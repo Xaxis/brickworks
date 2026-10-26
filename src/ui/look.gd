@@ -27,6 +27,22 @@ const ACCENT_HOVER := Color(0.78, 0.87, 1.0)
 ## [method dialogs] gives the engine's windows.
 const FACE := Color(0.10, 0.11, 0.13, 0.98)
 const EDGE := Color(1, 1, 1, 0.14)
+## The edge round a button of the engine's, so it is seen to be one: the
+## tick boxes' outline (UNCHECKED), at least 3:1 on every face the app has
+## (WCAG 1.4.11), and still so where the window is drawn smaller than the
+## app is laid out for and a line of one unit is spread over two pixels.
+## The engine's fill alone, black at 60% on the dark face, was 1.0:1, and
+## "Start a session", Cancel, Join read as words (contrast270, 2026-10-26).
+const OUTLINE := Color(0.83, 0.85, 0.89)
+## A dialog's default button (its OK), and the app's own strong ones
+## (Render picture): white words at least 4.5:1 on it, it at least 3:1 on
+## the face. Render's blue was 3.4:1 under its words.
+const STRONG := Color(0.20, 0.42, 0.85)
+const STRONG_HOVER := Color(0.21, 0.44, 0.88)
+const STRONG_DOWN := Color(0.17, 0.36, 0.75)
+## One of a choice that is chosen (a tab, a segment): the accent, at least
+## 3:1 on the face; at 38% it was 2.0:1.
+const CHOSEN := Color(0.36, 0.6, 1.0, 0.65)
 
 const UNCHECKED := """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">
 <rect x="1.75" y="1.75" width="12.5" height="12.5" rx="2.5" fill="#ffffff" fill-opacity="0.06"
@@ -127,6 +143,50 @@ static func dialogs() -> void:
 	if not OS.has_feature("web"):
 		_face(theme, "panel", "PopupMenu", true)
 		_face(theme, "panel", "PopupPanel", true)
+
+
+## Every button of the engine's edged with [constant OUTLINE], inside its
+## own box, so nothing moves; and every dialog's default button, its OK
+## where it has others beside it, in [constant STRONG], told apart from
+## them (a ConfirmationDialog's, a FileDialog's). In the default theme
+## before the first button is made, as [method dialogs] is.
+static func buttons() -> void:
+	var theme: Theme = ThemeDB.get_default_theme()
+	# And a tab not chosen, which the colour picker's modes are drawn as
+	# (RGB, HSV, Linear: 1.2:1), and the print designer's areas.
+	var states: Dictionary = {"Button": ["normal", "hover", "pressed"],
+		"OptionButton": ["normal", "hover", "pressed"], "MenuButton": ["normal", "hover", "pressed"],
+		"TabContainer": ["tab_unselected", "tab_hovered"], "TabBar": ["tab_unselected", "tab_hovered"]}
+	for type: String in states:
+		for state: String in states[type]:
+			var engine := theme.get_stylebox(state, type) as StyleBoxFlat
+			if engine == null or engine.has_meta(&"look"):
+				continue
+			var edged := engine.duplicate() as StyleBoxFlat
+			edged.border_color = OUTLINE
+			edged.set_border_width_all(1)
+			edged.set_meta(&"look", true)
+			theme.set_stylebox(state, type, edged)
+	if theme.is_type_variation(&"DefaultButton", &"Button"):
+		return
+	theme.set_type_variation(&"DefaultButton", &"Button")
+	var fills: Dictionary = {"normal": STRONG, "hover": STRONG_HOVER, "pressed": STRONG_DOWN}
+	for state: String in fills:
+		var face := theme.get_stylebox(state, "Button").duplicate() as StyleBoxFlat
+		face.bg_color = fills[state]
+		face.set_border_width_all(0)
+		theme.set_stylebox(state, &"DefaultButton", face)
+	for item: String in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color",
+			"font_hover_pressed_color"]:
+		theme.set_color(item, &"DefaultButton", Color(1, 1, 1))
+	(Engine.get_main_loop() as SceneTree).node_added.connect(_default_marked)
+
+
+## A question's default button marked as such, as the question is made.
+static func _default_marked(node: Node) -> void:
+	var asked := node as ConfirmationDialog
+	if asked != null:
+		asked.get_ok_button().theme_type_variation = &"DefaultButton"
 
 
 ## [param theme]'s [param item] of [param type] in the panels' face, with

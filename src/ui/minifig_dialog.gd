@@ -603,7 +603,10 @@ func _make_way() -> void:
 	if not is_instance_valid(_touch):
 		_touch = get_tree().get_first_node_in_group(TouchSizing.SELF) as TouchSizing
 	var way: bool = _touch != null and _touch.keyboard > 0.0 and _touch.typing_in(self)
-	if _frame.visible == way:
+	# Not under a finger: a part found, pressed with the keyboard up, takes
+	# the keys from the search, and the figure coming back moved the part
+	# down from under the finger before it lifted (TouchSizing._place).
+	if _frame.visible == way and not TouchSizing.finger_down():
 		_frame.visible = not way
 		_colour_note.visible = not way
 		_palette_scroll.visible = not way
@@ -776,6 +779,11 @@ func _cell(info: PartLibrary.PartInfo) -> Button:
 		if state.ends_with("pressed"):
 			back.border_color = Color(1.0, 0.92, 0.55)
 			back.set_border_width_all(2)
+		else:
+			# Edged as every button is (Look.OUTLINE): the shade alone was
+			# 1.7:1 on the panel.
+			back.border_color = Look.OUTLINE
+			back.set_border_width_all(1)
 		cell.add_theme_stylebox_override(state, back)
 	var id: String = "" if info == null else info.id
 	cell.set_meta("part", id)
@@ -857,10 +865,10 @@ func _mark_swatches() -> void:
 	if info != null and info.availability_known():
 		if info.id == Minifig.flat_of(library.parts.get(part)):
 			# A worn drawing of cloth stands for the cloth.
-			note += " A dot marks the %d colours %s comes in: %s is that cloth as worn." \
-				% [info.colors.size(), info.id, part]
+			note += " A dot marks the %s %s comes in: %s is that cloth as worn." \
+				% [Counted.of(info.colors.size(), "colour"), info.id, part]
 		else:
-			note += " A dot marks the %d colours %s%s comes in." % [info.colors.size(),
+			note += " A dot marks the %s %s%s comes in." % [Counted.of(info.colors.size(), "colour"),
 				info.id, "" if info.id == part else " (what %s is printed on)" % part]
 	_colour_note.text = note
 

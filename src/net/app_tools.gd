@@ -2428,12 +2428,34 @@ func _open_link(link: String, discard: bool) -> String:
 		% [author if not author.is_empty() else "its builder", url]]) \
 		if licence is String and GalleryTool.LICENCES.has(licence) \
 		else "none chosen: the person may build it; do not share what is made from it as theirs"
-	return ("Opened a copy of %s (%s)%s: %d parts, saved in the person's models as %s, theirs to "
+	return ("Opened a copy of %s (%s)%s: %s, saved in the person's models as %s, theirs to "
 		+ "change; the shared one stays as it was, and sharing this one says it was remixed from "
 		+ "it. Licence %s. look_at_model to see it.") % [name, url,
 		", by %s" % author if not author.is_empty() else "",
-		(app.get("_world") as BrickWorld).brick_count() - store.scenery.size(), kept, terms] \
+		await _parts_against_box(store, ""), kept, terms] \
 		+ _replaced_words(store, unsaved, was) + _opened_motions()
+
+
+## The opened model's part count as a builder counts it (Inventory.pieces_in),
+## and what else the model holds and its box says where they differ: the Cat
+## D11 "3,868 parts (6,793 pieces drawn: a cable, a hose or a motor's case is
+## drawn in segments)", 6680-1 "76 parts (its box holds 67)". [param number]
+## is its set's, or "" for none to ask after.
+func _parts_against_box(store: ModelStore, number: String) -> String:
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	var parts: int = Inventory.pieces_in(world, library, store.scenery)
+	var drawn: int = world.brick_count() - store.scenery.size()
+	var said := PackedStringArray()
+	if drawn != parts:
+		said.append("%s pieces drawn: a cable, a hose or a motor's case is drawn in segments"
+			% CollectionDialog._comma(drawn))
+	if not number.is_empty():
+		var box: int = await ModelLibrary.box_of(number)
+		if box > 0 and not ModelLibrary.agrees(parts, box):
+			said.append("its box holds %s" % CollectionDialog._comma(box))
+	return "%s parts%s" % [CollectionDialog._comma(parts),
+		" (%s)" % "; ".join(said) if not said.is_empty() else ""]
 
 
 ## open_model library=: LDraw's model of a real set, from the library File,
@@ -2473,10 +2495,11 @@ func _open_library(id: String, discard: bool) -> String:
 	var since: int = Time.get_ticks_msec()
 	while not store.awaited.is_empty() and Time.get_ticks_msec() - since < 120000:
 		await app.get_tree().create_timer(0.3).timeout
-	return ("Opened %s: %d parts%s, %s (%s). It is LDraw's model of the real set: credit %s and keep "
+	return ("Opened %s: %s%s, %s (%s). It is LDraw's model of the real set: credit %s and keep "
 		+ "to its licence in anything made from it. Not saved: save_model keeps it in the person's "
 		+ "models. look_at_model to see it.") % [title,
-		(app.get("_world") as BrickWorld).brick_count() - store.scenery.size(),
+		await _parts_against_box(store, str(entry["set"]) if str(entry.get("alternate_of", "")).is_empty()
+			else ""),
 		ModelBar.left_out_words(result, false), ModelBar.credit_words(store.credit), entry["page"],
 		str(entry["author"]) if not str(entry["author"]).is_empty() else "its maker"] \
 		+ _replaced_words(store, unsaved, was) + _opened_motions()
@@ -2496,7 +2519,8 @@ func _parts_list(input: Dictionary) -> String:
 		if stock.lots.is_empty():
 			return "Nothing is built yet."
 		var said := PackedStringArray()
-		said.append("%d pieces in %d lots, %s." % [stock.pieces, stock.lots.size(), stock.weight()])
+		said.append("%s in %s, %s." % [Counted.of(stock.pieces, "piece"),
+			Counted.of(stock.lots.size(), "lot"), stock.weight()])
 		for lot: Inventory.Lot in stock.lots.slice(0, limit):
 			said.append("  %3d x %s %s, %s%s" % [lot.count, lot.part_id, lot.name, lot.color_name,
 				" (element %s)" % lot.element if not lot.element.is_empty() else ""])
@@ -2534,7 +2558,7 @@ func _parts_list(input: Dictionary) -> String:
 			if short <= limit:
 				said.append("  short %d of %d x %s in colour %d" % [int(row["short"]), int(row["need"]),
 					str(row["part"]), int(row["colour"])])
-		said.append("Short of %d lots." % short if short > 0 else "They own every piece.")
+		said.append("Short of %s." % Counted.of(short, "lot") if short > 0 else "They own every piece.")
 		return "\n".join(said)
 	# What can I build? as the window ranks it (CollectionDialog._fill_build):
 	# the person's saved models, the examples and the official LDraw models

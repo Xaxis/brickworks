@@ -3,7 +3,7 @@
 Finding one of 28,000 parts by the words a builder would type, and getting its
 geometry in front of them.
 
-<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, ui:recent and favourite parts, ui:techniques in the bin, ui:find a part from a photo, cli:dialog look probe, cli:picker folder probe, ui:the app's dialogs and menus, ui:where a chooser opens -->
+<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, ui:recent and favourite parts, ui:techniques in the bin, ui:find a part from a photo, cli:dialog look probe, cli:picker folder probe, ui:the app's dialogs and menus, ui:where a chooser opens, cli:contrast probe, ui:buttons seen and read -->
 
 ## Sub-features
 
@@ -289,8 +289,15 @@ geometry in front of them.
   constructions (`Techniques.all()`, 91 on 2026-10-24) under their
   `Techniques.GROUPS`, one a row with its picture (`PartThumbnails.offer_group`,
   drawn once a colour and cached as a part's is) and its one-line reason
-  (`Techniques.reason`, the first sentence of its *why*). What is typed in the
-  search narrows them. A row chosen is read as a design's words are, by an
+  (`Techniques.reason`, the first sentence of its *why*), titled as words
+  ("Door in a wall", `Techniques.title`). What is typed finds them, best
+  first (`Techniques.found`): every word in a construction's name, group or
+  use, whole, through its plural or as a word's start or end, worth most in
+  the name; the groups with the best first, the best first in each. walk256
+  TQ1: "door" led with columns and an awning, and "stairs" found nothing;
+  `technique_search_probe` asks 18 queries written before the change, each
+  needing its construction in the first three rows (12 of 18 on base, 18 of
+  18 now). A row chosen is read as a design's words are, by an
   assistant of the bin's own (`Techniques.as_ldraw`, never the one designing),
   into LDraw lines and back (`Carry.from_ldraw`, the path a paste takes), and
   held whole (`EditVerbs.hold`): R turns it, a click puts it down, one undo
@@ -310,7 +317,14 @@ geometry in front of them.
   `tools/deploy.sh`); its BrickLink numbers become parts here by
   `PartLibrary.by_shop` (LDraw's "BrickLink 3062" keyword, else the number,
   else the mould under a letter) and show as the bin's results, each with how
-  sure Brickognize is. Offline, refused, garbled or empty, the status line says
+  sure Brickognize is. The colour it sees is asked for too
+  (`predict_color=true&top_k_colors=1`, `Brickognize.colour`, a BrickLink
+  colour number through `PartLibrary.by_bricklink`) and taken in hand, as an
+  element number's is, where it is at least `COLOUR_LEAST` sure, and the
+  line says "in Black": a black slope's photo came back in the red in hand
+  (walk256 S3). `photo_search_stub_probe` answers Black at 0.81 and 0.12 and
+  none; `bin_flow.mjs` sends the blue 3039 fixture live and reads the colour
+  in hand turn blue. Offline, refused, garbled or empty, the status line says
   so in words.
 - `the app's dialogs and menus` (`Look.dialogs`, called first in
   `Main._ready`): every dialog of the engine's (AcceptDialog,
@@ -327,6 +341,30 @@ geometry in front of them.
   opens each as a person does (Render's panel gives the face), then pops
   up every other dialog and menu in the window and reads them all: 134 of
   its checks failed on desk263's build, none after.
+- `buttons seen and read` (`Look.buttons`, called first in `Main._ready`
+  beside `Look.dialogs`): every button of the engine's (Button,
+  OptionButton, MenuButton) and every tab not chosen is edged in
+  `Look.OUTLINE` (the tick boxes' outline, #d4d9e2), inside its own box,
+  so nothing moves; the engine's fill alone, black at 60% on the dark
+  face, was 1.0:1, and "Start a session", Cancel and Join read as words.
+  A question's default (a ConfirmationDialog's or FileDialog's OK) is
+  `DefaultButton`, a type variation of Button in `Look.STRONG` with white
+  words, told apart from the rest; Render's strong button is the same
+  blue (its words were 3.4:1). A chosen tab or segment is `Look.CHOSEN`
+  (the accent at 65%; at 38% it was 2.0:1). The panels' own faint edges
+  (the model bar's, the toolbar's choosers, the library's and
+  collection's tabs, the figure builder's cells, the parts rail's line)
+  are `Look.OUTLINE` too. On the desktop and the web: the web's main
+  window changed with it (the parts tiles, the model bar), so
+  `desktop_same.mjs` takes a base build with contrast270 in it from then
+  on. `contrast_probe` (extends `dialog_look_probe`, the same windows plus
+  the main window and its fifteen main panels) reads every button off the
+  pixels: its edge or fill 3:1 on its face on the side it is best told
+  on, its words 4.5:1 in their own colour on its fill and drawn 3:1, its
+  picture 3:1, a question's default 3:1 from the rest; a flat button, a
+  link, a tick box or a toolbar's faceless button is its words or
+  picture. 307 of 653 buttons failed on rel-m176, none after
+  (2026-10-26). The app has one theme, its dark one.
 - `where a chooser opens` (`OpenFrom`, `ShellPrefs` `open_folders`): on
   the desktop every file chooser opens in the folder the last file of its
   kind was chosen from, while it is there; else a picture (the photo
@@ -339,7 +377,13 @@ geometry in front of them.
   `picker_folder_probe` opens each and chooses a file in it.
 - `a part asked for by number` lists its own family first: `3023` gives 3023b,
   3023a and the 3023 prints before 30236 or the 30239 spider (`NUMBER` in
-  `_match_score`).
+  `_match_score`). And only them: digits that number a part here match
+  numbers only, never words in a name or keywords (`PartSearch.ranked`,
+  `as_words`), so 3648 is the two gears and not the torsos of set 3648
+  ("Set 3648" in their keywords), nor 3001 a torso printed with a 3001 brick
+  (walk256 S3); digits no part is numbered by are still looked for as words,
+  as a BrickLink number in keywords is. `search_probe` `_only_numbered`, 12
+  numbers in the bin's search and the assistant's.
 - `thumbnails of light parts` are lit less (`PartThumbnails._light_for`), so a
   white part has a top and sides instead of one flat silhouette.
 
@@ -364,10 +408,12 @@ godot --headless --path . --script src/dev/search_probe.gd          # what it re
 godot --headless --path . --script src/dev/search_probe.gd -- --catalogue=PATH  # a corrected catalogue, before it is swapped in
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd  # Recent, Favourites, 3023
 godot --path . --resolution 1280x860 --script src/dev/bin_techniques_probe.gd  # Techniques: window in a wall onto a wall, three more; shots/bin_techniques/
+godot --headless --path . --script src/dev/technique_search_probe.gd  # 18 queries, each's construction in the first three rows; titles as words
 godot --headless --path . --script src/dev/photo_search_stub_probe.gd  # the camera with Brickognize stubbed on 9061: told first, nothing sent, every failure in words
 godot --path . --resolution 1280x860 --script src/dev/photo_search_probe.gd -- --keep  # Brickognize live: 5 parts drawn by ModelShot, at least 4 right in the first three
 tools/probe.sh dialog_look_probe -- --shots=DIR  # every dialog, chooser and desktop menu in the app's look, read off the window's pixels (108 on 2026-10-26)
 tools/probe.sh picker_folder_probe                # every chooser in Pictures, Documents or Downloads first, then where its kind last came from
+tools/probe.sh contrast_probe -- --shots=DIR      # every button's edge 3:1, words 4.5:1, a question's default told apart (653 buttons on 2026-10-26); -- --main-only --every lists each
 node tools/web/bin_flow.mjs --url=http://127.0.0.1:9063/ --out=DIR   # both in a browser at 1280 and 390 (serve.py on 9063; Brickognize live)
 godot --headless --path . --script src/dev/vocab_probe.gd           # the words a builder types
 godot --headless --path . --script src/dev/print_search_probe.gd    # a print by what is on it; plain parts unmoved

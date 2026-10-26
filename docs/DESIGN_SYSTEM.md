@@ -38,9 +38,11 @@ sized its own titles, from 26 to 74 px. Now:
   into the gutter at 320, 360 or 390 px). Everything in it is 44 px
   tall, a finger's: the mark, its links, Open the app (the regular
   `.cta`, 44 px at 16, not a size of its own), Menu and your avatar's
-  button (2026-10-26; they were 36-42). The footer: the mark and a row of links (Compare, FAQ, Changelog,
-  Source, Privacy, Terms, Guidelines, Takedown), then every notice
-  docs/TRADEMARKS.md asks for, small and quiet.
+  button (2026-10-26; they were 36-42). The footer: the mark and a row
+  of links (Challenge, Collections, Compare, FAQ, Changelog, Source,
+  Privacy, Terms, Guidelines, Takedown), each a finger's 44 x 44 with
+  its words 12 px apart (at 16 the tenth wraps the Theme choice at
+  1280), then every notice docs/TRADEMARKS.md asks for, small and quiet.
 - **One type scale** (`--t-display`, `--t-h1` 32-46 px, `--t-h2` 22-26
   px, `--t-h3` 18 px, `--t-lede`, then the words: `--t-body` 16,
   `--t-small` 14.5, `--t-tiny` 13, `--t-micro` 12): `h1` is a page's
@@ -258,7 +260,12 @@ is on the page, `hidden`, for the script to show.
   `web/kit.js` `iconHtml`),
   drawn in the words' colour. **Icon button**: `.icon-btn` (`iconButtonHtml`), round,
   as tall as a field (`.small` 36 for a card's row), its count beside its
-  icon once there is one. Its label says its name and count to a screen
+  icon once there is one. `.labelled` (`iconButtonHtml({ labelled: true })`)
+  says a word for it too, between the icon and the count (`word`, its
+  name unless said, and in its label): a model's Like and I built it
+  ("Built"), which nobody reads from a glyph alone; on a phone (600 px and
+  under) the row of six has room for icons and counts only, and the word
+  is hidden there. Its label says its name and count to a screen
   reader ("Like, 12 likes"; "Like" at none); a toggle is `aria-pressed`,
   and pressed is edged in `--accent-edge` with its icon filled. A button
   that opens something rather than toggling (Save, which opens your
@@ -294,6 +301,17 @@ is on the page, `hidden`, for the script to show.
   in `--accent-edge`; `.side`, the column that stays beside it on a laptop;
   and `.page-tabs`, the kit's `.tabs` as links to the parts of the page,
   sticky under the header, with a ground of its own only once stuck. The
+  Its Parts (`.parts`, docs/SOCIAL.md, site278): the count in a `.note` ("N parts in M lots"),
+  `.parts-bar` (a `.segmented` Colour · Kind, then the shops' lists as
+  `.cta.ghost.small` links that download), and `ul.lot-list`, a row a
+  colour or kind (`li.group`: its swatch, name and count) over a row a lot
+  (`li.lot`: `.pic`, its 48 px picture on `--picture-ground`; `.what`, the
+  name and `.meta`, number and colour, each one line that ends in an
+  ellipsis; `.qty`), every row 60 px so the space the list takes is kept
+  before it comes; a colour's swatch is an inline `svg.swatch` filled with
+  the brick's own colour, which is the model's, not the site's. Download is
+  a `.cta.ghost` in the column's actions: Build it across the column, Open
+  in Brickworks and Download sharing the row under it. The
   public collections it is in (docs/SOCIAL.md U11) are a fact `a.pill`
   ("In 2 collections"), a tab and `.in-lists`, a `.list-cards` of their
   covers, each saying whose; none of the three while it is in none. Its

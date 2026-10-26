@@ -19157,10 +19157,12 @@ around the base at different heights read as debris, not as a lawn. \
 Either lay a deliberate shape — an even layer, a definite edge — or \
 leave the baseplate bare and let the model stand on it.
 
-Choose what it stands on (submit_design's floor). A vehicle, a ship, a \
-figure or a creature has no plate in its box: floor "none". A scene, a \
-diorama or a building on its lot comes on a baseplate: floor "baseplate" \
-in the colour of its ground, and that plate is part of the build. A figure \
+Choose what it stands on (submit_design's floor). Real sets stand on \
+their own plates, not on a baseplate: a vehicle, a ship, a figure or a \
+creature has nothing under it, a building stands on the floor its rooms \
+need, and a scene is its builds, each on the small base its own ground \
+needs, with bare table between them: floor "none" for all of these. Only \
+a modular street building comes on its 32 x 32 baseplate. A figure \
 or two with what the brief stands them on is not a scene: floor "none", \
 and the base the brief names (a log, a stool, a stretch of floor, a small \
 base) built a stud or two past their footprint.
@@ -19573,6 +19575,30 @@ A call answered with a job number is still working in the app: call job \
 about every 10 s until it gives the answer."""
 
 
+## HOW TO WORK in a few lines, which a connector chat hears once, in its first
+## answer (ClaudeConnector._taught). A client need not show a server's
+## instructions at all, and whether claude.ai does was never measured; all 88
+## bench sessions, which Claude Code shows the head, followed the method
+## (design281, 2026-10-26). The same steps as the head's, held to its tools by
+## mcp_sync_probe.
+const METHOD := """How to work here, said once as this chat begins \
+(read_guide "work" has it whole, and read_guide any section a step names):
+ 1. Before building: plan_scale with the real thing's size, find_reference \
+for anything that exists, how_real_sets_build_this with the subject: real \
+sets' parts, and the faults found in our own designs of it, to design out.
+ 2. submit_design the silhouette first: the main masses, with its assemblies \
+and its features (what the subject is known by, each with where it goes). A \
+hull, a car body or a building is a shape pattern (read_guide "shapes"); a \
+figure or a creature is shaped parts on joints (read_guide "figures"). When \
+the person named a part count, pass it as parts.
+ 3. review_model: fix the silhouette and proportions before any detail.
+ 4. Each feature: the app lays a real set's piece; settle_feature it.
+ 5. Each assembly: review_model {"assembly": name}, detailed with edit_model.
+ 6. review_model {"surface": true}, settle_surface each; 7. review_model \
+{"creative": true}; then save_model.
+Nothing overlaps, nothing floats, and the model is one connected thing."""
+
+
 ## The section on figures and creatures, which the head sends a session to.
 const FIGURES := "FIGURES, CREATURES AND SMALL MODELS"
 ## The section on choosing the parts a rounded body's outline is made of.
@@ -19752,7 +19778,7 @@ func _show_technique(wanted: String) -> String:
 			+ "to pose it, or attach to your own part (a brick standing is \"#41.stud[3]\"; "
 			+ "attachment_points lists every connector)")
 	return ("%s — %s.\n\n%s\n\nBuilt like this, at the origin:\n%s\n\n"
-		% [str(technique["name"]).capitalize(), technique["when"],
+		% [Techniques.title(str(technique["name"])), technique["when"],
 			technique["why"], "\n".join(rows)]
 		+ move + ". Every one "
 		+ "of these is checked against the same lattice your design is, "

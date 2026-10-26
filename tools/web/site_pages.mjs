@@ -123,6 +123,12 @@ export function sitePages({ remote = "" } = {}) {
         const opened = await until(page, () => document.querySelector(".list-head .more-menu[open]"));
         return [[opened ? "more" : "more (missing)", ".list-head .more-menu"]];
       } },
+    // The directory of public collections (api/people.js collectionsPage,
+    // walk256 W12): their cards, each with Follow once signed in.
+    { name: "collections", path: "/collections",
+      ready: (page, { signedIn }) => (signedIn && !remote
+        ? until(page, () => [...document.querySelectorAll("button[data-follow-list]")].some((button) => !button.hidden)) : true) },
+    { name: "collections-followed", path: "/collections?sort=followed", local: true },
     { name: "challenge", path: "/challenge",
       ready: (page) => until(page, () => document.documentElement.dataset.challenge === "open") },
     // A challenge that ran, on its own page (supabase/challenge_year.sql):

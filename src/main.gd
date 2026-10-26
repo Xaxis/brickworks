@@ -1396,11 +1396,14 @@ func _ready() -> void:
 	if not OS.has_feature("web"):
 		get_window().title = "Brickworks %s" % BuildInfo.version()
 	_boot_mark("ready")
-	# Before any window is made, so every dialog and menu is made in the
-	# app's look, the engine's own among them (Look.dialogs).
+	# Before any window or button is made, so every dialog, menu and button
+	# is made in the app's look, the engine's own among them (Look.dialogs,
+	# Look.buttons).
 	Look.dialogs()
+	Look.buttons()
 	IdleDraw.for_the_app()
 	Tooltips.let_clicks_through(get_window())
+	Tooltips.keep_inside(get_window())
 	# Before anything draws: the controls strip reads these to say what
 	# the middle button does, and a strip built from the defaults and
 	# never rebuilt would be wrong for everyone who has changed them.
@@ -2178,6 +2181,11 @@ func _open_commands(port: int) -> void:
 ## who opens the app to use it is asked.
 func _gate_wanted() -> bool:
 	if gate_for_probe:
+		return true
+	# Headless, standing in for a person's tab as Claude's connector reaches
+	# one (tools/bench/realset.py --via relay): signed in from the session kept
+	# in its data folder, which the run has to itself.
+	if _has_argument("--signed-in"):
 		return true
 	if DisplayServer.get_name() == "headless":
 		return false
@@ -4222,6 +4230,11 @@ func _build_ui() -> void:
 	# The parts bin at the top of the left-hand column, which takes the
 	# model tree and the properties under it (Shell.build).
 	_stack = PanelStack.new()
+	# A list thrown by a finger glides as a phone's does (FlingScroll): every
+	# list and panel that scrolls, a shared model's viewer's too. The desktop's
+	# wheel is its own.
+	if Phone.on():
+		add_child(FlingScroll.new())
 	if _phone_wanted():
 		_phone = PhoneShell.new()
 		_phone.app = self
@@ -6270,7 +6283,7 @@ func _on_part_fetched(part_id: String) -> void:
 	if _store.place_awaited(part_id) > 0:
 		_on_model_changed()
 		if _store.awaited.is_empty():
-			_bar.say("%d bricks" % (_world.brick_count() - _store.scenery.size()))
+			_bar.say("%d bricks" % Inventory.pieces_in(_world, _library, _store.scenery))
 	if _builder.held_part == part_id:
 		_refresh_preview()
 		_bar.say("%s ready" % part_id)

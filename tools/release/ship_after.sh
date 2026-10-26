@@ -3,11 +3,18 @@
 # Ship TAG once release PREV has shipped, as a queue: waits until PREV's
 # result is in $RELEASE_OUT (PREV.done, its exit code, which this writes;
 # or an "exit=N" last line in PREV_ship.log), ships only if it was 0, and
-# writes TAG's own. PREV "-" ships at once.
+# writes TAG's own. PREV "-" ships at once. A waiter that gives up writes
+# TAG.gave_up, never TAG.done: TAG never ran.
 #
 # Waiters written by hand looked for the release before by its command
 # line, and one's own grep took it out of the list: it found nothing and
 # let m43's ship go at once (2026-10-17).
+#
+# A result is the latest attempt's or none. m177's first waiter gave up when
+# m175 held and wrote m177.done = 1; m177 shipped later, and m178's waiter
+# read that 1 while m177's checks still ran, and held (2026-10-26). So TAG
+# queued clears what its attempts before left (ship.sh does too, for a ship
+# begun by hand), and the log before is kept as TAG_ship.prev.log.
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # Absolute: ship.sh runs from the worktree, where a relative folder is another
@@ -17,16 +24,20 @@ export RELEASE_OUT="$S"
 PREV="$1"; W="$2"; TAG="$3"; shift 3
 
 result_of() {
-  if [ -e "$S/$1.done" ]; then cat "$S/$1.done"; return; fi
-  [ -e "$S/${1}_ship.log" ] && tail -1 "$S/${1}_ship.log" | sed -n 's/^exit=//p'
+  if [ -e "$S/$1.done" ]; then echo "exit $(cat "$S/$1.done")"; return; fi
+  if [ -e "$S/$1.gave_up" ]; then echo "never begun: $(cat "$S/$1.gave_up")"; return; fi
+  [ -e "$S/${1}_ship.log" ] && tail -1 "$S/${1}_ship.log" | sed -n 's/^exit=/exit /p'
 }
 
+rm -f "$S/$TAG.done" "$S/$TAG.gave_up"
+[ -e "$S/${TAG}_ship.log" ] && mv -f "$S/${TAG}_ship.log" "$S/${TAG}_ship.prev.log"
 if [ "$PREV" != "-" ]; then
   echo "SHIP: $TAG waits for $PREV"
-  until [ -n "$(result_of "$PREV")" ]; do sleep 30; done
-  if [ "$(result_of "$PREV")" != 0 ]; then
-    echo "SHIP: $PREV did not ship (exit $(result_of "$PREV")); $TAG held"
-    echo 1 > "$S/$TAG.done"
+  # Read once: a second read can fall after PREV's next attempt cleared it.
+  until result=$(result_of "$PREV"); [ -n "$result" ]; do sleep 30; done
+  if [ "$result" != "exit 0" ]; then
+    echo "SHIP: $PREV did not ship ($result); $TAG held"
+    echo "$PREV did not ship ($result)" > "$S/$TAG.gave_up"
     exit 1
   fi
 fi

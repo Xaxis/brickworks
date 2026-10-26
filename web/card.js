@@ -84,13 +84,17 @@ export function iconHtml(name) {
 
 /// An icon button: its icon and its count beside it once there is one,
 /// its name and count its label ("Like, 12 likes"; "Like" at none). A
-/// toggle ([pressed] true or false) is aria-pressed.
-export function iconButtonHtml({ icon, name, count = 0, one = "", many = "", pressed = null, small = false, attrs = "" }) {
+/// toggle ([pressed] true or false) is aria-pressed. [labelled] shows a
+/// word for it between the two, [word] (its name unless said), which is
+/// in its label.
+export function iconButtonHtml({ icon, name, count = 0, one = "", many = "", pressed = null, small = false, labelled = false,
+  word = name, attrs = "" }) {
   const n = Number(count) || 0;
   const said = n ? `${name}, ${n.toLocaleString("en-US")} ${n === 1 ? one : many || `${one}s`}` : name;
-  return `<button type="button" class="icon-btn${small ? " small" : ""}" aria-label="${escapeHtml(said)}"`
+  return `<button type="button" class="icon-btn${small ? " small" : ""}${labelled ? " labelled" : ""}" aria-label="${escapeHtml(said)}"`
     + `${pressed === null ? "" : ` aria-pressed="${pressed ? "true" : "false"}"`}${attrs ? ` ${attrs}` : ""}>`
-    + `${iconHtml(icon)}${n ? `<span class="n" aria-hidden="true">${escapeHtml(n.toLocaleString("en-US"))}</span>` : ""}</button>`;
+    + `${iconHtml(icon)}${labelled ? `<span class="word">${escapeHtml(word)}</span>` : ""}`
+    + `${n ? `<span class="n" aria-hidden="true">${escapeHtml(n.toLocaleString("en-US"))}</span>` : ""}</button>`;
 }
 
 /// What a person earned, as the row of pills under their numbers on their

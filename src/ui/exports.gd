@@ -77,7 +77,7 @@ func shop_list(shop: String, skip: Dictionary = {}, asking: bool = false) -> Str
 		return ""
 	var line: String = _give(str(made["text"]), to.get_file(), mime, to.get_base_dir())
 	if int(made["left_out"]) > 0:
-		line += " — %d of %d lots left off: %s" % [int(made["left_out"]), stock.lots.size(),
+		line += " — %d of %s left off: %s" % [int(made["left_out"]), Counted.of(stock.lots.size(), "lot"),
 			ShopLists.why_left_off(made, shop)]
 	say.call(line)
 	return line

@@ -15,7 +15,7 @@
 ## Writes assets/generated/sets/models.json:
 ##   {"models": [{"n": name, "set": "10237-1", "file": "10237-1.mpd",
 ##                "y": year, "t": theme, "g": its page at library.ldraw.org/omr/sets/,
-##                "p": [[part, colour, qty], ...]}]}
+##                "p": [[part, colour, qty], ...], "c": its part count}]}
 ## One entry per file: a set with a B-model has two.
 extends SceneTree
 
@@ -60,6 +60,16 @@ func _initialize() -> void:
 		models.append({"n": name, "set": number, "file": file_name,
 			"y": int(str(said.get("year", "0"))), "t": str(said.get("theme", "")),
 			"g": str(said.get("page", "")), "p": rows})
+	# And each one's part count as a builder counts it, which the Library's
+	# card says (tools/library_build.py): the lots above are what of its set's
+	# box it uses, which left out the 1,679 parts the Cat D11 carries. After
+	# every list, since counting reads a file as opening it does and puts the
+	# parts it carries in the library, where a B-model's list would find its
+	# A-model's; and nothing kept of them.
+	CustomParts.keeps = false
+	for model: Dictionary in models:
+		model["c"] = Inventory.count_of_text(
+			FileAccess.get_file_as_string(OMR + "files/" + str(model["file"])), library)
 	var out: FileAccess = FileAccess.open(SetInventories.ROOT + "models.json", FileAccess.WRITE)
 	if out == null:
 		print("FAIL could not write %smodels.json" % SetInventories.ROOT)

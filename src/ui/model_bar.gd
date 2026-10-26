@@ -274,7 +274,8 @@ func _button(row: Container, text: String, action: Callable,
 	for state: String in ["normal", "hover", "pressed"]:
 		var face := StyleBoxFlat.new()
 		face.bg_color = BUTTON_FACES[state]
-		face.border_color = Color(1, 1, 1, 0.1 if state == "normal" else 0.22)
+		# Its edge 3:1 on the bar (Look.OUTLINE): at 10% white it was 1.5:1.
+		face.border_color = Look.OUTLINE
 		face.set_border_width_all(1)
 		face.set_corner_radius_all(5)
 		face.content_margin_left = 9
@@ -301,7 +302,11 @@ func bind(to: ModelStore) -> void:
 		on_disk = ""
 		_name.text = name
 		model_named.emit(name)
-		_say("opened %s — %d bricks" % [name, bricks]))
+		# The parts a builder counts, as the counts line and the parts list
+		# do: the Cat D11 said 6,793 here, its motors' cable segments each one.
+		var parts: int = bricks if store.world == null else Inventory.pieces_in(
+			store.world, store.library, store.scenery)
+		_say("opened %s — %d bricks" % [name, parts]))
 	store.begun.connect(func(name: String) -> void:
 		on_disk = ""
 		_name.text = name

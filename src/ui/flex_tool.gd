@@ -879,7 +879,7 @@ func _build_panel() -> void:
 		button.add_theme_font_size_override("font_size", 12)
 		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		var down := StyleBoxFlat.new()
-		down.bg_color = Color(0.36, 0.6, 1.0, 0.38)
+		down.bg_color = Look.CHOSEN
 		down.set_corner_radius_all(3)
 		down.content_margin_top = 3
 		down.content_margin_bottom = 3

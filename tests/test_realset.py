@@ -275,3 +275,74 @@ def test_shares_and_win_rate_count_a_subject_with_no_model_as_lost():
 def test_a_paired_gap_has_its_interval_round_it():
     gap, low, high = realset.paired_gap([1.0, 0.5, 1.0, 0.5], [0.0, 0.5, 0.0, 0.0])
     assert gap == pytest.approx(0.625) and low <= gap <= high
+
+
+# -- what the sessions reached --------------------------------------------------
+
+
+def test_measures_count_the_parts_turned_off_the_grid():
+    brick = PartInfo("Brick 2 x 4", "Brick", ((-40.0, -4.0, -20.0), (40.0, 24.0, 20.0)))
+    parts = Parts.of({"3001": brick})
+    square = ["1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+              "1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat",
+              "1 4 100 0 0 1 0 0 0 1 0 0 0 1 3001.dat"]
+    # A third brick turned 30 degrees about the vertical, as a facade turned to a wedge.
+    turned = square[:2] + ["1 4 100 0 0 0.866 0 0.5 0 1 0 -0.5 0 0.866 3001.dat"]
+    assert realset.measures("\n".join(square), parts)["angled"] == 0
+    assert realset.measures("\n".join(turned), parts)["angled"] == pytest.approx(1 / 3, abs=0.01)
+    assert realset.turned_share("\n".join(turned), parts) == pytest.approx(1 / 3, abs=0.01)
+    assert "angled" in realset.MEASURES and "angled" in realset.SHARE_MEASURES
+
+
+def _turn(role: str, blocks: list[dict]) -> str:
+    return json.dumps({"type": role, "message": {"role": role, "content": blocks}})
+
+
+def test_a_session_is_read_for_what_it_reached_each_call_once():
+    use = lambda i, name, given: {"type": "tool_use", "id": i,  # noqa: E731
+                                  "name": f"mcp__brickworks__{name}", "input": given}
+    answer = lambda i, text: {"type": "tool_result", "tool_use_id": i,  # noqa: E731
+                              "content": [{"type": "text", "text": text}]}
+    facade = {"sections": [{"name": "facade", "x": 5, "y": 1, "z": 0, "yaw": 18.4}],
+              "floor": "none"}
+    square = {"sections": [{"name": "ramp", "x": 5, "y": 1, "z": 0, "pitch": 90}]}
+    lines = [json.dumps({"type": "user", "message": {"role": "user", "content": "A tower."}}),
+             _turn("assistant", [use("a", "read_guide", {"section": "angle"})]),
+             _turn("assistant", [use("a", "read_guide", {"section": "angle"})]),   # written twice
+             _turn("assistant", [use("b", "submit_design", facade)]),
+             _turn("user", [answer("b", "Not applied — it does not hold together yet.")]),
+             _turn("assistant", [use("c", "submit_design", facade)]),
+             _turn("user", [answer("c", "Built. 300 bricks on the baseplate.")]),
+             _turn("assistant", [use("d", "edit_model", square)]),
+             _turn("assistant", [use("e", "settle_feature", {"verdict": "built"}),
+                                 use("f", "settle_feature", {"verdict": "reject"}),
+                                 use("g", "place_technique", {"id": "21004-1/cluster-1"})])]
+    reach = realset.session_reach(lines)
+    assert reach["guide"] == ["angle"]
+    assert reach["turned_builds"] == 2 and reach["turned_refused"] == 1   # pitch 90 is square
+    assert reach["techniques"] == {"find_techniques": 0, "show_technique": 0,
+                                   "place_technique": 1}
+    assert reach["features"] == {"built": 1, "reject": 1}
+    assert reach["floor"] == "none" and reach["calls"] == 7
+
+
+def test_a_session_is_read_for_whether_it_worked_by_the_method():
+    use = lambda i, name, given: {"type": "tool_use", "id": i,  # noqa: E731
+                                  "name": f"mcp__brickworks__{name}", "input": given}
+    answer = lambda i, text: {"type": "tool_result", "tool_use_id": i,  # noqa: E731
+                              "content": [{"type": "text", "text": text}]}
+    built_first = [_turn("assistant", [use("a", "submit_design", {"name": "tower"})]),
+                   _turn("assistant", [use("b", "how_real_sets_build_this", {"subject": "tower"})])]
+    method = realset.session_reach(built_first)["method"]
+    assert not method["real_first"] and not method["told"] and not method["parts"]
+    by_the_method = [
+        _turn("assistant", [use("a", "plan_scale", {"longest_metres": 30})]),
+        _turn("user", [answer("a", "Tab k7qd, “Car”."),
+                       answer("a", realset.METHOD_SAID + " as this chat begins")]),
+        _turn("assistant", [use("b", "how_real_sets_build_this", {"subject": "tower"})]),
+        _turn("assistant", [use("c", "submit_design", {"name": "tower", "parts": 300})]),
+        _turn("assistant", [use("d", "review_model", {}), use("e", "settle_feature", {"verdict": "accept"}),
+                            use("f", "review_model", {"surface": True})])]
+    method = realset.session_reach(by_the_method)["method"]
+    assert method == {"real_first": True, "reviews": 2, "settled": 1, "passes": ["surface"],
+                      "parts": True, "told": True}

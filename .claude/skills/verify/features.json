@@ -483,6 +483,14 @@
       "tests": []
     },
     {
+      "id": "cli:collections browser flow",
+      "kind": "cli",
+      "entry": "tools/web/collections_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/collections_flow.mjs --url=<preview> --out=DIR   (live project, throwaway accounts; preview check [collections])",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:comments browser flow",
       "kind": "cli",
       "entry": "tools/web/comments_flow.mjs",
@@ -504,6 +512,14 @@
       "entry": "tools/web/oauth_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/oauth_flow.mjs --url=<deployment>/app --out=shots/oauth   (with .env sourced)",
       "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:contrast probe",
+      "kind": "cli",
+      "entry": "src/dev/contrast_probe.gd",
+      "reach": "tools/probe.sh contrast_probe -- --shots=DIR",
+      "area": "parts",
       "tests": []
     },
     {
@@ -1155,10 +1171,26 @@
       "tests": []
     },
     {
+      "id": "cli:part counts probe",
+      "kind": "cli",
+      "entry": "src/dev/part_counts_probe.gd",
+      "reach": "tools/probe.sh part_counts_probe   (headless; ten Library sets: the card, the model opened and its box say one count, or the card says the box too)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "cli:part facts",
       "kind": "cli",
       "entry": "tools/web/part_facts.mjs",
       "reach": "node tools/web/part_facts.mjs OUT.json   (deploy.sh writes _part_facts.json beside /api/share)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:parts page probe",
+      "kind": "cli",
+      "entry": "src/dev/parts_page_probe.gd",
+      "reach": "tools/probe.sh parts_page_probe [-- FILE.mpd ...]   (headless; the app's Inventory.of and ShopLists of four Library sets, or the files given, against the page's list, tools/web/parts_check.mjs, lot by lot and word for word)",
       "area": "web",
       "tests": []
     },
@@ -1520,6 +1552,14 @@
       "tests": []
     },
     {
+      "id": "cli:technic stress probe",
+      "kind": "cli",
+      "entry": "src/dev/technic_stress_probe.gd",
+      "reach": "tools/probe.sh technic_stress_probe   (headless; Stress on the Cat D11 in under 10 s, its pins and axles weighed and said)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:telescope probe",
       "kind": "cli",
       "entry": "src/dev/telescope_probe.gd",
@@ -1813,7 +1853,9 @@
       "entry": "src/ai/assistant.gd",
       "reach": "godot --headless --path . --script src/dev/responsive_probe.gd",
       "area": "assistant",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "lib:a build photo made safe",
@@ -1871,7 +1913,9 @@
       "entry": "src/ai/assistant.gd",
       "reach": "godot --headless --path . --script src/dev/section_probe.gd",
       "area": "geometry",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "lib:axles and gears on a line",
@@ -2067,7 +2111,9 @@
       "entry": "src/ai/assistant.gd",
       "reach": "godot --headless --path . --script src/dev/rules_probe.gd",
       "area": "assistant",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "lib:designers' numbers",
@@ -2407,7 +2453,9 @@
       "entry": "src/ai/assistant.gd",
       "reach": "godot --headless --path . --script src/dev/reference_probe.gd",
       "area": "assistant",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "lib:renders for the critique",
@@ -2455,7 +2503,9 @@
       "entry": "src/assembly/sections.gd",
       "reach": "godot --headless --path . --script src/dev/sections_probe.gd",
       "area": "building",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "lib:shapes said as patterns",
@@ -2712,7 +2762,9 @@
       "entry": "src/ai/techniques.gd",
       "reach": "godot --headless --path . --script src/dev/techniques_probe.gd",
       "area": "assistant",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "lib:worms hold their gears",
@@ -2760,7 +2812,9 @@
       "entry": "src/ai/assistant.gd",
       "reach": "godot --path .  (Mosaic from a picture, then Design with Claude; or ask the assistant for a LEGO Art picture)",
       "area": "view",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "ui:a designer's page",
@@ -2776,6 +2830,14 @@
       "entry": "src/render/frame_budget.gd",
       "reach": "tools/probe.sh look_probe   (on the GPU: nothing cut; -- --shots=DIR for pictures to cmp against a checkout before)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:a model's parts and its download",
+      "kind": "ui",
+      "entry": "api/_parts.js",
+      "reach": "https://brickworks.diy/m/<id>#parts (Parts: by Colour or Kind, Show all; BrickLink XML /m/<id>/parts.xml, Rebrickable CSV /m/<id>/parts.csv, the list /m/<id>/parts.json; Download /m/<id>.mpd, /m/<id>/v/<n>.mpd)",
+      "area": "web",
       "tests": []
     },
     {
@@ -2899,6 +2961,14 @@
       "tests": []
     },
     {
+      "id": "ui:buttons seen and read",
+      "kind": "ui",
+      "entry": "src/ui/look.gd",
+      "reach": "godot --path .  (every button edged 3:1 on its face; a question's default in the strong blue)",
+      "area": "parts",
+      "tests": []
+    },
+    {
       "id": "ui:camera controls",
       "kind": "ui",
       "entry": "src/camera/cad_camera.gd",
@@ -2919,6 +2989,14 @@
       "kind": "ui",
       "entry": "web/admin.js",
       "reach": "https://brickworks.diy/admin signed in as MASTER_EMAIL: This week's pick (what visitors see, the choices with End, the week worked out) and Make it the pick beside every model in the gallery",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:collections directory",
+      "kind": "ui",
+      "entry": "api/people.js",
+      "reach": "https://brickworks.diy/collections  (?sort=followed, ?page=N, ?tests=1; supabase/collection_directory.sql; linked from the gallery's tabs and the footer)",
       "area": "web",
       "tests": []
     },
@@ -3737,7 +3815,9 @@
       "entry": "src/ai/techniques.gd",
       "reach": "godot --path .  (Techniques beside Recent and Favourites in the parts bin; a row held whole, R turns it, a click puts it down)",
       "area": "parts",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "ui:terms and guidelines",

@@ -68,8 +68,10 @@ static func _said(words: String, data: Dictionary, error: bool = false) -> Dicti
 	return {"content": [{"type": "text", "text": words}], "structuredContent": data, "isError": error}
 
 
+## The model's part count as a builder counts it, as the counts line says it
+## (Inventory.pieces_in).
 func _parts_count() -> int:
-	return maxi(assistant.world.brick_count() - assistant.scenery.size(), 0)
+	return Inventory.pieces_in(assistant.world, assistant.library, assistant.scenery)
 
 
 func _now() -> String:
@@ -173,7 +175,7 @@ func _parts() -> Dictionary:
 	var title: String = _title()
 	var file: String = (title if not title.is_empty() else "brickworks").to_lower() \
 		.replace(" ", "-").validate_filename() + "-bricklink.xml"
-	return _said("%d pieces in %d lots." % [stock.pieces, lots.size()], {"of": _now(), "lots": lots,
+	return _said("%s in %s." % [Counted.of(stock.pieces, "piece"), Counted.of(lots.size(), "lot")], {"of": _now(), "lots": lots,
 		"pieces": stock.pieces, "grams": snappedf(stock.grams, 0.1), "file": file,
 		"bricklink": {"text": str(bricklink.get("text", "")),
 			"left_out": ShopLists.why_left_off(bricklink, "BrickLink")}})

@@ -73,6 +73,11 @@
 // (tools/web/notifications_stand_in.mjs), for tools/web/notifications_flow.mjs
 // and follows_flow.mjs as they will be once the file is applied.
 //
+// --instructions=none answers Claude's initialize with no instructions, as a
+// client that shows a server none would have it: the bound on claude.ai,
+// where whether they are shown was never measured (tools/bench/realset.py
+// --via relay --instructions none).
+//
 // --hold=replies holds supabase/replies.sql: which comment each reply
 // answers kept here, the replies written to the project as the comments
 // they are, and the functions the API asks answered over the live ones
@@ -84,6 +89,7 @@ import { standIn, standInRoute } from "./trust_stand_in.mjs";
 
 const port = Number(process.argv[2] || 8790);
 const site = (process.argv.find((a) => a.startsWith("--static=")) || "").slice(9);
+const withheld = process.argv.includes("--instructions=none");
 // Tables the live project does not have yet, kept in this process
 // (tools/web/held_tables.mjs): --hold=share_versions proves the code that
 // uses supabase/versions.sql before the file is applied. What they hold is
@@ -140,9 +146,17 @@ const MAPPED = [
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/?$/, "share", "page"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]png$/, "share", "image"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]cutout[.]png$/, "share", "cutout"],
+  // Its file to download, and its parts list as JSON, a BrickLink wanted
+  // list and a Rebrickable CSV, of the newest version or an older one.
+  [/^\/m\/([A-Za-z0-9]{10})[.]mpd$/, "share", "file"],
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]mpd$/, "share", "file"],
+  [/^\/m\/([A-Za-z0-9]{10})()\/parts[.](json|xml|csv)$/, "share", "parts"],
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/parts[.](json|xml|csv)$/, "share", "parts"],
   // A person's profile and a public collection (api/people.js).
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
+  // The public collections, as cards (api/people.js collectionsPage).
+  [/^\/collections\/?$/, "people", "collections_page"],
   // The sitemap, with every listed model in it (api/share.js).
   [/^\/sitemap\.xml$/, "share", "sitemap"],
   // The daily cron's clean-up of files no published row owns.
@@ -247,6 +261,7 @@ http.createServer(async (incoming, outgoing) => {
     const captured = mapped[0].exec(url.pathname);
     if (captured[1] && mapped[1] === "share") query.id = captured[1];
     if (captured[2] && mapped[1] === "share") query.v = captured[2];
+    if (captured[3] && mapped[1] === "share") query.as = captured[3];
     if (captured[1] && mapped[2] === "page" && mapped[1] === "people") query.handle = captured[1];
     if (captured[1] && mapped[2] === "list_page") query.id = captured[1];
   }
@@ -293,6 +308,9 @@ http.createServer(async (incoming, outgoing) => {
     status(code) { this.statusCode = code; return this; },
     setHeader(name, value) { outgoing.setHeader(name, value); return this; },
     json(value) {
+      if (withheld && found && found[1] === "mcp" && body && body.method === "initialize" && value?.result) {
+        delete value.result.instructions;
+      }
       outgoing.writeHead(this.statusCode, { "content-type": "application/json" });
       outgoing.end(JSON.stringify(value));
       return this;
@@ -311,4 +329,5 @@ http.createServer(async (incoming, outgoing) => {
   }
 }).listen(port, "127.0.0.1", () => {
   console.log(`the deployment's functions on http://127.0.0.1:${port}/api/`);
+  if (withheld) console.log("initialize answered with no instructions (--instructions=none)");
 });

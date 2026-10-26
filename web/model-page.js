@@ -49,6 +49,10 @@ if (strip) startPictures(strip);
 // The page's tabs: the part being read is marked as the page scrolls.
 const tabs = document.getElementById("page-tabs");
 if (tabs) startTabs(tabs);
+// Its parts (api/share.js partsSection): the list asked for as it nears the
+// screen, so a visit that never gets there asks for nothing.
+const partsPart = document.getElementById("parts");
+if (partsPart && partsPart.dataset.parts) startParts(partsPart);
 
 function startPicture(big) {
   const img = big.querySelector("img");
@@ -212,6 +216,164 @@ function startTabs(nav) {
     mark(held);
   });
   reading();
+}
+
+// How many rows the list shows before Show all, as api/share.js LOTS_SHOWN
+// keeps their space.
+const LOTS_SHOWN = 12;
+const SVG = "http://www.w3.org/2000/svg";
+
+/// The Parts list (site278): /m/X/parts.json, asked for once the section is
+/// a screen away (or its tab is chosen), drawn a row a colour or a kind
+/// (Colour, Kind) with its lots under it in the app's order, the first
+/// LOTS_SHOWN rows until Show all. Each lot is its picture, its name, its
+/// number and colour, and how many. A lot has no picture yet
+/// (api/_parts.js pictureOf), so each shows its colour; a browser a check
+/// drives (navigator.webdriver) asks for none either way.
+function startParts(section) {
+  const list = section.querySelector(".lot-list");
+  const all = section.querySelector("[data-all]");
+  const choices = [...section.querySelectorAll("[data-group]")];
+  const pictures = !navigator.webdriver;
+  let lots = null;
+  let asked = null;
+  let group = "colour";
+  let open = false;
+  list.setAttribute("aria-busy", "true");
+  const swatch = (hex) => {
+    const svg = document.createElementNS(SVG, "svg");
+    svg.setAttribute("class", "swatch");
+    svg.setAttribute("viewBox", "0 0 14 14");
+    svg.setAttribute("aria-hidden", "true");
+    const square = document.createElementNS(SVG, "rect");
+    for (const [name, value] of [["width", 14], ["height", 14], ["rx", 3], ["fill", `#${hex}`],
+      ["stroke", "currentColor"], ["stroke-opacity", "0.25"]]) square.setAttribute(name, String(value));
+    svg.append(square);
+    return svg;
+  };
+  const row = (lot) => {
+    const item = document.createElement("li");
+    item.className = "lot";
+    item.dataset.part = lot.part;
+    item.dataset.colour = String(lot.colour);
+    const pic = document.createElement("span");
+    pic.className = "pic";
+    if (pictures && lot.picture) {
+      const img = document.createElement("img");
+      img.alt = "";
+      img.width = 48;
+      img.height = 48;
+      img.loading = "lazy";
+      img.decoding = "async";
+      img.referrerPolicy = "no-referrer";
+      img.addEventListener("error", () => img.replaceWith(swatch(lot.hex)), { once: true });
+      img.src = lot.picture;
+      pic.append(img);
+    } else pic.append(swatch(lot.hex));
+    const what = document.createElement("span");
+    what.className = "what";
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = lot.name;
+    name.title = lot.name;
+    const meta = document.createElement("span");
+    meta.className = "meta";
+    meta.append(`${lot.part}${lot.element ? ` · ${lot.element}` : ""} ·`, swatch(lot.hex), lot.colour_name);
+    meta.title = `${lot.part}${lot.element ? `, element ${lot.element}` : ""}, ${lot.colour_name}`;
+    what.append(name, meta);
+    const qty = document.createElement("span");
+    qty.className = "qty";
+    qty.textContent = `× ${lot.count.toLocaleString("en-US")}`;
+    qty.setAttribute("aria-label", `${lot.count.toLocaleString("en-US")} of them`);
+    item.append(pic, what, qty);
+    return item;
+  };
+  const heading = (words, n, hex) => {
+    const item = document.createElement("li");
+    item.className = "group";
+    if (hex) item.append(swatch(hex));
+    const said = document.createElement("span");
+    said.textContent = words;
+    const count = document.createElement("span");
+    count.className = "n";
+    count.textContent = `${n.toLocaleString("en-US")} ${n === 1 ? "part" : "parts"}`;
+    item.append(said, count);
+    return item;
+  };
+  const draw = () => {
+    // Each colour (or kind) with the most of its parts first, its lots
+    // under it.
+    const groups = new Map();
+    for (const lot of lots) {
+      const key = group === "colour" ? `c${lot.colour}` : lot.category || "Other";
+      if (!groups.has(key)) groups.set(key, { lots: [], n: 0, words: group === "colour" ? lot.colour_name : lot.category || "Other",
+        hex: group === "colour" ? lot.hex : "" });
+      const one = groups.get(key);
+      one.lots.push(lot);
+      one.n += lot.count;
+    }
+    // In a colour, the most of a part first; in a kind, the app's order,
+    // which keeps a part's colours together.
+    const most = (a, b) => b.count - a.count || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+    const rows = [];
+    for (const one of [...groups.values()].sort((a, b) => b.n - a.n || (a.words < b.words ? -1 : 1))) {
+      rows.push(heading(one.words, one.n, one.hex), ...(group === "colour" ? [...one.lots].sort(most) : one.lots).map(row));
+    }
+    rows.forEach((item, at) => { item.hidden = !open && at >= LOTS_SHOWN; });
+    list.replaceChildren(...rows);
+    list.removeAttribute("aria-busy");
+    if (all) all.hidden = open || rows.length <= LOTS_SHOWN;
+  };
+  const load = () => {
+    if (asked) return asked;
+    asked = fetch(section.dataset.parts).then((answer) => (answer.ok ? answer.json() : null)).catch(() => null)
+      .then((body) => {
+        if (!body || !Array.isArray(body.lots)) {
+          list.removeAttribute("aria-busy");
+          const said = document.createElement("li");
+          said.className = "group";
+          said.textContent = "The list did not come. Reload the page to ask for it again.";
+          list.replaceChildren(said);
+          asked = null;
+          return;
+        }
+        lots = body.lots;
+        draw();
+        document.documentElement.dataset.parts = "drawn";
+      });
+    return asked;
+  };
+  for (const choice of choices) {
+    choice.addEventListener("click", () => {
+      group = choice.dataset.group;
+      for (const one of choices) one.setAttribute("aria-pressed", String(one === choice));
+      if (lots) draw();
+      else load();
+    });
+  }
+  if (all) {
+    all.addEventListener("click", () => {
+      open = true;
+      if (lots) draw();
+      // The next row in reach of the keyboard, where Show all was.
+      list.querySelectorAll("li")[LOTS_SHOWN]?.setAttribute("tabindex", "-1");
+      list.querySelectorAll("li")[LOTS_SHOWN]?.focus({ preventScroll: true });
+    });
+  }
+  document.querySelector('#page-tabs a[data-tab="parts"]')?.addEventListener("click", load);
+  // Watched once the page has loaded, its picture first: the list never
+  // competes with what is on the first screen.
+  const watch = () => {
+    if (!("IntersectionObserver" in window)) return load();
+    const near = new IntersectionObserver((seen) => {
+      if (!seen.some((one) => one.isIntersecting)) return;
+      near.disconnect();
+      load();
+    }, { rootMargin: "800px 0px" });
+    near.observe(section);
+  };
+  if (document.readyState === "complete") watch();
+  else addEventListener("load", watch, { once: true });
 }
 
 function startComments(section) {

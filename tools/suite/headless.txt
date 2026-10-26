@@ -185,6 +185,12 @@ gate_line
 nothing_changed
 renewal           # a returning person let in at once, renewed behind the model (walk256 A17)
 first_session     # the first design on the example is a model of its own (walk256 M15)
+technique_search  # 18 held-out queries each find their construction in the first three Techniques rows; titles as words (walk256 TQ1)
 held_items   # a figure holds a tool, a cup, a pole, a camera by BrickNet's connectors in one add_minifig, Tested-held; a sack said not held when put in the hand (hand264)
 picker_folder   # every file chooser opens where its kind is kept (Pictures, Documents, Downloads), then where the last came from; never the install folder (dialogs269)
 moves             # every word a card says it moves is a move the set has: the gallery's seeds, the shipped models and 16 held out (moves268)
+part_counts     # walk256 D11: a model's card, the model opened and its box say one part count
+technic_stress  # walk256 D12: Stress on the Cat D11 weighs its pins and axles, in under 10 s
+parts_page      # site278: a model's page lists its parts as the app's parts list does, and exports them the same
+connector_method   # a connector chat hears how to work once a sitting, and its first design call begins its subject (conn283)
+fling             # a list thrown by a finger glides as iOS's does at 0.5 to 4 pt/ms, phone and tablet scales and at 8 frames a second; held still it stays; a tap taps (fling272)

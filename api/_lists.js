@@ -12,6 +12,15 @@
 // api/people.js answers the requests with these and draws a collection's
 // page; api/share.js asks listsOf for a model's page.
 //
+// And the directory (2026-10-25, walk256 W12, supabase/collection_directory.sql):
+//
+//   GET  /collections             the public collections as cards, what was
+//                                 put in last first, or ?sort=followed most
+//                                 followed first; ?page=N, 24 a page
+//   GET  ?op=list_follows&ids=A,B  each one's follows as ?op=list_follows&id
+//                                 says it, in one answer, for a page of
+//                                 cards each with its Follow (at most 48)
+//
 // Who may follow and what may be followed is the database's to say
 // (list_follow_trouble), and its trigger says it again whatever writes:
 // follows.sql's rules, an account 13 or over, not taken out, following a
@@ -25,7 +34,7 @@
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
 import { Unacceptable, count, escapeHtml } from "./_directory.js";
-import { pictureOf } from "./_card.js";
+import { avatarHtml, pictureOf } from "./_card.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const NOT_THERE = /: 404$/;
@@ -84,6 +93,16 @@ export async function listFollowsOf(id, asker = null) {
 export async function getListFollows(request, response) {
   const asker = await who(request);
   response.setHeader("Cache-Control", "private, no-store");
+  // A page of cards, each with its Follow (/collections): all of them in
+  // one answer, not a request a card. One that may not be followed is
+  // left out.
+  if (request.query?.ids !== undefined) {
+    const ids = [...new Set(String(request.query.ids).split(","))].map(idOf).filter(Boolean).slice(0, 48);
+    const states = await Promise.all(ids.map((id) => listFollowsOf(id, asker).catch(() => null)));
+    const follows = {};
+    ids.forEach((id, at) => { if (states[at]) follows[id] = { id, ...states[at], signed_in: Boolean(asker) }; });
+    return response.status(200).json({ follows, signed_in: Boolean(asker) });
+  }
   const id = idOf(request.query?.id);
   if (!id) throw refused("nobody");
   const state = await listFollowsOf(id, asker);
@@ -119,6 +138,46 @@ export async function listsOf(id, tests = false) {
   if (!said || typeof said !== "object") return none;
   const lists = (Array.isArray(said.lists) ? said.lists : []).filter((list) => ID.test(String(list?.id)));
   return { count: Math.max(Number(said.count) || 0, lists.length), lists };
+}
+
+// ---------------------------------------------------------------------------
+// The directory of public collections (/collections).
+
+/// How many cards a page of the directory has.
+export const DIRECTORY_PAGE = 24;
+
+/// One page of the public collections as the directory lists them:
+/// {ready, total, rows: [{id, name, description, count, followers, added,
+/// by}]}, [sort] "recent" or "followed"; ready false before
+/// collection_directory.sql is applied.
+export async function directoryOf({ sort = "recent", page = 1, tests = false } = {}) {
+  const said = await call("collection_directory", { sort: sort === "followed" ? "followed" : "recent", page,
+    size: DIRECTORY_PAGE, tests }, () => ({ missing: true }));
+  if (!said || said.missing) return { ready: false, total: 0, rows: [] };
+  const rows = (Array.isArray(said.rows) ? said.rows : []).filter((row) => ID.test(String(row?.id)));
+  return { ready: true, total: Number(said.total) || 0, rows };
+}
+
+/// A collection in the directory: its cover and name, a link to its page;
+/// whose, with their avatar, a link to their profile; how many models and
+/// followers, each said once there is one; and Follow, which web/follow.js
+/// shows once it knows who is asking (not inside the link: a button in a
+/// link is neither).
+export function directoryCardHtml(list, covers) {
+  const id = escapeHtml(list.id);
+  const by = list.by && list.by.handle
+    ? `<a class="who" href="/u/${escapeHtml(list.by.handle)}">${avatarHtml({ handle: list.by.handle,
+      name: list.by.name || list.by.handle, picture: list.by.picture }, { size: "small" })}`
+      + `<span>${escapeHtml(list.by.name || list.by.handle)}</span></a>`
+    : "";
+  const followers = Number(list.followers) || 0;
+  return `<article class="list-card in-directory" data-id="${id}">`
+    + `<a class="cover" href="/c/${id}" tabindex="-1" aria-hidden="true">${mosaicHtml(covers.get(list.id) || [])}</a>`
+    + `<div class="words"><a class="name" href="/c/${id}"><b>${escapeHtml(list.name)}</b></a>${by}`
+    + `<span class="numbers"><span>${escapeHtml(count(list.count, "model"))}</span>`
+    + `<span data-list-followers="${id}"${followers ? "" : " hidden"}>${escapeHtml(count(followers, "follower"))}</span></span>`
+    + `<p class="follow-line"><button type="button" class="cta ghost follow" data-follow-list="${id}" hidden>Follow</button>`
+    + `<span class="said" role="status"></span></p></div></article>`;
 }
 
 // ---------------------------------------------------------------------------

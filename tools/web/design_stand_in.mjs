@@ -728,6 +728,20 @@ function listFollowState(asker, id, askAge = false) {
     you_follow: Boolean(asker) && LIST_FOLLOWS.some((one) => one.follower === asker && one.collection === id), mine, trouble };
 }
 
+/// collection_directory (supabase/collection_directory.sql): a page of the
+/// public collections with a model in the gallery, the one updated last
+/// first (its models' times are not kept here), or the most followed.
+function collectionDirectory({ sort = "recent", page = 1, size = 24 } = {}) {
+  const shown = LISTS.filter((list) => list.public && collectionCount(list.id, false) > 0)
+    .map((list) => ({ id: list.id, name: list.name, description: list.description, count: collectionCount(list.id, false),
+      followers: LIST_FOLLOWS.filter((one) => one.collection === list.id).length, added: list.updated_at, by: named(list.owner) }))
+    .sort((a, b) => (sort === "followed" ? b.followers - a.followers : 0) || String(b.added).localeCompare(String(a.added)));
+  const size_ = Math.min(Math.max(Number(size) || 24, 1), 48);
+  const page_ = Math.max(Number(page) || 1, 1);
+  return { sort: sort === "followed" ? "followed" : "recent", page: page_, size: size_, total: shown.length,
+    rows: shown.slice((page_ - 1) * size_, page_ * size_) };
+}
+
 /// model_lists: the public collections a model in the gallery is in, the
 /// one it was put in last first (the newest-updated list, here).
 function modelLists(id, most = 12) {
@@ -797,6 +811,8 @@ const RPC = {
   follow_list: ({ wanted }) => followList(wanted),
   // supabase/collection_follows.sql
   list_follow_state: ({ asker, list }) => listFollowState(asker || null, list),
+  // supabase/collection_directory.sql
+  collection_directory: (query) => collectionDirectory(query || {}),
   model_lists: ({ model, most }) => modelLists(model, most || 12),
   follow_choice: ({ account }) => ({ shows_follows: SHOWS_FOLLOWS.has(account) }),
   shown_publicly: ({ account }) => !ADMIN.barred.some((one) => one.account === account),
@@ -927,7 +943,7 @@ function rest(where, init) {
 // model of three bricks, for any model that has them.
 const PIXEL_PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 const PIXEL_WEBP = "UklGRiQAAABXRUJQVlA4IBgAAAAwAQCdASoBAAEAAwA0JaQAA3AA/vuUAAA=";
-const BRICKS = "0 FILE model.ldr\n0 Author: Brickworks\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n0 STEP\n"
+export const BRICKS = "0 FILE model.ldr\n0 Author: Brickworks\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n0 STEP\n"
   + "1 14 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat\n0 STEP\n1 1 0 -48 0 1 0 0 0 1 0 0 0 1 3003.dat\n0 STEP\n";
 
 function storage(where, init) {
@@ -974,8 +990,13 @@ const PAGES = [
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/?$/, "share", "page"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]png$/, "share", "image"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]cutout[.]png$/, "share", "cutout"],
+  [/^\/m\/([A-Za-z0-9]{10})[.]mpd$/, "share", "file"],
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]mpd$/, "share", "file"],
+  [/^\/m\/([A-Za-z0-9]{10})()\/parts[.](json|xml|csv)$/, "share", "parts"],
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/parts[.](json|xml|csv)$/, "share", "parts"],
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
+  [/^\/collections\/?$/, "people", "collections_page"],
 ];
 
 /// Which handler makes [pathname], and what it is asked. A path under /m/,
@@ -985,7 +1006,9 @@ function routeOf(pathname) {
   for (const [pattern, name, op] of PAGES) {
     const found = pattern.exec(pathname);
     if (!found) continue;
-    if (name === "share") return { name, query: { op, id: found[1], ...(found[2] ? { v: found[2] } : {}) } };
+    if (name === "share") {
+      return { name, query: { op, id: found[1], ...(found[2] ? { v: found[2] } : {}), ...(found[3] ? { as: found[3] } : {}) } };
+    }
     return { name, query: op === "page" ? { op, handle: found[1] } : { op, id: found[1] } };
   }
   const [, place, rest = ""] = /^\/([muc])\/([^/]*)/.exec(pathname) || [];
@@ -1415,6 +1438,16 @@ function people(method, params, body, who, state) {
         mine, left: who ? Math.max(0, 3 - mine.length) : null });
     }
     if (op === "follows") return follows(params.get("handle"), who, state);
+    // A page of cards' Follow at once (/collections): each one's, as the API
+    // gives them; a collection nobody may follow left out.
+    if (op === "list_follows" && params.get("ids") !== null) {
+      const follows = {};
+      for (const one of String(params.get("ids")).split(",")) {
+        const said = listFollows(one, who, state);
+        if (said.status === 200) follows[one] = said.json;
+      }
+      return answer(200, { follows, signed_in: Boolean(who) });
+    }
     if (op === "list_follows") return listFollows(id, who, state);
     if (op === "following" && !params.get("handle")) {
       // Your own, for you alone (your account page), whatever you show.
@@ -1915,16 +1948,19 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
       return route.fulfill({ status: said.status, contentType: "application/json", body: asProject(JSON.stringify(said.json)) });
     }
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
-    if (/^\/(m|u|c)\//.test(url.pathname)) {
+    if (/^\/(m|u|c)\//.test(url.pathname) || /^\/collections\/?$/.test(url.pathname)) {
       const made = await serverPage(api, url.pathname + url.search);
       // With the security policy the server sends with it. A picture the
       // server makes (/m/X.cutout.png) as the bytes and type it answered:
       // sent as an empty page, every cut-out failed to draw, and a model's
       // page and a profile's banner said "No picture".
+      // A model's file and its parts lists (/m/X.mpd, /m/X/parts.json)
+      // as their own type, named as they download.
       const policy = made.headers?.["content-security-policy"];
+      const named = made.headers?.["content-disposition"];
       return route.fulfill({ status: made.status, body: made.bytes ?? made.html,
-        contentType: made.bytes ? made.headers["content-type"] : "text/html; charset=utf-8",
-        headers: policy ? { "content-security-policy": policy } : {} });
+        contentType: made.headers?.["content-type"] || "text/html; charset=utf-8",
+        headers: { ...(policy ? { "content-security-policy": policy } : {}), ...(named ? { "content-disposition": named } : {}) } });
     }
     const file = staticFile(web, url.pathname);
     return route.fulfill({ status: file.status, contentType: file.type, body: file.body });

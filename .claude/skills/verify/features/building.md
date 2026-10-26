@@ -369,7 +369,19 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`TouchSizing._grew`, on the panel's or the window's
   `minimum_size_changed`, fig257): Render's status line, told the picture's
   file name once it was downloaded, ran it and its Close off a 430-point
-  phone. Targets in a
+  phone. A dialog already placed never moves under a finger
+  (`TouchSizing._place`, `finger_down`, press271): laid out again while a
+  finger or a mouse button is down, it waits for the lift. Pressing Save or
+  Rename takes the keys from the field, so the keyboard counted as gone and
+  the dialog moved from under the finger before it lifted: a finger rolled a
+  pixel was let go and nothing was saved or renamed (dialogs_1024 on m175,
+  Save as at 390). The Minifigure builder's figure comes back after the
+  search the same way (`MinifigDialog._make_way`). Proved by
+  `dialogs_flow.mjs --only=save_as,saved --hold=150` and `--hold=600`, whose
+  held tap rolls 2 px before it lifts: on the base, held 150 ms, Rename is
+  missed at 390 and at 1024 x 768 and every delete check after it fails
+  (Rename left open over the list); held 600, Save as is missed at both.
+  Targets in a
   scrolling list pass a
   finger's drag to the list (`MOUSE_FILTER_PASS`), so More's list and a
   dialog's rows scroll under a finger; they did not. A notice's words and
@@ -418,6 +430,56 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`--parts-url`), where the live library is. On base it fails with the
   named controls under 44 counted and no dialogs said. The desktop is
   unchanged (`desktop_same.mjs`, 0 pixels).
+- `a thrown list glides as a phone's` (`src/ui/fling_scroll.gd`, `FlingScroll`,
+  fling272): Godot's ScrollContainer slows a finger's throw by a fixed 1,000
+  units a second every second, so its glide grows as the square of the
+  speed: on a phone (1.85 units a point) 237, 931, 3,707 and 14,741 points
+  thrown at 0.5, 1, 2 and 4 points a ms, where iOS's UIScrollView ("normal",
+  0.998 a ms) glides 250, 500, 1,000 and 2,000 (first258: a 434-point drag
+  on More threw it 8,500 points, end to end). On a phone or a tablet
+  (`Phone.on`, Main makes it) the root window's `window_input` hears every
+  press and lift first, a dialog's (Saved models) and the parts bin's too
+  (its cells scroll it themselves and take the lift); while a finger is down
+  every list showing is looked at once a frame, and on a lift moving the
+  list's speed (least squares over its last 100 ms of frames, or three
+  frames, from where it set off; not the lift's own look) goes on and slows
+  by 0.998 a ms, Godot's own glide cancelled first (setting a scroll cancels
+  its drag). Lifted still (100 ms, and twice the time between its last two
+  moves, as `Grab.fling_rate` has it) it stays; a press catches a glide; a
+  list scrolled by anything else stops gliding; nothing runs a frame once
+  the glides end. A finger's move reaches a list twice on the web, as the
+  touch's (`DEVICE_ID_EMULATION`) and as the page's pointermove of type
+  touch, which Godot's web input reads as a mouse's: the list and the parts
+  bin went 2.00 points for each the finger went, and threw twice as fast.
+  The list's own `gui_input` takes the second while a finger is down; the
+  bin scrolls by the pressing device's moves alone. `tools/probe.sh
+  fling_probe` (headless; events through `Input.parse_input_event`, each
+  move twice as the web sends it) throws a 72,800-unit list at 0.5 to 4
+  pt/ms at a phone's and a tablet's scale, again at 8 frames a second as a
+  browser drawing in software draws, and a list that grows as it is
+  scrolled, its foot met mid-glide: each glide within 25% of iOS's, the
+  list 1:1 under the finger, a drag held still 200 ms not gliding, a tap
+  tapping, and nothing processing after. On ada7c2aa 12 checks fail (2.00
+  a point, glides +34% to +1,847%); with it every throw is within 2%.
+  The bin let go of the tile's press as it scrolls
+  (`NOTIFICATION_SCROLL_BEGIN`): the touch's own lift came after the
+  mouse's and tapped the tile still under the finger, taking the part and
+  shutting the sheet, which the base hid by running the grid away at
+  twice the finger's pace. A glide waits three frames at a list's foot,
+  for the bin's next page of tiles. In the web build (`--parts-url`, 390 x
+  844, CDP touch, a device ratio of 1 so that SwiftShader keeps up; a
+  throw whose moves the browser held up 120 ms is thrown again), More's
+  list glides 243 to 254 points at 0.5 pt/ms, 405 to 728 at 1 and 1,020
+  to 1,048 at 2 (iOS 250, 499, 999; 10 of 12 within 25%, the two outside
+  where CDP's moves landed 37 to 50 ms off the frames), in 3.3 to 5.0 s
+  to its last frame drawn (iOS 3.1 to 3.8 to under half a point left);
+  the parts bin 282 and 328, 391 and 579, 954 and 1,162 (5 of 6); Saved
+  models (12 saves, a 383-point list) 168 and 259 at 0.5 pt/ms, faster
+  throws stopping at its foot. Each list 1.00 a point under a drag held
+  still, and that drag not gliding. On ada7c2aa More ran to its end on
+  every throw (2,090, 1,970, 1,760 points), the bin and Saved models went
+  2.00 a point, and the bin glided nothing. Standing still after each
+  list, 0 frames drawn in 6 s on both. A tap on More's View folds it.
 - `minifig builder by finger` (`MinifigDialog._arrange`, fig257): the
   builder's three columns want 860 units across at the least, and a phone
   has 720 (a tablet held upright too): its figure, Keep and Place in model
@@ -436,6 +498,19 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   finds (`_make_way`). The same controls moved, never made again; nothing is
   moved on a desktop. The page is told the figure on the bench and whether
   one is held (`bench`, `figure_held` in `window.brickworksState`).
+- `tooltips kept inside the window` (`Tooltips.keep_inside`, 2026-10-25):
+  every tooltip put up is moved inside the window, and one with a line
+  longer than `Tooltips.WIDEST` (480 units, or the window less its edges) is
+  laid out as lines that wide (`autowrap` on Godot's own label, once it has
+  placed it). A technique's hover text was one line of three hundred
+  letters and ran off the window at 1280 (walk256 TQ1). `tooltip_fit_probe`
+  rests the pointer on Techniques rows found for "door" and on a part's tile,
+  at 1280 x 800 and at 390 x 844, and reads each tooltip's rect against the
+  window's. Never over the pointer (above it, else beside it): one over it
+  is the pointer's, and Godot takes it away. On a phone or a tablet no
+  tooltip comes at all (`PhoneShell`), and none is fitted there: fitting
+  each one Godot put up and PhoneShell put away kept a phone drawing two
+  frames a second (86 drawn in 40 s against 13).
 - `tooltips let clicks through` (`src/ui/tooltips.gd`, `Tooltips.let_clicks_through`,
   2026-10-15): a tooltip never takes a click meant for what is under it. Godot's
   tooltip is a window of its own embedded in the app's, and a pointer on it is
@@ -1764,6 +1839,9 @@ godot --path . --resolution 1200x800 --script src/dev/marquee_probe.gd
 # pointer was over where no tooltip came)
 MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
   --resolution 1400x900 --script src/dev/tooltip_probe.gd
+# a long hover text inside the window: Techniques for "door" and a part's
+# tile, at 1280 x 800 and (PROBE_SIZE=390x844) as a phone is wide
+tools/probe.sh tooltip_fit_probe
 # several bricks worked on at once, and taken back at once
 godot --headless --path . --script src/dev/select_probe.gd
 # a part found in the Boutique Hotel: the list's pictures, a row clicked (57

@@ -81,7 +81,7 @@ func of(assistant: Assistant, tool: String, whole: bool = false) -> Dictionary:
 	var world: BrickWorld = assistant.world if assistant != null else null
 	if world == null:
 		return {}
-	var shown: Dictionary = {"parts": maxi(world.brick_count() - assistant.scenery.size(), 0),
+	var shown: Dictionary = {"parts": Inventory.pieces_in(world, assistant.library, assistant.scenery),
 		"views": []}
 	var carried: int = 0
 	if int(shown["parts"]) > 0:

@@ -23,6 +23,14 @@
 //                            /m/X/v/N.cutout.png
 //   GET  ?op=embed&id=X      /m/X/embed: a card for a blog or a forum to
 //                            put in an iframe
+//   GET  ?op=file&id=X       /m/X.mpd: the model's file, as it is stored,
+//                            to download (with v=N, /m/X/v/N.mpd, version
+//                            N's), named for the model
+//   GET  ?op=parts&id=X      /m/X/parts.json: its parts list, as the app's
+//                            parts list counts it (api/_parts.js); as=xml
+//                            (/m/X/parts.xml) a BrickLink wanted list,
+//                            as=csv (/m/X/parts.csv) a Rebrickable parts
+//                            list, each to download; with v=N, version N's
 //   GET  ?op=thumb&id=X      /m/X.webp: the small picture the gallery's
 //                            cards show, made by the app beside the big one
 //   GET  ?op=list&page=N     /gallery's models: the listed ones, a page at
@@ -160,6 +168,8 @@ import {
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
 import { libraryCredit } from "./_omr_credit.js";
+// A model's parts list from its file, as the app's (site278).
+import { inventoryOf, partsTable, pictureOf, rebrickableCsv, wantedList } from "./_parts.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
@@ -948,14 +958,14 @@ function nextRow(key, title, cards) {
 /// page's own address, an older version's its own.
 function actionBar(origin, id, model, url = links(origin, id).url) {
   return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="What you can do with it">`
-    + iconButtonHtml({ icon: "like", name: "Like", count: model.likes, one: "like", pressed: false,
+    + iconButtonHtml({ icon: "like", name: "Like", count: model.likes, one: "like", pressed: false, labelled: true,
       attrs: 'data-mark="like" title="Like it"' })
     + `<button type="button" class="icon-btn" data-mark="save" aria-label="Save" aria-expanded="false" `
       + `aria-controls="save-panel" title="Save it to your favourites or a collection">${iconHtml("save")}</button>`
     + iconButtonHtml({ icon: "share", name: "Share",
       attrs: 'data-share aria-haspopup="dialog" aria-controls="share-sheet" title="Share it: its link, and the code to embed it"' })
     + iconButtonHtml({ icon: "comment", name: "Comment", attrs: 'data-mark="comment" title="Comments on it and its steps"' })
-    + iconButtonHtml({ icon: "build", name: "I built it", count: model.builds, one: "build",
+    + iconButtonHtml({ icon: "build", name: "I built it", count: model.builds, one: "build", labelled: true, word: "Built",
       attrs: 'data-mark="built" title="I built it: add a photo of your build"' })
     + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="More" title="More">`
       + `${iconHtml("more")}</summary><div class="menu-list">`
@@ -1003,9 +1013,10 @@ function shareSheet(origin, id, model, url) {
 /// web/share-page.js counts the view, and if a reload finds the viewer was
 /// here (it keeps the link in the address bar), goes back to it.
 /// [counted] is the shown version's steps, counted from its file as it is
-/// read (api/_steps.js), or null where they are not known.
+/// read (api/_steps.js), or null where they are not known; [parts] its
+/// parts list (partsOf), or null.
 function sharePage(origin, id, model, versions = [], shown = null, mark = null, photos = [], next = { by: [], like: [] },
-  counted = null, lists = { count: 0, lists: [], covers: new Map() }) {
+  counted = null, lists = { count: 0, lists: [], covers: new Map() }, parts = null) {
   const newest = versions[0]?.n ?? 1;
   const version = shown ?? versions[0] ?? { n: 1, has_image: model.has_image };
   // An older version: its own page, marked as older, its own picture and
@@ -1015,7 +1026,10 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   const title = old ? `${model.name}, version ${version.n} — a Brickworks model` : `${model.name} — a Brickworks model`;
   const viewer = `/app?view=${id}${old ? `&v=${version.n}` : ""}`;
   const copyLink = `/app?copy=${id}${old ? `&v=${version.n}` : ""}`;
-  const shownModel = old ? { ...model, parts: version.parts } : model;
+  // Its parts as the app counts them, where its file was read: the count
+  // the Parts list under it says.
+  const shownModel = { ...model, parts: parts ? parts.pieces : old ? version.parts : model.parts };
+  const fileAt = `/m/${id}${old ? `/v/${version.n}` : ""}`;
   // Its picture with nothing behind the model, on the theme's own ground
   // (?op=cutout: the picture itself for a model published before there were
   // cut-outs). In the strip, whose frames are four to three, the cards'
@@ -1106,6 +1120,7 @@ ${header}
       <div class="actions">
         <a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="Build it with real bricks, one step at a time from step 1: no account needed">Build it</a>
         <a class="cta ghost" href="${escapeHtml(copyLink)}" title="Copy it into your own models, to change and make yours">Open in Brickworks</a>
+        <a class="cta ghost" href="${fileAt}.mpd" download>Download</a>
       </div>
       ${actionBar(origin, id, model, old ? `${origin}/m/${id}/v/${version.n}` : links(origin, id).url)}
       <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, counted)}</li>` : ""}${facts}</ul>
@@ -1113,11 +1128,12 @@ ${header}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
     <div class="rest">
-  ${pageTabs(model, newest, lists.count)}
+  ${pageTabs(model, newest, lists.count, parts)}
   <section class="words" id="about" aria-labelledby="about-h"><h2 id="about-h">About it</h2>
     ${model.description ? `<p class="description">${escapeHtml(model.description)}</p>` : ""}
     ${tags ? `<ul class="tags pills" aria-label="Tags">${tags}</ul>` : ""}
     <div class="licence"><h3 id="licence-h">Licence</h3>${licenceWords(model)}</div></section>
+  ${partsSection(fileAt, parts)}
   ${commentsSection(id, version.n, newest, counted ? counted.pages : null)}
   ${buildsSection(id, model, photos)}
   <section class="tree" id="remixes" aria-labelledby="tree-h"><h2 id="tree-h">Remixes</h2>
@@ -1169,13 +1185,44 @@ function mediaStrip(model, picture, photos, small = picture) {
 /// count once there is one, kept on screen as the page scrolls; the one
 /// being read is marked by web/model-page.js, which also counts the
 /// comments as it lists them. Versions only once there are two.
-function pageTabs(model, newest, inLists = 0) {
+function pageTabs(model, newest, inLists = 0, parts = null) {
   const tab = (key, name, n = 0) => `<a href="#${key}" data-tab="${key}">${name}`
     + `${Number(n) ? ` <span class="n">${Number(n).toLocaleString("en-US")}</span>` : ""}</a>`;
   return `<nav class="tabs page-tabs" id="page-tabs" aria-label="On this page">${tab("about", "About")}`
-    + `${tab("comments", "Comments")}${tab("builds", "Builds", model.builds)}${tab("remixes", "Remixes", model.remixes)}`
+    + `${parts ? tab("parts", "Parts", parts.pieces) : ""}${tab("comments", "Comments")}${tab("builds", "Builds", model.builds)}${tab("remixes", "Remixes", model.remixes)}`
     + `${Number(inLists) ? tab("collections", "Collections", inLists) : ""}`
     + `${newest > 1 ? tab("versions", "Versions", newest) : ""}</nav>`;
+}
+
+/// How many rows the Parts list shows before Show all, and each row's
+/// height, which web/directory.css gives every row: the space the list will
+/// take is kept for it before it comes, so nothing under it moves.
+export const LOTS_SHOWN = 12;
+export const LOT_ROW = 60;
+
+/// Its parts (site278, docs/SOCIAL.md U4): how many in how many lots, the
+/// two shops' lists to download, and the list itself, which
+/// web/model-page.js asks for (/m/X/parts.json) as the section nears the
+/// screen, a row a lot under a row a colour, or a kind. Nothing where
+/// this deployment cannot list them. [at] is /m/X, or /m/X/v/N for an older
+/// version.
+function partsSection(at, parts) {
+  if (!parts || !parts.lots.length) return "";
+  const colours = new Set(parts.lots.map((lot) => lot.colour)).size;
+  const rows = Math.min(LOTS_SHOWN, parts.lots.length + colours);
+  // Lean: every byte here is in the page's first bytes, and the list is not.
+  return `<section class="parts" id="parts" aria-labelledby="parts-h" data-parts="${at}/parts.json">`
+    + `<h2 id="parts-h">Parts</h2><p class="note">${escapeHtml(count(parts.pieces, "part"))} in `
+    + `${escapeHtml(count(parts.lots.length, "lot"))}</p>`
+    + `<div class="parts-bar"><div class="segmented" role="group" aria-label="Group them by">`
+    + `<button type="button" data-group="colour" aria-pressed="true">Colour</button>`
+    + `<button type="button" data-group="kind" aria-pressed="false">Kind</button></div>`
+    + `<a class="cta ghost small" href="${at}/parts.xml" download>BrickLink XML</a>`
+    + `<a class="cta ghost small" href="${at}/parts.csv" download>Rebrickable CSV</a></div>`
+    + `<ul class="lot-list" style="min-height:${rows * LOT_ROW}px"></ul>`
+    + (parts.lots.length + colours > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all hidden>`
+      + `Show all ${escapeHtml(count(parts.lots.length, "lot"))}</button>` : "")
+    + `</section>`;
 }
 
 /// The public collections it is in (docs/SOCIAL.md U11, [PR-C]), each a card
@@ -1469,15 +1516,103 @@ async function missing(id) {
 /// The steps of the model in the bucket's file [name], counted as it is
 /// read (checkModel's count): what was counted when it was published was
 /// the 0 STEP lines of its first model until steps206, and is not shown.
-/// Null for none known, or no file.
+/// Null for none known, or no file. And [parts], its parts list as the app
+/// counts it (partsOf), or null.
 async function countedOf(name) {
   const file = await getFile(name).catch(() => null);
-  if (!file) return null;
+  if (!file) return { counted: null, parts: null };
+  let counted = null;
   try {
-    return checkModel(file.toString("utf8")).count;
+    counted = checkModel(file.toString("utf8")).count;
   } catch {
-    return null;
+    counted = null;
   }
+  return { counted, parts: partsOf(name, file) };
+}
+
+// The parts lists worked out by this instance, by file: a version's file is
+// never written again (a republish is the next version's), so each is worked
+// out once while the instance lives, for its page and its exports.
+const PARTS_KEPT = 40;
+const partsKept = new Map();
+
+/// The parts list of the bucket's file [name] ([file] its bytes), as the
+/// app's parts list counts it (api/_parts.js inventoryOf), or null where
+/// this deployment has no parts table or the file cannot be read. The
+/// current version's file takes the next version's name when it is
+/// republished, so it is kept by its bytes' length and ends too.
+function partsOf(name, file) {
+  const key = `${name}/${file.length}/${file.subarray(0, 64).toString("hex")}/${file.subarray(-64).toString("hex")}`;
+  if (partsKept.has(key)) return partsKept.get(key);
+  let found = null;
+  try {
+    const table = partsTable();
+    found = table ? inventoryOf(file.toString("utf8"), table) : null;
+  } catch {
+    found = null;
+  }
+  partsKept.set(key, found);
+  if (partsKept.size > PARTS_KEPT) partsKept.delete(partsKept.keys().next().value);
+  return found;
+}
+
+/// A file name for [name]: its words in lower case, joined by hyphens,
+/// nothing a file system minds; [fallback] where none are left.
+export function fileName(name, fallback) {
+  const words = String(name || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60).replace(/-+$/, "");
+  return words || fallback;
+}
+
+/// /m/X.mpd, /m/X/parts.json, .xml and .csv: the file as it is stored, or
+/// its parts, of the version asked for (the newest unless one is). Read as a
+/// visitor, signed out: what its page offers anybody. Kept by the CDN as the
+/// page is, so a model taken down goes with its page.
+async function download(response, op, id, asked, as) {
+  const fail = (status, error) => response.status(status).setHeader("Cache-Control", "no-store").json({ error });
+  const row = await publishedRow(id);
+  if (!row) {
+    const gone = await missing(id);
+    return fail(gone.status, gone.error);
+  }
+  const versions = await versionsOf(id, row);
+  const newest = versions[0].n;
+  const shown = asked === null ? versions[0] : versions.find((one) => one.n === asked);
+  if (!shown) return fail(404, `There is no version ${asked} of this model: it has ${count(newest, "version")}.`);
+  const stored = versionFile(id, shown.n, newest, "mpd");
+  const file = await getFile(stored);
+  if (!file) return fail(410, "This model is no longer shared.");
+  const base = `${fileName(row.name, id)}${shown.n === newest ? "" : `-v${shown.n}`}`;
+  const named = (ext) => `attachment; filename="${base}.${ext}"`;
+  response.setHeader("Cache-Control", SHARED_CACHE);
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  if (op === "file") {
+    response.setHeader("Content-Type", "application/x-ldraw");
+    response.setHeader("Content-Disposition", named("mpd"));
+    return response.status(200).end(file);
+  }
+  const parts = partsOf(stored, file);
+  if (!parts) return fail(503, "This site cannot list a model's parts just now.");
+  if (as === "xml") {
+    response.setHeader("Content-Type", "application/xml; charset=utf-8");
+    response.setHeader("Content-Disposition", `attachment; filename="${base}-bricklink.xml"`);
+    return response.status(200).end(wantedList(parts).text);
+  }
+  if (as === "csv") {
+    response.setHeader("Content-Type", "text/csv; charset=utf-8");
+    response.setHeader("Content-Disposition", `attachment; filename="${base}-rebrickable.csv"`);
+    return response.status(200).end(rebrickableCsv(parts).text);
+  }
+  if (as !== "json") return fail(400, `a parts list is json, xml or csv, not ${as}`);
+  return response.status(200).json({
+    id, version: shown.n, newest, pieces: parts.pieces,
+    lots: parts.lots.map((lot) => ({ part: lot.part, name: lot.name, category: lot.category, colour: lot.colour,
+      colour_name: lot.colour_name, hex: lot.hex, count: lot.count, element: lot.element || null, custom: lot.custom,
+      picture: pictureOf(lot) || null })),
+    // What each shop's list leaves off: a made part, or a colour it has no
+    // number for.
+    left_out: { bricklink: wantedList(parts).left_out, rebrickable: rebrickableCsv(parts).left_out },
+  });
 }
 
 async function modelPage(id) {
@@ -1503,7 +1638,11 @@ async function read(request, response) {
   // A version asked for, where there can be one: the page, its picture and
   // the model. The gallery's small picture says which upload it is with a
   // v of its own (cardOf), which is not a version.
-  const asked = ["page", "image", "cutout", ""].includes(op) ? askedVersion(request) : null;
+  const asked = ["page", "image", "cutout", "file", "parts", ""].includes(op) ? askedVersion(request) : null;
+
+  if (op === "file" || op === "parts") {
+    return download(response, op, id, asked, String(request.query?.as || "json"));
+  }
 
   if (op === "page") {
     const page = await modelPage(id);
@@ -1520,7 +1659,7 @@ async function read(request, response) {
     // The collections it is in, with their covers: a test model's own page
     // counts a test account's too, as it offers test models.
     const tests = own?.test === true;
-    const [mark, photos, next, counted, lists] = await Promise.all([markOf(db, id, shown.n),
+    const [mark, photos, next, { counted, parts }, lists] = await Promise.all([markOf(db, id, shown.n),
       photosWhere(`model=eq.${id}`, shownPublicly), nextOf(origin, id, page, own),
       countedOf(versionFile(id, shown.n, versions[0].n, "mpd")),
       listsOf(id, tests).then(async (found) => ({ ...found,
@@ -1531,7 +1670,8 @@ async function read(request, response) {
       .sort((a, b) => Number(b.own) - Number(a.own));
     // Each person on it with their own picture, where they have one.
     await withFaces([page, ordered, next]);
-    return html(response, 200, sharePage(origin, id, page, versions, shown, publicMark(mark), ordered, next, counted, lists));
+    return html(response, 200, sharePage(origin, id, page, versions, shown, publicMark(mark), ordered, next, counted, lists,
+      parts));
   }
 
   const row = await publishedRow(id);

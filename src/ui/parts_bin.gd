@@ -875,12 +875,13 @@ func _say_colour() -> void:
 		text = "%s%s, selected: a colour clicked paints %s" % [what, colour,
 			"it" if count == 1 else "them"]
 		if info != null and info.availability_known():
-			text += ". A dot marks the %d colours it comes in" % info.colors.size()
+			text += ". A dot marks the %s it comes in" % Counted.of(info.colors.size(), "colour")
 	else:
 		var color: PartLibrary.BrickColor = library.color(_selected_color)
 		text = "%s, %s" % [color.name, color.finish_name()]
 		if info != null and info.availability_known():
-			text += ". A dot marks the %d colours %s comes in" % [info.colors.size(), info.id]
+			text += ". A dot marks the %s %s comes in" % [Counted.of(info.colors.size(), "colour"),
+				info.id]
 			if not info.colors_partial:
 				text += "; it was made in no other"
 	_colour_note.text = text
@@ -1725,12 +1726,13 @@ func _show_more(most: int = PAGE) -> void:
 func _update_status() -> void:
 	var total: int = _display.size()
 	if not _guesses.is_empty():
-		_status.text = "From your photo, most likely first, as Brickognize sees it"
+		_status.text = "From your photo, most likely first, as Brickognize sees it" + (
+			"" if _guessed_colour.is_empty() else ", in %s" % _guessed_colour)
 		_status.tooltip_text = _guessed_note
 		return
 	if _category == TECHNIQUES:
 		_status.text = "nothing matches" if _techniques_shown == 0 else (
-			"%d worked constructions: choose one to hold it whole" % _techniques_shown)
+			"%s: choose one to hold it whole" % Counted.of(_techniques_shown, "worked construction"))
 		_status.tooltip_text = "R turns what is held, a click puts it down, Esc puts it away"
 		return
 	if total == 0 and _category == RECENT and _search.text.strip_edges().is_empty():
@@ -1746,7 +1748,8 @@ func _update_status() -> void:
 			_comma(_shown), _comma(total)]
 	# What the tiles hold folded: said where nothing else is, on one line.
 	if _folded > 0 and _set_aside == 0:
-		_status.text += "\n%s more folded under their parts: press +" % _comma(_folded)
+		_status.text += ("\n1 more folded under its part: press +" if _folded == 1
+			else "\n%s more folded under their parts: press +" % _comma(_folded))
 
 	# Where the rest went. Only on the default view, since that is the
 	# only place anything is held back.
@@ -1917,6 +1920,8 @@ var _drag_from: Vector2 = Vector2.INF
 var _drag_part: String = ""
 ## A finger dragged the grid since it came down (by_finger).
 var _scrolled: bool = false
+## Whose press began it: a finger's moves are taken from it alone.
+var _drag_device: int = 0
 
 
 func is_dragging_part() -> bool:
@@ -1931,6 +1936,7 @@ func _cell_input(button: Button, part_id: String, event: InputEvent) -> void:
 			button.accept_event()
 		elif press.button_index == MOUSE_BUTTON_LEFT and press.pressed:
 			_drag_from = press.global_position
+			_drag_device = press.device
 			_scrolled = false
 		elif press.button_index == MOUSE_BUTTON_LEFT:
 			_drag_from = Vector2.INF
@@ -1950,8 +1956,17 @@ func _cell_input(button: Button, part_id: String, event: InputEvent) -> void:
 		return
 	if by_finger:
 		if _scrolled or motion.global_position.distance_to(_drag_from) >= DRAG_START:
+			# The tile's press let go as a ScrollContainer lets go of a row's:
+			# a touch's own lift, after the mouse's, tapped the tile still
+			# under the finger and took the part.
+			if not _scrolled:
+				button.notification(NOTIFICATION_SCROLL_BEGIN)
 			_scrolled = true
-			_scroll.scroll_vertical -= roundi(motion.relative.y)
+			# A finger's move once. On the web it comes twice, as the touch's
+			# (DEVICE_ID_EMULATION) and as the page's pointermove, read as a
+			# mouse's: the grid went 2.09 points for each the finger went.
+			if motion.device == _drag_device:
+				_scroll.scroll_vertical -= roundi(motion.relative.y)
 			button.accept_event()
 		return
 	if _drag_part.is_empty():
@@ -2066,7 +2081,8 @@ func _reader() -> Assistant:
 
 ## The worked constructions, in the order show_technique lists them: by what
 ## they are for, and under that one a row, with its picture and why it
-## works. What is typed narrows them by their names and uses.
+## works. What is typed finds them (Techniques.found): the groups the best
+## of it is in first, and in each the best first.
 func _fill_techniques(query: String) -> void:
 	for child: Node in _grid.get_children():
 		_grid.remove_child(child)
@@ -2076,22 +2092,25 @@ func _fill_techniques(query: String) -> void:
 	_scroll.scroll_vertical = 0
 	_grid.columns = 1
 	_techniques_seen = []
-	var words: PackedStringArray = query.to_lower().split(" ", false)
 	_techniques_shown = 0
-	for group: String in Techniques.GROUPS:
+	var listed: Array = Techniques.all()
+	var groups: Array = Techniques.GROUPS
+	if not query.strip_edges().is_empty():
+		listed = Techniques.found(query).map(func(one: Array) -> Dictionary: return one[1])
+		groups = []
+		for technique: Dictionary in listed:
+			if not groups.has(str(technique.get("group", ""))):
+				groups.append(str(technique.get("group", "")))
+	for group: String in groups:
 		var titled: bool = false
-		for one: Variant in Techniques.all():
+		for one: Variant in listed:
 			var technique: Dictionary = one
 			if str(technique.get("group", "")) != group:
-				continue
-			var said: String = ("%s %s %s" % [technique["name"], technique["when"],
-				group]).to_lower()
-			if not Array(words).all(func(word: String) -> bool: return said.contains(word)):
 				continue
 			if not titled:
 				titled = true
 				var title := Label.new()
-				title.text = group.capitalize()
+				title.text = Techniques.title(group)
 				title.add_theme_font_size_override("font_size", ceili(_z(11)))
 				title.modulate = Color(1, 1, 1, 0.7)
 				_grid.add_child(title)
@@ -2110,11 +2129,11 @@ func _technique_cell(technique: Dictionary) -> Control:
 	FocusGuard.by_keyboard(button)
 	button.add_theme_stylebox_override("focus", FocusGuard.ring())
 	button.set_meta("technique", name)
-	button.accessibility_name = name.capitalize()
+	button.accessibility_name = Techniques.title(name)
 	button.accessibility_description = "%s. %d parts" % [Techniques.reason(technique),
 		(technique["bricks"] as Array).size()]
 	button.tooltip_text = "%s: %s.\n\n%s\n\n%d parts: choose it to hold it whole" % [
-		name.capitalize(), technique["when"], technique["why"],
+		Techniques.title(name), technique["when"], technique["why"],
 		(technique["bricks"] as Array).size()]
 	button.pressed.connect(_on_technique.bind(name))
 
@@ -2139,7 +2158,7 @@ func _technique_cell(technique: Dictionary) -> Control:
 	words.add_theme_constant_override("separation", 0)
 	row.add_child(words)
 	var title := Label.new()
-	title.text = name.capitalize()
+	title.text = Techniques.title(name)
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.clip_text = true
 	title.add_theme_font_size_override("font_size", ceili(_z(12)))
@@ -2232,6 +2251,10 @@ var _telling: ConfirmationDialog
 var _guesses: Dictionary = {}
 ## What of the answer the bin has no part for, said on the status line's tooltip.
 var _guessed_note: String = ""
+## The colour the photo was seen in, by name, or "".
+var _guessed_colour: String = ""
+## How sure Brickognize must be of a photo's colour for it to be taken.
+const COLOUR_LEAST := 0.3
 
 
 ## A button in the search field, at its end, as the field's own clear button
@@ -2336,4 +2359,15 @@ func show_guesses(guesses: Array) -> void:
 			(child as Button).button_pressed = str(child.get_meta("category", "")) == _category
 	_results = found
 	_guesses = scores
+	# In the colour the photo shows, taken in hand as an element number's
+	# is: the photo of a black slope was shown in red, the colour that was
+	# in hand (walk256 S3). Kept as it is where Brickognize is not sure.
+	_guessed_colour = ""
+	var seen: Dictionary = _brickognize.colour
+	var code: int = int(PartLibrary.by_bricklink.get(int(seen.get("bricklink", -1)), -1)) \
+		if not seen.is_empty() and float(seen.get("score", 0.0)) >= COLOUR_LEAST else -1
+	if code >= 0 and library.colors.has(code):
+		_guessed_colour = library.color(code).name
+		if code != _selected_color:
+			_on_colour(code)
 	_fill_grid()

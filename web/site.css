@@ -806,6 +806,11 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .icon-btn[aria-pressed="true"] .icon, .icon-btn[data-on] .icon { fill: currentColor; }
 .icon-btn.small { min-width: 36px; min-height: 36px; padding: 0 10px; }
 .icon-btn.small .icon { width: 18px; height: 18px; }
+/* .labelled says a word for it too, between its icon and its count (a
+   model's Like and I built it), a little closer set; on a phone the row of
+   six has room for icons and counts alone, and the name stays its label. */
+.icon-btn.labelled { gap: 4px; padding: 0 10px; }
+@media (width < 600px) { .icon-btn.labelled .word { display: none; } .icon-btn.labelled { gap: 6px; padding: 0 12px; } }
 
 /* The toast (web/kit.js toast): a line that says what just happened
    ("Link copied") at the foot of the screen, read out, gone in a moment. */
@@ -884,20 +889,23 @@ details.qa > div p { margin: 0 0 10px; }
 
 /* -- the foot ------------------------------------------------------
    One footer on every page (web/_shell.html): the mark and a row of
-   links, then the notices, quiet but whole (docs/TRADEMARKS.md). */
+   links, then the notices, quiet but whole (docs/TRADEMARKS.md). The
+   links 12 px apart: at 16 the tenth, Collections, put the Theme choice on
+   a row of its own at 1280 px, every page a row taller. */
 
 .site-foot { border-top: 1px solid var(--line); padding: var(--s-6) 0 var(--s-7); color: var(--ink-faint); background: var(--bg-soft); }
 .foot-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3) var(--s-5); margin-bottom: var(--s-4); }
 .foot-top .mark { font-size: var(--t-body); min-height: var(--control-h); }
 .foot-top .chip { width: 22px; height: 22px; }
-/* Its links a finger's 44 x 44: 8 px a side, so the words stay 16 px
-   apart and the row starts on the page's edge. */
-.foot-links { display: flex; flex-wrap: wrap; margin: 0 -8px 0 auto; }
+/* Its links a finger's 44 x 44: 6 px a side, so the words stay 12 px
+   apart (at 16 the tenth link wraps the Theme choice at 1280) and the
+   row starts on the page's edge. */
+.foot-links { display: flex; flex-wrap: wrap; margin: 0 -6px 0 auto; }
 .foot-links a {
 	display: inline-flex; align-items: center; justify-content: center; min-width: var(--control-h); min-height: var(--control-h);
-	padding: 0 8px; color: var(--ink-soft); text-decoration: none; font-size: var(--t-small);
+	padding: 0 6px; color: var(--ink-soft); text-decoration: none; font-size: var(--t-small);
 }
-@media (width < 600px) { .foot-links { margin-left: -8px; } }
+@media (width < 600px) { .foot-links { margin-left: -6px; } }
 .foot-links a:hover { color: var(--ink); text-decoration: underline; }
 .legal p { margin: 0 0 6px; max-width: 110ch; font-size: var(--t-micro); line-height: 1.6; }
 .legal a { color: var(--ink-soft); }

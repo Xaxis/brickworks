@@ -2947,6 +2947,20 @@
       "area": "web"
     },
     {
+      "kind": "ui",
+      "label": "a model's parts and its download",
+      "entry": "api/_parts.js",
+      "reach": "https://brickworks.diy/m/<id>#parts (Parts: by Colour or Kind, Show all; BrickLink XML /m/<id>/parts.xml, Rebrickable CSV /m/<id>/parts.csv, the list /m/<id>/parts.json; Download /m/<id>.mpd, /m/<id>/v/<n>.mpd)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "parts page probe",
+      "entry": "src/dev/parts_page_probe.gd",
+      "reach": "tools/probe.sh parts_page_probe [-- FILE.mpd ...]   (headless; the app's Inventory.of and ShopLists of four Library sets, or the files given, against the page's list, tools/web/parts_check.mjs, lot by lot and word for word)",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "model page browser flow",
       "entry": "tools/web/model_page_flow.mjs",
@@ -3413,6 +3427,48 @@
       "label": "where a chooser opens",
       "entry": "src/ui/open_from.gd",
       "reach": "godot --path .  (any file chooser on the desktop: its kind's last folder, else Pictures, Documents or Downloads)",
+      "area": "parts"
+    },
+    {
+      "kind": "ui",
+      "label": "collections directory",
+      "entry": "api/people.js",
+      "reach": "https://brickworks.diy/collections  (?sort=followed, ?page=N, ?tests=1; supabase/collection_directory.sql; linked from the gallery's tabs and the footer)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "collections browser flow",
+      "entry": "tools/web/collections_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/collections_flow.mjs --url=<preview> --out=DIR   (live project, throwaway accounts; preview check [collections])",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "technic stress probe",
+      "entry": "src/dev/technic_stress_probe.gd",
+      "reach": "tools/probe.sh technic_stress_probe   (headless; Stress on the Cat D11 in under 10 s, its pins and axles weighed and said)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "part counts probe",
+      "entry": "src/dev/part_counts_probe.gd",
+      "reach": "tools/probe.sh part_counts_probe   (headless; ten Library sets: the card, the model opened and its box say one count, or the card says the box too)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "contrast probe",
+      "entry": "src/dev/contrast_probe.gd",
+      "reach": "tools/probe.sh contrast_probe -- --shots=DIR",
+      "area": "parts"
+    },
+    {
+      "kind": "ui",
+      "label": "buttons seen and read",
+      "entry": "src/ui/look.gd",
+      "reach": "godot --path .  (every button edged 3:1 on its face; a question's default in the strong blue)",
       "area": "parts"
     }
   ]

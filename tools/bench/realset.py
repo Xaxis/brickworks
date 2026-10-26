@@ -10,6 +10,8 @@
     python3 tools/bench/realset.py report --which proof --arm m32 [--date D] [--first N]
     python3 tools/bench/realset.py compare --which proof --arms m32,mine [--dates D1,D2]
                                        [--first N] [--jobs 2]
+    heavy python3 tools/bench/realset.py reach --which proof --arm m32 [--date D]
+    python3 tools/bench/realset.py run ... --via relay [--instructions none]
 
 A half is 44 subjects; `--first 10` is the ten it had before 2026-10-19. On
 two workers a subject took nine minutes (main, 2026-10-19), a half about 6.5
@@ -76,8 +78,25 @@ tuned on, judged blind.
   nothing.
 - **Measures**, ours against the set's, from tools/style.py and the build
   check's reading (src/dev/connection_audit.gd): parts, shapes per 100
-  parts, shaped share, 1 x 1 share, colours, tiles, SNOT and joints, and
-  parts the check calls floating.
+  parts, shaped share, 1 x 1 share, colours, tiles, SNOT, joints, parts
+  turned off the grid, and parts the check calls floating.
+- **The owner's path**, `--via relay`: the owner designs with their own Claude
+  through the connector, not with Claude Code on the app's port. So each design's
+  app is started as a connector tab of a throwaway account (a Resend test address,
+  deleted after) on tools/web/relay_server.mjs, with `--mcp` only: no brief heard,
+  no world cleared. Claude Code is signed in to the account with OAuth, as
+  `claude mcp login` leaves it, and given the brief as the person types it, with
+  the relay its only server. `--instructions none` withholds the server's
+  instructions at initialize, the bound on a client that shows none: whether
+  claude.ai shows them was never measured, and Claude Code shows about 4,096
+  characters. Without `--via` the path is the bench's, as before. Ports come
+  from BENCH_PORTS, two a design (the relay's and the app's), and the app's data
+  from a folder of its own under XDG_DATA_HOME.
+- **Reach**, `reach`: whether a lever reached the sessions at all, from
+  each design's Claude Code transcript (the guide sections read, sections
+  turned or hinged and refused, techniques placed, features settled) beside
+  the share of parts turned, ours and the set's. Words that reach no
+  session move no verdict, and the pictures do not say which happened.
 
 Everything lands in the main checkout's bench/results/ (git-ignored):
 realset-<date>-<arm>/<set>/ for an arm's designs, realset-sets/<set>/ for
@@ -96,10 +115,14 @@ import os
 import random
 import re
 import shutil
+import signal
+import socket
 import statistics
 import subprocess
 import sys
 import threading
+import time
+import urllib.request
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -542,7 +565,7 @@ def subject_of(c: Candidate, plan: tuple[int, int]) -> suite.Subject:
 
 ONE_BY_ONE = re.compile(r"\b1 x 1\b")
 MEASURES = ("parts", "shapes_per_100", "shaped", "one_by_one", "colours", "tile", "snot",
-            "angle_parts", "floating_share")
+            "angle_parts", "angled", "floating_share")
 
 
 def measures(text: str, parts: style.Parts) -> dict:
@@ -555,8 +578,10 @@ def measures(text: str, parts: style.Parts) -> dict:
         info = parts.get(placed.part, model.embedded)
         if style.building(info) and ONE_BY_ONE.search(info.name):  # type: ignore[union-attr]
             small += 1
+    # angle_parts counts parts that let a part turn (hinges, clips, bars); angled, the
+    # parts that are turned: main's Flatiron, two thirds turned, read 0% the first way.
     out = {k: found.get(k) for k in ("parts", "shapes", "shaped", "colours", "tile", "snot",
-                                    "angle_parts", "symmetry", "plain")}
+                                    "angle_parts", "angled", "symmetry", "plain")}
     out["shapes_per_100"] = round(100.0 * found.get("shapes", 0) / total, 1) if total else 0.0
     out["one_by_one"] = round(small / total, 3) if total else 0.0
     return out
@@ -776,6 +801,257 @@ def _held_out_said(log: str, number: str) -> bool:
     return f"real sets: holding out {number}" in log
 
 
+# -- the owner's path: the app as a connector tab -----------------------------
+
+# The relay's account helper and server, of this checkout: the relay is the
+# deployment's code, never an arm's.
+RELAY_ACCOUNT = ROOT / "tools" / "web" / "relay_account.mjs"
+RELAY_SERVER = ROOT / "tools" / "web" / "relay_server.mjs"
+# Claude Code waits this long for a tool, as the app's own session does
+# (src/ai/claude_code.gd TOOL_TIMEOUT_MS); the relay makes a long call a job.
+TOOL_TIMEOUT_MS = 600000
+# How long a tab may take to sign in and switch its connector on.
+TAB_WAIT_S = 300
+# Who may see what the session is given: Claude Code, never the project's keys.
+SECRETS = re.compile(r"^(SUPABASE_|RESEND_|VERCEL_|BW_)|SECRET")
+
+
+def _node(*args: str, timeout: int = 120) -> subprocess.CompletedProcess:
+    return subprocess.run(["node", f"--env-file={ROOT / '.env'}", *args], cwd=ROOT,
+                          capture_output=True, text=True, timeout=timeout)
+
+
+def _until(test, seconds: float, every: float = 2.0) -> bool:
+    end = time.time() + seconds
+    while time.time() < end:
+        if test():
+            return True
+        time.sleep(every)
+    return False
+
+
+def _as_claude(origin: str, token: str, method: str, params: dict) -> dict:
+    """One MCP request to the relay as the account's Claude, or {} when it failed."""
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode()
+    asked = urllib.request.Request(f"{origin}/api/mcp", data=body, method="POST", headers={
+        "content-type": "application/json", "accept": "application/json",
+        "authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(asked, timeout=60) as answer:
+            return json.loads(answer.read().decode())
+    except (OSError, ValueError):
+        return {}
+
+
+def _tab_open(origin: str, token: str) -> bool:
+    """Whether the account has a tab listening, as the relay's tabs tool says."""
+    said = _as_claude(origin, token, "tools/call", {"name": "tabs", "arguments": {}})
+    result = said.get("result") or {}
+    text = " ".join(b.get("text", "") for b in result.get("content", []) if isinstance(b, dict))
+    return not result.get("isError") and ("tab is open" in text or "tabs are open" in text)
+
+
+def _ask_app(port: int, tool: str, arguments: dict) -> dict:
+    """One call on the app's own port (src/net/command_socket.gd), as tools/brick.py makes one."""
+    with socket.create_connection(("127.0.0.1", port), timeout=180) as sock:
+        sock.sendall(json.dumps({"id": 1, "tool": tool, "input": arguments}).encode() + b"\n")
+        got = b""
+        while b"\n" not in got:
+            chunk = sock.recv(1 << 16)
+            if not chunk:
+                break
+            got += chunk
+    return json.loads(got.split(b"\n", 1)[0] or b"{}")
+
+
+def _stop(process: subprocess.Popen | None) -> None:
+    """A process started in a session of its own, and everything it started."""
+    if process is None or process.poll() is not None:
+        return
+    for sig, wait in ((signal.SIGTERM, 30), (signal.SIGKILL, 10)):
+        try:
+            os.killpg(process.pid, sig)
+        except ProcessLookupError:
+            return
+        try:
+            process.wait(wait)
+            return
+        except subprocess.TimeoutExpired:
+            continue
+
+
+def _parts_of(model: Path) -> list[str]:
+    """A saved model's part lines, sorted: what it is, whatever the file's header says."""
+    if not model.exists():
+        return []
+    return sorted(line.strip() for line in model.read_text(errors="replace").splitlines()
+                  if re.match(r"^1 .*\.dat\s*$", line.strip(), re.I))
+
+
+def _changed_anything(stream: Path) -> bool:
+    """Whether a session called any tool that changes the model (none read-only by its
+    annotations, tools/mcp_tools.json), from its stream."""
+    tools = json.loads((ROOT / "tools" / "mcp_tools.json").read_text())
+    looks = {t["name"] for t in tools if (t.get("annotations") or {}).get("readOnlyHint")}
+    for line in stream.read_text(errors="replace").splitlines() if stream.exists() else []:
+        try:
+            content = (json.loads(line).get("message") or {}).get("content")
+        except (ValueError, AttributeError):
+            continue
+        for block in content if isinstance(content, list) else []:
+            if block.get("type") == "tool_use":
+                name = str(block.get("name", "")).rsplit("__", 1)[-1]
+                if name not in looks and name not in ("tabs", "select_tab", "job"):
+                    return True
+    return False
+
+
+def _two_ports() -> tuple[int, int]:
+    """The relay's port and the app's. A worker's ports from its last design are its own
+    again, but the servers there closed connections, and a port waits out TIME_WAIT for a
+    minute before bench's check will bind it: 7630's second design found no free port in
+    four (2026-10-26). So it waits for them, up to three minutes."""
+    end = time.time() + 180
+    while True:
+        taken: list[int] = []
+        try:
+            taken.append(bench._free_port())
+            taken.append(bench._free_port())
+            return taken[0], taken[1]
+        except SystemExit:
+            for port in taken:
+                bench._port_back(port)
+            if time.time() > end:
+                raise
+            time.sleep(10)
+
+
+def _session_end(stream: Path) -> dict:
+    """The end of a Claude Code session, from its stream-json: the result event."""
+    if not stream.exists():
+        return {}
+    for line in reversed(stream.read_text(errors="replace").splitlines()):
+        try:
+            said = json.loads(line)
+        except ValueError:
+            continue
+        if said.get("type") == "result":
+            return said
+    return {}
+
+
+def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: Path,
+                     instructions: str = "all") -> dict:
+    """One brief designed as the owner designs: Claude through the connector relay, the
+    app a signed-in tab of a throwaway account. Recorded in design.json as bench.design
+    records one, with the session's own stream beside it (session.jsonl)."""
+    done = run_dir / "design.json"
+    if done.exists():
+        return json.loads(done.read_text())
+    relay_port, app_port = _two_ports()
+    origin = f"http://127.0.0.1:{relay_port}"
+    tab_home = Path(os.environ["XDG_DATA_HOME"]) / f"relay-{subject.id}-{app_port}"
+    user_dir = tab_home / "godot" / "app_userdata" / "Brickworks"
+    log, stream, relay_log = run_dir / "design.log", run_dir / "session.jsonl", run_dir / "relay.log"
+    relay = tab = None
+    account: dict = {}
+    result: dict = {}
+    sha = bench.commit(app)
+    bench.say(f"design {subject.id} via the relay: ports {relay_port} and {app_port}, "
+              f"instructions {instructions}, up to {timeout // 60} min")
+    try:
+        with relay_log.open("w") as out:
+            relay = subprocess.Popen(
+                ["node", f"--env-file={ROOT / '.env'}", str(RELAY_SERVER), str(relay_port),
+                 *(["--instructions=none"] if instructions == "none" else [])],
+                cwd=ROOT, stdout=out, stderr=subprocess.STDOUT, start_new_session=True)
+        if not _until(lambda: "functions on" in relay_log.read_text(errors="replace"), 30, 0.5):
+            raise SystemExit(f"design {subject.id}: the relay never listened; see {relay_log}")
+        opened = _node(str(RELAY_ACCOUNT), "open", f"--origin={origin}")
+        if opened.returncode != 0:
+            raise SystemExit(f"design {subject.id}: no throwaway account: {opened.stderr[-400:]}")
+        account = json.loads(opened.stdout.strip().splitlines()[-1])
+        # Signed in as a returning visitor's app is (src/account/account.gd).
+        user_dir.mkdir(parents=True, exist_ok=True)
+        (user_dir / "session.json").write_text(json.dumps(account["kept"]))
+        with log.open("w") as out:
+            tab = subprocess.Popen(
+                ["godot", "--headless", "--path", str(app), "--log-file",
+                 str(run_dir / "godot_design.log"), "--", f"--mcp={app_port}", "--assistant=on",
+                 "--signed-in", f"--held-out={subject.id}", "--draw-by=" + json.dumps(bench.DRAWER)],
+                cwd=app, stdout=out, stderr=subprocess.STDOUT, start_new_session=True,
+                env=bench._billing_free_env(XDG_DATA_HOME=str(tab_home),
+                                            BRICKWORKS_API=origin, MESA_VK_WSI_DEBUG="sw"))
+        if not _until(lambda: tab.poll() is None and _tab_open(origin, account["token"]),
+                      TAB_WAIT_S, 3.0):
+            raise SystemExit(f"design {subject.id}: the tab never switched its connector on; "
+                             f"see {log}")
+        config = run_dir / "relay-mcp.json"
+        config.write_text(json.dumps({"mcpServers": {"brickworks": {
+            "type": "http", "url": f"{origin}/api/mcp", "timeout": TOOL_TIMEOUT_MS,
+            "headers": {"Authorization": f"Bearer {account['token']}"}}}}))
+        env = {k: v for k, v in bench._billing_free_env().items() if not SECRETS.search(k)}
+        env.update(MCP_TOOL_TIMEOUT=str(TOOL_TIMEOUT_MS), MCP_TIMEOUT="120000")
+        started = time.time()
+        # As the app starts its own session (src/ai/claude_code.gd arguments), the
+        # relay its only server and its tools all it may use; in the arm's checkout,
+        # as the bench's session is.
+        with stream.open("w") as said:
+            status = subprocess.run(
+                ["timeout", "--kill-after=30", str(timeout), "claude", "-p", subject.brief,
+                 "--mcp-config", str(config), "--strict-mcp-config", "--tools", "",
+                 "--restricted", "--allowedTools", "mcp__brickworks",
+                 "--output-format", "stream-json", "--verbose"],
+                cwd=app, env=env, stdout=said, stderr=subprocess.STDOUT).returncode
+        seconds = time.time() - started
+        ended = _session_end(stream)
+        if ended.get("is_error") and "API Error" in str(ended.get("result", "")):
+            # Claude's service failed (529 Overloaded), not the design: not recorded,
+            # so the same command tries it again.
+            raise SystemExit(f"design {subject.id}: {str(ended.get('result'))[:160]}")
+        ldr = run_dir / "design.ldr"
+        name = f"realset-{subject.id}-{app_port}.ldr"
+        saved: dict = {}
+        try:
+            saved = _ask_app(app_port, "save_model", {"name": name})
+        except (OSError, ValueError) as trouble:
+            bench.say(f"design {subject.id}: the tab would not save: {trouble}")
+        kept = user_dir / "models" / name
+        # The tab opens on a first visit's example, which is no design: a session
+        # that changed nothing leaves it there, and has made no model.
+        if kept.exists() and _parts_of(kept) and _changed_anything(stream):
+            shutil.copy(kept, ldr)
+        result = {
+            "status": status, "seconds": round(seconds, 1), "timed_out": status in (124, 137),
+            "design_seconds": int(ended["duration_ms"] / 1000) if ended.get("duration_ms") else None,
+            "commit": sha, "port": app_port, "relay_port": relay_port, "via": "relay",
+            "instructions": instructions, "model": ldr.exists() and ldr.stat().st_size > 0,
+            **({} if app == ROOT else {"app": str(app)}),
+            "finished": (f"claude code ok={not ended.get('is_error', True)} "
+                         f"turns={ended.get('num_turns')} {ended.get('subtype', '')}: "
+                         f"{str(ended.get('result', ''))[:240]}") if ended else "",
+            "saved": json.dumps(saved.get("content") or saved.get("error") or "")[:200],
+            "transcript": str(stream),
+        }
+    finally:
+        _stop(tab)
+        if account.get("user"):
+            closed = _node(str(RELAY_ACCOUNT), "close", f"--user={account['user']}")
+            result["account_deleted"] = closed.returncode == 0
+            if closed.returncode != 0:
+                bench.say(f"design {subject.id}: the throwaway account {account.get('email')} "
+                          f"was NOT deleted: {closed.stdout} {closed.stderr[-300:]}")
+        _stop(relay)
+        bench._port_back(relay_port)
+        bench._port_back(app_port)
+    result["pictures_given_up"] = bench.pictures_given_up(run_dir / "godot_design.log")
+    bench._write_json(done, result)
+    shutil.rmtree(tab_home, ignore_errors=True)
+    bench.say(f"design {subject.id} via the relay: status {result['status']} in "
+              f"{result['seconds'] / 60:.1f} min, {'a model' if result['model'] else 'NO MODEL'}")
+    return result
+
+
 def one(c: Candidate, args: argparse.Namespace, parts: style.Parts) -> dict:
     """A subject end to end on one arm: the set's side, the design, its pictures, its
     measures, and the judge both orders. Each stage is skipped when its output is there."""
@@ -792,7 +1068,9 @@ def one(c: Candidate, args: argparse.Namespace, parts: style.Parts) -> dict:
                                            "theme": c.theme, "year": c.year})
     canned = bench.CANNED / "design.ldr" if args.dry_run else None
     try:
-        made = bench.design(subject, out, args.timeout, canned, app=args.checkout)
+        made = (design_via_relay(subject, out, args.timeout, args.checkout, args.instructions)
+                if args.via == "relay" and canned is None else
+                bench.design(subject, out, args.timeout, canned, app=args.checkout))
     except SystemExit as failed:      # the machine failed, not the design: tried again next time
         bench.say(f"{c.number}: {failed}")
         return {}
@@ -854,7 +1132,8 @@ def run(args: argparse.Namespace) -> int:
         if not (out / "arm.json").exists():
             bench._write_json(out / "arm.json", {"arm": args.arm, "checkout": str(args.checkout),
                                                  "commit": bench.commit(args.checkout),
-                                                 "date": args.date})
+                                                 "date": args.date, "via": args.via,
+                                                 "instructions": args.instructions})
         for c in wanted:
             bench.say(f"{c.number} {c.name}: starting")
             try:
@@ -864,7 +1143,8 @@ def run(args: argparse.Namespace) -> int:
         return 0
     bench._write_json(out / "arm.json", {"arm": args.arm, "checkout": str(args.checkout),
                                          "commit": bench.commit(args.checkout),
-                                         "which": args.which, "date": args.date})
+                                         "which": args.which, "date": args.date,
+                                         "via": args.via, "instructions": args.instructions})
     bench.say(f"realset {args.which}: {len(wanted)} subjects on {args.arm} "
               f"({bench.commit(args.checkout)}), {args.jobs} at a time, into {out}")
     jobs = max(1, min(args.jobs, len(wanted)))
@@ -897,7 +1177,8 @@ def _in_a_slot(share: list[Candidate], args: argparse.Namespace) -> int:
                *(["--audit-later"] if args.audit_later else []),
                *(["--dry-run"] if args.dry_run else []),
                *(["--no-judge"] if args.no_judge else []),
-               *(["--rejudge"] if args.rejudge else [])]
+               *(["--rejudge"] if args.rejudge else []),
+               "--via", args.via, "--instructions", args.instructions]
     named = ", ".join(c.number for c in share)
     bench.say(f"{named}: queued")
     log_path = out / f"worker-{share[0].number}.log"
@@ -1067,7 +1348,8 @@ def _cell(value: float | None, share: bool) -> str:
     return f"{100 * value:.0f}%" if share else f"{value:.1f}" if value % 1 else f"{value:.0f}"
 
 
-SHARE_MEASURES = {"shaped", "one_by_one", "tile", "snot", "angle_parts", "floating_share"}
+SHARE_MEASURES = {"shaped", "one_by_one", "tile", "snot", "angle_parts", "angled",
+                  "floating_share"}
 
 
 def report_arm(which: str, date: str, arm: str, first: int = 0) -> str:
@@ -1139,6 +1421,203 @@ def gave_up_said(found: list[dict]) -> str:
     if len(counted) < len(found):
         said += f"; {len(found) - len(counted)} recorded before the count was kept"
     return said + "."
+
+
+# -- what the sessions reached --------------------------------------------------
+
+# A lever is a tool, a pattern or a line of guidance; whether a session ever used it
+# is in its transcript, not its pictures. On main's and main2's 88 proof designs
+# (design281, 2026-10-26) "angle" was read twice and "round" never, 9 of 300
+# features took the app's piece, and 82 designs turned under 5% of their parts off
+# the grid where the sets turn a median 11%.
+PROJECTS = Path.home() / ".claude" / "projects"
+
+
+def _turned(sections: object) -> bool:
+    """Whether a build's sections turn any of them off the grid: an angle that is not a
+    whole number of right angles (a section folded 90 degrees on a hinge is square)."""
+    found = list(sections.values()) if isinstance(sections, dict) else sections
+    for one in found if isinstance(found, list) else []:
+        for key in ("yaw", "pitch", "roll", "degrees"):
+            angle = one.get(key, 0) if isinstance(one, dict) else 0
+            if isinstance(angle, (int, float)) and abs(angle / 90.0 - round(angle / 90.0)) > 0.01:
+                return True
+    return False
+
+
+# The words the connector's working method begins with (src/ai/assistant.gd METHOD).
+METHOD_SAID = "How to work here, said once"
+BUILDS = ("submit_design", "edit_model")
+
+
+def session_reach(lines: list[str]) -> dict:
+    """What one Claude Code session called, from its transcript's lines: the guide
+    sections it read, the builds that turned a section and how many were refused, the
+    technique calls, how it settled features, and the floor of its first build. And
+    whether it worked by the method (HOW TO WORK): how_real_sets_build_this before its
+    first build, review_model, settle_feature, a part count given; and whether a tool's
+    answer told it the method. A transcript writes each call more than once; each is
+    counted once."""
+    calls: dict[str, tuple[str, dict]] = {}
+    refused: set[str] = set()
+    told = False
+    for line in lines:
+        message = json.loads(line).get("message", {})
+        content = message.get("content") if isinstance(message, dict) else None
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if block.get("type") == "tool_use" and block["id"] not in calls:
+                calls[block["id"]] = (block["name"].rsplit("__", 1)[-1], block.get("input", {}))
+            elif block.get("type") == "tool_result":
+                said = block.get("content")
+                if isinstance(said, list):
+                    said = " ".join(b.get("text", "") for b in said if isinstance(b, dict))
+                if str(said).startswith("Not applied"):
+                    refused.add(block.get("tool_use_id"))
+                told = told or METHOD_SAID in str(said)
+    named = Counter(name for name, _ in calls.values())
+    turned = [i for i, (name, given) in calls.items()
+              if name in ("submit_design", "edit_model")
+              and _turned(given.get("sections", []))]
+    first = next((given for name, given in calls.values() if name == "submit_design"), {})
+    order = [name for name, _ in calls.values()]
+    built = next((i for i, name in enumerate(order) if name in BUILDS), len(order))
+    return {"calls": len(calls),
+            "method": {"real_first": "how_real_sets_build_this" in order[:built],
+                       "reviews": named["review_model"], "settled": named["settle_feature"],
+                       "passes": sorted({k for n, g in calls.values() if n == "review_model"
+                                         for k in ("assembly", "surface", "creative") if g.get(k)}),
+                       "parts": any("parts" in g for n, g in calls.values() if n == "submit_design"),
+                       "told": told},
+            "guide": sorted({str(g.get("section", "")) for n, g in calls.values()
+                             if n == "read_guide"}),
+            "turned_builds": len(turned), "turned_refused": len(refused & set(turned)),
+            "techniques": {k: named[k] for k in ("find_techniques", "show_technique",
+                                                 "place_technique")},
+            "features": dict(Counter(str(g.get("verdict")) for n, g in calls.values()
+                                     if n == "settle_feature")),
+            "floor": str(first.get("floor", ""))}
+
+
+def transcript_of(record: dict) -> Path | None:
+    """The session that made a recorded design: its own stream, kept beside it by a run
+    --via relay (design.json's `transcript`), or else as Claude Code keeps it under its working
+    directory, the checkout whose app designed (design.json's `app`, else the arm's own,
+    read from the arm the record names: proof's first ten in main's are t2base's), as
+    the transcript whose first message is the brief, the last begun before the design
+    was written."""
+    kept = record.get("design", {}).get("transcript")
+    if kept and Path(kept).exists():
+        return Path(kept)
+    relayed = _relayed_sessions()
+    where = arm_dir(record["date"], record["arm"])
+    meta = where / "arm.json"
+    checkout = (record.get("design", {}).get("app")
+                or (json.loads(meta.read_text()).get("checkout") if meta.exists() else None)
+                or str(ROOT))
+    design = where / record["number"] / "design.json"
+    until = design.stat().st_mtime + 60 if design.exists() else float("inf")
+    best: tuple[float, Path] | None = None
+    for path in (PROJECTS / re.sub(r"[/.]", "-", str(checkout))).glob("*.jsonl"):
+        if path.stem in relayed:
+            continue
+        with path.open(errors="replace") as lines:
+            for line in lines:
+                said = json.loads(line)
+                if said.get("type") != "user":
+                    continue
+                if said.get("message", {}).get("content") == record["brief"]:
+                    began = datetime.datetime.fromisoformat(
+                        said["timestamp"].replace("Z", "+00:00")).timestamp()
+                    if began <= until and (best is None or began > best[0]):
+                        best = (began, path)
+                break
+    return best[1] if best else None
+
+
+def _relayed_sessions() -> set[str]:
+    """The Claude Code sessions of runs --via relay, by id: each is kept with its design,
+    and runs in the arm's checkout too, where a bench session of the same brief at the
+    same time would otherwise be taken for it."""
+    found = set()
+    for stream in RESULTS.glob("realset-*/*/session.jsonl"):
+        with stream.open(errors="replace") as lines:
+            first = lines.readline()
+        try:
+            found.add(str(json.loads(first).get("session_id", "")))
+        except ValueError:
+            continue
+    return found
+
+
+def turned_share(text: str, parts: style.Parts) -> float:
+    """The share of a model's parts turned off its grid (tools/style.py's `angled`)."""
+    return float(style.measure(style.read(text), parts).get("angled") or 0.0)
+
+
+def reach_report(which: str, date: str, arm: str, first: int = 0) -> str:
+    found = records(which, date, arm, first)
+    parts = style.Parts()
+    by = {c.number: c for c in sample(which, first)}
+    out = [f"# What {arm}'s sessions reached, {which} half, {date}", "",
+           "Each subject: overall verdicts won; the share of parts turned off the grid, "
+           "ours and the set's; and from its session's transcript the guide sections read, "
+           "builds with a turned or hinged section (refused of them), find/show/place "
+           "technique calls, features settled, and the first build's floor. Method: "
+           "how_real_sets_build_this before the first build (real), review_model calls, "
+           "settle_feature calls, a part count given to submit_design, and whether an answer "
+           "told the session the method.", "",
+           "| set | overall | turned | set's turned | guide | turned builds | techniques "
+           "| features | floor | method |", "|" + "---|" * 10]
+    ours_turned, sets_turned, guides, turned_any, placed_any, sessions = [], [], Counter(), 0, 0, 0
+    method = Counter()
+    for r in found:
+        design = arm_dir(date, arm) / r["number"] / "design.ldr"
+        mine = turned_share(design.read_text(errors="replace"), parts) if design.exists() else None
+        theirs = turned_share((FILES / by[r["number"]].file).read_text(errors="replace"),
+                              parts) if r["number"] in by else None
+        ours_turned.append(mine)
+        sets_turned.append(theirs)
+        path = transcript_of(r)
+        reach = session_reach(path.read_text(errors="replace").splitlines()) if path else None
+        ours = r.get("keys", {}).get("ours")
+        won = f"{sum(v['winners']['overall'] == ours for v in r.get('verdicts', []))}/" \
+              f"{len(r.get('verdicts', []))}"
+        if reach is None:
+            out.append(f"| {r['number']} | {won} | {_cell(mine, True)} | {_cell(theirs, True)} "
+                       "| no transcript found | | | | | |")
+            continue
+        sessions += 1
+        guides.update(reach["guide"])
+        turned_any += reach["turned_builds"] > 0
+        placed_any += reach["techniques"]["place_technique"] > 0
+        tech = "/".join(str(reach["techniques"][k]) for k in ("find_techniques", "show_technique",
+                                                              "place_technique"))
+        feats = ", ".join(f"{k} {v}" for k, v in sorted(reach["features"].items()))
+        how = reach["method"]
+        method.update({k: int(v) for k, v in {
+            "real": how["real_first"], "review": how["reviews"] > 0, "settle": how["settled"] > 0,
+            "parts": how["parts"], "told": how["told"], **{p: True for p in how["passes"]}}.items()})
+        did = (f"real {'yes' if how['real_first'] else 'no'}, review {how['reviews']}"
+               + (f" ({', '.join(how['passes'])})" if how["passes"] else "") + ", "
+               f"settle {how['settled']}, parts {'yes' if how['parts'] else 'no'}"
+               + (", told" if how["told"] else ""))
+        out.append(f"| {r['number']} | {won} | {_cell(mine, True)} | {_cell(theirs, True)} | "
+                   f"{', '.join(reach['guide'])} | {reach['turned_builds']} "
+                   f"({reach['turned_refused']}) | {tech} | {feats} | {reach['floor']} | {did} |")
+    out += ["", f"Turned off the grid, the median: ours {_cell(_median(ours_turned), True)}, the "
+            f"sets' {_cell(_median(sets_turned), True)}; ours 5% or more in "
+            f"{sum(1 for v in ours_turned if v is not None and v >= 0.05)} of {len(found)}.",
+            f"Of {sessions} sessions read: {turned_any} built a turned or hinged section, "
+            f"{placed_any} placed a real set's technique; guide sections read by how many: "
+            + (", ".join(f"{k} {v}" for k, v in guides.most_common()) or "none") + ".",
+            f"The method, of {sessions} sessions: how_real_sets_build_this before the first "
+            f"build in {method['real']}, review_model in {method['review']} (an assembly's in "
+            f"{method['assembly']}, the surface pass in {method['surface']}, the creative pass in "
+            f"{method['creative']}), settle_feature in {method['settle']}, a part count given in "
+            f"{method['parts']}; told the method by an answer in {method['told']}."]
+    return "\n".join(out) + "\n"
 
 
 # -- two arms -------------------------------------------------------------------
@@ -1245,7 +1724,7 @@ def main(argv: list[str] | None = None) -> int:
     one_.add_argument("--first", type=int, default=0)
     one_.add_argument("--show", action="store_true",
                       help="names and briefs (never for proof while building the tool)")
-    for name in ("run", "one", "calibrate", "report", "compare", "audit"):
+    for name in ("run", "one", "calibrate", "report", "compare", "audit", "reach"):
         p = sub.add_parser(name)
         p.add_argument("--which", choices=HALVES, default="tune")
         p.add_argument("--date", default=f"{datetime.date.today():%Y-%m-%d}")
@@ -1258,7 +1737,7 @@ def main(argv: list[str] | None = None) -> int:
                        help="draw on lavapipe under heavy, not on the GPU (both sides alike)")
         p.add_argument("--dry-run", action="store_true",
                        help="a canned design and canned replies: nothing designed or asked")
-        if name in ("run", "one", "report", "audit"):
+        if name in ("run", "one", "report", "audit", "reach"):
             p.add_argument("--arm", required=True, help="this arm's name: m32, a branch's")
         if name in ("run", "one"):
             p.add_argument("--checkout", type=Path, default=ROOT,
@@ -1269,6 +1748,11 @@ def main(argv: list[str] | None = None) -> int:
                            help="read recorded subjects through again (a verdict asked is kept)")
             p.add_argument("--share", default="",
                            help="K/N: only every Nth subject of the half from the Kth")
+            p.add_argument("--via", choices=("port", "relay"), default="port",
+                           help="relay: as the owner designs, Claude through the connector "
+                           "relay to the app as a throwaway account's tab")
+            p.add_argument("--instructions", choices=("all", "none"), default="all",
+                           help="none: the server's instructions withheld (with --via relay)")
             p.add_argument("--audit-later", action="store_true",
                            help="leave the build check's reading to `audit`, so no worker "
                            "holding the GPU waits for a CPU slot")
@@ -1280,6 +1764,8 @@ def main(argv: list[str] | None = None) -> int:
         return _show(args.which, args.show, args.first)
     if args.what in ("run", "one"):      # one: a single subject, as run starts it under heavy
         args.checkout = args.checkout.resolve()
+        if args.instructions == "none" and args.via != "relay":
+            raise SystemExit("--instructions none withholds what the relay serves: with --via relay")
         return run(args)
     if args.what == "calibrate":
         return calibrate_half(args)
@@ -1288,6 +1774,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.what == "report":
         text = report_arm(args.which, args.date, args.arm, args.first)
         (arm_dir(args.date, args.arm) / _report_name(args)).write_text(text)
+        print(text)
+        return 0
+    if args.what == "reach":
+        text = reach_report(args.which, args.date, args.arm, args.first)
+        name = _report_name(args).replace("report-", "reach-")
+        (arm_dir(args.date, args.arm) / name).write_text(text)
         print(text)
         return 0
     return compare(args)

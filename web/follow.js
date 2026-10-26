@@ -10,7 +10,9 @@
 // followed nothing, and there is no way to write to them from here. And a
 // collection, the same (2026-10-24, supabase/collection_follows.sql): a
 // button with data-follow-list="<id>" on its page (/c/<id>), what is put in
-// it then in your feed; its owner is told nothing.
+// it then in your feed; its owner is told nothing. A page of them (the
+// collections directory's cards, /collections) asks how all of them stand
+// at once.
 //
 // Your account in the header (2026-10-22, docs/SOCIAL.md U7, D10): Sign in
 // (a[data-account]) until you are, and then your avatar, carrying how many
@@ -314,7 +316,23 @@ export function showTabCounts(state) {
   }
 }
 
-for (const button of document.querySelectorAll("button[data-follow], button[data-follow-list]")) followButton(button).catch(() => null);
+/// A page of collections' cards, each with its Follow (/collections): how
+/// each stands asked once for all of them, not once a card. A server from
+/// before that answer is asked a card at a time, as before.
+async function followLists(buttons) {
+  const ids = [...new Set(buttons.map((button) => button.dataset.followList))];
+  const answer = await call(`/api/people?op=list_follows&ids=${ids.map(encodeURIComponent).join(",")}`).catch(() => null);
+  const follows = answer && answer.status === 200 && answer.body && answer.body.follows;
+  for (const button of buttons) {
+    if (!follows) followButton(button).catch(() => null);
+    else if (follows[button.dataset.followList]?.ready) followButton(button, follows[button.dataset.followList]).catch(() => null);
+  }
+}
+
+for (const button of document.querySelectorAll("button[data-follow]")) followButton(button).catch(() => null);
+const listButtons = [...document.querySelectorAll("button[data-follow-list]")];
+if (listButtons.length > 1) followLists(listButtons).catch(() => null);
+else for (const button of listButtons) followButton(button).catch(() => null);
 // /feed and /notifications ask once they have opened (web/feed.js,
 // web/notifications.js), so their own count is cleared first.
 showFeedCount({ ask: !["/feed", "/notifications"].includes(location.pathname) }).catch(() => null);
