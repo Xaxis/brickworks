@@ -515,6 +515,14 @@
       "tests": []
     },
     {
+      "id": "cli:contrast probe",
+      "kind": "cli",
+      "entry": "src/dev/contrast_probe.gd",
+      "reach": "tools/probe.sh contrast_probe -- --shots=DIR",
+      "area": "parts",
+      "tests": []
+    },
+    {
       "id": "cli:decorated parts in a browser",
       "kind": "cli",
       "entry": "tools/web/decor_flow.mjs",
@@ -2920,6 +2928,14 @@
       "entry": "src/ui/together_dialog.gd",
       "reach": "File, Build together\u2026: Start a session (a link to send) or paste a link and Join; in one, the link, who is in it, Remove, End the session or Leave. A link opened in a browser (/app?together=<secret>) or --together=<secret> joins at start",
       "area": "together",
+      "tests": []
+    },
+    {
+      "id": "ui:buttons seen and read",
+      "kind": "ui",
+      "entry": "src/ui/look.gd",
+      "reach": "godot --path .  (every button edged 3:1 on its face; a question's default in the strong blue)",
+      "area": "parts",
       "tests": []
     },
     {

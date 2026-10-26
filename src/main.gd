@@ -1396,9 +1396,11 @@ func _ready() -> void:
 	if not OS.has_feature("web"):
 		get_window().title = "Brickworks %s" % BuildInfo.version()
 	_boot_mark("ready")
-	# Before any window is made, so every dialog and menu is made in the
-	# app's look, the engine's own among them (Look.dialogs).
+	# Before any window or button is made, so every dialog, menu and button
+	# is made in the app's look, the engine's own among them (Look.dialogs,
+	# Look.buttons).
 	Look.dialogs()
+	Look.buttons()
 	IdleDraw.for_the_app()
 	Tooltips.let_clicks_through(get_window())
 	# Before anything draws: the controls strip reads these to say what

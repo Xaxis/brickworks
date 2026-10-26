@@ -776,6 +776,11 @@ func _cell(info: PartLibrary.PartInfo) -> Button:
 		if state.ends_with("pressed"):
 			back.border_color = Color(1.0, 0.92, 0.55)
 			back.set_border_width_all(2)
+		else:
+			# Edged as every button is (Look.OUTLINE): the shade alone was
+			# 1.7:1 on the panel.
+			back.border_color = Look.OUTLINE
+			back.set_border_width_all(1)
 		cell.add_theme_stylebox_override(state, back)
 	var id: String = "" if info == null else info.id
 	cell.set_meta("part", id)

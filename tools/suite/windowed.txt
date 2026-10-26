@@ -49,3 +49,4 @@ a11y_size   # Settings, Interface size at 85% and 150%: nothing off the window (
 find_submodels   # Find on the Cat D11 (188 sub-models) from the Library: Enter, a row and a row clicked twice select every one, those in sub-models too (walk256 D10)
 dialog_look   # the photo search's question, the picture choosers and Build together in the app's look; the chooser in Pictures, then where the last came from (desk263)
 phone_idle        # the layout for a finger draws nothing standing still (m174 tablet check)
+contrast   # every button's edge or fill 3:1 on its face, its words 4.5:1, a dialog's default told apart, over the main panels and every dialog and menu (contrast270)

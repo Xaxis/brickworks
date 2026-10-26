@@ -581,7 +581,7 @@ func _button(into: Control, words: String, action: Callable, tip: String,
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	if strong:
 		var face := StyleBoxFlat.new()
-		face.bg_color = Color(0.25, 0.48, 0.95, 0.9)
+		face.bg_color = Look.STRONG
 		face.set_corner_radius_all(4)
 		face.content_margin_left = 12
 		face.content_margin_right = 12
@@ -589,8 +589,10 @@ func _button(into: Control, words: String, action: Callable, tip: String,
 		face.content_margin_bottom = 5
 		button.add_theme_stylebox_override("normal", face)
 		var hover: StyleBoxFlat = face.duplicate()
-		hover.bg_color = Color(0.33, 0.56, 1.0, 0.95)
+		hover.bg_color = Look.STRONG_HOVER
 		button.add_theme_stylebox_override("hover", hover)
+		for item: String in ["font_color", "font_hover_color", "font_pressed_color"]:
+			button.add_theme_color_override(item, Color(1, 1, 1))
 	button.pressed.connect(action)
 	into.add_child(button)
 	return button
@@ -614,7 +616,7 @@ func _segments(into: Control, names: Array, chosen: int, picked: Callable) -> Ar
 		button.add_theme_font_size_override("font_size", 12)
 		button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		var down := StyleBoxFlat.new()
-		down.bg_color = Color(0.36, 0.6, 1.0, 0.38)
+		down.bg_color = Look.CHOSEN
 		down.set_corner_radius_all(3)
 		down.content_margin_top = 3
 		down.content_margin_bottom = 3

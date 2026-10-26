@@ -274,7 +274,8 @@ func _button(row: Container, text: String, action: Callable,
 	for state: String in ["normal", "hover", "pressed"]:
 		var face := StyleBoxFlat.new()
 		face.bg_color = BUTTON_FACES[state]
-		face.border_color = Color(1, 1, 1, 0.1 if state == "normal" else 0.22)
+		# Its edge 3:1 on the bar (Look.OUTLINE): at 10% white it was 1.5:1.
+		face.border_color = Look.OUTLINE
 		face.set_border_width_all(1)
 		face.set_corner_radius_all(5)
 		face.content_margin_left = 9

@@ -3442,6 +3442,20 @@
       "entry": "src/dev/part_counts_probe.gd",
       "reach": "tools/probe.sh part_counts_probe   (headless; ten Library sets: the card, the model opened and its box say one count, or the card says the box too)",
       "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "contrast probe",
+      "entry": "src/dev/contrast_probe.gd",
+      "reach": "tools/probe.sh contrast_probe -- --shots=DIR",
+      "area": "parts"
+    },
+    {
+      "kind": "ui",
+      "label": "buttons seen and read",
+      "entry": "src/ui/look.gd",
+      "reach": "godot --path .  (every button edged 3:1 on its face; a question's default in the strong blue)",
+      "area": "parts"
     }
   ]
 }
