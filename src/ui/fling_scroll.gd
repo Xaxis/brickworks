@@ -35,6 +35,8 @@ const WINDOW_MS := 100.0
 const STILL_MS := 100.0
 ## A glide this slow has stopped, units a ms.
 const STOPPED := 0.002
+## Frames a glide waits at a list's foot for it to grow.
+const FOOT_FRAMES := 3
 
 ## Each ScrollContainer watched, by its id.
 var _lists: Dictionary = {}
@@ -43,7 +45,8 @@ var _down: bool = false
 var _by_touch: bool = false
 ## Each list showing while it is down: [usec, scroll] each frame, by its id.
 var _seen: Dictionary = {}
-## Each list gliding: [where it is, its speed in units a ms], by its id.
+## Each list gliding: [where it is, its speed in units a ms, frames it has
+## waited at its foot], by its id.
 var _gliding: Dictionary = {}
 
 
@@ -144,7 +147,7 @@ func _lifted() -> void:
 		list.scroll_vertical = roundi(at.y)
 		var speed: Vector2 = _thrown(seen, at, now)
 		if speed != Vector2.ZERO:
-			_gliding[id] = [at, speed]
+			_gliding[id] = [at, speed, 0]
 	_seen.clear()
 
 
@@ -214,15 +217,26 @@ func _glide(ms: float) -> void:
 			_gliding.erase(id)
 			continue
 		var speed: Vector2 = _gliding[id][1]
+		var waited: int = _gliding[id][2]
 		at += speed * went
 		speed *= kept
-		# Stopped at either end, as a thrown list stops there.
+		# Stopped at either end, as a thrown list stops there. At its foot
+		# after a few frames: a list that grows as it is scrolled (the parts
+		# bin adds a page of tiles as its foot comes near) has grown by then,
+		# and a glide stopped at once stopped where its last page ended.
 		var most := Vector2(maxf(0.0, list.get_h_scroll_bar().max_value - list.get_h_scroll_bar().page),
 			maxf(0.0, list.get_v_scroll_bar().max_value - list.get_v_scroll_bar().page))
+		var held: bool = false
 		for axis: int in 2:
-			if at[axis] <= 0.0 or at[axis] >= most[axis]:
-				at[axis] = clampf(at[axis], 0.0, most[axis])
+			if at[axis] <= 0.0:
+				at[axis] = 0.0
 				speed[axis] = 0.0
+			elif at[axis] >= most[axis]:
+				at[axis] = most[axis]
+				held = true
+				if waited >= FOOT_FRAMES:
+					speed[axis] = 0.0
+		waited = waited + 1 if held else 0
 		list.scroll_horizontal = roundi(at.x)
 		list.scroll_vertical = roundi(at.y)
 		# Where the list took it: a list that cannot scroll that way stays.
@@ -231,7 +245,7 @@ func _glide(ms: float) -> void:
 		if speed.length() < STOPPED:
 			_gliding.erase(id)
 		else:
-			_gliding[id] = [at, speed]
+			_gliding[id] = [at, speed, waited]
 
 
 static func _scroll_of(list: ScrollContainer) -> Vector2:

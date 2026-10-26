@@ -22,8 +22,9 @@
 ## for a point; and a drag held still 200 ms before it lifts must not glide.
 ## Then again at 8 frames a second, as a browser drawing in software draws:
 ## the moves a frame hears came in while the frame before it drew, and
-## half the throws lift in the frame of their last move. A tap on a row
-## still taps it, and once a glide ends nothing is looked at a frame.
+## half the throws lift in the frame of their last move. A list that grows
+## as it is scrolled (the parts bin) glides on into what it grew. A tap on
+## a row still taps it, and once a glide ends nothing is looked at a frame.
 ## With the app's own handling of a throw (FlingScroll) where the build has
 ## it: on a build without, Godot's glide is measured.
 extends SceneTree
@@ -105,6 +106,35 @@ func _run() -> void:
 	await _scale("phone, 8 frames a second", SCALES["phone"], [0.5, 1.0, 2.0])
 	Engine.max_fps = 60
 
+	# A list that grows as it is scrolled, as the parts bin adds a page of
+	# tiles as its foot comes near: a glide goes on into what it grew.
+	var growing := ScrollContainer.new()
+	growing.size = _scroll.size
+	growing.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var grown := VBoxContainer.new()
+	growing.add_child(grown)
+	_rows(grown, 70)
+	var grower := Grower.new()
+	grower.scroll = growing
+	grower.grow = _rows.bind(grown, 20)
+	growing.add_child(grower)
+	_scroll.visible = false
+	root.add_child(growing)
+	var kept: ScrollContainer = _scroll
+	_scroll = growing
+	await _frames(10)
+	var k: float = SCALES["phone"]
+	var got: Dictionary = await _throw(2.0 * k, 0.0, false)
+	var glide: float = float(got["glide"]) / k
+	var ios: float = 2.0 / -log(IOS)
+	_check("a list that grows as it is scrolled, thrown at 2.0 pt/ms: glides %d points, iOS %d (%+d%%), its foot met at %d units" % [
+		roundi(glide), roundi(ios), roundi((glide / ios - 1.0) * 100.0), 70 * 104 - 1600],
+		absf(glide / ios - 1.0) <= SLACK)
+	_scroll = kept
+	_scroll.visible = true
+	growing.queue_free()
+	await _frames(5)
+
 	# A tap on a row taps it, and moves nothing.
 	_scroll.scroll_vertical = 4000
 	await _frames(10)
@@ -141,6 +171,26 @@ func _scale(named: String, k: float, speeds: Array) -> void:
 	var held: Dictionary = await _throw(2.0 * k, 200.0, false)
 	_check("held still 200 ms before it lifts: glides %.1f points" % (float(held["glide"]) / k),
 		float(held["glide"]) / k < 1.0)
+
+
+## [param count] rows a finger can drag the list by, added to [param box].
+func _rows(box: VBoxContainer, count: int) -> void:
+	for n: int in count:
+		var row := Button.new()
+		row.custom_minimum_size = Vector2(380, 100)
+		row.mouse_filter = Control.MOUSE_FILTER_PASS
+		box.add_child(row)
+
+
+## Grows its list by a page as its foot comes near, as PartsBin does.
+class Grower extends Node:
+	var scroll: ScrollContainer
+	var grow: Callable
+
+	func _process(_delta: float) -> void:
+		var bar: VScrollBar = scroll.get_v_scroll_bar()
+		if bar.max_value > 0.0 and bar.max_value - bar.value - bar.page < 260.0:
+			grow.call()
 
 
 ## A finger's press or lift, as Godot hands a touch on to the window as a
