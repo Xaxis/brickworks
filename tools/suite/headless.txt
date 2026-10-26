@@ -185,3 +185,4 @@ gate_line
 nothing_changed
 renewal           # a returning person let in at once, renewed behind the model (walk256 A17)
 first_session     # the first design on the example is a model of its own (walk256 M15)
+technique_search  # 18 held-out queries each find their construction in the first three Techniques rows; titles as words (walk256 TQ1)

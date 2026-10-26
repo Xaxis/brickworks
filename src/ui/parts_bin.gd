@@ -2066,7 +2066,8 @@ func _reader() -> Assistant:
 
 ## The worked constructions, in the order show_technique lists them: by what
 ## they are for, and under that one a row, with its picture and why it
-## works. What is typed narrows them by their names and uses.
+## works. What is typed finds them (Techniques.found): the groups the best
+## of it is in first, and in each the best first.
 func _fill_techniques(query: String) -> void:
 	for child: Node in _grid.get_children():
 		_grid.remove_child(child)
@@ -2076,22 +2077,25 @@ func _fill_techniques(query: String) -> void:
 	_scroll.scroll_vertical = 0
 	_grid.columns = 1
 	_techniques_seen = []
-	var words: PackedStringArray = query.to_lower().split(" ", false)
 	_techniques_shown = 0
-	for group: String in Techniques.GROUPS:
+	var listed: Array = Techniques.all()
+	var groups: Array = Techniques.GROUPS
+	if not query.strip_edges().is_empty():
+		listed = Techniques.found(query).map(func(one: Array) -> Dictionary: return one[1])
+		groups = []
+		for technique: Dictionary in listed:
+			if not groups.has(str(technique.get("group", ""))):
+				groups.append(str(technique.get("group", "")))
+	for group: String in groups:
 		var titled: bool = false
-		for one: Variant in Techniques.all():
+		for one: Variant in listed:
 			var technique: Dictionary = one
 			if str(technique.get("group", "")) != group:
-				continue
-			var said: String = ("%s %s %s" % [technique["name"], technique["when"],
-				group]).to_lower()
-			if not Array(words).all(func(word: String) -> bool: return said.contains(word)):
 				continue
 			if not titled:
 				titled = true
 				var title := Label.new()
-				title.text = group.capitalize()
+				title.text = Techniques.title(group)
 				title.add_theme_font_size_override("font_size", ceili(_z(11)))
 				title.modulate = Color(1, 1, 1, 0.7)
 				_grid.add_child(title)
@@ -2110,11 +2114,11 @@ func _technique_cell(technique: Dictionary) -> Control:
 	FocusGuard.by_keyboard(button)
 	button.add_theme_stylebox_override("focus", FocusGuard.ring())
 	button.set_meta("technique", name)
-	button.accessibility_name = name.capitalize()
+	button.accessibility_name = Techniques.title(name)
 	button.accessibility_description = "%s. %d parts" % [Techniques.reason(technique),
 		(technique["bricks"] as Array).size()]
 	button.tooltip_text = "%s: %s.\n\n%s\n\n%d parts: choose it to hold it whole" % [
-		name.capitalize(), technique["when"], technique["why"],
+		Techniques.title(name), technique["when"], technique["why"],
 		(technique["bricks"] as Array).size()]
 	button.pressed.connect(_on_technique.bind(name))
 
@@ -2139,7 +2143,7 @@ func _technique_cell(technique: Dictionary) -> Control:
 	words.add_theme_constant_override("separation", 0)
 	row.add_child(words)
 	var title := Label.new()
-	title.text = name.capitalize()
+	title.text = Techniques.title(name)
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.clip_text = true
 	title.add_theme_font_size_override("font_size", ceili(_z(12)))

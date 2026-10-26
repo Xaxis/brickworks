@@ -289,8 +289,15 @@ geometry in front of them.
   constructions (`Techniques.all()`, 91 on 2026-10-24) under their
   `Techniques.GROUPS`, one a row with its picture (`PartThumbnails.offer_group`,
   drawn once a colour and cached as a part's is) and its one-line reason
-  (`Techniques.reason`, the first sentence of its *why*). What is typed in the
-  search narrows them. A row chosen is read as a design's words are, by an
+  (`Techniques.reason`, the first sentence of its *why*), titled as words
+  ("Door in a wall", `Techniques.title`). What is typed finds them, best
+  first (`Techniques.found`): every word in a construction's name, group or
+  use, whole, through its plural or as a word's start or end, worth most in
+  the name; the groups with the best first, the best first in each. walk256
+  TQ1: "door" led with columns and an awning, and "stairs" found nothing;
+  `technique_search_probe` asks 18 queries written before the change, each
+  needing its construction in the first three rows (12 of 18 on base, 18 of
+  18 now). A row chosen is read as a design's words are, by an
   assistant of the bin's own (`Techniques.as_ldraw`, never the one designing),
   into LDraw lines and back (`Carry.from_ldraw`, the path a paste takes), and
   held whole (`EditVerbs.hold`): R turns it, a click puts it down, one undo
@@ -343,6 +350,7 @@ godot --headless --path . --script src/dev/search_probe.gd          # what it re
 godot --headless --path . --script src/dev/search_probe.gd -- --catalogue=PATH  # a corrected catalogue, before it is swapped in
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd  # Recent, Favourites, 3023
 godot --path . --resolution 1280x860 --script src/dev/bin_techniques_probe.gd  # Techniques: window in a wall onto a wall, three more; shots/bin_techniques/
+godot --headless --path . --script src/dev/technique_search_probe.gd  # 18 queries, each's construction in the first three rows; titles as words
 godot --headless --path . --script src/dev/photo_search_stub_probe.gd  # the camera with Brickognize stubbed on 9061: told first, nothing sent, every failure in words
 godot --path . --resolution 1280x860 --script src/dev/photo_search_probe.gd -- --keep  # Brickognize live: 5 parts drawn by ModelShot, at least 4 right in the first three
 tools/probe.sh dialog_look_probe -- --shots=DIR  # the question, the chooser, Print's chooser and Build together in the app's look; the chooser in Pictures, then where the last came from

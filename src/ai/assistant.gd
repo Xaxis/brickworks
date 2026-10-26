@@ -19744,7 +19744,7 @@ func _show_technique(wanted: String) -> String:
 			+ "to pose it, or attach to your own part (a brick standing is \"#41.stud[3]\"; "
 			+ "attachment_points lists every connector)")
 	return ("%s — %s.\n\n%s\n\nBuilt like this, at the origin:\n%s\n\n"
-		% [str(technique["name"]).capitalize(), technique["when"],
+		% [Techniques.title(str(technique["name"])), technique["when"],
 			technique["why"], "\n".join(rows)]
 		+ move + ". Every one "
 		+ "of these is checked against the same lattice your design is, "
