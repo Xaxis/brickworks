@@ -75,10 +75,6 @@ const ONLY = args.only ? String(args.only).split(",") : null;
 // person's is (about 100 ms) or longer; 0, the default, taps at once.
 const HOLD = Number(args.hold || 0);
 const SLOW = Number(args.slow || 1);
-// --still=MS: More's drags held still that long before they lift (400 by
-// default), as a person stops a list where they want it; 0 lifts each one
-// moving, to glide on as a flick does.
-const STILL = args.still === undefined ? 400 : Number(args.still);
 mkdirSync(out, { recursive: true });
 
 let failed = 0;
@@ -340,7 +336,7 @@ try {
         // (ScrollContainer's fling): 434 points dragged went 8,500, end to end,
         // once the app drew at a phone's frame rate (f8596e3f). Each scroll
         // passed the row, and More never stopped on floor_custom.
-        await drag({ x: panel.x, y: from }, { x: panel.x, y: from + by }, 16, STILL);
+        await drag({ x: panel.x, y: from }, { x: panel.x, y: from + by }, 16, 400);
         const moved = await where(`phone_row_${row}`, 8);
         if (moved && Math.abs(moved.y - at.y) < 4) {
           return check(`More scrolls under a finger (a drag of ${Math.round(by)} moved ${row} `
