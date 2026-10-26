@@ -11,7 +11,7 @@ that folder's library/ up to the parts bucket under the same names:
     tools/storage_library.py [DIR]           upload what is not up there yet
     tools/storage_library.py [DIR] --check   say what would be uploaded, and the size
 
-DIR is bench/results/library-2026-10-22 unless said. A model or cover already
+DIR is bench/results/library-2026-10-26 unless said. A model or cover already
 there is left as it is, never deleted, as tools/storage_ldraw.py leaves the
 LDraw files; the index is sent every time, last, over the one there, so the
 live index never names a file that is not up yet. Reads SUPABASE_URL and
@@ -32,7 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from storage_ldraw import listing  # noqa: E402
 from storage_parts import BUCKET, ROOT, env  # noqa: E402
 
-DEFAULT = ROOT / "bench" / "results" / "library-2026-10-22"
+DEFAULT = ROOT / "bench" / "results" / "library-2026-10-26"
 # A week for the models and covers, which a new build of the library adds
 # to and never changes in place; five minutes for the index, which changes.
 LASTING = "public, max-age=604800"

@@ -17,7 +17,7 @@ it, beside the parts:
                                   contact sheets of that many covers, spread over
                                   the library, to look through by eye
 
-DIR is bench/results/library-2026-10-22 unless said. Nothing is uploaded here:
+DIR is bench/results/library-2026-10-26 unless said. Nothing is uploaded here:
 tools/storage_library.py sends DIR/library/ to the store.
 
 The index, which the app's library screen reads:
@@ -60,7 +60,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OMR = ROOT / "vendor" / "omr"
 MODELS = ROOT / "assets" / "generated" / "sets" / "models.json"
-DEFAULT_OUT = ROOT / "bench" / "results" / "library-2026-10-22"
+DEFAULT_OUT = ROOT / "bench" / "results" / "library-2026-10-26"
 PAGE = "https://library.ldraw.org/omr/sets/"
 LICENCES = ("CCAL 2.0", "CC BY 4.0")
 FIELDS = ("id", "kind", "set", "name", "theme", "year", "parts", "box", "file", "cover",

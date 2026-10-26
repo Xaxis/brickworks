@@ -966,7 +966,7 @@
       "id": "cli:model library",
       "kind": "cli",
       "entry": "tools/library_build.py",
-      "reach": "python3 tools/library_build.py covers && python3 tools/library_build.py stage && python3 tools/library_build.py check   (needs vendor/omr and models.json; covers on the GPU lease; writes bench/results/library-2026-10-22/library/)",
+      "reach": "python3 tools/library_build.py covers && python3 tools/library_build.py stage && python3 tools/library_build.py check   (needs vendor/omr and models.json; covers on the GPU lease; writes bench/results/library-2026-10-26/library/)",
       "area": "collection",
       "tests": []
     },

@@ -1,21 +1,23 @@
 ## The model library, opened as the app will open it: its index and a few of
 ## its models fetched from where the store serves them, each opened with the
-## app's own reader (ModelStore.open_text_fetched), and its parts counted as
+## app's own reader (ModelStore.open_text_fetched), its lots counted as
 ## "What can I build?" counts them (src/dev/collection_models.gd), which must
-## be what models.json and the index say.
+## be what models.json says, and its part count as its card says it
+## (Inventory.count_of_text), which must be models.json's "c" and the index's.
 ##
 ##   godot --headless --path . --script src/dev/library_open_probe.gd -- --base=URL [ID ...]
 ##   godot --headless --path . --script src/dev/library_open_probe.gd -- --recount [--recount-out=FILE]
 ##
 ## With --recount, every model in vendor/omr is counted again as
-## collection_models.gd counts it and held to models.json, nothing opened:
+## collection_models.gd counts it, its lots and its part count, and held to
+## models.json, nothing opened:
 ## a model whose count moved since models.json was written is said (and
 ## written to FILE as JSON), and the fix is to run collection_models.gd again,
 ## then tools/library_build.py stage.
 ##
 ## URL is the store's root as the app has it (PARTS_URL): library/index.json
 ## is under it. A staged library served on a local port does
-## (python3 -m http.server --directory bench/results/library-2026-10-22).
+## (python3 -m http.server --directory bench/results/library-2026-10-26).
 ## Without IDs, three: a small model, a set's alternate build and the largest.
 extends SceneTree
 
@@ -94,12 +96,14 @@ func _run() -> void:
 	var models: Array = (said as Dictionary).get("models", [])
 	print("  %d models in %slibrary/index.json" % [models.size(), base])
 	var counted: Dictionary = {}
+	var cards: Dictionary = {}
 	var listed: Variant = JSON.parse_string(FileAccess.get_file_as_string(SetInventories.ROOT + "models.json"))
 	for entry: Variant in (listed as Dictionary).get("models", []):
 		var total: int = 0
 		for row: Variant in (entry as Dictionary).get("p", []):
 			total += int((row as Array)[2])
 		counted[str((entry as Dictionary).get("file", ""))] = total
+		cards[str((entry as Dictionary).get("file", ""))] = int((entry as Dictionary).get("c", -1))
 	var chosen: Array = []
 	if ids.is_empty():
 		var by_size: Array = models.duplicate()
@@ -125,6 +129,14 @@ func _run() -> void:
 		var got: PackedByteArray = await _fetch(base + str(m["file"]))
 		fetched.append(got)
 		totals.append(_counted(got.get_string_from_utf8(), str(m["set"]), library, counter))
+	# And each one's part count, which its card says: after every list, as
+	# collection_models.gd counts them.
+	var keeps: bool = CustomParts.keeps
+	CustomParts.keeps = false
+	var pieces: Array = []
+	for got: PackedByteArray in fetched:
+		pieces.append(Inventory.count_of_text(got.get_string_from_utf8(), library))
+	CustomParts.keeps = keeps
 	for n: int in chosen.size():
 		var m: Dictionary = chosen[n]
 		print("%s (%s, %s): %d parts in the index" % [m["id"], m["set"], m["name"], int(m["parts"])])
@@ -152,9 +164,12 @@ func _run() -> void:
 			% [missing.size(), ModelStore.named_counts(missing)]],
 			int(opened.get("placed", 0)) > 0 and world.brick_count() == int(opened.get("placed", 0)))
 		var total: int = totals[n]
-		_check("its parts counted as What can I build? counts them: %d, models.json %d, the index %d" % [
-			total, int(counted.get(original, -1)), int(m["parts"])],
-			total == int(counted.get(original, -1)) and total == int(m["parts"]))
+		_check("its lots counted as What can I build? counts them: %d, models.json %d" % [
+			total, int(counted.get(original, -1))], total == int(counted.get(original, -1)))
+		var count: int = pieces[n]
+		_check("its part count as its card says it: %d, models.json %d, the index %d" % [
+			count, int(cards.get(original, -1)), int(m["parts"])],
+			count == int(cards.get(original, -1)) and count == int(m["parts"]))
 		var cover := Image.new()
 		var picture: PackedByteArray = await _fetch(base + str(m["cover"]))
 		var read: bool = cover.load_webp_from_buffer(picture) == OK
@@ -177,7 +192,7 @@ static func _counted(text: String, number: String, library: PartLibrary, counter
 	return total
 
 
-## Every model counted again and held to models.json.
+## Every model counted again, its lots and its part count, and held to models.json.
 func _recount() -> void:
 	var out: String = ""
 	for a: String in OS.get_cmdline_user_args():
@@ -190,11 +205,10 @@ func _recount() -> void:
 		return
 	var counter: GDScript = load("res://src/dev/collection_models.gd")
 	var listed: Variant = JSON.parse_string(FileAccess.get_file_as_string(SetInventories.ROOT + "models.json"))
+	var models: Array = (listed as Dictionary).get("models", [])
 	var moved: Array = []
-	var same: int = 0
 	var began: int = Time.get_ticks_msec()
-	for entry: Variant in (listed as Dictionary).get("models", []):
-		var model: Dictionary = entry
+	for model: Dictionary in models:
 		var file_name: String = str(model["file"])
 		var was: int = 0
 		for row: Variant in model.get("p", []):
@@ -203,14 +217,24 @@ func _recount() -> void:
 		var now: int = 0
 		for key: String in needs:
 			now += int(needs[key])
-		if now == was:
-			same += 1
-		else:
-			moved.append({"file": file_name, "models_json": was, "now": now})
+		if now != was:
+			moved.append({"file": file_name, "of": "lots", "models_json": was, "now": now})
+	# And each one's part count, which its card says: after every list, as
+	# collection_models.gd counts them.
+	CustomParts.keeps = false
+	for model: Dictionary in models:
+		var file_name: String = str(model["file"])
+		var now: int = Inventory.count_of_text(
+			FileAccess.get_file_as_string("res://vendor/omr/files/" + file_name), library)
+		if now != int(model.get("c", -1)):
+			moved.append({"file": file_name, "of": "count", "models_json": int(model.get("c", -1)), "now": now})
+	var files: Dictionary = {}
+	for one: Dictionary in moved:
+		files[one["file"]] = true
 	print("library_open_probe: %d of %d models count as models.json says, %d moved, in %d s" % [
-		same, same + moved.size(), moved.size(), (Time.get_ticks_msec() - began) / 1000])
+		models.size() - files.size(), models.size(), files.size(), (Time.get_ticks_msec() - began) / 1000])
 	for one: Dictionary in moved.slice(0, 20):
-		print("  %s: models.json %d, now %d" % [one["file"], one["models_json"], one["now"]])
+		print("  %s, its %s: models.json %d, now %d" % [one["file"], one["of"], one["models_json"], one["now"]])
 	if not out.is_empty():
 		var file: FileAccess = FileAccess.open(out, FileAccess.WRITE)
 		file.store_string(JSON.stringify(moved, " "))
