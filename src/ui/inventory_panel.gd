@@ -226,7 +226,8 @@ func hide_list() -> void:
 
 
 func _counts() -> String:
-	return "%d pieces · %d lots · %s" % [_stock.pieces, _stock.lot_count(), _stock.weight()]
+	return "%s · %s · %s" % [Counted.of(_stock.pieces, "piece"), Counted.of(_stock.lot_count(), "lot"),
+		_stock.weight()]
 
 
 ## Only the rows the find answers, in the list's own order.

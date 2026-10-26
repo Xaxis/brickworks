@@ -37,6 +37,7 @@ func _initialize() -> void:
 	print("")
 	var failed: int = _rankings(library)
 	failed += _numbers(library)
+	failed += _only_numbered(library)
 	failed += _names(library)
 	quit(1 if failed > 0 else 0)
 
@@ -172,6 +173,37 @@ static func _most_used(library: PartLibrary, family: String) -> PackedStringArra
 ## merely begins the same.
 ## Every number the CAD task's three sets use is asked, so a new keyword or
 ## a ranking change that buries one fails here.
+## A part number typed finds the parts it numbers and nothing that merely
+## has the digits: walk256 (S3) typed 3648 and was shown three torsos of set
+## 3648's ("Set 3648" in their keywords), and 3001 two torsos printed with
+## a 3001 brick. Each answer is the number's own part, one it numbers (3648a,
+## 3001p01), or the one it stands for (PartLibrary.resolve), in the bin's
+## search (every word) and the assistant's.
+static func _only_numbered(library: PartLibrary) -> int:
+	var failures: int = 0
+	for number: String in ["3648", "3001", "3626", "973", "3062", "3023", "4070", "60596",
+			"3005", "3010", "3039", "2357"]:
+		var stray := PackedStringArray()
+		var first: String = ""
+		for every_word: bool in [true, false]:
+			# All of them, as the bin asks (PartsBin._find): for 3626 the parts
+			# that only say it in their keywords come after sixty of its heads.
+			var found: Array[PartLibrary.PartInfo] = library.search(number, -1, every_word)
+			if every_word and not found.is_empty():
+				first = found[0].id
+			for info: PartLibrary.PartInfo in found:
+				var own: bool = info.id.begins_with(number) \
+					and not info.id.substr(number.length(), 1).is_valid_int()
+				if not own and info.id != library.resolve(number) \
+						and info.id != library.current(number) and not stray.has(info.id):
+					stray.append(info.id)
+		var ok: bool = stray.is_empty() and first.begins_with(number)
+		failures += 0 if ok else 1
+		print("  %s %-6s lists its own parts only, %s first%s" % ["ok  " if ok else "FAIL", number,
+			first, "" if stray.is_empty() else " (and %s)" % ", ".join(stray.slice(0, 5))])
+	return failures
+
+
 static func _numbers(library: PartLibrary) -> int:
 	var sets: Array[String] = ["5762-1_Plane.mpd", "8643-1_Combination-with-8644.mpd",
 		"8841-1_Balance.mpd"]

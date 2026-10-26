@@ -36,12 +36,18 @@ const WAIT := 30.0
 var url: String = URL
 
 ## The guesses, best first: each {bricklink, name, score}, score 0 to 1.
-## Empty when Brickognize saw no part it knows.
+## Empty when Brickognize saw no part it knows. [member colour] is the
+## colour it saw, by then.
 signal answered(guesses: Array)
 ## Why there is no answer, in words for the person.
 signal failed(why: String)
 
 var _http: HTTPRequest
+## The colour the last answer saw the part in: {bricklink, name, score}, its
+## BrickLink colour number, or {} when it named none. walk256 (S3): the photo
+## of a black slope was shown in red, the colour in hand, for its colour was
+## never asked for.
+var colour: Dictionary = {}
 
 
 ## Ask what part [param photo] shows. Answered by [signal answered] or
@@ -70,7 +76,10 @@ func identify(photo: Image) -> void:
 		add_child(_http)
 	else:
 		_http.cancel_request()
-	var asked: int = _http.request_raw("%s?top_k_items=%d&min_similarity_items=%s"
+	colour = {}
+	# And the colour it sees the part in, its best one.
+	var asked: int = _http.request_raw(
+		"%s?top_k_items=%d&min_similarity_items=%s&predict_color=true&top_k_colors=1"
 		% [url, MOST, LEAST], ["Content-Type: multipart/form-data; boundary=" + boundary],
 		HTTPClient.METHOD_POST, body)
 	if asked != OK:
@@ -90,6 +99,7 @@ func _on_answer(result: int, code: int, _headers: PackedStringArray,
 	if guesses == null:
 		failed.emit("Brickognize answered with something that is not an answer: try again later")
 		return
+	colour = colour_in(body.get_string_from_utf8())
 	answered.emit(guesses)
 
 
@@ -107,6 +117,22 @@ static func trouble(result: int, code: int) -> String:
 	if code != 200:
 		return "Brickognize could not take that photo (HTTP %d)" % code
 	return ""
+
+
+## The colour an answer's text saw, {bricklink, name, score}, or {} when it
+## names none ("colors": [{id, name, score}], asked for by predict_color).
+static func colour_in(text: String) -> Dictionary:
+	var reading := JSON.new()
+	if reading.parse(text) != OK or not reading.data is Dictionary:
+		return {}
+	var colours: Variant = (reading.data as Dictionary).get("colors")
+	if not colours is Array or (colours as Array).is_empty() or not colours[0] is Dictionary:
+		return {}
+	var first: Dictionary = colours[0]
+	if not str(first.get("id", "")).is_valid_int():
+		return {}
+	return {"bricklink": int(first["id"]), "name": str(first.get("name", "")),
+		"score": clampf(float(first.get("score", 0.0)), 0.0, 1.0)}
 
 
 ## The guesses in an answer's text, best first, or null when it is not one.

@@ -2482,6 +2482,86 @@ static func for_feature(feature: String) -> Dictionary:
 	return best
 
 
+## What [param asked] finds, best first, as [score, technique] pairs: the
+## parts bin's Techniques. Every word asked must be one of a construction's
+## own, in its name, its group's or what it is for: whole, with its plural,
+## or as the start or end of one ("stairs" is the staircase, "fire" the
+## campfire and the fireplace, "doo" being typed the door). A word counts
+## most in the name, less in the group and least in what it is for; ties
+## keep the library's order. walk256 (TQ1): matched as letters anywhere and
+## listed in the library's order, "door" led with columns, a wing and an
+## awning that only say a door in what they are for, and "stairs" found
+## nothing.
+static func found(asked: String) -> Array:
+	var words: PackedStringArray = _search_words(asked)
+	var out: Array = []
+	if words.is_empty():
+		return out
+	var order: int = 0
+	for one: Variant in all():
+		var technique: Dictionary = one
+		order += 1
+		var name: PackedStringArray = _search_words(str(technique["name"]))
+		var group: PackedStringArray = _search_words(str(technique.get("group", "")))
+		var use: PackedStringArray = _search_words(str(technique["when"]))
+		var score: float = 0.0
+		for word: String in words:
+			var best: float = maxf(NAME_WORTH * _strength(word, name),
+				maxf(GROUP_WORTH * _strength(word, group), _strength(word, use)))
+			if best <= 0.0:
+				score = 0.0
+				break
+			score += best
+		if score > 0.0:
+			out.append([score, technique, order])
+	out.sort_custom(func(a: Array, b: Array) -> bool:
+		return float(a[0]) > float(b[0]) if float(a[0]) != float(b[0]) else int(a[2]) < int(b[2]))
+	return out.map(func(one: Array) -> Array: return [one[0], one[1]])
+
+
+## What a word in a construction's name and its group are worth against one
+## in what it is for.
+const NAME_WORTH := 4.0
+const GROUP_WORTH := 2.0
+## A word matched as the start or the end of one, against the word itself.
+const PART_WORD := 0.6
+## The words a search reads past.
+const SEARCH_FILLER: Array[String] = ["a", "an", "the", "of", "and", "or", "with", "to",
+	"in", "on", "for", "at", "by", "it", "its"]
+
+
+## How well [param word] is one of [param words]: whole, 1; as the start of
+## one, or the end of one run together ("campfire"), less.
+static func _strength(word: String, words: PackedStringArray) -> float:
+	if words.has(word):
+		return 1.0
+	for one: String in words:
+		if (word.length() >= 3 and one.begins_with(word)) \
+				or (word.length() >= 4 and one.ends_with(word)):
+			return PART_WORD
+	return 0.0
+
+
+## A phrase's words, lower case and through their plurals.
+static func _search_words(text: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	for match: RegExMatch in _WORD.search_all(text.to_lower()):
+		var word: String = match.get_string()
+		if not SEARCH_FILLER.has(word):
+			out.append(RealSnippets.stem(word))
+	return out
+
+
+static var _WORD := RegEx.create_from_string("[a-z0-9]+")
+
+
+## A name or a group as words for a person: its first letter a capital and
+## the rest as written ("Door in a wall", "Windows and doors"). Not
+## capitalize(), which made every word a capital, as a slug's.
+static func title(words: String) -> String:
+	return words.left(1).to_upper() + words.substr(1)
+
+
 ## The names, for when nothing matched.
 static func names() -> PackedStringArray:
 	var out := PackedStringArray()

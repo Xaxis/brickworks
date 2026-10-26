@@ -748,15 +748,24 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 			_matching_into(_keyed, term, false, by_keyword, keyed_list)
 		else:
 			decor_asked = decor_asked or said == "print" or said == "sticker"
-			_matching_into(_named, term, loose, by_name, named_list)
-			var by_also := PackedFloat32Array()
-			by_also.resize(count_of)
-			var also_list := PackedInt32Array()
-			_matching_into(_also, term, loose, by_also, also_list)
-			# The words the set inventories name it by are its name as much as
-			# LDraw's: Rebrickable's, and BrickLink's with them.
-			for at: int in also_list:
-				_raise(by_name, named_list, at, by_also[at])
+			# A part's number names that part and the parts it numbers (3023
+			# is 3023b, 3023p01 its print), and nothing else: not a part whose
+			# name or keywords carry the digits for something else, a torso
+			# of set 3648's ("Set 3648") for 3648 or one printed with a 3001
+			# brick for 3001 (walk256 S3). Digits no part is numbered by are
+			# looked for as words, as a BrickLink number in keywords is.
+			var by_number: Dictionary = _numbered(said)
+			var as_words: bool = by_number.is_empty()
+			if as_words:
+				_matching_into(_named, term, loose, by_name, named_list)
+				var by_also := PackedFloat32Array()
+				by_also.resize(count_of)
+				var also_list := PackedInt32Array()
+				_matching_into(_also, term, loose, by_also, also_list)
+				# The words the set inventories name it by are its name as much
+				# as LDraw's: Rebrickable's, and BrickLink's with them.
+				for at: int in also_list:
+					_raise(by_name, named_list, at, by_also[at])
 			if STUDLESS.has(said):
 				for at: int in count_of:
 					if _infos[at].stud_count == 0:
@@ -766,7 +775,6 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 			for form: String in _forms(said):
 				for at: int in _by_height.get(form, PackedInt32Array()):
 					_raise(by_name, named_list, at, 1.0)
-			var by_number: Dictionary = _numbered(said)
 			for at: int in by_number:
 				_raise(by_name, named_list, at, 1.0)
 				flags[at] |= 1
@@ -774,7 +782,8 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 					flags[at] |= 2
 			for at: int in joined[n]:
 				_raise(by_name, named_list, at, 1.0)
-			_matching_into(_keyed, term, loose, by_keyword, keyed_list)
+			if as_words:
+				_matching_into(_keyed, term, loose, by_keyword, keyed_list)
 		var count: int = named_list.size()
 		for at: int in keyed_list:
 			if by_name[at] == 0.0:
