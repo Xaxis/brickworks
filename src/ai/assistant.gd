@@ -19774,6 +19774,31 @@ func _show_technique(wanted: String) -> String:
 const FOUND := 3
 
 
+## Pieces that are what was asked for before those that only mention it: a
+## piece is its head noun (RealSnippets.heads_of), the query its own
+## (FeaturePass.nouns_of), as the feature pass has it. Asked "giant spider
+## leg", design285's Shelob session was shown a Spider-Man BrickHeadz first.
+## The search's order otherwise.
+static func _what_it_is_first(found: Array, query: String) -> Array:
+	var nouns: Array = FeaturePass.nouns_of(query)
+	var said: PackedStringArray = RealSnippets.words(query)
+	var ranked: Array = []
+	for n: int in found.size():
+		var entry: Dictionary = (found[n] as Array)[1]
+		ranked.append([FeaturePass.names_it(entry, said, nouns), n, found[n]])
+	ranked.sort_custom(func(a: Array, b: Array) -> bool:
+		# Its first reading, then a later one, then neither; else as found.
+		var mine: int = _reading_rank(int(a[0]))
+		var theirs: int = _reading_rank(int(b[0]))
+		return mine > theirs if mine != theirs else int(a[1]) < int(b[1]))
+	return ranked.map(func(row: Array) -> Variant: return row[2])
+
+
+static func _reading_rank(named: int) -> int:
+	return 2 if named >= FeaturePass.FIRST_READING else (1 if named >= FeaturePass.LATER_READING
+		else 0)
+
+
 func _find_techniques(query: String, max_studs: float, kinds: Array) -> Variant:
 	# Fetched on the web the first time, from beside the build.
 	if not await RealSnippets.ensure(self):
@@ -19782,7 +19807,8 @@ func _find_techniques(query: String, max_studs: float, kinds: Array) -> Variant:
 			+ "examples.")
 	if query.strip_edges().is_empty():
 		return "Say what you are building: \"owl eye\", \"car nose\", \"dragon wing\"."
-	var found: Array = RealSnippets.search(query, max_studs, kinds, FOUND)
+	var found: Array = _what_it_is_first(RealSnippets.search(query, max_studs, kinds, FOUND * 8),
+		query).slice(0, FOUND)
 	if found.is_empty():
 		return ("No real set has a piece called anything like \"%s\"%s. Try the "
 			% [query, " that small" if max_studs > 0.0 else ""]

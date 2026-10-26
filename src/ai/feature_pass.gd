@@ -263,7 +263,7 @@ func candidates_for(name: String) -> Array:
 				continue
 			seen[entry["id"]] = true
 			var named: int = names_it(entry, said, nouns) if _says_any(entry, also) else 0
-			if named <= 0:
+			if named <= 0 or not does_the_job(entry, nouns):
 				continue
 			# Too deep for the model: the same build at a size real sets made it
 			# that fits, or none.
@@ -292,6 +292,32 @@ func candidates_for(name: String) -> Array:
 		if out.size() >= CANDIDATES:
 			break
 	return out
+
+
+## What a feature does that only some plastic can: a light shines and a
+## window is seen through, so its piece has a transparent part. design285's
+## loader was offered "truck tail light or pillar column", three yellow
+## bricks, for its tail lights, and the session said "a yellow column is not a
+## lamp".
+const SHINES := ["light", "lamp", "headlight", "headlamp", "lantern", "torch", "beacon",
+	"taillight", "indicator", "lens", "lamppost"]
+const SEEN_THROUGH := ["window", "pane", "windscreen", "windshield", "glass", "porthole",
+	"skylight"]
+
+
+## Whether [param entry] can do what the feature named by [param nouns]
+## does: one that shines or is seen through has a transparent part.
+func does_the_job(entry: Dictionary, nouns: Array) -> bool:
+	var needs_clear: bool = false
+	for kin: PackedStringArray in nouns:
+		needs_clear = needs_clear or SHINES.has(kin[0]) or SEEN_THROUGH.has(kin[0])
+	if not needs_clear:
+		return true
+	for line: Variant in entry.get("bom", []):
+		var colour: PartLibrary.BrickColor = assistant.library.color(int((line as Array)[1]))
+		if colour != null and colour.is_transparent():
+			return true
+	return false
 
 
 ## Whether a piece is no wider than [param most] studs and no deeper than

@@ -1924,7 +1924,9 @@ fixing what it got wrong.
   Recall on ten queries written beforehand (`docs/ROADMAP.md`): 8 of 10 with
   something an expert would use on names alone, 9 with descriptions; the miss
   left is the corpus (no owl or dragon set). `find_techniques` answers with
-  the best three (`FOUND`), each credited, in two lines (`_piece_line`: id,
+  the best three (`FOUND`) of the best 24 found, those that are what was asked
+  first (`_what_it_is_first`, the feature pass's `names_it`: "giant spider leg"
+  showed a Spider-Man BrickHeadz first), each credited, in two lines (`_piece_line`: id,
   size, whether it lays, its description cut at 110 characters, its first
   four parts), and one picture of them side by side, 200 pixels a piece
   (`_snippet_picture`, headless: text only) — five with whole parts lists
@@ -1977,7 +1979,10 @@ fixing what it got wrong.
   on the wall" is a torch, "gate doors in the arch" doors; "coat of arms" a
   coat that must be of arms, `of_what`; "row of windows" windows) or a word
   of the index's synonyms (`RealSnippets.kin`), a first reading before a
-  later one ("traffic cone or warning beacon" is a cone first; a later
+  later one, and that does the feature's job (`does_the_job`: a light —
+  `SHINES` — or a window — `SEEN_THROUGH` — has a transparent part; the
+  loader's tail lights were offered three yellow bricks) ("traffic cone or
+  warning beacon" is a cone first; a later
   reading only when no piece is it by its first), two a set counted among
   those that are it (a set's houses took its two before its waterfall), ranked by
   how much of the feature it says (`names_it`), and none when no piece is

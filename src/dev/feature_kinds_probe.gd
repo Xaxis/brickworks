@@ -193,6 +193,30 @@ func _checks(assistant: Assistant) -> void:
 			(found[0] as Dictionary)["text"]).get_slice(":", 0)) if not found.is_empty()
 			else "none offered", case[4]])
 
+	print("\na piece does what the feature does: a light has a transparent part")
+	DesignMemory.hold_out(PackedStringArray(["7630-1"]))
+	RealSnippets._take(whole.duplicate(false))
+	var tails: Array = await _offered(assistant, "Front-End Loader, in the style of LEGO® City "
+		+ "sets: fitting in about 9 x 24 studs, 90 to 150 pieces.", "tail lights", 24, 9)
+	var shine: bool = true
+	for entry: Variant in tails:
+		var clear: bool = false
+		for line: Variant in (entry as Dictionary)["bom"]:
+			var colour: PartLibrary.BrickColor = assistant.library.color(int((line as Array)[1]))
+			clear = clear or (colour != null and colour.is_transparent())
+		shine = shine and clear and str((entry as Dictionary)["id"]) != "7347-1/car-s22"
+	_ok(shine, "tail lights: %s, each with a transparent part, never the yellow column" % (
+		str((tails[0] as Dictionary)["text"]).get_slice(":", 0) if not tails.is_empty() else "none"))
+
+	print("\nfind_techniques shows what was asked for before what only mentions it")
+	DesignMemory.hold_out(PackedStringArray(["9470-1"]))
+	RealSnippets._take(whole.duplicate(false))
+	var legs: Array = Assistant._what_it_is_first(RealSnippets.search("giant spider leg", 12.0,
+		[], 24), "giant spider leg").slice(0, 3)
+	_ok(not legs.is_empty() and RealSnippets.heads_of((legs[0] as Array)[1])[0].has("leg"),
+		"giant spider leg: first %s" % (str(((legs[0] as Array)[1] as Dictionary)["text"]).get_slice(
+			":", 0) if not legs.is_empty() else "none"))
+
 	print("\na piece no deeper than the model it goes on, or the same build smaller")
 	# design285's Venice, 32 studs long and 5 deep, was offered the Capitol's
 	# 6 x 6 dome for its domes.
