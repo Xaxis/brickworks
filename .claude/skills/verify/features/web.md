@@ -3119,6 +3119,17 @@ project through a relay with nothing held and `BW_BYPASS` set, and 53
 (the knock) against the held relay, 2026-10-18, about 4 minutes each with
 the app.
 
+Follow, then the feed at once (web295, 2026-10-26): having let Ada go, Bob
+presses Follow on her profile and at once Your feed in his avatar's menu,
+the follow's request held 1.5 s by the flow as a slow phone's is. The feed
+must wait for it (web/follow.js `followsSent`: a follow not yet answered
+is kept in sessionStorage, sent again by the next page, and waited on by
+the feed, a Follow button, the avatar's count and /profile's list) and
+show her castle and its version 2, and the server must have the follow
+("the feed opened N ms after Follow, the follow held: version, model",
+"...and the server has it: following true, 1 follower"). Before the fix
+the page left dropped the request: "nothing", "following false".
+
 Notifications apart from the feed (2026-10-22, docs/SOCIAL.md U7). The
 SQL first, after the live files (follows and challenges are applied), in
 one rolled-back transaction:

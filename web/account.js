@@ -287,12 +287,13 @@ export function signOut() {
 }
 
 /// A call to the site's own API with the sign-in, as JSON: {status, body}.
-export async function call(path, { method = "GET", body } = {}) {
+/// [keepalive]: sent on even when the page is left before it is answered.
+export async function call(path, { method = "GET", body, keepalive = false } = {}) {
   const access = await token();
   const headers = { accept: "application/json" };
   if (access) headers.authorization = `Bearer ${access}`;
   if (body !== undefined) headers["content-type"] = "application/json";
-  const reply = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  const reply = await fetch(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), keepalive });
   return { status: reply.status, body: await json(reply) };
 }
 

@@ -41,6 +41,10 @@
 //   6. Cy, under 13, is told why not on Ada's profile, and refused (422).
 //   7. Bob chooses to show whom he follows: his profile lists Ada; hers
 //      still says only how many follow her.
+//   8. Having let her go, Bob presses Follow on her profile and at once
+//      Your feed in his avatar's menu, the follow held a moment on its way
+//      as a slow phone's is (web295): the feed waits for it, and has her
+//      castle; the server has the follow.
 //
 // Pictures in --out.
 import { launch } from "./browser.mjs";
@@ -464,6 +468,36 @@ try {
   const unfollow = await api("/api/people?op=follow", { method: "POST", token: bob.access_token, body: { handle: ADA, on: false } });
   check(`letting her go: ${unfollow.body.followers} followers, following ${unfollow.body.you_follow}`,
     unfollow.status === 200 && unfollow.body.followers === 0 && unfollow.body.you_follow === false);
+
+  // --- 8. Follow, then the feed at once -----------------------------------
+  console.log("Follow, then Your feed at once");
+  // The follow's request held on its way, so the feed is opened before the
+  // server could have it, however fast it is today: before web295 the page
+  // left dropped it, and the feed was drawn without her.
+  let follows = 0;
+  await bobPage.route("**/api/people?op=follow", async (route) => {
+    follows += 1;
+    if (follows === 1) await new Promise((done) => setTimeout(done, 1500));
+    await route.continue().catch(() => {});
+  });
+  await bobPage.goto(`${site}/u/${ADA}?tests=1`, { waitUntil: "load" });
+  await until(bobPage, () => document.querySelector("button[data-follow]")?.textContent === "Follow"
+    && !document.querySelector("button[data-follow]").hidden && document.querySelector(".site-head .account-menu summary"),
+  "Follow on her profile again");
+  const pressed = Date.now();
+  await bobPage.click("button[data-follow]");
+  await bobPage.click(".site-head .nav .account-menu summary");
+  await bobPage.click(".site-head .nav .account-menu a[data-place=feed]");
+  const opened = Date.now() - pressed;
+  await bobPage.waitForURL("**/feed", { timeout: 20000 });
+  await until(bobPage, () => document.documentElement.dataset.feed === "ready", "Bob's feed, at once");
+  rows = await feedDrawn(bobPage);
+  check(`the feed opened ${opened} ms after Follow, the follow held: ${rows.map((one) => one.kind).join(", ") || "nothing"}`,
+    rows.some((one) => one.href === `/m/${castleId}/v/2`) && rows.some((one) => one.href === `/m/${castleId}`));
+  const server = await api(`/api/people?op=follows&handle=${ADA}`, { token: bob.access_token });
+  check(`...and the server has it: following ${server.body.you_follow}, ${server.body.followers} follower`,
+    server.body.you_follow === true && server.body.followers === 1);
+  await bobPage.unroute("**/api/people?op=follow");
 } catch (trouble) {
   failed += 1;
   console.log(`  FAIL  ${String(trouble.stack || trouble).split("\n").slice(0, 3).join(" | ")}`);
