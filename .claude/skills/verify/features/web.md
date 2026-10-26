@@ -777,10 +777,9 @@ plan with Claude as the client.
   CDN as the page (`SHARED_CACHE`), 404/410 as the viewer's answer. The
   table it needs (`partsTable`): `_parts_table.json` beside the function
   (deploy.sh, `part_facts.mjs --parts`, 3.2 MB) or the checkout's
-  `assets/generated`. Pictures: Rebrickable's (`pictureOf`, the page's
-  policy allows `https://cdn.rebrickable.com` for images), none when
-  `navigator.webdriver` (no check calls Rebrickable), the colour's swatch
-  for one that fails. Download is `.side .actions a[download]`. Like and I
+  `assets/generated`. Pictures: none yet (`pictureOf` gives "", the
+  page's policy allows images from itself alone), so every lot shows its
+  colour's swatch; our own renders of the parts come later. Download is `.side .actions a[download]`. Like and I
   built it are `.icon-btn.labelled` (their word in `.word`). Checked by
   `parts page probe` (against the app) and `model_page_flow` step 16 (the
   page, the files, the space kept).

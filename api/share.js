@@ -1472,9 +1472,7 @@ function pageCsp() {
   } catch {
     signIn = "";
   }
-  // And Rebrickable's pictures of parts, which a model's Parts list shows
-  // (api/_parts.js pictureOf), sent no address of the page they are on.
-  return "default-src 'none'; script-src 'self'; img-src 'self' https://cdn.rebrickable.com; style-src 'self' 'unsafe-inline'; "
+  return "default-src 'none'; script-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; "
     + `connect-src 'self'${signIn ? ` ${signIn}` : ""}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 }
 // The site's stylesheet ('self'), so the card is drawn in the site's colours,

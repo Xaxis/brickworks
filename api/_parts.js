@@ -567,12 +567,10 @@ export function rebrickableCsv(inventory) {
   return { text: `${rows.join("\n")}\n`, lots: inventory.lots.length - left, left_out: left };
 }
 
-/// Where a lot's picture is: Rebrickable's photo of the element where there
-/// is one to order, else its render of the part in the colour, which is the
-/// picture its own parts lists show. "" for a made part, which it has none of.
-export function pictureOf(lot) {
-  if (lot.custom) return "";
-  if (lot.element) return `https://cdn.rebrickable.com/media/parts/elements/${lot.element}.jpg`;
-  if (lot.rebrickable_colour < 0) return "";
-  return `https://cdn.rebrickable.com/media/parts/ldraw/${lot.rebrickable_colour}/${encodeURIComponent(lot.rebrickable)}.png`;
+/// Where a lot's picture is: nowhere yet, so the list shows its colour.
+/// Rebrickable's photos would have every visitor's browser ask a third party
+/// for a part on every page, where Brickworks asks Rebrickable at most once
+/// a day; our own renders of each part in its colour come later.
+export function pictureOf(_lot) {
+  return "";
 }

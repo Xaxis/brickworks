@@ -159,9 +159,9 @@ const SVG = "http://www.w3.org/2000/svg";
 /// a screen away (or its tab is chosen), drawn a row a colour or a kind
 /// (Colour, Kind) with its lots under it in the app's order, the first
 /// LOTS_SHOWN rows until Show all. Each lot is its picture, its name, its
-/// number and colour, and how many. The pictures are Rebrickable's
-/// (api/_parts.js pictureOf), and a browser a check drives
-/// (navigator.webdriver) asks it for none: no check calls Rebrickable.
+/// number and colour, and how many. A lot has no picture yet
+/// (api/_parts.js pictureOf), so each shows its colour; a browser a check
+/// drives (navigator.webdriver) asks for none either way.
 function startParts(section) {
   const list = section.querySelector(".lot-list");
   const all = section.querySelector("[data-all]");

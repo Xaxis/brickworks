@@ -663,13 +663,12 @@ off and counted, never guessed. **Download** beside Build it: the
 version's .mpd as it is stored (`/m/X.mpd`, `/m/X/v/N.mpd`), signed out,
 named for the model. **Like** and **I built it** ("Built") say their
 names beside their icons and counts from 600 px up (`.icon-btn.labelled`);
-a phone's row of six has room for icons and counts alone. The pictures are
-Rebrickable's, as its own lists show them (its photo of the element where
-there is one, else its render of the part in the colour), sent no address
-of the page (`referrerpolicy="no-referrer"`); the model page's security
-policy allows `cdn.rebrickable.com` for pictures alone, a lot whose picture
-fails shows its colour, and a browser a check drives
-(`navigator.webdriver`) asks for none, so no check calls Rebrickable. No
+a phone's row of six has room for icons and counts alone. A lot has no
+picture yet: it shows its colour. Rebrickable's photos were left out on
+purpose (2026-10-26): they would have every visitor's browser ask a third
+party for every part on every page, where Brickworks asks Rebrickable at
+most once a day, so the page's security policy allows images from itself
+alone; our own renders of each part in its colour come later. No
 booklet PDF is kept for any model (the bucket holds the .mpd and its
 pictures), so the page offers none; the viewer makes the booklet.
 
