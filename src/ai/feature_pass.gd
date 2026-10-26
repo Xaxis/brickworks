@@ -227,11 +227,12 @@ func spot_for(name: String) -> Dictionary:
 		"z": snappedf(at.z / STUD, 0.5), "facing": facing, "guessed": true}
 
 
-## The real pieces for a feature that lay whole and are that feature, best
-## first: the subject's own sets first (RealSnippets.search), then any.
+## The real pieces for a feature that lay whole (RealSnippets.holdable: as
+## they stand, or held by the model where they go) and are that feature,
+## best first: the subject's own sets first (RealSnippets.search), then any.
 ##
-## A piece is the feature when what it is (RealSnippets.what_it_is) names
-## the feature's own noun or a word the index takes as the same: the
+## A piece is the feature when its head (RealSnippets.heads_of) is the
+## feature's own noun or a word the index takes as the same: the
 ## fenders of "tyre fenders", the hands of "claw hands" (a claw, a
 ## gripper). Matched on the whole description, the subject's words decided
 ## it: "harbour tug boat" ran together as "tugboat", the rarest word in the
@@ -246,17 +247,17 @@ func candidates_for(name: String) -> Array:
 	var most: float = maxf(4.0, widest * 0.6)
 	var said: PackedStringArray = RealSnippets.words(name)
 	var nouns: Array = nouns_of(name)
+	var also: PackedStringArray = of_what(name)
 	var found: Array = []
 	var seen: Dictionary = {}
 	for asked: String in [query, name]:
 		for row: Variant in RealSnippets.search(asked, most, [], LOOKED_AT, 2):
 			var entry: Dictionary = (row as Array)[1]
-			if seen.has(entry["id"]) or not bool(entry.get("lays", false)) \
-					or not bool(entry.get("square", true)) \
+			if seen.has(entry["id"]) or not RealSnippets.holdable(entry) \
 					or int(entry.get("parts", 0)) > MOST_PARTS:
 				continue
 			seen[entry["id"]] = true
-			var named: int = names_it(entry, said, nouns)
+			var named: int = names_it(entry, said, nouns) if _says_any(entry, also) else 0
 			if named > 0:
 				found.append([named, found.size(), entry])
 	# Those that say more of it first, then in the search's order: the
@@ -270,35 +271,86 @@ func candidates_for(name: String) -> Array:
 
 
 ## The nouns a feature is named by, each with the words the index takes as
-## the same: the last word of each thing it lists ("mast and navigation
-## lights" is a mast and lights).
+## the same: the head of each thing it lists ("mast and navigation lights" is
+## a mast and lights), not where it is ("torch on the wall" is a torch, "gate
+## doors in the arch" doors) nor what it holds. "coat of arms" is a coat; a
+## "row of windows" is windows.
 static func nouns_of(name: String) -> Array:
 	var out: Array = []
+	var thing: String = _WHERE_IT_IS.sub(name, "", true)
+	var of: RegExMatch = _OF.search(thing)
+	if of != null:
+		var before: PackedStringArray = RealSnippets.words(of.get_string(1))
+		thing = of.get_string(2) if not before.is_empty() and COUNTED.has(before[-1]) \
+			else of.get_string(1)
 	var parts: PackedStringArray = RegEx.create_from_string(
-		"(?i)\\s*(?:,|&|\\band\\b|\\bwith\\b|\\bon\\b|\\bat\\b|\\bfor\\b|\\bplus\\b)\\s*").sub(
-		name, "|", true).split("|", false)
+		"(?i)\\s*(?:,|&|\\band\\b|\\bplus\\b)\\s*").sub(thing, "|", true).split("|", false)
 	for part: String in parts:
-		var said: PackedStringArray = RealSnippets.words(part)
-		if said.is_empty():
+		var heads: PackedStringArray = RealSnippets.head_words(part)
+		if heads.is_empty():
 			continue
-		out.append(RealSnippets.kin(said[-1]))
+		out.append(RealSnippets.kin(heads[0]))
 	return out
 
 
+## What a feature named "X of Y" is X of, where X is not a count: "coat of
+## arms" is a coat of arms, and a coat that is not of arms (Hagrid's) is not
+## it. Empty for a feature with no "of", or one counted ("row of windows").
+static func of_what(name: String) -> PackedStringArray:
+	var of: RegExMatch = _OF.search(_WHERE_IT_IS.sub(name, "", true))
+	if of == null:
+		return PackedStringArray()
+	var before: PackedStringArray = RealSnippets.words(of.get_string(1))
+	if before.is_empty() or COUNTED.has(before[-1]):
+		return PackedStringArray()
+	return RealSnippets.words(of.get_string(2))
+
+
+## Whether what [param entry] is says any of [param words]; true for none.
+static func _says_any(entry: Dictionary, words: PackedStringArray) -> bool:
+	if words.is_empty():
+		return true
+	var what: PackedStringArray = RealSnippets.what_it_is(entry)
+	for word: String in words:
+		if what.has(word):
+			return true
+	return false
+
+
+## What follows a word that says where or with what: not the feature.
+static var _WHERE_IT_IS := RegEx.create_from_string(
+	"(?i)\\s+\\b(?:with|on|at|for|in|inside|into|under|over|above|below|beside|behind|"
+	+ "atop|along|around|across|between|from|onto|beneath|near|by)\\b.*$")
+static var _OF := RegEx.create_from_string("(?i)^(.*?)\\s+\\bof\\b\\s+(.*)$")
+## Words a thing is counted in: a row of windows is windows.
+const COUNTED := ["row", "pair", "set", "line", "column", "ring", "stack", "bank",
+	"band", "string", "array", "series", "couple", "number", "run", "tier", "cluster",
+	"group", "collection", "bunch"]
+
+
 ## How well what [param entry] is says a feature, given as its words
-## ([param said]) and its nouns ([method nouns_of]): 0 when it names none of
-## its nouns, nor a word the index takes as the same; otherwise two for each
-## of the feature's words it says as they are, and one for a noun it says
-## another way. The front door before a hatch, the arm's claw before a
-## chameleon's hand for "claw hands".
+## ([param said]) and its nouns ([method nouns_of]): 0 when its head
+## (RealSnippets.heads_of) is none of the feature's nouns, nor a word the
+## index takes as the same; more when its first reading is one of them than
+## a later one; then two for each of the feature's words it says as they
+## are, and one for a noun it says another way. The front door before a
+## hatch, the arm's claw before a chameleon's hand for "claw hands", a
+## beacon before a traffic cone that might be one.
 static func names_it(entry: Dictionary, said: PackedStringArray, nouns: Array) -> int:
 	var what: PackedStringArray = RealSnippets.what_it_is(entry)
-	var named: bool = false
-	for kin: PackedStringArray in nouns:
-		for word: String in kin:
-			if what.has(word):
-				named = true
-	if not named:
+	var readings: Array = RealSnippets.heads_of(entry)
+	var reading: int = -1
+	for n: int in readings.size():
+		for kin: PackedStringArray in nouns:
+			for word: String in kin:
+				if (readings[n] as PackedStringArray).has(word):
+					reading = n
+					break
+			if reading >= 0:
+				break
+		if reading >= 0:
+			break
+	if reading < 0:
 		return 0
 	var score: int = 0
 	var heads: Dictionary = {}
@@ -312,7 +364,9 @@ static func names_it(entry: Dictionary, said: PackedStringArray, nouns: Array) -
 				if what.has(other):
 					score += 1
 					break
-	return maxi(score, 1)
+	# A later reading after every first one: a beacon before a traffic cone
+	# that might be one.
+	return maxi(score, 1) + (200 if reading == 0 else 100)
 
 
 ## Lay the best piece that fits for a feature, as its proposal, unless one
@@ -417,14 +471,16 @@ func _standing(ids: Array[int]) -> bool:
 ## placements as edit_model takes them, "turn", "up", "at"}, or {}. Each way
 ## the piece can face the spot is tried, seated by one of its lowest
 ## hollows on a free stud of the model that points the same way, and kept
-## when none of its parts runs into the model and at least one is held by
-## it (OpenPoints.test, the check's own rules a part at a time). [param
+## when none of its parts runs into the model and each part the piece does
+## not hold itself is held by it (PieceHold, the check's own rules a part at
+## a time). [param
 ## in_wall]: a door's or a window's, whose seat may be under a lintel.
 func fit(entry: Dictionary, spot: Dictionary, in_wall: bool = false) -> Dictionary:
 	var facing: String = str(spot.get("facing", "+z"))
 	var target := Vector3(float(spot["x"]) * STUD, float(spot["y"]) * PLATE,
 		float(spot["z"]) * STUD)
 	var read: OpenPoints = OpenPoints.read(assistant)
+	var hold := PieceHold.new(assistant, read)
 	var ids: Array = []
 	for brick: BrickWorld.Brick in assistant._bricks_inside({}):
 		ids.append(brick.id)
@@ -455,6 +511,9 @@ func fit(entry: Dictionary, spot: Dictionary, in_wall: bool = false) -> Dictiona
 		var base: Variant = await assistant._snippet_bricks(entry, Vector3.ZERO, turn, {}, up)
 		if base is String:
 			return {}
+		# A piece held from outside it (a roof by its walls) is laid where the
+		# model holds each part of it that the piece itself does not.
+		var groups: Array = hold.components(base as Array)
 		var hollows: Array = _lowest_hollows(base as Array, way)
 		var tried: Dictionary = {}
 		for seat: OpenPoints.Point in seats:
@@ -467,7 +526,7 @@ func fit(entry: Dictionary, spot: Dictionary, in_wall: bool = false) -> Dictiona
 					continue
 				tried[key] = true
 				var moved: Array = _shifted(base as Array, shift)
-				if _stands(read, moved):
+				if not hold.holds(moved, groups).is_empty():
 					return {"bricks": moved, "turn": turn, "up": up,
 						"at": Vector3(seat.at.x / STUD, seat.at.y / PLATE, seat.at.z / STUD)}
 	return {}
@@ -618,19 +677,6 @@ static func _shifted(bricks: Array, by: Vector3) -> Array:
 		one["z"] = snappedf(float(one["z"]) + by.z, 0.01)
 		out.append(one)
 	return out
-
-
-## Whether bricks laid as they are would fit and be held by the model.
-static func _stands(read: OpenPoints, bricks: Array) -> bool:
-	var held: bool = false
-	for raw: Variant in bricks:
-		var trial: Dictionary = read.test(Assistant.Placement.from_dict(raw))
-		if not bool(trial["fits"]):
-			return false
-		for by: Variant in trial["held_by"]:
-			if int(by) > 0:
-				held = true
-	return held
 
 
 ## Lay bricks through edit_model, checked like any edit; the ids they were
