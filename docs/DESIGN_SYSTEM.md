@@ -77,6 +77,8 @@ The colours (`--bg`, `--bg-soft`, `--panel`, `--panel-hi`, `--line`,
 | `--shade`, `--shine` | dark and light, see-through | a brick's lower edge and top: the 404's wall, a colour's dot |
 | `--scrim` | black, 55% | the dim behind an open dialog |
 | `--avatar-1` … `-8`, `--on-avatar` | eight tiles, white | an avatar made from a handle, its letter 5.37:1 or more on each |
+| `--motion`, `--motion-open`, `--ease` | 150 ms, 180 ms, an ease-out | a control answering the pointer; a dialog or menu opening ("Motion") |
+| `--head-h` | 61 px | the header's height, which `main` fills the window under ("Steady loads") |
 
 **Only the scale (2026-10-22).** Every font size is a `--t-*`, every corner
 an `--r-*` (`--radius`, `--control-radius`), `0` or `50%`, and every colour
@@ -360,6 +362,66 @@ is on the page, `hidden`, for the script to show.
   `.wide` takes the whole row. What cannot be undone is `.setting.danger`
   and its button `.cta.ghost.danger`, in `--bad`.
 
+## Motion
+
+Every control and card answers the pointer (site275, 2026-10-26; site273
+found two transitions on the whole site, both the toast's). All of it is
+in `site.css` "motion", by kind, so a page adds none of its own:
+
+- **Ease, not snap**: `.cta`, any `button`, `.icon-btn`, `.pill`, a tab,
+  a `.segmented` button, the header's links and Menu, a menu's items, the
+  footer's links, a field, `.model`, `.list-card`, `details.qa` and a
+  strip's thumbnail change colour, ground, edge, shadow, transform and
+  brightness over `--motion` (150 ms) on `--ease`.
+- **A press sinks**: `:active` scales a button, an icon button, a button
+  pill, a segmented button and Menu to 0.97 (a primary one a shade darker
+  too), a card to 0.99; a tab and a menu's item take the panel's ground.
+  For a finger as much as a mouse: a phone shows no hover.
+- **A card lifts** 2 px under a mouse (`@media (hover: hover)`), never
+  under a finger, where a hover sticks.
+- **Opening**: a `dialog` rises and fades in over `--motion-open` (180 ms),
+  its backdrop fades; a menu (`details[open] > .menu-list`: Menu, More,
+  the account menu, Filters) drops 4 px and fades in.
+- **Drawn at once**: a press that marks something (a card's like, a
+  model's Like, Follow) is drawn as pressed when it is pressed, then as the
+  server says; if the server refuses, it is drawn back as it was and says
+  why (`.marks-said`, Follow's `.said`, the toast on a card).
+
+## Steady loads
+
+Nothing moves once it is drawn (site275; site273 measured layout shifts of
+0.12 to 1.17 on 13 of 24 page states). The check: CLS under 0.02 at load
+and after scrolling, every page at 390 and 1280 px.
+
+- **`main` fills the window** under the header (`--head-h`), so the
+  footer starts at the window's foot on a short page and never comes into
+  view while a page's script is still drawing.
+- **A skeleton holds a script's place** (`.skeleton`): what a script draws
+  from an answer is in its place at about its size before the answer, as
+  the site's own panels and cards with `.bone` bars in `--panel-hi`,
+  breathing slowly. A card's is `.skeleton-card` (`web/card.js`
+  `skeletonHtml`, the same markup in a page's HTML), not a `.model`, so
+  nothing that counts cards counts it. When the answer comes the skeleton
+  is taken out whole and what came put in, in one frame: new, not moved.
+  The gallery's first three rows, the landing page's strip, /profile (its
+  head, tabs and cards; a tab drawn the first time), /settings (its
+  panel), /feed (posts and the rail) and /notifications.
+- **Drawn whole**: a page whose parts come from several answers (the
+  gallery's cards, pick and challenge line; Settings' rows; your profile)
+  waits for all of them and draws them together, rather than each as it
+  came, each moving the others.
+- **Signed in at once**: a page that is yours (/profile, /settings, /feed,
+  /notifications) knows from the session kept in this browser that you
+  are signed in, so it never says "Looking for your sign-in…" while it
+  asks; it shows your page's skeleton.
+- **Under, not over**: what only one person sees on a page every visitor
+  shares (a designer's own numbers on their /u/ page) is put under the
+  page's work, where its coming moves nothing in view.
+- **Pictures**: every `img` has `width` and `height`. The first screen's
+  are asked at once and first (`loading="eager" fetchpriority="high"`:
+  `cardHtml`'s `eager`, the first `FIRST_SCREEN` (8) of a list; a pinned
+  row; the landing page's first feature); the rest are `loading="lazy"`.
+
 ## Accessibility
 
 Every page is for a person on the keyboard alone and a person with a
@@ -379,8 +441,10 @@ does for every page, so a page need not:
   says whose ("Reply to Jo Lindqvist"). A table that scrolls sideways is a
   named region the keyboard can reach and scroll.
 - **Targets**: every link and button 24 px at least (a card's name too).
-- **Reduced motion**: the toast does not slide, and the page does not
-  scroll smoothly; nothing else on the site moves.
+- **Reduced motion**: nothing moves. Every transition and animation is
+  0 s (a skeleton does not breathe, a dialog does not fade, a card does not
+  lift, a press does not sink), the toast does not slide, and the page
+  does not scroll smoothly.
 
 `tools/web/a11y_flow.mjs` (preview check `[a11y]`) runs axe-core
 (`tools/web/axe-core`, vendored) on every page and state `[design]`

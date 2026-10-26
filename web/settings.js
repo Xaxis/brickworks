@@ -166,21 +166,43 @@ $("oc-code").addEventListener("submit", async (event) => {
   }
 });
 
+/// What the age answer changes: under 13, no public profile here (the
+/// server refuses one too), and what is kept of it said in Privacy.
+function drawAge(kept, handle) {
+  const young = Boolean(kept && kept.over_13 === false);
+  $("young").hidden = !young;
+  document.documentElement.dataset.young = young ? "yes" : "no";
+  $("age-said").textContent = kept && kept.over_13 === true
+    ? "You told Brickworks you are 13 or over. Only that is kept, never your date of birth."
+    : kept && kept.over_13 === false
+      ? "You told Brickworks you are under 13, so your profile and collections stay private. Only that is kept."
+      : "Brickworks asks everyone once whether they are 13 or over, and keeps only that answer.";
+  $("edit-profile").hidden = young;
+  if (young && !handle) $("profile-line").textContent = "A public profile is for people 13 and over.";
+  $("follows-choice").hidden = !$("follows-choice").dataset.ready || young;
+  $("likes-choice").hidden = !$("likes-choice").dataset.ready || young || !handle;
+}
+
+// Signed in, the skeleton (settings.html #loading) holds the panel's place
+// while every part is asked at once, and the panel is drawn whole when they
+// have come: each part drawn as it came moved the rows under it (site273,
+// /settings at 390 px 1.17). Then the age question, if this account is to
+// be asked it, over the page.
 async function load() {
-  $("loading").hidden = true;
   if (!signedIn()) {
+    $("loading").hidden = true;
     $("signed-out").hidden = false;
     $("signed-in").hidden = true;
     document.documentElement.dataset.settings = "signed-out";
     return;
   }
+  const parts = Promise.all([orangecheck().catch(() => null), claude().catch(() => null)]);
+  const ageNow = age().catch(() => null);
   const answer = await call("/api/people?op=me");
   if (answer.status === 401) {
     signOut();
     return load();
   }
-  $("signed-out").hidden = true;
-  $("signed-in").hidden = false;
   // An orangecheck account has no address: Brickworks has an id for it, and
   // mails it nothing. It is deleted by signing in with orangecheck again.
   const ocOnly = madeUp(email());
@@ -192,28 +214,13 @@ async function load() {
   $("delete-confirm").closest("label").hidden = ocOnly;
   $("delete-go").hidden = ocOnly;
   $("delete-oc").hidden = !ocOnly;
-  orangecheck().catch(() => null);
-  // The age question, if this account has not answered it; and under 13,
-  // no public profile here (the server refuses one too).
-  const answered = await askAgeIfAsked().catch(() => null);
-  const young = Boolean(answered && answered.over_13 === false);
-  $("young").hidden = !young;
-  document.documentElement.dataset.young = young ? "yes" : "no";
-  const kept = answered || await age().catch(() => null);
-  $("age-said").textContent = kept && kept.over_13 === true
-    ? "You told Brickworks you are 13 or over. Only that is kept, never your date of birth."
-    : kept && kept.over_13 === false
-      ? "You told Brickworks you are under 13, so your profile and collections stay private. Only that is kept."
-      : "Brickworks asks everyone once whether they are 13 or over, and keeps only that answer.";
   const mine = answer.body.profile;
   const handle = mine && HANDLE.test(String(mine.handle)) ? String(mine.handle) : "";
   $("profile-line").textContent = handle
     ? `brickworks.diy/u/${handle}: your name, words, links and pinned models, as everybody sees them.`
-    : young ? "A public profile is for people 13 and over."
-      : "No profile yet: choose a name and a handle, and your models in the gallery have a page of their own.";
+    : "No profile yet: choose a name and a handle, and your models in the gallery have a page of their own.";
   $("edit-profile").textContent = handle ? "Edit profile" : "Make your profile";
   $("edit-profile").href = handle ? "/profile?edit=1" : "/profile";
-  $("edit-profile").hidden = young;
   // What is emailed (api/_comments.js): comments on their models, at most
   // once a day, off until chosen. Not there before comments.sql. And the
   // feed's kinds, one choice each, since follows.sql.
@@ -224,14 +231,22 @@ async function load() {
   for (const box of $("mail-kinds").querySelectorAll("input[data-kind]")) box.checked = Boolean(mail && mail[box.dataset.kind]);
   // Whether their profile shows whom they follow (supabase/follows.sql).
   const shows = answer.body.follows;
-  $("follows-choice").hidden = !(shows && shows.ready) || young;
+  $("follows-choice").dataset.ready = shows && shows.ready ? "yes" : "";
   $("shows-follows").checked = Boolean(shows && shows.shows_follows);
   // Whether their profile shows the models they liked: only with a profile
   // to show them on (supabase/avatars.sql).
   const likes = answer.body.likes;
-  $("likes-choice").hidden = !(likes && likes.ready) || young || !handle;
+  $("likes-choice").dataset.ready = likes && likes.ready ? "yes" : "";
   $("shows-likes").checked = Boolean(likes && likes.shows_likes);
-  await claude().catch(() => null);
+  // The answer kept, if there is one: what Privacy says, drawn with the rest.
+  const known = await ageNow;
+  drawAge(known, handle);
+  await parts;
+  $("loading").hidden = true;
+  $("signed-out").hidden = true;
+  $("signed-in").hidden = false;
+  // The age question, if this account has not answered it.
+  if (known && known.ask) drawAge(await askAgeIfAsked().catch(() => null) || known, handle);
   document.documentElement.dataset.settings = "ready";
 }
 

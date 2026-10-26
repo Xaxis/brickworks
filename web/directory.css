@@ -511,6 +511,8 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .profile .paging { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-5); margin: var(--s-5) 0 0; }
 .profile .paging a:not(.cta) { color: var(--ink-soft); }
 .profile .follows { margin-top: var(--s-7); }
+/* A designer's own numbers on their page, under the work (api/people.js). */
+.profile #designs-mine { margin: var(--s-7) 0 0; }
 .profile .follows .pill .avatar { margin-left: -6px; }
 @media (max-width: 640px) {
 	.profile .banner { aspect-ratio: 2 / 1; }

@@ -4,10 +4,12 @@
 //
 // It must never show a dead card. So a card is put in only once its
 // picture has arrived and decoded, a model with no picture is left out,
-// and the strip stays hidden until three cards are ready; an answer that
-// does not come leaves it hidden. Asked as the strip nears the screen
-// (the sentence under the pictures above it), not before, so a visitor
-// who never scrolls fetches none of it.
+// and the cards go in only once three are ready; until then the row holds
+// skeletons at a card's size (site.css .skeleton), so the page under it
+// stays where it is, and an answer that does not come takes the strip
+// away. Asked as the strip nears the screen (a screen and a half before
+// the sentence under the pictures above it), so it is in by the time it
+// is read, and a visitor who never scrolls fetches none of it.
 import { modelCard, pictureOf } from "/card.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -40,9 +42,11 @@ async function fill() {
   const listed = models.filter((m) => m && ID.test(String(m.id)) && pictureOf(m)).slice(0, MOST);
   const cards = (await Promise.all(listed.map((m) => ready(m).catch(() => null)))).filter(Boolean);
   document.documentElement.dataset.strip = cards.length >= LEAST ? String(cards.length) : "none";
-  if (cards.length < LEAST) return;
+  if (cards.length < LEAST) {
+    strip.hidden = true;
+    return;
+  }
   row.replaceChildren(...cards);
-  strip.hidden = false;
 }
 
 if (strip && row) {
@@ -51,7 +55,7 @@ if (strip && row) {
       if (!seen.some((one) => one.isIntersecting)) return;
       watch.disconnect();
       fill();
-    }, { rootMargin: "300px 0px" });
+    }, { rootMargin: "150% 0px" });
     watch.observe(near);
   } else {
     fill();

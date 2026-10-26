@@ -900,15 +900,28 @@ function start() {
     return Boolean(state);
   }
 
+  // Drawn at once, as a card's like is, then as the server counts it; back
+  // as it was, and why, if it refuses. Waiting on it took 420-470 ms (site273).
   like.addEventListener("click", async () => {
     if (!(await ready("Sign in to like it: we email you a code, no password."))) return;
+    const was = Boolean(state.liked);
+    const count = Number(like.querySelector(".n")?.textContent.replace(/\D/g, "")) || 0;
+    state.liked = !was;
+    setCount(like, Math.max(0, count + (was ? -1 : 1)), "Like", "like");
+    say("");
+    draw();
     like.disabled = true;
-    const answer = await call(`/api/people?op=like&id=${id}`, { method: "POST", body: { on: !state.liked } });
+    const answer = await call(`/api/people?op=like&id=${id}`, { method: "POST", body: { on: !was } })
+      .catch(() => ({ status: 0, body: {} }));
     like.disabled = false;
-    if (answer.status !== 200) return say(answer.body.error || "That did not work just now.");
+    if (answer.status !== 200) {
+      state.liked = was;
+      setCount(like, count, "Like", "like");
+      draw();
+      return say(answer.body.error || "That did not work just now. Try again.");
+    }
     state.liked = answer.body.liked;
     setCount(like, answer.body.likes, "Like", "like");
-    say("");
     draw();
   });
 

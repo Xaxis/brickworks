@@ -199,7 +199,23 @@
 				<h2 class="visually-hidden" id="pick-h">This week’s pick</h2>
 				<div id="pick-card"></div>
 			</section>
-			<div id="models"></div>
+			<!-- Three rows of skeletons (site.css .skeleton) where the first page's
+			     cards go, taken out when it comes (gallery.js), so nothing under
+			     them moves. web/card.js skeletonHtml draws the same. -->
+			<div id="models">
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone"></span><span class="bone short"></span><span class="bone short"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone"></span><span class="bone short"></span><span class="bone short"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone"></span><span class="bone short"></span><span class="bone short"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone"></span><span class="bone short"></span><span class="bone short"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone"></span><span class="bone short"></span><span class="bone short"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone"></span><span class="bone short"></span><span class="bone short"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone"></span><span class="bone short"></span><span class="bone short"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone"></span><span class="bone short"></span><span class="bone short"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone"></span><span class="bone short"></span><span class="bone short"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone"></span><span class="bone short"></span><span class="bone short"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone"></span><span class="bone short"></span><span class="bone short"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone"></span><span class="bone short"></span><span class="bone short"></span></div></div>
+			</div>
 			<!-- The front's shelves, after the first rows: hidden while anything is asked. -->
 			<div class="shelves" id="shelves" hidden>
 				<section class="shelf" id="ready" aria-labelledby="ready-h" hidden>
@@ -221,7 +237,7 @@
 			</div>
 		</div>
 		<p class="visually-hidden" id="found" aria-live="polite"></p>
-		<p class="state" id="loading">Fetching the gallery…</p>
+		<p class="visually-hidden" id="loading" role="status">Fetching the gallery…</p>
 		<div class="state" id="empty" hidden>
 			Nothing is listed yet. Share a model from the app and tick
 			<b>List it in the gallery</b>, and it will be the first here.

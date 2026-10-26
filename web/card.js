@@ -60,7 +60,7 @@ export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size
   const pictured = PICTURE.test(String(picture || ""));
   const classes = ["avatar", size, `c${avatarTone(handle || name)}`, pictured ? "pictured" : ""].filter(Boolean).join(" ");
   return `<span class="${classes}"${id ? ` id="${escapeHtml(id)}"` : ""} aria-hidden="true">${pictured
-    ? `<img src="${escapeHtml(picture)}" alt="" loading="lazy" decoding="async">` : escapeHtml(letter)}</span>`;
+    ? `<img src="${escapeHtml(picture)}" alt="" width="112" height="112" loading="lazy" decoding="async">` : escapeHtml(letter)}</span>`;
 }
 
 /// The icons there are (web/icons.svg).
@@ -179,7 +179,10 @@ const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 /// and likes, in words, and never its views.
 /// [like]: its like is a button (data-like, the model's id), pressed when
 /// model.liked; the gallery's script makes it work. Elsewhere it is a count.
-export function cardHtml(model, { earned = false, like = false } = {}) {
+/// [eager]: one of the first screen's cards, whose picture is asked for at
+/// once and first (fetchpriority) rather than when the browser finds it in
+/// view: a lazy picture in the first screen came last (site273).
+export function cardHtml(model, { earned = false, like = false, eager = false } = {}) {
   const id = String(model.id);
   const name = escapeHtml(model.name);
   const picture = pictureOf(model);
@@ -266,11 +269,24 @@ export function cardHtml(model, { earned = false, like = false } = {}) {
   }
   return `<article class="model" ${data.join(" ")}>`
     + `<div class="frame${picture ? "" : " none"}">${picture
-      ? `<img src="${escapeHtml(picture)}" alt="${name}" width="1200" height="630" loading="lazy" decoding="async">`
+      ? `<img src="${escapeHtml(picture)}" alt="${name}" width="1200" height="630" ${eager
+        ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async">`
       : "No picture"}${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}</div>`
     + `<div class="words"><a class="open" href="/m/${escapeHtml(id)}"><b title="${name}">${name}</b></a>`
     + `<span class="by">${who}<span class="parts">${escapeHtml(counted(model.parts, "part"))}</span></span>`
     + `${lines.join("")}</div></article>`;
+}
+
+/// How many of a list's cards are its first screen's, drawn [eager]: two
+/// rows of four on a laptop, four rows of two on a phone.
+export const FIRST_SCREEN = 8;
+
+/// A card's skeleton (site.css .skeleton-card): the card's frame and its
+/// words as bars, in a card's place until the list it stands for comes.
+/// Not a .model: nothing that counts the cards counts it.
+export function skeletonHtml() {
+  return '<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words">'
+    + '<span class="bone"></span><span class="bone short"></span><span class="bone short"></span></div></div>';
 }
 
 /// The card for [model] as an element, in a browser: cardHtml's markup,

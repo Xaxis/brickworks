@@ -108,11 +108,19 @@ export async function followButton(button, known = null) {
       say(state.why_not);
       return;
     }
+    // Drawn at once, as a card's like is, then as the server says; back as
+    // it was, and why, if it refuses. Waiting on it took 260-390 ms (site273).
+    const was = state;
+    const on = !state.you_follow;
+    state = { ...state, you_follow: on, followers: Math.max(0, (Number(state.followers) || 0) + (on ? 1 : -1)) };
+    draw();
     button.disabled = true;
-    const [where, body] = kind.sent(handle, !state.you_follow);
-    const answer = await call(where, { method: "POST", body });
+    const [where, body] = kind.sent(handle, on);
+    const answer = await call(where, { method: "POST", body }).catch(() => ({ status: 0, body: {} }));
     button.disabled = false;
     if (answer.status !== 200) {
+      state = was;
+      draw();
       say(answer.body.error || "That did not work just now. Try again in a minute.");
       return;
     }
