@@ -1,5 +1,5 @@
 ## The few things every panel draws the same way: a link, a tick box, one
-## of a choice and a switch.
+## of a choice, a switch, and the frame of a dialog of the engine's.
 ##
 ## The app has no theme of its own and every panel styles itself, which
 ## is fine until two panels need the same thing to look like the same
@@ -23,6 +23,10 @@ extends RefCounted
 ## Links, ticks and a switch that is on.
 const ACCENT := Color(0.56, 0.74, 1.0)
 const ACCENT_HOVER := Color(0.78, 0.87, 1.0)
+## The face of the app's panels and its edge (LibraryDialog._build), which
+## [method dialog] gives the engine's dialogs.
+const FACE := Color(0.10, 0.11, 0.13, 0.98)
+const EDGE := Color(1, 1, 1, 0.14)
 
 const UNCHECKED := """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">
 <rect x="1.75" y="1.75" width="12.5" height="12.5" rx="2.5" fill="#ffffff" fill-opacity="0.06"
@@ -69,6 +73,7 @@ const PICTURES: Dictionary = {
 
 static var _textures: Dictionary = {}   ## theme item -> ImageTexture
 static var _drawn_at: float = 0.0
+static var _dialog_theme: Theme = null
 
 
 ## Put the pictures in the default theme, drawn for the density this
@@ -100,6 +105,43 @@ static func apply(viewport: Viewport) -> void:
 			texture.set_image(drawn)
 		# Drawn with as many pixels as it is shown with, measured in units.
 		texture.set_size_override(units)
+
+
+## A dialog of the engine's (an AcceptDialog, a ConfirmationDialog, a
+## FileDialog) in the look of the app's own panels (LibraryDialog,
+## RenderDialog): their dark face, faint edge and round corners, for its
+## frame, its title bar and its body. The engine's is a grey of its own,
+## and the photo search's question, Build together and the picture
+## chooser were drawn in it on the desktop beside panels in this one
+## (walk256 DS1, 2026-10-25). Sizes stay the engine's, so nothing in it
+## moves. A dialog it opens (a file chooser's questions) takes it too.
+## The web's stay as they are.
+static func dialog(window: Window) -> void:
+	if OS.has_feature("web"):
+		return
+	if _dialog_theme == null:
+		_dialog_theme = _dialog_look()
+	window.theme = _dialog_theme
+
+
+static func _dialog_look() -> Theme:
+	var engine: Theme = ThemeDB.get_default_theme()
+	var look := Theme.new()
+	for item: String in ["embedded_border", "embedded_unfocused_border"]:
+		var frame := engine.get_stylebox(item, "Window").duplicate() as StyleBoxFlat
+		if frame == null:
+			continue
+		frame.bg_color = FACE
+		frame.border_color = EDGE
+		frame.set_border_width_all(1)
+		frame.set_corner_radius_all(6)
+		look.set_stylebox(item, "Window", frame)
+	var body := engine.get_stylebox("panel", "AcceptDialog").duplicate() as StyleBoxFlat
+	if body != null:
+		body.bg_color = FACE
+		body.set_border_width_all(0)
+		look.set_stylebox("panel", "AcceptDialog", body)
+	return look
 
 
 ## A link: blue, underlined, and only as wide as its words, so a click

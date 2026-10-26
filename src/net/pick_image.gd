@@ -44,11 +44,33 @@ func _ask_desktop() -> void:
 		_dialog.title = "Choose a picture"
 		_dialog.size = Vector2i(760, 520)
 		_dialog.file_selected.connect(_read_file)
+		Look.dialog(_dialog)
 		add_child(_dialog)
+	_dialog.current_dir = start()
 	_dialog.popup_centered()
 
 
+## The folder a picture is chosen from on the desktop: the one the last
+## came from, while it is there, or Pictures. Godot's own dialog opens in
+## the folder the app was started from, its install folder (walk256 DS1,
+## 2026-10-25).
+static func start() -> String:
+	var last: String = str(ShellPrefs.value("picture_folder"))
+	if not last.is_empty() and DirAccess.dir_exists_absolute(last):
+		return last
+	var pictures: String = OS.get_system_dir(OS.SYSTEM_DIR_PICTURES)
+	if not pictures.is_empty() and DirAccess.dir_exists_absolute(pictures):
+		return pictures
+	return OS.get_environment("USERPROFILE" if OS.get_name() == "Windows" else "HOME")
+
+
+## Where the picture [param path] was chosen from, for the next chooser.
+static func chose(path: String) -> void:
+	ShellPrefs.put("picture_folder", path.get_base_dir())
+
+
 func _read_file(path: String) -> void:
+	chose(path)
 	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
 	if bytes.is_empty():
 		failed.emit("could not read that file")

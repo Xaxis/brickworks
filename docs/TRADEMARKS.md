@@ -31,7 +31,8 @@ darker. No brick silhouette, no studs, and it still reads at 16 px.
 `web/icon.svg` is the one source; `tools/web/make_icons.mjs` draws the
 favicons, the web manifest's icons and `assets/icon.png` from it (the
 window, and the macOS and Windows icons Godot makes at export; the Linux
-download carries `favicon-512.png`). The site header (`.chip` in
+download carries `favicon-512.png`), and the desktop app's boot splash,
+`assets/splash.png`. The site header (`.chip` in
 `web/site.css`, and the sign-in page's own copy), the share card
 (`tools/web/make_share.mjs`) and Help, About show it. The 404 page's wall
 and the web app's loading wall (`src/boot/shell.html`) lost their studs for

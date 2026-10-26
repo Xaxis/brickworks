@@ -43,8 +43,13 @@ func ask() -> void:
 		_dialog.add_filter("*.png, *.jpg, *.jpeg, *.webp, *.bmp, *.svg", "Pictures")
 		_dialog.title = "Choose a picture to print"
 		_dialog.size = Vector2i(760, 520)
-		_dialog.file_selected.connect(read)
+		_dialog.file_selected.connect(func(path: String) -> void:
+			PickImage.chose(path)
+			read(path))
+		Look.dialog(_dialog)
 		add_child(_dialog)
+	# Where the photo search's chooser opens, and where it last chose from.
+	_dialog.current_dir = PickImage.start()
 	_dialog.popup_centered()
 
 

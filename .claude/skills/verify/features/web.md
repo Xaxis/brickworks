@@ -2233,7 +2233,9 @@ plan with Claude as the client.
   names `sitemap.xml`, which lists `/`, `/download`, `/changelog`, `/faq` and
   `/privacy`. The mark is `web/icon.svg`, a cube with a corner cut away
   (no brick, no studs: docs/TRADEMARKS.md, Decisions); `tools/web/make_icons.mjs`
-  draws the favicons, the manifest's icons and `assets/icon.png` from it,
+  draws the favicons, the manifest's icons, `assets/icon.png` and the
+  desktop's boot splash `assets/splash.png` from it (`make_icons.mjs FILE`
+  draws that one alone),
   `tools/web/make_share.mjs` the share card, and every header shows it as `.chip`
   in `site.css`. Judge it at 390, 1280 and 1920 px:
   `node tools/web/page_shot.mjs --file=web/index.html --width=1920 --full`.

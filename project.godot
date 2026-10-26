@@ -17,6 +17,18 @@ config/features=PackedStringArray("4.7", "Forward Plus")
 ; window, on the dock, and as the favicon of the web build, where the
 ; browser tab of a brick app showed an engine logo.
 config/icon="res://assets/icon.png"
+; The desktop boots on the app's own mark on its dark face (Look.FACE),
+; not the engine's logo (walk256 DS1, 2026-10-25): a window's shape drawn
+; from web/icon.svg by tools/web/make_icons.mjs, kept to the window's
+; aspect, so the mark is a fifth of its height. Imported as "keep", so
+; the PNG itself is packed, which is what Godot reads at boot. Named for
+; the desktop alone: the web's page covers its canvas with a loading wall
+; of its own until the app is up (src/boot/shell.html), and is left as it
+; was: the picture is not in its pack (export_presets.cfg) and its canvas
+; boots as before (tests/test_boot_splash.py).
+boot_splash/image.pc="res://assets/splash.png"
+boot_splash/bg_color.pc=Color(0.1, 0.11, 0.13, 1)
+boot_splash/stretch_mode.pc=1
 
 [debug]
 

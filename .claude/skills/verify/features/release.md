@@ -6,7 +6,7 @@ runs each one as a person would, the GitHub release, and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check -->
+<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check -->
 
 ## Sub-features
 
@@ -36,7 +36,20 @@ that offers each system its own build. The cycle and its cadence are
   and `tools/mcp_check.py --port` drives it (search, clear, place two
   bricks, save, read back); its state must land in the fresh home. An
   AppImage also runs with `--appimage-extract-and-run`. `--window` draws the
-  car on Xvfb (under `gpu`) and keeps `shots/release-<os>.png`.
+  car on Xvfb (under `gpu`) and keeps `shots/release-<os>.png`, and fails
+  a package that boots on Godot's logo because the splash project.godot
+  names is not in it (Godot says "invalid boot splash"; see
+  `the boot splash`).
+- `the boot splash` (project.godot `application/boot_splash/*.pc`,
+  `assets/splash.png`): the desktop app boots on the mark on the app's dark
+  face (`Look.FACE`), not the engine's logo (walk256 DS1, 2026-10-25). The
+  picture is a window's shape drawn from `web/icon.svg` by
+  `tools/web/make_icons.mjs assets/splash.png`, kept to the window's aspect,
+  so the mark is a fifth of its height; imported as `keep`, so the PNG
+  itself is packed for Godot to read at boot. Named for the desktop (`pc`)
+  alone and left out of the web's pack: the web's page covers its canvas
+  with its own loading wall (`src/boot/shell.html`). `tests/test_boot_splash.py`
+  reads the settings and the picture; the windowed smoke, the package.
 - `publish a release`: `tools/release.py publish --draft` creates a draft
   GitHub release with the packages and `SHA256SUMS`, then compares GitHub's
   own SHA-256 of every asset with `dist/`. Without `--draft` it promotes that
@@ -116,7 +129,9 @@ python3 tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.AppImage
 
 Proves it when: every line is `ok` and it ends `... starts, loads the part
 library, opens a model and takes bricks`; `shots/release-linux.png` shows the
-example car on its baseplate.
+example car on its baseplate. To see the boot itself, record the unpacked
+package's first seconds on an Xvfb of its own (`ffmpeg -f x11grab`): the mark
+on the dark face, then the app.
 
 ```sh
 node tools/web/download_check.mjs --manifest=/tmp/releases.json --shots=shots

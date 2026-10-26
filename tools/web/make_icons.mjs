@@ -1,6 +1,7 @@
 // Render web/icon.svg to the sizes everything wants.
 //
 //   node tools/web/make_icons.mjs
+//   node tools/web/make_icons.mjs assets/splash.png     only the ones named
 //
 // One source, many sizes, because a favicon set assembled by hand goes
 // out of step the first time the mark changes — and the one that goes
@@ -25,7 +26,9 @@ const svg = readFileSync(resolve(root, "web/icon.svg"), "utf8");
 const TILE = "#14181e";
 
 // Where, how big, and on what: none (the mark alone), bleed (a square
-// tile, the mark inside the maskable safe zone) or tile (rounded).
+// tile, the mark inside the maskable safe zone), tile (rounded) or splash
+// (a window's shape, the mark alone in its middle). A size is a square's
+// side, or [width, height].
 const WANTED = [
   ["web/favicon-32.png", 32, "none"],
   ["web/favicon-180.png", 180, "bleed"],
@@ -34,22 +37,31 @@ const WANTED = [
   // The window, the dock and the web build's own favicon: Godot makes the
   // macOS .icns and the Windows .exe icon from this, so it is drawn big.
   ["assets/icon.png", 512, "tile"],
+  // The desktop app's boot splash (project.godot application/boot_splash):
+  // laid on the app's dark face, the window's own shape scaled to fit it,
+  // the mark a fifth of its height whatever the window's size. Godot's own
+  // was the engine's logo (walk256 DS1, 2026-10-25).
+  ["assets/splash.png", [2560, 1440], "splash"],
 ];
+const ONLY = process.argv.slice(2);
 
 const browser = await launch({ signedOut: true });  // a page of the site, not the app
 for (const [where, size, ground] of WANTED) {
+  if (ONLY.length && !ONLY.includes(where)) continue;
+  const [width, height] = Array.isArray(size) ? size : [size, size];
   const page = await browser.newPage({
-    viewport: { width: size, height: size },
+    viewport: { width, height },
     deviceScaleFactor: 1,
   });
-  const inset = { none: 0, bleed: 0.2, tile: 0.17 }[ground];
-  const radius = ground === "tile" ? size * 0.225 : 0;
+  const inset = { none: 0, bleed: 0.2, tile: 0.17, splash: 0.4 }[ground];
+  const radius = ground === "tile" ? width * 0.225 : 0;
   await page.setContent(
     `<!doctype html><style>
        html,body{margin:0;padding:0;background:transparent}
-       div{width:${size}px;height:${size}px;box-sizing:border-box;
-           padding:${size * inset}px;border-radius:${radius}px;
-           background:${ground === "none" ? "transparent" : TILE}}
+       div{width:${width}px;height:${height}px;box-sizing:border-box;
+           padding:${height * inset}px ${(width - height * (1 - 2 * inset)) / 2}px;
+           border-radius:${radius}px;
+           background:${ground === "none" || ground === "splash" ? "transparent" : TILE}}
        svg{display:block;width:100%;height:100%}
      </style><div>${svg}</div>`,
     { waitUntil: "load" },
@@ -68,6 +80,6 @@ for (const [where, size, ground] of WANTED) {
     }
   }
   await page.close();
-  console.log(`  ${where}  ${size}x${size}, ${ground}`);
+  console.log(`  ${where}  ${width}x${height}, ${ground}`);
 }
 await browser.close();
