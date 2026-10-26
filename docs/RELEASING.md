@@ -63,8 +63,9 @@ tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-x86_64.AppImage
 #    every file is compared with dist/.
 tools/release.py publish --draft
 
-# 5. Each package on its own system: Linux, macOS on Apple silicon and on
-#    Intel, and Windows, each unpacked and run in a clean home. Wait for green.
+# 5. Each package on its own system: macOS on Apple silicon and on Intel,
+#    and Windows, each unpacked and run in a clean home (Linux was step 3).
+#    Wait for green. It runs once, here: publishing does not run it again.
 gh workflow run release.yml -f tag=v0.2.0
 gh run watch "$(gh run list --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId')"
 
