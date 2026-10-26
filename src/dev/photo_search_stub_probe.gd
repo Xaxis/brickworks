@@ -6,7 +6,10 @@
 ## The parts bin's camera sends a photo the person chose to Brickognize, a
 ## third party (src/net/brickognize.gd). Nothing may go before the bin has
 ## said so, once; and offline, refused, garbled or empty, the answer has to
-## be said in words rather than leave the bin waiting. Brickognize itself is
+## be said in words rather than leave the bin waiting. And answered, its
+## part comes in the colour the photo shows when Brickognize is sure of it
+## (walk256 S3: a black slope came back in the red in hand), and a part made
+## in one colour is said to come in one. Brickognize itself is
 ## a stub here, on a port of this probe's own, and offline is a port with
 ## nobody on it: photo_search_probe asks the real one.
 extends SceneTree
@@ -21,6 +24,8 @@ var _server := TCPServer.new()
 ## What the stub answers next: a whole HTTP response.
 var _reply: String = ""
 var _asked: int = 0
+## The request line of the last photo asked about.
+var _request_line: String = ""
 var _peers: Array[StreamPeerTCP] = []
 var _heard: Dictionary = {}   ## peer -> bytes read so far
 
@@ -122,6 +127,42 @@ func _run() -> void:
 	_check("each says how sure Brickognize is (\"%s\")" % label, label == "3001  72%")
 	_check("what has no part here is said (\"%s\")" % _bin._status.tooltip_text,
 		_bin._status.tooltip_text.contains("bogus-77"))
+
+	print("  in the colour the photo shows")
+	# walk256 (S3): a black slope's photo was shown in red, the colour in hand.
+	_bin.choose_colour(4)
+	_reply = _http(200, "application/json", JSON.stringify({"listing_id": "x",
+		"items": [_item("3039", "Slope 45 2 x 2", 0.83)],
+		"colors": [{"id": "11", "name": "Black", "score": 0.81}]}))
+	await _ask(photo)
+	_check("the photo's colour is asked for (%s)" % _request_line,
+		_request_line.contains("predict_color=true"))
+	_check("its part comes in the photo's colour, Black, not the red in hand (%s)"
+		% library.color(_bin.selected_color()).name, _bin.selected_color() == 0
+		and _bin.first_found() == PackedStringArray(["3039"]))
+	_check("and the line says so: \"%s\"" % _bin._status.text, _bin._status.text.ends_with("in Black"))
+	_bin.choose_colour(4)
+	_reply = _http(200, "application/json", JSON.stringify({"listing_id": "x",
+		"items": [_item("3039", "Slope 45 2 x 2", 0.83)],
+		"colors": [{"id": "11", "name": "Black", "score": 0.12}]}))
+	await _ask(photo)
+	_check("a colour Brickognize is not sure of leaves the one in hand (%s)"
+		% library.color(_bin.selected_color()).name, _bin.selected_color() == 4)
+	_reply = _http(200, "application/json", JSON.stringify({"listing_id": "x",
+		"items": [_item("3039", "Slope 45 2 x 2", 0.83)]}))
+	await _ask(photo)
+	_check("and so does an answer with none (%s)" % library.color(_bin.selected_color()).name,
+		_bin.selected_color() == 4 and not _bin._status.text.contains(" in "))
+	# And what the palette says of a part made in one colour (walk256 S3: "A
+	# dot marks the 1 colours 3648a comes in").
+	var gear: PartLibrary.PartInfo = library.parts.get("3648a")
+	if gear != null and gear.availability_known() and gear.colors.size() == 1:
+		_bin.show_held("3648a", int(gear.colors[0]))
+		_bin._say_colour()
+		_check("a part made in one colour is said so: \"%s\"" % _bin._colour_note.text,
+			_bin._colour_note.text.contains("the 1 colour 3648a comes in"))
+	else:
+		_check("3648a is known in one colour", false)
 	_bin._search.text = "plate"
 	_bin._run_search("plate")
 	_check("typing a search puts the photo's results away",
@@ -190,6 +231,7 @@ func _serve() -> void:
 		if heard.size() < head_end + 4 + length:
 			continue
 		_asked += 1
+		_request_line = text.substr(0, text.find("\r\n"))
 		peer.put_data(_reply.to_utf8_buffer())
 		peer.disconnect_from_host()
 		_peers.erase(peer)

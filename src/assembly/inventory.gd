@@ -269,8 +269,8 @@ static func _csv(field: String) -> String:
 ## The same thing to read rather than to parse.
 func to_text(title: String = "Model") -> String:
 	var lines := PackedStringArray()
-	lines.append("%s — %d pieces in %d lots, %s" % [
-		title, pieces, lots.size(), weight()])
+	lines.append("%s — %s in %s, %s" % [
+		title, Counted.of(pieces, "piece"), Counted.of(lots.size(), "lot"), weight()])
 	lines.append("")
 	for lot: Lot in lots:
 		lines.append("%4d x  %-9s %-8s %-32s %s" % [

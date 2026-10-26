@@ -875,12 +875,13 @@ func _say_colour() -> void:
 		text = "%s%s, selected: a colour clicked paints %s" % [what, colour,
 			"it" if count == 1 else "them"]
 		if info != null and info.availability_known():
-			text += ". A dot marks the %d colours it comes in" % info.colors.size()
+			text += ". A dot marks the %s it comes in" % Counted.of(info.colors.size(), "colour")
 	else:
 		var color: PartLibrary.BrickColor = library.color(_selected_color)
 		text = "%s, %s" % [color.name, color.finish_name()]
 		if info != null and info.availability_known():
-			text += ". A dot marks the %d colours %s comes in" % [info.colors.size(), info.id]
+			text += ". A dot marks the %s %s comes in" % [Counted.of(info.colors.size(), "colour"),
+				info.id]
 			if not info.colors_partial:
 				text += "; it was made in no other"
 	_colour_note.text = text
@@ -1725,12 +1726,13 @@ func _show_more(most: int = PAGE) -> void:
 func _update_status() -> void:
 	var total: int = _display.size()
 	if not _guesses.is_empty():
-		_status.text = "From your photo, most likely first, as Brickognize sees it"
+		_status.text = "From your photo, most likely first, as Brickognize sees it" + (
+			"" if _guessed_colour.is_empty() else ", in %s" % _guessed_colour)
 		_status.tooltip_text = _guessed_note
 		return
 	if _category == TECHNIQUES:
 		_status.text = "nothing matches" if _techniques_shown == 0 else (
-			"%d worked constructions: choose one to hold it whole" % _techniques_shown)
+			"%s: choose one to hold it whole" % Counted.of(_techniques_shown, "worked construction"))
 		_status.tooltip_text = "R turns what is held, a click puts it down, Esc puts it away"
 		return
 	if total == 0 and _category == RECENT and _search.text.strip_edges().is_empty():
@@ -1746,7 +1748,8 @@ func _update_status() -> void:
 			_comma(_shown), _comma(total)]
 	# What the tiles hold folded: said where nothing else is, on one line.
 	if _folded > 0 and _set_aside == 0:
-		_status.text += "\n%s more folded under their parts: press +" % _comma(_folded)
+		_status.text += ("\n1 more folded under its part: press +" if _folded == 1
+			else "\n%s more folded under their parts: press +" % _comma(_folded))
 
 	# Where the rest went. Only on the default view, since that is the
 	# only place anything is held back.
@@ -2236,6 +2239,10 @@ var _telling: ConfirmationDialog
 var _guesses: Dictionary = {}
 ## What of the answer the bin has no part for, said on the status line's tooltip.
 var _guessed_note: String = ""
+## The colour the photo was seen in, by name, or "".
+var _guessed_colour: String = ""
+## How sure Brickognize must be of a photo's colour for it to be taken.
+const COLOUR_LEAST := 0.3
 
 
 ## A button in the search field, at its end, as the field's own clear button
@@ -2341,4 +2348,15 @@ func show_guesses(guesses: Array) -> void:
 			(child as Button).button_pressed = str(child.get_meta("category", "")) == _category
 	_results = found
 	_guesses = scores
+	# In the colour the photo shows, taken in hand as an element number's
+	# is: the photo of a black slope was shown in red, the colour that was
+	# in hand (walk256 S3). Kept as it is where Brickognize is not sure.
+	_guessed_colour = ""
+	var seen: Dictionary = _brickognize.colour
+	var code: int = int(PartLibrary.by_bricklink.get(int(seen.get("bricklink", -1)), -1)) \
+		if not seen.is_empty() and float(seen.get("score", 0.0)) >= COLOUR_LEAST else -1
+	if code >= 0 and library.colors.has(code):
+		_guessed_colour = library.color(code).name
+		if code != _selected_color:
+			_on_colour(code)
 	_fill_grid()

@@ -2496,7 +2496,8 @@ func _parts_list(input: Dictionary) -> String:
 		if stock.lots.is_empty():
 			return "Nothing is built yet."
 		var said := PackedStringArray()
-		said.append("%d pieces in %d lots, %s." % [stock.pieces, stock.lots.size(), stock.weight()])
+		said.append("%s in %s, %s." % [Counted.of(stock.pieces, "piece"),
+			Counted.of(stock.lots.size(), "lot"), stock.weight()])
 		for lot: Inventory.Lot in stock.lots.slice(0, limit):
 			said.append("  %3d x %s %s, %s%s" % [lot.count, lot.part_id, lot.name, lot.color_name,
 				" (element %s)" % lot.element if not lot.element.is_empty() else ""])
@@ -2534,7 +2535,7 @@ func _parts_list(input: Dictionary) -> String:
 			if short <= limit:
 				said.append("  short %d of %d x %s in colour %d" % [int(row["short"]), int(row["need"]),
 					str(row["part"]), int(row["colour"])])
-		said.append("Short of %d lots." % short if short > 0 else "They own every piece.")
+		said.append("Short of %s." % Counted.of(short, "lot") if short > 0 else "They own every piece.")
 		return "\n".join(said)
 	# What can I build? as the window ranks it (CollectionDialog._fill_build):
 	# the person's saved models, the examples and the official LDraw models

@@ -321,11 +321,24 @@ geometry in front of them.
   `tools/deploy.sh`); its BrickLink numbers become parts here by
   `PartLibrary.by_shop` (LDraw's "BrickLink 3062" keyword, else the number,
   else the mould under a letter) and show as the bin's results, each with how
-  sure Brickognize is. Offline, refused, garbled or empty, the status line says
+  sure Brickognize is. The colour it sees is asked for too
+  (`predict_color=true&top_k_colors=1`, `Brickognize.colour`, a BrickLink
+  colour number through `PartLibrary.by_bricklink`) and taken in hand, as an
+  element number's is, where it is at least `COLOUR_LEAST` sure, and the
+  line says "in Black": a black slope's photo came back in the red in hand
+  (walk256 S3). `photo_search_stub_probe` answers Black at 0.81 and 0.12 and
+  none; `bin_flow.mjs` sends the blue 3039 fixture live and reads the colour
+  in hand turn blue. Offline, refused, garbled or empty, the status line says
   so in words.
 - `a part asked for by number` lists its own family first: `3023` gives 3023b,
   3023a and the 3023 prints before 30236 or the 30239 spider (`NUMBER` in
-  `_match_score`).
+  `_match_score`). And only them: digits that number a part here match
+  numbers only, never words in a name or keywords (`PartSearch.ranked`,
+  `as_words`), so 3648 is the two gears and not the torsos of set 3648
+  ("Set 3648" in their keywords), nor 3001 a torso printed with a 3001 brick
+  (walk256 S3); digits no part is numbered by are still looked for as words,
+  as a BrickLink number in keywords is. `search_probe` `_only_numbered`, 12
+  numbers in the bin's search and the assistant's.
 - `thumbnails of light parts` are lit less (`PartThumbnails._light_for`), so a
   white part has a top and sides instead of one flat silhouette.
 

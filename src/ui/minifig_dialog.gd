@@ -857,10 +857,10 @@ func _mark_swatches() -> void:
 	if info != null and info.availability_known():
 		if info.id == Minifig.flat_of(library.parts.get(part)):
 			# A worn drawing of cloth stands for the cloth.
-			note += " A dot marks the %d colours %s comes in: %s is that cloth as worn." \
-				% [info.colors.size(), info.id, part]
+			note += " A dot marks the %s %s comes in: %s is that cloth as worn." \
+				% [Counted.of(info.colors.size(), "colour"), info.id, part]
 		else:
-			note += " A dot marks the %d colours %s%s comes in." % [info.colors.size(),
+			note += " A dot marks the %s %s%s comes in." % [Counted.of(info.colors.size(), "colour"),
 				info.id, "" if info.id == part else " (what %s is printed on)" % part]
 	_colour_note.text = note
 

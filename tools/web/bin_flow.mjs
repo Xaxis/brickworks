@@ -14,9 +14,10 @@
 //      Ctrl-Z takes all 17 back.
 //   3. The camera in the search field: first it says the photo goes to
 //      Brickognize, a third party; "Choose a photo" brings up the page's own
-//      file chooser; tests/fixtures/photos/3001.jpg (drawn by the app's own
-//      renderer, src/dev/photo_search_probe.gd) goes to Brickognize, live,
-//      and Brick 2 x 4, 3001, comes first in the bin.
+//      file chooser; tests/fixtures/photos/3039.jpg, a blue slope (drawn by
+//      the app's own renderer, src/dev/photo_search_probe.gd), goes to
+//      Brickognize, live, and Slope 45 2 x 2, 3039, comes first in the bin,
+//      in blue, the photo's colour, not the red in hand (walk256 S3).
 //   4. 3008, 3001, 3039 and 3069b typed: the part itself is the first tile, its
 //      prints and stickers folded under it behind a count (search242); the
 //      count pressed opens them after it, and pressed again folds them.
@@ -40,7 +41,7 @@ const first = bypass
   ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
   : url;
 const out = resolve(String(args.out || "shots/bin_web"));
-const photo = resolve("tests/fixtures/photos/3001.jpg");
+const photo = resolve("tests/fixtures/photos/3039.jpg");
 mkdirSync(out, { recursive: true });
 
 let failures = 0;
@@ -201,10 +202,14 @@ for (const phone of [false, true]) {
     await hit(told);
     for (let n = 0; n < 40 && choosers.length === 0; n++) await page.waitForTimeout(250);
     if (check("\"Choose a photo\" brings up the page's file chooser", choosers.length > 0)) {
+      const held = (await state()).colour;
       await choosers.shift().setFiles(photo);
-      const s = await until((now) => (now.found || [])[0] === "3001", 90);
-      check(`Brickognize names it, and Brick 2 x 4 comes first (${(s.found || []).slice(0, 3).join(", ")})`,
-        (s.found || [])[0] === "3001");
+      const s = await until((now) => (now.found || [])[0] === "3039", 90);
+      check(`Brickognize names it, and Slope 45 2 x 2 comes first (${(s.found || []).slice(0, 3).join(", ")})`,
+        (s.found || [])[0] === "3039");
+      const blue = await until((now) => now.colour === 1, 10);
+      check(`in the photo's colour, blue, not the colour in hand (${held} then ${blue.colour})`,
+        blue.colour === 1 && held !== 1);
       await page.waitForTimeout(phone ? 8000 : 5000);
       await picture("5_found");
     }
