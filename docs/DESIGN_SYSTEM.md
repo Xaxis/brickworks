@@ -465,10 +465,14 @@ and after scrolling, every page at 390 and 1280 px.
   `skeletonHtml`, the same markup in a page's HTML), not a `.model`, so
   nothing that counts cards counts it. Its bars are a typical row of
   cards' words: a name of two lines, the designer's line (two lines on a
-  phone, where their name and the model's size wrap) and one line of what
-  it has. When the answer comes the skeleton
+  card under 190 px wide, where their name and the model's size wrap: a
+  container query, as a row that scrolls holds 200 px cards on a phone)
+  and one line of what it has. As many as the cards it stands for: five
+  skeletons in a row that scrolls spread wider and taller than its eight
+  cards. `card_check` fails a page's copy that is not `skeletonHtml`'s.
+  When the answer comes the skeleton
   is taken out whole and what came put in, in one frame: new, not moved.
-  The gallery's first three rows (18 cards, three rows at six), the landing page's strip, /profile (its
+  The gallery's first three rows (18 cards, three rows at six), the landing page's strip (eight), /profile (its
   head, tabs and cards; a tab drawn the first time), /settings (its
   panel), /feed (posts and the rail) and /notifications.
 - **Drawn whole**: a page whose parts come from several answers (the
@@ -484,6 +488,11 @@ and after scrolling, every page at 390 and 1280 px.
   until then `#comments-hold` (`directory.css .comments-hold`, bones) holds
   their place at the height of a section with none yet and the box, and
   goes in the frame they are drawn in.
+- **Out of sight, or pressed**: a list's next page that comes by itself
+  (the gallery's, a screen ahead) is put in only while the end of the list
+  is under the screen. Come while what is under the list shows (Put yours
+  here, the footer), it waits, and Show more draws it at once: put in then,
+  it pushed them down under a person's eyes (site277, CLS 0.51).
 - **Signed in at once**: a page that is yours (/profile, /settings, /feed,
   /notifications) knows from the session kept in this browser that you
   are signed in, so it never says "Looking for your sign-in…" while it
@@ -496,7 +505,10 @@ and after scrolling, every page at 390 and 1280 px.
   alone pushed the page down).
 - **Pictures**: every `img` has `width` and `height`. The first screen's
   are asked at once and first (`loading="eager" fetchpriority="high"`:
-  `cardHtml`'s `eager`, the first `FIRST_SCREEN` (8) of a list; a pinned
+  `cardHtml`'s `eager`, the first `FIRST_SCREEN` (12) of a list the server
+  draws, and in the gallery as many as its skeletons on the first screen
+  at that width (18 at 1920); a designer's rows on the first screen once
+  laid out (`designs.js`); a pinned
   row; the landing page's first feature; a collection's cover and the
   first four collection cards, `mosaicHtml`'s and `listCardHtml`'s
   `eager`; the first five of a model's strip); the rest are

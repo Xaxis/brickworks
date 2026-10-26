@@ -319,12 +319,15 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
 
 /// How many of a list's cards are its first screen's, drawn [eager]: two
 /// rows of six on a wide window, two of five and more at 1280, six rows of
-/// two on a phone (site277's grid: 2 to 6 a row).
+/// two on a phone (site277's grid: 2 to 6 a row). The gallery counts the
+/// places on its own first screen instead (18 at 1920, three rows of six).
 export const FIRST_SCREEN = 12;
 
 /// A card's skeleton (site.css .skeleton-card): the card's frame and its
 /// words as bars, in a card's place until the list it stands for comes.
-/// Not a .model: nothing that counts the cards counts it.
+/// Not a .model: nothing that counts the cards counts it. The pages hold
+/// it in their HTML (gallery, index, profile and feed), each copy this
+/// markup: tools/web/card_check.mjs fails one that is not.
 export function skeletonHtml() {
   return '<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words">'
     + '<span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>';

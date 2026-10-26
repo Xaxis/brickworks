@@ -25,8 +25,10 @@
 //      heart is pressed and its count one more at once, and the model's own
 //      page shows it liked;
 //   4. endless: the next page comes by itself three times as the end
-//      nears, then waits for Show more, which brings a fifth; the address
-//      says page=5;
+//      nears, put in while the end is under the screen, then waits for
+//      Show more, which brings a fifth; the address says page=5. Flung to
+//      the foot of the page, the page that comes waits, moving nothing in
+//      view, and Show more draws it at once;
 //   5. Back from a model deep in the list comes back to its card, within
 //      100 px of where it was, with the page asked again (an unload
 //      listener keeps it out of the back-forward cache, which would keep
@@ -388,8 +390,11 @@ try {
   {
     const { context, page } = await visit({ width: 1280 });
     await gallery(page);
+    // Down the list as a person reads it: its end 100 px under the screen
+    // each time, which asks for the next page and puts it in out of sight.
     for (let at = 0; at < 6; at += 1) {
-      await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+      await page.evaluate(() => scrollBy({ top: document.getElementById("feed").getBoundingClientRect().bottom - innerHeight - 100,
+        behavior: "instant" }));
       await page.waitForTimeout(700);
     }
     let seen = await drawn(page);
@@ -402,6 +407,26 @@ try {
     check(seen.pages === 5 && /[?&]page=5\b/.test(seen.address) && seen.ids.length === new Set(seen.ids).size,
       `Show more brought a fifth page: ${seen.ids.length} cards, none twice, ${seen.address}`);
     deep = { address: seen.address, id: seen.ids[100], at: 101 };
+    await context.close();
+  }
+  {
+    // Flung to the foot: Put yours here shows when the next page comes,
+    // which waits rather than push it down (CLS 0.51 at 1280, site277).
+    const { context, page } = await visit({ width: 1280 });
+    await gallery(page);
+    const was = await page.evaluate(() => {
+      scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" });
+      return document.querySelector(".yours").getBoundingClientRect().top;
+    });
+    const came = await until(page, () => document.documentElement.dataset.auto === "1" && !document.getElementById("more").disabled);
+    await page.waitForTimeout(500);
+    const held = await page.evaluate(() => ({ pages: Number(document.documentElement.dataset.pages),
+      yours: document.querySelector(".yours").getBoundingClientRect().top }));
+    check(came && held.pages === 1 && held.yours === was,
+      `flung to the foot, the next page waits: ${held.pages} page drawn, Put yours here at ${Math.round(held.yours)} px, was ${Math.round(was)}`);
+    await page.click("#more");
+    const drew = await until(page, () => Number(document.documentElement.dataset.pages) === 2, null, 1000);
+    check(drew, "Show more draws the page that waited, at once");
     await context.close();
   }
 

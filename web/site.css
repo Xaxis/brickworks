@@ -552,23 +552,30 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 .tabs .bone { width: 240px; margin: 14px var(--s-3); }
 .skeleton-card {
 	display: flex; flex-direction: column; min-width: 0; border-radius: var(--radius); overflow: hidden;
-	border: 1px solid var(--line); background: var(--panel);
+	border: 1px solid var(--line); background: var(--panel); container-type: inline-size;
 }
 .skeleton-card .frame { aspect-ratio: 4 / 3; background: var(--picture-ground); animation: breathe 1.6s ease-in-out infinite; }
 /* As tall as a row of cards' words: a name of two lines (16 px at every
-   width), the designer's line (24 px, two lines on a phone's card, where
-   their name and its size wrap), and one line of what it has (Moves, the
-   most common), each bar drawn in the middle of its line's box. The card
-   has no row of numbers since site277: they are on the designer's line. */
+   width), the designer's line (24 px, two lines on a card narrower than
+   190 px, where their name and its size wrap), and one line of what it has
+   (Moves, the most common), each bar drawn in the middle of its line's box.
+   The card has no row of numbers since site277: they are on the
+   designer's line. */
 .skeleton-card .words { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px 12px; font-size: var(--t-body); }
 .skeleton-card .bone { height: calc(1.35em); margin: 0; padding: 0.3em 0; background-clip: content-box; }
-.skeleton-card .bone:nth-child(3) { height: calc(24px + 2px + var(--t-tiny) * 1.5); padding: 6px 0 calc(var(--t-tiny) * 1.5 + 8px); }
+.skeleton-card .bone:nth-child(3) { height: 24px; padding: 6px 0; }
 .skeleton-card .bone:nth-child(4) { height: calc(var(--t-tiny) * 1.65); padding: 6px 0; }
 .bone.tiny { width: 30%; }
 /* A bar as tall as a line of the words it stands for (a comment list's
    "Nobody has commented yet"), drawn in the line's middle. */
 .bone.line { height: 1lh; margin: 0; padding: 0.3lh 0; background-clip: content-box; }
-@media (width >= 600px) { .skeleton-card .bone:nth-child(3) { height: 24px; padding: 6px 0; } }
+/* The card's width decides the wrap, not the window's: a phone's card two
+   a row is 171 px, but a row that scrolls holds 200 px cards on a phone
+   too, and the landing strip's skeletons stood 24 px taller than its cards
+   there (site277). */
+@container (width < 190px) {
+	.skeleton-card .bone:nth-child(3) { height: calc(24px + 2px + var(--t-tiny) * 1.5); padding: 6px 0 calc(var(--t-tiny) * 1.5 + 8px); }
+}
 @media (width >= 900px) { .skeleton-card .words { padding: 10px 14px 12px; } }
 .models.row .skeleton-card { scroll-snap-align: start; }
 @keyframes breathe { 50% { opacity: 0.55; } }

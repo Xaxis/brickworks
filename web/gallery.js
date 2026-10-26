@@ -271,14 +271,16 @@ import { toast } from "/kit.js";
     }
     // A shelf of one or two looks broken: three at least (D12).
     $("small").hidden = small.length < 3;
-    $("small-models").replaceChildren(...(small.length < 3 ? [] : small.map(card)));
+    // Lazy, under the first rows: map's index is no [eager] (it made seven
+    // of the eight eager, far under the first screen).
+    $("small-models").replaceChildren(...(small.length < 3 ? [] : small.map((one) => card(one))));
     $("small-all").hidden = !(front && front.small && front.small.more);
     // What they can build now: signed in, every part in their collection.
     const signedIn = Boolean(shown && front && "mine" in front);
     const pool = signedIn ? front.mine : null;
     const ready = pool && front.ready ? (front.ready.models || []).filter((m) => m && ID.test(String(m.id))) : [];
     $("ready").hidden = !signedIn;
-    $("ready-models").replaceChildren(...ready.map(card));
+    $("ready-models").replaceChildren(...ready.map((one) => card(one)));
     $("ready-models").hidden = ready.length === 0;
     $("ready-all").hidden = !pool;
     const said = $("ready-said");
@@ -379,11 +381,36 @@ import { toast } from "/kit.js";
     }
   }
 
+  // Show more's press while a page that came by itself waits to be drawn
+  // (outOfSight): it is drawn then.
+  let release = null;
+
+  /// Resolves once the end of the list is under the screen, so a page put
+  /// there moves only what is out of sight, or once Show more is pressed.
+  /// Put in while Put yours here and the footer showed, a page moved them
+  /// down under a person's eyes (CLS 0.51 at 1280 signed in, whose pages
+  /// come slower: site277).
+  function outOfSight() {
+    const under = () => feed.getBoundingClientRect().bottom > innerHeight;
+    if (under()) return Promise.resolve();
+    return new Promise((done) => {
+      const look = () => { if (under()) release(); };
+      release = () => {
+        removeEventListener("scroll", look);
+        release = null;
+        done();
+      };
+      addEventListener("scroll", look, { passive: true });
+    });
+  }
+
   /// The next page of the list ([fresh]: the first, in place of what is
-  /// shown), drawn once [hold] (the shelves, on the first) has come too.
+  /// shown), drawn once [hold] (the shelves, on the first) has come too,
+  /// and [byItself] (not asked for by a press) once it is out of sight.
   /// Resolves once it is drawn.
-  async function next(fresh, hold = null) {
+  async function next(fresh, hold = null, byItself = false) {
     const mine = ++asking;
+    if (release) release();
     loading = true;
     more.disabled = true;
     const asked = question();
@@ -411,6 +438,11 @@ import { toast } from "/kit.js";
         await hold;
         if (mine !== asking) return;
       }
+      if (byItself) {
+        more.disabled = false;
+        await outOfSight();
+        if (mine !== asking) return;
+      }
       offers = { following: data.following === true, made: Array.isArray(data.mades),
         windows: Array.isArray(data.windows) };
       if (!filled) {
@@ -422,6 +454,11 @@ import { toast } from "/kit.js";
         filled = true;
       }
       if (data.score) weights = data.score;
+      // As many pictures asked for at once as the first screen shows at
+      // this width: the places of what the list replaces (its skeletons, at
+      // first) that are on it. Twelve left the third row lazy at 1920.
+      const eager = fresh ? [...grid.children].filter((one) => one.getBoundingClientRect().top < innerHeight).length
+        || FIRST_SCREEN : 0;
       if (fresh) grid.replaceChildren();
       page = Number(data.page) || (fresh ? 1 : page + 1);
       // A card once: the front's pick leads, and a page that shifted
@@ -433,7 +470,7 @@ import { toast } from "/kit.js";
         if (!ID.test(id)) continue;
         listed.set(id, model);
         if (id === pick || grid.querySelector(`.model[data-id="${id}"]`)) continue;
-        grid.append(card(model, fresh && grid.children.length < FIRST_SCREEN));
+        grid.append(card(model, grid.children.length < eager));
       }
       hasMore = Boolean(data.more);
       $("loading").hidden = true;
@@ -477,15 +514,17 @@ import { toast } from "/kit.js";
     return next(true);
   }
 
-  /// The next page by itself as the end of the list nears the screen, the
-  /// first three times; then Show more stays for a person to press.
+  /// The next page by itself as the end of the list comes within a screen
+  /// of the window, the first three times; then Show more stays for a
+  /// person to press. A screen ahead, so it is mostly drawn before the end
+  /// is in view (outOfSight); a person who got there first sees Show more.
   function nearEnd() {
     if (loading || !hasMore || more.hidden || auto >= AUTO) return;
     const box = more.getBoundingClientRect();
-    if (box.top > innerHeight + 600) return;
+    if (box.top > innerHeight * 2) return;
     auto += 1;
     document.documentElement.dataset.auto = String(auto);
-    next(false).then(nearEnd);
+    next(false, null, true).then(nearEnd);
   }
 
   // --- a like from a card ---------------------------------------------------
@@ -620,7 +659,7 @@ import { toast } from "/kit.js";
     kind = tag = "";
     ask();
   });
-  more.addEventListener("click", () => next(false));
+  more.addEventListener("click", () => (release ? release() : next(false)));
   addEventListener("scroll", nearEnd, { passive: true });
   addEventListener("resize", nearEnd, { passive: true });
   sayFilters();

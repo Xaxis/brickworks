@@ -173,6 +173,13 @@ export async function showDesigns(box, { handle = null, heading = "Your models, 
   const list = make("ol", "design-rows", ...models.map(row));
   box.replaceChildren(title, only, totals, counting, list);
   box.hidden = false;
+  // The pictures on the first screen asked for at once: a lazy one there
+  // came last (the first row at 1280 and 1920, site277). Which they are is
+  // known once they are laid out.
+  for (const img of list.querySelectorAll("img")) {
+    const at = img.getBoundingClientRect();
+    if (at.top < innerHeight && at.bottom > 0) img.loading = "eager";
+  }
   return said("ready");
 }
 

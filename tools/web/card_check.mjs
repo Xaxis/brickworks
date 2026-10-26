@@ -29,6 +29,7 @@
 // design_flow.mjs serves it (design_stand_in.mjs).
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -136,6 +137,15 @@ try {
     const [browserMade] = await drawn([model], options);
     check(server === browserMade, `sample ${model.id}${options.earned ? " (earned)" : options.like ? " (a like button)" : ""}: the same markup`
       + (server === browserMade ? "" : `\n        server:  ${server}\n        browser: ${browserMade}`));
+  }
+  // The pages' card skeletons are skeletonHtml's: each page holds its own
+  // copy in its HTML, and site275's stood for the card before site277's.
+  const { skeletonHtml } = await import(pathToFileURL(path.join(api, "_card.js")).href);
+  for (const name of ["gallery", "index", "profile", "feed"]) {
+    const copies = readFileSync(path.join(web, `${name}.html`), "utf8").match(/<div class="skeleton-card[^\n]*?<\/span><\/div><\/div>/g) || [];
+    const off = copies.filter((copy) => copy !== skeletonHtml());
+    check(copies.length > 0 && !off.length, `${name}.html: ${copies.length} card skeletons, ${off.length} not skeletonHtml's`
+      + (off.length ? `\n        page:    ${off[0]}\n        card.js: ${skeletonHtml()}` : ""));
   }
   // Words stay words: a name's markup is text on the card.
   const [risky] = await drawn([SAMPLES[0][0]], {});

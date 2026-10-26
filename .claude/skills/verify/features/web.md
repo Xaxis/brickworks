@@ -929,9 +929,15 @@ plan with Claude as the client.
   as a skeleton (`.skeleton`, `.bone`, `.skeleton-card` from
   `web/card.js` `skeletonHtml`) and is drawn whole when its answers are in
   (the gallery's first page with its pick and challenge line, the landing
-  strip, /profile, /settings, /feed, /notifications); the first screen's
+  strip, /profile, /settings, /feed, /notifications; each copy in a page's
+  HTML is `skeletonHtml`'s, which `card_check` fails otherwise; the strip
+  holds eight, as many as its cards, and a skeleton's designer line is two
+  lines only on a card under 190 px, by a container query); the first screen's
   card pictures are `eager` + `fetchpriority="high"` (`cardHtml`'s
-  `eager`, `FIRST_SCREEN` = 12 since site277's grid of up to six a row; a collection's cover and first four
+  `eager`, `FIRST_SCREEN` = 12 since site277's grid of up to six a row on
+  the server's pages; the gallery counts the skeletons on its first
+  screen, 18 at 1920, and `designs.js` makes a row's picture eager once it
+  is laid out on the first screen; a collection's cover and first four
   collection cards, `api/_lists.js` `mosaicHtml`/`listCardHtml` `eager`;
   a model's strip's first five); a designer's own numbers on /u/ sit under
   the work; the gallery's challenge line is the grid's first row
@@ -1708,8 +1714,12 @@ plan with Claude as the client.
   pick first and the shelves after the first rows (`ui:the gallery's front
   shelves`). A card's heart likes it from the card, signed in, at once
   (`POST /api/people?op=like`), and asks to sign in when not. The next page
-  comes by itself as Show more nears the screen, three times
-  (`data-auto`), then waits for Show more; the address keeps the question and
+  comes by itself as Show more comes within a screen of the window, three
+  times (`data-auto`), then waits for Show more; a page that came by itself
+  is put in only while the end of the list is under the screen, and waits
+  (Show more pressable, drawing it at once) while Put yours here or the
+  footer shows (site277: it pushed them down, CLS 0.51 signed in at 1280);
+  the shelves' cards are lazy; the address keeps the question and
   how many pages (`/gallery?q=castle&kind=space&sort=newest&page=3`), put back
   with `replaceState`, so it can be sent; a card opened is kept in the
   history's state and Back puts it where it was (`data-back` its id or
@@ -4345,7 +4355,9 @@ the same order (five shorter cards a row bring a third page with the
 same scroll); Filters a sheet inside a phone's screen; nothing matching said,
 and Clear bringing the gallery back; a like from a card signed out asking
 to sign in, signed in pressed and one more at once, its page saying
-Liked; three pages by scrolling, then Show more, page=5 in the address;
+Liked; three pages by scrolling (the end 100 px under the screen), then
+Show more, page=5 in the address; flung to the foot, the next page waiting
+with Put yours here where it was, and Show more drawing it at once;
 Back to card 101 within 100 px; the empty gallery, an empty Following and
 a quiet week each saying theirs with its way; and `api/share.js` before
 the SQL refusing a window or Made in words (400), after offering them with
