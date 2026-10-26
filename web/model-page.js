@@ -171,6 +171,7 @@ function startParts(section) {
   let asked = null;
   let group = "colour";
   let open = false;
+  list.setAttribute("aria-busy", "true");
   const swatch = (hex) => {
     const svg = document.createElementNS(SVG, "svg");
     svg.setAttribute("class", "swatch");

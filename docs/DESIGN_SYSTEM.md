@@ -252,7 +252,7 @@ is on the page, `hidden`, for the script to show.
   in `--accent-edge`; `.side`, the column that stays beside it on a laptop;
   and `.page-tabs`, the kit's `.tabs` as links to the parts of the page,
   sticky under the header, with a ground of its own only once stuck. The
-  Its Parts (`.parts`, docs/SOCIAL.md, site278): the count in a `.note`,
+  Its Parts (`.parts`, docs/SOCIAL.md, site278): the count in a `.note` ("N parts in M lots"),
   `.parts-bar` (a `.segmented` Colour · Kind, then the shops' lists as
   `.cta.ghost.small` links that download), and `ul.lot-list`, a row a
   colour or kind (`li.group`: its swatch, name and count) over a row a lot

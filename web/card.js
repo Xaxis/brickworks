@@ -81,7 +81,7 @@ export function iconButtonHtml({ icon, name, count = 0, one = "", many = "", pre
   const said = n ? `${name}, ${n.toLocaleString("en-US")} ${n === 1 ? one : many || `${one}s`}` : name;
   return `<button type="button" class="icon-btn${small ? " small" : ""}${labelled ? " labelled" : ""}" aria-label="${escapeHtml(said)}"`
     + `${pressed === null ? "" : ` aria-pressed="${pressed ? "true" : "false"}"`}${attrs ? ` ${attrs}` : ""}>`
-    + `${iconHtml(icon)}${labelled ? `<span class="word" aria-hidden="true">${escapeHtml(name)}</span>` : ""}`
+    + `${iconHtml(icon)}${labelled ? `<span class="word">${escapeHtml(name)}</span>` : ""}`
     + `${n ? `<span class="n" aria-hidden="true">${escapeHtml(n.toLocaleString("en-US"))}</span>` : ""}</button>`;
 }
 

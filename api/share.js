@@ -1117,7 +1117,7 @@ ${header}
       <div class="actions">
         <a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="Build it with real bricks, one step at a time from step 1: no account needed">Build it</a>
         <a class="cta ghost" href="${escapeHtml(copyLink)}" title="Copy it into your own models, to change and make yours">Open in Brickworks</a>
-        <a class="cta ghost" href="${fileAt}.mpd" download title="Its LDraw file, for Brickworks, Studio, LeoCAD or LDCad">Download</a>
+        <a class="cta ghost" href="${fileAt}.mpd" download>Download</a>
       </div>
       ${actionBar(origin, id, model, old ? `${origin}/m/${id}/v/${version.n}` : links(origin, id).url)}
       <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, counted)}</li>` : ""}${facts}</ul>
@@ -1130,7 +1130,7 @@ ${header}
     ${model.description ? `<p class="description">${escapeHtml(model.description)}</p>` : ""}
     ${tags ? `<ul class="tags pills" aria-label="Tags">${tags}</ul>` : ""}
     <div class="licence"><h3 id="licence-h">Licence</h3>${licenceWords(model)}</div></section>
-  ${partsSection(fileAt, version.n, parts)}
+  ${partsSection(fileAt, parts)}
   ${commentsSection(id, version.n, newest, counted ? counted.pages : null)}
   ${buildsSection(id, model, photos)}
   <section class="tree" id="remixes" aria-labelledby="tree-h"><h2 id="tree-h">Remixes</h2>
@@ -1201,19 +1201,20 @@ export const LOT_ROW = 60;
 /// screen, a row a lot under a row a colour, or a kind. Nothing where
 /// this deployment cannot list them. [at] is /m/X, or /m/X/v/N for an older
 /// version.
-function partsSection(at, n, parts) {
+function partsSection(at, parts) {
   if (!parts || !parts.lots.length) return "";
   const colours = new Set(parts.lots.map((lot) => lot.colour)).size;
   const rows = Math.min(LOTS_SHOWN, parts.lots.length + colours);
-  return `<section class="parts" id="parts" aria-labelledby="parts-h" data-parts="${at}/parts.json" data-version="${n}">`
+  // Lean: every byte here is in the page's first bytes, and the list is not.
+  return `<section class="parts" id="parts" aria-labelledby="parts-h" data-parts="${at}/parts.json">`
     + `<h2 id="parts-h">Parts</h2><p class="note">${escapeHtml(count(parts.pieces, "part"))} in `
-    + `${escapeHtml(count(parts.lots.length, "lot"))}: a lot is a part in a colour.</p>`
+    + `${escapeHtml(count(parts.lots.length, "lot"))}</p>`
     + `<div class="parts-bar"><div class="segmented" role="group" aria-label="Group them by">`
     + `<button type="button" data-group="colour" aria-pressed="true">Colour</button>`
     + `<button type="button" data-group="kind" aria-pressed="false">Kind</button></div>`
-    + `<a class="cta ghost small" href="${at}/parts.xml" download title="A wanted list to upload at BrickLink, under Wanted › Upload">BrickLink XML</a>`
-    + `<a class="cta ghost small" href="${at}/parts.csv" download title="A parts list to import at Rebrickable">Rebrickable CSV</a></div>`
-    + `<ul class="lot-list" aria-busy="true" style="min-height: ${rows * LOT_ROW}px"></ul>`
+    + `<a class="cta ghost small" href="${at}/parts.xml" download>BrickLink XML</a>`
+    + `<a class="cta ghost small" href="${at}/parts.csv" download>Rebrickable CSV</a></div>`
+    + `<ul class="lot-list" style="min-height:${rows * LOT_ROW}px"></ul>`
     + (parts.lots.length + colours > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all hidden>`
       + `Show all ${escapeHtml(count(parts.lots.length, "lot"))}</button>` : "")
     + `</section>`;
