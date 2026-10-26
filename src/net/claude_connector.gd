@@ -466,6 +466,64 @@ static func _chat_said(request: Dictionary) -> Dictionary:
 	return meta.get("brickworks/chat", {}) if meta.get("brickworks/chat") is Dictionary else {}
 
 
+## Each chat working in this tab, by the relay's short name ("" for calls that
+## name none: a tab's own address), as one sitting: when it last called, and
+## whether it has been told how to work here (Assistant.METHOD) and has begun
+## its subject. A chat quiet for longer than [constant QUIET_MS] begins a new
+## sitting, as the relay stops counting it in the tab then (api/mcp.js
+## HELD_MS): claude.ai is reported to share one session between two of its
+## conversations (claudeissues.com/issue/41836), and the second would
+## otherwise never be told.
+var _sittings: Dictionary = {}
+const QUIET_MS := 30 * 60 * 1000
+## The calls that say what is being designed, with the words that say it.
+const SUBJECT_CALLS := ["how_real_sets_build_this", "plan_scale", "find_reference",
+	"submit_design"]
+
+
+func _sitting(request: Dictionary) -> Dictionary:
+	var chat: String = str(_chat_said(request).get("chat", ""))
+	var now: int = Time.get_ticks_msec()
+	var sitting: Dictionary = _sittings.get(chat, {})
+	if sitting.is_empty() or now - int(sitting["last"]) > QUIET_MS:
+		sitting = {"told": false, "begun": false}
+		_sittings[chat] = sitting
+	sitting["last"] = now
+	return sitting
+
+
+## A chat's first design call begins its subject, as the bench's brief begins
+## one (Main.design_with_claude_code, Assistant.heard(brief, true)): what an
+## earlier chat in this tab designed, its part count and what it was told,
+## is not this one's. The tab never hears the person's words, so the subject
+## is the call's own.
+func _begin(sitting: Dictionary, tool: String, arguments: Dictionary) -> void:
+	if not tool in SUBJECT_CALLS or bool(sitting["begun"]) or rpc == null or rpc.assistant == null:
+		return
+	sitting["begun"] = true
+	var subject: String = str(arguments.get("subject", "")) if tool != "submit_design" \
+		else "%s. %s" % [arguments.get("name", ""), arguments.get("description", "")]
+	rpc.assistant.heard(subject.strip_edges().trim_suffix(".").strip_edges(), true)
+
+
+## [param answer] as the chat is sent it: its first answer in this tab with
+## the working method ahead of the tool's own words, which a client that
+## shows no instructions never had. Once a sitting, never in every answer: a
+## word said in every answer is heard twenty times and misleads (pose174,
+## 2026-10-23). The panel's copy of the answer is the tool's alone.
+func _taught(sitting: Dictionary, tool: String, answer: Variant) -> Variant:
+	if tool.is_empty() or bool(sitting["told"]) or not answer is Dictionary \
+			or not (answer as Dictionary).get("result") is Dictionary \
+			or not ((answer as Dictionary)["result"] as Dictionary).get("content") is Array:
+		return answer
+	sitting["told"] = true
+	var sent: Dictionary = (answer as Dictionary).duplicate()
+	var result: Dictionary = (sent["result"] as Dictionary).duplicate()
+	result["content"] = [{"type": "text", "text": Assistant.METHOD}] + (result["content"] as Array)
+	sent["result"] = result
+	return sent
+
+
 ## An ISO time from the relay, in seconds since 1970 (UTC).
 static func _unix(iso: String) -> int:
 	if iso.length() < 19:
@@ -1032,6 +1090,10 @@ func _answer(token: String, work: Dictionary) -> void:
 	# protocol's own — wants no answer, and the relay has already let it go.
 	if request.get("id") == null:
 		return
+	var sitting: Dictionary = {}
+	if not looking and not tool.is_empty():
+		sitting = _sitting(request)
+		_begin(sitting, tool, arguments)
 	var answer: Variant = null
 	if rpc != null:
 		answer = await rpc.answer_rpc(request)
@@ -1049,7 +1111,7 @@ func _answer(token: String, work: Dictionary) -> void:
 		meta["brickworks/model"] = _model()
 		carried["_meta"] = meta
 	await _ask(_reply, "%s/api/mcp?t=%s&op=answer&id=%d" % [base_url, token,
-		int(work.get("id", 0))], JSON.stringify(answer))
+		int(work.get("id", 0))], JSON.stringify(answer if sitting.is_empty() else _taught(sitting, tool, answer)))
 	if looking:
 		return
 	var result: Dictionary = (answer as Dictionary).get("result", {}) as Dictionary

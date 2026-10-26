@@ -73,6 +73,11 @@
 // (tools/web/notifications_stand_in.mjs), for tools/web/notifications_flow.mjs
 // and follows_flow.mjs as they will be once the file is applied.
 //
+// --instructions=none answers Claude's initialize with no instructions, as a
+// client that shows a server none would have it: the bound on claude.ai,
+// where whether they are shown was never measured (tools/bench/realset.py
+// --via relay --instructions none).
+//
 // --hold=replies holds supabase/replies.sql: which comment each reply
 // answers kept here, the replies written to the project as the comments
 // they are, and the functions the API asks answered over the live ones
@@ -84,6 +89,7 @@ import { standIn, standInRoute } from "./trust_stand_in.mjs";
 
 const port = Number(process.argv[2] || 8790);
 const site = (process.argv.find((a) => a.startsWith("--static=")) || "").slice(9);
+const withheld = process.argv.includes("--instructions=none");
 // Tables the live project does not have yet, kept in this process
 // (tools/web/held_tables.mjs): --hold=share_versions proves the code that
 // uses supabase/versions.sql before the file is applied. What they hold is
@@ -302,6 +308,9 @@ http.createServer(async (incoming, outgoing) => {
     status(code) { this.statusCode = code; return this; },
     setHeader(name, value) { outgoing.setHeader(name, value); return this; },
     json(value) {
+      if (withheld && found && found[1] === "mcp" && body && body.method === "initialize" && value?.result) {
+        delete value.result.instructions;
+      }
       outgoing.writeHead(this.statusCode, { "content-type": "application/json" });
       outgoing.end(JSON.stringify(value));
       return this;
@@ -320,4 +329,5 @@ http.createServer(async (incoming, outgoing) => {
   }
 }).listen(port, "127.0.0.1", () => {
   console.log(`the deployment's functions on http://127.0.0.1:${port}/api/`);
+  if (withheld) console.log("initialize answered with no instructions (--instructions=none)");
 });

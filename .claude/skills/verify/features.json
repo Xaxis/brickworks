@@ -1853,7 +1853,9 @@
       "entry": "src/ai/assistant.gd",
       "reach": "godot --headless --path . --script src/dev/responsive_probe.gd",
       "area": "assistant",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "lib:a build photo made safe",
@@ -1911,7 +1913,9 @@
       "entry": "src/ai/assistant.gd",
       "reach": "godot --headless --path . --script src/dev/section_probe.gd",
       "area": "geometry",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "lib:axles and gears on a line",
@@ -2107,7 +2111,9 @@
       "entry": "src/ai/assistant.gd",
       "reach": "godot --headless --path . --script src/dev/rules_probe.gd",
       "area": "assistant",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "lib:designers' numbers",
@@ -2447,7 +2453,9 @@
       "entry": "src/ai/assistant.gd",
       "reach": "godot --headless --path . --script src/dev/reference_probe.gd",
       "area": "assistant",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "lib:renders for the critique",
@@ -2495,7 +2503,9 @@
       "entry": "src/assembly/sections.gd",
       "reach": "godot --headless --path . --script src/dev/sections_probe.gd",
       "area": "building",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "lib:shapes said as patterns",
@@ -2752,7 +2762,9 @@
       "entry": "src/ai/techniques.gd",
       "reach": "godot --headless --path . --script src/dev/techniques_probe.gd",
       "area": "assistant",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "lib:worms hold their gears",
@@ -2800,7 +2812,9 @@
       "entry": "src/ai/assistant.gd",
       "reach": "godot --path .  (Mosaic from a picture, then Design with Claude; or ask the assistant for a LEGO Art picture)",
       "area": "view",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "ui:a designer's page",
@@ -3801,7 +3815,9 @@
       "entry": "src/ai/techniques.gd",
       "reach": "godot --path .  (Techniques beside Recent and Favourites in the parts bin; a row held whole, R turns it, a click puts it down)",
       "area": "parts",
-      "tests": []
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "ui:terms and guidelines",

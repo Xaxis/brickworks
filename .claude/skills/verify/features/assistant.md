@@ -224,7 +224,9 @@ fixing what it got wrong.
   set's name, theme, footprint and piece band, the real loop on the subscription
   (`--arm`, `--checkout`), and the pairwise judge blind between the design and the
   set, both orders; win rate per dimension with 95% intervals, the set-file
-  measures side by side, and two arms through the set and head to head. A set's
+  measures side by side (parts turned off the grid among them), `reach` for what
+  each design's session read, turned and placed, and two arms through the set and
+  head to head. A set's
   own pieces are held out of the designer's real-set index by `--held-out=<set
   number>` (src/ai/real_snippets.gd). `docs/DESIGN_SCORES.md`, "Against real
   sets". Under How to check it, "Real sets".
@@ -2483,8 +2485,25 @@ env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 
 env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which proof --arm mine --checkout ../mine --jobs 2 --audit-later
 heavy env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data python3 tools/bench/realset.py audit --which proof --arm mine
 env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py compare --which proof --arms main,mine --dates 2026-10-19,D --jobs 2
+heavy python3 tools/bench/realset.py reach --which proof --arm mine --date D   # did the lever reach the sessions: guide read, sections turned, techniques placed
+# The owner's path: Claude through the connector relay to the app as a throwaway account's tab
+# (deleted after), the server's instructions withheld; .env's keys, two ports a design
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --arm mine-relay --checkout ../mine --jobs 2 --audit-later --via relay --instructions none
 godot --headless --path . --script src/dev/design_memory_probe.gd -- --held-out=40148-1   # the set's pieces held out
 ```
+
+`--via relay` (conn283, 2026-10-26) runs each design as the owner's are: the
+relay (tools/web/relay_server.mjs, `--instructions=none` with `--instructions
+none`), a throwaway account with Claude Code signed in to it
+(tools/web/relay_account.mjs open/close), the arm's app headless as its tab
+(`--mcp --assistant=on --signed-in --held-out --draw-by`, a data folder of its
+own), and `claude -p` with the relay its only server; the session's stream is
+kept as session.jsonl, which `reach` reads, and the model is saved from the
+tab's own port. A session that changed nothing leaves the tab's example, which
+is no model; an API error (529) is not recorded, so the command tries again.
+`reach` says for each session whether it worked by the method:
+how_real_sets_build_this before its first build, review_model, settle_feature,
+a part count given, and whether an answer told it the method.
 
 Each of `--jobs` workers runs its share of the subjects, one after another
 (worker-<set>.log). Run it bare: a design's app is headless and holds no lease,
@@ -2517,7 +2536,10 @@ technique round started each half at once at load 45-75, its workers in one leas
 and a half of ten took 45-55 minutes on two or three workers; 2026-10-19, the
 grown proof half on main: 88 of 88 verdicts with all six pictures, orders
 agreeing on 88%, the first shown winning 45%, 34 new subjects in five hours on
-two workers with the GPU shared, nine minutes a subject).
+two workers with the GPU shared, nine minutes a subject). `reach` finds every
+design's transcript: 44 of 44 on main's and on main2's proof arms (2026-10-26),
+main's Flatiron 66% turned beside its set's 39%, ours 0% at the median against
+the sets' 11%.
 
 ### Best of two: each new brief designed twice in the app
 

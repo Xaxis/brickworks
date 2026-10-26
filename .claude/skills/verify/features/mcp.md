@@ -183,13 +183,29 @@ asking for an API key.
   in neither), and when one of the window's commands (Shell) is in neither
   `AppTools.COMMANDS` (the tool that does it) nor `AppTools.WINDOW_ONLY`
   (why it is the window's alone). A command added to the menus fails it
-  until it is placed in one.
+  until it is placed in one. And when `Assistant.METHOD`, the working method a
+  connector chat hears once, drops a tool HOW TO WORK names.
 - Over the connector (`api/mcp.js`, not the desktop's port) a session also
   has the relay's own `tabs` and `select_tab`, and a `target` argument on
   every tool, to choose between the account's open tabs; every answer from a
   tab begins by naming it and its model. See [web](web.md), "Several tabs,
   one account". They are not the app's tools, so `tools/mcp_tools.json` does
   not list them.
+- `a connector chat hears how to work` (conn283, 2026-10-26): a client need
+  not show a server's instructions, and whether claude.ai does was never
+  measured. So a tab says the method itself: a chat's first answer in it
+  carries `Assistant.METHOD` (HOW TO WORK in a few lines, and where read_guide
+  has the rest) after the relay's line naming the tab, once a sitting
+  (`ClaudeConnector._taught`; a chat quiet for 30 minutes begins another, a
+  call naming no chat is the tab's own sitting). The chat panel's copy of the
+  answer is the tool's alone. A chat's first design call
+  (`how_real_sets_build_this`, `plan_scale`, `find_reference`,
+  `submit_design`) begins its subject as the bench's brief does
+  (`Assistant.heard(subject, true)`): an earlier chat's subject, part count and
+  joints told are not this one's. The desktop's own port is unchanged.
+  `src/dev/connector_method_probe.gd` (headless, in the suite);
+  `tools/bench/realset.py --via relay` proves it through the relay and Claude
+  Code (assistant.md, "Real sets").
 - `the model in Claude` (MCP Apps, 2026-10-14): claude.ai and the Claude
   apps show the model inline beside `submit_design`, `look_at_model`,
   `view_model` and `edit_model`. The relay serves one `ui://brickworks/model.html`
