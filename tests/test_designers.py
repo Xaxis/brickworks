@@ -118,7 +118,7 @@ def test_the_page_counts_as_its_cards_do() -> None:
 
 def test_a_designer_card_leads_with_builds_and_never_says_views() -> None:
     # The one card (web/card.js), which the profile page draws its models with.
-    assert re.search(r'import \{ cardHtml\b[^}]*\} from "\./_card\.js";', PEOPLE)
+    assert re.search(r'import \{[^}]*\bcardHtml\b[^}]*\} from "\./_card\.js";', PEOPLE)
     card = js_function((ROOT / "web/card.js").read_text(encoding="utf-8"), "cardHtml")
     start = card.index("if (earned) {")
     earned = card[start: card.index("\n  }", start)]
