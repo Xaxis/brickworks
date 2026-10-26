@@ -1461,6 +1461,7 @@ def session_reach(lines: list[str]) -> dict:
     calls: dict[str, tuple[str, dict]] = {}
     refused: set[str] = set()
     told = False
+    laid: set[str] = set()
     for line in lines:
         message = json.loads(line).get("message", {})
         content = message.get("content") if isinstance(message, dict) else None
@@ -1476,6 +1477,9 @@ def session_reach(lines: list[str]) -> dict:
                 if str(said).startswith("Not applied"):
                     refused.add(block.get("tool_use_id"))
                 told = told or METHOD_SAID in str(said)
+                # A real piece laid: its bricks "as laid", and no refusal of the edit.
+                if "as laid" in str(said).lower() and "Not applied" not in str(said):
+                    laid.add(block.get("tool_use_id"))
     named = Counter(name for name, _ in calls.values())
     turned = [i for i, (name, given) in calls.items()
               if name in ("submit_design", "edit_model")
@@ -1483,6 +1487,15 @@ def session_reach(lines: list[str]) -> dict:
     first = next((given for name, given in calls.values() if name == "submit_design"), {})
     order = [name for name, _ in calls.values()]
     built = next((i for i, name in enumerate(order) if name in BUILDS), len(order))
+    # Each feature by the verdict it ended on (a feature accepted in three calls, adjusting
+    # it, is one), over the features the last build listed.
+    listed = next((given.get("features") for name, given in reversed(list(calls.values()))
+                   if name == "submit_design" and given.get("features")), []) or []
+    ended: dict[str, str] = {}
+    for name, given in calls.values():
+        if name == "settle_feature":
+            for one in str(given.get("feature", "")).split(","):
+                ended[one.strip().lower()] = str(given.get("verdict"))
     return {"calls": len(calls),
             "method": {"real_first": "how_real_sets_build_this" in order[:built],
                        "reviews": named["review_model"], "settled": named["settle_feature"],
@@ -1495,6 +1508,10 @@ def session_reach(lines: list[str]) -> dict:
             "turned_builds": len(turned), "turned_refused": len(refused & set(turned)),
             "techniques": {k: named[k] for k in ("find_techniques", "show_technique",
                                                  "place_technique")},
+            "placed": sum(1 for i, (name, _) in calls.items()
+                          if name == "place_technique" and i in laid),
+            "features_listed": len(listed),
+            "features_accepted": sum(1 for v in ended.values() if v == "accept"),
             "features": dict(Counter(str(g.get("verdict")) for n, g in calls.values()
                                      if n == "settle_feature")),
             "floor": str(first.get("floor", ""))}
@@ -1572,6 +1589,7 @@ def reach_report(which: str, date: str, arm: str, first: int = 0) -> str:
            "| features | floor | method |", "|" + "---|" * 10]
     ours_turned, sets_turned, guides, turned_any, placed_any, sessions = [], [], Counter(), 0, 0, 0
     method = Counter()
+    real_any, listed, accepted = 0, 0, 0
     for r in found:
         design = arm_dir(date, arm) / r["number"] / "design.ldr"
         mine = turned_share(design.read_text(errors="replace"), parts) if design.exists() else None
@@ -1592,6 +1610,10 @@ def reach_report(which: str, date: str, arm: str, first: int = 0) -> str:
         guides.update(reach["guide"])
         turned_any += reach["turned_builds"] > 0
         placed_any += reach["techniques"]["place_technique"] > 0
+        # A real piece in the design: one place_technique laid, or a feature's piece accepted.
+        real_any += reach["placed"] > 0 or reach["features_accepted"] > 0
+        listed += reach["features_listed"]
+        accepted += reach["features_accepted"]
         tech = "/".join(str(reach["techniques"][k]) for k in ("find_techniques", "show_technique",
                                                               "place_technique"))
         feats = ", ".join(f"{k} {v}" for k, v in sorted(reach["features"].items()))
@@ -1616,7 +1638,11 @@ def reach_report(which: str, date: str, arm: str, first: int = 0) -> str:
             f"build in {method['real']}, review_model in {method['review']} (an assembly's in "
             f"{method['assembly']}, the surface pass in {method['surface']}, the creative pass in "
             f"{method['creative']}), settle_feature in {method['settle']}, a part count given in "
-            f"{method['parts']}; told the method by an answer in {method['told']}."]
+            f"{method['parts']}; told the method by an answer in {method['told']}.",
+            f"A real piece in the design (a place_technique laid, or a feature's piece "
+            f"accepted): {real_any} of {sessions} sessions. Features accepted: "
+            f"{accepted} of the {listed} the last builds listed"
+            + (f" ({100 * accepted / listed:.0f}%)" if listed else "") + "."]
     return "\n".join(out) + "\n"
 
 

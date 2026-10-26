@@ -325,6 +325,172 @@ static var _CARRIES := RegEx.create_from_string(
 	"(?i)\\b(with|on|for|holding|carrying|over|under|beside|behind|inside|atop)\\b")
 
 
+## Words that say how much of a thing a piece is, never what: "tower roof
+## ridge section" is a ridge, "jet engine exhaust nozzle block" a nozzle.
+## A word for where on a thing it is stays its head: a bus's front end is a
+## front, not a bus, as a lion's belly is not a lion.
+const FILLER_HEADS := ["section", "segment", "detail", "piece", "part", "assembly",
+	"subassembly", "unit", "element", "module", "cluster", "structure", "block",
+	"portion", "component", "frame", "housing", "mount", "mounting", "build",
+	"construction", "mechanism", "arrangement", "combination", "group"]
+
+
+## What a piece is, by the head noun of each thing its description says it
+## is, stemmed: [[first reading's heads], [the next reading's], ...]. A
+## piece is named by its head, not by a word that only describes it: a
+## "pool cue rack" is a rack, not a pool, a "yellow lion belly" a belly, a
+## "bus bonnet" a bonnet. main's and main2's sessions rejected 63 of 72
+## pieces handed for features, matched on any word: a Technic gearbox for
+## a skyscraper's crown ("a 24-tooth crown gear"), a cue rack for a
+## reflecting pool. "traffic cone or warning beacon" is a cone first, a
+## beacon only as its second reading; "car windscreen and roof" both.
+static func heads_of(entry: Dictionary) -> Array:
+	var head: String = str(entry.get("text", "")).get_slice(":", 0)
+	var cut: RegExMatch = _CARRIES.search(head)
+	if cut != null and cut.get_start() > 0:
+		head = head.left(cut.get_start())
+	# "top-left of Boba Fett's helmet dome" is a top-left, not a dome; "row of
+	# windows" windows.
+	var of: RegExMatch = _OF.search(head)
+	if of != null:
+		var before: PackedStringArray = words(of.get_string(1))
+		head = of.get_string(2) if not before.is_empty() and COUNTED.has(before[-1]) \
+			else of.get_string(1)
+	var out: Array = []
+	for reading: String in _READINGS.sub(head, "|", true).split("|", false):
+		var heads := PackedStringArray()
+		for thing: String in _AND.sub(reading, "|", true).split("|", false):
+			for one: String in head_words(thing):
+				if not heads.has(one):
+					heads.append(one)
+		if not heads.is_empty():
+			out.append(heads)
+	return out
+
+
+## The head of a noun phrase, stemmed: its last word that is not
+## [constant FILLER_HEADS]. "tower roof ridge section" is [ridge]. Empty for
+## no word.
+static func head_words(phrase: String) -> PackedStringArray:
+	var said: PackedStringArray = words(phrase)
+	for n: int in range(said.size() - 1, -1, -1):
+		if not FILLER_HEADS.has(said[n]):
+			return PackedStringArray([said[n]])
+	return PackedStringArray([said[-1]]) if not said.is_empty() else PackedStringArray()
+
+
+## Whether a piece can be laid whole into a model: square to the grid, and
+## whole as it stands or wanting only a hold from the model (alone, its
+## verdict is floating, not held, or in pieces: PieceHold finds the hold).
+## Not one the check refuses as it was built, an overlap or a collision of
+## its own parts, which no hold mends.
+static func holdable(entry: Dictionary) -> bool:
+	if not bool(entry.get("square", true)) or not entry.has("lays"):
+		return false
+	if bool(entry["lays"]):
+		return true
+	var why: String = str(entry.get("why", ""))
+	for said: String in why.split(",", false):
+		var one: String = said.strip_edges()
+		if not (one == "floating" or one == "not held" or one.ends_with(" pieces")):
+			return false
+	return not why.is_empty()
+
+
+## The same build at the other sizes real sets use it: pieces that are the
+## same thing by their first reading (an arch, a shell, a fender), made of
+## much the same parts, as small and as big as sets made them, smallest
+## first, each laid whole by place_technique. An arch of two 1 x 4 arches
+## for a gateway, of 1 x 12 x 3 ones for a bridge.
+static func sizes_of(entry: Dictionary, limit: int = 3) -> Array:
+	var mine: PackedStringArray = first_heads(entry)
+	if mine.is_empty():
+		return []
+	var parts: Dictionary = _parts_of(entry)
+	var scored: Array = []
+	for raw: Variant in document().get("entries", []):
+		var other: Dictionary = raw
+		if other["id"] == entry["id"] or not first_heads(other).has(mine[0]) \
+				or not holdable(other):
+			continue
+		var alike: float = _alike(parts, _parts_of(other)) + 0.5 * _alike(
+			_set_of(entry.get("kinds", [])), _set_of(other.get("kinds", [])))
+		if alike >= 0.25:
+			scored.append([alike, other])
+	scored.sort_custom(func(a: Array, b: Array) -> bool:
+		return a[0] > b[0] if a[0] != b[0] else str(a[1]["id"]) < str(b[1]["id"]))
+	var kept: Array = []
+	var sizes: Array = [footprint(entry)]
+	for row: Array in scored:
+		var size: float = footprint(row[1])
+		var apart: bool = true
+		for other_size: float in sizes:
+			if maxf(size, other_size) < 1.4 * minf(size, other_size):
+				apart = false
+		if apart:
+			kept.append(row[1])
+			sizes.append(size)
+		if kept.size() >= limit:
+			break
+	kept.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return footprint(a) < footprint(b))
+	return kept
+
+
+## How much ground a piece covers, in studs: its width by its depth, the
+## height counted for one that stands taller than it is wide.
+static func footprint(entry: Dictionary) -> float:
+	var size: Array = entry["size"]
+	return maxf(1.0, float(size[0])) * maxf(1.0, float(size[2])) \
+		* maxf(1.0, float(size[1]) / 3.0 / maxf(1.0, maxf(float(size[0]), float(size[2]))))
+
+
+static var _first_heads: Dictionary = {}
+
+
+## The heads of a piece's first reading, kept once worked out.
+static func first_heads(entry: Dictionary) -> PackedStringArray:
+	var id: String = str(entry["id"])
+	if not _first_heads.has(id):
+		var readings: Array = heads_of(entry)
+		_first_heads[id] = readings[0] if not readings.is_empty() else PackedStringArray()
+	return _first_heads[id]
+
+
+static func _parts_of(entry: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for line: Variant in entry.get("bom", []):
+		out[str((line as Array)[0])] = true
+	return out
+
+
+static func _set_of(items: Variant) -> Dictionary:
+	var out: Dictionary = {}
+	for item: Variant in items as Array:
+		out[str(item)] = true
+	return out
+
+
+## Jaccard: what two sets share, of all either has.
+static func _alike(one: Dictionary, other: Dictionary) -> float:
+	if one.is_empty() and other.is_empty():
+		return 0.0
+	var shared: int = 0
+	for key: Variant in one:
+		if other.has(key):
+			shared += 1
+	return float(shared) / float(one.size() + other.size() - shared)
+
+
+## Words a thing is counted in: a row of windows is windows.
+const COUNTED := ["row", "pair", "set", "line", "column", "ring", "stack", "bank",
+	"band", "string", "array", "series", "couple", "number", "run", "tier", "cluster",
+	"group", "collection", "bunch"]
+static var _OF := RegEx.create_from_string("(?i)^(.*?)\\s+\\bof\\b\\s+(.*)$")
+static var _READINGS := RegEx.create_from_string("(?i)\\s*(?:\\bor\\b|,|;|/)\\s*")
+static var _AND := RegEx.create_from_string("(?i)\\s*(?:\\band\\b|&|\\+)\\s*")
+
+
 static func entry(id: String) -> Dictionary:
 	document()
 	return _by_id.get(id.strip_edges(), {})

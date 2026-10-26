@@ -11343,7 +11343,8 @@ func _piece_line(n: int, entry: Dictionary) -> String:
 	var size: Array = entry["size"]
 	var lays: String = "lays as it stands" if bool(entry.get("lays", false)) \
 		else ("built at an angle, copy it" if not bool(entry.get("square", true))
-			else "held from outside it, so hold it in your model or copy it")
+			else ("held by your model where it goes: place_technique finds the hold"
+				if RealSnippets.holdable(entry) else "the check refuses part of it as built, copy it"))
 	var text: String = str(entry.get("text", ""))
 	if text.length() > 110:
 		text = text.substr(0, text.rfind(" ", 110)) + "…"
@@ -19799,6 +19800,31 @@ func _show_technique(wanted: String) -> String:
 const FOUND := 3
 
 
+## Pieces that are what was asked for before those that only mention it: a
+## piece is its head noun (RealSnippets.heads_of), the query its own
+## (FeaturePass.nouns_of), as the feature pass has it. Asked "giant spider
+## leg", design285's Shelob session was shown a Spider-Man BrickHeadz first.
+## The search's order otherwise.
+static func _what_it_is_first(found: Array, query: String) -> Array:
+	var nouns: Array = FeaturePass.nouns_of(query)
+	var said: PackedStringArray = RealSnippets.words(query)
+	var ranked: Array = []
+	for n: int in found.size():
+		var entry: Dictionary = (found[n] as Array)[1]
+		ranked.append([FeaturePass.names_it(entry, said, nouns), n, found[n]])
+	ranked.sort_custom(func(a: Array, b: Array) -> bool:
+		# Its first reading, then a later one, then neither; else as found.
+		var mine: int = _reading_rank(int(a[0]))
+		var theirs: int = _reading_rank(int(b[0]))
+		return mine > theirs if mine != theirs else int(a[1]) < int(b[1]))
+	return ranked.map(func(row: Array) -> Variant: return row[2])
+
+
+static func _reading_rank(named: int) -> int:
+	return 2 if named >= FeaturePass.FIRST_READING else (1 if named >= FeaturePass.LATER_READING
+		else 0)
+
+
 func _find_techniques(query: String, max_studs: float, kinds: Array) -> Variant:
 	# Fetched on the web the first time, from beside the build.
 	if not await RealSnippets.ensure(self):
@@ -19807,7 +19833,8 @@ func _find_techniques(query: String, max_studs: float, kinds: Array) -> Variant:
 			+ "examples.")
 	if query.strip_edges().is_empty():
 		return "Say what you are building: \"owl eye\", \"car nose\", \"dragon wing\"."
-	var found: Array = RealSnippets.search(query, max_studs, kinds, FOUND)
+	var found: Array = _what_it_is_first(RealSnippets.search(query, max_studs, kinds, FOUND * 8),
+		query).slice(0, FOUND)
 	if found.is_empty():
 		return ("No real set has a piece called anything like \"%s\"%s. Try the "
 			% [query, " that small" if max_studs > 0.0 else ""]
@@ -19943,6 +19970,20 @@ func _snippet_picture(entries: Array) -> Image:
 ## id, turned, moved, recoloured, and put through edit_model so it is
 ## checked like anything else a design adds. The bricks as laid come back
 ## with the answer, so a design writing whole lists can carry them.
+##
+## Where it holds is the app's to find (PieceHold): a piece cut out of a set
+## is often held by the set around it, and "held from outside it, so hold it
+## in your model or copy it" sent main2's Sydney session, shown 21012's own
+## shell, to build flat wedges (design281). Laid at the x, y, z asked when
+## the model holds it there; otherwise at the nearest place within
+## [constant PLACE_REACH] where it does; and when none is that near,
+## refused with the nearest place that has one. The same build at the other
+## sizes real sets use it is said with each answer.
+const PLACE_REACH := 4.0 * 20.0
+## Edits tried at the places found, nearest first, before saying why not.
+const PLACE_TRIES := 3
+
+
 func _place_technique(args: Dictionary) -> Variant:
 	var id: String = str(args.get("id", ""))
 	await RealSnippets.ensure(self)
@@ -19957,10 +19998,15 @@ func _place_technique(args: Dictionary) -> Variant:
 			% id + "an id find_techniques gave or a name show_technique lists."
 			if RealSnippets.available()
 			else "This build has no index of real sets' sub-assemblies.")
+	var sizes: String = _piece_sizes(entry)
 	if not bool(entry.get("square", true)):
 		return ("%s is built at an angle, which a placement here cannot say "
 			% id + "part by part. Build it from the picture, with a section "
-			+ "for the angled part.")
+			+ "for the angled part." + sizes)
+	if not RealSnippets.holdable(entry):
+		return ("%s cannot be laid whole: the check refuses part of it as it was built (%s), "
+			% [id, entry.get("why", "")] + "which no hold in your model mends. Copy it with "
+			+ "your own parts from find_techniques' picture." + sizes)
 	var recolor: Dictionary = {}
 	var asked: Variant = args.get("recolor", {})
 	if asked is Dictionary:
@@ -19968,22 +20014,98 @@ func _place_technique(args: Dictionary) -> Variant:
 			recolor[int(str(key))] = int((asked as Dictionary)[key])
 	var at := Vector3(float(args.get("x", 0.0)), float(args.get("y", 0.0)),
 		float(args.get("z", 0.0)))
-	var laid: Variant = await _snippet_bricks(entry, at, int(args.get("turn", 0)), recolor)
-	if laid is String:
-		return laid
-	var bricks: Array = laid
-	_laying_whole = true
-	var said: Variant = await _run_tool({"name": "edit_model", "input": {"add": bricks}})
-	_laying_whole = false
+	var turn: int = posmod(int(args.get("turn", 0)), 4)
+	var hold := PieceHold.new(self)
+	var passed: Dictionary = {}
+	var said: Variant = null
+	var found: Dictionary = {}
+	var refused: String = ""
+	for attempt: int in PLACE_TRIES:
+		# The turn asked first; another only where that one holds nowhere near.
+		found = await hold.find(entry, at, [turn], "up", passed)
+		if found.is_empty() or float(found["far"]) > PLACE_REACH:
+			var turned: Dictionary = await hold.find(entry, at,
+				[1, 2, 3].map(func(n: int) -> int: return (turn + n) % 4), "up", passed)
+			if not turned.is_empty() and (found.is_empty()
+					or float(turned["far"]) < float(found["far"])):
+				found = turned
+		if found.is_empty() or float(found["far"]) > PLACE_REACH:
+			break
+		var bricks: Array = found["bricks"]
+		for brick: Variant in bricks:
+			var colour: int = int((brick as Dictionary)["color"])
+			(brick as Dictionary)["color"] = int(recolor.get(colour, colour))
+		_laying_whole = true
+		said = await _run_tool({"name": "edit_model", "input": {"add": bricks}})
+		_laying_whole = false
+		var first: String = str(said if said is String else (said as Array)[0].get("text", ""))
+		if not (first.begins_with("Not applied") or first.begins_with("That would")):
+			break
+		refused = first.get_slice("\n", 0)
+		passed[str(found["corner"])] = true
+		said = null
+	if said == null:
+		return _no_hold_said(entry, at, found, hold.why, refused) + sizes
+	var bricks: Array = found["bricks"]
+	var corner: Vector3 = found["corner"]
 	var rows := PackedStringArray()
 	for raw: Variant in bricks:
 		rows.append(JSON.stringify(raw))
-	var head: String = ("%s \"%s\", %s: %d parts, as laid:\n%s\n"
-		% [id, entry["name"], RealSnippets.credit(entry), bricks.size(),
-			"\n".join(rows)])
+	var moved: String = "" if float(found["far"]) < 0.5 and int(found["turn"]) == turn \
+		else " (asked at x=%s y=%s z=%s%s: the nearest place the model holds it)" % [
+			_studs(at.x), _studs(at.y), _studs(at.z),
+			", turn %d" % turn if int(found["turn"]) != turn else ""]
+	var held_by := PackedStringArray()
+	for brick_id: Variant in (found["held_by"] as Array).slice(0, 6):
+		held_by.append("the ground" if int(brick_id) == 0 else "#%d" % int(brick_id))
+	var head: String = ("%s \"%s\", %s: %d parts, laid whole at x=%s y=%s z=%s, turn %d%s, "
+		% [id, entry["name"], RealSnippets.credit(entry), bricks.size(), _studs(corner.x),
+			_studs(corner.y), _studs(corner.z), int(found["turn"]), moved]
+		+ "held by %s%s. As laid:\n%s\n%s"
+		% [", ".join(held_by), "" if int(found["groups"]) == 1
+			else " (in %d groups, each held by what it stands on, not by each other)" % int(found["groups"]),
+			"\n".join(rows), sizes.strip_edges()])
 	if said is Array:
 		return [{"type": "text", "text": head}] + (said as Array)
 	return "%s\n%s" % [head, str(said)]
+
+
+## Why a piece was not laid near where it was asked, and the nearest place
+## that holds it, to lay it there or give it a hold where it was meant to go.
+func _no_hold_said(entry: Dictionary, at: Vector3, found: Dictionary, why: String,
+		refused: String) -> String:
+	var asked: String = "x=%s y=%s z=%s" % [_studs(at.x), _studs(at.y), _studs(at.z)]
+	if found.is_empty():
+		return ("Not applied: %s holds nowhere in the model: %s%s. Give it free studs to "
+			% [entry["id"], why, ("; the check refused the nearest: " + refused)
+				if not refused.is_empty() else ""]
+			+ "sit on where it goes (a plate under where its parts stand), then place it again.")
+	var corner: Vector3 = found["corner"]
+	return ("Not applied: nothing holds %s within %s studs of %s%s. The nearest place "
+		% [entry["id"], _studs(PLACE_REACH / 20.0), asked, ("; the check refused the "
+			+ "nearest: " + refused) if not refused.is_empty() else ""]
+		+ "with a hold is x=%s y=%s z=%s, turn %d, %s studs away: place_technique there, or "
+		% [_studs(corner.x), _studs(corner.y), _studs(corner.z), int(found["turn"]),
+			_studs(snappedf(float(found["far"]) / 20.0, 0.5))]
+		+ "give it free studs where you want it and place it again.")
+
+
+## The same build at the other sizes real sets use it, in a line, for a
+## design to pick the one its model's scale wants. "" when none is.
+func _piece_sizes(entry: Dictionary) -> String:
+	var others: Array = RealSnippets.sizes_of(entry)
+	if others.is_empty():
+		return ""
+	var said := PackedStringArray()
+	for raw: Variant in others:
+		var other: Dictionary = raw
+		var size: Array = other["size"]
+		said.append("%s %s x %s studs, %s plates, %d parts" % [other["id"],
+			_studs(float(size[0])), _studs(float(size[2])), _studs(float(size[1])),
+			int(other["parts"])])
+	var mine: Array = entry["size"]
+	return ("\nThe same build at the sizes real sets use it (this one %s x %s studs): %s."
+		% [_studs(float(mine[0])), _studs(float(mine[2])), "; ".join(said)])
 
 
 ## One of show_technique's worked constructions laid into the model by edit_model:
@@ -22962,11 +23084,15 @@ func _tools() -> Array:
 				+ "connectors): every part where the set has it, "
 				+ "turned a number of quarter turns about the upright and "
 				+ "moved so its low corner is at x, y, z, in your colours "
-				+ "if you say which of its colours become which. Parts "
-				+ "cannot be scaled; pick a piece of the right size. "
-				+ "Checked like any edit: it is refused, with the reason, "
-				+ "if it overlaps the model or does not hold on. The "
-				+ "answer lists the bricks as placed."),
+				+ "if you say which of its colours become which. The app "
+				+ "finds the hold: laid where you say if the model holds it "
+				+ "there, or at the nearest place within 4 studs where it "
+				+ "does (a free stud under each part that needs one), and "
+				+ "otherwise refused with the nearest place that holds it. "
+				+ "Parts cannot be scaled: the answer says the same build at "
+				+ "the sizes real sets use it, to pick the one your model's "
+				+ "scale wants. Checked like any edit. The answer says where "
+				+ "it went and what holds it, and lists the bricks as placed."),
 			"input_schema": {
 				"type": "object",
 				"properties": {

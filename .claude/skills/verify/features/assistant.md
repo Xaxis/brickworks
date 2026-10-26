@@ -1924,11 +1924,36 @@ fixing what it got wrong.
   Recall on ten queries written beforehand (`docs/ROADMAP.md`): 8 of 10 with
   something an expert would use on names alone, 9 with descriptions; the miss
   left is the corpus (no owl or dragon set). `find_techniques` answers with
-  the best three (`FOUND`), each credited, in two lines (`_piece_line`: id,
+  the best three (`FOUND`) of the best 24 found, those that are what was asked
+  first (`_what_it_is_first`, the feature pass's `names_it`: "giant spider leg"
+  showed a Spider-Man BrickHeadz first), each credited, in two lines (`_piece_line`: id,
   size, whether it lays, its description cut at 110 characters, its first
   four parts), and one picture of them side by side, 200 pixels a piece
   (`_snippet_picture`, headless: text only) — five with whole parts lists
   and a 1,600-pixel sheet was a long read a run made once.
+  `place_technique` finds the hold itself (`src/ai/piece_hold.gd`,
+  `PieceHold`, design285): a piece that does not hold alone was answered
+  "held from outside it, so hold it in your model or copy it", and main2's
+  Sydney session, shown 21012's own shell, built flat wedges. Now the piece's
+  parts are grouped by what holds what among them (`components`), and places
+  are tried nearest the x, y, z asked first — the asked corner itself, then
+  each free hollow of the piece on each free stud of the model, the turn asked
+  before the other three — until every part fits and every group is held by
+  the model or stands on the ground (`holds`). Within `PLACE_REACH` (4 studs)
+  it is laid there through `edit_model` (up to `PLACE_TRIES` places if the
+  check refuses one), the answer saying where, how far from the asked spot and
+  by which bricks it is held; further, refused with the nearest place that has
+  a hold ("Not applied: nothing holds ... The nearest place with a hold is
+  x= y= z=, turn n"); a piece whose own parts the check refuses is refused
+  up front. Every answer says the same build at the sizes real sets use it
+  (`RealSnippets.sizes_of`: the same first head, parts and kinds much alike,
+  footprints 1.4 times apart; `_piece_sizes`), and `_piece_line` says
+  "place_technique finds the hold" for such a piece. `place_held_probe` (windowed, pictures in
+  `shots/place_held/`) asks a hinged shell, an arch, a wheel arch, a window
+  frame and a roof section each three plates over a walled 16 x 16 plate,
+  each laid whole and held and the model checked whole after; one asked 24
+  studs off is refused with the nearest place, and laid there when asked
+  again; the pieces' sizes are each the same thing.
   Features, one at a time, driven by the app (`src/ai/feature_pass.gd`,
   2026-10-13): `submit_design` takes `features` (required in the schema: what
   the subject is known by, each `{"name", "x", "y", "z", "facing"}` — where
@@ -1939,14 +1964,37 @@ fixing what it got wrong.
   app does the retrieval itself (`FeaturePass.propose`): `candidates_for`
   searches the index for the subject word and the feature (`_subject_words`,
   "owl eyes"), then the feature alone, and keeps up to six pieces that lay
-  whole (`lays`, square, at most 40 parts, no wider than 0.6 of the model)
-  and are that feature: what the piece is (`RealSnippets.what_it_is`, its
-  description up to the colon) names the feature's noun (`nouns_of`, the
-  last word of each thing it lists) or a word of the index's synonyms
-  (`RealSnippets.kin`), ranked by how much of the feature it says
-  (`names_it`), and none when no piece is it (walk180's tug was offered a
-  tugboat's funnel for its fenders, windows, bitts and mast: "harbour tug
-  boat" ran together as "tugboat" in the search);
+  whole (`RealSnippets.holdable`: square, and laying as they stand or wanting
+  only the model's hold — alone floating, not held or in pieces, never an
+  overlap or collision of their own; at most 40 parts, no wider than 0.6 of
+  the model, and no deeper than the model's shorter side — one too deep is
+  swapped for the same build at a size real sets made that fits,
+  `_fits`/`_smaller`; Venice's 5-deep skyline was offered a 6 x 6 dome) and
+  are that feature: the head noun of what the piece is
+  (`RealSnippets.heads_of`: its description up to the colon, cut at
+  with/on/for, an "X of Y" an X unless X counts it, each reading split at
+  "or" and each thing at "and", the last word not a filler like section,
+  detail or block) is the feature's noun
+  (`nouns_of`: the head of each thing it lists, cut at where it is — "torch
+  on the wall" is a torch, "gate doors in the arch" doors; "coat of arms" a
+  coat that must be of arms, `of_what`; "row of windows" windows) or a word
+  of the index's synonyms (`RealSnippets.kin`), a first reading before a
+  later one, and that does the feature's job (`does_the_job`: a light —
+  `SHINES` — or a window — `SEEN_THROUGH` — has a transparent part; the
+  loader's tail lights were offered three yellow bricks) ("traffic cone or
+  warning beacon" is a cone first; a later
+  reading only when no piece is it by its first), two a set counted among
+  those that are it (a set's houses took its two before its waterfall), ranked by
+  how much of the feature it says (`names_it`), and none when no piece is
+  it (walk180's tug was offered a tugboat's funnel for its fenders, windows,
+  bitts and mast; main's and main2's proof sessions rejected 63 of 72 pieces
+  as the wrong thing, matched on any word: a gearbox for a crown from "a
+  24-tooth crown gear", a cue rack for a reflecting pool, a lion's belly for
+  lions, design285). `feature_kinds_probe` (headless) checks heads and nouns
+  and eight of those features held out as realset holds them: none offered
+  the rejected piece, each offer of the kind named; with
+  `--cases=FILE --out=FILE` (rows of brief, feature, widest, set) it writes
+  each feature's first three offers for counting by hand;
   `spot_for` takes the design's spot or reads one off the name (`WHERE`:
   eyes high on the front, wheels low on the side, ear tufts on top, tails at
   the back) on the model's surface at that height, not its box; `fit` tries
@@ -1958,7 +2006,9 @@ fixing what it got wrong.
   studs and, facing sideways, `DEPTH` 1.5 studs of the face (seven studs every
   way put a starfighter's exhausts on its fuselage; the free studs found on a
   worker, `WorkerTasks.awaited`, 300 ms a piece tried on a Technic loader) — kept when no part runs
-  into the model and one is held by it (`OpenPoints.test`), and then only if
+  into the model and each group of the piece's parts that hold each other is
+  held by the model or the ground (`PieceHold.components`, `holds`, the
+  check's own rules a part at a time, `OpenPoints.test`), and then only if
   it is the feature where it goes (`unsuited`, walk256's M17: three of four
   pieces laid for a lighthouse were wrong): a door or a window (`IN_A_WALL`)
   upright in its wall's plane, its back half a stud or more inside the face
