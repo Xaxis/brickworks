@@ -28,6 +28,10 @@ done
 R=$(dirname "$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)")
 HERE=${RELEASE_HERE:-$(cd "$(dirname "$0")" && pwd)}
 S=$(realpath -m "${RELEASE_OUT:-${TMPDIR:-/tmp}/brickworks-release}"); mkdir -p "$S"
+# Begun, this is TAG's latest attempt: a result left by one before, or by a
+# waiter that gave up, would tell the release queued behind it that it had
+# ended (m178 held on m177's, 2026-10-26). ship_after.sh writes the new one.
+rm -f "$S/$TAG.done" "$S/$TAG.gave_up"
 export BOX_HEAVY_PRIORITY=1
 # The preview and its checks, as unit_preview.sh makes and runs them.
 WHO=SHIP
