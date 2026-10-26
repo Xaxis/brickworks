@@ -6270,7 +6270,7 @@ func _on_part_fetched(part_id: String) -> void:
 	if _store.place_awaited(part_id) > 0:
 		_on_model_changed()
 		if _store.awaited.is_empty():
-			_bar.say("%d bricks" % (_world.brick_count() - _store.scenery.size()))
+			_bar.say("%d bricks" % Inventory.pieces_in(_world, _library, _store.scenery))
 	if _builder.held_part == part_id:
 		_refresh_preview()
 		_bar.say("%s ready" % part_id)

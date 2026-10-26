@@ -1268,7 +1268,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		var placement: LdrModel.Placement = item
 		if not authored:
 			placement.step = -1
-		placement.part_id = studio_part(placement.part_id)
+		placement.part_id = studio_part(placement.part_id, library)
 		if placement.mirrored:
 			mirrored_lines["%d|%s" % [placement.line, placement.unit]] = true
 			Assemblies.unmirror(placement, library)
@@ -1736,7 +1736,7 @@ func _parts_named_in(model: LdrModel) -> Array:
 			named[placement.part_id] = true
 	var out: Dictionary = {}
 	for part_id: String in named:
-		out[library.resolve(studio_part(part_id))] = true
+		out[library.resolve(studio_part(part_id, library))] = true
 	return out.keys()
 
 
@@ -1806,7 +1806,7 @@ static func named_counts(counts: Dictionary, most: int = 6) -> String:
 ## library has that number it is that part; where it has not (a print only
 ## BrickLink knows, bl_3068pb2483), the name is kept, and the part is left
 ## out and named like any other the library has not got.
-func studio_part(part_id: String) -> String:
+static func studio_part(part_id: String, library: PartLibrary) -> String:
 	if part_id.begins_with("bl_") and not library.parts.has(part_id) \
 			and library.parts.has(part_id.substr(3)):
 		return part_id.substr(3)

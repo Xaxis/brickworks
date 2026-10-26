@@ -214,6 +214,14 @@ can occupy the same millimetre.
   bricks. Changing what it reads: compare the verdicts on real sets before
   and after (45 OMR sets, 2026-10-21: none changed but the Falcon's, whose
   4 x 6 plates hold six cones and two round bricks on ten studs, not two).
+  `Stability.contacts` compares each pair of parts once, both ways
+  (`BrickLattice.shared_lifted`: what rests on each and what the two share
+  as they stand, a turned cover's slices against the other's z by z where
+  the slices' spans meet, indexed by z, a box only against the other's
+  bound): on the Cat D11, its motors' cables 2,891 turned segments, the
+  graph took 19-21 s and takes under 5 s at load 40, the same graph to the
+  cell on four sets; `stability_probe` holds every way of counting to box
+  against box on Orthanc's turned parts.
 - `balance` (`src/assembly/balance.gd`, pure; docs/MECHANISMS.md §4, phase S1):
   whether the model stands on what it stands on, by how much, and which stud
   joint gives first. The support polygon is the hull of every box within half
@@ -224,7 +232,18 @@ can occupy the same millimetre.
   holds what (studs from `Stability.stud_joints`, pins, clips, hinges and
   turntables from `Joints`) carry everything beyond them: the moment about
   the edge they would turn on against M = Σ F·dᵢ at 1 N a stud (working) and
-  3 N (lets go), and the pull on a part hung under another. Joints in bonded
+  3 N (lets go), and the pull on a part hung under another. A bridge that
+  pins or axles alone make (`Joints.through`'s lines between the two) is
+  weighed as one fails (`Balance._pin_load`, docs/MECHANISMS.md §4): an axle
+  keyed in its hole ("axle") or pins on two lines ("two lines") hold it
+  square; on one line it turns unless its friction pins (`Bodies._has_friction`)
+  hold the moment about that line, 0.75 N·cm a pin working and 1 N·cm where it
+  slips (the docs' 0.5 to 1, not measured); a frictionless pin or an axle in a
+  round hole holds nothing about it. `JointLoad.kind`, `pins` and `held_on()`
+  say which ("on a friction pin"). walk256's D12: the Cat D11 had 14 joints
+  weighed, all on studs, its pin joints "held otherwise"; now 146, 125 of them
+  pins or axles, and `src/dev/technic_stress_probe.gd` holds it to that in
+  under 10 s. Joints in bonded
   walls share load statics cannot split and are left to Stability's levels.
   A touch (`stud_joints`' "beside": a face on a face, turned covers side by
   side) holds nothing: it carries weight straight down into what is under it
@@ -321,7 +340,15 @@ can occupy the same millimetre.
   rounds; see `pipeline.md`. And an older hinge's knuckles: rounds of one size
   on one line, a round of one part ending where two of another's begin and end
   (`Joints._knuckles`: 4275b's fingers and 4276b's), held both ways and
-  forgiving nothing. Joints are matched where a part is: one read off the
+  forgiving nothing. Each round's ends go in every box (`KNUCKLE_BOX`, 4
+  LDU) they could meet a knuckle's end in, and a knuckle looks at a part only
+  when a round of it ends by both of its ends; a round 2 LDU long or less
+  is neither a knuckle nor a finger (`KNUCKLE_SHORTEST`: it cannot be told
+  from the slack at its ends), which leaves out a cable LDraw draws as 1 LDU
+  wires; and a shaft is compared only with bores of its family and size to a
+  whole LDU. The Cat D11's round joints (25,602 knuckle-sized rounds, nearly
+  all its cables' wires) took 22-27 s and take under 2 s, the same knuckles
+  on nine sets with old hinges and the same joints and zones on seven. Joints are matched where a part is: one read off the
   world and not moved by the edit, in a section or not, is checked where it
   stands, its cover and studs as well as its joints (`Assistant._joined_at`). Read square, a hand
   turned 45 degrees in its arm had its peg nowhere near the arm's socket, so

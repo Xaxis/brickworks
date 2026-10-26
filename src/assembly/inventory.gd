@@ -62,6 +62,10 @@ class Lot extends RefCounted:
 
 var lots: Array[Lot] = []
 var pieces: int = 0
+## The bricks of the model that are no piece of their own (is_piece): the
+## cable segments and the like a bigger part is drawn with.
+var drawn_in_pieces: int = 0
+var _not_pieces: Dictionary = {}
 var grams: float = 0.0
 ## The flexible items counted as one part: item path -> its Lot, and each
 ## of their bricks -> its item's path. A hose laid along a bend is an end,
@@ -105,6 +109,10 @@ static func of(world: BrickWorld, library: PartLibrary,
 	for brick: BrickWorld.Brick in world.bricks():
 		if skip.has(brick.id) or inventory.whole_of.has(brick.id):
 			continue
+		if not is_piece(brick.part_id, library):
+			inventory.drawn_in_pieces += 1
+			inventory._not_pieces[brick.id] = true
+			continue
 		inventory._add(by_key, library, brick.part_id, brick.color_code).bricks.append(brick.id)
 
 	# Grouped by part, and the parts ordered by how many of them there
@@ -141,6 +149,8 @@ static func of(world: BrickWorld, library: PartLibrary,
 ## item's first piece stands for the whole of it and the rest are "", so a
 ## booklet step lists the hose once, where it goes in.
 func key_of(brick: BrickWorld.Brick) -> String:
+	if _not_pieces.has(brick.id):
+		return ""
 	var path: String = str(whole_of.get(brick.id, ""))
 	if path.is_empty():
 		return "%s:%d" % [brick.part_id, brick.color_code]
@@ -151,17 +161,75 @@ func key_of(brick: BrickWorld.Brick) -> String:
 
 
 ## How many pieces [method of] would count, without making the list: what
-## the counts line says.
+## the counts line says, the toast when a model opens and an opened model's
+## answer over MCP.
 static func pieces_in(world: BrickWorld, library: PartLibrary,
 		skip: Dictionary = {}) -> int:
-	var count: int = world.brick_count()
-	for brick_id: int in skip:
-		if world.get_brick(brick_id) != null:
-			count -= 1
-	var whole: Dictionary = _sold_whole(world, library, skip)
+	return pieces_among(world.bricks(), library, skip)
+
+
+## [method pieces_in] of [param bricks]: one count of a model's parts, the
+## one a builder means, whether it stands in the world or is a file read.
+static func pieces_among(bricks: Array, library: PartLibrary, skip: Dictionary = {}) -> int:
+	var whole: Dictionary = _sold_whole_among(bricks, library, skip)
+	var count: int = whole.size()
+	var in_whole: Dictionary = {}
 	for path: String in whole:
-		count -= (whole[path]["bricks"] as Array).size() - 1
+		for brick: BrickWorld.Brick in whole[path]["bricks"]:
+			in_whole[brick.id] = true
+	for brick: BrickWorld.Brick in bricks:
+		if not skip.has(brick.id) and not in_whole.has(brick.id) \
+				and is_piece(brick.part_id, library):
+			count += 1
 	return count
+
+
+## A model file's part count, as [method pieces_in] counts it once the file is
+## opened, without opening it: what the Library's card says of a model
+## (tools/library_build.py, from collection_models' "c"), and its box beside
+## it. Read as opening reads it (ModelStore._open_into): the parts the file
+## carries and its hoses' skins join the library first
+## (CustomParts.take_into), so what each is, a piece or a bit of one, is
+## read from what they are there; its sub-models expanded; a reference the
+## library has no part for (a primitive placed straight into the model) is
+## not drawn, and not counted. Read by its first lines alone, the D11 counted
+## 13 primitives and 12 of its own parts the catalogue names with a ~, and
+## 10179-1 none of its three hoses.
+static func count_of_text(text: String, library: PartLibrary) -> int:
+	var model: LdrModel = LdrModel.parse(text, "model")
+	if model == null:
+		return 0
+	CustomParts.take_into([], library, model, null)
+	var bricks: Array = []
+	for placement: LdrModel.Placement in model.flatten(library.parts):
+		var part: String = library.resolve(ModelStore.studio_part(placement.part_id, library))
+		if not library.parts.has(part):
+			continue
+		var brick := BrickWorld.Brick.new(bricks.size() + 1, part, placement.color_code,
+			placement.transform)
+		brick.group = placement.group
+		brick.unit = placement.unit
+		bricks.append(brick)
+	return pieces_among(bricks, library)
+
+
+## Whether a part is a piece a builder takes out of the box, as a model's
+## part count counts it: not one of the bits LDraw draws a bigger part with
+## and names with a ~ (a motor's cable as 1,300 ribbon segments), nor a hose
+## or a string drawn link by link (Flexible_Section), unless the ~ only says
+## the number moved. The Cat D11 opened as 6,793 parts, 2,891 of them its
+## four motors' cable segments, where its box holds 3,853 (walk256's D11).
+## Collection.ownable, less its stickers, which are in the model and on the
+## box's sheet; and a flexible item's piece (Flex.kind_of_piece) is one,
+## which in its item the item stands for and on its own is what it is:
+## nothing says which hose a loose ring is of.
+static func is_piece(part_id: String, library: PartLibrary) -> bool:
+	if library == null or not Flex.kind_of_piece(part_id).is_empty():
+		return true
+	var info: PartLibrary.PartInfo = library.parts.get(library.resolve(part_id))
+	if info == null:
+		return true
+	return info.category == "Sticker" or Collection.ownable(part_id, library)
 
 
 ## The flexible items sold as one part: item path -> {"part", "color",
@@ -169,8 +237,13 @@ static func pieces_in(world: BrickWorld, library: PartLibrary,
 ## has them in two.
 static func _sold_whole(world: BrickWorld, library: PartLibrary,
 		skip: Dictionary) -> Dictionary:
+	return _sold_whole_among(world.bricks(), library, skip)
+
+
+static func _sold_whole_among(bricks: Array, library: PartLibrary,
+		skip: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
-	var laid: Dictionary = Flex.items_in(world, skip)
+	var laid: Dictionary = Flex.items_among(bricks, skip)
 	for path: String in laid:
 		var item: Dictionary = laid[path]
 		var pieces: Array = []

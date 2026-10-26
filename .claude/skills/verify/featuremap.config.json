@@ -3428,6 +3428,20 @@
       "entry": "tools/web/collections_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/collections_flow.mjs --url=<preview> --out=DIR   (live project, throwaway accounts; preview check [collections])",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "technic stress probe",
+      "entry": "src/dev/technic_stress_probe.gd",
+      "reach": "tools/probe.sh technic_stress_probe   (headless; Stress on the Cat D11 in under 10 s, its pins and axles weighed and said)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "part counts probe",
+      "entry": "src/dev/part_counts_probe.gd",
+      "reach": "tools/probe.sh part_counts_probe   (headless; ten Library sets: the card, the model opened and its box say one count, or the card says the box too)",
+      "area": "collection"
     }
   ]
 }

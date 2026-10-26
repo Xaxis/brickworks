@@ -231,8 +231,9 @@ func _a_tall_model_costs_no_more(library: PartLibrary) -> void:
 ## hundred for a big turned plate, and counting what two of them share box
 ## against box was 10.4 s of Orthanc's 11 s check (8,785 parts, 5,345 of
 ## them turned; run 18), four times building it. The covers are compared
-## slice by slice now (BrickLattice.shared_lifted), which must count
-## exactly what box against box counts, lifted and as they stand.
+## slice by slice now (BrickLattice.shared_lifted), one's slices or both z
+## by z, which must count exactly what box against box counts, lifted
+## either way and as they stand.
 func _turned_parts_cost_no_more(library: PartLibrary) -> void:
 	var ldr: LdrModel = LdrModel.load_file("res://models/orthanc.ldr")
 	if ldr == null:
@@ -277,12 +278,16 @@ func _turned_parts_cost_no_more(library: PartLibrary) -> void:
 		for over: int in lattice.near_bounds(lid, brick.id):
 			var theirs: PackedInt32Array = lattice.boxes_of(over)
 			pairs += 1
-			var counted := Vector2i(BrickLattice.shared_cells(lid, theirs),
-				BrickLattice.shared_cells(mine, theirs))
+			var counted := Vector3i(BrickLattice.shared_cells(lid, theirs),
+				BrickLattice.shared_cells(mine, theirs),
+				BrickLattice.shared_cells(mine, BrickLattice.moved_by(theirs, Vector3i(0, 1, 0))))
 			if counted.y > 0:
 				overlapping += 1
 			if BrickLattice.shared_lifted(mine, slices, theirs) != counted \
-					or BrickLattice.shared_lifted(mine, [], theirs) != counted:
+					or BrickLattice.shared_lifted(mine, [], theirs) != counted \
+					or BrickLattice.shared_lifted(mine, [], theirs, BrickLattice.slices_of(theirs)) != counted \
+					or BrickLattice.shared_lifted(mine, slices, theirs, BrickLattice.slices_of(theirs)) \
+						!= counted:
 				wrong += 1
 	if wrong == 0 and pairs > 1000 and overlapping > 100:
 		print("  ok    sliced and box by box count the same on %d pairs of Orthanc's turned parts, %d of them overlapping"

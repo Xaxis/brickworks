@@ -1163,6 +1163,14 @@
       "tests": []
     },
     {
+      "id": "cli:part counts probe",
+      "kind": "cli",
+      "entry": "src/dev/part_counts_probe.gd",
+      "reach": "tools/probe.sh part_counts_probe   (headless; ten Library sets: the card, the model opened and its box say one count, or the card says the box too)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "cli:part facts",
       "kind": "cli",
       "entry": "tools/web/part_facts.mjs",
@@ -1525,6 +1533,14 @@
       "entry": "src/dev/tabs_probe.gd",
       "reach": "node tools/web/relay_server.mjs 8790, then godot --headless --path . --script src/dev/tabs_probe.gd -- 8790   (with .env sourced)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:technic stress probe",
+      "kind": "cli",
+      "entry": "src/dev/technic_stress_probe.gd",
+      "reach": "tools/probe.sh technic_stress_probe   (headless; Stress on the Cat D11 in under 10 s, its pins and axles weighed and said)",
+      "area": "view",
       "tests": []
     },
     {

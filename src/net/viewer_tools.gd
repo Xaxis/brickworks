@@ -68,8 +68,10 @@ static func _said(words: String, data: Dictionary, error: bool = false) -> Dicti
 	return {"content": [{"type": "text", "text": words}], "structuredContent": data, "isError": error}
 
 
+## The model's part count as a builder counts it, as the counts line says it
+## (Inventory.pieces_in).
 func _parts_count() -> int:
-	return maxi(assistant.world.brick_count() - assistant.scenery.size(), 0)
+	return Inventory.pieces_in(assistant.world, assistant.library, assistant.scenery)
 
 
 func _now() -> String:

@@ -410,7 +410,7 @@ func _sets(ask: Dictionary) -> Dictionary:
 			facts.append(str(entry["set"]))
 		if int(entry["year"]) > 0:
 			facts.append(str(entry["year"]))
-		facts.append("%s parts" % CollectionDialog._comma(int(entry["parts"])))
+		facts.append(ModelLibrary.parts_words(entry))
 		cards.append({"id": entry["id"], "name": ModelLibrary.tidy(str(entry["name"])), "kind": "set",
 			"facts": " · ".join(facts), "theme": ModelLibrary.tidy(str(entry["theme"])),
 			"credit": _credit_line(str(entry["author"]), str(entry["licence"])),

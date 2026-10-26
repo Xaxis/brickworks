@@ -301,7 +301,11 @@ func bind(to: ModelStore) -> void:
 		on_disk = ""
 		_name.text = name
 		model_named.emit(name)
-		_say("opened %s — %d bricks" % [name, bricks]))
+		# The parts a builder counts, as the counts line and the parts list
+		# do: the Cat D11 said 6,793 here, its motors' cable segments each one.
+		var parts: int = bricks if store.world == null else Inventory.pieces_in(
+			store.world, store.library, store.scenery)
+		_say("opened %s — %d bricks" % [name, parts]))
 	store.begun.connect(func(name: String) -> void:
 		on_disk = ""
 		_name.text = name

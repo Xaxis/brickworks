@@ -1362,10 +1362,15 @@ static func _pieces_of_kinds() -> Dictionary:
 ## Pieces loose in the model are no item: nothing says which hose a ring
 ## is of. Bricks in [param skip] are left out.
 static func items_in(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
+	return items_among(world.bricks(), skip)
+
+
+## [method items_in], of [param bricks] given rather than a world's: a model
+## file's parts as they are read, for its count (Inventory.count_of_text).
+static func items_among(bricks: Array, skip: Dictionary = {}) -> Dictionary:
 	# The counts line asks after every change, of models of thousands of
 	# parts: the pieces first, by a lookup each, and only where there are
 	# any the sub-models they are in.
-	var bricks: Array = world.bricks()
 	var found: Dictionary = {}
 	var not_items: Dictionary = {}
 	for brick: BrickWorld.Brick in bricks:

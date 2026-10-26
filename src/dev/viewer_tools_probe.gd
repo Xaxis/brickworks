@@ -97,8 +97,8 @@ func _run() -> void:
 	_check("it answers with the model packed, v1, %d bricks, of %s" % [int(scene.get("count", -1)),
 		str(scene.get("of", ""))], int(scene.get("v", 0)) == 1 and int(scene.get("count", -1)) == bricks.size()
 		and str(scene.get("of", "")) == ModelScene.of(_world) and str(data.get("of", "")) == ModelScene.of(_world))
-	_check("...and the parts count, %d" % int(data.get("parts", -1)),
-		int(data.get("parts", -1)) == _world.brick_count() - _assistant.scenery.size())
+	_check("...and the parts count as a builder counts them, %d" % int(data.get("parts", -1)),
+		int(data.get("parts", -1)) == Inventory.pieces_in(_world, _library, _assistant.scenery))
 	_check("...where the geometry is: %s" % str(scene.get("root", "")),
 		str(scene.get("root", "")).ends_with("/") and not str(scene.get("root", "")).is_empty())
 	var meshes: Array = scene.get("meshes", [])
@@ -208,7 +208,7 @@ func _run() -> void:
 	var shown: Dictionary = (asked.get("_meta", {}) as Dictionary).get(ModelViews.KEY, {})
 	_check("asked, look_at_model's _meta carries the model packed and the count",
 		(shown.get("scene", {}) as Dictionary).get("of", "") == ModelScene.of(_world)
-			and int(shown.get("parts", -1)) == wanted)
+			and int(shown.get("parts", -1)) == Inventory.pieces_in(_world, _library, _assistant.scenery))
 	var plain: Dictionary = await _rpc("tools/call", {"name": "look_at_model", "arguments": {}})
 	_check("not asked, it carries nothing more, and its words are the same",
 		not plain.has("_meta") and _text(plain) == _text(asked))
