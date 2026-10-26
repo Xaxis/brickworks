@@ -97,6 +97,10 @@
 .model-page .facts .tested-mark { margin: 0; }
 .model-page .facts li.tested:has(> .tested-mark[open]) { flex-basis: 100%; }
 .model-page .side .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0 0 12px; }
+/* Build it across the column, Open in Brickworks and Download under it,
+   sharing the row: three in a row fit neither a phone nor the column. */
+.model-page .side .actions > .cta { flex: 1 1 auto; }
+.model-page .side .actions > .cta:first-child { flex-basis: 100%; }
 
 /* Who made it: their avatar, name and handle, a link to their profile,
    and Follow beside it. */

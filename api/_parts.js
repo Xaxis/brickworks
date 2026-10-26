@@ -76,7 +76,7 @@ for (const [kind, spec] of Object.entries(KINDS)) {
 /// What the table holds, from the catalogue, the colours and the elements
 /// (assets/generated): every part as [name, category index, flags (1: a
 /// Flexible_Section), moved to, BrickLink's number, Rebrickable's number],
-/// trailing blanks left off; every colour as [name, hex, LEGO's name,
+/// trailing blanks left off; every colour as [name, hex, the LEGO Group's name for it,
 /// Rebrickable's number, BrickLink's number, plain code]; the element to
 /// order for each part in a plain colour; and the straight parts each
 /// flexible kind is sold as, shortest first (Flex.lengths_of).
@@ -334,6 +334,11 @@ function takeInto(library, model) {
     }
     const named = library.info(name.trim());
     if (named && !named.custom && name.trim() !== id) name = named.name;
+    // A copy of a catalogue part, named for it as the LDraw model
+    // repository names one ("8880 - 168315i"), goes by that part's name
+    // (CustomParts.read_as_copy, where its drawing is the part's, as it is).
+    const copied = id.lastIndexOf(" - ") >= 0 ? library.info(id.slice(id.lastIndexOf(" - ") + 3).trim()) : null;
+    if (copied && !copied.custom) name = copied.name;
     library.custom.set(id, { name, category: text.includes("\n0 !CATEGORY Flexible\n") ? "Flexible" : "Custom",
       flexible: false, moved: "", bricklink: "", rebrickable: "", custom: true });
   }

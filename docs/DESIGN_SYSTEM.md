@@ -214,7 +214,9 @@ is on the page, `hidden`, for the script to show.
   as tall as a field (`.small` 36 for a card's row), its count beside its
   icon once there is one. `.labelled` (`iconButtonHtml({ labelled: true })`)
   says its name too, between the icon and the count: a model's Like and
-  I built it, which nobody reads from a glyph alone. Its label says its name and count to a screen
+  I built it, which nobody reads from a glyph alone; on a phone (600 px and
+  under) the row of six has room for icons and counts only, and the word
+  is hidden there. Its label says its name and count to a screen
   reader ("Like, 12 likes"; "Like" at none); a toggle is `aria-pressed`,
   and pressed is edged in `--accent-edge` with its icon filled. A button
   that opens something rather than toggling (Save, which opens your
@@ -259,7 +261,8 @@ is on the page, `hidden`, for the script to show.
   ellipsis; `.qty`), every row 60 px so the space the list takes is kept
   before it comes; a colour's swatch is an inline `svg.swatch` filled with
   the brick's own colour, which is the model's, not the site's. Download is
-  a `.cta.ghost` in the column's actions. The
+  a `.cta.ghost` in the column's actions: Build it across the column, Open
+  in Brickworks and Download sharing the row under it. The
   public collections it is in (docs/SOCIAL.md U11) are a fact `a.pill`
   ("In 2 collections"), a tab and `.in-lists`, a `.list-cards` of their
   covers, each saying whose; none of the three while it is in none. Its

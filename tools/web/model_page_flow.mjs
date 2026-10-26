@@ -216,8 +216,16 @@ async function partsChecks(page, label, seen, one) {
     const list = section.querySelector(".lot-list");
     return { busy: list.getAttribute("aria-busy"), height: section.getBoundingClientRect().height,
       drawn: document.documentElement.dataset.parts || "", note: section.querySelector(".note").textContent,
-      at: section.dataset.parts, words: [...document.querySelectorAll("#marks .icon-btn.labelled .word")].map((w) => w.textContent),
-      download: document.querySelector('.side .actions a[download]')?.getAttribute("href") || "" };
+      at: section.dataset.parts,
+      // Shown beside their icons on a tablet or a laptop; on a phone the
+      // row of six has room for icons and counts alone.
+      words: [...document.querySelectorAll("#marks .icon-btn.labelled .word")]
+        .filter((w) => innerWidth <= 600 || w.getClientRects().length).map((w) => w.textContent),
+      download: document.querySelector('.side .actions a[download]')?.getAttribute("href") || "",
+      // When the list was asked for, against the page's first paint: never
+      // with the page itself.
+      asked: performance.getEntriesByType("resource").find((r) => r.name.includes("/parts.json"))?.startTime ?? null,
+      painted: performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? null };
   });
   check(`${label}: a Parts section (${before ? before.note : "none"})`, Boolean(before));
   if (!before) return;
@@ -226,8 +234,9 @@ async function partsChecks(page, label, seen, one) {
   check(`${label}: its tab (${tab}) and its section say one count, ${total}`, tab === `Parts ${total.toLocaleString("en-US")}`);
   check(`${label}: Like and I built it say their names beside their icons (${before.words.join(", ")})`,
     JSON.stringify(before.words) === JSON.stringify(["Like", "I built it"]));
-  check(`${label}: the list not asked for before the section nears the screen (${before.drawn || "not drawn"})`,
-    before.drawn === "" && before.busy === "true");
+  check(`${label}: the list its own request, after the page's first paint (asked at ${before.asked === null ? "none yet"
+    : Math.round(before.asked)} ms, painted at ${Math.round(before.painted)} ms)`,
+  before.painted !== null && (before.asked === null ? before.busy === "true" : before.asked >= before.painted));
   await page.evaluate(() => document.getElementById("parts").scrollIntoView({ block: "start" }));
   const drawn = await until(page, () => document.documentElement.dataset.parts === "drawn", null, 20000);
   check(`${label}: the list drawn once it nears the screen`, drawn);

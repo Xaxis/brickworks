@@ -697,6 +697,10 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .icon-btn[aria-pressed="true"] .icon, .icon-btn[data-on] .icon { fill: currentColor; }
 .icon-btn.small { min-width: 36px; min-height: 36px; padding: 0 10px; }
 .icon-btn.small .icon { width: 18px; height: 18px; }
+/* .labelled says its name too, between its icon and its count (a model's
+   Like and I built it); on a phone the row of six has room for icons and
+   counts alone, and the name stays its label. */
+@media (max-width: 600px) { .icon-btn.labelled .word { display: none; } }
 
 /* The toast (web/kit.js toast): a line that says what just happened
    ("Link copied") at the foot of the screen, read out, gone in a moment. */
