@@ -280,12 +280,14 @@ a:focus-visible { border-radius: var(--r-1); }
 /* On a phone the mark, Open the app and Menu fill the bar, and the last
    keeps the page's 16 px gutter (design_flow.mjs fails it closer): Open
    the app drops the margin that set it apart from the links Menu now
-   holds, and it and Menu give a little a side. A tablet has the laptop's
+   holds, the bar's gaps close to 8 px, and Open the app and Menu give a
+   little a side, so the word still fits at 390. A tablet has the laptop's
    bar: it fits from 600 px. */
 @media (width < 600px) {
 	.nav a:not(.cta), .nav .account-menu { display: none; }
 	.menu { display: block; }
-	.site-head .nav .cta { margin-left: 0; padding-inline: 12px; }
+	.site-head .bar { gap: var(--s-2); }
+	.site-head .nav .cta { margin-left: 0; padding-inline: 10px; }
 	.site-head .menu summary:not(.account-btn) { padding-inline: 10px; }
 }
 

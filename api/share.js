@@ -845,7 +845,7 @@ ${rows.join("\n")}
 function testedMark(mark, counted = null) {
   if (!mark) return "";
   return `<details class="tested-mark" data-tested="yes"><summary class="pill good" title="${escapeHtml(mark.line)}">`
-    + `<span class="tick" aria-hidden="true">✓</span> Tested</summary><div class="tested-says">`
+    + `<span aria-hidden="true">✓</span> Tested</summary><div class="tested-says">`
     + `<ul>${mark.said.map((one) => `<li>${escapeHtml(one)}</li>`).join("")}</ul>`
     + `<p class="note">Worked out by the Brickworks app ${escapeHtml(mark.app)} as it was published, `
     + `building it by its own ${counted ? countSaid(counted) : count(mark.steps, "step")}.</p></div></details>`;

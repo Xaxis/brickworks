@@ -438,8 +438,9 @@ signed in, and fails on what a person would notice: a visible control the
 browser drew its own way, controls of one kind on a page that differ from
 each other (the fields in type, height, corners, border or fill; the
 buttons of one size), a page that scrolls sideways on a phone, a count of
-none shown ("0 likes"), and any rule in the page's stylesheets, its own
-style or a `style=""` with a font size, corner or colour off the scale
+none shown ("0 likes"), an h2 or h3 drawn off `--t-h2` or `--t-h3`
+(2026-10-26: red on a planted `.prose h2` at the h3's size), and any
+rule in the page's stylesheets, its own style or a `style=""` with a font size, corner or colour off the scale
 (named once, with its stylesheet). Against the site before the kit
 (2026-10-22) it named 178 such rules (123 sizes, 43 corners, 12 colours or
 fonts) and a quiet model's "0 remixes"; after, none.
