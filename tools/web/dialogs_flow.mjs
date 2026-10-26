@@ -72,7 +72,8 @@ const out = String(args.out || "shots/dialogs");
 const SIZES = String(args.sizes || "390x844,430x932,768x1024,1024x768").split(",");
 const ONLY = args.only ? String(args.only).split(",") : null;
 // --hold=MS: each tap held down that long before the finger lifts, as a
-// person's is (about 100 ms) or longer; 0, the default, taps at once.
+// person's is (about 100 ms) or longer, and rolled a pixel or two first, as
+// a finger is; 0, the default, taps at once.
 const HOLD = Number(args.hold || 0);
 const SLOW = Number(args.slow || 1);
 mkdirSync(out, { recursive: true });
@@ -143,6 +144,11 @@ try {
       if (HOLD > 0) {
         await touch("touchStart", [at]);
         await page.waitForTimeout(HOLD);
+        // A finger held down is never quite still: it rolls a pixel or two
+        // before it lifts. Held perfectly still, a button that moved away
+        // under it still took the press (press271), and a person's did not.
+        await touch("touchMove", [{ x: at.x + 2, y: at.y }]);
+        await page.waitForTimeout(50);
         await touch("touchEnd", []);
       } else {
         await page.touchscreen.tap(at.x, at.y);
@@ -429,7 +435,12 @@ try {
             await press("saved_rename_ok", 5);
             await keyboard(0);
             const s = await until((now) => now.storage?.title === `${named} again`, 15);
-            check(`renamed "${named} again" (${s.storage?.title})`, s.storage?.title === `${named} again`);
+            // As a missed save does: where the tap went, where Rename is
+            // now, and what the dialog asks (a name refused says why there).
+            const why = s.storage?.title === `${named} again` ? "" : `; tapped ${JSON.stringify(lastTap)}, Rename now at `
+              + `${JSON.stringify((await controls()).saved_rename_ok || null)}, open ${JSON.stringify((await ask())?.dialogs || null)}, `
+              + `asking "${s.saved_models?.asking || ""}", said "${s.said || ""}"`;
+            check(`renamed "${named} again" (${s.storage?.title}${why})`, s.storage?.title === `${named} again`);
           }
         }
         if (await press("saved_delete_1", 10)) {
