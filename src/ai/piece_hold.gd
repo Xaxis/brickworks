@@ -36,8 +36,12 @@ func _init(of: Assistant, reading: OpenPoints = null) -> void:
 
 ## The piece's parts, laid as [param bricks] (placements as edit_model takes
 ## them), in groups that hold each other: a part joined to another by a stud,
-## a pin or a clip is in its group. One group is a piece that lays whole.
-func components(bricks: Array) -> Array:
+## a pin or a clip is in its group. One group for a piece the index says
+## lays whole alone ([param whole]: the whole check's verdict, which knows a
+## door's hinge in its frame where one part asked at a time does not).
+func components(bricks: Array, whole: bool = false) -> Array:
+	if whole:
+		return [range(bricks.size())]
 	var skip: Dictionary = {}
 	for brick: BrickWorld.Brick in assistant.world.bricks():
 		skip[brick.id] = true
@@ -97,9 +101,15 @@ func find(entry: Dictionary, corner: Vector3, turns: Array, up: String = "up",
 	for brick: BrickWorld.Brick in assistant.world.bricks():
 		if not assistant.scenery.has(brick.id):
 			ids.append(brick.id)
-	var free: Array = (read.points_of(ids) as Array).filter(func(point: OpenPoints.Point) -> bool:
+	var points: Array = read.points_of(ids)
+	var free: Array = points.filter(func(point: OpenPoints.Point) -> bool:
 		return point.kind == "stud" and point.by == 0 and point.section.is_empty() \
 			and point.way.dot(way) > 0.99)
+	# And the model's free hollows, for a piece that hangs under what holds
+	# it: a fender under a car's deck, a canopy under a roof's edge.
+	var under: Array = points.filter(func(point: OpenPoints.Point) -> bool:
+		return point.kind == "anti-stud" and point.by == 0 and point.section.is_empty() \
+			and point.way.dot(-way) > 0.99)
 	var best: Dictionary = {}
 	var best_far: float = INF
 	for turn: Variant in turns:
@@ -108,8 +118,9 @@ func find(entry: Dictionary, corner: Vector3, turns: Array, up: String = "up",
 			why = str(base)
 			return {}
 		var bricks: Array = base
-		var groups: Array = components(bricks)
+		var groups: Array = components(bricks, bool(entry.get("lays", false)))
 		var hollows: Array = _free_hollows(bricks, way)
+		var studs: Array = _free_studs(bricks)
 		var low: Vector3 = _low(bricks)
 		# Each hollow on each free stud, as a move of the whole piece, nearest
 		# where its low corner was asked to be first.
@@ -118,16 +129,17 @@ func find(entry: Dictionary, corner: Vector3, turns: Array, up: String = "up",
 		# the ground, it goes there.
 		if not passed.has(str(corner)):
 			moves[str(corner)] = [0.0, corner - low, corner]
-		for seat: OpenPoints.Point in free:
-			for hollow: Vector3 in hollows:
-				var by: Vector3 = seat.at - hollow
-				var shift := Vector3(snappedf(by.x / STUD, 0.05), snappedf(by.y / PLATE, 0.25),
-					snappedf(by.z / STUD, 0.05))
-				var at: Vector3 = low + shift
-				var key: String = str(at)
-				if moves.has(key) or passed.has(key):
-					continue
-				moves[key] = [_far(at, corner), shift, at]
+		for pair: Array in [[free, hollows], [under, studs]]:
+			for seat: OpenPoints.Point in pair[0]:
+				for own: Vector3 in pair[1]:
+					var by: Vector3 = seat.at - own
+					var shift := Vector3(snappedf(by.x / STUD, 0.05), snappedf(by.y / PLATE, 0.25),
+						snappedf(by.z / STUD, 0.05))
+					var at: Vector3 = low + shift
+					var key: String = str(at)
+					if moves.has(key) or passed.has(key):
+						continue
+					moves[key] = [_far(at, corner), shift, at]
 		var order: Array = moves.values()
 		order.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
 		for row: Array in order.slice(0, TRIES):
@@ -143,9 +155,9 @@ func find(entry: Dictionary, corner: Vector3, turns: Array, up: String = "up",
 				"far": best_far}
 			break
 	if best.is_empty():
-		why = ("the model has no free stud facing %s" % up if free.is_empty()
-			else "no free stud of the model takes it without a part of it running into "
-				+ "the model or left unheld")
+		why = ("the model has no free stud facing %s" % up if free.is_empty() and under.is_empty()
+			else "no free stud or hollow of the model takes it without a part of it running "
+				+ "into the model or left unheld")
 	return best
 
 
@@ -183,6 +195,36 @@ func holds(bricks: Array, groups: Array) -> Array:
 	if held.size() < groups.size():
 		return []
 	return held_by.keys()
+
+
+## The studs of a piece laid as [param bricks] that no part of it covers,
+## in LDU: a piece seated by one of these into a free hollow of the model
+## hangs under it.
+func _free_studs(bricks: Array) -> Array:
+	var all_hollows: Array = []
+	var studs: Array = []
+	for raw: Variant in bricks:
+		var placement: Assistant.Placement = Assistant.Placement.from_dict(raw)
+		var mesh: Lbm.PartMesh = assistant.library.mesh_for(placement.part)
+		if mesh == null:
+			continue
+		var at: Transform3D = assistant._transform(placement, mesh, null)
+		for connector: Lbm.Connector in mesh.connectors:
+			if connector.kind == "stud" and connector.gender == "male":
+				studs.append(at * connector.position)
+		var bottom: float = mesh.bounds.position.y
+		for socket: Vector2 in mesh.sockets:
+			all_hollows.append(at * Vector3(socket.x, bottom, socket.y))
+	var out: Array = []
+	for stud: Vector3 in studs:
+		var covered: bool = false
+		for hollow: Vector3 in all_hollows:
+			if hollow.distance_to(stud) <= FILLED:
+				covered = true
+				break
+		if not covered:
+			out.append(stud)
+	return out
 
 
 ## The hollows under a piece laid as [param bricks] that none of its own

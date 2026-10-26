@@ -20059,7 +20059,7 @@ func _place_technique(args: Dictionary) -> Variant:
 			_studs(corner.y), _studs(corner.z), int(found["turn"]), moved]
 		+ "held by %s%s. As laid:\n%s\n%s"
 		% [", ".join(held_by), "" if int(found["groups"]) == 1
-			else " (it comes in %d groups that hold only by the model)" % int(found["groups"]),
+			else " (in %d groups, each held by what it stands on, not by each other)" % int(found["groups"]),
 			"\n".join(rows), sizes.strip_edges()])
 	if said is Array:
 		return [{"type": "text", "text": head}] + (said as Array)
@@ -23080,11 +23080,15 @@ func _tools() -> Array:
 				+ "connectors): every part where the set has it, "
 				+ "turned a number of quarter turns about the upright and "
 				+ "moved so its low corner is at x, y, z, in your colours "
-				+ "if you say which of its colours become which. Parts "
-				+ "cannot be scaled; pick a piece of the right size. "
-				+ "Checked like any edit: it is refused, with the reason, "
-				+ "if it overlaps the model or does not hold on. The "
-				+ "answer lists the bricks as placed."),
+				+ "if you say which of its colours become which. The app "
+				+ "finds the hold: laid where you say if the model holds it "
+				+ "there, or at the nearest place within 4 studs where it "
+				+ "does (a free stud under each part that needs one), and "
+				+ "otherwise refused with the nearest place that holds it. "
+				+ "Parts cannot be scaled: the answer says the same build at "
+				+ "the sizes real sets use it, to pick the one your model's "
+				+ "scale wants. Checked like any edit. The answer says where "
+				+ "it went and what holds it, and lists the bricks as placed."),
 			"input_schema": {
 				"type": "object",
 				"properties": {

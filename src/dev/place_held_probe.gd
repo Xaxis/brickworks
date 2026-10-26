@@ -10,11 +10,11 @@
 ## sub-assembly the losses named (a hinged shell, an arch, a wheel arch, a
 ## window frame, a roof section) is asked for in the air over a model with
 ## nothing there to hold it, and is laid whole on the nearest place that
-## does, the model checked whole after. Asked far from anything, it is
-## refused with the nearest place that holds it, and laid there when asked
-## again. Each answer says the same build at the sizes real sets use it.
-## Windowed for a picture of each (shots/place_held/); headless it skips
-## the pictures.
+## does (on the deck or the walls, or hung under the deck's edge), the model
+## checked whole after. Asked far from anything, it is refused with the
+## nearest place that holds it, and laid there when asked again. Each answer
+## says the same build at the sizes real sets use it. Windowed for a
+## picture of each (shots/place_held/); headless it skips the pictures.
 extends SceneTree
 
 
@@ -23,8 +23,9 @@ const KINDS: Array = [
 	["hinged shell", ["6890-1/cluster-3", "6601-1/cluster-1", "4404-1/hood"]],
 	["arch", ["3938-1/cluster-2", "10359-1/cluster-1", "10220-1/van-s026"]],
 	["wheel arch", ["30103-1/cluster-1", "10264-1/cluster-1", "2531-1/cluster-2",
-		"10220-1/van-s014-l"]],
-	["window frame", ["21037-1/cluster-2", "10270-1/cluster-1", "10182-1/cluster-3"]],
+		"10220-1/van-s014-l", "10220-1/van-s014-r", "4096-1_EB-Truck/eb-truck-s07"]],
+	["window frame", ["21037-1/cluster-2", "10270-1/cluster-1", "10182-1/cluster-3",
+		"10214-1/tower-step76", "10220-1/van-s101"]],
 	["roof section", ["10267-1/house-step82-92", "10264-1/cluster-2",
 		"10243-1/roof-roof2-window"]],
 ]
@@ -74,9 +75,9 @@ func _run() -> void:
 				continue
 			await _house(assistant)
 			var before: int = world.brick_count()
-			# In the air, three plates over the house's walls, where nothing holds it.
+			# In the air, three plates over the walls, where nothing holds it.
 			var answer: String = _text(await assistant.use_tool("place_technique",
-				{"id": id, "x": 5, "y": 10, "z": 5}))
+				{"id": id, "x": 5, "y": 16, "z": 5}))
 			var added: int = world.brick_count() - before
 			var whole: Dictionary = assistant._check(assistant._model_from_world())
 			print("    %s (%s, %d parts): %s" % [id, "lays alone" if bool(entry.get("lays"))
@@ -102,7 +103,7 @@ func _run() -> void:
 	print("\nasked far from anything, it says the nearest place that holds it")
 	await _house(assistant)
 	var far: String = _text(await assistant.use_tool("place_technique",
-		{"id": "3938-1/cluster-2", "x": 40, "y": 0, "z": 40}))
+		{"id": "3938-1/cluster-2", "x": 40, "y": 24, "z": 40}))
 	print("    " + far.left(400))
 	var place: RegExMatch = RegEx.create_from_string(
 		"nearest place with a hold is x=(-?[\\d.]+) y=(-?[\\d.]+) z=(-?[\\d.]+), turn (\\d)").search(far)
@@ -150,13 +151,20 @@ func _run() -> void:
 	quit(1 if _failures > 0 else 0)
 
 
-## A small house with nothing on it: a 16 x 16 plate, and walls of 1 x 4 and
-## 1 x 2 bricks two courses high round a room 6 by 6.
+## A small house with nothing on it, on a raised deck: a 16 x 16 plate on
+## four columns two bricks high, and on it walls of 1 x 4 and 1 x 2 bricks
+## two courses high round a room 6 by 6. Free studs on the deck and the
+## walls, free hollows under the deck's edges.
 func _house(assistant: Assistant) -> void:
 	assistant.world.clear()
 	assistant.builder.lattice.clear()
-	var bricks: Array = [{"part": "91405", "color": 2, "x": 0, "y": 0, "z": 0, "rot": 0}]
-	for y: int in [1, 4]:
+	var bricks: Array = []
+	for y: int in [0, 3]:
+		for x: int in [0, 14]:
+			for z: int in [0, 14]:
+				bricks.append({"part": "3003", "color": 72, "x": x, "y": y, "z": z, "rot": 0})
+	bricks.append({"part": "91405", "color": 2, "x": 0, "y": 6, "z": 0, "rot": 0})
+	for y: int in [7, 10]:
 		for z: int in [4, 11]:
 			for x: int in [4, 8]:
 				bricks.append({"part": "3010", "color": 15, "x": x, "y": y, "z": z, "rot": 0})

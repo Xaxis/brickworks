@@ -25,7 +25,7 @@ const PLATE := 8.0
 ## Pieces looked at for a feature, before those that do not lay whole or
 ## are not the feature are left out, and the most parts one may have to be
 ## laid as a proposal.
-const LOOKED_AT := 80
+const LOOKED_AT := 200
 const MOST_PARTS := 40
 ## Pieces kept as candidates for a feature, in the index's order.
 const CANDIDATES := 6
@@ -250,8 +250,10 @@ func candidates_for(name: String) -> Array:
 	var also: PackedStringArray = of_what(name)
 	var found: Array = []
 	var seen: Dictionary = {}
+	# Two a set, counted among the pieces that are the feature: counted in the
+	# search, a set's houses took its two before its waterfall was reached.
 	for asked: String in [query, name]:
-		for row: Variant in RealSnippets.search(asked, most, [], LOOKED_AT, 2):
+		for row: Variant in RealSnippets.search(asked, most, [], LOOKED_AT, LOOKED_AT):
 			var entry: Dictionary = (row as Array)[1]
 			if seen.has(entry["id"]) or not RealSnippets.holdable(entry) \
 					or int(entry.get("parts", 0)) > MOST_PARTS:
@@ -260,13 +262,24 @@ func candidates_for(name: String) -> Array:
 			var named: int = names_it(entry, said, nouns) if _says_any(entry, also) else 0
 			if named > 0:
 				found.append([named, found.size(), entry])
+	# A piece that is the feature only by a later reading ("exhaust pipe or
+	# horn" for a dinosaur's horns) only when none is it by its first.
+	if found.any(func(row: Array) -> bool: return int(row[0]) >= FIRST_READING):
+		found = found.filter(func(row: Array) -> bool: return int(row[0]) >= FIRST_READING)
 	# Those that say more of it first, then in the search's order: the
 	# subject's own sets, then the best scored.
 	found.sort_custom(func(one: Array, other: Array) -> bool:
 		return one[0] > other[0] if one[0] != other[0] else one[1] < other[1])
 	var out: Array = []
-	for row: Array in found.slice(0, CANDIDATES):
+	var from: Dictionary = {}
+	for row: Array in found:
+		var set_of: String = str((row[2] as Dictionary)["set"])
+		if int(from.get(set_of, 0)) >= 2:
+			continue
+		from[set_of] = int(from.get(set_of, 0)) + 1
 		out.append(row[2])
+		if out.size() >= CANDIDATES:
+			break
 	return out
 
 
@@ -322,6 +335,10 @@ static var _WHERE_IT_IS := RegEx.create_from_string(
 	"(?i)\\s+\\b(?:with|on|at|for|in|inside|into|under|over|above|below|beside|behind|"
 	+ "atop|along|around|across|between|from|onto|beneath|near|by)\\b.*$")
 static var _OF := RegEx.create_from_string("(?i)^(.*?)\\s+\\bof\\b\\s+(.*)$")
+## What names_it adds for a piece that is the feature by its first reading,
+## and by a later one, above what it says of the feature's words.
+const FIRST_READING := 200
+const LATER_READING := 100
 ## Words a thing is counted in: a row of windows is windows.
 const COUNTED := ["row", "pair", "set", "line", "column", "ring", "stack", "bank",
 	"band", "string", "array", "series", "couple", "number", "run", "tier", "cluster",
@@ -366,7 +383,7 @@ static func names_it(entry: Dictionary, said: PackedStringArray, nouns: Array) -
 					break
 	# A later reading after every first one: a beacon before a traffic cone
 	# that might be one.
-	return maxi(score, 1) + (200 if reading == 0 else 100)
+	return maxi(score, 1) + (FIRST_READING if reading == 0 else LATER_READING)
 
 
 ## Lay the best piece that fits for a feature, as its proposal, unless one
@@ -513,7 +530,7 @@ func fit(entry: Dictionary, spot: Dictionary, in_wall: bool = false) -> Dictiona
 			return {}
 		# A piece held from outside it (a roof by its walls) is laid where the
 		# model holds each part of it that the piece itself does not.
-		var groups: Array = hold.components(base as Array)
+		var groups: Array = hold.components(base as Array, bool(entry.get("lays", false)))
 		var hollows: Array = _lowest_hollows(base as Array, way)
 		var tried: Dictionary = {}
 		for seat: OpenPoints.Point in seats:
