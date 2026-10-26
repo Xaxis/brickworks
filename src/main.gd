@@ -2287,10 +2287,24 @@ func _enter_view() -> void:
 	_share_view.newest_wanted.connect(_open_newest)
 	_share_view.reset_wanted.connect(_play_reset)
 	_share_view.motion_wanted.connect(_play_motion)
-	# The big Build it of a phone sits above the timeline.
+	# The big Build it of a phone sits above the timeline, from its first
+	# frame. The timeline comes once the steps are worked out, after Build
+	# it is up, and Build it rose the timeline's height then, under a finger
+	# meant for it (builds_flow on m177's preview, 2026-10-26). So the floor
+	# is where the timeline's top is or will be: what is below it stays put
+	# as it comes, and it is as tall as it asks to be. Its own rectangle is
+	# laid out only the frame after it is shown.
 	_share_view.floor_at = func() -> float:
-		return _steps.get_global_rect().position.y if _steps.is_visible_in_tree() \
-			else _share_view.size.y
+		var coming: bool = not _view_phases.has("steps") or _steps.is_starting()
+		if not coming and not _steps.is_visible_in_tree():
+			return _share_view.size.y
+		var middle: Control = _steps.get_parent_control()
+		var bottom: float = middle.get_global_rect().end.y
+		for n: int in range(_steps.get_index() + 1, middle.get_child_count()):
+			var below: Control = middle.get_child(n) as Control
+			if below != null and below.visible:
+				bottom -= below.get_combined_minimum_size().y
+		return bottom - _steps.get_combined_minimum_size().y
 	_share_view.loading()
 	_build_mode = BuildMode.new()
 	_build_mode.thumbnails = _thumbnails

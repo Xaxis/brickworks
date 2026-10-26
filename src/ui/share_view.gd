@@ -781,9 +781,18 @@ func _fit_big() -> void:
 	_play.visible = ready and play_ready and _offers_play()
 	_fit_play(pt if _narrow else 1.0, _narrow)
 	set_process(_big.visible or (_place != null and _place.visible) or _pill_shown() or _play.visible)
+	# Placed now, not next frame: shown, Build it was drawn and told to the
+	# page for a frame where it was last, the window's corner the first time.
+	_lay_out()
 
 
 func _process(_delta: float) -> void:
+	_lay_out()
+
+
+## Where everything over the model goes: every frame while any of it is up,
+## as the bar and the timeline come and go.
+func _lay_out() -> void:
 	var below: float = _bar.get_global_rect().end.y + 10.0 if _bar.is_visible_in_tree() else 10.0
 	if _place.visible:
 		# Just under the bar, in the middle.
