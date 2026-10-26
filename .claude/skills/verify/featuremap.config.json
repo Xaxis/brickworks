@@ -3414,6 +3414,20 @@
       "entry": "src/ui/open_from.gd",
       "reach": "godot --path .  (any file chooser on the desktop: its kind's last folder, else Pictures, Documents or Downloads)",
       "area": "parts"
+    },
+    {
+      "kind": "ui",
+      "label": "collections directory",
+      "entry": "api/people.js",
+      "reach": "https://brickworks.diy/collections  (?sort=followed, ?page=N, ?tests=1; supabase/collection_directory.sql; linked from the gallery's tabs and the footer)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "collections browser flow",
+      "entry": "tools/web/collections_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/collections_flow.mjs --url=<preview> --out=DIR   (live project, throwaway accounts; preview check [collections])",
+      "area": "web"
     }
   ]
 }

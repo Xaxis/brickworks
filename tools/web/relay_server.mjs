@@ -143,6 +143,8 @@ const MAPPED = [
   // A person's profile and a public collection (api/people.js).
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
+  // The public collections, as cards (api/people.js collectionsPage).
+  [/^\/collections\/?$/, "people", "collections_page"],
   // The sitemap, with every listed model in it (api/share.js).
   [/^\/sitemap\.xml$/, "share", "sitemap"],
   // The daily cron's clean-up of files no published row owns.

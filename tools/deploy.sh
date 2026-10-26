@@ -391,6 +391,7 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
     { "src": "/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$1" },
     { "src": "/c/([A-Za-z0-9]{10})/?", "dest": "/api/people?op=list_page&id=\$1" },
+    { "src": "/collections/?", "dest": "/api/people?op=collections_page" },
     { "src": "/parts/(.*[.](lbm|bwx))", "headers": {
         "Cache-Control": "public, max-age=31536000, immutable" } },
     { "src": "/(.*)",
