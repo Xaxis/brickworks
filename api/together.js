@@ -81,6 +81,11 @@ const WAIT_MS = 20_000;
 const POLL_MS = 100;
 // Who is in it, read again this often while a poll waits.
 const PEOPLE_MS = 1_000;
+// How long a poll waits before it looks at its person's name again: a
+// profile made or renamed mid-session names them from then on, where it was
+// fixed at their first join (walk256 BT1). Once a poll, and only one that
+// waits this long: it costs two trips to the database.
+const NAME_MS = 5_000;
 // Heard from within this long: here.
 const HERE_MS = 45_000;
 
@@ -265,8 +270,9 @@ async function join(request, me) {
   const session = await inSession(id, me, { joining: true });
   const [mine] = await db(`together_people?session=eq.${id}&account=eq.${me}&select=account`) || [];
   if (mine) {
+    // Back in, by the name their profile has now.
     await db(`together_people?session=eq.${id}&account=eq.${me}`, {
-      method: "PATCH", body: { seen_at: new Date().toISOString(), left_at: null },
+      method: "PATCH", body: { seen_at: new Date().toISOString(), left_at: null, name: await shownName(me) },
     });
   } else {
     await db("together_people", { method: "POST", body: { session: id, account: me, name: await shownName(me) } });
@@ -334,10 +340,20 @@ async function poll(request, me) {
     }
     return noChat;
   };
-  const until = Date.now() + WAIT_MS;
+  const began = Date.now();
+  const until = began + WAIT_MS;
   let people = peopleOut(id, session, all, me);
   let checked = Date.now();
+  let named = false;
   for (;;) {
+    if (!named && Date.now() - began > NAME_MS) {
+      named = true;
+      const now = await shownName(me).catch(() => null);
+      if (now !== null && now !== String(mine?.name ?? "")) {
+        await db(`together_people?session=eq.${id}&account=eq.${me}`, { method: "PATCH", body: { name: now } });
+        checked = 0;
+      }
+    }
     const rows = await db(`together_ops?session=eq.${id}&seq=gt.${after}&order=seq.asc&limit=${SEND_MOST}`
       + "&select=seq,author,client,cid,changes") || [];
     if (Date.now() - checked > PEOPLE_MS) {

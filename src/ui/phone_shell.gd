@@ -389,6 +389,9 @@ func _chose(what: String) -> void:
 			_fill_colours()
 			_toggle(_colours, "full")
 		"more":
+			# Opened as a menu bar is, every menu folded.
+			if not _more.is_open():
+				_more_open.clear()
 			_fill_more()
 			_toggle(_more, "full")
 		"turn":
@@ -599,6 +602,8 @@ func _lay_pill() -> void:
 	_pill.visible = not words.is_empty() and (wide or not _any_open())
 	if wide:
 		_lay_beside(free)
+	else:
+		_fit.position.y = _fit_top()
 
 
 ## A tablet's Fit and the notices strip over the model kept in the model's
@@ -606,7 +611,6 @@ func _lay_pill() -> void:
 ## the strip says in the middle of the room rather than under a panel.
 func _lay_beside(free: Rect2) -> void:
 	var notices: Control = app.get("_notices")
-	var top: float = p(TOP + 12)
 	if notices != null:
 		var face: StyleBoxFlat = notices.get_theme_stylebox("panel") as StyleBoxFlat
 		var room: float = get_viewport().get_visible_rect().size.x
@@ -614,9 +618,18 @@ func _lay_beside(free: Rect2) -> void:
 				or face.content_margin_right != room - free.end.x):
 			face.content_margin_left = free.position.x
 			face.content_margin_right = room - free.end.x
-		if notices.is_visible_in_tree():
-			top = maxf(top, notices.get_global_rect().end.y + p(8))
-	_fit.position = Vector2(free.end.x - p(12 + 48), top)
+	_fit.position = Vector2(free.end.x - p(12 + 48), _fit_top())
+
+
+## Fit's top: under the notices strip while it shows, on a phone as on a
+## tablet. walk256 (T2): at 390 Fit sat over the strip's "Show the
+## assistant".
+func _fit_top() -> float:
+	var top: float = p(TOP + 12)
+	var notices: Control = app.get("_notices")
+	if notices != null and notices.is_visible_in_tree():
+		top = maxf(top, notices.get_global_rect().end.y + p(8))
+	return top
 
 
 func _any_open() -> bool:
@@ -692,12 +705,28 @@ func _fill_context(words: String) -> void:
 		_context.add_row(label, item)
 
 
-## Every menu's commands, under the menu's name, a row each.
+## Every menu's commands, a row each, folded under the menu's name, which a
+## tap opens and folds again, as the desktop's menu bar has them: File to
+## Help. walk256 (T2): every command of every menu at once was one list a
+## hundred rows long to scroll through.
 func _fill_more() -> void:
 	_more.clear()
 	for menu: Array in Shell.MENUS:
-		_more.add_heading(str(menu[0]))
-		_more_rows(menu[1] as Array, "")
+		var name: String = str(menu[0])
+		var open: bool = _more_open.has(name)
+		_more.add_section(name, open, func() -> void:
+			if _more_open.has(name):
+				_more_open.erase(name)
+			else:
+				_more_open[name] = true
+			# Once the tap is done with its row, which this puts away.
+			_fill_more.call_deferred())
+		if open:
+			_more_rows(menu[1] as Array, "")
+
+
+## The menus open in More, by name, while it is up: each opens folded.
+var _more_open: Dictionary = {}
 
 
 func _more_rows(items: Array, under: String) -> void:
@@ -788,6 +817,8 @@ func controls_by_name() -> Dictionary:
 		out[key.replace("phone_sheet_", "phone_panel_")] = sheet
 		for row: Control in sheet.rows():
 			out["phone_row_" + str(row.get_meta("command", row.name))] = row
+		for row: Control in sheet.sections():
+			out["phone_section_" + str(row.get_meta("section")).to_lower()] = row
 		for swatch: Control in sheet.swatches():
 			out["phone_swatch_%d" % int(swatch.get_meta("code"))] = swatch
 	return out
@@ -1047,6 +1078,38 @@ class Sheet extends PanelContainer:
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_list.add_child(label)
 
+	## A menu's name, a row of its own: tapped, its commands open under it,
+	## and fold again. Its words in the headings' colour, and a chevron at
+	## its end that points down while it is open.
+	func add_section(words: String, open: bool, toggled: Callable) -> void:
+		var row := Button.new()
+		row.text = words
+		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		row.focus_mode = Control.FOCUS_NONE
+		row.custom_minimum_size = Vector2(0, phone.p(Phone.TARGET + 4.0))
+		row.add_theme_font_size_override("font_size", ceili(phone.p(16)))
+		row.set_meta("section", words)
+		row.name = "section_" + words.to_lower()
+		row.accessibility_description = "open" if open else "folded"
+		# A finger dragged over it scrolls the list, as over the rows.
+		row.mouse_filter = Control.MOUSE_FILTER_PASS
+		for state_name: String in ["normal", "hover", "pressed", "disabled", "focus"]:
+			var face := StyleBoxFlat.new()
+			face.bg_color = Color(1, 1, 1, 0.14) if state_name == "pressed" else Color(1, 1, 1, 0.045)
+			face.set_corner_radius_all(ceili(phone.p(8)))
+			face.content_margin_left = phone.p(14)
+			face.content_margin_right = phone.p(14)
+			row.add_theme_stylebox_override(state_name, face)
+		for colour: String in ["font_color", "font_hover_color", "font_pressed_color"]:
+			row.add_theme_color_override(colour, Color(0.62, 0.74, 1.0, 0.95))
+		var chevron := PhoneShell.Chevron.new()
+		chevron.open = open
+		chevron.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		PhoneShell._pin(chevron, 1.0, 0.0, 1.0, 1.0, Rect2(-phone.p(14 + 16), 0, -phone.p(14), 0))
+		row.add_child(chevron)
+		row.pressed.connect(toggled)
+		_list.add_child(row)
+
 	func add_note(words: String) -> void:
 		var label := Label.new()
 		label.text = words
@@ -1105,4 +1168,28 @@ class Sheet extends PanelContainer:
 				if child is Button and child.has_meta("command"):
 					out.append(child)
 		return out
+
+	## More's menu names, each a row that opens its commands.
+	func sections() -> Array[Control]:
+		var out: Array[Control] = []
+		if _list != null:
+			for child: Node in _list.get_children():
+				if child is Button and child.has_meta("section"):
+					out.append(child)
+		return out
+
+
+## The mark at the end of a menu's name in More: pointing on while it is
+## folded, down while it is open.
+class Chevron extends Control:
+	var open: bool = false
+
+	func _draw() -> void:
+		var middle: Vector2 = size * 0.5
+		var arm: float = minf(size.x, size.y) * 0.22
+		var points := PackedVector2Array([middle + Vector2(-arm, -arm * 0.5), middle + Vector2(0, arm * 0.5),
+			middle + Vector2(arm, -arm * 0.5)]) if open \
+			else PackedVector2Array([middle + Vector2(-arm * 0.5, -arm), middle + Vector2(arm * 0.5, 0),
+				middle + Vector2(-arm * 0.5, arm)])
+		draw_polyline(points, Color(0.62, 0.74, 1.0, 0.95), maxf(1.5, arm * 0.3), true)
 

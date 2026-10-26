@@ -16,8 +16,12 @@
 //      to, as a person does), and presses Start a session: a link.
 //   2. The second person opens the link, signed in: they join, and have the
 //      car byte for byte; each sees who is in it ("Builder 2", never an
-//      email). The desktop app joins the same session too
-//      (src/dev/together_probe.gd --join), and makes edits of its own.
+//      email), and opens on the owner's view, as the owner turned and
+//      zoomed it. The owner makes a profile then, mid-session: both
+//      browsers name the owner by it from then on, and the person under 13
+//      stays "Builder 2" (walk256 BT1). The desktop app joins the same
+//      session too (src/dev/together_probe.gd --join), and makes edits of
+//      its own.
 //   3. 50 random edits from the two browsers, interleaved, as the keys make
 //      them (Together.check_edit: place, move, paint, delete, undo), some on
 //      the same part at the same moment; then, once nothing is on its way,
@@ -369,6 +373,24 @@ try {
   check("the owner's Claude signs in with OAuth", claude.startsWith("bwa_"));
   // The car, the app's own first model: its doors move.
   await opened(owner, "model=res://models/car.ldr&assistant=on");
+  // The owner's own view, turned and zoomed as a person leaves it: whoever
+  // joins opens on it, not on the parts alone (walk256 BT1: a stud 107
+  // pixels across, on a gear).
+  const viewAt = (await controls(owner.page)).view;
+  if (viewAt) await owner.page.mouse.move(viewAt.x, viewAt.y + 40);
+  const framed = (await state(owner.page)).view || {};
+  // Turned by the right button, which never moves a part, and zoomed out.
+  if (viewAt) {
+    await owner.page.mouse.down({ button: "right" });
+    for (let n = 1; n <= 12; n++) await owner.page.mouse.move(viewAt.x + 20 * n, viewAt.y + 40, { steps: 2 });
+    await owner.page.mouse.up({ button: "right" });
+    await owner.page.mouse.wheel(0, 600);
+  }
+  await wait(2500);
+  const ownerView = (await state(owner.page)).view || {};
+  check("the owner turned and zoomed the view", Math.abs((ownerView.yaw ?? 0) - (framed.yaw ?? 0)) > 0.3
+    && Math.abs((ownerView.distance ?? 0) - (framed.distance ?? 0)) > 0.1 * (framed.distance || 1),
+    `yaw ${framed.yaw?.toFixed?.(2)} to ${ownerView.yaw?.toFixed?.(2)}, distance ${Math.round(framed.distance)} to ${Math.round(ownerView.distance)}`);
   const panel = await menu(owner.page, "file", "Build tog", "together_start");
   check("File, Build together… opens its panel", Boolean(panel));
   if (!panel) throw new Error("no Build together in the File menu");
@@ -399,6 +421,33 @@ try {
   }, "two people in it", 30)).map((one) => one.name);
   check(`each is shown who is in it: ${names.join(", ")}`, names.length === 2
     && !names.some((name) => name.includes("@")) && names.includes("Builder 2"));
+  const near = (a, b, by) => Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= by;
+  const guestView = await until(async () => {
+    const now = (await state(guest.page)).view || {};
+    return near(now.distance, ownerView.distance, 0.02 * ownerView.distance) ? now : null;
+  }, "the second person's view on the owner's", 15).catch(async () => (await state(guest.page)).view || {});
+  const focusOff = Math.hypot(...[0, 1, 2].map((n) => (guestView.focus?.[n] ?? 1e9) - (ownerView.focus?.[n] ?? 0)));
+  check("the second person opens on the owner's view", near(guestView.yaw, ownerView.yaw, 0.02)
+    && near(guestView.pitch, ownerView.pitch, 0.02) && near(guestView.distance, ownerView.distance, 0.02 * ownerView.distance)
+    && focusOff < 2, `yaw ${guestView.yaw?.toFixed?.(2)} of ${ownerView.yaw?.toFixed?.(2)}, pitch ${guestView.pitch?.toFixed?.(2)}`
+      + ` of ${ownerView.pitch?.toFixed?.(2)}, distance ${Math.round(guestView.distance)} of ${Math.round(ownerView.distance)},`
+      + ` focus ${Math.round(focusOff)} LDU off`);
+  // A profile made mid-session: the owner is named by it from then on, in
+  // both browsers; the person under 13 is never named.
+  const ownerName = `Ada Together ${rand.slice(0, 4)}`;
+  const profileMade = await fetch(`${site}/api/people?op=profile`, { method: "POST",
+    headers: { ...headers, "content-type": "application/json", authorization: `Bearer ${owner.token}` },
+    body: JSON.stringify({ handle: `together-${rand}`, name: ownerName }) });
+  check("the owner makes a profile, mid-session", profileMade.ok, `${profileMade.status}`);
+  const renamed = await until(async () => {
+    const [mine, theirs] = await Promise.all([together(owner.page), together(guest.page)]);
+    const named = (list) => (list.people || []).map((one) => one.name);
+    return named(mine).includes(ownerName) && named(theirs).includes(ownerName) ? [named(mine), named(theirs)] : null;
+  }, "the owner's profile name in both browsers", 30).catch(async () => [
+    ((await together(owner.page)).people || []).map((one) => one.name),
+    ((await together(guest.page)).people || []).map((one) => one.name)]);
+  check(`both name the owner by the profile: ${renamed[0].join(", ")} | ${renamed[1].join(", ")}`,
+    renamed.every((list) => list.includes(ownerName) && list.includes("Builder 2")));
   await until(async () => (await controls(guest.page)).together_end, "the guest's panel", 30).catch(() => null);
   await shot(guest.page, "2_joined.png");
   await press(guest.page, "together_close").catch(() => {});
@@ -614,6 +663,7 @@ try {
   console.log("\n5d. a short chat");
   const chatPanel = await menu(owner.page, "file", "Build tog", "together_chat_field");
   check("the owner's panel has a chat", Boolean(chatPanel));
+  const closeBefore = (await controls(owner.page)).together_close;
   if (chatPanel) {
     await owner.page.mouse.click(chatPanel.x, chatPanel.y);
     await owner.page.keyboard.type("Roof next?", { delay: 40 });
@@ -622,9 +672,21 @@ try {
   const said = await until(async () => ((await together(owner.page)).messages || []).find((m) => m.text === "Roof next?"),
     "the owner's line numbered", 20).catch(() => null);
   check("the owner's line is in the chat", Boolean(said));
+  // Lines enough to fill it: the panel keeps its size, and Close its place.
+  for (const line of ["Walls first", "Then the windows", "A door at the front", "And a chimney", "Done by lunch"]) {
+    await owner.page.keyboard.type(line, { delay: 20 });
+    await owner.page.keyboard.press("Enter");
+    await until(async () => ((await together(owner.page)).messages || []).some((m) => m.text === line),
+      `"${line}" numbered`, 20).catch(() => null);
+  }
+  await wait(1500);
+  const closeAfter = (await controls(owner.page)).together_close;
+  check("six lines said, and Close is where it was", Boolean(closeBefore && closeAfter)
+    && Math.abs(closeAfter.x - closeBefore.x) <= 1 && Math.abs(closeAfter.y - closeBefore.y) <= 1,
+    `${closeBefore ? `${closeBefore.x}, ${closeBefore.y}` : "none"} then ${closeAfter ? `${closeAfter.x}, ${closeAfter.y}` : "none"}`);
   await shot(owner.page, "5d_chat.png");
   if (withDesktop) {
-    const heard = await until(async () => (readDesktop(desktopFile)?.messages || []).includes("The owner: Roof next?"),
+    const heard = await until(async () => (readDesktop(desktopFile)?.messages || []).includes(`${ownerName}: Roof next?`),
       "the desktop hearing it", 20).catch(() => null);
     check("the desktop app (13 or over) hears it", Boolean(heard));
   }

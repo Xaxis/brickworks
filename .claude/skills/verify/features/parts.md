@@ -132,8 +132,10 @@ geometry in front of them.
   current colour applied to the thumbnails. It searches through `PartSearch`
   (every word, ranked as search_parts ranks), and folds each print, sticker
   and assembly of a part that is listed too under that part's tile, behind a
-  count in its corner (`PartsBin._fold`, `_fold_badge`): pressed, they follow
-  the tile, pressed again they fold; typed with "print" or "sticker" they are
+  count in its corner (`PartsBin._fold`, `_fold_badge`; by a finger a
+  44-point square in the tile's foot, clear of its picture, which a tap
+  takes the part from: walk256 T1): pressed, they follow the tile, pressed
+  again they fold; typed with "print" or "sticker" they are
   listed as themselves, which is how the keys reach them (no tile takes the
   keys, and a field gives them back at Tab, `FocusGuard`). One assembly LDraw
   draws whole is put beside its part instead (60593c01, the window with its

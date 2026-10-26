@@ -49,7 +49,15 @@ app, joined by a link (docs/TOGETHER.md).
   follows comments' rule (13 or over, not barred, words filtered); an
   under-13 reader's copy of a chat op has the words taken out. Numbers come
   from `together_append` under the session row's lock. Names: the profile's
-  when `shown_publicly`, else "Builder N"; never an email.
+  when `shown_publicly`, else "Builder N"; never an email. A profile made or
+  renamed mid-session names its person from then on: a poll that waits
+  `NAME_MS` (5 s) looks at its person's name again, once; and one joining
+  again is named by the profile as it is then (walk256 BT1: names were fixed
+  at the first join). The owner's view
+  goes in the session's snapshot (`CadCamera.aim`), and whoever joins opens
+  on it (`aim_at`), not framed on the parts alone. The panel keeps who is in
+  it to 3 rows and the chat to 4 lines, each scrolled, so it does not grow
+  and Close does not move (`TogetherDialog._hold_heights`).
 - `together probe` (`tools/web/together_probe.mjs`), `together browser flow`
   (`tools/web/together_flow.mjs`), `together desktop probe`
   (`src/dev/together_probe.gd`): below.
@@ -86,7 +94,10 @@ signed in as someone else.
   typed, floor, printed part, step, booklet look, motion, hidden colours)
   byte-identical after each; Ctrl+Z; latency p50/p95; a reload and an
   offline spell rejoining; the owner's pointer drawn in the other view;
-  chat heard by the desktop and refused to the under-13; a real MCP
+  chat heard by the desktop and refused to the under-13; the guest opening
+  on the owner's turned and zoomed view; the owner's profile made
+  mid-session naming them in both browsers while the under-13 stays
+  "Builder 2"; six chat lines and Close where it was; a real MCP
   `edit_model` from the owner's Claude reaching the other browser. A
   mismatch writes both files to DIR and prints the first lines that differ.
   On a build without the feature it fails at "File, Build together… opens

@@ -152,7 +152,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   kept. In the list each row shows its part's picture in its colour
   (`ThumbTile`, drawn as it comes into sight), and a click selects that lot's
   every piece (a hose's every segment), frames them and says how many, with I
-  for a buried one; the list opens again where it was. Escape over the list
+  for a buried one; the list opens again where it was. Parts inside
+  sub-models are taken as any other. A row clicked twice selects as once:
+  the second click, which lands on the model once the list has gone, is the
+  list's (`Main._found_at`, `_eat_release`); it went into the sub-model under
+  the pointer and left nothing selected on the Cat D11 (walk256 D10,
+  `find_submodels_probe`). Escape over the list
   closes it before it clears a selection under it. In a shared model's viewer
   a row does the same, and Escape then lets go of them (`share_view_probe`). The MCP's twin is
   look_at_model's `part=` and `color=`, which list where each one is: no
@@ -278,6 +283,18 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   the app's own audit (`window.brickworksAskPhone`, `Main._phone_audit`):
   every target 44 points or more, no text under 12, nothing off the screen.
   The dialogs More opens are sized for a finger too (`touch dialogs`, below).
+  walk256 (T1, T2, 2026-10-25): More is the menus' names, File to Help, each
+  a row that a tap opens to its commands and folds again
+  (`Sheet.add_section`, `phone_section_<menu>`; every menu folded each time
+  More opens), not every command in one list a hundred rows long; Fit keeps
+  under the notices strip on a phone as on a tablet (`PhoneShell._fit_top`:
+  at 390 it sat over "Show the assistant"); and a part's "+N" of folded
+  prints is a fingertip in its tile's foot, right of its number, clear of
+  its picture (`PartsBin._fold_badge` by finger): in the top corner it
+  covered the picture's middle and the first tap opened the prints. The
+  flows check each: Fit clear of the strip, More's six names and no rows,
+  File opened to its rows; 3004's picture tapped takes it and opens
+  nothing, its "+N" opens and folds the prints.
   Words the bar says with keys after a
   dash ("1 selected — Ctrl-C copies, X moves...") are said without them
   (`Phone.touch_words`), and a count of the selection alone is left to the
@@ -1752,6 +1769,12 @@ godot --headless --path . --script src/dev/select_probe.gd
 # 1,074-piece row against Select all, longest frame (-- --no-time, --time-only,
 # --rounds=N; on a base checkout only Select all). shots/findpart_*.png
 tools/probe.sh find_part_probe
+# Find on the Cat D11 (42131-1, 188 sub-models) opened as the Library opens
+# it: "liftarm 1 x 5" and Enter (98), "11478" and Enter (49, all inside
+# sub-models), a row clicked (14 black), a row clicked twice (35 yellow;
+# on base 0: the second click went into the sub-model under the pointer).
+# shots/findsub_*.png
+tools/probe.sh find_submodels_probe
 # the selection's outline round its silhouette, never over it, for one brick,
 # a chain and Orthanc, through the cut and x-ray, and the hover's; its targets
 # let go of at once when nothing is outlined, with no frame drawn; at 1x and

@@ -4429,6 +4429,7 @@ func _build_ui() -> void:
 	_together.store = _store
 	_together.account = _account
 	_together.bar = _bar
+	_together.camera = _camera
 	_together.base_url = Deployment.api_base()
 	_together.said.connect(func(words: String) -> void: _bar.say(words))
 	# Where this person is working, for the others' view: the part under the
@@ -5981,10 +5982,19 @@ func _show_weak(ids: Array, around: Array) -> void:
 	_camera.frame(box, 1.6)
 
 
+## Find in the parts list has selected (_show_found) since the model was
+## last pressed: the next press, if it is a double-click's second, is the
+## list's, and so is its release (_eat_release). Not by the time since: a
+## frame over a big model held the second click for seconds.
+var _found_last: bool = false
+var _eat_release: bool = false
+
+
 ## The parts the parts list was asked for, selected and in view
 ## (InventoryPanel.chosen): where they are in the model. [param what] says
 ## what they are.
 func _show_found(ids: PackedInt64Array, what: String) -> void:
+	_found_last = true
 	var count: int = _verbs.select_found(Array(ids))
 	var left: int = ids.size() - count
 	if count == 0:
@@ -7510,6 +7520,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if button.button_index != MOUSE_BUTTON_LEFT:
+		return
+
+	# The second click of a double-click on a row of the parts list, which
+	# chose with the first and went from under the pointer: the list's,
+	# press and release, not the model's. It went into the sub-model under
+	# the pointer, and Find on a set built of them selected nothing
+	# (walk256, D10).
+	if button.pressed:
+		_eat_release = _found_last and button.double_click
+		_found_last = false
+		if _eat_release:
+			return
+	elif _eat_release:
+		_eat_release = false
 		return
 
 	# A left drag lent to the view, let go: nothing is placed, picked or
