@@ -13,11 +13,27 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-26
+
+A release about the app's own face, and about counting and finding what a
+model is made of. Every dialog, menu and button wears the app's dark look
+and can be seen on it, and a file chooser opens where you would look. A
+model has one part count, the pieces a builder takes out of the box, and
+Stress weighs a Technic model's pins and axles, the Cat D11 in seconds.
+Search finds a technique by its words and a part by its number, and a
+photo's part comes in its colour. Claude lays real pieces that do the job,
+where the model can hold them, and Instructions saves a PDF.
+
 ### Added
 
 - Instructions saves a PDF beside the booklet's page, every step and the
   parts list in it, ready to print or send.
 - The app starts on its own mark, not the engine's.
+- Stress weighs pins and axles, so a Technic model's joints are weighed
+  too: an axle keyed in its hole, or pins on two lines, hold square, and a
+  lone line of pins turns unless their friction holds it. On the Cat D11
+  it weighs 146 joints, 125 of them pins or axles, in seconds; it took 47
+  to list 14 studs.
 
 ### Changed
 
@@ -27,6 +43,26 @@ whole cycle.
   from last, else Pictures for a picture, Documents for a model and
   Downloads for a mesh to brickify or a shopping list. Never the folder the
   app is installed in.
+- Every button can be seen on the dark face, edged in the tick boxes'
+  outline, and a question's default is the strong blue with white words.
+  Read off the pixels, 307 of 653 buttons fell short before; none do now.
+- A model's part count is the pieces a builder takes out of the box, and
+  every place that counts says the same: the model tree, the viewer, the
+  steps bar and the toast. The Cat D11 is 3,868, where some said 6,793 for
+  its motors' cables drawn in segments.
+- Techniques are found by their words, best first, and titled as words:
+  "stairs" finds stairs, and "door" leads with doors.
+- A part number finds the part it numbers: 3648 is the gear, not a torso
+  printed "Set 3648".
+- A photo's part comes in the photo's colour when Brickognize is sure of
+  it, and the line says which.
+- Every tooltip stays inside the window, a long one in lines.
+- Claude's feature pass offers only a piece that is the feature, sized to
+  fit the model (a tail light gets a clear part), and lays a real set's
+  piece where the model can hold it, finding the hold itself. A scene or a
+  building stands on its own plates, not on a baseplate the brief's size.
+- A Claude using the connector hears how to work once a sitting, as Claude
+  Code does, and begins each design with its subject.
 - A returning person sees their last model at once, and is signed in
   behind it.
 - Build together: someone who joins sees the model from the owner's view,
