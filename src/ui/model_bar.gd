@@ -576,8 +576,8 @@ func _on_open() -> void:
 	_saves.add_item("From a file on this computer (LDraw, Studio .io, LDD .lxf)…", IMPORT)
 	_saves.add_item("From the library: real sets and the community's models…", LIBRARY)
 	# With the other commands, above the saves. Under them, forty saves put
-	# it past the window's foot, in a menu a finger cannot scroll without
-	# opening a save (fling272b, 2026-10-26).
+	# it below the window's foot, out of sight until the menu was scrolled,
+	# and no tap on a phone found it (fling272b, 2026-10-26).
 	if not _entries.is_empty():
 		_saves.add_item("Rename or delete saved models…", MANAGE)
 	_saves.add_separator()

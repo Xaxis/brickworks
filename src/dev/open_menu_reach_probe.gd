@@ -6,15 +6,16 @@
 ##
 ## fling272b (2026-10-26): with more than a dozen saves, Open's menu grew
 ## its list until "Rename or delete saved models…", after the saves, was
-## past the bottom of the window: no finger, pointer or key reached it, so
-## a person with many saves could rename or delete none of them.
+## below the window's foot as the menu opened: out of sight until the menu
+## was scrolled, and on a phone no tap found it, so a person with many
+## saves could rename or delete none of them.
 ##
 ## Here forty models are saved, and Open's menu is opened as a person opens
 ## it, with the pointer high, in the middle and low in the window: the menu
-## is inside the window; every command in it (not a save) is on the screen
-## as it opens; the arrows reach each of them, each shown inside the window
-## when it is reached; Up from the top comes round to the last; Enter on
-## Rename or delete opens Saved models; and Escape puts the menu away.
+## is inside the window; its three commands are in the window as it opens;
+## Down reaches every row, each shown inside the window when it is
+## reached; Up from the top comes round to the last; Enter on Rename or
+## delete opens Saved models; and Escape puts the menu away.
 ## --tablet and --phone lay the window out for a finger, as a touch screen
 ## in a browser does, a phone's at a browser's scale.
 extends SceneTree
