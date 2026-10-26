@@ -212,7 +212,9 @@ is on the page, `hidden`, for the script to show.
   `web/kit.js` `iconHtml`),
   drawn in the words' colour. **Icon button**: `.icon-btn` (`iconButtonHtml`), round,
   as tall as a field (`.small` 36 for a card's row), its count beside its
-  icon once there is one. Its label says its name and count to a screen
+  icon once there is one. `.labelled` (`iconButtonHtml({ labelled: true })`)
+  says its name too, between the icon and the count: a model's Like and
+  I built it, which nobody reads from a glyph alone. Its label says its name and count to a screen
   reader ("Like, 12 likes"; "Like" at none); a toggle is `aria-pressed`,
   and pressed is edged in `--accent-edge` with its icon filled. A button
   that opens something rather than toggling (Save, which opens your
@@ -248,6 +250,16 @@ is on the page, `hidden`, for the script to show.
   in `--accent-edge`; `.side`, the column that stays beside it on a laptop;
   and `.page-tabs`, the kit's `.tabs` as links to the parts of the page,
   sticky under the header, with a ground of its own only once stuck. The
+  Its Parts (`.parts`, docs/SOCIAL.md, site278): the count in a `.note`,
+  `.parts-bar` (a `.segmented` Colour · Kind, then the shops' lists as
+  `.cta.ghost.small` links that download), and `ul.lot-list`, a row a
+  colour or kind (`li.group`: its swatch, name and count) over a row a lot
+  (`li.lot`: `.pic`, its 48 px picture on `--picture-ground`; `.what`, the
+  name and `.meta`, number and colour, each one line that ends in an
+  ellipsis; `.qty`), every row 60 px so the space the list takes is kept
+  before it comes; a colour's swatch is an inline `svg.swatch` filled with
+  the brick's own colour, which is the model's, not the site's. Download is
+  a `.cta.ghost` in the column's actions. The
   public collections it is in (docs/SOCIAL.md U11) are a fact `a.pill`
   ("In 2 collections"), a tab and `.in-lists`, a `.list-cards` of their
   covers, each saying whose; none of the three while it is in none. Its

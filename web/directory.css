@@ -161,6 +161,34 @@
 .model-page .earlier { margin: 0; padding-left: 22px; color: var(--ink-soft); }
 .model-page .earlier li { margin: 4px 0; overflow-wrap: anywhere; }
 .model-page .earlier a { color: var(--ink); }
+/* Its parts (api/share.js partsSection, web/model-page.js startParts): how
+   many in how many lots, Colour or Kind and the two shops' lists, then a
+   row a colour (or a kind) and under it a row a lot: its picture, its name,
+   its number and colour, and how many. Every row is LOT_ROW (api/share.js)
+   tall and a name too long for its row ends in an ellipsis, so the space the
+   list takes is kept for it before it comes and nothing under it moves. */
+.model-page .parts .note { margin: 0 0 var(--s-3); color: var(--ink-soft); }
+.parts-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-3); }
+.parts-bar .segmented { margin-right: auto; }
+.lot-list { list-style: none; margin: 0 0 var(--s-3); padding: 0; }
+.lot-list li {
+	display: flex; align-items: center; gap: var(--s-3); height: 60px; min-width: 0;
+	border-bottom: 1px solid var(--line); box-sizing: border-box;
+}
+.lot-list li:first-child { border-top: 1px solid var(--line); }
+.lot-list .group { gap: var(--s-2); font-weight: 640; }
+.lot-list .group .n, .lot-list .qty { margin-left: auto; flex: none; font-variant-numeric: tabular-nums; }
+.lot-list .group .n { color: var(--ink-soft); font-weight: 500; font-size: var(--t-small); }
+.lot-list .pic {
+	flex: none; display: grid; place-items: center; width: 48px; height: 48px; overflow: hidden;
+	border-radius: var(--r-1); background: var(--picture-ground);
+}
+.lot-list .pic img { width: 100%; height: 100%; object-fit: contain; }
+.lot-list .what { flex: 1; display: grid; min-width: 0; line-height: 1.35; }
+.lot-list .name, .lot-list .meta { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.lot-list .meta { display: flex; align-items: center; gap: 6px; font-size: var(--t-small); color: var(--ink-soft); }
+.lot-list .qty { font-weight: 640; }
+.lot-list .swatch { flex: none; width: 14px; height: 14px; }
 .model-page .tree, .model-page .in-lists { max-width: none; }
 .model-page .line { margin: 0; padding-left: 22px; color: var(--ink-soft); }
 .model-page .line li { margin: 3px 0; overflow-wrap: anywhere; }

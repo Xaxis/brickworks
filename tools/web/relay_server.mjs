@@ -140,6 +140,12 @@ const MAPPED = [
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/?$/, "share", "page"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]png$/, "share", "image"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]cutout[.]png$/, "share", "cutout"],
+  // Its file to download, and its parts list as JSON, a BrickLink wanted
+  // list and a Rebrickable CSV, of the newest version or an older one.
+  [/^\/m\/([A-Za-z0-9]{10})[.]mpd$/, "share", "file"],
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]mpd$/, "share", "file"],
+  [/^\/m\/([A-Za-z0-9]{10})()\/parts[.](json|xml|csv)$/, "share", "parts"],
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/parts[.](json|xml|csv)$/, "share", "parts"],
   // A person's profile and a public collection (api/people.js).
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
@@ -249,6 +255,7 @@ http.createServer(async (incoming, outgoing) => {
     const captured = mapped[0].exec(url.pathname);
     if (captured[1] && mapped[1] === "share") query.id = captured[1];
     if (captured[2] && mapped[1] === "share") query.v = captured[2];
+    if (captured[3] && mapped[1] === "share") query.as = captured[3];
     if (captured[1] && mapped[2] === "page" && mapped[1] === "people") query.handle = captured[1];
     if (captured[1] && mapped[2] === "list_page") query.id = captured[1];
   }

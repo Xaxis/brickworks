@@ -68,6 +68,17 @@
 //      &build), View in 3D a quiet link beside it to the viewer, and its
 //      picture and name the model's page, each in a tab of its own; in a
 //      frame a phone's column wide the bar still fits, Build it whole.
+//  16. Its parts (site278): a Parts tab and section saying one count, the
+//      app's (api/_parts.js); the list asked for only as the section nears
+//      the screen and drawn into the space kept for it, nothing under it
+//      moving; a row a colour over its lots, the lots' counts adding up to
+//      the total, Kind grouping them by kind; no picture asked of Rebrickable
+//      by a browser a check drives; the BrickLink wanted list well-formed
+//      XML of ITEMTYPE P, ITEMID, a numbered COLOR and MINQTY, adding up to
+//      the total less what it says it left off; the Rebrickable CSV
+//      Part,Color,Quantity likewise; and Download the stored file byte for
+//      byte, signed out, named for the model. And Like and I built it say
+//      their names beside their icons.
 //
 // Pictures in --out: each page whole and its first screen (-fold), and
 // Save's lists and More open.
@@ -116,12 +127,12 @@ const until = (page, test, arg, ms = 8000) => page.waitForFunction(test, arg, { 
 // only that a row shown has three to six.
 const PAGES = remote ? [] : [
   { name: "watchtower", path: `/m/${stand.MODEL_ID}`, by: 3, like: 0, favourite: true, designer: "Robin Castell",
-    tabs: ["About", "Comments 6", "Builds 37", "Remixes 3", "Collections 2", "Versions 2"], thumbs: 3, threads: true, lists: 2 },
+    tabs: ["About", "Parts 3", "Comments 6", "Builds 37", "Remixes 3", "Collections 2", "Versions 2"], thumbs: 3, threads: true, lists: 2 },
   { name: "dusk", path: "/m/DesignRmx1", by: 0, like: 3, favourite: false, designer: "Jo Lindqvist",
-    tabs: ["About", "Comments 1", "Builds 3", "Remixes", "Collections 1"], thumbs: 0, lists: 1 },
+    tabs: ["About", "Parts 3", "Comments 1", "Builds 3", "Remixes", "Collections 1"], thumbs: 0, lists: 1 },
   // Signed in, Sam's own: More has the owner's own in place of Report it.
   { name: "bakery", path: "/m/SamModel02", by: 0, like: 0, gallery: true, favourite: false, designer: null,
-    tabs: ["About", "Comments", "Builds", "Remixes"], thumbs: 0, empty: true, owner: true, lists: 0 },
+    tabs: ["About", "Parts 3", "Comments", "Builds", "Remixes"], thumbs: 0, empty: true, owner: true, lists: 0 },
 ];
 let remoteDb = "";
 const asProject = (text) => (remoteDb ? text.split(stand.DB).join(remoteDb) : text);
@@ -195,6 +206,101 @@ function read() {
     paragraph: /View in 3D turns it, steps through its build/.test(document.body.innerText),
     sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   };
+}
+
+/// 16. The Parts section, the shops' lists and the file, on [page].
+async function partsChecks(page, label, seen, one) {
+  const before = await page.evaluate(() => {
+    const section = document.getElementById("parts");
+    if (!section) return null;
+    const list = section.querySelector(".lot-list");
+    return { busy: list.getAttribute("aria-busy"), height: section.getBoundingClientRect().height,
+      drawn: document.documentElement.dataset.parts || "", note: section.querySelector(".note").textContent,
+      at: section.dataset.parts, words: [...document.querySelectorAll("#marks .icon-btn.labelled .word")].map((w) => w.textContent),
+      download: document.querySelector('.side .actions a[download]')?.getAttribute("href") || "" };
+  });
+  check(`${label}: a Parts section (${before ? before.note : "none"})`, Boolean(before));
+  if (!before) return;
+  const total = Number((/^([\d,]+) parts?/.exec(before.note) || [])[1]?.replace(/,/g, ""));
+  const tab = seen.tabs.find((t) => t.startsWith("Parts")) || "";
+  check(`${label}: its tab (${tab}) and its section say one count, ${total}`, tab === `Parts ${total.toLocaleString("en-US")}`);
+  check(`${label}: Like and I built it say their names beside their icons (${before.words.join(", ")})`,
+    JSON.stringify(before.words) === JSON.stringify(["Like", "I built it"]));
+  check(`${label}: the list not asked for before the section nears the screen (${before.drawn || "not drawn"})`,
+    before.drawn === "" && before.busy === "true");
+  await page.evaluate(() => document.getElementById("parts").scrollIntoView({ block: "start" }));
+  const drawn = await until(page, () => document.documentElement.dataset.parts === "drawn", null, 20000);
+  check(`${label}: the list drawn once it nears the screen`, drawn);
+  if (!drawn) return;
+  const after = await page.evaluate(() => {
+    const section = document.getElementById("parts");
+    const rows = [...section.querySelectorAll(".lot-list li")];
+    return { height: section.getBoundingClientRect().height, shown: rows.filter((li) => !li.hidden).length,
+      groups: rows.filter((li) => li.classList.contains("group")).length,
+      firstGroup: rows[0]?.classList.contains("group"), pictures: section.querySelectorAll(".lot-list img").length,
+      all: Boolean(section.querySelector("[data-all]:not([hidden])")) };
+  });
+  check(`${label}: drawn into the space kept for it (${Math.round(before.height)} px before, ${Math.round(after.height)} after)`,
+    Math.abs(after.height - before.height) < 0.5);
+  check(`${label}: ${after.shown} rows shown, a colour's row first, no picture asked of Rebrickable (${after.pictures})`,
+    after.shown > 0 && after.shown <= 12 && after.firstGroup && after.pictures === 0);
+  if (after.all) await page.click("#parts [data-all]");
+  const counted = await page.evaluate(() => {
+    const qty = [...document.querySelectorAll("#parts .lot-list .lot .qty")].map((q) => Number(q.textContent.replace(/[^\d]/g, "")));
+    return { lots: qty.length, sum: qty.reduce((a, b) => a + b, 0), hidden: document.querySelectorAll("#parts .lot-list li[hidden]").length };
+  });
+  check(`${label}: Show all shows every lot, and their counts add up to ${total} (${counted.sum} in ${counted.lots} lots)`,
+    counted.sum === total && counted.hidden === 0);
+  await page.click('#parts [data-group="kind"]');
+  const kind = await page.evaluate(() => ({ pressed: document.querySelector('#parts [data-group="kind"]').getAttribute("aria-pressed"),
+    first: document.querySelector("#parts .lot-list li.group span")?.textContent || "" }));
+  check(`${label}: Kind groups them by kind (first: ${kind.first})`, kind.pressed === "true" && Boolean(kind.first));
+  await page.click('#parts [data-group="colour"]');
+  // The shops' lists and the file, as a visitor's browser fetches them.
+  const got = await page.evaluate(async ({ at, download }) => {
+    const ask = async (href) => {
+      const answer = await fetch(href);
+      return { status: answer.status, type: answer.headers.get("content-type") || "", named: answer.headers.get("content-disposition") || "",
+        text: await answer.text() };
+    };
+    const xml = await ask(at.replace(/json$/, "xml"));
+    const csv = await ask(at.replace(/json$/, "csv"));
+    const json = await (await fetch(at)).json();
+    const file = await ask(download);
+    const doc = new DOMParser().parseFromString(xml.text, "application/xml");
+    const items = [...doc.querySelectorAll("INVENTORY > ITEM")].map((item) => ({
+      type: item.querySelector("ITEMTYPE")?.textContent, id: item.querySelector("ITEMID")?.textContent,
+      colour: item.querySelector("COLOR")?.textContent, qty: item.querySelector("MINQTY")?.textContent,
+      fields: [...item.children].map((c) => c.tagName).join(",") }));
+    return { xml: { ...xml, text: xml.text.slice(0, 300), wellFormed: !doc.querySelector("parsererror"),
+      root: doc.documentElement.tagName, items }, csv: { ...csv, lines: csv.text.trim().split("\n") },
+      left: json.left_out, file };
+  }, { at: before.at, download: before.download });
+  // The file as it is stored: the viewer's own answer on a deployment
+  // (api/share.js gives the model's text as stored), the stand-in's bucket
+  // here.
+  let stored = stand.BRICKS;
+  if (remote) {
+    const id = one.path.split("/")[2];
+    const v = /\/v\/(\d+)\.mpd$/.exec(before.download)?.[1];
+    stored = (await (await fetch(`${remote}/api/share?id=${id}${v ? `&v=${v}` : ""}`, { headers })).json()).model || "";
+  }
+  got.file.same = Buffer.from(got.file.text).equals(Buffer.from(stored));
+  got.file.length = Buffer.byteLength(got.file.text);
+  const listed = got.xml.items.reduce((a, item) => a + Number(item.qty), 0);
+  check(`${label}: the BrickLink wanted list is well-formed XML in INVENTORY, each ITEM ITEMTYPE P, ITEMID, a numbered COLOR and MINQTY (${got.xml.items.length} items, ${got.xml.named})`,
+    got.xml.status === 200 && got.xml.wellFormed && got.xml.root === "INVENTORY" && /xml/.test(got.xml.type)
+      && got.xml.items.length > 0 && got.xml.items.every((i) => i.type === "P" && i.id && /^\d+$/.test(i.colour) && /^[1-9]\d*$/.test(i.qty)
+        && i.fields === "ITEMTYPE,ITEMID,COLOR,MINQTY") && /attachment; filename="[a-z0-9-]+-bricklink\.xml"/.test(got.xml.named));
+  check(`${label}: its items, ${got.xml.items.length}, are the lots less the ${got.left.bricklink} it left off`,
+    got.xml.items.length === counted.lots - got.left.bricklink && listed <= total);
+  const rows = got.csv.lines.slice(1);
+  check(`${label}: the Rebrickable CSV is Part,Color,Quantity, a lot a row (${rows.length}, ${got.left.rebrickable} left off, ${got.csv.named})`,
+    got.csv.status === 200 && got.csv.lines[0] === "Part,Color,Quantity" && rows.every((r) => /^[^,]+,\d+,[1-9]\d*$/.test(r))
+      && rows.length === counted.lots - got.left.rebrickable && /attachment; filename="[a-z0-9-]+-rebrickable\.csv"/.test(got.csv.named));
+  check(`${label}: Download is the stored file byte for byte, signed out (${got.file.length} bytes, ${got.file.named})`,
+    got.file.status === 200 && got.file.same && got.file.length > 0 && /attachment; filename="[a-z0-9-]+(-v\d+)?\.mpd"/.test(got.file.named));
+  await page.evaluate(() => window.scrollTo(0, 0));
 }
 
 const browser = await launch({ signedOut: true });
@@ -320,9 +426,12 @@ try {
 
             // 8. The tabs.
             const tabNames = seen.tabs.map((t) => t.replace(/ [\d,]+$/, ""));
-            const wantNames = ["About", "Comments", "Builds", "Remixes", "Versions"].slice(0, tabNames.includes("Versions") ? 5 : 4);
+            const wantNames = ["About", "Parts", "Comments", "Builds", "Remixes", "Versions"].slice(0, tabNames.includes("Versions") ? 6 : 5);
             check(`${label}: the tabs say ${seen.tabs.join(" | ")}`, one.tabs ? JSON.stringify(seen.tabs) === JSON.stringify(one.tabs)
               : JSON.stringify(tabNames) === JSON.stringify(wantNames) || JSON.stringify(tabNames) === JSON.stringify(wantNames.filter((n) => n !== "Comments")));
+
+            // 16. Its parts, signed out.
+            if (!signedIn) await partsChecks(page, label, seen, one);
 
             // 9. The strip of its pictures.
             if (one.thumbs !== undefined && !(signedIn && one.owner)) {
