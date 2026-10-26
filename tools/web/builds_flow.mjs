@@ -320,6 +320,14 @@ try {
     listen(page, "phone");
     await page.goto(`${site}/app?view=${id}`, { waitUntil: "domcontentloaded", timeout: 180000 });
     await until(page, () => ((window.brickworksShare || {}).view || {}).state === "ready", "the viewer", 600);
+    // A phone's Build it sits above the timeline, which comes up once the
+    // steps are worked out, after the viewer is ready; until then Build it
+    // is at the foot of the page, and it rises the timeline's height when
+    // the timeline comes. Tapped where it was told first, on a busy box the
+    // tap landed on the timeline as it came, and the step player never
+    // opened (m177). Tapped once the timeline is told the page, it is where
+    // it stays.
+    await until(page, () => Boolean((window.brickworksControls || {}).steps_slider), "the timeline", 120);
     await tap(page, "view_build");
     await until(page, () => ((window.brickworksShare || {}).build || {}).open === true, "the step player", 60);
     const last = (await page.evaluate(() => window.brickworksShare.build)).last;
