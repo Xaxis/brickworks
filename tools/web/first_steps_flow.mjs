@@ -319,7 +319,10 @@ try {
     await shots(page, `2_start-${width}`, theme);
     const follow = `dialog.first-steps .person-row[data-handle="${designer}"] button[data-follow]`;
     await page.click(follow);
-    await until(page, (at) => document.querySelector(at)?.getAttribute("aria-pressed") === "true", "Following", 20, follow);
+    // Drawn at once, and pressed again once the server answers (site275):
+    // the feed is opened after that.
+    await until(page, (at) => document.querySelector(at)?.getAttribute("aria-pressed") === "true"
+      && !document.querySelector(at).disabled, "Following, answered", 20, follow);
     check(`...Follow pressed: "${await page.textContent(follow)}"`, (await page.textContent(follow)) === "Following");
     await shots(page, `2_followed-${width}`, theme);
     await page.click("#first-feed");
@@ -372,7 +375,8 @@ try {
     const drawn = await atStep(page, "start", "fewest");
     const follow = `dialog.first-steps .person-row[data-handle="${designer}"] button[data-follow]`;
     await tap(follow);
-    await until(page, (at) => document.querySelector(at)?.getAttribute("aria-pressed") === "true", "Following", 20, follow);
+    await until(page, (at) => document.querySelector(at)?.getAttribute("aria-pressed") === "true"
+      && !document.querySelector(at).disabled, "Following, answered", 20, follow);
     // A new follow's backlog is not new (walk180, W7: a new account that
     // followed the house here had 7 on its avatar at once). Ada's castle was
     // listed before Cy followed her, and Cy has never opened the feed.
@@ -440,7 +444,8 @@ try {
     check(`signed in to follow: First steps end with Done (${drawn.done}), not the feed (${drawn.feed || "none"})`, drawn.done && !drawn.feed);
     await shots(page, "4_start_pending-1280", "dark");
     await page.click("#first-done");
-    await until(page, (at) => document.querySelector(at)?.getAttribute("aria-pressed") === "true", "the follow, after First steps", 20, button);
+    await until(page, (at) => document.querySelector(at)?.getAttribute("aria-pressed") === "true"
+      && !document.querySelector(at).disabled, "the follow, after First steps, answered", 20, button);
     check(`...closed, and the follow went on: "${await page.textContent(button)}", on ${new URL(page.url()).pathname}`,
       (await page.textContent(button)) === "Following" && new URL(page.url()).pathname === `/u/${HOUSE}` && them.follows.has(HOUSE));
     await browserOf.close();

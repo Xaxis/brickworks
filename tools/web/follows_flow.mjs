@@ -245,7 +245,10 @@ try {
   let drawn = await followDrawn(bobPage);
   check(`her profile: "${drawn.text}", "${drawn.followers}"`, drawn.text === "Follow" && drawn.followers === "0 followers");
   await bobPage.click("button[data-follow]");
-  await until(bobPage, () => document.querySelector("button[data-follow]")?.textContent === "Following", "Following");
+  // Following is drawn at once and its words once the server answers (site275):
+  // the button is pressed again when it has.
+  await until(bobPage, () => document.querySelector("button[data-follow]")?.textContent === "Following"
+    && !document.querySelector("button[data-follow]").disabled, "Following, answered");
   drawn = await followDrawn(bobPage);
   check(`pressed: "${drawn.text}" (pressed ${drawn.pressed}), "${drawn.followers}", "${drawn.said}"`,
     drawn.text === "Following" && drawn.pressed === "true" && drawn.followers === "1 follower"
