@@ -115,7 +115,7 @@
 
 /* The action bar (web/model-page.js): the kit's icon buttons in a row,
    More at its end; Save's lists open under it and push the page down. */
-.action-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0; }
+.action-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1); margin: 0; }
 .action-bar .more-menu { margin-left: auto; }
 /* On a phone, one row across the column, More at its end. */
 @media (max-width: 600px) { .action-bar { gap: var(--s-1); justify-content: space-between; } .action-bar .more-menu { margin-left: 0; } }

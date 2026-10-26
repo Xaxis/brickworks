@@ -233,8 +233,8 @@ function startParts(section) {
     return item;
   };
   const draw = () => {
-    // Each colour (or kind) with the most of its parts first, its lots in
-    // the app's order under it.
+    // Each colour (or kind) with the most of its parts first, its lots
+    // under it.
     const groups = new Map();
     for (const lot of lots) {
       const key = group === "colour" ? `c${lot.colour}` : lot.category || "Other";
@@ -244,9 +244,12 @@ function startParts(section) {
       one.lots.push(lot);
       one.n += lot.count;
     }
+    // In a colour, the most of a part first; in a kind, the app's order,
+    // which keeps a part's colours together.
+    const most = (a, b) => b.count - a.count || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
     const rows = [];
     for (const one of [...groups.values()].sort((a, b) => b.n - a.n || (a.words < b.words ? -1 : 1))) {
-      rows.push(heading(one.words, one.n, one.hex), ...one.lots.map(row));
+      rows.push(heading(one.words, one.n, one.hex), ...(group === "colour" ? [...one.lots].sort(most) : one.lots).map(row));
     }
     rows.forEach((item, at) => { item.hidden = !open && at >= LOTS_SHOWN; });
     list.replaceChildren(...rows);
@@ -290,14 +293,19 @@ function startParts(section) {
     });
   }
   document.querySelector('#page-tabs a[data-tab="parts"]')?.addEventListener("click", load);
-  if ("IntersectionObserver" in window) {
+  // Watched once the page has loaded, its picture first: the list never
+  // competes with what is on the first screen.
+  const watch = () => {
+    if (!("IntersectionObserver" in window)) return load();
     const near = new IntersectionObserver((seen) => {
       if (!seen.some((one) => one.isIntersecting)) return;
       near.disconnect();
       load();
     }, { rootMargin: "800px 0px" });
     near.observe(section);
-  } else load();
+  };
+  if (document.readyState === "complete") watch();
+  else addEventListener("load", watch, { once: true });
 }
 
 function startComments(section) {

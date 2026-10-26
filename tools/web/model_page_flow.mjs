@@ -232,8 +232,17 @@ async function partsChecks(page, label, seen, one) {
   const total = Number((/^([\d,]+) parts?/.exec(before.note) || [])[1]?.replace(/,/g, ""));
   const tab = seen.tabs.find((t) => t.startsWith("Parts")) || "";
   check(`${label}: its tab (${tab}) and its section say one count, ${total}`, tab === `Parts ${total.toLocaleString("en-US")}`);
-  check(`${label}: Like and I built it say their names beside their icons (${before.words.join(", ")})`,
-    JSON.stringify(before.words) === JSON.stringify(["Like", "I built it"]));
+  check(`${label}: Like and I built it say their names beside their icons on a tablet or a laptop (${before.words.join(", ")})`,
+    JSON.stringify(before.words) === JSON.stringify(["Like", "Built"]));
+  // With its words the row is wider: on a laptop it may take a second row
+  // for More where the counts are long, never more, and never past the column.
+  const bar = await page.evaluate(() => {
+    const bar = document.getElementById("marks").getBoundingClientRect();
+    const all = [...document.querySelectorAll("#marks > button, #marks > details")].map((el) => el.getBoundingClientRect());
+    return { rows: new Set(all.map((r) => Math.round(r.top))).size, inside: all.every((r) => r.right <= bar.right + 0.5) };
+  });
+  check(`${label}: the action bar in ${bar.rows} row${bar.rows === 1 ? "" : "s"}, inside its column`,
+    bar.rows <= 2 && bar.inside && (seen.viewport.width > 600 || bar.rows === 1));
   check(`${label}: the list its own request, after the page's first paint (asked at ${before.asked === null ? "none yet"
     : Math.round(before.asked)} ms, painted at ${Math.round(before.painted)} ms)`,
   before.painted !== null && (before.asked === null ? before.busy === "true" : before.asked >= before.painted));

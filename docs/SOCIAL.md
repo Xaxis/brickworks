@@ -661,8 +661,9 @@ shop's own part and colour numbers as the app exports them
 (`ShopLists`), a made part or a colour the shop has no number for left
 off and counted, never guessed. **Download** beside Build it: the
 version's .mpd as it is stored (`/m/X.mpd`, `/m/X/v/N.mpd`), signed out,
-named for the model. **Like** and **I built it** say their names beside
-their icons and counts (`.icon-btn.labelled`). The pictures are
+named for the model. **Like** and **I built it** ("Built") say their
+names beside their icons and counts from 600 px up (`.icon-btn.labelled`);
+a phone's row of six has room for icons and counts alone. The pictures are
 Rebrickable's, as its own lists show them (its photo of the element where
 there is one, else its render of the part in the colour), sent no address
 of the page (`referrerpolicy="no-referrer"`); the model page's security

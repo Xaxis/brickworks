@@ -965,7 +965,7 @@ function actionBar(origin, id, model, url = links(origin, id).url) {
     + iconButtonHtml({ icon: "share", name: "Share",
       attrs: 'data-share aria-haspopup="dialog" aria-controls="share-sheet" title="Share it: its link, and the code to embed it"' })
     + iconButtonHtml({ icon: "comment", name: "Comment", attrs: 'data-mark="comment" title="Comments on it and its steps"' })
-    + iconButtonHtml({ icon: "build", name: "I built it", count: model.builds, one: "build", labelled: true,
+    + iconButtonHtml({ icon: "build", name: "I built it", count: model.builds, one: "build", labelled: true, word: "Built",
       attrs: 'data-mark="built" title="I built it: add a photo of your build"' })
     + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="More" title="More">`
       + `${iconHtml("more")}</summary><div class="menu-list">`

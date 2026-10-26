@@ -213,8 +213,9 @@ is on the page, `hidden`, for the script to show.
   drawn in the words' colour. **Icon button**: `.icon-btn` (`iconButtonHtml`), round,
   as tall as a field (`.small` 36 for a card's row), its count beside its
   icon once there is one. `.labelled` (`iconButtonHtml({ labelled: true })`)
-  says its name too, between the icon and the count: a model's Like and
-  I built it, which nobody reads from a glyph alone; on a phone (600 px and
+  says a word for it too, between the icon and the count (`word`, its
+  name unless said, and in its label): a model's Like and I built it
+  ("Built"), which nobody reads from a glyph alone; on a phone (600 px and
   under) the row of six has room for icons and counts only, and the word
   is hidden there. Its label says its name and count to a screen
   reader ("Like, 12 likes"; "Like" at none); a toggle is `aria-pressed`,
