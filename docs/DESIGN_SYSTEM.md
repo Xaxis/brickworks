@@ -29,18 +29,29 @@ sized its own titles, from 26 to 74 px. Now:
   copy. The header: Gallery · Download · **Open the app** · Account (Sign
   in until you are, then your avatar: the account menu, below), the
   account last at the far right (the owner, 2026-10-23: "an obvious
-  pattern"; design_flow.mjs fails a header in another order); on a
-  phone the mark, the way in and Menu (your avatar, once signed in),
-  the last 16 px from the edge as the page's words are, down to 320 px:
-  under 390 px the mark is the cube alone (design_flow.mjs fails a
-  header that runs into the gutter at 320, 360 or 390 px). The footer: the mark and a row of links (Compare, FAQ, Changelog,
+  pattern"; design_flow.mjs fails a header in another order), from 600
+  px, so a tablet has it too; on a phone the mark, the way in and Menu
+  (your avatar, once signed in), the last 16 px from the edge as the
+  page's words are, down to 320 px: where the bar has no room for the
+  word, the mark is the cube alone, the word wrapped out of sight with
+  no breakpoint of its own (design_flow.mjs fails a header that runs
+  into the gutter at 320, 360 or 390 px). Everything in it is 44 px
+  tall, a finger's: the mark, its links, Open the app (the regular
+  `.cta`, 44 px at 16, not a size of its own), Menu and your avatar's
+  button (2026-10-26; they were 36-42). The footer: the mark and a row of links (Compare, FAQ, Changelog,
   Source, Privacy, Terms, Guidelines, Takedown), then every notice
   docs/TRADEMARKS.md asks for, small and quiet.
-- **One type scale** (`--t-display`, `--t-h1`, `--t-h2`, `--t-h3`,
-  `--t-lede`, then the words: `--t-body` 16, `--t-small` 14.5, `--t-tiny`
-  13, `--t-micro` 12): `h1` is a page's title at `--t-h1` on every page;
-  the landing page's one line is `h1.display`; `h2` a section's. A page
-  does not size its own titles.
+- **One type scale** (`--t-display`, `--t-h1` 32-46 px, `--t-h2` 22-26
+  px, `--t-h3` 18 px, `--t-lede`, then the words: `--t-body` 16,
+  `--t-small` 14.5, `--t-tiny` 13, `--t-micro` 12): `h1` is a page's
+  title at `--t-h1` on every page; the landing page's one line is
+  `h1.display`; `h2` a section's, at `--t-h2` wherever it is (a model's
+  About it and More by, a settings row, a notice, a dialog's title, a
+  legal page's parts); `h3` a part of a section, at `--t-h3`. A page
+  does not size its own titles, and design_flow.mjs fails an h2 or an
+  h3 drawn at any other size. There were three sizes of h2 and four of
+  h3 (2026-10-26), and `--t-h2` was 23-30 px: one size for every section
+  head made it 22-26, so a settings row or a dialog is not shouting.
 - **One rhythm** (`--s-1` 4 px to `--s-7` 48 px, `--page-top` above a
   page's title, `--section` between sections).
 - **Four breakpoints** (2026-10-26): **600, 900, 1200 and 1600 px**, and
@@ -185,7 +196,8 @@ is on the page, `hidden`, for the script to show.
   width, the legal pages), narrower and quieter.
 - **Empty**: `.state`, a dashed box for what has nothing yet.
 - **Segmented**: `.segmented`, a few buttons in a row, the chosen one
-  `aria-pressed="true"` and edged in `--accent-edge`, as tall as a field.
+  `aria-pressed="true"` and edged in `--accent-edge`, as tall as a field
+  (its buttons 36 px); under 600 px its buttons are a finger's 44.
   The theme (`[data-theme-choice]`: System, Light, Dark), with its word in
   `.theme-choice`; any `[data-theme-choice]` button works with no script of
   the page's own.
@@ -208,7 +220,7 @@ is on the page, `hidden`, for the script to show.
   (`web/kit.js` `avatarHtml`: a round tile in one of eight colours, the
   same for a handle on every page, and the first letter of their name;
   never a figure's likeness, docs/TRADEMARKS.md). Sizes `.small` 24
-  (a byline), 40, `.big` 64 (your account), `.huge` 112 (a profile). It is
+  (a byline), 40, `.big` 64 (your account), `.huge` 112 (a profile; 80 under 600 px). It is
   decoration beside the name, so `aria-hidden`. A person's own picture
   (`.avatar.pictured`, supabase/avatars.sql) fills the same circle over its
   tile, and only this site's address for one is drawn. **Cropper**:
@@ -386,7 +398,12 @@ does for every page, so a page need not:
   which model ("Like Riverside Watchtower, 96 likes"); a comment's Reply
   says whose ("Reply to Jo Lindqvist"). A table that scrolls sideways is a
   named region the keyboard can reach and scroll.
-- **Targets**: every link and button 24 px at least (a card's name too).
+- **Targets**: every link and button 24 px at least (a card's name too);
+  everything in the header and the footer 44 x 44 (the footer's links
+  pad out to it); a link on a line of its own (a crumb, Older versions,
+  a designer's name on a card or in a list, Version 1) 30-32 px, by
+  padding that does not move the words (`site.css` "Targets"). A
+  checkbox's target is its `label.choice`, which ticks it.
 - **Reduced motion**: the toast does not slide, and the page does not
   scroll smoothly; nothing else on the site moves.
 

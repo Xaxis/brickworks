@@ -342,6 +342,7 @@ function listRow(list) {
   top.append(name, open, save, drop, page, many);
   const shownIn = document.createElement("details");
   const summary = document.createElement("summary");
+  summary.className = "cta ghost small";
   summary.textContent = "What is in it";
   const grid = document.createElement("div");
   grid.className = "models compact";

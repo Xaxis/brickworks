@@ -1288,7 +1288,7 @@ function versionsSection(id, versions, shown) {
       <span class="when">${when(shown.at)}</span></p>
     ${shown.note ? `<blockquote class="version-note"><p>${escapeHtml(shown.note)}</p></blockquote>` : ""}
     ${kept}
-    ${lots ? `<details class="lots"><summary>Part by part</summary><ul>${lots}</ul></details>` : ""}
+    ${lots ? `<details class="lots"><summary class="cta ghost small">Part by part</summary><ul>${lots}</ul></details>` : ""}
     ${others ? `<h3>${shown.n === newest ? "Earlier versions" : "The others"}</h3><ol class="earlier">${others}</ol>` : ""}
   </section>`;
 }
