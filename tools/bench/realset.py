@@ -880,6 +880,32 @@ def _stop(process: subprocess.Popen | None) -> None:
             continue
 
 
+def _parts_of(model: Path) -> list[str]:
+    """A saved model's part lines, sorted: what it is, whatever the file's header says."""
+    if not model.exists():
+        return []
+    return sorted(line.strip() for line in model.read_text(errors="replace").splitlines()
+                  if re.match(r"^1 .*\.dat\s*$", line.strip(), re.I))
+
+
+def _changed_anything(stream: Path) -> bool:
+    """Whether a session called any tool that changes the model (none read-only by its
+    annotations, tools/mcp_tools.json), from its stream."""
+    tools = json.loads((ROOT / "tools" / "mcp_tools.json").read_text())
+    looks = {t["name"] for t in tools if (t.get("annotations") or {}).get("readOnlyHint")}
+    for line in stream.read_text(errors="replace").splitlines() if stream.exists() else []:
+        try:
+            content = (json.loads(line).get("message") or {}).get("content")
+        except (ValueError, AttributeError):
+            continue
+        for block in content if isinstance(content, list) else []:
+            if block.get("type") == "tool_use":
+                name = str(block.get("name", "")).rsplit("__", 1)[-1]
+                if name not in looks and name not in ("tabs", "select_tab", "job"):
+                    return True
+    return False
+
+
 def _session_end(stream: Path) -> dict:
     """The end of a Claude Code session, from its stream-json: the result event."""
     if not stream.exists():
@@ -959,6 +985,10 @@ def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: P
                 cwd=app, env=env, stdout=said, stderr=subprocess.STDOUT).returncode
         seconds = time.time() - started
         ended = _session_end(stream)
+        if ended.get("is_error") and "API Error" in str(ended.get("result", "")):
+            # Claude's service failed (529 Overloaded), not the design: not recorded,
+            # so the same command tries it again.
+            raise SystemExit(f"design {subject.id}: {str(ended.get('result'))[:160]}")
         ldr = run_dir / "design.ldr"
         name = f"realset-{subject.id}-{app_port}.ldr"
         saved: dict = {}
@@ -967,7 +997,9 @@ def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: P
         except (OSError, ValueError) as trouble:
             bench.say(f"design {subject.id}: the tab would not save: {trouble}")
         kept = user_dir / "models" / name
-        if kept.exists() and kept.stat().st_size > 0:
+        # The tab opens on a first visit's example, which is no design: a session
+        # that changed nothing leaves it there, and has made no model.
+        if kept.exists() and _parts_of(kept) and _changed_anything(stream):
             shutil.copy(kept, ldr)
         result = {
             "status": status, "seconds": round(seconds, 1), "timed_out": status in (124, 137),
@@ -1393,13 +1425,22 @@ def _turned(sections: object) -> bool:
     return False
 
 
+# The words the connector's working method begins with (src/ai/assistant.gd METHOD).
+METHOD_SAID = "How to work here, said once"
+BUILDS = ("submit_design", "edit_model")
+
+
 def session_reach(lines: list[str]) -> dict:
     """What one Claude Code session called, from its transcript's lines: the guide
     sections it read, the builds that turned a section and how many were refused, the
-    technique calls, how it settled features, and the floor of its first build. A
-    transcript writes each call more than once; each is counted once."""
+    technique calls, how it settled features, and the floor of its first build. And
+    whether it worked by the method (HOW TO WORK): how_real_sets_build_this before its
+    first build, review_model, settle_feature, a part count given; and whether a tool's
+    answer told it the method. A transcript writes each call more than once; each is
+    counted once."""
     calls: dict[str, tuple[str, dict]] = {}
     refused: set[str] = set()
+    told = False
     for line in lines:
         message = json.loads(line).get("message", {})
         content = message.get("content") if isinstance(message, dict) else None
@@ -1414,12 +1455,19 @@ def session_reach(lines: list[str]) -> dict:
                     said = " ".join(b.get("text", "") for b in said if isinstance(b, dict))
                 if str(said).startswith("Not applied"):
                     refused.add(block.get("tool_use_id"))
+                told = told or METHOD_SAID in str(said)
     named = Counter(name for name, _ in calls.values())
     turned = [i for i, (name, given) in calls.items()
               if name in ("submit_design", "edit_model")
               and _turned(given.get("sections", []))]
     first = next((given for name, given in calls.values() if name == "submit_design"), {})
+    order = [name for name, _ in calls.values()]
+    built = next((i for i, name in enumerate(order) if name in BUILDS), len(order))
     return {"calls": len(calls),
+            "method": {"real_first": "how_real_sets_build_this" in order[:built],
+                       "reviews": named["review_model"], "settled": named["settle_feature"],
+                       "parts": any("parts" in g for n, g in calls.values() if n == "submit_design"),
+                       "told": told},
             "guide": sorted({str(g.get("section", "")) for n, g in calls.values()
                              if n == "read_guide"}),
             "turned_builds": len(turned), "turned_refused": len(refused & set(turned)),
@@ -1431,11 +1479,15 @@ def session_reach(lines: list[str]) -> dict:
 
 
 def transcript_of(record: dict) -> Path | None:
-    """The session that made a recorded design. Claude Code keeps it under its working
+    """The session that made a recorded design: its own stream, kept beside it by a run
+    --via relay (design.json's `transcript`), or else as Claude Code keeps it under its working
     directory, the checkout whose app designed (design.json's `app`, else the arm's own,
     read from the arm the record names: proof's first ten in main's are t2base's), as
     the transcript whose first message is the brief, the last begun before the design
     was written."""
+    kept = record.get("design", {}).get("transcript")
+    if kept and Path(kept).exists():
+        return Path(kept)
     where = arm_dir(record["date"], record["arm"])
     meta = where / "arm.json"
     checkout = (record.get("design", {}).get("app")
@@ -1472,10 +1524,14 @@ def reach_report(which: str, date: str, arm: str, first: int = 0) -> str:
            "Each subject: overall verdicts won; the share of parts turned off the grid, "
            "ours and the set's; and from its session's transcript the guide sections read, "
            "builds with a turned or hinged section (refused of them), find/show/place "
-           "technique calls, features settled, and the first build's floor.", "",
+           "technique calls, features settled, and the first build's floor. Method: "
+           "how_real_sets_build_this before the first build (real), review_model calls, "
+           "settle_feature calls, a part count given to submit_design, and whether an answer "
+           "told the session the method.", "",
            "| set | overall | turned | set's turned | guide | turned builds | techniques "
-           "| features | floor |", "|" + "---|" * 9]
+           "| features | floor | method |", "|" + "---|" * 10]
     ours_turned, sets_turned, guides, turned_any, placed_any, sessions = [], [], Counter(), 0, 0, 0
+    method = Counter()
     for r in found:
         design = arm_dir(date, arm) / r["number"] / "design.ldr"
         mine = turned_share(design.read_text(errors="replace"), parts) if design.exists() else None
@@ -1490,7 +1546,7 @@ def reach_report(which: str, date: str, arm: str, first: int = 0) -> str:
               f"{len(r.get('verdicts', []))}"
         if reach is None:
             out.append(f"| {r['number']} | {won} | {_cell(mine, True)} | {_cell(theirs, True)} "
-                       "| no transcript found | | | | |")
+                       "| no transcript found | | | | | |")
             continue
         sessions += 1
         guides.update(reach["guide"])
@@ -1499,15 +1555,25 @@ def reach_report(which: str, date: str, arm: str, first: int = 0) -> str:
         tech = "/".join(str(reach["techniques"][k]) for k in ("find_techniques", "show_technique",
                                                               "place_technique"))
         feats = ", ".join(f"{k} {v}" for k, v in sorted(reach["features"].items()))
+        how = reach["method"]
+        method.update({"real": how["real_first"], "review": how["reviews"] > 0,
+                       "settle": how["settled"] > 0, "parts": how["parts"], "told": how["told"]})
+        did = (f"real {'yes' if how['real_first'] else 'no'}, review {how['reviews']}, "
+               f"settle {how['settled']}, parts {'yes' if how['parts'] else 'no'}"
+               + (", told" if how["told"] else ""))
         out.append(f"| {r['number']} | {won} | {_cell(mine, True)} | {_cell(theirs, True)} | "
                    f"{', '.join(reach['guide'])} | {reach['turned_builds']} "
-                   f"({reach['turned_refused']}) | {tech} | {feats} | {reach['floor']} |")
+                   f"({reach['turned_refused']}) | {tech} | {feats} | {reach['floor']} | {did} |")
     out += ["", f"Turned off the grid, the median: ours {_cell(_median(ours_turned), True)}, the "
             f"sets' {_cell(_median(sets_turned), True)}; ours 5% or more in "
             f"{sum(1 for v in ours_turned if v is not None and v >= 0.05)} of {len(found)}.",
             f"Of {sessions} sessions read: {turned_any} built a turned or hinged section, "
             f"{placed_any} placed a real set's technique; guide sections read by how many: "
-            + (", ".join(f"{k} {v}" for k, v in guides.most_common()) or "none") + "."]
+            + (", ".join(f"{k} {v}" for k, v in guides.most_common()) or "none") + ".",
+            f"The method, of {sessions} sessions: how_real_sets_build_this before the first "
+            f"build in {method['real']}, review_model in {method['review']}, settle_feature in "
+            f"{method['settle']}, a part count given in {method['parts']}; told the method by "
+            f"an answer in {method['told']}."]
     return "\n".join(out) + "\n"
 
 

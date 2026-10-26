@@ -143,6 +143,16 @@ func _run() -> void:
 	_check("every tool is named in the head or a read_guide section%s" % (
 		"" if unmentioned.is_empty() else ": not " + ", ".join(unmentioned)),
 		unmentioned.is_empty())
+	# The method a connector chat hears once (ClaudeConnector._taught) is the
+	# head's HOW TO WORK in a few lines: every tool a step names, none dropped.
+	var steps: String = head.get_slice("HOW TO WORK", 1).get_slice("THE RULES", 0)
+	var dropped := PackedStringArray()
+	for name: String in names:
+		word.compile("(?<![A-Za-z_])%s(?![A-Za-z_])" % name)
+		if word.search(steps) != null and word.search(Assistant.METHOD) == null:
+			dropped.append(name)
+	_check("the method a connector chat hears names every tool of HOW TO WORK%s" % (
+		"" if dropped.is_empty() else ": not " + ", ".join(dropped)), dropped.is_empty())
 
 	# 3. Every command of the window is a tool's, or the window's alone.
 	var shell: Shell = main.get("_shell")
