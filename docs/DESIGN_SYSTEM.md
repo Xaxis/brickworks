@@ -43,6 +43,14 @@ sized its own titles, from 26 to 74 px. Now:
   does not size its own titles.
 - **One rhythm** (`--s-1` 4 px to `--s-7` 48 px, `--page-top` above a
   page's title, `--section` between sections).
+- **Four breakpoints** (2026-10-26): **600, 900, 1200 and 1600 px**, and
+  no others, in `site.css`, `directory.css` and a page's own `<style>`.
+  Under 600 is a phone, 600 to 900 a tablet, 900 to 1200 a laptop, 1200
+  to 1600 a desktop, 1600 and over a wide one. Written in the range form,
+  `@media (width < 600px)` and `@media (width >= 600px)`, so a query and
+  its opposite name the same number. There were 13 (389, 480, 520, 599,
+  620, 640, 700, 860, 1100 and the four), each a unit's guess at its own
+  page; a layout that needs another width is made fluid instead.
 
 ## Themes
 
