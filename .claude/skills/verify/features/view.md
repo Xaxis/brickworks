@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
 
 ## Sub-features
 
@@ -468,14 +468,20 @@ picture the assistant is shown.
   paint, no history step, no revision. Off, it
   costs nothing; on, each change's weighing takes longer (1 s after turning it
   on for 75969-1's 925 parts, 3 s for Orthanc's 9,541, on the GPU box).
+  A joint pins or axles alone make is weighed too (Balance's pins: "on a
+  friction pin", "on an axle keyed in its hole"), and its words and the
+  brace request say so. On the Cat D11 (6,793 parts drawn) Stress took 47 s
+  and listed 14 joints, every one on studs (walk256's D12); it takes under
+  10 s and weighs 146, 125 of them pins or axles (`technic_stress_probe`).
   Known gaps: a part standing on the floor or a baseplate is held by the
-  floor, so a tower's foot is not weighed; a pin, axle, clip or hinge is not
-  weighed. `tools/probe.sh stress_probe` (hand-worked cantilevers, a bonded
+  floor, so a tower's foot is not weighed; a clip, hinge, ball or turntable
+  is not weighed. `tools/probe.sh stress_probe` (hand-worked cantilevers, a bonded
   wall, the shipped models none red), `touch_probe` (walk180's tug bow amber
   at 0.86 with its ladder and without, a plate on a touch past it red and a
   weak joint, columns pressed down standing on studs and on a tile, and in
   the app the verdict, the view and `weakest_joints` agreeing) and
-  `stress_view_probe` (the menu, the
+  `technic_stress_probe` (the D11 weighed as Stress weighs it, timed, its
+  pins and axles among the joints and in the words), `stress_view_probe` (the menu, the
   tint, the hover, the brace offer, two OMR sets and Orthanc pictured in
   shots/stress/), `stress_list_probe` (the panel on hand-worked cantilevers
   and a plate on a touch: the count as `weakest_joints` says it, the worst

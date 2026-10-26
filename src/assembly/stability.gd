@@ -203,10 +203,10 @@ func _weigh_margins(bricks: Array, graph: Dictionary, report: Report) -> void:
 		risk.margin = 1.0 / one.ratio
 		risk.carrying_grams = one.grams
 		risk.studs = one.studs
-		risk.message = "%s %s %s on %d stud%s with %s g past it, %sx its studs' working load" % [
-			one.beyond_part, "hangs from" if one.hangs else "is levered off", one.held_part,
-			one.studs, "" if one.studs == 1 else "s", Balance.tidy(one.grams),
-			Balance.tidy(one.ratio)]
+		risk.message = "%s %s %s %s with %s g past it, %sx its %sworking load" % [
+			one.beyond_part, ("hangs from" if one.hangs else "is levered off") if one.kind == "studs"
+				else "turns on", one.held_part, one.held_on(), Balance.tidy(one.grams),
+			Balance.tidy(one.ratio), "studs' " if one.kind == "studs" else ""]
 		report.risks.append(risk)
 	for piece: Dictionary in weighed.tipping:
 		var risk := Risk.new()
@@ -305,7 +305,18 @@ func contacts(bricks: Array) -> Dictionary:
 	# cell-by-cell count on seven real pairs of parts: identical.
 	var above: Dictionary = {}         ## id -> { id: shared cell count }
 	var overlap: Dictionary = {}       ## pair_of -> cells shared as they stand
-	var none: Array = []
+	# A turned part's many slices sorted once, for every brick it might
+	# carry or rest on; and every brick whose bounds meet it counted
+	# outright, the count being the test. Asking the lattice which ones
+	# touch first compared the same boxes twice: on Orthanc that was 3.9 s,
+	# and counting box against box 6.5 s more.
+	var sliced: Dictionary = {}        ## id -> BrickLattice.slices_of its boxes, or []
+	# Each pair once, both ways: what rests on each counted in one pass
+	# (BrickLattice.shared_lifted), the other way only for a part asked of.
+	var asked: Dictionary = {}
+	for item: Variant in bricks:
+		asked[(item as BrickWorld.Brick).id] = true
+	var compared: Dictionary = {}      ## pair_of -> true
 	for item: Variant in bricks:
 		if stopped:
 			break
@@ -316,13 +327,7 @@ func contacts(bricks: Array) -> Dictionary:
 			continue
 		var lid: PackedInt32Array = BrickLattice.moved_by(
 			mine, Vector3i(0, 1, 0))
-		# A turned part's many slices sorted once, for every brick it might
-		# carry; and every brick whose bounds meet it counted outright, the
-		# count being the test. Asking the lattice which ones touch first
-		# compared the same boxes twice: on Orthanc that was 3.9 s, and
-		# counting box against box 6.5 s more.
-		var slices: Array = BrickLattice.slices_of(mine) \
-			if mine.size() >= SLICED_FROM * 6 else none
+		var slices: Array = _sliced(sliced, brick.id, mine)
 		for over: int in lattice.near_bounds(lid, brick.id):
 			# Skipping pairs whose boxes already overlap was tried, on
 			# the theory that a part inside another is not resting on
@@ -331,18 +336,36 @@ func contacts(bricks: Array) -> Dictionary:
 			# every real joint overlaps. The kart went from 42 joints to
 			# 14 and the car from 53 to 44. What the two share as they
 			# stand is counted in the same pass, for stud_joints.
-			var theirs: PackedInt32Array = lattice.boxes_of(over)
-			var shared: Vector2i = BrickLattice.shared_lifted(mine,
-				slices if theirs.size() >= SLICED_FROM * 6 else none, theirs)
-			if shared.x <= 0:
+			var pair: int = pair_of(brick.id, over)
+			if compared.has(pair):
 				continue
-			if not above.has(brick.id):
-				above[brick.id] = {}
-			above[brick.id][over] = int(above[brick.id].get(over, 0)) + shared.x
-			if shared.y > 0:
-				overlap[pair_of(brick.id, over)] = shared.y
+			compared[pair] = true
+			var theirs: PackedInt32Array = lattice.boxes_of(over)
+			var shared: Vector3i = BrickLattice.shared_lifted(mine, slices, theirs,
+				_sliced(sliced, over, theirs))
+			var back: bool = shared.z > 0 and asked.has(over)
+			if shared.x > 0:
+				if not above.has(brick.id):
+					above[brick.id] = {}
+				above[brick.id][over] = int(above[brick.id].get(over, 0)) + shared.x
+			if back:
+				if not above.has(over):
+					above[over] = {}
+				above[over][brick.id] = int(above[over].get(brick.id, 0)) + shared.z
+			if shared.y > 0 and (shared.x > 0 or back):
+				overlap[pair] = shared.y
 
 	return {"above": above, "boxes": boxes_of, "bricks": bricks, "overlap": overlap}
+
+
+## [param boxes]' slices (BrickLattice.slices_of), kept in [param sliced] by
+## [param id], or [] for a part of fewer boxes than [constant SLICED_FROM].
+static func _sliced(sliced: Dictionary, id: int, boxes: PackedInt32Array) -> Array:
+	var slices: Variant = sliced.get(id)
+	if slices == null:
+		slices = BrickLattice.slices_of(boxes) if boxes.size() >= SLICED_FROM * 6 else []
+		sliced[id] = slices
+	return slices
 
 
 ## Lattice cells shared across one stud joint, as [method contacts] counts

@@ -1162,6 +1162,13 @@
       "area": "view"
     },
     {
+      "kind": "cli",
+      "label": "technic stress probe",
+      "entry": "src/dev/technic_stress_probe.gd",
+      "reach": "tools/probe.sh technic_stress_probe   (headless; Stress on the Cat D11 in under 10 s, its pins and axles weighed and said)",
+      "area": "view"
+    },
+    {
       "kind": "ui",
       "label": "stress view",
       "entry": "src/ui/stress_view.gd",

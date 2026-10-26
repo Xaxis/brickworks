@@ -67,7 +67,7 @@ const BUCKET := 20.0
 ## [param entries] is an array of [key, Transform3D, Lbm.PartMesh]. The
 ## key is whatever the caller wants back — a placement index, a brick id
 ## — and comes out untouched.
-static func pairs(entries: Array) -> Array:
+static func pairs(entries: Array, lines: Variant = null) -> Array:
 	## Bucketed, so a pin is compared with the holes near it rather than
 	## with every hole in the model. A chassis has hundreds of each and
 	## all-against-all is their product.
@@ -100,7 +100,7 @@ static func pairs(entries: Array) -> Array:
 	# between them is in all three, and the connectors by its tips are
 	# nowhere near the gear. A part with an axle hole goes onto the axle,
 	# as a wheel goes onto its pin; the axle goes into a round hole.
-	for one: Array in through(entries):
+	for one: Array in (lines if lines is Array else through(entries)):
 		var pair: Array = [one[1], one[0]] if one[2] == "grips" else [one[0], one[1]]
 		var key: String = "%s|%s" % pair
 		if not seen.has(key):
@@ -311,9 +311,10 @@ static func _teeth(gear: Mechanism.Gear) -> String:
 
 
 ## Each thing joined, to everything it is joined to, both ways round.
-static func both_ways(entries: Array) -> Dictionary:
+## [param lines] is [method through]'s answer when the caller has it already.
+static func both_ways(entries: Array, lines: Variant = null) -> Dictionary:
 	var held: Dictionary = {}
-	for pair: Array in pairs(entries):
+	for pair: Array in pairs(entries, lines):
 		_add(held, pair[0], pair[1])
 		_add(held, pair[1], pair[0])
 	return held
@@ -578,20 +579,43 @@ static func rounds(entries: Array) -> Dictionary:
 const KNUCKLE_WIDEST := 8.0
 ## How far apart along the line two knuckles may end and still meet, LDU.
 const KNUCKLE_GAP := 1.0
+## How wide the boxes are that [method _knuckles] finds ends in, LDU: about
+## as wide as a short round's end reaches.
+const KNUCKLE_BOX := 4.0
 
 
 static func _knuckles(shafts: Array, held: Dictionary) -> void:
-	var ends: Dictionary = {}   ## bucket -> Array of shaft indices with an end in it
+	# Each round's ends put in every box they could meet a knuckle's end in:
+	# within KNUCKLE_GAP along the line and ROUND_OFF_AXIS off it, its far
+	# end by what the round tilted as far as _coaxial lets it adds over its
+	# length too. So a knuckle looks in the one box each of its own ends is
+	# in, and at a part only when a round of it ends by both, as one must for
+	# the knuckle to be between two of its fingers. Looked for in stud-sized
+	# boxes and the 26 round each, the Cat D11's 25,602 knuckle-sized
+	# rounds, its motors' cables drawn as thousands of short wires side by
+	# side, were 23.6 s of a 48 s Stress.
+	var tilt: float = sqrt(1.0 - COAXIAL * COAXIAL)
+	var ends: Dictionary = {}   ## box -> {key -> shaft indices with an end that reaches it}
 	for n: int in shafts.size():
 		var row: Array = shafts[n]
 		if row[5] != "round" or float(row[4]) > KNUCKLE_WIDEST:
 			continue
 		for end: int in 2:
+			var off: float = ROUND_OFF_AXIS + float(row[3]) * tilt * end
+			var reach := Vector3.ONE * (sqrt(KNUCKLE_GAP * KNUCKLE_GAP + off * off) + 0.01)
 			var point: Vector3 = (row[1] as Vector3) + (row[2] as Vector3) * (float(row[3]) * end)
-			var box: Vector3i = _bucket(point)
-			if not ends.has(box):
-				ends[box] = []
-			(ends[box] as Array).append(n)
+			var low := Vector3i(((point - reach) / KNUCKLE_BOX).floor())
+			var high := Vector3i(((point + reach) / KNUCKLE_BOX).floor())
+			for x: int in range(low.x, high.x + 1):
+				for y: int in range(low.y, high.y + 1):
+					for z: int in range(low.z, high.z + 1):
+						var box := Vector3i(x, y, z)
+						if not ends.has(box):
+							ends[box] = {}
+						var here: Dictionary = ends[box]
+						if not here.has(row[0]):
+							here[row[0]] = []
+						(here[row[0]] as Array).append(n)
 	for n: int in shafts.size():
 		var knuckle: Array = shafts[n]
 		if knuckle[5] != "round" or float(knuckle[4]) > KNUCKLE_WIDEST:
@@ -599,32 +623,46 @@ static func _knuckles(shafts: Array, held: Dictionary) -> void:
 		var start: Vector3 = knuckle[1]
 		var way: Vector3 = knuckle[2]
 		var length: float = knuckle[3]
-		var before: Dictionary = {}   ## key -> true: a round of that part ending at this one's start
-		var after: Dictionary = {}
-		var seen: Dictionary = {}
-		for end: int in 2:
-			var home: Vector3i = _bucket(start + way * (length * end))
-			for dx: int in [-1, 0, 1]:
-				for dy: int in [-1, 0, 1]:
-					for dz: int in [-1, 0, 1]:
-						for m: int in ends.get(home + Vector3i(dx, dy, dz), []):
-							if seen.has(m):
-								continue
-							seen[m] = true
-							var other: Array = shafts[m]
-							if other[0] == knuckle[0] \
-									or absf(float(other[4]) - float(knuckle[4])) > 0.5 \
-									or not _coaxial(other, knuckle):
-								continue
-							var span: Vector2 = _span(other, start, way)
-							if absf(span.y) <= KNUCKLE_GAP and span.x < span.y:
-								before[other[0]] = true
-							if absf(span.x - length) <= KNUCKLE_GAP and span.y > span.x:
-								after[other[0]] = true
-		for key: Variant in before:
-			if after.has(key):
+		var at_start: Dictionary = ends.get(Vector3i((start / KNUCKLE_BOX).floor()), {})
+		var at_end: Dictionary = ends.get(Vector3i(((start + way * length) / KNUCKLE_BOX).floor()), {})
+		for key: Variant in at_start:
+			if key != knuckle[0] and at_end.has(key) \
+					and _knuckle_end(shafts, at_start[key], knuckle, false) \
+					and _knuckle_end(shafts, at_end[key], knuckle, true):
 				_add_zones(held, knuckle[0], key, [])
 				_add_zones(held, key, knuckle[0], [])
+
+
+## Whether one of [param rounds] (indices into [param shafts]) is on [param
+## knuckle]'s line, its size, and ends where the knuckle begins, or with
+## [param after] begins where it ends.
+static func _knuckle_end(shafts: Array, rounds: Array, knuckle: Array, after: bool) -> bool:
+	var start: Vector3 = knuckle[1]
+	var way: Vector3 = knuckle[2]
+	var length: float = knuckle[3]
+	var radius: float = knuckle[4]
+	# _coaxial and _span, written out: a cable's wires are hundreds of
+	# thousands of these.
+	for m: int in rounds:
+		var other: Array = shafts[m]
+		if absf(float(other[4]) - radius) > 0.5:
+			continue
+		var along_way: float = (other[2] as Vector3).dot(way)
+		if absf(along_way) < COAXIAL:
+			continue
+		var gap: Vector3 = (other[1] as Vector3) - start
+		var along: float = gap.dot(way)
+		if (gap - way * along).length() > ROUND_OFF_AXIS:
+			continue
+		var other_end: float = along + float(other[3]) * along_way
+		var low: float = minf(along, other_end)
+		var high: float = maxf(along, other_end)
+		if after:
+			if absf(low - length) <= KNUCKLE_GAP and high > low:
+				return true
+		elif absf(high) <= KNUCKLE_GAP and low < high:
+			return true
+	return false
 
 
 ## One part's bores on a joint's axis that the other part's shafts reach
@@ -684,10 +722,15 @@ static func _fits(shaft: Array, bore: Array) -> bool:
 	return reach >= ROUND_DEPTH
 
 
+## How square two rounds on one line are to each other, as the cosine of
+## the angle between them, at least.
+const COAXIAL := 0.999
+
+
 ## Whether two rounds share an axis line, either way along it.
 static func _coaxial(one: Array, other: Array) -> bool:
 	var way: Vector3 = other[2]
-	if absf((one[2] as Vector3).dot(way)) < 0.999:
+	if absf((one[2] as Vector3).dot(way)) < COAXIAL:
 		return false
 	var gap: Vector3 = one[1] - other[1]
 	return (gap - way * gap.dot(way)).length() <= ROUND_OFF_AXIS
