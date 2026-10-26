@@ -10,12 +10,14 @@
 #
 # The Godot probes run locally, through tools/check.sh. This is the
 # safety net for what a laptop might skip, not a replacement for it.
+#
+# Run by hand only (gh workflow run check.yml). On every push to main it
+# ran 351 times in a month, red every time since 2026-10-13 and read by
+# nobody, and a private repository pays for each minute. A release's own
+# gates run on our machine before main moves.
 name: check
 
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
 
 jobs:
