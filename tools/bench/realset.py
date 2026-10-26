@@ -1179,6 +1179,7 @@ def session_reach(lines: list[str]) -> dict:
     transcript writes each call more than once; each is counted once."""
     calls: dict[str, tuple[str, dict]] = {}
     refused: set[str] = set()
+    laid: set[str] = set()
     for line in lines:
         message = json.loads(line).get("message", {})
         content = message.get("content") if isinstance(message, dict) else None
@@ -1193,6 +1194,9 @@ def session_reach(lines: list[str]) -> dict:
                     said = " ".join(b.get("text", "") for b in said if isinstance(b, dict))
                 if str(said).startswith("Not applied"):
                     refused.add(block.get("tool_use_id"))
+                # A real piece laid: its bricks "as laid", and no refusal of the edit.
+                if "as laid" in str(said).lower() and "Not applied" not in str(said):
+                    laid.add(block.get("tool_use_id"))
     named = Counter(name for name, _ in calls.values())
     turned = [i for i, (name, given) in calls.items()
               if name in ("submit_design", "edit_model")
@@ -1204,6 +1208,8 @@ def session_reach(lines: list[str]) -> dict:
             "turned_builds": len(turned), "turned_refused": len(refused & set(turned)),
             "techniques": {k: named[k] for k in ("find_techniques", "show_technique",
                                                  "place_technique")},
+            "placed": sum(1 for i, (name, _) in calls.items()
+                          if name == "place_technique" and i in laid),
             "features": dict(Counter(str(g.get("verdict")) for n, g in calls.values()
                                      if n == "settle_feature")),
             "floor": str(first.get("floor", ""))}
@@ -1255,6 +1261,7 @@ def reach_report(which: str, date: str, arm: str, first: int = 0) -> str:
            "| set | overall | turned | set's turned | guide | turned builds | techniques "
            "| features | floor |", "|" + "---|" * 9]
     ours_turned, sets_turned, guides, turned_any, placed_any, sessions = [], [], Counter(), 0, 0, 0
+    real_any, verdicts = 0, Counter()
     for r in found:
         design = arm_dir(date, arm) / r["number"] / "design.ldr"
         mine = turned_share(design.read_text(errors="replace"), parts) if design.exists() else None
@@ -1275,6 +1282,9 @@ def reach_report(which: str, date: str, arm: str, first: int = 0) -> str:
         guides.update(reach["guide"])
         turned_any += reach["turned_builds"] > 0
         placed_any += reach["techniques"]["place_technique"] > 0
+        # A real piece in the design: one place_technique laid, or a feature's piece accepted.
+        real_any += reach["placed"] > 0 or reach["features"].get("accept", 0) > 0
+        verdicts.update(reach["features"])
         tech = "/".join(str(reach["techniques"][k]) for k in ("find_techniques", "show_technique",
                                                               "place_technique"))
         feats = ", ".join(f"{k} {v}" for k, v in sorted(reach["features"].items()))
@@ -1286,7 +1296,12 @@ def reach_report(which: str, date: str, arm: str, first: int = 0) -> str:
             f"{sum(1 for v in ours_turned if v is not None and v >= 0.05)} of {len(found)}.",
             f"Of {sessions} sessions read: {turned_any} built a turned or hinged section, "
             f"{placed_any} placed a real set's technique; guide sections read by how many: "
-            + (", ".join(f"{k} {v}" for k, v in guides.most_common()) or "none") + "."]
+            + (", ".join(f"{k} {v}" for k, v in guides.most_common()) or "none") + ".",
+            f"A real piece in the design (a place_technique laid, or a feature's piece "
+            f"accepted): {real_any} of {sessions} sessions. Features accepted: "
+            f"{verdicts.get('accept', 0)} of {sum(verdicts.values())} settle calls"
+            + (f" ({100 * verdicts.get('accept', 0) / sum(verdicts.values()):.0f}%)"
+               if verdicts else "") + "."]
     return "\n".join(out) + "\n"
 
 

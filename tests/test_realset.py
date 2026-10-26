@@ -316,11 +316,17 @@ def test_a_session_is_read_for_what_it_reached_each_call_once():
              _turn("assistant", [use("d", "edit_model", square)]),
              _turn("assistant", [use("e", "settle_feature", {"verdict": "built"}),
                                  use("f", "settle_feature", {"verdict": "reject"}),
-                                 use("g", "place_technique", {"id": "21004-1/cluster-1"})])]
+                                 use("g", "place_technique", {"id": "21004-1/cluster-1"}),
+                                 use("h", "place_technique", {"id": "21012-1/cluster-1"})]),
+             _turn("user", [answer("g", "21004-1/cluster-1: 12 parts, laid whole at x=1. As "
+                                        "laid:\n{}"),
+                            answer("h", "Not applied: nothing holds 21012-1/cluster-1 within 4 "
+                                        "studs")])]
     reach = realset.session_reach(lines)
     assert reach["guide"] == ["angle"]
     assert reach["turned_builds"] == 2 and reach["turned_refused"] == 1   # pitch 90 is square
     assert reach["techniques"] == {"find_techniques": 0, "show_technique": 0,
-                                   "place_technique": 1}
+                                   "place_technique": 2}
+    assert reach["placed"] == 1                         # the one refused laid nothing
     assert reach["features"] == {"built": 1, "reject": 1}
-    assert reach["floor"] == "none" and reach["calls"] == 7
+    assert reach["floor"] == "none" and reach["calls"] == 8
