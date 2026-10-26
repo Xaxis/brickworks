@@ -423,30 +423,31 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   units a second every second, so its glide grows as the square of the
   speed: on a phone (1.85 units a point) 237, 931, 3,707 and 14,741 points
   thrown at 0.5, 1, 2 and 4 points a ms, where iOS's UIScrollView ("normal",
-  0.998 a ms) glides 250, 500, 1,000 and 2,000, and Android's OverScroller
-  about 60, 190, 650 and 2,160 (first258: a 434-point drag on More threw it
-  8,500 points, end to end). On a phone or a tablet (`Phone.on`, Main makes
-  it, a shared model's viewer too) every ScrollContainer is heard through its
-  `gui_input` as a finger presses and lifts on it. A finger's move reaches a
-  list twice on the web, as a touch handed on as a mouse's move
-  (`DEVICE_ID_EMULATION`) and as the page's pointermove of type touch, which
-  Godot's web input reads as a mouse's own (a 100-point drag: ten of each,
-  the pointermoves' movementY 100): both moved the list, twice as far as the
-  finger, and threw it twice as fast. The second is accepted before the
-  list hears it, so the drag stays Godot's, a point for a point; on a lift
-  moving the list's speed over its last
-  80 ms goes on and slows by iOS's 0.998 a ms (the distance worked out
-  exactly for each frame's length), Godot's own glide cancelled before the
-  list hears the lift (setting its scroll cancels a drag); lifted after
-  100 ms still it stays; a press catches a gliding list. `tools/probe.sh
-  fling_probe` (headless; a mouse standing for a finger, touch emulated)
-  throws a 72,800-unit list, each move sent twice as the web sends it, at
-  0.5, 1, 2 and 4 pt/ms at a phone's and a tablet's units a point: each
-  glide within 25% of iOS's, the list under the finger 1:1 while it drags,
-  and a drag held still 200 ms not gliding. On ada7c2aa all 8 throws fail
-  (the list 2.00 a point under the finger, glides +81% to +1,687%); with it
-  every one is within 1%, 1.00 a point. The desktop's wheel is untouched
-  (`desktop_same.mjs`, 0 pixels).
+  0.998 a ms) glides 250, 500, 1,000 and 2,000 (first258: a 434-point drag
+  on More threw it 8,500 points, end to end). On a phone or a tablet
+  (`Phone.on`, Main makes it) the root window's `window_input` hears every
+  press and lift first, a dialog's (Saved models) and the parts bin's too
+  (its cells scroll it themselves and take the lift); while a finger is down
+  every list showing is looked at once a frame, and on a lift moving the
+  list's speed (least squares over its last 100 ms of frames, or three
+  frames, from where it set off; not the lift's own look) goes on and slows
+  by 0.998 a ms, Godot's own glide cancelled first (setting a scroll cancels
+  its drag). Lifted still (100 ms, and twice the time between its last two
+  moves, as `Grab.fling_rate` has it) it stays; a press catches a glide; a
+  list scrolled by anything else stops gliding; nothing runs a frame once
+  the glides end. A finger's move reaches a list twice on the web, as the
+  touch's (`DEVICE_ID_EMULATION`) and as the page's pointermove of type
+  touch, which Godot's web input reads as a mouse's: the list and the parts
+  bin went 2.00 points for each the finger went, and threw twice as fast.
+  The list's own `gui_input` takes the second while a finger is down; the
+  bin takes moves from the device that pressed. `tools/probe.sh
+  fling_probe` (headless; events through `Input.parse_input_event`, each
+  move twice as the web sends it) throws a 72,800-unit list at 0.5 to 4
+  pt/ms at a phone's and a tablet's scale, and again at 8 frames a second
+  as a browser drawing in software draws: each glide within 25% of iOS's,
+  the list 1:1 under the finger, a drag held still 200 ms not gliding, a
+  tap tapping, and nothing processing after. On ada7c2aa 11 checks fail
+  (2.00 a point, glides +34% to +1,847%); with it every throw is within 2%.
 - `minifig builder by finger` (`MinifigDialog._arrange`, fig257): the
   builder's three columns want 860 units across at the least, and a phone
   has 720 (a tablet held upright too): its figure, Keep and Place in model
