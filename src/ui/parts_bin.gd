@@ -1952,14 +1952,18 @@ func _cell_input(button: Button, part_id: String, event: InputEvent) -> void:
 			or (motion.button_mask & MOUSE_BUTTON_MASK_LEFT) == 0:
 		return
 	if by_finger:
-		# A finger's move once. On the web it comes twice, as the touch's
-		# (DEVICE_ID_EMULATION) and as the page's pointermove, read as a
-		# mouse's: the grid went 2.09 points for each the finger went.
-		if motion.device != _drag_device:
-			return
 		if _scrolled or motion.global_position.distance_to(_drag_from) >= DRAG_START:
+			# The tile's press let go as a ScrollContainer lets go of a row's:
+			# a touch's own lift, after the mouse's, tapped the tile still
+			# under the finger and took the part.
+			if not _scrolled:
+				button.notification(NOTIFICATION_SCROLL_BEGIN)
 			_scrolled = true
-			_scroll.scroll_vertical -= roundi(motion.relative.y)
+			# A finger's move once. On the web it comes twice, as the touch's
+			# (DEVICE_ID_EMULATION) and as the page's pointermove, read as a
+			# mouse's: the grid went 2.09 points for each the finger went.
+			if motion.device == _drag_device:
+				_scroll.scroll_vertical -= roundi(motion.relative.y)
 			button.accept_event()
 		return
 	if _drag_part.is_empty():
