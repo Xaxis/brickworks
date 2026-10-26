@@ -28,8 +28,7 @@ HERE=${RELEASE_HERE:-$(cd "$(dirname "$0")" && pwd)}
 S=$(realpath -m "${RELEASE_OUT:-${TMPDIR:-/tmp}/brickworks-release}"); mkdir -p "$S"
 # The release's priority is the release's alone.
 unset BOX_HEAVY_PRIORITY
-WHO=UNIT
-. "$HERE/preview_lib.sh" || exit 1
+. "$HERE/preview_lib.sh" UNIT || exit 1
 cd "$W" || exit 1
 R=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
@@ -55,10 +54,12 @@ echo "UNIT: $BRANCH at $SHA, changed since $(git rev-parse --short "$BASE") ($FR
 if [ $# -eq 0 ]; then
   flows=$(python3 tools/release/flows_for.py --since "$BASE") || exit 1
   echo "$flows" | sed 's/^/  /'
-  set -- $(echo "$flows" | sed -n 's/^checks: \([a-z_0-9 ]*\)$/\1/p')
+  read -r -a named <<< "$(echo "$flows" | sed -n 's/^checks: \([a-z_0-9 ]*\)$/\1/p')"
+  set -- "${named[@]}"
 fi
 case " $* " in *" site "*) ;; *) set -- "$@" site;; esac
-set -- $(printf '%s\n' "$@" | awk '!seen[$0]++')
+mapfile -t named < <(printf '%s\n' "$@" | awk '!seen[$0]++')
+set -- "${named[@]}"
 unwired=$(unwired_flows "$BASE")
 [ -z "$unwired" ] || { echo "UNIT: held, a new flow no check runs:$unwired (name it in preview_checks.sh, or mark it there '# local only: NAME')"; exit 1; }
 set -a; . "$R/.env"; set +a

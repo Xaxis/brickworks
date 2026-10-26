@@ -376,7 +376,8 @@ NAMES="${*:-$ORDER}"
 LIVE_DB="$(git rev-parse --path-format=absolute --git-common-dir)/live-db"
 live() { grep -qE 'deleteAccount\(|auth/v1/admin/users' "${CMD[$1]%% *}" 2>/dev/null; }
 run() {
-  local name="$1" t0=$(date +%s) lock
+  local name="$1" t0 lock
+  t0=$(date +%s)
   # A name not in the map ran bare node, which exits 0 at once: technic
   # "passed" in 0 s without running (2026-10-13).
   if [ -z "${CMD[$name]:-}" ]; then echo "$name exit=127 fails=1 0s :: FAIL no such check" >> "$S/$TAG.out"; return; fi
@@ -462,4 +463,4 @@ calm() {
   echo "$1 began at load $load after ${waited}s" >> "$S/${TAG}_calm.log"
 }
 for n in $ALONE; do calm "$n"; run "$n"; done
-echo done >> "$S/$TAG.out"
+echo "done" >> "$S/$TAG.out"

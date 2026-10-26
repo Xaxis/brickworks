@@ -112,7 +112,8 @@ What each one guards against, all learned the hard way on 2026-10-13:
   on every push. One version in `VERSION`, `project.godot` and
   `CHANGELOG.md` (`tools/release.py version`); the Python suite as
   `tools/check.sh` runs it (pytest, else `tools/minitest.py`); and
-  `shellcheck -S warning tools/*.sh`, where shellcheck is installed (where
+  `shellcheck -S warning tools/*.sh tools/release/*.sh` (these scripts
+  too, which CI never linted), where shellcheck is installed (where
   it is not, the gate says so and goes on: koalaman's v0.10.0 static
   binary goes in `~/.local/bin`). CI was red from 2026-10-13 to 10-26 and
   nobody read it: a quoting warning in `describe_snippets.sh`, then a test

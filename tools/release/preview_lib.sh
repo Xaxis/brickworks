@@ -1,9 +1,14 @@
+# shellcheck shell=bash
 # preview_lib.sh: what ship.sh and unit_preview.sh share, sourced by both:
 # a preview of a worktree, and the browser checks run on it. A unit that
 # proved its site change on a preview of its own, the same way a release
 # does, would not have held four release previews on 2026-10-22.
 # The caller is in the worktree and sets W (it, absolute), S (where results
-# go), HERE (the scripts) and WHO (the word its lines begin with).
+# go) and HERE (the scripts), and gives its name as the one argument: the
+# word its lines begin with.
+# Checked, since sourced with none it would read the caller's own first one.
+WHO=${1:-}
+case "$WHO" in SHIP|UNIT) ;; *) echo "preview_lib.sh is sourced with one argument, SHIP or UNIT"; return 1;; esac
 
 # Every check named reported, and passed. A battery that never ran writes
 # no results, and "no failed line" read as a pass: m31 went on to deploy

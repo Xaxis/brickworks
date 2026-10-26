@@ -74,4 +74,4 @@ jobs:
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
           # -S warning: style opinions on a deploy script are noise, a
           # quoting bug in one is a broken release.
-          shellcheck -S warning tools/*.sh
+          shellcheck -S warning tools/*.sh tools/release/*.sh
