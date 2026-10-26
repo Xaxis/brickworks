@@ -871,9 +871,17 @@ plan with Claude as the client.
   (the gallery's first page with its pick and challenge line, the landing
   strip, /profile, /settings, /feed, /notifications); the first screen's
   card pictures are `eager` + `fetchpriority="high"` (`cardHtml`'s
-  `eager`, `FIRST_SCREEN` = 8); a designer's own numbers on /u/ sit under
-  the work; Like on /m/ and Follow are drawn at once and roll back with
-  why if refused. Measured with site273's scripts (CLS at load and after
+  `eager`, `FIRST_SCREEN` = 8; a collection's cover and first four
+  collection cards, `api/_lists.js` `mosaicHtml`/`listCardHtml` `eager`;
+  a model's strip's first five); a designer's own numbers on /u/ sit under
+  the work; the gallery's challenge line is the grid's first row
+  (`#feed > #challenge-line`), drawn with the cards; a model page's
+  comments are held by `#comments-hold` (bones, the height of an empty
+  section and its box) until drawn, its "I built it" box is shown from
+  the server, and its owner's Add a picture sits over the picture
+  (`.on-picture`) while there is no strip (`model_page_flow` accepts
+  either place); Like on /m/ and Follow are drawn at once and roll back
+  with why if refused. Measured with site273's scripts (CLS at load and after
   scrolling, the footer's bottom against the window's, lazy pictures in
   the first screen, every control's transition with and without reduced
   motion, an `:active` rule per kind, Like and Follow's time to draw).

@@ -409,18 +409,33 @@ and after scrolling, every page at 390 and 1280 px.
 - **Drawn whole**: a page whose parts come from several answers (the
   gallery's cards, pick and challenge line; Settings' rows; your profile)
   waits for all of them and draws them together, rather than each as it
-  came, each moving the others.
+  came, each moving the others. What comes with them goes where it moves
+  nothing: the gallery's challenge line is the grid's first row
+  (`#feed > #challenge-line`), not a line over it, and a part the script
+  only hides or shows is drawn at load as it will be (the gallery's
+  filter count and tag chips start `hidden`; a model's "I built it" box
+  starts shown).
+- **Held, then drawn**: a model page's comments are asked after it loads;
+  until then `#comments-hold` (`directory.css .comments-hold`, bones) holds
+  their place at the height of a section with none yet and the box, and
+  goes in the frame they are drawn in.
 - **Signed in at once**: a page that is yours (/profile, /settings, /feed,
   /notifications) knows from the session kept in this browser that you
   are signed in, so it never says "Looking for your sign-in…" while it
   asks; it shows your page's skeleton.
 - **Under, not over**: what only one person sees on a page every visitor
   shares (a designer's own numbers on their /u/ page) is put under the
-  page's work, where its coming moves nothing in view.
+  page's work, where its coming moves nothing in view; or over what is
+  there (a model's owner's Add a picture, `.on-picture`, on the picture's
+  corner while it has no strip of pictures, where a strip shown for it
+  alone pushed the page down).
 - **Pictures**: every `img` has `width` and `height`. The first screen's
   are asked at once and first (`loading="eager" fetchpriority="high"`:
   `cardHtml`'s `eager`, the first `FIRST_SCREEN` (8) of a list; a pinned
-  row; the landing page's first feature); the rest are `loading="lazy"`.
+  row; the landing page's first feature; a collection's cover and the
+  first four collection cards, `mosaicHtml`'s and `listCardHtml`'s
+  `eager`; the first five of a model's strip); the rest are
+  `loading="lazy"`.
 
 ## Accessibility
 
