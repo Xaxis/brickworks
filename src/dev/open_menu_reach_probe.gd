@@ -1,8 +1,8 @@
 ## Can every command in File › Open's menu be reached with forty models saved?
 ##
-##   godot --path . --resolution 1280x800 --script src/dev/open_menu_reach_probe.gd
+##   godot --path . --resolution 390x844 --script src/dev/open_menu_reach_probe.gd -- --phone
 ##   PROBE_SIZE=768x1024 tools/probe.sh open_menu_reach_probe --tablet
-##   PROBE_SIZE=390x844 tools/probe.sh open_menu_reach_probe --phone
+##   PROBE_SIZE=1280x800 tools/probe.sh open_menu_reach_probe      the desktop's
 ##
 ## fling272b (2026-10-26): with more than a dozen saves, Open's menu grew
 ## its list until "Rename or delete saved models…", after the saves, was
@@ -53,14 +53,16 @@ func _run() -> void:
 	var playback: Variant = _main.get("_playback")
 	if playback is BuildPlayback:
 		(playback as BuildPlayback).stop()
-	# A phone draws at a browser's scale (Main.screen_factor, web): a
-	# desktop's window draws its layout half as big, which no phone does.
+	# A phone draws at a browser's scale (Main.screen_factor, web), where
+	# a desktop's window draws its layout half as big, which no phone does:
+	# held there, with the phone's layout's own look at it stopped.
 	if Phone.on() and not Phone.wide() and not OS.has_feature("web"):
-		var main_script: GDScript = _main.get_script()
+		(_main.get("_phone") as Node).set_process(false)
 		for link: Dictionary in root.size_changed.get_connections():
 			var call: Callable = link["callable"]
 			if call.get_method() == &"_match_screen_density":
 				root.size_changed.disconnect(call)
+		var main_script: GDScript = _main.get_script()
 		root.content_scale_factor = main_script.sized_factor(Room.across(), Room.down(), true,
 			ShellPrefs.interface_size(), true)
 	await _frames(20)
