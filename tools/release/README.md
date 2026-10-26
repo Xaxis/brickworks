@@ -102,6 +102,19 @@ What each one guards against, all learned the hard way on 2026-10-13:
   each gate waited 30 to 70 minutes for a slot at load 50 (2026-10-16).
   `MERGE_GATES=ship` has `merge_unit.sh` leave them to it; without it the
   merge still runs them, as before.
+- `ci_gate.sh` is the first of those gates: what GitHub's `check.yml` ran
+  on every push. One version in `VERSION`, `project.godot` and
+  `CHANGELOG.md` (`tools/release.py version`); the Python suite as
+  `tools/check.sh` runs it (pytest, else `tools/minitest.py`); and
+  `shellcheck -S warning tools/*.sh`, where shellcheck is installed (where
+  it is not, the gate says so and goes on: koalaman's v0.10.0 static
+  binary goes in `~/.local/bin`). CI was red from 2026-10-13 to 10-26 and
+  nobody read it: a quoting warning in `describe_snippets.sh`, then a test
+  that needed `colors.json`, which CI never had. A check that only reports
+  is not read, so this one holds the release before main moves, and the
+  workflow runs by hand only, since a private repository pays for each
+  minute. It takes 80 to 120 s in its slot at load 40, nearly all of it
+  the suite.
 - `ship.sh` hands over to the worktree's own `tools/release/ship.sh`, so a
   release runs its own scripts and knows its own checks. m87 was started
   from main's copy and held on "no such check" for the three it added

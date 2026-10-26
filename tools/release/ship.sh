@@ -47,6 +47,10 @@ set -a; . $R/.env; set +a
 URL=""
 [ -n "${SHIP_REUSE:-}" ] && reused_preview "$TAG" "$SHA"
 if [ -z "$URL" ]; then
+  # What CI ran on every push and nobody read: the version, the Python
+  # suite, the shell scripts. First, as it needs no import: two minutes in
+  # its slot at load 40 (2026-10-26).
+  "$HERE/ci_gate.sh" "$W" || { echo "SHIP: held, the version, the Python suite or a shell script (ci_gate.sh)"; exit 1; }
   import_here || { echo "SHIP: held, the import did not finish (tools/fresh_import.sh)"; exit 1; }
   # The merge gates, here under the release's priority: every GDScript file
   # changed since main parses, and the tool list is the app's. Run per merge
