@@ -876,7 +876,23 @@ plan with Claude as the client.
   mark is `madeOf(model)`: `made_with` as the app said (`cardOf` passes it
   from `directory_card`), else the `ai-designed`/`brickify` tags; its title
   says which. `card_check` holds a hand-built model tagged ai-designed
-  unmarked, an untagged one of Claude's marked (red on base).
+  unmarked, an untagged one of Claude's marked (red on base). Since
+  2026-10-26 (site277, from site273's review) the marks are one row
+  (`.marks` one pill tall; a mark that does not fit is left off whole),
+  and a mark 90% or more of a page's cards carry (four cards or more) is
+  not shown: `quietMarks` names it on `<body data-quiet>`, the server's
+  /u/, /c/ and /m/ pages as they are made, `modelCard` again in a browser
+  before the next frame for every card then on the page, and site.css
+  hides it. The gallery's like (`like: true`) is over the picture's
+  top-right corner; likes elsewhere, builds and comments are `.tally`s in
+  `small.acts` on the designer's `.by` line; no card ends in a row of
+  numbers. Titles 16 px at every width. `.models` is 2/3/4/5/6 a row at
+  0/600/900/1200/1600 px; card pages are `.wrap.wide` (`--page-wide`
+  1600 px, as the header and footer on every page). On the live gallery
+  before: marks over 30.7% of a phone's picture in three rows, Tested and
+  Assistant on 100% of the cards, 216 cards ending in a lone heart, a
+  one-line card 348 px at 1280, 4 a row and 8 cards on the first screen
+  at 1920, 2 a row and no header links at 768.
 - `picture themes` (`tools/web/picture_themes.mjs`, 2026-10-24, U15): a
   model's card (found by a word in the gallery's search) and page at 390 and
   1280 in each theme, pictured, a corner of each measured on screen: dark in
@@ -1063,7 +1079,7 @@ plan with Claude as the client.
   `.account-part` (`.menu-who`: avatar, name, @handle; then `nav` links
   `data-place` profile, notifications, feed, saved, settings, the two
   with their own `.count`), the footer's theme choice and
-  `button.sign-out`. At 860 px and under the avatar menu is hidden and
+  `button.sign-out`. Under 600 px (860 and under before 2026-10-26) the avatar menu is hidden and
   `details.menu`'s summary becomes the avatar (`.account-btn`), its list
   the site's links, the same `.account-part`, the theme and Sign out. Who
   you are and the counts come from `GET ?op=feed_count` (`me`,
@@ -2799,8 +2815,14 @@ collection), parses its cards in Chromium, and compares each with the card
 the browser's `/card.js` draws from the same handler's `?op=collection`
 JSON; then four sample cards (owned, won, moves and motions, Tested, no
 picture, markup and quotes in a name, a designer's earned card) by the
-module the server imports (`api/_card.js`) and by `/card.js`. It proves it
-when it ends `card check: 7 cards compared, 0 failed` (2026-10-22).
+module the server imports (`api/_card.js`) and by `/card.js`. Since
+2026-10-26 also the card's shape: a like that is a button over the
+picture, builds and comments in `.by`'s `small.acts`, a like that is a
+count there too, no card whose numbers are a button alone; `quietMarks`
+at 10, 9 and 8 of 10 cards and at three; the server's `/c/` page's
+`data-quiet` against the browser's for the same cards; and five cards
+drawn by `modelCard` naming theirs on `<body>`. It proves it when it ends
+`card check: 15 cards compared, 0 failed` (2026-10-26).
 
 `age_flow` proves it when it ends "the age question is asked neutrally, and
 what it answers holds on the site, in the app and on the server": every

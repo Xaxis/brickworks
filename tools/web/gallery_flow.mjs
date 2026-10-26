@@ -145,7 +145,17 @@ const drawn = (page) => page.evaluate(() => {
   // To a row: the most cards that share a top (on a phone the pick is the
   // first row alone).
   const rows = {};
-  for (const b of boxes) rows[Math.round(b.top)] = (rows[Math.round(b.top)] || 0) + 1;
+  for (const el of cards.filter((one) => !one.closest(".models.row"))) {
+    const top = Math.round(el.getBoundingClientRect().top);
+    rows[top] = (rows[top] || 0) + 1;
+  }
+  // A mark shown: drawn, and inside its row (one that does not fit is
+  // clipped off whole by .marks).
+  const shownMarks = (el, which = ".pill") => [...el.querySelectorAll(`.marks ${which}`)].filter((p) => {
+    const box = p.getBoundingClientRect();
+    const row = p.parentElement.getBoundingClientRect();
+    return p.getClientRects().length && box.bottom <= row.bottom + 1;
+  });
   const tab = document.querySelector("#tabs [aria-current]")?.dataset.tab || "";
   return {
     address: location.pathname + location.search,
@@ -153,10 +163,9 @@ const drawn = (page) => page.evaluate(() => {
     columns: Math.max(0, ...Object.values(rows)),
     // The marks shown: the most rows of them on a card, and the share of
     // the cards that show each; cards whose numbers' row holds only a button.
-    markRows: Math.max(0, ...cards.map((el) => new Set([...el.querySelectorAll(".marks .pill")].filter((p) => p.getClientRects().length)
-      .map((p) => Math.round(p.getBoundingClientRect().top))).size)),
-    markShare: Object.fromEntries(["tested", "made"].map((mark) => [mark, cards.filter((el) => [...el.querySelectorAll(`.marks .${mark}`)]
-      .some((p) => p.getClientRects().length)).length / Math.max(1, cards.length)])),
+    markRows: Math.max(0, ...cards.map((el) => new Set(shownMarks(el).map((p) => Math.round(p.getBoundingClientRect().top))).size)),
+    markShare: Object.fromEntries(["tested", "made"].map((mark) => [mark,
+      cards.filter((el) => shownMarks(el, `.${mark}`).length).length / Math.max(1, cards.length)])),
     lonelyLike: cards.filter((el) => { const acts = el.querySelector(".acts"); return acts && [...acts.children].length > 0
       && [...acts.children].every((c) => c.matches(".icon-btn")); }).length,
     pickWide: (() => { const pick = document.querySelector("#pick-card .model"); const other = document.querySelector("#models .model");
@@ -293,13 +302,16 @@ try {
     await until(page, () => Number(document.documentElement.dataset.pages) === 2);
     const sent = await drawn(page);
     await context.close();
+    // Two pages at least: five shorter cards a row bring a third with the
+    // same scroll (site277).
+    const pages = Number(/[?&]page=(\d+)/.exec(sent.address)?.[1] || 0);
     const other = await visit({ width: 390, theme: "dark" });
     await gallery(other.page, sent.address);
-    await until(other.page, () => Number(document.documentElement.dataset.pages) === 2);
+    await until(other.page, (n) => Number(document.documentElement.dataset.pages) === n, pages);
     const got = await drawn(other.page);
     const controls = await other.page.evaluate(() => ({ q: document.getElementById("q").value,
       size: document.getElementById("size").value, on: document.getElementById("filters-said").textContent }));
-    check(/[?&]page=2\b/.test(sent.address) && sent.ids.length === 48 && got.ids.join(",") === sent.ids.join(",")
+    check(pages >= 2 && sent.ids.length === 24 * pages && got.ids.join(",") === sent.ids.join(",")
       && got.tab === "new" && controls.q === "crowd" && controls.size === "medium" && controls.on === "1",
       `a search sent to somebody: ${sent.address}, ${sent.ids.length} cards; opened at 390 in the dark, ${got.ids.length} cards, `
       + `${got.ids.join(",") === sent.ids.join(",") ? "the same, in the same order" : "NOT the same"}, New, "${controls.q}", ${controls.size}, Filters ${controls.on}`);
