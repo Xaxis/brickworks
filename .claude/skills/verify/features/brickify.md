@@ -196,7 +196,8 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   with the smallest size, half again a try, that lays it whole (`_keeps_at`).
 - `brickify a 3d model` (`src/ui/brickify_dialog.gd`, `src/ui/mesh_file_picker.gd`):
   Ctrl-I (plain I is x-ray), Build > Brickify a 3D model…, or File > Import > 3D model to brickify. The
-  file chooser (several files at once in a browser, for an `.mtl` or a `.bin`),
+  file chooser (several files at once in a browser, for an `.mtl` or a `.bin`;
+  on the desktop in Downloads, then where the last came from: `OpenFrom`),
   then a panel: the model turning, its triangles, size in studs along its
   longest side or its scale in mm a unit (each moves the other), which way is
   up (STL defaults to Z), what it comes to in studs, bricks and centimetres,

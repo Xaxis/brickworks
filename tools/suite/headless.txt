@@ -181,3 +181,4 @@ session_hand
 returning
 gate_line
 nothing_changed
+picker_folder   # every file chooser opens where its kind is kept (Pictures, Documents, Downloads), then where the last came from; never the install folder (dialogs269)

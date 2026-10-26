@@ -38,7 +38,7 @@ func ask(offer: String = "") -> void:
 	for extension: String in accept.split(",", false):
 		patterns.append("*" + extension.strip_edges())
 	_dialog.add_filter(", ".join(patterns), "Collection files")
-	_dialog.popup_centered()
+	OpenFrom.ask(_dialog, "list")
 
 
 func _take(bytes: PackedByteArray, file_name: String) -> void:

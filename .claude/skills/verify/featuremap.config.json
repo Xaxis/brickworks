@@ -749,6 +749,27 @@
       "area": "parts"
     },
     {
+      "kind": "cli",
+      "label": "picker folder probe",
+      "entry": "src/dev/picker_folder_probe.gd",
+      "reach": "tools/probe.sh picker_folder_probe",
+      "area": "parts"
+    },
+    {
+      "kind": "ui",
+      "label": "the app's dialogs and menus",
+      "entry": "src/ui/look.gd",
+      "reach": "godot --path .  (any dialog, chooser or menu: the panels' dark face, on the desktop and, for dialogs, the web)",
+      "area": "parts"
+    },
+    {
+      "kind": "ui",
+      "label": "where a chooser opens",
+      "entry": "src/ui/open_from.gd",
+      "reach": "godot --path .  (any file chooser on the desktop: its kind's last folder, else Pictures, Documents or Downloads)",
+      "area": "parts"
+    },
+    {
       "kind": "ui",
       "label": "mirror a selection",
       "entry": "src/assembly/mirror.gd",

@@ -36,7 +36,7 @@ func ask() -> void:
 		_dialog.size = Vector2i(760, 520)
 		_dialog.file_selected.connect(open_path)
 		add_child(_dialog)
-	_dialog.popup_centered()
+	OpenFrom.ask(_dialog, "mesh")
 
 
 ## A model on this computer, with the files it names read from beside it.

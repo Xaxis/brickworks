@@ -12,8 +12,6 @@ var title: String = "Model"
 var _list: VBoxContainer
 var _heading: Label
 var _status: Label
-var _save_dialog: FileDialog
-var _saving: String = ""
 
 
 func _ready() -> void:
@@ -170,25 +168,26 @@ func _save(kind: String) -> void:
 			else "image/png")
 		_status.text = "Saved %s: print it at actual size (100%%)." % name
 		return
-	_saving = kind
-	if _save_dialog == null:
-		_save_dialog = FileDialog.new()
-		_save_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-		_save_dialog.access = FileDialog.ACCESS_FILESYSTEM
-		_save_dialog.size = Vector2i(760, 520)
-		_save_dialog.file_selected.connect(func(path: String) -> void:
-			var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
-			if file == null:
-				_status.text = "Could not write %s." % path
-				return
-			file.store_buffer(sheet_bytes(_saving))
-			file.close()
-			_status.text = "Saved %s: print it at actual size (100%%)." % path)
-		add_child(_save_dialog)
-	_save_dialog.clear_filters()
-	_save_dialog.add_filter("*.%s" % kind, kind.to_upper())
-	_save_dialog.current_file = name
-	_save_dialog.popup_centered()
+	await save_sheet(kind, bytes)
+
+
+## The sheet's [param bytes] written where the person chooses, on the
+## desktop: the Save dialog every export opens (SaveTo), in the folder the
+## last file went to, asking before it writes over one. It had a chooser
+## of its own that opened in the app's install folder (walk256 DS1).
+func save_sheet(kind: String, bytes: PackedByteArray) -> void:
+	var name: String = "%s stickers.%s" % [title, kind]
+	var path: String = await SaveTo.ask(name, "", "Save the sticker sheet")
+	if path.is_empty():
+		return
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		_status.text = "Could not write %s." % path
+		return
+	file.store_buffer(bytes)
+	file.close()
+	SaveTo.wrote(path)
+	_status.text = "Saved %s: print it at actual size (100%%)." % path
 
 
 ## The sheet's bytes: "pdf", or "png" at 300 dpi.
