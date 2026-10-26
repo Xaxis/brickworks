@@ -43,7 +43,10 @@ plan with Claude as the client.
   worktree, each ready unit merged as the user with a parse gate, then
   `ship.sh WORKTREE TAG CHECK...` (preview, its browser checks, production,
   the live site). Checked by running it: `ship.sh` says `SHIP: brickworks.diy
-  serves <sha>` and the live site check and share probe pass.
+  serves <sha>` and the live site check and share probe pass. A production
+  deploy that fails, or a site that does not serve `/b/<sha>/` after it,
+  fails the ship before the live checks (m174's deploy lost a size to a
+  timed-out connection and its ship still said done 0, 2026-10-26).
 - `what a first visit waits for` (load250, 2026-10-24): a browser taking
   brotli is sent the build as `tools/export.sh` compressed it, brotli 11
   (`deploy.sh` routes `index.wasm`, `index.pck`, `index.js` and
