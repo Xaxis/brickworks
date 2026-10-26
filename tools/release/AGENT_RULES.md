@@ -78,6 +78,11 @@ date says when.
   range it names (two agents once measured each other's build on one port).
 - Never run the full suite (tools/check.sh); run what
   `~/.claude/claude-core/bin/featuremap affected` lists, and your own checks.
+- **Before `ready:`, run `~/.claude/claude-core/bin/heavy tools/release/ci_gate.sh`**
+  (the Python suite, the version check and shellcheck, about 2.5 minutes in
+  its slot). ship.sh runs it before every deploy and holds on any failure:
+  m181 held on a test a website unit had broken by sorting an import, which
+  no unit had run (2026-10-26).
 
 ## The product
 - **A new probe goes on one line of tools/suite/headless.txt or
