@@ -2428,11 +2428,11 @@ func _open_link(link: String, discard: bool) -> String:
 		% [author if not author.is_empty() else "its builder", url]]) \
 		if licence is String and GalleryTool.LICENCES.has(licence) \
 		else "none chosen: the person may build it; do not share what is made from it as theirs"
-	return ("Opened a copy of %s (%s)%s: %d parts, saved in the person's models as %s, theirs to "
+	return ("Opened a copy of %s (%s)%s: %s, saved in the person's models as %s, theirs to "
 		+ "change; the shared one stays as it was, and sharing this one says it was remixed from "
 		+ "it. Licence %s. look_at_model to see it.") % [name, url,
 		", by %s" % author if not author.is_empty() else "",
-		(app.get("_world") as BrickWorld).brick_count() - store.scenery.size(), kept, terms] \
+		await _parts_against_box(store, ""), kept, terms] \
 		+ _replaced_words(store, unsaved, was) + _opened_motions()
 
 

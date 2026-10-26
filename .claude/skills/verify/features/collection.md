@@ -93,9 +93,11 @@ which models they could build from what they have. Added 2026-10-12.
   its part count as a builder counts it (`Inventory.count_of_text`): read as
   opening reads it (the parts it carries and its hoses' skins into the library
   first, `CustomParts.take_into`, then flattened), a sticker counted, a hose
-  once, a ~ bit (a motor cable's 2,891 ribbon segments in the Cat D11) and an
-  unknown primitive not; it is what the model says when it opens
-  (`Inventory.pieces_in`). The lots in `p` are only what of its box it uses,
+  once and a hose's loose ring as itself (`Flex.kind_of_piece`), a ~ bit (a
+  motor cable's 2,891 ribbon segments in the Cat D11) and an unknown
+  primitive not; it is what the model says when it opens
+  (`Inventory.pieces_in`). An assembly LDraw draws as its ~ halves (a shock
+  absorber's cylinder and rod) counts none of them. The lots in `p` are only what of its box it uses,
   which left out the 1,679 parts the D11 carries: the card said 2,183, the
   model opened as 6,793 and its box holds 3,853; now 3,868, 3,868 and 3,853.
   `src/dev/part_counts_probe.gd` holds the card, the model opened and its box

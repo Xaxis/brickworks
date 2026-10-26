@@ -215,14 +215,16 @@ static func count_of_text(text: String, library: PartLibrary) -> int:
 
 ## Whether a part is a piece a builder takes out of the box, as a model's
 ## part count counts it: not one of the bits LDraw draws a bigger part with
-## and names with a ~ (a motor's cable as 1,300 ribbon segments, a hose's
-## centre), nor a hose or a string drawn link by link (Flexible_Section),
-## unless the ~ only says the number moved. The Cat D11 opened as 6,793
-## parts, 2,891 of them its four motors' cable segments, where its box holds
-## 3,853 (walk256's D11). Collection.ownable, less its stickers, which are in
-## the model and on the box's sheet.
+## and names with a ~ (a motor's cable as 1,300 ribbon segments), nor a hose
+## or a string drawn link by link (Flexible_Section), unless the ~ only says
+## the number moved. The Cat D11 opened as 6,793 parts, 2,891 of them its
+## four motors' cable segments, where its box holds 3,853 (walk256's D11).
+## Collection.ownable, less its stickers, which are in the model and on the
+## box's sheet; and a flexible item's piece (Flex.kind_of_piece) is one,
+## which in its item the item stands for and on its own is what it is:
+## nothing says which hose a loose ring is of.
 static func is_piece(part_id: String, library: PartLibrary) -> bool:
-	if library == null:
+	if library == null or not Flex.kind_of_piece(part_id).is_empty():
 		return true
 	var info: PartLibrary.PartInfo = library.parts.get(library.resolve(part_id))
 	if info == null:

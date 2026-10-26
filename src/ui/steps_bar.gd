@@ -378,7 +378,7 @@ func start(world: BrickWorld, library: PartLibrary,
 	elif not _authored and _mode == AUTHORS:
 		_set_mode_quietly(0)
 	var job: Working.Job = Working.begin("Laying out %s parts in steps…"
-		% Working.comma(world.brick_count() - scenery.size()), 0, true)
+		% Working.comma(Inventory.pieces_in(world, library, scenery)), 0, true)
 	_job = job
 	await job.shown()
 	var steps: Array[Instructions.Step] = await Instructions.plan_paced(

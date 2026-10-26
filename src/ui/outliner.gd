@@ -284,7 +284,7 @@ func _refresh(now: bool) -> void:
 	if sections != null:
 		sections.sections.forget_if_stale()
 	if not _open or not is_visible_in_tree():
-		var total: int = maxi(0, shell.world.brick_count() - assemblies.scenery.size())
+		var total: int = Inventory.pieces_in(shell.world, shell.library, assemblies.scenery)
 		_count.text = "%d part%s" % [total, "" if total == 1 else "s"]
 		_shown = ""
 		_shown_base = ""
