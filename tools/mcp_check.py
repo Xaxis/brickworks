@@ -355,7 +355,7 @@ def drive(relay: Relay, window: bool = False) -> None:
           "step" in listed and "#" in listed)
     parts = say("parts_list", {})
     check("the parts list counts the two bricks: %s" % parts.splitlines()[0] if parts else "",
-          parts.startswith("2 pieces in 1 lots") and "3001" in parts)
+          parts.startswith("2 pieces in 1 lot,") and "3001" in parts)
     said = say("lay_flex", {"kind": "rope"})
     check("a refusal says what to fix: %s" % said[:50], said.startswith("kind is one of"))
 
