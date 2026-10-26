@@ -1,5 +1,5 @@
 {
-  "about": "What each set really moves, for src/dev/moves_probe.gd, in Playable's words: moves are the words true of it, sure those it plainly has that a card must say. Judged from its renders and its own steps before the rule was changed (moves268, 2026-10-25); the held out sets were chosen and judged then too, and opened only after.",
+  "about": "What each set really moves, for src/dev/moves_probe.gd, in Playable's words: moves are the words true of it, sure those it plainly has that a card must say. Judged from its renders and its own steps before the rule was changed (moves268, 2026-10-25); the held out sets were chosen and judged then too, and opened only after; held_out_2 was chosen and judged before the rule's second change (a crane's arm with no hook by name, motions_probe's 4096-1) and opened only after it.",
   "seeds": {
     "6080-1.mpd": {"name": "King's Castle", "moves": ["doors"], "sure": [],
       "why": "The drawbridge (a 6 x 10 plate on a Technic pin) lowers on its chains and a wing of the castle swings open on hinge bricks. A drawbridge is a gate; nothing is a boom."},
@@ -85,5 +85,29 @@
     "6822-1.mpd": {"name": "Space Digger", "moves": ["boom", "turntable", "doors"], "sure": []},
     "42004-1.mpd": {"name": "Mini Backhoe Loader", "moves": ["boom", "steering", "turntable", "gears"], "sure": ["boom"],
       "why": "Its backhoe slews on a Technic turntable turned by a 20 tooth gear in its 28 teeth: gears, which the first judging missed and the held out run showed."}
+  },
+  "held_out_2": {
+    "6067-1.mpd": {"name": "Guarded Inn", "moves": ["doors"], "sure": []},
+    "6040-1.mpd": {"name": "Blacksmith Shop", "moves": ["doors"], "sure": []},
+    "6062-1.mpd": {"name": "Battering Ram", "moves": [], "sure": [],
+      "why": "The ram swings in its frame; it lifts nothing."},
+    "6370-1.mpd": {"name": "Weekend Home", "moves": ["doors"], "sure": []},
+    "6374-1.mpd": {"name": "Holiday Home", "moves": ["doors"], "sure": []},
+    "6388-1.mpd": {"name": "Holiday Home with Caravan", "moves": ["doors"], "sure": []},
+    "6512-1.mpd": {"name": "Landscape Loader", "moves": ["boom", "steering", "doors"], "sure": []},
+    "7630-1.mpd": {"name": "Front-End Loader", "moves": ["boom", "steering", "doors"], "sure": []},
+    "6480-1.mpd": {"name": "Hook and Ladder Truck", "moves": ["turntable", "boom", "doors"], "sure": []},
+    "1489-1.mpd": {"name": "Mobile Car Crane", "moves": ["turntable", "boom", "doors"], "sure": []},
+    "7246-1.mpd": {"name": "Mini Digger", "moves": ["turntable", "boom"], "sure": []},
+    "5761-1.mpd": {"name": "Mini Digger", "moves": ["turntable", "boom", "doors"], "sure": []},
+    "6658-1.mpd": {"name": "Bulldozer", "moves": ["boom", "doors"], "sure": [],
+      "why": "Its blade lifts on its arms, which may be called a boom."},
+    "6687-1.mpd": {"name": "Turbo Prop I", "moves": ["doors"], "sure": []},
+    "6368-1.mpd": {"name": "Jet Airliner", "moves": ["doors"], "sure": []},
+    "6392-1.mpd": {"name": "Airport", "moves": ["doors", "turntable"], "sure": []},
+    "6597-1.mpd": {"name": "Century Skyway", "moves": ["doors", "turntable"], "sure": []},
+    "6542-1.mpd": {"name": "Launch & Load Seaport", "moves": ["boom", "turntable", "doors"], "sure": []},
+    "6339-1.mpd": {"name": "Shuttle Launch Pad", "moves": ["boom", "turntable", "doors"], "sure": []},
+    "6363-1.mpd": {"name": "Auto Service Station", "moves": ["doors", "boom", "turntable"], "sure": []}
   }
 }

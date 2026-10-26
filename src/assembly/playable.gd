@@ -17,9 +17,11 @@
 ##               lifts (its line is not upright), with no tyre in it, that
 ##               works something at its end: a crane's arm or hook, a
 ##               digger's bucket, a forklift's forks or a grab, on it or on
-##               what hangs from it (a castle's drawbridge, a garage door,
-##               a plane's folding wings and a ship's cockpit all reach and
-##               lift, and each was said to be a boom, moves268);
+##               what hangs from it, or is in a sub-model its file names as
+##               a crane, a digger, a boom or a bucket (a castle's
+##               drawbridge, a garage door, a plane's folding wings and a
+##               ship's cockpit all reach and lift, and each was said to be
+##               a boom, moves268);
 ##   doors       a door, ramp, hatch, gate, tailgate, flap or lid on a
 ##               hinge, a click hinge or a pin, that is the body or hangs on
 ##               the joint itself (a door in a castle's wing that swings, or
@@ -121,7 +123,7 @@ static func read(bodies: Bodies, world: BrickWorld, library: PartLibrary,
 		elif kind.is_empty() and link.turns and not tyre and not upright and ids.size() >= BOOM_PARTS \
 				and link.kind in ["hinge", "click", "pin", "axle"] \
 				and _reach(bodies, body, link, world, library) >= BOOM_REACH \
-				and _works(bodies, body, name_of):
+				and _works(bodies, body, name_of, world):
 			kind = "boom"
 		if kind.is_empty():
 			continue
@@ -238,12 +240,32 @@ const _WORKING: Array[String] = ["Crane", "Excavator", "Digger Bucket", "Forklif
 
 
 ## Whether [param body], or anything that hangs from it (a hook on its
-## string, a digger's stick and bucket), has a working end (working_end).
-static func _works(bodies: Bodies, body: int, name_of: Callable) -> bool:
+## string, a digger's stick and bucket), has a working end (working_end),
+## or is in a sub-model its file names for a machine that lifts: 4096-1's
+## crane has no hook by name, and its arm is in "4096 - EB Crane"; 8862-1's
+## are "boom" and "bucket".
+static func _works(bodies: Bodies, body: int, name_of: Callable, world: BrickWorld) -> bool:
 	for id: int in bodies.parts_of(bodies.beyond(body)):
 		if working_end(str(name_of.call(id))):
 			return true
+		var brick: BrickWorld.Brick = world.get_brick(id)
+		if brick != null and lifting_named("%s %s" % [brick.group, brick.unit]):
+			return true
 	return false
+
+
+## A sub-model's name, or the path of them a part is in, that names a
+## machine that lifts with a boom.
+static func lifting_named(names: String) -> bool:
+	var lower: String = names.to_lower()
+	for word: String in _LIFTING:
+		if lower.contains(word):
+			return true
+	return false
+
+
+const _LIFTING: Array[String] = ["crane", "boom", "digger", "excavator", "backhoe", "loader",
+	"bucket", "forklift", "derrick"]
 
 
 ## Whether [param id] is one of the parts [param link] joins.

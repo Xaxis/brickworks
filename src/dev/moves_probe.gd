@@ -2,7 +2,7 @@
 ## parts that move as the word says (Playable).
 ##
 ##   godot --headless --path . --script src/dev/moves_probe.gd
-##   godot --headless --path . --script src/dev/moves_probe.gd -- seeds|held_out
+##   godot --headless --path . --script src/dev/moves_probe.gd -- seeds|held_out|held_out_2
 ##   godot --headless --path . --script src/dev/moves_probe.gd -- dump FILE...
 ##
 ## moves268 (2026-10-25): the gallery's King's Castle and Dragon Defender
@@ -15,8 +15,9 @@
 ## models that come with the app, where a word the set is marked as sure to
 ## have and the card does not say fails too (what the rule found right
 ## before stays found), and sixteen more held out: chosen and judged before
-## the rule was changed and opened only after, where a word missed is told
-## and not failed (the joints a drag finds do not see every crane's arm).
+## the rule was changed and opened only after, and twenty more held out the
+## same way before its second change; there a word missed is told and not
+## failed (the joints a drag finds do not see every crane's arm).
 ##
 ## With dump, each file named is read and each body Playable names is told:
 ## its word, its joint, how many parts and how far they reach, and what
@@ -65,7 +66,7 @@ func _run() -> void:
 		return
 	var truth: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(TRUTH))
 	# One group alone where it is named: the seeds, or the held out.
-	var groups: Array = ["seeds", "held_out"]
+	var groups: Array = ["seeds", "held_out", "held_out_2"]
 	if args.size() > 0 and groups.has(args[0]):
 		groups = [args[0]]
 	for group: String in groups:
@@ -162,9 +163,29 @@ func _dump(path: String) -> void:
 		var parts: Array = []
 		for part: String in counts:
 			parts.append("%d× %s" % [counts[part], part] if int(counts[part]) > 1 else part)
-		print("  %-10s %d parts on %s %s, axis %s, reach %.0f: %s" % [str(named.get(body, "-")),
+		print("  %-10s %d parts on %s %s, axis %s, reach %.0f, across %.0f: %s" % [str(named.get(body, "-")),
 			ids.size(), link.kind, "turns" if link.turns else "slides", str(link.axis.snapped(Vector3.ONE * 0.01)),
-			reach, ", ".join(parts.slice(0, 8))])
+			reach, _across(ids, link), ", ".join(parts.slice(0, 8))])
+
+
+## How wide [param ids] are along [param link]'s line, LDU: a crane's arm is
+## narrow there, a drawbridge or a wing as wide as it is long.
+func _across(ids: PackedInt64Array, link: Bodies.Link) -> float:
+	if link.axis == Vector3.ZERO:
+		return 0.0
+	var way: Vector3 = link.axis.normalized()
+	var low: float = INF
+	var high: float = -INF
+	for id: int in ids:
+		var brick: BrickWorld.Brick = _world.get_brick(id)
+		var info: PartLibrary.PartInfo = _library.parts.get(brick.part_id) if brick != null else null
+		if info == null:
+			continue
+		for n: int in 8:
+			var corner: Vector3 = brick.transform * info.bounds.get_endpoint(n)
+			low = minf(low, corner.dot(way))
+			high = maxf(high, corner.dot(way))
+	return high - low if high > low else 0.0
 
 
 func _done() -> void:
