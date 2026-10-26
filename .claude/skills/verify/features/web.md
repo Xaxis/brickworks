@@ -752,7 +752,18 @@ plan with Claude as the client.
   I built it, "Nobody has remixed it yet." with Open it in Brickworks.
   `tests/test_model_page.py` makes the stand-in's pages with the real
   handler (no browser): the rows, their order, the bar's names and counts,
-  and the page drawn when `directory_models` answers 500.
+  and the page drawn when `directory_models` answers 500. Since 2026-10-26
+  (site277) the page is `.wrap.wide` (1,600 px): from 1200 px the column
+  is 420 px and the picture the rest (1,140 x 598 at 1920); under 600 px
+  the picture's frame is square (358 px tall at 390, 188 before) and
+  `model-page.js` `fitPicture` reads the model's columns from a 120 px
+  copy of the picture and draws it by `object-fit: contain` and a
+  `transform` (no layout shift): cropped round the model when it is no
+  wider than the square, else scaled until all of it is in, the picture's
+  own sky and ground carried on above and below as the frame's
+  background. A photo from the strip is shown whole as before. On the
+  live models: the owl and the rocket at x1.9, the rover x1.25, the
+  dragon (86% of the picture's width) x1.08.
 - `model page browser flow` (`tools/web/model_page_flow.mjs`, preview check
   `[model_page]`): below.
 - `site sign-in` (`web/account.js`): the app's own session in this browser
@@ -4227,16 +4238,22 @@ BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_flow.mjs --url=<preview> --out=s
 ```
 
 It passes when it ends "N passed, 0 failed" (2026-10-22: 37 locally, and
-37 with `--url` on `relay_server.mjs` serving this checkout's pages): at
-390 x 844, light and dark, the first card's picture within 330 px of the
-top, two to a row and four cards' names on the first two screens; at 1280
-x 900 four whole cards, four to a row; Top over all time with this week's
+37 with `--url` on `relay_server.mjs` serving this checkout's pages;
+2026-10-26: 41 locally): at 390 x 844, light and dark, the first card's
+picture within 330 px of the top, two to a row (the most cards sharing a
+top, outside the shelves' rows) and four cards' names on the first two
+screens; at 1280 x 900 five whole cards, five to a row (four before
+2026-10-26); at each, one row of marks at most (a mark clipped off by
+`.marks` is not counted), none shown on 90% of the cards, and no card
+whose numbers' row is its like alone; Top over all time with this week's
 pick first and no count of 0; New newest first; Top over this week the
 week's, no pick or shelves; the Space pill pressed; Made with the
-assistant every card marked, Filters saying 1; Following only signed in,
-only whom Sam follows; a search with New, a size and two pages opened by
-somebody else at 390 in the dark showing the same 48 cards in the same
-order; Filters a sheet inside a phone's screen; nothing matching said,
+assistant every card made so and its mark left off (`data-quiet` says
+made, as every card carries it), Filters saying 1; Following only signed
+in, only whom Sam follows; a search with New, a size and two pages or
+more opened by somebody else at 390 in the dark showing the same cards in
+the same order (five shorter cards a row bring a third page with the
+same scroll); Filters a sheet inside a phone's screen; nothing matching said,
 and Clear bringing the gallery back; a like from a card signed out asking
 to sign in, signed in pressed and one more at once, its page saying
 Liked; three pages by scrolling, then Show more, page=5 in the address;

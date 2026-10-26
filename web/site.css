@@ -59,6 +59,11 @@
 	   shows against it; the light one the ground the app drew before, so a
 	   picture published before then and a new one look alike there. */
 	--picture-ground: linear-gradient(180deg, #333a45, #1d222a);
+	/* The ground a picture published before then carries, in either theme:
+	   carried on above and below one drawn smaller than its frame
+	   (web/model-page.js fitPicture). */
+	--render-top: #edeff4;
+	--render-foot: #ccd3dd;
 	/* An avatar made from a handle (web/kit.js avatarHtml): one of eight
 	   tiles, its letter in white, 4.5:1 or more on each, in both themes. */
 	--avatar-1: #b42318; --avatar-2: #1f5fbf; --avatar-3: #1f7a3d; --avatar-4: #7a3fb0;
@@ -177,7 +182,7 @@ code.cmd {
 a:focus-visible { border-radius: var(--r-1); }
 
 .wrap { width: min(100% - 32px, var(--page)); margin-inline: auto; }
-.wrap.wide, .site-head > .wrap, .site-foot > .wrap { --page: var(--page-wide); }
+.wrap.wide, .site-head > .wrap, .site-foot > .wrap { width: min(100% - 32px, var(--page-wide)); }
 .skip {
 	position: absolute; left: 12px; top: -60px; z-index: 50;
 	background: var(--accent); color: var(--on-accent);

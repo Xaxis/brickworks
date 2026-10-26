@@ -82,8 +82,10 @@ function startPicture(big) {
 /// On a phone the picture's frame is square, and its model is drawn as
 /// large as the model's width lets it: the 1200 x 630 picture cropped
 /// round the model when the model is no wider than the square, else
-/// scaled until all of it is in, the picture's own ground carried on above
-/// and below. Never smaller than the whole picture across the frame, as it
+/// scaled until all of it is in, on the frame's ground (a picture with
+/// nothing behind the model), or with the ground an older picture carries
+/// (--render-top, --render-foot) carried on above and below it. Never
+/// smaller than the whole picture across the frame, as it
 /// was: 186 px tall at 390, a fifth of the screen (site273). By transform
 /// alone, which moves nothing else, so the page never shifts as it does.
 /// A photo is shown whole (.photo), and on a laptop the frame is the
@@ -93,8 +95,9 @@ function fitPicture(big, img) {
   img.style.transform = "";
   big.style.background = "";
   if (!PHONE.matches || big.classList.contains("photo") || !img.naturalWidth) return;
-  // The model's columns, read from a small copy: those that differ from
-  // the ground, a gradient from top to bottom read at the corners.
+  // The model's columns, read from a small copy: those drawn on, in a
+  // picture with nothing behind the model; else those that differ from its
+  // ground, a gradient from top to bottom read at the corners.
   const w = 120;
   const h = Math.max(1, Math.round((w * img.naturalHeight) / img.naturalWidth));
   const pen = Object.assign(document.createElement("canvas"), { width: w, height: h }).getContext("2d", { willReadFrequently: true });
@@ -106,6 +109,8 @@ function fitPicture(big, img) {
     return;
   }
   const colour = (x, y) => [0, 1, 2].map((c) => px[(y * w + x) * 4 + c]);
+  const alpha = (x, y) => px[(y * w + x) * 4 + 3];
+  const clear = [alpha(0, 0), alpha(w - 1, 0), alpha(0, h - 1), alpha(w - 1, h - 1)].every((a) => a < 16);
   const mix = (a, b) => a.map((v, c) => (v + b[c]) / 2);
   const top = mix(colour(0, 0), colour(w - 1, 0));
   const foot = mix(colour(0, h - 1), colour(w - 1, h - 1));
@@ -114,7 +119,8 @@ function fitPicture(big, img) {
     const ground = top.map((v, c) => v + ((foot[c] - v) * y) / Math.max(1, h - 1));
     for (let x = 0; x < w; x += 1) {
       const here = colour(x, y);
-      if (Math.abs(here[0] - ground[0]) + Math.abs(here[1] - ground[1]) + Math.abs(here[2] - ground[2]) > 40) hits[x] += 1;
+      if (clear ? alpha(x, y) > 16
+        : Math.abs(here[0] - ground[0]) + Math.abs(here[1] - ground[1]) + Math.abs(here[2] - ground[2]) > 40) hits[x] += 1;
     }
   }
   const first = hits.findIndex((n) => n >= 2);
@@ -128,11 +134,11 @@ function fitPicture(big, img) {
   // Drawn whole across the frame (contain), then enlarged round the model.
   img.style.objectFit = "contain";
   img.style.transform = `scale(${(1 / shown).toFixed(4)}) translateX(${((0.5 - middle) * 100).toFixed(2)}%)`;
-  // Its ground above and below it, where it is shorter than the frame.
+  // An older picture's own ground above and below it, where it is shorter
+  // than the frame; one with nothing behind the model is on the frame's.
   const band = Math.max(0, (1 - 1 / (shown * aspect)) / 2) * 100;
-  if (band > 0.5) {
-    const rgb = (c) => `rgb(${c.map(Math.round).join(" ")})`;
-    big.style.background = `linear-gradient(180deg, ${rgb(top)} ${band.toFixed(1)}%, ${rgb(foot)} ${(100 - band).toFixed(1)}%)`;
+  if (band > 0.5 && !clear) {
+    big.style.background = `linear-gradient(180deg, var(--render-top) ${band.toFixed(1)}%, var(--render-foot) ${(100 - band).toFixed(1)}%)`;
   }
 }
 
