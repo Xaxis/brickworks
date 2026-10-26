@@ -2181,6 +2181,11 @@ func _open_commands(port: int) -> void:
 func _gate_wanted() -> bool:
 	if gate_for_probe:
 		return true
+	# Headless, standing in for a person's tab as Claude's connector reaches
+	# one (tools/bench/realset.py --via relay): signed in from the session kept
+	# in its data folder, which the run has to itself.
+	if _has_argument("--signed-in"):
+		return true
 	if DisplayServer.get_name() == "headless":
 		return false
 	if OS.get_cmdline_args().has("--script"):
