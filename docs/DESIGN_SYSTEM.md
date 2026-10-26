@@ -483,9 +483,6 @@ does for every page, so a page need not:
   a designer's name on a card or in a list, Version 1) 30-32 px, by
   padding that does not move the words (`site.css` "Targets"). A
   checkbox's target is its `label.choice`, which ticks it.
-- **Reduced motion**: the toast does not slide, and the page does not
-  scroll smoothly; nothing else on the site moves.
-- **Targets**: every link and button 24 px at least (a card's name too).
 - **Reduced motion**: nothing moves. Every transition and animation is
   0 s (a skeleton does not breathe, a dialog does not fade, a card does not
   lift, a press does not sink), the toast does not slide, and the page
