@@ -46,3 +46,4 @@ a11y_names   # every control a person can operate has a name a screen reader say
 a11y_keys   # Tab and the arrows reach the toolbar, the bin, a colour, the view cube; a part placed by keys
 a11y_motion   # Settings, Reduce motion stills the build, the shimmer and the view's easing
 a11y_size   # Settings, Interface size at 85% and 150%: nothing off the window (a11y241)
+phone_idle        # the layout for a finger draws nothing standing still (m174 tablet check)
