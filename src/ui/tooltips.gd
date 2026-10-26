@@ -95,11 +95,25 @@ static func _fit(popup: Window) -> void:
 	if longest > widest and widest > 0.0:
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		label.custom_minimum_size.x = widest
+		# Its lines counted at that width, not at the one it had.
+		label.size.x = widest
 		popup.size = Vector2i(popup.get_contents_minimum_size().ceil())
+	_inside(popup, room)
+	# And again whenever it grows: a wrapped label settles its height after
+	# its width, and the window grew down past the foot of the screen. Once
+	# a tooltip, which is made anew each time it shows.
+	popup.size_changed.connect(func() -> void: Tooltips._inside(popup, room))
+
+
+## [param popup] moved inside [param room], its edges kept clear.
+static func _inside(popup: Window, room: Rect2) -> void:
+	if not is_instance_valid(popup):
+		return
 	var at := Vector2(popup.position)
 	at.x = clampf(at.x, room.position.x + EDGE, maxf(room.position.x + EDGE, room.end.x - popup.size.x - EDGE))
 	at.y = clampf(at.y, room.position.y + EDGE, maxf(room.position.y + EDGE, room.end.y - popup.size.y - EDGE))
-	popup.position = Vector2i(at.round())
+	if Vector2i(at.round()) != popup.position:
+		popup.position = Vector2i(at.round())
 
 
 ## Whether [param window] is a tooltip the engine put up.
