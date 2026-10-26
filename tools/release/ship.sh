@@ -34,8 +34,7 @@ S=$(realpath -m "${RELEASE_OUT:-${TMPDIR:-/tmp}/brickworks-release}"); mkdir -p 
 rm -f "$S/$TAG.done" "$S/$TAG.gave_up"
 export BOX_HEAVY_PRIORITY=1
 # The preview and its checks, as unit_preview.sh makes and runs them.
-WHO=SHIP
-. "$HERE/preview_lib.sh" || exit 1
+. "$HERE/preview_lib.sh" SHIP || exit 1
 cd "$W" || exit 1
 if [ -e "$(git rev-parse --git-dir)/merging" ]; then echo "SHIP: a merge in $W is still running its gates"; exit 1; fi
 SHA=$(git rev-parse --short HEAD)
