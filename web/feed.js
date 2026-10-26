@@ -23,7 +23,7 @@
 import { askToSignIn, call, signOut, signedIn } from "/account.js";
 import { followButton, showFeedCount, showTabCounts } from "/follow.js";
 import { ago, avatarHtml } from "/kit.js";
-import { modelCard } from "/card.js";
+import { FIRST_SCREEN, modelCard } from "/card.js";
 
 const $ = (id) => document.getElementById(id);
 // How many designers it suggests.
@@ -61,7 +61,7 @@ function toProfile(by, inner, attrs = {}) {
 
 /// The photo of a build, as a post shows it: the picture, a link to it on
 /// its model's page, and which model it is a build of.
-function photoFigure(one) {
+function photoFigure(one, eager = false) {
   const figure = document.createElement("figure");
   figure.className = "feed-photo";
   const link = document.createElement("a");
@@ -73,7 +73,8 @@ function photoFigure(one) {
     img.width = Number(one.photo.width);
     img.height = Number(one.photo.height);
   }
-  img.loading = "lazy";
+  img.loading = eager ? "eager" : "lazy";
+  if (eager) img.fetchPriority = "high";
   img.decoding = "async";
   link.append(img);
   const caption = document.createElement("figcaption");
@@ -85,7 +86,7 @@ function photoFigure(one) {
   return figure;
 }
 
-function row(one) {
+function row(one, eager = false) {
   const item = document.createElement("li");
   item.className = `feed-row${one.new ? " new" : ""}`;
   item.dataset.kind = String(one.kind || "");
@@ -137,8 +138,8 @@ function row(one) {
     item.append(quote);
   }
   // The thing: the photo of the build, or the model's card.
-  if (one.kind === "photo" && one.photo && one.photo.url) item.append(photoFigure(one));
-  else if (one.card) item.append(modelCard(one.card));
+  if (one.kind === "photo" && one.photo && one.photo.url) item.append(photoFigure(one, eager));
+  else if (one.card) item.append(modelCard(one.card, { eager }));
   return item;
 }
 
@@ -220,7 +221,7 @@ async function suggest(mine, { withLatest, skip = new Set() }) {
   if (!withLatest) return;
   const models = Array.isArray(answer.body.models) ? answer.body.models : [];
   const photos = Array.isArray(answer.body.photos) ? answer.body.photos : [];
-  $("latest-models").replaceChildren(...models.map((one) => modelCard(one)));
+  $("latest-models").replaceChildren(...models.map((one, i) => modelCard(one, { eager: i < FIRST_SCREEN })));
   $("latest-photos").replaceChildren(...photos.map(buildFigure));
   $("latest-photos").hidden = $("photos-title").hidden = photos.length === 0;
   $("latest").hidden = models.length === 0 && photos.length === 0;
@@ -245,7 +246,8 @@ async function page(mine) {
     return;
   }
   const rows = Array.isArray(answer.body.rows) ? answer.body.rows : [];
-  for (const one of rows) $("rows").append(row(one));
+  // The first two posts are the first screen's: their pictures asked first.
+  for (const [i, one] of rows.entries()) $("rows").append(row(one, first && i < 2));
   if (rows.length) oldest = rows[rows.length - 1].at;
   $("older-line").hidden = !answer.body.more;
   // Opened: what was counted is seen now; Notifications' is what is left.
@@ -264,23 +266,31 @@ async function page(mine) {
   if (mine === run) document.documentElement.dataset.feed = "ready";
 }
 
+// The skeleton (feed.html #loading) holds the page's place while the feed
+// and the designers to follow are asked, and the page is drawn whole once
+// they have come: each part drawn as it came moved the others, and the
+// rail coming in beside the posts narrowed them (site273, /feed 0.31-0.52).
 async function load() {
   const mine = ++run;
-  $("loading").hidden = true;
-  $("layout").hidden = false;
+  $("loading").hidden = false;
+  $("layout").hidden = true;
   for (const id of ["signed-out", "nobody", "quiet", "not-yet", "latest", "designers"]) $(id).hidden = true;
   $("rows").replaceChildren();
   $("layout").classList.remove("posts");
   $("older-line").hidden = true;
   $("said").textContent = "";
   oldest = null;
-  if (!signedIn()) {
+  const out = !signedIn();
+  if (out) {
     $("signed-out").hidden = false;
     await suggest(mine, { withLatest: true });
-    if (mine === run) document.documentElement.dataset.feed = "signed-out";
-    return;
+  } else {
+    await page(mine);
   }
-  await page(mine);
+  if (mine !== run) return;
+  $("loading").hidden = true;
+  $("layout").hidden = false;
+  if (out) document.documentElement.dataset.feed = "signed-out";
 }
 
 // Signed in, here or from a Follow among the designers, the page is drawn

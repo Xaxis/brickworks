@@ -13,7 +13,7 @@
 // page as text, never as markup; a link is built from an id or a handle
 // only when it is one. Each tab asks for its own when it is first opened
 // and draws what came, so one that cannot be read leaves the others.
-import { askAgeIfAsked, askToSignIn, call, signOut, signedIn } from "/account.js";
+import { age, askAgeIfAsked, askToSignIn, call, signOut, signedIn } from "/account.js";
 import { showFeedCount } from "/follow.js";
 import { avatarHtml, awardsHtml, toast } from "/kit.js";
 
@@ -467,7 +467,9 @@ function firstTab() {
 }
 
 /// Shows [tab], drawing it the first time, and says so in the address so a
-/// reload or a link comes back to it.
+/// reload or a link comes back to it. While a tab is drawn the first time,
+/// a row of skeletons (#tab-loading) holds its place and it is shown whole
+/// once drawn: drawn in view, its parts moved each other as they came.
 async function choose(tab, { push = false } = {}) {
   const there = tabsNow();
   const first = firstTab();
@@ -477,14 +479,20 @@ async function choose(tab, { push = false } = {}) {
     if (link.dataset.tab === chosen) link.setAttribute("aria-current", "page");
     else link.removeAttribute("aria-current");
   }
-  for (const panel of document.querySelectorAll("#work [data-panel]")) panel.hidden = panel.dataset.panel !== chosen;
+  const fresh = !drawnTabs.has(chosen);
+  for (const panel of document.querySelectorAll("#work [data-panel]")) panel.hidden = fresh || panel.dataset.panel !== chosen;
   const address = new URL(location.href);
   if (chosen === first) address.searchParams.delete("tab");
   else address.searchParams.set("tab", chosen);
   history[push ? "pushState" : "replaceState"](null, "", address.pathname + address.search + address.hash);
-  if (!drawnTabs.has(chosen)) {
+  if (fresh) {
     drawnTabs.add(chosen);
+    $("tab-loading").hidden = false;
     await Promise.resolve(DRAW[chosen]()).catch(() => null);
+    $("tab-loading").hidden = true;
+    // Unless another tab was chosen meanwhile.
+    const now = document.querySelector('#tabs [aria-current="page"]')?.dataset.tab;
+    for (const panel of document.querySelectorAll("#work [data-panel]")) panel.hidden = panel.dataset.panel !== now;
   }
   return chosen;
 }
@@ -708,37 +716,55 @@ const back = (() => {
   return /^\/app(\?[^#\s]*)?$/.test(then) ? then : "";
 })();
 
+// Signed in, the skeleton (profile.html #loading) holds the page's place
+// while your profile, your page as others see it and the first tab are
+// asked, and the page is drawn whole once they have come: each part drawn
+// as it came moved the rest (site273, /profile at 390 px 0.99). Then the
+// age question, if this account is to be asked it, over the page.
 async function load() {
-  $("loading").hidden = true;
   if (back && signedIn()) {
     location.replace(back);
     return;
   }
   if (!signedIn()) {
+    $("loading").hidden = true;
     $("signed-out").hidden = false;
     $("signed-in").hidden = true;
     document.documentElement.dataset.profile = "signed-out";
     if (back && await askToSignIn("Sign in with your email or with orangecheck, and you go back to the app signed in.")) location.replace(back);
     return;
   }
+  const ageNow = age().catch(() => null);
   const [answer] = await Promise.all([call("/api/people?op=me"), drawn()]);
   if (answer.status === 401) {
     signOut();
     return load();
   }
   mine = answer.body;
-  $("signed-out").hidden = true;
-  $("signed-in").hidden = false;
-  // The age question, if this account has not answered it; and under 13,
-  // no public profile or public list here (the server refuses them too).
-  const answered = await askAgeIfAsked().catch(() => null);
-  young = Boolean(answered && answered.over_13 === false);
+  // Under 13, no public profile or public list here (the server refuses
+  // them too).
+  const known = await ageNow;
+  young = Boolean(known && known.over_13 === false);
   $("young").hidden = !young;
   document.documentElement.dataset.young = young ? "yes" : "no";
   await readShown();
   draw();
   drawnTabs.clear();
   await choose(new URLSearchParams(location.search).get("tab") || "");
+  $("loading").hidden = true;
+  $("signed-out").hidden = true;
+  $("signed-in").hidden = false;
+  // The age question, if this account has not answered it; answered under
+  // 13, the page drawn again as it is for them.
+  if (known && known.ask) {
+    const answered = await askAgeIfAsked().catch(() => null);
+    if (answered && answered.over_13 === false) {
+      young = true;
+      $("young").hidden = false;
+      document.documentElement.dataset.young = "yes";
+      await refresh();
+    }
+  }
   // From Settings' Edit profile.
   if (new URLSearchParams(location.search).get("edit") === "1") {
     const address = new URL(location.href);

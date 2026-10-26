@@ -86,7 +86,25 @@
 			<a href="/notifications">Notifications <span class="n" data-count="notifications" hidden></span></a>
 			<a href="/feed" aria-current="page">Your feed <span class="n" data-count="feed" hidden></span></a>
 		</nav>
-		<p class="state" id="loading">Looking for your sign-in…</p>
+		<!-- The page's place while the feed is asked (feed.js): posts and the
+		     designers beside them, as skeletons. -->
+		<div class="feed-layout with-rail skeleton" id="loading" role="status">
+			<span class="visually-hidden">Looking for your sign-in…</span>
+			<div class="feed-main" aria-hidden="true">
+				<div class="feed-list">
+					<div class="feed-row"><div class="post-head"><span class="bone round"></span><div class="words"><span class="bone wide"></span><span class="bone short"></span></div></div>
+						<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div></div>
+					<div class="feed-row"><div class="post-head"><span class="bone round"></span><div class="words"><span class="bone wide"></span><span class="bone short"></span></div></div>
+						<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div></div>
+				</div>
+			</div>
+			<div class="feed-rail" aria-hidden="true">
+				<span class="bone short"></span>
+				<div class="person-row"><span class="bone round"></span><div class="names"><span class="bone"></span><span class="bone short"></span></div><span class="bone button"></span></div>
+				<div class="person-row"><span class="bone round"></span><div class="names"><span class="bone"></span><span class="bone short"></span></div><span class="bone button"></span></div>
+				<div class="person-row"><span class="bone round"></span><div class="names"><span class="bone"></span><span class="bone short"></span></div><span class="bone button"></span></div>
+			</div>
+		</div>
 
 		<div class="feed-layout" id="layout" hidden>
 			<div class="feed-main">

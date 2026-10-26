@@ -171,7 +171,13 @@ function read() {
       if (!row || row.hidden) return null;
       return { thumbs: [...row.querySelectorAll("a.thumb")].map((a) => ({ href: a.getAttribute("href"),
         current: a.getAttribute("aria-current") === "true" })),
-      add: !row.querySelector("[data-add-picture]").hidden, box: box(row) };
+      add: Boolean(row.querySelector("[data-add-picture]:not([hidden])")), box: box(row) };
+    })(),
+    // Its owner's Add a picture: in the strip, or over the picture while
+    // there is no strip (site275: a strip shown for it alone moved the page).
+    addPicture: (() => {
+      const add = document.querySelector("[data-add-picture]");
+      return add && !add.hidden ? (add.closest("#pictures") ? "strip" : "picture") : "";
     })(),
     // The page's last cards, and any count of none said in words.
     lastCards: (() => {
@@ -349,9 +355,9 @@ try {
               await page.click("#pictures a.thumb:nth-of-type(1)");
             }
             if (signedIn && one.owner) {
-              check(`${label}: its owner has Add a picture in the strip, shown though it has no photo (${JSON.stringify(seen.strip?.thumbs.length)} pictures)`,
-                Boolean(seen.strip?.add));
-              await page.click("#pictures [data-add-picture]");
+              check(`${label}: its owner has Add a picture, in the strip or over the picture while it has no photo (${seen.addPicture || "none"}, ${JSON.stringify(seen.strip?.thumbs.length ?? 0)} pictures)`,
+                seen.addPicture === (seen.strip ? "strip" : "picture"));
+              await page.click("[data-add-picture]");
               const formOpen = await until(page, () => !document.querySelector("#builds .build-form").hidden, null, 4000);
               check(`${label}: Add a picture opens the photo form`, formOpen);
               await page.click("#builds .build-form [data-cancel]").catch(() => {});

@@ -167,7 +167,7 @@
 				<img src="/img/stability-400.webp"
 					srcset="/img/stability-400.webp 400w, /img/stability-720.webp 720w, /img/stability-1200.webp 1200w"
 					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
-					width="1200" height="900" loading="lazy" decoding="async"
+					width="1200" height="900" decoding="async"
 					alt="Tools, Check stability on an arm reaching far past a small base: the base's footprint drawn on the floor in red, the centre of mass marked beyond its edge with a line to it, and the joints carrying more than they can hold tinted a lighter red.">
 				<figcaption><b>Will it stand?</b>Where it tips, which joints carry more than they can hold, and what would fix each.</figcaption>
 			</figure></li>
@@ -216,13 +216,22 @@
 			in on; worked constructions in the parts bin; 3D export at true size, renders up to 4K, and what your own sets can build.</p>
 	</section>
 
-	<!-- Filled by web/landing.js from the live gallery; shown only once three cards have their pictures. -->
-	<section id="made" class="wrap wide" aria-labelledby="made-h" hidden>
+	<!-- Filled by web/landing.js from the live gallery once three cards have
+	     their pictures; until then a row of skeletons holds its place, so the
+	     page under it does not move when it comes. Taken away only when the
+	     gallery cannot be read. -->
+	<section id="made" class="wrap wide" aria-labelledby="made-h">
 		<div class="section-head">
 			<h2 id="made-h">Made in Brickworks</h2>
 			<a href="/gallery">The gallery</a>
 		</div>
-		<div class="models row" id="made-models"></div>
+		<div class="models row" id="made-models">
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+		</div>
 	</section>
 
 	<section id="assistant" class="wrap" aria-labelledby="assistant-h">

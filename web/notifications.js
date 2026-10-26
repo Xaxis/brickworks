@@ -88,7 +88,7 @@ function line(one) {
   return item;
 }
 
-function group(one) {
+function group(one, i = 0) {
   const item = document.createElement("li");
   item.className = `notice${one.unread ? " unread" : ""}`;
   item.dataset.model = String(one.model || "");
@@ -101,7 +101,10 @@ function group(one) {
     const img = document.createElement("img");
     img.src = here(one.picture);
     img.alt = "";
-    img.loading = "lazy";
+    img.width = 1200;
+    img.height = 630;
+    // The first screen's asked at once.
+    img.loading = i < 4 ? "eager" : "lazy";
     img.decoding = "async";
     picture.append(img);
   }
@@ -136,21 +139,24 @@ function group(one) {
   return item;
 }
 
+// Signed in, the skeleton (notifications.html #loading) holds the list's
+// place while it is asked, and the list is drawn whole when it comes.
 async function load() {
-  $("loading").hidden = true;
   if (!signedIn()) {
+    $("loading").hidden = true;
     $("signed-out").hidden = false;
     $("signed-in").hidden = true;
     document.documentElement.dataset.notifications = "signed-out";
     return;
   }
   $("signed-out").hidden = true;
-  $("signed-in").hidden = false;
   const answer = await call("/api/people?op=notifications");
   if (answer.status === 401) {
     signOut();
     return load();
   }
+  $("loading").hidden = true;
+  $("signed-in").hidden = false;
   if (answer.status !== 200) {
     $("said").textContent = answer.body.error || "Brickworks could not show your notifications just now. Try again in a minute.";
     document.documentElement.dataset.notifications = "failed";

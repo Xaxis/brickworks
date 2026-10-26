@@ -883,6 +883,30 @@ plan with Claude as the client.
   padding (site.css "targets"). Measured with site273's scripts (copied to
   site276's scratch): `report.mjs --bars` over `measure.mjs` at 320, 390
   and 1280.
+  Since 2026-10-26 (site275, docs/DESIGN_SYSTEM.md "Motion" and
+  "Steady loads"): every control and card eases over `--motion` (150 ms),
+  sinks on `:active`, a card lifts 2 px under a mouse, a dialog and a menu
+  fade in (`--motion-open`), and none of it under reduced motion; `main`
+  fills the window under the header (`--head-h`); a script's part starts
+  as a skeleton (`.skeleton`, `.bone`, `.skeleton-card` from
+  `web/card.js` `skeletonHtml`) and is drawn whole when its answers are in
+  (the gallery's first page with its pick and challenge line, the landing
+  strip, /profile, /settings, /feed, /notifications); the first screen's
+  card pictures are `eager` + `fetchpriority="high"` (`cardHtml`'s
+  `eager`, `FIRST_SCREEN` = 12 since site277's grid of up to six a row; a collection's cover and first four
+  collection cards, `api/_lists.js` `mosaicHtml`/`listCardHtml` `eager`;
+  a model's strip's first five); a designer's own numbers on /u/ sit under
+  the work; the gallery's challenge line is the grid's first row
+  (`#feed > #challenge-line`), drawn with the cards; a model page's
+  comments are held by `#comments-hold` (bones, the height of an empty
+  section and its box) until drawn, its "I built it" box is shown from
+  the server, and its owner's Add a picture sits over the picture
+  (`.on-picture`) while there is no strip (`model_page_flow` accepts
+  either place); Like on /m/ and Follow are drawn at once and roll back
+  with why if refused. Measured with site273's scripts (CLS at load and after
+  scrolling, the footer's bottom against the window's, lazy pictures in
+  the first screen, every control's transition with and without reduced
+  motion, an `:active` rule per kind, Like and Follow's time to draw).
 - `model card` (`web/card.js`, 2026-10-22): one renderer, `cardHtml(model,
   {earned})`, a pure string function; `modelCard` parses it in the
   browser (gallery, landing strip, /profile), and the server's pages

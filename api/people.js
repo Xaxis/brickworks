@@ -201,7 +201,7 @@ import {
 import { withFaces } from "./_faces.js";
 // The one model card, the browser's too (web/card.js): the page needs no
 // script to show its models.
-import { cardHtml, marksOf, quietMarks } from "./_card.js";
+import { FIRST_SCREEN, cardHtml, marksOf, quietMarks } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
 import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml } from "./_card.js";
@@ -1207,7 +1207,7 @@ async function profilePage(request, response) {
   await withFaces(showcase.pins);
   const pinned = showcase.pins.length ? `<section class="pinned" aria-labelledby="pinned-h"><h2 id="pinned-h">Pinned</h2>
     <div class="models row">${showcase.pins.map((card) => cardHtml({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 },
-      { earned: Boolean(earned) })).join("")}</div></section>` : "";
+      { earned: Boolean(earned), eager: true })).join("")}</div></section>` : "";
 
   // The tab, and the cards on the page.
   let panel = "";
@@ -1223,7 +1223,8 @@ async function profilePage(request, response) {
       <a href="/m/${start.id}">${escapeHtml(start.name)}</a>, ${escapeHtml(count(start.builds, "build"))} finished${start.tested ? ", Tested" : ""}.
       <a class="cta small" href="/app?view=${start.id}&amp;build">Build it</a></p>` : ""}
     ${earned && counts.models > 1 && earned.builds + earned.remixes > 0 ? `<p class="note">Most built first: a build finished counts most, then a remix and the Tested mark.</p>` : ""}
-    <div class="models" data-models data-page="${shown.page}">${cards.map((card) => cardHtml(card, { earned: Boolean(earned) })).join("")}</div>
+    <div class="models" data-models data-page="${shown.page}">${cards.map((card, i) => cardHtml(card, { earned: Boolean(earned),
+      eager: i < (showcase.pins.length ? 4 : FIRST_SCREEN) })).join("")}</div>
     ${shown.more || shown.page > 1 ? `<p class="paging">${shown.more ? `<a class="cta ghost" data-more="${shown.page + 1}"
       href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: "models", page: shown.page + 1 }))}">Show more</a>` : ""}${shown.page > 1
       ? ` <a href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: "models" }))}">Back to the first</a>` : ""}</p>` : ""}`
@@ -1241,14 +1242,14 @@ async function profilePage(request, response) {
     const cards = page ? await withWins(await withFaces(page.models), tests) : [];
     drawn.push(...cards);
     panel = cards.length ? `<p class="note">${name} chose to show the models they liked, newest first.</p>
-    <div class="models" data-models data-page="${page.page}">${cards.map((card) => cardHtml(card)).join("")}</div>
+    <div class="models" data-models data-page="${page.page}">${cards.map((card, i) => cardHtml(card, { eager: i < 4 })).join("")}</div>
     ${page.more || page.page > 1 ? `<p class="paging">${page.more ? `<a class="cta ghost" data-more="${page.page + 1}"
       href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: "likes", page: page.page + 1 }))}">Show more</a>` : ""}${page.page > 1
       ? ` <a href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: "likes" }))}">Back to the first</a>` : ""}</p>` : ""}`
       : `<p class="state">No likes yet. The models ${name} likes in the gallery show here, as they chose.</p>`;
   } else {
     const covers = lists.length ? await coversOf(lists, tests) : new Map();
-    panel = lists.length ? `<div class="list-cards">${lists.map((list) => listCardHtml(list, covers)).join("")}</div>`
+    panel = lists.length ? `<div class="list-cards">${lists.map((list, i) => listCardHtml(list, covers, { eager: i < 4 })).join("")}</div>`
       : `<p class="state">No collections yet. The lists of models ${name} makes public show here.</p>`;
   }
   const tabsHtml = `<nav class="tabs" aria-label="${name}’s work">${tabs.map(([id, label]) =>
@@ -1257,12 +1258,14 @@ async function profilePage(request, response) {
 
   const main = `<div class="wrap wide person profile${earned ? " designer" : ""}${showcase.banner ? " bannered" : ""}" data-handle="${escapeHtml(person.handle)}">
   ${head}
-  <section class="designs" id="designs-mine" aria-label="Your models, as only you see them" hidden></section>
   ${pinned}
   <div class="work" id="work">
   ${tabsHtml}
   <div class="tab-panel" data-panel="${tab}">${panel}</div>
   </div>
+  <!-- Under the work, not over it: drawn for its designer alone once their
+       sign-in is read, it moved the whole page down as it came (site273). -->
+  <section class="designs" id="designs-mine" aria-label="Your models, as only you see them" hidden></section>
   ${following.length ? `<section class="follows" aria-labelledby="follows-h"><h2 id="follows-h">Follows</h2>
     <p class="note">${name} chose to show whom they follow.</p>
     <ul class="pills">${following.map((one) => `<li><a class="pill" href="/u/${escapeHtml(one.handle)}">`
@@ -1308,7 +1311,7 @@ async function listPage(request, response) {
     + "Report it</button><a href=\"/takedown\">Takedown requests</a></div></details>";
   const main = `<div class="wrap wide person list" data-id="${id}">
   <header class="list-head">
-    <div class="cover">${mosaicHtml(covers.get(id) || [])}</div>
+    <div class="cover">${mosaicHtml(covers.get(id) || [], { eager: true })}</div>
     <div class="who">
       <p class="eyebrow">Collection</p>
       <h1>${escapeHtml(list.name)}</h1>
@@ -1324,7 +1327,7 @@ async function listPage(request, response) {
       </div>
     </div>
   </header>
-  ${shown.models.length ? `<div class="models">${shown.models.map((card) => cardHtml(card)).join("")}</div>`
+  ${shown.models.length ? `<div class="models">${shown.models.map((card, i) => cardHtml(card, { eager: i < FIRST_SCREEN })).join("")}</div>`
     : `<p class="state">Nothing in it is in the gallery just now. The models put in it show here once they are.</p>`}
 </div>`;
   return html(response, 200, page(origin, {

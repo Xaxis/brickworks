@@ -126,7 +126,26 @@
 
 <main id="main">
 	<div class="wrap page account">
-		<p class="state" id="loading">Looking for your sign-in…</p>
+		<!-- The page's place while your profile is asked (profile.js): its head,
+		     its tabs and a row of cards, as skeletons. -->
+		<div class="person profile skeleton" id="loading" role="status">
+			<span class="visually-hidden">Looking for your sign-in…</span>
+			<div class="profile-head" aria-hidden="true">
+				<span class="bone round huge"></span>
+				<div class="who"><span class="bone short"></span><span class="bone"></span></div>
+			</div>
+			<div class="tabs" aria-hidden="true"><span class="bone short"></span></div>
+			<div class="models" aria-hidden="true">
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			</div>
+		</div>
 
 		<section id="signed-out" class="account-out" hidden>
 			<div class="page-head">
@@ -196,6 +215,14 @@
 					<a href="/profile?tab=sets" data-tab="sets">Sets</a>
 					<a href="/profile?tab=insights" data-tab="insights">Insights</a>
 				</nav>
+
+				<!-- A tab's place while it is drawn the first time (profile.js choose). -->
+				<div class="models skeleton" id="tab-loading" aria-hidden="true" hidden>
+					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+					<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				</div>
 
 				<div class="tab-panel" data-panel="models" hidden>
 					<div class="models" id="my-models"></div>

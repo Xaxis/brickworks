@@ -242,14 +242,19 @@ function startComments(section) {
       const reply = await fetch(path, { headers: { accept: "application/json" } });
       answer = { status: reply.status, body: await reply.json().catch(() => ({})) };
     }
+    // The skeleton holding its place (api/share.js commentsSection) goes in
+    // the frame it is drawn in.
+    const hold = document.getElementById("comments-hold");
     if (answer.status !== 200) {
       // The section stays hidden, and so does its tab.
+      hold?.remove();
       const tab = document.querySelector('#page-tabs a[data-tab="comments"]');
       if (tab && section.hidden) tab.hidden = true;
       return say(answer.body.error || "The comments did not load just now.");
     }
     state = answer.body;
     // Not open on this deployment yet (comments.sql): nothing to show.
+    hold?.remove();
     section.hidden = state.ready === false;
     draw();
     commentsSaid(state, setOpen);
@@ -612,9 +617,14 @@ function buildPhotos(box) {
     open.disabled = state.left === 0;
     if (state.owner) ownerTools(state.photos || []);
     // Its owner adds pictures of their own under the picture: they lead
-    // the strip (api/share.js mediaStrip), shown to them even while empty.
+    // the strip (api/share.js mediaStrip). With no strip yet, Add a picture
+    // is over the picture's corner, where its coming moves nothing: the
+    // strip shown for it alone pushed the page down (site275).
     if (state.owner && addPicture) {
-      pictures.hidden = false;
+      if (pictures.hidden) {
+        addPicture.className = "cta ghost small on-picture";
+        pictures.before(addPicture);
+      }
       addPicture.hidden = false;
       addPicture.disabled = state.left === 0;
       addPicture.textContent = state.left === 0 ? "Three added" : "Add a picture";
@@ -968,15 +978,28 @@ function start() {
     return Boolean(state);
   }
 
+  // Drawn at once, as a card's like is, then as the server counts it; back
+  // as it was, and why, if it refuses. Waiting on it took 420-470 ms (site273).
   like.addEventListener("click", async () => {
     if (!(await ready("Sign in to like it: we email you a code, no password."))) return;
+    const was = Boolean(state.liked);
+    const count = Number(like.querySelector(".n")?.textContent.replace(/\D/g, "")) || 0;
+    state.liked = !was;
+    setCount(like, Math.max(0, count + (was ? -1 : 1)), "Like", "like");
+    say("");
+    draw();
     like.disabled = true;
-    const answer = await call(`/api/people?op=like&id=${id}`, { method: "POST", body: { on: !state.liked } });
+    const answer = await call(`/api/people?op=like&id=${id}`, { method: "POST", body: { on: !was } })
+      .catch(() => ({ status: 0, body: {} }));
     like.disabled = false;
-    if (answer.status !== 200) return say(answer.body.error || "That did not work just now.");
+    if (answer.status !== 200) {
+      state.liked = was;
+      setCount(like, count, "Like", "like");
+      draw();
+      return say(answer.body.error || "That did not work just now. Try again.");
+    }
     state.liked = answer.body.liked;
     setCount(like, answer.body.likes, "Like", "like");
-    say("");
     draw();
   });
 
