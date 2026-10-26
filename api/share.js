@@ -1556,6 +1556,22 @@ function partsOf(name, file) {
   return found;
 }
 
+/// How many parts a builder would buy for the model [text], as its page
+/// and the app's parts list count them (inventoryOf: sub-models expanded,
+/// a sticker counted, a hose once): what a publish keeps for its card.
+/// [otherwise] (checkModel's count) where this deployment has no parts
+/// table, or the list cannot be made or has nothing in it (no part the
+/// catalogue knows), which a count kept may not be.
+export function piecesIn(text, otherwise) {
+  try {
+    const table = partsTable();
+    const pieces = table ? inventoryOf(text, table).pieces : 0;
+    return pieces >= 1 ? pieces : otherwise;
+  } catch {
+    return otherwise;
+  }
+}
+
 /// A file name for [name]: its words in lower case, joined by hyphens,
 /// nothing a file system minds; [fallback] where none are left.
 export function fileName(name, fallback) {
@@ -2119,7 +2135,10 @@ async function publish(request, response) {
 
   // Everything about the upload is checked before anything is counted
   // or stored, so a refused upload costs nobody a publish.
-  const { parts, bytes, steps, ownSteps, technic, needs } = checkModel(body.model);
+  const { parts: lines, bytes, steps, ownSteps, technic, needs } = checkModel(body.model);
+  // Kept as its page and the app's parts list count it, so its card says
+  // what its page does (web295).
+  const parts = piecesIn(body.model, lines);
   // Who modelled it, when it is a model of the app's own Library: found
   // there and held to its file, never taken from what this file says of
   // itself (api/_omr_credit.js). Its licence is then the library model's.

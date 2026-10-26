@@ -1187,6 +1187,14 @@
       "tests": []
     },
     {
+      "id": "cli:parts count backfill",
+      "kind": "cli",
+      "entry": "tools/web/parts_backfill.mjs",
+      "reach": "node --env-file=.env tools/web/parts_backfill.mjs [--out=FILE] [--facts=<part_facts.mjs output>]   (reads only: each published model's versions counted as its page counts them, api/share.js piecesIn; writes supabase/parts_counted.sql, an update a count that differs, for tools/apply_sql.mjs --dry and then the lead)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:parts page probe",
       "kind": "cli",
       "entry": "src/dev/parts_page_probe.gd",

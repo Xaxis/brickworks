@@ -1385,6 +1385,16 @@ plan with Claude as the client.
   first time it is asked after the collection changed); `checkModel`'s
   `needs` in `api/share.js`, kept on publish.
 - `needs backfill` (`tools/web/needs_backfill.mjs`): below.
+- `parts count backfill` (`tools/web/parts_backfill.mjs`, web295): the
+  count a published model keeps for its card, as its page counts it
+  (`piecesIn` in `api/share.js`, which a publish keeps since web295):
+  reads every published model's versions and files, and writes
+  `supabase/parts_counted.sql`, one update a count that differs, each held
+  to the row as read. Proved by `tools/apply_sql.mjs supabase/parts_counted.sql
+  --dry --try=<a select of the rows it names>`: on 2026-10-26, 39 published,
+  4 models and 4 versions changed (6085's 983 to 748), rolled back. And
+  `share_probe` lists 10243-1 and reads its card and page: 2458 and
+  "2,458", not its 2,479 part lines.
 - `discovery browser flow` (`tools/web/discovery_flow.mjs`): below.
 - `designers' numbers` (`supabase/designers.sql`, 2026-10-19): table
   `model_opens` (a model, a day, how many opened its page: kept by the
