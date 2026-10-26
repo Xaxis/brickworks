@@ -63,9 +63,35 @@ MODELS = ROOT / "assets" / "generated" / "sets" / "models.json"
 DEFAULT_OUT = ROOT / "bench" / "results" / "library-2026-10-22"
 PAGE = "https://library.ldraw.org/omr/sets/"
 LICENCES = ("CCAL 2.0", "CC BY 4.0")
-FIELDS = ("id", "kind", "set", "name", "theme", "year", "parts", "file", "cover",
+FIELDS = ("id", "kind", "set", "name", "theme", "year", "parts", "box", "file", "cover",
           "author", "licence", "page", "alternate_of")
 CORE = Path.home() / ".claude" / "claude-core" / "bin"
+
+
+SETS = ROOT / "assets" / "generated" / "sets"
+
+
+def shard_of(number: str) -> int:
+    """SetInventories.shard_of: the shard a set's inventory is in."""
+    h = 0
+    for byte in number.lower().encode():
+        h = (h * 31 + byte) % 1000003
+    return h % 256
+
+
+_shards: dict[int, dict] = {}
+
+
+def box_of(number: str) -> int:
+    """The parts the set's box holds, by its inventory, spares left out: what
+    a card says beside the model's own count where the two differ (0 when the
+    set is not known)."""
+    shard = shard_of(number)
+    if shard not in _shards:
+        path = SETS / f"{shard:03d}.json"
+        _shards[shard] = json.loads(path.read_text()).get("sets", {}) if path.exists() else {}
+    record = _shards[shard].get(number.lower()) or _shards[shard].get(number)
+    return sum(int(row[2]) for row in record["p"]) if record else 0
 
 
 def safe_stem(stem: str) -> str:
@@ -150,7 +176,11 @@ def entries(models_path: Path = MODELS, files_dir: Path = OMR / "files") -> tupl
             "name": with_marks(tidy(model["n"])),
             "theme": with_marks(tidy(model["t"])),
             "year": int(model["y"]),
-            "parts": sum(int(row[2]) for row in model["p"]),
+            # The model's own count, as the app counts a model it opens
+            # (Inventory.count_of_text); the lots' sum is what of its set's
+            # box it uses, which left out the parts a file carries.
+            "parts": int(model.get("c", sum(int(row[2]) for row in model["p"]))),
+            "box": box_of(number) if not alternate else 0,
             "file": f"library/omr/{stem}.mpd",
             "cover": f"library/covers/{model_id}.webp",
             "author": author_name(said_author) or "unknown",
@@ -184,6 +214,8 @@ def problems(index: dict, root: Path | None = None) -> list[str]:
         for key in ("year", "parts"):
             if not isinstance(m[key], int) or isinstance(m[key], bool) or m[key] <= 0:
                 wrong.append(f"{at}: {key} {m[key]!r} is not a count")
+        if not isinstance(m.get("box", 0), int) or isinstance(m.get("box", 0), bool) or m.get("box", 0) < 0:
+            wrong.append(f"{at}: box {m.get('box')!r} is not a count")
         if m["kind"] != "set":
             wrong.append(f"{at}: kind {m['kind']!r}")
         if m["licence"] not in LICENCES:

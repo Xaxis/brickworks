@@ -34,7 +34,7 @@ def good() -> dict:
     return {"version": 1, "models": [{
         "id": "omr-10179-1", "kind": "set", "set": "10179-1",
         "name": "Ultimate Collector's Millennium Falcon", "theme": "Star Wars", "year": 2007,
-        "parts": 5195, "file": "library/omr/10179-1.mpd",
+        "parts": 5264, "box": 5205, "file": "library/omr/10179-1.mpd",
         "cover": "library/covers/omr-10179-1.webp", "author": "Roland Dahl",
         "licence": "CCAL 2.0", "page": "https://library.ldraw.org/omr/sets/657",
         "alternate_of": None}]}
@@ -50,6 +50,7 @@ def test_a_good_index_has_no_problems() -> None:
     (lambda m: m.update(licence="Free for non-commercial use."), "licence"),
     (lambda m: m.update(year="2007"), "year"),
     (lambda m: m.update(parts=0), "parts"),
+    (lambda m: m.update(box=-1), "box"),
     (lambda m: m.update(file="omr/10179-1.mpd"), "file"),
     (lambda m: m.update(cover="library/covers/10179-1.webp"), "cover"),
     (lambda m: m.update(alternate_of="10180-1"), "alternate_of"),

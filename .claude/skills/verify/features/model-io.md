@@ -360,6 +360,13 @@ Whether what you built is still there tomorrow, and still means the same thing.
   covers and models it fetched under `user://library/`; a dev checkout falls
   back to `vendor/omr/files`. Over MCP: `gallery library=true` searches the
   sets, `open_model library=<id>` opens one in the session's tab.
+  A set's card, the model opened (the toast, the counts line,
+  `open_model library=`'s answer) and its box say one part count: the parts a
+  builder takes out of the box (`Inventory.pieces_in`, `count_of_text` for the
+  card), and the card and the answer add the box's where it differs by more
+  than a fiftieth ("76 parts · its box 67", `ModelLibrary.parts_words`,
+  `AppTools._parts_against_box`); the answer says too how many pieces are
+  drawn where a cable or a motor's case is drawn in segments.
   The set's file is fetched with the index, not after it
   (`ModelLibrary.fetch_model`: an id's file is known from the id). A big
   set opens as any big model does (`ModelStore._open_into` with a job), on

@@ -118,7 +118,7 @@ static func pages_for(text: String, library: PartLibrary, store: ModelStore,
 		var placement: LdrModel.Placement = item
 		if not authored:
 			placement.step = -1
-		placement.part_id = store.studio_part(placement.part_id)
+		placement.part_id = ModelStore.studio_part(placement.part_id, library)
 		if placement.mirrored:
 			Assemblies.unmirror(placement, library)
 		var real: String = library.resolve(placement.part_id)

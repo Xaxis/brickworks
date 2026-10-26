@@ -2857,6 +2857,13 @@
     },
     {
       "kind": "cli",
+      "label": "part counts probe",
+      "entry": "src/dev/part_counts_probe.gd",
+      "reach": "tools/probe.sh part_counts_probe   (headless; ten Library sets: the card, the model opened and its box say one count, or the card says the box too)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
       "label": "library probe",
       "entry": "src/dev/library_probe.gd",
       "reach": "tools/probe.sh library_probe   (a window; starts tools/web/serve.py --library tests/fixtures/library on 8901 and two more copies of the app, and stops them)",

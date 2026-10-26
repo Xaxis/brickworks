@@ -4,7 +4,7 @@ What a person owns, kept with their account: what the open model needs that
 they do not have, what could stand in, the shortfall as a shopping list, and
 which models they could build from what they have. Added 2026-10-12.
 
-<!-- covers: ui:my collection, lib:collection sums, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project -->
+<!-- covers: ui:my collection, lib:collection sums, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project -->
 
 ## Sub-features
 
@@ -89,16 +89,39 @@ which models they could build from what they have. Added 2026-10-12.
   model whole for 624 of 1,234 sets and within 1% for 880; the rest draw a
   few pieces more than the box holds (2 of 246 whole before, 2026-10-19,
   `bench/results/ownedsets-2026-10-19`). Run after `tools/collection_data.py`,
-  which rewrites every file in the folder, this one too.
+  which rewrites every file in the folder, this one too. Each model's `c` is
+  its part count as a builder counts it (`Inventory.count_of_text`): read as
+  opening reads it (the parts it carries and its hoses' skins into the library
+  first, `CustomParts.take_into`, then flattened), a sticker counted, a hose
+  once, a ~ bit (a motor cable's 2,891 ribbon segments in the Cat D11) and an
+  unknown primitive not; it is what the model says when it opens
+  (`Inventory.pieces_in`). The lots in `p` are only what of its box it uses,
+  which left out the 1,679 parts the D11 carries: the card said 2,183, the
+  model opened as 6,793 and its box holds 3,853; now 3,868, 3,868 and 3,853.
+  `src/dev/part_counts_probe.gd` holds the card, the model opened and its box
+  to one count, or the card to saying its box too, on ten sets of every size.
+- `part counts probe`: `tools/probe.sh part_counts_probe` (headless, about a
+  minute alone). Ten Library sets of every size (the Cat D11, the UCS Falcon,
+  two modular buildings, a creator cottage, a castle shop, an ambulance, two
+  Technic sets with hoses and stickers, one whose model builds part of its
+  set): each read as the card counts it (`Inventory.count_of_text`, before
+  the file is opened), then opened, and the two must be one count, and agree
+  with the box (`ModelLibrary.box_of`) to a fiftieth or the card say the box
+  too. Its table prints drawn, opened, card, box and the card before
+  (models.json's lots summed): the D11 6,793 drawn, 3,868, 3,868, 3,853,
+  before 2,183.
 - `model library` (`tools/library_build.py`, `src/dev/library_covers.gd`): the
   data behind opening any official model from inside the app. Every
   `vendor/omr` model with a cover drawn by the app's own ModelShot (built,
   the three-quarter view, 512 x 384 WebP), staged as the parts store holds it:
   `library/index.json`, `library/omr/<file>.mpd` (LDraw's bytes, licence lines
   kept), `library/covers/<id>.webp`. The index is `{"version": 1, "models":
-  [{id, kind, set, name, theme, year, parts, file, cover, author, licence,
+  [{id, kind, set, name, theme, year, parts, box, file, cover, author, licence,
   page, alternate_of}]}` in that order (the library screen reads it); name,
-  set, year, theme, page and parts are models.json's, author and licence the
+  set, year, theme, page and parts are models.json's (`c`, the count the model
+  opens with), box the set's own inventory summed (`box_of`, 0 for a B-model:
+  the card says "N parts · its box B" when they differ by more than a fiftieth,
+  `ModelLibrary.parts_words`), author and licence the
   file's own main-model header ("CCAL 2.0" or "CC BY 4.0"); names carry LEGO®
   with its mark. `covers` draws on the GPU lease in drawers of up to 100
   models, each leaving after 20 s when another job waits; 1,575 covers in

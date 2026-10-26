@@ -125,6 +125,7 @@ static func _entry(raw: Variant) -> Dictionary:
 			if given.get("theme") is String else "",
 		"year": int(given.get("year", 0)) if given.get("year") is float or given.get("year") is int else 0,
 		"parts": int(given.get("parts", 0)) if given.get("parts") is float or given.get("parts") is int else 0,
+		"box": int(given.get("box", 0)) if given.get("box") is float or given.get("box") is int else 0,
 		"file": file, "cover": cover,
 		"author": str(given.get("author", "")).left(200) if given.get("author") is String else "",
 		"licence": str(given.get("licence", "")).left(60) if given.get("licence") is String else "",
@@ -167,6 +168,47 @@ static func decades(of: Array) -> PackedStringArray:
 	for year: int in years:
 		out.append("%ds" % year)
 	return out
+
+
+## How near a model's part count and its box's are to be the same count: a
+## fiftieth. LDraw's model of a set and the set's inventory number some
+## parts differently (a universal joint as two parts or one), so the Cat
+## D11's 3,868 against its box's 3,853 is the same count; 67 against 212 is
+## a model of part of the set.
+const AGREES_WITHIN := 0.02
+
+
+static func agrees(parts: int, box: int) -> bool:
+	return box <= 0 or absf(parts - box) <= AGREES_WITHIN * box
+
+
+## The parts its box holds, by the set's inventory (SetInventories, its spares
+## left out), or 0 when the set is not known.
+static func box_of(number: String) -> int:
+	if number.is_empty():
+		return 0
+	if _inventories == null:
+		_inventories = SetInventories.new()
+	var found: Dictionary = await _inventories.lookup(PackedStringArray([number]))
+	var record: Dictionary = found.get(number, {})
+	var count: int = 0
+	for row: Variant in record.get("p", []):
+		count += int((row as Array)[2])
+	return count
+
+
+static var _inventories: SetInventories = null
+
+
+## What a card says of a model's parts: its count, and its box's where the
+## index has the box and the two are not the same count (agrees).
+static func parts_words(entry: Dictionary) -> String:
+	var parts: int = int(entry.get("parts", 0))
+	var box: int = int(entry.get("box", 0))
+	var said: String = "%s parts" % CollectionDialog._comma(parts)
+	if box > 0 and not agrees(parts, box):
+		said += " · its box %s" % CollectionDialog._comma(box)
+	return said
 
 
 ## The LEGO Group's own words as the index has them, written as docs/TRADEMARKS.md

@@ -1147,6 +1147,14 @@
       "tests": []
     },
     {
+      "id": "cli:part counts probe",
+      "kind": "cli",
+      "entry": "src/dev/part_counts_probe.gd",
+      "reach": "tools/probe.sh part_counts_probe   (headless; ten Library sets: the card, the model opened and its box say one count, or the card says the box too)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "cli:part facts",
       "kind": "cli",
       "entry": "tools/web/part_facts.mjs",
