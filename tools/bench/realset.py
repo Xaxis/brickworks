@@ -11,6 +11,7 @@
     python3 tools/bench/realset.py compare --which proof --arms m32,mine [--dates D1,D2]
                                        [--first N] [--jobs 2]
     heavy python3 tools/bench/realset.py reach --which proof --arm m32 [--date D]
+    python3 tools/bench/realset.py run ... --via relay [--instructions none]
 
 A half is 44 subjects; `--first 10` is the ten it had before 2026-10-19. On
 two workers a subject took nine minutes (main, 2026-10-19), a half about 6.5
@@ -79,6 +80,18 @@ tuned on, judged blind.
   check's reading (src/dev/connection_audit.gd): parts, shapes per 100
   parts, shaped share, 1 x 1 share, colours, tiles, SNOT, joints, parts
   turned off the grid, and parts the check calls floating.
+- **The owner's path**, `--via relay`: the owner designs with their own Claude
+  through the connector, not with Claude Code on the app's port. So each design's
+  app is started as a connector tab of a throwaway account (a Resend test address,
+  deleted after) on tools/web/relay_server.mjs, with `--mcp` only: no brief heard,
+  no world cleared. Claude Code is signed in to the account with OAuth, as
+  `claude mcp login` leaves it, and given the brief as the person types it, with
+  the relay its only server. `--instructions none` withholds the server's
+  instructions at initialize, the bound on a client that shows none: whether
+  claude.ai shows them was never measured, and Claude Code shows about 4,096
+  characters. Without `--via` the path is the bench's, as before. Ports come
+  from BENCH_PORTS, two a design (the relay's and the app's), and the app's data
+  from a folder of its own under XDG_DATA_HOME.
 - **Reach**, `reach`: whether a lever reached the sessions at all, from
   each design's Claude Code transcript (the guide sections read, sections
   turned or hinged and refused, techniques placed, features settled) beside
@@ -102,10 +115,14 @@ import os
 import random
 import re
 import shutil
+import signal
+import socket
 import statistics
 import subprocess
 import sys
 import threading
+import time
+import urllib.request
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
@@ -784,6 +801,205 @@ def _held_out_said(log: str, number: str) -> bool:
     return f"real sets: holding out {number}" in log
 
 
+# -- the owner's path: the app as a connector tab -----------------------------
+
+# The relay's account helper and server, of this checkout: the relay is the
+# deployment's code, never an arm's.
+RELAY_ACCOUNT = ROOT / "tools" / "web" / "relay_account.mjs"
+RELAY_SERVER = ROOT / "tools" / "web" / "relay_server.mjs"
+# Claude Code waits this long for a tool, as the app's own session does
+# (src/ai/claude_code.gd TOOL_TIMEOUT_MS); the relay makes a long call a job.
+TOOL_TIMEOUT_MS = 600000
+# How long a tab may take to sign in and switch its connector on.
+TAB_WAIT_S = 300
+# Who may see what the session is given: Claude Code, never the project's keys.
+SECRETS = re.compile(r"^(SUPABASE_|RESEND_|VERCEL_|BW_)|SECRET")
+
+
+def _node(*args: str, timeout: int = 120) -> subprocess.CompletedProcess:
+    return subprocess.run(["node", f"--env-file={ROOT / '.env'}", *args], cwd=ROOT,
+                          capture_output=True, text=True, timeout=timeout)
+
+
+def _until(test, seconds: float, every: float = 2.0) -> bool:
+    end = time.time() + seconds
+    while time.time() < end:
+        if test():
+            return True
+        time.sleep(every)
+    return False
+
+
+def _as_claude(origin: str, token: str, method: str, params: dict) -> dict:
+    """One MCP request to the relay as the account's Claude, or {} when it failed."""
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": method, "params": params}).encode()
+    asked = urllib.request.Request(f"{origin}/api/mcp", data=body, method="POST", headers={
+        "content-type": "application/json", "accept": "application/json",
+        "authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(asked, timeout=60) as answer:
+            return json.loads(answer.read().decode())
+    except (OSError, ValueError):
+        return {}
+
+
+def _tab_open(origin: str, token: str) -> bool:
+    """Whether the account has a tab listening, as the relay's tabs tool says."""
+    said = _as_claude(origin, token, "tools/call", {"name": "tabs", "arguments": {}})
+    result = said.get("result") or {}
+    text = " ".join(b.get("text", "") for b in result.get("content", []) if isinstance(b, dict))
+    return not result.get("isError") and ("tab is open" in text or "tabs are open" in text)
+
+
+def _ask_app(port: int, tool: str, arguments: dict) -> dict:
+    """One call on the app's own port (src/net/command_socket.gd), as tools/brick.py makes one."""
+    with socket.create_connection(("127.0.0.1", port), timeout=180) as sock:
+        sock.sendall(json.dumps({"id": 1, "tool": tool, "input": arguments}).encode() + b"\n")
+        got = b""
+        while b"\n" not in got:
+            chunk = sock.recv(1 << 16)
+            if not chunk:
+                break
+            got += chunk
+    return json.loads(got.split(b"\n", 1)[0] or b"{}")
+
+
+def _stop(process: subprocess.Popen | None) -> None:
+    """A process started in a session of its own, and everything it started."""
+    if process is None or process.poll() is not None:
+        return
+    for sig, wait in ((signal.SIGTERM, 30), (signal.SIGKILL, 10)):
+        try:
+            os.killpg(process.pid, sig)
+        except ProcessLookupError:
+            return
+        try:
+            process.wait(wait)
+            return
+        except subprocess.TimeoutExpired:
+            continue
+
+
+def _session_end(stream: Path) -> dict:
+    """The end of a Claude Code session, from its stream-json: the result event."""
+    if not stream.exists():
+        return {}
+    for line in reversed(stream.read_text(errors="replace").splitlines()):
+        try:
+            said = json.loads(line)
+        except ValueError:
+            continue
+        if said.get("type") == "result":
+            return said
+    return {}
+
+
+def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: Path,
+                     instructions: str = "all") -> dict:
+    """One brief designed as the owner designs: Claude through the connector relay, the
+    app a signed-in tab of a throwaway account. Recorded in design.json as bench.design
+    records one, with the session's own stream beside it (session.jsonl)."""
+    done = run_dir / "design.json"
+    if done.exists():
+        return json.loads(done.read_text())
+    relay_port, app_port = bench._free_port(), bench._free_port()
+    origin = f"http://127.0.0.1:{relay_port}"
+    tab_home = Path(os.environ["XDG_DATA_HOME"]) / f"relay-{subject.id}-{app_port}"
+    user_dir = tab_home / "godot" / "app_userdata" / "Brickworks"
+    log, stream, relay_log = run_dir / "design.log", run_dir / "session.jsonl", run_dir / "relay.log"
+    relay = tab = None
+    account: dict = {}
+    result: dict = {}
+    sha = bench.commit(app)
+    bench.say(f"design {subject.id} via the relay: ports {relay_port} and {app_port}, "
+              f"instructions {instructions}, up to {timeout // 60} min")
+    try:
+        with relay_log.open("w") as out:
+            relay = subprocess.Popen(
+                ["node", f"--env-file={ROOT / '.env'}", str(RELAY_SERVER), str(relay_port),
+                 *(["--instructions=none"] if instructions == "none" else [])],
+                cwd=ROOT, stdout=out, stderr=subprocess.STDOUT, start_new_session=True)
+        if not _until(lambda: "functions on" in relay_log.read_text(errors="replace"), 30, 0.5):
+            raise SystemExit(f"design {subject.id}: the relay never listened; see {relay_log}")
+        opened = _node(str(RELAY_ACCOUNT), "open", f"--origin={origin}")
+        if opened.returncode != 0:
+            raise SystemExit(f"design {subject.id}: no throwaway account: {opened.stderr[-400:]}")
+        account = json.loads(opened.stdout.strip().splitlines()[-1])
+        # Signed in as a returning visitor's app is (src/account/account.gd).
+        user_dir.mkdir(parents=True, exist_ok=True)
+        (user_dir / "session.json").write_text(json.dumps(account["kept"]))
+        with log.open("w") as out:
+            tab = subprocess.Popen(
+                ["godot", "--headless", "--path", str(app), "--log-file",
+                 str(run_dir / "godot_design.log"), "--", f"--mcp={app_port}", "--assistant=on",
+                 "--signed-in", f"--held-out={subject.id}", "--draw-by=" + json.dumps(bench.DRAWER)],
+                cwd=app, stdout=out, stderr=subprocess.STDOUT, start_new_session=True,
+                env=bench._billing_free_env(XDG_DATA_HOME=str(tab_home),
+                                            BRICKWORKS_API=origin, MESA_VK_WSI_DEBUG="sw"))
+        if not _until(lambda: tab.poll() is None and _tab_open(origin, account["token"]),
+                      TAB_WAIT_S, 3.0):
+            raise SystemExit(f"design {subject.id}: the tab never switched its connector on; "
+                             f"see {log}")
+        config = run_dir / "relay-mcp.json"
+        config.write_text(json.dumps({"mcpServers": {"brickworks": {
+            "type": "http", "url": f"{origin}/api/mcp", "timeout": TOOL_TIMEOUT_MS,
+            "headers": {"Authorization": f"Bearer {account['token']}"}}}}))
+        env = {k: v for k, v in bench._billing_free_env().items() if not SECRETS.search(k)}
+        env.update(MCP_TOOL_TIMEOUT=str(TOOL_TIMEOUT_MS), MCP_TIMEOUT="120000")
+        started = time.time()
+        # As the app starts its own session (src/ai/claude_code.gd arguments), the
+        # relay its only server and its tools all it may use; in the arm's checkout,
+        # as the bench's session is.
+        with stream.open("w") as said:
+            status = subprocess.run(
+                ["timeout", "--kill-after=30", str(timeout), "claude", "-p", subject.brief,
+                 "--mcp-config", str(config), "--strict-mcp-config", "--tools", "",
+                 "--restricted", "--allowedTools", "mcp__brickworks",
+                 "--output-format", "stream-json", "--verbose"],
+                cwd=app, env=env, stdout=said, stderr=subprocess.STDOUT).returncode
+        seconds = time.time() - started
+        ended = _session_end(stream)
+        ldr = run_dir / "design.ldr"
+        name = f"realset-{subject.id}-{app_port}.ldr"
+        saved: dict = {}
+        try:
+            saved = _ask_app(app_port, "save_model", {"name": name})
+        except (OSError, ValueError) as trouble:
+            bench.say(f"design {subject.id}: the tab would not save: {trouble}")
+        kept = user_dir / "models" / name
+        if kept.exists() and kept.stat().st_size > 0:
+            shutil.copy(kept, ldr)
+        result = {
+            "status": status, "seconds": round(seconds, 1), "timed_out": status in (124, 137),
+            "design_seconds": int(ended["duration_ms"] / 1000) if ended.get("duration_ms") else None,
+            "commit": sha, "port": app_port, "relay_port": relay_port, "via": "relay",
+            "instructions": instructions, "model": ldr.exists() and ldr.stat().st_size > 0,
+            **({} if app == ROOT else {"app": str(app)}),
+            "finished": (f"claude code ok={not ended.get('is_error', True)} "
+                         f"turns={ended.get('num_turns')} {ended.get('subtype', '')}: "
+                         f"{str(ended.get('result', ''))[:240]}") if ended else "",
+            "saved": json.dumps(saved.get("content") or saved.get("error") or "")[:200],
+            "transcript": str(stream),
+        }
+    finally:
+        _stop(tab)
+        if account.get("user"):
+            closed = _node(str(RELAY_ACCOUNT), "close", f"--user={account['user']}")
+            result["account_deleted"] = closed.returncode == 0
+            if closed.returncode != 0:
+                bench.say(f"design {subject.id}: the throwaway account {account.get('email')} "
+                          f"was NOT deleted: {closed.stdout} {closed.stderr[-300:]}")
+        _stop(relay)
+        bench._port_back(relay_port)
+        bench._port_back(app_port)
+    result["pictures_given_up"] = bench.pictures_given_up(run_dir / "godot_design.log")
+    bench._write_json(done, result)
+    shutil.rmtree(tab_home, ignore_errors=True)
+    bench.say(f"design {subject.id} via the relay: status {result['status']} in "
+              f"{result['seconds'] / 60:.1f} min, {'a model' if result['model'] else 'NO MODEL'}")
+    return result
+
+
 def one(c: Candidate, args: argparse.Namespace, parts: style.Parts) -> dict:
     """A subject end to end on one arm: the set's side, the design, its pictures, its
     measures, and the judge both orders. Each stage is skipped when its output is there."""
@@ -800,7 +1016,9 @@ def one(c: Candidate, args: argparse.Namespace, parts: style.Parts) -> dict:
                                            "theme": c.theme, "year": c.year})
     canned = bench.CANNED / "design.ldr" if args.dry_run else None
     try:
-        made = bench.design(subject, out, args.timeout, canned, app=args.checkout)
+        made = (design_via_relay(subject, out, args.timeout, args.checkout, args.instructions)
+                if args.via == "relay" and canned is None else
+                bench.design(subject, out, args.timeout, canned, app=args.checkout))
     except SystemExit as failed:      # the machine failed, not the design: tried again next time
         bench.say(f"{c.number}: {failed}")
         return {}
@@ -862,7 +1080,8 @@ def run(args: argparse.Namespace) -> int:
         if not (out / "arm.json").exists():
             bench._write_json(out / "arm.json", {"arm": args.arm, "checkout": str(args.checkout),
                                                  "commit": bench.commit(args.checkout),
-                                                 "date": args.date})
+                                                 "date": args.date, "via": args.via,
+                                                 "instructions": args.instructions})
         for c in wanted:
             bench.say(f"{c.number} {c.name}: starting")
             try:
@@ -872,7 +1091,8 @@ def run(args: argparse.Namespace) -> int:
         return 0
     bench._write_json(out / "arm.json", {"arm": args.arm, "checkout": str(args.checkout),
                                          "commit": bench.commit(args.checkout),
-                                         "which": args.which, "date": args.date})
+                                         "which": args.which, "date": args.date,
+                                         "via": args.via, "instructions": args.instructions})
     bench.say(f"realset {args.which}: {len(wanted)} subjects on {args.arm} "
               f"({bench.commit(args.checkout)}), {args.jobs} at a time, into {out}")
     jobs = max(1, min(args.jobs, len(wanted)))
@@ -905,7 +1125,8 @@ def _in_a_slot(share: list[Candidate], args: argparse.Namespace) -> int:
                *(["--audit-later"] if args.audit_later else []),
                *(["--dry-run"] if args.dry_run else []),
                *(["--no-judge"] if args.no_judge else []),
-               *(["--rejudge"] if args.rejudge else [])]
+               *(["--rejudge"] if args.rejudge else []),
+               "--via", args.via, "--instructions", args.instructions]
     named = ", ".join(c.number for c in share)
     bench.say(f"{named}: queued")
     log_path = out / f"worker-{share[0].number}.log"
@@ -1418,6 +1639,11 @@ def main(argv: list[str] | None = None) -> int:
                            help="read recorded subjects through again (a verdict asked is kept)")
             p.add_argument("--share", default="",
                            help="K/N: only every Nth subject of the half from the Kth")
+            p.add_argument("--via", choices=("port", "relay"), default="port",
+                           help="relay: as the owner designs, Claude through the connector "
+                           "relay to the app as a throwaway account's tab")
+            p.add_argument("--instructions", choices=("all", "none"), default="all",
+                           help="none: the server's instructions withheld (with --via relay)")
             p.add_argument("--audit-later", action="store_true",
                            help="leave the build check's reading to `audit`, so no worker "
                            "holding the GPU waits for a CPU slot")
@@ -1429,6 +1655,8 @@ def main(argv: list[str] | None = None) -> int:
         return _show(args.which, args.show, args.first)
     if args.what in ("run", "one"):      # one: a single subject, as run starts it under heavy
         args.checkout = args.checkout.resolve()
+        if args.instructions == "none" and args.via != "relay":
+            raise SystemExit("--instructions none withholds what the relay serves: with --via relay")
         return run(args)
     if args.what == "calibrate":
         return calibrate_half(args)

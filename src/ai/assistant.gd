@@ -19573,6 +19573,30 @@ A call answered with a job number is still working in the app: call job \
 about every 10 s until it gives the answer."""
 
 
+## HOW TO WORK in a few lines, which a connector chat hears once, in its first
+## answer (ClaudeConnector._taught). A client need not show a server's
+## instructions at all, and whether claude.ai does was never measured; all 88
+## bench sessions, which Claude Code shows the head, followed the method
+## (design281, 2026-10-26). The same steps as the head's, held to its tools by
+## mcp_sync_probe.
+const METHOD := """How to work here, said once as this chat begins \
+(read_guide "work" has it whole, and read_guide any section a step names):
+ 1. Before building: plan_scale with the real thing's size, find_reference \
+for anything that exists, how_real_sets_build_this with the subject: real \
+sets' parts, and the faults found in our own designs of it, to design out.
+ 2. submit_design the silhouette first: the main masses, with its assemblies \
+and its features (what the subject is known by, each with where it goes). A \
+hull, a car body or a building is a shape pattern (read_guide "shapes"); a \
+figure or a creature is shaped parts on joints (read_guide "figures"). When \
+the person named a part count, pass it as parts.
+ 3. review_model: fix the silhouette and proportions before any detail.
+ 4. Each feature: the app lays a real set's piece; settle_feature it.
+ 5. Each assembly: review_model {"assembly": name}, detailed with edit_model.
+ 6. review_model {"surface": true}, settle_surface each; 7. review_model \
+{"creative": true}; then save_model.
+Nothing overlaps, nothing floats, and the model is one connected thing."""
+
+
 ## The section on figures and creatures, which the head sends a session to.
 const FIGURES := "FIGURES, CREATURES AND SMALL MODELS"
 ## The section on choosing the parts a rounded body's outline is made of.
