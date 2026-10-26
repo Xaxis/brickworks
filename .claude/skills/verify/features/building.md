@@ -377,9 +377,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   pixel was let go and nothing was saved or renamed (dialogs_1024 on m175,
   Save as at 390). The Minifigure builder's figure comes back after the
   search the same way (`MinifigDialog._make_way`). Proved by
-  `dialogs_flow.mjs --only=save_as,saved --hold=600` (and 150), whose held
-  tap rolls 2 px before it lifts: on the base Save as is missed at 390 and
-  1024 x 768. Targets in a
+  `dialogs_flow.mjs --only=save_as,saved --hold=150` and `--hold=600`, whose
+  held tap rolls 2 px before it lifts: on the base, held 150 ms, Rename is
+  missed at 390 and at 1024 x 768 and every delete check after it fails
+  (Rename left open over the list); held 600, Save as is missed at both.
+  Targets in a
   scrolling list pass a
   finger's drag to the list (`MOUSE_FILTER_PASS`), so More's list and a
   dialog's rows scroll under a finger; they did not. A notice's words and
