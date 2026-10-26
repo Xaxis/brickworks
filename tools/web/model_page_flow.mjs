@@ -222,9 +222,10 @@ async function partsChecks(page, label, seen, one) {
       words: [...document.querySelectorAll("#marks .icon-btn.labelled .word")]
         .filter((w) => innerWidth <= 600 || w.getClientRects().length).map((w) => w.textContent),
       download: document.querySelector('.side .actions a[download]')?.getAttribute("href") || "",
-      // When the list was asked for, against the page's first paint: never
-      // with the page itself.
+      // When the list was asked for, against the page's load: never with
+      // the page itself, nor before what the first screen shows.
       asked: performance.getEntriesByType("resource").find((r) => r.name.includes("/parts.json"))?.startTime ?? null,
+      loaded: performance.getEntriesByType("navigation")[0]?.loadEventStart ?? null,
       painted: performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? null };
   });
   check(`${label}: a Parts section (${before ? before.note : "none"})`, Boolean(before));
@@ -243,9 +244,9 @@ async function partsChecks(page, label, seen, one) {
   });
   check(`${label}: the action bar in ${bar.rows} row${bar.rows === 1 ? "" : "s"}, inside its column`,
     bar.rows <= 2 && bar.inside && (seen.viewport.width > 600 || bar.rows === 1));
-  check(`${label}: the list its own request, after the page's first paint (asked at ${before.asked === null ? "none yet"
-    : Math.round(before.asked)} ms, painted at ${Math.round(before.painted)} ms)`,
-  before.painted !== null && (before.asked === null ? before.busy === "true" : before.asked >= before.painted));
+  check(`${label}: the list its own request, once the page has loaded (asked at ${before.asked === null ? "none yet"
+    : Math.round(before.asked)} ms, loaded at ${Math.round(before.loaded)} ms, first paint at ${Math.round(before.painted)} ms)`,
+  before.loaded !== null && (before.asked === null ? before.busy === "true" : before.asked >= before.loaded));
   await page.evaluate(() => document.getElementById("parts").scrollIntoView({ block: "start" }));
   const drawn = await until(page, () => document.documentElement.dataset.parts === "drawn", null, 20000);
   check(`${label}: the list drawn once it nears the screen`, drawn);
