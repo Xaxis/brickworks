@@ -201,7 +201,7 @@ import {
 import { withFaces } from "./_faces.js";
 // The one model card, the browser's too (web/card.js): the page needs no
 // script to show its models.
-import { cardHtml } from "./_card.js";
+import { cardHtml, marksOf, quietMarks } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
 import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml } from "./_card.js";
@@ -1025,14 +1025,17 @@ ${siteChrome().head}
 <script src="/person.js" type="module"></script>` : ""}`;
 }
 
-function page(origin, { title, about, url, image, robots, main, mine = false, share = false }) {
+/// A page of the directory. [cards]: the models its cards are drawn for,
+/// whose marks that nearly all carry are left off (web/card.js quietMarks).
+function page(origin, { title, about, url, image, robots, main, mine = false, share = false, cards = [] }) {
   const { header, footer } = siteChrome();
+  const quiet = quietMarks(cards.map(marksOf));
   return `<!doctype html>
 <html lang="en">
 <head>
 ${head(origin, { title, about, url, image, robots, mine, share })}
 </head>
-<body>
+<body${quiet ? ` data-quiet="${quiet}"` : ""}>
 <a class="skip" href="#main">Skip to content</a>
 ${header}
 <main id="main">
@@ -1206,11 +1209,13 @@ async function profilePage(request, response) {
     <div class="models row">${showcase.pins.map((card) => cardHtml({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 },
       { earned: Boolean(earned) })).join("")}</div></section>` : "";
 
-  // The tab.
+  // The tab, and the cards on the page.
   let panel = "";
+  const drawn = [...showcase.pins];
   if (tab === "models") {
     const cards = (await withWins(await withFaces(shown.models), tests))
       .map((card) => ({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 }));
+    drawn.push(...cards);
     const first = shown.page === 1 ? cards[0] : null;
     // The model to start with: the first by Top builds, once somebody built it.
     const start = earned && first && first.builds > 0 ? first : null;
@@ -1234,6 +1239,7 @@ async function profilePage(request, response) {
   } else if (tab === "likes") {
     const page = await likedPage(origin, person, at, tests);
     const cards = page ? await withWins(await withFaces(page.models), tests) : [];
+    drawn.push(...cards);
     panel = cards.length ? `<p class="note">${name} chose to show the models they liked, newest first.</p>
     <div class="models" data-models data-page="${page.page}">${cards.map((card) => cardHtml(card)).join("")}</div>
     ${page.more || page.page > 1 ? `<p class="paging">${page.more ? `<a class="cta ghost" data-more="${page.page + 1}"
@@ -1249,7 +1255,7 @@ async function profilePage(request, response) {
     `<a href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: id }))}" data-tab="${id}"${id === tab ? ' aria-current="page"' : ""}>`
     + `${label}${counts[id] ? ` <span class="n">${escapeHtml(counts[id].toLocaleString("en-US"))}</span>` : ""}</a>`).join("")}</nav>`;
 
-  const main = `<div class="wrap person profile${earned ? " designer" : ""}${showcase.banner ? " bannered" : ""}" data-handle="${escapeHtml(person.handle)}">
+  const main = `<div class="wrap wide person profile${earned ? " designer" : ""}${showcase.banner ? " bannered" : ""}" data-handle="${escapeHtml(person.handle)}">
   ${head}
   <section class="designs" id="designs-mine" aria-label="Your models, as only you see them" hidden></section>
   ${pinned}
@@ -1269,7 +1275,7 @@ async function profilePage(request, response) {
   return html(response, 200, page(origin, {
     title: `${person.name} (@${person.handle}) — ${earned ? "a designer in" : "models built in"} Brickworks`,
     about: person.bio ? person.bio.replace(/\s+/g, " ").slice(0, 160) : told,
-    url, image: picture, main, mine: true,
+    url, image: picture, main, mine: true, cards: drawn,
   }), { tests });
 }
 
@@ -1300,7 +1306,7 @@ async function listPage(request, response) {
   const more = `<details class="more-menu end"><summary class="icon-btn" aria-label="More" title="More">${iconHtml("more")}</summary>`
     + `<div class="menu-list"><button type="button" data-report="this collection" data-report-collection="${id}" hidden>`
     + "Report it</button><a href=\"/takedown\">Takedown requests</a></div></details>";
-  const main = `<div class="wrap person list" data-id="${id}">
+  const main = `<div class="wrap wide person list" data-id="${id}">
   <header class="list-head">
     <div class="cover">${mosaicHtml(covers.get(id) || [])}</div>
     <div class="who">
@@ -1325,7 +1331,7 @@ async function listPage(request, response) {
     title: `${list.name} — a collection in the Brickworks gallery`,
     about: list.description ? list.description.replace(/\s+/g, " ").slice(0, 160)
       : `${count(list.count, "model")} built in Brickworks, collected by ${list.by ? list.by.name : "a builder"}.`,
-    url, image: first && first.image ? first.image : "", main, share: true,
+    url, image: first && first.image ? first.image : "", main, share: true, cards: shown.models,
   }), { tests });
 }
 

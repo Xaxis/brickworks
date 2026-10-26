@@ -78,8 +78,9 @@
 
 /* The cards: this week's pick first on the front, then the list; the
    shelves (what you can build now, small builds) across the grid after
-   its first twelve places, which fill whole rows at two, three or four
-   to a row. The list's cards are #models' own, laid out in this grid. */
+   its first whole rows: twelve places at three or four to a row, and on a
+   phone, where the pick is as wide as the row; fifteen at five, eighteen
+   at six. The list's cards are #models' own, laid out in this grid. */
 .feed #models { display: contents; }
 .feed > .pick { min-width: 0; display: grid; }
 .feed > .shelves {
@@ -87,8 +88,23 @@
 	margin: var(--s-3) 0; min-width: 0;
 }
 .shelves > * { min-width: 0; }
-.feed[data-front="pick"] #models > .model:nth-child(n+12),
-.feed[data-front="plain"] #models > .model:nth-child(n+13) { order: 2; }
+@media (max-width: 599px) {
+	.feed > .pick { grid-column: 1 / -1; }
+	.feed[data-front="pick"] #models > .model:nth-child(n+11),
+	.feed[data-front="plain"] #models > .model:nth-child(n+13) { order: 2; }
+}
+@media (min-width: 600px) and (max-width: 1199px) {
+	.feed[data-front="pick"] #models > .model:nth-child(n+12),
+	.feed[data-front="plain"] #models > .model:nth-child(n+13) { order: 2; }
+}
+@media (min-width: 1200px) and (max-width: 1599px) {
+	.feed[data-front="pick"] #models > .model:nth-child(n+15),
+	.feed[data-front="plain"] #models > .model:nth-child(n+16) { order: 2; }
+}
+@media (min-width: 1600px) {
+	.feed[data-front="pick"] #models > .model:nth-child(n+18),
+	.feed[data-front="plain"] #models > .model:nth-child(n+19) { order: 2; }
+}
 .pick-card .why { margin: 2px 0 0; color: var(--ink); font-size: var(--t-tiny); font-weight: 600; }
 .shelves h2 { font-size: var(--t-h3); margin: 0; }
 .shelf-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
@@ -138,7 +154,7 @@
 </header>
 
 <main id="main">
-	<section class="wrap listing" aria-labelledby="gallery-h">
+	<section class="wrap wide listing" aria-labelledby="gallery-h">
 		<!-- Answered by gallery.js, never sent: the page asks /api/share itself. -->
 		<form class="finder" id="finder" role="search" action="/gallery" method="get">
 			<div class="gallery-head">
@@ -249,7 +265,7 @@
 		</div>
 	</section>
 
-	<section class="wrap yours" aria-labelledby="yours-h">
+	<section class="wrap wide yours" aria-labelledby="yours-h">
 		<h2 id="yours-h">Put yours here</h2>
 		<p>
 			In the app, choose <b>File › Share…</b>, give the model a name, say

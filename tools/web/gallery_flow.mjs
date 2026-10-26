@@ -8,10 +8,13 @@
 // dark:
 //
 //   1. the first screen: at 390 the first card's picture starts within
-//      330 px of the top, two cards to a row, four cards' names on the
-//      first two screens; at 1280 four whole cards on
-//      the first screen; Top the tab shown, its window All time; nothing
-//      scrolls sideways; a picture of it in each theme;
+//      330 px of the top, two cards to a row (the week's pick as wide as
+//      the row), four cards' names on the first two screens; at 1280 five
+//      to a row and five whole cards on the first screen, the cards marked
+//      once (no row of marks, none that nearly every card carries, no
+//      card ending in a row that holds only its like); Top the tab shown,
+//      its window All time; nothing scrolls sideways; a picture of it in
+//      each theme;
 //   2. Top, New and Following: New is the newest first and says so in the
 //      address; Top over this week is the week's builds and remixes, no
 //      pick, no shelves; a kind's pill and Made in Filters ask the list
@@ -139,12 +142,25 @@ const drawn = (page) => page.evaluate(() => {
   const cards = [...document.querySelectorAll("#feed .model")].filter((el) => el.getClientRects().length);
   const boxes = cards.map((el) => el.getBoundingClientRect());
   const firstPicture = Math.min(...cards.map((el) => el.querySelector(".frame").getBoundingClientRect().top));
-  const firstRow = boxes.filter((b) => Math.abs(b.top - Math.min(...boxes.map((x) => x.top))) < 2);
+  // To a row: the most cards that share a top (on a phone the pick is the
+  // first row alone).
+  const rows = {};
+  for (const b of boxes) rows[Math.round(b.top)] = (rows[Math.round(b.top)] || 0) + 1;
   const tab = document.querySelector("#tabs [aria-current]")?.dataset.tab || "";
   return {
     address: location.pathname + location.search,
     firstPicture: Math.round(firstPicture + scrollY),
-    columns: firstRow.length,
+    columns: Math.max(0, ...Object.values(rows)),
+    // The marks shown: the most rows of them on a card, and the share of
+    // the cards that show each; cards whose numbers' row holds only a button.
+    markRows: Math.max(0, ...cards.map((el) => new Set([...el.querySelectorAll(".marks .pill")].filter((p) => p.getClientRects().length)
+      .map((p) => Math.round(p.getBoundingClientRect().top))).size)),
+    markShare: Object.fromEntries(["tested", "made"].map((mark) => [mark, cards.filter((el) => [...el.querySelectorAll(`.marks .${mark}`)]
+      .some((p) => p.getClientRects().length)).length / Math.max(1, cards.length)])),
+    lonelyLike: cards.filter((el) => { const acts = el.querySelector(".acts"); return acts && [...acts.children].length > 0
+      && [...acts.children].every((c) => c.matches(".icon-btn")); }).length,
+    pickWide: (() => { const pick = document.querySelector("#pick-card .model"); const other = document.querySelector("#models .model");
+      return pick && other ? Math.round(pick.getBoundingClientRect().width / other.getBoundingClientRect().width * 10) / 10 : 0; })(),
     // Where each card's name ends, down the page, in the order they come.
     names: cards.map((el) => Math.round(el.querySelector(".open b").getBoundingClientRect().bottom + scrollY)).sort((a, b) => a - b),
     whole: boxes.filter((b) => b.top >= 0 && b.bottom <= innerHeight && b.width > 0).length,
@@ -181,14 +197,18 @@ try {
         .map((i) => (i.complete ? null : new Promise((done) => { i.onload = i.onerror = done; })))));
       const seen = await drawn(page);
       if (width === 390) {
-        check(seen.firstPicture <= 330 && seen.columns === 2 && !seen.sideways,
-          `390 ${theme}: the first card's picture at ${seen.firstPicture} px (330 at most), ${seen.columns} to a row, nothing sideways`);
+        check(seen.firstPicture <= 330 && seen.columns === 2 && seen.pickWide >= 2 && !seen.sideways,
+          `390 ${theme}: the first card's picture at ${seen.firstPicture} px (330 at most), ${seen.columns} to a row, the pick ${seen.pickWide}x as wide, nothing sideways`);
         check(seen.names.length >= 4 && seen.names[3] <= 2 * 844,
           `390 ${theme}: four cards' names on the first two screens, the fourth's ending at ${seen.names[3]} px (${2 * 844} at most)`);
       } else {
-        check(seen.whole >= 4 && seen.columns === 4 && !seen.sideways,
-          `1280 ${theme}: ${seen.whole} whole cards on the first screen (4 at least), ${seen.columns} to a row, nothing sideways`);
+        check(seen.whole >= 5 && seen.columns === 5 && !seen.sideways,
+          `1280 ${theme}: ${seen.whole} whole cards on the first screen (5 at least), ${seen.columns} to a row, nothing sideways`);
       }
+      const common = Object.entries(seen.markShare).filter(([, share]) => share >= 0.9).map(([mark]) => mark);
+      check(seen.markRows <= 1 && !common.length && seen.lonelyLike === 0,
+        `${width} ${theme}: one row of marks at most (${seen.markRows}), none on 90% of the cards (${Object.entries(seen.markShare)
+          .map(([mark, share]) => `${mark} ${Math.round(share * 100)}%`).join(", ")}), no card ending in its like alone (${seen.lonelyLike})`);
       check(seen.tab === "top" && seen.window === "" && seen.tabs.join(",") === "top,new" && seen.pick && !seen.zero,
         `${width} ${theme}: Top shown over all time, tabs ${seen.tabs.join(" · ")} signed out, this week's pick first (${seen.pick}), no count of 0`);
       await shot(page, `gallery_${width}_${theme}_fold.png`);
@@ -229,10 +249,13 @@ try {
     await until(page, () => location.search.includes("made=assistant") && document.documentElement.dataset.gallery === "ready");
     const made = await page.evaluate(() => {
       const cards = [...document.querySelectorAll("#models .model")];
+      // Each made so, and none saying it: a mark every card carries tells none apart.
       return { n: cards.length, all: cards.every((el) => el.dataset.made === "assistant" && el.querySelector(".marks .pill.made")),
-        said: document.getElementById("filters-said").textContent };
+        shown: cards.filter((el) => el.querySelector(".marks .pill.made")?.getClientRects().length).length,
+        quiet: document.body.dataset.quiet || "", said: document.getElementById("filters-said").textContent };
     });
-    check(made.n > 0 && made.all && made.said === "1", `Made: with the assistant: ${made.n} cards, each marked; Filters says ${made.said} on`);
+    check(made.n > 0 && made.all && (made.n < 4 || (made.shown === 0 && /made/.test(made.quiet))) && made.said === "1",
+      `Made: with the assistant: ${made.n} cards, each made so, its mark shown on ${made.shown} (data-quiet "${made.quiet}"); Filters says ${made.said} on`);
     await shot(page, "2_made_assistant_1280.png");
     await context.close();
   }

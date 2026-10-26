@@ -1,11 +1,14 @@
 // A shared model's card, the one every page draws (site.css .model): the
 // gallery, the landing page's strip, a profile, a collection, a model's
 // remixes, your account. Its picture with its marks over a corner (Tested,
-// made with the assistant), its name, who made it with their avatar and a
-// link to their profile, its size, what it has (how much of it your
-// collection holds, what it won, what moves in it), and its numbers once
-// there are any: a like, which the gallery lets you give from the card,
-// the builds finished and the comments, each as an icon and a count.
+// made with the assistant: one row of them, and none that nearly every
+// card shown carries) and, in the gallery, its like button over the other;
+// its name; who made it with their avatar and a link to their profile, its
+// size and its numbers once there are any (likes, builds finished,
+// comments, each an icon and a count), all on one line; then what it has
+// (how much of it your collection holds, what it won, what moves in it).
+// It ended in a row holding only an empty heart, a fifth of its height
+// (site273).
 //
 // One renderer for the server and the browser: cardHtml is a pure string
 // function, so api/people.js and api/share.js put it in the pages they
@@ -19,6 +22,13 @@
 // The card is an article, not a link: its name is the link to the model's
 // page, stretched over the whole card (site.css), so the designer's name
 // and the like button inside it can be links and buttons of their own.
+//
+// A mark is said when it tells a card apart. When 90% or more of the
+// cards on a page carry one (every model in the gallery was Tested and
+// made with the assistant, site273), <body data-quiet> names it and
+// site.css leaves it off: the server's pages say so as they are made
+// (quietMarks), and in a browser modelCard says it again, before the next
+// frame, for every card then on the page.
 //
 // Names and credits were typed by strangers, so every word is escaped;
 // the link is built from the model's id alone, and the caller passes only
@@ -166,6 +176,31 @@ export function madeOf(model) {
     by: brickify ? "brickify" : tags.includes("ai-designed") ? "assistant" : "hand", said: "tags" };
 }
 
+/// The marks a card for [model] carries over its picture: "tested", and
+/// "made" (with the assistant or Brickify).
+export function marksOf(model) {
+  return [model.tested === true ? "tested" : "", madeOf(model).way === "assistant" ? "made" : ""].filter(Boolean);
+}
+
+/// The marks that tell none of a page's cards apart, as <body data-quiet>
+/// says them ("tested made", or ""): each carried by 90% or more of the
+/// cards, [carried] being each card's marks (marksOf). Under four cards
+/// each card says its own.
+export function quietMarks(carried) {
+  const all = [...carried];
+  if (all.length < 4) return "";
+  return ["tested", "made"].filter((mark) => all.filter((marks) => marks.includes(mark)).length >= 0.9 * all.length).join(" ");
+}
+
+/// Says on <body> which marks the cards on this page now leave off.
+export function quietPage() {
+  const cards = [...document.querySelectorAll(".model")].map((card) => [
+    card.dataset.tested === "yes" ? "tested" : "", card.dataset.made === "assistant" ? "made" : ""].filter(Boolean));
+  const quiet = quietMarks(cards);
+  if (quiet) document.body.dataset.quiet = quiet;
+  else delete document.body.dataset.quiet;
+}
+
 // What the Tested mark means, said on hover.
 const TESTED_SAYS = "Stands at every step · every step reachable · every part made in its colour · nothing loose";
 // A handle, as api/people.js keeps one: only such a one makes a link.
@@ -253,23 +288,24 @@ export function cardHtml(model, { earned = false, like = false } = {}) {
     data.push(`data-moves="${escapeHtml(moves.join(","))}"`);
     if (motions.length) data.push(`data-motions="${escapeHtml(motions.join("|"))}"`);
   }
-  // Its numbers as icons, each once there is one: a like (a button where
-  // the page makes it one), builds finished to the last step, once per
-  // device (supabase/builds.sql), and comments. Views are never shown or
-  // ranked (docs/SOCIAL.md D6).
-  if (!earned) {
-    // Named with the model: twenty cards' "Like" in a row say which they like.
-    const liked = like ? iconButtonHtml({ icon: "like", name: likeName(model.name), count: model.likes, one: "like",
-      pressed: model.liked === true, small: true, attrs: `data-like="${escapeHtml(id)}"` }) : tallyHtml("like", model.likes, "like");
-    const acts = liked + tallyHtml("build", model.builds, "built", "built") + tallyHtml("comment", model.comments, "comment");
-    if (acts) lines.push(`<small class="acts">${acts}</small>`);
-  }
+  // Its numbers as icons, each once there is one, on the designer's line:
+  // likes (where the like is not a button), builds finished to the last
+  // step, once per device (supabase/builds.sql), and comments. Views are
+  // never shown or ranked (docs/SOCIAL.md D6).
+  const tallies = earned ? "" : (like ? "" : tallyHtml("like", model.likes, "like"))
+    + tallyHtml("build", model.builds, "built", "built") + tallyHtml("comment", model.comments, "comment");
+  // The like, where the page makes it a button: over the picture's other
+  // corner, its count beside its heart. Named with the model: twenty
+  // cards' "Like" in a row say which they like.
+  const liked = like && !earned ? iconButtonHtml({ icon: "like", name: likeName(model.name), count: model.likes, one: "like",
+    pressed: model.liked === true, small: true, attrs: `data-like="${escapeHtml(id)}"` }) : "";
   return `<article class="model" ${data.join(" ")}>`
     + `<div class="frame${picture ? "" : " none"}">${picture
       ? `<img src="${escapeHtml(picture)}" alt="${name}" width="1200" height="630" loading="lazy" decoding="async">`
-      : "No picture"}${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}</div>`
+      : "No picture"}${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}${liked}</div>`
     + `<div class="words"><a class="open" href="/m/${escapeHtml(id)}"><b title="${name}">${name}</b></a>`
-    + `<span class="by">${who}<span class="parts">${escapeHtml(counted(model.parts, "part"))}</span></span>`
+    + `<span class="by">${who}<span class="parts">${escapeHtml(counted(model.parts, "part"))}</span>`
+    + `${tallies ? `<small class="acts">${tallies}</small>` : ""}</span>`
     + `${lines.join("")}</div></article>`;
 }
 
@@ -278,8 +314,19 @@ export function cardHtml(model, { earned = false, like = false } = {}) {
 /// own with no window, where a picture never loads and decode() refuses:
 /// the landing page's strip waited on its cards' pictures before showing,
 /// and stayed hidden with all seven refused (walk180, 2026-10-23).
+///
+/// Every card made here says the page's quiet marks again before the next
+/// frame, when it is on the page with the others (quietPage).
 export function modelCard(model, options) {
   const made = document.createElement("template");
   made.innerHTML = cardHtml(model, options);
+  if (!quieting) {
+    quieting = true;
+    requestAnimationFrame(() => {
+      quieting = false;
+      quietPage();
+    });
+  }
   return document.importNode(made.content.firstElementChild, true);
 }
+let quieting = false;

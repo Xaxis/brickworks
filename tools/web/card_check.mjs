@@ -17,7 +17,12 @@
 //     motions, Tested, made with the assistant, its designer's avatar and
 //     link, comments, a like that is a button and pressed, no picture, a
 //     name with markup and quotes in it, a designer's earned card), drawn by
-//     the module the server imports and by the browser's /card.js.
+//     the module the server imports and by the browser's /card.js;
+//   and a card's shape (site273): a like that is a button is over its
+//     picture, its numbers are on its designer's line, and no card ends in
+//     a row holding only a button; the marks nearly every card of a page
+//     carries are named on <body data-quiet>, by the server's page as the
+//     browser names them for the same cards.
 //
 // Fails on any card that differs, or when no card was compared. Needs no
 // network: the site is served from --root's web/ and api/ as
@@ -151,6 +156,52 @@ try {
   check(/class="avatar small c\d pictured"[^>]*><img src="\/api\/people\?op=avatar&amp;id=FaceRobin1"/.test(face)
     && !/<img[^>]*tracker\.example/.test(elsewhere) && />M<\/span>/.test(elsewhere),
   "a designer's own picture drawn, and one from anywhere else never: the tile");
+  // The like over the picture, the numbers on the designer's line.
+  const [liked] = await drawn([SAMPLES[4][0]], { like: true });
+  check(/<div class="frame">[^]*<button type="button" class="icon-btn small"[^>]*data-like="CardAbcde5"[^]*<\/button><\/div><div class="words">/.test(liked)
+    && /<span class="by">[^]*<small class="acts"><span class="tally" title="37 built">[^]*title="3 comments"[^]*<\/small><\/span>/.test(liked)
+    && !/title="97 likes"/.test(liked), "a like that is a button: over the picture's corner; builds and comments on the designer's line");
+  const [counted] = await drawn([SAMPLES[0][0]], {});
+  check(/<span class="by">[^]*<small class="acts"><span class="tally" title="12 likes">/.test(counted)
+    && !/<div class="frame">[^]*<button/.test(counted), "a like that is a count: on the designer's line, nothing over the picture");
+  const lonely = await page.evaluate(async (list) => {
+    const { modelCard } = await import("/card.js");
+    return list.flatMap(([model, options]) => {
+      const card = modelCard(model, options);
+      const acts = card.querySelector(".acts");
+      return acts && [...acts.children].length && [...acts.children].every((one) => one.matches(".icon-btn")) ? [model.id] : [];
+    });
+  }, SAMPLES);
+  check(lonely.length === 0, `no card's numbers are a button alone (${lonely.join(", ") || "none"})`);
+  // The marks that tell no card apart.
+  const quiet = await page.evaluate(async () => {
+    const { quietMarks } = await import("/card.js");
+    const both = ["tested", "made"];
+    return {
+      all: quietMarks(Array(10).fill(both)), nine: quietMarks([...Array(9).fill(both), ["tested"]]),
+      eight: quietMarks([...Array(8).fill(both), [], []]), few: quietMarks(Array(3).fill(both)),
+    };
+  });
+  check(quiet.all === "tested made" && quiet.nine === "tested made" && quiet.eight === "" && quiet.few === "",
+    `quiet marks: 10 of 10 "${quiet.all}", 9 of 10 "${quiet.nine}", 8 of 10 "${quiet.eight}", three cards "${quiet.few}"`);
+  const serverQuiet = /<body[^>]*\sdata-quiet="([^"]*)"/.exec(made.html)?.[1] || "";
+  const browserQuiet = await page.evaluate(async (list) => {
+    const { marksOf, quietMarks } = await import("/card.js");
+    return quietMarks(list.map(marksOf));
+  }, models);
+  check(serverQuiet === browserQuiet, `/c/${stand.LIST_ID}: the server's page leaves off "${serverQuiet}", the browser "${browserQuiet}" for its ${models.length} cards`);
+  // In a browser, cards drawn say it on <body> before the next frame.
+  const drawnQuiet = await page.evaluate(async () => {
+    const { modelCard } = await import("/card.js");
+    const grid = document.body.appendChild(document.createElement("div"));
+    grid.append(...Array.from({ length: 5 }, (_, i) => modelCard({ id: `Quiet0000${i}`, name: "Q", parts: 1, tested: true,
+      made_with: i ? "assistant" : "hand" })));
+    await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+    const said = document.body.dataset.quiet || "";
+    grid.remove();
+    return { said };
+  });
+  check(drawnQuiet.said === "tested", `five cards drawn, all Tested and four with the assistant: <body data-quiet="${drawnQuiet.said}">`);
   check(!errors.length, `no script errors${errors.length ? `: ${errors.join("; ")}` : ""}`);
 } finally {
   await browser.close();

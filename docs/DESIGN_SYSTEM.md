@@ -30,7 +30,8 @@ sized its own titles, from 26 to 74 px. Now:
   in until you are, then your avatar: the account menu, below), the
   account last at the far right (the owner, 2026-10-23: "an obvious
   pattern"; design_flow.mjs fails a header in another order); on a
-  phone the mark, the way in and Menu (your avatar, once signed in),
+  phone (under 600 px; a tablet has the laptop's header, its links in
+  view) the mark, the way in and Menu (your avatar, once signed in),
   the last 16 px from the edge as the page's words are, down to 320 px:
   under 390 px the mark is the cube alone (design_flow.mjs fails a
   header that runs into the gutter at 320, 360 or 390 px). The footer: the mark and a row of links (Compare, FAQ, Changelog,
@@ -157,20 +158,43 @@ is on the page, `hidden`, for the script to show.
   and the browser with `modelCard`, the same string parsed, so the two are
   the same markup (`tools/web/card_check.mjs` proves it). Its picture is
   4:3, the middle of the 1200 x 630 one by `object-fit: cover`
-  (docs/SOCIAL.md D3), with its marks over the top corner (`.marks`: the
-  Tested `.pill.good`, and `.pill.made` Assistant or Brickify, read from
-  its tags). It is an `article`: its name (`a.open`) is the one link to the
-  model, stretched over the whole card, so the designer's name and a like
-  sit inside it as a link and a button of their own. Under the name, `.by`:
-  the designer's `.small` avatar and name (`a.who`, to their page) and its
-  size; then `.acts`, its numbers last, each an icon and a count and none
-  at nought: the like (an `.icon-btn.small`, `aria-pressed`, when the page
-  passes `like: true`, as the gallery does; a `.tally` elsewhere), builds
-  finished and comments. In `.models` (a grid: two to a row on a phone,
-  three from 900 px, four from 1200), `.models.compact` (more to a row,
-  beside a rail), `.models.wide` (fewer, one to a row on a phone, for cards
-  that carry a button under them) or `.models.row` (one row that scrolls
-  inside itself, never the page).
+  (docs/SOCIAL.md D3), with its marks over the top-left corner (`.marks`:
+  the Tested `.pill.good`, and `.pill.made` Assistant or Brickify, read
+  from its tags), one row of them: a mark that does not fit is left off
+  whole. A mark carried by 90% or more of the cards on a page (four cards
+  or more) tells none apart and is not shown: `<body data-quiet>` names it
+  (`quietMarks`; the server's pages say it as they are made, and in a
+  browser `modelCard` says it again for every card then on the page).
+  They stacked two and three rows deep, 30% of a phone's picture, and
+  every card said "Tested" and "Assistant" (site273). Where the page
+  passes `like: true` (the gallery), its like is an `.icon-btn.small` over
+  the picture's top-right corner, on a `--panel` ground, `aria-pressed`,
+  its count beside the heart. It is an `article`: its name (`a.open`, 16
+  px at every width) is the one link to the model, stretched over the
+  whole card, so the designer's name and the like sit inside it as a link
+  and a button of their own. Under the name, one line, `.by`: the
+  designer's `.small` avatar and name (`a.who`, to their page), its size,
+  then `.acts`, its numbers, each an icon and a count and none at nought:
+  likes (a `.tally` where the like is not a button), builds finished and
+  comments. Then a line each for what it has (Moves, what your collection
+  holds, what it won). No card ends in a row of its own for its numbers:
+  it held only an empty heart on every card, a fifth of its height. In
+  `.models` (a grid: two to a row on a phone, then three, four, five and
+  six from 600, 900, 1200 and 1600 px, a card 180-280 px wide at every
+  width), `.models.compact` (more to a row, beside a rail), `.models.wide`
+  (fewer, one to a row on a phone, for cards that carry a button under
+  them) or `.models.row` (one row that scrolls inside itself, never the
+  page).
+- **Width**: `--page` (1,140 px) for a page of words; `--page-wide`
+  (1,600 px) for a page of cards and pictures, `.wrap.wide`: the gallery, a
+  person, a collection, a model's page, the feed and the landing page's
+  row of models; and for the header and the footer on every page, so the
+  mark and the account sit where they do on the gallery. Nothing was wider
+  than 1,140 px, 59% of a 1920 window, four cards to a row (site273). A
+  model's page: from 1200 px its column is 420 px and its picture the
+  rest; on a phone (under 600 px) its picture is square, the model drawn
+  as large as its width lets it (`web/model-page.js` `fitPicture`, by
+  transform alone, so nothing shifts).
 - **Page**: `main.page` (or a `.wrap.page-head` first under `<main>`): the
   space above the title, an optional `.page-head` (`.eyebrow`, `h1`,
   `.lede`), then its sections. `.prose` for a page of words (the FAQ's

@@ -76,7 +76,13 @@
 	--r-pill: 999px;
 	--control-radius: var(--r-2);
 	--radius: var(--r-3);
+	/* A page's width: a page of words keeps --page; a page of cards and
+	   pictures (.wrap.wide: the gallery, a person, a collection, a model,
+	   the feed, the landing page's row of models) and the header and
+	   footer on every page use the window up to --page-wide. Nothing was
+	   wider than 1,140 px, 59% of a 1920 window (site273). */
 	--page: 1140px;
+	--page-wide: 1600px;
 	/* One type scale for every page (docs/DESIGN_SYSTEM.md): the landing
 	   page's one line, a page's title, a section's, a card's; the lede;
 	   then the words, small print, the smallest, and a count's. Each page
@@ -171,6 +177,7 @@ code.cmd {
 a:focus-visible { border-radius: var(--r-1); }
 
 .wrap { width: min(100% - 32px, var(--page)); margin-inline: auto; }
+.wrap.wide, .site-head > .wrap, .site-foot > .wrap { --page: var(--page-wide); }
 .skip {
 	position: absolute; left: 12px; top: -60px; z-index: 50;
 	background: var(--accent); color: var(--on-accent);
@@ -264,7 +271,8 @@ a:focus-visible { border-radius: var(--r-1); }
 /* Sign out last, a menu's button as any other, under a line. */
 .menu-list > :has(+ .sign-out) { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .menu-list > .sign-out { margin-top: 6px; }
-@media (max-width: 860px) {
+/* Under 600 px: a tablet has the laptop's header, its links in view. */
+@media (max-width: 599px) {
 	.nav a:not(.cta), .nav .account-menu { display: none; }
 	.menu { display: block; }
 }
@@ -518,12 +526,15 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
    width, rows line up, and the space is held before the picture comes.
    Its name is the link, stretched over the whole card; the designer's
    name and a like button sit above it, links and buttons of their own.
-   .models lays them out: two to a row on a phone, three from 900 px,
-   four from 1200; .models.row is one row that scrolls inside itself,
+   .models lays them out: two to a row on a phone, then three, four, five
+   and six from 600, 900, 1200 and 1600 px, so a card is 180-280 px wide
+   at every width; .models.row is one row that scrolls inside itself,
    never the page. */
 .models { display: grid; gap: var(--s-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
-@media (min-width: 900px) { .models { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; } }
-@media (min-width: 1200px) { .models { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 600px) { .models { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .models { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; } }
+@media (min-width: 1200px) { .models { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (min-width: 1600px) { .models { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 .models.row {
 	grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(200px, 260px);
 	overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding: 2px 2px 10px;
@@ -547,9 +558,26 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 	display: grid; place-items: center; color: var(--ink-faint); font-size: var(--t-small);
 	background: linear-gradient(180deg, var(--panel-hi), var(--bg-soft));
 }
-/* Its marks over the picture's top corner: Tested, how it was made. */
-.model .marks { position: absolute; top: var(--s-2); left: var(--s-2); right: var(--s-2); display: flex; flex-wrap: wrap; gap: var(--s-1); }
+/* Its marks over the picture's top corner: Tested, how it was made. One
+   row of them: a mark that does not fit is left off whole, never cut (the
+   row is one pill tall, its 3 px edge holding their shadows). They stacked
+   two and three rows deep on a phone, 30% of the picture (site273). A
+   mark nearly every card on the page carries is not said at all
+   (web/card.js quietMarks, <body data-quiet>). */
+.model .marks {
+	position: absolute; top: 5px; left: 5px; right: 5px; max-height: 30px; padding: 3px; overflow: hidden;
+	display: flex; flex-wrap: wrap; gap: var(--s-1);
+}
 .model .marks .pill { box-shadow: 0 1px 3px var(--shade); }
+[data-quiet~="tested"] .model .marks .tested, [data-quiet~="made"] .model .marks .made { display: none; }
+/* The gallery's like, over the picture's other corner, on a ground of its
+   own over any picture; the marks keep clear of it. */
+.model .frame > .icon-btn {
+	position: absolute; top: var(--s-2); right: var(--s-2); z-index: 1;
+	background: var(--panel); box-shadow: 0 1px 3px var(--shade);
+}
+.model .frame > .icon-btn:hover { background: var(--panel-hi); }
+.model .frame:has(> .icon-btn) .marks { right: 49px; }
 .model .words { flex: 1; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 @media (min-width: 900px) { .model .words { padding: 12px 16px 14px; } }
 /* The name: the card's one link to the model, stretched over all of it,
@@ -564,7 +592,8 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 	color: var(--ink); font-size: var(--t-body); font-weight: 640; line-height: 1.35; overflow-wrap: anywhere;
 }
-/* Who made it, with their avatar, and its size. */
+/* Who made it, with their avatar, its size and its numbers, one line that
+   wraps on a phone. */
 .model .by {
 	display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--s-2); min-width: 0;
 	color: var(--ink-soft); font-size: var(--t-small); line-height: 1.5;
@@ -578,19 +607,17 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 /* How much of it the signed-in person's collection holds, and what moves. */
 .model small.moves, .model small.owned.all { color: var(--ink); font-weight: 600; }
 .model small.owned { color: var(--ink-soft); }
-/* Its numbers, last: a like (a button in the gallery), builds and comments,
-   each an icon and a count. */
-.model .acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-3); margin-top: auto; padding-top: 6px; }
-.model .acts .icon-btn { position: relative; z-index: 1; margin-left: -4px; }
-.model .tally { display: inline-flex; align-items: center; gap: var(--s-1); color: var(--ink-soft); font-size: var(--t-small); }
-.model .tally .icon { width: 17px; height: 17px; }
-/* Two to a row on a phone: the words a step smaller, so a name, its
-   designer and its numbers fit a card 170 px wide. */
+/* Its numbers on that line, after its size: likes (where the like is not
+   a button), builds and comments, each an icon and a count. The card used
+   to end in a row of them, which held only an empty heart on every card. */
+.model .by .acts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s-3); font-size: inherit; }
+.model .tally { display: inline-flex; align-items: center; gap: var(--s-1); color: var(--ink-soft); }
+.model .tally .icon { width: 16px; height: 16px; }
+/* A card 180-280 px wide: the designer's line a step smaller, so their
+   name, its size and its numbers fit. The name stays 16 px at every width. */
 @media (max-width: 899px) {
-	.model b { font-size: var(--t-small); }
-	.model .by, .model .tally { font-size: var(--t-tiny); }
-	.model .acts { gap: var(--s-1) var(--s-2); }
-	.model .acts .icon-btn { padding: 0 8px; }
+	.model .by { font-size: var(--t-tiny); }
+	.model .by .acts { gap: 0 var(--s-2); }
 }
 .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
 
