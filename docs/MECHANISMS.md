@@ -3411,7 +3411,9 @@ boom (6 parts or more on a hinge, a click hinge, a pin or an axle,
 reaching 3 studs or more from its line, no tyre in it, lifting: its
 line is not upright, and working something at its end, on it or on what
 hangs from it: a crane's arm, hook or basket, a digger's bucket, a
-forklift's forks or a grab; a castle's drawbridge, a garage door, folding
+forklift's forks or a grab, or in a sub-model its file names a crane, a
+digger, a boom, a loader or a bucket, as 4096-1's crane with no hook by
+name is; a castle's drawbridge, a garage door, folding
 wings and a ship's cockpits reach and lift too, and each was said to be a
 boom until moves268), doors (a door,
 ramp, hatch, gate, tailgate, flap or lid that is its body's biggest part

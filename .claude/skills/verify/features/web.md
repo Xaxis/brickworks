@@ -1468,14 +1468,17 @@ plan with Claude as the client.
   A steering wheel spinning alone on its stud is never the steering's
   handle. A boom works something at its end (`Playable.working_end`: a
   crane's arm, hook or basket, a digger's bucket, forklift forks, a grab),
-  on it or beyond it on its chain; a door is its body's biggest part or
+  on it or beyond it on its chain, or is in a sub-model named for a
+  machine that lifts (`Playable.lifting_named`: 4096-1's "4096 - EB
+  Crane", 8862-1's "boom" and "bucket"); a door is its body's biggest part or
   hangs on the joint itself (moves268: the gallery's King's Castle and
   Dragon Defender both said "boom", the castle's being its drawbridge, and
   ten of the thirty seeds said a boom or a door they do not have).
   `tools/probe.sh moves_probe` opens the thirty seeds, the models that ship
-  and sixteen sets held out (`tests/fixtures/moves/truth.json`, judged from
-  renders and each set's steps) and fails a word a set does not move, and a
-  word the seeds plainly have and do not say; `-- dump FILE...` tells each
+  and two batches held out, sixteen and twenty sets
+  (`tests/fixtures/moves/truth.json`, judged from renders and each set's
+  steps) and fails a word a set does not move, and a word the seeds
+  plainly have and do not say; `-- dump FILE...` tells each
   moving body, its joint, reach and parts. On 2e28f712 it fails 11 seeds
   and 4 held out (castles' drawbridges and walls, a house's garage door,
   wings, a train's door rail); misses that the joints cannot see (five

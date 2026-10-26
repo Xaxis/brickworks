@@ -100,13 +100,14 @@
     "1489-1.mpd": {"name": "Mobile Car Crane", "moves": ["turntable", "boom", "doors"], "sure": []},
     "7246-1.mpd": {"name": "Mini Digger", "moves": ["turntable", "boom"], "sure": []},
     "5761-1.mpd": {"name": "Mini Digger", "moves": ["turntable", "boom", "doors"], "sure": []},
-    "6658-1.mpd": {"name": "Bulldozer", "moves": ["boom", "doors"], "sure": [],
-      "why": "Its blade lifts on its arms, which may be called a boom."},
+    "6658-1.mpd": {"name": "Bulldozer", "moves": ["boom", "doors", "steering"], "sure": [],
+      "why": "Its blade lifts on its arms, which may be called a boom. It steers by bending on an articulated hinge plate, its wheels on either side: steering as the rule names it, which the judging before missed and the run showed."},
     "6687-1.mpd": {"name": "Turbo Prop I", "moves": ["doors"], "sure": []},
     "6368-1.mpd": {"name": "Jet Airliner", "moves": ["doors"], "sure": []},
     "6392-1.mpd": {"name": "Airport", "moves": ["doors", "turntable"], "sure": []},
     "6597-1.mpd": {"name": "Century Skyway", "moves": ["doors", "turntable"], "sure": []},
-    "6542-1.mpd": {"name": "Launch & Load Seaport", "moves": ["boom", "turntable", "doors"], "sure": []},
+    "6542-1.mpd": {"name": "Launch & Load Seaport", "moves": ["boom", "turntable", "doors", "steering"], "sure": [],
+      "why": "Its vehicles' front axles turn on tiles with pins under them, a toy's steering as the rule names it, which the judging before missed and the run showed."},
     "6339-1.mpd": {"name": "Shuttle Launch Pad", "moves": ["boom", "turntable", "doors"], "sure": []},
     "6363-1.mpd": {"name": "Auto Service Station", "moves": ["doors", "boom", "turntable"], "sure": []}
   }
