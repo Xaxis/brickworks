@@ -55,10 +55,10 @@ const DEFAULTS: Dictionary = {
 	# The folder the last export or Save as went to on the desktop, where
 	# the next one's dialog opens (SaveTo): "" for Documents.
 	"save_folder": "",
-	# The folder the last picture was chosen from on the desktop (a photo
-	# to search by, a picture to print), where the next chooser opens
-	# (PickImage.start): "" for Pictures.
-	"picture_folder": "",
+	# The folder the last file of each kind ("picture", "model", "mesh",
+	# "list") was chosen from on the desktop, where the next chooser of
+	# that kind opens (OpenFrom).
+	"open_folders": {},
 	# Settings, Interface size: how much bigger or smaller than the window
 	# would draw it the interface is, 0.85 to 1.5 (Main._match_screen_density).
 	"interface_size": 1.0,

@@ -41,7 +41,7 @@ func ask() -> void:
 		_dialog.file_selected.connect(func(path: String) -> void:
 			take(FileAccess.get_file_as_bytes(path), path.get_file()))
 		add_child(_dialog)
-	_dialog.popup_centered()
+	OpenFrom.ask(_dialog, "model")
 
 
 ## A file's bytes and name, made into LDraw text and handed on.
