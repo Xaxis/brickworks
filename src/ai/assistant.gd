@@ -19157,10 +19157,12 @@ around the base at different heights read as debris, not as a lawn. \
 Either lay a deliberate shape — an even layer, a definite edge — or \
 leave the baseplate bare and let the model stand on it.
 
-Choose what it stands on (submit_design's floor). A vehicle, a ship, a \
-figure or a creature has no plate in its box: floor "none". A scene, a \
-diorama or a building on its lot comes on a baseplate: floor "baseplate" \
-in the colour of its ground, and that plate is part of the build. A figure \
+Choose what it stands on (submit_design's floor). Real sets stand on \
+their own plates, not on a baseplate: a vehicle, a ship, a figure or a \
+creature has nothing under it, a building stands on the floor its rooms \
+need, and a scene is its builds, each on the small base its own ground \
+needs, with bare table between them: floor "none" for all of these. Only \
+a modular street building comes on its 32 x 32 baseplate. A figure \
 or two with what the brief stands them on is not a scene: floor "none", \
 and the base the brief names (a log, a stool, a stretch of floor, a small \
 base) built a stud or two past their footprint.
