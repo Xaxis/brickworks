@@ -336,6 +336,17 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   it needs a base build served beside) shoots 1280 x 800 by a mouse, ready,
   3001 searched and the File menu, against a base build, 0 pixels different
   and the base against itself 0.
+  Standing still it draws nothing (2026-10-25, m174's tablet check: its first
+  picture waited 30 s for a frame). The row's colour in hand redrew itself
+  every frame (`PhoneShell.RowPicture`) and the hint was laid out every frame,
+  set to nothing and back, so the whole window was drawn every frame
+  (IdleDraw): 2 to 5 s a frame in software at 768 x 1024 at 2x, frozen from
+  the moment it showed, which since the sign-in went behind the model is the
+  moment it is used. Now each is set only when it changes. Proved by
+  `tools/probe.sh phone_idle_probe` (windowed, the tablet's layout made in a
+  window; `-- --phone` the phone's): settled, at most a frame a second standing
+  still; a new colour in hand drawn, its picture the new colour; words over the
+  model drawn, then still again. On the base standing still draws every frame.
 - `touch dialogs` (`src/ui/touch_sizing.gd`, `TouchSizing`, 2026-10-24): on a
   phone or a tablet (`Phone.on`) every dialog and panel over the model takes
   the layout's sizing, one rule for all as `Access` is for the keys: its text
@@ -387,33 +398,25 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Undo; a version opened from Versions; Share's name typed, published by link
   where signed in; Settings, Reduce motion changed and back; Build together
   started where signed in; a 3D model and an LDraw model exported (downloads);
-  Find typed into; the booklet's Save as PDF (its bar measured in the tab, a
-  PDF downloaded); Model tree and Properties (on a tablet the parts panel not
-  under them, and back as they fold); Library, "UNICEF" typed above the
-  keyboard and the van opened, its 65 parts in a tab of its own (fig257); Render, a quick
-  picture made and downloaded; Parts list, My collection, Part maker, Colour
-  the hidden parts, Keys and controls, About, Clear and Floor size opened and
-  put away by their own close buttons; the Minifigure builder (below), a
-  torso searched for above the keyboard, chosen by its tile and the figure
-  placed by a tap on an empty baseplate; and last Account's Sign out, the
-  sign-in screen up and audited where the test account was signed in; each
-  step audited. Each size's check has an hour (`preview_checks.sh`; the
-  rest have 45 minutes): with the main actions a size took 2,575 s. Locally the server is given the parts bucket (`--parts-url`),
-  where the live library is. On base it fails with
   Find typed into; the booklet's tab, asked for inside the tap's activation
   (`navigator.userActivation` read at the app's `window.open`: the headless
   shell has no popup blocker, so any ask opened one) and heard from before
   More is scrolled (a wait begun then ran out while More's drags took two
-  minutes under load, booklet262); its Save as PDF (its bar
-  measured in the tab, a PDF downloaded); Model tree and Properties (on a tablet the parts panel not
-  under them, and back as they fold); and Library, Account, Render, Parts
-  list, My collection, Part maker, Colour the hidden parts, Keys and
-  controls, About, Clear and Floor size opened and put away by their own
-  close buttons, each step audited. Not yet: the Minifigure builder, whose
-  two columns side by side are wider than a phone (a row with a grid in it
-  never flows: a grid that takes its columns from its width grew without end
-  in a flow). On base it fails with
-  the named controls under 44 counted and no dialogs said. The desktop is
+  minutes under load, booklet262); its Save as PDF (its bar measured in the
+  tab, a PDF downloaded); Model tree and Properties (on a tablet the parts
+  panel not under them, and back as they fold); Library, "UNICEF" typed
+  above the keyboard and the van opened, its 65 parts in a tab of its own
+  (fig257); Render, a quick picture made and downloaded; Parts list, My
+  collection, Part maker, Colour the hidden parts, Keys and controls, About,
+  Clear and Floor size opened and put away by their own close buttons; the
+  Minifigure builder (below), a torso searched for above the keyboard, chosen
+  by its tile and the figure placed by a tap on an empty baseplate; and last
+  Account's Sign out, the sign-in screen up and audited where the test
+  account was signed in; each step audited. Each size's check has an hour
+  (`preview_checks.sh`; the rest have 45 minutes): with the main actions a
+  size took about 2,600 s. Locally the server is given the parts bucket
+  (`--parts-url`), where the live library is. On base it fails with the
+  named controls under 44 counted and no dialogs said. The desktop is
   unchanged (`desktop_same.mjs`, 0 pixels).
 - `minifig builder by finger` (`MinifigDialog._arrange`, fig257): the
   builder's three columns want 860 units across at the least, and a phone

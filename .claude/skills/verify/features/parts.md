@@ -3,7 +3,7 @@
 Finding one of 28,000 parts by the words a builder would type, and getting its
 geometry in front of them.
 
-<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, ui:recent and favourite parts, ui:techniques in the bin, ui:find a part from a photo, cli:dialog look probe -->
+<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, ui:recent and favourite parts, ui:techniques in the bin, ui:find a part from a photo, cli:dialog look probe, cli:picker folder probe, ui:the app's dialogs and menus, ui:where a chooser opens -->
 
 ## Sub-features
 
@@ -308,14 +308,10 @@ geometry in front of them.
   third party that may keep it and train on it (their terms, read 2026-10-24),
   and that nothing is sent until a photo is chosen (`ShellPrefs` `photo_told`,
   once a device); then the picker (`PickImage`, the camera on a phone; on
-  the desktop Godot's file dialog, opened in the folder the last picture
-  was chosen from while it is there, else Pictures, else home:
-  `PickImage.start`, `ShellPrefs` `picture_folder`, shared with Print's
-  `PictureFile`; it opened in the install folder, walk256 DS1). The
-  question and the chooser are in the app's dialog look on the desktop
-  (`Look.dialog`: the panels' dark face, faint edge and round corners on
-  the engine's own sizes; the web's stay as they were); `dialog_look_probe`
-  reads their pixels against the Render panel's face. The
+  the desktop Godot's file dialog, opened where the last picture was
+  chosen from, else Pictures: see `where a chooser opens`). The question
+  and the chooser are in the app's look (see `the app's dialogs and
+  menus`). The
   photo, at most 1024 px, is posted to `api.brickognize.com/predict/parts/`
   from wherever the app runs (CORS `*`, no key; `connect-src` in
   `tools/deploy.sh`); its BrickLink numbers become parts here by
@@ -330,6 +326,31 @@ geometry in front of them.
   none; `bin_flow.mjs` sends the blue 3039 fixture live and reads the colour
   in hand turn blue. Offline, refused, garbled or empty, the status line says
   so in words.
+- `the app's dialogs and menus` (`Look.dialogs`, called first in
+  `Main._ready`): every dialog of the engine's (AcceptDialog,
+  ConfirmationDialog, FileDialog and the questions a FileDialog asks
+  itself: Create Folder, the overwrite question) has the panels' dark face
+  (`Look.FACE`), faint edge and round corners for its frame, title bar and
+  body, on the desktop and the web; and on the desktop every menu and
+  popup (the menu bar's, a part's, every list's, the colour picker's) too.
+  Put in the default theme before the first window is made, so it reaches
+  every one; sizes stay the engine's. The web's menus stay as they were:
+  `tools/web/desktop_same.mjs` holds the web's File menu to the pixel.
+  walk256 DS1 (2026-10-25) found the photo search's question, Build
+  together and the choosers in the engine's grey. `dialog_look_probe`
+  opens each as a person does (Render's panel gives the face), then pops
+  up every other dialog and menu in the window and reads them all: 134 of
+  its checks failed on desk263's build, none after.
+- `where a chooser opens` (`OpenFrom`, `ShellPrefs` `open_folders`): on
+  the desktop every file chooser opens in the folder the last file of its
+  kind was chosen from, while it is there; else a picture (the photo
+  search's, Print's, LEGO Art's, the page editor's) in Pictures, a model
+  (File, Open, From a file) in the folder the last export went to
+  (`SaveTo`) or Documents, a 3D model to brickify and a shop's list for My
+  collection in Downloads, where a browser saves them; never the install
+  folder, where Godot's own dialog starts. The sticker sheet's Save is the
+  Save dialog every export has (`StickerSheetDialog.save_sheet`, `SaveTo`).
+  `picker_folder_probe` opens each and chooses a file in it.
 - `a part asked for by number` lists its own family first: `3023` gives 3023b,
   3023a and the 3023 prints before 30236 or the 30239 spider (`NUMBER` in
   `_match_score`). And only them: digits that number a part here match
@@ -366,7 +387,8 @@ godot --path . --resolution 1280x860 --script src/dev/bin_techniques_probe.gd  #
 godot --headless --path . --script src/dev/technique_search_probe.gd  # 18 queries, each's construction in the first three rows; titles as words
 godot --headless --path . --script src/dev/photo_search_stub_probe.gd  # the camera with Brickognize stubbed on 9061: told first, nothing sent, every failure in words
 godot --path . --resolution 1280x860 --script src/dev/photo_search_probe.gd -- --keep  # Brickognize live: 5 parts drawn by ModelShot, at least 4 right in the first three
-tools/probe.sh dialog_look_probe -- --shots=DIR  # the question, the chooser, Print's chooser and Build together in the app's look; the chooser in Pictures, then where the last came from
+tools/probe.sh dialog_look_probe -- --shots=DIR  # every dialog, chooser and desktop menu in the app's look, read off the window's pixels (108 on 2026-10-26)
+tools/probe.sh picker_folder_probe                # every chooser in Pictures, Documents or Downloads first, then where its kind last came from
 node tools/web/bin_flow.mjs --url=http://127.0.0.1:9063/ --out=DIR   # both in a browser at 1280 and 390 (serve.py on 9063; Brickognize live)
 godot --headless --path . --script src/dev/vocab_probe.gd           # the words a builder types
 godot --headless --path . --script src/dev/print_search_probe.gd    # a print by what is on it; plain parts unmoved

@@ -13,6 +13,42 @@ whole cycle.
 
 ## [Unreleased]
 
+### Added
+
+- Instructions saves a PDF beside the booklet's page, every step and the
+  parts list in it, ready to print or send.
+- The app starts on its own mark, not the engine's.
+
+### Changed
+
+- Every dialog and menu wears the app's own dark face, the engine's own
+  questions among them (a new folder, overwriting a file).
+- A file chooser opens where you would look: where that kind of file came
+  from last, else Pictures for a picture, Documents for a model and
+  Downloads for a mesh to brickify or a shopping list. Never the folder the
+  app is installed in.
+- A returning person sees their last model at once, and is signed in
+  behind it.
+- Build together: someone who joins sees the model from the owner's view,
+  people go by the names on their profiles, and the panel keeps its size as
+  the chat grows.
+- A minifigure holds what it is given in its hand, the right way round and
+  clear of its own body, and says so when a part has nothing a hand can hold.
+- A model's moves are named only where something really moves that way: a
+  castle's drawbridge is no crane's boom.
+
+### Fixed
+
+- Edit › Select by › Part number or name selects the parts it lists inside
+  sub-models too; on a big Technic set it found them and selected none.
+- The first design Claude makes on a new account is a model of its own,
+  not built into the example car.
+- A save made by hand is never refused by the benchmark's piece count.
+- The detail pass puts a door in its wall and at the wall's height, and a
+  window in the wall rather than on the ground beside it.
+- An edit says how many bricks it made again when the request named no
+  count.
+
 ## [0.8.0] - 2026-10-25
 
 A release about building with others, and by any hand. Build together puts

@@ -1396,6 +1396,9 @@ func _ready() -> void:
 	if not OS.has_feature("web"):
 		get_window().title = "Brickworks %s" % BuildInfo.version()
 	_boot_mark("ready")
+	# Before any window is made, so every dialog and menu is made in the
+	# app's look, the engine's own among them (Look.dialogs).
+	Look.dialogs()
 	IdleDraw.for_the_app()
 	Tooltips.let_clicks_through(get_window())
 	Tooltips.keep_inside(get_window())
@@ -6233,7 +6236,7 @@ func _open_figures() -> void:
 ## Hold a figure from the builder the way a part is held: the next click
 ## on a stud stands it there.
 func _hold_figure(figure: Minifig) -> void:
-	_builder.hold_figure(figure.assemble(_library), figure.name)
+	_builder.hold_figure(FigureTool.parts_of(figure, _library), figure.name)
 	var fetching: int = 0
 	for part_id: String in figure.part_ids():
 		if not _library.is_resident(part_id) and _library.request_mesh(part_id, true):
@@ -7948,6 +7951,9 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 	# is judged against the screen.
 	var typed_in: Node = _touch.typing_dialog() if _touch != null else null
 	var dialogs: Array = []
+	# Where each window is, its body without its frame, for a check that
+	# reads its colour off the page.
+	var frames: Array = []
 	var box_of := func(rect: Rect2) -> Array:
 		var on_page: Rect2 = to_window * rect
 		return [roundi(on_page.position.x / per_css), roundi(on_page.position.y / per_css),
@@ -7973,6 +7979,7 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 			dialogs.append(dialog)
 			holder = window
 			shift = Vector2(window.position)
+			frames.append({"name": dialog, "box": box_of.call(Rect2(shift, Vector2(window.size)))})
 			clip = clip.intersection(Rect2(shift, Vector2(window.size)))
 			_audit_window(window, box_of, points_of, dialog,
 				above if typed_in == null or typed_in == window else screen, targets, texts)
@@ -8036,6 +8043,7 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 			field.position += Vector2((focus.get_viewport() as Window).position)
 		typing = box_of.call(field)
 	return {"targets": targets, "texts": texts, "phone": _phone.state(), "dialogs": dialogs,
+		"frames": frames,
 		"keyboard": _touch.keyboard if _touch != null else 0.0, "typing": typing,
 		"room": [roundi(room.position.x / per_css), roundi(room.position.y / per_css),
 			roundi(room.size.x / per_css), roundi(room.size.y / per_css)],

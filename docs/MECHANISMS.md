@@ -3408,9 +3408,18 @@ its biggest part; not by a steering wheel spinning alone on its stud, which
 turns nothing with it, as the kart's did on its round brick until
 kartlink196 joined it to the rack, section 38), turntable,
 boom (6 parts or more on a hinge, a click hinge, a pin or an axle,
-reaching 3 studs or more from its line, no tyre in it, and lifting: its
-line is not upright), doors (a door,
-ramp, hatch, gate, tailgate, flap or lid), gears (two in mesh, one
+reaching 3 studs or more from its line, no tyre in it, lifting: its
+line is not upright, and working something at its end, on it or on what
+hangs from it: a crane's arm, hook or basket, a digger's bucket, a
+forklift's forks or a grab, or in a sub-model its file names a crane, a
+digger, a boom, a loader or a bucket, as 4096-1's crane with no hook by
+name is; a castle's drawbridge, a garage door, folding
+wings and a ship's cockpits reach and lift too, and each was said to be a
+boom until moves268), doors (a door,
+ramp, hatch, gate, tailgate, flap or lid that is its body's biggest part
+or hangs on the joint itself: a door in a castle's wing that swings on
+hinge bricks, or in a locomotive's half on its bogie, does not open),
+gears (two in mesh, one
 turning on its joint), pneumatics, actuator, rack. A minifigure, a hose
 and a wheel on its axle are not said: every town and car has them, and
 they can still be dragged. The viewer's pill says "Moves: steering, boom"

@@ -119,11 +119,22 @@ func _edit_names_its_parts() -> void:
 			fresh.append("#%d" % brick.id)
 	_check("it says them: %s / %s" % [said.get_slice("\n", 1), ", ".join(fresh)],
 		fresh.size() == 2 and said.get_slice("\n", 1).contains("(%s)" % ", ".join(fresh)))
+	# With no count asked, the count of bricks and nothing of a count: "Done.
+	# ." and a build's ": the passes after this one" were said of every
+	# design that gave none (hand264).
+	_check("with no count asked, it counts the bricks: %s" % said.get_slice("\n", 0),
+		RegEx.create_from_string("^Done\\. \\d+ bricks now\\.").search(said.get_slice("\n", 0)) != null
+			and not said.contains("asked"))
 
 
 func _budget_held() -> void:
 	print("── the brief's count: said against, and kept inside ──")
 	await _call("clear_model", {})
+	var uncounted: String = _text(await _call("submit_design", {"name": "Wall", "description":
+		"a wall", "bricks": [{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0}]}))
+	_check("a design that names no count is told nothing of one: %s" % uncounted.get_slice("\n", 0),
+		uncounted.begins_with("Built.") and not uncounted.contains("passes after this one")
+			and not uncounted.contains("asked"))
 	var bricks: Array = []
 	for x: int in [0, 4, 8]:
 		for z: int in [0, 2, 4, 6]:

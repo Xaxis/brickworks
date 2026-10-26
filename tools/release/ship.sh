@@ -93,9 +93,22 @@ done
 git -C $R merge --ff-only "$SHA" >/dev/null && env -u GITHUB_TOKEN git -C $R push -q origin main || { echo "SHIP: could not fast-forward or push main"; exit 1; }
 echo "SHIP: main is $SHA, authors: $(git -C $R log --since='1 day ago' --format='%an <%ae>' | sort | uniq -c | tr '\n' ' ')"
 timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh --prod > $S/${TAG}_prod.log 2>&1
+deployed=$?
 grep -E "serves|deploy FAILED" $S/${TAG}_prod.log | sed 's/^/SHIP: /'
+# A failed deploy is a failed ship. m174's lost one size of its start check
+# to a timed-out connection, was never promoted, and still wrote done 0: its
+# live checks passed against m173, and m175's ship began on top of it
+# (2026-10-26).
+if [ $deployed -ne 0 ]; then
+  echo "SHIP: main is $SHA but production is not (deploy exit $deployed): deploy it again with tools/deploy.sh --prod"
+  exit 1
+fi
 # The CDN keeps serving the last pages for a minute or so after the promotion.
 sleep 90
+# And the live checks go on only against this build.
+serves() { curl -s --max-time 30 https://brickworks.diy/app | grep -q "/b/$SHA/"; }
+serves || { sleep 120; serves; } || {
+  echo "SHIP: deployed, but https://brickworks.diy/app does not serve /b/$SHA/"; exit 1; }
 # canary: sign-up still shut and a new person still signs in by a code, on
 # production's own route and settings (api/_canary.js, 2026-10-24).
 "$HERE/preview_checks.sh" https://brickworks.diy "$W" ${TAG}_live site share_probe canary

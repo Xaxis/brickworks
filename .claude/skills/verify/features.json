@@ -759,6 +759,14 @@
       "tests": []
     },
     {
+      "id": "cli:held items probe",
+      "kind": "cli",
+      "entry": "src/dev/held_items_probe.gd",
+      "reach": "tools/probe.sh held_items_probe   (a figure holding a hammer and a cup, a pole and a wrench, a torch and a camera, each pair by one add_minifig: each thing joined to a hand by BrickNet's connectors and through nothing, Tested's whole test passed, the Minifigure builder's figure alike; a sack, which BrickNet gives no bar, said not held when put in the hand)",
+      "area": "minifig",
+      "tests": []
+    },
+    {
       "id": "cli:hoses and chains by hand in a browser",
       "kind": "cli",
       "entry": "tools/web/flex_pose_flow.mjs",
@@ -1160,6 +1168,14 @@
       "entry": "tools/web/people_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/people_flow.mjs --url=<deployment> --out=shots/people   (.env sourced)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:picker folder probe",
+      "kind": "cli",
+      "entry": "src/dev/picker_folder_probe.gd",
+      "reach": "tools/probe.sh picker_folder_probe",
+      "area": "parts",
       "tests": []
     },
     {
@@ -3748,6 +3764,14 @@
       "tests": []
     },
     {
+      "id": "ui:the app's dialogs and menus",
+      "kind": "ui",
+      "entry": "src/ui/look.gd",
+      "reach": "godot --path .  (any dialog, chooser or menu: the panels' dark face, on the desktop and, for dialogs, the web)",
+      "area": "parts",
+      "tests": []
+    },
+    {
       "id": "ui:the author's steps",
       "kind": "ui",
       "entry": "src/assembly/author_steps.gd",
@@ -3912,6 +3936,14 @@
       "entry": "src/ui/working.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/progress_probe.gd  (or open Orthanc and press Timeline: the bar at the foot, with Cancel)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:where a chooser opens",
+      "kind": "ui",
+      "entry": "src/ui/open_from.gd",
+      "reach": "godot --path .  (any file chooser on the desktop: its kind's last folder, else Pictures, Documents or Downloads)",
+      "area": "parts",
       "tests": []
     },
     {

@@ -68,9 +68,9 @@ printed at true size.
   undo and redo (Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y; a stroke or a drag is one step, 40
   kept). **Add a picture…** reads PNG, JPEG, WebP, BMP or SVG (`PictureFile`: the
   first bytes say which, then the name; an SVG drawn 1024 pixels on its longer
-  side; a file dialog on the desktop, in the app's dialog look and opened
-  where the last picture was chosen from, else Pictures (`PickImage.start`),
-  the page's own file picker in a browser)
+  side; a file dialog on the desktop, opened where the last picture was
+  chosen from, else Pictures (`OpenFrom`), the page's own file picker in a
+  browser)
   onto a layer of its own, kept as itself (`PrintPicture`: the source, its
   middle, scale, turn, crop, opacity) and fitted to the face (the mask's extent).
   Move drags it, its edges and middle snapping to the face's edges and middle
