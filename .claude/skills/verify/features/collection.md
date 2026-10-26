@@ -133,7 +133,12 @@ which models they could build from what they have. Added 2026-10-12.
   `library/` into the parts bucket under `library/`, beside `ldraw/parts/`, as
   `application/octet-stream` (the only type the bucket takes); a model or cover
   already there is left, the index sent last over the old one, five minutes'
-  cache. 3,151 files, 388 MB (2026-10-22, not yet uploaded).
+  cache. 3,151 files, 388 MB (2026-10-22). On 2026-10-26 the index alone went
+  up again from `bench/results/library-2026-10-26` (the 10-22 covers linked
+  in, models.json rebuilt with each model's `c`), the 3,150 files there
+  already left: the D11's card 2,183 to 3,868, 1,032 counts changed, 687
+  cards adding their box. Read it back with
+  `curl -s <PARTS_URL>library/index.json | sha256sum` against the staged one.
 - `/api/collection` (`api/collection.js`, `supabase/collection.sql`): GET, POST
   an import, PUT the whole collection, DELETE. Every import is parsed and
   mapped here (Rebrickable CSV with quoted fields, BrickLink XML, Rebrickable's
@@ -181,7 +186,7 @@ node tools/apply_sql.mjs --look        # what the live table is (PG_MODULE=…, 
 python3 tools/library_build.py covers && python3 tools/library_build.py stage
 python3 tools/library_build.py check && python3 tools/library_build.py sheet --count 60
 python3 tools/minitest.py tests/test_library.py
-python3 -m http.server 8961 --bind 127.0.0.1 --directory bench/results/library-2026-10-22 &
+python3 -m http.server 8961 --bind 127.0.0.1 --directory bench/results/library-2026-10-26 &
 godot --headless --path . --script src/dev/library_open_probe.gd -- --base=http://127.0.0.1:8961/
 godot --headless --path . --script src/dev/library_open_probe.gd -- --recount
 tools/storage_library.py --check       # what the upload would send; without --check it sends it
@@ -227,10 +232,13 @@ Proves it when:
   from every file holds: an author and a licence for each). Look at
   `bench/results/library-2026-10-22/sheets/`: every cover a built model,
   framed with a margin. `library_open_probe` ends `0 failures`: the index
-  fetched from the served store, and three models (44, 635 and 8,968 parts)
-  fetched byte for byte as LDraw has them, opened with the app's reader and
-  counted as models.json counts them; `--recount` finds every model as
-  models.json says (1,575 of 1,575, 2026-10-22).
+  fetched from the served store, and three models (46, 654 and 9,163 parts)
+  fetched byte for byte as LDraw has them, opened with the app's reader, their
+  lots as models.json lists them (46, 635, 8,689) and their part count as the
+  card says it, models.json's `c` and the index's `parts` (2026-10-26; it held
+  the lots to the index before, which failed 2 of 3 once the index carried the
+  builder's count); `--recount` finds every model's lots and count as
+  models.json says.
 
 Last proven 2026-10-12 on the preview of `133ed75`
 (brickworks-4ox4aq5lj-xaxis-projects.vercel.app): `collection_probe.mjs` 44 of
