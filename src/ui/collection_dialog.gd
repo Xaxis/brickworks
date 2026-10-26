@@ -215,7 +215,7 @@ func _build() -> void:
 		tab.focus_mode = Control.FOCUS_NONE
 		tab.add_theme_font_size_override("font_size", 12)
 		var lit := StyleBoxFlat.new()
-		lit.bg_color = Color(0.36, 0.6, 1.0, 0.38)
+		lit.bg_color = Look.CHOSEN
 		lit.set_corner_radius_all(4)
 		lit.content_margin_left = 8
 		lit.content_margin_right = 8
@@ -228,6 +228,9 @@ func _build() -> void:
 		for state: String in ["normal", "hover"]:
 			var plain: StyleBoxFlat = lit.duplicate()
 			plain.bg_color = Color(1, 1, 1, 0.05 if state == "normal" else 0.12)
+			# Edged as every button is (Look.OUTLINE), inside the same box.
+			plain.border_color = Look.OUTLINE
+			plain.set_border_width_all(1)
 			tab.add_theme_stylebox_override(state, plain)
 		var named: String = page[0]
 		tab.pressed.connect(func() -> void: _show(named))

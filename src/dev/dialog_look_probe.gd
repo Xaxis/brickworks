@@ -36,6 +36,9 @@ var _face := Color()
 ## What has been read, by instance id.
 var _read: Dictionary = {}
 var _names: PackedStringArray = PackedStringArray()
+## What this probe is called in its last line (contrast_probe walks the
+## same windows and judges them by another measure).
+var _label: String = "dialog look probe"
 
 
 func _initialize() -> void:
@@ -68,7 +71,7 @@ func _run() -> void:
 				and _shell != null:
 			break
 	if world == null or world.brick_count() <= 1:
-		print("  dialog look probe: SKIPPED — no model came up on the baseplate")
+		print("  %s: SKIPPED — no model came up on the baseplate" % _label)
 		quit(3)
 		return
 	var playback: Variant = _main.get("_playback")
@@ -76,6 +79,7 @@ func _run() -> void:
 		(playback as BuildPlayback).stop()
 	await _frames(30)
 
+	await _main_window()
 	await _render_face()
 	await _photo()
 	await _print_chooser()
@@ -90,15 +94,25 @@ func _run() -> void:
 	await _menus()
 	await _everything_else()
 
-	print("\n  %d read: %s" % [_names.size(), ", ".join(_names)])
+	_summary()
 	print("")
 	if _failures == 0:
-		print("dialog look probe: all checks passed")
+		print("%s: all checks passed" % _label)
 	else:
-		print("dialog look probe: %d check(s) FAILED" % _failures)
+		print("%s: %d check(s) FAILED" % [_label, _failures])
 	_main.queue_free()
 	await process_frame
 	quit(1 if _failures > 0 else 0)
+
+
+func _summary() -> void:
+	print("\n  %d read: %s" % [_names.size(), ", ".join(_names)])
+
+
+## The main window before anything is opened over it: nothing to read for
+## the look, which is its own panels'.
+func _main_window() -> void:
+	pass
 
 
 ## The face of a panel already in the app's look: File, Render….

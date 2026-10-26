@@ -3402,6 +3402,20 @@
       "area": "parts"
     },
     {
+      "kind": "cli",
+      "label": "contrast probe",
+      "entry": "src/dev/contrast_probe.gd",
+      "reach": "tools/probe.sh contrast_probe -- --shots=DIR",
+      "area": "parts"
+    },
+    {
+      "kind": "ui",
+      "label": "buttons seen and read",
+      "entry": "src/ui/look.gd",
+      "reach": "godot --path .  (every button edged 3:1 on its face; a question's default in the strong blue)",
+      "area": "parts"
+    },
+    {
       "kind": "ui",
       "label": "the app's dialogs and menus",
       "entry": "src/ui/look.gd",

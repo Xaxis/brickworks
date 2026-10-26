@@ -239,7 +239,8 @@ func _chooser(icon: String) -> OptionButton:
 	for state: String in ["normal", "hover", "pressed"]:
 		var face := StyleBoxFlat.new()
 		face.bg_color = Color(1, 1, 1, 0.06 if state == "normal" else 0.12)
-		face.border_color = Color(1, 1, 1, 0.12)
+		# Its edge 3:1 on the bar (Look.OUTLINE); at 12% white it was 2.8:1.
+		face.border_color = Look.OUTLINE
 		face.set_border_width_all(1)
 		face.set_corner_radius_all(5)
 		face.content_margin_left = 6

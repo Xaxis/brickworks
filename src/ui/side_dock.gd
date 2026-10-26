@@ -119,7 +119,9 @@ func _style_rail() -> void:
 	# for it.
 	var idle := StyleBoxFlat.new()
 	idle.bg_color = Color(0.17, 0.18, 0.21, 0.94)
-	idle.border_color = Color(1, 1, 1, 0.13)
+	# The line 3:1 on the panel (Look.OUTLINE), so the rail is seen to be
+	# something to press: at 13% white it and the strip were 2.0:1.
+	idle.border_color = Look.OUTLINE
 	if edge == Edge.LEFT:
 		idle.border_width_right = 1
 	else:
