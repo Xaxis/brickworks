@@ -193,3 +193,4 @@ part_counts     # walk256 D11: a model's card, the model opened and its box say 
 technic_stress  # walk256 D12: Stress on the Cat D11 weighs its pins and axles, in under 10 s
 parts_page      # site278: a model's page lists its parts as the app's parts list does, and exports them the same
 connector_method   # a connector chat hears how to work once a sitting, and its first design call begins its subject (conn283)
+fling             # a list thrown by a finger glides as iOS's does at 0.5 to 4 pt/ms, phone and tablet scales and at 8 frames a second; held still it stays; a tap taps (fling272)

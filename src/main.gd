@@ -4230,6 +4230,11 @@ func _build_ui() -> void:
 	# The parts bin at the top of the left-hand column, which takes the
 	# model tree and the properties under it (Shell.build).
 	_stack = PanelStack.new()
+	# A list thrown by a finger glides as a phone's does (FlingScroll): every
+	# list and panel that scrolls, a shared model's viewer's too. The desktop's
+	# wheel is its own.
+	if Phone.on():
+		add_child(FlingScroll.new())
 	if _phone_wanted():
 		_phone = PhoneShell.new()
 		_phone.app = self
