@@ -178,7 +178,7 @@ import { freshPool, keyed } from "./_owned.js";
 import { challengeLine, withWins } from "./_challenges.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { MADE_WITH, cardHtml } from "./_card.js";
+import { MADE_WITH, cardHtml, marksOf, quietMarks } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml } from "./_card.js";
@@ -1081,6 +1081,9 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
     : "<li>a model shared by link</li>").join("");
   const listedRemixes = model.remixes_listed || [];
   const unlisted = Math.max(0, (Number(model.remixes) || 0) - listedRemixes.length);
+  // The marks nearly every card on the page carries, left off (web/card.js).
+  const quiet = quietMarks([...listedRemixes.map((row) => cardOf(origin, row)), ...(model.by ? next.by : []), ...next.like,
+    ...(next.gallery || [])].map(marksOf));
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -1094,11 +1097,11 @@ ${old ? '<meta name="robots" content="noindex">\n' : ""}${head}
 <script src="/follow.js" type="module"></script>
 ${structured(origin, id, model)}
 </head>
-<body data-viewer="${escapeHtml(viewer)}" data-id="${id}" data-version="${version.n}" data-newest="${newest}">
+<body data-viewer="${escapeHtml(viewer)}" data-id="${id}" data-version="${version.n}" data-newest="${newest}"${quiet ? ` data-quiet="${quiet}"` : ""}>
 <a class="skip" href="#main">Skip to content</a>
 ${header}
 <main id="main">
-<article class="wrap model-page">
+<article class="wrap wide model-page">
   <nav class="crumbs" aria-label="Where it is"><a href="/gallery">Gallery</a>${model.kind
     ? ` <span aria-hidden="true">›</span> <a href="/gallery?kind=${model.kind}">${escapeHtml(kind)}</a>` : ""}</nav>
   ${old ? `<p class="old-version" role="note"><b>An older version.</b> This is version ${version.n} of

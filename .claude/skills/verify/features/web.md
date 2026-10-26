@@ -752,7 +752,18 @@ plan with Claude as the client.
   I built it, "Nobody has remixed it yet." with Open it in Brickworks.
   `tests/test_model_page.py` makes the stand-in's pages with the real
   handler (no browser): the rows, their order, the bar's names and counts,
-  and the page drawn when `directory_models` answers 500.
+  and the page drawn when `directory_models` answers 500. Since 2026-10-26
+  (site277) the page is `.wrap.wide` (1,600 px): from 1200 px the column
+  is 420 px and the picture the rest (1,140 x 598 at 1920); under 600 px
+  the picture's frame is square (358 px tall at 390, 188 before) and
+  `model-page.js` `fitPicture` reads the model's columns from a 120 px
+  copy of the picture and draws it by `object-fit: contain` and a
+  `transform` (no layout shift): cropped round the model when it is no
+  wider than the square, else scaled until all of it is in, the picture's
+  own sky and ground carried on above and below as the frame's
+  background. A photo from the strip is shown whole as before. On the
+  live models: the owl and the rocket at x1.9, the rover x1.25, the
+  dragon (86% of the picture's width) x1.08.
 - `a model's parts and its download` (`api/_parts.js`, `api/share.js`
   `partsSection`, `download`, `web/model-page.js` `startParts`, 2026-10-26,
   site278, docs/SOCIAL.md): on `/m/<id>`, a Parts tab (with the count) and
@@ -910,7 +921,7 @@ plan with Claude as the client.
   padding (site.css "targets"). Measured with site273's scripts (copied to
   site276's scratch): `report.mjs --bars` over `measure.mjs` at 320, 390
   and 1280.
-  /compare. Since 2026-10-26 (site275, docs/DESIGN_SYSTEM.md "Motion" and
+  Since 2026-10-26 (site275, docs/DESIGN_SYSTEM.md "Motion" and
   "Steady loads"): every control and card eases over `--motion` (150 ms),
   sinks on `:active`, a card lifts 2 px under a mouse, a dialog and a menu
   fade in (`--motion-open`), and none of it under reduced motion; `main`
@@ -918,9 +929,15 @@ plan with Claude as the client.
   as a skeleton (`.skeleton`, `.bone`, `.skeleton-card` from
   `web/card.js` `skeletonHtml`) and is drawn whole when its answers are in
   (the gallery's first page with its pick and challenge line, the landing
-  strip, /profile, /settings, /feed, /notifications); the first screen's
+  strip, /profile, /settings, /feed, /notifications; each copy in a page's
+  HTML is `skeletonHtml`'s, which `card_check` fails otherwise; the strip
+  holds eight, as many as its cards, and a skeleton's designer line is two
+  lines only on a card under 190 px, by a container query); the first screen's
   card pictures are `eager` + `fetchpriority="high"` (`cardHtml`'s
-  `eager`, `FIRST_SCREEN` = 8; a collection's cover and first four
+  `eager`, `FIRST_SCREEN` = 12 since site277's grid of up to six a row on
+  the server's pages; the gallery counts the skeletons on its first
+  screen, 18 at 1920, and `designs.js` makes a row's picture eager once it
+  is laid out on the first screen; a collection's cover and first four
   collection cards, `api/_lists.js` `mosaicHtml`/`listCardHtml` `eager`;
   a model's strip's first five); a designer's own numbers on /u/ sit under
   the work; the gallery's challenge line is the grid's first row
@@ -948,7 +965,25 @@ plan with Claude as the client.
   mark is `madeOf(model)`: `made_with` as the app said (`cardOf` passes it
   from `directory_card`), else the `ai-designed`/`brickify` tags; its title
   says which. `card_check` holds a hand-built model tagged ai-designed
-  unmarked, an untagged one of Claude's marked (red on base).
+  unmarked, an untagged one of Claude's marked (red on base). Since
+  2026-10-26 (site277, from site273's review) the marks are one row
+  (`.marks` one pill tall; a mark that does not fit is left off whole),
+  and a mark 90% or more of a page's cards carry (four cards or more) is
+  not shown: `quietMarks` names it on `<body data-quiet>`, the server's
+  /u/, /c/ and /m/ pages as they are made, and in a browser again
+  whenever cards come onto the page (a MutationObserver the first
+  `modelCard` starts; the landing strip puts its cards in frames after it
+  made them), before the page is drawn, and site.css
+  hides it. The gallery's like (`like: true`) is over the picture's
+  top-right corner; likes elsewhere, builds and comments are `.tally`s in
+  `small.acts` on the designer's `.by` line; no card ends in a row of
+  numbers. Titles 16 px at every width. `.models` is 2/3/4/5/6 a row at
+  0/600/900/1200/1600 px; card pages are `.wrap.wide` (`--page-wide`
+  1600 px, as the header and footer on every page). On the live gallery
+  before: marks over 30.7% of a phone's picture in three rows, Tested and
+  Assistant on 100% of the cards, 216 cards ending in a lone heart, a
+  one-line card 348 px at 1280, 4 a row and 8 cards on the first screen
+  at 1920, 2 a row and no header links at 768.
 - `picture themes` (`tools/web/picture_themes.mjs`, 2026-10-24, U15): a
   model's card (found by a word in the gallery's search) and page at 390 and
   1280 in each theme, pictured, a corner of each measured on screen: dark in
@@ -1135,7 +1170,7 @@ plan with Claude as the client.
   `.account-part` (`.menu-who`: avatar, name, @handle; then `nav` links
   `data-place` profile, notifications, feed, saved, settings, the two
   with their own `.count`), the footer's theme choice and
-  `button.sign-out`. At 860 px and under the avatar menu is hidden and
+  `button.sign-out`. Under 600 px (860 and under before 2026-10-26) the avatar menu is hidden and
   `details.menu`'s summary becomes the avatar (`.account-btn`), its list
   the site's links, the same `.account-part`, the theme and Sign out. Who
   you are and the counts come from `GET ?op=feed_count` (`me`,
@@ -1679,8 +1714,12 @@ plan with Claude as the client.
   pick first and the shelves after the first rows (`ui:the gallery's front
   shelves`). A card's heart likes it from the card, signed in, at once
   (`POST /api/people?op=like`), and asks to sign in when not. The next page
-  comes by itself as Show more nears the screen, three times
-  (`data-auto`), then waits for Show more; the address keeps the question and
+  comes by itself as Show more comes within a screen of the window, three
+  times (`data-auto`), then waits for Show more; a page that came by itself
+  is put in only while the end of the list is under the screen, and waits
+  (Show more pressable, drawing it at once) while Put yours here or the
+  footer shows (site277: it pushed them down, CLS 0.51 signed in at 1280);
+  the shelves' cards are lazy; the address keeps the question and
   how many pages (`/gallery?q=castle&kind=space&sort=newest&page=3`), put back
   with `replaceState`, so it can be sent; a card opened is kept in the
   history's state and Back puts it where it was (`data-back` its id or
@@ -2885,8 +2924,15 @@ collection), parses its cards in Chromium, and compares each with the card
 the browser's `/card.js` draws from the same handler's `?op=collection`
 JSON; then four sample cards (owned, won, moves and motions, Tested, no
 picture, markup and quotes in a name, a designer's earned card) by the
-module the server imports (`api/_card.js`) and by `/card.js`. It proves it
-when it ends `card check: 7 cards compared, 0 failed` (2026-10-22).
+module the server imports (`api/_card.js`) and by `/card.js`. Since
+2026-10-26 also the card's shape: a like that is a button over the
+picture, builds and comments in `.by`'s `small.acts`, a like that is a
+count there too, no card whose numbers are a button alone; `quietMarks`
+at 10, 9 and 8 of 10 cards and at three; the server's `/c/` page's
+`data-quiet` against the browser's for the same cards; and five cards
+put on a page at once, and five two frames after they were made, each
+naming theirs on `<body>`. It proves it when it ends
+`card check: 15 cards compared, 0 failed` (2026-10-26).
 
 `age_flow` proves it when it ends "the age question is asked neutrally, and
 what it answers holds on the site, in the app and on the server": every
@@ -4291,19 +4337,27 @@ BW_BYPASS=$VERCEL_BYPASS node tools/web/gallery_flow.mjs --url=<preview> --out=s
 ```
 
 It passes when it ends "N passed, 0 failed" (2026-10-22: 37 locally, and
-37 with `--url` on `relay_server.mjs` serving this checkout's pages): at
-390 x 844, light and dark, the first card's picture within 330 px of the
-top, two to a row and four cards' names on the first two screens; at 1280
-x 900 four whole cards, four to a row; Top over all time with this week's
+37 with `--url` on `relay_server.mjs` serving this checkout's pages;
+2026-10-26: 41 locally): at 390 x 844, light and dark, the first card's
+picture within 330 px of the top, two to a row (the most cards sharing a
+top, outside the shelves' rows) and four cards' names on the first two
+screens; at 1280 x 900 five whole cards, five to a row (four before
+2026-10-26); at each, one row of marks at most (a mark clipped off by
+`.marks` is not counted), none shown on 90% of the cards, and no card
+whose numbers' row is its like alone; Top over all time with this week's
 pick first and no count of 0; New newest first; Top over this week the
 week's, no pick or shelves; the Space pill pressed; Made with the
-assistant every card marked, Filters saying 1; Following only signed in,
-only whom Sam follows; a search with New, a size and two pages opened by
-somebody else at 390 in the dark showing the same 48 cards in the same
-order; Filters a sheet inside a phone's screen; nothing matching said,
+assistant every card made so and its mark left off (`data-quiet` says
+made, as every card carries it), Filters saying 1; Following only signed
+in, only whom Sam follows; a search with New, a size and two pages or
+more opened by somebody else at 390 in the dark showing the same cards in
+the same order (five shorter cards a row bring a third page with the
+same scroll); Filters a sheet inside a phone's screen; nothing matching said,
 and Clear bringing the gallery back; a like from a card signed out asking
 to sign in, signed in pressed and one more at once, its page saying
-Liked; three pages by scrolling, then Show more, page=5 in the address;
+Liked; three pages by scrolling (the end 100 px under the screen), then
+Show more, page=5 in the address; flung to the foot, the next page waiting
+with Put yours here where it was, and Show more drawing it at once;
 Back to card 101 within 100 px; the empty gallery, an empty Following and
 a quiet week each saying theirs with its way; and `api/share.js` before
 the SQL refusing a window or Made in words (400), after offering them with

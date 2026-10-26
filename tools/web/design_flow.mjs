@@ -301,7 +301,7 @@ function headerItems() {
 async function headerOrder(page, signedIn) {
   const said = await page.evaluate(headerItems);
   if (!said) return [];
-  const wide = page.viewportSize().width > 860;
+  const wide = page.viewportSize().width >= 600;
   const account = signedIn ? "avatar" : wide ? "Sign in" : "Menu";
   const want = wide ? ["Brickworks", "Gallery", "Download", "Open the app", account] : ["Brickworks", "Open the app", account];
   const words = said.items.map((one) => one.word);

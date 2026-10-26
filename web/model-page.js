@@ -34,6 +34,8 @@ if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) challengeEntry();
 const comments = document.getElementById("comments");
 if (comments && /^[A-Za-z0-9]{10}$/.test(comments.dataset.id || "")) startComments(comments);
 
+// Where the picture's frame is square (directory.css): a phone's.
+const PHONE = matchMedia("(width < 600px)");
 // Its picture: the frame says it is coming until it is drawn, and one that
 // fails is asked for again, twice, before the frame says there is none.
 const frame = document.querySelector(".model-page .picture");
@@ -60,6 +62,7 @@ function startPicture(big) {
   const drawn = () => {
     sign.hidden = true;
     img.style.visibility = "";
+    fitPicture(big, img);
   };
   const failed = () => {
     // Not the browser's broken picture over the words while it is asked again.
@@ -76,6 +79,71 @@ function startPicture(big) {
   img.addEventListener("load", drawn);
   img.addEventListener("error", failed);
   if (img.complete) (img.naturalWidth > 0 ? drawn : failed)();
+  PHONE.addEventListener("change", () => fitPicture(big, img));
+}
+
+
+/// On a phone the picture's frame is square, and its model is drawn as
+/// large as the model's width lets it: the 1200 x 630 picture cropped
+/// round the model when the model is no wider than the square, else
+/// scaled until all of it is in, on the frame's ground (a picture with
+/// nothing behind the model), or with the ground an older picture carries
+/// (--render-top, --render-foot) carried on above and below it. Never
+/// smaller than the whole picture across the frame, as it
+/// was: 186 px tall at 390, a fifth of the screen (site273). By transform
+/// alone, which moves nothing else, so the page never shifts as it does.
+/// A photo is shown whole (.photo), and on a laptop the frame is the
+/// picture's own shape.
+function fitPicture(big, img) {
+  img.style.objectFit = "";
+  img.style.transform = "";
+  big.style.background = "";
+  if (!PHONE.matches || big.classList.contains("photo") || !img.naturalWidth) return;
+  // The model's columns, read from a small copy: those drawn on, in a
+  // picture with nothing behind the model; else those that differ from its
+  // ground, a gradient from top to bottom read at the corners.
+  const w = 120;
+  const h = Math.max(1, Math.round((w * img.naturalHeight) / img.naturalWidth));
+  const pen = Object.assign(document.createElement("canvas"), { width: w, height: h }).getContext("2d", { willReadFrequently: true });
+  let px;
+  try {
+    pen.drawImage(img, 0, 0, w, h);
+    px = pen.getImageData(0, 0, w, h).data;
+  } catch {
+    return;
+  }
+  const colour = (x, y) => [0, 1, 2].map((c) => px[(y * w + x) * 4 + c]);
+  const alpha = (x, y) => px[(y * w + x) * 4 + 3];
+  const clear = [alpha(0, 0), alpha(w - 1, 0), alpha(0, h - 1), alpha(w - 1, h - 1)].every((a) => a < 16);
+  const mix = (a, b) => a.map((v, c) => (v + b[c]) / 2);
+  const top = mix(colour(0, 0), colour(w - 1, 0));
+  const foot = mix(colour(0, h - 1), colour(w - 1, h - 1));
+  const hits = new Array(w).fill(0);
+  for (let y = 0; y < h; y += 1) {
+    const ground = top.map((v, c) => v + ((foot[c] - v) * y) / Math.max(1, h - 1));
+    for (let x = 0; x < w; x += 1) {
+      const here = colour(x, y);
+      if (clear ? alpha(x, y) > 16
+        : Math.abs(here[0] - ground[0]) + Math.abs(here[1] - ground[1]) + Math.abs(here[2] - ground[2]) > 40) hits[x] += 1;
+    }
+  }
+  const first = hits.findIndex((n) => n >= 2);
+  const last = w - 1 - [...hits].reverse().findIndex((n) => n >= 2);
+  if (first < 0) return;
+  // The share of the picture's width shown: the model's and a margin, and
+  // no less than the square's, which crops it to the frame's height.
+  const aspect = img.naturalWidth / img.naturalHeight;
+  const shown = Math.min(1, Math.max(1 / aspect, (last - first + 1) / w + 0.06));
+  const middle = Math.min(1 - shown / 2, Math.max(shown / 2, (first + last + 1) / 2 / w));
+  // Drawn whole across the frame (contain), then enlarged round the model.
+  img.style.objectFit = "contain";
+  img.style.transform = `scale(${(1 / shown).toFixed(4)}) translateX(${((0.5 - middle) * 100).toFixed(2)}%)`;
+  // An older picture's own ground above and below it, where it is shorter
+  // than the frame; one with nothing behind the model is on the frame's.
+  const band = Math.max(0, (1 - 1 / (shown * aspect)) / 2) * 100;
+  if (band > 0.5 && !clear) {
+    big.style.background = `linear-gradient(180deg, var(--render-top) ${band.toFixed(1)}%, var(--render-foot) ${(100 - band).toFixed(1)}%)`;
+  }
 }
 
 function startPictures(row) {

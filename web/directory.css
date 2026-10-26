@@ -9,7 +9,9 @@
   picture, the name, the designer and the action bar are the first screen.
   Then tabs that stay on screen, About, Comments, Builds, Remixes and
   Versions, each a part of the page; and at the end more by its designer
-  and similar models, or the gallery's.
+  and similar models, or the gallery's. It is as wide as the gallery
+  (.wrap.wide): from 1200 px the column is 420 px and the picture takes
+  the rest, 60% of a 1920 window.
 */
 .model-page { padding: 22px 0 72px; }
 .crumbs { font-size: var(--t-small); color: var(--ink-faint); margin: 0 0 14px; }
@@ -22,6 +24,7 @@
 .model-page .media { grid-area: picture; min-width: 0; }
 .model-page .side { grid-area: side; position: sticky; top: 84px; min-width: 0; }
 .model-page .rest { grid-area: rest; min-width: 0; }
+@media (width >= 1200px) { .model-page .top { grid-template-columns: minmax(0, 1fr) 420px; } }
 @media (width < 900px) {
 	.model-page { padding-top: 12px; }
 	.model-page .crumbs { margin-bottom: 10px; }
@@ -84,6 +87,10 @@
 .model-page .media > .on-picture { position: absolute; top: 14px; left: 14px; background: var(--panel); }
 .model-page .picture.photo img { object-fit: contain; background: var(--bg-soft); }
 @media (width < 600px) { .media-strip .thumb { width: 80px; height: 60px; } }
+/* On a phone the picture is square: at 390 px it is 358 px tall, not 188,
+   and web/model-page.js draws the model as large as its width lets it,
+   the picture's own ground carried on above and below a wide one. */
+@media (width < 600px) { .model-page .picture { aspect-ratio: 1 / 1; } }
 
 /* The page's tabs (api/share.js pageTabs): the kit's .tabs, kept on screen
    under the header as the page scrolls past its parts. */
@@ -407,6 +414,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	.feed-layout.with-rail .feed-rail { position: sticky; top: 84px; }
 	.feed-layout.with-rail .latest .models { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+@media (width >= 1600px) { .feed-layout.with-rail .latest .models { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 
 /* Notifications (/notifications, web/notifications.js, docs/SOCIAL.md U7):
    one group a model, its picture and name, then each thing that happened
@@ -520,6 +528,8 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	border: 1px solid var(--line); background: var(--picture-ground);
 }
 .profile .banner img { width: 100%; height: 100%; object-fit: cover; object-position: center 45%; }
+/* As wide as the gallery from 1200 px (.wrap.wide): a lower band, not a wall. */
+@media (width >= 1200px) { .profile .banner { aspect-ratio: 4 / 1; } }
 .profile-head {
 	display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--s-3) var(--s-5);
 	margin: 0 0 var(--s-4);

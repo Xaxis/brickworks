@@ -180,20 +180,44 @@ is on the page, `hidden`, for the script to show.
   and the browser with `modelCard`, the same string parsed, so the two are
   the same markup (`tools/web/card_check.mjs` proves it). Its picture is
   4:3, the middle of the 1200 x 630 one by `object-fit: cover`
-  (docs/SOCIAL.md D3), with its marks over the top corner (`.marks`: the
-  Tested `.pill.good`, and `.pill.made` Assistant or Brickify, read from
-  its tags). It is an `article`: its name (`a.open`) is the one link to the
-  model, stretched over the whole card, so the designer's name and a like
-  sit inside it as a link and a button of their own. Under the name, `.by`:
-  the designer's `.small` avatar and name (`a.who`, to their page) and its
-  size; then `.acts`, its numbers last, each an icon and a count and none
-  at nought: the like (an `.icon-btn.small`, `aria-pressed`, when the page
-  passes `like: true`, as the gallery does; a `.tally` elsewhere), builds
-  finished and comments. In `.models` (a grid: two to a row on a phone,
-  three from 900 px, four from 1200), `.models.compact` (more to a row,
-  beside a rail), `.models.wide` (fewer, one to a row on a phone, for cards
-  that carry a button under them) or `.models.row` (one row that scrolls
-  inside itself, never the page).
+  (docs/SOCIAL.md D3), with its marks over the top-left corner (`.marks`:
+  the Tested `.pill.good`, and `.pill.made` Assistant or Brickify, read
+  from its tags), one row of them: a mark that does not fit is left off
+  whole. A mark carried by 90% or more of the cards on a page (four cards
+  or more) tells none apart and is not shown: `<body data-quiet>` names it
+  (`quietMarks`; the server's pages say it as they are made, and in a
+  browser it is said again whenever cards `modelCard` made come onto the
+  page, before it is drawn).
+  They stacked two and three rows deep, 30% of a phone's picture, and
+  every card said "Tested" and "Assistant" (site273). Where the page
+  passes `like: true` (the gallery), its like is an `.icon-btn.small` over
+  the picture's top-right corner, on a `--panel` ground, `aria-pressed`,
+  its count beside the heart. It is an `article`: its name (`a.open`, 16
+  px at every width) is the one link to the model, stretched over the
+  whole card, so the designer's name and the like sit inside it as a link
+  and a button of their own. Under the name, one line, `.by`: the
+  designer's `.small` avatar and name (`a.who`, to their page), its size,
+  then `.acts`, its numbers, each an icon and a count and none at nought:
+  likes (a `.tally` where the like is not a button), builds finished and
+  comments. Then a line each for what it has (Moves, what your collection
+  holds, what it won). No card ends in a row of its own for its numbers:
+  it held only an empty heart on every card, a fifth of its height. In
+  `.models` (a grid: two to a row on a phone, then three, four, five and
+  six from 600, 900, 1200 and 1600 px, a card 180-280 px wide at every
+  width), `.models.compact` (more to a row, beside a rail), `.models.wide`
+  (fewer, one to a row on a phone, for cards that carry a button under
+  them) or `.models.row` (one row that scrolls inside itself, never the
+  page).
+- **Width**: `--page` (1,140 px) for a page of words; `--page-wide`
+  (1,600 px) for a page of cards and pictures, `.wrap.wide`: the gallery, a
+  person, a collection, a model's page, the feed and the landing page's
+  row of models; and for the header and the footer on every page, so the
+  mark and the account sit where they do on the gallery. Nothing was wider
+  than 1,140 px, 59% of a 1920 window, four cards to a row (site273). A
+  model's page: from 1200 px its column is 420 px and its picture the
+  rest; on a phone (under 600 px) its picture is square, the model drawn
+  as large as its width lets it (`web/model-page.js` `fitPicture`, by
+  transform alone, so nothing shifts).
 - **Page**: `main.page` (or a `.wrap.page-head` first under `<main>`): the
   space above the title, an optional `.page-head` (`.eyebrow`, `h1`,
   `.lede`), then its sections. `.prose` for a page of words (the FAQ's
@@ -439,9 +463,16 @@ and after scrolling, every page at 390 and 1280 px.
   the site's own panels and cards with `.bone` bars in `--panel-hi`,
   breathing slowly. A card's is `.skeleton-card` (`web/card.js`
   `skeletonHtml`, the same markup in a page's HTML), not a `.model`, so
-  nothing that counts cards counts it. When the answer comes the skeleton
+  nothing that counts cards counts it. Its bars are a typical row of
+  cards' words: a name of two lines, the designer's line (two lines on a
+  card under 190 px wide, where their name and the model's size wrap: a
+  container query, as a row that scrolls holds 200 px cards on a phone)
+  and one line of what it has. As many as the cards it stands for: five
+  skeletons in a row that scrolls spread wider and taller than its eight
+  cards. `card_check` fails a page's copy that is not `skeletonHtml`'s.
+  When the answer comes the skeleton
   is taken out whole and what came put in, in one frame: new, not moved.
-  The gallery's first three rows, the landing page's strip, /profile (its
+  The gallery's first three rows (18 cards, three rows at six), the landing page's strip (eight), /profile (its
   head, tabs and cards; a tab drawn the first time), /settings (its
   panel), /feed (posts and the rail) and /notifications.
 - **Drawn whole**: a page whose parts come from several answers (the
@@ -457,6 +488,11 @@ and after scrolling, every page at 390 and 1280 px.
   until then `#comments-hold` (`directory.css .comments-hold`, bones) holds
   their place at the height of a section with none yet and the box, and
   goes in the frame they are drawn in.
+- **Out of sight, or pressed**: a list's next page that comes by itself
+  (the gallery's, a screen ahead) is put in only while the end of the list
+  is under the screen. Come while what is under the list shows (Put yours
+  here, the footer), it waits, and Show more draws it at once: put in then,
+  it pushed them down under a person's eyes (site277, CLS 0.51).
 - **Signed in at once**: a page that is yours (/profile, /settings, /feed,
   /notifications) knows from the session kept in this browser that you
   are signed in, so it never says "Looking for your sign-in…" while it
@@ -469,7 +505,10 @@ and after scrolling, every page at 390 and 1280 px.
   alone pushed the page down).
 - **Pictures**: every `img` has `width` and `height`. The first screen's
   are asked at once and first (`loading="eager" fetchpriority="high"`:
-  `cardHtml`'s `eager`, the first `FIRST_SCREEN` (8) of a list; a pinned
+  `cardHtml`'s `eager`, the first `FIRST_SCREEN` (12) of a list the server
+  draws, and in the gallery as many as its skeletons on the first screen
+  at that width (18 at 1920); a designer's rows on the first screen once
+  laid out (`designs.js`); a pinned
   row; the landing page's first feature; a collection's cover and the
   first four collection cards, `mosaicHtml`'s and `listCardHtml`'s
   `eager`; the first five of a model's strip); the rest are

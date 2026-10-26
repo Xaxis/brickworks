@@ -84,7 +84,7 @@ def test_the_ways_are_the_same_words_in_the_app_the_card_the_server_and_the_sql(
     assert app and sorted(re.findall(r'"([a-z]+)"', app[1])) == in_sql
     # The server checks what it is sent against the card's list, and cards
     # are given it from the same list.
-    assert 'import { MADE_WITH, cardHtml } from "./_card.js";' in SHARE
+    assert re.search(r'import \{[^}]*\bMADE_WITH\b[^}]*\} from "\./_card\.js";', SHARE)
     assert "if (!MADE_WITH.includes(given))" in SHARE
     assert "made_with: MADE_WITH.includes(row.made_with) ? row.made_with : null," in DIRECTORY
     # The app sends it only when it knows.

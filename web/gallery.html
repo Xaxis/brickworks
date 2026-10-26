@@ -80,8 +80,9 @@
 
 /* The cards: this week's pick first on the front, then the list; the
    shelves (what you can build now, small builds) across the grid after
-   its first twelve places, which fill whole rows at two, three or four
-   to a row. The list's cards are #models' own, laid out in this grid. */
+   its first whole rows: twelve places at two, three or four to a row,
+   fifteen at five, eighteen at six. The list's cards are #models' own,
+   laid out in this grid. */
 .feed #models { display: contents; }
 .feed > .pick { min-width: 0; display: grid; }
 .feed > .shelves {
@@ -89,8 +90,18 @@
 	margin: var(--s-3) 0; min-width: 0;
 }
 .shelves > * { min-width: 0; }
-.feed[data-front="pick"] #models > .model:nth-child(n+12),
-.feed[data-front="plain"] #models > .model:nth-child(n+13) { order: 2; }
+@media (width < 1200px) {
+	.feed[data-front="pick"] #models > .model:nth-child(n+12),
+	.feed[data-front="plain"] #models > .model:nth-child(n+13) { order: 2; }
+}
+@media (1200px <= width < 1600px) {
+	.feed[data-front="pick"] #models > .model:nth-child(n+15),
+	.feed[data-front="plain"] #models > .model:nth-child(n+16) { order: 2; }
+}
+@media (width >= 1600px) {
+	.feed[data-front="pick"] #models > .model:nth-child(n+18),
+	.feed[data-front="plain"] #models > .model:nth-child(n+19) { order: 2; }
+}
 .pick-card .why { margin: 2px 0 0; color: var(--ink); font-size: var(--t-tiny); font-weight: 600; }
 .shelves h2 { margin: 0; }
 .shelf-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
@@ -140,7 +151,7 @@
 </header>
 
 <main id="main">
-	<section class="wrap listing" aria-labelledby="gallery-h">
+	<section class="wrap wide listing" aria-labelledby="gallery-h">
 		<!-- Answered by gallery.js, never sent: the page asks /api/share itself. -->
 		<form class="finder" id="finder" role="search" action="/gallery" method="get">
 			<div class="gallery-head">
@@ -204,10 +215,16 @@
 				<h2 class="visually-hidden" id="pick-h">This week’s pick</h2>
 				<div id="pick-card"></div>
 			</section>
-			<!-- Three rows of skeletons (site.css .skeleton) where the first page's
+			<!-- Three rows of skeletons at six a row (site.css .skeleton) where the first page's
 			     cards go, taken out when it comes (gallery.js), so nothing under
 			     them moves. web/card.js skeletonHtml draws the same. -->
 			<div id="models">
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
 				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
 				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
 				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
@@ -270,7 +287,7 @@
 		</div>
 	</section>
 
-	<section class="wrap yours" aria-labelledby="yours-h">
+	<section class="wrap wide yours" aria-labelledby="yours-h">
 		<h2 id="yours-h">Put yours here</h2>
 		<p>
 			In the app, choose <b>File › Share…</b>, give the model a name, say

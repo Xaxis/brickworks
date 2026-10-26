@@ -17,13 +17,19 @@
 //     motions, Tested, made with the assistant, its designer's avatar and
 //     link, comments, a like that is a button and pressed, no picture, a
 //     name with markup and quotes in it, a designer's earned card), drawn by
-//     the module the server imports and by the browser's /card.js.
+//     the module the server imports and by the browser's /card.js;
+//   and a card's shape (site273): a like that is a button is over its
+//     picture, its numbers are on its designer's line, and no card ends in
+//     a row holding only a button; the marks nearly every card of a page
+//     carries are named on <body data-quiet>, by the server's page as the
+//     browser names them for the same cards.
 //
 // Fails on any card that differs, or when no card was compared. Needs no
 // network: the site is served from --root's web/ and api/ as
 // design_flow.mjs serves it (design_stand_in.mjs).
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -107,7 +113,11 @@ try {
   const listed = await stand.serverAsk(api, { name: "people", query: { op: "collection", id: stand.LIST_ID } });
   const models = JSON.parse(listed.html || "{}").models || [];
   const fromServer = await parsed(cardsOf(made.html).join(""));
-  const fromBrowser = await drawn(models, {});
+  // Its first screen's pictures asked for at once, as the page does (FIRST_SCREEN).
+  const fromBrowser = await page.evaluate(async (list) => {
+    const { FIRST_SCREEN, modelCard } = await import("/card.js");
+    return list.map((model, i) => modelCard(model, { eager: i < FIRST_SCREEN }).outerHTML);
+  }, models);
   check(made.status === 200 && fromServer.length > 0, `/c/${stand.LIST_ID}: the server made ${fromServer.length} cards`);
   check(fromServer.length === fromBrowser.length,
     `the browser drew ${fromBrowser.length} cards from ?op=collection, the page has ${fromServer.length}`);
@@ -127,6 +137,15 @@ try {
     const [browserMade] = await drawn([model], options);
     check(server === browserMade, `sample ${model.id}${options.earned ? " (earned)" : options.like ? " (a like button)" : ""}: the same markup`
       + (server === browserMade ? "" : `\n        server:  ${server}\n        browser: ${browserMade}`));
+  }
+  // The pages' card skeletons are skeletonHtml's: each page holds its own
+  // copy in its HTML, and site275's stood for the card before site277's.
+  const { skeletonHtml } = await import(pathToFileURL(path.join(api, "_card.js")).href);
+  for (const name of ["gallery", "index", "profile", "feed"]) {
+    const copies = readFileSync(path.join(web, `${name}.html`), "utf8").match(/<div class="skeleton-card[^\n]*?<\/span><\/div><\/div>/g) || [];
+    const off = copies.filter((copy) => copy !== skeletonHtml());
+    check(copies.length > 0 && !off.length, `${name}.html: ${copies.length} card skeletons, ${off.length} not skeletonHtml's`
+      + (off.length ? `\n        page:    ${off[0]}\n        card.js: ${skeletonHtml()}` : ""));
   }
   // Words stay words: a name's markup is text on the card.
   const [risky] = await drawn([SAMPLES[0][0]], {});
@@ -151,6 +170,68 @@ try {
   check(/class="avatar small c\d pictured"[^>]*><img src="\/api\/people\?op=avatar&amp;id=FaceRobin1"/.test(face)
     && !/<img[^>]*tracker\.example/.test(elsewhere) && />M<\/span>/.test(elsewhere),
   "a designer's own picture drawn, and one from anywhere else never: the tile");
+  // The like over the picture, the numbers on the designer's line.
+  const [liked] = await drawn([SAMPLES[4][0]], { like: true });
+  check(/<div class="frame">[^]*<button type="button" class="icon-btn small"[^>]*data-like="CardAbcde5"[^]*<\/button><\/div><div class="words">/.test(liked)
+    && /<span class="by">[^]*<small class="acts"><span class="tally" title="37 built">[^]*title="3 comments"[^]*<\/small><\/span>/.test(liked)
+    && !/title="97 likes"/.test(liked), "a like that is a button: over the picture's corner; builds and comments on the designer's line");
+  const [counted] = await drawn([SAMPLES[0][0]], {});
+  check(/<span class="by">[^]*<small class="acts"><span class="tally" title="12 likes">/.test(counted)
+    && !/<div class="frame">[^]*<button/.test(counted), "a like that is a count: on the designer's line, nothing over the picture");
+  const lonely = await page.evaluate(async (list) => {
+    const { modelCard } = await import("/card.js");
+    return list.flatMap(([model, options]) => {
+      const card = modelCard(model, options);
+      const acts = card.querySelector(".acts");
+      return acts && [...acts.children].length && [...acts.children].every((one) => one.matches(".icon-btn")) ? [model.id] : [];
+    });
+  }, SAMPLES);
+  check(lonely.length === 0, `no card's numbers are a button alone (${lonely.join(", ") || "none"})`);
+  // The marks that tell no card apart.
+  const quiet = await page.evaluate(async () => {
+    const { quietMarks } = await import("/card.js");
+    const both = ["tested", "made"];
+    return {
+      all: quietMarks(Array(10).fill(both)), nine: quietMarks([...Array(9).fill(both), ["tested"]]),
+      eight: quietMarks([...Array(8).fill(both), [], []]), few: quietMarks(Array(3).fill(both)),
+    };
+  });
+  check(quiet.all === "tested made" && quiet.nine === "tested made" && quiet.eight === "" && quiet.few === "",
+    `quiet marks: 10 of 10 "${quiet.all}", 9 of 10 "${quiet.nine}", 8 of 10 "${quiet.eight}", three cards "${quiet.few}"`);
+  const serverQuiet = /<body[^>]*\sdata-quiet="([^"]*)"/.exec(made.html)?.[1] || "";
+  const browserQuiet = await page.evaluate(async (list) => {
+    const { marksOf, quietMarks } = await import("/card.js");
+    return quietMarks(list.map(marksOf));
+  }, models);
+  check(serverQuiet === browserQuiet, `/c/${stand.LIST_ID}: the server's page leaves off "${serverQuiet}", the browser "${browserQuiet}" for its ${models.length} cards`);
+  // In a browser, cards that come onto the page say it on <body> before it
+  // is drawn: put in at once, and put in two frames after they were made
+  // (the landing page's strip waits for its pictures to decode).
+  const drawnQuiet = await page.evaluate(async () => {
+    const { modelCard } = await import("/card.js");
+    const make = (n, tag) => Array.from({ length: n }, (_, i) => modelCard({ id: `Quiet${tag}${i}`.padEnd(10, "0").slice(0, 10),
+      name: "Q", parts: 1, tested: true, made_with: i ? "assistant" : "hand" }));
+    const frame = () => new Promise((done) => requestAnimationFrame(done));
+    const grid = document.body.appendChild(document.createElement("div"));
+    grid.append(...make(5, "A"));
+    await Promise.resolve();
+    const now = document.body.dataset.quiet || "";
+    grid.remove();
+    // Said afresh: a removal says nothing, so the late cards must.
+    delete document.body.dataset.quiet;
+    const later = make(5, "B");
+    await frame();
+    await frame();
+    const strip = document.body.appendChild(document.createElement("div"));
+    strip.append(...later);
+    await Promise.resolve();
+    const late = document.body.dataset.quiet || "";
+    strip.remove();
+    return { now, late };
+  });
+  check(drawnQuiet.now === "tested" && drawnQuiet.late === "tested",
+    `five cards put on the page, all Tested and four with the assistant: <body data-quiet="${drawnQuiet.now}">, `
+    + `and "${drawnQuiet.late}" for five put on two frames after they were made`);
   check(!errors.length, `no script errors${errors.length ? `: ${errors.join("; ")}` : ""}`);
 } finally {
   await browser.close();
