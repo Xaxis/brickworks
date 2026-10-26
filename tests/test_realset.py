@@ -304,7 +304,7 @@ def test_a_session_is_read_for_what_it_reached_each_call_once():
     answer = lambda i, text: {"type": "tool_result", "tool_use_id": i,  # noqa: E731
                               "content": [{"type": "text", "text": text}]}
     facade = {"sections": [{"name": "facade", "x": 5, "y": 1, "z": 0, "yaw": 18.4}],
-              "floor": "none"}
+              "floor": "none", "features": ["eyes", "beak", "wings"]}
     square = {"sections": [{"name": "ramp", "x": 5, "y": 1, "z": 0, "pitch": 90}]}
     lines = [json.dumps({"type": "user", "message": {"role": "user", "content": "A tower."}}),
              _turn("assistant", [use("a", "read_guide", {"section": "angle"})]),
@@ -314,8 +314,12 @@ def test_a_session_is_read_for_what_it_reached_each_call_once():
              _turn("assistant", [use("c", "submit_design", facade)]),
              _turn("user", [answer("c", "Built. 300 bricks on the baseplate.")]),
              _turn("assistant", [use("d", "edit_model", square)]),
-             _turn("assistant", [use("e", "settle_feature", {"verdict": "built"}),
-                                 use("f", "settle_feature", {"verdict": "reject"}),
+             _turn("assistant", [use("e", "settle_feature", {"feature": "eyes",
+                                                             "verdict": "accept"}),
+                                 use("e2", "settle_feature", {"feature": "eyes",
+                                                              "verdict": "accept"}),
+                                 use("f", "settle_feature", {"feature": "beak, wings",
+                                                             "verdict": "reject"}),
                                  use("g", "place_technique", {"id": "21004-1/cluster-1"}),
                                  use("h", "place_technique", {"id": "21012-1/cluster-1"})]),
              _turn("user", [answer("g", "21004-1/cluster-1: 12 parts, laid whole at x=1. As "
@@ -328,5 +332,6 @@ def test_a_session_is_read_for_what_it_reached_each_call_once():
     assert reach["techniques"] == {"find_techniques": 0, "show_technique": 0,
                                    "place_technique": 2}
     assert reach["placed"] == 1                         # the one refused laid nothing
-    assert reach["features"] == {"built": 1, "reject": 1}
-    assert reach["floor"] == "none" and reach["calls"] == 8
+    assert reach["features"] == {"accept": 2, "reject": 1}
+    assert reach["features_listed"] == 3 and reach["features_accepted"] == 1   # eyes, once
+    assert reach["floor"] == "none" and reach["calls"] == 9
