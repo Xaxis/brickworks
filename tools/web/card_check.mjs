@@ -112,7 +112,11 @@ try {
   const listed = await stand.serverAsk(api, { name: "people", query: { op: "collection", id: stand.LIST_ID } });
   const models = JSON.parse(listed.html || "{}").models || [];
   const fromServer = await parsed(cardsOf(made.html).join(""));
-  const fromBrowser = await drawn(models, {});
+  // Its first screen's pictures asked for at once, as the page does (FIRST_SCREEN).
+  const fromBrowser = await page.evaluate(async (list) => {
+    const { FIRST_SCREEN, modelCard } = await import("/card.js");
+    return list.map((model, i) => modelCard(model, { eager: i < FIRST_SCREEN }).outerHTML);
+  }, models);
   check(made.status === 200 && fromServer.length > 0, `/c/${stand.LIST_ID}: the server made ${fromServer.length} cards`);
   check(fromServer.length === fromBrowser.length,
     `the browser drew ${fromBrowser.length} cards from ?op=collection, the page has ${fromServer.length}`);
