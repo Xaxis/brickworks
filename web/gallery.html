@@ -95,7 +95,7 @@
 .shelf-head a { font-size: var(--t-small); color: var(--ink-soft); }
 .shelf-said { margin: 4px 0 12px; color: var(--ink-soft); font-size: var(--t-small); }
 
-#challenge-line { margin: 0 0 var(--s-4); }
+.feed > #challenge-line { grid-column: 1 / -1; margin: 0; }
 .listing .state { margin-top: var(--s-2); }
 .state .actions { margin-top: var(--s-3); }
 .score-said { margin: var(--s-5) 0 0; color: var(--ink-faint); font-size: var(--t-small); }
@@ -165,7 +165,7 @@
 			<div class="gallery-filters">
 				<details class="filters more-menu" id="filters">
 					<summary class="pill"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#filter"></use></svg>
-						Filters <span class="n" id="filters-said"></span></summary>
+						Filters <span class="n" id="filters-said" hidden></span></summary>
 					<div class="menu-list sheet">
 						<label>Order
 							<select id="sort" name="sort"><option value="top">Top builds</option></select></label>
@@ -188,12 +188,14 @@
 				</div>
 			</div>
 			<!-- A tag asked for (a tag on a model's page links here), to let go of. -->
-			<div class="pills" id="chips"></div>
+			<div class="pills" id="chips" hidden></div>
 		</form>
-		<!-- This month's challenge, in one line (gallery.js sayChallenge, supabase/challenges.sql). -->
-		<p class="note" id="challenge-line" hidden></p>
-
 		<div class="models feed" id="feed">
+			<!-- This month's challenge, in one line (gallery.js sayChallenge,
+			     supabase/challenges.sql): across the grid's first row, drawn
+			     with the cards in place of their skeletons, so its coming
+			     moves nothing (over the grid, it pushed every card down). -->
+			<p class="note" id="challenge-line" hidden></p>
 			<!-- The front's pick, its first card (gallery.js drawShelves). -->
 			<section class="pick" id="pick" aria-labelledby="pick-h" hidden>
 				<h2 class="visually-hidden" id="pick-h">This week’s pick</h2>

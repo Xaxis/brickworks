@@ -174,14 +174,19 @@ function startComments(section) {
       const reply = await fetch(path, { headers: { accept: "application/json" } });
       answer = { status: reply.status, body: await reply.json().catch(() => ({})) };
     }
+    // The skeleton holding its place (api/share.js commentsSection) goes in
+    // the frame it is drawn in.
+    const hold = document.getElementById("comments-hold");
     if (answer.status !== 200) {
       // The section stays hidden, and so does its tab.
+      hold?.remove();
       const tab = document.querySelector('#page-tabs a[data-tab="comments"]');
       if (tab && section.hidden) tab.hidden = true;
       return say(answer.body.error || "The comments did not load just now.");
     }
     state = answer.body;
     // Not open on this deployment yet (comments.sql): nothing to show.
+    hold?.remove();
     section.hidden = state.ready === false;
     draw();
     commentsSaid(state, setOpen);
@@ -544,9 +549,14 @@ function buildPhotos(box) {
     open.disabled = state.left === 0;
     if (state.owner) ownerTools(state.photos || []);
     // Its owner adds pictures of their own under the picture: they lead
-    // the strip (api/share.js mediaStrip), shown to them even while empty.
+    // the strip (api/share.js mediaStrip). With no strip yet, Add a picture
+    // is over the picture's corner, where its coming moves nothing: the
+    // strip shown for it alone pushed the page down (site275).
     if (state.owner && addPicture) {
-      pictures.hidden = false;
+      if (pictures.hidden) {
+        addPicture.className = "cta ghost small on-picture";
+        pictures.before(addPicture);
+      }
       addPicture.hidden = false;
       addPicture.disabled = state.left === 0;
       addPicture.textContent = state.left === 0 ? "Three added" : "Add a picture";

@@ -1243,7 +1243,7 @@ async function profilePage(request, response) {
       : `<p class="state">No likes yet. The models ${name} likes in the gallery show here, as they chose.</p>`;
   } else {
     const covers = lists.length ? await coversOf(lists, tests) : new Map();
-    panel = lists.length ? `<div class="list-cards">${lists.map((list) => listCardHtml(list, covers)).join("")}</div>`
+    panel = lists.length ? `<div class="list-cards">${lists.map((list, i) => listCardHtml(list, covers, { eager: i < 4 })).join("")}</div>`
       : `<p class="state">No collections yet. The lists of models ${name} makes public show here.</p>`;
   }
   const tabsHtml = `<nav class="tabs" aria-label="${name}’s work">${tabs.map(([id, label]) =>
@@ -1305,7 +1305,7 @@ async function listPage(request, response) {
     + "Report it</button><a href=\"/takedown\">Takedown requests</a></div></details>";
   const main = `<div class="wrap person list" data-id="${id}">
   <header class="list-head">
-    <div class="cover">${mosaicHtml(covers.get(id) || [])}</div>
+    <div class="cover">${mosaicHtml(covers.get(id) || [], { eager: true })}</div>
     <div class="who">
       <p class="eyebrow">Collection</p>
       <h1>${escapeHtml(list.name)}</h1>
