@@ -1639,6 +1639,13 @@
     },
     {
       "kind": "ui",
+      "label": "collections directory",
+      "entry": "api/people.js",
+      "reach": "https://brickworks.diy/collections  (?sort=followed, ?page=N, ?tests=1; supabase/collection_directory.sql; linked from the gallery's tabs and the footer)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
       "label": "your profile page",
       "entry": "web/profile.html",
       "reach": "https://brickworks.diy/profile   (profile.js: sign in; no profile: name and handle; your page's head with Edit profile, and the tabs Models, Builds, Saved, Sets, Insights, ?tab=)",
@@ -2580,6 +2587,13 @@
       "label": "follows browser flow",
       "entry": "tools/web/follows_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/follows_flow.mjs --url=<preview> --out=DIR   (.env sourced; or a local relay_server.mjs --static=build/web with nothing held, or with --hold=follows,model_comments,build_photos,report_photos --trust-stand-in; --site leaves the app out)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "collections browser flow",
+      "entry": "tools/web/collections_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/collections_flow.mjs --url=<preview> --out=DIR   (live project, throwaway accounts; preview check [collections])",
       "area": "web"
     },
     {

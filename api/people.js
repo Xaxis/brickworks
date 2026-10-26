@@ -192,7 +192,8 @@ import {
   feed, follow, followChoice, followChoiceOf, followingOf, followsOf, getFollowing, getFollows, latest,
 } from "./_follows.js";
 import { feedCount, notifications, notificationsRead } from "./_notifications.js";
-import { coversOf, getListFollows, listCardHtml, listFollow, listFollowsOf, mosaicHtml } from "./_lists.js";
+import { DIRECTORY_PAGE, coversOf, directoryCardHtml, directoryOf, getListFollows, listCardHtml, listFollow, listFollowsOf,
+  mosaicHtml } from "./_lists.js";
 import { designerOf, designs } from "./_designers.js";
 import {
   AvatarRefusal, avatarFile, avatarOf, avatarSaid, chooseLikes, dropAvatar, keepAvatar, likedRows, likesChoiceOf,
@@ -1329,6 +1330,65 @@ async function listPage(request, response) {
   }), { tests });
 }
 
+/// /collections: the public collections anyone may see, as cards, the way
+/// Rebrickable lists its MOC lists and Flickr its albums (walk256 W12,
+/// supabase/collection_directory.sql). What was put in last first, or the
+/// most followed; 24 a page, the next a link, so it works with no script.
+/// Each card: its cover (up to four of its models' pictures), its name,
+/// whose, how many models and followers, and Follow (web/follow.js, all the
+/// page's in one ask). A private collection never; nor one with nothing in
+/// the gallery, which would be a blank card. With nothing to list it says
+/// so, and how a collection gets here.
+async function collectionsPage(request, response) {
+  const origin = originOf(request);
+  const tests = testsAsked(request.query);
+  const sort = request.query?.sort === "followed" ? "followed" : "recent";
+  const asked = Number.parseInt(String(request.query?.page ?? "1"), 10);
+  const at = Number.isInteger(asked) ? Math.min(Math.max(asked, 1), MOST_PAGES) : 1;
+  const listed = await directoryOf({ sort, page: at, tests });
+  const rows = await withFaces(listed.rows);
+  const covers = await coversOf(rows, tests);
+  const keep = (query) => {
+    const params = new URLSearchParams();
+    if (query.sort === "followed") params.set("sort", "followed");
+    if (query.page > 1) params.set("page", String(query.page));
+    if (tests) params.set("tests", "1");
+    const text = params.toString();
+    return `/collections${text ? `?${text}` : ""}`;
+  };
+  const tab = (which, words) => `<a href="${escapeHtml(keep({ sort: which, page: 1 }))}" data-sort="${which}"`
+    + `${which === sort ? ' aria-current="page"' : ""}>${escapeHtml(words)}</a>`;
+  const pages = Math.max(1, Math.ceil(listed.total / DIRECTORY_PAGE));
+  const pager = listed.total > DIRECTORY_PAGE ? `<nav class="actions center more" aria-label="Pages">`
+    + (at > 1 ? `<a class="cta ghost" rel="prev" href="${escapeHtml(keep({ sort, page: at - 1 }))}">Previous</a>` : "")
+    + `<span class="note">Page ${at.toLocaleString("en-US")} of ${pages.toLocaleString("en-US")}</span>`
+    + (at < pages ? `<a class="cta ghost" rel="next" href="${escapeHtml(keep({ sort, page: at + 1 }))}">Next</a>` : "")
+    + "</nav>" : "";
+  const empty = !listed.ready
+    ? `<p class="state" id="collections-empty">Collections are not listed on Brickworks yet. Each one has its own page `
+      + "in the meantime, linked from its owner's profile and from the models in it.</p>"
+    : at > 1 && !rows.length
+    ? `<p class="state" id="collections-empty">There is no page ${at.toLocaleString("en-US")}. `
+      + `<a class="link" href="${escapeHtml(keep({ sort, page: 1 }))}">Back to the first page</a>.</p>`
+    : `<p class="state" id="collections-empty">No public collections yet. Anyone can make one: on a model's page, `
+      + "press Save to put it in a collection, then make the collection public on your profile. It is listed here "
+      + "once a model in it is in the gallery.</p>";
+  const main = `<div class="wrap listing collections" data-sort="${sort}" data-page="${at}">
+  <div class="gallery-head"><h1>Collections</h1></div>
+  <div class="gallery-bar">
+    <nav class="tabs" aria-label="Which collections first">${tab("recent", "Recently added to")}${tab("followed", "Most followed")}</nav>
+  </div>
+  ${rows.length ? `<div class="list-cards" id="collections">${rows.map((list) => directoryCardHtml(list, covers)).join("")}</div>` : empty}
+  ${pager}
+  <p class="crumbs" id="collections-gallery"><a href="/gallery">Models in the gallery</a></p>
+</div>`;
+  return html(response, 200, page(origin, {
+    title: "Collections — the Brickworks gallery",
+    about: "Collections of models built in Brickworks, made by the people who build them: follow one to see what is put in it.",
+    url: `${origin}${keep({ sort, page: at })}`, robots: at > 1 || sort !== "recent" ? "noindex" : "", image: "", main,
+  }), { tests });
+}
+
 export default async function handler(request, response) {
   if (request.method === "OPTIONS") {
     return response.status(204)
@@ -1352,6 +1412,7 @@ export default async function handler(request, response) {
       if (op === "favourites") return await favourites(request, response);
       if (op === "collection") return await collection(request, response);
       if (op === "list_page") return await listPage(request, response);
+      if (op === "collections_page") return await collectionsPage(request, response);
       if (op === "comments") return await listComments(request, response);
       if (op === "photos") return await photos(request, response);
       if (op === "photo_file") return await photoServe(request, response);

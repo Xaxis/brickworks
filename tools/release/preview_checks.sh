@@ -65,6 +65,12 @@ declare -A CMD=(
   # private, gone. Throwaway accounts, deleted after with their model and
   # collection.
   [list_follows]="tools/web/list_follows_flow.mjs --url=$P --out=$S/${TAG}_list_follows"
+  # The collections directory (W12, supabase/collection_directory.sql):
+  # /collections lists a throwaway designer's public collection as a card
+  # with its cover, name, owner, model count and Follow; her private one
+  # never; Follow from the card at 390 px dark; most followed; 390 and 1280
+  # px in both themes; made private, gone. Throwaway accounts, deleted after.
+  [collections]="tools/web/collections_flow.mjs --url=$P --out=$S/${TAG}_collections"
   # Notifications apart from the feed (docs/SOCIAL.md U7): your avatar in
   # the header with what is new, its menu (Menu at 390 px); a comment, a
   # photo and ten likes on a throwaway designer's model as one group with

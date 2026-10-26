@@ -483,6 +483,14 @@
       "tests": []
     },
     {
+      "id": "cli:collections browser flow",
+      "kind": "cli",
+      "entry": "tools/web/collections_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/collections_flow.mjs --url=<preview> --out=DIR   (live project, throwaway accounts; preview check [collections])",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:comments browser flow",
       "kind": "cli",
       "entry": "tools/web/comments_flow.mjs",
@@ -2903,6 +2911,14 @@
       "kind": "ui",
       "entry": "web/admin.js",
       "reach": "https://brickworks.diy/admin signed in as MASTER_EMAIL: This week's pick (what visitors see, the choices with End, the week worked out) and Make it the pick beside every model in the gallery",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:collections directory",
+      "kind": "ui",
+      "entry": "api/people.js",
+      "reach": "https://brickworks.diy/collections  (?sort=followed, ?page=N, ?tests=1; supabase/collection_directory.sql; linked from the gallery's tabs and the footer)",
       "area": "web",
       "tests": []
     },

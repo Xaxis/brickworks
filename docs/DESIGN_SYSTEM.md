@@ -33,8 +33,8 @@ sized its own titles, from 26 to 74 px. Now:
   phone the mark, the way in and Menu (your avatar, once signed in),
   the last 16 px from the edge as the page's words are, down to 320 px:
   under 390 px the mark is the cube alone (design_flow.mjs fails a
-  header that runs into the gutter at 320, 360 or 390 px). The footer: the mark and a row of links (Compare, FAQ, Changelog,
-  Source, Privacy, Terms, Guidelines, Takedown), then every notice
+  header that runs into the gutter at 320, 360 or 390 px). The footer: the mark and a row of links (Challenge, Collections,
+  Compare, FAQ, Changelog, Source, Privacy, Terms, Guidelines, Takedown), then every notice
   docs/TRADEMARKS.md asks for, small and quiet.
 - **One type scale** (`--t-display`, `--t-h1`, `--t-h2`, `--t-h3`,
   `--t-lede`, then the words: `--t-body` 16, `--t-small` 14.5, `--t-tiny`
