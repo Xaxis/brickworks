@@ -57,7 +57,10 @@ static func _before(event: InputEvent, window: Window) -> void:
 ## off the window at 1280 (walk256 TQ1).
 static func keep_inside(window: Window) -> void:
 	var tree: SceneTree = window.get_tree()
-	if tree == null or tree.node_added.is_connected(_added):
+	# Not by a finger: a phone's or a tablet's layout puts every tooltip away
+	# as it comes (PhoneShell), and one fitted first was drawn twice for
+	# nothing, again each time Godot put it up.
+	if tree == null or Phone.on() or tree.node_added.is_connected(_added):
 		return
 	tree.node_added.connect(_added)
 
@@ -75,7 +78,7 @@ static func _added(node: Node) -> void:
 
 
 static func _fit(popup: Window) -> void:
-	if not is_instance_valid(popup) or not popup.is_inside_tree():
+	if not is_instance_valid(popup) or not popup.is_inside_tree() or not popup.visible:
 		return
 	var label: Label = null
 	for child: Node in popup.get_children():
@@ -105,15 +108,32 @@ static func _fit(popup: Window) -> void:
 	popup.size_changed.connect(func() -> void: Tooltips._inside(popup, room))
 
 
-## [param popup] moved inside [param room], its edges kept clear.
+## [param popup] moved inside [param room], its edges kept clear, and never
+## over the pointer: one over it is the pointer's, and Godot takes it away.
 static func _inside(popup: Window, room: Rect2) -> void:
-	if not is_instance_valid(popup):
+	if not is_instance_valid(popup) or not popup.visible:
 		return
-	var at := Vector2(popup.position)
-	at.x = clampf(at.x, room.position.x + EDGE, maxf(room.position.x + EDGE, room.end.x - popup.size.x - EDGE))
-	at.y = clampf(at.y, room.position.y + EDGE, maxf(room.position.y + EDGE, room.end.y - popup.size.y - EDGE))
+	var size := Vector2(popup.size)
+	var at: Vector2 = _clamped(Vector2(popup.position), size, room)
+	var pointer: Vector2 = popup.get_tree().root.get_mouse_position()
+	if Rect2(at, size).grow(2.0).has_point(pointer):
+		# Above the pointer, as Godot puts it below; else beside it.
+		var above: Vector2 = _clamped(Vector2(at.x, pointer.y - size.y - EDGE * 2.0), size, room)
+		var beside: Vector2 = _clamped(Vector2(pointer.x + EDGE * 2.0, at.y), size, room)
+		if not Rect2(above, size).grow(2.0).has_point(pointer):
+			at = above
+		elif not Rect2(beside, size).grow(2.0).has_point(pointer):
+			at = beside
+		else:
+			at = _clamped(Vector2(pointer.x - size.x - EDGE * 2.0, at.y), size, room)
 	if Vector2i(at.round()) != popup.position:
 		popup.position = Vector2i(at.round())
+
+
+static func _clamped(at: Vector2, size: Vector2, room: Rect2) -> Vector2:
+	return Vector2(
+		clampf(at.x, room.position.x + EDGE, maxf(room.position.x + EDGE, room.end.x - size.x - EDGE)),
+		clampf(at.y, room.position.y + EDGE, maxf(room.position.y + EDGE, room.end.y - size.y - EDGE)))
 
 
 ## Whether [param window] is a tooltip the engine put up.

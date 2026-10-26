@@ -441,7 +441,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   letters and ran off the window at 1280 (walk256 TQ1). `tooltip_fit_probe`
   rests the pointer on Techniques rows found for "door" and on a part's tile,
   at 1280 x 800 and at 390 x 844, and reads each tooltip's rect against the
-  window's. On a phone or a tablet no tooltip comes at all (`PhoneShell`).
+  window's. Never over the pointer (above it, else beside it): one over it
+  is the pointer's, and Godot takes it away. On a phone or a tablet no
+  tooltip comes at all (`PhoneShell`), and none is fitted there: fitting
+  each one Godot put up and PhoneShell put away kept a phone drawing two
+  frames a second (86 drawn in 40 s against 13).
 - `tooltips let clicks through` (`src/ui/tooltips.gd`, `Tooltips.let_clicks_through`,
   2026-10-15): a tooltip never takes a click meant for what is under it. Godot's
   tooltip is a window of its own embedded in the app's, and a pointer on it is
