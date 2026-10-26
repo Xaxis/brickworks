@@ -258,7 +258,8 @@ import { toast } from "/kit.js";
       marks.className = "marks";
       const mark = document.createElement("span");
       mark.className = "pill new";
-      mark.textContent = "This week’s pick";
+      // Short: one row of marks over a phone's card, 12% of its picture at most.
+      mark.textContent = "Week’s pick";
       marks.prepend(mark);
       const why = document.createElement("p");
       why.className = "why";

@@ -579,7 +579,7 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 .model .frame > .icon-btn:hover { background: var(--panel-hi); }
 .model .frame:has(> .icon-btn) .marks { right: 49px; }
 .model .words { flex: 1; padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-@media (min-width: 900px) { .model .words { padding: 12px 16px 14px; } }
+@media (min-width: 900px) { .model .words { padding: 10px 14px 12px; } }
 /* The name: the card's one link to the model, stretched over all of it,
    and a finger's target of its own too (24 px at least, WCAG 2.5.8): a
    one-line name on a phone is 20 px, a hair from the designer's link. */

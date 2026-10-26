@@ -8,8 +8,8 @@
 // dark:
 //
 //   1. the first screen: at 390 the first card's picture starts within
-//      330 px of the top, two cards to a row (the week's pick as wide as
-//      the row), four cards' names on the first two screens; at 1280 five
+//      330 px of the top, two cards to a row, four cards' names on the
+//      first two screens; at 1280 five
 //      to a row and five whole cards on the first screen, the cards marked
 //      once (no row of marks, none that nearly every card carries, no
 //      card ending in a row that holds only its like); Top the tab shown,
@@ -142,8 +142,7 @@ const drawn = (page) => page.evaluate(() => {
   const cards = [...document.querySelectorAll("#feed .model")].filter((el) => el.getClientRects().length);
   const boxes = cards.map((el) => el.getBoundingClientRect());
   const firstPicture = Math.min(...cards.map((el) => el.querySelector(".frame").getBoundingClientRect().top));
-  // To a row: the most cards that share a top (on a phone the pick is the
-  // first row alone).
+  // To a row: the most cards that share a top, outside the shelves' rows.
   const rows = {};
   for (const el of cards.filter((one) => !one.closest(".models.row"))) {
     const top = Math.round(el.getBoundingClientRect().top);
@@ -168,8 +167,7 @@ const drawn = (page) => page.evaluate(() => {
       cards.filter((el) => shownMarks(el, `.${mark}`).length).length / Math.max(1, cards.length)])),
     lonelyLike: cards.filter((el) => { const acts = el.querySelector(".acts"); return acts && [...acts.children].length > 0
       && [...acts.children].every((c) => c.matches(".icon-btn")); }).length,
-    pickWide: (() => { const pick = document.querySelector("#pick-card .model"); const other = document.querySelector("#models .model");
-      return pick && other ? Math.round(pick.getBoundingClientRect().width / other.getBoundingClientRect().width * 10) / 10 : 0; })(),
+
     // Where each card's name ends, down the page, in the order they come.
     names: cards.map((el) => Math.round(el.querySelector(".open b").getBoundingClientRect().bottom + scrollY)).sort((a, b) => a - b),
     whole: boxes.filter((b) => b.top >= 0 && b.bottom <= innerHeight && b.width > 0).length,
@@ -206,8 +204,8 @@ try {
         .map((i) => (i.complete ? null : new Promise((done) => { i.onload = i.onerror = done; })))));
       const seen = await drawn(page);
       if (width === 390) {
-        check(seen.firstPicture <= 330 && seen.columns === 2 && seen.pickWide >= 2 && !seen.sideways,
-          `390 ${theme}: the first card's picture at ${seen.firstPicture} px (330 at most), ${seen.columns} to a row, the pick ${seen.pickWide}x as wide, nothing sideways`);
+        check(seen.firstPicture <= 330 && seen.columns === 2 && !seen.sideways,
+          `390 ${theme}: the first card's picture at ${seen.firstPicture} px (330 at most), ${seen.columns} to a row, nothing sideways`);
         check(seen.names.length >= 4 && seen.names[3] <= 2 * 844,
           `390 ${theme}: four cards' names on the first two screens, the fourth's ending at ${seen.names[3]} px (${2 * 844} at most)`);
       } else {

@@ -78,9 +78,9 @@
 
 /* The cards: this week's pick first on the front, then the list; the
    shelves (what you can build now, small builds) across the grid after
-   its first whole rows: twelve places at three or four to a row, and on a
-   phone, where the pick is as wide as the row; fifteen at five, eighteen
-   at six. The list's cards are #models' own, laid out in this grid. */
+   its first whole rows: twelve places at two, three or four to a row,
+   fifteen at five, eighteen at six. The list's cards are #models' own,
+   laid out in this grid. */
 .feed #models { display: contents; }
 .feed > .pick { min-width: 0; display: grid; }
 .feed > .shelves {
@@ -88,12 +88,7 @@
 	margin: var(--s-3) 0; min-width: 0;
 }
 .shelves > * { min-width: 0; }
-@media (max-width: 599px) {
-	.feed > .pick { grid-column: 1 / -1; }
-	.feed[data-front="pick"] #models > .model:nth-child(n+11),
-	.feed[data-front="plain"] #models > .model:nth-child(n+13) { order: 2; }
-}
-@media (min-width: 600px) and (max-width: 1199px) {
+@media (max-width: 1199px) {
 	.feed[data-front="pick"] #models > .model:nth-child(n+12),
 	.feed[data-front="plain"] #models > .model:nth-child(n+13) { order: 2; }
 }
