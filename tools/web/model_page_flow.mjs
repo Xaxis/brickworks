@@ -445,9 +445,14 @@ try {
 
             // 8. The tabs.
             const tabNames = seen.tabs.map((t) => t.replace(/ [\d,]+$/, ""));
-            const wantNames = ["About", "Parts", "Comments", "Builds", "Remixes", "Versions"].slice(0, tabNames.includes("Versions") ? 6 : 5);
+            // On a deployment its own model's: in this order, each there or
+            // not as the model has it (Comments where they are open,
+            // Collections once it is in one, Versions with two), and About,
+            // Parts, Builds and Remixes always.
+            const ORDER = ["About", "Parts", "Comments", "Builds", "Remixes", "Collections", "Versions"];
+            const ordered = tabNames.every((n, k) => ORDER.includes(n) && (k === 0 || ORDER.indexOf(tabNames[k - 1]) < ORDER.indexOf(n)));
             check(`${label}: the tabs say ${seen.tabs.join(" | ")}`, one.tabs ? JSON.stringify(seen.tabs) === JSON.stringify(one.tabs)
-              : JSON.stringify(tabNames) === JSON.stringify(wantNames) || JSON.stringify(tabNames) === JSON.stringify(wantNames.filter((n) => n !== "Comments")));
+              : ordered && ["About", "Parts", "Builds", "Remixes"].every((n) => tabNames.includes(n)));
 
             // 16. Its parts, signed out.
             if (!signedIn) await partsChecks(page, label, seen, one);
