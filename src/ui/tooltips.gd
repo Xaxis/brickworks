@@ -50,6 +50,58 @@ static func _before(event: InputEvent, window: Window) -> void:
 			sub.queue_free()
 
 
+## And every tooltip put up in [param window] kept inside it: one longer
+## than [constant WIDEST] is laid out as lines that wide, or the window's
+## width where that is less. Godot draws a tooltip's text as it is, one
+## line a line, where it goes past the window's edge: a technique's ran
+## off the window at 1280 (walk256 TQ1).
+static func keep_inside(window: Window) -> void:
+	var tree: SceneTree = window.get_tree()
+	if tree == null or tree.node_added.is_connected(_added):
+		return
+	tree.node_added.connect(_added)
+
+
+## The widest a tooltip's line is, in the window's units, and how far it
+## keeps from the window's edges.
+const WIDEST := 480.0
+const EDGE := 8.0
+
+
+static func _added(node: Node) -> void:
+	if node is Window and is_tooltip(node as Window):
+		# Once Godot has sized and placed it, which it does after adding it.
+		_fit.call_deferred(node)
+
+
+static func _fit(popup: Window) -> void:
+	if not is_instance_valid(popup) or not popup.is_inside_tree():
+		return
+	var label: Label = null
+	for child: Node in popup.get_children():
+		if child is Label:
+			label = child
+			break
+	# Placed in the window it is embedded in, the app's, a dialog's too.
+	if label == null or not popup.is_embedded():
+		return
+	var room: Rect2 = popup.get_tree().root.get_visible_rect()
+	var widest: float = minf(WIDEST, room.size.x - 2.0 * EDGE - (popup.size.x - label.size.x))
+	var font: Font = label.get_theme_font("font")
+	var font_size: int = label.get_theme_font_size("font_size")
+	var longest: float = 0.0
+	for line: String in label.text.split("\n"):
+		longest = maxf(longest, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
+	if longest > widest and widest > 0.0:
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.custom_minimum_size.x = widest
+		popup.size = Vector2i(popup.get_contents_minimum_size().ceil())
+	var at := Vector2(popup.position)
+	at.x = clampf(at.x, room.position.x + EDGE, maxf(room.position.x + EDGE, room.end.x - popup.size.x - EDGE))
+	at.y = clampf(at.y, room.position.y + EDGE, maxf(room.position.y + EDGE, room.end.y - popup.size.y - EDGE))
+	popup.position = Vector2i(at.round())
+
+
 ## Whether [param window] is a tooltip the engine put up.
 static func is_tooltip(window: Window) -> bool:
 	return window is PopupPanel and (window as PopupPanel).theme_type_variation == &"TooltipPanel"

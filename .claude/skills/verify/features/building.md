@@ -433,6 +433,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   finds (`_make_way`). The same controls moved, never made again; nothing is
   moved on a desktop. The page is told the figure on the bench and whether
   one is held (`bench`, `figure_held` in `window.brickworksState`).
+- `tooltips kept inside the window` (`Tooltips.keep_inside`, 2026-10-25):
+  every tooltip put up is moved inside the window, and one with a line
+  longer than `Tooltips.WIDEST` (480 units, or the window less its edges) is
+  laid out as lines that wide (`autowrap` on Godot's own label, once it has
+  placed it). A technique's hover text was one line of three hundred
+  letters and ran off the window at 1280 (walk256 TQ1). `tooltip_fit_probe`
+  rests the pointer on Techniques rows found for "door" and on a part's tile,
+  at 1280 x 800 and at 390 x 844, and reads each tooltip's rect against the
+  window's. On a phone or a tablet no tooltip comes at all (`PhoneShell`).
 - `tooltips let clicks through` (`src/ui/tooltips.gd`, `Tooltips.let_clicks_through`,
   2026-10-15): a tooltip never takes a click meant for what is under it. Godot's
   tooltip is a window of its own embedded in the app's, and a pointer on it is
@@ -1761,6 +1770,9 @@ godot --path . --resolution 1200x800 --script src/dev/marquee_probe.gd
 # pointer was over where no tooltip came)
 MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
   --resolution 1400x900 --script src/dev/tooltip_probe.gd
+# a long hover text inside the window: Techniques for "door" and a part's
+# tile, at 1280 x 800 and (PROBE_SIZE=390x844) as a phone is wide
+tools/probe.sh tooltip_fit_probe
 # several bricks worked on at once, and taken back at once
 godot --headless --path . --script src/dev/select_probe.gd
 # a part found in the Boutique Hotel: the list's pictures, a row clicked (57
