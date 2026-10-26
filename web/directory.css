@@ -561,8 +561,11 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 /* In the directory of collections (/collections, api/_lists.js
    directoryCardHtml): the cover and the name each a link to it, whose with
    their avatar, its numbers, and Follow, laid out as the model card's
-   owner line is; no link round the whole, as a button may not be in one. */
-.list-card.in-directory .words { gap: var(--s-1); align-content: start; flex: 1; }
+   owner line is; no link round the whole, as a button may not be in one.
+   Follow at the foot of the card, level across a row; nothing there when
+   there is no Follow (your own) and nothing said. */
+.list-card.in-directory .words { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-1); flex: 1; }
+.list-card.in-directory .words > * { max-width: 100%; }
 .list-card.in-directory .cover { display: block; }
 .list-card.in-directory .name { color: inherit; text-decoration: none; }
 .list-card.in-directory:hover b { text-decoration: none; }
@@ -571,9 +574,10 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	color: var(--ink-soft); text-decoration: none; font-size: var(--t-small); }
 .list-card.in-directory .who span:not(.avatar) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list-card.in-directory a.who:hover { color: var(--ink); text-decoration: underline; }
-.list-card.in-directory .numbers { display: flex; flex-wrap: wrap; gap: 0 var(--s-2); }
-.list-card.in-directory .numbers [data-list-followers]::before { content: "· "; }
-.list-card.in-directory .follow-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: var(--s-2) 0 0; }
+.list-card.in-directory .numbers { display: flex; flex-wrap: wrap; gap: 0 var(--s-1); margin: 0; }
+.list-card.in-directory .numbers [data-list-followers]::before { content: "·"; margin-right: var(--s-1); }
+.list-card.in-directory .follow-line { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: auto 0 0; padding-top: var(--s-2); min-height: 0; }
+.list-card.in-directory .follow-line:not(:has(> .follow:not([hidden]), > .said:not(:empty))) { display: none; }
 .list-card.in-directory .follow-line .said { flex-basis: 100%; }
 .list-card.in-directory .follow-line .said:empty { display: none; }
 .collections .crumbs { margin-top: var(--s-5); }

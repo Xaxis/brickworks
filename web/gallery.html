@@ -66,7 +66,9 @@
 .search { position: relative; flex: 1 1 200px; max-width: 480px; margin-left: auto; }
 .search input { width: 100%; padding-left: 40px; }
 .search .icon { position: absolute; left: 12px; top: 12px; color: var(--ink-faint); pointer-events: none; }
-.gallery-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); border-bottom: 1px solid var(--line); }
+/* Its tabs scroll inside themselves on a phone: without min-width the grid's
+   column grew to all four tabs and Top's time, and the page scrolled sideways. */
+.gallery-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-width: 0; border-bottom: 1px solid var(--line); }
 .gallery-bar .tabs { flex: 1; margin: 0; border-bottom: 0; }
 .gallery-bar .window { flex: none; }
 .gallery-filters { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }

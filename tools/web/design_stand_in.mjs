@@ -1942,7 +1942,7 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
       return route.fulfill({ status: said.status, contentType: "application/json", body: asProject(JSON.stringify(said.json)) });
     }
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
-    if (/^\/(m|u|c)\//.test(url.pathname)) {
+    if (/^\/(m|u|c)\//.test(url.pathname) || /^\/collections\/?$/.test(url.pathname)) {
       const made = await serverPage(api, url.pathname + url.search);
       // With the security policy the server sends with it. A picture the
       // server makes (/m/X.cutout.png) as the bytes and type it answered:
