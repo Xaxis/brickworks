@@ -775,13 +775,15 @@ details.qa > div p { margin: 0 0 10px; }
 
 /* -- the foot ------------------------------------------------------
    One footer on every page (web/_shell.html): the mark and a row of
-   links, then the notices, quiet but whole (docs/TRADEMARKS.md). */
+   links, then the notices, quiet but whole (docs/TRADEMARKS.md). The
+   links 12 px apart: at 16 the tenth, Collections, put the Theme choice on
+   a row of its own at 1280 px, every page a row taller. */
 
 .site-foot { border-top: 1px solid var(--line); padding: var(--s-6) 0 var(--s-7); color: var(--ink-faint); background: var(--bg-soft); }
 .foot-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3) var(--s-5); margin-bottom: var(--s-4); }
 .foot-top .mark { font-size: var(--t-body); }
 .foot-top .chip { width: 22px; height: 22px; }
-.foot-links { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); margin-left: auto; }
+.foot-links { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-3); margin-left: auto; }
 .foot-links a { color: var(--ink-soft); text-decoration: none; font-size: var(--t-small); padding: 6px 0; }
 .foot-links a:hover { color: var(--ink); text-decoration: underline; }
 .legal p { margin: 0 0 6px; max-width: 110ch; font-size: var(--t-micro); line-height: 1.6; }
