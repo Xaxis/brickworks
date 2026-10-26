@@ -217,10 +217,11 @@ can occupy the same millimetre.
   `Stability.contacts` compares each pair of parts once, both ways
   (`BrickLattice.shared_lifted`: what rests on each and what the two share
   as they stand, a turned cover's slices against the other's z by z where
-  the slices' spans meet, a box only against the other's bound): on the Cat
-  D11, its motors' cables 2,891 turned segments, the graph took 18.3 s and
-  takes 3-6 s, the same graph to the cell on four sets; `stability_probe`
-  holds every way of counting to box against box on Orthanc's turned parts.
+  the slices' spans meet, indexed by z, a box only against the other's
+  bound): on the Cat D11, its motors' cables 2,891 turned segments, the
+  graph took 19-21 s and takes under 5 s at load 40, the same graph to the
+  cell on four sets; `stability_probe` holds every way of counting to box
+  against box on Orthanc's turned parts.
 - `balance` (`src/assembly/balance.gd`, pure; docs/MECHANISMS.md §4, phase S1):
   whether the model stands on what it stands on, by how much, and which stud
   joint gives first. The support polygon is the hull of every box within half
@@ -341,9 +342,13 @@ can occupy the same millimetre.
   (`Joints._knuckles`: 4275b's fingers and 4276b's), held both ways and
   forgiving nothing. Each round's ends go in every box (`KNUCKLE_BOX`, 4
   LDU) they could meet a knuckle's end in, and a knuckle looks at a part only
-  when a round of it ends by both of its ends: the Cat D11's 25,602 cable
-  wires took 23.6 s in stud-sized boxes and take 1.8 s, the same joints on
-  eight sets with old hinges. Joints are matched where a part is: one read off the
+  when a round of it ends by both of its ends; a round 2 LDU long or less
+  is neither a knuckle nor a finger (`KNUCKLE_SHORTEST`: it cannot be told
+  from the slack at its ends), which leaves out a cable LDraw draws as 1 LDU
+  wires; and a shaft is compared only with bores of its family and size to a
+  whole LDU. The Cat D11's round joints (25,602 knuckle-sized rounds, nearly
+  all its cables' wires) took 22-27 s and take under 2 s, the same knuckles
+  on nine sets with old hinges and the same joints and zones on seven. Joints are matched where a part is: one read off the
   world and not moved by the edit, in a section or not, is checked where it
   stands, its cover and studs as well as its joints (`Assistant._joined_at`). Read square, a hand
   turned 45 degrees in its arm had its peg nowhere near the arm's socket, so

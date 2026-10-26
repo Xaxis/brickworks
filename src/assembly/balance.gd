@@ -689,7 +689,7 @@ func _links() -> Array:
 		var listed: Array = _pin_lines.get(key, [])
 		listed.append([str(one[2]), one[3], one[4], int(one[0])])
 		_pin_lines[key] = listed
-	for held: Dictionary in [Joints.both_ways(entries, lines), Joints.rounds(entries),
+	for held: Dictionary in [Joints.both_ways(entries, lines), Joints.rounds(entries, false),
 			Joints.held_otherwise(entries, library)]:
 		for one: Variant in held:
 			for other: Variant in held[one]:
@@ -1167,10 +1167,13 @@ func _find_bridges(boxes: Dictionary) -> void:
 			continue
 		if _edge_stud[int(e)] == 0:
 			# A pin's or an axle's: weighed where its lines are known (pins and
-			# axles found here, not handed in), as a friction pin slips.
-			var a: int = _ids[_edge_a[int(e)]]
-			var b: int = _ids[_edge_b[int(e)]]
-			var on: Array = _pin_lines.get(Vector2i(mini(a, b), maxi(a, b)), [])
+			# axles found here, not handed in), as a friction pin slips. The
+			# floor's node, past the parts', has none.
+			var on: Array = []
+			if _edge_a[int(e)] < _ids.size() and _edge_b[int(e)] < _ids.size():
+				var a: int = _ids[_edge_a[int(e)]]
+				var b: int = _ids[_edge_b[int(e)]]
+				on = _pin_lines.get(Vector2i(mini(a, b), maxi(a, b)), [])
 			if on.is_empty():
 				_held_otherwise[_bridge_edges[e]] = true
 				continue

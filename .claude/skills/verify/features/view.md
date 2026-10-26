@@ -471,8 +471,10 @@ picture the assistant is shown.
   A joint pins or axles alone make is weighed too (Balance's pins: "on a
   friction pin", "on an axle keyed in its hole"), and its words and the
   brace request say so. On the Cat D11 (6,793 parts drawn) Stress took 47 s
-  and listed 14 joints, every one on studs (walk256's D12); it takes under
-  10 s and weighs 146, 125 of them pins or axles (`technic_stress_probe`).
+  and listed 14 joints, every one on studs (walk256's D12); it takes 7-9 s
+  at load 35-50 (`technic_stress_probe`, under 10) and weighs 146, 125 of
+  them pins or axles; `weakest_joints` answered in 11.6 s in the app at load
+  49.
   Known gaps: a part standing on the floor or a baseplate is held by the
   floor, so a tower's foot is not weighed; a clip, hinge, ball or turntable
   is not weighed. `tools/probe.sh stress_probe` (hand-worked cantilevers, a bonded

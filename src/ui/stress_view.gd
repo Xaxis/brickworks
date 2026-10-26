@@ -335,7 +335,7 @@ static func said(weighed: Stability.Report, world: BrickWorld, library: PartLibr
 			+ "edge each would turn on (1 N a stud working, about 3 N lets go); on pins or axles "
 			+ "in a line, turned about it (a friction pin about 0.75 N·cm working, 1 slips; a "
 			+ "frictionless one nothing); an axle keyed in its hole or pins on two lines, held "
-			+ "square. The weakest:") % [
+			+ "square; the weakest:") % [
 			all, "" if all == 1 else "s"])
 	# A piece on a touch past where it touches first: it falls.
 	for risk: Stability.Risk in weighed.risks:

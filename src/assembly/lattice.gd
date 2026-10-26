@@ -854,6 +854,9 @@ static func shared_lifted(a: PackedInt32Array, slices_a: Array,
 		b: PackedInt32Array, slices_b: Array = []) -> Vector3i:
 	if a.is_empty() or b.is_empty():
 		return Vector3i.ZERO
+	# A few boxes against a few: every pair is fewer steps than the bounds.
+	if slices_a.is_empty() and slices_b.is_empty() and a.size() * b.size() <= FEW_PAIRS * 36:
+		return _meet_every(a, b)
 	var bound_a: PackedInt32Array = slices_a[2] if not slices_a.is_empty() else _bound_of(a)
 	var bound_b: PackedInt32Array = slices_b[2] if not slices_b.is_empty() else _bound_of(b)
 	if not _may_meet(bound_a, 0, bound_b, 0):
@@ -861,38 +864,34 @@ static func shared_lifted(a: PackedInt32Array, slices_a: Array,
 	if slices_a.is_empty() and slices_b.is_empty():
 		return _meet_all(a, _reaching(a, _every(a), bound_b), b, _reaching(b, _every(b), bound_a))
 	if slices_b.is_empty():
-		return _across(b, _every(b), false, a, slices_a, bound_a, true)
+		return _across(b, _every(b), false, a, slices_a, bound_a,
+			_reaching(a, slices_a[1], bound_b))
 	if slices_a.is_empty():
-		return _across(a, _every(a), true, b, slices_b, bound_b, true)
+		return _across(a, _every(a), true, b, slices_b, bound_b,
+			_reaching(b, slices_b[1], bound_a))
 	# Slice against slice at each z both have, then what is deeper than a
 	# slice against the rest: each pair of boxes once.
-	var a_by_z: Dictionary = slices_a[0]
-	var b_by_z: Dictionary = slices_b[0]
-	var lo: int = maxi(bound_a[2], bound_b[2])
-	var hi: int = mini(bound_a[5], bound_b[5])
-	var fewer: Dictionary = a_by_z if a_by_z.size() <= b_by_z.size() else b_by_z
+	var a_rows: Array = slices_a[0]
+	var b_rows: Array = slices_b[0]
+	var a_spans: PackedInt32Array = slices_a[3]
+	var b_spans: PackedInt32Array = slices_b[3]
 	var out := Vector3i.ZERO
-	var zs: Array = range(lo, hi) if hi - lo <= fewer.size() else fewer.keys()
-	for z: int in zs:
-		if z < lo or z >= hi:
-			continue
-		var mine: Variant = a_by_z.get(z)
-		if mine == null:
-			continue
-		var theirs: Variant = b_by_z.get(z)
-		if theirs == null:
-			continue
+	for z: int in range(maxi(bound_a[2], bound_b[2]), mini(bound_a[5], bound_b[5])):
+		var at_a: int = z - bound_a[2]
+		var at_b: int = z - bound_b[2]
 		# Two parts' slices at a z, side by side, not touching: the bounds
 		# of their turned covers meet far more often than the covers do.
-		var span_a: PackedInt32Array = slices_a[3][z]
-		var span_b: PackedInt32Array = slices_b[3][z]
-		if span_a[0] < span_b[2] and span_b[0] < span_a[2] \
-				and span_b[1] <= span_a[3] and span_a[1] <= span_b[3]:
-			out += _meet_all(a, mine, b, theirs)
-	if not (slices_a[1] as PackedInt32Array).is_empty():
-		out += _across(a, _reaching(a, slices_a[1], bound_b), true, b, slices_b, bound_b, true)
-	if not (slices_b[1] as PackedInt32Array).is_empty():
-		out += _across(b, _reaching(b, slices_b[1], bound_a), false, a, slices_a, bound_a, false)
+		var i: int = at_a * 4
+		var j: int = at_b * 4
+		if a_spans[i] < b_spans[j + 2] and b_spans[j] < a_spans[i + 2] \
+				and b_spans[j + 1] <= a_spans[i + 3] and a_spans[i + 1] <= b_spans[j + 3]:
+			out += _meet_all(a, a_rows[at_a], b, b_rows[at_b])
+	var a_deeper: PackedInt32Array = _reaching(a, slices_a[1], bound_b)
+	var b_deeper: PackedInt32Array = _reaching(b, slices_b[1], bound_a)
+	if not a_deeper.is_empty():
+		out += _across(a, a_deeper, true, b, slices_b, bound_b, b_deeper)
+	if not b_deeper.is_empty():
+		out += _across(b, b_deeper, false, a, slices_a, bound_a, PackedInt32Array())
 	return out
 
 
@@ -948,37 +947,56 @@ static func _meet_all(a: PackedInt32Array, mine: PackedInt32Array,
 	return Vector3i(lifted, standing, other)
 
 
+## Pairs of boxes up to which [method shared_lifted] compares every one.
+const FEW_PAIRS := 16
+
+
+## [method _meet_all] of every box of each.
+static func _meet_every(a: PackedInt32Array, b: PackedInt32Array) -> Vector3i:
+	var lifted: int = 0
+	var standing: int = 0
+	var other: int = 0
+	var j: int = 0
+	while j < b.size():
+		var i: int = 0
+		while i < a.size():
+			var wide: int = mini(a[i + 3], b[j + 3]) - maxi(a[i], b[j])
+			if wide > 0 and b[j + 1] <= a[i + 4] and a[i + 1] <= b[j + 4]:
+				var deep: int = mini(a[i + 5], b[j + 5]) - maxi(a[i + 2], b[j + 2])
+				if deep > 0:
+					lifted += wide * deep * maxi(0,
+						mini(a[i + 4] + 1, b[j + 4]) - maxi(a[i + 1] + 1, b[j + 1]))
+					standing += wide * deep * maxi(0,
+						mini(a[i + 4], b[j + 4]) - maxi(a[i + 1], b[j + 1]))
+					other += wide * deep * maxi(0,
+						mini(b[j + 4] + 1, a[i + 4]) - maxi(b[j + 1] + 1, a[i + 1]))
+			i += 6
+		j += 6
+	return Vector3i(lifted, standing, other)
+
+
 ## [param offsets] of [param outer]'s boxes against [param inner]'s slices
-## ([param slices], its bound [param bound]) at each z they span, and with
-## [param deeper] against its deeper boxes too; [param outer_is_a]: whether
-## [param outer] is [method shared_lifted]'s a.
+## ([param slices], its bound [param bound]) at each z they span, and
+## against [param deep_ones], those of its deeper boxes to compare; [param
+## outer_is_a]: whether [param outer] is [method shared_lifted]'s a.
 static func _across(outer: PackedInt32Array, offsets: PackedInt32Array, outer_is_a: bool,
 		inner: PackedInt32Array, slices: Array, bound: PackedInt32Array,
-		deeper: bool) -> Vector3i:
-	var by_z: Dictionary = slices[0]
-	var spans: Dictionary = slices[3]
-	var deep_ones: PackedInt32Array = slices[1] if deeper else PackedInt32Array()
+		deep_ones: PackedInt32Array) -> Vector3i:
+	var rows: Array = slices[0]
+	var spans: PackedInt32Array = slices[3]
 	var out := Vector3i.ZERO
 	var one := PackedInt32Array([0])
 	for j: int in offsets:
 		if not _may_meet(outer, j, bound, 0):
 			continue
 		one[0] = j
-		var lo_z: int = maxi(outer[j + 2], bound[2])
-		var hi_z: int = mini(outer[j + 5], bound[5])
-		var zs: Array = range(lo_z, hi_z) if hi_z - lo_z <= by_z.size() else by_z.keys()
-		for z: int in zs:
-			if z < lo_z or z >= hi_z:
+		for z: int in range(maxi(outer[j + 2], bound[2]), mini(outer[j + 5], bound[5])):
+			var at: int = (z - bound[2]) * 4
+			if outer[j] >= spans[at + 2] or spans[at] >= outer[j + 3] \
+					or spans[at + 1] > outer[j + 4] or outer[j + 1] > spans[at + 3]:
 				continue
-			var here: Variant = by_z.get(z)
-			if here == null:
-				continue
-			var span: PackedInt32Array = spans[z]
-			if outer[j] >= span[2] or span[0] >= outer[j + 3] \
-					or span[1] > outer[j + 4] or outer[j + 1] > span[3]:
-				continue
-			out += _meet_all(outer, one, inner, here) if outer_is_a \
-				else _meet_all(inner, here, outer, one)
+			out += _meet_all(outer, one, inner, rows[z - bound[2]]) if outer_is_a \
+				else _meet_all(inner, rows[z - bound[2]], outer, one)
 		if not deep_ones.is_empty():
 			out += _meet_all(outer, one, inner, deep_ones) if outer_is_a \
 				else _meet_all(inner, deep_ones, outer, one)
@@ -986,35 +1004,42 @@ static func _across(outer: PackedInt32Array, offsets: PackedInt32Array, outer_is
 
 
 ## Boxes a cell deep, by the z they are at, and the deeper ones apart:
-## [Dictionary z -> offsets into [param packed], PackedInt32Array of the
-## other offsets, their bound (_bound_of), Dictionary z -> where that z's
-## slice spans in x and y, [low x, low y, high x, high y]]. For [method
-## shared_lifted].
+## [Array, by z from the bound's lowest, of the offsets into [param packed]
+## of the boxes a cell deep there; PackedInt32Array of the other offsets;
+## their bound (_bound_of); PackedInt32Array, four a z, of where that z's
+## slice spans in x and y, low x, low y, high x, high y, and nothing (low
+## past high) where there is none]. For [method shared_lifted]: indexed by
+## z, not looked up in a Dictionary, as it is asked every z two parts share.
 static func slices_of(packed: PackedInt32Array) -> Array:
-	var by_z: Dictionary = {}
-	var spans: Dictionary = {}
+	var bound: PackedInt32Array = _bound_of(packed)
+	var depth: int = bound[5] - bound[2] if not bound.is_empty() else 0
+	var rows: Array = []
+	rows.resize(depth)
+	for k: int in depth:
+		rows[k] = PackedInt32Array()
+	var spans := PackedInt32Array()
+	spans.resize(depth * 4)
+	for k: int in depth:
+		spans[k * 4] = 0x7FFFFFFF
+		spans[k * 4 + 1] = 0x7FFFFFFF
+		spans[k * 4 + 2] = -0x7FFFFFFF
+		spans[k * 4 + 3] = -0x7FFFFFFF
 	var deep := PackedInt32Array()
 	var n: int = 0
 	while n < packed.size():
-		var z: int = packed[n + 2]
-		if packed[n + 5] - z == 1:
-			var at: PackedInt32Array = by_z.get(z, PackedInt32Array())
+		if packed[n + 5] - packed[n + 2] == 1:
+			var k: int = packed[n + 2] - bound[2]
+			var at: PackedInt32Array = rows[k]
 			at.append(n)
-			by_z[z] = at
-			var span: Variant = spans.get(z)
-			if span == null:
-				spans[z] = PackedInt32Array([packed[n], packed[n + 1], packed[n + 3], packed[n + 4]])
-			else:
-				var wider: PackedInt32Array = span
-				wider[0] = mini(wider[0], packed[n])
-				wider[1] = mini(wider[1], packed[n + 1])
-				wider[2] = maxi(wider[2], packed[n + 3])
-				wider[3] = maxi(wider[3], packed[n + 4])
-				spans[z] = wider
+			rows[k] = at
+			spans[k * 4] = mini(spans[k * 4], packed[n])
+			spans[k * 4 + 1] = mini(spans[k * 4 + 1], packed[n + 1])
+			spans[k * 4 + 2] = maxi(spans[k * 4 + 2], packed[n + 3])
+			spans[k * 4 + 3] = maxi(spans[k * 4 + 3], packed[n + 4])
 		else:
 			deep.append(n)
 		n += 6
-	return [by_z, deep, _bound_of(packed), spans]
+	return [rows, deep, bound, spans]
 
 
 ## The lowest and highest cell a set of boxes covers, as [low, high].

@@ -325,9 +325,13 @@ func contacts(bricks: Array) -> Dictionary:
 		boxes_of[brick.id] = mine
 		if mine.is_empty():
 			continue
-		var lid: PackedInt32Array = BrickLattice.moved_by(
-			mine, Vector3i(0, 1, 0))
 		var slices: Array = _sliced(sliced, brick.id, mine)
+		# The lattice asked by the bound of its boxes lifted a cell, which is
+		# all it reads of them.
+		var bound: PackedInt32Array = slices[2] if not slices.is_empty() \
+			else BrickLattice._bound_of(mine)
+		var lid := PackedInt32Array([bound[0], bound[1] + 1, bound[2], bound[3], bound[4] + 1,
+			bound[5]])
 		for over: int in lattice.near_bounds(lid, brick.id):
 			# Skipping pairs whose boxes already overlap was tried, on
 			# the theory that a part inside another is not resting on
