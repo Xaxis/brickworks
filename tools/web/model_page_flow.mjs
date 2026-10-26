@@ -326,7 +326,10 @@ try {
 
             // 8. The tabs.
             const tabNames = seen.tabs.map((t) => t.replace(/ [\d,]+$/, ""));
-            const wantNames = ["About", "Comments", "Builds", "Remixes", "Versions"].slice(0, tabNames.includes("Versions") ? 5 : 4);
+            // Collections once it is in a public one (api/share.js pageTabs):
+            // the gallery's first model was put in one (6416, 2026-10-26).
+            const wantNames = ["About", "Comments", "Builds", "Remixes", "Collections", "Versions"]
+              .filter((n) => !["Collections", "Versions"].includes(n) || tabNames.includes(n));
             check(`${label}: the tabs say ${seen.tabs.join(" | ")}`, one.tabs ? JSON.stringify(seen.tabs) === JSON.stringify(one.tabs)
               : JSON.stringify(tabNames) === JSON.stringify(wantNames) || JSON.stringify(tabNames) === JSON.stringify(wantNames.filter((n) => n !== "Comments")));
 
