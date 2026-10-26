@@ -22,7 +22,7 @@
 .model-page .media { grid-area: picture; min-width: 0; }
 .model-page .side { grid-area: side; position: sticky; top: 84px; min-width: 0; }
 .model-page .rest { grid-area: rest; min-width: 0; }
-@media (max-width: 900px) {
+@media (width < 900px) {
 	.model-page { padding-top: 12px; }
 	.model-page .crumbs { margin-bottom: 10px; }
 	.model-page .top { grid-template-columns: minmax(0, 1fr); grid-template-areas: "picture" "side" "rest"; gap: 16px; }
@@ -78,7 +78,7 @@
 .media-strip .thumb.add:hover { color: var(--ink); border-color: var(--ink-faint); }
 .media-strip .thumb.add[hidden] { display: none; }
 .model-page .picture.photo img { object-fit: contain; background: var(--bg-soft); }
-@media (max-width: 600px) { .media-strip .thumb { width: 80px; height: 60px; } }
+@media (width < 600px) { .media-strip .thumb { width: 80px; height: 60px; } }
 
 /* The page's tabs (api/share.js pageTabs): the kit's .tabs, kept on screen
    under the header as the page scrolls past its parts. */
@@ -114,7 +114,7 @@
 .action-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0; }
 .action-bar .more-menu { margin-left: auto; }
 /* On a phone, one row across the column, More at its end. */
-@media (max-width: 600px) { .action-bar { gap: var(--s-1); justify-content: space-between; } .action-bar .more-menu { margin-left: 0; } }
+@media (width < 600px) { .action-bar { gap: var(--s-1); justify-content: space-between; } .action-bar .more-menu { margin-left: 0; } }
 .save-panel {
 	margin-top: 10px; max-width: 420px; padding: 12px; border-radius: var(--r-3);
 	border: 1px solid var(--line); background: var(--panel); display: grid; gap: 8px;
@@ -125,15 +125,15 @@
 
 /* What comes next: more by its designer, similar models, a row each. */
 .model-page .next { margin-top: var(--section); max-width: none; }
-.model-page .next h2 { font-size: var(--t-h2); margin: 0 0 12px; overflow-wrap: anywhere; }
+.model-page .next h2 { margin: 0 0 12px; overflow-wrap: anywhere; }
 .model-page .next h2 a { color: inherit; }
 
 .model-page section { margin-top: 34px; max-width: 72ch; }
 .model-page .rest > section:first-of-type { margin-top: 12px; }
 /* Gone to from the action bar: clear of the header, which stays on screen. */
 .model-page section { scroll-margin-top: 84px; }
-.model-page section h2 { font-size: var(--t-h3); margin: 0 0 8px; }
-.model-page section h3 { font-size: var(--t-small); margin: 16px 0 8px; color: var(--ink-soft); font-weight: 600; }
+.model-page section h2 { margin: 0 0 var(--s-2); }
+.model-page section h3 { margin: var(--s-4) 0 var(--s-2); }
 .model-page .tags { margin: 18px 0 0; }
 .model-page .description { margin: 0; white-space: pre-line; overflow-wrap: anywhere; color: var(--ink); }
 .model-page .licence h3 { margin-top: 18px; }
@@ -156,7 +156,6 @@
 }
 .model-page .version-note p { margin: 0; }
 .model-page .versions .kept { margin: 0 0 10px; color: var(--ink-soft); }
-.model-page .versions .lots summary { cursor: pointer; color: var(--ink-soft); }
 .model-page .versions .lots ul { margin: 6px 0 0; padding-left: 22px; color: var(--ink-soft); }
 .model-page .earlier { margin: 0; padding-left: 22px; color: var(--ink-soft); }
 .model-page .earlier li { margin: 4px 0; overflow-wrap: anywhere; }
@@ -204,7 +203,7 @@
 .person .lists a { color: var(--ink); font-weight: 600; }
 .person .lists span { color: var(--ink-faint); font-size: var(--t-small); margin-left: 6px; }
 .profile-form { display: grid; gap: 12px; max-width: 560px; margin: 8px 0 0; }
-.profile-form h2 { font-size: var(--t-h3); margin: 0; }
+.profile-form h2 { margin: 0; }
 .profile-form .hint { font-size: var(--t-tiny); color: var(--ink-faint); }
 .profile-form .hint b { color: var(--ink-soft); }
 .said { color: var(--ink-soft); font-size: var(--t-small); min-height: 1em; margin: 6px 0 0; }
@@ -213,7 +212,6 @@
 .list-top { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; }
 .list-top small { color: var(--ink-faint); }
 .list-mine details { margin-top: 8px; }
-.list-mine summary { cursor: pointer; color: var(--ink-soft); font-size: var(--t-small); }
 .list-mine .models { margin-top: 10px; }
 
 /* Report it, on a model's, a profile's and a collection's page
@@ -299,7 +297,7 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 .model-page .comment-new .actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .model-page .comment-new .note, .model-page .comment-why .note { margin: 0; }
 .model-page .comment-why { margin-top: 14px; display: grid; gap: 8px; justify-items: start; }
-@media (max-width: 520px) {
+@media (width < 600px) {
 	.model-page .comment { gap: 10px; padding: 10px 12px; }
 	.model-page .replies { padding-left: 10px; }
 }
@@ -345,7 +343,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	grid-area: rail; min-width: 0; align-self: start; padding: var(--s-4) var(--s-4) var(--s-2);
 	border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
 }
-.feed-rail h2 { margin: 0 0 var(--s-2); font-size: var(--t-h3); }
+.feed-rail h2 { margin: 0 0 var(--s-2); }
 .feed-page .latest { grid-area: latest; min-width: 0; margin: 0; }
 .feed-page .section-head {
 	display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-1) var(--s-4);
@@ -355,8 +353,8 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .feed-page .section-head a { color: var(--ink-soft); font-size: var(--t-small); }
 .feed-page .latest h3 { margin: var(--s-6) 0 var(--s-3); font-size: var(--t-h3); }
 .feed-page .latest .build-grid { columns: 2 150px; }
-@media (min-width: 700px) { .feed-page .latest .build-grid { columns: 3 180px; } }
-@media (min-width: 1100px) {
+@media (width >= 600px) { .feed-page .latest .build-grid { columns: 3 180px; } }
+@media (width >= 1200px) {
 	.feed-layout.with-rail {
 		grid-template-columns: minmax(0, 1fr) 320px; column-gap: var(--s-7);
 		grid-template-areas: "main rail" "latest rail";
@@ -382,7 +380,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .notice.unread { border-color: var(--accent-edge); }
 .notice .pic { display: block; aspect-ratio: 4 / 3; overflow: hidden; border-radius: var(--r-2); background: var(--picture-ground); }
 .notice .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
-.notice h2 { display: flex; align-items: center; gap: var(--s-2); margin: 2px 0 var(--s-2); font-size: var(--t-body); }
+.notice h2 { display: flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-2); }
 .notice h2 a { color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
 .notice h2 a:hover { text-decoration: underline; }
 .notice .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--accent-edge); }
@@ -396,7 +394,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .notice .what .pill { margin-left: 2px; }
 .notice .what q { display: block; margin-top: 2px; color: var(--ink-soft); }
 .notice .what time { display: block; margin-top: 2px; color: var(--ink-faint); font-size: var(--t-tiny); }
-@media (max-width: 600px) {
+@media (width < 600px) {
 	.notice { grid-template-columns: 76px minmax(0, 1fr); gap: var(--s-3); }
 }
 
@@ -431,7 +429,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	margin: 0 0 30px; padding: 16px 18px 18px; border: 1px dashed var(--ink-faint); border-radius: var(--radius);
 	background: var(--bg-soft); max-width: 100%; min-width: 0;
 }
-.designs h2 { font-size: var(--t-h3); margin: 0 0 4px; }
+.designs h2 { margin: 0 0 4px; }
 .designs .private { margin: 0 0 12px; font-size: var(--t-small); color: var(--ink-soft); max-width: 72ch; }
 .designs .note { margin-top: 4px; }
 .designs .mine-totals { margin-bottom: 4px; }
@@ -444,8 +442,8 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .design-row .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .design-row .pic.none { display: grid; place-items: center; color: var(--ink-faint); font-size: var(--t-tiny); }
 .design-main { min-width: 0; }
-.design-main h3 { margin: 0; font-size: var(--t-body); overflow-wrap: anywhere; }
-.design-main h3 a { color: var(--ink); }
+.design-main h3 { margin: 0; overflow-wrap: anywhere; }
+.design-main h3 a { color: var(--ink); padding-block: 6px; }
 .design-meta { margin: 2px 0 0; font-size: var(--t-tiny); color: var(--ink-faint); }
 .design-numbers { margin: 10px 0 0; display: grid; gap: 8px 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .design-numbers dt { font-size: var(--t-tiny); color: var(--ink-faint); }
@@ -457,7 +455,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .design-builders .build-strip .build { width: min(200px, 60vw); }
 .design-builders .build-strip .build img { height: 140px; }
 .design-builders figcaption a { font-weight: 600; }
-@media (max-width: 620px) {
+@media (width < 600px) {
 	.design-row { grid-template-columns: minmax(0, 1fr); }
 	.design-row .pic { max-width: 220px; }
 	.design-numbers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -505,14 +503,14 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .profile .standing { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-5); margin: 0 0 var(--s-4); }
 .profile .standing .numbers, .profile .standing .awards { margin: 0; }
 .profile .pinned { margin-top: var(--s-6); }
-.profile .pinned h2, .profile .follows h2, .profile .tab-panel h2 { font-size: var(--t-h3); margin: 0 0 var(--s-3); }
+.profile .pinned h2, .profile .follows h2, .profile .tab-panel h2 { margin: 0 0 var(--s-3); }
 .profile .work { margin-top: var(--s-6); }
 .profile .tab-panel > section:first-child { margin-top: 0; }
 .profile .paging { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-5); margin: var(--s-5) 0 0; }
 .profile .paging a:not(.cta) { color: var(--ink-soft); }
 .profile .follows { margin-top: var(--s-7); }
 .profile .follows .pill .avatar { margin-left: -6px; }
-@media (max-width: 640px) {
+@media (width < 600px) {
 	.profile .banner { aspect-ratio: 2 / 1; }
 	.profile-head { grid-template-columns: auto minmax(0, 1fr); }
 	.profile-head .avatar.huge { width: 80px; height: 80px; font-size: var(--t-h2); }
@@ -597,7 +595,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .list-head .acts { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); }
 .list-head .follow-line { margin: 0; }
 .list-head .follow-line .said:empty { display: none; }
-@media (max-width: 640px) {
+@media (width < 600px) {
 	.list-head { grid-template-columns: minmax(0, 1fr); gap: var(--s-4); }
 	.list-head .mosaic { aspect-ratio: 2 / 1; }
 }

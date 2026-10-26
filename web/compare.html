@@ -61,7 +61,7 @@
 .point .them { margin-top: 12px; font-size: var(--t-small); color: var(--ink-faint); }
 .shot img, .shot video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; background: var(--bg-soft); }
 .shot video:not([controls]) { cursor: pointer; }
-@media (max-width: 760px) {
+@media (width < 900px) {
 	.point { grid-template-columns: 1fr; }
 	.point:nth-child(even) .shot { order: 0; }
 }

@@ -83,7 +83,7 @@
 	   used to size its own titles, from 26 to 74 px. */
 	--t-display: clamp(40px, 6.6vw, 68px);
 	--t-h1: clamp(32px, 4.6vw, 46px);
-	--t-h2: clamp(23px, 2.8vw, 30px);
+	--t-h2: clamp(22px, 2.4vw, 26px);
 	--t-h3: 18px;
 	--t-lede: clamp(17px, 1.9vw, 19px);
 	--t-body: 16px;
@@ -196,10 +196,22 @@ a:focus-visible { border-radius: var(--r-1); }
 /* The mark (web/icon.svg): a cube with a corner cut away. The .chip every
    page's header has, so a page shows it with no markup of its own. */
 .chip { width: 26px; height: 26px; flex: none; background: url(/icon.svg) center / contain no-repeat; }
+/* In the bar everything is a finger's 44 px: the mark, the links, Open the
+   app (the regular .cta, not a size of its own: it was 42 px at 14.5),
+   Menu and your avatar's button. Where the bar has no room for the word
+   (a phone under about 390 px), the word wraps onto a second line the
+   mark's height hides, and the mark is the cube alone, its name still
+   "Brickworks": no breakpoint of its own, only the room the rest leaves. */
+.site-head .mark {
+	flex: 0 1 auto; min-width: 44px; height: var(--control-h); padding: 0 4px; overflow: hidden;
+	flex-wrap: wrap; align-content: flex-start; row-gap: 0; line-height: var(--control-h);
+}
+.site-head .mark .chip { margin-block: 9px; }
 .nav { margin-left: auto; display: flex; align-items: center; gap: 2px; }
-.nav a {
-	text-decoration: none; color: var(--ink-soft); font-size: var(--t-small);
-	padding: 8px 11px; border-radius: var(--r-2); white-space: nowrap;
+.nav a:not(.cta) {
+	display: inline-flex; align-items: center; min-height: var(--control-h);
+	text-decoration: none; color: var(--ink-soft); font-size: var(--t-body);
+	padding: 0 12px; border-radius: var(--r-2); white-space: nowrap;
 }
 .nav a:hover, .nav a[aria-current="page"] { color: var(--ink); background: var(--panel); }
 .nav .cta { margin-left: 8px; }
@@ -210,8 +222,9 @@ a:focus-visible { border-radius: var(--r-1); }
    not run inline anyway. */
 .menu { display: none; position: relative; }
 .menu summary {
-	list-style: none; cursor: pointer; padding: 8px 12px; border-radius: var(--control-radius);
-	border: 1px solid var(--line); font-size: var(--t-small); color: var(--ink);
+	list-style: none; cursor: pointer; display: inline-flex; align-items: center; min-height: var(--control-h);
+	padding: 0 14px; border-radius: var(--control-radius);
+	border: 1px solid var(--line); font-size: var(--t-body); color: var(--ink);
 }
 .menu summary::-webkit-details-marker { display: none; }
 .menu[open] summary { background: var(--panel); }
@@ -245,13 +258,13 @@ a:focus-visible { border-radius: var(--r-1); }
    nav's gap, as Menu is on a phone (.bar's gap). */
 .account-menu { margin-left: 10px; }
 .site-head .account-btn {
-	position: relative; display: inline-grid; place-items: center; padding: 0; border: 0;
-	border-radius: 50%; background: none; list-style: none; cursor: pointer;
+	position: relative; display: inline-grid; place-items: center; min-width: var(--control-h); min-height: var(--control-h);
+	padding: 0; border: 0; border-radius: 50%; background: none; list-style: none; cursor: pointer;
 }
 .site-head .account-btn::-webkit-details-marker { display: none; }
 .site-head .account-btn .avatar { width: 36px; height: 36px; font-size: var(--t-body); }
 .account-menu[open] .account-btn .avatar, .menu[open] .account-btn .avatar { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent-edge); }
-.site-head .account-btn .count { position: absolute; top: -5px; right: -7px; }
+.site-head .account-btn .count { position: absolute; top: -1px; right: -3px; }
 .account-menu .menu-list { min-width: 240px; }
 .menu-who { display: flex; align-items: center; gap: var(--s-3); margin: 0; padding: 8px 12px 10px; }
 .menu-who span { display: grid; min-width: 0; }
@@ -264,22 +277,18 @@ a:focus-visible { border-radius: var(--r-1); }
 /* Sign out last, a menu's button as any other, under a line. */
 .menu-list > :has(+ .sign-out) { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .menu-list > .sign-out { margin-top: 6px; }
-@media (max-width: 860px) {
-	.nav a:not(.cta), .nav .account-menu { display: none; }
-	.menu { display: block; }
-}
 /* On a phone the mark, Open the app and Menu fill the bar, and the last
    keeps the page's 16 px gutter (design_flow.mjs fails it closer): Open
    the app drops the margin that set it apart from the links Menu now
-   holds, and it and Menu give 2 px a side. Under 390 px there is no room
-   for the word as well, so the mark is the cube alone, a 44 px square
-   whose name is still "Brickworks", the word cut off by its box. */
-@media (max-width: 480px) {
-	.site-head .nav .cta { margin-left: 0; padding-inline: 12px; }
+   holds, the bar's gaps close to 8 px, and Open the app and Menu give a
+   little a side, so the word still fits at 390. A tablet has the laptop's
+   bar: it fits from 600 px. */
+@media (width < 600px) {
+	.nav a:not(.cta), .nav .account-menu { display: none; }
+	.menu { display: block; }
+	.site-head .bar { gap: var(--s-2); }
+	.site-head .nav .cta { margin-left: 0; padding-inline: 10px; }
 	.site-head .menu summary:not(.account-btn) { padding-inline: 10px; }
-}
-@media (max-width: 389px) {
-	.site-head .mark { flex: none; width: 44px; height: 44px; padding: 0 9px; overflow: hidden; }
 }
 
 /* -- buttons ------------------------------------------------------- */
@@ -303,7 +312,6 @@ a:focus-visible { border-radius: var(--r-1); }
 .cta.ghost[aria-pressed="true"] { border-color: var(--accent-edge); }
 .cta.small { min-height: 36px; padding: 5px 12px; font-size: var(--t-small); }
 .cta.big { min-height: 52px; padding: 13px 26px; font-size: var(--t-h3); border-radius: var(--control-radius); }
-.nav .cta { min-height: 38px; padding: 8px 14px; font-size: var(--t-small); }
 summary.cta { width: fit-content; list-style: none; }
 summary.cta::-webkit-details-marker { display: none; }
 button.link, a.link {
@@ -329,6 +337,8 @@ button.link:hover, a.link:hover { color: var(--ink); background: none; }
 }
 .segmented button:hover { color: var(--ink); background: var(--panel); }
 .segmented button[aria-pressed="true"] { color: var(--ink); background: var(--panel); border-color: var(--accent-edge); }
+/* On a phone its buttons are a finger's 44 px (the footer's theme too). */
+@media (width < 600px) { .segmented button { min-height: var(--control-h); } }
 /* Its words beside it: what is being chosen. */
 .theme-choice { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); font-size: var(--t-small); color: var(--ink-soft); }
 
@@ -393,7 +403,7 @@ dialog {
 	background: var(--panel); color: var(--ink); padding: 22px; box-shadow: var(--shadow);
 }
 dialog::backdrop { background: var(--scrim); }
-dialog h2 { font-size: var(--t-h3); margin: 0 0 6px; }
+dialog h2 { margin: 0 0 6px; }
 dialog p { color: var(--ink-soft); margin: 0 0 14px; }
 dialog form label { margin-bottom: 14px; }
 dialog .said { margin: 10px 0 0; color: var(--ink); min-height: 1em; }
@@ -410,14 +420,14 @@ dialog .when { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
    pills and a grid of cards, its steps counted in the eyebrow. */
 dialog.first-steps { width: min(640px, calc(100vw - 32px)); }
 dialog.first-steps .eyebrow { margin-bottom: var(--s-2); }
-dialog.first-steps h3 { margin: var(--s-5) 0 var(--s-2); font-size: var(--t-body); }
+dialog.first-steps h3 { margin: var(--s-5) 0 var(--s-2); }
 dialog.first-steps .face-row { display: flex; align-items: center; gap: var(--s-4); margin: 0 0 var(--s-4); }
 dialog.first-steps .face-row p { margin: 0; overflow-wrap: anywhere; }
 dialog.first-steps .face-row b { color: var(--ink); font-weight: 650; }
 dialog.first-steps .kinds { margin: 0 0 var(--s-5); }
 /* Six cards: three to a row in its width, two on a phone. */
 dialog.first-steps .models { margin: 0 0 var(--s-2); grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
-@media (max-width: 599px) { dialog.first-steps .models { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (width < 600px) { dialog.first-steps .models { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 dialog.first-steps .actions { margin-top: var(--s-5); }
 
 /* A person to follow (the feed's designers, First steps): their avatar,
@@ -462,6 +472,15 @@ h3 { margin: 0 0 6px; font-size: var(--t-h3); line-height: 1.3; letter-spacing: 
 .center { text-align: center; }
 .center .lede, .center .sub { margin-inline: auto; }
 
+/* -- targets -------------------------------------------------------
+   A link on a line of its own is a finger's target, 30-32 px (WCAG 2.5.8
+   asks 24; they were 16-22): padding above and below that an inline
+   link's line makes no room for, so its words stay where they were, or,
+   on a block, given back by a negative margin. A crumb, Older versions,
+   Version 1, a card's designer, a person to follow. */
+.crumbs a, .note a, .eyebrow a, .state a, .earlier a { padding-block: 6px; }
+.model a.who, .person-row .names a { padding-block: 4px; margin-block: -4px; }
+
 /* -- blocks -------------------------------------------------------- */
 
 main > section, .band { padding: var(--section) 0; }
@@ -479,7 +498,7 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 .page section { margin-top: var(--s-7); }
 .page section > h2:first-child { margin-top: 0; }
 .prose { max-width: 760px; }
-.prose h2 { font-size: var(--t-h3); margin: var(--s-6) 0 6px; letter-spacing: -0.01em; }
+.prose h2 { margin: var(--s-6) 0 var(--s-2); }
 .prose p { color: var(--ink-soft); margin: 0 0 var(--s-3); }
 .prose p b { color: var(--ink); font-weight: 620; }
 
@@ -586,7 +605,7 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 .model .tally .icon { width: 17px; height: 17px; }
 /* Two to a row on a phone: the words a step smaller, so a name, its
    designer and its numbers fit a card 170 px wide. */
-@media (max-width: 899px) {
+@media (width < 900px) {
 	.model b { font-size: var(--t-small); }
 	.model .by, .model .tally { font-size: var(--t-tiny); }
 	.model .acts { gap: var(--s-1) var(--s-2); }
@@ -734,10 +753,10 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 }
 .setting + .setting { border-top: 1px solid var(--line); }
 .setting .wide { grid-column: 1 / -1; }
-.setting h2 { font-size: var(--t-body); margin: 0 0 2px; }
+.setting h2 { margin: 0 0 var(--s-1); }
 .setting p { margin: 0 0 6px; color: var(--ink-soft); font-size: var(--t-small); max-width: 70ch; }
 .setting .actions .said { margin: 0; }
-@media (max-width: 600px) { .setting { grid-template-columns: minmax(0, 1fr); } }
+@media (width < 600px) { .setting { grid-template-columns: minmax(0, 1fr); } }
 .setting.danger summary { color: var(--bad); }
 .cta.danger, .cta.danger:hover { color: var(--bad); border-color: var(--bad); }
 .dot {
@@ -781,10 +800,17 @@ details.qa > div p { margin: 0 0 10px; }
 
 .site-foot { border-top: 1px solid var(--line); padding: var(--s-6) 0 var(--s-7); color: var(--ink-faint); background: var(--bg-soft); }
 .foot-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3) var(--s-5); margin-bottom: var(--s-4); }
-.foot-top .mark { font-size: var(--t-body); }
+.foot-top .mark { font-size: var(--t-body); min-height: var(--control-h); }
 .foot-top .chip { width: 22px; height: 22px; }
-.foot-links { display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-3); margin-left: auto; }
-.foot-links a { color: var(--ink-soft); text-decoration: none; font-size: var(--t-small); padding: 6px 0; }
+/* Its links a finger's 44 x 44: 6 px a side, so the words stay 12 px
+   apart (at 16 the tenth link wraps the Theme choice at 1280) and the
+   row starts on the page's edge. */
+.foot-links { display: flex; flex-wrap: wrap; margin: 0 -6px 0 auto; }
+.foot-links a {
+	display: inline-flex; align-items: center; justify-content: center; min-width: var(--control-h); min-height: var(--control-h);
+	padding: 0 6px; color: var(--ink-soft); text-decoration: none; font-size: var(--t-small);
+}
+@media (width < 600px) { .foot-links { margin-left: -6px; } }
 .foot-links a:hover { color: var(--ink); text-decoration: underline; }
 .legal p { margin: 0 0 6px; max-width: 110ch; font-size: var(--t-micro); line-height: 1.6; }
 .legal a { color: var(--ink-soft); }

@@ -861,7 +861,17 @@ plan with Claude as the client.
   that scrolls inside itself (the FAQ's dimensions, moved off its own
   copy), and `.table.wide`, /compare's field, whose row names stay in view
   as a phone scrolls it; design_flow and a11y_flow judge both on /faq and
-  /compare.
+  /compare. Since 2026-10-26 (site276) one size an h2 (`--t-h2`, now 22-26
+  px) and an h3 (`--t-h3` 18) wherever it is, which `design_flow` fails
+  otherwise (red on a planted `.prose h2 { font-size: var(--t-h3) }`);
+  four breakpoints, 600/900/1200/1600, in range form (`width < 600px`);
+  the header 44 px throughout (the regular `.cta`, Menu, the avatar's
+  button; the mark's word wraps out of sight where there is no room, no
+  389 px query) and from 600 px the laptop's; the footer's links and, under
+  600, every `.segmented` button 44; a link alone on its line 30-32 px by
+  padding (site.css "targets"). Measured with site273's scripts (copied to
+  site276's scratch): `report.mjs --bars` over `measure.mjs` at 320, 390
+  and 1280.
 - `model card` (`web/card.js`, 2026-10-22): one renderer, `cardHtml(model,
   {earned})`, a pure string function; `modelCard` parses it in the
   browser (gallery, landing strip, /profile), and the server's pages

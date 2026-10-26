@@ -845,7 +845,7 @@ ${rows.join("\n")}
 function testedMark(mark, counted = null) {
   if (!mark) return "";
   return `<details class="tested-mark" data-tested="yes"><summary class="pill good" title="${escapeHtml(mark.line)}">`
-    + `<span class="tick" aria-hidden="true">✓</span> Tested</summary><div class="tested-says">`
+    + `<span aria-hidden="true">✓</span> Tested</summary><div class="tested-says">`
     + `<ul>${mark.said.map((one) => `<li>${escapeHtml(one)}</li>`).join("")}</ul>`
     + `<p class="note">Worked out by the Brickworks app ${escapeHtml(mark.app)} as it was published, `
     + `building it by its own ${counted ? countSaid(counted) : count(mark.steps, "step")}.</p></div></details>`;
@@ -1288,7 +1288,7 @@ function versionsSection(id, versions, shown) {
       <span class="when">${when(shown.at)}</span></p>
     ${shown.note ? `<blockquote class="version-note"><p>${escapeHtml(shown.note)}</p></blockquote>` : ""}
     ${kept}
-    ${lots ? `<details class="lots"><summary>Part by part</summary><ul>${lots}</ul></details>` : ""}
+    ${lots ? `<details class="lots"><summary class="cta ghost small">Part by part</summary><ul>${lots}</ul></details>` : ""}
     ${others ? `<h3>${shown.n === newest ? "Earlier versions" : "The others"}</h3><ol class="earlier">${others}</ol>` : ""}
   </section>`;
 }
