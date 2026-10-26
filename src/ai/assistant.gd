@@ -3335,9 +3335,8 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# And what our own scored designs of the nearest subject did and
 			# were faulted for: asked once, with the subject, before building.
 			await DesignMemory.ensure(self)
-			await RealSnippets.ensure(self)
-			return [{"type": "text", "text": str(_how_real_sets_build_this(subject)["content"])
-				+ _sub_assemblies_for(subject)}] + DesignMemory.recall(subject)
+			return [{"type": "text", "text": str(_how_real_sets_build_this(subject)["content"])}] \
+				+ DesignMemory.recall(subject)
 		"look_at_model":
 			progress.emit("looking at what is already built")
 			return _describe_world(args)
@@ -18093,53 +18092,6 @@ func _how_real_sets_build_this(subject: String) -> Dictionary:
 		+ "the kind look like itself. Use these where the shape calls for "
 		+ "them — they are what a real designer reached for, not a list "
 		+ "to fill. Check a part with search_parts before placing it."}
-
-
-## Real sets' sub-assemblies for a subject, offered where a design first
-## asks how sets of its kind are built: a few built with a technique (hinged,
-## angled, curved, sideways, on brackets), each a different thing, said by
-## how it is built, with its id for place_technique, which lays it whole and
-## finds its hold in the model. Only 16 of 88 proof sessions placed any real
-## piece; the pieces they were shown came from find_techniques, which most
-## never called (design281). "" when the index has none.
-const OFFERED_PIECES := 3
-const BUILT_WITH := ["hinged", "angled", "curved", "sideways", "brackets", "sloped"]
-
-
-func _sub_assemblies_for(subject: String) -> String:
-	if not RealSnippets.available():
-		return ""
-	var rows := PackedStringArray()
-	var things: Dictionary = {}
-	for row: Variant in RealSnippets.search(subject, 0.0, [], 60, 1):
-		var entry: Dictionary = (row as Array)[1]
-		var heads: PackedStringArray = RealSnippets.first_heads(entry)
-		if heads.is_empty() or things.has(heads[0]) or not RealSnippets.holdable(entry) \
-				or int(entry["parts"]) < 6 or int(entry["parts"]) > 60:
-			continue
-		var built: bool = false
-		for kind: Variant in entry.get("kinds", []):
-			built = built or BUILT_WITH.has(str(kind))
-		if not built:
-			continue
-		things[heads[0]] = true
-		var text: String = str(entry.get("text", ""))
-		var how: String = text.get_slice(":", 1).strip_edges() if text.contains(":") else text
-		if how.length() > 120:
-			how = how.substr(0, how.rfind(" ", 120)) + "…"
-		var size: Array = entry["size"]
-		var others: int = RealSnippets.sizes_of(entry).size()
-		rows.append("  %s: %s — %s; %s x %s studs, %d parts%s" % [entry["id"],
-			text.get_slice(":", 0), how, _studs(float(size[0])), _studs(float(size[2])),
-			int(entry["parts"]), ", and at %d other sizes" % others if others > 0 else ""])
-		if rows.size() >= OFFERED_PIECES:
-			break
-	if rows.is_empty():
-		return ""
-	return ("\n\nSUB-ASSEMBLIES REAL SETS BUILT FOR IT\nEach as its set built it, "
-		+ "credited when laid. place_technique with the id and where it goes lays it whole "
-		+ "and finds the hold your model gives it, and says the same build at the sizes real "
-		+ "sets use it:\n" + "\n".join(rows))
 
 
 ## The kinds of real set [param subject]'s words are, where none is named

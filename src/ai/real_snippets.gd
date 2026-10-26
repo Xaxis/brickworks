@@ -349,6 +349,13 @@ static func heads_of(entry: Dictionary) -> Array:
 	var cut: RegExMatch = _CARRIES.search(head)
 	if cut != null and cut.get_start() > 0:
 		head = head.left(cut.get_start())
+	# "top-left of Boba Fett's helmet dome" is a top-left, not a dome; "row of
+	# windows" windows.
+	var of: RegExMatch = _OF.search(head)
+	if of != null:
+		var before: PackedStringArray = words(of.get_string(1))
+		head = of.get_string(2) if not before.is_empty() and COUNTED.has(before[-1]) \
+			else of.get_string(1)
 	var out: Array = []
 	for reading: String in _READINGS.sub(head, "|", true).split("|", false):
 		var heads := PackedStringArray()
@@ -475,6 +482,11 @@ static func _alike(one: Dictionary, other: Dictionary) -> float:
 	return float(shared) / float(one.size() + other.size() - shared)
 
 
+## Words a thing is counted in: a row of windows is windows.
+const COUNTED := ["row", "pair", "set", "line", "column", "ring", "stack", "bank",
+	"band", "string", "array", "series", "couple", "number", "run", "tier", "cluster",
+	"group", "collection", "bunch"]
+static var _OF := RegEx.create_from_string("(?i)^(.*?)\\s+\\bof\\b\\s+(.*)$")
 static var _READINGS := RegEx.create_from_string("(?i)\\s*(?:\\bor\\b|,|;|/)\\s*")
 static var _AND := RegEx.create_from_string("(?i)\\s*(?:\\band\\b|&|\\+)\\s*")
 

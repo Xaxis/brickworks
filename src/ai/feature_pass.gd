@@ -245,6 +245,9 @@ func candidates_for(name: String) -> Array:
 	var box: AABB = assistant._bounds_of(assistant._bricks_inside({}))
 	var widest: float = maxf(box.size.x, box.size.z) / STUD
 	var most: float = maxf(4.0, widest * 0.6)
+	# And no deeper than the model it goes on: Venice's skyline, 5 studs deep,
+	# was offered the Capitol's 6 x 6 dome for its domes (design285).
+	var narrowest: float = maxf(2.0, minf(box.size.x, box.size.z) / STUD)
 	var said: PackedStringArray = RealSnippets.words(name)
 	var nouns: Array = nouns_of(name)
 	var also: PackedStringArray = of_what(name)
@@ -260,8 +263,16 @@ func candidates_for(name: String) -> Array:
 				continue
 			seen[entry["id"]] = true
 			var named: int = names_it(entry, said, nouns) if _says_any(entry, also) else 0
-			if named > 0:
-				found.append([named, found.size(), entry])
+			if named <= 0:
+				continue
+			# Too deep for the model: the same build at a size real sets made it
+			# that fits, or none.
+			if not _fits(entry, most, narrowest):
+				entry = _smaller(entry, most, narrowest)
+				if entry.is_empty() or seen.has(entry["id"]):
+					continue
+				seen[entry["id"]] = true
+			found.append([named, found.size(), entry])
 	# A piece that is the feature only by a later reading ("exhaust pipe or
 	# horn" for a dinosaur's horns) only when none is it by its first.
 	if found.any(func(row: Array) -> bool: return int(row[0]) >= FIRST_READING):
@@ -283,6 +294,24 @@ func candidates_for(name: String) -> Array:
 	return out
 
 
+## Whether a piece is no wider than [param most] studs and no deeper than
+## [param narrowest], the model's own shorter side.
+static func _fits(entry: Dictionary, most: float, narrowest: float) -> bool:
+	var size: Array = entry["size"]
+	return maxf(float(size[0]), float(size[2])) <= most \
+		and minf(float(size[0]), float(size[2])) <= narrowest + 0.5
+
+
+## The same build as [param entry] at the biggest size real sets made it that
+## fits ([method _fits]), or {}.
+static func _smaller(entry: Dictionary, most: float, narrowest: float) -> Dictionary:
+	var best: Dictionary = {}
+	for other: Variant in RealSnippets.sizes_of(entry, 6):
+		if _fits(other, most, narrowest) and int((other as Dictionary).get("parts", 0)) <= MOST_PARTS:
+			best = other
+	return best
+
+
 ## The nouns a feature is named by, each with the words the index takes as
 ## the same: the head of each thing it lists ("mast and navigation lights" is
 ## a mast and lights), not where it is ("torch on the wall" is a torch, "gate
@@ -294,7 +323,7 @@ static func nouns_of(name: String) -> Array:
 	var of: RegExMatch = _OF.search(thing)
 	if of != null:
 		var before: PackedStringArray = RealSnippets.words(of.get_string(1))
-		thing = of.get_string(2) if not before.is_empty() and COUNTED.has(before[-1]) \
+		thing = of.get_string(2) if not before.is_empty() and RealSnippets.COUNTED.has(before[-1]) \
 			else of.get_string(1)
 	var parts: PackedStringArray = RegEx.create_from_string(
 		"(?i)\\s*(?:,|&|\\band\\b|\\bplus\\b)\\s*").sub(thing, "|", true).split("|", false)
@@ -314,7 +343,7 @@ static func of_what(name: String) -> PackedStringArray:
 	if of == null:
 		return PackedStringArray()
 	var before: PackedStringArray = RealSnippets.words(of.get_string(1))
-	if before.is_empty() or COUNTED.has(before[-1]):
+	if before.is_empty() or RealSnippets.COUNTED.has(before[-1]):
 		return PackedStringArray()
 	return RealSnippets.words(of.get_string(2))
 
@@ -339,10 +368,6 @@ static var _OF := RegEx.create_from_string("(?i)^(.*?)\\s+\\bof\\b\\s+(.*)$")
 ## and by a later one, above what it says of the feature's words.
 const FIRST_READING := 200
 const LATER_READING := 100
-## Words a thing is counted in: a row of windows is windows.
-const COUNTED := ["row", "pair", "set", "line", "column", "ring", "stack", "bank",
-	"band", "string", "array", "series", "couple", "number", "run", "tier", "cluster",
-	"group", "collection", "bunch"]
 
 
 ## How well what [param entry] is says a feature, given as its words

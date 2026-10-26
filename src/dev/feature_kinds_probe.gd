@@ -68,14 +68,17 @@ func _run() -> void:
 
 
 ## The pieces the feature pass would offer for a feature of a subject, best
-## first, on a model [param widest] studs across.
-func _offered(assistant: Assistant, brief: String, feature: String, widest: int) -> Array:
+## first, on a model [param widest] studs across and [param deep] deep (as
+## wide as it is deep when 0).
+func _offered(assistant: Assistant, brief: String, feature: String, widest: int,
+		deep: int = 0) -> Array:
 	assistant.world.clear()
 	assistant.builder.lattice.clear()
 	assistant._brief = brief
 	var row: Array = []
-	for x: int in [0, maxi(1, widest - 1)]:
-		row.append({"part": "3024", "color": 71, "x": x, "y": 0, "z": 0, "rot": 0})
+	for corner: Vector2i in [Vector2i.ZERO, Vector2i(maxi(1, widest - 1),
+			maxi(0, (deep if deep > 0 else widest) - 1))]:
+		row.append({"part": "3024", "color": 71, "x": corner.x, "y": 0, "z": corner.y, "rot": 0})
 	await assistant._run_tool({"name": "edit_model", "input": {"add": row}})
 	return assistant.feature_pass().candidates_for(feature)
 
@@ -91,7 +94,7 @@ func _measure(assistant: Assistant, path: String, out_path: String) -> void:
 		DesignMemory.hold_out(PackedStringArray([str(case.get("set", ""))]))
 		RealSnippets._take(whole.duplicate(false))
 		var found: Array = await _offered(assistant, str(case["brief"]), str(case["feature"]),
-			int(case.get("widest", 16)))
+			int(case.get("widest", 16)), int(case.get("narrowest", 0)))
 		var said: Array = []
 		for entry: Variant in found.slice(0, 3):
 			said.append({"id": (entry as Dictionary)["id"],
@@ -147,6 +150,8 @@ func _checks(assistant: Assistant) -> void:
 			+ "only how it is built")
 	_ok(RealSnippets.heads_of({"text": "bus front end with grille: yellow plates"}) == [
 		PackedStringArray(["end"])], "a bus's front end is not a bus")
+	_ok(RealSnippets.heads_of({"text": "top-left of Boba Fett's helmet dome: plates"}) == [
+		PackedStringArray(["left"])], "the top-left of a helmet's dome is not a dome")
 
 	print("\na feature is what it names, not where it is")
 	_ok(FeaturePass.nouns_of("torch on the wall")[0][0] == "torch"
@@ -173,7 +178,7 @@ func _checks(assistant: Assistant) -> void:
 	for case: Array in CASES:
 		DesignMemory.hold_out(PackedStringArray([str(case[0])]))
 		RealSnippets._take(whole.duplicate(false))
-		var found: Array = await _offered(assistant, case[1], case[2], case[3])
+		var found: Array = await _offered(assistant, case[1], case[2], case[3], case[3])
 		var nouns: Array = FeaturePass.nouns_of(case[2])
 		var right: bool = true
 		for entry: Variant in found:
@@ -187,6 +192,21 @@ func _checks(assistant: Assistant) -> void:
 		_ok(right, "%s (%s): %s, never %s" % [case[2], case[0], ("first " + str(
 			(found[0] as Dictionary)["text"]).get_slice(":", 0)) if not found.is_empty()
 			else "none offered", case[4]])
+
+	print("\na piece no deeper than the model it goes on, or the same build smaller")
+	# design285's Venice, 32 studs long and 5 deep, was offered the Capitol's
+	# 6 x 6 dome for its domes.
+	DesignMemory.hold_out(PackedStringArray(["21026-1"]))
+	RealSnippets._take(whole.duplicate(false))
+	var domes: Array = await _offered(assistant, "Venice, in the style of LEGO® Architecture "
+		+ "sets: fitting in about 5 x 32 studs, 230 to 380 pieces.", "basilica domes", 32, 5)
+	var deep_enough: bool = true
+	for entry: Variant in domes:
+		var size: Array = (entry as Dictionary)["size"]
+		deep_enough = deep_enough and minf(float(size[0]), float(size[2])) <= 5.5
+	_ok(deep_enough, "basilica domes on a skyline 5 deep: %s" % (", ".join(PackedStringArray(
+		domes.map(func(entry: Dictionary) -> String: return "%s %sx%s" % [entry["id"],
+			entry["size"][0], entry["size"][2]]))) if not domes.is_empty() else "none"))
 
 
 func _ok(passed: bool, said: String) -> void:

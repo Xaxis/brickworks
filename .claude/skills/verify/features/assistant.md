@@ -1946,11 +1946,7 @@ fixing what it got wrong.
   up front. Every answer says the same build at the sizes real sets use it
   (`RealSnippets.sizes_of`: the same first head, parts and kinds much alike,
   footprints 1.4 times apart; `_piece_sizes`), and `_piece_line` says
-  "place_technique finds the hold" for such a piece. `how_real_sets_build_this`
-  ends with up to three real sub-assemblies for the subject built with a
-  technique (hinged, angled, curved, sideways, brackets, sloped), each a
-  different thing, said by how it is built, with ids
-  (`_sub_assemblies_for`). `place_held_probe` (windowed, pictures in
+  "place_technique finds the hold" for such a piece. `place_held_probe` (windowed, pictures in
   `shots/place_held/`) asks a hinged shell, an arch, a wheel arch, a window
   frame and a roof section each three plates over a walled 16 x 16 plate,
   each laid whole and held and the model checked whole after; one asked 24
@@ -1969,15 +1965,21 @@ fixing what it got wrong.
   whole (`RealSnippets.holdable`: square, and laying as they stand or wanting
   only the model's hold — alone floating, not held or in pieces, never an
   overlap or collision of their own; at most 40 parts, no wider than 0.6 of
-  the model) and are that feature: the head noun of what the piece is
+  the model, and no deeper than the model's shorter side — one too deep is
+  swapped for the same build at a size real sets made that fits,
+  `_fits`/`_smaller`; Venice's 5-deep skyline was offered a 6 x 6 dome) and
+  are that feature: the head noun of what the piece is
   (`RealSnippets.heads_of`: its description up to the colon, cut at
-  with/on/for, each reading split at "or" and each thing at "and", the last
-  word not a filler like section, detail or block) is the feature's noun
+  with/on/for, an "X of Y" an X unless X counts it, each reading split at
+  "or" and each thing at "and", the last word not a filler like section,
+  detail or block) is the feature's noun
   (`nouns_of`: the head of each thing it lists, cut at where it is — "torch
   on the wall" is a torch, "gate doors in the arch" doors; "coat of arms" a
   coat that must be of arms, `of_what`; "row of windows" windows) or a word
   of the index's synonyms (`RealSnippets.kin`), a first reading before a
-  later one ("traffic cone or warning beacon" is a cone first), ranked by
+  later one ("traffic cone or warning beacon" is a cone first; a later
+  reading only when no piece is it by its first), two a set counted among
+  those that are it (a set's houses took its two before its waterfall), ranked by
   how much of the feature it says (`names_it`), and none when no piece is
   it (walk180's tug was offered a tugboat's funnel for its fenders, windows,
   bitts and mast; main's and main2's proof sessions rejected 63 of 72 pieces
