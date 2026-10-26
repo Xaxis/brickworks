@@ -524,9 +524,18 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 	border: 1px solid var(--line); background: var(--panel);
 }
 .skeleton-card .frame { aspect-ratio: 4 / 3; background: var(--picture-ground); animation: breathe 1.6s ease-in-out infinite; }
-.skeleton-card .words { padding: 10px 12px 12px; }
-.skeleton-card .bone:first-child { height: 1.1em; }
-@media (min-width: 900px) { .skeleton-card .words { padding: 12px 16px 14px; } }
+/* As tall as a card's words with a name of two lines: each bar is drawn in
+   the middle of its line's box (a name's two lines, the designer's, the
+   numbers'), so a row of skeletons is a row of cards' height. */
+.skeleton-card .words { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px 12px; font-size: var(--t-small); }
+.skeleton-card .bone { height: calc(1.35em); margin: 0; padding: 0.3em 0; background-clip: content-box; }
+.skeleton-card .bone:nth-child(3) { height: 24px; padding: 6px 0; }
+.skeleton-card .bone:nth-child(4) { height: 27px; padding: 12px 0 4px; }
+.bone.tiny { width: 30%; }
+@media (min-width: 900px) {
+	.skeleton-card .words { padding: 12px 16px 14px; font-size: var(--t-body); }
+	.skeleton-card .bone:nth-child(4) { height: 30px; padding: 13px 0 5px; }
+}
 .models.row .skeleton-card { scroll-snap-align: start; }
 @keyframes breathe { 50% { opacity: 0.55; } }
 

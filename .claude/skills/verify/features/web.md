@@ -861,7 +861,22 @@ plan with Claude as the client.
   that scrolls inside itself (the FAQ's dimensions, moved off its own
   copy), and `.table.wide`, /compare's field, whose row names stay in view
   as a phone scrolls it; design_flow and a11y_flow judge both on /faq and
-  /compare.
+  /compare. Since 2026-10-26 (site275, docs/DESIGN_SYSTEM.md "Motion" and
+  "Steady loads"): every control and card eases over `--motion` (150 ms),
+  sinks on `:active`, a card lifts 2 px under a mouse, a dialog and a menu
+  fade in (`--motion-open`), and none of it under reduced motion; `main`
+  fills the window under the header (`--head-h`); a script's part starts
+  as a skeleton (`.skeleton`, `.bone`, `.skeleton-card` from
+  `web/card.js` `skeletonHtml`) and is drawn whole when its answers are in
+  (the gallery's first page with its pick and challenge line, the landing
+  strip, /profile, /settings, /feed, /notifications); the first screen's
+  card pictures are `eager` + `fetchpriority="high"` (`cardHtml`'s
+  `eager`, `FIRST_SCREEN` = 8); a designer's own numbers on /u/ sit under
+  the work; Like on /m/ and Follow are drawn at once and roll back with
+  why if refused. Measured with site273's scripts (CLS at load and after
+  scrolling, the footer's bottom against the window's, lazy pictures in
+  the first screen, every control's transition with and without reduced
+  motion, an `:active` rule per kind, Like and Follow's time to draw).
 - `model card` (`web/card.js`, 2026-10-22): one renderer, `cardHtml(model,
   {earned})`, a pure string function; `modelCard` parses it in the
   browser (gallery, landing strip, /profile), and the server's pages

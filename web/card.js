@@ -286,7 +286,7 @@ export const FIRST_SCREEN = 8;
 /// Not a .model: nothing that counts the cards counts it.
 export function skeletonHtml() {
   return '<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words">'
-    + '<span class="bone"></span><span class="bone short"></span><span class="bone short"></span></div></div>';
+    + '<span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>';
 }
 
 /// The card for [model] as an element, in a browser: cardHtml's markup,
