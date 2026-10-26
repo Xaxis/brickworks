@@ -10,6 +10,7 @@
     python3 tools/bench/realset.py report --which proof --arm m32 [--date D] [--first N]
     python3 tools/bench/realset.py compare --which proof --arms m32,mine [--dates D1,D2]
                                        [--first N] [--jobs 2]
+    heavy python3 tools/bench/realset.py reach --which proof --arm m32 [--date D]
 
 A half is 44 subjects; `--first 10` is the ten it had before 2026-10-19. On
 two workers a subject took nine minutes (main, 2026-10-19), a half about 6.5
@@ -76,8 +77,13 @@ tuned on, judged blind.
   nothing.
 - **Measures**, ours against the set's, from tools/style.py and the build
   check's reading (src/dev/connection_audit.gd): parts, shapes per 100
-  parts, shaped share, 1 x 1 share, colours, tiles, SNOT and joints, and
-  parts the check calls floating.
+  parts, shaped share, 1 x 1 share, colours, tiles, SNOT, joints, parts
+  turned off the grid, and parts the check calls floating.
+- **Reach**, `reach`: whether a lever reached the sessions at all, from
+  each design's Claude Code transcript (the guide sections read, sections
+  turned or hinged and refused, techniques placed, features settled) beside
+  the share of parts turned, ours and the set's. Words that reach no
+  session move no verdict, and the pictures do not say which happened.
 
 Everything lands in the main checkout's bench/results/ (git-ignored):
 realset-<date>-<arm>/<set>/ for an arm's designs, realset-sets/<set>/ for
@@ -542,7 +548,7 @@ def subject_of(c: Candidate, plan: tuple[int, int]) -> suite.Subject:
 
 ONE_BY_ONE = re.compile(r"\b1 x 1\b")
 MEASURES = ("parts", "shapes_per_100", "shaped", "one_by_one", "colours", "tile", "snot",
-            "angle_parts", "floating_share")
+            "angle_parts", "angled", "floating_share")
 
 
 def measures(text: str, parts: style.Parts) -> dict:
@@ -555,8 +561,10 @@ def measures(text: str, parts: style.Parts) -> dict:
         info = parts.get(placed.part, model.embedded)
         if style.building(info) and ONE_BY_ONE.search(info.name):  # type: ignore[union-attr]
             small += 1
+    # angle_parts counts parts that let a part turn (hinges, clips, bars); angled, the
+    # parts that are turned: main's Flatiron, two thirds turned, read 0% the first way.
     out = {k: found.get(k) for k in ("parts", "shapes", "shaped", "colours", "tile", "snot",
-                                    "angle_parts", "symmetry", "plain")}
+                                    "angle_parts", "angled", "symmetry", "plain")}
     out["shapes_per_100"] = round(100.0 * found.get("shapes", 0) / total, 1) if total else 0.0
     out["one_by_one"] = round(small / total, 3) if total else 0.0
     return out
@@ -1067,7 +1075,8 @@ def _cell(value: float | None, share: bool) -> str:
     return f"{100 * value:.0f}%" if share else f"{value:.1f}" if value % 1 else f"{value:.0f}"
 
 
-SHARE_MEASURES = {"shaped", "one_by_one", "tile", "snot", "angle_parts", "floating_share"}
+SHARE_MEASURES = {"shaped", "one_by_one", "tile", "snot", "angle_parts", "angled",
+                  "floating_share"}
 
 
 def report_arm(which: str, date: str, arm: str, first: int = 0) -> str:
@@ -1139,6 +1148,146 @@ def gave_up_said(found: list[dict]) -> str:
     if len(counted) < len(found):
         said += f"; {len(found) - len(counted)} recorded before the count was kept"
     return said + "."
+
+
+# -- what the sessions reached --------------------------------------------------
+
+# A lever is a tool, a pattern or a line of guidance; whether a session ever used it
+# is in its transcript, not its pictures. On main's and main2's 88 proof designs
+# (design281, 2026-10-26) "angle" was read twice and "round" never, 9 of 300
+# features took the app's piece, and 82 designs turned under 5% of their parts off
+# the grid where the sets turn a median 11%.
+PROJECTS = Path.home() / ".claude" / "projects"
+
+
+def _turned(sections: object) -> bool:
+    """Whether a build's sections turn any of them off the grid: an angle that is not a
+    whole number of right angles (a section folded 90 degrees on a hinge is square)."""
+    found = list(sections.values()) if isinstance(sections, dict) else sections
+    for one in found if isinstance(found, list) else []:
+        for key in ("yaw", "pitch", "roll", "degrees"):
+            angle = one.get(key, 0) if isinstance(one, dict) else 0
+            if isinstance(angle, (int, float)) and abs(angle / 90.0 - round(angle / 90.0)) > 0.01:
+                return True
+    return False
+
+
+def session_reach(lines: list[str]) -> dict:
+    """What one Claude Code session called, from its transcript's lines: the guide
+    sections it read, the builds that turned a section and how many were refused, the
+    technique calls, how it settled features, and the floor of its first build. A
+    transcript writes each call more than once; each is counted once."""
+    calls: dict[str, tuple[str, dict]] = {}
+    refused: set[str] = set()
+    for line in lines:
+        message = json.loads(line).get("message", {})
+        content = message.get("content") if isinstance(message, dict) else None
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if block.get("type") == "tool_use" and block["id"] not in calls:
+                calls[block["id"]] = (block["name"].rsplit("__", 1)[-1], block.get("input", {}))
+            elif block.get("type") == "tool_result":
+                said = block.get("content")
+                if isinstance(said, list):
+                    said = " ".join(b.get("text", "") for b in said if isinstance(b, dict))
+                if str(said).startswith("Not applied"):
+                    refused.add(block.get("tool_use_id"))
+    named = Counter(name for name, _ in calls.values())
+    turned = [i for i, (name, given) in calls.items()
+              if name in ("submit_design", "edit_model")
+              and _turned(given.get("sections", []))]
+    first = next((given for name, given in calls.values() if name == "submit_design"), {})
+    return {"calls": len(calls),
+            "guide": sorted({str(g.get("section", "")) for n, g in calls.values()
+                             if n == "read_guide"}),
+            "turned_builds": len(turned), "turned_refused": len(refused & set(turned)),
+            "techniques": {k: named[k] for k in ("find_techniques", "show_technique",
+                                                 "place_technique")},
+            "features": dict(Counter(str(g.get("verdict")) for n, g in calls.values()
+                                     if n == "settle_feature")),
+            "floor": str(first.get("floor", ""))}
+
+
+def transcript_of(record: dict) -> Path | None:
+    """The session that made a recorded design. Claude Code keeps it under its working
+    directory, the checkout whose app designed (design.json's `app`, else the arm's own,
+    read from the arm the record names: proof's first ten in main's are t2base's), as
+    the transcript whose first message is the brief, the last begun before the design
+    was written."""
+    where = arm_dir(record["date"], record["arm"])
+    meta = where / "arm.json"
+    checkout = (record.get("design", {}).get("app")
+                or (json.loads(meta.read_text()).get("checkout") if meta.exists() else None)
+                or str(ROOT))
+    design = where / record["number"] / "design.json"
+    until = design.stat().st_mtime + 60 if design.exists() else float("inf")
+    best: tuple[float, Path] | None = None
+    for path in (PROJECTS / re.sub(r"[/.]", "-", str(checkout))).glob("*.jsonl"):
+        with path.open(errors="replace") as lines:
+            for line in lines:
+                said = json.loads(line)
+                if said.get("type") != "user":
+                    continue
+                if said.get("message", {}).get("content") == record["brief"]:
+                    began = datetime.datetime.fromisoformat(
+                        said["timestamp"].replace("Z", "+00:00")).timestamp()
+                    if began <= until and (best is None or began > best[0]):
+                        best = (began, path)
+                break
+    return best[1] if best else None
+
+
+def turned_share(text: str, parts: style.Parts) -> float:
+    """The share of a model's parts turned off its grid (tools/style.py's `angled`)."""
+    return float(style.measure(style.read(text), parts).get("angled") or 0.0)
+
+
+def reach_report(which: str, date: str, arm: str, first: int = 0) -> str:
+    found = records(which, date, arm, first)
+    parts = style.Parts()
+    by = {c.number: c for c in sample(which, first)}
+    out = [f"# What {arm}'s sessions reached, {which} half, {date}", "",
+           "Each subject: overall verdicts won; the share of parts turned off the grid, "
+           "ours and the set's; and from its session's transcript the guide sections read, "
+           "builds with a turned or hinged section (refused of them), find/show/place "
+           "technique calls, features settled, and the first build's floor.", "",
+           "| set | overall | turned | set's turned | guide | turned builds | techniques "
+           "| features | floor |", "|" + "---|" * 9]
+    ours_turned, sets_turned, guides, turned_any, placed_any, sessions = [], [], Counter(), 0, 0, 0
+    for r in found:
+        design = arm_dir(date, arm) / r["number"] / "design.ldr"
+        mine = turned_share(design.read_text(errors="replace"), parts) if design.exists() else None
+        theirs = turned_share((FILES / by[r["number"]].file).read_text(errors="replace"),
+                              parts) if r["number"] in by else None
+        ours_turned.append(mine)
+        sets_turned.append(theirs)
+        path = transcript_of(r)
+        reach = session_reach(path.read_text(errors="replace").splitlines()) if path else None
+        ours = r.get("keys", {}).get("ours")
+        won = f"{sum(v['winners']['overall'] == ours for v in r.get('verdicts', []))}/" \
+              f"{len(r.get('verdicts', []))}"
+        if reach is None:
+            out.append(f"| {r['number']} | {won} | {_cell(mine, True)} | {_cell(theirs, True)} "
+                       "| no transcript found | | | | |")
+            continue
+        sessions += 1
+        guides.update(reach["guide"])
+        turned_any += reach["turned_builds"] > 0
+        placed_any += reach["techniques"]["place_technique"] > 0
+        tech = "/".join(str(reach["techniques"][k]) for k in ("find_techniques", "show_technique",
+                                                              "place_technique"))
+        feats = ", ".join(f"{k} {v}" for k, v in sorted(reach["features"].items()))
+        out.append(f"| {r['number']} | {won} | {_cell(mine, True)} | {_cell(theirs, True)} | "
+                   f"{', '.join(reach['guide'])} | {reach['turned_builds']} "
+                   f"({reach['turned_refused']}) | {tech} | {feats} | {reach['floor']} |")
+    out += ["", f"Turned off the grid, the median: ours {_cell(_median(ours_turned), True)}, the "
+            f"sets' {_cell(_median(sets_turned), True)}; ours 5% or more in "
+            f"{sum(1 for v in ours_turned if v is not None and v >= 0.05)} of {len(found)}.",
+            f"Of {sessions} sessions read: {turned_any} built a turned or hinged section, "
+            f"{placed_any} placed a real set's technique; guide sections read by how many: "
+            + (", ".join(f"{k} {v}" for k, v in guides.most_common()) or "none") + "."]
+    return "\n".join(out) + "\n"
 
 
 # -- two arms -------------------------------------------------------------------
@@ -1245,7 +1394,7 @@ def main(argv: list[str] | None = None) -> int:
     one_.add_argument("--first", type=int, default=0)
     one_.add_argument("--show", action="store_true",
                       help="names and briefs (never for proof while building the tool)")
-    for name in ("run", "one", "calibrate", "report", "compare", "audit"):
+    for name in ("run", "one", "calibrate", "report", "compare", "audit", "reach"):
         p = sub.add_parser(name)
         p.add_argument("--which", choices=HALVES, default="tune")
         p.add_argument("--date", default=f"{datetime.date.today():%Y-%m-%d}")
@@ -1258,7 +1407,7 @@ def main(argv: list[str] | None = None) -> int:
                        help="draw on lavapipe under heavy, not on the GPU (both sides alike)")
         p.add_argument("--dry-run", action="store_true",
                        help="a canned design and canned replies: nothing designed or asked")
-        if name in ("run", "one", "report", "audit"):
+        if name in ("run", "one", "report", "audit", "reach"):
             p.add_argument("--arm", required=True, help="this arm's name: m32, a branch's")
         if name in ("run", "one"):
             p.add_argument("--checkout", type=Path, default=ROOT,
@@ -1288,6 +1437,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.what == "report":
         text = report_arm(args.which, args.date, args.arm, args.first)
         (arm_dir(args.date, args.arm) / _report_name(args)).write_text(text)
+        print(text)
+        return 0
+    if args.what == "reach":
+        text = reach_report(args.which, args.date, args.arm, args.first)
+        name = _report_name(args).replace("report-", "reach-")
+        (arm_dir(args.date, args.arm) / name).write_text(text)
         print(text)
         return 0
     return compare(args)

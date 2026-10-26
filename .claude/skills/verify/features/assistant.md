@@ -224,7 +224,9 @@ fixing what it got wrong.
   set's name, theme, footprint and piece band, the real loop on the subscription
   (`--arm`, `--checkout`), and the pairwise judge blind between the design and the
   set, both orders; win rate per dimension with 95% intervals, the set-file
-  measures side by side, and two arms through the set and head to head. A set's
+  measures side by side (parts turned off the grid among them), `reach` for what
+  each design's session read, turned and placed, and two arms through the set and
+  head to head. A set's
   own pieces are held out of the designer's real-set index by `--held-out=<set
   number>` (src/ai/real_snippets.gd). `docs/DESIGN_SCORES.md`, "Against real
   sets". Under How to check it, "Real sets".
@@ -2483,6 +2485,7 @@ env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 
 env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which proof --arm mine --checkout ../mine --jobs 2 --audit-later
 heavy env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data python3 tools/bench/realset.py audit --which proof --arm mine
 env -u ANTHROPIC_API_KEY python3 tools/bench/realset.py compare --which proof --arms main,mine --dates 2026-10-19,D --jobs 2
+heavy python3 tools/bench/realset.py reach --which proof --arm mine --date D   # did the lever reach the sessions: guide read, sections turned, techniques placed
 godot --headless --path . --script src/dev/design_memory_probe.gd -- --held-out=40148-1   # the set's pieces held out
 ```
 
@@ -2517,7 +2520,10 @@ technique round started each half at once at load 45-75, its workers in one leas
 and a half of ten took 45-55 minutes on two or three workers; 2026-10-19, the
 grown proof half on main: 88 of 88 verdicts with all six pictures, orders
 agreeing on 88%, the first shown winning 45%, 34 new subjects in five hours on
-two workers with the GPU shared, nine minutes a subject).
+two workers with the GPU shared, nine minutes a subject). `reach` finds every
+design's transcript: 44 of 44 on main's and on main2's proof arms (2026-10-26),
+main's Flatiron 66% turned beside its set's 39%, ours 0% at the median against
+the sets' 11%.
 
 ### Best of two: each new brief designed twice in the app
 
