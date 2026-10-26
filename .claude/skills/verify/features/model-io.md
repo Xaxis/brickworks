@@ -852,7 +852,12 @@ Whether what you built is still there tomorrow, and still means the same thing.
   probe` (`src/ui/saved_models_dialog.gd`, `src/ui/account_full_offer.gd`,
   `ModelStore.delete_saved`/`rename_saved`/`put_back`,
   `supabase/account_models_delete.sql`, 2026-10-24, lib219): File › Open has
-  "Rename or delete saved models…" under the saved ones, a dialog listing
+  "Rename or delete saved models…" with its other commands, above the saved
+  ones (under them, forty saves put it past the window's foot, where a
+  finger never reached it: fling272b; `open_menu_reach_probe`, in the suite
+  at 390 as a phone, and PROBE_SIZE=1280x800 or 768x1024 --tablet: every
+  command in the window as the menu opens, the arrows reach every row,
+  Enter opens the dialog, Escape shuts it), a dialog listing
   each with Rename… (asks the name, as Save does) and Delete… (asks first).
   A deleted model is kept in the tab's own folder (`deleted/`) and its row
   says "Deleted" with Undo. A rename writes the new name into the file
