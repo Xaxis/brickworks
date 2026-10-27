@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe -->
 
 ## Sub-features
 
@@ -82,6 +82,19 @@ fixing what it got wrong.
   from a command line (the bench) or any session from outside.
   `best_of_two_probe` (the rules, the undo, the card; no subscription) and
   `best_of_two_walk_probe` (a real brief through the panel).
+- `fresh eyes at the first save`: `src/ai/fresh_eyes.gd`. A session from outside
+  (the MCP port, the connector) whose new design began on a bare baseplate
+  (`Assistant.heard`, fresh) is, at its first whole save, handed a fresh pair
+  of eyes' answer in place of the close looks, which come at the next save:
+  Claude Code (`DesignPick.put`, no tools, nothing kept, `FreshEyes.SCHEMA`)
+  shown the subject and `DesignPick.pictures` (corner, front, close) and
+  nothing of the session, saying what it reads as, what reads as generic, and
+  three changes. Once a subject, whatever comes of it; never a chat about a
+  selection or beside a model already standing. No Claude Code on PATH (a
+  browser: `ClaudeCode.found()`), no pictures or no answer in `MOST_S`: the
+  save is main's, byte for byte. The log says `fresh eyes: S s (model): {...}`.
+  `fresh_eyes_probe` (a stand-in `claude` on PATH; `--baseline --dump=FILE` on
+  another checkout gives main's answers to compare).
 - `the check by real shapes`: `src/ai/exact_check.gd` over `src/assembly/exact.gd`,
   called from `Assistant._check`, so every check, edit, submission, review and save
   has it: each part BrickNet has is its convex colliders and connector labels

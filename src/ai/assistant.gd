@@ -6249,6 +6249,7 @@ func heard(subject: String, fresh: bool = false) -> void:
 	var said: String = subject.strip_edges()
 	if fresh:
 		_heard_fresh = said
+		fresh_eyes().begin(world != null and world.brick_count() <= scenery.size())
 		# What the last design was called is not this one's subject: a
 		# lighthouse after a statue was read as a figure.
 		_begin_subject(_brief if _busy else "")
@@ -20697,6 +20698,17 @@ var _lookup_waiting: bool = false
 ## the same implementations, which is the only way the two cannot drift.
 func tool_catalogue() -> Array:
 	return _tools() + focus_tools() + sketch_tools()
+
+
+## A fresh pair of eyes on a new design from outside, at its first save.
+func fresh_eyes() -> FreshEyes:
+	if _eyes == null:
+		_eyes = FreshEyes.new()
+		_eyes.assistant = self
+	return _eyes
+
+
+var _eyes: FreshEyes = null
 
 
 ## Choosing a sketch, for a session outside the app: in the app's own loop
