@@ -804,12 +804,14 @@ plan with Claude as the client.
   loaded: the policy's `img-src` stays `'self'`; `connect-src` names the
   store's origin (PARTS_URL, today the Supabase project already there).
   The module (`/part-pictures.js`) is asked for beside `parts.json`, so a
-  visit that never nears the list loads neither. On 10243-1 (393 lots) at
-  1280 the list is drawn as before (37-112 ms after Parts is clicked at
-  load, against 46-87 before) and its first screen of pictures 218-309 ms
-  after; scrolling Show all to the end draws 386 (7 carried parts keep
-  their swatches) with no frame over 100 ms (base: the same one 88-92 ms
-  Show all). Download is `.side .actions a[download]`. Like and I
+  visit that never nears the list loads neither, and the list is drawn
+  without waiting for it: the pictures come over the swatches once it is
+  here. On 10243-1 (393 lots, Parts clicked at load, the stand-in, five
+  runs) the list is drawn in a median 46 ms at 1280 and 51 at 390 (42 and
+  43 before; single runs 22-126 either way) and the first screen's
+  pictures by 271 and 323 ms; scrolling Show all to the end draws 386 (7
+  carried parts keep their swatches) with no frame over 100 ms (before:
+  the one Show all frame, 88-92 ms). Download is `.side .actions a[download]`. Like and I
   built it are `.icon-btn.labelled` (their word in `.word`). Checked by
   `parts page probe` (against the app: each lot's geometry the app's own,
   read into triangles in its colour) and `model_page_flow` step 16 (the

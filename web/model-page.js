@@ -235,7 +235,10 @@ function startParts(section) {
   const list = section.querySelector(".lot-list");
   const all = section.querySelector("[data-all]");
   const choices = [...section.querySelectorAll("[data-group]")];
-  let pictures = null;
+  // What draws the lots' pictures (web/part-pictures.js): undefined until
+  // it is here, false where there is none.
+  let pictures;
+  const lotOf = new WeakMap();
   let lots = null;
   let asked = null;
   let group = "colour";
@@ -260,8 +263,9 @@ function startParts(section) {
     const pic = document.createElement("span");
     pic.className = "pic";
     pic.append(swatch(lot.hex));
+    lotOf.set(pic, lot);
     if (pictures) pictures.want(pic, lot);
-    else pic.dataset.picture = "none";
+    else if (pictures === false) pic.dataset.picture = "none";
     const what = document.createElement("span");
     what.className = "what";
     const name = document.createElement("span");
@@ -322,7 +326,7 @@ function startParts(section) {
     // so a visit that never comes near the list loads neither.
     const drawer = import("/part-pictures.js").catch(() => null);
     asked = fetch(section.dataset.parts).then((answer) => (answer.ok ? answer.json() : null)).catch(() => null)
-      .then(async (body) => {
+      .then((body) => {
         if (!body || !Array.isArray(body.lots)) {
           list.removeAttribute("aria-busy");
           const said = document.createElement("li");
@@ -332,15 +336,22 @@ function startParts(section) {
           asked = null;
           return;
         }
-        const made = await drawer;
-        try {
-          pictures = made && body.root ? made.partPictures(body.root, body.colours) : null;
-        } catch {
-          pictures = null;
-        }
         lots = body.lots;
         draw();
         document.documentElement.dataset.parts = "drawn";
+        // The list never waits for its pictures: they come over the
+        // swatches once what draws them is here.
+        drawer.then((made) => {
+          try {
+            pictures = (made && body.root && made.partPictures(body.root, body.colours)) || false;
+          } catch {
+            pictures = false;
+          }
+          for (const pic of list.querySelectorAll(".lot .pic")) {
+            if (pictures) pictures.want(pic, lotOf.get(pic));
+            else pic.dataset.picture = "none";
+          }
+        });
       });
     return asked;
   };
