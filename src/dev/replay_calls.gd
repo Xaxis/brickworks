@@ -164,9 +164,11 @@ func _on_the_model(calls_path: String, model_path: String, ids_path: String,
 	assistant._placed_ids = built
 	# And its sizes as that session was last told them, with the model it
 	# built (walk180's last look before its edit said these same rows).
+	# Kept for each chat since conn308 (2026-10-27); the session here names none.
 	if "_sizes_said" in assistant:
-		assistant.set("_sizes_said", assistant._measured())
-		print("replay: told its sizes: %s" % str(assistant.get("_sizes_said")).replace("\n", " / "))
+		var told: String = assistant._measured()
+		assistant.set("_sizes_said", {"": told} if assistant.get("_sizes_said") is Dictionary else told)
+		print("replay: told its sizes: %s" % told.replace("\n", " / "))
 	print("replay: %s opened, %d bricks" % [model_path.get_file(), world.brick_count()])
 	var ids: Dictionary = _matched_ids(ids_path, world, assistant)
 	if not png_dir.is_empty():
