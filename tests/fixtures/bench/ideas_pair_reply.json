@@ -1,0 +1,15 @@
+{
+ "type": "result",
+ "subtype": "success",
+ "is_error": false,
+ "result": "",
+ "structured_output": {
+  "looked_at": ["aaaaaa_corner.png", "aaaaaa_front.png", "aaaaaa_close.png", "bbbbbb_corner.png", "bbbbbb_front.png", "bbbbbb_close.png"],
+  "likeness": {"better": "A", "reason": "A has the toll house, the troll and the horse; B left the troll out."},
+  "realism": {"better": "B", "reason": "B's arch is built of real curved bricks; A's is a stair of plates."},
+  "creativity": {"better": "A", "reason": "A's dragon has a coin hoard under its tail."},
+  "technique": {"better": "B", "reason": "B hangs the lantern on a clip and bar; A stacks it."},
+  "overall": {"better": "A", "reason": "A is the scene that was asked for."}
+ },
+ "modelUsage": {"canned-judge": {"inputTokens": 0, "outputTokens": 0}}
+}
