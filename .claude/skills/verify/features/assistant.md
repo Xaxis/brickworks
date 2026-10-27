@@ -83,14 +83,15 @@ fixing what it got wrong.
   `best_of_two_probe` (the rules, the undo, the card; no subscription) and
   `best_of_two_walk_probe` (a real brief through the panel).
 - `fresh eyes at the first save`: `src/ai/fresh_eyes.gd`. A session from outside
-  (the MCP port, the connector) whose new design began on a bare baseplate
-  (`Assistant.heard`, fresh) is, at its first whole save, handed a fresh pair
+  (the MCP port, the connector) whose new design went down on a bare baseplate
+  (`Assistant.use_tool`'s submit, the example a tab opens on taken off first by
+  `make_room`) is, at its first whole save, handed a fresh pair
   of eyes' answer in place of the close looks, which come at the next save:
   Claude Code (`DesignPick.put`, no tools, nothing kept, `FreshEyes.SCHEMA`)
   shown the subject and `DesignPick.pictures` (corner, front, close) and
   nothing of the session, saying what it reads as, what reads as generic, and
-  three changes. Once a subject, whatever comes of it; never a chat about a
-  selection or beside a model already standing. No Claude Code on PATH (a
+  three changes. Once a subject (`Assistant.heard`, fresh), whatever comes of
+  it; never a chat about a selection or beside the person's own model. No Claude Code on PATH (a
   browser: `ClaudeCode.found()`), no pictures or no answer in `MOST_S`: the
   save is main's, byte for byte. The log says `fresh eyes: S s (model): {...}`.
   `fresh_eyes_probe` (a stand-in `claude` on PATH; `--baseline --dump=FILE` on

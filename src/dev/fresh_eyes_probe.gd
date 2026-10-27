@@ -10,10 +10,11 @@
 ## as Claude Code does. With no Claude Code on PATH the save says what it says
 ## on main, and the eyes are never asked again for that subject; with it, the
 ## eyes are asked once and their changes said, never at a later save or a
-## second design of the sitting; a new chat's new design is asked again; a
-## chat that designs beside a model already standing, and an answer that
-## failed, say what main says. The eyes see three pictures and the subject,
-## nothing of the session. In a window, for the pictures.
+## second design of the sitting; a new chat's new design is asked again, and
+## so is one over the example car a tab opens on (the relay's); a chat that
+## designs beside a model already standing, and an answer that failed, say
+## what main says. The eyes see three pictures and the subject, nothing of
+## the session. In a window, for the pictures.
 ##
 ## --dump=FILE writes the no-Claude-Code chat's answers there, and --baseline
 ## runs that chat alone, touching nothing of FreshEyes: run with both on main
@@ -56,6 +57,7 @@ func _run() -> void:
 		OS.set_environment("PATH", "%s:%s" % [_fake, _path])
 		await _asked_once()
 		await _asked_again_for_a_new_chat()
+		await _over_the_example()
 		await _beside_a_model()
 		await _no_answer()
 	OS.set_environment("PATH", _path)
@@ -175,13 +177,37 @@ func _asked_again_for_a_new_chat() -> void:
 	_check("...of its own subject", sent.contains("A red tower wall. a long low red wall"))
 
 
+## As the relay's tab opens: the example car on the baseplate as the chat
+## begins its subject, taken off by its design (Assistant.make_room).
+func _over_the_example() -> void:
+	print("\n── a chat in a tab opened on the example car ──")
+	await _call_as("c5", "clear_model", {})
+	var placed: int = _main.call("_open",
+		_main.get_script().get_script_constant_map()["SAMPLE_MODEL"])
+	_main.set("_sample_untouched", true)
+	(_main.get("_builder") as Builder).forget_history()
+	await _call_as("c5", "plan_scale", {"subject": "a red tower", "longest_metres": 30})
+	_check("the example car stands as the chat begins its subject (%d parts)" % placed,
+		placed > 0 and _parts() == placed)
+	await _call_as("c5", "submit_design", _tower())
+	_check("...and its design takes it off: %d parts stand" % _parts(), _parts() == 6)
+	var said: Array = await _call_as("c5", "save_model", {"name": "tower5.ldr"})
+	_check("the eyes are asked (%d asks)" % _calls(),
+		_text(said).contains("1. CHANGE-ONE") and _calls() == 3)
+
+
 func _beside_a_model() -> void:
-	print("\n── a chat designing beside a model already standing ──")
-	_check("the wall stands", _parts() > 0)
-	await _call_as("c3", "submit_design", _tower())
+	print("\n── a chat designing beside the person's own model ──")
+	await _call_as("c3", "clear_model", {})
+	var theirs: int = _main.call("_open",
+		_main.get_script().get_script_constant_map()["SAMPLE_MODEL"])
+	_main.set("_sample_untouched", false)
+	var built: Array = await _call_as("c3", "submit_design", _wall())
+	_check("the wall goes down beside their %d parts: %d stand" % [theirs, _parts()],
+		_text(built).contains("Built") and _parts() == theirs + 9)
 	var said: Array = await _call_as("c3", "save_model", {"name": "both.ldr"})
 	_check("is never asked: %s" % _line_with(_text(said), "Before it is finished"),
-		not _text(said).contains("fresh pair") and _calls() == 2)
+		not _text(said).contains("fresh pair") and _calls() == 3)
 
 
 func _no_answer() -> void:
@@ -195,7 +221,7 @@ func _no_answer() -> void:
 	var eyes: Object = _assistant.call("fresh_eyes")
 	_check("asked (%d), and the save says what it would have: %s" % [_calls(),
 		str((eyes.get("last") as Dictionary).get("error", "")).left(40)],
-		_calls() == 3 and not _text(said).contains("fresh pair")
+		_calls() == 4 and not _text(said).contains("fresh pair")
 		and _text(said).contains("Before it is finished"))
 
 

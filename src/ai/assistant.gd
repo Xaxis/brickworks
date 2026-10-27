@@ -6249,7 +6249,7 @@ func heard(subject: String, fresh: bool = false) -> void:
 	var said: String = subject.strip_edges()
 	if fresh:
 		_heard_fresh = said
-		fresh_eyes().begin(world != null and world.brick_count() <= scenery.size())
+		fresh_eyes().begin()
 		# What the last design was called is not this one's subject: a
 		# lighthouse after a statue was read as a figure.
 		_begin_subject(_brief if _busy else "")
@@ -20775,6 +20775,8 @@ static func gear_ratio_said(args: Dictionary) -> String:
 ## get "Received. Checking it now." for a design that was never checked
 ## and never built.
 func use_tool(name: String, input: Dictionary) -> Variant:
+	var bare: bool = name == "submit_design" and world != null \
+		and world.brick_count() <= scenery.size()
 	var answer: Variant = await _run_tool({"name": name, "input": input})
 	if name != "submit_design" or _pending == null:
 		return answer
@@ -20812,6 +20814,7 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_outside_creative_handed = false
 		_outside_creative = {}
 		surface_pass().reset()
+		fresh_eyes().designed(bare)
 	return _built_from_outside(design, report)
 
 

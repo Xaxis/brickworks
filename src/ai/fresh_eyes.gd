@@ -18,8 +18,9 @@
 ## own to say.
 ##
 ## Once a subject (Assistant.heard, fresh), whatever comes of it. Only a new
-## design begun on a bare baseplate, from outside (the MCP port, the
-## connector), and never a chat about a selection. With no Claude Code here
+## design submitted from outside (the MCP port, the connector) onto a bare
+## baseplate, the example a first visit opens on taken off first
+## (Assistant.make_room), and never a chat about a selection. With no Claude Code here
 ## (a browser, or a machine without it), no pictures, or no answer in time,
 ## the save says what it said before, word for word.
 class_name FreshEyes
@@ -47,7 +48,7 @@ const SCHEMA: Dictionary = {
 }
 
 var assistant: Assistant
-## Whether this subject's design began on a bare baseplate.
+## Whether a design of this subject went down on a bare baseplate.
 var fresh: bool = false
 ## Whether the eyes have been asked for this subject: then never again.
 var asked: bool = false
@@ -57,12 +58,19 @@ var last: Dictionary = {}
 var _shot: ModelShot = null
 
 
-## A new subject begins (Assistant.heard, fresh): [param bare] when nothing
-## stood on the baseplate.
-func begin(bare: bool) -> void:
-	fresh = bare
+## A new subject begins (Assistant.heard, fresh): nothing of the last one's
+## carries over.
+func begin() -> void:
+	fresh = false
 	asked = false
 	last = {}
+
+
+## A design from outside stands; [param bare] when nothing stood before it.
+## Decided as it is submitted, not as the subject begins: a connector tab
+## opens on the example car, which a design takes off (relay, design311).
+func designed(bare: bool) -> void:
+	fresh = fresh or bare
 
 
 ## What a whole save of a new design says in place of its close looks, the
