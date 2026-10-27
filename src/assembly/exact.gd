@@ -284,6 +284,24 @@ static func parse(bytes: PackedByteArray) -> Shape:
 	return shape
 
 
+## [param shape] where it is the part whose box (PartInfo.bounds, from the
+## part as the app draws it) is [param box], else null: its pieces' box
+## within [constant TAU] of the part's own on every side. BrickNet gives 130
+## parts another part's shape, moved by its alias's matrix, and draws 7 of
+## its own as an older LDraw file did; where the two differ by more than a
+## check allows, the shape is another part's. 4592c01's stick and base is
+## 73587p01's moved 1.59 LDU down and 4.77 back: its base stood 1.6 LDU in
+## the plate under it in four of the gallery's real sets, and BrickNet
+## held it by one connector of its two (tested303). Such a part is judged
+## as the parts BrickNet does not have are, by its cover.
+static func own(shape: Shape, box: AABB) -> Shape:
+	if shape == null or not shape.has_pieces() or not box.has_volume():
+		return shape
+	var lo: Vector3 = (shape.lo - box.position).abs()
+	var hi: Vector3 = (shape.hi - box.end).abs()
+	return shape if maxf(lo[lo.max_axis_index()], hi[hi.max_axis_index()]) <= TAU else null
+
+
 ## The shape a round part with no exact shape of its own makes (a tyre, a
 ## wheel: its box two sides alike across [param axis], 0 to 2): the prism of
 ## [constant ROUND_SIDES] sides inside its box's round. Its box's corners are
@@ -398,7 +416,7 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 	var path: String = file_for(library, info.id)
 	var shape: Shape = null
 	if FileAccess.file_exists(path):
-		shape = parse(FileAccess.get_file_as_bytes(path))
+		shape = own(parse(FileAccess.get_file_as_bytes(path)), info.bounds)
 	elif OS.has_feature("web"):
 		# Fetched as the geometry is (PartLibrary.request_exact); null until then.
 		if library.request_exact(info.id) and main and noting:
@@ -415,9 +433,10 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 	return shape
 
 
-## Kept from a fetch: the web build's way in (PartLibrary._on_fetched_exact).
-static func keep(mesh_hash: String, bytes: PackedByteArray) -> void:
-	var shape: Shape = parse(bytes) if not bytes.is_empty() else null
+## Kept from a fetch: the web build's way in (PartLibrary._on_fetched_exact),
+## for the part whose box is [param box].
+static func keep(mesh_hash: String, bytes: PackedByteArray, box: AABB = AABB()) -> void:
+	var shape: Shape = own(parse(bytes), box) if not bytes.is_empty() else null
 	_shapes_lock.lock()
 	_shapes[mesh_hash] = shape
 	_shapes_lock.unlock()

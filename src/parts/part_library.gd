@@ -1634,7 +1634,9 @@ func shaped_as(part_id: String) -> PartInfo:
 func _on_fetched_exact(code: int, body: PackedByteArray, hash_name: String,
 		part_id: String) -> void:
 	_fetching_exact.erase(hash_name)
-	Exact.keep(hash_name, body if code == 200 else PackedByteArray())
+	var info: PartInfo = parts.get(part_id)
+	Exact.keep(hash_name, body if code == 200 else PackedByteArray(),
+		info.bounds if info != null else AABB())
 	exact_fetched.emit(part_id)
 	_next_exact()
 

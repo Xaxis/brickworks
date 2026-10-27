@@ -13,6 +13,7 @@
 ## legs, realset 2026-10-16), said as the joint it is, a ball pushed through
 ## its socket, a hinge folded into its base, and a real set's clip on its
 ## bar in a run kept to BrickBench's parts, whose verify.py forgives nothing.
+## And a part BrickNet gives another part's shape, judged by its cover.
 extends SceneTree
 
 var _library: PartLibrary
@@ -109,6 +110,7 @@ func _run() -> void:
 	_refused("a Joint-8 plate pushed 5 LDU onto the ball, off its socket", OFF_ITS_SOCKET,
 		["14419"], "overlap")
 	_hinge_folded()
+	_stick()
 	# A run kept to BrickBench's parts: verify.py forgives no overlap, joint or
 	# not, so neither does the check.
 	PartsOnly.use(PackedStringArray(["60478", "30377"]), "the probe's list")
@@ -173,6 +175,37 @@ func _refused(name: String, lines: Array, parts: Array, words: String) -> void:
 	_say(not hit.is_empty(), "%s: refused: %s" % [name, hit.left(300)],
 		"%s: not refused with \"%s\" (said: %s; summary: %s)" % [name, words, said,
 			report.get("summary", "")])
+
+
+## A control stick on a plate as a session lays it, and with a brick in it.
+## BrickNet gives 4592c01 73587p01's shape, moved 1.59 LDU down and 4.77 back
+## (its newer stick and base, drawn otherwise), so the base stood 1.6 LDU in
+## the plate under it where LDraw's own geometry is clear of it (13, 26, 27
+## and 29 of the gallery's real sets). Another part's shape is no shape
+## (Exact.own): the stick is judged by its cover, which still finds a brick
+## stood inside it.
+func _stick() -> void:
+	_say(Exact.shape_for(_library, "4592c01") == null and Exact.shape_for(_library, "3020") != null,
+		"a part BrickNet gives another part's shape (4592c01, 73587p01's moved) has none; a plate its own",
+		"4592c01 has a shape: %s; 3020: %s" % [Exact.shape_for(_library, "4592c01"),
+			Exact.shape_for(_library, "3020")])
+	var on: Array = [{"part": "3020", "color": 7, "x": 0, "y": 0, "z": 0},
+		{"part": "4592c01", "color": 0, "x": 0, "y": 1, "z": 0}]
+	for inside: bool in [false, true]:
+		_world.clear()
+		var bricks: Array = on.duplicate()
+		if inside:
+			bricks.append({"part": "3005", "color": 4, "x": 0, "y": 1, "z": 0})
+		var report: Dictionary = _assistant._check(_assistant._read_model({"bricks": bricks}), true)
+		var said: String = str(report.get("feedback", ""))
+		if inside:
+			_say(said.contains("3005") and said.contains("overlaps"),
+				"a brick stood inside the control stick is refused by its cover: %s" % said.strip_edges().left(160),
+				"a brick inside the control stick: %s" % said.left(300))
+		else:
+			_say(str(report.get("summary", "")).ends_with("buildable"),
+				"a control stick on a plate passes: %s" % report.get("summary", ""),
+				"a control stick on a plate: %s" % said.left(300))
 
 
 ## A leg of Joint-8 plates as a session lays it (Shelob's first right leg,
