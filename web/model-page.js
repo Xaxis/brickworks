@@ -297,6 +297,7 @@ function startParts(section) {
     return item;
   };
   const draw = () => {
+    if (pictures) pictures.forget();
     // Each colour (or kind) with the most of its parts first, its lots
     // under it.
     const groups = new Map();

@@ -555,5 +555,13 @@ export function partPictures(root, colours = {}) {
       wanted.set(pic, lot);
       near.observe(pic);
     },
+    /// The rows asked for so far are gone (the list drawn again): none of
+    /// them watched any more, nor waiting its turn. A picture under way is
+    /// still drawn and kept, for the row that shows its lot now.
+    forget() {
+      near?.disconnect();
+      queue.length = 0;
+      for (const [key, job] of jobs) if (!job.started) jobs.delete(key);
+    },
   };
 }
