@@ -29,9 +29,9 @@ import { INHERIT, parseLbm } from "/lbm.js";
 
 /// The picture's size on the page, as .lot-list .pic in directory.css.
 const SHOWN = 48;
-/// The least it is drawn at before it is scaled to fit: on a screen of one
-/// pixel to the point it is drawn at twice and scaled down, for its edges.
-const LEAST = 96;
+/// It is drawn at twice the pixels it is shown at and scaled down, so its
+/// lines are half a pixel's weight and every edge smooth.
+const OVER = 2;
 /// How many parts' geometry is asked for at once.
 const AT_ONCE = 6;
 /// How long a frame may spend drawing pictures before the rest wait for the
@@ -70,6 +70,65 @@ void main() {
   facing = normal;
   gl_Position = view * vec4(position, 1.0);
 }`;
+// Its lines, as LDraw draws a part's edges and a builder knows them from
+// the instructions: first where every pixel faces and how near it is
+// (FACTS, into a texture: the normal across and up the picture in red and
+// green, the depth in blue and alpha, none where there is no part), then a
+// line wherever that turns (LINES): its outline, a fold between two faces,
+// a step from one face to another behind it.
+const FACTS = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform vec3 right;
+uniform vec3 up;
+varying vec3 facing;
+void main() {
+  vec3 n = normalize(facing);
+  if (!gl_FrontFacing) n = -n;
+  float near = 0.02 + 0.98 * (1.0 - gl_FragCoord.z);
+  float high = floor(near * 255.0) / 255.0;
+  gl_FragColor = vec4(dot(n, right) * 0.5 + 0.5, dot(n, up) * 0.5 + 0.5, high, (near - high) * 255.0);
+}`;
+const FLAT = `
+attribute vec2 position;
+varying vec2 at;
+void main() {
+  at = position * 0.5 + 0.5;
+  gl_Position = vec4(position, 0.0, 1.0);
+}`;
+const LINES = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform sampler2D facts;
+uniform vec2 texel;
+uniform vec4 pen;
+varying vec2 at;
+vec3 read(vec2 p) {
+  vec4 t = texture2D(facts, p);
+  return vec3(t.rg * 2.0 - 1.0, t.b + t.a / 255.0);
+}
+void main() {
+  vec3 c = read(at);
+  vec3 l = read(at - vec2(texel.x, 0.0));
+  vec3 r = read(at + vec2(texel.x, 0.0));
+  vec3 d = read(at - vec2(0.0, texel.y));
+  vec3 u = read(at + vec2(0.0, texel.y));
+  bool here = c.z > 0.0;
+  float line = 0.0;
+  if (here != (l.z > 0.0) || here != (r.z > 0.0) || here != (u.z > 0.0) || here != (d.z > 0.0)) line = 1.0;
+  else if (here) {
+    float fold = max(max(distance(c.xy, l.xy), distance(c.xy, r.xy)), max(distance(c.xy, u.xy), distance(c.xy, d.xy)));
+    float step = max(abs(l.z + r.z - 2.0 * c.z), abs(u.z + d.z - 2.0 * c.z));
+    line = max(smoothstep(0.22, 0.5, fold), smoothstep(0.004, 0.012, step));
+  }
+  gl_FragColor = pen * line;
+}`;
 // Lit as the bin lights a part: the face towards the key light in the
 // part's own colour, the others a step and two darker, so a brick's top,
 // front and side part. A dark part's lit faces are lifted a little and a
@@ -104,6 +163,16 @@ function inkOf(hex) {
   return [at(0), at(2), at(4), hex.length === 8 ? Math.max(at(6), 0.66) : 1];
 }
 
+/// The lines' colour on a part of colour [ink], premultiplied, as LDraw's
+/// edge colours go: grey on black and the darkest colours, a dark shade of
+/// the colour on the rest.
+function penOf(ink) {
+  const bright = 0.2126 * ink[0] + 0.7152 * ink[1] + 0.0722 * ink[2];
+  const line = bright < 0.12 ? [0.5, 0.5, 0.5] : ink.slice(0, 3).map((c) => c * 0.4);
+  const alpha = 0.9;
+  return [...line.map((c) => c * alpha), alpha];
+}
+
 /// What draws the list's pictures: geometry from [root] (the store, ending
 /// in "/"), a surface's own colour from [colours] ({code: hex}). Null where
 /// there is no store to draw from.
@@ -111,7 +180,7 @@ export function partPictures(root, colours = {}) {
   if (typeof root !== "string" || !/^(https?:)?\//.test(root)) return null;
   const ratio = Math.min(Math.max(window.devicePixelRatio || 1, 1), 3);
   const px = Math.round(SHOWN * ratio);
-  const size = Math.max(LEAST, px);
+  const size = px * OVER;
   const drawn = new Map();      // part:colour -> its canvas
   const jobs = new Map();       // part:colour -> {lot, pics, started}, to be drawn
   const geometry = new Map();   // hash -> Promise of its buffers on the card
@@ -122,7 +191,11 @@ export function partPictures(root, colours = {}) {
   let framed = false;
   let gl = null;
   let broken = false;
-  let program = null;
+  let shaded = null;            // the programs: the part lit, its facts, its lines
+  let facts = null;
+  let lines = null;
+  let factsTarget = null;       // where its facts are drawn: a texture and a depth
+  let corners = null;           // a triangle over the whole picture, for its lines
 
   // A row in reach of the screen is queued, and one scrolled past before
   // its turn came is taken off again: what is asked for is what is in sight.
@@ -152,7 +225,7 @@ export function partPictures(root, colours = {}) {
       for (const job of jobs.values()) job.pics.forEach(giveUp);
       jobs.clear();
     });
-    const made = canvas.getContext("webgl", { antialias: true, alpha: true, premultipliedAlpha: true, depth: true,
+    const made = canvas.getContext("webgl", { antialias: false, alpha: true, premultipliedAlpha: true, depth: true,
       preserveDrawingBuffer: false, powerPreference: "low-power" });
     if (!made) {
       broken = true;
@@ -164,25 +237,68 @@ export function partPictures(root, colours = {}) {
       made.compileShader(one);
       return one;
     };
-    program = made.createProgram();
-    made.attachShader(program, shader(made.VERTEX_SHADER, VERTEX));
-    made.attachShader(program, shader(made.FRAGMENT_SHADER, FRAGMENT));
-    made.bindAttribLocation(program, 0, "position");
-    made.bindAttribLocation(program, 1, "normal");
-    made.linkProgram(program);
-    if (!made.getProgramParameter(program, made.LINK_STATUS)) {
+    const link = (vertex, fragment) => {
+      const one = made.createProgram();
+      made.attachShader(one, shader(made.VERTEX_SHADER, vertex));
+      made.attachShader(one, shader(made.FRAGMENT_SHADER, fragment));
+      made.bindAttribLocation(one, 0, "position");
+      made.bindAttribLocation(one, 1, "normal");
+      made.linkProgram(one);
+      if (!made.getProgramParameter(one, made.LINK_STATUS)) throw new Error(made.getProgramInfoLog(one) || "no program");
+      const named = { program: one };
+      for (let i = 0; i < made.getProgramParameter(one, made.ACTIVE_UNIFORMS); i++) {
+        const { name } = made.getActiveUniform(one, i);
+        named[name] = made.getUniformLocation(one, name);
+      }
+      return named;
+    };
+    try {
+      shaded = link(VERTEX, FRAGMENT);
+      facts = link(VERTEX, FACTS);
+      lines = link(FLAT, LINES);
+    } catch {
       broken = true;
       return null;
     }
     made.getExtension("OES_element_index_uint");
-    made.useProgram(program);
-    made.uniform3fv(made.getUniformLocation(program, "key"), KEY);
-    made.uniform3fv(made.getUniformLocation(program, "fill"), FILL);
-    made.uniform3fv(made.getUniformLocation(program, "eye"), EYE);
+    made.useProgram(shaded.program);
+    made.uniform3fv(shaded.key, KEY);
+    made.uniform3fv(shaded.fill, FILL);
+    made.uniform3fv(shaded.eye, EYE);
+    made.useProgram(facts.program);
+    made.uniform3fv(facts.right, RIGHT);
+    made.uniform3fv(facts.up, UP);
+    made.useProgram(lines.program);
+    made.uniform2f(lines.texel, 1 / size, 1 / size);
+    made.uniform1i(lines.facts, 0);
+    // The facts' texture, and a depth for drawing into it.
+    const texture = made.createTexture();
+    made.bindTexture(made.TEXTURE_2D, texture);
+    made.texImage2D(made.TEXTURE_2D, 0, made.RGBA, size, size, 0, made.RGBA, made.UNSIGNED_BYTE, null);
+    for (const [name, value] of [[made.TEXTURE_MIN_FILTER, made.NEAREST], [made.TEXTURE_MAG_FILTER, made.NEAREST],
+      [made.TEXTURE_WRAP_S, made.CLAMP_TO_EDGE], [made.TEXTURE_WRAP_T, made.CLAMP_TO_EDGE]]) {
+      made.texParameteri(made.TEXTURE_2D, name, value);
+    }
+    const depth = made.createRenderbuffer();
+    made.bindRenderbuffer(made.RENDERBUFFER, depth);
+    made.renderbufferStorage(made.RENDERBUFFER, made.DEPTH_COMPONENT16, size, size);
+    factsTarget = made.createFramebuffer();
+    made.bindFramebuffer(made.FRAMEBUFFER, factsTarget);
+    made.framebufferTexture2D(made.FRAMEBUFFER, made.COLOR_ATTACHMENT0, made.TEXTURE_2D, texture, 0);
+    made.framebufferRenderbuffer(made.FRAMEBUFFER, made.DEPTH_ATTACHMENT, made.RENDERBUFFER, depth);
+    const whole = made.checkFramebufferStatus(made.FRAMEBUFFER) === made.FRAMEBUFFER_COMPLETE;
+    made.bindFramebuffer(made.FRAMEBUFFER, null);
+    if (!whole) {
+      broken = true;
+      return null;
+    }
+    corners = made.createBuffer();
+    made.bindBuffer(made.ARRAY_BUFFER, corners);
+    made.bufferData(made.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), made.STATIC_DRAW);
     made.enableVertexAttribArray(0);
-    made.enableVertexAttribArray(1);
-    made.enable(made.DEPTH_TEST);
     made.blendFunc(made.ONE, made.ONE_MINUS_SRC_ALPHA);
+    made.viewport(0, 0, size, size);
+    made.clearColor(0, 0, 0, 0);
     gl = made;
     return gl;
   }
@@ -263,48 +379,70 @@ export function partPictures(root, colours = {}) {
     return { surfaces, view };
   }
 
+  /// Each surface of [part] drawn by [using] (a program with a view), its
+  /// colour, where it takes one, [inks][s]; [through]: only those you can
+  /// see through, else only those you cannot, or (null) all.
+  function surfaces(part, using, inks, through) {
+    gl.useProgram(using.program);
+    gl.uniformMatrix4fv(using.view, false, part.view);
+    gl.enableVertexAttribArray(1);
+    for (let s = 0; s < part.surfaces.length; s++) {
+      const surface = part.surfaces[s];
+      if (through !== null && (inks[s][3] < 1) !== through) continue;
+      if (using.ink) gl.uniform4fv(using.ink, inks[s]);
+      gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffers[0]);
+      gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffers[1]);
+      gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, surface.buffers[2]);
+      const type = surface.wide ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;
+      if (through) {
+        gl.enable(gl.BLEND);
+        gl.depthMask(false);
+        gl.enable(gl.CULL_FACE);
+        for (const side of [gl.FRONT, gl.BACK]) {
+          gl.cullFace(side);
+          gl.drawElements(gl.TRIANGLES, surface.count, type, 0);
+        }
+        gl.disable(gl.BLEND);
+        gl.depthMask(true);
+      } else {
+        if (surface.twoSided) gl.disable(gl.CULL_FACE);
+        else {
+          gl.enable(gl.CULL_FACE);
+          gl.cullFace(gl.BACK);
+        }
+        gl.drawElements(gl.TRIANGLES, surface.count, type, 0);
+      }
+    }
+    gl.disableVertexAttribArray(1);
+  }
+
   /// One lot drawn on the card and copied into a canvas of its own.
   function paint(part, lot) {
     const own = inkOf(colours[lot.colour]) || inkOf(lot.hex) || [0.6, 0.6, 0.6, 1];
-    gl.viewport(0, 0, size, size);
-    gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.uniformMatrix4fv(gl.getUniformLocation(program, "view"), false, part.view);
-    const ink = gl.getUniformLocation(program, "ink");
     const inks = part.surfaces.map((s) => (s.colour === INHERIT ? own : inkOf(colours[s.colour]) || own));
-    // What you cannot see through first, then what you can, its far side
-    // before its near, over it.
-    for (const through of [false, true]) {
-      for (let s = 0; s < part.surfaces.length; s++) {
-        const surface = part.surfaces[s];
-        if ((inks[s][3] < 1) !== through) continue;
-        gl.uniform4fv(ink, inks[s]);
-        gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffers[0]);
-        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-        gl.bindBuffer(gl.ARRAY_BUFFER, surface.buffers[1]);
-        gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 0, 0);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, surface.buffers[2]);
-        const type = surface.wide ? gl.UNSIGNED_INT : gl.UNSIGNED_SHORT;
-        if (through) {
-          gl.enable(gl.BLEND);
-          gl.depthMask(false);
-          gl.enable(gl.CULL_FACE);
-          for (const side of [gl.FRONT, gl.BACK]) {
-            gl.cullFace(side);
-            gl.drawElements(gl.TRIANGLES, surface.count, type, 0);
-          }
-          gl.disable(gl.BLEND);
-          gl.depthMask(true);
-        } else {
-          if (surface.twoSided) gl.disable(gl.CULL_FACE);
-          else {
-            gl.enable(gl.CULL_FACE);
-            gl.cullFace(gl.BACK);
-          }
-          gl.drawElements(gl.TRIANGLES, surface.count, type, 0);
-        }
-      }
-    }
+    gl.enable(gl.DEPTH_TEST);
+    // Where each pixel faces and how near it is, every surface alike.
+    gl.bindFramebuffer(gl.FRAMEBUFFER, factsTarget);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    surfaces(part, facts, inks, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    // The part lit: what you cannot see through first, then what you can,
+    // its far side before its near, over it.
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    surfaces(part, shaded, inks, false);
+    surfaces(part, shaded, inks, true);
+    // Its lines over it.
+    gl.disable(gl.DEPTH_TEST);
+    gl.disable(gl.CULL_FACE);
+    gl.enable(gl.BLEND);
+    gl.useProgram(lines.program);
+    gl.uniform4fv(lines.pen, penOf(own));
+    gl.bindBuffer(gl.ARRAY_BUFFER, corners);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    gl.disable(gl.BLEND);
     const canvas = document.createElement("canvas");
     canvas.width = px;
     canvas.height = px;
