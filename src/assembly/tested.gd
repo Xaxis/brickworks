@@ -12,16 +12,19 @@
 ##           each step's build so far weighed as the build check weighs it
 ##           (Balance): its centre of mass over what it stands on, and no stud
 ##           joint past where it lets go. A sub-assembly built in the hand is
-##           weighed once it is on the model.
+##           weighed once it is on the model, and an author's sub-model once
+##           it is built.
 ##   steps   no part in a step is put down in the air or hidden behind what
 ##           is already built, by the booklet's own rules: at the end of its
 ##           step each new thing is held to something that stands (the steps
 ##           score's "floating", src/dev/steps_score.gd: on the model, what is
 ##           on its lowest point, its first parts and the first parts of each
-##           piece a step begins; in the hand, the sub-assembly's first parts),
-##           and shows a tenth of itself from the front or from the back with
-##           what earlier steps built in front of it (Instructions.Pictures,
-##           the planner's own pictures of a step).
+##           piece a step begins; in the hand, the sub-assembly's first parts;
+##           and anywhere the first parts of each of the author's sub-models,
+##           which may be built in the hand), and shows a tenth of itself from
+##           the front or from the back with what earlier steps built in front
+##           of it, of its sub-model's own until that is built
+##           (Instructions.Pictures, the planner's own pictures of a step).
 ##   parts   every part is a real element in its colour, as the catalogue's
 ##           colour availability knows it (PartInfo.never_made_in): none in a
 ##           colour it was never made in, none made here, none in a colour
@@ -33,6 +36,11 @@
 ##           a joint's own parts do and gears in mesh (ExactCheck.forgiven);
 ##           each part is joined to the rest by BrickNet's connections (a
 ##           stud in its hole, a pin, an axle, a clip, a hinge, a ball), by
+##           a joint other than a stud the app reads itself (Joints: a pin, an
+##           axle, a bar in a clip, a ball, as Mechanism and the build check
+##           read them: of the gallery's 30 real sets' pieces held by
+##           nothing, 34 were held so, flowers on their stems, plumes,
+##           torches and bows in hands, gates on their hinges, tested301), by
 ##           glue, magnets or being one flexible thing (Joints.held_otherwise),
 ##           or, standing where it is, caught there so it cannot slide out
 ##           (ExactCheck.comes_away). A piece on the floor that stands by
@@ -603,7 +611,8 @@ class Steps extends RefCounted:
 ## "floor" (the lowest of them), "near" (id -> {id: true}, every joint read,
 ## either way round), "links" (the joints Balance weighs a part by),
 ## "otherwise" (what glue, magnets and flexible things hold,
-## Joints.held_otherwise), "joined" (what the finished model holds to what it
+## Joints.held_otherwise), "jointed" (those, and what every joint but a
+## stud's holds, either way round), "joined" (what the finished model holds to what it
 ## stands on through them), "piece" (id -> which piece of the finished model
 ## it is in, by them) and "us" (microseconds reading the contacts, then the
 ## joints). Left empty when [param job] was cancelled; at once with no job.
@@ -673,12 +682,24 @@ static func holds_into(out: Dictionary, bricks: Array, lattice: BrickLattice,
 			for other: Variant in (held[one] as Dictionary):
 				link.call(one, other)
 				links.append([int(one), int(other)])
+	# And each part with what holds it by a joint of its own, not a stud:
+	# what the whole test holds by besides BrickNet's connections.
+	var jointed: Dictionary = {}
+	var joint := func(a: Variant, b: Variant) -> void:
+		link.call(a, b)
+		if not jointed.has(a):
+			jointed[a] = {}
+		(jointed[a] as Dictionary)[b] = true
+	for held: Dictionary in [both, rounds, otherwise]:
+		for one: Variant in held:
+			for other: Variant in (held[one] as Dictionary):
+				joint.call(one, other)
 	var balls: Dictionary = Joints.balls(entries)
 	for one: Variant in balls:
 		for other: Variant in (balls[one] as Dictionary):
-			link.call(one, other)
+			joint.call(one, other)
 	for pair: Array in Joints.through(entries):
-		link.call(pair[0], pair[1])
+		joint.call(pair[0], pair[1])
 	if job != null:
 		await job.next()
 		if job.cancelled:
@@ -713,7 +734,7 @@ static func holds_into(out: Dictionary, bricks: Array, lattice: BrickLattice,
 					pending.append(next)
 		pieces += 1
 	out.merge({"contacts": contacts, "bottom": bottom, "floor": floor_cell, "near": near,
-		"links": links, "otherwise": otherwise, "joined": held, "piece": piece,
+		"links": links, "otherwise": otherwise, "jointed": jointed, "joined": held, "piece": piece,
 		"us": [contacts_us, joints_us]})
 
 
@@ -750,7 +771,7 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 	var boxes: Dictionary = contacts["boxes"]
 	var near: Dictionary = holding["near"]
 	var links: Array = holding["links"]
-	var otherwise: Dictionary = holding["otherwise"]
+	var otherwise: Dictionary = holding["jointed"]
 	# What a step is judged on: held through what joins it, as the steps score
 	# judges it. Then, for a part with no exact shape, which the whole test
 	# holds by these as the design check holds it by the lattice
@@ -961,8 +982,9 @@ static func _unfinished(tests: Dictionary, built_to: int, of: int) -> bool:
 ## The model by its parts' exact shapes (ExactCheck), as the design check
 ## reads a whole design. The shapes are read here a part a slice, and in a
 ## browser fetched, as the design check waits for them; the rest runs on a
-## worker ([method _exact_whole]). [param otherwise] is what glue, magnets
-## and flexible things hold (Joints.held_otherwise), [param near] every joint
+## worker ([method _exact_whole]). [param otherwise] is what glue, magnets,
+## flexible things and every joint but a stud's hold (holds_into's
+## "jointed"), [param near] every joint
 ## read, and [param held] what they and what rests on what hold, by brick id:
 ## a part with no exact shape is judged by those. {} when [param asked] was
 ## cancelled.
