@@ -92,15 +92,41 @@ func models() -> Array:
 ## (_entry), once by id, and none of a set a design run holds out ([param
 ## held], the bench's --held-out=, a set's number): a real-set test's session
 ## could search the shelf for its own set and open it (design286, 2026-10-26).
+## Nor any set of the same subject (same_subject): 21008 Burj Khalifa is the
+## answer to 21031 Burj Khalifa as much as 21031 is.
 func shelved(raw_models: Array, held: PackedStringArray) -> Array:
-	var kept: Array = []
+	var entries: Array = []
+	var held_names: PackedStringArray = PackedStringArray()
 	for raw: Variant in raw_models:
 		var entry: Dictionary = _entry(raw)
-		if entry.is_empty() or _by_id.has(entry["id"]) or held.has(str(entry["set"])):
+		if entry.is_empty():
+			continue
+		entries.append(entry)
+		if held.has(str(entry["set"])) and not held_names.has(str(entry["name"])):
+			held_names.append(str(entry["name"]))
+	var kept: Array = []
+	for entry: Dictionary in entries:
+		if _by_id.has(entry["id"]) or held.has(str(entry["set"])) or Array(held_names).any(
+				func(name: String) -> bool: return same_subject(name, str(entry["name"]))):
 			continue
 		_by_id[entry["id"]] = entry
 		kept.append(entry)
 	return kept
+
+
+## Whether two sets' names name one subject: a word of one is a word of the
+## other, or inside it from four letters (a Dozer is a Bulldozer). Wider than
+## the subject on purpose, for a held-out set: a set kept off the shelf costs
+## a session one example, a set left on it is the answer (Year of the Sheep
+## keeps every Year of the ... off, Heartlake Vet every Heartlake).
+static func same_subject(name: String, other: String) -> bool:
+	var theirs: PackedStringArray = RealSnippets.words(other)
+	for word: String in RealSnippets.words(name):
+		for said: String in theirs:
+			if word == said or (mini(word.length(), said.length()) >= 4
+					and (word.contains(said) or said.contains(word))):
+				return true
+	return false
 
 
 ## One model by its id, or {} with [member trouble] saying why.
