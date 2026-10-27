@@ -232,16 +232,21 @@ static func _lines_of(part: Lbm.PartMesh) -> Array:
 ## gear train there is; this is what it forgives. Read by Mechanism, from
 ## the gear table, so a mesh here is a mesh there: spur, crown, bevel and
 ## worm, at the pitch the table gives to within [constant Mechanism.MESH_SLACK].
+## And a chain's or a tread's links in a sprocket's teeth, "a chain on a
+## 16": 10124-1's chain met its sprockets 16 times by their exact shapes,
+## and the whole test called each a collision (tested301).
 ## [param entries] as [method pairs] takes them, with the part's id fourth.
 static func meshing(entries: Array) -> Dictionary:
 	var out: Dictionary = {}
 	var gears: Array = []
 	var standing: Array = []   ## [key, part, Transform3D], for Racks
+	var links: Dictionary = {str(Flex.KINDS["chain"]["link"]): true,
+		str(Flex.KINDS["tread"]["link"]): true}
 	for entry: Array in entries:
 		if entry.size() < 4 or entry[2] == null:
 			continue
 		standing.append([entry[0], str(entry[3]), entry[1]])
-		if Mechanism.spec_of(str(entry[3])).is_empty():
+		if Mechanism.spec_of(str(entry[3])).is_empty() and not links.has(str(entry[3])):
 			continue
 		gears.append({"key": gears.size() + 1, "part": str(entry[3]), "at": entry[1],
 			"mesh": entry[2], "was": entry[0]})
@@ -262,6 +267,27 @@ static func meshing(entries: Array) -> Dictionary:
 	if gears.size() < 2:
 		return out
 	var model: Mechanism = Mechanism.build(gears)
+	# A link in a sprocket's plane, within a link's length of its teeth, is
+	# in them or on its way round: a modeller lays a chain by hand, a link or
+	# two off the pin circle Mechanism's chains are found by.
+	for gear: Mechanism.Gear in model.gears:
+		if gear.links <= 0:
+			continue
+		var sprocket: Variant = gears[gear.key - 1]["was"]
+		for one: Dictionary in gears:
+			if not links.has(str(one["part"])):
+				continue
+			var gap: Vector3 = (one["at"] as Transform3D).origin - gear.centre
+			var along: float = gap.dot(gear.axis)
+			if absf(along) > 2.0 * Mechanism.CHAIN_SLACK \
+					or (gap - gear.axis * along).length() > gear.radius + 1.5 * Flex.CHAIN_PITCH:
+				continue
+			var said_chain: String = "a %s on %s" % ["tread" if str(one["part"])
+				== str(Flex.KINDS["tread"]["link"]) else "chain", _teeth(gear)]
+			for pair: Array in [[one["was"], sprocket], [sprocket, one["was"]]]:
+				if not out.has(pair[0]):
+					out[pair[0]] = {}
+				(out[pair[0]] as Dictionary)[pair[1]] = said_chain
 	for coupling: Mechanism.Coupling in model.couplings:
 		if coupling.how == "chain":
 			continue
