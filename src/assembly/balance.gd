@@ -89,11 +89,13 @@ var library: PartLibrary
 var lattice: BrickLattice
 ## Bricks that are the floor and not the model: the baseplate under it.
 var floor_ids: Dictionary = {}
-## Where each stud joint's studs are, by the pair's ids (Vector2i(lower,
-## upper) -> [method _overlap]): kept from one weighing to the next when a
-## caller hands the same dictionary to each, as Tested does weighing a model
-## at every step. Comparing the two parts' boxes was most of a weighing:
-## 2.6 s of 2.65 for 75060's 2,014 parts, many of them turned.
+## Where each stud joint's studs are, and where each touch meets, by the
+## pair's ids (Vector2i(lower, upper) -> [method _overlap]): kept from one
+## weighing to the next when a caller hands the same dictionary to each, as
+## Tested does weighing a model at every step. Comparing the two parts' boxes
+## was most of a weighing: 2.6 s of 2.65 for 75060's 2,014 parts, many of
+## them turned; and of weighing 42029-1 where it lay at the steps it tipped,
+## 0.46 s each for its 40 touches.
 var overlaps: Dictionary = {}
 ## What each brick is, by id ([part id, grams, the middle of its shape, its
 ## mesh, its sub-model's path, whether it has studs], or [] for one with no
@@ -124,6 +126,10 @@ var floor_top: int = 0x7FFFFFFF
 ## as [member rigid] from then on. Found only when [member finds_core].
 var finds_core: bool = false
 var core: Dictionary = {}
+## Where it touches the floor, when the caller knows it better than the
+## parts' boxes do (support_of's {"hull", "floor_y", "grounded"}): a build
+## weighed lying where it fell (Tested), whose boxes are of it standing.
+var support: Dictionary = {}
 
 
 ## One stud joint and what it carries.
@@ -542,7 +548,7 @@ func prepare(bricks: Array, links: Variant = null, contacts: Dictionary = {}) ->
 ## pose alone; no advice, which is for a whole motion.
 func weigh_pose(placed: Dictionary, label: String = "") -> Report:
 	var report := Report.new()
-	if _ids.is_empty() or _hull.size() < 3:
+	if _ids.is_empty() or _hull.size() < 3 and floor_cell == 0x7FFFFFFF:
 		return report
 	report.empty = false
 	report.support = _hull
@@ -608,7 +614,8 @@ func _read(bricks: Array) -> void:
 ## of the model, or of the top of the floor [param top] under it, and the
 ## hull round them.
 func _ground(boxes: Dictionary, top: int = 0x7FFFFFFF) -> void:
-	var found: Dictionary = Balance.support_of(boxes, floor_cell, top)
+	var found: Dictionary = support if not support.is_empty() \
+		else Balance.support_of(boxes, floor_cell, top)
 	_hull = found["hull"]
 	_floor_y = found["floor_y"]
 	_grounded = {}
@@ -1100,7 +1107,11 @@ var _boxes_of: Dictionary = {}
 
 func _patch(touch: Array) -> PackedVector2Array:
 	if touch[2] == null:
-		var met: Array = Balance._overlap(_boxes_of[_ids[int(touch[1])]], _boxes_of[_ids[int(touch[0])]])
+		var pair := Vector2i(_ids[int(touch[1])], _ids[int(touch[0])])
+		var met: Variant = overlaps.get(pair)
+		if met == null:
+			met = Balance._overlap(_boxes_of[pair.x], _boxes_of[pair.y])
+			overlaps[pair] = met
 		var lo: Vector3i = met[0]
 		var hi: Vector3i = met[1]
 		touch[2] = PackedVector2Array() if lo.x == 0x7FFFFFFF else PackedVector2Array([

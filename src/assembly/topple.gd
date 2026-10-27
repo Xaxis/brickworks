@@ -52,13 +52,15 @@ static func corners_of(world: BrickWorld, library: PartLibrary, placed: Dictiona
 ## How [param points] (the model's cover) with its centre of mass at
 ## [param centre] falls on a floor at [param floor_y]: {"turn": Transform3D
 ## from where it stands to where it rests, "falls": [[edge name, degrees]],
-## "rests": bool, "words": String}; "falls" empty when it stands.
-static func fall(points: PackedVector3Array, centre: Vector3, floor_y: float) -> Dictionary:
+## "rests": bool, "words": String}; "falls" empty when it stands. At most
+## [param most] falls.
+static func fall(points: PackedVector3Array, centre: Vector3, floor_y: float,
+		most: int = MOST) -> Dictionary:
 	var turn := Transform3D.IDENTITY
 	var falls: Array = []
 	var steps: Array = []   ## [point on the line, its way, radians]
 	var rests: bool = false
-	for _n: int in MOST:
+	for _n: int in most:
 		var support := PackedVector2Array()
 		var lowest: float = INF
 		for p: Vector3 in points:
@@ -223,5 +225,5 @@ static func words(falls: Array, turn: Transform3D, rests: bool) -> String:
 		out += " (it fell %d times, %s)" % [falls.size(), ", ".join(falls.map(
 			func(one: Array) -> String: return "%d° to the %s" % [roundi(float(one[1])), one[0]]))]
 	if not rests:
-		out += "; it does not come to rest within %d falls" % MOST
+		out += "; it does not come to rest within %d falls" % falls.size()
 	return out

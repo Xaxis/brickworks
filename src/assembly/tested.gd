@@ -8,12 +8,20 @@
 ## builder finds out when the build falls apart. Four tests, each passed or
 ## failed with its reason:
 ##
-##   stands  the model stands at every step of the steps the share carries:
-##           each step's build so far weighed as the build check weighs it
-##           (Balance): its centre of mass over what it stands on, and no stud
-##           joint past where it lets go. A sub-assembly built in the hand is
-##           weighed once it is on the model, and an author's sub-model once
-##           it is built.
+##   stands  the model holds together at every step of the steps the share
+##           carries, set down on a table: each step's build so far weighed
+##           as the build check weighs it (Balance), and no stud joint past
+##           where it lets go. A build that tips over is not held against
+##           it: it is let fall as one rigid thing onto a second and a third
+##           contact until it rests (Topple.fall), as a builder lays a
+##           Technic chassis on its side or a boat on its keel, and weighed
+##           as it lies there. It fails where a joint gives as it lies, or
+##           where it never comes to rest. Weighed standing upright on its
+##           lowest parts, 9 of the gallery's 30 real sets failed 102 times,
+##           42022-1 on one tyre from step 4 to 37, 851-1 on two crown gears
+##           and 5521-1 on its keel (tested305). A sub-assembly built in the
+##           hand is weighed once it is on the model, and an author's
+##           sub-model once it is built.
 ##   steps   no part in a step is put down in the air or hidden behind what
 ##           is already built, by the booklet's own rules: at the end of its
 ##           step each new thing is held to something that stands (the steps
@@ -140,8 +148,14 @@ class Pile extends RefCounted:
 ## what it carried, and is weighed no more until a part put in joins or
 ## touches it. A piece with a joint that gave stays, and is said again at
 ## each step, as weighing the whole build said it. The margin is the whole
-## build's, kept as each step adds to it.
+## build's, kept as each step adds to it. A build that tips is weighed whole
+## again where it comes to rest ([method settle]).
 class Weighing extends RefCounted:
+	## At most this many falls, one edge after another, to where a build
+	## that tips comes to rest (Topple.MOST is a dragged part's): 8862-1's
+	## grader settles at its step 14 in 22 falls of a degree or less, onto
+	## one part after another just above the floor.
+	const FALLS := 32
 	## What Stability.stud_joints says of a pair, each by its kind.
 	const KINDS: Array[String] = ["studs", "under", "sideways", "seated", "overlapped", "pivots",
 		"beside", "resting"]
@@ -171,6 +185,15 @@ class Weighing extends RefCounted:
 	var _hull := PackedVector2Array()
 	var _grams: float = 0.0
 	var _weighted := Vector3.ZERO
+	## The corners of each weighed part's box, by id: how the build falls
+	## where it tips. Eight a part, not every corner of each part's cover a
+	## dragged part falls on (Topple.corners_of): fewer to turn at each fall.
+	var _corners: Dictionary = {}       ## id -> PackedVector3Array
+	var _all_links: Array = []
+	## As it last lay where it tipped: the parts held two ways or more to the
+	## floor, and every part it lay on.
+	var _lying_core: Dictionary = {}
+	var _lying_on: Dictionary = {}
 
 	func _init(given_library: PartLibrary, given_lattice: BrickLattice, given: Dictionary,
 			bricks: Dictionary, links: Array) -> void:
@@ -178,6 +201,7 @@ class Weighing extends RefCounted:
 		lattice = given_lattice
 		contacts = given
 		by_id = bricks
+		_all_links = links
 		_joints = Stability.stud_joints(contacts, library, lattice)
 		Stability.beside(contacts, library, lattice)
 		for id: int in by_id:
@@ -238,6 +262,11 @@ class Weighing extends RefCounted:
 			var middle: Vector3 = brick.transform * (it[2] as Vector3)
 			_grams += float(it[1])
 			_weighted += middle * float(it[1])
+			var bounds: AABB = (it[3] as Lbm.PartMesh).bounds
+			var corners := PackedVector3Array()
+			for corner: int in 8:
+				corners.append(brick.transform * bounds.get_endpoint(corner))
+			_corners[id] = corners
 			var packed: PackedInt32Array = boxes.get(id, PackedInt32Array())
 			for at: int in range(0, packed.size(), 6):
 				if packed[at + 1] < _lowest:
@@ -318,6 +347,73 @@ class Weighing extends RefCounted:
 				gave[one.held_by] = true
 		_settle(gave)
 		return out
+
+	## The build so far, which tips, let fall as a rigid body until it rests
+	## (Topple.fall), as a real one settles on a table: a Technic chassis on
+	## its side, a boat on its keel. Then weighed whole as it lies there, on
+	## what touches the floor: {"fell": Topple.fall, "gave": the first stud
+	## joint past where it lets go as it lies, or null}.
+	func settle() -> Dictionary:
+		var points := PackedVector3Array()
+		for id: int in _corners:
+			points.append_array(_corners[id])
+		var centre: Vector3 = _weighted / maxf(_grams, 0.000001)
+		var fell: Dictionary = Topple.fall(points, centre, _lowest * BrickLattice.CELL, FALLS)
+		return {"fell": fell, "gave": _lying(fell["turn"])}
+
+	## The build so far turned by [param turn] and weighed on what then
+	## touches the floor, within half a plate of the lowest of it: the first
+	## stud joint past where it lets go, or null. What was held to the floor
+	## two ways or more as it last lay is weighed as the floor (Balance.rigid)
+	## while it lies on all it lay on then, as the core is standing. Weighed
+	## whole at each of the 46 steps it tips at, 42029-1 spent 1.4 s of its 9
+	## lying; weighed so, 0.4 s.
+	func _lying(turn: Transform3D) -> Balance.JointLoad:
+		var lowest: float = INF
+		for id: int in _corners:
+			for p: Vector3 in (_corners[id] as PackedVector3Array):
+				lowest = minf(lowest, (turn * p).y)
+		var grounded: Dictionary = {}
+		for id: int in _corners:
+			for p: Vector3 in (_corners[id] as PackedVector3Array):
+				if (turn * p).y <= lowest + BrickLattice.PLATE * 0.5:
+					grounded[id] = true
+					break
+		if not _lying_on.keys().all(func(id: int) -> bool: return grounded.has(id)):
+			_lying_core.clear()
+		var rigid: Dictionary = {}
+		var bricks: Array = []
+		for id: int in _corners:
+			if _lying_core.has(id):
+				continue
+			bricks.append(by_id[id])
+			for other: int in (_adjacent[id] as Array):
+				if _lying_core.has(other) and not rigid.has(other):
+					rigid[other] = true
+					bricks.append(by_id[other])
+		var on: Dictionary = {}
+		var placed_at: Dictionary = {}
+		for brick: BrickWorld.Brick in bricks:
+			placed_at[brick.id] = turn * brick.transform
+			if grounded.has(brick.id):
+				on[brick.id] = true
+		var balance := Balance.new()
+		balance.library = library
+		balance.lattice = lattice
+		balance.overlaps = overlaps
+		balance.known = known
+		balance.rigid = rigid
+		balance.finds_core = true
+		balance.floor_cell = _lowest
+		balance.support = {"hull": PackedVector2Array(), "floor_y": lowest, "grounded": on}
+		if not balance.prepare(bricks, _all_links, contacts):
+			return null
+		_lying_core.merge(balance.core)
+		_lying_on = grounded
+		for one: Balance.JointLoad in balance.weigh_pose(placed_at).joints:
+			if one.moment > one.ultimate:
+				return one
+		return null
 
 	func _add_points(packed: PackedInt32Array) -> void:
 		var more: bool = false
@@ -947,23 +1043,35 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 
 ## [param ids] put on the model at step [param number], and the build so
 ## far weighed as the build check weighs it: whether it stood on anything
-## to weigh. Where it tips, or a joint gives, it is said into [param tips].
+## to weigh. Where a joint gives, it is said into [param tips]. A build that
+## tips over is let fall to where it rests, as a real one is laid on a table
+## (Weighing.settle), and is said only where a joint gives as it lies
+## there, or where it does not come to rest.
 static func _weighed(weighing: Weighing, ids: Array[int], number: int, tips: Array,
 		library: PartLibrary) -> bool:
 	if ids.is_empty():
 		return false
 	var weigh_from: int = Time.get_ticks_usec()
 	var report: Dictionary = weighing.add(ids)
-	laps["weigh"] = int(laps.get("weigh", 0)) + Time.get_ticks_usec() - weigh_from
 	if report["empty"]:
+		laps["weigh"] = int(laps.get("weigh", 0)) + Time.get_ticks_usec() - weigh_from
 		return false
+	var joints: Array = report["joints"]
+	var fell: String = ""
 	if float(report["margin"]) < 0.0:
-		tips.append([number, "it tips over, %s studs past the %s edge" % [
-			Balance.studs(-float(report["margin"])), report["edge"]]])
-		return true
-	for one: Balance.JointLoad in report["joints"]:
+		var settle_from: int = Time.get_ticks_usec()
+		var settled: Dictionary = weighing.settle()
+		laps["settle"] = int(laps.get("settle", 0)) + Time.get_ticks_usec() - settle_from
+		var falls: Dictionary = settled["fell"]
+		if not str(falls["words"]).is_empty():
+			fell = "it %s, and " % falls["words"]
+		joints = [] if settled["gave"] == null else [settled["gave"]]
+		if not bool(falls["rests"]) and joints.is_empty():
+			tips.append([number, "it %s" % falls["words"]])
+	laps["weigh"] = int(laps.get("weigh", 0)) + Time.get_ticks_usec() - weigh_from
+	for one: Balance.JointLoad in joints:
 		if one.moment > one.ultimate:
-			tips.append([number, "%s %s %s on %d stud%s past where it lets go" % [
+			tips.append([number, "%s%s %s %s on %d stud%s past where it lets go" % [fell,
 				_named(one.beyond_part, library), "hangs from" if one.hangs else "is held by",
 				_named(one.held_part, library), one.studs, "" if one.studs == 1 else "s"]])
 			break

@@ -13,10 +13,12 @@
 ## tyre in Rubber Black is a Black one, an older file's colour code is the
 ## colour it meant, a part is made in what its other moulds were made in,
 ## an author's sub-model may be built in the hand, a part is held by a
-## joint the app reads besides BrickNet's, and a chain's links are in its
-## sprockets' teeth. And a part BrickNet gives another part's shape, which
-## put 4592c01's base 1.6 LDU into the plate under it in four of them, is
-## judged by its cover (tested303).
+## joint the app reads besides BrickNet's, a chain's links are in its
+## sprockets' teeth, and a build that tips over is let fall to where it
+## rests, as a builder lays it down (tested305): none comes apart there.
+## And a part BrickNet gives another part's shape, which put 4592c01's
+## base 1.6 LDU into the plate under it in four of them, is judged by its
+## cover (tested303).
 ## --only runs those of the list (1 is its first); --dump writes every
 ## failure each test found, in full (Tested.said_all), by set.
 extends SceneTree
@@ -26,14 +28,15 @@ const LIST := "res://tools/web/gallery_seeds/ldraw_library.json"
 ## whole. As published (app 0.8.0) the 30 had 134, 525, 45 and 297, every
 ## seed failing one; at tested301, 102, 230, 22 and 244, and the 21st,
 ## 346-2 House with Car, Tested; at tested303, whole 204, once a part
-## whose exact shape is another part's is judged by its cover (Exact.own).
+## whose exact shape is another part's is judged by its cover (Exact.own);
+## at tested305, none failing stands.
 const MOST: Dictionary = {
-	1: [0, 0, 0, 4], 2: [0, 16, 0, 8], 3: [1, 18, 0, 7], 4: [0, 43, 0, 8], 5: [19, 17, 0, 3],
-	6: [0, 2, 0, 8], 7: [0, 9, 0, 2], 8: [0, 0, 0, 7], 9: [6, 25, 1, 6], 10: [0, 1, 1, 11],
-	11: [34, 2, 1, 7], 12: [0, 8, 1, 16], 13: [0, 0, 0, 2], 14: [0, 14, 0, 12], 15: [0, 7, 0, 11],
-	16: [8, 7, 0, 7], 17: [1, 6, 0, 8], 18: [0, 0, 0, 2], 19: [23, 5, 0, 7], 20: [0, 3, 0, 18],
-	21: [0, 0, 0, 0], 22: [0, 6, 0, 5], 23: [0, 3, 0, 0], 24: [2, 0, 1, 2], 25: [0, 1, 0, 0],
-	26: [0, 19, 0, 5], 27: [8, 18, 16, 16], 28: [0, 0, 1, 8], 29: [0, 0, 0, 11], 30: [0, 0, 0, 3],
+	1: [0, 0, 0, 4], 2: [0, 16, 0, 8], 3: [0, 18, 0, 7], 4: [0, 43, 0, 8], 5: [0, 17, 0, 3],
+	6: [0, 2, 0, 8], 7: [0, 9, 0, 2], 8: [0, 0, 0, 7], 9: [0, 25, 1, 6], 10: [0, 1, 1, 11],
+	11: [0, 2, 1, 7], 12: [0, 8, 1, 16], 13: [0, 0, 0, 2], 14: [0, 14, 0, 12], 15: [0, 7, 0, 11],
+	16: [0, 7, 0, 7], 17: [0, 6, 0, 8], 18: [0, 0, 0, 2], 19: [0, 5, 0, 7], 20: [0, 3, 0, 18],
+	21: [0, 0, 0, 0], 22: [0, 6, 0, 5], 23: [0, 3, 0, 0], 24: [0, 0, 1, 2], 25: [0, 1, 0, 0],
+	26: [0, 19, 0, 5], 27: [0, 18, 16, 16], 28: [0, 0, 1, 8], 29: [0, 0, 0, 11], 30: [0, 0, 0, 3],
 }
 ## Faults the files really have, each still to be found: [seed, test, what
 ## it says]. Each set's own inventory (Rebrickable) has the part otherwise.

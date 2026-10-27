@@ -3971,8 +3971,14 @@ builds of their own, and its whole test names only the 1 x 2 plate its file
 puts inside a 1 x 6 one; three bricks
 stacked pass all four; the top one put in before what holds it fails steps
 ("Step 2: Brick 2 x 4 is put down in the air"); a brick put in a closed box
-after its roof fails steps as hidden; an arm on a 1 x 2 base fails stands
-("At step 2 it tips over, 1.4 studs past the right edge"); a 1 x 1 brick in
+after its roof fails steps as hidden; an arm on a 1 x 2 base tips it over
+onto the arm's tip and lies there whole, which passes stands (a build that
+tips is let fall to where it rests, `Tested.Weighing.settle`, tested305);
+a table on one leg tipped over onto its edge by a stack of eight 4 x 12
+bricks on one stud fails stands ("At step 4 it tipped over to the right and
+rests leaning 46°, its far end on the floor, and Plate 1 x 1 Round is held
+by Plate 6 x 16 on 1 stud past where it lets go"), and with five it holds
+and passes; a 1 x 1 brick in
 Light Blue fails parts ("never made in Light Blue"); a brick held by nothing
 fails whole ("Brick 1 x 1 falls"); the finding names its file's
 fingerprint and the app's version; 10218-1 (2,042 parts, 190 steps) tested in
