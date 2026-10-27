@@ -107,6 +107,10 @@ for hold in "$S/HOLD" "$S/${TAG}.hold"; do
   [ -e "$hold" ] && { echo "SHIP: held by $hold ($(cat "$hold" 2>/dev/null))"; exit 1; }
 done
 git -C $R merge --ff-only "$SHA" >/dev/null && env -u GITHUB_TOKEN git -C $R push -q origin main || { echo "SHIP: could not fast-forward or push main"; exit 1; }
+# The main checkout's scripts moved, its class list did not: a bench run
+# from it drew no pictures ("TouchSizing not declared", 2026-10-27). Its
+# import takes 10+ minutes, so it runs beside the deploy, not before it.
+(cd "$R" && setsid nohup bash tools/fresh_import.sh > "$S/${TAG}_main_import.log" 2>&1 &)
 echo "SHIP: main is $SHA, authors: $(git -C $R log --since='1 day ago' --format='%an <%ae>' | sort | uniq -c | tr '\n' ' ')"
 timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh --prod > $S/${TAG}_prod.log 2>&1
 deployed=$?
