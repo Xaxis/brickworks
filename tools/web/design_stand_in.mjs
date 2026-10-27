@@ -1928,6 +1928,19 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
     // visit counter); nothing else is fetched from here.
     if (!ours) return route.fallback();
     if (isPicture(url)) return route.fulfill({ status: 200, contentType: "image/png", body: PICTURE });
+    // A part's geometry, which a model's Parts list draws each lot from
+    // (web/part-pictures.js): a deployment's from its own store, here from
+    // this checkout's catalogue, as the store serves it.
+    const mesh = db && /^\/storage\/v1\/object\/public\/parts\/([0-9a-f]{8,64})\.lbm$/.exec(url.pathname);
+    if (mesh) {
+      if (remote) return route.fallback();
+      const file = path.join(web, "..", "assets", "generated", "parts", `${mesh[1]}.lbm`);
+      return existsSync(file)
+        ? route.fulfill({ status: 200, contentType: "application/octet-stream", body: readFileSync(file),
+          headers: { "access-control-allow-origin": "*", "cache-control": "public, max-age=31536000, immutable" } })
+        : route.fulfill({ status: 400, contentType: "application/json", body: '{"error":"not_found"}',
+          headers: { "access-control-allow-origin": "*" } });
+    }
     const face = avatarFile(url);
     if (face !== undefined) {
       return face ? route.fulfill({ status: 200, contentType: "image/jpeg", body: face })

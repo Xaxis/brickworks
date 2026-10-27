@@ -28,8 +28,9 @@ export const LEAST_SHARED = 0.5;
 const MOST_CANDIDATES = 8;
 const INDEX_FOR_MS = 10 * 60 * 1000;
 
-/// Where the store is, ending in "/": as api/_viewer.js partsRoot says it.
-function storeRoot(env = process.env) {
+/// Where the store is, ending in "/": as api/_viewer.js partsRoot says it
+/// (that module carries the viewer's page, too big to load for this).
+export function storeRoot(env = process.env) {
   const named = env.PARTS_URL || (env.SUPABASE_URL ? `${env.SUPABASE_URL.replace(/\/+$/, "")}/storage/v1/object/public/parts/` : "");
   return named ? named.replace(/\/?$/, "/") : "";
 }

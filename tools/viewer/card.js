@@ -27,7 +27,7 @@ import {
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { INHERIT, parseLbm } from "./lbm.js";
+import { INHERIT, parseLbm } from "../../web/lbm.js";
 import { SCENERY, sceneShape, unpack } from "./scene.js";
 
 const PROTOCOL = "2026-01-26";

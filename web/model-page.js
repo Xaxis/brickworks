@@ -227,14 +227,15 @@ const SVG = "http://www.w3.org/2000/svg";
 /// a screen away (or its tab is chosen), drawn a row a colour or a kind
 /// (Colour, Kind) with its lots under it in the app's order, the first
 /// LOTS_SHOWN rows until Show all. Each lot is its picture, its name, its
-/// number and colour, and how many. A lot has no picture yet
-/// (api/_parts.js pictureOf), so each shows its colour; a browser a check
-/// drives (navigator.webdriver) asks for none either way.
+/// number and colour, and how many. Its picture is its colour's swatch until
+/// the part itself is drawn over it, in its colour, from its geometry
+/// (web/part-pictures.js, site304), as the row nears the screen; one that
+/// cannot be drawn keeps the swatch.
 function startParts(section) {
   const list = section.querySelector(".lot-list");
   const all = section.querySelector("[data-all]");
   const choices = [...section.querySelectorAll("[data-group]")];
-  const pictures = !navigator.webdriver;
+  let pictures = null;
   let lots = null;
   let asked = null;
   let group = "colour";
@@ -258,18 +259,9 @@ function startParts(section) {
     item.dataset.colour = String(lot.colour);
     const pic = document.createElement("span");
     pic.className = "pic";
-    if (pictures && lot.picture) {
-      const img = document.createElement("img");
-      img.alt = "";
-      img.width = 48;
-      img.height = 48;
-      img.loading = "lazy";
-      img.decoding = "async";
-      img.referrerPolicy = "no-referrer";
-      img.addEventListener("error", () => img.replaceWith(swatch(lot.hex)), { once: true });
-      img.src = lot.picture;
-      pic.append(img);
-    } else pic.append(swatch(lot.hex));
+    pic.append(swatch(lot.hex));
+    if (pictures) pictures.want(pic, lot);
+    else pic.dataset.picture = "none";
     const what = document.createElement("span");
     what.className = "what";
     const name = document.createElement("span");
@@ -326,8 +318,11 @@ function startParts(section) {
   };
   const load = () => {
     if (asked) return asked;
+    // What draws the pictures, asked for beside the list and only with it,
+    // so a visit that never comes near the list loads neither.
+    const drawer = import("/part-pictures.js").catch(() => null);
     asked = fetch(section.dataset.parts).then((answer) => (answer.ok ? answer.json() : null)).catch(() => null)
-      .then((body) => {
+      .then(async (body) => {
         if (!body || !Array.isArray(body.lots)) {
           list.removeAttribute("aria-busy");
           const said = document.createElement("li");
@@ -336,6 +331,12 @@ function startParts(section) {
           list.replaceChildren(said);
           asked = null;
           return;
+        }
+        const made = await drawer;
+        try {
+          pictures = made && body.root ? made.partPictures(body.root, body.colours) : null;
+        } catch {
+          pictures = null;
         }
         lots = body.lots;
         draw();

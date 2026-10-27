@@ -3,11 +3,14 @@
 // app). Only what drawing needs: each surface's positions, normals and
 // triangles, its colour (16 is the colour the part is placed in) and
 // whether it is two-sided. Connectors, boxes and sockets are passed over.
+// Read by the viewer Claude shows (tools/viewer/card.js, bundled) and by a
+// model page's Parts list, which draws each lot from it (web/part-pictures.js).
 //
 // The file is in the app's convention, which is three.js's too: +Y up,
 // right handed, one unit one LDU. Its triangles are wound clockwise from
 // outside, as Godot draws them (src/parts/mesh_export.gd turns them round
-// for glTF); three.js wants them counter-clockwise, so each is turned here.
+// for glTF); three.js and WebGL want them counter-clockwise, so each is
+// turned here.
 
 export const INHERIT = 16;
 const MAGIC = 0x334d424c; // "LBM3", little-endian

@@ -167,9 +167,9 @@ import {
   siteChrome, testsAsked, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
-import { libraryCredit } from "./_omr_credit.js";
+import { libraryCredit, storeRoot } from "./_omr_credit.js";
 // A model's parts list from its file, as the app's (site278).
-import { inventoryOf, partsTable, pictureOf, rebrickableCsv, wantedList } from "./_parts.js";
+import { inventoryOf, paletteOf, partsTable, rebrickableCsv, wantedList } from "./_parts.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
@@ -1467,16 +1467,21 @@ ${footer || `<footer><small>${NOTICE}</small></footer>`}
 // page's scripts (web/share-page.js counts a view on this same origin,
 // web/model-page.js likes and keeps it for somebody signed in).
 /// Its policy, with the sign-in service (SUPABASE_URL) beside itself for
-/// a person who likes it, keeps it or puts it in a list (web/account.js).
+/// a person who likes it, keeps it or puts it in a list (web/account.js),
+/// and the parts store (PARTS_URL, today the same place), whose geometry
+/// the Parts list draws each lot's picture from (web/part-pictures.js).
+/// Pictures from itself alone: those are drawn on a canvas, not loaded.
 function pageCsp() {
-  let signIn = "";
-  try {
-    signIn = new URL(process.env.SUPABASE_URL || "").origin;
-  } catch {
-    signIn = "";
-  }
+  const origin = (url) => {
+    try {
+      return new URL(url || "").origin;
+    } catch {
+      return "";
+    }
+  };
+  const others = [...new Set([origin(process.env.SUPABASE_URL), origin(storeRoot())])].filter(Boolean);
   return "default-src 'none'; script-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; "
-    + `connect-src 'self'${signIn ? ` ${signIn}` : ""}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
+    + `connect-src 'self'${others.map((one) => ` ${one}`).join("")}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 }
 // The site's stylesheet ('self'), so the card is drawn in the site's colours,
 // and its theme's script (web/theme.js), so in the colours its viewer chose.
@@ -1620,11 +1625,15 @@ async function download(response, op, id, asked, as) {
     return response.status(200).end(rebrickableCsv(parts).text);
   }
   if (as !== "json") return fail(400, `a parts list is json, xml or csv, not ${as}`);
+  // Each lot's picture is drawn by the page (web/part-pictures.js) from its
+  // part's geometry (mesh), fetched from the store (root), in its colours.
+  const root = storeRoot();
   return response.status(200).json({
     id, version: shown.n, newest, pieces: parts.pieces,
     lots: parts.lots.map((lot) => ({ part: lot.part, name: lot.name, category: lot.category, colour: lot.colour,
       colour_name: lot.colour_name, hex: lot.hex, count: lot.count, element: lot.element || null, custom: lot.custom,
-      picture: pictureOf(lot) || null })),
+      mesh: (root && lot.mesh) || null })),
+    root: root || null, colours: root ? paletteOf() : {},
     // What each shop's list leaves off: a made part, or a colour it has no
     // number for.
     left_out: { bricklink: wantedList(parts).left_out, rebrickable: rebrickableCsv(parts).left_out },
