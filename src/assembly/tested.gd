@@ -22,17 +22,29 @@
 ##           and 5521-1 on its keel (tested305). A sub-assembly built in the
 ##           hand is weighed once it is on the model, and an author's
 ##           sub-model once it is built.
-##   steps   no part in a step is put down in the air or hidden behind what
-##           is already built, by the booklet's own rules: at the end of its
-##           step each new thing is held to something that stands (the steps
-##           score's "floating", src/dev/steps_score.gd: on the model, what is
-##           on its lowest point, its first parts and the first parts of each
-##           piece a step begins; in the hand, the sub-assembly's first parts;
-##           and anywhere the first parts of each of the author's sub-models,
-##           which may be built in the hand), and shows a tenth of itself from
-##           the front or from the back with what earlier steps built in front
-##           of it, of its sub-model's own until that is built
-##           (Instructions.Pictures, the planner's own pictures of a step).
+##   steps   every part of a step can be put where the step puts it, and
+##           seen there. At the end of its step each new thing is held to
+##           something that stands (the steps score's "floating",
+##           src/dev/steps_score.gd: on the model, what is on its lowest
+##           point, its first parts and the first parts of each piece a step
+##           begins; in the hand, the sub-assembly's first parts; and
+##           anywhere the first parts of each of the author's sub-models,
+##           which may be built in the hand). Parts put down in the air and
+##           held to each other there, two or more, until a later step holds
+##           them are a sub-assembly built in the hand, as a callout is that
+##           a modeller drew where it goes; one part alone, or a sub-assembly
+##           put on where nothing holds it, is put down in the air
+##           (Steps._held_up). And a real booklet could show it: drawn by the
+##           parts' own shapes (their covers), a tenth of it is in sight from
+##           the front, the back or either side, or from any of those with
+##           the model turned over, past everything earlier steps built in
+##           front of it, of its sub-model's own until that is built (Sight);
+##           a see-through part hides nothing. A part buried inside, which no
+##           view shows, is hidden. Judged by boxes from the front and the
+##           back alone, the gallery's 30 real sets failed it 230 times, 148
+##           of them hidden: bogies under a train, plates under a wing, a part
+##           under a turned part's box; and 43 parts of 5891-1's flattened
+##           callouts were put down in the air (tested306).
 ##   parts   every part is a real element in its colour, as the catalogue's
 ##           colour availability knows it (PartInfo.never_made_in): none in a
 ##           colour it was never made in, none made here, none in a colour
@@ -69,8 +81,9 @@ class_name Tested
 extends RefCounted
 
 const VERSION := 1
-## A new thing shows at least this much of itself, from the front or the
-## back: the steps score's SEEN, the planner's Pictures.SEEN.
+## A new thing shows at least this much of itself, from one way a booklet
+## looks at a step (Sight.VIEWS): the steps score's SEEN, the planner's
+## Pictures.SEEN.
 const SEEN := 0.1
 ## How many failures each test names before it says how many more.
 const NAMED := 3
@@ -554,11 +567,12 @@ class Seen extends RefCounted:
 
 
 ## What a booklet's pictures of a step show of a new thing: each part drawn
-## by its own shape (Seen), from each way a booklet looks at a step. Only what
-## earlier steps built near it is drawn in front of it, as the planner's own
-## pictures draw it (Instructions.Pictures.IN_FRONT): a tower across the model
-## does not hide a plate, as a booklet's picture of a step looks at where
-## it goes.
+## by its own shape (Seen), from each way a booklet looks at a step, with
+## everything earlier steps built along the line of sight in front of it.
+## The planner's own pictures count only what is within a stud and a bit
+## (Instructions.Pictures.IN_FRONT), where two views are enough; from eight,
+## a brick shut in a box after its roof showed through the gap to the far
+## walls.
 class Sight extends RefCounted:
 	## The ways a booklet looks at a step, towards the eye: from the front and
 	## the back, as the app's booklet draws them (BookletStudio.FRONT, BACK),
@@ -570,10 +584,11 @@ class Sight extends RefCounted:
 		Vector3(1.0, -0.68, -0.62), Vector3(-1.0, -0.68, 0.62)]
 	## A booklet's picture is a few hundred pixels across; a stud is 20 LDU.
 	const PIXEL := Instructions.Pictures.PIXEL
-	const IN_FRONT := Instructions.Pictures.IN_FRONT
+	const CELL := Instructions.Pictures.CELL
 	## Each view's [toward the eye, right, up].
 	var frames: Array = []
 	var _built: Dictionary = {}        ## Vector3i -> the parts of earlier steps there
+	var _bounds := AABB()              ## round all of them
 
 	func _init() -> void:
 		for view: Vector3 in VIEWS:
@@ -587,45 +602,78 @@ class Sight extends RefCounted:
 		for seen: Seen in step:
 			if seen.clear:
 				continue
+			_bounds = seen.box if _built.is_empty() else _bounds.merge(seen.box)
 			for key: Vector3i in Instructions.Pictures._cells_of(seen.box):
 				if not _built.has(key):
 					_built[key] = []
 				(_built[key] as Array).append(seen)
 
+	## How far past [param box], toward the eye of view [param v], what is
+	## built reaches.
+	func _reach(box: AABB, v: int) -> float:
+		var way: Vector3 = frames[v][0]
+		var reach: float = -INF
+		for corner: int in 8:
+			reach = maxf(reach, (_bounds.get_endpoint(corner) - box.get_center()).dot(way))
+		return reach
+
+	## The parts of earlier steps in the cells the line of sight from [param
+	## box] to the eye of view [param v] passes through, into [param out], the
+	## nearest it first.
+	func _ahead(box: AABB, v: int, out: Dictionary) -> void:
+		var way: Vector3 = frames[v][0] * (0.5 * CELL)
+		var at: AABB = box
+		var passed: Dictionary = {}
+		for k: int in ceili(maxf(0.0, _reach(box, v)) / (0.5 * CELL)) + 1:
+			for key: Vector3i in Instructions.Pictures._cells_of(at):
+				if passed.has(key):
+					continue
+				passed[key] = true
+				for other: Seen in _built.get(key, []):
+					out[other.id] = other
+			at.position += way
+
 	## Whether [param thing], its parts each a Seen, shows less than a tenth
-	## of itself from every view, with what earlier steps built near it in
-	## front of it. A view with nothing in front shows it whole; a thing too
-	## small for a pixel is not judged.
+	## of itself from every view, with what earlier steps built in front of
+	## it. A view with nothing in front shows it whole; a thing too small for
+	## a pixel is not judged. The views are asked the shortest way out of
+	## what is built first, and each drawn before the next is asked: a part
+	## on the back wall is in sight from the back, and the line of sight
+	## from the front through the whole model, asked of every view first,
+	## made 10218-1's tests take a third longer.
 	func hides(thing: Array) -> bool:
+		if _built.is_empty():
+			return false
 		var own: Dictionary = {}
 		for seen: Seen in thing:
 			own[seen.id] = true
-		var near: Dictionary = {}
-		for seen: Seen in thing:
-			var around: AABB = seen.box.grow(IN_FRONT)
-			for key: Vector3i in Instructions.Pictures._cells_of(around):
-				for other: Seen in _built.get(key, []):
-					if not own.has(other.id) and not near.has(other.id) and around.intersects(other.box):
-						near[other.id] = other
-		if near.is_empty():
-			return false
-		# In front of it in each view, by the boxes: no part's shape is
-		# drawn for a view something leaves bare.
-		var before: Array = []
+		var order: Array = []
 		for v: int in frames.size():
+			var reach: float = -INF
+			for seen: Seen in thing:
+				reach = maxf(reach, _reach(seen.box, v))
+			order.append([reach, v])
+		order.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+		for one: Array in order:
+			var v: int = one[1]
+			# In front of it, by the boxes: no part's shape is drawn for a
+			# view something leaves bare.
+			var ahead: Dictionary = {}
+			for seen: Seen in thing:
+				_ahead(seen.box, v, ahead)
 			var there: Array = []
-			for other: Seen in near.values():
+			for other: Seen in ahead.values():
+				if own.has(other.id):
+					continue
 				var theirs: Array = other.span(v, frames[v])
 				for seen: Seen in thing:
-					var mine: Array = seen.span(v, frames[v])
-					if (theirs[0] as Rect2).intersects(mine[0]) \
-							and (theirs[1] as Vector2).y > (mine[1] as Vector2).x:
+					var span: Array = seen.span(v, frames[v])
+					if (theirs[0] as Rect2).intersects(span[0]) \
+							and (theirs[1] as Vector2).y > (span[1] as Vector2).x:
 						there.append(other)
 						break
 			if there.is_empty():
 				return false
-			before.append(there)
-		for v: int in frames.size():
 			var mine: Dictionary = {}
 			for seen: Seen in thing:
 				var drawn: Dictionary = seen.drawn(v, frames[v])
@@ -634,7 +682,7 @@ class Sight extends RefCounted:
 			if mine.is_empty():
 				return false
 			var open: Dictionary = mine.duplicate()
-			for other: Seen in before[v]:
+			for other: Seen in there:
 				if float(open.size()) < SEEN * float(mine.size()):
 					break
 				Instructions.Pictures._cover(open, other.drawn(v, frames[v]))
@@ -842,7 +890,12 @@ class Steps extends RefCounted:
 			for id: int in new_ids:
 				pile.stand(id)
 		for thing: PackedInt64Array in things:
-			if joined.has(thing[0]) and not _stood(pile, thing):
+			if not joined.has(thing[0]) or _stood(pile, thing):
+				continue
+			# A sub-assembly put on whole is put on where it is held.
+			if thing.size() > 1:
+				floating.append([step.number, thing[0]])
+			else:
 				pile.aloft.append([step.number, thing, -1])
 		_held_up(pile)
 		var step_nodes: Array = []
