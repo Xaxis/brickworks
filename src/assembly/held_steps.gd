@@ -350,6 +350,7 @@ static func _carried(slots: Array, holding: Dictionary, by_id: Dictionary, nodes
 			things.append(PackedInt64Array([id]))
 		test.take(step, things)
 		out.append({"step": step, "ids": waiting, "other": [] as Array[int], "before": []})
+	test.finish()
 	return {"slots": out, "test": test}
 
 

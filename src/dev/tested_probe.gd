@@ -9,8 +9,11 @@
 ## A real set from vendor/omr, whose own steps stand (stands, parts), and
 ## whose figures stand beside its car as builds of their own (whole);
 ## three bricks stacked in order, and the same with the top one put in a step
-## before what holds it (steps: in the air); a closed box with a brick put in
-## it after its roof (steps: hidden); an arm that tips its base over onto
+## before what holds it (steps: in the air), and with the top two (a
+## sub-assembly built in the hand, passed); a closed box with a brick put in
+## it after its roof (steps: hidden, from every side and from below), and a
+## plate put under a bigger one's edge, seen with the model turned over
+## (passed); an arm that tips its base over onto
 ## the arm's tip, and lies there whole (stands, passed), and a table on one
 ## leg that a stack on one stud tips over, the stud letting go as it lies
 ## (stands, failed); a 1 x 1 brick in a colour it was never made in (parts);
@@ -107,6 +110,20 @@ func _run() -> void:
 	print("  %s" % _said(boxed))
 	_ok(not _passes(boxed, "steps") and _why(boxed, "steps").contains("hidden behind what is already built"),
 		"a brick put in a box after its roof fails steps as hidden: %s" % _why(boxed, "steps"))
+	# A booklet turns a model over to build its underside: a 1 x 1 plate
+	# under a 6 x 6 plate's edge, hidden from every side above.
+	var under: Dictionary = await _test(_model("under", [
+		[["3001", 4, Vector3(0, 0, 0)]], [["3958", 7, Vector3(0, -8, 0)]], [["3024", 14, Vector3(50, 0, 0)]]]))
+	print("  %s" % _said(under))
+	_ok(_passes(under, "steps"), "a plate put under a bigger one's edge is seen with the model turned over: %s"
+		% _why(under, "steps"))
+	# Two bricks put down in the air, one on the other, and then the brick
+	# under them: a sub-assembly built in the hand, as a booklet's callout.
+	var hand: Dictionary = await _test(_model("in the hand", [
+		[["3001", 4, Vector3(0, 0, 0)]], [["3001", 14, Vector3(0, -48, 0)]], [["3001", 1, Vector3(0, -72, 0)]],
+		[["3001", 1, Vector3(0, -24, 0)]]]))
+	print("  %s" % _said(hand))
+	_ok(_passes(hand, "steps"), "two bricks built in the hand and then put on pass steps: %s" % _why(hand, "steps"))
 
 	print("\nstanding up")
 	# Tipping is no fault: a build is set down as a builder would (tested305).
