@@ -1114,6 +1114,19 @@ def one(c: Candidate, args: argparse.Namespace, parts: style.Parts) -> dict:
     return record
 
 
+def _imported(checkout: Path) -> None:
+    """The arm's checkout with its class list up to date before any design starts. A
+    snapshot worktree is never imported by being made, and every design of one that
+    wasn't hit a parse error and timed out with nothing made: main292t and design300t,
+    2.5 hours each (2026-10-27). fresh_import.sh imports only when the list is behind."""
+    script = checkout / "tools" / "fresh_import.sh"
+    if not script.exists():
+        bench.say(f"{checkout} has no tools/fresh_import.sh: its class list is not checked")
+        return
+    if subprocess.run(["bash", str(script)], cwd=checkout).returncode:
+        raise SystemExit(f"{checkout}: its class list could not be brought up to date")
+
+
 def run(args: argparse.Namespace) -> int:
     if not args.software and subprocess.run([bench.GPU, "--held"]).returncode == 0:
         bench.say("realset: this run is inside a GPU lease and holds it to the end; run it bare "
@@ -1792,6 +1805,8 @@ def main(argv: list[str] | None = None) -> int:
         args.checkout = args.checkout.resolve()
         if args.instructions == "none" and args.via != "relay":
             raise SystemExit("--instructions none withholds what the relay serves: with --via relay")
+        if args.what == "run" and not args.dry_run:
+            _imported(args.checkout)
         return run(args)
     if args.what == "calibrate":
         return calibrate_half(args)
