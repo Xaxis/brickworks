@@ -111,14 +111,23 @@ static func found() -> String:
 	# browser check found on the first run after it shipped.
 	if OS.has_feature("web"):
 		return ""
-	# `which` rather than a guess at the path: it is installed by a
-	# script that picks its own directory, and ~/.local/bin is only the
-	# usual answer.
+	# `which` first: it is installed by a script that picks its own
+	# directory, and ~/.local/bin is only the usual answer.
 	var out: Array = []
-	if OS.execute("which", ["claude"], out, false) != 0:
-		return ""
-	var path: String = ("\n".join(out) if out is Array else "").strip_edges()
-	return path.split("\n")[0].strip_edges() if not path.is_empty() else ""
+	if OS.execute("which", ["claude"], out, false) == 0:
+		var path: String = ("\n".join(out) if out is Array else "").strip_edges()
+		if not path.is_empty():
+			return path.split("\n")[0].strip_edges()
+	# Then where its installers put it. An app started from a desktop icon
+	# or the Dock has no shell PATH (PATH=/usr/bin:/bin), so `which` misses
+	# ~/.local/bin, as RenderOutput.ffmpeg() misses Homebrew's.
+	var home: String = OS.get_environment("HOME")
+	for candidate: String in [home.path_join(".local/bin/claude"),
+			home.path_join(".claude/local/claude"), "/opt/homebrew/bin/claude",
+			"/usr/local/bin/claude"]:
+		if candidate.is_absolute_path() and FileAccess.file_exists(candidate):
+			return candidate
+	return ""
 
 
 ## True when a design is running.
