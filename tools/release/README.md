@@ -73,8 +73,7 @@ What each one guards against, all learned the hard way on 2026-10-13:
   worktree path) m31 went on to deploy production unchecked (2026-10-15).
 - `RELEASE_OUT=<folder> ship_after.sh <prev-tag> <worktree> <tag> <check…>`
   queues a release behind the one before it: it waits for that release's
-  result (`<prev>.done`, or the `exit=` line ending `<prev>_ship.log`),
-  ships only if it shipped, and writes its own. `-` for none before. A
+  result (`<prev>.done`), ships only if it shipped, and writes its own. `-` for none before. A
   waiter written by hand found the release before by its command line, its
   own grep hid it, and m43's ship went at once (2026-10-17).
 - A result is only the latest attempt's: a waiter that gives up writes
@@ -82,6 +81,11 @@ What each one guards against, all learned the hard way on 2026-10-13:
   both (its log before is kept as `<tag>_ship.prev.log`). m177's first
   waiter gave up when m175 held and wrote `m177.done` = 1; m177 shipped
   later, and m178's waiter read that 1 while m177's checks ran, and held
+  (2026-10-26).
+- `ship.sh` writes `<tag>.done` itself as it ends, begun by hand or queued,
+  and no waiter reads a log for a result. m181's promote, begun by hand,
+  cleared `m181.done`; m182's waiter fell back to the held battery's
+  `exit=1` ending `m181_ship.log`, and held while the promote ran
   (2026-10-26).
 - Every release runs `site` and `frames` whether they are named or not:
   `frames` holds a big model's step, orbit and select all to the app's own

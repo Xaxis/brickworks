@@ -1,10 +1,10 @@
 #!/bin/bash
 # ship_after.sh PREV WORKTREE TAG CHECK...
 # Ship TAG once release PREV has shipped, as a queue: waits until PREV's
-# result is in $RELEASE_OUT (PREV.done, its exit code, which this writes;
-# or an "exit=N" last line in PREV_ship.log), ships only if it was 0, and
-# writes TAG's own. PREV "-" ships at once. A waiter that gives up writes
-# TAG.gave_up, never TAG.done: TAG never ran.
+# result is in $RELEASE_OUT (PREV.done, its exit code, which ship.sh and
+# this write), ships only if it was 0, and writes TAG's own. PREV "-" ships
+# at once. A waiter that gives up writes TAG.gave_up, never TAG.done: TAG
+# never ran.
 #
 # Waiters written by hand looked for the release before by its command
 # line, and one's own grep took it out of the list: it found nothing and
@@ -15,6 +15,12 @@
 # read that 1 while m177's checks still ran, and held (2026-10-26). So TAG
 # queued clears what its attempts before left (ship.sh does too, for a ship
 # begun by hand), and the log before is kept as TAG_ship.prev.log.
+#
+# The log is never read for a result. An "exit=N" ending PREV_ship.log was
+# once read when PREV.done was missing, which is just when PREV has begun
+# again: m181's promote, begun by hand, cleared m181.done, and m182's waiter
+# read the held battery's "exit=1" from the log while the promote ran, and
+# held (2026-10-26).
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # Absolute: ship.sh runs from the worktree, where a relative folder is another
@@ -25,8 +31,7 @@ PREV="$1"; W="$2"; TAG="$3"; shift 3
 
 result_of() {
   if [ -e "$S/$1.done" ]; then echo "exit $(cat "$S/$1.done")"; return; fi
-  if [ -e "$S/$1.gave_up" ]; then echo "never begun: $(cat "$S/$1.gave_up")"; return; fi
-  [ -e "$S/${1}_ship.log" ] && tail -1 "$S/${1}_ship.log" | sed -n 's/^exit=/exit /p'
+  if [ -e "$S/$1.gave_up" ]; then echo "never begun: $(cat "$S/$1.gave_up")"; fi
 }
 
 rm -f "$S/$TAG.done" "$S/$TAG.gave_up"
