@@ -10,7 +10,8 @@
 ## hoses, pneumatic tubes, LDCad skins and stickers): the model opened in the
 ## app, its Inventory.of and ShopLists, and the page's own list of the same
 ## file (tools/web/parts_check.mjs), lot by lot and the two exports word for
-## word. Exits non-zero when one differs.
+## word, and each lot's picture drawn from the geometry the app draws its part
+## from (site304). Exits non-zero when one differs.
 extends SceneTree
 
 const OMR := "res://vendor/omr/files/"
@@ -58,9 +59,12 @@ func _run() -> void:
 		var stock: Inventory = Inventory.of(world, library, store.scenery)
 		var lots: Array = []
 		for lot: Inventory.Lot in stock.lots:
+			# And the geometry the app draws the part from, which the page
+			# draws each lot's picture from (site304).
+			var info: PartLibrary.PartInfo = library.parts.get(lot.part_id)
 			lots.append([lot.part_id, lot.color_code, lot.count, lot.name, lot.bricklink_id,
 				library.bricklink_colour(lot.color_code), lot.rebrickable_id, lot.rebrickable_colour,
-				lot.element, lot.custom])
+				lot.element, lot.custom, info.mesh_hash if info != null else ""])
 		out[path] = {"pieces": stock.pieces, "lots": lots,
 			"xml": str(ShopLists.bricklink_xml(stock, library)["text"]),
 			"csv": str(ShopLists.rebrickable_csv(stock)["text"])}

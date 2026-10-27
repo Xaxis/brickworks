@@ -10,7 +10,7 @@
 // it packed from), scene.js unpacks the very bytes the tab sent into those
 // bricks: number, part, colour and place.
 import { readFileSync } from "node:fs";
-import { parseLbm } from "./lbm.js";
+import { parseLbm } from "../../web/lbm.js";
 import { sceneShape, unpack } from "./scene.js";
 
 const root = new URL("../../", import.meta.url);

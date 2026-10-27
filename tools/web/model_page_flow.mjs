@@ -72,8 +72,13 @@
 //      app's (api/_parts.js); the list asked for only as the section nears
 //      the screen and drawn into the space kept for it, nothing under it
 //      moving; a row a colour over its lots, the lots' counts adding up to
-//      the total, Kind grouping them by kind; no picture asked of Rebrickable
-//      by a browser a check drives; the BrickLink wanted list well-formed
+//      the total, Kind grouping them by kind; each lot on screen its part
+//      drawn on the page from its geometry (site304, web/part-pictures.js):
+//      a canvas in place of the swatch, a part on it (not blank, lit and
+//      lined) and the lot's colour in it, again at once after Kind and
+//      Colour; no picture loaded from anywhere, and a policy that lets none
+//      in but the site's own and talks only to it and its Supabase project
+//      (the store the geometry comes from); the BrickLink wanted list well-formed
 //      XML of ITEMTYPE P, ITEMID, a numbered COLOR and MINQTY, adding up to
 //      the total less what it says it left off; the Rebrickable CSV
 //      Part,Color,Quantity likewise; and Download the stored file byte for
@@ -214,6 +219,59 @@ function read() {
   };
 }
 
+/// 16's pictures: every lot row on screen, once each has its picture or
+/// has kept its swatch (data-picture), read pixel by pixel. A picture is a
+/// canvas where the swatch was, a part on it (between a twentieth and
+/// nineteen twentieths of the square covered, in three shades or more:
+/// lit faces and lines), and the lot's colour in it (a third of the part
+/// within a shade of it). On the stand-in every lot is drawn; on a
+/// deployment's model a part its file carries keeps its swatch, and one
+/// lot drawn at the least.
+async function lotPictures(page, label, how) {
+  const settled = await until(page, () => {
+    const pics = [...document.querySelectorAll("#parts .lot:not([hidden]) .pic")].filter((pic) => {
+      const r = pic.getBoundingClientRect();
+      return r.bottom > 0 && r.top < innerHeight;
+    });
+    return pics.length > 0 && pics.every((pic) => pic.dataset.picture === "drawn" || pic.dataset.picture === "none");
+  }, null, 30000);
+  const lots = await page.evaluate(() => [...document.querySelectorAll("#parts .lot:not([hidden])")].filter((li) => {
+    const r = li.getBoundingClientRect();
+    return r.bottom > 0 && r.top < innerHeight;
+  }).map((li) => {
+    const pic = li.querySelector(".pic");
+    const canvas = pic.querySelector("canvas");
+    const hex = (li.querySelector(".meta .swatch rect")?.getAttribute("fill") || "").replace("#", "");
+    const row = { part: li.dataset.part, hex, state: pic.dataset.picture || "", swatch: Boolean(pic.querySelector(".swatch")),
+      canvas: Boolean(canvas) };
+    if (!canvas) return row;
+    const { data } = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
+    const ink = [0, 2, 4].map((at) => parseInt(hex.slice(at, at + 2), 16));
+    const inkSq = ink.reduce((a, c) => a + c * c, 0) || 1;
+    let covered = 0;
+    let near = 0;
+    const shades = new Set();
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 200) continue;
+      covered += 1;
+      const px = [data[i], data[i + 1], data[i + 2]];
+      shades.add(Math.round((0.2126 * px[0] + 0.7152 * px[1] + 0.0722 * px[2]) / 12));
+      // The colour lit or shaded: the nearest of it, a half to six fifths as bright.
+      const k = Math.min(Math.max(px.reduce((a, c, n) => a + c * ink[n], 0) / inkSq, 0.5), 1.2);
+      if (Math.hypot(...px.map((c, n) => c - k * ink[n])) < 48) near += 1;
+    }
+    return { ...row, covered: covered / (canvas.width * canvas.height), shades: shades.size, near: covered ? near / covered : 0 };
+  }));
+  const good = (lot) => lot.state === "drawn" && lot.canvas && !lot.swatch && lot.covered > 0.05 && lot.covered < 0.95
+    && lot.shades >= 3 && lot.near >= 0.33;
+  const drawn = lots.filter((lot) => lot.state === "drawn");
+  const said = lots.map((lot) => `${lot.part} #${lot.hex} ${lot.state}${lot.canvas ? ` ${Math.round(lot.covered * 100)}% covered, `
+    + `${lot.shades} shades, ${Math.round(lot.near * 100)}% its colour` : ""}`).join("; ");
+  check(`${label}: each lot on screen its part ${how}, in its colour (${said || "none"})`,
+    settled && lots.length > 0 && drawn.length > 0 && drawn.every(good)
+      && (remote ? lots.every((lot) => lot.state === "drawn" || (lot.state === "none" && lot.swatch)) : drawn.length === lots.length));
+}
+
 /// 16. The Parts section, the shops' lists and the file, on [page].
 async function partsChecks(page, label, seen, one) {
   const before = await page.evaluate(() => {
@@ -267,8 +325,16 @@ async function partsChecks(page, label, seen, one) {
   });
   check(`${label}: drawn into the space kept for it (${Math.round(before.height)} px before, ${Math.round(after.height)} after)`,
     Math.abs(after.height - before.height) < 0.5);
-  check(`${label}: ${after.shown} rows shown, a colour's row first, no picture asked of Rebrickable (${after.pictures})`,
+  check(`${label}: ${after.shown} rows shown, a colour's row first, no picture loaded from anywhere (${after.pictures})`,
     after.shown > 0 && after.shown <= 12 && after.firstGroup && after.pictures === 0);
+  // Each lot's picture, drawn on the page (site304): only images from the
+  // site itself, and a fetch only to it and its own Supabase project.
+  const sources = (name) => (new RegExp(`(?:^|;)\\s*${name}\\s+([^;]*)`).exec(seen.policy || "") || [])[1]?.trim().split(/\s+/) || [];
+  const project = remote ? remoteDb : stand.DB;
+  check(`${label}: its policy lets in pictures from itself alone (img-src ${sources("img-src").join(" ")}) and talks to itself and its project (connect-src ${sources("connect-src").join(" ")})`,
+    JSON.stringify(sources("img-src")) === JSON.stringify(["'self'"])
+      && sources("connect-src").every((one) => one === "'self'" || one === project) && sources("connect-src").includes("'self'"));
+  await lotPictures(page, label, "drawn from its geometry");
   if (after.all) await page.click("#parts [data-all]");
   const counted = await page.evaluate(() => {
     const qty = [...document.querySelectorAll("#parts .lot-list .lot .qty")].map((q) => Number(q.textContent.replace(/[^\d]/g, "")));
@@ -281,6 +347,8 @@ async function partsChecks(page, label, seen, one) {
     first: document.querySelector("#parts .lot-list li.group span")?.textContent || "" }));
   check(`${label}: Kind groups them by kind (first: ${kind.first})`, kind.pressed === "true" && Boolean(kind.first));
   await page.click('#parts [data-group="colour"]');
+  await page.evaluate(() => document.getElementById("parts").scrollIntoView({ block: "start" }));
+  await lotPictures(page, label, "again by Colour, from what was drawn");
   // The shops' lists and the file, as a visitor's browser fetches them.
   const got = await page.evaluate(async ({ at, download }) => {
     const ask = async (href) => {
@@ -381,7 +449,7 @@ try {
             }
           });
           try {
-            await page.goto(base + one.path, { waitUntil: "load", timeout: 60000 });
+            const visited = await page.goto(base + one.path, { waitUntil: "load", timeout: 60000 });
             // Signed in, the lists asked for; and the comments listed, which
             // say Comment's count.
             await until(page, () => !document.getElementById("comments")?.hidden
@@ -389,6 +457,7 @@ try {
             await page.waitForTimeout(400);
             if (out) await page.screenshot({ path: path.join(out, `${stem}-fold.png`) });
             const seen = await page.evaluate(read);
+            seen.policy = visited?.headers()["content-security-policy"] || "";
             const vh = seen.viewport.height;
 
             // 1. Media first.

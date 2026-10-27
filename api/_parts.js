@@ -75,9 +75,10 @@ for (const [kind, spec] of Object.entries(KINDS)) {
 
 /// What the table holds, from the catalogue, the colours and the elements
 /// (assets/generated): every part as [name, category index, flags (1: a
-/// Flexible_Section), moved to, BrickLink's number, Rebrickable's number],
-/// trailing blanks left off; every colour as [name, hex, the LEGO Group's name for it,
-/// Rebrickable's number, BrickLink's number, plain code]; the element to
+/// Flexible_Section), moved to, BrickLink's number, Rebrickable's number,
+/// the hash its geometry is named by], trailing blanks left off; every
+/// colour as [name, hex, the LEGO Group's name for it, Rebrickable's number,
+/// BrickLink's number, plain code, alpha 0-255]; the element to
 /// order for each part in a plain colour; and the straight parts each
 /// flexible kind is sold as, shortest first (Flex.lengths_of).
 export function deriveTable(catalogue, colours, elements = {}) {
@@ -97,7 +98,7 @@ export function deriveTable(catalogue, colours, elements = {}) {
     }
     const row = [String(part.name || ""), categoryOf.get(category),
       String(part.kind || "").includes("Flexible_Section") ? 1 : 0, String(part.moved_to || ""),
-      shop(part, "BrickLink"), shop(part, "Rebrickable")];
+      shop(part, "BrickLink"), shop(part, "Rebrickable"), String(part.mesh || "")];
     while (row.length > 2 && (row[row.length - 1] === "" || row[row.length - 1] === 0)) row.pop();
     parts[String(part.id)] = row;
   }
@@ -107,7 +108,8 @@ export function deriveTable(catalogue, colours, elements = {}) {
     colourRows[colour.code] = [String(colour.name || ""), hex, String(colour.lego_name || ""),
       Number.isInteger(colour.rebrickable_id) ? colour.rebrickable_id : -1,
       Number.isInteger(colour.bricklink) ? colour.bricklink : -1,
-      Number.isInteger(colour.plain_code) ? colour.plain_code : colour.code];
+      Number.isInteger(colour.plain_code) ? colour.plain_code : colour.code,
+      Number.isInteger(colour.alpha) ? colour.alpha : 255];
   }
   const flex = {};
   for (const [kind, spec] of Object.entries(KINDS)) {
@@ -249,7 +251,7 @@ function makeLibrary(given) {
     const row = given.parts[id];
     if (!row) return null;
     return { name: row[0], category: given.categories[row[1]] || "", flexible: row[2] === 1,
-      moved: row[3] || "", bricklink: row[4] || "", rebrickable: row[5] || "", custom: false };
+      moved: row[3] || "", bricklink: row[4] || "", rebrickable: row[5] || "", mesh: row[6] || "", custom: false };
   };
   const has = (id) => custom.has(id) || Object.prototype.hasOwnProperty.call(given.parts, id);
   /// The number a part means today (PartLibrary.resolve).
@@ -461,7 +463,8 @@ const tidy = (raw) => String(raw).trim().replace(/ {2,}/g, " ");
 
 /// The parts list of a model file: {pieces, lots}, each lot {part, name,
 /// category, colour, colour_name, hex, lego_colour, count, element, custom,
-/// bricklink, bricklink_colour, rebrickable, rebrickable_colour}, ordered as
+/// bricklink, bricklink_colour, rebrickable, rebrickable_colour, mesh (the
+/// hash the app's geometry for it is named by, "" for a made part)}, ordered as
 /// the app orders its list: by how many of a part there are, its colours
 /// together. [given] is partsTable()'s.
 export function inventoryOf(text, given = partsTable()) {
@@ -498,6 +501,7 @@ export function inventoryOf(text, given = partsTable()) {
         lego_colour: plain.lego, count: 0, element, custom: Boolean(info && info.custom),
         bricklink: shopPart(info, part, "bricklink"), bricklink_colour: plain.bricklink,
         rebrickable: shopPart(info, part, "rebrickable"), rebrickable_colour: plain.rebrickable,
+        mesh: (info && info.mesh) || "",
       };
       byKey.set(key, lot);
       lots.push(lot);
@@ -567,10 +571,25 @@ export function rebrickableCsv(inventory) {
   return { text: `${rows.join("\n")}\n`, lots: inventory.lots.length - left, left_out: left };
 }
 
-/// Where a lot's picture is: nowhere yet, so the list shows its colour.
-/// Rebrickable's photos would have every visitor's browser ask a third party
-/// for a part on every page, where Brickworks asks Rebrickable at most once
-/// a day; our own renders of each part in its colour come later.
-export function pictureOf(_lot) {
-  return "";
+/// What a page needs to draw each lot's picture itself (web/part-pictures.js,
+/// site304): every colour a surface of a part may be moulded in, as
+/// {code: "rrggbb"}, "rrggbbaa" for one you can see through. Each lot says
+/// its part's geometry (mesh) and its own colour (hex); a surface of colour
+/// 16 takes the lot's, any other its own from here.
+///
+/// Rebrickable's photos, which the list showed until rel-m180, had every
+/// visitor's browser ask a third party for a part on every page, where
+/// Brickworks asks Rebrickable at most once a day. These are drawn from the
+/// geometry the app draws the part from, in the bucket the app reads it from.
+export function paletteOf(given = partsTable()) {
+  if (!given) return {};
+  if (palettes.has(given)) return palettes.get(given);
+  const palette = {};
+  for (const [code, row] of Object.entries(given.colours)) {
+    const alpha = Number.isInteger(row[6]) ? row[6] : 255;
+    palette[code] = alpha < 255 ? `${row[1]}${alpha.toString(16).padStart(2, "0")}` : row[1];
+  }
+  palettes.set(given, palette);
+  return palette;
 }
+const palettes = new WeakMap();

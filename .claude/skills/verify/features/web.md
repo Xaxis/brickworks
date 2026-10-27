@@ -787,13 +787,36 @@ plan with Claude as the client.
   `?op=parts&as=json|xml|csv` likewise named; both signed out, kept by the
   CDN as the page (`SHARED_CACHE`), 404/410 as the viewer's answer. The
   table it needs (`partsTable`): `_parts_table.json` beside the function
-  (deploy.sh, `part_facts.mjs --parts`, 3.2 MB) or the checkout's
-  `assets/generated`. Pictures: none yet (`pictureOf` gives "", the
-  page's policy allows images from itself alone), so every lot shows its
-  colour's swatch; our own renders of the parts come later. Download is `.side .actions a[download]`. Like and I
+  (deploy.sh, `part_facts.mjs --parts`, 4.0 MB with each part's geometry
+  hash and each colour's alpha) or the checkout's `assets/generated`.
+  Pictures (site304, `web/part-pictures.js`): each lot's `.pic` starts as
+  its colour's swatch and, as the row comes within 300 px of the screen,
+  the part is drawn over it on a `<canvas>` from the geometry the app
+  draws it from (`lot.mesh`, fetched from `root`, the store, at most six
+  at once; `web/lbm.js` reads it): WebGL off the page, orthographic from
+  the app's parts bin's corner and lights, each surface in its colour
+  (`colours`, every code's `rrggbb[aa]`; 16 the lot's), LDraw-style lines
+  from each pixel's normal and depth, drawn at twice its pixels and scaled
+  down, a few each frame within 8 ms. Kept by part and colour for the
+  page's life, so Kind and back draw nothing again.
+  `.pic[data-picture="drawn"]` once drawn, `"none"` where it keeps the
+  swatch (a part the file carries, a failed fetch, no WebGL). No image is
+  loaded: the policy's `img-src` stays `'self'`; `connect-src` names the
+  store's origin (PARTS_URL, today the Supabase project already there).
+  The module (`/part-pictures.js`) is asked for beside `parts.json`, so a
+  visit that never nears the list loads neither, and the list is drawn
+  without waiting for it: the pictures come over the swatches once it is
+  here. On 10243-1 (393 lots, Parts clicked at load, the stand-in, five
+  runs) the list is drawn in a median 46 ms at 1280 and 51 at 390 (42 and
+  43 before; single runs 22-126 either way) and the first screen's
+  pictures by 271 and 323 ms; scrolling Show all to the end draws 386 (7
+  carried parts keep their swatches) with no frame over 100 ms (before:
+  the one Show all frame, 88-92 ms). Download is `.side .actions a[download]`. Like and I
   built it are `.icon-btn.labelled` (their word in `.word`). Checked by
-  `parts page probe` (against the app) and `model_page_flow` step 16 (the
-  page, the files, the space kept).
+  `parts page probe` (against the app: each lot's geometry the app's own,
+  read into triangles in its colour) and `model_page_flow` step 16 (the
+  page, the files, the space kept, each lot's picture read pixel by pixel
+  and the policy).
 - `parts page probe`: `tools/probe.sh parts_page_probe` (headless, about a
   minute once its class list is current): opens 6040-1, 10243-1, 42080-1
   and 8880-1 in the app (or the files given after `--`), takes each one's
