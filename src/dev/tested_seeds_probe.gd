@@ -12,8 +12,9 @@
 ## all fail; most of those were the tests wrong (tested301). Put right: a
 ## tyre in Rubber Black is a Black one, an older file's colour code is the
 ## colour it meant, a part is made in what its other moulds were made in,
-## an author's sub-model may be built in the hand, and a part is held by a
-## joint the app reads besides BrickNet's.
+## an author's sub-model may be built in the hand, a part is held by a
+## joint the app reads besides BrickNet's, and a chain's links are in its
+## sprockets' teeth.
 ## --only runs those of the list (1 is its first); --dump writes every
 ## failure each test found, in full (Tested.said_all), by set.
 extends SceneTree
@@ -21,15 +22,15 @@ extends SceneTree
 const LIST := "res://tools/web/gallery_seeds/ldraw_library.json"
 ## The most failures each seed may have, by test: stands, steps, parts,
 ## whole. As published (app 0.8.0) the 30 had 134, 525, 45 and 297, every
-## seed failing one; at tested301, 83, 230, 22 and 263, and the 21st,
+## seed failing one; at tested301, 102, 230, 22 and 244, and the 21st,
 ## 346-2 House with Car, Tested.
 const MOST: Dictionary = {
-	1: [0, 0, 0, 4], 2: [0, 16, 0, 8], 3: [1, 18, 0, 7], 4: [0, 43, 0, 8], 5: [2, 17, 0, 3],
-	6: [0, 2, 0, 8], 7: [0, 9, 0, 2], 8: [0, 0, 0, 7], 9: [12, 25, 1, 25], 10: [0, 1, 1, 22],
+	1: [0, 0, 0, 4], 2: [0, 16, 0, 8], 3: [1, 18, 0, 7], 4: [0, 43, 0, 8], 5: [19, 17, 0, 3],
+	6: [0, 2, 0, 8], 7: [0, 9, 0, 2], 8: [0, 0, 0, 7], 9: [6, 25, 1, 6], 10: [0, 1, 1, 22],
 	11: [34, 2, 1, 7], 12: [0, 8, 1, 16], 13: [0, 0, 0, 10], 14: [0, 14, 0, 12], 15: [0, 7, 0, 11],
-	16: [9, 7, 0, 7], 17: [0, 6, 0, 9], 18: [0, 0, 0, 2], 19: [23, 5, 0, 7], 20: [0, 3, 0, 18],
-	21: [0, 0, 0, 0], 22: [0, 6, 0, 5], 23: [0, 3, 0, 0], 24: [1, 0, 1, 2], 25: [0, 1, 0, 0],
-	26: [0, 19, 0, 15], 27: [1, 18, 16, 20], 28: [0, 0, 1, 8], 29: [0, 0, 0, 17], 30: [0, 0, 0, 3],
+	16: [8, 7, 0, 7], 17: [1, 6, 0, 9], 18: [0, 0, 0, 2], 19: [23, 5, 0, 7], 20: [0, 3, 0, 18],
+	21: [0, 0, 0, 0], 22: [0, 6, 0, 5], 23: [0, 3, 0, 0], 24: [2, 0, 1, 2], 25: [0, 1, 0, 0],
+	26: [0, 19, 0, 15], 27: [8, 18, 16, 20], 28: [0, 0, 1, 8], 29: [0, 0, 0, 17], 30: [0, 0, 0, 3],
 }
 ## Faults the files really have, each still to be found: [seed, test, what
 ## it says]. Each set's own inventory (Rebrickable) has the part otherwise.
@@ -45,6 +46,17 @@ const FAULTS: Array = [
 	[27, "parts", "Cone 1 x 1 (3) never made in Chrome Gold"],
 	# 6361-1's hook is Black.
 	[28, "parts", "Crane Hook Metal 1 x 4 x 1 never made in Pearl Black"],
+	# 21011-1's 2 x 12 plates half a stud off the plates over them: their
+	# studs stand between those plates' tubes, by the parts' real shapes too.
+	[6, "whole", "Plate 6 x 10 into Plate 2 x 12 by 2.8 LDU"],
+	# 851-1 draws a 1 x 2 plate and a bush twice, each in one place.
+	[19, "whole", "Plate 1 x 2 into Plate 1 x 2 by 4 LDU"],
+	[19, "whole", "Technic Bush with Two Flanges into Technic Bush with Two Flanges by 3.1 LDU"],
+	# 358-1 stands four 1 x 4 bricks 20 LDU over the bricks under them, not 24.
+	[20, "whole", "Brick 1 x 4 into Brick 1 x 4 by 4 LDU"],
+	# 5935-1 draws a 2 x 2 tile and a 1 x 2 brick twice, each in one place.
+	[29, "whole", "Tile 2 x 2 without Groove into Tile 2 x 2 without Groove by 4 LDU"],
+	[29, "whole", "Brick 1 x 2 into Brick 1 x 2 by 4 LDU"],
 ]
 
 var _failures: int = 0

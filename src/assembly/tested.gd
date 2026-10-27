@@ -389,7 +389,8 @@ class Steps extends RefCounted:
 	var side: Dictionary = {}          ## callout -> Pile
 	var _main_pictures := Instructions.Pictures.new()
 	var _side_pictures: Dictionary = {} ## callout -> Instructions.Pictures
-	## The author's sub-models begun, by path.
+	## The author's sub-models begun, by path: true for one begun in the
+	## hand, whose first parts stood on nothing that stands.
 	var _begun_sections: Dictionary = {}
 	## Those being built, by path: the pictures of what each has built, the
 	## parts it has, and the pictures it goes into when it is built (its
@@ -551,9 +552,9 @@ class Steps extends RefCounted:
 					_begun_pieces[which] = true
 					pile.stand(thing[0])
 		# And, on the model or in a callout, the first parts of each of the
-		# author's sub-models, in the hand.
+		# author's sub-models, in the hand where nothing that stands holds them.
 		if not section.is_empty() and not _begun_sections.has(section):
-			_begun_sections[section] = true
+			_begun_sections[section] = not new_ids.any(func(id: int) -> bool: return pile.stands(id))
 			for id: int in new_ids:
 				pile.stand(id)
 		for thing: PackedInt64Array in things:
@@ -573,6 +574,19 @@ class Steps extends RefCounted:
 		if _section_nodes.has(section):
 			(_section_nodes[section] as Array).append_array(step_nodes)
 		return new_ids
+
+	## The outermost of the author's sub-models [param section] is in that
+	## is built in the hand, or "": what its parts wait for to be weighed.
+	## Every one is but one the model itself places that was begun on what
+	## stands, which is a build of the model's own: its main build, as one
+	## file of a whole set often is, or a figure beside it.
+	func in_hand(section: String) -> String:
+		var path: String = ""
+		for segment: String in Assemblies.segments(section):
+			path = Assemblies.join(path, segment)
+			if path.contains("/") or bool(_begun_sections.get(path, false)):
+				return path
+		return ""
 
 	## The pictures a step of [param section] is judged in sight by: its
 	## sub-model's own, once each sub-model it is not in is built into what
@@ -841,13 +855,18 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 		if step.in_callout():
 			continue
 		# Weighed as the build check weighs it, the build so far: a part of
-		# one of the author's sub-models once that is built, as a booklet's
-		# sub-assembly is put on whole, not while a hand holds it (Steps).
-		# Each weighed where the booklet shows it as it was built, 8862-1
-		# tipped over at its step 10 and 10124-1 at its step 3.
+		# one of the author's sub-models begun in the hand once that is built,
+		# as a booklet's sub-assembly is put on whole, not while a hand holds
+		# it (Steps). Each weighed where the booklet shows it as it was built,
+		# 8862-1 tipped over at its step 10 and 5984-1 at its step 16. But
+		# the model's own builds, begun on what stands, are weighed as they
+		# go: held back, 10124-1's plane, one sub-model of its file, had its
+		# own frame weighed only at its end, and tipped over at 12 steps, not
+		# 6 (tested301).
 		var section: String = step.authored_in if step.authored_step >= 0 else ""
+		var hand: String = test.in_hand(section)
 		for id: int in new_ids:
-			held_up[id] = section
+			held_up[id] = hand
 		var weigh: Array[int] = []
 		for id: int in held_up.keys():
 			var in_section: String = held_up[id]
@@ -1088,7 +1107,12 @@ static func _exact_whole(parts: Array, shapes: Dictionary, glued: Array, joints:
 		into.append([a, b, float(found["depth"])])
 	into.sort_custom(func(x: Array, y: Array) -> bool: return x[2] > y[2])
 
+	# A chain round its sprockets is held by them, as the plastic is.
 	var extra: Array = glued.duplicate()
+	for a: Variant in meshing:
+		for b: Variant in (meshing[a] as Dictionary):
+			if str(meshing[a][b]).begins_with("a chain on") or str(meshing[a][b]).begins_with("a tread on"):
+				extra.append([int(a), int(b)])
 	for pair: Array in joints:
 		if exact.items[pair[0]] == null or exact.items[pair[1]] == null:
 			extra.append(pair)

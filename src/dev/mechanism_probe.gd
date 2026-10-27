@@ -421,6 +421,32 @@ func _chain() -> void:
 		and model.chains[0].sprockets.size() == 2 and model.couplings.size() == 1 and result["ok"])
 	var ratio: float = model.spin(b.body, Z) / model.spin(a.body, Z)
 	_check("the 8 turns 12/4 = 3 times the 24, the same way (%.6f)" % ratio, absf(ratio - 3.0) < 1e-5)
+	# Its links in the sprockets' teeth meet them by their exact shapes; the
+	# design check and the Tested mark forgive what Joints.meshing pairs, as
+	# gears in mesh (tested301: 10124-1's chain met its sprockets 16 times).
+	var entries: Array = []
+	var ids: Dictionary = {}
+	for one: Dictionary in kit.list:
+		entries.append([one["key"], one["at"], one["mesh"], one["part"]])
+		ids[one["part"]] = true
+	var exact := ExactCheck.new(Exact.shapes_for(_library, ids.keys()), entries.size())
+	for n: int in entries.size():
+		exact.place(n, str(entries[n][3]), entries[n][1])
+	var meshing: Dictionary = Joints.meshing(entries)
+	var met: int = 0
+	var refused: int = 0
+	for found: Dictionary in exact.collisions({}):
+		var parts: Array = [str(entries[int(found["a"])][3]), str(entries[int(found["b"])][3])]
+		if not parts.has("3711"):
+			continue
+		met += 1
+		var ka: int = entries[int(found["a"])][0]
+		var kb: int = entries[int(found["b"])][0]
+		if not (meshing.get(ka, {}) as Dictionary).has(kb):
+			refused += 1
+	_check("its links meet the sprockets' teeth %d times by their exact shapes, and %d of them are "
+		% [met, met - refused] + "forgiven as a mesh (%s)" % str(meshing.get(big, {}).values().slice(0, 1)),
+		met > 0 and refused == 0)
 
 
 ## Two clutch gears on one axle, turning on it, a driving ring on a ridged
