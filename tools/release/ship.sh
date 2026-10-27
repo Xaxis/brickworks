@@ -35,6 +35,10 @@ S=$(realpath -m "${RELEASE_OUT:-${TMPDIR:-/tmp}/brickworks-release}"); mkdir -p 
 # m182 queued behind it could only have waited for ever (2026-10-26).
 rm -f "$S/$TAG.done" "$S/$TAG.gave_up"
 trap 'echo $? > "$S/$TAG.done"' EXIT
+# Stopped, it did not ship: without these the EXIT trap wrote the status of
+# the command the signal cut short, 0, and a waiter read a stopped m185 as
+# shipped (2026-10-27).
+trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM
 export BOX_HEAVY_PRIORITY=1
 # The preview and its checks, as unit_preview.sh makes and runs them.
 . "$HERE/preview_lib.sh" SHIP || exit 1
