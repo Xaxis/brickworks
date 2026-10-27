@@ -236,7 +236,7 @@ asking for an API key.
   real answers as a host sends them, in a browser with no WebGL (the
   turntable fallback, asked for through the host).
 - `the model in Claude in 3D` (2026-10-15): the page is the real model in
-  3D. Source `tools/viewer/` (`card.html`, `card.js`, `lbm.js`, `scene.js`);
+  3D. Source `tools/viewer/` (`card.html`, `card.js`, `scene.js`) and `web/lbm.js` (the geometry reader a model page's Parts list shares);
   `tools/viewer/build.mjs` bundles it with three.js 0.186.1 into one
   self-contained page, `api/_viewer_page.js` (committed: the deploy builds
   nothing; `--check` holds the source to the build). The tab packs the model
