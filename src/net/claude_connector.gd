@@ -469,11 +469,12 @@ static func _chat_said(request: Dictionary) -> Dictionary:
 ## Each chat working in this tab, by the relay's short name ("" for calls that
 ## name none: a tab's own address), as one sitting: when it last called, and
 ## whether it has been told how to work here (Assistant.METHOD) and has begun
-## its subject. A chat quiet for longer than [constant QUIET_MS] begins a new
-## sitting, as the relay stops counting it in the tab then (api/mcp.js
-## HELD_MS): claude.ai is reported to share one session between two of its
-## conversations (claudeissues.com/issue/41836), and the second would
-## otherwise never be told.
+## its subject; the assistant keeps which sizes it was told (_sizes_once), and
+## a new sitting is told them again. A chat quiet for longer than
+## [constant QUIET_MS] begins a new sitting, as the relay stops counting it in
+## the tab then (api/mcp.js HELD_MS): claude.ai is reported to share one
+## session between two of its conversations (claudeissues.com/issue/41836),
+## and the second would otherwise never be told.
 var _sittings: Dictionary = {}
 const QUIET_MS := 30 * 60 * 1000
 ## The calls that say what is being designed, with the words that say it.
@@ -488,6 +489,8 @@ func _sitting(request: Dictionary) -> Dictionary:
 	if sitting.is_empty() or now - int(sitting["last"]) > QUIET_MS:
 		sitting = {"told": false, "begun": false}
 		_sittings[chat] = sitting
+		if rpc != null and rpc.assistant != null:
+			rpc.assistant.sitting_begun(chat)
 	sitting["last"] = now
 	return sitting
 

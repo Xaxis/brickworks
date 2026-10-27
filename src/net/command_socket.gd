@@ -801,7 +801,9 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 			var before: Dictionary = _before_change(name)
 			var held: Dictionary = _held()
 			_at_work += 1
+			assistant.chat = chat
 			var said: Variant = await _run_own(name, input)
+			assistant.chat = ""
 			_at_work -= 1
 			_one_step(name, before, chat)
 			_hand_and_view_back(held)
@@ -847,12 +849,14 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "")
 	var held: Dictionary = _held()
 	var answer: Variant
 	_at_work += 1
+	assistant.chat = chat
 	if _the_app_tools().has(name):
 		_the_app_tools().chat = chat
 		answer = await _the_app_tools().run(name, input, work)
 		_the_app_tools().chat = ""
 	else:
 		answer = await assistant.use_tool(name, input)
+	assistant.chat = ""
 	_at_work -= 1
 	_one_step(name, before, chat)
 	_hand_and_view_back(held)

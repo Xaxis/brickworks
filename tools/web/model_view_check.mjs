@@ -188,9 +188,14 @@ class Conversation {
 // comparison of two answers reads it; told() counts it.
 const method = (b) => b.type === "text" && /^How to work here, said once as this chat begins/.test(b.text);
 const told = (answer) => ((answer.result || {}).content || []).filter(method).length;
-// The model's sizes are said once a change, by the tab (mcp_lean_probe): the
-// first chat to look hears them and a second in the same tab does not.
+// The model's sizes, said to each chat once a change (Assistant._sizes_once,
+// mcp_lean_probe): compared on their own (sizes), since a look asked again for
+// want of a picture heard them in the answer before.
 const once = (b) => method(b) || (b.type === "text" && /^Measured, in studs: /.test(b.text));
+// What an answer said of the sizes: a block of their own, or within the
+// letters a look without a picture falls back to. "" when it said none.
+const sizes = (answer) => (/Measured, in studs: [\s\S]*?(?=\n\n|$)/.exec(((answer.result || {}).content || [])
+  .filter((b) => b.type === "text").map((b) => b.text).join("\n\n")) || [""])[0];
 const texts = (answer) => ((answer.result || {}).content || []).filter((b) => b.type === "text" && !once(b)).map((b) => b.text);
 const images = (answer) => ((answer.result || {}).content || []).filter((b) => b.type === "image");
 const shownOf = (answer) => ((answer.result || {})._meta || {})["brickworks/view"];
@@ -335,17 +340,20 @@ try {
     `viewer_scene, views: true, gives the count and the whole turntable: ${whole.map((v) => v.from).join(", ")}`);
   // A picture the tab cannot draw in 20 s comes back as letters (asked
   // again), or as a job, which is followed as a session follows it: its
-  // answer is the call's own (4 below proves it).
+  // answer is the call's own (4 below proves it). With the sizes the chat
+  // heard on the way, in whichever answer said them.
   async function aPicture(conversation) {
     let answer = await conversation.followed("view_model", { from: "front" });
+    let heard = sizes(answer);
     for (let n = 0; n < 3 && images(answer).length === 0; n++) {
       console.log(`  (view_model came back without a picture: "${texts(answer).slice(-1)[0]?.slice(0, 60)}"; again)`);
       await tab.waitForTimeout(15000);
       answer = await conversation.followed("view_model", { from: "front" });
+      heard = heard || sizes(answer);
     }
-    return answer;
+    return [answer, heard];
   }
-  const viewed = await aPicture(viewer);
+  const [viewed, viewedSizes] = await aPicture(viewer);
   check(images(viewed).length === 1 && (shownOf(viewed) || {}).parts === stated
       && ((shownOf(viewed) || {}).views || []).length === 0,
     `view_model carries the count, and its own picture is the one shown (${kinds(viewed)})`);
@@ -354,11 +362,16 @@ try {
   const plainGreeted = await plain.start();
   check(Boolean(plainGreeted.result?.serverInfo), "a client that does not show pages connects as before");
   const plainLooked = await plain.call("look_at_model");
-  const plainViewed = await aPicture(plain);
+  const [plainViewed, plainSizes] = await aPicture(plain);
   check(!shownOf(plainLooked) && !shownOf(plainViewed) && !plainLooked.result?.structuredContent,
     "...its answers carry nothing for a viewer");
   check(told(plainLooked) === 1 && told(plainViewed) === 0,
     `...and it hears how to work here once, with its first answer, and not again (${told(plainLooked)}, then ${told(plainViewed)})`);
+  // A second chat in the tab hears the sizes the first heard (conn308): each
+  // is told them once a change, and this is each one's first look.
+  check(Boolean(viewedSizes) && plainSizes === viewedSizes,
+    `...and each chat's first look says the model's sizes, the same: "${viewedSizes.slice(0, 70) || "none"}"`
+      + `${plainSizes !== viewedSizes ? ` / "${plainSizes.slice(0, 70) || "none"}"` : ""}`);
   const firstApart = (a, b) => {
     const x = a.join("\n").split("\n"); const y = b.join("\n").split("\n");
     const n = x.findIndex((line, i) => line !== y[i]);
@@ -573,6 +586,9 @@ try {
       && JSON.stringify(ownTexts(plainJob.done)) === JSON.stringify(ownTexts(jobViewed.done)),
     `a client that does not show pages: the same words and picture as a job, and no _meta (${ownKinds(plainJob.done)} / ${ownKinds(jobViewed.done)}`
       + `${firstApart(ownTexts(plainJob.done), ownTexts(jobViewed.done)) ? `; ${firstApart(ownTexts(plainJob.done), ownTexts(jobViewed.done))}` : ""})`);
+  check(Boolean(sizes(jobViewed.done)) && sizes(plainJob.done) === sizes(jobViewed.done),
+    `...and each chat's first look in the second tab says the sizes, as a job too: "${sizes(jobViewed.done).slice(0, 70) || "none"}"`
+      + `${sizes(plainJob.done) !== sizes(jobViewed.done) ? ` / "${sizes(plainJob.done).slice(0, 70) || "none"}"` : ""}`);
   // The card beside the call that became a job: handed "Started job N", it
   // follows the job through the host and shows the picture it gave.
   const pageCalls = calledByPage.length;

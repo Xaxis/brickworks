@@ -16,6 +16,11 @@
 ## change; a look at a section lists the section's parts, not the whole
 ## model's, and a look at the whole still tallies the whole. Exits non-zero
 ## when an answer is wrong.
+##
+## The sizes are said once a change to each chat (conn308): a second chat in
+## the tab, its calls handed over as the relay hands them (ClaudeConnector),
+## hears them on its first look and not again, and again in a sitting begun
+## after half an hour quiet, as it hears how to work here.
 extends SceneTree
 
 var _failures: int = 0
@@ -53,6 +58,7 @@ func _run() -> void:
 	await _what_if()
 	await _the_edit()
 	await _looks()
+	await _two_chats()
 	print("")
 	print("lean: a check asks what if of the model it has, an edit says what it changed "
 		+ "and broke, and the sizes and the tally are said once" if _failures == 0
@@ -126,6 +132,38 @@ func _looks() -> void:
 		near.contains("you asked about") and not near.contains("Parts and colours"))
 
 
+func _two_chats() -> void:
+	print("── a second chat in the tab hears the sizes too ──")
+	var assistant: Assistant = _main.get("_assistant")
+	var connector: ClaudeConnector = _main.get("_connector")
+	await _call("view_model", {"from": "corner"})
+	var said: Array = await _call("view_model", {"from": "corner"})
+	_check("the first chat, told the sizes, is not told them again",
+		not _text(said).contains("Measured, in studs"))
+	said = await _call_as(connector, "c3d4", "view_model", {"from": "corner"})
+	_check("a second chat's first look says them, as they are now",
+		_text(said).contains(assistant._measured()))
+	said = await _call_as(connector, "c3d4", "view_model", {"from": "front"})
+	_check("...and its next look does not", not _text(said).contains("Measured, in studs"))
+	var off: String = _text(await _call_as(connector, "c3d4", "edit_model",
+		{"remove": [_highest_brick()], "picture": false}))
+	_check("its edit that changes them says them: %s" % off.get_slice("\n", 0),
+		off.begins_with("Done.") and off.contains("Measured, in studs"))
+	said = await _call("view_model", {"from": "corner"})
+	_check("...and the first chat hears the new sizes on its next look",
+		_text(said).contains(assistant._measured()))
+	said = await _call_as(connector, "c3d4", "view_model", {"from": "corner"})
+	_check("...which the second, told them, does not", not _text(said).contains("Measured, in studs"))
+	(connector._sittings["c3d4"] as Dictionary)["last"] = \
+		Time.get_ticks_msec() - ClaudeConnector.QUIET_MS - 1000
+	said = await _call_as(connector, "c3d4", "view_model", {"from": "corner"})
+	_check("a chat quiet for half an hour hears them again, as a new sitting",
+		_text(said).contains(assistant._measured()))
+	said = await _call_as(connector, "c3d4", "view_model", {"from": "corner"})
+	_check("...once", not _text(said).contains("Measured, in studs"))
+	await _call_as(connector, "c3d4", "undo", {})
+
+
 func _highest_brick() -> int:
 	var assistant: Assistant = _main.get("_assistant")
 	var best: int = 0
@@ -164,6 +202,18 @@ func _call(tool: String, arguments: Dictionary) -> Array:
 	_next += 1
 	var answer: Variant = await _socket.answer_rpc({"jsonrpc": "2.0", "id": _next,
 		"method": "tools/call", "params": {"name": tool, "arguments": arguments}})
+	return ((answer as Dictionary).get("result", {}) as Dictionary).get("content", []) as Array
+
+
+## A call from the relay's chat [param chat], handed over as the tab's
+## connector hands it (ClaudeConnector._answer): its sitting first.
+func _call_as(connector: ClaudeConnector, chat: String, tool: String, arguments: Dictionary) -> Array:
+	_next += 1
+	var request: Dictionary = {"jsonrpc": "2.0", "id": _next, "method": "tools/call",
+		"params": {"name": tool, "arguments": arguments,
+			"_meta": {"brickworks/chat": {"chat": chat, "since": "2026-10-27T06:00:00Z"}}}}
+	connector._sitting(request)
+	var answer: Variant = await connector.rpc.answer_rpc(request)
 	return ((answer as Dictionary).get("result", {}) as Dictionary).get("content", []) as Array
 
 

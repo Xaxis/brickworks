@@ -4410,10 +4410,13 @@ func _what_broke(report: Variant, model: Model) -> String:
 ## (walk180's tug, the same seven rows nine times in two turns). Empty when it
 ## is what the session was last told, to the nearest stud and plate: a tenth
 ## of a stud is no change to the sizes a design planned.
+##
+## Kept for each chat: a second chat in the same tab was never told the sizes
+## the first had heard (model_view_check, 2026-10-27).
 func _sizes_once(sizes: String) -> String:
-	if _sizes_key(sizes) == _sizes_key(_sizes_said):
+	if _sizes_key(sizes) == _sizes_key(str(_sizes_said.get(chat, ""))):
 		return ""
-	_sizes_said = sizes
+	_sizes_said[chat] = sizes
 	return sizes
 
 
@@ -4427,8 +4430,17 @@ static func _sizes_key(sizes: String) -> String:
 	return out + sizes.substr(at)
 
 
-## The sizes last said to a session (_sizes_once).
-var _sizes_said: String = ""
+## The sizes last said to each chat (_sizes_once), by [member chat].
+var _sizes_said: Dictionary = {}
+## The Claude chat whose call is running, as the relay names it, or "" (the
+## desktop's port, a tab's own address): set by CommandSocket around each call.
+var chat: String = ""
+
+
+## A chat begins a sitting in this tab (ClaudeConnector._sitting): it is told
+## the sizes again, as it is told how to work here.
+func sitting_begun(chat_name: String) -> void:
+	_sizes_said.erase(chat_name)
 
 
 ## How big the model actually came out, in studs.
