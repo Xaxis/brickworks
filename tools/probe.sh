@@ -31,6 +31,9 @@ name=${1:?usage: probe.sh NAME [ARGS…]}; shift
 name=${name%.gd}; name=${name##*/}
 cd "$(dirname "$0")/.." || exit 1
 file="src/dev/$name.gd"
+# The suite's lists name most probes without "_probe" (tested_seeds), and
+# probe.sh was handed those names twice in one night (2026-10-27).
+[ -f "$file" ] || [ ! -f "src/dev/${name}_probe.gd" ] || { name=${name}_probe; file="src/dev/$name.gd"; }
 [ -f "$file" ] || { echo "probe.sh: no $file" >&2; exit 2; }
 
 # The header's command: the line naming this script, and the lines it
