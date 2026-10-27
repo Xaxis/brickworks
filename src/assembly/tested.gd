@@ -12,16 +12,19 @@
 ##           each step's build so far weighed as the build check weighs it
 ##           (Balance): its centre of mass over what it stands on, and no stud
 ##           joint past where it lets go. A sub-assembly built in the hand is
-##           weighed once it is on the model.
+##           weighed once it is on the model, and an author's sub-model once
+##           it is built.
 ##   steps   no part in a step is put down in the air or hidden behind what
 ##           is already built, by the booklet's own rules: at the end of its
 ##           step each new thing is held to something that stands (the steps
 ##           score's "floating", src/dev/steps_score.gd: on the model, what is
 ##           on its lowest point, its first parts and the first parts of each
-##           piece a step begins; in the hand, the sub-assembly's first parts),
-##           and shows a tenth of itself from the front or from the back with
-##           what earlier steps built in front of it (Instructions.Pictures,
-##           the planner's own pictures of a step).
+##           piece a step begins; in the hand, the sub-assembly's first parts;
+##           and anywhere the first parts of each of the author's sub-models,
+##           which may be built in the hand), and shows a tenth of itself from
+##           the front or from the back with what earlier steps built in front
+##           of it, of its sub-model's own until that is built
+##           (Instructions.Pictures, the planner's own pictures of a step).
 ##   parts   every part is a real element in its colour, as the catalogue's
 ##           colour availability knows it (PartInfo.never_made_in): none in a
 ##           colour it was never made in, none made here, none in a colour
@@ -33,6 +36,11 @@
 ##           a joint's own parts do and gears in mesh (ExactCheck.forgiven);
 ##           each part is joined to the rest by BrickNet's connections (a
 ##           stud in its hole, a pin, an axle, a clip, a hinge, a ball), by
+##           a joint other than a stud the app reads itself (Joints: a pin, an
+##           axle, a bar in a clip, a ball, as Mechanism and the build check
+##           read them: of the gallery's 30 real sets' pieces held by
+##           nothing, 34 were held so, flowers on their stems, plumes,
+##           torches and bows in hands, gates on their hinges, tested301), by
 ##           glue, magnets or being one flexible thing (Joints.held_otherwise),
 ##           or, standing where it is, caught there so it cannot slide out
 ##           (ExactCheck.comes_away). A piece on the floor that stands by
@@ -77,6 +85,9 @@ const DIRECT_FROM := 0x2000000
 
 ## Where the last [method check]'s time went, in microseconds, for a probe.
 static var laps: Dictionary = {}
+## Every failure the last [method check] found, in full, by test: its
+## finding names the first [constant NAMED] of each. For a probe.
+static var said_all: Dictionary = {}
 
 
 ## A build's parts joined as they go in: the main build, or a sub-assembly
@@ -356,6 +367,17 @@ class Weighing extends RefCounted:
 ## booklet's own rules (the "steps" test). The worked-out steps are put
 ## right by asking it first what would stand ([method stands_if]) and then
 ## building with it as the test does (HeldSteps).
+##
+## An author's sub-model may be built in the hand, as a callout is: the
+## parts of its first step stand, held in the hand, and what goes onto them
+## stands with them; and each is in sight with what its own earlier steps
+## built, not the rest of the model, until it is built. The booklet shows
+## them where they will go. An LDraw file's sub-model is the booklet's
+## sub-assembly, built on the side or where it goes. Built only where it
+## goes, 6043-1's dragon head, begun above the trebuchet that later holds
+## it, put 60 parts down in the air, 928-1's pilot sat down in its cockpit a
+## part at a time, each hidden by the ship, and the gallery's 30 real sets
+## failed the steps test 22 times (tested301).
 class Steps extends RefCounted:
 	var by_id: Dictionary
 	var near: Dictionary
@@ -367,6 +389,14 @@ class Steps extends RefCounted:
 	var side: Dictionary = {}          ## callout -> Pile
 	var _main_pictures := Instructions.Pictures.new()
 	var _side_pictures: Dictionary = {} ## callout -> Instructions.Pictures
+	## The author's sub-models begun, by path.
+	var _begun_sections: Dictionary = {}
+	## Those being built, by path: the pictures of what each has built, the
+	## parts it has, and the pictures it goes into when it is built (its
+	## build's: the model's or its callout's).
+	var _section_pictures: Dictionary = {}
+	var _section_nodes: Dictionary = {}
+	var _section_onto: Dictionary = {}
 	## id -> Instructions.Node2, made as they are asked for ([method Tested._node]).
 	var nodes: Dictionary = {}
 	var _begun_pieces: Dictionary = {}
@@ -480,7 +510,9 @@ class Steps extends RefCounted:
 	func take(step: Instructions.Step, things: Array) -> Array[int]:
 		var in_hand: bool = step.in_callout()
 		var pile: Pile = pile_of(step)
-		var pictures: Instructions.Pictures = _side_pictures[step.callout] if in_hand else _main_pictures
+		var section: String = step.authored_in if step.authored_step >= 0 else ""
+		var pictures: Instructions.Pictures = _pictures_for(section,
+			_side_pictures[step.callout] if in_hand else _main_pictures)
 		var new_ids: Array[int] = []
 		for thing: PackedInt64Array in things:
 			for id: int in thing:
@@ -518,6 +550,12 @@ class Steps extends RefCounted:
 				if not _begun_pieces.has(which):
 					_begun_pieces[which] = true
 					pile.stand(thing[0])
+		# And, on the model or in a callout, the first parts of each of the
+		# author's sub-models, in the hand.
+		if not section.is_empty() and not _begun_sections.has(section):
+			_begun_sections[section] = true
+			for id: int in new_ids:
+				pile.stand(id)
 		for thing: PackedInt64Array in things:
 			if not joined.has(thing[0]):
 				continue
@@ -532,7 +570,40 @@ class Steps extends RefCounted:
 		for id: int in new_ids:
 			step_nodes.append(Tested._node(id, nodes, by_id, library))
 		pictures.built(step_nodes)
+		if _section_nodes.has(section):
+			(_section_nodes[section] as Array).append_array(step_nodes)
 		return new_ids
+
+	## The pictures a step of [param section] is judged in sight by: its
+	## sub-model's own, once each sub-model it is not in is built into what
+	## holds it; [param build]'s for the model's own steps.
+	func _pictures_for(section: String, build: Instructions.Pictures) -> Instructions.Pictures:
+		var done: Array = _section_pictures.keys().filter(func(path: String) -> bool:
+			return not (section == path or section.begins_with(path + "/")))
+		done.sort_custom(func(a: String, b: String) -> bool:
+			return Assemblies.segments(a).size() > Assemblies.segments(b).size())
+		for path: String in done:
+			var built: Array = _section_nodes[path]
+			var onto: Variant = _section_onto[path]
+			var up: String = Assemblies.parent_of(path)
+			while not up.is_empty():
+				if section == up or section.begins_with(up + "/"):
+					onto = _section(up, onto)
+					(_section_nodes[up] as Array).append_array(built)
+					break
+				up = Assemblies.parent_of(up)
+			(onto as Instructions.Pictures).built(built)
+			_section_pictures.erase(path)
+			_section_nodes.erase(path)
+			_section_onto.erase(path)
+		return build if section.is_empty() else _section(section, build)
+
+	func _section(path: String, onto: Instructions.Pictures) -> Instructions.Pictures:
+		if not _section_pictures.has(path):
+			_section_pictures[path] = Instructions.Pictures.new()
+			_section_nodes[path] = []
+			_section_onto[path] = onto
+		return _section_pictures[path]
 
 
 ## What holds what in [param bricks], as the tests read it, into [param
@@ -540,7 +611,8 @@ class Steps extends RefCounted:
 ## "floor" (the lowest of them), "near" (id -> {id: true}, every joint read,
 ## either way round), "links" (the joints Balance weighs a part by),
 ## "otherwise" (what glue, magnets and flexible things hold,
-## Joints.held_otherwise), "joined" (what the finished model holds to what it
+## Joints.held_otherwise), "jointed" (those, and what every joint but a
+## stud's holds, either way round), "joined" (what the finished model holds to what it
 ## stands on through them), "piece" (id -> which piece of the finished model
 ## it is in, by them) and "us" (microseconds reading the contacts, then the
 ## joints). Left empty when [param job] was cancelled; at once with no job.
@@ -610,12 +682,24 @@ static func holds_into(out: Dictionary, bricks: Array, lattice: BrickLattice,
 			for other: Variant in (held[one] as Dictionary):
 				link.call(one, other)
 				links.append([int(one), int(other)])
+	# And each part with what holds it by a joint of its own, not a stud:
+	# what the whole test holds by besides BrickNet's connections.
+	var jointed: Dictionary = {}
+	var joint := func(a: Variant, b: Variant) -> void:
+		link.call(a, b)
+		if not jointed.has(a):
+			jointed[a] = {}
+		(jointed[a] as Dictionary)[b] = true
+	for held: Dictionary in [both, rounds, otherwise]:
+		for one: Variant in held:
+			for other: Variant in (held[one] as Dictionary):
+				joint.call(one, other)
 	var balls: Dictionary = Joints.balls(entries)
 	for one: Variant in balls:
 		for other: Variant in (balls[one] as Dictionary):
-			link.call(one, other)
+			joint.call(one, other)
 	for pair: Array in Joints.through(entries):
-		link.call(pair[0], pair[1])
+		joint.call(pair[0], pair[1])
 	if job != null:
 		await job.next()
 		if job.cancelled:
@@ -650,7 +734,7 @@ static func holds_into(out: Dictionary, bricks: Array, lattice: BrickLattice,
 					pending.append(next)
 		pieces += 1
 	out.merge({"contacts": contacts, "bottom": bottom, "floor": floor_cell, "near": near,
-		"links": links, "otherwise": otherwise, "joined": held, "piece": piece,
+		"links": links, "otherwise": otherwise, "jointed": jointed, "joined": held, "piece": piece,
 		"us": [contacts_us, joints_us]})
 
 
@@ -687,7 +771,7 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 	var boxes: Dictionary = contacts["boxes"]
 	var near: Dictionary = holding["near"]
 	var links: Array = holding["links"]
-	var otherwise: Dictionary = holding["otherwise"]
+	var otherwise: Dictionary = holding["jointed"]
 	# What a step is judged on: held through what joins it, as the steps score
 	# judges it. Then, for a part with no exact shape, which the whole test
 	# holds by these as the design check holds it by the lattice
@@ -733,6 +817,9 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 	var built_to: int = -1
 	var weighed: int = 0
 	var weighing := Weighing.new(library, lattice, contacts, by_id, links)
+	## Put in on the model and not yet weighed, each by the author's
+	## sub-model it is in, not yet built.
+	var held_up: Dictionary = {}
 	asked.say("Testing it: building its %s…" % _counted(int(Instructions.count(steps)["steps"]), "step"))
 	asked.count(0, steps.size())
 	for step: Instructions.Step in steps:
@@ -753,23 +840,26 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 		var new_ids: Array[int] = test.take(step, things)
 		if step.in_callout():
 			continue
-		# Weighed as the build check weighs it, the build so far.
-		var weigh_from: int = Time.get_ticks_usec()
-		var report: Dictionary = weighing.add(new_ids)
-		laps["weigh"] = int(laps.get("weigh", 0)) + Time.get_ticks_usec() - weigh_from
-		if report["empty"]:
-			continue
+		# Weighed as the build check weighs it, the build so far: a part of
+		# one of the author's sub-models once that is built, as a booklet's
+		# sub-assembly is put on whole, not while a hand holds it (Steps).
+		# Each weighed where the booklet shows it as it was built, 8862-1
+		# tipped over at its step 10 and 10124-1 at its step 3.
+		var section: String = step.authored_in if step.authored_step >= 0 else ""
+		for id: int in new_ids:
+			held_up[id] = section
+		var weigh: Array[int] = []
+		for id: int in held_up.keys():
+			var in_section: String = held_up[id]
+			if in_section.is_empty() or not (section == in_section
+					or section.begins_with(in_section + "/")):
+				weigh.append(id)
+				held_up.erase(id)
+		if _weighed(weighing, weigh, step.number, tips, library):
+			weighed += 1
+	if built_to < 0 and _weighed(weighing, Array(held_up.keys(), TYPE_INT, "", null),
+			steps[-1].number, tips, library):
 		weighed += 1
-		if float(report["margin"]) < 0.0:
-			tips.append([step.number, "it tips over, %s studs past the %s edge" % [
-				Balance.studs(-float(report["margin"])), report["edge"]]])
-			continue
-		for one: Balance.JointLoad in report["joints"]:
-			if one.moment > one.ultimate:
-				tips.append([step.number, "%s %s %s on %d stud%s past where it lets go" % [
-					_named(one.beyond_part, library), "hangs from" if one.hangs else "is held by",
-					_named(one.held_part, library), one.studs, "" if one.studs == 1 else "s"]])
-				break
 	laps["hidden"] = test.hidden_us
 	var floating: Array = test.floating
 	var hidden: Array = test.hidden
@@ -796,13 +886,15 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 		never[key][2] = int(never[key][2]) + 1
 
 	var tests: Dictionary = {}
+	said_all.clear()
 	var main_steps: int = int(Instructions.count(steps)["steps"])
 	if tips.is_empty():
 		tests["stands"] = {"ok": weighed > 0, "why": ("Stands at every one of its %s"
 			% _counted(main_steps, "step")) if weighed > 0 else "Nothing in it stands on anything to weigh"}
 	else:
-		tests["stands"] = {"ok": false, "why": _list(tips.map(func(one: Array) -> String:
-			return "At step %d %s" % [int(one[0]), str(one[1])]), tips.size(), "step")}
+		said_all["stands"] = tips.map(func(one: Array) -> String:
+			return "At step %d %s" % [int(one[0]), str(one[1])])
+		tests["stands"] = {"ok": false, "why": _list(said_all["stands"], tips.size(), "step")}
 	if floating.is_empty() and hidden.is_empty():
 		tests["steps"] = {"ok": true, "why": "Every part goes onto what is already built, in sight"}
 	else:
@@ -813,6 +905,7 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 		for one: Array in hidden:
 			said.append("Step %d: %s is hidden behind what is already built" % [int(one[0]),
 				_named((by_id[int(one[1])] as BrickWorld.Brick).part_id, library)])
+		said_all["steps"] = said
 		tests["steps"] = {"ok": false, "why": _list(said, said.size(), "part")}
 	if never.is_empty():
 		tests["parts"] = {"ok": true, "why": "Every part is made in its colour" + (
@@ -823,6 +916,7 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 			var one: Array = never[key]
 			said.append("%s%s %s" % [_named(str(one[0]), library),
 				(" (%d)" % int(one[2])) if int(one[2]) > 1 else "", str(one[3])])
+		said_all["parts"] = said
 		tests["parts"] = {"ok": false, "why": _list(said, said.size(), "kind")}
 	tests["whole"] = _whole_said(whole, bricks, library)
 	if built_to >= 0 and not _unfinished(tests, built_to, steps.size()):
@@ -830,6 +924,31 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 			% _counted(bricks.size(), "part"), "parts": bricks.size(), "steps": steps.size()}
 	return {"v": VERSION, "app": BuildInfo.version(), "parts": bricks.size(), "steps": steps.size(),
 		"tests": tests, "ms": Time.get_ticks_msec() - began}
+
+
+## [param ids] put on the model at step [param number], and the build so
+## far weighed as the build check weighs it: whether it stood on anything
+## to weigh. Where it tips, or a joint gives, it is said into [param tips].
+static func _weighed(weighing: Weighing, ids: Array[int], number: int, tips: Array,
+		library: PartLibrary) -> bool:
+	if ids.is_empty():
+		return false
+	var weigh_from: int = Time.get_ticks_usec()
+	var report: Dictionary = weighing.add(ids)
+	laps["weigh"] = int(laps.get("weigh", 0)) + Time.get_ticks_usec() - weigh_from
+	if report["empty"]:
+		return false
+	if float(report["margin"]) < 0.0:
+		tips.append([number, "it tips over, %s studs past the %s edge" % [
+			Balance.studs(-float(report["margin"])), report["edge"]]])
+		return true
+	for one: Balance.JointLoad in report["joints"]:
+		if one.moment > one.ultimate:
+			tips.append([number, "%s %s %s on %d stud%s past where it lets go" % [
+				_named(one.beyond_part, library), "hangs from" if one.hangs else "is held by",
+				_named(one.held_part, library), one.studs, "" if one.studs == 1 else "s"]])
+			break
+	return true
 
 
 ## How long the tests of a model of [param parts] parts may take, ms.
@@ -863,8 +982,9 @@ static func _unfinished(tests: Dictionary, built_to: int, of: int) -> bool:
 ## The model by its parts' exact shapes (ExactCheck), as the design check
 ## reads a whole design. The shapes are read here a part a slice, and in a
 ## browser fetched, as the design check waits for them; the rest runs on a
-## worker ([method _exact_whole]). [param otherwise] is what glue, magnets
-## and flexible things hold (Joints.held_otherwise), [param near] every joint
+## worker ([method _exact_whole]). [param otherwise] is what glue, magnets,
+## flexible things and every joint but a stud's hold (holds_into's
+## "jointed"), [param near] every joint
 ## read, and [param held] what they and what rests on what hold, by brick id:
 ## a part with no exact shape is judged by those. {} when [param asked] was
 ## cancelled.
@@ -1124,6 +1244,7 @@ static func _whole_said(whole: Dictionary, bricks: Array, library: PartLibrary) 
 			"away":
 				return ("%s rests on %s" % [who, on]) if not on.is_empty() else "%s rests where it is" % who
 		return ("%s falls off %s" % [who, on]) if not on.is_empty() else "%s falls" % who)
+	said_all["whole"] = pairs + pieces
 	var heads := PackedStringArray()
 	if not into.is_empty():
 		heads.append("%s %s into each other: " % [_counted(into.size(), "pair"),

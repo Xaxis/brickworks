@@ -253,10 +253,46 @@ func _check_the_checker(library: PartLibrary) -> void:
 		"3641, a tyre, is recorded in Black and never in Rubber Black")
 	_ok(assistant._never_made(tyres).is_empty(),
 		"...and drawn in Rubber Black it is not told it was never made")
+	_ok(not known.never_made_in(256), "...nor does the catalogue say so, which the Tested mark asks")
 
+	_check_real_sets_colours(assistant, library)
 	_check_colours_refused(assistant)
 	await _check_a_recolour_refused(assistant, world, builder)
 	await _check_placed_in_made(assistant, world, builder)
+
+
+## The colours the gallery's 30 real sets from the LDraw library have that
+## the Tested mark called never made (tested301), as the design check reads
+## them: neither told nor recoloured. And one each set really has wrong,
+## still told.
+func _check_real_sets_colours(assistant: Assistant, library: PartLibrary) -> void:
+	print("\nreal sets' colours")
+	# [part, colour, why it was made in it]: 5891-1's inverted slopes, made
+	# in Green as 3665b; 31025-1's wheels in an older file's Flat Silver,
+	# 179, which LDraw moved to 315; 5521-1's windscreen in an older file's
+	# Trans Light Blue, 41, which LDraw moved to 43.
+	for one: Array in [["3665a", 2, "its other mould"], ["93594", 179, "an older file's Flat Silver"],
+			["2437", 41, "an older file's Trans Light Blue"]]:
+		var info: PartLibrary.PartInfo = library.parts.get(str(one[0]))
+		var code: int = one[1]
+		_ok(info != null and not info.colors.is_empty() and not info.colors.has(code),
+			"%s's own colours do not list %d" % [one[0], code])
+		var model := Assistant.Model.new()
+		var put := Assistant.Placement.new()
+		put.part = str(one[0])
+		put.color = code
+		model.placements.append(put)
+		_ok(info != null and not info.never_made_in(code) and assistant._never_made(model).is_empty()
+			and library.made_nearest(str(one[0]), code) == code,
+			"...and in %d (%s) the design check neither tells it nor recolours it" % [code, one[2]])
+	# 5984-1's file draws its Dark Purple plates in Dark Blue Violet.
+	var wrong := Assistant.Model.new()
+	var plate := Assistant.Placement.new()
+	plate.part = "4477"
+	plate.color = 23
+	wrong.placements.append(plate)
+	_ok(assistant._never_made(wrong).contains("4477"),
+		"a 1 x 10 plate in Dark Blue Violet, never made, is still told")
 
 
 ## The join itself, read through what the app loads.

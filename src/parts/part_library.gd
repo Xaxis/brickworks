@@ -224,6 +224,13 @@ func made_nearest(part: String, code: int) -> int:
 ## BrickLink's colour numbers -> LDraw's plain colour for each, filled as the
 ## colours load: for reading a Studio file's model2.ldr.
 static var by_bricklink: Dictionary = {}
+## LDraw's colour codes -> each code a part's colours may hold for it, filled
+## as the colours load, for [method PartInfo.never_made_in]: its plain
+## colour too (a tyre in Rubber Black is a Black tyre), and the colour the
+## code was before LDraw moved that plastic to a new code, which an older
+## file means by it and Rebrickable still numbers it by (179 was Flat
+## Silver, now 315; 41 was Trans Light Blue, now 43). Absent: the code alone.
+static var made_as: Dictionary = {}
 
 
 ## The colour number a BrickLink wanted list or catalogue page names this
@@ -391,10 +398,24 @@ class PartInfo extends RefCounted:
 	## that is both present and complete. Everything else is silence,
 	## because telling a designer a part does not exist in a colour it
 	## does exist in costs more than saying nothing.
+	##
+	## A code is asked as every colour it may be (PartLibrary.made_as), and
+	## made in it when any mould of the part was ([member mould_colors]).
+	## Asked as it was typed, every tyre of the gallery's real sets was never
+	## made in Rubber Black, and 3665a in Green, which 5891-1 has (tested301).
 	func never_made_in(code: int) -> bool:
 		if colors.is_empty() or colors_partial:
 			return false
-		return not colors.has(code)
+		for made: Variant in PartLibrary.made_as.get(code, [code]):
+			if colors.has(made) or mould_colors.has(made):
+				return false
+		return true
+
+	## The colours the part's other moulds were made in: 3665a and 3665b
+	## are one inverted slope to a builder, which LDraw and Rebrickable
+	## number apart each their own way, and an older file's 3665 is LDraw's
+	## 3665a now and Rebrickable's 3665 still. Empty for most parts.
+	var mould_colors: PackedInt32Array
 
 	## Whether the part has been in a set recently enough to buy. Only
 	## meaningful when something is known about it at all.
@@ -787,6 +808,7 @@ func load_catalogue(path: String = "") -> bool:
 	_read_names()
 	_read_usage()
 	_index_wholes()
+	_index_moulds()
 	_search_index = null
 	_current_lock.lock()
 	_current_of.clear()
@@ -868,6 +890,36 @@ func _index_wholes() -> void:
 		if not _wholes.has(base.id):
 			_wholes[base.id] = []
 		(_wholes[base.id] as Array).append(id)
+
+
+## A part number with a mould letter: 3665a, 3665b.
+static var MOULD_NUMBER := RegEx.create_from_string("^([ux]?\\d+)[a-z]$")
+
+
+## Each part's [member PartInfo.mould_colors]: the colours of the parts
+## numbered as it is but for a mould letter, itself among them.
+func _index_moulds() -> void:
+	var by_number: Dictionary = {}
+	for id: String in _ordered_ids:
+		var info: PartInfo = parts[id]
+		info.mould_colors = PackedInt32Array()
+		if info.colors.is_empty() or info.is_redirect():
+			continue
+		var found: RegExMatch = MOULD_NUMBER.search(id)
+		var number: String = found.get_string(1) if found != null else id
+		if not by_number.has(number):
+			by_number[number] = []
+		(by_number[number] as Array).append(info)
+	for number: String in by_number:
+		var moulds: Array = by_number[number]
+		if moulds.size() < 2:
+			continue
+		var all: Dictionary = {}
+		for info: PartInfo in moulds:
+			for code: int in info.colors:
+				all[code] = true
+		for info: PartInfo in moulds:
+			info.mould_colors = PackedInt32Array(all.keys())
 
 
 ## The assemblies LDraw draws whole that are built on [param id]: 60593c01
@@ -987,6 +1039,20 @@ func _load_colors() -> void:
 		color.drawn_as = finish_for(color.finish, color.name, material_kind)
 		color.pack_finish()
 		colors[color.code] = color
+
+	# What a part's colours may hold for each code (made_as): its plain
+	# colour, and the colour Rebrickable's id of the same number went to.
+	made_as.clear()
+	for code: int in colors:
+		var plain: int = (colors[code] as BrickColor).plain_code
+		if plain != code:
+			made_as[code] = [code, plain]
+	for code: int in colors:
+		var was: int = (colors[code] as BrickColor).rebrickable_id
+		if was >= 0 and was != code and colors.has(was):
+			if not made_as.has(was):
+				made_as[was] = [was]
+			(made_as[was] as Array).append(code)
 
 
 ## Geometry for a part, loading it on first use.

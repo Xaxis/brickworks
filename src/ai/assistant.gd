@@ -6584,8 +6584,7 @@ func _never_made(model: Model) -> String:
 	var wrong: Dictionary = {}
 	for placement: Placement in model.placements:
 		var info: PartLibrary.PartInfo = library.parts.get(placement.part)
-		if info == null \
-				or not info.never_made_in(library.plain_code(placement.color)):
+		if info == null or not info.never_made_in(placement.color):
 			continue
 		var key: String = "%s|%d" % [placement.part, placement.color]
 		wrong[key] = int(wrong.get(key, 0)) + 1
