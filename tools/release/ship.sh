@@ -30,8 +30,11 @@ HERE=${RELEASE_HERE:-$(cd "$(dirname "$0")" && pwd)}
 S=$(realpath -m "${RELEASE_OUT:-${TMPDIR:-/tmp}/brickworks-release}"); mkdir -p "$S"
 # Begun, this is TAG's latest attempt: a result left by one before, or by a
 # waiter that gave up, would tell the release queued behind it that it had
-# ended (m178 held on m177's, 2026-10-26). ship_after.sh writes the new one.
+# ended (m178 held on m177's, 2026-10-26). And it writes its own as it ends,
+# begun by hand or queued: m181's promote, begun by hand, wrote none, and
+# m182 queued behind it could only have waited for ever (2026-10-26).
 rm -f "$S/$TAG.done" "$S/$TAG.gave_up"
+trap 'echo $? > "$S/$TAG.done"' EXIT
 export BOX_HEAVY_PRIORITY=1
 # The preview and its checks, as unit_preview.sh makes and runs them.
 . "$HERE/preview_lib.sh" SHIP || exit 1
@@ -81,7 +84,9 @@ if ! passed $S/${TAG}_pv.out $#; then
   if [ -z "$timing" ] && [ -n "$failed" ] && [ "$ran" -eq $# ]; then
     for name in $failed; do
       echo "SHIP: $name failed beside others; once more, alone"
-      "$HERE/preview_checks.sh" "$URL" "$W" ${TAG}_alone_$name $name >/dev/null 2>&1
+      # Through run_checks, which clears the answer first: a run that died
+      # before writing one would leave the last attempt's pass to be read.
+      run_checks "$URL" ${TAG}_alone_$name $name >/dev/null 2>&1
       cut -c1-160 $S/${TAG}_alone_$name.out | head -1
       passed $S/${TAG}_alone_$name.out 1 || { echo "SHIP: held, $name failed alone too"; exit 1; }
     done
@@ -118,5 +123,7 @@ serves || { sleep 120; serves; } || {
   echo "SHIP: deployed, but https://brickworks.diy/app does not serve /b/$SHA/"; exit 1; }
 # canary: sign-up still shut and a new person still signs in by a code, on
 # production's own route and settings (api/_canary.js, 2026-10-24).
+# Cleared first, as run_checks clears: an attempt before may have left its own.
+rm -f $S/${TAG}_live.out $S/${TAG}_live2.out
 "$HERE/preview_checks.sh" https://brickworks.diy "$W" ${TAG}_live site share_probe canary
 if ! passed $S/${TAG}_live.out 3; then sleep 120; "$HERE/preview_checks.sh" https://brickworks.diy "$W" ${TAG}_live2 site share_probe canary; cat $S/${TAG}_live2.out | cut -c1-160; else cat $S/${TAG}_live.out | cut -c1-160; fi
