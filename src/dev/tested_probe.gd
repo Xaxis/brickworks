@@ -10,9 +10,12 @@
 ## whose figures stand beside its car as builds of their own (whole);
 ## three bricks stacked in order, and the same with the top one put in a step
 ## before what holds it (steps: in the air); a closed box with a brick put in
-## it after its roof (steps: hidden); an arm that tips its base over (stands);
-## a 1 x 1 brick in a colour it was never made in (parts); a brick held by
-## nothing (whole). And the time on a model of about 2,000 parts.
+## it after its roof (steps: hidden); an arm that tips its base over onto
+## the arm's tip, and lies there whole (stands, passed), and a table on one
+## leg that a stack on one stud tips over, the stud letting go as it lies
+## (stands, failed); a 1 x 1 brick in a colour it was never made in (parts);
+## a brick held by nothing (whole). And the time on a model of about 2,000
+## parts.
 ##
 ## --sets prints the four results for each file, and how long they took.
 ## --write puts the steps in each IN, as the Share panel does, and writes it
@@ -106,11 +109,30 @@ func _run() -> void:
 		"a brick put in a box after its roof fails steps as hidden: %s" % _why(boxed, "steps"))
 
 	print("\nstanding up")
+	# Tipping is no fault: a build is set down as a builder would (tested305).
+	# An arm eight studs long tips its 1 x 2 base over onto the arm's tip, 11
+	# degrees, and lies there whole, its two studs carrying almost nothing.
 	var arm: Dictionary = await _test(_model("arm", [
 		[["3004", 4, Vector3(0, 0, 0)]], [["3008", 1, Vector3(60, -24, 0)]], [["3008", 1, Vector3(60, -48, 0)]]]))
 	print("  %s" % _said(arm))
-	_ok(not _passes(arm, "stands") and _why(arm, "stands").begins_with("At step 2"),
-		"an arm eight studs long on a 1 x 2 base fails stands at the step it goes on: %s" % _why(arm, "stands"))
+	_ok(_passes(arm, "stands"),
+		"an arm eight studs long tips its 1 x 2 base over onto its own tip, and lies there whole: %s"
+		% _why(arm, "stands"))
+	# A 6 x 16 plate on a leg of six 2 x 2 bricks, and on it a stack of 4 x 12
+	# bricks on the one stud of a 1 x 1 round plate. Past the leg, the stack
+	# tips the table over onto its edge, 46 degrees, and leaning so the stack
+	# hangs from that stud: five bricks it holds, eight it lets go.
+	var held: Dictionary = await _test(_table(5))
+	print("  %s" % _said(held))
+	_ok(_passes(held, "stands"), "a table that a stack of five tips over onto its edge holds them: %s"
+		% _why(held, "stands"))
+	var table: Dictionary = await _test(_table(8))
+	print("  %s" % _said(table))
+	_ok(not _passes(table, "stands") and _why(table, "stands").begins_with("At step 4 it tipped over")
+		and _why(table, "stands").contains("Plate 1 x 1 Round is held by Plate 6 x 16 on 1 stud past where it lets go"),
+		"...a stack of eight on its one stud comes away as it lies, and fails stands at the step it goes on: %s"
+		% _why(table, "stands"))
+	_ok(_passes(table, "whole") and _passes(table, "steps"), "...though it goes together, a step at a time")
 	_ok(_passes(stacked, "stands"), "...where three bricks stacked stand: %s" % _why(stacked, "stands"))
 
 	print("\nits colours")
@@ -209,11 +231,28 @@ func _closed_box() -> String:
 		walls.append(["3010", 4, Vector3(50, y, 0)])
 	var roof: Array = [["3958", 7, Vector3(0, -56, 0)]]
 	var steps: Array = [floor_plate, walls, roof, [["3005", 14, Vector3(10, -24, 10)]]]
-	var text: String = _model("closed box", steps)
 	# The side walls turned a quarter, along z.
+	return _quarter(_model("closed box", steps), "3010")
+
+
+## A 6 x 16 plate on a leg of six 2 x 2 bricks, a 1 x 1 round plate on it
+## and on that a stack of [param bricks] 4 x 12 bricks, their length across.
+func _table(bricks: int) -> String:
+	var leg: Array = []
+	for course: int in 6:
+		leg.append(["3003", 4, Vector3(0, -24 * course, 0)])
+	var stack: Array = []
+	for course: int in bricks:
+		stack.append(["4202", 1, Vector3(40, -160 - 24 * course, 0)])
+	return _quarter(_model("table", [leg, [["3027", 71, Vector3(0, -128, 0)]],
+		[["6141", 14, Vector3(50, -136, 10)]], stack]), "4202")
+
+
+## [param text] with each of [param part] turned a quarter about the vertical.
+func _quarter(text: String, part: String) -> String:
 	var lines: PackedStringArray = text.split("\r\n")
 	for n: int in lines.size():
-		if lines[n].ends_with("3010.dat"):
+		if lines[n].ends_with(part + ".dat"):
 			var bits: PackedStringArray = lines[n].split(" ")
 			bits[5] = "0"
 			bits[7] = "1"

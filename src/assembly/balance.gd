@@ -124,6 +124,10 @@ var floor_top: int = 0x7FFFFFFF
 ## as [member rigid] from then on. Found only when [member finds_core].
 var finds_core: bool = false
 var core: Dictionary = {}
+## Where it touches the floor, when the caller knows it better than the
+## parts' boxes do (support_of's {"hull", "floor_y", "grounded"}): a build
+## weighed lying where it fell (Tested), whose boxes are of it standing.
+var support: Dictionary = {}
 
 
 ## One stud joint and what it carries.
@@ -542,7 +546,7 @@ func prepare(bricks: Array, links: Variant = null, contacts: Dictionary = {}) ->
 ## pose alone; no advice, which is for a whole motion.
 func weigh_pose(placed: Dictionary, label: String = "") -> Report:
 	var report := Report.new()
-	if _ids.is_empty() or _hull.size() < 3:
+	if _ids.is_empty() or _hull.size() < 3 and floor_cell == 0x7FFFFFFF:
 		return report
 	report.empty = false
 	report.support = _hull
@@ -608,7 +612,8 @@ func _read(bricks: Array) -> void:
 ## of the model, or of the top of the floor [param top] under it, and the
 ## hull round them.
 func _ground(boxes: Dictionary, top: int = 0x7FFFFFFF) -> void:
-	var found: Dictionary = Balance.support_of(boxes, floor_cell, top)
+	var found: Dictionary = support if not support.is_empty() \
+		else Balance.support_of(boxes, floor_cell, top)
 	_hull = found["hull"]
 	_floor_y = found["floor_y"]
 	_grounded = {}
