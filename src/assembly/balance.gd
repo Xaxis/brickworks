@@ -89,11 +89,13 @@ var library: PartLibrary
 var lattice: BrickLattice
 ## Bricks that are the floor and not the model: the baseplate under it.
 var floor_ids: Dictionary = {}
-## Where each stud joint's studs are, by the pair's ids (Vector2i(lower,
-## upper) -> [method _overlap]): kept from one weighing to the next when a
-## caller hands the same dictionary to each, as Tested does weighing a model
-## at every step. Comparing the two parts' boxes was most of a weighing:
-## 2.6 s of 2.65 for 75060's 2,014 parts, many of them turned.
+## Where each stud joint's studs are, and where each touch meets, by the
+## pair's ids (Vector2i(lower, upper) -> [method _overlap]): kept from one
+## weighing to the next when a caller hands the same dictionary to each, as
+## Tested does weighing a model at every step. Comparing the two parts' boxes
+## was most of a weighing: 2.6 s of 2.65 for 75060's 2,014 parts, many of
+## them turned; and of weighing 42029-1 where it lay at the steps it tipped,
+## 0.46 s each for its 40 touches.
 var overlaps: Dictionary = {}
 ## What each brick is, by id ([part id, grams, the middle of its shape, its
 ## mesh, its sub-model's path, whether it has studs], or [] for one with no
@@ -1105,7 +1107,11 @@ var _boxes_of: Dictionary = {}
 
 func _patch(touch: Array) -> PackedVector2Array:
 	if touch[2] == null:
-		var met: Array = Balance._overlap(_boxes_of[_ids[int(touch[1])]], _boxes_of[_ids[int(touch[0])]])
+		var pair := Vector2i(_ids[int(touch[1])], _ids[int(touch[0])])
+		var met: Variant = overlaps.get(pair)
+		if met == null:
+			met = Balance._overlap(_boxes_of[pair.x], _boxes_of[pair.y])
+			overlaps[pair] = met
 		var lo: Vector3i = met[0]
 		var hi: Vector3i = met[1]
 		touch[2] = PackedVector2Array() if lo.x == 0x7FFFFFFF else PackedVector2Array([

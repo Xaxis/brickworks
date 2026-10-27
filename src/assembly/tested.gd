@@ -190,6 +190,10 @@ class Weighing extends RefCounted:
 	## dragged part falls on (Topple.corners_of): fewer to turn at each fall.
 	var _corners: Dictionary = {}       ## id -> PackedVector3Array
 	var _all_links: Array = []
+	## As it last lay where it tipped: the parts held two ways or more to the
+	## floor, and every part it lay on.
+	var _lying_core: Dictionary = {}
+	var _lying_on: Dictionary = {}
 
 	func _init(given_library: PartLibrary, given_lattice: BrickLattice, given: Dictionary,
 			bricks: Dictionary, links: Array) -> void:
@@ -351,45 +355,61 @@ class Weighing extends RefCounted:
 	## joint past where it lets go as it lies, or null}.
 	func settle() -> Dictionary:
 		var points := PackedVector3Array()
-		var bricks: Array = []
 		for id: int in _corners:
 			points.append_array(_corners[id])
-			bricks.append(by_id[id])
 		var centre: Vector3 = _weighted / maxf(_grams, 0.000001)
 		var fell: Dictionary = Topple.fall(points, centre, _lowest * BrickLattice.CELL, FALLS)
-		return {"fell": fell, "gave": _lying(bricks, fell["turn"])}
+		return {"fell": fell, "gave": _lying(fell["turn"])}
 
-	## [param bricks] turned by [param turn] and weighed on what then touches
-	## the floor, within half a plate of the lowest of them: the first stud
-	## joint past where it lets go, or null.
-	func _lying(bricks: Array, turn: Transform3D) -> Balance.JointLoad:
+	## The build so far turned by [param turn] and weighed on what then
+	## touches the floor, within half a plate of the lowest of it: the first
+	## stud joint past where it lets go, or null. What was held to the floor
+	## two ways or more as it last lay is weighed as the floor (Balance.rigid)
+	## while it lies on all it lay on then, as the core is standing. Weighed
+	## whole at each of the 46 steps it tips at, 42029-1 spent 1.4 s of its 9
+	## lying; weighed so, 0.4 s.
+	func _lying(turn: Transform3D) -> Balance.JointLoad:
 		var lowest: float = INF
 		for id: int in _corners:
 			for p: Vector3 in (_corners[id] as PackedVector3Array):
 				lowest = minf(lowest, (turn * p).y)
 		var grounded: Dictionary = {}
-		var points := PackedVector2Array()
 		for id: int in _corners:
 			for p: Vector3 in (_corners[id] as PackedVector3Array):
-				var q: Vector3 = turn * p
-				if q.y <= lowest + BrickLattice.PLATE * 0.5:
+				if (turn * p).y <= lowest + BrickLattice.PLATE * 0.5:
 					grounded[id] = true
-					points.append(Vector2(q.x, q.z))
-		var hull: PackedVector2Array = Geometry2D.convex_hull(points)
-		if hull.size() > 1 and hull[0].is_equal_approx(hull[hull.size() - 1]):
-			hull.resize(hull.size() - 1)
+					break
+		if not _lying_on.keys().all(func(id: int) -> bool: return grounded.has(id)):
+			_lying_core.clear()
+		var rigid: Dictionary = {}
+		var bricks: Array = []
+		for id: int in _corners:
+			if _lying_core.has(id):
+				continue
+			bricks.append(by_id[id])
+			for other: int in (_adjacent[id] as Array):
+				if _lying_core.has(other) and not rigid.has(other):
+					rigid[other] = true
+					bricks.append(by_id[other])
+		var on: Dictionary = {}
 		var placed_at: Dictionary = {}
 		for brick: BrickWorld.Brick in bricks:
 			placed_at[brick.id] = turn * brick.transform
+			if grounded.has(brick.id):
+				on[brick.id] = true
 		var balance := Balance.new()
 		balance.library = library
 		balance.lattice = lattice
 		balance.overlaps = overlaps
 		balance.known = known
+		balance.rigid = rigid
+		balance.finds_core = true
 		balance.floor_cell = _lowest
-		balance.support = {"hull": hull, "floor_y": lowest, "grounded": grounded}
+		balance.support = {"hull": PackedVector2Array(), "floor_y": lowest, "grounded": on}
 		if not balance.prepare(bricks, _all_links, contacts):
 			return null
+		_lying_core.merge(balance.core)
+		_lying_on = grounded
 		for one: Balance.JointLoad in balance.weigh_pose(placed_at).joints:
 			if one.moment > one.ultimate:
 				return one
