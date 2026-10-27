@@ -183,7 +183,15 @@ class Conversation {
   }
 }
 
-const texts = (answer) => ((answer.result || {}).content || []).filter((b) => b.type === "text").map((b) => b.text);
+// The working method a chat hears once, ahead of its first answer in a tab
+// (claude_connector.gd _taught, since m181): not the call's words, so no
+// comparison of two answers reads it; told() counts it.
+const method = (b) => b.type === "text" && /^How to work here, said once as this chat begins/.test(b.text);
+const told = (answer) => ((answer.result || {}).content || []).filter(method).length;
+// The model's sizes are said once a change, by the tab (mcp_lean_probe): the
+// first chat to look hears them and a second in the same tab does not.
+const once = (b) => method(b) || (b.type === "text" && /^Measured, in studs: /.test(b.text));
+const texts = (answer) => ((answer.result || {}).content || []).filter((b) => b.type === "text" && !once(b)).map((b) => b.text);
 const images = (answer) => ((answer.result || {}).content || []).filter((b) => b.type === "image");
 const shownOf = (answer) => ((answer.result || {})._meta || {})["brickworks/view"];
 const kinds = (answer) => ((answer.result || {}).content || []).map((b) => b.type).join(",");
@@ -192,7 +200,7 @@ const jobOf = (answer) => ((answer.result || {})._meta || {})["brickworks/job"];
 // nor the job's line saying which job it was.
 const ownTexts = (answer) => texts(answer).filter((t) => !/^Tab \S+, /.test(t) && !/^Job \d+ \(\w+\) is done/.test(t));
 const ownKinds = (answer) => ((answer.result || {}).content || [])
-  .filter((b) => !(b.type === "text" && (/^Tab \S+, /.test(b.text) || /^Job \d+ \(\w+\) is done/.test(b.text))))
+  .filter((b) => !once(b) && !(b.type === "text" && (/^Tab \S+, /.test(b.text) || /^Job \d+ \(\w+\) is done/.test(b.text))))
   .map((b) => b.type).join(",");
 
 let browser = null;
@@ -349,6 +357,8 @@ try {
   const plainViewed = await aPicture(plain);
   check(!shownOf(plainLooked) && !shownOf(plainViewed) && !plainLooked.result?.structuredContent,
     "...its answers carry nothing for a viewer");
+  check(told(plainLooked) === 1 && told(plainViewed) === 0,
+    `...and it hears how to work here once, with its first answer, and not again (${told(plainLooked)}, then ${told(plainViewed)})`);
   const firstApart = (a, b) => {
     const x = a.join("\n").split("\n"); const y = b.join("\n").split("\n");
     const n = x.findIndex((line, i) => line !== y[i]);
@@ -366,7 +376,8 @@ try {
     + `${apart ? ` (${apart})` : ""}`);
   check(ownKinds(plainViewed) === ownKinds(viewed) && JSON.stringify(ownTexts(plainViewed)) === JSON.stringify(ownTexts(viewed))
       && images(plainViewed)[0]?.mimeType === images(viewed)[0]?.mimeType,
-    `...and view_model's words and picture the same (${kinds(plainViewed)})`);
+    `...and view_model's words and picture the same (${ownKinds(plainViewed)} / ${ownKinds(viewed)}`
+      + `${firstApart(ownTexts(plainViewed), ownTexts(viewed)) ? `; ${firstApart(ownTexts(plainViewed), ownTexts(viewed))}` : ""})`);
   await tab.screenshot({ path: `${out}/1_tab.png`, timeout: 120000 }).catch(() => {});
 
   console.log("\n3. a host, as the spec says one behaves, in a browser that cannot draw in 3D");
@@ -560,7 +571,8 @@ try {
   check(plainJob.id > 0 && !shownOf(plainJob.done) && !jobOf(plainJob.done) && !jobOf(plainJob.started)
       && ownKinds(plainJob.done) === ownKinds(jobViewed.done)
       && JSON.stringify(ownTexts(plainJob.done)) === JSON.stringify(ownTexts(jobViewed.done)),
-    `a client that does not show pages: the same words and picture as a job, and no _meta (${kinds(plainJob.done)})`);
+    `a client that does not show pages: the same words and picture as a job, and no _meta (${ownKinds(plainJob.done)} / ${ownKinds(jobViewed.done)}`
+      + `${firstApart(ownTexts(plainJob.done), ownTexts(jobViewed.done)) ? `; ${firstApart(ownTexts(plainJob.done), ownTexts(jobViewed.done))}` : ""})`);
   // The card beside the call that became a job: handed "Started job N", it
   // follows the job through the host and shows the picture it gave.
   const pageCalls = calledByPage.length;
