@@ -230,6 +230,14 @@ fixing what it got wrong.
   own pieces are held out of the designer's real-set index by `--held-out=<set
   number>` (src/ai/real_snippets.gd). `docs/DESIGN_SCORES.md`, "Against real
   sets". Under How to check it, "Real sets".
+- `test designs on the owner's own ideas`: `tools/bench/ideas.py`, twenty fixed
+  briefs in a person's words (`tools/bench/ideas_briefs.py`: scenes, vehicles with
+  a story, landmark-inspired originals, creatures and mechs, interiors, dioramas,
+  Technic machines; no set names), run by realset's machinery (`--via port|relay`,
+  `--jobs`, BENCH_PORTS, XDG_DATA_HOME), and two arms judged head to head, both
+  orders, on likeness to the brief, realism as a LEGO® set, creativity, technique
+  and overall. Every share in its table names the arm it belongs to. Under How to
+  check it, "Owner-style ideas".
 - `keep a run to a list of parts`: `src/parts/parts_only.gd`, `--parts-only=FILE`
   (a part number a line, the first `#` line naming the list). search_parts and
   find_parts_like list only those; a design or edit with another is refused
@@ -2590,6 +2598,38 @@ two workers with the GPU shared, nine minutes a subject). `reach` finds every
 design's transcript: 44 of 44 on main's and on main2's proof arms (2026-10-26),
 main's Flatiron 66% turned beside its set's 39%, ours 0% at the median against
 the sets' 11%.
+
+### Owner-style ideas: two arms head to head
+
+`tools/bench/ideas.py` runs the twenty briefs of `tools/bench/ideas_briefs.py`
+(fixed: a changed brief gets a new id, and `compare` leaves out a design whose
+words are not the brief's today) on an arm's checkout, with realset's designer:
+`one` per worker, `realset.design_via_relay` or run.py's design stage, the views
+drawn by `bench_views.gd`, tools/style.py's measures. No set and no build check:
+`compare` puts two arms' designs of each brief before realset's prompt with
+ideas' own question (`ideas.QUESTION`), both orders, and reports each arm's
+share by name with a 95% interval over briefs. A brief one arm made no model for
+is lost by that arm on every dimension; one neither made is left out and named.
+
+```sh
+python3 tools/minitest.py tests/test_ideas.py     # the briefs; whose share the table shows, both ways round; a changed brief left out
+python3 tools/bench/ideas.py list
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/ideas.py run --arm dry --subjects dragon_bridge --dry-run --jobs 1
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-a BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/ideas.py run --arm mine --checkout ../mine --via relay --jobs 2
+env -u ANTHROPIC_API_KEY python3 tools/bench/ideas.py compare --arms main,mine --dates D1,D2 --jobs 2
+```
+
+Results land in the main checkout's `bench/results/ideas-<date>-<arm>/<id>/`
+(brief.json, design.json, session.jsonl, design.ldr, views, record.json) and
+`ideas-<date>-<a>-vs-<b>/` (verdicts per brief, report.md). Each stage is skipped
+when its output is there: the same command resumes. Start each arm as a
+background task of its own, not `setsid`'d and left: an arm detached so lost the
+network when its command ended, and every throwaway account timed out
+(2026-10-27).
+
+Proves it when: the dry run writes two records and a compare report with two
+verdicts a brief; `test_ideas.py` passes; and main against main, two arms of one
+snapshot, comes out near 50% on every dimension.
 
 ### Best of two: each new brief designed twice in the app
 
