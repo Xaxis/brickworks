@@ -29,6 +29,36 @@
 import { askToSignIn, call, email, signOut, signedIn } from "/account.js";
 import { avatarHtml } from "/kit.js";
 
+// A follow sent and not yet answered, kept for this tab until it is
+// (web295): Follow is drawn at once and the server answers 260-390 ms
+// later, so the next page (Your feed, pressed at once) could be opened
+// first, and leaving a page dropped what it was still asking. The next
+// page sends it again (a follow says on or off, so twice is once), and
+// what reads follows waits for the answer (followsSent): the feed is never
+// drawn without whom you just followed.
+const SENT = "brickworks.follows-sent";
+// How long one is sent again for: long after any answer would have come.
+const SENT_FOR_MS = 60 * 1000;
+// This page's, on their way: each a promise of the server's answer.
+const sending = new Map();
+
+const sentKept = () => {
+  try {
+    const kept = JSON.parse(sessionStorage.getItem(SENT) || "[]");
+    return Array.isArray(kept) ? kept.filter((one) => one && one.who === email() && Date.now() - one.at < SENT_FOR_MS) : [];
+  } catch {
+    return [];
+  }
+};
+const keepSent = (list) => {
+  try {
+    if (list.length) sessionStorage.setItem(SENT, JSON.stringify(list));
+    else sessionStorage.removeItem(SENT);
+  } catch {
+    // Not kept: this page still waits on its own.
+  }
+};
+
 const plural = (n, one, many = `${one}s`) => `${Number(n).toLocaleString("en-US")} ${n === 1 ? one : many}`;
 
 // What a Follow button follows: a person by their handle, or a collection
@@ -52,11 +82,39 @@ const FOLLOWS = {
   },
 };
 
+/// Follows [id] (a "person" or a "list", as [named] says) or lets them go,
+/// as [on] says: the server's answer, {status, body}. Kept for this tab
+/// until it is answered, and sent so that leaving the page does not drop it.
+function send(named, id, on) {
+  const key = `${named}:${id}`;
+  const at = Date.now();
+  keepSent([...sentKept().filter((one) => one.key !== key), { key, named, id, on, at, who: email() }]);
+  const [where, body] = FOLLOWS[named].sent(id, on);
+  const answer = call(where, { method: "POST", body, keepalive: true }).catch(() => ({ status: 0, body: {} }))
+    .then((said) => {
+      keepSent(sentKept().filter((one) => !(one.key === key && one.at === at)));
+      if (sending.get(key) === answer) sending.delete(key);
+      return said;
+    });
+  sending.set(key, answer);
+  return answer;
+}
+
+/// Once every follow this tab sent is answered: one an earlier page was
+/// left before it heard back is sent again first. What draws follows as the
+/// server has them (the feed, a Follow button, the count on your avatar)
+/// asks after this.
+export async function followsSent() {
+  for (const one of sentKept()) if (!sending.has(one.key) && FOLLOWS[one.named]) send(one.named, one.id, one.on);
+  await Promise.all(sending.values());
+}
+
 /// One Follow button, made live: drawn from [known] when the page already
 /// knows how it stands (the feed's designers to follow, none of whom you
 /// follow yet), else as the server says.
 export async function followButton(button, known = null) {
-  const kind = button.dataset.followList ? FOLLOWS.list : FOLLOWS.person;
+  const named = button.dataset.followList ? "list" : "person";
+  const kind = FOLLOWS[named];
   const handle = button.dataset.followList || button.dataset.follow;
   const said = button.parentElement?.querySelector(".said") || null;
   const say = (words) => {
@@ -87,6 +145,7 @@ export async function followButton(button, known = null) {
     }
   };
   const ask = async () => {
+    await followsSent();
     const answer = await call(kind.asked(handle));
     if (answer.status !== 200 || !answer.body.ready) return false;
     state = answer.body;
@@ -117,8 +176,7 @@ export async function followButton(button, known = null) {
     state = { ...state, you_follow: on, followers: Math.max(0, (Number(state.followers) || 0) + (on ? 1 : -1)) };
     draw();
     button.disabled = true;
-    const [where, body] = kind.sent(handle, on);
-    const answer = await call(where, { method: "POST", body }).catch(() => ({ status: 0, body: {} }));
+    const answer = await send(named, handle, on);
     button.disabled = false;
     if (answer.status !== 200) {
       state = was;
@@ -297,6 +355,7 @@ export async function showFeedCount({ ask = true } = {}) {
   const kept = keptState() || { email: email(), me: null, count: 0, notifications: null, feed: null };
   drawSignedIn(kept);
   if (!ask) return kept;
+  await followsSent();
   const answer = await call("/api/people?op=feed_count").catch(() => null);
   if (!answer || answer.status !== 200 || answer.body.signed_in === false) return kept;
   const state = { email: email(), me: answer.body.me || null, count: Number(answer.body.count) || 0,
@@ -320,6 +379,7 @@ export function showTabCounts(state) {
 /// each stands asked once for all of them, not once a card. A server from
 /// before that answer is asked a card at a time, as before.
 async function followLists(buttons) {
+  await followsSent();
   const ids = [...new Set(buttons.map((button) => button.dataset.followList))];
   const answer = await call(`/api/people?op=list_follows&ids=${ids.map(encodeURIComponent).join(",")}`).catch(() => null);
   const follows = answer && answer.status === 200 && answer.body && answer.body.follows;

@@ -183,6 +183,8 @@ const emailI = `delivered+bw-share-i-${rand}@resend.dev`;
 // The library's (gallery261): one who shares a model of the app's Library,
 // as it is and changed, and one with a credit line of its own.
 const emailJ = `delivered+bw-share-j-${rand}@resend.dev`;
+// One who lists a set from the Library, its card counting as its page does.
+const emailK = `delivered+bw-share-k-${rand}@resend.dev`;
 const SMALL = "0 Small\r\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n";
 
 /// [text] carrying [pages] as the app carries the steps it worked out
@@ -373,6 +375,7 @@ async function main() {
   await thePeople(tokenA, tokenB);
   await theModeration(tokenA);
   await theLibrary();
+  await countedAsItsPage();
 
   // --- The database, asked directly with the publishable key
   console.log("the database, with the key every page has");
@@ -1395,6 +1398,27 @@ async function theLibrary() {
     `and its page names nobody it did not make (${r.status})`);
 }
 
+/// A card says the count its model's page says (web295): 10243-1, the
+/// Library's Parisian Restaurant, is 2,479 part lines and 2,458 parts to
+/// buy as the app's parts list counts them (api/_parts.js), which its page
+/// has said since site278. A publish keeps that count, so its card in the
+/// gallery, the publish's answer and its page all say 2,458.
+async function countedAsItsPage() {
+  console.log("a card counts as its page does");
+  const { access_token: token } = await mintSession(emailK);
+  const model = readFileSync(new URL("../../vendor/omr/files/10243-1.mpd", import.meta.url), "utf8");
+  let r = await call("/api/share", { method: "POST", token,
+    body: { name: "Probe Parisian Restaurant", model, image: PICTURE, listed: true } });
+  const id = r.json?.id || "";
+  if (id) published.add(id);
+  check(r.status === 201 && r.json?.parts === 2458, `10243-1 published: ${r.status}, ${r.json?.parts} parts kept, not its 2479 part lines`);
+  const l = await call("/api/share?op=list&page=1&tests=1");
+  const card = (l.json?.models || []).find((m) => m.id === id) || {};
+  r = await call(`/m/${id}`);
+  const page = /<li class="pill">([\d,]+) parts<\/li>/.exec(r.text)?.[1] || "";
+  check(card.parts === 2458 && page === "2,458", `its card says ${card.parts}, its page ${page}`);
+}
+
 async function cleanUp() {
   // What moderation keeps that does not go with an account: the files the
   // site's owner barred, and reports of a profile by its handle. How often
@@ -1411,7 +1435,7 @@ async function cleanUp() {
   // Every model published here is taken down (the files go with that),
   // then every account, which takes their rows with them.
   const sessions = [];
-  for (const email of [emailA, emailB, emailD, emailE, emailF, emailG, emailH, emailI, emailJ]) {
+  for (const email of [emailA, emailB, emailD, emailE, emailF, emailG, emailH, emailI, emailJ, emailK]) {
     sessions.push(await mintSession(email).catch(() => null));
   }
   const accounts = sessions.filter(Boolean).map((one) => one.kept.user_id).filter(Boolean);
@@ -1433,7 +1457,9 @@ async function cleanUp() {
   const goneG = await deleteAccount(emailG);
   const goneH = await deleteAccount(emailH);
   const goneI = await deleteAccount(emailI);
-  check(goneA && goneB && goneD && goneE && goneF && goneG && goneH && goneI,
+  const goneJ = await deleteAccount(emailJ);
+  const goneK = await deleteAccount(emailK);
+  check(goneA && goneB && goneD && goneE && goneF && goneG && goneH && goneI && goneJ && goneK,
     "every throwaway account deleted, and their rows with them");
   const left = await call(`/api/share?id=${[...published][0] || "QQQQQQQQQQ"}`);
   check(left.status === 404, `nothing left behind: the link is gone with the account (${left.status})`);

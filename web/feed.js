@@ -21,7 +21,7 @@
 // Every word is put on the page as text; a card and an avatar are the kit's,
 // which escape their own.
 import { askToSignIn, call, signOut, signedIn } from "/account.js";
-import { followButton, showFeedCount, showTabCounts } from "/follow.js";
+import { followButton, followsSent, showFeedCount, showTabCounts } from "/follow.js";
 import { ago, avatarHtml } from "/kit.js";
 import { FIRST_SCREEN, modelCard } from "/card.js";
 
@@ -229,6 +229,10 @@ async function suggest(mine, { withLatest, skip = new Set() }) {
 
 async function page(mine) {
   const first = oldest === null;
+  // A follow pressed a moment ago, here or on the page before, is answered
+  // first: the feed is asked as it is then, never without them (web295).
+  if (first) await followsSent();
+  if (mine !== run) return;
   const answer = await call(`/api/people?op=feed${oldest ? `&before=${encodeURIComponent(oldest)}` : ""}`);
   if (mine !== run) return;
   if (answer.status === 401) {

@@ -14,7 +14,7 @@
 // only when it is one. Each tab asks for its own when it is first opened
 // and draws what came, so one that cannot be read leaves the others.
 import { age, askAgeIfAsked, askToSignIn, call, signOut, signedIn } from "/account.js";
-import { showFeedCount } from "/follow.js";
+import { followsSent, showFeedCount } from "/follow.js";
 import { avatarHtml, awardsHtml, toast } from "/kit.js";
 
 // What only a signed-in page draws (card.js, designs.js), fetched as the
@@ -383,6 +383,7 @@ function listRow(list) {
 /// Whom you follow, for you alone. Where the server cannot list them yet
 /// (ready: false), how many, from your page's counts.
 async function following() {
+  await followsSent();
   const answer = await call("/api/people?op=following").catch(() => null);
   const list = $("following");
   list.replaceChildren();

@@ -1385,6 +1385,16 @@ plan with Claude as the client.
   first time it is asked after the collection changed); `checkModel`'s
   `needs` in `api/share.js`, kept on publish.
 - `needs backfill` (`tools/web/needs_backfill.mjs`): below.
+- `parts count backfill` (`tools/web/parts_backfill.mjs`, web295): the
+  count a published model keeps for its card, as its page counts it
+  (`piecesIn` in `api/share.js`, which a publish keeps since web295):
+  reads every published model's versions and files, and writes
+  `supabase/parts_counted.sql`, one update a count that differs, each held
+  to the row as read. Proved by `tools/apply_sql.mjs supabase/parts_counted.sql
+  --dry --try=<a select of the rows it names>`: on 2026-10-26, 39 published,
+  4 models and 4 versions changed (6085's 983 to 748), rolled back. And
+  `share_probe` lists 10243-1 and reads its card and page: 2458 and
+  "2,458", not its 2,479 part lines.
 - `discovery browser flow` (`tools/web/discovery_flow.mjs`): below.
 - `designers' numbers` (`supabase/designers.sql`, 2026-10-19): table
   `model_opens` (a model, a day, how many opened its page: kept by the
@@ -3118,6 +3128,17 @@ microsecond, a time that is not one 400. 52 checks, all ok, on the live
 project through a relay with nothing held and `BW_BYPASS` set, and 53
 (the knock) against the held relay, 2026-10-18, about 4 minutes each with
 the app.
+
+Follow, then the feed at once (web295, 2026-10-26): having let Ada go, Bob
+presses Follow on her profile and at once Your feed in his avatar's menu,
+the follow's request held 1.5 s by the flow as a slow phone's is. The feed
+must wait for it (web/follow.js `followsSent`: a follow not yet answered
+is kept in sessionStorage, sent again by the next page, and waited on by
+the feed, a Follow button, the avatar's count and /profile's list) and
+show her castle and its version 2, and the server must have the follow
+("the feed opened N ms after Follow, the follow held: version, model",
+"...and the server has it: following true, 1 follower"). Before the fix
+the page left dropped the request: "nothing", "following false".
 
 Notifications apart from the feed (2026-10-22, docs/SOCIAL.md U7). The
 SQL first, after the live files (follows and challenges are applied), in
