@@ -78,6 +78,18 @@ if (args.collection) {
   if (args.dry) console.log(`  would put them in ${list ? `the collection ${list.id}` : `a new collection "${args.collection}"`}`);
 }
 
+// What the server made of the app's finding (api/share.js publish): a
+// refusal says why at its top, and a finding kept that failed says why in
+// each test it failed. Only the top was printed, so on 2026-10-26 twenty
+// real sets came back "not Tested" with no reason, each one kept and
+// failing.
+function testedSaid(tested) {
+  if (tested?.kept && tested.passed) return "Tested";
+  const failed = Object.values(tested?.tests || {}).filter((one) => !one.ok)
+    .map((one) => `${one.said} (${String(one.why).slice(0, 90)})`);
+  return `not Tested: ${tested?.why || failed.join("; ") || (tested ? "no reason given" : "no finding sent")}`;
+}
+
 let failed = 0;
 // The last first: the gallery is newest first, so it then shows them in
 // the order given.
@@ -104,7 +116,7 @@ for (const body of [...bodies].reverse()) {
   if (!ok) failed += 1;
   console.log(`  ${ok ? "ok  " : "FAIL"}  ${body.name}: ${reply.status} ${said.url || said.error || ""}`
     + (ok ? ` (${said.parts} parts, ${said.updated ? `version ${said.version}` : "new"}, `
-      + `${said.tested?.kept && said.tested.passed ? "Tested" : `not Tested${said.tested?.why ? `: ${said.tested.why}` : ""}`}`
+      + testedSaid(said.tested)
       + `${said.modelled_by ? `, modelled by ${said.modelled_by.name}` : ""}, ${said.licence})` : ""));
   // Listed a second apart, so each has a time of its own in the gallery.
   await new Promise((done) => setTimeout(done, 1100));
