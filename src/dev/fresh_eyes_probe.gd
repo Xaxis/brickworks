@@ -14,7 +14,9 @@
 ## so is one over the example car a tab opens on (the relay's); a chat that
 ## designs beside a model already standing, and an answer that failed, say
 ## what main says. The eyes see three pictures and the subject, nothing of
-## the session. In a window, for the pictures.
+## the session. An app started from a desktop icon (PATH=/usr/bin:/bin, the
+## stand-in where the installer puts it, ~/.local/bin) still asks it, through
+## ClaudeCode.found(). In a window, for the pictures.
 ##
 ## --dump=FILE writes the no-Claude-Code chat's answers there, and --baseline
 ## runs that chat alone, touching nothing of FreshEyes: run with both on main
@@ -29,6 +31,7 @@ var _assistant: Assistant
 var _next: int = 0
 var _fake: String = ""
 var _path: String = ""
+var _home: String = ""
 
 
 func _initialize() -> void:
@@ -49,6 +52,7 @@ func _run() -> void:
 	_assistant = _main.get("_assistant")
 	(_main.get("_store") as ModelStore).keeps = false
 	_path = OS.get_environment("PATH")
+	_home = OS.get_environment("HOME")
 	var baseline: bool = OS.get_cmdline_user_args().has("--baseline")
 
 	await _no_claude_code(baseline)
@@ -60,7 +64,9 @@ func _run() -> void:
 		await _over_the_example()
 		await _beside_a_model()
 		await _no_answer()
+		await _from_a_desktop_icon()
 	OS.set_environment("PATH", _path)
+	OS.set_environment("HOME", _home)
 
 	print("")
 	print("fresh eyes: asked once at a new design's first save, its changes said; "
@@ -71,12 +77,14 @@ func _run() -> void:
 	quit(1 if _failures > 0 else 0)
 
 
-## No Claude Code on PATH: what the save says, kept for --dump.
+## No Claude Code on PATH, nor where its installers put it (a home of
+## nothing): what the save says, kept for --dump.
 func _no_claude_code(baseline: bool) -> void:
 	print("── no Claude Code on this machine ──")
 	var empty: String = ProjectSettings.globalize_path("user://no-claude")
 	DirAccess.make_dir_recursive_absolute(empty)
 	OS.set_environment("PATH", "%s:/usr/bin:/bin" % empty)
+	OS.set_environment("HOME", empty)
 	_check("Claude Code is not found", ClaudeCode.found().is_empty())
 	var dump := PackedStringArray()
 	await _call_as("c0", "clear_model", {})
@@ -95,6 +103,7 @@ func _no_claude_code(baseline: bool) -> void:
 		_check("the eyes were looked for once, and not asked again for this subject",
 			bool(eyes.get("asked")) and (eyes.get("last") as Dictionary).is_empty())
 	OS.set_environment("PATH", _path)
+	OS.set_environment("HOME", _home)
 	var dump_to: String = _argument("--dump")
 	if not dump_to.is_empty():
 		var file: FileAccess = FileAccess.open(dump_to, FileAccess.WRITE)
@@ -225,11 +234,34 @@ func _no_answer() -> void:
 		and _text(said).contains("Before it is finished"))
 
 
+## Started from a desktop icon: no shell PATH, so `which` cannot find the
+## stand-in, which is where the installer puts it (the home's .local/bin).
+## The eyes find it as the app's own designer does (ClaudeCode.found).
+func _from_a_desktop_icon() -> void:
+	print("\n── an app started from a desktop icon ──")
+	DirAccess.remove_absolute(_fake.path_join("fail"))
+	OS.set_environment("PATH", "/usr/bin:/bin")
+	OS.set_environment("HOME", _fake.get_base_dir().get_base_dir())
+	_check("`which` finds no claude on PATH=%s" % OS.get_environment("PATH"),
+		OS.execute("which", ["claude"], [], false) != 0)
+	_check("...and ClaudeCode.found() finds the stand-in in the home: %s" % ClaudeCode.found(),
+		ClaudeCode.found() == _fake.path_join("claude"))
+	await _call_as("c6", "clear_model", {})
+	await _call_as("c6", "submit_design", _tower())
+	var said: Array = await _call_as("c6", "save_model", {"name": "tower6.ldr"})
+	_check("the eyes are asked (%d asks) and their changes said: %s"
+		% [_calls(), _line_with(_text(said), "1. CHANGE")],
+		_calls() == 5 and _text(said).contains("1. CHANGE-ONE"))
+	OS.set_environment("PATH", "%s:%s" % [_fake, _path])
+	OS.set_environment("HOME", _home)
+
+
 ## A stand-in for Claude Code: it writes down its arguments and the message it
 ## is sent, answers as `claude -p --output-format stream-json` does (or with an
-## error once its folder has a file called fail), and waits to be stopped.
+## error once its folder has a file called fail), and waits to be stopped. It
+## sits in a home of its own's .local/bin, where the installer puts claude.
 func _stand_in() -> String:
-	var dir: String = ProjectSettings.globalize_path("user://stand-in")
+	var dir: String = ProjectSettings.globalize_path("user://home/.local/bin")
 	DirAccess.make_dir_recursive_absolute(dir)
 	var answer: Dictionary = {"type": "result", "is_error": false, "result": "",
 		"structured_output": {"reads_as": "a red stack of bricks",

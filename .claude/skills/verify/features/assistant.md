@@ -91,11 +91,13 @@ fixing what it got wrong.
   shown the subject and `DesignPick.pictures` (corner, front, close) and
   nothing of the session, saying what it reads as, what reads as generic, and
   three changes. Once a subject (`Assistant.heard`, fresh), whatever comes of
-  it; never a chat about a selection or beside the person's own model. No Claude Code on PATH (a
-  browser: `ClaudeCode.found()`), no pictures or no answer in `MOST_S`: the
+  it; never a chat about a selection or beside the person's own model. No Claude Code
+  (found as the app's designer finds it, `ClaudeCode.found()`: on PATH, else where
+  its installers put it; never in a browser), no pictures or no answer in `MOST_S`: the
   save is main's, byte for byte. The log says `fresh eyes: S s (model): {...}`.
-  `fresh_eyes_probe` (a stand-in `claude` on PATH; `--baseline --dump=FILE` on
-  another checkout gives main's answers to compare).
+  `fresh_eyes_probe` (a stand-in `claude` on PATH, then in a home's .local/bin
+  with PATH=/usr/bin:/bin as a desktop icon starts the app; `--baseline
+  --dump=FILE` on another checkout gives main's answers to compare).
 - `the check by real shapes`: `src/ai/exact_check.gd` over `src/assembly/exact.gd`,
   called from `Assistant._check`, so every check, edit, submission, review and save
   has it: each part BrickNet has is its convex colliders and connector labels
