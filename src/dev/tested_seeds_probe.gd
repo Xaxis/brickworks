@@ -18,7 +18,10 @@
 ## rests, as a builder lays it down (tested305): none comes apart there.
 ## And a part BrickNet gives another part's shape, which put 4592c01's
 ## base 1.6 LDU into the plate under it in four of them, is judged by its
-## cover (tested303).
+## cover (tested303). And a step's parts are judged in sight as a real
+## booklet shows them, by their shapes from every side and turned over, and
+## parts built in the air on each other are a callout built in the hand
+## (tested306): 40448-1 is Tested too.
 ## --only runs those of the list (1 is its first); --dump writes every
 ## failure each test found, in full (Tested.said_all), by set.
 extends SceneTree
@@ -29,14 +32,17 @@ const LIST := "res://tools/web/gallery_seeds/ldraw_library.json"
 ## seed failing one; at tested301, 102, 230, 22 and 244, and the 21st,
 ## 346-2 House with Car, Tested; at tested303, whole 204, once a part
 ## whose exact shape is another part's is judged by its cover (Exact.own);
-## at tested305, none failing stands.
+## at tested305, none failing stands; at tested306, steps 28, once a step's
+## parts are judged as a real booklet shows them, by their shapes from every
+## side and turned over, and a callout drawn where it goes is built in the
+## hand.
 const MOST: Dictionary = {
-	1: [0, 0, 0, 4], 2: [0, 16, 0, 8], 3: [0, 18, 0, 7], 4: [0, 43, 0, 8], 5: [0, 17, 0, 3],
-	6: [0, 2, 0, 8], 7: [0, 9, 0, 2], 8: [0, 0, 0, 7], 9: [0, 25, 1, 6], 10: [0, 1, 1, 11],
-	11: [0, 2, 1, 7], 12: [0, 8, 1, 16], 13: [0, 0, 0, 2], 14: [0, 14, 0, 12], 15: [0, 7, 0, 11],
-	16: [0, 7, 0, 7], 17: [0, 6, 0, 8], 18: [0, 0, 0, 2], 19: [0, 5, 0, 7], 20: [0, 3, 0, 18],
-	21: [0, 0, 0, 0], 22: [0, 6, 0, 5], 23: [0, 3, 0, 0], 24: [0, 0, 1, 2], 25: [0, 1, 0, 0],
-	26: [0, 19, 0, 5], 27: [0, 18, 16, 16], 28: [0, 0, 1, 8], 29: [0, 0, 0, 11], 30: [0, 0, 0, 3],
+	1: [0, 0, 0, 4], 2: [0, 0, 0, 8], 3: [0, 1, 0, 7], 4: [0, 0, 0, 8], 5: [0, 5, 0, 3],
+	6: [0, 0, 0, 8], 7: [0, 0, 0, 2], 8: [0, 0, 0, 7], 9: [0, 4, 1, 6], 10: [0, 1, 1, 11],
+	11: [0, 0, 1, 7], 12: [0, 0, 1, 16], 13: [0, 0, 0, 2], 14: [0, 2, 0, 12], 15: [0, 4, 0, 11],
+	16: [0, 0, 0, 7], 17: [0, 2, 0, 8], 18: [0, 0, 0, 2], 19: [0, 4, 0, 7], 20: [0, 0, 0, 18],
+	21: [0, 0, 0, 0], 22: [0, 0, 0, 5], 23: [0, 3, 0, 0], 24: [0, 0, 1, 2], 25: [0, 0, 0, 0],
+	26: [0, 0, 0, 5], 27: [0, 2, 16, 16], 28: [0, 0, 1, 8], 29: [0, 0, 0, 11], 30: [0, 0, 0, 3],
 }
 ## Faults the files really have, each still to be found: [seed, test, what
 ## it says]. Each set's own inventory (Rebrickable) has the part otherwise.
@@ -71,6 +77,8 @@ const FAULTS: Array = [
 	# 6066-1 opens its chest's lid about a line 8.5 LDU off the lid's hinge
 	# pins, which are in the chest's hinge holes only when it is closed.
 	[8, "whole", "Container Treasure Chest without Slots into Container Treasure Chest with Slots Lid by 2.1 LDU"],
+	# 7815-1 seats its two passengers after the carriage's roof is on.
+	[23, "steps", "Step 35: Minifig Leg Right (Obsolete) is hidden behind what is already built"],
 ]
 
 var _failures: int = 0
@@ -155,7 +163,7 @@ func _run() -> void:
 		file.close()
 	print("%d of %d seeds Tested" % [passed, ran])
 	if only.is_empty():
-		_ok(passed >= 1, "at least one of the 30 is Tested")
+		_ok(passed >= 2, "at least two of the 30 are Tested")
 	print("%d FAILED" % _failures if _failures else "each seed fails no more than it did, and for its file's own faults")
 	quit(1 if _failures else 0)
 

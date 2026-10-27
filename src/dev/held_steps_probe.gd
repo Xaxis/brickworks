@@ -9,8 +9,9 @@
 ## in the hand are each two pieces until they are put on; and the robot,
 ## which put a sub-assembly on before what holds it. Each fails the Tested
 ## mark's steps test with the planner alone (HeldSteps.mends off) and passes
-## it with the mend, but the fox's two parts that its body hides even beside
-## what holds them, which the test still names; and every part is in the
+## it with the mend, but the fox's one part that its body hides from every
+## side even beside what holds it, which the test still names (two, judged
+## by boxes from the front and the back, tested306); and every part is in the
 ## steps once, where the share's pages carry it, its file unchanged. A
 ## bench design whose planned steps already pass (sculpt170's model-043) is
 ## left exactly as planned.
@@ -66,10 +67,10 @@ func _run() -> void:
 		_ok(not _passes(alone, "steps"), "the planner alone puts parts down in the air: %s"
 			% _why(alone, "steps").left(160))
 		if name == "fox":
-			_ok(int(said.get("floating", -1)) == 0 and int(said.get("hidden", -1)) == 2
-					and _why(mended, "steps").count("is hidden behind what is already built") == 2
+			_ok(int(said.get("floating", -1)) == 0 and int(said.get("hidden", -1)) == 1
+					and _why(mended, "steps").count("is hidden behind what is already built") == 1
 					and not _why(mended, "steps").contains("in the air"),
-				"mended, nothing is in the air; two parts its body hides even beside what holds them are named: %s"
+				"mended, nothing is in the air; the one part its body hides from every side even beside what holds it is named: %s"
 					% _why(mended, "steps"))
 			_ok(int(said.get("waited", 0)) >= 100, "...%d parts waited for the step that holds them"
 				% int(said.get("waited", 0)))

@@ -22,17 +22,29 @@
 ##           and 5521-1 on its keel (tested305). A sub-assembly built in the
 ##           hand is weighed once it is on the model, and an author's
 ##           sub-model once it is built.
-##   steps   no part in a step is put down in the air or hidden behind what
-##           is already built, by the booklet's own rules: at the end of its
-##           step each new thing is held to something that stands (the steps
-##           score's "floating", src/dev/steps_score.gd: on the model, what is
-##           on its lowest point, its first parts and the first parts of each
-##           piece a step begins; in the hand, the sub-assembly's first parts;
-##           and anywhere the first parts of each of the author's sub-models,
-##           which may be built in the hand), and shows a tenth of itself from
-##           the front or from the back with what earlier steps built in front
-##           of it, of its sub-model's own until that is built
-##           (Instructions.Pictures, the planner's own pictures of a step).
+##   steps   every part of a step can be put where the step puts it, and
+##           seen there. At the end of its step each new thing is held to
+##           something that stands (the steps score's "floating",
+##           src/dev/steps_score.gd: on the model, what is on its lowest
+##           point, its first parts and the first parts of each piece a step
+##           begins; in the hand, the sub-assembly's first parts; and
+##           anywhere the first parts of each of the author's sub-models,
+##           which may be built in the hand). Parts put down in the air and
+##           held to each other there, two or more, until a later step holds
+##           them are a sub-assembly built in the hand, as a callout is that
+##           a modeller drew where it goes; one part alone, or a sub-assembly
+##           put on where nothing holds it, is put down in the air
+##           (Steps._held_up). And a real booklet could show it: drawn by the
+##           parts' own shapes (their covers), a tenth of it is in sight from
+##           the front, the back or either side, or from any of those with
+##           the model turned over, past everything earlier steps built in
+##           front of it, of its sub-model's own until that is built (Sight);
+##           a see-through part hides nothing. A part buried inside, which no
+##           view shows, is hidden. Judged by boxes from the front and the
+##           back alone, the gallery's 30 real sets failed it 230 times, 148
+##           of them hidden: bogies under a train, plates under a wing, a part
+##           under a turned part's box; and 43 parts of 5891-1's flattened
+##           callouts were put down in the air (tested306).
 ##   parts   every part is a real element in its colour, as the catalogue's
 ##           colour availability knows it (PartInfo.never_made_in): none in a
 ##           colour it was never made in, none made here, none in a colour
@@ -69,8 +81,9 @@ class_name Tested
 extends RefCounted
 
 const VERSION := 1
-## A new thing shows at least this much of itself, from the front or the
-## back: the steps score's SEEN, the planner's Pictures.SEEN.
+## A new thing shows at least this much of itself, from one way a booklet
+## looks at a step (Sight.VIEWS): the steps score's SEEN, the planner's
+## Pictures.SEEN.
 const SEEN := 0.1
 ## How many failures each test names before it says how many more.
 const NAMED := 3
@@ -106,6 +119,9 @@ class Pile extends RefCounted:
 	var _stands: Dictionary = {}      ## root id -> true
 	var begun: bool = false
 	var lowest: int = 0x7FFFFFFF
+	## Things put down in the air and not yet held to what stands: [step
+	## number, thing, its root as the last step left it] ([method Steps.take]).
+	var aloft: Array = []
 
 	func root(id: int) -> int:
 		var at: int = id
@@ -458,6 +474,223 @@ class Weighing extends RefCounted:
 				settled[id] = piece
 
 
+## A part as a step's pictures draw it: its box where it stands, and its
+## cover, the boxes the build check reads it by, which follow its shape to
+## within a cell (Lbm.PartMesh.boxes), its box alone for a part with none.
+## Drawn from a view the first time that view is asked about.
+class Seen extends RefCounted:
+	var id: int = 0
+	var box := AABB()
+	var at := Transform3D.IDENTITY
+	var cover: Array[AABB] = []
+	## The size of a cell of [member cover], LDU.
+	var cell: float = 1.0
+	## In a see-through colour: drawn so in a booklet, it hides nothing.
+	var clear: bool = false
+	var _drawn: Array = []             ## per view: {pixel: depth}, null till drawn
+	var _spans: Array = []             ## per view: [Rect2, Vector2(furthest, nearest)]
+
+	## Where its box lands in [param frame]'s picture ([member Sight.frames]),
+	## in pixels, and how near the eye it comes, furthest and nearest.
+	func span(v: int, frame: Array) -> Array:
+		if _spans.is_empty():
+			_spans.resize(Sight.VIEWS.size())
+		var known: Variant = _spans[v]
+		if known != null:
+			return known
+		var low := Vector2(INF, INF)
+		var high := Vector2(-INF, -INF)
+		var depth := Vector2(INF, -INF)
+		for corner: int in 8:
+			var point: Vector3 = box.get_endpoint(corner)
+			var flat := Vector2(point.dot(frame[1]), point.dot(frame[2])) / Sight.PIXEL
+			low = low.min(flat)
+			high = high.max(flat)
+			var d: float = point.dot(frame[0])
+			depth = Vector2(minf(depth.x, d), maxf(depth.y, d))
+		var out: Array = [Rect2(low, high - low), depth]
+		_spans[v] = out
+		return out
+
+	## Its pixels in [param frame]'s picture, {pixel: how near the eye}: each
+	## pixel whose middle's line of sight meets a box of its cover, and how
+	## near the eye it first does. Each box is read in the part's own frame,
+	## where it is square, along the line of sight brought into that frame.
+	func drawn(v: int, frame: Array) -> Dictionary:
+		if _drawn.is_empty():
+			_drawn.resize(Sight.VIEWS.size())
+		var known: Variant = _drawn[v]
+		if known != null:
+			return known
+		var view: Vector3 = frame[0]
+		var right: Vector3 = frame[1]
+		var up: Vector3 = frame[2]
+		var inverse: Transform3D = at.affine_inverse()
+		var across: Vector3 = inverse.basis * right * Sight.PIXEL
+		var along: Vector3 = inverse.basis * up * Sight.PIXEL
+		var sight: Vector3 = inverse.basis * view
+		var out: Dictionary = {}
+		for one: AABB in cover:
+			var lo: Vector3 = one.position * cell
+			var hi: Vector3 = one.end * cell
+			var low := Vector2(INF, INF)
+			var high := Vector2(-INF, -INF)
+			for corner: int in 8:
+				var point: Vector3 = at * AABB(lo, hi - lo).get_endpoint(corner)
+				var flat := Vector2(point.dot(right), point.dot(up)) / Sight.PIXEL
+				low = low.min(flat)
+				high = high.max(flat)
+			for x: int in range(ceili(low.x - 0.5), floori(high.x - 0.5) + 1):
+				var column: Vector3 = inverse.origin + across * (x + 0.5)
+				for y: int in range(ceili(low.y - 0.5), floori(high.y - 0.5) + 1):
+					var from: Vector3 = column + along * (y + 0.5)
+					var enters: float = -INF
+					var leaves: float = INF
+					var meets: bool = true
+					for k: int in 3:
+						if absf(sight[k]) < 0.000001:
+							if from[k] < lo[k] or from[k] > hi[k]:
+								meets = false
+								break
+							continue
+						var a: float = (lo[k] - from[k]) / sight[k]
+						var b: float = (hi[k] - from[k]) / sight[k]
+						enters = maxf(enters, minf(a, b))
+						leaves = minf(leaves, maxf(a, b))
+					if not meets or enters > leaves:
+						continue
+					var pixel: int = (x << 24) + y
+					if leaves > float(out.get(pixel, -INF)):
+						out[pixel] = leaves
+		_drawn[v] = out
+		return out
+
+
+## What a booklet's pictures of a step show of a new thing: each part drawn
+## by its own shape (Seen), from each way a booklet looks at a step, with
+## everything earlier steps built along the line of sight in front of it.
+## The planner's own pictures count only what is within a stud and a bit
+## (Instructions.Pictures.IN_FRONT), where two views are enough; from eight,
+## a brick shut in a box after its roof showed through the gap to the far
+## walls.
+class Sight extends RefCounted:
+	## The ways a booklet looks at a step, towards the eye: from the front and
+	## the back, as the app's booklet draws them (BookletStudio.FRONT, BACK),
+	## and from either side, the model turned a quarter; and each again from
+	## below, the model turned over to build its underside.
+	const VIEWS: Array[Vector3] = [BookletStudio.FRONT, BookletStudio.BACK,
+		Vector3(1.0, 0.68, -0.62), Vector3(-1.0, 0.68, 0.62),
+		Vector3(0.62, -0.68, 1.0), Vector3(-0.62, -0.68, -1.0),
+		Vector3(1.0, -0.68, -0.62), Vector3(-1.0, -0.68, 0.62)]
+	## A booklet's picture is a few hundred pixels across; a stud is 20 LDU.
+	const PIXEL := Instructions.Pictures.PIXEL
+	const CELL := Instructions.Pictures.CELL
+	## Each view's [toward the eye, right, up].
+	var frames: Array = []
+	var _built: Dictionary = {}        ## Vector3i -> the parts of earlier steps there
+	var _bounds := AABB()              ## round all of them
+
+	func _init() -> void:
+		for view: Vector3 in VIEWS:
+			var ahead: Vector3 = view.normalized()
+			var right: Vector3 = Vector3.UP.cross(ahead).normalized()
+			frames.append([ahead, right, ahead.cross(right).normalized()])
+
+	## A step is done: [param step]'s parts may stand in front of the next
+	## steps', but for those a booklet draws see-through.
+	func built(step: Array) -> void:
+		for seen: Seen in step:
+			if seen.clear:
+				continue
+			_bounds = seen.box if _built.is_empty() else _bounds.merge(seen.box)
+			for key: Vector3i in Instructions.Pictures._cells_of(seen.box):
+				if not _built.has(key):
+					_built[key] = []
+				(_built[key] as Array).append(seen)
+
+	## How far past [param box], toward the eye of view [param v], what is
+	## built reaches.
+	func _reach(box: AABB, v: int) -> float:
+		var way: Vector3 = frames[v][0]
+		var reach: float = -INF
+		for corner: int in 8:
+			reach = maxf(reach, (_bounds.get_endpoint(corner) - box.get_center()).dot(way))
+		return reach
+
+	## The parts of earlier steps in the cells the line of sight from [param
+	## box] to the eye of view [param v] passes through, into [param out], the
+	## nearest it first.
+	func _ahead(box: AABB, v: int, out: Dictionary) -> void:
+		var way: Vector3 = frames[v][0] * (0.5 * CELL)
+		var at: AABB = box
+		var passed: Dictionary = {}
+		for k: int in ceili(maxf(0.0, _reach(box, v)) / (0.5 * CELL)) + 1:
+			for key: Vector3i in Instructions.Pictures._cells_of(at):
+				if passed.has(key):
+					continue
+				passed[key] = true
+				for other: Seen in _built.get(key, []):
+					out[other.id] = other
+			at.position += way
+
+	## Whether [param thing], its parts each a Seen, shows less than a tenth
+	## of itself from every view, with what earlier steps built in front of
+	## it. A view with nothing in front shows it whole; a thing too small for
+	## a pixel is not judged. The views are asked the shortest way out of
+	## what is built first, and each drawn before the next is asked: a part
+	## on the back wall is in sight from the back, and the line of sight
+	## from the front through the whole model, asked of every view first,
+	## made 10218-1's tests take a third longer.
+	func hides(thing: Array) -> bool:
+		if _built.is_empty():
+			return false
+		var own: Dictionary = {}
+		for seen: Seen in thing:
+			own[seen.id] = true
+		var order: Array = []
+		for v: int in frames.size():
+			var reach: float = -INF
+			for seen: Seen in thing:
+				reach = maxf(reach, _reach(seen.box, v))
+			order.append([reach, v])
+		order.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+		for one: Array in order:
+			var v: int = one[1]
+			# In front of it, by the boxes: no part's shape is drawn for a
+			# view something leaves bare.
+			var ahead: Dictionary = {}
+			for seen: Seen in thing:
+				_ahead(seen.box, v, ahead)
+			var there: Array = []
+			for other: Seen in ahead.values():
+				if own.has(other.id):
+					continue
+				var theirs: Array = other.span(v, frames[v])
+				for seen: Seen in thing:
+					var span: Array = seen.span(v, frames[v])
+					if (theirs[0] as Rect2).intersects(span[0]) \
+							and (theirs[1] as Vector2).y > (span[1] as Vector2).x:
+						there.append(other)
+						break
+			if there.is_empty():
+				return false
+			var mine: Dictionary = {}
+			for seen: Seen in thing:
+				var drawn: Dictionary = seen.drawn(v, frames[v])
+				for pixel: int in drawn:
+					mine[pixel] = maxf(float(mine.get(pixel, -INF)), float(drawn[pixel]))
+			if mine.is_empty():
+				return false
+			var open: Dictionary = mine.duplicate()
+			for other: Seen in there:
+				if float(open.size()) < SEEN * float(mine.size()):
+					break
+				Instructions.Pictures._cover(open, other.drawn(v, frames[v]))
+			if float(open.size()) >= SEEN * float(mine.size()):
+				return false
+		return true
+
+
 ## The steps test as a build goes in, a step at a time: what each step puts
 ## down in the air, and what it puts behind what is already built, by the
 ## booklet's own rules (the "steps" test). The worked-out steps are put
@@ -483,8 +716,8 @@ class Steps extends RefCounted:
 	var library: PartLibrary
 	var main := Pile.new()
 	var side: Dictionary = {}          ## callout -> Pile
-	var _main_pictures := Instructions.Pictures.new()
-	var _side_pictures: Dictionary = {} ## callout -> Instructions.Pictures
+	var _main_pictures := Sight.new()
+	var _side_pictures: Dictionary = {} ## callout -> Sight
 	## The author's sub-models begun, by path: true for one begun in the
 	## hand, whose first parts stood on nothing that stands.
 	var _begun_sections: Dictionary = {}
@@ -494,7 +727,7 @@ class Steps extends RefCounted:
 	var _section_pictures: Dictionary = {}
 	var _section_nodes: Dictionary = {}
 	var _section_onto: Dictionary = {}
-	## id -> Instructions.Node2, made as they are asked for ([method Tested._node]).
+	## id -> Seen, made as they are asked for ([method Tested._node]).
 	var nodes: Dictionary = {}
 	var _begun_pieces: Dictionary = {}
 	var floating: Array = []           ## [step number, id]
@@ -544,7 +777,7 @@ class Steps extends RefCounted:
 			return main
 		if not side.has(step.callout):
 			side[step.callout] = Pile.new()
-			_side_pictures[step.callout] = Instructions.Pictures.new()
+			_side_pictures[step.callout] = Sight.new()
 		return side[step.callout]
 
 	## Which of [param things], put down as [param step]'s, would stand were
@@ -608,7 +841,7 @@ class Steps extends RefCounted:
 		var in_hand: bool = step.in_callout()
 		var pile: Pile = pile_of(step)
 		var section: String = step.authored_in if step.authored_step >= 0 else ""
-		var pictures: Instructions.Pictures = _pictures_for(section,
+		var pictures: Sight = _pictures_for(section,
 			_side_pictures[step.callout] if in_hand else _main_pictures)
 		var new_ids: Array[int] = []
 		for thing: PackedInt64Array in things:
@@ -618,7 +851,10 @@ class Steps extends RefCounted:
 		# Hidden by what earlier steps built, before this one's parts go in.
 		var hidden_from: int = Time.get_ticks_usec()
 		for thing: PackedInt64Array in things:
-			if Tested._hidden(thing, pictures, nodes, by_id, library):
+			var seen: Array = []
+			for id: int in thing:
+				seen.append(Tested._node(id, nodes, by_id, library))
+			if pictures.hides(seen):
 				hidden.append([step.number, thing[0]])
 		hidden_us += Time.get_ticks_usec() - hidden_from
 		# Put in, and joined to what is there.
@@ -654,15 +890,14 @@ class Steps extends RefCounted:
 			for id: int in new_ids:
 				pile.stand(id)
 		for thing: PackedInt64Array in things:
-			if not joined.has(thing[0]):
+			if not joined.has(thing[0]) or _stood(pile, thing):
 				continue
-			var stood: bool = false
-			for id: int in thing:
-				if pile.stands(id):
-					stood = true
-					break
-			if not stood:
+			# A sub-assembly put on whole is put on where it is held.
+			if thing.size() > 1:
 				floating.append([step.number, thing[0]])
+			else:
+				pile.aloft.append([step.number, thing, -1])
+		_held_up(pile)
 		var step_nodes: Array = []
 		for id: int in new_ids:
 			step_nodes.append(Tested._node(id, nodes, by_id, library))
@@ -670,6 +905,51 @@ class Steps extends RefCounted:
 		if _section_nodes.has(section):
 			(_section_nodes[section] as Array).append_array(step_nodes)
 		return new_ids
+
+	func _stood(pile: Pile, thing: PackedInt64Array) -> bool:
+		for id: int in thing:
+			if pile.stands(id):
+				return true
+		return false
+
+	## What [param pile] holds in the air, judged once a step holds it to
+	## what stands. Parts held to each other there, two or more, are a
+	## sub-assembly built in the hand and put on whole, as a booklet's
+	## callout is; a modeller who draws the callout's steps where it goes
+	## puts it down in the air. 5891-1's apple tree crown, seven steps
+	## before the trunk under it, and its mailbox, before its post, put 43
+	## parts down in the air (tested306). One part alone, held by the next
+	## step's under it, was put down in the air.
+	func _held_up(pile: Pile) -> void:
+		var held: Dictionary = {}          ## root as the last step left it -> [entry]
+		var still: Array = []
+		for one: Array in pile.aloft:
+			if _stood(pile, one[1]):
+				var root: int = int(one[2])
+				if not held.has(root):
+					held[root] = []
+				(held[root] as Array).append(one)
+			else:
+				one[2] = pile.root((one[1] as PackedInt64Array)[0])
+				still.append(one)
+		pile.aloft = still
+		for root: int in held:
+			var parts: int = 0
+			for one: Array in held[root]:
+				parts += (one[1] as PackedInt64Array).size()
+			if root < 0 or parts < 2:
+				for one: Array in held[root]:
+					floating.append([int(one[0]), (one[1] as PackedInt64Array)[0]])
+
+	## The steps are all built: what is still in the air was put down there.
+	func finish() -> void:
+		var piles: Array = [main]
+		piles.append_array(side.values())
+		for pile: Pile in piles:
+			for one: Array in pile.aloft:
+				floating.append([int(one[0]), (one[1] as PackedInt64Array)[0]])
+			pile.aloft = []
+		floating.sort_custom(func(a: Array, b: Array) -> bool: return int(a[0]) < int(b[0]))
 
 	## The outermost of the author's sub-models [param section] is in that
 	## is built in the hand, or "": what its parts wait for to be weighed.
@@ -687,7 +967,7 @@ class Steps extends RefCounted:
 	## The pictures a step of [param section] is judged in sight by: its
 	## sub-model's own, once each sub-model it is not in is built into what
 	## holds it; [param build]'s for the model's own steps.
-	func _pictures_for(section: String, build: Instructions.Pictures) -> Instructions.Pictures:
+	func _pictures_for(section: String, build: Sight) -> Sight:
 		var done: Array = _section_pictures.keys().filter(func(path: String) -> bool:
 			return not (section == path or section.begins_with(path + "/")))
 		done.sort_custom(func(a: String, b: String) -> bool:
@@ -702,15 +982,15 @@ class Steps extends RefCounted:
 					(_section_nodes[up] as Array).append_array(built)
 					break
 				up = Assemblies.parent_of(up)
-			(onto as Instructions.Pictures).built(built)
+			(onto as Sight).built(built)
 			_section_pictures.erase(path)
 			_section_nodes.erase(path)
 			_section_onto.erase(path)
 		return build if section.is_empty() else _section(section, build)
 
-	func _section(path: String, onto: Instructions.Pictures) -> Instructions.Pictures:
+	func _section(path: String, onto: Sight) -> Sight:
 		if not _section_pictures.has(path):
-			_section_pictures[path] = Instructions.Pictures.new()
+			_section_pictures[path] = Sight.new()
 			_section_nodes[path] = []
 			_section_onto[path] = onto
 		return _section_pictures[path]
@@ -975,6 +1255,7 @@ static func check(world: BrickWorld, lattice: BrickLattice, library: PartLibrary
 	if built_to < 0 and _weighed(weighing, Array(held_up.keys(), TYPE_INT, "", null),
 			steps[-1].number, tips, library):
 		weighed += 1
+	test.finish()
 	laps["hidden"] = test.hidden_us
 	var floating: Array = test.floating
 	var hidden: Array = test.hidden
@@ -1450,36 +1731,6 @@ static func fingerprint(text: String) -> String:
 	return "\n".join(kept).sha256_text()
 
 
-## Whether [param thing] shows less than a tenth of itself from the front and
-## from the back, with what earlier steps built in front of it.
-static func _hidden(thing: PackedInt64Array, pictures: Instructions.Pictures, nodes: Dictionary,
-		by_id: Dictionary, library: PartLibrary) -> bool:
-	var own: Dictionary = {}
-	for id: int in thing:
-		own[id] = true
-	for v: int in 2:
-		var mine: Dictionary = {}
-		var before: Dictionary = {}
-		for id: int in thing:
-			var node: Instructions.Node2 = _node(id, nodes, by_id, library)
-			var drawn: Dictionary = pictures.pixels_of(node, v)
-			for pixel: int in drawn:
-				mine[pixel] = maxf(float(mine.get(pixel, -INF)), float(drawn[pixel]))
-			for other: Instructions.Node2 in pictures.in_front(node):
-				if not own.has(other.id):
-					before[other.id] = other
-		if mine.is_empty():
-			return false
-		var open: Dictionary = mine.duplicate()
-		for other: Instructions.Node2 in before.values():
-			if open.is_empty():
-				break
-			Instructions.Pictures._cover(open, pictures.pixels_of(other, v))
-		if float(open.size()) / float(mine.size()) >= SEEN:
-			return false
-	return true
-
-
 ## [param packed] boxes each a cell bigger every way: what touches them.
 static func _grown(packed: PackedInt32Array) -> PackedInt32Array:
 	var out: PackedInt32Array = packed.duplicate()
@@ -1493,17 +1744,28 @@ static func _grown(packed: PackedInt32Array) -> PackedInt32Array:
 	return out
 
 
-## The planner's node for a part: its id and its box where it stands.
-static func _node(id: int, nodes: Dictionary, by_id: Dictionary, library: PartLibrary) -> Instructions.Node2:
+## A part as the steps test sees it (Seen): its box where it stands, and its
+## cover. Made where the library is read, for a worker to draw.
+static func _node(id: int, nodes: Dictionary, by_id: Dictionary, library: PartLibrary) -> Seen:
 	var known: Variant = nodes.get(id)
 	if known != null:
 		return known
 	var brick: BrickWorld.Brick = by_id[id]
-	var node := Instructions.Node2.new()
+	var node := Seen.new()
 	node.id = id
-	node.part_id = brick.part_id
+	node.at = brick.transform
 	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
-	node.box = brick.transform * mesh.bounds if mesh != null else AABB(brick.transform.origin, Vector3.ZERO)
+	var colour: PartLibrary.BrickColor = library.colors.get(brick.color_code)
+	node.clear = colour != null and colour.is_transparent()
+	if mesh == null:
+		node.box = AABB(brick.transform.origin, Vector3.ZERO)
+	else:
+		node.box = brick.transform * mesh.bounds
+		if mesh.boxes.is_empty():
+			node.cover = [mesh.bounds]
+		else:
+			node.cover = mesh.boxes
+			node.cell = mesh.cell_ldu
 	nodes[id] = node
 	return node
 
