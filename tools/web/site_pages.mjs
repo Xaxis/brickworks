@@ -59,10 +59,13 @@ export function sitePages({ remote = "" } = {}) {
         if (!signedIn) {
           await page.click("#more > summary");
           const shown = await until(page, () => document.querySelector("#more[open]"));
-          // Judged open, before Report's dialog covers it.
-          if (!shown) return [["more (missing)", ".side"]];
+          // Judged open, before Report's dialog covers it: the menu, as
+          // every other More is. The side under it is judged closed; judged
+          // open, axe failed a pill the menu drops over ("In 1 collection")
+          // for the sliver left showing under it (site324).
+          if (!shown) return [["more (missing)", "#more"]];
           await page.waitForTimeout(200);
-          await judge("more", ".side");
+          await judge("more", "#more");
           await page.click('[data-report="this model"]');
           const opened = await until(page, () => document.querySelector("dialog.report[open]"));
           return [[opened ? "report" : "report (missing)", "dialog.report"]];
