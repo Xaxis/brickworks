@@ -40,7 +40,8 @@
 ## a critic's one change, or with no Claude Code the pictures and the final
 ## question, answered with fresh_eyes_final before anything else goes ahead.
 ## Once a subject; "done" adds nothing; a pass that added nothing waits for
-## the next save; no creative pass, no final look.
+## the next save; a close look the save hands comes before it, word for word;
+## no creative pass, no final look.
 ##
 ## --dump=FILE writes the Claude Code chat's answers and the tool list there,
 ## with the answers of two runs through the creative pass (the eyes' one
@@ -633,10 +634,9 @@ func _own_final(chat: String) -> void:
 
 ## With no Claude Code, as most relay sessions work: the creative pass and its
 ## touch before the first save, so its line comes at the save after the first
-## look, with the close look. The final look waits while a save hands a close
-## look or says the surface pass was never run (a session once answered the
-## look beside a close look and ended, the close look never made), and comes
-## at the first save that hands nothing; done ends it.
+## look, with a close look. The final look comes there, after both, which
+## stay word for word (sessions end at that save whatever it hands, 30 of 44
+## on design317t); done ends it, and the saves after hand what they would.
 func _own_final_done(chat: String) -> void:
 	print("\n── no Claude Code, the pass before the first look, then done ──")
 	await _call_as(chat, "clear_model", {})
@@ -650,27 +650,20 @@ func _own_final_done(chat: String) -> void:
 	await _call_as(chat, "fresh_eyes", {"reads_as": "a red column", "generic": "one stack",
 		"changes": ["OWN-ONE: step the top in", "OWN-TWO: a pointed roof", "OWN-THREE: windows"]})
 	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
-	_check("the next save: the pass's line and a close look, and no final look: %s"
-		% _line_with(_text(said), "close look"), _text(said).contains(
-			"The creative pass: 1 part added") and _text(said).contains("has not had a close look")
-		and not _final_in(said) and not bool(_eyes().call("final_waiting")))
-	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
-	_check("the next: the surface pass never run, and no final look: %s"
-		% _line_with(_text(said), "surface pass"), _text(said).contains(
-			"The surface pass has not been run") and not _final_in(said))
-	await _call_as(chat, "review_model", {"surface": true})
-	await _call_as(chat, "settle_surface", {"finding": "all", "verdict": "accept"})
-	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
-	_check("the first save that hands nothing: the final look, %d pictures" % _images(said),
-		_text(said).begins_with("Written to %s.ldr" % chat) and _final_in(said)
-		and _images(said) == 3 and not _text(said).contains("Before it is finished"))
+	var text: String = _text(said)
+	var line: int = text.find("The creative pass: 1 part added")
+	var close: int = text.find("Before it is finished: 1 of its 1 assemblies has not had a close look")
+	_check("the next save: the pass's line, the close look, then the final look: %d pictures"
+		% _images(said), line > 0 and close > line and text.find("one last look") > close
+		and _images(said) == 3 and bool(_eyes().call("final_waiting")))
 	said = await _call_as(chat, "fresh_eyes_final", {"landed": "all three show",
 		"reads_as": "a red tower", "generic": "nothing", "done": true, "change": ""})
 	_check("done: %s" % _text(said), _text(said).begins_with("Then it is finished")
 		and not bool(_eyes().call("final_waiting")))
 	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
-	_check("the next save says nothing more: %s" % _text(said).get_slice("\n\n", 1).left(60),
-		not _final_in(said) and _images(said) == 0)
+	_check("the next save hands what it would, the surface pass never run, and no look: %s"
+		% _line_with(_text(said), "surface pass"), _text(said).contains(
+			"The surface pass has not been run") and not _final_in(said) and _images(said) == 0)
 
 
 ## Whether an answer carries the final look, the eyes' or the session's own.

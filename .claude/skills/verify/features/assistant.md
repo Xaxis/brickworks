@@ -116,12 +116,13 @@ fixing what it got wrong.
   Through the relay as a browser tab: `realset.py run --via relay --no-claude-code`.
   And once more, last (`FreshEyes.final_look`, design329): at the first whole
   save after the creative pass (`FreshEyes.reviewed`, which `save_model` calls
-  in place of `next_review`), when the first look named its changes, its result
-  has been said (not "nothing added" at this save) and no feature or assembly
-  is left (`final_due`), the eyes in the first look's form are shown the model
+  in place of `next_review`), when the first look named its changes and its
+  result has been said (not "nothing added" at this save; `final_due`), the
+  eyes in the first look's form are shown the model
   as it stands and the changes they asked first (`final_prompt`,
   `FreshEyes.FINAL`), and say what landed, then done or the one change. Its
-  words follow next_review's, which are never left out; done adds nothing.
+  words follow next_review's (a close look or reminder it hands too), which
+  are never left out; done adds nothing.
   The critic's: `fresh eyes: final look, S s (model), after the creative pass
   (it came to: ...)`. The session's own: the pictures and the question,
   answered with `fresh_eyes_final` (served wherever `fresh_eyes` is,

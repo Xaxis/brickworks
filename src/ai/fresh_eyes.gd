@@ -390,42 +390,38 @@ var final: Dictionary = {}
 
 ## A whole save's answer once the first look is past: next_review's, and
 ## after it the final look, when the save follows a completed creative pass
-## and hands nothing else to do (final_due). What next_review says comes
-## first, the creative pass's line among it, and is never left out.
+## (final_due). What next_review says comes first, the creative pass's line
+## and any close look or reminder it hands, and is never left out. Not held
+## back for them: of 44 browser-tab sessions (design317t), 30 ended at the
+## save after the first look whatever it handed, a close look or the
+## surface pass, and 24 of those at the save that said what the pass added.
 func reviewed() -> Variant:
-	# Read before next_review, which marks the assembly it hands as looked at:
-	# whether the pass's result is said at this save (Assistant._creative_passed),
-	# and whether a feature or an assembly is handed. With the look beside a
-	# close look, a relay session answered the look and ended, the close look
-	# never made (shell station, design329).
+	# Whether the pass's result is said at this save (Assistant._creative_passed).
 	var closing: bool = not assistant._outside_creative.is_empty()
-	var handing: bool = not assistant._features_left().is_empty() \
-		or not assistant._not_yet_reviewed().is_empty()
 	var more: Variant = await assistant.next_review()
-	if handing or not final_due(more, closing):
+	if not final_due(closing):
 		return more
 	var look: Variant = await final_look()
 	if look is String and (look as String).is_empty():
 		return more
+	if more is Array:
+		return (more as Array) + (look as Array if look is Array
+			else [{"type": "text", "text": str(look)}])
 	return Assistant._joined(str(more), look)
 
 
 ## Whether this save's answer gets the final look: the first look named its
 ## changes; the creative pass was handed and what it added said, at this
 ## save or before (and at this one not "nothing added", which asks for a
-## touch and a save first); the surface pass has nothing left to say; and
-## it has not been asked for this subject. [method reviewed] has found no
-## feature or assembly handed.
-func final_due(more: Variant, closing: bool) -> bool:
-	if not final.is_empty() or not fresh or not last.has("changes") or not (more is String) \
+## touch and a save first); and it has not been asked for this subject.
+func final_due(closing: bool) -> bool:
+	if not final.is_empty() or not fresh or not last.has("changes") \
 			or assistant._busy or not assistant._outside_standing \
 			or assistant.asked_about_selection():
 		return false
 	if not assistant._outside_creative_handed or not assistant._outside_creative.is_empty():
 		return false
-	if closing and assistant._creative_record == "nothing added":
-		return false
-	return assistant.surface_pass().reminder().is_empty()
+	return not (closing and assistant._creative_record == "nothing added")
 
 
 ## The final look, in the first look's form: the separate eyes, whose one
