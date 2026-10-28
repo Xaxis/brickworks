@@ -631,21 +631,39 @@ func _own_final(chat: String) -> void:
 		_text(said).begins_with("Nothing to answer"))
 
 
-## With no Claude Code, the session's own final look says done: it is
-## finished as it stands, and the next save says nothing more.
+## With no Claude Code, as most relay sessions work: the creative pass and its
+## touch before the first save, so its line comes at the save after the first
+## look, with the close look. The final look waits while a save hands a close
+## look or says the surface pass was never run (a session once answered the
+## look beside a close look and ended, the close look never made), and comes
+## at the first save that hands nothing; done ends it.
 func _own_final_done(chat: String) -> void:
-	print("\n── no Claude Code, the session's own final look says done ──")
-	await _to_the_creative_pass(chat, true)
-	var said: Array = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
-	_check("the save hands over the creative pass, with no final look",
-		_text(said).contains("the creative pass, which this app's own designer makes last")
-		and not _final_in(said) and _images(said) == 0)
+	print("\n── no Claude Code, the pass before the first look, then done ──")
+	await _call_as(chat, "clear_model", {})
+	await _call_as(chat, "submit_design", _tower())
+	await _call_as(chat, "review_model", {"creative": true})
 	await _call_as(chat, "edit_model", {"add": [TOUCH]})
+	var said: Array = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
+	_check("the first save, the first look and nothing of the pass",
+		_text(said).contains("a fresh pair of eyes") and not _text(said).contains(
+			"The creative pass:") and not _final_in(said))
+	await _call_as(chat, "fresh_eyes", {"reads_as": "a red column", "generic": "one stack",
+		"changes": ["OWN-ONE: step the top in", "OWN-TWO: a pointed roof", "OWN-THREE: windows"]})
 	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
-	var line: int = _text(said).find("The creative pass: 1 part added")
-	_check("the first save after the pass: its line, then the final look: %d pictures"
-		% _images(said), line > 0 and _text(said).find("one last look") > line
-		and _images(said) == 3)
+	_check("the next save: the pass's line and a close look, and no final look: %s"
+		% _line_with(_text(said), "close look"), _text(said).contains(
+			"The creative pass: 1 part added") and _text(said).contains("has not had a close look")
+		and not _final_in(said) and not bool(_eyes().call("final_waiting")))
+	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
+	_check("the next: the surface pass never run, and no final look: %s"
+		% _line_with(_text(said), "surface pass"), _text(said).contains(
+			"The surface pass has not been run") and not _final_in(said))
+	await _call_as(chat, "review_model", {"surface": true})
+	await _call_as(chat, "settle_surface", {"finding": "all", "verdict": "accept"})
+	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
+	_check("the first save that hands nothing: the final look, %d pictures" % _images(said),
+		_text(said).begins_with("Written to %s.ldr" % chat) and _final_in(said)
+		and _images(said) == 3 and not _text(said).contains("Before it is finished"))
 	said = await _call_as(chat, "fresh_eyes_final", {"landed": "all three show",
 		"reads_as": "a red tower", "generic": "nothing", "done": true, "change": ""})
 	_check("done: %s" % _text(said), _text(said).begins_with("Then it is finished")
