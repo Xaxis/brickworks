@@ -2622,10 +2622,11 @@ env -u ANTHROPIC_API_KEY python3 tools/bench/ideas.py compare --arms main,mine -
 Results land in the main checkout's `bench/results/ideas-<date>-<arm>/<id>/`
 (brief.json, design.json, session.jsonl, design.ldr, views, record.json) and
 `ideas-<date>-<a>-vs-<b>/` (verdicts per brief, report.md). Each stage is skipped
-when its output is there: the same command resumes. Start each arm as a
-background task of its own, not `setsid`'d and left: an arm detached so lost the
-network when its command ended, and every throwaway account timed out
-(2026-10-27).
+when its output is there: the same command resumes. Inside an agent's sandbox,
+run each arm as a background task of its own: an arm `setsid`'d from a sandboxed
+shell lost the network once that shell's command ended, and every throwaway
+account timed out (2026-10-27). Outside the sandbox a `setsid` arm reaches
+Supabase as before.
 
 Proves it when: the dry run writes two records and a compare report with two
 verdicts a brief; `test_ideas.py` passes; and main against main, two arms of one
