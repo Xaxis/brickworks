@@ -357,3 +357,20 @@ def test_a_session_is_read_for_whether_it_worked_by_the_method():
     method = realset.session_reach(by_the_method)["method"]
     assert method == {"real_first": True, "reviews": 2, "settled": 1, "passes": ["surface"],
                       "parts": True, "told": True}
+
+
+# -- a session the relay dropped ---------------------------------------------------
+
+
+def test_a_session_that_ended_on_the_relays_lost_connection_is_no_design(tmp_path):
+    def answer(text: str) -> str:
+        return _turn("user", [{"type": "tool_result", "tool_use_id": "t", "is_error": True,
+                               "content": [{"type": "text", "text": text}]}])
+    lost = 'Error POSTing to endpoint: {"error":"fetch failed"}'
+    ended_on_it, came_back = tmp_path / "ended.jsonl", tmp_path / "back.jsonl"
+    ended_on_it.write_text("\n".join([answer("Built."), answer(lost), answer(lost)]) + "\n")
+    came_back.write_text("\n".join([answer(lost), answer("Written to x.ldr.")]) + "\n")
+    assert realset.relay_lost(ended_on_it)
+    assert not realset.relay_lost(came_back)
+    # The real stream of critic315's excavator, 2026-10-28, ended so.
+    assert lost.endswith(realset.RELAY_LOST)
