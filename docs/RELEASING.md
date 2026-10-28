@@ -3,8 +3,9 @@
 The web build at brickworks.diy is deployed whenever something is worth
 showing, and is not versioned. A **release** is a snapshot of the same app
 for Linux, macOS and Windows, with the whole part library inside so it works
-with no network. It is versioned, it lives on GitHub Releases, and the site's
-download page offers it.
+with no network. It is versioned, it lives on GitHub Releases in
+[Xaxis/brickworks-releases](https://github.com/Xaxis/brickworks-releases), a
+public repository of builds only, and the site's download page offers it.
 
 Everything below is `tools/release.py`; `--help` lists its commands.
 
@@ -59,20 +60,23 @@ tools/release.py build
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-x86_64.tar.xz --window
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-x86_64.AppImage
 
-# 4. Upload to a draft. Nobody else can see it yet. GitHub's own SHA-256 of
-#    every file is compared with dist/.
+# 4. Upload to a draft on Xaxis/brickworks-releases. Nobody else can see it
+#    yet. GitHub's own SHA-256 of every file is compared with dist/.
 tools/release.py publish --draft
 
 # 5. Each package on its own system: macOS on Apple silicon and on Intel,
 #    and Windows, each unpacked and run in a clean home (Linux was step 3).
 #    Wait for green. It runs once, here: publishing does not run it again.
-gh workflow run release.yml -f tag=v0.2.0
-gh run watch "$(gh run list --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId')"
+#    The workflow lives in the releases repository, where Actions are free.
+gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.2.0
+gh run watch -R Xaxis/brickworks-releases "$(gh run list -R Xaxis/brickworks-releases --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId')"
 
 # 6. Publish the draft that was checked, then put it on the download page,
 #    with four short lines on what is new in it: web/download.html's
 #    <ul data-highlights="0.2.0">, in place of the last release's. Without
-#    them the page shows the first sentences of the summary.
+#    them the page shows the first sentences of the summary. Publishing
+#    also pushes the tag v0.2.0 to origin, on the commit that was built:
+#    the tag in the releases repository is on its README.
 tools/release.py publish                       # writes web/releases.json
 git -c user.name=Xaxis -c user.email=william.neeley@gmail.com \
   commit -m "Brickworks 0.2.0 on the download page" web/releases.json web/download.html && git push
@@ -219,6 +223,16 @@ downloads; that fades on its own.
 
 ## Where the files go, and why
 
+- **In a public repository of builds only.** The releases lived on
+  Xaxis/brickworks until the owner chose to make the source private
+  (2026-10-27); a private repository's files answer 404 to everyone else.
+  So they live in Xaxis/brickworks-releases, as Gamewright's do in
+  Xaxis/gamewright-releases: a README, the release workflow, and the
+  releases. `tools/release/releases_repo.sh` made it and copied 0.8.0 and
+  0.9.0 there (the older ones stayed behind); `release.py` publishes there.
+  Its workflow checks out the source's tools, with
+  `BRICKWORKS_SOURCE_TOKEN` (a fine-grained token that reads the source's
+  contents and nothing else) once the source is private.
 - **GitHub Releases, not Vercel.** A release is 1.7 GB across four
   packages (0.1.0: AppImage 383 MB, tar.xz 255 MB, macOS zip 543 MB,
   Windows zip 521 MB; each unpacks to 1.1-1.2 GB, nearly all of it the
@@ -236,7 +250,7 @@ downloads; that fades on its own.
   are exactly those of the file the button fetches. The cost is one site
   deploy per release, which step 6 already is.
 - **Versioned file names**, so a download says what it is in the Downloads
-  folder. `https://github.com/Xaxis/brickworks/releases/latest` is the
+  folder. `https://github.com/Xaxis/brickworks-releases/releases/latest` is the
   stable address for a person; the page is the stable address for the
   right file.
 
@@ -251,8 +265,9 @@ test that unpacks each package into a clean home and runs it; a release
 workflow that runs each package on its own system; and its wording for the
 unsigned first launch.
 
-Done differently: the packages live on GitHub Releases, where Reelwright's
-repository is private and serves its own; the macOS package is a zip rather
+Done differently: the packages live on GitHub Releases in a public
+repository of builds only, where Reelwright's repository is private and
+serves its own; the macOS package is a zip rather
 than a DMG, because a zip is built and inspected on Linux and a DMG needs
 `hdiutil`; nothing is built in CI, because the part library is not in git;
 there is no installer for Windows yet (a zip, extracted); and signing is

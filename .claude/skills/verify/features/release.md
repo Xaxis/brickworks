@@ -2,11 +2,12 @@
 
 The desktop release cycle: one version for the whole app, the packages for
 Linux, macOS and Windows with the part library inside, the smoke test that
-runs each one as a person would, the GitHub release, and the download page
+runs each one as a person would, the GitHub release in the public
+repository of builds only (Xaxis/brickworks-releases), and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:check every release link -->
+<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link -->
 
 ## Sub-features
 
@@ -51,15 +52,37 @@ that offers each system its own build. The cycle and its cadence are
   with its own loading wall (`src/boot/shell.html`). `tests/test_boot_splash.py`
   reads the settings and the picture; the windowed smoke, the package.
 - `publish a release`: `tools/release.py publish --draft` creates a draft
-  GitHub release with the packages and `SHA256SUMS`, then compares GitHub's
-  own SHA-256 of every asset with `dist/`. Without `--draft` it promotes that
-  draft (or creates a public one), checks again, and writes
-  `web/releases.json` with pinned URLs for the page.
-- `check a release on three systems`: `.github/workflows/release.yml`
-  downloads a release, draft or published, on ubuntu-24.04, macos-15 (Apple
-  silicon), macos-15-intel and windows-2022, runs `inspect` and `smoke` on
-  each package there, and on macOS `codesign --verify --deep --strict` and
-  `lipo -archs`. It builds nothing: the part library is not in git.
+  release on `Xaxis/brickworks-releases` (`REPO`), on that repository's
+  `main`, with the packages and `SHA256SUMS`, then compares GitHub's own
+  SHA-256 of every asset with `dist/`. Without `--draft` it promotes that
+  draft (never creates a public one), checks again, pushes the tag to origin
+  on the commit that was built (`tag_source`; a tag already there must name
+  it), and writes `web/releases.json` with pinned URLs for the page.
+  `tests/test_release.py` pins the repository, the target and the tag push
+  with GitHub and git answered in the test.
+- `check a release on three systems`: `tools/release/releases_repo/release.yml`,
+  which runs in Xaxis/brickworks-releases as `.github/workflows/release.yml`
+  (Actions are free on a public repository; macOS minutes cost ten times
+  Linux's on a private one). It checks out the source's tools from
+  Xaxis/brickworks (`BRICKWORKS_SOURCE_TOKEN` once that is private, else the
+  run's own token), downloads a release there, draft or published, on
+  macos-15 (Apple silicon), macos-15-intel and windows-2022, runs `inspect`
+  and `smoke` on each package, and on macOS `codesign --verify --deep
+  --strict` and `lipo -archs`. It builds nothing: the part library is not in
+  git. A change to it goes to that repository by hand.
+- `move the downloads to the releases repository`:
+  `tools/release/releases_repo.sh [--go] [--dir=DIR]`. A dry run reads
+  v0.8.0 and v0.9.0 on Xaxis/brickworks, downloads every asset into DIR,
+  checks each against GitHub's SHA-256 and the release's `SHA256SUMS`,
+  prints them, and prints every step `--go` would take. `--go` (the owner's
+  yes only) creates the public repository with one commit by Xaxis (the
+  README and the workflow from `tools/release/releases_repo/`), copies each
+  release as a draft, compares every uploaded file's SHA-256, title and
+  notes with the original's, publishes only when all match, then fetches
+  each file with no login. A mismatch exits 1 and leaves a draft. It reads
+  the source through `from_source`, which runs `release view` and
+  `release download` and refuses anything else, and every write must name
+  the new repository. Run again, it checks what is there and redoes nothing.
 - `check every release link`: `tools/release/release_links.sh [MANIFEST]`
   asks for every release page and file in `web/releases.json` with no login,
   following GitHub's redirect: a page must answer 200, a file 200 with the
@@ -100,7 +123,8 @@ python3 tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz -
 python3 tools/release.py manifest --local --out=/tmp/releases.json
 node tools/web/download_check.mjs --manifest=/tmp/releases.json --shots=shots
 python3 tools/release.py publish --draft --tag=v0.0.0-upload-test --target=main --no-manifest
-gh workflow run release.yml -f tag=v0.1.0   # once the workflow is on main
+gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.1.0
+tools/release/releases_repo.sh --dir=<scratch>      # a dry run: about 5 GB downloaded
 tools/release/release_links.sh                      # this checkout's web/releases.json
 ```
 
@@ -151,6 +175,17 @@ addresses in ... answer`, exit 0 (2026-10-27, main's manifest: 51
 addresses, 31 s). Against a manifest naming a repository that does not
 exist, each address is `FAIL ... answered '404 ...'` and it exits 1; a file
 whose size is one byte off is `FAIL ... answered '200 <size>'`.
+
+```sh
+tools/release/releases_repo.sh --dir=<scratch>
+```
+
+Proves it when: for v0.8.0 and v0.9.0 it prints each of the five files'
+SHA-256 (the same as `gh release view TAG -R Xaxis/brickworks --json assets`
+gives as `digest`), then `TAG: every file matches GitHub's SHA-256 and
+SHA256SUMS`, then the `would:` lines (repo create, the push of the first
+commit by Xaxis, release create `--draft`, release edit `--draft=false`),
+and ends `dry run: nothing was created, uploaded or changed`, exit 0.
 
 ```sh
 node tools/web/download_check.mjs --manifest=/tmp/releases.json --shots=shots
@@ -205,6 +240,10 @@ that has no release it reads `no release yet` for all four.
 - **The site's CSP is site-wide** (`tools/deploy.sh`): no inline script that
   is not hashed, and `connect-src` only to itself and a short list. The page
   is an external script reading a same-origin manifest for that reason.
-- **A draft release has no tag yet.** The workflow checks out the default
-  branch for its tools and downloads the draft by tag name with a token that
-  can see drafts (`contents: write`).
+- **A draft release has no tag yet.** The workflow checks out the source's
+  main for its tools and downloads the draft by tag name with a token that
+  can see drafts (`contents: write`). The tag in the releases repository is
+  on its own README commit; the source's tag is pushed by `publish`.
+- **gh's token here has no `workflow` scope**, so a push of
+  `.github/workflows/` over HTTPS is refused. `releases_repo.sh` pushes its
+  first commit over SSH.

@@ -332,6 +332,7 @@
       "reach": "tools/release.py build   (all three, into dist/<version>/; linux, mac or windows for one)",
       "area": "release",
       "tests": [
+        "tests/test_release.py",
         "tests/test_release_links.py"
       ]
     },
@@ -445,10 +446,11 @@
     {
       "id": "cli:check a release on three systems",
       "kind": "cli",
-      "entry": ".github/workflows/release.yml",
-      "reach": "gh workflow run release.yml -f tag=v0.1.0",
+      "entry": "tools/release/releases_repo/release.yml",
+      "reach": "gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.1.0  (its .github/workflows/release.yml there)",
       "area": "release",
       "tests": [
+        "tests/test_release.py",
         "tests/test_release_links.py"
       ]
     },
@@ -1048,6 +1050,14 @@
       "tests": []
     },
     {
+      "id": "cli:move the downloads to the releases repository",
+      "kind": "cli",
+      "entry": "tools/release/releases_repo.sh",
+      "reach": "tools/release/releases_repo.sh --dir=DIR   (a dry run: reads, downloads, prints every step; --go only with the owner's yes)",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:needs backfill",
       "kind": "cli",
       "entry": "tools/web/needs_backfill.mjs",
@@ -1302,6 +1312,7 @@
       "reach": "tools/release.py publish --draft, then tools/release.py publish",
       "area": "release",
       "tests": [
+        "tests/test_release.py",
         "tests/test_release_links.py"
       ]
     },
@@ -1541,6 +1552,7 @@
       "reach": "tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz --window",
       "area": "release",
       "tests": [
+        "tests/test_release.py",
         "tests/test_release_links.py"
       ]
     },

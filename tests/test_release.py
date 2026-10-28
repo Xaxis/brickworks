@@ -13,7 +13,9 @@ build` reads every one back, and `smoke` runs it.
 
 from __future__ import annotations
 
+import json
 import shutil
+import subprocess
 import sys
 import tempfile
 from pathlib import Path
@@ -170,3 +172,62 @@ def test_nothing_is_made_public_without_a_draft_first():
     finally:
         release.release_view, release.check_version, release.built = kept_view, kept_check, kept_built
     assert refused
+
+
+def _publish_with_github_stubbed(draft: bool, existing: bool) -> list[list[str]]:
+    """Every command publish runs, with GitHub and git answered here: a
+    one-file build, a draft already up or none, and GitHub's SHA-256 the
+    file's own."""
+    where = Path(tempfile.mkdtemp(prefix="brickworks-release-test-"))
+    package = where / "Brickworks-9.9.9-linux-x86_64.tar.xz"
+    package.write_bytes(b"a package")
+    (where / "SHA256SUMS").write_text("%s  %s\n" % (release.sha256_of(package), package.name))
+    files = [package, where / "SHA256SUMS"]
+    held = {"url": "https://github.com/%s/releases/tag/v9.9.9" % release.REPO, "isDraft": True,
+            "databaseId": 1, "assets": [{"name": p.name, "size": p.stat().st_size} for p in files]}
+    views = [held if existing else None, {**held, "isDraft": draft}]
+    ran: list[list[str]] = []
+
+    def run(command, **kwargs):
+        ran.append(list(command))
+        out = ""
+        if command[:2] == ["gh", "api"]:
+            out = json.dumps({"assets": [{"name": p.name, "digest": "sha256:" + release.sha256_of(p),
+                                          "browser_download_url": "https://example/" + p.name}
+                                         for p in files]})
+        elif command[:2] == ["git", "rev-parse"]:
+            out = "f" * 40
+        return subprocess.CompletedProcess(command, 0, stdout=out, stderr="")
+
+    kept = (release.release_view, release.check_version, release.built, release.subprocess.run)
+    release.release_view = lambda tag: views.pop(0)
+    release.check_version = lambda: []
+    release.built = lambda version: (where, {"commit": "x", "files": [
+        {"name": package.name, "os": "linux", "size": package.stat().st_size, "facts": {}}]})
+    release.subprocess.run = run
+    try:
+        release.publish(draft, "v9.9.9", "abc", False)
+    finally:
+        release.release_view, release.check_version, release.built, release.subprocess.run = kept
+        shutil.rmtree(where, ignore_errors=True)
+    return ran
+
+
+def test_a_draft_goes_to_the_public_releases_repository():
+    # The source repository is to be private, and a private repository's
+    # files answer 404 to everyone else (2026-10-27). Its commits are not in
+    # the releases repository, so the tag there goes on that one's main.
+    ran = _publish_with_github_stubbed(draft=True, existing=False)
+    create = next(c for c in ran if c[:3] == ["gh", "release", "create"])
+    assert create[create.index("--repo") + 1] == "Xaxis/brickworks-releases"
+    assert create[create.index("--target") + 1] == "main"
+    assert "--draft" in create
+    assert not any(c[:2] == ["git", "push"] for c in ran), "a draft tagged the source"
+
+
+def test_publishing_tags_the_built_commit_on_origin():
+    ran = _publish_with_github_stubbed(draft=False, existing=True)
+    edit = next(c for c in ran if c[:3] == ["gh", "release", "edit"])
+    assert edit[edit.index("--repo") + 1] == "Xaxis/brickworks-releases"
+    assert "--draft=false" in edit
+    assert ["git", "push", "-q", "origin", "f" * 40 + ":refs/tags/v9.9.9"] in ran

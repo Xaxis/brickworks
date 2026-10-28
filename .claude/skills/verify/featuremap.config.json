@@ -436,8 +436,8 @@
     {
       "kind": "cli",
       "label": "check a release on three systems",
-      "entry": ".github/workflows/release.yml",
-      "reach": "gh workflow run release.yml -f tag=v0.1.0",
+      "entry": "tools/release/releases_repo/release.yml",
+      "reach": "gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.1.0  (its .github/workflows/release.yml there)",
       "area": "release"
     },
     {
@@ -3505,6 +3505,13 @@
       "entry": "tools/bench/ideas.py",
       "reach": "python3 tools/minitest.py tests/test_ideas.py; python3 tools/bench/ideas.py list   (for real: env -u ANTHROPIC_API_KEY XDG_DATA_HOME=... BENCH_PORTS=... python3 tools/bench/ideas.py run --arm A --checkout DIR --via relay --jobs 2 | report --arm A | compare --arms A,B; the recipe is Owner-style ideas in features/assistant.md)",
       "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "move the downloads to the releases repository",
+      "entry": "tools/release/releases_repo.sh",
+      "reach": "tools/release/releases_repo.sh --dir=DIR   (a dry run: reads, downloads, prints every step; --go only with the owner's yes)",
+      "area": "release"
     }
   ]
 }

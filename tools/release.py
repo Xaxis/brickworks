@@ -9,10 +9,11 @@
     tools/release.py inspect [DIR]           what is in each package: versions, architectures,
                                              signatures, contents. Reads the packages, not notes
     tools/release.py smoke FILE [--window]   unpack it as a person would and run it in a clean home
-    tools/release.py publish --draft         upload the packages to a draft GitHub release and
-                                             check GitHub's SHA-256 of each against dist/
-    tools/release.py publish                 publish that draft (or create and publish), check
-                                             it again, and write web/releases.json for the page
+    tools/release.py publish --draft         upload the packages to a draft release on
+                                             Xaxis/brickworks-releases and check GitHub's
+                                             SHA-256 of each against dist/
+    tools/release.py publish                 publish that draft, check it again, tag the
+                                             commit on origin, and write web/releases.json
           [--tag=TAG] [--target=REF] [--no-manifest]
     tools/release.py manifest --local [--out=FILE]   the page's manifest from dist/, to preview it
 
@@ -21,7 +22,8 @@ docs/RELEASING.md is the cycle this is part of, and says when to run each.
 The packages carry the whole part library (about a gigabyte of geometry),
 because the desktop app works with no network and the web build cannot.
 That library is not in git, so a release is built on a machine that has
-it, and CI only proves what was built (.github/workflows/release.yml).
+it, and CI only proves what was built (tools/release/releases_repo/release.yml,
+run in the releases repository).
 
 Signing plugs in by environment, from .env or the shell; values are never
 printed. Without them the macOS app is ad-hoc signed and Windows unsigned,
@@ -58,7 +60,10 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
-REPO = "Xaxis/brickworks"
+# Where the packages are published: a public repository of builds only, so
+# the downloads answer whether or not the source repository is public
+# (tools/release/releases_repo.sh made it, 2026-10-27).
+REPO = "Xaxis/brickworks-releases"
 DIST = ROOT / "dist"
 WORK = ROOT / "build" / "release"
 STAGE = WORK / "stage"
@@ -1360,8 +1365,8 @@ def publish(draft: bool, tag: str, target: str, manifest: bool) -> int:
     # stopped part way through its upload.
     if existing is None and not draft:
         raise Failed("there is no draft %s to publish: publish --draft first, check it "
-                     "on all three systems (gh workflow run release.yml -f tag=%s), "
-                     "then publish it" % (tag, tag))
+                     "on all three systems (gh workflow run release.yml -R %s -f tag=%s), "
+                     "then publish it" % (tag, REPO, tag))
     if existing is None:
         # Uploaded once. A draft is how a release is checked on the
         # systems it is for before anyone can see it; publishing then
@@ -1371,8 +1376,11 @@ def publish(draft: bool, tag: str, target: str, manifest: bool) -> int:
             handle.write(notes)
         say("── %s %s, %d files, %s ──" % ("drafting" if draft else "publishing", tag,
                                          len(files), human(sum(p.stat().st_size for p in files))))
+        # The tag there is on that repository's own main, its README: the
+        # source is not in it. The source's tag goes on the commit when the
+        # release is published (tag_source).
         command = ["gh", "release", "create", tag, "--repo", REPO, "--title",
-                   "Brickworks %s" % version, "--notes-file", handle.name, "--target", commit]
+                   "Brickworks %s" % version, "--notes-file", handle.name, "--target", "main"]
         command += ["--draft"] if draft else ["--latest"]
         started = time.time()
         subprocess.run(command + [str(p) for p in files], env=gh_env(), check=True)
@@ -1411,6 +1419,8 @@ def publish(draft: bool, tag: str, target: str, manifest: bool) -> int:
     if wrong:
         raise Failed("%d file(s) on the release are not what was built: %s" % (wrong, view["url"]))
     say("  %s%s" % (view["url"], " (a draft: nobody else can see it)" if view["isDraft"] else ""))
+    if not draft:
+        tag_source(tag, commit)
     if manifest and not draft:
         public = {name: "https://github.com/%s/releases/download/%s/%s" % (REPO, tag, name)
                   for name in urls}
@@ -1418,6 +1428,23 @@ def publish(draft: bool, tag: str, target: str, manifest: bool) -> int:
         say("next: commit web/releases.json, push, then tools/deploy.sh --prod so the "
             "download page offers %s" % version)
     return 0
+
+
+def tag_source(tag: str, commit: str) -> None:
+    """The release's tag on the commit it was built from, on origin. GitHub set
+    it there while the releases lived in the source repository; theirs holds
+    builds only, so it is pushed here. A tag already there must name the
+    same commit."""
+    full = git("rev-parse", commit + "^{commit}")
+    there = git("ls-remote", "origin", "refs/tags/%s^{}" % tag, "refs/tags/%s" % tag)
+    if there:
+        named = there.splitlines()[-1].split()[0]
+        if named != full:
+            raise Failed("origin's tag %s names %s, not %s, which was built" % (tag, named, full))
+        return
+    subprocess.run(["git", "push", "-q", "origin", "%s:refs/tags/%s" % (full, tag)],
+                   cwd=ROOT, check=True)
+    say("  tagged %s on origin: %s" % (tag, full[:12]))
 
 
 def local_manifest(out_path: Path) -> int:
