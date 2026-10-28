@@ -98,14 +98,22 @@ fixing what it got wrong.
   it, as before. Once a subject (`Assistant.heard`, fresh), whatever comes of
   it, and begun again with each chat's sitting (`Assistant.sitting_begun`), so an
   edit-only chat never gets the eyes on the last chat's unsaved design; never a
-  chat about a selection or beside the person's own model. No Claude Code
-  (found as the app's designer finds it, `ClaudeCode.found()`: on PATH, else where
-  its installers put it; never in a browser), no pictures or no answer in `MOST_S`: the
-  save is main's, byte for byte. The log says `fresh eyes: S s (model): {...}`.
+  chat about a selection or beside the person's own model. No pictures or no
+  answer in `MOST_S`: the save is main's, byte for byte. The log says
+  `fresh eyes: S s (model): {...}`. No Claude Code (found as the app's designer
+  finds it, `ClaudeCode.found()`: on PATH, else where its installers put it;
+  never in a browser, design317): the session's own look (`FreshEyes.own_look`),
+  the save handing it the same three pictures and the eyes' question; every
+  call but `fresh_eyes` (served only there, `FreshEyes.tools`) and a save is
+  refused until it answers in the eyes' shape, at most `MOST_REFUSED` times
+  (`not_yet`, in `CommandSocket._call`). The log says `fresh eyes: no Claude
+  Code here ...` and `fresh eyes: the session's own look (N refused): {...}`.
   `fresh_eyes_probe` (a stand-in `claude` on PATH, then in a home's .local/bin
-  with PATH=/usr/bin:/bin as a desktop icon starts the app; a 1,500-character
-  brief reaches the eyes whole from a chat and from `Main.design_with_claude_code`;
-  `--baseline --dump=FILE` on another checkout gives main's answers to compare).
+  with PATH=/usr/bin:/bin as a desktop icon starts the app, then none at all;
+  a 1,500-character brief reaches the eyes whole from a chat and from
+  `Main.design_with_claude_code`; `--baseline --dump=FILE` on another checkout
+  gives main's answers and tool list with Claude Code, to compare byte for byte).
+  Through the relay as a browser tab: `realset.py run --via relay --no-claude-code`.
 - `the check by real shapes`: `src/ai/exact_check.gd` over `src/assembly/exact.gd`,
   called from `Assistant._check`, so every check, edit, submission, review and save
   has it: each part BrickNet has is its convex colliders and connector labels
@@ -2581,6 +2589,8 @@ heavy python3 tools/bench/realset.py reach --which proof --arm mine --date D   #
 # The owner's path: Claude through the connector relay to the app as a throwaway account's tab
 # (deleted after), the server's instructions withheld; .env's keys, two ports a design
 env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --arm mine-relay --checkout ../mine --jobs 2 --audit-later --via relay --instructions none
+# ...and each tab with no Claude Code to find, as a browser tab (PATH without claude, a home of its own)
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --arm mine-tab --checkout ../mine --jobs 2 --audit-later --via relay --no-claude-code
 godot --headless --path . --script src/dev/design_memory_probe.gd -- --held-out=40148-1   # the set's pieces held out
 ```
 
