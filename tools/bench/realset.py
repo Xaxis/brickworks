@@ -627,21 +627,37 @@ def _with_floating(found: dict, row: dict | None) -> dict:
 LIKENESS = ("Likeness, silhouette and proportion: which reads at a glance as the subject of the "
             "brief, with its proportions, from every view?")
 RUBRIC = {**{d: pairwise.RUBRIC[d] for d in DIMS}, "likeness": LIKENESS}
-SCHEMA: dict = {
-    "type": "object",
-    "properties": {
-        "looked_at": {"type": "array", "items": {"type": "string"},
-                      "description": "the file name of every picture you opened"},
-        **{dim: {"type": "object",
-                 "properties": {"better": {"type": "string", "enum": list(pairwise.PICK)},
-                                "reason": {"type": "string"}},
-                 "required": ["better", "reason"]} for dim in DIMS},
-    },
-    "required": ["looked_at", *DIMS],
-}
 
 
-def prompt(brief_text: str, a: tuple[judge.Picture, ...], b: tuple[judge.Picture, ...]) -> str:
+@dataclass(frozen=True, slots=True)
+class Question:
+    """What the judge is asked of a pair: its dimensions, each one's words, and the
+    prompt's version, kept with every verdict. tools/bench/ideas.py asks its own."""
+
+    dims: tuple[str, ...]
+    rubric: dict[str, str]
+    version: int
+
+    def schema(self) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "looked_at": {"type": "array", "items": {"type": "string"},
+                              "description": "the file name of every picture you opened"},
+                **{dim: {"type": "object",
+                         "properties": {"better": {"type": "string", "enum": list(pairwise.PICK)},
+                                        "reason": {"type": "string"}},
+                         "required": ["better", "reason"]} for dim in self.dims},
+            },
+            "required": ["looked_at", *self.dims],
+        }
+
+
+SETS = Question(DIMS, RUBRIC, PROMPT_VERSION)
+
+
+def prompt(brief_text: str, a: tuple[judge.Picture, ...], b: tuple[judge.Picture, ...],
+           question: Question = SETS) -> str:
     """The question, the same for every pair but the pictures: nothing says which is a set."""
     lines = [
         "You are comparing two LEGO® models built to the same brief, A and B, as a LEGO® set "
@@ -663,7 +679,7 @@ def prompt(brief_text: str, a: tuple[judge.Picture, ...], b: tuple[judge.Picture
         "For each dimension say which model is better, A or B, and give one sentence naming "
         "what you see in the two that decides it. You must choose one even when they are "
         "close: pick the one that is better on that dimension, however slightly.",
-        *[f"  {dim}: {RUBRIC[dim]}" for dim in DIMS],
+        *[f"  {dim}: {question.rubric[dim]}" for dim in question.dims],
         "",
         "Reply with only the JSON object the schema asks for, with looked_at listing the file "
         "name of every picture you opened.",
@@ -671,8 +687,9 @@ def prompt(brief_text: str, a: tuple[judge.Picture, ...], b: tuple[judge.Picture
     return "\n".join(lines)
 
 
-def parse(reply: dict | str, first: str, second: str) -> pairwise.Verdict:
-    """A reply read into a winner per dimension of DIMS, or ValueError saying what is wrong."""
+def parse(reply: dict | str, first: str, second: str,
+          dims: tuple[str, ...] = DIMS) -> pairwise.Verdict:
+    """A reply read into a winner per dimension of `dims`, or ValueError saying what is wrong."""
     if isinstance(reply, dict) and reply.get("type") == "result":
         if reply.get("is_error"):
             raise ValueError(f"the judge's call failed: {str(reply.get('result'))[:200]}")
@@ -685,7 +702,7 @@ def parse(reply: dict | str, first: str, second: str) -> pairwise.Verdict:
         found = judge._object(reply)
     winners: dict[str, str] = {}
     reasons: dict[str, str] = {}
-    for dim in DIMS:
+    for dim in dims:
         said = found.get(dim)
         pick, reason = ((said.get("better"), said.get("reason", "")) if isinstance(said, dict)
                         else (said, ""))
@@ -716,13 +733,13 @@ def shown(key: str, views: list[Path], number: str) -> tuple[judge.Picture, ...]
 
 def ask(brief_text: str, number: str, first: tuple[str, tuple[judge.Picture, ...]],
         second: tuple[str, tuple[judge.Picture, ...]], into: Path, model: str,
-        canned: Path | None = None) -> pairwise.Verdict | None:
+        canned: Path | None = None, question: Question = SETS) -> pairwise.Verdict | None:
     """One ordered pair asked once, or read back from into/."""
     (a_key, a), (b_key, b) = first, second
     done = into / f"{pairwise.opaque(a_key)}-{pairwise.opaque(b_key)}.json"
     if done.exists():
         return pairwise.Verdict.from_dict(json.loads(done.read_text()))
-    text = prompt(brief_text, a, b)
+    text = prompt(brief_text, a, b, question)
     where = BLIND / pairwise.opaque(f"realset:{number}")
     error = ""
     for attempt in (1, 2):
@@ -732,19 +749,20 @@ def ask(brief_text: str, number: str, first: tuple[str, tuple[judge.Picture, ...
             bench.say(f"judge {number}: {pairwise.opaque(a_key)} v {pairwise.opaque(b_key)} "
                       f"(attempt {attempt})")
             try:
-                reply, seconds = judge.call(text, where, [where], model=model, schema=SCHEMA)
+                reply, seconds = judge.call(text, where, [where], model=model,
+                                            schema=question.schema())
             except (RuntimeError, subprocess.TimeoutExpired, json.JSONDecodeError) as failed:
                 error = str(failed)
                 continue
         try:
-            verdict = parse(reply, a_key, b_key)
+            verdict = parse(reply, a_key, b_key, question.dims)
         except ValueError as failed:
             error = str(failed)
             continue
         used = sorted((reply.get("modelUsage") or {}).keys()) if isinstance(reply, dict) else []
         into.mkdir(parents=True, exist_ok=True)
         (into / "prompt_example.txt").write_text(text)
-        bench._write_json(done, {**verdict.as_dict(), "prompt": PROMPT_VERSION,
+        bench._write_json(done, {**verdict.as_dict(), "prompt": question.version,
                                  "model": ", ".join(used) or ("canned" if canned else model),
                                  "seconds": round(seconds, 1)})
         return verdict
@@ -754,9 +772,9 @@ def ask(brief_text: str, number: str, first: tuple[str, tuple[judge.Picture, ...
 
 def both_orders(brief_text: str, number: str, x: tuple[str, tuple[judge.Picture, ...]],
                 y: tuple[str, tuple[judge.Picture, ...]], into: Path, model: str,
-                canned: Path | None = None) -> list[pairwise.Verdict]:
-    found = [ask(brief_text, number, x, y, into, model, canned),
-             ask(brief_text, number, y, x, into, model, canned)]
+                canned: Path | None = None, question: Question = SETS) -> list[pairwise.Verdict]:
+    found = [ask(brief_text, number, x, y, into, model, canned, question),
+             ask(brief_text, number, y, x, into, model, canned, question)]
     return [v for v in found if v is not None]
 
 

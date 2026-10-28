@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, cli:test designs on the owner's own ideas -->
 
 ## Sub-features
 
@@ -254,6 +254,14 @@ fixing what it got wrong.
   own pieces are held out of the designer's real-set index by `--held-out=<set
   number>` (src/ai/real_snippets.gd). `docs/DESIGN_SCORES.md`, "Against real
   sets". Under How to check it, "Real sets".
+- `test designs on the owner's own ideas`: `tools/bench/ideas.py`, twenty fixed
+  briefs in a person's words (`tools/bench/ideas_briefs.py`: scenes, vehicles with
+  a story, landmark-inspired originals, creatures and mechs, interiors, dioramas,
+  Technic machines; no set names), run by realset's machinery (`--via port|relay`,
+  `--jobs`, BENCH_PORTS, XDG_DATA_HOME), and two arms judged head to head, both
+  orders, on likeness to the brief, realism as a LEGO® set, creativity, technique
+  and overall. Every share in its table names the arm it belongs to. Under How to
+  check it, "Owner-style ideas".
 - `keep a run to a list of parts`: `src/parts/parts_only.gd`, `--parts-only=FILE`
   (a part number a line, the first `#` line naming the list). search_parts and
   find_parts_like list only those; a design or edit with another is refused
@@ -2624,6 +2632,46 @@ two workers with the GPU shared, nine minutes a subject). `reach` finds every
 design's transcript: 44 of 44 on main's and on main2's proof arms (2026-10-26),
 main's Flatiron 66% turned beside its set's 39%, ours 0% at the median against
 the sets' 11%.
+
+### Owner-style ideas: two arms head to head
+
+`tools/bench/ideas.py` runs the twenty briefs of `tools/bench/ideas_briefs.py`
+(fixed: a changed brief gets a new id, and `compare` leaves out a design whose
+words are not the brief's today) on an arm's checkout, with realset's designer:
+`one` per worker, `realset.design_via_relay` or run.py's design stage, the views
+drawn by `bench_views.gd`, tools/style.py's measures. No set and no build check:
+`compare` puts two arms' designs of each brief before realset's prompt with
+ideas' own question (`ideas.QUESTION`), both orders, and reports each arm's
+share by name with a 95% interval over briefs. A brief one arm made no model for
+is lost by that arm on every dimension; one neither made is left out and named.
+
+```sh
+python3 tools/minitest.py tests/test_ideas.py     # the briefs; whose share the table shows, both ways round; a changed brief left out
+python3 tools/bench/ideas.py list
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/ideas.py run --arm dry --subjects dragon_bridge --dry-run --jobs 1
+env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-a BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/ideas.py run --arm mine --checkout ../mine --via relay --jobs 2
+env -u ANTHROPIC_API_KEY python3 tools/bench/ideas.py compare --arms main,mine --dates D1,D2 --jobs 2
+```
+
+Results land in the main checkout's `bench/results/ideas-<date>-<arm>/<id>/`
+(brief.json, design.json, session.jsonl, design.ldr, views, record.json) and
+`ideas-<date>-<a>-vs-<b>/` (verdicts per brief, report.md). Each stage is skipped
+when its output is there: the same command resumes. Inside an agent's sandbox,
+run each arm as a background task of its own: an arm `setsid`'d from a sandboxed
+shell lost the network once that shell's command ended, and every throwaway
+account timed out (2026-10-27). Outside the sandbox a `setsid` arm reaches
+Supabase as before.
+
+Proves it when: the dry run writes two records and a compare report with two
+verdicts a brief; `test_ideas.py` passes; and main against main, two arms of one
+snapshot, comes out near 50% with every interval holding it (2026-10-27,
+main315a against main315b via the relay on all twenty: overall 52%, 95%
+32-72%, every dimension 40-55%; orders agreeing on 77%, the first shown winning
+41%; sessions 8-45 minutes, median 28, six of 40 at the 45-minute timeout,
+about ten session-hours an arm, eleven briefs in 3 h 13 min on two workers an
+arm). A lever clears that floor on twenty briefs at a share of about 72%: the
+fresh-eyes critic came out at 61% and 45% against the two main arms.
+`docs/DESIGN_SCORES.md`, "The owner's own ideas").
 
 ### Best of two: each new brief designed twice in the app
 
