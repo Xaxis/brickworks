@@ -117,7 +117,7 @@ def one(idea: Idea, args: argparse.Namespace, parts: style.Parts) -> dict:
     canned = bench.CANNED / "design.ldr" if args.dry_run else None
     try:
         made = (realset.design_via_relay(subject, out, args.timeout, args.checkout,
-                                         args.instructions)
+                                         args.instructions, not args.no_claude_code)
                 if args.via == "relay" and canned is None else
                 bench.design(subject, out, args.timeout, canned, app=args.checkout))
     except SystemExit as failed:
@@ -163,7 +163,8 @@ def run(args: argparse.Namespace) -> int:
     bench._write_json(out / "arm.json", {"arm": args.arm, "checkout": str(args.checkout),
                                          "commit": bench.commit(args.checkout),
                                          "date": args.date, "via": args.via,
-                                         "instructions": args.instructions})
+                                         "instructions": args.instructions,
+                                         "claude_code": not args.no_claude_code})
     jobs = max(1, min(args.jobs, len(chosen)))
     bench.say(f"ideas: {len(chosen)} briefs on {args.arm} ({bench.commit(args.checkout)}) "
               f"via {args.via}, {jobs} at a time, into {out}")
@@ -374,6 +375,8 @@ def main(argv: list[str] | None = None) -> int:
                            "relay to the app as a throwaway account's tab")
             p.add_argument("--instructions", choices=("all", "none"), default="all",
                            help="none: the server's instructions withheld (with --via relay)")
+            p.add_argument("--no-claude-code", action="store_true",
+                           help="each tab as a browser is, with no Claude Code (with --via relay)")
         if name == "compare":
             p.add_argument("--arms", required=True)
             p.add_argument("--dates", default="", help="each arm's date, when they differ")
@@ -387,6 +390,8 @@ def main(argv: list[str] | None = None) -> int:
         args.checkout = args.checkout.resolve()
         if args.instructions == "none" and args.via != "relay":
             raise SystemExit("--instructions none withholds what the relay serves: with --via relay")
+        if args.no_claude_code and args.via != "relay":
+            raise SystemExit("--no-claude-code starts a relay tab as a browser is: with --via relay")
         return run(args)
     if args.what == "report":
         text = report_arm(args.date, args.arm)
