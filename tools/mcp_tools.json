@@ -2186,6 +2186,10 @@
           },
           "type": "array"
         },
+        "brief": {
+          "description": "the person's request in their own words, whole and word for word as they gave it: a fresh pair of eyes judges the model against it",
+          "type": "string"
+        },
         "description": {
           "type": "string"
         },

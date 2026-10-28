@@ -120,12 +120,22 @@ func after_save() -> String:
 	return said_to_session(last)
 
 
-## The subject the eyes are told: the brief the session was started on or
-## its first design call named (Assistant.heard), else what it was submitted as.
+## The most of the brief the eyes are told, in characters: an idea of the
+## owner's kind runs to 350, and was judged on the session's "taco food truck".
+const SUBJECT_MOST := 2000
+
+
+## The subject the eyes are told: the person's request in their own words,
+## whole (Assistant.asked, or submit_design's brief from a connector chat).
+## Else the brief the session was started on or its first design call named
+## (Assistant.heard), else what it was submitted as. Told the session's
+## "taco food truck" for a brief of a surfboard on its roof, the eyes said to
+## take the surfboard off (ideas-2026-10-27-critic315).
 static func subject_of(from: Assistant) -> String:
-	for said: String in [from._heard_fresh, from._named, from._heard]:
+	for said: String in [from._their_words, from._words_passed, from._heard_fresh,
+			from._named, from._heard]:
 		if not said.strip_edges().is_empty():
-			return said.strip_edges().left(400)
+			return said.strip_edges().left(SUBJECT_MOST)
 	return "(not said)"
 
 
@@ -144,7 +154,12 @@ static func prompt(subject: String) -> String:
 		+ "said in bricks, plates, slopes, curves and studs (\"the top storey is as wide "
 		+ "as the one under it: step it in one stud on each side\"). Changes to its shape "
 		+ "and its features that the subject itself calls for: not more parts, more of "
-		+ "what is there or a bigger model.")
+		+ "what is there or a bigger model.\n\n"
+		+ "Everything the brief asks for stays. Each thing it names, and what it says of "
+		+ "it (its colour, where it is, what it is doing), is what the person wants: no "
+		+ "change takes one away, covers it up or builds it as something else. Where one "
+		+ "reads poorly, or stands in another's way, the change makes it read better as "
+		+ "what the brief says it is.")
 
 
 ## The one message the eyes are sent: the prompt, then the pictures, each

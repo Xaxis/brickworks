@@ -335,6 +335,14 @@ var _brief: String = ""
 var _heard: String = ""
 ## The brief a session was started on, which outlives a clear_model inside it.
 var _heard_fresh: String = ""
+## The person's request in their own words, whole, which the fresh eyes judge
+## the design by (FreshEyes.subject_of): the brief Claude Code was started on
+## here ([method asked]). A chat through the connector begins its subject on
+## its first call's few words and the person is never heard: the request is
+## what it passes as submit_design's brief. "" for none, from each new subject
+## ([method heard] fresh).
+var _their_words: String = ""
+var _words_passed: String = ""
 ## What was heard since the last design was submitted: the next one's, if the
 ## next is of another subject.
 var _heard_since: String = ""
@@ -3584,6 +3592,8 @@ func _tool_answer(block: Dictionary) -> Variant:
 			_subject_submitted(_pending)
 			if args.has("parts"):
 				_count_asked(int(args["parts"]), PARTS_ABOUT)
+			if not str(args.get("brief", "")).strip_edges().is_empty():
+				_words_passed = str(args["brief"]).strip_edges()
 			progress.emit("submitted %d bricks%s"
 				% [_pending.placements.size(), _shorthand_used(args)])
 			_say_shorthand_trouble()
@@ -6252,6 +6262,8 @@ func heard(subject: String, fresh: bool = false) -> void:
 	var said: String = subject.strip_edges()
 	if fresh:
 		_heard_fresh = said
+		_their_words = ""
+		_words_passed = ""
 		fresh_eyes().begin()
 		# What the last design was called is not this one's subject: a
 		# lighthouse after a statue was read as a figure.
@@ -6263,6 +6275,14 @@ func heard(subject: String, fresh: bool = false) -> void:
 		_heard = ("%s %s" % [_heard, said]).strip_edges().right(HEARD_MOST)
 	if not _heard_since.to_lower().contains(said.to_lower()):
 		_heard_since = ("%s %s" % [_heard_since, said]).strip_edges().right(HEARD_MOST)
+
+
+## A new design asked for in the person's own words, which Claude Code is
+## started on here (Main.design_with_claude_code): its subject begins, as
+## heard(brief, true) begins it, and the words are kept whole for the eyes.
+func asked(brief: String) -> void:
+	heard(brief, true)
+	_their_words = brief.strip_edges()
 
 
 ## How much of what was heard is kept, in characters: a brief and a few subjects.
@@ -19605,8 +19625,9 @@ sets' parts, and the faults found in our own designs of it, to design out.
  2. submit_design the silhouette first: the main masses, with its assemblies \
 and its features (what the subject is known by, each with where it goes). A \
 hull, a car body or a building is a shape pattern (read_guide "shapes"); a \
-figure or a creature is shaped parts on joints (read_guide "figures"). When \
-the person named a part count, pass it as parts.
+figure or a creature is shaped parts on joints (read_guide "figures"). Pass \
+the person's request, word for word, as brief, and a part count they named \
+as parts.
  3. review_model: fix the silhouette and proportions before any detail.
  4. Each feature: the app lays a real set's piece; settle_feature it.
  5. Each assembly: review_model {"assembly": name}, detailed with edit_model.
@@ -23712,6 +23733,9 @@ func _tools() -> Array:
 						+ "the person asked for, when they named a number (\"about "
 						+ "250 parts\"): the app holds the design to it, says the "
 						+ "count against it, and lays its own detail only inside it")},
+					"brief": {"type": "string", "description": ("the person's request "
+						+ "in their own words, whole and word for word as they gave it: "
+						+ "a fresh pair of eyes judges the model against it")},
 					"floor": {"type": "string", "enum": ModelFloor.KINDS,
 						"description":
 							"what it stands on. \"none\" for anything that is "
