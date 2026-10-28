@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<!--
+  Plans, coming soon, at /plans (2026-10-28, the owner's ask): Free, Plus
+  and Creator, and education free, from the pricing research (price274,
+  bench/results/price274-2026-10-26/PRICING_RESEARCH.md: its tiers, prices
+  and what each includes, in its words). Nothing here takes money: no
+  checkout, no card, no licence check, and nothing in the app locks or
+  limits anybody. Plus and Creator each have "Tell me when it's ready",
+  which opens the interest form (#interest, web/plans.js): an email, the
+  plan, monthly or yearly and a line, kept by /api/plans
+  (supabase/plan_interest.sql) only to write once when that plan opens.
+
+  Free lists what the app does today, at today's limits, never the
+  research's smaller ones: the page promises nothing it does today is
+  taken away. Every paid line is said as coming, since none is built.
+  LEGO® stays out of this page's own words (the research: keep the marks
+  out of plan names and the pricing page; docs/TRADEMARKS.md Decision 6
+  asks a fresh review before anything is paid). The footer carries the
+  notices as on every page.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plans · Brickworks</title>
+<meta name="description" content="Brickworks is free, and stays free. Plus and Creator are coming: more room on the server, and a licence to sell what you make. Nothing to pay yet.">
+<link rel="canonical" href="https://brickworks.diy/plans">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Plans · Brickworks">
+<meta property="og:description" content="Free, for good. Plus and Creator are coming, and nothing takes money yet.">
+<meta property="og:url" content="https://brickworks.diy/plans">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/site.css">
+<style>
+/* The three plans side by side from 900 px, their rows shared (a subgrid)
+   so names, prices, buttons and lists line up whatever each says; one
+   under another on a phone. Only layout here; every control is site.css's. */
+.tiers { display: grid; gap: var(--s-4); margin: 0; }
+.tier { display: grid; align-content: start; gap: var(--s-3); min-width: 0; }
+@media (width >= 900px) {
+	.tiers { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(6, auto); column-gap: var(--s-4); row-gap: 0; }
+	.tier { grid-row: span 6; grid-template-rows: subgrid; }
+}
+.tier .name { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+.tier .name h2 { margin: 0; }
+.tier .price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s-2); color: var(--ink-soft); font-size: var(--t-body); }
+.tier .price b { color: var(--ink); font-size: var(--t-h1); font-weight: 720; line-height: 1.1; letter-spacing: -0.03em; }
+.tier .cta { width: 100%; }
+.tier .rows { margin: 0; padding-left: 20px; color: var(--ink-soft); font-size: var(--t-small); }
+.tier .rows li { margin: 0 0 6px; }
+.tier .rows b { color: var(--ink); font-weight: 620; }
+.edu { margin-top: var(--s-4); }
+.edu h2 { margin-bottom: var(--s-1); }
+.edu p { max-width: 75ch; }
+.keep { margin: 0; padding-left: 20px; color: var(--ink-soft); max-width: 75ch; }
+.keep li { margin: 0 0 10px; }
+.keep b { color: var(--ink); font-weight: 620; }
+/* The form: the plan and monthly or yearly side by side. */
+dialog .pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-3); }
+dialog .done .actions { margin-top: var(--s-4); }
+</style>
+<script src="/follow.js" type="module"></script>
+<script src="/plans.js" type="module"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Main">
+			<a href="/gallery">Gallery</a>
+			<a href="/download">Download</a>
+			<a class="cta" href="/app">Open the app</a>
+			<a href="/profile" data-account>Sign in</a>
+		</nav>
+		<details class="menu">
+			<summary>Menu</summary>
+			<div class="menu-list">
+				<nav aria-label="Menu">
+					<a href="/gallery">Gallery</a>
+					<a href="/download">Download</a>
+					<a href="/profile" data-account>Sign in</a>
+				</nav>
+				<div class="theme-choice"><span aria-hidden="true">Theme</span>
+					<div class="segmented" role="group" aria-label="Theme">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+					</div>
+				</div>
+			</div>
+		</details>
+	</div>
+</header>
+
+<main id="main" class="wrap page plans">
+	<div class="page-head">
+		<p class="eyebrow">Plans · coming soon</p>
+		<h1>Free, for good. Two plans are coming.</h1>
+		<p class="lede">Everything Brickworks does today stays free. Plus and Creator are for more room on the server, and for selling what you make. Nothing here takes money yet: say which you would use, and we will write once, when it opens.</p>
+	</div>
+
+	<div class="tiers">
+		<article class="card tier" id="free" aria-labelledby="free-h">
+			<div class="name"><h2 id="free-h">Free</h2></div>
+			<p>Everything Brickworks does today.</p>
+			<p class="price"><b>$0</b> for good</p>
+			<a class="cta ghost" href="/app">Open the app</a>
+			<p>What it has:</p>
+			<ul class="rows">
+				<li>The web app, and the desktop app for Windows, macOS and Linux</li>
+				<li>The desktop works offline, every part on disk</li>
+				<li>The whole LDraw parts library, and its official models of real sets</li>
+				<li>Physics: whether it stands, and joints that move</li>
+				<li>Booklets to print or save as PDF</li>
+				<li>Find a part from a photo</li>
+				<li>Parts lists for Rebrickable and BrickLink</li>
+				<li>Design with AI on your own Claude</li>
+				<li>Publish to the gallery</li>
+				<li>Build together, live, by a link</li>
+				<li>Your models kept with your account, up to 500, and every version of a model you share</li>
+			</ul>
+		</article>
+
+		<article class="card tier" id="plus" aria-labelledby="plus-h">
+			<div class="name"><h2 id="plus-h">Plus</h2><span class="pill new">Coming soon</span></div>
+			<p>More room on the server.</p>
+			<p class="price"><b>$48</b> a year, or $5 a month</p>
+			<button class="cta" type="button" data-interest="plus">Tell me when it’s ready</button>
+			<p>Everything in Free. Coming with Plus:</p>
+			<ul class="rows">
+				<li><b>Unlimited</b> private models in the cloud</li>
+				<li><b>Full version history</b> of the models kept with your account</li>
+				<li><b>Build together for up to 8</b></li>
+				<li>Early-access builds</li>
+				<li>A supporter badge</li>
+			</ul>
+		</article>
+
+		<article class="card tier" id="creator" aria-labelledby="creator-h">
+			<div class="name"><h2 id="creator-h">Creator</h2><span class="pill new">Coming soon</span></div>
+			<p>For people who sell what they make.</p>
+			<p class="price"><b>$96</b> a year, or $10 a month</p>
+			<button class="cta" type="button" data-interest="creator">Tell me when it’s ready</button>
+			<p>Everything in Plus. Coming with Creator:</p>
+			<ul class="rows">
+				<li><b>A commercial-use licence:</b> sell instructions, kits or commissioned builds, or use Brickworks in a business</li>
+				<li><b>Build together for up to 20</b></li>
+				<li>Priority support</li>
+				<li>Later: sell instructions from a model’s page at a <b>5% fee</b> (10% on Free and Plus)</li>
+			</ul>
+		</article>
+	</div>
+
+	<section class="card edu" aria-labelledby="edu-h">
+		<h2 id="edu-h">Education is free</h2>
+		<p>Students and teachers will have Plus free, with a school email or a short form, and schools free accounts. It comes with the plans. Teaching? Choose Plus in the form and say so in its line.</p>
+	</section>
+
+	<section aria-labelledby="keep-h">
+		<h2 id="keep-h">What Free keeps, for good</h2>
+		<ul class="keep">
+			<li><b>The app is free.</b> In your browser, on a tablet or a phone, and on the desktop.</li>
+			<li><b>It works offline.</b> The desktop app has every part on disk.</li>
+			<li><b>Nothing it does today will be taken away.</b> What Free lists above stays in Free.</li>
+			<li><b>It never locks.</b> Offline, or with a plan that has ended, the app opens, edits and exports everything; only what the server does for a plan pauses. Over a plan’s limit, models become read-only, never deleted.</li>
+		</ul>
+	</section>
+
+	<section aria-labelledby="ask-h">
+		<h2 id="ask-h">Questions</h2>
+		<details class="qa">
+			<summary>Can I pay now?</summary>
+			<div><p>No. There is no checkout, and nothing here takes a card. This page asks who would use a plan before any is built.</p></div>
+		</details>
+		<details class="qa">
+			<summary>Why have plans at all?</summary>
+			<div><p>To pay for what costs money to run, and to share in what makes you money: storage, history and bigger rooms for Build together on the server, and selling what you make. Never for the app itself.</p></div>
+		</details>
+		<details class="qa">
+			<summary>What does the form keep?</summary>
+			<div><p>Your email, the plan, monthly or yearly, and your line, only to write to you once when that plan opens. To take it off, open the form, type the address and choose <b>take it off</b>. More in <a href="/privacy#plans">privacy</a>.</p></div>
+		</details>
+	</section>
+
+	<dialog id="interest" aria-labelledby="interest-h">
+		<h2 id="interest-h">Tell me when it’s ready</h2>
+		<p>One email when the plan opens. Nothing is charged, and nothing else is sent.</p>
+		<form id="interest-form" novalidate>
+			<label>Email<input id="interest-email" name="email" type="email" maxlength="320" autocomplete="email" required></label>
+			<div class="pair">
+				<label>Plan<select id="interest-plan" name="plan">
+					<option value="plus">Plus</option>
+					<option value="creator">Creator</option>
+				</select></label>
+				<label>Monthly or yearly<select id="interest-billing" name="billing">
+					<option value="yearly">Yearly</option>
+					<option value="monthly">Monthly</option>
+				</select></label>
+			</div>
+			<label><span>Anything to add <small>optional, one line</small></span><input id="interest-note" name="note" maxlength="200"></label>
+			<div class="actions">
+				<button class="cta" type="submit" id="interest-send">Tell me</button>
+				<button class="cta ghost" type="button" data-close>Cancel</button>
+			</div>
+			<p class="said" id="interest-said" role="status"></p>
+			<p class="note">Changed your mind? Type the address and <button class="link" type="button" id="interest-forget">take it off</button>, from every plan.</p>
+		</form>
+		<div class="done" id="interest-done" hidden>
+			<p id="interest-thanks"></p>
+			<div class="actions"><button class="cta" type="button" data-close>Close</button></div>
+		</div>
+	</dialog>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-top">
+			<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+			<nav class="foot-links" aria-label="More">
+				<a href="/challenge">Challenge</a>
+				<a href="/collections">Collections</a>
+				<a href="/compare">Compare</a>
+				<a href="/plans">Plans</a>
+				<a href="/faq">FAQ</a>
+				<a href="/changelog">Changelog</a>
+				<a href="https://github.com/Xaxis/brickworks">Source</a>
+				<a href="/privacy">Privacy</a>
+				<a href="/terms">Terms</a>
+				<a href="/guidelines">Guidelines</a>
+				<a href="/takedown">Takedown</a>
+			</nav>
+			<div class="theme-choice"><span aria-hidden="true">Theme</span>
+				<div class="segmented" role="group" aria-label="Theme">
+					<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+					<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+					<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+				</div>
+			</div>
+		</div>
+		<div class="legal">
+			<p>
+				Models in the gallery are made and shared by the people credited, or by
+				someone who chose not to be; Brickworks does not check them before they
+				are listed. Something that should not be there? Press Report on its
+				page, or see <a href="/takedown">takedown requests</a>.
+			</p>
+			<p>
+				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
+				community, licensed
+				<a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a> and
+				<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
+				LDraw™ is a trademark owned and licensed by the Estate of James
+				Jessiman. This site is not affiliated with or endorsed by LDraw.org.
+				Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
+			</p>
+			<p>
+				LEGO® is a trademark of the LEGO Group of companies which does not
+				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
+				Minifigure and the Brick and Knob configurations are also trademarks
+				of the LEGO Group. BrickLink is a trademark of the LEGO Group too.
+			</p>
+		</div>
+	</div>
+</footer>
+</body>
+</html>

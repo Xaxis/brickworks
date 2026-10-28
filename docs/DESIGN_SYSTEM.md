@@ -39,9 +39,10 @@ sized its own titles, from 26 to 74 px. Now:
   tall, a finger's: the mark, its links, Open the app (the regular
   `.cta`, 44 px at 16, not a size of its own), Menu and your avatar's
   button (2026-10-26; they were 36-42). The footer: the mark and a row
-  of links (Challenge, Collections, Compare, FAQ, Changelog, Source,
-  Privacy, Terms, Guidelines, Takedown), each a finger's 44 x 44 with
-  its words 12 px apart (at 16 the tenth wraps the Theme choice at
+  of links (Challenge, Collections, Compare, Plans, FAQ, Changelog,
+  Source, Privacy, Terms, Guidelines, Takedown), each a finger's 44 x 44
+  with its words 12 px apart (at 16 the tenth wraps the Theme choice at
+  1280; with Plans, the eleventh, it still fits at 1280 and wraps under
   1280), then every notice docs/TRADEMARKS.md asks for, small and quiet.
 - **One type scale** (`--t-display`, `--t-h1` 32-46 px, `--t-h2` 22-26
   px, `--t-h3` 18 px, `--t-lede`, then the words: `--t-body` 16,

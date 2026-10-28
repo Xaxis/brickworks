@@ -176,6 +176,12 @@ declare -A CMD=(
   # with three cards. Signed in, the API answered by the stand-in.
   [model_page]="tools/web/model_page_flow.mjs --url=$P --out=$S/${TAG}_model_page"
   [download]="tools/web/download_check.mjs --url=$P/download"
+  # Plans, coming soon (web/plans.html, supabase/plan_interest.sql): the page
+  # at 390 and 1400, light and dark; its form refusing a bad address, then a
+  # Resend test address's entry kept, sent again and changed, not added, and
+  # taken off; read in the table with the secret key, and forgotten at the
+  # end. No account is made. Fails until plan_interest.sql is applied.
+  [plans]="tools/web/plans_flow.mjs --url=$P --out=$S/${TAG}_plans"
   [tabs]="tools/web/tabs_flow.mjs --url=$P/app --out=$S/${TAG}_tabs"
   # Two chats, two tabs: the relay's rules alone, then the app in two tabs.
   [tabpair_probe]="tools/web/tabpair_probe.mjs --url=$P"
