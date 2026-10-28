@@ -2631,11 +2631,13 @@ Supabase as before.
 Proves it when: the dry run writes two records and a compare report with two
 verdicts a brief; `test_ideas.py` passes; and main against main, two arms of one
 snapshot, comes out near 50% with every interval holding it (2026-10-27,
-main315a against main315b via the relay on eleven briefs: overall 41%, 95%
-18-68%, every dimension 36-64%; orders agreeing on 80%, the first shown winning
-42%; sessions 19-45 minutes, median 27-30, five of 22 at the 45-minute timeout;
-eleven briefs in 3 h 13 min on two workers an arm. `docs/DESIGN_SCORES.md`,
-"The owner's own ideas").
+main315a against main315b via the relay on all twenty: overall 52%, 95%
+32-72%, every dimension 40-55%; orders agreeing on 77%, the first shown winning
+41%; sessions 8-45 minutes, median 28, six of 40 at the 45-minute timeout,
+about ten session-hours an arm, eleven briefs in 3 h 13 min on two workers an
+arm). A lever clears that floor on twenty briefs at a share of about 72%: the
+fresh-eyes critic came out at 61% and 45% against the two main arms.
+`docs/DESIGN_SCORES.md`, "The owner's own ideas").
 
 ### Best of two: each new brief designed twice in the app
 

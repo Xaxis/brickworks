@@ -123,34 +123,55 @@ would not save counts as no model and loses that brief on every dimension.
 
 **The noise floor: main against main.** We ran two arms of one snapshot,
 `main315a` and `main315b` (main at `bd1eaaf3`), `--via relay` as the owner
-designs, two workers an arm, on the first eleven briefs (2026-10-27, 23:07Z to
-02:20Z). The other nine were held back for time.
+designs, on all twenty briefs. The first eleven ran on two workers an arm
+(2026-10-27, 23:07Z to 02:20Z), the other nine on one worker an arm beside the
+critic's arm (02:44Z to 07:23Z).
 
 | dimension | main315a preferred | 95% interval | main315b preferred |
 |---|---|---|---|
-| likeness | 41% | 18-68% | 59% |
-| realism | 36% | 15-65% | 64% |
-| creativity | 64% | 35-85% | 36% |
-| technique | 41% | 18-68% | 59% |
-| overall | 41% | 18-68% | 59% |
+| likeness | 52% | 32-72% | 48% |
+| realism | 40% | 22-61% | 60% |
+| creativity | 55% | 34-74% | 45% |
+| technique | 48% | 28-68% | 52% |
+| overall | 52% | 32-72% | 48% |
 
-Every interval holds 50%, and the spread across dimensions, 36% to 64%, is luck
-alone. On eleven briefs a lever's own interval clears 50% only when its share is
-about 80% or more. On all twenty it needs about 72%, and a draw's interval is
-30-70%. The judge is not the noise. Its two orders named the same design on 80%
-of dimensions, and the design shown first won 42%. The noise is in the designs.
-Of the nine briefs both arms made, eight went 2/2 on overall to one arm or the
-other, so one brief is close to a coin toss between two runs of the same code. A
-lever smaller than that needs more briefs or more runs a brief.
+Every interval holds 50%, and the spread across dimensions, 40% to 55%, is luck
+alone. On the first eleven alone it was 36% to 64% (overall 41%, 18-68%). On
+twenty briefs a lever's own interval clears 50% only when its share is about 72%
+or more. The judge is not the noise. Its two orders named the same design on 77%
+of dimensions, and the design shown first won 41%. The noise is in the designs.
+Of the eighteen briefs both arms made, seventeen went 2/2 on overall to one arm
+or the other, so one brief is close to a coin toss between two runs of the same
+code. A lever smaller than that needs more briefs or more runs a brief.
 
-Sessions ran long. The median was 27 minutes on main315a and 30 on main315b,
-19 to 45 in all. Five of the 22 hit the 45-minute timeout. Eleven briefs took
-6.0 session-hours an arm and 3 h 13 min of wall clock on two workers. Two of the
-22 designs counted as no model, both after a timeout. In each the session had
-built a model, but the app's save refused it: ramen_shop on main315b with a part
-not held, excavator on main315a with a feature not settled. The owner would see
-that model in their tab. The bench reads it as nothing made, and that is part of
-the floor above.
+Sessions ran long. The median was 28 minutes on each arm, 8 to 45 in all, and 6
+of the 40 hit the 45-minute timeout. Twenty briefs took 10.2 and 10.3
+session-hours. Two of the 40 designs counted as no model, both after a timeout.
+In each the session had built a model, but the app's save refused it: ramen_shop
+on main315b with a part not held, excavator on main315a with a feature not
+settled. The owner would see that model in their tab. The bench reads it as
+nothing made, and that is part of the floor above.
+
+**The fresh-eyes critic against the floor** (`critic315`: stack316 at
+`441d56bd`, which is main `bd1eaaf3` with the critic and the Claude Code
+resolver; the same flags, all twenty briefs, two workers, 02:32Z to 08:41Z). It
+passed on tune's 44 real sets at 66% (51-78). On these briefs its shares are:
+
+| head to head | likeness | realism | creativity | technique | overall (95%) |
+|---|---|---|---|---|---|
+| main315a against main315b (the floor) | 52% | 40% | 55% | 48% | 52% (32-72%) |
+| critic315 against main315a (19 briefs) | 50% | 50% | 55% | 63% | 61% (39-79%) |
+| critic315 against main315b (20 briefs) | 45% | 42% | 60% | 52% | 45% (26-66%) |
+
+Neither interval clears 50%. Across the two main arms the critic averages 53% on
+overall, inside the floor. On the owner's kind of brief it shows no gain we can
+tell from luck. The eyes answered in 18 of 20 sessions. salvage_mech and
+excavator never got them: neither session's whole save went through.
+excavator's model was refused at the save, so it counts as no model on two of
+the three arms (critic315, main315a). On taco_truck the critic told the session
+to take the surfboard off the roof, and the person's brief asked for it.
+Sessions ran longer with the critic: median 34 minutes, 16 to 45, 11.0
+session-hours.
 
 ## Against real sets (2026-10-16)
 
