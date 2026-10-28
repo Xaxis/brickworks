@@ -218,6 +218,7 @@ func _run() -> void:
 	await _cluster_opened()
 	await _no_daylight()
 	_round_bodies()
+	_side_studs_cover_one()
 
 	print("")
 	if _failures == 0:
@@ -1812,6 +1813,66 @@ static func _text(said: Variant) -> String:
 		if block is Dictionary and str((block as Dictionary).get("type", "")) == "text":
 			text += str(block["text"])
 	return text
+
+
+## A brick with a stud on its side stands on the studs its body covers.
+##
+## Its box reaches a fifth of a stud past them, and read off the box a
+## 1 x 1 brick with a stud on its side (87087) covered two: the empty stud
+## beside it was its top. A shape raised onto that stud was taken for held,
+## its foot laid in a brick and nothing said why it floated; a sculpt the
+## same; a part stood on a shape kept the stud beside it too; and a mirror
+## moved one a stud too far (fills313, 2026-10-27).
+func _side_studs_cover_one() -> void:
+	print("")
+	print("  a brick with a stud on its side covers the studs its body does")
+	for one: Array in [["87087", Vector2i(1, 1)], ["4733", Vector2i(1, 1)],
+			["30414", Vector2i(4, 1)], ["11211", Vector2i(2, 1)], ["99780", Vector2i(2, 2)],
+			["3001", Vector2i(4, 2)], ["3941", Vector2i(2, 2)]]:
+		var covers := Vector2i(roundi(Patterns._spans(_library, one[0], 0, "x")),
+			roundi(Patterns._spans(_library, one[0], 0, "z")))
+		_check("%s covers %dx%d (its box %s)" % [one[0], covers.x, covers.y,
+			str((_library.parts[one[0]] as PartLibrary.PartInfo).footprint_studs())],
+			covers == one[1])
+	var row: Array = []
+	for x: int in 6:
+		row.append({"part": "87087", "color": 71, "x": x, "y": 0, "z": 0, "rot": 0})
+	var beside: Array = []
+	for x: int in 6:
+		beside.append({"part": "3005", "color": 71, "x": x, "y": 0, "z": 1, "rot": 0})
+	var ledge: Dictionary = {"pattern": "shape", "at": {"x": 0, "y": 3, "z": 1}, "color": 4,
+		"box": {"from": [0, 0, 0], "size": [6, 6, 1]}}
+	# Patterns._over_nothing, and the shape's own foot (its _under).
+	for case: Array in [[row, true, "beside a row of them"], [beside, false, "on 1 x 1 bricks"]]:
+		var made: Array = _made([ledge], case[0])
+		var foot: Array = made.filter(func(one: Dictionary) -> bool:
+			return is_equal_approx(float(one["y"]), 3.0))
+		var said: bool = str(Shapes.said).contains("so it floats")
+		_check("a shape raised %s is said to float: %s, its foot %s" % [case[2],
+			"yes" if said else "no", str(foot.map(func(one: Dictionary) -> String:
+				return str(one["part"])))], said == case[1])
+		if case[1]:
+			_check("...its foot laid in plates, as a foot over nothing is",
+				not foot.is_empty() and foot.all(func(one: Dictionary) -> bool:
+					return str(one["part"]) == "3666"))
+	# Assistant._sculpt_on_nothing.
+	var assistant := Assistant.new()
+	assistant.library = _library
+	var laid: Dictionary = {"box": AABB(Vector3(0, 3, 1), Vector3(2, 3, 2)),
+		"bricks": [{"part": "3003", "color": 29, "x": 0, "y": 3, "z": 1, "rot": 0}]}
+	_check("a sculpt raised beside a row of them is said to float",
+		assistant._sculpt_on_nothing(laid, row).contains("so it floats"))
+	_check("...and on 1 x 1 bricks it is not",
+		assistant._sculpt_on_nothing(laid, beside).is_empty())
+	assistant.free()
+	# Patterns.feet_of, and _mirror.
+	var feet: Dictionary = Patterns.feet_of([row[1]], _library)
+	_check("one stood on a shape stands on one stud: %s" % str(feet.keys()),
+		feet.keys() == [Vector2i(1, 0)])
+	var mirrored: Array = _made([{"pattern": "mirror", "about": "z", "at": 5,
+		"bricks": [row[0]]}])
+	_check("one mirrored about z 5 lands at z %s" % str(mirrored[0]["z"]),
+		is_equal_approx(float(mirrored[0]["z"]), 9.0))
 
 
 func _made(patterns: Array, already: Array = []) -> Array:

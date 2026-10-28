@@ -1717,7 +1717,17 @@ fixing what it got wrong.
   the same way every layer, the held-out owl's base (20 x 16, two plates)
   was columns of two, eleven pieces side by side. `patterns_probe`: a display
   base two plates thick is one piece; a round one is still in pieces where
-  its rim's wing plates lie wedge on wedge.
+  its rim's wing plates lie wedge on wedge. The studs a design's part covers
+  are `Patterns.grid_footprint`: its box, but for a stud standing out of a
+  side, read off its mesh (87087 covers one stud where its box says two), for
+  every reader of where a part stands and where its top is (`_foot_cells`,
+  `feet_of`, `_mirror`, so `_over_nothing`, a shape's `_under` and
+  `Assistant._sculpt_on_nothing`). `patterns_probe` ("a brick with a stud on
+  its side covers the studs its body does"): 87087, 4733, 30414 and 11211
+  cover their body's studs, a bracket and plain bricks as before; a shape and
+  a sculpt raised beside a row of 87087s are said to float, the shape's foot
+  in plates; one stood on a shape stands on one stud; mirrored, it lands
+  where its body reflects.
 - `a module said again`: `repeat_section`, on both `submit_design` and
   `edit_model`, over `Assistant._expand_repeats`. Build the repeating unit once
   as a section, then give `{from, times, dx, dy, dz, degrees, axis}` and get a

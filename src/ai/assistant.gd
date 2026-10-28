@@ -14496,7 +14496,7 @@ func _mostly_big_plates(model: Model) -> String:
 		if info == null:
 			continue
 		counted += 1
-		var footprint: Vector2i = info.footprint_studs()
+		var footprint: Vector2i = Patterns.grid_footprint(library, placement.part)
 		var studs: float = float(footprint.x) * float(footprint.y)
 		# A round brick or a cylinder half is the skin of a rocket, not a
 		# plate under it: a body laid in them read as "structure, not yet

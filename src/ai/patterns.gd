@@ -461,7 +461,7 @@ static func _spans(library: PartLibrary, part: String, rot: int,
 	var info: PartLibrary.PartInfo = library.parts.get(part)
 	if info == null:
 		return 1.0
-	var footprint: Vector2i = info.footprint_studs()
+	var footprint: Vector2i = grid_footprint(library, part)
 	var across: int = footprint.x
 	var deep: int = footprint.y
 	if rot % 2 == 1:
@@ -469,6 +469,53 @@ static func _spans(library: PartLibrary, part: String, rot: int,
 		across = deep
 		deep = swap
 	return float(across if axis == "x" else deep)
+
+
+## How far a stud stands out of the face it is on, in LDU.
+const STUD_TALL := 4.0
+
+
+## The studs a part covers on the grid, across and deep: its box
+## (PartInfo.footprint_studs), but for a stud standing out of a side, which
+## is no stud of the grid. Read off the box, a 1 x 1 brick with a stud on its
+## side (87087) was a 1 x 2, and the empty stud beside it was its top: a
+## shape or a sculpt raised onto that stud was taken for held, a part stood
+## on one kept the stud of the shape beside it, and a mirror moved one a
+## stud too far. Read off its mesh where a side stud could reach past its
+## box's whole studs; the box alone where the mesh is not to hand.
+static func grid_footprint(library: PartLibrary, part: String) -> Vector2i:
+	var info: PartLibrary.PartInfo = library.parts.get(part)
+	if info == null:
+		return Vector2i.ONE
+	var footprint: Vector2i = info.footprint_studs()
+	# A side stud reaches a fifth of a stud past whole studs, which rounds down.
+	if footprint == Vector2i(maxi(1, roundi(info.size.x / 20.0)),
+			maxi(1, roundi(info.size.z / 20.0))):
+		return footprint
+	var mesh: Lbm.PartMesh = library.mesh_for(part)
+	if mesh == null:
+		return footprint
+	var lo: Vector3 = mesh.bounds.position
+	var hi: Vector3 = mesh.bounds.end
+	var cut: bool = false
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind != "stud" or connector.gender != "male":
+			continue
+		var out: Vector3 = connector.axis.normalized()
+		for k: int in [0, 2]:
+			# The body ends where a stud stands out of it to the box's end.
+			if out[k] > 0.9 and hi[k] > connector.position[k] + 0.5 \
+					and hi[k] <= connector.position[k] + STUD_TALL + 0.5:
+				hi[k] = connector.position[k]
+				cut = true
+			elif out[k] < -0.9 and lo[k] < connector.position[k] - 0.5 \
+					and lo[k] >= connector.position[k] - STUD_TALL - 0.5:
+				lo[k] = connector.position[k]
+				cut = true
+	if not cut:
+		return footprint
+	return Vector2i(maxi(1, ceili((hi.x - lo.x - BrickLattice.CLEARANCE) / 20.0)),
+		maxi(1, ceili((hi.z - lo.z - BrickLattice.CLEARANCE) / 20.0)))
 
 
 ## The other hand of a part, where it has one.
