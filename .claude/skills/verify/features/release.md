@@ -6,7 +6,7 @@ runs each one as a person would, the GitHub release, and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check -->
+<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:check every release link -->
 
 ## Sub-features
 
@@ -60,6 +60,14 @@ that offers each system its own build. The cycle and its cadence are
   silicon), macos-15-intel and windows-2022, runs `inspect` and `smoke` on
   each package there, and on macOS `codesign --verify --deep --strict` and
   `lipo -archs`. It builds nothing: the part library is not in git.
+- `check every release link`: `tools/release/release_links.sh [MANIFEST]`
+  asks for every release page and file in `web/releases.json` with no login,
+  following GitHub's redirect: a page must answer 200, a file 200 with the
+  manifest's size. `tools/release/ship.sh` runs it before a deploy and holds
+  on any failure, so a branch pointing at a repository that does not exist
+  yet cannot go out. `tests/test_release_links.py` runs it against a server
+  on this machine that redirects as GitHub does: all there, a file missing,
+  a file of another size.
 - `download page`: `web/download.html` with `web/download.js`, served at
   `/download` (tools/site.py copies every file in `web/`; the old
   `/download.html` 308s to `/download`). Reads same-origin `releases.json`, detects the
@@ -93,6 +101,7 @@ python3 tools/release.py manifest --local --out=/tmp/releases.json
 node tools/web/download_check.mjs --manifest=/tmp/releases.json --shots=shots
 python3 tools/release.py publish --draft --tag=v0.0.0-upload-test --target=main --no-manifest
 gh workflow run release.yml -f tag=v0.1.0   # once the workflow is on main
+tools/release/release_links.sh                      # this checkout's web/releases.json
 ```
 
 ## How to check it
@@ -132,6 +141,16 @@ library, opens a model and takes bricks`; `shots/release-linux.png` shows the
 example car on its baseplate. To see the boot itself, record the unpacked
 package's first seconds on an Xvfb of its own (`ffmpeg -f x11grab`): the mark
 on the dark face, then the app.
+
+```sh
+tools/release/release_links.sh
+```
+
+Proves it when: every line is `ok` and it ends `release_links: all N
+addresses in ... answer`, exit 0 (2026-10-27, main's manifest: 51
+addresses, 31 s). Against a manifest naming a repository that does not
+exist, each address is `FAIL ... answered '404 ...'` and it exits 1; a file
+whose size is one byte off is `FAIL ... answered '200 <size>'`.
 
 ```sh
 node tools/web/download_check.mjs --manifest=/tmp/releases.json --shots=shots

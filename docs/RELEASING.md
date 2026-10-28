@@ -78,8 +78,9 @@ git -c user.name=Xaxis -c user.email=william.neeley@gmail.com \
   commit -m "Brickworks 0.2.0 on the download page" web/releases.json web/download.html && git push
 tools/deploy.sh --prod
 
-# 7. Check it live.
+# 7. Check it live: the page, and every address in its manifest.
 node tools/web/download_check.mjs --url=https://brickworks.diy/download
+tools/release/release_links.sh
 ```
 
 `gh` here means `env -u GITHUB_TOKEN gh`: this machine's `GITHUB_TOKEN` is
@@ -95,6 +96,9 @@ stale and shadows the keyring login. `tools/release.py` drops it itself.
   (`shots/release-linux.png`) shows the example car.
 - The release workflow is green on all five jobs.
 - `publish` prints `ok` for every file: GitHub's SHA-256 matches.
+- `tools/release/release_links.sh` ends `all N addresses ... answer`: every
+  release's page and every file in `web/releases.json`, the file at its
+  size. `tools/release/ship.sh` holds a deploy until it does.
 - The live page's check passes for linux, macos, windows and phone, and a
   file fetched from the live button matches its checksum:
 

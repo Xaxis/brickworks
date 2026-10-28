@@ -331,7 +331,9 @@
       "entry": "tools/release.py",
       "reach": "tools/release.py build   (all three, into dist/<version>/; linux, mac or windows for one)",
       "area": "release",
-      "tests": []
+      "tests": [
+        "tests/test_release_links.py"
+      ]
     },
     {
       "id": "cli:build the exact shapes",
@@ -445,6 +447,16 @@
       "kind": "cli",
       "entry": ".github/workflows/release.yml",
       "reach": "gh workflow run release.yml -f tag=v0.1.0",
+      "area": "release",
+      "tests": [
+        "tests/test_release_links.py"
+      ]
+    },
+    {
+      "id": "cli:check every release link",
+      "kind": "cli",
+      "entry": "tools/release/release_links.sh",
+      "reach": "tools/release/release_links.sh [web/releases.json]   (ship.sh runs it before a deploy)",
       "area": "release",
       "tests": []
     },
@@ -1288,7 +1300,9 @@
       "entry": "tools/release.py",
       "reach": "tools/release.py publish --draft, then tools/release.py publish",
       "area": "release",
-      "tests": []
+      "tests": [
+        "tests/test_release_links.py"
+      ]
     },
     {
       "id": "cli:put the website together",
@@ -1525,7 +1539,9 @@
       "entry": "tools/release.py",
       "reach": "tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz --window",
       "area": "release",
-      "tests": []
+      "tests": [
+        "tests/test_release_links.py"
+      ]
     },
     {
       "id": "cli:step count probe",
@@ -2820,7 +2836,9 @@
       "entry": "web/404.html",
       "reach": "https://brickworks.diy/<anything not there>   (answers 404)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_release_links.py"
+      ]
     },
     {
       "id": "ui:FAQ page",

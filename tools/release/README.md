@@ -126,6 +126,12 @@ What each one guards against, all learned the hard way on 2026-10-13:
   workflow runs by hand only, since a private repository pays for each
   minute. It takes 80 to 120 s in its slot at load 40, nearly all of it
   the suite.
+- `release_links.sh` holds a release before any of them, in about 30 s:
+  every release page and file `web/releases.json` links to must answer a
+  visitor, each file at its size (`tests/test_release_links.py`). A
+  manifest naming a repository or a file that is not there yet cannot
+  ship, and neither can one whose links a private source repository has
+  broken (the releases' move to Xaxis/brickworks-releases, 2026-10-27).
 - `ship.sh` hands over to the worktree's own `tools/release/ship.sh`, so a
   release runs its own scripts and knows its own checks. m87 was started
   from main's copy and held on "no such check" for the three it added
