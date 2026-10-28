@@ -1,7 +1,65 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.9.0",
+ "latest": "0.10.0",
  "releases": [
+  {
+   "version": "0.10.0",
+   "tag": "v0.10.0",
+   "date": "2026-10-28",
+   "page": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.10.0",
+   "notes": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.10.0",
+   "summary": "A release about a second look. When Claude designs something new, a fresh pair of eyes now looks at it before it is finished: a Claude session that never saw the designing is shown three pictures and the person's whole request, and says what reads as a generic box and the three changes a set designer would make first. Judged against the same designs without it, designs with it were preferred in two of every three verdicts. Parts with studs on their sides are no longer read as wider than they are, and the Tested mark judges a build by its own parts and its own joints.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.10.0-linux-x86_64.AppImage",
+     "size": 572291576,
+     "sha256": "7f37ed7425809f3b335fce8a7ba4ba38e2e259f16b0988b3fb4e6a825c640413",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.10.0/Brickworks-0.10.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.10.0-linux-x86_64.tar.xz",
+     "size": 423575640,
+     "sha256": "6eec00ce4f88be4b8781703900dbe7f47fa3e7f49952f79f002c69b0d80efcdb",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.10.0/Brickworks-0.10.0-linux-x86_64.tar.xz",
+     "unpacked": 1483741693,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.10.0-macos-universal.zip",
+     "size": 752110974,
+     "sha256": "8b64cb34e7c7aaa4fe35b5d410848ec14d59d96a1c6d894fc34b3bfa2262147b",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.10.0/Brickworks-0.10.0-macos-universal.zip",
+     "unpacked": 1580496161,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.10.0-windows-x86_64.zip",
+     "size": 730474137,
+     "sha256": "59e94fb6214a5f4da8ce5ab3f1c648c1af94842ac294bddb20119dec3ee19527",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.10.0/Brickworks-0.10.0-windows-x86_64.zip",
+     "unpacked": 1519444573,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.9.0",
    "tag": "v0.9.0",
