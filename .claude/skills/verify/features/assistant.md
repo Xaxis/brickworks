@@ -91,7 +91,9 @@ fixing what it got wrong.
   shown the subject and `DesignPick.pictures` (corner, front, close) and
   nothing of the session, saying what it reads as, what reads as generic, and
   three changes. Once a subject (`Assistant.heard`, fresh), whatever comes of
-  it; never a chat about a selection or beside the person's own model. No Claude Code
+  it, and begun again with each chat's sitting (`Assistant.sitting_begun`), so an
+  edit-only chat never gets the eyes on the last chat's unsaved design; never a
+  chat about a selection or beside the person's own model. No Claude Code
   (found as the app's designer finds it, `ClaudeCode.found()`: on PATH, else where
   its installers put it; never in a browser), no pictures or no answer in `MOST_S`: the
   save is main's, byte for byte. The log says `fresh eyes: S s (model): {...}`.

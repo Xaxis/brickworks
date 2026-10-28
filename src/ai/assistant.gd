@@ -4438,9 +4438,12 @@ var chat: String = ""
 
 
 ## A chat begins a sitting in this tab (ClaudeConnector._sitting): it is told
-## the sizes again, as it is told how to work here.
+## the sizes again, as it is told how to work here. Nothing of the last
+## chat's design carries over: an edit-only chat begins no subject, so the
+## eyes left unasked by a chat that designed and never saved would see it.
 func sitting_begun(chat_name: String) -> void:
 	_sizes_said.erase(chat_name)
+	fresh_eyes().begin()
 
 
 ## How big the model actually came out, in studs.
