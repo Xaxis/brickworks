@@ -20,11 +20,24 @@
 ## Once a subject (Assistant.heard, fresh), whatever comes of it. Only a new
 ## design submitted from outside (the MCP port, the connector) onto a bare
 ## baseplate, the example a first visit opens on taken off first
-## (Assistant.make_room), and never a chat about a selection. With no Claude Code here
-## (a browser, or a machine without it), no pictures, or no answer in time,
-## the save says what it said before, word for word.
+## (Assistant.make_room), and never a chat about a selection. With no pictures,
+## or no answer in time, the save says what it said before, word for word.
+##
+## With no Claude Code here (a browser tab, as the owner designs from
+## claude.ai, or a machine without it) the only eyes at hand are the
+## session's own (own_look): the save hands it the same three pictures and
+## the eyes' own question, to answer as the eyes would, from the pictures
+## alone, with TOOL before it builds on.
 class_name FreshEyes
 extends RefCounted
+
+## The tool a session answers its own look with (own_look), served only
+## where no Claude Code is found ([method tools]).
+const TOOL := "fresh_eyes"
+
+## The calls refused while the session's own look is unanswered (not_yet):
+## after them it builds on as it would have, so a session is never stuck.
+const MOST_REFUSED := 2
 
 ## The most the save waits for an answer. The session's call waits on it,
 ## and Claude Code's own limit for one is ten minutes (ClaudeCode.TOOL_TIMEOUT_MS).
@@ -74,13 +87,16 @@ func designed(bare: bool) -> void:
 
 
 ## What a whole save of a new design says in place of its close looks, the
-## first time only: the three changes, or "" (and the save says what it did).
-func after_save() -> String:
+## first time only: the three changes, the session's own look to answer
+## (own_look), or "" (and the save says what it did).
+func after_save() -> Variant:
 	if asked or not fresh or assistant == null or assistant._busy \
 			or not assistant._outside_standing or assistant.asked_about_selection():
 		return ""
 	asked = true
-	if ClaudeCode.found().is_empty() or not ModelShot.possible():
+	if ClaudeCode.found().is_empty():
+		return await own_look()
+	if not ModelShot.possible():
 		return ""
 	var subject: String = subject_of(assistant)
 	var started_ms: int = Time.get_ticks_msec()
@@ -193,3 +209,121 @@ static func said_to_session(answer: Dictionary) -> String:
 		+ "then save_model. Where you are sure one is wrong for this subject, say why in a "
 		+ "line and make the others.")
 	return "\n".join(lines)
+
+
+## Where no Claude Code is found, the eyes are the session's own. The save
+## hands it the three pictures and the eyes' own question, framed as the
+## eyes are asked it: a judge shown only the subject and the pictures,
+## never what it meant the model to be. Every other call waits for the
+## answer (not_yet), in the eyes' shape (TOOL), and then the session makes
+## the changes it named. "" when no picture could be taken, and the save
+## says what it said before.
+func own_look() -> Variant:
+	var views: Array = await _pictures()
+	if views.is_empty():
+		last = {"error": "no pictures"}
+		print("fresh eyes: no Claude Code here and no pictures, nothing said")
+		return ""
+	last = {"own": true, "refused": 0}
+	print("fresh eyes: no Claude Code here (ClaudeCode.found() is empty): the session's "
+		+ "own look asked, with %d pictures" % views.size())
+	# Saved, as next_review would have marked it.
+	assistant._outside_unsaved = false
+	var content: Array = (message(subject_of(assistant), views)["message"]["content"] as Array)
+	return [{"type": "text", "text": OWN_OPENING}] + content \
+		+ [{"type": "text", "text": OWN_ASK % TOOL}]
+
+
+const OWN_OPENING := ("Not finished yet: now look at it with a fresh pair of eyes. A judge "
+	+ "is shown only the subject and the three pictures below, never what you meant it to "
+	+ "be or how it was made, and asked what follows. Answer as that judge: from the "
+	+ "pictures alone, saying what they show, not what you meant each part to be.")
+
+const OWN_ASK := ("Answer before any other call: %s, with reads_as (what it reads as at a "
+	+ "glance), generic (what reads as a generic box, slab or stack) and changes (the three, "
+	+ "the biggest first). Then make them: edit_model for each (submit_design again when one "
+	+ "changes the whole shape), then view_model to see that it reads, then save_model. "
+	+ "Where you are sure one is wrong for this subject, say why in a line and make the others.")
+
+
+## Whether the session's own look waits for its answer.
+func waiting() -> bool:
+	return bool(last.get("own", false)) and not last.has("changes") \
+		and not last.has("unanswered")
+
+
+## What a call is told while the session's own look waits for its answer:
+## "" when it goes ahead. The answer goes ahead, and so does a save, so
+## what stands is never lost; anything else is refused, up to MOST_REFUSED
+## times.
+func not_yet(tool: String) -> String:
+	if not waiting() or tool in [TOOL, "save_model"]:
+		return ""
+	if int(last["refused"]) >= MOST_REFUSED:
+		last["unanswered"] = true
+		print("fresh eyes: the session's own look never answered; %s goes ahead" % tool)
+		return ""
+	last["refused"] = int(last["refused"]) + 1
+	print("fresh eyes: %s refused, the session's own look unanswered" % tool)
+	return ("Not yet: first answer the fresh look the save asked for. Call %s with "
+		% TOOL + "reads_as, generic and the three changes, from the save's three pictures "
+		+ "alone, as the judge would; then make the changes.")
+
+
+## The session's own look, answered with TOOL: kept as the eyes' answer is
+## ([member last]), and the changes it named are to be made now.
+func answered(input: Dictionary) -> String:
+	if not waiting():
+		return "Nothing to answer: a new design's first save asks for this, once."
+	var changes: Array[String] = []
+	for change: Variant in (input.get("changes") as Array if input.get("changes") is Array else []):
+		if not str(change).strip_edges().is_empty():
+			changes.append(str(change).strip_edges())
+	var reads_as: String = str(input.get("reads_as", "")).strip_edges()
+	var generic: String = str(input.get("generic", "")).strip_edges()
+	if reads_as.is_empty() or generic.is_empty() or changes.size() < 3:
+		return ("Answer in full: reads_as, generic, and changes, the three changes, the "
+			+ "biggest first.")
+	last = {"own": true, "refused": last["refused"], "reads_as": reads_as,
+		"generic": generic, "changes": changes.slice(0, 3)}
+	print("fresh eyes: the session's own look (%d refused): %s" % [last["refused"],
+		JSON.stringify({"reads_as": reads_as, "generic": generic, "changes": last["changes"]})])
+	return ("Now make them, the biggest first: edit_model for each (submit_design again when "
+		+ "one changes the whole shape), then view_model to see that it reads, then "
+		+ "save_model. Where you are sure one is wrong for this subject, say why in a line "
+		+ "and make the others.")
+
+
+## TOOL, for a session to answer its own look with: served only where no
+## Claude Code is found, so where it is the tools are main's.
+static func tools() -> Array:
+	if not ClaudeCode.found().is_empty():
+		return []
+	var schema: Dictionary = SCHEMA.duplicate(true)
+	schema["additionalProperties"] = false
+	return [{"name": TOOL, "description": ("Answer the fresh look a new design's first "
+		+ "save asks for, from the three pictures it handed you alone: what the model "
+		+ "reads as, what reads as a generic box, and the three changes that would most "
+		+ "make it read as the subject. Only when a save asks."), "input_schema": schema,
+		"annotations": {"title": "Say what it reads as", "readOnlyHint": true,
+			"openWorldHint": false}}]
+
+
+## The design's three pictures as the bench takes them, as content blocks,
+## or [] when they could not be taken.
+func _pictures() -> Array:
+	if not ModelShot.possible():
+		return []
+	if _shot == null:
+		_shot = ModelShot.new()
+		_shot.library = assistant.library
+		_shot.give_up_after = 60.0
+		assistant.add_child(_shot)
+	var images: Array[Image] = await DesignPick.pictures(_shot, assistant.world,
+		assistant.scenery, assistant.library)
+	if images.size() < DesignPick.VIEWS.size():
+		return []
+	var views: Array = []
+	for image: Image in images:
+		views.append(await _shot.encode(image))
+	return views

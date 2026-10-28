@@ -11,7 +11,7 @@
     python3 tools/bench/realset.py compare --which proof --arms m32,mine [--dates D1,D2]
                                        [--first N] [--jobs 2]
     heavy python3 tools/bench/realset.py reach --which proof --arm m32 [--date D]
-    python3 tools/bench/realset.py run ... --via relay [--instructions none]
+    python3 tools/bench/realset.py run ... --via relay [--instructions none] [--no-claude-code]
 
 A half is 44 subjects; `--first 10` is the ten it had before 2026-10-19. On
 two workers a subject took nine minutes (main, 2026-10-19), a half about 6.5
@@ -89,7 +89,10 @@ tuned on, judged blind.
   the relay its only server. `--instructions none` withholds the server's
   instructions at initialize, the bound on a client that shows none: whether
   claude.ai shows them was never measured, and Claude Code shows about 4,096
-  characters. Without `--via` the path is the bench's, as before. Ports come
+  characters. `--no-claude-code` starts each tab as a browser is, with no Claude
+  Code to find (a PATH without it and a home of its own), so the app takes the
+  path it takes in a browser; the designing session is Claude Code as before.
+  Without `--via` the path is the bench's, as before. Ports come
   from BENCH_PORTS, two a design (the relay's and the app's), and the app's data
   from a folder of its own under XDG_DATA_HOME.
 - **Reach**, `reach`: whether a lever reached the sessions at all, from
@@ -941,7 +944,7 @@ def _session_end(stream: Path) -> dict:
 
 
 def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: Path,
-                     instructions: str = "all") -> dict:
+                     instructions: str = "all", claude_code: bool = True) -> dict:
     """One brief designed as the owner designs: Claude through the connector relay, the
     app a signed-in tab of a throwaway account. Recorded in design.json as bench.design
     records one, with the session's own stream beside it (session.jsonl)."""
@@ -958,7 +961,8 @@ def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: P
     result: dict = {}
     sha = bench.commit(app)
     bench.say(f"design {subject.id} via the relay: ports {relay_port} and {app_port}, "
-              f"instructions {instructions}, up to {timeout // 60} min")
+              f"instructions {instructions}, {'' if claude_code else 'no '}Claude Code in the "
+              f"tab, up to {timeout // 60} min")
     try:
         with relay_log.open("w") as out:
             relay = subprocess.Popen(
@@ -980,8 +984,10 @@ def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: P
                  str(run_dir / "godot_design.log"), "--", f"--mcp={app_port}", "--assistant=on",
                  "--signed-in", f"--held-out={subject.id}", "--draw-by=" + json.dumps(bench.DRAWER)],
                 cwd=app, stdout=out, stderr=subprocess.STDOUT, start_new_session=True,
-                env=bench._billing_free_env(XDG_DATA_HOME=str(tab_home),
-                                            BRICKWORKS_API=origin, MESA_VK_WSI_DEBUG="sw"))
+                env=_tab_env(bench._billing_free_env(XDG_DATA_HOME=str(tab_home),
+                                                     BRICKWORKS_API=origin,
+                                                     MESA_VK_WSI_DEBUG="sw"),
+                             tab_home, claude_code))
         if not _until(lambda: tab.poll() is None and _tab_open(origin, account["token"]),
                       TAB_WAIT_S, 3.0):
             raise SystemExit(f"design {subject.id}: the tab never switched its connector on; "
@@ -1026,6 +1032,7 @@ def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: P
             "design_seconds": int(ended["duration_ms"] / 1000) if ended.get("duration_ms") else None,
             "commit": sha, "port": app_port, "relay_port": relay_port, "via": "relay",
             "instructions": instructions, "model": ldr.exists() and ldr.stat().st_size > 0,
+            **({} if claude_code else {"claude_code": False}),
             **({} if app == ROOT else {"app": str(app)}),
             "finished": (f"claude code ok={not ended.get('is_error', True)} "
                          f"turns={ended.get('num_turns')} {ended.get('subtype', '')}: "
@@ -1052,6 +1059,29 @@ def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: P
     return result
 
 
+def _tab_env(env: dict[str, str], home: Path, claude_code: bool) -> dict[str, str]:
+    """The tab's environment. Without Claude Code it is a browser's, as far as the app
+    can tell (ClaudeCode.found() looks on PATH, then where installers put it under
+    HOME): a home of its own, and each folder of PATH that holds claude stood in for
+    by one with everything else of that folder, so godot, xvfb-run and the rest are
+    found as before. Caches stay where they were, so drawing is no slower."""
+    if claude_code:
+        return env
+    kept = home / "bin-without-claude"
+    kept.mkdir(parents=True, exist_ok=True)
+    path: list[str] = []
+    for folder in env.get("PATH", os.defpath).split(os.pathsep):
+        if folder and (Path(folder) / "claude").exists():
+            for entry in Path(folder).iterdir():
+                if entry.name != "claude" and not os.path.lexists(kept / entry.name):
+                    (kept / entry.name).symlink_to(entry)
+            folder = str(kept)
+        if folder and folder not in path:
+            path.append(folder)
+    cache = env.get("XDG_CACHE_HOME") or str(Path(env.get("HOME", Path.home())) / ".cache")
+    return {**env, "PATH": os.pathsep.join(path), "HOME": str(home), "XDG_CACHE_HOME": cache}
+
+
 def one(c: Candidate, args: argparse.Namespace, parts: style.Parts) -> dict:
     """A subject end to end on one arm: the set's side, the design, its pictures, its
     measures, and the judge both orders. Each stage is skipped when its output is there."""
@@ -1068,7 +1098,8 @@ def one(c: Candidate, args: argparse.Namespace, parts: style.Parts) -> dict:
                                            "theme": c.theme, "year": c.year})
     canned = bench.CANNED / "design.ldr" if args.dry_run else None
     try:
-        made = (design_via_relay(subject, out, args.timeout, args.checkout, args.instructions)
+        made = (design_via_relay(subject, out, args.timeout, args.checkout, args.instructions,
+                                 not args.no_claude_code)
                 if args.via == "relay" and canned is None else
                 bench.design(subject, out, args.timeout, canned, app=args.checkout))
     except SystemExit as failed:      # the machine failed, not the design: tried again next time
@@ -1146,7 +1177,8 @@ def run(args: argparse.Namespace) -> int:
             bench._write_json(out / "arm.json", {"arm": args.arm, "checkout": str(args.checkout),
                                                  "commit": bench.commit(args.checkout),
                                                  "date": args.date, "via": args.via,
-                                                 "instructions": args.instructions})
+                                                 "instructions": args.instructions,
+                                                 "claude_code": not args.no_claude_code})
         for c in wanted:
             bench.say(f"{c.number} {c.name}: starting")
             try:
@@ -1157,7 +1189,8 @@ def run(args: argparse.Namespace) -> int:
     bench._write_json(out / "arm.json", {"arm": args.arm, "checkout": str(args.checkout),
                                          "commit": bench.commit(args.checkout),
                                          "which": args.which, "date": args.date,
-                                         "via": args.via, "instructions": args.instructions})
+                                         "via": args.via, "instructions": args.instructions,
+                                         "claude_code": not args.no_claude_code})
     bench.say(f"realset {args.which}: {len(wanted)} subjects on {args.arm} "
               f"({bench.commit(args.checkout)}), {args.jobs} at a time, into {out}")
     jobs = max(1, min(args.jobs, len(wanted)))
@@ -1191,7 +1224,8 @@ def _in_a_slot(share: list[Candidate], args: argparse.Namespace) -> int:
                *(["--dry-run"] if args.dry_run else []),
                *(["--no-judge"] if args.no_judge else []),
                *(["--rejudge"] if args.rejudge else []),
-               "--via", args.via, "--instructions", args.instructions]
+               "--via", args.via, "--instructions", args.instructions,
+               *(["--no-claude-code"] if args.no_claude_code else [])]
     named = ", ".join(c.number for c in share)
     bench.say(f"{named}: queued")
     log_path = out / f"worker-{share[0].number}.log"
@@ -1792,6 +1826,9 @@ def main(argv: list[str] | None = None) -> int:
                            "relay to the app as a throwaway account's tab")
             p.add_argument("--instructions", choices=("all", "none"), default="all",
                            help="none: the server's instructions withheld (with --via relay)")
+            p.add_argument("--no-claude-code", action="store_true",
+                           help="each tab finds no Claude Code, as a browser tab (with --via "
+                           "relay); the designing session is Claude Code as before")
             p.add_argument("--audit-later", action="store_true",
                            help="leave the build check's reading to `audit`, so no worker "
                            "holding the GPU waits for a CPU slot")
@@ -1805,6 +1842,8 @@ def main(argv: list[str] | None = None) -> int:
         args.checkout = args.checkout.resolve()
         if args.instructions == "none" and args.via != "relay":
             raise SystemExit("--instructions none withholds what the relay serves: with --via relay")
+        if args.no_claude_code and args.via != "relay":
+            raise SystemExit("--no-claude-code hides it from the relay's tab: with --via relay")
         if args.what == "run" and not args.dry_run:
             _imported(args.checkout)
         return run(args)
