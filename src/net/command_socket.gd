@@ -783,7 +783,11 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 	if assistant != null:
 		if name == FreshEyes.TOOL:
 			return [assistant.fresh_eyes().answered(input), true]
+		if name == FreshEyes.FINAL_TOOL:
+			return [assistant.fresh_eyes().final_answered(input), true]
 		var not_yet: String = assistant.fresh_eyes().not_yet(name)
+		if not_yet.is_empty():
+			not_yet = assistant.fresh_eyes().final_not_yet(name)
 		if not not_yet.is_empty():
 			return [not_yet, true]
 	if entry == null:
@@ -1035,7 +1039,7 @@ func _the_app_tools() -> AppTools:
 ## posing, undo, opening, the parts list, rendering, exporting.
 func _own_tools() -> Array:
 	return _socket_tools() + _the_app_tools().definitions() + [ToolJobs.definition()] \
-		+ FreshEyes.tools()
+		+ FreshEyes.tools() + FreshEyes.final_tools()
 
 
 func _socket_tools() -> Array:
@@ -1207,12 +1211,13 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 			# assembly it has not looked at closely, if there is one. A new
 			# design's first save hands back a fresh pair of eyes' three
 			# changes instead (FreshEyes), or with no Claude Code its pictures
-			# for the session's own look, and the close looks at the next.
+			# for the session's own look, and the close looks at the next; the
+			# first save after the creative pass, the eyes' final look after it.
 			var more: Variant = ""
 			if assistant != null:
 				more = await assistant.fresh_eyes().after_save()
 			if assistant != null and str(more).is_empty():
-				more = await assistant.next_review()
+				more = await assistant.fresh_eyes().reviewed()
 			return Assistant._joined(written, more)
 	return "No tool called %s." % tool
 
