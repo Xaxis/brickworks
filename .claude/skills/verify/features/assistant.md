@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, cli:test designs on the owner's own ideas, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe -->
 
 ## Sub-features
 
@@ -2629,7 +2629,12 @@ network when its command ended, and every throwaway account timed out
 
 Proves it when: the dry run writes two records and a compare report with two
 verdicts a brief; `test_ideas.py` passes; and main against main, two arms of one
-snapshot, comes out near 50% on every dimension.
+snapshot, comes out near 50% with every interval holding it (2026-10-27,
+main315a against main315b via the relay on eleven briefs: overall 41%, 95%
+18-68%, every dimension 36-64%; orders agreeing on 80%, the first shown winning
+42%; sessions 19-45 minutes, median 27-30, five of 22 at the 45-minute timeout;
+eleven briefs in 3 h 13 min on two workers an arm. `docs/DESIGN_SCORES.md`,
+"The owner's own ideas").
 
 ### Best of two: each new brief designed twice in the app
 

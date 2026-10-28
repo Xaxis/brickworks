@@ -96,6 +96,62 @@ technique and surface, the two weakest); and that likeness does not fall,
 which would say a session copied the nearest design's picture rather than
 designing past it. A subject moves only beyond the 0.5 run-to-run spread.
 
+## The owner's own ideas: two arms head to head (2026-10-27)
+
+The owner's complaint: whatever complex idea they bring, what comes back is not
+built the way a LEGO® designer would build it, with that range and realism. The
+real-set bench briefs a set's name ("Robin, in the style of LEGO® BrickHeadz
+sets"), and many verdicts turned on how a name was read. One session built a bird
+for a BrickHeadz figure. Another spelled out a word where the set was a buggy. The
+owner never names a set. They bring scenes, vehicles, buildings and creatures,
+mixed and detailed.
+
+`tools/bench/ideas.py` measures that. `tools/bench/ideas_briefs.py` holds twenty
+fixed briefs in a person's words, each with several elements, a setting and a
+size where a person would give one. They cover fantasy and sci-fi scenes,
+vehicles with a story, landmark-inspired originals, creatures and mechs,
+interiors, dioramas and Technic machines. The house account's published titles
+(a treehouse in an old oak, a dragon asleep on its hoard, an orrery, a moon
+rover and its crew) set the style. No brief names a set or a licensed
+character. An idea has no right answer to put beside a design, so two arms are
+judged against each other. The judge gets realset's prompt with its own five
+dimensions: likeness to the brief, realism as a LEGO® set, creativity, technique
+and overall. It sees both orders and gives a reason for each pick. A brief counts
+the share of its verdicts the first arm won, with a 95% interval over briefs.
+Every column of the table names the arm whose share it is. A design the app
+would not save counts as no model and loses that brief on every dimension.
+
+**The noise floor: main against main.** We ran two arms of one snapshot,
+`main315a` and `main315b` (main at `bd1eaaf3`), `--via relay` as the owner
+designs, two workers an arm, on the first eleven briefs (2026-10-27, 23:07Z to
+02:20Z). The other nine were held back for time.
+
+| dimension | main315a preferred | 95% interval | main315b preferred |
+|---|---|---|---|
+| likeness | 41% | 18-68% | 59% |
+| realism | 36% | 15-65% | 64% |
+| creativity | 64% | 35-85% | 36% |
+| technique | 41% | 18-68% | 59% |
+| overall | 41% | 18-68% | 59% |
+
+Every interval holds 50%, and the spread across dimensions, 36% to 64%, is luck
+alone. On eleven briefs a lever's own interval clears 50% only when its share is
+about 80% or more. On all twenty it needs about 72%, and a draw's interval is
+30-70%. The judge is not the noise. Its two orders named the same design on 80%
+of dimensions, and the design shown first won 42%. The noise is in the designs.
+Of the nine briefs both arms made, eight went 2/2 on overall to one arm or the
+other, so one brief is close to a coin toss between two runs of the same code. A
+lever smaller than that needs more briefs or more runs a brief.
+
+Sessions ran long. The median was 27 minutes on main315a and 30 on main315b,
+19 to 45 in all. Five of the 22 hit the 45-minute timeout. Eleven briefs took
+6.0 session-hours an arm and 3 h 13 min of wall clock on two workers. Two of the
+22 designs counted as no model, both after a timeout. In each the session had
+built a model, but the app's save refused it: ramen_shop on main315b with a part
+not held, excavator on main315a with a feature not settled. The owner would see
+that model in their tab. The bench reads it as nothing made, and that is part of
+the floor above.
+
 ## Against real sets (2026-10-16)
 
 From 2026-10-16 the bar is real LEGO® sets, judged blind, on subjects no round
