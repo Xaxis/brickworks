@@ -187,6 +187,7 @@ def _in_a_slot(share: list[Idea], args: argparse.Namespace) -> int:
                "--subjects", ",".join(i.id for i in share), "--checkout", str(args.checkout),
                "--timeout", str(args.timeout), "--via", args.via,
                "--instructions", args.instructions,
+               *(["--no-claude-code"] if args.no_claude_code else []),
                *(["--software"] if args.software else []),
                *(["--dry-run"] if args.dry_run else [])]
     log_path = out / f"worker-{share[0].id}.log"
