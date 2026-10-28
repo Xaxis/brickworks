@@ -13,6 +13,51 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-10-28
+
+A release about a second look. When Claude designs something new, a fresh
+pair of eyes now looks at it before it is finished: a Claude session that
+never saw the designing is shown three pictures and the person's whole
+request, and says what reads as a generic box and the three changes a set
+designer would make first. Judged against the same designs without it,
+designs with it were preferred in two of every three verdicts. Parts with
+studs on their sides are no longer read as wider than they are, and the
+Tested mark judges a build by its own parts and its own joints.
+
+### Added
+
+- A fresh pair of eyes at a new design's first save. Claude Code, started
+  on its own and shown only the request and three pictures of the model,
+  names what makes it read as the subject, what reads as a generic box,
+  and the three biggest changes; the designing chat makes them. Where no
+  Claude Code runs, the chat is shown the same pictures and asked the same
+  question, and answers it before it builds on.
+- The fresh eyes judge by the person's whole request, in their own words,
+  and never ask to take away anything it names.
+- Every lot on a model's Parts tab shows its own part, drawn by Brickworks.
+
+### Changed
+
+- A chat through the connector hears the model's sizes once for itself,
+  not once for every tab.
+- A step's parts are counted as a booklet shows them, and a side build
+  counts as one step.
+
+### Fixed
+
+- Claude Code is found where its installer puts it, so an app started from
+  a desktop icon can use it.
+- A part with studs on its side (87087, 4733, 30414) is no longer taken
+  for a wider one: a shape built beside it is told when it would float,
+  and its foot is laid in plates.
+- The Tested mark: a build that tips is let settle and fails only where a
+  joint gives; a part is judged by its own shape, never another's moved
+  out of place; chains are held by their sprockets; and real sets'
+  booklets, colours and joints pass it.
+- Rename or delete stays in reach however many models are saved.
+- On a phone, Build it comes up where it stays, so a finger never lands
+  on the timeline.
+
 ## [0.9.0] - 2026-10-26
 
 A release about the app's own face, and about counting and finding what a
