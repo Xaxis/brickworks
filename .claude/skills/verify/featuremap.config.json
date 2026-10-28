@@ -3512,6 +3512,34 @@
       "entry": "tools/release/releases_repo.sh",
       "reach": "tools/release/releases_repo.sh --dir=DIR   (a dry run: reads, downloads, prints every step; --go only with the owner's yes)",
       "area": "release"
+    },
+    {
+      "kind": "ui",
+      "label": "plans page",
+      "entry": "web/plans.html",
+      "reach": "https://brickworks.diy/plans   (Free, Plus and Creator, the paid two coming soon, education free; Tell me when it's ready opens the interest form, web/plans.js; linked from every page's footer)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "POST /api/plans",
+      "entry": "api/plans.js",
+      "reach": "curl -s -X POST https://brickworks.diy/api/plans -H 'content-type: application/json' -d '{\"email\":\"not-an-email\",\"plan\":\"plus\",\"billing\":\"yearly\"}'   (422 with why; an entry kept or changed by supabase/plan_interest.sql, {email, forget: true} takes it off)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "plans browser flow",
+      "entry": "tools/web/plans_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/plans_flow.mjs --url=<preview> --out=DIR   (live table, a Resend test address forgotten after; --stand-in for no network; preview check [plans])",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "plan interest counts",
+      "entry": "tools/plan_interest.py",
+      "reach": "python3 tools/plan_interest.py   (with .env sourced: how many a plan, monthly or yearly, never an address; --of EMAIL, --forget EMAIL for a person who asks)",
+      "area": "web"
     }
   ]
 }

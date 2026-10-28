@@ -54,6 +54,8 @@ import { noticeGroups } from "../../api/_notifications.js";
 import { LATEST, designersFrom } from "../../api/_follows.js";
 // What a handle may not be, as the API says it (a new account's First steps).
 import { handleTrouble } from "../../api/_names.js";
+// The interest form on /plans, checked as the API checks it, and its words.
+import { GONE, KEPT, entryOf } from "../../api/plans.js";
 // What a person earned (docs/SOCIAL.md U13), worked out as the server works it out.
 import { achievementsOf } from "../../api/people.js";
 // Whose picture is beside their name (supabase/avatars.sql), given as the
@@ -1868,6 +1870,16 @@ function answered({ url, method = "GET", body, state = {} }) {
     case "oauth": return oauth(verb, params, body, who);
     // What you own (api/collection.js): the sets and loose parts.
     case "collection": return who ? answer(200, OWNED_SETS) : answer(401, { error: SIGN_IN });
+    // The interest form (api/plans.js): its refusals in its words, and
+    // anything it takes answered as kept, which nothing here keeps.
+    case "plans": {
+      if (verb !== "POST") return answer(405, { error: "POST {email, plan, billing, note} or {email, forget: true}" });
+      try {
+        return answer(200, { said: entryOf(body).forget ? GONE : KEPT });
+      } catch (trouble) {
+        return answer(422, { error: trouble.message });
+      }
+    }
     default: return null;
   }
 }
