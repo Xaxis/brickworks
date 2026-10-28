@@ -2622,11 +2622,14 @@ env -u ANTHROPIC_API_KEY python3 tools/bench/ideas.py compare --arms main,mine -
 Results land in the main checkout's `bench/results/ideas-<date>-<arm>/<id>/`
 (brief.json, design.json, session.jsonl, design.ldr, views, record.json) and
 `ideas-<date>-<a>-vs-<b>/` (verdicts per brief, report.md). Each stage is skipped
-when its output is there: the same command resumes. Inside an agent's sandbox,
-run each arm as a background task of its own: an arm `setsid`'d from a sandboxed
-shell lost the network once that shell's command ended, and every throwaway
-account timed out (2026-10-27). Outside the sandbox a `setsid` arm reaches
-Supabase as before.
+when its output is there: the same command resumes. When the box loses its route
+to Cloudflare (on and off from about 08:21Z to 10:31Z on 2026-10-28 it reached no
+Cloudflare address: 1.1.1.1, cloudflare.com and the Supabase hosts), every
+throwaway account opened then times out ("no throwaway account:
+ConnectTimeoutError") on every arm at once, and a session under way ends on the
+relay's failed calls (`realset.relay_lost`). Neither is recorded, so the same
+command run again designs it. An agent runs each arm as a background task of its
+own, which it can wait on.
 
 Proves it when: the dry run writes two records and a compare report with two
 verdicts a brief; `test_ideas.py` passes; and main against main, two arms of one

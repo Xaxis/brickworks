@@ -958,6 +958,31 @@ def _session_end(stream: Path) -> dict:
     return {}
 
 
+# What a session's tool call answers when the relay itself could not reach
+# Supabase (tools/web/relay_server.mjs), as Claude Code words it.
+RELAY_LOST = '{"error":"fetch failed"}'
+
+
+def relay_lost(stream: Path) -> bool:
+    """Whether a session ended on the relay's lost connection: its last tool answer is the
+    relay failing to reach Supabase. critic315's excavator stopped so after 8 minutes, said
+    "the Brickworks app stopped answering" and was recorded as a design with no model
+    (2026-10-28), while this box could reach no Cloudflare address, the Supabase hosts
+    among them, on and off from about 08:21Z to 10:31Z, for every arm at once."""
+    last = ""
+    for line in stream.read_text(errors="replace").splitlines() if stream.exists() else []:
+        try:
+            content = (json.loads(line).get("message") or {}).get("content")
+        except (ValueError, AttributeError):
+            continue
+        for block in content if isinstance(content, list) else []:
+            if isinstance(block, dict) and block.get("type") == "tool_result":
+                said = block.get("content")
+                last = (" ".join(b.get("text", "") for b in said if isinstance(b, dict))
+                        if isinstance(said, list) else str(said))
+    return RELAY_LOST in last
+
+
 def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: Path,
                      instructions: str = "all") -> dict:
     """One brief designed as the owner designs: Claude through the connector relay, the
@@ -1027,6 +1052,10 @@ def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: P
             # Claude's service failed (529 Overloaded), not the design: not recorded,
             # so the same command tries it again.
             raise SystemExit(f"design {subject.id}: {str(ended.get('result'))[:160]}")
+        if relay_lost(stream):
+            # Nor did the design end itself: the relay lost Supabase under it.
+            raise SystemExit(f"design {subject.id}: the relay lost Supabase and the session "
+                             "ended on it; not recorded")
         ldr = run_dir / "design.ldr"
         name = f"realset-{subject.id}-{app_port}.ldr"
         saved: dict = {}
