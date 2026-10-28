@@ -4438,9 +4438,12 @@ var chat: String = ""
 
 
 ## A chat begins a sitting in this tab (ClaudeConnector._sitting): it is told
-## the sizes again, as it is told how to work here.
+## the sizes again, as it is told how to work here. Nothing of the last
+## chat's design carries over: an edit-only chat begins no subject, so the
+## eyes left unasked by a chat that designed and never saved would see it.
 func sitting_begun(chat_name: String) -> void:
 	_sizes_said.erase(chat_name)
+	fresh_eyes().begin()
 
 
 ## How big the model actually came out, in studs.
@@ -6249,6 +6252,7 @@ func heard(subject: String, fresh: bool = false) -> void:
 	var said: String = subject.strip_edges()
 	if fresh:
 		_heard_fresh = said
+		fresh_eyes().begin()
 		# What the last design was called is not this one's subject: a
 		# lighthouse after a statue was read as a figure.
 		_begin_subject(_brief if _busy else "")
@@ -20699,6 +20703,17 @@ func tool_catalogue() -> Array:
 	return _tools() + focus_tools() + sketch_tools()
 
 
+## A fresh pair of eyes on a new design from outside, at its first save.
+func fresh_eyes() -> FreshEyes:
+	if _eyes == null:
+		_eyes = FreshEyes.new()
+		_eyes.assistant = self
+	return _eyes
+
+
+var _eyes: FreshEyes = null
+
+
 ## Choosing a sketch, for a session outside the app: in the app's own loop
 ## the person chooses, on the cards in the panel, so the loop is not offered it.
 func sketch_tools() -> Array:
@@ -20763,6 +20778,8 @@ static func gear_ratio_said(args: Dictionary) -> String:
 ## get "Received. Checking it now." for a design that was never checked
 ## and never built.
 func use_tool(name: String, input: Dictionary) -> Variant:
+	var bare: bool = name == "submit_design" and world != null \
+		and world.brick_count() <= scenery.size()
 	var answer: Variant = await _run_tool({"name": name, "input": input})
 	if name != "submit_design" or _pending == null:
 		return answer
@@ -20800,6 +20817,7 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_outside_creative_handed = false
 		_outside_creative = {}
 		surface_pass().reset()
+		fresh_eyes().designed(bare)
 	return _built_from_outside(design, report)
 
 

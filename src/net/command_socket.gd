@@ -1194,9 +1194,13 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 			if assistant != null:
 				written = Assistant._joined(written, assistant.save_advice())
 			# A run's last act is to save: so saving hands back the next
-			# assembly it has not looked at closely, if there is one.
+			# assembly it has not looked at closely, if there is one. A new
+			# design's first save hands back a fresh pair of eyes' three
+			# changes instead (FreshEyes), and the close looks at the next.
 			var more: Variant = ""
 			if assistant != null:
+				more = await assistant.fresh_eyes().after_save()
+			if assistant != null and str(more).is_empty():
 				more = await assistant.next_review()
 			return Assistant._joined(written, more)
 	return "No tool called %s." % tool
