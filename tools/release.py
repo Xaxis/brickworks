@@ -22,7 +22,8 @@ docs/RELEASING.md is the cycle this is part of, and says when to run each.
 The packages carry the whole part library (about a gigabyte of geometry),
 because the desktop app works with no network and the web build cannot.
 That library is not in git, so a release is built on a machine that has
-it, and CI only proves what was built (.github/workflows/release.yml).
+it, and CI only proves what was built (tools/release/releases_repo/release.yml,
+run in the releases repository).
 
 Signing plugs in by environment, from .env or the shell; values are never
 printed. Without them the macOS app is ad-hoc signed and Windows unsigned,
