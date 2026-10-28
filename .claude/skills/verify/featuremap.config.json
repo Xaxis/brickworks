@@ -2002,6 +2002,20 @@
       "area": "assistant"
     },
     {
+      "kind": "lib",
+      "label": "fresh eyes at the first save",
+      "entry": "src/ai/fresh_eyes.gd",
+      "reach": "tools/probe.sh fresh_eyes_probe   (in a window: a stand-in Claude Code asked once at a new design's first save, its three changes said; none on PATH, the save as main's)",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "fresh eyes probe",
+      "entry": "src/dev/fresh_eyes_probe.gd",
+      "reach": "tools/probe.sh fresh_eyes_probe",
+      "area": "assistant"
+    },
+    {
       "kind": "cli",
       "label": "best of two walk probe",
       "entry": "src/dev/best_of_two_walk_probe.gd",

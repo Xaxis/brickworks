@@ -300,35 +300,19 @@ func _pick(text: String) -> Dictionary:
 	return answer if answer is Dictionary else {"error": "no answer"}
 
 
-## The pictures the pick is shown, as the bench took them (src/dev/
-## bench_views.gd): the corner, the front, and the corner's nearest quarter
-## close. Kept in this run's folder, and handed back as content blocks.
+## The pictures the pick is shown (DesignPick.pictures), kept in this run's
+## folder and handed back as content blocks.
 func _views(of: BrickWorld, skip: Dictionary, name: String) -> Array:
 	if _shot == null:
 		_shot = ModelShot.new()
 		_shot.library = library
 		_shot.give_up_after = 120.0
 		add_child(_shot)
-	var bounds := AABB()
-	var first: bool = true
-	for brick: BrickWorld.Brick in of.bricks():
-		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
-		if skip.has(brick.id) or part == null:
-			continue
-		var here: AABB = (brick.transform * part.bounds).abs()
-		bounds = here if first else bounds.merge(here)
-		first = false
-	var middle: Vector3 = bounds.get_center()
-	var close := AABB(Vector3(middle.x, bounds.position.y, middle.z),
-		Vector3(bounds.end.x - middle.x, bounds.size.y, bounds.end.z - middle.z))
+	var images: Array[Image] = await DesignPick.pictures(_shot, of, skip, library)
 	var blocks: Array = []
-	for view: Array in [["corner", "corner", AABB()], ["front", "front", AABB()],
-			["close", "corner", close]]:
-		var image: Image = await _shot.take(of, view[1], skip, view[2])
-		if image == null:
-			return []
-		var path: String = _dir.path_join("%s_%s.png" % [name, view[0]])
-		image.save_png(path)
+	for n: int in images.size():
+		var path: String = _dir.path_join("%s_%s.png" % [name, DesignPick.VIEWS[n]])
+		images[n].save_png(path)
 		blocks.append(DesignPick.picture(path))
 	return blocks
 

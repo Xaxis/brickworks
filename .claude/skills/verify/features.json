@@ -751,6 +751,14 @@
       "tests": []
     },
     {
+      "id": "cli:fresh eyes probe",
+      "kind": "cli",
+      "entry": "src/dev/fresh_eyes_probe.gd",
+      "reach": "tools/probe.sh fresh_eyes_probe",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:gallery browser flow",
       "kind": "cli",
       "entry": "tools/web/gallery_flow.mjs",
@@ -2185,6 +2193,14 @@
       "entry": "api/_follows.js",
       "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/follows.sql --dry --try=tools/follows_try.sql --table=follows   (after the live files; then the follows browser flow)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:fresh eyes at the first save",
+      "kind": "lib",
+      "entry": "src/ai/fresh_eyes.gd",
+      "reach": "tools/probe.sh fresh_eyes_probe   (in a window: a stand-in Claude Code asked once at a new design's first save, its three changes said; none on PATH, the save as main's)",
+      "area": "assistant",
       "tests": []
     },
     {

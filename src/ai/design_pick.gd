@@ -68,6 +68,33 @@ static func message(brief: String, a: Array, b: Array) -> Dictionary:
 	return {"type": "user", "message": {"role": "user", "content": content}}
 
 
+## The three pictures a design is chosen by, in VIEWS order, as the bench took
+## them (src/dev/bench_views.gd): the corner, the front, and the corner's
+## nearest quarter close. Of [param of] without [param skip] (the floor);
+## [] when one could not be taken.
+static func pictures(shot: ModelShot, of: BrickWorld, skip: Dictionary,
+		library: PartLibrary) -> Array[Image]:
+	var bounds := AABB()
+	var first: bool = true
+	for brick: BrickWorld.Brick in of.bricks():
+		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if skip.has(brick.id) or part == null:
+			continue
+		var here: AABB = (brick.transform * part.bounds).abs()
+		bounds = here if first else bounds.merge(here)
+		first = false
+	var middle: Vector3 = bounds.get_center()
+	var close := AABB(Vector3(middle.x, bounds.position.y, middle.z),
+		Vector3(bounds.end.x - middle.x, bounds.size.y, bounds.end.z - middle.z))
+	var taken: Array[Image] = []
+	for view: Array in [["corner", AABB()], ["front", AABB()], ["corner", close]]:
+		var image: Image = await shot.take(of, view[0], skip, view[1])
+		if image == null:
+			return []
+		taken.append(image)
+	return taken
+
+
 ## A PNG file as an image content block.
 static func picture(path: String) -> Dictionary:
 	var png: PackedByteArray = FileAccess.get_file_as_bytes(path)
@@ -78,8 +105,9 @@ static func picture(path: String) -> Dictionary:
 
 
 ## How the session is started: no tools at all, none of the person's MCP
-## servers or settings, nothing kept afterwards, and the answer in SCHEMA.
-static func arguments() -> PackedStringArray:
+## servers or settings, nothing kept afterwards, and the answer in
+## [param schema].
+static func arguments(schema: Dictionary = SCHEMA) -> PackedStringArray:
 	return PackedStringArray([
 		"-p",
 		"--input-format", "stream-json",
@@ -89,23 +117,36 @@ static func arguments() -> PackedStringArray:
 		"--strict-mcp-config",
 		"--restricted",
 		"--no-session-persistence",
-		"--json-schema", JSON.stringify(SCHEMA),
+		"--json-schema", JSON.stringify(schema),
 	])
 
 
 ## Ask once, and wait for the answer: meant for a worker thread.
 ## {keep: "A" or "B", a, b, why, seconds, model, usage}, or {error}.
 func ask(brief: String, a: Array, b: Array) -> Dictionary:
+	var said: Dictionary = put(message(brief, a, b), SCHEMA)
+	if not said.has("result"):
+		return said
+	var found: Dictionary = _answer(said["result"])
+	found["seconds"] = said["seconds"]
+	found["model"] = said["model"]
+	return found
+
+
+## [param message] put to a session of its own, its answer in [param schema],
+## and waited for: meant for a worker thread. {result: the session's result
+## event, seconds, model}, or {error}. FreshEyes asks its question this way.
+func put(message: Dictionary, schema: Dictionary) -> Dictionary:
 	var claude: String = ClaudeCode.found()
 	if claude.is_empty():
 		return {"error": "Claude Code is not installed on this machine."}
 	var started_ms: int = Time.get_ticks_msec()
-	var started: Dictionary = ClaudeCode.start_on_subscription(claude, arguments())
+	var started: Dictionary = ClaudeCode.start_on_subscription(claude, arguments(schema))
 	if not started.has("stdio"):
 		return {"error": "Could not start %s." % claude}
 	_pid = int(started.get("pid", -1))
 	var pipe: FileAccess = started["stdio"]
-	pipe.store_string(JSON.stringify(message(brief, a, b)) + "\n")
+	pipe.store_string(JSON.stringify(message) + "\n")
 	pipe.flush()
 	var found: Dictionary = {"error": "Claude Code stopped without an answer."}
 	var model: String = ""
@@ -123,7 +164,7 @@ func ask(brief: String, a: Array, b: Array) -> Dictionary:
 		if event.get("type") == "system" and event.get("subtype") == "init":
 			model = str(event.get("model", ""))
 		if event.get("type") == "result":
-			found = _answer(event)
+			found = {"result": event}
 			break
 	stop()
 	found["seconds"] = (Time.get_ticks_msec() - started_ms) / 1000.0
