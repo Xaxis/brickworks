@@ -436,8 +436,8 @@
     {
       "kind": "cli",
       "label": "check a release on three systems",
-      "entry": ".github/workflows/release.yml",
-      "reach": "gh workflow run release.yml -f tag=v0.1.0",
+      "entry": "tools/release/releases_repo/release.yml",
+      "reach": "gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.1.0  (its .github/workflows/release.yml there)",
       "area": "release"
     },
     {
@@ -3498,6 +3498,13 @@
       "entry": "src/ui/look.gd",
       "reach": "godot --path .  (every button edged 3:1 on its face; a question's default in the strong blue)",
       "area": "parts"
+    },
+    {
+      "kind": "cli",
+      "label": "move the downloads to the releases repository",
+      "entry": "tools/release/releases_repo.sh",
+      "reach": "tools/release/releases_repo.sh --dir=DIR   (a dry run: reads, downloads, prints every step; --go only with the owner's yes)",
+      "area": "release"
     }
   ]
 }

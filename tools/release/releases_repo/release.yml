@@ -1,5 +1,11 @@
 # Prove a desktop release on the systems it is for.
 #
+# This runs in Xaxis/brickworks-releases, the public repository the
+# releases live in, not in the source: Actions are free on a public
+# repository, and macOS minutes cost ten times Linux's on a private one.
+# Its copy here is the one to edit; tools/release/releases_repo.sh put it
+# there, and a change goes there by hand.
+#
 # The packages are built by tools/release.py on a machine that has the part
 # library: a gigabyte of geometry that is not in git and takes ninety minutes
 # to rebuild, so building here would cost more than it proves. What only a
@@ -7,15 +13,17 @@
 # Windows. Linux is the machine that built it, and docs/RELEASING.md smokes
 # both Linux packages there before the upload.
 #
-# So this downloads what was uploaded to a GitHub release and runs each
+# So this downloads what was uploaded to a release here and runs each
 # package the way a person would, unpacked into a clean home:
 # tools/release.py smoke asks it which build it is, opens the example model
-# and writes it back, and has a session place bricks in it over MCP.
+# and writes it back, and has a session place bricks in it over MCP. Those
+# tools are the source's, checked out from Xaxis/brickworks: once that is
+# private, with BRICKWORKS_SOURCE_TOKEN, a fine-grained token that reads
+# that one repository's contents and nothing else.
 #
 # Run it on the draft, before publishing (docs/RELEASING.md):
-#   gh workflow run release.yml -f tag=v0.1.0
-# Only then: publishing changes no file, so it is not run again, and macOS
-# minutes cost ten times Linux's once the repository is private.
+#   gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.1.0
+# Only then: publishing changes no file, so it is not run again.
 name: release
 
 on:
@@ -57,9 +65,12 @@ jobs:
       # headings are not in it.
       PYTHONUTF8: "1"
     steps:
-      # The checkout's tools, not the tag's: a draft's tag does not exist yet.
+      # The source's tools at its main, not at the tag: the tag here is on
+      # this repository's README, and a draft's does not exist yet.
       - uses: actions/checkout@v4
         with:
+          repository: Xaxis/brickworks
+          token: ${{ secrets.BRICKWORKS_SOURCE_TOKEN || github.token }}
           persist-credentials: false
 
       - uses: actions/setup-python@v5
