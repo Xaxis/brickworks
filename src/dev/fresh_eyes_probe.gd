@@ -18,6 +18,15 @@
 ## stand-in where the installer puts it, ~/.local/bin) still asks it, through
 ## ClaudeCode.found(). In a window, for the pictures.
 ##
+## The subject the eyes are told is the person's request, whole, in their own
+## words: a brief of 1,500 characters reaches their message entire, from a
+## connector chat that passes it as submit_design's brief after naming its
+## subject in a few words of its own, and from Claude Code started on it here
+## (Main.design_with_claude_code), whose session's own brief never replaces
+## the app's copy. A chat that passes none is judged by its own subject, never
+## by the chat's before. Told the session's "taco food truck", the eyes once
+## said to take off the surfboard the brief asked for (critic315).
+##
 ## --dump=FILE writes the no-Claude-Code chat's answers there, and --baseline
 ## runs that chat alone, touching nothing of FreshEyes: run with both on main
 ## (the file copied in) and here, the two files are the same, byte for byte.
@@ -65,12 +74,14 @@ func _run() -> void:
 		await _beside_a_model()
 		await _no_answer()
 		await _from_a_desktop_icon()
+		await _whole_brief_from_a_chat()
+		await _whole_brief_on_the_port()
 	OS.set_environment("PATH", _path)
 	OS.set_environment("HOME", _home)
 
 	print("")
-	print("fresh eyes: asked once at a new design's first save, its changes said; "
-		+ "with no Claude Code, the save as before" if _failures == 0
+	print("fresh eyes: asked once at a new design's first save, its changes said, of the "
+		+ "person's whole brief; with no Claude Code, the save as before" if _failures == 0
 		else "fresh eyes: %d FAILED" % _failures)
 	_main.queue_free()
 	await process_frame
@@ -88,7 +99,8 @@ func _no_claude_code(baseline: bool) -> void:
 	_check("Claude Code is not found", ClaudeCode.found().is_empty())
 	var dump := PackedStringArray()
 	await _call_as("c0", "clear_model", {})
-	var said: Array = await _call_as("c0", "submit_design", _tower())
+	var said: Array = await _call_as("c0", "submit_design", _with_brief(_tower(),
+		_long_brief("A red tower")))
 	dump.append(_text(said))
 	said = await _call_as("c0", "save_model", {"name": "tower0.ldr"})
 	dump.append(_text(said))
@@ -256,6 +268,69 @@ func _from_a_desktop_icon() -> void:
 	OS.set_environment("HOME", _home)
 
 
+## A connector chat names its subject in a few words of its own (plan_scale's
+## "a red tower"), and passes the person's request as submit_design's brief.
+func _whole_brief_from_a_chat() -> void:
+	print("\n── a chat that passes the person's whole brief ──")
+	var brief: String = _long_brief("A red tower")
+	var before: int = _calls()
+	await _call_as("c8", "clear_model", {})
+	await _call_as("c8", "plan_scale", {"subject": "a red tower", "longest_metres": 30})
+	await _call_as("c8", "submit_design", _with_brief(_tower(), brief))
+	var said: Array = await _call_as("c8", "save_model", {"name": "tower8.ldr"})
+	var told: String = _told()
+	_check("the eyes are asked (%d asks) and their changes said" % (_calls() - before),
+		_calls() == before + 1 and _text(said).contains("1. CHANGE-ONE"))
+	_check("...told the person's brief of %d characters whole, last words and all"
+		% brief.length(), brief.length() >= 1500
+		and told.contains("built to this brief: \"%s\"" % brief))
+	_check("...never the chat's own name for it (\"a red tower\", \"A red tower. a slender "
+		+ "red tower\")", not told.contains("brief: \"a red tower") and not told.contains(
+		"brief: \"A red tower. a slender") and not told.contains("a slender red tower"))
+	_check("...and that everything the brief asks for stays: %s"
+		% _line_with(told, "Everything the brief"),
+		told.contains("Everything the brief asks for stays")
+		and told.contains("no change takes one away"))
+	await _call_as("c9", "clear_model", {})
+	await _call_as("c9", "submit_design", _wall())
+	said = await _call_as("c9", "save_model", {"name": "wall9.ldr"})
+	told = _told()
+	_check("the next chat, passing none, is judged by its own subject, not the last brief",
+		_calls() == before + 2 and told.contains("brief: \"A red tower wall. a long low red wall\"")
+		and not told.contains(brief.left(60)))
+
+
+## Claude Code started here on the person's request (Main.design_with_claude_code),
+## on the port: its session passes a few words of its own as the brief, and the
+## eyes are told the app's copy of the person's words.
+func _whole_brief_on_the_port() -> void:
+	print("\n── Claude Code started here on the person's whole brief ──")
+	var brief: String = _long_brief("A red tower by the harbour")
+	var before: int = _calls()
+	var designed: String = _fake.path_join("designed.txt")
+	DirAccess.remove_absolute(designed)
+	_main.set("_commands", _connector.rpc)
+	var started: bool = _main.call("design_with_claude_code", brief)
+	var until: int = Time.get_ticks_msec() + 20000
+	while not FileAccess.file_exists(designed) and Time.get_ticks_msec() < until:
+		await process_frame
+	for _n: int in 10:
+		await process_frame
+	_check("Claude Code is started on the brief of %d characters, whole" % brief.length(),
+		started and FileAccess.get_file_as_string(designed) == brief)
+	await _port_call("clear_model", {})
+	await _port_call("submit_design", _with_brief(_tower(), "a red tower"))
+	var said: Array = await _port_call("save_model", {"name": "tower10.ldr"})
+	var told: String = _told()
+	_check("the eyes are asked (%d asks) and their changes said" % (_calls() - before),
+		_calls() == before + 1 and _text(said).contains("1. CHANGE-ONE"))
+	_check("...told the person's brief whole, last words and all",
+		told.contains("built to this brief: \"%s\"" % brief))
+	_check("...not the session's \"a red tower\" passed as its brief, nor its name",
+		not told.contains("brief: \"a red tower") and not told.contains("a slender red tower"))
+	_main.set("_commands", null)
+
+
 ## A stand-in for Claude Code: it writes down its arguments and the message it
 ## is sent, answers as `claude -p --output-format stream-json` does (or with an
 ## error once its folder has a file called fail), and waits to be stopped. It
@@ -273,6 +348,8 @@ func _stand_in() -> String:
 	var script: String = "\n".join(PackedStringArray([
 		"#!/bin/bash",
 		"dir=\"$(dirname \"$0\")\"",
+		# A design session (Main.design_with_claude_code): its brief, and done.
+		"case \" $* \" in *' --json-schema '*) ;; *) printf '%s' \"$2\" > \"$dir/designed.txt\"; exit 0;; esac",
 		"printf '%s\\n' \"$@\" > \"$dir/args.txt\"",
 		"echo asked >> \"$dir/calls.txt\"",
 		"IFS= read -r line",
@@ -291,6 +368,41 @@ func _stand_in() -> String:
 
 func _calls() -> int:
 	return FileAccess.get_file_as_string(_fake.path_join("calls.txt")).count("asked")
+
+
+## The words the eyes were last sent, ahead of the pictures.
+func _told() -> String:
+	var sent: Variant = JSON.parse_string(FileAccess.get_file_as_string(
+		_fake.path_join("asked.json")))
+	if not sent is Dictionary:
+		return ""
+	return str(((sent as Dictionary)["message"]["content"] as Array)[0].get("text", ""))
+
+
+## A call on the MCP port, as Claude Code started here makes it: no chat, no
+## sitting (CommandSocket.answer_rpc, which the connector's calls go through too).
+func _port_call(tool: String, arguments: Dictionary) -> Array:
+	_next += 1
+	var answer: Variant = await _connector.rpc.answer_rpc({"jsonrpc": "2.0", "id": _next,
+		"method": "tools/call", "params": {"name": tool, "arguments": arguments}})
+	return ((answer as Dictionary).get("result", {}) as Dictionary).get("content", []) as Array
+
+
+## A request of the owner's kind, long: past 1,500 characters, one thing named
+## after another, its last words far past where the eyes once cut it (400).
+static func _long_brief(subject: String) -> String:
+	var said: String = "%s, as I picture it:" % subject
+	var n: int = 0
+	while said.length() < 1480:
+		n += 1
+		said += " detail %d stands where I put it," % n
+	return said + " and the surfboard strapped to its roof."
+
+
+static func _with_brief(design: Dictionary, brief: String) -> Dictionary:
+	var given: Dictionary = design.duplicate()
+	given["brief"] = brief
+	return given
 
 
 ## A call from the relay's chat [param chat], handed over as the tab's

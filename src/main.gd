@@ -2009,9 +2009,9 @@ func design_with_claude_code(brief: String) -> bool:
 		return false
 	# What it was asked for, for the checks to read the subject by: a check
 	# carries no name, and a figure checked before its first submit was read
-	# as a subject of no kind.
+	# as a subject of no kind. The fresh eyes judge by the words whole.
 	if _assistant != null:
-		_assistant.heard(brief, true)
+		_assistant.asked(brief)
 	_claude_code.design(brief, _commands.port(), _commands.tool_names())
 	return true
 
@@ -2049,7 +2049,7 @@ func _second_design(brief: String) -> BestOfTwo:
 			# The first's parts are gone, and what the assistant kept of them;
 			# the subject is the same brief.
 			_assistant.forget_built()
-			_assistant.heard(brief, true)
+			_assistant.asked(brief)
 			_on_model_edited()
 			_camera.frame(_built_bounds())
 		_best_of_two = null)
