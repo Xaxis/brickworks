@@ -441,6 +441,13 @@
       "area": "release"
     },
     {
+      "kind": "cli",
+      "label": "check every release link",
+      "entry": "tools/release/release_links.sh",
+      "reach": "tools/release/release_links.sh [web/releases.json]   (ship.sh runs it before a deploy)",
+      "area": "release"
+    },
+    {
       "kind": "ui",
       "label": "download page",
       "entry": "web/download.html",

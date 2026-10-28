@@ -48,6 +48,13 @@ SHA=$(git rev-parse --short HEAD)
 git -C $R merge-base --is-ancestor main "$SHA" || { echo "SHIP: $SHA does not contain main"; exit 1; }
 unwired=$(unwired_flows main)
 [ -z "$unwired" ] || { echo "SHIP: held, a new flow no check runs:$unwired (name it in preview_checks.sh, or mark it there '# local only: NAME')"; exit 1; }
+# Every download the page and the changelog link to answers, in seconds: a
+# file that 404s fails only the person who clicked it. A manifest naming a
+# repository that does not exist yet, or a source repository made private,
+# breaks them all at once (the releases' move to Xaxis/brickworks-releases,
+# 2026-10-27).
+"$HERE/release_links.sh" "$W/web/releases.json" > "$S/${TAG}_links.out" 2>&1 \
+  || { echo "SHIP: held, a download link does not answer (release_links.sh)"; grep FAIL "$S/${TAG}_links.out" | head -3; exit 1; }
 set -a; . $R/.env; set +a
 # SHIP_REUSE=1: the preview this TAG already made, if it was made from this
 # very commit. A timing check that failed under load held a release twice
