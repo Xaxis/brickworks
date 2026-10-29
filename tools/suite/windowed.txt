@@ -57,3 +57,4 @@ fresh_eyes   # a new design's first save from outside hands the session the thre
 about_credits   # Help, About names every credit and its terms; Tab and Return open Godot's licence and BrickNet's in full (credits337)
 product_render   # Render's Product look: product shaders on the render's copy only, white, gradient and dark backdrops, depth of field, the window's frame cost unchanged (render340)
 library_search   # the library searched as a person types: Ctrl+F, Escape clears, Enter opens the first, nothing found said (search334); by hand, PROBE_SIZE=390x844 tools/probe.sh library_search --phone for the layout for a finger, where Enter only asks
+provider_loop   # a model on an OpenAI-compatible provider designs on the person's key through the app's own MCP tools in process: built, the fresh look answered from its pictures, saved; the adapter and the key's keeping (provider339)
