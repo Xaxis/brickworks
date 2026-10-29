@@ -1,13 +1,14 @@
-// Plans, coming soon (2026-10-28): who would use Plus or Creator, from the
-// interest form on /plans (web/plans.html, web/plans.js).
+// Plans, coming soon (2026-10-28): who would use Pro, from the interest
+// form on /plans (web/plans.html, web/plans.js).
 //
 //   POST /api/plans   {email, plan, billing, note}
-//                     plan "plus" or "creator", billing "monthly" or
-//                     "yearly", note one line of at most 200 characters,
-//                     or none. {said}, the same words whether the address
-//                     was there already or not: a second entry for the
-//                     same plan changes the first (supabase/plan_interest.sql),
-//                     and whether somebody left one is nobody else's to learn.
+//                     plan "pro" (kept as "plus", PLANS below), billing
+//                     "monthly" or "yearly", note one line of at most 200
+//                     characters, or none. {said}, the same words whether
+//                     the address was there already or not: a second entry
+//                     for the same plan changes the first
+//                     (supabase/plan_interest.sql), and whether somebody
+//                     left one is nobody else's to learn.
 //   POST /api/plans   {email, forget: true}
 //                     every entry of that address deleted ("Take my email
 //                     off"). {said}, the same words whether there were any.
@@ -35,7 +36,11 @@ import { AuthError, bearer, verify } from "./_auth.js";
 import { billingMode, currentOffer, entitlementOf, reportOwner } from "./_billing.js";
 import { db, dbConfigured } from "./_db.js";
 
-export const PLANS = ["plus", "creator"];
+// Pro is the one paid plan since 2026-10-29 (docs/PLANS.md, section 1).
+// The table allows only the two the page first asked about, Plus and
+// Creator, and both mean Pro now (section 9), so Pro is kept as 'plus':
+// no SQL, and the counts read as they did (tools/plan_interest.py).
+export const PLANS = { pro: "plus" };
 export const BILLING = ["monthly", "yearly"];
 export const NOTE_MOST = 200;
 // As api/otp.js takes an address: something, an @, something with a dot.
@@ -52,8 +57,9 @@ export function entryOf(body) {
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   if (!EMAIL.test(email) || email.length > 320) throw new Refusal("That is not an email address.");
   if (body?.forget === true) return { email, forget: true };
-  const plan = String(body?.plan || "");
-  if (!PLANS.includes(plan)) throw new Refusal("Choose Plus or Creator.");
+  const asked = String(body?.plan || "");
+  if (!Object.hasOwn(PLANS, asked)) throw new Refusal("Choose Pro.");
+  const plan = PLANS[asked];
   const billing = String(body?.billing || "");
   if (!BILLING.includes(billing)) throw new Refusal("Choose monthly or yearly.");
   if (body?.note !== undefined && body?.note !== null && typeof body.note !== "string") {
