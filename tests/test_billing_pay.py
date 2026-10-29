@@ -299,3 +299,40 @@ def test_the_consent_table_only_adds_and_only_the_server_reads_it() -> None:
     # Four years, and the function the server calls is the one made here.
     assert "interval '4 years'" in plain
     assert set(re.findall(r"rpc/(plan_consent_[a-z]+)", (ROOT / "api/_billing.js").read_text())) == set(made)
+
+
+def deploy(*flags: str, **env: str) -> subprocess.CompletedProcess:
+    """tools/deploy.sh [flags], copied alone into an empty checkout, so no
+    .env is found and no VERCEL_TOKEN: it can stop on its options, or say it
+    has no token, and never deploy anything."""
+    with tempfile.TemporaryDirectory() as made:
+        (Path(made) / "tools").mkdir()
+        shutil.copy(ROOT / "tools/deploy.sh", Path(made) / "tools/deploy.sh")
+        clean = {"PATH": "/usr/bin:/bin", "HOME": made, **env}
+        return subprocess.run(["bash", str(Path(made) / "tools/deploy.sh"), *flags], cwd=made, env=clean,
+                              capture_output=True, text=True, timeout=30)
+
+
+def test_a_unit_preview_tries_the_real_test_mode_only_with_a_test_key() -> None:
+    test_key = "adm_test_" + "Ab3" * 10 + "Cd"
+    live_key = "adm_live_" + "Ab3" * 10 + "Cd"
+    # A unit's preview alone, and never with the stand-in too.
+    assert deploy("--billing-test", ADMISSION_TEST_KEY=test_key).returncode == 2
+    assert deploy("--prod", "--billing-test", ADMISSION_TEST_KEY=test_key).returncode == 2
+    assert deploy("--unit", "--billing-test", "--billing-stand-in", ADMISSION_TEST_KEY=test_key).returncode == 2
+    # No key, a live key, or a webhook secret that is not one: refused
+    # before anything is asked of Vercel.
+    for env in ({}, {"ADMISSION_TEST_KEY": live_key}, {"ADMISSION_TEST_KEY": "adm_test_short"},
+                {"ADMISSION_TEST_KEY": test_key, "ADMISSION_TEST_WEBHOOK_SECRET": "whsec_stripe"}):
+        done = deploy("--unit", "--billing-test", **env)
+        assert done.returncode == 2, (env, done.stdout)
+        assert "--billing-test needs an adm_test_ key" in done.stdout or "not an adm_whsec_" in done.stdout
+        assert live_key not in done.stdout + done.stderr
+    # A test key, with or without a webhook secret, gets past the options
+    # to the token, which this empty checkout has none of; the key is
+    # never printed.
+    for env in ({"ADMISSION_TEST_KEY": test_key},
+                {"ADMISSION_TEST_KEY": test_key, "ADMISSION_TEST_WEBHOOK_SECRET": "adm_whsec_" + "x" * 32}):
+        done = deploy("--unit", "--billing-test", **env)
+        assert done.returncode == 1 and "no VERCEL_TOKEN" in done.stdout, done.stdout
+        assert test_key not in done.stdout + done.stderr
