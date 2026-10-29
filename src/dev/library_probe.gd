@@ -432,7 +432,8 @@ func _search(dialog: LibraryDialog, words: String) -> void:
 	var field: LineEdit = dialog.get("_search")
 	field.text = words
 	var asked: int = int(dialog.get("_asked"))
-	field.text_submitted.emit(words)
+	# Typed, not entered: Enter opens the first found (library_search_probe).
+	field.text_changed.emit(words)
 	await _until(func() -> bool: return int(dialog.last.get("asked", 0)) > asked, 20.0)
 	await _frames(2)
 

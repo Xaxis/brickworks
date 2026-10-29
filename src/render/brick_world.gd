@@ -26,6 +26,22 @@ const SHADERS := {
 	"trans_two_sided": preload("res://src/render/plastic_trans_two_sided.gdshader"),
 }
 
+## Each plastic shader's variant in the product look (plastic_body's
+## PLASTIC_PRODUCT), for a world set [member product].
+const PRODUCT_SHADERS := {
+	preload("res://src/render/plastic.gdshader"): preload("res://src/render/plastic_product.gdshader"),
+	preload("res://src/render/plastic_two_sided.gdshader"):
+		preload("res://src/render/plastic_product_two_sided.gdshader"),
+	preload("res://src/render/plastic_trans.gdshader"):
+		preload("res://src/render/plastic_product_trans.gdshader"),
+	preload("res://src/render/plastic_trans_two_sided.gdshader"):
+		preload("res://src/render/plastic_product_trans_two_sided.gdshader"),
+	preload("res://src/render/plastic_print.gdshader"):
+		preload("res://src/render/plastic_product_print.gdshader"),
+	preload("res://src/render/plastic_print_two_sided.gdshader"):
+		preload("res://src/render/plastic_product_print_two_sided.gdshader"),
+}
+
 ## How a surface is drawn. Transparent plastic needs a different blend mode
 ## and draw order, so it cannot share a batch with opaque plastic even when
 ## the geometry is identical.
@@ -117,6 +133,11 @@ var _dirty: Dictionary = {}          ## String key -> true
 var _next_id: int = 1
 var _rebuild_queued: bool = false
 var _materials: Dictionary = {}      ## int MaterialClass -> ShaderMaterial
+## Drawn as a product shot (StudioRender's Product look): every batch made
+## from here on in the PRODUCT_SHADERS. Only a render's copy of the model
+## sets it, before its first brick; the window's never does.
+var product: bool = false
+
 
 ## Emitted after a deferred rebuild settles, with the current totals.
 signal rebuilt(brick_count: int, batch_count: int, triangle_count: int)
@@ -795,10 +816,24 @@ func _create_batch(
 	# A print drawn in the app is a picture on its surface (PartPrints).
 	if part.prints.has(surface_index) and material_class == MaterialClass.OPAQUE:
 		material = PartPrints.material_for(material, part.prints[surface_index], two_sided)
+	if product:
+		material.shader = PRODUCT_SHADERS.get(material.shader, material.shader)
+		material.set_shader_parameter("part_body_top", _body_top(part))
 	batch.instance.material_override = material
 	add_child(batch.instance)
 	batch.triangles = _triangles_of(part.surfaces[surface_index])
 	return batch
+
+
+## Where a part's body ends at the top, under its studs, in its own
+## coordinates: the top of its box when it has no studs on top.
+static func _body_top(part: Lbm.PartMesh) -> float:
+	var top: float = part.bounds.end.y
+	for connector: Lbm.Connector in part.connectors:
+		if connector.kind == "stud" and connector.gender == "male" and connector.axis.y > 0.9 \
+				and connector.position.y > top - 6.0:
+			return top - 4.0
+	return top
 
 
 func _mark_dirty(key: String) -> void:

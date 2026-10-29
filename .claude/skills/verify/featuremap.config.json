@@ -3560,7 +3560,7 @@
       "kind": "lib",
       "label": "plans from Admission",
       "entry": "api/_billing.js",
-      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, Claude builds and desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
+      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, AI builds and desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
       "area": "web"
     },
     {
@@ -3604,6 +3604,48 @@
       "entry": "src/dev/docs_menus.gd",
       "reach": "godot --headless --path . --script src/dev/docs_menus.gd -- --menus-to=docs-site/generated/menus.json   (tests/test_docs_site.py says when it is due)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "product look",
+      "entry": "src/render/plastic_product.gdshader",
+      "reach": "tools/probe.sh product_render_probe  (windowed, on the GPU: Render's Product look draws in the product shaders, each backdrop as named, depth of field softens, the window's frame cost and environment unchanged; sixteen colour swatches on the white sweep against LDraw: black black, the colours and clear colours near their own, no shadow hatching)  /  tools/probe.sh render_probe -- --model=models/sports_car.ldr --look=product --gradient=1 --backdrop=#f5f6f8 --quality=best --size=1280x720 --picture=OUT.png",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "library search",
+      "entry": "src/ui/library_dialog.gd",
+      "reach": "godot --path .  (File, Library…: the search first, edged, with a magnifier; asked as you type; Ctrl+F comes to it, Escape clears it, Enter opens the first found (on a phone Enter only asks); words that find nothing are said where the covers were, with Clear the search, the filters let go and the other shelf)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "library search probe",
+      "entry": "src/dev/library_search_probe.gd",
+      "reach": "tools/probe.sh library_search_probe   (a window; serves tests/fixtures/library on 8934; -- --phone for the layout for a finger, PROBE_SIZE=390x844 for a phone's pictures)",
+      "area": "model-io"
+    },
+    {
+      "kind": "lib",
+      "label": "designing with any provider on the person's key",
+      "entry": "src/ai/designer_loop.gd",
+      "reach": "tools/probe.sh provider_loop_probe   (in a window: an OpenAI-compatible stub provider designs through the app's own MCP tools in process, answers the fresh look from its three pictures and saves; the Chat Completions adapter and the key's keeping read without a network)",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "design with another provider from a brief",
+      "entry": "src/main.gd",
+      "reach": "godot --path . -- --ask-provider=\"a red tower\" --provider=openai --provider-model=gpt-6.1-sol [--provider-base=URL] [--out=FILE]   (the key from the provider's environment variable or the one kept; never printed)",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "provider loop probe",
+      "entry": "src/dev/provider_loop_probe.gd",
+      "reach": "tools/probe.sh provider_loop_probe",
+      "area": "assistant"
     }
   ]
 }
