@@ -13,6 +13,17 @@ whole cycle.
 
 ## [Unreleased]
 
+### Added
+
+- Designing with another provider's model on your own key, the first part of
+  it. A model on OpenAI, or on any server that speaks OpenAI's Chat
+  Completions (OpenRouter, Groq, Together, Mistral, DeepSeek, Gemini, or Ollama,
+  LM Studio and vLLM on your own computer), is given the same instructions
+  and tools Claude is, builds in the window, and answers the same fresh look
+  at its first save. Your key goes from your computer to the provider and
+  nowhere else. From the command line for now (`--ask-provider`); the
+  settings to choose a provider in the app come next (docs/PROVIDERS.md).
+
 ## [0.10.0] - 2026-10-28
 
 A release about a second look. When Claude designs something new, a fresh

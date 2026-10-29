@@ -347,7 +347,9 @@ What a model needs, from what the tools ask of it:
 **How the app tells a person.** Three ways, in order of cost:
 
 1. What the provider says, where it says it: OpenRouter's model list (tools
-   and image input per model, as above); an Ollama model's capabilities.
+   and image input per model, as above); for a server on the person's
+   computer, whatever its own listing says of a model (Ollama's and LM
+   Studio's, which P7 reads and checks against Test).
 2. **Test**, beside the model in the panel: two small requests, one that must
    call a tool, one with a 32-pixel picture of one colour to name. It says
    "Calls tools: yes. Sees pictures: yes." or what is missing, in words, and is
@@ -454,8 +456,13 @@ answer is a rate limit. The probe checks the model is built, the fresh look
 asked and answered in the judge's shape, the design saved, every request
 carrying the key, the app's instructions and all its tools, view_model's
 picture and the fresh look's three reaching the model, and the key in no log.
-No OpenAI key was in `.env` on 2026-10-29, so no real model was run; with one,
-`--ask-provider` runs a real design (section 9).
+No key for OpenAI, OpenRouter, Gemini, Groq, Mistral, DeepSeek, Together or
+xAI was in `.env` on 2026-10-29, so no real model was run; with one,
+`--ask-provider` runs a real design (section 9). The command line itself was
+run against the stub, headless: `provider ok=true bricks=6 replies=7 calls=7`,
+the model written to `--out` with its 6 parts, the key shown only as its
+fingerprint (headless there are no pictures, so the fresh look is not asked,
+as on any headless run).
 
 ## 9. Running it by hand
 
