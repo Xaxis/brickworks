@@ -3540,6 +3540,20 @@
       "entry": "tools/plan_interest.py",
       "reach": "python3 tools/plan_interest.py   (with .env sourced: how many a plan, monthly or yearly, never an address; --of EMAIL, --forget EMAIL for a person who asks)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "about and the licences",
+      "entry": "src/ui/credits.gd",
+      "reach": "godot --path .  (Help, About Brickworks: every credit with its terms; Godot's licence and notices, BrickNet's licence open in full)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "about credits probe",
+      "entry": "src/dev/about_credits_probe.gd",
+      "reach": "tools/probe.sh about_credits_probe -- --shots=DIR",
+      "area": "release"
     }
   ]
 }
