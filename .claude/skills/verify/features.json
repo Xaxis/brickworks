@@ -83,6 +83,14 @@
       "tests": []
     },
     {
+      "id": "api:GET /api/plans",
+      "kind": "api",
+      "entry": "api/plans.js",
+      "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan; off, 405 as before)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "api:GET/POST /api/people",
       "kind": "api",
       "entry": "api/people.js",
@@ -174,6 +182,14 @@
       "entry": "tools/web/art_flow.mjs",
       "reach": "node tools/web/art_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=shots/art_web",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:about credits probe",
+      "kind": "cli",
+      "entry": "src/dev/about_credits_probe.gd",
+      "reach": "tools/probe.sh about_credits_probe -- --shots=DIR",
+      "area": "release",
       "tests": []
     },
     {
@@ -378,6 +394,7 @@
       "reach": "node tools/viewer/build.mjs --deps=DIR [--check]   (DIR: three@0.186.1 and esbuild@0.28.2 installed apart, as its head says; writes api/_viewer_page.js)",
       "area": "mcp",
       "tests": [
+        "tests/test_billing.py",
         "tests/test_brickbench.py",
         "tests/test_update_parts.py"
       ]
@@ -887,6 +904,14 @@
       "kind": "cli",
       "entry": "src/dev/library_probe.gd",
       "reach": "tools/probe.sh library_probe   (a window; starts tools/web/serve.py --library tests/fixtures/library on 8901 and two more copies of the app, and stops them)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:library search probe",
+      "kind": "cli",
+      "entry": "src/dev/library_search_probe.gd",
+      "reach": "tools/probe.sh library_search_probe   (a window; serves tests/fixtures/library on 8934; -- --phone for the layout for a finger, PROBE_SIZE=390x844 for a phone's pictures)",
       "area": "model-io",
       "tests": []
     },
@@ -2273,7 +2298,7 @@
       "id": "lib:fresh eyes at the first save",
       "kind": "lib",
       "entry": "src/ai/fresh_eyes.gd",
-      "reach": "tools/probe.sh fresh_eyes_probe   (in a window: a stand-in Claude Code asked once at a new design's first save, its three changes said; none found, the session's own look asked with the three pictures and answered with fresh_eyes)",
+      "reach": "tools/probe.sh fresh_eyes_probe   (in a window: a new design's first save hands the session the three pictures and the judge's question, answered with fresh_eyes before any other call, once a subject; with a stand-in Claude Code on PATH, never started for it, and with none)",
       "area": "assistant",
       "tests": []
     },
@@ -2492,6 +2517,14 @@
       "tests": []
     },
     {
+      "id": "lib:plans from Admission",
+      "kind": "lib",
+      "entry": "api/_billing.js",
+      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, Claude builds and desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:playing motions",
       "kind": "lib",
       "entry": "src/assembly/motion_player.gd",
@@ -2703,6 +2736,14 @@
       "entry": "src/assembly/swing.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=swing   (by hand: on a beam hung on a pin without friction ridges, drag it out and let go; it swings and comes to rest hanging)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "lib:the Admission client",
+      "kind": "lib",
+      "entry": "api/_admission.js",
+      "reach": "UPSTREAM.md   (Admission's packages/client, its types taken out; tests/test_billing.py runs it against tests/fixtures/billing/fake_admission.mjs)",
+      "area": "web",
       "tests": []
     },
     {
@@ -2951,6 +2992,14 @@
       "entry": "api/_parts.js",
       "reach": "https://brickworks.diy/m/<id>#parts (Parts: by Colour or Kind, Show all; BrickLink XML /m/<id>/parts.xml, Rebrickable CSV /m/<id>/parts.csv, the list /m/<id>/parts.json; Download /m/<id>.mpd, /m/<id>/v/<n>.mpd)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:about and the licences",
+      "kind": "ui",
+      "entry": "src/ui/credits.gd",
+      "reach": "godot --path .  (Help, About Brickworks: every credit with its terms; Godot's licence and notices, BrickNet's licence open in full)",
+      "area": "release",
       "tests": []
     },
     {
@@ -3339,6 +3388,14 @@
       "kind": "ui",
       "entry": "src/ui/library_dialog.gd",
       "reach": "godot --path .  (File, Library\u2026, or File, Open\u2026, From the library\u2026: LDraw sets and Community, searched, filtered, Open in a new tab or window)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "ui:library search",
+      "kind": "ui",
+      "entry": "src/ui/library_dialog.gd",
+      "reach": "godot --path .  (File, Library\u2026: the search first, edged, with a magnifier; asked as you type; Ctrl+F comes to it, Escape clears it, Enter opens the first found (on a phone Enter only asks); words that find nothing are said where the covers were, with Clear the search, the filters let go and the other shelf)",
       "area": "model-io",
       "tests": []
     },

@@ -54,6 +54,13 @@ var _save_as_name: LineEdit
 var _about: AcceptDialog
 ## About's words, beside the mark.
 var _about_text: Label
+## Its trademark notice, under the credits.
+var _about_marks: Label
+## Its words, credits and notice, scrolled where the window is short.
+var _about_scroll: ScrollContainer
+## A licence in full, opened from About, and its words.
+var _licence: AcceptDialog
+var _licence_text: TextEdit
 
 
 class Command extends RefCounted:
@@ -321,11 +328,29 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	mark.custom_minimum_size = Vector2(72, 72)
 	mark.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	about_row.add_child(mark)
+	# The words, whose work is in Brickworks and on what terms (Credits),
+	# and the trademark notice, scrolled: OK stays on a short window's
+	# screen and a phone's.
+	_about_scroll = ScrollContainer.new()
+	_about_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_about_scroll.follow_focus = true
+	_about_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	about_row.add_child(_about_scroll)
+	var about_column := VBoxContainer.new()
+	about_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	about_column.add_theme_constant_override("separation", 14)
+	_about_scroll.add_child(about_column)
 	_about_text = Label.new()
 	_about_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_about_text.custom_minimum_size = Vector2(380, 0)
 	_about_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	about_row.add_child(_about_text)
+	about_column.add_child(_about_text)
+	about_column.add_child(_credits())
+	_about_marks = Label.new()
+	_about_marks.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_about_marks.add_theme_font_size_override("font_size", 12)
+	_about_marks.modulate = Color(1, 1, 1, 0.75)
+	about_column.add_child(_about_marks)
 	_about.add_child(about_row)
 	add_child(_about)
 
@@ -1500,16 +1525,118 @@ func _toggle_full_screen() -> void:
 		else DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 
+## About's width, as it was with the mark beside its words.
+const ABOUT_WIDE := 600
+
+
 func _show_about() -> void:
 	_about_text.text = ("Brickworks %s\n\nA complete CAD for LEGO® models, built by hand"
 		+ (" or with the assistant" if assistant_shown else "")
-		+ ", on the web or on your own computer.\n\n%s\n\n"
-		+ "Part geometry from the LDraw™ Parts Library, CC BY 2.0 and CC BY 4.0.\n"
-		+ "Part colliders and connector labels from BrickNet (Kulits and Schmid, 2026), MIT License.\n"
-		+ "LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this app. "
-		+ "LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group.") % [
+		+ ", on the web or on your own computer.\n\n%s") % [
 		BuildInfo.version(), BuildInfo.describe()]
-	_about.popup_centered(Vector2i(520, 0))
+	_about_marks.text = ("LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this app. "
+		+ "LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group.")
+	_about_scroll.scroll_vertical = 0
+	_about_scroll.custom_minimum_size.y = _about_room()
+	_about.popup_centered(Vector2i(ABOUT_WIDE, 0))
+	if not Phone.on():
+		_fit_about.call_deferred()
+
+
+## What About's words have room for: most of the window's height, the
+## rest of them scrolled.
+func _about_room() -> float:
+	return get_viewport().get_visible_rect().size.y * 0.6
+
+
+## On a desktop, About only as tall as what it says once that is laid out
+## at its width, where the window has room for it all. A phone's sheet
+## keeps its room: what it says is always taller there.
+func _fit_about() -> void:
+	await get_tree().process_frame
+	if not _about.visible:
+		return
+	var said: Control = _about_scroll.get_child(0)
+	var tall: float = minf(said.get_combined_minimum_size().y, _about_room())
+	if absf(tall - _about_scroll.custom_minimum_size.y) < 1.0:
+		return
+	_about_scroll.custom_minimum_size.y = tall
+	_about.size = Vector2i(ABOUT_WIDE, 0)
+	_about.move_to_center()
+
+
+## Help, About's list of whose work is in Brickworks (Credits): each one's
+## name, its licence to read in full or its links, and what of it is here
+## on what terms. Each link is a button, so Tab reaches it (Access) and a
+## screen reader says its words.
+func _credits() -> VBoxContainer:
+	var list := VBoxContainer.new()
+	list.name = "credits"
+	list.add_theme_constant_override("separation", 10)
+	var head := Label.new()
+	head.text = "Made with"
+	head.add_theme_font_size_override("font_size", 12)
+	head.modulate = Color(1, 1, 1, 0.75)
+	list.add_child(head)
+	for one: Dictionary in Credits.LIST:
+		var id: String = one["id"]
+		var entry := VBoxContainer.new()
+		entry.name = "credit_" + id
+		entry.add_theme_constant_override("separation", 2)
+		var top := HFlowContainer.new()
+		top.add_theme_constant_override("h_separation", 14)
+		var named := Label.new()
+		named.text = one["name"]
+		top.add_child(named)
+		if not str(one["full"]).is_empty():
+			var read: LinkButton = Look.link(one["full"])
+			read.name = "read_" + id
+			read.pressed.connect(_read_licence.bind(id))
+			top.add_child(read)
+		for link: Array in one["links"]:
+			var address: String = link[1]
+			var away: LinkButton = Look.link(str(link[0]))
+			away.tooltip_text = address
+			away.pressed.connect(func() -> void: OS.shell_open(address))
+			top.add_child(away)
+		entry.add_child(top)
+		var words := Label.new()
+		words.text = "%s %s" % [one["what"], one["terms"]]
+		words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.add_theme_font_size_override("font_size", 12)
+		words.modulate = Color(1, 1, 1, 0.75)
+		entry.add_child(words)
+		list.add_child(entry)
+	return list
+
+
+## A licence in full, over About (Credits.full_text): a page the keys
+## scroll and a screen reader reads, the same on the web, where there is
+## no file beside the app to open.
+func _read_licence(id: String) -> void:
+	if _licence == null:
+		_licence = AcceptDialog.new()
+		_licence.ok_button_text = "Close"
+		_licence_text = TextEdit.new()
+		_licence_text.editable = false
+		_licence_text.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+		_licence_text.custom_minimum_size = Vector2(ABOUT_WIDE, 420)
+		_licence_text.add_theme_font_size_override("font_size", 12)
+		# Read only, not greyed: it is there to be read.
+		_licence_text.add_theme_color_override("font_readonly_color",
+			_licence_text.get_theme_color("font_color"))
+		_licence.add_child(_licence_text)
+		# Over About, which holds the keys while it shows.
+		_about.add_child(_licence)
+	var one: Dictionary = Credits.find(id)
+	_licence.title = str(one["full"])
+	_licence_text.accessibility_name = str(one["full"])
+	_licence_text.text = Credits.full_text(id)
+	_licence_text.set_caret_line(0)
+	_licence_text.scroll_vertical = 0
+	_licence.popup_centered()
+	_licence_text.grab_focus.call_deferred()
 
 
 ## View, Floor: what the model stands on (ModelFloor, FloorLayer). Each a
@@ -2254,6 +2381,16 @@ func controls_by_name() -> Dictionary:
 		out["save_as_name"] = _save_as_name
 		out["save_as_ok"] = _save_as.get_ok_button()
 		out["save_as_cancel"] = _save_as.get_cancel_button()
+	# About's links to the licences in full, and the licence open.
+	if _about != null and _about.visible:
+		out["about_ok"] = _about.get_ok_button()
+		for one: Dictionary in Credits.LIST:
+			var read: Node = _about.find_child("read_" + str(one["id"]), true, false)
+			if read != null:
+				out["about_" + read.name] = read
+	if _licence != null and _licence.visible:
+		out["licence_text"] = _licence_text
+		out["licence_close"] = _licence.get_ok_button()
 	return out
 
 

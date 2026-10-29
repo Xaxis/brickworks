@@ -3,7 +3,8 @@
     "vendor/**",
     "assets/**",
     "build/**",
-    "shots/**"
+    "shots/**",
+    "tests/fixtures/billing/**"
   ],
   "manual": [
     {
@@ -2012,7 +2013,7 @@
       "kind": "lib",
       "label": "fresh eyes at the first save",
       "entry": "src/ai/fresh_eyes.gd",
-      "reach": "tools/probe.sh fresh_eyes_probe   (in a window: a stand-in Claude Code asked once at a new design's first save, its three changes said; none found, the session's own look asked with the three pictures and answered with fresh_eyes)",
+      "reach": "tools/probe.sh fresh_eyes_probe   (in a window: a new design's first save hands the session the three pictures and the judge's question, answered with fresh_eyes before any other call, once a subject; with a stand-in Claude Code on PATH, never started for it, and with none)",
       "area": "assistant"
     },
     {
@@ -3561,6 +3562,55 @@
       "entry": "tools/plan_interest.py",
       "reach": "python3 tools/plan_interest.py   (with .env sourced: how many a plan, monthly or yearly, never an address; --of EMAIL, --forget EMAIL for a person who asks)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "about and the licences",
+      "entry": "src/ui/credits.gd",
+      "reach": "godot --path .  (Help, About Brickworks: every credit with its terms; Godot's licence and notices, BrickNet's licence open in full)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "about credits probe",
+      "entry": "src/dev/about_credits_probe.gd",
+      "reach": "tools/probe.sh about_credits_probe -- --shots=DIR",
+      "area": "release"
+    },
+    {
+      "kind": "lib",
+      "label": "plans from Admission",
+      "entry": "api/_billing.js",
+      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, Claude builds and desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the Admission client",
+      "entry": "api/_admission.js",
+      "reach": "UPSTREAM.md   (Admission's packages/client, its types taken out; tests/test_billing.py runs it against tests/fixtures/billing/fake_admission.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "GET /api/plans",
+      "entry": "api/plans.js",
+      "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan; off, 405 as before)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "library search",
+      "entry": "src/ui/library_dialog.gd",
+      "reach": "godot --path .  (File, Library…: the search first, edged, with a magnifier; asked as you type; Ctrl+F comes to it, Escape clears it, Enter opens the first found (on a phone Enter only asks); words that find nothing are said where the covers were, with Clear the search, the filters let go and the other shelf)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "library search probe",
+      "entry": "src/dev/library_search_probe.gd",
+      "reach": "tools/probe.sh library_search_probe   (a window; serves tests/fixtures/library on 8934; -- --phone for the layout for a finger, PROBE_SIZE=390x844 for a phone's pictures)",
+      "area": "model-io"
     }
   ]
 }

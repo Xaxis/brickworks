@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow -->
 
 ## Sub-features
 
@@ -2519,6 +2519,16 @@ plan with Claude as the client.
   address a plan, ten tries an hour from one place (an HMAC of its address,
   kept a day). The owner reads counts only; linked from every page's footer
   and in the sitemap; /privacy#plans says what it keeps.
+- `plans from Admission` (`api/_billing.js`), `the Admission client`
+  (`api/_admission.js`, UPSTREAM.md) and `GET /api/plans` (`api/plans.js`,
+  `supabase/admission_snapshots.sql`): Free and Pro from Admission, built
+  dark (2026-10-29, docs/PLANS.md unit U1, billing336). BRICKWORKS_BILLING
+  is the one switch: off (unset) asks nothing and limits nothing; test or
+  live with its own kind of ADMISSION_KEY reads an account's plan, Claude
+  builds (10 a month on Free) and the desktop flag, keyed by the Supabase
+  user id of the session. Snapshots go in a server-only table, so a cold
+  instance answers a paying person while Admission is down; with none, the
+  answer is `unknown` and refuses nothing.
 - `compare media` (`tools/web/compare_media.mjs`): retakes every picture and clip
   of `/compare` from the live app in a real, headed Chromium window on
   SwiftShader, its tabs and address bar in the picture (ffmpeg's x11grab):
@@ -4617,6 +4627,32 @@ changed (still one row), and taken off (none left), the address forgotten
 at the end whatever happened. Before the SQL is applied the form says it
 is not open yet and the flow fails, saying so. The counts:
 `set -a; . ./.env; set +a; python3 tools/plan_interest.py`.
+
+### Plans from Admission (BRICKWORKS_BILLING), built dark
+
+No network: the real client against a stand-in Admission and Supabase
+(`tests/fixtures/billing/`), every request recorded.
+
+```sh
+python3 tools/minitest.py tests/test_billing.py
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/admission_snapshots.sql --dry --try=tools/admission_snapshots_try.sql --table=admission_snapshots
+```
+
+The tests pass when all do: Free with 10 builds and none used (and none
+left at 10 used), Pro with no limit and the desktop, a comp until its date,
+the owner (MASTER_EMAIL) reported and given everything, a cold instance
+answering from the database's snapshot while Admission is down (Pro stays
+Pro, Free stays at its limit), no snapshot answered `unknown` (refuses
+nothing), and with the switch off, or a mode without its own kind of key,
+not one request and a GET to /api/plans refused with 405 as before. The
+dry run: the table empty, row security with no policy, both functions the
+server's alone, a snapshot kept and kept over, a key not the client's
+refused, a row 90 days old gone at the next write, anon and signed-in
+refused. On a deployment, only with the switch on for it alone
+(`--env BRICKWORKS_BILLING=test --env ADMISSION_KEY=<adm_test_ key>`, never
+on the project): `curl -s <deployment>/api/plans` is the offer, and
+`/api/plans?op=plan` with a test account's session is its plan, Free and
+`builds.limit` 10, `standing` "known", `freshness` "live".
 
 ### The site for everyone: axe, names and the keyboard
 

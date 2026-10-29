@@ -85,35 +85,34 @@ fixing what it got wrong.
 - `fresh eyes at the first save`: `src/ai/fresh_eyes.gd`. A session from outside
   (the MCP port, the connector) whose new design went down on a bare baseplate
   (`Assistant.use_tool`'s submit, the example a tab opens on taken off first by
-  `make_room`) is, at its first whole save, handed a fresh pair
-  of eyes' answer in place of the close looks, which come at the next save:
-  Claude Code (`DesignPick.put`, no tools, nothing kept, `FreshEyes.SCHEMA`)
-  shown the subject and `DesignPick.pictures` (corner, front, close) and
-  nothing of the session, saying what it reads as, what reads as generic, and
-  three changes, none of which takes away what the brief asks for. The subject
-  is the person's request, whole, in their own words (`FreshEyes.subject_of`,
-  up to `SUBJECT_MOST`): the brief Claude Code was started on here
-  (`Assistant.asked`), else what a connector chat passed as submit_design's
-  `brief` (the tab never hears the person), else the session's own words for
-  it, as before. Once a subject (`Assistant.heard`, fresh), whatever comes of
-  it, and begun again with each chat's sitting (`Assistant.sitting_begun`), so an
-  edit-only chat never gets the eyes on the last chat's unsaved design; never a
-  chat about a selection or beside the person's own model. No pictures or no
-  answer in `MOST_S`: the save is main's, byte for byte. The log says
-  `fresh eyes: S s (model): {...}`. No Claude Code (found as the app's designer
-  finds it, `ClaudeCode.found()`: on PATH, else where its installers put it;
-  never in a browser, design317): the session's own look (`FreshEyes.own_look`),
-  the save handing it the same three pictures and the eyes' question; every
-  call but `fresh_eyes` (served only there, `FreshEyes.tools`) and a save is
-  refused until it answers in the eyes' shape, at most `MOST_REFUSED` times
-  (`not_yet`, in `CommandSocket._call`). The log says `fresh eyes: no Claude
-  Code here ...` and `fresh eyes: the session's own look (N refused): {...}`.
-  `fresh_eyes_probe` (a stand-in `claude` on PATH, then in a home's .local/bin
-  with PATH=/usr/bin:/bin as a desktop icon starts the app, then none at all;
-  a 1,500-character brief reaches the eyes whole from a chat and from
-  `Main.design_with_claude_code`; `--baseline --dump=FILE` on another checkout
-  gives main's answers and tool list with Claude Code, to compare byte for byte).
-  Through the relay as a browser tab: `realset.py run --via relay --no-claude-code`.
+  `make_room`) is, at its first whole save, handed a fresh look in place of the
+  close looks, which come at the next save: `DesignPick.pictures` (corner,
+  front, close) and the judge's question (`FreshEyes.prompt`), framed as a
+  judge shown only the subject and the pictures is asked it, saying what it
+  reads as, what reads as generic, and three changes, none of which takes away
+  what the brief asks for. Every call but `fresh_eyes` (`FreshEyes.definition`,
+  always served, its `CommandSocket.HINTS` row read-only) and a save is refused
+  until it answers in that shape, at most `MOST_REFUSED` times (`not_yet`, in
+  `CommandSocket._call`). The same with Claude Code on the machine or without:
+  a separate Claude Code critic asked the same question did no better
+  (design328: 23% against the set to the own look's 24%, 49% head to head) and
+  was removed (design330). The subject is the person's request, whole, in
+  their own words (`FreshEyes.subject_of`, up to `SUBJECT_MOST`): the brief
+  Claude Code was started on here (`Assistant.asked`), else what a connector
+  chat passed as submit_design's `brief` (the tab never hears the person),
+  else the session's own words for it, as before. Once a subject
+  (`Assistant.heard`, fresh), whatever comes of it, and begun again with each
+  chat's sitting (`Assistant.sitting_begun`), so an edit-only chat never gets
+  the eyes on the last chat's unsaved design; never a chat about a selection
+  or beside the person's own model. No pictures: the save is main's. The log
+  says `fresh eyes: the session's own look asked, with 3 pictures`, then
+  `fresh eyes: the session's own look (N refused): {...}`.
+  `fresh_eyes_probe` (a stand-in `claude` on PATH that writes down every start,
+  never started by the look; then none at all, as a browser tab; a
+  1,500-character brief reaches the question whole from a chat and from
+  `Main.design_with_claude_code`). Through the relay:
+  `realset.py run --via relay` (with `--no-claude-code` as a browser tab); its
+  `godot_design.log` shows the own look and no `fresh eyes: N s (claude-...)`.
 - `the check by real shapes`: `src/ai/exact_check.gd` over `src/assembly/exact.gd`,
   called from `Assistant._check`, so every check, edit, submission, review and save
   has it: each part BrickNet has is its convex colliders and connector labels

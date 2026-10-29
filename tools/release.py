@@ -57,7 +57,7 @@ import urllib.request
 import zipfile
 import zlib
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 ROOT = Path(__file__).resolve().parent.parent
 # Where the packages are published: a public repository of builds only, so
@@ -94,6 +94,21 @@ TOOLS = {
 
 SIGNING_NAMES = ("APPLE_SIGN_P12", "APPLE_SIGN_P12_PASSWORD", "APPLE_NOTARY_KEY",
                  "APPLE_NOTARY_KEY_ID", "APPLE_NOTARY_ISSUER", "WINDOWS_SIGN_COMMAND")
+
+
+# The licence texts every package carries beside the app (extras), and what
+# THIRD-PARTY-NOTICES.txt must say for them to be whole: each licence's own
+# words that a copy has to carry. Credits.notices writes it from the list
+# Help, About shows (tools/release_notices.gd); inspect reads it back out of
+# every package.
+LICENCE_FILES = ("ATTRIBUTION.md", "THIRD-PARTY-NOTICES.txt")
+NOTICES_SAY = {
+    "Godot's licence": "Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md)",
+    "its components' notices": "== Components ==",
+    "BrickNet's MIT text": "Copyright (c) 2026 Peter Kulits\n\nPermission is hereby granted",
+    "LDraw's notice": "the LDraw community, licensed under CC BY 2.0 and CC BY 4.0",
+    "Rebrickable's credit": "Catalog data: Rebrickable",
+}
 
 
 class Failed(Exception):
@@ -372,6 +387,34 @@ def notices(target: Path) -> None:
                           capture_output=True, text=True).returncode
     if code != 0 or not target.exists():
         raise Failed("could not write the engine's notices")
+    lacking = notices_lacking(target.read_text())
+    if lacking:
+        raise Failed("THIRD-PARTY-NOTICES.txt lacks %s" % ", ".join(lacking))
+
+
+def notices_lacking(text: str) -> list[str]:
+    """What of NOTICES_SAY a THIRD-PARTY-NOTICES.txt does not say."""
+    return [what for what, words in NOTICES_SAY.items() if words not in text]
+
+
+def licences(read: Callable[[str], bytes | None]) -> dict[str, Any]:
+    """The licence texts a package carries: [read] gives a file beside the
+    app by its name, or None. What is lacking, files or words, is named."""
+    texts = {name: read(name) for name in LICENCE_FILES}
+    notices = texts["THIRD-PARTY-NOTICES.txt"]
+    lacking = [name for name, data in texts.items() if not data]
+    if notices:
+        lacking += notices_lacking(notices.decode("utf-8", "replace"))
+    return {"files": [name for name, data in texts.items() if data],
+            "notices": len(notices or b""), "lacking": lacking}
+
+
+def say_licences(package: str, facts: dict[str, Any]) -> None:
+    said = [what for what in NOTICES_SAY if what not in facts["lacking"]]
+    say("      licences: %s; the notices (%s) say %s" % (
+        ", ".join(facts["files"]) or "none", human(facts["notices"]), ", ".join(said) or "nothing"))
+    if facts["lacking"]:
+        raise Failed("%s lacks %s" % (package, ", ".join(facts["lacking"])))
 
 
 def readme(platform: str, version: str, date: str, signed: dict[str, bool]) -> str:
@@ -418,7 +461,9 @@ def readme(platform: str, version: str, date: str, signed: dict[str, bool]) -> s
                   "windows": "Brickworks.console.exe"}[platform], "",
               "LEGO(R) is a trademark of the LEGO Group of companies which does not",
               "sponsor, authorize or endorse this app. Part geometry is derived",
-              "from the LDraw(TM) Parts Library; see ATTRIBUTION.md.", ""]
+              "from the LDraw(TM) Parts Library; see ATTRIBUTION.md.", "",
+              "Help, About in the app names everyone whose work it is made with;",
+              "THIRD-PARTY-NOTICES.txt carries their licences in full.", ""]
     return "\n".join(lines)
 
 
@@ -817,16 +862,31 @@ def glibc_needed(data: bytes) -> str:
 
 
 def inspect_tar(path: Path) -> dict[str, Any]:
+    # One pass through the stream, each file read as it is reached: a read
+    # back from the end decompresses the whole archive again.
+    members = []
+    binary = None
+    data = b""
+    beside: dict[str, bytes] = {}
     with tarfile.open(path) as archive:
-        members = archive.getmembers()
-        tops = {member.name.split("/")[0] for member in members}
-        binary = next(m for m in members if m.name.endswith("/brickworks.x86_64"))
-        handle = archive.extractfile(binary)
-        data = handle.read() if handle else b""
+        for member in archive:
+            members.append(member)
+            leaf = member.name.split("/", 1)[-1]
+            if member.name.endswith("/brickworks.x86_64") or leaf in LICENCE_FILES:
+                handle = archive.extractfile(member)
+                read = handle.read() if handle else b""
+                if leaf in LICENCE_FILES:
+                    beside[leaf] = read
+                else:
+                    binary, data = member, read
+    if binary is None:
+        raise Failed("%s has no brickworks.x86_64" % path.name)
+    tops = {member.name.split("/")[0] for member in members}
     names = sorted(member.name.split("/", 1)[1] for member in members if "/" in member.name)
     return {"folder": sorted(tops), "contents": names,
             "executable": bool(binary.mode & 0o111), "glibc": glibc_needed(data),
-            "unpacked": sum(member.size for member in members)}
+            "unpacked": sum(member.size for member in members),
+            "licences": licences(beside.get)}
 
 
 def inspect_appimage(path: Path) -> dict[str, Any]:
@@ -846,6 +906,12 @@ def inspect_appimage(path: Path) -> dict[str, Any]:
                                  capture_output=True, text=True).stdout
         facts["contents"] = sorted(line.split("squashfs-root/", 1)[1]
                                    for line in listing.splitlines() if "squashfs-root/" in line)
+
+        def read(name: str) -> bytes | None:
+            got = subprocess.run(["unsquashfs", "-o", str(squash), "-cat", str(path),
+                                  "usr/share/doc/brickworks/" + name], capture_output=True)
+            return got.stdout if got.returncode == 0 else None
+        facts["licences"] = licences(read)
     return facts
 
 
@@ -853,6 +919,9 @@ def inspect_mac(path: Path) -> dict[str, Any]:
     with zipfile.ZipFile(path) as archive:
         names = archive.namelist()
         prefix = next(name for name in names if name.endswith("Brickworks.app/"))
+        beside = prefix[:-len("Brickworks.app/")]
+        texts = licences(lambda name: archive.read(beside + name)
+                         if beside + name in names else None)
         plist = plistlib.loads(archive.read(prefix + "Contents/Info.plist"))
         binary_name = plist.get("CFBundleExecutable", "Brickworks")
         binary = prefix + "Contents/MacOS/" + binary_name
@@ -871,6 +940,7 @@ def inspect_mac(path: Path) -> dict[str, Any]:
         "pck": any(name.endswith("Contents/Resources/Brickworks.pck") for name in names),
         "top": sorted({name.split("/")[0] for name in names}),
         "unpacked": unpacked,
+        "licences": texts,
     })
     return facts
 
@@ -883,10 +953,13 @@ def inspect_windows(path: Path) -> dict[str, Any]:
             if name.endswith(".exe"):
                 exes[name.split("/")[-1]] = pe_facts(archive.read(name))
         unpacked = sum(info.file_size for info in archive.infolist())
-    return {"top": sorted({name.split("/")[0] for name in names}),
+        tops = sorted({name.split("/")[0] for name in names})
+        texts = licences(lambda name: archive.read(tops[0] + "/" + name)
+                         if len(tops) == 1 and tops[0] + "/" + name in names else None)
+    return {"top": tops,
             "contents": sorted(name.split("/", 1)[1] for name in names
                                if "/" in name and name.split("/", 1)[1]),
-            "exes": exes, "unpacked": unpacked}
+            "exes": exes, "unpacked": unpacked, "licences": texts}
 
 
 def inspect(out: Path) -> list[dict[str, Any]]:
@@ -911,6 +984,7 @@ def inspect(out: Path) -> list[dict[str, Any]]:
                 path.name, human(entry["size"]), human(facts["unpacked"]),
                 "yes" if facts["executable"] else "NO", facts["glibc"]))
             say("      " + ", ".join(facts["contents"]))
+            say_licences(path.name, facts["licences"])
             if not facts["executable"]:
                 raise Failed("%s: the binary lost its executable bit" % path.name)
         elif path.name.endswith(".AppImage"):
@@ -919,6 +993,7 @@ def inspect(out: Path) -> list[dict[str, Any]]:
                 "yes" if facts["elf"] else "NO", "yes" if facts["executable"] else "NO"))
             if facts.get("contents"):
                 say("      " + ", ".join(facts["contents"]))
+                say_licences(path.name, facts["licences"])
         elif "-macos-" in path.name:
             facts = inspect_mac(path)
             say("  %s  %s, unpacks to %s" % (path.name, human(entry["size"]),
@@ -929,6 +1004,7 @@ def inspect(out: Path) -> list[dict[str, Any]]:
             say("      signature %s; sealed %s; notarisation ticket %s; executable %s; "
                 "pck inside %s" % (facts["signature"], facts["sealed"], facts["stapled"],
                                    facts["executable"], facts["pck"]))
+            say_licences(path.name, facts["licences"])
             if not facts["executable"]:
                 raise Failed("%s: the app's binary lost its executable bit" % path.name)
             if facts["version"] != version:
@@ -948,6 +1024,7 @@ def inspect(out: Path) -> list[dict[str, Any]]:
             for exe, about in facts["exes"].items():
                 say("      %s: %s, %s, version %s, %s" % (exe, about["machine"], about["subsystem"],
                     about["version"], "signed" if about["signed"] else "unsigned"))
+            say_licences(path.name, facts["licences"])
             if not facts["exes"]:
                 raise Failed("%s has no .exe in it" % path.name)
         else:
