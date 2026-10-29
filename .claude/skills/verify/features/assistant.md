@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, cli:test designs on the owner's own ideas -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, cli:test designs on the owner's own ideas -->
 
 ## Sub-features
 
@@ -113,6 +113,30 @@ fixing what it got wrong.
   `Main.design_with_claude_code`). Through the relay:
   `realset.py run --via relay` (with `--no-claude-code` as a browser tab); its
   `godot_design.log` shows the own look and no `fresh eyes: N s (claude-...)`.
+- `designing with any provider on the person's key`: `src/ai/designer_loop.gd`
+  (`DesignerLoop`), `src/ai/provider.gd` (the adapter's shape and the
+  transcript), `src/ai/openai_chat.gd` (Chat Completions: OpenAI and every
+  compatible server), `src/ai/provider_settings.gd` (presets, the key kept per
+  provider on the device or for the visit, never printed). The app's own MCP
+  client for any model: `initialize`, `tools/list` and every `tools/call`
+  through `CommandSocket.answer_rpc` in process, exactly as Claude's calls run,
+  so the fresh look, jobs and one history step a call are the same. Chat
+  Completions takes no picture in a tool's answer, so a turn's pictures follow
+  its tool messages in one user message. A job is waited for by the loop
+  (`job` until it ends). `Main.design_with_provider` (refused while Claude Code
+  or another design runs); `--ask-provider=BRIEF --provider=ID
+  --provider-model=M --provider-base=URL --provider-effort=E` from a command
+  line. `provider_loop_probe` (in a window) drives a whole design against
+  `tools/provider_stub.py`, an OpenAI-compatible stub as strict as OpenAI about
+  call pairing and pictures, its first answer a 429: 6 parts built, the fresh
+  look asked with 3 pictures and answered, `stub-tower.ldr` saved, 8 requests
+  (429 then 7 answered) each with the key, the app's instructions and all 61
+  tools, view_model's picture and the look's three reaching the model, and the
+  key in no log; then the adapter and the key's keeping read without a network.
+  A real model by hand: `OPENAI_API_KEY=… godot --path . -- --ask-provider="a
+  small red lighthouse" --provider=openai --provider-model=gpt-6.1-sol` prints
+  each call, `provider ok=… bricks=… replies=… calls=…` and the tokens.
+  `docs/PROVIDERS.md` is the research and the units left.
 - `the check by real shapes`: `src/ai/exact_check.gd` over `src/assembly/exact.gd`,
   called from `Assistant._check`, so every check, edit, submission, review and save
   has it: each part BrickNet has is its convex colliders and connector labels
