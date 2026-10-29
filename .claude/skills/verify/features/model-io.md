@@ -457,8 +457,8 @@ Whether what you built is still there tomorrow, and still means the same thing.
   window with `--library=omr-106-1` (killed at once); Enter on nothing opens
   nothing; 50 synthetic sets put in the index read page with the words kept.
   `-- --phone` (with `PROBE_SIZE=390x844` for a phone's pictures) runs the
-  same in the layout for a finger, where Enter only asks. Both in the suite
-  (`windowed.txt`). Pictures `shots/library_search_*.png`. Passed 38 checks
+  same in the layout for a finger, where Enter only asks. The desktop run is
+  in the suite (`windowed.txt`, a probe once only); the phone run by hand. Pictures `shots/library_search_*.png`. Passed 38 checks
   on the desktop and 37 at 390 x 844 on the phone layout, 0 failures
   (2026-10-29, search334).
 - `library browser flow`: `tools/web/library_flow.mjs`, wired into
