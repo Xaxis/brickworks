@@ -3576,6 +3576,27 @@
       "entry": "api/plans.js",
       "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan; off, 405 as before)",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "designing with any provider on the person's key",
+      "entry": "src/ai/designer_loop.gd",
+      "reach": "tools/probe.sh provider_loop_probe   (in a window: an OpenAI-compatible stub provider designs through the app's own MCP tools in process, answers the fresh look from its three pictures and saves; the Chat Completions adapter and the key's keeping read without a network)",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "design with another provider from a brief",
+      "entry": "src/main.gd",
+      "reach": "godot --path . -- --ask-provider=\"a red tower\" --provider=openai --provider-model=gpt-6.1-sol [--provider-base=URL] [--out=FILE]   (the key from the provider's environment variable or the one kept; never printed)",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "provider loop probe",
+      "entry": "src/dev/provider_loop_probe.gd",
+      "reach": "tools/probe.sh provider_loop_probe",
+      "area": "assistant"
     }
   ]
 }
