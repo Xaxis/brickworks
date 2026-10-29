@@ -234,6 +234,10 @@ declare -A CMD=(
   # quota a run, and Claude's answers vary, so a release cannot wait on it.
   # tabpair above holds the same rules with scripted chats. Run it by hand
   # after a change to the relay's tabs or the connector (its header says how).
+  # local only: relay_timing.mjs. A measure with no verdict: what a call
+  # through the relay costs when the tab answers at once, median and p90
+  # (relay338). It runs against a preview too; run it after a change to
+  # the relay's queue (its header says how).
   [people]="tools/web/people_flow.mjs --url=$P --out=$S/${TAG}_people"
   # A person's page (/u/<handle>, docs/SOCIAL.md U5): a throwaway designer
   # lists two models and chooses links, a banner and pins (op=showcase, its

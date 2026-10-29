@@ -1501,6 +1501,14 @@
       "tests": []
     },
     {
+      "id": "cli:relay timing",
+      "kind": "cli",
+      "entry": "tools/web/relay_timing.mjs",
+      "reach": "node tools/web/relay_server.mjs 8790, then node tools/web/relay_timing.mjs --url=http://127.0.0.1:8790 [--rounds=4]   (with .env sourced; or --url=<preview> with BW_BYPASS)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:reload browser flow",
       "kind": "cli",
       "entry": "tools/web/reload_flow.mjs",
