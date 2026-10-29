@@ -18,8 +18,21 @@
 // owner writes once, when the plan opens, and until then reads only the
 // counts (tools/plan_interest.py). Where a request came from is kept only
 // as a key nobody can turn back into the address, for a day, to count it.
+//
+// And the plans themselves, from Admission (api/_billing.js), only while
+// BRICKWORKS_BILLING is test or live; off, a GET is refused as it always
+// was:
+//
+//   GET /api/plans           what Free and Pro offer, and whether Pro is
+//                            for sale: {billing, free, pro, forSale}
+//   GET /api/plans?op=plan   the signed-in account's own (a session, as
+//                            "Authorization: Bearer …"): {billing,
+//                            standing, plan, owner, builds, desktop,
+//                            subscription, freshness}; 401 without one
 
 import { createHmac } from "node:crypto";
+import { AuthError, bearer, verify } from "./_auth.js";
+import { billingMode, currentOffer, entitlementOf, reportOwner } from "./_billing.js";
 import { db, dbConfigured } from "./_db.js";
 
 export const PLANS = ["plus", "creator"];
@@ -74,10 +87,28 @@ function bodyOf(request) {
 const say = (response, status, error) => response.status(status).json({ error });
 const rpc = (name, body) => db(`rpc/${name}`, { method: "POST", body });
 
+/// A GET while billing is on: the offer, or the signed-in account's plan,
+/// the owner's reported to Admission first.
+async function planned(request, response) {
+  const op = String(request.query?.op || "");
+  if (op === "") return response.status(200).json(await currentOffer());
+  if (op !== "plan") return say(response, 404, "GET /api/plans, or /api/plans?op=plan signed in");
+  let claims;
+  try {
+    claims = await verify(bearer(request), request);
+  } catch (trouble) {
+    if (trouble instanceof AuthError) return say(response, trouble.status, trouble.message);
+    throw trouble;
+  }
+  await reportOwner(claims);
+  return response.status(200).json(await entitlementOf(claims.sub));
+}
+
 export default async function handler(request, response) {
   // Asked only by the site's own page: no cross-origin answer, and nothing
   // kept by any cache.
   response.setHeader("Cache-Control", "no-store");
+  if (request.method === "GET" && billingMode() !== "off") return planned(request, response);
   if (request.method !== "POST") return say(response, 405, "POST {email, plan, billing, note} or {email, forget: true}");
   let entry;
   try {
