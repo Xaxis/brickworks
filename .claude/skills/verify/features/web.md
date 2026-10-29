@@ -334,8 +334,10 @@ plan with Claude as the client.
   answered a call in the last minute (`relay_tabs.answered_at`,
   `supabase/relay_cost.sql`). A call reads which tools its tab serves from
   the tab's row (`relay_tabs.list`, written beside the hello, nulled by a
-  trigger when a hello is written without it), not the 248 KB hello. The
-  same answers: 42 of 42
+  trigger when a hello is written without it), not the 248 KB hello. Both
+  columns only once that file is applied: whether they are there is asked
+  once an instance (`columns()`), and again a minute after a no, so until
+  then the relay runs as it did without them. The same answers: 42 of 42
   identical to the relay before, for a scripted 40 calls with the headless
   app as the tab.
 - `two windows probe` (`src/dev/tabpair_probe.gd -- 8790`): the desktop's side
