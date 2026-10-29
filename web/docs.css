@@ -73,7 +73,11 @@
 .docs-search-open { gap: var(--s-2); color: var(--ink-soft); }
 .docs-search-open svg { flex: none; }
 .docs-search-open.wide { width: 100%; justify-content: flex-start; margin: 0 0 var(--s-2); background: var(--field); }
-.docs-search-open.wide > kbd.keys { margin-left: auto; }
+.docs-search-open.wide > kbd.keys { margin-left: auto; flex-wrap: nowrap; }
+.docs-search-open.wide > span { white-space: nowrap; }
+@media (width < 900px) {
+	.docs-search-open.wide { display: none; }
+}
 
 /* -- the page ---------------------------------------------------------- */
 
@@ -218,7 +222,8 @@ dialog.docs-search {
 dialog.docs-search[open] { display: flex; }
 .docs-search-box { display: flex; align-items: center; gap: var(--s-2); padding: var(--s-3); border-bottom: 1px solid var(--line); }
 .docs-search-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-dialog form label.docs-search-field { display: flex; flex: 1; align-items: center; gap: var(--s-2); margin: 0; color: var(--ink-faint); }
+dialog form label.docs-search-field { display: flex; flex: 1; min-width: 0; align-items: center; gap: var(--s-2); margin: 0; color: var(--ink-faint); }
+.docs-search-box .cta { flex: none; }
 .docs-search-field input { flex: 1; min-width: 0; }
 .docs-search-said { margin: 0; padding: 0 var(--s-4); font-size: var(--t-small); }
 .docs-search-said:not(:empty) { padding: var(--s-3) var(--s-4) 0; }

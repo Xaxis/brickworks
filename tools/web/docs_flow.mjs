@@ -165,7 +165,9 @@ for (const [width, dark] of [[1400, false], [390, true]]) {
   check(`${width} ${theme}: Ctrl+K opens search with the box focused`, opened);
   for (const [query, want] of [["fresh eyes", "/docs/fresh-eyes"], ["Build together", "/docs/build-together"]]) {
     await page.fill("dialog.docs-search input", query);
-    const first = await page.waitForFunction(() => document.querySelector(".docs-results li a")?.getAttribute("href"), null, { timeout: 6000 })
+    // The results for this query, not the last one's still on screen.
+    const first = await page.waitForFunction((q) => document.querySelector(".docs-results")?.dataset.for === q
+      && document.querySelector(".docs-results li a")?.getAttribute("href"), query, { timeout: 6000 })
       .then((h) => h.jsonValue(), () => "");
     check(`"${query}" finds ${want} first`, first.split("#")[0] === want, first);
     if (query === "fresh eyes" && width === 1400) await page.screenshot({ path: `${out}/search_${width}_${theme}.png` });

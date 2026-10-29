@@ -158,6 +158,7 @@
       <b>${escape(row.h || row.p)}</b>${snippet(row, terms)}</a></li>`).join("");
     said.textContent = found.length ? `${found.length === 20 ? "The first 20" : found.length} result${found.length === 1 ? "" : "s"}` : `Nothing found for “${input.value.trim()}”.`;
     input.setAttribute("aria-expanded", String(found.length > 0));
+    list.dataset.for = input.value.trim();
     active = -1;
     if (found.length) choose(0);
   }

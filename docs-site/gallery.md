@@ -12,9 +12,11 @@ api:GET/POST /api/share
 lib:directory
 -->
 
+![The gallery: Top, New and Collections, the kinds as pills, Filters, and the models as cards, each with its designer, part count and Tested mark.](/img/docs-gallery.webp "brickworks.diy/gallery")
+
 ## Tabs and filters {#tabs}
 
-- **Top** puts first the models most people have built, over this week, this month or all time; **New** the newest; **Following**, signed in, the people you follow.
+- **Top** puts first the models most people have built, over this week, this month or all time; **New** the newest; **Following**, signed in, the people you follow; **Collections** the [directory of collections](/docs/collections#directory).
 - **Kinds** are pills across the top: buildings, vehicles, space, Technic and more.
 - **Filters** opens a sheet: the order, the size, how it was made (by hand, with Claude, from the LDraw library), with instructions, Technic, and **Tested** only.
 - Search by a name, a builder, a tag or a description. The address keeps it all (`/gallery?q=castle&kind=space&sort=newest`), so a search can be shared.

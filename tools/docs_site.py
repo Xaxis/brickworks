@@ -103,6 +103,8 @@ def inline(text: str) -> str:
 def plain(fragment: str) -> str:
     """The words of some HTML, as search reads them."""
     text = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", fragment, flags=re.S)
+    # A tag inside a line of words joins them; any other parts them.
+    text = re.sub(r"</?(?:a|code|strong|em|kbd|span|b|i|small|mark)\b[^>]*>", "", text)
     text = re.sub(r"<[^>]+>", " ", text)
     return re.sub(r"\s+", " ", html.unescape(text)).strip()
 
@@ -739,7 +741,7 @@ def document(nav: list[dict], pages: dict[str, Page], order: list[Page], page: P
 <button type="button" class="docs-search-open" data-docs-search aria-label="Search the docs">{ICON_SEARCH}<span>Search</span></button>
 </div>
 <nav class="docs-side" id="docs-side" aria-label="Documentation">
-<button type="button" class="docs-search-open wide" data-docs-search aria-keyshortcuts="Control+K Meta+K">{ICON_SEARCH}<span>Search the docs</span><kbd class="keys"><kbd>Ctrl</kbd><kbd>K</kbd></kbd></button>
+<button type="button" class="docs-search-open wide" data-docs-search aria-keyshortcuts="Control+K Meta+K" aria-label="Search the docs">{ICON_SEARCH}<span>Search</span><kbd class="keys"><kbd>Ctrl</kbd><kbd>K</kbd></kbd></button>
 {sidebar(nav, pages, page)}
 </nav>
 <main id="main" class="docs-main" tabindex="-1">

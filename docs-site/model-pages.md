@@ -10,9 +10,11 @@ Every shared model has a page at `brickworks.diy/m/<id>`, which anyone can open 
 ui:shared model page and card
 -->
 
+![A model's page: its picture with View in 3D, its tabs, and beside it Build it, Open in Brickworks, Download and the action bar.](/img/docs-model.webp "A shared model's page.")
+
 ## The viewer {#viewer}
 
-The model opens in 3D at the top of its page: turn it, zoom, look from any side, step through its build, and open its booklet and parts list. In the app, `/app?view=<id>` opens the same model to look at; nothing there can change it.
+**View in 3D** on its picture opens the model in 3D: turn it, zoom, look from any side, step through its build, and open its booklet and parts list. In the app, `/app?view=<id>` opens the same model to look at; nothing there can change it.
 
 <!-- covers
 ui:shared model viewer
@@ -37,7 +39,7 @@ ui:play in a shared model
 
 ## Pictures and tabs {#tabs}
 
-Under the picture is a strip: the published picture, its owner's photos and photos of real builds people sent; choose one to see it large. Its owner can **Add a picture**. Then the tabs: **About**, **Comments**, **Builds**, **Remixes**, **Versions** and **Parts**.
+Under the picture is a strip: the published picture, its owner's photos and photos of real builds people sent; choose one to see it large. Its owner can **Add a picture**. Then the tabs: **About**, **Parts**, **Comments**, **Builds**, **Remixes**, **Collections**, and **Versions** once it has more than one.
 
 <!-- covers
 ui:model page pictures and tabs
@@ -45,10 +47,11 @@ ui:model page pictures and tabs
 
 ## The action bar {#actions}
 
+- **Build it**, **Open in Brickworks** (a copy in your own models) and **Download** are first.
 - **Like** and **Save** (to your Favourites or one of [your collections](/docs/collections)) sign you in on the way if they need to.
 - **Share** copies the link, or opens your device's share sheet.
 - **Comment** goes to the comments.
-- **I built it** says you built it, with a photo of your build if you like; the photo is cleaned of what the camera wrote into it before it is kept.
+- **Built** (I built it) says you built it, with a photo of your build if you like; the photo is cleaned of what the camera wrote into it before it is kept.
 - **More** has the code to embed the model in a page of your own (`/m/<id>/embed`) and **Report it**.
 - On your own model's page, **Enter this month's challenge** sits under Like ([the challenge](/docs/challenges)).
 
