@@ -19,6 +19,18 @@
 ##          shadows, real occlusion and real depth of field, on either
 ##          renderer.
 ##
+## And two looks. "window" draws the plastic as the window does. "product"
+## (RenderSettings.look) is a product shot's: the copy of the model drawn in
+## plastic_body's PLASTIC_PRODUCT shaders (a gloss over the plastic, edges
+## rounded where they catch the light, chrome and metal reflecting the
+## studio, clear parts that bend what is behind them), lit by a key, a fill
+## and a rim over a softbox studio's own light (an HDR panorama, which is
+## also what everything glossy reflects), with screen-space bounce light
+## and reflections on the desktop, and graded through AgX, a film-like
+## tone curve, rather than ACES. The window itself is never touched: its
+## plastic, its environment and its frame cost are the same either way.
+## docs/RENDERING.md says what it reaches and what is left.
+##
 ## Off screen, in viewports of its own with a copy of the model, so the
 ## window keeps drawing and answering: a frame of the render is a frame of
 ## the app, and the work is cut into frames (one sample of one piece of the
@@ -75,6 +87,22 @@ const RIG: Array = [
 	[Vector3(-0.647, 0.418, -0.637), 0.2, false, 0.3, Color(0.95, 0.96, 1.0)],
 	[Vector3(-0.642, 0.552, 0.532), 0.3, false, 0.3, Color(1, 0.96, 0.9)],
 ]
+## The product look's key, fill and rim, as RIG: the key the window's own,
+## a fill low on the camera's left, and a rim from behind and above that
+## draws a line of light along every top edge and stud.
+const PRODUCT_RIG: Array = [
+	[Vector3(0.479, 0.659, 0.579), 1.0, true, 0.5, Color(1, 0.98, 0.95)],
+	[Vector3(-0.93, 0.355, 0.087), 0.32, false, 0.15, Color(0.94, 0.96, 1.0)],
+	[Vector3(0.62, 0.66, -0.425), 0.55, false, 1.0, Color(1, 1, 1)],
+]
+## The softbox studio the product look's plastic reflects and is lit by,
+## when no photographed place is chosen.
+const PRODUCT_SKY := "softbox"
+## How far the product look's sweep falls away, from under the model to the
+## edge of the picture: a gradient's, and a dark backdrop's pool of light.
+const FALL_GRADIENT := 0.42
+const FALL_DARK := 0.8
+
 ## Which way CadCamera's starting view faces, from the model towards the
 ## eye, as a turn about the vertical: the rig is set for it.
 const RIG_HEADING := -0.6108652  # -35 degrees
@@ -861,7 +889,7 @@ static func _draw_alone(views: Array) -> void:
 ## is there already is it.
 func _stage_model(world: BrickWorld) -> bool:
 	var wanted: Array = [world.get_instance_id(), world.generation(), world.revision,
-		scenery.size(), scenery.hash(), _hidden_hash(world)]
+		scenery.size(), scenery.hash(), _hidden_hash(world), _stage.product]
 	if wanted == _staged:
 		return true
 	_staged = []
@@ -917,6 +945,7 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 	if not _built:
 		await _build()
 	_stage.library = library
+	_stage.product = settings.look == "product"
 	progress.emit(0.0, "setting up the model")
 	if not await _stage_model(world):
 		return false
@@ -1206,12 +1235,20 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	var radius: float = _bounds.size.length() * 0.5
 	var reach: float = (shot.origin - _bounds.get_center()).length() + radius * 2.5
 
+	var product: bool = settings.look == "product"
 	var panorama: StudioPanorama = _panorama(settings.lighting)
+	# What the product look's plastic reflects and is lit by besides its
+	# three lights, when no photographed place is: a softbox studio. Only on
+	# the desktop, whose sky lights as it should (see below).
+	var reflected: StudioPanorama = panorama
+	if product and panorama == null and full:
+		reflected = _panorama(PRODUCT_SKY)
+		_panorama_in_use = null
 	# One environment for each way of lighting, kept and changed rather than
 	# made again: in a browser each new one drawn for the first time held the
 	# page for seconds, at the start of every draft.
-	var key: String = "%s %s %s %s" % [settings.lighting, plan.gi, plan.occlusion,
-		plan.sky_samples]
+	var key: String = "%s %s %s %s %s" % [settings.lighting, plan.gi, plan.occlusion,
+		plan.sky_samples, settings.look]
 	var environment: Environment = _environments.get(key)
 	if environment == null:
 		environment = look.duplicate() if look != null else Environment.new()
@@ -1227,13 +1264,13 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 			environment.ambient_light_color = Color(0.86, 0.86, 0.87)
 			environment.tonemap_mode = Environment.TONE_MAPPER_ACES
 			environment.tonemap_white = 6.0
-		if panorama != null and full:
+		if reflected != null and full:
 			var sky := Sky.new()
 			var material := PanoramaSkyMaterial.new()
-			material.panorama = panorama.texture
+			material.panorama = reflected.texture
 			# As bright as the window's light whatever the place: its
 			# average brought to one, and the exposure metered after.
-			material.energy_multiplier = HDRI_LEVEL / maxf(panorama.average, 0.0001)
+			material.energy_multiplier = HDRI_LEVEL / maxf(reflected.average, 0.0001)
 			sky.sky_material = material
 			environment.sky = sky
 			environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
@@ -1260,6 +1297,27 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 			# like a second sun, and the probe measured the model half as
 			# light again as the window draws it, its reds gone to pink.
 			environment.sdfgi_energy = GI_ENERGY if panorama == null else 1.0
+		if product:
+			# A film's curve: highlights roll off to white rather than clip.
+			# Not AgX, which does the same and also bends a bright red
+			# towards orange on its way there: the sports car's bricks came
+			# out the orange of a traffic cone (docs/RENDERING.md). Filmic
+			# keeps red red, and gives back less colour and contrast than
+			# ACES, so a little of each is put back.
+			environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+			environment.tonemap_white = 6.0
+			environment.adjustment_enabled = true
+			environment.adjustment_saturation = 1.18
+			environment.adjustment_contrast = 1.06
+			if full:
+				# Deeper shading where parts meet. Not screen-space bounce
+				# light (SSIL), whose half-size checker of samples showed as
+				# dashes along every lit edge at Good's six frames, nor
+				# screen-space reflections, which a viewport with a clear
+				# background does not draw: global illumination bounces the
+				# light at Good and Best.
+				environment.ssao_intensity = 1.6
+				environment.ssao_radius = 10.0
 		_environments[key] = environment
 	# What changes from picture to picture.
 	environment.tonemap_exposure = look.tonemap_exposure if look != null else 1.05
@@ -1273,10 +1331,16 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	if look == null:
 		ambient_forward = 0.4
 	var key_energy_forward: float = 0.9
+	if product and panorama == null and reflected != null:
+		# The softbox's light in place of the window's even grey, at the
+		# window's strength (the exposure is metered after).
+		ambient_forward *= 0.8
 	if panorama != null:
 		ambient_forward = HDRI_AMBIENT * (1.0 - 0.5 * panorama.key_share)
 		key_energy_forward = HDRI_KEY * panorama.key_share
 		environment.sky_rotation = Vector3(0.0, turn, 0.0) if full else Vector3.ZERO
+	elif reflected != null:
+		environment.sky_rotation = Vector3(0.0, turn, 0.0)
 	environment.ambient_light_energy = BrickWorld.light_energy(ambient_forward)
 	if plan.gi:
 		environment.sdfgi_min_cell_size = clampf(radius / 48.0, 0.5, 64.0)
@@ -1291,8 +1355,9 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	# The lights.
 	for n: int in _lights.size():
 		var light: DirectionalLight3D = _lights[n]
-		var row: Array = RIG[n]
-		var source: DirectionalLight3D = rig_lights[n] if n < rig_lights.size() else null
+		var row: Array = PRODUCT_RIG[n] if product else RIG[n]
+		var source: DirectionalLight3D = rig_lights[n] if n < rig_lights.size() and not product \
+			else null
 		var own: Vector3 = source.global_transform.basis.z if source != null else Vector3(row[0])
 		var toward: Vector3 = (spin * own).normalized()
 		light.light_color = source.light_color if source != null else Color(row[4])
@@ -1377,6 +1442,10 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 			Vector3(_bounds.get_center().x, floor_y, _bounds.get_center().z))
 		_backdrop_material.set_shader_parameter("colour",
 			Vector3(settings.backdrop.r, settings.backdrop.g, settings.backdrop.b))
+		var dark: bool = settings.backdrop.get_luminance() < 0.2
+		_backdrop_material.set_shader_parameter("fall", 0.0 if not settings.backdrop_gradient
+			else (FALL_DARK if dark else FALL_GRADIENT))
+		_backdrop_material.set_shader_parameter("pool", Vector2(radius * 0.7, radius * 3.2))
 
 
 ## The shadow map's size, set only when it changes: the atlas is made

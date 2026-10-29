@@ -31,6 +31,7 @@
 ## With -- --model=FILE it draws that model instead and asks nothing:
 ##   -- --model=models/castle.ldr --quality=best --size=1920x1080
 ##      --lighting=softbox --view=hero --picture=shots/render/castle_best.png
+##      --look=product --backdrop=#0f1013 --gradient=1
 ## (--picture, not --out: the app itself reads --out as "write the model
 ## there and quit")
 extends SceneTree
@@ -604,7 +605,7 @@ func _showcase() -> void:
 	var size: String = _argument("--size")
 	if not size.is_empty():
 		settings.size = Vector2i(size.get_slice("x", 0).to_int(), size.get_slice("x", 1).to_int())
-	for key: String in ["lighting", "view"]:
+	for key: String in ["lighting", "view", "look"]:
 		var said: String = _argument("--" + key)
 		if not said.is_empty():
 			settings.set(key, said)
@@ -619,6 +620,7 @@ func _showcase() -> void:
 	if not backdrop.is_empty():
 		settings.backdrop = Color.html(backdrop)
 	settings.transparent = _argument("--transparent") == "1"
+	settings.backdrop_gradient = _argument("--gradient") == "1"
 	var out: String = _argument("--picture")
 	if out.is_empty():
 		out = OUT + "showcase.png"

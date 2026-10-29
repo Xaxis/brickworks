@@ -20,12 +20,20 @@ enum Quality {
 }
 
 var quality: int = Quality.GOOD
+## How the plastic and the set are drawn: "window", as the window draws
+## them, or "product", as a product shot is lit and finished (StudioRender:
+## plastic with a gloss and rounded edges, clear parts that bend the light,
+## a key, fill and rim over a studio's light, and AgX's film-like tones).
+var look: String = "window"
 var size: Vector2i = Vector2i(1920, 1080)
 ## Nothing behind the model: the backdrop is not drawn, the contact shadow
 ## is, as a shadow on nothing.
 var transparent: bool = false
 ## The sweep's colour, as a person picks it (sRGB).
 var backdrop: Color = Color(1, 1, 1)
+## The sweep lit like a studio's, brightest under the model and falling
+## away towards the edges of the picture, rather than one even colour.
+var backdrop_gradient: bool = false
 ## "studio" for three lights, or one of StudioRender.HDRIS.
 var lighting: String = "studio"
 ## Which way the light comes from, turned round the model, in degrees.
