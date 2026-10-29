@@ -43,6 +43,19 @@
 // http://localhost:<any port>/callback) may name any port, as RFC 8252
 // requires for a program on the person's own machine.
 //
+// ChatGPT (2026-10-29, docs/PROVIDERS.md) identifies itself the same way,
+// by https://chatgpt.com/oauth/client.json, but that document says it
+// signs its token requests: private_key_jwt, a JWT signed RS256 by a key at
+// its jwks_uri (api/_assertion.js checks it). This server says it takes
+// that, so ChatGPT signs, and a client whose document says it signs must:
+// a code or a refresh token of ChatGPT's is no use to anyone without
+// ChatGPT's key. A document that only lists what it can do, with no one
+// way it will, is taken as a public client when it lists "none", and its
+// assertion checked when it sends one. A client that registers may give
+// public keys to sign with too (RFC 7591's jwks). The keys' addresses and
+// the given keys are kept by supabase/oauth_keys.sql; Claude's rows never
+// have either.
+//
 // What is kept (supabase/oauth.sql): codes good once, for two minutes;
 // access tokens for an hour; refresh tokens until used, then replaced —
 // all by SHA-256, never the token. A refresh token used twice, outside a
@@ -50,10 +63,11 @@
 // the app deletes the connection, and every token of it goes with it.
 
 import { timingSafeEqual } from "node:crypto";
+import { ASSERTION_TYPE, assertionTrouble, claimedClient, givenKeys, keysAt } from "./_assertion.js";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import {
-  CLAUDE_AI, SCOPE, clientLabel, hadClaude, originOf, rememberClaude, resourceOf, secret, sha256,
+  CLAUDE_AI, SCOPE, clientLabel, hadClaude, isClaude, originOf, rememberClaude, resourceOf, secret, sha256,
 } from "./_oauth.js";
 
 const CODE_TTL_S = 120;
@@ -70,6 +84,9 @@ const REGISTERED_ID = /^bwc_[A-Za-z0-9_-]{43}$/;
 const CHALLENGE = /^[A-Za-z0-9_-]{43}$/;
 const VERIFIER = /^[A-Za-z0-9._~-]{43,128}$/;
 const METHODS = ["none", "client_secret_post", "client_secret_basic"];
+// What a client may sign its token requests with: a key of its own,
+// RS256, never a secret shared with this server.
+const SIGNED = "private_key_jwt";
 
 const iso = (msFromNow = 0) => new Date(Date.now() + msFromNow).toISOString();
 const text = (value, most = 2000) => (typeof value === "string" ? value.slice(0, most) : "");
@@ -92,7 +109,10 @@ function serverMetadata(origin) {
     code_challenge_methods_supported: ["S256"],
     // "none" and the document flag together are what make Claude use its
     // published description rather than register a new client each time.
-    token_endpoint_auth_methods_supported: METHODS,
+    // private_key_jwt is what makes ChatGPT sign: it uses the way its
+    // document prefers when this list has it.
+    token_endpoint_auth_methods_supported: [...METHODS, SIGNED],
+    token_endpoint_auth_signing_alg_values_supported: ["RS256"],
     revocation_endpoint_auth_methods_supported: METHODS,
     client_id_metadata_document_supported: true,
     authorization_response_iss_parameter_supported: true,
@@ -162,6 +182,35 @@ function privateHost(hostname) {
     || /^\d+\.\d+\.\d+\.\d+$/.test(hostname) || hostname.startsWith("[");
 }
 
+/// How a document's client proves itself at the token endpoint, or null
+/// for no way this server takes: { method, jwks_uri }. The one way the
+/// document says it will use, if it says one (token_endpoint_auth_method,
+/// "none" when it says nothing at all); else, of the ways it lists, a
+/// public client when "none" is one, or one that signs. Never a secret's
+/// way: a document is public. Its keys only at an https address on the
+/// document's own origin, and kept for a public client too when it may
+/// sign, so an assertion it sends is checked rather than ignored.
+function documentWay(said, url) {
+  let keys = null;
+  try {
+    const at = new URL(String(said.jwks_uri || ""));
+    if (at.origin === url.origin && !at.hash && !at.username && at.href.length <= 500) keys = at.href;
+  } catch {
+    keys = null;
+  }
+  const alg = said.token_endpoint_auth_signing_alg;
+  const canSign = Boolean(keys) && (alg === undefined || alg === "RS256");
+  const listed = Array.isArray(said.token_endpoint_auth_methods_supported)
+    ? said.token_endpoint_auth_methods_supported : null;
+  const preferred = said.token_endpoint_auth_method ?? (listed ? null : "none");
+  const publicWay = () => ({ method: "none", jwks_uri: canSign && listed?.includes(SIGNED) ? keys : null });
+  if (preferred === "none") return publicWay();
+  if (preferred === SIGNED) return canSign ? { method: SIGNED, jwks_uri: keys } : null;
+  if (preferred !== null) return null;
+  if (listed.includes("none")) return publicWay();
+  return listed.includes(SIGNED) && canSign ? { method: SIGNED, jwks_uri: keys } : null;
+}
+
 /// A client named by the address of its description: read it (or the
 /// copy kept within the hour) and keep what it says.
 async function documentClient(clientId) {
@@ -195,16 +244,19 @@ async function documentClient(clientId) {
   if (said.client_id !== clientId) return null;
   const uris = Array.isArray(said.redirect_uris)
     ? said.redirect_uris.filter(returnAddressAllowed).slice(0, 10) : [];
-  // A document cannot carry a secret, so it is a public client or nothing.
-  if (!uris.length || (said.token_endpoint_auth_method || "none") !== "none") return null;
+  const way = documentWay(said, url);
+  if (!uris.length || !way) return null;
   const row = {
     client_id: clientId,
     client_name: text(said.client_name, 200) || url.host,
     redirect_uris: uris,
-    auth_method: "none",
+    auth_method: way.method,
     secret_hash: null,
     fetched_at: iso(),
   };
+  // Written only where there is or was one: Claude's rows never name the
+  // column, so they are kept the same whether or not oauth_keys.sql is.
+  if (way.jwks_uri || kept?.jwks_uri) row.jwks_uri = way.jwks_uri;
   await db("oauth_clients", { method: "POST", body: row, prefer: "resolution=merge-duplicates" });
   return { ...kept, ...row };
 }
@@ -231,10 +283,21 @@ async function register(request, response) {
     });
   }
   const method = given.token_endpoint_auth_method || "none";
-  if (!METHODS.includes(method)) {
+  if (![...METHODS, SIGNED].includes(method)) {
     return response.status(400).json({
       error: "invalid_client_metadata",
-      error_description: `token_endpoint_auth_method must be one of ${METHODS.join(", ")}`,
+      error_description: `token_endpoint_auth_method must be one of ${[...METHODS, SIGNED].join(", ")}`,
+    });
+  }
+  // One that signs gives its public keys here: an address of them would be
+  // somewhere a stranger asked this server to fetch from.
+  const jwks = method === SIGNED ? givenKeys(given.jwks) : null;
+  if (method === SIGNED && (!jwks || given.jwks_uri !== undefined
+      || (given.token_endpoint_auth_signing_alg ?? "RS256") !== "RS256")) {
+    return response.status(400).json({
+      error: "invalid_client_metadata",
+      error_description: "private_key_jwt: RS256, with jwks of one to five RSA signing keys of 2048 bits "
+        + "or more given here (no jwks_uri)",
     });
   }
   if (Array.isArray(given.response_types) && !given.response_types.includes("code")) {
@@ -243,13 +306,13 @@ async function register(request, response) {
     });
   }
   const clientId = secret("bwc");
-  const clientSecret = method === "none" ? null : secret("bws");
+  const clientSecret = METHODS.includes(method) && method !== "none" ? secret("bws") : null;
   const name = text(given.client_name, 200) || null;
   await db("oauth_clients", {
     method: "POST",
     body: {
       client_id: clientId, client_name: name, redirect_uris: uris, auth_method: method,
-      secret_hash: clientSecret ? sha256(clientSecret) : null,
+      secret_hash: clientSecret ? sha256(clientSecret) : null, ...(jwks ? { jwks } : {}),
     },
   });
   if (Math.random() < 0.05) await db("rpc/oauth_sweep", { method: "POST", body: {} }).catch(() => {});
@@ -262,6 +325,7 @@ async function register(request, response) {
     response_types: ["code"],
     token_endpoint_auth_method: method,
     scope: SCOPE,
+    ...(jwks ? { jwks, token_endpoint_auth_signing_alg: "RS256" } : {}),
   };
   if (clientSecret) Object.assign(answer, { client_secret: clientSecret, client_secret_expires_at: 0 });
   return response.status(201).json(answer);
@@ -307,7 +371,8 @@ async function authorization(params, origin) {
   if (!redirect && client.redirect_uris.length === 1) redirect = client.redirect_uris[0];
   if (!returnAddressMatches(client.redirect_uris, redirect)) {
     return { refuse: "The app that sent you here asked to be answered at an "
-      + "address it did not declare, so Brickworks will not send you there." };
+      + "address it did not declare, so Brickworks will not send you there.",
+    client: clientLabel({ client_name: client.client_name, redirect_uri: client.redirect_uris[0] }) };
   }
   const state = text(params.state);
   const back = (error, description) => ({
@@ -330,12 +395,18 @@ async function authorization(params, origin) {
 /// the answer will go.
 async function check(request, response, origin) {
   const asked = await authorization(request.query || {}, origin);
-  if (asked.refuse) return response.status(400).json({ refuse: asked.refuse });
+  // Which app, where it is known, so the page names it rather than Claude.
+  if (asked.refuse) {
+    return response.status(400).json({ refuse: asked.refuse, client: asked.client || null,
+      claude: Boolean(asked.client && isClaude(asked.client)) });
+  }
   if (asked.back) return response.status(200).json({ back: asked.back });
   const to = new URL(asked.redirect);
   const loopback = to.protocol === "http:" && LOOPBACK.has(to.hostname);
+  const client = clientLabel({ client_name: asked.client.client_name, redirect_uri: asked.redirect });
   return response.status(200).json({
-    client: clientLabel({ client_name: asked.client.client_name, redirect_uri: asked.redirect }),
+    client,
+    claude: isClaude(client),
     client_name: asked.client.client_name || null,
     // The host the person will be sent back to, which the page shows
     // plainly (MCP's authorization spec asks for it).
@@ -432,9 +503,28 @@ function sameSecret(given, hash) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-/// The client making a token or revocation request, with its secret
-/// checked if it has one; null if it is unknown or the secret is wrong.
-async function callingClient(request, given) {
+/// What checks a signing client's assertions: its keys, read from its
+/// jwks_uri or as it gave them; null for a client with neither.
+function keysFor(client) {
+  if (client.jwks_uri) return ({ fresh }) => keysAt(client.jwks_uri, { fresh });
+  const given = givenKeys(client.jwks);
+  return given ? async () => given.keys : null;
+}
+
+/// [clientId]'s assertion id [jti] spent until [until] (seconds): true the
+/// first time, on every instance. In the store orangecheck's token ids are
+/// spent in (supabase/orangecheck.sql oc_spend), under keys of their own.
+const spender = (clientId) => async (jti, until) => (await db("rpc/oc_spend", {
+  method: "POST",
+  body: { token_id: `oauth:${sha256(`${clientId} ${jti}`)}`, until: new Date(until * 1000).toISOString() },
+})) === true;
+
+/// The client making a token request, proved: { client }, or { why } it is
+/// not. One that signs sends a client_assertion its keys check
+/// (api/_assertion.js); one that holds a secret, the secret; a public one,
+/// nothing more, its PKCE verifier being the proof. An assertion sent is
+/// checked whoever sends it, never ignored.
+export async function callingClient(request, given, origin) {
   let clientId = given.client_id;
   let clientSecret = given.client_secret;
   const basic = /^Basic\s+(.+)$/i.exec(String(request.headers?.authorization || ""));
@@ -444,13 +534,35 @@ async function callingClient(request, given) {
       clientId = decodeURIComponent(id);
       clientSecret = decodeURIComponent(rest.join(":"));
     } catch {
-      return null;
+      return { why: "unknown client, or a wrong secret" };
     }
   }
+  const asserted = given.client_assertion !== undefined || given.client_assertion_type !== undefined;
+  if (asserted) {
+    if (given.client_assertion_type !== ASSERTION_TYPE) return { why: `client_assertion_type must be ${ASSERTION_TYPE}` };
+    if (basic || clientSecret !== undefined) return { why: "one way of authenticating a request, not two" };
+    const claimed = claimedClient(given.client_assertion);
+    if (!claimed || (clientId !== undefined && clientId !== claimed)) {
+      return { why: "client_assertion must name the client_id as its iss" };
+    }
+    clientId = claimed;
+  }
   const client = await clientOf(clientId);
-  if (!client) return null;
-  if (client.auth_method !== "none" && !sameSecret(clientSecret, client.secret_hash)) return null;
-  return client;
+  if (!client) return { why: "unknown client, or a wrong secret" };
+  if (asserted) {
+    const keysOf = keysFor(client);
+    if (!keysOf) return { why: "this client has no keys to check a client_assertion by" };
+    const why = await assertionTrouble(given.client_assertion, {
+      clientId: client.client_id, keysOf, audiences: [origin, `${origin}/oauth/token`],
+      spend: spender(client.client_id),
+    });
+    return why ? { why } : { client };
+  }
+  if (client.auth_method === SIGNED) return { why: "this client signs its token requests: send a client_assertion" };
+  if (client.auth_method !== "none" && !sameSecret(clientSecret, client.secret_hash)) {
+    return { why: "unknown client, or a wrong secret" };
+  }
+  return { client };
 }
 
 function verifierMatches(verifier, challenge) {
@@ -501,8 +613,12 @@ async function tellTabs(owner, client) {
 async function token(request, response, origin) {
   response.setHeader("pragma", "no-cache");
   const given = fields(request);
-  const client = await callingClient(request, given);
-  if (!client) return oauthError(response, 401, "invalid_client", "unknown client, or a wrong secret");
+  const { client, why } = await callingClient(request, given, origin);
+  if (!client) {
+    // Said in the log too: ChatGPT shows a person only that it failed.
+    console.warn(`oauth token: refused ${text(given.client_id || claimedClient(given.client_assertion) || "", 120)}: ${why}`);
+    return oauthError(response, 401, "invalid_client", why);
+  }
 
   if (given.grant_type === "authorization_code") {
     if (typeof given.code !== "string" || !given.code_verifier) {
