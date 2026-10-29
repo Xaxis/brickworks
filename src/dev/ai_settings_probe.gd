@@ -104,9 +104,9 @@ func _claude_as_before() -> void:
 		and (_chat.get("_key_form") as Control).visible == not OwnKey.has_key())
 	(_main.get("_shell") as Shell).run("settings")
 	await _frames(10)
-	var words: String = (_controls.get("_designer_words") as Label).text
-	_check("Settings says who designs, with the way to AI: \"%s\"" % words,
-		_controls.visible and words == "Designs with: Claude" and _controls.ai_open.visible)
+	var words: String = _controls.ai_open.text
+	_check("Settings says who designs, on the way to AI: \"%s\"" % words,
+		_controls.visible and words == "AI: Claude…" and _controls.ai_open.is_visible_in_tree())
 	_controls.ai_open.pressed.emit()
 	await _frames(10)
 	_check("AI… opens the page in Settings, Claude chosen and nothing more asked",
@@ -259,6 +259,9 @@ func _kept() -> void:
 		ProviderSettings.load_key("custom") == _key and fresh.key_field.text.is_empty()
 		and fresh.key_field.placeholder_text.contains(ProviderSettings.fingerprint(_key)))
 	fresh.queue_free()
+	_controls.call("_show_designer")
+	_check("Settings' link says who designs now: %s" % _controls.ai_open.text,
+		_controls.ai_open.text == "AI: stub-sees…")
 	_ai.remember.button_pressed = false
 	await _frames(2)
 	_check("Remember unticked: for this visit only, the file gone, the key still in use",

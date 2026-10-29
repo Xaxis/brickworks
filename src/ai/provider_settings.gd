@@ -250,14 +250,26 @@ static func forget(id: String) -> void:
 		DirAccess.remove_absolute(key_file(id))
 
 
-## Where the key is kept and who could read it, said in the panel beside it:
-## [param on_device] false for a key kept for this visit only.
-static func custody(id: String, on_device: bool = true) -> String:
+## Where the key in use came from: "visit", "device", "environment" or "".
+static func key_source(id: String) -> String:
+	if not str(_this_visit.get(id, "")).is_empty():
+		return "visit"
+	if not _read_kept(id).is_empty():
+		return "device"
+	return "environment" if not load_key(id).is_empty() else ""
+
+
+## Where the key is kept and who could read it, said in the panel beside it,
+## for a key from [param source] (key_source; "" for one not given yet).
+static func custody(id: String, source: String = "device") -> String:
 	var name: String = str(PRESETS.get(id, {}).get("name", id))
 	var sent: String = ("Sent only to %s, never to Brickworks." % name) if id != "custom" \
 		else "Sent only to the address above, never to Brickworks."
-	if not on_device:
+	if source == "visit":
 		return "Kept for this visit only, nowhere on this device. " + sent
+	if source == "environment":
+		return ("Read from %s in the environment this app was started from; not kept by "
+			% str(PRESETS[id]["env"]) + "Brickworks. Paste a key to keep one here instead. " + sent)
 	if OS.has_feature("web"):
 		return ("Kept in this browser's storage for this site, scrambled but not secret: "
 			+ "anyone using this browser could recover it. Untick Remember on a shared "

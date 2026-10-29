@@ -2045,6 +2045,34 @@
       "area": "assistant"
     },
     {
+      "kind": "ui",
+      "label": "choose the AI that designs",
+      "entry": "src/ui/ai_settings.gd",
+      "reach": "godot --path .  (Tools, Settings…, AI…: Claude, or another AI on your own API key: provider, address, key with Show and Remember, the provider's own model list filtered, temperature, max output, reasoning effort, Test, Design with it; the assistant's column then designs with it)   tools/probe.sh ai_settings_probe",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "ai settings probe",
+      "entry": "src/dev/ai_settings_probe.gd",
+      "reach": "tools/probe.sh ai_settings_probe   (PROBE_SIZE=1024x768 or 400x860 for the pictures at that size, in shots/ai_settings/)",
+      "area": "assistant"
+    },
+    {
+      "kind": "lib",
+      "label": "designing on Anthropic's Messages or Gemini's own API",
+      "entry": "src/ai/anthropic_messages.gd",
+      "reach": "tools/probe.sh provider_apis_probe   (AnthropicMessages and GeminiNative read and written offline, then each designs, is tested and lists its models against tools/provider_stub.py, as strict as each API)",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "provider apis probe",
+      "entry": "src/dev/provider_apis_probe.gd",
+      "reach": "tools/probe.sh provider_apis_probe",
+      "area": "assistant"
+    },
+    {
       "kind": "cli",
       "label": "best of two walk probe",
       "entry": "src/dev/best_of_two_walk_probe.gd",

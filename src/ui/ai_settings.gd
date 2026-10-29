@@ -33,7 +33,7 @@ signal design_wanted
 signal tested(said: Control)
 
 ## Interface units: the width of a row's name.
-const LABEL_WIDE := 118.0
+const LABEL_WIDE := 100.0
 const NOTE := Color(0.62, 0.65, 0.72)
 const WRONG := Color(1.0, 0.6, 0.5)
 
@@ -112,6 +112,9 @@ func _build() -> void:
 	provider_choice.accessibility_name = "Provider"
 	provider_choice.add_theme_font_size_override("font_size", 12)
 	provider_choice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# As wide as the page, not as its longest name: the page fits a phone.
+	provider_choice.fit_to_longest_item = false
+	provider_choice.clip_text = true
 	for id: String in ProviderSettings.ORDER:
 		provider_choice.add_item(str(ProviderSettings.PRESETS[id]["name"]))
 	provider_choice.item_selected.connect(func(index: int) -> void:
@@ -151,6 +154,7 @@ func _build() -> void:
 	remember.text = "Remember on this device"
 	remember.button_pressed = true
 	remember.add_theme_font_size_override("font_size", 12)
+	remember.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	remember.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	remember.toggled.connect(func(on: bool) -> void:
 		if _showing:
@@ -232,6 +236,8 @@ func _build() -> void:
 	effort_choice.accessibility_name = "Reasoning effort"
 	effort_choice.add_theme_font_size_override("font_size", 12)
 	effort_choice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	effort_choice.fit_to_longest_item = false
+	effort_choice.clip_text = true
 	effort_choice.item_selected.connect(func(_index: int) -> void: _save())
 	_effort_row = _row("Reasoning", effort_choice)
 	_own.add_child(_effort_row)
@@ -319,12 +325,14 @@ func _show_key_state() -> void:
 		_showing = true
 		remember.button_pressed = on_device
 		_showing = false
-	forget.visible = not key.is_empty()
 	key_field.placeholder_text = ("Kept: %s. Paste another to replace it"
 		% ProviderSettings.fingerprint(key)) if not key.is_empty() \
 		else "Paste your key" if bool(preset["needs_key"]) \
 		else "None needed; paste one if the server asks"
-	_key_note.text = ProviderSettings.custody(_id, key.is_empty() or on_device)
+	var source: String = ProviderSettings.key_source(_id)
+	_key_note.text = ProviderSettings.custody(_id, source if not source.is_empty() else "device")
+	# A key from the environment is not the app's to forget.
+	forget.visible = source == "device" or source == "visit"
 
 
 ## Keep the key in the field, if there is one: said beside it when it will

@@ -112,7 +112,6 @@ func _build() -> void:
 	_interface(lower)
 	_new_floor(lower)
 	_assistant(lower)
-	_ai(lower)
 
 	# Which build this is and when it went out. The owner, looking at the
 	# live site, had no way to tell when it had last been deployed; the
@@ -415,7 +414,13 @@ func _assistant(column: VBoxContainer) -> void:
 	var words := Label.new()
 	words.text = "Assistant (AI)"
 	words.add_theme_font_size_override("font_size", 12)
-	column.add_child(words)
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Who designs, and the way to the AI page, on the heading's own line:
+	# a row of its own cost the settings their fit at 100% (a11y_size).
+	var heading := HBoxContainer.new()
+	heading.add_child(words)
+	_ai(heading)
+	column.add_child(heading)
 	var choice := ButtonGroup.new()
 	assistant_off = _choice(column, "Build by hand only", choice)
 	assistant_on = _choice(column, "Show the assistant: Claude designs and changes parts when you ask",
@@ -453,10 +458,9 @@ func _show_assistant_choice() -> void:
 			+ "Claude connections are off while the assistant is off.")
 
 
-## Settings, AI: who designs now, and the way to the page that changes it.
+## Settings, AI: the page, and the link to it, which says who designs now.
 var ai: AiSettings
-var ai_open: Button
-var _designer_words: Label
+var ai_open: LinkButton
 var _ai_page: ScrollContainer
 var _back: LinkButton
 var _title: Label
@@ -464,33 +468,23 @@ var _keys: ScrollContainer
 var _rule: HSeparator
 
 
-func _ai(column: VBoxContainer) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	column.add_child(row)
-	_designer_words = Label.new()
-	_designer_words.add_theme_font_size_override("font_size", 12)
-	_designer_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_designer_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	row.add_child(_designer_words)
-	ai_open = Button.new()
-	ai_open.text = "AI…"
+func _ai(row: HBoxContainer) -> void:
+	ai_open = Look.link("", 12)
 	ai_open.accessibility_name = "AI: who designs, provider, model and key"
 	ai_open.tooltip_text = "Claude, or another AI on your own API key: its provider, model and key"
-	ai_open.add_theme_font_size_override("font_size", 12)
+	ai_open.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	ai_open.pressed.connect(func() -> void: _show_ai(true))
 	row.add_child(ai_open)
 	_show_designer()
 
 
+## The link's words: AI, and who designs ("AI: Claude…", "AI: gpt-6.1-sol…").
 func _show_designer() -> void:
-	if _designer_words == null:
+	if ai_open == null:
 		return
 	var kept: Dictionary = ProviderSettings.chosen()
-	_designer_words.text = "Designs with: " + ("Claude" if ProviderSettings.who()
-		== ProviderSettings.WHO_CLAUDE else "%s, %s" % [str(ProviderSettings.PRESETS[
-			kept["provider"]]["name"]), str(kept["model"]) if not str(kept["model"]).is_empty()
-			else "no model chosen"])
+	ai_open.text = "AI: %s…" % ("Claude" if ProviderSettings.who() == ProviderSettings.WHO_CLAUDE
+		else str(kept["model"]) if not str(kept["model"]).is_empty() else "no model chosen")
 
 
 ## The AI page in place of the keys and the settings, or back.
