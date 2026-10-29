@@ -43,13 +43,13 @@ function returnable(raw) {
 }
 
 const FEATURES = [
-  { key: "claude_builds", name: "Claude builds", kind: "allowance", reset: "month", unit: "builds" },
+  { key: "ai_builds", name: "AI builds", kind: "allowance", reset: "month", unit: "builds" },
   { key: "desktop", name: "Desktop app", kind: "flag", reset: null, unit: null },
 ];
 
 const PLANS = {
-  free: { name: "Free", rank: 0, includes: { claude_builds: 10 } },
-  pro: { name: "Pro", rank: 10, includes: { claude_builds: null, desktop: null } },
+  free: { name: "Free", rank: 0, includes: { ai_builds: 10 } },
+  pro: { name: "Pro", rank: 10, includes: { ai_builds: null, desktop: null } },
 };
 
 /// The first of next month, UTC: when a monthly allowance starts again.

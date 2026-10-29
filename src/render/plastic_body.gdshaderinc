@@ -101,6 +101,47 @@ uniform sampler2D print_texture : filter_linear_mipmap, repeat_disable;
 uniform vec4 cut_plane = vec4(0.0, 1.0, 0.0, 1.0e9);
 #endif
 
+#ifdef PLASTIC_PRODUCT
+// The product look (StudioRender, RenderSettings.look "product"): the
+// _product variants of these shaders, used only on the copy of the model
+// a render draws, never in the window. Three things a product shot has
+// that the window's plastic does not:
+//
+//   Edges that catch the light. A moulded brick's edges are rounded a
+//   little, and that round is where every highlight runs along a wall of
+//   bricks. Drawn here by bending the normal near the part's box edges as
+//   a rounded box's would bend: a face lying on the box, within a bevel's
+//   width of another of its faces, turns towards it. No geometry: only
+//   edges on the part's box are rounded, which is the outline of most
+//   bricks, plates and tiles, and never wrongly (a slope's own edge is
+//   left sharp, not given a round it does not have).
+//
+//   A clear coat of gloss over the plastic: a broad soft highlight under a
+//   sharp one, which is how polished ABS reads in a photograph, and
+//   chrome, metal and pearl as metals reflecting the studio itself (its
+//   sky), not the window's drawn one.
+//
+//   Clear parts that bend what is behind them and tint it, rather than
+//   veiling it.
+//
+// The body's top, in the part's own coordinates: a brick's studs stand
+// above its box's body, so the box's top is the studs' and the brick's own
+// top edge is lower. BrickWorld sets it from the part's studs.
+uniform float part_body_top = 1.0e9;
+uniform float bevel_ldu : hint_range(0.0, 4.0) = 0.6;
+// At least this many pixels across, or the round's highlight, a line a
+// pixel wide, came out as dashes along every edge at Good's six frames.
+uniform float bevel_pixels : hint_range(0.0, 4.0) = 2.2;
+varying vec3 local_normal;
+// The part's own axes in view space, for the bent normal.
+varying flat vec3 axis_x;
+varying flat vec3 axis_y;
+varying flat vec3 axis_z;
+#ifdef PLASTIC_TRANSPARENT
+uniform sampler2D behind_texture : hint_screen_texture, filter_linear_mipmap, repeat_disable;
+#endif
+#endif
+
 // FINISHES. Numbered as PartLibrary.BrickColor.Finish numbers them.
 const int FINISH_PLASTIC = 0;
 const int FINISH_CHROME = 1;
@@ -143,6 +184,12 @@ void vertex() {
 	// renderers, so its origin is where this brick stands.
 	instance_seed = MODEL_MATRIX[3].xyz;
 	local_position = VERTEX;
+#ifdef PLASTIC_PRODUCT
+	local_normal = NORMAL;
+	axis_x = normalize((MODELVIEW_MATRIX * vec4(1.0, 0.0, 0.0, 0.0)).xyz);
+	axis_y = normalize((MODELVIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+	axis_z = normalize((MODELVIEW_MATRIX * vec4(0.0, 0.0, 1.0, 0.0)).xyz);
+#endif
 }
 
 // How much of a seam this fragment is in, from 0 to 1. `per_pixel` is
@@ -231,6 +278,47 @@ vec3 studio(vec3 r, float blur) {
 	return mix(env, vec3(0.45), blur * 0.6);
 }
 
+#ifdef PLASTIC_PRODUCT
+// The normal of a box with rounded edges, [param width] in radius, at a
+// point of a face of the part's body box ([param n] the surface's own
+// normal, part space); [param n] itself anywhere else.
+vec3 bevelled(vec3 at, vec3 n, float width, float pixel, float small) {
+	vec3 low = part_box_min;
+	vec3 high = vec3(part_box_max.x, min(part_box_max.y, part_body_top), part_box_max.z);
+	vec3 size = high - low;
+	if (size.x <= 0.0 || size.y <= 0.0 || size.z <= 0.0) {
+		return n;
+	}
+	vec3 across = abs(n);
+	float most = max(across.x, max(across.y, across.z));
+	if (most < 0.97) {
+		return n;
+	}
+	vec3 axis = step(vec3(most - 0.0001), across);
+	vec3 half_size = size * 0.5;
+	vec3 p = at - (low + high) * 0.5;
+	vec3 out_of = abs(p) - half_size;
+	// On the box's face, facing out of it, and inside the body the other
+	// two ways (a stud's side, above the body, is not). Allowing a pixel
+	// past the body: under multisampling a pixel at the edge of a face is
+	// shaded at its centre, which can be off the face and off the box, and
+	// a test that refused those drew every edge as dashes.
+	float slack = max(width * 0.3, 0.06) + pixel;
+	if (abs(dot(out_of, axis)) > slack || dot(sign(p) * sign(n), axis) < 0.5
+			|| any(greaterThan(out_of, vec3(slack)))) {
+		return n;
+	}
+	vec3 q = max(min(abs(p), half_size) - (half_size - vec3(width)), vec3(0.0));
+	// A round a pixel or two across is seen whole by each pixel on it: its
+	// average turn, the same across it, rather than the full quarter turn
+	// within two pixels, whose highlight each pixel caught or missed by
+	// where its centre fell (dashes along every edge at Good).
+	q = mix(q, step(vec3(0.0001), q) * width * 0.6, small);
+	q = mix(q, vec3(width), axis);
+	return normalize(sign(p) * q);
+}
+#endif
+
 void fragment() {
 #ifdef PLASTIC_CUT
 	vec3 world_at = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -305,6 +393,23 @@ void fragment() {
 	vec3 normal = normalize(NORMAL);
 	vec3 view = normalize(VIEW);
 	float pixel_ldu = max(local_width.x, max(local_width.y, local_width.z));
+#ifdef PLASTIC_PRODUCT
+	// How much of this pixel is on a round small on screen: its gloss is
+	// spread, as a pixel's worth of a curved edge reflects a spread of the
+	// studio, not one point of it.
+	float on_round = 0.0;
+	{
+		vec3 n_local = normalize(local_normal);
+		float width = max(bevel_ldu, bevel_pixels * pixel_ldu);
+		float small = smoothstep(bevel_ldu, bevel_ldu * 3.0, width);
+		vec3 bent = bevelled(local_position, n_local, width, pixel_ldu, small);
+		if (bent != n_local) {
+			normal = normalize(axis_x * bent.x + axis_y * bent.y + axis_z * bent.z);
+			NORMAL = normal;
+			on_round = small;
+		}
+	}
+#endif
 	float faded = 0.0;
 	float facing = clamp(dot(normal, view), 0.0, 1.0);
 	float grazing = 1.0 - facing;
@@ -436,6 +541,55 @@ void fragment() {
 		}
 	}
 
+#ifdef PLASTIC_PRODUCT
+	// Gloss over the plastic, and metals that are metals. The studio drawn
+	// for the window's mirrors (studio()) gives way to the render's own
+	// sky, which a product shot's chrome reflects.
+	float coat = 0.0;
+	float coat_roughness = 0.1;
+	if (finish == FINISH_PLASTIC) {
+		roughness = 0.3 + 0.08 * grazing;
+		// ABS has one surface, which reflects about 4.5% head-on. The coat's
+		// sharp lobe and the plastic's broad one share it: 0.35 is 2% here,
+		// the coat's 0.55 another 2%. At 0.5 under the coat the plastic
+		// reflected half as much again as it does, which on black is more
+		// than its own colour.
+		specular = 0.35;
+		coat = 0.55;
+		coat_roughness = 0.07;
+		// Pale plastics glow a little through: a white brick's shadow side
+		// is never grey.
+		backlight = vec3(0.16 * luminance_in) * (body_linear / max(luminance_in, 0.001)) * 0.5;
+	} else if (finish == FINISH_CHROME) {
+		albedo = max(body, vec3(0.12));
+		metallic = 1.0;
+		roughness = 0.06;
+		emission *= 0.25;
+	} else if (finish == FINISH_METAL) {
+		albedo = max(body, vec3(0.06)) * 0.9;
+		metallic = 1.0;
+		roughness = 0.34;
+		coat = 1.0;
+		coat_roughness = 0.05;
+		emission *= 0.2;
+	} else if (finish == FINISH_PEARL) {
+		albedo = body * (1.0 + 0.25 * pow(grazing, 2.0));
+		metallic = 0.65;
+		roughness = 0.3;
+		coat = 0.8;
+		coat_roughness = 0.08;
+		emission *= 0.3;
+	} else if (finish == FINISH_RUBBER) {
+		roughness = 0.8;
+		specular = 0.25;
+	} else if (finish == FINISH_SPECKLE || finish == FINISH_GLITTER) {
+		coat = 0.6;
+		coat_roughness = 0.06;
+	}
+	roughness = mix(roughness, max(roughness, 0.5), on_round);
+	CLEARCOAT = coat * (1.0 - 0.6 * on_round);
+	CLEARCOAT_ROUGHNESS = mix(coat_roughness, 0.35, on_round);
+#endif
 	ALBEDO = albedo;
 	METALLIC = metallic;
 	ROUGHNESS = roughness;
@@ -447,6 +601,43 @@ void fragment() {
 	ALPHA = alpha;
 	ROUGHNESS = glass_roughness;
 	BACKLIGHT = glass_backlight;
+#endif
+#if defined(PLASTIC_PRODUCT) && defined(PLASTIC_TRANSPARENT)
+	// Clear plastic as glass: what is behind it, bent by its surface and
+	// tinted by its colour, and the sky reflected off it towards the edges.
+	// Only what is opaque is behind it here (the engine copies the picture
+	// once, before the clear parts): a clear part behind another is not
+	// seen through it. Opal and milky plastic scatter rather than bend, and
+	// stay as they are.
+	if (finish == FINISH_PLASTIC || finish == FINISH_FLUORESCENT || finish == FINISH_GLITTER) {
+		vec2 bend = normal.xy * 0.035 * (0.35 + 0.65 * grazing);
+		vec3 behind = textureLod(behind_texture, SCREEN_UV - bend, glass_roughness * 3.0).rgb;
+		if (!linearise) {
+			behind = srgb_to_linear(behind);
+		}
+		// What gets through is the colour itself: LDConfig gives a clear
+		// colour as the part looks against white, so white behind it comes
+		// out as that colour, and smoked plastic lets little through. A hue
+		// kept at full strength with a sixth of the light let past untinted
+		// washed every clear colour to a pastel: trans dark blue #0020a0
+		// came out #7e86d9.
+		float reflected = 0.04 + 0.96 * pow(grazing, 5.0);
+		vec3 seen = behind * body_linear * (1.0 - reflected);
+		ALBEDO = body * 0.04;
+		ALPHA = 1.0;
+		ROUGHNESS = 0.04;
+		// Low: at Good and Best the engine lights a clear part's reflection
+		// from its global illumination, where the white sweep is at full
+		// strength, and at glass's own 0.5 that laid a white veil over the
+		// whole part (trans red #c91a09 came out #d74e47). Its edges still
+		// reflect, as Fresnel has them.
+		SPECULAR = 0.15;
+		BACKLIGHT = vec3(0.0);
+		METALLIC = 0.0;
+		CLEARCOAT = 0.0;
+		vec3 own = emission + seen;
+		EMISSION = linearise ? own : linear_to_srgb(own);
+	}
 #endif
 
 #ifdef PLASTIC_CAP

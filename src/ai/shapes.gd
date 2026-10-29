@@ -6853,6 +6853,10 @@ class Plan extends RefCounted:
 						if across(run[placed + n]) * 2 == sum:
 							long = n if n > 0 else 1
 							break
+				# Cut to three by the plane: no panel is three long, so two
+				# now and the third next, before the plane's own stud.
+				if long == 3:
+					long = 2
 				var part: String = {4: "30414", 2: "11211", 1: "87087"}[long]
 				var piece: Array[Vector2i] = []
 				for n: int in long:

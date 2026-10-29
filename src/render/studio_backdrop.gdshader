@@ -16,6 +16,19 @@ uniform vec3 colour = vec3(1.0);
 uniform bool linearise = true;
 // How bright the sweep is made, set by metering it.
 uniform float level = 1.0;
+// A studio's fall of light (RenderSettings.backdrop_gradient): how much
+// darker the sweep is at the edge of the picture than under the model,
+// and over what distance from the model, along the sweep, in LDU: full
+// strength within pool.x, fallen away by pool.y. Zero is one even colour.
+uniform float fall = 0.0;
+uniform vec2 pool = vec2(100.0, 400.0);
+
+// Where on the sweep, in its own space: the model stands at the origin.
+varying vec3 at;
+
+void vertex() {
+	at = VERTEX;
+}
 
 vec3 to_linear(vec3 c) {
 	bvec3 cutoff = lessThanEqual(c, vec3(0.04045));
@@ -29,9 +42,13 @@ vec3 to_srgb(vec3 c) {
 }
 
 void fragment() {
-	vec3 lin = to_linear(colour);
+	// Measured along the floor and on up the wall, which is how far the
+	// light from over the model has to reach.
+	float along = length(at.xz) + max(at.y, 0.0);
+	float lit = 1.0 - fall * smoothstep(pool.x, pool.y, along);
+	vec3 lin = to_linear(colour) * lit * lit;
 	float reflects = min(level, 1.0);
-	ALBEDO = (linearise ? lin : colour) * reflects;
+	ALBEDO = (linearise ? lin : to_srgb(lin)) * reflects;
 	ROUGHNESS = 0.9;
 	// Paper, not plastic: a glossy sweep mirrored the bright windows of a
 	// photographed place as a band across the floor.

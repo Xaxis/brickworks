@@ -620,6 +620,14 @@
       "tests": []
     },
     {
+      "id": "cli:design with another provider from a brief",
+      "kind": "cli",
+      "entry": "src/main.gd",
+      "reach": "godot --path . -- --ask-provider=\"a red tower\" --provider=openai --provider-model=gpt-6.1-sol [--provider-base=URL] [--out=FILE]   (the key from the provider's environment variable or the one kept; never printed)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:designers browser flow",
       "kind": "cli",
       "entry": "tools/web/designers_flow.mjs",
@@ -1377,6 +1385,14 @@
       "entry": "tools/web/progress_check.mjs",
       "reach": "node tools/web/progress_check.mjs --dir=build/web   (with .env sourced; or BW_BYPASS=\u2026 --url=<a preview>/app; --only=timeline,booklet,\u2026; --report-only for a build from before)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:provider loop probe",
+      "kind": "cli",
+      "entry": "src/dev/provider_loop_probe.gd",
+      "reach": "tools/probe.sh provider_loop_probe",
+      "area": "assistant",
       "tests": []
     },
     {
@@ -2259,6 +2275,14 @@
       "tests": []
     },
     {
+      "id": "lib:designing with any provider on the person's key",
+      "kind": "lib",
+      "entry": "src/ai/designer_loop.gd",
+      "reach": "tools/probe.sh provider_loop_probe   (in a window: an OpenAI-compatible stub provider designs through the app's own MCP tools in process, answers the fresh look from its three pictures and saves; the Chat Completions adapter and the key's keeping read without a network)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "lib:directory",
       "kind": "lib",
       "entry": "api/_directory.js",
@@ -2538,7 +2562,7 @@
       "id": "lib:plans from Admission",
       "kind": "lib",
       "entry": "api/_billing.js",
-      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, Claude builds and desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
+      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, AI builds and desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
       "area": "web",
       "tests": []
     },
@@ -2555,6 +2579,14 @@
       "kind": "lib",
       "entry": "src/assembly/pose.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "lib:product look",
+      "kind": "lib",
+      "entry": "src/render/plastic_product.gdshader",
+      "reach": "tools/probe.sh product_render_probe  (windowed, on the GPU: Render's Product look draws in the product shaders, each backdrop as named, depth of field softens, the window's frame cost and environment unchanged; sixteen colour swatches on the white sweep against LDraw: black black, the colours and clear colours near their own, no shadow hatching)  /  tools/probe.sh render_probe -- --model=models/sports_car.ldr --look=product --gradient=1 --backdrop=#f5f6f8 --quality=best --size=1280x720 --picture=OUT.png",
       "area": "view",
       "tests": []
     },
