@@ -3917,8 +3917,14 @@ node tools/web/download_check.mjs --shots=shots/gallery
 VERCEL_BYPASS=$VERCEL_BYPASS node tools/web/download_check.mjs --url=<deployment>/download --shots=shots/gallery
 ```
 
-Proves it when the gallery lines say 24 cards then 26 after Show more
-(locally), the markup name shown as text and no `img` but the pictures', a
+Proves it when, locally, the first page is drawn as 24 cards with Show more
+and the gallery lines say "24, then 2 by Show more" at 390 and "24, then 2
+by itself" at 1280 (where Show more is first drawn within a screen under the
+window, so `gallery.js` nearEnd brings the next page unasked), 26 cards and
+Show more gone at both; against a deployment that lists more than a page,
+its next page the same way (brickworks.diy on 2026-10-29: "23, then 24 by
+Show more" at both widths, its pick and shelves over the list); the markup
+name shown as text and no `img` but the pictures', a
 model with no picture given none, "86 parts, by Builder 2"; and at 390 and
 1280 px no console error, no sideways scroll, no broken picture
 (`gallery-phone.png`, `gallery-laptop.png`). Locally, since the directory:
