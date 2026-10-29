@@ -72,6 +72,15 @@
 //                            what its owner says changed. What it says
 //                            about itself is kept on a republish that does
 //                            not say it again.
+//   GET  ?op=library         /library's sets, the LDraw library the app's
+//                            Library opens (api/_library.js), a page at a
+//                            time: searched (q), filtered (theme, decade,
+//                            size) and sorted (sort), from the store's index
+//   GET  ?op=set&id=X        /library/X: a set's page, made as a model's
+//                            page is; op=set_cover (/library/X.webp) its
+//                            cover, op=set_file (/library/X.mpd) its file,
+//                            op=set_parts (/library/X/parts.json, .xml,
+//                            .csv) its parts
 //   POST ?op=seen&id=X       its page was looked at: counted once a day per
 //                            visitor, and never for a robot
 //   POST ?op=built&id=X      {device, v?}: built to its last step, in the
@@ -167,7 +176,12 @@ import {
   siteChrome, testsAsked, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
-import { libraryCredit, storeRoot } from "./_omr_credit.js";
+import { libraryCredit, storeFile, storeRoot } from "./_omr_credit.js";
+// The LDraw library's sets, each a page made as a model's is (library333).
+import {
+  FROM as SET_FROM, PER_PAGE as SET_PER_PAGE, SET_ID, SET_SORTS, askOf, authorsIn, decades, fileSteps, librarySet,
+  librarySets, searchSets, setCard, setModel, setTitle, themeOf, themes,
+} from "./_library.js";
 // A model's parts list from its file, as the app's (site278).
 import { inventoryOf, paletteOf, partsTable, rebrickableCsv, wantedList } from "./_parts.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
@@ -667,6 +681,13 @@ function versionSaid(origin, id, one, newest) {
 // What a link answers.
 
 function links(origin, id) {
+  // A set of the LDraw library (api/_library.js): its page under /library/,
+  // its cover for a picture, and the app opening it as the app's own
+  // Library does, in a tab of its own (TabSession.open_another). No embed.
+  if (SET_ID.test(id)) {
+    const url = `${origin}/library/${id}`;
+    return { url, image: `${url}.webp`, viewer: `${origin}/app?new=1&library=${id}`, embed: "" };
+  }
   const url = `${origin}/m/${id}`;
   return {
     url,
@@ -788,8 +809,28 @@ function licenceWords(model) {
       + `they credit ${creditOf(model)}, link to this page, and share what they make under the `
       + `same licence.${deed}</p>`;
   }
+  // A set of the LDraw library: its modellers and LDraw, whose page of it
+  // the credit links to; this page is not its source.
   return `<p><b>${licence.name}.</b> Anyone may share it, change it and build on it, for any `
-    + `purpose, as long as they credit ${creditOf(model)} and link to this page.${deed}</p>`;
+    + `purpose, as long as they credit ${creditOf(model)}${model.library ? "" : " and link to this page"}.${deed}</p>`;
+}
+
+/// A set's facts, as a model's page says a model's (sharePage): its parts,
+/// the steps its file lays out, its number, theme and year (each a way to
+/// more of the shelf), that it is another build of its set, and its box's
+/// count where the model's is not the same count (ModelLibrary.agrees).
+function setFacts(set, parts) {
+  const decade = set.year ? `${Math.floor(set.year / 10) * 10}s` : "";
+  const box = Number(set.box) || 0;
+  return [
+    `<li class="pill">${escapeHtml(count(parts, "part"))}</li>`,
+    box && Math.abs(parts - box) > 0.02 * box ? `<li class="pill">Its box: ${escapeHtml(count(box, "part"))}</li>` : "",
+    set.steps ? `<li class="pill" data-steps="${Number(set.steps)}">${escapeHtml(count(set.steps, "step"))}, laid out by its modeller</li>` : "",
+    set.set ? `<li class="pill" data-set="${escapeHtml(set.set)}">Set ${escapeHtml(set.set)}</li>` : "",
+    set.alternate_of ? `<li class="pill">Another build of ${escapeHtml(set.alternate_of)}</li>` : "",
+    set.theme ? `<li><a class="pill" href="/library?theme=${encodeURIComponent(set.theme)}">${escapeHtml(set.theme)}</a></li>` : "",
+    decade ? `<li><a class="pill" href="/library?decade=${decade}">${Number(set.year)}</a></li>` : "",
+  ].join("");
 }
 
 /// What a search engine reads of the model: schema.org's CreativeWork,
@@ -801,7 +842,7 @@ function structured(origin, id, model) {
   const parent = (model.from || [])[0];
   const data = {
     "@context": "https://schema.org", "@type": "CreativeWork", name: model.name, url,
-    description: model.description || describe(model), image: model.has_image ? `${url}.png` : undefined,
+    description: model.description || describe(model), image: model.has_image ? links(origin, id).image : undefined,
     author: creditName(model) ? { "@type": "Person", name: creditName(model),
       url: modelledByOf(model.modelled_by)?.page || (model.by ? `${origin}/u/${model.by.handle}` : undefined) } : undefined,
     license: LICENCES[model.licence]?.url || undefined, dateCreated: model.listed_at || undefined,
@@ -829,7 +870,8 @@ async function sitemap(response, origin) {
       break;
     }
   }
-  const pages = await db("rpc/sitemap_pages", { method: "POST", body: {} }) || {};
+  const [pages, sets] = await Promise.all([db("rpc/sitemap_pages", { method: "POST", body: {} }).then((said) => said || {}),
+    librarySets().catch(() => [])]);
   const day = (iso) => String(iso || "").slice(0, 10);
   const entry = (loc, when, often, rank) => `  <url><loc>${escapeHtml(loc)}</loc>`
     + `${when ? `<lastmod>${day(when)}</lastmod>` : ""}<changefreq>${often}</changefreq><priority>${rank}</priority></url>`;
@@ -839,6 +881,8 @@ async function sitemap(response, origin) {
     ...(pages.models || []).map((m) => entry(`${origin}/m/${m.id}`, m.updated_at, "weekly", "0.6")),
     ...(pages.people || []).map((p) => entry(`${origin}/u/${p.handle}`, p.updated_at, "weekly", "0.4")),
     ...(pages.collections || []).map((c) => entry(`${origin}/c/${c.id}`, c.updated_at, "weekly", "0.3")),
+    // The LDraw library's sets (api/_library.js), each a page of its own.
+    ...sets.map((one) => entry(`${origin}/library/${one.id}`, "", "monthly", "0.4")),
   ];
   response.setHeader("Content-Type", "application/xml; charset=utf-8");
   response.setHeader("Cache-Control", "public, max-age=0, s-maxage=3600, stale-while-revalidate=600");
@@ -957,6 +1001,16 @@ function nextRow(key, title, cards) {
 /// one must be; it counts the comments as it lists them. [url] is the
 /// page's own address, an older version's its own.
 function actionBar(origin, id, model, url = links(origin, id).url) {
+  // A set of the LDraw library has no row to like, save, comment on or say
+  // was built: Share and More alone.
+  if (model.library) {
+    return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="What you can do with it">`
+      + iconButtonHtml({ icon: "share", name: "Share",
+        attrs: 'data-share aria-haspopup="dialog" aria-controls="share-sheet" title="Share it: its link"' })
+      + `<details class="more-menu end" id="more"><summary class="icon-btn" aria-label="More" title="More">`
+      + `${iconHtml("more")}</summary><div class="menu-list"><a href="/takedown">Takedown requests</a></div></details>`
+      + `</div>` + shareSheet(origin, id, model, url);
+  }
   return `<div class="action-bar" id="marks" data-id="${id}" role="group" aria-label="What you can do with it">`
     + iconButtonHtml({ icon: "like", name: "Like", count: model.likes, one: "like", pressed: false, labelled: true,
       attrs: 'data-mark="like" title="Like it"' })
@@ -994,9 +1048,9 @@ function shareSheet(origin, id, model, url) {
     + `<form method="dialog">`
     + `<div class="copy-row"><label>Its link<input id="share-link" value="${escapeHtml(url)}" readonly spellcheck="false"></label>`
     + `<button type="button" class="cta" data-copy="share-link">Copy link</button></div>`
-    + `<div class="copy-row"><label>Embed it in a page <small>Its picture and name, opening it here, light or dark to suit whoever looks at it</small>`
+    + (links(origin, id).embed ? `<div class="copy-row"><label>Embed it in a page <small>Its picture and name, opening it here, light or dark to suit whoever looks at it</small>`
     + `<textarea id="share-embed" rows="4" readonly spellcheck="false">${escapeHtml(links(origin, id).embed)}</textarea></label>`
-    + `<button type="button" class="cta ghost" data-copy="share-embed">Copy code</button></div>`
+    + `<button type="button" class="cta ghost" data-copy="share-embed">Copy code</button></div>` : "")
     + `<p class="said" role="status"></p>`
     + `<div class="actions"><button type="button" class="cta ghost" data-share-app hidden>Share with another app</button>`
     + `<button class="cta ghost" value="close">Close</button></div>`
@@ -1015,28 +1069,39 @@ function shareSheet(origin, id, model, url) {
 /// [counted] is the shown version's steps, counted from its file as it is
 /// read (api/_steps.js), or null where they are not known; [parts] its
 /// parts list (partsOf), or null.
+///
+/// A set of the LDraw library (api/_library.js setModel, model.library) has
+/// its page made here too (library333): its picture, who modelled it for
+/// LDraw and on what terms, the app opening it, Share, its parts and more
+/// of its theme. None of what is a shared model's row (versions, marks,
+/// likes, comments, builds, remixes, collections), and its number, theme
+/// and year where a model has its kind.
 function sharePage(origin, id, model, versions = [], shown = null, mark = null, photos = [], next = { by: [], like: [] },
   counted = null, lists = { count: 0, lists: [], covers: new Map() }, parts = null) {
+  const set = model.library || null;
   const newest = versions[0]?.n ?? 1;
   const version = shown ?? versions[0] ?? { n: 1, has_image: model.has_image };
   // An older version: its own page, marked as older, its own picture and
   // counts, its viewer, and the newest a click away. Never indexed: the
   // link is what a search should find.
   const old = version.n !== newest;
-  const title = old ? `${model.name}, version ${version.n} — a Brickworks model` : `${model.name} — a Brickworks model`;
-  const viewer = `/app?view=${id}${old ? `&v=${version.n}` : ""}`;
-  const copyLink = `/app?copy=${id}${old ? `&v=${version.n}` : ""}`;
+  const title = set ? `${model.name}, LEGO® set ${set.set} — from the LDraw library`
+    : old ? `${model.name}, version ${version.n} — a Brickworks model` : `${model.name} — a Brickworks model`;
+  // A set is looked at in the app itself, opened as the app's Library opens
+  // one; there is no copy to make of it, so Open in Brickworks is the same.
+  const viewer = set ? `/app?new=1&library=${id}` : `/app?view=${id}${old ? `&v=${version.n}` : ""}`;
+  const copyLink = set ? viewer : `/app?copy=${id}${old ? `&v=${version.n}` : ""}`;
   // Its parts as the app counts them, where its file was read: the count
   // the Parts list under it says.
   const shownModel = { ...model, parts: parts ? parts.pieces : old ? version.parts : model.parts };
-  const fileAt = `/m/${id}${old ? `/v/${version.n}` : ""}`;
+  const fileAt = set ? `/library/${id}` : `/m/${id}${old ? `/v/${version.n}` : ""}`;
   // Its picture with nothing behind the model, on the theme's own ground
   // (?op=cutout: the picture itself for a model published before there were
   // cut-outs). In the strip, whose frames are four to three, the cards'
   // picture, which is too since 2026-10-24.
-  const picture = old ? (version.has_image ? `/m/${id}/v/${version.n}.cutout.png` : "")
+  const picture = set ? `/library/${id}.webp` : old ? (version.has_image ? `/m/${id}/v/${version.n}.cutout.png` : "")
     : (model.has_image ? `/m/${id}.cutout.png` : "");
-  const small = !old && model.has_thumb
+  const small = set ? picture : !old && model.has_thumb
     ? `/m/${id}.webp?v=${(Date.parse(model.updated_at || "") || 0).toString(36)}` : picture;
   const { head, header, footer } = siteChrome();
   const kind = kindLabel(model.kind);
@@ -1059,7 +1124,7 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   // not said. What is built on the side is said apart: the orrery's 87
   // steps, and its 12 sub-assemblies' 64.
   const side = counted ? sideSaid(counted) : "";
-  const facts = [
+  const facts = set ? setFacts(set, shownModel.parts) : [
     `<li class="pill">${escapeHtml(count(shownModel.parts, "part"))}</li>`,
     counted ? `<li class="pill" data-steps="${counted.steps}">${stepsSaid(counted)}${model.own_steps ? ", laid out by its builder" : ""}</li>` : "",
     side ? `<li class="pill" data-side="${counted.side}">${side}</li>` : "",
@@ -1102,8 +1167,10 @@ ${structured(origin, id, model)}
 ${header}
 <main id="main">
 <article class="wrap wide model-page">
-  <nav class="crumbs" aria-label="Where it is"><a href="/gallery">Gallery</a>${model.kind
-    ? ` <span aria-hidden="true">›</span> <a href="/gallery?kind=${model.kind}">${escapeHtml(kind)}</a>` : ""}</nav>
+  <nav class="crumbs" aria-label="Where it is">${set ? `<a href="/library">LDraw library</a>${set.theme
+    ? ` <span aria-hidden="true">›</span> <a href="/library?theme=${encodeURIComponent(set.theme)}">${escapeHtml(set.theme)}</a>` : ""}`
+    : `<a href="/gallery">Gallery</a>${model.kind
+    ? ` <span aria-hidden="true">›</span> <a href="/gallery?kind=${model.kind}">${escapeHtml(kind)}</a>` : ""}`}</nav>
   ${old ? `<p class="old-version" role="note"><b>An older version.</b> This is version ${version.n} of
     ${newest}, published ${when(version.at)}. <a href="/m/${id}">See the newest, version ${newest}</a></p>` : ""}
   <div class="top">
@@ -1118,8 +1185,9 @@ ${header}
       ${designerRow(model)}
       ${modelledLine(model)}
       <div class="actions">
-        <a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="Build it with real bricks, one step at a time from step 1: no account needed">Build it</a>
-        <a class="cta ghost" href="${escapeHtml(copyLink)}" title="Copy it into your own models, to change and make yours">Open in Brickworks</a>
+        ${set ? `<a class="cta" href="${escapeHtml(viewer)}" title="Open it in Brickworks in a tab of its own: turn it in 3D, step through its build, change it and save it as yours">Open in Brickworks</a>`
+    : `<a class="cta" href="${escapeHtml(`${viewer}&build`)}" title="Build it with real bricks, one step at a time from step 1: no account needed">Build it</a>
+        <a class="cta ghost" href="${escapeHtml(copyLink)}" title="Copy it into your own models, to change and make yours">Open in Brickworks</a>`}
         <a class="cta ghost" href="${fileAt}.mpd" download>Download</a>
       </div>
       ${actionBar(origin, id, model, old ? `${origin}/m/${id}/v/${version.n}` : links(origin, id).url)}
@@ -1134,7 +1202,7 @@ ${header}
     ${tags ? `<ul class="tags pills" aria-label="Tags">${tags}</ul>` : ""}
     <div class="licence"><h3 id="licence-h">Licence</h3>${licenceWords(model)}</div></section>
   ${partsSection(fileAt, parts)}
-  ${commentsSection(id, version.n, newest, counted ? counted.pages : null)}
+  ${set ? "" : `${commentsSection(id, version.n, newest, counted ? counted.pages : null)}
   ${buildsSection(id, model, photos)}
   <section class="tree" id="remixes" aria-labelledby="tree-h"><h2 id="tree-h">Remixes</h2>
     ${line ? `<h3>It came from</h3><ol class="line">${line}</ol>` : ""}
@@ -1145,13 +1213,13 @@ ${header}
           + `shared by link, not in the gallery.</p>` : "")
       : `<p class="note none">Nobody has remixed it yet. <a href="${escapeHtml(copyLink)}">Open it in Brickworks</a>
         to make a copy of your own to change; share that, and it shows here.</p>`}
-  </section>
+  </section>`}
   ${listsSection(lists)}
   ${versionsSection(id, versions, version)}
     </div>
   </div>
   ${model.by ? nextRow("more-by", `More by <a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>`, next.by) : ""}
-  ${nextRow("similar", "Similar models", next.like)}
+  ${nextRow("similar", set ? `More ${escapeHtml(set.theme || "sets")} from the LDraw library` : "Similar models", next.like)}
   ${nextRow("from-gallery", "More in the gallery", next.gallery || [])}
 </article>
 </main>
@@ -1189,7 +1257,8 @@ function pageTabs(model, newest, inLists = 0, parts = null) {
   const tab = (key, name, n = 0) => `<a href="#${key}" data-tab="${key}">${name}`
     + `${Number(n) ? ` <span class="n">${Number(n).toLocaleString("en-US")}</span>` : ""}</a>`;
   return `<nav class="tabs page-tabs" id="page-tabs" aria-label="On this page">${tab("about", "About")}`
-    + `${parts ? tab("parts", "Parts", parts.pieces) : ""}${tab("comments", "Comments")}${tab("builds", "Builds", model.builds)}${tab("remixes", "Remixes", model.remixes)}`
+    + `${parts ? tab("parts", "Parts", parts.pieces) : ""}`
+    + `${model.library ? "" : `${tab("comments", "Comments")}${tab("builds", "Builds", model.builds)}${tab("remixes", "Remixes", model.remixes)}`}`
     + `${Number(inLists) ? tab("collections", "Collections", inLists) : ""}`
     + `${newest > 1 ? tab("versions", "Versions", newest) : ""}</nav>`;
 }
@@ -1498,12 +1567,12 @@ const EMBED_CSP = "default-src 'none'; script-src 'self'; img-src 'self'; style-
 /// model by a minute at max-age=60).
 export const SHARED_CACHE = "public, max-age=0, s-maxage=30, stale-while-revalidate=30";
 
-function html(response, status, body, { embed = false } = {}) {
+function html(response, status, body, { embed = false, cache = SHARED_CACHE } = {}) {
   response.setHeader("Content-Type", "text/html; charset=utf-8");
   response.setHeader("Content-Security-Policy", embed ? EMBED_CSP : pageCsp());
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  response.setHeader("Cache-Control", SHARED_CACHE);
+  response.setHeader("Cache-Control", cache);
   return response.status(status).end(body);
 }
 
@@ -1612,7 +1681,14 @@ async function download(response, op, id, asked, as) {
     response.setHeader("Content-Disposition", named("mpd"));
     return response.status(200).end(file);
   }
-  const parts = partsOf(stored, file);
+  return partsAnswer(response, partsOf(stored, file), base, as, { id, version: shown.n, newest });
+}
+
+/// A parts list as /m/X/parts.json, .xml and .csv answer it, and a set's
+/// (/library/X/parts.json): [parts] the list (partsOf), [base] what its
+/// files are named, [said] what the JSON says first.
+function partsAnswer(response, parts, base, as, said) {
+  const fail = (status, error) => response.status(status).setHeader("Cache-Control", "no-store").json({ error });
   if (!parts) return fail(503, "This site cannot list a model's parts just now.");
   if (as === "xml") {
     response.setHeader("Content-Type", "application/xml; charset=utf-8");
@@ -1629,7 +1705,7 @@ async function download(response, op, id, asked, as) {
   // part's geometry (mesh), fetched from the store (root), in its colours.
   const root = storeRoot();
   return response.status(200).json({
-    id, version: shown.n, newest, pieces: parts.pieces,
+    ...said, pieces: parts.pieces,
     lots: parts.lots.map((lot) => ({ part: lot.part, name: lot.name, category: lot.category, colour: lot.colour,
       colour_name: lot.colour_name, hex: lot.hex, count: lot.count, element: lot.element || null, custom: lot.custom,
       mesh: (root && lot.mesh) || null })),
@@ -1659,6 +1735,13 @@ async function read(request, response) {
   if (op === "list") return gallery(request, response, origin);
   if (op === "shelves") return shelves(request, response, origin);
   if (op === "sitemap") return sitemap(response, origin);
+  // The LDraw library's sets (api/_library.js): /library's list, and each
+  // set's page, cover, file and parts.
+  if (op === "library") return library(request, response);
+  if (op === "set") return setPage(response, origin, id);
+  if (op === "set_cover") return setCover(response, id);
+  if (op === "set_file") return setFile(response, id);
+  if (op === "set_parts") return setParts(response, id, String(request.query?.as || "json"));
 
   // A version asked for, where there can be one: the page, its picture and
   // the model. The gallery's small picture says which upload it is with a
@@ -1790,6 +1873,99 @@ async function read(request, response) {
     ...links(origin, id),
     model: model.toString("utf8"),
   });
+}
+
+// ---------------------------------------------------------------------------
+// The LDraw library (library333): /library's sets a page at a time, and each
+// set's page, cover, file and parts, from the app's own index and files in
+// the parts store (api/_library.js). Nothing here reads the database.
+
+/// What the CDN keeps of the shelf and a set's page: the store's index
+/// changes a few times a year, so an hour, given while it asks again for a
+/// day. A cover a week: it is drawn again only when the index is built again.
+const SET_CACHE = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
+const COVER_CACHE = "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800";
+
+/// /library's sets (web/library.js), as askOf reads the query: {models (the
+/// cards, web/card.js), total, page, pages, per_page, of (every set), asked,
+/// themes [{name, n}], decades, sizes, sorts}.
+async function library(request, response) {
+  const every = await librarySets();
+  if (!every.length) {
+    return response.status(503).setHeader("Cache-Control", "no-store")
+      .json({ error: "The LDraw library cannot be read just now. Try again in a minute." });
+  }
+  const asked = askOf(request.query || {});
+  const found = searchSets(every, asked);
+  response.setHeader("Cache-Control", SET_CACHE);
+  return response.status(200).json({ ...found, models: found.models.map(setCard), per_page: SET_PER_PAGE,
+    of: every.length, asked, themes: themes(every), decades: decades(every),
+    sizes: Object.fromEntries(Object.entries(SIZES).map(([key, size]) => [key, size.label])), sorts: SET_SORTS });
+}
+
+/// The sets a set's page ends with: its theme's, the nearest in years
+/// first, at most NEXT_MOST, and none fewer than NEXT_LEAST.
+function setsBeside(every, entry) {
+  const theme = themeOf(entry);
+  const kin = theme ? every.filter((one) => one.id !== entry.id && themeOf(one) === theme)
+    .sort((a, b) => Math.abs(a.year - entry.year) - Math.abs(b.year - entry.year)
+      || a.name.localeCompare(b.name, "en", { numeric: true })).slice(0, NEXT_MOST) : [];
+  return kin.length >= NEXT_LEAST ? kin.map(setCard) : [];
+}
+
+/// /library/X: a set's page, made as a model's is (sharePage), its parts and
+/// steps and every modeller read from its own file.
+async function setPage(response, origin, id) {
+  const entry = await librarySet(id);
+  if (!entry) return html(response, 404, gonePage(origin, id, false));
+  const text = await storeFile(entry).catch(() => null);
+  const parts = text ? partsOf(entry.file, Buffer.from(text)) : null;
+  const model = setModel(entry, { authors: authorsIn(text), steps: fileSteps(text) });
+  const next = { by: [], like: setsBeside(await librarySets(), entry), gallery: [] };
+  return html(response, 200, sharePage(origin, id, model, [], null, null, [], next, null, undefined, parts),
+    { cache: SET_CACHE });
+}
+
+/// /library/X.webp: its cover, the app's Library's own (library_covers.gd),
+/// from this site's origin, which is where the pages take pictures from.
+async function setCover(response, id) {
+  const entry = await librarySet(id);
+  const root = storeRoot();
+  const answer = entry && root ? await fetch(`${root}${entry.cover}`).catch(() => null) : null;
+  const bytes = answer && answer.ok ? Buffer.from(await answer.arrayBuffer()) : null;
+  if (!bytes || !bytes.subarray(0, 4).equals(RIFF) || !bytes.subarray(8, 12).equals(WEBP)) {
+    return response.status(404).setHeader("Cache-Control", "no-store").end("");
+  }
+  response.setHeader("Content-Type", "image/webp");
+  response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  response.setHeader("Cache-Control", COVER_CACHE);
+  return response.status(200).end(bytes);
+}
+
+/// /library/X.mpd: its file, as LDraw has it, from the store itself: the
+/// largest is 36 MB, past what a function may answer with.
+async function setFile(response, id) {
+  const entry = await librarySet(id);
+  const root = storeRoot();
+  if (!entry || !root) {
+    return response.status(404).setHeader("Cache-Control", "no-store").json({ error: "The LDraw library has no such set." });
+  }
+  response.setHeader("Cache-Control", SET_CACHE);
+  response.setHeader("Location", `${root}${entry.file}`);
+  return response.status(302).end("");
+}
+
+/// /library/X/parts.json, .xml and .csv: its parts, as a model's are.
+async function setParts(response, id, as) {
+  const entry = await librarySet(id);
+  if (!entry) {
+    return response.status(404).setHeader("Cache-Control", "no-store").json({ error: "The LDraw library has no such set." });
+  }
+  const text = await storeFile(entry).catch(() => null);
+  response.setHeader("Cache-Control", SET_CACHE);
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  return partsAnswer(response, text ? partsOf(entry.file, Buffer.from(text)) : null,
+    fileName(setTitle(entry), entry.id), as, { id, version: 1, newest: 1 });
 }
 
 /// /gallery's models, a page at a time: the listed ones a query asks for

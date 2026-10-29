@@ -41,7 +41,7 @@ STYLESHEET = '<link rel="stylesheet" href="/site.css">'
 # Each page's own address, where it is one of the header's links. The
 # landing page marks the mark; your settings are part of your account.
 OWN = {"index.html": "/", "gallery.html": "/gallery", "download.html": "/download",
-       "profile.html": "/profile", "settings.html": "/profile"}
+       "profile.html": "/profile", "settings.html": "/profile", "library.html": "/gallery"}
 
 
 def shell() -> tuple[str, str, str]:
