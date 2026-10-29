@@ -159,6 +159,7 @@
 // SUPABASE_PUBLISHABLE_KEY for accounts.
 
 import { createHash, randomBytes } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { challenge, grantOf, originOf, resourceOf } from "./_oauth.js";
@@ -379,6 +380,58 @@ async function tabOf(channel) {
 async function helloOf(channel) {
   const rows = await db(`relay_tabs?channel=eq.${channel}&select=hello`);
   return rows && rows.length ? rows[0].hello : null;
+}
+
+// The tools of the app build this deployment serves, as tools/list gives
+// them (CommandSocket.served_tools): tools/mcp_tools.json, which mcp_sync
+// holds to what the app serves, beside this file in a deployment
+// (deploy.sh) and in tools/ in a checkout. Each tool's keys in the order
+// the database keeps a hello's (jsonb: shorter first, then by bytes), so
+// the list hashes (listOf) as a tab of this build's hello does. Null where
+// there is none.
+let ownList;
+
+function ownTools() {
+  if (ownList !== undefined) return ownList;
+  ownList = null;
+  for (const where of ["./_mcp_tools.json", "../tools/mcp_tools.json"]) {
+    const url = new URL(where, import.meta.url);
+    if (!existsSync(url)) continue;
+    ownList = JSON.parse(readFileSync(url, "utf8")).map((one) => keptOrder({
+      name: one.name || "", description: one.description || "",
+      inputSchema: one.input_schema || {}, annotations: one.annotations || {},
+    }));
+    break;
+  }
+  return ownList;
+}
+
+const byKept = (a, b) => a.length - b.length || (a < b ? -1 : a > b ? 1 : 0);
+
+function keptOrder(value) {
+  if (Array.isArray(value)) return value.map(keptOrder);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.keys(value).sort(byKept).map((key) => [key, keptOrder(value[key])]));
+}
+
+// And the guidance that goes with them: the instructions of the latest
+// hello of this very list, whoever's tab said it, since the app's guidance
+// is the same for everyone. Kept once found, and looked for again a minute
+// after a miss; none until a tab of this build has said hello.
+const GUIDANCE_AGAIN_MS = 60_000;
+let ownGuidance = null;
+
+async function guidanceOf(tools) {
+  const known = ownGuidance;
+  if (known && (known.text !== null || Date.now() - known.at < GUIDANCE_AGAIN_MS)) return known.text || "";
+  const list = listOf(tools);
+  const recent = await db("relay_tabs?hello=not.is.null&owner=not.is.null"
+    + "&select=channel,tools:hello->tools&order=seen_at.desc&limit=20") || [];
+  const same = recent.find((row) => listOf(row.tools) === list);
+  const [said] = (same && await db(`relay_tabs?channel=eq.${same.channel}`
+    + "&select=instructions:hello->>instructions")) || [];
+  ownGuidance = { at: Date.now(), text: said ? String(said.instructions || "") : null };
+  return ownGuidance.text || "";
 }
 
 // "closed", "hidden" or "ready". Alive is ready, in view or not; a page
@@ -688,23 +741,18 @@ function accountTabs(grant, origin, session, early = null) {
     tabs: () => ahead("tabs") || tabsOf(grant.owner),
     pick: () => ahead("pick") || pickOf(key),
     lists: () => ahead("lists") || listsOf(key),
-    // The handshake and the tool list are the app's, the same for every
-    // account: from the tab if there is one, else from the last tab of this
-    // account to switch on, else from somebody's — so Claude can add the
-    // connector before the person has opened Brickworks at all. Somebody's
-    // is the fullest of the latest few, so a test's one-tool tab is never
-    // what a person's Claude is shown.
+    // The handshake and the tool list: the tab's own once it has said
+    // hello. Before that — no tab open, or one yet to say hello — those of
+    // the app build this deployment serves, which are the tools the
+    // person's tab will have, so Claude can add the connector before the
+    // person has opened Brickworks at all. Never another tab's: the fullest
+    // anyone had sent was once a test build's, with a tool no person's app
+    // has (2026-10-29), and an account's own last tab may be an older build.
     async hello(tab) {
       const its = tab ? await helloOf(tab.channel) : null;
       if (its) return its;
-      const own = await db(`relay_tabs?owner=eq.${grant.owner}&hello=not.is.null`
-        + "&select=hello&order=seen_at.desc&limit=1");
-      if (own && own.length) return own[0].hello;
-      const recent = await db("relay_tabs?hello=not.is.null&owner=not.is.null"
-        + "&select=channel,tools:hello->tools&order=seen_at.desc&limit=20") || [];
-      const count = (row) => (Array.isArray(row.tools) ? row.tools.length : 0);
-      const fullest = recent.sort((a, b) => count(b) - count(a))[0];
-      return fullest ? await helloOf(fullest.channel) : null;
+      const tools = ownTools();
+      return tools ? { instructions: await guidanceOf(tools), tools } : null;
     },
     notOpen: notOpenFor(origin),
     // This conversation's pick when Claude sends the session id it was
