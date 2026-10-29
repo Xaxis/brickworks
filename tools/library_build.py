@@ -9,6 +9,10 @@ it, beside the parts:
 
     tools/library_build.py stage  [--out DIR]   copy the models, write the index
     tools/library_build.py covers [--out DIR]   draw the covers not drawn yet (GPU)
+    tools/library_build.py pictures [--out DIR] draw the website's pictures not drawn
+                                  yet (GPU): library/pages/<id>.webp, 1200 x 900,
+                                  and library/cards/<id>.webp, 480 x 360, each the
+                                  model with nothing behind it (library333)
     tools/library_build.py check  [--out DIR]   hold the index to the format and the files
     tools/library_build.py sample --to DIR [--count 30]
                                   a few models and their covers from DIR, for
@@ -292,10 +296,17 @@ def stage(out: Path) -> int:
     return 0
 
 
-def covers(out: Path, most: int, run_timeout: int) -> int:
+def covers(out: Path, most: int, run_timeout: int, clear: bool = False) -> int:
+    """The covers the app's Library shows; with [clear], the website's
+    pictures of each, a page's and a card's, with nothing behind the model
+    (src/dev/library_covers.gd --clear), so the site's frames show it on
+    their own ground in either theme, as a shared model's page does."""
     models, _ = entries()
-    folder = out / "library" / "covers"
+    folder = out / "library" / ("pages" if clear else "covers")
     folder.mkdir(parents=True, exist_ok=True)
+    cards = out / "library" / "cards"
+    if clear:
+        cards.mkdir(parents=True, exist_ok=True)
     work = out / ".work"
     (work / "logs").mkdir(parents=True, exist_ok=True)
     (work / "xdg").mkdir(parents=True, exist_ok=True)
@@ -317,6 +328,8 @@ def covers(out: Path, most: int, run_timeout: int) -> int:
                    "godot", "--path", str(ROOT), "--resolution", "640x480",
                    "--script", "src/dev/library_covers.gd", "--",
                    f"--list={listing}", f"--out={folder}", f"--most={most}"]
+        if clear:
+            command += ["--clear", f"--cards={cards}"]
         with log.open("w") as sink:
             try:
                 code = subprocess.run(command, stdout=sink, stderr=subprocess.STDOUT,
@@ -425,7 +438,7 @@ def check(out: Path) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("what", choices=["stage", "covers", "check", "sample", "sheet"])
+    parser.add_argument("what", choices=["stage", "covers", "pictures", "check", "sample", "sheet"])
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--to", type=Path, help="sample: where to write it")
     parser.add_argument("--count", type=int, default=30)
@@ -437,8 +450,8 @@ def main() -> int:
     out = args.out.resolve()
     if args.what == "stage":
         return stage(out)
-    if args.what == "covers":
-        return covers(out, args.most, args.run_timeout)
+    if args.what in ("covers", "pictures"):
+        return covers(out, args.most, args.run_timeout, clear=args.what == "pictures")
     if args.what == "check":
         return check(out)
     if args.what == "sheet":

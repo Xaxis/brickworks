@@ -6,6 +6,7 @@
   <url><loc>https://brickworks.diy/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
   <url><loc>https://brickworks.diy/gallery</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
   <url><loc>https://brickworks.diy/collections</loc><changefreq>daily</changefreq><priority>0.6</priority></url>
+  <url><loc>https://brickworks.diy/library</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://brickworks.diy/challenge</loc><changefreq>daily</changefreq><priority>0.6</priority></url>
   <url><loc>https://brickworks.diy/download</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>
   <url><loc>https://brickworks.diy/takedown</loc><changefreq>monthly</changefreq><priority>0.2</priority></url>

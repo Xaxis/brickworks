@@ -43,6 +43,7 @@
         "tests/test_collection.py",
         "tests/test_designers.py",
         "tests/test_library.py",
+        "tests/test_library_site.py",
         "tests/test_refresh_catalogue.py",
         "tests/test_update_parts.py"
       ]
@@ -105,7 +106,9 @@
       "entry": "api/share.js",
       "reach": "curl -s 'https://brickworks.diy/api/share?id=<id>'   (and /m/<id>, /m/<id>.png, /m/<id>/embed; POST with a session publishes, ?op=unpublish takes down)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_library_site.py"
+      ]
     },
     {
       "id": "api:POST /api/account?op=age",
@@ -178,6 +181,14 @@
       "entry": "tools/storage_ldraw.py",
       "reach": "tools/storage_ldraw.py --check   (the library's parts/ in the parts bucket under ldraw/parts/, what is not up yet and its size; without --check uploads it, never over a file there)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:LDraw library browser flow",
+      "kind": "cli",
+      "entry": "tools/web/library_site_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/library_site_flow.mjs --url=<preview> --out=DIR [--no-app]   (preview_checks.sh library_site: /library and a set's page at 390 and 1400, light and dark, search by number, credit, parts, Share, Open in Brickworks)",
+      "area": "web",
       "tests": []
     },
     {
@@ -1053,7 +1064,7 @@
       "id": "cli:model library",
       "kind": "cli",
       "entry": "tools/library_build.py",
-      "reach": "python3 tools/library_build.py covers && python3 tools/library_build.py stage && python3 tools/library_build.py check   (needs vendor/omr and models.json; covers on the GPU lease; writes bench/results/library-2026-10-26/library/)",
+      "reach": "python3 tools/library_build.py covers && python3 tools/library_build.py stage && python3 tools/library_build.py check   (needs vendor/omr and models.json; covers on the GPU lease; writes bench/results/library-2026-10-26/library/); python3 tools/library_build.py pictures --out DIR   (the website's: library/pages/<id>.webp 1200x900 and library/cards/<id>.webp 480x360, the model on nothing, src/dev/library_covers.gd --clear, about a second a set on the lease)",
       "area": "collection",
       "tests": []
     },
@@ -1061,7 +1072,7 @@
       "id": "cli:model library in storage",
       "kind": "cli",
       "entry": "tools/storage_library.py",
-      "reach": "tools/storage_library.py --check   (the staged library/ in the parts bucket under library/, what is not up yet and its size; without --check uploads it, the index last)",
+      "reach": "tools/storage_library.py --check   (the staged library/ in the parts bucket under library/, what is not up yet and its size; without --check uploads it, the index last); tools/storage_library.py DIR --pictures   (the website's pictures alone, library/pages and library/cards, never the index)",
       "area": "collection",
       "tests": []
     },
@@ -2476,7 +2487,9 @@
       "entry": "api/share.js",
       "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most; with neither, More in the gallery, its Top)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_library_site.py"
+      ]
     },
     {
       "id": "lib:motions",
@@ -3000,6 +3013,17 @@
       "tests": []
     },
     {
+      "id": "ui:LDraw library page",
+      "kind": "ui",
+      "entry": "web/library.html",
+      "reach": "https://brickworks.diy/library?q=10179&theme=Star%20Wars&sort=oldest&page=2   (every set the app's Library opens, as the gallery's cards: cover, name, number, theme, year, modeller; search, themes as pills, Filters: order, size, years; web/library.js reads /api/share?op=library a page at a time; linked from the gallery's tabs and every page's footer)",
+      "area": "web",
+      "tests": [
+        "tests/test_library.py",
+        "tests/test_library_site.py"
+      ]
+    },
+    {
       "id": "ui:LEGO Art designed by Claude",
       "kind": "ui",
       "entry": "src/ai/assistant.gd",
@@ -3086,6 +3110,14 @@
       "kind": "ui",
       "entry": "api/_trust.js",
       "reach": "sign in as a new account: the app's sign-in screen asks it, and /profile on the site (once supabase/trust.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:an LDraw set's page",
+      "kind": "ui",
+      "entry": "api/_library.js",
+      "reach": "https://brickworks.diy/library/omr-10179-1   (api/share.js sharePage with model.library: its cover, modelled by and CC BY credit with LDraw's page, facts, Open in Brickworks = /app?new=1&library=<id>, Share, Parts; /library/<id>.webp, .cutout.webp, .cover.webp, .mpd and /parts.json|xml|csv; from the parts store's library/index.json, no database)",
       "area": "web",
       "tests": []
     },
@@ -3495,7 +3527,8 @@
       "reach": "every card of a shared model: /gallery, the landing page's strip, /u/<handle>, /c/<id>, a model's remixes on /m/<id>, /profile; one renderer for the server (api/_card.js) and the browser, its picture 4:3",
       "area": "web",
       "tests": [
-        "tests/test_billing_pay.py"
+        "tests/test_billing_pay.py",
+        "tests/test_library_site.py"
       ]
     },
     {
@@ -4138,7 +4171,8 @@
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app --host=<ext-apps basic-host, built> --out=shots/app_host   (with .env sourced: the page in the MCP Apps reference host, drawn in 3D whatever the host hands it, turned, a part picked, Check, the instructions, the parts list, full screen, Open in Brickworks)",
       "area": "mcp",
       "tests": [
-        "tests/test_billing_pay.py"
+        "tests/test_billing_pay.py",
+        "tests/test_library_site.py"
       ]
     },
     {
@@ -4147,7 +4181,9 @@
       "entry": "web/theme.js",
       "reach": "every page of brickworks.diy: System, Light or Dark at the foot of the page, on Menu at a phone's width, and in Settings on /profile; kept in the browser and, signed in, on the account (GET/POST /api/account?op=theme, supabase/theme.sql)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_library_site.py"
+      ]
     },
     {
       "id": "ui:this month's challenge page",
