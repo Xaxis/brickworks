@@ -1,40 +1,31 @@
-## Does a new design's first save hand back a fresh pair of eyes, once?
+## Does a new design's first save hand back a fresh look, once?
 ##
 ##   godot --path . --resolution 1400x900 --script src/dev/fresh_eyes_probe.gd
 ##
-## FreshEyes (src/ai/fresh_eyes.gd): at a connector chat's first whole save of
-## a new design, Claude Code is shown the subject and three pictures of the
-## model, and the save's answer carries its three changes in place of the close
-## looks, which come at the next save. Here Claude Code is a stand-in put first
-## on PATH, which writes down what it was started with and sent, and answers
-## as Claude Code does. With it, the eyes are asked once and their changes
-## said, never at a later save or a second design of the sitting; a new
-## chat's new design is asked again, and so is one over the example car a tab
-## opens on (the relay's); a chat that designs beside a model already
-## standing, a chat about a selection, and an answer that failed, say what
-## main says. The eyes see three pictures and the subject, nothing of the
-## session. An app started from a desktop icon (PATH=/usr/bin:/bin, the
-## stand-in where the installer puts it, ~/.local/bin) still asks it, through
-## ClaudeCode.found(). In a window, for the pictures.
+## FreshEyes (src/ai/fresh_eyes.gd): at a connector chat's first whole save
+## of a new design, the save hands the session the design's three pictures and
+## the judge's question, in place of the close looks, which come at the next
+## save. Every call but a save and fresh_eyes is refused until it answers in
+## the judge's shape (twice at most), and the answer is kept. Once a subject:
+## never at a later save or a second design of the sitting; a new chat's new
+## design is asked again, and so is one over the example car a tab opens on
+## (the relay's); a chat that designs beside a model already standing, and a
+## chat about a selection, say what main says.
+##
+## The eyes are the session's own whether Claude Code is on the machine or
+## not (design330: a separate Claude Code critic did no better, design328).
+## A stand-in claude first on PATH writes down every start, and the look
+## never starts it; then with no Claude Code anywhere, as in a browser tab,
+## the look is the same. In a window, for the pictures.
 ##
 ## The subject the eyes are told is the person's request, whole, in their own
-## words: a brief of 1,500 characters reaches their message entire, from a
+## words: a brief of 1,500 characters reaches their question entire, from a
 ## connector chat that passes it as submit_design's brief after naming its
 ## subject in a few words of its own, and from Claude Code started on it here
 ## (Main.design_with_claude_code), whose session's own brief never replaces
 ## the app's copy. A chat that passes none is judged by its own subject, never
 ## by the chat's before. Told the session's "taco food truck", the eyes once
 ## said to take off the surfboard the brief asked for (critic315).
-##
-## With no Claude Code (a browser tab, design317) the eyes are the session's
-## own: the first whole save hands it the three pictures and the eyes'
-## question, every other call but a save is refused until it answers with
-## fresh_eyes (twice at most), the answer is kept, and it is asked once a
-## subject, never in a chat about a selection.
-##
-## --dump=FILE writes the Claude Code chat's answers and the tool list there,
-## and --baseline runs that chat alone: run with both on main (the file
-## copied in) and here, the two files are the same, byte for byte.
 extends SceneTree
 
 var _failures: int = 0
@@ -67,66 +58,52 @@ func _run() -> void:
 	(_main.get("_store") as ModelStore).keeps = false
 	_path = OS.get_environment("PATH")
 	_home = OS.get_environment("HOME")
-	var baseline: bool = OS.get_cmdline_user_args().has("--baseline")
 
 	_fake = _stand_in()
 	OS.set_environment("PATH", "%s:%s" % [_fake, _path])
 	await _asked_once()
-	if not baseline:
-		await _asked_again_for_a_new_chat()
-		await _over_the_example()
-		await _beside_a_model()
-		await _about_a_selection("c7", 0)
-		await _no_answer()
-		await _from_a_desktop_icon()
-		await _whole_brief_from_a_chat()
-		await _whole_brief_on_the_port()
-		_no_claude_code()
-		await _own_look()
-		await _own_look_unanswered()
-		await _about_a_selection("c10", 1)
+	await _unanswered()
+	await _over_the_example()
+	await _beside_a_model()
+	await _about_a_selection("c7")
+	await _whole_brief_from_a_chat()
+	await _whole_brief_on_the_port()
+	_no_claude_code()
+	await _without_claude_code()
+	await _about_a_selection("c10")
 	OS.set_environment("PATH", _path)
 	OS.set_environment("HOME", _home)
 
 	print("")
-	print("fresh eyes: asked once at a new design's first save, its changes said, of the "
-		+ "person's whole brief; with no Claude Code, the session's own look asked and answered" if _failures == 0
-		else "fresh eyes: %d FAILED" % _failures)
+	print("fresh eyes: the session's own look asked once at a new design's first save, of "
+		+ "the person's whole brief, with Claude Code or without, and Claude Code never "
+		+ "started for it" if _failures == 0 else "fresh eyes: %d FAILED" % _failures)
 	_main.queue_free()
 	await process_frame
 	quit(1 if _failures > 0 else 0)
 
 
-## No Claude Code on PATH, nor where its installers put it (a home of
-## nothing), as in a browser tab.
-func _no_claude_code() -> void:
-	var empty: String = ProjectSettings.globalize_path("user://no-claude")
-	DirAccess.make_dir_recursive_absolute(empty)
-	OS.set_environment("PATH", "%s:/usr/bin:/bin" % empty)
-	OS.set_environment("HOME", empty)
-
-
-## With no Claude Code, a new design's first save hands the session the three
-## pictures and the eyes' question; nothing else goes ahead until it answers
-## in the eyes' shape; then once a subject, as the eyes are.
-func _own_look() -> void:
-	print("\n── no Claude Code (a browser tab): the session's own look ──")
-	_check("Claude Code is not found", ClaudeCode.found().is_empty())
-	var asks: int = _calls()
+## Claude Code here (the stand-in): the first whole save hands the session the
+## three pictures and the judge's question; nothing else goes ahead until it
+## answers in the judge's shape; then once a subject. Claude Code never starts.
+func _asked_once() -> void:
+	print("── a new design's first save, with Claude Code here ──")
+	_check("the stand-in is the Claude Code found: %s" % ClaudeCode.found(),
+		ClaudeCode.found() == _fake.path_join("claude"))
 	var listed: Dictionary = _listed("fresh_eyes")
-	_check("fresh_eyes is served, read-only, in the eyes' shape: %s"
+	_check("fresh_eyes is served, read-only, in the judge's shape: %s"
 		% JSON.stringify(listed.get("inputSchema", {}).get("required", [])),
 		not listed.is_empty() and bool(listed["annotations"].get("readOnlyHint", false))
 		and listed["inputSchema"]["required"] == ["reads_as", "generic", "changes"])
-	await _call_as("c8", "clear_model", {})
-	await _call_as("c8", "submit_design", _tower())
-	var said: Array = await _call_as("c8", "save_model", {"name": "tower8.ldr"})
+	var starts: int = _starts()
+	await _call_as("c1", "clear_model", {})
+	await _call_as("c1", "submit_design", _tower())
+	var said: Array = await _call_as("c1", "save_model", {"name": "tower1.ldr"})
 	var text: String = _text(said)
 	_check("the save is written, then the fresh look asked: %s" % _line_with(text, "fresh pair"),
-		text.begins_with("Written to tower8.ldr") and text.contains("a fresh pair of eyes")
+		text.begins_with("Written to tower1.ldr") and text.contains("a fresh pair of eyes")
 		and text.contains("never what you meant it to be"))
-	_check("...in place of the close looks, as the eyes' answer is",
-		not text.contains("Before it is finished"))
+	_check("...in place of the close looks", not text.contains("Before it is finished"))
 	var words := PackedStringArray()
 	var pictures: int = 0
 	for block: Dictionary in said:
@@ -137,55 +114,59 @@ func _own_look() -> void:
 				and block["mimeType"] == "image/png")
 		else:
 			words.append(str(block["text"]))
-	_check("...the three pictures the eyes see, the corner, the front and one close: %s"
+	_check("...the three pictures the judge sees, the corner, the front and one close: %s"
 		% " | ".join(words.slice(2, 5)), pictures == 3 and words.size() >= 6
 		and words[2] == "The corner view:" and words[4].begins_with("The close view"))
-	_check("...the eyes' own question, of the subject and nothing of the session: %d characters"
-		% words[1].length(), words[1] == FreshEyes.prompt(
-			"A red tower. a slender red tower") and not words[1].contains("assembl"))
+	_check("...the judge's own question, of the subject and nothing of the session: %d "
+		% words[1].length() + "characters", words[1] == FreshEyes.prompt(
+			"A red tower. a slender red tower") and not words[1].contains("assembl")
+		and not words[1].contains("omr") and not words[1].contains("real set"))
 	_check("...and to answer with fresh_eyes before any other call, then make the changes",
 		words[5].begins_with("Answer before any other call: fresh_eyes") and words[5].contains(
 			"reads_as") and words[5].contains("generic") and words[5].contains("then save_model"))
-	_check("no Claude Code was started", _calls() == asks)
+	_check("Claude Code was never started for it (%d starts)" % (_starts() - starts),
+		_starts() == starts)
 
 	var parts: int = _parts()
-	said = await _call_as("c8", "edit_model", {"recolor": [{"bricks": [_first_brick()],
+	said = await _call_as("c1", "edit_model", {"recolor": [{"bricks": [_first_brick()],
 		"color": 1}]})
 	_check("an edit before the answer is refused: %s" % _text(said).left(60),
 		_text(said).begins_with("Not yet: first answer the fresh look") and _parts() == parts
 		and _first_colour() == 4)
-	said = await _call_as("c8", "fresh_eyes", {"reads_as": "a red column", "generic": "all of it",
+	said = await _call_as("c1", "fresh_eyes", {"reads_as": "a red column", "generic": "all of it",
 		"changes": ["one"]})
 	_check("an answer short of three changes is asked again: %s" % _text(said).left(50),
 		_text(said).begins_with("Answer in full") and bool(_eyes().call("waiting")))
-	said = await _call_as("c8", "fresh_eyes", {"reads_as": "a red column of six bricks",
+	said = await _call_as("c1", "fresh_eyes", {"reads_as": "a red column of six bricks",
 		"generic": "one straight stack, no roof", "changes": ["OWN-ONE: step the top in",
 			"OWN-TWO: a pointed roof", "OWN-THREE: windows"]})
 	var last: Dictionary = _eyes().get("last")
-	_check("the answer in the eyes' shape is kept, and the changes to be made: %s"
+	_check("the answer in the judge's shape is kept, and the changes to be made: %s"
 		% _text(said).left(50), _text(said).begins_with("Now make them")
 		and last.get("changes", []) == ["OWN-ONE: step the top in", "OWN-TWO: a pointed roof",
 			"OWN-THREE: windows"] and last["reads_as"] == "a red column of six bricks"
 		and int(last["refused"]) == 1 and not bool(_eyes().call("waiting")))
-	said = await _call_as("c8", "edit_model", {"recolor": [{"bricks": [_first_brick()],
+	said = await _call_as("c1", "edit_model", {"recolor": [{"bricks": [_first_brick()],
 		"color": 1}]})
 	_check("then the edit goes ahead", not _text(said).begins_with("Not yet")
 		and _first_colour() == 1)
-	said = await _call_as("c8", "save_model", {"name": "tower8.ldr"})
+	said = await _call_as("c1", "save_model", {"name": "tower1.ldr"})
 	_check("the next save: the close looks, and no fresh look: %s"
 		% _line_with(_text(said), "Before it is finished"),
 		_text(said).contains("Before it is finished") and not _text(said).contains("fresh pair"))
-	await _call_as("c8", "clear_model", {})
-	await _call_as("c8", "submit_design", _wall())
-	said = await _call_as("c8", "save_model", {"name": "wall8.ldr"})
+	await _call_as("c1", "clear_model", {})
+	await _call_as("c1", "submit_design", _wall())
+	said = await _call_as("c1", "save_model", {"name": "wall1.ldr"})
 	_check("a second design in the same sitting: never again",
 		not _text(said).contains("fresh pair") and not bool(_eyes().call("waiting")))
+	_check("...and Claude Code never started (%d starts)" % (_starts() - starts),
+		_starts() == starts)
 
 
 ## Never answered: two calls refused, then the session builds on; a save goes
 ## ahead throughout, so what stands is never lost.
-func _own_look_unanswered() -> void:
-	print("\n── no Claude Code, a new chat that never answers ──")
+func _unanswered() -> void:
+	print("\n── a new chat that never answers ──")
 	await _call_as("c9", "clear_model", {})
 	await _call_as("c9", "submit_design", _tower())
 	var said: Array = await _call_as("c9", "save_model", {"name": "tower9.ldr"})
@@ -205,114 +186,6 @@ func _own_look_unanswered() -> void:
 		and not bool(_eyes().call("waiting")))
 
 
-## A chat about a selection is never asked: the person's request is about
-## those parts, not a new design. [param own] 1 with no Claude Code.
-func _about_a_selection(chat: String, own: int) -> void:
-	print("\n── a chat about a selection%s ──" % (", no Claude Code" if own else ""))
-	var asks: int = _calls()
-	await _call_as(chat, "clear_model", {})
-	await _call_as(chat, "submit_design", _tower())
-	_check("the person's selection is asked about",
-		_assistant.focus_on([_first_brick()], true).is_empty() and _assistant.asked_about_selection())
-	var said: Array = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
-	_check("is never asked: %s" % _text(said).left(60), not _text(said).contains("fresh pair")
-		and _images(said) == 0 and _calls() == asks and not bool(_eyes().call("waiting")))
-	said = await _call_as(chat, "edit_selection", {"recolor": [{"bricks": [_first_brick()],
-		"color": 1}]})
-	_check("...and nothing it does is held: %s" % _text(said).left(50),
-		not _text(said).begins_with("Not yet"))
-	_assistant.unfocus()
-
-
-func _asked_once() -> void:
-	print("── a new design's first save, with Claude Code ──")
-	_check("the stand-in is the Claude Code found: %s" % ClaudeCode.found(),
-		ClaudeCode.found() == _fake.path_join("claude"))
-	var dump := PackedStringArray([JSON.stringify(_connector.rpc.served_tools())])
-	await _call_as("c1", "clear_model", {})
-	dump.append(_text(await _call_as("c1", "submit_design", _tower())))
-	var started: int = Time.get_ticks_msec()
-	var said: Array = await _call_as("c1", "save_model", {"name": "tower1.ldr"})
-	var text: String = _text(said)
-	dump.append(text)
-	_check("the save is written, then the eyes' answer: %s" % _line_with(text, "fresh pair"),
-		text.begins_with("Written to tower1.ldr") and text.contains("a fresh pair of eyes"))
-	_check("...all three changes, in order, and to save after them",
-		text.find("1. CHANGE-ONE") > 0 and text.find("2. CHANGE-TWO") > text.find("1. CHANGE-ONE")
-		and text.find("3. CHANGE-THREE") > text.find("2. CHANGE-TWO")
-		and text.contains("then save_model"))
-	_check("...in place of the close looks: %d pictures" % _images(said),
-		not text.contains("Before it is finished") and _images(said) == 0)
-	_check("the eyes were asked once (%d), in %d ms" % [_calls(), Time.get_ticks_msec() - started],
-		_calls() == 1)
-	var args: PackedStringArray = FileAccess.get_file_as_string(
-		_fake.path_join("args.txt")).split("\n")
-	var tools_at: int = args.find("--tools")
-	_check("...with no tools, none of the person's servers or settings, nothing kept",
-		tools_at >= 0 and args[tools_at + 1] == "" and args.has("--strict-mcp-config")
-		and args.has("--restricted") and args.has("--no-session-persistence")
-		and args.has("--json-schema"))
-	var sent: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(
-		_fake.path_join("asked.json")))
-	var content: Array = sent["message"]["content"]
-	var pictures: int = 0
-	var words := PackedStringArray()
-	for block: Dictionary in content:
-		if block["type"] == "image":
-			pictures += 1
-			_check("  a picture of the model, %d bytes of PNG" % Marshalls.base64_to_raw(
-				block["source"]["data"]).size(),
-				Marshalls.base64_to_raw(block["source"]["data"]).size() > 1000)
-		else:
-			words.append(str(block["text"]))
-	_check("...shown three pictures, the corner, the front and one close: %s"
-		% " | ".join(words.slice(1)), pictures == 3 and words.size() == 4
-		and words[1] == "The corner view:" and words[3].begins_with("The close view"))
-	_check("...and told the subject and nothing of the session's: %d characters" % words[0].length(),
-		words[0].begins_with("A LEGO® model was built to this brief: \"A red tower. a slender "
-			+ "red tower\"") and not words[0].contains("assembl")
-		and not words[0].contains("omr") and not words[0].contains("real set"))
-
-	said = await _call_as("c1", "save_model", {"name": "tower1.ldr"})
-	text = _text(said)
-	dump.append(text)
-	_dump(dump)
-	_check("the next save: the close looks, and no eyes: %s"
-		% _line_with(text, "Before it is finished"),
-		text.contains("Before it is finished") and not text.contains("fresh pair")
-		and _calls() == 1)
-	await _call_as("c1", "edit_model", {"recolor": [{"bricks": [_first_brick()], "color": 1}]})
-	said = await _call_as("c1", "save_model", {"name": "tower1.ldr"})
-	_check("an edit and a save: no eyes", not _text(said).contains("fresh pair") and _calls() == 1)
-	await _call_as("c1", "clear_model", {})
-	await _call_as("c1", "submit_design", _wall())
-	said = await _call_as("c1", "save_model", {"name": "wall1.ldr"})
-	_check("a second design in the same sitting: never again", not _text(said).contains(
-		"fresh pair") and _calls() == 1)
-
-
-## [param answers] to --dump's file, the app's data folder said as <user>.
-func _dump(answers: PackedStringArray) -> void:
-	var dump_to: String = _argument("--dump")
-	if dump_to.is_empty():
-		return
-	var file: FileAccess = FileAccess.open(dump_to, FileAccess.WRITE)
-	file.store_string("\n\n=====\n\n".join(answers).replace(OS.get_user_data_dir(), "<user>"))
-	file.close()
-	print("  answers written to %s" % dump_to)
-
-
-func _asked_again_for_a_new_chat() -> void:
-	print("\n── a new chat's new design ──")
-	await _call_as("c2", "clear_model", {})
-	await _call_as("c2", "submit_design", _wall())
-	var said: Array = await _call_as("c2", "save_model", {"name": "wall2.ldr"})
-	_check("is asked again (%d asks)" % _calls(),
-		_text(said).contains("1. CHANGE-ONE") and _calls() == 2)
-	var sent: String = FileAccess.get_file_as_string(_fake.path_join("asked.json"))
-	_check("...of its own subject", sent.contains("A red tower wall. a long low red wall"))
-
-
 ## As the relay's tab opens: the example car on the baseplate as the chat
 ## begins its subject, taken off by its design (Assistant.make_room).
 func _over_the_example() -> void:
@@ -328,8 +201,9 @@ func _over_the_example() -> void:
 	await _call_as("c5", "submit_design", _tower())
 	_check("...and its design takes it off: %d parts stand" % _parts(), _parts() == 6)
 	var said: Array = await _call_as("c5", "save_model", {"name": "tower5.ldr"})
-	_check("the eyes are asked (%d asks)" % _calls(),
-		_text(said).contains("1. CHANGE-ONE") and _calls() == 3)
+	_check("the fresh look is asked: %d pictures" % _images(said),
+		_images(said) == 3 and bool(_eyes().call("waiting")))
+	await _answer("c5")
 
 
 func _beside_a_model() -> void:
@@ -343,44 +217,27 @@ func _beside_a_model() -> void:
 		_text(built).contains("Built") and _parts() == theirs + 9)
 	var said: Array = await _call_as("c3", "save_model", {"name": "both.ldr"})
 	_check("is never asked: %s" % _line_with(_text(said), "Before it is finished"),
-		not _text(said).contains("fresh pair") and _calls() == 3)
+		not _text(said).contains("fresh pair") and _images(said) == 0
+		and not bool(_eyes().call("waiting")))
 
 
-func _no_answer() -> void:
-	print("\n── the eyes fail to answer ──")
-	var mode: FileAccess = FileAccess.open(_fake.path_join("fail"), FileAccess.WRITE)
-	mode.store_string("1")
-	mode.close()
-	await _call_as("c4", "clear_model", {})
-	await _call_as("c4", "submit_design", _tower())
-	var said: Array = await _call_as("c4", "save_model", {"name": "tower4.ldr"})
-	var eyes: Object = _assistant.call("fresh_eyes")
-	_check("asked (%d), and the save says what it would have: %s" % [_calls(),
-		str((eyes.get("last") as Dictionary).get("error", "")).left(40)],
-		_calls() == 4 and not _text(said).contains("fresh pair")
-		and _text(said).contains("Before it is finished"))
-
-
-## Started from a desktop icon: no shell PATH, so `which` cannot find the
-## stand-in, which is where the installer puts it (the home's .local/bin).
-## The eyes find it as the app's own designer does (ClaudeCode.found).
-func _from_a_desktop_icon() -> void:
-	print("\n── an app started from a desktop icon ──")
-	DirAccess.remove_absolute(_fake.path_join("fail"))
-	OS.set_environment("PATH", "/usr/bin:/bin")
-	OS.set_environment("HOME", _fake.get_base_dir().get_base_dir())
-	_check("`which` finds no claude on PATH=%s" % OS.get_environment("PATH"),
-		OS.execute("which", ["claude"], [], false) != 0)
-	_check("...and ClaudeCode.found() finds the stand-in in the home: %s" % ClaudeCode.found(),
-		ClaudeCode.found() == _fake.path_join("claude"))
-	await _call_as("c6", "clear_model", {})
-	await _call_as("c6", "submit_design", _tower())
-	var said: Array = await _call_as("c6", "save_model", {"name": "tower6.ldr"})
-	_check("the eyes are asked (%d asks) and their changes said: %s"
-		% [_calls(), _line_with(_text(said), "1. CHANGE")],
-		_calls() == 5 and _text(said).contains("1. CHANGE-ONE"))
-	OS.set_environment("PATH", "%s:%s" % [_fake, _path])
-	OS.set_environment("HOME", _home)
+## A chat about a selection is never asked: the person's request is about
+## those parts, not a new design.
+func _about_a_selection(chat: String) -> void:
+	print("\n── a chat about a selection%s ──" % (
+		"" if not ClaudeCode.found().is_empty() else ", no Claude Code"))
+	await _call_as(chat, "clear_model", {})
+	await _call_as(chat, "submit_design", _tower())
+	_check("the person's selection is asked about",
+		_assistant.focus_on([_first_brick()], true).is_empty() and _assistant.asked_about_selection())
+	var said: Array = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
+	_check("is never asked: %s" % _text(said).left(60), not _text(said).contains("fresh pair")
+		and _images(said) == 0 and not bool(_eyes().call("waiting")))
+	said = await _call_as(chat, "edit_selection", {"recolor": [{"bricks": [_first_brick()],
+		"color": 1}]})
+	_check("...and nothing it does is held: %s" % _text(said).left(50),
+		not _text(said).begins_with("Not yet"))
+	_assistant.unfocus()
 
 
 ## A connector chat names its subject in a few words of its own (plan_scale's
@@ -388,16 +245,12 @@ func _from_a_desktop_icon() -> void:
 func _whole_brief_from_a_chat() -> void:
 	print("\n── a chat that passes the person's whole brief ──")
 	var brief: String = _long_brief("A red tower")
-	var before: int = _calls()
 	await _call_as("c11", "clear_model", {})
 	await _call_as("c11", "plan_scale", {"subject": "a red tower", "longest_metres": 30})
 	await _call_as("c11", "submit_design", _with_brief(_tower(), brief))
-	var said: Array = await _call_as("c11", "save_model", {"name": "tower11.ldr"})
-	var told: String = _told()
-	_check("the eyes are asked (%d asks) and their changes said" % (_calls() - before),
-		_calls() == before + 1 and _text(said).contains("1. CHANGE-ONE"))
-	_check("...told the person's brief of %d characters whole, last words and all"
-		% brief.length(), brief.length() >= 1500
+	var told: String = _question(await _call_as("c11", "save_model", {"name": "tower11.ldr"}))
+	_check("the fresh look is asked, told the person's brief of %d characters whole, last "
+		% brief.length() + "words and all", brief.length() >= 1500
 		and told.contains("built to this brief: \"%s\"" % brief))
 	_check("...never the chat's own name for it (\"a red tower\", \"A red tower. a slender "
 		+ "red tower\")", not told.contains("brief: \"a red tower") and not told.contains(
@@ -406,22 +259,24 @@ func _whole_brief_from_a_chat() -> void:
 		% _line_with(told, "Everything the brief"),
 		told.contains("Everything the brief asks for stays")
 		and told.contains("no change takes one away"))
+	await _answer("c11")
 	await _call_as("c12", "clear_model", {})
 	await _call_as("c12", "submit_design", _wall())
-	said = await _call_as("c12", "save_model", {"name": "wall12.ldr"})
-	told = _told()
+	told = _question(await _call_as("c12", "save_model", {"name": "wall12.ldr"}))
 	_check("the next chat, passing none, is judged by its own subject, not the last brief",
-		_calls() == before + 2 and told.contains("brief: \"A red tower wall. a long low red wall\"")
+		told.contains("brief: \"A red tower wall. a long low red wall\"")
 		and not told.contains(brief.left(60)))
+	await _answer("c12")
 
 
 ## Claude Code started here on the person's request (Main.design_with_claude_code),
 ## on the port: its session passes a few words of its own as the brief, and the
-## eyes are told the app's copy of the person's words.
+## eyes are told the app's copy of the person's words. That start is the
+## designer's, the only one.
 func _whole_brief_on_the_port() -> void:
 	print("\n── Claude Code started here on the person's whole brief ──")
 	var brief: String = _long_brief("A red tower by the harbour")
-	var before: int = _calls()
+	var starts: int = _starts()
 	var designed: String = _fake.path_join("designed.txt")
 	DirAccess.remove_absolute(designed)
 	_main.set("_commands", _connector.rpc)
@@ -436,43 +291,59 @@ func _whole_brief_on_the_port() -> void:
 	await _port_call("clear_model", {})
 	await _port_call("submit_design", _with_brief(_tower(), "a red tower"))
 	var said: Array = await _port_call("save_model", {"name": "tower13.ldr"})
-	var told: String = _told()
-	_check("the eyes are asked (%d asks) and their changes said" % (_calls() - before),
-		_calls() == before + 1 and _text(said).contains("1. CHANGE-ONE"))
+	var told: String = _question(said)
+	_check("the fresh look is asked: %d pictures" % _images(said),
+		_images(said) == 3 and bool(_eyes().call("waiting")))
 	_check("...told the person's brief whole, last words and all",
 		told.contains("built to this brief: \"%s\"" % brief))
 	_check("...not the session's \"a red tower\" passed as its brief, nor its name",
 		not told.contains("brief: \"a red tower") and not told.contains("a slender red tower"))
+	await _port_call("fresh_eyes", _full_answer())
+	_check("...answered, and Claude Code started once, as the designer (%d starts)"
+		% (_starts() - starts), not bool(_eyes().call("waiting")) and _starts() == starts + 1)
 	_main.set("_commands", null)
 
 
-## A stand-in for Claude Code: it writes down its arguments and the message it
-## is sent, answers as `claude -p --output-format stream-json` does (or with an
-## error once its folder has a file called fail), and waits to be stopped. It
-## sits in a home of its own's .local/bin, where the installer puts claude.
+## No Claude Code on PATH, nor where its installers put it (a home of
+## nothing), as in a browser tab.
+func _no_claude_code() -> void:
+	var empty: String = ProjectSettings.globalize_path("user://no-claude")
+	DirAccess.make_dir_recursive_absolute(empty)
+	OS.set_environment("PATH", "%s:/usr/bin:/bin" % empty)
+	OS.set_environment("HOME", empty)
+
+
+## With no Claude Code, the same look: the three pictures and the same
+## question, and nothing else ahead of the answer.
+func _without_claude_code() -> void:
+	print("\n── no Claude Code (a browser tab) ──")
+	_check("Claude Code is not found", ClaudeCode.found().is_empty())
+	_check("...and fresh_eyes is served as before", not _listed("fresh_eyes").is_empty())
+	await _call_as("c8", "clear_model", {})
+	await _call_as("c8", "submit_design", _tower())
+	var said: Array = await _call_as("c8", "save_model", {"name": "tower8.ldr"})
+	_check("the save asks the same fresh look: %d pictures" % _images(said),
+		_images(said) == 3 and _question(said) == FreshEyes.prompt(
+			"A red tower. a slender red tower") and bool(_eyes().call("waiting")))
+	said = await _call_as("c8", "view_model", {})
+	_check("...and a call before the answer is refused: %s" % _text(said).left(50),
+		_text(said).begins_with("Not yet"))
+	said = await _call_as("c8", "fresh_eyes", _full_answer())
+	_check("...then answered: %s" % _text(said).left(40),
+		_text(said).begins_with("Now make them") and not bool(_eyes().call("waiting")))
+
+
+## A stand-in for Claude Code, in a home of its own's .local/bin, where the
+## installer puts claude. It writes down every start; started as the
+## designer (Main.design_with_claude_code), it writes down its brief too.
 func _stand_in() -> String:
 	var dir: String = ProjectSettings.globalize_path("user://home/.local/bin")
 	DirAccess.make_dir_recursive_absolute(dir)
-	var answer: Dictionary = {"type": "result", "is_error": false, "result": "",
-		"structured_output": {"reads_as": "a red stack of bricks",
-			"generic": "the tower is one straight column",
-			"changes": ["CHANGE-ONE: step the top storey in one stud on each side",
-				"CHANGE-TWO: a pointed roof of slopes", "CHANGE-THREE: a window in each storey"]},
-		"usage": {"input_tokens": 1, "output_tokens": 1}}
-	var failed: Dictionary = {"type": "result", "is_error": true, "result": "overloaded"}
 	var script: String = "\n".join(PackedStringArray([
 		"#!/bin/bash",
 		"dir=\"$(dirname \"$0\")\"",
-		# A design session (Main.design_with_claude_code): its brief, and done.
-		"case \" $* \" in *' --json-schema '*) ;; *) printf '%s' \"$2\" > \"$dir/designed.txt\"; exit 0;; esac",
-		"printf '%s\\n' \"$@\" > \"$dir/args.txt\"",
-		"echo asked >> \"$dir/calls.txt\"",
-		"IFS= read -r line",
-		"printf '%s\\n' \"$line\" > \"$dir/asked.json\"",
-		"echo '{\"type\":\"system\",\"subtype\":\"init\",\"model\":\"stand-in\"}'",
-		"if [ -f \"$dir/fail\" ]; then echo '%s'; else echo '%s'; fi" % [
-			JSON.stringify(failed), JSON.stringify(answer)],
-		"exec sleep 60",
+		"echo started >> \"$dir/started.txt\"",
+		"case \" $* \" in *' --json-schema '*) ;; *) printf '%s' \"$2\" > \"$dir/designed.txt\";; esac",
 		""]))
 	var file: FileAccess = FileAccess.open(dir.path_join("claude"), FileAccess.WRITE)
 	file.store_string(script)
@@ -481,17 +352,27 @@ func _stand_in() -> String:
 	return dir
 
 
-func _calls() -> int:
-	return FileAccess.get_file_as_string(_fake.path_join("calls.txt")).count("asked")
+func _starts() -> int:
+	return FileAccess.get_file_as_string(_fake.path_join("started.txt")).count("started")
 
 
-## The words the eyes were last sent, ahead of the pictures.
-func _told() -> String:
-	var sent: Variant = JSON.parse_string(FileAccess.get_file_as_string(
-		_fake.path_join("asked.json")))
-	if not sent is Dictionary:
-		return ""
-	return str(((sent as Dictionary)["message"]["content"] as Array)[0].get("text", ""))
+## The judge's question a save handed back, ahead of the pictures: "" for none.
+func _question(said: Array) -> String:
+	for block: Dictionary in said:
+		if str(block.get("text", "")).begins_with("A LEGO® model was built to this brief"):
+			return str(block["text"])
+	return ""
+
+
+static func _full_answer() -> Dictionary:
+	return {"reads_as": "a red column", "generic": "one straight stack",
+		"changes": ["ONE", "TWO", "THREE"]}
+
+
+## [param chat]'s answer to the look its save asked for.
+func _answer(chat: String) -> void:
+	var said: Array = await _call_as(chat, "fresh_eyes", _full_answer())
+	_check("  answered: %s" % _text(said).left(30), _text(said).begins_with("Now make them"))
 
 
 ## A call on the MCP port, as Claude Code started here makes it: no chat, no
@@ -584,13 +465,6 @@ func _first_brick() -> int:
 		if not _assistant.scenery.has(brick.id):
 			return brick.id
 	return 0
-
-
-static func _argument(prefix: String) -> String:
-	for argument: String in OS.get_cmdline_user_args():
-		if argument.begins_with(prefix + "="):
-			return argument.substr(prefix.length() + 1)
-	return ""
 
 
 static func _text(blocks: Array) -> String:

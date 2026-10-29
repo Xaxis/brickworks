@@ -8,40 +8,34 @@
 ## shown the pictures and nothing else, says at once what reads as a generic
 ## box and what the subject is missing.
 ##
-## So at a new design's first save, Claude Code on the person's subscription,
-## a session of its own that never saw the designing, is shown the subject
-## and the design's three pictures as the bench takes them (DesignPick.
-## pictures), and asked what makes it read as the subject at a glance, what
-## reads as a generic box, and the three changes a set designer would make,
-## the biggest first. That save's answer carries them, where a session acts.
-## It is shown no real set and told of none: what the subject needs is its
-## own to say.
+## So a new design's first whole save hands the session the design's three
+## pictures as the bench takes them (DesignPick.pictures) and the judge's
+## question: what makes it read as the subject at a glance, what reads as a
+## generic box, and the three changes a set designer would make, the biggest
+## first. It answers as a judge shown only the subject and the pictures,
+## never what it meant the model to be, with TOOL before any other call goes
+## ahead (not_yet), then makes them. It is shown no real set and told of
+## none: what the subject needs is its own to say.
+##
+## A separate Claude Code session asked the same question did no better: on
+## one path, one night, 23% against the real sets to the session's own 24%,
+## and 49% head to head, for about 40 s a save and a second session
+## (design328). So the eyes are the session's own, with Claude Code or without.
 ##
 ## Once a subject (Assistant.heard, fresh), whatever comes of it. Only a new
 ## design submitted from outside (the MCP port, the connector) onto a bare
 ## baseplate, the example a first visit opens on taken off first
-## (Assistant.make_room), and never a chat about a selection. With no pictures,
-## or no answer in time, the save says what it said before, word for word.
-##
-## With no Claude Code here (a browser tab, as the owner designs from
-## claude.ai, or a machine without it) the only eyes at hand are the
-## session's own (own_look): the save hands it the same three pictures and
-## the eyes' own question, to answer as the eyes would, from the pictures
-## alone, with TOOL before it builds on.
+## (Assistant.make_room), and never a chat about a selection. With no
+## pictures, the save says what it said before, word for word.
 class_name FreshEyes
 extends RefCounted
 
-## The tool a session answers its own look with (own_look), served only
-## where no Claude Code is found ([method tools]).
+## The tool a session answers the fresh look with ([method definition]).
 const TOOL := "fresh_eyes"
 
-## The calls refused while the session's own look is unanswered (not_yet):
-## after them it builds on as it would have, so a session is never stuck.
+## The calls refused while the fresh look is unanswered (not_yet): after
+## them it builds on as it would have, so a session is never stuck.
 const MOST_REFUSED := 2
-
-## The most the save waits for an answer. The session's call waits on it,
-## and Claude Code's own limit for one is ten minutes (ClaudeCode.TOOL_TIMEOUT_MS).
-const MOST_S := 240.0
 
 ## The answer's shape. What it reads as comes first, so the changes are made
 ## on what was seen.
@@ -58,6 +52,7 @@ const SCHEMA: Dictionary = {
 				+ "biggest first: where on the model, and what to build there"},
 	},
 	"required": ["reads_as", "generic", "changes"],
+	"additionalProperties": false,
 }
 
 var assistant: Assistant
@@ -65,8 +60,9 @@ var assistant: Assistant
 var fresh: bool = false
 ## Whether the eyes have been asked for this subject: then never again.
 var asked: bool = false
-## The last answer, {reads_as, generic, changes, seconds, model} or {error},
-## for the log and a probe.
+## The look asked, {refused}, then answered, {refused, reads_as, generic,
+## changes}, or let go of, {refused, unanswered}; {error} with no pictures.
+## For the log and a probe.
 var last: Dictionary = {}
 var _shot: ModelShot = null
 
@@ -87,53 +83,25 @@ func designed(bare: bool) -> void:
 
 
 ## What a whole save of a new design says in place of its close looks, the
-## first time only: the three changes, the session's own look to answer
-## (own_look), or "" (and the save says what it did).
+## first time only: the three pictures and the judge's question, framed as
+## the judge is asked it, for the session to answer with TOOL; or "" (and
+## the save says what it did).
 func after_save() -> Variant:
 	if asked or not fresh or assistant == null or assistant._busy \
 			or not assistant._outside_standing or assistant.asked_about_selection():
 		return ""
 	asked = true
-	if ClaudeCode.found().is_empty():
-		return await own_look()
-	if not ModelShot.possible():
-		return ""
-	var subject: String = subject_of(assistant)
-	var started_ms: int = Time.get_ticks_msec()
-	if _shot == null:
-		_shot = ModelShot.new()
-		_shot.library = assistant.library
-		_shot.give_up_after = 60.0
-		assistant.add_child(_shot)
-	var images: Array[Image] = await DesignPick.pictures(_shot, assistant.world,
-		assistant.scenery, assistant.library)
-	if images.size() < DesignPick.VIEWS.size():
+	var views: Array = await _pictures()
+	if views.is_empty():
 		last = {"error": "no pictures"}
 		print("fresh eyes: no pictures, nothing said")
 		return ""
-	var views: Array = []
-	for image: Image in images:
-		views.append(await _shot.encode(image))
-	var critic := DesignPick.new()
-	var thread := Thread.new()
-	thread.start(critic.put.bind(message(subject, views), SCHEMA))
-	var until: int = Time.get_ticks_msec() + int(MOST_S * 1000.0)
-	while thread.is_alive():
-		if Time.get_ticks_msec() > until:
-			critic.stop()
-		await assistant.get_tree().process_frame
-	var said: Variant = thread.wait_to_finish()
-	last = _answer(said if said is Dictionary else {})
-	last["seconds"] = (Time.get_ticks_msec() - started_ms) / 1000.0
-	if last.has("error"):
-		print("fresh eyes: %.1f s, no answer: %s" % [last["seconds"], last["error"]])
-		return ""
-	print("fresh eyes: %.1f s (%s): %s" % [last["seconds"], last["model"],
-		JSON.stringify({"reads_as": last["reads_as"], "generic": last["generic"],
-			"changes": last["changes"]})])
+	last = {"refused": 0}
+	print("fresh eyes: the session's own look asked, with %d pictures" % views.size())
 	# Saved, as next_review would have marked it.
 	assistant._outside_unsaved = false
-	return said_to_session(last)
+	return [{"type": "text", "text": OWN_OPENING}] + shown(subject_of(assistant), views) \
+		+ [{"type": "text", "text": OWN_ASK % TOOL}]
 
 
 ## The most of the brief the eyes are told, in characters: an idea of the
@@ -178,75 +146,14 @@ static func prompt(subject: String) -> String:
 		+ "what the brief says it is.")
 
 
-## The one message the eyes are sent: the prompt, then the pictures, each
-## with what it is.
-static func message(subject: String, views: Array) -> Dictionary:
+## What the eyes are shown: the question, then the pictures, each with what
+## it is.
+static func shown(subject: String, views: Array) -> Array:
 	var content: Array = [{"type": "text", "text": prompt(subject)}]
 	for i: int in views.size():
 		content.append({"type": "text", "text": "The %s:" % DesignPick.SAID[DesignPick.VIEWS[i]]})
 		content.append(views[i])
-	return {"type": "user", "message": {"role": "user", "content": content}}
-
-
-## DesignPick.put's answer read: {reads_as, generic, changes, model} or {error}.
-static func _answer(said: Dictionary) -> Dictionary:
-	if not said.has("result"):
-		return {"error": str(said.get("error", "no answer"))}
-	var event: Dictionary = said["result"]
-	var found: Variant = event.get("structured_output")
-	if bool(event.get("is_error", false)) or not (found is Dictionary) \
-			or not (found.get("changes") is Array) or (found["changes"] as Array).is_empty():
-		return {"error": str(event.get("result", "no answer")).left(300)}
-	var changes: Array[String] = []
-	for change: Variant in found["changes"]:
-		if not str(change).strip_edges().is_empty():
-			changes.append(str(change).strip_edges())
-	if changes.is_empty():
-		return {"error": "no changes named"}
-	return {"reads_as": str(found.get("reads_as", "")).strip_edges(),
-		"generic": str(found.get("generic", "")).strip_edges(),
-		"changes": changes.slice(0, 3), "model": str(said.get("model", ""))}
-
-
-## The answer as the save says it to the session.
-static func said_to_session(answer: Dictionary) -> String:
-	var lines := PackedStringArray([
-		"Not finished yet: a fresh pair of eyes looked at it. Another Claude, shown only "
-		+ "the subject and three pictures of the model, never what you meant it to be, says:",
-		"  At a glance: %s" % answer["reads_as"],
-		"  Reads as generic: %s" % answer["generic"],
-		"The changes that would most make it read as the subject, the biggest first:"])
-	var changes: Array = answer["changes"]
-	for n: int in changes.size():
-		lines.append("  %d. %s" % [n + 1, changes[n]])
-	lines.append("Make them now, before you answer: edit_model for each (submit_design "
-		+ "again when one changes the whole shape), then view_model to see that it reads, "
-		+ "then save_model. Where you are sure one is wrong for this subject, say why in a "
-		+ "line and make the others.")
-	return "\n".join(lines)
-
-
-## Where no Claude Code is found, the eyes are the session's own. The save
-## hands it the three pictures and the eyes' own question, framed as the
-## eyes are asked it: a judge shown only the subject and the pictures,
-## never what it meant the model to be. Every other call waits for the
-## answer (not_yet), in the eyes' shape (TOOL), and then the session makes
-## the changes it named. "" when no picture could be taken, and the save
-## says what it said before.
-func own_look() -> Variant:
-	var views: Array = await _pictures()
-	if views.is_empty():
-		last = {"error": "no pictures"}
-		print("fresh eyes: no Claude Code here and no pictures, nothing said")
-		return ""
-	last = {"own": true, "refused": 0}
-	print("fresh eyes: no Claude Code here (ClaudeCode.found() is empty): the session's "
-		+ "own look asked, with %d pictures" % views.size())
-	# Saved, as next_review would have marked it.
-	assistant._outside_unsaved = false
-	var content: Array = (message(subject_of(assistant), views)["message"]["content"] as Array)
-	return [{"type": "text", "text": OWN_OPENING}] + content \
-		+ [{"type": "text", "text": OWN_ASK % TOOL}]
+	return content
 
 
 const OWN_OPENING := ("Not finished yet: now look at it with a fresh pair of eyes. A judge "
@@ -261,10 +168,9 @@ const OWN_ASK := ("Answer before any other call: %s, with reads_as (what it read
 	+ "Where you are sure one is wrong for this subject, say why in a line and make the others.")
 
 
-## Whether the session's own look waits for its answer.
+## Whether the fresh look waits for its answer.
 func waiting() -> bool:
-	return bool(last.get("own", false)) and not last.has("changes") \
-		and not last.has("unanswered")
+	return last.has("refused") and not last.has("changes") and not last.has("unanswered")
 
 
 ## What a call is told while the session's own look waits for its answer:
@@ -299,7 +205,7 @@ func answered(input: Dictionary) -> String:
 	if reads_as.is_empty() or generic.is_empty() or changes.size() < 3:
 		return ("Answer in full: reads_as, generic, and changes, the three changes, the "
 			+ "biggest first.")
-	last = {"own": true, "refused": last["refused"], "reads_as": reads_as,
+	last = {"refused": last["refused"], "reads_as": reads_as,
 		"generic": generic, "changes": changes.slice(0, 3)}
 	print("fresh eyes: the session's own look (%d refused): %s" % [last["refused"],
 		JSON.stringify({"reads_as": reads_as, "generic": generic, "changes": last["changes"]})])
@@ -309,19 +215,12 @@ func answered(input: Dictionary) -> String:
 		+ "and make the others.")
 
 
-## TOOL, for a session to answer its own look with: served only where no
-## Claude Code is found, so where it is the tools are main's.
-static func tools() -> Array:
-	if not ClaudeCode.found().is_empty():
-		return []
-	var schema: Dictionary = SCHEMA.duplicate(true)
-	schema["additionalProperties"] = false
-	return [{"name": TOOL, "description": ("Answer the fresh look a new design's first "
+## TOOL, as a session is served it; its annotations are CommandSocket.HINTS'.
+static func definition() -> Dictionary:
+	return {"name": TOOL, "description": ("Answer the fresh look a new design's first "
 		+ "save asks for, from the three pictures it handed you alone: what the model "
 		+ "reads as, what reads as a generic box, and the three changes that would most "
-		+ "make it read as the subject. Only when a save asks."), "input_schema": schema,
-		"annotations": {"title": "Say what it reads as", "readOnlyHint": true,
-			"openWorldHint": false}}]
+		+ "make it read as the subject. Only when a save asks."), "input_schema": SCHEMA}
 
 
 ## The design's three pictures as the bench takes them, as content blocks,

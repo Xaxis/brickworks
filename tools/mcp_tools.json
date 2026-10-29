@@ -5504,5 +5504,42 @@
       "type": "object"
     },
     "name": "job"
+  },
+  {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Say what it reads as"
+    },
+    "description": "Answer the fresh look a new design's first save asks for, from the three pictures it handed you alone: what the model reads as, what reads as a generic box, and the three changes that would most make it read as the subject. Only when a save asks.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "changes": {
+          "description": "the three changes that would most make it read as the subject, the biggest first: where on the model, and what to build there",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "type": "array"
+        },
+        "generic": {
+          "description": "what reads as a generic box, slab or stack rather than as the subject",
+          "type": "string"
+        },
+        "reads_as": {
+          "description": "what it reads as at a glance, and what in it reads as the subject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reads_as",
+        "generic",
+        "changes"
+      ],
+      "type": "object"
+    },
+    "name": "fresh_eyes"
   }
 ]

@@ -144,7 +144,8 @@ func _run() -> void:
 	for call: Array in [["parts_list", {}], ["parts_list", {"which": "need"}],
 			["gallery", {"q": "castle"}], ["job", {}], ["suggest_sections", {}],
 			["evaluate_section", {"suggestion": 1}], ["booklet_layout", {}], ["list_motions", {}],
-			["weakest_joints", {}]]:
+			["weakest_joints", {}], ["fresh_eyes", {"reads_as": "a house", "generic": "its walls",
+				"changes": ["one", "two", "three"]}]]:
 		_called[str(call[0])] = true
 		var was: String = _standing(app_world)
 		sent += 1

@@ -523,9 +523,7 @@ func catalogue() -> Array:
 		return listed
 	for tool: Variant in assistant.tool_catalogue() + _own_tools():
 		var one: Dictionary = (tool as Dictionary).duplicate()
-		var name: String = str(one.get("name", ""))
-		# A tool served only on some machines (FreshEyes.tools) says its own.
-		one["annotations"] = annotations(name) if HINTS.has(name) else one.get("annotations", {})
+		one["annotations"] = annotations(str(one.get("name", "")))
 		listed.append(one)
 	return listed
 
@@ -617,6 +615,7 @@ const HINTS := {
 	"gallery": ["Search the gallery", "look", "world"],
 	# cancel=true stops only the session's own job.
 	"job": ["Follow a long job", "look"],
+	"fresh_eyes": ["Say what it reads as", "look"],
 }
 const KINDS: Array[String] = ["look", "file", "add", "remove"]
 
@@ -779,7 +778,7 @@ var jobs := ToolJobs.new()
 func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: String = "") -> Array:
 	if name == ToolJobs.TOOL:
 		return [await jobs.answer(input), true]
-	# The session's own fresh look, where no Claude Code is: answered first.
+	# The fresh look a new design's first save asked for: answered first.
 	if assistant != null:
 		if name == FreshEyes.TOOL:
 			return [assistant.fresh_eyes().answered(input), true]
@@ -1034,8 +1033,8 @@ func _the_app_tools() -> AppTools:
 ## of what the window does (AppTools): the floor, the build steps, hoses,
 ## posing, undo, opening, the parts list, rendering, exporting.
 func _own_tools() -> Array:
-	return _socket_tools() + _the_app_tools().definitions() + [ToolJobs.definition()] \
-		+ FreshEyes.tools()
+	return _socket_tools() + _the_app_tools().definitions() + [ToolJobs.definition(),
+		FreshEyes.definition()]
 
 
 func _socket_tools() -> Array:
@@ -1205,9 +1204,8 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 				written = Assistant._joined(written, assistant.save_advice())
 			# A run's last act is to save: so saving hands back the next
 			# assembly it has not looked at closely, if there is one. A new
-			# design's first save hands back a fresh pair of eyes' three
-			# changes instead (FreshEyes), or with no Claude Code its pictures
-			# for the session's own look, and the close looks at the next.
+			# design's first save hands back its pictures for a fresh look
+			# instead (FreshEyes), and the close looks at the next.
 			var more: Variant = ""
 			if assistant != null:
 				more = await assistant.fresh_eyes().after_save()

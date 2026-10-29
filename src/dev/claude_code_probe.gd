@@ -14,7 +14,8 @@
 ## So this checks the three flags that take away, by reading the command
 ## rather than running it. Running it spends somebody's subscription;
 ## the end-to-end run is src/dev/assistant_probe.gd's neighbour and is
-## done by hand.
+## done by hand. And that an app started from a desktop icon, with no shell
+## PATH, still finds it where its installer puts it (ClaudeCode.found).
 extends SceneTree
 
 var _failures: int = 0
@@ -107,6 +108,29 @@ func _initialize() -> void:
 			OS.unset_environment(name)
 		else:
 			OS.set_environment(name, before[name])
+
+	print("")
+	print("  and an app started from a desktop icon still finds it")
+	# No shell PATH there (PATH=/usr/bin:/bin), so `which` misses ~/.local/bin,
+	# where the installer puts claude: found() looks there too. A stand-in in a
+	# home of its own, which is never run.
+	var path: String = OS.get_environment("PATH")
+	var was_home: String = OS.get_environment("HOME")
+	var home: String = ProjectSettings.globalize_path("user://icon-home")
+	var stand_in: String = home.path_join(".local/bin/claude")
+	DirAccess.make_dir_recursive_absolute(stand_in.get_base_dir())
+	var file: FileAccess = FileAccess.open(stand_in, FileAccess.WRITE)
+	file.store_string("#!/bin/sh\n")
+	file.close()
+	OS.execute("chmod", ["+x", stand_in])
+	OS.set_environment("PATH", "/usr/bin:/bin")
+	OS.set_environment("HOME", home)
+	_check("`which` finds no claude on PATH=/usr/bin:/bin",
+		OS.execute("which", ["claude"], [], false) != 0)
+	_check("...and ClaudeCode.found() finds it in the home: %s" % ClaudeCode.found(),
+		ClaudeCode.found() == stand_in)
+	OS.set_environment("PATH", path)
+	OS.set_environment("HOME", was_home)
 
 	print("")
 	if _failures == 0:
