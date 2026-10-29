@@ -32,22 +32,19 @@
 ## fresh_eyes (twice at most), the answer is kept, and it is asked once a
 ## subject, never in a chat about a selection.
 ##
-## And once more, last: at the first whole save after the creative pass,
-## never at one before it nor at the save that hands the pass over, the eyes
-## in the first look's form are shown the model as it stands and the changes
-## they asked first, and say done or the one change. The save's answer is
-## what it would have been, the pass's line first, with the look after it:
-## a critic's one change, or with no Claude Code the pictures and the final
-## question, answered with fresh_eyes_final before anything else goes ahead.
+## And once more, last, where the first look was the session's own: at the
+## first whole save after the creative pass, never at one before it nor at
+## the save that hands the pass over, the save's answer is what it would have
+## been, the pass's line and any close look first, then the pictures and the
+## final question, answered with fresh_eyes_final before anything else goes
+## ahead: what landed of the first look's changes, then done or one change.
 ## Once a subject; "done" adds nothing; a pass that added nothing waits for
-## the next save; a close look the save hands comes before it, word for word;
-## no creative pass, no final look.
+## the next save; no creative pass, no final look; with Claude Code (the
+## eyes' first look) none at all.
 ##
 ## --dump=FILE writes the Claude Code chat's answers and the tool list there,
-## with the answers of two runs through the creative pass (the eyes' one
-## change, and their done), and --baseline runs those chats alone: run with
-## both on main (the file copied in) and here, the two files are the same,
-## byte for byte, but for the final look's words after the pass's line.
+## and --baseline runs that chat alone: run with both on main (the file
+## copied in) and here, the two files are the same, byte for byte.
 extends SceneTree
 
 var _failures: int = 0
@@ -59,9 +56,6 @@ var _next: int = 0
 var _fake: String = ""
 var _path: String = ""
 var _home: String = ""
-var _baseline: bool = false
-## Each save's answer, and the tool list, for --dump.
-var _answers := PackedStringArray()
 
 
 func _initialize() -> void:
@@ -83,12 +77,12 @@ func _run() -> void:
 	(_main.get("_store") as ModelStore).keeps = false
 	_path = OS.get_environment("PATH")
 	_home = OS.get_environment("HOME")
-	_baseline = OS.get_cmdline_user_args().has("--baseline")
+	var baseline: bool = OS.get_cmdline_user_args().has("--baseline")
 
 	_fake = _stand_in()
 	OS.set_environment("PATH", "%s:%s" % [_fake, _path])
 	await _asked_once()
-	if not _baseline:
+	if not baseline:
 		await _asked_again_for_a_new_chat()
 		await _over_the_example()
 		await _beside_a_model()
@@ -97,10 +91,7 @@ func _run() -> void:
 		await _from_a_desktop_icon()
 		await _whole_brief_from_a_chat()
 		await _whole_brief_on_the_port()
-	await _final_from_the_eyes("c14", false)
-	await _final_from_the_eyes("c15", true)
-	_dump(_answers)
-	if not _baseline:
+		await _none_from_the_eyes("c14")
 		_no_claude_code()
 		await _own_look()
 		await _own_look_unanswered()
@@ -113,7 +104,7 @@ func _run() -> void:
 	print("")
 	print("fresh eyes: asked once at a new design's first save, its changes said, of the "
 		+ "person's whole brief; with no Claude Code, the session's own look asked and answered; "
-		+ "once more after the creative pass, in the first look's form" if _failures == 0
+		+ "and once more after the creative pass" if _failures == 0
 		else "fresh eyes: %d FAILED" % _failures)
 	_main.queue_free()
 	await process_frame
@@ -251,13 +242,13 @@ func _asked_once() -> void:
 	print("── a new design's first save, with Claude Code ──")
 	_check("the stand-in is the Claude Code found: %s" % ClaudeCode.found(),
 		ClaudeCode.found() == _fake.path_join("claude"))
-	_answers.append(JSON.stringify(_connector.rpc.served_tools()))
+	var dump := PackedStringArray([JSON.stringify(_connector.rpc.served_tools())])
 	await _call_as("c1", "clear_model", {})
-	_answers.append(_text(await _call_as("c1", "submit_design", _tower())))
+	dump.append(_text(await _call_as("c1", "submit_design", _tower())))
 	var started: int = Time.get_ticks_msec()
 	var said: Array = await _call_as("c1", "save_model", {"name": "tower1.ldr"})
 	var text: String = _text(said)
-	_answers.append(text)
+	dump.append(text)
 	_check("the save is written, then the eyes' answer: %s" % _line_with(text, "fresh pair"),
 		text.begins_with("Written to tower1.ldr") and text.contains("a fresh pair of eyes"))
 	_check("...all three changes, in order, and to save after them",
@@ -298,7 +289,8 @@ func _asked_once() -> void:
 
 	said = await _call_as("c1", "save_model", {"name": "tower1.ldr"})
 	text = _text(said)
-	_answers.append(text)
+	dump.append(text)
+	_dump(dump)
 	_check("the next save: the close looks, and no eyes: %s"
 		% _line_with(text, "Before it is finished"),
 		text.contains("Before it is finished") and not text.contains("fresh pair")
@@ -480,7 +472,6 @@ func _to_the_creative_pass(chat: String, own: bool) -> void:
 	await _call_as(chat, "clear_model", {})
 	await _call_as(chat, "submit_design", _tower())
 	var said: Array = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
-	_answers.append(_text(said))
 	_check("the first save, the first look: %s" % _line_with(_text(said), "fresh pair"),
 		_text(said).contains("a fresh pair of eyes") and not _final_in(said))
 	if own:
@@ -490,7 +481,6 @@ func _to_the_creative_pass(chat: String, own: bool) -> void:
 		_check("...answered as the eyes would: %s" % _text(said).left(40),
 			_text(said).begins_with("Now make them"))
 	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
-	_answers.append(_text(said))
 	_check("the next save, the close look and no final look: %s"
 		% _line_with(_text(said), "Before it is finished"),
 		_text(said).contains("Before it is finished") and not _final_in(said))
@@ -500,65 +490,28 @@ func _to_the_creative_pass(chat: String, own: bool) -> void:
 	print("  (settled: %s)" % _text(said).left(160).replace("\n", " "))
 
 
-## With Claude Code: the save after the surface pass hands over the creative
-## pass, and is never the final look; the first save after the pass, its
-## line first and then the eyes' one change, once. [param done]: the eyes
-## find nothing generic left, and the save says what it would have.
-func _final_from_the_eyes(chat: String, done: bool) -> void:
-	print("\n── with Claude Code, a design through its creative pass%s ──"
-		% (", the eyes done" if done else ""))
+## With Claude Code the first look is the eyes', and the final look is the
+## session's own alone: through the creative pass every save says what it
+## would have, and the eyes are asked once.
+func _none_from_the_eyes(chat: String) -> void:
+	print("\n── with Claude Code, a design through its creative pass ──")
 	var asks: int = _calls()
 	await _to_the_creative_pass(chat, false)
 	var said: Array = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
 	var text: String = _text(said)
-	_answers.append(text)
 	_check("the next save hands over the creative pass: %s" % _line_with(text, "creative pass"),
-		text.contains("the creative pass, which this app's own designer makes last"))
-	_new("...never the final look in its place (%d asks)" % (_calls() - asks),
-		not _final_in(said) and _calls() == asks + 1)
-	said = await _call_as(chat, "edit_model", {"add": [TOUCH]})
-	print("  (the touch: %s)" % _text(said).left(120).replace("\n", " "))
-	var flag: String = _fake.path_join("done")
-	if done:
-		FileAccess.open(flag, FileAccess.WRITE).store_string("1")
+		text.contains("the creative pass, which this app's own designer makes last")
+		and not _final_in(said))
+	await _call_as(chat, "edit_model", {"add": [TOUCH]})
 	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
-	DirAccess.remove_absolute(flag)
 	text = _text(said)
-	_answers.append(text)
-	var line: int = text.find("The creative pass: 1 part added")
-	_check("the first save after the pass says what it added: %s"
-		% _line_with(text, "The creative pass:"), line > 0)
-	_new("the eyes are asked once more there (%d asks), with the final look's schema"
-		% (_calls() - asks), _calls() == asks + 2 and FileAccess.get_file_as_string(
-			_fake.path_join("args.txt")).contains("\"landed\""))
-	var told: String = _told()
-	_new("...told the subject and the first look's three changes, to say what landed: %s"
-		% _line_with(told, "1. CHANGE-ONE").strip_edges(),
-		told.begins_with("A LEGO® model was built to this brief: \"A red tower. a slender red tower\"")
-		and told.contains("  1. CHANGE-ONE") and told.contains("  3. CHANGE-THREE")
-		and told.contains("whether it shows in the pictures") and told.contains("say it is done")
-		and told.contains("Everything the brief asks for stays") and not told.contains("assembl"))
-	var sent: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(
-		_fake.path_join("asked.json")))
-	_new("...and shown three pictures of the model as it stands",
-		(sent["message"]["content"] as Array).filter(func(block: Dictionary) -> bool:
-			return block["type"] == "image").size() == 3)
-	if done:
-		_new("done: the save says only what it would have, the pass's line last: %s"
-			% text.get_slice("\n\n", text.count("\n\n")), not _final_in(said)
-			and text.get_slice("\n\n", text.count("\n\n")).begins_with(
-				"The creative pass: 1 part added"))
-	else:
-		_new("the eyes' one change after the pass's line, and to make it: %s"
-			% _line_with(text, "FINAL-CHANGE").strip_edges(),
-			text.find("looked once more") > line and text.contains("  Of what it asked: CHANGE-ONE")
-			and text.contains("  FINAL-CHANGE: a pointed roof") and text.contains(
-				"keeping what the creative pass added") and _images(said) == 0)
+	_check("the first save after the pass says what it added, and no final look: %s"
+		% _line_with(text, "The creative pass:"), text.contains(
+			"The creative pass: 1 part added") and not _final_in(said) and _images(said) == 0)
 	await _call_as(chat, "edit_model", {"recolor": [{"bricks": [_first_brick()], "color": 1}]})
 	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
-	_answers.append(_text(said))
-	_new("an edit and a save: never again (%d asks)" % (_calls() - asks),
-		not _final_in(said) and _calls() == asks + 2)
+	_check("an edit and a save: the eyes were asked once, at the first (%d asks)"
+		% (_calls() - asks), not _final_in(said) and _calls() == asks + 1)
 
 
 ## With no Claude Code: the session asks for the creative pass itself, and
@@ -672,13 +625,6 @@ static func _final_in(blocks: Array) -> bool:
 	return text.contains("looked once more") or text.contains("one last look")
 
 
-## A check of what only this branch does. A --baseline run, which main runs
-## too (the file copied in), writes the answers down and checks it not.
-func _new(what: String, ok: bool) -> void:
-	if not _baseline:
-		_check(what, ok)
-
-
 ## A stand-in for Claude Code: it writes down its arguments and the message it
 ## is sent, answers as `claude -p --output-format stream-json` does (or with an
 ## error once its folder has a file called fail), and waits to be stopped. It
@@ -693,15 +639,6 @@ func _stand_in() -> String:
 				"CHANGE-TWO: a pointed roof of slopes", "CHANGE-THREE: a window in each storey"]},
 		"usage": {"input_tokens": 1, "output_tokens": 1}}
 	var failed: Dictionary = {"type": "result", "is_error": true, "result": "overloaded"}
-	# The final look's answer (its schema names landed): its one change, or
-	# done once the folder has a file called done.
-	var final: Dictionary = answer.duplicate(true)
-	final["structured_output"] = {"landed": "CHANGE-ONE shows and worked; the roof did not land",
-		"reads_as": "a red tower with a stepped top", "generic": "the top is flat",
-		"done": false, "change": "FINAL-CHANGE: a pointed roof of four slopes on the top storey"}
-	var done: Dictionary = final.duplicate(true)
-	done["structured_output"]["done"] = true
-	done["structured_output"]["change"] = ""
 	var script: String = "\n".join(PackedStringArray([
 		"#!/bin/bash",
 		"dir=\"$(dirname \"$0\")\"",
@@ -712,10 +649,8 @@ func _stand_in() -> String:
 		"IFS= read -r line",
 		"printf '%s\\n' \"$line\" > \"$dir/asked.json\"",
 		"echo '{\"type\":\"system\",\"subtype\":\"init\",\"model\":\"stand-in\"}'",
-		("if [ -f \"$dir/fail\" ]; then echo '%s'; elif printf '%%s' \"$*\" | grep -q landed; "
-			+ "then if [ -f \"$dir/done\" ]; then echo '%s'; else echo '%s'; fi; else echo '%s'; fi") % [
-			JSON.stringify(failed), JSON.stringify(done), JSON.stringify(final),
-			JSON.stringify(answer)],
+		"if [ -f \"$dir/fail\" ]; then echo '%s'; else echo '%s'; fi" % [
+			JSON.stringify(failed), JSON.stringify(answer)],
 		"exec sleep 60",
 		""]))
 	var file: FileAccess = FileAccess.open(dir.path_join("claude"), FileAccess.WRITE)

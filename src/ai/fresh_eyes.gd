@@ -30,9 +30,9 @@
 ## alone, with TOOL before it builds on.
 ##
 ## And once more, last (final_look): at the first whole save after the
-## creative pass, the eyes in the first look's form are shown the model as
-## it stands and what they asked first, and say what landed, then done, or
-## the one change it most needs. Later looks at the saves that followed the
+## creative pass, the session's own look, where it looked itself first, is
+## handed the model as it stands and what that look asked, to say what
+## landed, then done, or the one change it most needs. Later looks at the saves that followed the
 ## first lost head to head: they took the saves where next_review hands
 ## over the creative pass, and the pass ran in 21 of 44 sessions against 30
 ## of 41 (design316). So this one comes only after the pass, and joins
@@ -382,9 +382,9 @@ const FINAL: Dictionary = {
 	"required": ["landed", "reads_as", "generic", "done", "change"],
 }
 
-## The final look: {} until it is asked, once a subject. Then its answer
-## {landed, reads_as, generic, done, change}, the session's own {own,
-## refused} while it waits for one, or {error}.
+## The final look: {} until it is asked, once a subject. Then {own,
+## refused} while it waits for the session's answer, its answer {landed,
+## reads_as, generic, done, change}, or {error}.
 var final: Dictionary = {}
 
 
@@ -410,12 +410,14 @@ func reviewed() -> Variant:
 	return Assistant._joined(str(more), look)
 
 
-## Whether this save's answer gets the final look: the first look named its
-## changes; the creative pass was handed and what it added said, at this
-## save or before (and at this one not "nothing added", which asks for a
-## touch and a save first); and it has not been asked for this subject.
+## Whether this save's answer gets the final look: the first look was the
+## session's own and named its changes; the creative pass was handed and
+## what it added said, at this save or before (and at this one not "nothing
+## added", which asks for a touch and a save first); and it has not been
+## asked for this subject.
 func final_due(closing: bool) -> bool:
-	if not final.is_empty() or not fresh or not last.has("changes") \
+	if not final.is_empty() or not fresh or not bool(last.get("own", false)) \
+			or not last.has("changes") \
 			or assistant._busy or not assistant._outside_standing \
 			or assistant.asked_about_selection():
 		return false
@@ -424,10 +426,10 @@ func final_due(closing: bool) -> bool:
 	return not (closing and assistant._creative_record == "nothing added")
 
 
-## The final look, in the first look's form: the separate eyes, whose one
-## change the save says, or the session's own (last's own), handed the
-## pictures and the question to answer with FINAL_TOOL. "" when the eyes
-## said done, or no picture or answer came: the save says what it would have.
+## The final look, as the first: the session's own, handed the pictures
+## and the question to answer with FINAL_TOOL before anything else goes
+## ahead (final_not_yet). "" when no picture could be taken: the save says
+## what it would have.
 func final_look() -> Variant:
 	final = {"asked": true}
 	var views: Array = await _pictures()
@@ -435,31 +437,13 @@ func final_look() -> Variant:
 		final = {"error": "no pictures"}
 		print("fresh eyes: final look, no pictures, nothing said")
 		return ""
-	var sent: Dictionary = final_message(subject_of(assistant), views, last["changes"])
-	if bool(last.get("own", false)):
-		final = {"own": true, "refused": 0}
-		print("fresh eyes: final look, the session's own, asked after the creative pass "
-			+ "(it came to: %s), with %d pictures" % [assistant._creative_record, views.size()])
-		return [{"type": "text", "text": FINAL_OPENING}] + (sent["message"]["content"] as Array) \
-			+ [{"type": "text", "text": FINAL_ASK % FINAL_TOOL}]
-	var started_ms: int = Time.get_ticks_msec()
-	var critic := DesignPick.new()
-	var thread := Thread.new()
-	thread.start(critic.put.bind(sent, FINAL))
-	var until: int = Time.get_ticks_msec() + int(MOST_S * 1000.0)
-	while thread.is_alive():
-		if Time.get_ticks_msec() > until:
-			critic.stop()
-		await assistant.get_tree().process_frame
-	var said: Variant = thread.wait_to_finish()
-	final = _final_answer(said if said is Dictionary else {})
-	final["seconds"] = (Time.get_ticks_msec() - started_ms) / 1000.0
-	if final.has("error"):
-		print("fresh eyes: final look, %.1f s, no answer: %s" % [final["seconds"], final["error"]])
-		return ""
-	print("fresh eyes: final look, %.1f s (%s), after the creative pass (it came to: %s): %s" % [
-		final["seconds"], final["model"], assistant._creative_record, _final_json(final)])
-	return "" if final["done"] else final_said(final)
+	final = {"own": true, "refused": 0}
+	print("fresh eyes: final look, the session's own, asked after the creative pass "
+		+ "(it came to: %s), with %d pictures" % [assistant._creative_record, views.size()])
+	var content: Array = final_message(subject_of(assistant), views,
+		last["changes"])["message"]["content"]
+	return [{"type": "text", "text": FINAL_OPENING}] + content \
+		+ [{"type": "text", "text": FINAL_ASK % FINAL_TOOL}]
 
 
 ## The final look's question: the first's, of the model as it stands, told
@@ -504,24 +488,9 @@ static func final_message(subject: String, views: Array, asked: Array) -> Dictio
 	return sent
 
 
-## DesignPick.put's answer to the final look read (_final_read), or {error}.
-static func _final_answer(said: Dictionary) -> Dictionary:
-	if not said.has("result"):
-		return {"error": str(said.get("error", "no answer"))}
-	var event: Dictionary = said["result"]
-	var found: Variant = event.get("structured_output")
-	if bool(event.get("is_error", false)) or not (found is Dictionary):
-		return {"error": str(event.get("result", "no answer")).left(300)}
-	var read: Dictionary = _final_read(found)
-	if read.has("error"):
-		return read
-	read["model"] = str(said.get("model", ""))
-	return read
-
-
-## A final look's answer, the eyes' or the session's own: {landed,
-## reads_as, generic, done, change}, done when it said so (then no change),
-## or {error} when it left out what it was asked.
+## The session's answer to its final look: {landed, reads_as, generic,
+## done, change}, done when it said so (then no change), or {error} when it
+## left out what it was asked.
 static func _final_read(found: Dictionary) -> Dictionary:
 	var read: Dictionary = {}
 	for key: String in ["landed", "reads_as", "generic", "change"]:
@@ -540,25 +509,9 @@ static func _final_json(answer: Dictionary) -> String:
 		"generic": answer["generic"], "done": answer["done"], "change": answer["change"]})
 
 
-## The eyes' final answer as the save says it to the session.
-static func final_said(answer: Dictionary) -> String:
-	return "\n".join(PackedStringArray([
-		"Not finished yet: the fresh pair of eyes looked once more, now the creative pass is "
-		+ "in. Shown only the subject, the changes it asked for first and three pictures of "
-		+ "the model as it stands, never what you meant it to be, it says:",
-		"  Of what it asked: %s" % answer["landed"],
-		"  At a glance: %s" % answer["reads_as"],
-		"  Reads as generic: %s" % answer["generic"],
-		"The one change that would now most make it read as the subject:",
-		"  %s" % answer["change"],
-		FINAL_MAKE]))
-
-
 const FINAL_THEN := ("edit_model, then view_model to see that it reads, then save_model, "
 	+ "keeping what the creative pass added. If you are sure it is wrong for this subject, "
 	+ "say why in a line.")
-
-const FINAL_MAKE := "Make it now, before you answer: " + FINAL_THEN
 
 const FINAL_OPENING := ("Not finished yet: one last look with the fresh pair of eyes, now "
 	+ "the creative pass is in. The judge is shown only the subject, the changes the first "

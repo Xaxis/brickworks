@@ -114,23 +114,20 @@ fixing what it got wrong.
   `Main.design_with_claude_code`; `--baseline --dump=FILE` on another checkout
   gives main's answers and tool list with Claude Code, to compare byte for byte).
   Through the relay as a browser tab: `realset.py run --via relay --no-claude-code`.
-  And once more, last (`FreshEyes.final_look`, design329): at the first whole
-  save after the creative pass (`FreshEyes.reviewed`, which `save_model` calls
-  in place of `next_review`), when the first look named its changes and its
-  result has been said (not "nothing added" at this save; `final_due`), the
-  eyes in the first look's form are shown the model
-  as it stands and the changes they asked first (`final_prompt`,
-  `FreshEyes.FINAL`), and say what landed, then done or the one change. Its
-  words follow next_review's (a close look or reminder it hands too), which
-  are never left out; done adds nothing.
-  The critic's: `fresh eyes: final look, S s (model), after the creative pass
-  (it came to: ...)`. The session's own: the pictures and the question,
-  answered with `fresh_eyes_final` (served wherever `fresh_eyes` is,
-  `final_tools`), every other call but a save refused until then
-  (`final_not_yet`); the log says `fresh eyes: final look, the session's own,
-  asked ...` and `fresh eyes: the session's own final look (N refused):
-  {...}`. Once a subject. `fresh_eyes_probe` chats c14-c17 (`--baseline` runs
-  c14 and c15 too, so main's dump differs only by the final look's words).
+  And once more, last (`FreshEyes.final_look`, design329), where the first
+  look was the session's own: at the first whole save after the creative pass
+  (`FreshEyes.reviewed`, which `save_model` calls in place of `next_review`),
+  once that look named its changes and the pass's result has been said (not
+  "nothing added" at this save; `final_due`), the save hands the pictures and
+  the final question (`final_prompt`: what landed of those changes, then done
+  or the one change) after next_review's words (the pass's line, a close look
+  or reminder), which are never left out. Every call but a save is refused
+  until `fresh_eyes_final` answers (served wherever `fresh_eyes` is,
+  `final_tools`; `final_not_yet`); done adds nothing. Once a subject; with
+  Claude Code (the eyes' first look) none. The log says `fresh eyes: final
+  look, the session's own, asked after the creative pass (it came to: ...)`
+  and `fresh eyes: the session's own final look (N refused): {...}`.
+  `fresh_eyes_probe` chats c14 (Claude Code) and c16-c17.
 - `the check by real shapes`: `src/ai/exact_check.gd` over `src/assembly/exact.gd`,
   called from `Assistant._check`, so every check, edit, submission, review and save
   has it: each part BrickNet has is its convex colliders and connector labels
