@@ -41,6 +41,9 @@ const PRODUCT_SHADERS := {
 	preload("res://src/render/plastic_print_two_sided.gdshader"):
 		preload("res://src/render/plastic_product_print_two_sided.gdshader"),
 }
+## What the product look's clear plastic lets through, drawn before its
+## reflections: a transparent batch's second pass (plastic_product_glass).
+const PRODUCT_GLASS := preload("res://src/render/plastic_product_glass.gdshader")
 
 ## How a surface is drawn. Transparent plastic needs a different blend mode
 ## and draw order, so it cannot share a batch with opaque plastic even when
@@ -819,6 +822,18 @@ func _create_batch(
 	if product:
 		material.shader = PRODUCT_SHADERS.get(material.shader, material.shader)
 		material.set_shader_parameter("part_body_top", _body_top(part))
+		if material_class == MaterialClass.TRANSPARENT:
+			# Clear plastic in two passes: what it lets through multiplies
+			# the picture behind, then what it reflects is added on top.
+			var glass := ShaderMaterial.new()
+			glass.shader = PRODUCT_GLASS
+			glass.render_priority = material.render_priority
+			glass.set_shader_parameter("linearise", _linearise_colors())
+			glass.set_shader_parameter("part_box_min", part.bounds.position)
+			glass.set_shader_parameter("part_box_max", part.bounds.end)
+			glass.set_shader_parameter("part_body_top", _body_top(part))
+			material.render_priority += 1
+			material.next_pass = glass
 	batch.instance.material_override = material
 	add_child(batch.instance)
 	batch.triangles = _triangles_of(part.surfaces[surface_index])

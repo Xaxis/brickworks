@@ -121,8 +121,8 @@ uniform vec4 cut_plane = vec4(0.0, 1.0, 0.0, 1.0e9);
 //   chrome, metal and pearl as metals reflecting the studio itself (its
 //   sky), not the window's drawn one.
 //
-//   Clear parts that bend what is behind them and tint it, rather than
-//   veiling it.
+//   Clear parts that tint what is behind them, rather than veiling it,
+//   through every wall and tube of them (plastic_product_glass).
 //
 // The body's top, in the part's own coordinates: a brick's studs stand
 // above its box's body, so the box's top is the studs' and the brick's own
@@ -137,9 +137,6 @@ varying vec3 local_normal;
 varying flat vec3 axis_x;
 varying flat vec3 axis_y;
 varying flat vec3 axis_z;
-#ifdef PLASTIC_TRANSPARENT
-uniform sampler2D behind_texture : hint_screen_texture, filter_linear_mipmap, repeat_disable;
-#endif
 #endif
 
 // FINISHES. Numbered as PartLibrary.BrickColor.Finish numbers them.
@@ -398,6 +395,10 @@ void fragment() {
 	// spread, as a pixel's worth of a curved edge reflects a spread of the
 	// studio, not one point of it.
 	float on_round = 0.0;
+	// How far it is round an edge, 0 on the flat: a face's own normal is
+	// not exactly the box's axis, so a test of bent against unbent alone
+	// counted whole faces.
+	float rounded = 0.0;
 	{
 		vec3 n_local = normalize(local_normal);
 		float width = max(bevel_ldu, bevel_pixels * pixel_ldu);
@@ -407,6 +408,7 @@ void fragment() {
 			normal = normalize(axis_x * bent.x + axis_y * bent.y + axis_z * bent.z);
 			NORMAL = normal;
 			on_round = small;
+			rounded = smoothstep(0.02, 0.3, length(bent - n_local));
 		}
 	}
 #endif
@@ -603,40 +605,36 @@ void fragment() {
 	BACKLIGHT = glass_backlight;
 #endif
 #if defined(PLASTIC_PRODUCT) && defined(PLASTIC_TRANSPARENT)
-	// Clear plastic as glass: what is behind it, bent by its surface and
-	// tinted by its colour, and the sky reflected off it towards the edges.
-	// Only what is opaque is behind it here (the engine copies the picture
-	// once, before the clear parts): a clear part behind another is not
-	// seen through it. Opal and milky plastic scatter rather than bend, and
-	// stay as they are.
+	// Clear plastic as glass. What comes through it is the picture behind,
+	// already tinted by plastic_product_glass, the pass drawn before this
+	// one; this pass only adds what glass gives back: the sky and the lights
+	// reflected off every surface of it, the inner ones too, which is what
+	// outlines a clear brick's tubes and far walls. Added, as reflected
+	// light is, so the surfaces need no order. Opal and milky plastic
+	// scatter rather than let light through, and are blended over what is
+	// behind as before.
 	if (finish == FINISH_PLASTIC || finish == FINISH_FLUORESCENT || finish == FINISH_GLITTER) {
-		vec2 bend = normal.xy * 0.035 * (0.35 + 0.65 * grazing);
-		vec3 behind = textureLod(behind_texture, SCREEN_UV - bend, glass_roughness * 3.0).rgb;
-		if (!linearise) {
-			behind = srgb_to_linear(behind);
-		}
-		// What gets through is the colour itself: LDConfig gives a clear
-		// colour as the part looks against white, so white behind it comes
-		// out as that colour, and smoked plastic lets little through. A hue
-		// kept at full strength with a sixth of the light let past untinted
-		// washed every clear colour to a pastel: trans dark blue #0020a0
-		// came out #7e86d9.
-		float reflected = 0.04 + 0.96 * pow(grazing, 5.0);
-		vec3 seen = behind * body_linear * (1.0 - reflected);
-		ALBEDO = body * 0.04;
-		ALPHA = 1.0;
+		ALBEDO = vec3(0.0);
+		ALPHA = 0.0;
 		ROUGHNESS = 0.04;
-		// Low: at Good and Best the engine lights a clear part's reflection
-		// from its global illumination, where the white sweep is at full
-		// strength, and at glass's own 0.5 that laid a white veil over the
-		// whole part (trans red #c91a09 came out #d74e47). Its edges still
-		// reflect, as Fresnel has them.
-		SPECULAR = 0.15;
+		// Low face on: at Good and Best the engine lights a clear part's
+		// reflection from its global illumination, where the white sweep
+		// is at full strength, and at glass's own 0.5 that laid a white veil
+		// over the whole part (trans red #c91a09 came out #d74e47). Its
+		// edges still reflect, as Fresnel has them, and its rounded edges
+		// catch the key and the rim as lines of light.
+		SPECULAR = mix(0.15, 0.7, rounded);
 		BACKLIGHT = vec3(0.0);
 		METALLIC = 0.0;
 		CLEARCOAT = 0.0;
-		vec3 own = emission + seen;
-		EMISSION = linearise ? own : linear_to_srgb(own);
+		EMISSION = linearise ? emission : linear_to_srgb(emission);
+	} else {
+		// Premultiplied by hand (Compatibility has no PREMUL_ALPHA_FACTOR):
+		// the plastic's own colour by how much of it there is, its
+		// reflection whole, as a reflection is.
+		ALBEDO *= ALPHA;
+		BACKLIGHT *= ALPHA;
+		EMISSION *= ALPHA;
 	}
 #endif
 
