@@ -3576,6 +3576,34 @@
       "entry": "api/plans.js",
       "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan; off, 405 as before)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "documentation",
+      "entry": "web/docs.js",
+      "reach": "https://brickworks.diy/docs   (and /docs/<page>: the pages list, On this page, Ctrl+K or / to search, previous and next; made from docs-site/ by tools/docs_site.py at deploy; linked from every page's footer, Menu on a phone, and the app's Help, Documentation)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "put the documentation together",
+      "entry": "tools/docs_site.py",
+      "reach": "python3 tools/docs_site.py --check   (every feature here on a docs page or in docs-site/internal.txt, every link resolves; python3 tools/docs_site.py OUT writes the pages, as tools/site.py does at deploy)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "docs browser flow",
+      "entry": "tools/web/docs_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/docs_flow.mjs --url=<preview> --out=DIR   (or --root=<a site from tools/site.py>; preview check [docs])",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the menus written for the docs",
+      "entry": "src/dev/docs_menus.gd",
+      "reach": "godot --headless --path . --script src/dev/docs_menus.gd -- --menus-to=docs-site/generated/menus.json   (tests/test_docs_site.py says when it is due)",
+      "area": "web"
     }
   ]
 }

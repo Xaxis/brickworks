@@ -4596,6 +4596,44 @@ on the project): `curl -s <deployment>/api/plans` is the offer, and
 `/api/plans?op=plan` with a test account's session is its plan, Free and
 `builds.limit` 10, `standing` "known", `freshness` "live".
 
+### The documentation (/docs)
+
+The pages are made, not kept: `tools/docs_site.py` turns `docs-site/*.md`
+(in `docs-site/_nav.json`'s order) into `docs.html`, `docs/<page>.html` and
+`docs/search.json`, and `tools/site.py` runs it at every deploy, as it
+writes the changelog. `web/docs.css` lays them out and `web/docs.js` is the
+pages list on a phone, Ctrl+K search, On this page and Copy. Four pages are
+made from their sources: the MCP tool reference from `tools/mcp_tools.json`,
+the shortcuts from `ControlsHint.for_keyboard()` and the menus' keys, the
+menus from `docs-site/generated/menus.json`, and the changelog from
+`CHANGELOG.md`. The menus file is written off the real window by
+`src/dev/docs_menus.gd` (the command is in its header), and
+`tests/test_docs_site.py` fails when `src/ui/shell.gd`'s menus no longer
+match it.
+
+```sh
+python3 tools/docs_site.py --check
+python3 tools/minitest.py tests/test_docs_site.py
+python3 tools/site.py /tmp/site && node tools/web/docs_flow.mjs --root=/tmp/site --out=shots/docs
+BW_BYPASS=$VERCEL_BYPASS node tools/web/docs_flow.mjs --url=<preview> --out=shots/docs
+```
+
+`--check` ends "every link resolves" when every feature in features.json
+is in a section's `<!-- covers -->` or in `docs-site/internal.txt` with
+why a person never meets it, no page names a feature the map lacks, and
+every link and picture goes somewhere. A feature added here with no page
+fails it, and so the Python suite. The flow ends "every check passed":
+every page 200 with its own title and canonical (on a deployment
+`/docs/<page>.html` 308 to `/docs/<page>`, `/docs/` to `/docs`), every link
+and `#fragment` on them answering, `/docs`, the shortcuts and the tool
+reference in light and dark at 390 and 1400 px with nothing sideways and
+no error, Ctrl+K finding "fresh eyes" and "Build together" first and Enter
+going there, `/` and Escape, the pages list behind Browse the docs at 390
+and down the left at 1400 with the page marked, On this page following the
+scroll, and a deep link landing with its heading in view. Pictures in
+`--out`. The app's way in is Help, Documentation (`src/ui/shell.gd`,
+command `docs`).
+
 ### The site for everyone: axe, names and the keyboard
 
 No network and no account: this checkout's pages, the stand-in's API.

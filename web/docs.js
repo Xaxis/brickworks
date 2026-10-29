@@ -56,6 +56,8 @@
       for (const head of heads) {
         if (head.getBoundingClientRect().top < 140) current = head;
       }
+      // At the foot of the page, the last section, however short.
+      if (innerHeight + scrollY >= document.scrollingElement.scrollHeight - 2) current = heads[heads.length - 1];
       for (const a of links.values()) a.removeAttribute("aria-current");
       if (current) links.get(current.id)?.setAttribute("aria-current", "true");
     };

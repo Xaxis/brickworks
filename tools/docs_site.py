@@ -68,7 +68,7 @@ site_shell = _tool("site_shell")  # the site's one header and footer
 # on a line of its own, and in a line `code`, **bold**, *words*, [links](/x)
 # and [[Ctrl+K]] for keys. A line that starts with an HTML tag is passed on.
 
-KEY = re.compile(r"\[\[([^\]]+)\]\]")
+KEY = re.compile(r"\[\[(\]|[^\]]+\]?)\]\]")  # [[]]] is the key ], [[Shift+]]] Shift and ]
 
 
 def slug(text: str) -> str:
@@ -492,8 +492,8 @@ def menus_data() -> dict:
 
 
 def shortcuts() -> str:
-    out = ["<p>Made from the list the app's own <strong>Keys and controls</strong> panel draws "
-           "([[F1]] or [[,]] in the app), and from the menus' keys, so it says exactly what the app answers to.</p>",
+    out = ["Made from the list the app's own **Keys and controls** panel draws ([[F1]] or [[,]] in the app), "
+           "and from the menus' keys, so it says exactly what the app answers to.\n",
            "> [!NOTE]\n> On a Mac, press Cmd wherever this page says Ctrl.\n"]
     for section, rows in keyboard():
         out.append(f"## {section}\n")

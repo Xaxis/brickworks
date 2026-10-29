@@ -114,7 +114,8 @@ def plain(text: str) -> str:
 def public_text() -> dict[str, str]:
     """Every file a person reads, as the words they read."""
     texts: dict[str, str] = {}
-    for path in sorted((ROOT / "web").glob("*.html")) + sorted((ROOT / "web").glob("*.js")) + [
+    for path in sorted((ROOT / "web").glob("*.html")) + sorted((ROOT / "web").glob("*.js")) + sorted(
+            (ROOT / "docs-site").glob("*.md")) + [
             ROOT / "web/site.webmanifest", ROOT / "api/share.js", ROOT / "api/_directory.js",
             ROOT / "api/people.js", ROOT / "api/_names.js",
             ROOT / "src/boot/shell.html",

@@ -33,6 +33,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 WEB, API, FLOWS = ROOT / "web", ROOT / "api", ROOT / "tools" / "web"
+DOCS_FROM = {"tools/docs_site.py", "web/docs.css", "web/docs.js", "tools/mcp_tools.json",
+             "src/ui/controls_hint.gd", "CHANGELOG.md", ".claude/skills/verify/features.json"}
 
 
 def changed(since: str) -> list[str]:
@@ -85,6 +87,11 @@ def addresses(path: str, seen: set[str] | None = None) -> set[str]:
         return set()
     seen.add(path)
     p = Path(path)
+    # The documentation is made, not copied (tools/docs_site.py): its words,
+    # its maker, its own stylesheet and script, and what it is made from are
+    # the address /docs.
+    if p.parts[:1] == ("docs-site",) or path in DOCS_FROM:
+        return {"/docs"}
     if p.parts[:1] == ("web",):
         if p.suffix == ".html":
             return {page_address(p)}

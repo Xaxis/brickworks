@@ -113,6 +113,8 @@ let dead = 0;
 for (const address of targets.keys()) {
   if (bodies.has(address)) continue;
   if (address.startsWith("/app")) continue; // the app, which site_check boots
+  // The server's pages, made by api/: a deployment has them, a folder does not.
+  if (!remote && /^\/(collections|m|u|c|api|oauth)(\/|$)/.test(address)) continue;
   const answer = await get(address);
   if (answer.status !== 200) {
     dead += 1;

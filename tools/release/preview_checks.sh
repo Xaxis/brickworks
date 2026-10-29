@@ -130,6 +130,12 @@ declare -A CMD=(
   [progress]="tools/web/progress_check.mjs --url=$P/app"
   [share_probe]="tools/web/share_probe.mjs --url=$P"
   [site]="tools/web/site_check.mjs --url=$P"
+  # The documentation at /docs (tools/docs_site.py): every page answers with
+  # its own title, every link and #fragment on it resolves, light and dark
+  # at 390 and 1400 with nothing sideways, search finds "fresh eyes" and
+  # "Build together" and goes there, the pages list folds on a phone, and
+  # what is on this page follows the reading.
+  [docs]="tools/web/docs_flow.mjs --url=$P --out=$S/${TAG}_docs"
   # Every page and dialog, each visible control judged against the design
   # system's tokens (web/site.css, docs/DESIGN_SYSTEM.md); the API answered
   # by its stand-in, so no account is made.
