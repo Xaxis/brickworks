@@ -162,6 +162,10 @@ const stepSaid = (page) => page.evaluate(() => {
   };
 });
 
+/// Where Continue to checkout went: Stripe's address, or what the step said instead.
+const whereTo = (page) => (/stripe\.test/.test(page.url()) ? page.url()
+  : page.evaluate(() => `stayed, saying "${document.querySelector("#upgrade .said")?.textContent || ""}"`).catch(() => page.url()));
+
 let who = null;
 try {
   const offered = await api("/api/plans");
@@ -243,7 +247,7 @@ try {
     await page.click("#upgrade label.choice");
     await Promise.all([page.waitForURL(/checkout\.stripe\.test/, { timeout: 30000 }).catch(() => null),
       page.click("#upgrade button[type=submit]")]);
-    check(`on to Stripe's Checkout for the month: ${page.url()}`, /^https:\/\/checkout\.stripe\.test\/c\/pay\/cs_test_\d+#month$/.test(page.url()));
+    check(`on to Stripe's Checkout for the month: ${await whereTo(page)}`, /^https:\/\/checkout\.stripe\.test\/c\/pay\/cs_test_\d+#month$/.test(page.url()));
 
     // --- 4. Back, Checkout closed ---------------------------------------------
     console.log("4. Back with Checkout closed");
@@ -264,7 +268,7 @@ try {
     await page.click("#upgrade label.choice");
     await Promise.all([page.waitForURL(/checkout\.stripe\.test/, { timeout: 30000 }).catch(() => null),
       page.click("#upgrade button[type=submit]")]);
-    check(`on to Checkout for the year: ${page.url()}`, /#year$/.test(page.url()));
+    check(`on to Checkout for the year: ${await whereTo(page)}`, /^https:\/\/checkout\.stripe\.test\/.*#year$/.test(page.url()));
     await page.goto(`${site}/settings#plan`, { waitUntil: "load" });
     await until(page, () => document.documentElement.dataset.settings === "ready", null, 40000);
     check("/settings at 390 px: nothing sideways", !(await page.evaluate(() => document.documentElement.scrollWidth
