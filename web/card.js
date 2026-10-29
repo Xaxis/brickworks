@@ -147,12 +147,18 @@ export function motionWords(names, most = 3) {
 }
 
 /// The small picture when there is one, a few KB, and the big one when
-/// not: a page of cards is quick on a phone. "" when it has neither.
+/// not: a page of cards is quick on a phone. "" when it has neither. A set
+/// of the LDraw library (api/_library.js) has its cover, drawn by the app.
 export function pictureOf(model) {
+  if (isSet(model)) return `/library/${model.id}.webp`;
   const version = typeof model.thumb === "string" ? (model.thumb.split("?v=")[1] || "") : "";
   return model.thumb ? `/m/${model.id}.webp${/^[a-z0-9]+$/.test(version) ? `?v=${version}` : ""}`
     : model.image ? `/m/${model.id}.png` : "";
 }
+
+/// Whether a card is a set of the LDraw library (api/_library.js setCard):
+/// its page is /library/<id>, and it says which set it is.
+const isSet = (model) => Boolean(model.library) && typeof model.library === "object";
 
 /// The tags that say a model was made with the assistant or Brickify, as
 /// the guidelines ask a designer to tag it (web/guidelines.html), read for
@@ -243,6 +249,9 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
       : `Designed with the assistant, ${how}`}">${brickified ? "Brickify" : "Assistant"}</span>`);
     data.push('data-made="assistant"');
   }
+  // A set of the LDraw library: its number, its theme and its year, each
+  // where the index knows it.
+  const set = isSet(model) ? model.library : null;
   // Who made it: whoever modelled it, when that is not who shares it (the
   // app's Library's model it is: supabase/modelled_by.sql), as words that
   // wrap on a phone's narrow card rather than end in "…"; else their avatar and name, a link to their profile, when they
@@ -259,6 +268,10 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
       + `<span>${escapeHtml(by.name || by.handle)}</span></a>`
     : model.author ? `<span class="who">${escapeHtml(model.author)}</span>` : "";
   const lines = [];
+  if (set) {
+    const said = [set.set, set.theme, Number(set.year) ? String(Number(set.year)) : ""].filter(Boolean).join(" · ");
+    if (said) lines.push(`<small class="set">${escapeHtml(said)}</small>`);
+  }
   if (earned) {
     // Said once there is one, in words: the designer's page counts them.
     const said = [];
@@ -311,7 +324,7 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
       ? `<img src="${escapeHtml(picture)}" alt="${name}" width="1200" height="630" ${eager
         ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async">`
       : "No picture"}${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}${liked}</div>`
-    + `<div class="words"><a class="open" href="/m/${escapeHtml(id)}"><b title="${name}">${name}</b></a>`
+    + `<div class="words"><a class="open" href="${set ? "/library" : "/m"}/${escapeHtml(id)}"><b title="${name}">${name}</b></a>`
     + `<span class="by">${who}<span class="parts">${escapeHtml(counted(model.parts, "part"))}</span>`
     + `${tallies ? `<small class="acts">${tallies}</small>` : ""}</span>`
     + `${lines.join("")}</div></article>`;

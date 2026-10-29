@@ -28,6 +28,13 @@ let commentsLoaded = null;
 const marks = document.getElementById("marks");
 const id = marks && marks.dataset.id;
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "")) start();
+// A set of the LDraw library (/library/<id>, api/_library.js): its bar is
+// Share and More alone, there being nothing of it to like, save or build.
+else if (marks && /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/.test(id || "")) {
+  const sheet = document.getElementById("share-sheet");
+  const share = marks.querySelector("[data-share]");
+  if (sheet && share) shareSheet(share, sheet);
+}
 // This month's challenge (supabase/challenges.sql), for the model's own
 // designer: Enter this month's challenge, or that it is in.
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) challengeEntry();

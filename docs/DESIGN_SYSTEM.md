@@ -209,6 +209,10 @@ is on the page, `hidden`, for the script to show.
   (fewer, one to a row on a phone, for cards that carry a button under
   them) or `.models.row` (one row that scrolls inside itself, never the
   page).
+  A set of the LDraw library (`/library`, library333) is the same card:
+  its name the link to `/library/<id>`, its cover (the app's own
+  renderer's, the model on nothing), "Modelled by" whoever modelled it for
+  LDraw, and a `small.set` line, its number · theme · year.
 - **Width**: `--page` (1,140 px) for a page of words; `--page-wide`
   (1,600 px) for a page of cards and pictures, `.wrap.wide`: the gallery, a
   person, a collection, a model's page, the feed and the landing page's
@@ -322,6 +326,14 @@ is on the page, `hidden`, for the script to show.
   rule, each reply with the `.small` avatar and no card of its own, and a
   reply's box (`form.reply-new`, a field and `.cta.small` with
   `.cta.ghost.small` Cancel) under the thread.
+- **An LDraw set's page** (`/library/<id>`, library333) is a model's page,
+  drawn by the same `sharePage`: its `.crumbs` the LDraw library and its
+  theme; Open in Brickworks the column's `.cta` (the app opens it as its
+  Library does) and Download beside it; an action bar of Share and More
+  alone, its sheet with no embed; its facts as pills, the theme and year
+  `a.pill` links back to the shelf; About and Parts its only tabs; more of
+  its theme as `.models.row`. `/library` is the gallery's layout (`.tabs`
+  with LDraw library marked, Filters, a `.pills.row` of themes).
 - **Toast**: `web/kit.js` `toast("Link copied")`: one line at the foot of
   the screen, in the page's colours the other way round, read out
   (`role="status"`, on the page empty from its load, since a screen

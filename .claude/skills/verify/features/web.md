@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow -->
 
 ## Sub-features
 
@@ -1682,6 +1682,21 @@ plan with Claude as the client.
   the engine started, so two builds paired are turned at the same moment.
   Numbers: docs/SLOW_DEVICES.md.
 - `play browser flow` (`tools/web/play_flow.mjs`): below.
+- **The LDraw library** (library333, 2026-10-29): `ui:LDraw library page`
+  is `/library` (`web/library.html`, `web/library.js`), every set of the
+  app's Library as the gallery's cards, a page of 24 at a time from
+  `/api/share?op=library` (`api/_library.js` `searchSets`, the app's
+  `ModelLibrary.search` in JS); `ui:an LDraw set's page` is
+  `/library/<id>`, `sharePage` with `model.library` (`setModel`), crediting
+  every modeller its file names (`authorsIn`) with LDraw's page and its CC
+  BY licence, Open in Brickworks `/app?new=1&library=<id>` as the app's
+  Library opens one, Share without an embed, its parts; its pictures
+  `/library/<id>.webp` (a card's), `.cutout.webp` (its page's) and
+  `.cover.webp` (the Library's cover, for a link's preview), from the
+  store's `library/cards/`, `library/pages/` and `library/covers/`. Linked
+  from the gallery's tabs and every page's footer; every set is in
+  `/sitemap.xml`. `cli:LDraw library browser flow` checks it on a
+  deployment (preview_checks.sh `library_site`).
 - **The sitemap** (`GET /sitemap.xml`, `api/share.js ?op=sitemap`, routed by
   `deploy.sh`, with `web/sitemap.xml` beside the function as `_sitemap.xml`):
   the site's own pages and every listed model, profile with a model in the
@@ -4533,6 +4548,49 @@ to it; Bob at 390 px dark presses Follow on the card, Following and "1
 follower", the API agreeing, one batched request answering for the cards;
 Most followed lists it; 390 and 1280 px in both themes with nothing
 sideways; made private, gone.
+
+### The LDraw library (/library) and a set's page (/library/<id>)
+
+Every set the app's Library opens (LDraw's Official Model Repository, the
+parts store's `library/index.json`), browsed as the gallery is, and a page
+per set made by `api/share.js` `sharePage` itself (`model.library`): the
+store's index and files alone, never the database. The code first, with a
+store of its own:
+
+```sh
+python3 tools/minitest.py tests/test_library_site.py
+```
+
+The tests hold the index to the app's edge (an entry out of `library/`,
+an id with a dot, a licence the site cannot pass on, an id twice), search
+as `ModelLibrary.search` does (a set's number, every word, theme, decade,
+size, the five orders), credit every modeller a file names (not a part's
+author, not LDCad, no login or address), count the steps its file lays
+out, draw a set's card (`/library/<id>`, its picture, its number, theme
+and year), and answer the shelf, a page, its pictures and its file through
+the handler asking the store and nothing else. Then a deployment, or
+locally anything routed as `tools/deploy.sh` routes `/library/...`:
+
+```sh
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/library_site_flow.mjs --url=<preview> --out=shots/library_site
+```
+
+It passes when it ends "library_site_flow: all passed": /library at 390
+and 1400 px, light and dark, 1,500 sets or more with 24 cards drawn and
+each card's page, number and modeller, nothing sideways, the footer's and
+the gallery's links; 10179 finding the Millennium Falcon alone, kept in the
+address, and Star Wars's pill; its card opening `/library/omr-10179-1` at
+both widths and in both themes, its cover drawn, "Modelled by Roland Dahl
+for LDraw's Official Model Repository" linked to its LDraw page, CC BY 2.0
+with the licence's link, its parts, steps, set, theme and year, View in 3D
+and Open in Brickworks both `/app?new=1&library=omr-10179-1`, more Star
+Wars sets; its parts list with our own pictures drawn; Share's link and no
+embed; a set not in the library a 404; parts.json and the cover from the
+site; and Open in Brickworks opening 106-1 UNICEF Van, 65 parts, in the app
+(`--no-app` leaves that out where there is no app). The pictures are the
+app's own renderer's (`tools/library_build.py pictures`, then
+`tools/storage_library.py DIR --pictures`); a set not drawn yet shows the
+Library's cover in their place.
 
 ### Plans, coming soon (/plans) and its interest form
 
