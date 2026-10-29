@@ -895,7 +895,12 @@ plan with Claude as the client.
   `/guidelines`, linked from every site page's footer (and the 404's and the
   Claude sign-in page's), from the server-made pages through the gallery's
   footer, and from the Share panel beside Publish. `/terms` has the
-  operator's line (`#operator`) marked for the owner to fill in.
+  operator's line (`#operator`) marked for the owner to fill in, and
+  `#paid-plans` (2026-10-29): Free and Pro when they open, sold by Atypic
+  through Link, renewal, cancelling and refunds as Atypic's policy says,
+  mirroring Bookwright's terms. The FAQ's "Is Brickworks free?" and "What
+  is an AI build?" (`#ai-builds`) and the download page's `#pro-note` say
+  the same as /plans: downloads free until Pro opens, every version kept.
 - `age question` (`web/account.js` `askAgeIfAsked`, `src/ui/sign_in_gate.gd`,
   `api/account.js` `?op=age`, `api/_trust.js`, `supabase/trust.sql`): asked
   once, after a first sign-in, on the site and in the app — "When were you
@@ -2492,14 +2497,19 @@ plan with Claude as the client.
   as for the landing page.
 - `plans page` (`web/plans.html`, `web/plans.js`), `POST /api/plans`
   (`api/plans.js`, `supabase/plan_interest.sql`) and `plan interest counts`
-  (`tools/plan_interest.py`): Plans, coming soon (2026-10-28, the owner's
-  ask, plans323). Free, Plus ($48 a year or $5 a month) and Creator ($96 or
-  $10), the paid two marked Coming soon, education free, what Free keeps,
-  and three questions; the tiers and their words from the pricing research
-  (price274), Free at today's limits. Nothing takes money. Plus's and
-  Creator's Tell me when it's ready open the interest form (a `dialog`):
-  email, plan, monthly or yearly, a line; take it off deletes the address's
-  entries. The table is the server's alone (row security, every grant
+  (`tools/plan_interest.py`): Plans (2026-10-28, plans323; Free and Pro
+  since 2026-10-29, gate M1 of docs/PLANS.md, plansite346). Free ($0: the
+  web app, 10 AI builds a month, building by hand without a limit,
+  everything else the app does today, at today's limits) and Pro ($8 a
+  month or $80 a year: the desktop app, every version released while you
+  pay kept, AI builds without a limit), Pro marked Coming soon; what an AI
+  build is; every account made before Pro opens gets Pro with no end;
+  education free; what stays free; five questions, one saying what changed.
+  Nothing takes money (BRICKWORKS_BILLING off). Pro's Tell me when it's
+  ready opens the interest form (a `dialog`): email, monthly or yearly, a
+  line; Pro is kept as 'plus' (`api/plans.js` `PLANS`: the table allows
+  Plus and Creator, which both mean Pro now; no SQL); take it off deletes
+  the address's entries. The table is the server's alone (row security, every grant
   revoked, five security-definer functions for the service role), one row an
   address a plan, ten tries an hour from one place (an HMAC of its address,
   kept a day). The owner reads counts only; linked from every page's footer
@@ -4549,7 +4559,9 @@ python3 tools/minitest.py tests/test_plans.py
 The tests run `api/plans.js`'s handler with the database played: refusals
 in words asking nothing, the rate limit asked first, the address lower case
 and its origin only as a key, the same words for a first entry and a
-second, and the page taking no money and listing no Free limit under
+second, Pro kept as 'plus' and Plus refused, and the page taking no
+money, keeping its promises (what stays free, accounts that exist, no
+desktop in Free, no Claude builds) and listing no Free limit under
 `api/models.js`'s. With no network, the page and the form from the stand-in
 (`design_flow` and `a11y_flow` page `plans`, its dialog opened), and:
 
@@ -4559,12 +4571,14 @@ BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/plans_flow.mjs --url=<pr
 ```
 
 It passes when it ends "plans: all ok": at 390 and 1400 px, light and
-dark, the three tiers and their prices, Coming soon on the paid two,
-education, what Free keeps, nothing sideways, the footer's link, and
-/privacy's line; at 390 px the form opened with Plus and yearly, a bad
-address refused on the page and by the API (and a plan off the list, a
-line past 200); then, live, a Resend test address kept for Plus yearly
-(its row read with the secret key), sent again monthly with a line and
+dark, Free and Pro and their prices, Coming soon on Pro, what an AI build
+is, accounts that exist keeping everything, education, what stays free, no
+Claude builds and no free desktop, nothing sideways, the footer's link, and
+/privacy's line; at 390 px the form opened from Pro with yearly, a bad
+address refused on the page and by the API (and a plan off the list, now
+Plus, a line past 200); then, live, a Resend test address kept for Pro
+yearly (its row, 'plus', read with the secret key), sent again monthly
+with a line and
 changed (still one row), and taken off (none left), the address forgotten
 at the end whatever happened. Before the SQL is applied the form says it
 is not open yet and the flow fails, saying so. The counts:
