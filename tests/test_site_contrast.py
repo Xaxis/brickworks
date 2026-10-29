@@ -116,7 +116,8 @@ def test_every_stylesheet_closes_what_it_opens() -> None:
     """A stray brace makes the browser drop the rule after it, silently: three
     were left in web/directory.css by a cut (2026-10-22), and a model's facts
     lost their margin with no check failing."""
-    for path in [ROOT / "web/site.css", ROOT / "web/directory.css", *sorted((ROOT / "web").glob("*.html"))]:
+    for path in [ROOT / "web/site.css", ROOT / "web/directory.css", ROOT / "web/docs.css",
+                 *sorted((ROOT / "web").glob("*.html"))]:
         text = path.read_text(encoding="utf-8")
         for css in [text] if path.suffix == ".css" else re.findall(r"<style[^>]*>(.*?)</style>", text, re.S):
             assert not unclosed(css), f"{path.name}: {unclosed(css)}"

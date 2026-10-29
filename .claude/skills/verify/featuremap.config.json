@@ -3667,6 +3667,118 @@
       "entry": "tools/web/library_site_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/library_site_flow.mjs --url=<preview> --out=DIR [--no-app]   (preview_checks.sh library_site: /library and a set's page at 390 and 1400, light and dark, search by number, credit, parts, Share, Open in Brickworks)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "choose the AI that designs",
+      "entry": "src/ui/ai_settings.gd",
+      "reach": "godot --path .  (Tools, Settings…, AI…: Claude, or another AI on your own API key: provider, address, key with Show and Remember, the provider's own model list filtered, temperature, max output, reasoning effort, Test, Design with it; the assistant's column then designs with it)   tools/probe.sh ai_settings_probe",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "ai settings probe",
+      "entry": "src/dev/ai_settings_probe.gd",
+      "reach": "tools/probe.sh ai_settings_probe   (PROBE_SIZE=1024x768 or 400x860 for the pictures at that size, in shots/ai_settings/)",
+      "area": "assistant"
+    },
+    {
+      "kind": "lib",
+      "label": "designing on Anthropic's Messages or Gemini's own API",
+      "entry": "src/ai/anthropic_messages.gd",
+      "reach": "tools/probe.sh provider_apis_probe   (AnthropicMessages and GeminiNative read and written offline, then each designs, is tested and lists its models against tools/provider_stub.py, as strict as each API)",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "provider apis probe",
+      "entry": "src/dev/provider_apis_probe.gd",
+      "reach": "tools/probe.sh provider_apis_probe",
+      "area": "assistant"
+    },
+    {
+      "kind": "ui",
+      "label": "documentation",
+      "entry": "web/docs.js",
+      "reach": "https://brickworks.diy/docs   (and /docs/<page>: the pages list, On this page, Ctrl+K or / to search, previous and next; made from docs-site/ by tools/docs_site.py at deploy; linked from every page's footer, Menu on a phone, and the app's Help, Documentation)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "put the documentation together",
+      "entry": "tools/docs_site.py",
+      "reach": "python3 tools/docs_site.py --check   (every feature here on a docs page or in docs-site/internal.txt, every link resolves; python3 tools/docs_site.py OUT writes the pages, as tools/site.py does at deploy)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "docs browser flow",
+      "entry": "tools/web/docs_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/docs_flow.mjs --url=<preview> --out=DIR   (or --root=<a site from tools/site.py>; preview check [docs])",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the menus written for the docs",
+      "entry": "src/dev/docs_menus.gd",
+      "reach": "godot --headless --path . --script src/dev/docs_menus.gd -- --menus-to=docs-site/generated/menus.json   (tests/test_docs_site.py says when it is due)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "GET /api/plans?op=download",
+      "entry": "api/plans.js",
+      "reach": "curl -sI '<deployment>/api/plans?op=download&file=Brickworks-0.10.0-linux-x86_64.AppImage'   (off: 302 to the public address, nobody asked; on: a session whose plan has the desktop gets GitHub's signed URL, Free a 403 with the way to Pro; python3 tools/minitest.py tests/test_desktop.py)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "GET /api/plans?op=entitlement",
+      "entry": "api/plans.js",
+      "reach": "curl -s '<deployment>/api/plans?op=entitlement' -H 'authorization: Bearer <session>'   (off: {billing: off}; on: an RS256 token {sub, plan, desktop, paid_through, iat}, never on a plan not known; python3 tools/minitest.py tests/test_desktop.py)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the desktop's files and token",
+      "entry": "api/_desktop.js",
+      "reach": "python3 tools/minitest.py tests/test_desktop.py   (GitHub's signed asset URL, a 200 refused; the token signed with DESKTOP_TOKEN_KEY; paid_through kept in supabase/desktop_paid_through.sql, only moving on)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "desktop token key",
+      "entry": "tools/desktop_key.mjs",
+      "reach": "node tools/desktop_key.mjs new FILE | public | sign FILE JSON   (docs/RELEASING.md, The desktop token's key; never prints the private half)",
+      "area": "release"
+    },
+    {
+      "kind": "lib",
+      "label": "the desktop pass",
+      "entry": "src/account/desktop_pass.gd",
+      "reach": "tools/probe.sh desktop_pass   (a release build holding a key checks its kept token at start: released while paid opens, later asks, 44 days of grace, never from source, never mid-session)",
+      "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "the Pro screen on the desktop",
+      "entry": "src/ui/pass_gate.gd",
+      "reach": "tools/probe.sh desktop_pass   (This version of the desktop app comes with Pro: See Pro, Open the web app, Sign in with another account, Check again, where the models are)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "desktop pass probe",
+      "entry": "src/dev/desktop_pass_probe.gd",
+      "reach": "tools/probe.sh desktop_pass   (needs node: tokens signed by api/_desktop.js)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "relay timing",
+      "entry": "tools/web/relay_timing.mjs",
+      "reach": "node tools/web/relay_server.mjs 8790, then node tools/web/relay_timing.mjs --url=http://127.0.0.1:8790 [--rounds=4]   (with .env sourced; or --url=<preview> with BW_BYPASS)",
+      "area": "web"
     }
   ]
 }

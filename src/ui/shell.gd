@@ -110,7 +110,7 @@ const MENUS: Array = [
 	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
 		"mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "measure",
 		"stability", "simulate", "hidden_colours", "reseat", "-", "connector", "settings"]],
-	["Help", ["keys", "tour", "-", "website", "about"]],
+	["Help", ["keys", "tour", "-", "docs", "website", "about"]],
 ]
 
 ## Submenu rows are numbered from here, clear of the commands.
@@ -477,7 +477,7 @@ func doing(name: String) -> String:
 ## never put off a frame to say so first. (The clipboard is not among
 ## them: in a browser the app keeps its own, EditVerbs.copy.)
 const IN_THE_PRESS: Array[String] = ["open", "import_ldraw", "import_io", "import_lxf",
-	"import_mesh", "mosaic", "brickify", "full_screen", "website", "quit", "new_window"]
+	"import_mesh", "mosaic", "brickify", "full_screen", "docs", "website", "quit", "new_window"]
 
 ## The commands that open a tab of their own in a browser (BookletMaker):
 ## run at once there, as those above are.
@@ -630,14 +630,14 @@ var read_only: bool = false
 const LOOKING: Array[String] = ["view_default", "view_front", "view_back",
 	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
 	"fit_model", "ortho", "full_screen", "timeline", "parts_list", "instructions",
-	"website", "about"]
+	"docs", "website", "about"]
 
 
 ## What may be done while a model is being laid (ModelStore.laying): look
 ## at what is down from another side, and nothing that reads the model.
 const WHILE_LAYING: Array[String] = ["view_default", "view_front", "view_back",
 	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
-	"ortho", "full_screen", "website", "about"]
+	"ortho", "full_screen", "docs", "website", "about"]
 
 
 ## -1 for a command that is not a setting; 0 off, 1 on.
@@ -1114,6 +1114,11 @@ func _define() -> void:
 		Callable(),
 		"What every button and key does")
 	_add("tour", "Take the tour", 0, func() -> void: tour.start())
+	# brickworks.diy/docs: every menu, tool and page of the site, written
+	# out (docs-site/, tools/docs_site.py). The owner asked for it, 2026-10-29.
+	_add("docs", "Documentation", 0,
+		func() -> void: OS.shell_open("https://brickworks.diy/docs"), Callable(),
+		"How everything in Brickworks works, on brickworks.diy")
 	_add("website", "Brickworks website", 0,
 		func() -> void: OS.shell_open("https://brickworks.diy"))
 	_add("about", "About Brickworks", 0, _show_about)

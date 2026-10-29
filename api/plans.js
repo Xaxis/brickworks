@@ -1,13 +1,14 @@
-// Plans, coming soon (2026-10-28): who would use Plus or Creator, from the
-// interest form on /plans (web/plans.html, web/plans.js).
+// Plans, coming soon (2026-10-28): who would use Pro, from the interest
+// form on /plans (web/plans.html, web/plans.js).
 //
 //   POST /api/plans   {email, plan, billing, note}
-//                     plan "plus" or "creator", billing "monthly" or
-//                     "yearly", note one line of at most 200 characters,
-//                     or none. {said}, the same words whether the address
-//                     was there already or not: a second entry for the
-//                     same plan changes the first (supabase/plan_interest.sql),
-//                     and whether somebody left one is nobody else's to learn.
+//                     plan "pro" (kept as "plus", PLANS below), billing
+//                     "monthly" or "yearly", note one line of at most 200
+//                     characters, or none. {said}, the same words whether
+//                     the address was there already or not: a second entry
+//                     for the same plan changes the first
+//                     (supabase/plan_interest.sql), and whether somebody
+//                     left one is nobody else's to learn.
 //   POST /api/plans   {email, forget: true}
 //                     every entry of that address deleted ("Take my email
 //                     off"). {said}, the same words whether there were any.
@@ -61,16 +62,47 @@
 //
 // Checkout and the portal come back to /settings#plan on this site
 // (returnOrigin): ?billing=done, cancelled or portal says from where.
+//
+// And the paid desktop (api/_desktop.js, units U5 and U6), answered in
+// every mode, so a page or an app can ask before it knows which:
+//
+//   GET /api/plans?op=download            {gated}: whether a download
+//                                         needs a session (billing on)
+//   GET /api/plans?op=download&file=NAME  the package NAME: a 302, or
+//                                         {url} to a request that accepts
+//                                         JSON (a page's fetch: a
+//                                         navigation cannot carry the
+//                                         session). Off: the public address
+//                                         it has always had, nobody asked.
+//                                         On: GitHub's signed one for a
+//                                         session whose plan has the
+//                                         desktop, or cannot be known just
+//                                         now; 401 without a session, 403
+//                                         {error, pro} for a plan without
+//                                         it; 404 for no such file
+//   GET /api/plans?op=entitlement         the desktop's token, for a
+//                                         session: {billing, token, plan,
+//                                         desktop, paid_through}. Off:
+//                                         {billing: "off"}, nobody asked.
+//                                         503 {billing, standing} while
+//                                         the plan cannot be known, or
+//                                         nothing signs: nothing is granted
+//                                         then, nor refused
 
 import { createHmac } from "node:crypto";
 import { AdmissionError, AdmissionUnavailable, verifyWebhook, WebhookError } from "./_admission.js";
 import { AuthError, bearer, verify } from "./_auth.js";
 import {
-  admission, agreed, billingMode, charge, currentOffer, entitlementOf, reportOwner, returnOrigin,
+  admission, agreed, billingMode, charge, currentOffer, entitlementOf, mayDesktop, reportOwner, returnOrigin,
 } from "./_billing.js";
 import { db, dbConfigured } from "./_db.js";
+import { NoSuchFile, publicUrl, signedUrl, signingKey, tagOf, tokenFor } from "./_desktop.js";
 
-export const PLANS = ["plus", "creator"];
+// Pro is the one paid plan since 2026-10-29 (docs/PLANS.md, section 1).
+// The table allows only the two the page first asked about, Plus and
+// Creator, and both mean Pro now (section 9), so Pro is kept as 'plus':
+// no SQL, and the counts read as they did (tools/plan_interest.py).
+export const PLANS = { pro: "plus" };
 export const BILLING = ["monthly", "yearly"];
 export const NOTE_MOST = 200;
 // As api/otp.js takes an address: something, an @, something with a dot.
@@ -87,8 +119,9 @@ export function entryOf(body) {
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
   if (!EMAIL.test(email) || email.length > 320) throw new Refusal("That is not an email address.");
   if (body?.forget === true) return { email, forget: true };
-  const plan = String(body?.plan || "");
-  if (!PLANS.includes(plan)) throw new Refusal("Choose Plus or Creator.");
+  const asked = String(body?.plan || "");
+  if (!Object.hasOwn(PLANS, asked)) throw new Refusal("Choose Pro.");
+  const plan = PLANS[asked];
   const billing = String(body?.billing || "");
   if (!BILLING.includes(billing)) throw new Refusal("Choose monthly or yearly.");
   if (body?.note !== undefined && body?.note !== null && typeof body.note !== "string") {
@@ -122,19 +155,27 @@ function bodyOf(request) {
 const say = (response, status, error) => response.status(status).json({ error });
 const rpc = (name, body) => db(`rpc/${name}`, { method: "POST", body });
 
+/// The signed-in account's claims, or null with the refusal sent.
+async function signedIn(request, response) {
+  try {
+    return await verify(bearer(request), request);
+  } catch (trouble) {
+    if (trouble instanceof AuthError) {
+      say(response, trouble.status, trouble.message);
+      return null;
+    }
+    throw trouble;
+  }
+}
+
 /// A GET while billing is on: the offer, or the signed-in account's plan,
 /// the owner's reported to Admission first.
 async function planned(request, response) {
   const op = String(request.query?.op || "");
   if (op === "") return response.status(200).json(await currentOffer());
   if (op !== "plan") return say(response, 404, "GET /api/plans, or /api/plans?op=plan signed in");
-  let claims;
-  try {
-    claims = await verify(bearer(request), request);
-  } catch (trouble) {
-    if (trouble instanceof AuthError) return say(response, trouble.status, trouble.message);
-    throw trouble;
-  }
+  const claims = await signedIn(request, response);
+  if (!claims) return response;
   await reportOwner(claims);
   if (request.query?.fresh === "1") await admission().forget(claims.sub);
   return response.status(200).json(await entitlementOf(claims.sub));
@@ -283,13 +324,8 @@ function refusedPaying(response, op, trouble) {
 /// A POST with one of the ops above while billing is on.
 async function paying(request, response, op) {
   if (op === "webhook") return webhook(request, response);
-  let claims;
-  try {
-    claims = await verify(bearer(request), request);
-  } catch (trouble) {
-    if (trouble instanceof AuthError) return say(response, trouble.status, trouble.message);
-    throw trouble;
-  }
+  const claims = await signedIn(request, response);
+  if (!claims) return response;
   try {
     return await (op === "checkout" ? checkout : portal)(request, response, claims);
   } catch (trouble) {
@@ -297,12 +333,62 @@ async function paying(request, response, op) {
   }
 }
 
+/// What a download is refused with, for a plan without the desktop.
+export const DESKTOP_IS_PRO = "The desktop app comes with Pro. The web app is free, in any browser.";
+
+/// GET ?op=download: whether a download is gated, or one package.
+async function download(request, response) {
+  const mode = billingMode();
+  const file = String(request.query?.file || "");
+  if (file === "") return response.status(200).json({ gated: mode !== "off" });
+  if (!tagOf(file)) return say(response, 404, "There is no download of that name.");
+  const send = (url) => {
+    if (/application\/json/.test(String(request.headers?.accept || ""))) return response.status(200).json({ url });
+    response.setHeader("Location", url);
+    return response.status(302).end();
+  };
+  if (mode === "off") return send(publicUrl(file));
+  const claims = await signedIn(request, response);
+  if (!claims) return response;
+  await reportOwner(claims);
+  if (!mayDesktop(await entitlementOf(claims.sub))) {
+    return response.status(403).json({ error: DESKTOP_IS_PRO, pro: "/plans" });
+  }
+  try {
+    return send(await signedUrl(file));
+  } catch (trouble) {
+    if (trouble instanceof NoSuchFile) return say(response, 404, "There is no download of that name.");
+    console.error(`download: ${String(trouble?.message || trouble).slice(0, 160)}`);
+    return say(response, 503, "The download did not start just now. Try again in a minute.");
+  }
+}
+
+/// GET ?op=entitlement: the desktop's token, signed only on a plan known.
+async function entitlement(request, response) {
+  const mode = billingMode();
+  if (mode === "off") return response.status(200).json({ billing: "off" });
+  const claims = await signedIn(request, response);
+  if (!claims) return response;
+  await reportOwner(claims);
+  const e = await entitlementOf(claims.sub);
+  const signer = signingKey();
+  if (e.standing !== "known" || !signer) {
+    if (!signer) console.error("desktop: billing is on and DESKTOP_TOKEN_KEY is not an RSA private key");
+    return response.status(503).json({ billing: e.billing, standing: signer ? e.standing : "unsigned" });
+  }
+  const { token, claims: said } = await tokenFor(claims.sub, e, signer);
+  return response.status(200).json({ billing: e.billing, token, plan: said.plan, desktop: said.desktop,
+    paid_through: said.paid_through });
+}
+
 export default async function handler(request, response) {
   // Asked only by the site's own page: no cross-origin answer, and nothing
   // kept by any cache.
   response.setHeader("Cache-Control", "no-store");
-  if (request.method === "GET" && billingMode() !== "off") return planned(request, response);
   const op = String(request.query?.op || "");
+  if (request.method === "GET" && op === "download") return download(request, response);
+  if (request.method === "GET" && op === "entitlement") return entitlement(request, response);
+  if (request.method === "GET" && billingMode() !== "off") return planned(request, response);
   if (request.method === "POST" && PAID.includes(op) && billingMode() !== "off") return paying(request, response, op);
   if (request.method !== "POST") return say(response, 405, "POST {email, plan, billing, note} or {email, forget: true}");
   let entry;

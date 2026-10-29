@@ -130,6 +130,12 @@ declare -A CMD=(
   [progress]="tools/web/progress_check.mjs --url=$P/app"
   [share_probe]="tools/web/share_probe.mjs --url=$P"
   [site]="tools/web/site_check.mjs --url=$P"
+  # The documentation at /docs (tools/docs_site.py): every page answers with
+  # its own title, every link and #fragment on it resolves, light and dark
+  # at 390 and 1400 with nothing sideways, search finds "fresh eyes" and
+  # "Build together" and goes there, the pages list folds on a phone, and
+  # what is on this page follows the reading.
+  [docs]="tools/web/docs_flow.mjs --url=$P --out=$S/${TAG}_docs"
   # Every page and dialog, each visible control judged against the design
   # system's tokens (web/site.css, docs/DESIGN_SYSTEM.md); the API answered
   # by its stand-in, so no account is made.
@@ -183,6 +189,10 @@ declare -A CMD=(
   # Share; and Open in Brickworks opening 106-1 in the app. The store's own
   # index and files: no account, no database.
   [library_site]="tools/web/library_site_flow.mjs --url=$P --out=$S/${TAG}_library_site"
+  # local only: download_check.mjs's gated half (a Free click refused with
+  # the way to Pro, a Pro click sent to the route's address). Every
+  # deployment answers "not gated" until the owner turns billing on (U8),
+  # so there it checks the public links, as before.
   [download]="tools/web/download_check.mjs --url=$P/download"
   # Plans, coming soon (web/plans.html, supabase/plan_interest.sql): the page
   # at 390 and 1400, light and dark; its form refusing a bad address, then a
@@ -231,6 +241,10 @@ declare -A CMD=(
   # quota a run, and Claude's answers vary, so a release cannot wait on it.
   # tabpair above holds the same rules with scripted chats. Run it by hand
   # after a change to the relay's tabs or the connector (its header says how).
+  # local only: relay_timing.mjs. A measure with no verdict: what a call
+  # through the relay costs when the tab answers at once, median and p90
+  # (relay338). It runs against a preview too; run it after a change to
+  # the relay's queue (its header says how).
   [people]="tools/web/people_flow.mjs --url=$P --out=$S/${TAG}_people"
   # A person's page (/u/<handle>, docs/SOCIAL.md U5): a throwaway designer
   # lists two models and chooses links, a banner and pins (op=showcase, its
