@@ -181,6 +181,14 @@ declare -A CMD=(
   # lists, Favourites first; More's embed code; More by and Similar only
   # with three cards. Signed in, the API answered by the stand-in.
   [model_page]="tools/web/model_page_flow.mjs --url=$P --out=$S/${TAG}_model_page"
+  # The LDraw library on the site (library333): /library at 390 and 1400 px,
+  # light and dark, the whole shelf with every card's cover, number and
+  # modeller; found by a set's number, 10179, and by a theme's pill; the
+  # Millennium Falcon's page from its card, its cover, its modeller credited
+  # with LDraw's page and CC BY 2.0, its facts, its parts with our pictures,
+  # Share; and Open in Brickworks opening 106-1 in the app. The store's own
+  # index and files: no account, no database.
+  [library_site]="tools/web/library_site_flow.mjs --url=$P --out=$S/${TAG}_library_site"
   [download]="tools/web/download_check.mjs --url=$P/download"
   # Plans, coming soon (web/plans.html, supabase/plan_interest.sql): the page
   # at 390 and 1400, light and dark; its form refusing a bad address, then a
