@@ -2891,6 +2891,20 @@
       "area": "model-io"
     },
     {
+      "kind": "ui",
+      "label": "library search",
+      "entry": "src/ui/library_dialog.gd",
+      "reach": "godot --path .  (File, Library…: the search first, edged, with a magnifier; asked as you type; Ctrl+F comes to it, Escape clears it, Enter opens the first found (on a phone Enter only asks); words that find nothing are said where the covers were, with Clear the search, the filters let go and the other shelf)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "library search probe",
+      "entry": "src/dev/library_search_probe.gd",
+      "reach": "tools/probe.sh library_search_probe   (a window; serves tests/fixtures/library on 8934; -- --phone for the layout for a finger, PROBE_SIZE=390x844 for a phone's pictures)",
+      "area": "model-io"
+    },
+    {
       "kind": "cli",
       "label": "library browser flow",
       "entry": "tools/web/library_flow.mjs",

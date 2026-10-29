@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe -->
 
 ## Sub-features
 
@@ -429,6 +429,38 @@ Whether what you built is still there tomorrow, and still means the same thing.
   stand-in: the real deployment and its store, all 1,575 models with covers,
   and 8466-1 (36 MB, the biggest) found and opened in the probe's window,
   timed: 13.9 s from the press, 1,234 parts, credited (dcf6e538).
+- `library search`: the Library's search, first under the shelves' buttons,
+  edged in `Look.OUTLINE` with a magnifier (`assets/ui/tools/search.svg`) that
+  gives way to the field's × once something is typed. Matches a set's name,
+  number, theme and designer (`ModelLibrary.search`) or a community model's
+  name, designer and tags (the gallery's `q`), within the shelf and filters
+  showing; the words go with the person to the other shelf. Asked 0.35 s after
+  the last key, at once when emptied. Ctrl+F (Cmd+F) gives it the keys while
+  the library shows (`LibraryDialog._input`), Escape clears it and keeps the
+  keys (`FocusGuard.CLEAR_ON_ESCAPE`; empty, Escape leaves it), Enter opens the
+  first found as its Open does (on the phone layout Enter only asks). Words
+  that find nothing are said where the covers were (`_none`), with Clear the
+  search, "Any theme, year and size" when a filter is chosen, and the other
+  shelf. Named for a screen reader per shelf; the count line and the
+  nothing-found line are polite live regions. The library is in
+  `FocusGuard.OVER`, so F6 lands on the search and Tab goes on from it.
+- `library search probe`: `tools/probe.sh library_search_probe` (a window,
+  1400 x 900; serves `tests/fixtures/library` on 8934, so it runs beside
+  `library_probe`'s 8901). Opened empty, the shelf is exactly what
+  `ModelLibrary.search` answers no words; the field above the note, edged,
+  magnifier, named. Ctrl+F, "6056" typed key by key asked once after the
+  pause, Escape clears and the shelf is as before (list, count, page, cards);
+  "house" finds a set and, on Community, Stub Lighthouse; "launch command"
+  (theme) and "heidemann" (designer); "town" in Castle says none and "Any
+  theme, year and size" brings three back; "zzqx" on both shelves, Clear the
+  search; the field's × clicked; "106-1" + Enter before the pause opens a
+  window with `--library=omr-106-1` (killed at once); Enter on nothing opens
+  nothing; 50 synthetic sets put in the index read page with the words kept.
+  `-- --phone` (with `PROBE_SIZE=390x844` for a phone's pictures) runs the
+  same in the layout for a finger, where Enter only asks. Both in the suite
+  (`windowed.txt`). Pictures `shots/library_search_*.png`. Passed 38 checks
+  on the desktop and 37 at 390 x 844 on the phone layout, 0 failures
+  (2026-10-29, search334).
 - `library browser flow`: `tools/web/library_flow.mjs`, wired into
   `preview_checks.sh` as `library`. The library and the gallery are played by
   Playwright's route from `tests/fixtures/library`, so a local export and a
