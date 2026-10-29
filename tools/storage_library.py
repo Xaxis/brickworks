@@ -93,8 +93,8 @@ def main() -> int:
              and (not args.pictures or p.parent.name in ("pages", "cards"))}
     total = sum(p.stat().st_size for p in files.values()) + (0 if args.pictures else index.stat().st_size)
     models = sum(1 for n in files if n.endswith(".mpd"))
-    print(f"storage: {models:,} models, {len(files) - models:,} covers and the index, "
-          f"{total / 1e6:.1f} MB")
+    print(f"storage: {len(files):,} pictures, {total / 1e6:.1f} MB" if args.pictures else
+          f"storage: {models:,} models, {len(files) - models:,} covers and the index, {total / 1e6:.1f} MB")
 
     url, key = env()
     have = set().union(*(listing(url, key, f"library/{folder}/") for folder in
@@ -102,7 +102,7 @@ def main() -> int:
     print(f"  already up: {len(have & set(files)):,}")
     todo = [(n, p) for n, p in files.items() if n not in have]
     todo_bytes = sum(p.stat().st_size for _, p in todo)
-    print(f"  to upload : {len(todo):,} and the index  ({todo_bytes / 1e6:.1f} MB)")
+    print(f"  to upload : {len(todo):,}{'' if args.pictures else ' and the index'}  ({todo_bytes / 1e6:.1f} MB)")
     if args.check:
         return 0
 

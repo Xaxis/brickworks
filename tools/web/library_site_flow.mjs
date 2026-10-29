@@ -19,7 +19,10 @@
 //      the app's Library does, its parts list drawn with our pictures, and
 //      Share's sheet with its link. More of its theme under it.
 //   4. Open in Brickworks (unless --no-app): /library/omr-106-1's button
-//      opens the app with the set in it, 106-1 UNICEF Van, 65 parts.
+//      opens the app with the set in it, 106-1 UNICEF Van, 65 parts. In a
+//      browser of its own, signed in as the test account (.env sourced), as
+//      the app shows nothing else until somebody is; the site's pages are
+//      looked at signed out.
 //
 // Fails too when a script error reaches the console. Pictures in --out:
 // library_<width>_<theme>.png, set_<width>_<theme>.png, app.png.
@@ -217,16 +220,18 @@ try {
 
   // 4. Open in Brickworks.
   if (!args["no-app"]) {
-    const made = await context({ width: 1400, dark: false });
+    const signedIn = await launch();
+    const made = await signedIn.newContext({ viewport: { width: 1400, height: 900 }, extraHTTPHeaders: headers });
     const { page } = await opened(made, "/library/omr-106-1");
     await Promise.all([page.waitForURL("**/app?**", { timeout: 60000 }).catch(() => null),
       page.click('.side .actions a.cta:has-text("Open in Brickworks")')]);
-    const up = await until(page, () => /^106-1 UNICEF Van/.test(window.brickworksState?.title || "")
+    // The model's title is the page's (library_tab_flow.mjs reads it so).
+    const up = await until(page, () => /^106-1 UNICEF Van/.test(document.title)
       && window.brickworksState?.bricks === 65 && !window.brickworksState?.awaited, null, 420);
-    const state = await page.evaluate(() => ({ title: window.brickworksState?.title, bricks: window.brickworksState?.bricks }));
+    const state = await page.evaluate(() => ({ title: document.title, bricks: window.brickworksState?.bricks }));
     check(`Open in Brickworks opens the app with the set: "${state.title}", ${state.bricks} parts`, up);
     await page.screenshot({ path: path.join(out, "app.png"), fullPage: false });
-    await made.close();
+    await signedIn.close();
   }
 } catch (trouble) {
   check(`the flow ran to its end (${String(trouble?.message || trouble).slice(0, 200)})`, false);
