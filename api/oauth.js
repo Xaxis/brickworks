@@ -615,8 +615,10 @@ async function token(request, response, origin) {
   const given = fields(request);
   const { client, why } = await callingClient(request, given, origin);
   if (!client) {
-    // Said in the log too: ChatGPT shows a person only that it failed.
-    console.warn(`oauth token: refused ${text(given.client_id || claimedClient(given.client_assertion) || "", 120)}: ${why}`);
+    // Said in the log too: ChatGPT shows a person only that it failed. The
+    // id is the caller's say, so printable characters only, one line.
+    const named = text(given.client_id || claimedClient(given.client_assertion) || "", 120).replace(/[^\x20-\x7e]/g, "?");
+    console.warn(`oauth token: refused ${named}: ${why}`);
     return oauthError(response, 401, "invalid_client", why);
   }
 
