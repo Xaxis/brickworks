@@ -526,10 +526,10 @@ Pictures, `bench/results/render353-2026-10-29/`:
     read the wrong picture (`sports_car_compat_product.png`).
   - render353 gave the glass a multiply that reads nothing (section 5b),
     and proves it in a browser: `tools/web/product_render_flow.mjs` opens
-    a black wall behind clear glass and a white one behind trans dark
-    blue, and draws Product on each backdrop, failing on a blank picture,
-    blue glass that is not blue, or a black wall that does not show dark
-    through the clear glass.
+    a black wall behind clear glass and a white one behind trans red, and
+    draws Product on each backdrop, failing on a flat picture, red glass
+    that is not red, or a black wall that does not show dark through the
+    clear glass.
 
 ## 7. The paid plan
 

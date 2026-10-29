@@ -1548,16 +1548,17 @@ picture the assistant is shown.
   cannot vouch for it and where the first Product glass read the wrong
   picture (a pale patch on the sports car's windscreen). Opens a black
   2 x 4 wall behind a taller, longer wall of trans-clear ones and a white
-  wall behind trans dark blue, presses Render, Product, Quick and 720p, and
+  wall behind trans red ones, presses Render, Product, Quick and 720p, and
   draws each of white, gradient, grey and dark, each downloaded. Check:
   `tools/web/serve.py build/web PORT --parts assets/generated/parts` after
   `tools/export.sh web`, then with .env sourced `node
   tools/web/product_render_flow.mjs --url=http://127.0.0.1:PORT/index.html
   --out=OUT` (or `--url=<preview>/app --bypass=$VERCEL_BYPASS`;
   preview_checks.sh's `product_render`, run alone): `the glass walls opened
-  (20 parts of 20)`, the dialog opens, and on each backdrop a 1280x720 PNG
-  whose lightness spreads over 0.03 and at least 1% of it blue (bluer by
-  0.1 than red or green); on white the model at least 2% of the picture and
+  (16 parts of 16)`, the dialog opens, and on each backdrop a 1280x720 PNG
+  whose lightness spreads over 0.01 and at least 0.5% of it red (redder by
+  0.15 than green or blue; 0.05% on dark, where the glass has little light
+  behind it); on white the model at least 2% of the picture and
   at least 0.5% near black (the black wall, seen only through the clear
   glass), no script errors. `--also=models/sports_car.ldr,…` draws those
   models too at Good on white, for pictures.

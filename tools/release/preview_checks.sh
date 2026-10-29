@@ -384,8 +384,8 @@ declare -A CMD=(
   # held to twice the app's own: alone, below.
   [render]="tools/web/render_flow.mjs --url=$P/app $B --out=$S/${TAG}_render_web"
   # Render's Product look under Compatibility: a black wall behind clear
-  # glass and a white one behind trans dark blue, drawn on each backdrop,
-  # each picture not blank, the blue glass blue and the black wall dark
+  # glass and a white one behind trans red, drawn on each backdrop, each
+  # picture not flat, the red glass red and the black wall dark
   # through the clear (docs/RENDERING.md, section 5b): alone, below.
   [product_render]="tools/web/product_render_flow.mjs --url=$P/app $B --out=$S/${TAG}_product_render_web"
   # Build it from a shared link on a slowed phone: each page turn timed, and

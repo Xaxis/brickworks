@@ -1419,7 +1419,7 @@
       "id": "cli:product look in a browser",
       "kind": "cli",
       "entry": "tools/web/product_render_flow.mjs",
-      "reach": "node tools/web/product_render_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=OUT   (a local export served by tools/web/serve.py, with .env sourced; or --url=<a preview>/app --bypass=$VERCEL_BYPASS: Product under Compatibility on each backdrop, the glass blue and see-through)",
+      "reach": "node tools/web/product_render_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=OUT   (a local export served by tools/web/serve.py, with .env sourced; or --url=<a preview>/app --bypass=$VERCEL_BYPASS: Product under Compatibility on each backdrop, the red glass red and the clear see-through)",
       "area": "view",
       "tests": []
     },

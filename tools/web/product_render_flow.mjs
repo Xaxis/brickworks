@@ -10,13 +10,15 @@
 //
 // Opens a small model made to show glass: a black wall behind a taller,
 // longer wall of trans-clear bricks, which from the hero view is seen only
-// through them, and a white wall behind one of trans dark blue. Presses
-// Render, Product, Quick (--quality=good for Good) and 720p, and draws it
-// on each backdrop, each downloaded. Fails if a picture is not 1280x720, is
-// blank (the model under 2% of it on white, or one flat colour), if the
-// blue glass does not show blue (it is white, or not drawn), if on white
-// the black wall does not show dark through the clear glass (a pale patch,
-// or the glass drawn opaque), or if a script error reaches the console.
+// through them, and a white wall behind one of trans red. Presses Render,
+// Product, Quick (--quality=good for Good) and 720p, and draws it on each
+// backdrop, each downloaded. Fails if a picture is not 1280x720, is one
+// flat colour, if the red glass does not show red (it is white, or not
+// drawn: under 0.5% of the picture red, 0.05% on the dark sweep, where
+// little light is behind it), if on white the model is under 2% of the
+// picture or the black wall does not show dark through the clear glass (a
+// pale patch, or the glass drawn opaque), or if a script error reaches the
+// console.
 // Says each render's longest frame and what it was doing then
 // (StudioRender's worst_step). Leaves OUT/*.png, the downloads and a summary.
 // --also=FILE,… draws those models too, for pictures, asking nothing.
@@ -43,7 +45,7 @@ mkdirSync(out, { recursive: true });
 const bricks = [];
 const brick = (colour, x, level, z) => bricks.push(
   `1 ${colour} ${x} ${-24 * level} ${z} 1 0 0 0 1 0 0 0 1 3001.dat`);
-for (const [x, behind, glass] of [[-140, 15, 33], [140, 0, 47]]) {
+for (const [x, behind, glass] of [[-140, 15, 36], [140, 0, 47]]) {
   for (let level = 0; level < 2; level++) brick(behind, x, level, 30);
   for (let level = 0; level < 3; level++) {
     brick(glass, x - 40, level, -30);
@@ -142,8 +144,9 @@ async function renderAndKeep(label, minutes) {
 
 // What a picture holds, read by the page itself: its size; how much of it
 // is the model (away from the backdrop's colour in its corners); how much
-// is blue (bluer by 0.1 than it is red or green: white glass is not); how
-// much is near black; and how far its lightness spreads, which a blank
+// is red (redder by 0.15 than it is green or blue: white glass is not);
+// how much is near black and grey, as the black wall is and the red
+// glass's darkest is not; and how far its lightness spreads, which a flat
 // picture's does not.
 function measure(file) {
   const data = readFileSync(file).toString("base64");
@@ -164,24 +167,24 @@ function measure(file) {
       const i = (cy * w + cx) * 4;
       for (let c = 0; c < 3; c++) corner[c] += data[i + c] / 255 / 4;
     }
-    let model = 0; let blue = 0; let dark = 0; let sum = 0; let squares = 0;
+    let model = 0; let red = 0; let dark = 0; let sum = 0; let squares = 0;
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i] / 255; const gr = data[i + 1] / 255; const b = data[i + 2] / 255;
       const lum = 0.2126 * r + 0.7152 * gr + 0.0722 * b;
       sum += lum;
       squares += lum * lum;
       if (Math.max(Math.abs(r - corner[0]), Math.abs(gr - corner[1]), Math.abs(b - corner[2])) > 0.1) model += 1;
-      if (b - Math.max(r, gr) > 0.1) blue += 1;
-      if (lum < 0.15) dark += 1;
+      if (r - Math.max(gr, b) > 0.15) red += 1;
+      if (lum < 0.15 && Math.max(r, gr, b) - Math.min(r, gr, b) < 0.08) dark += 1;
     }
     const n = w * h;
     const mean = sum / n;
-    return { width: w, height: h, model: model / n, blue: blue / n, dark: dark / n,
+    return { width: w, height: h, model: model / n, red: red / n, dark: dark / n,
       spread: Math.sqrt(Math.max(squares / n - mean * mean, 0)) };
   }, data);
 }
 
-const pct = (x) => `${(100 * x).toFixed(1)}%`;
+const pct = (x) => `${(100 * x).toFixed(x < 0.01 ? 2 : 1)}%`;
 
 try {
   await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
@@ -217,15 +220,19 @@ try {
       check(`Product on ${backdrop} downloads a picture`, false);
       continue;
     }
-    check(`Product on ${backdrop}: a ${seen.width}x${seen.height} PNG, not blank (lightness spread ${seen.spread.toFixed(3)})`,
-      seen.width === 1280 && seen.height === 720 && seen.spread > 0.03);
-    check(`...its blue glass shows blue, not white: ${pct(seen.blue)} of it, at least 1%`, seen.blue >= 0.01);
+    check(`Product on ${backdrop}: a ${seen.width}x${seen.height} PNG, not flat (lightness spread ${seen.spread.toFixed(3)})`,
+      seen.width === 1280 && seen.height === 720 && seen.spread > 0.01);
+    // On the dark sweep there is little light behind the glass to colour:
+    // a tenth as much red asked of it.
+    const least = backdrop === "dark" ? 0.0005 : 0.005;
+    check(`...its red glass shows red, not white: ${pct(seen.red)} of it, at least ${pct(least)}`, seen.red >= least);
   }
   const white = shown.white;
   if (white) {
     check(`on white the model is ${pct(white.model)} of the picture, at least 2%`, white.model >= 0.02);
     // The black wall is seen only through the clear glass: a pale patch, or
-    // glass drawn opaque, leaves nothing near black.
+    // glass drawn opaque, leaves nothing near black but the wall's ends
+    // (0.11% on main before render353, which drew the clear glass white).
     check(`...and the black wall shows through the clear glass: ${pct(white.dark)} of it near black, at least 0.5%`,
       white.dark >= 0.005);
   }
