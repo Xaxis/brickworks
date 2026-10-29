@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
 
 ## Sub-features
 
@@ -1458,9 +1458,11 @@ picture the assistant is shown.
   keeping, Studio's Eyesight and Mecabricks' Workshop being the bar. The panel's
   picture is a Quick draft drawn again a moment after any choice changes, so
   the framing, backdrop, light and lens are seen before Render is pressed.
-  Choices: Quick, Good or Best; 720p, 1080p, 4K, a square or a custom size;
-  a white, grey, black or coloured sweep, or none (transparent, the contact
-  shadow kept as a shadow on nothing); the window's three lights or one of
+  Choices: Quick, Good or Best; the look, As in the window or Product (see
+  `product look`); 720p, 1080p, 4K, a square or a custom size;
+  a white, gradient, grey, dark or coloured sweep, or none (transparent, the
+  contact shadow kept as a shadow on nothing; `RenderSettings.BACKDROPS`, the
+  same names render_model takes); the window's three lights or one of
   three Poly Haven HDRIs (`assets/hdri/`, CC0, docs/ATTRIBUTION.md), turned
   round by "Light from"; the contact shadow; the view looked at or six
   presets; a full-frame focal length; f-stop and focus (Best); Best's frames;
@@ -1499,6 +1501,38 @@ picture the assistant is shown.
   one, for the set's nodes laid out; 7 before). Not in a probe that does not
   ask (`RenderDialog.warms_when_idle`), as IdleDraw leaves a probe be:
   idle_probe counted them as 9 frames drawn in 5 s standing still.
+- `product look` (`RenderSettings.look` "product"; Render's Look, render_model's
+  `look=product`, with `backdrop` and `depth_of_field`; docs/RENDERING.md):
+  the render's copy of the model drawn in the `plastic_product*` shaders
+  (`BrickWorld.product`, `PRODUCT_SHADERS`; `PLASTIC_PRODUCT` in
+  `plastic_body.gdshaderinc`: a clear coat over the plastic, edges of the
+  part's body box rounded by a bent normal, chrome and metal reflecting the
+  studio's sky, clear parts letting through their own LDraw colour of the
+  screen behind), a key, fill and rim (`StudioRender.PRODUCT_RIG`) over the
+  softbox HDRI on the desktop with its room flagged down to
+  `PRODUCT_ROOM` (`studio_sky.gdshader`: black stays black, the softboxes
+  still give every highlight), Filmic graded by `PRODUCT_WHITE`,
+  `_SATURATION`, `_CONTRAST` and `_EXPOSURE`, a key shadow biased past its
+  soft filter (no hatching at Good), the meter blind to the look's glass,
+  and the sweep's fall of light (`studio_backdrop.gdshader` `fall`, `pool`)
+  for the gradient and dark backdrops. Check: `tools/probe.sh
+  product_render_probe` (GPU, Forward+; it SKIPs, which fails, on another
+  renderer) prints 16 ok lines: every batch of the render's copy in a
+  product shader and none of the window's, Filmic, a picture that differs
+  from the window's look, white corners above 0.85, the gradient at least
+  0.1 darker in its corners than under the model, dark corners below 0.12,
+  depth of field at f/2 losing detail, the window's own GPU time per frame
+  (median of 120) within 10% + 0.3 ms of before, its environment as it was;
+  then sixteen colour swatches at Good, each lit face's CIEDE2000 from
+  LDConfig printed: black's bricks' mean lightness under 0.19 (0.218 before
+  render342), dark bluish grey within 6, red, yellow, blue, green, white
+  and tan within 5 on average, the clear colours within 6, and a light grey
+  face's grain under 0.012 (0.038 hatched); pictures in
+  `shots/render/product_*`, `product_swatches.png` the swatches.
+  A model: `tools/probe.sh render_probe -- --model=models/sports_car.ldr
+  --look=product --gradient=1 --backdrop=#f5f6f8 --quality=best
+  --size=1280x720 --picture=OUT.png`. Over MCP: render_model with
+  look=product (mcp_sync_probe keeps tools/mcp_tools.json in step).
 - `studio renderer` (`src/render/studio_render.gd`): off screen, in its own
   viewports with a copy of the model staged a slice a frame (`FramePace`): the
   model alone on the sweep, its floor's baseplate left out unless it is part of
