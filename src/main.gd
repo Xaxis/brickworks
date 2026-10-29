@@ -4664,6 +4664,19 @@ func _build_ui() -> void:
 			return
 		var second: BestOfTwo = _second_design(brief) if twice else null
 		_chat.follow(claude_code(), second.finished if second != null else Signal()))
+	# Or another AI on the person's own key, chosen in Settings, AI: the same
+	# brief to the app's own loop (DesignerLoop), followed the same way.
+	_chat.design_elsewhere.connect(func(brief: String) -> void:
+		_fresh_brief = ""
+		if not design_with_provider(brief, ProviderSettings.current()):
+			_chat.gave_up("Could not start: %s" % ("another design is running"
+				if ProviderSettings.current() != null else "this provider has no adapter"))
+			return
+		_chat.follow(_designer))
+	_chat.stop_elsewhere.connect(func() -> void:
+		if _designer != null:
+			_designer.stop())
+	_chat.ai_settings_wanted.connect(func() -> void: _controls.open_ai())
 
 	# Across the window rather than inside a column: a parts list is
 	# consulted and dismissed, and at four hundred pieces it wants the
@@ -4706,6 +4719,14 @@ func _build_ui() -> void:
 	_inset(_controls, ControlsDialog.WIDE, ControlsDialog.TALL)
 	_bar.controls_wanted.connect(_controls.open)
 	_controls.assistant_chosen.connect(set_assistant)
+	_controls.ai_changed.connect(_chat.refresh_designer)
+	# Design with it: the assistant's column, open, its brief to type in.
+	_controls.ai_design_wanted.connect(func() -> void:
+		if not ShellPrefs.assistant_shown():
+			set_assistant(true)
+		_chat_dock.set_open(true)
+		_chat.refresh_designer()
+		_chat.focus_brief())
 	# The strip along the bottom names what the middle button does, so
 	# it is wrong the moment somebody changes it.
 	_controls.changed.connect(func() -> void:

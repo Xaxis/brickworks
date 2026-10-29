@@ -70,6 +70,33 @@ func read(_code: int, _body: PackedByteArray) -> Reply:
 	return reply
 
 
+## The request that lists the provider's models: {url, headers}. A list
+## costs nothing, so the settings ask for it as soon as there is a key.
+func models_request() -> Dictionary:
+	return {}
+
+
+## That list, read: {ok, error, models: [{id, name, tools, pictures,
+## params}]}, where tools and pictures are true or false only where the
+## provider says (OpenRouter does), else null, and params the request fields
+## it says the model takes ([] when it does not say).
+func read_models(_code: int, _body: PackedByteArray) -> Dictionary:
+	return {"ok": false, "error": "this provider has no adapter yet", "models": []}
+
+
+## The reasoning efforts this API takes, least first, for a model that
+## reasons at all (ProviderSettings.takes_effort).
+func efforts() -> Array:
+	return ["low", "medium", "high"]
+
+
+## A model's listing, as read_models gives each one: [param id] with
+## nothing known of it.
+static func listed(id: String, name: String = "") -> Dictionary:
+	return {"id": id, "name": name if not name.is_empty() else id, "tools": null,
+		"pictures": null, "params": []}
+
+
 ## What a person is told of a refusal, by HTTP status, when the provider's
 ## own words say nothing better.
 static func refusal(code: int, said: String) -> String:
