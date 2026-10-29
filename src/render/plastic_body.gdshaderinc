@@ -549,7 +549,12 @@ void fragment() {
 	float coat_roughness = 0.1;
 	if (finish == FINISH_PLASTIC) {
 		roughness = 0.3 + 0.08 * grazing;
-		specular = 0.5;
+		// ABS has one surface, which reflects about 4.5% head-on. The coat's
+		// sharp lobe and the plastic's broad one share it: 0.35 is 2% here,
+		// the coat's 0.55 another 2%. At 0.5 under the coat the plastic
+		// reflected half as much again as it does, which on black is more
+		// than its own colour.
+		specular = 0.35;
 		coat = 0.55;
 		coat_roughness = 0.07;
 		// Pale plastics glow a little through: a white brick's shadow side
@@ -610,16 +615,23 @@ void fragment() {
 		if (!linearise) {
 			behind = srgb_to_linear(behind);
 		}
-		float value = max(body_linear.r, max(body_linear.g, body_linear.b));
-		vec3 hue = body_linear / max(value, 0.0001);
-		// How much gets through: clear nearly all, smoked little.
-		float through = mix(0.12, 0.92, sqrt(value));
+		// What gets through is the colour itself: LDConfig gives a clear
+		// colour as the part looks against white, so white behind it comes
+		// out as that colour, and smoked plastic lets little through. A hue
+		// kept at full strength with a sixth of the light let past untinted
+		// washed every clear colour to a pastel: trans dark blue #0020a0
+		// came out #7e86d9.
 		float reflected = 0.04 + 0.96 * pow(grazing, 5.0);
-		vec3 seen = behind * mix(vec3(1.0), hue, 0.85) * through * (1.0 - reflected);
+		vec3 seen = behind * body_linear * (1.0 - reflected);
 		ALBEDO = body * 0.04;
 		ALPHA = 1.0;
 		ROUGHNESS = 0.04;
-		SPECULAR = 0.5;
+		// Low: at Good and Best the engine lights a clear part's reflection
+		// from its global illumination, where the white sweep is at full
+		// strength, and at glass's own 0.5 that laid a white veil over the
+		// whole part (trans red #c91a09 came out #d74e47). Its edges still
+		// reflect, as Fresnel has them.
+		SPECULAR = 0.15;
 		BACKLIGHT = vec3(0.0);
 		METALLIC = 0.0;
 		CLEARCOAT = 0.0;

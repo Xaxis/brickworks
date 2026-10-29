@@ -56,6 +56,7 @@ const RESOLVE := preload("res://src/render/studio_resolve.gdshader")
 const COPY := preload("res://src/render/studio_copy.gdshader")
 const BACKDROP := preload("res://src/render/studio_backdrop.gdshader")
 const CONTACT := preload("res://src/render/studio_contact.gdshader")
+const STUDIO_SKY := preload("res://src/render/studio_sky.gdshader")
 
 ## Real places to light the model with: Poly Haven's, CC0, recorded in
 ## docs/ATTRIBUTION.md. Key -> [words, file].
@@ -102,6 +103,22 @@ const PRODUCT_SKY := "softbox"
 ## edge of the picture: a gradient's, and a dark backdrop's pool of light.
 const FALL_GRADIENT := 0.42
 const FALL_DARK := 0.8
+## How much of the softbox studio's room the product look's plastic
+## reflects, its softboxes left whole (studio_sky.gdshader): the black flags
+## round a glossy subject that keep black black.
+const PRODUCT_ROOM := 0.2
+## The product look's grade: Filmic's white, the saturation and contrast
+## put back after it, and its exposure against the window's. Set on
+## swatches of each colour on the white sweep at Good, read off the face
+## the key lights (product_render_probe). At white 6, saturation 1.18 and
+## contrast 1.06 a white brick came out #dbdad7 and green #1aa033 (LDraw's
+## #f4f4f4 and #00852b). Brighter than this and red, blue and green ran
+## past their colours while white still came up short: a film curve
+## compresses white against a saturated colour, so the two are traded.
+const PRODUCT_WHITE := 4.0
+const PRODUCT_SATURATION := 1.08
+const PRODUCT_CONTRAST := 1.03
+const PRODUCT_EXPOSURE := 0.7
 
 ## Which way CadCamera's starting view faces, from the model towards the
 ## eye, as a turn about the vertical: the rig is set for it.
@@ -1085,7 +1102,16 @@ func _meter(shot: Shot, picture: Vector2i) -> float:
 	environment.background_mode = Environment.BG_CLEAR_COLOR
 	_camera.cull_mask = 1
 	_point(shot, Rect2i(Vector2i.ZERO, picture), 0, picture, Vector2.ZERO, Vector2.ZERO)
+	# The product look's clear parts are drawn whole, with what is behind
+	# them, and on this picture's clear background that is nothing: they
+	# counted as dark glass and lifted the exposure, where the window's,
+	# drawn see-through, do not count.
+	var clear: Array[GeometryInstance3D] = _product_glass()
+	for batch: GeometryInstance3D in clear:
+		batch.visible = false
 	var drawn: bool = await _draw([_scene])
+	for batch: GeometryInstance3D in clear:
+		batch.visible = true
 	_camera.cull_mask = 1 | 2
 	environment.background_mode = background as Environment.BGMode
 	if not drawn:
@@ -1102,6 +1128,21 @@ func _meter(shot: Shot, picture: Vector2i) -> float:
 				sum += c.get_luminance()
 				count += 1
 	return sum / float(count) if count > 0 else 0.0
+
+
+## The staged model's clear parts in the product look's glass, as shown.
+func _product_glass() -> Array[GeometryInstance3D]:
+	var out: Array[GeometryInstance3D] = []
+	if not _stage.product:
+		return out
+	var glass: Array = [BrickWorld.PRODUCT_SHADERS[BrickWorld.SHADERS["trans"]],
+		BrickWorld.PRODUCT_SHADERS[BrickWorld.SHADERS["trans_two_sided"]]]
+	for child: Node in _stage.get_children():
+		var batch := child as MultiMeshInstance3D
+		if batch != null and batch.visible and batch.material_override is ShaderMaterial \
+				and (batch.material_override as ShaderMaterial).shader in glass:
+			out.append(batch)
+	return out
 
 
 ## Where the camera goes for these settings, framing [param bounds].
@@ -1266,12 +1307,22 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 			environment.tonemap_white = 6.0
 		if reflected != null and full:
 			var sky := Sky.new()
-			var material := PanoramaSkyMaterial.new()
-			material.panorama = reflected.texture
-			# As bright as the window's light whatever the place: its
-			# average brought to one, and the exposure metered after.
-			material.energy_multiplier = HDRI_LEVEL / maxf(reflected.average, 0.0001)
-			sky.sky_material = material
+			if product and panorama == null:
+				# The product look's own studio, its room flagged down.
+				var studio_sky := ShaderMaterial.new()
+				studio_sky.shader = STUDIO_SKY
+				studio_sky.set_shader_parameter("panorama", reflected.texture)
+				studio_sky.set_shader_parameter("energy",
+					HDRI_LEVEL / maxf(reflected.average, 0.0001))
+				studio_sky.set_shader_parameter("room", PRODUCT_ROOM)
+				sky.sky_material = studio_sky
+			else:
+				var material := PanoramaSkyMaterial.new()
+				material.panorama = reflected.texture
+				# As bright as the window's light whatever the place: its
+				# average brought to one, and the exposure metered after.
+				material.energy_multiplier = HDRI_LEVEL / maxf(reflected.average, 0.0001)
+				sky.sky_material = material
 			if product:
 				sky.process_mode = Sky.PROCESS_MODE_QUALITY
 				sky.radiance_size = Sky.RADIANCE_SIZE_512
@@ -1308,10 +1359,10 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 			# keeps red red, and gives back less colour and contrast than
 			# ACES, so a little of each is put back.
 			environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-			environment.tonemap_white = 6.0
+			environment.tonemap_white = PRODUCT_WHITE
 			environment.adjustment_enabled = true
-			environment.adjustment_saturation = 1.18
-			environment.adjustment_contrast = 1.06
+			environment.adjustment_saturation = PRODUCT_SATURATION
+			environment.adjustment_contrast = PRODUCT_CONTRAST
 			if full:
 				# Deeper shading where parts meet. Not screen-space bounce
 				# light (SSIL), whose half-size checker of samples showed as
@@ -1324,6 +1375,8 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 		_environments[key] = environment
 	# What changes from picture to picture.
 	environment.tonemap_exposure = look.tonemap_exposure if look != null else 1.05
+	if product:
+		environment.tonemap_exposure *= PRODUCT_EXPOSURE
 	if settings.transparent:
 		environment.background_mode = Environment.BG_CLEAR_COLOR
 	else:
@@ -1394,10 +1447,14 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 		light.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 		light.directional_shadow_max_distance = reach
 		light.directional_shadow_fade_start = 1.0
-		light.shadow_bias = 0.02
-		# The product look's gloss shows the acne of a shadow the window's
-		# plastic hides: fine diagonal hatching over every rounded grey.
-		light.shadow_normal_bias = 3.0 if product else 1.5
+		# Good's soft key filters its shadow over a wide spread of the map,
+		# and on a face turned from the light the face itself lies behind
+		# the map across that spread: at 0.02 every grey face the key lit
+		# was hatched with the filter's pattern. Normal bias moves the test
+		# a texel or two and did not reach (3 left it). Product only: the
+		# window look's renders are as they were.
+		light.shadow_bias = 0.12 if product else 0.02
+		light.shadow_normal_bias = 1.5
 	_sky_light.visible = plan.sky_samples
 	_sky_light.shadow_enabled = not settings.no_shadows
 	_sky_light.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
