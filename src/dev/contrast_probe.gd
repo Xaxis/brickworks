@@ -10,7 +10,8 @@
 ## same 108 dialogs and menus, opened as a person opens them, then every
 ## other one in the window), and before them the main window and its main
 ## panels (Library, Render, My collection, the figure builder, Settings
-## and the rest), and reads each button off the window's own pixels:
+## and its AI page, and the rest), and reads each button off the window's
+## own pixels:
 ##
 ##   its boundary or its fill against the face round it (WCAG 1.4.11, at
 ##   least 3:1), where it has one: a flat button is its words or its
@@ -76,6 +77,17 @@ func _main_window() -> void:
 			if not windows.has(shown.get_instance_id()):
 				shown.hide()
 		await _frames(10)
+	# Settings, AI: a page of its own in Settings, with another AI chosen so
+	# the whole of its form shows.
+	var settings: ControlsDialog = _main.get("_controls")
+	settings.open_ai()
+	settings.ai.who_key.button_pressed = true
+	await _frames(30)
+	await _shot("panel_settings_ai")
+	await _judge_here(root, "Settings, AI", settings)
+	settings.ai.who_claude.button_pressed = true
+	settings.visible = false
+	await _frames(10)
 	if "--main-only" in OS.get_cmdline_user_args():
 		_summary()
 		quit(1 if _failures > 0 else 0)

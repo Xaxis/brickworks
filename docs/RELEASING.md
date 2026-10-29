@@ -254,6 +254,77 @@ downloads; that fades on its own.
   stable address for a person; the page is the stable address for the
   right file.
 
+## The paid desktop: gated files and the token (built dark)
+
+docs/PLANS.md §4, units U5 and U6 (desk347, 2026-10-29). Both wait behind
+the server's `BRICKWORKS_BILLING` (api/_billing.js): while it is off, the
+download page links the public files as above and a build asks nothing it
+did not ask before.
+
+- **Downloads.** `GET /api/plans?op=download` says whether downloads are
+  gated; with `&file=NAME` it answers the file: off, its public address;
+  on, for a session whose plan has the desktop (or cannot be known just
+  now), GitHub's short-lived signed URL, from the release-asset API asked
+  with `Accept: application/octet-stream` (a 302; a 200 would mean streaming
+  the file through Vercel, so it is an error). A Free account is refused
+  with the way to Pro. `web/download.js` asks first and gates its links only
+  when told to. `RELEASES_TOKEN`, a fine-grained token that reads only
+  Xaxis/brickworks-releases' contents, is sent to GitHub when set; the
+  public repo answers without it.
+- **The token.** `GET /api/plans?op=entitlement` signs a JWT (RS256)
+  `{sub, plan, desktop, paid_through, iat}` with `DESKTOP_TOKEN_KEY`, never
+  on a plan it cannot know. A release build holding the public half
+  (`src/account/desktop_pass.gd`, `KEYS`) keeps it and runs when it covers
+  the build's release day (`res://release.json`), or says the desktop and is
+  at most 44 days old; otherwise it shows the Pro screen (`PassGate`).
+  Builds made from source, probes and the web never check, and nor does a
+  build with no key in `KEYS`, which is every build until the key below is
+  made. `supabase/desktop_paid_through.sql` keeps each account's furthest
+  day (applied by the lead). `DESKTOP_FREE_THROUGH=YYYY-MM-DD` makes every
+  build released on or before it run for every account: set it to the day
+  before billing goes live, so no build that was free is taken back.
+
+### The desktop token's key
+
+Made once, before the first release that should check:
+
+```sh
+node tools/desktop_key.mjs new ~/brickworks-desktop-token.pem
+# prints the key's id and a line for KEYS in src/account/desktop_pass.gd;
+# never the private half.
+base64 -w0 ~/brickworks-desktop-token.pem | vercel env add DESKTOP_TOKEN_KEY production
+# then keep the file somewhere safe and off this machine, or delete it.
+```
+
+Commit the printed line into `KEYS` and release: that release and every one
+after checks. `node tools/desktop_key.mjs public` (with the env var set)
+prints the id of the key a deployment signs with, to compare with `KEYS`.
+
+**Rotating it.** Make a new key, add its line to `KEYS` beside the old one,
+and release. Once most people run that release, set the new private half as
+`DESKTOP_TOKEN_KEY`. A build holding only the old key then gets tokens it
+cannot read: it refuses nothing on them (a paying person is never locked out
+by our key change) and still runs every build its kept tokens cover, so an
+old build is open to anyone signed in from then on. That is the price of the
+cheap version (PLANS.md §4, "Piracy, realistically"). If the private half
+ever leaks, rotate at once and drop the old line from `KEYS`: builds released
+with it can be fooled for good, newer ones cannot.
+
+### At go-live (U8), for the gated files and the token
+
+1. `RELEASES_TOKEN` on Vercel production (contents: read, on
+   Xaxis/brickworks-releases only).
+2. The key made and set as above, `KEYS` holding its public half in the
+   release that goes out with Pro, and `DESKTOP_FREE_THROUGH` set to the
+   day before.
+3. The lead applies `supabase/desktop_paid_through.sql`.
+4. Then, and only then, the owner makes Xaxis/brickworks-releases private.
+   Every public file address in `web/releases.json` (and the release pages
+   the download page links) answers 404 from then on; the page asks the
+   route instead. `release_links.sh` and `download_check.mjs` check the
+   public addresses, so both need the token path at that moment (PLANS.md
+   U5 and U8 say they are run again then).
+
 ## What Reelwright does that this does too, and what it does not
 
 Taken from Reelwright's release cycle: `VERSION` as the one version with a

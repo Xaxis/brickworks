@@ -41,7 +41,7 @@ import { isMaster } from "./_auth.js";
 
 /// Admission's names for Brickworks (docs/PLANS.md, section 1).
 export const PRODUCT = "brickworks";
-export const BUILDS = "claude_builds";
+export const BUILDS = "ai_builds";
 export const DESKTOP = "desktop";
 
 /// What /plans says when Admission cannot: section 1 of docs/PLANS.md.
@@ -168,7 +168,7 @@ export async function entitlementOf(userId) {
   }
 }
 
-/// Whether [e] lets its account start a Claude build: unless Admission said
+/// Whether [e] lets its account start an AI build: unless Admission said
 /// this month's are used. Only reads; counting one is the relay's (U2).
 export function mayBuild(e) {
   if (e.standing !== "known" || !e.builds) return true;

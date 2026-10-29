@@ -165,5 +165,29 @@
   "subject": "a Technic boom moved by hand",
   "alt": "The Technic Container Truck in the builder, side on: its red lifting arm swung on its hinges by hand, the linear actuator that drives it stretched to follow and outlined in light blue, above two big wheels on a green baseplate.",
   "caption": "Grab it and it moves like the real one."
+ },
+ {
+  "slug": "docs-gallery",
+  "files": {
+   "1200": "docs-gallery.webp"
+  },
+  "width": 1200,
+  "height": 750,
+  "source": "brickworks.diy/gallery in Playwright's Chromium (tools/web/browser.mjs launch, signed out), a 1200 x 750 window, dark, 2026-10-29; PNG to WebP at quality 78 (PIL)",
+  "subject": "the gallery, for the docs (docs-site/gallery.md)",
+  "alt": "The gallery: Top, New and Collections, the kinds as pills, Filters, and the models as cards, each with its designer, part count and Tested mark.",
+  "caption": "brickworks.diy/gallery"
+ },
+ {
+  "slug": "docs-model",
+  "files": {
+   "1200": "docs-model.webp"
+  },
+  "width": 1200,
+  "height": 750,
+  "source": "brickworks.diy/m/XqW6brmPQs (6080 King's Castle) in Playwright's Chromium (tools/web/browser.mjs launch, signed out), a 1200 x 750 window, dark, 2026-10-29; PNG to WebP at quality 78 (PIL)",
+  "subject": "a shared model's page, for the docs (docs-site/model-pages.md)",
+  "alt": "A model's page: its picture with View in 3D, its tabs, and beside it Build it, Open in Brickworks, Download and the action bar.",
+  "caption": "A shared model's page."
  }
 ]

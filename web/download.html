@@ -14,6 +14,11 @@
   download.js reads it; this page has no inline script, because the
   site's content security policy allows none that it has not hashed.
   tools/web/download_check.mjs checks each system's offer against it.
+
+  The desktop app comes with Pro once Pro opens (docs/PLANS.md, gate M1,
+  2026-10-29). Until then every download is free and nothing is gated;
+  the page says so once, under the button (#pro-note), with the promise
+  that every version downloaded keeps working (section 4).
 -->
 <html lang="en">
 <head>
@@ -21,7 +26,7 @@
 <script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Download Brickworks for Linux, macOS and Windows</title>
-<meta name="description" content="Brickworks for the desktop: the same builder as the web app, with every part on disk, so it works offline. Free for Linux, macOS and Windows.">
+<meta name="description" content="Brickworks for the desktop: the same builder as the web app, with every part on disk, so it works offline. For Linux, macOS and Windows, free to download until Pro opens.">
 <link rel="canonical" href="https://brickworks.diy/download">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
@@ -30,7 +35,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="Download Brickworks">
-<meta property="og:description" content="Brickworks for Linux, macOS and Windows, with every part on disk so it builds offline. Free.">
+<meta property="og:description" content="Brickworks for Linux, macOS and Windows, with every part on disk so it builds offline. Free to download until Pro opens.">
 <meta property="og:url" content="https://brickworks.diy/download">
 <meta property="og:image" content="https://brickworks.diy/share.png">
 <meta property="og:image:width" content="1200">
@@ -86,6 +91,7 @@
 				<nav aria-label="Menu">
 					<a href="/gallery">Gallery</a>
 					<a href="/download" aria-current="page">Download</a>
+					<a href="/docs">Docs</a>
 					<a href="/profile" data-account>Sign in</a>
 				</nav>
 				<div class="theme-choice"><span aria-hidden="true">Theme</span>
@@ -104,7 +110,7 @@
 	<section class="wrap get" aria-labelledby="get-h">
 		<div class="offer">
 			<h1 id="get-h">Download Brickworks</h1>
-			<p class="lede" data-pitch="computer">The same builder as the web app, with every part on disk, so it works offline. Free.</p>
+			<p class="lede" data-pitch="computer">The same builder as the web app, with every part on disk, so it works offline.</p>
 			<p class="lede" data-pitch="mobile" hidden>The desktop app is for a computer. Here, open the web app: it is the same builder, with nothing to install.</p>
 			<p class="lede" data-pitch="other" hidden>There is no desktop build for this computer yet. The web app is the same builder, with nothing to install.</p>
 
@@ -115,6 +121,7 @@
 			</div>
 			<p class="note" id="offer-meta"></p>
 			<p class="note" id="others" hidden></p>
+			<p class="note" id="pro-note">Free to download until <a href="/plans">Pro</a> opens, when new versions come with Pro. Every version you download keeps working, with Pro or without.</p>
 
 			<p class="state" id="none-yet" hidden>The first desktop release is on its way. Until then, <a href="/app">open the web app</a>.</p>
 			<p class="state" id="broken" hidden>The list of downloads did not load. Every release is on <a href="https://github.com/Xaxis/brickworks-releases/releases/latest">GitHub</a>.</p>
@@ -235,8 +242,10 @@
 			<nav class="foot-links" aria-label="More">
 				<a href="/challenge">Challenge</a>
 				<a href="/collections">Collections</a>
+				<a href="/library">LDraw library</a>
 				<a href="/compare">Compare</a>
 				<a href="/plans">Plans</a>
+				<a href="/docs">Docs</a>
 				<a href="/faq">FAQ</a>
 				<a href="/changelog">Changelog</a>
 				<a href="/privacy">Privacy</a>

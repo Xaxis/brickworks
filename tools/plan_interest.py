@@ -12,6 +12,10 @@ environment, through the file's own functions: the counts never name an
 address, and no address is printed but the one asked about. Resend's test
 addresses (@resend.dev, the site's checks) are counted apart.
 
+Pro is the one paid plan since 2026-10-29 (docs/PLANS.md): the form asks
+about Pro alone and api/plans.js keeps it as 'plus', so the plus line is
+Pro's. Creator's are from before, and mean Pro too (section 9).
+
 The research's bar (price274, section 7) is 30 paid founding annuals for
 go, under 10 after 60 days to stop. These are people saying they would use
 a plan, not pre-orders: a step before that bar, not the bar.
@@ -50,11 +54,11 @@ def counts() -> None:
     assert isinstance(rows, list)
     if not rows:
         print("nobody yet")
-    for plan in ("plus", "creator"):
+    for plan, said in (("plus", "pro"), ("creator", "creator")):
         mine = [row for row in rows if row["plan"] == plan]
         people = sum(int(row["people"]) for row in mine)
         by = ", ".join(f"{row['billing']} {row['people']}" for row in mine)
-        print(f"{plan:8} {people:4}  ({by or 'none'})")
+        print(f"{said:8} {people:4}  ({by or 'none'})")
     people = sum(int(row["people"]) for row in rows)
     tests = sum(int(row["tests"]) for row in rows)
     print(f"{'all':8} {people:4}  entries, an address once a plan; {tests} more from the checks' test addresses")

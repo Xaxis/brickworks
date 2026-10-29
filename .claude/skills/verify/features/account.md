@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, cli:ChatGPT connector flow, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
+<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, cli:ChatGPT connector flow, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:signup check, api:GET /api/otp/canary, cli:canary check, lib:the desktop pass, ui:the Pro screen on the desktop, cli:desktop pass probe -->
 
 ## Sub-features
 
@@ -479,6 +479,27 @@ where it serves something — the relay. `/api/account`'s `parts_url` stays open
 to everyone, because builds already out ask it and the parts bucket is public
 anyway. Sessions last until signed out (Supabase's refresh token); there is no
 idle timeout.
+- `the desktop pass` (`src/account/desktop_pass.gd`), `the Pro screen on the
+  desktop` (`src/ui/pass_gate.gd`) and `desktop pass probe`
+  (`src/dev/desktop_pass_probe.gd`): the paid desktop's check at start, built
+  dark (2026-10-29, docs/PLANS.md U6, desk347). Only an exported release
+  build (`BuildInfo.is_release()`, the `template` feature, not the web)
+  holding a key in `DesktopPass.KEYS` checks; KEYS is empty until the owner
+  makes the key (docs/RELEASING.md), so today nothing checks or asks. Once
+  signed in, the kept tokens (`user://desktop_pass.json`) are read offline: a
+  build runs when one of this account says the desktop with no end, or
+  paid_through on or after its release day, or the desktop and at most 44
+  days old. Billing off (or never said otherwise): open at once, asked behind
+  it for the next start. Not covered: "Checking your plan…" while
+  `/api/plans?op=entitlement` is asked, then open on a renewal or on an answer
+  it cannot have (unknown, unsigned, a token it cannot read), else the screen:
+  "This version of the desktop app comes with Pro." with See Pro, Open the
+  web app, Sign in with another account, Check again, and where the models
+  on this computer stay. Once open, nothing closes it that session. The probe
+  signs tokens with `node tools/desktop_key.mjs sign` (the server's code) and
+  checks 35 things: verify, both ways of each rule, changed/other-key/garbage
+  refused without an engine error, and the start against a stand-in
+  deployment.
 
 ## How to reach it
 

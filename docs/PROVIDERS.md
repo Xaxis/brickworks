@@ -315,9 +315,12 @@ Recommended, and what the slice does (`src/ai/provider_settings.gd`), as
 `OwnKey` keeps an Anthropic key today:
 
 - **Local only.** One file per provider in the app's own data on the desktop
-  (`user://provider-openai.key`); in the browser, the same path, which the web
-  build keeps in the site's storage. Or **for this visit only**, kept nowhere.
-  Forgetting it deletes it.
+  (`user://provider-openai.key`), encrypted (`FileAccess.open_encrypted_with_pass`)
+  with a password made of this computer's id and a salt the app made once,
+  so a copy taken elsewhere cannot be read (aiset345); in the browser, the same
+  path, which the web build keeps in the site's storage, where there is no
+  computer id and the encryption only scrambles it, as the panel says. Or
+  **for this visit only**, kept nowhere. Forgetting it deletes it.
 - **Never on our server**, not even encrypted: a key we can decrypt is a key
   we hold. The plans' `/api/builds` count (section 7) never sees it.
 - **Shown as a fingerprint** (`sk-pro…abcd`), never whole, in the panel and in
@@ -526,6 +529,8 @@ reported to refuse ("array schema missing items"; not run here, no key in
 designs with the chosen model. *Bar:* a probe drives the panel (choose,
 keep, forget, Test against the stub, design); the panel at 1024 and 1400 in
 light and dark; on-screen words as the brief names them.
+*Built (aiset345):* Settings, AI… (`src/ui/ai_settings.gd`), Test
+(`src/ai/model_test.gd`), the column designing with it; `ai_settings_probe`.
 
 **P3. Three more adapters.** `AnthropicMessages` (pictures in `tool_result`,
 thinking blocks sent back, `cache_control`), `OpenAIResponses` (pictures as
@@ -534,6 +539,10 @@ OpenAI's own models), `GeminiNative` (the schema subset, thought signatures,
 multimodal function responses). *Bar:* for each, a stub scripted as
 `provider_loop_probe`'s, strict as that API is; and one real design each where
 a key exists, printed with its numbers.
+*Built (aiset345):* `AnthropicMessages` and `GeminiNative` (not yet Responses),
+`provider_apis_probe` against `tools/provider_stub.py`'s two strict APIs. A real
+Test of Claude Sonnet 5.5 on the Anthropic key in .env: tools and pictures
+(2026-10-29). No real design yet; no Gemini key.
 
 **P4. Streaming**, per adapter, with a `submit_design`'s bricks drawn as they
 are written. *Bar:* the stub streams; the probe sees bricks before the reply

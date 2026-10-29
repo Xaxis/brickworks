@@ -117,6 +117,7 @@ const WINDOW_ONLY: Dictionary = {
 	"keys": "help for the person",
 	"tour": "help for the person",
 	"website": "help for the person",
+	"docs": "help for the person",
 	"about": "help for the person",
 }
 
@@ -180,7 +181,8 @@ library= opens LDraw's model of a real set (gallery library=true finds them).
 which="need" what the person's collection is short of; "buildable" What \
 can I build?: saved models, examples and real sets' models by how much is owned.
  - render_model: a picture or a turntable worth keeping, Quick, Good or \
-Best, up to 4K, saved where Render saves.
+Best, up to 4K, as the window draws it or as a product shot, saved where \
+Render saves.
  - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
 (GLB, glTF, OBJ, STL), a picture, a BrickLink wanted list, a Rebrickable \
 parts list, or the building instructions as a booklet, written where \
@@ -619,14 +621,23 @@ func definitions() -> Array:
 				+ "(a WebP and, where ffmpeg is installed, an MP4), on a studio sweep with soft "
 				+ "shadows. quality quick, good or best (good for a picture, quick for a "
 				+ "turntable when omitted); size 720p, 1080p, 4k or square; view hero, "
-				+ "front, side, back, low or top. Saved where Render saves. It is a job: the "
-				+ "answer is a job number at once, and job gives the result, a picture with "
-				+ "it. Needs the app in a window."),
+				+ "front, side, back, low or top. look product is a product shot's: glossy "
+				+ "plastic with rounded edges, clear parts that bend the light, a key, fill "
+				+ "and rim over a softbox studio (window, the default, is the window's own). "
+				+ "backdrop white, gradient, grey, dark or none (as Render last had it when "
+				+ "omitted). depth_of_field blurs what is nearer and farther than the "
+				+ "model's middle, as a lens at f/4 does, and is drawn at best. Saved where "
+				+ "Render saves. It is a job: the answer is a job number at once, and job "
+				+ "gives the result, a picture with it. Needs the app in a window."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"kind": {"type": "string", "enum": ["picture", "turntable"]},
 				"quality": {"type": "string", "enum": ["quick", "good", "best"]},
 				"size": {"type": "string", "enum": ["720p", "1080p", "4k", "square"]},
 				"view": {"type": "string", "enum": ["hero", "front", "side", "back", "low", "top"]},
+				"look": {"type": "string", "enum": ["window", "product"]},
+				"backdrop": {"type": "string", "enum": ["white", "gradient", "grey", "dark",
+					"none"]},
+				"depth_of_field": {"type": "boolean"},
 			}},
 		},
 		{
@@ -2628,6 +2639,22 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 	chosen.size = sizes.get(str(input.get("size", "720p" if turning else "1080p")),
 		Vector2i(1920, 1080))
 	chosen.view = str(input.get("view", "hero"))
+	var look: String = str(input.get("look", "window"))
+	if not RenderSettings.LOOKS.has(look):
+		return "look is window or product."
+	chosen.look = look
+	if input.has("backdrop"):
+		var backdrop: String = str(input["backdrop"])
+		if backdrop == "none":
+			chosen.use_backdrop("white")
+			chosen.transparent = true
+		elif not chosen.use_backdrop(backdrop):
+			return "backdrop is white, gradient, grey, dark or none."
+	if bool(input.get("depth_of_field", false)):
+		# A lens wide enough to blur is many frames through it: Best's.
+		chosen.f_stop = 4.0
+		chosen.focus = 0.4
+		chosen.quality = RenderSettings.Quality.BEST
 	var said: String = await dialog.render_for(kind, chosen, work)
 	if kind != "picture" or dialog.last_picture() == null:
 		return said

@@ -47,10 +47,11 @@ const PREVIEW := Vector2i(600, 400)
 
 const SIZES: Array = [["720p", Vector2i(1280, 720)], ["1080p", Vector2i(1920, 1080)],
 	["4K", Vector2i(3840, 2160)], ["Square", Vector2i(1080, 1080)], ["Custom", Vector2i.ZERO]]
-## Name, colour; "Colour" takes the picker's, "None" is transparent.
-const BACKGROUNDS: Array = [["White", Color(1, 1, 1)], ["Grey", Color(0.74, 0.75, 0.77)],
-	["Black", Color(0.015, 0.015, 0.02)], ["Colour", Color(0.24, 0.42, 0.72)],
-	["None", Color(1, 1, 1)]]
+## Name, and which of RenderSettings.BACKDROPS: "Colour" takes the
+## picker's, "None" is transparent.
+const BACKGROUNDS: Array = [["White", "white"], ["Gradient", "gradient"], ["Grey", "grey"],
+	["Dark", "dark"], ["Colour", ""], ["None", ""]]
+const COLOUR := Color(0.24, 0.42, 0.72)
 const STOPS: Array = [["Off", 0.0], ["f/16", 16.0], ["f/8", 8.0], ["f/4", 4.0], ["f/2", 2.0]]
 const FRAMES: Array = [24, 36, 48, 72]
 ## Animation's camera: [words, framed on what moves].
@@ -63,6 +64,8 @@ var _progress: ProgressBar
 var _status: Label
 var _quality: Array[Button] = []
 var _quality_note: Label
+var _looks: Array[Button] = []
+var _look_note: Label
 var _sizes: Array[Button] = []
 var _custom: HBoxContainer
 var _width: SpinBox
@@ -424,6 +427,15 @@ func _build() -> void:
 	# grade changes: a browser check clicked where "24" had just been.
 	_quality_note.custom_minimum_size.y = 30
 
+	_heading(right, "Look")
+	_looks = _segments(right, RenderSettings.LOOKS.values(),
+		RenderSettings.LOOKS.keys().find(settings.look), func(n: int) -> void:
+			settings.look = str(RenderSettings.LOOKS.keys()[n])
+			_describe()
+			_ask_preview())
+	_look_note = _note(right)
+	_look_note.custom_minimum_size.y = 30
+
 	_heading(right, "Size")
 	var size_names: Array = []
 	for choice: Array in SIZES:
@@ -445,7 +457,7 @@ func _build() -> void:
 		background_names.append(choice[0])
 	_backgrounds = _segments(right, background_names, 0, _pick_background)
 	_picker = ColorPickerButton.new()
-	_picker.color = BACKGROUNDS[3][1]
+	_picker.color = COLOUR
 	_picker.edit_alpha = false
 	_picker.custom_minimum_size = Vector2(0, 26)
 	_picker.tooltip_text = "The backdrop's colour"
@@ -702,9 +714,11 @@ func _pick_size(n: int) -> void:
 
 func _pick_background(n: int) -> void:
 	_background = n
-	settings.transparent = BACKGROUNDS[n][0] == "None"
 	_picker.visible = BACKGROUNDS[n][0] == "Colour"
-	settings.backdrop = _picker.color if _picker.visible else Color(BACKGROUNDS[n][1])
+	if not settings.use_backdrop(str(BACKGROUNDS[n][1])):
+		settings.backdrop = _picker.color if _picker.visible else Color(1, 1, 1)
+		settings.backdrop_gradient = false
+	settings.transparent = BACKGROUNDS[n][0] == "None"
 	for child: Node in _preview.get_parent().get_children():
 		if child.has_meta("checks"):
 			(child as CanvasItem).modulate = Color(1, 1, 1, 1.0 if settings.transparent else 0.0)
@@ -759,6 +773,9 @@ func _describe() -> void:
 			_quality_note.text = ("%d frames averaged: soft shadows from an area light, "
 				+ "smooth edges, shading under every ledge, and depth of field if you "
 				+ "want it.") % settings.samples_here()
+	_look_note.text = ("Glossy plastic with rounded edges, clear parts that bend the light, "
+		+ "and a studio's key, fill and rim, as a set's own pictures are."
+		if settings.look == "product" else "The plastic and the light as the window draws them.")
 	var fov: float = settings.fov_degrees()
 	var kind: String = "wide" if settings.focal_mm < 35.0 else (
 		"normal" if settings.focal_mm < 70.0 else "long, flattening")
@@ -1049,6 +1066,8 @@ func controls_by_name() -> Dictionary:
 		named_controls["render_size_" + _sizes[n].text.to_lower()] = _sizes[n]
 	for n: int in _backgrounds.size():
 		named_controls["render_bg_" + _backgrounds[n].text.to_lower()] = _backgrounds[n]
+	for n: int in _looks.size():
+		named_controls["render_look_" + str(RenderSettings.LOOKS.keys()[n])] = _looks[n]
 	for n: int in _frames.size():
 		named_controls["render_frames_" + _frames[n].text] = _frames[n]
 	named_controls["render_camera_seen"] = _cameras[0]

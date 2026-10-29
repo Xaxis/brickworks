@@ -6,6 +6,10 @@
   and shows it; this is where the detail lives: the two ways to bring
   Claude, what each costs, and the questions people ask. The answers are
   also FAQPage JSON-LD at the foot (data, not script).
+
+  What is free and what comes with Pro is said as /plans says it
+  (docs/PLANS.md, section 1, and gate M1, 2026-10-29): until then this page
+  said there was nothing to subscribe to, desktop included.
 -->
 <html lang="en">
 <head>
@@ -61,6 +65,7 @@
 				<nav aria-label="Menu">
 					<a href="/gallery">Gallery</a>
 					<a href="/download">Download</a>
+					<a href="/docs">Docs</a>
 					<a href="/profile" data-account>Sign in</a>
 				</nav>
 				<div class="theme-choice"><span aria-hidden="true">Theme</span>
@@ -80,7 +85,7 @@
 	<p class="lede">If yours is not here, <a href="https://github.com/Xaxis/brickworks-releases/issues">ask it on GitHub</a>.</p>
 
 	<h2 id="claude">Designing with Claude</h2>
-	<p class="sub">Building by hand needs nothing but an account, and there is no AI in the window until you ask for it. To have Claude design, <a href="/app?assistant=on">open Brickworks with the assistant on</a> (or turn it on in <b>Settings, Assistant</b>), then bring your own Claude, one of two ways. Brickworks bills nothing.</p>
+	<p class="sub">Building by hand needs nothing but an account, and there is no AI in the window until you ask for it. To have Claude design, <a href="/app?assistant=on">open Brickworks with the assistant on</a> (or turn it on in <b>Settings, Assistant</b>), then bring your own Claude, one of two ways. Brickworks bills nothing for Claude’s work: once <a href="/plans">Pro</a> opens, Free has 10 AI builds a month and Pro no limit.</p>
 	<div class="ways">
 		<div class="card way">
 			<h3>Your Claude plan</h3>
@@ -112,7 +117,11 @@
 	</details>
 	<details class="qa">
 		<summary>Is Brickworks free?</summary>
-		<div><p>Yes. Building, saving, building together, instructions, renders and share links cost nothing, and there is nothing to subscribe to. Designing with Claude uses your own Claude plan or Anthropic API key, so Anthropic bills that the way it already bills you, never Brickworks.</p></div>
+		<div><p>In your browser, yes: building by hand without a limit, 10 AI builds a month, saving, building together, instructions, renders and share links. <a href="/plans">Pro</a>, coming soon at $8 a month or $80 a year, adds the desktop app and AI builds without a limit. Nothing takes money yet, and the desktop app is free to download until Pro opens. Every account made before then keeps both, free, with no end date. The AI that designs runs on your own plan or API key, so its maker bills that, never Brickworks.</p></div>
+	</details>
+	<details class="qa" id="ai-builds">
+		<summary>What is an AI build?</summary>
+		<div><p>An AI working on a model in one tab: everything it changes there, until it stops for half an hour, counts as one, however many changes or chats it takes. When it only looks (searches parts, reads the gallery, views the model), nothing is counted, and building by hand never is. Once Pro opens, Free has 10 a month, back on the 1st, and Pro no limit. Until then nothing is counted.</p></div>
 	</details>
 	<details class="qa" id="sign-in">
 		<summary>How do I sign in?</summary>
@@ -164,7 +173,7 @@
 	</details>
 	<details class="qa">
 		<summary>What do I need to run it?</summary>
-		<div><p>A recent browser on a computer, a tablet or a phone (it runs on WebGL 2 and WebAssembly threads). On a tablet or a phone the app is laid out for a finger: one row of tools, and the parts, the colours and the rest in panels beside the model or, on a phone, sheets over it. Or the <a href="/download">desktop app</a> for Linux, macOS and Windows, which carries every part on disk and builds with no network at all.</p></div>
+		<div><p>A recent browser on a computer, a tablet or a phone (it runs on WebGL 2 and WebAssembly threads). On a tablet or a phone the app is laid out for a finger: one row of tools, and the parts, the colours and the rest in panels beside the model or, on a phone, sheets over it. Or the <a href="/download">desktop app</a> for Linux, macOS and Windows, which carries every part on disk and builds with no network at all; it comes with <a href="/plans">Pro</a> once Pro opens, and is free to download until then.</p></div>
 	</details>
 	<details class="qa" id="access">
 		<summary>Does it work with a screen reader, or the keyboard alone?</summary>
@@ -204,8 +213,10 @@
 			<nav class="foot-links" aria-label="More">
 				<a href="/challenge">Challenge</a>
 				<a href="/collections">Collections</a>
+				<a href="/library">LDraw library</a>
 				<a href="/compare">Compare</a>
 				<a href="/plans">Plans</a>
+				<a href="/docs">Docs</a>
 				<a href="/faq">FAQ</a>
 				<a href="/changelog">Changelog</a>
 				<a href="/privacy">Privacy</a>
@@ -253,7 +264,8 @@
 	"@type": "FAQPage",
 	"mainEntity": [
 		{ "@type": "Question", "name": "Why Brickworks, when BrickLink Studio exists?", "acceptedAnswer": { "@type": "Answer", "text": "Studio is the community's standard and does a lot well. Brickworks runs in any browser, a tablet's or a phone's too, with nothing to install; weighs balance and joint strength, and lists the weakest joints; turns gear trains at their real ratios; opens and saves Studio .io; exports STL, OBJ and GLB; and builds one model with others, live. brickworks.diy/compare sets it beside Studio, Mecabricks, LeoCAD and LDCad, with where each of them still leads." } },
-		{ "@type": "Question", "name": "Is Brickworks free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Building, saving, building together, instructions, renders and share links cost nothing, and there is nothing to subscribe to. Designing with Claude uses your own Claude plan or Anthropic API key, so Anthropic bills that the way it already bills you, never Brickworks." } },
+		{ "@type": "Question", "name": "Is Brickworks free?", "acceptedAnswer": { "@type": "Answer", "text": "In your browser, yes: building by hand without a limit, 10 AI builds a month, saving, building together, instructions, renders and share links. Pro, coming soon at $8 a month or $80 a year, adds the desktop app and AI builds without a limit. Nothing takes money yet, and the desktop app is free to download until Pro opens. Every account made before then keeps both, free, with no end date. The AI that designs runs on your own plan or API key, so its maker bills that, never Brickworks." } },
+		{ "@type": "Question", "name": "What is an AI build?", "acceptedAnswer": { "@type": "Answer", "text": "An AI working on a model in one tab: everything it changes there, until it stops for half an hour, counts as one, however many changes or chats it takes. When it only looks, nothing is counted, and building by hand never is. Once Pro opens, Free has 10 a month, back on the 1st, and Pro no limit. Until then nothing is counted." } },
 		{ "@type": "Question", "name": "How do I sign in?", "acceptedAnswer": { "@type": "Answer", "text": "With a code we email you, or with orangecheck: its own window, with a Bitcoin wallet, email, Google or GitHub. Either way there is no password to keep. The desktop app signs in by the emailed code, and with orangecheck from 0.8.0." } },
 		{ "@type": "Question", "name": "Do I need a Claude subscription?", "acceptedAnswer": { "@type": "Answer", "text": "No. Everything but the assistant works without one, and the assistant is off until you turn it on in Settings, Assistant, or open brickworks.diy/app?assistant=on: build entirely by hand and there is no AI anywhere in the window. To bring Claude in, turn it on, then connect a Claude Pro or Max plan, or paste an API key from the Anthropic Console." } },
 		{ "@type": "Question", "name": "Does Brickworks see my API key?", "acceptedAnswer": { "@type": "Answer", "text": "No. It stays in your browser, or only for the visit if you choose, and is sent only to Anthropic. The page's security policy refuses to send anything anywhere but its own short list." } },
@@ -263,7 +275,7 @@
 		{ "@type": "Question", "name": "What does Tested mean on a model?", "acceptedAnswer": { "@type": "Answer", "text": "That a person can build it. Brickworks tests a model as it is shared: built in its own steps, each part goes on where something holds it and the model stands at every step; every part is in a colour it was made in; and, finished, every part is held by a stud, a joint or what catches it, no two passing into each other, by the parts' real shapes. A model that is not marked tells its owner why on its page." } },
 		{ "@type": "Question", "name": "Can it open my BrickLink Studio, LDD or LDraw files?", "acceptedAnswer": { "@type": "Answer", "text": "Yes: Studio .io (locked ones too), LEGO® Digital Designer .lxf, and LDraw .ldr and .mpd. It saves LDraw and .io, exports glTF, OBJ and STL, saves a booklet as a PDF or PNG pages, and turns OBJ, STL and glTF models into bricks." } },
 		{ "@type": "Question", "name": "Can I buy the parts to build it?", "acceptedAnswer": { "@type": "Answer", "text": "Export the parts list as a BrickLink wanted list or a Rebrickable parts list, by the lot. My collection first takes off what you already own." } },
-		{ "@type": "Question", "name": "What do I need to run it?", "acceptedAnswer": { "@type": "Answer", "text": "A recent browser on a computer, a tablet or a phone (WebGL 2 and WebAssembly threads); on a tablet or a phone the app is laid out for a finger. Or the desktop app for Linux, macOS and Windows, which builds with no network at all." } },
+		{ "@type": "Question", "name": "What do I need to run it?", "acceptedAnswer": { "@type": "Answer", "text": "A recent browser on a computer, a tablet or a phone (WebGL 2 and WebAssembly threads); on a tablet or a phone the app is laid out for a finger. Or the desktop app for Linux, macOS and Windows, which builds with no network at all; it comes with Pro once Pro opens, and is free to download until then." } },
 		{ "@type": "Question", "name": "Does it work with a screen reader, or the keyboard alone?", "acceptedAnswer": { "@type": "Answer", "text": "In the desktop app, from 0.8.0. Every button, part, colour and field says its name, and what the status line says is read out. F6 (or Tab, with a screen reader running) goes from the model into the toolbar, the parts and the colours; Return takes a part, and Return again puts it down at the middle of the view. Settings has Interface size, 85 to 150%, and Reduce motion. In a browser a screen reader cannot reach the app's controls; this site's own pages work with both." } },
 		{ "@type": "Question", "name": "How exact are the parts?", "acceptedAnswer": { "@type": "Answer", "text": "1 LDU is 0.4 mm exactly, and every dimension was read off the part geometry: stud pitch 8.00 mm, brick height 9.60 mm, plate height 3.20 mm, stud diameter 4.80 mm. The stud height, 1.60 mm, is the LDraw library's own convention." } },
 		{ "@type": "Question", "name": "Is Brickworks made by the LEGO Group?", "acceptedAnswer": { "@type": "Answer", "text": "No. LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. The parts come from the community's LDraw library, and the catalogue data from Rebrickable." } }

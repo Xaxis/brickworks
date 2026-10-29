@@ -1,0 +1,912 @@
+#!/usr/bin/env python3
+"""The documentation at brickworks.diy/docs, made from docs-site/.
+
+    tools/docs_site.py OUT       write OUT/docs.html, OUT/docs/<page>.html, OUT/docs/search.json
+    tools/docs_site.py --check   say what the docs miss, and exit 1 if anything
+
+The owner, 2026-10-29: "an advanced 'docs' page ... documenting cleanly
+every detail of the app and user site features". The words are Markdown in
+docs-site/, one file a page, in the order docs-site/_nav.json gives; this
+turns them into static pages with the site's header and footer
+(web/_shell.html), a sidebar, a table of contents, previous and next, and
+the index web/docs.js searches. tools/site.py runs it at every deploy, as
+it writes the changelog.
+
+Four pages are made from what they describe, so they cannot drift from it:
+the MCP tool reference from tools/mcp_tools.json, the keyboard shortcuts
+from ControlsHint.for_keyboard() (src/ui/controls_hint.gd) and the menus'
+keys, the menus from docs-site/generated/menus.json (written off the real
+window by src/dev/docs_menus.gd; tests/test_docs_site.py fails when
+src/ui/shell.gd's menus no longer match it), and the changelog from
+CHANGELOG.md.
+
+--check fails when a feature in the feature map (.claude/skills/verify/
+features.json) is in no page and not named in docs-site/internal.txt as
+something a person never meets, when a page names a feature the map does
+not have, and when a link or picture on a page goes nowhere. A section says
+what it documents with a comment under its heading:
+
+    ## Box select
+    <!-- covers
+    ui:box select
+    -->
+"""
+
+from __future__ import annotations
+
+import fnmatch
+import html
+import importlib.util
+import json
+import re
+import struct
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+SRC = ROOT / "docs-site"
+WEB = ROOT / "web"
+SITE = "https://brickworks.diy"
+FEATURES = ROOT / ".claude/skills/verify/features.json"
+
+
+
+def _tool(name: str):
+    """tools/<name>.py, by its path: the standard library has a module named
+    site, and Python has it loaded before anything here runs."""
+    spec = importlib.util.spec_from_file_location(f"brickworks_{name}", Path(__file__).resolve().parent / f"{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+site_shell = _tool("site_shell")  # the site's one header and footer
+
+# -- Markdown -----------------------------------------------------------------
+# The few things these pages use, and no more: headings with ids, paragraphs,
+# lists one level deep, tables, fenced code, callouts (> [!NOTE]), a picture
+# on a line of its own, and in a line `code`, **bold**, *words*, [links](/x)
+# and [[Ctrl+K]] for keys. A line that starts with an HTML tag is passed on.
+
+KEY = re.compile(r"\[\[(\]|[^\]]+\]?)\]\]")  # [[]]] is the key ], [[Shift+]]] Shift and ]
+
+
+def slug(text: str) -> str:
+    words = re.sub(r"<[^>]+>", "", text).lower()
+    words = re.sub(r"[^a-z0-9]+", "-", html.unescape(words)).strip("-")
+    return words or "section"
+
+
+def keys(text: str) -> str:
+    """[[Ctrl+Shift+Z]] as keys, each its own <kbd>."""
+    parts = [p.strip() for p in re.split(r"(?<!^)\+(?!$)", text)]
+    return '<kbd class="keys">' + "+".join(f"<kbd>{html.escape(p)}</kbd>" for p in parts) + "</kbd>"
+
+
+def inline(text: str) -> str:
+    held: list[str] = []
+
+    def hold(snippet: str) -> str:
+        held.append(snippet)
+        return f"\x00{len(held) - 1}\x00"
+
+    text = re.sub(r"`([^`]+)`", lambda m: hold(f"<code>{html.escape(m.group(1))}</code>"), text)
+    text = KEY.sub(lambda m: hold(keys(m.group(1))), text)
+    text = html.escape(text, quote=False)
+    text = re.sub(r"\*\*([^*]+)\*\*", r"<strong>\1</strong>", text)
+    text = re.sub(r"(?<![*\w])\*([^*\s][^*]*)\*(?![*\w])", r"<em>\1</em>", text)
+    text = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)",
+                  lambda m: f'<a href="{html.escape(m.group(2))}">{m.group(1)}</a>', text)
+    return re.sub(r"\x00(\d+)\x00", lambda m: held[int(m.group(1))], text)
+
+
+def plain(fragment: str) -> str:
+    """The words of some HTML, as search reads them."""
+    text = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", fragment, flags=re.S)
+    # A tag inside a line of words joins them; any other parts them.
+    text = re.sub(r"</?(?:a|code|strong|em|kbd|span|b|i|small|mark)\b[^>]*>", "", text)
+    text = re.sub(r"<[^>]+>", " ", text)
+    return re.sub(r"\s+", " ", html.unescape(text)).strip()
+
+
+def webp_size(path: Path) -> tuple[int, int] | None:
+    """A WebP picture's width and height, read off its header."""
+    try:
+        head = path.read_bytes()[:30]
+    except OSError:
+        return None
+    if head[:4] != b"RIFF" or head[8:12] != b"WEBP":
+        return None
+    kind = head[12:16]
+    if kind == b"VP8 ":
+        w, h = struct.unpack("<HH", head[26:30])
+        return w & 0x3FFF, h & 0x3FFF
+    if kind == b"VP8L":
+        b = head[21:25]
+        bits = int.from_bytes(b, "little")
+        return (bits & 0x3FFF) + 1, ((bits >> 14) & 0x3FFF) + 1
+    if kind == b"VP8X":
+        return int.from_bytes(head[24:27], "little") + 1, int.from_bytes(head[27:30], "little") + 1
+    return None
+
+
+class Page:
+    def __init__(self, name: str, meta: dict, body: str) -> None:
+        self.name = name
+        self.meta = meta
+        self.body = body
+        self.title = meta.get("title", name)
+        self.nav = meta.get("nav", self.title)
+        self.description = meta.get("description", "")
+        self.html = ""
+        self.headings: list[tuple[int, str, str]] = []  # level, id, words (HTML)
+        self.covers: dict[str, str] = {}  # feature id: the section's id ("" the page)
+        self.sections: list[tuple[str, str, str]] = []  # id, heading, words, for search
+        self.section = ""
+
+    @property
+    def url(self) -> str:
+        return "/docs" if self.name == "index" else f"/docs/{self.name}"
+
+
+def render(page: Page, markdown: str) -> None:
+    out: list[str] = []
+    ids: set[str] = set()
+    current = ""
+    lines = markdown.splitlines()
+    i = 0
+    para: list[str] = []
+
+    def flush() -> None:
+        if para:
+            out.append(f"<p>{inline(' '.join(s.strip() for s in para))}</p>")
+            para.clear()
+
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+        if not stripped:
+            flush()
+            i += 1
+            continue
+        if stripped.startswith("<!-- covers"):
+            flush()
+            i += 1
+            while i < len(lines) and lines[i].strip() != "-->":
+                feature = lines[i].strip()
+                if feature:
+                    if feature in page.covers:
+                        raise SystemExit(f"docs: {page.name}.md covers {feature} twice")
+                    page.covers[feature] = current
+                i += 1
+            i += 1
+            continue
+        if stripped.startswith("<!--"):
+            flush()
+            while i < len(lines) and "-->" not in lines[i]:
+                i += 1
+            i += 1
+            continue
+        head = re.match(r"^(#{2,4})\s+(.*?)(?:\s+\{#([a-z0-9_-]+)\})?\s*$", line)
+        if head:
+            flush()
+            level = len(head.group(1))
+            words = inline(head.group(2))
+            anchor = head.group(3) or slug(head.group(2))
+            base, n = anchor, 2
+            while anchor in ids:
+                anchor, n = f"{base}-{n}", n + 1
+            ids.add(anchor)
+            current = anchor
+            page.headings.append((level, anchor, words))
+            label = html.escape(plain(words), quote=True)
+            out.append(f'<h{level} id="{anchor}">{words}<a class="anchor" href="#{anchor}" '
+                       f'aria-label="Link to {label}"></a></h{level}>')
+            i += 1
+            continue
+        if stripped.startswith("```"):
+            flush()
+            lang = stripped[3:].strip()
+            i += 1
+            code: list[str] = []
+            while i < len(lines) and not lines[i].strip().startswith("```"):
+                code.append(lines[i])
+                i += 1
+            i += 1
+            label = f' data-lang="{html.escape(lang)}"' if lang else ""
+            out.append(f'<div class="code"{label}><pre><code>{html.escape(chr(10).join(code))}</code></pre></div>')
+            continue
+        if stripped.startswith(">"):
+            flush()
+            quoted: list[str] = []
+            while i < len(lines) and lines[i].strip().startswith(">"):
+                quoted.append(lines[i].strip()[1:].strip())
+                i += 1
+            kind = "note"
+            said = re.match(r"^\[!(NOTE|TIP|WARNING)\]\s*(.*)$", quoted[0])
+            if said:
+                kind = said.group(1).lower()
+                quoted[0] = said.group(2)
+            title = {"note": "Note", "tip": "Tip", "warning": "Careful"}[kind]
+            body = "".join(f"<p>{inline(' '.join(chunk))}</p>" for chunk in _paragraphs(quoted))
+            out.append(f'<aside class="callout {kind}" aria-label="{title}"><p class="callout-title">{title}</p>{body}</aside>')
+            continue
+        picture = re.match(r"^!\[([^\]]*)\]\(([^)\s]+)(?:\s+\"([^\"]*)\")?\)$", stripped)
+        if picture:
+            flush()
+            alt, src, caption = picture.group(1), picture.group(2), picture.group(3) or ""
+            size = webp_size(WEB / src.lstrip("/")) if src.startswith("/img/") else None
+            dims = f' width="{size[0]}" height="{size[1]}"' if size else ""
+            cap = f"<figcaption>{inline(caption)}</figcaption>" if caption else ""
+            out.append(f'<figure class="shot"><img src="{html.escape(src)}" alt="{html.escape(alt)}"'
+                       f'{dims} loading="lazy" decoding="async">{cap}</figure>')
+            i += 1
+            continue
+        if stripped.startswith("|") and i + 1 < len(lines) and re.match(r"^\|[\s:|-]+\|$", lines[i + 1].strip()):
+            flush()
+            cells = lambda row: [c.strip() for c in row.strip().strip("|").split("|")]  # noqa: E731
+            header = cells(line)
+            i += 2
+            rows: list[list[str]] = []
+            while i < len(lines) and lines[i].strip().startswith("|"):
+                rows.append(cells(lines[i]))
+                i += 1
+            thead = "".join(f'<th scope="col">{inline(c)}</th>' for c in header)
+            tbody = "".join("<tr>" + "".join(f"<td>{inline(c)}</td>" for c in row) + "</tr>" for row in rows)
+            out.append(f'<div class="table"><table><thead><tr>{thead}</tr></thead><tbody>{tbody}</tbody></table></div>')
+            continue
+        bullet = re.match(r"^(\s*)([-*]|\d+\.)\s+(.*)$", line)
+        if bullet and not bullet.group(1):
+            flush()
+            ordered = bullet.group(2)[0].isdigit()
+            items: list[list[str]] = []
+            subs: list[list[str]] = []
+            while i < len(lines):
+                one = re.match(r"^(\s*)([-*]|\d+\.)\s+(.*)$", lines[i])
+                if one and not one.group(1):
+                    items.append([one.group(3)])
+                    subs.append([])
+                elif one and items:
+                    subs[-1].append(one.group(3))
+                elif lines[i].startswith("  ") and lines[i].strip() and items:
+                    if subs[-1]:
+                        subs[-1][-1] += " " + lines[i].strip()
+                    else:
+                        items[-1].append(lines[i].strip())
+                else:
+                    break
+                i += 1
+            tag = "ol" if ordered else "ul"
+            parts = []
+            for words, sub in zip(items, subs):
+                inner = "".join(f"<li>{inline(s)}</li>" for s in sub)
+                parts.append(f"<li>{inline(' '.join(words))}{f'<ul>{inner}</ul>' if inner else ''}</li>")
+            out.append(f"<{tag}>{''.join(parts)}</{tag}>")
+            continue
+        if stripped.startswith("<"):
+            flush()
+            out.append(line)
+            i += 1
+            continue
+        para.append(line)
+        i += 1
+    flush()
+    page.html += "\n".join(out)
+
+
+def _paragraphs(lines: list[str]) -> list[list[str]]:
+    chunks: list[list[str]] = [[]]
+    for line in lines:
+        if line:
+            chunks[-1].append(line)
+        elif chunks[-1]:
+            chunks.append([])
+    return [c for c in chunks if c]
+
+
+def read_page(path: Path) -> Page:
+    text = path.read_text(encoding="utf-8")
+    meta: dict = {}
+    if text.startswith("---\n"):
+        end = text.index("\n---\n", 4)
+        for line in text[4:end].splitlines():
+            if ":" in line:
+                key, value = line.split(":", 1)
+                meta[key.strip()] = value.strip()
+        text = text[end + 5:]
+    return Page(path.stem, meta, text)
+
+
+# -- the pages made from their sources -----------------------------------------
+
+
+def mcp_tools() -> str:
+    """Every tool Claude has in Brickworks, from tools/mcp_tools.json: what it
+    is called, whether it only looks, and what it takes."""
+    tools = json.loads((ROOT / "tools/mcp_tools.json").read_text(encoding="utf-8"))
+    groups = [
+        ("Look and read", "Change nothing: safe to allow always.",
+         lambda a: a.get("readOnlyHint")),
+        ("Build and change", "Change the model in the open tab. Each change is one undo step.",
+         lambda a: not a.get("readOnlyHint") and not a.get("destructiveHint")),
+        ("Replace or take away", "Can replace or remove what is on the baseplate. Each is still one undo step.",
+         lambda a: not a.get("readOnlyHint") and a.get("destructiveHint")),
+    ]
+    out = [f"<p>Brickworks has <strong>{len(tools)} tools</strong> for Claude. The list below is made "
+           "from the same table the connector serves, so it is always the current one.</p>"]
+    summary = []
+    for title, _, test in groups:
+        for tool in tools:
+            if test(tool.get("annotations", {})):
+                a = tool["annotations"]
+                summary.append(f'<tr><td><a href="#{tool["name"]}"><code>{tool["name"]}</code></a></td>'
+                               f'<td>{html.escape(a.get("title", ""))}</td><td>{title}</td></tr>')
+    out.append('<div class="table"><table><thead><tr><th scope="col">Tool</th><th scope="col">What it does</th>'
+               f'<th scope="col">Kind</th></tr></thead><tbody>{"".join(summary)}</tbody></table></div>')
+    md = []
+    for title, words, test in groups:
+        md.append(f"## {title}\n\n{words}\n")
+        for tool in tools:
+            a = tool.get("annotations", {})
+            if not test(a):
+                continue
+            md.append(f"### {a.get('title', tool['name'])} {{#{tool['name']}}}\n")
+            badges = [f"<code>{tool['name']}</code>"]
+            badges.append('<span class="pill">Read-only</span>' if a.get("readOnlyHint") else
+                          '<span class="pill">Changes the model</span>')
+            if a.get("destructiveHint"):
+                badges.append('<span class="pill">Can replace or remove</span>')
+            if a.get("openWorldHint"):
+                badges.append('<span class="pill">Reaches the web</span>')
+            if a.get("idempotentHint"):
+                badges.append('<span class="pill">Same result twice</span>')
+            md.append(f'<p class="tool-badges">{" ".join(badges)}</p>\n')
+            md.append(f"<p>{html.escape(tool['description'])}</p>\n")
+            props = tool.get("input_schema", {}).get("properties", {})
+            required = set(tool.get("input_schema", {}).get("required", []))
+            if props:
+                rows = []
+                for name, spec in props.items():
+                    kind = spec.get("type", "")
+                    if isinstance(kind, list):
+                        kind = " or ".join(kind)
+                    if spec.get("enum"):
+                        kind += ": " + ", ".join(str(v) for v in spec["enum"])
+                    if kind == "array" and isinstance(spec.get("items"), dict) and spec["items"].get("type"):
+                        kind = f"array of {spec['items']['type']}"
+                    need = "yes" if name in required else ""
+                    rows.append(f"<tr><td><code>{html.escape(name)}</code></td><td>{html.escape(str(kind))}</td>"
+                                f"<td>{need}</td><td>{html.escape(spec.get('description', ''))}</td></tr>")
+                md.append('<div class="table params"><table><thead><tr><th scope="col">Takes</th>'
+                          '<th scope="col">Type</th><th scope="col">Needed</th><th scope="col">What it is</th>'
+                          f'</tr></thead><tbody>{"".join(rows)}</tbody></table></div>\n')
+            else:
+                md.append("<p class=\"note\">Takes nothing.</p>\n")
+    return "\n".join(out) + "\n\n" + "\n".join(md)
+
+
+def _binding_keys(raw: str) -> list[str]:
+    """Binding.new's first argument as the words each key is, the platform's
+    modifier written Ctrl."""
+    found = []
+    for item in re.findall(r'"((?:[^"\\]|\\.)*)"(\s*%\s*_hold\(\))?', raw):
+        words, held = item
+        found.append(words.replace("%s", "Ctrl") if held else words)
+    return found
+
+
+def keyboard() -> list[tuple[str, list[tuple[list[str], str, bool]]]]:
+    """ControlsHint.for_keyboard() and for_touch(), read off
+    src/ui/controls_hint.gd: [(section, [(keys, what it does, desktop only)])].
+    Says so and stops when the file no longer reads as this expects, rather
+    than list less than the app answers to."""
+    text = (ROOT / "src/ui/controls_hint.gd").read_text(encoding="utf-8")
+
+    def body(name: str) -> str:
+        start = re.search(rf"^static func {name}\(.*?$", text, re.M)
+        if not start:
+            raise SystemExit(f"docs: src/ui/controls_hint.gd has no {name}(); the shortcuts page reads it")
+        end = re.search(r"^(static func|func|const|class|##)", text[start.end():], re.M)
+        return text[start.end(): start.end() + (end.start() if end else len(text))]
+
+    def bindings(chunk: str) -> list[tuple[list[str], str, bool]]:
+        rows = []
+        # What follows this is the desktop's alone: a browser keeps the keys.
+        desktop = chunk.find('if not OS.has_feature("web")')
+        for m in re.finditer(r"Binding\.new\(", chunk):
+            depth, j = 1, m.end()
+            while depth and j < len(chunk):
+                depth += {"(": 1, ")": -1}.get(chunk[j], 0)
+                j += 1
+            call = chunk[m.end(): j - 1]
+            # The list's own ], not one inside a key's quotes ("[", "]").
+            quoted, keys_end = False, 0
+            for at, ch in enumerate(call):
+                if ch == '"' and call[at - 1: at] != "\\":
+                    quoted = not quoted
+                elif ch == "]" and not quoted:
+                    keys_end = at + 1
+                    break
+            keys_ = _binding_keys(call[:keys_end])
+            rest = call[keys_end:].lstrip(", \n\t")
+            said = re.match(r'"((?:[^"\\]|\\.)*)"', rest)
+            if said:
+                does = said.group(1)
+                if re.match(r'\s*%', rest[said.end():]):
+                    raise SystemExit("docs: a binding's words are made with %; tools/docs_site.py keyboard() must learn it")
+            else:
+                does = "turn or slide, as the navigation preset (Settings, Navigate like) has it"
+            rows.append((keys_, does.replace('\\"', '"'), 0 <= desktop < m.start()))
+        if not rows:
+            raise SystemExit("docs: no Binding.new rows where the shortcuts page looks in controls_hint.gd")
+        return rows
+
+    kb = body("for_keyboard")
+    sections: list[tuple[str, list]] = []
+    for m in re.finditer(r'_section\(everything, "([^"]+)", (\[|_view_bindings\(\)|rest)', kb):
+        name, what = m.group(1), m.group(2)
+        if what == "[":
+            depth, j = 1, m.end()
+            while depth and j < len(kb):
+                depth += {"[": 1, "]": -1}.get(kb[j], 0)
+                j += 1
+            sections.append((name, bindings(kb[m.end(): j])))
+        elif what == "rest":
+            start = kb.index("var rest")
+            sections.append((name, bindings(kb[start: m.start()])))
+        else:
+            sections.append((name, bindings(body("_view_bindings"))))
+    if len(sections) < 4:
+        raise SystemExit(f"docs: read {len(sections)} sections of keys from controls_hint.gd, expected the five")
+    sections.append(("On a touchscreen", bindings(body("for_touch"))))
+    return sections
+
+
+GESTURES = {"click", "drag", "double-click", "right-click", "right-drag", "middle-drag", "scroll",
+            "pinch", "2 fingers", "tap", "hold", "arrows", "edges", "hold, then drag",
+            "middle double-click", "shift-double-click", "Turn", "Tip", "Undo", "Redo"}
+MODIFIERS = {"shift": "Shift", "alt": "Alt", "Ctrl": "Ctrl", "space": "Space"}
+
+
+def key_html(words: str) -> str:
+    """One binding's key as keys and gestures: "Ctrl-shift-Z" as three keys,
+    "alt-drag" as a key and a gesture."""
+    if words in GESTURES or words in ("-", "+"):
+        return f'<span class="gesture">{html.escape(words)}</span>' if words in GESTURES else f"<kbd>{words}</kbd>"
+    parts = []
+    rest = words
+    while "-" in rest:
+        head, tail = rest.split("-", 1)
+        if head in MODIFIERS and tail:
+            parts.append(f"<kbd>{MODIFIERS[head]}</kbd>")
+            rest = tail
+        else:
+            break
+    if rest in GESTURES or " " in rest and rest not in ("Page Up", "Page Down"):
+        parts.append(f'<span class="gesture">{html.escape(rest)}</span>')
+    else:
+        parts.append(f"<kbd>{html.escape(rest[:1].upper() + rest[1:] if len(rest) > 1 and rest.islower() and rest not in ('arrows',) else rest)}</kbd>")
+    return '<span class="keys">' + "+".join(parts) + "</span>"
+
+
+def menus_data() -> dict:
+    return json.loads((SRC / "generated/menus.json").read_text(encoding="utf-8"))
+
+
+def shortcuts() -> str:
+    out = ["Made from the list the app's own **Keys and controls** panel draws ([[F1]] or [[,]] in the app), "
+           "and from the menus' keys, so it says exactly what the app answers to.\n",
+           "> [!NOTE]\n> On a Mac, press Cmd wherever this page says Ctrl.\n"]
+    for section, rows in keyboard():
+        out.append(f"## {section}\n")
+        body = []
+        for keys_, does, desktop in rows:
+            shown = " ".join(key_html(k) for k in keys_)
+            note = ' <span class="pill">Desktop app</span>' if desktop else ""
+            body.append(f"<tr><td>{shown}</td><td>{html.escape(does[:1].upper() + does[1:])}{note}</td></tr>")
+        out.append('<div class="table keys-table"><table><thead><tr><th scope="col">Press</th>'
+                   f'<th scope="col">What it does</th></tr></thead><tbody>{"".join(body)}</tbody></table></div>\n')
+    out.append("## In the menus\n\nEvery menu command that has a key of its own. "
+               "[Menus and commands](/docs/menus) lists them all.\n")
+    rows = []
+    for menu in menus_data()["menus"]:
+        for item in _flat(menu["items"]):
+            if item.get("key"):
+                shown = '<span class="keys">' + "+".join(f"<kbd>{html.escape(k)}</kbd>" for k in item["key"].split("+")) + "</span>"
+                rows.append(f"<tr><td>{shown}</td><td>{html.escape(item['words'].rstrip('…'))}</td>"
+                            f"<td>{html.escape(menu['title'])}</td></tr>")
+    out.append('<div class="table keys-table"><table><thead><tr><th scope="col">Press</th>'
+               '<th scope="col">Command</th><th scope="col">Menu</th></tr></thead>'
+               f'<tbody>{"".join(rows)}</tbody></table></div>\n')
+    return "\n".join(out)
+
+
+def _flat(items: list) -> list:
+    out = []
+    for item in items:
+        if "submenu" in item:
+            out.extend(_flat(item.get("items", [])))
+        elif "name" in item:
+            out.append(item)
+    return out
+
+
+def _menu_rows(items: list) -> str:
+    rows = []
+    for item in items:
+        if item.get("line") or "submenu" in item:
+            continue
+        key = item.get("key", "")
+        shown = ('<span class="keys">' + "+".join(f"<kbd>{html.escape(k)}</kbd>" for k in key.split("+")) + "</span>") if key else ""
+        tip = html.escape(item.get("tip", ""))
+        rows.append(f'<tr id="cmd-{item["name"]}"><td>{html.escape(item["words"])}</td><td>{shown}</td><td>{tip}</td></tr>')
+    return ('<div class="table menu-table"><table><thead><tr><th scope="col">Command</th><th scope="col">Key</th>'
+            f'<th scope="col">What it does</th></tr></thead><tbody>{"".join(rows)}</tbody></table></div>\n')
+
+
+def menus() -> str:
+    data = menus_data()
+    out = ["<p>Every command in the app's menus, in the order the menus have them, with its key and the "
+           "words its tooltip says. Made from the app itself, so it matches the version on the web.</p>",
+           "> [!NOTE]\n> On a Mac, press Cmd wherever this page says Ctrl. In a browser, File has **New tab** "
+           "where the desktop app has **New window**, and nothing that would close the page.\n"]
+    for menu in data["menus"]:
+        out.append(f"## {menu['title']} {{#{slug(menu['title'])}-menu}}\n")
+        out.append(_menu_rows(menu["items"]))
+        for item in menu["items"]:
+            if "submenu" in item:
+                out.append(f"### {menu['title']} › {item['words']} {{#{slug(menu['title'])}-{item['submenu'].replace('_', '-')}}}\n")
+                if item.get("items"):
+                    out.append(_menu_rows(item["items"]))
+                    for sub in item["items"]:
+                        if "submenu" in sub and sub.get("items"):
+                            out.append(f"<p class=\"note\">{html.escape(sub['words'])}:</p>")
+                            out.append(_menu_rows(sub["items"]))
+                else:
+                    out.append("<p>Filled as it opens, with what is yours: your recent models, or the steps you can go back to.</p>\n")
+    out.append("## On a part {#on-a-part}\n\nA right click on a part (a long press on a touchscreen) offers these, "
+               "for the part or the selection it is in.\n")
+    out.append(_menu_rows(data["on_a_part"]))
+    return "\n".join(out)
+
+
+def changelog() -> str:
+    changelog_site = _tool("site")  # its reading of CHANGELOG.md; it runs this, so asked for here
+    found = changelog_site.sections((ROOT / "CHANGELOG.md").read_text(encoding="utf-8"))
+    releases = json.loads((WEB / "releases.json").read_text(encoding="utf-8"))
+    by_version = {r["version"]: r for r in releases.get("releases", [])}
+    out = ["<p>What changed in the latest releases. The <a href=\"/changelog\">full changelog</a> "
+           "has every release since the first.</p>"]
+    shown = 0
+    for section in found:
+        if not section["blocks"]:
+            continue
+        version = section["version"]
+        if version.lower() == "unreleased":
+            out.append("## On the web now {#web}\n")
+            out.append('<p class="note">In the app at <a href="/app">brickworks.diy/app</a>; in the next desktop release.</p>')
+        else:
+            date = by_version.get(version, {}).get("date") or section["date"]
+            out.append(f"## Brickworks {version} {{#v{version.replace('.', '-')}}}\n")
+            out.append(f'<p class="note"><time datetime="{html.escape(date)}">{changelog_site.day(date)}</time> · '
+                       '<a href="/download">Download</a></p>')
+        items: list[str] = []
+        for kind, words in section["blocks"]:
+            if kind != "li" and items:
+                out.append(f"<ul>{''.join(items)}</ul>")
+                items = []
+            if kind == "h3":
+                out.append(f"<p class=\"release-part\"><strong>{changelog_site.inline(words)}</strong></p>")
+            elif kind == "li":
+                items.append(f"<li>{changelog_site.inline(words)}</li>")
+            else:
+                out.append(f"<p>{changelog_site.inline(words)}</p>")
+        if items:
+            out.append(f"<ul>{''.join(items)}</ul>")
+        shown += 1
+        if shown >= 6:
+            break
+    return "\n".join(out)
+
+
+GENERATED = {"mcp_tools": mcp_tools, "shortcuts": shortcuts, "menus": menus, "changelog": changelog}
+
+
+# -- the site ------------------------------------------------------------------
+
+
+def load() -> tuple[list[dict], list[Page]]:
+    nav = json.loads((SRC / "_nav.json").read_text(encoding="utf-8"))
+    pages: list[Page] = []
+    seen: set[str] = set()
+    for group in nav:
+        for name in group["pages"]:
+            if name in seen:
+                raise SystemExit(f"docs: {name} is twice in docs-site/_nav.json")
+            seen.add(name)
+            path = SRC / f"{name}.md"
+            if not path.exists():
+                raise SystemExit(f"docs: docs-site/_nav.json names {name}, and there is no docs-site/{name}.md")
+            page = read_page(path)
+            page.section = group["title"]
+            made = page.meta.get("generated")
+            body = page.body
+            if made:
+                if made not in GENERATED:
+                    raise SystemExit(f"docs: {name}.md asks for generated: {made}, which is none of {sorted(GENERATED)}")
+                body = body.rstrip() + "\n\n" + GENERATED[made]() + "\n"
+            render(page, body)
+            pages.append(page)
+    loose = sorted(p.stem for p in SRC.glob("*.md") if p.stem not in seen)
+    if loose:
+        raise SystemExit(f"docs: docs-site/{loose[0]}.md is in no group of docs-site/_nav.json")
+    for page in pages:
+        page.sections = _split(page)
+    return nav, pages
+
+
+def _split(page: Page) -> list[tuple[str, str, str]]:
+    """The page cut at each heading: (id, heading, its words) for search."""
+    parts = re.split(r'(<h[23] id="[^"]+">.*?</h[23]>)', page.html)
+    found = [("", page.title, plain(parts[0])[:600])]
+    for n in range(1, len(parts), 2):
+        anchor = re.search(r'id="([^"]+)"', parts[n]).group(1)
+        found.append((anchor, plain(parts[n]), plain(parts[n + 1] if n + 1 < len(parts) else "")[:900]))
+    return found
+
+
+ICON_SEARCH = ('<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" '
+               'stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/>'
+               '<path d="m20 20-3.5-3.5"/></svg>')
+
+
+def sidebar(nav: list[dict], pages: dict[str, Page], here: Page) -> str:
+    groups = []
+    for n, group in enumerate(nav):
+        links = []
+        for name in group["pages"]:
+            page = pages[name]
+            current = ' aria-current="page"' if page is here else ""
+            links.append(f'<li><a href="{page.url}"{current}>{html.escape(page.nav)}</a></li>')
+        groups.append(f'<p class="docs-group" id="g{n}">{html.escape(group["title"])}</p>'
+                      f'<ul aria-labelledby="g{n}">{"".join(links)}</ul>')
+    return "".join(groups)
+
+
+def toc(page: Page) -> str:
+    depth = int(page.meta.get("toc", "3"))
+    items = [(lvl, anchor, words) for lvl, anchor, words in page.headings if lvl <= depth]
+    if len(items) < 2:
+        return ""
+    links = "".join(f'<li class="l{lvl}"><a href="#{anchor}">{plain(words)}</a></li>' for lvl, anchor, words in items)
+    return (f'<aside class="docs-toc" aria-labelledby="toc-title"><p class="docs-toc-title" id="toc-title">On this page</p>'
+            f'<ul>{links}</ul></aside>')
+
+
+def pager(order: list[Page], page: Page) -> str:
+    at = order.index(page)
+    parts = []
+    if at > 0:
+        prev = order[at - 1]
+        parts.append(f'<a class="prev" rel="prev" href="{prev.url}"><small>Previous</small>{html.escape(prev.nav)}</a>')
+    if at + 1 < len(order):
+        nxt = order[at + 1]
+        parts.append(f'<a class="next" rel="next" href="{nxt.url}"><small>Next</small>{html.escape(nxt.nav)}</a>')
+    return f'<nav class="docs-pager" aria-label="Previous and next page">{"".join(parts)}</nav>'
+
+
+def document(nav: list[dict], pages: dict[str, Page], order: list[Page], page: Page) -> str:
+    head, header, footer = site_shell.shell()
+    title = "Brickworks documentation" if page.name == "index" else f"{page.title} · Brickworks docs"
+    description = html.escape(page.description, quote=True)
+    crumbs = ('<nav class="crumbs" aria-label="Breadcrumb"><a href="/docs">Docs</a>'
+              + ("" if page.name == "index" else f' <span aria-hidden="true">›</span> {html.escape(page.section)}')
+              + "</nav>")
+    lede = f'<p class="lede">{inline(page.description)}</p>' if page.description else ""
+    return f"""<!DOCTYPE html>
+<!-- Made by tools/docs_site.py from docs-site/{page.name}.md: edit that, not this. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{html.escape(title)}</title>
+<meta name="description" content="{description}">
+<link rel="canonical" href="{SITE}{page.url}">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="{html.escape(title, quote=True)}">
+<meta property="og:description" content="{description}">
+<meta property="og:url" content="{SITE}{page.url}">
+<meta property="og:image" content="{SITE}/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="{SITE}/share.png">
+{head}
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/docs.css">
+<script src="/follow.js" type="module"></script>
+<script defer src="/docs.js"></script>
+</head>
+<body class="docs-page">
+<a class="skip" href="#main">Skip to content</a>
+{header}
+<div class="docs-layout wrap wide">
+<div class="docs-bar">
+<button type="button" class="docs-menu-button" aria-expanded="false" aria-controls="docs-side">Browse the docs</button>
+<button type="button" class="docs-search-open" data-docs-search aria-label="Search the docs">{ICON_SEARCH}<span>Search</span></button>
+</div>
+<nav class="docs-side" id="docs-side" aria-label="Documentation">
+<button type="button" class="docs-search-open wide" data-docs-search aria-keyshortcuts="Control+K Meta+K" aria-label="Search the docs">{ICON_SEARCH}<span>Search</span><kbd class="keys"><kbd>Ctrl</kbd><kbd>K</kbd></kbd></button>
+{sidebar(nav, pages, page)}
+</nav>
+<main id="main" class="docs-main" tabindex="-1">
+{crumbs}
+<article class="docs-article">
+<h1>{html.escape(page.title)}</h1>
+{lede}
+{page.html}
+</article>
+{pager(order, page)}
+</main>
+{toc(page)}
+</div>
+{footer}
+<dialog class="docs-search" aria-labelledby="docs-search-title">
+<form method="dialog" class="docs-search-box" role="search">
+<h2 class="docs-search-title" id="docs-search-title">Search the docs</h2>
+<label class="docs-search-field">{ICON_SEARCH}<span class="visually-hidden">Search for</span>
+<input type="search" name="q" autocomplete="off" spellcheck="false" placeholder="Search the docs" role="combobox" aria-expanded="false" aria-controls="docs-results" aria-autocomplete="list">
+</label>
+<button type="submit" class="cta ghost small" value="close">Close</button>
+</form>
+<p class="docs-search-said" role="status" aria-live="polite"></p>
+<ul class="docs-results" id="docs-results" role="listbox" aria-label="Results"></ul>
+<p class="docs-search-hint"><span><kbd>↑</kbd><kbd>↓</kbd> to choose</span><span><kbd>Enter</kbd> to open</span><span><kbd>Esc</kbd> to close</span></p>
+</dialog>
+</body>
+</html>
+"""
+
+
+def search_index(pages: list[Page]) -> list[dict]:
+    rows = []
+    for page in pages:
+        for anchor, heading, words in page.sections:
+            rows.append({"p": page.title, "s": page.section, "h": heading if anchor else "",
+                         "u": page.url + (f"#{anchor}" if anchor else ""), "t": words})
+    return rows
+
+
+def build(out: Path) -> int:
+    nav, pages = load()
+    by_name = {p.name: p for p in pages}
+    docs = out / "docs"
+    docs.mkdir(parents=True, exist_ok=True)
+    for page in pages:
+        target = out / "docs.html" if page.name == "index" else docs / f"{page.name}.html"
+        target.write_text(document(nav, by_name, pages, page), encoding="utf-8")
+    (docs / "search.json").write_text(json.dumps(search_index(pages), ensure_ascii=False, separators=(",", ":")),
+                                      encoding="utf-8")
+    return len(pages)
+
+
+# -- the check -------------------------------------------------------------------
+
+
+def internal() -> list[tuple[str, str]]:
+    rules = []
+    for line in (SRC / "internal.txt").read_text(encoding="utf-8").splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        pattern, _, why = line.partition("  #")
+        if not why.strip():
+            raise SystemExit(f"docs: docs-site/internal.txt says no why for {pattern.strip()}")
+        rules.append((pattern.strip(), why.strip()))
+    return rules
+
+
+def is_internal(feature: dict, rules: list[tuple[str, str]]) -> bool:
+    for pattern, _ in rules:
+        if pattern.startswith("entry:"):
+            if fnmatch.fnmatchcase(feature.get("entry", ""), pattern[6:]):
+                return True
+        elif fnmatch.fnmatchcase(feature["id"], pattern):
+            return True
+    return False
+
+
+def routes() -> set[str]:
+    """The site's own addresses a docs page may link to, besides its pages."""
+    found = {"/", "/app", "/docs", "/collections", "/sitemap.xml", "/changelog"}
+    for page in WEB.glob("*.html"):
+        if not page.name.startswith("_") and page.stem not in ("index", "404", "authorize"):
+            found.add(f"/{page.stem}")
+    return found
+
+
+def moved() -> dict[str, str]:
+    """docs-site/_moved.json: a page's old name and its new one, which
+    tools/deploy.sh answers with a 308 so an old link still lands."""
+    found = json.loads((SRC / "_moved.json").read_text(encoding="utf-8"))
+    return {old: new for old, new in found.items() if not old.startswith("$")}
+
+
+def check() -> list[str]:
+    problems: list[str] = []
+    nav, pages = load()
+    names = {p.name for p in pages}
+    for old, new in moved().items():
+        if new not in names:
+            problems.append(f"docs-site/_moved.json sends {old} to {new}, which is no page")
+        if old in names:
+            problems.append(f"docs-site/_moved.json moves {old}, which is still a page")
+    features = json.loads(FEATURES.read_text(encoding="utf-8"))["features"]
+    ids = {f["id"] for f in features}
+    rules = internal()
+    covered: dict[str, str] = {}
+    for page in pages:
+        for feature, anchor in page.covers.items():
+            if feature in covered:
+                problems.append(f"{feature} is covered twice: {covered[feature]} and {page.url}#{anchor}")
+            covered[feature] = f"{page.url}#{anchor}"
+            if feature not in ids:
+                problems.append(f"{page.name}.md covers {feature}, which the feature map does not have "
+                                "(renamed or gone? see .claude/skills/verify/features.json)")
+    for feature in features:
+        if feature["id"] not in covered and not is_internal(feature, rules):
+            problems.append(f"{feature['id']} ({feature['entry']}) is in no docs page: add it to a section's "
+                            "<!-- covers --> in docs-site/, or to docs-site/internal.txt with why a person never meets it")
+    for pattern, _ in rules:
+        if not pattern.startswith("entry:") and "*" not in pattern and pattern not in ids:
+            problems.append(f"docs-site/internal.txt names {pattern}, which the feature map does not have")
+    # Every link and picture on every page goes somewhere.
+    anchors = {p.url: {a for _, a, _ in p.headings} for p in pages}
+    for page in pages:
+        for attr, target in re.findall(r'(href|src)="([^"]+)"', page.html):
+            target = html.unescape(target)
+            if target.startswith(("http://", "https://", "mailto:")):
+                continue
+            path, _, frag = target.partition("#")
+            path = path.split("?")[0]
+            if not path:
+                path = page.url
+            if path.startswith("/docs"):
+                if path not in anchors:
+                    problems.append(f"{page.name}.md links to {target}: no such docs page")
+                elif frag and frag not in anchors[path] and not frag.startswith("cmd-"):
+                    problems.append(f"{page.name}.md links to {target}: no such heading on {path}")
+            elif path.startswith(("/img/", "/m/", "/u/", "/c/", "/api/", "/oauth/", "/library/")):
+                if path.startswith("/img/") and not (WEB / path.lstrip("/")).exists():
+                    problems.append(f"{page.name}.md shows {target}, which is not in web/")
+            elif path not in routes():
+                problems.append(f"{page.name}.md links to {target}, which is no page of the site")
+    return problems
+
+
+def main(argv: list[str]) -> int:
+    if argv == ["--check"]:
+        problems = check()
+        for problem in problems:
+            print(f"docs: {problem}")
+        if problems:
+            print(f"docs: {len(problems)} problem(s)")
+            return 1
+        _, pages = load()
+        covered = sum(len(p.covers) for p in pages)
+        print(f"docs: {len(pages)} pages, {covered} features covered, every link resolves")
+        return 0
+    if len(argv) != 1 or argv[0].startswith("-"):
+        print((__doc__ or "").strip())
+        return 2
+    n = build(Path(argv[0]))
+    print(f"docs: {n} page(s) in {argv[0]}/docs")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

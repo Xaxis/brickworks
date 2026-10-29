@@ -14,7 +14,8 @@
 ## Tab, Escape and a press anywhere outside the field end the typing.
 ## Escape also puts back what the field said when the typing began, or what
 ## Enter last kept, in a field marked for it (``revert_on_escape``), which
-## the model's name is.
+## the model's name is; and a search marked [constant CLEAR_ON_ESCAPE] it
+## empties first, the keys kept there.
 ##
 ## And the controls Tab reaches that are not fields (the toolbar, the bin's
 ## tiles and colours, the view cube: [method by_keyboard]) have the keys only
@@ -33,6 +34,10 @@ const BY_KEYBOARD := &"by_keyboard"
 ## its fields goes on to its next control: there is no model to give the
 ## keys back to there.
 const OVER := &"over_the_frame"
+## Marks a search field whose Escape clears what was typed and keeps the
+## keys there for the next words; Escape in it empty leaves it as in any
+## field (LibraryDialog's search).
+const CLEAR_ON_ESCAPE := &"clear_on_escape"
 
 
 ## [param control] in the keyboard's order: Tab and the arrows reach it, and
@@ -177,6 +182,11 @@ func _input(event: InputEvent) -> void:
 	match key.keycode:
 		KEY_ESCAPE:
 			var field: LineEdit = focused as LineEdit
+			if field != null and field.has_meta(CLEAR_ON_ESCAPE) and not field.text.is_empty():
+				# Said as typing is (clear() sends text_changed).
+				field.clear()
+				get_viewport().set_input_as_handled()
+				return
 			focused.release_focus()
 			if field != null and bool(field.get_meta("revert_on_escape", false)):
 				var was: Variant = _before.get(field.get_instance_id())

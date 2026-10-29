@@ -12,6 +12,7 @@ or "." (working parts: the render the share card is composed from) and
 img/manifest.json, which says where each picture came from. One page is
 written rather than copied: the changelog, filled from CHANGELOG.md and
 web/releases.json, so it can never say something the release notes do not.
+And the documentation at /docs is made from docs-site/ (tools/docs_site.py).
 """
 
 from __future__ import annotations
@@ -23,6 +24,9 @@ import re
 import shutil
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import docs_site  # noqa: E402  the documentation, /docs
 
 ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "web"
@@ -163,7 +167,7 @@ def build(out: Path) -> int:
         else:
             shutil.copyfile(item, target)
         count += 1
-    return count
+    return count + docs_site.build(out)
 
 
 if __name__ == "__main__":
