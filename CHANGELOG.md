@@ -30,6 +30,15 @@ whole cycle.
   model has: its picture, who modelled it for LDraw's Official Model
   Repository and under which licence, its parts list, Share, and Open in
   Brickworks, which opens it in the app as File, Library… does.
+- Settings, AI: choose who designs. Claude, as before, or another AI on your
+  own API key: OpenAI, the Anthropic API, Google Gemini, OpenRouter, Mistral,
+  Groq, Together, DeepSeek, xAI, or any server that speaks OpenAI's Chat
+  Completions (Ollama, LM Studio, vLLM). Pick a model from the provider's own
+  list, set the temperature, the max output and the reasoning effort where
+  the model takes them, and Test it: one tool call and one picture, and it
+  says plainly what works. Design with it from the assistant's column. Your
+  key is kept on your computer in a file encrypted to it, or for the visit
+  only, and is never sent to us, logged or saved with a model.
 
 ## [0.10.0] - 2026-10-28
 

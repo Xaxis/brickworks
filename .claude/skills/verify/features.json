@@ -225,6 +225,14 @@
       "tests": []
     },
     {
+      "id": "cli:ai settings probe",
+      "kind": "cli",
+      "entry": "src/dev/ai_settings_probe.gd",
+      "reach": "tools/probe.sh ai_settings_probe   (PROBE_SIZE=1024x768 or 400x860 for the pictures at that size, in shots/ai_settings/)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:animation probe",
       "kind": "cli",
       "entry": "src/dev/animation_probe.gd",
@@ -1376,6 +1384,14 @@
       "tests": []
     },
     {
+      "id": "cli:provider apis probe",
+      "kind": "cli",
+      "entry": "src/dev/provider_apis_probe.gd",
+      "reach": "tools/probe.sh provider_apis_probe",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:provider loop probe",
       "kind": "cli",
       "entry": "src/dev/provider_loop_probe.gd",
@@ -2252,6 +2268,14 @@
       "entry": "supabase/designers.sql",
       "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/designers.sql --dry --try=tools/designers_try.sql --table=model_opens   (after the live files; the promises around it in tests/test_designers.py; then the designers browser flow)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:designing on Anthropic's Messages or Gemini's own API",
+      "kind": "lib",
+      "entry": "src/ai/anthropic_messages.gd",
+      "reach": "tools/probe.sh provider_apis_probe   (AnthropicMessages and GeminiNative read and written offline, then each designs, is tested and lists its models against tools/provider_stub.py, as strict as each API)",
+      "area": "assistant",
       "tests": []
     },
     {
@@ -3184,6 +3208,14 @@
       "entry": "web/changelog.html",
       "reach": "https://brickworks.diy/changelog   (filled from CHANGELOG.md by tools/site.py)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:choose the AI that designs",
+      "kind": "ui",
+      "entry": "src/ui/ai_settings.gd",
+      "reach": "godot --path .  (Tools, Settings\u2026, AI\u2026: Claude, or another AI on your own API key: provider, address, key with Show and Remember, the provider's own model list filtered, temperature, max output, reasoning effort, Test, Design with it; the assistant's column then designs with it)   tools/probe.sh ai_settings_probe",
+      "area": "assistant",
       "tests": []
     },
     {
