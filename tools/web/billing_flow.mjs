@@ -34,6 +34,12 @@
 //   6. With --stand-in (this machine's, which can be paid): paid, and the
 //      webhook heard, the page says Pro and renews, Manage billing goes to
 //      Stripe's portal; cancelled there, "Pro until".
+//   7. With --stand-in: paid again, renewing, and the account deleted from
+//      /settings. Its delete form, at 390 dark and 1280 light, and the
+//      question before it, say Pro ends now with nothing charged again
+//      (Free's said nothing of it, in 2); deleted, the page says Pro has
+//      ended, the stand-in erased the customer and ended the subscription,
+//      and the sign-in service has no such account.
 //
 // Pictures in --out. It passes when it ends "billing: all ok".
 import { launch } from "./browser.mjs";
@@ -103,6 +109,15 @@ async function axe(page, scope) {
   }, scope);
 }
 
+/// Whether the sign-in service has an account at [address].
+async function accountExists(address) {
+  const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+  const secret = process.env.SUPABASE_SECRET_KEY || "";
+  const listed = await (await fetch(`${base}/auth/v1/admin/users?page=1&per_page=1000`, {
+    headers: { apikey: secret, authorization: `Bearer ${secret}` } })).json();
+  return (listed.users || []).some((u) => (u.email || "").toLowerCase() === address.toLowerCase());
+}
+
 const browser = await launch({ signedOut: true });
 const stripe = [];
 
@@ -142,6 +157,16 @@ async function open(pathname, { width, theme, who, label }) {
   return { page, context, asked };
 }
 
+/// The delete form opened: what it says of the plan, and whether the page
+/// went sideways. The words come with the form's toggle event, a moment
+/// after the click: waited for, two seconds at most, since Free's has none.
+async function deleteSaid(page) {
+  await page.click("#delete-part summary");
+  await until(page, () => document.getElementById("delete-plan"), null, 2000);
+  return page.evaluate(() => ({ plan: document.getElementById("delete-plan")?.textContent.replace(/\s+/g, " ").trim()
+    || null, sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 }));
+}
+
 const planSaid = (page) => page.evaluate(() => {
   const row = document.getElementById("plan");
   return row ? { state: row.dataset.plan, words: row.innerText.replace(/\s+/g, " ").trim(),
@@ -167,6 +192,8 @@ const whereTo = (page) => (/stripe\.test/.test(page.url()) ? page.url()
   : page.evaluate(() => `stayed, saying "${document.querySelector("#upgrade .said")?.textContent || ""}"`).catch(() => page.url()));
 
 let who = null;
+// Deleted from /settings (7), so not closed again at the end.
+let closed = false;
 try {
   const offered = await api("/api/plans");
   const on = offered.status === 200 && offered.json?.billing && offered.json.billing !== "off";
@@ -220,6 +247,8 @@ try {
     check(`axe in the Plan row: ${found.join("; ") || "nothing serious"}`, found.length === 0);
     await page.locator("#plan").scrollIntoViewIfNeeded();
     await shot(page, "settings-plan-1280-light.png");
+    const free = await deleteSaid(page);
+    check(`Free: the delete form says nothing of a plan: ${free.plan}`, free.plan === null);
 
     // --- 3. The step before Checkout -----------------------------------------
     console.log("3. The step before Checkout");
@@ -303,13 +332,56 @@ try {
       check(`"${plan?.words.slice(0, 60)}"`, plan?.state === "ending" && /^Plan Pro until \d+ \w+ \d{4}\./.test(plan.words));
       await shot(page, "settings-ending-1280-dark.png");
       await context.close();
+
+      // --- 7. Deleting the account while Pro renews --------------------------
+      console.log("7. Deleting the account while Pro renews");
+      const again = await (await fetch(`${standIn}/__stand_in/pay`, { method: "POST",
+        body: JSON.stringify({ customerId: who.kept.user_id, interval: "month" }) })).json();
+      check(`paid again, renewing: ${again.heard?.status}`, again.heard?.status === 200);
+      const ENDS = /^Your Pro plan ends now, with the account, and you are not charged again\. Any refund is as the terms of sale say\.$/;
+      ({ page, context } = await open("/settings", { width: 390, theme: "dark", who, label: "delete 390 dark" }));
+      let form = await deleteSaid(page);
+      check(`390 dark: the delete form says "${form.plan}", nothing sideways`, ENDS.test(form.plan || "") && !form.sideways);
+      await page.locator("#delete-plan").scrollIntoViewIfNeeded();
+      await shot(page, "delete-pro-390-dark.png");
+      found = await axe(page, "#delete-part");
+      check(`axe in the delete form: ${found.join("; ") || "nothing serious"}`, found.length === 0);
+      await context.close();
+      ({ page, context } = await open("/settings", { width: 1280, theme: "light", who, label: "delete 1280 light" }));
+      plan = await planSaid(page);
+      check(`Pro, renewing, before: ${plan?.state}`, plan?.state === "pro");
+      form = await deleteSaid(page);
+      check(`1280 light: the delete form says "${form.plan?.slice(0, 40)}…"`, ENDS.test(form.plan || ""));
+      check("its refund link is the terms of sale", await page.evaluate(() =>
+        document.querySelector("#delete-plan a")?.href === "https://atypic.ai/refunds"));
+      await page.fill("#delete-confirm", email);
+      await shot(page, "delete-pro-1280-light.png");
+      let asked = "";
+      page.once("dialog", (dialog) => {
+        asked = dialog.message();
+        dialog.accept();
+      });
+      await page.click("#delete-go");
+      await until(page, () => document.documentElement.dataset.deleted === "yes", null, 40000);
+      check(`asked first: "${asked}"`, asked === "Delete this account and everything in it, for good? "
+        + "Your Pro plan ends now, with the account, and you are not charged again.");
+      const lede = await page.evaluate(() => document.querySelector("#signed-out .lede")?.textContent || "");
+      check(`deleted, and said: "${lede.slice(0, 110)}"`, /^Your account is deleted, and everything in it\. Your Pro plan has ended, and you will not be charged again\./.test(lede));
+      await shot(page, "deleted-pro-1280-light.png");
+      await context.close();
+      const erased = await (await fetch(`${standIn}/__stand_in/erased`, { method: "POST",
+        body: JSON.stringify({ customerId: who.kept.user_id }) })).json();
+      check(`Admission erased them and ended the subscription: ${JSON.stringify(erased.erasures)}`,
+        erased.erasures?.length === 1 && erased.erasures[0].canceled.length === 1);
+      closed = !(await accountExists(email));
+      check("gone from the sign-in service", closed);
     }
   }
   check(`no errors on any page: ${errors.join(" | ") || "none"}`, errors.length === 0);
 } catch (trouble) {
   check(`ran to the end: ${String(trouble?.stack || trouble).split("\n").slice(0, 3).join(" ")}`, false);
 } finally {
-  if (who) check(`the throwaway account closed: ${email}`, await deleteAccount(email));
+  if (who) check(`the throwaway account closed: ${email}`, closed || await deleteAccount(email));
   await browser.close();
 }
 console.log(failed ? `billing: ${failed} FAILED, ${passed} ok` : `billing: all ok (${passed} checks)`);

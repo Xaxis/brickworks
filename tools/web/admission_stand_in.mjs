@@ -10,8 +10,10 @@
 //
 //   POST /__stand_in/pay     {customerId, interval}  Pro, renewing
 //   POST /__stand_in/cancel  {customerId}            Pro until the period's end
+//   POST /__stand_in/erased  {customerId}            {erasures}: each time the
+//                                                     site erased them
 //
-// Each answers {heard}, the site's answer to the webhook. Everything else is
+// The first two answer {heard}, the site's answer to the webhook. Everything else is
 // Admission's API as the stand-in answers it. A unit's preview has no such
 // server: there the stand-in answers in the function's own process
 // (api/_billing.js), and nobody can pay.
@@ -52,6 +54,9 @@ http.createServer(async (incoming, outgoing) => {
     if (url.pathname === "/__stand_in/pay") {
       admission.subscribe(customerId, { interval: asked.interval === "year" ? "year" : "month" });
       return reply(200, { heard: await tell(customerId, "subscription.created") });
+    }
+    if (url.pathname === "/__stand_in/erased") {
+      return reply(200, { erasures: admission.erasures.filter((e) => e.customerId === customerId) });
     }
     if (url.pathname === "/__stand_in/cancel") {
       const later = new Date(Date.now() + 30 * 86400000).toISOString();

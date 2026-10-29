@@ -241,8 +241,12 @@ async function load() {
   // The plan, only while this deployment has plans on (web/plan.js):
   // otherwise nothing of it is asked or drawn.
   $("plan")?.remove();
+  planSays = null;
   const plan = answer.body.billing
-    ? import("/plan.js").then((m) => m.planPart($("profile-part"))).catch(() => null) : null;
+    ? import("/plan.js").then((m) => {
+      planSays = m.endsWithAccount;
+      return m.planPart($("profile-part"));
+    }).catch(() => null) : null;
   // The answer kept, if there is one: what Privacy says, drawn with the rest.
   const known = await ageNow;
   drawAge(known, handle);
@@ -333,10 +337,23 @@ $("sign-out").addEventListener("click", () => {
   showFeedCount().catch(() => null);
   load();
 });
+// What deleting does to the plan this account pays for (web/plan.js
+// endsWithAccount), while plans are on; null while they are off.
+let planSays = null;
+const planEnds = () => (planSays ? planSays($("plan")?.dataset.plan) : null);
+
+// Opening the delete form says it again, as the plan's row has it now.
+$("delete-form").closest("details").addEventListener("toggle", () => {
+  $("delete-plan")?.remove();
+  const ends = planEnds();
+  if (ends) $("delete-form").querySelector("p").after(ends.said);
+});
+
 /// The account deleted, with [body] as its confirmation: its address typed
 /// again, or a fresh sign-in with orangecheck. Asked first, for good.
 async function deleteAccount(body) {
-  if (!confirm("Delete this account and everything in it, for good?")) return;
+  const ends = planEnds();
+  if (!confirm(`Delete this account and everything in it, for good?${ends ? ` ${ends.words}` : ""}`)) return;
   $("delete-go").disabled = true;
   const answer = await call("/api/account?op=delete", { method: "POST", body });
   $("delete-go").disabled = false;
@@ -367,7 +384,9 @@ async function deleteAccount(body) {
   // An orangecheck account Connect made that orangecheck would not delete
   // stays the person's, and they are told where (api/account.js).
   const kept = answer.body.orangecheck && answer.body.orangecheck.kept ? `${answer.body.orangecheck.said} ` : "";
-  $("signed-out").querySelector(".lede").textContent = `Your account is deleted, and everything in it. ${kept}`
+  // Its Pro plan, ended at Admission first (api/account.js).
+  const ended = answer.body.plan && answer.body.plan.ended ? "Your Pro plan has ended, and you will not be charged again. " : "";
+  $("signed-out").querySelector(".lede").textContent = `Your account is deleted, and everything in it. ${ended}${kept}`
     + "Sign in again with any address to start a new one.";
 }
 

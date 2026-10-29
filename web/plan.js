@@ -13,6 +13,9 @@
 // plan is asked afresh until Stripe's word has reached Admission;
 // ?upgrade=month or year opens the step at once (for /plans).
 //
+// Deleting the account ends a plan it pays for (endsWithAccount), and the
+// delete form says so before anyone presses it.
+//
 // Every word goes on the page as text, never as markup.
 import { call } from "/account.js";
 
@@ -251,6 +254,19 @@ async function draw(row, fresh = false) {
   row.replaceChildren(words, said.buttons ? make("div", "actions", ...said.buttons) : "", status);
   row.dataset.plan = said.state;
   return { ...said, mine: mine.body, status };
+}
+
+/// What deleting the account does to a plan it pays for, as the plan's row
+/// [state] has it: Pro ends now, and nothing is charged again, since
+/// api/account.js ends it at Admission before anything else goes. {words}
+/// for the question asked before deleting, and {said} for the form; null
+/// for a plan nobody pays for.
+export function endsWithAccount(state) {
+  if (!["pro", "ending", "unpaid"].includes(state)) return null;
+  const words = "Your Pro plan ends now, with the account, and you are not charged again.";
+  const said = make("p", "", `${words} Any refund is as the `, link(ATYPIC.refunds, "terms of sale"), " say.");
+  said.id = "delete-plan";
+  return { words, said };
 }
 
 /// The plan's row on /settings, after [after]; resolves once drawn. Back
