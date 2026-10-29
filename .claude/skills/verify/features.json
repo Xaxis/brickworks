@@ -82,6 +82,14 @@
       "tests": []
     },
     {
+      "id": "api:GET /api/plans",
+      "kind": "api",
+      "entry": "api/plans.js",
+      "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan; off, 405 as before)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "api:GET/POST /api/people",
       "kind": "api",
       "entry": "api/people.js",
@@ -375,6 +383,7 @@
       "reach": "node tools/viewer/build.mjs --deps=DIR [--check]   (DIR: three@0.186.1 and esbuild@0.28.2 installed apart, as its head says; writes api/_viewer_page.js)",
       "area": "mcp",
       "tests": [
+        "tests/test_billing.py",
         "tests/test_brickbench.py",
         "tests/test_update_parts.py"
       ]
@@ -2487,6 +2496,14 @@
       "tests": []
     },
     {
+      "id": "lib:plans from Admission",
+      "kind": "lib",
+      "entry": "api/_billing.js",
+      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, Claude builds and desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:playing motions",
       "kind": "lib",
       "entry": "src/assembly/motion_player.gd",
@@ -2698,6 +2715,14 @@
       "entry": "src/assembly/swing.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=swing   (by hand: on a beam hung on a pin without friction ridges, drag it out and let go; it swings and comes to rest hanging)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "lib:the Admission client",
+      "kind": "lib",
+      "entry": "api/_admission.js",
+      "reach": "UPSTREAM.md   (Admission's packages/client, its types taken out; tests/test_billing.py runs it against tests/fixtures/billing/fake_admission.mjs)",
+      "area": "web",
       "tests": []
     },
     {

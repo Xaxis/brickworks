@@ -3,7 +3,8 @@
     "vendor/**",
     "assets/**",
     "build/**",
-    "shots/**"
+    "shots/**",
+    "tests/fixtures/billing/**"
   ],
   "manual": [
     {
@@ -3554,6 +3555,27 @@
       "entry": "src/dev/about_credits_probe.gd",
       "reach": "tools/probe.sh about_credits_probe -- --shots=DIR",
       "area": "release"
+    },
+    {
+      "kind": "lib",
+      "label": "plans from Admission",
+      "entry": "api/_billing.js",
+      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, Claude builds and desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the Admission client",
+      "entry": "api/_admission.js",
+      "reach": "UPSTREAM.md   (Admission's packages/client, its types taken out; tests/test_billing.py runs it against tests/fixtures/billing/fake_admission.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "GET /api/plans",
+      "entry": "api/plans.js",
+      "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan; off, 405 as before)",
+      "area": "web"
     }
   ]
 }
