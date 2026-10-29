@@ -182,6 +182,13 @@ declare -A CMD=(
   # taken off; read in the table with the secret key, and forgotten at the
   # end. No account is made. Fails until plan_interest.sql is applied.
   [plans]="tools/web/plans_flow.mjs --url=$P --out=$S/${TAG}_plans"
+  # Paying for Pro (docs/PLANS.md U3): on a deployment with plans off, as
+  # every release's is, that none of it answers or shows (no Plan row on
+  # /settings, nothing asked of plans, each POST the interest form's). On a
+  # unit's preview deployed with tools/deploy.sh --unit --billing-stand-in,
+  # the step before Checkout and Checkout, the portal and the webhook. A
+  # throwaway account, closed at the end.
+  [billing]="tools/web/billing_flow.mjs --url=$P --out=$S/${TAG}_billing"
   [tabs]="tools/web/tabs_flow.mjs --url=$P/app --out=$S/${TAG}_tabs"
   # Two chats, two tabs: the relay's rules alone, then the app in two tabs.
   [tabpair_probe]="tools/web/tabpair_probe.mjs --url=$P"

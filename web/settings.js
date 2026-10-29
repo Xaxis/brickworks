@@ -238,15 +238,23 @@ async function load() {
   const likes = answer.body.likes;
   $("likes-choice").dataset.ready = likes && likes.ready ? "yes" : "";
   $("shows-likes").checked = Boolean(likes && likes.shows_likes);
+  // The plan, only while this deployment has plans on (web/plan.js):
+  // otherwise nothing of it is asked or drawn.
+  $("plan")?.remove();
+  const plan = answer.body.billing
+    ? import("/plan.js").then((m) => m.planPart($("profile-part"))).catch(() => null) : null;
   // The answer kept, if there is one: what Privacy says, drawn with the rest.
   const known = await ageNow;
   drawAge(known, handle);
   await parts;
+  await plan;
   $("loading").hidden = true;
   $("signed-out").hidden = true;
   $("signed-in").hidden = false;
   // The age question, if this account has not answered it.
   if (known && known.ask) drawAge(await askAgeIfAsked().catch(() => null) || known, handle);
+  // Back from Stripe to #plan, which was not on the page until now.
+  if (plan && location.hash === "#plan") $("plan")?.scrollIntoView({ block: "start" });
   document.documentElement.dataset.settings = "ready";
 }
 
