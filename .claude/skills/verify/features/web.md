@@ -330,7 +330,12 @@ plan with Claude as the client.
   writes beside it; the answer is taken and deleted in one step; and each
   side naps on a wake (`nap`/`wake` in api/mcp.js), so one instance serving
   both hands each over at once, else Claude's call looks from 40 ms up to
-  350 ms and the tab's ask for work every 350 ms. The same answers: 42 of 42
+  350 ms and the tab's ask for work every 350 ms, or every 100 ms while it
+  answered a call in the last minute (`relay_tabs.answered_at`,
+  `supabase/relay_cost.sql`). A call reads which tools its tab serves from
+  the tab's row (`relay_tabs.list`, written beside the hello, nulled by a
+  trigger when a hello is written without it), not the 248 KB hello. The
+  same answers: 42 of 42
   identical to the relay before, for a scripted 40 calls with the headless
   app as the tab.
 - `two windows probe` (`src/dev/tabpair_probe.gd -- 8790`): the desktop's side

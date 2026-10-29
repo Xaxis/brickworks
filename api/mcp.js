@@ -189,12 +189,16 @@ const PICK = "key,channel,picked_at,called_at,did,moved_at";
 const ANSWER_WAIT_MS = 240_000;
 const WORK_WAIT_MS = 25_000;
 // How often each side looks in the queue for what it waits on, when nothing
-// in this instance has woken it first (wake, below): a tab's ask for work
-// every POLL_MS, and Claude's call from FIRST_POLL_MS up to POLL_MS, since
-// most answers land within a second (2026-10-29, relay338: a fixed 350 ms
-// cost a call 175 ms on average for nothing).
+// in this instance has woken it first (wake, below). Claude's call looks
+// soon and then less often, up to POLL_MS: most answers land within a
+// second (2026-10-29, relay338: a fixed 350 ms cost a call 175 ms on
+// average for nothing). A tab's ask for work looks every ACTIVE_POLL_MS
+// while a chat has called it in the last ACTIVE_MS, and every POLL_MS
+// while none has, so an idle tab costs the database what it did.
 const POLL_MS = 350;
 const FIRST_POLL_MS = 40;
+const ACTIVE_POLL_MS = 100;
+const ACTIVE_MS = 60_000;
 // A page that has said nothing in this long — no request for work and no
 // word that it is alive, which it sends every ten seconds — has stopped.
 const TAB_GONE_MS = 45_000;
@@ -368,8 +372,13 @@ const HIDDEN =
   "call again.";
 
 // A tab's row, without its hello: that is the app's whole guidance and
-// tool list, read only when it is what is wanted (helloOf).
-const TAB = "channel,seen_at,instance,visible,open,owner,tab,model,used_at";
+// tool list, read only when it is what is wanted (helloOf). Its list is
+// which tools that hello serves (listOf), kept beside it when it is
+// written (helloFromTab), so a call need not read a quarter of a megabyte
+// of tools to learn it (2026-10-29, relay338: the largest single cost of a
+// call); null where another hello has been written since
+// (supabase/relay_cost.sql), and then the hello is read as before.
+const TAB = "channel,seen_at,instance,visible,open,owner,tab,model,used_at,list";
 
 async function tabOf(channel) {
   const rows = await db(`relay_tabs?channel=eq.${channel}&select=${TAB}`);
@@ -1031,12 +1040,14 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
     // tools it is given are the ones its calls reach.
     tab = (picked && live.find((one) => one.channel === picked.channel)) || lastUsed(tabs);
   }
-  const hello = await where.hello(tab);
+  // A call needs only which tools its tab serves, which the tab's row says
+  // (TAB's list); the handshake and the list need the whole hello.
+  const hello = calling && tab && tab.list ? null : await where.hello(tab);
 
   // Which tools this conversation was given, and whether it is to be told
   // they have changed: on any answer that can carry the word, which for a
   // client taking JSON alone is a call's.
-  const served = hello ? listOf(hello.tools) : "";
+  const served = hello ? listOf(hello.tools) : calling && tab && tab.list ? tab.list : "";
   let changed = false;
   if (served && where.listKey) {
     if (["initialize", "tools/list"].includes(message.method)) {
@@ -1283,7 +1294,7 @@ async function helloFromTab(channel, instance, request, response) {
   }
   // Which tab it is, to Claude: its id and its model's name.
   const id = String(request.query?.tab || "");
-  await db("relay_tabs", {
+  const [kept] = await db("relay_tabs?select=tools:hello->tools", {
     method: "POST",
     body: {
       channel, seen_at: new Date().toISOString(), instance, visible: true, open: true,
@@ -1293,7 +1304,13 @@ async function helloFromTab(channel, instance, request, response) {
       model: modelFrom(body.model),
       used_at: usedFrom(request.query?.used) || new Date().toISOString(),
     },
-    prefer: "resolution=merge-duplicates",
+    prefer: "resolution=merge-duplicates,return=representation",
+  });
+  // Which tools it serves, for a call to read with its row (TAB): of the
+  // tools as kept, as a call would read them from the hello. Only while
+  // this page's hello is the one there: another page's since leaves its own.
+  await db(`relay_tabs?channel=eq.${channel}&instance=eq.${instance}`, {
+    method: "PATCH", body: { list: listOf(kept.tools) },
   });
   return response.status(204).end();
 }
@@ -1309,7 +1326,7 @@ async function nextForTab(channel, instance, request, response) {
   // listening, and a signed-in page switched the connector on. Where
   // either is not so nothing is written, and why is read after.
   const mine = instance ? `&or=(instance.is.null,instance.eq.${instance})` : "";
-  const [marked] = await db(`relay_tabs?channel=eq.${channel}&owner=not.is.null${mine}&select=channel`, {
+  const [marked] = await db(`relay_tabs?channel=eq.${channel}&owner=not.is.null${mine}&select=answered_at`, {
     method: "PATCH", body: seen, prefer: "return=representation",
   }) || [];
   if (!marked) {
@@ -1329,6 +1346,9 @@ async function nextForTab(channel, instance, request, response) {
     await db("relay_tabs", { method: "POST", body: seen, prefer: "resolution=merge-duplicates" });
   }
   if (Math.random() < 0.05) await db("rpc/relay_sweep", { method: "POST", body: {} });
+  // A tab a chat is working with looks often; an idle one as it did.
+  const answered = Date.parse((marked && marked.answered_at) || "");
+  const every = Date.now() - answered < ACTIVE_MS ? ACTIVE_POLL_MS : POLL_MS;
   const until = Date.now() + WORK_WAIT_MS;
   let woken = false;
   while (Date.now() < until) {
@@ -1354,7 +1374,7 @@ async function nextForTab(channel, instance, request, response) {
       }
       return response.status(200).json({ id, request });
     }
-    woken = await nap(`channel:${channel}`, POLL_MS, looked);
+    woken = await nap(`channel:${channel}`, every, looked);
   }
   return response.status(204).end();
 }
@@ -1419,16 +1439,20 @@ export default async function handler(request, response) {
       if (!Number.isInteger(id) || !answer || typeof answer !== "object") {
         return response.status(400).json({ error: "answer what?" });
       }
+      const at = new Date().toISOString();
       // The model's name as the call left it: a call can begin, open or
-      // name one, and the list of tabs should say so at once. Written beside
-      // the answer, which wakes the call waiting on it here.
+      // name one, and the list of tabs should say so at once. And when the
+      // tab last answered, which keeps its asks for work looking often.
+      // Both written beside the answer, which wakes the call waiting on it.
       const named = modelFrom(answer.result?._meta?.["brickworks/model"]);
       await Promise.all([
         db(`relay?id=eq.${id}&channel=eq.${channel}`, {
           method: "PATCH",
-          body: { response: answer, answered_at: new Date().toISOString() },
+          body: { response: answer, answered_at: at },
         }).then(() => wake(`row:${id}`)),
-        named !== null ? db(`relay_tabs?channel=eq.${channel}`, { method: "PATCH", body: { model: named } }) : null,
+        db(`relay_tabs?channel=eq.${channel}`, {
+          method: "PATCH", body: named !== null ? { model: named, answered_at: at } : { answered_at: at },
+        }),
       ]);
       return response.status(204).end();
     }
