@@ -45,6 +45,8 @@
 import { FIRST_SCREEN, counted, iconButtonHtml, likeName, modelCard } from "/card.js";
 // The toast, and Filters closing on a click elsewhere as a "more" menu does.
 import { toast } from "/kit.js";
+// "/" to search, and the bar of filters kept under the header.
+import { browseBar } from "/browse.js";
 
 (function () {
   "use strict";
@@ -215,7 +217,16 @@ import { toast } from "/kit.js";
     }
   }
 
-  /// How many filters are on, on the Filters button, and the tag as a chip.
+  /// What each select now says, in its own words ("Small (under 200
+  /// parts)"), or "" for its first choice; until the list has filled it
+  /// in, what the address asked of it, so its chip is there from the first
+  /// frame and only its words change.
+  const saidBy = (select) => (!filled ? select.dataset.wanted || ""
+    : chosen(select) && select.selectedIndex > 0 ? select.options[select.selectedIndex].textContent : "");
+
+  /// How many filters are on, on the Filters button, and each as a chip
+  /// to let go of: the tag, an order other than the tabs', a size, how it
+  /// was made and each box ticked; Clear all once there are two.
   function sayFilters() {
     let on = [chosen(size), chosen(made), instructions.checked, technic.checked, tested.checked].filter(Boolean).length;
     if (!["top", "newest"].includes(order())) on += 1;
@@ -224,17 +235,46 @@ import { toast } from "/kit.js";
     n.hidden = !on;
     $("filters").querySelector("summary").setAttribute("aria-label", on ? `Filters, ${on} on` : "Filters");
     const chips = $("chips");
+    const kept = chips.contains(document.activeElement) ? [...chips.children].indexOf(document.activeElement) : -1;
     chips.replaceChildren();
-    if (tag) {
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = "pill tag";
-      chip.textContent = `${tag} ×`;
-      chip.setAttribute("aria-label", `Stop filtering by the tag ${tag}`);
-      chip.addEventListener("click", () => { tag = ""; ask(); });
-      chips.append(chip);
+    const chip = (words, said, drop, kind = "pill") => {
+      const one = document.createElement("button");
+      one.type = "button";
+      one.className = kind;
+      one.textContent = `${words} ×`;
+      one.setAttribute("aria-label", said);
+      one.addEventListener("click", drop);
+      chips.append(one);
+    };
+    if (tag) chip(tag, `Stop filtering by the tag ${tag}`, () => { tag = ""; ask(); }, "pill tag");
+    if (!["top", "newest"].includes(order())) {
+      const words = saidBy(sort) || order();
+      chip(words, `Stop ordering by ${words}`, () => { sort.value = "top"; ask(); });
     }
-    chips.hidden = !tag;
+    for (const [select, what] of [[size, "size"], [made, "how it was made"]]) {
+      const words = saidBy(select);
+      if (words) chip(words, `Stop filtering by ${what}: ${words}`, () => { select.value = ""; ask(); });
+    }
+    for (const [box, words] of [[instructions, "Has instructions"], [technic, "Technic or mechanism"], [tested, "Tested only"]]) {
+      if (box.checked) chip(words, `Stop filtering by ${words}`, () => { box.checked = false; ask(); });
+    }
+    if (chips.children.length > 1) {
+      const all = document.createElement("button");
+      all.type = "button";
+      all.className = "link";
+      all.textContent = "Clear all";
+      all.addEventListener("click", () => {
+        for (const select of [size, made]) select.value = "";
+        if (!["top", "newest"].includes(sort.value)) sort.value = "top";
+        instructions.checked = technic.checked = tested.checked = false;
+        tag = "";
+        ask();
+      });
+      chips.append(all);
+    }
+    chips.hidden = !chips.children.length;
+    // A chip let go of: the focus on what took its place, never the body.
+    if (kept >= 0) (chips.children[Math.min(kept, chips.children.length - 1)] || q).focus();
   }
 
   /// A card of the list, its like a button; [eager] for the first screen's.
@@ -638,7 +678,7 @@ import { toast } from "/kit.js";
   let typing = 0;
   q.addEventListener("input", () => {
     clearTimeout(typing);
-    typing = setTimeout(ask, 350);
+    typing = setTimeout(ask, 200);
   });
   form.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -660,6 +700,8 @@ import { toast } from "/kit.js";
     ask();
   });
   more.addEventListener("click", () => (release ? release() : next(false)));
+  // "/" to search, the bar of filters' edge once stuck, the kinds' fade.
+  browseBar({ search: q, above: document.querySelector(".gallery-bar"), bar: $("toolbar"), row: $("kinds") });
   addEventListener("scroll", nearEnd, { passive: true });
   addEventListener("resize", nearEnd, { passive: true });
   sayFilters();
