@@ -126,8 +126,10 @@ const GUIDE := """THE REST OF THE APP
 Besides designing, a session can do what the person does from the menus. \
 Each change is one undo step.
  - clear_model takes everything off for a new model, as New does; \
-save_model writes it with the person's models; make_part makes a part \
-the LEGO Group has not made, when search_parts finds no real one that will do.
+save_model writes it with the person's models, and a new design's first \
+save hands back its pictures for a fresh look, answered with fresh_eyes \
+before any other call; make_part makes a part the LEGO Group has not \
+made, when search_parts finds no real one that will do.
  - set_floor: what the model stands on — a baseplate 8 to 192 studs in \
 eights, in a colour baseplates come in, a grid floor, or nothing (a car \
 or a ship stands on a table). part_of_model=true counts the baseplate as \

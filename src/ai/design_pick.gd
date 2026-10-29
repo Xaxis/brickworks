@@ -105,9 +105,8 @@ static func picture(path: String) -> Dictionary:
 
 
 ## How the session is started: no tools at all, none of the person's MCP
-## servers or settings, nothing kept afterwards, and the answer in
-## [param schema].
-static func arguments(schema: Dictionary = SCHEMA) -> PackedStringArray:
+## servers or settings, nothing kept afterwards, and the answer in SCHEMA.
+static func arguments() -> PackedStringArray:
 	return PackedStringArray([
 		"-p",
 		"--input-format", "stream-json",
@@ -117,36 +116,23 @@ static func arguments(schema: Dictionary = SCHEMA) -> PackedStringArray:
 		"--strict-mcp-config",
 		"--restricted",
 		"--no-session-persistence",
-		"--json-schema", JSON.stringify(schema),
+		"--json-schema", JSON.stringify(SCHEMA),
 	])
 
 
 ## Ask once, and wait for the answer: meant for a worker thread.
 ## {keep: "A" or "B", a, b, why, seconds, model, usage}, or {error}.
 func ask(brief: String, a: Array, b: Array) -> Dictionary:
-	var said: Dictionary = put(message(brief, a, b), SCHEMA)
-	if not said.has("result"):
-		return said
-	var found: Dictionary = _answer(said["result"])
-	found["seconds"] = said["seconds"]
-	found["model"] = said["model"]
-	return found
-
-
-## [param message] put to a session of its own, its answer in [param schema],
-## and waited for: meant for a worker thread. {result: the session's result
-## event, seconds, model}, or {error}. FreshEyes asks its question this way.
-func put(message: Dictionary, schema: Dictionary) -> Dictionary:
 	var claude: String = ClaudeCode.found()
 	if claude.is_empty():
 		return {"error": "Claude Code is not installed on this machine."}
 	var started_ms: int = Time.get_ticks_msec()
-	var started: Dictionary = ClaudeCode.start_on_subscription(claude, arguments(schema))
+	var started: Dictionary = ClaudeCode.start_on_subscription(claude, arguments())
 	if not started.has("stdio"):
 		return {"error": "Could not start %s." % claude}
 	_pid = int(started.get("pid", -1))
 	var pipe: FileAccess = started["stdio"]
-	pipe.store_string(JSON.stringify(message) + "\n")
+	pipe.store_string(JSON.stringify(message(brief, a, b)) + "\n")
 	pipe.flush()
 	var found: Dictionary = {"error": "Claude Code stopped without an answer."}
 	var model: String = ""
@@ -164,7 +150,7 @@ func put(message: Dictionary, schema: Dictionary) -> Dictionary:
 		if event.get("type") == "system" and event.get("subtype") == "init":
 			model = str(event.get("model", ""))
 		if event.get("type") == "result":
-			found = {"result": event}
+			found = _answer(event)
 			break
 	stop()
 	found["seconds"] = (Time.get_ticks_msec() - started_ms) / 1000.0

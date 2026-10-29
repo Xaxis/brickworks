@@ -54,7 +54,7 @@ asking for an API key.
   account, nothing billed by us. Desktop only; a browser cannot start a program.
   `ClaudeCode.found()` looks on PATH, then where the installers put it
   (~/.local/bin, ~/.claude/local, Homebrew's, /usr/local/bin): an app started
-  from a desktop icon has no shell PATH. `fresh_eyes_probe`'s desktop-icon case.
+  from a desktop icon has no shell PATH. `claude_code_probe`'s desktop-icon case.
 - `the window's commands over mcp`: `src/net/app_tools.gd` (AppTools), what
   the person does from the menus besides designing, as tools a session has
   and the design loop does not: `set_floor` (View, Floor), `edit_steps`
