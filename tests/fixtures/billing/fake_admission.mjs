@@ -74,6 +74,8 @@ export function fakeAdmission() {
     /// What each checkout and portal was asked, in order.
     checkouts: [],
     portals: [],
+    /// Each erasure: {customerId, found, canceled}, in order.
+    erasures: [],
     /// Unreachable: every request fails as a network error would.
     down: false,
     owners: new Set(),
@@ -97,7 +99,7 @@ export function fakeAdmission() {
       const auth = new Headers(init.headers).get("authorization");
       if (auth !== `Bearer ${FAKE_KEY}`) return reply(401, error("unauthorized", "Bad key."));
       const body = init.body ? JSON.parse(String(init.body)) : {};
-      return route(method, url.pathname, body);
+      return route(method, url.pathname, body, url.searchParams);
     },
   };
 
@@ -143,7 +145,7 @@ export function fakeAdmission() {
     };
   }
 
-  function route(method, path, body) {
+  function route(method, path, body, query) {
     if (method === "GET" && path === "/v1/plans") {
       return reply(200, {
         mode: "test",
@@ -161,6 +163,28 @@ export function fakeAdmission() {
     }
     const customer = /^\/v1\/customers\/([^/]+)$/.exec(path);
     if (method === "GET" && customer) return reply(200, state(decodeURIComponent(customer[1])));
+    // Erased, as Admission's ADR-0004 has it: one who pays is refused unless
+    // cancelSubscription=true, which ends the subscription now; then usage,
+    // comps, subscriptions and owner marks go. Erasing again finds nothing.
+    if (method === "DELETE" && customer) {
+      const id = decodeURIComponent(customer[1]);
+      const s = subs.get(id);
+      const paying = Boolean(s && s.status !== "canceled");
+      if (paying && query?.get("cancelSubscription") !== "true") {
+        return reply(409, error("active_subscription", "This customer is paying. Let their subscription end, or "
+          + "erase with cancelSubscription=true to end it now (no refund)."));
+      }
+      const used = [...usage.keys()].filter((k) => k.startsWith(`${id}:`));
+      const found = Boolean(s) || overrides.has(id) || self.owners.has(id) || used.length > 0;
+      for (const k of used) usage.delete(k);
+      for (const k of [...answers.keys()]) if (k.startsWith(`${id}:`)) answers.delete(k);
+      subs.delete(id);
+      overrides.delete(id);
+      self.owners.delete(id);
+      const canceled = paying ? [`sub_${id}`] : [];
+      self.erasures.push({ customerId: id, found, canceled });
+      return reply(200, { customerId: id, mode: "test", found, canceled, fingerprint: `erased:${id.length}` });
+    }
     const marking = /^\/v1\/customers\/([^/]+)\/owner$/.exec(path);
     if (method === "PUT" && marking) {
       const id = decodeURIComponent(marking[1]);

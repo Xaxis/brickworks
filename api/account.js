@@ -45,7 +45,12 @@
 //   the admin page. An orangecheck account Connect made for it, at its
 //   tick (2026-10-24), is deleted at orangecheck before anything here; one
 //   orangecheck will not delete stays the person's at ochk.app, and the
-//   answer says so ({orangecheck: {kept, said}}).
+//   answer says so ({orangecheck: {kept, said}}). While billing is on
+//   (api/_billing.js), its plan goes before any of that (2026-10-29): the
+//   account erased at Admission, and a subscription it pays for ended now,
+//   with nothing charged again ({plan: {ended}}). If Admission cannot,
+//   nothing is deleted (503), and asking again finishes what a deletion
+//   that stopped later began. Billing off, Admission is never asked.
 //
 // Everyone who uses Brickworks signs in (2026-10-11). There were
 // accounts before, until 2026-10-09, so that one of them could design on
@@ -256,6 +261,11 @@ async function theme(request, response) {
   }
 }
 
+const SUPPORT = "support@atypic.ai";
+// Admission did not erase the account: one that pays, and any other.
+const PLAN_NOT_ENDED = `We couldn't cancel your Pro plan, so nothing was deleted. Try again in a minute, or write to ${SUPPORT}.`;
+const PLAN_NOT_ERASED = `We couldn't close your plan with billing just now, so nothing was deleted. Try again in a minute, or write to ${SUPPORT}.`;
+
 /// The account deleted, at its own asking, with its address typed again.
 async function deleteAccount(request, response) {
   response.setHeader("Cache-Control", "no-store");
@@ -331,6 +341,24 @@ async function deleteAccount(request, response) {
     return response.status(403).json({ error: "The site owner's account holds the admin page and is not deleted from here." });
   }
   const account = claims.sub;
+  // Its plan before anything here, while billing is on: erased at Admission
+  // (api/_billing.js eraseAccount), and a subscription it pays for ended
+  // now, nothing charged again. Admission not doing it holds the whole
+  // deletion, to try again: an account deleted with its plan left behind
+  // would go on being charged, and nobody could cancel it. Off, nothing is
+  // asked. Loaded only here, as orangecheck's code is.
+  const { eraseAccount, entitlementOf } = await import("./_billing.js");
+  let ended;
+  try {
+    ended = await eraseAccount(account);
+  } catch (trouble) {
+    console.error(`account: not erased at Admission: ${trouble?.code || trouble?.name || "error"}: `
+      + String(trouble?.message || trouble).slice(0, 120));
+    // What is held of the account says whether it pays, Admission or not.
+    const paying = await entitlementOf(account)
+      .then((e) => Boolean(e.subscription && e.subscription.status !== "canceled"), () => false);
+    return response.status(503).json({ error: paying ? PLAN_NOT_ENDED : PLAN_NOT_ERASED });
+  }
   // The orangecheck account Connect made for it, at its own tick
   // (api/orangecheck.js ?op=connect), deleted first: until the person
   // claims it, deleting it is Brickworks' to do, and once this account is
@@ -408,7 +436,7 @@ async function deleteAccount(request, response) {
       method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20000) });
     if (!gone.ok && gone.status !== 404) throw new Error(`auth DELETE: ${gone.status}`);
     return response.status(200).json({ deleted: true, photos: photos.length, avatars: avatars.length,
-      ...(kept ? { orangecheck: { kept: true, said: kept } } : {}) });
+      ...(kept ? { orangecheck: { kept: true, said: kept } } : {}), ...(ended ? { plan: { ended } } : {}) });
   } catch (trouble) {
     console.error(`account: not deleted: ${String(trouble?.message || trouble).slice(0, 120)}`);
     return response.status(502).json({ error: "Brickworks could not delete the account just now. Try again in a minute." });

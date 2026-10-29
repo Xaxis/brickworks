@@ -40,6 +40,8 @@
 // ?op=portal), and they send a person back to this site alone
 // (returnOrigin). What someone agreed to before Checkout is kept here
 // (agreed, supabase/plan_consents.sql), as the law on renewals asks.
+// Deleting an account erases it at Admission before anything else goes
+// (eraseAccount, api/account.js ?op=delete), ending what it pays for.
 //
 // A unit's preview proves all of it with no Admission at all: deployed with
 // tools/deploy.sh --unit --billing-stand-in, the stand-in Admission
@@ -293,6 +295,21 @@ export function renewalTerms(amount, currency, interval) {
   return `Pro at ${charge(amount, currency, interval)}, plus any tax; charged today, then renews automatically at `
     + "that price until cancelled; cancel any time in Settings, Manage billing, or at link.com, and Pro stays on "
     + `to the end of the ${interval} paid for; sold through Link, the merchant of record.`;
+}
+
+/// The account [userId] erased at Admission as it is deleted (Bookwright's
+/// ADR-0014 decision 7, Admission's ADR-0004): a subscription it pays for
+/// ended now, with no refund and nothing charged again, and its usage,
+/// comps and snapshots gone. How many subscriptions that ended; null while
+/// billing is off, when nothing is asked. Throws when Admission could not
+/// do it, and then nothing of the account may go, or a plan would go on
+/// charging an account nobody has. Erasing again finds nothing and ends
+/// nothing, so a deletion that stopped after it can be repeated.
+export async function eraseAccount(userId) {
+  const a = admission();
+  if (!a) return null;
+  const erased = await a.eraseCustomer(userId, { cancelSubscription: true });
+  return erased.canceled?.length ?? 0;
 }
 
 /// Kept in the database: that the account [userId] agreed, just now, to

@@ -1,7 +1,8 @@
-// Everything api/_billing.js and api/plans.js talk to, in memory, behind
-// the one fetch: the stand-in Admission (fake_admission.mjs), and the
-// Supabase they use (the snapshot functions of
-// supabase/admission_snapshots.sql, and the keys sessions are signed with).
+// Everything api/_billing.js, api/plans.js and api/account.js's deletion
+// talk to, in memory, behind the one fetch: the stand-in Admission
+// (fake_admission.mjs), and the Supabase they use (the snapshot functions
+// of supabase/admission_snapshots.sql, the keys sessions are signed with,
+// and the auth that deletes an account).
 // Every request any of them is sent is in [calls], so a test can say none
 // was.
 //
@@ -20,8 +21,13 @@ const b64url = (bytes) => Buffer.from(bytes).toString("base64url");
 /// {status, json}, and {location} when it redirects. [raw], a string, is a
 /// body as Vercel's helpers leave it: parsed as JSON into the body, and its
 /// bytes to read again as the request's data (@vercel/node restoreBody).
-export async function askPlans({ method = "GET", query = {}, headers = {}, body, raw } = {}) {
-  const { default: handle } = await import("../../../api/plans.js");
+export const askPlans = (asked) => ask("plans", asked);
+
+/// One request through api/account.js's handler, as askPlans makes one.
+export const askAccount = (asked) => ask("account", asked);
+
+async function ask(route, { method = "GET", query = {}, headers = {}, body, raw } = {}) {
+  const { default: handle } = await import(`../../../api/${route}.js`);
   let status = 0;
   let json = null;
   let location = null;
@@ -83,6 +89,10 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     githubStreams: false,
     /// The authorization each request to GitHub carried, or null.
     githubAuth: [],
+    /// Accounts Supabase's auth deleted (api/account.js ?op=delete), by id.
+    deleted: [],
+    /// Supabase's auth refusing to delete one, as an outage would.
+    authDown: false,
     /// Every request, "METHOD url" without its query.
     calls: [],
     /// The snapshot store unreachable, as a database outage.
@@ -125,6 +135,12 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     }
     if (url.origin !== SUPABASE_URL) throw new TypeError(`nothing here answers ${url.origin}`);
     if (url.pathname === "/auth/v1/.well-known/jwks.json") return json(200, { keys: [jwk] });
+    const user = /^\/auth\/v1\/admin\/users\/([^/]+)$/.exec(url.pathname);
+    if (user && init.method === "DELETE") {
+      if (self.authDown) return json(500, { message: "down" });
+      self.deleted.push(user[1]);
+      return json(200, {});
+    }
     if (self.storeDown) throw new TypeError("fetch failed");
     const asked = JSON.parse(String(init.body || "{}"));
     if (url.pathname === "/rest/v1/rpc/admission_snapshot_get") return json(200, snapshots.get(asked.p_key) ?? null);
@@ -141,6 +157,8 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
       // after the snapshot was kept, so the client took every put as failed.
       return json(200);
     }
+    // No orangecheck account made by Connect (supabase/orangecheck_connect_leaving.sql).
+    if (url.pathname === "/rest/v1/rpc/oc_connect_leaving") return json(200, false);
     if (url.pathname === "/rest/v1/rpc/plan_consent_note" && !self.noConsents) {
       consents.push(asked);
       return json(200);
