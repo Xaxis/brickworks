@@ -231,3 +231,80 @@ def test_publishing_tags_the_built_commit_on_origin():
     assert edit[edit.index("--repo") + 1] == "Xaxis/brickworks-releases"
     assert "--draft=false" in edit
     assert ["git", "push", "-q", "origin", "f" * 40 + ":refs/tags/v9.9.9"] in ran
+
+
+# The words a THIRD-PARTY-NOTICES.txt carries, as Credits.notices writes it
+# and Godot 4.7 says its own licence: what each licence asks a copy to carry.
+WHOLE_NOTICES = (ROOT / "src/ui/credits.gd").read_text() + """
+Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md).
+Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.
+
+== Components ==
+"""
+# Before 2026-10-29: BrickNet's notice line, and not its permission.
+NOTICE_LINE_ONLY = WHOLE_NOTICES.replace(
+    "Copyright (c) 2026 Peter Kulits\n\nPermission is hereby granted", "Copyright (c) 2026 Peter Kulits.")
+
+
+def _package(tmp_path: Path, platform: str, notices: str | None) -> Path:
+    """A package as release.py makes one, with a stand-in for the app: the
+    files beside it put there by extras(), from a staged ATTRIBUTION.md and
+    the notices given (None: none written)."""
+    kept = release.STAGE, release.WORK
+    release.STAGE, release.WORK = tmp_path / "stage", tmp_path / "work"
+    (release.STAGE / "docs").mkdir(parents=True)
+    shutil.copy2(ROOT / "docs" / "ATTRIBUTION.md", release.STAGE / "docs" / "ATTRIBUTION.md")
+    release.WORK.mkdir()
+    if notices is not None:
+        (release.WORK / "THIRD-PARTY-NOTICES.txt").write_text(notices)
+    folder = tmp_path / platform / ("Brickworks-9.9.9-%s" % platform)
+    folder.mkdir(parents=True)
+    try:
+        if notices is not None:
+            release.extras(folder, platform, "9.9.9", "2026-10-29", {})
+        else:
+            (folder / "ATTRIBUTION.md").write_text("terms")
+        if platform == "linux":
+            binary = folder / "brickworks.x86_64"
+            binary.write_bytes(b"\x7fELF GLIBC_2.31\0")
+            binary.chmod(0o755)
+            package = tmp_path / (folder.name + ".tar.xz")
+            release.write_tar_xz(folder, package, 1761696000)
+        else:
+            package = tmp_path / (folder.name + ".zip")
+            release.write_zip(folder, package, 1761696000)
+    finally:
+        release.STAGE, release.WORK = kept
+    return package
+
+
+def test_the_credits_carry_every_licences_words_but_the_engines():
+    source = (ROOT / "src/ui/credits.gd").read_text()
+    engine = {"Godot's licence", "its components' notices"}
+    assert [what for what, words in release.NOTICES_SAY.items()
+            if what not in engine and words not in source] == []
+    assert release.notices_lacking(WHOLE_NOTICES) == []
+
+
+def test_inspect_reads_the_licences_out_of_each_package(tmp_path):
+    tar = release.inspect_tar(_package(tmp_path / "a", "linux", WHOLE_NOTICES))
+    assert {"README.txt", "ATTRIBUTION.md", "THIRD-PARTY-NOTICES.txt"} <= set(tar["contents"])
+    assert tar["licences"]["files"] == ["ATTRIBUTION.md", "THIRD-PARTY-NOTICES.txt"]
+    assert tar["licences"]["lacking"] == []
+    assert tar["licences"]["notices"] == len(WHOLE_NOTICES.encode())
+    release.say_licences("linux", tar["licences"])
+    zipped = release.inspect_windows(_package(tmp_path / "b", "windows", WHOLE_NOTICES))
+    assert zipped["licences"]["lacking"] == []
+
+
+def test_a_package_without_a_licences_words_is_refused(tmp_path):
+    old = release.inspect_tar(_package(tmp_path / "a", "linux", NOTICE_LINE_ONLY))
+    assert old["licences"]["lacking"] == ["BrickNet's MIT text"]
+    try:
+        release.say_licences("Brickworks-9.9.9-linux-x86_64.tar.xz", old["licences"])
+        refused = ""
+    except release.Failed as failure:
+        refused = str(failure)
+    assert refused == "Brickworks-9.9.9-linux-x86_64.tar.xz lacks BrickNet's MIT text"
+    bare = release.inspect_windows(_package(tmp_path / "b", "windows", None))
+    assert bare["licences"]["lacking"] == ["THIRD-PARTY-NOTICES.txt"]

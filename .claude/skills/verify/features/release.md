@@ -7,7 +7,7 @@ repository of builds only (Xaxis/brickworks-releases), and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link -->
+<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, ui:about and the licences, cli:about credits probe -->
 
 ## Sub-features
 
@@ -30,6 +30,23 @@ that offers each system its own build. The cycle and its cadence are
   `dist/<version>/`, with `build.json` holding what was read. Signing plugs in
   by environment (`APPLE_SIGN_P12`..., `WINDOWS_SIGN_COMMAND`; see
   `docs/RELEASING.md`).
+- `about and the licences`: Help, About names everyone whose work ships in
+  Brickworks, one list in `src/ui/credits.gd` (`Credits.LIST`): Godot (and
+  the type, Open Sans), the LDraw Parts Library (its CC BY notice, links to
+  both licences), BrickNet, Rebrickable ("Catalog data: Rebrickable"), the
+  LDraw OMR, Poly Haven and ldraw.xml, each with its terms and links
+  (`Shell._credits`). Godot's licence (the engine's text, every component's
+  notice and their licence texts, read from the running engine) and
+  BrickNet's MIT text (`Credits.BRICKNET_MIT`) open in full over About in a
+  read-only page (`Shell._read_licence`), the same on the web. About's words
+  scroll in most of the window's height (`_about_room`), so its OK stays on
+  a short window or a phone. The same list, both licences in full, is the
+  `THIRD-PARTY-NOTICES.txt` every package carries (`tools/release_notices.gd`
+  writes `Credits.notices()`); `build` refuses notices and `inspect` refuses
+  a package whose copy lacks a licence's words (`NOTICES_SAY`: Godot's
+  licence, its components, BrickNet's notice and permission, LDraw's notice,
+  Rebrickable's credit). `docs/ATTRIBUTION.md` says why each term is what it
+  is.
 - `smoke a package`: `tools/release.py smoke FILE [--window]` unpacks it the
   way a person's system would into a fresh home, then: `--about` must say the
   version and that it is a release; the example car is opened from the
@@ -119,6 +136,8 @@ godot --headless --path . -- --about        # from source
 python3 tools/release.py version            # do VERSION, project.godot and CHANGELOG agree?
 python3 tools/release.py build linux        # or mac, windows; all three by default
 python3 tools/release.py inspect            # read dist/<version>/ back
+tools/probe.sh about_credits_probe -- --shots=DIR   # Help, About, and the licences in full
+godot --headless --path . --script res://tools/release_notices.gd -- OUT   # the packages' THIRD-PARTY-NOTICES.txt
 python3 tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz --window
 python3 tools/release.py manifest --local --out=/tmp/releases.json
 node tools/web/download_check.mjs --manifest=/tmp/releases.json --shots=shots
@@ -153,7 +172,33 @@ python3 tools/release.py build && python3 tools/release.py inspect
 Proves it when: it ends `built 0.1.0`, and the read-back shows the macOS
 bundle at `0.1.0` with `arm64 + x86_64`, a signature on both slices and
 `sealed True`; both Windows executables `x86_64` with `version 0.1.0`; the
-tar.xz's binary executable. It exits 1 on any of those being wrong.
+tar.xz's binary executable; and under every package `licences:
+ATTRIBUTION.md, THIRD-PARTY-NOTICES.txt; the notices (94 KB) say Godot's
+licence, its components' notices, BrickNet's MIT text, LDraw's notice,
+Rebrickable's credit`. It exits 1 on any of those being wrong: 0.4.0's
+tar.xz fails with `lacks BrickNet's MIT text, LDraw's notice, Rebrickable's
+credit` (its notices were Godot's alone; BrickNet's permission was nowhere
+in it, 2026-10-29). Without a build,
+`tests/test_release.py` makes small packages with `extras()` and reads
+them back the same way.
+
+```sh
+tools/probe.sh about_credits_probe -- --shots=DIR
+```
+
+Proves it when: it ends `about credits probe: all checks passed`: each of
+the seven credits in About with its name, what it is and its terms,
+scrolled into sight; Rebrickable's "Catalog data: Rebrickable"; LDraw's
+links to CC BY 2.0 and 4.0; About and its OK inside a 1400 x 900 window;
+Tab from OK reaches "Godot's licence and notices", Return opens it (about
+2,240 lines, the components' notices among them), the keys on its words,
+Page Down scrolls, Escape puts it away with About still up; the same for
+"BrickNet's licence" (22 lines, `Credits.BRICKNET_MIT` exactly), put away
+with Close; every control named. Its pictures: About at the top and the
+end, and each licence open. On the web, `dialogs_flow.mjs` audits About at
+phone and tablet sizes with the rest of More (`rest`), and
+`window.brickworksControls` names `about_read_godot`,
+`about_read_bricknet`, `licence_text` and `licence_close` while they show.
 
 ```sh
 python3 tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz --window

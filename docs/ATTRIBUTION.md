@@ -4,6 +4,16 @@ This project renders geometry it did not author. The terms below are
 obligations, not courtesies: they must appear in the application's about
 screen and in any distributed build.
 
+What a person is shown is one list, `src/ui/credits.gd` (`Credits`): Help,
+About names each with its terms and links, and opens Godot's licence (with
+its components' notices) and BrickNet's MIT text in full, on the desktop
+and the web alike. `tools/release_notices.gd` writes the same list, with
+both licences in full, into the `THIRD-PARTY-NOTICES.txt` every desktop
+package carries beside this file, and `tools/release.py inspect` reads each
+package's copy back and fails one that lacks a licence's words
+(`NOTICES_SAY`). A new source of data or code that ships goes in that list
+as well as here.
+
 ## LDraw Parts Library
 
 All part geometry derives from the LDraw Parts Library.
@@ -61,6 +71,11 @@ LDraw one:
 
   > Part colliders and connector labels from BrickNet (Kulits and Schmid,
   > 2026), MIT License, Copyright (c) 2026 Peter Kulits.
+
+MIT asks for the notice and the permission with every copy: the whole text,
+word for word as the `bricknet` 0.1.1 package carries it, is
+`Credits.BRICKNET_MIT`, opened from Help, About and written into every
+package's `THIRD-PARTY-NOTICES.txt`.
 
 ## LDraw Official Model Repository
 
@@ -340,7 +355,8 @@ once-a-day condition is enforced in the fetch itself, where `--force`
 will not re-download a table less than a day old.
 
 Required credit: "Catalog data: Rebrickable" — in `web/index.html`'s
-footer and on every instruction booklet (`src/assembly/booklet.gd`).
+footer, on every instruction booklet (`src/assembly/booklet.gd`) and in
+Help, About (`src/ui/credits.gd`).
 
 **BrickLink** — do not redistribute. The API is OAuth-gated and catalog
 downloads are login-gated; the LEGO Group has owned BrickLink since

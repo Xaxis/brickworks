@@ -8,6 +8,13 @@
   "manual": [
     {
       "kind": "ui",
+      "label": "about and the licences",
+      "entry": "src/ui/credits.gd",
+      "reach": "godot --path .  (Help, About Brickworks: every credit with its terms; Godot's licence and notices, BrickNet's licence open in full)",
+      "area": "release"
+    },
+    {
+      "kind": "ui",
       "label": "place and remove",
       "entry": "src/main.gd",
       "reach": "godot --path .  (Q or a part in the bin puts it in hand, a click puts it down; Esc lets go; a click selects, a drag moves, Delete removes)",
@@ -3420,6 +3427,13 @@
       "label": "the boot splash",
       "entry": "assets/splash.png",
       "reach": "godot --path .  (the mark on the app's dark face while the app loads, on the desktop)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "about credits probe",
+      "entry": "src/dev/about_credits_probe.gd",
+      "reach": "tools/probe.sh about_credits_probe -- --shots=DIR",
       "area": "release"
     },
     {

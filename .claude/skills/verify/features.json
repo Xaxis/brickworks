@@ -166,6 +166,14 @@
       "tests": []
     },
     {
+      "id": "cli:about credits probe",
+      "kind": "cli",
+      "entry": "src/dev/about_credits_probe.gd",
+      "reach": "tools/probe.sh about_credits_probe -- --shots=DIR",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:accessibility browser flow",
       "kind": "cli",
       "entry": "tools/web/a11y_flow.mjs",
@@ -2927,6 +2935,14 @@
       "entry": "api/_parts.js",
       "reach": "https://brickworks.diy/m/<id>#parts (Parts: by Colour or Kind, Show all; BrickLink XML /m/<id>/parts.xml, Rebrickable CSV /m/<id>/parts.csv, the list /m/<id>/parts.json; Download /m/<id>.mpd, /m/<id>/v/<n>.mpd)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:about and the licences",
+      "kind": "ui",
+      "entry": "src/ui/credits.gd",
+      "reach": "godot --path .  (Help, About Brickworks: every credit with its terms; Godot's licence and notices, BrickNet's licence open in full)",
+      "area": "release",
       "tests": []
     },
     {
