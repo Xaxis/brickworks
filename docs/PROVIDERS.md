@@ -520,10 +520,11 @@ tool list with every array's `items` said (OpenAI refuses `attach.align`'s
 bare array) and all three hints. Proofs: `tests/test_oauth_clients.py` (16),
 `tools/web/chatgpt_flow.mjs` (check `chatgpt`: ChatGPT's real document up to
 its signature, then a key-holding stand-in all the way to a call in a tab),
-`oauth_probe.mjs` unchanged. Found on the way: the own-key OpenAI adapter
-(`src/ai/openai_chat.gd`) sends the same bare array, which OpenAI's API is
-reported to refuse ("array schema missing items"; not run here, no key in
-`.env`); a fix there wants the same `items`.
+`oauth_probe.mjs` unchanged. The own-key OpenAI adapter
+(`src/ai/openai_chat.gd`) sent the same bare array, which OpenAI's API
+refuses ("array schema missing items"); it now sends the same portable list
+(`Provider.portable`), which `provider_loop_probe` holds to the relay's for
+all 61 tools, against a stub that refuses a bare array as OpenAI does.
 
 **P2. The settings panel (desktop).** Section 6, with Test. The chat panel
 designs with the chosen model. *Bar:* a probe drives the panel (choose,
