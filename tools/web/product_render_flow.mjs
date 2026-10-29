@@ -19,6 +19,7 @@
 // or the glass drawn opaque), or if a script error reaches the console.
 // Says each render's longest frame and what it was doing then
 // (StudioRender's worst_step). Leaves OUT/*.png, the downloads and a summary.
+// --also=FILE,… draws those models too, for pictures, asking nothing.
 import { launch } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -231,6 +232,29 @@ try {
   facts.shown = shown;
   await page.screenshot({ path: path.join(out, "dialog.png"), timeout: 120000 });
   await press("render_close");
+
+  // Pictures to put beside the desktop's, asking nothing of them:
+  // --also=models/sports_car.ldr,… each opened and drawn in Product on
+  // white at --also_quality (good).
+  for (const file of (args.also ? String(args.also).split(",") : [])) {
+    await openFile(path.resolve(file));
+    let last = -1;
+    for (let n = 0, still = 0; n < 480 && still < 6; n++) {
+      const now = await page.evaluate(() => window.brickworksState || {});
+      still = now.bricks > 0 && !now.awaited && now.bricks === last ? still + 1 : 0;
+      last = now.bricks;
+      await page.waitForTimeout(500);
+    }
+    await press("tool_render");
+    await press("render_look_product");
+    await press(`render_${args.also_quality || "good"}`);
+    await press("render_size_720p");
+    await press("render_bg_white");
+    const name = path.basename(file).replace(/\.[^.]*$/, "");
+    console.log(`      (${name}: ${last} parts)`);
+    await renderAndKeep(name, 30);
+    await press("render_close");
+  }
 } catch (error) {
   check(String(error), false);
 } finally {

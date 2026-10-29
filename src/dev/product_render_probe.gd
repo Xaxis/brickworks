@@ -283,12 +283,13 @@ func _swatches(library: PartLibrary) -> void:
 ## behind it a wall of trans-red ones. Before, a clear part showed only what
 ## is opaque behind it, drawn one surface deep over a copy of the picture
 ## without the clear parts: the red wall was not there behind the clear one,
-## whose face showed the sweep, #e8e8e7, and a clear brick on the plain
-## sweep was one flat tint that read as solid. Now each surface of every
-## clear part tints what is behind it (plastic_product_glass), so the clear
-## wall's face shows the red wall through it. And on nothing (no backdrop,
-## a transparent picture) the glass is blended, its colour in the alpha,
-## rather than drawn clear (or, before, black).
+## whose face showed the sweep, #d0d0d0 (red by 0.00), and a clear brick on
+## the plain sweep was one flat tint that read as solid. Now each surface of
+## every clear part tints what is behind it (plastic_product_glass), so the
+## clear wall's face shows the red wall through it (#a85251, red by 0.34).
+## And on nothing (no backdrop, a transparent picture) the glass is blended,
+## its colour in the alpha (lightness 0.65), where it was drawn black (alpha
+## 1.00, lightness 0.16) and would otherwise have come out clear.
 const SEE_RED := 0.25
 func _glass(library: PartLibrary) -> void:
 	_world.clear()

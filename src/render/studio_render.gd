@@ -23,7 +23,7 @@
 ## (RenderSettings.look) is a product shot's: the copy of the model drawn in
 ## plastic_body's PLASTIC_PRODUCT shaders (a gloss over the plastic, edges
 ## rounded where they catch the light, chrome and metal reflecting the
-## studio, clear parts that bend what is behind them), lit by a key, a fill
+## studio, clear parts that tint what is behind them), lit by a key, a fill
 ## and a rim over a softbox studio's own light (an HDR panorama, which is
 ## also what everything glossy reflects), with screen-space bounce light
 ## and reflections on the desktop, and graded through AgX, a film-like

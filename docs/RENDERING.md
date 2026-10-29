@@ -109,7 +109,8 @@ What the engine offers, for this project, on this box (RX 6700 XT, Godot
 | PBR plastic, metallic, roughness, specular | yes | yes | yes, already |
 | Clear coat (CLEARCOAT, CLEARCOAT_ROUGHNESS) | yes | not drawn | Product |
 | Subsurface scattering (SSS_STRENGTH) | yes, screen-space, scale in world units | no | no: BACKLIGHT, keyed to lightness, instead |
-| Refraction (hint_screen_texture) | yes | yes | Product, clear parts |
+| Refraction (hint_screen_texture) | yes | wrong picture in a viewport | no longer: render340-342's glass, until render353 (section 5b) |
+| Multiply blend (blend_mul) | yes | yes | Product, clear parts: every surface tints what is behind it (render353) |
 | SDFGI global illumination | yes | no | Good and Best, already |
 | VoxelGI | yes, needs a bake per model | no | no: SDFGI needs no bake |
 | SSAO | yes | no | yes, already; deeper in Product |
@@ -148,24 +149,25 @@ What we found while building it:
 
 **Reachable in realtime:**
 - **Achieved.** A well-lit studio shot of glossy plastic with rounded
-  box-edges, real glass in front of opaque parts, metals reflecting a
-  studio, soft area shadows, contact shadow and AO, a lens, and a graded
-  film curve. That is the after pictures below.
-- **Not reachable.** Clear parts seen through other clear parts (the
-  engine copies the screen once, before the clear parts are drawn). Light
-  bounced through clear parts. Caustics. Edges rounded where they are not
-  on the part's box: a slope's edge, a stud's rim. True subsurface glow in
-  white bricks.
+  box-edges and stud rims, clear parts seen into and through (their own
+  walls and tubes, and other clear parts behind them, render353), metals
+  reflecting a studio, soft area shadows, contact shadow and AO, a lens,
+  and a graded film curve. That is the after pictures below.
+- **Not reachable.** Light bent by a clear part (render353's glass tints
+  what is behind it and does not move it). Light through clear parts:
+  their shadows are grey, not coloured. Caustics. Edges rounded where they
+  are not on the part's box or a stud's rim: a slope's edge. True
+  subsurface glow in white bricks.
 
 **Cost on the web against the desktop:**
 - **Compatibility has no SDFGI, SSAO, clear coat or quality soft shadows**,
   and draws in a browser's one thread.
-- **What Product gives a browser:** the refraction, the bevel normal, the
+- **What Product gives a browser:** the glass, the bevel normal, the
   rig, Filmic and the backdrops. A browser's sky is not used for
   reflections, because it lit wrongly there (see `_dress`).
 - **Best's 32 frames there** cost what they always did. The product
-  shaders add a branch per fragment and one screen copy, which is nothing
-  next to that.
+  shaders add a branch per fragment, and a clear part a second pass,
+  which is nothing next to that.
 
 ## 3. An offline path tracer
 
@@ -254,10 +256,10 @@ The gaps before, against a real product shot:
 After: 1, 2 (on box edges), 3 (in front of opaque parts), 4 and 5 are
 closed, and 6 is a film curve. What is still visibly short of a LEGO
 product shot:
-- edges that are not on a part's box (slopes, curves, stud rims) are still
-  sharp;
+- edges that are not on a part's box (slopes, curves) are still sharp
+  (stud rims rounded in render353);
 - no logo on the studs;
-- clear behind clear;
+- clear behind clear (closed in render353, section 5b);
 - no light through clear parts;
 - black read as mid-grey, and at Good grey faces were hatched (both
   fixed in render342, section 5a);
@@ -301,7 +303,8 @@ The rest needs the path tracer.
 - **Rubber:** roughness 0.8.
 - **Transparent:** the screen behind, bent by the normal, times the
   colour itself (LDConfig's value is the part against white), with a low
-  specular so its edges reflect and its face is not veiled.
+  specular so its edges reflect and its face is not veiled. Replaced in
+  render353 (section 5b).
 - **Light** (`StudioRender.PRODUCT_RIG`, Forward+):
   - the key is the window's own key;
   - a fill sits low on the camera's left;
@@ -425,6 +428,88 @@ Pictures: `bench/results/render342-2026-10-29/`:
 - `crop_*.png`: the black parts and the grey faces, at 3x;
 - `swatches_before_after.png`: the swatches.
 
+## 5b. Clear parts, the web, and stud rims (render353)
+
+**Clear parts read as solid.** Trans red, blue, yellow and green had their
+colour after render342 but looked like opaque plastic
+(`bench/results/render342-2026-10-29/swatches_before_after.png`). The
+cause, found on the swatches and a clear wall in front of a trans-red one:
+- **The glass was one surface deep.** It read the picture behind it from
+  a copy of the screen, which the engine makes once, after the opaque
+  parts and before any clear one, and it drew only its nearest surface
+  (a depth prepass with alpha 1). So a clear brick's own far walls, tubes
+  and studs were never behind it, and on the plain sweep its face was the
+  floor times one flat tint: a solid.
+- **Clear behind clear was not there at all.** The clear wall's face over
+  the trans-red wall came out #d0d0d0, the sweep (red by 0.00, as
+  r - (g + b)/2).
+- **Not the balance of absorption and transmission, the refraction's
+  strength, the clear coat (off on glass) or the sweep's brightness.**
+  Each moves the tint, none puts the far side of the part in the picture.
+
+The fix: every surface of a clear part, front and back, multiplies what is
+behind it by what one surface lets through (`plastic_product_glass.gdshader`,
+blend_mul, the batch's first pass): the square root of LDConfig's colour
+per surface, so a wall at normal incidence gives the colour render342
+matched, more plastic gives more colour (a ray along a wall, within 4 LDU
+of the box's edge, counts 2.5 walls), and the bend of the ray inside
+(ABS about 1.5) keeps the slant short. A multiply needs no order, so no
+sorting and nothing inside out. Then the reflections are added on top
+(`plastic_product_trans`, premultiplied with alpha 0): the key and rim on
+every surface, inside ones too, which is what outlines the tubes, and
+the rounded edges at specular 0.7 for a bright rim (0.15 face on, as
+before, so no veil). The refraction's bend is given up: on a brick's flat
+face it moved nothing, and a thin wall moves little.
+
+Measured (`product_render_probe`, Good, white sweep; the before is
+main at 7864e6c4 with the same probe):
+
+| | Before | After |
+|---|---|---|
+| trans clear | #d9d9d8, dE 7.5 | #ededec, dE 3.2 |
+| trans red | #ca1b0f, dE 0.8 | #d4211b, dE 3.5 |
+| trans dark blue | #0e23ac, dE 1.9 | #1d24a3, dE 1.5 |
+| trans yellow | #dbc62e, dE 5.4 | #f0cb25, dE 1.2 |
+| trans green | #2b8648, dE 4.9 | #2a6b38, dE 4.4 |
+| **mean, the five clear** | **4.11** | **2.76** |
+| a clear wall over a trans-red one | #d0d0d0, red by 0.00 | #a85251, red by 0.34 |
+| the same on nothing (no backdrop) | black: alpha 1.00, lightness 0.16 | glass: alpha 0.98, lightness 0.65 |
+| the window's frame on the card | 2.620 ms | 2.604 ms before the renders, 2.609 after |
+
+The opaque colours are where render342 left them (bright mean 3.86;
+black's bricks 0.179, under 0.19, the stud rims' highlights the 0.007).
+
+**On nothing** (the None backdrop, a transparent picture) there is
+nothing behind the glass to tint, and it would come out clear; before, it
+came out black. There the glass is blended as the window's is, its colour
+in the picture's alpha (`over_nothing`, set by StudioRender).
+
+**The web.** Under Compatibility the old glass's screen read came back as
+the wrong part of the picture: the sports car's windscreen showed a flat
+taupe patch with pieces of the red bodywork in it
+(`compat/sports_car_before.png`). The multiply reads nothing, so the same
+glass draws there. `PREMUL_ALPHA_FACTOR` does not compile under
+Compatibility (`premul_alpha` undeclared in the GLES3 scene shader), so the
+reflections are premultiplied by hand. Compatibility's picture is sRGB, so
+the multiply is the linear factor to the 1/2.2 there.
+
+**Stud rims.** The box's round left every stud a knife edge. A stud's top
+edge is now rounded the same way (`stud_rim`: the 6 LDU stud on the 20 LDU
+grid from the part's box corner, standing to the box's top), so each stud
+carries a ring of light. Slopes' edges are still sharp: their plane is not
+in anything the shader is given.
+
+Pictures, `bench/results/render353-2026-10-29/`:
+- `desktop/*_before.png`, `*_after.png`, `*_before_after.png`: Forward+,
+  Good, white sweep: swatches (`swatches.ldr` there), sports_car,
+  corner_shop, barn_owl;
+- `compat/`: the same under Compatibility (the desktop binary with
+  `--rendering-method gl_compatibility`, Xvfb);
+- `web/`: the web build in Chromium on SwiftShader
+  (`tools/web/product_render_flow.mjs`): the glass walls on each backdrop,
+  and the three models;
+- `before/`: the probe's pictures and output on main.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
@@ -434,13 +519,17 @@ Pictures: `bench/results/render342-2026-10-29/`:
   - Product's shaders, rig, film curve and backdrops, without SDFGI, AO or
     clear coat.
   - Path-traced stills from the server (R3).
-  - Product under Compatibility was drawn once in this unit (on the GPU
+  - Product under Compatibility was drawn once in render340 (on the GPU
     under Xvfb, `--rendering-method gl_compatibility`, Good, 960×540,
-    12.7 s): it compiles and draws, with the backdrop's fall, the rig and
-    the curve, but the windscreen shows a pale patch where its refraction
-    reads the wrong picture (`sports_car_compat_product.png`). No probe
-    covers it yet. R6 proves it in a browser (`render_flow.mjs` with the
-    look pressed) and fixes the glass.
+    12.7 s): it compiled and drew, with the backdrop's fall, the rig and
+    the curve, but the windscreen showed a pale patch where its refraction
+    read the wrong picture (`sports_car_compat_product.png`).
+  - render353 gave the glass a multiply that reads nothing (section 5b),
+    and proves it in a browser: `tools/web/product_render_flow.mjs` opens
+    a black wall behind clear glass and a white one behind trans dark
+    blue, and draws Product on each backdrop, failing on a blank picture,
+    blue glass that is not blue, or a black wall that does not show dark
+    through the clear glass.
 
 ## 7. The paid plan
 
@@ -497,14 +586,17 @@ Each says what it does and the bar it must reach.
      Cycles paths, with haze (volumetric fog) on the desktop.
    - **Bar:** each preset on 3 models; the model sitting on the surface,
      with its shadow and reflection; no stretched HDRI at the horizon.
-5. **R6 the web's Product look.**
+5. **R6 the web's Product look.** Proven and the glass fixed in
+   render353 (section 5b, `product_render_flow.mjs`); what is left is the
+   frame budget below.
    - **What:** Product proven and tuned under Compatibility.
    - **Bar:**
      - `render_flow.mjs` presses Product and draws each backdrop;
      - no frame over the dialog's existing budget (`worst_frame_ms`);
      - pictures in Chromium on SwiftShader next to the desktop's;
      - unit_preview.sh pass.
-6. **R7 the box-edge bevel's misses.**
+6. **R7 the box-edge bevel's misses.** Stud rims done in render353
+   (section 5b); slopes are left.
    - **What:** slopes and stud rims rounded in the realtime look, either
      from the LDraw edge lines baked into a per-part edge texture at build
      time, or a screen-space edge detect in the render's own pass.

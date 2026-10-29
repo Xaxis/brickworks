@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
 
 ## Sub-features
 
@@ -1506,9 +1506,13 @@ picture the assistant is shown.
   the render's copy of the model drawn in the `plastic_product*` shaders
   (`BrickWorld.product`, `PRODUCT_SHADERS`; `PLASTIC_PRODUCT` in
   `plastic_body.gdshaderinc`: a clear coat over the plastic, edges of the
-  part's body box rounded by a bent normal, chrome and metal reflecting the
-  studio's sky, clear parts letting through their own LDraw colour of the
-  screen behind), a key, fill and rim (`StudioRender.PRODUCT_RIG`) over the
+  part's body box and studs' top rims rounded by a bent normal (`bevelled`,
+  `stud_rim`), chrome and metal reflecting the studio's sky; clear parts in
+  two passes, `plastic_product_glass` multiplying what is behind by what
+  each surface lets through, every surface, so a clear part's own walls and
+  tubes and the clear parts behind it show, then the reflections added on
+  top; on nothing, the None backdrop, blended as the window's glass,
+  `over_nothing`), a key, fill and rim (`StudioRender.PRODUCT_RIG`) over the
   softbox HDRI on the desktop with its room flagged down to
   `PRODUCT_ROOM` (`studio_sky.gdshader`: black stays black, the softboxes
   still give every highlight), Filmic graded by `PRODUCT_WHITE`,
@@ -1517,7 +1521,7 @@ picture the assistant is shown.
   and the sweep's fall of light (`studio_backdrop.gdshader` `fall`, `pool`)
   for the gradient and dark backdrops. Check: `tools/probe.sh
   product_render_probe` (GPU, Forward+; it SKIPs, which fails, on another
-  renderer) prints 16 ok lines: every batch of the render's copy in a
+  renderer) prints 18 ok lines: every batch of the render's copy in a
   product shader and none of the window's, Filmic, a picture that differs
   from the window's look, white corners above 0.85, the gradient at least
   0.1 darker in its corners than under the model, dark corners below 0.12,
@@ -1526,13 +1530,37 @@ picture the assistant is shown.
   then sixteen colour swatches at Good, each lit face's CIEDE2000 from
   LDConfig printed: black's bricks' mean lightness under 0.19 (0.218 before
   render342), dark bluish grey within 6, red, yellow, blue, green, white
-  and tan within 5 on average, the clear colours within 6, and a light grey
-  face's grain under 0.012 (0.038 hatched); pictures in
-  `shots/render/product_*`, `product_swatches.png` the swatches.
+  and tan within 5 on average, the clear colours within 4.5 (4.11 at
+  render342, 2.76 at render353), and a light grey face's grain under 0.012
+  (0.038 hatched); then a wall of trans-clear 1 x 4s in front of a
+  trans-red one: the clear wall's face red by at least 0.25 (r - (g+b)/2;
+  0.00 before render353, the red wall not there behind it, 0.34 after),
+  and the same drawn on nothing glass, alpha over 0.3 and lightness over
+  0.35 (black before, 1.00 and 0.16); pictures in `shots/render/product_*`,
+  `product_swatches.png` the swatches, `product_glass*.png` the walls.
+  In a browser: `cli:product look in a browser`.
   A model: `tools/probe.sh render_probe -- --model=models/sports_car.ldr
   --look=product --gradient=1 --backdrop=#f5f6f8 --quality=best
   --size=1280x720 --picture=OUT.png`. Over MCP: render_model with
   look=product (mcp_sync_probe keeps tools/mcp_tools.json in step).
+- `product look in a browser` (`tools/web/product_render_flow.mjs`): the
+  web build's Product look under Compatibility, where the desktop's probe
+  cannot vouch for it and where the first Product glass read the wrong
+  picture (a pale patch on the sports car's windscreen). Opens a black
+  2 x 4 wall behind a taller, longer wall of trans-clear ones and a white
+  wall behind trans dark blue, presses Render, Product, Quick and 720p, and
+  draws each of white, gradient, grey and dark, each downloaded. Check:
+  `tools/web/serve.py build/web PORT --parts assets/generated/parts` after
+  `tools/export.sh web`, then with .env sourced `node
+  tools/web/product_render_flow.mjs --url=http://127.0.0.1:PORT/index.html
+  --out=OUT` (or `--url=<preview>/app --bypass=$VERCEL_BYPASS`;
+  preview_checks.sh's `product_render`, run alone): `the glass walls opened
+  (20 parts of 20)`, the dialog opens, and on each backdrop a 1280x720 PNG
+  whose lightness spreads over 0.03 and at least 1% of it blue (bluer by
+  0.1 than red or green); on white the model at least 2% of the picture and
+  at least 0.5% near black (the black wall, seen only through the clear
+  glass), no script errors. `--also=models/sports_car.ldr,…` draws those
+  models too at Good on white, for pictures.
 - `studio renderer` (`src/render/studio_render.gd`): off screen, in its own
   viewports with a copy of the model staged a slice a frame (`FramePace`): the
   model alone on the sweep, its floor's baseplate left out unless it is part of
