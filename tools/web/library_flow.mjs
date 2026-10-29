@@ -17,7 +17,11 @@
 //   1. Tab A, signed in, has its model. File > Library… (the File menu, by
 //      its keys) opens the screen on the LDraw sets: eight, with covers.
 //   2. A search ("dragon"), the theme filter chosen by typing in its list
-//      (Town: three), the size filter (Under 200 parts: two of them).
+//      (Town: three), the size filter (Under 200 parts: two of them). The
+//      search's keys: Ctrl+F gives it the keys (the engine's, not the
+//      browser's find), "house" asked with no Enter, Escape clears it,
+//      "zzqx" said to find nothing, and Enter on "dragon" opens the Dragon
+//      Wagon in a tab at ?new=1&library=omr-6056-1, closed at once.
 //   3. Open on 106-1 opens tab B at ?new=1&library=omr-106-1: the set, 65
 //      parts, named "106-1 UNICEF Van", credited to its LDraw author under
 //      CCAL 2.0 with its LDraw page in Properties; ?library gone from its
@@ -29,7 +33,7 @@
 //   6. The screen at 1400 x 900 and 390 x 844, in the light and dark colour
 //      schemes (the app has one look; the page around it follows the scheme).
 //
-// Pictures in OUT: 1_sets_1400.png, 2_filtered.png, 3_tab_set.png,
+// Pictures in OUT: 1_sets_1400.png, 2_filtered.png, 2b_none.png, 3_tab_set.png,
 // 4_community.png, 5_tab_copy.png, 6_sets_390_dark.png, 7_sets_390_light.png,
 // 8_community_390_dark.png, 9_sets_1400_light.png.
 //
@@ -174,16 +178,17 @@ async function click(page, name) {
   const at = await controlAt(page, name, 60);
   await page.mouse.click(at.x, at.y);
 }
-// Words typed into the search, then the shelf asked again: true once it shows [want].
+// Words typed into the search, and the shelf asked again a moment after the
+// last key: true once it shows [want]. No Enter: Enter opens the first found.
 async function search(page, words, want) {
   const field = await controlAt(page, "library_search", 60);
   await page.mouse.click(field.x, field.y);
   await page.keyboard.press("Control+a");
   if (words) await page.keyboard.type(words, { delay: 40 });
   else await page.keyboard.press("Delete");
-  await page.keyboard.press("Enter");
   if (want === null) return until(async () => ((await shelf(page)).ask || {}).q === "", 30);
-  return until(async () => (await shown(page)) === JSON.stringify(want), 30);
+  return until(async () => (await shown(page)) === JSON.stringify(want)
+    && ((await shelf(page)).ask || {}).q === words, 30);
 }
 // One of a filter's items, chosen in its list by typing its first letters,
 // as a person can.
@@ -195,13 +200,15 @@ async function choose(page, control, typed, key, value) {
   await page.keyboard.press("Enter");
   return until(async () => ((await shelf(page)).ask || {})[key] === value, 20);
 }
-// The tab a press opens, and the address it was opened at.
-async function opensTab(page, control) {
+// The tab a press opens (of [control], or of the key [press]), and the
+// address it was opened at.
+async function opensTab(page, control, press = "") {
   const asked = [];
   const listen = (r) => { if (r.isNavigationRequest()) asked.push(r.url()); };
   context.on("request", listen);
   const coming = context.waitForEvent("page", { timeout: 60000 }).catch(() => null);
-  await click(page, control);
+  if (press) await page.keyboard.press(press);
+  else await click(page, control);
   const tab = await coming;
   if (tab) {
     tab.on("pageerror", (e) => problems.push(String(e).slice(0, 200)));
@@ -397,6 +404,35 @@ try {
   await a.screenshot({ path: `${out}/2_filtered.png` });
   await choose(a, "library_theme", "Any", "theme", "");
   await choose(a, "library_size", "Any", "size", "");
+
+  // The search's keys in a browser, whose own Ctrl+F finds in the page:
+  // the engine takes the key, and the library gives its search the keys.
+  console.log("\nthe search's keys");
+  await until(async () => (await shelf(a)).total === 8, 20);
+  const unfocused = !(await shelf(a)).searching;
+  await a.keyboard.press("Control+f");
+  check("Ctrl+F gives the search the keys",
+    unfocused && await until(async () => (await shelf(a)).searching === true, 10));
+  await a.keyboard.type("house", { delay: 40 });
+  await checkAfter(async () => `"house", typed, no Enter: ${await shown(a)}`,
+    until(async () => (await shown(a)) === JSON.stringify(["omr-1484-1"]), 20));
+  await a.keyboard.press("Escape");
+  await checkAfter(async () => `Escape clears it, the keys kept: "${(await shelf(a)).typed}", ${(await shelf(a)).total} sets`,
+    until(async () => (await shelf(a)).typed === "" && (await shelf(a)).total === 8
+      && (await shelf(a)).searching === true, 20));
+  await a.keyboard.type("zzqx", { delay: 40 });
+  await checkAfter(async () => `"zzqx" finds nothing, said: "${(await shelf(a)).none}"`,
+    until(async () => (await shelf(a)).none === "No set matches “zzqx”", 20));
+  await a.screenshot({ path: `${out}/2b_none.png` });
+  await a.keyboard.press("Escape");
+  await until(async () => (await shelf(a)).total === 8, 20);
+  await a.keyboard.type("dragon", { delay: 40 });
+  const entered = await opensTab(a, "", "Enter");
+  const enteredAt = entered.asked.map((u) => new URL(u)).find((u) => u.searchParams.has("library"));
+  check(`Enter opens the first found in a tab: ${enteredAt ? enteredAt.search : entered.asked.join(" ")}`,
+    Boolean(entered.tab) && Boolean(enteredAt) && enteredAt.searchParams.get("library") === "omr-6056-1");
+  if (entered.tab) await entered.tab.close();
+  await a.bringToFront();
 
   console.log("\nan LDraw set, in a new tab");
   check("\"106-1\" finds the UNICEF Van", await search(a, "106-1", ["omr-106-1"]));

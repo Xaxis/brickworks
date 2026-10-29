@@ -13,6 +13,33 @@ whole cycle.
 
 ## [Unreleased]
 
+### Added
+
+- Designing with another provider's model on your own key, the first part of
+  it. A model on OpenAI, or on any server that speaks OpenAI's Chat
+  Completions (OpenRouter, Groq, Together, Mistral, DeepSeek, Gemini, or Ollama,
+  LM Studio and vLLM on your own computer), is given the same instructions
+  and tools Claude is, builds in the window, and answers the same fresh look
+  at its first save. Your key goes from your computer to the provider and
+  nowhere else. From the command line for now (`--ask-provider`); the
+  settings to choose a provider in the app come next (docs/PROVIDERS.md).
+- The LDraw library on the website, at brickworks.diy/library: every model
+  of a real set the app's Library opens, browsed as the gallery is, by a
+  set's name, number, theme or modeller, its themes as pills and its order,
+  size and years in Filters. Each set has a page of its own, as a shared
+  model has: its picture, who modelled it for LDraw's Official Model
+  Repository and under which licence, its parts list, Share, and Open in
+  Brickworks, which opens it in the app as File, Library… does.
+- Settings, AI: choose who designs. Claude, as before, or another AI on your
+  own API key: OpenAI, the Anthropic API, Google Gemini, OpenRouter, Mistral,
+  Groq, Together, DeepSeek, xAI, or any server that speaks OpenAI's Chat
+  Completions (Ollama, LM Studio, vLLM). Pick a model from the provider's own
+  list, set the temperature, the max output and the reasoning effort where
+  the model takes them, and Test it: one tool call and one picture, and it
+  says plainly what works. Design with it from the assistant's column. Your
+  key is kept on your computer in a file encrypted to it, or for the visit
+  only, and is never sent to us, logged or saved with a model.
+
 ## [0.10.0] - 2026-10-28
 
 A release about a second look. When Claude designs something new, a fresh

@@ -1,0 +1,245 @@
+/*
+  The documentation's layout (brickworks.diy/docs, made by tools/docs_site.py
+  from docs-site/): the pages list down the left, the page in the middle,
+  what is on it down the right, and search over all of it. The site's own
+  controls, tokens and type are site.css's; this lays them out and draws
+  the few things only docs have (keys, code, callouts, tables, the search
+  dialog). Only the scale: every size a --t-*, corner an --r-*, colour a
+  token, and the four breakpoints (docs/DESIGN_SYSTEM.md "Docs").
+
+  Under 900 px the pages list folds behind Browse the docs, and under 1200
+  what is on this page goes, as the pages list keeps the room.
+*/
+
+.docs-layout {
+	display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 var(--s-6);
+	align-items: start; padding-bottom: var(--section);
+}
+@media (width >= 900px) {
+	.docs-layout { grid-template-columns: 236px minmax(0, 1fr); }
+}
+@media (width >= 1200px) {
+	.docs-layout { grid-template-columns: 248px minmax(0, 1fr) 220px; gap: 0 var(--s-7); }
+}
+
+/* -- the pages list -------------------------------------------------- */
+
+.docs-side {
+	display: none; padding: var(--s-4) 0 var(--s-5);
+}
+.docs-side.open { display: block; border-bottom: 1px solid var(--line); margin-bottom: var(--s-4); }
+@media (width >= 900px) {
+	.docs-side, .docs-side.open {
+		display: block; position: sticky; top: var(--head-h); max-height: calc(100vh - var(--head-h));
+		overflow-y: auto; overscroll-behavior: contain; padding: var(--s-6) var(--s-2) var(--s-6) 0;
+		border-bottom: 0; margin-bottom: 0;
+	}
+}
+.docs-group {
+	margin: var(--s-5) 0 var(--s-1); padding: 0 var(--s-3); font-size: var(--t-tiny); font-weight: 650;
+	letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint);
+}
+.docs-side ul { list-style: none; margin: 0; padding: 0; }
+.docs-side li a {
+	display: flex; align-items: center; min-height: 36px; padding: 4px var(--s-3);
+	border-radius: var(--r-1); color: var(--ink-soft); text-decoration: none; font-size: var(--t-small);
+	line-height: 1.35;
+}
+.docs-side li a:hover { color: var(--ink); background: var(--panel); }
+.docs-side li a[aria-current="page"] {
+	color: var(--ink); background: var(--panel-hi); font-weight: 620;
+	box-shadow: inset 3px 0 0 var(--accent-edge);
+}
+
+/* The bar a phone and a tablet have instead: the pages list and search. */
+.docs-bar {
+	display: flex; gap: var(--s-2); padding: var(--s-4) 0 0; flex-wrap: wrap;
+}
+.docs-bar .docs-menu-button { flex: 1 1 auto; justify-content: flex-start; }
+.docs-menu-button::after {
+	content: ""; width: 8px; height: 8px; margin-left: auto; border: solid currentColor;
+	border-width: 0 2px 2px 0; transform: translateY(-2px) rotate(45deg);
+	transition: transform var(--motion) var(--ease);
+}
+.docs-menu-button[aria-expanded="true"]::after { transform: translateY(2px) rotate(-135deg); }
+@media (width >= 900px) {
+	.docs-bar { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.docs-menu-button::after { transition: none; }
+}
+
+/* Search, as a button that looks like the box it opens. */
+.docs-search-open { gap: var(--s-2); color: var(--ink-soft); }
+.docs-search-open svg { flex: none; }
+.docs-search-open.wide { width: 100%; justify-content: flex-start; margin: 0 0 var(--s-2); background: var(--field); }
+.docs-search-open.wide > kbd.keys { margin-left: auto; flex-wrap: nowrap; }
+.docs-search-open.wide > span { white-space: nowrap; }
+@media (width < 900px) {
+	.docs-search-open.wide { display: none; }
+}
+
+/* -- the page ---------------------------------------------------------- */
+
+.docs-main { min-width: 0; padding-top: var(--s-6); outline: none; }
+@media (width < 900px) {
+	.docs-main { padding-top: var(--s-4); }
+}
+.docs-main .crumbs { margin: 0 0 var(--s-3); font-size: var(--t-small); color: var(--ink-faint); }
+.docs-main .crumbs a { color: var(--ink-soft); }
+.docs-article { max-width: 760px; }
+.docs-article > h1 { margin-bottom: var(--s-3); }
+.docs-article > .lede { margin-bottom: var(--s-6); }
+.docs-article h2 { margin: var(--s-7) 0 var(--s-3); scroll-margin-top: calc(var(--head-h) + var(--s-4)); }
+.docs-article h3 { margin: var(--s-6) 0 var(--s-2); scroll-margin-top: calc(var(--head-h) + var(--s-4)); }
+.docs-article h4 { margin: var(--s-5) 0 var(--s-2); font-size: var(--t-body); scroll-margin-top: calc(var(--head-h) + var(--s-4)); }
+.docs-article h2 + h3 { margin-top: var(--s-4); }
+.docs-article p, .docs-article li { color: var(--ink-soft); }
+.docs-article p { margin: 0 0 var(--s-4); }
+.docs-article strong { color: var(--ink); font-weight: 620; }
+.docs-article ul, .docs-article ol { margin: 0 0 var(--s-4); padding-left: var(--s-5); }
+.docs-article li { margin: 0 0 var(--s-2); }
+.docs-article li ul { margin: var(--s-2) 0 0; }
+.docs-article a:not(.anchor):not(.cta):not(.pill) { color: var(--ink); text-decoration-color: var(--accent-edge); }
+.docs-article code { padding: 1px 5px; border-radius: var(--r-1); background: var(--bg-soft); border: 1px solid var(--line); color: var(--ink); overflow-wrap: anywhere; }
+
+/* A heading's own link: its # beside it, on hover and on focus. */
+.anchor {
+	margin-left: var(--s-2); color: var(--ink-faint); text-decoration: none; opacity: 0;
+	font-weight: 500; transition: opacity var(--motion) var(--ease);
+}
+.anchor::before { content: "#"; }
+:is(h2, h3, h4):hover > .anchor, .anchor:focus-visible { opacity: 1; }
+@media (hover: none) {
+	.anchor { opacity: 0.6; }
+}
+
+/* Keys: a key cap each, and gestures in words beside them. */
+kbd {
+	display: inline-block; min-width: 1.6em; padding: 0 6px; border: 1px solid var(--line);
+	border-bottom-width: 2px; border-radius: var(--r-1); background: var(--panel);
+	font: 600 var(--t-tiny)/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	color: var(--ink); text-align: center; white-space: nowrap;
+}
+kbd.keys, span.keys { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 3px; min-width: 0; padding: 0; border: 0; background: none; font: inherit; color: var(--ink-faint); }
+.gesture { color: var(--ink); font-style: italic; white-space: nowrap; }
+
+/* Code: a block of its own that scrolls inside itself, never the page. */
+.code { position: relative; margin: 0 0 var(--s-4); }
+.code pre {
+	margin: 0; padding: var(--s-4); padding-right: 76px; overflow-x: auto;
+	background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--r-2);
+}
+.code pre code { padding: 0; border: 0; background: none; font-size: var(--t-small); line-height: 1.6; overflow-wrap: normal; white-space: pre; }
+.code .copy { position: absolute; top: var(--s-2); right: var(--s-2); }
+
+/* A callout: a note, a tip or a warning, its edge the kind's colour. */
+.callout {
+	margin: 0 0 var(--s-5); padding: var(--s-3) var(--s-4); border: 1px solid var(--line);
+	border-left: 4px solid var(--focus); border-radius: var(--r-2); background: var(--panel);
+}
+.callout.tip { border-left-color: var(--green); }
+.callout.warning { border-left-color: var(--bad); }
+.callout p { margin: 0 0 var(--s-2); }
+.callout p:last-child { margin-bottom: 0; }
+.callout .callout-title { color: var(--ink); font-weight: 650; font-size: var(--t-small); }
+
+/* Tables scroll inside their frame on a phone. */
+.table { margin: 0 0 var(--s-5); overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r-2); }
+.table table { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
+.table th, .table td { padding: var(--s-2) var(--s-3); text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
+.table th { color: var(--ink); font-weight: 650; background: var(--panel); white-space: nowrap; }
+.table td { color: var(--ink-soft); }
+.table tr:last-child td { border-bottom: 0; }
+.table td:first-child { color: var(--ink); }
+.keys-table td:first-child { min-width: 140px; }
+.menu-table td:nth-child(2) { white-space: nowrap; }
+.menu-table tr:target td { background: var(--panel-hi); }
+.tool-badges { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+.tool-badges .pill { font-size: var(--t-tiny); }
+
+/* A picture of the app or the site. */
+.shot { margin: 0 0 var(--s-5); }
+.shot img { width: 100%; border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel); }
+.shot figcaption { margin-top: var(--s-2); font-size: var(--t-small); color: var(--ink-faint); }
+
+/* The start page's ways in: a card each. */
+.docs-cards { display: grid; gap: var(--s-3); grid-template-columns: minmax(0, 1fr); margin: 0 0 var(--s-6); padding: 0; list-style: none; }
+@media (width >= 600px) {
+	.docs-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.docs-cards li { margin: 0; }
+.docs-cards a {
+	display: block; height: 100%; padding: var(--s-4); border: 1px solid var(--line); border-radius: var(--radius);
+	background: var(--panel); text-decoration: none; color: var(--ink-soft); font-size: var(--t-small);
+	transition: border-color var(--motion) var(--ease), background var(--motion) var(--ease);
+}
+.docs-article .docs-cards a { color: var(--ink-soft); }
+.docs-cards a:hover { border-color: var(--ink-faint); background: var(--panel-hi); }
+.docs-cards a strong { display: block; margin-bottom: var(--s-1); color: var(--ink); font-size: var(--t-body); }
+
+/* Previous and next. */
+.docs-pager {
+	display: grid; gap: var(--s-3); grid-template-columns: minmax(0, 1fr); max-width: 760px;
+	margin-top: var(--s-7); padding-top: var(--s-5); border-top: 1px solid var(--line);
+}
+@media (width >= 600px) {
+	.docs-pager { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.docs-pager a {
+	display: block; padding: var(--s-3) var(--s-4); border: 1px solid var(--line); border-radius: var(--r-2);
+	text-decoration: none; color: var(--ink); font-weight: 620;
+}
+.docs-pager a:hover { border-color: var(--ink-faint); background: var(--panel); }
+.docs-pager small { display: block; color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 500; }
+.docs-pager .next { grid-column: -2; text-align: right; }
+
+/* -- what is on this page ------------------------------------------- */
+
+.docs-toc { display: none; }
+@media (width >= 1200px) {
+	.docs-toc {
+		display: block; position: sticky; top: var(--head-h); max-height: calc(100vh - var(--head-h));
+		overflow-y: auto; padding: var(--s-6) 0; font-size: var(--t-small);
+	}
+}
+.docs-toc-title { margin: 0 0 var(--s-2); font-size: var(--t-tiny); font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); }
+.docs-toc ul { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--line); }
+.docs-toc a {
+	display: block; padding: 4px 0 4px var(--s-3); margin-left: -1px; border-left: 2px solid transparent;
+	color: var(--ink-faint); text-decoration: none; line-height: 1.4;
+}
+.docs-toc .l3 a { padding-left: var(--s-5); }
+.docs-toc a:hover { color: var(--ink); }
+.docs-toc a[aria-current="true"] { color: var(--ink); border-left-color: var(--accent-edge); }
+
+/* -- search ------------------------------------------------------------- */
+
+dialog.docs-search {
+	width: min(640px, calc(100vw - 32px)); max-height: min(640px, calc(100vh - 64px));
+	margin: max(var(--s-6), 10vh) auto auto; padding: 0; display: none; flex-direction: column; overflow: hidden;
+}
+dialog.docs-search[open] { display: flex; }
+.docs-search-box { display: flex; align-items: center; gap: var(--s-2); padding: var(--s-3); border-bottom: 1px solid var(--line); }
+.docs-search-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+dialog form label.docs-search-field { display: flex; flex: 1; min-width: 0; align-items: center; gap: var(--s-2); margin: 0; color: var(--ink-faint); }
+.docs-search-box .cta { flex: none; }
+.docs-search-field input { flex: 1; min-width: 0; }
+.docs-search-said { margin: 0; padding: 0 var(--s-4); font-size: var(--t-small); }
+.docs-search-said:not(:empty) { padding: var(--s-3) var(--s-4) 0; }
+.docs-results { list-style: none; margin: 0; padding: var(--s-2); overflow-y: auto; flex: 1; }
+.docs-results li { margin: 0; }
+.docs-results a {
+	display: block; padding: var(--s-2) var(--s-3); border-radius: var(--r-2); text-decoration: none; color: var(--ink-soft);
+	font-size: var(--t-small);
+}
+.docs-results a b { display: block; color: var(--ink); font-weight: 620; font-size: var(--t-body); }
+.docs-results a small { display: block; color: var(--ink-faint); font-size: var(--t-tiny); }
+.docs-results [aria-selected="true"] a, .docs-results a:hover { background: var(--panel-hi); box-shadow: inset 3px 0 0 var(--accent-edge); }
+.docs-results mark { background: none; color: var(--ink); font-weight: 650; text-decoration: underline; text-decoration-color: var(--accent-edge); }
+.docs-search-hint { display: flex; gap: var(--s-4); flex-wrap: wrap; margin: 0; padding: var(--s-2) var(--s-4); border-top: 1px solid var(--line); font-size: var(--t-tiny); color: var(--ink-faint); }
+.docs-search-hint span { display: inline-flex; gap: 3px; align-items: center; }
+@media (width < 600px) {
+	.docs-search-hint { display: none; }
+	dialog.docs-search { margin-top: var(--s-4); max-height: calc(100vh - 32px); }
+}

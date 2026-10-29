@@ -43,6 +43,7 @@
         "tests/test_collection.py",
         "tests/test_designers.py",
         "tests/test_library.py",
+        "tests/test_library_site.py",
         "tests/test_refresh_catalogue.py",
         "tests/test_update_parts.py"
       ]
@@ -87,7 +88,29 @@
       "entry": "api/plans.js",
       "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan; off, 405 as before)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_desktop.py"
+      ]
+    },
+    {
+      "id": "api:GET /api/plans?op=download",
+      "kind": "api",
+      "entry": "api/plans.js",
+      "reach": "curl -sI '<deployment>/api/plans?op=download&file=Brickworks-0.10.0-linux-x86_64.AppImage'   (off: 302 to the public address, nobody asked; on: a session whose plan has the desktop gets GitHub's signed URL, Free a 403 with the way to Pro; python3 tools/minitest.py tests/test_desktop.py)",
+      "area": "web",
+      "tests": [
+        "tests/test_desktop.py"
+      ]
+    },
+    {
+      "id": "api:GET /api/plans?op=entitlement",
+      "kind": "api",
+      "entry": "api/plans.js",
+      "reach": "curl -s '<deployment>/api/plans?op=entitlement' -H 'authorization: Bearer <session>'   (off: {billing: off}; on: an RS256 token {sub, plan, desktop, paid_through, iat}, never on a plan not known; python3 tools/minitest.py tests/test_desktop.py)",
+      "area": "web",
+      "tests": [
+        "tests/test_desktop.py"
+      ]
     },
     {
       "id": "api:GET/POST /api/people",
@@ -103,7 +126,9 @@
       "entry": "api/share.js",
       "reach": "curl -s 'https://brickworks.diy/api/share?id=<id>'   (and /m/<id>, /m/<id>.png, /m/<id>/embed; POST with a session publishes, ?op=unpublish takes down)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_library_site.py"
+      ]
     },
     {
       "id": "api:POST /api/account?op=age",
@@ -145,7 +170,9 @@
       "entry": "api/plans.js",
       "reach": "curl -s -X POST https://brickworks.diy/api/plans -H 'content-type: application/json' -d '{\"email\":\"not-an-email\",\"plan\":\"plus\",\"billing\":\"yearly\"}'   (422 with why; an entry kept or changed by supabase/plan_interest.sql, {email, forget: true} takes it off)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_desktop.py"
+      ]
     },
     {
       "id": "api:POST /api/together",
@@ -163,6 +190,14 @@
       "entry": "tools/storage_ldraw.py",
       "reach": "tools/storage_ldraw.py --check   (the library's parts/ in the parts bucket under ldraw/parts/, what is not up yet and its size; without --check uploads it, never over a file there)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:LDraw library browser flow",
+      "kind": "cli",
+      "entry": "tools/web/library_site_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/library_site_flow.mjs --url=<preview> --out=DIR [--no-app]   (preview_checks.sh library_site: /library and a set's page at 390 and 1400, light and dark, search by number, credit, parts, Share, Open in Brickworks)",
+      "area": "web",
       "tests": []
     },
     {
@@ -211,6 +246,14 @@
       "entry": "tools/web/age_flow.mjs",
       "reach": "BW_STAND_IN=http://127.0.0.1:8742 node tools/web/age_flow.mjs --url=http://127.0.0.1:8742 --out=shots/age   (.env sourced; relay_server.mjs --static=build/web --trust-stand-in)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:ai settings probe",
+      "kind": "cli",
+      "entry": "src/dev/ai_settings_probe.gd",
+      "reach": "tools/probe.sh ai_settings_probe   (PROBE_SIZE=1024x768 or 400x860 for the pictures at that size, in shots/ai_settings/)",
+      "area": "assistant",
       "tests": []
     },
     {
@@ -597,6 +640,14 @@
       "tests": []
     },
     {
+      "id": "cli:design with another provider from a brief",
+      "kind": "cli",
+      "entry": "src/main.gd",
+      "reach": "godot --path . -- --ask-provider=\"a red tower\" --provider=openai --provider-model=gpt-6.1-sol [--provider-base=URL] [--out=FILE]   (the key from the provider's environment variable or the one kept; never printed)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:designers browser flow",
       "kind": "cli",
       "entry": "tools/web/designers_flow.mjs",
@@ -613,6 +664,22 @@
       "tests": []
     },
     {
+      "id": "cli:desktop pass probe",
+      "kind": "cli",
+      "entry": "src/dev/desktop_pass_probe.gd",
+      "reach": "tools/probe.sh desktop_pass   (needs node: tokens signed by api/_desktop.js)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:desktop token key",
+      "kind": "cli",
+      "entry": "tools/desktop_key.mjs",
+      "reach": "node tools/desktop_key.mjs new FILE | public | sign FILE JSON   (docs/RELEASING.md, The desktop token's key; never prints the private half)",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:dialog look probe",
       "kind": "cli",
       "entry": "src/dev/dialog_look_probe.gd",
@@ -625,6 +692,14 @@
       "kind": "cli",
       "entry": "tools/web/discovery_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/discovery_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL; or a local relay_server.mjs --hold=gallery_picks until discovery.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:docs browser flow",
+      "kind": "cli",
+      "entry": "tools/web/docs_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/docs_flow.mjs --url=<preview> --out=DIR   (or --root=<a site from tools/site.py>; preview check [docs])",
       "area": "web",
       "tests": []
     },
@@ -897,6 +972,14 @@
       "tests": []
     },
     {
+      "id": "cli:library search probe",
+      "kind": "cli",
+      "entry": "src/dev/library_search_probe.gd",
+      "reach": "tools/probe.sh library_search_probe   (a window; serves tests/fixtures/library on 8934; -- --phone for the layout for a finger, PROBE_SIZE=390x844 for a phone's pictures)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:library tab browser flow",
       "kind": "cli",
       "entry": "tools/web/library_tab_flow.mjs",
@@ -1014,7 +1097,7 @@
       "id": "cli:model library",
       "kind": "cli",
       "entry": "tools/library_build.py",
-      "reach": "python3 tools/library_build.py covers && python3 tools/library_build.py stage && python3 tools/library_build.py check   (needs vendor/omr and models.json; covers on the GPU lease; writes bench/results/library-2026-10-26/library/)",
+      "reach": "python3 tools/library_build.py covers && python3 tools/library_build.py stage && python3 tools/library_build.py check   (needs vendor/omr and models.json; covers on the GPU lease; writes bench/results/library-2026-10-26/library/); python3 tools/library_build.py pictures --out DIR   (the website's: library/pages/<id>.webp 1200x900 and library/cards/<id>.webp 480x360, the model on nothing, src/dev/library_covers.gd --clear, about a second a set on the lease)",
       "area": "collection",
       "tests": []
     },
@@ -1022,7 +1105,7 @@
       "id": "cli:model library in storage",
       "kind": "cli",
       "entry": "tools/storage_library.py",
-      "reach": "tools/storage_library.py --check   (the staged library/ in the parts bucket under library/, what is not up yet and its size; without --check uploads it, the index last)",
+      "reach": "tools/storage_library.py --check   (the staged library/ in the parts bucket under library/, what is not up yet and its size; without --check uploads it, the index last); tools/storage_library.py DIR --pictures   (the website's pictures alone, library/pages and library/cards, never the index)",
       "area": "collection",
       "tests": []
     },
@@ -1349,6 +1432,22 @@
       "tests": []
     },
     {
+      "id": "cli:provider apis probe",
+      "kind": "cli",
+      "entry": "src/dev/provider_apis_probe.gd",
+      "reach": "tools/probe.sh provider_apis_probe",
+      "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "cli:provider loop probe",
+      "kind": "cli",
+      "entry": "src/dev/provider_loop_probe.gd",
+      "reach": "tools/probe.sh provider_loop_probe",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:publish a release",
       "kind": "cli",
       "entry": "tools/release.py",
@@ -1357,6 +1456,16 @@
       "tests": [
         "tests/test_release.py",
         "tests/test_release_links.py"
+      ]
+    },
+    {
+      "id": "cli:put the documentation together",
+      "kind": "cli",
+      "entry": "tools/docs_site.py",
+      "reach": "python3 tools/docs_site.py --check   (every feature here on a docs page or in docs-site/internal.txt, every link resolves; python3 tools/docs_site.py OUT writes the pages, as tools/site.py does at deploy)",
+      "area": "web",
+      "tests": [
+        "tests/test_docs_site.py"
       ]
     },
     {
@@ -1717,6 +1826,14 @@
       "entry": "src/dev/ahead_probe.gd",
       "reach": "godot --headless --path . --script src/dev/ahead_probe.gd -- --most-ms=50   (tools/probe.sh ahead_probe: a part turned by move_part, Ctrl+Z, a part placed by a click, on the Ducati a session designed, 8808-1 and 42004-1, each followed 4 s while the joints are read and the model weighed on workers; then a press while the joints are read takes the worker's reading, and one while a session moves a part says so)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:the menus written for the docs",
+      "kind": "cli",
+      "entry": "src/dev/docs_menus.gd",
+      "reach": "godot --headless --path . --script src/dev/docs_menus.gd -- --menus-to=docs-site/generated/menus.json   (tests/test_docs_site.py says when it is due)",
+      "area": "web",
       "tests": []
     },
     {
@@ -2228,6 +2345,22 @@
       "tests": []
     },
     {
+      "id": "lib:designing on Anthropic's Messages or Gemini's own API",
+      "kind": "lib",
+      "entry": "src/ai/anthropic_messages.gd",
+      "reach": "tools/probe.sh provider_apis_probe   (AnthropicMessages and GeminiNative read and written offline, then each designs, is tested and lists its models against tools/provider_stub.py, as strict as each API)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:designing with any provider on the person's key",
+      "kind": "lib",
+      "entry": "src/ai/designer_loop.gd",
+      "reach": "tools/probe.sh provider_loop_probe   (in a window: an OpenAI-compatible stub provider designs through the app's own MCP tools in process, answers the fresh look from its three pictures and saves; the Chat Completions adapter and the key's keeping read without a network)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "lib:directory",
       "kind": "lib",
       "entry": "api/_directory.js",
@@ -2421,7 +2554,9 @@
       "entry": "api/share.js",
       "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most; with neither, More in the gallery, its Top)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_library_site.py"
+      ]
     },
     {
       "id": "lib:motions",
@@ -2507,7 +2642,7 @@
       "id": "lib:plans from Admission",
       "kind": "lib",
       "entry": "api/_billing.js",
-      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, Claude builds and desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
+      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, AI builds and desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
       "area": "web",
       "tests": []
     },
@@ -2524,6 +2659,14 @@
       "kind": "lib",
       "entry": "src/assembly/pose.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/pose_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "lib:product look",
+      "kind": "lib",
+      "entry": "src/render/plastic_product.gdshader",
+      "reach": "tools/probe.sh product_render_probe  (windowed, on the GPU: Render's Product look draws in the product shaders, each backdrop as named, depth of field softens, the window's frame cost and environment unchanged; sixteen colour swatches on the white sweep against LDraw: black black, the colours and clear colours near their own, no shadow hatching)  /  tools/probe.sh render_probe -- --model=models/sports_car.ldr --look=product --gradient=1 --backdrop=#f5f6f8 --quality=best --size=1280x720 --picture=OUT.png",
       "area": "view",
       "tests": []
     },
@@ -2768,6 +2911,22 @@
       "tests": []
     },
     {
+      "id": "lib:the desktop pass",
+      "kind": "lib",
+      "entry": "src/account/desktop_pass.gd",
+      "reach": "tools/probe.sh desktop_pass   (a release build holding a key checks its kept token at start: released while paid opens, later asks, 44 days of grace, never from source, never mid-session)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "lib:the desktop's files and token",
+      "kind": "lib",
+      "entry": "api/_desktop.js",
+      "reach": "python3 tools/minitest.py tests/test_desktop.py   (GitHub's signed asset URL, a 200 refused; the token signed with DESKTOP_TOKEN_KEY; paid_through kept in supabase/desktop_paid_through.sql, only moving on)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:the gallery over mcp",
       "kind": "lib",
       "entry": "src/net/gallery_tool.gd",
@@ -2937,6 +3096,17 @@
       "tests": []
     },
     {
+      "id": "ui:LDraw library page",
+      "kind": "ui",
+      "entry": "web/library.html",
+      "reach": "https://brickworks.diy/library?q=10179&theme=Star%20Wars&sort=oldest&page=2   (every set the app's Library opens, as the gallery's cards: cover, name, number, theme, year, modeller; search, themes as pills, Filters: order, size, years; web/library.js reads /api/share?op=library a page at a time; linked from the gallery's tabs and every page's footer)",
+      "area": "web",
+      "tests": [
+        "tests/test_library.py",
+        "tests/test_library_site.py"
+      ]
+    },
+    {
       "id": "ui:LEGO Art designed by Claude",
       "kind": "ui",
       "entry": "src/ai/assistant.gd",
@@ -3023,6 +3193,14 @@
       "kind": "ui",
       "entry": "api/_trust.js",
       "reach": "sign in as a new account: the app's sign-in screen asks it, and /profile on the site (once supabase/trust.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:an LDraw set's page",
+      "kind": "ui",
+      "entry": "api/_library.js",
+      "reach": "https://brickworks.diy/library/omr-10179-1   (api/share.js sharePage with model.library: its cover, modelled by and CC BY credit with LDraw's page, facts, Open in Brickworks = /app?new=1&library=<id>, Share, Parts; /library/<id>.webp, .cutout.webp, .cover.webp, .mpd and /parts.json|xml|csv; from the parts store's library/index.json, no database)",
       "area": "web",
       "tests": []
     },
@@ -3120,6 +3298,14 @@
       "entry": "web/changelog.html",
       "reach": "https://brickworks.diy/changelog   (filled from CHANGELOG.md by tools/site.py)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:choose the AI that designs",
+      "kind": "ui",
+      "entry": "src/ui/ai_settings.gd",
+      "reach": "godot --path .  (Tools, Settings\u2026, AI\u2026: Claude, or another AI on your own API key: provider, address, key with Show and Remember, the provider's own model list filtered, temperature, max output, reasoning effort, Test, Design with it; the assistant's column then designs with it)   tools/probe.sh ai_settings_probe",
+      "area": "assistant",
       "tests": []
     },
     {
@@ -3235,12 +3421,24 @@
       "tests": []
     },
     {
+      "id": "ui:documentation",
+      "kind": "ui",
+      "entry": "web/docs.js",
+      "reach": "https://brickworks.diy/docs   (and /docs/<page>: the pages list, On this page, Ctrl+K or / to search, previous and next; made from docs-site/ by tools/docs_site.py at deploy; linked from every page's footer, Menu on a phone, and the app's Help, Documentation)",
+      "area": "web",
+      "tests": [
+        "tests/test_docs_site.py",
+        "tests/test_release.py"
+      ]
+    },
+    {
       "id": "ui:download page",
       "kind": "ui",
       "entry": "web/download.html",
       "reach": "https://brickworks.diy/download  (locally: node tools/web/download_check.mjs)",
       "area": "release",
       "tests": [
+        "tests/test_desktop.py",
         "tests/test_site_shell.py"
       ]
     },
@@ -3360,6 +3558,14 @@
       "tests": []
     },
     {
+      "id": "ui:library search",
+      "kind": "ui",
+      "entry": "src/ui/library_dialog.gd",
+      "reach": "godot --path .  (File, Library\u2026: the search first, edged, with a magnifier; asked as you type; Ctrl+F comes to it, Escape clears it, Enter opens the first found (on a phone Enter only asks); words that find nothing are said where the covers were, with Clear the search, the filters let go and the other shelf)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "ui:likes on a profile",
       "kind": "ui",
       "entry": "api/_avatars.js",
@@ -3423,7 +3629,9 @@
       "entry": "web/card.js",
       "reach": "every card of a shared model: /gallery, the landing page's strip, /u/<handle>, /c/<id>, a model's remixes on /m/<id>, /profile; one renderer for the server (api/_card.js) and the browser, its picture 4:3",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_library_site.py"
+      ]
     },
     {
       "id": "ui:model page action bar",
@@ -3641,7 +3849,9 @@
       "entry": "web/plans.html",
       "reach": "https://brickworks.diy/plans   (Free, Plus and Creator, the paid two coming soon, education free; Tell me when it's ready opens the interest form, web/plans.js; linked from every page's footer)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_desktop.py"
+      ]
     },
     {
       "id": "ui:play in a shared model",
@@ -3974,6 +4184,14 @@
       "tests": []
     },
     {
+      "id": "ui:the Pro screen on the desktop",
+      "kind": "ui",
+      "entry": "src/ui/pass_gate.gd",
+      "reach": "tools/probe.sh desktop_pass   (This version of the desktop app comes with Pro: See Pro, Open the web app, Sign in with another account, Check again, where the models are)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "ui:the account menu",
       "kind": "ui",
       "entry": "web/follow.js",
@@ -4062,7 +4280,9 @@
       "entry": "tools/viewer/card.js",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app --host=<ext-apps basic-host, built> --out=shots/app_host   (with .env sourced: the page in the MCP Apps reference host, drawn in 3D whatever the host hands it, turned, a part picked, Check, the instructions, the parts list, full screen, Open in Brickworks)",
       "area": "mcp",
-      "tests": []
+      "tests": [
+        "tests/test_library_site.py"
+      ]
     },
     {
       "id": "ui:theme choice",
@@ -4070,7 +4290,9 @@
       "entry": "web/theme.js",
       "reach": "every page of brickworks.diy: System, Light or Dark at the foot of the page, on Menu at a phone's width, and in Settings on /profile; kept in the browser and, signed in, on the account (GET/POST /api/account?op=theme, supabase/theme.sql)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_library_site.py"
+      ]
     },
     {
       "id": "ui:this month's challenge page",

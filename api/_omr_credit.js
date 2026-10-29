@@ -20,7 +20,7 @@
 // and on a deployment by publishing a library model (gallery261's proof).
 
 /// Whose words a library model's licence is in, as the site names it.
-const SITE_LICENCE = { "CCAL 2.0": "cc-by-2.0", "CC BY 4.0": "cc-by-4.0" };
+export const SITE_LICENCE = { "CCAL 2.0": "cc-by-2.0", "CC BY 4.0": "cc-by-4.0" };
 /// Of a model's parts, the least that must be the library model's, and of
 /// the library model's the least that must be in it.
 export const LEAST_SHARED = 0.5;
@@ -38,7 +38,8 @@ export function storeRoot(env = process.env) {
 let kept = { at: 0, models: null };
 
 /// The library's models, as the app's Library reads them; kept a while.
-async function storeIndex() {
+/// The site's LDraw library reads them too (api/_library.js).
+export async function storeIndex() {
   if (kept.models && Date.now() - kept.at < INDEX_FOR_MS) return kept.models;
   const root = storeRoot();
   if (!root) return [];
@@ -49,8 +50,9 @@ async function storeIndex() {
   return kept.models;
 }
 
-/// A library model's own file, as LDraw has it, or null.
-async function storeFile(entry) {
+/// A library model's own file, as LDraw has it, or null. A set's page reads
+/// it too (api/share.js), for its parts and steps.
+export async function storeFile(entry) {
   const root = storeRoot();
   if (!root || typeof entry.file !== "string" || !/^library\/omr\/[A-Za-z0-9._-]+\.mpd$/.test(entry.file)) return null;
   const answer = await fetch(`${root}${entry.file}`);

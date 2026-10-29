@@ -10,9 +10,13 @@ the files and run api/plans.js's handler with the database played here:
   row security on both, every grant revoked, each function the server's;
 - the API refuses what it should in words, asks the rate limit before it
   keeps anything, keeps the address in lower case and never the address it
-  came from, and answers a first entry and a second in the same words;
-- nothing on the page takes money, and Free lists no limit smaller than
-  today's (api/models.js keeps 500 models an account).
+  came from, keeps Pro as 'plus' (the table allows Plus and Creator, which
+  both mean Pro now), and answers a first entry and a second in the same
+  words;
+- nothing on the page takes money, Free lists no limit smaller than
+  today's (api/models.js keeps 500 models an account), and the page keeps
+  the promise to accounts that exist and says what stays free (gate M1,
+  docs/PLANS.md).
 """
 
 from __future__ import annotations
@@ -85,14 +89,14 @@ def handler(cases: list[dict], answers: dict) -> list[dict] | None:
     return json.loads(done.stdout.strip().splitlines()[-1])
 
 
-GOOD = {"email": "  Ada@Example.com ", "plan": "plus", "billing": "yearly", "note": "for my\tclub  "}
+GOOD = {"email": "  Ada@Example.com ", "plan": "pro", "billing": "yearly", "note": "for my\tclub  "}
 FROM = {"x-forwarded-for": "203.0.113.9, 10.0.0.1"}
 
 
 def test_refusals_say_why_and_keep_nothing() -> None:
     got = handler([
         {"body": {**GOOD, "email": "ada@"}},
-        {"body": {**GOOD, "plan": "pro"}},
+        {"body": {**GOOD, "plan": "plus"}},
         {"body": {**GOOD, "billing": "weekly"}},
         {"body": {**GOOD, "note": "x" * 201}},
         {"body": {**GOOD, "note": 5}},
@@ -102,7 +106,7 @@ def test_refusals_say_why_and_keep_nothing() -> None:
         return
     assert [one["status"] for one in got] == [422, 422, 422, 422, 422, 405]
     assert got[0]["json"]["error"] == "That is not an email address."
-    assert "Plus or Creator" in got[1]["json"]["error"] and "monthly or yearly" in got[2]["json"]["error"]
+    assert got[1]["json"]["error"] == "Choose Pro." and "monthly or yearly" in got[2]["json"]["error"]
     assert "at most 200" in got[3]["json"]["error"]
     assert all(one["asked"] == [] for one in got), "a refusal asked the database"
 
@@ -143,7 +147,7 @@ def test_take_it_off_forgets_that_address_alone() -> None:
     assert got[0]["asked"][1] == ["plan_interest_forget", {"p_email": "ada@example.com"}]
 
 
-def test_the_page_takes_no_money_and_takes_nothing_away() -> None:
+def test_the_page_takes_no_money_and_keeps_its_promises() -> None:
     lowered = PAGE.lower()
     # No payment anywhere: nothing of Stripe's, no link or form to a
     # checkout, no card's fields, no script but the site's own and its counter.
@@ -152,12 +156,21 @@ def test_the_page_takes_no_money_and_takes_nothing_away() -> None:
     assert not re.search(r'autocomplete="cc-', lowered)
     assert re.findall(r'<script[^>]*src="([^"]+)"', PAGE) == [
         "https://overlook.technology/s.js", "/theme.js", "/follow.js", "/plans.js"]
-    assert "Nothing it does today will be taken away." in PAGE
+    # What stays free, and the promise to every account made before Pro.
+    plain = re.sub(r"\s+", " ", PAGE)
+    assert "What stays free" in plain and "It takes nothing out of Free" in plain
+    assert "Every account made before 29 October 2026, when this page changed, gets Pro, free and with no end date" in plain
+    assert "Education is free" in plain
+    # The desktop app is never listed in Free, and AI builds are not Claude's.
+    assert "desktop" not in re.search(r'<ul class="rows">.*?</ul>', PAGE, re.S).group(0)
+    assert "Claude build" not in PAGE
     # Free says today's limit for models kept with an account, never less.
     most = int(re.search(r"export const MOST_MODELS = (\d+);", MODELS).group(1))
     free = re.search(r'<article class="card tier" id="free".*?</article>', PAGE, re.S).group(0)
     said = [int(n) for n in re.findall(r"up to (\d+)", free)]
     assert said == [most], f"Free says up to {said}, the account keeps {most}"
-    for plan in ("plus", "creator"):
-        tier = re.search(rf'<article class="card tier" id="{plan}".*?</article>', PAGE, re.S).group(0)
-        assert "Coming soon" in tier and "Coming with" in tier and f'data-interest="{plan}"' in tier
+    tiers = re.findall(r'<article class="card tier" id="([a-z]+)"', PAGE)
+    assert tiers == ["free", "pro"], tiers
+    pro = re.search(r'<article class="card tier" id="pro".*?</article>', PAGE, re.S).group(0)
+    assert "Coming soon" in pro and "Coming with Pro" in pro and 'data-interest="pro"' in pro
+    assert re.sub(r"<[^>]+>", "", re.search(r'<p class="price">(.*?)</p>', pro).group(1)) == "$8 a month, or $80 a year"

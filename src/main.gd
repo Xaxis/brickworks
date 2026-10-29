@@ -83,6 +83,10 @@ var _account: Account
 ## Over everything until someone is signed in, when a person is in front
 ## of the window to sign in (see [method _gate_wanted]).
 var _gate: SignInGate
+## The paid desktop's check at start, and its screen (DesktopPass,
+## PassGate): only in an exported release build that holds a key.
+var _pass: DesktopPass
+var _pass_gate: PassGate
 var _account_panel: AccountPanel
 ## Whether the connector has been put back as it was for this sign-in.
 var _connector_resumed: bool = false
@@ -342,6 +346,11 @@ var _commands: CommandSocket = null
 ## Designing on the person's own Claude subscription, by starting the
 ## Claude Code they already have and pointing it back at this app.
 var _claude_code: ClaudeCode = null
+## Designing with another provider's model on the person's own key
+## (DesignerLoop), and the in-process MCP server it is a client of when no
+## port or connector has one.
+var _designer: DesignerLoop = null
+var _designer_rpc: CommandSocket = null
 
 var _library: PartLibrary
 
@@ -1570,6 +1579,12 @@ func _ready() -> void:
 	if not local.is_empty():
 		await _ask_claude_code(local)
 
+	# The same brief, designed by another provider's model on the person's
+	# own key (DesignerLoop): --provider, --provider-model, --provider-base.
+	var elsewhere: String = _argument("--ask-provider")
+	if not elsewhere.is_empty():
+		await _ask_provider(elsewhere)
+
 	var ask: String = _argument("--ask")
 	if not ask.is_empty():
 		# For this run, not for the person's settings.
@@ -1830,7 +1845,7 @@ func _unthrottle_if_nobody_is_watching() -> void:
 	# this project treats as a failed deploy.
 	if OS.has_feature("web"):
 		return
-	if not _given_any(["--mcp", "--ask", "--ask-claude-code", "--bench",
+	if not _given_any(["--mcp", "--ask", "--ask-claude-code", "--ask-provider", "--bench",
 			"--shot", "--booklet", "--autobuild", "--showcase", "--out"]):
 		return
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
@@ -2021,6 +2036,100 @@ func claude_code() -> ClaudeCode:
 	return _claude_code
 
 
+## Design with [param provider]'s model on the person's own key: the app's
+## MCP tools, served in process, to a loop in the app (DesignerLoop). False
+## when it cannot start: no provider, or a design of Claude Code's or the
+## loop's already running.
+func design_with_provider(brief: String, provider: Provider) -> bool:
+	if provider == null or (_claude_code != null and _claude_code.busy()) \
+			or (_designer != null and _designer.busy()):
+		return false
+	if _designer == null:
+		_designer = DesignerLoop.new()
+		add_child(_designer)
+	# The one MCP server this app already answers with, so a call from the
+	# loop and one from Claude wait their turns in one queue.
+	var rpc: CommandSocket = _commands
+	if rpc == null and _connector != null:
+		rpc = _connector.rpc
+	if rpc == null:
+		if _designer_rpc == null:
+			_designer_rpc = CommandSocket.new()
+			_designer_rpc.assistant = _assistant
+			_designer_rpc.app = self
+			add_child(_designer_rpc)
+		rpc = _designer_rpc
+	_designer.rpc = rpc
+	_designer.provider = provider
+	# The subject, whole, for the checks and the fresh look, as Claude Code's.
+	if _assistant != null:
+		_assistant.asked(brief)
+	_designer.design(brief)
+	return true
+
+
+## The loop designing with another provider, if one has started.
+func designer() -> DesignerLoop:
+	return _designer
+
+
+## Drive another provider's model on the person's own key and print what it
+## does, as _ask_claude_code does Claude Code: --provider (a preset of
+## ProviderSettings, openai when not given), --provider-model, --provider-base
+## (another address for it: a server of the person's, or a stub), and
+## --provider-effort. The key is the one kept for that provider, else its
+## environment variable (OPENAI_API_KEY, …), and is never printed.
+func _ask_provider(brief: String) -> void:
+	var id: String = _argument("--provider")
+	if id.is_empty():
+		id = ProviderSettings.DEFAULT_PROVIDER
+	var kept: Dictionary = ProviderSettings.chosen()
+	var model: String = _argument("--provider-model")
+	if model.is_empty():
+		model = str(kept["model"]) if str(kept["provider"]) == id \
+			else str((ProviderSettings.PRESETS.get(id, {}).get("models", [""]) as Array).front())
+	var params: Dictionary = {}
+	if not _argument("--provider-effort").is_empty():
+		params["reasoning_effort"] = _argument("--provider-effort")
+	var key: String = ProviderSettings.load_key(id)
+	var provider: Provider = ProviderSettings.provider_for(id, model, key,
+		_argument("--provider-base"), params)
+	var problem: String = ProviderSettings.problem_with(id, key)
+	if provider == null or not problem.is_empty():
+		print("provider: %s" % (problem if provider != null else "no provider called %s" % id))
+		_ask_went_well = false
+		return
+	_world.clear()
+	_builder.lattice.clear()
+	_builder.forget_history()
+	_lay_baseplate()
+	_store.begin(ModelStore.name_for(brief))
+	_named_for_work = _store.title
+	print("provider %s, model %s at %s, key %s" % [id, provider.model, provider.base_url,
+		ProviderSettings.fingerprint(key)])
+	if not design_with_provider(brief, provider):
+		print("provider: could not start")
+		_ask_went_well = false
+		return
+	var started: int = Time.get_ticks_msec()
+	var at: Callable = func() -> float: return (Time.get_ticks_msec() - started) / 1000.0
+	_designer.progress.connect(func(note: String) -> void:
+		print("  [%5.1fs] %s" % [at.call(), note]))
+	_designer.said.connect(func(text: String) -> void:
+		print("  said: %s" % text.substr(0, 300)))
+	_assistant.progress.connect(func(note: String) -> void:
+		print("  [%5.1fs]   app: %s" % [at.call(), note.replace("\n", "\n             ")]))
+	var outcome: Array = await _designer.finished
+	_ask_went_well = bool(outcome[0])
+	var spend: Brain.Spend = _designer.spent()
+	print("provider ok=%s bricks=%d replies=%d calls=%d  (%.0fs)\n  %s" % [outcome[0],
+		_world.brick_count() - _store.scenery.size(), _designer.replies(), _designer.calls(),
+		at.call(), str(outcome[1]).substr(0, 600)])
+	print("  tokens fresh=%d cached=%d out=%d" % [spend.fresh, spend.cached, spend.made])
+	_camera.frame(_built_bounds())
+	await get_tree().process_frame
+
+
 ## The brief the panel last began a new design with, until it is sent.
 var _fresh_brief: String = ""
 ## The second design of the brief being designed twice, while it runs.
@@ -2191,13 +2300,13 @@ func _gate_wanted() -> bool:
 		return false
 	if OS.get_cmdline_args().has("--script"):
 		return false
-	return not _given_any(["--ask", "--ask-claude-code", "--bench", "--shot",
+	return not _given_any(["--ask", "--ask-claude-code", "--ask-provider", "--bench", "--shot",
 		"--booklet", "--autobuild", "--showcase", "--out", "--stress", "--about"])
 
 
 ## Whether the sign-in screen is up, so nothing behind it moves.
 func _gated() -> bool:
-	return _gate != null and _gate.visible
+	return (_gate != null and _gate.visible) or (_pass_gate != null and _pass_gate.visible)
 
 
 ## Somebody signed in, or out. The connector belongs to an account: put
@@ -4019,7 +4128,7 @@ func _build_ui() -> void:
 	# leaves their working model alone. Set before anything opens, or the
 	# open's own autosave gets in first. A session over MCP is somebody's:
 	# it builds in front of them.
-	_store.keeps = not _given_any(["--ask", "--ask-claude-code", "--bench",
+	_store.keeps = not _given_any(["--ask", "--ask-claude-code", "--ask-provider", "--bench",
 		"--shot", "--booklet", "--autobuild", "--showcase", "--out"])
 	# Nor a probe: every one that opened the app wrote this machine's own
 	# autosave, so the desktop app reopened whatever the last test left.
@@ -4111,6 +4220,14 @@ func _build_ui() -> void:
 	# visitor's own tab at once would end it.
 	_account.keeps = _gate_wanted() and not gate_for_probe and _viewing.is_empty()
 	add_child(_account)
+
+	# Whether this build is the account's (docs/PLANS.md §4): never from
+	# source, a probe or the web, and never for a run that keeps no session.
+	_pass = DesktopPass.new()
+	_pass.account = _account
+	_pass.checks = _account.keeps and DesktopPass.wanted()
+	_pass.released = str(BuildInfo.stamp().get("date", ""))
+	add_child(_pass)
 
 	# Models shared by link: publishing this one, and opening somebody's.
 	# A probe hands in its own, which answers without a network.
@@ -4559,6 +4676,19 @@ func _build_ui() -> void:
 			return
 		var second: BestOfTwo = _second_design(brief) if twice else null
 		_chat.follow(claude_code(), second.finished if second != null else Signal()))
+	# Or another AI on the person's own key, chosen in Settings, AI: the same
+	# brief to the app's own loop (DesignerLoop), followed the same way.
+	_chat.design_elsewhere.connect(func(brief: String) -> void:
+		_fresh_brief = ""
+		if not design_with_provider(brief, ProviderSettings.current()):
+			_chat.gave_up("Could not start: %s" % ("another design is running"
+				if ProviderSettings.current() != null else "this provider has no adapter"))
+			return
+		_chat.follow(_designer))
+	_chat.stop_elsewhere.connect(func() -> void:
+		if _designer != null:
+			_designer.stop())
+	_chat.ai_settings_wanted.connect(func() -> void: _controls.open_ai())
 
 	# Across the window rather than inside a column: a parts list is
 	# consulted and dismissed, and at four hundred pieces it wants the
@@ -4601,6 +4731,14 @@ func _build_ui() -> void:
 	_inset(_controls, ControlsDialog.WIDE, ControlsDialog.TALL)
 	_bar.controls_wanted.connect(_controls.open)
 	_controls.assistant_chosen.connect(set_assistant)
+	_controls.ai_changed.connect(_chat.refresh_designer)
+	# Design with it: the assistant's column, open, its brief to type in.
+	_controls.ai_design_wanted.connect(func() -> void:
+		if not ShellPrefs.assistant_shown():
+			set_assistant(true)
+		_chat_dock.set_open(true)
+		_chat.refresh_designer()
+		_chat.focus_brief())
 	# The strip along the bottom names what the middle button does, so
 	# it is wrong the moment somebody changes it.
 	_controls.changed.connect(func() -> void:
@@ -5156,6 +5294,10 @@ func _build_ui() -> void:
 	# Over everything else, so it is added last: nothing in the builder can
 	# be used until someone is signed in. Not over a shared model's viewer,
 	# which is for anybody with the link.
+	if _pass.checks:
+		_pass_gate = PassGate.new()
+		_pass_gate.setup(_pass)
+		$HUD.add_child(_pass_gate)
 	if _gate_wanted() and _viewing.is_empty():
 		_gate = SignInGate.new()
 		_gate.setup(_account)

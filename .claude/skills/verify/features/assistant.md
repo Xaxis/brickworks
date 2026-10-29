@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, cli:test designs on the owner's own ideas -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, cli:test designs on the owner's own ideas -->
 
 ## Sub-features
 
@@ -113,6 +113,71 @@ fixing what it got wrong.
   `Main.design_with_claude_code`). Through the relay:
   `realset.py run --via relay` (with `--no-claude-code` as a browser tab); its
   `godot_design.log` shows the own look and no `fresh eyes: N s (claude-...)`.
+- `designing with any provider on the person's key`: `src/ai/designer_loop.gd`
+  (`DesignerLoop`), `src/ai/provider.gd` (the adapter's shape and the
+  transcript), `src/ai/openai_chat.gd` (Chat Completions: OpenAI and every
+  compatible server), `src/ai/provider_settings.gd` (presets, the key kept per
+  provider on the device or for the visit, never printed). The app's own MCP
+  client for any model: `initialize`, `tools/list` and every `tools/call`
+  through `CommandSocket.answer_rpc` in process, exactly as Claude's calls run,
+  so the fresh look, jobs and one history step a call are the same. Chat
+  Completions takes no picture in a tool's answer, so a turn's pictures follow
+  its tool messages in one user message. A job is waited for by the loop
+  (`job` until it ends). `Main.design_with_provider` (refused while Claude Code
+  or another design runs); `--ask-provider=BRIEF --provider=ID
+  --provider-model=M --provider-base=URL --provider-effort=E` from a command
+  line. `provider_loop_probe` (in a window) drives a whole design against
+  `tools/provider_stub.py`, an OpenAI-compatible stub as strict as OpenAI about
+  call pairing and pictures, its first answer a 429: 6 parts built, the fresh
+  look asked with 3 pictures and answered, `stub-tower.ldr` saved, 8 requests
+  (429 then 7 answered) each with the key, the app's instructions and all 61
+  tools, view_model's picture and the look's three reaching the model, and the
+  key in no log; then a design stopped while a second stub (`--delay 4`) thinks
+  ends once, as stopped, and the next design on the quick one is answered by
+  nothing of the stopped one's; and the adapter and the key's keeping read
+  without a network.
+  A real model by hand: `OPENAI_API_KEY=… godot --path . -- --ask-provider="a
+  small red lighthouse" --provider=openai --provider-model=gpt-6.1-sol` prints
+  each call, `provider ok=… bricks=… replies=… calls=…` and the tokens.
+  `docs/PROVIDERS.md` is the research and the units left.
+- `choose the AI that designs`: `src/ui/ai_settings.gd` (`AiSettings`), a page of
+  Settings (`ControlsDialog`: the AI… button under Assistant (AI), `open_ai()`).
+  Who designs (`ProviderSettings.who`): Claude as before, or another AI on the
+  person's key, then provider, address (servers of the person's own), key
+  (secret, Show, Remember on this device, Forget, where it is kept said
+  beside it; kept on Enter or leaving the field, then cleared, its
+  fingerprint the placeholder), the provider's own list of models
+  (`Provider.models_request`/`read_models`, filtered as typed, Enter takes
+  any id), temperature and reasoning effort where the model takes them
+  (`ProviderSettings.takes_temperature`/`takes_effort`), max output, Test
+  (`src/ai/model_test.gd`: one tool call and one picture of a colour to
+  name, "tools ✓, pictures ✗: …", kept per model) and Design with it. The
+  chat panel then sends the brief to `Main.design_with_provider` and follows
+  `DesignerLoop` as it follows Claude Code (`ChatPanel.design_elsewhere`).
+  The key file is encrypted (`FileAccess.open_encrypted_with_pass`, this
+  computer's id and a salt); a plain one from before is read and encrypted.
+  `ai_settings_probe` (in a window; `PROBE_SIZE=1024x768` or `400x860` for
+  the pictures, in `shots/ai_settings/`) drives the page against
+  `tools/provider_stub.py` on 9660: the list refused without the key, a key
+  with a space refused, Show and Hide, kept and cleared, 4 models listed and
+  filtered, effort for gpt-6.1-sol and temperature for stub-sees, Test on
+  stub-sees (✓ ✓), stub-blind (✓ ✗, the brief's words) and stub-notools (✗),
+  read back as a restart reads it, Remember unticked, every control named
+  and Tab in order, Design with it designing the tower (fresh look, saved,
+  temperature and max output in every request), and the key in none of the
+  files the app wrote, its log included. The contrast and a11y names probes
+  open the page too.
+- `designing on Anthropic's Messages or Gemini's own API`:
+  `src/ai/anthropic_messages.gd` (tools as input_schema, pictures inside
+  tool_result, the reply's blocks sent back untouched for thinking's
+  signatures, cache marks, effort as output_config with adaptive thinking)
+  and `src/ai/gemini_native.gd` (functionDeclarations cut to Gemini's
+  schema subset, pictures inside functionResponse's parts, the model's parts
+  sent back for thoughtSignature, thinkingLevel). Presets `anthropic` and
+  `gemini_native`. `provider_apis_probe` (in a window) reads and writes each
+  offline, then designs, tests and lists models against the stub's
+  `/v1/messages` and `/v1beta/models/M:generateContent`, each as strict as
+  its API. Not yet run against the real APIs (no key in .env, 2026-10-29).
 - `the check by real shapes`: `src/ai/exact_check.gd` over `src/assembly/exact.gd`,
   called from `Assistant._check`, so every check, edit, submission, review and save
   has it: each part BrickNet has is its convex colliders and connector labels

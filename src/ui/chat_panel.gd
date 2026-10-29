@@ -243,12 +243,17 @@ func _build() -> void:
 	_which_key.add_theme_font_size_override("font_size", 11)
 	_which_key.modulate = Color(1, 1, 1, 0.6)
 	_which_key.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Another AI's line names its provider and model, longer than the column.
+	_which_key.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_footer.add_child(_which_key)
 
 	_out = Look.link("Change key", 11)
 	_out.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_out.tooltip_text = "Forget this key and paste another"
 	_out.pressed.connect(func() -> void:
+		if designing_elsewhere():
+			ai_settings_wanted.emit()
+			return
 		OwnKey.forget()
 		_show_for_key(OwnKey.has_key()))
 	_footer.add_child(_out)
@@ -332,6 +337,10 @@ func _build_settings() -> void:
 ## well as at the start, because choosing a model can take the effort
 ## control away.
 func _show_settings() -> void:
+	# Claude's model, effort and My Claude are Claude's: another AI has its
+	# own, in Settings, AI.
+	if _settings != null:
+		_settings.visible = not designing_elsewhere()
 	# The model and effort belong to the loop inside the app. When the
 	# person's own Claude is doing the designing, it chooses its own.
 	if _which != null and _use_claude_code != null:
@@ -359,6 +368,33 @@ var claude_code_here: bool = false
 signal design_locally(brief: String)
 var _use_claude_code: CheckBox = null
 
+## Designing with another AI on the person's own key, chosen in Settings, AI
+## (ProviderSettings.who): the brief goes to Main's DesignerLoop, as a brief
+## goes to Claude Code, and the run is followed the same way.
+signal design_elsewhere(brief: String)
+## Stop pressed on such a run's card.
+signal stop_elsewhere
+## The way to Settings, AI, from the foot of the column.
+signal ai_settings_wanted
+
+
+## True when another AI on the person's own key designs.
+func designing_elsewhere() -> bool:
+	return ProviderSettings.who() == ProviderSettings.WHO_KEY
+
+
+## Who designs changed in Settings, AI: the column follows.
+func refresh_designer() -> void:
+	_show_settings()
+	_show_for_key(OwnKey.has_key())
+
+
+## The brief's box, ready to type in.
+func focus_brief() -> void:
+	if _composer.visible:
+		# After the column has opened round it.
+		_input.grab_focus.call_deferred()
+
 
 ## True when the person has asked for their own Claude to do it.
 func designing_locally() -> bool:
@@ -376,14 +412,18 @@ func gave_up(why: String) -> void:
 ## The same three handlers the assistant's signals use, so a design run
 ## looks the same in the panel whichever side of the window it is on.
 ## [param ends] says the run's end in place of the session's own: a design
-## made twice ends when the better of the two stands (BestOfTwo).
-func follow(session: ClaudeCode, ends: Signal = Signal()) -> void:
-	if not session.progress.is_connected(_on_progress):
-		session.progress.connect(_on_progress)
-		session.said.connect(_on_said)
-	var end: Signal = session.finished if ends.is_null() else ends
-	if not ends.is_null() and session.finished.is_connected(_on_finished):
-		session.finished.disconnect(_on_finished)
+## made twice ends when the better of the two stands (BestOfTwo). The
+## session is Claude Code's, or another AI's (DesignerLoop): both say the
+## same three things.
+func follow(session: Node, ends: Signal = Signal()) -> void:
+	var progress := Signal(session, &"progress")
+	var finished := Signal(session, &"finished")
+	if not progress.is_connected(_on_progress):
+		progress.connect(_on_progress)
+		Signal(session, &"said").connect(_on_said)
+	var end: Signal = finished if ends.is_null() else ends
+	if not ends.is_null() and finished.is_connected(_on_finished):
+		finished.disconnect(_on_finished)
 	if not end.is_connected(_on_finished):
 		end.connect(_on_finished)
 
@@ -739,6 +779,8 @@ It would work in %s."
 func _why_not() -> String:
 	# Nothing to pay for: the thinking is being done by the Claude the
 	# person already has, on their own machine.
+	if designing_elsewhere():
+		return ProviderSettings.not_ready()
 	if designing_locally():
 		return ""
 	if OwnKey.has_key():
@@ -778,6 +820,10 @@ func _on_spent(model_id: String, tokens: Brain.Spend) -> void:
 ## Told whether there is a key rather than asking, so a probe can see
 ## both layouts without touching the key this machine holds.
 func _show_for_key(has_key: bool) -> void:
+	# Another AI chosen in Settings, AI, designs with its own key: the brief
+	# box is for it, and Claude's key form and connector stand aside.
+	var elsewhere: bool = designing_elsewhere()
+	has_key = has_key or elsewhere
 	# On a desktop with Claude Code the brief box stays: "My Claude" sits
 	# in it, and is a way to design that needs no key.
 	_composer.visible = has_key or claude_code_here
@@ -813,7 +859,20 @@ func _show_for_key(has_key: bool) -> void:
 	_suggestions.visible = has_key and not talking
 	_status.text = ""
 	_send.disabled = _working or not (has_key or designing_locally())
-	if has_key:
+	_out.text = "Change" if elsewhere else "Change key"
+	_out.tooltip_text = ("Settings, AI: who designs, the provider, model and key" if elsewhere
+		else "Forget this key and paste another")
+	if elsewhere:
+		var kept: Dictionary = ProviderSettings.chosen()
+		var id: String = str(kept["provider"])
+		var key: String = ProviderSettings.load_key(id)
+		_which_key.text = "%s · %s%s" % [str(ProviderSettings.PRESETS[id]["name"]),
+			str(kept["model"]), " · your key %s" % ProviderSettings.fingerprint(key)
+			if not key.is_empty() else ""]
+		var why: String = ProviderSettings.not_ready()
+		_send.disabled = _working or not why.is_empty()
+		_status.text = why
+	elif has_key:
 		# No count to show: Anthropic is billing them directly and we
 		# could not count it if we wanted to.
 		_which_key.text = "your own key · %s" % OwnKey.fingerprint()
@@ -901,7 +960,8 @@ func _on_send() -> void:
 	var fresh: bool = not about and (assistant == null or not assistant.has_conversation())
 	if fresh:
 		designing.emit(text)
-	_open_run(fresh)
+	_open_run(fresh, (func() -> void: stop_elsewhere.emit()) if designing_elsewhere()
+		else Callable())
 	_show_sketch_first()
 	# A brief typed instead of choosing: the cards still showing are past.
 	for button: Button in _sketch_buttons:
@@ -912,6 +972,10 @@ func _on_send() -> void:
 		_run_title.text = "Sketching three ideas"
 		_run_hint.text = _sketch_expect()
 
+	if designing_elsewhere():
+		design_elsewhere.emit(Assistant.selection_brief(text, count) if about
+			else Assistant.sketch_brief(text) if sketching else text)
+		return
 	if designing_locally():
 		design_locally.emit(Assistant.selection_brief(text, count) if about
 			else Assistant.sketch_brief(text) if sketching else text)
@@ -1155,6 +1219,9 @@ func _open_run(fresh: bool, stop: Callable = Callable()) -> void:
 
 ## How long a design takes at the chosen setting, said plainly.
 func _expect() -> String:
+	if designing_elsewhere():
+		return ("A design is 70 to 200 tool calls; how long that takes is the model's and "
+			+ "the provider's. You can keep building, or look around, while it works.")
 	var effort: String = "high"
 	if _how_hard != null and _how_hard.visible and _how_hard.selected >= 0:
 		effort = _how_hard.get_item_text(_how_hard.selected).to_lower()
@@ -1337,6 +1404,8 @@ func _follow_the_card() -> void:
 func controls_by_name() -> Dictionary:
 	var named: Dictionary = {"brief": _input, "build": _send,
 		"change_key": _out, "sketch_first": _sketch_first}
+	if designing_elsewhere():
+		named["ai_change"] = _out
 	# Each sketch's button, by its card: sketch_1 to sketch_3.
 	for button: Button in _sketch_buttons:
 		if is_instance_valid(button) and not button.disabled:
@@ -1384,6 +1453,10 @@ func _on_finished(ok: bool, summary: String) -> void:
 	var on_card: bool = _run != null and is_instance_valid(_run)
 	if summary == "cancelled":
 		_close_run("Stopped", "Stopped. What was there before is back.")
+	elif summary == "stopped":
+		# Another AI's run: each call it made is a step of its own in the
+		# history, so what it built stays, and undo takes it back.
+		_close_run("Stopped", "Stopped. What it built so far stays; undo takes it back.")
 	else:
 		_close_run("Done" if ok else "Did not finish", _sentence(summary), ok)
 	# A refused key will be refused again. Forget it and ask for another,

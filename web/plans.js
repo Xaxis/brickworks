@@ -1,9 +1,9 @@
 // The interest form on /plans (web/plans.html): "Tell me when it's ready"
-// on Plus or Creator opens it with that plan chosen, yearly first, and the
-// address of whoever is signed in filled in. Sent to /api/plans, which
-// answers the same words for a first entry and a second (a second for the
-// same plan changes the first), and Take it off deletes that address's
-// entries, every plan. Nothing typed is shown back as markup.
+// on Pro opens it for that plan, yearly first, and the address of whoever
+// is signed in filled in. Sent to /api/plans, which answers the same words
+// for a first entry and a second (a second for the same plan changes the
+// first), and Take it off deletes that address's entries, every plan.
+// Nothing typed is shown back as markup.
 import { email, madeUp } from "/account.js";
 
 const $ = (id) => document.getElementById(id);
@@ -12,13 +12,15 @@ const form = $("interest-form");
 const said = $("interest-said");
 const send = $("interest-send");
 const forget = $("interest-forget");
+// The plan the form was opened for: Pro, the one there is.
+let chosen = "pro";
 
 /// The form, fresh, for [plan].
 function open(plan) {
   form.hidden = false;
   $("interest-done").hidden = true;
   said.textContent = "";
-  $("interest-plan").value = plan;
+  chosen = plan;
   const mine = email();
   if (!$("interest-email").value && mine && !madeUp(mine)) $("interest-email").value = mine;
   dialog.showModal();
@@ -62,7 +64,7 @@ async function ask(body) {
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
-  ask({ email: $("interest-email").value, plan: $("interest-plan").value,
+  ask({ email: $("interest-email").value, plan: chosen,
     billing: $("interest-billing").value, note: $("interest-note").value });
 });
 forget.addEventListener("click", () => ask({ email: $("interest-email").value, forget: true }));

@@ -1,5 +1,5 @@
-// Plans, coming soon (web/plans.html, web/plans.js, api/plans.js,
-// supabase/plan_interest.sql), in real browsers.
+// Plans: Free, and Pro coming soon (web/plans.html, web/plans.js,
+// api/plans.js, supabase/plan_interest.sql), in real browsers.
 //
 //   BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/plans_flow.mjs --url=<preview> --out=DIR
 //   node tools/web/plans_flow.mjs --stand-in --out=DIR
@@ -10,18 +10,20 @@
 // table, so plan_interest.sql applied; before it the form says it is not
 // open yet, and the flow says so and fails.
 //
-//   1. /plans at 390 and 1400 px, light and dark: Free, Plus and Creator
-//      with $0, $48 a year or $5 a month, and $96 or $10; Plus and Creator
-//      Coming soon, each with Tell me when it's ready; education free; what
-//      Free keeps; nothing sideways; the footer links /plans; the privacy
-//      page says what the form keeps.
-//   2. At 390 px, Plus's button opens the form with Plus and yearly chosen.
-//      An address that is not one is refused in words, and the API refuses
-//      one sent to it straight (422), and a plan off its list.
+//   1. /plans at 390 and 1400 px, light and dark: Free and Pro with $0,
+//      and $8 a month or $80 a year; Pro Coming soon, with Tell me when
+//      it's ready; what an AI build is; accounts that exist keep
+//      everything; education free; what stays free; nothing sideways; the
+//      footer links /plans; the privacy page says what the form keeps.
+//   2. At 390 px, Pro's button opens the form with yearly chosen. An
+//      address that is not one is refused in words, and the API refuses
+//      one sent to it straight (422), and a plan off its list (Plus, now).
 //   3. A test address of ours (delivered+plans-<random>@resend.dev) for
-//      Plus, yearly: the thanks, and its row in the table.
+//      Pro, yearly: the thanks, and its row in the table, kept as 'plus'
+//      (api/plans.js PLANS: the table allows Plus and Creator, which both
+//      mean Pro now).
 //   4. Sent again, monthly, with a line: the same thanks, and still one row
-//      for Plus, now monthly with the line.
+//      for Pro, now monthly with the line.
 //   5. Take it off: its words, and no row left. Whatever happens, the
 //      address is forgotten at the end: only ours, nothing else touched.
 //
@@ -102,22 +104,25 @@ try {
         soon: Boolean(one.querySelector(".pill.new")?.textContent.includes("Coming soon")),
         ask: one.querySelector("[data-interest]")?.textContent.trim() || "",
         top: Math.round(one.getBoundingClientRect().top) })));
-      check(`${at}: Free, Plus and Creator (${tiers.map((one) => one.name).join(", ")})`,
-        tiers.map((one) => one.name).join() === "Free,Plus,Creator");
-      check(`${at}: $0 for good, $48 a year or $5 a month, $96 a year or $10 a month`,
-        tiers[0]?.price === "$0 for good" && tiers[1]?.price === "$48 a year, or $5 a month"
-        && tiers[2]?.price === "$96 a year, or $10 a month");
-      check(`${at}: Plus and Creator marked Coming soon, Free not`,
-        !tiers[0]?.soon && tiers[1]?.soon && tiers[2]?.soon);
-      check(`${at}: Plus and Creator each have Tell me when it's ready`,
-        /Tell me when it.s ready/.test(tiers[1]?.ask) && /Tell me when it.s ready/.test(tiers[2]?.ask) && !tiers[0]?.ask);
-      check(`${at}: the three side by side on a wide screen, one under another on a phone`,
-        width < 600 ? tiers[0].top < tiers[1].top && tiers[1].top < tiers[2].top
-          : tiers[0].top === tiers[1].top && tiers[1].top === tiers[2].top);
+      check(`${at}: Free and Pro (${tiers.map((one) => one.name).join(", ")})`,
+        tiers.map((one) => one.name).join() === "Free,Pro");
+      check(`${at}: $0, and $8 a month or $80 a year (${tiers.map((one) => one.price).join(" | ")})`,
+        tiers[0]?.price === "$0" && tiers[1]?.price === "$8 a month, or $80 a year");
+      check(`${at}: Pro marked Coming soon, Free not`, !tiers[0]?.soon && tiers[1]?.soon);
+      check(`${at}: Pro has Tell me when it's ready, Free not`,
+        /Tell me when it.s ready/.test(tiers[1]?.ask) && !tiers[0]?.ask);
+      check(`${at}: the two side by side on a wide screen, one under the other on a phone`,
+        width < 600 ? tiers[0].top < tiers[1].top : tiers[0].top === tiers[1].top);
       const body = await words(page, "main");
+      check(`${at}: what an AI build is`, /An AI build is an AI working on a model/.test(body));
+      check(`${at}: accounts that exist keep everything`,
+        /Every account made before 29 October 2026, when this page changed, gets Pro, free and with no end date/.test(body));
       check(`${at}: education is free`, /Education is free/.test(body));
-      check(`${at}: what Free keeps: free, offline, nothing taken away`,
-        /The app is free\./.test(body) && /It works offline\./.test(body) && /Nothing it does today will be taken away\./.test(body));
+      check(`${at}: what stays free: the web app, by hand, everything else, nothing taken out`,
+        /What stays free/.test(body) && /It takes nothing out of Free/.test(body) && /The web app\./.test(body)
+        && /Building by hand, without a limit\./.test(body) && /Everything else the app does today\./.test(body));
+      check(`${at}: no Claude builds, and no free desktop`,
+        !/Claude build/i.test(body) && !/desktop app (is|stays) free(?! to download)/i.test(body));
       check(`${at}: nothing on the page takes money (no checkout, no card form)`,
         !(await page.$('input[autocomplete^="cc-"], [href*="checkout"], [href*="stripe"]')));
       const wide = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -133,7 +138,7 @@ try {
     await page.goto(`${site}/privacy`, { waitUntil: "load" });
     const plans = await words(page, "#plans + p");
     check("/privacy says what the form keeps, why, and how to take it off",
-      /email is kept with the plan/.test(plans) && /only to write to you once/.test(plans) && /take it off/.test(plans));
+      /hear when Pro opens, your email is kept with/.test(plans) && /only to write to you once/.test(plans) && /take it off/.test(plans));
     await made.close();
   }
 
@@ -155,9 +160,9 @@ try {
     return { status: answer.status(), thanks: await words(page, "#interest-thanks"), said: await words(page, "#interest-said"),
       done: await page.isVisible("#interest-done") };
   };
-  check("Plus's button opens the form", await open("plus"));
-  check("with Plus and yearly chosen", await page.inputValue("#interest-plan") === "plus"
-    && await page.inputValue("#interest-billing") === "yearly");
+  check("Pro's button opens the form", await open("pro"));
+  check("with yearly chosen, and no plan to choose", await page.inputValue("#interest-billing") === "yearly"
+    && !(await page.$("#interest-plan")));
   await page.waitForTimeout(400); // past the dialog's rise (--motion-open)
   await page.screenshot({ path: path.join(out, "plans_390_form.png") });
 
@@ -168,47 +173,47 @@ try {
   const straight = await page.evaluate(async () => {
     const ask = (body) => fetch("/api/plans", { method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify(body) }).then(async (r) => [r.status, (await r.json().catch(() => ({}))).error || ""]);
-    return { email: await ask({ email: "nobody@", plan: "plus", billing: "yearly" }),
-      plan: await ask({ email: "delivered@resend.dev", plan: "pro", billing: "yearly" }),
-      note: await ask({ email: "delivered@resend.dev", plan: "plus", billing: "yearly", note: "x".repeat(201) }) };
+    return { email: await ask({ email: "nobody@", plan: "pro", billing: "yearly" }),
+      plan: await ask({ email: "delivered@resend.dev", plan: "plus", billing: "yearly" }),
+      note: await ask({ email: "delivered@resend.dev", plan: "pro", billing: "yearly", note: "x".repeat(201) }) };
   });
   check(`the API refuses a bad address (${straight.email.join(" ")}), a plan off its list (${straight.plan.join(" ")}) `
     + `and a line past 200 (${straight.note[0]})`,
     straight.email[0] === 422 && straight.plan[0] === 422 && straight.note[0] === 422);
 
-  // 3. Our test address, Plus, yearly.
+  // 3. Our test address, Pro, yearly.
   await page.fill("#interest-email", EMAIL);
   const first = await send();
   if (first.status === 503) {
     check(`the form is open (it said ${first.status}: "${first.said}": supabase/plan_interest.sql is not applied)`, false);
   } else {
-    check(`sent for Plus, yearly: the thanks ("${first.thanks}")`, first.status === 200 && first.done
+    check(`sent for Pro, yearly: the thanks ("${first.thanks}")`, first.status === 200 && first.done
       && /write to you once/.test(first.thanks));
     await page.waitForTimeout(400);
     await page.screenshot({ path: path.join(out, "plans_390_thanks.png") });
     const kept = await rows(EMAIL);
     if (kept) {
-      check(`its row is in the table (${JSON.stringify(kept.map(({ plan, billing, note }) => [plan, billing, note]))})`,
+      check(`its row is in the table, Pro kept as plus (${JSON.stringify(kept.map(({ plan, billing, note }) => [plan, billing, note]))})`,
         kept.length === 1 && kept[0].plan === "plus" && kept[0].billing === "yearly" && kept[0].note === "");
     } else console.log("  (the stand-in: no table to read)");
 
     // 4. Again, monthly with a line: changed, not added.
     await page.click("#interest-done [data-close]");
-    check("the form opens again for a second entry", await open("plus"));
+    check("the form opens again for a second entry", await open("pro"));
     await page.selectOption("#interest-billing", "monthly");
     await page.fill("#interest-note", "Monthly suits me better");
     const again = await send();
     check(`sent again: the same thanks (${again.status})`, again.status === 200 && again.done && again.thanks === first.thanks);
     const changed = await rows(EMAIL);
     if (changed) {
-      check(`still one row for Plus, now monthly with the line (${JSON.stringify(changed.map(({ plan, billing, note }) => [plan, billing, note]))})`,
+      check(`still one row for Pro, now monthly with the line (${JSON.stringify(changed.map(({ plan, billing, note }) => [plan, billing, note]))})`,
         changed.length === 1 && changed[0].plan === "plus" && changed[0].billing === "monthly"
         && changed[0].note === "Monthly suits me better" && changed[0].updated_at > changed[0].created_at);
     }
 
     // 5. Take it off.
     await page.click("#interest-done [data-close]");
-    await open("plus");
+    await open("pro");
     const gone = await send("#interest-forget");
     check(`take it off: its words ("${gone.thanks}")`, gone.status === 200 && gone.done && /not on the list/.test(gone.thanks));
     const left = await rows(EMAIL);

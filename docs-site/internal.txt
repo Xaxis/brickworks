@@ -1,0 +1,57 @@
+# What the feature map lists that a person using Brickworks never meets, so
+# no docs page covers it: how the project is tested, measured, built and
+# released, and the owner's own pages. tools/docs_site.py --check fails on a
+# feature that is in no docs page and not here. One a line: a feature id, or
+# entry:<a glob of where it lives>, then two spaces, a # and why.
+#
+# A tool a person does run (the MCP bridge, brick.py, the app's own command
+# line) is in the docs, not here.
+
+entry:src/dev/*  # probes and dumps: how the app is tested (tools/check.sh)
+entry:tools/web/*  # browser flows and checks, run against a deployment by the release
+entry:tools/bench/*  # the design benches: the project's measures of Claude's designs
+entry:tools/release/*  # how a release is made, checked and published
+entry:tools/release.py  # building, smoking and publishing the desktop packages
+entry:export_presets.cfg  # the desktop exports the release makes
+entry:tools/viewer/*  # building and checking the card Claude shows (the card itself is in connector.md)
+entry:tools/storage_ldraw.py  # an upload to the parts store, the project's own
+entry:tools/storage_library.py  # an upload to the parts store, the project's own
+entry:tools/storage_parts.py  # an upload to the parts store, the project's own
+entry:tools/build_meshes.py  # the parts pipeline: the meshes the app ships
+entry:tools/build_exact.py  # the parts pipeline: the exact shapes the checks read
+entry:tools/build_custom.py  # the parts pipeline: the project's own made parts
+entry:tools/update_parts.py  # the parts pipeline: a new LDraw library
+entry:tools/refresh_catalogue.py  # the parts pipeline: the catalogue the app ships
+entry:tools/web_pack.py  # the parts pipeline: the parts packed for the web
+entry:tools/library_build.py  # the model library's index, built for the app
+entry:tools/collection_data.py  # set inventories, built for My collection
+entry:tools/gears.py  # a check of the gear table the app ships
+entry:tools/apply_sql.mjs  # the owner's: changes to the live database
+entry:tools/connection_audit.py  # a measure of joints in real sets, for the project
+entry:tools/hidden_colours_audit.py  # a measure of hidden colours in real sets, for the project
+entry:tools/style.py  # a measure of how models are built, for the design work
+entry:tools/minifig.py  # a measure of minifigure offsets, for the pipeline
+entry:tools/steps_score.py  # a measure of build steps against real sets' authors
+entry:tools/design.py  # a design run from a shell, for the project's benches
+entry:tools/mcp_check.py  # a check of the app over MCP, for the project
+entry:tools/plan_interest.py  # the owner's: counts of interest in plans
+entry:tools/plan_diff.py  # a check of the project's plans across checkouts
+entry:tools/windows_check.py  # a check of the desktop's windows, for the release
+entry:tools/site.py  # puts the website together at deploy (the pages are documented)
+entry:tools/docs_site.py  # makes these pages at deploy, and checks them
+entry:tools/deploy.sh  # the web build and its deploy, the project's own
+api:GET /api/admin  # the owner's admin page's API
+api:GET /api/otp/canary  # a daily check that sign-in mail is delivered, run by the host
+ui:admin page  # the owner's own page
+ui:choosing this week's pick  # the owner's, on the admin page (the pick itself is in gallery.md)
+ui:setting the monthly challenge  # the owner's, on the admin page (the challenge is in challenges.md)
+ui:component kit  # the site's controls as the project builds pages with them
+ui:design system  # the site's styles as the project builds pages with them
+lib:keep a run to a list of parts  # a flag the design bench starts the app with
+lib:the Admission client  # how the site will ask what a plan allows, switched off (plans.md)
+api:GET /api/plans?op=download  # Pro's downloads, switched off until Pro opens: the page keeps today's links (plans.md says so at launch)
+api:GET /api/plans?op=entitlement  # the desktop's pass, switched off until Pro opens; no build asks for it yet
+cli:desktop token key  # the owner's key tool for Pro's desktop pass, run once at go-live (docs/RELEASING.md)
+lib:the desktop pass  # checks nothing until Pro opens: the app carries no key yet
+lib:the desktop's files and token  # Pro's signed downloads and pass, switched off until Pro opens
+ui:the Pro screen on the desktop  # shown only once Pro is open and a build is past what was paid for; documented at launch

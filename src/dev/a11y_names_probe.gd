@@ -13,10 +13,10 @@
 ## more than one line is counted as no name.
 ##
 ## It walks the whole scene from launch, then every dialog and panel the
-## menus open, the bin's tabs, a selection's properties and the Settings,
-## and counts each visible control with no name once, however often it was
-## seen. Every menu's every item is read too, open or not. It fails with
-## the count and a line for each, and passes at none.
+## menus open, the bin's tabs, a selection's properties and the Settings
+## with its AI page, and counts each visible control with no name once,
+## however often it was seen. Every menu's every item is read too, open or
+## not. It fails with the count and a line for each, and passes at none.
 extends SceneTree
 
 var _failures: int = 0
@@ -90,6 +90,16 @@ func _run() -> void:
 			openers.assign(arg.trim_prefix("openers=").split(",", false))
 	for name: String in openers:
 		await _open_and_walk(name)
+	# Settings, AI, its whole form shown: another AI chosen.
+	if openers.has("settings"):
+		var settings: ControlsDialog = _main.get("_controls")
+		settings.open_ai()
+		settings.ai.who_key.button_pressed = true
+		await _frames(12)
+		_walk_all("settings, AI")
+		settings.ai.who_claude.button_pressed = true
+		settings.visible = false
+		await _frames(4)
 
 	var count: int = _unnamed.size()
 	if count > 0:
