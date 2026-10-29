@@ -1382,8 +1382,9 @@ async function collectionsPage(request, response) {
     : `<p class="state" id="collections-empty">No public collections yet. Anyone can make one: on a model's page, `
       + "press Save to put it in a collection, then make the collection public on your profile. It is listed here "
       + "once a model in it is in the gallery.</p>";
-  const main = `<div class="wrap page collections" data-sort="${sort}" data-page="${at}">
-  <h1>Collections</h1>
+  const main = `<div class="wrap wide page collections" data-sort="${sort}" data-page="${at}">
+  <div class="page-head"><h1>Collections</h1>
+  <p class="lede">Models put together by the people who build them. Follow one to see what goes in it next.</p></div>
   <nav class="tabs" aria-label="Which collections first">${tab("recent", "Recently added to")}${tab("followed", "Most followed")}</nav>
   ${rows.length ? `<div class="list-cards" id="collections">${rows.map((list) => directoryCardHtml(list, covers)).join("")}</div>` : empty}
   ${pager}

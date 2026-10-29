@@ -219,8 +219,9 @@ is on the page, `hidden`, for the script to show.
   row of models; and for the header and the footer on every page, so the
   mark and the account sit where they do on the gallery. Nothing was wider
   than 1,140 px, 59% of a 1920 window, four cards to a row (site273). A
-  model's page: from 1200 px its column is 420 px and its picture the
-  rest; on a phone (under 600 px) its picture is square, the model drawn
+  model's page: from 1200 px its column is 452 px, room for its action
+  bar in one row inside the panel it is from 900 px (site357), and its
+  picture the rest; on a phone (under 600 px) its picture is square, the model drawn
   as large as its width lets it (`web/model-page.js` `fitPicture`, by
   transform alone, so nothing shifts).
 - **Page**: `main.page` (or a `.wrap.page-head` first under `<main>`): the
@@ -333,7 +334,25 @@ is on the page, `hidden`, for the script to show.
   alone, its sheet with no embed; its facts as pills, the theme and year
   `a.pill` links back to the shelf; About and Parts its only tabs; more of
   its theme as `.models.row`. `/library` is the gallery's layout (`.tabs`
-  with LDraw library marked, Filters, a `.pills.row` of themes).
+  with LDraw library marked, then the bar of filters: Filters and a
+  `.pills.row` of themes).
+- **A page to browse** (the gallery and `/library`, site357): its head
+  (`.gallery-head`, `.library-head`), the title and a `.lede` under it
+  with the search beside them, which "/" focuses from anywhere but a
+  field (`web/browse.js`, said by a `kbd.hint` on the field until it is
+  used; under 600 px the lede and the hint are left out and the search
+  sits beside the title); the tabs; then **the bar of filters**
+  (`.toolbar`), Filters and the kinds or themes as a `.pills.row`, sticky
+  under the header over the whole list, on the page's ground carried to
+  the window's edges, with the header's edge under it once stuck
+  (`data-stuck`), its row of pills fading out at its edge while there are
+  more (`data-end`). Under it, `#chips`: each filter that is on (a tag,
+  an order other than the tabs', a size, how it was made, a box ticked)
+  a pill to let go of, and Clear all once there are two. A search asks
+  200 ms after typing stops, and the cards it will replace step back
+  while it is asked (`[data-gallery="asking"]`). Its styles are each
+  page's own `<style>`, the same in both, so neither waits on a sheet
+  more before it is drawn.
 - **Toast**: `web/kit.js` `toast("Link copied")`: one line at the foot of
   the screen, in the page's colours the other way round, read out
   (`role="status"`, on the page empty from its load, since a screen

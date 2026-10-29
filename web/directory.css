@@ -13,7 +13,7 @@
   (.wrap.wide): from 1200 px the column is 420 px and the picture takes
   the rest, 60% of a 1920 window.
 */
-.model-page { padding: 22px 0 72px; }
+.model-page { padding: var(--s-5) 0 72px; }
 .crumbs { font-size: var(--t-small); color: var(--ink-faint); margin: 0 0 14px; }
 .crumbs a { color: var(--ink-soft); }
 .model-page .top {
@@ -22,9 +22,21 @@
 	grid-template-areas: "picture side" "rest side";
 }
 .model-page .media { grid-area: picture; min-width: 0; }
-.model-page .side { grid-area: side; position: sticky; top: 84px; min-width: 0; }
+.model-page .side { grid-area: side; position: sticky; top: calc(var(--head-h) + var(--s-4)); min-width: 0; }
+/* On a laptop the column is a panel of its own beside the picture, as a
+   product's page has its buying box: the name, who made it, the ways in,
+   the action bar and its facts, apart from the page under it. */
+@media (width >= 900px) {
+	.model-page .side {
+		padding: var(--s-4); border: 1px solid var(--line); border-radius: var(--radius);
+		background: var(--panel); box-shadow: var(--shadow);
+	}
+	.model-page .side .facts { padding-top: var(--s-4); border-top: 1px solid var(--line); }
+}
+/* From 1200 px the panel's words have the room the action bar needs in one row. */
+@media (width >= 1200px) { .model-page .side { padding: var(--s-5); } }
 .model-page .rest { grid-area: rest; min-width: 0; }
-@media (width >= 1200px) { .model-page .top { grid-template-columns: minmax(0, 1fr) 420px; } }
+@media (width >= 1200px) { .model-page .top { grid-template-columns: minmax(0, 1fr) 452px; } }
 @media (width < 900px) {
 	.model-page { padding-top: 12px; }
 	.model-page .crumbs { margin-bottom: 10px; }
@@ -40,7 +52,9 @@
 	border: 1px solid var(--line); background: var(--picture-ground); aspect-ratio: 1200 / 630;
 	box-shadow: var(--shadow); text-decoration: none; color: inherit;
 }
-.model-page .picture img { position: relative; width: 100%; height: 100%; object-fit: cover; }
+.model-page .picture img { position: relative; width: 100%; height: 100%; object-fit: cover; transition: transform 320ms var(--ease); }
+@media (hover: hover) { .model-page a.picture:hover img { transform: scale(1.02); } }
+@media (prefers-reduced-motion: reduce) { .model-page .picture img { transition: none; } .model-page a.picture:hover img { transform: none; } }
 /* Until its picture is drawn the frame says it is coming, as a card with
    none says so (site.css .model .frame.none), and the picture lands over
    it: the first view right after publishing was a blank grey frame while
@@ -53,8 +67,14 @@
 .model-page .picture .waiting[hidden] { display: none; }
 .model-page .picture .none { display: grid; place-items: center; height: 100%; color: var(--ink-faint); }
 .model-page .picture .go {
-	position: absolute; right: 14px; bottom: 14px; padding: 8px 14px; border-radius: var(--r-2);
+	position: absolute; right: var(--s-4); bottom: var(--s-4); display: inline-flex; align-items: center; gap: var(--s-2);
+	min-height: 40px; padding: 0 var(--s-4); border-radius: var(--r-pill);
 	background: var(--accent); color: var(--on-accent); font-weight: 650; font-size: var(--t-small);
+	box-shadow: 0 6px 18px -6px var(--shade);
+}
+/* A turning cube before its words: the picture is a way into the model in 3D. */
+.model-page .picture .go::before {
+	content: ""; width: 9px; height: 9px; border: 2px solid currentColor; border-radius: 0; transform: rotate(45deg);
 }
 .model-page .picture:hover .go { filter: brightness(1.07); }
 
@@ -94,7 +114,7 @@
 
 /* The page's tabs (api/share.js pageTabs): the kit's .tabs, kept on screen
    under the header as the page scrolls past its parts. */
-.model-page .page-tabs { position: sticky; top: 61px; z-index: 5; background: var(--bg); margin-bottom: var(--s-2); }
+.model-page .page-tabs { position: sticky; top: var(--head-h); z-index: 5; background: var(--bg); margin: var(--s-2) 0 var(--s-2); }
 .model-page .page-tabs.loose { background: none; }
 /* Gone to: clear of the tabs, beyond the header's own scroll-padding. */
 .model-page .rest > section { scroll-margin-top: 44px; }
@@ -144,7 +164,8 @@
 .model-page .next h2 { margin: 0 0 12px; overflow-wrap: anywhere; }
 .model-page .next h2 a { color: inherit; }
 
-.model-page section { margin-top: 34px; max-width: 72ch; }
+.model-page section { margin-top: var(--s-7); max-width: 72ch; }
+.model-page .rest > section + section { padding-top: var(--s-6); border-top: 1px solid var(--line); }
 .model-page .rest > section:first-of-type { margin-top: 12px; }
 /* Gone to from the action bar: clear of the header, which stays on screen. */
 .model-page section { scroll-margin-top: 84px; }
@@ -307,7 +328,9 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 .model-page .comments { max-width: 72ch; }
 /* The comments' place while they are asked (api/share.js commentsSection),
    as tall as the section drawn with none yet and the box (site275). */
-.model-page .comments-hold { display: flex; flex-direction: column; gap: 8px; margin-top: 34px; padding-bottom: 40px; max-width: 72ch; }
+.model-page .comments-hold { display: flex; flex-direction: column; gap: 8px; margin-top: var(--s-7); padding-bottom: 40px; max-width: 72ch; }
+/* Under its line as the section it holds the place of will be. */
+.model-page .rest > section + .comments-hold { padding-top: var(--s-6); border-top: 1px solid var(--line); }
 .model-page .comments-hold .bone { margin: 0; }
 .model-page .comments-hold .title { width: 8em; height: 1.3em; font-size: var(--t-h3); }
 .model-page .comments-hold .box { width: 100%; height: calc(3lh + 22px); border-radius: var(--control-radius); }
@@ -662,3 +685,9 @@ dialog.share-sheet { width: min(520px, calc(100vw - 32px)); }
 .share-sheet .copy-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-2) var(--s-3); margin: 0 0 var(--s-4); }
 .share-sheet .copy-row label { flex: 1 1 16em; margin: 0; }
 .share-sheet .actions { margin-top: var(--s-4); }
+
+/* The directory of collections as wide as the gallery it is a tab of, its
+   title and a line about it over the tabs. */
+.collections .page-head { margin-bottom: var(--s-4); }
+.collections .page-head h1 { margin: 0; letter-spacing: -0.03em; }
+.collections .page-head .lede { margin-top: var(--s-2); color: var(--ink-soft); }
