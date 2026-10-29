@@ -106,7 +106,7 @@ lib:angled sections
 
 ## Undo and history {#undo}
 
-[[Ctrl+Z]] undoes and [[Ctrl+Shift+Z]] redoes. **History** on the toolbar (or **Edit › History**) lists the steps you can go back to. Whatever Claude builds is one undo step too.
+[[Ctrl+Z]] undoes and [[Ctrl+Shift+Z]] redoes. **History** on the toolbar (or **Edit › History**) lists the steps you can go back to. Whatever an AI builds is one undo step too.
 
 <!-- covers
 ui:undo and redo

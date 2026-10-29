@@ -50,7 +50,7 @@ lib:model versions
 
 ## The library {#library}
 
-**File › Library…** (or **Open › From the library…**) opens any of LDraw's models of real sets, or a model the community shared. Search it, filter it, and open one in a new tab or window. See [The LDraw library](/docs/ldraw-library).
+**File › Library…** (or **Open › From the library…**) opens any of LDraw's models of real sets, or a model the community shared. Search it as you type, filter it, and open one in a new tab or window. See [The LDraw library](/docs/ldraw-library).
 
 <!-- covers
 ui:library

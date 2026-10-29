@@ -4,7 +4,7 @@ nav: Connect Claude
 description: The two ways to have Claude design in Brickworks, your Claude plan or your own API key, set up in a minute.
 ---
 
-Building by hand needs nothing but an account, and there is no AI in the window until you ask for it. To have Claude design, turn the assistant on and bring your own Claude. Brickworks bills nothing for it.
+Building by hand needs nothing but an account, and there is no AI in the window until you ask for it. To have Claude design, turn the assistant on and bring your own Claude. Brickworks bills nothing for Claude's work: once Pro opens, Free has 10 AI builds a month and Pro no limit ([Plans](/docs/plans)).
 
 ## Turn the assistant on {#assistant-on}
 
@@ -42,6 +42,10 @@ Then `/mcp` in Claude Code and **Authenticate**. More in [Claude Code](/docs/cla
 3. Describe what you want and press **Build it**. Choose the model and how hard it thinks.
 
 Measured at the default setting, a small house took 11 minutes and $2.40, and a castle 45 minutes and $5 to $10. Medium effort costs about a third. More in [Designing with AI](/docs/ai).
+
+## Another AI {#other-ai}
+
+Not Claude? **Tools › Settings…**, **AI…** sets another AI on your own key, from OpenAI, Google Gemini, OpenRouter and others: see [Another AI on your own key](/docs/ai#other-ais).
 
 > [!NOTE]
 > The key stays in your browser and is sent only to Anthropic. The page's security policy refuses to send anything anywhere but its own short list, so a key has nowhere else to go.

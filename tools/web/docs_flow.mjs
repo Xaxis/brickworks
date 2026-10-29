@@ -7,7 +7,8 @@
 //
 //   1. /docs and every page its pages list names answer 200, each with its
 //      own title and canonical link; on a deployment /docs/<page>.html
-//      answers 308 to /docs/<page> and /docs/ to /docs.
+//      answers 308 to /docs/<page>, /docs/ to /docs, and a page that moved
+//      (docs-site/_moved.json) 308 to where it went.
 //   2. Every link on every docs page to the site answers (200 after its
 //      redirects), and every #fragment is an id on its page.
 //   3. /docs and a long page in light and dark at 390 and 1400 px: drawn
@@ -23,8 +24,9 @@
 // Pictures in --out: docs_<width>_<theme>.png and search_<width>_<theme>.png.
 import { launch } from "./browser.mjs";
 import { serveDir } from "./static_server.mjs";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -83,6 +85,12 @@ check(`all ${pages.length} pages answer 200 with their own title and canonical l
 if (remote) {
   const old = await get("/docs/shortcuts.html", "manual");
   check("/docs/shortcuts.html answers 308 to /docs/shortcuts", old.status === 308 && old.location.endsWith("/docs/shortcuts"), `${old.status} ${old.location}`);
+  // A page that moved (docs-site/_moved.json) lands at its new address.
+  const moved = JSON.parse(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../docs-site/_moved.json"), "utf8"));
+  for (const [was, now] of Object.entries(moved).filter(([k]) => !k.startsWith("$"))) {
+    const answer = await get(`/docs/${was}`, "manual");
+    check(`/docs/${was}, moved, answers 308 to /docs/${now}`, answer.status === 308 && answer.location.endsWith(`/docs/${now}`), `${answer.status} ${answer.location}`);
+  }
   const slash = await get("/docs/", "manual");
   check("/docs/ answers 308 to /docs", slash.status === 308 && slash.location.replace(site, "").replace("https://brickworks.diy", "") === "/docs", `${slash.status} ${slash.location}`);
 }
@@ -114,7 +122,7 @@ for (const address of targets.keys()) {
   if (bodies.has(address)) continue;
   if (address.startsWith("/app")) continue; // the app, which site_check boots
   // The server's pages, made by api/: a deployment has them, a folder does not.
-  if (!remote && /^\/(collections|m|u|c|api|oauth)(\/|$)/.test(address)) continue;
+  if (!remote && /^\/((collections|m|u|c|api|oauth)(\/|$)|library\/)/.test(address)) continue;
   const answer = await get(address);
   if (answer.status !== 200) {
     dead += 1;

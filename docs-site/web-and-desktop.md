@@ -29,7 +29,7 @@ When the same model is open in two tabs and you save it in one, the other offers
 
 ## On the desktop {#desktop}
 
-Download it from [the download page](/download), for Linux, macOS and Windows. The desktop app carries every part on disk and builds with no network at all.
+Download it from [the download page](/download), for Linux, macOS and Windows. The desktop app carries every part on disk and builds with no network at all. It is free to download until Pro opens; then it comes with Pro, and every account made before 29 October 2026 keeps it free ([Plans](/docs/plans)).
 
 - **File › New window** ([[Ctrl+Shift+N]]) opens a second window with its own model.
 - File choosers open where you last used one of their kind, or else Pictures, Documents or Downloads, and every export asks where to save.

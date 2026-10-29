@@ -9,7 +9,7 @@ scene:main
 ui:documentation
 -->
 
-Brickworks is a CAD app for LEGO® bricks. It runs at [brickworks.diy/app](/app) in any recent browser, on a computer, a tablet or a phone, and as a desktop app for Linux, macOS and Windows. You place real parts from the LDraw library, check that the model stands and holds, step through how it is built, print a booklet, and share it to the [gallery](/gallery). Claude can design with you, on your own Claude plan or API key.
+Brickworks is a CAD app for LEGO® bricks. It runs at [brickworks.diy/app](/app) in any recent browser, on a computer, a tablet or a phone, and as a desktop app for Linux, macOS and Windows. You place real parts from the LDraw library, check that the model stands and holds, step through how it is built, print a booklet, and share it to the [gallery](/gallery). Claude can design with you, on your own Claude plan or API key, or another AI on your own key.
 
 ![The builder at work: a model on its baseplate, the parts bin and model tree down the left, the menus and toolbar along the top.](/img/hero-1200.webp "The app, with a model open.")
 
@@ -25,7 +25,7 @@ Brickworks is a CAD app for LEGO® bricks. It runs at [brickworks.diy/app](/app)
 ## Find your way
 
 - **Building** covers the builder itself: [placing and moving parts](/docs/building), [selecting](/docs/selecting), [the parts bin](/docs/parts-bin), [the view](/docs/the-view), [joints and mechanisms](/docs/joints-and-mechanisms), [minifigures and prints](/docs/figures-and-prints), [mosaics and brickify](/docs/art-and-brickify), [your collection](/docs/collection), [files](/docs/saving-and-files), [panels and settings](/docs/panels-and-settings) and [every menu command](/docs/menus).
-- **Designing with AI** explains [the assistant](/docs/ai), [the Claude connector](/docs/connector), [Claude Code](/docs/claude-code), [fresh eyes](/docs/fresh-eyes) and [what a Claude build is](/docs/claude-builds).
+- **Designing with AI** explains [the assistant](/docs/ai), [the Claude connector](/docs/connector), [Claude Code](/docs/claude-code), [fresh eyes](/docs/fresh-eyes) and [what an AI build is](/docs/ai-builds).
 - **The website** is the community around the app: [the gallery](/docs/gallery), [sharing](/docs/sharing), [a model's page](/docs/model-pages), [profiles and your feed](/docs/profiles), [collections](/docs/collections), [the monthly challenge](/docs/challenges), [Build together](/docs/build-together), [the LDraw library](/docs/ldraw-library) and [your account](/docs/account).
 - **Instructions and exports**: [booklets](/docs/instructions), and [every file and picture the app makes](/docs/exports).
 - **Reference**: [shortcuts](/docs/shortcuts), [the MCP tool reference](/docs/mcp-tools), [accessibility](/docs/accessibility), [plans](/docs/plans), [troubleshooting](/docs/troubleshooting) and [the changelog](/docs/changelog).
@@ -35,4 +35,4 @@ Brickworks is a CAD app for LEGO® bricks. It runs at [brickworks.diy/app](/app)
 
 ## What it costs
 
-Building, saving, building together, instructions, renders and share links cost nothing. Designing with Claude uses your own Claude plan or Anthropic API key, which Anthropic bills as it already bills you. Paid plans are on their way: see [Plans and billing](/docs/plans).
+Brickworks in your browser is free: building by hand without a limit, saving, building together, instructions, renders and share links. Pro, coming soon, adds the desktop app and AI builds without a limit. The AI that designs runs on your own plan or key, so its maker bills that, never Brickworks. See [Plans and billing](/docs/plans).

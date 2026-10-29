@@ -6,7 +6,24 @@ description: Open a model of a real set from the LDraw community's library, and 
 
 ## Real sets to open {#sets}
 
-**File › Library…** (or **Open › From the library…**) opens any of the LDraw community's models of real sets, or a model the community shared in the gallery. Search by name, number or theme, filter, and **Open** one in a new tab or window. Each says who modelled it. Real sets are also on the gallery's [LDraw shelf](/gallery), as cards with a page each.
+**File › Library…** (or **Open › From the library…**) opens any of the LDraw community's models of real sets, or a model the community shared in the gallery, in a new tab or window. Each says who modelled it.
+
+The search comes first, and asks as you type: by a set's name, number or theme. [[Ctrl+F]] comes back to it, [[Esc]] clears it, and [[Enter]] opens the first set found (on a phone, Enter only searches). When nothing is found it says so where the covers were, with **Clear the search**, the filters let go, and the other shelf to look in.
+
+<!-- covers
+ui:library search
+-->
+
+## On the website {#website}
+
+[brickworks.diy/library](/library) is the same library, browsed as the gallery is: every model of a real set the app's Library opens, as cards with a cover, name, number, theme, year and modeller. Search by name, number, theme or modeller; the themes are pills; **Filters** sets the order, the size and the years. It is linked from the gallery's tabs and every page's footer.
+
+Each set has a page of its own, at `brickworks.diy/library/<id>`, as a shared model has: its picture, who modelled it for LDraw's Official Model Repository and under which licence, its parts list to download for BrickLink or Rebrickable, **Share**, and **Open in Brickworks**, which opens it in the app as **File › Library…** does.
+
+<!-- covers
+ui:LDraw library page
+ui:an LDraw set's page
+-->
 
 ## The parts {#parts}
 

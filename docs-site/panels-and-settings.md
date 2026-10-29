@@ -55,5 +55,5 @@ ui:what the app is busy with
 - **Navigate like** Studio, Blender or Mecabricks, and which way the wheel zooms ([The view](/docs/the-view#presets)).
 - **New models start on**: the floor a new model gets.
 - **Interface size** (85 to 150%) and **Reduce motion** ([Accessibility](/docs/accessibility)).
-- **Assistant (AI)**: *Build by hand only*, or *Show the assistant* ([Connect Claude](/docs/connect-claude#assistant-on)).
+- **Assistant (AI)**: *Build by hand only*, or *Show the assistant* ([Connect Claude](/docs/connect-claude#assistant-on)), and **AI…**: who designs, Claude or another AI on your own key ([Another AI on your own key](/docs/ai#other-ais)).
 - The app's version, under the list.

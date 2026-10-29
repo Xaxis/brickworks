@@ -40,12 +40,36 @@ ui:parts lists for shops
 
 ## Render {#render}
 
-**File › Render…** (or the toolbar's camera) makes a photo-real picture of the model, or a turntable that turns it round, on a backdrop in studio light. Choose the backdrop, the angle and the quality; the best takes longer.
+**File › Render…** (or the toolbar's camera) makes a picture of the model worth keeping, a turntable, or an animation of one of its motions. The picture on the left is a quick draft of the render, drawn again every time a choice changes, so what comes out is what you looked at; **Render** only makes it better. A render runs a piece at a time, with its progress on the bar and **Cancel** (or [[Esc]]) to stop it; when it is done it downloads, or on the desktop goes to Downloads.
 
 <!-- covers
 ui:photo-real render
 lib:studio renderer
 -->
+
+The choices are a photographer's:
+
+| Choice | What there is |
+|---|---|
+| Quality | A quick one in the window's own look, up to Best: frames averaged for soft shadows from an area light, smooth edges, shading under every ledge, and depth of field |
+| Look | **As in the window**, or **Product** (below) |
+| Size | 720p, 1080p, 4K, Square, or Custom |
+| Backdrop | White, Gradient, Grey, Dark, a Colour you pick, or None (a transparent picture), with a contact shadow under the model if you like |
+| Light | Three lights, as in the window; or photographed light: a softbox studio, window light, or daylight |
+| View | Three-quarter like the box, the view you are looking at, front, side, back three-quarter, low looking up, or from above |
+| Lens | The focal length, and an aperture from Off to f/2 for depth of field (blur comes with Best) |
+
+### The Product look {#product-look}
+
+**Product** draws the model as a set's own pictures are: glossy plastic with rounded edges, clear parts that bend the light and keep their colour, and a studio's key, fill and rim light, with film-like tones. Black parts stay black and every colour stays true to its LDraw colour. It goes with any backdrop; at Best, with an aperture set, depth of field softens what is out of focus.
+
+<!-- covers
+lib:product look
+-->
+
+### Animation {#animation}
+
+**Animation** plays one of the model's [motions](/docs/joints-and-mechanisms#motions), or all of them in order, and keeps every frame as an animated WebP, at the quality, size, light and lens chosen for a picture. The camera stays as you see it, or is framed on what moves.
 
 ## Booklets {#booklets}
 

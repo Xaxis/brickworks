@@ -829,9 +829,22 @@ def routes() -> set[str]:
     return found
 
 
+def moved() -> dict[str, str]:
+    """docs-site/_moved.json: a page's old name and its new one, which
+    tools/deploy.sh answers with a 308 so an old link still lands."""
+    found = json.loads((SRC / "_moved.json").read_text(encoding="utf-8"))
+    return {old: new for old, new in found.items() if not old.startswith("$")}
+
+
 def check() -> list[str]:
     problems: list[str] = []
     nav, pages = load()
+    names = {p.name for p in pages}
+    for old, new in moved().items():
+        if new not in names:
+            problems.append(f"docs-site/_moved.json sends {old} to {new}, which is no page")
+        if old in names:
+            problems.append(f"docs-site/_moved.json moves {old}, which is still a page")
     features = json.loads(FEATURES.read_text(encoding="utf-8"))["features"]
     ids = {f["id"] for f in features}
     rules = internal()
@@ -867,7 +880,7 @@ def check() -> list[str]:
                     problems.append(f"{page.name}.md links to {target}: no such docs page")
                 elif frag and frag not in anchors[path] and not frag.startswith("cmd-"):
                     problems.append(f"{page.name}.md links to {target}: no such heading on {path}")
-            elif path.startswith(("/img/", "/m/", "/u/", "/c/", "/api/", "/oauth/")):
+            elif path.startswith(("/img/", "/m/", "/u/", "/c/", "/api/", "/oauth/", "/library/")):
                 if path.startswith("/img/") and not (WEB / path.lstrip("/")).exists():
                     problems.append(f"{page.name}.md shows {target}, which is not in web/")
             elif path not in routes():
