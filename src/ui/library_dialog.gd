@@ -6,10 +6,22 @@
 ## room):
 ##
 ##   LDraw sets   every model of a real set in LDraw's Official Model
-##                Repository (ModelLibrary), searched by name or set
-##                number, and by theme, decade and size, sorted
+##                Repository (ModelLibrary), searched by name, set
+##                number, theme or designer, and by theme, decade and
+##                size, sorted
 ##   Community    the gallery at brickworks.diy/gallery (api/share.js
 ##                ?op=list), searched by words, kind and size, sorted
+##
+## The search is first, under the shelves' buttons, edged as a control is
+## and marked by a magnifier: below the shelf's note it was a field with no
+## edge between two lines of small print, and the owner asked for a search
+## (2026-10-29). It asks again as the person types, a moment after the last
+## key; its words go with them to the other shelf. Ctrl+F (Cmd+F) comes to
+## it while the library shows, Escape clears it, and Enter opens the first
+## model found (on a phone, whose screen's keyboard has an Enter for every
+## field, Enter only asks). Words that find nothing say so where the covers
+## would be, with the ways to find more: the search cleared, the filters
+## let go, the other shelf.
 ##
 ## Each is a grid of covers, a page at a time. Open puts the model in a new
 ## tab (TabSession.open_another: a new window on the desktop), so the model
@@ -35,6 +47,10 @@ const GALLERY_SORTS: Array = [["newest", "Newest"], ["top", "Top builds"], ["bui
 	["likes", "Most liked"], ["views", "Most viewed"], ["remixes", "Most remixed"]]
 const DISCLAIMER := ("LEGO® is a trademark of the LEGO Group of companies which does not sponsor, "
 	+ "authorize or endorse this app.")
+## The magnifier at the search's end while it is empty; its clear button
+## takes the place once something is typed.
+const MAGNIFIER := "res://assets/ui/tools/search.svg"
+const MAGNIFIER_TALL := 14.0
 
 var app: Node
 var books: ModelLibrary
@@ -58,6 +74,12 @@ var _page_words: Label
 var _previous: Button
 var _next: Button
 var _typing: Timer
+## Said where the covers would be when the words typed find nothing.
+var _none: VBoxContainer
+var _none_words: Label
+var _none_hint: Label
+var _let_go: Button
+var _elsewhere: Button
 
 var _page: int = 1
 var _pages: int = 1
@@ -70,6 +92,8 @@ var _wanted: Array = []
 var _fetchers: int = 0
 ## Bumped at every fill, so an answer to an older question is dropped.
 var _asked: int = 0
+## The fill whose answer is shown: [member _asked] once it has come.
+var _answered: int = 0
 ## What the shelf said last, for a probe and the page.
 var last: Dictionary = {}
 
@@ -82,6 +106,9 @@ func attach(main: Node) -> void:
 	app = main
 	books = main.get("_model_library")
 	main.get_node("HUD").add_child(self)
+	# Over the frame: while it shows, F6 comes into it, at its search, and
+	# Tab from the search goes on to what it found (FocusGuard).
+	add_to_group(FocusGuard.OVER)
 	_fit()
 	get_viewport().size_changed.connect(_fit)
 
@@ -94,6 +121,12 @@ func _ready() -> void:
 ## Open on a shelf: "sets" or "community".
 func open(source: String = "") -> void:
 	visible = true
+	# Drawn for the screen it is on now: a browser's ratio is known only
+	# once the page is up.
+	var magnifier: ImageTexture = Icons.texture_for(MAGNIFIER, MAGNIFIER_TALL, Icons.density(self))
+	if magnifier != null:
+		magnifier.set_size_override(Vector2i(int(MAGNIFIER_TALL), int(MAGNIFIER_TALL)))
+	_search.right_icon = magnifier
 	_show(source if not source.is_empty() else _source)
 
 
@@ -109,6 +142,20 @@ func close() -> void:
 ## Where each control is, for a browser test to press it as a person does.
 func controls_by_name() -> Dictionary:
 	return _controls if visible else {}
+
+
+## Ctrl+F (Cmd+F on a Mac) while the library shows: the keys to its search,
+## what it says chosen, so the next words replace them. Over the model, the
+## engine had no Ctrl+F and the app's own F fitted the view behind.
+func _input(event: InputEvent) -> void:
+	var key: InputEventKey = event as InputEventKey
+	if key == null or not key.pressed or key.echo or not is_visible_in_tree():
+		return
+	if key.keycode == KEY_F and (key.ctrl_pressed or key.meta_pressed) and not key.alt_pressed \
+			and not key.shift_pressed:
+		_search.grab_focus()
+		_search.select_all()
+		get_viewport().set_input_as_handled()
 
 
 func _fit() -> void:
@@ -188,12 +235,7 @@ func _build() -> void:
 	var done := _button(header, "Done", close, "library_done")
 	done.focus_mode = Control.FOCUS_NONE
 
-	_note = Label.new()
-	_note.add_theme_font_size_override("font_size", 11)
-	_note.modulate = Color(1, 1, 1, 0.6)
-	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	column.add_child(_note)
-
+	# The search and the filters first, the shelf's note after them.
 	var filters := HFlowContainer.new()
 	filters.add_theme_constant_override("h_separation", 6)
 	filters.add_theme_constant_override("v_separation", 6)
@@ -203,11 +245,21 @@ func _build() -> void:
 	_search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_search.add_theme_font_size_override("font_size", 12)
 	_search.clear_button_enabled = true
-	# Escape leaves the field, not the dialog (FocusGuard).
-	_search.text_changed.connect(func(_t: String) -> void: _typing.start())
-	_search.text_submitted.connect(func(_t: String) -> void:
-		_typing.stop()
-		_refill())
+	# Edged as the buttons beside it are (Look.OUTLINE), inside the same box.
+	var engine := ThemeDB.get_default_theme().get_stylebox("normal", "LineEdit") as StyleBoxFlat
+	var edged: StyleBoxFlat = engine.duplicate() if engine != null else StyleBoxFlat.new()
+	edged.border_color = Look.OUTLINE
+	edged.set_border_width_all(1)
+	_search.add_theme_stylebox_override("normal", edged)
+	_search.accessibility_description = ("%s+F comes here; Escape clears it; Enter opens the first "
+		+ "found") % EditVerbs.held_key()
+	# Escape clears the words; once there are none it leaves the field, not
+	# the dialog (FocusGuard).
+	_search.set_meta(FocusGuard.CLEAR_ON_ESCAPE, true)
+	_search.text_changed.connect(_typed)
+	_search.text_submitted.connect(_entered)
+	_search.focus_entered.connect(_tell_page)
+	_search.focus_exited.connect(_tell_page)
 	filters.add_child(_search)
 	_controls["library_search"] = _search
 	_typing = Timer.new()
@@ -239,10 +291,18 @@ func _build() -> void:
 	_sets_row = [_theme, _decade]
 	_community_row = [_kind]
 
+	_note = Label.new()
+	_note.add_theme_font_size_override("font_size", 11)
+	_note.modulate = Color(1, 1, 1, 0.6)
+	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_note)
+
 	_status = Label.new()
 	_status.add_theme_font_size_override("font_size", 12)
 	_status.modulate = Color(1, 1, 1, 0.75)
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# How many the words found, said to a screen reader as it changes.
+	_status.accessibility_live = AccessibilityServer.LIVE_POLITE
 	column.add_child(_status)
 
 	_scroll = ScrollContainer.new()
@@ -256,6 +316,34 @@ func _build() -> void:
 	_grid.add_theme_constant_override("h_separation", int(GAP))
 	_grid.add_theme_constant_override("v_separation", int(GAP))
 	_scroll.add_child(_grid)
+
+	_none = VBoxContainer.new()
+	_none.visible = false
+	_none.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_none.alignment = BoxContainer.ALIGNMENT_CENTER
+	_none.add_theme_constant_override("separation", 8)
+	column.add_child(_none)
+	_none_words = Label.new()
+	_none_words.add_theme_font_size_override("font_size", 15)
+	_none_words.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_none_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_none_words.accessibility_live = AccessibilityServer.LIVE_POLITE
+	_none.add_child(_none_words)
+	_none_hint = Label.new()
+	_none_hint.add_theme_font_size_override("font_size", 12)
+	_none_hint.modulate = Color(1, 1, 1, 0.75)
+	_none_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_none_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_none.add_child(_none_hint)
+	var ways := HFlowContainer.new()
+	ways.alignment = FlowContainer.ALIGNMENT_CENTER
+	ways.add_theme_constant_override("h_separation", 8)
+	ways.add_theme_constant_override("v_separation", 6)
+	_none.add_child(ways)
+	_button(ways, "Clear the search", _clear_search, "library_clear_search")
+	_let_go = _button(ways, "", _any_filter, "library_any_filter")
+	_elsewhere = _button(ways, "", func() -> void: _show("community" if _source == "sets" else "sets"),
+		"library_search_elsewhere")
 
 	var foot := HFlowContainer.new()
 	foot.add_theme_constant_override("h_separation", 8)
@@ -315,8 +403,11 @@ func _show(source: String) -> void:
 		control.visible = sets
 	for control: Control in _community_row:
 		control.visible = not sets
-	_search.placeholder_text = "Search by name or set number" if sets \
-		else "Search by name, designer or tag"
+	# What each shelf's words are matched against: ModelLibrary.search, and
+	# the gallery's directory_words (supabase/directory.sql).
+	_search.placeholder_text = "Search sets by name, set number, theme or designer" if sets \
+		else "Search models by name, designer or tag"
+	_search.accessibility_name = "Search the LDraw sets" if sets else "Search the community's models"
 	_note.text = ("Models of real LEGO® sets from LDraw's Official Model Repository, each made by "
 		+ "the LDraw member credited and free to use under its licence. Open puts one in a new %s; "
 		+ "the model here stays as it is.") % _tab_word() if sets else ("Models people built in "
@@ -342,6 +433,65 @@ static func _tab_word() -> String:
 func _refill() -> void:
 	_page = 1
 	await _fill()
+
+
+## Words typed: asked a moment after the last key, and at once when the
+## field is emptied (its clear button, Escape, Clear the search).
+func _typed(text: String) -> void:
+	if text.strip_edges().is_empty():
+		_typing.stop()
+		_refill()
+	else:
+		_typing.start()
+
+
+## Enter: the first model found opened, as its Open does, in the press (a
+## browser opens a tab only in answer to one); asked first when the words
+## have not been yet. On a phone it only asks: its screen's keyboard has an
+## Enter for every field, and the person has not seen what was found.
+func _entered(_text: String) -> void:
+	_typing.stop()
+	if Phone.on():
+		_refill()
+		return
+	if not _answers_the_field():
+		await _refill()
+		if not visible or not _answers_the_field():
+			return
+	if not _shown.is_empty():
+		_open_card(_shown[0])
+
+
+## Whether what is shown is the answer to the words in the field now.
+func _answers_the_field() -> bool:
+	return _answered == _asked and last.get("source") == _source \
+		and str((last.get("ask", {}) as Dictionary).get("q", "")) == _search.text.strip_edges()
+
+
+func _clear_search() -> void:
+	# Asked again at once: clear() sends text_changed (_typed).
+	_search.clear()
+	# The keys back in the field for the next words; not on a phone, where
+	# that brings its keyboard up over what came back.
+	if not Phone.on():
+		_search.grab_focus()
+
+
+## Every filter of the shelf showing back at Any, and asked again.
+func _any_filter() -> void:
+	for choice: OptionButton in [_theme, _decade, _kind, _size]:
+		if choice.visible:
+			choice.select(0)
+	_refill()
+
+
+## The filters chosen on the shelf showing, in their own words: Town, 1980s.
+func _filtering() -> PackedStringArray:
+	var chosen := PackedStringArray()
+	for choice: OptionButton in [_theme, _decade, _kind, _size]:
+		if choice.visible and choice.selected > 0:
+			chosen.append(choice.get_item_text(choice.selected))
+	return chosen
 
 
 func _turn(by: int) -> void:
@@ -377,6 +527,7 @@ func _fill() -> void:
 		found = await _community(asking())
 	if asked != _asked:
 		return
+	_answered = asked
 	_shown = found.get("models", [])
 	_pages = int(found.get("pages", 1))
 	_more = bool(found.get("more", false))
@@ -384,11 +535,36 @@ func _fill() -> void:
 	_next.disabled = not (_page < _pages or _more)
 	_page_words.text = ("Page %d of %d" % [_page, _pages]) if _source == "sets" else "Page %d" % _page
 	_say(str(found.get("said", "")))
+	# Words that found nothing: said where the covers would be. With no
+	# words, the filters alone, the status line says it as it did.
+	var words: String = _search.text.strip_edges()
+	var none: bool = bool(found.get("answered", false)) and _shown.is_empty() and not words.is_empty()
+	if none:
+		_say_none(words)
+	_none.visible = none
+	_scroll.visible = not none
+	_status.visible = not none
 	last = {"asked": asked, "source": _source, "ask": asking(), "total": int(found.get("total", _shown.size())),
 		"shown": _shown.map(func(one: Dictionary) -> String: return str(one["id"])),
-		"status": _status.text}
+		"status": _status.text, "none": _none_words.text if none else ""}
 	_lay_cards()
 	_tell_page()
+
+
+## Nothing found for [param words]: what was asked, and the ways to more.
+func _say_none(words: String) -> void:
+	var sets: bool = _source == "sets"
+	var quoted: String = "“%s”" % words.left(60)
+	var filtering: PackedStringArray = _filtering()
+	_none_words.text = ("No set matches %s" if sets else "Nothing in the gallery matches %s") % quoted
+	_none_hint.text = ("Try fewer words or another spelling, or a set number such as 6056 or 10179-1."
+		if sets else "Try fewer words or another spelling: a model's name, its designer or a tag.")
+	if not filtering.is_empty():
+		_none_hint.text += " Searched only within the filters chosen: %s." % " · ".join(filtering)
+	_let_go.visible = not filtering.is_empty()
+	_let_go.text = "Any theme, year and size" if sets else "Any kind and size"
+	_elsewhere.text = "Search Community for %s" % quoted if sets else "Search LDraw sets for %s" % quoted
+	_say(_none_words.text + ".")
 
 
 ## A page of sets: {"models", "pages", "total", "said"}.
@@ -420,7 +596,7 @@ func _sets(ask: Dictionary) -> Dictionary:
 			"picture": entry["cover"], "entry": entry})
 	_page = int(found["page"])
 	var total: int = int(found["total"])
-	return {"models": cards, "pages": int(found["pages"]), "total": total,
+	return {"models": cards, "pages": int(found["pages"]), "total": total, "answered": true,
 		"said": ("%s of %s sets" % [CollectionDialog._comma(total), CollectionDialog._comma(every.size())]
 			if total > 0 else "No set matches. Try fewer words, or Any theme.")}
 
@@ -459,7 +635,7 @@ func _community(ask: Dictionary) -> Dictionary:
 			"picture": thumb if thumb.begins_with("http") else "%s/m/%s.webp" % [Deployment.api_base(),
 				model["id"]]})
 	var more: bool = bool((json.data as Dictionary).get("more", false))
-	return {"models": cards, "more": more, "total": cards.size(),
+	return {"models": cards, "more": more, "total": cards.size(), "answered": true,
 		"said": ("Models shared in the gallery" if not cards.is_empty()
 			else "Nothing in the gallery matches. Try fewer words, or Any kind.")}
 
@@ -612,4 +788,6 @@ func _tell_page() -> void:
 	told["open"] = visible
 	told["covers"] = covered
 	told["status"] = _status.text if _status != null else ""
+	told["typed"] = _search.text
+	told["searching"] = _search.has_focus()
 	JavaScriptBridge.eval("window.brickworksLibrary = %s" % JSON.stringify(told), true)
