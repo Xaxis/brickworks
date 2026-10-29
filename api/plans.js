@@ -29,11 +29,38 @@
 //                            "Authorization: Bearer …"): {billing,
 //                            standing, plan, owner, builds, desktop,
 //                            subscription, freshness}; 401 without one
+//
+// And the paid desktop (api/_desktop.js, units U5 and U6), answered in
+// every mode, so a page or an app can ask before it knows which:
+//
+//   GET /api/plans?op=download            {gated}: whether a download
+//                                         needs a session (billing on)
+//   GET /api/plans?op=download&file=NAME  the package NAME: a 302, or
+//                                         {url} to a request that accepts
+//                                         JSON (a page's fetch: a
+//                                         navigation cannot carry the
+//                                         session). Off: the public address
+//                                         it has always had, nobody asked.
+//                                         On: GitHub's signed one for a
+//                                         session whose plan has the
+//                                         desktop, or cannot be known just
+//                                         now; 401 without a session, 403
+//                                         {error, pro} for a plan without
+//                                         it; 404 for no such file
+//   GET /api/plans?op=entitlement         the desktop's token, for a
+//                                         session: {billing, token, plan,
+//                                         desktop, paid_through}. Off:
+//                                         {billing: "off"}, nobody asked.
+//                                         503 {billing, standing} while
+//                                         the plan cannot be known, or
+//                                         nothing signs: nothing is granted
+//                                         then, nor refused
 
 import { createHmac } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
-import { billingMode, currentOffer, entitlementOf, reportOwner } from "./_billing.js";
+import { billingMode, currentOffer, entitlementOf, mayDesktop, reportOwner } from "./_billing.js";
 import { db, dbConfigured } from "./_db.js";
+import { NoSuchFile, publicUrl, signedUrl, signingKey, tagOf, tokenFor } from "./_desktop.js";
 
 export const PLANS = ["plus", "creator"];
 export const BILLING = ["monthly", "yearly"];
@@ -87,27 +114,86 @@ function bodyOf(request) {
 const say = (response, status, error) => response.status(status).json({ error });
 const rpc = (name, body) => db(`rpc/${name}`, { method: "POST", body });
 
+/// The signed-in account's claims, or null with the refusal sent.
+async function signedIn(request, response) {
+  try {
+    return await verify(bearer(request), request);
+  } catch (trouble) {
+    if (trouble instanceof AuthError) {
+      say(response, trouble.status, trouble.message);
+      return null;
+    }
+    throw trouble;
+  }
+}
+
 /// A GET while billing is on: the offer, or the signed-in account's plan,
 /// the owner's reported to Admission first.
 async function planned(request, response) {
   const op = String(request.query?.op || "");
   if (op === "") return response.status(200).json(await currentOffer());
   if (op !== "plan") return say(response, 404, "GET /api/plans, or /api/plans?op=plan signed in");
-  let claims;
-  try {
-    claims = await verify(bearer(request), request);
-  } catch (trouble) {
-    if (trouble instanceof AuthError) return say(response, trouble.status, trouble.message);
-    throw trouble;
-  }
+  const claims = await signedIn(request, response);
+  if (!claims) return response;
   await reportOwner(claims);
   return response.status(200).json(await entitlementOf(claims.sub));
+}
+
+/// What a download is refused with, for a plan without the desktop.
+export const DESKTOP_IS_PRO = "The desktop app comes with Pro. The web app is free, in any browser.";
+
+/// GET ?op=download: whether a download is gated, or one package.
+async function download(request, response) {
+  const mode = billingMode();
+  const file = String(request.query?.file || "");
+  if (file === "") return response.status(200).json({ gated: mode !== "off" });
+  if (!tagOf(file)) return say(response, 404, "There is no download of that name.");
+  const send = (url) => {
+    if (/application\/json/.test(String(request.headers?.accept || ""))) return response.status(200).json({ url });
+    response.setHeader("Location", url);
+    return response.status(302).end();
+  };
+  if (mode === "off") return send(publicUrl(file));
+  const claims = await signedIn(request, response);
+  if (!claims) return response;
+  await reportOwner(claims);
+  if (!mayDesktop(await entitlementOf(claims.sub))) {
+    return response.status(403).json({ error: DESKTOP_IS_PRO, pro: "/plans" });
+  }
+  try {
+    return send(await signedUrl(file));
+  } catch (trouble) {
+    if (trouble instanceof NoSuchFile) return say(response, 404, "There is no download of that name.");
+    console.error(`download: ${String(trouble?.message || trouble).slice(0, 160)}`);
+    return say(response, 503, "The download did not start just now. Try again in a minute.");
+  }
+}
+
+/// GET ?op=entitlement: the desktop's token, signed only on a plan known.
+async function entitlement(request, response) {
+  const mode = billingMode();
+  if (mode === "off") return response.status(200).json({ billing: "off" });
+  const claims = await signedIn(request, response);
+  if (!claims) return response;
+  await reportOwner(claims);
+  const e = await entitlementOf(claims.sub);
+  const signer = signingKey();
+  if (e.standing !== "known" || !signer) {
+    if (!signer) console.error("desktop: billing is on and DESKTOP_TOKEN_KEY is not an RSA private key");
+    return response.status(503).json({ billing: e.billing, standing: signer ? e.standing : "unsigned" });
+  }
+  const { token, claims: said } = await tokenFor(claims.sub, e, signer);
+  return response.status(200).json({ billing: e.billing, token, plan: said.plan, desktop: said.desktop,
+    paid_through: said.paid_through });
 }
 
 export default async function handler(request, response) {
   // Asked only by the site's own page: no cross-origin answer, and nothing
   // kept by any cache.
   response.setHeader("Cache-Control", "no-store");
+  const op = String(request.query?.op || "");
+  if (request.method === "GET" && op === "download") return download(request, response);
+  if (request.method === "GET" && op === "entitlement") return entitlement(request, response);
   if (request.method === "GET" && billingMode() !== "off") return planned(request, response);
   if (request.method !== "POST") return say(response, 405, "POST {email, plan, billing, note} or {email, forget: true}");
   let entry;
