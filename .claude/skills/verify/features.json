@@ -189,6 +189,16 @@
       ]
     },
     {
+      "id": "api:a deleted account's plan ended at Admission",
+      "kind": "api",
+      "entry": "api/account.js",
+      "reach": "python3 tools/minitest.py tests/test_account_erase.py   (POST /api/account?op=delete {confirm}: with BRICKWORKS_BILLING test or live the customer is erased at Admission and a subscription ended first, and nothing is deleted when Admission cannot; off, Admission is never asked; billing_flow.mjs --stand-in deletes a paying account from /settings)",
+      "area": "web",
+      "tests": [
+        "tests/test_model_page.py"
+      ]
+    },
+    {
       "id": "api:paying for Pro",
       "kind": "api",
       "entry": "api/plans.js",
@@ -1872,7 +1882,7 @@
       "id": "cli:the stand-in Admission",
       "kind": "cli",
       "entry": "tools/web/admission_stand_in.mjs",
-      "reach": "node tools/web/admission_stand_in.mjs 8891 --hook=http://127.0.0.1:8890/api/plans?op=webhook   (Admission's API from tests/fixtures/billing/fake_admission.mjs over HTTP for relay_server.mjs with ADMISSION_URL at it; POST /__stand_in/pay or /cancel sends the signed webhook)",
+      "reach": "node tools/web/admission_stand_in.mjs 8891 --hook=http://127.0.0.1:8890/api/plans?op=webhook   (Admission's API from tests/fixtures/billing/fake_admission.mjs over HTTP for relay_server.mjs with ADMISSION_URL at it; POST /__stand_in/pay or /cancel sends the signed webhook, /__stand_in/erased says what was erased)",
       "area": "web",
       "tests": []
     },
@@ -4478,6 +4488,7 @@
       "reach": "<deployment>/settings#plan signed in, plans on   (the Plan row: Free with Upgrade to Pro and the step before Checkout, Pro with Manage billing, Pro until, Update your card; ?upgrade=month|year opens the step; nothing drawn or asked with plans off)",
       "area": "web",
       "tests": [
+        "tests/test_account_erase.py",
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",

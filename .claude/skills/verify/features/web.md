@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing -->
 
 ## Sub-features
 
@@ -709,9 +709,10 @@ plan with Claude as the client.
   (`#who`, `#mail-comments` and `#mail-kinds`), Privacy (`#age-said`,
   `#shows-follows`), Claude (`/api/oauth?op=connections`, Disconnect with a
   confirm), Sign out, and Delete this account (`api/account.js ?op=delete`,
-  their address typed to confirm: the files of their build photos and of
-  photos of their models deleted, then the account, every row of theirs
-  cascading; the site owner's refused). people_flow and account_page_flow
+  their address typed to confirm: while billing is on, their plan erased at
+  Admission first, nothing deleted if it cannot; then the files of their
+  build photos and of photos of their models deleted, then the account,
+  every row of theirs cascading; the site owner's refused). people_flow and account_page_flow
   delete their accounts this way; `documentElement.dataset.settings` says
   `ready` or `signed-out`.
 - `model page action bar` (`web/model-page.js`, `api/share.js` `actionBar`,
@@ -2569,6 +2570,22 @@ plan with Claude as the client.
   Admission's signed webhook forgetting what is kept of the account. Back
   to this site's `/settings#plan` (live: brickworks.diy). Off, each POST is
   the interest form's 422, and /settings draws and asks nothing of plans.
+- `a deleted account's plan ended at Admission` (`api/account.js` ?op=delete,
+  `api/_billing.js` eraseAccount; `web/plan.js` endsWithAccount, drawn by
+  `web/settings.js`): a go-live blocker, built dark (2026-10-29, erase352,
+  Bookwright's ADR-0014 decision 7, Admission's ADR-0004). While
+  BRICKWORKS_BILLING is on, a deletion first asks Admission to erase the
+  customer with `cancelSubscription=true`, so a subscription it pays for
+  ends now (no refund, nothing charged again) before anything of
+  Brickworks' goes; Admission down or refusing our key, nothing is deleted
+  and the answer is a 503 saying so ("We couldn't cancel your Pro plan…"
+  when what is held says they pay). A deletion that stopped later is
+  finished by asking again: erasing finds nothing the second time. The
+  answer adds `plan: {ended}` when a subscription ended. On /settings, while
+  the Plan row shows a subscription, the delete form and the question
+  before it say Pro ends now with nothing charged again, and the page after
+  says it has ended. Off, Admission is never asked and the answer is as it
+  was.
 - `GET /api/plans?op=download`, `GET /api/plans?op=entitlement` (`api/plans.js`)
   and `the desktop's files and token` (`api/_desktop.js`,
   `supabase/desktop_paid_through.sql`): the paid desktop, built dark
@@ -4776,7 +4793,40 @@ year. With `--stand-in` also: paid, the webhook heard, "Pro, $80.00 USD a
 year. Renews", Manage billing to `billing.stripe.test`, Checkout again sent
 to the portal, cancelled, "Pro until". The throwaway account is closed at
 the end. Pictures: settings-plan and consent at 1280 light and 390 dark,
-settings-pro and settings-ending.
+settings-pro and settings-ending. With `--stand-in`, step 7 pays again and
+deletes the account from /settings: the delete form at 390 dark and 1280
+light says "Your Pro plan ends now, with the account, and you are not
+charged again. Any refund is as the terms of sale say." (Free's said
+nothing of a plan, in 2), the question before it says so too, the page
+after says Pro has ended, the stand-in's `/__stand_in/erased` shows one
+erasure with one subscription ended, and the sign-in service has no such
+account. Pictures: delete-pro-390-dark, delete-pro-1280-light,
+deleted-pro-1280-light.
+
+### A deleted account's plan ended at Admission
+
+No network: `api/account.js`'s deletion against the stand-in Admission and
+Supabase (`tests/fixtures/billing/`), every request recorded:
+
+```sh
+python3 tools/minitest.py tests/test_account_erase.py
+```
+
+It passes when all five do: billing off, the answer exactly
+`{deleted, photos: 0, avatars: 0}` and no request to Admission; Free,
+erased (its usage gone) before Supabase deletes the account, the answer
+unchanged, and the owner's refused before Admission is asked; Pro, the
+subscription ended and the customer erased before the account goes, the
+answer with `plan: {ended: 1}`, the stand-in's customer with no
+subscription after and the kept snapshot emptied; Admission down, 503
+"We couldn't cancel your Pro plan, so nothing was deleted…" for one who
+pays and "We couldn't close your plan with billing…" for one who does not,
+with nothing of either touched (no Connect mark, storage or auth
+request), and a key Admission does not know the same; a deletion whose
+Supabase step failed after Admission erased the account (502) finishing
+when asked again, the second erasure finding nothing and ending nothing.
+The browser half is the billing flow's step 7, above. Billing off, the
+existing deletion flows (account_page, people) prove nothing changed.
 
 ### The documentation (/docs)
 

@@ -3616,7 +3616,14 @@
       "kind": "cli",
       "label": "the stand-in Admission",
       "entry": "tools/web/admission_stand_in.mjs",
-      "reach": "node tools/web/admission_stand_in.mjs 8891 --hook=http://127.0.0.1:8890/api/plans?op=webhook   (Admission's API from tests/fixtures/billing/fake_admission.mjs over HTTP for relay_server.mjs with ADMISSION_URL at it; POST /__stand_in/pay or /cancel sends the signed webhook)",
+      "reach": "node tools/web/admission_stand_in.mjs 8891 --hook=http://127.0.0.1:8890/api/plans?op=webhook   (Admission's API from tests/fixtures/billing/fake_admission.mjs over HTTP for relay_server.mjs with ADMISSION_URL at it; POST /__stand_in/pay or /cancel sends the signed webhook, /__stand_in/erased says what was erased)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "a deleted account's plan ended at Admission",
+      "entry": "api/account.js",
+      "reach": "python3 tools/minitest.py tests/test_account_erase.py   (POST /api/account?op=delete {confirm}: with BRICKWORKS_BILLING test or live the customer is erased at Admission and a subscription ended first, and nothing is deleted when Admission cannot; off, Admission is never asked; billing_flow.mjs --stand-in deletes a paying account from /settings)",
       "area": "web"
     },
     {
