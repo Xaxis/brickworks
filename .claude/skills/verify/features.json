@@ -89,6 +89,7 @@
       "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan; off, 405 as before)",
       "area": "web",
       "tests": [
+        "tests/test_billing_pay.py",
         "tests/test_desktop.py"
       ]
     },
@@ -99,6 +100,7 @@
       "reach": "curl -sI '<deployment>/api/plans?op=download&file=Brickworks-0.10.0-linux-x86_64.AppImage'   (off: 302 to the public address, nobody asked; on: a session whose plan has the desktop gets GitHub's signed URL, Free a 403 with the way to Pro; python3 tools/minitest.py tests/test_desktop.py)",
       "area": "web",
       "tests": [
+        "tests/test_billing_pay.py",
         "tests/test_desktop.py"
       ]
     },
@@ -109,6 +111,7 @@
       "reach": "curl -s '<deployment>/api/plans?op=entitlement' -H 'authorization: Bearer <session>'   (off: {billing: off}; on: an RS256 token {sub, plan, desktop, paid_through, iat}, never on a plan not known; python3 tools/minitest.py tests/test_desktop.py)",
       "area": "web",
       "tests": [
+        "tests/test_billing_pay.py",
         "tests/test_desktop.py"
       ]
     },
@@ -171,6 +174,7 @@
       "reach": "curl -s -X POST https://brickworks.diy/api/plans -H 'content-type: application/json' -d '{\"email\":\"not-an-email\",\"plan\":\"plus\",\"billing\":\"yearly\"}'   (422 with why; an entry kept or changed by supabase/plan_interest.sql, {email, forget: true} takes it off)",
       "area": "web",
       "tests": [
+        "tests/test_billing_pay.py",
         "tests/test_desktop.py"
       ]
     },
@@ -182,6 +186,28 @@
       "area": "together",
       "tests": [
         "tests/test_steps_score.py"
+      ]
+    },
+    {
+      "id": "api:a deleted account's plan ended at Admission",
+      "kind": "api",
+      "entry": "api/account.js",
+      "reach": "python3 tools/minitest.py tests/test_account_erase.py   (POST /api/account?op=delete {confirm}: with BRICKWORKS_BILLING test or live the customer is erased at Admission and a subscription ended first, and nothing is deleted when Admission cannot; off, Admission is never asked; billing_flow.mjs --stand-in deletes a paying account from /settings)",
+      "area": "web",
+      "tests": [
+        "tests/test_model_page.py"
+      ]
+    },
+    {
+      "id": "api:paying for Pro",
+      "kind": "api",
+      "entry": "api/plans.js",
+      "reach": "python3 tools/minitest.py tests/test_billing_pay.py   (POST /api/plans?op=checkout {interval, consent: true, amount}, ?op=portal {flow}, ?op=webhook signed by Admission; only with BRICKWORKS_BILLING test or live, off each is the interest form's 422; the agreement kept first in supabase/plan_consents.sql)",
+      "area": "web",
+      "tests": [
+        "tests/test_billing.py",
+        "tests/test_billing_pay.py",
+        "tests/test_desktop.py"
       ]
     },
     {
@@ -350,6 +376,14 @@
       "entry": "src/dev/bigmodel_probe.gd",
       "reach": "godot --headless --path . --script src/dev/bigmodel_probe.gd   (in tools/check.sh: models of 1,000 and 5,000 parts made here, each act's growth held to a ratio, a part in hand swept over each (a brick, a pin, a copy, a figure, a sticker) held flat, and 75969-1 and 42082-1 opened, the big one's open held near-linear, then a quit at once with the model's weigh on a worker); add -- --profile [--bigmodel-out=FILE.json] vendor/omr/files/42082-1.mpd to say where a real set's time goes, or -- --open [--dump=DIR] PATH... to time an open alone, by phase, and write the world it opened, or -- --sweep [--profile] PATH... to sweep a part in hand over real sets and say where each move goes",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:billing browser flow",
+      "kind": "cli",
+      "entry": "tools/web/billing_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/billing_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in, or plans off: nothing answers; --stand-in=<tools/web/admission_stand_in.mjs> on this machine also pays and cancels; preview check [billing])",
+      "area": "web",
       "tests": []
     },
     {
@@ -1842,6 +1876,14 @@
       "entry": "tools/plan_diff.py",
       "reach": "XDG_DATA_HOME=.scratch-data godot --headless --path . --script src/dev/plan_dump.gd -- --dump --out=A.jsonl --list=FILES in each checkout (copy src/dev/plan_dump.gd into an older one), then python3 tools/plan_diff.py A.jsonl B.jsonl   (minutes, under heavy; --time times Instructions.plan alone)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:the stand-in Admission",
+      "kind": "cli",
+      "entry": "tools/web/admission_stand_in.mjs",
+      "reach": "node tools/web/admission_stand_in.mjs 8891 --hook=http://127.0.0.1:8890/api/plans?op=webhook   (Admission's API from tests/fixtures/billing/fake_admission.mjs over HTTP for relay_server.mjs with ADMISSION_URL at it; POST /__stand_in/pay or /cancel sends the signed webhook, /__stand_in/erased says what was erased)",
+      "area": "web",
       "tests": []
     },
     {
@@ -3630,6 +3672,7 @@
       "reach": "every card of a shared model: /gallery, the landing page's strip, /u/<handle>, /c/<id>, a model's remixes on /m/<id>, /profile; one renderer for the server (api/_card.js) and the browser, its picture 4:3",
       "area": "web",
       "tests": [
+        "tests/test_billing_pay.py",
         "tests/test_library_site.py"
       ]
     },
@@ -3850,6 +3893,7 @@
       "reach": "https://brickworks.diy/plans   (Free, Plus and Creator, the paid two coming soon, education free; Tell me when it's ready opens the interest form, web/plans.js; linked from every page's footer)",
       "area": "web",
       "tests": [
+        "tests/test_billing_pay.py",
         "tests/test_desktop.py"
       ]
     },
@@ -4281,6 +4325,7 @@
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/app_host_check.mjs --url=<a preview>/app --host=<ext-apps basic-host, built> --out=shots/app_host   (with .env sourced: the page in the MCP Apps reference host, drawn in 3D whatever the host hands it, turned, a part picked, Check, the instructions, the parts list, full screen, Open in Brickworks)",
       "area": "mcp",
       "tests": [
+        "tests/test_billing_pay.py",
         "tests/test_library_site.py"
       ]
     },
@@ -4437,6 +4482,20 @@
       "tests": []
     },
     {
+      "id": "ui:your plan on settings",
+      "kind": "ui",
+      "entry": "web/plan.js",
+      "reach": "<deployment>/settings#plan signed in, plans on   (the Plan row: Free with Upgrade to Pro and the step before Checkout, Pro with Manage billing, Pro until, Update your card; ?upgrade=month|year opens the step; nothing drawn or asked with plans off)",
+      "area": "web",
+      "tests": [
+        "tests/test_account_erase.py",
+        "tests/test_billing.py",
+        "tests/test_billing_pay.py",
+        "tests/test_desktop.py",
+        "tests/test_plans.py"
+      ]
+    },
+    {
       "id": "ui:your profile page",
       "kind": "ui",
       "entry": "web/profile.html",
@@ -4452,7 +4511,9 @@
       "entry": "web/settings.html",
       "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Sign out, Delete account)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_billing_pay.py"
+      ]
     }
   ]
 }
