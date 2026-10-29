@@ -66,7 +66,7 @@ def ask(setup: str, who: str, **world) -> dict | None:
     return run(setup + ASK.replace("WHO", json.dumps(who)), billing="test", **world)
 
 
-def test_free_has_ten_claude_builds_and_none_used() -> None:
+def test_free_has_ten_ai_builds_and_none_used() -> None:
     got = ask("", "u-free")
     if got is None:
         return
@@ -82,14 +82,14 @@ def test_free_has_ten_claude_builds_and_none_used() -> None:
 
 
 def test_free_with_its_ten_used_may_not_build() -> None:
-    got = ask("w.admission.setUsed('u-free', 'claude_builds', 10);", "u-free")
+    got = ask("w.admission.setUsed('u-free', 'ai_builds', 10);", "u-free")
     if got is None:
         return
     assert got["e"]["builds"]["remaining"] == 0 and got["build"] is False
 
 
 def test_pro_has_no_limit_and_the_desktop() -> None:
-    got = ask("w.admission.subscribe('u-pro'); w.admission.setUsed('u-pro', 'claude_builds', 400);", "u-pro")
+    got = ask("w.admission.subscribe('u-pro'); w.admission.setUsed('u-pro', 'ai_builds', 400);", "u-pro")
     if got is None:
         return
     e = got["e"]
@@ -111,7 +111,7 @@ def test_a_comp_gives_pro_until_it_ends() -> None:
 def test_down_a_cold_instance_answers_from_the_kept_snapshot() -> None:
     got = run("""
 w.admission.subscribe('u-pro');
-w.admission.setUsed('u-free', 'claude_builds', 10);
+w.admission.setUsed('u-free', 'ai_builds', 10);
 const before = [await billing.entitlementOf('u-pro'), await billing.entitlementOf('u-free')];
 billing.forgetClient();
 w.age(10 * 60_000);

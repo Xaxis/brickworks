@@ -3560,7 +3560,7 @@
       "kind": "lib",
       "label": "plans from Admission",
       "entry": "api/_billing.js",
-      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, Claude builds and desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
+      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, AI builds and desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
       "area": "web"
     },
     {
