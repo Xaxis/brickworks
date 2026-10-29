@@ -243,6 +243,8 @@ func _build() -> void:
 	_which_key.add_theme_font_size_override("font_size", 11)
 	_which_key.modulate = Color(1, 1, 1, 0.6)
 	_which_key.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Another AI's line names its provider and model, longer than the column.
+	_which_key.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_footer.add_child(_which_key)
 
 	_out = Look.link("Change key", 11)
@@ -390,7 +392,8 @@ func refresh_designer() -> void:
 ## The brief's box, ready to type in.
 func focus_brief() -> void:
 	if _composer.visible:
-		_input.grab_focus()
+		# After the column has opened round it.
+		_input.grab_focus.call_deferred()
 
 
 ## True when the person has asked for their own Claude to do it.

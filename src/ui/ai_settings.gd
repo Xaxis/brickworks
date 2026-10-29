@@ -29,6 +29,8 @@ extends VBoxContainer
 signal changed
 ## Design with it was pressed: the assistant's brief is wanted.
 signal design_wanted
+## Test has answered, in [param said]: for the page to scroll it into sight.
+signal tested(said: Control)
 
 ## Interface units: the width of a row's name.
 const LABEL_WIDE := 118.0
@@ -220,9 +222,9 @@ func _build() -> void:
 	_temperature_row = warmth
 	_own.add_child(warmth)
 
-	max_out = _number("Most a reply may write, in tokens", 0.0, 1_000_000.0, 1000.0)
+	max_out = _number("Max output, in tokens", 0.0, 1_000_000.0, 1000.0)
 	max_out.value_changed.connect(func(_value: float) -> void: _save())
-	var most: HBoxContainer = _row("Most a reply", max_out)
+	var most: HBoxContainer = _row("Max output", max_out)
 	most.add_child(_note("tokens; 0 is the model's own"))
 	_own.add_child(most)
 
@@ -507,6 +509,7 @@ func _test() -> void:
 		return
 	_test_said.text = str(found["words"])
 	_say(_test_detail, str(found["detail"]))
+	tested.emit(_test_detail if _test_detail.visible else _test_said)
 	changed.emit()
 
 

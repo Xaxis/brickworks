@@ -135,10 +135,15 @@ func _build() -> void:
 	_ai_page.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_ai_page.visible = false
 	column.add_child(_ai_page)
+	# Clear of the scroll bar on the right.
+	var inset := MarginContainer.new()
+	inset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inset.add_theme_constant_override("margin_right", 14)
+	_ai_page.add_child(inset)
 	var page := VBoxContainer.new()
 	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	page.add_theme_constant_override("separation", 10)
-	_ai_page.add_child(page)
+	inset.add_child(page)
 	_back = Look.link("‹ Back to Settings", 12)
 	_back.accessibility_name = "Back to Settings"
 	_back.pressed.connect(func() -> void: _show_ai(false))
@@ -148,6 +153,8 @@ func _build() -> void:
 	ai.changed.connect(func() -> void:
 		_show_designer()
 		ai_changed.emit())
+	# What Test found, scrolled into sight: below the fold in a short window.
+	ai.tested.connect(func(said: Control) -> void: _ai_page.ensure_control_visible(said))
 	ai.design_wanted.connect(func() -> void:
 		visible = false
 		ai_design_wanted.emit())
