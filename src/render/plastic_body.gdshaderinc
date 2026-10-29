@@ -282,7 +282,7 @@ vec3 studio(vec3 r, float blur) {
 // The normal of a box with rounded edges, [param width] in radius, at a
 // point of a face of the part's body box ([param n] the surface's own
 // normal, part space); [param n] itself anywhere else.
-vec3 bevelled(vec3 at, vec3 n, float width, float pixel) {
+vec3 bevelled(vec3 at, vec3 n, float width, float pixel, float small) {
 	vec3 low = part_box_min;
 	vec3 high = vec3(part_box_max.x, min(part_box_max.y, part_body_top), part_box_max.z);
 	vec3 size = high - low;
@@ -309,6 +309,11 @@ vec3 bevelled(vec3 at, vec3 n, float width, float pixel) {
 		return n;
 	}
 	vec3 q = max(min(abs(p), half_size) - (half_size - vec3(width)), vec3(0.0));
+	// A round a pixel or two across is seen whole by each pixel on it: its
+	// average turn, the same across it, rather than the full quarter turn
+	// within two pixels, whose highlight each pixel caught or missed by
+	// where its centre fell (dashes along every edge at Good).
+	q = mix(q, step(vec3(0.0001), q) * width * 0.6, small);
 	q = mix(q, vec3(width), axis);
 	return normalize(sign(p) * q);
 }
@@ -396,11 +401,12 @@ void fragment() {
 	{
 		vec3 n_local = normalize(local_normal);
 		float width = max(bevel_ldu, bevel_pixels * pixel_ldu);
-		vec3 bent = bevelled(local_position, n_local, width, pixel_ldu);
+		float small = smoothstep(bevel_ldu, bevel_ldu * 3.0, width);
+		vec3 bent = bevelled(local_position, n_local, width, pixel_ldu, small);
 		if (bent != n_local) {
 			normal = normalize(axis_x * bent.x + axis_y * bent.y + axis_z * bent.z);
 			NORMAL = normal;
-			on_round = smoothstep(bevel_ldu, bevel_ldu * 3.0, width);
+			on_round = small;
 		}
 	}
 #endif
@@ -575,9 +581,9 @@ void fragment() {
 		coat = 0.6;
 		coat_roughness = 0.06;
 	}
-	roughness = mix(roughness, max(roughness, 0.42), on_round);
+	roughness = mix(roughness, max(roughness, 0.5), on_round);
 	CLEARCOAT = coat * (1.0 - 0.6 * on_round);
-	CLEARCOAT_ROUGHNESS = mix(coat_roughness, 0.3, on_round);
+	CLEARCOAT_ROUGHNESS = mix(coat_roughness, 0.35, on_round);
 #endif
 	ALBEDO = albedo;
 	METALLIC = metallic;

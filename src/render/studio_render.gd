@@ -1272,6 +1272,9 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 			# average brought to one, and the exposure metered after.
 			material.energy_multiplier = HDRI_LEVEL / maxf(reflected.average, 0.0001)
 			sky.sky_material = material
+			if product:
+				sky.process_mode = Sky.PROCESS_MODE_QUALITY
+				sky.radiance_size = Sky.RADIANCE_SIZE_512
 			environment.sky = sky
 			environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 			environment.ambient_light_sky_contribution = 1.0
@@ -1392,7 +1395,9 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 		light.directional_shadow_max_distance = reach
 		light.directional_shadow_fade_start = 1.0
 		light.shadow_bias = 0.02
-		light.shadow_normal_bias = 1.5
+		# The product look's gloss shows the acne of a shadow the window's
+		# plastic hides: fine diagonal hatching over every rounded grey.
+		light.shadow_normal_bias = 3.0 if product else 1.5
 	_sky_light.visible = plan.sky_samples
 	_sky_light.shadow_enabled = not settings.no_shadows
 	_sky_light.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL

@@ -19,6 +19,21 @@ enum Quality {
 	BEST,
 }
 
+## The backdrops a render is offered by name, as File, Render… and
+## render_model name them: [colour (sRGB), lit as a studio's, falling away
+## from the model (backdrop_gradient)].
+const BACKDROPS: Dictionary = {
+	"white": [Color(1, 1, 1), false],
+	"gradient": [Color(0.96, 0.965, 0.975), true],
+	"grey": [Color(0.74, 0.75, 0.77), false],
+	"dark": [Color(0.05, 0.055, 0.065), true],
+}
+## The looks, by name: words for each.
+const LOOKS: Dictionary = {
+	"window": "As in the window",
+	"product": "Product",
+}
+
 var quality: int = Quality.GOOD
 ## How the plastic and the set are drawn: "window", as the window draws
 ## them, or "product", as a product shot is lit and finished (StudioRender:
@@ -61,6 +76,17 @@ var on_what_moves: bool = false
 ## The key light casts no shadow. For a probe, to measure the shadow by
 ## what taking it away changes.
 var no_shadows: bool = false
+
+
+## Put one of [constant BACKDROPS] behind the model; false when there is no
+## such backdrop.
+func use_backdrop(name: String) -> bool:
+	if not BACKDROPS.has(name):
+		return false
+	backdrop = BACKDROPS[name][0]
+	backdrop_gradient = BACKDROPS[name][1]
+	transparent = false
+	return true
 
 
 func copy() -> RenderSettings:

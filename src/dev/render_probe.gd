@@ -621,6 +621,7 @@ func _showcase() -> void:
 		settings.backdrop = Color.html(backdrop)
 	settings.transparent = _argument("--transparent") == "1"
 	settings.backdrop_gradient = _argument("--gradient") == "1"
+	settings.no_shadows = _argument("--no_shadows") == "1"
 	var out: String = _argument("--picture")
 	if out.is_empty():
 		out = OUT + "showcase.png"
