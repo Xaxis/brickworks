@@ -485,7 +485,7 @@ func _any_filter() -> void:
 	_refill()
 
 
-## The filters chosen on the shelf showing, in their own words: "Town, 1980s".
+## The filters chosen on the shelf showing, in their own words: Town, 1980s.
 func _filtering() -> PackedStringArray:
 	var chosen := PackedStringArray()
 	for choice: OptionButton in [_theme, _decade, _kind, _size]:
@@ -597,7 +597,7 @@ func _sets(ask: Dictionary) -> Dictionary:
 	_page = int(found["page"])
 	var total: int = int(found["total"])
 	return {"models": cards, "pages": int(found["pages"]), "total": total, "answered": true,
-		"said":("%s of %s sets" % [CollectionDialog._comma(total), CollectionDialog._comma(every.size())]
+		"said": ("%s of %s sets" % [CollectionDialog._comma(total), CollectionDialog._comma(every.size())]
 			if total > 0 else "No set matches. Try fewer words, or Any theme.")}
 
 
@@ -636,7 +636,7 @@ func _community(ask: Dictionary) -> Dictionary:
 				model["id"]]})
 	var more: bool = bool((json.data as Dictionary).get("more", false))
 	return {"models": cards, "more": more, "total": cards.size(), "answered": true,
-		"said":("Models shared in the gallery" if not cards.is_empty()
+		"said": ("Models shared in the gallery" if not cards.is_empty()
 			else "Nothing in the gallery matches. Try fewer words, or Any kind.")}
 
 
