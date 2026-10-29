@@ -132,7 +132,10 @@ fixing what it got wrong.
   look asked with 3 pictures and answered, `stub-tower.ldr` saved, 8 requests
   (429 then 7 answered) each with the key, the app's instructions and all 61
   tools, view_model's picture and the look's three reaching the model, and the
-  key in no log; then the adapter and the key's keeping read without a network.
+  key in no log; then a design stopped while a second stub (`--delay 4`) thinks
+  ends once, as stopped, and the next design on the quick one is answered by
+  nothing of the stopped one's; and the adapter and the key's keeping read
+  without a network.
   A real model by hand: `OPENAI_API_KEY=… godot --path . -- --ask-provider="a
   small red lighthouse" --provider=openai --provider-model=gpt-6.1-sol` prints
   each call, `provider ok=… bricks=… replies=… calls=…` and the tokens.

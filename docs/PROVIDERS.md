@@ -456,6 +456,8 @@ answer is a rate limit. The probe checks the model is built, the fresh look
 asked and answered in the judge's shape, the design saved, every request
 carrying the key, the app's instructions and all its tools, view_model's
 picture and the fresh look's three reaching the model, and the key in no log.
+Then a design stopped while a slower stub thinks ends once, as stopped, and
+the next one is answered by nothing of the stopped one's.
 No key for OpenAI, OpenRouter, Gemini, Groq, Mistral, DeepSeek, Together or
 xAI was in `.env` on 2026-10-29, so no real model was run; with one,
 `--ask-provider` runs a real design (section 9). The command line itself was

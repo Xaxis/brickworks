@@ -16,7 +16,8 @@ a data: URL in a user message, and the tools must be functions with object
 parameters. Anything else is a 400 with OpenAI's kind of words. Each request is
 written to --log as one line: what it carried, never the key itself (only
 whether it was the one STUB_KEY names). --fail-first N answers the first N
-requests 429, as a rate limit would.
+requests 429, as a rate limit would; --delay S waits S seconds before each
+answer, as a model thinking does.
 """
 
 import argparse
@@ -24,6 +25,7 @@ import json
 import os
 import re
 import sys
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 TOWER = {
@@ -132,6 +134,7 @@ def step(messages):
 class Stub(BaseHTTPRequestHandler):
     log_path = ""
     fail_first = 0
+    delay = 0.0
     seen = 0
 
     def log_message(self, *_args):
@@ -171,6 +174,7 @@ class Stub(BaseHTTPRequestHandler):
             "problems": wrong,
             "bytes": size,
         }
+        time.sleep(Stub.delay)
         status = 400 if wrong else 200
         if not wrong and Stub.seen <= Stub.fail_first:
             status = 429
@@ -201,9 +205,11 @@ def main():
     parser.add_argument("--port", type=int, required=True)
     parser.add_argument("--log", required=True)
     parser.add_argument("--fail-first", type=int, default=0)
+    parser.add_argument("--delay", type=float, default=0.0)
     args = parser.parse_args()
     Stub.log_path = args.log
     Stub.fail_first = args.fail_first
+    Stub.delay = args.delay
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Stub)
     print("provider stub on 127.0.0.1:%d" % args.port, flush=True)
     try:

@@ -66,7 +66,11 @@ var _running: bool = false
 var _replies: int = 0
 var _calls: int = 0
 var _spend := Brain.Spend.new()
+## The request in the air, one of its own each time: a stopped run's request
+## is freed, never reused, so its reply cannot reach the next run.
 var _http: HTTPRequest = null
+## Which run is current: every wait of a run checks it is still this one.
+var _run_number: int = 0
 var _next_id: int = 0
 var _job_line := RegEx.create_from_string("^(Started job|The app is busy with job) (\\d+)")
 
@@ -86,6 +90,8 @@ func design(brief: String) -> void:
 		finished.emit(false, "No provider is chosen.")
 		return
 	_running = true
+	_run_number += 1
+	var run: int = _run_number
 	_replies = 0
 	_calls = 0
 	_spend = Brain.Spend.new()
@@ -94,6 +100,8 @@ func design(brief: String) -> void:
 		"protocolVersion": CommandSocket.PROTOCOL, "capabilities": {},
 		"clientInfo": {"name": "brickworks-designer", "version": "1"}})
 	var listed: Dictionary = await _ask_app("tools/list", {})
+	if not _live(run):
+		return
 	_tools = listed.get("tools", []) if listed.get("tools") is Array else []
 	if _tools.is_empty():
 		_end(false, "The app served no tools.")
@@ -101,7 +109,7 @@ func design(brief: String) -> void:
 	_system = FRAME + "\n\n" + str(hello.get("instructions", ""))
 	_turns.append({"role": "user", "content": [{"type": "text", "text": brief}]})
 	progress.emit("%s is reading the brief" % provider.model)
-	await _run()
+	await _run(run)
 
 
 ## Stop, as soon as the reply or call in hand ends. What is built stays.
@@ -110,6 +118,8 @@ func stop() -> void:
 		return
 	if _http != null:
 		_http.cancel_request()
+		_http.queue_free()
+		_http = null
 	_end(false, "stopped")
 
 
@@ -134,14 +144,19 @@ func transcript() -> Array:
 	return _turns
 
 
-func _run() -> void:
-	while _running:
+## Whether run [param run] is still the one going.
+func _live(run: int) -> bool:
+	return _running and run == _run_number
+
+
+func _run(run: int) -> void:
+	while _live(run):
 		if _replies >= most_replies:
 			_end(false, "Stopped after %d replies with the model still going." % _replies)
 			return
 		_trim()
-		var reply: Provider.Reply = await _reply()
-		if not _running:
+		var reply: Provider.Reply = await _reply(run)
+		if not _live(run):
 			return
 		if not reply.ok:
 			_end(false, reply.error)
@@ -165,31 +180,35 @@ func _run() -> void:
 			return
 		var results: Array = []
 		for call: Dictionary in reply.calls:
-			if not _running:
+			var answered: Dictionary = await _answer(call)
+			if not _live(run):
 				return
-			results.append(await _answer(call))
+			results.append(answered)
 		_turns.append({"role": "tool", "results": results})
 
 
 ## One reply from the provider, asked again while its refusal may pass.
-func _reply() -> Provider.Reply:
+func _reply(run: int) -> Provider.Reply:
 	var reply: Provider.Reply = null
 	for attempt: int in tries:
 		if attempt > 0:
 			progress.emit("%s; asking again" % reply.error.left(120))
 			await get_tree().create_timer(2.0 * pow(2.0, attempt - 1)).timeout
-			if not _running:
+			if not _live(run):
 				return reply
 		var asked: Dictionary = provider.request(_system, _tools, _turns)
-		if _http == null:
-			_http = HTTPRequest.new()
-			add_child(_http)
-		_http.timeout = reply_timeout
+		var http := HTTPRequest.new()
+		http.timeout = reply_timeout
+		add_child(http)
+		_http = http
 		var reply_raw: Array = [HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(),
 			PackedByteArray()]
-		if _http.request(str(asked["url"]), asked["headers"], HTTPClient.METHOD_POST,
+		if http.request(str(asked["url"]), asked["headers"], HTTPClient.METHOD_POST,
 				str(asked["body"])) == OK:
-			reply_raw = await _http.request_completed
+			reply_raw = await http.request_completed
+		if _http == http:
+			_http = null
+			http.queue_free()
 		var code: int = int(reply_raw[1]) if int(reply_raw[0]) == HTTPRequest.RESULT_SUCCESS else 0
 		reply = provider.read(code, reply_raw[3])
 		if reply.ok or not reply.again:

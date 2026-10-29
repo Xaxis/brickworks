@@ -18,11 +18,16 @@
 ## Completions takes none in a tool's answer, so they follow in a user
 ## message). And the adapter and the key's keeping, read without a network:
 ## a refused key is said so and not asked again, arguments that are not JSON
-## go back to the model to say again, a Claude plan's token is refused.
+## go back to the model to say again, a Claude plan's token is refused. And a
+## design stopped while its request is in the air ends once, and the next
+## design is not answered by the stopped one's reply.
 ## In a window, for the pictures.
 extends SceneTree
 
 const PORT := 9621
+## A second stub that thinks for SLOW_S seconds before every answer.
+const SLOW_PORT := 9622
+const SLOW_S := 4.0
 const BRIEF := "A slender red tower, six bricks tall"
 
 var _failures: int = 0
@@ -30,6 +35,7 @@ var _main: Node
 var _world: BrickWorld
 var _assistant: Assistant
 var _stub: int = -1
+var _slow: int = -1
 var _log: String = ""
 
 
@@ -52,8 +58,10 @@ func _run() -> void:
 	_assistant = _main.get("_assistant")
 	(_main.get("_store") as ModelStore).keeps = false
 	await _end_to_end()
-	if _stub > 0:
-		OS.kill(_stub)
+	await _stopped_then_again()
+	for pid: int in [_stub, _slow]:
+		if pid > 0:
+			OS.kill(pid)
 
 	print("")
 	print("provider loop: a model on an OpenAI-compatible provider designed, answered the "
@@ -140,6 +148,49 @@ func _end_to_end() -> void:
 	_check("the log of the run never holds the key",
 		not FileAccess.get_file_as_string(_log).contains(key)
 		and not " ".join(lines).contains(key))
+
+
+## Stopped while a slow provider thinks: finished once, as stopped; then a
+## design on the quick one goes as it should, and the stopped one's reply
+## never comes back into it.
+func _stopped_then_again() -> void:
+	print("\n── stopped part way, then designed again ──")
+	var slow_log: String = ProjectSettings.globalize_path("user://provider-slow.jsonl")
+	DirAccess.remove_absolute(slow_log)
+	var key: String = "sk-stub-" + Crypto.new().generate_random_bytes(16).hex_encode()
+	_slow = OS.create_process("python3", ["-I",
+		ProjectSettings.globalize_path("res://tools/provider_stub.py"), "--port",
+		str(SLOW_PORT), "--log", slow_log, "--delay", str(SLOW_S)])
+	await _seconds(2.0)
+	var loop: DesignerLoop = _main.call("designer")
+	var endings: Array = []
+	loop.finished.connect(func(ok: bool, summary: String) -> void: endings.append([ok, summary]))
+	_check("a design on the slow provider starts", _main.call("design_with_provider", BRIEF,
+		ProviderSettings.provider_for("openai", "gpt-6.1-sol", key,
+			"http://127.0.0.1:%d/v1" % SLOW_PORT)))
+	await _seconds(1.0)
+	_check("...and is busy while it thinks", loop.busy())
+	loop.stop()
+	_check("stopped: finished once, as stopped: %s" % str(endings),
+		endings == [[false, "stopped"]] and not loop.busy())
+	_check("another starts at once on the quick one", _main.call("design_with_provider", BRIEF,
+		ProviderSettings.provider_for("openai", "gpt-6.1-sol", key,
+			"http://127.0.0.1:%d/v1" % PORT)))
+	var until: int = Time.get_ticks_msec() + 240000
+	while endings.size() < 2 and Time.get_ticks_msec() < until:
+		await process_frame
+	# The slow reply would have landed by now, had it a way in.
+	await _seconds(SLOW_S + 1.0)
+	_check("it finishes on its own last word, and nothing of the stopped one's: %s"
+		% str(endings), endings.size() == 2 and bool(endings[1][0])
+		and str(endings[1][1]).begins_with("I built a red tower") and loop.replies() == 7)
+	_check("the tower stands again: %d parts" % _parts(), _parts() == 6)
+
+
+func _seconds(seconds: float) -> void:
+	var until: int = Time.get_ticks_msec() + roundi(seconds * 1000.0)
+	while Time.get_ticks_msec() < until:
+		await process_frame
 
 
 ## The request made after [param replies] replies, which answers the calls of
