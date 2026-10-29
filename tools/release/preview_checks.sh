@@ -175,6 +175,10 @@ declare -A CMD=(
   # lists, Favourites first; More's embed code; More by and Similar only
   # with three cards. Signed in, the API answered by the stand-in.
   [model_page]="tools/web/model_page_flow.mjs --url=$P --out=$S/${TAG}_model_page"
+  # local only: download_check.mjs's gated half (a Free click refused with
+  # the way to Pro, a Pro click sent to the route's address). Every
+  # deployment answers "not gated" until the owner turns billing on (U8),
+  # so there it checks the public links, as before.
   [download]="tools/web/download_check.mjs --url=$P/download"
   # Plans, coming soon (web/plans.html, supabase/plan_interest.sql): the page
   # at 390 and 1400, light and dark; its form refusing a bad address, then a
