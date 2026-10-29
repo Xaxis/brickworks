@@ -116,7 +116,7 @@ try {
       const body = await words(page, "main");
       check(`${at}: what an AI build is`, /An AI build is an AI working on a model/.test(body));
       check(`${at}: accounts that exist keep everything`,
-        /Every account made before Pro opens gets Pro, free and with no end date/.test(body));
+        /Every account made before 29 October 2026, when this page changed, gets Pro, free and with no end date/.test(body));
       check(`${at}: education is free`, /Education is free/.test(body));
       check(`${at}: what stays free: the web app, by hand, everything else, nothing taken out`,
         /What stays free/.test(body) && /It takes nothing out of Free/.test(body) && /The web app\./.test(body)
