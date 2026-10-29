@@ -7,7 +7,7 @@ repository of builds only (Xaxis/brickworks-releases), and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, ui:about and the licences, cli:about credits probe -->
+<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, ui:about and the licences, cli:about credits probe, cli:desktop token key -->
 
 ## Sub-features
 
@@ -108,6 +108,17 @@ that offers each system its own build. The cycle and its cadence are
   yet cannot go out. `tests/test_release_links.py` runs it against a server
   on this machine that redirects as GitHub does: all there, a file missing,
   a file of another size.
+  With `RELEASES_TOKEN` set it asks the releases repo's addresses through
+  GitHub's API with the token instead (a release by tag, a file as its
+  asset's bytes, followed to the signed URL, the token never sent past the
+  API): the check that still means something once the repo is private (U8).
+  Both ways 15 of 15 on 2026-10-29 (a gh token standing in).
+- `desktop token key` (`tools/desktop_key.mjs`): `new FILE` makes the RSA key
+  a desktop token is signed with, the private half to FILE (0600, never over
+  another) and only the public half's id and KEYS line printed; `public`
+  prints the id of the key in DESKTOP_TOKEN_KEY; `sign FILE JSON` signs claims
+  with a test key (the desktop pass probe's). docs/RELEASING.md, "The desktop
+  token's key", says how to set and rotate it.
 - `download page`: `web/download.html` with `web/download.js`, served at
   `/download` (tools/site.py copies every file in `web/`; the old
   `/download.html` 308s to `/download`). Reads same-origin `releases.json`, detects the

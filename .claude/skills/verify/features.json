@@ -88,7 +88,29 @@
       "entry": "api/plans.js",
       "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan; off, 405 as before)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_desktop.py"
+      ]
+    },
+    {
+      "id": "api:GET /api/plans?op=download",
+      "kind": "api",
+      "entry": "api/plans.js",
+      "reach": "curl -sI '<deployment>/api/plans?op=download&file=Brickworks-0.10.0-linux-x86_64.AppImage'   (off: 302 to the public address, nobody asked; on: a session whose plan has the desktop gets GitHub's signed URL, Free a 403 with the way to Pro; python3 tools/minitest.py tests/test_desktop.py)",
+      "area": "web",
+      "tests": [
+        "tests/test_desktop.py"
+      ]
+    },
+    {
+      "id": "api:GET /api/plans?op=entitlement",
+      "kind": "api",
+      "entry": "api/plans.js",
+      "reach": "curl -s '<deployment>/api/plans?op=entitlement' -H 'authorization: Bearer <session>'   (off: {billing: off}; on: an RS256 token {sub, plan, desktop, paid_through, iat}, never on a plan not known; python3 tools/minitest.py tests/test_desktop.py)",
+      "area": "web",
+      "tests": [
+        "tests/test_desktop.py"
+      ]
     },
     {
       "id": "api:GET/POST /api/people",
@@ -148,7 +170,9 @@
       "entry": "api/plans.js",
       "reach": "curl -s -X POST https://brickworks.diy/api/plans -H 'content-type: application/json' -d '{\"email\":\"not-an-email\",\"plan\":\"plus\",\"billing\":\"yearly\"}'   (422 with why; an entry kept or changed by supabase/plan_interest.sql, {email, forget: true} takes it off)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_desktop.py"
+      ]
     },
     {
       "id": "api:POST /api/together",
@@ -637,6 +661,22 @@
       "entry": "src/dev/desktop_cloud_probe.gd",
       "reach": "set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8891 & BRICKWORKS_API=http://127.0.0.1:8891 tools/probe.sh desktop_cloud_probe   (the desktop's models in step with the account: saves, a browser's model, both of two edits kept as Name 2, deletes online and offline, a delete while changed, renames, Undo; a throwaway account)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "cli:desktop pass probe",
+      "kind": "cli",
+      "entry": "src/dev/desktop_pass_probe.gd",
+      "reach": "tools/probe.sh desktop_pass   (needs node: tokens signed by api/_desktop.js)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:desktop token key",
+      "kind": "cli",
+      "entry": "tools/desktop_key.mjs",
+      "reach": "node tools/desktop_key.mjs new FILE | public | sign FILE JSON   (docs/RELEASING.md, The desktop token's key; never prints the private half)",
+      "area": "release",
       "tests": []
     },
     {
@@ -2863,6 +2903,22 @@
       "tests": []
     },
     {
+      "id": "lib:the desktop pass",
+      "kind": "lib",
+      "entry": "src/account/desktop_pass.gd",
+      "reach": "tools/probe.sh desktop_pass   (a release build holding a key checks its kept token at start: released while paid opens, later asks, 44 days of grace, never from source, never mid-session)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "lib:the desktop's files and token",
+      "kind": "lib",
+      "entry": "api/_desktop.js",
+      "reach": "python3 tools/minitest.py tests/test_desktop.py   (GitHub's signed asset URL, a 200 refused; the token signed with DESKTOP_TOKEN_KEY; paid_through kept in supabase/desktop_paid_through.sql, only moving on)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:the gallery over mcp",
       "kind": "lib",
       "entry": "src/net/gallery_tool.gd",
@@ -3374,6 +3430,7 @@
       "reach": "https://brickworks.diy/download  (locally: node tools/web/download_check.mjs)",
       "area": "release",
       "tests": [
+        "tests/test_desktop.py",
         "tests/test_site_shell.py"
       ]
     },
@@ -3784,7 +3841,9 @@
       "entry": "web/plans.html",
       "reach": "https://brickworks.diy/plans   (Free, Plus and Creator, the paid two coming soon, education free; Tell me when it's ready opens the interest form, web/plans.js; linked from every page's footer)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_desktop.py"
+      ]
     },
     {
       "id": "ui:play in a shared model",
@@ -4114,6 +4173,14 @@
       "entry": "web/guidelines.html",
       "reach": "https://brickworks.diy/guidelines and /terms  (linked from every page's footer and beside Publish)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the Pro screen on the desktop",
+      "kind": "ui",
+      "entry": "src/ui/pass_gate.gd",
+      "reach": "tools/probe.sh desktop_pass   (This version of the desktop app comes with Pro: See Pro, Open the web app, Sign in with another account, Check again, where the models are)",
+      "area": "account",
       "tests": []
     },
     {

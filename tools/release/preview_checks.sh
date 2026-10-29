@@ -189,6 +189,10 @@ declare -A CMD=(
   # Share; and Open in Brickworks opening 106-1 in the app. The store's own
   # index and files: no account, no database.
   [library_site]="tools/web/library_site_flow.mjs --url=$P --out=$S/${TAG}_library_site"
+  # local only: download_check.mjs's gated half (a Free click refused with
+  # the way to Pro, a Pro click sent to the route's address). Every
+  # deployment answers "not gated" until the owner turns billing on (U8),
+  # so there it checks the public links, as before.
   [download]="tools/web/download_check.mjs --url=$P/download"
   # Plans, coming soon (web/plans.html, supabase/plan_interest.sql): the page
   # at 390 and 1400, light and dark; its form refusing a bad address, then a

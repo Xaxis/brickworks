@@ -8,6 +8,14 @@
 // fetches. Same origin on purpose: the site's content security policy lets a
 // page connect only to itself and a short list of others, and GitHub's API is
 // not on it.
+//
+// The paid desktop, built dark (docs/PLANS.md, unit U5): /api/plans?op=download
+// says whether downloads are gated. While billing is off they are not, and
+// every link is the public address it always was. While it is on, a click on
+// a file asks the same route with the sign-in (web/account.js) for GitHub's
+// short-lived address and goes there; signed out it asks to sign in first,
+// and an account whose plan has no desktop is told so, in the server's
+// words, with the way to Pro.
 (function () {
   "use strict";
 
@@ -237,9 +245,55 @@
     document.getElementById(id).hidden = false;
   }
 
+  // Whether a download needs the sign-in: only while billing is on. Asked
+  // once; unanswered, the links stay the public ones.
+  let gated = false;
+  async function askGated() {
+    try {
+      const reply = await fetch("/api/plans?op=download", { cache: "no-store" });
+      gated = reply.ok && (await reply.json()).gated === true;
+    } catch {
+      gated = false;
+    }
+  }
+
+  // What the route said instead of a file, under the button: its words, and
+  // the way to Pro when it gave one.
+  function refused(words, pro) {
+    let line = document.getElementById("gate-said");
+    if (!line) {
+      line = el("p", { class: "note", id: "gate-said", role: "status" });
+      document.getElementById("offer-meta").after(line);
+    }
+    line.replaceChildren(words, ...(pro ? [" ", el("a", { href: pro, text: "See Pro" })] : []));
+  }
+
+  async function fetchGated(file) {
+    const account = await import("/account.js");
+    const path = "/api/plans?op=download&file=" + encodeURIComponent(file);
+    let reply = await account.call(path);
+    if (reply.status === 401) {
+      if (!(await account.askToSignIn("Sign in to download the desktop app."))) return;
+      reply = await account.call(path);
+    }
+    if (reply.status === 200 && reply.body.url) {
+      location.assign(reply.body.url);
+      return;
+    }
+    refused(reply.body.error || "The download did not start just now. Try again in a minute.", reply.body.pro);
+  }
+
+  document.addEventListener("click", (event) => {
+    const link = event.target.closest('a[href*="/releases/download/"]');
+    if (!gated || !link) return;
+    event.preventDefault();
+    fetchGated(decodeURIComponent(link.getAttribute("href").split("/").pop()));
+  });
+
   async function start() {
     const device = detect();
     welcome(device);
+    askGated();
     let manifest;
     try {
       const response = await fetch("releases.json", { cache: "no-cache" });

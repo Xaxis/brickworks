@@ -83,6 +83,10 @@ var _account: Account
 ## Over everything until someone is signed in, when a person is in front
 ## of the window to sign in (see [method _gate_wanted]).
 var _gate: SignInGate
+## The paid desktop's check at start, and its screen (DesktopPass,
+## PassGate): only in an exported release build that holds a key.
+var _pass: DesktopPass
+var _pass_gate: PassGate
 var _account_panel: AccountPanel
 ## Whether the connector has been put back as it was for this sign-in.
 var _connector_resumed: bool = false
@@ -2302,7 +2306,7 @@ func _gate_wanted() -> bool:
 
 ## Whether the sign-in screen is up, so nothing behind it moves.
 func _gated() -> bool:
-	return _gate != null and _gate.visible
+	return (_gate != null and _gate.visible) or (_pass_gate != null and _pass_gate.visible)
 
 
 ## Somebody signed in, or out. The connector belongs to an account: put
@@ -4217,6 +4221,14 @@ func _build_ui() -> void:
 	_account.keeps = _gate_wanted() and not gate_for_probe and _viewing.is_empty()
 	add_child(_account)
 
+	# Whether this build is the account's (docs/PLANS.md §4): never from
+	# source, a probe or the web, and never for a run that keeps no session.
+	_pass = DesktopPass.new()
+	_pass.account = _account
+	_pass.checks = _account.keeps and DesktopPass.wanted()
+	_pass.released = str(BuildInfo.stamp().get("date", ""))
+	add_child(_pass)
+
 	# Models shared by link: publishing this one, and opening somebody's.
 	# A probe hands in its own, which answers without a network.
 	if _shared == null:
@@ -5282,6 +5294,10 @@ func _build_ui() -> void:
 	# Over everything else, so it is added last: nothing in the builder can
 	# be used until someone is signed in. Not over a shared model's viewer,
 	# which is for anybody with the link.
+	if _pass.checks:
+		_pass_gate = PassGate.new()
+		_pass_gate.setup(_pass)
+		$HUD.add_child(_pass_gate)
 	if _gate_wanted() and _viewing.is_empty():
 		_gate = SignInGate.new()
 		_gate.setup(_account)
