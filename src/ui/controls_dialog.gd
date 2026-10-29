@@ -41,6 +41,10 @@ signal changed
 signal assistant_chosen(on: bool)
 ## Settings, Interface size: chosen, for the window to be drawn again at it.
 signal interface_sized
+## Settings, AI: who designs, or with what, changed (AiSettings).
+signal ai_changed
+## Settings, AI, Design with it: the assistant's brief is wanted.
+signal ai_design_wanted
 
 
 func _ready() -> void:
@@ -68,11 +72,13 @@ func _build() -> void:
 	title.text = "Controls"
 	title.add_theme_font_size_override("font_size", 15)
 	column.add_child(title)
+	_title = title
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	column.add_child(scroll)
+	_keys = scroll
 
 	_rows = VBoxContainer.new()
 	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -80,7 +86,8 @@ func _build() -> void:
 	scroll.add_child(_rows)
 	_fill()
 
-	column.add_child(HSeparator.new())
+	_rule = HSeparator.new()
+	column.add_child(_rule)
 
 	# The settings, as they were, where the window has room for them all; in
 	# a window too short (a big Interface size on a laptop) they scroll,
@@ -105,6 +112,7 @@ func _build() -> void:
 	_interface(lower)
 	_new_floor(lower)
 	_assistant(lower)
+	_ai(lower)
 
 	# Which build this is and when it went out. The owner, looking at the
 	# live site, had no way to tell when it had last been deployed; the
@@ -118,6 +126,32 @@ func _build() -> void:
 	lower.add_child(_version)
 	if OS.has_feature("web"):
 		_read_version.call_deferred()
+
+	# Settings, AI: a page of its own in the dialog, over the keys and the
+	# settings, with the whole height: its form is taller than the room the
+	# settings leave the keys (_fit_settings).
+	_ai_page = ScrollContainer.new()
+	_ai_page.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_ai_page.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_ai_page.visible = false
+	column.add_child(_ai_page)
+	var page := VBoxContainer.new()
+	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page.add_theme_constant_override("separation", 10)
+	_ai_page.add_child(page)
+	_back = Look.link("‹ Back to Settings", 12)
+	_back.accessibility_name = "Back to Settings"
+	_back.pressed.connect(func() -> void: _show_ai(false))
+	page.add_child(_back)
+	ai = AiSettings.new()
+	ai.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ai.changed.connect(func() -> void:
+		_show_designer()
+		ai_changed.emit())
+	ai.design_wanted.connect(func() -> void:
+		visible = false
+		ai_design_wanted.emit())
+	page.add_child(ai)
 
 	var done := Button.new()
 	done.text = "Done"
@@ -412,6 +446,66 @@ func _show_assistant_choice() -> void:
 			+ "Claude connections are off while the assistant is off.")
 
 
+## Settings, AI: who designs now, and the way to the page that changes it.
+var ai: AiSettings
+var ai_open: Button
+var _designer_words: Label
+var _ai_page: ScrollContainer
+var _back: LinkButton
+var _title: Label
+var _keys: ScrollContainer
+var _rule: HSeparator
+
+
+func _ai(column: VBoxContainer) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	column.add_child(row)
+	_designer_words = Label.new()
+	_designer_words.add_theme_font_size_override("font_size", 12)
+	_designer_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_designer_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(_designer_words)
+	ai_open = Button.new()
+	ai_open.text = "AI…"
+	ai_open.accessibility_name = "AI: who designs, provider, model and key"
+	ai_open.tooltip_text = "Claude, or another AI on your own API key: its provider, model and key"
+	ai_open.add_theme_font_size_override("font_size", 12)
+	ai_open.pressed.connect(func() -> void: _show_ai(true))
+	row.add_child(ai_open)
+	_show_designer()
+
+
+func _show_designer() -> void:
+	if _designer_words == null:
+		return
+	var kept: Dictionary = ProviderSettings.chosen()
+	_designer_words.text = "Designs with: " + ("Claude" if ProviderSettings.who()
+		== ProviderSettings.WHO_CLAUDE else "%s, %s" % [str(ProviderSettings.PRESETS[
+			kept["provider"]]["name"]), str(kept["model"]) if not str(kept["model"]).is_empty()
+			else "no model chosen"])
+
+
+## The AI page in place of the keys and the settings, or back.
+func _show_ai(on: bool) -> void:
+	_ai_page.visible = on
+	_keys.visible = not on
+	_rule.visible = not on
+	_settings.visible = not on
+	_title.text = "Settings: AI" if on else "Controls"
+	if on:
+		ai.show_kept()
+		(ai.who_key if ai.who_key.button_pressed else ai.who_claude).grab_focus.call_deferred()
+	else:
+		_show_designer()
+
+
+## Settings opened at its AI page.
+func open_ai() -> void:
+	open()
+	_show_ai(true)
+
+
 var _version: Label
 
 
@@ -452,6 +546,9 @@ func open() -> void:
 	if interface_choice != null:
 		interface_choice.select(_interface_index())
 		reduce_motion.set_pressed_no_signal(ShellPrefs.reduce_motion())
+	if _ai_page != null and _ai_page.visible:
+		_show_ai(false)
+	_show_designer()
 	visible = true
 
 
@@ -459,6 +556,10 @@ func open() -> void:
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
-	return {"assistant_on": assistant_on, "assistant_off": assistant_off,
+	var named: Dictionary = {"assistant_on": assistant_on, "assistant_off": assistant_off,
 		"interface_size": interface_choice, "reduce_motion": reduce_motion,
-		"settings_done": _done}
+		"settings_done": _done, "ai_settings": ai_open}
+	if _ai_page.visible:
+		named.merge(ai.controls_by_name())
+		named["ai_back"] = _back
+	return named

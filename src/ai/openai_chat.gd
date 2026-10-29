@@ -165,3 +165,45 @@ func read(code: int, body: PackedByteArray) -> Reply:
 	reply.spend.made = int(usage.get("completion_tokens", 0))
 	reply.ok = true
 	return reply
+
+
+## GET {base}/models: every OpenAI-compatible server has it, Ollama's and
+## LM Studio's included. OpenRouter's says per model what it takes.
+func models_request() -> Dictionary:
+	var headers := PackedStringArray()
+	if not key.is_empty():
+		headers.append("authorization: Bearer " + key)
+	return {"url": address("models"), "headers": headers}
+
+
+func read_models(code: int, body: PackedByteArray) -> Dictionary:
+	var parsed: Variant = Provider.parsed(body.get_string_from_utf8())
+	var answer: Dictionary = parsed if parsed is Dictionary else {}
+	if code != 200 or not (answer.get("data") is Array):
+		var said: Variant = answer.get("error", {})
+		return {"ok": false, "models": [], "error": Provider.refusal(code,
+			str((said as Dictionary).get("message", "")) if said is Dictionary else str(said))}
+	var models: Array = []
+	for raw: Variant in answer["data"]:
+		if not (raw is Dictionary) or str((raw as Dictionary).get("id", "")).is_empty():
+			continue
+		var one: Dictionary = raw
+		var model: Dictionary = Provider.listed(str(one["id"]), str(one.get("name", "")))
+		# OpenRouter's: supported_parameters, and architecture's input
+		# modalities. Nobody else says, and silence is not a no.
+		if one.get("supported_parameters") is Array:
+			var takes: Array = one["supported_parameters"]
+			model["params"] = takes
+			model["tools"] = takes.has("tools")
+		var architecture: Variant = one.get("architecture")
+		if architecture is Dictionary and (architecture as Dictionary).get("input_modalities") is Array:
+			model["pictures"] = ((architecture as Dictionary)["input_modalities"] as Array).has("image")
+		models.append(model)
+	return {"ok": true, "error": "", "models": models}
+
+
+## OpenAI's own take minimal and xhigh as well; the servers that copy the
+## API take low, medium and high where they take it at all.
+func efforts() -> Array:
+	return ["minimal", "low", "medium", "high", "xhigh"] if base_url.contains("api.openai.com") \
+		else ["low", "medium", "high"]
