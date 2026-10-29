@@ -585,7 +585,7 @@ function itemsSaid(schema) {
 // destructiveHint, and openWorldHint to explicit boolean values"): a tool
 // that only looks destroys nothing. Claude is given the list as it always
 // was, word for word.
-function portable(tool) {
+export function portable(tool) {
   const hints = tool.annotations && typeof tool.annotations === "object" ? tool.annotations : {};
   return {
     ...tool,
