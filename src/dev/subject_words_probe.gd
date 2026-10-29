@@ -149,6 +149,29 @@ func _run() -> void:
 	_ok(str(Techniques.named("ant").get("name", "")) != "planter",
 		"...nor \"ant\" the planter")
 
+	# A brief is read once for what each of its words names (perf331), and a
+	# vocabulary looked up in that: it must be what kind_of_word finds each
+	# word to be, word for word, or the two have drifted apart.
+	print("\na word names alone what kind_of_word finds it to be")
+	var briefs: Array = NEAR_MISSES.keys() + STILL.map(func(pair: Array) -> String: return pair[0])
+	briefs.append_array(["spacecraft spaceports firetrucks speedboats seaplanes houseboats",
+		"firemen policemen snowmobiles helicopters motorbikes racecars", "the bodies of castles"])
+	var wanted: Dictionary = {}
+	for word: Variant in _words_of(Style.TRAITS) + library.kinds.keys() + SubjectWords.COMPOUND_ENDS:
+		for one: String in SubjectWords.of(str(word)):
+			wanted[one] = true
+	var drifted := PackedStringArray()
+	var asked: int = 0
+	for brief: Variant in briefs:
+		for word: String in SubjectWords.of(str(brief)):
+			var alone: Dictionary = SubjectWords.named_alone(word)
+			for one: String in wanted.keys() + alone.keys():
+				asked += 1
+				if alone.has(one) == SubjectWords.kind_of_word(word, {one: true}).is_empty():
+					drifted.append("%s/%s" % [word, one])
+	_ok(drifted.is_empty() and asked > 10000, "%d words of briefs against a vocabulary of one: %s"
+		% [asked, "the same" if drifted.is_empty() else "differ " + ", ".join(drifted.slice(0, 8))])
+
 	print("\nand what a brief means is still found")
 	for pair: Array in STILL:
 		var kinds: Array = library.kinds_for(str(pair[0])).map(
