@@ -558,6 +558,7 @@ static func in_a_scene(about: String, titles: Array) -> bool:
 ## Where in [param said] (a brief's words) a word or phrase of [param
 ## vocabulary] first comes, as SubjectWords names it; -1 for nowhere.
 static func _first_at(said: PackedStringArray, vocabulary: Array) -> int:
+	var read: Array = SubjectWords.read(said)
 	var best: int = -1
 	for raw: Variant in vocabulary:
 		var want: PackedStringArray = SubjectWords.of(str(raw))
@@ -566,15 +567,7 @@ static func _first_at(said: PackedStringArray, vocabulary: Array) -> int:
 		for start: int in said.size() - want.size() + 1:
 			if best >= 0 and start >= best:
 				break
-			var all: bool = true
-			if want.size() == 1:
-				all = not SubjectWords.kind_of_word(said[start], {want[0]: true}).is_empty()
-			else:
-				for k: int in want.size():
-					if not SubjectWords.forms(said[start + k]).has(want[k]):
-						all = false
-						break
-			if all:
+			if SubjectWords.named_at(read, start, want):
 				best = start
 				break
 	return best
