@@ -1,0 +1,1384 @@
+{
+	"menus": [
+		{
+			"title": "File",
+			"items": [
+				{
+					"name": "new",
+					"words": "New",
+					"key": "Ctrl+N",
+					"tip": "Start a new model on an empty baseplate"
+				},
+				{
+					"name": "new_window",
+					"words": "New window",
+					"key": "Ctrl+Shift+N",
+					"tip": "Start a new model in a window of its own"
+				},
+				{
+					"name": "open",
+					"words": "Open…",
+					"key": "Ctrl+O",
+					"tip": "Reopen a saved model, an example, or a file from this computer"
+				},
+				{
+					"name": "library",
+					"words": "Library…",
+					"key": "",
+					"tip": "Any of LDraw's models of real sets, or a model the community shared, opened in a new window"
+				},
+				{
+					"submenu": "recent",
+					"words": "Open recent",
+					"items": []
+				},
+				{
+					"submenu": "import",
+					"words": "Import",
+					"items": [
+						{
+							"name": "import_ldraw",
+							"words": "LDraw model (.ldr, .mpd)…",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "import_io",
+							"words": "BrickLink Studio model (.io)…",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "import_lxf",
+							"words": "LEGO® Digital Designer model (.lxf)…",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "import_mesh",
+							"words": "3D model to brickify (.obj, .stl, .ply, .3mf, .vox, .fbx, .gltf, .glb)…",
+							"key": "",
+							"tip": "A sculpt, a scan or any 3D model, laid in bricks"
+						}
+					]
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "save",
+					"words": "Save",
+					"key": "Ctrl+S",
+					"tip": "Keep this model under its name"
+				},
+				{
+					"name": "save_as",
+					"words": "Save as…",
+					"key": "Ctrl+Shift+S",
+					"tip": "Keep a copy of this model under another name"
+				},
+				{
+					"name": "versions",
+					"words": "Versions…",
+					"key": "",
+					"tip": "The last 20 saves of this model, to open one again"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "share",
+					"words": "Share…",
+					"key": "",
+					"tip": "A link anyone can open to see this model, its steps and its parts list"
+				},
+				{
+					"name": "together",
+					"words": "Build together…",
+					"key": "",
+					"tip": "Build this model with someone else, live, each in their own browser or the app"
+				},
+				{
+					"submenu": "export",
+					"words": "Export",
+					"items": [
+						{
+							"name": "export_ldraw",
+							"words": "LDraw model (.ldr, or .mpd with its sub-models)",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "export_io",
+							"words": "BrickLink Studio model (.io)",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "export_3d",
+							"words": "3D model (.glb, .gltf, .obj, .stl)…",
+							"key": "",
+							"tip": "The model as a 3D file for Blender, AR or a 3D printer"
+						},
+						{
+							"name": "export_picture",
+							"words": "Picture of the model (.png)",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "export_bricklink",
+							"words": "BrickLink wanted list (.xml)",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "export_rebrickable",
+							"words": "Rebrickable parts list (.csv)",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "export_all",
+							"words": "All my models (.zip)",
+							"key": "",
+							"tip": "Every model saved here, as LDraw files in one .zip: a copy of your own"
+						}
+					]
+				},
+				{
+					"name": "render",
+					"words": "Render…",
+					"key": "",
+					"tip": "A photo-real picture or turntable of the model, on a backdrop, in studio light"
+				},
+				{
+					"name": "instructions",
+					"words": "Instructions…",
+					"key": "",
+					"tip": "Building instructions for this model, step by step"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "clear",
+					"words": "Clear the baseplate…",
+					"key": "",
+					"tip": "Empty the baseplate. Asks first: it cannot be undone"
+				},
+				{
+					"name": "account",
+					"words": "Account…",
+					"key": "",
+					"tip": "Who is signed in, and Sign out"
+				},
+				{
+					"name": "quit",
+					"words": "Quit",
+					"key": "Ctrl+Q",
+					"tip": ""
+				}
+			]
+		},
+		{
+			"title": "Edit",
+			"items": [
+				{
+					"name": "undo",
+					"words": "Undo",
+					"key": "Ctrl+Z",
+					"tip": "Take back the last change"
+				},
+				{
+					"name": "redo",
+					"words": "Redo",
+					"key": "Ctrl+Shift+Z",
+					"tip": "Put it back"
+				},
+				{
+					"submenu": "history",
+					"words": "History",
+					"items": []
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "cut_parts",
+					"words": "Cut",
+					"key": "Ctrl+X",
+					"tip": "Take the selection off the model, to paste somewhere else"
+				},
+				{
+					"name": "copy",
+					"words": "Copy",
+					"key": "Ctrl+C",
+					"tip": "Copy the selection"
+				},
+				{
+					"name": "paste",
+					"words": "Paste",
+					"key": "Ctrl+V",
+					"tip": "Hold a copy of what was copied: click to put it down, R turns it"
+				},
+				{
+					"name": "duplicate",
+					"words": "Duplicate",
+					"key": "Ctrl+D",
+					"tip": "Hold a copy of the selection, to put down beside it"
+				},
+				{
+					"name": "delete",
+					"words": "Delete",
+					"key": "Delete",
+					"tip": "Take the selection off the model"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "select_all",
+					"words": "Select all",
+					"key": "Ctrl+A",
+					"tip": ""
+				},
+				{
+					"name": "select_none",
+					"words": "Select nothing",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"submenu": "select_by",
+					"words": "Select by",
+					"items": [
+						{
+							"name": "select_colour",
+							"words": "Same colour",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "select_part",
+							"words": "Same part",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "select_alike",
+							"words": "Same part and colour",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "select_find",
+							"words": "Part number or name…",
+							"key": "",
+							"tip": "Find a part in the model by its number, its name or its colour"
+						},
+						{
+							"name": "select_connected",
+							"words": "Everything connected",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "select_submodel",
+							"words": "Same sub-model",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "select_inverse",
+							"words": "The opposite",
+							"key": "",
+							"tip": ""
+						}
+					]
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "hide",
+					"words": "Hide",
+					"key": "Ctrl+H",
+					"tip": "Hide the selection, to reach what is behind it"
+				},
+				{
+					"name": "isolate",
+					"words": "Show only the selection",
+					"key": "Shift+H",
+					"tip": "Hide everything else, to work on just this"
+				},
+				{
+					"name": "show_all",
+					"words": "Show everything",
+					"key": "Alt+H",
+					"tip": "Bring back whatever is hidden"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "lock",
+					"words": "Lock the selection",
+					"key": "L",
+					"tip": "Keep the selection from being picked out, moved, painted or taken off"
+				},
+				{
+					"name": "unlock",
+					"words": "Unlock everything",
+					"key": "Shift+L",
+					"tip": ""
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "paint",
+					"words": "Paint the selection",
+					"key": "C",
+					"tip": "Paint the selection the colour in hand"
+				},
+				{
+					"name": "replace",
+					"words": "Replace with the part in hand",
+					"key": "",
+					"tip": "Swap the selection for the part you hold, each in its own colour"
+				},
+				{
+					"name": "printed_versions",
+					"words": "Printed versions…",
+					"key": "",
+					"tip": "Swap the part for one of the prints or stickered versions the LEGO Group made of it"
+				},
+				{
+					"name": "mirror",
+					"words": "Mirror",
+					"key": "Shift+M",
+					"tip": "Make the selection its mirror image, left to right as you see it"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "ask_claude",
+					"words": "Ask Claude about this…",
+					"key": "Ctrl+K",
+					"tip": "Ask Claude to change the selected parts, and only them, or ask about them"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "make_submodel",
+					"words": "Make a sub-assembly…",
+					"key": "Ctrl+G",
+					"tip": "Name the selection as a sub-assembly: it moves as one, saves as a sub-model, and its copies follow it"
+				},
+				{
+					"name": "leave_submodel",
+					"words": "Ungroup",
+					"key": "Ctrl+Shift+G",
+					"tip": "Take the selected sub-assembly apart one level"
+				},
+				{
+					"name": "enter_assembly",
+					"words": "Edit inside the sub-assembly",
+					"key": "Enter",
+					"tip": "Work on its parts one by one; what you put down goes into it (double-click does this too)"
+				},
+				{
+					"name": "leave_assembly",
+					"words": "Done editing the sub-assembly",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"name": "rename_assembly",
+					"words": "Rename the sub-assembly…",
+					"key": "F2",
+					"tip": ""
+				},
+				{
+					"name": "make_unique",
+					"words": "Make this copy unique",
+					"key": "",
+					"tip": "Cut this copy loose, so editing it changes no other"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "break_out",
+					"words": "Break out the section",
+					"key": "Y",
+					"tip": "Pull the selected section away from the model to work on it, or put it back exactly where it was (Y again)"
+				},
+				{
+					"name": "put_back",
+					"words": "Put every section back",
+					"key": "",
+					"tip": "Every section broken out back exactly where it was"
+				},
+				{
+					"line": true
+				},
+				{
+					"submenu": "steps",
+					"words": "Build steps",
+					"items": [
+						{
+							"name": "step_close",
+							"words": "Next step",
+							"key": "E",
+							"tip": "The parts put down since the last step make a step, and the next part starts another"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "step_prev",
+							"words": "Move to previous step",
+							"key": "Shift+[",
+							"tip": "The selected parts a step earlier in the build steps"
+						},
+						{
+							"name": "step_next",
+							"words": "Move to next step",
+							"key": "Shift+]",
+							"tip": "The selected parts a step later in the build steps, in a new step from the last"
+						},
+						{
+							"name": "step_new",
+							"words": "New step from selection",
+							"key": "Shift+N",
+							"tip": "The selected parts in a step of their own, after the step the timeline is on"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "step_earlier",
+							"words": "Step earlier",
+							"key": "",
+							"tip": "The step the timeline is on, before the one ahead of it"
+						},
+						{
+							"name": "step_later",
+							"words": "Step later",
+							"key": "",
+							"tip": "The step the timeline is on, after the one that follows it"
+						},
+						{
+							"name": "step_merge",
+							"words": "Merge with the next step",
+							"key": "",
+							"tip": "The step the timeline is on and the next made one"
+						},
+						{
+							"name": "step_delete",
+							"words": "Delete the step",
+							"key": "",
+							"tip": "Take out the step the timeline is on; its parts join the step before"
+						}
+					]
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "reshape_flex",
+					"words": "Reshape the hose or chain",
+					"key": "",
+					"tip": "Drag the selected hose's bend, or put its chain round other sprockets"
+				}
+			]
+		},
+		{
+			"title": "View",
+			"items": [
+				{
+					"name": "view_default",
+					"words": "Default view",
+					"key": "0",
+					"tip": "Look at the model default view"
+				},
+				{
+					"name": "view_front",
+					"words": "From the front",
+					"key": "1",
+					"tip": "Look at the model from the front"
+				},
+				{
+					"name": "view_back",
+					"words": "From the back",
+					"key": "2",
+					"tip": "Look at the model from the back"
+				},
+				{
+					"name": "view_left",
+					"words": "From the left",
+					"key": "3",
+					"tip": "Look at the model from the left"
+				},
+				{
+					"name": "view_right",
+					"words": "From the right",
+					"key": "4",
+					"tip": "Look at the model from the right"
+				},
+				{
+					"name": "view_top",
+					"words": "From above",
+					"key": "5",
+					"tip": "Look at the model from above"
+				},
+				{
+					"name": "view_bottom",
+					"words": "From below",
+					"key": "6",
+					"tip": "Look at the model from below"
+				},
+				{
+					"name": "view_iso",
+					"words": "Isometric",
+					"key": "7",
+					"tip": "Look at the model isometric"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "mode_orbit",
+					"words": "Orbit tool",
+					"key": "O",
+					"tip": ""
+				},
+				{
+					"name": "mode_pan",
+					"words": "Pan tool",
+					"key": "H",
+					"tip": ""
+				},
+				{
+					"name": "mode_zoom",
+					"words": "Zoom tool",
+					"key": "Z",
+					"tip": ""
+				},
+				{
+					"name": "fit",
+					"words": "Fit",
+					"key": "F",
+					"tip": "Zoom to show the selection, or the whole model"
+				},
+				{
+					"name": "fit_model",
+					"words": "Fit the model",
+					"key": "Shift+F",
+					"tip": "Zoom to show the whole model"
+				},
+				{
+					"name": "fit_selection",
+					"words": "Fit the selection",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"name": "ortho",
+					"words": "Orthographic",
+					"key": "`",
+					"tip": "Square on, with no perspective: how a CAD drawing is read"
+				},
+				{
+					"name": "grid",
+					"words": "Stud grid",
+					"key": "",
+					"tip": "Lines between the studs of the baseplate, for counting them"
+				},
+				{
+					"submenu": "floor",
+					"words": "Floor",
+					"items": [
+						{
+							"name": "floor_16",
+							"words": "Baseplate 16 × 16",
+							"key": "",
+							"tip": "Stand the model on a 16 by 16 baseplate"
+						},
+						{
+							"name": "floor_32",
+							"words": "Baseplate 32 × 32",
+							"key": "",
+							"tip": "Stand the model on a 32 by 32 baseplate"
+						},
+						{
+							"name": "floor_48",
+							"words": "Baseplate 48 × 48",
+							"key": "",
+							"tip": "Stand the model on a 48 by 48 baseplate"
+						},
+						{
+							"name": "floor_custom",
+							"words": "Baseplate, other size…",
+							"key": "",
+							"tip": "A baseplate of any size in eights of studs, cut from the ones the LEGO Group sells"
+						},
+						{
+							"submenu": "floor_colour",
+							"words": "Baseplate colour",
+							"items": [
+								{
+									"name": "floor_colour_2",
+									"words": "Green",
+									"key": "",
+									"tip": ""
+								},
+								{
+									"name": "floor_colour_10",
+									"words": "Bright Green",
+									"key": "",
+									"tip": ""
+								},
+								{
+									"name": "floor_colour_288",
+									"words": "Dark Green",
+									"key": "",
+									"tip": ""
+								},
+								{
+									"name": "floor_colour_19",
+									"words": "Tan",
+									"key": "",
+									"tip": ""
+								},
+								{
+									"name": "floor_colour_28",
+									"words": "Dark Tan",
+									"key": "",
+									"tip": ""
+								},
+								{
+									"name": "floor_colour_71",
+									"words": "Light Bluish Grey",
+									"key": "",
+									"tip": ""
+								},
+								{
+									"name": "floor_colour_72",
+									"words": "Dark Bluish Grey",
+									"key": "",
+									"tip": ""
+								},
+								{
+									"name": "floor_colour_378",
+									"words": "Sand Green",
+									"key": "",
+									"tip": ""
+								},
+								{
+									"name": "floor_colour_1",
+									"words": "Blue",
+									"key": "",
+									"tip": ""
+								},
+								{
+									"name": "floor_colour_15",
+									"words": "White",
+									"key": "",
+									"tip": ""
+								},
+								{
+									"name": "floor_colour_0",
+									"words": "Black",
+									"key": "",
+									"tip": ""
+								},
+								{
+									"name": "floor_colour_7",
+									"words": "Light Grey",
+									"key": "",
+									"tip": ""
+								}
+							]
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "floor_grid",
+							"words": "Grid floor",
+							"key": "",
+							"tip": "No baseplate: a faint ground with a line between the studs, as Studio has"
+						},
+						{
+							"name": "floor_none",
+							"words": "No floor",
+							"key": "",
+							"tip": "Nothing under the model, as a car or a ship stands on a table"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "floor_part",
+							"words": "The baseplate is part of the model",
+							"key": "",
+							"tip": "Counted in the parts list and the shop lists, saved with the model and the first step of the booklet"
+						},
+						{
+							"name": "floor_default",
+							"words": "Start new models on this floor",
+							"key": "",
+							"tip": "What New, and a model opened from a file that does not say, stand on"
+						}
+					]
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "cut",
+					"words": "Cut away",
+					"key": "K",
+					"tip": "A plane through the model, dragged along X, Y or Z, to see and work inside it"
+				},
+				{
+					"submenu": "cut_away",
+					"words": "Cut along",
+					"items": [
+						{
+							"name": "cut_x",
+							"words": "Along X",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "cut_y",
+							"words": "Along Y",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"name": "cut_z",
+							"words": "Along Z",
+							"key": "",
+							"tip": ""
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "cut_flip",
+							"words": "Cut away the other side",
+							"key": "Shift+K",
+							"tip": ""
+						},
+						{
+							"name": "cut_ghosts",
+							"words": "Leave a ghost of what is cut away",
+							"key": "",
+							"tip": ""
+						}
+					]
+				},
+				{
+					"name": "xray",
+					"words": "X-ray",
+					"key": "I",
+					"tip": "Everything but the selection, or the sub-assembly being edited, see-through"
+				},
+				{
+					"name": "stress",
+					"words": "Stress",
+					"key": "",
+					"tip": "Every part tinted by how near its weakest joint is to letting go: red past its studs' working load, amber within twice it"
+				},
+				{
+					"name": "explode",
+					"words": "Exploded view",
+					"key": "Shift+Y",
+					"tip": "Every section drawn apart, and back together (Shift+Y again)"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "turn_left",
+					"words": "Turn the model left",
+					"key": "Shift+Q",
+					"tip": ""
+				},
+				{
+					"name": "turn_right",
+					"words": "Turn the model right",
+					"key": "Shift+E",
+					"tip": ""
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "panel_parts",
+					"words": "Parts bin",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"name": "panel_assistant",
+					"words": "Assistant",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"name": "panel_properties",
+					"words": "Properties",
+					"key": "",
+					"tip": "What is selected: its part, colour, where it stands and what it is joined to"
+				},
+				{
+					"name": "panel_outliner",
+					"words": "Model tree",
+					"key": "",
+					"tip": "The model's sub-assemblies by name, inside one another"
+				},
+				{
+					"name": "panel_keys",
+					"words": "Key strip",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "full_screen",
+					"words": "Full screen",
+					"key": "F11",
+					"tip": ""
+				}
+			]
+		},
+		{
+			"title": "Build",
+			"items": [
+				{
+					"name": "timeline",
+					"words": "Timeline",
+					"key": "B",
+					"tip": "Play the build from an empty baseplate to the finished model and back"
+				},
+				{
+					"name": "step_close",
+					"words": "Next step",
+					"key": "E",
+					"tip": "The parts put down since the last step make a step, and the next part starts another"
+				},
+				{
+					"name": "pose",
+					"words": "Motions…",
+					"key": "",
+					"tip": "The model's own movements, Open the doors or Lift the boom: played, recorded by dragging the parts, and rendered"
+				},
+				{
+					"name": "instructions",
+					"words": "Instructions…",
+					"key": "",
+					"tip": "Building instructions for this model, step by step"
+				},
+				{
+					"submenu": "booklet",
+					"words": "Booklet page",
+					"items": [
+						{
+							"name": "booklet_turn_left",
+							"words": "Turn the view left",
+							"key": "",
+							"tip": "The model turned 45 degrees for this step's picture, and the steps after it"
+						},
+						{
+							"name": "booklet_turn_right",
+							"words": "Turn the view right",
+							"key": "",
+							"tip": "The model turned 45 degrees the other way for this step's picture"
+						},
+						{
+							"name": "booklet_tilt_up",
+							"words": "Look from higher",
+							"key": "",
+							"tip": "This step's picture from 15 degrees higher"
+						},
+						{
+							"name": "booklet_tilt_down",
+							"words": "Look from lower",
+							"key": "",
+							"tip": "This step's picture from 15 degrees lower"
+						},
+						{
+							"name": "booklet_this_view",
+							"words": "Use this view for the step",
+							"key": "",
+							"tip": "This step's picture drawn from the angle the window looks from now"
+						},
+						{
+							"name": "booklet_usual_view",
+							"words": "Usual view",
+							"key": "",
+							"tip": "This step drawn from the booklet's usual angle again"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "booklet_zoom_in",
+							"words": "Zoom in",
+							"key": "",
+							"tip": "This step's picture closer in on what it adds"
+						},
+						{
+							"name": "booklet_zoom_out",
+							"words": "Zoom out",
+							"key": "",
+							"tip": "This step's picture further out"
+						},
+						{
+							"name": "booklet_bigger",
+							"words": "Bigger on the page",
+							"key": "",
+							"tip": "This step drawn larger, so fewer go on its page"
+						},
+						{
+							"name": "booklet_smaller",
+							"words": "Smaller on the page",
+							"key": "",
+							"tip": "This step drawn smaller"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "booklet_new_page",
+							"words": "Start a new page",
+							"key": "",
+							"tip": "This step at the top of a new page"
+						},
+						{
+							"name": "booklet_alone",
+							"words": "A page alone",
+							"key": "",
+							"tip": "This step on a page of its own"
+						},
+						{
+							"name": "booklet_parts",
+							"words": "Parts list",
+							"key": "",
+							"tip": "The box of parts this step adds, shown or left off"
+						},
+						{
+							"name": "booklet_callout",
+							"words": "Callout",
+							"key": "",
+							"tip": "The sub-assembly this step puts on built in a box beside it, or on pages of its own"
+						},
+						{
+							"name": "booklet_per_page",
+							"words": "Steps a page",
+							"key": "",
+							"tip": "At most this many steps on a page: as they fit, 1, 2 or 4"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "booklet_lay_out",
+							"words": "Lay out the page…",
+							"key": "",
+							"tip": "This step's page by hand: drag its picture, parts list, callout and number where they go, and add words and pictures"
+						},
+						{
+							"name": "booklet_highlight",
+							"words": "Outline new parts",
+							"key": "",
+							"tip": "The parts each step adds outlined in orange in the booklet, or not"
+						}
+					]
+				},
+				{
+					"name": "parts_list",
+					"words": "Parts list",
+					"key": "P",
+					"tip": "Every part this model needs, by colour and count"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "collection",
+					"words": "My collection…",
+					"key": "",
+					"tip": "The sets and parts you own: from Rebrickable, BrickLink, or typed in"
+				},
+				{
+					"name": "collection_need",
+					"words": "What do I need?…",
+					"key": "",
+					"tip": "What this model uses that you do not own, and what could stand in"
+				},
+				{
+					"name": "collection_build",
+					"words": "What can I build?…",
+					"key": "",
+					"tip": "Models ranked by how much of each you already own"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "make_submodel",
+					"words": "Make a sub-assembly…",
+					"key": "Ctrl+G",
+					"tip": "Name the selection as a sub-assembly: it moves as one, saves as a sub-model, and its copies follow it"
+				},
+				{
+					"name": "leave_submodel",
+					"words": "Ungroup",
+					"key": "Ctrl+Shift+G",
+					"tip": "Take the selected sub-assembly apart one level"
+				},
+				{
+					"name": "enter_assembly",
+					"words": "Edit inside the sub-assembly",
+					"key": "Enter",
+					"tip": "Work on its parts one by one; what you put down goes into it (double-click does this too)"
+				},
+				{
+					"name": "select_submodel",
+					"words": "Same sub-model",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "suggest_sections",
+					"words": "Suggest sections",
+					"key": "",
+					"tip": "How a builder would split this into sections, as a set into bags: shown in the model tree to accept, rename, merge or split"
+				},
+				{
+					"name": "evaluate_section",
+					"words": "Evaluate the section…",
+					"key": "",
+					"tip": "The selected section on its own: parts, weight, whether it holds together and stands, what joins it to the rest, its own steps"
+				},
+				{
+					"name": "break_out",
+					"words": "Break out the section",
+					"key": "Y",
+					"tip": "Pull the selected section away from the model to work on it, or put it back exactly where it was (Y again)"
+				},
+				{
+					"name": "explode",
+					"words": "Exploded view",
+					"key": "Shift+Y",
+					"tip": "Every section drawn apart, and back together (Shift+Y again)"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "flex",
+					"words": "Hose, tube or chain…",
+					"key": "",
+					"tip": "Lay a hose, a tube, a string or a chain from one connector to another, along a curve"
+				},
+				{
+					"name": "minifig",
+					"words": "Minifigure builder…",
+					"key": "M",
+					"tip": "Make a minifigure from real parts and stand it in the model"
+				},
+				{
+					"name": "mosaic",
+					"words": "Mosaic from a picture…",
+					"key": "",
+					"tip": "Turn a picture into a wall of plates"
+				},
+				{
+					"name": "brickify",
+					"words": "Brickify a 3D model…",
+					"key": "Ctrl+I",
+					"tip": "Bring in an OBJ, STL, PLY, 3MF, VOX, FBX or glTF model — a sculpt, a scan, anything — and lay it in bricks at the size you choose"
+				},
+				{
+					"name": "part_maker",
+					"words": "Part maker…",
+					"key": "",
+					"tip": "Make a part of your own from the part in hand"
+				},
+				{
+					"name": "print_part",
+					"words": "Print on a part…",
+					"key": "",
+					"tip": "Draw a print on the part selected, printed where it stands, or on the part in hand"
+				},
+				{
+					"name": "sticker",
+					"words": "Put a sticker on…",
+					"key": "",
+					"tip": "Click a face of the model, then draw the sticker that goes on it"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "rotate_held",
+					"words": "Turn the part in hand",
+					"key": "R",
+					"tip": ""
+				},
+				{
+					"name": "tip_held",
+					"words": "Tip the part in hand on its side",
+					"key": "T",
+					"tip": ""
+				}
+			]
+		},
+		{
+			"title": "Tools",
+			"items": [
+				{
+					"name": "mode_select",
+					"words": "Select tool",
+					"key": "V",
+					"tip": ""
+				},
+				{
+					"name": "mode_place",
+					"words": "Place the part in hand",
+					"key": "Q",
+					"tip": ""
+				},
+				{
+					"name": "mode_move",
+					"words": "Move tool",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"name": "mode_rotate",
+					"words": "Rotate tool",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"name": "mode_hinge",
+					"words": "Hinge tool",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"name": "mode_clone",
+					"words": "Clone tool",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"name": "mode_paint",
+					"words": "Paint tool",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"name": "mode_hide",
+					"words": "Hide tool",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"name": "mode_delete",
+					"words": "Delete tool",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "measure",
+					"words": "Measure",
+					"key": "U",
+					"tip": "A ruler: click two points for the distance in studs, plates and millimetres"
+				},
+				{
+					"name": "stability",
+					"words": "Check stability",
+					"key": "",
+					"tip": "Find the joints that would give way, and select the parts on them"
+				},
+				{
+					"name": "simulate",
+					"words": "Simulate mechanism…",
+					"key": "",
+					"tip": "Turn a gear train from a crank or an axle: how fast each part goes, each arm's period, what locks it, and whether it stays standing as it turns"
+				},
+				{
+					"name": "hidden_colours",
+					"words": "Colour the hidden parts…",
+					"key": "",
+					"tip": "Give the parts nobody sees in the finished model a colour for each section, stage or side, as big sets do, so you can find your place while building"
+				},
+				{
+					"name": "reseat",
+					"words": "Seat parts on their studs",
+					"key": "",
+					"tip": "Find parts a fraction of a stud off their studs, and offer to seat them"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "connector",
+					"words": "Claude connector…",
+					"key": "",
+					"tip": "Let Claude build here, from your own Claude account"
+				},
+				{
+					"name": "settings",
+					"words": "Settings…",
+					"key": ",",
+					"tip": "Which way the wheel zooms, and what the middle button does"
+				}
+			]
+		},
+		{
+			"title": "Help",
+			"items": [
+				{
+					"name": "keys",
+					"words": "Keys and controls",
+					"key": "F1",
+					"tip": "What every button and key does"
+				},
+				{
+					"name": "tour",
+					"words": "Take the tour",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "docs",
+					"words": "Documentation",
+					"key": "",
+					"tip": "How everything in Brickworks works, on brickworks.diy"
+				},
+				{
+					"name": "website",
+					"words": "Brickworks website",
+					"key": "",
+					"tip": ""
+				},
+				{
+					"name": "about",
+					"words": "About Brickworks",
+					"key": "",
+					"tip": ""
+				}
+			]
+		}
+	],
+	"on_a_part": [
+		{
+			"name": "ask_claude",
+			"words": "Ask Claude about this…",
+			"key": "Ctrl+K",
+			"tip": "Ask Claude to change the selected parts, and only them, or ask about them"
+		},
+		{
+			"name": "brace",
+			"words": "Ask Claude to brace this…",
+			"key": "",
+			"tip": "Ask Claude to make this joint hold: what it carries, on what, and its margin, asked for you"
+		},
+		{
+			"line": true
+		},
+		{
+			"name": "select_connected",
+			"words": "Everything connected",
+			"key": "",
+			"tip": ""
+		},
+		{
+			"line": true
+		},
+		{
+			"name": "hide",
+			"words": "Hide",
+			"key": "Ctrl+H",
+			"tip": "Hide the selection, to reach what is behind it"
+		},
+		{
+			"name": "isolate",
+			"words": "Show only the selection",
+			"key": "Shift+H",
+			"tip": "Hide everything else, to work on just this"
+		},
+		{
+			"line": true
+		},
+		{
+			"name": "paint",
+			"words": "Paint the selection",
+			"key": "C",
+			"tip": "Paint the selection the colour in hand"
+		},
+		{
+			"name": "printed_versions",
+			"words": "Printed versions…",
+			"key": "",
+			"tip": "Swap the part for one of the prints or stickered versions the LEGO Group made of it"
+		},
+		{
+			"name": "copy",
+			"words": "Copy",
+			"key": "Ctrl+C",
+			"tip": "Copy the selection"
+		},
+		{
+			"name": "delete",
+			"words": "Delete",
+			"key": "Delete",
+			"tip": "Take the selection off the model"
+		},
+		{
+			"line": true
+		},
+		{
+			"name": "make_submodel",
+			"words": "Make a sub-assembly…",
+			"key": "Ctrl+G",
+			"tip": "Name the selection as a sub-assembly: it moves as one, saves as a sub-model, and its copies follow it"
+		},
+		{
+			"line": true
+		},
+		{
+			"name": "show_properties",
+			"words": "Properties",
+			"key": "",
+			"tip": "What it is, its colour by every name, where it stands and what it is joined to"
+		}
+	]
+}

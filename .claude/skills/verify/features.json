@@ -656,6 +656,14 @@
       "tests": []
     },
     {
+      "id": "cli:docs browser flow",
+      "kind": "cli",
+      "entry": "tools/web/docs_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/docs_flow.mjs --url=<preview> --out=DIR   (or --root=<a site from tools/site.py>; preview check [docs])",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:download page check",
       "kind": "cli",
       "entry": "tools/web/download_check.mjs",
@@ -1411,6 +1419,16 @@
       ]
     },
     {
+      "id": "cli:put the documentation together",
+      "kind": "cli",
+      "entry": "tools/docs_site.py",
+      "reach": "python3 tools/docs_site.py --check   (every feature here on a docs page or in docs-site/internal.txt, every link resolves; python3 tools/docs_site.py OUT writes the pages, as tools/site.py does at deploy)",
+      "area": "web",
+      "tests": [
+        "tests/test_docs_site.py"
+      ]
+    },
+    {
       "id": "cli:put the website together",
       "kind": "cli",
       "entry": "tools/site.py",
@@ -1760,6 +1778,14 @@
       "entry": "src/dev/ahead_probe.gd",
       "reach": "godot --headless --path . --script src/dev/ahead_probe.gd -- --most-ms=50   (tools/probe.sh ahead_probe: a part turned by move_part, Ctrl+Z, a part placed by a click, on the Ducati a session designed, 8808-1 and 42004-1, each followed 4 s while the joints are read and the model weighed on workers; then a press while the joints are read takes the worker's reading, and one while a session moves a part says so)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:the menus written for the docs",
+      "kind": "cli",
+      "entry": "src/dev/docs_menus.gd",
+      "reach": "godot --headless --path . --script src/dev/docs_menus.gd -- --menus-to=docs-site/generated/menus.json   (tests/test_docs_site.py says when it is due)",
+      "area": "web",
       "tests": []
     },
     {
@@ -3329,6 +3355,17 @@
       "reach": "godot --path .  (the left-hand column: parts bin, model tree, properties; fold a header, drag the bar between two; under 1600 units across one column shows beside the model) and node tools/web/fit_check.mjs",
       "area": "building",
       "tests": []
+    },
+    {
+      "id": "ui:documentation",
+      "kind": "ui",
+      "entry": "web/docs.js",
+      "reach": "https://brickworks.diy/docs   (and /docs/<page>: the pages list, On this page, Ctrl+K or / to search, previous and next; made from docs-site/ by tools/docs_site.py at deploy; linked from every page's footer, Menu on a phone, and the app's Help, Documentation)",
+      "area": "web",
+      "tests": [
+        "tests/test_docs_site.py",
+        "tests/test_release.py"
+      ]
     },
     {
       "id": "ui:download page",

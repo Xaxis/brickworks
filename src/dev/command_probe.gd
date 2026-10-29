@@ -38,7 +38,7 @@ const SKIP: Dictionary = {
 	"import_ldraw": "file dialog", "import_io": "file dialog", "import_lxf": "file dialog",
 	"import_mesh": "file dialog", "mosaic": "file dialog", "brickify": "file dialog",
 	"account": "network", "share": "network", "connector": "network",
-	"ask_claude": "network", "website": "opens a browser", "quit": "leaves the app",
+	"ask_claude": "network", "website": "opens a browser", "docs": "opens a browser", "quit": "leaves the app",
 	"full_screen": "the window, not the app", "new_window": "starts another window",
 }
 
