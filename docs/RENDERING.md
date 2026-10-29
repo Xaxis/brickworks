@@ -493,6 +493,16 @@ Compatibility (`premul_alpha` undeclared in the GLES3 scene shader), so the
 reflections are premultiplied by hand. Compatibility's picture is sRGB, so
 the multiply is the linear factor to the 1/2.2 there.
 
+In Chromium on SwiftShader (`product_render_flow.mjs`, Quick, 720p, the
+web build of main at 7864e6c4 against this one, each served locally):
+- main's clear glass is white: the black wall behind it shows only at its
+  ends, 0.11% of the picture grey and near black, and the check fails;
+  here 1.25%, and it passes (at least 0.5%);
+- the red glass is red on every backdrop (0.86% on white, 0.13% on dark);
+- the render's longest frame is no longer than main's: 512 ms against 619
+  for the first picture, which compiles the shaders, then 28-49 ms
+  against 36-78.
+
 **Stud rims.** The box's round left every stud a knife edge. A stud's top
 edge is now rounded the same way (`stud_rim`: the 6 LDU stud on the 20 LDU
 grid from the part's box corner, standing to the box's top), so each stud
