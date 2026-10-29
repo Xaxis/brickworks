@@ -231,35 +231,70 @@ static func forms(word: String) -> PackedStringArray:
 ## "tie fighters" names tie fighter. A word alone may begin a word made of two
 ## ([method kind_of_word]): a spacecraft names space.
 static func names(text: String, word: String) -> bool:
-	return _names(of(text), of(word))
+	return _names(read(of(text)), of(word))
 
 
 ## The first of [param vocabulary] that [param text] names, or "".
+##
+## The text is read once ([method read]) and each word of the vocabulary
+## looked up in what it names. Read again for each, every word of a long
+## brief against every end of a compound, the style advice of one check
+## stemmed words 800,000 times, and was most of an edit_model's time
+## (perf331, 2026-10-29).
 static func first_named(text: String, vocabulary: Array) -> String:
-	var said: PackedStringArray = of(text)
+	var said: Array = read(of(text))
 	for word: Variant in vocabulary:
 		if _names(said, of(str(word))):
 			return str(word)
 	return ""
 
 
-static func _names(said: PackedStringArray, wanted: PackedStringArray) -> bool:
+## [param said], a brief's words, read for what each names: the words it
+## names alone ([method named_alone]) and its forms, which a phrase's words
+## are matched against one by one. What [method named_at] reads.
+static func read(said: PackedStringArray) -> Array:
+	var out: Array = []
+	for word: String in said:
+		out.append([named_alone(word), forms(word)])
+	return out
+
+
+## Whether [param wanted], a word or a phrase's words, is named in [param
+## said] (a brief as [method read] reads it) from its word [param start].
+static func named_at(said: Array, start: int, wanted: PackedStringArray) -> bool:
+	if wanted.size() == 1:
+		return (said[start][0] as Dictionary).has(wanted[0])
+	for k: int in wanted.size():
+		if not (said[start + k][1] as PackedStringArray).has(wanted[k]):
+			return false
+	return true
+
+
+static func _names(said: Array, wanted: PackedStringArray) -> bool:
 	if wanted.is_empty():
 		return false
-	if wanted.size() == 1:
-		for word: String in said:
-			if not kind_of_word(word, {wanted[0]: true}).is_empty():
-				return true
-		return false
 	for start: int in range(said.size() - wanted.size() + 1):
-		var all: bool = true
-		for k: int in wanted.size():
-			if not forms(said[start + k]).has(wanted[k]):
-				all = false
-				break
-		if all:
+		if named_at(said, start, wanted):
 			return true
 	return false
+
+
+## The words one word of a brief names alone, as keys: each word w that
+## [method kind_of_word] finds it to be of the vocabulary {w} alone. Its
+## forms of three letters or more, and, if it is made of two, the forms of
+## the word before one of [constant COMPOUND_ENDS] (a spacecraft names space).
+static func named_alone(word: String) -> Dictionary:
+	var out: Dictionary = {}
+	var its: PackedStringArray = forms(word)
+	for form: String in its:
+		if form.length() >= 3:
+			out[form] = true
+	for end: String in COMPOUND_ENDS:
+		for form: String in its:
+			if form.length() > end.length() + 3 and form.ends_with(end):
+				for one: String in forms(form.left(-end.length())):
+					out[one] = true
+	return out
 
 
 ## The word of [param vocabulary] (a Dictionary keyed by its words) that one
