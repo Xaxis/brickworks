@@ -17,7 +17,15 @@
 ##   depth of field softens the picture;
 ##   the window's frame costs what it did before (its own measured time on
 ##     the card, the median of 120 frames, before and after), with its
-##     environment as it was.
+##     environment as it was;
+##   and then, on swatches of sixteen colours (a 2x4 brick of each) on the
+##     white sweep at Good, each colour as LDraw has it: read off the
+##     middle of the face the key lights and the camera sees, as CIEDE2000
+##     against LDConfig's value. Black stays black (its bricks' mean
+##     lightness, highlights and all), dark bluish grey is not crushed into
+##     it, the bright colours and the clear ones are each near their own,
+##     and a light grey face the key lights is smooth, not hatched with its
+##     own shadow (render342).
 ##
 ## Leaves shots/render/product_*.png to look at.
 extends SceneTree
@@ -162,6 +170,8 @@ func _run() -> void:
 		environment.adjustment_enabled, environment.sky]
 	_say("...and its environment is as it was", now == window_look)
 
+	await _swatches(library)
+
 	print("")
 	print("%d failed" % _failures if _failures
 		else "the product look draws every backdrop and leaves the window as it was")
@@ -187,6 +197,188 @@ func _build_scene(library: PartLibrary) -> void:
 	for n: int in 7:
 		_world.add_brick("3005", 1, Transform3D(Basis.IDENTITY,
 			Vector3(110, 24.0 * float(n + 1), 30)))
+
+
+## Each colour as LDraw has it, on the white sweep: [code, name], laid out
+## four by four so none hides another from the hero view.
+const SWATCHES: Array = [
+	[0, "black"], [72, "dark bluish grey"], [320, "dark red"], [272, "dark blue"],
+	[4, "red"], [14, "yellow"], [1, "blue"], [2, "green"],
+	[15, "white"], [19, "tan"], [71, "light bluish grey"], [47, "trans clear"],
+	[36, "trans red"], [33, "trans dark blue"], [46, "trans yellow"], [34, "trans green"],
+]
+const BRIGHT: Array = ["red", "yellow", "blue", "green", "white", "tan"]
+## Black's bricks, highlights and all, no lighter than this (sRGB
+## luminance, 0 to 1): 0.218 before render342 on this sweep, 0.132 in the
+## window look, 0.155 LDraw's own #1b2a34.
+const BLACK_MOST := 0.19
+
+
+func _swatches(library: PartLibrary) -> void:
+	_world.clear()
+	var ids: Array = []
+	for n: int in SWATCHES.size():
+		ids.append(_world.add_brick("3001", int(SWATCHES[n][0]), Transform3D(Basis.IDENTITY,
+			Vector3((n % 4) * 140.0, 24.0, (n / 4) * 110.0))))
+	for _n: int in 10:
+		await process_frame
+	var settings: RenderSettings = _settings("product", "white")
+	settings.size = Vector2i(1280, 720)
+	var image: Image = await _render.render(_world, settings)
+	if image == null:
+		_say("the swatches draw", false)
+		return
+	image.save_png(OUT + "product_swatches.png")
+	var mesh: Lbm.PartMesh = library.mesh_for("3001")
+	var low: Vector3 = mesh.bounds.position
+	var high: Vector3 = mesh.bounds.end
+	high.y = minf(high.y, BrickWorld._body_top(mesh))
+	var faces: Dictionary = {
+		"front": [Vector3(low.x, low.y, high.z), Vector3(high.x, low.y, high.z),
+			Vector3(high.x, high.y, high.z), Vector3(low.x, high.y, high.z)],
+		"side": [Vector3(low.x, low.y, low.z), Vector3(low.x, low.y, high.z),
+			Vector3(low.x, high.y, high.z), Vector3(low.x, high.y, low.z)],
+		"top": [Vector3(low.x, high.y, high.z), Vector3(high.x, high.y, high.z),
+			Vector3(high.x, high.y, low.z), Vector3(low.x, high.y, low.z)],
+	}
+	var bright: float = 0.0
+	var clear: float = 0.0
+	var found: Dictionary = {}
+	print("  swatches at Good, the lit face against LDraw (CIEDE2000):")
+	for n: int in SWATCHES.size():
+		var at: Transform3D = _render.staged_transform(ids[n])
+		var want: Color = (library.colors[int(SWATCHES[n][0])] as PartLibrary.BrickColor).rgb
+		var lit: Array = []
+		var lightness: float = 0.0
+		var pixels: int = 0
+		for face: String in faces:
+			var got: Array = _face(image, faces[face], at, settings.size)
+			if face == "front":
+				lit = got
+			lightness += float(got[2]) * int(got[1])
+			pixels += int(got[1])
+		var difference: float = _ciede2000(lit[0], want)
+		var name: String = SWATCHES[n][1]
+		found[name] = [difference, lightness / maxf(pixels, 1), lit[3]]
+		if name in BRIGHT:
+			bright += difference / BRIGHT.size()
+		elif name.begins_with("trans"):
+			clear += difference / 5.0
+		print("    %-18s LDraw #%s  drawn #%s  dE %4.1f" % [name, want.to_html(false),
+			(lit[0] as Color).to_html(false), difference])
+	_say("black stays black on the white sweep: its bricks' mean lightness %.3f, under %.2f"
+		% [found["black"][1], BLACK_MOST], found["black"][1] < BLACK_MOST)
+	_say("dark bluish grey is not crushed into it: dE %.1f from its own" % found["dark bluish grey"][0],
+		found["dark bluish grey"][0] < 6.0)
+	_say("red, yellow, blue, green, white and tan near their own: mean dE %.2f" % bright,
+		bright < 5.0)
+	_say("the clear colours near their own: mean dE %.2f" % clear, clear < 6.0)
+	_say("a light grey face the key lights is smooth, not hatched: %.4f" % found["light bluish grey"][2],
+		found["light bluish grey"][2] < 0.012)
+
+
+## A face of a brick at [param at], in its own coordinates [param corners],
+## its middle (a fifth in from each edge) as drawn: [mean colour, averaged
+## in linear light; pixels; mean lightness; grain, the mean of each
+## pixel's lightness against its four neighbours'].
+func _face(image: Image, corners: Array, at: Transform3D, size: Vector2i) -> Array:
+	var shot: StudioRender.Shot = _render.last_shot
+	var quad: Array = []
+	for uv: Vector2 in [Vector2(0.2, 0.2), Vector2(0.8, 0.2), Vector2(0.8, 0.8), Vector2(0.2, 0.8)]:
+		var point: Vector3 = at * (corners[0] as Vector3).lerp(corners[1], uv.x).lerp(
+			(corners[3] as Vector3).lerp(corners[2], uv.x), uv.y)
+		var seen: Vector3 = shot.basis.inverse() * (point - shot.origin)
+		var across: float = tan(deg_to_rad(shot.fov) * 0.5)
+		var flat := Vector2(seen.x, seen.y) / -seen.z / across
+		flat.x /= float(size.x) / float(size.y)
+		quad.append(Vector2((flat.x * 0.5 + 0.5) * size.x, (0.5 - flat.y * 0.5) * size.y))
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for corner: Vector2 in quad:
+		lo = lo.min(corner)
+		hi = hi.max(corner)
+	var sum := Vector3.ZERO
+	var lightness: float = 0.0
+	var grain: float = 0.0
+	var count: int = 0
+	for y: int in range(maxi(int(lo.y), 1), mini(int(hi.y) + 1, image.get_height() - 1)):
+		for x: int in range(maxi(int(lo.x), 1), mini(int(hi.x) + 1, image.get_width() - 1)):
+			if not _inside(Vector2(x + 0.5, y + 0.5), quad):
+				continue
+			var here: Color = image.get_pixel(x, y)
+			var linear: Color = here.srgb_to_linear()
+			sum += Vector3(linear.r, linear.g, linear.b)
+			lightness += here.get_luminance()
+			grain += absf(4.0 * here.get_luminance() - image.get_pixel(x - 1, y).get_luminance()
+				- image.get_pixel(x + 1, y).get_luminance() - image.get_pixel(x, y - 1).get_luminance()
+				- image.get_pixel(x, y + 1).get_luminance())
+			count += 1
+	if count == 0:
+		return [Color(0, 0, 0), 0, 0.0, 0.0]
+	sum /= float(count)
+	return [Color(sum.x, sum.y, sum.z).linear_to_srgb(), count, lightness / count, grain / count]
+
+
+static func _inside(point: Vector2, quad: Array) -> bool:
+	var side: float = 0.0
+	for n: int in quad.size():
+		var a: Vector2 = quad[n]
+		var turn: float = ((quad[(n + 1) % quad.size()] as Vector2) - a).cross(point - a)
+		if side == 0.0:
+			side = signf(turn)
+		elif turn != 0.0 and signf(turn) != side:
+			return false
+	return true
+
+
+## CIE L*a*b* (D65) of an sRGB colour.
+static func _lab(colour: Color) -> Vector3:
+	var c: Color = colour.srgb_to_linear()
+	var xyz := Vector3((0.4124 * c.r + 0.3576 * c.g + 0.1805 * c.b) / 0.95047,
+		0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b,
+		(0.0193 * c.r + 0.1192 * c.g + 0.9505 * c.b) / 1.08883)
+	var f := Vector3.ZERO
+	for i: int in 3:
+		f[i] = pow(xyz[i], 1.0 / 3.0) if xyz[i] > 0.008856 else 7.787 * xyz[i] + 16.0 / 116.0
+	return Vector3(116.0 * f.y - 16.0, 500.0 * (f.x - f.y), 200.0 * (f.y - f.z))
+
+
+## The CIEDE2000 colour difference: about 1 is the least an eye tells apart.
+static func _ciede2000(one: Color, two: Color) -> float:
+	var a: Vector3 = _lab(one)
+	var b: Vector3 = _lab(two)
+	var mean_chroma: float = (Vector2(a.y, a.z).length() + Vector2(b.y, b.z).length()) * 0.5
+	var g: float = 0.5 * (1.0 - sqrt(pow(mean_chroma, 7.0) / (pow(mean_chroma, 7.0) + pow(25.0, 7.0))))
+	var c1: float = Vector2(a.y * (1.0 + g), a.z).length()
+	var c2: float = Vector2(b.y * (1.0 + g), b.z).length()
+	var h1: float = fposmod(rad_to_deg(atan2(a.z, a.y * (1.0 + g))), 360.0)
+	var h2: float = fposmod(rad_to_deg(atan2(b.z, b.y * (1.0 + g))), 360.0)
+	var dh: float = 0.0
+	var hm: float = h1 + h2
+	if c1 * c2 != 0.0:
+		dh = h2 - h1
+		if dh > 180.0:
+			dh -= 360.0
+		elif dh < -180.0:
+			dh += 360.0
+		if absf(h1 - h2) <= 180.0:
+			hm = (h1 + h2) * 0.5
+		else:
+			hm = (h1 + h2 + 360.0) * 0.5 if h1 + h2 < 360.0 else (h1 + h2 - 360.0) * 0.5
+	var big_dh: float = 2.0 * sqrt(c1 * c2) * sin(deg_to_rad(dh * 0.5))
+	var lm: float = (a.x + b.x) * 0.5
+	var cm: float = (c1 + c2) * 0.5
+	var t: float = 1.0 - 0.17 * cos(deg_to_rad(hm - 30.0)) + 0.24 * cos(deg_to_rad(2.0 * hm)) \
+		+ 0.32 * cos(deg_to_rad(3.0 * hm + 6.0)) - 0.2 * cos(deg_to_rad(4.0 * hm - 63.0))
+	var rc: float = 2.0 * sqrt(pow(cm, 7.0) / (pow(cm, 7.0) + pow(25.0, 7.0)))
+	var rt: float = -sin(deg_to_rad(60.0 * exp(-pow((hm - 275.0) / 25.0, 2.0)))) * rc
+	var sl: float = 1.0 + 0.015 * pow(lm - 50.0, 2.0) / sqrt(20.0 + pow(lm - 50.0, 2.0))
+	var sc: float = 1.0 + 0.045 * cm
+	var sh: float = 1.0 + 0.015 * cm * t
+	var dl: float = (b.x - a.x) / sl
+	var dc: float = (c2 - c1) / sc
+	var dhh: float = big_dh / sh
+	return sqrt(dl * dl + dc * dc + dhh * dhh + rt * dc * dhh)
 
 
 func _settings(look: String, backdrop: String) -> RenderSettings:

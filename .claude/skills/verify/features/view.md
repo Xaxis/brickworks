@@ -1507,18 +1507,28 @@ picture the assistant is shown.
   (`BrickWorld.product`, `PRODUCT_SHADERS`; `PLASTIC_PRODUCT` in
   `plastic_body.gdshaderinc`: a clear coat over the plastic, edges of the
   part's body box rounded by a bent normal, chrome and metal reflecting the
-  studio's sky, clear parts refracting the screen), a key, fill and rim
-  (`StudioRender.PRODUCT_RIG`) over the softbox HDRI on the desktop, Filmic
-  with saturation and contrast back, and the sweep's fall of light
-  (`studio_backdrop.gdshader` `fall`, `pool`) for the gradient and dark
-  backdrops. Check: `tools/probe.sh product_render_probe` (GPU, Forward+;
-  it SKIPs, which fails, on another renderer) prints 11 ok lines: every
-  batch of the render's copy in a product shader and none of the window's,
-  Filmic, a picture that differs from the window's look, white corners
-  above 0.85, the gradient at least 0.1 darker in its corners than under the
-  model, dark corners below 0.12, depth of field at f/2 losing detail, and
-  the window's own GPU time per frame (median of 120) within 10% + 0.3 ms of
-  before, its environment as it was; pictures in `shots/render/product_*`.
+  studio's sky, clear parts letting through their own LDraw colour of the
+  screen behind), a key, fill and rim (`StudioRender.PRODUCT_RIG`) over the
+  softbox HDRI on the desktop with its room flagged down to
+  `PRODUCT_ROOM` (`studio_sky.gdshader`: black stays black, the softboxes
+  still give every highlight), Filmic graded by `PRODUCT_WHITE`,
+  `_SATURATION`, `_CONTRAST` and `_EXPOSURE`, a key shadow biased past its
+  soft filter (no hatching at Good), the meter blind to the look's glass,
+  and the sweep's fall of light (`studio_backdrop.gdshader` `fall`, `pool`)
+  for the gradient and dark backdrops. Check: `tools/probe.sh
+  product_render_probe` (GPU, Forward+; it SKIPs, which fails, on another
+  renderer) prints 16 ok lines: every batch of the render's copy in a
+  product shader and none of the window's, Filmic, a picture that differs
+  from the window's look, white corners above 0.85, the gradient at least
+  0.1 darker in its corners than under the model, dark corners below 0.12,
+  depth of field at f/2 losing detail, the window's own GPU time per frame
+  (median of 120) within 10% + 0.3 ms of before, its environment as it was;
+  then sixteen colour swatches at Good, each lit face's CIEDE2000 from
+  LDConfig printed: black's bricks' mean lightness under 0.19 (0.218 before
+  render342), dark bluish grey within 6, red, yellow, blue, green, white
+  and tan within 5 on average, the clear colours within 6, and a light grey
+  face's grain under 0.012 (0.038 hatched); pictures in
+  `shots/render/product_*`, `product_swatches.png` the swatches.
   A model: `tools/probe.sh render_probe -- --model=models/sports_car.ldr
   --look=product --gradient=1 --backdrop=#f5f6f8 --quality=best
   --size=1280x720 --picture=OUT.png`. Over MCP: render_model with

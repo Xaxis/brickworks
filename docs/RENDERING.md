@@ -131,9 +131,11 @@ What we found while building it:
   contrast ×1.06 put back.
 - **The HDRI's radiance map needs `Sky.PROCESS_MODE_QUALITY`.** It costs
   nothing that matters, because it is filtered once per render.
-- **The clear coat shows shadow acne that the window's plastic hides**, as
-  fine hatching on rounded greys. The product key's normal bias is 3.0
-  (1.5 in the window). Best's averaging removes the rest.
+- **The soft key hatched grey faces with its own shadow at Good.** Its
+  filter spreads over many texels of the shadow map, and a face turned
+  from the light lies behind the map across that spread. Normal bias
+  moves the test a texel or two and did not reach. The product key's
+  depth bias is 0.12 (render342, section 5a).
 
 **Our meshes** (`tools/build_meshes.py`, `tools/ldraw/meshfile.py`):
 - **Smooth normals except across LDraw type-2 edge lines**, so creases are
@@ -257,9 +259,8 @@ product shot:
 - no logo on the studs;
 - clear behind clear;
 - no light through clear parts;
-- black bricks' bevel highlights read a little too grey on the dark
-  backdrop;
-- at Good, faint shadow acne on rounded greys;
+- black read as mid-grey, and at Good grey faces were hatched (both
+  fixed in render342, section 5a);
 - no lifestyle scenes.
 
 The rest needs the path tracer.
@@ -291,20 +292,23 @@ The rest needs the path tracer.
     `PLASTIC_PRODUCT` in `plastic_body.gdshaderinc`).
   - The window's BrickWorld never sets it, and its shaders compile without
     the product code.
-- **Plastic** (opaque ABS, plain finish): roughness 0.3-0.38, clear coat
-  0.55 at roughness 0.07, and a little colour-keyed glow in shadow.
+- **Plastic** (opaque ABS, plain finish): roughness 0.3-0.38, specular
+  0.35 under a clear coat of 0.55 at roughness 0.07 (one surface's 4.5%
+  shared by the two lobes), and a little colour-keyed glow in shadow.
 - **Chrome:** metal at roughness 0.06, reflecting the studio's sky.
 - **Metallic:** metal at 0.34 under a clear coat.
 - **Pearl:** metallic 0.65 under a coat.
 - **Rubber:** roughness 0.8.
-- **Transparent:** the screen behind, bent by the normal, tinted by the
-  colour's hue, darker for smoked colours, with Fresnel reflection on top.
+- **Transparent:** the screen behind, bent by the normal, times the
+  colour itself (LDConfig's value is the part against white), with a low
+  specular so its edges reflect and its face is not veiled.
 - **Light** (`StudioRender.PRODUCT_RIG`, Forward+):
   - the key is the window's own key;
   - a fill sits low on the camera's left;
   - a rim comes from behind and above;
   - all three sit over the softbox HDRI, which is also the ambient light
-    and what everything reflects.
+    and what everything reflects, its room flagged down to 20% and its
+    softboxes left whole (`studio_sky.gdshader`, `PRODUCT_ROOM`).
   - A chosen photographed place still replaces the rig, as it did.
 - **Backdrops** (`RenderSettings.BACKDROPS`, one table for the dialog and
   render_model):
@@ -316,7 +320,8 @@ The rest needs the path tracer.
     along the sweep from the model.
 - **Depth of field:** Best's lens, already there. render_model's
   `depth_of_field` asks for f/4 focused 40% back, and draws at Best.
-- **Tone:** Filmic, white 6, saturation 1.18, contrast 1.06.
+- **Tone:** Filmic, white 4, saturation 1.08, contrast 1.03, exposure 0.7
+  of the window's (`PRODUCT_*`; render342 set them on colour swatches).
 - **AO:** SSAO at intensity 1.6 and radius 10 LDU. SDFGI at Good and Best,
   as before.
 
@@ -330,6 +335,95 @@ Proof (`tools/probe.sh product_render_probe`, on the GPU, 2026-10-29):
 - detail 0.0113 sharp, 0.0090 at f/2;
 - **the window's frame on the card 2.624 ms before and 2.614 ms after**,
   with its environment unchanged.
+
+## 5a. Black, the hatching and colour (render342)
+
+The owner wants renders good enough for product shots. Three things kept
+the first slice short of that.
+
+**Black read as mid-grey on the white sweep.** The causes, as measured
+on 2x4 swatches at Good (`product_render_probe`'s swatches):
+- **The reflected room (the root cause).** The softbox HDRI is brought
+  to an average of one, which is as bright as the key light, and most of
+  it is a white cyclorama and a lit floor. Every glossy face mirrored 4-6%
+  of that room. Black's own colour is 2%, so the reflection was three
+  times the plastic. Halving the sky took black's mean lightness from
+  0.218 to 0.162 on its own.
+- **The gloss counted twice.** Specular 0.5 (4%) under a coat of 0.55
+  (another 2%) is half as much again as ABS's one surface reflects.
+- **Not the tone curve.** ACES in Filmic's place took black only from
+  0.218 to 0.196. **Not the bevel normal**, which is a line along each
+  edge, and **not ambient light**: halving ambient energy moved black by
+  0.003.
+
+The fix is what a product photographer does: black flags round the
+subject. The product look's sky is the same softbox studio with its room
+at 20% and its softboxes (over six times the average) whole, so highlights
+stay crisp and black stays black. The plastic's specular is 0.35 under the
+coat. Black's bricks now average 0.17 (0.13 in the window look; 0.155 is
+LDraw's own #1b2a34). Dark bluish grey stays 3 dE from its own colour,
+not crushed into black.
+
+**The hatching on grey faces at Good** was the soft key's own shadow (see
+section 2): grain on a light grey face of 0.038, 0.006 with shadows off,
+0.024 at a normal bias of 6 (render340 set 3), 0.0069 at a depth bias of
+0.12.
+The window look's renders still show it at Good (0.034). The same bias
+would fix them, but they are outside this unit.
+
+**Colour.** Mean colour of the middle of each swatch's lit face (the face
+the key lights and the camera sees, a fifth in from each edge), against
+LDConfig's value, CIEDE2000 (about 1 is the least an eye tells apart):
+
+| Colour | LDraw | Before (render340) | dE | After (render342) | dE |
+|---|---|---|---|---|---|
+| black | #1b2a34 | #2d3031 | 7.0 | #26292a | 6.3 |
+| dark bluish grey | #646464 | #706e6b | 4.5 | #6d6b68 | 3.2 |
+| dark red | #720012 | #8c181f | 5.9 | #810914 | 3.6 |
+| dark blue | #19325a | #273d6a | 3.9 | #1b3360 | 1.2 |
+| red | #b40000 | #ca0f0e | 4.8 | #be0504 | 2.2 |
+| yellow | #fac80a | #eacb0a | 4.8 | #e2c506 | 5.4 |
+| blue | #1e5aa8 | #2266b8 | 4.3 | #1b5fad | 1.9 |
+| green | #00852b | #19a033 | 9.5 | #0a9229 | 4.8 |
+| white | #f4f4f4 | #dbdad7 | 5.8 | #dad8d6 | 6.1 |
+| tan | #d7ba8c | #d3bd90 | 2.4 | #ceb98e | 2.7 |
+| light bluish grey | #969696 | #a6a3a0 | 4.8 | #9f9d9a | 3.0 |
+| trans clear | #fcfcfc | #e2e2e2 | 5.4 | #d9d9d8 | 7.5 |
+| trans red | #c91a09 | #e48480 | 25.5 | #ca1b0f | 0.8 |
+| trans dark blue | #0020a0 | #7c84da | 32.5 | #0e23ac | 1.9 |
+| trans yellow | #f5cd2f | #e7d890 | 11.8 | #dbc62e | 5.4 |
+| trans green | #237841 | #8acd9f | 28.6 | #2b8648 | 4.9 |
+| **mean, the six bright** | | | **5.28** | | **3.85** |
+| **mean, the five clear** | | | **20.77** | | **4.11** |
+
+The clear colours were washed to pastels for two reasons:
+- **The glass model.** The hue was kept at full strength, with a sixth of
+  the light let past untinted.
+- **The engine.** At Good and Best, Godot lights a clear part's reflection
+  from its global illumination, where the white sweep is at full
+  strength. At glass's own specular that laid a white veil over the face.
+
+Now what gets through is the screen times the colour, and the specular is
+low enough that only the edges reflect.
+
+Two other things moved the exposure:
+- **The meter counted the look's glass.** It is drawn opaque, and so dark
+  on the meter's clear background. The meter now leaves it out, as it
+  already left out the window look's see-through glass.
+- **The plain sweep's level crept** towards white over its four rounds in
+  the curve's shoulder. Its gain now follows the last round's answer.
+
+A film curve compresses white against a saturated colour, so the two are
+traded: white comes out #dad8d6 while red, blue and green sit on their
+own. Brighter exposures ran the colours past LDraw's and white was still
+short.
+
+Pictures: `bench/results/render342-2026-10-29/`:
+- `*_best_gradient_before_after.png`: Best, gradient, render340 then
+  render342;
+- `*_good_white_before_after.png`: Good on the white sweep;
+- `crop_*.png`: the black parts and the grey faces, at 3x;
+- `swatches_before_after.png`: the swatches.
 
 ## 6. Web and desktop
 

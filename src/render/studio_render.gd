@@ -1037,13 +1037,27 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 		var level: float = 1.0
 		_backdrop_material.set_shader_parameter("level", level)
 		var goal: float = minf(settings.backdrop.get_luminance(), 0.95)
+		var before: Vector2 = Vector2.ZERO
+		var product: bool = settings.look == "product"
 		for _round: int in 4:
 			var floor_seen: float = await _meter_floor(shot, settings.size)
 			if floor_seen < 0.0:
 				return false
 			if absf(floor_seen - goal) < 0.015 or floor_seen <= 0.0005:
 				break
-			level = clampf(level * clampf(pow(goal / floor_seen, 1.6), 0.3, 3.0), 0.05, 6.0)
+			# Near white the film curve's shoulder lightens the sweep far
+			# less than its light: the last round's answer says how much
+			# less. Taken as 1 in 1.6, a white sweep under the product
+			# look's exposure crept from #e4 to #ee in four rounds and
+			# stopped short of white. The window look keeps 1 in 1.6: a
+			# photographed place's sweep driven home went to its brightest
+			# (6) and its bounce greyed the model (render_probe).
+			var gain: float = 1.6
+			if product and before.x > 0.0 and absf(log(level / before.x)) > 0.001:
+				var answer: float = log(floor_seen / before.y) / log(level / before.x)
+				gain = clampf(1.0 / maxf(answer, 0.01), 1.6, 12.0)
+			before = Vector2(level, floor_seen)
+			level = clampf(level * clampf(pow(goal / floor_seen, gain), 0.3, 3.0), 0.05, 6.0)
 			_backdrop_material.set_shader_parameter("level", level)
 		last_level = level
 	return true
