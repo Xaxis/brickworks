@@ -247,11 +247,11 @@ export function sitePages({ remote = "" } = {}) {
     { name: "authorize", path: AUTHORIZE,
       ready: (page) => until(page, () => [...document.querySelectorAll("main section")].some((s) => !s.classList.contains("hide"))) },
     { name: "compare", path: "/compare" },
-    // Plans, coming soon (web/plans.html): its interest form open from
-    // Plus's Tell me when it's ready, as a person opens it.
+    // Plans (web/plans.html): its interest form open from Pro's Tell me
+    // when it's ready, as a person opens it.
     { name: "plans", path: "/plans",
       open: async (page) => {
-        await page.click('[data-interest="plus"]');
+        await page.click('[data-interest="pro"]');
         const opened = await until(page, () => document.querySelector("dialog#interest[open]"));
         return [[opened ? "interest" : "interest (missing)", "dialog#interest"]];
       } },

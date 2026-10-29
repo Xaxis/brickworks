@@ -96,6 +96,9 @@ async function send(method, params) {
 }
 let failures = 0;
 const check = (ok, what) => { console.log(`  ${ok ? "ok  " : "FAIL"}  ${what}`); if (!ok) failures += 1; };
+// An answer's words, all of them: the relay's first block names the tab
+// and the model (api/mcp.js, 2026-10-13), and the tab's own follow it.
+const words = (answer) => (answer.result?.content || []).map((c) => c.text || "").join(" ");
 
 const hello = await claude("initialize", { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "connector_flow", version: "1" } });
 check(hello.result?.serverInfo?.name === "brickworks" && (hello.result?.instructions || "").length > 1000,
@@ -107,7 +110,7 @@ const found = await claude("tools/call", { name: "search_parts", arguments: { qu
 const text = (found.result?.content || []).map((c) => c.text || "").join(" ");
 check(text.includes("3001") && !found.result?.isError, `a tool call runs in the tab: ${text.slice(0, 50)}`);
 const scaled = await claude("tools/call", { name: "plan_scale", arguments: { subject: "a lighthouse", longest_metres: 30 } });
-check(((scaled.result?.content || [])[0]?.text || "").includes("studs"), "a second call, the scale, is answered too");
+check(words(scaled).includes("studs"), "a second call, the scale, is answered too");
 // The style norms have to have reached the web build: they are packed by
 // tools/web_pack.py, and without them the check says nothing about how
 // squarely a design is built. A plain wall is as square as anything is.
@@ -141,7 +144,7 @@ check(asleepText.includes("3004") && !asleep.result?.isError,
 // And a real build out of view, not only a search: the app has to run
 // frames to place bricks.
 t0 = Date.now();
-const built = await claude("tools/call", { name: "submit_design", arguments: { name: "out of view",
+const built = await claude("tools/call", { name: "submit_design", arguments: { name: "built unseen",
   bricks: [{ part: "3001", color: 4, x: 40, y: 0, z: 40 }, { part: "3001", color: 1, x: 40, y: 3, z: 40 }] } });
 const builtText = (built.result?.content || []).map((c) => c.text || "").join(" ");
 check(!built.result?.isError && !builtText.includes("out of view") && !builtText.includes("not open"),
@@ -150,12 +153,12 @@ check(!built.result?.isError && !builtText.includes("out of view") && !builtText
 // tab: the page's own word that it is alive keeps it connected.
 await page.waitForTimeout(70000);
 const later = await claude("tools/call", { name: "search_parts", arguments: { query: "brick 2 x 2" } });
-check(((later.result?.content || [])[0]?.text || "").includes("3003"),
+check(words(later).includes("3003"),
   "out of view for over a minute, it is still connected and answers");
 await seeing(false);
 await page.waitForTimeout(1500);
 const back = await claude("tools/call", { name: "search_parts", arguments: { query: "brick 1 x 2" } });
-check(((back.result?.content || [])[0]?.text || "").includes("3004"), "back in view, it answers at once");
+check(words(back).includes("3004"), "back in view, it answers at once");
 await page.screenshot({ path: `${out}/2b_back_in_view.png`, timeout: 120000 }).catch(() => {});
 
 // A reload is a new visit: the address must not change, and the
@@ -163,7 +166,7 @@ await page.screenshot({ path: `${out}/2b_back_in_view.png`, timeout: 120000 }).c
 await page.reload({ waitUntil: "domcontentloaded", timeout: 120000 });
 await page.waitForTimeout(Number(args.load || 90000));
 const afterReload = await claude("tools/call", { name: "search_parts", arguments: { query: "brick 2 x 2" } });
-check(((afterReload.result?.content || [])[0]?.text || "").includes("3003"),
+check(words(afterReload).includes("3003"),
   "after a reload the same address works, with nothing pressed");
 await page.waitForTimeout(2000);
 await page.screenshot({ path: `${out}/3_after_reload.png`, timeout: 120000 }).catch(() => {});

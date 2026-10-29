@@ -117,6 +117,7 @@ const WINDOW_ONLY: Dictionary = {
 	"keys": "help for the person",
 	"tour": "help for the person",
 	"website": "help for the person",
+	"docs": "help for the person",
 	"about": "help for the person",
 }
 

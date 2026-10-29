@@ -297,6 +297,24 @@ for page in .vercel/output/static/*.html; do
   overrides="$overrides${overrides:+,}\"$name.html\": { \"path\": \"$name\", \"contentType\": \"text/html; charset=utf-8\" }"
 done
 echo "deploy: pages at /${pages//|/, /}"
+# The documentation (tools/docs_site.py, run by tools/site.py): /docs is
+# docs.html, a page like the others above, and each of its pages is
+# /docs/<name>, from docs/<name>.html, its .html address redirected below.
+docs=0
+for page in .vercel/output/static/docs/*.html; do
+  [ -e "$page" ] || continue
+  name=$(basename "$page" .html)
+  overrides="$overrides,\"docs/$name.html\": { \"path\": \"docs/$name\", \"contentType\": \"text/html; charset=utf-8\" }"
+  docs=$((docs + 1))
+done
+[ "$docs" -gt 0 ] || { echo "deploy FAILED: tools/site.py wrote no documentation pages (docs/)"; exit 1; }
+# A docs page that moved (docs-site/_moved.json) answers at its old address
+# with a 308 to its new one, so a link anyone kept still lands.
+docs_moved=$(python3 -c 'import json; m = json.load(open("docs-site/_moved.json"))
+print("".join("    { \"src\": \"/docs/%s(/|[.]html)?\", \"status\": 308, \"headers\": { \"Location\": \"/docs/%s\" } },\n" % (a, b)
+               for a, b in sorted(m.items()) if not a.startswith("$")), end="")') || {
+  echo "deploy FAILED: could not read docs-site/_moved.json"; exit 1; }
+echo "deploy: $docs documentation pages at /docs/"
 
 # What the pages may load and, above all, where they may send anything.
 #
@@ -366,6 +384,8 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/authorize[.]html", "status": 308, "headers": { "Location": "/oauth/authorize" } },
     { "src": "/challenges/?", "status": 308, "headers": { "Location": "/challenge" } },
     { "src": "/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/\$1" } },
+$docs_moved
+    { "src": "/docs/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/docs/\$1" } },
     { "src": "/(app|$pages)/", "status": 308, "headers": { "Location": "/\$1" } },
     { "src": "/api/share/sweep", "dest": "/api/share?op=sweep" },
     { "src": "/api/otp/canary", "dest": "/api/otp?op=canary" },

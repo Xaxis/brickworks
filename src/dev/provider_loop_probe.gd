@@ -21,12 +21,13 @@
 ## go back to the model to say again, a Claude plan's token is refused. And a
 ## design stopped while its request is in the air ends once, and the next
 ## design is not answered by the stopped one's reply.
-## In a window, for the pictures.
+## In a window, for the pictures. The stubs' ports are 9621 and the next,
+## or -- --port=N and the next.
 extends SceneTree
 
-const PORT := 9621
+var _stub_port: int = _port()
 ## A second stub that thinks for SLOW_S seconds before every answer.
-const SLOW_PORT := 9622
+var _slow_port: int = _stub_port + 1
 const SLOW_S := 4.0
 const BRIEF := "A slender red tower, six bricks tall"
 
@@ -41,6 +42,13 @@ var _log: String = ""
 
 func _initialize() -> void:
 	_run()
+
+
+static func _port() -> int:
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--port="):
+			return int(argument.trim_prefix("--port="))
+	return 9621
 
 
 func _run() -> void:
@@ -81,7 +89,7 @@ func _end_to_end() -> void:
 	var key: String = "sk-stub-" + Crypto.new().generate_random_bytes(16).hex_encode()
 	OS.set_environment("STUB_KEY", key)
 	_stub = OS.create_process("python3", ["-I",
-		ProjectSettings.globalize_path("res://tools/provider_stub.py"), "--port", str(PORT),
+		ProjectSettings.globalize_path("res://tools/provider_stub.py"), "--port", str(_stub_port),
 		"--log", _log, "--fail-first", "1"])
 	OS.unset_environment("STUB_KEY")
 	_check("the stub provider starts (pid %d)" % _stub, _stub > 0)
@@ -90,7 +98,7 @@ func _end_to_end() -> void:
 		await process_frame
 
 	var provider: Provider = ProviderSettings.provider_for("openai", "gpt-6.1-sol", key,
-		"http://127.0.0.1:%d/v1" % PORT)
+		"http://127.0.0.1:%d/v1" % _stub_port)
 	var started: bool = _main.call("design_with_provider", BRIEF, provider)
 	_check("the design starts", started)
 	var loop: DesignerLoop = _main.call("designer")
@@ -160,14 +168,14 @@ func _stopped_then_again() -> void:
 	var key: String = "sk-stub-" + Crypto.new().generate_random_bytes(16).hex_encode()
 	_slow = OS.create_process("python3", ["-I",
 		ProjectSettings.globalize_path("res://tools/provider_stub.py"), "--port",
-		str(SLOW_PORT), "--log", slow_log, "--delay", str(SLOW_S)])
+		str(_slow_port), "--log", slow_log, "--delay", str(SLOW_S)])
 	await _seconds(2.0)
 	var loop: DesignerLoop = _main.call("designer")
 	var endings: Array = []
 	loop.finished.connect(func(ok: bool, summary: String) -> void: endings.append([ok, summary]))
 	_check("a design on the slow provider starts", _main.call("design_with_provider", BRIEF,
 		ProviderSettings.provider_for("openai", "gpt-6.1-sol", key,
-			"http://127.0.0.1:%d/v1" % SLOW_PORT)))
+			"http://127.0.0.1:%d/v1" % _slow_port)))
 	await _seconds(1.0)
 	_check("...and is busy while it thinks", loop.busy())
 	loop.stop()
@@ -175,7 +183,7 @@ func _stopped_then_again() -> void:
 		endings == [[false, "stopped"]] and not loop.busy())
 	_check("another starts at once on the quick one", _main.call("design_with_provider", BRIEF,
 		ProviderSettings.provider_for("openai", "gpt-6.1-sol", key,
-			"http://127.0.0.1:%d/v1" % PORT)))
+			"http://127.0.0.1:%d/v1" % _stub_port)))
 	var until: int = Time.get_ticks_msec() + 240000
 	while endings.size() < 2 and Time.get_ticks_msec() < until:
 		await process_frame
@@ -290,8 +298,12 @@ func _keys() -> void:
 		ProviderSettings.load_key("openai") == key
 		and not FileAccess.file_exists(ProviderSettings.key_file("openai")))
 	ProviderSettings.remember("openai", key, true)
-	_check("kept on this device, in the app's own data",
-		FileAccess.get_file_as_string(ProviderSettings.key_file("openai")) == key)
+	_check("kept on this device, in the app's own data, encrypted: the file holds no key",
+		ProviderSettings.load_key("openai") == key and FileAccess.file_exists(
+			ProviderSettings.key_file("openai")) and not FileAccess.get_file_as_string(
+			ProviderSettings.key_file("openai")).contains("k".repeat(20)))
+	ProviderSettings._this_visit.clear()
+	_check("...and read back from it", ProviderSettings.load_key("openai") == key)
 	ProviderSettings.forget("openai")
 	_check("forgotten: gone", not FileAccess.file_exists(ProviderSettings.key_file("openai"))
 		and ProviderSettings.load_key("openai") == OS.get_environment("OPENAI_API_KEY"))

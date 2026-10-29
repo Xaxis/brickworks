@@ -437,6 +437,25 @@ is on the page, `hidden`, for the script to show.
   `.wide` takes the whole row. What cannot be undone is `.setting.danger`
   and its button `.cta.ghost.danger`, in `--bad`.
 
+## Docs
+
+The documentation at /docs (2026-10-29, the owner: "an advanced 'docs'
+page with best practice ui/ux pattern") is made by `tools/docs_site.py`
+from the Markdown in `docs-site/`, with the shell's header and footer, and
+laid out by `web/docs.css`: the pages list down the left (`.docs-side`,
+folded behind **Browse the docs** under 900 px), the page in the middle
+(`.docs-article`, 760 px of words), and what is on this page down the
+right from 1200 px (`.docs-toc`, the section being read marked with the
+`--accent-edge`). Its own pieces, on the scale like everything else: keys
+(`kbd`, a cap each, a gesture in words beside them), a block of code
+(`.code`, scrolling inside itself, with Copy), a callout (`.callout`, its
+edge `--focus` for a note, `--green` for a tip, `--bad` for a warning), a
+table that scrolls inside its frame (`.table`), a picture of the app
+(`.shot`), the start page's cards (`.docs-cards`), previous and next
+(`.docs-pager`), and search (`dialog.docs-search`, Ctrl+K or `/`).
+The site's buttons, pills and dialog are site.css's. `tools/web/docs_flow.mjs`
+looks at it at 390 and 1400 px in both themes.
+
 ## Motion
 
 Every control and card answers the pointer (site275, 2026-10-26; site273

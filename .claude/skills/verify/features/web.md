@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing -->
 
 ## Sub-features
 
@@ -318,6 +318,21 @@ plan with Claude as the client.
   did before, as chat B's first choice is and chat A's, the account's first,
   is not, and `server/discover` answered "method not found" by the relay
   with no tab asked. 36 checks, seconds; deletes its throwaway account.
+- `relay timing` (`tools/web/relay_timing.mjs`, `--url=` a local relay or a
+  preview, `--rounds=4`): what a call through the relay costs when the tab
+  answers at once. A throwaway account (deleted at the end), a stand-in tab
+  saying hello with the app's real 248 KB tool list, Claude signed in with
+  OAuth; tabs, search_parts, edit_model and look_at_model each round, the
+  first round a warm-up; median and p90 from Claude's side. A measure with
+  no verdict. The relay's per-call cost (2026-10-29, relay338): a call's
+  reads go out together, beside the token's check once this instance knows
+  whose the token is (`owners`); the call is queued with its bookkeeping
+  writes beside it; the answer is taken and deleted in one step; and each
+  side naps on a wake (`nap`/`wake` in api/mcp.js), so one instance serving
+  both hands each over at once, else Claude's call looks from 40 ms up to
+  350 ms and the tab's ask for work every 350 ms. The same answers: 42 of 42
+  identical to the relay before, for a scripted 40 calls with the headless
+  app as the tab.
 - `two windows probe` (`src/dev/tabpair_probe.gd -- 8790`): the desktop's side
   — two windows as two of the app's connectors in one process, each with its
   own world and socket and a fresh `TabSession` id: the three links and the
@@ -895,7 +910,12 @@ plan with Claude as the client.
   `/guidelines`, linked from every site page's footer (and the 404's and the
   Claude sign-in page's), from the server-made pages through the gallery's
   footer, and from the Share panel beside Publish. `/terms` has the
-  operator's line (`#operator`) marked for the owner to fill in.
+  operator's line (`#operator`) marked for the owner to fill in, and
+  `#paid-plans` (2026-10-29): Free and Pro when they open, sold by Atypic
+  through Link, renewal, cancelling and refunds as Atypic's policy says,
+  mirroring Bookwright's terms. The FAQ's "Is Brickworks free?" and "What
+  is an AI build?" (`#ai-builds`) and the download page's `#pro-note` say
+  the same as /plans: downloads free until Pro opens, every version kept.
 - `age question` (`web/account.js` `askAgeIfAsked`, `src/ui/sign_in_gate.gd`,
   `api/account.js` `?op=age`, `api/_trust.js`, `supabase/trust.sql`): asked
   once, after a first sign-in, on the site and in the app — "When were you
@@ -2507,14 +2527,19 @@ plan with Claude as the client.
   as for the landing page.
 - `plans page` (`web/plans.html`, `web/plans.js`), `POST /api/plans`
   (`api/plans.js`, `supabase/plan_interest.sql`) and `plan interest counts`
-  (`tools/plan_interest.py`): Plans, coming soon (2026-10-28, the owner's
-  ask, plans323). Free, Plus ($48 a year or $5 a month) and Creator ($96 or
-  $10), the paid two marked Coming soon, education free, what Free keeps,
-  and three questions; the tiers and their words from the pricing research
-  (price274), Free at today's limits. Nothing takes money. Plus's and
-  Creator's Tell me when it's ready open the interest form (a `dialog`):
-  email, plan, monthly or yearly, a line; take it off deletes the address's
-  entries. The table is the server's alone (row security, every grant
+  (`tools/plan_interest.py`): Plans (2026-10-28, plans323; Free and Pro
+  since 2026-10-29, gate M1 of docs/PLANS.md, plansite346). Free ($0: the
+  web app, 10 AI builds a month, building by hand without a limit,
+  everything else the app does today, at today's limits) and Pro ($8 a
+  month or $80 a year: the desktop app, every version released while you
+  pay kept, AI builds without a limit), Pro marked Coming soon; what an AI
+  build is; every account made before Pro opens gets Pro with no end;
+  education free; what stays free; five questions, one saying what changed.
+  Nothing takes money (BRICKWORKS_BILLING off). Pro's Tell me when it's
+  ready opens the interest form (a `dialog`): email, monthly or yearly, a
+  line; Pro is kept as 'plus' (`api/plans.js` `PLANS`: the table allows
+  Plus and Creator, which both mean Pro now; no SQL); take it off deletes
+  the address's entries. The table is the server's alone (row security, every grant
   revoked, five security-definer functions for the service role), one row an
   address a plan, ten tries an hour from one place (an HMAC of its address,
   kept a day). The owner reads counts only; linked from every page's footer
@@ -2529,6 +2554,29 @@ plan with Claude as the client.
   user id of the session. Snapshots go in a server-only table, so a cold
   instance answers a paying person while Admission is down; with none, the
   answer is `unknown` and refuses nothing.
+- `GET /api/plans?op=download`, `GET /api/plans?op=entitlement` (`api/plans.js`)
+  and `the desktop's files and token` (`api/_desktop.js`,
+  `supabase/desktop_paid_through.sql`): the paid desktop, built dark
+  (2026-10-29, docs/PLANS.md units U5 and U6, desk347). Answered in every
+  mode. Downloads: no file, `{gated}`; a package's name (the release
+  manifest's), off, a 302 to the public address it always had, nobody asked;
+  on, a session whose plan has the desktop (or cannot be known just now) gets
+  GitHub's signed asset URL (the API's 302, `RELEASES_TOKEN` sent when set; a
+  200 is a 503, never a stream), Free a 403 "The desktop app comes with Pro.
+  The web app is free, in any browser." with `pro: /plans`, no session a 401,
+  anything else a 404. `Accept: application/json` gets `{url}` instead of the
+  302 (the page's fetch). `web/download.js` asks `{gated}` once and gates its
+  file links only when told. The token: off, `{billing: "off"}`; on, a JWT
+  signed RS256 with `DESKTOP_TOKEN_KEY` `{sub, plan, desktop, paid_through,
+  iat}`, never on standing `unknown` nor without a key (503 `{billing,
+  standing}`); paid_through is today at least while the plan has the desktop,
+  a period's or comp's end when later, null for no end, the largest kept per
+  account (only moves on), and never before `DESKTOP_FREE_THROUGH`.
+  `tests/test_desktop.py` runs both over the stand-in world (GitHub included)
+  and proves the token verifies with its key and no other, refused when
+  changed. Proven live against the public repo: `signedUrl` gave a
+  release-assets.githubusercontent.com URL whose first bytes (a Range
+  request) are the AppImage's ELF header.
 - `compare media` (`tools/web/compare_media.mjs`): retakes every picture and clip
   of `/compare` from the live app in a real, headed Chromium window on
   SwiftShader, its tabs and address bar in the picture (ffmpeg's x11grab):
@@ -4607,7 +4655,9 @@ python3 tools/minitest.py tests/test_plans.py
 The tests run `api/plans.js`'s handler with the database played: refusals
 in words asking nothing, the rate limit asked first, the address lower case
 and its origin only as a key, the same words for a first entry and a
-second, and the page taking no money and listing no Free limit under
+second, Pro kept as 'plus' and Plus refused, and the page taking no
+money, keeping its promises (what stays free, accounts that exist, no
+desktop in Free, no Claude builds) and listing no Free limit under
 `api/models.js`'s. With no network, the page and the form from the stand-in
 (`design_flow` and `a11y_flow` page `plans`, its dialog opened), and:
 
@@ -4617,12 +4667,14 @@ BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/plans_flow.mjs --url=<pr
 ```
 
 It passes when it ends "plans: all ok": at 390 and 1400 px, light and
-dark, the three tiers and their prices, Coming soon on the paid two,
-education, what Free keeps, nothing sideways, the footer's link, and
-/privacy's line; at 390 px the form opened with Plus and yearly, a bad
-address refused on the page and by the API (and a plan off the list, a
-line past 200); then, live, a Resend test address kept for Plus yearly
-(its row read with the secret key), sent again monthly with a line and
+dark, Free and Pro and their prices, Coming soon on Pro, what an AI build
+is, accounts that exist keeping everything, education, what stays free, no
+Claude builds and no free desktop, nothing sideways, the footer's link, and
+/privacy's line; at 390 px the form opened from Pro with yearly, a bad
+address refused on the page and by the API (and a plan off the list, now
+Plus, a line past 200); then, live, a Resend test address kept for Pro
+yearly (its row, 'plus', read with the secret key), sent again monthly
+with a line and
 changed (still one row), and taken off (none left), the address forgotten
 at the end whatever happened. Before the SQL is applied the form says it
 is not open yet and the flow fails, saying so. The counts:
@@ -4653,6 +4705,44 @@ refused. On a deployment, only with the switch on for it alone
 on the project): `curl -s <deployment>/api/plans` is the offer, and
 `/api/plans?op=plan` with a test account's session is its plan, Free and
 `builds.limit` 10, `standing` "known", `freshness` "live".
+
+### The documentation (/docs)
+
+The pages are made, not kept: `tools/docs_site.py` turns `docs-site/*.md`
+(in `docs-site/_nav.json`'s order) into `docs.html`, `docs/<page>.html` and
+`docs/search.json`, and `tools/site.py` runs it at every deploy, as it
+writes the changelog. `web/docs.css` lays them out and `web/docs.js` is the
+pages list on a phone, Ctrl+K search, On this page and Copy. Four pages are
+made from their sources: the MCP tool reference from `tools/mcp_tools.json`,
+the shortcuts from `ControlsHint.for_keyboard()` and the menus' keys, the
+menus from `docs-site/generated/menus.json`, and the changelog from
+`CHANGELOG.md`. The menus file is written off the real window by
+`src/dev/docs_menus.gd` (the command is in its header), and
+`tests/test_docs_site.py` fails when `src/ui/shell.gd`'s menus no longer
+match it.
+
+```sh
+python3 tools/docs_site.py --check
+python3 tools/minitest.py tests/test_docs_site.py
+python3 tools/site.py /tmp/site && node tools/web/docs_flow.mjs --root=/tmp/site --out=shots/docs
+BW_BYPASS=$VERCEL_BYPASS node tools/web/docs_flow.mjs --url=<preview> --out=shots/docs
+```
+
+`--check` ends "every link resolves" when every feature in features.json
+is in a section's `<!-- covers -->` or in `docs-site/internal.txt` with
+why a person never meets it, no page names a feature the map lacks, and
+every link and picture goes somewhere. A feature added here with no page
+fails it, and so the Python suite. The flow ends "every check passed":
+every page 200 with its own title and canonical (on a deployment
+`/docs/<page>.html` 308 to `/docs/<page>`, `/docs/` to `/docs`, and a page that moved, named in `docs-site/_moved.json`, 308 to its new address), every link
+and `#fragment` on them answering, `/docs`, the shortcuts and the tool
+reference in light and dark at 390 and 1400 px with nothing sideways and
+no error, Ctrl+K finding "fresh eyes" and "Build together" first and Enter
+going there, `/` and Escape, the pages list behind Browse the docs at 390
+and down the left at 1400 with the page marked, On this page following the
+scroll, and a deep link landing with its heading in view. Pictures in
+`--out`. The app's way in is Help, Documentation (`src/ui/shell.gd`,
+command `docs`).
 
 ### The site for everyone: axe, names and the keyboard
 

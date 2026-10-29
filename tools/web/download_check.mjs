@@ -38,6 +38,15 @@
 // kind, finds nothing and clears it, and opens an address asking for a kind
 // there is not: the address says each question, and the page the answer.
 //
+// And downloads gated by the plan (docs/PLANS.md, unit U5), locally only: a
+// deployment's billing is off until the owner turns it on, and then its
+// files are the plan's to give. The page asks /api/plans?op=download
+// whether downloads are gated; here it is answered "no" for every view
+// above (the public links, as always), then "yes" for a Linux visitor whose
+// plan has no desktop (a click is refused in the server's words, with the
+// way to Pro, and goes nowhere) and for one whose plan has it (a click goes
+// to the short-lived address the route gives).
+//
 // Each system is a real browser told it is that system the way a browser
 // says so: the user agent, navigator.platform and the client hints, through
 // the DevTools protocol. Playwright's userAgent option changes only the
@@ -107,6 +116,11 @@ const LISTED = Array.from({ length: 26 }, (_, n) => ({
 }));
 const KINDS = [{ id: "castle", label: "Castles and fantasy" }, { id: "space", label: "Space" }];
 let galleryTarget = "";
+// How the stand-in /api/plans answers a download: null, not gated; "free",
+// refused; "pro", the short-lived address.
+let gatedAs = null;
+const SIGNED_PATH = "/signed-download-for-the-check";
+const PRO_WORDS = "The desktop app comes with Pro. The web app is free, in any browser.";
 if (!target) {
   const root = resolve("web");
   const replacement = args.manifest ? resolve(args.manifest) : null;
@@ -141,6 +155,19 @@ if (!target) {
       response.writeHead(200, { ...headers, "Content-Type": "application/json" });
       return response.end(JSON.stringify({ pick: null,
         small: { size: "small", label: "Small, under 200 parts", most: 200, models: [], more: false } }));
+    }
+    if (path === "/api/plans" && url.searchParams.get("op") === "download") {
+      const json = (status, body) => {
+        response.writeHead(status, { ...headers, "Content-Type": "application/json" });
+        return response.end(JSON.stringify(body));
+      };
+      if (!url.searchParams.get("file")) return json(200, { gated: gatedAs !== null });
+      if (gatedAs === "pro") return json(200, { url: SIGNED_PATH });
+      return json(403, { error: PRO_WORDS, pro: "/plans" });
+    }
+    if (path === SIGNED_PATH) {
+      response.writeHead(200, { ...headers, "Content-Type": "application/octet-stream" });
+      return response.end("the file");
     }
     if (/^\/m\/[A-Za-z0-9]{10}\.png$/.test(path)) {
       response.writeHead(200, { ...headers, "Content-Type": "image/png" });
@@ -346,6 +373,37 @@ for (const system of SYSTEMS) {
     console.log(`           ${path}`);
   }
   await context.close();
+}
+
+// -- downloads gated by the plan (locally only) ------------------------------------
+if (server && release) {
+  for (const plan of ["free", "pro"]) {
+    gatedAs = plan;
+    const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await context.newPage();
+    const fail = (text) => problems.push(`gated, ${plan}: ${text}`);
+    await page.goto(`${target}?os=linux`, { waitUntil: "load", timeout: 45000 });
+    await page.waitForFunction(() => !document.getElementById("notes").hidden, null, { timeout: 15000 })
+      .catch(() => fail("the page did not draw its offer"));
+    // The question answered before the click, as a person's would be.
+    await page.waitForResponse((r) => r.url().includes("/api/plans?op=download"), { timeout: 5000 })
+      .catch(() => {});
+    const href = await page.getAttribute("#offer-button", "href");
+    if (href !== primary("linux").url) fail(`the button's link is ${href}, not the manifest's`);
+    const went = page.waitForRequest((r) => r.url().endsWith(SIGNED_PATH), { timeout: 8000 }).catch(() => null);
+    await page.click("#offer-button");
+    if (plan === "free") {
+      const said = await page.waitForSelector("#gate-said", { timeout: 8000 }).then((e) => e.textContent(), () => "");
+      const pro = await page.getAttribute("#gate-said a", "href").catch(() => null);
+      if (!said.startsWith(PRO_WORDS) || pro !== "/plans") fail(`a click said "${said}", linking ${pro}`);
+      if (!page.url().startsWith(target)) fail(`a refused click went to ${page.url()}`);
+    } else if (!(await went)) {
+      fail("a click did not go to the address the route gave");
+    }
+    console.log(`  gated    ${plan}: ${plan === "free" ? "refused with the way to Pro" : "sent to the route's address"}`);
+    await context.close();
+  }
+  gatedAs = null;
 }
 
 // -- the page's links ------------------------------------------------------------
