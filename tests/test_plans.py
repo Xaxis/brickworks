@@ -159,7 +159,8 @@ def test_the_page_takes_no_money_and_keeps_its_promises() -> None:
     # What stays free, and the promise to every account made before Pro.
     plain = re.sub(r"\s+", " ", PAGE)
     assert "What stays free" in plain and "It takes nothing out of Free" in plain
-    assert "Every account made before Pro opens gets Pro, free and with no end date" in plain
+    assert ("Every account made before 29 October 2026, when this page changed, gets Pro, "
+            "free and with no end date") in plain
     assert "Education is free" in plain
     # The desktop app is never listed in Free, and AI builds are not Claude's.
     assert "desktop" not in re.search(r'<ul class="rows">.*?</ul>', PAGE, re.S).group(0)
