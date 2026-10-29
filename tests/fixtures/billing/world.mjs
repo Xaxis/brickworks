@@ -9,6 +9,7 @@
 //   const token = await w.signIn({ sub: "u1", email: "ada@example.com" });
 
 import { webcrypto } from "node:crypto";
+import { Readable } from "node:stream";
 import { ADMISSION_URL, FAKE_KEY, fakeAdmission } from "./fake_admission.mjs";
 
 export const SUPABASE_URL = "https://db.test";
@@ -16,8 +17,10 @@ export const SUPABASE_URL = "https://db.test";
 const b64url = (bytes) => Buffer.from(bytes).toString("base64url");
 
 /// One request through api/plans.js's handler, as Vercel would make it:
-/// {status, json}.
-export async function askPlans({ method = "GET", query = {}, headers = {}, body } = {}) {
+/// {status, json}. [raw], a string, is a body as Vercel's helpers leave
+/// it: parsed as JSON into the body, and its bytes to read again as the
+/// request's data (@vercel/node restoreBody).
+export async function askPlans({ method = "GET", query = {}, headers = {}, body, raw } = {}) {
   const { default: handle } = await import("../../../api/plans.js");
   let status = 0;
   let json = null;
@@ -26,7 +29,17 @@ export async function askPlans({ method = "GET", query = {}, headers = {}, body 
     status: (s) => { status = s; return response; },
     json: (b) => { json = b; return response; },
   };
-  await handle({ method, query, headers, body }, response);
+  let request = { method, query, headers, body };
+  if (raw !== undefined) {
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = undefined;
+    }
+    request = Object.assign(Readable.from([Buffer.from(raw)]), { method, query, headers, body: parsed });
+  }
+  await handle(request, response);
   return { status, json };
 }
 
@@ -42,11 +55,16 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
   }
   const admission = fakeAdmission();
   const snapshots = new Map();
+  // supabase/plan_consents.sql's rows, as plan_consent_note keeps them.
+  const consents = [];
   const signer = await webcrypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
   const jwk = { ...(await webcrypto.subtle.exportKey("jwk", signer.publicKey)), kid: "k1", alg: "ES256" };
   const self = {
     admission,
     snapshots,
+    consents,
+    /// plan_consents.sql not applied: its function answers 404.
+    noConsents: false,
     /// Every request, "METHOD url" without its query.
     calls: [],
     /// The snapshot store unreachable, as a database outage.
@@ -79,7 +97,13 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     if (url.pathname === "/rest/v1/rpc/admission_snapshot_get") return json(200, snapshots.get(asked.p_key) ?? null);
     if (url.pathname === "/rest/v1/rpc/admission_snapshot_put") {
       snapshots.set(asked.p_key, asked.p_value);
-      return json(204);
+      // 200, not 204: a Response refuses a 204 with a body, which threw
+      // after the snapshot was kept, so the client took every put as failed.
+      return json(200);
+    }
+    if (url.pathname === "/rest/v1/rpc/plan_consent_note" && !self.noConsents) {
+      consents.push(asked);
+      return json(200);
     }
     return json(404, { message: "no such function" });
   };

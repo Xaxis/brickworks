@@ -28,11 +28,46 @@
 //   GET /api/plans?op=plan   the signed-in account's own (a session, as
 //                            "Authorization: Bearer …"): {billing,
 //                            standing, plan, owner, builds, desktop,
-//                            subscription, freshness}; 401 without one
+//                            subscription, freshness}; 401 without one.
+//                            &fresh=1 asks Admission again past what is
+//                            kept: back from Checkout, until Stripe's word
+//                            has reached it.
+//
+// And the way to pay for Pro (docs/PLANS.md U3), POSTs with an op, asked
+// before the interest form's (which has none), again only while billing is
+// on; off, each is the interest form's, refused as it always was:
+//
+//   POST /api/plans?op=checkout  signed in, {interval: "month" or "year",
+//                                consent: true, amount}: where to pay,
+//                                {url, kind}: Stripe Checkout, or for one
+//                                who pays already the portal to change
+//                                plan. 422 without the renewal terms agreed
+//                                (consent); the agreement is kept before
+//                                anything else (supabase/plan_consents.sql),
+//                                or nobody goes on. 409 when Pro is not on
+//                                sale, the account has Pro without paying,
+//                                or [amount], the price the page showed,
+//                                is not the price.
+//   POST /api/plans?op=portal    signed in, {flow}: Stripe's billing
+//                                portal, {url}; [flow] "cancel" or
+//                                "payment_method_update" goes straight to
+//                                that. 409 for an account that never paid.
+//   POST /api/plans?op=webhook   Admission's events, signed with
+//                                ADMISSION_WEBHOOK_SECRET (404 without one,
+//                                400 for one it did not sign):
+//                                customer.updated forgets what is kept of
+//                                that account, on every instance, so its
+//                                next request reads its new plan.
+//
+// Checkout and the portal come back to /settings#plan on this site
+// (returnOrigin): ?billing=done, cancelled or portal says from where.
 
 import { createHmac } from "node:crypto";
+import { AdmissionError, AdmissionUnavailable, verifyWebhook, WebhookError } from "./_admission.js";
 import { AuthError, bearer, verify } from "./_auth.js";
-import { billingMode, currentOffer, entitlementOf, reportOwner } from "./_billing.js";
+import {
+  admission, agreed, billingMode, charge, currentOffer, entitlementOf, reportOwner, returnOrigin,
+} from "./_billing.js";
 import { db, dbConfigured } from "./_db.js";
 
 export const PLANS = ["plus", "creator"];
@@ -101,7 +136,165 @@ async function planned(request, response) {
     throw trouble;
   }
   await reportOwner(claims);
+  if (request.query?.fresh === "1") await admission().forget(claims.sub);
   return response.status(200).json(await entitlementOf(claims.sub));
+}
+
+export const INTERVALS = ["month", "year"];
+const FLOWS = ["cancel", "payment_method_update"];
+const PAID = ["checkout", "portal", "webhook"];
+const TRY_AGAIN = "Billing cannot be reached just now. Try again in a minute.";
+const NOT_FOR_SALE = "Pro is not on sale yet. Try again soon.";
+export const NEVER_PAID = "There is no billing to manage: this account has never paid for Pro.";
+export const NO_CONSENT = "Tick the box to agree that Pro renews until you cancel.";
+
+/// The agreement could not be kept, so nobody goes on to pay.
+class NotKept extends Error {}
+
+/// Where to pay for Pro: Checkout, once the renewal terms are agreed and
+/// the agreement kept.
+async function checkout(request, response, claims) {
+  const body = bodyOf(request);
+  const interval = INTERVALS.includes(body?.interval) ? body.interval : null;
+  if (!interval) return say(response, 422, "Choose monthly or yearly.");
+  if (body?.consent !== true) return say(response, 422, NO_CONSENT);
+  // Pro given, or the owner's: nothing to pay for. One who pays already is
+  // sent on, and Admission sends them to the portal to change plan.
+  const mine = await entitlementOf(claims.sub);
+  if (mine.standing === "known" && (mine.owner || mine.plan?.key === "pro") && !mine.subscription) {
+    return say(response, 409, "This account has Pro already, with nothing to pay.");
+  }
+  const offer = await currentOffer();
+  const amount = offer.pro.prices[interval];
+  if (!offer.forSale || !Number.isInteger(amount)) return say(response, 409, NOT_FOR_SALE);
+  if (body.amount !== undefined && body.amount !== amount) {
+    return say(response, 409, `The price is ${charge(amount, offer.pro.currency, interval)} now. `
+      + "Read the terms again, and agree to that price to go on.");
+  }
+  try {
+    await agreed(claims.sub, interval, amount, offer.pro.currency);
+  } catch (trouble) {
+    throw new NotKept(String(trouble?.message || trouble));
+  }
+  const origin = returnOrigin(request);
+  const email = String(claims.email || "");
+  const { url, kind } = await admission().checkout({
+    customerId: claims.sub,
+    // Prefills Checkout; an orangecheck account's address is made up.
+    ...(email && !/@oc\.brickworks\.diy$/i.test(email) ? { email } : {}),
+    plan: "pro",
+    interval,
+    returnUrl: `${origin}/settings?billing=done#plan`,
+    cancelUrl: `${origin}/settings?billing=cancelled#plan`,
+  });
+  return response.status(200).json({ url, kind });
+}
+
+/// Stripe's billing portal, for an account that has paid: the card,
+/// invoices, monthly or yearly, cancelling.
+async function portal(request, response, claims) {
+  const body = bodyOf(request);
+  const flow = body?.flow ?? undefined;
+  if (flow !== undefined && !FLOWS.includes(flow)) return say(response, 422, "That is not something billing does.");
+  const mine = await entitlementOf(claims.sub);
+  if (mine.standing === "known" && !mine.subscription) return say(response, 409, NEVER_PAID);
+  const { url } = await admission().portal({
+    customerId: claims.sub,
+    returnUrl: `${returnOrigin(request)}/settings?billing=portal#plan`,
+    ...(flow ? { flow } : {}),
+  });
+  return response.status(200).json({ url });
+}
+
+/// The body exactly as sent, as a signature is made over it, or null past
+/// [most] bytes. Vercel's helpers parse a JSON body, which loses its bytes,
+/// and leave them to read again as the request's data (@vercel/node
+/// restoreBody); a request made here with a string body is that string.
+function rawOf(request, most = 256 * 1024) {
+  if (typeof request.on !== "function") return Promise.resolve(typeof request.body === "string" ? request.body : null);
+  return new Promise((done) => {
+    const chunks = [];
+    let size = 0;
+    const timer = setTimeout(() => done(null), 5000);
+    request.on("data", (chunk) => {
+      size += chunk.length;
+      if (size <= most) chunks.push(Buffer.from(chunk));
+    });
+    request.on("end", () => {
+      clearTimeout(timer);
+      done(size > most ? null : Buffer.concat(chunks).toString("utf8"));
+    });
+    request.on("error", () => {
+      clearTimeout(timer);
+      done(null);
+    });
+  });
+}
+
+// Events heard on this instance, so one sent twice is acted on once.
+// Forgetting twice changes nothing, so an instance that missed the first
+// does no harm by acting on the second.
+const heardEvents = new Set();
+
+/// Admission's word that something changed (its ADR-0008).
+async function webhook(request, response) {
+  const secret = String(process.env.ADMISSION_WEBHOOK_SECRET || "").trim();
+  if (!secret) return say(response, 404, "This deployment takes no webhook.");
+  const raw = await rawOf(request);
+  if (raw === null) return say(response, 400, "That is not from Admission.");
+  let event;
+  try {
+    event = await verifyWebhook(raw, String(request.headers?.["admission-signature"] || ""), secret);
+  } catch (trouble) {
+    if (trouble instanceof WebhookError) return say(response, 400, "That is not from Admission.");
+    throw trouble;
+  }
+  const a = admission();
+  const id = String(event?.id || "");
+  if (heardEvents.has(id)) return response.status(200).json({ heard: "again" });
+  heardEvents.add(id);
+  if (heardEvents.size > 1000) heardEvents.delete(heardEvents.values().next().value);
+  // The other mode's event is not this deployment's to act on.
+  if (event.mode === a.mode && event.type === "customer.updated" && typeof event.data?.customerId === "string") {
+    await a.forget(event.data.customerId);
+  }
+  return response.status(200).json({ heard: String(event.type || "") });
+}
+
+/// What went wrong on the way to Stripe, in words a person can act on.
+function refusedPaying(response, op, trouble) {
+  if (trouble instanceof AdmissionUnavailable) return say(response, 503, TRY_AGAIN);
+  if (trouble instanceof NotKept) {
+    console.error(`plans: consent: ${trouble.message.slice(0, 120)}`);
+    // PostgREST answers 404 for a function that is not there: before the file.
+    return say(response, 503, /: 404$/.test(trouble.message) ? "Paying for Pro is not open here yet."
+      : "That did not go just now. Try again in a minute.");
+  }
+  if (trouble instanceof AdmissionError) {
+    if (trouble.code === "plan_not_for_sale" || trouble.code === "no_price") return say(response, 409, NOT_FOR_SALE);
+    if (trouble.code === "no_stripe_customer") return say(response, 409, NEVER_PAID);
+    if (trouble.code === "no_subscription") return say(response, 409, "There is no subscription to cancel.");
+    console.error(`billing: ${op}: ${trouble.code}: ${String(trouble.message).slice(0, 120)}`);
+    return say(response, 503, TRY_AGAIN);
+  }
+  throw trouble;
+}
+
+/// A POST with one of the ops above while billing is on.
+async function paying(request, response, op) {
+  if (op === "webhook") return webhook(request, response);
+  let claims;
+  try {
+    claims = await verify(bearer(request), request);
+  } catch (trouble) {
+    if (trouble instanceof AuthError) return say(response, trouble.status, trouble.message);
+    throw trouble;
+  }
+  try {
+    return await (op === "checkout" ? checkout : portal)(request, response, claims);
+  } catch (trouble) {
+    return refusedPaying(response, op, trouble);
+  }
 }
 
 export default async function handler(request, response) {
@@ -109,6 +302,8 @@ export default async function handler(request, response) {
   // kept by any cache.
   response.setHeader("Cache-Control", "no-store");
   if (request.method === "GET" && billingMode() !== "off") return planned(request, response);
+  const op = String(request.query?.op || "");
+  if (request.method === "POST" && PAID.includes(op) && billingMode() !== "off") return paying(request, response, op);
   if (request.method !== "POST") return say(response, 405, "POST {email, plan, billing, note} or {email, forget: true}");
   let entry;
   try {
