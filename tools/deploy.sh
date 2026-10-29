@@ -166,7 +166,8 @@ fi
 # one for a visitor's read): /m/<id>, its pictures (.png, .cutout.png for
 # its page, and .webp for the gallery's cards) and its card are mapped
 # onto it, and the LDraw library's sets, each a page at /library/<id> with its
-# cover (.webp), its file (.mpd) and its parts (api/_library.js; /library is
+# pictures (.webp the card's, .cutout.webp the page's, .cover.webp the app's
+# cover), its file (.mpd) and its parts (api/_library.js; /library is
 # web/library.html). /api/people is who shares them and what is done with them
 # (supabase/people.sql): profiles at /u/<handle>, collections at /c/<id>,
 # likes and favourites; the site's header and footer beside it too, as
@@ -400,6 +401,7 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/collections/?", "dest": "/api/people?op=collections_page" },
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})/?", "dest": "/api/share?op=set&id=\$1" },
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.]webp", "dest": "/api/share?op=set_cover&id=\$1" },
+    { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.](cutout|cover)[.]webp", "dest": "/api/share?op=set_cover&id=\$1&as=\$2" },
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.]mpd", "dest": "/api/share?op=set_file&id=\$1" },
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})/parts[.](json|xml|csv)", "dest": "/api/share?op=set_parts&id=\$1&as=\$2" },
     { "src": "/parts/(.*[.](lbm|bwx))", "headers": {

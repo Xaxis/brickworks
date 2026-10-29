@@ -10,6 +10,10 @@ that folder's library/ up to the parts bucket under the same names:
 
     tools/storage_library.py [DIR]           upload what is not up there yet
     tools/storage_library.py [DIR] --check   say what would be uploaded, and the size
+    tools/storage_library.py DIR --pictures  only the website's pictures
+                                             (library_build.py pictures), never
+                                             the index: library/pages/<id>.webp
+                                             and library/cards/<id>.webp
 
 DIR is bench/results/library-2026-10-26 unless said. A model or cover already
 there is left as it is, never deleted, as tools/storage_ldraw.py leaves the
@@ -75,22 +79,26 @@ def main() -> int:
     parser.add_argument("dir", nargs="?", type=Path, default=DEFAULT)
     parser.add_argument("--check", action="store_true",
                         help="say what would be uploaded and stop")
+    parser.add_argument("--pictures", action="store_true",
+                        help="only the website's pictures, library/pages and library/cards; no index")
     args = parser.parse_args()
 
     shelf = args.dir.resolve() / "library"
     index = shelf / "index.json"
-    if not index.is_file():
+    if not index.is_file() and not args.pictures:
         sys.exit(f"storage: no {index} (tools/library_build.py stage)")
     files = {f"library/{p.relative_to(shelf).as_posix()}": p
              for p in sorted(shelf.rglob("*"))
-             if p.is_file() and p.suffix in (".mpd", ".webp")}
-    total = sum(p.stat().st_size for p in files.values()) + index.stat().st_size
+             if p.is_file() and p.suffix in (".mpd", ".webp")
+             and (not args.pictures or p.parent.name in ("pages", "cards"))}
+    total = sum(p.stat().st_size for p in files.values()) + (0 if args.pictures else index.stat().st_size)
     models = sum(1 for n in files if n.endswith(".mpd"))
     print(f"storage: {models:,} models, {len(files) - models:,} covers and the index, "
           f"{total / 1e6:.1f} MB")
 
     url, key = env()
-    have = listing(url, key, "library/omr/") | listing(url, key, "library/covers/")
+    have = set().union(*(listing(url, key, f"library/{folder}/") for folder in
+                         (("pages", "cards") if args.pictures else ("omr", "covers", "pages", "cards"))))
     print(f"  already up: {len(have & set(files)):,}")
     todo = [(n, p) for n, p in files.items() if n not in have]
     todo_bytes = sum(p.stat().st_size for _, p in todo)
@@ -117,10 +125,13 @@ def main() -> int:
     with concurrent.futures.ThreadPoolExecutor(WORKERS) as pool:
         list(pool.map(send, todo))
     if failures:
-        print(f"  failed {len(failures):,}, so the index was not sent:")
+        print(f"  failed {len(failures):,}{'' if args.pictures else ', so the index was not sent'}:")
         for line in failures[:10]:
             print(f"    {line}")
         return 1
+    if args.pictures:
+        print(f"\n  uploaded {done:,} pictures in {(time.time() - started) / 60:.1f} min")
+        return 0
     problem = upload(url, key, "library/index.json", index, INDEX, True)
     if problem:
         print(f"  the index: {problem}")

@@ -78,7 +78,10 @@
 //                            size) and sorted (sort), from the store's index
 //   GET  ?op=set&id=X        /library/X: a set's page, made as a model's
 //                            page is; op=set_cover (/library/X.webp) its
-//                            cover, op=set_file (/library/X.mpd) its file,
+//                            card's picture, with as=cutout
+//                            (/library/X.cutout.webp) its page's, and
+//                            as=cover (/library/X.cover.webp) the app's
+//                            cover; op=set_file (/library/X.mpd) its file,
 //                            op=set_parts (/library/X/parts.json, .xml,
 //                            .csv) its parts
 //   POST ?op=seen&id=X       its page was looked at: counted once a day per
@@ -686,7 +689,7 @@ function links(origin, id) {
   // Library does, in a tab of its own (TabSession.open_another). No embed.
   if (SET_ID.test(id)) {
     const url = `${origin}/library/${id}`;
-    return { url, image: `${url}.webp`, viewer: `${origin}/app?new=1&library=${id}`, embed: "" };
+    return { url, image: `${url}.cover.webp`, viewer: `${origin}/app?new=1&library=${id}`, embed: "" };
   }
   const url = `${origin}/m/${id}`;
   return {
@@ -1099,9 +1102,9 @@ function sharePage(origin, id, model, versions = [], shown = null, mark = null, 
   // (?op=cutout: the picture itself for a model published before there were
   // cut-outs). In the strip, whose frames are four to three, the cards'
   // picture, which is too since 2026-10-24.
-  const picture = set ? `/library/${id}.webp` : old ? (version.has_image ? `/m/${id}/v/${version.n}.cutout.png` : "")
+  const picture = set ? `/library/${id}.cutout.webp` : old ? (version.has_image ? `/m/${id}/v/${version.n}.cutout.png` : "")
     : (model.has_image ? `/m/${id}.cutout.png` : "");
-  const small = set ? picture : !old && model.has_thumb
+  const small = set ? `/library/${id}.webp` : !old && model.has_thumb
     ? `/m/${id}.webp?v=${(Date.parse(model.updated_at || "") || 0).toString(36)}` : picture;
   const { head, header, footer } = siteChrome();
   const kind = kindLabel(model.kind);
@@ -1739,7 +1742,7 @@ async function read(request, response) {
   // set's page, cover, file and parts.
   if (op === "library") return library(request, response);
   if (op === "set") return setPage(response, origin, id);
-  if (op === "set_cover") return setCover(response, id);
+  if (op === "set_cover") return setCover(response, id, String(request.query?.as || "card"));
   if (op === "set_file") return setFile(response, id);
   if (op === "set_parts") return setParts(response, id, String(request.query?.as || "json"));
 
@@ -1926,19 +1929,32 @@ async function setPage(response, origin, id) {
     { cache: SET_CACHE });
 }
 
-/// /library/X.webp: its cover, the app's Library's own (library_covers.gd),
-/// from this site's origin, which is where the pages take pictures from.
-async function setCover(response, id) {
+/// A set's pictures, each drawn by the app's own renderer
+/// (src/dev/library_covers.gd), from this site's origin, which is where the
+/// pages take pictures from: /library/X.webp its card's, and
+/// /library/X.cutout.webp its page's, each with nothing behind the model
+/// (tools/library_build.py pictures), as a shared model's are; and
+/// /library/X.cover.webp the cover the app's Library shows, on its own
+/// ground, for a link's preview elsewhere. A set whose clear pictures are
+/// not drawn yet has its cover in their place, kept briefly, so the new
+/// picture shows within the hour once it is up.
+const SET_PICTURES = { card: "cards", cutout: "pages", cover: "" };
+
+async function setCover(response, id, as = "card") {
   const entry = await librarySet(id);
   const root = storeRoot();
-  const answer = entry && root ? await fetch(`${root}${entry.cover}`).catch(() => null) : null;
-  const bytes = answer && answer.ok ? Buffer.from(await answer.arrayBuffer()) : null;
-  if (!bytes || !bytes.subarray(0, 4).equals(RIFF) || !bytes.subarray(8, 12).equals(WEBP)) {
-    return response.status(404).setHeader("Cache-Control", "no-store").end("");
-  }
+  const read = async (path) => {
+    const answer = await fetch(`${root}${path}`).catch(() => null);
+    const bytes = answer && answer.ok ? Buffer.from(await answer.arrayBuffer()) : null;
+    return bytes && bytes.subarray(0, 4).equals(RIFF) && bytes.subarray(8, 12).equals(WEBP) ? bytes : null;
+  };
+  const folder = SET_PICTURES[as];
+  const drawn = entry && root && folder ? await read(`library/${folder}/${entry.id}.webp`) : null;
+  const bytes = drawn || (entry && root && folder !== undefined ? await read(entry.cover) : null);
+  if (!bytes) return response.status(404).setHeader("Cache-Control", "no-store").end("");
   response.setHeader("Content-Type", "image/webp");
   response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
-  response.setHeader("Cache-Control", COVER_CACHE);
+  response.setHeader("Cache-Control", drawn || !folder ? COVER_CACHE : SET_CACHE);
   return response.status(200).end(bytes);
 }
 

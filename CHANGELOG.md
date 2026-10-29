@@ -13,6 +13,16 @@ whole cycle.
 
 ## [Unreleased]
 
+### Added
+
+- The LDraw library on the website, at brickworks.diy/library: every model
+  of a real set the app's Library opens, browsed as the gallery is, by a
+  set's name, number, theme or modeller, its themes as pills and its order,
+  size and years in Filters. Each set has a page of its own, as a shared
+  model has: its picture, who modelled it for LDraw's Official Model
+  Repository and under which licence, its parts list, Share, and Open in
+  Brickworks, which opens it in the app as File, Library… does.
+
 ## [0.10.0] - 2026-10-28
 
 A release about a second look. When Claude designs something new, a fresh
