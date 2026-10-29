@@ -36,6 +36,9 @@ uniform float part_body_top = 1.0e9;
 uniform float wall_ldu : hint_range(0.0, 8.0) = 4.0;
 // How many walls' worth more that is, at the edge itself.
 uniform float along_wall : hint_range(0.0, 4.0) = 1.5;
+// A picture with no backdrop (StudioRender): plastic_product_trans blends
+// the glass instead, and this lets everything through.
+uniform bool over_nothing = false;
 
 varying vec3 tint;
 varying flat float finish;
@@ -54,7 +57,7 @@ void fragment() {
 	// glow and the rest scatter, and plastic_product_trans blends them over
 	// what is behind as it always did.
 	int kind = int(floor(finish + 0.001));
-	if (kind != 0 && kind != 5 && kind != 8) {
+	if (over_nothing || (kind != 0 && kind != 5 && kind != 8)) {
 		ALBEDO = vec3(1.0);
 	} else {
 		// The light bends towards the surface's normal going in (ABS, about

@@ -132,6 +132,12 @@ uniform float bevel_ldu : hint_range(0.0, 4.0) = 0.6;
 // At least this many pixels across, or the round's highlight, a line a
 // pixel wide, came out as dashes along every edge at Good's six frames.
 uniform float bevel_pixels : hint_range(0.0, 4.0) = 2.2;
+#ifdef PLASTIC_TRANSPARENT
+// A picture with no backdrop (StudioRender): with nothing behind clear
+// plastic to tint, it is blended as the window's is, its colour carried in
+// the picture's alpha, and plastic_product_glass lets everything through.
+uniform bool over_nothing = false;
+#endif
 varying vec3 local_normal;
 // The part's own axes in view space, for the bent normal.
 varying flat vec3 axis_x;
@@ -314,6 +320,42 @@ vec3 bevelled(vec3 at, vec3 n, float width, float pixel, float small) {
 	q = mix(q, vec3(width), axis);
 	return normalize(sign(p) * q);
 }
+
+// The normal at a stud's top edge, rounded as a moulded stud's is: on the
+// top or the side of a stud on the body's top (6 LDU round, standing to the
+// top of the part's box, on the 20 LDU grid from its corner), within
+// [param width] of the rim; [param n] itself anywhere else. The box's
+// round leaves every stud with a knife edge, which caught no light.
+vec3 stud_rim(vec3 at, vec3 n, float width, float small) {
+	float top = part_box_max.y;
+	if (part_box_max.x <= part_box_min.x || at.y < part_body_top + 0.5 || at.y > top + 0.3) {
+		return n;
+	}
+	vec2 centre = part_box_min.xz + 10.0 + 20.0 * floor((at.xz - part_box_min.xz) / 20.0);
+	vec2 d = at.xz - centre;
+	float r = length(d);
+	width = min(width, 2.0);
+	if (r > 6.3 || r < 0.001) {
+		return n;
+	}
+	vec2 out_from = d / r;
+	// Out from the stud's axis and up, as bevelled()'s q: how far into the
+	// round each way, seen whole when it is a pixel or two across.
+	vec2 q;
+	if (n.y > 0.97) {
+		float into = max(r - (6.0 - width), 0.0);
+		q = vec2(mix(into, width * 0.6, small * step(0.0001, into)), width);
+	} else if (abs(n.y) < 0.2 && dot(n.xz, out_from) > 0.9 && r > 5.7) {
+		float into = max(at.y - (top - width), 0.0);
+		q = vec2(width, mix(into, width * 0.6, small * step(0.0001, into)));
+	} else {
+		return n;
+	}
+	if (min(q.x, q.y) <= 0.0) {
+		return n;
+	}
+	return normalize(vec3(out_from.x * q.x, q.y, out_from.y * q.x));
+}
 #endif
 
 void fragment() {
@@ -404,6 +446,9 @@ void fragment() {
 		float width = max(bevel_ldu, bevel_pixels * pixel_ldu);
 		float small = smoothstep(bevel_ldu, bevel_ldu * 3.0, width);
 		vec3 bent = bevelled(local_position, n_local, width, pixel_ldu, small);
+		if (bent == n_local) {
+			bent = stud_rim(local_position, n_local, width, small);
+		}
 		if (bent != n_local) {
 			normal = normalize(axis_x * bent.x + axis_y * bent.y + axis_z * bent.z);
 			NORMAL = normal;
@@ -613,7 +658,8 @@ void fragment() {
 	// light is, so the surfaces need no order. Opal and milky plastic
 	// scatter rather than let light through, and are blended over what is
 	// behind as before.
-	if (finish == FINISH_PLASTIC || finish == FINISH_FLUORESCENT || finish == FINISH_GLITTER) {
+	if (!over_nothing
+			&& (finish == FINISH_PLASTIC || finish == FINISH_FLUORESCENT || finish == FINISH_GLITTER)) {
 		ALBEDO = vec3(0.0);
 		ALPHA = 0.0;
 		ROUGHNESS = 0.04;
