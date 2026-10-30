@@ -86,9 +86,13 @@ const DEFAULTS: Dictionary = {
 	"keys": {},
 	"keys_at": 0.0,
 	# View, Split: a straight-on view beside the model (SplitView), off out
-	# of the box, and the side it looks from.
+	# of the box, the side it looks from, and its own zoom (LDU across its
+	# height; 0 while it follows the main view's) and how far what it looks
+	# at is from the main view's focus, [x, y, z].
 	"split": false,
 	"split_side": "front",
+	"split_zoom": 0.0,
+	"split_pan": [],
 }
 
 ## Settings, Interface size: the choices, as shares of the size the window

@@ -20,8 +20,17 @@
 ## main view's own marks left out of it, and nothing drawn standing still
 ## that was not drawn without it.
 ##
-## `-- unrouted` takes the second view's ray off the main camera once the
-## split is on (CadCamera.beside), the split doing nothing, to see this fail.
+## The second view is a view of its own: a wheel over it zooms it and leaves
+## the main camera as it was, a drag slides it, a right drag moves neither,
+## its zoom and where it looks are kept on this device, its Fit frames the
+## model, and a box, Connect's points and the handles' rings and arrows work
+## in it through its own camera. Run on the code before it was its own
+## (efcc83b1), the wheel, the drags, the box, the Connect point, the ring and
+## the arrow each fail.
+##
+## `-- unrouted` takes the second view off the main camera once the split is
+## on (CadCamera.second), the split showing but doing nothing, to see this
+## fail.
 extends SceneTree
 
 const PART := "87087"
@@ -37,6 +46,8 @@ var _shell: Shell
 var _verbs: EditVerbs
 var _split: SplitView
 var _acts: Dictionary = {}
+## Where the pointer was last sent, for how far a move goes.
+var _pointer := Vector2.ZERO
 
 
 func _initialize() -> void:
@@ -83,11 +94,12 @@ func _run() -> void:
 	await _turn_on()
 	await _shot("on")
 	if "unrouted" in OS.get_cmdline_user_args():
-		print("  -- unrouted: the second view's ray taken off the main camera")
-		_camera.beside = Callable()
+		print("  -- unrouted: the second view taken off the main camera")
+		_unroute()
 	await _place_from("main")
 	await _place_from("second")
 	await _sides()
+	await _second_view()
 	await _main_only()
 	await _still()
 	await _turn_off()
@@ -219,8 +231,8 @@ func _place_from(view: String) -> void:
 			second.has_point(at) and not main_rect.has_point(at))
 		# Where the second view draws it, the main view's own ray finds
 		# nothing of the stud: only the second view's ray can put it there.
-		var own: BrickLattice.Hit = _builder.lattice.raycast(
-			_main_ray_origin(at), _main_ray_normal(at))
+		var ray: Array = _main_ray(at)
+		var own: BrickLattice.Hit = _builder.lattice.raycast(ray[0], ray[1])
 		_check("...where the main view's own ray meets %s" % (
 			"nothing" if not own.is_valid() else "the baseplate"
 			if _store.scenery.has(own.brick_id) else "part %d" % own.brick_id),
@@ -287,6 +299,280 @@ func _sides() -> void:
 	await _settle()
 	_check("a zoom of the main view zooms the second with it (%.1f -> %.1f)" % [was, eye.size],
 		eye.size < was * 0.97)
+
+
+# -- the second view's own ------------------------------------------------------------
+
+
+## A view of its own: a wheel over it zooms it and a drag slides it, the main
+## view left as it is, and a right drag moves neither; its zoom and where it
+## looks are kept; Fit frames the model; and a box, Connect's points and the
+## handles' rings and arrows work in it through its own camera.
+func _second_view() -> void:
+	print("  -- the second view's own")
+	_verbs.set_mode("select")
+	_builder.clear_selection()
+	var standing: BrickWorld.Brick = _model_bricks()[0]
+	var eye: Camera3D = _split.get("_eye")
+	var rect: Rect2 = _split.picture_rect()
+	var middle: Vector2 = rect.get_center()
+
+	var main_was: Dictionary = _camera.aim()
+	var size_was: float = eye.size
+	await _move(middle)
+	await _wheel(middle, MOUSE_BUTTON_WHEEL_UP)
+	await _settle()
+	_check("a wheel over the second view leaves the main camera as it was (%s)"
+		% _moved_by(main_was), _moved_by(main_was) == "unmoved")
+	_check("...and zooms the second view (%.1f -> %.1f across)" % [size_was, eye.size],
+		eye.size < size_was * 0.97)
+	await _shot("second_zoomed")
+
+	# A drag that would turn or slide the main view slides this one, what is
+	# under the pointer going with it; a right drag, which turns, does nothing.
+	for button: MouseButton in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_MIDDLE, MOUSE_BUTTON_RIGHT]:
+		var from: Vector2 = _empty_spot(standing)
+		var by := Vector2(-60.0, 40.0)
+		var spot: Vector2 = _split.on_screen(_box_of(standing).get_center())
+		main_was = _camera.aim()
+		await _drag(from, from + by, button)
+		await _settle()
+		var went: Vector2 = _split.on_screen(_box_of(standing).get_center()) - spot
+		var named: String = {MOUSE_BUTTON_LEFT: "left", MOUSE_BUTTON_MIDDLE: "middle",
+			MOUSE_BUTTON_RIGHT: "right"}[button]
+		if button == MOUSE_BUTTON_RIGHT:
+			_check("a right drag over it moves neither view (the part went %s, the main view %s)"
+				% [str(went.round()), _moved_by(main_was)],
+				went.length() < 1.0 and _moved_by(main_was) == "unmoved")
+		else:
+			_check("a %s drag over it slides it: the part went %s for the pointer's %s, the main view %s"
+				% [named, str(went.round()), str(by), _moved_by(main_was)],
+				went.distance_to(by) < by.length() * 0.25 and _moved_by(main_was) == "unmoved")
+	await _key(KEY_ESCAPE)
+
+	# Kept on this device: what the next start reads is what it shows.
+	await create_timer(0.6).timeout
+	if not _split.has_method("is_own"):
+		_check("its zoom and where it looks are kept on this device", false)
+	else:
+		var own: float = float(_split.get("_own_size"))
+		var offset: Vector3 = _split.get("_offset")
+		var fresh := SplitView.new()
+		fresh.camera = _camera
+		root.add_child(fresh)
+		var kept: float = float(fresh.get("_own_size"))
+		var kept_offset: Vector3 = fresh.get("_offset")
+		# Its buttons' reach is checked a frame after they come (Access).
+		await _frames(2)
+		fresh.queue_free()
+		_check("its zoom (%.1f across) and where it looks (%s off the main view's focus) are kept on this device: the next start reads %.1f, %s"
+			% [own, str(offset.snappedf(0.1)), kept, str(kept_offset.snappedf(0.1))],
+			bool(_split.call("is_own")) and is_equal_approx(kept, own)
+			and kept_offset.is_equal_approx(offset))
+		var size_now: float = eye.size
+		await _key(KEY_F8)
+		await _settle()
+		await _key(KEY_F8)
+		await _settle()
+		_check("...and F8 off and on again shows it as it was (%.1f, %.1f across)"
+			% [size_now, eye.size], _split.is_showing() and is_equal_approx(eye.size, size_now))
+
+	var fit: Button = _split.buttons().get("fit")
+	if fit == null:
+		_check("its header has Fit", false)
+	else:
+		main_was = _camera.aim()
+		await _click(fit.get_global_rect().get_center())
+		await _settle()
+		var shown: Rect2 = _drawn_box(standing)
+		rect = _split.picture_rect()
+		_check("its Fit frames the model in it (%s of the picture's %.0f high), the main view %s"
+			% [str(shown.size.round()), rect.size.y, _moved_by(main_was)], rect.encloses(shown)
+			and shown.size.y > rect.size.y * 0.5 and _moved_by(main_was) == "unmoved")
+		await _shot("second_fit")
+
+	# A box drawn round the part in it picks it out, as its own camera draws
+	# the part: two notches out first, for room round it.
+	await _wheel(middle, MOUSE_BUTTON_WHEEL_DOWN)
+	await _wheel(middle, MOUSE_BUTTON_WHEEL_DOWN)
+	await _settle()
+	_builder.clear_selection()
+	await _frames(3)
+	var around: Rect2 = _drawn_box(standing).grow(18.0)
+	main_was = _camera.aim()
+	await _drag(around.end, around.position, MOUSE_BUTTON_LEFT, true, "second_box")
+	_check("a box drawn round the part in the second view (Ctrl and a drag) picks it out (%d picked), the main view %s"
+		% [_builder.selection.size(), _moved_by(main_was)], _builder.selection.has(standing.id)
+		and _builder.selection.size() == 1 and _moved_by(main_was) == "unmoved")
+	_builder.clear_selection()
+
+	# From the top, far enough out to see a 3L pin beside the part.
+	await _click((_split.buttons()["top"] as Button).get_global_rect().get_center())
+	for _n: int in 12:
+		if eye.size > 250.0:
+			break
+		await _wheel(middle, MOUSE_BUTTON_WHEEL_DOWN)
+	await _settle()
+	await _connect_in_second(standing)
+	await _ring_in_second(standing)
+	await _arrow_in_second(standing)
+
+
+## Connect picks a point drawn in the second view: a 3L pin in hand, aimed
+## beside the part there, N, and a click on one of its points as the second
+## view draws it, where the main view draws none of them.
+func _connect_in_second(standing: BrickWorld.Brick) -> void:
+	var count: int = _model_bricks().size()
+	var tool: ConnectTool = _verbs.connect_tool
+	await _hold("6558", 0)
+	var box: AABB = _box_of(standing)
+	var aim: Vector2 = _split.on_screen(Vector3(box.end.x + 40.0, box.position.y,
+		box.get_center().z))
+	await _move(aim)
+	var aimed: bool = _builder.has_preview()
+	await _key(KEY_N)
+	var picture: Rect2 = _split.picture_rect().grow(-12.0)
+	var header: Rect2 = (_split.buttons()["front"] as Button).get_global_rect().merge(
+		(_split.buttons()["close"] as Button).get_global_rect()).grow(8.0)
+	var pick: int = -1
+	var spot := Vector2.ZERO
+	var nearest_main: float = INF
+	for n: int in tool.points.size():
+		var at: Vector2 = _split.on_screen(tool.call("_middle", n))
+		if pick < 0 and picture.has_point(at) and not header.has_point(at):
+			pick = n
+			spot = at
+	if pick >= 0:
+		for n: int in tool.points.size():
+			nearest_main = minf(nearest_main,
+				_camera.unproject_position(tool.call("_middle", n)).distance_to(spot))
+	print("    aimed %s, %d points offered (%s), point %d drawn at %s in the second view, the main view's nearest %.0f away"
+		% [str(aimed), tool.points.size(), tool.stage, pick, str(spot.round()), nearest_main])
+	await _shot("second_connect_points")
+	var main_was: Dictionary = _camera.aim()
+	if pick >= 0:
+		await _click(spot)
+	var chosen: int = tool.chosen
+	var picked_at: Vector2 = _split.on_screen(tool.call("_middle", chosen)) if chosen >= 0 \
+		else Vector2(-1, -1)
+	_check("Connect picks a point in the second view: a click where it draws point %d picks %d (stage %s), the main view drawing none within %.0f px, and %s"
+		% [pick, chosen, tool.stage, nearest_main, _moved_by(main_was)],
+		pick >= 0 and tool.stage == "aim" and chosen >= 0 and picked_at.distance_to(spot) <= 4.0
+		and nearest_main > 40.0 and _moved_by(main_was) == "unmoved")
+	await _key(KEY_ESCAPE)
+	await _key(KEY_ESCAPE)
+	for _n: int in 3:
+		if _model_bricks().size() <= count:
+			break
+		await _key(KEY_Z, true)
+	_verbs.set_mode("select")
+	await _frames(4)
+
+
+## The Rotate tool's rings drawn in the second view, and one dragged a
+## quarter round there turning the part: the y ring, a circle from the top,
+## found where the second view draws it.
+func _ring_in_second(standing: BrickWorld.Brick) -> void:
+	_verbs.set_mode("rotate")
+	_builder.clear_selection()
+	await _frames(4)
+	await _click(_split.on_screen(_box_of(standing).get_center()))
+	var centre: Vector2 = _split.on_screen(_handles().pivot())
+	var picture: Rect2 = _split.picture_rect()
+	# Up and to the right, between the x ring and the z ring, which from the
+	# top are lines through the middle.
+	var way := Vector2(1.0, -1.0).normalized()
+	var radius: float = -1.0
+	for r: int in range(8, 400, 2):
+		var at: Vector2 = centre + way * r
+		if not picture.has_point(at):
+			break
+		var found: Dictionary = _handles().handle_at(at)
+		if found.get("kind") == "ring" and int(found.get("axis", -1)) == 1:
+			radius = r + 2.0
+			break
+	_check("a click on the part in the second view picks it out, and its y ring is drawn there (%s)"
+		% ("%.0f px round" % radius if radius > 0.0 else "none"),
+		_builder.selection.has(standing.id) and radius > 0.0)
+	await _shot("second_rings")
+	# Without a ring there, the drag is made where the ring would be.
+	if radius <= 0.0:
+		radius = Handles.RADIUS
+	var was: Transform3D = _world.get_brick(standing.id).transform
+	var depth: int = _builder.history_depth()
+	var main_was: Dictionary = _camera.aim()
+	var start: float = way.angle()
+	var press: Vector2 = centre + way * radius
+	await _move(press)
+	_press(press, MOUSE_BUTTON_LEFT, true)
+	await _frames(2)
+	for s: int in range(1, 13):
+		var angle: float = start - PI * 0.5 * s / 12.0
+		await _move(centre + Vector2(cos(angle), sin(angle)) * radius, MOUSE_BUTTON_LEFT)
+	await _shot("second_ring_drag")
+	_press(_pointer, MOUSE_BUTTON_LEFT, false)
+	await _frames(6)
+	var now: Transform3D = _world.get_brick(standing.id).transform
+	var turn: Quaternion = (now.basis.orthonormalized() * was.basis.orthonormalized().inverse()) \
+		.get_rotation_quaternion()
+	var axis: Vector3 = turn.get_axis() if turn.get_angle() > 0.001 else Vector3.ZERO
+	_check("a handle drag in the second view turns the part: the y ring a quarter round turns it %.0f° about %s, one step to undo (%d), the main view %s"
+		% [rad_to_deg(turn.get_angle()), str(axis.snappedf(0.01)),
+		_builder.history_depth() - depth, _moved_by(main_was)],
+		absf(axis.y) > 0.99 and rad_to_deg(turn.get_angle()) > 45.0
+		and _builder.history_depth() - depth == 1 and _moved_by(main_was) == "unmoved")
+	await _key(KEY_Z, true)
+	await _frames(4)
+	_check("...and Ctrl+Z turns it back", _world.get_brick(standing.id).transform
+		.is_equal_approx(was))
+	await _key(KEY_ESCAPE)
+	_verbs.set_mode("select")
+	_builder.clear_selection()
+	await _frames(4)
+
+
+## The Move tool's x arrow, found where the second view draws it (from the
+## top, to the right of the part), dragged along it there: the part slides
+## along x.
+func _arrow_in_second(standing: BrickWorld.Brick) -> void:
+	_verbs.set_mode("move")
+	_builder.clear_selection()
+	await _frames(4)
+	await _click(_split.on_screen(_box_of(standing).get_center()))
+	var centre: Vector2 = _split.on_screen(_handles().pivot())
+	var picture: Rect2 = _split.picture_rect()
+	var reach: float = -1.0
+	# On its shaft, past where it starts.
+	for r: int in range(24, 400, 2):
+		var at: Vector2 = centre + Vector2.RIGHT * r
+		if not picture.has_point(at):
+			break
+		var found: Dictionary = _handles().handle_at(at)
+		if found.get("kind") == "arrow" and int(found.get("axis", -1)) == 0:
+			reach = r
+			break
+	_check("the Move tool's x arrow is drawn in the second view (%s)"
+		% ("%.0f px out" % reach if reach > 0.0 else "none"), reach > 0.0)
+	if reach <= 0.0:
+		reach = Handles.RADIUS
+	var was: Transform3D = _world.get_brick(standing.id).transform
+	var depth: int = _builder.history_depth()
+	var main_was: Dictionary = _camera.aim()
+	await _drag(centre + Vector2.RIGHT * reach, centre + Vector2.RIGHT * (reach + 80.0),
+		MOUSE_BUTTON_LEFT, false, "second_arrow_drag")
+	var moved: Vector3 = _world.get_brick(standing.id).transform.origin - was.origin
+	_check("an arrow dragged in the second view slides the part along x (%s), one step to undo (%d), the main view %s"
+		% [str(moved.snappedf(0.1)), _builder.history_depth() - depth, _moved_by(main_was)],
+		moved.x >= 7.9 and Vector2(moved.y, moved.z).length() < 0.01
+		and _builder.history_depth() - depth == 1 and _moved_by(main_was) == "unmoved")
+	await _key(KEY_Z, true)
+	await _frames(4)
+	_check("...and Ctrl+Z puts it back", _world.get_brick(standing.id).transform
+		.is_equal_approx(was))
+	await _key(KEY_ESCAPE)
+	_verbs.set_mode("select")
+	_builder.clear_selection()
+	await _frames(4)
 
 
 # -- the main view's own ------------------------------------------------------------
@@ -385,21 +671,66 @@ func _socket_on(brick: BrickWorld.Brick, stud: Vector3) -> bool:
 	return false
 
 
-## The main view's own ray, without the second view's: as it was before.
-func _main_ray_origin(at: Vector2) -> Vector3:
-	var lent: Callable = _camera.beside
-	_camera.beside = Callable()
-	var origin: Vector3 = _camera.ray_origin(at)
-	_camera.beside = lent
-	return origin
+## The main view's own ray, [origin, direction], as if there were no second
+## view. By name, so this probe also runs on the code before the second view
+## was its own (CadCamera.beside then, .second now), to see its checks fail.
+func _main_ray(at: Vector2) -> Array:
+	var key: String = "second" if "second" in _camera else "beside"
+	var lent: Variant = _camera.get(key)
+	_camera.set(key, null if key == "second" else Callable())
+	var ray: Array = [_camera.ray_origin(at), _camera.ray_normal(at)]
+	_camera.set(key, lent)
+	return ray
 
 
-func _main_ray_normal(at: Vector2) -> Vector3:
-	var lent: Callable = _camera.beside
-	_camera.beside = Callable()
-	var normal: Vector3 = _camera.ray_normal(at)
-	_camera.beside = lent
-	return normal
+## The second view taken off the main camera: shown, routed nowhere.
+func _unroute() -> void:
+	if "second" in _camera:
+		_camera.set("second", null)
+	else:
+		_camera.set("beside", Callable())
+
+
+## Where the second view draws [param brick]'s box, in the window's units.
+func _drawn_box(brick: BrickWorld.Brick) -> Rect2:
+	var box: AABB = _box_of(brick)
+	var drawn := Rect2(_split.on_screen(box.get_endpoint(0)), Vector2.ZERO)
+	for n: int in range(1, 8):
+		drawn = drawn.expand(_split.on_screen(box.get_endpoint(n)))
+	return drawn
+
+
+## A point of the second view's picture with no part under it, as far from
+## [param brick] as four such points go.
+func _empty_spot(brick: BrickWorld.Brick) -> Vector2:
+	var rect: Rect2 = _split.picture_rect()
+	var part_at: Vector2 = _split.on_screen(_box_of(brick).get_center())
+	var best: Vector2 = rect.get_center()
+	var best_off: float = -1.0
+	for share: Vector2 in [Vector2(0.25, 0.7), Vector2(0.75, 0.7), Vector2(0.75, 0.4),
+			Vector2(0.25, 0.4)]:
+		var at: Vector2 = rect.position + rect.size * share
+		if _verbs.brick_at(at) != 0:
+			continue
+		if at.distance_to(part_at) > best_off:
+			best = at
+			best_off = at.distance_to(part_at)
+	return best
+
+
+## How the main view's aim has changed since [param was]: "unmoved", or
+## what did.
+func _moved_by(was: Dictionary) -> String:
+	var now: Dictionary = _camera.aim()
+	var changed: Array = []
+	for key: String in now:
+		if str(now[key]) != str(was.get(key)):
+			changed.append("%s %s -> %s" % [key, str(was.get(key)), str(now[key])])
+	return "unmoved" if changed.is_empty() else ", ".join(changed)
+
+
+func _handles() -> Handles:
+	return _verbs.handles
 
 
 static func _distance(a: Color, b: Color) -> float:
@@ -447,10 +778,16 @@ func _as_event(at: Vector2) -> Vector2:
 	return at * (window / rect)
 
 
-func _move(at: Vector2) -> void:
+## The pointer moved to [param at], with [param held] down (and Ctrl with
+## [param ctrl]) for a drag: by as much as it went, as a mouse says.
+func _move(at: Vector2, held: MouseButton = MOUSE_BUTTON_NONE, ctrl: bool = false) -> void:
 	var event := InputEventMouseMotion.new()
 	event.position = _as_event(at)
 	event.global_position = event.position
+	event.relative = event.position - _as_event(_pointer)
+	event.button_mask = _mask(held)
+	event.ctrl_pressed = ctrl
+	_pointer = at
 	Input.parse_input_event(event)
 	await _frames(3)
 
@@ -460,21 +797,50 @@ func _act_move(at: Vector2) -> void:
 	await _move(at)
 
 
-func _button(at: Vector2, down: bool) -> void:
+func _press(at: Vector2, button: MouseButton, down: bool, ctrl: bool = false) -> void:
 	var event := InputEventMouseButton.new()
-	event.button_index = MOUSE_BUTTON_LEFT
+	event.button_index = button
 	event.pressed = down
+	event.ctrl_pressed = ctrl
+	event.button_mask = _mask(button) if down else 0
 	event.position = _as_event(at)
 	event.global_position = event.position
 	Input.parse_input_event(event)
 
 
+static func _mask(button: MouseButton) -> int:
+	return 0 if button == MOUSE_BUTTON_NONE else 1 << (button - 1)
+
+
 func _click(at: Vector2) -> void:
 	await _move(at)
-	_button(at, true)
+	_press(at, MOUSE_BUTTON_LEFT, true)
 	await _frames(2)
-	_button(at, false)
+	_press(at, MOUSE_BUTTON_LEFT, false)
 	await _frames(4)
+
+
+## Press [param button] at [param from], move to [param to] in steps and let
+## go, Ctrl held with [param ctrl]; a picture named [param shot] taken before
+## letting go.
+func _drag(from: Vector2, to: Vector2, button: MouseButton, ctrl: bool = false,
+		shot: String = "") -> void:
+	await _move(from)
+	_press(from, button, true, ctrl)
+	await _frames(2)
+	for s: int in range(1, 9):
+		await _move(from.lerp(to, s / 8.0), button, ctrl)
+	if not shot.is_empty():
+		await _shot(shot)
+	_press(to, button, false, ctrl)
+	await _frames(6)
+
+
+## A notch of the wheel at [param at].
+func _wheel(at: Vector2, which: MouseButton) -> void:
+	for down: bool in [true, false]:
+		_press(at, which, down)
+	await _frames(3)
 
 
 func _act_click(at: Vector2) -> void:

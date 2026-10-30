@@ -46,7 +46,9 @@ ui:view cube
 
 ## A second view beside the model {#split}
 
-**View › Split** ([[F8]]) puts a second view of the model beside the first, square on from the front. **Front**, **Top**, **Side** and **Back** at its top turn it; **×** goes back to one view. It looks where the main view looks, at the same size: sliding or zooming moves both, and turning the main view leaves the second square on. A part in hand shows in both, and a click in the second view puts it down, picks or connects there as it would in the first: a part for a side stud or under an overhang is easier to aim square on. The split takes its room from the model's, never from the parts bin or the panels, and the app keeps it on for next time. On a phone, a tablet held upright, or a window too small for two views, it is greyed.
+**View › Split** ([[F8]]) puts a second view of the model beside the first, square on from the front. **Front**, **Top**, **Side** and **Back** at its top turn it, **Fit** frames the whole model in it, and **×** goes back to one view. It starts looking where the main view looks, at the same size, and follows it until you move it: the wheel over it zooms it, and a drag over it slides it, without moving the main view. A right drag over it does nothing, since a view square on cannot turn. Once moved it keeps its own zoom and place, and the app remembers them with the split.
+
+The second view works like the first. A part in hand shows in both. A click there puts the part down or picks a part. A box drawn there selects what it surrounds. Connect's points and the rotate and move handles are drawn in both views and can be taken in either. A part for a side stud or under an overhang is easier to aim square on. The split takes its room from the model's, never from the parts bin or the panels, and the app keeps it on for next time. On a phone, a tablet held upright, or a window too small for two views, it is greyed.
 
 <!-- covers
 ui:split view

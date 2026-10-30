@@ -63,31 +63,44 @@ picture the assistant is shown.
 - `split view` (`SplitView`, `src/ui/split_view.gd`; APP_UX B9): View ›
   Split (F8 in every preset; LDCad's Space is one of Keymap's FIXED keys, so
   no preset takes it) puts a second, orthographic view beside the model, from
-  the front, top, side or back (the buttons at its top; `×` closes). Its
-  SubViewport shares the window's World3D and draws only while shown; its
-  camera follows the main view's focus and zoom (pixels per LDU), so a part
-  in hand is drawn in both. It is a column of `layout` after the model's
-  own, so its width comes out of the model's: the bin and the right column
-  keep theirs, the main view's `seen` rect is the rest, and `model_cover()`
-  covers both views, less its header. A click over it places, picks and
-  connects through its own camera: `CadCamera.beside` (`SplitView.ray_at`)
-  gives `ray_origin`/`ray_normal` from the second camera wherever the point
-  is over its picture. Overlays stay in the main view: the pivot mark is on
-  `SplitView.MAIN_ONLY` (render layer 19), the view cube and the handles are
-  2D over the main view. Off out of the box, kept per device (ShellPrefs
-  `split`, `split_side`); greyed with "The window is too small for two views"
-  where the model's column cannot give each view 320 points (`Room`, not
-  units: a phone at 3x lays 900 units across 390 points), on a phone (short
-  side under `Phone.NARROW`) and on a touch tablet held upright. fit_check
-  with F8 pressed showed the split on both its phones until it was counted
-  in points. Published to the page as `brickworksState.split`,
-  `brickworksLayout.split`, and the controls `split_front` … `split_close`.
-  `split_probe` (1280x720 and 1400x900) puts an 87087 on a side stud of a
-  2 x 2 from the main view and from the second one, counting the actions (the
-  second takes no more), checks the columns' widths, the narrow window's grey,
-  the sides, the overlays, and that an idle split draws nothing; `-- unrouted`
-  takes the routing away and must fail. Not routed through it: the connect
-  tool's second pick and the handles, which use the main camera.
+  the front, top, side or back (the buttons at its top; Fit frames the model
+  in it; `×` closes). Its SubViewport shares the window's World3D and draws
+  only while shown. Until it is zoomed or slid its camera follows the main
+  view's focus and zoom, so a part in hand is drawn in both at one scale;
+  after that its zoom and its offset from the main view's focus are its own,
+  kept per device (ShellPrefs `split_zoom`, `split_pan`) and re-anchored
+  when the main view frames (`CadCamera.framed`). It is a column of `layout`
+  after the model's own, so its width comes out of the model's: the bin and
+  the right column keep theirs, the main view's `seen` rect is the rest, and
+  `model_cover()` covers both views, less its header. Everything made from
+  the screen goes through the view the point is over: `CadCamera.second`,
+  `view_at(at)` (MAIN or SECOND), `ray_origin`/`ray_normal(at, view)`,
+  `screen_of`/`behind`/`eye_of(point, view)`. A drag keeps the view it began
+  in (the handles' `drag["view"]`, GrabDrag `_view`, Main `_box_view`). The
+  wheel, a pinch and two fingers over it zoom or slide it; a drag that would
+  turn or slide the main view slides it; a right drag over it does nothing
+  (it is square on and cannot turn). The handles and Connect's points are
+  drawn in both views (`ViewOverlays`, a CanvasLayer with one clipped canvas
+  per view); the pivot mark is on `SplitView.MAIN_ONLY` (render layer 19) and
+  the view cube stays in the main view. Off out of the box, kept per device
+  (ShellPrefs `split`, `split_side`); greyed with "The window is too small
+  for two views" where the model's column cannot give each view 320 points
+  (`Room`, not units: a phone at 3x lays 900 units across 390 points), on a
+  phone (short side under `Phone.NARROW`) and on a touch tablet held
+  upright. fit_check with F8 pressed showed the split on both its phones
+  until it was counted in points. Published to the page as
+  `brickworksState.split`, `brickworksLayout.split`, and the controls
+  `split_front` … `split_fit`, `split_close`. `split_probe` (1280x720 and
+  1400x900) puts an 87087 on a side stud of a 2 x 2 from the main view and
+  from the second one, counting the actions (the second takes no more),
+  checks the columns' widths, the narrow window's grey, the sides, then in
+  the second view: a wheel (the main camera's `aim()` unchanged), left and
+  middle drags (slide), a right drag (nothing), the kept zoom read by a fresh
+  SplitView, Fit, a Ctrl box, Connect picking a 3L pin's point drawn only
+  there, and the Rotate tool's y ring dragged a quarter round there; then the
+  overlays and that an idle split draws nothing. `-- unrouted` takes
+  `CadCamera.second` away and must fail; so must the probe run on efcc83b1,
+  before the second view was its own.
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
   is what everything frames against, baseplate excluded. View > Default view
   (0, `Main.default_view`) turns to the usual angle and frames what is built,

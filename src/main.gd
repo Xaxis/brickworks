@@ -308,6 +308,9 @@ var _ask_went_well: bool = true
 ## Whether a left press this handler saw started the box being drawn.
 ## The watchdog below will not finish one it never saw begin.
 var _box_began: bool = false
+## The view the box is drawn in (CadCamera.MAIN, or SECOND for the second
+## view beside the model): what it takes is what that view shows inside it.
+var _box_view: int = CadCamera.MAIN
 ## A box Escape threw away while the button was still down. Its release
 ## is not a click, and the rest of the drag does not start another box.
 var _box_dropped: bool = false
@@ -4580,7 +4583,7 @@ func _build_ui() -> void:
 	_split.world = _world
 	_split.bounds = _built_bounds
 	layout.add_child(_split)
-	_camera.beside = _split.ray_at
+	_camera.second = _split
 	middle.resized.connect(_split.fit)
 	_split.shown_changed.connect(_hover_again)
 
@@ -7972,6 +7975,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				"box":
 					_marquee.begin(_press_at)
 					_box_began = true
+					_box_view = _camera.view_at(_press_at)
 				_:
 					_start_left_nav(_pending_verb, _press_at)
 		if not _left_nav.is_empty():
@@ -8223,7 +8227,7 @@ func _unhandled_input(event: InputEvent) -> void:
 ## deciding whether a box covers it and far cheaper than anything
 ## exact. A corner behind the camera projects to nonsense, so a brick
 ## with any corner behind it is left out rather than guessed at.
-func _brick_on_screen(brick: BrickWorld.Brick) -> Variant:
+func _brick_on_screen(brick: BrickWorld.Brick, view: int = CadCamera.MAIN) -> Variant:
 	if _store != null and _store.scenery.has(brick.id):
 		return null
 	# Nor what is hidden: a box drawn over a hidden roof takes what is
@@ -8241,9 +8245,9 @@ func _brick_on_screen(brick: BrickWorld.Brick) -> Variant:
 			box.size.x if n & 1 else 0.0,
 			box.size.y if n & 2 else 0.0,
 			box.size.z if n & 4 else 0.0))
-		if _camera.is_position_behind(corner):
+		if _camera.behind(corner, view):
 			return null
-		var at: Vector2 = _camera.unproject_position(corner)
+		var at: Vector2 = _camera.screen_of(corner, view)
 		lo = Vector2(minf(lo.x, at.x), minf(lo.y, at.y))
 		hi = Vector2(maxf(hi.x, at.x), maxf(hi.y, at.y))
 	return Rect2(lo, hi - lo)
@@ -8656,7 +8660,7 @@ func _finish_box(add: bool) -> void:
 		_marquee.finish()
 		return
 	var took: int = _builder.select_in(_marquee.box(),
-		_brick_on_screen, _marquee.takes_touching(), add)
+		_brick_on_screen.bind(_box_view), _marquee.takes_touching(), add)
 	_marquee.finish()
 	_bar.say("took %d" % took if took > 0 else "nothing in there")
 
