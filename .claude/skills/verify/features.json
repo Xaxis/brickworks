@@ -480,7 +480,8 @@
       "area": "release",
       "tests": [
         "tests/test_release.py",
-        "tests/test_release_links.py"
+        "tests/test_release_links.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -600,7 +601,8 @@
       "area": "release",
       "tests": [
         "tests/test_release.py",
-        "tests/test_release_links.py"
+        "tests/test_release_links.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -1544,7 +1546,8 @@
       "area": "release",
       "tests": [
         "tests/test_release.py",
-        "tests/test_release_links.py"
+        "tests/test_release_links.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -1563,7 +1566,9 @@
       "entry": "tools/site.py",
       "reach": "python3 tools/site.py /tmp/site",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_release_train.py"
+      ]
     },
     {
       "id": "cli:quit probe",
@@ -1596,6 +1601,16 @@
       "reach": "node tools/web/relay_server.mjs 8790, then node tools/web/relay_timing.mjs --url=http://127.0.0.1:8790 [--rounds=4]   (with .env sourced; or --url=<preview> with BW_BYPASS)",
       "area": "web",
       "tests": []
+    },
+    {
+      "id": "cli:release train",
+      "kind": "cli",
+      "entry": "tools/release/train.sh",
+      "reach": "tools/release/train.sh stage TAG BRANCH --after PREV --checks \"...\"; tools/release/train.sh status",
+      "area": "release",
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "cli:reload browser flow",
@@ -1826,7 +1841,8 @@
       "area": "release",
       "tests": [
         "tests/test_release.py",
-        "tests/test_release_links.py"
+        "tests/test_release_links.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -3602,7 +3618,9 @@
       "entry": "web/site.css",
       "reach": "every page of brickworks.diy: its controls (fields, checkboxes, buttons, dialog, card) in one place (docs/DESIGN_SYSTEM.md)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_release_train.py"
+      ]
     },
     {
       "id": "ui:docked panels",
@@ -3698,6 +3716,7 @@
       "area": "web",
       "tests": [
         "tests/test_gallery_tabs.py",
+        "tests/test_release_train.py",
         "tests/test_site_shell.py"
       ]
     },
@@ -4485,6 +4504,7 @@
       "area": "web",
       "tests": [
         "tests/test_gallery_tabs.py",
+        "tests/test_release_train.py",
         "tests/test_site_shell.py"
       ]
     },

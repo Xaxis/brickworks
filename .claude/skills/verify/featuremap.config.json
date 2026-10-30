@@ -450,6 +450,13 @@
       "area": "release"
     },
     {
+      "kind": "cli",
+      "label": "release train",
+      "entry": "tools/release/train.sh",
+      "reach": "tools/release/train.sh stage TAG BRANCH --after PREV --checks \"...\"; tools/release/train.sh status",
+      "area": "release"
+    },
+    {
       "kind": "ui",
       "label": "download page",
       "entry": "web/download.html",
