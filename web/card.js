@@ -439,6 +439,46 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
     + `${lines.join("")}</div></article>`;
 }
 
+// When a build was posted, as a card says it: "30 Oct 2026".
+const POSTED = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+
+/// A photo of a real build as a card (site.css .build-card), the gallery's
+/// Builds tab: the model card's shape, so the tab reads as the gallery
+/// does. The photo, cut to the card's 4:3 as a model's picture is and
+/// shown whole on its model's page, which the card opens at it; the
+/// model's name; who built it, their avatar a link to their profile (or "A
+/// builder", with no profile shown); when; and what they said of it. The
+/// caller passes ids that are ids: the links are made from them alone.
+export function buildCardHtml(photo, { eager = false } = {}) {
+  const id = escapeHtml(String(photo.id));
+  const model = escapeHtml(String(photo.model));
+  const name = String(photo.model_name || "A model");
+  const by = photo.by && typeof photo.by === "object" && HANDLE.test(String(photo.by.handle || "")) ? photo.by : null;
+  const builder = by ? String(by.name || by.handle) : "";
+  const who = by
+    ? `<a class="who" href="/u/${escapeHtml(by.handle)}">${avatarHtml({ handle: by.handle, name: builder, picture: by.picture },
+      { size: "small" })}<span>${escapeHtml(`Built by ${builder}`)}</span></a>`
+    : '<span class="who">Built by a builder</span>';
+  const at = Date.parse(String(photo.at || ""));
+  const when = Number.isFinite(at)
+    ? `<time class="when" datetime="${escapeHtml(new Date(at).toISOString())}">${escapeHtml(POSTED.format(at))}</time>` : "";
+  return `<article class="model build-card" data-id="${id}" data-model="${model}">`
+    + `<div class="frame"><img src="/api/people?op=photo_file&amp;id=${id}" `
+    + `alt="${escapeHtml(`A build of ${name}${builder ? ` by ${builder}` : ""}`)}" `
+    + `width="${Number(photo.width) || 4}" height="${Number(photo.height) || 3}" ${eager
+      ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async"></div>`
+    + `<div class="words"><a class="open" href="/m/${model}#photo-${id}"><b title="${escapeHtml(name)}">${escapeHtml(name)}</b></a>`
+    + `<span class="by">${who}${when}</span>`
+    + `${photo.words ? `<q class="said">${escapeHtml(photo.words)}</q>` : ""}</div></article>`;
+}
+
+/// buildCardHtml's card as an element, in a browser.
+export function buildCard(photo, options) {
+  const made = document.createElement("template");
+  made.innerHTML = buildCardHtml(photo, options);
+  return document.importNode(made.content.firstElementChild, true);
+}
+
 /// How many of a list's cards are its first screen's, drawn [eager]: two
 /// rows of six on a wide window, two of five and more at 1280, six rows of
 /// two on a phone (site277's grid: 2 to 6 a row). The gallery counts the

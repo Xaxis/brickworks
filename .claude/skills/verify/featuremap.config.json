@@ -4298,6 +4298,48 @@
       "entry": "src/ui/inspector.gd",
       "reach": "godot --path . --resolution 1280x720  (the bin open, select a part: its name, colour, X, Y, Z, Turn, Tilt and Roll under the bin; More opens the rest down the right)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "the gallery's builds tab",
+      "entry": "web/builds.html",
+      "reach": "https://brickworks.diy/builds   (?page=N, ?tests=1; a tab of /gallery and /library; web/builds.js reads /api/people?op=builds a page at a time, each card web/card.js buildCardHtml; locally relay_server.mjs serves /builds)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "builds in the gallery",
+      "entry": "api/_builds.js",
+      "reach": "/api/people?op=builds&page=N   (galleryBuilds: newest first, 24 a page; not hidden, no report waiting, builder and owner shown in public, the model in the gallery; tests/test_gallery_builds.py)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "gallery builds browser flow",
+      "entry": "tools/web/gallery_builds_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/gallery_builds_flow.mjs --url=<preview or local relay> --out=DIR   (preview_checks.sh gallery_builds: throwaway Ann, Bo, Cy and Di; five photos, a hidden, a reported and an under-13 builder's left out; 1280 light signed in, 390 dark signed out, the empty tab)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "more like a designer",
+      "entry": "api/_alike.js",
+      "reach": "/api/people?op=alike&handle=X   (designersAlike: shared themes and tags, parts and followers in common from supabase/designers_alike.sql once applied; never the person, the asker or whom they follow; tests/test_alike.py; dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/designers_alike.sql --dry --try=tools/designers_alike_try.sql --table=model_needs)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "more like on a profile",
+      "entry": "web/follow.js",
+      "reach": "https://brickworks.diy/u/<handle>   (More like <name>, under their work: up to six designers with Follow in place, hidden when nobody is close; api/people.js profilePage section#alike, follow.js showAlike)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "more like browser flow",
+      "entry": "tools/web/alike_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/alike_flow.mjs --url=<preview or local relay> --out=DIR   (preview_checks.sh alike: throwaway Ann, Bo, Cy, Di and Fay; hidden alone, the closest first signed out at 1280 light, signed in at 390 dark never yourself or whom you follow, Follow in place)",
+      "area": "web"
     }
   ]
 }
