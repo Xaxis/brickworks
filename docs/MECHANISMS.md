@@ -6180,3 +6180,79 @@ rim instead, as a hand does. A grab that offers a slide its loop cannot
 make (`Grab.can_slide` reads `Linkage.slide_col`, not whether the loop
 lets it go) is left.
 
+
+## 39. Where the motion stops (motion, APP_UX2 9)
+
+Simulate turned a train or a loop as far as its joints let it and no
+further than that: two parts could turn through each other, a crank's
+range was found only by a drag, and a motor turned any load at all.
+Kinebrick's mark, the one this meets, is the three things a person asks
+of a mechanism before building it: where it hits itself, how far it goes,
+and whether the motor can lift it. Simulate now says all three
+(`Simulation.begin_stops`, a slice a frame from the panel and from
+`simulate_mechanism`).
+
+- **What meets.** Over the cycle, forward as Play turns it and back, every
+  part that moves is posed (`placed`, the gear reading's poses or a loop's
+  as Grab solves it) and judged against every other part by their exact
+  shapes (`Exact.clash`, 1 LDU let through, as Grab judges a drag). The
+  first turn where two meet is bisected to 0.01°. What they were built into
+  each other by, a joint's own pieces on its line, and toothed parts built
+  in mesh (two gears, a pinion and its rack) are forgiven, as Grab forgives
+  them; two parts that have not turned against each other since they were
+  built are let be. The two that meet are named by number and tinted red.
+- **The range.** A loop the driver closes is walked either way from how
+  it was built (`Linkage.reach`): where it closes no further is that
+  end's range. The driver's range is from the first meeting back to the
+  first meeting on, or the loop's ends where they come first, said in
+  degrees with what stops each end.
+- **A motor's stall.** A Power Functions M, L or XL motor, an E-motor or a
+  9 V motor (Philo's table at 9 V: 11, 18, 40, 3.4 and 6 N·cm) marks the
+  axle in its output as the driver; its output, drawn as an axle hole in
+  its case, is read as a round hole so the axle turns in it. Turning on,
+  the torque the weight of what moves asks of it is how much higher the
+  weight stands for each radian of the motor (virtual work, the parts'
+  grams as Balance weighs them, no friction). Where it first asks more
+  than the motor gives, it stalls, and the panel says so with the most it
+  is asked; where it never does, how much it slows at its heaviest.
+
+Play stops at the first of these, the slider goes no further, and Go to
+the stop shows it. Over MCP the same lines come back and the picture is
+taken there.
+
+Two things keep it right and quick. A part round about its own axis (named
+a gear, wheel, tyre, pin, axle, bush and so on, its bounds square about
+that axis to 2 LDU) that has only turned about it is tested as it was
+built, moved to where its middle goes, as Grab's `_shape_at` tests it: an
+axle in its hole, a 6542b idler on a 2780 friction pin, then never meet
+for being drawn in facets, and need no test again until they go
+somewhere. And each part is tested when it has gone 2 LDU since it was
+last tested (the furthest corner of its bounds), the step sized so the
+fastest goes about that far: the motor rig's arm turns 9 times its motor,
+and testing every part every step took its first reading 95 s; it takes
+11 s. A train that comes round whole with nothing met is not swept back.
+
+Measured (`tools/probe.sh motion_probe`, three models built part by part):
+
+- An arm on a crank axle meets a 7 beam stood to be met at 140°: it meets
+  at 140.54°, clear a hundredth of a degree short of it, and back at
+  -148.23° on the beam's other side. Both tinted red; Go to the stop, the slider and Play all end
+  at 140.54°.
+- A four-bar (ground 6 studs, crank 2, coupler 4, rocker 2) closes no
+  further at +80.47° and -80.48°, 160.95° in all, against ±80.41°,
+  160.81° by its closed form (cos θ = (g² + a² − (b + c)²) / 2ga).
+- A PF M motor turning an arm of eight 1 x 8 bricks through 8:24 twice
+  (9:1) stalls at 25.400° of its turn, worked 25.400° (the arm at 228.6°),
+  asked 14.67 N·cm at most against its 11. Unloaded it goes round, asked
+  0.2 of its 11 N·cm, 405 slowing to 397 rpm.
+
+`telescope_probe` still passes; its rigs now say where each stops: the
+rack wheel's tube meets its bearing at 2.11 turns and its rack ends at
+-337°, the telescope's tube meets the cradle at -253° and its rack ends at
+112.5°, the tilt cradle swung round meets the baseplate at 282°.
+
+Left: a hinge or a click hinge is not a joint Simulate drives (the gear
+reading has none; a hinge's range is Grab's, section 35); a drag on a
+motor's axle still reads it keyed to the case (Bodies); and the stall is
+by weight alone, with no friction in the gears, so a real train stalls
+sooner.
