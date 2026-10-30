@@ -20,7 +20,7 @@ lib:directory
 
 ## Tabs and filters {#tabs}
 
-- **Top** puts first the models most people have built, over this week, this month or all time; **New** the newest; **Following**, signed in, the people you follow; **Collections** the [directory of collections](/docs/collections#directory).
+- **Top** puts first the models most people have built, over this week, this month or all time; **New** the newest; **Following**, signed in, the people you follow; **Builds** everybody's [photos of real builds](#builds); **Collections** the [directory of collections](/docs/collections#directory).
 - **Kinds** are pills across the top: buildings, vehicles, space, Technic and more. They and **Filters** stay in view under the header as you scroll.
 - **Filters** opens a sheet: the order, the size, how it was made (by hand, with Claude, from the LDraw library), with instructions, Technic, and **Tested** only. Each filter that is on shows as a pill under the bar; press one to drop it, or **Clear all**.
 - Search by a name, a builder, a tag or a description: the cards change as you type, and [[/]] jumps to the search from anywhere on the page. A misspelt word, and words run together or apart (`spaceship`, `space ship`), find what the library's search would. The address keeps it all (`/gallery?q=castle&kind=space&sort=newest`), so a search can be shared.
@@ -31,6 +31,15 @@ Every list on the site pages the same way: the gallery, [the LDraw library](/doc
 ui:a list's pages
 lib:model kinds
 lib:Top builds and this week's pick
+-->
+
+## Builds {#builds}
+
+[brickworks.diy/builds](/builds), the gallery's **Builds** tab, shows everybody's photos of models from the gallery built in real bricks, the newest first. Each card links to the photo on its model's page and to whoever built it. To add yours, open the model's page and choose **I built it**. A photo stays off the tab once its model's designer hides it or while a report of it is looked at.
+
+<!-- covers
+ui:the gallery's builds tab
+lib:builds in the gallery
 -->
 
 ## The front shelves {#shelves}

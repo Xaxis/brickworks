@@ -104,8 +104,30 @@ async function where(name, seconds = 60) {
   return null;
 }
 
+// The dialog's choices scroll, and the app tells where a control is even
+// when it is scrolled out of sight: a click there lands on whatever is
+// drawn instead. Turntable's frames went out of sight at 1400x900 when the
+// choices grew (Product, Light, Lens, focus), and the 24 the check pressed
+// never took (rel-m226). A person scrolls the choices until it shows.
+const CHOICE = /^render_(quick|good|best|size_|bg_|look_|frames_|camera_|motion|light|view)/;
+
+async function inView(name) {
+  let at = await where(name);
+  const box = CHOICE.test(name) ? await where("render_choices", 5) : null;
+  for (let n = 0; at && box && n < 12; n++) {
+    const top = box.y - box.h / 2;
+    const bottom = box.y + box.h / 2;
+    if (at.y - at.h / 2 >= top && at.y + at.h / 2 <= bottom) break;
+    await page.mouse.move(box.x, box.y);
+    await page.mouse.wheel(0, at.y > bottom - at.h / 2 ? 240 : -240);
+    await page.waitForTimeout(1100);
+    at = await where(name);
+  }
+  return at;
+}
+
 async function press(name) {
-  const at = await where(name);
+  const at = await inView(name);
   if (!at) throw new Error(`no ${name} on the page`);
   await page.mouse.click(at.x, at.y);
   // The app tells the page where its controls are twice a second, and a
@@ -320,16 +342,7 @@ try {
   // Quick and 720p at the top of the choices, before they scroll away.
   await press("render_quick");
   await press("render_size_720p");
-  // Animation sits under Turntable in the choices: scrolled to, as a person does.
-  const light = await where("render_light", 10);
-  if (light) {
-    await page.mouse.move(light.x, light.y);
-    for (let n = 0; n < 8; n++) {
-      await page.mouse.wheel(0, 240);
-      await page.waitForTimeout(200);
-    }
-    await page.waitForTimeout(1100);
-  }
+  // Animation sits under Turntable in the choices: press scrolls to it.
   await press("render_camera_moves");
   const animation = await renderAndKeep("render_animation", "5_animation", 30);
   const animationFrames = animation.file ? webpFrames(animation.file) : -1;

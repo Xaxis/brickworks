@@ -40,8 +40,9 @@ OLD_BAR = re.compile(r'<meta name="theme-color"[^>]*>\n')
 STYLESHEET = '<link rel="stylesheet" href="/site.css">'
 # Each page's own address, where it is one of the header's links (or
 # Menu's: Download is there since site356). The landing page marks the
-# mark; your settings are part of your account.
-OWN = {"index.html": "/", "gallery.html": "/gallery", "download.html": "/download",
+# mark; your settings are part of your account; the gallery's Builds tab
+# is the gallery.
+OWN = {"index.html": "/", "gallery.html": "/gallery", "builds.html": "/gallery", "download.html": "/download",
        "profile.html": "/profile", "settings.html": "/profile", "library.html": "/library",
        "plans.html": "/plans"}
 

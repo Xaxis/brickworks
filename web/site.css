@@ -828,6 +828,15 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 .model .by .acts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s-3); font-size: inherit; }
 .model .tally { display: inline-flex; align-items: center; gap: var(--s-1); color: var(--ink-soft); }
 .model .tally .icon { width: 16px; height: 16px; }
+/* A photo of a real build as a card (web/card.js buildCardHtml), the
+   gallery's Builds tab: the model card's shape, the photo cut to its 4:3;
+   who built it and when on one line, and what they said of it, two lines
+   at most, its quote marks the browser's. */
+.model .when { color: var(--ink-faint); font-size: var(--t-tiny); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.build-card .said {
+	display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 2px;
+	color: var(--ink-soft); font-size: var(--t-small); line-height: 1.4; overflow-wrap: anywhere;
+}
 /* A card 180-280 px wide: the designer's line a step smaller, so their
    name, its size and its numbers fit. The name stays 16 px at every width. */
 @media (width < 900px) {

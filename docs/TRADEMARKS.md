@@ -91,6 +91,30 @@ on every page's footer, in Help, About, on the booklet and in the README.
 [FP] [BR p.9]. Any paid tier, ads, or selling parts lists or kits needs a
 fresh review of all of the above first.
 
+## Decision, 2026-10-30
+
+**7. A set in the catalogue is shown by its own picture.** The owner, of
+the site's library: "its not showing preview images of the actual sets, it
+has those stupid images with a few parts in them". 27,000 of its 28,441 sets
+were a collage of parts drawn by Brickworks, because rule 3 below kept every
+picture our own. Every fan catalogue of sets (Rebrickable, Brickset,
+BrickLink, Brick Owl, BrickEconomy) identifies a set by its picture, and a
+person browsing for a set cannot find it among collages. So each set's card
+and page in the library (`/library`, `/library/set/<number>`) show the set
+as Rebrickable pictures it, where LDraw has no 3D model of it to render:
+many are the LEGO Group's own box or catalogue photographs.
+
+What keeps this inside the policy's spirit: the picture only identifies the
+set it is beside, on that set's own catalogue entry, which is the use the
+policy allows the mark itself ("to refer to LEGO products [...] which are
+shown or discussed", [FP]); it is never our branding, our marketing, the
+landing page, a share card of ours or an icon, which stay our own (rule 3);
+Brickworks is free (Decision 6); each picture is credited to Rebrickable
+where it is shown, as their terms ask; the files are kept on our own storage
+(`tools/set_pictures.py`), so a visitor's browser never asks a third party;
+and the takedown page (`/takedown`) takes any one down on request. Anything
+that brings money in reopens this with the rest.
+
 ## Sources
 
 Fetched on 2026-10-13. lego.com refuses scripts, so the policy's full text
@@ -159,7 +183,8 @@ Brick and Knob configurations are also trademarks of the LEGO Group."
 Every picture on the site and in the app is our own: screenshots of the app
 and renders of LDraw models, made by the runs listed in
 `web/img/manifest.json`. No box art, catalogue photos or official
-instructions. LDraw's own legal page lists "Rendered images generated from
+instructions. The one exception is a set's own picture in the library's
+catalogue, which identifies that set and nothing else (Decision 7). LDraw's own legal page lists "Rendered images generated from
 the LDraw library" as not derivative of the parts
 (https://www.ldraw.org/legal-info). The parts are credited, CC BY 2.0 and CC BY 4.0,
 in the site's footers, the app's About, the booklet and the README.

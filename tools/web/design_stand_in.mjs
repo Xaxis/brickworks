@@ -52,6 +52,8 @@ import { noticeGroups } from "../../api/_notifications.js";
 // Designers to follow, read from Top builds' cards as the API reads them
 // (docs/SOCIAL.md U9): pure too.
 import { LATEST, designersFrom } from "../../api/_follows.js";
+// More like a designer: the order the API puts them in.
+import { alikeSaid, closestDesigners } from "../../api/_alike.js";
 // What a handle may not be, as the API says it (a new account's First steps).
 import { handleTrouble } from "../../api/_names.js";
 // What a featured model's card says (gallery362).
@@ -1485,7 +1487,8 @@ function people(method, params, body, who, state) {
   const id = params.get("id") || "";
   // What anybody may ask; everything else needs the session.
   const open = method === "GET" ? ["profile", "collection", "comments", "photos", "photo_file", "follows", "following",
-    "feed_count", "page", "list_page", "challenge", "latest", "likes", "avatar", "list_follows"] : ["report", "digest"];
+    "feed_count", "page", "list_page", "challenge", "latest", "likes", "avatar", "list_follows", "builds", "alike"]
+    : ["report", "digest"];
   if (!who && !open.includes(op)) {
     return answer(401, { error: op === "feed" ? "Sign in to see your feed: we email you a code, no password."
       : ["follow", "follow_choice"].includes(op) ? FOLLOW_WORDS.sign_in : op === "list_follow" ? LIST_WORDS.sign_in : SIGN_IN });
@@ -1585,6 +1588,35 @@ function people(method, params, body, who, state) {
         .slice(0, LATEST.photos).map((one) => ({ ...photoSaid(one), model_name: modelOf(one.model).name }));
       return answer(200, { models: listModels({ sort: "newest", size: LATEST.models, tests }).map(apiCard), photos,
         designers: designersFrom(listModels({ sort: "top", size: 49, tests }).map(apiCard)) });
+    }
+    if (op === "builds") {
+      // api/_builds.js galleryBuilds: the gallery's Builds tab, every photo
+      // of a build of a model in the gallery, newest first, a page of 24.
+      const tests = asked(params.get("tests"));
+      const all = photosWhere((one) => shownModel(one.model)?.listed && (tests || !modelOf(one.model).test));
+      return answer(200, { page, more: all.length > page * PER_PAGE, photos: all.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+        .map((one) => ({ ...photoSaid(one), model_name: modelOf(one.model).name })) });
+    }
+    if (op === "alike") {
+      // api/_alike.js designersAlike, by themes and tags alone (no parts
+      // here): never the asker nor anybody they follow.
+      const person = personNamed(params.get("handle"));
+      if (!person) return answer(404, { error: "nobody here has that handle" });
+      const tests = asked(params.get("tests"));
+      const listed = (owner) => [...MODELS, ...CROWD].filter((m) => m.owner === owner && m.published && m.listed && !m.barred
+        && (tests || !m.test));
+      const mine = listed(person.account);
+      const theirs = PEOPLE.filter((one) => one.account !== person.account)
+        .flatMap((one) => listed(one.account).map((m) => ({ id: one.account, kinds: [m.kind], tags: m.tags })));
+      const designers = !mine.length ? [] : closestDesigners({ kinds: mine.map((m) => m.kind), tags: mine.flatMap((m) => m.tags) },
+        theirs, { most: 24 })
+        .filter((one) => one.id !== who && !FOLLOWS.some((f) => f.follower === who && f.followed === one.id)).slice(0, 6)
+        .map((one) => {
+          const them = personOf(one.id);
+          return { handle: them.handle, name: them.name, said: alikeSaid(one), kinds: one.kinds, tags: one.tags,
+            follow: follows(them.handle, who, state).json };
+        });
+      return answer(200, { handle: person.handle, name: person.name, designers });
     }
     if (op === "feed_count") {
       if (!who) return answer(200, { count: 0, signed_in: false });
