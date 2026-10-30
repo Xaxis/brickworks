@@ -568,8 +568,9 @@ func place_step(path: String) -> int:
 
 ## The steps worked out again after the model or its steps changed, in the
 ## author's steps when it now has them, showing the end of the main step
-## numbered [param number] (the one showing, when -1).
-func refresh(number: int = -1) -> void:
+## numbered [param number] (the one showing, when -1), or of its callout's
+## step [param inside].
+func refresh(number: int = -1, inside: int = 0) -> void:
 	if not visible:
 		return
 	var at: Instructions.Step = current_step()
@@ -590,6 +591,8 @@ func refresh(number: int = -1) -> void:
 	for index: int in _steps.size():
 		if _steps[index].number <= number:
 			end = _step_ends[index]
+		if inside > 0 and _steps[index].number == number and _steps[index].callout_step == inside:
+			break
 	_show(end if end >= 0 else (_step_ends[0] if not _step_ends.is_empty() else 0))
 
 
@@ -858,6 +861,13 @@ func _show_look() -> void:
 	_per_page.text = "Per page: %s" % ("as fit" if most == 0 else str(most))
 	var said: String = BookletLooks.said(_world, section, step) if step >= 0 else ""
 	_look_said.text = said if not said.is_empty() else "as the booklet chooses"
+	# A callout's step: its own view first, which the view buttons turn.
+	var inside: Instructions.Step = current_step()
+	if inside != null and inside.in_callout():
+		var turned: String = BookletLooks.turn_said(_world, inside.authored_in, inside.authored_step) \
+			if inside.authored_step >= 0 else ""
+		_look_said.text = "%s step %d %s; step %d %s" % [inside.assembly, inside.callout_step,
+			turned if not turned.is_empty() else "as the callout faces", at.number, _look_said.text]
 	_look_said.tooltip_text = _look_said.text
 
 

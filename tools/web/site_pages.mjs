@@ -35,6 +35,10 @@ export function sitePages({ remote = "" } = {}) {
         await page.click("#filters summary");
         return [["filters", "#filters"]];
       } },
+    // The gallery's Builds tab (web/builds.html): photos of real builds as
+    // the gallery's cards, newest first.
+    { name: "builds", path: "/builds",
+      ready: (page) => until(page, () => ["ready", "none"].includes(document.documentElement.dataset.builds)) },
     { name: "model", path: `/m/${stand.MODEL_ID}`,
       // The comments listed (Comment's count), and signed out Report it made
       // live in More. On a deployment the page is its own model, whose
@@ -97,7 +101,10 @@ export function sitePages({ remote = "" } = {}) {
     // is: its page says no count of none ("0 remixes").
     { name: "model-quiet", path: "/m/DesignFox1", local: true },
     { name: "embed", path: `/m/${stand.MODEL_ID}/embed` },
-    { name: "person", path: `/u/${stand.HANDLE}` },
+    // Judged once More like (web/follow.js) has asked who is alike, drawn
+    // or not; a profile with no model in the gallery has no such section.
+    { name: "person", path: `/u/${stand.HANDLE}`,
+      ready: (page) => until(page, () => !document.querySelector("[data-alike]") || Boolean(document.documentElement.dataset.alike)) },
     // A person's other tabs (api/people.js profilePage, docs/SOCIAL.md U5):
     // photos of real builds in columns, and collections as cards; the house
     // account, credited "Brickworks" as the live gallery's models are, and

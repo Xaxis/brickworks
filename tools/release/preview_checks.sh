@@ -80,6 +80,20 @@ declare -A CMD=(
   # twice. Before the file, a comment names nobody and goes as ever.
   # Throwaway accounts, deleted after with their model.
   [mentions]="tools/web/mentions_flow.mjs --url=$P --out=$S/${TAG}_mentions"
+  # The gallery's Builds tab (docs/SOCIAL.md section 7, item 8): /builds
+  # lists everybody's photos of real builds newest first, each linking its
+  # model's page at the photo and its builder's profile; a photo hidden by
+  # the model's owner, one a report waits on and an under-13 builder's left
+  # out; 1280 px light signed in, 390 px dark signed out; the empty tab
+  # says what a build is. Throwaway accounts, deleted after with their model.
+  [gallery_builds]="tools/web/gallery_builds_flow.mjs --url=$P --out=$S/${TAG}_gallery_builds"
+  # More like a designer on a profile (docs/SOCIAL.md section 7, item 9):
+  # hidden with nobody close; signed out the closest by shared tags (and
+  # parts once supabase/designers_alike.sql is applied) with Follow beside
+  # each, never the person or an under-13 account; signed in at 390 px dark,
+  # never yourself or whom you follow, and Follow in place. Throwaway
+  # accounts, deleted after with their models.
+  [alike]="tools/web/alike_flow.mjs --url=$P --out=$S/${TAG}_alike"
   # The collections directory (W12, supabase/collection_directory.sql):
   # /collections lists a throwaway designer's public collection as a card
   # with its cover, name, owner, model count and Follow; her private one
@@ -497,8 +511,9 @@ declare -A CMD=(
   [render]="tools/web/render_flow.mjs --url=$P/app $B --out=$S/${TAG}_render_web"
   # A picture lit by a photographed place: the light is not in the pack the
   # start waits for, so it is fetched from the deployment the first time,
-  # and the dialog says so (webload, 2026-10-30).
-  [light_render]="tools/web/light_render_flow.mjs --url=$P/app/index.html $B --out=$S/${TAG}_light_render"
+  # and the dialog says so (webload, 2026-10-30). /app, not /app/index.html,
+  # which a deployment answers 404.
+  [light_render]="tools/web/light_render_flow.mjs --url=$P/app $B --out=$S/${TAG}_light_render"
   # Render's Product look under Compatibility: a black wall behind clear
   # glass and a white one behind trans red, drawn on each backdrop, each
   # picture not flat, the red glass red and the black wall dark

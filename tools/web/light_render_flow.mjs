@@ -4,7 +4,7 @@
 //
 //   python3 tools/web/serve.py build/web 9463 --parts assets/generated/parts --delay 0 --compressed --cached &
 //   node tools/web/light_render_flow.mjs --url=http://127.0.0.1:9463/index.html --out=DIR [--against=OTHER.png]
-//   node tools/web/light_render_flow.mjs --url=https://<preview>.vercel.app/app/index.html --bypass=$VERCEL_BYPASS --out=DIR
+//   node tools/web/light_render_flow.mjs --url=https://<preview>.vercel.app/app --bypass=$VERCEL_BYPASS --out=DIR
 //
 // Opens the render dialog on the example car, chooses Softbox studio
 // (photographed), Quick and 720p, renders, and keeps the PNG. Fails if no
