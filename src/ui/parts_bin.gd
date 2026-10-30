@@ -1036,6 +1036,7 @@ func show_category(name: String) -> void:
 
 
 func _on_category(name: String) -> void:
+	_set_parts.clear()
 	_category = name
 	for child: Node in _category_row.get_children():
 		var button: Button = child
@@ -1044,6 +1045,7 @@ func _on_category(name: String) -> void:
 
 
 func _on_search_typed(text: String) -> void:
+	_set_parts.clear()
 	# Debounced: a held key would otherwise scan the library per character.
 	# A first key after a pause is answered at once, and the keys that follow
 	# it quickly once they stop.
@@ -1087,8 +1089,13 @@ func _process(_delta: float) -> void:
 func _run_search(query: String) -> void:
 	if library == null:
 		return
+	# A set's parts stay shown when the bin asks again by itself (its
+	# catalogue arriving on the web, a shelf's count): only a search typed or
+	# a category chosen puts them away (_on_search_typed, _on_category).
+	if not _set_parts.is_empty():
+		_fill_grid()
+		return
 	_guesses.clear()
-	_set_parts.clear()
 	if _category == TECHNIQUES:
 		_results = []
 		_fill_techniques(query.strip_edges())
@@ -2410,6 +2417,7 @@ func show_guesses(guesses: Array) -> void:
 		_category = "All"
 		for child: Node in _category_row.get_children():
 			(child as Button).button_pressed = str(child.get_meta("category", "")) == _category
+	_set_parts.clear()
 	_results = found
 	_guesses = scores
 	# In the colour the photo shows, taken in hand as an element number's

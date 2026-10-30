@@ -17,8 +17,11 @@
 //      Build it in 3D, the model's page, which links back.
 //   4. Parts you own: a throwaway account (a Resend test address, its session
 //      minted here) with three of 10497-1's lots in its collection sees
-//      "Parts you own: N of 1,278" with N those lots' pieces, and downloads
-//      what it is missing as a BrickLink wanted list. Deleted at the end.
+//      "Parts you own: N of M" with N those lots' pieces and M the set's
+//      parts a collection can hold (1,264 of its 1,278: a print LDraw does
+//      not draw is left out, as the app's My collection leaves it out), and
+//      downloads what it is missing as a BrickLink wanted list. Deleted at
+//      the end.
 //   5. Open its parts in Brickworks (unless --no-app): the app opens with the
 //      set's parts in its bin (brickworksState.bin_set), signed in as the
 //      test account.
@@ -189,8 +192,8 @@ try {
     const listed = await (await get(`/library/set/${PLAIN}/parts.json`)).json();
     const three = listed.lots.slice(0, 3);
     const pieces = three.reduce((n, lot) => n + lot.count, 0);
-    const { kept } = await mintSession(email);
-    const put = await made.request.put(`${site}/api/collection`, { headers: { ...headers, authorization: `Bearer ${kept.access_token}`,
+    const { access_token: token } = await mintSession(email);
+    const put = await made.request.put(`${site}/api/collection`, { headers: { ...headers, authorization: `Bearer ${token}`,
       "content-type": "application/json" }, data: { sets: [], parts: three.map((lot) => ({ part: lot.part, colour: lot.colour, qty: lot.count })) } });
     check(`a throwaway's collection of three of its lots, ${pieces} parts (${put.status()})`, put.ok());
     const mine = await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers, acceptDownloads: true });
@@ -201,8 +204,13 @@ try {
     const counted = await until(page, () => /^\d+\/\d+$/.test(document.documentElement.dataset.owned || ""), null, 60);
     const owned = await page.evaluate(() => ({ said: document.getElementById("owned-said")?.textContent || "",
       data: document.documentElement.dataset.owned }));
-    check(`"${owned.said}"`, counted && owned.data === `${pieces}/${listed.pieces}`
-      && owned.said.startsWith(`Parts you own: ${pieces.toLocaleString("en-US")} of ${listed.pieces.toLocaleString("en-US")}`));
+    // Of the parts a collection can hold, as the app's My collection counts
+    // them (api/_owned.js keyed): a print Rebrickable numbers and LDraw does
+    // not draw is left out of both sides, as the app leaves it out.
+    const [have, of] = String(owned.data).split("/").map(Number);
+    check(`"${owned.said}"`, counted && have === pieces && of <= listed.pieces && of >= 0.95 * listed.pieces
+      && owned.said.startsWith(`Parts you own: ${pieces.toLocaleString("en-US")} of ${of.toLocaleString("en-US")}`));
+    const short = Number((/in ([\d,]+) lots?\.$/.exec(owned.said) || [])[1]?.replace(/,/g, "")) || 0;
     await page.locator("#owned").scrollIntoViewIfNeeded();
     await page.screenshot({ path: path.join(out, "owned.png") });
     const [download] = await Promise.all([page.waitForEvent("download", { timeout: 15000 }).catch(() => null),
@@ -210,7 +218,7 @@ try {
     const text = download ? readFileSync(await download.path(), "utf8") : "";
     const items = (text.match(/<ITEM>/g) || []).length;
     check(`what is missing downloads as a BrickLink wanted list (${download?.suggestedFilename()}, ${items} lots)`,
-      /^<INVENTORY>/.test(text) && items >= listed.lots.length - 3 - 5 && items <= listed.lots.length);
+      /^<INVENTORY>/.test(text) && items > 0 && items <= short && items >= short - 10);
     await mine.close();
   }
 
@@ -225,6 +233,12 @@ try {
     const up = await until(page, () => /^10497-1 Galaxy Explorer$/.test(window.brickworksState?.bin_set || ""), null, 420);
     const state = await page.evaluate(() => ({ set: window.brickworksState?.bin_set, found: window.brickworksState?.found || [] }));
     check(`the app opens with its parts in the bin: "${state.set}", ${state.found.slice(0, 4).join(", ")}`, up && state.found.length > 0);
+    // And still there once the app has settled: its catalogue arriving asks
+    // the bin again by itself, which put the set away (sets364, the preview).
+    await until(page, () => window.brickworksState && !window.brickworksState.awaited, null, 120);
+    await page.waitForTimeout(15000);
+    const later = await page.evaluate(() => window.brickworksState?.bin_set || "");
+    check(`...and still there once the app has settled ("${later}")`, later === "10497-1 Galaxy Explorer");
     await page.screenshot({ path: path.join(out, "app_bin.png") });
     await app.close();
   }

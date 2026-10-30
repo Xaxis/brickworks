@@ -83,10 +83,17 @@ func _run() -> void:
 				label = (child as Label).text
 	_check("its tile counts how many the set has: \"%s\"" % label, label == "%s  ×%d" % [most, int(counts[most])])
 
+	# The bin asking again by itself, as it does when the web build's
+	# catalogue arrives after the set was shown: the set stays.
+	bin.populate()
+	await process_frame
+	_check("the bin asking again by itself keeps the set (%s)" % ", ".join(bin.first_found(4)),
+		bin.set_showing() == "10497-1 Galaxy Explorer" and bin.first_found(1) == PackedStringArray([most]))
+
 	var chat: ChatPanel = main.get("_chat")
 	_check("the assistant's box holds the brief, not sent", chat != null and chat.drafted() == BRIEF)
 
-	bin.call("_run_search", "brick 2 x 4")
+	bin.call("_on_search_typed", "brick 2 x 4")
 	await process_frame
 	_check("a search gives the bin back to every part", bin.set_showing().is_empty()
 		and not status.text.contains("Galaxy Explorer"))
