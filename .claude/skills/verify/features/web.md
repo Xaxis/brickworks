@@ -111,8 +111,12 @@ plan with Claude as the client.
   everybody, which Claude signs in to with OAuth (`api/oauth.js`, see
   [account](account.md)) — each call then goes to that account's open tab on
   any device (`accountTabs`; which tab, exactly, is below; the handshake and
-  tool list from that tab, else the account's last, else the fullest recent
-  one, so Claude can add it before the app is opened) — and one tab's private
+  tool list from that tab once it has said hello, else the tools of the app
+  build the deployment serves, `tools/mcp_tools.json` put beside the function
+  by `deploy.sh` (`ownTools`), with the guidance of a hello of that same list
+  (`guidanceOf`), so Claude can add it before the app is opened; never
+  another tab's list, which had been a test build's: 69 tools for 68,
+  2026-10-29, `tests/test_relay_hello.py`) — and one tab's private
   address (`/api/mcp?t=<token>`), the way from 2026-10-09, still answered for
   everyone who added one (`oneTab`).
   **Several tabs, one account** (2026-10-13): each tab is a connector of its
@@ -1795,6 +1799,9 @@ plan with Claude as the client.
   is put in only while the end of the list is under the screen, and waits
   (Show more pressable, drawing it at once) while Put yours here or the
   footer shows (site277: it pushed them down, CLS 0.51 signed in at 1280);
+  Show more stays pressable while that page is on its way, and a press then
+  draws it as soon as it comes (it was disabled, and the press lost, until
+  2026-10-29; `/library` the same);
   the shelves' cards are lazy; the address keeps the question and
   how many pages (`/gallery?q=castle&kind=space&sort=newest&page=3`), put back
   with `replaceState`, so it can be sent; a card opened is kept in the
@@ -3925,7 +3932,10 @@ VERCEL_BYPASS=$VERCEL_BYPASS node tools/web/download_check.mjs --url=<deployment
 ```
 
 Proves it when, locally, the first page is drawn as 24 cards with Show more
-and the gallery lines say "24, then 2 by Show more" at 390 and "24, then 2
+and the gallery lines say "24, then 2 by Show more" at 390 (pressed once, at
+its place on the screen, while the page the scroll to it asked for by itself
+is on its way: the made-up list gives a later page after 1.5 s, and asked
+for it once) and "24, then 2
 by itself" at 1280 (where Show more is first drawn within a screen under the
 window, so `gallery.js` nearEnd brings the next page unasked), 26 cards and
 Show more gone at both; against a deployment that lists more than a page,

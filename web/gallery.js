@@ -382,8 +382,11 @@ import { toast } from "/kit.js";
   }
 
   // Show more's press while a page that came by itself waits to be drawn
-  // (outOfSight): it is drawn then.
+  // (outOfSight): it is drawn then. And one while that page is still on its
+  // way (pressed): it is drawn as soon as it comes. Show more was disabled
+  // while it came, and a press then was lost (gallery350, 2026-10-29).
   let release = null;
+  let pressed = false;
 
   /// Resolves once the end of the list is under the screen, so a page put
   /// there moves only what is out of sight, or once Show more is pressed.
@@ -392,7 +395,7 @@ import { toast } from "/kit.js";
   /// come slower: site277).
   function outOfSight() {
     const under = () => feed.getBoundingClientRect().bottom > innerHeight;
-    if (under()) return Promise.resolve();
+    if (pressed || under()) return Promise.resolve();
     return new Promise((done) => {
       const look = () => { if (under()) release(); };
       release = () => {
@@ -412,7 +415,8 @@ import { toast } from "/kit.js";
     const mine = ++asking;
     if (release) release();
     loading = true;
-    more.disabled = true;
+    pressed = false;
+    more.disabled = !byItself;
     const asked = question();
     asked.set("page", String(fresh ? 1 : page + 1));
     try {
@@ -439,7 +443,6 @@ import { toast } from "/kit.js";
         if (mine !== asking) return;
       }
       if (byItself) {
-        more.disabled = false;
         await outOfSight();
         if (mine !== asking) return;
       }
@@ -659,7 +662,11 @@ import { toast } from "/kit.js";
     kind = tag = "";
     ask();
   });
-  more.addEventListener("click", () => (release ? release() : next(false)));
+  more.addEventListener("click", () => {
+    if (release) release();
+    else if (loading) pressed = true;
+    else next(false);
+  });
   addEventListener("scroll", nearEnd, { passive: true });
   addEventListener("resize", nearEnd, { passive: true });
   sayFilters();

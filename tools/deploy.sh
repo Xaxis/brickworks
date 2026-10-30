@@ -210,6 +210,11 @@ for handler in api/*.js; do
     fi
     cp assets/generated/sets/index.json "$fn/_collection_index.json"
   fi
+  # The relay lists the tools of the app build it serves until a tab has
+  # said hello (api/mcp.js, ownTools): the app's own list, from this build.
+  if [ "$route" = mcp ] && ! cp tools/mcp_tools.json "$fn/_mcp_tools.json"; then
+    echo "deploy FAILED: no tools/mcp_tools.json for /api/mcp"; exit 1
+  fi
   # A shared model's page, and what the gallery filters on (api/_directory.js):
   # the site's header and footer, from the gallery's own page, so /m/<id> is a
   # page of the site and changes when the site's do; and which parts are
