@@ -515,6 +515,12 @@
 					"tip": ""
 				},
 				{
+					"name": "reference",
+					"words": "Reference picture…",
+					"key": "",
+					"tip": "A photo, plan or drawing laid on the floor or stood behind the model, to build over"
+				},
+				{
 					"name": "ortho",
 					"words": "Orthographic",
 					"key": "`",
@@ -1581,6 +1587,7 @@
 		"floor_colour_7": "",
 		"floor_part": "",
 		"floor_default": "",
+		"reference": "",
 		"cut": "K",
 		"cut_x": "",
 		"cut_y": "",

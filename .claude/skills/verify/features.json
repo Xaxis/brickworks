@@ -4547,6 +4547,14 @@
       "tests": []
     },
     {
+      "id": "ui:reference picture",
+      "kind": "ui",
+      "entry": "src/ui/reference_image.gd",
+      "reach": "tools/probe.sh refimage_probe   (PROBE_SIZE=1400x900 too; by hand: View, Reference picture\u2026, a PNG or JPEG, then its width, opacity and Locked)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:reload a model saved elsewhere",
       "kind": "ui",
       "entry": "src/ui/reload_offer.gd",
