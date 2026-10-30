@@ -191,6 +191,8 @@ func place() -> int:
 	_history.append({"undo": "remove", "brick": brick_id})
 	_redo.clear()
 	below = maxf(0.0, -part.lowest_at(_ghost_transform)) if part != null else 0.0
+	# A number typed is spent once it is put down: the next follows the pointer.
+	_typed_from = null
 	placed.emit(brick_id, held_part)
 	return brick_id
 
@@ -773,8 +775,13 @@ func move_selection(by: Vector3i) -> int:
 	if by == Vector3i.ZERO:
 		return 0
 	var shift: Vector3 = BrickLattice.to_ldu(by)
-	return _reposition(func(at: Transform3D) -> Transform3D:
+	var moved: int = _reposition(func(at: Transform3D) -> Transform3D:
 		return Transform3D(at.basis, at.origin + shift), "", by)
+	if moved > 0:
+		var axis: int = shift.abs().max_axis_index()
+		last_way = Vector3.ZERO
+		last_way[axis] = signf(shift[axis])
+	return moved
 
 
 ## Shift the selection by any amount in LDU, to the thousandth an LDraw
@@ -1040,6 +1047,13 @@ static func _tidy(at: Transform3D, square: bool) -> Transform3D:
 	return Transform3D(basis, origin)
 
 
+## The parts of the model the last move or turn of the selection refused
+## for would have run into ([method _reposition]); empty when it was the
+## floor, or nothing was refused. What a turn with no room shows red
+## (EditVerbs.turn_by).
+var refused_by := PackedInt64Array()
+
+
 ## Put every selected brick where ``to`` says, as one step, or none of
 ## them if any would go through another brick or the floor.
 func _reposition(to: Callable, words: String = "", by_cells: Variant = null) -> int:
@@ -1060,6 +1074,7 @@ func _reposition(to: Callable, words: String = "", by_cells: Variant = null) -> 
 
 	var landing: Dictionary = {}
 	var blocked: bool = false
+	refused_by = PackedInt64Array()
 	for brick_id: int in alive:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		var to_here: Transform3D = to.call(brick.transform)
@@ -1079,6 +1094,7 @@ func _reposition(to: Callable, words: String = "", by_cells: Variant = null) -> 
 			n += 6
 		if blocked or lattice.collides_boxes(packed):
 			blocked = true
+			refused_by = _not_scenery(lattice.blockers_boxes(packed))
 			break
 		landing[brick_id] = {"at": to_here, "boxes": packed, "shifted": shifted}
 
@@ -1739,7 +1755,15 @@ func _put_carried() -> int:
 		words = "moved %s" % _many(ids.size())
 	_history.append({"undo": "group", "steps": steps, "words": words})
 	_redo.clear()
+	# A clone or a duplicate: another copy in hand for the next, as it
+	# was before anything was typed for this one, R's turn kept.
+	var again: Array = carrying.base_items() if carrying.repeats else []
+	var turned: int = carrying.turns
 	carrying.drop()
+	if not again.is_empty():
+		carrying.hold(again, false)
+		carrying.turns = turned
+		carrying.repeats = true
 	selection.clear()
 	for brick_id: int in ids:
 		selection[brick_id] = true
@@ -1750,6 +1774,10 @@ func _put_carried() -> int:
 
 ## Work out where the held part would go, given a ray from the camera.
 func update_preview(origin: Vector3, direction: Vector3) -> void:
+	# Kept where it is while a number is typed (TypedEntry).
+	if is_pinned():
+		return
+	var was: Vector3 = carrying.pivot() if is_carrying() else _ghost_transform.origin
 	_joint_site = null
 	if is_carrying():
 		_ghost.visible = false
@@ -1757,7 +1785,13 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 		_hide_figure_ghosts()
 		carrying.library = library
 		_hovered = carrying.aim(lattice, self, origin, direction)
+		_went(was, carrying.pivot())
 		return
+	_aim_single(origin, direction)
+	_went(was, _ghost_transform.origin)
+
+
+func _aim_single(origin: Vector3, direction: Vector3) -> void:
 	if not held_figure.is_empty():
 		_preview_figure(origin, direction)
 		return
@@ -3463,12 +3497,175 @@ func can_place() -> bool:
 
 
 func hide_preview() -> void:
+	unpin_hand()
 	_ghost.visible = false
 	_ghost_valid = false
 	_joint_site = null
 	_hide_figure_ghosts()
 	if carrying != null:
 		carrying.hide_ghost()
+
+
+# -- typed: what is in hand moved by a number -----------------------------
+
+
+## Which way the ghost last went, along one axis of the model (a unit
+## vector), or zero before it has gone anywhere: a number typed alone
+## moves what is in hand that way (TypedEntry), as SketchUp's typed
+## distance goes the way the move was going.
+var last_way: Vector3 = Vector3.ZERO
+
+
+## The ghost went from [param from] to [param to]: [member last_way] is the
+## axis it went furthest along, by at least a cell.
+func _went(from: Vector3, to: Vector3) -> void:
+	if not has_preview():
+		return
+	var by: Vector3 = to - from
+	var axis: int = by.abs().max_axis_index()
+	if absf(by[axis]) < BrickLattice.CELL - 0.01:
+		return
+	last_way = Vector3.ZERO
+	last_way[axis] = signf(by[axis])
+
+
+## The single part in hand, kept where its ghost stood when a number began
+## to be typed, the pointer no longer moving it, and what it turns about
+## there: the joint it is on, or the upright through its middle. Null when
+## nothing is typed. A group in hand keeps its own (Carry.pin).
+var _typed_from: Variant = null
+var _typed_point: Vector3 = Vector3.ZERO
+var _typed_axis: Vector3 = Vector3.UP
+
+
+## Keep what is in hand where its ghost stands now, for a number to move
+## it from there (TypedEntry). False when it stands nowhere, or is a
+## minifigure, which nothing typed moves.
+func pin_hand() -> bool:
+	if is_carrying():
+		return carrying.pin()
+	if not held_figure.is_empty() or not has_preview():
+		return false
+	_typed_from = _ghost_transform
+	if _joint_site != null:
+		_typed_point = _joint_site.at
+		_typed_axis = _joint_site.axis.normalized()
+	else:
+		var part: Lbm.PartMesh = library.mesh_for(held_part)
+		_typed_point = (_ghost_transform * part.bounds).abs().get_center() if part != null \
+			else _ghost_transform.origin
+		_typed_axis = Vector3.UP
+	return true
+
+
+func is_pinned() -> bool:
+	return _typed_from != null or (carrying != null and carrying.is_pinned())
+
+
+## Let go of the pin: the ghost follows the pointer again.
+func unpin_hand() -> void:
+	_typed_from = null
+	if carrying != null and carrying.is_pinned():
+		carrying.unpin()
+
+
+## What is in hand, kept where it was pinned, turned [param turn] degrees
+## about its joint or the upright, tilted [param tilt] degrees about the
+## level [param tilt_axis] through its middle (its bottom kept where it
+## was, as T keeps it), then moved [param move] LDU along the model's
+## axes: shown there, and whether it may go down there. One placement when
+## put down, as any is.
+func typed_hand(move: Vector3, turn: float, tilt: float, tilt_axis: Vector3) -> bool:
+	if not is_pinned():
+		return false
+	# A group turns about where R turns it, the upright through its pivot.
+	var point: Vector3 = _typed_point if _typed_from != null else carrying.pivot()
+	var axis: Vector3 = _typed_axis if _typed_from != null else Vector3.UP
+	var by := Transform3D.IDENTITY
+	if not is_zero_approx(turn):
+		by = _about(point, Basis(axis, deg_to_rad(turn))) * by
+	if not is_zero_approx(tilt):
+		var box: AABB = _box_after(by)
+		var tipped: Transform3D = _about(box.get_center(), Basis(tilt_axis.normalized(),
+			deg_to_rad(tilt))) * by
+		var lands: AABB = _box_after(tipped)
+		by = Transform3D(Basis.IDENTITY, Vector3(0.0, box.position.y - lands.position.y, 0.0)) \
+			* tipped
+	by = Transform3D(Basis.IDENTITY, move) * by
+	if is_carrying():
+		return carrying.show_moved(by, lattice, self)
+	var at: Transform3D = by * (_typed_from as Transform3D)
+	at = _tidy(Transform3D(at.basis.orthonormalized(), at.origin),
+		BrickLattice.is_square_to_grid(at.basis))
+	_ghost_transform = at
+	# Not typed down through the floor, unless it was held below it (on a
+	# joint under the model) when the number began.
+	_ghost_valid = room_for(held_part, at, false, true) \
+		and (not _below_ground(held_part, at) or _below_ground(held_part, _typed_from))
+	_seated_on = 0
+	var part: Lbm.PartMesh = library.mesh_for(held_part)
+	if part != null:
+		_show_ghost(part)
+	return _ghost_valid
+
+
+func _below_ground(part_id: String, at: Transform3D) -> bool:
+	var part: Lbm.PartMesh = library.mesh_for(part_id)
+	if part == null:
+		return false
+	var packed: PackedInt32Array = boxes_for(part, at)
+	var n: int = 1
+	while n < packed.size():
+		if packed[n] < GROUND_CELL:
+			return true
+		n += 6
+	return false
+
+
+static func _about(point: Vector3, turn: Basis) -> Transform3D:
+	return Transform3D(Basis.IDENTITY, point) * Transform3D(turn, Vector3.ZERO) \
+		* Transform3D(Basis.IDENTITY, -point)
+
+
+## The box round what is in hand where it was pinned, or an empty one.
+func pinned_box() -> AABB:
+	return _box_after(Transform3D.IDENTITY) if is_pinned() else AABB()
+
+
+## The box round what is in hand where it was pinned, moved by [param by].
+func _box_after(by: Transform3D) -> AABB:
+	if _typed_from == null:
+		return carrying.bounds_moved(by)
+	var mesh: Lbm.PartMesh = library.mesh_for(held_part)
+	if mesh == null:
+		return AABB(by * (_typed_from as Transform3D).origin, Vector3.ZERO)
+	return ((by * (_typed_from as Transform3D)) * mesh.bounds).abs()
+
+
+## What R and T have left in hand: the part's turn and face, its way and
+## turn on a joint, and a group's parts and quarter turns. EditVerbs keeps
+## it before R or T, so a number typed straight after takes their place
+## (a turn of 23.58 instead of R's step), as SketchUp's typed angle does.
+func hand_state() -> Dictionary:
+	return {"rotation": held_rotation, "face": held_face, "way": _joint_way,
+		"roll": _joint_roll, "extra": _joint_extra, "chosen": _joint_chosen,
+		"items": carrying.items.duplicate(true) if is_carrying() else [],
+		"turns": carrying.turns if is_carrying() else 0}
+
+
+func set_hand_state(state: Dictionary) -> void:
+	held_rotation = int(state.get("rotation", held_rotation))
+	held_face = str(state.get("face", held_face))
+	_joint_way = int(state.get("way", _joint_way))
+	_joint_roll = int(state.get("roll", _joint_roll))
+	_joint_extra = float(state.get("extra", _joint_extra))
+	_joint_chosen = bool(state.get("chosen", _joint_chosen))
+	var items: Array = state.get("items", [])
+	if is_carrying() and not items.is_empty():
+		var keep: bool = carrying.repeats
+		carrying.hold(items, carrying.lifted)
+		carrying.repeats = keep
+		carrying.turns = int(state.get("turns", 0))
 
 
 # -- a minifigure, as one thing ------------------------------------------

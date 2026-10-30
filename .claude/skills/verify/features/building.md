@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe -->
 
 ## Sub-features
 
@@ -129,7 +129,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `copy paste and duplicate` (`src/assembly/carry.gd`): `Ctrl-C` copies the
   selection, `Ctrl-V` holds a copy as one ghost, `Ctrl-D` holds a copy of the
   selection without touching the clipboard, `Ctrl-X` cuts. A click puts it down
-  as one step and selects it; `R` turns it; `Esc` puts it away. The group's frame
+  as one step and selects it; `R` turns it; `Esc` puts it away. After `Ctrl-D`
+  or a click with the Clone tool another copy stays in hand (`Carry.repeats`,
+  APP_UX A6), as Studio's Clone does, until `Esc`, a right click or another
+  tool; a paste and a `Ctrl`-drag copy go once (`typed_moves_probe -- only=clones`:
+  five copies in six actions, one undo each). The group's frame
   is a stud centre or corner at its bottom, so whole-stud moves and quarter turns
   keep every part on the studs; it drops onto whatever is highest under any of
   its parts, and a side face pushes it out until its edge meets the face. Copy
@@ -138,7 +142,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `move and turn a selection`: `X` with a selection picks it up to follow the
   pointer; a click puts it down (lifting and putting down are one undo); `Esc`
   puts it back. `R` / `Shift-R` turn a selection where it stands, about the
-  same point each time, so four turns come back exactly. Half round (the
+  same point each time, so four turns come back exactly. Where a turn (`R`, `T`,
+  the Rotate tool) has no room, the parts in the way are tinted red (amber on a red part) for a second
+  (`Builder.refused_by`, `EditVerbs._flash`) and the selection comes into hand
+  already turned (`Carry.reshape`): a click puts it down where it fits, lifting
+  and putting down one undo, and `Esc` puts it back as it was (APP_UX A3;
+  `typed_moves_probe -- only=wall`: the walk's brick down at 15 degrees in R, an
+  aim and a click). Half round (the
   properties panel's Turn of 180) goes round the middle on a half stud each
   way and lands on its own footprint, as Mirror does (`mirror_probe`).
 - `select by colour part or connection` (`src/assembly/select_by.gd`): the
@@ -1721,6 +1731,37 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   Technic hole's (`JointSnap.ends_of`, `COUNTERBORE`). Probe: `placing_probe
   -- only=balance`; in a browser, `placing_flow.mjs --only=balance` opens the
   set's file up to its plates and puts both through the interface.
+- `type a number while moving` (`src/ui/typed_entry.gd`, `EditVerbs._begin_typing`,
+  `Builder.pin_hand` / `typed_hand`, `Carry.pin` / `show_moved`, APP_UX B1):
+  with a part or a copy in hand (its ghost aimed), or straight after `R` or `T`,
+  a digit, `.` or `-` opens a field at the pointer. What is in hand stays where
+  its ghost stood; the text is read whole after every key (`TypedEntry.parse`:
+  `3x`, `-2z`, `2py`, `-14ly`, `5mm x`, `23.58r`, `30t`, `40/2+1lx`, `2x-1py`; a
+  stud the unit, a number alone along `Builder.last_way`, or after `R`/`T` a turn
+  or tilt taking their step's place) and shown in hand, red where `room_for` (a
+  part) or the lattice (a group) refuses. `Enter` puts it down through `place()`,
+  one undo; `Esc` leaves it as before typing. On the model, straight after `R`/`T`
+  turned a selection, the turn is undone and the selection lifted where it stood
+  to type its turn instead. The field reads only the keys' characters
+  (`InputEventKey.unicode`, the keypad's codes), as a browser sends them. While it
+  is open it takes every key, so a digit is not a view key then; with nothing in
+  hand the digits are views as before. `R` or `T` stays "just pressed" until the
+  pointer moves 6 px from where it was pressed (`EditVerbs._input`): a number
+  after aiming again moves the part as `R` left it. The field opens under the
+  ghost's screen box (`TypedEntry.clear_of`), not on it. Probe: `typed_moves_probe`
+  (headers its command; sections reading, clones, wall, typed, sets; `only=` takes
+  several, comma-separated). In a browser: `tools/web/typed_flow.mjs` against a
+  local export (`tools/export.sh web`, then `tools/web/serve.py build/web PORT
+  --parts assets/generated/parts --delay 0`): Q, "3x", Enter, Ctrl-Z, "-1py", Esc,
+  read through `window.brickworksState` and `brickworksWords`.
+- `typed moves probe` (`src/dev/typed_moves_probe.gd`): windowed 1400x900, about
+  four minutes. `sets` opens each set's file for the truth, puts the parts before
+  the one typed (found by its line among the file's parts: the runs typed their
+  places in a model lifted on the floor), takes it into hand, aims, turns it with
+  `R`/`T` to the nearest quarter only if the ghost is not turned as it goes,
+  aims again and types the difference; its rows go to `shots/typed/sets.json`
+  with the actions counted (point, click, key, a typed number one; characters
+  beside). Each section starts on an empty floor.
 - `typed place and hinge` (`src/ui/inspector.gd`, `Builder.move_selection_by`,
   `Builder.hinge_angle`, 2026-10-17): Properties' X, Y and Z move the
   selection by exactly the difference typed, to the hundredth of an LDU
