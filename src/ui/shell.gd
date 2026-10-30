@@ -109,10 +109,10 @@ const ALT := KEY_MASK_ALT
 ## any of them by name.
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", ">recent", ">import", "-", "save", "save_as",
-		"versions", "compare", "-", "share", "together", ">export", "render", "-", "clear", "quit"]],
+		"versions", "compare", "-", "share", "together", "comments", ">export", "render", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
-		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror", "comments"]],
+		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
@@ -120,7 +120,7 @@ const MENUS: Array = [
 		"turn_left",
 		"turn_right", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
-		"full_screen"]],
+		"split_view", "full_screen"]],
 	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list", "-",
 		"collection", "collection_need", "collection_build", "-", "make_submodel",
 		"leave_submodel", "enter_assembly", "leave_assembly", "rename_assembly", "make_unique", "-",
@@ -561,6 +561,7 @@ func work_size(name: String) -> int:
 
 ## The commands whose work grows with the selection rather than the model.
 const ON_THE_SELECTION: Array[String] = ["mirror", "replace", "duplicate", "pattern", "paint",
+	"split_parts", "merge_parts",
 	"cut_parts", "copy", "delete", "hide", "isolate", "lock", "make_submodel",
 	"leave_submodel", "make_unique", "rotate_held", "tip_held"]
 
@@ -608,6 +609,7 @@ const STEPPED_SLOW_FROM := 2000
 ## baseplate.
 const SLOW_FROM: Dictionary = {
 	"mirror": 200, "replace": 200, "duplicate": 300, "pattern": 300, "paste": 300,
+	"split_parts": 300, "merge_parts": 300,
 	"cut_parts": 600,
 	"paint": 600, "hide": 3000, "isolate": 3000, "leave_submodel": 2000,
 	"make_unique": 2000,
@@ -662,6 +664,7 @@ const DOING: Dictionary = {
 	"hide": "Hiding…", "isolate": "Showing only the selection…", "show_all": "Showing everything…",
 	"lock": "Locking…", "unlock": "Unlocking…", "paint": "Painting…",
 	"replace": "Replacing…", "mirror": "Mirroring…",
+	"split_parts": "Splitting…", "merge_parts": "Merging…",
 	"make_submodel": "Making a sub-assembly…", "leave_submodel": "Ungrouping…",
 	"make_unique": "Making the copy unique…",
 	"timeline": "Opening the timeline…", "parts_list": "Listing the parts…",
@@ -759,6 +762,7 @@ const NEEDS: Dictionary = {
 	"put_back": "No section is broken out",
 	"xray": "Select a part first", "cut_flip": "Turn on Cut away first",
 	"stress": "Put a part on the baseplate first",
+	"split_view": "The window is too small for two views",
 	"compare": "Save the model first: each save is kept to compare with",
 	"reshape_flex": "Select a hose or chain",
 	"floor_part": "Stand the model on a baseplate first",
@@ -1003,6 +1007,13 @@ func _define() -> void:
 		"Swap the part for one of the prints or stickered versions the LEGO Group made of it")
 	_add("mirror", "Mirror", SHIFT | KEY_M, func() -> void: verbs.mirror(), selected,
 		"Make the selection its mirror image, left to right as you see it")
+	# src/assembly/split_merge.gd: Studio's Split and Merge, on its keys.
+	_add("split_parts", "Split into smaller parts", ALT | KEY_S,
+		func() -> void: SplitMerge.split(verbs), selected,
+		"Plates, bricks and tiles into 1 x 1s, a 1 x 1 brick into three plates, slopes into 1-wide slopes, on the same studs")
+	_add("merge_parts", "Merge into bigger parts", ALT | KEY_M,
+		func() -> void: SplitMerge.merge(verbs), selected,
+		"The selected plates, bricks and tiles of a colour into the fewest real parts made in it: three plates high a brick")
 	# J, which had no command: on the menu on a part, and found by name.
 	_add("swing", "Swing on its hinge", KEY_J, func() -> void: verbs.swing(EditVerbs.SWING),
 		func() -> bool: return builder.hinge_angle() != null,
@@ -1159,6 +1170,19 @@ func _define() -> void:
 		"What it is, its colour by every name, where it stands and what it is joined to")
 	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown()))
 	_ticked("panel_keys", key_strip_shown)
+	# A straight-on view beside the model (SplitView). F8: LDCad's Space,
+	# which swaps its split for one large view, is the app's to slide the
+	# view and play the timeline, and F8 is no preset's.
+	_add("split_view", "Split", KEY_F8, func() -> void:
+		var split: SplitView = app.get("_split")
+		split.set_on(not split.is_showing()),
+		func() -> bool:
+			var split: SplitView = app.get("_split")
+			return split != null and (split.is_showing() or split.fits()),
+		"A second view beside the model, square on from the front, top, side or back")
+	_ticked("split_view", func() -> bool:
+		var split: SplitView = app.get("_split")
+		return split != null and split.is_showing())
 	_add("full_screen", "Full screen", KEY_F11, _toggle_full_screen)
 	_ticked("full_screen", func() -> bool:
 		return DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN \
@@ -1337,6 +1361,7 @@ func _define() -> void:
 ## their keys, among what selects, hides, copies and changes the part.
 const ON_A_PART: Array = ["ask_claude", "brace", "comments", "-", "select_connected", "select_part",
 	"select_colour", "-", "hide", "isolate", "-", "copy", "duplicate", "delete", "-", "paint",
+	"split_parts", "merge_parts",
 	"replace", "printed_versions", "swing", "-", "step_prev", "step_next", "make_submodel", "-",
 	"show_properties"]
 
@@ -2107,6 +2132,9 @@ func handle_key(key: InputEventKey) -> bool:
 		KEY_F11:
 			run("full_screen")
 			return true
+		KEY_F8:
+			if not held and not key.shift_pressed and not key.alt_pressed:
+				return run("split_view")
 		KEY_F1:
 			run("keys")
 			return true
@@ -2168,6 +2196,10 @@ func handle_key(key: InputEventKey) -> bool:
 			# laid out at once.
 			if held and key.shift_pressed and not key.alt_pressed:
 				return run("pattern")
+		# Studio's Alt+S and Alt+M (SplitMerge).
+		KEY_S, KEY_M:
+			if key.alt_pressed and not held and not key.shift_pressed:
+				return run("split_parts" if key.keycode == KEY_S else "merge_parts")
 	return false
 
 

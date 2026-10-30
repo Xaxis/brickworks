@@ -2561,9 +2561,9 @@ func _right_click_a_part() -> void:
 		menu != null and menu.visible)
 	_check("...on that part, selected", _builder.selection.keys() == [blue])
 	_check("...with the verbs a person reaches for", ", ".join(words).begins_with(
-		"Ask Claude about this…, Select everything joined to it, Select the same part, "
-		+ "Select the same colour, Hide, Show only the selection, Copy, Duplicate, Delete, "
-		+ "Paint with")
+		"Ask Claude about this…, Comment on it…, Select everything joined to it, "
+		+ "Select the same part, Select the same colour, Hide, Show only the selection, Copy, "
+		+ "Duplicate, Delete, Paint with")
 		and words.has("Copy") and words.has("Delete") and words.has("Make a sub-assembly…")
 		and words.has("Properties"))
 	await _shot("first_timer_part_menu")

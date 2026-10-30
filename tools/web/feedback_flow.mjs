@@ -154,13 +154,19 @@ const dialogSaid = (page) => page.evaluate(() => {
 });
 
 /// Send what is filled in, and wait for the answer: sent, or said why not.
+// Sent once the status line says something new: before the press it holds
+// the dialog's own words, which a loaded page can still show when the wait
+// begins, and the check read those as the answer (rel-m224, 2026-10-30).
 async function sendIt(page) {
+  const statusNow = () => page.evaluate(() => [...document.querySelectorAll("dialog.feedback")]
+    .find((d) => d.open)?.querySelector('[role="status"]')?.textContent || "");
+  const before = await statusNow();
   await page.locator("dialog.feedback[open] button[type=submit]").click();
-  await until(page, () => {
+  await until(page, (was) => {
     const dialog = [...document.querySelectorAll("dialog.feedback")].find((d) => d.open);
     const status = dialog?.querySelector('[role="status"]')?.textContent || "";
-    return !dialog || dialog.dataset.sent || (status && status !== "Sending…");
-  }, null, 60000);
+    return !dialog || dialog.dataset.sent || (status && status !== was && status !== "Sending…");
+  }, before, 60000);
   return dialogSaid(page);
 }
 
@@ -254,7 +260,10 @@ try {
     const said = await sendIt(page);
     if (applied) {
       sentIds.visitor = Number(said?.sent);
-      check(`sent, and thanked with how we answer: "${said?.said}"`, sentIds.visitor > 0 && /answer by email/.test(said.said)
+      // A signed-out report is capped at three an hour for one inbox, and
+      // every run on this box sends from the same test inbox: a fourth in
+      // the hour is refused, as it should be, and says so here.
+      check(`sent, and thanked with how we answer: "${said?.said}"${said?.status ? ` (the dialog said: "${said.status}")` : ""}`, sentIds.visitor > 0 && /answer by email/.test(said.said)
         && !said.reports);
     } else {
       check(`said, in words, that it is not open yet: "${said?.status}"`, said?.status === NOT_YET && !said.sent);
@@ -352,8 +361,14 @@ try {
     // In the app's menu, the mark's at the menu bar's far left.
     const markUp = await until(page, () => Boolean((window.brickworksControls || {}).app_menu), null, 120000);
     if (check("the app's menu is on the page", markUp)) {
+      // Typed only once the menu is open: on a loaded page the click is
+      // answered late, and "Send" typed before went to the model (rel-m224).
+      const menuOpen = () => until(page, () => (window.brickworksState?.app_menu || []).length > 0, null, 20000);
       await press("app_menu");
-      await page.waitForTimeout(1200);
+      if (!(await menuOpen())) {
+        await press("app_menu");
+        await menuOpen();
+      }
       await page.keyboard.type("Send", { delay: 120 });
       await page.waitForTimeout(600);
       await page.keyboard.press("Enter");

@@ -33,11 +33,11 @@ Open the link, or paste it in **File › Build together…** and press **Join**.
 - **Undo takes back only your own changes**, never someone else's.
 - **Follow** beside a name in **File › Build together…** puts your view where theirs is, and keeps it there as they turn it. Move the view yourself, or press **Stop**, to stop.
 - A short chat is there for people 13 and over.
-- A reload goes back into the session by itself, and sends what you had just changed. Leaving ends nothing for the others, even if you started the session.
+- A reload goes back into the session by itself, and sends what you had just changed. So does closing the tab or quitting the app: what you had just changed is sent as it closes, or, if it could not be, the next time you open Brickworks. Leaving ends nothing for the others, even if you started the session.
 
 ## Comments on parts {#comments}
 
-Select a part, then **Edit › Comments…** (or right-click the part, **Comment on it…**), write, and press **Pin**. A numbered dot in your colour stands over the part and moves with it. Press it to read the comment, and **Resolve** when it is done with; **Ctrl+Z** brings it back. **Edit › Comments…** lists them all, with resolved ones under **Show resolved**.
+Select a part, then **File › Comments…** (or right-click the part, **Comment on it…**), write, and press **Pin**. A numbered dot in your colour stands over the part and moves with it. Press it to read the comment, and **Resolve** when it is done with; **Ctrl+Z** brings it back. **File › Comments…** lists them all, with resolved ones under **Show resolved**.
 
 Comments are kept in the model's file, so saving, opening and sharing by link keep them. A shared link's page does not show them. In a session everyone 13 and over sees them as they are pinned.
 

@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
 
 ## Sub-features
 
@@ -60,6 +60,47 @@ picture the assistant is shown.
   sees it or after, drawing: the same step (`src/dev/slow_frames_probe.gd`). Each is published to the
   page (`cube_turn_left` …, `cube_pan`, `cube_zoom_in`, `cube_fit`, and
   `cube_<face>` for the faces in view). `gizmo_probe` clicks each.
+- `split view` (`SplitView`, `src/ui/split_view.gd`; APP_UX B9): View ›
+  Split (F8 in every preset; LDCad's Space is one of Keymap's FIXED keys, so
+  no preset takes it) puts a second, orthographic view beside the model, from
+  the front, top, side or back (the buttons at its top; Fit frames the model
+  in it; `×` closes). Its SubViewport shares the window's World3D and draws
+  only while shown. Until it is zoomed or slid its camera follows the main
+  view's focus and zoom, so a part in hand is drawn in both at one scale;
+  after that its zoom and its offset from the main view's focus are its own,
+  kept per device (ShellPrefs `split_zoom`, `split_pan`) and re-anchored
+  when the main view frames (`CadCamera.framed`). It is a column of `layout`
+  after the model's own, so its width comes out of the model's: the bin and
+  the right column keep theirs, the main view's `seen` rect is the rest, and
+  `model_cover()` covers both views, less its header. Everything made from
+  the screen goes through the view the point is over: `CadCamera.second`,
+  `view_at(at)` (MAIN or SECOND), `ray_origin`/`ray_normal(at, view)`,
+  `screen_of`/`behind`/`eye_of(point, view)`. A drag keeps the view it began
+  in (the handles' `drag["view"]`, GrabDrag `_view`, Main `_box_view`). The
+  wheel, a pinch and two fingers over it zoom or slide it; a drag that would
+  turn or slide the main view slides it; a right drag over it does nothing
+  (it is square on and cannot turn). The handles and Connect's points are
+  drawn in both views (`ViewOverlays`, a CanvasLayer with one clipped canvas
+  per view); the pivot mark is on `SplitView.MAIN_ONLY` (render layer 19) and
+  the view cube stays in the main view. Off out of the box, kept per device
+  (ShellPrefs `split`, `split_side`); greyed with "The window is too small
+  for two views" where the model's column cannot give each view 320 points
+  (`Room`, not units: a phone at 3x lays 900 units across 390 points), on a
+  phone (short side under `Phone.NARROW`) and on a touch tablet held
+  upright. fit_check with F8 pressed showed the split on both its phones
+  until it was counted in points. Published to the page as
+  `brickworksState.split`, `brickworksLayout.split`, and the controls
+  `split_front` … `split_fit`, `split_close`. `split_probe` (1280x720 and
+  1400x900) puts an 87087 on a side stud of a 2 x 2 from the main view and
+  from the second one, counting the actions (the second takes no more),
+  checks the columns' widths, the narrow window's grey, the sides, then in
+  the second view: a wheel (the main camera's `aim()` unchanged), left and
+  middle drags (slide), a right drag (nothing), the kept zoom read by a fresh
+  SplitView, Fit, a Ctrl box, Connect picking a 3L pin's point drawn only
+  there, and the Rotate tool's y ring dragged a quarter round there; then the
+  overlays and that an idle split draws nothing. `-- unrouted` takes
+  `CadCamera.second` away and must fail; so must the probe run on efcc83b1,
+  before the second view was its own.
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
   is what everything frames against, baseplate excluded. View > Default view
   (0, `Main.default_view`) turns to the usual angle and frames what is built,

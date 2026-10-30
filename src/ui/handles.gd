@@ -114,7 +114,9 @@ var _part_axes := Basis.IDENTITY
 var _box := AABB()
 var _pivot_is: String = ""
 var _drawn: Array = []
-var _overlay: Control
+## Drawn over the main view, and over the second one beside it while View,
+## Split shows it: taken and dragged in the view the press was in.
+var _overlays: ViewOverlays
 
 
 func _ready() -> void:
@@ -122,18 +124,12 @@ func _ready() -> void:
 		_seen += 1
 		_picked = null
 		_after = {})
-	var layer := CanvasLayer.new()
-	layer.name = "Handles"
 	# Over the model, under the menus and dialogs, as Connect's points.
-	layer.layer = 2
-	add_child(layer)
-	_overlay = Control.new()
-	_overlay.name = "HandlesDrawn"
-	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_overlay.visible = false
-	_overlay.draw.connect(_draw_handles)
-	layer.add_child(_overlay)
+	_overlays = ViewOverlays.new()
+	_overlays.name = "Handles"
+	_overlays.camera = camera
+	_overlays.draw_in = _draw_handles
+	add_child(_overlays)
 
 
 ## Whether the handles are on the selection now: the Move or Rotate tool,
@@ -204,11 +200,12 @@ func pick_pivot(at: Vector2) -> bool:
 	var brick: BrickWorld.Brick = world.get_brick(hit.brick_id)
 	if brick != null:
 		var best: float = PICK * 1.5 * _scale()
+		var view: int = camera.view_at(at)
 		for end: JointSnap.End in JointSnap.ends_for(library, brick.part_id):
 			var middle: Vector3 = end.placed(brick.transform, 0).middle()
-			if camera.is_position_behind(middle):
+			if camera.behind(middle, view):
 				continue
-			var off: float = camera.unproject_position(middle).distance_to(at)
+			var off: float = camera.screen_of(middle, view).distance_to(at)
 			if off < best:
 				best = off
 				_picked = middle
@@ -227,15 +224,16 @@ func _scale() -> float:
 		else 1.0
 
 
-## A ring's radius on the screen now, px: round the selection as it is drawn,
-## between [constant RADIUS] and [constant LARGEST], and kept while dragged.
-func _radius() -> float:
+## A ring's radius on the screen now in [param view], px: round the
+## selection as it is drawn there, between [constant RADIUS] and [constant
+## LARGEST], and kept while dragged.
+func _radius(view: int = CadCamera.MAIN) -> float:
 	if not drag.is_empty():
 		return drag["radius"]
 	var frame_now: int = Engine.get_process_frames()
-	if frame_now == _radius_frame:
-		return _radius_now
-	_radius_frame = frame_now
+	if frame_now == _radius_frame[view]:
+		return _radius_now[view]
+	_radius_frame[view] = frame_now
 	_known()
 	var scale: float = _scale()
 	var reach: float = 0.0
@@ -243,18 +241,18 @@ func _radius() -> float:
 		var shown := Rect2()
 		for n: int in 8:
 			var corner: Vector3 = _box.get_endpoint(n)
-			if camera.is_position_behind(corner):
+			if camera.behind(corner, view):
 				shown = Rect2()
 				break
-			var at: Vector2 = camera.unproject_position(corner)
+			var at: Vector2 = camera.screen_of(corner, view)
 			shown = Rect2(at, Vector2.ZERO) if n == 0 else shown.expand(at)
 		reach = shown.size.length() * 0.3
-	_radius_now = clampf(reach, RADIUS * scale, LARGEST * scale)
-	return _radius_now
+	_radius_now[view] = clampf(reach, RADIUS * scale, LARGEST * scale)
+	return _radius_now[view]
 
 
-var _radius_now: float = RADIUS
-var _radius_frame: int = -1
+var _radius_now: Array[float] = [RADIUS, RADIUS]
+var _radius_frame: Array[int] = [-1, -1]
 
 
 ## The pivot, and the first part's axes, worked out when the selection or the
@@ -301,10 +299,10 @@ func _known() -> void:
 		_pivot_is = "middle"
 
 
-## How many pixels an LDU at [param at] is across the screen.
-func _px_per_ldu(at: Vector3) -> float:
-	var right: Vector3 = camera.global_transform.basis.x
-	return camera.unproject_position(at).distance_to(camera.unproject_position(at + right))
+## How many pixels an LDU at [param at] is across [param view].
+func _px_per_ldu(at: Vector3, view: int = CadCamera.MAIN) -> float:
+	var right: Vector3 = camera.eye_basis(view).x
+	return camera.screen_of(at, view).distance_to(camera.screen_of(at + right, view))
 
 
 ## Two directions square to [param axis] and to each other, the plane a ring
@@ -315,21 +313,23 @@ static func _plane_of(axis: Vector3) -> Array:
 	return [u, axis.cross(u).normalized()]
 
 
-## Every handle as it stands on the screen now: {kind, axis, way, points
-## (a ring's SEGMENTS + 1, an arrow's start and tip), front (a ring's: each
-## point on the near half)}. Empty when the pivot is behind the view.
-func screen_handles() -> Array:
+## Every handle as it stands on the screen now in [param view] (the main
+## one, or CadCamera.SECOND beside it): {kind, axis, way, points (a ring's
+## SEGMENTS + 1, an arrow's start and tip), front (a ring's: each point on
+## the near half)}. Empty when the pivot is behind the view.
+func screen_handles(view: int = CadCamera.MAIN) -> Array:
 	var out: Array = []
 	var at: Vector3 = _drawn_at()
-	if camera == null or camera.is_position_behind(at):
+	if camera == null or camera.behind(at, view):
 		return out
-	var middle: Vector2 = camera.unproject_position(at)
-	var per: float = _px_per_ldu(at)
+	var middle: Vector2 = camera.screen_of(at, view)
+	var per: float = _px_per_ldu(at, view)
 	if per < 0.0001:
 		return out
-	var reach: float = _radius() / per
+	var radius: float = _radius(view)
+	var reach: float = radius / per
 	var basis: Basis = axes()
-	var toward: Vector3 = camera.global_transform.basis.z
+	var toward: Vector3 = camera.eye_basis(view).z
 	var ring: bool = (drag.get("kind", "") == "ring") if not drag.is_empty() \
 		else verbs.mode == "rotate"
 	for n: int in 3:
@@ -342,23 +342,23 @@ func screen_handles() -> Array:
 				var t: float = TAU * k / SEGMENTS
 				var p: Vector3 = at + ((plane[0] as Vector3) * cos(t) + (plane[1] as Vector3) * sin(t)) \
 					* reach
-				if camera.is_position_behind(p):
+				if camera.behind(p, view):
 					points = PackedVector2Array()
 					break
-				points.append(camera.unproject_position(p))
+				points.append(camera.screen_of(p, view))
 				front.append((p - at).dot(toward) >= -0.02 * reach)
 			if not points.is_empty():
 				out.append({"kind": "ring", "axis": n, "way": way, "points": points,
 					"front": front, "middle": middle})
 		else:
 			var tip3: Vector3 = at + way * reach * 1.25
-			if camera.is_position_behind(tip3):
+			if camera.behind(tip3, view):
 				continue
-			var tip: Vector2 = camera.unproject_position(tip3)
+			var tip: Vector2 = camera.screen_of(tip3, view)
 			var length: float = tip.distance_to(middle)
 			# An axis that points at the eye has no length on the screen to
 			# drag along.
-			if length < _radius() * 0.3:
+			if length < radius * 0.3:
 				continue
 			var from: Vector2 = middle + (tip - middle) / length * 10.0 * _scale()
 			out.append({"kind": "arrow", "axis": n, "way": way,
@@ -376,20 +376,24 @@ func _drawn_at() -> Vector3:
 
 ## The tag that says whose axes these are, which a click goes to the next,
 ## and while dragging how far it has gone: its box on the screen.
-func _tag_box(said: String = "") -> Rect2:
+func _tag_box(said: String = "", view: int = CadCamera.MAIN) -> Rect2:
 	var at: Vector3 = _drawn_at()
-	if camera == null or camera.is_position_behind(at) or _overlay == null:
+	if camera == null or camera.behind(at, view) or _overlays == null:
 		return Rect2()
-	var middle: Vector2 = camera.unproject_position(at)
-	var font: Font = _overlay.get_theme_default_font()
+	var middle: Vector2 = camera.screen_of(at, view)
+	var font: Font = _overlays.font()
 	var size: int = roundi(12 * _scale())
 	var words: Vector2 = font.get_string_size(FRAME_WORDS[frame] if said.is_empty() else said,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, size)
-	var box := Rect2(middle + Vector2(_radius() * 1.05, -_radius() * 1.25),
+	var radius: float = _radius(view)
+	var box := Rect2(middle + Vector2(radius * 1.05, -radius * 1.25),
 		words + Vector2(14, 8) * _scale())
-	var room: Vector2 = _overlay.get_rect().size
-	box.position.x = clampf(box.position.x, 4.0, maxf(room.x - box.size.x - 4.0, 4.0))
-	box.position.y = clampf(box.position.y, 4.0, maxf(room.y - box.size.y - 4.0, 4.0))
+	# Inside its own view.
+	var room: Rect2 = _overlays.rect(view)
+	box.position.x = clampf(box.position.x, room.position.x + 4.0,
+		maxf(room.end.x - box.size.x - 4.0, room.position.x + 4.0))
+	box.position.y = clampf(box.position.y, room.position.y + 4.0,
+		maxf(room.end.y - box.size.y - 4.0, room.position.y + 4.0))
 	return box
 
 
@@ -398,11 +402,13 @@ func _tag_box(said: String = "") -> Rect2:
 func handle_at(at: Vector2) -> Dictionary:
 	if not shown():
 		return {}
-	if _tag_box().has_point(at):
+	# The view the pointer is over: its handles, as it draws them.
+	var view: int = camera.view_at(at)
+	if _tag_box("", view).has_point(at):
 		return {"kind": "frame"}
 	var best: Dictionary = {}
 	var best_off: float = PICK * _scale()
-	for handle: Dictionary in screen_handles():
+	for handle: Dictionary in screen_handles(view):
 		var points: PackedVector2Array = handle["points"]
 		for k: int in points.size() - 1:
 			var near: Vector2 = Geometry2D.get_closest_point_to_segment(at, points[k], points[k + 1])
@@ -413,7 +419,7 @@ func handle_at(at: Vector2) -> Dictionary:
 			if off < best_off:
 				best_off = off
 				best = {"kind": handle["kind"], "axis": handle["axis"], "way": handle["way"],
-					"at": near, "segment": k}
+					"at": near, "segment": k, "view": view}
 	return best
 
 
@@ -423,30 +429,36 @@ func _process(_delta: float) -> void:
 			cancel()
 		_press = {}
 		lit = {}
-		if _overlay != null and _overlay.visible:
-			_overlay.visible = false
+		if _overlays != null and _overlays.is_shown():
+			_overlays.show_drawn(false)
 			_drawn = []
 		return
 	if not drag.is_empty():
 		_sweep()
 	# Drawn again only when something it shows changed: a frame drawn for
 	# nothing is a frame the app need not have drawn (IdleDraw).
-	var now: Array = [camera.global_transform, _overlay.get_rect().size, pivot(), axes(), lit,
-		drag.get("value"), drag.get("want"), drag.get("kind"), frame, verbs.mode, _picked,
-		drag.get("typing"), drag.get("pointer")]
-	if now != _drawn or not _overlay.visible:
+	_overlays.camera = camera
+	var second: Array = camera.second.pose() if camera.second != null \
+		and camera.second.is_showing() else []
+	var now: Array = [camera.global_transform, _overlays.rect(CadCamera.MAIN),
+		_overlays.rect(CadCamera.SECOND), second, pivot(), axes(), lit, drag.get("value"),
+		drag.get("want"), drag.get("kind"), frame, verbs.mode, _picked, drag.get("typing"),
+		drag.get("pointer")]
+	if now != _drawn or not _overlays.is_shown():
 		_drawn = now
-		_overlay.visible = true
-		_overlay.queue_redraw()
+		_overlays.show_drawn(true)
 
 
-func _draw_handles() -> void:
+## The handles as [param view] shows them, drawn on [param canvas] in the
+## window's units (ViewOverlays).
+func _draw_handles(canvas: Control, view: int) -> void:
 	if not shown():
 		return
 	var scale: float = _scale()
-	var handles: Array = screen_handles()
+	var handles: Array = screen_handles(view)
 	if handles.is_empty():
 		return
+	var radius: float = _radius(view)
 	var middle: Vector2 = handles[0]["middle"]
 	var dragged: int = int(drag.get("axis", -1))
 	for handle: Dictionary in handles:
@@ -460,10 +472,10 @@ func _draw_handles() -> void:
 			var runs: Array = _runs(points, handle["front"])
 			for run: Array in runs:
 				if run[1]:
-					_overlay.draw_polyline(run[0], EDGE, (5.0 if on else 4.0) * scale, true)
+					canvas.draw_polyline(run[0], EDGE, (5.0 if on else 4.0) * scale, true)
 			for run: Array in runs:
 				var near: bool = run[1]
-				_overlay.draw_polyline(run[0], colour if near else Color(colour, 0.35),
+				canvas.draw_polyline(run[0], colour if near else Color(colour, 0.35),
 					((3.0 if on else 2.2) if near else 1.2) * scale, true)
 		else:
 			var from: Vector2 = points[0]
@@ -471,48 +483,48 @@ func _draw_handles() -> void:
 			var along: Vector2 = (tip - from).normalized()
 			var side: Vector2 = along.orthogonal() * 5.5 * scale
 			var back: Vector2 = tip - along * 13.0 * scale
-			_overlay.draw_line(from, back, EDGE, (5.0 if on else 4.5) * scale, true)
-			_overlay.draw_line(from, back, colour, (3.0 if on else 2.4) * scale, true)
+			canvas.draw_line(from, back, EDGE, (5.0 if on else 4.5) * scale, true)
+			canvas.draw_line(from, back, colour, (3.0 if on else 2.4) * scale, true)
 			var head := PackedVector2Array([tip + along * scale, back + side * 1.25,
 				back - side * 1.25])
-			_overlay.draw_colored_polygon(head, EDGE)
-			_overlay.draw_colored_polygon(PackedVector2Array([tip, back + side, back - side]),
+			canvas.draw_colored_polygon(head, EDGE)
+			canvas.draw_colored_polygon(PackedVector2Array([tip, back + side, back - side]),
 				colour)
 	# The pivot: white, or amber where it was picked.
-	_overlay.draw_circle(middle, 4.5 * scale, EDGE)
-	_overlay.draw_circle(middle, 3.0 * scale, LIT if _picked != null else Color.WHITE)
-	var font: Font = _overlay.get_theme_default_font()
+	canvas.draw_circle(middle, 4.5 * scale, EDGE)
+	canvas.draw_circle(middle, 3.0 * scale, LIT if _picked != null else Color.WHITE)
+	var font: Font = canvas.get_theme_default_font()
 	var size: int = roundi(12 * scale)
 	if drag.is_empty():
-		var box: Rect2 = _tag_box()
+		var box: Rect2 = _tag_box("", view)
 		var face := StyleBoxFlat.new()
 		face.bg_color = Look.FACE
 		face.border_color = LIT if lit.get("kind") == "frame" else Look.EDGE
 		face.set_border_width_all(1)
 		face.set_corner_radius_all(4)
-		_overlay.draw_style_box(face, box)
-		_overlay.draw_string(font, box.position + Vector2(7.0 * scale, box.size.y - 6.0 * scale),
+		canvas.draw_style_box(face, box)
+		canvas.draw_string(font, box.position + Vector2(7.0 * scale, box.size.y - 6.0 * scale),
 			FRAME_WORDS[frame], HORIZONTAL_ALIGNMENT_LEFT, -1, size, Look.ROW_WORDS)
 		return
 	# Dragging: where a ring gets finer, and how far it has gone.
 	if drag["kind"] == "ring":
 		for zone: int in [1, 2]:
-			_overlay.draw_arc(middle, _radius() * ZONES[zone], 0.0, TAU, 72,
+			canvas.draw_arc(middle, radius * ZONES[zone], 0.0, TAU, 72,
 				Color(1, 1, 1, 0.22), 1.0 * scale, true)
-			_overlay.draw_string(font, middle + Vector2(4.0, -_radius() * ZONES[zone] - 3.0) * scale,
+			canvas.draw_string(font, middle + Vector2(4.0, -radius * ZONES[zone] - 3.0) * scale,
 				"5°" if zone == 1 else "1°", HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(11 * scale),
 				Color(1, 1, 1, 0.6))
 	var said: String = _amount(drag["kind"], float(drag["value"]), drag["way"])
 	if drag.get("stuck") != null:
 		said += " · no room further"
-	var box: Rect2 = _tag_box(said)
+	var box: Rect2 = _tag_box(said, view)
 	var face := StyleBoxFlat.new()
 	face.bg_color = Look.FACE
 	face.border_color = Look.EDGE
 	face.set_border_width_all(1)
 	face.set_corner_radius_all(4)
-	_overlay.draw_style_box(face, box)
-	_overlay.draw_string(font, box.position + Vector2(7.0 * scale, box.size.y - 6.0 * scale),
+	canvas.draw_style_box(face, box)
+	canvas.draw_string(font, box.position + Vector2(7.0 * scale, box.size.y - 6.0 * scale),
 		said, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Look.ROW_WORDS)
 
 
@@ -541,10 +553,11 @@ static func _amount(kind: String, value: float, way: Vector3) -> String:
 ## The handles' box on the screen, for the typed field to open clear of.
 func on_screen() -> Rect2:
 	var at: Vector3 = _drawn_at()
-	if camera == null or camera.is_position_behind(at):
+	var view: int = int(drag.get("view", CadCamera.MAIN))
+	if camera == null or camera.behind(at, view):
 		return Rect2()
-	var reach: float = _radius() * 1.3
-	return Rect2(camera.unproject_position(at) - Vector2(reach, reach), Vector2(reach, reach) * 2.0)
+	var reach: float = _radius(view) * 1.3
+	return Rect2(camera.screen_of(at, view) - Vector2(reach, reach), Vector2(reach, reach) * 2.0)
 
 
 # -- the drag ---------------------------------------------------------------------
@@ -662,16 +675,19 @@ func _start(handle: Dictionary, at: Vector2) -> bool:
 		return false
 	var way: Vector3 = handle["way"]
 	var plane: Array = _plane_of(way)
-	var reach: float = _radius() / maxf(_px_per_ldu(center), 0.0001)
-	var radius: float = _radius()
-	drag = {"radius": radius, "kind": handle["kind"], "axis": handle["axis"], "way": way, "pivot": center,
+	# Dragged in the view it was taken in, wherever the pointer goes.
+	var view: int = int(handle.get("view", CadCamera.MAIN))
+	var radius: float = _radius(view)
+	var reach: float = radius / maxf(_px_per_ldu(center, view), 0.0001)
+	drag = {"view": view, "radius": radius, "kind": handle["kind"], "axis": handle["axis"],
+		"way": way, "pivot": center,
 		"axes": basis, "frame": frame, "u": plane[0], "v": plane[1], "reach": reach,
 		"value": 0.0, "want": 0.0, "stuck": null, "step": 1.0, "turned": 0.0,
 		"held": held, "clear": 0.0, "piece": 0.0, "parts": 0,
 		"big": held > BIG, "typing": false, "pointer": at, "last_at": at}
 	if handle["kind"] == "ring":
-		var view: Vector3 = camera.ray_normal(camera.unproject_position(center))
-		drag["edge_on"] = absf(way.dot(view)) < 0.25
+		var looking: Vector3 = camera.ray_normal(camera.screen_of(center, view), view)
+		drag["edge_on"] = absf(way.dot(looking)) < 0.25
 		var angle: Variant = _ring_angle(at)
 		drag["last"] = angle if angle != null else 0.0
 		if bool(drag["edge_on"]) or angle == null:
@@ -681,10 +697,10 @@ func _start(handle: Dictionary, at: Vector2) -> bool:
 			var t: float = TAU * int(handle.get("segment", 0)) / SEGMENTS
 			var u: Vector3 = plane[0]
 			var v: Vector3 = plane[1]
-			var a: Vector2 = camera.unproject_position(center + (u * cos(t - 0.05)
-				+ v * sin(t - 0.05)) * reach)
-			var b: Vector2 = camera.unproject_position(center + (u * cos(t + 0.05)
-				+ v * sin(t + 0.05)) * reach)
+			var a: Vector2 = camera.screen_of(center + (u * cos(t - 0.05)
+				+ v * sin(t - 0.05)) * reach, view)
+			var b: Vector2 = camera.screen_of(center + (u * cos(t + 0.05)
+				+ v * sin(t + 0.05)) * reach, view)
 			drag["tangent"] = (b - a) / 0.1
 	else:
 		var along: Variant = _along(at)
@@ -695,8 +711,9 @@ func _start(handle: Dictionary, at: Vector2) -> bool:
 ## The angle about the ring's axis of the point the pointer is over on its
 ## plane, from u towards v; null where the plane is edge on to the eye.
 func _ring_angle(at: Vector2) -> Variant:
-	var origin: Vector3 = camera.ray_origin(at)
-	var normal: Vector3 = camera.ray_normal(at)
+	var view: int = int(drag.get("view", CadCamera.MAIN))
+	var origin: Vector3 = camera.ray_origin(at, view)
+	var normal: Vector3 = camera.ray_normal(at, view)
 	var way: Vector3 = drag["way"]
 	var across: float = normal.dot(way)
 	if absf(across) < 0.0001:
@@ -712,8 +729,9 @@ func _ring_angle(at: Vector2) -> Variant:
 ## the nearest points of the pointer's ray and the line. Null where the line
 ## points at the eye.
 func _along(at: Vector2) -> Variant:
-	var origin: Vector3 = camera.ray_origin(at)
-	var normal: Vector3 = camera.ray_normal(at)
+	var view: int = int(drag.get("view", CadCamera.MAIN))
+	var origin: Vector3 = camera.ray_origin(at, view)
+	var normal: Vector3 = camera.ray_normal(at, view)
 	var way: Vector3 = drag["way"]
 	var b: float = way.dot(normal)
 	var square: float = 1.0 - b * b
@@ -726,7 +744,8 @@ func _along(at: Vector2) -> Variant:
 ## The pointer at [param at]: where it says the drag goes, snapped, and the
 ## way there weighed.
 func _follow(at: Vector2) -> void:
-	var middle: Vector2 = camera.unproject_position(drag["pivot"])
+	var view: int = int(drag.get("view", CadCamera.MAIN))
+	var middle: Vector2 = camera.screen_of(drag["pivot"], view)
 	var reach: float = _radius()
 	if drag["kind"] == "ring":
 		if bool(drag["edge_on"]):
@@ -754,8 +773,8 @@ func _follow(at: Vector2) -> void:
 		var along: Variant = _along(at)
 		if along == null:
 			return
-		var tip: Vector2 = camera.unproject_position((drag["pivot"] as Vector3)
-			+ (drag["way"] as Vector3) * float(drag["reach"]))
+		var tip: Vector2 = camera.screen_of((drag["pivot"] as Vector3)
+			+ (drag["way"] as Vector3) * float(drag["reach"]), view)
 		var off: float = at.distance_to(Geometry2D.get_closest_point_to_segment_uncapped(at,
 			middle, tip))
 		var snaps: Array = EditVerbs.SNAPS[verbs.snap]
