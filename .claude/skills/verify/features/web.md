@@ -4809,6 +4809,24 @@ erasure with one subscription ended, and the sign-in service has no such
 account. Pictures: delete-pro-390-dark, delete-pro-1280-light,
 deleted-pro-1280-light.
 
+And against Admission's own test mode, in Stripe's sandbox with no money
+(billtest358, 2026-10-29): `tools/deploy.sh --unit --billing-test`, which
+gives that deployment alone `ADMISSION_TEST_KEY` and, when set,
+`ADMISSION_TEST_WEBHOOK_SECRET` from .env. The steps are by hand, as a
+throwaway Resend account, closed at the end. `GET /api/plans` says Pro is
+for sale at 800 and 8000 usd, and `?op=plan` says Free (default). POST
+`?op=checkout` is 422 without `consent`; with it, `{kind: "checkout"}` and
+a `checkout.stripe.com/c/pay/cs_test_…` URL, which a browser shows at
+"$8.00 per month" or "$80.00 per year". `plan_consents` keeps a row for
+each, read through the pooler (the table refuses REST). Each new Checkout
+for an account ends the one before ("You're all done here"), so open the
+last one made. A webhook signed with the .env secret answers 200
+`{heard}`, and a wrong secret gets 400. A heard `customer.updated` turns
+the account's `admission_snapshots` value to `at: 0` (forget), with no
+other request to the deployment. `?op=delete` erases the customer at
+Admission: `get_customer` in test mode then says `seen: false`, with no
+subscriptions.
+
 ### A deleted account's plan ended at Admission
 
 No network: `api/account.js`'s deletion against the stand-in Admission and
