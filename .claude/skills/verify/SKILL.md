@@ -69,8 +69,31 @@ godot --path .                                   # the real thing
 godot --path . -- --mcp                          # ...with the MCP port open
 tools/probe.sh X_probe                           # one probe, run as its header says
 godot --headless --path . --script src/dev/X_probe.gd   # one probe, by hand
-godot --path . --resolution 1400x900 --script src/dev/feel_probe.gd   # a windowed probe
+env -u WAYLAND_DISPLAY MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24" \
+  godot --path . --resolution 1400x900 --script src/dev/feel_probe.gd   # a windowed probe, by hand
 ```
+
+**Nothing a probe does reaches the owner's desktop.** This shell carries it
+(`WAYLAND_DISPLAY`, the D-Bus session), and a probe that pressed
+Documentation opened brickworks.diy/docs in Firefox on the owner's screen
+for seven minutes (2026-10-29). So:
+- Every link and every Show in folder goes through `Outside.open_link` /
+  `Outside.show_in_folder` (src/ui/outside.gd). In any script's run
+  (`--script`), or with `BRICKWORKS_OPEN_NOTHING` set, they open nothing and
+  append the address or path to `Outside.opened`: a probe asserts what a
+  button opened by reading that. `tests/test_outside.py` fails on a direct
+  `OS.shell_open` / `shell_show_in_file_manager` (or an opener run by name)
+  anywhere else; `outside_probe` presses the share panel's Open, Website,
+  Documentation and Show in folder after an export, and reads the record.
+- `tools/probe.sh` runs Godot with no `WAYLAND_DISPLAY`, with
+  `BRICKWORKS_OPEN_NOTHING=1`, and with stubs of `xdg-open`, `gio`,
+  `gvfs-open`, `kde-open(5)`, `exo-open` and `gnome-open` first on PATH: a
+  stub writes down what it was asked, opens nothing, and the run fails
+  naming it. `tools/check.sh` sets the same two and always uses Xvfb.
+- A window by hand goes on Xvfb with `WAYLAND_DISPLAY` unset, as above.
+  Godot 4.7 tries X11 first and falls back to Wayland when X11 will not
+  open; here `DISPLAY=:0` refuses (no XAUTHORITY), so a bare
+  `godot --path .` from this shell opens on the owner's screen.
 
 `tools/probe.sh` reads the probe's header for headless or a window and its
 size, gives it its own data folder, the GPU lease and Xvfb for a window, and
@@ -86,7 +109,7 @@ checkout, the others wait for it) and does not run the probe (exit 2) when an
 import cannot fix it. A probe run by hand gets no such check: run
 `tools/fresh_import.sh` first.
 
-Needs: a display (`DISPLAY` or `WAYLAND_DISPLAY`) for anything that draws —
+Needs: a display (Xvfb, as above) for anything that draws —
 previews, the renders the assistant is shown, and what a dragged box catches all
 come from a SubViewport that a headless run has no device to draw into. Needs
 `vendor/ldraw` (`tools/fetch_data.sh`) and a built mesh cache

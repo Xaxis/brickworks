@@ -48,11 +48,6 @@ var versions: VersionsDialog
 var _commands: Dictionary = {}
 ## Menu ids are indexes into this.
 var _ids: Array[String] = []
-## How Documentation and Website open their pages: in the browser, in a tab
-## of its own. A probe stands in for it: an agent's shell carries the
-## owner's desktop, and a probe that chose Documentation opened a browser
-## window on the owner's screen (brand373, 2026-10-29).
-var open_link: Callable = Callable(OS, "shell_open")
 var _menus: Array[MenuButton] = []
 var _save_as: ConfirmationDialog
 var _save_as_name: LineEdit
@@ -1140,10 +1135,10 @@ func _define() -> void:
 	# out (docs-site/, tools/docs_site.py). The owner asked for it, 2026-10-29.
 	# It opens at the page of the panel in front, where one is (docs_page).
 	_add("docs", "Documentation", 0,
-		func() -> void: open_link.call(DocsPages.SITE + docs_page()), Callable(),
+		func() -> void: Outside.open_link(DocsPages.SITE + docs_page()), Callable(),
 		"How everything in Brickworks works, on brickworks.diy")
 	_add("website", "Brickworks website", 0,
-		func() -> void: open_link.call("https://brickworks.diy"))
+		func() -> void: Outside.open_link("https://brickworks.diy"))
 	_add("about", "About Brickworks", 0, _show_about)
 	# The web app had no way back to the site but the browser's own Back
 	# (brand373). This tab, the site's own address: a preview's on a preview.
@@ -1682,7 +1677,7 @@ func _credits() -> VBoxContainer:
 			var address: String = link[1]
 			var away: LinkButton = Look.link(str(link[0]))
 			away.tooltip_text = address
-			away.pressed.connect(func() -> void: OS.shell_open(address))
+			away.pressed.connect(func() -> void: Outside.open_link(address))
 			top.add_child(away)
 		entry.add_child(top)
 		var words := Label.new()

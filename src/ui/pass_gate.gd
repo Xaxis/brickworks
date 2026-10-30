@@ -78,8 +78,8 @@ func setup(with_pass: DesktopPass) -> void:
 	_buttons = VBoxContainer.new()
 	_buttons.add_theme_constant_override("separation", 8)
 	column.add_child(_buttons)
-	_see_pro = _button("See Pro", func() -> void: OS.shell_open(Deployment.api_base() + "/plans"))
-	_web = _button("Open the web app", func() -> void: OS.shell_open(Deployment.api_base() + "/app"))
+	_see_pro = _button("See Pro", func() -> void: Outside.open_link(Deployment.api_base() + "/plans"))
+	_web = _button("Open the web app", func() -> void: Outside.open_link(Deployment.api_base() + "/app"))
 	_other = _button("Sign in with another account", func() -> void: pass_check.account.sign_out())
 	_again = _button("Check again", func() -> void: pass_check.recheck())
 

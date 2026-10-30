@@ -200,3 +200,4 @@ desktop_pass     # the paid desktop's check at start: a server-signed token veri
 plan_full         # the plan keeps no more models with the account: its words and See Pro (savecap360)
 docs_pages        # Help, Documentation opens the page of the panel in front, from the docs' own heads; the words a session is told are the docs' (docs363)
 designer_words   # who designs is named: Claude for a Claude call, GPT-6.1 Sol for a model on a key, in the history, a job, a change to the selection, the toolbar and the ask words (provider370)
+outside         # a probe pressing the share panel's Open, Website, Documentation and Show in folder opens nothing on the desktop and keeps each in Outside.opened (noopen)

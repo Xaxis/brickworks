@@ -32,8 +32,6 @@ const DESKTOP_ROWS: Array = ["About Brickworks", "-", "Brickworks website", "Doc
 	"Account…"]
 
 var _failures: int = 0
-## The addresses the app asked to open (Shell.open_link).
-var _opened: Array[String] = []
 var _main: Node
 var _shell: Shell
 var _bar: ModelBar
@@ -70,11 +68,6 @@ func _run() -> void:
 	_main.call("clear_model")
 	_shell = _main.get("_shell")
 	_bar = _main.get("_bar")
-	# A link chosen opens nothing: this shell carries the owner's desktop, and
-	# a row that ran Documentation opened a browser on the owner's screen.
-	_shell.open_link = func(address: String) -> Error:
-		_opened.append(address)
-		return OK
 	# The width is the probe's from here: Main's own look at the window would
 	# put its factor back.
 	for link: Dictionary in root.size_changed.get_connections():
@@ -211,12 +204,14 @@ func _menu_by_click(mark: MenuButton) -> void:
 	await _frames(6)
 	_check("...and the menu has gone", not menu.visible)
 	for row: int in [2, 3]:
-		_opened.clear()
+		# Opened nothing: a probe's run is held (Outside), and keeps the address.
+		Outside.opened.clear()
 		menu.id_pressed.emit(menu.get_item_id(row))
 		await _frames(6)
-		_check("%s opens %s" % [menu.get_item_text(row), ", ".join(_opened)], _opened.size() == 1
-			and _opened[0].begins_with("https://brickworks.diy")
-			and (row == 2 or _opened[0].begins_with(DocsPages.SITE)))
+		var opened: Array[String] = Outside.opened
+		_check("%s opens %s" % [menu.get_item_text(row), ", ".join(opened)], opened.size() == 1
+			and opened[0].begins_with("https://brickworks.diy")
+			and (row == 2 or opened[0].begins_with(DocsPages.SITE)))
 
 
 func _menu_by_keys(mark: MenuButton) -> void:

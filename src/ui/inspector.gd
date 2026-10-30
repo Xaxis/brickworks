@@ -143,7 +143,7 @@ func _ready() -> void:
 	_credit_link = Look.link("Its page", 12)
 	_credit_link.pressed.connect(func() -> void:
 		if not _credit_page.is_empty():
-			OS.shell_open(_credit_page))
+			Outside.open_link(_credit_page))
 	_credit.add_child(_credit_link)
 
 	_scroll = ScrollContainer.new()

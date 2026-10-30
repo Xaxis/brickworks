@@ -79,7 +79,7 @@ func start() -> String:
 	set_process(true)
 	var url: String = auth_host.rstrip("/") + "/native/authorize?" + _encode(query)
 	if open_browser:
-		OS.shell_open(url)
+		Outside.open_link(url)
 	return url
 
 

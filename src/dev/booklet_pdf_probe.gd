@@ -244,7 +244,7 @@ func _check(what: String, ok: bool) -> bool:
 ## Every way out: the system's own opener put back first, as a lambda of
 ## this script's left in SaveTo's static breaks the heap at exit.
 func _quit() -> void:
-	SaveTo.open_with = Callable(OS, "shell_open")
+	SaveTo.open_with = Callable(Outside, "open_link")
 	print("booklet_pdf_probe: %s" % ("PASS" if _failures == 0 else "FAIL (%d)" % _failures))
 	if _main != null:
 		_main.queue_free()

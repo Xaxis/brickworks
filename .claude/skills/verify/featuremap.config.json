@@ -3969,6 +3969,13 @@
       "entry": "src/ai/stream.gd",
       "reach": "tools/probe.sh provider_apis_probe   (Anthropic's, Gemini's and Responses' replies streamed: the tower drawn brick by brick before its reply ends, gone before it is built; one reply streamed and whole on all four adapters, the same body read back); tools/probe.sh provider_loop_probe   (the same on Chat Completions, its usage from the last chunk, and a stream lost half way asked again whole)",
       "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "outside probe",
+      "entry": "src/dev/outside_probe.gd",
+      "reach": "tools/probe.sh outside_probe   (the share panel's Open, Website, Documentation and Show in folder after an export open nothing and are kept in Outside.opened; probe.sh's opener stubs fail the run if anything reaches the desktop)",
+      "area": "release"
     }
   ]
 }
