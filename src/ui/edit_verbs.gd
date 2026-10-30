@@ -323,7 +323,7 @@ func ruler() -> void:
 		return
 	if measure.toggle():
 		builder.hide_preview()
-		say.call("measuring — click two points; U or Esc puts the ruler away")
+		say.call(Keymap.filled("measuring — click two points; {measure} or Esc puts the ruler away"))
 	else:
 		aim_again.call()
 		say.call("")
@@ -344,7 +344,7 @@ func swing(degrees: float) -> int:
 		return 0
 	edited.call()
 	aim_again.call()
-	say.call("swung %s %+d° — J again, Shift-J back" % [_parts(count), int(degrees)])
+	say.call(Keymap.filled("swung %s %+d° — {swing|again}, {swing_back|back}") % [_parts(count), int(degrees)])
 	return count
 
 
@@ -518,14 +518,14 @@ func go_back(count: int) -> int:
 	# changes kept with the model it took off, for Redo.
 	var opened: String = reopen_words.call(false)
 	if count > builder.history_depth() and not opened.is_empty() and await reopen.call(false):
-		say.call("went back to before: %s — %s-Shift-Z goes forward again" % [opened, _hold()])
+		say.call(Keymap.filled("went back to before: %s — {redo|goes forward again}") % opened)
 		aim_again.call()
 		return count
 	var done: int = builder.undo_steps(count)
 	if done > 0:
 		edited.call()
-		say.call("went back %d step%s — %s-Shift-Z goes forward again" % [
-			done, "" if done == 1 else "s", _hold()])
+		say.call(Keymap.filled("went back %d step%s — {redo|goes forward again}") % [
+			done, "" if done == 1 else "s"])
 	aim_again.call()
 	return done
 
@@ -554,7 +554,7 @@ func select_by(kind: String) -> int:
 				return 0
 			found = SelectBy.submodel(world, seeds, scenery)
 			if found.is_empty():
-				say.call("that is not in a sub-model — %s-G makes one" % _hold())
+				say.call(Keymap.filled("that is not in a sub-model — {make_submodel|makes one}"))
 				return 0
 		"connected":
 			if seeds.is_empty():
@@ -619,8 +619,8 @@ func hide_selection() -> int:
 	builder.clear_selection()
 	apply_hidden()
 	# H alone is the Pan tool: the keys that bring it back are these.
-	say.call("hid %s — Alt-H, or %s-H with nothing selected, shows everything"
-		% [_parts(ids.size()), _hold()])
+	say.call(Keymap.filled("hid %s — {show_all}, or {hide} with nothing selected, shows everything")
+		% _parts(ids.size()))
 	return ids.size()
 
 
@@ -637,7 +637,7 @@ func isolate() -> int:
 		builder.lattice.unseen[brick.id] = true
 		hid += 1
 	apply_hidden()
-	say.call("showing only %s — Alt-H shows everything" % _parts(keep.size()))
+	say.call(Keymap.filled("showing only %s — {show_all|shows everything}") % _parts(keep.size()))
 	return hid
 
 
@@ -679,7 +679,7 @@ func copy() -> int:
 	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD) and not OS.has_feature("web"):
 		_put_on_clipboard = Carry.as_ldraw(Carry.clipboard)
 		DisplayServer.clipboard_set(_put_on_clipboard)
-	say.call("copied %s — %s-V to paste" % [_parts(count), _hold()])
+	say.call(Keymap.filled("copied %s — {paste|to paste}") % _parts(count))
 	return count
 
 
@@ -690,7 +690,7 @@ func cut() -> int:
 	var gone: int = builder.remove_selection()
 	if gone > 0:
 		edited.call()
-	say.call("cut %s — %s-V to paste" % [_parts(gone), _hold()])
+	say.call(Keymap.filled("cut %s — {paste|to paste}") % _parts(gone))
 	return gone
 
 
@@ -710,12 +710,12 @@ func paste() -> int:
 		if not read.is_empty():
 			parts = read
 	if parts.is_empty():
-		say.call("nothing copied yet — select something and press %s-C" % _hold())
+		say.call(Keymap.filled("nothing copied yet — select something and press {copy}"))
 		return 0
 	builder.cancel_carry()
 	builder.hold_copy(parts)
 	aim_again.call()
-	say.call("holding %s — click to put down, R turns, Esc puts away"
+	say.call(Keymap.filled("holding %s — click to put down, {rotate_held|turns}, Esc puts away")
 		% _parts(parts.size()))
 	return parts.size()
 
@@ -728,7 +728,7 @@ func hold(parts: Array, what: String) -> int:
 	builder.cancel_carry()
 	builder.hold_copy(parts)
 	aim_again.call()
-	say.call("holding %s, %s — click to put it down, R turns, Esc puts away"
+	say.call(Keymap.filled("holding %s, %s — click to put it down, {rotate_held|turns}, Esc puts away")
 		% [what, _parts(parts.size())])
 	return parts.size()
 
@@ -749,8 +749,8 @@ func duplicate_selection(again: bool = true) -> int:
 	builder.hold_copy(parts)
 	builder.carrying.repeats = again
 	aim_again.call()
-	say.call(("holding a copy of %s — each click puts one down, R turns, Esc or a right click stops"
-		if again else "holding a copy of %s — click to put it down, R turns, Esc puts away")
+	say.call(Keymap.filled("holding a copy of %s — each click puts one down, {rotate_held|turns}, Esc or a right click stops"
+		if again else "holding a copy of %s — click to put it down, {rotate_held|turns}, Esc puts away")
 		% _parts(parts.size()))
 	return parts.size()
 
@@ -783,7 +783,7 @@ func tip_selection(way: int) -> int:
 	_armed = {"verb": "tilt", "depth": depth, "way": way}
 	edited.call()
 	aim_again.call()
-	say.call("tipped %s over — T again, Shift-T back, or type its angle" % _parts(count))
+	say.call(Keymap.filled("tipped %s over — {tip_held|again}, {tip_back|back}, or type its angle") % _parts(count))
 	return count
 
 
@@ -906,7 +906,7 @@ func lock(yes: bool) -> int:
 		say.call("select what to lock first")
 		return 0
 	var count: int = builder.lock_selection(yes)
-	say.call(("locked %s — Shift-L unlocks everything" if yes else "unlocked %s")
+	say.call(Keymap.filled("locked %s — {unlock|unlocks everything}" if yes else "unlocked %s")
 		% _parts(count))
 	return count
 
@@ -1041,7 +1041,7 @@ func view_tool(name: String) -> void:
 		put_away()
 	builder.drop_figure()
 	set_mode(name)
-	say.call("%s: drag to %s the view — Esc or V for Select" % [name.capitalize(),
+	say.call(Keymap.filled("%s: drag to %s the view — Esc or {mode_select} for Select") % [name.capitalize(),
 		{"orbit": "turn", "pan": "slide", "zoom": "zoom"}[name]])
 
 
@@ -1074,7 +1074,7 @@ func pick_at(at: Vector2) -> bool:
 ## there was nothing it could take.
 func drag_start(brick_id: int, copy: bool) -> bool:
 	if builder.is_locked(brick_id):
-		say.call("that part is locked — Shift-L unlocks everything")
+		say.call(Keymap.filled("that part is locked — {unlock|unlocks everything}"))
 		return false
 	if not builder.selection.has(brick_id):
 		builder.select_brick(brick_id, false)
@@ -1103,7 +1103,7 @@ func hint() -> String:
 	if is_view_tool():
 		return {"orbit": "Orbit: drag turns the view", "pan": "Pan: drag slides the view",
 			"zoom": "Zoom: drag up or down zooms, a click zooms in (Shift-click out)"}[mode] \
-			+ " — Esc or V back to Select"
+			+ Keymap.filled(" — Esc or {mode_select} back to Select")
 	if Input.is_key_pressed(KEY_SPACE):
 		return "Space held: drag slides the view — let go of Space to carry on"
 	if Input.is_key_pressed(KEY_ALT):
@@ -1126,7 +1126,7 @@ func hint() -> String:
 			var named: String = Inventory._tidy(info.name) if info != null else builder.held_part
 			# On a joint, what it is on and what R and T do there instead.
 			if builder.is_on_joint():
-				return "Placing %s on %s: click puts it there · R turns it about the joint · T the other way on · Esc lets go" % [
+				return Keymap.filled("Placing %s on %s: click puts it there · {rotate_held|turns it about the joint} · {tip_held|the other way on} · Esc lets go") % [
 					named, builder.joint_words()]
 			return "Placing %s: click puts one down · type a number to move it exactly · %s, the part stays in hand · Esc lets go" % [
 				named, look]
@@ -1145,7 +1145,7 @@ func hint() -> String:
 		"paint":
 			return "Paint: click a part to paint it the colour in hand · %s" % look
 		"hide":
-			return "Hide: click a part to hide it — Alt-H shows everything · %s" % look
+			return Keymap.filled("Hide: click a part to hide it — {show_all|shows everything} · %s") % look
 		"delete":
 			return "Delete: click a part to take it off · %s" % look
 	return ""
@@ -1208,13 +1208,13 @@ func click(at: Vector2, shift: bool) -> bool:
 				builder.clear_selection()
 			return false
 		if builder.is_locked(brick_id):
-			say.call("that part is locked — Shift-L unlocks everything")
+			say.call(Keymap.filled("that part is locked — {unlock|unlocks everything}"))
 			return false
 		return builder.select_brick(brick_id, shift)
 	if brick_id == 0:
 		return false
 	if builder.is_locked(brick_id):
-		say.call("that part is locked — Shift-L unlocks everything")
+		say.call(Keymap.filled("that part is locked — {unlock|unlocks everything}"))
 		return false
 	if mode == "connect":
 		builder.clear_selection()
@@ -1529,6 +1529,3 @@ func put_away() -> void:
 static func _parts(count: int) -> String:
 	return "1 part" if count == 1 else "%d parts" % count
 
-
-static func _hold() -> String:
-	return "Cmd" if OS.get_name() == "macOS" else "Ctrl"

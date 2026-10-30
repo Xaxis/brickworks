@@ -298,8 +298,8 @@ func _build_tools() -> Control:
 			_show(), "More corners where the surface is coarse, for finer detail")
 	var undo_row := HBoxContainer.new()
 	column.add_child(undo_row)
-	_button(undo_row, "Undo", _undo, "Take the last stroke back (Ctrl+Z)")
-	_button(undo_row, "Redo", _redo, "Put it back (Ctrl+Shift+Z)")
+	Keymap.tell(_button(undo_row, "Undo", _undo, ""), "Take the last stroke back ({undo})")
+	Keymap.tell(_button(undo_row, "Redo", _redo, ""), "Put it back ({redo})")
 	_counts = Label.new()
 	_counts.add_theme_font_size_override("font_size", 11)
 	_counts.modulate = Color(1, 1, 1, 0.6)
@@ -640,9 +640,9 @@ func _input(event: InputEvent) -> void:
 	if key.keycode == KEY_ESCAPE:
 		close()
 		get_viewport().set_input_as_handled()
-	elif key.keycode == KEY_Z and key.is_command_or_control_pressed() \
+	elif Keymap.action_of(Keymap.accel_of(key)) in ["undo", "redo"] \
 			and not (get_viewport().gui_get_focus_owner() is LineEdit):
-		if key.shift_pressed:
+		if Keymap.action_of(Keymap.accel_of(key)) == "redo":
 			_redo()
 		else:
 			_undo()

@@ -255,9 +255,10 @@ func _build() -> void:
 			["delete", "Delete step", "Take this step out; its parts join the step before. "
 				+ "No part is taken off"],
 			["new", "New step from selection", "The selected parts in a step of their own, "
-				+ "after this one (Shift-N)"]]:
+				+ "after this one ({step_new})"]]:
 		var op: String = edit[0]
-		var made: Button = _button(edit[1], edit[2])
+		var made: Button = _button(edit[1], "")
+		Keymap.tell(made, edit[2])
 		made.pressed.connect(func() -> void: edit_wanted.emit(op))
 		_edits.add_child(made)
 		_named["steps_" + op] = made

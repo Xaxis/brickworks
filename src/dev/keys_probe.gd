@@ -177,6 +177,9 @@ func _studio() -> void:
 	_select(ids[0])
 	await _press(KEY_L, CTRL)
 	_check("Ctrl-L hides the selection", _builder.lattice.unseen.has(ids[0]))
+	var hid: String = str((_main.get("_shell") as Shell).status.fields()["message"])
+	_check("...and says Ctrl-Shift-L shows it again, not Alt-H (%s)" % hid,
+		hid.to_lower().contains("ctrl-shift-l, or ctrl-l with nothing selected") and not hid.contains("Alt-H"))
 	await _press(KEY_L, CTRL | SHIFT)
 	_check("Ctrl-Shift-L shows everything", _builder.lattice.unseen.is_empty())
 	# Invert.
@@ -304,6 +307,9 @@ func _mecabricks_and_ldcad() -> void:
 	_select(ids[0])
 	await _press(KEY_H)
 	_check("H hides the selection", _builder.lattice.unseen.has(ids[0]))
+	var hid: String = str((_main.get("_shell") as Shell).status.fields()["message"])
+	_check("...and says Ctrl-Shift-H shows it again (%s)" % hid,
+		hid.to_lower().contains("ctrl-shift-h, or h with nothing selected"))
 	await _press(KEY_H, CTRL | SHIFT)
 	_check("Ctrl-Shift-H shows everything", _builder.lattice.unseen.is_empty())
 	await _press(KEY_INSERT)

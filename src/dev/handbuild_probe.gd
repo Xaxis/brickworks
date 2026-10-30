@@ -2410,8 +2410,8 @@ func _hide_says_its_keys() -> void:
 	await _frames(2)
 	await _key(KEY_H, true)
 	var said: String = str(shell.status.fields()["message"])
-	_check("Ctrl-H says what shows it again (%s)" % said, said.contains("Alt-H")
-		and said.contains("Ctrl-H with nothing selected") and not said.contains(" H with"))
+	_check("Ctrl-H says what shows it again (%s)" % said, said.contains(Keymap.listed("show_all"))
+		and said.contains(Keymap.listed("hide") + " with nothing selected") and not said.contains(" H with"))
 	await _key(KEY_H)
 	_check("...and H, the Pan tool, is not one of them", verbs.mode == "pan"
 		and _model().any(func(b: BrickWorld.Brick) -> bool: return b.hidden))
