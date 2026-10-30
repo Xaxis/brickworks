@@ -115,6 +115,7 @@ const WINDOW_ONLY: Dictionary = {
 	"panel_*": "the window's panels",
 	"show_properties": "the window's panels",
 	"full_screen": "the window's panels",
+	"split_view": "the window's panels: a second view of the person's; view_model from= looks from any side",
 	"rotate_held": "the part in the person's hand; a session gives rot= and face=",
 	"tip_held": "the part in the person's hand; a session gives rot= and face=",
 	"measure": "a ruler for the person; a session's coordinates are already studs and plates",
