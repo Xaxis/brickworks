@@ -9,7 +9,9 @@
 ## part's picture is in the file once, however many pages show it; and
 ## the boxes, arrows and words are drawn as PDF draws them, so a step
 ## number or a part's element number is words a reader can find and copy,
-## sharp at any size. The words are set in Liberation Sans, which has
+## sharp at any size. Words or a picture its designer turned are turned
+## about the same middle (cm), and faded ones drawn as faint (an ExtGState's
+## /ca), as the browser draws them. The words are set in Liberation Sans, which has
 ## Helvetica's widths letter for letter (the widths the booklet lays its
 ## words out by, BookletRead), and the type itself is in the file, so
 ## every reader draws the same letters whether it has Helvetica or not.
@@ -183,7 +185,11 @@ func page(drawn: BookletRead.Page) -> void:
 	var content := PackedStringArray()
 	content.append("%s 0 0 %s 0 %s cm 1 J 1 j" % [_n(PT), _n(-PT), _n(Booklet.PAGE.y * PT)])
 	var images := PackedStringArray()
+	var faded: Dictionary = {}
 	for op: Dictionary in drawn.ops:
+		var how: String = _how(op, faded)
+		if not how.is_empty():
+			content.append("q " + how)
 		match op["k"]:
 			"rect":
 				_rect(content, op)
@@ -199,17 +205,41 @@ func page(drawn: BookletRead.Page) -> void:
 				images.append("/I%d %d 0 R" % [placed[0], placed[0]])
 				content.append("q %s 0 0 %s %s %s cm /I%d Do Q" % [_n(at.size.x), _n(-at.size.y),
 					_n(at.position.x), _n(at.end.y), placed[0]])
+		if not how.is_empty():
+			content.append("Q")
 	var stream: PackedByteArray = "\n".join(content).to_ascii_buffer()
 	var squeezed: PackedByteArray = stream.compress(FileAccess.COMPRESSION_DEFLATE)
 	var contents: int = _new()
 	_stream(contents, "/Filter /FlateDecode", squeezed)
 	var number: int = _new()
 	_object(number, ("<< /Type /Page /Parent %d 0 R /MediaBox [0 0 %s %s] /Contents %d 0 R "
-		+ "/Resources << /Font << /F1 %d 0 R /F2 %d 0 R >> /XObject << %s >> >> >>") % [
+		+ "/Resources << /Font << /F1 %d 0 R /F2 %d 0 R >> /XObject << %s >>%s >> >>") % [
 		_PAGES, _n(Booklet.PAGE.x * PT), _n(Booklet.PAGE.y * PT), contents, _FONT, _BOLD,
-		" ".join(_unique(images))])
+		" ".join(_unique(images)), (" /ExtGState << %s >>" % " ".join(faded.values()))
+			if not faded.is_empty() else ""])
 	_kids.append("%d 0 R" % number)
 	pages += 1
+
+
+## What [param op] is drawn under beyond the page's own: faded (a graphics
+## state of [param faded], name -> its dictionary, made the first time a
+## page fades that much) and turned about its pivot. "" for neither.
+static func _how(op: Dictionary, faded: Dictionary) -> String:
+	var how := PackedStringArray()
+	if op.has("alpha"):
+		var percent: int = roundi(float(op["alpha"]) * 100.0)
+		faded["A%d" % percent] = "/A%d << /ca %s /CA %s >>" % [percent, _n(percent / 100.0),
+			_n(percent / 100.0)]
+		how.append("/A%d gs" % percent)
+	if op.has("turn") and op.has("pivot"):
+		# Clockwise on the page, which runs downward: what the browser's
+		# rotate() turns by.
+		var angle: float = deg_to_rad(float(op["turn"]))
+		var pivot: Vector2 = op["pivot"]
+		var turned: Vector2 = pivot - pivot.rotated(angle)
+		how.append("%s %s %s %s %s %s cm" % [_n(cos(angle)), _n(sin(angle)), _n(-sin(angle)),
+			_n(cos(angle)), _n(turned.x), _n(turned.y)])
+	return " ".join(how)
 
 
 ## The end of the file: its pages, its title, and where each object is.

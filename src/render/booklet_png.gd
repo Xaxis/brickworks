@@ -8,7 +8,9 @@
 ## boxes are as sharp as print, and a step's picture is the booklet's own,
 ## drawn smooth to that size. The words are set in the type the PDF
 ## carries (BookletPdf.TYPE), so a page reads alike on every computer and
-## on the web, which has no Helvetica of its own. Each is written into the
+## on the web, which has no Helvetica of its own. Words or a picture its
+## designer turned or faded are drawn turned about the same middle and as
+## faint as the browser draws them. Each is written into the
 ## zip before the next is drawn: one page held at a time. One zip, on the
 ## desktop and on the web alike, because a browser asked for 590 downloads
 ## at once gives one.
@@ -138,6 +140,12 @@ func _page(page: BookletRead.Page) -> void:
 	RenderingServer.canvas_item_clear(_canvas)
 	var kept: Array = []
 	for op: Dictionary in page.ops:
+		var turned: bool = op.has("turn") and op.has("pivot")
+		if turned:
+			# Turned about its pivot: what the browser's rotate() does.
+			var pivot: Vector2 = _px(op["pivot"])
+			RenderingServer.canvas_item_add_set_transform(_canvas,
+				Transform2D(deg_to_rad(float(op["turn"])), pivot) * Transform2D(0.0, -pivot))
 		match op["k"]:
 			"rect":
 				_rect(op)
@@ -147,11 +155,12 @@ func _page(page: BookletRead.Page) -> void:
 				_path(op)
 			"image":
 				var texture: Texture2D = _texture(op)
-				if texture == null:
-					continue
-				kept.append(texture)
-				RenderingServer.canvas_item_add_texture_rect(_canvas, _placed(op, texture),
-					texture.get_rid())
+				if texture != null:
+					kept.append(texture)
+					RenderingServer.canvas_item_add_texture_rect(_canvas, _placed(op, texture),
+						texture.get_rid(), false, Color(1, 1, 1, float(op.get("alpha", 1.0))))
+		if turned:
+			RenderingServer.canvas_item_add_set_transform(_canvas, Transform2D.IDENTITY)
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	# Drawn now, not at the next frame: asked from a browser tab in front,
 	# the app's own is out of view and is given none.
@@ -190,13 +199,15 @@ func _text(op: Dictionary) -> void:
 	var at: Vector2 = _px(op["at"])
 	var text: String = op["text"]
 	var spacing: float = float(op["spacing"]) * px_per_mm
+	var colour: Color = op["colour"]
+	colour.a *= float(op.get("alpha", 1.0))
 	if absf(spacing) < 0.3:
-		font.draw_string(_canvas, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, op["colour"])
+		font.draw_string(_canvas, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, colour)
 		return
 	# Letter by letter where the letters are set closer (a step number).
 	for index: int in text.length():
 		var letter: String = text[index]
-		font.draw_char(_canvas, at, letter.unicode_at(0), size, op["colour"])
+		font.draw_char(_canvas, at, letter.unicode_at(0), size, colour)
 		at.x += font.get_string_size(letter, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x + spacing
 
 

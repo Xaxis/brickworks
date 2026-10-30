@@ -31,6 +31,14 @@
 ## made booklet's. A model with no steps given a look takes the worked-out
 ## steps in the same undo, and one undo takes both back.
 ##
+## --only=objects: Lay out the page's objects, as a person uses them. A
+## picture turned 30° by its knob and words faded to 50% by Opacity, each
+## in three actions or fewer; an arrow bent through two points; a guide
+## dragged from each ruler and words dropped near where they cross landing
+## on both to the pixel. Each one undo step, said in the file, and printed:
+## the HTML page, the PDF (its cm and graphics state) and the 300 dpi PNG
+## (its ink) show each.
+##
 ## --into=DIR writes each set's booklet before and after (SET_before.html,
 ## SET_after.html) and a JSON of its pages; print them with
 ## tools/web/booklet_print.mjs, which checks the PDF has the booklet's
@@ -182,6 +190,8 @@ func _run() -> void:
 	if _only.is_empty() or _only == "stay":
 		await _settings_stay(false)
 		await _settings_stay(true)
+	if _only.is_empty() or _only == "objects":
+		await _page_objects()
 	for set: Array in SETS:
 		if _only.is_empty() or str(set[1]) == _only:
 			await _one_set(str(set[0]), str(set[1]))
@@ -635,6 +645,482 @@ static func _plain(look: Variant) -> Variant:
 	if look is float or look is int:
 		return snappedf(float(look), 0.1)
 	return look
+
+
+# -- Studio's page objects ----------------------------------------------------------
+
+
+## Studio's page objects (docs/APP_UX2.md, pages2), each by the mouse and
+## the keys as a person does it, on a page of 106-1: a picture of the
+## designer's turned 30° by its knob, and words faded to 50% by Opacity,
+## each in three actions or fewer; an arrow bent through two points, each
+## pulled out of the middle of a stretch of it; a guide dragged from each
+## ruler, and a box dropped near them landing on them, to a pixel. Each one
+## undo and its line in the file, read back when the file is opened again.
+## Then the page as the booklet prints it, its PDF and its PNG, each
+## showing all four: the picture's corner turned off where it was, the
+## words half as dark, red ink through both bends, the words where the
+## guides are.
+func _page_objects() -> void:
+	_name = "objects"
+	print("")
+	print("Studio's page objects, on 106-1")
+	if DisplayServer.get_name() == "headless":
+		print("  (headless: the page objects are done by the mouse; nothing judged here)")
+		return
+	await _open(str(SETS[1][0]))
+	await _timeline()
+	var base: String = _save()
+	var start: int = _history()
+	var editor: PageEditor = _main.get("_page_editor")
+	var own: Array[Instructions.Step] = _own_steps(2)
+	var pick: Instructions.Step = own[mini(1, own.size() - 1)]
+	_go(pick.number)
+	await editor.open()
+	await _until_laid(editor)
+	var k: float = editor._scale() * editor._canvas.get_global_transform().get_scale().x
+	var origin: Vector2 = editor._canvas.get_global_rect().position
+	var page: int = int(editor.page_state().get("page", 0))
+	var shot: Image = root.get_texture().get_image()
+	if shot != null:
+		shot.save_png(_out.path_join("objects_page_editor_open.png"))
+	var free: Array = _free_boxes(editor, [Vector2(46, 38), Vector2(80, 22), Vector2(64, 40)])
+	_check("page %d of step %d open, with room for three things (%s)" % [page, pick.number,
+		", ".join(PackedStringArray(free.map(func(box: Rect2) -> String: return _mm(box))))],
+		free.size() == 3 and editor.controls_by_name().has("page_ruler_top"))
+	if free.size() < 3:
+		editor.close()
+		return
+
+	# A picture of the designer's, put in the first free box, then turned 30°.
+	var picture := Image.create(64, 48, false, Image.FORMAT_RGB8)
+	picture.fill(Color(0.85, 0.2, 0.15))
+	picture.fill_rect(Rect2i(8, 8, 24, 24), Color(1, 1, 1))
+	await editor.add_image(picture)
+	await _until_laid(editor)
+	var image_name: String = _named_like(editor, "page_image_")
+	var at: int = editor.item_named(image_name)
+	await editor.place(at, Rect2((free[0] as Rect2).position + Vector2(3, 3), Vector2(40, 30)))
+	await _until_laid(editor)
+	editor._select(-1)
+	await _frames(3)
+	var history: int = _history()
+	var actions: int = 0
+	var control: Control = editor._items[editor.item_named(image_name)]["control"]
+	await _click(control.get_global_rect().get_center())
+	actions += 1
+	var knob: Control = editor.controls_by_name().get("page_turn_knob")
+	var centre: Vector2 = control.get_global_rect().get_center()
+	if knob != null:
+		var from: Vector2 = knob.get_global_rect().get_center()
+		await _drag_mouse(from, centre + (from - centre).rotated(deg_to_rad(30.0)))
+		actions += 1
+	await _until_laid(editor)
+	var turned: Dictionary = (editor.page_state().get("notes", {}) as Dictionary).get(image_name, {})
+	_edited("the picture clicked and its knob dragged round, %d actions: turned %s°"
+		% [actions, str(turned.get("turn", "?"))], base, history)
+	_check("...turned 30° in 3 actions or fewer (%d), and the file says it: %s" % [actions,
+		_line_with(_save(), "!BRICKWORKS NOTE TURN").strip_edges()],
+		knob != null and is_equal_approx(float(turned.get("turn", 0.0)), 30.0) and actions <= 3
+		and _line_with(_save(), "!BRICKWORKS NOTE TURN").strip_edges() == "0 !BRICKWORKS NOTE TURN 30")
+
+	# Words, put in the second free box, then faded to 50% by Opacity.
+	await editor.add_text("Half seen", Rect2((free[1] as Rect2).position + Vector2(2, 2),
+		Vector2(70, 12)), 5.0)
+	await _until_laid(editor)
+	editor._words.release_focus()
+	await _frames(2)
+	var text_name: String = _named_like(editor, "page_text_")
+	editor._select(-1)
+	await _frames(3)
+	history = _history()
+	actions = 0
+	control = editor._items[editor.item_named(text_name)]["control"]
+	await _click(control.get_global_rect().get_center())
+	actions += 1
+	var opacity: SpinBox = editor.controls_by_name().get("page_opacity")
+	if opacity != null:
+		await _click(opacity.get_line_edit().get_global_rect().get_center())
+		actions += 1
+		await _type("50")
+		await _key(KEY_ENTER)
+		actions += 1
+	await _until_laid(editor)
+	var faded: Dictionary = (editor.page_state().get("notes", {}) as Dictionary).get(text_name, {})
+	_edited("the words clicked, Opacity clicked and 50 typed with Enter, %d actions: %s opaque"
+		% [actions, str(faded.get("opacity", "?"))], base, history)
+	_check("...at 50%% in 3 actions or fewer (%d), and the file says it: %s" % [actions,
+		_line_with(_save(), "!BRICKWORKS NOTE OPACITY").strip_edges()],
+		opacity != null and is_equal_approx(float(faded.get("opacity", 1.0)), 0.5) and actions <= 3
+		and _line_with(_save(), "!BRICKWORKS NOTE OPACITY").strip_edges() == "0 !BRICKWORKS NOTE OPACITY 50")
+
+	# An arrow drawn across the third free box, then bent through two points.
+	var box: Rect2 = free[2]
+	await _click((editor.controls_by_name()["page_add_arrow"] as Control).get_global_rect().get_center())
+	await _drag_mouse(origin + (box.position + Vector2(4, 36)) * k, origin + (box.position + Vector2(60, 4)) * k)
+	await _until_laid(editor)
+	var arrows: Dictionary = editor.page_state().get("arrows", {})
+	var arrow_name: String = arrows.keys()[0] if arrows.size() == 1 else ""
+	var bends: Array = [box.position + Vector2(18, 8), box.position + Vector2(44, 34)]
+	history = _history()
+	for index: int in 2:
+		var handle: Control = editor.controls_by_name().get("page_arrow_add_%d" % (index + 1))
+		if handle == null:
+			break
+		await _drag_mouse(handle.get_global_rect().get_center(), origin + (bends[index] as Vector2) * k)
+		await _until_laid(editor)
+	var bent: Array = ((editor.page_state().get("arrows", {}) as Dictionary).get(arrow_name, {})
+		as Dictionary).get("at", [])
+	var points: Array = BookletLooks.arrow_points({"at": bent})
+	var through: Array = points[2] if not points.is_empty() else []
+	var line: Dictionary = BookletLooks.arrow_line(points, 0.9 * 2.9 * 2.3) if not points.is_empty() else {}
+	var off: Array = bends.map(func(bend: Vector2) -> float:
+		return _off_line(line.get("line", PackedVector2Array()), bend))
+	var said: String = _line_with(_save(), "!BRICKWORKS ARROW").strip_edges()
+	_check("an arrow drawn, and the middles of its stretches pulled to %s and %s: bent through %s, its line %s mm from each, %d undo steps; the file: %s"
+		% [str(bends[0]), str(bends[1]), str(through),
+			", ".join(PackedStringArray(off.map(func(d: float) -> String: return "%.2f" % d))),
+			_history() - history, said],
+		through.size() == 2 and (through[0] as Vector2).distance_to(bends[0]) < 1.0
+		and (through[1] as Vector2).distance_to(bends[1]) < 1.0 and off.all(func(d: float) -> bool: return d < 0.3)
+		and _history() == history + 2 and said.split(" ").size() == 13)
+
+	# A guide from each ruler, then the words dropped near where they cross.
+	var words_at: Vector2 = (editor._items[editor.item_named(text_name)]["rect"] as Rect2).position
+	var cross: Vector2 = words_at + Vector2(5, 6)
+	history = _history()
+	var top: Rect2 = (editor.controls_by_name()["page_ruler_top"] as Control).get_global_rect()
+	var left: Rect2 = (editor.controls_by_name()["page_ruler_left"] as Control).get_global_rect()
+	await _drag_mouse(Vector2(origin.x + 30.0 * k, top.get_center().y), origin + Vector2(30.0, cross.y) * k)
+	await _until_laid(editor)
+	await _drag_mouse(Vector2(left.get_center().x, origin.y + 30.0 * k), origin + Vector2(cross.x, 30.0) * k)
+	await _until_laid(editor)
+	var guides: Dictionary = editor.page_state().get("ruler_guides", {})
+	var gx: float = float((guides.get("x", []) as Array)[0]) if (guides.get("x", []) as Array).size() == 1 else -1.0
+	var gy: float = float((guides.get("y", []) as Array)[0]) if (guides.get("y", []) as Array).size() == 1 else -1.0
+	var saved: String = _save()
+	_check("a guide dragged from each ruler: upright at %s mm, across at %s mm (want %s, %s), %d undo steps; the file: %s, %s"
+		% [gx, gy, snappedf(cross.x, 0.1), snappedf(cross.y, 0.1), _history() - history,
+			_line_with(saved, "!BRICKWORKS GUIDE X").strip_edges(), _line_with(saved, "!BRICKWORKS GUIDE Y").strip_edges()],
+		absf(gx - cross.x) < 0.5 and absf(gy - cross.y) < 0.5 and _history() == history + 2
+		and _line_with(saved, "!BRICKWORKS GUIDE X").strip_edges() == "0 !BRICKWORKS GUIDE X " + BookletLooks._number(gx)
+		and _line_with(saved, "!BRICKWORKS GUIDE Y").strip_edges() == "0 !BRICKWORKS GUIDE Y " + BookletLooks._number(gy))
+	history = _history()
+	var drop: Vector2 = Vector2(gx, gy) + Vector2(1.5, 1.4)
+	control = editor._items[editor.item_named(text_name)]["control"]
+	var grip: Vector2 = control.get_global_rect().get_center()
+	await _drag_mouse(grip, grip + (drop - words_at) * k)
+	await _until_laid(editor)
+	var landed: Array = (editor.page_state().get("items", {}) as Dictionary).get(text_name, [])
+	var by_px: Vector2 = (Vector2(float(landed[0]), float(landed[1])) - Vector2(gx, gy)).abs() * k \
+		if landed.size() >= 2 else Vector2(INF, INF)
+	_check("the words dropped 1.5 mm right of and 1.4 mm below where the guides cross: at %s, %s mm, %.2f x %.2f px off them, one undo step (%d)"
+		% [str(landed[0]) if landed.size() >= 2 else "?", str(landed[1]) if landed.size() >= 2 else "?",
+			by_px.x, by_px.y, _history() - history],
+		by_px.x <= 1.0 and by_px.y <= 1.0 and _history() == history + 1)
+	# The across guide dragged back into its ruler is gone; an undo puts it back.
+	history = _history()
+	await _drag_mouse(origin + Vector2(3.0, gy) * k, Vector2(origin.x + 3.0 * k, top.get_center().y))
+	await _until_laid(editor)
+	var gone: Dictionary = editor.page_state().get("ruler_guides", {})
+	var without: String = _save()
+	var removed: int = _history() - history
+	_builder.undo()
+	await _frames(4)
+	await _until_laid(editor)
+	var back: Dictionary = editor.page_state().get("ruler_guides", {})
+	_check("the across guide dragged back into its ruler: guides %s, the file %s GUIDE Y, one undo step (%d); undone, guides %s"
+		% [str(gone), "without" if _line_with(without, "!BRICKWORKS GUIDE Y").is_empty() else "still with",
+			removed, str(back)],
+		(gone.get("y", [0]) as Array).is_empty() and (gone.get("x", []) as Array).size() == 1
+		and _line_with(without, "!BRICKWORKS GUIDE Y").is_empty() and removed == 1 and _history() == history
+		and (back.get("y", []) as Array).size() == 1 and is_equal_approx(float(back["y"][0]), gy))
+	editor._select(editor.item_named(image_name))
+	await _frames(6)
+	shot = root.get_texture().get_image()
+	if shot != null:
+		shot.save_png(_out.path_join("objects_page_editor_%dx%d.png" % [shot.get_width(), shot.get_height()]))
+	var steps: Array = editor.page_state().get("steps", [])
+	editor.close()
+	await _printed(page, steps, Vector2(gx, gy), through, text_name)
+
+	# Opened again from the file it saved: each as it was.
+	var text: String = _save()
+	while _history() > start:
+		_builder.undo()
+	await _frames(2)
+	_steps.refresh()
+	_check("every one of them undone, the file as it was", _save() == base)
+	var file: String = _out.path_join("objects_saved.mpd")
+	var writing: FileAccess = FileAccess.open(file, FileAccess.WRITE)
+	writing.store_string(text)
+	writing.close()
+	await _open(file)
+	await _timeline()
+	var notes: Array = []
+	var drawn: Array = []
+	for name: String in _world.step_looks:
+		var look: Variant = _world.step_looks[name]
+		if look is Dictionary:
+			notes.append_array((look as Dictionary).get("notes", []))
+			drawn.append_array((look as Dictionary).get("arrows", []))
+	var turns: Array = notes.map(func(note: Dictionary) -> float: return BookletLooks.turn_of(note))
+	var fades: Array = notes.map(func(note: Dictionary) -> float: return BookletLooks.opacity_of(note))
+	var kept: Dictionary = BookletLooks.guides(_world)
+	_check("opened again from the file: turns %s, opacities %s, an arrow through %d points, guides %s; saved again, the same text"
+		% [str(turns), str(fades), (drawn[0]["at"] as Array).size() / 2 - 2 if not drawn.is_empty() else -1,
+			str(kept)], 30.0 in turns and 0.5 in fades and drawn.size() == 1
+		and (drawn[0]["at"] as Array).size() == 8 and (kept["x"] as Array).size() == 1
+		and is_equal_approx(float(kept["x"][0]), gx) and (kept["y"] as Array).size() == 1
+		and is_equal_approx(float(kept["y"][0]), gy)
+		and _save() == text)
+
+
+## The page [param page] with steps [param steps] as the booklet prints it,
+## then its PDF and its PNG (BookletPdf, BookletPng, from the page itself as
+## the booklet's Save as PDF and Save pages as PNG make them), each judged
+## for the turned picture, the faded words named [param text_name], the
+## arrow through [param through] and the words on the guides at [param
+## guides].
+func _printed(page: int, steps: Array, guides: Vector2, through: Array, text_name: String) -> void:
+	var maker := BookletMaker.new()
+	maker.library = _library
+	var numbers: Dictionary = {}
+	for number: Variant in steps:
+		numbers[int(number)] = true
+	maker.only = numbers
+	_main.add_child(maker)
+	await maker.make(_world, _store.scenery, "Page objects")
+	var document: Booklet.Document = maker.document
+	maker.queue_free()
+	var printed: Booklet.Page = null
+	for one: Booklet.Page in document.pages if document != null else []:
+		if one.number == page:
+			printed = one
+	if printed == null:
+		_check("the booklet has page %d" % page, false)
+		return
+	var html: String = _out.path_join("objects_page.html")
+	var writing: FileAccess = FileAccess.open(html, FileAccess.WRITE)
+	writing.store_string("\n".join([Booklet.head(document), Booklet.page_html(printed, document), Booklet.TAIL]))
+	writing.close()
+	var written: String = FileAccess.get_file_as_string(html)
+	_check("the booklet's page %d: the picture turned 30° (%s), the words at 50%% (%s), the arrow a curve through its bends (%s)"
+		% [page, written.contains("transform:rotate(30deg)"), written.contains("opacity:0.5"),
+			written.contains("class=\"drawn-arrow\" d=\"M")],
+		written.contains("transform:rotate(30deg)") and written.contains("opacity:0.5")
+		and written.contains("class=\"drawn-arrow\" d=\"M") and written.contains(" L"))
+	# What the PDF and the PNG are made from: the page read back.
+	var read := BookletRead.new()
+	var read_pages: Array = []
+	await read.read_all(html, func(one: BookletRead.Page) -> void: read_pages.append(one))
+	var picture_op: Dictionary = {}
+	var words_op: Dictionary = {}
+	for op: Dictionary in (read_pages[0] as BookletRead.Page).ops if not read_pages.is_empty() else []:
+		if op["k"] == "image" and op.has("turn"):
+			picture_op = op
+		if op["k"] == "text" and str(op.get("text", "")).begins_with("Half"):
+			words_op = op
+	# The PDF.
+	var pdf: String = _out.path_join("objects_page.pdf")
+	var writer := BookletPdf.new()
+	var again := BookletRead.new()
+	writer.begin(pdf, again)
+	await again.read_all(html, writer.page)
+	writer.finish("Page objects")
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(pdf)
+	var content: String = _pdf_content(bytes)
+	var dictionary: bool = _bytes_find(bytes, "/A50 << /ca 0.5 /CA 0.5 >>") >= 0
+	var turn_at: int = content.find("0.866 0.5 -0.5 0.866 ")
+	var fade_at: int = content.find("/A50 gs")
+	var red: PackedVector2Array = _pdf_red_line(content)
+	var words: RegExMatch = RegEx.create_from_string("1 0 0 -1 ([0-9.]+) ([0-9.]+) Tm [0-9. ]+ rg <%s"
+		% "Half".to_ascii_buffer().hex_encode()).search(content)
+	var off: Array = through.map(func(bend: Vector2) -> float: return _off_line(red, bend))
+	_check("the PDF: the picture drawn turned 30° (cm at %d, then Do: %s), the words under a 50%% graphics state (%s, /ca 0.5: %s), red ink %s mm from each bend, the words at x %s mm (the guide %s)"
+		% [turn_at, content.find(" Do", turn_at) > turn_at and content.find(" Do", turn_at) - turn_at < 120,
+			fade_at >= 0 and content.find("BT", fade_at) > fade_at, dictionary,
+			", ".join(PackedStringArray(off.map(func(d: float) -> String: return "%.2f" % d))),
+			words.get_string(1) if words != null else "?", guides.x],
+		turn_at >= 0 and content.find(" Do", turn_at) - turn_at < 120 and fade_at >= 0
+		and dictionary and off.size() == 2
+		and off.all(func(d: float) -> bool: return d < 0.3) and words != null
+		and absf(words.get_string(1).to_float() - guides.x) < 0.05)
+	# The PNG, at 300 dots an inch.
+	var zip: String = _out.path_join("objects_pages.zip")
+	var drawer := BookletPng.new()
+	root.add_child(drawer)
+	await drawer.write(html, zip, "objects")
+	var px: float = drawer.px_per_mm
+	drawer.queue_free()
+	var reader := ZIPReader.new()
+	var image := Image.new()
+	if reader.open(zip) == OK:
+		image.load_png_from_buffer(reader.read_file("objects-%03d.png" % page))
+		reader.close()
+	if image.is_empty() or picture_op.is_empty():
+		_check("the PNG of page %d, and the picture on it" % page, false)
+		return
+	image.save_png(_out.path_join("objects_page_%d.png" % page))
+	var at: Rect2 = picture_op["at"]
+	var pivot: Vector2 = picture_op["pivot"]
+	var on := func(u: float, v: float, turn: bool) -> Color:
+		var mm: Vector2 = at.position + at.size * Vector2(u, v)
+		if turn:
+			mm = pivot + (mm - pivot).rotated(deg_to_rad(30.0))
+		return image.get_pixelv(Vector2i((mm * px).round()))
+	var red_in: Color = on.call(0.78, 0.5, true)
+	var white_in: Color = on.call(0.31, 0.42, true)
+	var corner: Color = on.call(0.03, 0.04, false)
+	var picture_red := Color(0.85, 0.2, 0.15)
+	var turned_ok: bool = _like(red_in, picture_red) and _like(white_in, Color.WHITE) \
+		and not _like(corner, picture_red)
+	# The words: their darkest pixel half way from the ink to the page.
+	var words_box := Rect2((words_op["at"] as Vector2) - Vector2(0.0, 5.0), Vector2(30, 6.5)) \
+		if not words_op.is_empty() else Rect2()
+	var darkest: float = 1.0
+	var first_ink: float = INF
+	for y: int in range(int(words_box.position.y * px), int(words_box.end.y * px)):
+		for x: int in range(int(words_box.position.x * px), int(words_box.end.x * px)):
+			var luminance: float = image.get_pixel(x, y).get_luminance()
+			darkest = minf(darkest, luminance)
+			if luminance < 0.75:
+				first_ink = minf(first_ink, x / px)
+	var reds: Array = through.map(func(bend: Vector2) -> bool: return _red_near(image, bend * px, 0.5 * px))
+	_check("the PNG at %.0f dpi: the picture turned (red %s and white %s where it is turned to, %s at its corner unturned), the words' darkest %.2f (ink 0.10, the page 0.91), red ink at both bends %s, the words' first ink %.2f mm right of the guide"
+		% [px * 25.4, red_in.to_html(false), white_in.to_html(false), corner.to_html(false), darkest,
+			str(reds), first_ink - guides.x],
+		turned_ok and darkest > 0.35 and darkest < 0.65 and reds.all(func(one: bool) -> bool: return one)
+		and first_ink - guides.x >= -0.05 and first_ink - guides.x < 1.0)
+
+
+## Where, on the page editor's page, boxes of [param sizes] (mm) go clear of
+## everything on it and of each other, within its margins: a Rect2 each,
+## as many as there was room for.
+func _free_boxes(editor: PageEditor, sizes: Array) -> Array:
+	var taken: Array = []
+	for item: Dictionary in editor._items:
+		taken.append((Booklet.ink_of(item["entry"]) if item["kind"] == "picture"
+			else PageEditor._box_of(item)).grow(3.0))
+	var out: Array = []
+	var area: Rect2 = Booklet.content()
+	for size: Vector2 in sizes:
+		var found: bool = false
+		var y: float = area.position.y
+		while not found and y + size.y <= area.end.y:
+			var x: float = area.position.x
+			while not found and x + size.x <= area.end.x:
+				var spot := Rect2(Vector2(x, y), size)
+				if taken.all(func(rect: Rect2) -> bool: return not rect.intersects(spot)):
+					out.append(spot)
+					taken.append(spot.grow(3.0))
+					found = true
+				x += 2.0
+			y += 2.0
+	return out
+
+
+## The name of the page editor's item that begins [param prefix], the last.
+func _named_like(editor: PageEditor, prefix: String) -> String:
+	var found: String = ""
+	for name: String in editor.controls_by_name():
+		if name.begins_with(prefix):
+			found = name
+	return found
+
+
+## [param text] typed a key at a time.
+func _type(text: String) -> void:
+	for index: int in text.length():
+		for down: bool in [true, false]:
+			var event := InputEventKey.new()
+			event.keycode = OS.find_keycode_from_string(text[index])
+			event.unicode = text.unicode_at(index) if down else 0
+			event.pressed = down
+			Input.parse_input_event(event)
+			await process_frame
+	await _frames(3)
+
+
+## How far [param point] is from the line through [param line]'s points.
+static func _off_line(line: PackedVector2Array, point: Vector2) -> float:
+	var best: float = INF
+	for index: int in line.size() - 1:
+		best = minf(best, point.distance_to(Geometry2D.get_closest_point_to_segment(point,
+			line[index], line[index + 1])))
+	return best
+
+
+## Where [param text] is in [param bytes] from [param from], or -1: a PDF
+## has its fonts and pictures in it, whose bytes no string holds.
+static func _bytes_find(bytes: PackedByteArray, text: String, from: int = 0) -> int:
+	var hex: String = bytes.hex_encode() if from == 0 else bytes.slice(from).hex_encode()
+	var key: String = text.to_ascii_buffer().hex_encode()
+	var at: int = hex.find(key)
+	while at >= 0 and at % 2 == 1:
+		at = hex.find(key, at + 1)
+	return -1 if at < 0 else from + at / 2
+
+
+## A PDF's page contents, each stream inflated, one after another.
+static func _pdf_content(bytes: PackedByteArray) -> String:
+	var out := PackedStringArray()
+	var hex: String = bytes.hex_encode()
+	var key: String = "/FlateDecode /Length ".to_ascii_buffer().hex_encode()
+	var at: int = 0
+	while true:
+		var found: int = hex.find(key, at)
+		if found < 0:
+			break
+		if found % 2 == 1:
+			at = found + 1
+			continue
+		var head: int = found / 2 + 21
+		var length: int = 0
+		while head < bytes.size() and bytes[head] >= 48 and bytes[head] <= 57:
+			length = length * 10 + bytes[head] - 48
+			head += 1
+		var start: int = _bytes_find(bytes.slice(head, head + 40), "stream\n")
+		if start < 0:
+			break
+		start += head + 7
+		var raw: PackedByteArray = bytes.slice(start, start + length)
+		var inflated: PackedByteArray = raw.decompress_dynamic(-1, FileAccess.COMPRESSION_DEFLATE)
+		var said: String = inflated.get_string_from_ascii()
+		if said.contains(" cm 1 J 1 j"):
+			out.append(said)
+		at = (start + length) * 2
+	return "\n".join(out)
+
+
+## The points of the red lines a PDF's page draws (the booklet's red, a
+## stroke), one after another.
+static func _pdf_red_line(content: String) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for line: String in content.split("\n"):
+		if not line.begins_with("0.816 0.063 0.071 RG"):
+			continue
+		var words: PackedStringArray = line.split(" ")
+		for index: int in range(2, words.size()):
+			if words[index] in ["m", "l"] and index >= 2:
+				out.append(Vector2(words[index - 2].to_float(), words[index - 1].to_float()))
+	return out
+
+
+static func _like(a: Color, b: Color) -> bool:
+	return absf(a.r - b.r) < 0.12 and absf(a.g - b.g) < 0.12 and absf(a.b - b.b) < 0.12
+
+
+## Whether [param image] has the booklet's red within [param radius] px of
+## [param at].
+static func _red_near(image: Image, at: Vector2, radius: float) -> bool:
+	for y: int in range(int(at.y - radius), int(at.y + radius) + 1):
+		for x: int in range(int(at.x - radius), int(at.x + radius) + 1):
+			if x < 0 or y < 0 or x >= image.get_width() or y >= image.get_height():
+				continue
+			if Vector2(x, y).distance_to(at) <= radius and _like(image.get_pixel(x, y), Color("#d01012")):
+				return true
+	return false
 
 
 # -- one set -----------------------------------------------------------------------
@@ -1375,7 +1861,7 @@ func _arrows(base: String) -> void:
 	var middle := Vector2((float(shown[0]) + float(shown[2])) * 0.5, (float(shown[1]) + float(shown[3])) * 0.5)
 	var aside: Vector2 = Vector2(float(shown[3]) - float(shown[1]), float(shown[0]) - float(shown[2])).normalized() * 15.0
 	if mouse:
-		var handle: Control = editor.controls_by_name().get("page_arrow_bend")
+		var handle: Control = editor.controls_by_name().get("page_arrow_add_1")
 		await _drag_mouse(handle.get_global_rect().get_center(), handle.get_global_rect().get_center() + aside * k)
 	else:
 		editor._shell.change_look("arrow_edit", editor._items[at]["step"], {"index": 0,

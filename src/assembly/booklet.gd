@@ -716,9 +716,12 @@ static func _move_thing(thing: Dictionary, to: Rect2, scale: float) -> void:
 ## Where an item dragged on the page comes to rest: [param at] moved, or
 ## with [param resize] its far corner moved, onto the nearest of the page's
 ## margins and middle and the edges and middles of [param others] (Rect2s
-## in page mm) within SNAP mm, each way on its own. {"rect": Rect2, "lines":
-## [["x" or "y", mm]] for the guides it snapped to}.
-static func snapped_to(at: Rect2, others: Array, resize: bool = false) -> Dictionary:
+## in page mm) within SNAP mm, each way on its own. A guide of [param
+## guides] ({"x": [mm], "y": [mm]}, BookletLooks.guides) within SNAP comes
+## first: its designer put it there to line things up on. {"rect": Rect2,
+## "lines": [["x" or "y", mm]] for the guides it snapped to}.
+static func snapped_to(at: Rect2, others: Array, resize: bool = false,
+		guides: Dictionary = {}) -> Dictionary:
 	var area: Rect2 = content()
 	var xs: Array = [area.position.x, area.end.x, PAGE.x * 0.5]
 	var ys: Array = [area.position.y, area.end.y, PAGE.y * 0.5]
@@ -728,16 +731,20 @@ static func snapped_to(at: Rect2, others: Array, resize: bool = false) -> Dictio
 		ys.append_array([rect.position.y, rect.end.y, rect.get_center().y])
 	var out: Rect2 = at
 	var lines: Array = []
-	var by_x: Array = _nearest([at.end.x] if resize
-		else [at.position.x, at.get_center().x, at.end.x], xs)
+	var edges_x: Array = [at.end.x] if resize else [at.position.x, at.get_center().x, at.end.x]
+	var edges_y: Array = [at.end.y] if resize else [at.position.y, at.get_center().y, at.end.y]
+	var by_x: Array = _nearest(edges_x, guides.get("x", []))
+	if by_x.is_empty():
+		by_x = _nearest(edges_x, xs)
 	if not by_x.is_empty():
 		if resize:
 			out.size.x += float(by_x[0])
 		else:
 			out.position.x += float(by_x[0])
 		lines.append(["x", by_x[1]])
-	var by_y: Array = _nearest([at.end.y] if resize
-		else [at.position.y, at.get_center().y, at.end.y], ys)
+	var by_y: Array = _nearest(edges_y, guides.get("y", []))
+	if by_y.is_empty():
+		by_y = _nearest(edges_y, ys)
 	if not by_y.is_empty():
 		if resize:
 			out.size.y += float(by_y[0])
@@ -1239,16 +1246,31 @@ static func _notes(entry: Entry, document: Document, out: PackedStringArray) -> 
 			if not (note is Dictionary) or not (note as Dictionary).has(kind):
 				continue
 			var at: Rect2 = BookletLooks.rect_of(note.get("at", []))
+			var how: String = note_style(note, at)
 			if kind == "image":
 				var source: String = str(document.images.get(str(note["image"]), ""))
 				if not source.is_empty():
-					_image(out, source, at, "A picture of the designer's")
+					_image(out, source, at, "A picture of the designer's", how)
 				continue
 			var size: float = clampf(float(note.get("size", 4.0)), 1.5, 40.0)
 			var words: String = _escape(str(note["text"])).replace("\n", "<br>")
-			out.append("<div class=\"t tx\" style=\"--x:%s;--y:%s;--s:%s;width:calc(%s * var(--mm));min-height:calc(%s * var(--mm))\">%s</div>"
+			out.append("<div class=\"t tx\" style=\"--x:%s;--y:%s;--s:%s;width:calc(%s * var(--mm));min-height:calc(%s * var(--mm))%s\">%s</div>"
 				% [_n(at.position.x), _n(at.position.y), _n(size), _n(at.size.x), _n(at.size.y),
-					words])
+					how, words])
+
+
+## A word or picture of the designer's turned about the middle of its box
+## [param at] and faded, as the page's style says it (BookletRead reads
+## it back): "" for one neither turned nor faded.
+static func note_style(note: Dictionary, at: Rect2) -> String:
+	var how: String = ""
+	var turn: float = BookletLooks.turn_of(note)
+	if not is_zero_approx(turn):
+		how += ";transform:rotate(%sdeg);transform-origin:calc(%s * var(--mm)) calc(%s * var(--mm))" % [
+			BookletLooks._number(snappedf(turn, 0.1)), _n(at.size.x * 0.5), _n(at.size.y * 0.5)]
+	if BookletLooks.opacity_of(note) < 1.0:
+		how += ";opacity:%s" % BookletLooks._number(snappedf(BookletLooks.opacity_of(note), 0.01))
+	return how
 
 
 ## A hidden colour's chip and words: "■ Tower: Bright Green"; in its own
@@ -1300,9 +1322,10 @@ static func _part(at: Rect2, lot: Lot, document: Document) -> String:
 			(" (%s)" % lot.element) if not lot.element.is_empty() else ""])]
 
 
-static func _image(out: PackedStringArray, source: String, at: Rect2, alt: String) -> void:
-	out.append("<img class=\"a\" style=\"--x:%s;--y:%s;--w:%s;--h:%s\" src=\"%s\" alt=\"%s\">"
-		% [_n(at.position.x), _n(at.position.y), _n(at.size.x), _n(at.size.y), source,
+static func _image(out: PackedStringArray, source: String, at: Rect2, alt: String,
+		how: String = "") -> void:
+	out.append("<img class=\"a\" style=\"--x:%s;--y:%s;--w:%s;--h:%s%s\" src=\"%s\" alt=\"%s\">"
+		% [_n(at.position.x), _n(at.position.y), _n(at.size.x), _n(at.size.y), how, source,
 			_escape(alt)])
 
 
@@ -1379,9 +1402,9 @@ static func _arrow(from: Vector2, to: Vector2, colour: String = "#15191e",
 
 ## An arrow its designer drew (BookletLooks "arrows"), drawn as the
 ## booklet's own are: a line with a white edge under it, so it reads across
-## a model of its colour, and a head; through its bend, when it has one, as
-## a curve, for a part turned or swung in. The head is as big for its width
-## as the booklet's red pointer's.
+## a model of its colour, and a head; through its bends, when it has any,
+## as a curve, for a part turned or swung in (BookletLooks.arrow_line). The
+## head is as big for its width as the booklet's red pointer's.
 static func drawn_arrow(arrow: Dictionary) -> String:
 	var points: Array = BookletLooks.arrow_points(arrow)
 	if points.is_empty():
@@ -1392,17 +1415,24 @@ static func drawn_arrow(arrow: Dictionary) -> String:
 	var colour: String = str(BookletLooks.ARROW_COLOURS.get(str(arrow.get("colour", "red")),
 		BookletLooks.ARROW_COLOURS["red"]))
 	var head: float = width * 2.9
-	# The curve through the bend at its middle: a quadratic whose control
-	# point is the bend pushed out by as much again.
-	var control: Vector2 = (points[2] as Vector2) * 2.0 - (from + to) * 0.5 \
-		if points[2] != null else (from + to) * 0.5
-	var way: Vector2 = (to - control).normalized()
-	if way == Vector2.ZERO:
+	var drawn: Dictionary = BookletLooks.arrow_line(points, head * 2.3)
+	if drawn.is_empty():
 		return ""
+	var way: Vector2 = drawn["way"]
 	var side := Vector2(-way.y, way.x)
 	var base: Vector2 = to - way * head * 2.3
-	var line: String = "M%s %s Q%s %s %s %s" % [_n(from.x), _n(from.y), _n(control.x),
-		_n(control.y), _n(base.x), _n(base.y)]
+	var line: String = ""
+	if drawn.has("control"):
+		# Straight, or through one bend at its middle: a quadratic whose
+		# control point is the bend pushed out by as much again.
+		var control: Vector2 = drawn["control"]
+		line = "M%s %s Q%s %s %s %s" % [_n(from.x), _n(from.y), _n(control.x),
+			_n(control.y), _n(base.x), _n(base.y)]
+	else:
+		var said := PackedStringArray()
+		for point: Vector2 in drawn["line"]:
+			said.append("%s %s" % [_n(point.x), _n(point.y)])
+		line = "M" + " L".join(said)
 	return ("<path class=\"drawn-arrow\" d=\"%s\" fill=\"none\" stroke=\"#fff\" stroke-width=\"%s\" stroke-linecap=\"round\"/>"
 		% [line, _n(width + 0.7)]
 		+ "<path d=\"%s\" fill=\"none\" stroke=\"%s\" stroke-width=\"%s\"/>" % [line, colour, _n(width)]
