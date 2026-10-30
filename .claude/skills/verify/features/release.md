@@ -113,7 +113,7 @@ that offers each system its own build. The cycle and its cadence are
   ships it in turn, detached: it waits until PREV's `_lead.out` says
   brickworks.diy serves it, makes the release worktree, merges BRANCH at
   its tip then (a later commit waits for the next release), refuses a dirty
-  or half-merged tree, runs the lists and probes, then
+  or half-merged tree, runs the lists and the probes three at a time, then
   `ship.sh`, and retires the worktrees once live. `status` says each one's
   step, its checks passed of all, and when it should serve, under what
   brickworks.diy serves and since when; `hold TAG`
@@ -269,7 +269,7 @@ whose size is one byte off is `FAIL ... answered '200 <size>'`.
 python3 tools/minitest.py tests/test_release_train.py
 ```
 
-Proves it when: `6 passed`, in about 14 s. Each test makes a repository
+Proves it when: `7 passed`, in about 17 s. Each test makes a repository
 with an origin and unit worktrees, and stand-ins for release_wt.sh,
 merge_unit.sh, ship.sh, check.sh and probe.sh (retire_wt.sh is the real
 one), and runs the train detached as staged: it waits for the release
@@ -281,7 +281,9 @@ and at its deadline; and `status` reads `checks: 2 of 4 passed; failed: io (pass
 alone); 1 to run` mid-ship and `live: brickworks.diy serves it (SHA)` after,
 its first line `live: brickworks.diy serves SHA, TAG's, since HH:MMZ`, and
 a ship begun by hand is listed with its ETA (a median ship after it began)
-and the train behind it a ship after that. A commit to the branch while it
+and the train behind it a ship after that. Five probes run no more than
+three at once, and one that fails beside others says `beside others: again
+alone` and passes alone (`TRAIN_PROBES_AT_ONCE=1` stops on it). A commit to the branch while it
 merges ships in the next release, not this one (`tip` in the spec is the one
 merged); a restage after a failed probe says `cleared TAG's attempt before
 (its merge alone)` and ships, and one over a fix staged or committed in the

@@ -28,8 +28,9 @@ began, and gives up at its deadline (`TRAIN_WAIT`, 6 hours). Then
 `release_wt.sh` from origin/main, `merge_unit.sh` of the branch's tip
 then (in the spec's `tip`; a commit to the branch after it waits for the
 next release) as `Merge: <title>` with `MERGE_GATES=ship`, a tree dirty or
-mid-merge refused, `check.sh --lists`, each probe (its exit and its FAIL lines both
-count), and `ship.sh` with the checks, which promotes the very preview its
+mid-merge refused, `check.sh --lists`, the probes three at a time
+(`TRAIN_PROBES_AT_ONCE`; one failing beside others runs again alone before
+it counts, and its exit and its FAIL lines both count), and `ship.sh` with the checks, which promotes the very preview its
 checks passed as soon as the battery ends. Once brickworks.diy serves the
 release's sha, it retires the release's worktree and each unit's whose HEAD
 is on main and which holds no file git does not track (`retire_wt.sh`). Its
