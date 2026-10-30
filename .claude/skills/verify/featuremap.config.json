@@ -1888,7 +1888,7 @@
       "kind": "ui",
       "label": "versions of a model",
       "entry": "src/ui/versions_dialog.gd",
-      "reach": "godot --path .  (File, Versions…: the last 20 saves of the model on the baseplate, Open on one)",
+      "reach": "godot --path .  (File, Versions…: the last 20 saves of the model on the baseplate, Open or Compare on one)",
       "area": "model-io"
     },
     {
@@ -4214,6 +4214,20 @@
       "entry": "src/assembly/pattern.gd",
       "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, Round or Along a hose, a count In all, the copies shown as they will go; one Ctrl+Z takes them all back)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "compare with a save",
+      "entry": "src/ui/compare_view.gd",
+      "reach": "tools/probe.sh compare_probe   (File, Compare with…, or Compare on a row of Versions…: added green, removed a red ghost, moved or turned amber with a faint ghost, recoloured violet, the rest faded; the panel's counts, Previous and Next; Esc or Close puts the view back)",
+      "area": "model-io"
+    },
+    {
+      "kind": "lib",
+      "label": "model diff",
+      "entry": "src/parts/model_diff.gd",
+      "reach": "tools/probe.sh compare_probe   (by part, colour and place, the fewest changes: ten alike with one moved to the end is 1 moved; a session reads it with open_model versions=true version=N)",
+      "area": "model-io"
     }
   ]
 }

@@ -143,7 +143,13 @@
 					"name": "versions",
 					"words": "Versions…",
 					"key": "",
-					"tip": "The last 20 saves of this model, to open one again"
+					"tip": "The last 20 saves of this model, to open one again or compare it with"
+				},
+				{
+					"name": "compare",
+					"words": "Compare with…",
+					"key": "",
+					"tip": "What changed since one of this model's saves: added green, removed red, moved amber"
 				},
 				{
 					"line": true
@@ -1271,7 +1277,7 @@
 					"name": "tour",
 					"words": "Take the tour",
 					"key": "",
-					"tip": ""
+					"tip": "Build your first model, seven short steps done in the app"
 				}
 			]
 		}
@@ -1448,6 +1454,7 @@
 		"save": "Ctrl-S",
 		"save_as": "Ctrl-shift-S",
 		"versions": "",
+		"compare": "",
 		"export_ldraw": "",
 		"export_io": "",
 		"export_3d": "",

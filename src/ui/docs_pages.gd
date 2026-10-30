@@ -13,6 +13,7 @@ const PANELS := {
 	"BuildMode": "/docs/model-pages#build-it",
 	"ClaudeTabView": "/docs/connector#tabs",
 	"CollectionDialog": "/docs/collection#my-collection",
+	"CompareView": "/docs/saving-and-files#compare",
 	"ControlsDialog": "/docs/panels-and-settings#settings",
 	"ElementDialog": "/docs/figures-and-prints#make-a-part",
 	"HiddenColoursPanel": "/docs/joints-and-mechanisms#hidden-colours",
