@@ -2005,6 +2005,14 @@
       ]
     },
     {
+      "id": "cli:splitmerge probe",
+      "kind": "cli",
+      "entry": "src/dev/splitmerge_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/splitmerge_probe.gd  (a 2 x 4 plate split on its studs; three 1 x 4 plates merged into a brick; six 1 x 1s into a 2 x 3; five 1 x 2s into two; a merge with no real part said and nothing changed; a 1 x 1 brick and a slope split)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:springs probe",
       "kind": "cli",
       "entry": "src/dev/springs_probe.gd",
@@ -4739,6 +4747,14 @@
       "kind": "ui",
       "entry": "src/assembly/joint_snap.gd",
       "reach": "godot --headless --path . --script src/dev/technic_hand_probe.gd  (a pin, axle, beam, clip or bar in hand, aimed at a hole, pin, axle or bar; R turns it about the joint, T the other way on)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:split and merge parts",
+      "kind": "ui",
+      "entry": "src/assembly/split_merge.gd",
+      "reach": "godot --path .  (select; Alt-S splits, Alt-M merges, or the menu on a part)",
       "area": "building",
       "tests": []
     },

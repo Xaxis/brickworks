@@ -72,7 +72,7 @@ var _connector: ClaudeConnector
 var _together: Together
 var _together_dialog: TogetherDialog
 ## Comments pinned to parts (src/assembly/pinned_comments.gd): drawn on the
-## model, and Edit, Comments….
+## model, and File, Comments….
 var _pins_view: PinsView
 var _pins_dialog: PinsDialog
 ## A Build together link's secret from the page's address (?together=).
@@ -6619,7 +6619,7 @@ func open_together() -> void:
 	_together_dialog.open()
 
 
-## Edit, Comments…: the comments pinned to the model's parts, and a new one
+## File, Comments…: the comments pinned to the model's parts, and a new one
 ## on the part selected.
 func open_pins() -> void:
 	if _pins_dialog == null:
