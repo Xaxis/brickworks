@@ -497,8 +497,9 @@ declare -A CMD=(
   [render]="tools/web/render_flow.mjs --url=$P/app $B --out=$S/${TAG}_render_web"
   # A picture lit by a photographed place: the light is not in the pack the
   # start waits for, so it is fetched from the deployment the first time,
-  # and the dialog says so (webload, 2026-10-30).
-  [light_render]="tools/web/light_render_flow.mjs --url=$P/app/index.html $B --out=$S/${TAG}_light_render"
+  # and the dialog says so (webload, 2026-10-30). /app, not /app/index.html,
+  # which a deployment answers 404.
+  [light_render]="tools/web/light_render_flow.mjs --url=$P/app $B --out=$S/${TAG}_light_render"
   # Render's Product look under Compatibility: a black wall behind clear
   # glass and a white one behind trans red, drawn on each backdrop, each
   # picture not flat, the red glass red and the black wall dark
