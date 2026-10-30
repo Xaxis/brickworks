@@ -41,12 +41,19 @@ plan with Claude as the client.
   here", where a release's preview answers 422 for the missing token.
   A release goes through `tools/release/` (README there): a staging
   worktree, each ready unit merged as the user with a parse gate, then
-  `ship.sh WORKTREE TAG CHECK...` (preview, its browser checks, production,
-  the live site). Checked by running it: `ship.sh` says `SHIP: brickworks.diy
-  serves <sha>` and the live site check and share probe pass. A production
-  deploy that fails, or a site that does not serve `/b/<sha>/` after it,
-  fails the ship before the live checks (m174's deploy lost a size to a
-  timed-out connection and its ship still said done 0, 2026-10-26).
+  `ship.sh WORKTREE TAG CHECK...` (preview, its browser checks, that very
+  preview promoted with `tools/deploy.sh --promote=URL`, the live site).
+  Checked by running it: `ship.sh` says `SHIP: deploy: brickworks.diy serves
+  <sha>` and the live site check and share probe pass. A promotion that
+  fails falls back to `deploy.sh --prod`; a production deploy that fails,
+  or a site that does not serve `/b/<sha>/` after it, fails the ship before
+  the live checks (m174's deploy lost a size to a timed-out connection and
+  its ship still said done 0, 2026-10-26). `--promote` refuses a deployment
+  whose `/version.json` names another commit than its checkout's HEAD:
+  `tools/deploy.sh --promote=<unit preview>` says "deploy FAILED: ... is a
+  build of <sha>, not <sha>" and promotes nothing. The battery's timing
+  checks (preview_checks.sh `SOLO`) run as `heavy --solo`; each one's line
+  in `<tag>_calm.log` says the load it began at and beside what.
 - `what a first visit waits for` (load250, 2026-10-24): a browser taking
   brotli is sent the build as `tools/export.sh` compressed it, brotli 11
   (`deploy.sh` routes `index.wasm`, `index.pck`, `index.js` and
@@ -2932,6 +2939,7 @@ plan with Claude as the client.
 ```sh
 tools/deploy.sh                 # a preview URL
 tools/deploy.sh --prod          # the one brickworks.diy points at
+tools/deploy.sh --promote=URL   # brickworks.diy onto a checked deployment of HEAD (ship.sh's)
 tools/deploy.sh --no-export     # deploy what is already in build/web
 node tools/web/check.mjs --url=https://brickworks.diy/app --out=shots/deploy.png
 VERCEL_BYPASS=… node tools/web/site_check.mjs --url=<deployment> --out=shots/site
