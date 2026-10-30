@@ -4820,10 +4820,20 @@ a `checkout.stripe.com/c/pay/cs_test_…` URL, which a browser shows at
 "$8.00 per month" or "$80.00 per year". `plan_consents` keeps a row for
 each, read through the pooler (the table refuses REST). Each new Checkout
 for an account ends the one before ("You're all done here"), so open the
-last one made. A webhook signed with the .env secret answers 200
-`{heard}`, and a wrong secret gets 400. A heard `customer.updated` turns
-the account's `admission_snapshots` value to `at: 0` (forget), with no
-other request to the deployment. `?op=delete` erases the customer at
+last one made. Admission never sends test webhooks to a preview, since
+that would mean storing the bypass in its URL. So a delivery is replayed
+as its sender builds one (apps/admission/src/server/webhooks/deliver.ts):
+`{id, type: "customer.updated", createdAt, mode, seq, data: {customerId,
+reason, customer}}`, where `customer` is exactly `GET /v1/customers/{id}`
+under the test key. It is JSON.stringify'd and signed `t=<unix>,v1=<hex
+HMAC-SHA256 of "t.body">` with the .env secret, which the client's own
+`verifyWebhook` checks first. Posted after a sandbox payment, while
+`?op=plan` still answers Free `cached`: a wrong secret and a `t` 600 s old
+each get 400, and the plan stays Free. The good one gets 200 `{heard}`,
+the account's `admission_snapshots` value goes to `at: 0`, and
+`?op=plan` answers Pro `live`. /settings then says "Pro, $8.00 USD a
+month. Renews …". Admission's real delivery to us is proven only on
+production, at go-live. `?op=delete` erases the customer at
 Admission: `get_customer` in test mode then says `seen: false`, with no
 subscriptions.
 
