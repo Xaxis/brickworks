@@ -528,7 +528,8 @@
       "tests": [
         "tests/test_release.py",
         "tests/test_release_links.py",
-        "tests/test_release_train.py"
+        "tests/test_release_train.py",
+        "tests/test_worktree_links_ignored.py"
       ]
     },
     {
@@ -649,7 +650,8 @@
       "tests": [
         "tests/test_release.py",
         "tests/test_release_links.py",
-        "tests/test_release_train.py"
+        "tests/test_release_train.py",
+        "tests/test_worktree_links_ignored.py"
       ]
     },
     {
@@ -1682,7 +1684,8 @@
       "tests": [
         "tests/test_release.py",
         "tests/test_release_links.py",
-        "tests/test_release_train.py"
+        "tests/test_release_train.py",
+        "tests/test_worktree_links_ignored.py"
       ]
     },
     {
@@ -1981,7 +1984,8 @@
       "tests": [
         "tests/test_release.py",
         "tests/test_release_links.py",
-        "tests/test_release_train.py"
+        "tests/test_release_train.py",
+        "tests/test_worktree_links_ignored.py"
       ]
     },
     {
