@@ -92,7 +92,7 @@ func begin(placing: bool, at: Variant = null) -> bool:
 		return false
 	if placing:
 		if not builder.hold_still(at if not builder.has_preview() else null):
-			say.call("Connect: aim the part at the model first, then N")
+			say.call(Keymap.filled("Connect: aim the part at the model first, then {mode_connect}"))
 			return false
 		if not _offer():
 			builder.follow_by(null)
@@ -168,7 +168,7 @@ func pick(index: int) -> void:
 	builder.follow_by(points[index])
 	_drop_marks()
 	var end_at: JointSnap.End = points[index]
-	say.call("Connect: the %s picked — click the %s it goes on, R turns it about the joint" % [
+	say.call(Keymap.filled("Connect: the %s picked — click the %s it goes on, {rotate_held|turns it about the joint}") % [
 		JointSnap.SAID.get(end_at.kind, end_at.kind), _goes_on(end_at)])
 	aim_again.call()
 
@@ -245,9 +245,9 @@ func hint() -> String:
 			if end_at == null:
 				return "Connect: click where it goes · Esc stops"
 			if builder.is_on_joint():
-				return "Connect: by its %s on %s · click puts it there · R turns it about the joint · T the other way on · N another point · Esc stops" % [
+				return Keymap.filled("Connect: by its %s on %s · click puts it there · {rotate_held|turns it about the joint} · {tip_held|the other way on} · {mode_connect|another point} · Esc stops") % [
 					JointSnap.SAID.get(end_at.kind, end_at.kind), builder.joint_words()]
-			return "Connect: aim its %s at a %s · N picks another point · Esc stops" % [
+			return Keymap.filled("Connect: aim its %s at a %s · {mode_connect|picks another point} · Esc stops") % [
 				JointSnap.SAID.get(end_at.kind, end_at.kind), _goes_on(end_at)]
 	return ""
 

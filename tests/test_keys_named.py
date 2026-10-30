@@ -30,12 +30,6 @@ EXCUSED = {
     # (Main reads the keymap only while no shared model is being viewed).
     ("src/ui/share_view.gd", "Step through the build (B)"),
     ("src/ui/share_view.gd", "Every part, with BrickLink and Rebrickable lists (P)"),
-    # Connect's site choice is the connect2 unit's, rewriting these lines.
-    ("src/ui/connect_tool.gd", "Connect: aim the part at the model first, then N"),
-    ("src/ui/connect_tool.gd", "Connect: aim its %s at a %s · N picks another point · Esc stops"),
-    ("src/ui/connect_tool.gd", "Connect: the %s picked — click the %s it goes on, R turns it about the joint"),
-    ("src/ui/connect_tool.gd",
-     "Connect: by its %s on %s · click puts it there · R turns it about the joint · T the other way on · N another point · Esc stops"),
 }
 # Not shown to a person: the keymap itself, the probes, and what the
 # assistant is told (src/ai), which names parts like "Saturn V"...
