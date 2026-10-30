@@ -526,7 +526,8 @@ plan with Claude as the client.
   its picture and name the model's page, **Build it** (`.cta.small`) the
   guided build at step 1 (`/app?view=<id>&build`, as the page's Build it),
   and View in 3D a quiet `a.link` to the viewer, hidden in a frame under
-  400 px. `model_page_flow` step 15 holds the links at 560 px and the bar
+  400 px. The picture stands on `--picture-ground`, as a card's frame does,
+  and a line parts it from the bar. `model_page_flow` step 15 holds the links at 560 px and the bar
   whole at 340 px; `share_probe` the links in the markup.
   **Who can do what:** a visitor's read asks, as the server, for a published
   row's public columns alone (`api/share.js` `publishedRow`; until oc205 it
