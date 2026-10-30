@@ -167,9 +167,13 @@ geometry in front of them.
   Slope), in at most two lines fitted to the tile by `fit_lines` (words whole,
   the last line cut with "…"), with a set's count or a photo's certainty
   after it; the number is on its tooltip and for a screen reader (appux371
-  A4: a tile said only "3710"). `bin_names_probe` reads every tile in sight
-  at 1280 x 720 (and 1400 x 900 with PROBE_SIZE): its part's name, fitted,
-  no two alike.
+  A4: a tile said only "3710"). Names that begin alike tell themselves
+  apart (`PartsBin._tell_apart`): a cut name's last line goes on from the
+  word where it parts from its nearest neighbour's ("Slope 45 2×2 /
+  …Medium H…"), and any two still alike end in their numbers.
+  `bin_names_probe` reads every tile in sight at 1280 x 720 (and 1400 x 900
+  with PROBE_SIZE), in the bin as it opens and after "slope 45 2x2": its
+  part's name, fitted, no two alike.
 - `fits` (`src/parts/part_fits.gd`, the bin's **Fits** chip after
   Techniques): the parts that fit the selected part, or the one in hand when
   Fits was chosen (a part then taken from its list does not change it): the
@@ -460,7 +464,7 @@ tools/probe.sh search_rank_probe -- quality   # + 26 words builders type (snot, 
 tools/probe.sh bin_names_probe                # every tile in sight named in words and fitted, no two alike, its part drawn while it waits; shots/bin_names/
 PROBE_SIZE=1400x900 tools/probe.sh bin_names_probe
 tools/probe.sh fits_probe                     # Fits: twelve pairs each in the first five; the part in hand; typed words narrow it
-# the tiles on the web, on a slow network, within a second of the bin showing (local only)
+# the tiles on the web, on a slow network, drawn within a second of the bin showing and of a search typed (local only)
 PARTS_URL=http://127.0.0.1:8871/parts/ tools/export.sh web
 node tools/web/bin_tiles_flow.mjs --build=build/web --port=8871 --parts=assets/generated/parts --out=shots/bin_tiles
 godot --headless --path . --script src/dev/print_search_probe.gd    # a print by what is on it; plain parts unmoved

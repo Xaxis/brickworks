@@ -1793,7 +1793,64 @@ func _show_more(most: int = PAGE) -> void:
 	while _shown < limit:
 		_grid.add_child(_make_cell(_display[_shown]))
 		_shown += 1
+	_tell_apart()
 	_update_status()
+
+
+## Tiles whose names begin alike tell themselves apart: a name cut short
+## goes on from the word where it parts from the one nearest it. Searching
+## "slope 45 2x2", seven inverted slopes each read "Slope 45 2×2 Inverted
+## wit…"; now "…Medium Holes", "…without Inner…". Sorted word by word, the
+## name sharing most of a name's words is beside it. Any still alike end
+## in their numbers.
+func _tell_apart() -> void:
+	var labels: Array[Label] = []
+	var words: Array[PackedStringArray] = []
+	var numbers := PackedStringArray()
+	for cell: Node in _grid.get_children():
+		if cell.has_meta("name_label"):
+			var label: Label = cell.get_meta("name_label")
+			labels.append(label)
+			words.append(str(label.get_meta("name")).split(" ", false))
+			numbers.append(str(cell.get_meta("part", "")))
+	var keys := PackedStringArray()
+	for each: PackedStringArray in words:
+		keys.append("\u0001".join(each))
+	var order: Array = range(labels.size())
+	order.sort_custom(func(a: int, b: int) -> bool: return keys[a] < keys[b])
+	var from := PackedInt32Array()
+	from.resize(labels.size())
+	for n: int in range(1, order.size()):
+		var a: int = order[n - 1]
+		var b: int = order[n]
+		var same: int = 0
+		while same < mini(words[a].size(), words[b].size()) and words[a][same] == words[b][same]:
+			same += 1
+		# A name the other runs on from is told by its own end: "Double
+		# Convex" beside "Double Convex with 45 Corner" goes on from "Convex",
+		# where it parts from "Double Concave".
+		if same < words[a].size():
+			from[a] = maxi(from[a], same)
+		if same < words[b].size():
+			from[b] = maxi(from[b], same)
+	for n: int in labels.size():
+		if int(labels[n].get_meta("from", 0)) != from[n]:
+			labels[n].set_meta("from", from[n])
+			_fit_name(labels[n], _name_width(labels[n]))
+	# Two that still read alike, "…Round Bot…" from two names, end in their
+	# numbers: how a builder tells 3660e from 76959 anyway.
+	var alone := PackedStringArray()
+	var alike: Dictionary = {}
+	for label: Label in labels:
+		var text: String = label.text if str(label.get_meta("number", "")).is_empty() \
+			else _name_text(label, _name_width(label), "")
+		alone.append(text)
+		alike[text] = int(alike.get(text, 0)) + 1
+	for n: int in labels.size():
+		var number: String = numbers[n] if int(alike[alone[n]]) > 1 else ""
+		if str(labels[n].get_meta("number", "")) != number:
+			labels[n].set_meta("number", number)
+			_fit_name(labels[n], _name_width(labels[n]))
 
 
 func _update_status() -> void:
@@ -1928,6 +1985,7 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 			roundi(float(_guesses[info.id]) * 100.0), button.tooltip_text]
 	label.set_meta("name", tile_name(info))
 	label.set_meta("after", after)
+	button.set_meta("name_label", label)
 	label.clip_text = true
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
@@ -1941,7 +1999,7 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 		+ float(label.get_theme_constant("line_spacing")) * (NAME_LINES - 1))
 	# Fitted to the tile's width as it is laid out, and before that to the
 	# width a tile is made at, so its first frame already reads.
-	_fit_name(label, _z(74) - _z(6))
+	_fit_name(label, _name_width(label))
 	label.resized.connect(func() -> void: _fit_name(label, label.size.x))
 	if by_finger and _folds.has(info.id):
 		# Its "+N" has the foot's right end, a fingertip (_fold_badge): the
@@ -2018,19 +2076,31 @@ static var SIZE_WORDS := RegEx.create_from_string("(\\d) x (?=\\d)")
 func _fit_name(label: Label, width: float) -> void:
 	if width <= 1.0:
 		return
-	var font: Font = label.get_theme_font("font")
-	var size: int = label.get_theme_font_size("font_size")
-	var text: String = fit_lines(str(label.get_meta("name", "")), str(label.get_meta("after", "")),
-		font, size, width, NAME_LINES)
+	var text: String = _name_text(label, width, str(label.get_meta("number", "")))
 	if label.text != text:
 		label.text = text
+
+
+## What [param label] reads at [param width], [param number] after its name.
+func _name_text(label: Label, width: float, number: String) -> String:
+	var after: String = (" " + number if not number.is_empty() else "") + str(label.get_meta("after", ""))
+	return fit_lines(str(label.get_meta("name", "")), after, label.get_theme_font("font"),
+		label.get_theme_font_size("font_size"), width, NAME_LINES, int(label.get_meta("from", 0)))
+
+
+## The width a name is fitted to: its label's, or before it is laid out the
+## width a tile is made at.
+func _name_width(label: Label) -> float:
+	return label.size.x if label.size.x > 1.0 else _z(74) - _z(6)
 
 
 ## [param name] broken into at most [param lines] lines of [param width] in
 ## [param font] at [param size], whole words to a line, the last line cut
 ## with "…" where the name runs on, and [param after] at the end of it.
+## Cut, its last line starts at word [param from] where that is further
+## on: where the name parts from a tile's beside it (_tell_apart).
 static func fit_lines(name: String, after: String, font: Font, size: int, width: float,
-		lines: int) -> String:
+		lines: int, from: int = 0) -> String:
 	var wide: Callable = func(text: String) -> float:
 		return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
 	var wrapped := PackedStringArray()
@@ -2051,6 +2121,12 @@ static func fit_lines(name: String, after: String, font: Font, size: int, width:
 		return "\n".join(wrapped)
 	var kept: PackedStringArray = wrapped.slice(0, lines - 1)
 	var rest: String = " ".join(wrapped.slice(lines - 1))
+	var words: PackedStringArray = name.split(" ", false)
+	if from > " ".join(kept).split(" ", false).size() and from < words.size():
+		rest = "…" + " ".join(words.slice(from))
+		if float(wide.call(rest + after)) <= width:
+			kept.append(rest + after)
+			return "\n".join(kept)
 	var room: float = width - float(wide.call("…" + after))
 	while not rest.is_empty() and float(wide.call(rest)) > room:
 		rest = rest.left(-1)

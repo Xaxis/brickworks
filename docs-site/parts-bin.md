@@ -9,7 +9,7 @@ nav: The parts bin
 description: Find any part by name, number, shape or a photo, keep the ones you use, and choose its colour.
 ---
 
-The parts bin is the top of the left-hand column. [[P]] opens it, and [[/]] goes straight to its search. Each part's name is under its picture, *Plate 1×2*, *Brick 1×1 with Stud on 1 Side*; its number is on its tooltip. While a picture is still coming, the part is drawn in its place from its size and studs, so no tile is ever a blank square.
+The parts bin is the top of the left-hand column. [[P]] opens it, and [[/]] goes straight to its search. Each part's name is under its picture, *Plate 1×2*, *Brick 1×1 with Stud on 1 Side*; its number is on its tooltip. Where names begin alike and run long, each goes on from the words that set it apart. While a picture is still coming, the part is drawn in its place from its size and studs, so no tile is ever a blank square.
 
 <!-- covers
 ui:parts bin

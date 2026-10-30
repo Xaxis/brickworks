@@ -17,7 +17,10 @@
 ##   the catalogue says of it (PartSketch): read off the window's pixels, a
 ##   shape in the colour in hand, where a plain placeholder was a faint
 ##   square nobody could tell from its neighbour (it fails on that one);
-## * and when the pictures land, the names and the tiles stay where they were.
+## * and when the pictures land, the names and the tiles stay where they were;
+## * and typed "slope 45 2x2", whose parts' names begin alike, the same of
+##   each tile in sight: a name cut short goes on from where it parts from
+##   its neighbour's, or ends in its number, so no two read the same.
 ##
 ## Also at 1400 x 900 (PROBE_SIZE=1400x900). Pictures of the bin waiting and
 ## drawn go to shots/bin_names/.
@@ -29,6 +32,8 @@ extends SceneTree
 ## shimmer crossing a plain placeholder lifts it towards white, not red.
 const DRAWN_SHARE := 0.12
 const TOWARDS := 0.08
+## Words that turn up parts whose names begin alike.
+const ALIKE := "slope 45 2x2"
 
 var _failures: int = 0
 var _main: Node
@@ -108,6 +113,21 @@ func _run() -> void:
 		drawn == sight.size() and after == names and moved == 0)
 	await _shot("drawn_%dx%d" % [size.x, size.y])
 
+	# A search for parts alike: seven inverted slopes once read "Slope 45
+	# 2×2 Inverted wit…" side by side. Their pictures held back again.
+	print("")
+	print("  \"%s\" typed, the pictures held back" % ALIKE)
+	_forget_pictures()
+	_thumbs.set_process(false)
+	bin._run_search(ALIKE)
+	await _frames(8)
+	var alike: Array[ThumbTile] = _seen(bin.get("_scroll"), _tiles_of(bin.get("_grid")))
+	_check("%d tiles in sight, waiting for their pictures" % alike.size(), alike.size() >= 8)
+	_names(alike, library)
+	await _stand_ins(alike)
+	await _shot("alike_%dx%d" % [size.x, size.y])
+	_thumbs.set_process(true)
+
 	_put_back_autosave()
 	print("")
 	print("bin names probe: every tile says its part, and stands in for its picture while it waits"
@@ -128,9 +148,9 @@ func _names(sight: Array[ThumbTile], library: PartLibrary) -> Dictionary:
 		read[tile.part_id] = text
 		shown.append(text.replace("\n", " / "))
 		var name: String = PartsBin.tile_name(library.parts[tile.part_id])
-		var flat: String = text.replace("\n", " ")
-		var whole: bool = flat == name or (flat.ends_with("…")
-			and name.begins_with(flat.trim_suffix("…").strip_edges()))
+		# Two names still alike when cut end in their numbers.
+		var flat: String = text.replace("\n", " ").trim_suffix(" " + tile.part_id)
+		var whole: bool = flat == name or (flat.contains("…") and _reads_from(flat, name))
 		var words: bool = RegEx.create_from_string("[A-Za-z]{3}").search(flat) != null
 		if whole and words and flat != tile.part_id:
 			named += 1
@@ -191,6 +211,22 @@ func _stand_ins(sight: Array[ThumbTile]) -> void:
 			drawn += 1
 	_check("each waiting tile draws its part in its place (%d of %d; the least covers %d%% of its square)"
 		% [drawn, sight.size(), roundi(least * 100.0)], drawn == sight.size())
+
+
+## Whether [param shown] is pieces of [param name] in order, with "…" where
+## words are left out: its start, then where it parts from a tile beside it.
+func _reads_from(shown: String, name: String) -> bool:
+	var at: int = 0
+	var pieces: PackedStringArray = shown.split("…")
+	for n: int in pieces.size():
+		var piece: String = pieces[n].strip_edges()
+		if piece.is_empty():
+			continue
+		var found: int = name.find(piece, at)
+		if found < 0 or (n == 0 and found != 0):
+			return false
+		at = found + piece.length()
+	return true
 
 
 func _label_of(tile: ThumbTile) -> Label:

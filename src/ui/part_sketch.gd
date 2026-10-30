@@ -55,6 +55,9 @@ static func draw(item: CanvasItem, rect: Rect2, info: PartLibrary.PartInfo, colo
 	if round:
 		_cylinder(item, view, Vector3(width * 0.5, 0.0, depth * 0.5), width * 0.5, depth * 0.5,
 			height, top, left, edge)
+	elif info.category == "Slope" and height > PLATE * 1.5 \
+			and info.name.get_slice(" with ", 0).contains("Inverted"):
+		_inverted(item, view, width, depth, height, top, left, right, edge)
 	elif info.category == "Slope" and height > PLATE * 1.5:
 		_slope(item, view, width, depth, height, studs, info.stud_count, top, left, right, edge)
 	else:
@@ -98,7 +101,9 @@ static func _shade(colour: Color, by: float, alpha: float) -> Color:
 static func _is_round(info: PartLibrary.PartInfo) -> bool:
 	if info.category in ["Cylinder", "Cone", "Dish"]:
 		return true
-	var name: String = info.name.to_lower()
+	# What it is, not what it has: "Slope Brick 45 2 x 2 Inverted with Round
+	# Bottom Pin" is not round.
+	var name: String = info.name.to_lower().get_slice(" with ", 0)
 	return name.contains(" round") and not name.contains("corner round") \
 		and not name.contains("round corner") and not name.contains("rounded") \
 		and info.footprint_studs().x == info.footprint_studs().y
@@ -140,6 +145,21 @@ static func _slope(item: CanvasItem, view: Callable, width: float, depth: float,
 	_face(item, PackedVector2Array([view.call(width, height, 0.0), view.call(width, height, flat),
 		view.call(width, lip, depth), view.call(width, 0.0, depth), view.call(width, 0.0, 0.0)]),
 		right, edge)
+
+
+## An inverted slope: its top whole, falling away underneath from a lip at
+## the front to the row it stands on at the back.
+static func _inverted(item: CanvasItem, view: Callable, width: float, depth: float, height: float,
+		top: Color, left: Color, right: Color, edge: Color) -> void:
+	var lip: float = minf(PLATE * 0.5, height)
+	var foot: float = minf(PITCH, depth)
+	_face(item, PackedVector2Array([view.call(0.0, height, 0.0), view.call(width, height, 0.0),
+		view.call(width, height, depth), view.call(0.0, height, depth)]), top, edge)
+	_face(item, PackedVector2Array([view.call(0.0, height, depth), view.call(width, height, depth),
+		view.call(width, height - lip, depth), view.call(0.0, height - lip, depth)]), left, edge)
+	_face(item, PackedVector2Array([view.call(width, height, 0.0), view.call(width, height, depth),
+		view.call(width, height - lip, depth), view.call(width, 0.0, foot),
+		view.call(width, 0.0, 0.0)]), right, edge)
 
 
 ## An upright round, [param across] and [param deep] its radii, standing

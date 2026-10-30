@@ -84,10 +84,12 @@ func _run() -> void:
 			continue
 		for child: Node in cell.find_children("*", "Label", true, false):
 			label = (child as Label).text
+	# The count on the name's last line when it fits there, else under it.
 	var named: String = PartsBin.tile_name(bin.library.parts[most])
-	_check("its tile names it and counts how many the set has: \"%s\"" % label.replace("\n", " "),
-		label.ends_with("  ×%d" % int(counts[most]))
-		and named.begins_with(label.replace("\n", " ").get_slice("  ×", 0).trim_suffix("…")))
+	var words: String = " ".join(label.replace("\n", " ").split(" ", false))
+	_check("its tile names it and counts how many the set has: \"%s\"" % words,
+		words.ends_with(" ×%d" % int(counts[most]))
+		and named.begins_with(words.get_slice(" ×", 0).trim_suffix("…")))
 
 	# The bin asking again by itself, as it does when the web build's
 	# catalogue arrives after the set was shown: the set stays.
