@@ -2760,14 +2760,15 @@ func set_bin() -> SetBin:
 	return _set_bin
 
 
-## What the first [param most] of a set's tiles count, part/colour -> how
-## many are left, for a browser check (brickworksState.bin_left).
-func counts_shown(most: int = 8) -> Dictionary:
-	var out: Dictionary = {}
+## What the first [param most] of a set's tiles count, in their order:
+## [[part/colour, how many are left], ...], for a browser check
+## (brickworksState.bin_left; a dictionary's keys went out sorted).
+func counts_shown(most: int = 8) -> Array:
+	var out: Array = []
 	if _set_bin == null or not _listing_set:
 		return out
 	for n: int in mini(most, _result_keys.size()):
-		out[_result_keys[n]] = _set_bin.left(_result_keys[n], _used)
+		out.append([_result_keys[n], _set_bin.left(_result_keys[n], _used)])
 	return out
 
 

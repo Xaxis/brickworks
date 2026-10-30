@@ -4,16 +4,17 @@
 ##
 ## The biggest sets there are: 75419-1 Death Star (9,188 pieces, 1,173 kinds
 ## by part and colour), bigbox-1 (10,253 pieces, 1,779 kinds, the most kinds
-## of any) and 5008796-1 (17,085 pieces, the most pieces). For the whole
-## library and for each set's bin, timed in one run on one machine:
-##   fill    the bin listed afresh, up to its next frame drawn (median of 7);
+## of any) and 5008796-1 (17,085 pieces, the most pieces). For each set's
+## bin and the whole library's, in turn four times in one run, each going
+## first in turn, so whatever else the machine does falls on both alike:
+##   fill    the bin listed afresh, up to its next frame drawn (median);
 ##   scroll  a frame of the grid scrolled 30 px a frame for 90 frames, its
-##           pictures coming in (median and p95);
+##           pictures coming in (median and p95 of the rounds' frames);
 ## and the counts worked out again (PartsBin._recount) over a model of 3,000
 ## parts, which a set's bin does once a model change (at most every
 ## RECOUNT_MSEC while a part is dragged).
-## Fails where a set's fill or median scroll frame is slower than the whole
-## library's by more than the noise between two runs of the library itself.
+## Fails where a set's median fill or scroll frame is over the whole
+## library's by more than 5% and a millisecond (half of one for a frame).
 extends SceneTree
 
 const SETS: Array[String] = ["75419-1", "bigbox-1", "5008796-1"]
@@ -56,7 +57,7 @@ func _fill() -> float:
 	return _median(times)
 
 
-## Frames of the grid scrolled down, 30 px a frame: [median, p95] in ms.
+## Frames of the grid scrolled down, 30 px a frame, each in ms.
 func _scroll() -> Array:
 	var scroll: ScrollContainer = _bin.get("_scroll")
 	scroll.scroll_vertical = 0
@@ -70,7 +71,7 @@ func _scroll() -> Array:
 		var now: int = Time.get_ticks_usec()
 		times.append((now - last) / 1000.0)
 		last = now
-	return [_median(times), _p95(times)]
+	return times
 
 
 func _run() -> void:
@@ -95,32 +96,40 @@ func _run() -> void:
 		dock.set_open(true)
 	var world: BrickWorld = main.get("_world")
 
-	# The library twice, so the noise between two runs of one bin is known.
-	var library_fill: Array = [await _fill(), 0.0]
-	var library_scroll: Array = await _scroll()
-	library_fill[1] = await _fill()
-	var again: Array = await _scroll()
-	var fill_noise: float = absf(float(library_fill[1]) - float(library_fill[0]))
-	var frame_noise: float = absf(float(again[0]) - float(library_scroll[0]))
-	var fill_whole: float = maxf(float(library_fill[0]), float(library_fill[1]))
-	var frame_whole: float = maxf(float(library_scroll[0]), float(again[0]))
-	print("the whole library: fill %.1f / %.1f ms, scroll frame median %.1f / %.1f ms, p95 %.1f / %.1f ms"
-		% [library_fill[0], library_fill[1], library_scroll[0], again[0], library_scroll[1], again[1]])
-
+	# Each set's bin and the library's in turn, four rounds: the frames of
+	# each pooled, and the median fill of each.
 	for number: String in SETS:
-		var kinds: int = await _bin.build_from(PackedStringArray([number]))
+		var fills: Array = [[], []]       ## the library's, the set's
+		var frames: Array = [[], []]
+		var kinds: int = 0
+		# Which goes first changes each round, so neither always has the
+		# machine as the other left it.
+		for round: int in 4:
+			for which: int in ([0, 1] if round % 2 == 0 else [1, 0]):
+				if which == 0:
+					_bin.leave_set()
+				else:
+					kinds = await _bin.build_from(PackedStringArray([number]))
+					if kinds == 0:
+						break
+				fills[which].append(await _fill())
+				frames[which].append_array(await _scroll())
+			if kinds == 0:
+				break
 		if kinds == 0:
 			_check("%s is in the inventories" % number, false)
 			continue
 		var set_bin: SetBin = _bin.set_bin()
-		var fill: float = await _fill()
-		var frames: Array = await _scroll()
-		print("%s (%s pieces, %d kinds shown): fill %.1f ms, scroll frame median %.1f ms, p95 %.1f ms"
-			% [set_bin.title, PartsBin._comma(set_bin.pieces), kinds, fill, frames[0], frames[1]])
-		_check("%s's bin fills no slower than the library's (%.1f against %.1f ms, noise %.1f)"
-			% [number, fill, fill_whole, fill_noise], fill <= fill_whole + maxf(fill_noise, 1.0))
-		_check("...and scrolls no slower (median frame %.1f against %.1f ms, noise %.1f)"
-			% [frames[0], frame_whole, frame_noise], float(frames[0]) <= frame_whole + maxf(frame_noise, 1.0))
+		var whole: Array = [_median(fills[0]), _median(frames[0]), _p95(frames[0])]
+		var mine: Array = [_median(fills[1]), _median(frames[1]), _p95(frames[1])]
+		print("%s (%s pieces, %d kinds shown) against the whole library: fill %.1f against %.1f ms, "
+			% [set_bin.title, PartsBin._comma(set_bin.pieces), kinds, mine[0], whole[0]]
+			+ "scroll frame median %.1f against %.1f ms, p95 %.1f against %.1f ms"
+			% [mine[1], whole[1], mine[2], whole[2]])
+		_check("%s's bin fills no slower than the library's (%.1f against %.1f ms)" % [number,
+			mine[0], whole[0]], float(mine[0]) <= float(whole[0]) * 1.05 + 1.0)
+		_check("...and scrolls no slower (median frame %.1f against %.1f ms)" % [mine[1], whole[1]],
+			float(mine[1]) <= float(whole[1]) * 1.05 + 0.5)
 
 	# The counts over a model of 3,000 parts, as a model change has them.
 	var parts: Array[String] = ["3001", "3020", "3023", "3069b", "3004", "3710"]

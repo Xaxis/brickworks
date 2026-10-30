@@ -29,6 +29,25 @@ which models they could build from what they have. Added 2026-10-12.
     owned in its own colour, then in any colour; Open puts one on the baseplate
     and shows its shortfall. An official model opens where `vendor/omr` is
     (a checkout); elsewhere See it links its page at library.ldraw.org.
+- `build from a set's parts` (`src/collection/set_bin.gd`, `src/ui/parts_bin.gd`,
+  docs/APP_UX.md B10, 2026-10-30): the parts bin as one set's parts, or
+  several sets' added up, a tile for each part and colour in its own colour,
+  each counting how many are left (`SetBin`). Chosen by a set's number typed
+  into the bin's search ("10497-1", "set 10497": the line at the bin's top
+  offers it, Build from it; Add its parts while building from one), by Build
+  from it and Build from them all on My collection's What I own, and by
+  `/app?parts=N` (`Main._maybe_fill_bin`). The counts are never kept: each
+  model change (`BrickWorld.revision`, at most every 100 ms while it goes on)
+  they are worked out again from the model's bricks (`SetBin.used_in`, its
+  baseplate left out), so a part put down, undo, delete and an open all
+  count alike. None left: greyed, still placeable, then "N over" on the tile
+  and the line. A tile taken takes its colour. A search and the categories
+  pick among the set's parts; All parts on the line goes back. Kept in the
+  model's saves and autosave as `0 !BRICKWORKS BIN <numbers>` after the first
+  line (never in what is published or exported, as the share line is);
+  followed when a model opens, kept by New, let go by Make a part's and
+  Print's own categories. The web build fetches the one shard a set is in
+  from the deployment's `/sets/` (about 0.2 s for 10497-1's 140 KB).
 - `collection sums` (`src/collection/collection.gd`, pure): the pool (sets
   expanded through their inventories, plus loose parts), the shortfall, the
   plan of what could stand in, and coverage. One spelling for both sides: a
@@ -171,6 +190,11 @@ curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   #
 python3 tools/minitest.py tests/test_collection.py        # a set's expansion against the raw tables
 godot --headless --path . --script src/dev/collection_probe.gd
 godot --path . --resolution 1400x900 --script src/dev/collection_ui_probe.gd   # needs a display
+# building from a set's parts: the counts down, undo, delete, over, saved (1280x720; PROBE_SIZE=1400x900 too)
+tools/probe.sh setbin_probe -- --shots=DIR
+tools/probe.sh setbin_time_probe        # the biggest sets' bins against the whole library's
+# ...and in a browser, a local export with build/web/sets linked to assets/generated/sets
+node tools/web/setbin_flow.mjs --url=http://127.0.0.1:9271/ --out=shots/setbin_web
 # the endpoint against the real database, two throwaway accounts (.env sourced)
 node tools/web/relay_server.mjs 8790 &
 node tools/web/collection_probe.mjs --url=http://127.0.0.1:8790

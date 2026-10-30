@@ -725,8 +725,8 @@ func _tell_page() -> void:
 		"tile_names": _bin.tile_names() if _bin != null else [],
 		# ...and which set's parts they are (/app?parts=, sets364).
 		"bin_set": _bin.set_showing() if _bin != null else "",
-		# ...and what its first tiles count, part/colour -> left (SetBin).
-		"bin_left": _bin.counts_shown() if _bin != null else {},
+		# ...and what its first tiles count, [[part/colour, left], ...] (SetBin).
+		"bin_left": _bin.counts_shown() if _bin != null else [],
 		# ...and the colour Enter in the colour's name would take.
 		"colour_first": _bin.colour_first() if _bin != null else -1,
 		"custom": _library.custom.keys(),

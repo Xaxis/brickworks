@@ -76,7 +76,7 @@ func _run() -> void:
 	var tiles: PackedStringArray = bin.first_found(6)
 	_check("its first tile is what the set has most of (%s, %d of it): %s" % [most_key,
 		int(counts.get(most_key, 0)), ", ".join(tiles)], not tiles.is_empty() and tiles[0] == most
-		and bin.counts_shown(1).has(most_key))
+		and str(bin.counts_shown(1)[0][0]) == most_key)
 	var every: bool = true
 	for id: String in tiles:
 		every = every and parts.has(id)

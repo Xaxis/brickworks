@@ -202,7 +202,7 @@ func _run() -> void:
 		shown.size() == want.size() and missing.is_empty() and extra.is_empty())
 	_check("each tile counts what the inventory says (%d wrong%s)" % [miscounted.size(),
 		": " + miscounted[0] if not miscounted.is_empty() else ""], miscounted.is_empty())
-	var first: Button = _cell(_bin.counts_shown(1).keys()[0])
+	var first: Button = _cell(str(_bin.counts_shown(1)[0][0]))
 	var first_tile: ThumbTile = first.get_meta("tile")
 	_check("a tile is drawn in its own colour: %s in %d" % [first_tile.part_id, first_tile.color_code],
 		first_tile.color_code == Collection.colour_of(str(first.get_meta("key"))))
