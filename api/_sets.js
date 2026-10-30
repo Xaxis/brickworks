@@ -193,13 +193,14 @@ export function searchCatalog(sets, ask, models = new Map()) {
     if (ask.model && !models.get(entry.set.toLowerCase())?.main) return false;
     return words.every((one) => entry.said.includes(one));
   });
+  // A year's biggest sets first: a year holds key rings and promotions too.
   const order = {
-    oldest: (a, b) => a.year - b.year,
+    oldest: (a, b) => a.year - b.year || b.parts - a.parts,
     largest: (a, b) => b.parts - a.parts,
     smallest: (a, b) => a.parts - b.parts,
     name: (a, b) => byName(a, b),
-    newest: (a, b) => b.year - a.year,
-  }[ask.sort] || ((a, b) => b.year - a.year);
+    newest: (a, b) => b.year - a.year || b.parts - a.parts,
+  }[ask.sort] || ((a, b) => b.year - a.year || b.parts - a.parts);
   const exact = (entry) => {
     if (!number) return 1;
     const key = entry.set.toLowerCase();

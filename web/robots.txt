@@ -9,3 +9,5 @@ Disallow: /b/
 Allow: /
 
 Sitemap: https://brickworks.diy/sitemap.xml
+# And every set's page, a few files of them under one index (api/_sets.js).
+Sitemap: https://brickworks.diy/sitemaps/index.xml

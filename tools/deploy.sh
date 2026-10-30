@@ -175,7 +175,9 @@ fi
 # onto it, and the LDraw library's sets, each a page at /library/<id> with its
 # pictures (.webp the card's, .cutout.webp the page's, .cover.webp the app's
 # cover), its file (.mpd) and its parts (api/_library.js; /library is
-# web/library.html). /api/people is who shares them and what is done with them
+# web/library.html); and every set in Rebrickable's catalogue, each a page
+# at /library/set/<number> with its parts and its picture drawn from them
+# (.jpg), and the sets' sitemaps under /sitemaps/ (api/_sets.js). /api/people is who shares them and what is done with them
 # (supabase/people.sql): profiles at /u/<handle>, collections at /c/<id>,
 # likes and favourites; the site's header and footer beside it too, as
 # _site.html. The viewer is /app?view=<id>: /app is the app's page itself,
@@ -201,6 +203,10 @@ for handler in api/*.js; do
   # The one model card (web/card.js), which api/_card.js passes through in
   # a checkout: here the file itself, so a function needs no web/.
   cp web/card.js "$fn/_card.js"
+  # A part's geometry as the app reads it (web/lbm.js), which api/_lbm.js
+  # passes through in a checkout: the pictures the share function draws of
+  # a set's parts (api/_flatlay.js).
+  cp web/lbm.js "$fn/_lbm.js"
   # The stand-in Admission, beside the function only on a preview that asks
   # for it: no other deployment holds it at all.
   if [ "$stand_in" = 1 ]; then cp tests/fixtures/billing/fake_admission.mjs "$fn/_admission_stand_in.mjs"; fi
@@ -225,6 +231,13 @@ for handler in api/*.js; do
     if ! node tools/web/part_facts.mjs "$fn/_part_facts.json" --parts="$fn/_parts_table.json" | sed 's/^/deploy: /'; then
       echo "deploy FAILED: no part facts for /api/share (tools/web/part_facts.mjs)"; exit 1
     fi
+    # Every set in Rebrickable's catalogue, a page each at /library/set/<n>
+    # (api/_sets.js): written from the vendored CSVs and the set shards,
+    # a few seconds, and only rewritten when it would change.
+    if ! python3 tools/set_catalog.py | sed 's/^/deploy: /' || [ ! -f assets/generated/set_catalog.json ]; then
+      echo "deploy FAILED: no set catalogue for /api/share (tools/set_catalog.py)"; exit 1
+    fi
+    cp assets/generated/set_catalog.json "$fn/_set_catalog.json"
   fi
   # The handler is .mjs and so is unambiguously a module; the shared
   # files it imports are .js, which Node classifies by the nearest
@@ -429,6 +442,11 @@ $docs_moved
     { "src": "/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$1" },
     { "src": "/c/([A-Za-z0-9]{10})/?", "dest": "/api/people?op=list_page&id=\$1" },
     { "src": "/collections/?", "dest": "/api/people?op=collections_page" },
+    { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})/parts[.](json|xml|csv)", "dest": "/api/share?op=catalog_parts&set=\$1&as=\$2" },
+    { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]jpg", "dest": "/api/share?op=catalog_picture&set=\$1" },
+    { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})/?", "dest": "/api/share?op=catalog_set&set=\$1" },
+    { "src": "/sitemaps/index[.]xml", "dest": "/api/share?op=sitemap_index" },
+    { "src": "/sitemaps/sets-([1-9][0-9]{0,2})[.]xml", "dest": "/api/share?op=sitemap_sets&n=\$1" },
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})/?", "dest": "/api/share?op=set&id=\$1" },
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.]webp", "dest": "/api/share?op=set_cover&id=\$1" },
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.](cutout|cover)[.]webp", "dest": "/api/share?op=set_cover&id=\$1&as=\$2" },

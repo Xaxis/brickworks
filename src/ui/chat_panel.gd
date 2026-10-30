@@ -389,6 +389,18 @@ func refresh_designer() -> void:
 	_show_for_key(OwnKey.has_key())
 
 
+## Words put in the brief's box for the person to send or change, never
+## sent here (/app?brief=, a set's page's Design with these parts).
+func draft(text: String) -> void:
+	_input.text = text
+	focus_brief()
+
+
+## What the brief's box holds.
+func drafted() -> String:
+	return _input.text
+
+
 ## The brief's box, ready to type in.
 func focus_brief() -> void:
 	if _composer.visible:
