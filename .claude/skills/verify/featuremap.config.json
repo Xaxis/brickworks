@@ -914,8 +914,8 @@
     {
       "kind": "ui",
       "label": "tour",
-      "entry": "src/ui/tour.gd",
-      "reach": "godot --path .  (Help, Take the tour)",
+      "entry": "src/ui/first_build.gd",
+      "reach": "godot --path .  (Build your first model: offered once along the top of the model on a first visit; Help, Take the tour)",
       "area": "building"
     },
     {
@@ -4136,6 +4136,13 @@
       "label": "find a command",
       "entry": "src/ui/command_palette.gd",
       "reach": "godot --path .  (Ctrl+/, Ctrl+Shift+P on the desktop, or the Brickworks menu's Find a command…: type, Up and Down, Return)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "first build probe",
+      "entry": "src/dev/first_build_probe.gd",
+      "reach": "tools/probe.sh first_build_probe; PROBE_SIZE=1400x900 tools/probe.sh first_build_probe   (pictures in shots/first_build/)",
       "area": "building"
     },
     {

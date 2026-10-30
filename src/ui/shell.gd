@@ -32,7 +32,8 @@ var banner: AssemblyBanner
 ## Sections suggested, broken out, exploded and evaluated: src/ui/sections_ui.gd.
 var sections: SectionsUi
 var grid: StudGrid
-var tour: Tour
+## Build your first model, along the top of the model: src/ui/first_build.gd.
+var first_build: FirstBuild
 ## My collection: src/ui/collection_dialog.gd.
 var collection: CollectionDialog
 ## File, Library…: src/ui/library_dialog.gd.
@@ -311,9 +312,11 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	grid.floor_layer = app.get("_floor")
 	app.add_child(grid)
 
-	tour = Tour.new()
-	tour.shell = self
-	app.get_node("HUD").add_child(tour)
+	# Offered once on a first visit, and from Help, Take the tour: in the
+	# strip along the top of the model, never over it.
+	first_build = FirstBuild.new()
+	first_build.shell = self
+	notices.add_child(first_build)
 
 	# What the person owns, what this model needs of it, what they could
 	# build: src/ui/collection_dialog.gd. The parts list leads there too.
@@ -1243,7 +1246,8 @@ func _define() -> void:
 	_add("keys", "Keys and controls", KEY_F1, func() -> void: (app.get("_controls") as ControlsDialog).open_keys(),
 		Callable(),
 		"What every button and key does")
-	_add("tour", "Take the tour", 0, func() -> void: tour.start())
+	_add("tour", "Take the tour", 0, func() -> void: first_build.start(), Callable(),
+		"Build your first model, seven short steps done in the app")
 	# src/ui/command_palette.gd: Figma's key for its Actions. Ctrl+Shift+P
 	# too on the desktop (handle_key); a browser keeps that one.
 	_add("palette", "Find a command…", CTRL | KEY_SLASH, func() -> void: palette.open(), Callable(),
@@ -2669,7 +2673,7 @@ func covers(point: Vector2) -> bool:
 		if panel != null and panel.is_visible_in_tree() \
 				and panel.get_global_rect().has_point(point):
 			return true
-	return tour != null and tour.visible
+	return false
 
 
 ## Where each control is, for a browser test to press it as a person does.
@@ -2700,6 +2704,8 @@ func controls_by_name() -> Dictionary:
 		out.merge(versions.controls_by_name())
 	if palette != null:
 		out.merge(palette.controls_by_name())
+	if first_build != null:
+		out.merge(first_build.controls_by_name())
 	# Save as's question, for tools/web/dialogs_flow.mjs.
 	if _save_as != null and _save_as.visible:
 		out["save_as_name"] = _save_as_name

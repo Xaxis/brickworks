@@ -197,29 +197,30 @@ func _first_visit() -> void:
 	_shell.run("panel_properties")
 	await _frames(30)
 
-	# The tour's Properties stop brings them out from behind the assistant's
-	# tab and lights them in the right column.
+	# Build your first model, from Help, Take the tour: Start, and its first
+	# step brings the bin out from behind the assistant's column and frames
+	# its parts, its line along the top of the model, not over it, and the
+	# model keeping its share.
 	_shell.run("panel_assistant")
 	await _frames(30)
 	_shell.run("tour")
 	await _frames(5)
-	var tour: Tour = _shell.tour
-	for _n: int in 8:
-		if tour._heading.text.begins_with("Properties") or not tour.visible:
-			break
-		await _click(tour._next.get_global_rect().get_center())
-		await _frames(20)
-	# The stop lights its panel again once the column has opened and the
-	# window laid itself out round it (Tour._opened): a time, not frames.
+	var first: FirstBuild = _shell.first_build
+	await _click((first.controls_by_name()["first_build_go"] as Control).get_global_rect().get_center())
 	await create_timer(SideDock.SLIDE_SECONDS + 0.2).timeout
 	await _frames(5)
-	_check("the tour's Properties stop opens the right column and lights them (%s: %s round %s)"
-		% [tour._heading.text, tour._lit, _shell.inspector.get_global_rect()],
-		tour._heading.text.begins_with("Properties")
-		and props_dock != null and props_dock.is_open()
-		and tour._lit.encloses(_shell.inspector.get_global_rect()))
-	await _shot("4b_tour_properties")
-	tour.stop()
+	var parts: Control = _bin.controls_by_name()["parts list"]
+	var lit: Rect2 = (first.get("_frame") as Control).get("lit")
+	_check("Build your first model's first step opens the bin and frames its parts (%s: %s round %s)"
+		% [first.step_name(), lit, parts.get_global_rect()],
+		first.step_name() == "put" and bin_dock.is_open() and lit.encloses(parts.get_global_rect()))
+	var below: Rect2 = (_main.get("_over_model") as Control).get_global_rect()
+	_check("...its line along the top of the model, not over it (%s above %s)"
+		% [first.get_global_rect(), below],
+		first.is_visible_in_tree() and first.get_global_rect().end.y <= below.position.y + 1.0)
+	_model_keeps_its_share("...and the model")
+	await _shot("4b_first_build")
+	first.stop()
 	await _frames(5)
 
 
