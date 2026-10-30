@@ -1529,9 +1529,9 @@ async function oembed(request, response, origin) {
   if (format !== "json") return response.status(501).json({ error: "JSON only: format=json" });
   const id = oembedId(request.query?.url, origin);
   if (!id) return response.status(404).json({ error: "name a model's link: url=https://brickworks.diy/m/<id>" });
-  const row = await publishedRow(id);
-  if (!row) return response.status(404).json({ error: "There is no model shared at that link." });
-  const model = { ...row, by: await profileOf(id, row.author) };
+  // Read as its page is (directory_model): whom it credits, as the page does.
+  const model = await modelPage(id);
+  if (!model) return response.status(404).json({ error: "There is no model shared at that link." });
   const link = links(origin, id);
   const { width, height } = oembedSize(request.query?.maxwidth, request.query?.maxheight);
   const credit = creditName(model);
@@ -1541,14 +1541,14 @@ async function oembed(request, response, origin) {
     type: "rich",
     provider_name: "Brickworks",
     provider_url: origin,
-    title: row.name,
+    title: model.name,
     ...(credit ? { author_name: credit } : {}),
     ...(model.by && model.by.handle && !modelledByOf(model.modelled_by) ? { author_url: `${origin}/u/${model.by.handle}` } : {}),
     html: `<iframe src="${escapeHtml(`${link.url}/embed`)}" width="${width}" height="${height}" style="border:0;max-width:100%" `
-      + `title="${escapeHtml(`${row.name}, a Brickworks model`)}" loading="lazy"></iframe>`,
+      + `title="${escapeHtml(`${model.name}, a Brickworks model`)}" loading="lazy"></iframe>`,
     width,
     height,
-    thumbnail_url: row.has_image ? link.image : `${origin}/share.png`,
+    thumbnail_url: model.has_image ? link.image : `${origin}/share.png`,
     thumbnail_width: 1200,
     thumbnail_height: 630,
     cache_age: 3600,
