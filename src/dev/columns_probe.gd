@@ -177,8 +177,13 @@ func _first_visit() -> void:
 			break
 		await _click(tour._next.get_global_rect().get_center())
 		await _frames(20)
-	_check("the tour's Properties stop opens the right column and lights them (%s)"
-		% tour._heading.text, tour._heading.text.begins_with("Properties")
+	# The stop lights its panel again once the column has opened and the
+	# window laid itself out round it (Tour._opened): a time, not frames.
+	await create_timer(SideDock.SLIDE_SECONDS + 0.2).timeout
+	await _frames(5)
+	_check("the tour's Properties stop opens the right column and lights them (%s: %s round %s)"
+		% [tour._heading.text, tour._lit, _shell.inspector.get_global_rect()],
+		tour._heading.text.begins_with("Properties")
 		and props_dock != null and props_dock.is_open()
 		and tour._lit.encloses(_shell.inspector.get_global_rect()))
 	await _shot("4b_tour_properties")
