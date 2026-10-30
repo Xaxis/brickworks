@@ -4734,25 +4734,43 @@ No network: the real client against a stand-in Admission and Supabase
 (`tests/fixtures/billing/`), every request recorded.
 
 ```sh
-python3 tools/minitest.py tests/test_billing.py
+python3 tools/minitest.py tests/test_billing.py tests/test_saved_models_plan.py
 PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/admission_snapshots.sql --dry --try=tools/admission_snapshots_try.sql --table=admission_snapshots
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/account_models_plan.sql --dry --try=tools/account_models_plan_try.sql --table=account_models
 ```
 
-The tests pass when all do: Free with 10 builds and none used (and none
-left at 10 used), Pro with no limit and the desktop, a comp until its date,
+AI is never limited, on any plan (the owner, 2026-10-29): what Free holds
+back is how many models an account keeps with it (Admission's
+saved_models, a cap: Free 25, Pro any number) and the desktop app.
+test_billing passes when all do: Free keeping 25 models and nothing of AI
+in its entitlement or the offer, Pro with no limit and the desktop, a comp until its date,
 the owner (MASTER_EMAIL) reported and given everything, a cold instance
 answering from the database's snapshot while Admission is down (Pro stays
-Pro, Free stays at its limit), no snapshot answered `unknown` (refuses
+Pro, Free stays at its 25), no snapshot answered `unknown` (refuses
 nothing), and with the switch off, or a mode without its own kind of key,
 not one request and a GET to /api/plans refused with 405 as before. The
 dry run: the table empty, row security with no policy, both functions the
 server's alone, a snapshot kept and kept over, a key not the client's
 refused, a row 90 days old gone at the next write, anon and signed-in
-refused. On a deployment, only with the switch on for it alone
+refused. test_saved_models_plan passes when api/models.js, plans off, never
+asks Admission and sends each save to the database exactly as before (30
+saves, save_account_model, the same seven arguments in order); Free keeps 25
+new models and the 26th is answered 413 {full: "plan", pro: "/plans",
+error: "Free keeps 25 models in your account. Delete one, or get Pro for
+unlimited."} and not kept; at 25 a save over a model it has and the same
+model again are kept; a delete makes room at once; Pro, a comp of Pro and the
+owner keep 30; a plan not known keeps 30; a Free snapshot held while
+Admission is down still keeps 25; and without account_models_plan.sql a
+save is kept and the log says so. The second dry run: two new models under
+a limit two above what the account has, an update and the same model again
+at the limit kept, a delete then a new one in its place, anon and
+signed-in unable to call the function, and a third new model ending the run
+with "models: plan" (P0001), rolled back. On a deployment, only with the switch on for it alone
 (`--env BRICKWORKS_BILLING=test --env ADMISSION_KEY=<adm_test_ key>`, never
 on the project): `curl -s <deployment>/api/plans` is the offer, and
 `/api/plans?op=plan` with a test account's session is its plan, Free and
-`builds.limit` 10, `standing` "known", `freshness` "live".
+`savedModels.limit` 25, `standing` "known", `freshness` "live"; one POST
+to `/api/models` with that session kept (`{name, version: 1}`).
 
 ### Paying for Pro: Checkout, the portal, the webhook, built dark
 
