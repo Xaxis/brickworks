@@ -1503,9 +1503,23 @@ func _ready() -> void:
 	_enable_antialiasing()
 	_match_screen_density()
 	_watch_frame_cost()
+	# On the web the catalogue, the models and LDraw's tables come in a pack
+	# of their own, fetched while the scripts were made (WebPacks): written
+	# in once this first frame ends, and waited for until then, nothing
+	# moving and the page's own screen still up. Nothing drawn either
+	# (GpuFence.hold): a frame drawn in software under that screen was most
+	# of the wait.
+	if not WebPacks.here(WebPacks.DATA):
+		get_tree().paused = true
+		GpuFence.hold()
+		await WebPacks.need(WebPacks.DATA)
+		GpuFence.let_go()
+		get_tree().paused = false
+		_boot_mark("data")
 	_library = PartLibrary.new()
 	var started: int = Time.get_ticks_msec()
 	if not _library.load_catalogue():
+		_boot_mark("stopped")
 		_title.text = "No catalogue"
 		_status.text = "Run tools/build_meshes.py to generate assets/generated/."
 		# Nothing below was built, so there is nothing for _process to

@@ -3803,6 +3803,13 @@
       "area": "view"
     },
     {
+      "kind": "cli",
+      "label": "photographed light in a browser",
+      "entry": "tools/web/light_render_flow.mjs",
+      "reach": "node tools/web/light_render_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=OUT [--against=OTHER.png]   (a local export served by tools/web/serve.py, with .env sourced: Quick at 720p lit by Softbox studio, the light fetched only then, and the same picture as a build that carried it in its pack)",
+      "area": "view"
+    },
+    {
       "kind": "lib",
       "label": "a plan's limit on models kept with the account",
       "entry": "supabase/account_models_plan.sql",
@@ -4167,13 +4174,6 @@
       "area": "building"
     },
     {
-      "kind": "cli",
-      "label": "set walk probe",
-      "entry": "src/dev/setwalk_probe.gd",
-      "reach": "tools/probe.sh setwalk_probe  (8841-1's 25 walk parts and 5762-1's first 25 built from the set's bin, its number typed and Build from it: each part's tile, R and T, the view's keys or cube, the pointer aimed with its corrections, Connect or a typed rest, every input counted; 12 actions a part or fewer and every part exact; -- only=8841-1|5762-1 shots=1 from=library (the same walk from the whole library); PROBE_SIZE=1400x900)",
-      "area": "building"
-    },
-    {
       "kind": "ui",
       "label": "handles on the selection",
       "entry": "src/ui/handles.gd",
@@ -4235,6 +4235,13 @@
       "entry": "src/parts/model_diff.gd",
       "reach": "tools/probe.sh compare_probe   (by part, colour and place, the fewest changes: ten alike with one moved to the end is 1 moved; a session reads it with open_model versions=true version=N)",
       "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "set walk probe",
+      "entry": "src/dev/setwalk_probe.gd",
+      "reach": "tools/probe.sh setwalk_probe  (8841-1's 25 walk parts and 5762-1's first 25 built from the set's bin, its number typed and Build from it: each part's tile, R and T, the view's keys or cube, the pointer aimed with its corrections, Connect or a typed rest, every input counted; 12 actions a part or fewer and every part exact; -- only=8841-1|5762-1 shots=1 from=library (the same walk from the whole library); PROBE_SIZE=1400x900)",
+      "area": "building"
     },
     {
       "kind": "ui",

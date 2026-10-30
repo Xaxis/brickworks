@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
 
 ## Sub-features
 
@@ -1674,6 +1674,22 @@ picture the assistant is shown.
   at least 0.5% near black (the black wall, seen only through the clear
   glass), no script errors. `--also=models/sports_car.ldr,…` draws those
   models too at Good on white, for pictures.
+- `photographed light in a browser` (`tools/web/light_render_flow.mjs`):
+  the web build does not carry Studio's panoramas in the pack its start
+  waits for (`index.hdri.bin`, `cli:web build and deploy`): the first
+  picture lit by one fetches them, the dialog saying "fetching the
+  photographed light" meanwhile (`StudioRender._prepare`). Opens the
+  example car, presses Render, Quick and 720p, chooses Softbox studio from
+  the light's list with the keys, and renders. Check, with .env sourced,
+  against a local export served by `tools/web/serve.py build/web PORT
+  --parts assets/generated/parts --compressed --cached`: `node
+  tools/web/light_render_flow.mjs --url=http://127.0.0.1:PORT/index.html
+  --out=OUT --against=BEFORE/light.png`, where BEFORE is the same flow's
+  run on a build whose pack still held the light: a 1280x720 PNG; the
+  light not fetched before the render, then fetched and written
+  (`window.brickworksPacks.hdri`); the dialog said so; the picture the
+  same as BEFORE's (no channel more than 24 of 255 apart, mean within 1);
+  no script errors; "light render: all passed".
 - `studio renderer` (`src/render/studio_render.gd`): off screen, in its own
   viewports with a copy of the model staged a slice a frame (`FramePace`): the
   model alone on the sweep, its floor's baseplate left out unless it is part of
