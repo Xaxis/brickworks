@@ -90,30 +90,37 @@ export function stem(word) {
 }
 
 /// The edit distance between [a] and [b], a swap of two letters one edit,
-/// or more than [most] as soon as it must be.
+/// or more than [most] as soon as it must be. Three rows kept between calls:
+/// a misspelt word is held to every word there is.
+const ROWS = [new Int32Array(64), new Int32Array(64), new Int32Array(64)];
 export function distance(a, b, most = 2) {
   if (Math.abs(a.length - b.length) > most) return most + 1;
-  let before = null;
-  let last = Array.from({ length: b.length + 1 }, (_, j) => j);
+  if (b.length >= 63) return a === b ? 0 : most + 1;
+  let [before, last, row] = ROWS;
+  for (let j = 0; j <= b.length; j += 1) last[j] = j;
   for (let i = 1; i <= a.length; i += 1) {
-    const row = [i];
+    row[0] = i;
     let least = i;
     for (let j = 1; j <= b.length; j += 1) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
       let d = Math.min(last[j] + 1, row[j - 1] + 1, last[j - 1] + cost);
-      if (before && i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d = Math.min(d, before[j - 2] + 1);
-      row.push(d);
-      least = Math.min(least, d);
+      if (i > 1 && j > 1 && a.charCodeAt(i - 1) === b.charCodeAt(j - 2) && a.charCodeAt(i - 2) === b.charCodeAt(j - 1)) {
+        d = Math.min(d, before[j - 2] + 1);
+      }
+      row[j] = d;
+      if (d < least) least = d;
     }
     if (least > most) return most + 1;
-    before = last;
-    last = row;
+    [before, last, row] = [last, row, before];
   }
   return last[b.length];
 }
 
 /// How far off a word of [length] letters may be typed.
 const slack = (length) => (length >= 8 ? 2 : length >= 4 ? 1 : 0);
+
+/// The most words of a query read.
+const MOST_WORDS = 10;
 
 /// What a set's number may be typed as: "10188-1", "375-2", "k4852".
 const NUMBER = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/;
@@ -215,7 +222,10 @@ export function indexOf(items) {
 /// sets have), and split (the same, whether or not it is, unless it is a
 /// word still being typed)}; and joins, two slots one word ("fire truck").
 export function readQuery(index, q) {
-  const typed = fold(q).split(/\s+/).map((one) => one.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")).filter(Boolean);
+  // Each word once, ten at most: a hundred letters of one-letter words took
+  // 150 ms.
+  const typed = [...new Set(fold(q).split(/\s+/).map((one) => one.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""))
+    .filter(Boolean))].slice(0, MOST_WORDS);
   const known = (word) => index.ids.get(stem(word));
   const slots = typed.map((token, at) => {
     const parts = token.match(/[\p{L}\p{N}]+/gu) || [];
