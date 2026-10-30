@@ -147,7 +147,7 @@ const drawn = (page) => page.evaluate(() => {
   const firstPicture = Math.min(...cards.map((el) => el.querySelector(".frame").getBoundingClientRect().top));
   // To a row: the most cards that share a top, outside the shelves' rows.
   const rows = {};
-  for (const el of cards.filter((one) => !one.closest(".models.row"))) {
+  for (const el of cards.filter((one) => !one.closest(".models.scroller"))) {
     const top = Math.round(el.getBoundingClientRect().top);
     rows[top] = (rows[top] || 0) + 1;
   }

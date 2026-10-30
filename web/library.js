@@ -365,7 +365,7 @@ import { browseBar } from "/browse.js";
     else if (loading) pressed = true;
     else next(false);
   });
-  browseBar({ search: q, above: document.querySelector(".library-bar"), bar: $("toolbar"), row: $("themes") });
+  browseBar({ search: q, above: document.querySelector(".library-bar"), bar: $("toolbar") });
   addEventListener("scroll", nearEnd, { passive: true });
   addEventListener("resize", nearEnd, { passive: true });
   sayFilters();

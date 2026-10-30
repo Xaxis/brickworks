@@ -40,10 +40,8 @@
   .note { margin: 0; font-size: var(--t-tiny); color: var(--ink-soft); }
   .note.bad { color: var(--bad); }
   .admin .stats { margin: 0 0 22px; }
-  /* A table wider than a phone scrolls inside its card; positioned, so a
-     header's words for a screen reader (.visually-hidden) scroll with it
-     rather than push the page sideways. */
-  .scroller { overflow-x: auto; position: relative; }
+  /* A table wider than a phone scrolls inside its card, a .card.scroller:
+     the site's scroller as a box (site.css). */
   table { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
   th { text-align: left; color: var(--ink-soft); font-weight: 600; font-size: var(--t-micro);
        text-transform: uppercase; letter-spacing: .05em;

@@ -135,7 +135,7 @@ def test_the_page_is_drawn_without_what_comes_next_when_the_database_will_not_sa
 def strip(html: str) -> list[str] | None:
     """What the strip under the picture links to, in order, or None when it
     is drawn hidden."""
-    found = re.search(r'<div class="media-strip" id="pictures"([^>]*)>([\s\S]*?)</div>', html)
+    found = re.search(r'<div class="media-strip scroller" id="pictures"([^>]*)>([\s\S]*?)</div>', html)
     assert found, "no strip"
     if "hidden" in found.group(1):
         return None

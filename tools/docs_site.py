@@ -318,7 +318,25 @@ def render(page: Page, markdown: str) -> None:
         para.append(line)
         i += 1
     flush()
-    page.html += "\n".join(out)
+    page.html += named_tables(page, "\n".join(out))
+
+
+def named_tables(page: Page, fragment: str) -> str:
+    """Each table's box in [fragment] a region the keyboard reaches and
+    scrolls where it is wider than a phone (the site's scroller,
+    docs/DESIGN_SYSTEM.md), named by the heading over it, or the page's
+    title over the first."""
+    over = page.title
+
+    def name(match: re.Match) -> str:
+        nonlocal over
+        if match.group("words") is not None:
+            over = plain(match.group("words"))
+            return match.group(0)
+        return (f'<div class="table{match.group("kind")}" role="region" '
+                f'aria-label="{html.escape(over, quote=True)}" tabindex="0">')
+
+    return re.sub(r'<h[2-4] id="[^"]*">(?P<words>.*?)<a class="anchor"|<div class="table(?P<kind>[^"]*)">', name, fragment)
 
 
 def _paragraphs(lines: list[str]) -> list[list[str]]:

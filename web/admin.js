@@ -5,6 +5,8 @@
 // addresses people typed, and an address is not something to let a
 // browser interpret.
 import { signedIn, token as tabToken } from "/account.js";
+// Its tables scroll as every scroller on the site does; it has no kit.
+import "/scroller.js";
 
 const $ = (id) => document.getElementById(id);
 

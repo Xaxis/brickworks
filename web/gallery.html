@@ -98,8 +98,8 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 /* The bar of filters: Filters, then the kinds, kept under the header as
    the list scrolls, on the page's ground carried out to the window's
    edges (a shadow, which nothing scrolls to), with the header's edge
-   under it once it is stuck (gallery.js data-stuck). Its kinds fade out
-   at the edge while there are more of them. */
+   under it once it is stuck (gallery.js data-stuck). Its kinds are a
+   scroller (site.css) that starts at Filters, not out in the gutter: inset. */
 .toolbar {
 	position: sticky; top: var(--head-h); z-index: 6; display: flex; align-items: center; gap: var(--s-2); min-width: 0;
 	margin: 0 0 var(--s-4); padding: var(--s-2) 0;
@@ -109,12 +109,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 	background: var(--bg); box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax);
 }
 .toolbar[data-stuck]::before { box-shadow: 0 0 0 100vmax var(--bg), 0 1px 0 100vmax var(--line); clip-path: inset(0 -100vmax -1px); }
-.toolbar .pills.row {
-	flex: 1; min-width: 0;
-	mask-image: linear-gradient(90deg, var(--ink) calc(100% - 48px), transparent);
-	-webkit-mask-image: linear-gradient(90deg, var(--ink) calc(100% - 48px), transparent);
-}
-.toolbar .pills.row[data-end] { mask-image: none; -webkit-mask-image: none; }
+.toolbar .pills.scroller { flex: 1; min-width: 0; }
 .filters { flex: none; }
 .filters summary .n {
 	display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill);
@@ -274,7 +269,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 					</div>
 				</div>
 			</details>
-			<div class="pills row" id="kinds" role="group" aria-label="Kind">
+			<div class="pills scroller inset" id="kinds" role="group" aria-label="Kind">
 				<button type="button" class="pill" data-kind="" aria-pressed="true">All</button>
 			</div>
 		</div>
@@ -326,7 +321,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 						<h2 id="spotlight-h">Today in the gallery</h2>
 						<a id="spotlight-library" href="/library">Browse the LDraw library</a>
 					</div>
-					<div class="models row" id="spotlight-models"></div>
+					<div class="models scroller" id="spotlight-models" role="group" aria-labelledby="spotlight-h"></div>
 				</section>
 				<section class="shelf" id="ready" aria-labelledby="ready-h" hidden>
 					<div class="shelf-head">
@@ -334,7 +329,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 						<a id="ready-all" href="/gallery?sort=owned" hidden>Everything by the parts you own</a>
 					</div>
 					<p class="shelf-said" id="ready-said"></p>
-					<div class="models row" id="ready-models"></div>
+					<div class="models scroller" id="ready-models" role="group" aria-labelledby="ready-h"></div>
 				</section>
 				<section class="shelf" id="small" aria-labelledby="small-h" hidden>
 					<div class="shelf-head">
@@ -342,7 +337,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 						<a id="small-all" href="/gallery?size=small" hidden>See every small build</a>
 					</div>
 					<p class="shelf-said">Under 200 parts, an evening’s build: the most built and remixed first.</p>
-					<div class="models row" id="small-models"></div>
+					<div class="models scroller" id="small-models" role="group" aria-labelledby="small-h"></div>
 				</section>
 			</div>
 		</div>
