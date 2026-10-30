@@ -1767,10 +1767,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `N` (or the toolbar's Connect, Build's tool row) holds it still where its ghost
   stood (where the view looks if it stood nowhere) and draws its ends
   (`JointSnap.ends_for`: pins, axles, pin and axle holes, bars, clips, tyres,
-  rims, hinge halves) as blue rings and pegs drawn over everything; the one
-  under the pointer lights. A click on one makes it the only end the hand goes
+  rims, hinge halves) as blue rings (holes, clips) and dots (pins, axles, bars)
+  on a 2D layer over the view (`ConnectPoints`); the one under the pointer
+  lights amber. A click on one makes it the only end the hand goes
   on by (`_onto_a_joint` takes `[connect_end]`), so a 1 x 16 on a pin has two
-  ways, not thirty; the click on a point and its release are eaten
+  ways, not thirty, and of ways joining as many parts `_best_on_joint` takes the
+  one above the floor and then the one turned least from how it stood
+  (`_turned_from_picked`); the click on a point and its release are eaten
   (`ConnectTool._unhandled_input`), and `place()` refuses while points are
   offered. `R` turns about the joint, `T` the other way on, `N` again picks
   another point, `Esc` back to placing. With nothing in hand the tool waits for
@@ -1783,12 +1786,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `PROBE_SIZE=1280x720` for the small window. `column`: 8841-1's parts 1 to 20
   from the file, the column taken, aimed at its pin, `N`, its end hole, the pin,
   a click (bar 6 actions), against the build flow's 25 presses of `T`/`R`
-  without Connect; one undo; another hole puts it 140 LDU along. `turned`: a
+  without Connect; one undo; another hole puts it on the pin by that hole. `turned`: a
   1 x 16 by its fourth hole onto a pin in a 1 x 4 turned 30° and tilted 25°, `R`
   about the joint. `model`: the toolbar's Connect on a column lying on the floor,
   `Esc` puts it back, then moved onto its pins in one undo. `walk`: 8841-1's nine
   joint parts of section 9's 25 by Connect, counted, and the run's 744 actions
-  with them in (rows in `shots/connect/walk.json`, pictures in
+  with them in (each part its run's take and colour overhead plus Connect's
+  count, where that is fewer and lands where the file has it) (rows in `shots/connect/walk.json`, pictures in
   `shots/connect/WxH/`).
 - `typed place and hinge` (`src/ui/inspector.gd`, `Builder.move_selection_by`,
   `Builder.hinge_angle`, 2026-10-17): Properties' X, Y and Z move the

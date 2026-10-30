@@ -2378,9 +2378,11 @@ const _JOINT_TRIES := 64
 func _best_on_joint(options: Array, site: JointSnap.End, basis: Basis) -> void:
 	var best_joins: int = -1
 	var best_under: float = INF
+	var best_turned: float = INF
 	if _joint_last_fits:
 		best_joins = _joins_made(_joint_last_at)
 		best_under = _under_ground(_joint_last_at)
+		best_turned = _turned_from_picked(_joint_last_at)
 	var tries: int = 0
 	for n: int in options.size():
 		var way: int = posmod(_joint_way + n, options.size())
@@ -2406,14 +2408,29 @@ func _best_on_joint(options: Array, site: JointSnap.End, basis: Basis) -> void:
 			# by its end hole on two pins stood up them, not down through
 			# the floor, which holds a part that hangs below the model.
 			var under: float = _under_ground(at)
-			if joins > best_joins or (joins == best_joins and under < best_under - 0.5):
+			# And of those, the one turned least from how it stood when
+			# Connect's point was picked on it.
+			var turned: float = _turned_from_picked(at)
+			if joins > best_joins or (joins == best_joins and (under < best_under - 0.5
+					or (under < best_under + 0.5 and turned < best_turned - 0.01))):
 				best_joins = joins
 				best_under = under
+				best_turned = turned
 				_joint_way = way
 				_joint_roll = int(turn[0])
 				_joint_extra = float(turn[1])
 				_joint_last_at = at
 				_joint_last_fits = true
+
+
+## How far [param at] is turned from the pose the part stood in when
+## Connect's point was picked on it; 0 with no point picked.
+func _turned_from_picked(at: Transform3D) -> float:
+	if connect_end == null or _connect_from == null:
+		return 0.0
+	var from: Basis = (_connect_from as Transform3D).basis
+	return (at.basis.x - from.x).length() + (at.basis.y - from.y).length() \
+		+ (at.basis.z - from.z).length()
 
 
 ## How far the part in hand at [param at] reaches below the ground, in LDU.
@@ -3544,6 +3561,8 @@ var connect_end: JointSnap.End = null
 ## Whether Connect is asking which point of the part in hand it goes on by:
 ## the ghost is kept where it stands, and a click puts nothing down.
 var connect_picking: bool = false
+## The pose the part in hand stood in while its point was picked.
+var _connect_from: Variant = null
 
 
 ## Hold the part in hand still where its ghost stands, or at [param at],
@@ -3563,6 +3582,7 @@ func hold_still(at: Variant = null) -> bool:
 		return false
 	connect_picking = true
 	_typed_from = _ghost_transform
+	_connect_from = _ghost_transform
 	return true
 
 
@@ -3571,6 +3591,8 @@ func hold_still(at: Variant = null) -> bool:
 func follow_by(end: JointSnap.End) -> void:
 	connect_picking = false
 	connect_end = end
+	if end == null:
+		_connect_from = null
 	_typed_from = null
 	_joint_last = ""
 

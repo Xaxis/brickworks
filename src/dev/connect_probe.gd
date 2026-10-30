@@ -367,8 +367,12 @@ func _walk() -> void:
 			continue
 		var end_index: int = pair[0]
 		var site: JointSnap.End = pair[1]
-		var kind: String = (JointSnap.ends_for(_library, part)[end_index] as JointSnap.End).kind
 		await _look_at_joint(site, want, part)
+		# Of a pin through two holes, by the half in the hole in sight.
+		pair = _goes_on(part, want, _camera.global_position)
+		end_index = pair[0]
+		site = pair[1]
+		var kind: String = (JointSnap.ends_for(_library, part)[end_index] as JointSnap.End).kind
 		_count_from()
 		await _hold(part, int(truth[index - 1][1]))
 		var at: Vector2 = _aim_for(site, _end_at(part, end_index, want))
@@ -430,8 +434,10 @@ func _lay(truth: Array, index: int) -> void:
 
 ## The point of [param part] that, where the file has it at [param want], is on
 ## a joint of a part down, and that joint: [index in its points, site], the
-## nearest the joint's line first and then the nearest its middle. [] for none.
-func _goes_on(part: String, want: Transform3D) -> Array:
+## nearest the joint's line first and then a pin's or axle's middle nearest
+## the hole's; of a pin through two holes alike, the hole nearer [param eye].
+## [] for none.
+func _goes_on(part: String, want: Transform3D, eye: Vector3 = Vector3.INF) -> Array:
 	var best: Array = []
 	var best_off: float = INF
 	var ends: Array = JointSnap.ends_for(_library, part)
@@ -443,14 +449,19 @@ func _goes_on(part: String, want: Transform3D) -> Array:
 			var off: float = _off_line(mine.at, site)
 			if off > 2.0:
 				continue
-			off += mine.at.distance_to(site.at) * 0.01
-			# A pin's end the hole is round, not the one inside the brick it is in.
-			if site.is_male() and (mine.at - site.at).dot(site.axis) < -1.0:
-				off += 10.0
+			# The half of a pin that is in the hole, not the half out of it.
+			off += _shaft_middle(mine).distance_to(_shaft_middle(site)) * 0.01
+			if eye != Vector3.INF:
+				off += site.at.distance_to(eye) * 0.00001
 			if off < best_off:
 				best_off = off
 				best = [n, site]
 	return best
+
+
+## A pin's or an axle's middle, from its collar out; a hole's own.
+static func _shaft_middle(end: JointSnap.End) -> Vector3:
+	return end.at + end.axis * end.reach * 0.5 if end.is_male() else end.at
 
 
 ## The view turned to the side a joint opens to, the part's place framed, as

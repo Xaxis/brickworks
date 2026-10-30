@@ -70,4 +70,4 @@ columns_saved   # a layout kept before the right column loads as it was left (la
 booklet_later   # Apply to later pages: 42004-1's booklet laid out from its first page in 9 acts (pages, B7)
 bin_names  # every tile in the parts bin names its part in words, no two alike, and draws its part from the catalogue while its picture comes; at 1280x720 (appux371 A4)
 typed_moves   # a number typed while moving or turning: CADTASK's typed placements, the wall's turn in hand, five clones (hand371)
-connect_probe   # Connect: a point on the part, then the point it goes on; 8841-1's column, a turned parent, a part down, the walk (connect)
+connect   # Connect: a point on the part, then the point it goes on; 8841-1's column, a turned parent, a part down, the walk (connect)
