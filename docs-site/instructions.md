@@ -12,7 +12,7 @@ description: Build steps, the timeline, the booklet Brickworks lays out from the
 
 ## Build steps {#steps}
 
-A model's build steps are the order it goes together in. Press [[E]] as you build: what was put down since the last step becomes one. **Edit › Build steps** moves the selected parts a step earlier ([[Shift+[]]) or later ([[Shift+]]]), makes a step of them ([[Shift+N]]), and moves, merges or deletes the step the timeline is on.
+A model's build steps are the order it goes together in. Press [[E]] as you build: what was put down since the last step becomes one. **Build › Build steps** moves the selected parts a step earlier ([[Shift+[]]) or later ([[Shift+]]]), makes a step of them ([[Shift+N]]), and moves, merges or deletes the step the timeline is on.
 
 <!-- covers
 ui:build steps

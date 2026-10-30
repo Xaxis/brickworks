@@ -1,5 +1,5 @@
-## Help, Send feedback… opens, attaches what the person chooses and sends
-## it, and Help, Beta hub is a tester's alone (beta374, FeedbackDialog,
+## Brickworks, Send feedback… opens, attaches what the person chooses and
+## sends it, and Brickworks, Beta hub is a tester's alone (beta374, FeedbackDialog,
 ## RecentLog, Shell.EARLY_COMMANDS).
 ##
 ##   tools/probe.sh feedback_probe
@@ -7,7 +7,7 @@
 ##   ... -- --shots=DIR    the dialog pictured there
 ##
 ## With a small model open and nobody signed in, it runs Send feedback as
-## the Help menu does and reads the dialog:
+## the app's menu (the mark's) does and reads the dialog:
 ##
 ##   it is up, with the picture of the window taken before it covered it,
 ##   shown small; Remove takes it off, Add a picture of the window puts it
@@ -25,9 +25,9 @@
 ##   the dialog, the log shown, fits the window, and in a short one what it
 ##   holds scrolls with Send still on the screen;
 ##   the picture removed and nothing ticked, none of it goes;
-##   Help has Send feedback and no Beta hub; the account's early features
-##   given (Shell.set_early), Help has Beta hub and it can run; taken away,
-##   it has not and it cannot.
+##   the app's menu has Send feedback and no Beta hub; the account's early
+##   features given (Shell.set_early), it has Beta hub and it can run; taken
+##   away, it has not and it cannot.
 extends SceneTree
 
 var _failures: int = 0
@@ -80,26 +80,21 @@ func _run() -> void:
 
 
 func _menus() -> void:
-	_check("Help has Send feedback", "feedback" in _shell._shown(_help()))
-	_check("Help has no Beta hub for an account that is not a tester", not "beta_hub" in _shell._shown(_help())
+	_check("the app's menu has Send feedback", "feedback" in _shell._shown(Shell.APP_MENU))
+	_check("the app's menu has no Beta hub for an account that is not a tester",
+		not "beta_hub" in _shell._shown(Shell.APP_MENU)
 		and not _shell.can("beta_hub"))
 	_shell.set_early(["beta_hub"] as Array[String])
-	_check("a tester's Help has Beta hub, and it can run", "beta_hub" in _shell._shown(_help())
+	_check("a tester's app menu has Beta hub, and it can run", "beta_hub" in _shell._shown(Shell.APP_MENU)
 		and _shell.can("beta_hub") and _shell.menu_id("beta_hub") >= 0)
 	_shell.set_early([] as Array[String])
-	_check("taken away, Help has no Beta hub and it cannot run", not "beta_hub" in _shell._shown(_help())
+	_check("taken away, the app's menu has no Beta hub and it cannot run",
+		not "beta_hub" in _shell._shown(Shell.APP_MENU)
 		and not _shell.can("beta_hub"))
-
-
-func _help() -> Array:
-	for menu: Array in Shell.MENUS:
-		if menu[0] == "Help":
-			return menu[1]
-	return []
 
 
 func _dialog() -> void:
-	_check("Help, Send feedback… can be run", _shell.run("feedback"))
+	_check("Brickworks, Send feedback… can be run", _shell.run("feedback"))
 	await _frames(12)
 	var dialog: FeedbackDialog = _shell.feedback
 	if not _check("the dialog is up", dialog != null and dialog.visible):

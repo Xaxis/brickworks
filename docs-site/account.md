@@ -32,7 +32,7 @@ api:POST /api/account?op=age
 
 ## Account in the app {#account-panel}
 
-**Account** on the toolbar (or **File › Account…**) says who is signed in, how many saved models your account holds, your Claude connection with **Disconnect Claude**, your tabs and their chats, and **Sign out**.
+**Account** on the toolbar (or **Brickworks › Account…**, in the menu under the mark) says who is signed in, how many saved models your account holds, your Claude connection with **Disconnect Claude**, your tabs and their chats, and **Sign out**.
 
 <!-- covers
 ui:account panel

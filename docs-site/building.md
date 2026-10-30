@@ -110,7 +110,7 @@ ui:hide and show only
 
 ## Sub-assemblies {#sub-assemblies}
 
-Select some parts and press [[Ctrl+G]] to make them a sub-assembly and name it. A click then takes it whole, a double-click edits inside it, and [[Esc]] leaves. Copies made with [[Ctrl+D]] follow the original: change one and they all change, until **Edit › Make this copy unique**. [[Enter]] (or a double-click) edits inside the selected one, [[F2]] renames it, and **Ungroup** ([[Ctrl+Shift+G]]) takes it apart one level.
+Select some parts and press [[Ctrl+G]] to make them a sub-assembly and name it. A click then takes it whole, a double-click edits inside it, and [[Esc]] leaves. Copies made with [[Ctrl+D]] follow the original: change one and they all change, until **Build › Make this copy unique**. [[Enter]] (or a double-click) edits inside the selected one, [[F2]] renames it, and **Ungroup** ([[Ctrl+Shift+G]]) takes it apart one level.
 
 <!-- covers
 ui:sub-assemblies

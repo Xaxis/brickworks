@@ -29,7 +29,7 @@
 //      picture chosen, removed and chosen again, the details ticked; sent.
 //   2. Throwaway A at 390, from the account menu: a bug, no address asked;
 //      /settings#feedback lists it, Received.
-//   3. A in the app (the web build at /app): Help, Send feedback…, the
+//   3. A in the app (the web build at /app): Brickworks, Send feedback…, the
 //      window's picture attached, the version ticked; sent, and the server
 //      kept a JPEG and the details.
 //   4. Throwaway B applies to the beta and the owner approves it (the beta
@@ -320,7 +320,7 @@ try {
   }
 
   // --- 3. A, in the app -----------------------------------------------------------
-  console.log("3. A in the app: Help, Send feedback…");
+  console.log("3. A in the app: Brickworks, Send feedback…");
   const app = await fetch(`${site}/app`, { headers }).catch(() => null);
   if (args.app === "off" || !app?.ok) {
     skip(`no app at ${site}/app (${app?.status ?? "unreachable"}): run the local server with --static=build/web`);
@@ -349,9 +349,10 @@ try {
     const signedIn = await until(page, () => (window.brickworksAccount || {}).state === "signed_in", null, 240000);
     check("the app is up, signed in as A", signedIn);
     check("A's early features: none", await page.evaluate(() => (window.brickworksAccount?.early || []).length === 0));
-    const helpUp = await until(page, () => Boolean((window.brickworksControls || {}).menu_help), null, 120000);
-    if (check("Help is on the page", helpUp)) {
-      await press("menu_help");
+    // In the app's menu, the mark's at the menu bar's far left.
+    const markUp = await until(page, () => Boolean((window.brickworksControls || {}).app_menu), null, 120000);
+    if (check("the app's menu is on the page", markUp)) {
+      await press("app_menu");
       await page.waitForTimeout(1200);
       await page.keyboard.type("Send", { delay: 120 });
       await page.waitForTimeout(600);

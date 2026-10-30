@@ -4130,6 +4130,27 @@
       "entry": "tools/web/mentions_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/mentions_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh mentions: throwaway Pia, Max and Lia; before comment_mentions.sql, a comment posts naming nobody; with no --url, the stand-in's whole of it)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "find a command",
+      "entry": "src/ui/command_palette.gd",
+      "reach": "godot --path .  (Ctrl+/, Ctrl+Shift+P on the desktop, or the Brickworks menu's Find a command…: type, Up and Down, Return)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "palette probe",
+      "entry": "src/dev/palette_probe.gd",
+      "reach": "tools/probe.sh palette_probe; PROBE_SIZE=1400x900 tools/probe.sh palette_probe   (pictures in shots/palette/)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "palette in a browser",
+      "entry": "tools/web/palette_flow.mjs",
+      "reach": "node tools/web/palette_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks palette: Ctrl+/, ren, Return opens Render; Mirror greyed says why; Escape)",
+      "area": "building"
     }
   ]
 }
