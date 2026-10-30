@@ -3526,7 +3526,11 @@ static func _authored_paced_from(shape: Array, steps: PackedInt32Array, nodes: A
 		paths: PackedStringArray, world: BrickWorld, library: PartLibrary, skip: Dictionary,
 		job: Working.Job) -> Array[Step]:
 	var given: PackedByteArray = _given_of(steps)
-	var found: Array[Assembly] = [] if shape.is_empty() else _assemblies_as_before(shape, given)
+	# Not `[] if … else …`: that [] is untyped, and assigning it here stopped
+	# the plan with a script error whenever shape came back empty (2026-10-30).
+	var found: Array[Assembly] = []
+	if not shape.is_empty():
+		found = _assemblies_as_before(shape, given)
 	if not found.is_empty():
 		return _authored_from(nodes, found, world, library, skip, steps, paths)
 	job.say("Finding what is built on the side…")

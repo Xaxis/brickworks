@@ -2136,9 +2136,7 @@ scroll bar (24 actions with their points). Of the plane's 159: 66 points,
 stage225 as it stands. What still costs actions, and who could take it:
 
 - **The step's parts first in the set's bin** (bin2, `parts_bin.gd`):
-  the next part where the pointer is, or the bin turned to the booklet's
-  step, would take the fifth of 8841-1's walk spent scrolling to nothing:
-  by this run's counts, from 6.76 to about 5.5 a part.
+  done, below: 8841-1 from 6.56 to 5.12 a part with snap2's axle.
 - **An axle slid along its hole by the pointer** (whoever holds
   `joint_snap.gd`): a slide for a male end, as a female end has one, would
   take the typed rest off an axle that is not yet where it goes.
@@ -2146,6 +2144,59 @@ stage225 as it stands. What still costs actions, and who could take it:
   of the file in their ring, they took a typed rest each.
 - **Connect's typed slide along its joint** (`edit_verbs.gd`): not needed
   on this walk, where the ghost onto the joint was always fewer actions.
+
+**Since (snap2).** An axle's tip aimed past the far face of its hole now
+goes on through to the pointer, a whole LDU a step (`JointSnap._pushed`);
+aimed at the hole it still stops flush. 8841-1's axle went on by its ghost
+with nothing typed: 7 actions at 1280 x 720 (was 12) and 6 at 1400 x 900
+(was 11), the set 164 (6.56 a part) and 172 (6.88). The plane's round
+plates are not the seat's: the file has each 1 LDU proud of the ring and of
+the plate under it, where 314 of the 325 round plates on that ring in the
+OMR's files sit flush, as do 224 of 228 on another's stud on its side. The
+seat stays flush, and those four keep their typed rest. The 1 x 16 at
+1400 x 900 is the walker's view, not the snap: after its click on the view
+cube for (-1, 0, -1) the eye was still at the default view's height on the
+default side, from where the 1 x 16's place is behind the column (the
+pointer's line meets the column 28 LDU in front of it), so the pointer was
+on the near half of the pin, inside the column, and no way on that had
+room. At 1280 x 720 the walker looked from the back and it took 8.
+
+**The step's parts first (bin2, 2026-10-30).** The set's bin follows the
+booklet of the model being built. Typing a set's number offers, beside
+Build from it, each of its models in LDraw's repository by name ("Follow
+a booklet: Desert Racer, Balance, Buggy, ..."), and one click builds from
+the set and follows that one; a set with one model, or its own, follows it
+by Build from it. The bin lists the whole step first, in the booklet's
+order, each tile marked by a line of the accent along its top, then the
+rest most held first. A line under the set's says "Balance, step 1 of 5:
+24 parts to put in", with ‹, › and Stop. The step is worked out from what
+the model uses, as the counts are: the first not yet built, or one turned
+to by hand until it is built. A part put in keeps its place, so the tiles
+move only when the step turns (`SetBooklet`, `PartsBin._follow_step`).
+Studio's step list and a booklet's parts callout are the model: the parts
+of the step and no hunting.
+
+| set, 25 parts, 1280 x 720 | stage225 with snap2, the set's bin | following its booklet |
+|---|---|---|
+| 8841-1 Balance | 164, 6.56 a part, 8 drags and 8 notches | **128, 5.12**, no drag, no notch |
+| 5762-1 Plane | 159, 6.36 a part, 2 drags and 4 notches | **147, 5.88**, no drag, no notch |
+
+The runs' lines: `8841-1_Balance: 25/25 exact; 128 actions (5.12 a part,
+the bin's 10 among them)` and `5762-1_Plane: 25/25 exact; 147 actions
+(5.88 a part, the bin's 10 among them)`. The bar is 5.5 for 8841-1 and
+6.36 for the plane; the same probe on stage225 (7d13c5f3) fails with
+`FAIL 8841-1: 6.56 actions a part from the set's bin, following its
+booklet, the bar 5.50`, its bin offering no booklet. Before snap2's axle
+the booklet alone took 8841-1 from 6.76 to 5.32. Choosing the booklet
+costs nothing: it is the click Build from it was. Of 8841-1's 36 fewer
+actions, 32 were the scrolling (8 drags of the bar with their points, 24,
+and 8 notches) and 4 points of the pointer; of the plane's 12, 10 and 2.
+
+Not proven here: an alternate's booklet is chosen again after the model
+is reopened (the model keeps the set, not the booklet; its own model's is
+followed again by itself); the booklet fetched from the deployment rather
+than this checkout's `vendor/omr` (the web build); the repository's steps
+against the printed booklet's, which can differ; 1400 x 900.
 
 ## The gaps, by how much a builder would feel them
 

@@ -8,9 +8,11 @@ of tests/fixtures/billing/world.mjs, with profiles.keys stood in for here:
 - before keymap.sql (PostgREST 400 for the column): GET says nothing kept
   and not ready, POST says not kept, never an error;
 - after it: what POST keeps GET answers, and a second POST replaces it;
+- the ten favourite colours on keys (keys3) are kept with them, and an app
+  from before them sends none and is kept as ever;
 - what is not keys is refused with words and keeps nothing: another preset,
   a name no command has, a key that is not a whole number, no time, too
-  many keys;
+  many keys, favourite colours that are not ten colour codes;
 - nobody signed in is refused.
 """
 
@@ -88,7 +90,18 @@ def test_what_is_kept_is_what_is_read_back() -> None:
     assert out[5] == 1
 
 
+def test_the_favourite_colours_are_kept_with_the_keys() -> None:
+    sent = {**STUDIO, "colours": [0, 71, 15, 72, 4, 14, 1, 19, 70, 378]}
+    out = run("return [await ask('POST', " + json.dumps(sent) + "), await ask('GET')];", column=True)
+    assert out[0] == {"status": 200, "json": {"keys": sent, "kept": True}}
+    assert out[1] == {"status": 200, "json": {"keys": sent, "ready": True}}
+
+
 @pytest.mark.parametrize("sent", [
+    {**STUDIO, "colours": [0, 71, 15]},
+    {**STUDIO, "colours": [0, 71, 15, 72, 4, 14, 1, 19, 70, -2]},
+    {**STUDIO, "colours": [0, 71, 15, 72, 4, 14, 1, 19, 70, 1.5]},
+    {**STUDIO, "colours": "red"},
     {**STUDIO, "preset": "vim"},
     {**STUDIO, "own": {"Not A Name": 66}},
     {**STUDIO, "own": {"mode_paint": 1.5}},

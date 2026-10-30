@@ -1,4 +1,4 @@
-## View, Reference picture… (docs/APP_UX2.md, refimage): a picture to build
+## Make, Reference picture… (docs/APP_UX2.md, refimage): a picture to build
 ## over, driven as a person drives it, clicks and keys sent as input events
 ## against the real scene.
 ##
@@ -9,7 +9,7 @@
 ## Pictures go to shots/refimage/WxH/.
 ##
 ## The bar, each read off the scene or its pixels:
-##   - added in 4 actions or fewer: View, Reference picture…, the file's name,
+##   - added in 4 actions or fewer: Make, Reference picture…, the file's name,
 ##     Open, and the picture is in the scene;
 ##   - its width typed in studs exact to 1 LDU: 32.35 typed is 647 LDU,
 ##     corner to corner;
@@ -161,27 +161,29 @@ func _picture_file(called: String = "plan.png", colour: Color = MAGENTA) -> Stri
 
 func _add(file: String) -> void:
 	print("  -- added")
-	var in_view: bool = false
+	# In Make, with the mosaic and brickify made from a picture or a model:
+	# View, where it was first, is full (keys3).
+	var in_make: bool = false
 	for menu: Array in Shell.MENUS:
-		if menu[0] == "View" and "reference" in menu[1]:
-			in_view = true
-	_check("View holds Reference picture…", in_view)
+		if menu[0] == "Make" and "reference" in menu[1]:
+			in_make = true
+	_check("Make holds Reference picture…", in_make)
 	_check("Find a command finds it by \"reference\" (%s)" % str(_shell.palette.matches("reference")),
 		_shell.palette != null and "reference" in _shell.palette.matches("reference"))
 	_check("no picture before", not _reference.has_picture())
 	var depth: int = _builder.history_depth()
 	_acts = 0
-	# 1: View.
-	var view_menu: MenuButton = _shell.menu("View")
-	await _act_click(view_menu.get_global_rect().get_center())
-	var popup: PopupMenu = view_menu.get_popup()
-	_check("...View opens", popup.visible)
+	# 1: Make.
+	var make_menu: MenuButton = _shell.menu("Make")
+	await _act_click(make_menu.get_global_rect().get_center())
+	var popup: PopupMenu = make_menu.get_popup()
+	_check("...Make opens", popup.visible)
 	# 2: Reference picture…, its row.
 	var id: int = _shell.menu_id("reference")
 	_check("...with Reference picture… in it (%s)" % (
 		popup.get_item_text(popup.get_item_index(id)) if id >= 0 else "none"),
 		id >= 0 and popup.get_item_text(popup.get_item_index(id)) == "Reference picture…")
-	await _shot("view_menu")
+	await _shot("make_menu")
 	_acts += 1
 	popup.id_pressed.emit(id)
 	popup.hide()

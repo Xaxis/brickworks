@@ -2,7 +2,8 @@
 ## the example car, and whether the status bar said so before it did.
 ##
 ##   godot --path . --resolution 1400x900 --script src/dev/command_probe.gd -- \
-##       [--subjects=car,orthanc] [--only=save,new] [--table=shots/commands.json] [--judge]
+##       [--subjects=car,orthanc] [--only=save,new] [--table=shots/commands.json] [--judge] \
+##       [--within=paste:1.0,hidden_colours:2.0]
 ##
 ## The owner (2026-10-13): "a standard 'progress indicator or working
 ## indicator' for actions taken in the app … when I clicked 'Save and then
@@ -23,6 +24,12 @@
 ## A command that changes the model is undone after (Builder.undo), or the
 ## model opened again when it was replaced. What the exports hand over goes
 ## into user://command_probe_downloads (Download.folder), never Downloads.
+##
+## With --within it fails a command that took longer than its seconds from
+## the press until nothing was being worked on (total), on a model of 1,000
+## parts or more: the bar a 10,000-part model is held to (docs/APP_UX2.md,
+## bigmodels: select joined, duplicate, paste and replace of all of
+## Orthanc in a second each, hidden colours in two).
 ##
 ## With --judge it fails a command whose own work in one frame is over
 ## BUDGET_MS and was not said first, and checks that the bar does not come
@@ -138,6 +145,7 @@ func _run() -> void:
 				continue
 			await _time(model, name)
 	_report(judge)
+	_held_to(_argument("within", ""))
 	if judge:
 		await _no_flash()
 	for file_name: String in DirAccess.get_files_at(ModelStore.SAVE_DIR):
@@ -161,6 +169,8 @@ func _run() -> void:
 
 var _standing: int = 0
 var _model: String = ""
+## Model -> how many parts it opened with.
+var _parts_of: Dictionary = {}
 
 
 func _open(model: String) -> void:
@@ -170,6 +180,7 @@ func _open(model: String) -> void:
 	_bar.opened.emit(placed)
 	await _quiet(120.0)
 	_standing = _world.brick_count()
+	_parts_of[model] = _standing
 	print("%s: %d parts open" % [model, _standing])
 
 
@@ -338,6 +349,30 @@ func _no_flash() -> void:
 		if up:
 			_failures += 1
 		await _tidy(depth)
+
+
+## Each command named in [param within] ("name:seconds,...") against its
+## seconds, on the big models it ran on.
+func _held_to(within: String) -> void:
+	for pair: String in within.split(",", false):
+		var name: String = pair.get_slice(":", 0)
+		var most_ms: float = float(pair.get_slice(":", 1)) * 1000.0
+		var timed: bool = false
+		for row: Dictionary in _rows:
+			if row["name"] != name or int(_parts_of.get(row["model"], 0)) < 1000:
+				continue
+			timed = timed or not row.has("skipped")
+			if row.has("skipped"):
+				continue
+			var ok: bool = float(row["total_ms"]) <= most_ms and not bool(row["cancelled"])
+			print("  %s %s on %s (%d parts): %d ms, the bar %d ms" % ["ok  " if ok else "FAIL",
+				name, row["model"], int(_parts_of[row["model"]]), int(row["total_ms"]),
+				int(most_ms)])
+			if not ok:
+				_failures += 1
+		if not timed:
+			print("  FAIL %s was not timed on a big model" % name)
+			_failures += 1
 
 
 func _report(judge: bool) -> void:

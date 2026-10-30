@@ -30,6 +30,18 @@ To set a key yourself, click it in the keys sheet and press the one you want. [[
 ui:keys of one's own
 -->
 
+## Colours on keys {#colour-keys}
+
+Select some parts and press [[Shift+1]] to [[Shift+0]] to paint them one of your ten favourite colours, or [[Ctrl+Shift+1]] to [[Ctrl+Shift+0]] for the colours the model uses most, [[Ctrl+Shift+1]] the most. One key paints them all, and one [[Ctrl+Z]] takes it back. With a part in hand, the key is that part's colour. [[[]] and [[]]] still step through the colours beside the one you have.
+
+The favourites start as the colours LEGO® sets use most: Black, Light Bluish Grey, White and so on. To change one, open the keys sheet ([[F1]]), find **Colours**, click a favourite's swatch and pick a colour. Your favourites are kept with your keys, so they follow your account. With Studio's keys they have no key at first, as in Studio; set any of them in the sheet.
+
+To select more like what is selected: [[Alt+C]] the same colour, [[Alt+P]] the same part, [[Alt+J]] everything joined to it, [[Alt+I]] everything else. With Studio's keys, [[Shift+V]] goes through the same colour, the same part, both and everything joined, a press each.
+
+<!-- covers
+ui:colour keys
+-->
+
 ## Docked panels {#panels}
 
 Fold a panel by its header, and drag the bar between two to share the room. A click on a column's strip folds it away to the edge, and another brings it back. The model keeps at least 60% of the window's width, so in most windows one column shows beside it at a time, and opening one folds the other; a window about twice as wide as it is tall shows both. **View** turns each panel on or off, and [[Tab]] shows or hides them all. Brickworks remembers the layout, the folds and the snap you chose, and starts with them next time.
@@ -51,8 +63,11 @@ ui:model tree
 
 Select a part and the right-hand column says what it is, under the model tree: its part, its colour, where it stands and what it is joined to, every field in sight. Type its **X**, **Y** and **Z** to the hundredth of an LDraw unit, or, when it hangs from a joint, its **Hinge** angle in degrees. With nothing selected, it holds the floor's settings.
 
+In a window where one column shows at a time, the parts bin has the selected part's name, colour, **X**, **Y**, **Z**, **Turn**, **Tilt** and **Roll** under it as well, so you can put a part down, type it to its place and take the next without folding the bin. A colour clicked under them paints it. **More** opens the rest down the right.
+
 <!-- covers
 ui:properties panel
+ui:properties under the bin
 ui:typed place and hinge
 -->
 

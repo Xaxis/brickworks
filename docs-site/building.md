@@ -61,7 +61,7 @@ lib:sideways building
 
 ## Onto a joint {#joints}
 
-A Technic pin, axle, beam, clip or bar in hand snaps into a hole, onto a pin, an axle or a bar it would really go into. [[R]] turns it about the joint, [[T]] the other way on. A gear pointed onto an axle beside another gear is seated in mesh where the teeth allow, and the status line says what it meshes with, or why not: too far apart, a bush in the way, square spurs.
+A Technic pin, axle, beam, clip or bar in hand snaps into a hole, onto a pin, an axle or a bar it would really go into. [[R]] turns it about the joint, [[T]] the other way on. An axle goes through a hole flush with its far face; point past that face and it goes on through to where you point. A gear pointed onto an axle beside another gear is seated in mesh where the teeth allow, and the status line says what it meshes with, or why not: too far apart, a bush in the way, square spurs.
 
 <!-- covers
 ui:snap onto a joint
@@ -116,10 +116,12 @@ ui:tool modes
 
 With the **Rotate** tool, a click on a part puts three rings on it; with **Move**, three arrows. Drag a ring to turn the selection about that axis, or an arrow to slide it along one. A click on the part again does the tool's own step: **Rotate** turns it by the turn step, **Move** picks it up.
 
+- Between the arrows are three small panes. Drag one to slide the selection on two axes at once, snapped on each.
+- Round the rings is a fourth, pale ring: it turns the selection about the view's own axis, as if turning a picture of it. Inside the rings, drag anywhere off them to roll it freely, like a trackball.
 - The tag beside them says whose axes they are: **Part axes** (the part's own, however the part under it is turned), **Model axes** or **View axes**. Click the tag for the next.
 - They stand where the part hangs from: the pin, hinge or clip it turns on, or the stud [[R]] turns it about. [[Alt]]-click another point to turn about it; [[Alt]]-click empty space to go back.
 - A ring snaps to quarter turns near its middle, to the **Turn** step on the ring, to 5° just outside it and to 1° further out. Faint circles mark where while you drag. An arrow snaps to the **Snap** step, and to the finest step when the pointer is well off its line.
-- Type a number while you drag, or straight after, to make it exact: degrees for a ring (**23.58**), a length for an arrow (**3** studs, **2p** plates). [[Enter]] puts it there; [[Esc]] leaves the drag as it was.
+- Type a number while you drag, or straight after, to make it exact: degrees for a ring (**23.58**), a length for an arrow (**3** studs, **2p** plates), and for a pane both its axes (**2x -1z**). [[Enter]] puts it there; [[Esc]] leaves the drag as it was. A free roll has no number.
 - Nothing goes through anything: a drag stops at the last place with room, and the part in the way lights up.
 - [[Esc]] or a right-click while dragging puts it back. Each drag is one step to undo.
 
@@ -187,6 +189,8 @@ ui:undo history
 ## Measure {#measure}
 
 Press [[U]] and click two points: the distance in studs, plates and millimetres. One LDraw unit is exactly 0.4 mm: a stud is 8 mm across, a brick 9.6 mm tall and a plate 3.2 mm.
+
+Click near a pin, a hole, an axle, a bar or a hinge and the point goes on its middle. With both points on one, Measure also says the angle between them, to a tenth of a degree: where a spring or a link goes between two pin holes.
 
 <!-- covers
 ui:measure

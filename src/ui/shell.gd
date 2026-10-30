@@ -104,34 +104,42 @@ const ALT := KEY_MASK_ALT
 ## sub-assembly and step commands were in Edit and in Build, Exploded view
 ## in View and in Build, and Edit was 39 rows, 689 px of a 720 px window.
 ## Edit keeps the clipboard, the selection, hiding, locking, paint and
-## replace; Build the steps, the sub-assemblies, the sections and the
-## prints; Tools what asks Claude. Find a command (CommandPalette) reaches
-## any of them by name.
+## replace; Build the steps, the sub-assemblies and the sections; Make what
+## makes something new (a minifigure, a mosaic, a brickified model, a hose,
+## a part, a print) and the picture one is built over; Tools the tools, the
+## checks and what asks Claude. Find
+## a command (CommandPalette) reaches any of them by name.
+##
+## No menu is more than 25 rows, nor opens taller than 60% of a 720 px
+## window, about 20 rows and their lines (keys3): Build grew back to 37 rows
+## and scrolled, View was 33, and Edit, with Comments, 25 rows and 486 of a
+## 470 unit limit. So the makers and the prints went to Make, the eight
+## views and the model's turns to View's Viewpoint, the part in hand's turn
+## and tip to Tools beside Place, Comments to File beside Share and Build
+## together, My collection and What can I build? beside Library, and What
+## do I need? beside the parts list.
 const MENUS: Array = [
-	["File", ["new", "new_window", "open", "library", ">recent", ">import", "-", "save", "save_as",
-		"versions", "compare", "-", "share", "together", "comments", ">export", "render", "-", "clear", "quit"]],
+	["File", ["new", "new_window", "open", "library", "collection", "collection_build", ">recent",
+		">import", "-", "save", "save_as", "versions", "compare", "-", "share", "together",
+		"comments", ">export", "render", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
-	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
-		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
+	["View", [">viewpoint", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
-		"reference",
-		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "-",
-		"turn_left",
-		"turn_right", "-", "panel_parts",
+		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
 		"split_view", "full_screen"]],
-	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list", "-",
-		"collection", "collection_need", "collection_build", "-", "make_submodel",
-		"leave_submodel", "enter_assembly", "leave_assembly", "rename_assembly", "make_unique", "-",
-		"suggest_sections", "evaluate_section", "break_out", "put_back", "explode", "-", "flex",
-		"reshape_flex", "minifig", "mosaic", "brickify", "part_maker", "print_part", "sticker",
-		"printed_versions", "-", "rotate_held", "tip_held"]],
+	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list",
+		"collection_need", "-", "make_submodel", "leave_submodel", "enter_assembly",
+		"leave_assembly", "rename_assembly", "make_unique", "-", "suggest_sections",
+		"evaluate_section", "break_out", "put_back", "explode"]],
+	["Make", ["minifig", "mosaic", "brickify", "reference", "-", "flex", "reshape_flex", "-",
+		"part_maker", "print_part", "sticker", "printed_versions"]],
 	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
-		"mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "measure",
-		"stability", "simulate", "hidden_colours", "reseat", "-", "ask_claude", "connector",
-		"settings"]],
+		"mode_connect", "mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "rotate_held",
+		"tip_held", "-", "measure", "stability", "simulate", "hidden_colours", "reseat", "-",
+		"ask_claude", "connector", "settings"]],
 	["Help", ["keys", "tour"]],
 ]
 
@@ -171,6 +179,8 @@ const SUBMENUS: Dictionary = {
 		"export_rebrickable", "-", "export_all"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_find",
 		"select_connected", "select_submodel", "select_inverse"],
+	"viewpoint": ["view_default", "view_front", "view_back", "view_left", "view_right",
+		"view_top", "view_bottom", "view_iso", "-", "turn_left", "turn_right"],
 	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_flip", "cut_ghosts"],
 	# Next step (E) is in Build itself, over these.
 	"steps": ["step_prev", "step_next", "step_new", "-", "step_earlier", "step_later",
@@ -190,7 +200,8 @@ const SUBMENUS: Dictionary = {
 
 ## A submenu's own words, as its row in the menu above says them.
 const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
-	"export": "Export", "history": "History", "select_by": "Select by", "cut_away": "Cut along",
+	"export": "Export", "history": "History", "select_by": "Select by",
+	"viewpoint": "Viewpoint", "cut_away": "Cut along",
 	"steps": "Build steps", "booklet": "Booklet page", "floor": "Floor",
 	"floor_colour": "Baseplate colour"}
 
@@ -520,6 +531,58 @@ func run(name: String) -> bool:
 		if can(name):
 			await found.run.call())
 	return true
+
+
+## What a key the keymap gives runs where no handler answers it
+## (Main._key_action): a colour key (ColourKeys), Studio's Shift-V
+## ([method cycle_select]), or a command as its menu runs it, and why not
+## said when it cannot be: Alt-C with nothing selected says to select a
+## part first, where it said nothing.
+func run_key(action: String) -> void:
+	if ColourKeys.owns(action):
+		ColourKeys.press(action, self)
+	elif action == "select_cycle":
+		await cycle_select()
+	elif not run(action) and _commands.has(action):
+		var why: String = why_not(action)
+		if not why.is_empty():
+			bar.say(why[0].to_lower() + why.substr(1))
+
+
+## Studio's Cycle Select Mode (Shift-V under its keys): from the parts
+## selected, each press selects the same colour, the same part, the same
+## part and colour, and everything joined to them, then the parts it began
+## from again. A selection made any other way starts it again from there.
+const CYCLE: Array = [["colour", "the same colour"], ["part", "the same part"],
+	["alike", "the same part and colour"], ["connected", "everything joined"]]
+var _cycle_from: Array = []
+var _cycle_left: Dictionary = {}
+var _cycle_at: int = -1
+
+
+func cycle_select() -> void:
+	if read_only:
+		return
+	if builder.selection != _cycle_left or _cycle_from.is_empty():
+		_cycle_from = builder.selection.keys()
+		_cycle_at = -1
+	_cycle_from = _cycle_from.filter(func(id: int) -> bool: return world.get_brick(id) != null)
+	if _cycle_from.is_empty():
+		bar.say("select a part first: then each press selects its colour, its part, both, "
+			+ "or all joined to it")
+		return
+	_cycle_at = (_cycle_at + 1) % (CYCLE.size() + 1)
+	verbs.select_found(_cycle_from)
+	var words: String = "the parts it began from"
+	if _cycle_at < CYCLE.size():
+		var way: String = CYCLE[_cycle_at][0]
+		if way == "connected":
+			await verbs.select_connected()
+		else:
+			verbs.select_by(way)
+		words = CYCLE[_cycle_at][1]
+	_cycle_left = builder.selection.duplicate()
+	bar.say("%s: %s selected" % [words, Counted.of(builder.selection.size(), "part")])
 
 
 ## Do [param work] as command [param name]: said first when it is slow,

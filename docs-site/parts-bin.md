@@ -17,7 +17,7 @@ ui:parts bin
 
 ## Search {#search}
 
-Type what you want in words: *2x4 brick*, *slope 45*, *wheel*, *window*, a part number like *3001*, or what is printed on it, with *print*: *control panel print*. The bin understands builders' words: *SNOT* finds bricks with side studs and brackets, *cheese* the small slopes, *Erling* the headlight brick, *Travis* the brick with studs on four sides, *macaroni* the curved corners, *jumper*, *click hinge* and *cheese grater* what builders mean by them. A size alone is a brick: *2x4* lists Brick 2 × 4 first. Every part comes from the LDraw library, and its geometry is fetched the first time it is used and kept.
+Type what you want in words: *2x4 brick*, *slope 45*, *wheel*, *window*, a part number like *3001*, or what is printed on it, with *print*: *control panel print*. The bin understands builders' words: *SNOT* finds bricks with side studs and brackets, *cheese* the small slopes, *Erling* the headlight brick, *Travis* the brick with studs on four sides, *macaroni* the curved corners, *jumper*, *click hinge* and *cheese grater* what builders mean by them. A size alone is a brick: *2x4* lists Brick 2 × 4 first. A size with a kind of part lists that kind first: *1x4 brick* is bricks, *2x2 tile* tiles. Every part comes from the LDraw library, and its geometry is fetched the first time it is used and kept.
 
 <!-- covers
 lib:part search
@@ -44,11 +44,17 @@ lib:worked constructions
 
 ## What fits {#fits}
 
-Select a part in the model, or take one in hand, and choose **Fits** beside Techniques: the bin lists the parts that fit it, the best fits first. A beam lists its pins, a clip its bars, a bar its clips, a hinge's base its top, a click hinge its other half, a ball its socket, and a jumper the 1 × 1 parts that sit on its stud; then the parts that sit on its studs, the ones real sets use most first. Type to narrow it: *axle* among a beam's fits lists the axles that go through it. Picking a part from the list keeps it on the part you asked about.
+Select a part in the model, or take one in hand, and choose **Fits** beside Techniques: the bin lists the parts that fit it, the best fits first. A beam lists its pins, a clip its bars, a bar its clips, a hinge's base its top, a click hinge its other half, a ball its socket, and a jumper the 1 × 1 parts that sit on its stud; then the parts that sit on its studs, the ones real sets use most first. Type to narrow it: *axle* among a beam's fits lists the axles that go through it. Picking a part from the list keeps it on the part you asked about. Double-click a part in the list to put it on the selected part, where it fits and there is room: a pin goes into a beam's hole. [[Ctrl+Z]] takes it off.
 
 ## Colours {#colours}
 
 The palette under the bin holds every colour parts are made in, and a part's own colours come first. [[[]] and [[]]] step through them, and [[Shift+C]] finds one by name or LDraw number. A part is drawn in its true colour, transparent and metallic finishes included.
+
+Tick **Only parts made in it** beside the colour's name and the bin lists only the parts real sets have in that colour, *Sand Green* or any other; choose another colour and the list follows it.
+
+## Swap, list and plain parts {#swap}
+
+Double-click a part in the bin to swap what is selected for it: three red bricks become three red masonry bricks in one step, in their places and colour, and [[Ctrl+Z]] swaps them back. **List**, under the bin, shows a row per part with its number, its size in studs and how many colours it was made in. Clear **Prints** beside it and printed and stickered parts leave the bin. **Only parts made in it**, **Prints** and **List** stay as you left them the next time you open Brickworks.
 
 <!-- covers
 ui:palette

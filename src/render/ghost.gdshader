@@ -13,12 +13,30 @@
 //
 // It draws without writing depth so it is never buried inside the brick
 // it is resting on.
+//
+// Several parts in hand (Carry) are drawn as instances, each part's colour
+// its instance's: [instanced] takes the colour from there, linearised as
+// the plastic's is where the renderer works in linear light.
 
 shader_type spatial;
 render_mode blend_mix, depth_draw_never, cull_back, unshaded;
 
 uniform vec3 tint : source_color = vec3(0.7, 0.1, 0.1);
 uniform bool valid = true;
+uniform bool instanced = false;
+uniform bool linearise = true;
+
+varying vec3 own;
+
+void vertex() {
+	own = COLOR.rgb;
+}
+
+vec3 to_linear(vec3 c) {
+	vec3 low = c / 12.92;
+	vec3 high = pow((c + vec3(0.055)) / 1.055, vec3(2.4));
+	return mix(high, low, vec3(lessThan(c, vec3(0.04045))));
+}
 
 void fragment() {
 	vec3 normal = normalize(NORMAL);
@@ -28,15 +46,16 @@ void fragment() {
 	float shade = 0.62 + 0.38 * lit;
 	float facing = abs(dot(normal, vec3(0.0, 0.0, 1.0)));
 	float rim = pow(1.0 - facing, 2.0);
+	vec3 base = instanced ? (linearise ? to_linear(own) : own) : tint;
 
 	if (valid) {
-		ALBEDO = tint * shade + rim * 0.35;
+		ALBEDO = base * shade + rim * 0.35;
 		ALPHA = 0.62 + rim * 0.3;
 	} else {
 		// Stripes in screen space, so they read the same at any distance.
 		float band = step(0.5, fract((FRAGCOORD.x + FRAGCOORD.y) / 14.0));
 		vec3 refused = mix(vec3(0.95, 0.16, 0.14), vec3(0.55, 0.05, 0.05), band);
-		ALBEDO = mix(tint * shade, refused, 0.72) + rim * 0.25;
+		ALBEDO = mix(base * shade, refused, 0.72) + rim * 0.25;
 		ALPHA = 0.72 + rim * 0.2;
 	}
 }

@@ -1370,12 +1370,15 @@ func replace_selection(part_id: String, in_place: bool = false) -> Vector2i:
 		var was: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		var at: Transform3D = brick.transform if in_place \
 			else _in_place_of(brick.transform, was, into)
-		lattice.release(brick_id)
 		var packed: PackedInt32Array = boxes_for(into, at)
-		if lattice.collides_boxes(packed):
-			lattice.occupy_boxes(brick_id, boxes_for(was, brick.transform))
+		# Asked with the old part still standing, left out of the question:
+		# one with no room stays as it was, with nothing to put back. Taken
+		# out and put back each time, the 9,673 parts of Orthanc a 2 x 4 has
+		# no room for were most of a replace's second (bigmodels).
+		if lattice.collides_boxes(packed, brick_id):
 			refused += 1
 			continue
+		lattice.release(brick_id)
 		var made: int = world.add_brick(part_id, brick.color_code, at)
 		if made == 0:
 			lattice.occupy_boxes(brick_id, boxes_for(was, brick.transform))
@@ -2467,12 +2470,14 @@ func _part_named(brick_id: int) -> String:
 
 ## Everything the pose on a joint is worked out from, in one string: the
 ## joint, the model as it stands, the part and how it is held, what R and
-## T have chosen, the turn step, and the first way on (which says which
-## face is near and where along a bar the pointer is).
+## T have chosen, the turn step, the first way on (which says which face
+## is near), and how far along each way goes: where along a bar the pointer
+## is, and how far an axle's tip is pushed through (JointSnap._pushed),
+## which is as often the second way's as the first's.
 func _joint_asked(key: String, basis: Basis, options: Array) -> String:
 	return "%s|%d|%s|%s|%d|%d|%s|%s|%s|%s|%s|%s" % [key, world.revision, held_part, basis,
 		_joint_way, _joint_roll, _joint_extra, _joint_chosen, turn_step, options[0][1],
-		options[0][2], _joint_part]
+		options.map(func(option: Array) -> float: return option[2]), _joint_part]
 
 
 ## The pose for one of the ways onto a joint, turned so many steps and

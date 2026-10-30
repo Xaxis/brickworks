@@ -60,12 +60,22 @@ const MOST_PIXELS_WEB := 1024
 const GIVE_UP := 30.0
 ## Numbers a picture can tell apart (seen_codes).
 const SPAN := 13823
+## Pictures drawn at once where the card marks what each holds (_tallied).
+const LANES := 8
+## Cells a row of the card's tally.
+const TALLY_WIDTH := 2048
+
+const TALLY_SHADER := preload("res://src/render/seen_tally.gdshader")
 
 var library: PartLibrary
 ## Said as it goes: (done, of).
 signal progressed(done: int, of: int)
 ## Set to stop a measure part way: it ends incomplete.
 var cancelled: bool = false
+## Read every picture back and find its numbers here, one picture a frame,
+## as on the web (where the card cannot mark them): what a probe compares
+## the card's tally against.
+var read_back: bool = false
 
 var _viewport: SubViewport
 var _camera: Camera3D
@@ -259,7 +269,10 @@ func measure(bricks: Array, count: int = VIEWS, finest: float = FINEST,
 	result.coarsest = 0.0
 	var ok: bool = true
 	var done: int = 0
-	for way: Vector3 in sides:
+	if _tallies():
+		done = await _tallied(sides, samples, passes, whole, finest, most, by_number, result)
+		ok = done == sides.size()
+	for way: Vector3 in sides if not _tallies() else []:
 		if cancelled:
 			ok = false
 			break
@@ -311,6 +324,17 @@ func measure(bricks: Array, count: int = VIEWS, finest: float = FINEST,
 ## pixels to spare, a pixel [param finest] LDU or as fine as [param most]
 ## pixels allow. Returns the pixel's size.
 func _aim(way: Vector3, whole: AABB, finest: float, most: int) -> float:
+	var framed: Array = _framing(way, whole, finest, most)
+	_viewport.size = framed[1]
+	_camera.transform = framed[2]
+	_camera.size = float((framed[1] as Vector2i).y) * float(framed[0])
+	_camera.far = framed[3]
+	return framed[0]
+
+
+## How [method _aim] frames a side: [the pixel's size, the picture's size,
+## the camera's transform, its far plane].
+static func _framing(way: Vector3, whole: AABB, finest: float, most: int) -> Array:
 	var turn: Basis = basis_from(way)
 	var low := Vector2(INF, INF)
 	var high := Vector2(-INF, -INF)
@@ -325,15 +349,195 @@ func _aim(way: Vector3, whole: AABB, finest: float, most: int) -> float:
 	var span: Vector2 = high - low
 	var pixel: float = maxf(finest, maxf(span.x, span.y) / float(most - 24))
 	var size := Vector2i(ceili(span.x / pixel) + 24, ceili(span.y / pixel) + 24)
-	_viewport.size = size
 	var middle: Vector2 = (low + high) * 0.5
 	var reach: float = whole.size.length() + 100.0
 	var depth: float = whole.get_center().dot(turn.z)
-	_camera.transform = Transform3D(turn, turn.x * middle.x + turn.y * middle.y
-		+ turn.z * (depth + reach))
-	_camera.size = float(size.y) * pixel
-	_camera.far = reach * 2.0 + 100.0
-	return pixel
+	return [pixel, size, Transform3D(turn, turn.x * middle.x + turn.y * middle.y
+		+ turn.z * (depth + reach)), reach * 2.0 + 100.0]
+
+
+# -- the card's tally ---------------------------------------------------------
+#
+# Read back, a picture of Orthanc took two frames and a sort of a few million
+# pixels: 256 of them held the measure 17 to 23 s, most of colouring its
+# hidden parts (bigmodels, 2026-10-30). Here the card marks the numbers
+# each picture holds in a tally of its own (seen_tally.gdshader), LANES
+# pictures a frame, and the tally alone is read back, once, at the end.
+# Each lane is made the size of its picture and aimed as the read-back
+# camera is, each frame: drawn in the corner of a lane the size of the
+# biggest, its edges fell a hair from where they fall read back, and a side
+# in a hundred showed a part more or less.
+
+
+## Whether the card can keep the tally: everywhere but the web's renderer,
+## whose canvas reads no picture another viewport has just drawn.
+func _tallies() -> bool:
+	return not read_back and RenderingServer.get_current_rendering_method() != "gl_compatibility"
+
+
+## Every side drawn and marked on the card: how many sides were, all of
+## [param sides] unless it was cancelled. Fills [param result]'s seen parts,
+## those seen on a table, each side's count and its pixels' sizes.
+func _tallied(sides: Array[Vector3], samples: int, passes: int, whole: AABB, finest: float,
+		most: int, by_number: Dictionary, result: Result) -> int:
+	# Every picture: [side, pixel, its size, the camera's transform, far].
+	var shots: Array = []
+	var biggest := Vector2i(8, 8)
+	for side: int in sides.size():
+		var framed: Array = _framing(sides[side], whole, finest, most)
+		var pixel: float = framed[0]
+		var aimed: Transform3D = framed[2]
+		result.finest = minf(result.finest, pixel)
+		result.coarsest = maxf(result.coarsest, pixel)
+		biggest = biggest.max(framed[1])
+		for sample: int in samples:
+			var shift: float = pixel * 0.5 * float(sample)
+			shots.append([side, pixel, framed[1], Transform3D(aimed.basis, aimed.origin
+				+ (aimed.basis.x + aimed.basis.y) * shift), framed[3]])
+	var rows_a_side: int = ceili(float(by_number.size() + 1) / float(TALLY_WIDTH))
+	var tally := SubViewport.new()
+	tally.disable_3d = true
+	tally.transparent_bg = true
+	tally.size = Vector2i(TALLY_WIDTH, sides.size() * rows_a_side)
+	tally.render_target_clear_mode = SubViewport.CLEAR_MODE_ONCE
+	tally.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(tally)
+	var lanes: Array = []
+	for _n: int in mini(LANES, shots.size()):
+		lanes.append(_lane(tally, biggest))
+	var jobs: Array = []
+	for pass_number: int in passes:
+		for shot: int in shots.size():
+			jobs.append([pass_number, shot])
+	var at: int = 0
+	var ok: bool = true
+	while at < jobs.size():
+		if cancelled:
+			ok = false
+			break
+		var pass_number: int = jobs[at][0]
+		_material.set_shader_parameter("first", float(pass_number * SPAN))
+		_material_two_sided.set_shader_parameter("first", float(pass_number * SPAN))
+		for lane: Array in lanes:
+			var viewport: SubViewport = lane[0]
+			var scatter: MultiMeshInstance2D = lane[2]
+			if at >= jobs.size() or int(jobs[at][0]) != pass_number:
+				viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+				scatter.visible = false
+				continue
+			var shot: Array = shots[int(jobs[at][1])]
+			var side: int = shot[0]
+			var pixel: float = shot[1]
+			var size: Vector2i = shot[2]
+			var aimed: Transform3D = shot[3]
+			var camera: Camera3D = lane[1]
+			viewport.size = size
+			camera.transform = aimed
+			camera.size = float(size.y) * pixel
+			camera.far = shot[4]
+			var marks: ShaderMaterial = scatter.material
+			marks.set_shader_parameter("size", size)
+			marks.set_shader_parameter("first", pass_number * SPAN)
+			marks.set_shader_parameter("side_row", side * rows_a_side)
+			viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+			scatter.visible = true
+			at += 1
+		await get_tree().process_frame
+		progressed.emit(int(at * sides.size() / jobs.size()), sides.size())
+	for lane: Array in lanes:
+		(lane[0] as SubViewport).render_target_update_mode = SubViewport.UPDATE_DISABLED
+	tally.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	var done: int = 0
+	if ok:
+		await GpuFence.finished()
+		var image: Image = tally.get_texture().get_image()
+		if image != null:
+			done = sides.size()
+			_read_tally(image, sides, rows_a_side, by_number, result)
+	tally.queue_free()
+	return done
+
+
+## A lane: [its viewport, drawing the stage's world from a camera of its
+## own, the camera, the points marking what it drew in [param tally]].
+func _lane(tally: SubViewport, size: Vector2i) -> Array:
+	var viewport := SubViewport.new()
+	viewport.size = size
+	viewport.transparent_bg = false
+	viewport.msaa_3d = Viewport.MSAA_DISABLED
+	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+	viewport.use_taa = false
+	viewport.use_debanding = false
+	viewport.positional_shadow_atlas_size = 0
+	viewport.world_3d = _viewport.world_3d
+	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	var camera := Camera3D.new()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.keep_aspect = Camera3D.KEEP_HEIGHT
+	camera.near = 1.0
+	camera.current = true
+	viewport.add_child(camera)
+	# Inside the tally, so it is drawn before the tally reads it.
+	tally.add_child(viewport)
+	var columns := PackedVector2Array()
+	columns.resize(size.x)
+	for x: int in size.x:
+		columns[x] = Vector2(x, 0)
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = columns
+	var points := ArrayMesh.new()
+	points.add_surface_from_arrays(Mesh.PRIMITIVE_POINTS, arrays, [], {},
+		Mesh.ARRAY_FLAG_USE_2D_VERTICES)
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_2D
+	multimesh.mesh = points
+	multimesh.instance_count = size.y
+	var marks := ShaderMaterial.new()
+	marks.shader = TALLY_SHADER
+	marks.set_shader_parameter("codes", viewport.get_texture())
+	marks.set_shader_parameter("width", TALLY_WIDTH)
+	var scatter := MultiMeshInstance2D.new()
+	scatter.multimesh = multimesh
+	scatter.material = marks
+	scatter.visible = false
+	tally.add_child(scatter)
+	# Its instances all stand at the origin (the shader places each point):
+	# never culled for it.
+	RenderingServer.canvas_item_set_custom_rect(scatter.get_canvas_item(), true,
+		Rect2(Vector2.ZERO, Vector2(tally.size)))
+	return [viewport, camera, scatter]
+
+
+## What the tally says: each side's count from its rows, and the parts seen
+## from any of [param sides], and from a side a table shows. A marked cell
+## is opaque and the rest clear, so each side's rows laid over the last
+## gather every side's marks: done here, rather than every point marking a
+## second time for every side as it drew (half of what the card did).
+static func _read_tally(image: Image, sides: Array[Vector3], rows_a_side: int,
+		by_number: Dictionary, result: Result) -> void:
+	if image.get_format() != Image.FORMAT_RGBA8:
+		image.convert(Image.FORMAT_RGBA8)
+	var marked: Image = image.duplicate()
+	marked.convert(Image.FORMAT_R8)
+	var reds: PackedByteArray = marked.get_data()
+	var cells: int = rows_a_side * TALLY_WIDTH
+	var every: Image = Image.create_empty(TALLY_WIDTH, rows_a_side, false, Image.FORMAT_RGBA8)
+	var on_table: Image = every.duplicate()
+	for side: int in sides.size():
+		var rows: PackedByteArray = reds.slice(side * cells, (side + 1) * cells)
+		result.per_view.append(rows.size() - rows.count(0))
+		var block := Rect2i(0, side * rows_a_side, TALLY_WIDTH, rows_a_side)
+		every.blend_rect(image, block, Vector2i.ZERO)
+		if sides[side].y > TABLE_BELOW:
+			on_table.blend_rect(image, block, Vector2i.ZERO)
+	var any: PackedByteArray = every.get_data()
+	var table: PackedByteArray = on_table.get_data()
+	for number: int in by_number:
+		if any[number * 4] > 127:
+			result.seen[by_number[number]] = true
+		if table[number * 4] > 127:
+			result.seen_on_table[by_number[number]] = true
 
 
 ## The distinct numbers in a picture of codes: each pixel as an integer,

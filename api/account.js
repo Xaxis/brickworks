@@ -29,10 +29,11 @@
 //   false); neither is an error, since the browser keeps it all the same.
 //
 //   GET ?op=keys, with a token: the app's keys this account set ({keys:
-//   {preset, own, at} or null, ready}), and POST ?op=keys with {preset,
-//   own, at} to keep them (2026-10-30, supabase/keymap.sql): the preset
-//   (brickworks, studio, mecabricks or ldcad), the keys set over it (a
-//   command's name and its key) and when, so a new browser or computer has
+//   {preset, own, colours, at} or null, ready}), and POST ?op=keys with {preset,
+//   own, colours, at} to keep them (2026-10-30, supabase/keymap.sql): the
+//   preset (brickworks, studio, mecabricks or ldcad), the keys set over it (a
+//   command's name and its key), the ten favourite colours on keys (keys3;
+//   none from an app before them) and when, so a new browser or computer has
 //   a person's keys once they sign in (src/account/keymap_sync.gd). Until
 //   keymap.sql is applied, GET answers null, ready false, and POST keeps
 //   nothing (kept false): the app keeps them on the device all the same.
@@ -288,6 +289,7 @@ const KEY_PRESETS = ["brickworks", "studio", "mecabricks", "ldcad"];
 // modifiers as Godot writes one, under 2^31. The app has some 150.
 const KEY_ACTION = /^[a-z0-9_]{1,48}$/;
 const MOST_KEYS = 400;
+const FAVOURITE_COLOURS = 10;
 let saidNoKeys = false;
 
 /// The app's keys as an account sends them, or why not: {preset, own, at}.
@@ -307,7 +309,15 @@ export function keysOf(body) {
   }
   const at = Number(body?.at);
   if (!Number.isFinite(at) || at < 0) return { trouble: "When the keys were set is a time in seconds." };
-  return { keys: { preset, own: kept, at } };
+  // The ten favourite colours on keys (src/ui/colour_keys.gd), LDraw colour
+  // codes; an app from before them sends none.
+  const colours = body?.colours;
+  if (colours === undefined || colours === null) return { keys: { preset, own: kept, at } };
+  if (!Array.isArray(colours) || colours.length !== FAVOURITE_COLOURS
+      || !colours.every((code) => Number.isInteger(code) && code >= 0 && code < 2 ** 31)) {
+    return { trouble: `The favourite colours are ${FAVOURITE_COLOURS} colour codes.` };
+  }
+  return { keys: { preset, own: kept, colours, at } };
 }
 
 /// The app's keys on the account: read (GET) or kept (POST {preset, own, at}).

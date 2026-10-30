@@ -93,7 +93,7 @@ var pins: PinnedComments = PinnedComments.new()
 ## (SetBin.META), never in what is published or exported; a model opened
 ## says it again, and a new one keeps the bin it was begun with.
 var bin_sets: PackedStringArray = PackedStringArray()
-## The picture to build over (View, Reference picture…), as ReferenceImage
+## The picture to build over (Make, Reference picture…), as ReferenceImage
 ## keeps it: {on, at, width, opacity, locked, name, picture}, or empty for
 ## none. Kept with its saves and the autosave as the app's other lines are
 ## (ReferenceImage.META), never in what is published or exported: it is the

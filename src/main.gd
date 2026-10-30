@@ -38,6 +38,9 @@ var _props_dock: SideDock
 var _stack: PanelStack
 ## The right-hand column's: the model tree over the properties.
 var _side: PanelStack
+## Where the columns take turns, the selection's place, turn and colour under
+## the parts bin as well (Inspector.compact). Null on a phone or a tablet.
+var _bin_props: Inspector
 ## The strip along the top of the model for what is said about it for a
 ## while: the sub-assembly being edited, the offer to seat old parts.
 var _notices: PanelContainer
@@ -46,7 +49,7 @@ var _notices: PanelContainer
 var _over_model: Control
 ## View, Split: the model straight on beside the main view (SplitView).
 var _split: SplitView
-## The picture to build over (View, Reference picture…).
+## The picture to build over (Make, Reference picture…).
 var _reference: ReferenceImage
 var _store: ModelStore
 ## The baseplate, the grid floor or nothing under the model.
@@ -297,13 +300,18 @@ var _motions: MotionPlayer
 var _simulate: SimulatePanel
 ## Tools, Colour the hidden parts… (src/ui/hidden_colours_panel.gd).
 var _hidden_colours: HiddenColoursPanel
-## Its column, docked beside the model's: shown while it is open, so the
+## Its column, docked beside the model's, and the hose tool's panel's
+## too (Make, Hose, tube or chain…): shown while either is open, so the
 ## model's column (and the lens centred on it) is what is left of the
-## window. Over the model's left edge it covered half a gear train in a
-## window 1600 across, and a click meant for an axle landed on the panel.
-var _simulate_column: ScrollContainer
-## Whether opening Simulate folded the parts column, to put it back.
-var _simulate_folded_parts: bool = false
+## window. Over the model's left edge Simulate's covered half a gear train
+## in a window 1600 across, and a click meant for an axle landed on the
+## panel; the hose tool's covered the left one of two gears a chain was to
+## go round, at 1400 x 900 (keys3).
+var _tool_column: ScrollContainer
+## What the column holds, one above the other.
+var _tool_panels: VBoxContainer
+## Whether opening the column folded the parts column, to put it back.
+var _tool_folded_parts: bool = false
 ## Whether --ask finished with a design rather than an apology. Read by
 ## the exit status, so a script can tell.
 var _ask_went_well: bool = true
@@ -753,7 +761,7 @@ func _tell_page() -> void:
 		"selected": _builder.selection.size(),
 		# View, Split: whether the second view shows.
 		"split": _split != null and _split.is_showing(),
-		# View, Reference picture…: the picture to build over, as the model
+		# Make, Reference picture…: the picture to build over, as the model
 		# keeps it (ReferenceImage.page_state).
 		"reference": _reference.page_state() if _reference != null else {},
 		# ...and which, the first few: tools/web/centre_check.mjs clicks a
@@ -1001,6 +1009,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_account_panel.controls_by_name())
 	if _shell != null:
 		named.merge(_shell.controls_by_name())
+	if _bin_props != null:
+		named.merge(_bin_props.controls_by_name())
 	if _seat_offer != null:
 		named.merge(_seat_offer.controls_by_name())
 	if _reload_offer != null:
@@ -1170,8 +1180,8 @@ func words_shown() -> PackedStringArray:
 	var out := PackedStringArray()
 	_words_in(get_tree().root, out)
 	if _shell != null:
-		for title: String in ["File", "Edit", "View", "Build", "Tools", "Help"]:
-			var button: MenuButton = _shell.menu(title)
+		for menu: Array in Shell.MENUS:
+			var button: MenuButton = _shell.menu(str(menu[0]))
 			if button != null:
 				_rows_in(button.get_popup(), out)
 		_rows_in(_shell.context, out)
@@ -4544,15 +4554,25 @@ func _build_ui() -> void:
 	_bin_dock.setup(_stack, SideDock.Edge.LEFT, _parts_wide(LEAST_ACROSS))
 	layout.add_child(_bin_dock)
 
-	# Tools, Simulate mechanism…'s column, beside the model's rather than
-	# over it, shown only while the panel is open (the panel goes in it
-	# below). It scrolls when the window is shorter than the panel.
-	_simulate_column = ScrollContainer.new()
-	_simulate_column.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_simulate_column.custom_minimum_size = Vector2(SIMULATE_WIDTH, 0)
-	_simulate_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_simulate_column.visible = false
-	layout.add_child(_simulate_column)
+	# Tools, Simulate mechanism…'s column and the hose tool's, beside the
+	# model's rather than over it, shown only while a panel in it is open
+	# (the panels go in it below). It scrolls when the window is shorter
+	# than the panel.
+	_tool_column = ScrollContainer.new()
+	_tool_column.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_tool_column.custom_minimum_size = Vector2(SIMULATE_WIDTH, 0)
+	_tool_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tool_column.visible = false
+	# Backed all the way down: below a short panel the model was drawn
+	# where a click does not reach it.
+	var backing := StyleBoxFlat.new()
+	backing.bg_color = Color(0.10, 0.11, 0.13)
+	_tool_column.add_theme_stylebox_override("panel", backing)
+	layout.add_child(_tool_column)
+	_tool_panels = VBoxContainer.new()
+	_tool_panels.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tool_panels.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tool_column.add_child(_tool_panels)
 
 	# The middle column is the viewport. Nothing is drawn into it, but the
 	# counters and the key list live at its top and bottom so they cannot
@@ -5148,6 +5168,10 @@ func _build_ui() -> void:
 	_verbs.camera = _camera
 	_verbs.together = _together
 	add_child(_verbs)
+	# A double-click in the bin replaces the selection, or puts a fit on it.
+	_bin.verbs = _verbs
+	# A set's booklet, where this build has no copy of LDraw's model of it.
+	_bin.models = _model_library
 	# A part in hand (Q, the bin, the eyedropper) brings the parts bin out
 	# if it was folded: a laptop's window starts with the assistant
 	# showing, and the part in hand and its colours are in the bin.
@@ -5176,6 +5200,16 @@ func _build_ui() -> void:
 		if not bool(ShellPrefs.value("right_column")):
 			ShellPrefs.put("right_column", true)
 			_shell.outliner.set_open(true)
+		# Where the columns take turns, opening the properties folds the
+		# bin: a part put down and typed to its place, and the next one,
+		# cost a rail click each way. So what a part just put down needs is
+		# under the bin too, and the model keeps its share.
+		_bin_props = Inspector.new()
+		_bin_props.shell = _shell
+		_bin_props.compact = true
+		_bin_props.wanted = _columns == "turns"
+		_stack.add_section(_bin_props)
+		_stack.keep_whole(_bin_props)
 	if _phone != null:
 		_phone.shell = _shell
 		_dress_for_phone()
@@ -5204,6 +5238,8 @@ func _build_ui() -> void:
 	_measure = Measure.new()
 	_measure.lattice = _builder.lattice
 	_measure.camera = _camera
+	_measure.world = _world
+	_measure.library = _library
 	_measure.label = _viewport_label(13)
 	_measure.label.visible = false
 	_measure.label.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -5213,8 +5249,8 @@ func _build_ui() -> void:
 	add_child(_measure)
 	_verbs.measure = _measure
 
-	# Build, Hose, tube or chain…: src/ui/flex_tool.gd, its panel over the
-	# model's left edge.
+	# Make, Hose, tube or chain…: src/ui/flex_tool.gd, its panel in the
+	# column beside the model's, as Simulate's is.
 	_flex = FlexTool.new()
 	_flex.world = _world
 	_flex.builder = _builder
@@ -5223,9 +5259,8 @@ func _build_ui() -> void:
 	_flex.camera = _camera
 	_flex.say = _bar.say
 	add_child(_flex)
-	spacer.add_child(_flex.panel)
-	_flex.panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_flex.panel.position = Vector2(12, 48)
+	_tool_panels.add_child(_flex.panel)
+	_flex.panel.visibility_changed.connect(_tool_column_shown)
 	_flex.changed.connect(_on_model_edited)
 	_make_grab_drag()
 
@@ -5272,7 +5307,7 @@ func _build_ui() -> void:
 	_update_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_update_offer)
 
-	# View, Reference picture…: a picture to build over, kept in the model's
+	# Make, Reference picture…: a picture to build over, kept in the model's
 	# file and never in a picture of it (src/ui/reference_image.gd).
 	_reference = ReferenceImage.new()
 	_reference.name = "ReferenceImage"
@@ -5422,8 +5457,8 @@ func _build_ui() -> void:
 	_simulate.named = _bar.model_name
 	_simulate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_simulate.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_simulate_column.add_child(_simulate)
-	_simulate.visibility_changed.connect(_simulate_shown)
+	_tool_panels.add_child(_simulate)
+	_simulate.visibility_changed.connect(_tool_column_shown)
 	_builder.selection_changed.connect(_simulate._on_selection)
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
@@ -5902,7 +5937,7 @@ func _built_bounds() -> AABB:
 	return everything
 
 
-## View > Default view (0): the view the app opens on, turned to its usual
+## View > Viewpoint > Default view (0): the view the app opens on, turned to its usual
 ## angle and framed on what is built, the baseplate when nothing is. It
 ## turned the camera alone and kept the focus and the zoom, so a view lost
 ## in empty space stayed lost and only Fit found the model (walk180 A2);
@@ -6262,6 +6297,8 @@ func _fit_panels() -> void:
 	if share == _columns:
 		return
 	_columns = share
+	if _bin_props != null:
+		_bin_props.wanted = share == "turns"
 	_arrange_columns()
 
 
@@ -6289,9 +6326,9 @@ func _model_rect() -> Rect2:
 	if _columns == "drawers" and _phone == null:
 		var across: float = get_viewport().get_visible_rect().size.x
 		rect.position.x = SideDock.RAIL_WIDTH
-		# Simulate's column is not a drawer: it stays open beside the model.
-		if _simulate_column != null and _simulate_column.visible:
-			rect.position.x = maxf(rect.position.x, _simulate_column.get_global_rect().end.x)
+		# The tool column is not a drawer: it stays open beside the model.
+		if _tool_column != null and _tool_column.visible:
+			rect.position.x = maxf(rect.position.x, _tool_column.get_global_rect().end.x)
 		rect.size.x = across - SideDock.RAIL_WIDTH - rect.position.x
 	# A tablet's panels stand beside the model, as the desktop's columns do.
 	if _phone != null:
@@ -6304,23 +6341,57 @@ func _model_rect() -> Rect2:
 const SIMULATE_WIDTH := 360.0
 
 
-## Simulate opened or closed: its column shown with it. Opening folds the
-## parts column, which building by hand needs and simulating does not, so
-## the model keeps its room; closing puts it back as it was.
-func _simulate_shown() -> void:
-	var open: bool = _simulate.visible
-	_simulate_column.visible = open
+## Simulate or the hose tool opened or closed: the column shown while
+## either is. Opening folds the parts column, which building by hand needs
+## and simulating or laying a hose does not, so the model keeps its room;
+## closing puts it back as it was. Where nothing folds, the column's room
+## comes out of the model's, and the view steps back so what was in sight
+## stays in sight.
+func _tool_column_shown() -> void:
+	var open: bool = _simulate.visible or _flex.panel.visible
+	if open == _tool_column.visible:
+		return
+	var room: Rect2 = _model_rect()
+	_tool_column.visible = open
 	if open and _bin_dock.is_open() and _columns != "drawers":
-		_simulate_folded_parts = true
+		_tool_folded_parts = true
 		_arranging = true
 		_bin_dock.set_open(false, false)
 		_arranging = false
-	elif not open and _simulate_folded_parts:
-		_simulate_folded_parts = false
+	elif not open and _tool_folded_parts:
+		_tool_folded_parts = false
 		if not _bin_dock.is_open():
 			_arranging = true
 			_bin_dock.set_open(true, false)
 			_arranging = false
+	if open:
+		_keep_in_sight.call_deferred(room)
+
+
+## After the column opened, once the columns are laid out: if a part of
+## the model that was in [param before], the model's room, would be out of
+## the room left (the lens slides the picture to its middle), the view
+## steps back by as much as the room narrowed, about the same middle, so
+## what was in sight is in sight still. A model framed whole has room to
+## spare and nothing moves; nothing moves either when the room grew, as it
+## does when the parts column folds.
+func _keep_in_sight(before: Rect2) -> void:
+	await get_tree().process_frame
+	var after: Rect2 = _model_rect()
+	if after.size.x >= before.size.x - 1.0:
+		return
+	var slide: Vector2 = after.get_center() - before.get_center()
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id) or _camera.is_position_behind(brick.transform.origin):
+			continue
+		var at: Vector2 = _camera.unproject_position(brick.transform.origin)
+		if before.has_point(at) and not after.has_point(at + slide):
+			var view: Dictionary = _camera.aim()
+			var back: float = before.size.x / after.size.x
+			view["distance"] = float(view["distance"]) * back
+			view["size"] = float(view["size"]) * back
+			_camera.aim_at(view)
+			return
 
 
 ## Open and fold the columns as the window's share says, from what the
@@ -6639,7 +6710,7 @@ func open_render() -> void:
 	_render.open()
 
 
-## Build, Hose, tube or chain…; Edit, Reshape the hose or chain.
+## Make, Hose, tube or chain…; Make, Reshape the hose or chain.
 func open_flex() -> void:
 	if _measure != null:
 		_measure.leave()
@@ -8746,7 +8817,7 @@ func _over_interface(point: Vector2) -> bool:
 
 func _over_panel_at(point: Vector2) -> bool:
 	for panel: Control in [_bin_dock, _props_dock, _chat_dock, _bar, _gizmo, _notices,
-			_simulate_column]:
+			_tool_column]:
 		if panel != null and panel.visible \
 				and panel.get_global_rect().has_point(point):
 			return true
@@ -8990,8 +9061,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 ## What a key bound by the keymap does where no key did it before: a
-## command, run as its menu runs it, or Studio's Shift and an arrow, a turn
-## of the selection by 45° (a part in hand turns a quarter, as R turns it).
+## command, run as its menu runs it, a colour key or Studio's Shift-V
+## (Shell.run_key), or Studio's Shift and an arrow, a turn of the selection
+## by 45° (a part in hand turns a quarter, as R turns it).
 func _key_action(action: String) -> void:
 	match action:
 		"part_left_45", "part_right_45":
@@ -9002,7 +9074,7 @@ func _key_action(action: String) -> void:
 			else:
 				_verbs.turn_by(45.0 * way)
 		_:
-			_shell.run(action)
+			await _shell.run_key(action)
 
 
 func _key_pressed(key: InputEventKey) -> void:

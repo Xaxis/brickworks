@@ -27,6 +27,10 @@ const NAME := "Brickworks"
 ## this many units tall.
 const MARK := "res://assets/ui/mark.svg"
 const MARK_TALL := 18.0
+## The model's name box: its width, and the least it gives way to in a
+## narrow window (_fit_mark).
+const NAME_WIDE := 200.0
+const NAME_NARROW := 120.0
 
 var _name: LineEdit
 ## Written by say(); the status bar shows it (use_status).
@@ -161,7 +165,7 @@ func _build() -> void:
 
 	_name = LineEdit.new()
 	_name.text = "Untitled"
-	_name.custom_minimum_size = Vector2(200, 0)
+	_name.custom_minimum_size = Vector2(NAME_WIDE, 0)
 	_name.tooltip_text = "What this model is called"
 	_name.accessibility_name = "Model name"
 	_name.add_theme_font_size_override("font_size", 13)
@@ -385,14 +389,17 @@ var _mark_drawn_at: float = 0.0
 ## rather than run off the side, and a second line would push the toolbar
 ## and the model down. At 720 units across (a narrow browser) the row has
 ## about 40 to spare without the menu (2026-10-29), so a Claude tab
-## showing, or Account's count, takes the name first.
+## showing, or Account's count, takes the name first. Then the model's
+## name box gives way, down to NAME_NARROW: the Make menu (keys3) took 50
+## of those 40, and a Claude tab put Account on a second line.
 func _fit_mark() -> void:
 	var row: HFlowContainer = mark.get_parent()
 	var gap: int = row.get_theme_constant("h_separation")
 	var wide: float = 0.0
+	var mine: bool = _name.get_parent() == row
 	for child: Node in row.get_children():
 		var control: Control = child as Control
-		if control != null and control != mark and control.visible:
+		if control != null and control != mark and control.visible and not (mine and control == _name):
 			wide += control.get_combined_minimum_size().x + gap
 	# Account as wide as its count makes it ("Account · 99+"), whether the
 	# count has come or not: it comes seconds in, signed in, and the name
@@ -406,6 +413,14 @@ func _fit_mark() -> void:
 	var word: float = mark.get_theme_font("font").get_string_size(NAME, HORIZONTAL_ALIGNMENT_LEFT,
 		-1, mark.get_theme_font_size("font_size")).x + mark.get_theme_constant("h_separation")
 	var bare: float = mark.get_combined_minimum_size().x - (0.0 if mark.text.is_empty() else word)
+	if mine:
+		wide += gap
+		var box: float = clampf(floorf(row.size.x - wide - bare), NAME_NARROW, NAME_WIDE)
+		if row.size.x <= 0.0:
+			box = NAME_WIDE
+		if not is_equal_approx(_name.custom_minimum_size.x, box):
+			_name.custom_minimum_size.x = box
+		wide += box
 	var named: String = NAME if wide + bare + word <= row.size.x else ""
 	if mark.text != named:
 		mark.text = named
