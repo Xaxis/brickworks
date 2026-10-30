@@ -5206,6 +5206,8 @@ func _build_ui() -> void:
 	_measure = Measure.new()
 	_measure.lattice = _builder.lattice
 	_measure.camera = _camera
+	_measure.world = _world
+	_measure.library = _library
 	_measure.label = _viewport_label(13)
 	_measure.label.visible = false
 	_measure.label.set_anchors_preset(Control.PRESET_CENTER_TOP)
