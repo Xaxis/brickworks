@@ -784,10 +784,81 @@ Latest for everybody, U9; (10) first steps and the house profile, U10.
   returns to the same card; endless to three pages then Show more; light
   and dark.
 
+## 7. Phase 7 (2026-10-30)
+
+The owner (2026-10-30): "improve social features of site", to the bar
+of better than any competitor on every feature, with nothing half done.
+
+**What is built.** Every unit of section 5 is built and live, U12-U14
+included (their notes above; the code: `supabase/challenge_year.sql`,
+`api/people.js` `achievementsOf`, `api/share.js` `shareSheet` and
+`embedCard`). On 2026-10-29 the live `/challenge` shows Haunted house
+open, with no entry, and Microscale told for November. The community is
+still the house's: the gallery's first page is 24 models, every one
+`/u/brickworks`'s, with 0 likes, builds and remixes. So the cold start
+(D12, [AC]) still decides the order: first what brings people in from
+elsewhere, then what gives a designer a reason to come back.
+
+**Where U12-U14 fall short of the best today** (research 2026-10-29,
+sources at the end; Printables' public API and Sketchfab's oEmbed read
+directly):
+
+- **U14, Share.** Only a model's page has the sheet. A profile's and a
+  collection's Share copy the link and nothing more; `/challenge` has no
+  Share, and its link preview is the site's generic picture. No network
+  is offered: Sketchfab puts Facebook, X and Pinterest under its viewer
+  [SK-SH], Mecabricks Facebook and X beside its embed [MB-S], Behance a
+  Share and Embed menu [BE-S]. There is no oEmbed, so a link pasted into
+  WordPress, Ghost, Notion or a Discourse forum stays a bare link, where
+  Sketchfab's (`/oembed`, a `rich` iframe, a discovery link in the page)
+  becomes its viewer [SK-O]. The embed is a picture and a name; Sketchfab's
+  and Mecabricks' are the 3D viewer [SK-EO], [MB-S].
+- **U13, Achievements.** Five marks, each had or not, that nobody is told
+  of. Printables has 22 badges, six of them tracks of four to nine levels,
+  each level a number to reach ("Publish 5 models"), a profile level that
+  is the count of badges, and an email when one is earned [PR-B], [PR-BL].
+  MakerWorld's are one-offs [MW-A]; Dribbble, Behance, Sketchfab and
+  Thingiverse have none. Nobody shows how far a person is from the next
+  level: an open lane.
+- **U12, Challenges.** Complete as a page: open, next, past, entries in two
+  groups, votes, winners, entry from the model's page as Rebrickable's
+  competition tag is [RB-C]. Nobody is told: a challenge opens and only
+  someone who opens `/challenge` knows; nobody is reminded before it
+  closes; a voter never hears who won. No peer documents reminders. The
+  open challenge has no entry with two days left (live, 2026-10-29);
+  Printables runs about three a month, median 16 days and 223 entries
+  [PR-B].
+
+**Ranked**, value first, then size (S, M, L as section 5):
+
+| # | What | Value, and the evidence | Size | Supabase |
+|---|---|---|---|---|
+| 1 | **Share everywhere** (U14 finished): the one share sheet on a model's, a set's, a profile's, a collection's and the challenge's page: its link, the phone's own sheet, Reddit, Bluesky, Pinterest, X, Facebook and email, the embed code where there is one; oEmbed at `/api/oembed` with its discovery link on `/m/`; the challenge's own link preview | High: every share is a way in from elsewhere, which a gallery of one designer needs most [AC]; [SK-SH], [MB-S], [BE-S], [SK-O] | M | none |
+| 2 | **Achievements with levels and the next step** (U13 finished): tracks with levels (models in the gallery, builds finished of them, photos of real builds, remixes of them, Tested), one-offs (a challenge entered, a challenge won); the next level and how far, on your own page; a page of them all, with how many hold each; told in Notifications when earned | High on the side that makes the work, designers [AC]: [PR-B], [PR-BL]; the next step shown is ours alone | M | `achievement_marks`: which levels each account has been told of |
+| 3 | **Challenges people hear of** (U12 finished): in Notifications when one opens and two days before it closes, for everybody who may enter; the winners for whoever voted; Share and its own link preview (in 1) | Medium-high: an empty challenge is a dead end (D12); the lane is open | S | none, or a mark for what was told |
+| 4 | **The embed in 3D**: `/m/X/embed` as the model turning, as viewer369's inline preview draws it | High: Sketchfab's whole embed [SK-EO], Mecabricks' too [MB-S]; after viewer369 lands | S then | none |
+| 5 | **Based on**: a model credits a set of the LDraw library (an alternate build or a change of it) or work elsewhere (its link, author and licence), beside today's remix line | Medium: Printables takes several parents, outside links with their author and licence [PR-B]; Rebrickable asks which set a MOC is built from [RB]; half of Thingiverse's remixed things have several parents [GR]. Only Brickworks has each set's own page to link to | M | additive column or table on `shared_models` |
+| 6 | **@mentions in comments** told in Notifications, 13+ shown profiles only, three a comment | Medium, later: Behance [BE-M], Dribbble [DR-N], Sketchfab [SK-N]; there is no conversation yet to mention anybody in | M | new versions of the comment functions |
+| 7 | **The week by email**, opt-in: your models' week, what people you follow made, the challenge | Low now: nothing happens yet; none of the peers sends a personal one [DR-N] | M | a mail kind |
+| 8 | **Builds as a gallery tab** (everybody's real builds) | Low now: 0 builds; site357 owns the gallery | S | none |
+| 9 | **People to follow on a profile** (more like this designer) | Low now: one designer; the feed has them (U9), as Sketchfab's and Behance's feeds do [SK-F], [BE-F] | S | none |
+
+**Not built, with the reason:** reactions beyond Like (none of the peers
+has them on work; MakerWorld's Boost is scarce and paid for by the site
+[MW-B]; a site with children on it keeps one plain Like); streaks
+(section 5's list; GitHub removed its own in 2016 so the profile "focuses
+on the work you're doing rather than the duration of your activity"
+[GH-S]; MakerWorld's Guardian expires, Printables' Maniac counts visits).
+
+**The order built:** 1, 2, 3 (U14, U13, U12 as asked), then 5 and 6.
+4 waits for viewer369. Each is done end to end, its browser flow on a
+preview, before the next begins.
+
 ## Sources
 
 Read 2026-10-22. Where a site refused automated reading, the claim is
 from its captured page text in search results or a guide, as noted.
+Phase 7's (section 7) were read 2026-10-29; they are after these.
 
 - [AC] Andrew Chen, *The Cold Start Problem*, as summarised:
   https://www.antoinebuteau.com/lessons-from-andrew-chen/
@@ -849,3 +920,42 @@ from its captured page text in search results or a guide, as noted.
   https://github.com/w3c/csswg-drafts/blob/master/css-grid-2/MASONRY-EXPLAINER.md
 - [WD] web.dev, "prefers-color-scheme: Hello darkness, my old friend":
   https://web.dev/articles/prefers-color-scheme
+
+Phase 7's, read 2026-10-29:
+
+- [BE-F] Behance help, the For You feed:
+  https://help.behance.net/hc/en-us/articles/204484454-Guide-For-You-Feed
+- [BE-M] Behance help, comment mentions (notified on Behance and by
+  email): https://help.behance.net/hc/en-us/articles/204484484-Guide-Comment-Mentions
+- [BE-S] Behance help, Share and Embed (Copy Link, Copy Embed):
+  https://help.behance.net/hc/en-us/articles/19288565618971-Guide-Sharing-and-Embedding-Behance-Content
+- [DR-N] Dribbble's notification settings (Mentions among 16 kinds; no
+  digest of people followed): https://dribbble.com/notifications
+- [GH-S] GitHub, "More contributions on your profile" (streaks removed,
+  2016): https://github.blog/news-insights/product-news/more-contributions-on-your-profile/
+- [GR] Roumen et al., Grafter (2018), on Thingiverse's remixes with
+  several parents: https://hpi.de/oldsite/fileadmin/user_upload/fachgebiete/baudisch/projects/grafter/Roumen-2018-grafter-paper.pdf
+- [MB-S] A Mecabricks model's Share tab (link, an Embed Viewer iframe to
+  its 3D player, Facebook, X), observed: https://www.mecabricks.com/en/models/07vN6RZWvAm
+- [MW-A] Bambu Lab forum, MakerWorld's profile achievements:
+  https://forum.bambulab.com/t/updated-new-achievements-on-makerworld-profile/163541
+- [MW-B] Bambu Lab, the MakerWorld Boost:
+  https://blog.bambulab.com/rethinking-rewards-makerworld-boost-system
+- [PR-B] Printables' public API, read directly
+  (`https://api.printables.com/graphql/`: `badges { name badgeLevels {
+  name description } }`, 22 badges, Designer's nine levels from "Publish
+  your first model"; `competitions { openFrom openTo printsCount }`)
+- [PR-BL] Prusa, the reward system and badges (an email when one is
+  earned, three chosen to show):
+  https://blog.prusa3d.com/introducing-a-new-reward-system-and-badges-for-prusaprinters_60073/
+- [RB-C] Rebrickable, a quarterly competition entered by a tag on the MOC:
+  https://rebrickable.com/blog/621/quarterly-competition-announcement/
+- [SK-EO] Sketchfab help, the embedded 3D viewer's options:
+  https://help.sketchfab.com/en/articles/16152734-customizing-your-embedded-3d-model
+- [SK-F] Sketchfab, profiles to follow in the news feed:
+  https://sketchfab.com/blogs/community/stay-up-to-date-with-our-news-feed
+- [SK-N] Sketchfab, notifications (mentioned in a comment):
+  https://sketchfab.com/blogs/community/welcome-notifications-updated-newsfeed
+- [SK-O] Sketchfab's oEmbed, read directly: https://sketchfab.com/developers/oembed
+- [SK-SH] Sketchfab help, sharing (Facebook, X, Pinterest):
+  https://help.sketchfab.com/en/articles/16152737-sharing-models-online
