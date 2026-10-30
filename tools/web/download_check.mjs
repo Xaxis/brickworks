@@ -29,8 +29,12 @@
 // And the gallery, /gallery (web/gallery.html), under the same policy: its
 // script draws the listed models from /api/share?op=list, a page at a time.
 // Locally the list is a made-up one of 26 models — one with no picture, one
-// whose name is markup — so the check sees two pages, Show more, and a name
-// that must be shown as the text it is; against a deployment, what it lists.
+// whose name is markup — so the check sees two pages and a name that must
+// be shown as the text it is; against a deployment, what it lists. The
+// first page is drawn with Show more; the next comes by itself where Show
+// more was within a screen under the window (locally at 1280), else when
+// it is pressed (at 390), and locally Show more is then gone. A deployment
+// that lists more than a page is paged the same way.
 // No error in the console (a refused script or fetch is one), and no
 // sideways scroll on a phone or a laptop. --shots gets gallery-phone.png and
 // gallery-laptop.png. Locally the made-up list answers a search and a kind
@@ -445,6 +449,20 @@ for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
   page.on("console", (m) => { if (m.type() === "error") said.push(m.text()); });
   page.on("pageerror", (e) => said.push(String(e)));
   const fail = (text) => problems.push(`gallery at ${label} width: ${text}`);
+  // The list as first drawn, before the page can bring the next page by
+  // itself (web/gallery.js nearEnd: once Show more is within a screen under
+  // the window, as the made-up list's first page ends at 1280). Read as
+  // data-pages is first said, which is before nearEnd runs.
+  await page.addInitScript(() => {
+    new MutationObserver((changes, watch) => {
+      if (document.documentElement.dataset.pages !== "1") return;
+      watch.disconnect();
+      const more = document.getElementById("more");
+      window.firstDrawn = { cards: document.querySelectorAll("#models .model").length, more: !more.hidden,
+        top: Math.round(more.getBoundingClientRect().top), within: innerHeight * 2,
+        where: location.pathname + location.search, state: document.documentElement.dataset.gallery };
+    }).observe(document, { attributes: true, subtree: true, attributeFilter: ["data-pages"] });
+  });
   const response = await page.goto(galleryTarget, { waitUntil: "load", timeout: 45000 });
   if (!response || !response.ok()) {
     fail(`the page answered ${response && response.status()}`);
@@ -468,20 +486,49 @@ for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
   }));
   await allPictures(page);
   let seen = await look();
+  let paged = "";
   if (seen.state !== "ready") fail(`the list did not load (${seen.state || "nothing said"})`);
+  const drawn = await page.evaluate(() => window.firstDrawn || null);
   if (!args.url) {
-    if (seen.cards.length !== 24 || !seen.more) fail(`the first page is ${seen.cards.length} cards, Show more ${seen.more ? "shown" : "hidden"}`);
+    if (!drawn || drawn.cards !== 24 || !drawn.more) {
+      fail(`the first page is ${drawn ? drawn.cards : "never drawn,"} cards, Show more ${drawn && drawn.more ? "shown" : "hidden"}`);
+    }
     const first = seen.cards[0] || {};
     if (first.name !== HOSTILE || seen.stray || seen.title === "owned") fail("a name that is markup was not shown as text");
     if (first.href !== "/m/Gal0000000" || first.about !== "12 parts") fail(`the first card is ${JSON.stringify(first)}`);
     if ((seen.cards[1] || {}).img) fail("a model with no picture was given one");
     if ((seen.cards[2] || {}).about !== "86 parts, by Builder 2") fail(`a credit reads "${(seen.cards[2] || {}).about}"`);
-    await page.click("#more");
-    await page.waitForFunction(() => document.querySelectorAll("#models .model").length > 24, null, { timeout: 10000 }).catch(() => {});
+  }
+  // The next page: by itself where Show more was first drawn within a
+  // screen under the window, else when it is pressed. A deployment's own
+  // list too, when it lists more than a page: releases check only that,
+  // and this half went stale for three days unseen (2026-10-29).
+  if (drawn && drawn.more) {
+    const near = drawn.top <= drawn.within;
+    if (!near) {
+      if (seen.cards.length !== drawn.cards || !seen.more) fail(`Show more ${drawn.top}px down, the list is ${seen.cards.length} cards before it is pressed, Show more ${seen.more ? "shown" : "hidden"}`);
+      if (seen.more) {
+        // Brought into view first, at once: that scroll may ask for the next
+        // page by itself (nearEnd), and Show more is disabled until it
+        // comes. Pressed in that moment, the press was lost.
+        await page.evaluate(() => document.getElementById("more").scrollIntoView({ block: "center", behavior: "instant" }));
+        await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+        await page.waitForFunction(() => !document.getElementById("more").disabled, null, { timeout: 10000 }).catch(() => {});
+        await page.click("#more");
+      }
+    }
+    const came = await page.waitForFunction((had) => document.querySelectorAll("#models .model").length > had, drawn.cards, { timeout: 10000 }).catch(() => null);
     await page.waitForTimeout(300);
+    const auto = await page.evaluate(() => document.documentElement.dataset.auto || "0");
     seen = await look();
-    if (seen.cards.length !== 26 || seen.more) fail(`after Show more, ${seen.cards.length} cards, Show more ${seen.more ? "still shown" : "gone"}`);
-
+    // Pressed, the scroll to it may have asked for it by itself (auto 1):
+    // either way it is drawn by the press.
+    if (!came || (near && auto !== "1") || (!args.url && (seen.cards.length !== 26 || seen.more))) {
+      fail(`${near ? `with Show more ${drawn.top}px down, by itself` : "after Show more"}, ${seen.cards.length} cards (auto ${auto}), Show more ${seen.more ? "still shown" : "gone"}`);
+    }
+    paged = ` (${drawn.cards}, then ${seen.cards.length - drawn.cards} ${near ? "by itself" : "by Show more"}, Show more first at ${drawn.top}px)`;
+  }
+  if (!args.url) {
     // The question: typed, picked, found nothing, cleared; each in the address.
     // Answered once the address says the question and the list is drawn.
     const answered = async (where) => {
@@ -514,12 +561,15 @@ for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
     // The one answer here that is meant to be refused, which the browser
     // logs as a failed load; anything else said meanwhile still counts.
     const before = said.length;
+    // Its first page as drawn: at 1280 the second comes by itself after.
     await page.goto(`${galleryTarget}?kind=nope&q=x`, { waitUntil: "load" });
-    asked = await answered("/gallery");
+    await page.waitForFunction(() => window.firstDrawn, null, { timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    const put = await page.evaluate(() => window.firstDrawn || {});
     const meanwhile = said.splice(before).filter((line) => !/status of 400/.test(line));
     said.push(...meanwhile);
-    if (asked.where !== "/gallery" || asked.cards.length !== 24 || asked.state !== "ready") {
-      fail(`an address asking for a kind there is not: ${asked.where}, ${asked.cards.length} cards, ${asked.state}`);
+    if (put.where !== "/gallery" || put.cards !== 24 || put.state !== "ready") {
+      fail(`an address asking for a kind there is not: ${put.where}, ${put.cards} cards, ${put.state}`);
     }
     await page.goto(`${galleryTarget}?kind=castle`, { waitUntil: "load" });
     asked = await answered("/gallery?kind=castle");
@@ -531,7 +581,7 @@ for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
   if (said.length) fail(`the console said: ${said.slice(0, 3).join(" | ")}`);
   if (seen.scrollW > seen.clientW + 1) fail(`scrolls sideways, ${seen.scrollW}px in ${seen.clientW}px`);
   if (seen.broken.length) fail(`broken pictures: ${seen.broken.slice(0, 3).join(", ")}`);
-  console.log(`  gallery  ${label}: ${seen.cards.length} cards${seen.empty ? " (nothing listed)" : ""}`
+  console.log(`  gallery  ${label}: ${seen.cards.length} cards${paged}${seen.empty ? " (nothing listed)" : ""}`
     + (seen.cards[0] ? `, first "${seen.cards[0].name.slice(0, 40)}"` : ""));
   if (args.shots) {
     const path = join(args.shots, `gallery-${label}.png`);
