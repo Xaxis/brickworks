@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:meet on hinges, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand -->
 
 ## Sub-features
 
@@ -937,6 +937,21 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   unselected one (`Joints.rounds`). It may press only on the part it is joined
   to; anything else refuses it. The parts stand off the grid afterwards, held
   as turned covers (`Builder.swing_selection`).
+- `meet on hinges` (`src/assembly/hinge_align.gd`, Properties' `Hinges  Meet`
+  with two parts selected; docs/APP_UX.md B4): every hinge, clip and
+  turntable between the two (Bodies' tree, each side back to the body both
+  hang from) swings so a free end of the one meets a free end of the other
+  that takes it — a click hinge's finger in a fork, a pin in its eye, a clip
+  on a bar — with the least bending, the new joint's bend counted too, so a
+  line of eight hinges closes into a regular octagon. Click hinges end on
+  their 22.5° clicks; every part must have room where it ends up and stay
+  above the model's lowest point. One step to undo. Otherwise nothing moves
+  and the status bar says why: not joined, nothing between them turns, no
+  free ends that take each other, "the nearest leaves them N plates apart",
+  "they meet only between the hinges' clicks", or what would run into what.
+  Probes: `hinge_align_probe` (a ring of eight click hinge plates, a wing
+  and its strut, the build check on each, the refusals) and, in a window,
+  `hinge_align_ui_probe` (the ring closed in three actions, one Ctrl+Z).
 - `grab and move on a joint` (`src/ui/grab_drag.gd` over `src/assembly/grab.gd`;
   owner, 2026-10-17): with the Select tool a drag on a part that hangs on a
   joint moves its whole rigid body and everything beyond it about that joint,
