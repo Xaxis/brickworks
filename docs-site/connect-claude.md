@@ -1,5 +1,5 @@
 ---
-ai: The ways to have an AI design in Brickworks: Claude on its plan through the connector, Claude Code, an Anthropic API key in the assistant panel, or another AI on the person's own key. The assistant must be switched on first (Settings, Assistant (AI)).
+ai: The ways to have an AI design in Brickworks: Claude on its plan or ChatGPT through the connector, Claude Code, an Anthropic API key in the assistant panel, or another AI on the person's own key. The assistant must be switched on first (Settings, Assistant (AI)).
 rules:
   - The connector's address is https://brickworks.diy/api/mcp, the same for every account.
   - With Build by hand only, the assistant's panel, its commands and the connector are gone from the window.

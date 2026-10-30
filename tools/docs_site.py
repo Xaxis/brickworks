@@ -2,7 +2,11 @@
 """The documentation at brickworks.diy/docs, made from docs-site/.
 
     tools/docs_site.py OUT       write OUT/docs.html, OUT/docs/<page>.html, OUT/docs/search.json
+                                 and OUT/docs/llms.txt
     tools/docs_site.py --check   say what the docs miss, and exit 1 if anything
+    tools/docs_site.py --write   write again what the docs make and commit:
+                                 the tools' docs' copies of their words,
+                                 src/ai/connector_guide.gd, src/ui/docs_pages.gd
 
 The owner, 2026-10-29: "an advanced 'docs' page ... documenting cleanly
 every detail of the app and user site features". The words are Markdown in
@@ -30,6 +34,21 @@ what it documents with a comment under its heading:
     <!-- covers
     ui:box select
     -->
+
+One source for people and for assistants (docs363, 2026-10-29: "a
+comprehensive docs system ... ALSO/basis for the MCP"). A page's head says,
+besides its title, which MCP tools it explains (tools:), which of the app's
+panels it is the page of (panels:, ClassName#section), and, to an
+assistant, what the feature is (ai:) and its rules (rules:, a list). Every
+tool has a doc, docs-site/tools/<name>.md: an example call held to the
+tool's schema, any words for people, and a copy of the tool list's own
+words, so a tool that changes fails the check until its doc is read again.
+From these: the tool reference, /docs/llms.txt, Help, Documentation's page
+for each panel (src/ui/docs_pages.gd), and the words every session is told
+first (src/ai/connector_guide.gd, from design-session.md's said blocks).
+--check fails when any of them is not what the docs make, when a tool has
+no doc or a doc no tool, an example breaks its schema, a page names a tool
+or panel there is none of, or a page people read has no ai:.
 """
 
 from __future__ import annotations
@@ -1007,7 +1026,36 @@ def build(out: Path) -> int:
         target.write_text(document(nav, by_name, pages, page), encoding="utf-8")
     (docs / "search.json").write_text(json.dumps(search_index(pages), ensure_ascii=False, separators=(",", ":")),
                                       encoding="utf-8")
+    (docs / "llms.txt").write_text(llms_txt(nav, pages), encoding="utf-8")
     return len(pages)
+
+
+def llms_txt(nav: list[dict], pages: list[Page]) -> str:
+    """The docs as an assistant reads them, at /docs/llms.txt: each page's
+    head (what it is, its rules, the tools it explains) under its address,
+    and every tool with its own."""
+    by_name = {p.name: p for p in pages}
+    start = by_name["index"]
+    out = [f"# Brickworks\n\n> {start.meta.get('ai', '')}\n",
+           "Connect an assistant at https://brickworks.diy/api/mcp (MCP over streamable HTTP, OAuth). "
+           f"How a session works: {SITE}/docs/design-session\n"]
+    for group in nav:
+        out.append(f"## {group['title']}\n")
+        for name in group["pages"]:
+            page = by_name[name]
+            line = f"- [{page.title}]({SITE}{page.url}): {page.meta.get('ai') or page.description}"
+            rules = page.meta.get("rules") or []
+            if rules:
+                line += " Rules: " + " ".join(rules)
+            if named_tools(page):
+                line += " Tools: " + ", ".join(named_tools(page)) + "."
+            out.append(line)
+        out.append("")
+    out.append("## Tools\n")
+    for tool in all_tools():
+        title = tool["annotations"].get("title", "")
+        out.append(f"- [{tool['name']}]({SITE}/docs/mcp-tools#{tool['name']}): {title}")
+    return "\n".join(out) + "\n"
 
 
 # -- what the app is given from the docs ------------------------------------------

@@ -4976,7 +4976,36 @@ going there, `/` and Escape, the pages list behind Browse the docs at 390
 and down the left at 1400 with the page marked, On this page following the
 scroll, and a deep link landing with its heading in view. Pictures in
 `--out`. The app's way in is Help, Documentation (`src/ui/shell.gd`,
-command `docs`).
+command `docs`), which opens the page of the panel in front.
+
+#### One source for people and assistants
+
+A page's head names the MCP tools it explains (`tools:`), the app's panels
+it is the page of (`panels:`, `ClassName#section`), and says to an
+assistant what the feature is (`ai:`) and its rules (`rules:`). Every tool
+the app or the relay serves has `docs-site/tools/<name>.md`: an `example:`
+call held to its input schema, words for people, and a copy of the tool
+list's words. From them: the tool reference (`/docs/mcp-tools`, with each
+example and the pages that explain it), `/docs/llms.txt`, Help's page for
+each panel (`src/ui/docs_pages.gd`), and the words every session is told
+first (`src/ai/connector_guide.gd`, from `docs-site/design-session.md`'s
+```` ```said ```` blocks; Assistant.GUIDE_HEAD and METHOD and
+ClaudeConnector.CONNECTED_NOTE are its constants).
+
+```sh
+python3 tools/docs_site.py --write      # writes nothing on a clean checkout
+python3 tools/docs_site.py --check      # the drift checks, in the Python suite too
+tools/probe.sh docs_pages_probe         # Help opens the panel's page; the words are the docs'
+```
+
+`--check` fails when a tool has no doc, a doc no tool, an example breaks
+its schema, a page names a tool or panel there is none of, a page people
+read has no `ai:`, or a made file is not what the docs make: change a
+tool's description in `tools/mcp_tools.json` by hand and it names that
+tool's doc; `--write` copies the new words in for review. The probe ends
+"docs pages: all passed": nothing open is `/docs`, Settings open is its
+page, Brickify over Settings is Brickify's, every panel named is a class,
+and the head, the method and the connector's note are ConnectorGuide's.
 
 ### The site for everyone: axe, names and the keyboard
 

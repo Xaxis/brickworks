@@ -19,6 +19,7 @@ An AI can design a whole model from a sentence, change a part of one, or answer 
 | Way | You need | Where it runs |
 |---|---|---|
 | [The Claude connector](/docs/connector) | A Claude Pro or Max plan | claude.ai, the Claude desktop and mobile apps, building in your open Brickworks tab |
+| [ChatGPT](/docs/connector#chatgpt) | A ChatGPT plan that can add a custom MCP server | chatgpt.com, building in your open Brickworks tab |
 | [Claude Code](/docs/claude-code) | Claude Code, signed in to your plan | Your terminal, or started by the desktop app for you |
 | [Your API key](#api-key) | A key from the Anthropic Console | The assistant panel itself |
 | [Another AI on your own key](#other-ais) | A key from OpenAI, Google, OpenRouter or another provider, or a model on your own computer | The assistant panel, chosen in **Settings › AI** |
