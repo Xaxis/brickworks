@@ -627,7 +627,9 @@ func _lay_pill() -> void:
 	var room: Vector2 = get_viewport().get_visible_rect().size
 	# Over the model's own room: on a tablet, between its panels.
 	var free: Rect2 = model_room(Rect2(Vector2.ZERO, room))
-	var widest: float = minf(free.size.x - p(24), p(380))
+	# One line where the screen is wider than tall: held sideways the
+	# model is 210 points high, and the line's two took a quarter of it.
+	var widest: float = minf(free.size.x - p(24), p(380) if room.y >= room.x else p(640))
 	var font: Font = _pill_words.get_theme_font("font")
 	var line: float = font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, ceili(p(13))).x
 	var inner: float = minf(line + p(2), widest - p(24))
