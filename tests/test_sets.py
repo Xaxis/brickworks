@@ -374,6 +374,34 @@ console.log(JSON.stringify({ card: await answer({ op: "catalog_photo", set: "421
 
 
 @needs_node
+def test_a_set_s_picture_waits_out_a_busy_store() -> None:
+    # Storage answers a page of new pictures at once with 429 SlowDown
+    # ("too many connections issued to the database"): seen 7 in 200, 24 at a time.
+    said = node(SITE + """
+const webp = Buffer.concat([Buffer.from("RIFF"), Buffer.alloc(4), Buffer.from("WEBPVP8 "), Buffer.alloc(20)]);
+const slow = () => new Response('{"statusCode":"429","error":"too_many_connections","code":"SlowDown"}', { status: 429 });
+const times = {};
+globalThis.fetch = async (url) => {
+  const name = String(url).split("/parts/")[1];
+  times[name] = (times[name] || 0) + 1;
+  if (name === "sets/card/42115-1.webp") return times[name] < 3 ? slow() : new Response(webp);
+  if (name === "sets/page/42115-1.webp") return times[name] < 2 ? new Response("", { status: 503 }) : new Response(webp);
+  if (name === "sets/card/10179-1.webp") return slow();
+  return new Response("", { status: 404 });
+};
+const status = async (query) => (await call(query)).status;
+console.log(JSON.stringify({ card: await status({ op: "catalog_photo", set: "42115-1", as: "card" }),
+  page: await status({ op: "catalog_photo", set: "42115-1", as: "page" }),
+  busy: await status({ op: "catalog_photo", set: "10179-1", as: "card" }),
+  none: await status({ op: "catalog_photo", set: "10497-1", as: "card" }), times }));""")
+    assert said["card"] == 200 and said["page"] == 200
+    # Busy every time: given up after three; not there: asked once.
+    assert said["busy"] == 404 and said["none"] == 404
+    assert said["times"] == {"sets/card/42115-1.webp": 3, "sets/page/42115-1.webp": 2,
+                             "sets/card/10179-1.webp": 3, "sets/card/10497-1.webp": 1}
+
+
+@needs_node
 def test_the_flat_lay_is_laid_out_in_cells() -> None:
     said = node("""
 import { cells, drawFlatLay } from "./api/_flatlay.js";

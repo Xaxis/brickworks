@@ -227,7 +227,7 @@ import {
   siteChrome, testsAsked, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
-import { libraryCredit, storeFile, storeRoot } from "./_omr_credit.js";
+import { libraryCredit, storeBytes, storeFile, storeRoot } from "./_omr_credit.js";
 // What the front leads with, chosen once a day; and the weekly look at the OMR.
 import { featuredSaid, runFeatures } from "./_featured.js";
 import { runOmrWatch } from "./_omr_watch.js";
@@ -2155,8 +2155,7 @@ async function setCover(response, id, as = "card", tests = false) {
   const entry = await librarySet(id, libraryOf(tests));
   const root = storeRoot();
   const read = async (path) => {
-    const answer = await fetch(`${root}${path}`).catch(() => null);
-    const bytes = answer && answer.ok ? Buffer.from(await answer.arrayBuffer()) : null;
+    const bytes = await storeBytes(path);
     return bytes && bytes.subarray(0, 4).equals(RIFF) && bytes.subarray(8, 12).equals(WEBP) ? bytes : null;
   };
   const folder = SET_PICTURES[as];
@@ -2295,9 +2294,7 @@ async function catalogPhoto(response, number, as) {
   const folder = SET_PHOTOS[as];
   const none = () => response.status(404).setHeader("Cache-Control", "no-store").end("");
   if (!entry || !root || !folder) return none();
-  const answer = await fetch(`${root}sets/${folder}/${encodeURIComponent(entry.set)}.webp`,
-    { signal: AbortSignal.timeout(20000) }).catch(() => null);
-  const bytes = answer && answer.ok ? Buffer.from(await answer.arrayBuffer()) : null;
+  const bytes = await storeBytes(`sets/${folder}/${encodeURIComponent(entry.set)}.webp`);
   if (!bytes || !bytes.subarray(0, 4).equals(RIFF) || !bytes.subarray(8, 12).equals(WEBP)) return none();
   response.setHeader("Content-Type", "image/webp");
   response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
@@ -2319,9 +2316,9 @@ async function catalogPicture(response, origin, number) {
     const [part, colour] = pick.split("/");
     const mesh = table.parts[part]?.[6];
     if (!mesh || !/^[0-9a-f]{8,64}$/.test(mesh)) return null;
-    const answer = await fetch(`${root}${mesh}.lbm`, { signal: AbortSignal.timeout(20000) }).catch(() => null);
-    if (!answer || !answer.ok) return null;
-    return { mesh: await answer.arrayBuffer(), hex: table.colours[colour]?.[1] || "a0a5a9" };
+    const bytes = await storeBytes(`${mesh}.lbm`);
+    if (!bytes) return null;
+    return { mesh: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length), hex: table.colours[colour]?.[1] || "a0a5a9" };
   }))).filter(Boolean);
   if (!parts.length) return none();
   response.setHeader("Content-Type", "image/jpeg");
