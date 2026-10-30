@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
 
 ## Sub-features
 
@@ -288,6 +288,26 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   how many of what, the colours, the size in studs and bricks, the group's
   corner to type over. Folds to its header; scrolls when the column gives it
   less room than it needs.
+- `properties under the bin` (`Inspector.compact`, `Main._bin_props`,
+  2026-10-30, docs/APP_UX2.md gap 5): where the columns take turns (a
+  laptop's 1280 x 720 and 1400 x 900, and 1920 x 1080), opening the properties folded the bin
+  and the bin folded them, so a part put down and typed to its place, and the
+  next one, cost a rail click each way. A second, compact Properties sits
+  between the bin and its colours (`PanelStack.keep_whole`), shown only while
+  something is selected and `_columns` is "turns": the selection's name in
+  its header, its colour by name, X, Y, Z three across and Turn, Tilt, Roll
+  under them (Hinge and Meet when they apply), the same typing as the full
+  one. A colour clicked in the bin's colours under it paints the selection.
+  **More** runs `show_properties`, the full one down the right. Its boxes are
+  published as `prop_x`… and `prop_colour`, `prop_more` while it shows (the
+  full one is folded then), so a flow types into whichever is in sight. A
+  window with room for both columns (`wide`, about twice as wide as it is
+  tall) never shows it; 1920 x 1080 (1600 units) takes turns, and shows it.
+  Probe: `laptop_probe` (1280 x 720 and
+  PROBE_SIZE=1400x900: five parts from tiles in sight, each selected and
+  typed to its place, the first turned and painted, 0 rail clicks, 12 parts
+  or more in sight, the model's 60%); `columns_probe` checks it after the
+  Parts rail brings the bin back.
 - `docked panels` (`src/ui/panel_stack.gd`, `src/ui/side_dock.gd`,
   `Main._fit_panels`, 2026-10-30, appux371's A10): the left column is the
   parts bin with its colours under it, as Studio keeps its parts palette down
@@ -322,7 +342,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   take turns, opening one folding the other side's (`Main._column_opening`),
   and a part put in hand (Q, the bin, the eyedropper) brings the bin out
   (`Main._bring_out_bin`). A first visit opens on the bin; the Properties
-  rail brings out the tree and every property, folding it. The assistant
+  rail brings out the tree and every property, folding it. With a part
+  selected the bin has its place, turn and colour under it as well
+  (`properties under the bin`), so building needs neither rail. The assistant
   turned on opens as the right column's tab, folding the bin where they
   take turns. On a phone or a tablet they are drawers, as before: the drawer down the
   left holds the tree, the properties and the colours, and there is no right

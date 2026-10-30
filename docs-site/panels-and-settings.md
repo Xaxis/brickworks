@@ -51,8 +51,11 @@ ui:model tree
 
 Select a part and the right-hand column says what it is, under the model tree: its part, its colour, where it stands and what it is joined to, every field in sight. Type its **X**, **Y** and **Z** to the hundredth of an LDraw unit, or, when it hangs from a joint, its **Hinge** angle in degrees. With nothing selected, it holds the floor's settings.
 
+In a window where one column shows at a time, the parts bin has the selected part's name, colour, **X**, **Y**, **Z**, **Turn**, **Tilt** and **Roll** under it as well, so you can put a part down, type it to its place and take the next without folding the bin. A colour clicked under them paints it. **More** opens the rest down the right.
+
 <!-- covers
 ui:properties panel
+ui:properties under the bin
 ui:typed place and hinge
 -->
 
