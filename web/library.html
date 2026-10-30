@@ -117,9 +117,14 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 .found-said { margin: 0 0 var(--s-3); }
 .listing .state { margin-top: var(--s-2); }
 .more { margin-top: 26px; }
-.yours { padding: 40px 0 88px; border-top: 1px solid var(--line); }
-.yours h2 { font-size: var(--t-h2); }
-.yours p { color: var(--ink-soft); max-width: 66ch; margin: 0 0 16px; }
+/* The way to add yours: a panel of its own at the foot of the list. */
+.yours {
+	margin: 0 auto var(--section); padding: var(--s-6); border: 1px solid var(--line); border-radius: var(--radius);
+	background: linear-gradient(135deg, var(--panel-hi), var(--panel));
+}
+.yours h2 { margin: 0 0 var(--s-2); font-size: var(--t-h2); }
+.yours p { color: var(--ink-soft); max-width: 66ch; margin: 0 0 var(--s-4); }
+@media (width < 600px) { .yours { padding: var(--s-5) var(--s-4); } }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>

@@ -1706,7 +1706,9 @@ plan with Claude as the client.
   is `/library` (`web/library.html`, `web/library.js`), every set of the
   app's Library as the gallery's cards, a page of 24 at a time from
   `/api/share?op=library` (`api/_library.js` `searchSets`, the app's
-  `ModelLibrary.search` in JS); `ui:an LDraw set's page` is
+  `ModelLibrary.search` in JS), laid out as the gallery is (site357: the
+  search beside the title, "/" focusing it, and `#toolbar`, Filters and the
+  themes, sticky under the header, `web/browse.js`); `ui:an LDraw set's page` is
   `/library/<id>`, `sharePage` with `model.library` (`setModel`), crediting
   every modeller its file names (`authorsIn`) with LDraw's page and its CC
   BY licence, Open in Brickworks `/app?new=1&library=<id>` as the app's
@@ -1766,17 +1768,22 @@ plan with Claude as the client.
 - `gallery page` (`web/gallery.html`, `web/gallery.js`): `/gallery`, its
   `.html` redirecting to it as every page's does (`deploy.sh`'s page loop; the
   local relay maps `/gallery` itself). Since U3 (docs/SOCIAL.md, 2026-10-22)
-  the work first: the title and a search (`#q`, asked 350 ms after typing
-  stops, at once on Enter) on one line; the tabs `#tabs [data-tab]` Top · New
+  the work first: the title and a search (`#q`, asked 200 ms after typing
+  stops, at once on Enter; "/" from anywhere but a field focuses it,
+  `web/browse.js`, site357) on one line; the tabs `#tabs [data-tab]` Top · New
   · Following (Following only signed in and once the list says `following:
   true`), one `aria-current`; Top over `#window` (All time, This month, This
   week: `window=month` or `week`, offered when the list sends `windows`); the kinds as
   `#kinds button.pill[data-kind]`, one `aria-pressed`, a row that scrolls
-  inside itself; `#filters` (a `.more-menu` whose summary says how many are on)
+  inside itself, beside `#filters` in `#toolbar`, the bar of filters that
+  stays under the header over the whole list (`data-stuck` once the tabs
+  have gone under it); `#filters` (a `.more-menu` whose summary says how many are on)
   holding the order (Top builds, Newest, Most liked, Most built, Most remixed,
   Parts I own signed in; never Most viewed), Size, `#made` (Hand-built, With the
   assistant: offered when the list sends `mades`), Has instructions, Technic,
-  Tested only, and Clear the filters; a tag as a chip to take off. Then the
+  Tested only, and Clear the filters; in `#chips` each that is on (a tag,
+  an order, a size, made, a box ticked) a pill to take off, and Clear all
+  from two. Then the
   cards (`web/card.js`, `like: true`), two to a row under 900 px, three to
   1200, four above; on the front (Top, all time, nothing asked) this week's
   pick first and the shelves after the first rows (`ui:the gallery's front
