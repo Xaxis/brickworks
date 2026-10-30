@@ -335,7 +335,7 @@ return {
     if got is None:
         return
     assert got["same"] and got["names"] and got["descriptions"] and got["readOnly"]
-    assert got["n"] == 63
+    assert got["n"] == 64
     # Claude's list keeps its arrays that say no items; nobody else's has one.
     assert got["bareClaude"] > 0 and got["bareOther"] == 0
-    assert got["hintsOther"] == 63 and got["hintsClaude"] < 63
+    assert got["hintsOther"] == 64 and got["hintsClaude"] < 64

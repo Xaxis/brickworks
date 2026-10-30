@@ -113,6 +113,22 @@ fixing what it got wrong.
   `Main.design_with_claude_code`). Through the relay:
   `realset.py run --via relay` (with `--no-claude-code` as a browser tab); its
   `godot_design.log` shows the own look and no `fresh eyes: N s (claude-...)`.
+  And once more, last (`FreshEyes.final_look`, design329): at the first whole
+  save after the creative pass (`FreshEyes.reviewed`, which `save_model` calls
+  in place of `next_review`), once the first look named its changes and the
+  pass's result has been said (not "nothing added" at this save; `final_due`),
+  the save hands the pictures and the final question (`final_prompt`: what
+  landed of those changes, then done or the one change) after next_review's
+  words (the pass's line, a close look or reminder), which are never left out.
+  Every call but a save is refused until `fresh_eyes_final` answers
+  (`FreshEyes.final_definition`, always served, its `CommandSocket.HINTS` row
+  read-only; `final_not_yet`); done adds nothing. Once a subject, Claude Code
+  here or not. Measured on the browser-tab path (design329: preferred 63% head
+  to head, 24% against the set to 22%). The log says `fresh eyes: final look,
+  the session's own, asked after the creative pass (it came to: ...)` and
+  `fresh eyes: the session's own final look (N refused): {...}`.
+  `fresh_eyes_probe` chats c14 (Claude Code here, the pass a save hands over),
+  c16 and c17 (none, the pass asked for, and before the first look).
 - `designing with any provider on the person's key`: `src/ai/designer_loop.gd`
   (`DesignerLoop`), `src/ai/provider.gd` (the adapter's shape and the
   transcript), `src/ai/openai_chat.gd` (Chat Completions: every server that
@@ -132,10 +148,10 @@ fixing what it got wrong.
   `tools/provider_stub.py`, an OpenAI-compatible stub as strict as OpenAI about
   call pairing, pictures and a tool's array that names no items (refused, as
   OpenAI does; OpenAIChat sends `Provider.portable`, and the probe holds it to
-  the relay's `portable` in api/mcp.js under node, "the same for 61 tools"),
+  the relay's `portable` in api/mcp.js under node, "the same for 62 tools"),
   its first answer a 429: 6 parts built, the fresh
   look asked with 3 pictures and answered, `stub-tower.ldr` saved, 8 requests
-  (429 then 7 answered) each with the key, the app's instructions and all 61
+  (429 then 7 answered) each with the key, the app's instructions and all 62
   tools, view_model's picture and the look's three reaching the model, and the
   key in no log; then a design stopped while a second stub (`--delay 4`) thinks
   ends once, as stopped, and the next design on the quick one is answered by
