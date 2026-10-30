@@ -30,7 +30,8 @@ extends SceneTree
 ## pixels moved from the tile's own background towards that colour, by this
 ## much at least (0 to 1) and more towards it than any other way. The
 ## shimmer crossing a plain placeholder lifts it towards white, not red.
-const DRAWN_SHARE := 0.12
+## A blank tile covers 0%; a Plate 1×8, drawn whole, 9% (six across, 2026-10-30).
+const DRAWN_SHARE := 0.04
 const TOWARDS := 0.08
 ## Words that turn up parts whose names begin alike.
 const ALIKE := "slope 45 2x2"
