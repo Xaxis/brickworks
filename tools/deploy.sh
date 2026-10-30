@@ -184,7 +184,12 @@ fi
 # for share_probe): it takes away the files of models whose row went with
 # a deleted account. At 04:47 it calls /api/otp/canary (api/_canary.js), the
 # same way: a public sign-up, an unconfirmed address and a new person's code
-# played through, the owner mailed if one fails. Its pages send their own
+# played through, the owner mailed if one fails. At 00:07 it calls
+# /api/share/feature, which keeps the day's choice of the gallery's front
+# (api/_featured.js), and on Mondays at 05:37 /api/share/omr, the week's
+# look at LDraw's OMR for sets the library has not got (api/_omr_watch.js);
+# each under its own lock, each run written down (supabase/gallery_crons.sql).
+# Its pages send their own
 # security policy; the app's below does not change, since the viewer talks
 # only to its own site.
 for handler in api/*.js; do
@@ -387,7 +392,9 @@ cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
   "crons": [ { "path": "/api/share/sweep", "schedule": "17 4 * * *" },
-             { "path": "/api/otp/canary", "schedule": "47 4 * * *" } ],
+             { "path": "/api/otp/canary", "schedule": "47 4 * * *" },
+             { "path": "/api/share/feature", "schedule": "7 0 * * *" },
+             { "path": "/api/share/omr", "schedule": "37 5 * * 1" } ],
   "overrides": { $overrides },
   "routes": [
     { "src": "/index[.]html", "status": 308, "headers": { "Location": "/" } },
@@ -399,6 +406,8 @@ $docs_moved
     { "src": "/(app|$pages)/", "status": 308, "headers": { "Location": "/\$1" } },
     { "src": "/api/share/sweep", "dest": "/api/share?op=sweep" },
     { "src": "/api/otp/canary", "dest": "/api/otp?op=canary" },
+    { "src": "/api/share/feature", "dest": "/api/share?op=feature" },
+    { "src": "/api/share/omr", "dest": "/api/share?op=omr" },
     { "src": "/sitemap[.]xml", "dest": "/api/share?op=sitemap" },
     { "src": "/api/(.*)", "dest": "/api/\$1" },
     { "src": "/[.]well-known/oauth-protected-resource(/.*)?", "dest": "/api/oauth?op=resource" },

@@ -93,6 +93,15 @@
 //   GET  ?op=mine            the session's own links
 //   GET  ?op=sweep           the daily clean-up (Vercel's cron, with
 //                            CRON_SECRET): files no published row owns
+//   GET  ?op=feature         the daily choice of the gallery's front (Vercel's
+//                            cron, with CRON_SECRET): this week's pick,
+//                            today's featured model and today's set from the
+//                            LDraw library (api/_featured.js)
+//   GET  ?op=omr             the weekly look at LDraw's Official Model
+//                            Repository for what the library has not got
+//                            (Vercel's cron, with CRON_SECRET; dry=1 says
+//                            what it would write and writes nothing:
+//                            api/_omr_watch.js)
 //
 // Where it is kept and who may touch it is in supabase/shared_models.sql.
 // In short: a visitor's read asks for a published row and its public
@@ -166,10 +175,19 @@
 // by part and colour, is counted from its file as it is published and
 // kept (model_needs), so that a signed-in person's share of every model in
 // the gallery is one join in the database (&mine=1).
+//
+// A front that changes by itself (gallery362, 2026-10-29,
+// supabase/gallery_crons.sql): once a day the cron chooses this week's pick
+// (on a week's first run), today's featured model and today's set from the
+// LDraw library, from what people did (api/_featured.js), and keeps them;
+// ?op=shelves reads what was kept. The owner's own pick still wins, and a
+// list asked with tests keeps the pick worked out from the week, as the
+// probes expect it.
 
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
+import { isCron } from "./_cron.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
@@ -180,6 +198,9 @@ import {
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
 import { libraryCredit, storeFile, storeRoot } from "./_omr_credit.js";
+// What the front leads with, chosen once a day; and the weekly look at the OMR.
+import { runFeatures } from "./_featured.js";
+import { runOmrWatch } from "./_omr_watch.js";
 // The LDraw library's sets, each a page made as a model's is (library333).
 import {
   FROM as SET_FROM, PER_PAGE as SET_PER_PAGE, SET_ID, SET_SORTS, askOf, authorsIn, decades, fileSteps, librarySet,
@@ -1735,6 +1756,8 @@ async function read(request, response) {
   if (op === "mine") return mine(request, response, origin);
   if (op === "tested") return testedOwn(request, response);
   if (op === "sweep") return sweep(request, response);
+  if (op === "feature") return feature(request, response);
+  if (op === "omr") return omrWatch(request, response);
   if (op === "list") return gallery(request, response, origin);
   if (op === "shelves") return shelves(request, response, origin);
   if (op === "sitemap") return sitemap(response, origin);
@@ -2181,6 +2204,10 @@ async function keepNeeds(id, needs) {
   }
 }
 
+/// What a featured model's choice weighed, as the page says it.
+const featuredWhy = (why) => ({ likes: Number(why?.likes) || 0, builds: Number(why?.builds) || 0,
+  comments: Number(why?.comments) || 0, remixes: Number(why?.remixes) || 0, tested: why?.tested === true });
+
 /// The week's numbers of a pick, as the page says them.
 const weekOf = (week) => ({ builds: Number(week?.builds) || 0, remixes: Number(week?.remixes) || 0,
   tested: week?.tested === true, score: Number(week?.score) || 0 });
@@ -2194,7 +2221,7 @@ async function shelves(request, response, origin) {
   const tests = testsAsked(request.query || {});
   const mine = await whoseOwn(request, origin);
   const notYet = (trouble) => (/: 404$/.test(String(trouble?.message || "")) ? null : Promise.reject(trouble));
-  const [pick, small, ready, challenge] = await Promise.all([
+  const [pick, small, ready, challenge, kept] = await Promise.all([
     db("rpc/gallery_pick", { method: "POST", body: { tests } }).catch(notYet),
     db("rpc/directory_models", { method: "POST", body: { query: {
       most: SIZES.small.most, sort: "top", size: SHELF + 1, ...(tests ? { tests: true } : {}),
@@ -2204,21 +2231,37 @@ async function shelves(request, response, origin) {
       pool: mine.account, buildable: true, sort: "top", size: SHELF + 1, ...(tests ? { tests: true } : {}) } } }) : null,
     // The monthly challenge open now, or the next (supabase/challenges.sql).
     challengeLine(tests),
+    // What the cron chose (supabase/gallery_crons.sql): none before it is applied.
+    db("rpc/gallery_features_now", { method: "POST", body: { tests } }).catch(notYet),
   ]);
+  const shown = (card) => Boolean(card && ID.test(String(card.id || "")));
+  // The week's pick the cron kept, unless the owner chose one; a list asked
+  // with tests keeps the pick worked out from its own week.
+  const keptPick = !tests && pick?.chosen !== true && shown(kept?.pick?.card) ? kept.pick : null;
+  const thePick = keptPick || (pick && shown(pick.card) ? pick : null);
+  const featured = shown(kept?.featured?.card) && kept.featured.card.id !== thePick?.card?.id ? kept.featured : null;
+  const set = kept?.library?.item ? await librarySet(kept.library.item) : null;
   const cards = {
     ready: (ready || []).slice(0, SHELF).map((row) => ownedCard(origin, row)),
-    pick: pick && pick.card && ID.test(String(pick.card.id || "")) ? cardOf(origin, pick.card) : null,
+    pick: thePick ? cardOf(origin, thePick.card) : null,
+    featured: featured ? cardOf(origin, featured.card) : null,
     small: await withWins((small || []).slice(0, SHELF).map((row) => ownedCard(origin, row)), tests),
   };
-  if (mine) await withLiked([...cards.ready, ...(cards.pick ? [cards.pick] : []), ...cards.small], mine.account);
+  const lead = [cards.pick, cards.featured].filter(Boolean);
+  if (mine) await withLiked([...cards.ready, ...lead, ...cards.small], mine.account);
   await withFaces(cards);
   response.setHeader("Cache-Control", tests || mine ? TESTS_CACHE : SHARED_CACHE);
   return response.status(200).json({
     ...(mine ? { mine: mine.pool, ready: { models: cards.ready, more: (ready || []).length > SHELF } } : {}),
     pick: cards.pick ? {
-      chosen: pick.chosen === true, until: pick.chosen === true ? pick.until ?? null : null,
-      week: weekOf(pick.week), model: cards.pick,
+      chosen: thePick.chosen === true, until: thePick.chosen === true ? thePick.until ?? null : null,
+      week: weekOf(thePick.week), model: cards.pick, ...(keptPick ? { kept: keptPick.day } : {}),
     } : null,
+    // Today's featured model and today's set from the LDraw library, as the
+    // cron kept them (api/_featured.js): what people did, and which theme.
+    featured: cards.featured ? { day: featured.day, why: featuredWhy(featured.why), model: cards.featured } : null,
+    library: set ? { day: kept.library.day, why: { theme: themeOf(set), decade: set.year ? `${Math.floor(set.year / 10) * 10}s` : "" },
+      model: setCard(set) } : null,
     small: { size: "small", label: SIZES.small.label, most: SIZES.small.most, models: cards.small,
       more: (small || []).length > SHELF },
     challenge,
@@ -2594,15 +2637,6 @@ async function unpublish(request, response) {
 
 const SWEEP_AGE_MS = 60 * 60 * 1000;
 
-/// Vercel's cron sends "Bearer <CRON_SECRET>"; nobody else has it.
-function isCron(request) {
-  const secret = process.env.CRON_SECRET || "";
-  if (!secret) return false;
-  const given = Buffer.from(String(request.headers?.authorization || ""));
-  const want = Buffer.from(`Bearer ${secret}`);
-  return given.length === want.length && timingSafeEqual(given, want);
-}
-
 async function sweep(request, response) {
   response.setHeader("Cache-Control", "no-store");
   if (!isCron(request)) return response.status(401).json({ error: "the sweep is the cron's" });
@@ -2641,6 +2675,40 @@ async function sweep(request, response) {
   }
   return response.status(200).json({ looked_at: files.length, kept: files.length - gone.length, removed: gone,
     originals });
+}
+
+// The front's daily choice (api/_featured.js) and the weekly look at the OMR
+// (api/_omr_watch.js): each the cron's alone, under its own lock, and each
+// run written down (supabase/gallery_crons.sql cron_runs), however it ends.
+
+/// Who ran a cron, for its log: Vercel's, or somebody by hand with the secret.
+const holderOf = (request) => (/^vercel-cron\b/.test(String(request.headers?.["user-agent"] || "")) ? "vercel-cron" : "by-hand");
+
+async function feature(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  if (!isCron(request)) return response.status(401).json({ error: "the front's choice is the cron's" });
+  return response.status(200).json(await runFeatures({ db, sets: () => librarySets(), holder: holderOf(request) }));
+}
+
+/// How LDraw's site is asked, as tools/omr.py asks it: named, and briefly.
+const OMR_AGENT = "brickworks (https://brickworks.diy)";
+
+async function omrWatch(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  if (!isCron(request)) return response.status(401).json({ error: "the look at the OMR is the cron's" });
+  // When the store's index was last written: a file of a set it has, changed
+  // after that, is an update.
+  const root = storeRoot();
+  const head = root ? await fetch(`${root}library/index.json`, { method: "HEAD" }).catch(() => null) : null;
+  const indexAt = Date.parse(head?.headers.get("last-modified") || "") || 0;
+  const fetchText = async (url) => {
+    const answer = await fetch(url, { headers: { "user-agent": OMR_AGENT }, signal: AbortSignal.timeout(20000) })
+      .catch(() => null);
+    return { status: answer ? answer.status : 0, text: answer && answer.ok ? await answer.text() : "" };
+  };
+  const done = await runOmrWatch({ db, fetchText, sets: () => librarySets(), indexAt, holder: holderOf(request),
+    dry: request.query?.dry === "1" });
+  return response.status(200).json({ ...done, index_at: indexAt ? new Date(indexAt).toISOString() : null });
 }
 
 export default async function handler(request, response) {

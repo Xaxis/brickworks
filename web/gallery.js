@@ -22,9 +22,12 @@
 // comes back after a newer question was asked is thrown away.
 //
 // The front of it, Top over all time with nothing asked, has this week's
-// pick as its first card (/api/share?op=shelves): worked out from the
-// past seven days' builds, remixes and Tested marks unless the site's
-// owner chose one. After the first rows, its shelves: what a signed-in
+// pick as its first card (/api/share?op=shelves): the one the daily cron
+// kept for the week (api/_featured.js), worked out from the past seven
+// days' builds, remixes and Tested marks while it has none, unless the
+// site's owner chose one. After the first rows, its shelves: today's
+// featured model and today's set from the LDraw library, as the cron kept
+// them; what a signed-in
 // person can build now, every part in their collection, and small builds,
 // the Size filter's Small by Top builds, once there are three of them
 // (D12: a shelf of one looks broken).
@@ -50,6 +53,8 @@ import { toast } from "/kit.js";
   "use strict";
 
   const ID = /^[A-Za-z0-9]{10}$/;
+  // A set of the LDraw library's (api/_library.js SET_ID).
+  const SET_ID = /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/;
   const $ = (id) => document.getElementById(id);
   const feed = $("feed");
   const grid = $("models");
@@ -122,6 +127,16 @@ import { toast } from "/kit.js";
     const line = said.join(", ");
     if (pick.chosen) return line ? `Chosen by Brickworks · ${line}` : "Chosen by Brickworks";
     return line ? line[0].toUpperCase() + line.slice(1) : "";
+  }
+
+  /// Why today's featured model is, in a line: what people did with it in
+  /// the past 30 days, or that it is new.
+  function whyFeatured(why = {}) {
+    const said = [["likes", "like"], ["builds", "build finished"], ["comments", "comment"], ["remixes", "remix"]]
+      .filter(([key]) => why[key] > 0).map(([key, one]) => counted(why[key], one, key === "remixes" ? "remixes"
+        : key === "builds" ? "builds finished" : undefined));
+    if (said.length) return `${said.join(", ")} in the past 30 days`;
+    return why.tested ? "New, and Tested" : "New in the gallery";
   }
 
   /// What a select says: until the first answer fills it in, what the
@@ -269,6 +284,29 @@ import { toast } from "/kit.js";
       // Not twice on one screen: the pick leads, the list goes on without it.
       grid.querySelector(`.model[data-id="${pick.model.id}"]`)?.remove();
     }
+    // Today's featured model and set (api/_featured.js), each marked as
+    // the pick is, and why.
+    const spot = shown && front ? [["featured", front.featured, ID, "Featured today"],
+      ["library", front.library, SET_ID, "LDraw library"]]
+      .filter(([, one, valid]) => one && one.model && valid.test(String(one.model.id))) : [];
+    $("spotlight").hidden = spot.length === 0;
+    $("spotlight-models").replaceChildren(...spot.map(([slot, one, , label]) => {
+      const drawn = card(slot === "featured" ? { ...one.model, ...(listed.get(String(one.model.id)) || {}) } : one.model);
+      drawn.dataset.slot = slot;
+      const frame = drawn.querySelector(".frame");
+      const marks = frame.querySelector(".marks") || frame.appendChild(document.createElement("div"));
+      marks.className = "marks";
+      const mark = document.createElement("span");
+      mark.className = "pill new";
+      mark.textContent = label;
+      marks.prepend(mark);
+      const why = document.createElement("p");
+      why.className = "why";
+      why.textContent = slot === "featured" ? whyFeatured(one.why)
+        : [one.why?.theme, one.why?.decade].filter(Boolean).join(", ");
+      (drawn.querySelector(".by") || drawn.querySelector(".words"))?.after(why);
+      return drawn;
+    }));
     // A shelf of one or two looks broken: three at least (D12).
     $("small").hidden = small.length < 3;
     // Lazy, under the first rows: map's index is no [eager] (it made seven
@@ -299,7 +337,7 @@ import { toast } from "/kit.js";
         + "parts list here, so what is in them is not counted.";
     }
     // Nothing listed at all: the empty gallery says so, with no shelf.
-    shelves.hidden = ($("small").hidden && $("ready").hidden) || grid.children.length === 0;
+    shelves.hidden = ($("small").hidden && $("ready").hidden && $("spotlight").hidden) || grid.children.length === 0;
     feed.dataset.front = !shown ? "" : pick ? "pick" : "plain";
   }
 
