@@ -65,6 +65,9 @@ import { achievementsOf } from "../../api/people.js";
 // API gives it; and the pictures themselves, made here.
 import { facesOn, pictureAt } from "../../api/_faces.js";
 import { encode as encodeJpeg } from "../../api/_jpeg.js";
+// What a model is based on (supabase/model_bases.sql): a designer's list
+// checked, and said, as the API checks and says it.
+import { basesAsked, basesSaid } from "../../api/_bases.js";
 
 export const ORIGIN = "http://design.test";
 export const DB = "https://stub.supabase.test";
@@ -476,8 +479,13 @@ const FEED_SEEN = "2026-10-14T00:00:00Z";
 
 // Sam's notifications (supabase/notifications.sql notification_list): what
 // happened to the tram and the bakery, newest first; the tram's group
-// opened since its photo, so only its newer rows are unread.
+// opened since its photo, so only its newer rows are unread. And a level
+// reached (supabase/achievements.sql), its group not opened yet; and the
+// challenges (supabase/challenge_notices.sql): who won September's, which
+// Sam voted in, read, and October's opening, not opened yet.
 const NOTICES = [
+  { kind: "achievement", at: "2026-10-16T12:00:00Z", on: null, track: "designer", level: 2, of: 6, reached: 3, next: 10,
+    read: false },
   { kind: "likes", at: "2026-10-16T11:40:00Z", on: "SamModel01", model: "SamModel01", name: "Harbour Tram", likes: 12,
     day: "2026-10-16" },
   { kind: "comment", at: "2026-10-16T09:30:00Z", on: "SamModel01", by: PRIYA, model: "SamModel01", name: "Harbour Tram",
@@ -490,6 +498,10 @@ const NOTICES = [
     title: "Main Street September", way: "hand", won: true, votes: 9 },
   { kind: "likes", at: "2026-10-01T20:15:00Z", on: "SamModel02", model: "SamModel02", name: "Corner Bakery", likes: 1,
     day: "2026-10-01" },
+  { kind: "challenge_won", at: "2026-10-01T09:00:00Z", on: null, challenge: 2, title: "Castle September", ends_on: "2026-09-30",
+    test: false, picked: false, read: true },
+  { kind: "challenge_open", at: "2026-10-01T00:00:00Z", on: null, challenge: 3, title: "Off-world October", ends_on: "2026-10-31",
+    test: false, read: false },
 ];
 
 // This month's challenge (supabase/challenges.sql), open, two entries in
@@ -554,6 +566,10 @@ const ADMIN = {
 
 // ---------------------------------------------------------------------------
 // Reading the world, as the database's functions read it.
+
+// supabase/achievements.sql's ladders, in its order.
+const LADDERS = [["designer", [1, 3, 10, 25, 50, 100]], ["built", [1, 10, 50, 100, 500, 1000]],
+  ["builder", [1, 5, 10, 25, 50]], ["remixed", [1, 5, 25, 100]], ["tested", [1, 5, 10, 25]], ["challenger", [1, 3, 6, 12]]];
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const personOf = (account) => PEOPLE.find((one) => one.account === account) || null;
@@ -694,6 +710,24 @@ function profilePage(handle, tests = false) {
 /// The photos that may be shown, newest first.
 const photosWhere = (test) => PHOTOS.filter((one) => !one.removed_at && !one.hidden_at && !LIVE && test(one)).sort(byTime("at"));
 
+/// achievement_levels: [account]'s number and level on each track, as
+/// designer_page counts them; challenges entered are this month's and
+/// those whose winner is theirs. [] for nobody and one taken out.
+function achievementLevels(account, tests = false) {
+  const person = personOf(account);
+  if (!person || ADMIN.barred.some((one) => one.account === account)) return [];
+  const earned = designerPage(person.handle, tests);
+  const entered = new Set([...CHALLENGE.entries.filter(([model]) => modelOf(model)?.owner === account).map(() => CHALLENGE.id),
+    ...PAST.filter((one) => one.winners.some(([model]) => modelOf(model)?.owner === account)).map((one) => one.id)]);
+  const numbers = { designer: earned.models, built: earned.builds, remixed: earned.remixes, tested: earned.tested,
+    builder: photosWhere((one) => one.account === account && shownModel(one.model)?.listed).length, challenger: entered.size };
+  return LADDERS.map(([track, steps]) => {
+    const n = numbers[track];
+    const level = steps.filter((step) => step <= n).length;
+    return { track, n, level, of: steps.length, reached: level ? steps[level - 1] : null, next: steps[level] ?? null };
+  });
+}
+
 /// designer_page: what a designer's models earned, for anybody.
 function designerPage(handle, tests = false) {
   const person = personNamed(handle);
@@ -805,8 +839,23 @@ const TABLES = {
   profile_choices: () => CHOICES,
 };
 
+// What the watchtower is based on (supabase/model_bases.sql): a set built
+// from, and work elsewhere changed, under its remix line. A list its
+// designer saves here is kept until the stand-in stops, as the table
+// keeps it, so the page the server makes says it after.
+const BASES = [
+  { model: MODEL_ID, n: 1, how: "alternate", set_number: "6080-1", url: null, title: null, author: null, licence: null },
+  { model: MODEL_ID, n: 2, how: "changed", set_number: null, url: "https://example.org/river-tower",
+    title: "A river tower, with its water gate", author: "Mira Holm", licence: "CC BY 4.0" },
+];
+
 // The functions the handlers call (rpc/<name>), each with what it was sent.
 const RPC = {
+  // supabase/model_bases.sql
+  model_bases_of: ({ model_ids }) => BASES.filter((row) => (model_ids || []).includes(row.model)),
+  set_based: ({ set_number }) => [...new Set(BASES.filter((row) => String(row.set_number).toLowerCase()
+    === String(set_number).toLowerCase()).map((row) => row.model))].map((id) => ({ ...card(modelOf(id)),
+    based: BASES.find((row) => row.model === id).how })),
   directory_model: ({ model_id }) => modelPage(model_id),
   directory_models: ({ query }) => listModels(query || {}),
   gallery_models: ({ query }) => listModels(query || {}),
@@ -814,6 +863,12 @@ const RPC = {
   collection_page: ({ list }) => collectionPage(list),
   collection_count: ({ list, private: hidden }) => collectionCount(list, hidden === true),
   designer_page: ({ wanted, tests }) => designerPage(wanted, tests === true),
+  // supabase/achievements.sql: nothing new is reached here, so none is told.
+  achievement_levels: ({ account, tests }) => achievementLevels(account, tests === true),
+  achievement_mark: () => 0,
+  achievement_read: () => ({ read: 0 }),
+  // supabase/challenge_notices.sql
+  challenge_read: () => ({ read: true }),
   follow_state: ({ asker, wanted }) => followState(asker || null, wanted),
   follow_list: ({ wanted }) => followList(wanted),
   // supabase/collection_follows.sql
@@ -994,6 +1049,7 @@ const PAGES = [
   [/^\/m\/([A-Za-z0-9]{10})[.]cutout[.]png$/, "share", "cutout"],
   [/^\/m\/([A-Za-z0-9]{10})[.]webp$/, "share", "thumb"],
   [/^\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", "embed"],
+  [/^\/oembed\/?$/, "share", "oembed"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/?$/, "share", "page"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]png$/, "share", "image"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]cutout[.]png$/, "share", "cutout"],
@@ -1004,6 +1060,8 @@ const PAGES = [
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
   [/^\/collections\/?$/, "people", "collections_page"],
+  // A LEGO® set's page (api/_sets.js), from this checkout's catalogue.
+  [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/?$/, "share", "catalog_set"],
 ];
 
 /// Which handler makes [pathname], and what it is asked. A path under /m/,
@@ -1013,8 +1071,10 @@ function routeOf(pathname) {
   for (const [pattern, name, op] of PAGES) {
     const found = pattern.exec(pathname);
     if (!found) continue;
+    if (op === "catalog_set") return { name, query: { op, set: found[1] } };
     if (name === "share") {
-      return { name, query: { op, id: found[1], ...(found[2] ? { v: found[2] } : {}), ...(found[3] ? { as: found[3] } : {}) } };
+      return { name, query: { op, ...(found[1] ? { id: found[1] } : {}), ...(found[2] ? { v: found[2] } : {}),
+        ...(found[3] ? { as: found[3] } : {}) } };
     }
     return { name, query: op === "page" ? { op, handle: found[1] } : { op, id: found[1] } };
   }
@@ -1141,6 +1201,25 @@ const LIST_WORDS = { sign_in: "Sign in to follow collections: we email you a cod
 const answer = (status, json) => ({ status, json });
 const YES = new Set(["1", "true", "yes", "on"]);
 const asked = (value) => YES.has(String(value ?? "").toLowerCase());
+
+/// POST ?op=bases {model, bases}: checked as api/_bases.js checks it, and
+/// kept for the model's designer alone, the whole list.
+function putBases(body, who) {
+  if (!who) return answer(401, { error: SIGN_IN });
+  const m = shownModel(String(body?.model || ""));
+  if (!m) return answer(404, { error: "There is no shared model at that link." });
+  if (m.owner !== who) return answer(403, { error: "Only its designer says what it is based on." });
+  let kept;
+  try {
+    kept = basesAsked(body?.bases);
+  } catch (trouble) {
+    return answer(trouble.status || 400, { error: trouble.message });
+  }
+  BASES.splice(0, BASES.length, ...BASES.filter((row) => row.model !== m.id), ...kept.map((one, at) => ({ model: m.id,
+    n: at + 1, how: one.how, set_number: one.set || null, url: one.url || null, title: one.title || null,
+    author: one.author || null, licence: one.licence || null })));
+  return answer(200, { bases: basesSaid(RPC.model_bases_of({ model_ids: [m.id] })) });
+}
 
 /// cardOf: a card as a client is given it, with the asker's share of its
 /// parts when the list was asked with theirs.
@@ -1355,7 +1434,8 @@ function profile(handle, page = 1, tests = false) {
     collections: about.collections, built, url: `${ORIGIN}/u/${person.handle}`, ...cards,
     liked_count: CHOICES.some((one) => one.account === person.account && one.shows_likes) ? likedOf(person.account, tests).length : null,
     achievements: achievementsOf({ about, earned: earned.models ? earned : null, built,
-      wins: RPC.challenge_wins({ owner: person.account }) }),
+      wins: RPC.challenge_wins({ owner: person.account }), levels: achievementLevels(person.account, tests) }),
+    levels: achievementLevels(person.account, tests),
     models: cards.models.map((one) => ({ ...one, comments: earned.cards[one.id]?.comments ?? 0 })) });
 }
 
@@ -1670,11 +1750,23 @@ function galleryQuery(params, mine, who) {
 }
 
 /// /api/share: the gallery's list and front, and a model's own page's asks.
-function share(method, params, who, state = {}) {
+function share(method, params, who, state = {}, body = undefined) {
   const op = params.get("op") || "";
   const id = params.get("id") || "";
   const mine = asked(params.get("mine"));
   if (mine && !who) return answer(401, { error: SIGN_IN });
+  // What a model is based on (api/_bases.js): its page's lines, and its
+  // designer's list taken as kept, which nothing here keeps.
+  if (op === "bases") {
+    if (method === "POST") return putBases(body, who);
+    const m = shownModel(id);
+    if (!m) return answer(404, { error: "There is no shared model at that link." });
+    return answer(200, { bases: basesSaid(RPC.model_bases_of({ model_ids: [id] })), mine: who === m.owner, ready: true });
+  }
+  if (op === "set_based") {
+    return answer(200, { set: params.get("set"), models: state.empty ? [] : RPC.set_based({ set_number: params.get("set") })
+      .map((row) => ({ ...apiCard(row), based: row.based })) });
+  }
   // A view counted, a build finished: it went.
   if (method === "POST") return answer(200, { counted: true });
   const pool = mine ? { mine: POOL } : {};
@@ -1925,7 +2017,7 @@ function answered({ url, method = "GET", body, state = {} }) {
         : answer(422, { error: "That is not an email address." });
     }
     case "people": return people(verb, params, body, who, state);
-    case "share": return share(verb, params, who, state);
+    case "share": return share(verb, params, who, state, body);
     case "admin": return admin(verb, params, who, state);
     case "oauth": return oauth(verb, params, body, who);
     // What you own (api/collection.js): the sets and loose parts.
@@ -2034,7 +2126,7 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
       return route.fulfill({ status: said.status, contentType: "application/json", body: asProject(JSON.stringify(said.json)) });
     }
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
-    if (/^\/(m|u|c)\//.test(url.pathname) || /^\/collections\/?$/.test(url.pathname)) {
+    if (/^\/(m|u|c|library\/set)\//.test(url.pathname) || /^\/(collections|oembed)\/?$/.test(url.pathname)) {
       const made = await serverPage(api, url.pathname + url.search);
       // With the security policy the server sends with it. A picture the
       // server makes (/m/X.cutout.png) as the bytes and type it answered:

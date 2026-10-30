@@ -224,8 +224,21 @@ def test_a_collection_page_leads_with_its_cover_follow_and_share() -> None:
     assert '<li data-stat="models"><b>3</b> <span>models</span></li>' in head
     assert '<li data-stat="followers" data-list-followers="ListAbcde1"><b>3</b> <span>followers</span></li>' in head
     assert 'data-follow-list="ListAbcde1" hidden>Follow</button>' in head
-    assert 'data-share="http://design.test/c/ListAbcde1" hidden' in head and 'data-report-collection="ListAbcde1"' in head
+    assert 'data-share="http://design.test/c/ListAbcde1" aria-haspopup="dialog" aria-controls="share-sheet" hidden' in head
+    assert 'data-report-collection="ListAbcde1"' in head
     assert '<script src="/person.js" type="module"></script>' in castles
+    # Share's sheet (docs/SOCIAL.md section 7): the collection's own link,
+    # and each network's share page given it; Pinterest its first picture.
+    sheet = re.search(r'<dialog class="share-sheet" id="share-sheet"[\s\S]*?</dialog>', castles).group(0)
+    assert '<h2 id="share-h">Share Castles worth a weekend</h2>' in sheet
+    assert 'id="share-link" value="http://design.test/c/ListAbcde1"' in sheet
+    link = "http%3A%2F%2Fdesign.test%2Fc%2FListAbcde1"
+    targets = dict(re.findall(r'data-to="([a-z]+)" href="([^"]+)"', sheet))
+    assert sorted(targets) == ["bluesky", "email", "facebook", "pinterest", "reddit", "x"]
+    assert all(link in href for href in targets.values())
+    assert targets["reddit"].startswith("https://www.reddit.com/submit?url=" + link + "&amp;title=Castles%20worth%20a%20weekend")
+    assert "media=http%3A%2F%2Fdesign.test%2Fm%2F" in targets["pinterest"]
+    assert 'id="share-embed"' not in sheet
     # Nobody follows the small one: its count is on the page for the
     # script, hidden, never "0 followers".
     assert '<li data-stat="followers" data-list-followers="ListSmall1" hidden><b>0</b>' in small
@@ -255,3 +268,34 @@ def test_with_neither_row_the_page_ends_on_the_gallerys_own() -> None:
     assert shown and 1 <= len(shown) <= 6 and "SamModel02" not in shown
     # A page with a row of its own does not add the gallery's.
     assert row(tower, "from-gallery") is None
+
+
+def test_oembed_answers_a_models_link_and_nothing_else() -> None:
+    """/oembed (api/share.js oembed, docs/SOCIAL.md section 7): a model's
+    page names it in its head; for the model's link, on this site or
+    brickworks.diy, a rich card, the embed's iframe at 560 x 420, made four
+    to three within maxwidth; 501 for XML; 404 for another site's link, a
+    page that is not a model's, or a model that is not shared."""
+    model = "http%3A%2F%2Fdesign.test%2Fm%2FDesignAbc1"
+    said = pages("/m/DesignAbc1", f"/oembed?url={model}", f"/oembed?url={model}&maxwidth=300",
+                 "/oembed?url=https%3A%2F%2Fbrickworks.diy%2Fm%2FDesignAbc1%2Fv%2F1",
+                 f"/oembed?url={model}&format=xml", "/oembed?url=https%3A%2F%2Fexample.com%2Fm%2FDesignAbc1",
+                 "/oembed?url=http%3A%2F%2Fdesign.test%2Fu%2Fdesign-tester",
+                 "/oembed?url=http%3A%2F%2Fdesign.test%2Fm%2FNoSuchOne1")
+    if said is None:
+        return
+    page, card, small, versioned, xml, foreign, person, missing = said
+    assert ('<link rel="alternate" type="application/json+oembed" '
+            f'href="http://design.test/oembed?url={model}&amp;format=json" title="Riverside Watchtower">') in page["html"]
+    body = json.loads(card["html"])
+    assert card["status"] == 200 and body["type"] == "rich" and body["version"] == "1.0"
+    assert body["title"] == "Riverside Watchtower" and body["author_name"] == "Robin Castell"
+    assert body["author_url"] == "http://design.test/u/design-tester" and body["provider_name"] == "Brickworks"
+    assert (body["width"], body["height"]) == (560, 420)
+    assert body["html"].startswith('<iframe src="http://design.test/m/DesignAbc1/embed" width="560" height="420"')
+    assert body["thumbnail_url"] == "http://design.test/m/DesignAbc1.png"
+    tiny = json.loads(small["html"])
+    assert (tiny["width"], tiny["height"]) == (300, 225) and 'width="300" height="225"' in tiny["html"]
+    assert versioned["status"] == 200 and json.loads(versioned["html"])["title"] == "Riverside Watchtower"
+    assert xml["status"] == 501
+    assert foreign["status"] == 404 and person["status"] == 404 and missing["status"] == 404

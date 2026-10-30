@@ -247,6 +247,20 @@ try {
   drawn = await headDrawn(bobPage);
   check(`the collection's cover is the tower now (${drawn.cover}: ${drawn.pictures.join(", ")})`,
     /\bn1\b/.test(drawn.cover) && drawn.pictures.length === 1 && drawn.pictures[0].includes(tower));
+  // Share (docs/SOCIAL.md section 7): the site's sheet on the collection's
+  // own link, Post it to each network, Pinterest pinning the tower.
+  await bobPage.click("button[data-share]");
+  await until(bobPage, () => document.querySelector("dialog.share-sheet[open]"), "its share sheet");
+  const sheet = await bobPage.evaluate(() => ({ link: document.getElementById("share-link")?.value || "",
+    heading: document.getElementById("share-h")?.textContent || "",
+    to: [...document.querySelectorAll("dialog.share-sheet a[data-to]")].map((a) => [a.dataset.to, a.href]) }));
+  const media = new URL(sheet.to.find(([to]) => to === "pinterest")?.[1] || "http://none/").searchParams.get("media") || "";
+  check(`Share opens "${sheet.heading}" on ${sheet.link}, Post it to ${sheet.to.map(([to]) => to).join(", ")}, `
+    + `Pinterest pinning ${media.replace(/^https?:\/\/[^/]+/, "")}`, sheet.link === `${site}/c/${listId}`
+    && sheet.heading === `Share ${LIST}` && sheet.to.map(([to]) => to).join() === "reddit,bluesky,pinterest,x,facebook,email"
+    && sheet.to.every(([to, href]) => href.includes(encodeURIComponent(sheet.link))) && media.includes(`/m/${tower}`));
+  await shot(bobPage, "4b_share.png");
+  await bobPage.keyboard.press("Escape");
 
   // --- 6. Bob lets it go ----------------------------------------------------
   console.log("Bob lets it go");

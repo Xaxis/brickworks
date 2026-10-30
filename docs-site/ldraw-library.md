@@ -41,6 +41,7 @@ Each set has a page at `brickworks.diy/library/set/<number>`, such as [10497-1](
 - **Open its parts in Brickworks**, which opens the app with the set's parts in the parts bin, the most used first;
 - **Design with these parts**, which opens the app with the assistant on and a brief naming the set's parts in its box, for your own AI to design with when you send it;
 - when LDraw has a model of it, **Build it in 3D** and the model's own page, which links back.
+- **Based on this set**: the models in the gallery that their designers said were built from it, changed from it or inspired by it ([what a model is based on](/docs/model-pages#based-on)).
 
 Its picture is LDraw's model when there is one; otherwise Brickworks draws a few of its most distinctive parts from their own geometry. No picture on these pages is the LEGO Group's or Rebrickable's. Set and inventory data is Rebrickable's, read from a copy Brickworks takes at most once a day.
 

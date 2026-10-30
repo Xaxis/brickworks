@@ -23,6 +23,10 @@
 //                            /m/X/v/N.cutout.png
 //   GET  ?op=embed&id=X      /m/X/embed: a card for a blog or a forum to
 //                            put in an iframe
+//   GET  ?op=oembed&url=L    /oembed: oEmbed's answer for a model's link
+//                            L (its card's iframe, name, credit and
+//                            picture), which /m/X's head names for
+//                            WordPress, a forum or Iframely to find
 //   GET  ?op=file&id=X       /m/X.mpd: the model's file, as it is stored,
 //                            to download (with v=N, /m/X/v/N.mpd, version
 //                            N's), named for the model
@@ -96,6 +100,10 @@
 //                            cover; op=set_file (/library/X.mpd) its file,
 //                            op=set_parts (/library/X/parts.json, .xml,
 //                            .csv) its parts
+//   GET  ?op=bases&id=X      what X is based on, and whether the caller may
+//                            change it; POST ?op=bases {model, bases} its
+//                            designer's list; GET ?op=set_based&set=N the
+//                            models based on set N (api/_bases.js)
 //   POST ?op=seen&id=X       its page was looked at: counted once a day per
 //                            visitor, and never for a robot
 //   POST ?op=built&id=X      {device, v?}: built to its last step, in the
@@ -234,12 +242,14 @@ import {
 } from "./_sets.js";
 import { flatLayJpeg } from "./_flatlay.js";
 import { challengeLine, withWins } from "./_challenges.js";
+// What a model is based on (docs/SOCIAL.md section 7, item 5).
+import { bases, basesOf, basesPut, setBased } from "./_bases.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { MADE_WITH, cardHtml, marksOf, quietMarks } from "./_card.js";
+import { MADE_WITH, basedHtml, cardHtml, marksOf, quietMarks } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
-import { avatarHtml, iconButtonHtml, iconHtml } from "./_card.js";
+import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
 // Whose picture to show beside their name (supabase/avatars.sql).
 import { withFaces } from "./_faces.js";
 // The public collections a model is in, each a card with its cover
@@ -808,7 +818,7 @@ ${canonical ? `<link rel="canonical" href="${escapeHtml(canonical)}">\n` : ""}<m
 <meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(description)}">
 <meta name="twitter:image" content="${escapeHtml(image)}">
-<link rel="icon" href="/icon.svg" type="image/svg+xml">
+${link.embed ? `<link rel="alternate" type="application/json+oembed" href="${escapeHtml(`${origin}/oembed?url=${encodeURIComponent(link.url)}&format=json`)}" title="${escapeHtml(row ? row.name : title)}">\n` : ""}<link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">`;
 }
 
@@ -886,6 +896,9 @@ function setFacts(set, parts) {
 function structured(origin, id, model) {
   const url = links(origin, id).url;
   const parent = (model.from || [])[0];
+  // The model it remixes, and what else it credits (api/_bases.js).
+  const basedOn = [...(parent && parent.id ? [`${origin}/m/${parent.id}`] : []),
+    ...(model.based || []).map((one) => (one.set ? `${origin}${one.href}` : one.href))];
   const data = {
     "@context": "https://schema.org", "@type": "CreativeWork", name: model.name, url,
     description: model.description || describe(model), image: model.has_image ? links(origin, id).image : undefined,
@@ -893,7 +906,7 @@ function structured(origin, id, model) {
       url: modelledByOf(model.modelled_by)?.page || (model.by ? `${origin}/u/${model.by.handle}` : undefined) } : undefined,
     license: LICENCES[model.licence]?.url || undefined, dateCreated: model.listed_at || undefined,
     keywords: (model.tags || []).join(", ") || undefined,
-    isBasedOn: parent && parent.id ? `${origin}/m/${parent.id}` : undefined,
+    isBasedOn: basedOn.length ? basedOn : undefined,
     interactionStatistic: [
       { "@type": "InteractionCounter", interactionType: "https://schema.org/ViewAction", userInteractionCount: Number(model.views) || 0 },
       { "@type": "InteractionCounter", interactionType: "https://schema.org/LikeAction", userInteractionCount: Number(model.likes) || 0 },
@@ -1085,24 +1098,15 @@ function actionBar(origin, id, model, url = links(origin, id).url) {
     + shareSheet(origin, id, model, url);
 }
 
-/// Share's sheet (docs/SOCIAL.md U14), the site's dialog: the page's link
-/// and the code that embeds its card (/m/X/embed) in somebody else's page,
-/// each with Copy, and on a phone its own share sheet too (web/model-page.js
-/// shows that button where the browser has one). Closed, with no script.
+/// Share's sheet (docs/SOCIAL.md U14 and section 7), web/card.js's, the
+/// same on every page with Share: the page's link, the networks to post it
+/// to, and the code that embeds its card (/m/X/embed) in somebody else's
+/// page. A set has no embed.
 function shareSheet(origin, id, model, url) {
-  return `<dialog class="share-sheet" id="share-sheet" aria-labelledby="share-h">`
-    + `<h2 id="share-h">Share ${escapeHtml(model.name)}</h2>`
-    + `<p>Its link opens this page, where anybody can turn it in 3D and build it, with no account.</p>`
-    + `<form method="dialog">`
-    + `<div class="copy-row"><label>Its link<input id="share-link" value="${escapeHtml(url)}" readonly spellcheck="false"></label>`
-    + `<button type="button" class="cta" data-copy="share-link">Copy link</button></div>`
-    + (links(origin, id).embed ? `<div class="copy-row"><label>Embed it in a page <small>Its picture and name, opening it here, light or dark to suit whoever looks at it</small>`
-    + `<textarea id="share-embed" rows="4" readonly spellcheck="false">${escapeHtml(links(origin, id).embed)}</textarea></label>`
-    + `<button type="button" class="cta ghost" data-copy="share-embed">Copy code</button></div>` : "")
-    + `<p class="said" role="status"></p>`
-    + `<div class="actions"><button type="button" class="cta ghost" data-share-app hidden>Share with another app</button>`
-    + `<button class="cta ghost" value="close">Close</button></div>`
-    + `</form></dialog>`;
+  const link = links(origin, id);
+  return shareSheetHtml({ url, name: model.name, text: `${model.name} on Brickworks`,
+    about: "Its link opens this page, where anybody can turn it in 3D and build it, with no account.",
+    image: model.has_image || model.library ? link.image : "", embed: link.embed });
 }
 
 /// /m/X: the model's own page. Its picture first, with the strip of its
@@ -1241,6 +1245,7 @@ ${header}
       ${actionBar(origin, id, model, old ? `${origin}/m/${id}/v/${version.n}` : links(origin, id).url)}
       <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, counted)}</li>` : ""}${facts}</ul>
       ${fromLine}
+      ${basedHtml(model.based || [])}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
     <div class="rest">
@@ -1497,6 +1502,71 @@ ${header}
 ${footer || `<footer><small>${NOTICE}</small></footer>`}
 </body>
 </html>`;
+}
+
+/// The model a link names for oEmbed: its id from /m/X, /m/X/, /m/X/embed
+/// or an older version's /m/X/v/N, on this site (any of its addresses, a
+/// preview's too) or brickworks.diy; null for any other link.
+export function oembedId(link, origin) {
+  let url;
+  try {
+    url = new URL(String(link || ""));
+  } catch {
+    return null;
+  }
+  const ours = [new URL(origin).host, "brickworks.diy", "www.brickworks.diy"];
+  if (!/^https?:$/.test(url.protocol) || !ours.includes(url.host)) return null;
+  const found = url.pathname.match(/^\/m\/([A-Za-z0-9]{10})(?:\/v\/[1-9][0-9]{0,5}|\/embed)?\/?$/);
+  return found ? found[1] : null;
+}
+
+/// The embed's size for oEmbed: 560 x 420, four to three, made smaller to
+/// fit within [maxwidth] and [maxheight] when a consumer asks.
+export function oembedSize(maxwidth, maxheight) {
+  let width = 560;
+  let height = 420;
+  const most = (value) => (Number.isFinite(Number(value)) && Number(value) >= 1 ? Math.floor(Number(value)) : Infinity);
+  if (most(maxwidth) < width) [width, height] = [most(maxwidth), Math.round((most(maxwidth) * 3) / 4)];
+  if (most(maxheight) < height) [width, height] = [Math.round((most(maxheight) * 4) / 3), most(maxheight)];
+  return { width, height };
+}
+
+/// /oembed?url=<a model's link> (docs/SOCIAL.md section 7, oembed.com): what
+/// WordPress, Ghost, Notion, a Discourse forum or Iframely asks to put a
+/// model's card in a page from its bare link, as Sketchfab's /oembed is
+/// asked for its viewer ([SK-O]). A rich answer, the card's iframe
+/// (/m/X/embed) at four to three, its name, whom it credits, its picture;
+/// JSON only (501 for format=xml, as the spec says), 404 for a link that
+/// is not a model shared here, and only what its page says to anybody.
+async function oembed(request, response, origin) {
+  const format = String(request.query?.format || "json");
+  if (format !== "json") return response.status(501).json({ error: "JSON only: format=json" });
+  const id = oembedId(request.query?.url, origin);
+  if (!id) return response.status(404).json({ error: "name a model's link: url=https://brickworks.diy/m/<id>" });
+  // Read as its page is (directory_model): whom it credits, as the page does.
+  const model = await modelPage(id);
+  if (!model) return response.status(404).json({ error: "There is no model shared at that link." });
+  const link = links(origin, id);
+  const { width, height } = oembedSize(request.query?.maxwidth, request.query?.maxheight);
+  const credit = creditName(model);
+  response.setHeader("Cache-Control", SHARED_CACHE);
+  return response.status(200).json({
+    version: "1.0",
+    type: "rich",
+    provider_name: "Brickworks",
+    provider_url: origin,
+    title: model.name,
+    ...(credit ? { author_name: credit } : {}),
+    ...(model.by && model.by.handle && !modelledByOf(model.modelled_by) ? { author_url: `${origin}/u/${model.by.handle}` } : {}),
+    html: `<iframe src="${escapeHtml(`${link.url}/embed`)}" width="${width}" height="${height}" style="border:0;max-width:100%" `
+      + `title="${escapeHtml(`${model.name}, a Brickworks model`)}" loading="lazy"></iframe>`,
+    width,
+    height,
+    thumbnail_url: model.has_image ? link.image : `${origin}/share.png`,
+    thumbnail_width: 1200,
+    thumbnail_height: 630,
+    cache_age: 3600,
+  });
 }
 
 /// /m/X/embed: a card sized for an iframe. The app itself cannot run in
@@ -1788,6 +1858,9 @@ async function read(request, response) {
   if (op === "list") return gallery(request, response, origin);
   if (op === "shelves") return shelves(request, response, origin);
   if (op === "sitemap") return sitemap(response, origin);
+  if (op === "oembed") return oembed(request, response, origin);
+  if (op === "bases") return bases(request, response);
+  if (op === "set_based") return setBased(request, response, origin);
   // The LDraw library's sets (api/_library.js): /library's list, and each
   // set's page, cover, file and parts.
   // With tests=1, the OMR's arrivals staged for the lead to let out too
@@ -1830,11 +1903,14 @@ async function read(request, response) {
     // The collections it is in, with their covers: a test model's own page
     // counts a test account's too, as it offers test models.
     const tests = own?.test === true;
-    const [mark, photos, next, { counted, parts }, lists] = await Promise.all([markOf(db, id, shown.n),
+    const [mark, photos, next, { counted, parts }, lists, based] = await Promise.all([markOf(db, id, shown.n),
       photosWhere(`model=eq.${id}`, shownPublicly), nextOf(origin, id, page, own),
       countedOf(versionFile(id, shown.n, versions[0].n, "mpd")),
       listsOf(id, tests).then(async (found) => ({ ...found,
-        covers: found.lists.length ? await coversOf(found.lists, tests).catch(() => new Map()) : new Map() }))]);
+        covers: found.lists.length ? await coversOf(found.lists, tests).catch(() => new Map()) : new Map() })),
+      basesOf(id).catch(() => null)]);
+    // What it is based on, under its remix line and in its structured data.
+    page.based = based || [];
     // The owner's own photos first, as its pictures (docs/SOCIAL.md U4),
     // then the builds of everybody else, newest first.
     const ordered = photos.map((photo) => ({ ...photo, own: Boolean(own && photo.account === own.owner) }))
@@ -1907,7 +1983,8 @@ async function read(request, response) {
   if (!model) return response.status(410).json({ error: "This model is no longer shared.", unpublished: true });
   // The mark this version passed, for the viewer's bar; a failure is its
   // owner's alone (?op=tested), so here it is no mark at all.
-  const [mark, builds, by] = await Promise.all([markOf(db, id, shown.n), buildsOf(id), profileOf(id, row.author)]);
+  const [mark, builds, by, based] = await Promise.all([markOf(db, id, shown.n), buildsOf(id), profileOf(id, row.author),
+    basesOf(id).catch(() => null)]);
   const tested = publicMark(mark);
   return response.status(200).json({
     tested,
@@ -1933,6 +2010,9 @@ async function read(request, response) {
     kind: row.kind ?? null,
     remixed_from: from ? { id: from.id, name: from.name, url: `${origin}/m/${from.id}`,
       version: remixVersion(versions) } : null,
+    // What else it credits (api/_bases.js): a set built from or changed, a
+    // work elsewhere; a set's href its page here.
+    based_on: (based || []).map((one) => ({ ...one, href: one.set ? `${origin}${one.href}` : one.href })),
     ...links(origin, id),
     model: model.toString("utf8"),
   });
@@ -2950,6 +3030,7 @@ export default async function handler(request, response) {
     if (op === "unpublish") return await unpublish(request, response);
     if (op === "seen") return await seen(request, response);
     if (op === "built") return await built(request, response);
+    if (op === "bases") return await basesPut(request, response);
     if (op === "") return await publish(request, response);
     return response.status(400).json({ error: `unknown op ${op}` });
   } catch (trouble) {

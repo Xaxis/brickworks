@@ -96,7 +96,7 @@
 //   GET  ?op=notifications        (session) what happened to the caller's
 //                                 models, grouped by model; opening it
 //                                 clears its count (api/_notifications.js)
-//   POST ?op=notifications_read   (session) {model} or {all: true}: read
+//   POST ?op=notifications_read   (session) {model}, {challenge}, {achievements: true} or {all: true}: read
 //   GET  ?op=designs              (session) the caller's own models' last 30
 //                                 days: opens, builds finished, remixes,
 //                                 comments, and who built them; &handle=X
@@ -106,6 +106,8 @@
 //                                 rules, its entries in their two groups and
 //                                 once it ended its winners; with the
 //                                 session, whom the caller voted for
+//   GET  ?op=challenge_page&id=N  /challenge?id=N: the page itself, its head
+//                                 challenge N's own (api/_challenges.js)
 //   GET  ?op=challenge_entry&id=X (session) the challenge open now, for X's
 //                                 own designer: whether X is in, and what its
 //                                 rules say of X
@@ -206,10 +208,10 @@ import { withFaces } from "./_faces.js";
 import { FIRST_SCREEN, cardHtml, marksOf, quietMarks, skeletonHtml } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
-import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml } from "./_card.js";
+import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, levelAwards, shareSheetHtml } from "./_card.js";
 // The site's one pager (web/pager.js), on every list these pages draw.
 import { pagerHtml, pagerLinks } from "./_pager.js";
-import { challenge, challengeEntry, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
+import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
@@ -519,7 +521,7 @@ async function profile(request, response) {
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : "no-cache");
   if (!person) return response.status(404).json({ error: "nobody has that handle" });
   const origin = originOf(request);
-  const [page, about, built, follows, designer, shows, liked, wins] = await Promise.all([
+  const [page, about, built, follows, designer, shows, liked, wins, levels] = await Promise.all([
     models(origin, { owner: person.account, tests, sort: "top" }, pageOf(request.query || {})),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
     builtBy(origin, person, tests),
@@ -528,6 +530,7 @@ async function profile(request, response) {
     showsOf(person.account),
     likedShown(person.account, tests),
     winsBy(person.account, tests).catch(() => []),
+    levelsOf(person.account, tests),
   ]);
   // What their models earned (supabase/designers.sql), and each card's
   // comments beside its builds and remixes, and what it won: the same
@@ -546,8 +549,10 @@ async function profile(request, response) {
       followers: follows?.followers ?? 0, photos: earned.photos } : null,
     collections: about?.collections ?? [], built, url: `${origin}/u/${person.handle}`,
     links: showcase.links, banner: showcase.banner, pins: showcase.pins,
-    // What they earned (docs/SOCIAL.md U13), as their page has it.
-    achievements: achievementsOf({ about, earned, built, wins }), ...page, models: cards }));
+    // What they earned (docs/SOCIAL.md U13), as their page has it, and
+    // their level on every track, for your own profile's Achievements tab:
+    // null before supabase/achievements.sql.
+    achievements: achievementsOf({ about, earned, built, wins, levels }), levels, ...page, models: cards }));
 }
 
 /// How many models [account] liked, when they chose to show which (and
@@ -1090,15 +1095,19 @@ function numbersHtml(earned, about, follows) {
     + "</ul>";
 }
 
-/// What a person earned here (docs/SOCIAL.md U13), worked out from what
-/// their page already shows and never stored: each challenge their models
-/// won, ten builds finished of their models, a model marked Tested, their
-/// first model in the gallery, their first photo of a real build; the
-/// rarest first. Nothing of a profile not shown in public, as every other
-/// part of it (personOf: none under 13, none taken out).
-export function achievementsOf({ about, earned, built, wins }) {
+/// What a person earned here (docs/SOCIAL.md U13 and section 7): each
+/// challenge their models won, then their level on each track of
+/// supabase/achievements.sql ([levels], from achievement_levels), the
+/// highest first. Before that file is applied ([levels] null), the five
+/// marks of before, worked out from what their page shows: ten builds
+/// finished of their models, a model marked Tested, their first model in
+/// the gallery, their first photo of a real build. Nothing of a profile not
+/// shown in public, as every other part of it (personOf: none under 13,
+/// none taken out).
+export function achievementsOf({ about, earned, built, wins, levels = null }) {
   const out = (wins || []).map((win) => ({ id: "won", name: wonSaid(win), model: win.model,
     said: `${win.name}: ${count(win.votes, "vote")}` }));
+  if (Array.isArray(levels)) return [...out, ...levelAwards(levels)];
   if ((Number(earned?.builds) || 0) >= 10) {
     out.push({ id: "ten", name: "Ten builds", said: "Their models were built to the last step ten times or more" });
   }
@@ -1112,6 +1121,19 @@ export function achievementsOf({ about, earned, built, wins }) {
     out.push({ id: "built", name: "First build finished", said: "They posted a photo of their real build of a model in the gallery" });
   }
   return out;
+}
+
+/// [account]'s level on each track (supabase/achievements.sql
+/// achievement_levels), test models counted with [tests]; null before the
+/// file is applied.
+async function levelsOf(account, tests) {
+  try {
+    const levels = await db("rpc/achievement_levels", { method: "POST", body: { account, tests } });
+    return Array.isArray(levels) ? levels : [];
+  } catch (trouble) {
+    if (NOT_THERE.test(String(trouble?.message || ""))) return null;
+    throw trouble;
+  }
 }
 
 /// A set of photos of real builds: [photos] each with its model's name;
@@ -1131,16 +1153,6 @@ function stripHtml(photos, { by = false } = {}) {
 /// with its count once there is one.
 const TABS = [["models", "Models"], ["builds", "Builds"], ["collections", "Collections"], ["likes", "Likes"]];
 
-/// /u/X: a person's page, the same for everybody it shows, the house's
-/// too. Their avatar, name, handle, words, links and numbers, Follow, Share
-/// and More; the models they pinned; then a tab: Models (every one, page by
-/// page, by Top builds), Builds (photos of their real builds, and other
-/// people's of their models) or Collections (their public lists), the first
-/// that has something unless one is asked for. Whom they follow, when they
-/// chose to show it; never who follows them. The designer's own numbers are
-/// not in it: web/designs.js asks for them with their sign-in and puts them
-/// in #designs-mine, so this page, which the CDN keeps, is the same for
-/// everybody.
 /// How many a list has, as [n] says, when it agrees with a page of it
 /// ([at], [shown] on it, [more] after it): else -1, and the pager says only
 /// which are shown. A profile's numbers are counted apart from its pages.
@@ -1154,6 +1166,30 @@ const agreed = (n, at, shown, more) => {
 const pastEnd = (at, href) => `<p class="state">There is no page ${at.toLocaleString("en-US")} here. `
   + `<a class="link" href="${escapeHtml(href(1))}">Back to the first page</a>.</p>`;
 
+/// /challenge?id=N (tools/deploy.sh): the challenge page with challenge
+/// N's own title, words and picture in its head (api/_challenges.js
+/// challengeHead). Its security policy and the rest are the route's, the
+/// same as the page served alone.
+async function challengePage(request, response) {
+  const origin = originOf(request);
+  const tests = testsAsked(request.query);
+  const id = /^[1-9][0-9]{0,15}$/.test(String(request.query?.id || "")) ? Number(request.query.id) : null;
+  const body = await challengePageHtml(origin, id, tests);
+  response.setHeader("Content-Type", "text/html; charset=utf-8");
+  response.setHeader("Cache-Control", tests ? TESTS_CACHE : PAGE_CACHE);
+  return response.status(200).end(body);
+}
+
+/// /u/X: a person's page, the same for everybody it shows, the house's
+/// too. Their avatar, name, handle, words, links and numbers, Follow, Share
+/// and More; the models they pinned; then a tab: Models (every one, page by
+/// page, by Top builds), Builds (photos of their real builds, and other
+/// people's of their models) or Collections (their public lists), the first
+/// that has something unless one is asked for. Whom they follow, when they
+/// chose to show it; never who follows them. The designer's own numbers are
+/// not in it: web/designs.js asks for them with their sign-in and puts them
+/// in #designs-mine, so this page, which the CDN keeps, is the same for
+/// everybody.
 async function profilePage(request, response) {
   const origin = originOf(request);
   const handle = String(request.query?.handle || "").toLowerCase();
@@ -1163,7 +1199,7 @@ async function profilePage(request, response) {
   const asked = TABS.some(([id]) => id === request.query?.tab) ? String(request.query.tab) : "";
   const number = Number(request.query?.page ?? 1);
   const at = Number.isInteger(number) && number >= 1 && number <= MOST_PAGES ? number : 1;
-  const [shown, about, built, follows, following, designer, wins, shows, liked] = await Promise.all([
+  const [shown, about, built, follows, following, designer, wins, shows, liked, levels] = await Promise.all([
     models(origin, { owner: person.account, tests, sort: "top" }, asked === "models" || !asked ? at : 1),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
     builtBy(origin, person, tests),
@@ -1173,6 +1209,7 @@ async function profilePage(request, response) {
     winsBy(person.account, tests).catch(() => []),
     showsOf(person.account),
     likedShown(person.account, tests),
+    levelsOf(person.account, tests),
   ]);
   const showcase = await showcaseOf(origin, person, shows, tests);
   // Their picture, and the faces of whom they follow, in one lookup.
@@ -1222,13 +1259,14 @@ async function profilePage(request, response) {
       ${follows && follows.ready ? `<p class="follow-line"><button type="button" class="cta ghost follow"
         data-follow="${escapeHtml(person.handle)}" hidden>Follow</button><span class="said" role="status"></span></p>
       <a class="cta ghost" href="/profile?edit=1" data-edit-own hidden>Edit profile</a>` : ""}
-      ${iconButtonHtml({ icon: "share", name: "Share", attrs: `data-share="${escapeHtml(url)}" hidden` })}
+      ${iconButtonHtml({ icon: "share", name: "Share",
+        attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
       ${more}
     </div>
   </header>
   ${person.bio ? `<p class="bio">${escapeHtml(person.bio)}</p>` : ""}
   ${links ? `<ul class="links" aria-label="Elsewhere">${links}</ul>` : ""}
-  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins }))}</div>`;
+  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins, levels }))}</div>`;
 
   // Pinned: up to three of their models, in the order they chose.
   await withFaces(showcase.pins);
@@ -1305,7 +1343,10 @@ async function profilePage(request, response) {
     <p class="note">${name} chose to show whom they follow.</p>
     <ul class="pills">${following.map((one) => `<li><a class="pill" href="/u/${escapeHtml(one.handle)}">`
       + `${avatarHtml({ handle: one.handle, name: one.name, picture: one.picture }, { size: "small" })}${escapeHtml(one.name)}</a></li>`).join("")}</ul></section>` : ""}
-</div>`;
+</div>
+${shareSheetHtml({ url, name: person.name, text: `${person.name} on Brickworks`,
+    about: "Its link opens their page: their models, their builds and their collections.",
+    image: showcase.banner ? `${origin}/m/${showcase.banner}.png` : shown.models[0]?.image || "" })}`;
   const told = earned
     ? `${count(earned.models, "model")} by ${person.name}, ${count(earned.builds, "build")} finished and ${count(earned.remixes, "remix", "remixes")}: designed in Brickworks.`
     : `${count(about?.models ?? 0, "model")} by ${person.name}, built in Brickworks and shared in its gallery.`;
@@ -1368,7 +1409,8 @@ async function listPage(request, response) {
       <div class="acts">
         ${ready ? `<p class="follow-line"><button type="button" class="cta ghost follow" data-follow-list="${id}" hidden>Follow</button>`
           + `<span class="said" role="status"></span></p>` : ""}
-        ${iconButtonHtml({ icon: "share", name: "Share", attrs: `data-share="${escapeHtml(url)}" hidden` })}
+        ${iconButtonHtml({ icon: "share", name: "Share",
+          attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
         ${more}
       </div>
     </div>
@@ -1378,7 +1420,10 @@ async function listPage(request, response) {
   ${pager.after}`
     : at > 1 ? pastEnd(at, pageHref)
     : `<p class="state">Nothing in it is in the gallery just now. The models put in it show here once they are.</p>`}
-</div>`;
+</div>
+${shareSheetHtml({ url, name: list.name, text: `${list.name}, a collection on Brickworks`,
+    about: `Its link opens this collection: the models in it, and who collected them.`,
+    image: first && first.image ? first.image : "" })}`;
   return html(response, 200, page(origin, {
     title: `${list.name} — a collection in the Brickworks gallery`,
     about: list.description ? list.description.replace(/\s+/g, " ").slice(0, 160)
@@ -1462,6 +1507,7 @@ export default async function handler(request, response) {
       if (op === "me") return await me(request, response);
       if (op === "profile") return await profile(request, response);
       if (op === "page") return await profilePage(request, response);
+      if (op === "challenge_page") return await challengePage(request, response);
       if (op === "likes") return await likes(request, response);
       if (op === "avatar") return await avatarServe(request, response);
       if (op === "marks") return await marks(request, response);

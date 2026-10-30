@@ -129,7 +129,9 @@
       "entry": "api/people.js",
       "reach": "curl -s 'https://brickworks.diy/api/people?op=profile&handle=<handle>'   (and /u/<handle>, /c/<id>; ?op=me, like, favourite, collection, collect with a session)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_challenge_notices.py"
+      ]
     },
     {
       "id": "api:GET/POST /api/share",
@@ -139,7 +141,8 @@
       "area": "web",
       "tests": [
         "tests/test_gallery_crons.py",
-        "tests/test_library_site.py"
+        "tests/test_library_site.py",
+        "tests/test_model_bases.py"
       ]
     },
     {
@@ -425,6 +428,14 @@
       "kind": "cli",
       "entry": "tools/web/avatar_flow.mjs",
       "reach": "node tools/web/avatar_flow.mjs --out=DIR   (the stand-in's people, nothing leaves the machine); node --env-file=.env tools/web/relay_server.mjs 8871 --hold=profile_avatars,profile_choices &  node --env-file=.env tools/web/avatar_flow.mjs --url=http://127.0.0.1:8871 --out=DIR   (throwaway accounts, deleted after; or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>, which says not open yet until supabase/avatars.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:based on browser flow",
+      "kind": "cli",
+      "entry": "tools/web/based_on_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/based_on_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh based_on: throwaway Ivy and Jon; before model_bases.sql, nothing offered and a list refused in words (503); with no --url, the stand-in's whole of it)",
       "area": "web",
       "tests": []
     },
@@ -1893,7 +1904,9 @@
       "entry": "src/dev/sign_in.gd",
       "reach": "godot --headless --path . --script src/dev/sign_in.gd -- you@example.com   (needs .env)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_challenge_notices.py"
+      ]
     },
     {
       "id": "cli:signup check",
@@ -2306,6 +2319,7 @@
       "reach": "godot --headless --path . --script src/dev/responsive_probe.gd",
       "area": "assistant",
       "tests": [
+        "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
     },
@@ -2377,6 +2391,16 @@
       ]
     },
     {
+      "id": "lib:achievements with levels",
+      "kind": "lib",
+      "entry": "supabase/achievements.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/achievements.sql --dry --try=tools/achievements_try.sql --table=achievement_marks   (after replies.sql; the promises in tests/test_achievements.py; then the profile and notifications browser flows)",
+      "area": "web",
+      "tests": [
+        "tests/test_achievements.py"
+      ]
+    },
+    {
       "id": "lib:add a minifig",
       "kind": "lib",
       "entry": "src/minifig/figure_tool.gd",
@@ -2391,6 +2415,7 @@
       "reach": "godot --headless --path . --script src/dev/section_probe.gd",
       "area": "geometry",
       "tests": [
+        "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
     },
@@ -2485,6 +2510,14 @@
       "tests": [
         "tests/test_steps_score.py"
       ]
+    },
+    {
+      "id": "lib:challenge notices",
+      "kind": "lib",
+      "entry": "supabase/challenge_notices.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/achievements.sql --again=supabase/challenge_notices.sql --dry --try=tools/challenge_notices_try.sql --table=challenge_reads   (after achievements.sql; the promises in tests/test_challenge_notices.py; then the challenges browser flow, whose Ed hears who won)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "lib:challenges between months",
@@ -2589,6 +2622,7 @@
       "reach": "godot --headless --path . --script src/dev/rules_probe.gd",
       "area": "assistant",
       "tests": [
+        "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
     },
@@ -2837,7 +2871,8 @@
       "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most; with neither, More in the gallery, its Top)",
       "area": "web",
       "tests": [
-        "tests/test_library_site.py"
+        "tests/test_library_site.py",
+        "tests/test_model_bases.py"
       ]
     },
     {
@@ -2999,6 +3034,7 @@
       "reach": "godot --headless --path . --script src/dev/reference_probe.gd",
       "area": "assistant",
       "tests": [
+        "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
     },
@@ -3184,6 +3220,7 @@
       "reach": "godot --headless --path . --script src/dev/tested_probe.gd   (-- --sets FILE ... prints each test and its time; -- --write IN OUT ... writes each IN with its steps carried and OUT.tested.json)",
       "area": "web",
       "tests": [
+        "tests/test_achievements.py",
         "tests/test_discovery.py",
         "tests/test_gallery_crons.py"
       ]
@@ -3340,6 +3377,14 @@
       "tests": []
     },
     {
+      "id": "lib:what a model is based on",
+      "kind": "lib",
+      "entry": "api/_bases.js",
+      "reach": "node tools/web/based_on_flow.mjs --out=DIR   (the stand-in: Say what it is based on on a model's page, a set and a link said, refused in words, its page's lines, structured data and JSON, the set's page's Based on this set, taken away; supabase/model_bases.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/model_bases.sql --dry --try=tools/model_bases_try.sql --table=model_bases; tests/test_model_bases.py)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:what moves in a model",
       "kind": "lib",
       "entry": "src/assembly/playable.gd",
@@ -3439,6 +3484,7 @@
       "reach": "godot --path .  (Mosaic from a picture, then Design with Claude; or ask the assistant for a LEGO Art picture)",
       "area": "view",
       "tests": [
+        "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
     },
@@ -3448,7 +3494,9 @@
       "entry": "api/people.js",
       "reach": "https://brickworks.diy/u/<handle of somebody with a model in the gallery>   (or a local relay_server.mjs --hold=model_opens, /u/<handle>?tests=1 for a test account's; the tiles, Start with their most built, Built by others, the cards by Top builds)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_challenge_notices.py"
+      ]
     },
     {
       "id": "ui:a lighter look where frames are slow",
@@ -3512,9 +3560,11 @@
       "id": "ui:achievements on a profile",
       "kind": "ui",
       "entry": "api/people.js",
-      "reach": "https://brickworks.diy/u/<handle> and /profile: ul.awards under the numbers (achievementsOf; GET /api/people?op=profile says achievements); the profile browser flow",
+      "reach": "https://brickworks.diy/u/<handle> and /profile: ul.awards under the numbers, a challenge won then a level a track (achievementsOf, levelAwards; GET /api/people?op=profile says achievements and levels); the profile browser flow",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_challenge_notices.py"
+      ]
     },
     {
       "id": "ui:admin page",
@@ -3669,7 +3719,9 @@
       "entry": "api/people.js",
       "reach": "https://brickworks.diy/collections  (?sort=followed, ?page=N, ?tests=1; supabase/collection_directory.sql; linked from the gallery's tabs and the footer)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_challenge_notices.py"
+      ]
     },
     {
       "id": "ui:colour the hidden parts",
@@ -3813,7 +3865,7 @@
       "id": "ui:every set's page",
       "kind": "ui",
       "entry": "api/_sets.js",
-      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; /library/set/N.jpg its picture drawn from its parts (api/_flatlay.js), /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
+      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; Based on this set, the gallery's models based on it (web/set-page.js, ?op=set_based); /library/set/N.jpg its picture drawn from its parts (api/_flatlay.js), /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
       "area": "web",
       "tests": []
     },
@@ -3942,7 +3994,8 @@
       "reach": "godot --path .  (select, L locks, Shift-L unlocks everything)",
       "area": "building",
       "tests": [
-        "tests/fixtures/collection/fake_rebrickable.py"
+        "tests/fixtures/collection/fake_rebrickable.py",
+        "tests/test_achievements.py"
       ]
     },
     {
@@ -4008,7 +4061,7 @@
       "id": "ui:model page action bar",
       "kind": "ui",
       "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (Like, Save: Favourites and your collections, Share: the link copied or the share sheet, Comment, I built it, More: the embed code, Report it; Like and Save sign in on the way)",
+      "reach": "https://brickworks.diy/m/<id>   (Like, Save: Favourites and your collections, Share: the share sheet with its link, Post it to each network and the embed code, Comment, I built it, More: Report it; Like and Save sign in on the way)",
       "area": "web",
       "tests": []
     },
@@ -4112,7 +4165,7 @@
       "id": "ui:notifications page",
       "kind": "ui",
       "entry": "web/notifications.html",
-      "reach": "https://brickworks.diy/notifications   (notifications.js: signed in, a group a model with its picture, newest first; opening it clears the avatar's count; a group read once opened; Mark all read)",
+      "reach": "https://brickworks.diy/notifications   (notifications.js: signed in, a group a model with its picture, newest first, and the levels you reached in a group of their own; opening it clears the avatar's count; a group read once opened; Mark all read)",
       "area": "web",
       "tests": []
     },
@@ -4196,6 +4249,8 @@
       "area": "model-io",
       "tests": [
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_achievements.py",
+        "tests/test_challenge_notices.py",
         "tests/test_feedback.py",
         "tests/test_sets.py"
       ]
@@ -4215,7 +4270,8 @@
       "reach": "godot --path .  (aim at an overhang's underside; or tip a plate with T and aim at a side stud)",
       "area": "building",
       "tests": [
-        "tests/fixtures/collection/fake_rebrickable.py"
+        "tests/fixtures/collection/fake_rebrickable.py",
+        "tests/test_achievements.py"
       ]
     },
     {
@@ -4285,7 +4341,9 @@
       "entry": "api/people.js",
       "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen in Edit profile on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_challenge_notices.py"
+      ]
     },
     {
       "id": "ui:properties panel",
@@ -4334,7 +4392,8 @@
       "reach": "godot --path .  (select, hold another part, Edit, Replace with the part in hand)",
       "area": "building",
       "tests": [
-        "tests/fixtures/collection/fake_rebrickable.py"
+        "tests/fixtures/collection/fake_rebrickable.py",
+        "tests/test_achievements.py"
       ]
     },
     {
@@ -4394,7 +4453,8 @@
       "reach": "godot --path .  (shift-click, then C paint / arrows nudge / Delete)",
       "area": "building",
       "tests": [
-        "tests/fixtures/collection/fake_rebrickable.py"
+        "tests/fixtures/collection/fake_rebrickable.py",
+        "tests/test_achievements.py"
       ]
     },
     {
@@ -4445,7 +4505,7 @@
       "id": "ui:shared model page and card",
       "kind": "ui",
       "entry": "web/share-page.js",
-      "reach": "https://brickworks.diy/m/<id>  and  /m/<id>/embed   (served by api/share.js; web/directory.css, web/share-page.js counts the view)",
+      "reach": "https://brickworks.diy/m/<id>  and  /m/<id>/embed  and  /oembed?url=https://brickworks.diy/m/<id>   (served by api/share.js; web/directory.css, web/share-page.js counts the view)",
       "area": "web",
       "tests": []
     },
@@ -4555,7 +4615,8 @@
       "reach": "godot --path .  (select what hangs from a hinge, clip or turntable; J, Shift-J)",
       "area": "building",
       "tests": [
-        "tests/fixtures/collection/fake_rebrickable.py"
+        "tests/fixtures/collection/fake_rebrickable.py",
+        "tests/test_achievements.py"
       ]
     },
     {
@@ -4739,9 +4800,10 @@
       "id": "ui:this month's challenge page",
       "kind": "ui",
       "entry": "web/challenge.js",
-      "reach": "https://brickworks.diy/challenge   (?tests=1 for the flows' test challenge; GET /api/people?op=challenge, with the sign-in for your votes; POST ?op=vote)",
+      "reach": "https://brickworks.diy/challenge   (?tests=1 for the flows' test challenge; ?id=N one challenge, its head its own (api/people.js ?op=challenge_page); GET /api/people?op=challenge, with the sign-in for your votes; POST ?op=vote)",
       "area": "web",
       "tests": [
+        "tests/test_challenge_notices.py",
         "tests/test_challenges.py"
       ]
     },
@@ -4792,7 +4854,8 @@
       "reach": "godot --path .  (Cmd-Z, Cmd-Shift-Z)",
       "area": "building",
       "tests": [
-        "tests/fixtures/collection/fake_rebrickable.py"
+        "tests/fixtures/collection/fake_rebrickable.py",
+        "tests/test_achievements.py"
       ]
     },
     {
@@ -4852,6 +4915,17 @@
       "tests": []
     },
     {
+      "id": "ui:your achievements tab",
+      "kind": "ui",
+      "entry": "web/profile.js",
+      "reach": "https://brickworks.diy/profile?tab=achievements   (signed in, once supabase/achievements.sql is applied: a tile a track, its level, how far the next is and the way there); the profile browser flow, locally",
+      "area": "web",
+      "tests": [
+        "tests/test_achievements.py",
+        "tests/test_site_shell.py"
+      ]
+    },
+    {
       "id": "ui:your feed page",
       "kind": "ui",
       "entry": "web/feed.html",
@@ -4887,6 +4961,8 @@
       "area": "web",
       "tests": [
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_achievements.py",
+        "tests/test_challenge_notices.py",
         "tests/test_feedback.py",
         "tests/test_sets.py"
       ]
@@ -4910,9 +4986,10 @@
       "id": "ui:your profile page",
       "kind": "ui",
       "entry": "web/profile.html",
-      "reach": "https://brickworks.diy/profile   (profile.js: sign in; no profile: name and handle; your page's head with Edit profile, and the tabs Models, Builds, Saved, Sets, Insights, ?tab=)",
+      "reach": "https://brickworks.diy/profile   (profile.js: sign in; no profile: name and handle; your page's head with Edit profile, and the tabs Models, Builds, Saved, Sets, Insights, Achievements, ?tab=)",
       "area": "web",
       "tests": [
+        "tests/test_achievements.py",
         "tests/test_site_shell.py"
       ]
     },

@@ -319,6 +319,11 @@ for handler in api/*.js; do
   if [ "$route" = share ] || [ "$route" = people ]; then
     cp web/gallery.html "$fn/_site.html"
   fi
+  # /challenge?id=N is the challenge page with that challenge's own head
+  # (api/_challenges.js challengeHead), so a link to one shows it.
+  if [ "$route" = people ]; then
+    cp web/challenge.html "$fn/_challenge.html"
+  fi
   if [ "$route" = share ]; then
     # /sitemap.xml is made there: the site's own pages, from web/sitemap.xml,
     # and every listed model, profile and public collection.
@@ -540,6 +545,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})[.]mpd", "dest": "/api/share?op=file&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/parts[.](json|xml|csv)", "dest": "/api/share?op=parts&id=\$1&as=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
+    { "src": "/oembed/?", "dest": "/api/share?op=oembed" },
     { "src": "/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$1" },
     { "src": "/c/([A-Za-z0-9]{10})/?", "dest": "/api/people?op=list_page&id=\$1" },
     { "src": "/collections/?", "dest": "/api/people?op=collections_page" },
@@ -565,6 +571,8 @@ $docs_moved
         "Content-Security-Policy": "$csp"
       },
       "continue": true },
+    { "src": "/challenge/?", "has": [ { "type": "query", "key": "id", "value": "[1-9][0-9]{0,15}" } ],
+      "dest": "/api/people?op=challenge_page" },
     { "src": "/(app|b/.*)",
       "headers": { "Cross-Origin-Opener-Policy": "same-origin" },
       "continue": true },

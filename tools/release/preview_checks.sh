@@ -65,6 +65,14 @@ declare -A CMD=(
   # private, gone. Throwaway accounts, deleted after with their model and
   # collection.
   [list_follows]="tools/web/list_follows_flow.mjs --url=$P --out=$S/${TAG}_list_follows"
+  # What a model is based on (docs/SOCIAL.md section 7, item 5,
+  # supabase/model_bases.sql): its designer says it in a dialog, a set
+  # built from and work elsewhere changed; its page credits each, its
+  # structured data and JSON say them, the set's page lists it; a wrong
+  # set or link said in words, somebody else refused; taken away, gone.
+  # Before the file, nothing offered and a list refused in words.
+  # Throwaway accounts, deleted after with their model.
+  [based_on]="tools/web/based_on_flow.mjs --url=$P --out=$S/${TAG}_based_on"
   # The collections directory (W12, supabase/collection_directory.sql):
   # /collections lists a throwaway designer's public collection as a card
   # with its cover, name, owner, model count and Follow; her private one
@@ -76,8 +84,10 @@ declare -A CMD=(
   # photo and ten likes on a throwaway designer's model as one group with
   # its picture, the likes one row naming nobody; opened, the count gone;
   # a group read once opened, Mark all read; the feed apart; signed out at
-  # both widths. Throwaway accounts, deleted after; before and after
-  # supabase/notifications.sql (it reads which from the answer).
+  # both widths; once supabase/achievements.sql is applied, the levels
+  # reached as a group of their own, its row opening /profile's
+  # Achievements tab, read once opened. Throwaway accounts, deleted after;
+  # before and after each file (it reads which from the answers).
   [notifications]="tools/web/notifications_flow.mjs --url=$P --out=$S/${TAG}_notifications"
   # A feed you look at (docs/SOCIAL.md U9): /feed signed out and following
   # nobody shows Latest on Brickworks (the newest models as the gallery's
@@ -103,8 +113,9 @@ declare -A CMD=(
   [designers]="tools/web/designers_flow.mjs --url=$P --out=$S/${TAG}_designers"
   # The monthly challenge: set on /admin?tests=1 (a test one, which no
   # visitor sees), entered from a model's page with each broken rule named,
-  # voted in its two groups, ended and won: API routes only, with the bypass
-  # (supabase/challenges.sql).
+  # voted in its two groups, ended and won, the winners told to a voter in
+  # Notifications, and its link's own head: API routes only, with the bypass
+  # (supabase/challenges.sql, supabase/challenge_notices.sql).
   [challenges]="tools/web/challenges_flow.mjs --url=$P --out=$S/${TAG}_challenges"
   # Play in a shared model's view: 8808-1's steering turned by its wheel,
   # by the mouse at 1280 px and a finger at 390, and Reset; the drag's own
@@ -286,7 +297,10 @@ declare -A CMD=(
   # refusals whether or not supabase/profile_shows.sql is applied, "not open
   # yet" until it is); her page at 390 and 1280, light and dark, signed out
   # and in: avatar, numbers with no count of none, links ugc nofollow,
-  # pins, tabs. The account deleted after, and its row of profile_shows.
+  # pins, tabs; what she earned as she lists, is Tested, posts a build and
+  # is built ten times (levels once supabase/achievements.sql is applied,
+  # which the answer says). The account deleted after, and its row of
+  # profile_shows.
   [profile]="tools/web/profile_flow.mjs --url=$P --out=$S/${TAG}_profile"
   # Your account as your profile (docs/SOCIAL.md U6): a throwaway Ada who
   # set all the old account page could (her name, words, links, banner and

@@ -292,7 +292,8 @@ const JOURNEYS = {
       check(opened, `${label}: Enter on Share opens its sheet, on the link (${(await page.evaluate(focusNow)).said})`);
       const region = await page.evaluate(() => Boolean(document.querySelector('dialog.share-sheet .said[role="status"]')));
       for (const [button, words] of [["share-link", /^Link copied$/], ["share-embed", /^Embed code copied/]]) {
-        const reached = await tabTo(page, label, `dialog.share-sheet [data-copy="${button}"]`, { most: 3 });
+        // The embed's Copy is past Post it to's networks (docs/SOCIAL.md section 7).
+        const reached = await tabTo(page, label, `dialog.share-sheet [data-copy="${button}"]`, { most: button === "share-embed" ? 10 : 3 });
         if (!reached) continue;
         await page.keyboard.press("Enter");
         const said = await until(page, (want) => new RegExp(want).test(document.querySelector("dialog.share-sheet .said")?.textContent || ""),

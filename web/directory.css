@@ -121,6 +121,19 @@
 .model-page h1 { font-size: var(--t-h1); margin: 0 0 12px; overflow-wrap: anywhere; line-height: 1.15; }
 .model-page .from { margin: 0 0 10px; color: var(--ink-soft); overflow-wrap: anywhere; }
 .model-page .from a { color: var(--ink); }
+/* What it is based on (api/_bases.js): a line a thing, under its remix
+   line; its designer's own line to change them; and their dialog, a box a
+   thing, at most three. */
+.model-page ul.based-on { list-style: none; padding: 0; }
+.model-page ul.based-on li + li { margin-top: 2px; }
+dialog.bases-dialog { width: min(480px, calc(100vw - 32px)); }
+dialog.bases-dialog .bases-rows { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 12px; }
+/* Each row boxed, over the report dialog's bare fieldsets (below); its
+   Remove at the row's start, as Add another is under them. */
+dialog.report.bases-dialog fieldset { border: 1px solid var(--line); border-radius: var(--r-3); padding: 12px; margin: 0; }
+dialog.report.bases-dialog fieldset > button { justify-self: start; }
+dialog.bases-dialog form label { margin-bottom: 10px; }
+dialog.bases-dialog .actions { margin-top: 16px; }
 /* The facts are words, not controls: a long one ("Moves: ...") wraps. */
 .model-page .facts { margin: 18px 0 12px; align-items: center; }
 .model-page .facts .pill { white-space: normal; max-width: 100%; }
@@ -257,6 +270,7 @@
 	background-color: var(--panel); box-shadow: var(--highlight), var(--shadow-1);
 }
 .challenge-hero > :last-child { margin-bottom: 0; }
+.challenge-hero .share-line { margin: var(--s-3) 0 0; }
 /* The rules and how to enter, each a panel; side by side from 900 px,
    under the brief, with everything else across the page. */
 .challenge #rules-part, .challenge #how {
@@ -474,6 +488,11 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .notice .what .pill { margin-left: 2px; }
 .notice .what q { display: block; margin-top: 2px; color: var(--ink-soft); }
 .notice .what time { display: block; margin-top: 2px; color: var(--ink-faint); font-size: var(--t-tiny); }
+/* The levels you reached (supabase/achievements.sql), and a challenge
+   (supabase/challenge_notices.sql): the award, or the brick, where a
+   model's picture is. */
+.notice .pic.award, .notice .pic.challenge { display: grid; place-items: center; color: var(--ink-soft); }
+.notice .pic.award .icon, .notice .pic.challenge .icon { width: 40%; height: auto; aspect-ratio: 1; stroke-width: 1.4; }
 @media (width < 600px) {
 	.notice { grid-template-columns: 76px minmax(0, 1fr); gap: var(--s-3); }
 }
@@ -497,6 +516,25 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .earned li.lead b { font-size: var(--t-h2); }
 .earned span { color: var(--ink-soft); font-size: var(--t-small); line-height: 1.35; }
 .earned small { color: var(--ink-faint); font-size: var(--t-micro); font-variant-numeric: tabular-nums; }
+/* Your achievements (/profile?tab=achievements, web/profile.js): a tile a
+   track, its level's name with the award, how far it is to the next as a
+   bar and in words, and the way there; a track not begun dashed. */
+.achievements-list {
+	list-style: none; padding: 0; margin: 0; max-width: 920px;
+	display: grid; gap: var(--s-3); grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+}
+.achievements-list li {
+	display: grid; align-content: start; gap: var(--s-2); padding: var(--s-3) var(--s-4) var(--s-4);
+	border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel);
+}
+.achievements-list li[data-level="0"] { border-style: dashed; background: transparent; }
+.achievements-list h3 { display: flex; align-items: center; gap: var(--s-2); margin: 0; font-size: var(--t-body); }
+.achievements-list h3 .icon { width: 18px; height: 18px; color: var(--ink-soft); }
+.achievements-list p { margin: 0; font-size: var(--t-small); line-height: 1.45; color: var(--ink-soft); }
+.achievements-list .level { color: var(--ink-faint); font-size: var(--t-tiny); font-variant-numeric: tabular-nums; }
+.achievements-list .reach { height: 6px; border-radius: var(--r-pill); background: var(--line); overflow: hidden; }
+.achievements-list .reach span { display: block; height: 100%; border-radius: inherit; background: var(--accent-edge); }
+.achievements-list .to-next { color: var(--ink); }
 .person.designer .counts { font-size: var(--t-small); }
 .start-with { margin: -8px 0 24px; color: var(--ink-soft); line-height: 2.1; }
 .start-with a:not(.cta) { color: var(--ink); font-weight: 600; }
@@ -692,6 +730,8 @@ dialog.share-sheet { width: min(520px, calc(100vw - 32px)); }
 .share-sheet .copy-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-2) var(--s-3); margin: 0 0 var(--s-4); }
 .share-sheet .copy-row label { flex: 1 1 16em; margin: 0; }
 .share-sheet .actions { margin-top: var(--s-4); }
+.share-sheet .share-to { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-4); }
+.share-sheet .share-to p { flex-basis: 100%; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
 
 /* The directory of collections as wide as the gallery it is a tab of, its
    title and a line about it over the tabs. */

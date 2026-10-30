@@ -24,9 +24,12 @@
 //   3. Share opens its sheet (docs/SOCIAL.md U14), the site's dialog: the
 //      page's link, selected, and Copy link puts it on the clipboard and
 //      says "Link copied" in the sheet; the embed code, and Copy code puts
-//      the iframe on the clipboard; Escape closes it, back on Share. Where
-//      the browser has a share sheet of its own (navigator.share), the
-//      sheet offers it too, given the link, and nothing copied.
+//      the iframe on the clipboard; Post it to (section 7): Reddit,
+//      Bluesky, Pinterest, X, Facebook and Email, each its own share page
+//      with the link, Reddit's opened in a new tab and said in the sheet;
+//      Escape closes it, back on Share. Where the browser has a share
+//      sheet of its own (navigator.share), the sheet offers it too, given
+//      the link, and nothing copied.
 //   4. Save, signed out, asks to sign in; signed in, it opens the lists,
 //      Favourites first and ticked when it is a favourite.
 //   5. More holds Report it and Takedown requests (the embed code is in
@@ -683,6 +686,33 @@ try {
             check(`${label}: Copy code puts the iframe on the clipboard, as the sheet shows it, and says "${embedded.said}"`,
               /^<iframe src="https?:\/\/[^"]+\/m\/[A-Za-z0-9]{10}\/embed"/.test(embedded.copied) && embedded.copied === embedded.shown
                 && /^Embed code copied/.test(embedded.said));
+            // 3c. Post it to (docs/SOCIAL.md section 7): each network's own
+            // share page with the link in it, in a tab of its own with no
+            // way back to this one; Pinterest with the model's picture.
+            const posts = await page.evaluate(() => ({ url: document.getElementById("share-link")?.value || "",
+              to: [...document.querySelectorAll("dialog.share-sheet .share-to a[data-to]")].map((a) => ({ to: a.dataset.to,
+                href: a.href, tab: a.target === "_blank", rel: a.rel, shown: a.getClientRects().length > 0 })) }));
+            const wanted = { reddit: "https://www.reddit.com/submit?", bluesky: "https://bsky.app/intent/compose?",
+              x: "https://x.com/intent/tweet?", facebook: "https://www.facebook.com/sharer/sharer.php?", email: "mailto:?" };
+            const each = Object.entries(wanted).map(([to, start]) => posts.to.find((one) => one.to === to && one.href.startsWith(start)
+              && one.href.includes(encodeURIComponent(posts.url)) && one.shown && (to === "email" || (one.tab && /noopener/.test(one.rel)))));
+            const pin = posts.to.find((one) => one.to === "pinterest");
+            check(`${label}: Post it to ${posts.to.map((one) => one.to).join(", ")}, each its own share page with the link, `
+              + "in a tab of its own (but email)", each.every(Boolean)
+              && (!pin || /[?&]media=https?%3A%2F%2F[^&]+%2Fm%2F[A-Za-z0-9]{10}\.png/.test(pin.href)));
+            if (width === widths[0] && theme === themes[0] && !signedIn) {
+              await context.route(/^https:\/\/www\.reddit\.com\//, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "reddit" }));
+              const [tab] = await Promise.all([context.waitForEvent("page", { timeout: 6000 }).catch(() => null),
+                page.click('dialog.share-sheet a[data-to="reddit"]')]);
+              const went = tab ? tab.url() : "";
+              if (tab) await tab.close();
+              const [saidNow, h1] = await page.evaluate(() => [document.querySelector("dialog.share-sheet .said")?.textContent || "",
+                document.querySelector("main h1")?.textContent || ""]);
+              check(`${label}: Reddit opens its submit page in a new tab with the link and the name (${went.slice(0, 90)}…), `
+                + `and the sheet says "${saidNow}"`, went.startsWith("https://www.reddit.com/submit?url=")
+                && new URL(went).searchParams.get("url") === posts.url && new URL(went).searchParams.get("title") === `${h1} on Brickworks`
+                && /^Reddit opens in a new tab/.test(saidNow));
+            }
             await page.keyboard.press("Escape");
             const closed = await until(page, () => !document.querySelector("dialog.share-sheet[open]")
               && document.activeElement?.matches("#marks [data-share]"), null, 4000);
@@ -820,6 +850,48 @@ try {
       } finally {
         await context.close();
       }
+    }
+  }
+
+  // 16. oEmbed (docs/SOCIAL.md section 7): the model's page names it in its
+  // head, and it answers a rich card, the embed's iframe at 560 x 420, its
+  // name and its picture; smaller to fit what a consumer asks; 501 for XML,
+  // 404 for a link that is no model here.
+  {
+    const id = PAGES[0]?.path.split("/")[2];
+    const context = await browser.newContext({ extraHTTPHeaders: headers });
+    await stand.serveSite(context, { web: path.join(root, "web"), api: path.join(root, "api"), remote, headers, remoteDb });
+    const page = await context.newPage();
+    try {
+      await page.goto(`${base}/m/${id}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      const found = await page.evaluate(async () => {
+        const link = document.querySelector('link[rel="alternate"][type="application/json+oembed"]');
+        const ask = async (href) => {
+          const reply = await fetch(href);
+          return { status: reply.status, type: reply.headers.get("content-type") || "", body: await reply.json().catch(() => null) };
+        };
+        const href = link ? link.href : "";
+        return { href, title: link?.title || "", name: document.querySelector("main h1")?.textContent || "",
+          json: href ? await ask(href) : null, small: href ? await ask(`${href}&maxwidth=300`) : null,
+          xml: href ? await ask(href.replace("format=json", "format=xml")) : null,
+          other: await ask(`/oembed?url=${encodeURIComponent("https://example.com/m/AAAAAAAAAA")}&format=json`) };
+      });
+      const card = found.json?.body || {};
+      check(`the oEmbed its page names (${found.href.replace(/^https?:\/\/[^/]+/, "")}): ${found.json?.status}, a ${card.type} `
+        + `card "${card.title}" by ${card.author_name || "nobody"}, ${card.width} x ${card.height}`,
+        new URL(found.href || "http://x/").pathname === "/oembed" && new URL(found.href).searchParams.get("url") === `${base}/m/${id}`
+        && found.json?.status === 200 && /json/.test(found.json.type) && card.version === "1.0" && card.type === "rich"
+        && card.provider_name === "Brickworks" && card.title === found.name && card.width === 560 && card.height === 420
+        && new RegExp(`^<iframe src="${base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/m/${id}/embed" width="560" height="420"`).test(card.html || "")
+        && /^https?:\/\/.+\.png$/.test(card.thumbnail_url || ""));
+      check(`oEmbed with maxwidth=300: ${found.small?.body?.width} x ${found.small?.body?.height}, four to three`,
+        found.small?.body?.width === 300 && found.small?.body?.height === 225 && /width="300" height="225"/.test(found.small.body.html));
+      check(`oEmbed asked for XML: ${found.xml?.status}; for a link that is no model here: ${found.other?.status}`,
+        found.xml?.status === 501 && found.other?.status === 404);
+    } catch (trouble) {
+      check(`oEmbed: asked (${String(trouble).split("\n")[0]})`, false);
+    } finally {
+      await context.close();
     }
   }
 

@@ -13,7 +13,7 @@ description: Gather models into collections of your own, follow other people's, 
 
 ## A collection's page {#page}
 
-Each public collection has a page at `/c/<id>`, with the site's header and footer: its cover, its name, its owner, its models as cards, and **Follow**. Following a collection puts each model added to it in your feed. A model's page says how many collections it is in.
+Each public collection has a page at `/c/<id>`, with the site's header and footer: its cover, its name, its owner, its models as cards, **Follow**, and **Share**, which opens the sheet a model's page has with the collection's link. Following a collection puts each model added to it in your feed. A model's page says how many collections it is in.
 
 ## The directory {#directory}
 
