@@ -72,10 +72,22 @@
 //                            what its owner says changed. What it says
 //                            about itself is kept on a republish that does
 //                            not say it again.
-//   GET  ?op=library         /library's sets, the LDraw library the app's
-//                            Library opens (api/_library.js), a page at a
-//                            time: searched (q), filtered (theme, decade,
-//                            size) and sorted (sort), from the store's index
+//   GET  ?op=library         /library's sets: every set in the catalogue
+//                            (api/_sets.js, sets364), those LDraw has a 3D
+//                            model of marked, a page at a time: searched
+//                            (q), filtered (theme, decade, year, size,
+//                            model, figs) and sorted (sort); the LDraw
+//                            shelf alone (api/_library.js) where this
+//                            deployment has no catalogue
+//   GET  ?op=catalog_set&set=N  /library/set/N: the set's page; with
+//                            op=catalog_parts (/library/set/N/parts.json,
+//                            .xml, .csv) its parts, op=catalog_picture
+//                            (/library/set/N.jpg) its picture drawn from
+//                            its parts (api/_flatlay.js), op=catalog_owned
+//                            how much of it the person signed in owns
+//   GET  ?op=sitemap_index   /sitemaps/index.xml: /sitemap.xml and the
+//                            sets' own (op=sitemap_sets&n=K,
+//                            /sitemaps/sets-K.xml)
 //   GET  ?op=set&id=X        /library/X: a set's page, made as a model's
 //                            page is; op=set_cover (/library/X.webp) its
 //                            card's picture, with as=cutout
@@ -186,12 +198,20 @@ import {
   librarySets, searchSets, setCard, setModel, setTitle, themeOf, themes,
 } from "./_library.js";
 // A model's parts list from its file, as the app's (site278).
-import { inventoryOf, paletteOf, partsTable, rebrickableCsv, wantedList } from "./_parts.js";
+import { inventoryOf, inventoryOfLots, paletteOf, partsTable, rebrickableCsv, wantedList } from "./_parts.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
 import { publicTrouble, shownPublicly } from "./_trust.js";
-import { freshPool, keyed } from "./_owned.js";
+import { freshPool, keyed, poolOf, readShard, shardOf } from "./_owned.js";
+// Every set in the catalogue, a page each (sets364), and the picture drawn
+// of one LDraw has no model of.
+import {
+  CREDIT as SETS_CREDIT, PER_PAGE as CATALOG_PER_PAGE, askSets, catalogCard, catalogSet, modelsBySet, ownedOf,
+  searchCatalog, setCatalog, setPage as catalogPage, setsBeside as catalogBeside, sitemapSets, themeTree, titleOf,
+  yearsOf,
+} from "./_sets.js";
+import { flatLayJpeg } from "./_flatlay.js";
 import { challengeLine, withWins } from "./_challenges.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
@@ -829,7 +849,9 @@ function setFacts(set, parts) {
     `<li class="pill">${escapeHtml(count(parts, "part"))}</li>`,
     box && Math.abs(parts - box) > 0.02 * box ? `<li class="pill">Its box: ${escapeHtml(count(box, "part"))}</li>` : "",
     set.steps ? `<li class="pill" data-steps="${Number(set.steps)}">${escapeHtml(count(set.steps, "step"))}, laid out by its modeller</li>` : "",
-    set.set ? `<li class="pill" data-set="${escapeHtml(set.set)}">Set ${escapeHtml(set.set)}</li>` : "",
+    // Its set's own page (sets364): every part, and what of it you own.
+    set.set ? (catalogSet(set.set) ? `<li><a class="pill" data-set="${escapeHtml(set.set)}" href="/library/set/${escapeHtml(catalogSet(set.set).set)}">Set ${escapeHtml(set.set)}</a></li>`
+      : `<li class="pill" data-set="${escapeHtml(set.set)}">Set ${escapeHtml(set.set)}</li>`) : "",
     set.alternate_of ? `<li class="pill">Another build of ${escapeHtml(set.alternate_of)}</li>` : "",
     set.theme ? `<li><a class="pill" href="/library?theme=${encodeURIComponent(set.theme)}">${escapeHtml(set.theme)}</a></li>` : "",
     decade ? `<li><a class="pill" href="/library?decade=${decade}">${Number(set.year)}</a></li>` : "",
@@ -1741,6 +1763,14 @@ async function read(request, response) {
   // The LDraw library's sets (api/_library.js): /library's list, and each
   // set's page, cover, file and parts.
   if (op === "library") return library(request, response);
+  if (op === "catalog_set") return catalogSetPage(response, origin, String(request.query?.set || ""));
+  if (op === "catalog_parts") {
+    return catalogParts(response, origin, String(request.query?.set || ""), String(request.query?.as || "json"));
+  }
+  if (op === "catalog_picture") return catalogPicture(response, origin, String(request.query?.set || ""));
+  if (op === "catalog_owned") return catalogOwned(request, response, origin, String(request.query?.set || ""));
+  if (op === "sitemap_index") return sitemapIndex(response, origin);
+  if (op === "sitemap_sets") return sitemapOfSets(response, origin, String(request.query?.n || ""));
   if (op === "set") return setPage(response, origin, id);
   if (op === "set_cover") return setCover(response, id, String(request.query?.as || "card"));
   if (op === "set_file") return setFile(response, id);
@@ -1894,6 +1924,8 @@ const COVER_CACHE = "public, max-age=86400, s-maxage=604800, stale-while-revalid
 /// themes [{name, n}], decades, sizes, sorts}.
 async function library(request, response) {
   const every = await librarySets();
+  const catalogue = setCatalog();
+  if (catalogue) return catalogList(request, response, catalogue, every);
   if (!every.length) {
     return response.status(503).setHeader("Cache-Control", "no-store")
       .json({ error: "The LDraw library cannot be read just now. Try again in a minute." });
@@ -1982,6 +2014,166 @@ async function setParts(response, id, as) {
   response.setHeader("X-Content-Type-Options", "nosniff");
   return partsAnswer(response, text ? partsOf(entry.file, Buffer.from(text)) : null,
     fileName(setTitle(entry), entry.id), as, { id, version: 1, newest: 1 });
+}
+
+// ---------------------------------------------------------------------------
+// Every set in the catalogue (sets364): /library's list, and each set's page
+// at /library/set/N, its parts, its picture and what of it a person owns
+// (api/_sets.js). The catalogue is beside this function and its parts lists
+// are the deployment's /sets/ shards: nothing here asks Rebrickable.
+
+/// What the CDN keeps of a set's page and parts: a day, given while it asks
+/// again for a week; the catalogue changes when a deploy brings a newer
+/// copy. Its picture a year: what it is drawn from changes only with that.
+const CATALOG_CACHE = "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800";
+const PICTURE_CACHE = "public, max-age=604800, s-maxage=31536000, stale-while-revalidate=31536000";
+
+/// /library's sets from the catalogue, LDraw's models of them marked:
+/// {models (the cards, web/card.js), total, page, pages, per_page, of,
+/// asked, themes [{name, n, sub}], decades, years, sizes, sorts}.
+function catalogList(request, response, catalogue, models) {
+  const asked = askSets(request.query || {});
+  const by = modelsBySet(models);
+  const found = searchCatalog(catalogue.sets, asked, by);
+  const { decades: decadesThere, years } = yearsOf(catalogue.sets);
+  response.setHeader("Cache-Control", SET_CACHE);
+  return response.status(200).json({
+    models: found.sets.map((entry) => catalogCard(entry, by)), total: found.total, page: found.page, pages: found.pages,
+    per_page: CATALOG_PER_PAGE, of: catalogue.sets.length, with_3d: [...by.values()].filter((one) => one.main).length,
+    asked, themes: themeTree(catalogue.sets), decades: decadesThere, years,
+    sizes: Object.fromEntries(Object.entries(SIZES).map(([key, size]) => [key, size.label])), sorts: SET_SORTS,
+    credit: SETS_CREDIT,
+  });
+}
+
+/// A set's inventory from its shard: [[part, colour, qty]], or null when
+/// the shard cannot be read.
+async function catalogRows(entry, origin) {
+  const shard = await readShard(shardOf(entry.set), origin).catch(() => null);
+  if (!shard) return null;
+  return shard.sets?.[entry.set.toLowerCase()]?.p || [];
+}
+
+/// Its parts list in the lots a model's list has (api/_parts.js).
+function catalogLots(rows) {
+  const table = partsTable();
+  return table && rows ? inventoryOfLots(rows, table) : null;
+}
+
+/// /library/set/N: the set's page.
+async function catalogSetPage(response, origin, number) {
+  const entry = catalogSet(number);
+  if (!entry) return html(response, 404, gonePage(origin, number.slice(0, 40), false));
+  const catalogue = setCatalog();
+  const by = modelsBySet(await librarySets().catch(() => []));
+  const lots = entry.lots ? catalogLots(await catalogRows(entry, origin)) : null;
+  const inside = entry.inside.map(([one, n]) => [catalogSet(one), n]).filter(([one]) => one);
+  const next = catalogBeside(catalogue.sets, entry).map((one) => catalogCard(one, by));
+  return html(response, 200, catalogPage({ origin, entry, chrome: siteChrome(), held: by.get(entry.set.toLowerCase()) || null,
+    inside, next, lots: lots ? lots.lots : [], cardHtml }), { cache: CATALOG_CACHE });
+}
+
+/// /library/set/N/parts.json, .xml and .csv: its parts, as a model's are.
+async function catalogParts(response, origin, number, as) {
+  const entry = catalogSet(number);
+  if (!entry) {
+    return response.status(404).setHeader("Cache-Control", "no-store").json({ error: "There is no such set in the catalogue." });
+  }
+  const rows = await catalogRows(entry, origin);
+  response.setHeader("Cache-Control", rows ? CATALOG_CACHE : "no-store");
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  return partsAnswer(response, catalogLots(rows), fileName(titleOf(entry), entry.set), as,
+    { set: entry.set, name: entry.name, credit: SETS_CREDIT });
+}
+
+/// /library/set/N.jpg: its most distinctive parts laid out and drawn from
+/// their own geometry (api/_flatlay.js), never anybody's photograph. 404 for
+/// a set with none to draw, or a store that will not give their geometry.
+async function catalogPicture(response, origin, number) {
+  const entry = catalogSet(number);
+  const table = partsTable();
+  const root = storeRoot();
+  const none = () => response.status(404).setHeader("Cache-Control", "no-store").end("");
+  if (!entry || !entry.picks.length || !table || !root) return none();
+  const parts = (await Promise.all(entry.picks.map(async (pick) => {
+    const [part, colour] = pick.split("/");
+    const mesh = table.parts[part]?.[6];
+    if (!mesh || !/^[0-9a-f]{8,64}$/.test(mesh)) return null;
+    const answer = await fetch(`${root}${mesh}.lbm`, { signal: AbortSignal.timeout(20000) }).catch(() => null);
+    if (!answer || !answer.ok) return null;
+    return { mesh: await answer.arrayBuffer(), hex: table.colours[colour]?.[1] || "a0a5a9" };
+  }))).filter(Boolean);
+  if (!parts.length) return none();
+  response.setHeader("Content-Type", "image/jpeg");
+  response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  response.setHeader("Cache-Control", parts.length === entry.picks.length ? PICTURE_CACHE : SET_CACHE);
+  return response.status(200).end(flatLayJpeg(parts, paletteOf(table)));
+}
+
+/// How much of set N the person signed in owns, as the app's collection
+/// counts it: {set, pieces, have, missing (lots), unknown (their sets no
+/// inventory has), wanted: {bricklink, rebrickable} (what they are missing,
+/// as each shop's list), left_out}. No collection is {pieces, have: 0,
+/// collection: false}. Never kept by anything between.
+async function catalogOwned(request, response, origin, number) {
+  response.setHeader("Cache-Control", "no-store");
+  const entry = catalogSet(number);
+  if (!entry) return response.status(404).json({ error: "There is no such set in the catalogue." });
+  let claims;
+  try {
+    claims = await verify(bearer(request), request);
+  } catch (trouble) {
+    return response.status(trouble?.status || 401).json({ error: trouble?.message || "Sign in to see what you own." });
+  }
+  const rows = await catalogRows(entry, origin);
+  if (!rows) return response.status(503).json({ error: "This set's parts cannot be read just now." });
+  const found = await db(`collections?owner=eq.${claims.sub}&select=sets,parts`).catch(() => null);
+  const collection = found && found[0];
+  const one = (lot) => keyed([lot])[0] || null;
+  if (!collection || (!(collection.sets || []).length && !(collection.parts || []).length)) {
+    const { pieces } = ownedOf(rows, [], one);
+    return response.status(200).json({ set: entry.set, pieces, have: 0, collection: false });
+  }
+  const pool = await poolOf(collection, (n) => readShard(n, origin));
+  const owned = ownedOf(rows, pool.lots, one);
+  const short = catalogLots(owned.missing) || { pieces: 0, lots: [] };
+  const bricklink = wantedList(short);
+  const rebrickable = rebrickableCsv(short);
+  return response.status(200).json({ set: entry.set, pieces: owned.pieces, have: owned.have, collection: true,
+    missing: short.lots.length, unknown: pool.unknown.length,
+    wanted: { bricklink: bricklink.text, rebrickable: rebrickable.text },
+    left_out: { bricklink: bricklink.left_out, rebrickable: rebrickable.left_out } });
+}
+
+/// /sitemaps/index.xml: the sitemaps there are, the site's own
+/// (/sitemap.xml) and the sets' pages', a few thousand to a file.
+function sitemapIndex(response, origin) {
+  const catalogue = setCatalog();
+  const files = catalogue ? sitemapSets(catalogue.sets, origin).length : 0;
+  const rows = [`${origin}/sitemap.xml`, ...Array.from({ length: files }, (_, k) => `${origin}/sitemaps/sets-${k + 1}.xml`)]
+    .map((loc) => `  <sitemap><loc>${escapeHtml(loc)}</loc></sitemap>`);
+  response.setHeader("Content-Type", "application/xml; charset=utf-8");
+  response.setHeader("Cache-Control", "public, max-age=0, s-maxage=86400, stale-while-revalidate=3600");
+  return response.status(200).end(`<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${rows.join("\n")}
+</sitemapindex>
+`);
+}
+
+/// /sitemaps/sets-K.xml: the K-th file of the sets' pages.
+function sitemapOfSets(response, origin, n) {
+  const catalogue = setCatalog();
+  const files = catalogue ? sitemapSets(catalogue.sets, origin) : [];
+  const k = /^[1-9][0-9]{0,2}$/.test(n) ? Number(n) : 0;
+  if (!k || k > files.length) return response.status(404).setHeader("Cache-Control", "no-store").end("");
+  response.setHeader("Content-Type", "application/xml; charset=utf-8");
+  response.setHeader("Cache-Control", "public, max-age=0, s-maxage=86400, stale-while-revalidate=3600");
+  return response.status(200).end(`<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${files[k - 1].map((loc) => `  <url><loc>${escapeHtml(loc)}</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>`).join("\n")}
+</urlset>
+`);
 }
 
 /// /gallery's models, a page at a time: the listed ones a query asks for

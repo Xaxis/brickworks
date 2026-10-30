@@ -26,8 +26,8 @@
 <meta charset="utf-8">
 <script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>LDraw library · Models of real sets, in Brickworks</title>
-<meta name="description" content="Every model of a real LEGO® set in LDraw's Official Model Repository, each credited to who modelled it: turn any of them in 3D, list its parts, and open it in Brickworks to build it or make it yours.">
+<title>Library · Every LEGO® set and its parts, in Brickworks</title>
+<meta name="description" content="Every LEGO® set there is, each with its whole parts list drawn by Brickworks: see what you own of it, open its parts in Brickworks, and build the ones LDraw's Official Model Repository has in 3D.">
 <link rel="canonical" href="https://brickworks.diy/library">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
@@ -35,16 +35,16 @@
 <link rel="manifest" href="/site.webmanifest">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
-<meta property="og:title" content="The LDraw library in Brickworks">
-<meta property="og:description" content="Every model of a real LEGO® set in LDraw's Official Model Repository: turn it in 3D, list its parts, open it in Brickworks.">
+<meta property="og:title" content="Every LEGO® set, in Brickworks">
+<meta property="og:description" content="Every LEGO® set there is, with its parts list: the ones LDraw has modelled in 3D to turn and build in Brickworks.">
 <meta property="og:url" content="https://brickworks.diy/library">
 <meta property="og:image" content="https://brickworks.diy/share.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="The Brickworks mark, a cube with a corner cut away, and the words: a complete CAD for LEGO® models, beside a render of a grey stone castle in bricks.">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="The LDraw library in Brickworks">
-<meta name="twitter:description" content="Every model of a real LEGO® set in LDraw's Official Model Repository: turn it in 3D, list its parts, open it in Brickworks.">
+<meta name="twitter:title" content="Every LEGO® set, in Brickworks">
+<meta name="twitter:description" content="Every LEGO® set there is, with its parts list: the ones LDraw has modelled in 3D to turn and build in Brickworks.">
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
 <meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
@@ -118,16 +118,16 @@
 		<!-- Answered by library.js, never sent: the page asks /api/share itself. -->
 		<form class="finder" id="finder" role="search" action="/library" method="get">
 			<div class="library-head">
-				<h1 id="library-h">LDraw library</h1>
+				<h1 id="library-h">Library</h1>
 				<label class="search">
 					<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
-					<span class="visually-hidden">Search the LDraw library</span>
+					<span class="visually-hidden">Search every set</span>
 					<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
 						placeholder="Search sets by name, number or theme">
 				</label>
 			</div>
-			<p class="lede">Models of real LEGO® sets from LDraw’s Official Model Repository, each credited to
-				who modelled it. Open one to turn it in 3D, list its parts, and build it in Brickworks.</p>
+			<p class="lede">Every LEGO® set there is, each with its whole parts list. Those marked 3D have a model from
+				LDraw’s Official Model Repository, credited to who modelled it, to turn and build in Brickworks.</p>
 			<div class="library-bar">
 				<!-- The gallery's own tabs, this one marked: the community's models are a tab away. -->
 				<nav class="tabs" aria-label="The gallery">

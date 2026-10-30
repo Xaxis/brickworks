@@ -160,6 +160,13 @@ const MAPPED = [
   [/^\/collections\/?$/, "people", "collections_page"],
   // The sitemap, with every listed model in it (api/share.js).
   [/^\/sitemap\.xml$/, "share", "sitemap"],
+  // Every set in the catalogue (api/_sets.js): its page, its parts, its
+  // picture, and the sitemaps of the sets' pages.
+  [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/parts[.](json|xml|csv)$/, "share", "catalog_parts"],
+  [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]jpg$/, "share", "catalog_picture"],
+  [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/?$/, "share", "catalog_set"],
+  [/^\/sitemaps\/index[.]xml$/, "share", "sitemap_index"],
+  [/^\/sitemaps\/sets-([1-9][0-9]{0,2})[.]xml$/, "share", "sitemap_sets"],
   // The daily cron's clean-up of files no published row owns.
   [/^\/api\/share\/sweep$/, "share", "sweep"],
 ];
@@ -265,6 +272,8 @@ http.createServer(async (incoming, outgoing) => {
     if (captured[3] && mapped[1] === "share") query.as = captured[3];
     if (captured[1] && mapped[2] === "page" && mapped[1] === "people") query.handle = captured[1];
     if (captured[1] && mapped[2] === "list_page") query.id = captured[1];
+    if (captured[1] && mapped[2].startsWith("catalog_")) Object.assign(query, { set: captured[1], as: captured[2] || "json" });
+    if (captured[1] && mapped[2] === "sitemap_sets") query.n = captured[1];
   }
   // The app is at /app, which the deployment sends on to the build with
   // its query (?view=<id>, ?copy=<id>) intact.
