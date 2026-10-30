@@ -1,11 +1,10 @@
 // Whether a request is Vercel's cron.
 //
-// tools/deploy.sh writes the project's "crons": /api/share/sweep and
-// /api/otp/canary, once a day each. Vercel calls them with
+// tools/deploy.sh writes the project's "crons": /api/share/sweep,
+// /api/otp/canary and /api/share/feature once a day each, and
+// /api/share/omr once a week. Vercel calls them with
 // "Authorization: Bearer <CRON_SECRET>" (set on the project, and in .env
-// for the checks that call them by hand); nobody else has it. The sweep
-// in api/share.js keeps its own copy of this from before, until share.js
-// next changes.
+// for the checks that call them by hand); nobody else has it.
 
 import { timingSafeEqual } from "node:crypto";
 

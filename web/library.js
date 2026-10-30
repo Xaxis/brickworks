@@ -150,6 +150,9 @@ import { browseBar } from "/browse.js";
     more.disabled = !byItself;
     const asked = question();
     asked.set("page", String(fresh ? 1 : page + 1));
+    // The OMR's arrivals staged for the lead to let out, which only a list
+    // asked with tests shows (api/share.js), as the gallery asks its own.
+    if (new URLSearchParams(location.search).get("tests") === "1") asked.set("tests", "1");
     try {
       const reply = await fetch(`/api/share?op=library&${asked}`, { headers: { accept: "application/json" } });
       if (reply.status !== 200) throw new Error(String(reply.status));

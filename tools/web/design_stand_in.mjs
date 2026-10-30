@@ -54,8 +54,11 @@ import { noticeGroups } from "../../api/_notifications.js";
 import { LATEST, designersFrom } from "../../api/_follows.js";
 // What a handle may not be, as the API says it (a new account's First steps).
 import { handleTrouble } from "../../api/_names.js";
+// What a featured model's card says (gallery362).
+import { featuredSaid } from "../../api/_featured.js";
 // The interest form on /plans, checked as the API checks it, and its words.
 import { GONE, KEPT, entryOf } from "../../api/plans.js";
+import { Refusal as BetaRefusal, applicationOf } from "../../api/_beta.js";
 // What a person earned (docs/SOCIAL.md U13), worked out as the server works it out.
 import { achievementsOf } from "../../api/people.js";
 // Whose picture is beside their name (supabase/avatars.sql), given as the
@@ -367,6 +370,8 @@ const CONNECTIONS = [{ id: "5f0c7a52-8d0e-4f53-9b7e-2d1f3c4b5a69", client: "Clau
 
 // This week's pick, worked out (not chosen) from the past seven days.
 const PICK = { model: MODEL_ID, week: { builds: 9, remixes: 1, tested: true, score: 34 } };
+// Today's featured model on the gallery's front (gallery362).
+const FEATURED = "DesignPar1";
 const WEEK = [
   { model: MODEL_ID, week: { builds: 9, remixes: 1, tested: true, score: 34 } },
   { model: "PriyaSpc01", week: { builds: 5, remixes: 0, tested: true, score: 20 } },
@@ -1703,6 +1708,21 @@ function share(method, params, who, state = {}) {
         model: shown(listModels({ size: 1000, ...own }).find((one) => one.id === PICK.model)) },
       small: { size: "small", label: SIZES.small.label, most: SIZES.small.most, models: small.slice(0, SHELF).map(shown),
         more: small.length > SHELF }, score: SCORE,
+      // Today in the gallery, as the daily cron keeps it (api/_featured.js):
+      // Gatehouse Starter, listed in May and Tested, with nothing done with
+      // it in the past 30 days; and a set of the LDraw library, which no one
+      // likes from a card.
+      ...(state.empty || LIVE ? {} : (() => {
+        const day = new Date().toISOString().slice(0, 10);
+        const why = { likes: 0, builds: 0, comments: 0, remixes: 0, tested: true };
+        const featured = listModels({ size: 1000, ...own }).find((one) => one.id === FEATURED);
+        return {
+          featured: featured ? { day, why, said: featuredSaid(why, featured.listed_at, day), model: shown(featured) } : null,
+          library: { day, why: { theme: "Castle", decade: "1980s" }, model: { id: "omr-6080-1", name: "King's Castle",
+            parts: 674, licence: "cc-by-2.0", modelled_by: { name: "Stefan Frenz", page: "https://library.ldraw.org/omr/sets/9" },
+            library: { set: "6080-1", theme: "Castle", year: 1984 } } },
+        };
+      })()),
       challenge: { id: CHALLENGE.id, title: CHALLENGE.title, state: CHALLENGE.state, starts_on: CHALLENGE.starts_on,
         ends_on: CHALLENGE.ends_on } });
   }
@@ -1720,11 +1740,51 @@ function share(method, params, who, state = {}) {
   return null;
 }
 
+/// The beta (api/_beta.js): open, 37 of its 100 spots given; the form
+/// checked as the server checks it, and kept, which nothing here keeps.
+const BETA_POOL = { pool: "beta", cap: 100, given: 37, left: 63 };
+const BETA_AT = "2026-10-29T18:00:00Z";
+function beta(method, body, who) {
+  if (method === "GET") {
+    return answer(200, { beta: "open", signed_in: Boolean(who), pool: BETA_POOL, early: false, test: false, application: null });
+  }
+  if (!who) return answer(401, { error: "Sign in to apply." });
+  try {
+    applicationOf(body);
+  } catch (trouble) {
+    if (trouble instanceof BetaRefusal) return answer(trouble.status, { error: trouble.message });
+    throw trouble;
+  }
+  return answer(200, { beta: "open", signed_in: true, pool: BETA_POOL, early: false, test: false, mail: "dry",
+    application: { status: "new", pool: "beta", early: false, spot: null, comp: "none", applied_at: BETA_AT,
+      decided_at: null, month_starts_at: null, month_ends_at: null, may_apply_again_at: null } });
+}
+
+/// The owner's queue of the beta (api/admin.js ?op=beta): one new, with
+/// what was read of it, and one approved, its month waiting for Pro.
+function betaQueue() {
+  const facts = { confirmed: true, made_at: BETA_AT, age_days: 12, models_kept: 3, models_shared: 1, same_inbox: 0,
+    same_inbox_applied: 0 };
+  const one = (account, email, status, more) => ({ account, email, status, early: false, spot: null,
+    build: "A working crane with a slewing ring and a two-speed winch, then a harbour around it.", ai: "claude",
+    background: "lego", background_line: "Ten years of Technic", link: "https://rebrickable.com/users/ada/mocs/",
+    terms: "2026-10-29", signals: { domain: "example.com", disposable: false, quality: { words: 16, issues: [] } },
+    applied_at: BETA_AT, decided_at: null, decided_by: null, note: null, comp: "none", comp_said: null,
+    month_starts_at: null, month_ends_at: null, facts, decisions: [], ...more });
+  return { beta: "open", tests: false, months: { billing: "off", live: "when Pro launches", test: "when billing is test" },
+    pool: BETA_POOL, counts: { new: 1, waitlist: 0, approved: 1, declined: 0, early: 0, pending: 1 },
+    applications: [one("00000000-0000-4000-8000-0000000000b1", "ada@example.com", "new", {}),
+      one("00000000-0000-4000-8000-0000000000b2", "bo@example.com", "approved", { spot: 1, comp: "pending",
+        comp_said: "Starts when Pro launches.", decided_at: BETA_AT, decided_by: "owner@example.com",
+        decisions: [{ decision: "approved", note: "Good crane", by: "owner@example.com", at: BETA_AT }] })] };
+}
+
 /// /api/admin: the site's owner's page.
 function admin(method, params, who, state) {
   if (!who) return answer(401, { error: SIGN_IN });
   if (!state.admin) return answer(404, { error: "not found" });
   const op = params.get("op") || "";
+  if (method === "GET" && op === "beta") return answer(200, betaQueue());
   if (method === "POST") return answer(200, { ok: true });
   // A reported photo, to look at: a picture, which the flow serves.
   if (op === "photo") return null;
@@ -1873,6 +1933,7 @@ function answered({ url, method = "GET", body, state = {} }) {
     // The interest form (api/plans.js): its refusals in its words, and
     // anything it takes answered as kept, which nothing here keeps.
     case "plans": {
+      if (params.get("op") === "beta") return beta(verb, body, who, state);
       if (verb !== "POST") return answer(405, { error: "POST {email, plan, billing, note} or {email, forget: true}" });
       try {
         return answer(200, { said: entryOf(body).forget ? GONE : KEPT });

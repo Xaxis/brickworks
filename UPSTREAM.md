@@ -5,7 +5,7 @@ blob hash, so a fix upstream can be found and brought over.
 
 | Here | From | Commit | Blob |
 | --- | --- | --- | --- |
-| api/_admission.js | Admission packages/client/src/index.ts | 76dfd2b | 3550e036dd13 |
+| api/_admission.js | Admission packages/client/src/index.ts | 0932894 | 8e9083c6a1a6 |
 
 **api/_admission.js** is Admission's client with its types taken out, and
 nothing else changed: Vercel runs `api/` here as plain JavaScript modules

@@ -30,11 +30,14 @@ lib:Top builds and this week's pick
 
 ## The front shelves {#shelves}
 
-Before you search, the gallery shows **This week's pick**, chosen by Brickworks, and **Small builds** for an afternoon. Signed in with [your collection](/docs/collection), **You can build now** shows models you own every part for, and **Sort › Parts I own** ranks the rest by how much of each you have. **Sort › Top builds** says how it weighs each model.
+Before you search, the gallery shows **This week's pick**, chosen by Brickworks, **Today in the gallery** and **Small builds** for an afternoon.
+
+**This week's pick** and **Today in the gallery** change by themselves. Every day Brickworks features one model, chosen from what people did with it in the past 30 days: likes, builds finished, comments and remixes, with a little extra for being new. A model featured once doesn't come back for four weeks. Beside it is one set from [the LDraw library](/docs/ldraw-library), each day from a different theme and decade, and never the same set twice in 90 days. The week's pick is chosen on Monday the same way, from the past seven days. Everyone sees the same choice all day; nothing is drawn at random. Signed in with [your collection](/docs/collection), **You can build now** shows models you own every part for, and **Sort › Parts I own** ranks the rest by how much of each you have. **Sort › Top builds** says how it weighs each model.
 
 <!-- covers
 ui:the gallery's front shelves
 lib:build with what I own
+lib:the gallery's daily choice
 -->
 
 ## A card {#card}

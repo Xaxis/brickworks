@@ -14,6 +14,9 @@
 #                                   the real Admission: ADMISSION_TEST_KEY
 #                                   and, when set, ADMISSION_TEST_WEBHOOK_SECRET
 #                                   from .env, for this deployment alone
+#   tools/deploy.sh --unit --beta-open
+#                                   and with the beta open (BRICKWORKS_BETA,
+#                                   api/_beta.js), for tools/web/beta_flow.mjs
 #   tools/deploy.sh --no-export     deploy what is already in build/web
 #   tools/deploy.sh --no-check      skip the browser proof (not advised)
 #   tools/deploy.sh --dir=DIR       deploy a build from elsewhere (a kept build: build/kept/<id>/web);
@@ -33,13 +36,14 @@ set -uo pipefail
 # shipping something else entirely.
 cd "$(dirname "$0")/.." || exit 1
 
-prod=0; unit=0; stand_in=0; billing_test=0; do_export=1; do_check=1; dir=build/web
+prod=0; unit=0; stand_in=0; billing_test=0; beta_open=0; do_export=1; do_check=1; dir=build/web
 for a in "$@"; do
   case "$a" in
     --prod) prod=1 ;;
     --unit) unit=1 ;;
     --billing-stand-in) stand_in=1 ;;
     --billing-test) billing_test=1 ;;
+    --beta-open) beta_open=1 ;;
     --no-export) do_export=0 ;;
     --no-check) do_check=0 ;;
     --dir=*) dir="${a#--dir=}"; do_export=0 ;;
@@ -50,6 +54,7 @@ if [ "$prod" = 1 ] && [ "$unit" = 1 ]; then echo "deploy: --unit is a preview, n
 if [ "$stand_in" = 1 ] && [ "$unit" = 0 ]; then echo "deploy: --billing-stand-in is a unit's preview's alone (--unit)"; exit 2; fi
 if [ "$billing_test" = 1 ] && [ "$unit" = 0 ]; then echo "deploy: --billing-test is a unit's preview's alone (--unit)"; exit 2; fi
 if [ "$billing_test" = 1 ] && [ "$stand_in" = 1 ]; then echo "deploy: --billing-test or --billing-stand-in, not both"; exit 2; fi
+if [ "$beta_open" = 1 ] && [ "$unit" = 0 ]; then echo "deploy: --beta-open is a unit's preview's alone (--unit)"; exit 2; fi
 
 [ -f .env ] && set -a && . ./.env && set +a
 # A test key only, by its shape (api/_billing.js KEYS): a live key never
@@ -201,7 +206,15 @@ fi
 # for share_probe): it takes away the files of models whose row went with
 # a deleted account. At 04:47 it calls /api/otp/canary (api/_canary.js), the
 # same way: a public sign-up, an unconfirmed address and a new person's code
-# played through, the owner mailed if one fails. Its pages send their own
+# played through, the owner mailed if one fails. At 00:07 it calls
+# /api/share/feature, which keeps the day's choice of the gallery's front
+# (api/_featured.js), and on Mondays at 05:37 /api/share/omr, the week's
+# look at LDraw's OMR for sets the library has not got (api/_omr_watch.js);
+# each under its own lock, each run written down (supabase/gallery_crons.sql).
+# At 05:07 the beta's daily run (/api/plans/beta-daily, api/_beta.js): a
+# tester's month given once Pro launches, a reminder three days before one
+# ends, and declined applications erased after 90 days.
+# Its pages send their own
 # security policy; the app's below does not change, since the viewer talks
 # only to its own site.
 for handler in api/*.js; do
@@ -409,7 +422,10 @@ cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
   "crons": [ { "path": "/api/share/sweep", "schedule": "17 4 * * *" },
-             { "path": "/api/otp/canary", "schedule": "47 4 * * *" } ],
+             { "path": "/api/otp/canary", "schedule": "47 4 * * *" },
+             { "path": "/api/share/feature", "schedule": "7 0 * * *" },
+             { "path": "/api/share/omr", "schedule": "37 5 * * 1" },
+             { "path": "/api/plans/beta-daily", "schedule": "7 5 * * *" } ],
   "overrides": { $overrides },
   "routes": [
     { "src": "/index[.]html", "status": 308, "headers": { "Location": "/" } },
@@ -421,6 +437,9 @@ $docs_moved
     { "src": "/(app|$pages)/", "status": 308, "headers": { "Location": "/\$1" } },
     { "src": "/api/share/sweep", "dest": "/api/share?op=sweep" },
     { "src": "/api/otp/canary", "dest": "/api/otp?op=canary" },
+    { "src": "/api/share/feature", "dest": "/api/share?op=feature" },
+    { "src": "/api/share/omr", "dest": "/api/share?op=omr" },
+    { "src": "/api/plans/beta-daily", "dest": "/api/plans?op=beta_daily" },
     { "src": "/sitemap[.]xml", "dest": "/api/share?op=sitemap" },
     { "src": "/api/(.*)", "dest": "/api/\$1" },
     { "src": "/[.]well-known/oauth-protected-resource(/.*)?", "dest": "/api/oauth?op=resource" },
@@ -573,6 +592,12 @@ if [ "$billing_test" = 1 ]; then
   blank+=(--env BRICKWORKS_BILLING=test --env "ADMISSION_KEY=$ADMISSION_TEST_KEY" --env ADMISSION_URL=
     --env "ADMISSION_WEBHOOK_SECRET=${ADMISSION_TEST_WEBHOOK_SECRET:-}")
   echo "deploy: plans on in test mode, against Admission's test mode$([ -n "${ADMISSION_TEST_WEBHOOK_SECRET:-}" ] && echo ", its webhook signed" || echo ", no webhook secret")"
+fi
+# The beta open for this deployment alone (api/_beta.js), never on the
+# project: production's stays off until the owner says.
+if [ "$beta_open" = 1 ]; then
+  blank+=(--env BRICKWORKS_BETA=open)
+  echo "deploy: the beta open"
 fi
 npx --yes vercel@48 deploy --prebuilt --prod --skip-domain --yes --archive=tgz \
   ${blank[@]+"${blank[@]}"} --token "$VERCEL_TOKEN" >"$log" 2>&1

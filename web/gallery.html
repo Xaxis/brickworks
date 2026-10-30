@@ -318,6 +318,16 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 			</div>
 			<!-- The front's shelves, after the first rows: hidden while anything is asked. -->
 			<div class="shelves" id="shelves" hidden>
+				<!-- Today's featured model and today's set from the LDraw library, as the
+				     daily cron kept them (api/_featured.js); each card says which by its
+				     data-slot, featured or library (gallery.js drawShelves). -->
+				<section class="shelf" id="spotlight" aria-labelledby="spotlight-h" hidden>
+					<div class="shelf-head">
+						<h2 id="spotlight-h">Today in the gallery</h2>
+						<a id="spotlight-library" href="/library">Browse the LDraw library</a>
+					</div>
+					<div class="models row" id="spotlight-models"></div>
+				</section>
 				<section class="shelf" id="ready" aria-labelledby="ready-h" hidden>
 					<div class="shelf-head">
 						<h2 id="ready-h">You can build now</h2>
@@ -434,27 +444,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 			</nav>
 		</div>
 		<div class="legal">
-			<p>
-				Models in the gallery are made and shared by the people credited, or by
-				someone who chose not to be; Brickworks does not check them before they
-				are listed. Something that should not be there? Press Report on its
-				page, or see <a href="/takedown">takedown requests</a>.
-			</p>
-			<p>
-				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
-				community, licensed
-				<a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a> and
-				<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
-				LDraw™ is a trademark owned and licensed by the Estate of James
-				Jessiman. This site is not affiliated with or endorsed by LDraw.org.
-				Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
-			</p>
-			<p>
-				LEGO® is a trademark of the LEGO Group of companies which does not
-				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
-				Minifigure and the Brick and Knob configurations are also trademarks
-				of the LEGO Group. BrickLink is a trademark of the LEGO Group too.
-			</p>
+			<p>LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group. Parts from the LDraw™ library (CC BY). <a href="/terms#notices">Notices</a></p>
 		</div>
 	</div>
 </footer>

@@ -76,15 +76,20 @@ export function shelf(raw) {
 let shelved = { raw: null, models: [] };
 
 /// Every set, as the store's index has them now ([index] reads it: the
-/// store's, kept ten minutes, unless a test gives its own). [] when the
-/// store cannot be read.
-export async function librarySets({ index = storeIndex } = {}) {
+/// store's, kept ten minutes, unless a test gives its own), and after them
+/// the OMR's arrivals [arrivals] gives (supabase/gallery_crons.sql: the live
+/// ones, and the staged ones for a list asked with tests), each held to the
+/// same shape and never in place of an index's own. [] when the store
+/// cannot be read.
+export async function librarySets({ index = storeIndex, arrivals = null } = {}) {
   const raw = await index().catch(() => []);
   if (raw !== shelved.raw) shelved = { raw, models: shelf(raw) };
-  return shelved.models;
+  const more = arrivals ? await arrivals().catch(() => []) : [];
+  if (!shelved.models.length || !Array.isArray(more) || !more.length) return shelved.models;
+  return shelf([...raw, ...more]);
 }
 
-/// A set by its id, or null.
+/// A set by its id, or null ([options] as librarySets').
 export async function librarySet(id, options) {
   if (!SET_ID.test(String(id || ""))) return null;
   return (await librarySets(options)).find((entry) => entry.id === id) || null;

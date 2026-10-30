@@ -13,10 +13,11 @@ the files and run api/plans.js's handler with the database played here:
   came from, keeps Pro as 'plus' (the table allows Plus and Creator, which
   both mean Pro now), and answers a first entry and a second in the same
   words;
-- nothing on the page takes money, Free lists no limit smaller than
-  today's (api/models.js keeps 500 models an account), and the page keeps
-  the promise to accounts that exist and says what stays free (gate M1,
-  docs/PLANS.md).
+- nothing on the page takes money, AI has no limit and no "AI build" is
+  said anywhere (the owner, 2026-10-29), Free says the 25 models
+  api/_billing.js keeps with an account and Pro any number, and the page
+  keeps the promise to accounts that exist and says what stays free (gate
+  M1, docs/PLANS.md).
 """
 
 from __future__ import annotations
@@ -30,7 +31,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SQL = (ROOT / "supabase/plan_interest.sql").read_text()
 PAGE = (ROOT / "web/plans.html").read_text()
-MODELS = (ROOT / "api/models.js").read_text()
+BILLING = (ROOT / "api/_billing.js").read_text()
 
 
 def code(text: str) -> str:
@@ -161,15 +162,19 @@ def test_the_page_takes_no_money_and_keeps_its_promises() -> None:
     assert "What stays free" in plain and "It takes nothing out of Free" in plain
     assert "Every account made before 29 October 2026, when this page changed, gets Pro, free and with no end date" in plain
     assert "Education is free" in plain
-    # The desktop app is never listed in Free, and AI builds are not Claude's.
+    # The desktop app is never listed in Free; AI is never counted.
     free_list = re.search(r'<article class="tier" id="free".*?<ul class="ticks">(.*?)</ul>', PAGE, re.S).group(1)
     assert "desktop" not in free_list
-    assert "Claude build" not in PAGE
-    # Free says today's limit for models kept with an account, never less.
-    most = int(re.search(r"export const MOST_MODELS = (\d+);", MODELS).group(1))
+    assert "Claude build" not in PAGE and not re.search(r"AI build", PAGE, re.I)
+    assert "AI without a limit" in plain
+    # Free says the models its plan keeps with an account, as Admission's
+    # fallback has it; Pro any number, and the table says both.
+    most = int(re.search(r'free: \{[^}]*savedModels: (\d+)', BILLING).group(1))
     free = re.search(r'<article class="tier" id="free".*?</article>', PAGE, re.S).group(0)
-    said = [int(n) for n in re.findall(r"up to (\d+)", free)]
-    assert said == [most], f"Free says up to {said}, the account keeps {most}"
+    said = [int(n) for n in re.findall(r"(\d+) models kept with your account", free)]
+    assert said == [most], f"Free says {said} models, the plan keeps {most}"
+    assert "up to 500" not in PAGE.lower()
+    assert f'<tr><th scope="row">Models kept with your account</th><td>{most}</td><td>Unlimited</td></tr>' in PAGE
     tiers = re.findall(r'<article class="tier[^"]*" id="([a-z]+)"', PAGE)
     assert tiers == ["free", "pro"], tiers
     pro = re.search(r'<article class="tier featured" id="pro".*?</article>', PAGE, re.S).group(0)
