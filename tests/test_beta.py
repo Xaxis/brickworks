@@ -411,7 +411,9 @@ def test_the_page_says_what_the_brief_asks() -> None:
                   'name="terms"', 'name="emails"'):
         assert field in PAGE, field
     assert 'maxlength="800"' in PAGE and 'maxlength="160"' in PAGE and 'maxlength="300"' in PAGE
-    assert "LEGO® " in PAGE and "LEGO " not in words.replace("LEGO®", "")
+    # LEGO® only as an adjective, marked, in the page's own words (the footer's notices are the shell's).
+    main = PAGE[PAGE.index("<main"):PAGE.index("</main>")]
+    assert "LEGO® " in main and not re.search(r"LEGO(?!®)", main)
 
 
 def test_terms_privacy_sitemap_and_docs_know_the_beta() -> None:
@@ -419,7 +421,7 @@ def test_terms_privacy_sitemap_and_docs_know_the_beta() -> None:
     privacy = (ROOT / "web/privacy.html").read_text()
     assert 'id="beta"' in terms and 'id="beta"' in privacy
     assert "not a subscription" in terms
-    for said in ("only the owner", "deleted with your account", "90 days", "IP address"):
+    for said in ("only the site’s owner", "deleted with your account", "90 days", "IP address"):
         assert said.lower() in privacy.lower(), said
     assert "https://brickworks.diy/beta</loc>" in (ROOT / "web/sitemap.xml").read_text()
     assert (ROOT / "docs-site/beta.md").exists()

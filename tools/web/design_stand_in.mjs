@@ -56,6 +56,7 @@ import { LATEST, designersFrom } from "../../api/_follows.js";
 import { handleTrouble } from "../../api/_names.js";
 // The interest form on /plans, checked as the API checks it, and its words.
 import { GONE, KEPT, entryOf } from "../../api/plans.js";
+import { Refusal as BetaRefusal, applicationOf } from "../../api/_beta.js";
 // What a person earned (docs/SOCIAL.md U13), worked out as the server works it out.
 import { achievementsOf } from "../../api/people.js";
 // Whose picture is beside their name (supabase/avatars.sql), given as the
@@ -1720,11 +1721,51 @@ function share(method, params, who, state = {}) {
   return null;
 }
 
+/// The beta (api/_beta.js): open, 37 of its 100 spots given; the form
+/// checked as the server checks it, and kept, which nothing here keeps.
+const BETA_POOL = { pool: "beta", cap: 100, given: 37, left: 63 };
+const BETA_AT = "2026-10-29T18:00:00Z";
+function beta(method, body, who) {
+  if (method === "GET") {
+    return answer(200, { beta: "open", signed_in: Boolean(who), pool: BETA_POOL, early: false, test: false, application: null });
+  }
+  if (!who) return answer(401, { error: "Sign in to apply." });
+  try {
+    applicationOf(body);
+  } catch (trouble) {
+    if (trouble instanceof BetaRefusal) return answer(trouble.status, { error: trouble.message });
+    throw trouble;
+  }
+  return answer(200, { beta: "open", signed_in: true, pool: BETA_POOL, early: false, test: false, mail: "dry",
+    application: { status: "new", pool: "beta", early: false, spot: null, comp: "none", applied_at: BETA_AT,
+      decided_at: null, month_starts_at: null, month_ends_at: null, may_apply_again_at: null } });
+}
+
+/// The owner's queue of the beta (api/admin.js ?op=beta): one new, with
+/// what was read of it, and one approved, its month waiting for Pro.
+function betaQueue() {
+  const facts = { confirmed: true, made_at: BETA_AT, age_days: 12, models_kept: 3, models_shared: 1, same_inbox: 0,
+    same_inbox_applied: 0 };
+  const one = (account, email, status, more) => ({ account, email, status, early: false, spot: null,
+    build: "A working crane with a slewing ring and a two-speed winch, then a harbour around it.", ai: "claude",
+    background: "lego", background_line: "Ten years of Technic", link: "https://rebrickable.com/users/ada/mocs/",
+    terms: "2026-10-29", signals: { domain: "example.com", disposable: false, quality: { words: 16, issues: [] } },
+    applied_at: BETA_AT, decided_at: null, decided_by: null, note: null, comp: "none", comp_said: null,
+    month_starts_at: null, month_ends_at: null, facts, decisions: [], ...more });
+  return { beta: "open", tests: false, months: { billing: "off", live: "when Pro launches", test: "when billing is test" },
+    pool: BETA_POOL, counts: { new: 1, waitlist: 0, approved: 1, declined: 0, early: 0, pending: 1 },
+    applications: [one("00000000-0000-4000-8000-0000000000b1", "ada@example.com", "new", {}),
+      one("00000000-0000-4000-8000-0000000000b2", "bo@example.com", "approved", { spot: 1, comp: "pending",
+        comp_said: "Starts when Pro launches.", decided_at: BETA_AT, decided_by: "owner@example.com",
+        decisions: [{ decision: "approved", note: "Good crane", by: "owner@example.com", at: BETA_AT }] })] };
+}
+
 /// /api/admin: the site's owner's page.
 function admin(method, params, who, state) {
   if (!who) return answer(401, { error: SIGN_IN });
   if (!state.admin) return answer(404, { error: "not found" });
   const op = params.get("op") || "";
+  if (method === "GET" && op === "beta") return answer(200, betaQueue());
   if (method === "POST") return answer(200, { ok: true });
   // A reported photo, to look at: a picture, which the flow serves.
   if (op === "photo") return null;
@@ -1873,6 +1914,7 @@ function answered({ url, method = "GET", body, state = {} }) {
     // The interest form (api/plans.js): its refusals in its words, and
     // anything it takes answered as kept, which nothing here keeps.
     case "plans": {
+      if (params.get("op") === "beta") return beta(verb, body, who, state);
       if (verb !== "POST") return answer(405, { error: "POST {email, plan, billing, note} or {email, forget: true}" });
       try {
         return answer(200, { said: entryOf(body).forget ? GONE : KEPT });

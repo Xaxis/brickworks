@@ -4,7 +4,8 @@
     "assets/**",
     "build/**",
     "shots/**",
-    "tests/fixtures/billing/**"
+    "tests/fixtures/billing/**",
+    "tests/fixtures/beta/**"
   ],
   "manual": [
     {
@@ -3785,6 +3786,41 @@
       "label": "relay timing",
       "entry": "tools/web/relay_timing.mjs",
       "reach": "node tools/web/relay_server.mjs 8790, then node tools/web/relay_timing.mjs --url=http://127.0.0.1:8790 [--rounds=4]   (with .env sourced; or --url=<preview> with BW_BYPASS)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "beta page",
+      "entry": "web/beta.html",
+      "reach": "<deployment>/beta   (BRICKWORKS_BETA off: Coming soon, no form, no count; open: the spots left live, signed out Sign in to apply, signed in the form (web/beta.js), applied where it stands; tools/web/beta_flow.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "applying to the beta",
+      "entry": "api/plans.js",
+      "reach": "curl -s '<deployment>/api/plans?op=beta'; POST it signed in with {build, ai, background, background_line, link, terms, emails}   (off: {beta: off} and POST 403; open: 401 signed out, 422 with why, 409 a second time; python3 tools/minitest.py tests/test_beta.py)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the beta's spots and months",
+      "entry": "api/_beta.js",
+      "reach": "python3 tools/minitest.py tests/test_beta.py   (the form checked at the edge, signals, spots 1-100 one at a time under the pool's lock in supabase/beta.sql, the month given at Admission's ADR-0015 comp or left pending until Pro launches, the emails, the daily run at /api/plans/beta-daily)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the beta's owner queue",
+      "entry": "web/beta-admin.html",
+      "reach": "<deployment>/beta-admin as MASTER_EMAIL (?tests=1 the checks' pool): GET /api/admin?op=beta, POST ?op=beta_decide&account=U {decision, note}, POST ?op=beta_grant",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "beta browser flow",
+      "entry": "tools/web/beta_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in --beta-open, or the beta off: Coming soon and refused; preview check [beta])",
       "area": "web"
     }
   ]

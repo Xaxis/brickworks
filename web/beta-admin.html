@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<!--
+  The beta's applications, for the site's owner (beta361, 2026-10-29):
+  each with its answers and what the server read of it, filtered by where
+  it stands, approved or declined with a note, every decision recorded
+  with who and when; the spots used and left; and Grant pending months,
+  which gives at Admission every month still waiting (once Pro launches).
+
+  The page is public, like /admin; what it shows is not. Every figure is
+  from /api/admin?op=beta, which checks the signed-in account is the
+  owner's (MASTER_EMAIL) before it reads a row, and answers anyone else
+  404. ?tests=1 shows the site's checks' own pool instead of the 100.
+  The script is beta-admin.js.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Beta testers · Brickworks</title>
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/site.css">
+<style>
+  /* Only this page's layout; the controls, cards and pills are site.css's. */
+  .queue { padding: var(--page-top) 0 var(--s-8); }
+  .queue h1 { margin-bottom: var(--s-1); }
+  .stats { display: grid; gap: var(--s-3); grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin: var(--s-5) 0; }
+  .stat { margin: 0; padding: var(--s-3) var(--s-4); background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-2); }
+  .stat b { display: block; font-size: var(--t-h2); }
+  .stat span { font-size: var(--t-tiny); color: var(--ink-soft); }
+  .tools { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; justify-content: space-between; }
+  /* Five choices fit a phone three to a row, as Menu's theme does. */
+  @media (width < 600px) { .tools .segmented { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; } }
+  .apps { display: grid; gap: var(--s-4); margin: var(--s-5) 0 0; padding: 0; list-style: none; }
+  .app h2 { margin: 0; overflow-wrap: anywhere; }
+  .app .top { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; justify-content: space-between; margin-bottom: var(--s-3); }
+  .app dl { display: grid; gap: var(--s-2) var(--s-4); margin: 0; }
+  @media (width >= 600px) { .app dl { grid-template-columns: 11em minmax(0, 1fr); } }
+  .app dt { color: var(--ink-soft); font-size: var(--t-small); }
+  .app dd { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+  .signals { display: grid; gap: var(--s-1); margin: 0; padding: 0; list-style: none; }
+  .signals .flag { color: var(--bad); font-weight: 600; }
+  .app form { display: grid; gap: var(--s-3); margin-top: var(--s-4); }
+  .app .said { margin: 0; min-height: 1.5em; color: var(--ink); }
+</style>
+<script type="module" src="/beta-admin.js"></script>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<main id="main" class="wrap queue">
+  <h1>Beta testers</h1>
+  <p class="sub">Applications to the beta, with what the server read of each. Nothing is decided for you: approve or decline each yourself.</p>
+
+  <div id="gate" class="card">
+    <p id="gate-note">Checking your sign-in…</p>
+    <p class="note">This page uses your sign-in to Brickworks in this browser. <a href="/app">Open Brickworks</a> and sign in there, then come back.</p>
+  </div>
+
+  <div id="view" hidden>
+    <div class="stats">
+      <p class="stat"><b id="n-given">—</b><span>spots given</span></p>
+      <p class="stat"><b id="n-left">—</b><span>spots left</span></p>
+      <p class="stat"><b id="n-new">—</b><span>new</span></p>
+      <p class="stat"><b id="n-waitlist">—</b><span>on the waitlist</span></p>
+      <p class="stat"><b id="n-pending">—</b><span>months still to give</span></p>
+    </div>
+    <p class="note" id="months"></p>
+    <div class="tools">
+      <div class="segmented" role="group" aria-label="Show">
+        <button type="button" data-status="new" aria-pressed="true">New</button>
+        <button type="button" data-status="waitlist" aria-pressed="false">Waitlist</button>
+        <button type="button" data-status="approved" aria-pressed="false">Approved</button>
+        <button type="button" data-status="declined" aria-pressed="false">Declined</button>
+        <button type="button" data-status="" aria-pressed="false">All</button>
+      </div>
+      <button class="cta ghost small" type="button" id="grant">Grant pending months</button>
+    </div>
+    <p class="said" id="said" role="status"></p>
+    <ol class="apps" id="apps"></ol>
+    <p class="state" id="empty" hidden>No applications here.</p>
+  </div>
+</main>
+</body>
+</html>
