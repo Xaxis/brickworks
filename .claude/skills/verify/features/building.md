@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand -->
 
 ## Sub-features
 
@@ -189,6 +189,24 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   orthographic, `,` Settings; never the engine's "QuoteLeft" or "Comma"). The
   menus can only draw the engine's name for a key, so one it misnames is
   handed the character it then draws (`Shell.menu_accel`).
+- `the app menu` (`ModelBar.mark`, `Shell.APP_MENU`): the mark (web/icon.svg,
+  drawn from its copy `assets/ui/mark.svg`, which `tools/web/make_icons.mjs`
+  writes and `tests/test_mark.py` holds byte for byte) and the app's name,
+  first in the menu bar, where the name in words was. It opens About
+  Brickworks, Brickworks website, Documentation, Account and, in a browser
+  only (`Shell.WEB_ONLY`), Back to brickworks.diy, which takes this tab to the
+  site's own `/` (a preview's on a preview). F6 from the model goes to it
+  first; Return opens it. Where the bar has no room for the name on one line
+  (`ModelBar._fit_mark`), the mark alone. Never on the model, a render or an
+  export. `app menu probe` (windowed) checks it first at the bar's left at
+  the window's width and narrower to 720 units, the bar one line and the
+  bar and toolbar exactly as with the old name in words, the rows, About from
+  them, the keys, and every row of it and of Select by running its own
+  command after the assistant is turned on (`Shell._fill` gives a command one
+  id for good; a menu made again once handed its ids to others).
+  `app menu in a browser` (preview check `app_menu`) does it in a browser at
+  1280 and 390 wide, reads the mark's colours off the canvas, and follows
+  Back to brickworks.diy to the site's header.
 - `tool modes` (`EditVerbs.mode`): Select (the default) and Place (a part in
   hand), and Move, Rotate, Hinge, Clone, Paint, Hide, Delete — a click on a part
   does that tool's one thing to it, or to the whole selection when the part is

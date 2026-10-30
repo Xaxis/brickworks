@@ -1,4 +1,4 @@
-// Render web/icon.svg to the sizes everything wants.
+// Render web/icon.svg to the sizes everything wants, and copy it for the app.
 //
 //   node tools/web/make_icons.mjs
 //   node tools/web/make_icons.mjs assets/splash.png     only the ones named
@@ -18,7 +18,7 @@
 // the deploy check and it renders the SVG with the same engine the tab
 // will.
 import { launch } from "./browser.mjs";
-import { readFileSync, mkdirSync } from "node:fs";
+import { readFileSync, mkdirSync, copyFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 
 const root = resolve(dirname(new URL(import.meta.url).pathname), "../..");
@@ -44,6 +44,17 @@ const WANTED = [
   ["assets/splash.png", [2560, 1440], "splash"],
 ];
 const ONLY = process.argv.slice(2);
+
+// And the mark itself for the app, which reads no file under web/ (its
+// .gdignore): the menu bar's mark (ModelBar.mark) draws this copy at the
+// screen's density, as the toolbar draws its icons. A copy, byte for byte:
+// tests/test_mark.py fails when it is not.
+const COPY = "assets/ui/mark.svg";
+if (!ONLY.length || ONLY.includes(COPY)) {
+  copyFileSync(resolve(root, "web/icon.svg"), resolve(root, COPY));
+  console.log(`  ${COPY}  a copy of web/icon.svg`);
+}
+if (ONLY.length && ONLY.every((one) => one === COPY)) process.exit(0);
 
 const browser = await launch({ signedOut: true });  // a page of the site, not the app
 for (const [where, size, ground] of WANTED) {

@@ -681,6 +681,9 @@ func _tell_page() -> void:
 		# What the last open cost, phase by phase, in ms (ModelStore.open_phases):
 		# tools/web/library_flow.mjs says it.
 		"open_phases": _store.open_phases,
+		# The rows of the app's menu while it is open (ModelBar.mark), for
+		# tools/web/app_menu_flow.mjs: [] while it is shut.
+		"app_menu": _open_rows(_bar.mark.get_popup()) if _bar != null and _bar.mark != null else [],
 		# Who made the model and on what terms, when it is someone else's
 		# (ModelStore.credit): tools/web/library_flow.mjs reads it.
 		"credit": _store.credit,
@@ -1117,6 +1120,8 @@ func words_shown() -> PackedStringArray:
 			if button != null:
 				_rows_in(button.get_popup(), out)
 		_rows_in(_shell.context, out)
+	if _bar != null and _bar.mark != null:
+		_rows_in(_bar.mark.get_popup(), out)
 	return out
 
 
@@ -1134,6 +1139,15 @@ func _words_in(node: Node, out: PackedStringArray) -> void:
 		out.append((node as AcceptDialog).dialog_text)
 	for child: Node in node.get_children():
 		_words_in(child, out)
+
+
+## A menu's rows as it shows them, a line as "-", while it is open.
+func _open_rows(popup: PopupMenu) -> Array:
+	var out: Array = []
+	if popup.visible:
+		for index: int in popup.item_count:
+			out.append("-" if popup.is_item_separator(index) else popup.get_item_text(index))
+	return out
 
 
 func _rows_in(popup: PopupMenu, out: PackedStringArray) -> void:

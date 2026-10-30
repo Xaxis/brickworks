@@ -40,7 +40,11 @@ func _run() -> void:
 	for menu: Array in Shell.MENUS:
 		menus.append({"title": menu[0], "items": _items(menu[1], commands, titles)})
 	var context: Array = _items(Shell.ON_A_PART, commands, titles)
-	var text: String = JSON.stringify({"menus": menus, "on_a_part": context}, "\t", false) + "\n"
+	# The app's own menu, from the mark (Shell.APP_MENU): every row, the
+	# browser's own among them, as a desktop window shows only some.
+	var app_menu: Array = _items(Shell.APP_MENU, commands, titles)
+	var text: String = JSON.stringify({"app_menu": app_menu, "menus": menus, "on_a_part": context},
+		"\t", false) + "\n"
 	var file := FileAccess.open(out if out.begins_with("/") else ProjectSettings.globalize_path("res://").path_join(out), FileAccess.WRITE)
 	if file == null:
 		print("docs_menus FAIL: could not write %s" % out)

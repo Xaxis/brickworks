@@ -14,8 +14,19 @@ var store: ModelStore
 var world: BrickWorld
 var builder: Builder
 
-## Where the menus go, between the name of the app and the model's.
+## The app's own menu, first in the row: the mark and the app's name, as
+## the site's header has them, the way a CAD program's top left has its
+## logo. Shell fills it (Shell.APP_MENU). Where the row has no room for the
+## name on one line, the mark alone ([method _fit_mark]).
+var mark: MenuButton
+## Where the menus go, between the app's menu and the model's name.
 var menus: HBoxContainer
+
+const NAME := "Brickworks"
+## The mark (web/icon.svg; this copy is tools/web/make_icons.mjs's), drawn
+## this many units tall.
+const MARK := "res://assets/ui/mark.svg"
+const MARK_TALL := 18.0
 
 var _name: LineEdit
 ## Written by say(); the status bar shows it (use_status).
@@ -105,13 +116,36 @@ func _build() -> void:
 	row.add_theme_constant_override("v_separation", 2)
 	add_child(row)
 
-	var mark := Label.new()
-	mark.text = "Brickworks"
+	mark = MenuButton.new()
+	mark.name = "app_menu"
+	mark.text = NAME
+	mark.flat = true
+	# Pointed at with another menu open, it opens in that one's place, as
+	# File does from Edit.
+	mark.switch_on_hover = true
+	mark.set_disable_shortcuts(true)
+	# Tab and the arrows reach it (F6 goes in here first); a click leaves
+	# the keys with the model.
+	FocusGuard.by_keyboard(mark)
 	mark.add_theme_font_size_override("font_size", 14)
-	mark.modulate = Color(1, 1, 1, 0.75)
-	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	mark.add_theme_color_override("font_color", Color(1, 1, 1, 0.75))
+	mark.add_theme_color_override("font_focus_color", Color(1, 1, 1, 0.75))
+	mark.add_theme_color_override("font_hover_color", Color.WHITE)
+	mark.add_theme_color_override("font_pressed_color", Color.WHITE)
+	mark.add_theme_constant_override("h_separation", 7)
 	mark.custom_minimum_size = Vector2(0, 28)
+	mark.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var face := StyleBoxEmpty.new()
+	face.content_margin_left = 2
+	face.content_margin_right = 4
+	for state: String in ["normal", "hover", "pressed", "disabled"]:
+		mark.add_theme_stylebox_override(state, face)
+	mark.add_theme_stylebox_override("focus", FocusGuard.ring())
+	mark.accessibility_name = NAME
 	row.add_child(mark)
+	row.sort_children.connect(_fit_mark, CONNECT_DEFERRED)
+	get_viewport().size_changed.connect(_draw_mark)
+	_draw_mark.call_deferred()
 
 	var gap := Control.new()
 	gap.custom_minimum_size = Vector2(8, 0)
@@ -332,8 +366,47 @@ func claude_tab_words() -> String:
 	return _claude_words.text if _claude_tab != null and _claude_tab.visible else ""
 
 
+## The mark at the screen's own density, sharp at 1x and at 2x alike, as
+## the toolbar draws its icons (Toolbar._draw_icons).
+func _draw_mark() -> void:
+	var density: float = Icons.density(mark)
+	if is_equal_approx(density, _mark_drawn_at):
+		return
+	_mark_drawn_at = density
+	var texture: ImageTexture = Icons.texture_for(MARK, MARK_TALL, density)
+	mark.icon = texture
+	mark.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	if texture != null:
+		mark.add_theme_constant_override("icon_max_width", roundi(texture.get_width() / density))
+
+
+var _mark_drawn_at: float = 0.0
+
+
+## The app's name beside the mark while the row holds everything on one
+## line with it, and the mark alone where it would not: the row wraps
+## rather than run off the side, and a second line would push the toolbar
+## and the model down. At 720 units across (a narrow browser) the row has
+## about 40 to spare without the menu (2026-10-29), so a Claude tab
+## showing, or Account's count, takes the name first.
+func _fit_mark() -> void:
+	var row: HFlowContainer = mark.get_parent()
+	var gap: int = row.get_theme_constant("h_separation")
+	var wide: float = 0.0
+	for child: Node in row.get_children():
+		var control: Control = child as Control
+		if control != null and control != mark and control.visible:
+			wide += control.get_combined_minimum_size().x + gap
+	var word: float = mark.get_theme_font("font").get_string_size(NAME, HORIZONTAL_ALIGNMENT_LEFT,
+		-1, mark.get_theme_font_size("font_size")).x + mark.get_theme_constant("h_separation")
+	var bare: float = mark.get_combined_minimum_size().x - (0.0 if mark.text.is_empty() else word)
+	var named: String = NAME if wide + bare + word <= row.size.x else ""
+	if mark.text != named:
+		mark.text = named
+
+
 func controls_by_name() -> Dictionary:
-	var out: Dictionary = {"model_name": _name, "account": _account}
+	var out: Dictionary = {"model_name": _name, "account": _account, "app_menu": mark}
 	if _claude_tab != null and _claude_tab.is_visible_in_tree():
 		out["claude_tab"] = _claude_words
 	# New's question, for tools/web/progress_check.mjs.
