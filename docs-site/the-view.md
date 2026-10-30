@@ -44,6 +44,14 @@ The cube in the corner turns the view to the face you click and shows which way 
 ui:view cube
 -->
 
+## A second view beside the model {#split}
+
+**View › Split** ([[F8]]) puts a second view of the model beside the first, square on from the front. **Front**, **Top**, **Side** and **Back** at its top turn it; **×** goes back to one view. It looks where the main view looks, at the same size: sliding or zooming moves both, and turning the main view leaves the second square on. A part in hand shows in both, and a click in the second view puts it down, picks or connects there as it would in the first: a part for a side stud or under an overhang is easier to aim square on. The split takes its room from the model's, never from the parts bin or the panels, and the app keeps it on for next time. In a window too narrow for two views, a phone or a tablet held upright, it is greyed.
+
+<!-- covers
+ui:split view
+-->
+
 ## Cut away and X-ray {#see-inside}
 
 - **View › Cut away** ([[K]]) puts a plane through the model. Drag the strip's slider to move it, choose **X**, **Y** or **Z**, **Flip** to cut the other side away, and **Ghost** to leave a faint copy of what is cut.

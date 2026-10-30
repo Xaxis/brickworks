@@ -941,6 +941,13 @@
     },
     {
       "kind": "ui",
+      "label": "split view",
+      "entry": "src/ui/split_view.gd",
+      "reach": "tools/probe.sh split_probe   (PROBE_SIZE=1400x900 too; by hand: View, Split or F8, then Front, Top, Side or Back over the second view, and a part put down from it)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "navigation presets",
       "entry": "src/camera/view_prefs.gd",
       "reach": "godot --path .  (Settings, Navigate like: Studio, Blender or Mecabricks; then drag with each button)",

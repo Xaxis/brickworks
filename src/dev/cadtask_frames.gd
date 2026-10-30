@@ -29,6 +29,10 @@
 ## then tinted when the weighing it asks for comes in, how long that took,
 ## and how many parts read red and amber) and every act's frames with it on.
 ##
+## --split: View, Split turned on before the first model (SplitView): every
+## act's frames with the second view drawn beside the main one, the model's
+## room both views, so the orbit begins and the sweep crosses where they meet.
+##
 ## Nothing is judged here: tools/bench/cadtask.py reads the numbers. They
 ## are this machine's frames, on whatever draws for xvfb (software here).
 ## Not in the suite.
@@ -41,6 +45,7 @@ var _store: ModelStore
 var _view: Rect2
 var _last_us: int = 0
 var _stress: bool = false
+var _split: bool = false
 
 
 func _initialize() -> void:
@@ -58,6 +63,8 @@ func _run() -> void:
 			out_path = argument.trim_prefix("--frames-out=")
 		elif argument == "--stress":
 			_stress = true
+		elif argument == "--split":
+			_split = true
 		else:
 			paths.append(argument)
 	if out_path.is_empty() or paths.is_empty():
@@ -74,6 +81,12 @@ func _run() -> void:
 	_world = _main.get("_world")
 	_builder = _main.get("_builder")
 	_store = _main.get("_store")
+	if _split:
+		(_main.get("_split") as SplitView).set_on(true)
+		for _n: int in 30:
+			await process_frame
+		print("frames: the split %s" % ("on" if (_main.get("_split") as SplitView).is_showing()
+			else "WANTED BUT NOT SHOWN"))
 	var rows: Array = []
 	for path: String in paths:
 		print("frames: %s" % path.get_file())
@@ -81,6 +94,7 @@ func _run() -> void:
 		var file: FileAccess = FileAccess.open(out_path, FileAccess.WRITE)
 		file.store_string(JSON.stringify({"renderer": RenderingServer.get_video_adapter_name(),
 			"window": [DisplayServer.window_get_size().x, DisplayServer.window_get_size().y],
+			"split": _split and (_main.get("_split") as SplitView).is_showing(),
 			"models": rows}, " "))
 		file.close()
 	print("frames: %d models written to %s" % [rows.size(), out_path])

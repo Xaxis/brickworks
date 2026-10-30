@@ -326,6 +326,14 @@ func buttons() -> Dictionary:
 	return _sides
 
 
+## The same, as a page is told of them (Main._page_controls): split_top...
+func controls_by_name() -> Dictionary:
+	var out: Dictionary = {}
+	for name: String in _sides:
+		out["split_" + name] = _sides[name]
+	return out
+
+
 ## The picture this view drew last, for a probe to read.
 func picture() -> Image:
 	return _view.get_texture().get_image()

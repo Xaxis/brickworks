@@ -4687,6 +4687,14 @@
       "tests": []
     },
     {
+      "id": "ui:split view",
+      "kind": "ui",
+      "entry": "src/ui/split_view.gd",
+      "reach": "tools/probe.sh split_probe   (PROBE_SIZE=1400x900 too; by hand: View, Split or F8, then Front, Top, Side or Back over the second view, and a part put down from it)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:status bar",
       "kind": "ui",
       "entry": "src/ui/status_bar.gd",

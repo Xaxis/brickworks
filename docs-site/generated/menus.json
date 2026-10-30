@@ -764,6 +764,12 @@
 					"line": true
 				},
 				{
+					"name": "split_view",
+					"words": "Split",
+					"key": "F8",
+					"tip": "A second view beside the model, square on from the front, top, side or back"
+				},
+				{
 					"name": "full_screen",
 					"words": "Full screen",
 					"key": "F11",
@@ -1265,7 +1271,7 @@
 					"name": "tour",
 					"words": "Take the tour",
 					"key": "",
-					"tip": ""
+					"tip": "Build your first model, seven short steps done in the app"
 				}
 			]
 		}
@@ -1457,6 +1463,7 @@
 		"copy": "Ctrl-C",
 		"paste": "Ctrl-V",
 		"duplicate": "Ctrl-D",
+		"pattern": "Ctrl-shift-D",
 		"delete": "Delete",
 		"select_all": "Ctrl-A",
 		"select_none": "",
@@ -1555,6 +1562,7 @@
 		"panel_properties": "",
 		"show_properties": "",
 		"panel_keys": "",
+		"split_view": "F8",
 		"full_screen": "F11",
 		"timeline": "B",
 		"parts_list": "P",
@@ -1586,6 +1594,7 @@
 		"mode_move": "shift-X",
 		"mode_rotate": "shift-O",
 		"mode_hinge": "shift-I",
+		"mode_connect": "N",
 		"mode_clone": "shift-V",
 		"mode_paint": "shift-P",
 		"mode_hide": "shift-G",

@@ -740,6 +740,8 @@ func _tell_page() -> void:
 		# tell a click that selected from one that put a part down.
 		"mode": _verbs.mode if _verbs != null else "",
 		"selected": _builder.selection.size(),
+		# View, Split: whether the second view shows.
+		"split": _split != null and _split.is_showing(),
 		# ...and which, the first few: tools/web/centre_check.mjs clicks a
 		# part and asks whether that one was taken.
 		"selection": _builder.selection.keys().slice(0, 12),
@@ -1003,6 +1005,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_brickify.controls_by_name())
 	if _shell != null:
 		named.merge(_shell.status.working.controls_by_name())
+	if _split != null:
+		named.merge(_split.controls_by_name())
 	if _phone != null:
 		named.merge(_phone.controls_by_name())
 	if _mosaic != null and _mosaic.visible:
@@ -1224,6 +1228,8 @@ func _layout_for_page(to_window: Transform2D, per_css: float) -> Dictionary:
 			"part": _world.get_brick(int(one["brick"])).part_id}))
 	return {"view": css.call(cover["view"]), "samples": cover["samples"],
 		"covered": covered, "panels": panels, "columns": _columns,
+		# The second view's picture, while View, Split shows it.
+		"split": css.call(_split.picture_rect()) if _split != null and _split.is_showing() else [],
 		"centre": point.call(_camera.unproject_position(_built_bounds().get_center())),
 		"targets": targets}
 
