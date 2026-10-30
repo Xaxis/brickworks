@@ -184,12 +184,12 @@ func _ready() -> void:
 	row.add_child(_words)
 	_named["page_words"] = _words
 	# The selected words' or picture's turn and opacity, typed in.
-	_turn_box = _number_box("Turn ", "°", -180.0, 180.0,
+	_turn_box = _number_box("Turn", "°", -180.0, 180.0,
 		"The selected words or picture turned about their middle, in degrees clockwise")
 	_turn_box.value_changed.connect(func(value: float) -> void: _set_note("turn", value))
 	row.add_child(_turn_box)
 	_named["page_turn"] = _turn_box
-	_opacity_box = _number_box("Opacity ", "%", BookletLooks.FAINTEST * 100.0, 100.0,
+	_opacity_box = _number_box("Opacity", "%", BookletLooks.FAINTEST * 100.0, 100.0,
 		"How solid the selected words or picture are printed: 100% solid, less to fade them")
 	_opacity_box.value_changed.connect(func(value: float) -> void: _set_note("opacity", value / 100.0))
 	row.add_child(_opacity_box)
@@ -263,6 +263,7 @@ func _number_box(prefix: String, suffix: String, least: float, most: float,
 	box.max_value = most
 	box.step = 1.0
 	box.editable = false
+	box.select_all_on_focus = true
 	box.tooltip_text = tip
 	box.custom_minimum_size = Vector2(124, 0)
 	box.add_theme_font_size_override("font_size", 12)
@@ -472,6 +473,16 @@ func _show_page() -> void:
 			item["arrow"] = entry.drawn_arrows[at]
 			item["points"] = points
 			item["base"] = item["rect"]
+	# Picked up as they are drawn: words and pictures of the designer's over
+	# every step's own things, arrows over those, the handles over all. In
+	# the order they were added, a later step's picture took the click
+	# meant for the words on an earlier step's page drawn over it.
+	for kinds: Array in [["text", "image"], ["arrow"]]:
+		for item: Dictionary in _items:
+			if item["kind"] in kinds:
+				_canvas.move_child(item["control"], -1)
+	_canvas.move_child(_handle, -1)
+	_canvas.move_child(_knob, -1)
 	for at: int in _items.size():
 		if _item_name(at) == keep:
 			_select(at)

@@ -1413,11 +1413,16 @@ picture the assistant is shown.
   clear behind the model (`Entry.clear`, WebP). The page editor outlines
   what moved in red and says it; `booklet_layout` says "overlapping: ...".
   Arrows: Draw an arrow (`page_add_arrow`), a drag on the canvas, the
-  selected arrow's `page_arrow_start` / `_end` / `_bend` handles,
-  `page_arrow_colour`, `page_arrow_width`, Delete; `0 !BRICKWORKS ARROW
-  RED|BLACK width x1 y1 x2 y2 [bx by]` on the step whose room it points into
-  (Shell.change_look "arrow", "arrow_edit"), printed by `Booklet.drawn_arrow`
-  (`path.drawn-arrow`); `edit_booklet arrow=`, whose answer says whether the
+  selected arrow's `page_arrow_start` / `_end` / `page_arrow_bend_N`
+  handles and `page_arrow_add_N` (the middle of each stretch: drag it to add
+  a bend; double-click a bend to take it out), `page_arrow_colour`,
+  `page_arrow_width`, Delete; `0 !BRICKWORKS ARROW RED|BLACK width x1 y1 x2
+  y2 [bx by ...]` (up to `BookletLooks.MOST_BENDS` bends; `Shell._arrow_of`
+  drops a bend within 1 mm of a straight stretch) on the step whose room it
+  points into (Shell.change_look "arrow", "arrow_edit"), printed by
+  `Booklet.drawn_arrow` (`path.drawn-arrow`; a quadratic through one bend, a
+  Catmull-Rom curve through more, `BookletLooks.arrow_line`); `edit_booklet
+  arrow=`, whose answer says whether the
   tip is on the step's new parts (`AppTools._aimed`, `Entry.adds` from
   `BookletMaker._adds`), and `booklet_layout` gives each step's "its new
   parts at x-x x y-y mm"; `booklet_probe` holds every drawn step's new parts
@@ -1426,7 +1431,24 @@ picture the assistant is shown.
   past `BookletMaker.TURN_ROUND` (60°) round or `TURN_OVER` (45°) up or down
   (`_round_from`); `page_sign_N` on the page editor, Delete / Put back
   (change_look "sign", `0 !BRICKWORKS TURN_SIGN OFF`), `edit_booklet
-  sign=`. A callout's own pages (`kind` "callout" in `page_state`, framed)
+  sign=`. Words and pictures turn by the knob over the selected one
+  (`page_turn_knob`, settling on 15° within 3°, `PageEditor.knob_turn`) or
+  `page_turn`, and fade by `page_opacity` (change_look "note" `turn=`,
+  `opacity=`; `0 !BRICKWORKS NOTE TURN 30 OPACITY 50` after the note's
+  line), printed as CSS `transform:rotate()` / `opacity` on the note
+  (`Booklet.note_style`), read by `BookletRead._turned` into the op's
+  turn, pivot and alpha: the PDF draws it under a `cm` about its middle and
+  an ExtGState `/ca` (`BookletPdf._how`), the PNG under a canvas transform
+  and modulate. Guides: drag out of `page_ruler_top` / `page_ruler_left`
+  (`PageEditor.guide`, change_look "guide", `0 !BRICKWORKS GUIDE X|Y mm` in
+  the booklet's look, `BookletLooks.guides`), drag one back into its ruler
+  to take it away; `Booklet.snapped_to` snaps to a guide within 2.5 mm
+  before anything else; never printed. `page_state` gives "notes" (each
+  one's turn and opacity) and "ruler_guides". `booklet_edit_probe
+  --only=objects` turns a picture 30° and fades words to 50% (three actions
+  or fewer each), bends an arrow through two points, drops words by two
+  guides, and finds each in the HTML, the PDF's content stream and the 300
+  dpi PNG's ink, then undoes them all and reopens the file. A callout's own pages (`kind` "callout" in `page_state`, framed)
   are among the editor's pages; their steps carry the sub-model's looks
   (`BookletMaker._hand_look`, plan index as the entry's "step" meta), are
   settled inside the frame (`Booklet._room_of`), and are drawn with the

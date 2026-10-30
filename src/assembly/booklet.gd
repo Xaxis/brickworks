@@ -1267,9 +1267,9 @@ static func note_style(note: Dictionary, at: Rect2) -> String:
 	var turn: float = BookletLooks.turn_of(note)
 	if not is_zero_approx(turn):
 		how += ";transform:rotate(%sdeg);transform-origin:calc(%s * var(--mm)) calc(%s * var(--mm))" % [
-			_n(turn), _n(at.size.x * 0.5), _n(at.size.y * 0.5)]
+			BookletLooks._number(snappedf(turn, 0.1)), _n(at.size.x * 0.5), _n(at.size.y * 0.5)]
 	if BookletLooks.opacity_of(note) < 1.0:
-		how += ";opacity:%s" % _n(BookletLooks.opacity_of(note))
+		how += ";opacity:%s" % BookletLooks._number(snappedf(BookletLooks.opacity_of(note), 0.01))
 	return how
 
 
