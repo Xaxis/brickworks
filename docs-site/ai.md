@@ -118,4 +118,4 @@ lib:reference pictures
 lib:find a reference picture
 -->
 
-Read on: [what an AI build is](/docs/ai-builds), and [fresh eyes](/docs/fresh-eyes), the second look every new design gets.
+Read on: [how the AI builds](/docs/how-ai-builds), and [fresh eyes](/docs/fresh-eyes), the second look every new design gets.

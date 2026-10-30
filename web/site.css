@@ -1214,3 +1214,68 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 	position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
 	overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
+
+/* -- an inner page ----------------------------------------------------
+   site359, 2026-10-29, for site356's system to keep: every page that is
+   not a landing page (the docs, settings, the FAQ, the legal pages,
+   /compare, /changelog, /feed, /notifications, /admin, the 404) opens on
+   the same head, lit as the landing pages' opening is (.halo), and a page
+   of parts keeps what is on it in view beside them.
+
+   .page-hero: the head, the whole width: the yellow's light from above
+   over the baseplate of studs, which fade out under the words. Its .wrap
+   holds the .eyebrow, the h1, the .lede and, under them, .hero-meta (a
+   date, a count) or .actions. */
+.page-hero {
+	position: relative; isolation: isolate; padding: var(--page-top) 0 var(--s-7);
+	border-bottom: 1px solid var(--line); background-image: var(--glow); background-repeat: no-repeat;
+}
+.page-hero::before {
+	content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+	background-image: var(--studs); background-size: 24px 24px;
+	mask-image: linear-gradient(180deg, #000 10%, transparent 90%);
+}
+.page-hero h1 { max-width: 22ch; }
+.page-hero .lede { margin-bottom: 0; }
+.page-hero .actions { margin-top: var(--s-5); }
+.hero-meta {
+	display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); margin: var(--s-4) 0 0; padding: 0;
+	list-style: none; color: var(--ink-faint); font-size: var(--t-small);
+}
+.hero-meta b { color: var(--ink-soft); font-weight: 600; }
+/* Under the head, the page's own parts. */
+.page-body { padding: var(--s-7) 0 var(--section); }
+
+/* .page-grid: what is on the page (.page-toc) down the left from 900 px,
+   sticky under the header, and the parts beside it; over them, in one
+   row of pills that scrolls, on a phone and a tablet. */
+.page-grid { display: grid; gap: var(--s-5) var(--s-8); grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (width >= 900px) { .page-grid { grid-template-columns: 220px minmax(0, 1fr); } }
+.page-toc { min-width: 0; }
+.page-toc-title {
+	margin: 0 0 var(--s-2); color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 650;
+	letter-spacing: 0.06em; text-transform: uppercase;
+}
+.page-toc ul { margin: 0; padding: 0; list-style: none; }
+.page-toc a { color: var(--ink-soft); text-decoration: none; font-size: var(--t-small); }
+.page-toc a:hover { color: var(--ink); }
+@media (width < 900px) {
+	.page-toc-title { display: none; }
+	.page-toc ul { display: flex; gap: var(--s-2); overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding: 2px; }
+	.page-toc li { flex: none; }
+	.page-toc a {
+		display: inline-flex; align-items: center; min-height: 36px; padding: 0 var(--s-3);
+		border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--panel);
+	}
+}
+@media (width >= 900px) {
+	.page-toc { position: sticky; top: calc(var(--head-h) + var(--s-5)); }
+	.page-toc ul { border-left: 1px solid var(--line); }
+	.page-toc a {
+		display: block; margin-left: -1px; padding: 6px 0 6px var(--s-3); border-left: 2px solid transparent; line-height: 1.4;
+	}
+	.page-toc a:hover { border-left-color: var(--line-strong); }
+	.page-toc a[aria-current="true"] { color: var(--ink); border-left-color: var(--accent-edge); }
+}
+/* A part of such a page lands under the header, not behind it. */
+.page-grid :is(section, h2, h3)[id] { scroll-margin-top: calc(var(--head-h) + var(--s-5)); }

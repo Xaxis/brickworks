@@ -1,4 +1,5 @@
 {
   "$comment": "A docs page that moved: its old name, its new. tools/deploy.sh answers the old address with a 308 to the new; tools/docs_site.py --check holds each new name to a page.",
-  "claude-builds": "ai-builds"
+  "claude-builds": "how-ai-builds",
+  "ai-builds": "how-ai-builds"
 }

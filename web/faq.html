@@ -3,13 +3,15 @@
   Questions about Brickworks, and how to design with Claude in it.
 
   Moved off the home page on 2026-10-13, which now says what Brickworks is
-  and shows it; this is where the detail lives: the two ways to bring
-  Claude, what each costs, and the questions people ask. The answers are
+  and shows it; this is where the detail lives: the three ways to bring
+  your own AI, what each costs, and the questions people ask, in groups
+  with what is on the page beside them (site359). The answers are
   also FAQPage JSON-LD at the foot (data, not script).
 
   What is free and what comes with Pro is said as /plans says it
   (docs/PLANS.md, section 1, and gate M1, 2026-10-29): until then this page
-  said there was nothing to subscribe to, desktop included.
+  said there was nothing to subscribe to, desktop included. AI is never
+  limited on any plan (the owner, 2026-10-29): people bring their own.
 -->
 <html lang="en">
 <head>
@@ -37,14 +39,19 @@
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <style>
-.page { max-width: 820px; }
-.page h2 { margin-top: var(--s-7); }
-.ways { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
-.way ol { margin: 14px 0 0; padding-left: 20px; color: var(--ink-soft); font-size: var(--t-small); }
+/* Laid out here; the head, the list of what is on the page, the cards,
+   the answers and the command are site.css's. */
+.faq { min-width: 0; max-width: 820px; }
+.faq-part + .faq-part { margin-top: var(--s-7); }
+.faq-part > h2 { margin-bottom: var(--s-4); }
+.ways { display: grid; gap: var(--s-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); }
+.way { display: flex; flex-direction: column; padding: var(--s-5); }
+.way h3 { margin: var(--s-4) 0 0; }
+.way ol { margin: var(--s-3) 0 0; padding-left: 20px; color: var(--ink-soft); font-size: var(--t-small); }
 .way li { margin: 0 0 10px; }
 .way b { color: var(--ink); font-weight: 620; }
 .way .for { font-size: var(--t-small); color: var(--ink-faint); margin: 2px 0 0; }
-.way .cost { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: var(--t-small); }
+.way .cost { margin-top: auto; padding-top: var(--s-3); border-top: 1px solid var(--line); font-size: var(--t-small); }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -84,130 +91,183 @@
 	</div>
 </header>
 
-<main id="main" class="wrap page">
-	<h1>Questions</h1>
-	<p class="lede">If yours is not here, <a href="https://github.com/Xaxis/brickworks-releases/issues">ask it on GitHub</a>.</p>
-
-	<h2 id="claude">Designing with Claude</h2>
-	<p class="sub">Building by hand needs nothing but an account, and there is no AI in the window until you ask for it. To have Claude design, <a href="/app?assistant=on">open Brickworks with the assistant on</a> (or turn it on in <b>Settings, Assistant</b>), then bring your own Claude, one of two ways. Brickworks bills nothing for Claude’s work: once <a href="/plans">Pro</a> opens, Free has 10 AI builds a month and Pro no limit.</p>
-	<div class="ways">
-		<div class="card way">
-			<h3>Your Claude plan</h3>
-			<p class="for">Claude Pro or Max · no key, nothing to install</p>
-			<ol>
-				<li><a href="/app?assistant=on">Open the app with the assistant on</a> and press <b>Connect Claude</b>. claude.ai opens with Brickworks filled in: press <b>Add</b>, then <b>Connect</b>, and <b>Allow</b> when Brickworks asks. Once, for your account; the Claude desktop and mobile apps have it too. Connecting again later, after a Disconnect, is <b>Connect</b> on the Brickworks in <b>Customize › Connectors</b>, which <b>Connect Claude</b> opens for you then.</li>
-				<li>Or in Claude Code, then <b>/mcp</b> and Authenticate:
-					<code class="cmd">claude mcp add --transport http brickworks https://brickworks.diy/api/mcp</code></li>
-				<li>With Brickworks open and its assistant on, ask Claude to “build a small red house in Brickworks”. It builds in your open tab, on any device, and every step shows as it goes.</li>
-			</ol>
-			<p class="cost">Counts against your plan’s usage, like any other chat with Claude.</p>
-		</div>
-		<div class="card way">
-			<h3>Your own API key</h3>
-			<p class="for">Pay as you go · from the Anthropic Console</p>
-			<ol>
-				<li>Make a key at <a href="https://console.anthropic.com/settings/keys">console.anthropic.com</a>, safest in a workspace of its own, with a spend limit, set to expire.</li>
-				<li>Paste it into <a href="/app?assistant=on">the app’s assistant</a>. It is checked with Anthropic before it is kept, in your browser or for this visit only.</li>
-				<li>Describe what you want and press <b>Build it</b>. Choose the model and how hard it thinks.</li>
-			</ol>
-			<p class="cost">Measured at the default setting: a small house took 11 minutes and $2.40, a castle 45 minutes and $5–10. Medium effort costs about a third.</p>
+<main id="main">
+	<div class="page-hero">
+		<div class="wrap">
+			<p class="eyebrow">Help</p>
+			<h1>Questions</h1>
+			<p class="lede">What Brickworks costs, how to bring your own AI, and what people ask. If yours is not here, <a href="https://github.com/Xaxis/brickworks-releases/issues">ask it on GitHub</a>, or read <a href="/docs">the docs</a>.</p>
 		</div>
 	</div>
-
-	<h2 id="questions">Questions people ask</h2>
-	<details class="qa" id="studio">
-		<summary>Why Brickworks, when BrickLink Studio exists?</summary>
-		<div><p>Studio is the community’s standard and does a lot well. Brickworks runs in any browser, a tablet’s or a phone’s too, with nothing to install; weighs balance and joint strength, and lists the weakest joints; turns gear trains at their real ratios; opens and saves Studio <code>.io</code>; exports STL, OBJ and GLB; and builds one model with others, live. <a href="/compare">See it beside Studio, Mecabricks, LeoCAD and LDCad</a>, with where each of them still leads.</p></div>
-	</details>
-	<details class="qa">
-		<summary>Is Brickworks free?</summary>
-		<div><p>In your browser, yes: building by hand without a limit, 10 AI builds a month, saving, building together, instructions, renders and share links. <a href="/plans">Pro</a>, coming soon at $8 a month or $80 a year, adds the desktop app and AI builds without a limit. Nothing takes money yet, and the desktop app is free to download until Pro opens. Every account made before then keeps both, free, with no end date. The AI that designs runs on your own plan or API key, so its maker bills that, never Brickworks.</p></div>
-	</details>
-	<details class="qa" id="ai-builds">
-		<summary>What is an AI build?</summary>
-		<div><p>An AI working on a model in one tab: everything it changes there, until it stops for half an hour, counts as one, however many changes or chats it takes. When it only looks (searches parts, reads the gallery, views the model), nothing is counted, and building by hand never is. Once Pro opens, Free has 10 a month, back on the 1st, and Pro no limit. Until then nothing is counted.</p></div>
-	</details>
-	<details class="qa" id="sign-in">
-		<summary>How do I sign in?</summary>
-		<div><p>With a code we email you, or with orangecheck: its own window, with a Bitcoin wallet, email, Google or GitHub. Either way there is no password to keep. The desktop app signs in by the emailed code, and with orangecheck from 0.8.0. More on <a href="/privacy">what each keeps</a>.</p></div>
-	</details>
-	<details class="qa">
-		<summary>Do I need a Claude subscription?</summary>
-		<div><p>No. Everything but the assistant works without one, and the assistant is off until you turn it on in Settings, Assistant, or <a href="/app?assistant=on">open the app with it on</a>: build entirely by hand and there is no AI anywhere in the window. To bring Claude in, turn it on, then connect a Claude Pro or Max plan, or paste an API key from the Anthropic Console.</p></div>
-	</details>
-	<details class="qa">
-		<summary>Does Brickworks see my API key?</summary>
-		<div><p>No. It stays in your browser, or only for the visit if you choose, and is sent only to Anthropic. The page's security policy refuses to send anything anywhere but its own short list, so a key has nowhere else to go. More on <a href="/privacy">what Brickworks keeps</a>.</p></div>
-	</details>
-	<details class="qa">
-		<summary>Where are my models saved?</summary>
-		<div><p>In your browser, or on your computer in the desktop app, and kept privately with your account too, so they open in File › Open wherever you sign in. Export them as LDraw <code>.ldr</code> or Studio <code>.io</code> to keep or move. Nobody else sees a model until you share it.</p></div>
-	</details>
-	<details class="qa" id="together">
-		<summary>Can I build a model with someone else?</summary>
-		<div><p>Yes, live. <b>File › Build together…</b> gives a link to your model, and whoever opens it, signed in, builds it with you at the same time in their browser (the desktop app from 0.8.0). Each of you sees the other’s parts go down, move and change colour as it happens, and their pointer with their name; <b>Undo</b> takes back only your own changes, and there is a short chat for people 13 and over. A reload goes back into the session by itself. You end it, and the model stays yours.</p></div>
-	</details>
-	<details class="qa" id="model-page">
-		<summary>What do the buttons on a shared model’s page do?</summary>
-		<div><p><b>Build it</b> opens it in 3D: turn it, step through its build, and get its booklet and parts list, with no account. <b>Open in Brickworks</b> copies it into your own models, to change and make yours; share that, and its page shows it as a remix. Under them you can <b>like</b> it, <b>save</b> it to your favourites or a collection, <b>share</b> its link, <b>comment</b> on it or on one of its steps, and say <b>I built it</b> with a photo of your build. <b>More</b> copies the code to embed it in a page of your own, and is where to report it.</p></div>
-	</details>
-	<details class="qa" id="tested">
-		<summary>What does Tested mean on a model?</summary>
-		<div><p>That a person can build it. Brickworks tests a model as it is shared: built in its own steps, each part goes on where something holds it and the model stands at every step; every part is in a colour it was made in; and, finished, every part is held by a stud, a joint or what catches it, no two passing into each other, by the parts’ real shapes. A model that is not marked tells its owner why on its page.</p></div>
-	</details>
-	<details class="qa">
-		<summary>Can it open my BrickLink Studio, LDD or LDraw files?</summary>
-		<div><p>Yes: Studio <code>.io</code> (locked ones too), LEGO® Digital Designer <code>.lxf</code>, and LDraw <code>.ldr</code> and <code>.mpd</code>. It saves LDraw and <code>.io</code>, exports glTF, OBJ and STL, saves a booklet as a PDF or PNG pages, and turns OBJ, STL and glTF models into bricks.</p></div>
-	</details>
-	<details class="qa">
-		<summary>Can I buy the parts to build it?</summary>
-		<div><p>Export the parts list as a BrickLink wanted list or a Rebrickable parts list, by the lot, the way shops sell them. My collection first takes off what you already own.</p></div>
-	</details>
-	<details class="qa" id="updated">
-		<summary>It says “Brickworks has been updated”. What do I do?</summary>
-		<div><p>Press <b>Reload</b> when it suits you. The model in that tab comes back as it is, under its name. Until then the tab keeps working, but it saves nothing to your saved models, so it can never write over what a tab on the new version keeps. Save again after the reload.</p></div>
-	</details>
-	<details class="qa" id="new-tools">
-		<summary>Claude can’t see a new Brickworks tool. What now?</summary>
-		<div><p>Brickworks tells Claude when its tools change, and a Claude app that listens for that picks them up by itself. If yours hasn’t, reload the Brickworks tab first if it says it has been updated. Then start a new conversation. If the tool is still missing, reconnect Brickworks in Claude: <b>Customize › Connectors</b>, select Brickworks, <b>Disconnect</b>, then <b>Connect</b>; in Claude Code, run <code>/mcp</code>, choose brickworks and Reconnect. Not <b>Disconnect Claude</b> in Brickworks: that ends Claude’s connection, and you connect it and allow it again.</p></div>
-	</details>
-	<details class="qa" id="tool-permissions">
-		<summary>Claude asks before every Brickworks tool. Can it stop asking?</summary>
-		<div><p>Yes, in Claude: <b>Customize › Connectors</b>, select Brickworks, and under <b>Tool permissions</b> choose <b>Always allow</b> for the tools you trust, or press <b>Always allow</b> when Claude asks. Those switches are Claude’s, so Brickworks cannot set them for you. It does tell Claude which of its tools only look and change nothing. Brickworks asks you to Allow once, and not again while Claude stays connected. To connect again after a Disconnect, press <b>Connect</b> on the Brickworks already in your connectors rather than adding it again: adding it again sets up a new one, with its tool permissions to choose again.</p></div>
-	</details>
-	<details class="qa">
-		<summary>What do I need to run it?</summary>
-		<div><p>A recent browser on a computer, a tablet or a phone (it runs on WebGL 2 and WebAssembly threads). On a tablet or a phone the app is laid out for a finger: one row of tools, and the parts, the colours and the rest in panels beside the model or, on a phone, sheets over it. Or the <a href="/download">desktop app</a> for Linux, macOS and Windows, which carries every part on disk and builds with no network at all; it comes with <a href="/plans">Pro</a> once Pro opens, and is free to download until then.</p></div>
-	</details>
-	<details class="qa" id="access">
-		<summary>Does it work with a screen reader, or the keyboard alone?</summary>
-		<div><p>In the desktop app, from 0.8.0. Every button, part, colour and field says its name (“Select, V”, “Brick 2 x 4, 3001”), and what the status line says is read out. <b>F6</b> (or <b>Tab</b>, with a screen reader running) goes from the model into the toolbar, the parts and the colours; <b>Return</b> takes a part, and <b>Return</b> again puts it down at the middle of the view. Settings has <b>Interface size</b>, 85 to 150%, and <b>Reduce motion</b>. In a browser the app draws its controls itself, where a screen reader cannot reach them; this site’s own pages work with both.</p></div>
-	</details>
-	<details class="qa">
-		<summary>How exact are the parts?</summary>
-		<div>
-			<p>1 LDU is 0.4 mm exactly, and every dimension was read off the part geometry rather than copied from a reference. The tests assert them, so a library update cannot move them quietly.</p>
-			<div class="table" role="region" aria-label="Dimensions, Brickworks against the specification" tabindex="0">
-			<table>
-				<thead><tr><th scope="col">Feature</th><th scope="col" class="n">Brickworks</th><th scope="col" class="n">Specification</th></tr></thead>
-				<tbody>
-					<tr><th scope="row">Stud pitch</th><td class="n">8.00 mm</td><td class="n">8.0</td></tr>
-					<tr><th scope="row">Brick height</th><td class="n">9.60 mm</td><td class="n">9.6</td></tr>
-					<tr><th scope="row">Plate height</th><td class="n">3.20 mm</td><td class="n">3.2</td></tr>
-					<tr><th scope="row">Stud diameter</th><td class="n">4.80 mm</td><td class="n">4.8</td></tr>
-					<tr><th scope="row">Wall thickness</th><td class="n">1.60 mm</td><td class="n">1.6</td></tr>
-					<tr><th scope="row">2 × 4 brick</th><td class="n">32.00 × 16.00 mm</td><td class="n">32 × 16</td></tr>
-					<tr><th scope="row">Stud height</th><td class="n">1.60 mm</td><td class="n">1.8</td></tr>
-				</tbody>
-			</table>
-			</div>
-			<p>Sizes are nominal rather than as moulded, which is what makes parts tile exactly instead of leaving a gap that grows along a long wall. The stud height is the LDraw library's own convention, and every part follows it.</p>
+	<div class="wrap page-body page-grid">
+		<nav class="page-toc" aria-labelledby="faq-toc">
+			<p class="page-toc-title" id="faq-toc">On this page</p>
+			<ul>
+				<li><a href="#claude">Bring your own AI</a></li>
+				<li><a href="#plans">Plans and price</a></li>
+				<li><a href="#ai-questions">Your AI</a></li>
+				<li><a href="#account">Your account and your models</a></li>
+				<li><a href="#sharing">Sharing and building together</a></li>
+				<li><a href="#building">Files, parts and what it runs on</a></li>
+				<li><a href="#about">About Brickworks</a></li>
+			</ul>
+		</nav>
+		<div class="faq">
+			<section class="faq-part" id="claude" aria-labelledby="claude-h">
+				<h2 id="claude-h">Bring your own AI</h2>
+				<p class="sub">Building by hand needs nothing but an account, and there is no AI in the window until you ask for it. To have an AI design, <a href="/app?assistant=on">open Brickworks with the assistant on</a> (or turn it on in <b>Settings, Assistant</b>), then bring your own, one of three ways. AI is never limited, on any plan: its maker bills your plan or key, never Brickworks.</p>
+				<div class="ways">
+					<div class="card way">
+						<span class="glyph" aria-hidden="true"><svg class="icon"><use href="/icons.svg#spark"/></svg></span>
+						<h3>Your Claude plan</h3>
+						<p class="for">Claude Pro or Max · no key, nothing to install</p>
+						<ol>
+							<li><a href="/app?assistant=on">Open the app with the assistant on</a> and press <b>Connect Claude</b>. claude.ai opens with Brickworks filled in: press <b>Add</b>, then <b>Connect</b>, and <b>Allow</b> when Brickworks asks. Once, for your account; the Claude desktop and mobile apps have it too.</li>
+							<li>With Brickworks open and its assistant on, ask Claude to “build a small red house in Brickworks”. It builds in your open tab, on any device, and every step shows as it goes.</li>
+						</ol>
+						<p class="cost">Counts against your plan’s usage, like any other chat with Claude.</p>
+					</div>
+					<div class="card way">
+						<span class="glyph" aria-hidden="true"><svg class="icon"><use href="/icons.svg#monitor"/></svg></span>
+						<h3>Claude Code</h3>
+						<p class="for">Claude Code, signed in to your plan</p>
+						<ol>
+							<li>Add Brickworks, then <b>/mcp</b> and Authenticate:
+								<code class="cmd">claude mcp add --transport http brickworks https://brickworks.diy/api/mcp</code></li>
+							<li>Or in the desktop app, the assistant panel starts Claude Code for you, so a design runs on your plan with no key.</li>
+						</ol>
+						<p class="cost">Counts against your plan’s usage, like any other Claude Code session.</p>
+					</div>
+					<div class="card way">
+						<span class="glyph" aria-hidden="true"><svg class="icon"><use href="/icons.svg#gear"/></svg></span>
+						<h3>Your own API key</h3>
+						<p class="for">Pay as you go · Claude, or another AI</p>
+						<ol>
+							<li>Make a key at <a href="https://console.anthropic.com/settings/keys">console.anthropic.com</a>, safest in a workspace of its own, with a spend limit, set to expire.</li>
+							<li>Paste it into <a href="/app?assistant=on">the app’s assistant</a>. It is checked with Anthropic before it is kept, in your browser or for this visit only.</li>
+							<li>Describe what you want and press <b>Build it</b>. Choose the model and how hard it thinks.</li>
+						</ol>
+						<p class="cost">Measured at the default setting: a small house took 11 minutes and $2.40, a castle 45 minutes and $5–10. Medium effort costs about a third.</p>
+					</div>
+				</div>
+			</section>
+			<section class="faq-part" id="plans" aria-labelledby="plans-h">
+				<h2 id="plans-h">Plans and price</h2>
+				<details class="qa" id="free">
+					<summary>Is Brickworks free?</summary>
+					<div><p>In your browser, yes: the whole web app, with AI never limited, building together, instructions, renders, exports and share links, and up to 25 models kept with your account. Saving to your device and exporting are never limited. <a href="/plans">Pro</a>, coming soon at $8 a month or $80 a year, adds the desktop app and any number of models kept with your account. Nothing takes money yet, and the desktop app is free to download until Pro opens.</p></div>
+				</details>
+				<details class="qa" id="ai">
+					<summary>Is AI limited on any plan?</summary>
+					<div><p>No, never, on any plan. You bring your own AI: your Claude plan through the connector or Claude Code, or your own API key. Its maker bills your plan or key for what it does, never Brickworks, so Brickworks never counts it or pays for it. The desktop app does AI exactly as the web app does, and can start Claude Code for you besides.</p></div>
+				</details>
+				<details class="qa" id="had-account">
+					<summary>I made my account before 29 October 2026. What changes?</summary>
+					<div><p>Nothing you have is taken away. Every account made before 29 October 2026 keeps Pro, free and with no end date: the desktop app, every version of it, and any number of models kept with your account. There is nothing to do.</p></div>
+				</details>
+			</section>
+			<section class="faq-part" id="ai-questions" aria-labelledby="ai-questions-h">
+				<h2 id="ai-questions-h">Your AI</h2>
+				<details class="qa">
+					<summary>Do I need a Claude subscription?</summary>
+					<div><p>No. Everything but the assistant works without one, and the assistant is off until you turn it on in Settings, Assistant, or <a href="/app?assistant=on">open the app with it on</a>: build entirely by hand and there is no AI anywhere in the window. To bring Claude in, turn it on, then connect a Claude Pro or Max plan, or paste an API key from the Anthropic Console.</p></div>
+				</details>
+				<details class="qa">
+					<summary>Does Brickworks see my API key?</summary>
+					<div><p>No. It stays in your browser, or only for the visit if you choose, and is sent only to Anthropic. The page's security policy refuses to send anything anywhere but its own short list, so a key has nowhere else to go. More on <a href="/privacy">what Brickworks keeps</a>.</p></div>
+				</details>
+				<details class="qa" id="new-tools">
+					<summary>Claude can’t see a new Brickworks tool. What now?</summary>
+					<div><p>Brickworks tells Claude when its tools change, and a Claude app that listens for that picks them up by itself. If yours hasn’t, reload the Brickworks tab first if it says it has been updated. Then start a new conversation. If the tool is still missing, reconnect Brickworks in Claude: <b>Customize › Connectors</b>, select Brickworks, <b>Disconnect</b>, then <b>Connect</b>; in Claude Code, run <code>/mcp</code>, choose brickworks and Reconnect. Not <b>Disconnect Claude</b> in Brickworks: that ends Claude’s connection, and you connect it and allow it again.</p></div>
+				</details>
+				<details class="qa" id="tool-permissions">
+					<summary>Claude asks before every Brickworks tool. Can it stop asking?</summary>
+					<div><p>Yes, in Claude: <b>Customize › Connectors</b>, select Brickworks, and under <b>Tool permissions</b> choose <b>Always allow</b> for the tools you trust, or press <b>Always allow</b> when Claude asks. Those switches are Claude’s, so Brickworks cannot set them for you. It does tell Claude which of its tools only look and change nothing. Brickworks asks you to Allow once, and not again while Claude stays connected. To connect again after a Disconnect, press <b>Connect</b> on the Brickworks already in your connectors rather than adding it again: adding it again sets up a new one, with its tool permissions to choose again.</p></div>
+				</details>
+			</section>
+			<section class="faq-part" id="account" aria-labelledby="account-h">
+				<h2 id="account-h">Your account and your models</h2>
+				<details class="qa" id="sign-in">
+					<summary>How do I sign in?</summary>
+					<div><p>With a code we email you, or with orangecheck: its own window, with a Bitcoin wallet, email, Google or GitHub. Either way there is no password to keep. The desktop app signs in by the emailed code, and with orangecheck from 0.8.0. More on <a href="/privacy">what each keeps</a>.</p></div>
+				</details>
+				<details class="qa">
+					<summary>Where are my models saved?</summary>
+					<div><p>In your browser, or on your computer in the desktop app, and kept privately with your account too, so they open in File › Open wherever you sign in. Export them as LDraw <code>.ldr</code> or Studio <code>.io</code> to keep or move. Nobody else sees a model until you share it.</p></div>
+				</details>
+				<details class="qa" id="updated">
+					<summary>It says “Brickworks has been updated”. What do I do?</summary>
+					<div><p>Press <b>Reload</b> when it suits you. The model in that tab comes back as it is, under its name. Until then the tab keeps working, but it saves nothing to your saved models, so it can never write over what a tab on the new version keeps. Save again after the reload.</p></div>
+				</details>
+			</section>
+			<section class="faq-part" id="sharing" aria-labelledby="sharing-h">
+				<h2 id="sharing-h">Sharing and building together</h2>
+				<details class="qa" id="together">
+					<summary>Can I build a model with someone else?</summary>
+					<div><p>Yes, live. <b>File › Build together…</b> gives a link to your model, and whoever opens it, signed in, builds it with you at the same time in their browser (the desktop app from 0.8.0). Each of you sees the other’s parts go down, move and change colour as it happens, and their pointer with their name; <b>Undo</b> takes back only your own changes, and there is a short chat for people 13 and over. A reload goes back into the session by itself. You end it, and the model stays yours.</p></div>
+				</details>
+				<details class="qa" id="model-page">
+					<summary>What do the buttons on a shared model’s page do?</summary>
+					<div><p><b>Build it</b> opens it in 3D: turn it, step through its build, and get its booklet and parts list, with no account. <b>Open in Brickworks</b> copies it into your own models, to change and make yours; share that, and its page shows it as a remix. Under them you can <b>like</b> it, <b>save</b> it to your favourites or a collection, <b>share</b> its link, <b>comment</b> on it or on one of its steps, and say <b>I built it</b> with a photo of your build. <b>More</b> copies the code to embed it in a page of your own, and is where to report it.</p></div>
+				</details>
+				<details class="qa" id="tested">
+					<summary>What does Tested mean on a model?</summary>
+					<div><p>That a person can build it. Brickworks tests a model as it is shared: built in its own steps, each part goes on where something holds it and the model stands at every step; every part is in a colour it was made in; and, finished, every part is held by a stud, a joint or what catches it, no two passing into each other, by the parts’ real shapes. A model that is not marked tells its owner why on its page.</p></div>
+				</details>
+			</section>
+			<section class="faq-part" id="building" aria-labelledby="building-h">
+				<h2 id="building-h">Files, parts and what it runs on</h2>
+				<details class="qa">
+					<summary>Can it open my BrickLink Studio, LDD or LDraw files?</summary>
+					<div><p>Yes: Studio <code>.io</code> (locked ones too), LEGO® Digital Designer <code>.lxf</code>, and LDraw <code>.ldr</code> and <code>.mpd</code>. It saves LDraw and <code>.io</code>, exports glTF, OBJ and STL, saves a booklet as a PDF or PNG pages, and turns OBJ, STL and glTF models into bricks.</p></div>
+				</details>
+				<details class="qa">
+					<summary>Can I buy the parts to build it?</summary>
+					<div><p>Export the parts list as a BrickLink wanted list or a Rebrickable parts list, by the lot, the way shops sell them. My collection first takes off what you already own.</p></div>
+				</details>
+				<details class="qa">
+					<summary>What do I need to run it?</summary>
+					<div><p>A recent browser on a computer, a tablet or a phone (it runs on WebGL 2 and WebAssembly threads). On a tablet or a phone the app is laid out for a finger: one row of tools, and the parts, the colours and the rest in panels beside the model or, on a phone, sheets over it. Or the <a href="/download">desktop app</a> for Linux, macOS and Windows, which carries every part on disk and builds with no network at all; it comes with <a href="/plans">Pro</a> once Pro opens, and is free to download until then.</p></div>
+				</details>
+				<details class="qa" id="access">
+					<summary>Does it work with a screen reader, or the keyboard alone?</summary>
+					<div><p>In the desktop app, from 0.8.0. Every button, part, colour and field says its name (“Select, V”, “Brick 2 x 4, 3001”), and what the status line says is read out. <b>F6</b> (or <b>Tab</b>, with a screen reader running) goes from the model into the toolbar, the parts and the colours; <b>Return</b> takes a part, and <b>Return</b> again puts it down at the middle of the view. Settings has <b>Interface size</b>, 85 to 150%, and <b>Reduce motion</b>. In a browser the app draws its controls itself, where a screen reader cannot reach them; this site’s own pages work with both.</p></div>
+				</details>
+				<details class="qa">
+					<summary>How exact are the parts?</summary>
+					<div>
+						<p>1 LDU is 0.4 mm exactly, and every dimension was read off the part geometry rather than copied from a reference. The tests assert them, so a library update cannot move them quietly.</p>
+						<div class="table" role="region" aria-label="Dimensions, Brickworks against the specification" tabindex="0">
+						<table>
+							<thead><tr><th scope="col">Feature</th><th scope="col" class="n">Brickworks</th><th scope="col" class="n">Specification</th></tr></thead>
+							<tbody>
+								<tr><th scope="row">Stud pitch</th><td class="n">8.00 mm</td><td class="n">8.0</td></tr>
+								<tr><th scope="row">Brick height</th><td class="n">9.60 mm</td><td class="n">9.6</td></tr>
+								<tr><th scope="row">Plate height</th><td class="n">3.20 mm</td><td class="n">3.2</td></tr>
+								<tr><th scope="row">Stud diameter</th><td class="n">4.80 mm</td><td class="n">4.8</td></tr>
+								<tr><th scope="row">Wall thickness</th><td class="n">1.60 mm</td><td class="n">1.6</td></tr>
+								<tr><th scope="row">2 × 4 brick</th><td class="n">32.00 × 16.00 mm</td><td class="n">32 × 16</td></tr>
+								<tr><th scope="row">Stud height</th><td class="n">1.60 mm</td><td class="n">1.8</td></tr>
+							</tbody>
+						</table>
+						</div>
+						<p>Sizes are nominal rather than as moulded, which is what makes parts tile exactly instead of leaving a gap that grows along a long wall. The stud height is the LDraw library's own convention, and every part follows it.</p>
+					</div>
+				</details>
+			</section>
+			<section class="faq-part" id="about" aria-labelledby="about-h">
+				<h2 id="about-h">About Brickworks</h2>
+				<details class="qa" id="studio">
+					<summary>Why Brickworks, when BrickLink Studio exists?</summary>
+					<div><p>Studio is the community’s standard and does a lot well. Brickworks runs in any browser, a tablet’s or a phone’s too, with nothing to install; weighs balance and joint strength, and lists the weakest joints; turns gear trains at their real ratios; opens and saves Studio <code>.io</code>; exports STL, OBJ and GLB; and builds one model with others, live. <a href="/compare">See it beside Studio, Mecabricks, LeoCAD and LDCad</a>, with where each of them still leads.</p></div>
+				</details>
+				<details class="qa">
+					<summary>Is Brickworks made by the LEGO Group?</summary>
+					<div><p>No. LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. The parts come from the community's LDraw library, and the catalogue data from Rebrickable.</p></div>
+				</details>
+			</section>
 		</div>
-	</details>
-	<details class="qa">
-		<summary>Is Brickworks made by the LEGO Group?</summary>
-		<div><p>No. LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. The parts come from the community's LDraw library, and the catalogue data from Rebrickable.</p></div>
-	</details>
+	</div>
 </main>
 
 <footer class="site-foot">
@@ -294,8 +354,9 @@
 	"@type": "FAQPage",
 	"mainEntity": [
 		{ "@type": "Question", "name": "Why Brickworks, when BrickLink Studio exists?", "acceptedAnswer": { "@type": "Answer", "text": "Studio is the community's standard and does a lot well. Brickworks runs in any browser, a tablet's or a phone's too, with nothing to install; weighs balance and joint strength, and lists the weakest joints; turns gear trains at their real ratios; opens and saves Studio .io; exports STL, OBJ and GLB; and builds one model with others, live. brickworks.diy/compare sets it beside Studio, Mecabricks, LeoCAD and LDCad, with where each of them still leads." } },
-		{ "@type": "Question", "name": "Is Brickworks free?", "acceptedAnswer": { "@type": "Answer", "text": "In your browser, yes: building by hand without a limit, 10 AI builds a month, saving, building together, instructions, renders and share links. Pro, coming soon at $8 a month or $80 a year, adds the desktop app and AI builds without a limit. Nothing takes money yet, and the desktop app is free to download until Pro opens. Every account made before then keeps both, free, with no end date. The AI that designs runs on your own plan or API key, so its maker bills that, never Brickworks." } },
-		{ "@type": "Question", "name": "What is an AI build?", "acceptedAnswer": { "@type": "Answer", "text": "An AI working on a model in one tab: everything it changes there, until it stops for half an hour, counts as one, however many changes or chats it takes. When it only looks, nothing is counted, and building by hand never is. Once Pro opens, Free has 10 a month, back on the 1st, and Pro no limit. Until then nothing is counted." } },
+		{ "@type": "Question", "name": "Is Brickworks free?", "acceptedAnswer": { "@type": "Answer", "text": "In your browser, yes: the whole web app, with AI never limited, building together, instructions, renders, exports and share links, and up to 25 models kept with your account. Saving to your device and exporting are never limited. Pro, coming soon at $8 a month or $80 a year, adds the desktop app and any number of models kept with your account. Nothing takes money yet, and the desktop app is free to download until Pro opens." } },
+		{ "@type": "Question", "name": "Is AI limited on any plan?", "acceptedAnswer": { "@type": "Answer", "text": "No, never, on any plan. You bring your own AI: your Claude plan through the connector or Claude Code, or your own API key. Its maker bills your plan or key for what it does, never Brickworks, so Brickworks never counts it or pays for it." } },
+		{ "@type": "Question", "name": "I made my account before 29 October 2026. What changes?", "acceptedAnswer": { "@type": "Answer", "text": "Nothing you have is taken away. Every account made before 29 October 2026 keeps Pro, free and with no end date: the desktop app, every version of it, and any number of models kept with your account." } },
 		{ "@type": "Question", "name": "How do I sign in?", "acceptedAnswer": { "@type": "Answer", "text": "With a code we email you, or with orangecheck: its own window, with a Bitcoin wallet, email, Google or GitHub. Either way there is no password to keep. The desktop app signs in by the emailed code, and with orangecheck from 0.8.0." } },
 		{ "@type": "Question", "name": "Do I need a Claude subscription?", "acceptedAnswer": { "@type": "Answer", "text": "No. Everything but the assistant works without one, and the assistant is off until you turn it on in Settings, Assistant, or open brickworks.diy/app?assistant=on: build entirely by hand and there is no AI anywhere in the window. To bring Claude in, turn it on, then connect a Claude Pro or Max plan, or paste an API key from the Anthropic Console." } },
 		{ "@type": "Question", "name": "Does Brickworks see my API key?", "acceptedAnswer": { "@type": "Answer", "text": "No. It stays in your browser, or only for the visit if you choose, and is sent only to Anthropic. The page's security policy refuses to send anything anywhere but its own short list." } },

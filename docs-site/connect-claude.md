@@ -4,7 +4,7 @@ nav: Connect Claude
 description: The two ways to have Claude design in Brickworks, your Claude plan or your own API key, set up in a minute.
 ---
 
-Building by hand needs nothing but an account, and there is no AI in the window until you ask for it. To have Claude design, turn the assistant on and bring your own Claude. Brickworks bills nothing for Claude's work: once Pro opens, Free has 10 AI builds a month and Pro no limit ([Plans](/docs/plans)).
+Building by hand needs nothing but an account, and there is no AI in the window until you ask for it. To have Claude design, turn the assistant on and bring your own Claude. AI is never limited, on any plan: you bring your own, so Brickworks never counts it or bills for it ([Plans](/docs/plans#ai)).
 
 ## Turn the assistant on {#assistant-on}
 
