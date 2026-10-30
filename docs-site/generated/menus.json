@@ -776,6 +776,12 @@
 					"line": true
 				},
 				{
+					"name": "split_view",
+					"words": "Split",
+					"key": "F8",
+					"tip": "A second view beside the model, square on from the front, top, side or back"
+				},
+				{
 					"name": "full_screen",
 					"words": "Full screen",
 					"key": "F11",
@@ -1576,6 +1582,7 @@
 		"panel_properties": "",
 		"show_properties": "",
 		"panel_keys": "",
+		"split_view": "F8",
 		"full_screen": "F11",
 		"timeline": "B",
 		"parts_list": "P",

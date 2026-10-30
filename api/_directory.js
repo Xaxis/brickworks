@@ -10,6 +10,7 @@
 import { createHash, createHmac } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { ASSISTANT_TAGS, MADE_WITH } from "./_card.js";
+import { SMALL, fold, readQuery, stem } from "./_search.js";
 
 /// The kinds of model the gallery filters by. The same ids, in the same
 /// order, as src/net/model_kinds.gd, which guesses one from a model's name
@@ -256,22 +257,58 @@ export function isTechnic(parts, technicParts, movingParts) {
 // ---------------------------------------------------------------------------
 // The gallery's question.
 
+/// One word of a search as a tsquery's prefix: its singular ("castles"
+/// finds a castle), at most 30 letters.
+function prefixOf(word) {
+  let one = word;
+  if (one.length > 4 && /(ses|xes|zes|ches|shes)$/.test(one)) one = one.slice(0, -2);
+  else if (one.length > 3 && /s$/.test(one) && !/ss$/.test(one)) one = one.slice(0, -1);
+  return `${one.slice(0, 30)}:*`;
+}
+
 /// What a search box's words ask, as a tsquery over directory_words: each
-/// word of two letters or more a prefix, all of them wanted. A plural
+/// word of two letters or more a prefix, all of them wanted but the small
+/// ones (api/_search.js SMALL: "the", "lego"). A plural
 /// asks for its singular ("castles" finds a castle), and nothing but
 /// letters and digits ever reaches the query.
-export function searchWords(given) {
+///
+/// With [vocabulary] (the catalogue's words, api/_search.js indexOf), each
+/// is as forgiving as the library's search (search, 2026-10-30): a word
+/// without its accents too ("pokemon"), two words run together as written
+/// apart ("spaceship" finds space ship), two written apart as one ("fire
+/// truck" finds firetruck), and a word no set has as the word it nearly is
+/// ("milenium" finds millennium).
+export function searchWords(given, vocabulary = null) {
   const text = String(given || "").slice(0, MAX_QUERY).toLowerCase().normalize("NFC");
-  const words = (text.match(/[\p{L}\p{N}]+/gu) || [])
-    .filter((word) => word.length >= 2)
-    .map((word) => {
-      if (word.length > 4 && /(ses|xes|zes|ches|shes)$/.test(word)) return word.slice(0, -2);
-      if (word.length > 3 && /s$/.test(word) && !/ss$/.test(word)) return word.slice(0, -1);
-      return word;
-    })
-    .map((word) => word.slice(0, 30));
-  const unique = [...new Set(words)].slice(0, 8);
-  return unique.length ? unique.map((word) => `${word}:*`).join(" & ") : null;
+  const all = [...new Set((text.match(/[\p{L}\p{N}]+/gu) || []).filter((word) => word.length >= 2))];
+  // Small words narrow nothing ("the", "lego"), unless there is nothing else.
+  const words = (all.some((word) => !SMALL.has(word)) ? all.filter((word) => !SMALL.has(word)) : all).slice(0, 8);
+  if (!words.length) return null;
+  const terms = words.map((word) => {
+    const ways = new Set([prefixOf(word)]);
+    const plain = fold(word);
+    if (/^[\p{L}\p{N}]+$/u.test(plain)) ways.add(prefixOf(plain));
+    if (vocabulary) {
+      const [slot] = readQuery(vocabulary, plain).slots;
+      const apart = slot?.apart || slot?.split;
+      if (apart) ways.add(`(${apart.said.split(" ").map((one) => one.slice(0, 30)).join(" <-> ")}:*)`);
+      if (slot?.nearly) ways.add(prefixOf(slot.nearly));
+    }
+    return [...ways];
+  });
+  const one = (ways) => (ways.length > 1 ? `(${ways.join(" | ")})` : ways[0]);
+  // Two written apart that the catalogue has as one word.
+  const said = [];
+  for (let at = 0; at < words.length; at += 1) {
+    const joined = fold(`${words[at]}${words[at + 1] || ""}`);
+    if (vocabulary && at + 1 < words.length && vocabulary.ids.has(stem(joined)) && /^[\p{L}\p{N}]+$/u.test(joined)) {
+      said.push(`((${one(terms[at])} & ${one(terms[at + 1])}) | ${prefixOf(joined)})`);
+      at += 1;
+    } else {
+      said.push(one(terms[at]));
+    }
+  }
+  return said.join(" & ");
 }
 
 const YES = new Set(["1", "true", "yes", "on"]);
@@ -297,7 +334,7 @@ export const TESTS_CACHE = "private, no-store";
 /// understood, for the answer. [signedIn]: asked with a sign-in, which
 /// Following needs; asked.following is then true, for the caller to make
 /// the account's.
-export function listQuery(query, perPage, mostPages, { mine = false, signedIn = false } = {}) {
+export function listQuery(query, perPage, mostPages, { mine = false, signedIn = false, vocabulary = null } = {}) {
   const page = Number(query.page ?? 1);
   if (!Number.isInteger(page) || page < 1 || page > mostPages) {
     throw new Unacceptable(`page is a whole number from 1 to ${mostPages}`);
@@ -308,7 +345,7 @@ export function listQuery(query, perPage, mostPages, { mine = false, signedIn = 
   if (q.length > MAX_QUERY) throw new Unacceptable(`a search is at most ${MAX_QUERY} characters`);
   if (q) {
     said.q = q;
-    asked.words = searchWords(q);
+    asked.words = searchWords(q, vocabulary);
   }
   const kind = String(query.kind ?? "");
   if (kind) {

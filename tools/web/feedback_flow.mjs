@@ -260,7 +260,10 @@ try {
     const said = await sendIt(page);
     if (applied) {
       sentIds.visitor = Number(said?.sent);
-      check(`sent, and thanked with how we answer: "${said?.said}"`, sentIds.visitor > 0 && /answer by email/.test(said.said)
+      // A signed-out report is capped at three an hour for one inbox, and
+      // every run on this box sends from the same test inbox: a fourth in
+      // the hour is refused, as it should be, and says so here.
+      check(`sent, and thanked with how we answer: "${said?.said}"${said?.status ? ` (the dialog said: "${said.status}")` : ""}`, sentIds.visitor > 0 && /answer by email/.test(said.said)
         && !said.reports);
     } else {
       check(`said, in words, that it is not open yet: "${said?.status}"`, said?.status === NOT_YET && !said.sent);

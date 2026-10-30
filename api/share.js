@@ -247,6 +247,7 @@ import {
   yearsOf,
 } from "./_sets.js";
 import { flatLayJpeg } from "./_flatlay.js";
+import { indexOf as searchIndex } from "./_search.js";
 import { challengeLine, withWins } from "./_challenges.js";
 // What a model is based on (docs/SOCIAL.md section 7, item 5).
 import { bases, basesOf, basesPut, setBased } from "./_bases.js";
@@ -2227,6 +2228,7 @@ function catalogList(request, response, catalogue, models, tests) {
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : SET_CACHE);
   return response.status(200).json({
     models: found.sets.map((entry) => catalogCard(entry, by)), total: found.total, page: found.page, pages: found.pages,
+    near: found.near, meant: found.meant,
     per_page: CATALOG_PER_PAGE, of: catalogue.sets.length, with_3d: [...by.values()].filter((one) => one.main).length,
     asked, themes: themeTree(catalogue.sets), decades: decadesThere, years,
     sizes: Object.fromEntries(Object.entries(SIZES).map(([key, size]) => [key, size.label])), sorts: SETS_SORTS,
@@ -2381,8 +2383,10 @@ async function gallery(request, response, origin) {
   let asked;
   let said;
   try {
+    // The catalogue's words make the search forgiving, as the library's is.
+    const catalogue = request.query?.q ? setCatalog() : null;
     ({ asked, said } = listQuery(request.query || {}, PER_PAGE, MOST_PAGES, { mine: Boolean(mine?.pool),
-      signedIn: Boolean(mine) }));
+      signedIn: Boolean(mine), vocabulary: catalogue ? searchIndex(catalogue.sets) : null }));
   } catch (trouble) {
     // Signed in, with nothing in their collection to sort or filter by.
     if (mine && trouble instanceof Unacceptable && trouble.status === 401) {

@@ -144,9 +144,10 @@ console.log(JSON.stringify({
     assert said["browse"] == ["10179-1", "214.1-1", "10497-1", "42115-1", "4488-1"]
     # Newest first when asked, and a year's biggest first; a key chain with no parts left out.
     assert said["newest"] == ["214.1-1", "10497-1", "42115-1", "10179-1", "4488-1"]
-    # A number is its set first; words find the key chain too.
+    # A number is its set first; words find the key chain too, in best match
+    # order: the sets to build first, the biggest first, and the key chain after.
     assert said["number"] == ["4488-1"]
-    assert said["words"] == ["10179-1", "853900-1", "4488-1"]
+    assert said["words"] == ["10179-1", "4488-1", "853900-1"]
     assert said["gear"] == ["853900-1"]
     assert said["theme"] == ["10179-1", "4488-1"] and said["inner"] == ["10179-1"]
     assert said["decade"] == ["214.1-1", "10497-1", "42115-1"] and said["year"] == ["10497-1"]
@@ -278,7 +279,7 @@ console.log(JSON.stringify({ list: { status: list.status, total: list.body.total
   page: [page.status, page.headers["cache-control"], page.body.includes("Key Chain Falcon")], none: none.status,
   index: index.body, first: (first.body.match(/<loc>/g) || []).length, past: past.status, owned: owned.status,
   db: asked.filter((one) => one.startsWith("https://db.test/rest")).length }));""")
-    assert said["list"] == {"status": 200, "total": 3, "of": 6, "ids": ["set-853900-1", "set-10179-1", "set-4488-1"],
+    assert said["list"] == {"status": 200, "total": 3, "of": 6, "ids": ["set-10179-1", "set-4488-1", "set-853900-1"],
                             "years": 5, "credit": {"name": "Rebrickable", "url": "https://rebrickable.com/"}}
     assert said["page"] == [200, "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800", True]
     assert said["none"] == 404

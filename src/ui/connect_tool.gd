@@ -174,19 +174,24 @@ func pick(index: int) -> void:
 
 
 ## The point under [param at] on the screen, nearest the pointer and then
-## nearest the eye; -1 for none within [constant PICK].
+## nearest the eye, in the view [param at] is over (the main one, or the
+## second beside it: View, Split); -1 for none within [constant PICK].
 func point_at(at: Vector2) -> int:
 	if stage != "point" or camera == null:
 		return -1
+	var cad: CadCamera = camera as CadCamera
+	var view: int = cad.view_at(at) if cad != null else CadCamera.MAIN
+	var eye: Camera3D = cad.eye_of(view) if cad != null else camera
 	var best: int = -1
 	var best_off: float = PICK * _scale()
 	var best_depth: float = INF
 	for n: int in points.size():
 		var middle: Vector3 = _middle(n)
-		if camera.is_position_behind(middle):
+		var shown: Variant = _shown_at(middle, view)
+		if shown == null:
 			continue
-		var off: float = camera.unproject_position(middle).distance_to(at)
-		var depth: float = camera.global_position.distance_to(middle)
+		var off: float = (shown as Vector2).distance_to(at)
+		var depth: float = eye.global_position.distance_to(middle)
 		if off < best_off - 2.0 or (off <= best_off + 2.0 and depth < best_depth):
 			best = n
 			best_off = minf(off, best_off)
@@ -199,17 +204,26 @@ func _middle(n: int) -> Vector3:
 	return (points[n] as JointSnap.End).placed(_at, 0).middle()
 
 
+## Where a point of the model is drawn in [param view], or null behind it.
+func _shown_at(middle: Vector3, view: int) -> Variant:
+	var cad: CadCamera = camera as CadCamera
+	if cad != null:
+		return null if cad.behind(middle, view) else cad.screen_of(middle, view)
+	return null if camera.is_position_behind(middle) else camera.unproject_position(middle)
+
+
 ## The points on the page, and which is picked, for a probe and a browser
-## flow to click as a person does: [{kind, x, y}] in the window's pixels.
-func screen_points() -> Array:
+## flow to click as a person does: [{kind, x, y}] in the window's pixels,
+## as [param view] (the main one, or CadCamera.SECOND) draws them.
+func screen_points(view: int = CadCamera.MAIN) -> Array:
 	var out: Array = []
 	if stage != "point" or camera == null:
 		return out
 	for n: int in points.size():
-		var middle: Vector3 = _middle(n)
-		if camera.is_position_behind(middle):
+		var shown: Variant = _shown_at(_middle(n), view)
+		if shown == null:
 			continue
-		var at: Vector2 = camera.unproject_position(middle)
+		var at: Vector2 = shown
 		out.append({"index": n, "kind": (points[n] as JointSnap.End).kind,
 			"x": snappedf(at.x, 0.1), "y": snappedf(at.y, 0.1)})
 	return out
@@ -346,45 +360,42 @@ const LIT := Color(1.0, 0.85, 0.3)
 
 
 func _draw_marks() -> void:
-	if _overlay == null:
-		var layer := CanvasLayer.new()
-		layer.name = "ConnectPoints"
-		# Over the model, under the menus and dialogs.
-		layer.layer = 2
-		add_child(layer)
-		_overlay = Control.new()
-		_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-		_overlay.draw.connect(_draw_points)
-		layer.add_child(_overlay)
-	_overlay.visible = true
-	_overlay.queue_redraw()
+	if _overlays == null:
+		# Over the model in each view, under the menus and dialogs.
+		_overlays = ViewOverlays.new()
+		_overlays.name = "ConnectPoints"
+		_overlays.draw_in = _draw_points
+		add_child(_overlays)
+	_overlays.camera = camera as CadCamera
+	_overlays.show_drawn(true)
 
 
 func _light() -> void:
-	if _overlay != null:
-		_overlay.queue_redraw()
+	if _overlays != null and _overlays.is_shown():
+		_overlays.show_drawn(true)
 
 
 func _drop_marks() -> void:
-	if _overlay != null:
-		_overlay.visible = false
+	if _overlays != null:
+		_overlays.show_drawn(false)
 
 
-## How many points are drawn now, for a probe.
-func drawn() -> int:
-	return screen_points().size() if _overlay != null and _overlay.visible else 0
+## How many points are drawn now in [param view], for a probe.
+func drawn(view: int = CadCamera.MAIN) -> int:
+	return screen_points(view).size() if _overlays != null and _overlays.is_shown() else 0
 
 
 func _process(_delta: float) -> void:
 	# Drawn again as the view turns: a point round the back comes into sight.
-	if stage == "point" and _overlay != null and _overlay.visible:
-		_overlay.queue_redraw()
+	if stage == "point" and _overlays != null and _overlays.is_shown():
+		_overlays.show_drawn(true)
 
 
-func _draw_points() -> void:
+## The points as [param view] shows them, drawn on [param canvas] in the
+## window's units (ViewOverlays).
+func _draw_points(canvas: Control, view: int) -> void:
 	var scale: float = _scale()
-	for point: Dictionary in screen_points():
+	for point: Dictionary in screen_points(view):
 		var at := Vector2(point["x"], point["y"])
 		var lit_up: bool = int(point["index"]) == lit
 		var r: float = DOT * scale * (1.4 if lit_up else 1.0)
@@ -392,11 +403,11 @@ func _draw_points() -> void:
 		var end_at: JointSnap.End = points[int(point["index"])]
 		if end_at.is_hole() or end_at.is_wrap() or end_at.is_hinge():
 			# A hole is a ring: what goes into it, round its middle.
-			_overlay.draw_arc(at, r, 0.0, TAU, 24, EDGE, 4.0 * scale, true)
-			_overlay.draw_arc(at, r, 0.0, TAU, 24, colour, 2.2 * scale, true)
+			canvas.draw_arc(at, r, 0.0, TAU, 24, EDGE, 4.0 * scale, true)
+			canvas.draw_arc(at, r, 0.0, TAU, 24, colour, 2.2 * scale, true)
 		else:
-			_overlay.draw_circle(at, r + 1.5 * scale, EDGE)
-			_overlay.draw_circle(at, r, colour)
+			canvas.draw_circle(at, r + 1.5 * scale, EDGE)
+			canvas.draw_circle(at, r, colour)
 
 
-var _overlay: Control
+var _overlays: ViewOverlays
