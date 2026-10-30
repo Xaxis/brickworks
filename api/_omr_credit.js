@@ -35,17 +35,37 @@ export function storeRoot(env = process.env) {
   return named ? named.replace(/\/?$/, "/") : "";
 }
 
+/// How many times a read the store is too busy for is asked, and the first
+/// wait between: Supabase Storage answers a burst, as a page of 24 new
+/// pictures at once is, with 429 SlowDown ("too many connections issued to
+/// the database"), and fails with a 5xx now and then.
+const STORE_TRIES = 3;
+const STORE_WAIT_MS = 300;
+
+/// [path] in the store: its bytes, or null for none. Asked again, a moment
+/// later each time, while the store is too busy (429) or failing (5xx); a
+/// read that takes past [seconds] is given up.
+export async function storeBytes(path, { seconds = 20 } = {}) {
+  const root = storeRoot();
+  if (!root) return null;
+  for (let tried = 1; ; tried += 1) {
+    const answer = await fetch(`${root}${path}`, { signal: AbortSignal.timeout(seconds * 1000) }).catch(() => null);
+    if (answer && answer.ok) return answer.arrayBuffer().then((body) => Buffer.from(body), () => null);
+    await answer?.body?.cancel().catch(() => {});
+    if (!answer || (answer.status !== 429 && answer.status < 500) || tried === STORE_TRIES) return null;
+    await new Promise((resolve) => setTimeout(resolve, STORE_WAIT_MS * tried * (1 + Math.random())));
+  }
+}
+
 let kept = { at: 0, models: null };
 
 /// The library's models, as the app's Library reads them; kept a while.
 /// The site's LDraw library reads them too (api/_library.js).
 export async function storeIndex() {
   if (kept.models && Date.now() - kept.at < INDEX_FOR_MS) return kept.models;
-  const root = storeRoot();
-  if (!root) return [];
-  const answer = await fetch(`${root}library/index.json`);
-  if (!answer.ok) return [];
-  const said = await answer.json();
+  const bytes = await storeBytes("library/index.json");
+  if (!bytes) return [];
+  const said = JSON.parse(bytes.toString("utf8"));
   kept = { at: Date.now(), models: Array.isArray(said?.models) ? said.models : [] };
   return kept.models;
 }
@@ -53,10 +73,10 @@ export async function storeIndex() {
 /// A library model's own file, as LDraw has it, or null. A set's page reads
 /// it too (api/share.js), for its parts and steps.
 export async function storeFile(entry) {
-  const root = storeRoot();
-  if (!root || typeof entry.file !== "string" || !/^library\/omr\/[A-Za-z0-9._-]+\.mpd$/.test(entry.file)) return null;
-  const answer = await fetch(`${root}${entry.file}`);
-  return answer.ok ? answer.text() : null;
+  if (typeof entry.file !== "string" || !/^library\/omr\/[A-Za-z0-9._-]+\.mpd$/.test(entry.file)) return null;
+  // The largest is 36 MB.
+  const bytes = await storeBytes(entry.file, { seconds: 120 });
+  return bytes ? bytes.toString("utf8") : null;
 }
 
 /// The page the file's own credit line names, as a hint where to look; ""

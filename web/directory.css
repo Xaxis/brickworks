@@ -95,6 +95,11 @@
 .model-page .media { position: relative; }
 .model-page .media > .on-picture { position: absolute; top: 14px; left: 14px; background: var(--panel); }
 .model-page .picture.photo img { object-fit: contain; background: var(--bg-soft); }
+/* A set's own picture (api/_sets.js photoOf): Rebrickable's, whole, on the
+   white it was photographed on, and credited under it, short. */
+.set-page .picture.photo, .set-page .picture.photo img { background: #fff; }
+.set-page .picture-credit { margin: 6px 2px 0; text-align: right; font-size: var(--t-small); color: var(--ink-faint); }
+.set-page .picture-credit a { color: inherit; }
 @media (width < 600px) { .media-strip .thumb { width: 80px; height: 60px; } }
 /* On a phone the picture is square: at 390 px it is 358 px tall, not 188,
    and web/model-page.js draws the model as large as its width lets it,
