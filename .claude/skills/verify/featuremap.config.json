@@ -670,14 +670,14 @@
       "kind": "ui",
       "label": "copy paste and duplicate",
       "entry": "src/assembly/carry.gd",
-      "reach": "godot --path .  (select, Ctrl-C then Ctrl-V, or Ctrl-D; click to put down, R turns, Esc puts away)",
+      "reach": "godot --path .  (select, Ctrl-C then Ctrl-V, or Ctrl-D; click to put down, R turns, Esc puts away; after Ctrl-D or a Clone tool click another copy stays in hand until Esc or a right click)",
       "area": "building"
     },
     {
       "kind": "ui",
       "label": "move and turn a selection",
       "entry": "src/ui/edit_verbs.gd",
-      "reach": "godot --path .  (select, X picks it up, click puts it down, Esc puts it back; R turns it where it stands)",
+      "reach": "godot --path .  (select, X picks it up, click puts it down, Esc puts it back; R turns it where it stands, and where it has no room the parts in the way flash red and it comes into hand turned)",
       "area": "building"
     },
     {
@@ -2400,6 +2400,20 @@
       "label": "typed place and hinge",
       "entry": "src/ui/inspector.gd",
       "reach": "godot --path .  (select a part; Properties: X, Y, Z typed to the hundredth of an LDU; Hinge, shown when it hangs from a joint, typed in degrees)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "type a number while moving",
+      "entry": "src/ui/typed_entry.gd",
+      "reach": "godot --path .  (a part or a copy in hand, or straight after R or T: type 3x, -2z, 2py, -14ly, 23.58r or 30t; the ghost shows it, red where there is no room; Enter puts it down as one undo, Esc as it was)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "typed moves probe",
+      "entry": "src/dev/typed_moves_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/typed_moves_probe.gd  (what the field reads; five clones in six actions; the walk's brick turned in its wall in three; a number typed in hand put, refused and undone; CADTASK's four typed parts and 8841-1's 23.58 degree swing from the part in hand, each counted; -- only=reading|clones|wall|typed|sets)",
       "area": "building"
     },
     {

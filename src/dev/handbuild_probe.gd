@@ -184,6 +184,10 @@ func _duplicate_and_turn() -> void:
 	_check("its 2 x 4 now runs the other way (%s)" % long_way,
 		absf(long_way.z) > 0.9)
 	_check("and every part is still on the studs", _all_on_studs())
+	_check("...and another copy stays in hand for the next, turned as this one",
+		_builder.is_carrying() and _builder.carrying.repeats and _builder.carrying.turns == 1)
+	await _key(KEY_ESCAPE)
+	_check("Esc lets go of it", not _builder.is_carrying() and _count() == 9)
 
 
 func _turn_in_place() -> void:
@@ -494,6 +498,7 @@ func _the_shell() -> void:
 	await _move(spot)
 	await _click(spot + Vector2(1, 0))
 	_check("...and a click puts the copy down (%d parts)" % _count(), _count() == 3)
+	_check("...and another copy stays in hand for the next", _builder.is_carrying())
 
 	await _click((buttons["mode_move"] as Button).get_global_rect().get_center())
 	var was: Vector3 = _world.get_brick(blue).transform.origin
