@@ -321,7 +321,13 @@ plan with Claude as the client.
   `--resume`) stopped and told it is a new chat here that cannot undo what it
   did before, as chat B's first choice is and chat A's, the account's first,
   is not, and `server/discover` answered "method not found" by the relay
-  with no tab asked. 36 checks, seconds; deletes its throwaway account.
+  with no tab asked. Then a tab that has closed stays closed (2026-10-29,
+  relay338): an ask for work that reaches the relay after the close (a long
+  poll still on its way as the page went) is answered 401, say hello again,
+  and opens nothing; the tab is not listed, and its fresh hello lists it
+  again. It used to mark the tab open, and a chat's next call waited on a
+  gone tab or was asked to choose between two; against that relay those two
+  checks fail. 41 checks, seconds; deletes its throwaway account.
 - `relay timing` (`tools/web/relay_timing.mjs`, `--url=` a local relay or a
   preview, `--rounds=4`): what a call through the relay costs when the tab
   answers at once. A throwaway account (deleted at the end), a stand-in tab
@@ -334,7 +340,14 @@ plan with Claude as the client.
   writes beside it; the answer is taken and deleted in one step; and each
   side naps on a wake (`nap`/`wake` in api/mcp.js), so one instance serving
   both hands each over at once, else Claude's call looks from 40 ms up to
-  350 ms and the tab's ask for work every 350 ms. The same answers: 42 of 42
+  350 ms and the tab's ask for work every 350 ms, or every 100 ms while it
+  answered a call in the last minute (`relay_tabs.answered_at`,
+  `supabase/relay_cost.sql`). A call reads which tools its tab serves from
+  the tab's row (`relay_tabs.list`, written beside the hello, nulled by a
+  trigger when a hello is written without it), not the 248 KB hello. Both
+  columns only once that file is applied: whether they are there is asked
+  once an instance (`columns()`), and again a minute after a no, so until
+  then the relay runs as it did without them. The same answers: 42 of 42
   identical to the relay before, for a scripted 40 calls with the headless
   app as the tab.
 - `two windows probe` (`src/dev/tabpair_probe.gd -- 8790`): the desktop's side

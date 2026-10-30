@@ -82,7 +82,9 @@ class Tab {
   }
   async answer() {
     while (!this.stopped) {
-      const asked = await fetch(this.address("next"), { method: "POST", headers: extra }).catch(() => null);
+      this.asking = new AbortController();
+      const asked = await fetch(this.address("next"), { method: "POST", headers: extra, signal: this.asking.signal })
+        .catch(() => null);
       if (!asked || asked.status !== 200) {
         if (asked && asked.status !== 204) await new Promise((done) => setTimeout(done, 500));
         continue;
@@ -97,8 +99,13 @@ class Tab {
       });
     }
   }
+  // As a page that goes stops asking first: its ask for work let go of and
+  // its loop ended, then the close. Closed while an ask was still on its
+  // way, the next section's call found two tabs open (relay338, 2026-10-29).
   async close() {
     this.stopped = true;
+    if (this.asking) this.asking.abort();
+    await this.answering;
     await fetch(this.address("close"), { method: "POST", headers: extra }).catch(() => {});
   }
 }
