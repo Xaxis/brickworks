@@ -39,15 +39,6 @@ EXCUSED = {
     ("src/ui/connect_tool.gd", "Connect: the %s picked — click the %s it goes on, R turns it about the joint"),
     ("src/ui/connect_tool.gd",
      "Connect: by its %s on %s · click puts it there · R turns it about the joint · T the other way on · N another point · Esc stops"),
-    # The tour is the firstbuild unit's (A12), rewriting it. When one of
-    # these units' work is merged, its lines here go.
-    ("src/ui/tour.gd", "The tools a click acts through. Select is where the app rests: click a part to pick it out, "
-     "drag it to move it. Place puts the part in hand down, one click at a time (Q). Move, Rotate, Hinge, Clone, "
-     "Paint, Hide and Delete each do their one thing to the part you click. The lit one is in use; Escape always "
-     "comes back to Select."),
-    ("src/ui/tour.gd", "Right-drag turns the view, the middle button (or Shift and a right drag) slides it, the wheel "
-     "zooms to the pointer — as in BrickLink Studio, or set it to work like Blender or Mecabricks in Settings. The "
-     "numbers 1 to 7 look from the front, back, sides, above, below and a corner; F frames what is selected."),
 }
 # Not shown to a person: the keymap itself, the probes, and what the
 # assistant is told (src/ai), which names parts like "Saturn V"...
