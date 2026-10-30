@@ -1996,7 +1996,7 @@ func _fill_grid() -> void:
 	_shown = 0
 	_scroll.scroll_vertical = 0
 	_grid.columns = 1 if _list.button_pressed else _tiles_across()
-	_grid.add_theme_constant_override("v_separation", int(_z(1 if _list.button_pressed else 4)))
+	_grid.add_theme_constant_override("v_separation", 0 if _list.button_pressed else int(_z(4)))
 	_fold()
 	_show_more(FIRST_PAGE)
 
@@ -2353,6 +2353,11 @@ func _make_row(info: PartLibrary.PartInfo, key: String = "") -> Control:
 	var tall: float = maxf(_z(ROW), least)
 	button.custom_minimum_size = Vector2(0, tall)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# A table's row, not a stack of buttons: lit as a menu's row is under the
+	# pointer, and every other one a shade lighter to follow across.
+	var striped: bool = _grid.get_child_count() % 2 == 1
+	for state: String in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		button.add_theme_stylebox_override(state, _row_look(state, striped))
 	var line := HBoxContainer.new()
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	line.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -2369,6 +2374,27 @@ func _make_row(info: PartLibrary.PartInfo, key: String = "") -> Control:
 	image.sketch_colour = _sketch_colour(colour)
 	line.add_child(image)
 	button.set_meta("tile", image)
+	# Its prints' count, in a column of its own so the names line up.
+	var fold_wide: float = maxf(least, ceilf(_z(30.0)))
+	if _folds.has(info.id):
+		var badge: Button = _fold_badge(info)
+		badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		badge.flat = true
+		badge.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		# No button's margins: a row with prints is as tall as one without.
+		for state: String in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+			badge.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+		badge.add_theme_color_override("font_color", Look.ACCENT)
+		badge.add_theme_color_override("font_hover_color", Look.ACCENT_HOVER)
+		badge.add_theme_color_override("font_pressed_color", Look.ACCENT_HOVER)
+		badge.custom_minimum_size = Vector2(fold_wide, 0)
+		badge.size_flags_vertical = Control.SIZE_FILL
+		line.add_child(badge)
+	else:
+		var gap := Control.new()
+		gap.custom_minimum_size.x = fold_wide
+		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		line.add_child(gap)
 
 	var title := Label.new()
 	title.set_meta("name", tile_name(info))
@@ -2408,13 +2434,6 @@ func _make_row(info: PartLibrary.PartInfo, key: String = "") -> Control:
 	star.visible = PartShelf.is_favourite(info.id)
 	line.add_child(star)
 	button.set_meta("star", star)
-	if _folds.has(info.id):
-		var badge: Button = _fold_badge(info)
-		badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		badge.custom_minimum_size = Vector2(maxf(least, _z(24.0)), tall - _z(2))
-		badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		line.add_child(badge)
-		line.move_child(badge, 1)
 
 	_cells[info.id] = image
 	if thumbnails:
@@ -2429,7 +2448,33 @@ func _make_row(info: PartLibrary.PartInfo, key: String = "") -> Control:
 ## How tall a row of the list is, in the desktop's units: a line of its
 ## eleven-point words and no more, so twenty rows and more are in sight in
 ## a laptop's bin.
-const ROW := 16.0
+const ROW := 17.0
+
+var _row_looks: Dictionary = {}
+
+
+## A list row's face in [param state]: nothing, a faint stripe on every
+## other row, [constant Look.ROW_LIT] edged in the accent under the pointer
+## or the keys, and the accent's own tint for the part in hand.
+func _row_look(state: String, striped: bool) -> StyleBox:
+	var key: String = "%s/%s" % [state, striped]
+	if _row_looks.has(key):
+		return _row_looks[key]
+	var face := StyleBoxFlat.new()
+	face.set_content_margin_all(0)
+	face.set_corner_radius_all(2)
+	face.bg_color = Color(1, 1, 1, 0.035 if striped else 0.0)
+	match state:
+		"hover", "focus":
+			face.bg_color = Look.ROW_LIT if state == "hover" else Color(0, 0, 0, 0)
+			face.border_color = Look.ACCENT
+			face.set_border_width_all(1)
+		"pressed", "hover_pressed":
+			face.bg_color = Color(Look.ACCENT, 0.22 if state == "pressed" else 0.3)
+			face.border_color = Look.ACCENT
+			face.set_border_width_all(1)
+	_row_looks[key] = face
+	return face
 
 
 ## The button a tile or a row is made on: what it says, what a click, a drag
