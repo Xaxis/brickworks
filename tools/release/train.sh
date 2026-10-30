@@ -44,7 +44,7 @@ usage() { sed -n '4,7p' "$HERE/train.sh"; exit 2; }
 # still runs this train: a pid is reused once its process ends.
 runner() {
   local pid; pid=$(cat "$RO/$1.train/pid" 2>/dev/null) || return 1
-  case "$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)" in
+  case "$(tr '\0' ' ' 2>/dev/null < "/proc/$pid/cmdline")" in
     *"train.sh run $1 ") echo "$pid" ;;
     *) return 1 ;;
   esac
