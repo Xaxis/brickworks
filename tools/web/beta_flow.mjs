@@ -217,7 +217,7 @@ try {
     const card = page.locator("li.app", { hasText: address("a") });
     const read = (await card.innerText().catch(() => "")).replace(/\s+/g, " ");
     for (const signal of ["Email confirmed", "Account 0 days old", "Email domain: resend.dev", "Same inbox as",
-      "Has not kept or shared a model yet", "The form: 13 words, nothing odd"]) {
+      "Has not kept or shared a model yet", "The form: 14 words, nothing odd"]) {
       check(`the signals say "${signal}"`, read.includes(signal));
     }
     check("its answers: what, AI, background, link", read.includes(form.build) && read.includes("Claude")

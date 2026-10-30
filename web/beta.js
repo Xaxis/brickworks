@@ -16,9 +16,9 @@ function show(id) {
   for (const one of PANELS) $(one).hidden = one !== id;
 }
 
-function spotsSaid(pool) {
+function spotsSaid(pool, applied) {
   if (!pool) return "";
-  if (pool.left <= 0) return `All ${pool.cap} spots are taken. Apply, and you are on the waitlist.`;
+  if (pool.left <= 0) return `All ${pool.cap} spots are taken.${applied ? "" : " Apply, and you are on the waitlist."}`;
   return `${pool.left} of ${pool.cap} spots left`;
 }
 
@@ -66,7 +66,8 @@ function draw(answer) {
   const open = answer?.beta === "open";
   for (const one of document.querySelectorAll("[data-when]")) one.hidden = one.dataset.when !== (open ? "open" : "off");
   $("to-apply").hidden = !open;
-  $("spots").textContent = open ? spotsSaid(answer.pool) : "Coming soon: applications open here shortly.";
+  $("spots").textContent = open ? spotsSaid(answer.pool, Boolean(answer.application))
+    : "Coming soon: applications open here shortly.";
   if (!open) return show("apply-soon");
   if (!answer.signed_in) return show("apply-out");
   const app = answer.application;
