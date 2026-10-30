@@ -30,6 +30,9 @@ class Page extends RefCounted:
 	##   spacing}: one line.
 	## {k: "path", lines ([PackedVector2Array]), closed, fill, line, width,
 	##   stroke_first}: a colour with no alpha is not drawn.
+	## A picture or words of the designer's turned or faded (Booklet
+	## .note_style) carry "turn" (degrees clockwise about "pivot", in page
+	## mm) and "alpha" (how solid, 0 to 1) as well.
 	var ops: Array[Dictionary] = []
 	## The step pictures' sources in the order they are on the page, for a
 	## check that the PDF has them as they are.
@@ -199,8 +202,10 @@ func _page(html: String) -> Page:
 			"img":
 				var style: Dictionary = _style(str(attributes.get("style", "")))
 				var source: String = str(attributes.get("src", ""))
-				page.ops.append({"k": "image", "at": _rect(style), "src": source, "part": "",
-					"on": _behind(page, _rect(style).get_center())})
+				var op: Dictionary = {"k": "image", "at": _rect(style), "src": source, "part": "",
+					"on": _behind(page, _rect(style).get_center())}
+				op.merge(_turned(style))
+				page.ops.append(op)
 				page.pictures.append(source)
 			"i":
 				var style: Dictionary = _style(str(attributes.get("style", "")))
@@ -245,6 +250,27 @@ static func _mm(value: Variant) -> float:
 static func _rect(style: Dictionary) -> Rect2:
 	return Rect2(_mm(style.get("--x", 0)), _mm(style.get("--y", 0)),
 		_mm(style.get("--w", 0)), _mm(style.get("--h", 0)))
+
+
+## What a style turns and fades its box by (transform: rotate(Ndeg) about
+## its transform-origin, opacity): {"turn", "pivot", "alpha"}, or {} where
+## it does neither.
+static func _turned(style: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var transform: String = str(style.get("transform", ""))
+	if transform.begins_with("rotate("):
+		var turn: float = _mm(transform)
+		if not is_zero_approx(turn):
+			var origin: PackedFloat64Array = _numbers(str(style.get("transform-origin", "")))
+			var by: Vector2 = Vector2(origin[0], origin[1]) if origin.size() >= 2 \
+				else _rect(style).size * 0.5
+			out["turn"] = turn
+			out["pivot"] = Vector2(_mm(style.get("--x", 0)), _mm(style.get("--y", 0))) + by
+	if style.has("opacity"):
+		var alpha: float = clampf(_mm(style["opacity"]), 0.0, 1.0)
+		if alpha < 1.0:
+			out["alpha"] = alpha
+	return out
 
 
 static func _colour(text: String) -> Color:
@@ -332,6 +358,7 @@ func _words(page: Page, words: Dictionary) -> void:
 			lines.size() * size + pad.y * 2.0)), "fill": Color8(255, 241, 214),
 			"line": Color(0, 0, 0, 0), "width": 0.0, "radius": 1.4})
 	var right: bool = str(style.get("text-align", "")) == "right" and width > 0.0
+	var turned: Dictionary = _turned(style)
 	var down: float = (high - ASCENT_DESCENT) * 0.5 + (BASELINE - (1.0 - ASCENT_DESCENT) * 0.5)
 	for index: int in lines.size():
 		var line: Array = lines[index]
@@ -349,8 +376,10 @@ func _words(page: Page, words: Dictionary) -> void:
 			var text: String = str(run)
 			if text.is_empty():
 				continue
-			page.ops.append({"k": "text", "at": Vector2(x, baseline), "size": size,
-				"text": text, "bold": bold, "colour": colour, "spacing": spacing})
+			var op: Dictionary = {"k": "text", "at": Vector2(x, baseline), "size": size,
+				"text": text, "bold": bold, "colour": colour, "spacing": spacing}
+			op.merge(turned)
+			page.ops.append(op)
 			x += text_width(text, size, bold, spacing)
 
 
