@@ -266,8 +266,40 @@ try {
     console.log("5. A decline");
     const b = await mintSession(address("b"));
     made.push(address("b"));
-    r = await api("/api/plans?op=beta", { method: "POST", token: b.access_token, body: form });
-    check(`B applied: ${r.status}`, r.status === 200);
+    // B applies by keyboard alone, at 1280: Tab from the panel's first
+    // field to Apply, the dropdowns by arrow keys, the boxes by Space.
+    ({ page, context } = await open("/beta", { width: 1280, who: b, label: "keyboard" }));
+    said = await betaSaid(page);
+    await page.focus("#f-build");
+    await page.keyboard.type(form.build);
+    const stops = [];
+    const tab = async () => {
+      await page.keyboard.press("Tab");
+      const at = await page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName);
+      stops.push(at);
+      return at;
+    };
+    await tab();
+    await page.keyboard.press("ArrowDown");
+    await tab();
+    await page.keyboard.press("ArrowDown");
+    await tab();
+    await tab();
+    await tab();
+    await page.keyboard.press("Space");
+    // The terms' own link sits in the first box's words.
+    while (!["f-emails", "BODY"].includes(await tab()) && stops.length < 10) { /* on to the second box */ }
+    await page.keyboard.press("Space");
+    await tab();
+    await page.keyboard.press("Enter");
+    const keyed = await until(page, () => !document.getElementById("apply-status").hidden
+      && document.activeElement?.id === "status-h");
+    check(`applied by keyboard alone, the focus on the answer: ${stops.join(" > ")}`, keyed
+      && stops.slice(0, 5).join() === "f-ai,f-background,f-line,f-link,f-terms");
+    await context.close();
+    r = await api("/api/plans?op=beta", { token: b.access_token });
+    check(`B applied: ${r.json?.application?.status} (${r.json?.application?.ai}, ${r.json?.application?.background})`,
+      r.json?.application?.status === "new");
     r = await api(`/api/admin?op=beta_decide&account=${b.kept.user_id}`, { method: "POST", token: owner.access_token,
       body: { decision: "decline", note: "Flow decline" } });
     check(`declined: ${r.status} ${r.json?.application?.status}, email ${r.json?.mail}`, r.status === 200
