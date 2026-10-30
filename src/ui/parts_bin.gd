@@ -203,12 +203,13 @@ func _build() -> void:
 	backing.bg_color = Color(0.11, 0.12, 0.14, 0.94)
 	backing.content_margin_left = _z(10)
 	backing.content_margin_right = _z(10)
-	backing.content_margin_top = _z(10)
-	backing.content_margin_bottom = _z(10)
+	# A phone's sheet has its own margins and height to spare for none.
+	backing.content_margin_top = _z(4 if by_finger else 10)
+	backing.content_margin_bottom = _z(4 if by_finger else 10)
 	add_theme_stylebox_override("panel", backing)
 
 	var root := VBoxContainer.new()
-	root.add_theme_constant_override("separation", int(_z(8)))
+	root.add_theme_constant_override("separation", int(_z(4 if by_finger else 8)))
 	add_child(root)
 
 	var head := HBoxContainer.new()
@@ -369,6 +370,27 @@ func _build() -> void:
 		# Not the techniques, a list of one across (_fill_techniques).
 		if _grid.columns > 1:
 			_grid.columns = _tiles_across())
+	# On a phone the rows above the parts scroll away with them, as a
+	# phone's lists do, and the foot stays. Stacked, they asked more than a
+	# sheet half a phone high or a phone on its side has: the sheet was
+	# laid taller than its room and its foot went past the screen's bottom
+	# (rel-m226: Prints and List at 801 of 844; on its side the whole foot
+	# under the screen).
+	if by_finger:
+		var page := VBoxContainer.new()
+		page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		page.add_theme_constant_override("separation", int(_z(4)))
+		_scroll.remove_child(_grid)
+		_scroll.add_child(page)
+		for row: Control in [head, _set_line, _set_models, _step_line, _search, category_scroll]:
+			root.remove_child(row)
+			page.add_child(row)
+		page.add_child(_grid)
+		# Room under the parts to put the search at the top with one row of
+		# them listed (_to_list_top, _process).
+		_page_foot = Control.new()
+		_page_foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		page.add_child(_page_foot)
 
 	# The status line, and at its end how the parts are shown, as a file
 	# window keeps its views at its foot: with their prints or without, as
@@ -424,7 +446,10 @@ func _build() -> void:
 	var colour_box := VBoxContainer.new()
 	colour_box.add_theme_constant_override("separation", 6)
 	colours.add_child(colour_box)
-	var colour_head := HBoxContainer.new()
+	# A line that wraps where the column is narrow: at 390 across the
+	# checkbox was cut to "Only par…" to keep the field and All beside it.
+	var colour_head := HFlowContainer.new()
+	colour_head.add_theme_constant_override("v_separation", 4)
 	colour_box.add_child(colour_head)
 	var colour_title := Label.new()
 	colour_title.text = "Colour"
@@ -432,12 +457,10 @@ func _build() -> void:
 	colour_head.add_child(colour_title)
 	# Studio's "Hide Unavailable Parts in the Selected Color": the bin's
 	# parts are those made in the colour in hand, from what the swatches'
-	# dots are read from. Cut short, not pushing the column wider, where
-	# the column is narrow; its tooltip has it whole.
+	# dots are read from. Whole: the field and All go under it where the
+	# column has no room for them beside it.
 	_only_made = CheckBox.new()
 	_only_made.text = "Only parts made in it"
-	_only_made.clip_text = true
-	_only_made.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_only_made.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_only_made.add_theme_font_size_override("font_size", 12)
 	FocusGuard.by_keyboard(_only_made)
@@ -1280,6 +1303,14 @@ func _process(_delta: float) -> void:
 			and Time.get_ticks_msec() - _counted_msec >= RECOUNT_MSEC:
 		_recount()
 
+	if _page_foot != null:
+		var under: float = maxf(0.0, _scroll.size.y - (_page_foot.position.y - _search.position.y))
+		if absf(_page_foot.custom_minimum_size.y - under) > 0.5:
+			_page_foot.custom_minimum_size.y = under
+	if _to_top_frames > 0:
+		_to_top_frames -= 1
+		_scroll.scroll_vertical = roundi(_search.position.y)
+
 	# Grow the grid as it is scrolled. Checking here rather than on a
 	# scroll signal covers the case where the window is resized and the
 	# existing page no longer fills it.
@@ -2050,6 +2081,23 @@ static func _is_buried(category: String) -> bool:
 	return false
 
 
+## A list shown from its start: the scroll's top on a desktop; on a phone
+## the search, over the chips and the parts, the head above it a drag away,
+## or a phone on its side showed the head and the chips and not one part.
+## Put there over the next frames, as the grid is laid out (_process).
+func _to_list_top() -> void:
+	_scroll.scroll_vertical = 0
+	if by_finger:
+		_to_top_frames = 3
+
+
+## Frames left to put a phone's list at its search (_to_list_top).
+var _to_top_frames: int = 0
+## On a phone, the room under the parts that lets the list be put at its
+## search however few they are.
+var _page_foot: Control
+
+
 func _fill_grid() -> void:
 	# Out of the grid now, not at the end of the frame, or what is in
 	# sight is worked out over the old cells and the new ones together.
@@ -2058,7 +2106,7 @@ func _fill_grid() -> void:
 		child.queue_free()
 	_cells.clear()
 	_shown = 0
-	_scroll.scroll_vertical = 0
+	_to_list_top()
 	_grid.columns = 1 if _list.button_pressed else _tiles_across()
 	_grid.add_theme_constant_override("v_separation", 0 if _list.button_pressed else int(_z(4)))
 	_fold()
@@ -3036,7 +3084,7 @@ func _fill_techniques(query: String) -> void:
 		child.queue_free()
 	_cells.clear()
 	_shown = 0
-	_scroll.scroll_vertical = 0
+	_to_list_top()
 	_grid.columns = 1
 	_grid.add_theme_constant_override("v_separation", int(_z(4)))
 	_techniques_seen = []
@@ -3135,7 +3183,9 @@ func _technique_cell(technique: Dictionary) -> Control:
 ## below and those above. Its rows are not all one height, as a grid of
 ## parts' are, so ThumbTile.Sight cannot say.
 func _technique_tiles() -> Array[ThumbTile]:
-	var window := Rect2(Vector2(0, _scroll.scroll_vertical), _scroll.size)
+	# In the grid's own terms: on a phone the rows above it scroll too.
+	var window := Rect2(Vector2(0, _scroll.get_global_rect().position.y
+		- _grid.get_global_rect().position.y), _scroll.size)
 	var seen: Array[ThumbTile] = []
 	var below: Array[ThumbTile] = []
 	var above: Array[ThumbTile] = []
