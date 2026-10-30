@@ -19,18 +19,24 @@ const DEFAULTS: Dictionary = {
 	# Folded to its rail until asked for: a first visit opens on the CAD
 	# itself, the parts bin and the model.
 	"assistant_open": false,
+	# The right-hand column on its model tree and properties, where the
+	# assistant is not showing in it (Main._arrange_columns).
+	"properties_open": true,
 	"inspector_open": true,
-	# Folded to its header under the parts bin: a model with no
-	# sub-assemblies has one row in it, and the properties use the room.
+	# Folded to its header: a model with no sub-assemblies has one row in
+	# it. A phone's drawer keeps it so; the desktop opens it once, the first
+	# time it has the right-hand column to itself ("right_column").
 	"outliner_open": false,
-	# The model tree's and the properties' heights in the left-hand
-	# column (PanelStack); the parts bin has what is left.
+	"right_column": false,
+	# The model tree's and the properties' heights in their column
+	# (PanelStack): down the right, the properties have what is left.
 	"tree_height": 210.0,
 	"properties_height": 230.0,
 	# In a window with room for one column beside the model, the one
-	# showing: "parts" (the bin, the tree and the properties), "assistant",
-	# or "" for neither (Main._fit_panels). A first visit gets the parts:
-	# Brickworks is a CAD first, and the assistant one choice in it.
+	# showing: "parts" (the bin), "properties" (the model tree and the
+	# properties), "assistant", or "" for none (Main._fit_panels). A first
+	# visit gets the parts: Brickworks is a CAD first, and the assistant one
+	# choice in it.
 	"narrow_side": "parts",
 	# Settings, Assistant (AI): "on", "off", or "" until somebody chooses
 	# ([method assistant_shown]).

@@ -976,11 +976,25 @@ func _part_point() -> Vector2:
 		for step: int in range(maxi(ring * 8, 1)):
 			var turn: float = TAU * step / maxf(ring * 8, 1)
 			var at: Vector2 = _middle + Vector2(cos(turn), sin(turn)) * ring * 20.0
-			if Rect2(Vector2.ZERO, size).has_point(at) and verbs.brick_at(at) != 0 \
+			if Rect2(Vector2.ZERO, size).has_point(at) and _inside_a_part(at, verbs) \
 					and not _main._over_panel_at(at):
 				return at
 	_check("there is somewhere over the model with a part under it", false)
 	return _middle
+
+
+## One part under the point and under the points a few units round it. On
+## a part's edge the pointer the window reports, rounded to its pixels,
+## found no part there: the model between both columns put a ring's point
+## on an edge (2026-10-30).
+func _inside_a_part(at: Vector2, verbs: EditVerbs) -> bool:
+	var brick: int = verbs.brick_at(at)
+	if brick == 0:
+		return false
+	for nudge: Vector2 in [Vector2(4, 0), Vector2(-4, 0), Vector2(0, 4), Vector2(0, -4)]:
+		if verbs.brick_at(at + nudge) != brick:
+			return false
+	return true
 
 
 ## A point where the part in hand has nowhere to go, walking up from the

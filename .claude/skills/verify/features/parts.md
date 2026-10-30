@@ -201,7 +201,7 @@ geometry in front of them.
   of them. `handbuild_probe -- only=build_from_a_booklet` types "light grey",
   "dark gray", "71" and "Light Bluish" and reads the colour in hand. The mosaic keeps its own 44 (`Mosaic.PALETTE`). The palette
   is a section of its own at the foot of the left-hand column
-  (`PartsBin.colours`, under the model tree and the properties), as tall as
+  (`PartsBin.colours`, under the parts bin), as tall as
   what it holds up to 14% of the column and a scroll beyond
   (`_fit_palette`): a fixed 168 cut the last group's title in half, and sized
   by the bin it sat in, the parts grid had room for two rows at 1440 x 900.

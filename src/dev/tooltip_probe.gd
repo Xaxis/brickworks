@@ -177,7 +177,8 @@ func _sweep() -> void:
 	bin_dock.set_open(true, false)
 	await _frames(20)
 	await _panel("the window", root)
-	# Properties: the column's panel of what is selected.
+	# Properties: the right-hand column's panel of what is selected.
+	SideDock.of(shell.inspector).set_open(true, false)
 	for brick: BrickWorld.Brick in world.bricks():
 		if builder.select_brick(brick.id, false):
 			break

@@ -47,7 +47,7 @@ picture the assistant is shown.
   from before it.
 - `view cube`: the cube at the model's top right (`ViewCube`, replacing the
   axis dots), the one thing over the model: the model tree and the properties
-  are docked in the left-hand column ([building](building.md)'s `docked
+  are docked in the right-hand column ([building](building.md)'s `docked
   panels`), and `Main.model_cover()` leaves out the points under the cube and
   nothing else. It turns with the view; a click on a face looks from that side, on
   an edge or corner from between two or three (`CadCamera.look_from`); a drag

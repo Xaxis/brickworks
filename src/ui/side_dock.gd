@@ -25,13 +25,19 @@ var content: Control
 ## that shows one column at a time the other is only its rail, and a pair
 ## of chevrons did not say what was behind it.
 var title: String = ""
-## Its icon at the top of the rail, drawn: "parts" (a brick) or
-## "assistant" (a spark).
+## Its icon at the top of the rail, drawn: "parts" (a brick), "properties"
+## (three sliders) or "assistant" (a spark).
 var icon: String = ""
 ## What showing or hiding it does, for the rail's tooltip: "the parts bin".
 var holds: String = ""
 
 var _rail: Button
+## The strip the rail stands in, at the panel's inner edge: shared with the
+## panels this one shares its edge with (share_edge), their rails one over
+## another.
+var _rails: VBoxContainer
+## The panels on this edge with this one, of which one is open at a time.
+var _edge_mates: Array[SideDock] = []
 var _arrow: Chevron
 var _open_idle: StyleBoxFlat
 var _open_hover: StyleBoxFlat
@@ -71,6 +77,36 @@ func set_phone_rail(width: float) -> void:
 	_update_rail()
 
 
+## The dock [param inside] is in, or null: for a command that shows a
+## section of a column (Shell's View, Properties) to open the column it is
+## in, wherever the window put it.
+static func of(inside: Node) -> SideDock:
+	var at: Node = inside
+	while at != null and not at is SideDock:
+		at = at.get_parent()
+	return at as SideDock
+
+
+## Share the edge [param first] is on: this panel's rail goes under its
+## rail, in one strip, and one of the two is open at a time, as the tabs of
+## one column. Opening one while the other is open swaps them where they
+## stand, without a slide: the column stays, and what is in it changes.
+## This panel is then only its holder, laid after [param first]'s.
+func share_edge(first: SideDock) -> void:
+	_rails.remove_child(_rail)
+	first._rails.add_child(_rail)
+	remove_child(_rails)
+	_rails.queue_free()
+	_rails = first._rails
+	for mate: SideDock in first._edge_mates:
+		mate._edge_mates.append(self)
+		_edge_mates.append(mate)
+	first._edge_mates.append(self)
+	_edge_mates.append(first)
+	# Hidden (the assistant turned off), its rail goes with it.
+	visibility_changed.connect(func() -> void: _rail.visible = visible)
+
+
 func setup(inner: Control, on_edge: int, width: float) -> void:
 	edge = on_edge
 	content = inner
@@ -85,6 +121,10 @@ func setup(inner: Control, on_edge: int, width: float) -> void:
 	inner.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_holder.add_child(inner)
 
+	_rails = VBoxContainer.new()
+	_rails.add_theme_constant_override("separation", 0)
+	_rails.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_rails.mouse_filter = Control.MOUSE_FILTER_PASS
 	_rail = Button.new()
 	_rail.custom_minimum_size = Vector2(RAIL_WIDTH, 0)
 	_rail.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -103,11 +143,12 @@ func setup(inner: Control, on_edge: int, width: float) -> void:
 	# Styled after the edge is known, since the rail's border sits on its
 	# inner side.
 	_style_rail()
+	_rails.add_child(_rail)
 	if edge == Edge.LEFT:
 		add_child(_holder)
-		add_child(_rail)
+		add_child(_rails)
 	else:
-		add_child(_rail)
+		add_child(_rails)
 		add_child(_holder)
 	_update_rail()
 
@@ -171,6 +212,11 @@ func set_open(open: bool, animate: bool = true) -> void:
 	if open == _open:
 		return
 	if open:
+		# The other tab of this column out: swapped where it stands.
+		for mate: SideDock in _edge_mates:
+			if mate.is_open():
+				mate.set_open(false, false)
+				animate = false
 		opening.emit()
 	_open = open
 	_update_rail()
@@ -259,6 +305,8 @@ class Chevron extends Control:
 		match icon:
 			"parts":
 				_brick(top, ink)
+			"properties":
+				_sliders(top, ink)
 			"assistant":
 				_spark(top, ink)
 		if not words.is_empty():
@@ -277,6 +325,13 @@ class Chevron extends Control:
 		draw_rect(Rect2(at + Vector2(-7, -2), Vector2(14, 8)), ink)
 		draw_rect(Rect2(at + Vector2(-5.5, -5), Vector2(4, 3)), ink)
 		draw_rect(Rect2(at + Vector2(1.5, -5), Vector2(4, 3)), ink)
+
+	## Three sliders, each with its knob: the model tree and the properties.
+	func _sliders(at: Vector2, ink: Color) -> void:
+		for row: int in 3:
+			var y: float = at.y - 5.0 + row * 5.0
+			draw_line(Vector2(at.x - 7.0, y), Vector2(at.x + 7.0, y), ink, 1.4, true)
+			draw_circle(Vector2(at.x + [3.0, -3.5, 1.0][row], y), 2.2, ink)
 
 	## A four-pointed spark, and a small one by it: the assistant.
 	func _spark(at: Vector2, ink: Color) -> void:

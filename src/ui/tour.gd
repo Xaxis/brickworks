@@ -45,14 +45,14 @@ func _every_stop() -> Array:
 			func() -> Control: return shell.toolbar],
 		["The parts bin",
 			"Every part, by category, or found by name or number. Pick one, pick a colour under it, and click the model to put it down — and again for the next. Escape or a right click lets go of it.",
-			func() -> Control: return _opened("_bin_dock")],
+			func() -> Control: return _opened(shell.app.get("_bin_dock"))],
 		["The model",
 			"Right-drag turns the view, the middle button (or Shift and a right drag) slides it, the wheel zooms to the pointer — as in BrickLink Studio, or set it to work like Blender or Mecabricks in Settings. The numbers 1 to 7 look from the front, back, sides, above, below and a corner; F frames what is selected.",
 			func() -> Control: return shell.app.get("_marquee").get_parent()],
 		["Properties",
 			"What is selected: the part and its numbers, its colour by every name it has, where it stands and what it is joined to. Type a number to move it exactly.",
 			func() -> Control:
-				_opened("_bin_dock")
+				_opened(SideDock.of(shell.inspector))
 				shell.inspector.set_open(true)
 				return shell.inspector],
 		["The status bar",
@@ -60,15 +60,14 @@ func _every_stop() -> Array:
 			func() -> Control: return shell.status],
 		[ASSISTANT_STOP,
 			"Describe a model and Claude designs and builds it here, part by part — or connect your own Claude to build in this window.",
-			func() -> Control: return _opened("_chat_dock")],
+			func() -> Control: return _opened(shell.app.get("_chat_dock"))],
 	]
 
 
 ## A side column, opened at once if it was folded, so its card has the
 ## panel to point at: a window with room for one column beside the model
 ## shows one at a time.
-func _opened(dock_name: String) -> SideDock:
-	var dock: SideDock = shell.app.get(dock_name)
+func _opened(dock: SideDock) -> SideDock:
 	if not dock.is_open():
 		dock.set_open(true, false)
 		# Lit again once the window has laid itself out round it, and the

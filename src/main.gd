@@ -28,9 +28,16 @@ var _weighing: bool = false
 var _counts: Label
 var _bin_dock: SideDock
 var _chat_dock: SideDock
-## The left-hand column's sections: the parts bin, the model tree and the
-## properties (src/ui/panel_stack.gd).
+## The right-hand column of the model tree and the properties, which the
+## assistant shares as a tab beside them (SideDock.share_edge). Null on a
+## phone or a tablet, whose drawer down the left has them.
+var _props_dock: SideDock
+## The left-hand column's sections (src/ui/panel_stack.gd): the parts bin
+## and the colours; on a phone, the model tree, the properties and the
+## colours.
 var _stack: PanelStack
+## The right-hand column's: the model tree over the properties.
+var _side: PanelStack
 ## The strip along the top of the model for what is said about it for a
 ## while: the sub-assembly being edited, the offer to seat old parts.
 var _notices: PanelContainer
@@ -819,6 +826,7 @@ func _tell_page() -> void:
 		# rail to click for a control in the other (openColumnFor in
 		# tools/web/browser.mjs).
 		"columns": {"parts": _bin_dock.is_open(), "assistant": _chat_dock.is_open(),
+			"properties": _props_dock.is_open() if _props_dock != null else _bin_dock.is_open(),
 			"share": _columns},
 		# Settings, Assistant (AI): whether the assistant is in the window at
 		# all (tools/web/noai_flow.mjs), and the first visit's line offering it.
@@ -1025,6 +1033,9 @@ func _page_controls() -> Dictionary:
 	if _bin_dock != null:
 		named["parts_rail"] = _bin_dock.rail()
 		named["assistant_rail"] = _chat_dock.rail()
+		# The model tree and the properties: down the right, or on a phone
+		# in the parts bin's drawer.
+		named["properties_rail"] = (_props_dock if _props_dock != null else _bin_dock).rail()
 	# The way in. While the sign-in screen is up nothing else can be
 	# pressed, so nothing else is said to be there.
 	if _gated():
@@ -1258,7 +1269,8 @@ func _parts_to_click(most: int = 5) -> Array:
 
 ## Everything laid out round the model, by name.
 func _panels_by_name() -> Dictionary:
-	var out: Dictionary = {"parts": _bin_dock, "right_column": _chat_dock, "assistant": _chat,
+	var out: Dictionary = {"parts": _bin_dock, "right_column": _props_dock if _props_dock != null
+		else _chat_dock, "assistant_column": _chat_dock, "assistant": _chat,
 		"menus": _bar, "notices": _notices, "steps": _steps, "keys": _hint, "cube": _gizmo,
 		"touch_tools": _tools}
 	if _shell != null:
@@ -2424,7 +2436,7 @@ func _enter_view() -> void:
 	# The status bar too: what it holds is the builder's (the tool's hint,
 	# the snap, the selection), and the viewer says its own things.
 	for hidden: Control in [_bar, _shell.toolbar, _shell.inspector, _shell.outliner,
-			_shell.banner, _bin_dock, _chat_dock, _tools, _seat_offer]:
+			_shell.banner, _bin_dock, _props_dock, _chat_dock, _tools, _seat_offer]:
 		if hidden != null:
 			hidden.visible = false
 	# ...but not what the app is busy with (Working): the timeline of a big
@@ -4444,8 +4456,11 @@ func _build_ui() -> void:
 		_builder.place()
 		_refresh_preview(at))
 
-	# The parts bin at the top of the left-hand column, which takes the
-	# model tree and the properties under it (Shell.build).
+	# The parts bin at the top of the left-hand column, its colours under it.
+	# The model tree and the properties are down the right (_side), so the
+	# bin has the column's height for its parts. A phone's parts are a sheet
+	# of its own (PhoneShell), and its drawer down the left has the tree and
+	# the properties over the colours (Shell.build).
 	_stack = PanelStack.new()
 	# A list thrown by a finger glides as a phone's does (FlingScroll): every
 	# list and panel that scrolls, a shared model's viewer's too. The desktop's
@@ -4464,8 +4479,9 @@ func _build_ui() -> void:
 	_bin_dock = SideDock.new()
 	_bin_dock.title = "Parts"
 	_bin_dock.icon = "parts"
-	_bin_dock.holds = "the parts bin, the model tree, the properties and the colours"
-	_bin_dock.setup(_stack, SideDock.Edge.LEFT, 336.0)
+	_bin_dock.holds = "the model tree, the properties and the colours" if _phone != null \
+		else "the parts bin and the colours"
+	_bin_dock.setup(_stack, SideDock.Edge.LEFT, PARTS_WIDE)
 	layout.add_child(_bin_dock)
 
 	# Tools, Simulate mechanism…'s column, beside the model's rather than
@@ -4622,6 +4638,19 @@ func _build_ui() -> void:
 	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	middle.add_child(pad)
 
+	# The model tree and the properties down the right, as Figma, Blender and
+	# Onshape keep the inspector there and Studio what is selected: the bin
+	# has the left to itself, and a part's every field is in sight to type a
+	# number into (docs/APP_UX.md A10). Shell.build puts them in it.
+	if _phone == null:
+		_side = PanelStack.new()
+		_props_dock = SideDock.new()
+		_props_dock.title = "Properties"
+		_props_dock.icon = "properties"
+		_props_dock.holds = "the model tree and the properties"
+		_props_dock.setup(_side, SideDock.Edge.RIGHT, SIDE_WIDE)
+		layout.add_child(_props_dock)
+
 	_chat = ChatPanel.new()
 	# Decided before the panel is built, because it decides whether the
 	# choice appears in the composer at all.
@@ -4630,8 +4659,13 @@ func _build_ui() -> void:
 	_chat_dock.title = "Assistant"
 	_chat_dock.icon = "assistant"
 	_chat_dock.holds = "the assistant"
-	_chat_dock.setup(_chat, SideDock.Edge.RIGHT, 340.0)
+	_chat_dock.setup(_chat, SideDock.Edge.RIGHT, SIDE_WIDE)
 	layout.add_child(_chat_dock)
+	# A tab beside the properties: its rail under theirs, one of the two
+	# showing, so the assistant opens beside the parts bin rather than
+	# folding it.
+	if _props_dock != null:
+		_chat_dock.share_edge(_props_dock)
 	# Rail and column, or neither: Settings, Assistant (AI) (set_assistant).
 	_chat_dock.visible = ShellPrefs.assistant_shown()
 	_chat.bind(_assistant)
@@ -4946,10 +4980,9 @@ func _build_ui() -> void:
 	# the moment you are not.
 	get_tree().root.size_changed.connect(_match_screen_density)
 	get_tree().root.size_changed.connect(_fit_panels)
-	_bin_dock.opening.connect(_column_opening.bind(_bin_dock))
-	_chat_dock.opening.connect(_column_opening.bind(_chat_dock))
-	_bin_dock.toggled.connect(func(_open: bool) -> void: _column_toggled())
-	_chat_dock.toggled.connect(func(_open: bool) -> void: _column_toggled())
+	for dock: SideDock in _docks():
+		dock.opening.connect(_column_opening.bind(dock))
+		dock.toggled.connect(func(_open: bool) -> void: _column_toggled())
 	_fit_panels()
 
 	_bin.populate()
@@ -5025,9 +5058,19 @@ func _build_ui() -> void:
 	_shell.app = self
 	_shell.assistant_shown = ShellPrefs.assistant_shown()
 	add_child(_shell)
-	_shell.build(column, _stack, _notices.get_child(0) as Control, _over_model)
+	_shell.build(column, _side if _side != null else _stack, _notices.get_child(0) as Control,
+		_over_model)
 	# Who designs, named in the commands that ask it (Settings, AI).
 	_shell.name_designer(ProviderSettings.designer_name())
+	if _side != null:
+		_side.keep_whole(_shell.inspector)
+		# The model tree out of its fold once, the first time this device has
+		# the right column: folded, it was room given to the parts bin they
+		# shared, and the column would be an empty Properties with nothing
+		# selected. Its height is kept as it was dragged.
+		if not bool(ShellPrefs.value("right_column")):
+			ShellPrefs.put("right_column", true)
+			_shell.outliner.set_open(true)
 	if _phone != null:
 		_phone.shell = _shell
 		_dress_for_phone()
@@ -5905,12 +5948,20 @@ func _art_laid(art: MosaicArt.Art) -> void:
 ## Their design widths plus something worth looking at between them.
 const ROOMY := 1040.0
 ## How much of the window, across, the model keeps between the two
-## columns, in the interface's units, or the columns take turns. It has 872
-## at the design width (1600), both open. A laptop's window is narrower:
-## at 1280 x 720 both left it 53% of the width, less again with the model
-## tree and the properties laid over it, and a click meant for a part
-## landed on a panel. One at a time it keeps 72%.
-const MODEL_ROOM := 860.0
+## columns, in the interface's units, or the columns take turns. It has 708
+## at the design width (1600), both open, and 499 at 1280 x 720. It was 860,
+## when the right column was the assistant's alone and the model tree and
+## the properties shared the left one with the bin: a laptop's window
+## showed one column at a time, and building meant the bin with 8 parts in
+## sight and the properties behind a scroller. With the tree and the
+## properties down the right, a laptop shows both columns, as Studio does.
+const MODEL_ROOM := 480.0
+## The columns' widths, open, in the interface's units: the parts bin's,
+## six tiles across (PartsBin._tiles_across: a laptop's column is four
+## rows tall, and 1280 x 720 showed 12 parts at four across and 15 at
+## five), and the right-hand column's, which the assistant's panel needs.
+const PARTS_WIDE := 500.0
+const SIDE_WIDE := 340.0
 
 ## How the window shares its width out: "wide" (both columns, as they
 ## were left), "turns" (one column at a time: opening one folds the
@@ -5920,7 +5971,7 @@ var _columns: String = ""
 ## Set while the window, not a person, opens and folds the columns: what
 ## it does is not the person's layout to keep.
 var _arranging: bool = false
-## What Tab put away, [parts, model], to bring back.
+## The columns Tab put away, to bring back.
 var _tabbed: Array = []
 
 
@@ -6046,20 +6097,26 @@ func _fit_panels() -> void:
 	# about 720 units, and the drawers came out 322 wide round panels
 	# that need 340, cut off down their right edge.
 	var units: float = get_viewport().get_visible_rect().size.x
-	var rails: float = 2.0 if _chat_dock.visible else 1.0
+	# The right-hand column's rails share one strip.
+	var right: bool = _props_dock != null or _chat_dock.visible
+	var rails: float = 2.0 if right else 1.0
 	var drawer: float = maxf(units - SideDock.RAIL_WIDTH * rails - 16.0, 220.0)
-	_bin_dock.set_open_width(minf(336.0, drawer) if phone else 336.0)
+	# A drawer is as wide as it was before the bin had a column to itself.
+	_bin_dock.set_open_width(minf(SIDE_WIDE, drawer) if phone else PARTS_WIDE)
 	# A phone's drawer of the model tree and the properties, sized for a
 	# finger (TouchSizing), is the screen beside its rail: at the desktop's
-	# 336 units, half a phone, its rows ran off its edge.
+	# 336 units then, half a phone, its rows ran off its edge.
 	if _phone != null and not Phone.wide():
 		_bin_dock.set_open_width(units - Phone.px(get_viewport(), Phone.TARGET + 4.0))
-	_chat_dock.set_open_width(minf(340.0, drawer) if phone else 340.0)
+	for dock: SideDock in [_props_dock, _chat_dock]:
+		if dock != null:
+			dock.set_open_width(minf(SIDE_WIDE, drawer) if phone else SIDE_WIDE)
 
 	# Whether both columns at their own widths leave the model its room:
-	# with the assistant off (set_assistant) there is only the one.
-	var both: float = 336.0 + SideDock.RAIL_WIDTH \
-		+ (340.0 + SideDock.RAIL_WIDTH if _chat_dock.visible else 0.0)
+	# on a phone's layout with the assistant off (set_assistant) there is
+	# only the one.
+	var both: float = PARTS_WIDE + SideDock.RAIL_WIDTH \
+		+ (SIDE_WIDE + SideDock.RAIL_WIDTH if right else 0.0)
 	var share: String = "drawers" if phone else (
 		"turns" if units - both < MODEL_ROOM else "wide")
 	# Only when it changes. Arranging them on every resize would fight
@@ -6124,33 +6181,61 @@ func _simulate_shown() -> void:
 
 
 ## Open and fold the columns as the window's share says, from what the
-## person left for a window of this kind.
+## person left for a window of this kind: the parts bin's column, and which
+## of the right-hand column's tabs shows, "properties", "assistant" or ""
+## for neither. A layout kept before the right column loads as it was: the
+## assistant open is the assistant's tab, and otherwise the properties show.
 func _arrange_columns() -> void:
 	var parts: bool = false
-	var assistant: bool = false
+	var right: String = ""
 	match _columns:
 		"wide":
 			parts = bool(ShellPrefs.value("parts_open"))
-			assistant = bool(ShellPrefs.value("assistant_open"))
+			if bool(ShellPrefs.value("assistant_open")):
+				right = "assistant"
+			elif bool(ShellPrefs.value("properties_open")):
+				right = "properties"
 		"turns":
 			var side: String = str(ShellPrefs.value("narrow_side"))
-			# With the assistant off, the window that showed it shows the parts.
-			if side == "assistant" and not _chat_dock.visible:
-				side = "parts"
 			parts = side == "parts"
-			assistant = side == "assistant"
+			if side in ["assistant", "properties"]:
+				right = side
+	# With the assistant off, the column that showed it shows the
+	# properties, and a window with room for one column the parts.
+	if right == "assistant" and not _chat_dock.visible:
+		right = "properties" if _columns == "wide" else ""
+		parts = parts or _columns == "turns"
+	var wanted: Dictionary = {_bin_dock: parts, _chat_dock: right == "assistant"}
+	if _props_dock != null:
+		wanted[_props_dock] = right == "properties"
 	_arranging = true
-	_bin_dock.set_open(parts, false)
-	_chat_dock.set_open(assistant and _chat_dock.visible, false)
+	# Folded first: a tab opened while the other is out would swap them.
+	for open: bool in [false, true]:
+		for dock: SideDock in wanted:
+			if bool(wanted[dock]) == open:
+				dock.set_open(open, false)
 	_arranging = false
 
 
+## The side columns there are: the parts bin's, the properties' (none on a
+## phone) and the assistant's.
+func _docks() -> Array[SideDock]:
+	var out: Array[SideDock] = [_bin_dock, _chat_dock]
+	if _props_dock != null:
+		out.insert(1, _props_dock)
+	return out
+
+
 ## A column about to open, by a person or a command: where there is room
-## for one, the other folds, so the model keeps its share of the window.
+## for one, the other side's folds, so the model keeps its share of the
+## window. The right-hand column's two tabs swap by themselves
+## (SideDock.share_edge).
 func _column_opening(dock: SideDock) -> void:
 	if _arranging or _columns == "wide":
 		return
-	(_chat_dock if dock == _bin_dock else _bin_dock).set_open(false)
+	for other: SideDock in _docks():
+		if (other == _bin_dock) != (dock == _bin_dock):
+			other.set_open(false)
 
 
 ## A column opened or folded: kept as the person's layout for a window of
@@ -6158,15 +6243,18 @@ func _column_opening(dock: SideDock) -> void:
 func _column_toggled() -> void:
 	if _arranging:
 		return
+	var props: bool = _props_dock != null and _props_dock.is_open()
 	match _columns:
 		"wide":
 			ShellPrefs.put("parts_open", _bin_dock.is_open())
+			if _props_dock != null:
+				ShellPrefs.put("properties_open", props)
 			# Folded because the assistant is off is not folded by the person.
 			if _chat_dock.visible:
 				ShellPrefs.put("assistant_open", _chat_dock.is_open())
 		"turns":
 			ShellPrefs.put("narrow_side", "parts" if _bin_dock.is_open()
-				else ("assistant" if _chat_dock.is_open() else ""))
+				else ("assistant" if _chat_dock.is_open() else ("properties" if props else "")))
 
 
 ## The parts bin out, if it is folded, for a part just put in hand. Not
@@ -6179,15 +6267,21 @@ func _bring_out_bin() -> void:
 
 ## Tab: both columns away, for looking at the model, and back as they were.
 func _tab_columns() -> void:
-	if _bin_dock.is_open() or _chat_dock.is_open():
-		_tabbed = [_bin_dock.is_open(), _chat_dock.is_open()]
-		_bin_dock.set_open(false)
-		_chat_dock.set_open(false)
+	var docks: Array[SideDock] = _docks()
+	if docks.any(func(dock: SideDock) -> bool: return dock.is_open()):
+		_tabbed = docks.filter(func(dock: SideDock) -> bool: return dock.is_open())
+		for dock: SideDock in docks:
+			dock.set_open(false)
 		return
-	var back: Array = _tabbed if not _tabbed.is_empty() else [true, _columns == "wide"]
+	var back: Array = _tabbed
+	if back.is_empty():
+		back = [_bin_dock]
+		if _columns == "wide":
+			back.append(_props_dock if _props_dock != null else _chat_dock)
 	_tabbed = []
-	_bin_dock.set_open(bool(back[0]))
-	_chat_dock.set_open(bool(back[1]) and _chat_dock.visible)
+	for dock: SideDock in back:
+		if dock != null and dock.visible:
+			dock.set_open(true)
 
 
 ## The strip over the model shows while something in it does.
@@ -8469,7 +8563,8 @@ func _over_interface(point: Vector2) -> bool:
 
 
 func _over_panel_at(point: Vector2) -> bool:
-	for panel: Control in [_bin_dock, _chat_dock, _bar, _gizmo, _notices, _simulate_column]:
+	for panel: Control in [_bin_dock, _props_dock, _chat_dock, _bar, _gizmo, _notices,
+			_simulate_column]:
 		if panel != null and panel.visible \
 				and panel.get_global_rect().has_point(point):
 			return true
