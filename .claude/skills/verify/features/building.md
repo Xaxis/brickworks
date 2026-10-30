@@ -226,9 +226,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   tree and the properties left it 8 parts in sight at 1280 x 720 and the
   properties X and Y. The colours are as tall as the column says
   (`PartsBin._fit_palette`: 14% of it, two category rows from a 700-unit
-  column; under that a row and a half of colours and one row of
-  categories, so a laptop's 1280 x 720 has four rows of six parts in
-  sight), so a part taken into hand moves the parts grid's foot and never
+  column; under that, on a desktop, a row and a half of colours and one
+  row of categories, so a laptop's 1280 x 720 has four rows of six parts
+  in sight), so a part taken into hand moves the parts grid's foot and never
   the palette. In the right column the tree has its dragged height and the
   properties the rest, all they hold in sight (`PanelStack.keep_whole`);
   with nothing selected the tree has the column (`PanelStack._filler`). The

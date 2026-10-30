@@ -659,8 +659,9 @@ func _fit_palette() -> void:
 			+ float(_category_row.get_theme_constant("v_separation")) * (rows - 1)
 	var wants: float = _palette.get_combined_minimum_size().y
 	# A laptop's short column keeps its room for parts: a row and a half of
-	# colours there, the rest a scroll or a search away.
-	var share: float = PALETTE_SHARE if tall_column >= SHORT else 0.0
+	# colours there, the rest a scroll or a search away. A phone's and a
+	# tablet's parts are a sheet of their own, and their colours keep theirs.
+	var share: float = PALETTE_SHARE if tall_column >= SHORT or by_finger else 0.0
 	var tall: float = clampf(minf(wants, tall_column * share), PALETTE_FLOOR,
 		maxf(wants, PALETTE_FLOOR))
 	tall = roundf(tall)
