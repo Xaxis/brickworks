@@ -2444,6 +2444,35 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 			change = {"callout": not on}
 			words = "the %s built %s" % [BookletLooks.definition_of(unit),
 				"on pages of its own" if on else "in a callout box"]
+		"guide":
+			# A guide on every page of the booklet (BookletLooks "guides"),
+			# dragged from the page editor's ruler: axis= "x" (upright, at x
+			# mm) or "y"; at= where it goes, null to take it off; was= where
+			# it was, to move one.
+			var axis: String = str(fields.get("axis", ""))
+			if not axis in ["x", "y"]:
+				_take_back(undo)
+				return "a guide is upright (axis x) or across (axis y)"
+			var kept: Dictionary = BookletLooks.guides(world)
+			var lines: Array = kept[axis]
+			if fields.get("was") != null:
+				var nearest: int = -1
+				for index: int in lines.size():
+					if absf(float(lines[index]) - float(fields["was"])) < 0.6 and (nearest < 0
+							or absf(float(lines[index]) - float(fields["was"]))
+							< absf(float(lines[nearest]) - float(fields["was"]))):
+						nearest = index
+				if nearest >= 0:
+					lines.remove_at(nearest)
+			var most: float = Booklet.PAGE.x if axis == "x" else Booklet.PAGE.y
+			if fields.get("at") != null and float(fields["at"]) >= 0.0 and float(fields["at"]) <= most:
+				lines.append(snappedf(float(fields["at"]), 0.1))
+				words = "a guide %s at %s mm" % ["upright" if axis == "x" else "across",
+					BookletLooks._number(snappedf(float(fields["at"]), 0.1))]
+			else:
+				words = "a guide taken off"
+			target = BookletLooks.BOOKLET
+			change = {"guides": kept}
 		"per_page":
 			var most: int = int(BookletLooks.booklet(world).get("per_page", 0))
 			var next: int = int({0: 1, 1: 2, 2: 4, 4: 0}.get(most, 0))
@@ -2576,7 +2605,21 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 					note["text"] = str(fields["text"]).strip_edges()
 				if fields.has("size") and note.has("text"):
 					note["size"] = clampf(float(fields["size"]), 1.5, 40.0)
+				# Turned about its middle and faded, as Studio's page objects are.
+				for field: String in ["turn", "opacity"]:
+					if fields.has(field):
+						note[field] = snappedf(BookletLooks.turn_of({"turn": fields[field]}), 0.1) \
+							if field == "turn" else snappedf(BookletLooks.opacity_of(
+								{"opacity": fields[field]}), 0.01)
+						if note[field] == (0.0 if field == "turn" else 1.0):
+							note.erase(field)
 				words = "step %d's %s changed" % [number, "words" if note.has("text") else "picture"]
+				if fields.has("turn"):
+					words = "step %d's %s turned to %s°" % [number, "words" if note.has("text")
+						else "picture", BookletLooks._number(BookletLooks.turn_of(note))]
+				elif fields.has("opacity"):
+					words = "step %d's %s at %d%% opacity" % [number, "words" if note.has("text")
+						else "picture", roundi(BookletLooks.opacity_of(note) * 100.0)]
 			change = {"notes": notes}
 		_:
 			_take_back(undo)
@@ -2650,18 +2693,23 @@ func place_pages(placed: Array, words: String) -> String:
 ## only where it bends the line by a millimetre or more), its colour one a
 ## booklet uses and its width the nearest it comes in.
 static func _arrow_of(at: Array, colour: String, width: float) -> Dictionary:
-	var points: Array = []
-	for n: int in mini(at.size(), 6):
-		points.append(snappedf(float(at[n]), 0.1))
-	if points.size() >= 6:
-		var from := Vector2(points[0], points[1])
-		var to := Vector2(points[2], points[3])
-		var bend := Vector2(points[4], points[5])
-		if bend.distance_to(Geometry2D.get_closest_point_to_segment(bend, from, to)) < 1.0:
-			points = points.slice(0, 4)
-	elif points.size() > 4:
-		points = points.slice(0, 4)
-	return {"at": points, "colour": colour.to_lower() if BookletLooks.ARROW_COLOURS.has(colour.to_lower())
+	var numbers: Array = []
+	for n: int in mini(at.size() - at.size() % 2, (BookletLooks.MOST_BENDS + 2) * 2):
+		numbers.append(snappedf(float(at[n]), 0.1))
+	var points: Array = BookletLooks.arrow_points({"at": numbers})
+	if not points.is_empty():
+		# A bend within a millimetre of the line between its neighbours bends
+		# nothing: dragged back straight, it is gone.
+		var bends: Array = []
+		var through: Array = [points[0]] + (points[2] as Array) + [points[1]]
+		for index: int in range(1, through.size() - 1):
+			var before: Vector2 = bends[-1] if not bends.is_empty() else through[0]
+			var bend: Vector2 = through[index]
+			if bend.distance_to(Geometry2D.get_closest_point_to_segment(bend, before,
+					through[index + 1])) >= 1.0:
+				bends.append(bend)
+		numbers = BookletLooks.arrow_at([points[0], points[1], bends])
+	return {"at": numbers, "colour": colour.to_lower() if BookletLooks.ARROW_COLOURS.has(colour.to_lower())
 		else "red", "width": BookletLooks.arrow_width(width)}
 
 

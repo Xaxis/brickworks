@@ -1767,7 +1767,8 @@
       "reach": "tools/release/train.sh stage TAG BRANCH --after PREV --checks \"...\"; tools/release/train.sh status",
       "area": "release",
       "tests": [
-        "tests/test_realset.py"
+        "tests/test_realset.py",
+        "tests/test_search.py"
       ]
     },
     {

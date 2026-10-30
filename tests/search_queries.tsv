@@ -1,6 +1,7 @@
 # What builders type into the library's search, and the sets they mean
 # (search, 2026-10-30). A search passes when one of its sets is in the
-# first three it answers with; theme:X is any set of the top theme X.
+# first three it answers with; theme:X is any set of the top theme X,
+# every:X the first three all of it.
 # A few were widened after the first run showed sets named for the very
 # word ("Helicopter" 9396-1, "Iron Man" 76165-1, the Modular and Train sets
 # named so): each is what the words mean. tests/test_search.py scores the table against
@@ -166,3 +167,23 @@ tie interceptor	75382-1 7181-1	held out
 at st	75417-1 10174-1	held out
 republic gunship	75309-1 75021-1	held out
 hogwarts castel	71043-1	held out
+# Theme names typed alone (second round): a theme's whole name is that
+# theme, its sets first, and today's trains and spacecraft before the
+# 1960s' and 70s'. Some repeat a search above, with what this asks of it.
+city	every:City	theme name
+trains	60336-1 60198-1 60337-1 60335-1 60197-1 60509-1 60423-1 60098-1 60052-1	theme name
+castle	every:Castle	theme name
+space	60434-1 60433-1 60446-1 60432-1 70709-1	theme name
+pirates	every:Pirates	theme name
+technic	every:Technic	theme name
+star wars	every:Star Wars	theme name
+harry potter	every:Harry Potter	theme name
+friends	every:Friends	theme name
+creator	every:Creator	theme name
+ideas	every:LEGO Ideas and CUUSOO	theme name
+icons	every:Icons	theme name
+ninjago	every:Ninjago	theme name
+duplo	every:Duplo	theme name
+minecraft	every:Minecraft	theme name
+marvel	every:Super Heroes Marvel	theme name
+batman	every:Super Heroes DC	theme name
