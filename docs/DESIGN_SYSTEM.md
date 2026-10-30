@@ -46,9 +46,11 @@ sized its own titles, from 26 to 74 px. Now:
   links (Product, Community, Help, Legal, each named by a `.foot-h`), four
   to a column at most, each link 32 px tall under a mouse and a finger's
   44 on a phone (at 1280 px it is 407 px tall, the row was 369: a
-  profile there stays under account_page_flow's 2,000 px); then
-  every notice docs/TRADEMARKS.md asks for, small and quiet, under a
-  line. The row of eleven links it was read as one line nobody scanned.
+  profile there stays under account_page_flow's 2,000 px); then, under a
+  line, one short paragraph (2026-10-29, the owner on three paragraphs of
+  small print: "a dumpster fire"): the LEGO Group's disclaimer and other
+  marks word for word (tests/test_trademarks.py), the LDraw library in a
+  few words, and Notices, every notice whole at /terms#notices. The row of eleven links it was read as one line nobody scanned.
 - **One type scale** (`--t-display` 42-76 px, `--t-h1` 32-48 px,
   `--t-section` 28-40 px, `--t-h2` 22-26 px, `--t-h3` 18 px, `--t-lede`,
   then the words: `--t-body` 16,

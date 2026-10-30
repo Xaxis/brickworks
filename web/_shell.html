@@ -21,10 +21,12 @@
   The footer: the mark, a line of what Brickworks is and the theme, then
   four columns of links (Product, Community, Help, Legal), then one line
   of notice (the owner, 2026-10-29: three paragraphs of small print were
-  "a dumpster fire"): the LEGO Group's, the LDraw library's, and a link
-  to every notice docs/TRADEMARKS.md asks for, whole, at /terms#notices.
-  It starts with api/_directory.js NOTICE's words, which the server's
-  pages look for to take this footer.
+  "a dumpster fire"): the LEGO Group's disclaimer and the other marks
+  word for word, as the Fair Play policy asks on every page
+  (tests/test_trademarks.py), the LDraw library's in a few words, and a
+  link to every notice, whole, at /terms#notices. It starts with
+  api/_directory.js NOTICE's words, which the server's pages look for to
+  take this footer.
 
   And what every page's <head> carries (tools/site_shell.py puts it there,
   before site.css, on the pages without the header too): the browser
@@ -125,7 +127,7 @@
 			</nav>
 		</div>
 		<div class="legal">
-			<p>LEGO® is a trademark of the LEGO Group of companies, which does not sponsor or endorse this site. Parts from the LDraw™ library (CC BY). <a href="/terms#notices">Notices</a></p>
+			<p>LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group. Parts from the LDraw™ library (CC BY). <a href="/terms#notices">Notices</a></p>
 		</div>
 	</div>
 </footer>
