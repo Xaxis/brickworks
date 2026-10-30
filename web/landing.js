@@ -50,7 +50,9 @@ async function fill({ strip, row, ask, id, said }) {
   let models = [];
   try {
     const reply = await fetch(ask, { headers: { accept: "application/json" } });
-    if (reply.ok) models = (await reply.json()).models || [];
+    // Read even a refusal: an answer never read keeps the page busy.
+    const body = await reply.json().catch(() => null);
+    if (reply.ok) models = body?.models || [];
   } catch { /* no strip */ }
   const listed = models.filter((m) => m && id.test(String(m.id)) && pictureOf(m)).slice(0, MOST);
   const drawn = (await Promise.all(listed.map((m) => ready(m).catch(() => null)))).filter(Boolean);

@@ -58,7 +58,11 @@ async function onSale() {
   let offer = null;
   try {
     const answer = await fetch("/api/plans", { headers: { accept: "application/json" } });
-    if (answer.ok) offer = await answer.json();
+    // Read whatever it says, refused or not: an answer whose words are never
+    // read stays open, and the page never goes quiet (plans_flow's
+    // networkidle waited 30 s for the 405 billing off gives).
+    const said = await answer.json().catch(() => null);
+    if (answer.ok) offer = said;
   } catch { /* coming soon, as written */ }
   if (!offer || offer.forSale !== true) return;
   for (const one of document.querySelectorAll("[data-when]")) one.hidden = one.dataset.when !== "sale";
