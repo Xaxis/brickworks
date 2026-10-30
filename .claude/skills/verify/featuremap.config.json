@@ -2105,7 +2105,7 @@
       "kind": "cli",
       "label": "build the viewer",
       "entry": "tools/viewer/build.mjs",
-      "reach": "node tools/viewer/build.mjs --deps=DIR [--check]   (DIR: three@0.186.1 and esbuild@0.28.2 installed apart, as its head says; writes api/_viewer_page.js)",
+      "reach": "node tools/viewer/build.mjs --deps=DIR [--check]   (DIR: three@0.186.1 and esbuild@0.28.2 installed apart, as its head says; writes api/_viewer_page.js, the card, and web/viewer3d.js, a model page's 3D view, both from tools/viewer/view.js)",
       "area": "mcp"
     },
     {
@@ -4109,6 +4109,13 @@
       "entry": "src/dev/typed_moves_probe.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/typed_moves_probe.gd  (what the field reads; five clones in six actions; the walk's brick turned in its wall in three; a number typed in hand put, refused and undone; CADTASK's four typed parts and 8841-1's 23.58 degree swing from the part in hand, each counted; -- only=reading|clones|wall|typed|sets)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "a model in 3D on its page",
+      "entry": "tools/viewer/inline.js",
+      "reach": "https://brickworks.diy/m/<id>, /library/<id> and /library/set/<n> with an LDraw model: View in 3D on the picture (or a click, or the first drag across it) turns the model in 3D in the picture's place (web/model-page.js start3d imports /viewer3d.js, built by tools/viewer/build.mjs from tools/viewer/inline.js and view.js, the card's scene); its scene /m/<id>/scene.json, /m/<id>/v/<n>/scene.json, /library/<id>/scene.json (api/share.js ?op=scene|set_scene, api/_parts.js sceneOf), its parts' geometry from the part store",
+      "area": "web"
     }
   ]
 }

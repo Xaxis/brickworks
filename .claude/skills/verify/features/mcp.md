@@ -239,10 +239,13 @@ asking for an API key.
   real answers as a host sends them, in a browser with no WebGL (the
   turntable fallback, asked for through the host).
 - `the model in Claude in 3D` (2026-10-15): the page is the real model in
-  3D. Source `tools/viewer/` (`card.html`, `card.js`, `scene.js`) and `web/lbm.js` (the geometry reader a model page's Parts list shares);
+  3D. Source `tools/viewer/` (`card.html`, `card.js`, `scene.js`, and
+  `view.js`, the scene drawn, shared with a model page's 3D view,
+  `inline.js`) and `web/lbm.js` (the geometry reader a model page's Parts list shares);
   `tools/viewer/build.mjs` bundles it with three.js 0.186.1 into one
-  self-contained page, `api/_viewer_page.js` (committed: the deploy builds
-  nothing; `--check` holds the source to the build). The tab packs the model
+  self-contained page, `api/_viewer_page.js`, and the page's into
+  `web/viewer3d.js` (both committed: the deploy builds nothing; `--check`
+  holds the source to both builds). The tab packs the model
   (`src/net/model_scene.gd`: per brick its number, part, colour, place and
   turn, in deflated columns, a few bytes a brick) and the page fetches each
   part's own `.lbm` from where the app does (`PARTS_URL`, the one origin in

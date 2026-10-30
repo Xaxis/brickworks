@@ -35,6 +35,10 @@
 //                            (/m/X/parts.xml) a BrickLink wanted list,
 //                            as=csv (/m/X/parts.csv) a Rebrickable parts
 //                            list, each to download; with v=N, version N's
+//   GET  ?op=scene&id=X      /m/X/scene.json: the model packed for its page's
+//                            3D view (api/_parts.js sceneOf), every part's
+//                            place, turn and colour, its geometry in the
+//                            store; with v=N, version N's
 //   GET  ?op=thumb&id=X      /m/X.webp: the small picture the gallery's
 //                            cards show, made by the app beside the big one
 //   GET  ?op=list&page=N     /gallery's models: the listed ones, a page at
@@ -99,7 +103,9 @@
 //                            as=cover (/library/X.cover.webp) the app's
 //                            cover; op=set_file (/library/X.mpd) its file,
 //                            op=set_parts (/library/X/parts.json, .xml,
-//                            .csv) its parts
+//                            .csv) its parts, op=set_scene
+//                            (/library/X/scene.json) its model for the
+//                            page's 3D view
 //   GET  ?op=bases&id=X      what X is based on, and whether the caller may
 //                            change it; POST ?op=bases {model, bases} its
 //                            designer's list; GET ?op=set_based&set=N the
@@ -227,7 +233,7 @@ import {
   librarySets, searchSets, setCard, setModel, setTitle, themeOf, themes,
 } from "./_library.js";
 // A model's parts list from its file, as the app's (site278).
-import { inventoryOf, inventoryOfLots, paletteOf, partsTable, rebrickableCsv, wantedList } from "./_parts.js";
+import { inventoryOf, inventoryOfLots, paletteOf, partsTable, rebrickableCsv, sceneOf, wantedList } from "./_parts.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
@@ -1227,7 +1233,8 @@ ${header}
     ${newest}, published ${when(version.at)}. <a href="/m/${id}">See the newest, version ${newest}</a></p>` : ""}
   <div class="top">
     <div class="media">
-    <a class="picture" href="${escapeHtml(viewer)}" aria-label="View ${escapeHtml(model.name)} in 3D">${picture
+    <a class="picture" href="${escapeHtml(viewer)}" aria-label="View ${escapeHtml(model.name)} in 3D"
+      data-scene="${fileAt}/scene.json" data-parts="${Number(shownModel.parts) || 0}">${picture
       ? `<span class="waiting" aria-hidden="true">Loading its picture…</span><img src="${picture}" alt="${escapeHtml(model.name)}" width="1200" height="630" fetchpriority="high">`
       : `<span class="none">No picture</span>`}<span class="go" aria-hidden="true">View in 3D</span></a>
     ${mediaStrip(model, picture, photos, small)}
@@ -1802,6 +1809,7 @@ async function download(response, op, id, asked, as) {
     response.setHeader("Content-Disposition", named("mpd"));
     return response.status(200).end(file);
   }
+  if (op === "scene") return sceneAnswer(response, stored, file, `m:${id}:${shown.n}`);
   return partsAnswer(response, partsOf(stored, file), base, as, { id, version: shown.n, newest });
 }
 
@@ -1836,6 +1844,30 @@ function partsAnswer(response, parts, base, as, said) {
     left_out: { bricklink: wantedList(parts).left_out, rebrickable: rebrickableCsv(parts).left_out },
   });
 }
+
+/// /m/X/scene.json (with v=N, /m/X/v/N/scene.json) and a set's
+/// /library/X/scene.json: the model packed for its page's 3D view
+/// (api/_parts.js sceneOf; tools/viewer/inline.js draws it), each part's
+/// geometry in the store the Parts list draws from. Asked only when a
+/// visitor opens the 3D view, and kept by the CDN as the page is.
+function sceneAnswer(response, name, file, of) {
+  const root = storeRoot();
+  const key = `${name}/${file.length}/${file.subarray(0, 64).toString("hex")}/${file.subarray(-64).toString("hex")}`;
+  let scene = scenesKept.get(key);
+  if (scene === undefined && root) {
+    try {
+      scene = sceneOf(file.toString("utf8"), root, of);
+    } catch {
+      scene = null;
+    }
+    scenesKept.set(key, scene);
+    if (scenesKept.size > SCENES_KEPT) scenesKept.delete(scenesKept.keys().next().value);
+  }
+  if (!scene) return response.status(503).setHeader("Cache-Control", "no-store").json({ error: "This site cannot draw a model in 3D just now." });
+  return response.status(200).json(scene);
+}
+const scenesKept = new Map();
+const SCENES_KEPT = 16;
 
 async function modelPage(id) {
   if (!ID.test(id || "")) return null;
@@ -1878,13 +1910,14 @@ async function read(request, response) {
   if (op === "set_cover") return setCover(response, id, String(request.query?.as || "card"), testsAsked(request.query || {}));
   if (op === "set_file") return setFile(response, id, testsAsked(request.query || {}));
   if (op === "set_parts") return setParts(response, id, String(request.query?.as || "json"), testsAsked(request.query || {}));
+  if (op === "set_scene") return setScene(response, id, testsAsked(request.query || {}));
 
   // A version asked for, where there can be one: the page, its picture and
   // the model. The gallery's small picture says which upload it is with a
   // v of its own (cardOf), which is not a version.
-  const asked = ["page", "image", "cutout", "file", "parts", ""].includes(op) ? askedVersion(request) : null;
+  const asked = ["page", "image", "cutout", "file", "parts", "scene", ""].includes(op) ? askedVersion(request) : null;
 
-  if (op === "file" || op === "parts") {
+  if (op === "file" || op === "parts" || op === "scene") {
     return download(response, op, id, asked, String(request.query?.as || "json"));
   }
 
@@ -2134,6 +2167,20 @@ async function setParts(response, id, as, tests = false) {
   response.setHeader("X-Content-Type-Options", "nosniff");
   return partsAnswer(response, text ? partsOf(entry.file, Buffer.from(text)) : null,
     fileName(setTitle(entry), entry.id), as, { id, version: 1, newest: 1 });
+}
+
+/// /library/X/scene.json: its model packed for its page's 3D view, as a
+/// model's is (sceneAnswer).
+async function setScene(response, id, tests = false) {
+  const entry = await librarySet(id, libraryOf(tests));
+  if (!entry) {
+    return response.status(404).setHeader("Cache-Control", "no-store").json({ error: "The LDraw library has no such set." });
+  }
+  const text = await storeFile(entry).catch(() => null);
+  if (!text) return response.status(503).setHeader("Cache-Control", "no-store").json({ error: "Its file could not be read just now." });
+  response.setHeader("Cache-Control", SET_CACHE);
+  response.setHeader("X-Content-Type-Options", "nosniff");
+  return sceneAnswer(response, entry.file, Buffer.from(text), `library:${entry.id}`);
 }
 
 // ---------------------------------------------------------------------------
