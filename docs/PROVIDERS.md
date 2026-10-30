@@ -239,12 +239,23 @@ room cannot take the list at all: a smaller set of core tools is unit P7.
 
 ### 4.3 Streaming
 
-The slice asks for whole replies. The person still watches the model being
-built, call by call, since each call changes the window. Streaming each API
-(OpenAI's `delta.tool_calls[].function.arguments` fragments, Anthropic's events
-as `Streamer` reads them, Gemini's `streamGenerateContent?alt=sse`) is unit P4,
-with the bricks of a `submit_design` drawn as they are written, as the in-app
-assistant does (`Assistant._sketch_one`).
+Every reply is streamed (unit P4, built): Chat Completions' chunks, each call's
+`delta.tool_calls[].function.arguments` in fragments and the usage in a last
+chunk (`stream_options`); Responses' events, ending in `response.completed`
+with the whole response; Anthropic's events as `Streamer` reads them; Gemini's
+`streamGenerateContent?alt=sse`. Each adapter asks with `request(…, stream =
+true)` and puts the events back with its own reader (`Provider.reader`, a
+`Streamer.Events`) into the body the unstreamed request would have had, so
+`read` is the same either way. The bricks of a `submit_design` are drawn as
+they are written, as the in-app assistant draws its own
+(`Assistant.sketch_brick`, its `_sketch_one`), and taken away when the reply
+has come, before its calls run and build the checked design in their place.
+Gemini writes a call whole, so its bricks come at once, still before the reply
+ends. A stream lost part way is asked again whole at once, as the assistant
+does; a stream refused where the same request whole passes (a server that
+copies Chat Completions without `stream_options`) makes the rest of the run
+ask whole. Streamed, a reply may go 600 seconds without a word (the loop's
+`reply_timeout`), for a model that reasons in silence.
 
 ### 4.4 Long sessions
 
@@ -578,6 +589,27 @@ No OpenAI key in .env (2026-10-29), so no real Test or design yet: with one,
 **P4. Streaming**, per adapter, with a `submit_design`'s bricks drawn as they
 are written. *Bar:* the stub streams; the probe sees bricks before the reply
 ends, and the whole reply equal to the unstreamed one.
+
+*Built (provider370):* as 4.3. `Streamer` takes a reader per API
+(`Streamer.Events`: Anthropic's `Reader`, `OpenAIChat.Chunks`,
+`OpenAIResponses.Items`, `GeminiNative.Chunks`), drops the carriage returns
+Gemini ends its lines with, and reads Chat's `[DONE]` quietly. Anthropic's
+`Reader` now keeps `message_start`'s input tokens when `message_delta` says
+only the output's, so a streamed reply's spend is the whole one's (the
+in-app assistant's too). The stub streams each API as it does, chunked, 30 ms
+an event (`--pace`), and `--cut-stream N` drops a stream half way; a reply's
+ids come from where it is in the conversation, so the same request gets the
+same reply streamed or whole. `provider_apis_probe` (90 ok): on Anthropic,
+Responses and Gemini every request streamed and the tower drawn 1 to 6 while
+its reply was still coming, over 6 frames (Gemini's in one), none left when
+the design was built; and one reply asked streamed and whole on all four
+adapters, the body read back from the stream equal to the whole one, read the
+same (calls, kept, stop, spend), the tower's arguments in 24 or 25 pieces
+(Gemini's one, whole). `provider_loop_probe` (49 ok): the same drawing on
+Chat Completions with its usage from the last chunk (7 × 40 out, 7,000
+cached), and a stream cut half way through the tower: 3 bricks drawn and
+taken away, the reply asked whole at once, the rest streamed, the tower
+built. `reader_probe` and `dropped_probe` pass on the assistant's own stream.
 
 **P5. The web.** The loop in the browser on the person's key (CORS as 4.6),
 the key in the site's storage or for the visit, and `POST /api/builds` before

@@ -24,6 +24,8 @@
 ## - Effort is output_config's, with adaptive thinking, only where the person
 ##   chose one (the settings offer it where ProviderSettings.takes_effort);
 ##   a temperature is not sent with thinking, which refuses one.
+## - Streamed, its events are read back by the in-app assistant's own reader
+##   (Streamer.Reader).
 class_name AnthropicMessages
 extends Provider
 
@@ -31,7 +33,7 @@ const VERSION := "2023-06-01"
 const MOST_OUT := 32000
 
 
-func request(system: String, tools: Array, turns: Array) -> Dictionary:
+func request(system: String, tools: Array, turns: Array, stream: bool = false) -> Dictionary:
 	var messages: Array = []
 	for turn: Dictionary in turns:
 		var message: Dictionary = _message_of(turn)
@@ -50,7 +52,13 @@ func request(system: String, tools: Array, turns: Array) -> Dictionary:
 		body["thinking"] = {"type": "adaptive"}
 	elif params.has("temperature"):
 		body["temperature"] = float(params["temperature"])
+	if stream:
+		body["stream"] = true
 	return {"url": address("messages"), "headers": headers(), "body": JSON.stringify(body)}
+
+
+func reader() -> Streamer.Events:
+	return Streamer.Reader.new()
 
 
 func headers() -> PackedStringArray:

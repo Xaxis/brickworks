@@ -21,6 +21,12 @@
 ## go back to the model to say again, a Claude plan's token is refused. And a
 ## design stopped while its request is in the air ends once, and the next
 ## design is not answered by the stopped one's reply.
+##
+## Every reply is streamed (docs/PROVIDERS.md, P4): the tower's bricks are
+## drawn one by one while its reply is still being written and are gone
+## before the design is built in their place, and the usage the stream says
+## last is counted. A stream lost part way takes what it drew with it and is
+## asked again whole at once; the design goes on, streamed again.
 ## In a window, for the pictures. The stubs' ports are 9621 and the next,
 ## or -- --port=N and the next.
 extends SceneTree
@@ -67,6 +73,7 @@ func _run() -> void:
 	(_main.get("_store") as ModelStore).keeps = false
 	await _end_to_end()
 	await _stopped_then_again()
+	await _lost_stream()
 	for pid: int in [_stub, _slow]:
 		if pid > 0:
 			OS.kill(pid)
@@ -106,10 +113,21 @@ func _end_to_end() -> void:
 	loop.progress.connect(func(note: String) -> void: lines.append(note))
 	var outcome: Array = []
 	loop.finished.connect(func(ok: bool, summary: String) -> void: outcome.append_array([ok, summary]))
+	var drawn: Array = _drawing(loop)
 	until = Time.get_ticks_msec() + 240000
 	while outcome.is_empty() and Time.get_ticks_msec() < until:
 		await process_frame
 	print("  the loop said: %s" % " | ".join(lines))
+	var counts: Array = drawn.map(func(one: Array) -> int: return int(one[0]))
+	var frames: Dictionary = {}
+	for one: Array in drawn:
+		frames[one[2]] = true
+	_check("the tower's bricks drawn one by one while its reply was written, %s over %d frames, "
+		% [str(counts), frames.size()] + "before the loop had it",
+		counts == [1, 2, 3, 4, 5, 6] and frames.size() > 1
+		and drawn.all(func(one: Array) -> bool: return int(one[1]) == 1))
+	_check("...and gone before the design was built in their place",
+		(_assistant.get("_sketched_ids") as PackedInt64Array).is_empty())
 	_check("it finishes well, on the model's own last word: %s" % str(outcome),
 		outcome.size() == 2 and bool(outcome[0])
 		and str(outcome[1]).begins_with("I built a red tower"))
@@ -140,6 +158,8 @@ func _end_to_end() -> void:
 			and int(one["tools"]) == served and str(one["model"]) == "gpt-6.1-sol"
 	_check("8 requests: the rate limit, then 7 answered: %s" % str(statuses),
 		statuses == [429, 200, 200, 200, 200, 200, 200, 200])
+	_check("each asked streamed, its usage asked for (stream_options)",
+		asked.all(func(one: Dictionary) -> bool: return bool(one["streamed"])))
 	_check("nothing in them the provider would refuse: %s" % str(refused), refused.is_empty())
 	_check("each carried the key, the app's instructions and its whole tool list (%d)" % served,
 		whole)
@@ -196,6 +216,63 @@ func _stopped_then_again() -> void:
 		% str(endings), endings.size() == 2 and bool(endings[1][0])
 		and str(endings[1][1]).begins_with("I built a red tower") and loop.replies() == 7)
 	_check("the tower stands again: %d parts" % _parts(), _parts() == 6)
+
+
+## A stream lost half way through the tower's reply: what it drew goes with
+## it, the same reply is asked again whole at once, and the design goes on,
+## streamed again, to the tower.
+func _lost_stream() -> void:
+	print("\n── a stream lost part way ──")
+	if _slow > 0:
+		OS.kill(_slow)
+	var cut_log: String = ProjectSettings.globalize_path("user://provider-cut.jsonl")
+	DirAccess.remove_absolute(cut_log)
+	var key: String = "sk-stub-" + Crypto.new().generate_random_bytes(16).hex_encode()
+	_slow = OS.create_process("python3", ["-I",
+		ProjectSettings.globalize_path("res://tools/provider_stub.py"), "--port",
+		str(_slow_port), "--log", cut_log, "--cut-stream", "1"])
+	await _seconds(2.0)
+	var loop: DesignerLoop = _main.call("designer")
+	var outcome: Array = []
+	var ended := func(ok: bool, summary: String) -> void: outcome.append_array([ok, summary])
+	loop.finished.connect(ended)
+	var drawn: Array = _drawing(loop)
+	_check("a design starts on a provider whose stream drops", _main.call("design_with_provider",
+		BRIEF, ProviderSettings.provider_for("custom", "gpt-6.1-sol", key,
+			"http://127.0.0.1:%d/v1" % _slow_port)))
+	var until: int = Time.get_ticks_msec() + 240000
+	while outcome.is_empty() and Time.get_ticks_msec() < until:
+		await process_frame
+	loop.finished.disconnect(ended)
+	var counts: Array = drawn.map(func(one: Array) -> int: return int(one[0]))
+	_check("it drew part of the tower before the stream dropped: %s" % str(counts),
+		not counts.is_empty() and int(counts.back()) < 6)
+	_check("it finishes on its own last word: %s" % str(outcome), outcome.size() == 2
+		and bool(outcome[0]) and str(outcome[1]).begins_with("I built a red tower"))
+	_check("the tower stands, nothing drawn left: %d parts" % _parts(), _parts() == 6
+		and (_assistant.get("_sketched_ids") as PackedInt64Array).is_empty())
+	var asked: Array = []
+	for line: String in FileAccess.get_file_as_string(cut_log).split("\n", false):
+		var one: Variant = JSON.parse_string(line)
+		if one is Dictionary and not bool((one as Dictionary).get("listed", false)):
+			asked.append("%d%s%s" % [int(one["replies"]), " streamed" if bool(one["streamed"])
+				else " whole", " cut" if bool(one.get("cut", false)) else ""])
+	_check("the cut reply asked again whole at once, then streamed again: %s" % str(asked),
+		asked == ["0 streamed", "1 streamed cut", "1 whole", "2 streamed", "3 streamed",
+			"4 streamed", "5 streamed", "6 streamed"])
+
+
+## [bricks drawn, replies the loop had read, frame] each time [param loop]'s
+## design draws one, until it finishes.
+func _drawing(loop: DesignerLoop) -> Array:
+	var drawn: Array = []
+	var drew := func(count: int) -> void:
+		drawn.append([count, loop.replies(), Engine.get_process_frames()])
+	_assistant.sketched.connect(drew)
+	loop.finished.connect(func(_ok: bool, _summary: String) -> void:
+		if _assistant.sketched.is_connected(drew):
+			_assistant.sketched.disconnect(drew), CONNECT_ONE_SHOT)
+	return drawn
 
 
 func _seconds(seconds: float) -> void:

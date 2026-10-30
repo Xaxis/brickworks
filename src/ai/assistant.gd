@@ -1840,6 +1840,22 @@ func _sketch_one(placement: Placement,
 	sketched.emit(_sketched_ids.size())
 
 
+## One brick of a design another model is writing, drawn the moment it is
+## written as the assistant draws its own (DesignerLoop, streamed): [param
+## raw] as submit_design's bricks are given.
+func sketch_brick(raw: Dictionary) -> void:
+	_sketch_one(Placement.from_dict(raw))
+
+
+## Every brick [method sketch_brick] drew, taken away: the design is about
+## to be built for real in their place.
+func clear_sketch() -> void:
+	for brick_id: int in _sketched_ids:
+		builder.lattice.release(brick_id)
+		world.remove_brick(brick_id)
+	_sketched_ids = PackedInt64Array()
+
+
 ## The request, built where it can be looked at.
 ##
 ## Only fields Anthropic takes. Anything else gets the whole request

@@ -3962,6 +3962,13 @@
       "entry": "tools/web/app_menu_flow.mjs",
       "reach": "node tools/web/app_menu_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks app_menu: the mark at 1280 and 390, its rows, About, Back to brickworks.diy landing on the site)",
       "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "a design drawn as any provider writes it",
+      "entry": "src/ai/stream.gd",
+      "reach": "tools/probe.sh provider_apis_probe   (Anthropic's, Gemini's and Responses' replies streamed: the tower drawn brick by brick before its reply ends, gone before it is built; one reply streamed and whole on all four adapters, the same body read back); tools/probe.sh provider_loop_probe   (the same on Chat Completions, its usage from the last chunk, and a stream lost half way asked again whole)",
+      "area": "assistant"
     }
   ]
 }

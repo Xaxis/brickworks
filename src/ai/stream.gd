@@ -12,6 +12,10 @@
 ## they land AND, at the end, exactly the same body a plain request
 ## would have returned — so everything downstream of the answer is
 ## untouched by the fact that it arrived in pieces.
+##
+## Anthropic's events are read by [Reader]; another API's by the [Events]
+## its adapter gives (Provider.reader), so the designer loop streams every
+## provider's reply the same way.
 class_name Streamer
 extends Node
 
@@ -28,6 +32,10 @@ signal done(reply: Array)
 ## adaptive thinking can spend a while before the first token, and the
 ## cost of being impatient is a design thrown away at random.
 const QUIET_SECONDS := 120.0
+
+## [constant QUIET_SECONDS], or as long as its caller will wait: a model
+## that reasons in silence says nothing until it has.
+var quiet_seconds: float = QUIET_SECONDS
 
 
 static func split_url(url: String) -> Dictionary:
@@ -58,7 +66,10 @@ func stop() -> void:
 var _stopped: bool = false
 
 
-func run(url: String, headers: PackedStringArray, body: String) -> void:
+## [param events] reads the stream back into its body: Anthropic's [Reader]
+## when none is given.
+func run(url: String, headers: PackedStringArray, body: String,
+		events: Events = null) -> void:
 	var where: Dictionary = split_url(url)
 	var client := HTTPClient.new()
 	var tls: TLSOptions = TLSOptions.client() if where["tls"] else null
@@ -66,7 +77,7 @@ func run(url: String, headers: PackedStringArray, body: String) -> void:
 		_fail("could not reach %s" % where["host"])
 		return
 
-	var deadline: int = _in(QUIET_SECONDS)
+	var deadline: int = _in(quiet_seconds)
 	while client.get_status() in [
 			HTTPClient.STATUS_CONNECTING, HTTPClient.STATUS_RESOLVING]:
 		client.poll()
@@ -87,7 +98,7 @@ func run(url: String, headers: PackedStringArray, body: String) -> void:
 		_fail("could not send the request")
 		return
 
-	deadline = _in(QUIET_SECONDS)
+	deadline = _in(quiet_seconds)
 	while client.get_status() == HTTPClient.STATUS_REQUESTING:
 		client.poll()
 		await get_tree().process_frame
@@ -109,7 +120,7 @@ func run(url: String, headers: PackedStringArray, body: String) -> void:
 	# caller already knows how to read one of those. Hand it over whole.
 	if code != 200:
 		var raw := PackedByteArray()
-		deadline = _in(QUIET_SECONDS)
+		deadline = _in(quiet_seconds)
 		while client.get_status() == HTTPClient.STATUS_BODY:
 			client.poll()
 			var piece: PackedByteArray = client.read_response_body_chunk()
@@ -118,12 +129,12 @@ func run(url: String, headers: PackedStringArray, body: String) -> void:
 				if Time.get_ticks_msec() > deadline:
 					break
 			else:
-				deadline = _in(QUIET_SECONDS)
+				deadline = _in(quiet_seconds)
 				raw.append_array(piece)
 		done.emit([HTTPRequest.RESULT_SUCCESS, code, reply_headers, raw])
 		return
 
-	var reader := Reader.new()
+	var reader: Events = events if events != null else Reader.new()
 	# Kept as bytes rather than decoded chunk by chunk. A character
 	# outside ASCII is two to four bytes and the network splits where it
 	# likes, so decoding each chunk on its own turns any character
@@ -135,7 +146,7 @@ func run(url: String, headers: PackedStringArray, body: String) -> void:
 	# appear inside a multi-byte character, so splitting on bytes and
 	# decoding whole events is safe.
 	var pending := PackedByteArray()
-	deadline = _in(QUIET_SECONDS)
+	deadline = _in(quiet_seconds)
 	while client.get_status() == HTTPClient.STATUS_BODY:
 		if _stopped:
 			_fail("cancelled")
@@ -148,8 +159,8 @@ func run(url: String, headers: PackedStringArray, body: String) -> void:
 				_fail("the answer stopped part way through")
 				return
 			continue
-		deadline = _in(QUIET_SECONDS)
-		pending.append_array(piece)
+		deadline = _in(quiet_seconds)
+		pending.append_array(_without_returns(piece))
 		# Anything after the last blank line is half an event and waits
 		# for the rest of itself.
 		var cut: int = _last_break(pending)
@@ -187,19 +198,35 @@ static func _last_break(bytes: PackedByteArray) -> int:
 	return -1
 
 
-func _feed(reader: Reader, block: String) -> void:
+## [param bytes] without carriage returns. A line may end in one before its
+## newline (Gemini's do), and a return byte is never part of a multi-byte
+## character, nor raw inside JSON, so taking them out leaves events that
+## end in a blank line of newlines alone.
+static func _without_returns(bytes: PackedByteArray) -> PackedByteArray:
+	if not bytes.has(13):
+		return bytes
+	var out := PackedByteArray()
+	for byte: int in bytes:
+		if byte != 13:
+			out.append(byte)
+	return out
+
+
+func _feed(reader: Events, block: String) -> void:
 	for line: String in block.split("\n", false):
 		if not line.begins_with("data:"):
 			continue
-		var parsed: Variant = JSON.parse_string(
-			line.substr(5).strip_edges())
-		if typeof(parsed) != TYPE_DICTIONARY:
+		# Quietly: Chat Completions ends its stream with "[DONE]", which is
+		# not JSON, and JSON.parse_string says so in the console each time.
+		var json := JSON.new()
+		if json.parse(line.substr(5).strip_edges()) != OK \
+				or typeof(json.data) != TYPE_DICTIONARY:
 			continue
-		var out: Dictionary = reader.take(parsed)
+		var out: Dictionary = reader.take(json.data)
 		if out.has("text"):
 			spoke.emit(str(out["text"]))
-		if out.has("fragment"):
-			fragment.emit(str(out["tool"]), str(out["fragment"]))
+		for one: Array in out.get("fragments", []):
+			fragment.emit(str(one[0]), str(one[1]))
 
 
 static func _in(seconds: float) -> int:
@@ -211,18 +238,32 @@ func _fail(why: String) -> void:
 		JSON.stringify({"error": {"message": why}}).to_utf8_buffer()])
 
 
+## One API's stream read back into the reply it came from.
+##
+## Each event is given to [method take] as it lands. At the end
+## [member message] is the body an unstreamed request would have had, and
+## [member finished] whether the stream came to its end: a stream cut
+## part way, or one that ended in an error, is not finished, and the
+## caller is told so and asks again.
+class Events extends RefCounted:
+	var message: Dictionary = {}
+	var finished: bool = false
+
+	## What the event said as it was written: {"text": prose} and
+	## {"fragments": [[tool name, a piece of its arguments], …]}, either,
+	## both or neither.
+	func take(_event: Dictionary) -> Dictionary:
+		return {}
+
+
 ## Puts the pieces back into the message they came from.
 ##
 ## The point is that what comes out is indistinguishable from an
 ## unstreamed reply — same blocks, same order, same thinking
 ## signatures. Anything less and the next turn sends back a mangled
 ## transcript, which the API rejects in ways that are hard to read.
-class Reader extends RefCounted:
-	var message: Dictionary = {}
+class Reader extends Events:
 	var started: bool = false
-	## Set only by message_stop. What tells a complete answer from a
-	## connection that died in the middle of one.
-	var finished: bool = false
 	var _blocks: Array = []
 	## Index -> the tool arguments so far, as text. They arrive as JSON
 	## in fragments and are only parseable once the block closes.
@@ -265,8 +306,11 @@ class Reader extends RefCounted:
 				var delta: Dictionary = event.get("delta", {})
 				for key: String in delta:
 					message[key] = delta[key]
-				if event.has("usage"):
-					message["usage"] = event["usage"]
+				# Counted so far, over message_start's: its input tokens
+				# are not always said again here.
+				if event.get("usage") is Dictionary:
+					message["usage"] = (message.get("usage", {}) as Dictionary) \
+						.merged(event["usage"], true)
 			"message_stop":
 				message["content"] = _blocks
 				finished = true
@@ -298,6 +342,5 @@ class Reader extends RefCounted:
 			"input_json_delta":
 				var piece: String = str(delta.get("partial_json", ""))
 				_partial[index] = str(_partial.get(index, "")) + piece
-				return {"tool": str(block.get("name", "")),
-					"fragment": piece}
+				return {"fragments": [[str(block.get("name", "")), piece]]}
 		return {}

@@ -14,6 +14,12 @@
 ## tower built, the fresh look asked with its three pictures in the tool's
 ## answer and answered, saved, its first answer a rate limit), Test (tools
 ## and pictures; pictures refused), and the provider's list of its models.
+## Every design's replies streamed (docs/PROVIDERS.md, P4): the tower's
+## bricks drawn one by one while its reply is still being written, and gone
+## before the design is built in their place. And one reply asked streamed
+## and whole on each of the four adapters, Chat Completions' too: the reply
+## read back from the stream is the one that came whole, and the tower's
+## arguments came in pieces before it ended.
 ## In a window, for the pictures. The stub's port is 9661, or -- --port=N.
 extends SceneTree
 
@@ -68,12 +74,15 @@ func _run() -> void:
 	await _tests("anthropic", "http://127.0.0.1:%d/v1" % _stub_port)
 	await _tests("gemini_native", "http://127.0.0.1:%d/v1beta" % _stub_port)
 	await _tests("openai", "http://127.0.0.1:%d/v1" % _stub_port)
+	for id: String in ["anthropic", "gemini_native", "openai", "custom"]:
+		await _streamed_whole(id, "http://127.0.0.1:%d/%s" % [_stub_port,
+			"v1beta" if id == "gemini_native" else "v1"])
 	_check("the key in no line the stub kept", not FileAccess.get_file_as_string(_log).contains(_key))
 	if _stub > 0:
 		OS.kill(_stub)
 	print("")
 	print("provider apis: Anthropic's Messages, Gemini's own API and OpenAI's Responses designed, "
-		+ "tested and listed"
+		+ "streamed, tested and listed"
 		if _failures == 0 else "provider apis: %d FAILED" % _failures)
 	_main.queue_free()
 	await process_frame
@@ -303,8 +312,15 @@ func _design(id: String, base: String) -> void:
 	var outcome: Array = []
 	var ended := func(ok: bool, summary: String) -> void: outcome.append_array([ok, summary])
 	loop.finished.connect(ended)
+	# [bricks drawn, replies the loop had read, frame] each time one is drawn.
+	var drawn: Array = []
+	var drew := func(count: int) -> void:
+		drawn.append([count, loop.replies(), Engine.get_process_frames()])
+	_assistant.sketched.connect(drew)
 	await _until(func() -> bool: return not outcome.is_empty(), 240.0)
 	loop.finished.disconnect(ended)
+	_assistant.sketched.disconnect(drew)
+	_drawn(drawn, id != "gemini_native")
 	_check("it finishes on the model's own last word: %s" % str(outcome), outcome.size() == 2
 		and bool(outcome[0]) and str(outcome[1]).begins_with("I built a red tower"))
 	_check("the tower stands: %d parts" % _parts(), _parts() == 6)
@@ -329,12 +345,106 @@ func _design(id: String, base: String) -> void:
 		+ "order, schema it takes): %s" % str(refused), refused.is_empty())
 	_check("each with the key in the API's own header, the app's instructions and all its tools",
 		whole and not asked.is_empty())
+	_check("each asked streamed", asked.all(func(one: Dictionary) -> bool: return bool(one["streamed"])))
 	var looked: Dictionary = _after(asked, 3)
 	var saved: Dictionary = _after(asked, 4)
 	_check("view_model's picture inside its answer: %d; the fresh look's three inside its: %d"
 		% [int(looked.get("pictures_in_answers", 0)), int(saved.get("pictures_in_answers", 0))],
 		int(looked.get("pictures_in_answers", 0)) >= 1 and int(saved.get("pictures_in_answers", 0)) == 3
 		and str(saved.get("last_tools", "")).contains("fresh pair of eyes"))
+
+
+## The tower drawn as its reply was written: [param drawn] as _design
+## kept it. Gemini sends a call whole, so its six come in one frame; the
+## others write a call's arguments in pieces, and so over several.
+func _drawn(drawn: Array, pieces: bool) -> void:
+	var counts: Array = drawn.map(func(one: Array) -> int: return int(one[0]))
+	var frames: Dictionary = {}
+	for one: Array in drawn:
+		frames[one[2]] = true
+	_check("the tower's bricks drawn one by one while its reply was written, %s over %d frame(s), "
+		% [str(counts), frames.size()] + "before the loop had it",
+		counts == [1, 2, 3, 4, 5, 6] and drawn.all(func(one: Array) -> bool: return int(one[1]) == 1)
+		and (frames.size() > 1 if pieces else frames.size() >= 1))
+	_check("...and gone before the design was built in their place: %d drawn left, %d parts"
+		% [(_assistant.get("_sketched_ids") as PackedInt64Array).size(), _parts()],
+		(_assistant.get("_sketched_ids") as PackedInt64Array).is_empty() and _parts() == 6)
+
+
+## One reply asked streamed and whole on [param id]'s adapter, at the point
+## of the design where the tower comes: the reply read back from the stream
+## is the one that came whole, body and all, and its arguments came in
+## pieces as they were written.
+func _streamed_whole(id: String, base: String) -> void:
+	print("\n── one reply streamed and whole, on %s ──" % id)
+	var provider: Provider = ProviderSettings.provider_for(id, "stub-sees", _key, base,
+		{"reasoning_effort": "high"})
+	var turns: Array = [{"role": "user", "content": [{"type": "text", "text": BRIEF}]}]
+	var first: Provider.Reply = provider.read(200, (await _whole(provider.request("rules", TOOLS,
+		turns)))[3])
+	turns.append({"role": "assistant", "text": first.text, "calls": first.calls, "kept": first.kept})
+	turns.append({"role": "tool", "results": first.calls.map(func(call: Dictionary) -> Dictionary:
+		return {"id": call["id"], "name": call["name"], "error": false,
+			"content": [{"type": "text", "text": "done"}]})})
+	var whole: Array = await _whole(provider.request("rules", TOOLS, turns))
+	var streamer := Streamer.new()
+	root.add_child(streamer)
+	var pieces: Array = []
+	streamer.fragment.connect(func(tool: String, piece: String) -> void: pieces.append([tool, piece]))
+	var streamed: Array = []
+	streamer.done.connect(func(reply: Array) -> void: streamed.assign(reply))
+	var asked: Dictionary = provider.request("rules", TOOLS, turns, true)
+	await streamer.run(str(asked["url"]), asked["headers"], str(asked["body"]), provider.reader())
+	streamer.queue_free()
+	var read: Variant = JSON.parse_string((streamed[3] as PackedByteArray).get_string_from_utf8()) \
+		if streamed.size() == 4 else null
+	var sent: Variant = JSON.parse_string((whole[3] as PackedByteArray).get_string_from_utf8())
+	_check("the reply read back from the stream is the one that came whole: %s"
+		% _difference(read, sent), int(whole[1]) == 200 and streamed.size() == 4
+		and int(streamed[1]) == 200 and read is Dictionary and read == sent)
+	var a: Provider.Reply = provider.read(200, streamed[3] if streamed.size() == 4 else PackedByteArray())
+	var b: Provider.Reply = provider.read(200, whole[3])
+	_check("...read the same: %s, its own kept, %d in, %d cached, %d out"
+		% [str(a.calls.map(func(call: Dictionary) -> String: return call["name"])), a.spend.fresh,
+			a.spend.cached, a.spend.made], a.ok and b.ok and a.calls == b.calls and a.kept == b.kept
+		and a.stop == b.stop and a.text == b.text and a.spend.fresh == b.spend.fresh
+		and a.spend.cached == b.spend.cached and a.spend.made == b.spend.made and a.spend.made > 0
+		and not a.calls.is_empty() and a.calls[-1]["name"] == "submit_design")
+	var tower: Array = pieces.filter(func(one: Array) -> bool: return one[0] == "submit_design")
+	var joined: String = "".join(tower.map(func(one: Array) -> String: return one[1]))
+	_check("the tower's arguments as they were written: %d piece(s), joined its input"
+		% tower.size(), (tower.size() > 1 if id != "gemini_native" else tower.size() == 1)
+		and not a.calls.is_empty() and JSON.parse_string(joined) == a.calls[-1].get("input"))
+
+
+## [param asked] sent whole: what came, as HTTPRequest gives it.
+func _whole(asked: Dictionary) -> Array:
+	var http := HTTPRequest.new()
+	root.add_child(http)
+	var came: Array = [HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray()]
+	if http.request(str(asked["url"]), asked["headers"], HTTPClient.METHOD_POST,
+			str(asked["body"])) == OK:
+		came = await http.request_completed
+	http.queue_free()
+	return came
+
+
+## Where [param a] and [param b] first differ, for a failure to say.
+static func _difference(a: Variant, b: Variant, at: String = "") -> String:
+	if a == b:
+		return "the same" if at.is_empty() else ""
+	if a is Dictionary and b is Dictionary:
+		for word: Variant in (a as Dictionary).keys() + (b as Dictionary).keys():
+			var inside: String = _difference((a as Dictionary).get(word), (b as Dictionary).get(word),
+				"%s.%s" % [at, word])
+			if not inside.is_empty():
+				return inside
+	if a is Array and b is Array and (a as Array).size() == (b as Array).size():
+		for n: int in (a as Array).size():
+			var inside: String = _difference(a[n], b[n], "%s[%d]" % [at, n])
+			if not inside.is_empty():
+				return inside
+	return "%s: %s against %s" % [at, JSON.stringify(a).left(120), JSON.stringify(b).left(120)]
 
 
 ## Test and the model list on [param id]'s adapter.
