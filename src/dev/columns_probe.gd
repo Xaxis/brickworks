@@ -165,6 +165,26 @@ func _first_visit() -> void:
 	_shell.run("panel_properties")
 	await _frames(30)
 
+	# The tour's Properties stop brings them out from behind the assistant's
+	# tab and lights them in the right column.
+	_shell.run("panel_assistant")
+	await _frames(30)
+	_shell.run("tour")
+	await _frames(5)
+	var tour: Tour = _shell.tour
+	for _n: int in 8:
+		if tour._heading.text.begins_with("Properties") or not tour.visible:
+			break
+		await _click(tour._next.get_global_rect().get_center())
+		await _frames(20)
+	_check("the tour's Properties stop opens the right column and lights them (%s)"
+		% tour._heading.text, tour._heading.text.begins_with("Properties")
+		and props_dock != null and props_dock.is_open()
+		and tour._lit.encloses(_shell.inspector.get_global_rect()))
+	await _shot("4b_tour_properties")
+	tour.stop()
+	await _frames(5)
+
 
 func _saved_layout() -> void:
 	var bin_dock: SideDock = _main.get("_bin_dock")
