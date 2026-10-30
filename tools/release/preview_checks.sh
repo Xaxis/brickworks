@@ -196,6 +196,14 @@ declare -A CMD=(
   # way (#81), ?page=3 opened afresh with Show earlier, Back to the same
   # pages and card, and the pager's fit at 390. The live database's lists.
   [paging]="tools/web/paging_flow.mjs --url=$P --out=$S/${TAG}_paging"
+  # Every set in the catalogue a page (sets364, api/_sets.js): /library's
+  # whole catalogue found by number and filtered (3D, theme and year); a set
+  # with no model (10497-1) with its picture drawn from its parts, its parts
+  # list with our pictures, its weight and first paint; one with a model
+  # (10179-1) and that model's page linking back; Parts you own for a
+  # throwaway account with three of its lots, and its wanted list; Open its
+  # parts in Brickworks landing in the app's bin; and the sets' sitemaps.
+  [sets_flow]="tools/web/sets_flow.mjs --url=$P --out=$S/${TAG}_sets_flow"
   # local only: download_check.mjs's gated half (a Free click refused with
   # the way to Pro, a Pro click sent to the route's address). Every
   # deployment answers "not gated" until the owner turns billing on (U8),

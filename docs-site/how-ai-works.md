@@ -1,10 +1,14 @@
 ---
-title: What an AI build is
-nav: What an AI build is
-description: What an AI builds with, what the app checks before a part goes down, how builds are counted, and how to ask for what you mean.
+ai: Whichever AI designs, it proposes real parts and Brickworks decides: each part where it fits, every part held, the model standing. A design that fails comes back part by part to be fixed. The AI is given patterns, real sets' pieces and its own best earlier work, and is never limited on any plan.
+rules:
+  - AI is never limited: people bring their own, and its maker bills them, never Brickworks.
+  - What lands on the baseplate is one undo step.
+title: How the AI works
+nav: How the AI works
+description: What the AI works with, what the app checks before a part goes down, and how to ask for what you mean. AI is never limited, on any plan.
 ---
 
-Whichever AI designs, Claude or another on your own key, it builds the same way and is held to the same checks. This page calls what it does an **AI build**.
+Whichever AI designs, your Claude through the connector, Claude Code, or Claude or another AI on your own key, it builds the same way and is held to the same checks.
 
 ## The same parts, the same checks {#same-checks}
 
@@ -47,9 +51,9 @@ lib:studs written on the render
 
 The AI sees its own work in pictures with the studs counted along each side, so it can judge sizes, and then gets [fresh eyes](/docs/fresh-eyes).
 
-## How builds are counted {#counted}
+## Never limited {#never-limited}
 
-An AI build is an AI working on a model in one tab: everything it changes there, until it stops for half an hour, counts as one. When it only looks (searches parts, reads the gallery, views the model), nothing is counted, and building by hand never is. Every AI counts the same way, Claude or another on your own key. What each plan includes is on [Plans and billing](/docs/plans).
+AI is never limited, on any plan. You bring your own AI, so Brickworks never meters it or pays for it: whatever you ask of it, its maker bills your plan or key, never Brickworks. What each plan includes is on [Plans and billing](/docs/plans).
 
 ## Tips {#tips}
 

@@ -1,4 +1,12 @@
 ---
+tools: tabs, select_tab
+panels: ClaudeTabView#tabs
+ai: The connector at https://brickworks.diy/api/mcp lets Claude (claude.ai and its apps, and Claude Code) and ChatGPT build in the person's open Brickworks tab. Each tab has a short id; a chat works in one tab, chosen with select_tab or target, and long work runs as jobs.
+rules:
+  - With several tabs open, a chat's first change waits until it chooses one: select_tab, or target on a call.
+  - A client waits about three minutes for an answer; renders, booklets, Studio files and recordings answer with a job number.
+  - An assistant's undo stops at a step another chat made.
+  - The person allows the connector once; Disconnect Claude in Account ends it.
 title: The Claude connector
 nav: The Claude connector
 description: Connect Brickworks to Claude on your Claude plan, choose which tab each chat builds in, and see the model in 3D inside Claude.
@@ -27,6 +35,19 @@ api:Claude's OAuth sign-in
 -->
 
 Brickworks asks you to Allow once, and not again while Claude stays connected. To connect again after a Disconnect, press **Connect** on the Brickworks already in **Customize › Connectors**: adding it a second time sets up a new one, with its tool permissions to choose again.
+
+
+## In ChatGPT {#chatgpt}
+
+The same address connects ChatGPT, on a ChatGPT plan that lets you add a custom MCP server (whether yours can is your plan's and workspace's say):
+
+1. At **chatgpt.com/plugins**, press **+**, then **Add custom MCP server**.
+2. Name it **Brickworks**. Connection: a public endpoint, `https://brickworks.diy/api/mcp`; Authentication: **OAuth**.
+3. Read the warning, **I understand and want to continue**, then **Create as a plugin**.
+4. Brickworks asks *Let ChatGPT build in Brickworks?* and says you will go back to chatgpt.com: sign in if you need to, then **Allow**.
+5. Install the plugin with the tools it lists. In a new chat, `@` and **Brickworks**, then ask it to build.
+
+Its connection is listed in **Account** as ChatGPT, and **Disconnect** ends it as it ends Claude's. When Brickworks' tools change, **Refresh** on the plugin's page at chatgpt.com/plugins, then start a new chat.
 
 ## Build {#build}
 
@@ -65,7 +86,7 @@ lib:the viewer's own tools
 
 ## What Claude can do {#tools}
 
-Everything you can do from the menus, Claude can do with a tool: design and edit, look from any side, check, set the floor, edit steps and the booklet, lay hoses, pose and animate, play motions, simulate, render, export, search the gallery, and more. The [MCP tool reference](/docs/mcp-tools) lists every one.
+Everything you can do from the menus, Claude can do with a tool: design and edit, look from any side, check, set the floor, edit steps and the booklet, lay hoses, pose and animate, play motions, simulate, render, export, search the gallery, and more. The [MCP tool reference](/docs/mcp-tools) lists every one. [How a design session works](/docs/design-session) says how an assistant uses them, the words it is given, and the limits it works within.
 
 <!-- covers
 lib:the window's commands over mcp

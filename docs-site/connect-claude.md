@@ -1,10 +1,15 @@
 ---
+ai: The ways to have an AI design in Brickworks: Claude on its plan or ChatGPT through the connector, Claude Code, an Anthropic API key in the assistant panel, or another AI on the person's own key. The assistant must be switched on first (Settings, Assistant (AI)).
+rules:
+  - The connector's address is https://brickworks.diy/api/mcp, the same for every account.
+  - With Build by hand only, the assistant's panel, its commands and the connector are gone from the window.
+  - A key is checked with its provider before it is kept, and is sent only to that provider.
 title: Connect Claude
 nav: Connect Claude
 description: The two ways to have Claude design in Brickworks, your Claude plan or your own API key, set up in a minute.
 ---
 
-Building by hand needs nothing but an account, and there is no AI in the window until you ask for it. To have Claude design, turn the assistant on and bring your own Claude. Brickworks bills nothing for Claude's work: once Pro opens, Free has 10 AI builds a month and Pro no limit ([Plans](/docs/plans)).
+Building by hand needs nothing but an account, and there is no AI in the window until you ask for it. To have Claude design, turn the assistant on and bring your own Claude. AI is never limited, on any plan: you bring your own, so Brickworks never counts it or bills for it ([Plans](/docs/plans#ai)).
 
 ## Turn the assistant on {#assistant-on}
 

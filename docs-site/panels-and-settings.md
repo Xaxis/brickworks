@@ -1,4 +1,9 @@
 ---
+panels: ControlsDialog#settings
+ai: The window's parts (menus, toolbar, the left column of parts bin, model tree and properties, the assistant on the right, the status bar), and every setting. Exact positions and hinge angles are typed in Properties.
+rules:
+  - Settings and Keys and controls (F1) are one panel.
+  - Properties take X, Y and Z to the hundredth of an LDraw unit.
 title: Panels, layout and settings
 nav: Panels and settings
 description: The window's panels, the toolbar and status bar, the properties of a part, and every setting.

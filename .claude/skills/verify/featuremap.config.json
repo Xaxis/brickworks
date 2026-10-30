@@ -3722,14 +3722,14 @@
       "kind": "ui",
       "label": "documentation",
       "entry": "web/docs.js",
-      "reach": "https://brickworks.diy/docs   (and /docs/<page>: the pages list, On this page, Ctrl+K or / to search, previous and next; made from docs-site/ by tools/docs_site.py at deploy; linked from every page's footer, Menu on a phone, and the app's Help, Documentation)",
+      "reach": "https://brickworks.diy/docs   (and /docs/<page>: the pages list, On this page, Ctrl+K or / to search, previous and next; made from docs-site/ by tools/docs_site.py at deploy; linked from every page's footer, Menu on a phone, and the app's Help, Documentation, which opens the page of the panel in front, from the pages' panels: heads (src/ui/docs_pages.gd); /docs/llms.txt is the same for an assistant)",
       "area": "web"
     },
     {
       "kind": "cli",
       "label": "put the documentation together",
       "entry": "tools/docs_site.py",
-      "reach": "python3 tools/docs_site.py --check   (every feature here on a docs page or in docs-site/internal.txt, every link resolves; python3 tools/docs_site.py OUT writes the pages, as tools/site.py does at deploy)",
+      "reach": "python3 tools/docs_site.py --check   (every feature here on a docs page or in docs-site/internal.txt, every link resolves; python3 tools/docs_site.py OUT writes the pages, as tools/site.py does at deploy; --write writes what the docs make and commit: each tool's doc's copy of its words, src/ai/connector_guide.gd and src/ui/docs_pages.gd, and --check fails while any differs, a tool has no doc or its example breaks its schema)",
       "area": "web"
     },
     {
@@ -3877,6 +3877,41 @@
       "label": "beta browser flow",
       "entry": "tools/web/beta_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in --beta-open, or the beta off: Coming soon and refused; preview check [beta])",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "every set's page",
+      "entry": "api/_sets.js",
+      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; /library/set/N.jpg its picture drawn from its parts (api/_flatlay.js), /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a set's picture drawn from its parts",
+      "entry": "api/_flatlay.js",
+      "reach": "https://brickworks.diy/library/set/10497-1.jpg   (its most distinctive parts, tools/set_catalog.py picks, drawn from their own geometry in the store and written as a JPEG; tests/test_sets.py)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "set catalogue",
+      "entry": "tools/set_catalog.py",
+      "reach": "python3 tools/set_catalog.py [--check]   (assets/generated/set_catalog.json from vendor/rebrickable and assets/generated/sets/; deploy.sh runs it and puts it beside the share function)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "sets browser flow",
+      "entry": "tools/web/sets_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/sets_flow.mjs --url=<preview> --out=DIR [--no-app]   (preview_checks.sh sets_flow: the library's every set, a set with and without a 3D model, parts with our pictures, weight and first paint (the first visit after a deploy said with its slowest fetches, a visitor after it held to 2.5 s), Parts you own for a throwaway, Open its parts landing in the app's bin, the sitemaps)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "set parts probe",
+      "entry": "src/dev/set_parts_probe.gd",
+      "reach": "tools/probe.sh set_parts_probe   (/app?parts=10497-1&brief=: the set's parts in the bin, most used first, and the brief drafted, not sent)",
       "area": "web"
     }
   ]

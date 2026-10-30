@@ -1,4 +1,12 @@
 ---
+tools: move_part, pose_model, lay_flex, simulate_mechanism, search_gear_ratio, weakest_joints, list_motions, define_motion, play_motion, colour_hidden_parts
+panels: SimulatePanel#simulate, PosePanel#motions, HiddenColoursPanel#hidden-colours
+ai: Parts move on their real joints (hinges, clips, turntables, pins, axles, balls, gears, racks), hoses and chains are laid between connectors, stability is weighed, mechanisms are simulated, and a model keeps named motions. An assistant moves parts with move_part, lays hoses with lay_flex, and names motions with define_motion.
+rules:
+  - Gears mesh at their real ratios; a worm drives its gear and holds it.
+  - simulate_mechanism reads the model and changes nothing.
+  - Motions are saved in the model's file and play for anyone who opens it.
+  - colour_hidden_parts shows a preview before it changes anything, and recolours a real set's own parts only when the person agreed.
 title: Joints and mechanisms
 nav: Joints and mechanisms
 description: Move parts on their real joints, turn gear trains, lay hoses and chains, check a model stands, and give it motions of its own.

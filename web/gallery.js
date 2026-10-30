@@ -690,8 +690,8 @@ import { pageAsked, pager } from "/pager.js";
     kind = tag = "";
     ask();
   });
-  // "/" to search, the bar of filters' edge once stuck, the kinds' fade.
-  browseBar({ search: q, above: document.querySelector(".gallery-bar"), bar: $("toolbar"), row: $("kinds") });
+  // "/" to search, and the bar of filters' edge once stuck.
+  browseBar({ search: q, above: document.querySelector(".gallery-bar"), bar: $("toolbar") });
   sayFilters();
   drawTabs();
 

@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow -->
 
 ## Sub-features
 
@@ -526,7 +526,8 @@ plan with Claude as the client.
   its picture and name the model's page, **Build it** (`.cta.small`) the
   guided build at step 1 (`/app?view=<id>&build`, as the page's Build it),
   and View in 3D a quiet `a.link` to the viewer, hidden in a frame under
-  400 px. `model_page_flow` step 15 holds the links at 560 px and the bar
+  400 px. The picture stands on `--picture-ground`, as a card's frame does,
+  and a line parts it from the bar. `model_page_flow` step 15 holds the links at 560 px and the bar
   whole at 340 px; `share_probe` the links in the markup.
   **Who can do what:** a visitor's read asks, as the server, for a published
   row's public columns alone (`api/share.js` `publishedRow`; until oc205 it
@@ -673,7 +674,7 @@ plan with Claude as the client.
   links (`ul.links`, https, `rel="ugc nofollow noopener"`, said as their
   domain); one row of numbers (`ul.numbers li[data-stat]`: builds,
   remixes, models, likes, followers `[data-followers]`, following, each
-  `hidden` at none); wins as pills; Pinned (`.pinned .models.row`, up to
+  `hidden` at none); wins as pills; Pinned (`.pinned .models.scroller`, up to
   three, their order); then `nav.tabs` Models · Builds · Collections, each
   a page of its own (`?tab=`; the default the first with something in it),
   a count `.n` once there is one, `.tab-panel[data-panel]`: Models 24 a page
@@ -758,7 +759,7 @@ plan with Claude as the client.
   models, `directory_models` with `owner`, by Top builds) and `#similar`
   (`directory_models` by its kind and by each of its first three tags,
   ranked by tags shared, then kind, then Top builds; never what anybody
-  looked at), each a `.models.row` of cards drawn only with three, six at
+  looked at), each a `.models.scroller` of cards drawn only with three, six at
   most, and no card the page shows already (the model, its listed
   remixes, More by's); with neither row, `#from-gallery`, More in the
   gallery: the gallery's Top, however few, so the last screen always has
@@ -766,7 +767,7 @@ plan with Claude as the client.
   database error is no row, never a 500. No new SQL.
 - `model page pictures and tabs` (`api/share.js` `mediaStrip`, `pageTabs`,
   `web/model-page.js` `startPictures`, `startTabs`, 2026-10-22,
-  docs/SOCIAL.md U4): under the picture, `#pictures.media-strip`: the
+  docs/SOCIAL.md U4): under the picture, `#pictures.media-strip.scroller`: the
   published picture first (`aria-current`), then its owner's own photos
   (`data-own`; build photos posted by the model's owner, through the same
   pipeline, so no new table), then photos of real builds, newest first,
@@ -932,9 +933,13 @@ plan with Claude as the client.
   operator's line (`#operator`) marked for the owner to fill in, and
   `#paid-plans` (2026-10-29): Free and Pro when they open, sold by Atypic
   through Link, renewal, cancelling and refunds as Atypic's policy says,
-  mirroring Bookwright's terms. The FAQ's "Is Brickworks free?" and "What
-  is an AI build?" (`#ai-builds`) and the download page's `#pro-note` say
-  the same as /plans: downloads free until Pro opens, every version kept.
+  mirroring Bookwright's terms. The FAQ's "Is Brickworks free?" (`#free`),
+  "Is AI limited on any plan?" (`#ai`: never, on any plan; people bring
+  their own) and "I made my account before 29 October 2026" (`#had-account`)
+  and the download page's `#pro-note` say the same as /plans: downloads
+  free until Pro opens, every version kept. The terms, the privacy page,
+  the guidelines and /takedown share one row of `.tabs` in their head
+  (site359, 2026-10-29).
 - `age question` (`web/account.js` `askAgeIfAsked`, `src/ui/sign_in_gate.gd`,
   `api/account.js` `?op=age`, `api/_trust.js`, `supabase/trust.sql`): asked
   once, after a first sign-in, on the site and in the app — "When were you
@@ -967,7 +972,7 @@ plan with Claude as the client.
   `tools/site_shell.py`), one type scale (`--t-*`) and rhythm (`--s-*`,
   `--page-top`, `--section`), the page template (`.page`, `.page-head`,
   `.prose`), the one model card (`.model`, in `.models`, `.models.compact`
-  or `.models.row`), `.state`, `.subnav`, `.settings`/`.setting` and
+  or `.models.scroller`), `.state`, `.subnav`, `.settings`/`.setting` and
   `.danger`. Since 2026-10-22 (docs/SOCIAL.md U2) only the token scale:
   every font size `var(--t-*)`, every corner `var(--r-*)` (or
   `--radius`, `--control-radius`, `0`, `50%`), every colour a token, in
@@ -1073,9 +1078,33 @@ plan with Claude as the client.
   `.menu-list`, closed by a click elsewhere or Escape. `web/_kit.html` at
   `/_kit` (served by the stand-in, never deployed: tools/site.py skips
   "_" names) shows each.
+- `scroller` (`web/scroller.js`, site.css "the scroller",
+  docs/DESIGN_SYSTEM.md "Scroller", scroll367, 2026-10-30): every row
+  that scrolls sideways is one primitive: `.models.scroller` (the landing
+  strips, the gallery's shelves, Pinned on /u/ and /profile, a model
+  page's More by / Similar with a See all in `.scroller-head`),
+  `.pills.scroller` (the gallery's and library's kinds, `.inset` in a
+  toolbar), `#pictures.media-strip.scroller`, `.build-strip.scroller`,
+  `nav.tabs`, an inner page's `.page-toc ul.scroller` under 900 px, and
+  the boxes `.table`, docs `.code > pre` and /admin's `.card.scroller`. It
+  scrolls inside itself (`overscroll-behavior-x: contain`, never the
+  page), a row snaps to its items' starts and bleeds into the 16 px
+  gutter, `data-more` fades only the sides with more, Previous and Next
+  (`.icon-btn.small.scroller-go`, after the row, anchor-positioned at its
+  ends) page by what is in view for a mouse and hide at their own end, a
+  row is named (`role="group"` + its heading; a table `role="region"`,
+  `tools/docs_site.py` `named_tables` for the docs), one with nothing
+  inside to focus takes `tabindex="0"` while it overflows, the scrollbar is
+  thin and shown on hover and focus, smooth only without reduced motion.
+  `/_kit` shows a row of cards and a row of pills. `design_flow` judges
+  every one on every page at start and end (below).
 - `design browser flow` (`tools/web/design_flow.mjs`, preview check
   `[design]`): every page and dialog, below. Its pages and the states it
   opens are `tools/web/site_pages.mjs`, shared with the accessibility flow.
+  Since 2026-10-30 (scroll367) also every scroller: named, contained,
+  thin bar, a row snapped, reachable by keyboard when it overflows, and
+  scrolled to each end its `data-more` and fade right, its Previous or
+  Next hidden at its own end, shown to a mouse only, never over the view.
 - `accessibility browser flow` (`tools/web/a11y_flow.mjs`, preview check
   `[a11y]`) and `keyboard browser flow` (`tools/web/keyboard_flow.mjs`,
   `[keyboard]`): axe and the accessibility tree's names on every page,
@@ -1242,9 +1271,15 @@ plan with Claude as the client.
   `details.menu`'s summary becomes the avatar (`.account-btn`), its list
   the site's links, the same `.account-part`, the theme and Sign out. Who
   you are and the counts come from `GET ?op=feed_count` (`me`,
-  `notifications`, `feed`), kept in `sessionStorage["brickworks.me"]` so
-  the next page draws at once (cleared by `signOut()`); /feed and
-  /notifications ask only once they have opened.
+  `notifications`, `feed`), kept in `localStorage["brickworks.me"]` (for
+  the signed-in address) so the next page, a new tab and the next visit
+  draw at once (cleared by `signOut()`); /feed and /notifications ask only
+  once they have opened. With nothing kept the avatar is a blank circle
+  (`.avatar.unknown`, no letter or tone) and `.menu-who` two `.bone` bars
+  until the answer: the address's letter only for an account with no
+  profile, never before the name's (avatar368, 2026-10-30;
+  `account_page_flow.mjs` records every letter the header shows, cold, in
+  a new tab and on a return visit).
 - `notifications apart from the feed` (`api/_notifications.js`,
   `supabase/notifications.sql`, **not applied to the live project** until
   the lead applies it): `GET ?op=notifications` (session; marks them
@@ -1778,6 +1813,26 @@ plan with Claude as the client.
   from the gallery's tabs and every page's footer; every set is in
   `/sitemap.xml`. `cli:LDraw library browser flow` checks it on a
   deployment (preview_checks.sh `library_site`).
+- **Every set in the catalogue** (sets364, 2026-10-29): `/library` lists
+  every set Rebrickable's catalogue has (28,441; browsed, the ones with
+  parts), `api/_sets.js` `searchCatalog` over `_set_catalog.json`
+  (`cli:set catalogue`, `tools/set_catalog.py`, run by deploy.sh), each a
+  card to `/library/set/<number>` marked 3D where LDraw modelled it; Filters
+  adds the theme inside the theme (`#sub`), year, 3D model and minifigures,
+  made by `web/library.js` where the page has none. `ui:every set's page`
+  is `/library/set/<number>` (`?op=catalog_set`, kept a day by the CDN):
+  facts, Rebrickable credited, CreativeWork and BreadcrumbList JSON-LD (no
+  Product, no price), its parts list from its shard with our pictures, Parts
+  you own (`?op=catalog_owned`, signed in, `web/set-page.js`), Open its
+  parts in Brickworks (`/app?parts=N`: `cli:set parts probe`), Design with
+  these parts (`&assistant=on&brief=`), Build it in 3D and its LDraw
+  model's page, which links back. `lib:a set's picture drawn from its
+  parts` is `/library/set/<number>.jpg`, kept a year. The sets' sitemaps are
+  `/sitemaps/index.xml` and `/sitemaps/sets-K.xml` (10,000 each), named in
+  robots.txt; `/sitemap.xml` is as it was. `cli:sets browser flow` checks it
+  all on a deployment (preview_checks.sh `sets_flow`). Locally:
+  `node tools/web/relay_server.mjs 8364` serves the pages but not LDraw's
+  `/library/<id>` ones.
 - **The sitemap** (`GET /sitemap.xml`, `api/share.js ?op=sitemap`, routed by
   `deploy.sh`, with `web/sitemap.xml` beside the function as `_sitemap.xml`):
   the site's own pages and every listed model, profile with a model in the
@@ -1846,8 +1901,9 @@ plan with Claude as the client.
   cards (`web/card.js`, `like: true`), two to a row under 600 px, three to
   900, four above (the owner, 2026-10-29); on the front (Top, all time,
   nothing asked, page 1) this week's pick first and the shelves after the
-  first twelve places (`ui:the gallery's front shelves`; Today in the
-  gallery a lit panel, its words beside its two cards from 900 px). A
+  first twelve places (`ui:the gallery's front shelves`, each a
+  `.scroller-head` over a `.models.scroller`; Today in the gallery in a
+  lit panel). A
   card's heart likes it from the card, signed in, at once
   (`POST /api/people?op=like`), and asks to sign in when not. Paged by the
   site's one pager (`ui:a list's pages`): nothing comes by itself; Show
@@ -2548,9 +2604,12 @@ plan with Claude as the client.
   page fetched (`encodedBodySize`), scrolled to its foot, at 390 and 1280 px
   against the live one (2026-10-20: 206/264 KB at load/scrolled on a phone and
   146/204 on a laptop, where the page before took 228/418 and 195/234). `img/manifest.json` says where each came from and holds
-  its alt text. `FAQ page` (`web/faq.html`): the two ways to bring Claude, each
-  as numbered steps with what it costs (`#claude`), the questions (FAQPage
-  JSON-LD, the same answers), the dimensions (a `.table`). Since 2026-10-24:
+  its alt text. `FAQ page` (`web/faq.html`): the three ways to bring your
+  own AI (your Claude plan, Claude Code, your own key), each as numbered
+  steps with what it costs (`#claude`), then the questions in groups (Plans
+  and price `#plans`, Your AI, Your account, Sharing, Files and parts,
+  About), each group listed in the `.page-toc` beside them (FAQPage JSON-LD,
+  the same answers), the dimensions (a `.table`). Since 2026-10-24:
   signing in (`#sign-in`: `ui:sign in with orangecheck`, and on the desktop
   `ui:sign in with orangecheck on the desktop`, from 0.8.0), building
   together (`#together`, `ui:build together`; the desktop from 0.8.0),
@@ -2562,8 +2621,14 @@ plan with Claude as the client.
   holds and what Brickworks never sees — each claim is in
   `src/account/account.gd`, `api/otp.js`, `api/mcp.js`, `src/ai/own_key.gd` and
   the CSP in `deploy.sh`; change one, change the page. `changelog page`
-  (`web/changelog.html`) and `404 page` (`web/404.html`, `noindex`) use the same
-  bar and foot. `robots.txt` keeps `/admin`, `/api/`, `/oauth/` and `/b/` out and
+  (`web/changelog.html`, each release's name and date in a `.release-head`
+  beside its `.release-notes`, sticky from 900 px; tools/site.py writes
+  them) and `404 page` (`web/404.html`, `noindex`, with four ways on) use
+  the same bar and foot. Every page that is not a landing page (these, the
+  docs' start, settings, the legal pages, /compare, /feed, /notifications,
+  /admin) opens on site.css's `.page-hero` and, where it has parts, keeps
+  a `.page-toc` beside them in a `.page-grid` (site359, 2026-10-29; see
+  docs/DESIGN_SYSTEM.md "An inner page"). `robots.txt` keeps `/admin`, `/api/`, `/oauth/` and `/b/` out and
   names `sitemap.xml`, which lists `/`, `/download`, `/changelog`, `/faq` and
   `/privacy`. The mark is `web/icon.svg`, a cube with a corner cut away
   (no brick, no studs: docs/TRADEMARKS.md, Decisions); `tools/web/make_icons.mjs`
@@ -2654,11 +2719,11 @@ plan with Claude as the client.
   `data-when="sale"` parts, Pro's Upgrade to Pro going to
   `/settings?upgrade=month|year#plan` with the choice made, and Admission's
   prices; off, the page as written, Coming soon). Free ($0: the
-  web app, 10 AI builds a month, building by hand without a limit,
-  everything else the app does today, at today's limits) and Pro ($8 a
-  month or $80 a year: the desktop app, every version released while you
-  pay kept, AI builds without a limit), Pro marked Coming soon; what an AI
-  build is; every account made before Pro opens gets Pro with no end;
+  web app, AI on your own Claude, ChatGPT or key with no limit, 25 models
+  kept with the account, saving to the device and exporting without a
+  limit) and Pro ($8 a month or $80 a year: the desktop app, every version
+  released while you pay kept, every model kept with the account), Pro
+  marked Coming soon; AI never counted on either; every account made before Pro opens gets Pro with no end;
   education free; what stays free; five questions, one saying what changed.
   Nothing takes money (BRICKWORKS_BILLING off). Pro's Tell me when it's
   ready opens the interest form (a `dialog`): email, monthly or yearly, a
@@ -2674,8 +2739,8 @@ plan with Claude as the client.
   `supabase/admission_snapshots.sql`): Free and Pro from Admission, built
   dark (2026-10-29, docs/PLANS.md unit U1, billing336). BRICKWORKS_BILLING
   is the one switch: off (unset) asks nothing and limits nothing; test or
-  live with its own kind of ADMISSION_KEY reads an account's plan, Claude
-  builds (10 a month on Free) and the desktop flag, keyed by the Supabase
+  live with its own kind of ADMISSION_KEY reads an account's plan, its saved-models
+  cap (25 on Free, none on Pro; AI is never counted) and the desktop flag, keyed by the Supabase
   user id of the session. Snapshots go in a server-only table, so a cold
   instance answers a paying person while Admission is down; with none, the
   answer is `unknown` and refuses nothing.
@@ -4871,8 +4936,8 @@ BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/plans_flow.mjs --url=<pr
 It passes when it ends "plans: all ok": at 390 and 1400 px, light and
 dark, Free and Pro and their prices ($80 a year first, $8 a month once
 Monthly is pressed), every row side by side, no way to pay shown with
-billing off, Coming soon on Pro, what an AI build
-is, accounts that exist keeping everything, education, what stays free, no
+billing off, Coming soon on Pro, AI with no limit on
+either plan, 25 models kept on Free, accounts that exist keeping everything, education, what stays free, no
 Claude builds and no free desktop, nothing sideways, the footer's link, and
 /privacy's line; at 390 px the form opened from Pro with yearly, a bad
 address refused on the page and by the API (and a plan off the list, now
@@ -5059,7 +5124,13 @@ The pages are made, not kept: `tools/docs_site.py` turns `docs-site/*.md`
 (in `docs-site/_nav.json`'s order) into `docs.html`, `docs/<page>.html` and
 `docs/search.json`, and `tools/site.py` runs it at every deploy, as it
 writes the changelog. `web/docs.css` lays them out and `web/docs.js` is the
-pages list on a phone, Ctrl+K search, On this page and Copy. Four pages are
+pages list on a phone, Ctrl+K search, On this page and Copy. Each page's
+head (`.docs-head`) says its part of the docs as an `.eyebrow` over its
+title; the start page's head is lit and holds a search as wide as its
+words (`.docs-search-open.big`); under every page, where to ask
+(`.docs-help`), then previous and next, each naming its part. A page that
+moved (`docs-site/_moved.json`: `ai-builds` and `claude-builds` to
+`how-ai-works`, 2026-10-29, when AI stopped being counted) answers 308. Four pages are
 made from their sources: the MCP tool reference from `tools/mcp_tools.json`,
 the shortcuts from `ControlsHint.for_keyboard()` and the menus' keys, the
 menus from `docs-site/generated/menus.json`, and the changelog from
@@ -5089,7 +5160,36 @@ going there, `/` and Escape, the pages list behind Browse the docs at 390
 and down the left at 1400 with the page marked, On this page following the
 scroll, and a deep link landing with its heading in view. Pictures in
 `--out`. The app's way in is Help, Documentation (`src/ui/shell.gd`,
-command `docs`).
+command `docs`), which opens the page of the panel in front.
+
+#### One source for people and assistants
+
+A page's head names the MCP tools it explains (`tools:`), the app's panels
+it is the page of (`panels:`, `ClassName#section`), and says to an
+assistant what the feature is (`ai:`) and its rules (`rules:`). Every tool
+the app or the relay serves has `docs-site/tools/<name>.md`: an `example:`
+call held to its input schema, words for people, and a copy of the tool
+list's words. From them: the tool reference (`/docs/mcp-tools`, with each
+example and the pages that explain it), `/docs/llms.txt`, Help's page for
+each panel (`src/ui/docs_pages.gd`), and the words every session is told
+first (`src/ai/connector_guide.gd`, from `docs-site/design-session.md`'s
+```` ```said ```` blocks; Assistant.GUIDE_HEAD and METHOD and
+ClaudeConnector.CONNECTED_NOTE are its constants).
+
+```sh
+python3 tools/docs_site.py --write      # writes nothing on a clean checkout
+python3 tools/docs_site.py --check      # the drift checks, in the Python suite too
+tools/probe.sh docs_pages_probe         # Help opens the panel's page; the words are the docs'
+```
+
+`--check` fails when a tool has no doc, a doc no tool, an example breaks
+its schema, a page names a tool or panel there is none of, a page people
+read has no `ai:`, or a made file is not what the docs make: change a
+tool's description in `tools/mcp_tools.json` by hand and it names that
+tool's doc; `--write` copies the new words in for review. The probe ends
+"docs pages: all passed": nothing open is `/docs`, Settings open is its
+page, Brickify over Settings is Brickify's, every panel named is a class,
+and the head, the method and the connector's note are ConnectorGuide's.
 
 ### The site for everyone: axe, names and the keyboard
 

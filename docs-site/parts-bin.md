@@ -1,4 +1,9 @@
 ---
+tools: search_parts, find_parts_like
+ai: Finding parts by words, number, shape or a photo, and the colours they come in. An assistant finds real parts with search_parts or by their look with find_parts_like, never by guessing a part number.
+rules:
+  - Every part is from the LDraw library; printed parts are found with the word print, stickered ones with sticker.
+  - Colours are LDraw colour codes, and a part comes only in colours it was really made in.
 title: The parts bin
 nav: The parts bin
 description: Find any part by name, number, shape or a photo, keep the ones you use, and choose its colour.

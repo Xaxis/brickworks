@@ -1,4 +1,7 @@
 ---
+ai: A person's profile and public page (/u/<handle>), following designers, the feed of what they make, notifications, the account menu and the site's settings.
+rules:
+  - Following is for people 13 and over.
 title: Profiles, following and your feed
 nav: Profiles and your feed
 description: Your profile, following designers, your feed and notifications, your account menu and settings.

@@ -83,14 +83,18 @@
 </header>
 
 <main id="main">
-	<div class="wrap wide page feed-page">
-		<div class="page-head">
+	<div class="page-hero">
+		<div class="wrap wide">
+			<p class="eyebrow">For you</p>
 			<h1>Your feed</h1>
+			<p class="lede">New models, new versions and photos of builds from the designers you follow.</p>
+			<nav class="tabs" aria-label="What is new for you">
+				<a href="/notifications">Notifications <span class="n" data-count="notifications" hidden></span></a>
+				<a href="/feed" aria-current="page">Your feed <span class="n" data-count="feed" hidden></span></a>
+			</nav>
 		</div>
-		<nav class="tabs" aria-label="What is new for you">
-			<a href="/notifications">Notifications <span class="n" data-count="notifications" hidden></span></a>
-			<a href="/feed" aria-current="page">Your feed <span class="n" data-count="feed" hidden></span></a>
-		</nav>
+	</div>
+	<div class="wrap wide page-body feed-page">
 		<!-- The page's place while the feed is asked (feed.js): posts and the
 		     designers beside them, as skeletons. -->
 		<div class="feed-layout with-rail skeleton" id="loading" role="status">
@@ -130,7 +134,7 @@
 				<ul class="people-list" id="people"></ul>
 			</aside>
 			<section class="latest" id="latest" hidden aria-labelledby="latest-title">
-				<div class="section-head">
+				<div class="scroller-head">
 					<h2 id="latest-title">Latest on Brickworks</h2>
 					<a href="/gallery?sort=newest">The gallery</a>
 				</div>

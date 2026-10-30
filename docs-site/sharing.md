@@ -1,4 +1,9 @@
 ---
+panels: SharePanel#share
+ai: Sharing publishes a model at brickworks.diy/m/<id> and in the gallery, with its steps, booklet, motions and moving parts. It is tested for being buildable, gets new versions when shared again, and credits what it was remixed from.
+rules:
+  - Sharing needs the person signed in, and is the person's to do: no tool shares a model.
+  - Names, tags and words are checked; brands and trademarks are refused in titles, tags and handles.
 title: Sharing a model
 nav: Sharing a model
 description: Publish a model with a link anyone can open in 3D, step through and build, update it with new versions, or take it down.

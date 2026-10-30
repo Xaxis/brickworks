@@ -1,4 +1,10 @@
 ---
+tools: fresh_eyes
+ai: Every new AI design gets one second look at its first whole save: three pictures and the person's whole request, answered as a judge with what it reads as, what reads as a generic box, and the three changes to make first, which it then makes.
+rules:
+  - Once a subject, at a new design's first whole save; never for a change to a selection, a sketch, or a model already being built.
+  - Until fresh_eyes is answered the next calls wait, and never more than twice.
+  - The look never takes away anything the request names.
 title: Fresh eyes
 nav: Fresh eyes
 description: The second look every new AI design gets at its first save, and what it changes.
@@ -12,7 +18,7 @@ lib:fresh eyes at the first save
 
 ## What happens {#what-happens}
 
-1. The AI builds a new design on an empty baseplate and saves it.
+1. The AI makes a new design on an empty baseplate and saves it.
 2. The save hands back three pictures of the model (a corner, the front and a close look) with your whole request, in your own words.
 3. It answers as a judge shown nothing but those: **what the model reads as**, **what reads as a generic box**, and **the three changes a set designer would make first**, the biggest first. It is told of no real set; what the subject needs is its own to say.
 4. Then it makes those changes, and goes on.

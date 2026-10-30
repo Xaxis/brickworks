@@ -1,4 +1,8 @@
 ---
+ai: The beta gives each of 100 approved testers 30 days of Pro, free and once: no card, nothing renews. A signed-in account applies once at brickworks.diy/beta, and the owner reads and decides each application. When the month ends the account is on Free and nothing is deleted. No tool applies; send the person to /beta.
+rules:
+  - AI is never limited, tester or not: people bring their own.
+  - An account made before 29 October 2026 has Pro already and takes none of the 100 spots.
 title: The beta
 nav: The beta
 description: 100 testers get 30 days of Pro, free. What you get, what we ask, how to apply and what happens when the month ends.

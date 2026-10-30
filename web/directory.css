@@ -80,12 +80,9 @@
 
 /* The strip of its pictures (api/share.js mediaStrip): the one it was
    published with, its owner's photos, then photos of real builds; the one
-   shown in the picture's place edged in the accent. It scrolls across on
-   its own, never the page. A photo shown large is shown whole. */
-.media-strip {
-	display: flex; gap: var(--s-2); margin-top: var(--s-3); padding: 3px;
-	overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: thin;
-}
+   shown in the picture's place edged in the accent. A scroller (site.css).
+   A photo shown large is shown whole. */
+.media-strip { display: flex; gap: var(--s-2); margin-top: var(--s-3); padding-block: 3px; }
 .media-strip[hidden] { display: none; }
 .media-strip .thumb {
 	flex: none; display: block; width: 96px; height: 72px; padding: 0; overflow: hidden;
@@ -114,7 +111,7 @@
 
 /* The page's tabs (api/share.js pageTabs): the kit's .tabs, kept on screen
    under the header as the page scrolls past its parts. */
-.model-page .page-tabs { position: sticky; top: var(--head-h); z-index: 5; background: var(--bg); margin: var(--s-2) 0 var(--s-2); }
+.model-page .page-tabs { position: sticky; top: var(--head-h); z-index: 5; background: var(--bg); margin-block: var(--s-2); }
 .model-page .page-tabs.loose { background: none; }
 /* Gone to: clear of the tabs, beyond the header's own scroll-padding
    (site.css html), which every other part of the page has alone: a margin
@@ -163,7 +160,7 @@
 
 /* What comes next: more by its designer, similar models, a row each. */
 .model-page .next { margin-top: var(--section); max-width: none; }
-.model-page .next h2 { margin: 0 0 12px; overflow-wrap: anywhere; }
+.model-page .next h2 { margin: 0; overflow-wrap: anywhere; }
 .model-page .next h2 a { color: inherit; }
 
 .model-page section { margin-top: var(--s-7); max-width: 72ch; }
@@ -318,16 +315,13 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 .tested-note b { color: var(--ink); }
 
 /* Built by people (api/share.js buildsSection, supabase/builds.sql): how many
-   built it, a strip of photos of real builds that scrolls across on its own
-   (never the page), and the form to add one. On a profile, what they built. */
+   built it, a strip of photos of real builds (a scroller, site.css), and
+   the form to add one. On a profile, what they built. */
 .model-page .builds { max-width: none; }
 .model-page .built-line { margin: 0 0 12px; color: var(--ink-soft); }
-.build-strip {
-	display: flex; gap: 12px; overflow-x: auto; overscroll-behavior-x: contain; padding: 2px 2px 10px;
-	scroll-snap-type: x proximity; max-width: 100%;
-}
+.build-strip { display: flex; gap: 12px; padding-block: 2px 10px; }
 .build-strip .build {
-	flex: 0 0 auto; width: min(260px, 72vw); margin: 0; scroll-snap-align: start;
+	width: min(260px, 72vw); margin: 0;
 	background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-3); overflow: hidden;
 }
 .build-strip .build img { display: block; width: 100%; height: 190px; object-fit: cover; background: var(--line); }
@@ -338,7 +332,6 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 .add-build .build-form { display: grid; gap: 10px; max-width: 520px; margin-top: 4px; }
 .add-build .said { margin: 6px 0 0; color: var(--ink-soft); }
 .hidden-builds { margin-top: 10px; }
-.person .builds-made .build-strip { margin-top: 6px; }
 
 /* Comments on a model and on its steps (web/model-page.js), as threads
    (docs/SOCIAL.md U8): each comment a card with its writer's avatar beside
@@ -437,12 +430,6 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 }
 .feed-rail h2 { margin: 0 0 var(--s-2); }
 .feed-page .latest { grid-area: latest; min-width: 0; margin: 0; }
-.feed-page .section-head {
-	display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--s-1) var(--s-4);
-	margin-bottom: var(--s-3);
-}
-.feed-page .section-head h2 { margin: 0; }
-.feed-page .section-head a { color: var(--ink-soft); font-size: var(--t-small); }
 .feed-page .latest h3 { margin: var(--s-6) 0 var(--s-3); font-size: var(--t-h3); }
 .feed-page .latest .build-grid { columns: 2 150px; }
 @media (width >= 600px) { .feed-page .latest .build-grid { columns: 3 180px; } }
@@ -515,7 +502,6 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .start-with a:not(.cta) { color: var(--ink); font-weight: 600; }
 .start-with .cta { margin-left: 8px; vertical-align: middle; }
 .person.designer .models { margin-top: 12px; }
-.builds-of .build-strip { margin-top: 6px; }
 .build-strip figcaption > a + a { font-weight: 600; }
 
 .designs {

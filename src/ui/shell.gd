@@ -1116,8 +1116,9 @@ func _define() -> void:
 	_add("tour", "Take the tour", 0, func() -> void: tour.start())
 	# brickworks.diy/docs: every menu, tool and page of the site, written
 	# out (docs-site/, tools/docs_site.py). The owner asked for it, 2026-10-29.
+	# It opens at the page of the panel in front, where one is (docs_page).
 	_add("docs", "Documentation", 0,
-		func() -> void: OS.shell_open("https://brickworks.diy/docs"), Callable(),
+		func() -> void: OS.shell_open(DocsPages.SITE + docs_page()), Callable(),
 		"How everything in Brickworks works, on brickworks.diy")
 	_add("website", "Brickworks website", 0,
 		func() -> void: OS.shell_open("https://brickworks.diy"))
@@ -1532,6 +1533,25 @@ func _toggle_full_screen() -> void:
 
 ## About's width, as it was with the mark beside its words.
 const ABOUT_WIDE := 600
+
+
+## The docs page of the panel open in front, as the docs' own heads name
+## it (DocsPages, from their `panels:`), or the docs' start with none open.
+## The last one open in the window's tree is the one drawn over the others.
+func docs_page() -> String:
+	var found := "/docs"
+	if app == null:
+		return found
+	for node: Node in app.find_children("*", "", true, false):
+		var script: Script = node.get_script() as Script
+		var name: StringName = script.get_global_name() if script != null else &""
+		if not DocsPages.PANELS.has(name):
+			continue
+		var shown: bool = (node as CanvasItem).is_visible_in_tree() if node is CanvasItem \
+			else node is Window and (node as Window).visible
+		if shown:
+			found = DocsPages.PANELS[name]
+	return found
 
 
 func _show_about() -> void:

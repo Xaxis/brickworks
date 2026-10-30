@@ -1,4 +1,9 @@
 ---
+panels: ShareView#viewer, BuildMode#build-it
+ai: A shared model's page: the 3D viewer, Build it (the steps played as a booklet), moving its parts, pictures, likes, comments, builds, remixes, versions and its parts list to download.
+rules:
+  - Anyone can open a model's page with no account.
+  - Its parts download as a BrickLink XML, a Rebrickable CSV or JSON, and the model as LDraw (.mpd).
 title: A model's page
 nav: A model's page
 description: Everything on a shared model's page, from the 3D viewer and Build it to likes, comments, builds and the parts list.

@@ -26,7 +26,7 @@
 // the server for a visitor who is not signed in.
 //
 // Everything is put on the page as text.
-import { askToSignIn, call, email, signOut, signedIn } from "/account.js";
+import { askToSignIn, call, email, madeUp, signOut, signedIn } from "/account.js";
 import { avatarHtml } from "/kit.js";
 
 // A follow sent and not yet answered, kept for this tab until it is
@@ -191,11 +191,16 @@ export async function followButton(button, known = null) {
 }
 
 // Who you are and what is new, from the last page, so the next is drawn at
-// once: {email, me: {handle, name}, count, notifications, feed}.
+// once: {email, me, count, notifications, feed}. me is {handle, name,
+// picture}, null for an account with no profile, and undefined until the
+// server has said. Kept in this browser, not only this tab: a new tab or
+// the next visit, with nothing kept, drew the address's letter until the
+// server answered with the name's (avatar368). Forgotten at Sign out
+// (account.js).
 const KEPT = "brickworks.me";
 const keptState = () => {
   try {
-    const kept = JSON.parse(sessionStorage.getItem(KEPT) || "null");
+    const kept = JSON.parse(localStorage.getItem(KEPT) || "null");
     return kept && kept.email === email() ? kept : null;
   } catch {
     return null;
@@ -203,7 +208,7 @@ const keptState = () => {
 };
 const keepState = (state) => {
   try {
-    sessionStorage.setItem(KEPT, JSON.stringify(state));
+    localStorage.setItem(KEPT, JSON.stringify(state));
   } catch {
     // Asked again on the next page.
   }
@@ -220,11 +225,25 @@ function badge(n, label = "") {
   return said;
 }
 
+// Your address, as the header may show it: an orangecheck account's is made
+// up (account.js madeUp), never to be shown as theirs.
+const addressOf = (state) => (madeUp(state.email) ? "" : state.email || "");
+
+/// Your avatar: your profile's, the address's letter only for an account
+/// with no profile, and a blank circle until the server has said which.
 function avatarOf(state, size) {
+  const { me } = state;
   const made = document.createElement("template");
-  made.innerHTML = avatarHtml({ handle: state.me?.handle || "", name: state.me?.name || state.email || "?",
-    picture: state.me?.picture || "" }, { size });
+  made.innerHTML = avatarHtml(me === undefined ? {} : me ? { handle: me.handle, name: me.name, picture: me.picture }
+    : { name: addressOf(state) }, { size });
   return made.content.firstElementChild;
+}
+
+/// A bar where words will be, until the server has said them.
+function bone(kind) {
+  const bar = document.createElement("span");
+  bar.className = `bone ${kind}`;
+  return bar;
 }
 
 /// What the account menu holds: who you are, your places with their
@@ -236,9 +255,14 @@ function accountPart(state) {
   whoIs.className = "menu-who";
   const words = document.createElement("span");
   const name = document.createElement("b");
-  name.textContent = state.me?.name || "Signed in";
   const handle = document.createElement("small");
-  handle.textContent = state.me?.handle ? `@${state.me.handle}` : state.email || "";
+  if (state.me === undefined) {
+    name.append(bone("wide"));
+    handle.append(bone("short"));
+  } else {
+    name.textContent = state.me?.name || "Signed in";
+    handle.textContent = state.me?.handle ? `@${state.me.handle}` : addressOf(state);
+  }
   words.append(name, handle);
   whoIs.append(avatarOf(state, ""), words);
   const places = document.createElement("nav");
@@ -352,7 +376,7 @@ export async function showFeedCount({ ask = true } = {}) {
     drawSignedOut();
     return null;
   }
-  const kept = keptState() || { email: email(), me: null, count: 0, notifications: null, feed: null };
+  const kept = keptState() || { email: email(), me: undefined, count: 0, notifications: null, feed: null };
   drawSignedIn(kept);
   if (!ask) return kept;
   await followsSent();

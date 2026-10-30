@@ -1,7 +1,11 @@
 ---
+ai: The LDraw community's models of real sets, opened in the app (File › Library) or browsed at /library, and the LDraw Parts Library every part comes from. An assistant searches them with gallery library=true and opens one with open_model library=.
+rules:
+  - One LDraw unit is 0.4 mm exactly; files go to and from LDCad, LeoCAD and Studio unchanged.
+  - Each set says who modelled it and under which licence.
 title: The LDraw library
 nav: The LDraw library
-description: Open a model of a real set from the LDraw community's library, and where Brickworks' parts come from.
+description: Every LEGO® set's parts on the website, the LDraw community's 3D models of real sets to open, and where Brickworks' parts come from.
 ---
 
 ## Real sets to open {#sets}
@@ -23,6 +27,28 @@ Each set has a page of its own, at `brickworks.diy/library/<id>`, as a shared mo
 <!-- covers
 ui:LDraw library page
 ui:an LDraw set's page
+-->
+
+## Every set there is {#every-set}
+
+The library on the website lists every LEGO® set in [Rebrickable](https://rebrickable.com/)'s catalogue, about 28,000 of them, beside the few hundred LDraw has modelled in 3D, which are marked **3D**. Search by a set's number (`10497` finds 10497-1 first) or its name; the themes are pills, and **Filters** adds the theme inside the one chosen, the year in the decade, only the sets with a 3D model, and minifigures. Browsing leaves out what Rebrickable lists with no parts, such as books and key rings; a search finds those too.
+
+Each set has a page at `brickworks.diy/library/set/<number>`, such as [10497-1](/library/set/10497-1):
+
+- its number, name, year, theme, part count, minifigures and any sets packed inside it;
+- its whole parts list, by colour or by kind, each part drawn by Brickworks from LDraw's geometry, with a BrickLink XML and a Rebrickable CSV to download;
+- signed in with a collection (**My collection** in the app), **Parts you own: N of M**, and what you are missing as a BrickLink wanted list or a Rebrickable CSV;
+- **Open its parts in Brickworks**, which opens the app with the set's parts in the parts bin, the most used first;
+- **Design with these parts**, which opens the app with the assistant on and a brief naming the set's parts in its box, for your own AI to design with when you send it;
+- when LDraw has a model of it, **Build it in 3D** and the model's own page, which links back.
+
+Its picture is LDraw's model when there is one; otherwise Brickworks draws a few of its most distinctive parts from their own geometry. No picture on these pages is the LEGO Group's or Rebrickable's. Set and inventory data is Rebrickable's, read from a copy Brickworks takes at most once a day.
+
+In the app, `/app?parts=<number>` puts a set's parts in the bin. Claude finds every set too: the gallery tool's `library=true` search names the sets LDraw has no model of with their parts list, and `open_model library=` takes a set's number or name.
+
+<!-- covers
+ui:every set's page
+lib:a set's picture drawn from its parts
 -->
 
 ## The parts {#parts}

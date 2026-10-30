@@ -63,12 +63,17 @@ const PICTURE = /^\/api\/people\?op=avatar&id=[A-Za-z0-9]{10}$/;
 /// A person's avatar: their picture when they have one (supabase/avatars.sql),
 /// else a tile in their handle's colour with the first letter of their
 /// name. Never a figure's likeness (docs/TRADEMARKS.md, docs/SOCIAL.md D11).
-/// [size] is "small", "", "big" or "huge"; it is decoration beside their
-/// name, so hidden from a screen reader.
+/// Given none of the three, somebody not known yet (your own in the header
+/// before the server has said who you are, or an orangecheck account's with
+/// no profile): the circle blank, no letter or colour that might not be
+/// theirs. [size] is "small", "", "big" or "huge"; it is decoration beside
+/// their name, so hidden from a screen reader.
 export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size = "", id = "" } = {}) {
-  const letter = [...String(name || handle || "?").trim()][0] || "?";
   const pictured = PICTURE.test(String(picture || ""));
-  const classes = ["avatar", size, `c${avatarTone(handle || name)}`, pictured ? "pictured" : ""].filter(Boolean).join(" ");
+  const known = Boolean(handle || name || pictured);
+  const letter = known ? [...String(name || handle || "?").trim()][0] || "?" : "";
+  const classes = ["avatar", size, known ? `c${avatarTone(handle || name)}` : "unknown", pictured ? "pictured" : ""]
+    .filter(Boolean).join(" ");
   return `<span class="${classes}"${id ? ` id="${escapeHtml(id)}"` : ""} aria-hidden="true">${pictured
     ? `<img src="${escapeHtml(picture)}" alt="" width="112" height="112" loading="lazy" decoding="async">` : escapeHtml(letter)}</span>`;
 }
@@ -76,7 +81,7 @@ export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size
 /// The icons there are (web/icons.svg).
 export const ICONS = ["like", "save", "share", "comment", "more", "build", "search", "filter", "award", "zoom-in", "zoom-out",
   "stand", "gear", "move", "file", "book", "people", "devices", "camera", "spark", "eye", "monitor", "globe", "library",
-  "download", "check"];
+  "download", "check", "back", "next"];
 
 /// An icon from the sprite, in the words' colour.
 export function iconHtml(name) {
@@ -152,6 +157,11 @@ export function motionWords(names, most = 3) {
 /// not: a page of cards is quick on a phone. "" when it has neither. A set
 /// of the LDraw library (api/_library.js) has its cover, drawn by the app.
 export function pictureOf(model) {
+  // A set of the whole catalogue (api/_sets.js catalogCard) names its own:
+  // its LDraw model's cover, the one drawn of its parts, or none.
+  if (isSet(model) && typeof model.library.picture === "string") {
+    return /^\/library\/[A-Za-z0-9._/-]+$/.test(model.library.picture) ? model.library.picture : "";
+  }
   if (isSet(model)) return `/library/${model.id}.webp`;
   const version = typeof model.thumb === "string" ? (model.thumb.split("?v=")[1] || "") : "";
   return model.thumb ? `/m/${model.id}.webp${/^[a-z0-9]+$/.test(version) ? `?v=${version}` : ""}`
@@ -161,6 +171,11 @@ export function pictureOf(model) {
 /// Whether a card is a set of the LDraw library (api/_library.js setCard):
 /// its page is /library/<id>, and it says which set it is.
 const isSet = (model) => Boolean(model.library) && typeof model.library === "object";
+
+/// A set's page: a set of the catalogue's own (api/_sets.js catalogCard,
+/// /library/set/<number>), else its LDraw model's, /library/<id>.
+const setPageOf = (model, id) => (typeof model.library.page === "string"
+  && /^\/library\/set\/[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/.test(model.library.page) ? model.library.page : `/library/${id}`);
 
 /// The tags that say a model was made with the assistant or Brickify, as
 /// the guidelines ask a designer to tag it (web/guidelines.html), read for
@@ -254,6 +269,11 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
   // A set of the LDraw library: its number, its theme and its year, each
   // where the index knows it.
   const set = isSet(model) ? model.library : null;
+  // A set of the catalogue LDraw has a 3D model of (sets364).
+  if (set && set.model3d === true) {
+    marks.push('<span class="pill good model3d" title="LDraw has a 3D model of it, to build in Brickworks">3D</span>');
+    data.push('data-model3d="yes"');
+  }
   // Who made it: whoever modelled it, when that is not who shares it (the
   // app's Library's model it is: supabase/modelled_by.sql), as words that
   // wrap on a phone's narrow card rather than end in "…"; else their avatar and name, a link to their profile, when they
@@ -326,7 +346,7 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
       ? `<img src="${escapeHtml(picture)}" alt="${name}" width="1200" height="630" ${eager
         ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async">`
       : "No picture"}${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}${liked}</div>`
-    + `<div class="words"><a class="open" href="${set ? "/library" : "/m"}/${escapeHtml(id)}"><b title="${name}">${name}</b></a>`
+    + `<div class="words"><a class="open" href="${escapeHtml(set ? setPageOf(model, id) : `/m/${id}`)}"><b title="${name}">${name}</b></a>`
     + `<span class="by">${who}<span class="parts">${escapeHtml(counted(model.parts, "part"))}</span>`
     + `${tallies ? `<small class="acts">${tallies}</small>` : ""}</span>`
     + `${lines.join("")}</div></article>`;

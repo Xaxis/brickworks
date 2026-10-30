@@ -2,7 +2,11 @@
 """The documentation at brickworks.diy/docs, made from docs-site/.
 
     tools/docs_site.py OUT       write OUT/docs.html, OUT/docs/<page>.html, OUT/docs/search.json
+                                 and OUT/docs/llms.txt
     tools/docs_site.py --check   say what the docs miss, and exit 1 if anything
+    tools/docs_site.py --write   write again what the docs make and commit:
+                                 the tools' docs' copies of their words,
+                                 src/ai/connector_guide.gd, src/ui/docs_pages.gd
 
 The owner, 2026-10-29: "an advanced 'docs' page ... documenting cleanly
 every detail of the app and user site features". The words are Markdown in
@@ -30,6 +34,21 @@ what it documents with a comment under its heading:
     <!-- covers
     ui:box select
     -->
+
+One source for people and for assistants (docs363, 2026-10-29: "a
+comprehensive docs system ... ALSO/basis for the MCP"). A page's head says,
+besides its title, which MCP tools it explains (tools:), which of the app's
+panels it is the page of (panels:, ClassName#section), and, to an
+assistant, what the feature is (ai:) and its rules (rules:, a list). Every
+tool has a doc, docs-site/tools/<name>.md: an example call held to the
+tool's schema, any words for people, and a copy of the tool list's own
+words, so a tool that changes fails the check until its doc is read again.
+From these: the tool reference, /docs/llms.txt, Help, Documentation's page
+for each panel (src/ui/docs_pages.gd), and the words every session is told
+first (src/ai/connector_guide.gd, from design-session.md's said blocks).
+--check fails when any of them is not what the docs make, when a tool has
+no doc or a doc no tool, an example breaks its schema, a page names a tool
+or panel there is none of, or a page people read has no ai:.
 """
 
 from __future__ import annotations
@@ -213,6 +232,14 @@ def render(page: Page, markdown: str) -> None:
                 code.append(lines[i])
                 i += 1
             i += 1
+            if lang.startswith("said "):
+                # Words an assistant is given (SAID_BLOCKS), shown as they read.
+                title = SAID_BLOCKS.get(lang[5:].strip(), ("", "What an assistant is told"))[1]
+                body = "".join(f"<p>{'<br>'.join(html.escape(line) for line in chunk)}</p>"
+                               for chunk in _paragraphs(code))
+                out.append(f'<aside class="callout note said" aria-label="{html.escape(title)}">'
+                           f'<p class="callout-title">{html.escape(title)}</p>{body}</aside>')
+                continue
             label = f' data-lang="{html.escape(lang)}"' if lang else ""
             out.append(f'<div class="code"{label}><pre><code>{html.escape(chr(10).join(code))}</code></pre></div>')
             continue
@@ -291,7 +318,25 @@ def render(page: Page, markdown: str) -> None:
         para.append(line)
         i += 1
     flush()
-    page.html += "\n".join(out)
+    page.html += named_tables(page, "\n".join(out))
+
+
+def named_tables(page: Page, fragment: str) -> str:
+    """Each table's box in [fragment] a region the keyboard reaches and
+    scrolls where it is wider than a phone (the site's scroller,
+    docs/DESIGN_SYSTEM.md), named by the heading over it, or the page's
+    title over the first."""
+    over = page.title
+
+    def name(match: re.Match) -> str:
+        nonlocal over
+        if match.group("words") is not None:
+            over = plain(match.group("words"))
+            return match.group(0)
+        return (f'<div class="table{match.group("kind")}" role="region" '
+                f'aria-label="{html.escape(over, quote=True)}" tabindex="0">')
+
+    return re.sub(r'<h[2-4] id="[^"]*">(?P<words>.*?)<a class="anchor"|<div class="table(?P<kind>[^"]*)">', name, fragment)
 
 
 def _paragraphs(lines: list[str]) -> list[list[str]]:
@@ -304,40 +349,226 @@ def _paragraphs(lines: list[str]) -> list[list[str]]:
     return [c for c in chunks if c]
 
 
-def read_page(path: Path) -> Page:
-    text = path.read_text(encoding="utf-8")
+def front_matter(text: str) -> tuple[dict, str]:
+    """A page's head and the rest: `key: words` a line, and a key with
+    nothing after its colon is a list, one `  - item` a line under it."""
     meta: dict = {}
-    if text.startswith("---\n"):
-        end = text.index("\n---\n", 4)
-        for line in text[4:end].splitlines():
-            if ":" in line:
-                key, value = line.split(":", 1)
-                meta[key.strip()] = value.strip()
-        text = text[end + 5:]
+    if not text.startswith("---\n"):
+        return meta, text
+    end = text.index("\n---\n", 4)
+    key = ""
+    for line in text[4:end].splitlines():
+        item = re.match(r"^\s+-\s+(.*)$", line)
+        if item and isinstance(meta.get(key), list):
+            meta[key].append(item.group(1).strip())
+        elif ":" in line:
+            key, value = (part.strip() for part in line.split(":", 1))
+            meta[key] = value if value else []
+    return meta, text[end + 5:]
+
+
+def read_page(path: Path) -> Page:
+    meta, text = front_matter(path.read_text(encoding="utf-8"))
     return Page(path.stem, meta, text)
+
+
+def named_tools(page: Page) -> list[str]:
+    """The MCP tools a page explains to people (`tools:` in its head)."""
+    return [t.strip() for t in str(page.meta.get("tools", "")).split(",") if t.strip()]
+
+
+# -- the tools, and what each one's doc says -------------------------------------
+# Every tool a session is served has a doc of its own, docs-site/tools/<name>.md:
+# an example call and any words for people, which are the doc's own, and the
+# words the tool list gives the tool, which are the app's (src/, served by the
+# app and kept in tools/mcp_tools.json by mcp_sync_probe) or the relay's
+# (api/mcp.js, its tabs and select_tab) and copied in by --write, so a
+# description that changes is read against its doc before it lands.
+
+TOOL_DOCS = SRC / "tools"
+SAID = re.compile(r"<!-- the tool list's words[^\n]*-->\n```text\n(.*?)\n```\n", re.S)
+SAID_NOTE = ("<!-- the tool list's words: tools/docs_site.py --write copies them here from "
+             "{source}; --check fails while they differ -->")
+
+
+def app_tools() -> list[dict]:
+    return json.loads((ROOT / "tools/mcp_tools.json").read_text(encoding="utf-8"))
+
+
+def relay_tools() -> list[dict]:
+    """The relay's own two (RELAY_TOOLS in api/mcp.js), read as the JSON its
+    literal nearly is: comments out, joined strings joined, keys quoted."""
+    text = (ROOT / "api/mcp.js").read_text(encoding="utf-8")
+    found = re.search(r"^const RELAY_TOOLS = (\[.*?^\]);", text, re.S | re.M)
+    if not found:
+        raise SystemExit("docs: api/mcp.js has no `const RELAY_TOOLS = [...]`; tools/docs_site.py relay_tools() reads it")
+    literal = re.sub(r"^\s*//.*$", "", found.group(1), flags=re.M)
+    literal = re.sub(r'"\s*\+\s*"', "", literal)
+    literal = re.sub(r"([{,]\s*)([A-Za-z_]\w*):", r'\1"\2":', literal)
+    literal = re.sub(r",(\s*[}\]])", r"\1", literal)
+    try:
+        tools = json.loads(literal)
+    except json.JSONDecodeError as said:
+        raise SystemExit(f"docs: api/mcp.js's RELAY_TOOLS no longer reads as JSON ({said}); "
+                         "tools/docs_site.py relay_tools() must learn it") from None
+    return [{"name": t["name"], "description": t["description"], "input_schema": t.get("inputSchema", {}),
+             "annotations": t.get("annotations", {}), "relay": True} for t in tools]
+
+
+def all_tools() -> list[dict]:
+    return app_tools() + relay_tools()
+
+
+class ToolDoc:
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.text = path.read_text(encoding="utf-8")
+        self.meta, rest = front_matter(self.text)
+        self.name = str(self.meta.get("tool", ""))
+        said = SAID.search(rest)
+        self.said = said.group(1) if said else None
+        # The words for people: everything but the copy of the tool list's.
+        self.notes = SAID.sub("", rest).strip()
+        try:
+            self.example = json.loads(str(self.meta.get("example", "")))
+        except json.JSONDecodeError:
+            self.example = None
+
+
+def tool_docs() -> dict[str, ToolDoc]:
+    return {p.stem: ToolDoc(p) for p in sorted(TOOL_DOCS.glob("*.md"))}
+
+
+def with_said(doc: ToolDoc, tool: dict) -> str:
+    """The doc's text with the tool list's words as they are now."""
+    source = "api/mcp.js" if tool.get("relay") else "tools/mcp_tools.json"
+    block = SAID_NOTE.format(source=source) + "\n```text\n" + tool["description"] + "\n```\n"
+    if SAID.search(doc.text):
+        return SAID.sub(lambda _: block, doc.text, count=1)
+    return doc.text.rstrip() + "\n\n" + block
+
+
+def schema_problems(value, schema: dict, at: str) -> list[str]:
+    """Where an example call breaks the tool's input schema: a key it does
+    not take, one it needs and lacks, a value of the wrong type or not one
+    of its enum."""
+    kinds = {"string": str, "integer": int, "number": (int, float), "boolean": bool, "object": dict, "array": list}
+    wanted = schema.get("type")
+    if wanted:
+        types = wanted if isinstance(wanted, list) else [wanted]
+        fits = any(isinstance(value, kinds[t]) and not (t in ("integer", "number") and isinstance(value, bool))
+                   for t in types if t in kinds)
+        if not fits:
+            return [f"{at} is {json.dumps(value)[:40]}, not {' or '.join(types)}"]
+    if "enum" in schema and value not in schema["enum"]:
+        return [f"{at} is {json.dumps(value)}, not one of {schema['enum']}"]
+    found: list[str] = []
+    if isinstance(value, dict):
+        props = schema.get("properties", {})
+        for key in schema.get("required", []):
+            if key not in value:
+                found.append(f"{at} lacks {key}, which it needs")
+        for key, one in value.items():
+            if key in props:
+                found += schema_problems(one, props[key], f"{at}.{key}")
+            elif schema.get("additionalProperties") is False:
+                found.append(f"{at} has {key}, which the tool does not take")
+    if isinstance(value, list) and isinstance(schema.get("items"), dict):
+        for n, one in enumerate(value):
+            found += schema_problems(one, schema["items"], f"{at}[{n}]")
+    return found
+
+
+def tool_problems(pages: list[Page]) -> list[str]:
+    """Every tool has its doc, every doc is a tool's, each doc's copy of the
+    tool list's words is the list's own, its example is a call the tool
+    takes, and every tool a page names is a tool."""
+    problems: list[str] = []
+    tools = {t["name"]: t for t in all_tools()}
+    docs = tool_docs()
+    for name, tool in tools.items():
+        doc = docs.get(name)
+        where = f"docs-site/tools/{name}.md"
+        if doc is None:
+            problems.append(f"{name} has no doc: write {where} (an example, as docs-site/tools/undo.md has one), "
+                            "then tools/docs_site.py --write")
+            continue
+        if doc.name != name:
+            problems.append(f"{where} says tool: {doc.name or '(none)'}, not {name}")
+        if doc.said != tool["description"]:
+            problems.append(f"{where} is behind what the tool list says of {name}: read the doc against the new "
+                            "words, change its example or notes if they no longer hold, then tools/docs_site.py --write")
+        if doc.example is None:
+            problems.append(f"{where} has no example: an `example:` line, the call's arguments as JSON")
+        else:
+            problems += [f"{where}'s example: {p}" for p in schema_problems(doc.example, tool["input_schema"], name)]
+    for name in docs:
+        if name not in tools:
+            problems.append(f"docs-site/tools/{name}.md is the doc of no tool the app or the relay serves "
+                            "(renamed or gone? tools/mcp_tools.json, api/mcp.js)")
+    explained: set[str] = set()
+    for page in pages:
+        for name in named_tools(page):
+            explained.add(name)
+            if name not in tools:
+                problems.append(f"{page.name}.md names the tool {name}, which there is none of")
+        for name in set(re.findall(r'href="/docs/mcp-tools#([a-z_]+)"', page.html)):
+            if name not in tools and not page.name == "mcp-tools":
+                problems.append(f"{page.name}.md links to the tool {name}, which there is none of")
+    for name in tools:
+        if name not in explained:
+            problems.append(f"no page names {name} in its `tools:`: add it to the page that explains what it does")
+    return problems
 
 
 # -- the pages made from their sources -----------------------------------------
 
 
+def explained_in() -> dict[str, list[tuple[str, str]]]:
+    """tool -> the pages that name it in their `tools:`, (title, address)."""
+    found: dict[str, list[tuple[str, str]]] = {}
+    for group in json.loads((SRC / "_nav.json").read_text(encoding="utf-8")):
+        for name in group["pages"]:
+            page = read_page(SRC / f"{name}.md")
+            for tool in named_tools(page):
+                found.setdefault(tool, []).append((page.title, page.url))
+    return found
+
+
+def example_call(args: dict) -> str:
+    one_line = json.dumps(args, ensure_ascii=False)
+    return one_line if len(one_line) <= 72 else json.dumps(args, ensure_ascii=False, indent=2)
+
+
 def mcp_tools() -> str:
-    """Every tool Claude has in Brickworks, from tools/mcp_tools.json: what it
-    is called, whether it only looks, and what it takes."""
-    tools = json.loads((ROOT / "tools/mcp_tools.json").read_text(encoding="utf-8"))
+    """Every tool a session has in Brickworks: the app's, from
+    tools/mcp_tools.json, and the connector's own two, from api/mcp.js, each
+    with its doc's example and words (docs-site/tools/). What it is called,
+    whether it only looks, what it takes, and where it is explained."""
+    tools = all_tools()
+    docs = tool_docs()
+    pages = explained_in()
     groups = [
         ("Look and read", "Change nothing: safe to allow always.",
-         lambda a: a.get("readOnlyHint")),
+         lambda t: not t.get("relay") and t["annotations"].get("readOnlyHint")),
         ("Build and change", "Change the model in the open tab. Each change is one undo step.",
-         lambda a: not a.get("readOnlyHint") and not a.get("destructiveHint")),
+         lambda t: not t["annotations"].get("readOnlyHint") and not t["annotations"].get("destructiveHint")),
         ("Replace or take away", "Can replace or remove what is on the baseplate. Each is still one undo step.",
-         lambda a: not a.get("readOnlyHint") and a.get("destructiveHint")),
+         lambda t: not t["annotations"].get("readOnlyHint") and t["annotations"].get("destructiveHint")),
+        ("Choose the tab", "The connector's own two, for the tab a chat works in. They change no model, and "
+         "a session on the desktop's own port has no need of them.",
+         lambda t: t.get("relay")),
     ]
-    out = [f"<p>Brickworks has <strong>{len(tools)} tools</strong> for Claude. The list below is made "
-           "from the same table the connector serves, so it is always the current one.</p>"]
+    own = sum(1 for t in tools if not t.get("relay"))
+    out = [f"<p>Brickworks has <strong>{own} tools</strong>, and the connector adds "
+           f"<strong>{len(tools) - own}</strong> of its own for choosing a tab. This page is made from the "
+           "same tables the app and the connector serve, so it is always the current list. Through the "
+           "connector every tool also takes <code>target</code>: the tab to do that one call in, by its id or "
+           "its model's name.</p>"]
     summary = []
     for title, _, test in groups:
         for tool in tools:
-            if test(tool.get("annotations", {})):
+            if test(tool):
                 a = tool["annotations"]
                 summary.append(f'<tr><td><a href="#{tool["name"]}"><code>{tool["name"]}</code></a></td>'
                                f'<td>{html.escape(a.get("title", ""))}</td><td>{title}</td></tr>')
@@ -347,9 +578,10 @@ def mcp_tools() -> str:
     for title, words, test in groups:
         md.append(f"## {title}\n\n{words}\n")
         for tool in tools:
-            a = tool.get("annotations", {})
-            if not test(a):
+            if not test(tool):
                 continue
+            a = tool["annotations"]
+            doc = docs.get(tool["name"])
             md.append(f"### {a.get('title', tool['name'])} {{#{tool['name']}}}\n")
             badges = [f"<code>{tool['name']}</code>"]
             badges.append('<span class="pill">Read-only</span>' if a.get("readOnlyHint") else
@@ -362,6 +594,8 @@ def mcp_tools() -> str:
                 badges.append('<span class="pill">Same result twice</span>')
             md.append(f'<p class="tool-badges">{" ".join(badges)}</p>\n')
             md.append(f"<p>{html.escape(tool['description'])}</p>\n")
+            if doc is not None and doc.notes:
+                md.append(doc.notes + "\n")
             props = tool.get("input_schema", {}).get("properties", {})
             required = set(tool.get("input_schema", {}).get("required", []))
             if props:
@@ -382,6 +616,11 @@ def mcp_tools() -> str:
                           f'</tr></thead><tbody>{"".join(rows)}</tbody></table></div>\n')
             else:
                 md.append("<p class=\"note\">Takes nothing.</p>\n")
+            if doc is not None and doc.example is not None:
+                md.append(f"For example:\n\n```json\n{example_call(doc.example)}\n```\n")
+            where = pages.get(tool["name"], [])
+            if where:
+                md.append("Explained in " + ", ".join(f"[{t}]({u})" for t, u in where) + ".\n")
     return "\n".join(out) + "\n\n" + "\n".join(md)
 
 
@@ -688,10 +927,12 @@ def pager(order: list[Page], page: Page) -> str:
     parts = []
     if at > 0:
         prev = order[at - 1]
-        parts.append(f'<a class="prev" rel="prev" href="{prev.url}"><small>Previous</small>{html.escape(prev.nav)}</a>')
+        parts.append(f'<a class="prev" rel="prev" href="{prev.url}"><small>Previous · {html.escape(prev.section)}</small>'
+                     f'<span>{html.escape(prev.nav)}</span></a>')
     if at + 1 < len(order):
         nxt = order[at + 1]
-        parts.append(f'<a class="next" rel="next" href="{nxt.url}"><small>Next</small>{html.escape(nxt.nav)}</a>')
+        parts.append(f'<a class="next" rel="next" href="{nxt.url}"><small>Next · {html.escape(nxt.section)}</small>'
+                     f'<span>{html.escape(nxt.nav)}</span></a>')
     return f'<nav class="docs-pager" aria-label="Previous and next page">{"".join(parts)}</nav>'
 
 
@@ -703,6 +944,12 @@ def document(nav: list[dict], pages: dict[str, Page], order: list[Page], page: P
               + ("" if page.name == "index" else f' <span aria-hidden="true">›</span> {html.escape(page.section)}')
               + "</nav>")
     lede = f'<p class="lede">{inline(page.description)}</p>' if page.description else ""
+    # The start page opens on its search, as a docs site's front door does;
+    # every other page says which part of the docs it is in, over its title.
+    eyebrow = html.escape("Documentation" if page.name == "index" else page.section)
+    start = (f'<button type="button" class="docs-search-open big" data-docs-search aria-label="Search the docs">{ICON_SEARCH}'
+             '<span>Search the docs</span><kbd class="keys"><kbd>Ctrl</kbd><kbd>K</kbd></kbd></button>'
+             if page.name == "index" else "")
     return f"""<!DOCTYPE html>
 <!-- Made by tools/docs_site.py from docs-site/{page.name}.md: edit that, not this. -->
 <html lang="en">
@@ -747,10 +994,15 @@ def document(nav: list[dict], pages: dict[str, Page], order: list[Page], page: P
 <main id="main" class="docs-main" tabindex="-1">
 {crumbs}
 <article class="docs-article">
+<header class="docs-head{' start' if page.name == 'index' else ''}">
+<p class="eyebrow">{eyebrow}</p>
 <h1>{html.escape(page.title)}</h1>
 {lede}
+{start}
+</header>
 {page.html}
 </article>
+<p class="docs-help">Something missing, or not as the app does it? <a href="https://github.com/Xaxis/brickworks-releases/issues">Say so on GitHub</a>, or see <a href="/faq">the questions people ask</a>.</p>
 {pager(order, page)}
 </main>
 {toc(page)}
@@ -792,7 +1044,168 @@ def build(out: Path) -> int:
         target.write_text(document(nav, by_name, pages, page), encoding="utf-8")
     (docs / "search.json").write_text(json.dumps(search_index(pages), ensure_ascii=False, separators=(",", ":")),
                                       encoding="utf-8")
+    (docs / "llms.txt").write_text(llms_txt(nav, pages), encoding="utf-8")
     return len(pages)
+
+
+def llms_txt(nav: list[dict], pages: list[Page]) -> str:
+    """The docs as an assistant reads them, at /docs/llms.txt: each page's
+    head (what it is, its rules, the tools it explains) under its address,
+    and every tool with its own."""
+    by_name = {p.name: p for p in pages}
+    start = by_name["index"]
+    out = [f"# Brickworks\n\n> {start.meta.get('ai', '')}\n",
+           "Connect an assistant at https://brickworks.diy/api/mcp (MCP over streamable HTTP, OAuth). "
+           f"How a session works: {SITE}/docs/design-session\n"]
+    for group in nav:
+        out.append(f"## {group['title']}\n")
+        for name in group["pages"]:
+            page = by_name[name]
+            line = f"- [{page.title}]({SITE}{page.url}): {page.meta.get('ai') or page.description}"
+            rules = page.meta.get("rules") or []
+            if rules:
+                line += " Rules: " + " ".join(rules)
+            if named_tools(page):
+                line += " Tools: " + ", ".join(named_tools(page)) + "."
+            out.append(line)
+        out.append("")
+    out.append("## Tools\n")
+    for tool in all_tools():
+        title = tool["annotations"].get("title", "")
+        out.append(f"- [{tool['name']}]({SITE}/docs/mcp-tools#{tool['name']}): {title}")
+    return "\n".join(out) + "\n"
+
+
+# -- what the app is given from the docs ------------------------------------------
+# Two GDScript files are made from docs-site/ and committed, so the app needs
+# no build step: what a session is told first (src/ai/connector_guide.gd,
+# from the ```said blocks of the page on a design session) and the docs page
+# of each panel, for Help, Documentation (src/ui/docs_pages.gd, from the
+# `panels:` in the pages' heads). --write writes them; --check fails while
+# either is not what the docs make.
+
+GUIDE_GD = ROOT / "src/ai/connector_guide.gd"
+PAGES_GD = ROOT / "src/ui/docs_pages.gd"
+SAID_PAGE = "design-session"
+# A ```said block's name: the constant it is, and what the page says it is.
+SAID_BLOCKS = {
+    "connected": ("CONNECTED", "Said first through the connector, before the rest"),
+    "head": ("HEAD", "The start of the instructions, which every session is given"),
+    "method": ("METHOD", "Said once, in a connector chat's first answer"),
+}
+SAID_FENCE = re.compile(r"^```said (\w+)\n(.*?)\n```$", re.S | re.M)
+
+
+def said_blocks() -> dict[str, str]:
+    """name -> its words, from the page on a design session."""
+    text = (SRC / f"{SAID_PAGE}.md").read_text(encoding="utf-8")
+    found = {m.group(1): m.group(2) for m in SAID_FENCE.finditer(text)}
+    if set(found) != set(SAID_BLOCKS):
+        raise SystemExit(f"docs: docs-site/{SAID_PAGE}.md has the said blocks {sorted(found)}, "
+                         f"not {sorted(SAID_BLOCKS)}")
+    return found
+
+
+def gd_string(text: str, width: int = 76) -> str:
+    """[text] as a GDScript string literal, exactly: long lines broken at a
+    space with a backslash, which GDScript joins again."""
+    if '"""' in text:
+        raise SystemExit('docs: a said block has """ in it, which no GDScript string can hold as written')
+    lines = []
+    for line in text.replace("\\", "\\\\").split("\n"):
+        while len(line) > width and line.rfind(" ", 0, width) > 0:
+            cut = line.rfind(" ", 0, width) + 1
+            lines.append(line[:cut] + "\\")
+            line = line[cut:]
+        lines.append(line)
+    return '"""' + "\n".join(lines) + '"""'
+
+
+def connector_guide() -> str:
+    said = said_blocks()
+    consts = "\n\n".join(f"## {SAID_BLOCKS[name][1]}.\nconst {SAID_BLOCKS[name][0]} := {gd_string(said[name])}"
+                          for name in SAID_BLOCKS)
+    return (f"## What a session is told, word for word as docs-site/{SAID_PAGE}.md shows\n"
+            "## people: made from that page by tools/docs_site.py --write, so the docs\n"
+            "## and the assistants read the same words. Edit the page, not this;\n"
+            "## tests/test_docs_site.py fails while the two differ. Assistant serves\n"
+            "## HEAD and METHOD, ClaudeConnector CONNECTED.\n"
+            f"class_name ConnectorGuide\n\n{consts}\n")
+
+
+def panels(pages: list[Page]) -> list[tuple[str, str, str]]:
+    """(the panel's class, its docs address, the page) from each page's
+    `panels:`, as `ClassName#section`."""
+    found = []
+    for page in pages:
+        for item in str(page.meta.get("panels", "")).split(","):
+            if item.strip():
+                name, _, anchor = item.strip().partition("#")
+                found.append((name.strip(), page.url + (f"#{anchor.strip()}" if anchor.strip() else ""), page.name))
+    return found
+
+
+def docs_pages(pages: list[Page]) -> str:
+    rows = "".join(f'\t"{name}": "{url}",\n' for name, url, _ in sorted(panels(pages)))
+    return ("## The docs page of each panel the window opens, which Help, Documentation\n"
+            "## opens while that panel is in front (Shell.docs_page): made by\n"
+            "## tools/docs_site.py --write from the `panels:` in docs-site's page heads.\n"
+            "## Edit those, not this; tests/test_docs_site.py fails while the two differ.\n"
+            f'class_name DocsPages\n\nconst SITE := "{SITE}"\n\nconst PANELS := {{\n{rows}}}\n')
+
+
+def made_files(pages: list[Page]) -> dict[Path, str]:
+    """Every file the docs make that is committed, and what it must say."""
+    tools = {t["name"]: t for t in all_tools()}
+    files = {GUIDE_GD: connector_guide(), PAGES_GD: docs_pages(pages)}
+    for name, doc in tool_docs().items():
+        if name in tools:
+            files[doc.path] = with_said(doc, tools[name])
+    return files
+
+
+def write() -> list[Path]:
+    _, pages = load()
+    changed = []
+    for path, text in made_files(pages).items():
+        if not path.exists() or path.read_text(encoding="utf-8") != text:
+            path.write_text(text, encoding="utf-8")
+            changed.append(path)
+    return changed
+
+
+def head_problems(pages: list[Page]) -> list[str]:
+    """Every page a person reads has its head for the AI (ai:), the files the
+    docs make are what they make, and each panel named is a class of the
+    app's with a section of that name."""
+    problems = []
+    for page in pages:
+        if not page.meta.get("generated") and not str(page.meta.get("ai", "")).strip():
+            problems.append(f"{page.name}.md has no `ai:` in its head: a paragraph saying, to an assistant, "
+                            "what the page's feature is and does")
+        if not isinstance(page.meta.get("rules", []), list):
+            problems.append(f"{page.name}.md's `rules:` is not a list (one `  - rule` a line under it)")
+    classes = set()
+    for script in (ROOT / "src").rglob("*.gd"):
+        found = re.search(r"^class_name (\w+)", script.read_text(encoding="utf-8"), re.M)
+        if found:
+            classes.add(found.group(1))
+    anchors = {p.name: {a for _, a, _ in p.headings} for p in pages}
+    seen: set[str] = set()
+    for name, url, page in panels(pages):
+        if name in seen:
+            problems.append(f"the panel {name} is in two pages' `panels:`")
+        seen.add(name)
+        if name not in classes:
+            problems.append(f"{page}.md names the panel {name}, which is no class_name in src/")
+        anchor = url.partition("#")[2]
+        if anchor and anchor not in anchors[page]:
+            problems.append(f"{page}.md sends the panel {name} to #{anchor}, which is no heading on it")
+    for path, text in made_files(pages).items():
+        if not path.exists() or path.read_text(encoding="utf-8") != text:
+            problems.append(f"{path.relative_to(ROOT)} is not what docs-site/ makes: tools/docs_site.py --write"
+                            + (" (after reading the doc against the tool's new words)" if path.suffix == ".md" else ""))
+    return problems
 
 
 # -- the check -------------------------------------------------------------------
@@ -885,6 +1298,8 @@ def check() -> list[str]:
                     problems.append(f"{page.name}.md shows {target}, which is not in web/")
             elif path not in routes():
                 problems.append(f"{page.name}.md links to {target}, which is no page of the site")
+    problems += tool_problems(pages)
+    problems += head_problems(pages)
     return problems
 
 
@@ -899,6 +1314,10 @@ def main(argv: list[str]) -> int:
         _, pages = load()
         covered = sum(len(p.covers) for p in pages)
         print(f"docs: {len(pages)} pages, {covered} features covered, every link resolves")
+        return 0
+    if argv == ["--write"]:
+        for path in write():
+            print(f"docs: wrote {path.relative_to(ROOT)}")
         return 0
     if len(argv) != 1 or argv[0].startswith("-"):
         print((__doc__ or "").strip())

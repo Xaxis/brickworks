@@ -40,3 +40,8 @@ $("cards").innerHTML = [
     href: (n) => `#pages-h-${n}` });
   $("pages").innerHTML = `${made.earlier}<p class="note" id="kit-pages">(pages 2 and 3 of the list)</p>${made.after}`;
 }
+
+// A row of eight, more than any window shows: the scroller's fades and its
+// Previous and Next.
+$("row").innerHTML = Array.from({ length: 8 }, (_, n) => cardHtml({ id: `KitRow0${n}`, name: `Model ${n + 1} in a row`,
+  parts: 120 + 37 * n, author: people[n % 4].name })).join("");

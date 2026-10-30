@@ -9,6 +9,13 @@
 
   Under 900 px the pages list folds behind Browse the docs, and under 1200
   what is on this page goes, as the pages list keeps the room.
+
+  site359 (2026-10-29), on site356's system: the start page opens on its
+  search; every page says its part of the docs over its title in the
+  accent, as the landing pages' eyebrows do; the pages list stands apart
+  on its own line; code, tables, the start page's cards and previous and
+  next are raised panels with the system's edge of light; and a line under
+  every page says where to ask.
 */
 
 .docs-layout {
@@ -31,8 +38,8 @@
 @media (width >= 900px) {
 	.docs-side, .docs-side.open {
 		display: block; position: sticky; top: var(--head-h); max-height: calc(100vh - var(--head-h));
-		overflow-y: auto; overscroll-behavior: contain; padding: var(--s-6) var(--s-2) var(--s-6) 0;
-		border-bottom: 0; margin-bottom: 0;
+		overflow-y: auto; overscroll-behavior: contain; padding: var(--s-6) var(--s-4) var(--s-6) 0;
+		border-bottom: 0; margin-bottom: 0; border-right: 1px solid var(--line); scrollbar-width: thin;
 	}
 }
 .docs-group {
@@ -47,7 +54,7 @@
 }
 .docs-side li a:hover { color: var(--ink); background: var(--panel); }
 .docs-side li a[aria-current="page"] {
-	color: var(--ink); background: var(--panel-hi); font-weight: 620;
+	color: var(--ink); background: var(--accent-soft); font-weight: 620;
 	box-shadow: inset 3px 0 0 var(--accent-edge);
 }
 
@@ -72,7 +79,12 @@
 /* Search, as a button that looks like the box it opens. */
 .docs-search-open { gap: var(--s-2); color: var(--ink-soft); }
 .docs-search-open svg { flex: none; }
-.docs-search-open.wide { width: 100%; justify-content: flex-start; margin: 0 0 var(--s-2); background: var(--field); }
+.docs-search-open:is(.wide, .big) { width: 100%; justify-content: flex-start; background: var(--field); border-color: var(--line-strong); font-weight: 500; }
+.docs-search-open:is(.wide, .big):hover { color: var(--ink); border-color: var(--ink-faint); }
+.docs-search-open.wide { margin: 0 0 var(--s-2); }
+/* The start page's: as wide as the words, a field's height and more. */
+.docs-search-open.big { max-width: 560px; min-height: 52px; margin-top: var(--s-5); padding-inline: var(--s-4); font-size: var(--t-body); box-shadow: var(--highlight), var(--shadow-1); }
+.docs-search-open.big > kbd.keys { margin-left: auto; flex-wrap: nowrap; }
 .docs-search-open.wide > kbd.keys { margin-left: auto; flex-wrap: nowrap; }
 .docs-search-open.wide > span { white-space: nowrap; }
 @media (width < 900px) {
@@ -88,11 +100,23 @@
 .docs-main .crumbs { margin: 0 0 var(--s-3); font-size: var(--t-small); color: var(--ink-faint); }
 .docs-main .crumbs a { color: var(--ink-soft); }
 .docs-article { max-width: 760px; }
-.docs-article > h1 { margin-bottom: var(--s-3); }
-.docs-article > .lede { margin-bottom: var(--s-6); }
-.docs-article h2 { margin: var(--s-7) 0 var(--s-3); scroll-margin-top: calc(var(--head-h) + var(--s-4)); }
-.docs-article h3 { margin: var(--s-6) 0 var(--s-2); scroll-margin-top: calc(var(--head-h) + var(--s-4)); }
-.docs-article h4 { margin: var(--s-5) 0 var(--s-2); font-size: var(--t-body); scroll-margin-top: calc(var(--head-h) + var(--s-4)); }
+.docs-head { margin-bottom: var(--s-6); padding-bottom: var(--s-5); border-bottom: 1px solid var(--line); }
+.docs-head .eyebrow { margin-bottom: var(--s-2); }
+.docs-head h1 { margin-bottom: var(--s-3); }
+.docs-head .lede { margin-bottom: 0; }
+/* The start page's head is lit as a landing page's opening is. */
+.docs-head.start {
+	margin-inline: calc(-1 * var(--s-4)); padding: var(--s-6) var(--s-4); border: 0; border-radius: var(--r-4);
+	background-image: var(--glow), linear-gradient(180deg, transparent 10%, var(--bg) 90%), var(--studs);
+	background-size: auto, auto, 24px 24px; background-repeat: no-repeat, no-repeat, repeat;
+}
+/* A heading scrolled to lands under the header by html's scroll-padding
+   (site.css); a margin of its own as well put it 153 px down, under the
+   line On this page marks at (docs.js), so the last section, which a
+   page can scroll to its top, was never marked (site359). */
+.docs-article h2 { margin: var(--s-7) 0 var(--s-3); }
+.docs-article h3 { margin: var(--s-6) 0 var(--s-2); }
+.docs-article h4 { margin: var(--s-5) 0 var(--s-2); font-size: var(--t-body); }
 .docs-article h2 + h3 { margin-top: var(--s-4); }
 .docs-article p, .docs-article li { color: var(--ink-soft); }
 .docs-article p { margin: 0 0 var(--s-4); }
@@ -124,22 +148,23 @@ kbd {
 kbd.keys, span.keys { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 3px; min-width: 0; padding: 0; border: 0; background: none; font: inherit; color: var(--ink-faint); }
 .gesture { color: var(--ink); font-style: italic; white-space: nowrap; }
 
-/* Code: a block of its own that scrolls inside itself, never the page. */
+/* Code: a block of its own, a scroller (site.css) as a box. */
 .code { position: relative; margin: 0 0 var(--s-4); }
 .code pre {
-	margin: 0; padding: var(--s-4); padding-right: 76px; overflow-x: auto;
-	background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--r-2);
+	margin: 0; padding: var(--s-4); padding-right: 76px;
+	background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--r-3);
+	box-shadow: var(--highlight);
 }
 .code pre code { padding: 0; border: 0; background: none; font-size: var(--t-small); line-height: 1.6; overflow-wrap: normal; white-space: pre; }
 .code .copy { position: absolute; top: var(--s-2); right: var(--s-2); }
 
 /* A callout is site.css's (.callout, .tip, .warning). */
 
-/* Tables scroll inside their frame on a phone. */
-.table { margin: 0 0 var(--s-5); overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r-2); }
+/* Tables scroll inside their frame on a phone: the scroller (site.css). */
+.table { margin: 0 0 var(--s-5); border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel); box-shadow: var(--highlight); }
 .table table { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
 .table th, .table td { padding: var(--s-2) var(--s-3); text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); }
-.table th { color: var(--ink); font-weight: 650; background: var(--panel); white-space: nowrap; }
+.table th { color: var(--ink); font-weight: 650; background: var(--panel-hi); white-space: nowrap; }
 .table td { color: var(--ink-soft); }
 .table tr:last-child td { border-bottom: 0; }
 .table td:first-child { color: var(--ink); }
@@ -161,28 +186,43 @@ kbd.keys, span.keys { display: inline-flex; flex-wrap: wrap; align-items: center
 }
 .docs-cards li { margin: 0; }
 .docs-cards a {
-	display: block; height: 100%; padding: var(--s-4); border: 1px solid var(--line); border-radius: var(--radius);
-	background: var(--panel); text-decoration: none; color: var(--ink-soft); font-size: var(--t-small);
-	transition: border-color var(--motion) var(--ease), background var(--motion) var(--ease);
+	display: block; height: 100%; padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--radius);
+	background: var(--panel); box-shadow: var(--highlight); text-decoration: none; color: var(--ink-soft); font-size: var(--t-small);
+	transition: border-color var(--motion) var(--ease), box-shadow var(--motion) var(--ease), transform var(--motion) var(--ease);
 }
 .docs-article .docs-cards a { color: var(--ink-soft); }
-.docs-cards a:hover { border-color: var(--ink-faint); background: var(--panel-hi); }
+.docs-cards a:hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
+@media (hover: hover) { .docs-cards a:hover { transform: translateY(-2px); } }
+@media (prefers-reduced-motion: reduce) { .docs-cards a:hover { transform: none; } }
+/* Its way on, a chevron drawn, not a glyph: the arrow is in none of the
+   site's own faces, and looking for one that has it held /docs' first
+   paint back by about 30 ms on this box (site359, measured). */
+.docs-cards a strong::after, .docs-pager .next span::after, .docs-pager .prev span::before {
+	content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 0 2px 8px;
+	border: solid var(--accent-ink); border-width: 2px 2px 0 0; transform: rotate(45deg);
+}
+.docs-pager .prev span::before { margin: 0 8px 2px 0; transform: rotate(-135deg); }
 .docs-cards a strong { display: block; margin-bottom: var(--s-1); color: var(--ink); font-size: var(--t-body); }
+
+/* Where to ask, under every page. */
+.docs-help { max-width: 760px; margin: var(--s-7) 0 0; padding-top: var(--s-4); border-top: 1px solid var(--line); color: var(--ink-faint); font-size: var(--t-small); }
+.docs-help a { color: var(--ink-soft); padding-block: 6px; }
 
 /* Previous and next. */
 .docs-pager {
 	display: grid; gap: var(--s-3); grid-template-columns: minmax(0, 1fr); max-width: 760px;
-	margin-top: var(--s-7); padding-top: var(--s-5); border-top: 1px solid var(--line);
+	margin-top: var(--s-5);
 }
 @media (width >= 600px) {
 	.docs-pager { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 .docs-pager a {
-	display: block; padding: var(--s-3) var(--s-4); border: 1px solid var(--line); border-radius: var(--r-2);
-	text-decoration: none; color: var(--ink); font-weight: 620;
+	display: block; padding: var(--s-4) var(--s-5); border: 1px solid var(--line); border-radius: var(--radius);
+	background: var(--panel); box-shadow: var(--highlight); text-decoration: none; color: var(--ink); font-weight: 650;
+	transition: border-color var(--motion) var(--ease), box-shadow var(--motion) var(--ease);
 }
-.docs-pager a:hover { border-color: var(--ink-faint); background: var(--panel); }
-.docs-pager small { display: block; color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 500; }
+.docs-pager a:hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
+.docs-pager small { display: block; margin-bottom: 2px; color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 500; }
 .docs-pager .next { grid-column: -2; text-align: right; }
 
 /* -- what is on this page ------------------------------------------- */

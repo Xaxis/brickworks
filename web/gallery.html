@@ -99,8 +99,8 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 /* The bar of filters: Filters, then the kinds, kept under the header as
    the list scrolls, on the page's ground carried out to the window's
    edges (a shadow, which nothing scrolls to), with the header's edge
-   under it once it is stuck (gallery.js data-stuck). Its kinds fade out
-   at the edge while there are more of them. */
+   under it once it is stuck (gallery.js data-stuck). Its kinds are a
+   scroller (site.css) that starts at Filters, not out in the gutter: inset. */
 .toolbar {
 	position: sticky; top: var(--head-h); z-index: 6; display: flex; align-items: center; gap: var(--s-2); min-width: 0;
 	margin: 0 0 var(--s-4); padding: var(--s-2) 0;
@@ -110,12 +110,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 	background: var(--bg); box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax);
 }
 .toolbar[data-stuck]::before { box-shadow: 0 0 0 100vmax var(--bg), 0 1px 0 100vmax var(--line); clip-path: inset(0 -100vmax -1px); }
-.toolbar .pills.row {
-	flex: 1; min-width: 0;
-	mask-image: linear-gradient(90deg, var(--ink) calc(100% - 48px), transparent);
-	-webkit-mask-image: linear-gradient(90deg, var(--ink) calc(100% - 48px), transparent);
-}
-.toolbar .pills.row[data-end] { mask-image: none; -webkit-mask-image: none; }
+.toolbar .pills.scroller { flex: 1; min-width: 0; }
 .filters { flex: none; }
 .filters summary .n {
 	display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill);
@@ -148,27 +143,18 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 .pick-card .why, #spotlight .why { margin: 2px 0 0; color: var(--ink); font-size: var(--t-tiny); font-weight: 600; }
 /* The week's pick, edged as what is chosen is. */
 .feed .pick-card { border-color: var(--accent-edge); }
-.shelves h2 { margin: 0; }
-.shelf-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
-.shelf-head a { font-size: var(--t-small); color: var(--ink-soft); }
-.shelf-said { margin: 4px 0 12px; color: var(--ink-soft); font-size: var(--t-small); }
+/* A shelf's head is a row's (site.css .scroller-head), its words under it. */
+.shelf-said { margin: calc(-1 * var(--s-2)) 0 var(--s-3); color: var(--ink-soft); font-size: var(--t-small); }
 /* Today in the gallery (gallery362): today's featured model and today's
-   set, in a panel lit as a landing page's last offer is (site.css
-   .closing), each card edged as what is chosen is, and from 900 px its
-   words beside its cards. How its row scrolls is the row's own (site.css). */
+   set, a shelf as the others are, in a panel lit as a landing page's last
+   offer is (site.css .closing), each card edged as what is chosen is. */
 #spotlight {
-	display: grid; gap: var(--s-4); padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--r-4);
+	padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--r-4);
 	background-color: var(--panel); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px;
 	box-shadow: var(--highlight), var(--shadow-1);
 }
-#spotlight[hidden] { display: none; }
-#spotlight .shelf-head { flex-direction: column; align-items: flex-start; justify-content: center; gap: var(--s-2); }
-#spotlight .shelf-said { margin: 0; max-width: 42ch; }
 #spotlight-models .model { border-color: var(--accent-edge); }
 @media (width < 600px) { #spotlight { padding: var(--s-4); } }
-@media (width >= 900px) {
-	#spotlight { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-6); align-items: center; padding: var(--s-6); }
-}
 
 .feed > #challenge-line { grid-column: 1 / -1; margin: 0; }
 .listing .state { margin-top: var(--s-2); }
@@ -281,7 +267,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 					</div>
 				</div>
 			</details>
-			<div class="pills row" id="kinds" role="group" aria-label="Kind">
+			<div class="pills scroller inset" id="kinds" role="group" aria-label="Kind">
 				<button type="button" class="pill" data-kind="" aria-pressed="true">All</button>
 			</div>
 		</div>
@@ -331,28 +317,28 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 				     daily cron kept them (api/_featured.js); each card says which by its
 				     data-slot, featured or library (gallery.js drawShelves). -->
 				<section class="shelf" id="spotlight" aria-labelledby="spotlight-h" hidden>
-					<div class="shelf-head">
+					<div class="scroller-head">
 						<h2 id="spotlight-h">Today in the gallery</h2>
-						<p class="shelf-said">A model from the gallery and a set from the LDraw library, chosen each day.</p>
 						<a id="spotlight-library" href="/library">Browse the LDraw library</a>
 					</div>
-					<div class="models row" id="spotlight-models"></div>
+					<p class="shelf-said">A model from the gallery and a set from the LDraw library, chosen each day.</p>
+					<div class="models scroller" id="spotlight-models" role="group" aria-labelledby="spotlight-h"></div>
 				</section>
 				<section class="shelf" id="ready" aria-labelledby="ready-h" hidden>
-					<div class="shelf-head">
+					<div class="scroller-head">
 						<h2 id="ready-h">You can build now</h2>
 						<a id="ready-all" href="/gallery?sort=owned" hidden>Everything by the parts you own</a>
 					</div>
 					<p class="shelf-said" id="ready-said"></p>
-					<div class="models row" id="ready-models"></div>
+					<div class="models scroller" id="ready-models" role="group" aria-labelledby="ready-h"></div>
 				</section>
 				<section class="shelf" id="small" aria-labelledby="small-h" hidden>
-					<div class="shelf-head">
+					<div class="scroller-head">
 						<h2 id="small-h">Small builds</h2>
 						<a id="small-all" href="/gallery?size=small" hidden>See every small build</a>
 					</div>
 					<p class="shelf-said">Under 200 parts, an evening’s build: the most built and remixed first.</p>
-					<div class="models row" id="small-models"></div>
+					<div class="models scroller" id="small-models" role="group" aria-labelledby="small-h"></div>
 				</section>
 			</div>
 		</div>

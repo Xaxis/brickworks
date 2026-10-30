@@ -915,10 +915,8 @@ func _save() -> void:
 ## session must act on goes in the answers instead — a paused tab says to
 ## ask for it to be shown, and every answer names its tab and model, and
 ## says when others are open (api/mcp.js). mcp_sync_probe holds the two
-## together under the limit.
-const CONNECTED_NOTE := ("These tools build in the person's Brickworks tab, "
-	+ "which works on while they are here. Each answer names its tab and model. "
-	+ "When the person names a tab or model, call select_tab first.\n\n")
+## together under the limit. Its words are docs-site/design-session.md's.
+const CONNECTED_NOTE := ConnectorGuide.CONNECTED + "\n\n"
 
 
 func _model() -> String:

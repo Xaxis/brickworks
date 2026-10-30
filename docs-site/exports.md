@@ -1,4 +1,10 @@
 ---
+tools: render_model, animate_model, render_motion, export_model, parts_list
+panels: RenderDialog#render
+ai: Every file Brickworks writes: LDraw, Studio, 3D models, pictures, BrickLink and Rebrickable parts lists, all models as a .zip, and photo-real renders, turntables and motion animations. An assistant renders with render_model or render_motion and exports with export_model; the long ones are jobs.
+rules:
+  - A render, a Studio file, a picture and the instructions answer with a job number; follow it with job.
+  - On the desktop an export asks where to save; in a browser it downloads.
 title: Exports and renders
 nav: Exports and renders
 description: Every file Brickworks saves, from LDraw and Studio files to 3D models, pictures, shopping lists and photo-real renders.

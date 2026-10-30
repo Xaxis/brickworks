@@ -1,4 +1,12 @@
 ---
+tools: submit_design, choose_sketch, plan_scale, find_reference, how_real_sets_build_this, find_techniques, show_technique, place_technique, restyle_model, add_rooms
+panels: AiSettings#other-ais
+ai: How an AI designs in Brickworks: Claude or another AI on the person's own key, in the assistant panel, through the connector or Claude Code. It proposes parts and the app decides: every design is checked and sent back with what failed. A design starts with plan_scale, find_reference and how_real_sets_build_this, then submit_design.
+rules:
+  - The app builds what is submitted, checks it holds together, and refuses what does not.
+  - A sketch is under 150 parts; three sketches, then choose_sketch one.
+  - Asked about a selection, change only it (selection, edit_selection), never submit_design.
+  - A whole design is one undo step.
 title: Designing with AI
 nav: The assistant
 description: How an AI designs in Brickworks: Claude or another AI on your own key, the assistant panel, sketches, and asking about a selection.
@@ -11,6 +19,7 @@ An AI can design a whole model from a sentence, change a part of one, or answer 
 | Way | You need | Where it runs |
 |---|---|---|
 | [The Claude connector](/docs/connector) | A Claude Pro or Max plan | claude.ai, the Claude desktop and mobile apps, building in your open Brickworks tab |
+| [ChatGPT](/docs/connector#chatgpt) | A ChatGPT plan that can add a custom MCP server | chatgpt.com, building in your open Brickworks tab |
 | [Claude Code](/docs/claude-code) | Claude Code, signed in to your plan | Your terminal, or started by the desktop app for you |
 | [Your API key](#api-key) | A key from the Anthropic Console | The assistant panel itself |
 | [Another AI on your own key](#other-ais) | A key from OpenAI, Google, OpenRouter or another provider, or a model on your own computer | The assistant panel, chosen in **Settings › AI** |
@@ -118,4 +127,4 @@ lib:reference pictures
 lib:find a reference picture
 -->
 
-Read on: [what an AI build is](/docs/ai-builds), and [fresh eyes](/docs/fresh-eyes), the second look every new design gets.
+Read on: [how the AI works](/docs/how-ai-works), and [fresh eyes](/docs/fresh-eyes), the second look every new design gets.

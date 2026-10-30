@@ -1,4 +1,8 @@
 ---
+tools: gallery
+ai: brickworks.diy/gallery holds the models people built and shared, searchable by words, kind, size, Technic, instructions and the parts a person owns. An assistant searches it and reads a model as a reference with gallery, and opens a copy with open_model link=.
+rules:
+  - A gallery model carries its credit and licence; say them when it is used as a reference.
 title: The gallery
 nav: The gallery
 description: Find models people built and shared, by Top builds, what is new, who you follow, kind, size and the parts you own.
