@@ -71,6 +71,7 @@ bin_names  # every tile in the parts bin names its part in words, no two alike, 
 typed_moves   # a number typed while moving or turning: CADTASK's typed placements, the wall's turn in hand, five clones (hand371)
 feedback   # Brickworks, Send feedback… attaches what the person chooses and sends it; Beta hub is a tester's alone (beta374)
 palette   # Find a command: every command found by its words and run by Return, Render in five presses, greyed rows say why; no command in two menus, Edit 25 rows; the menu on a part's six new rows run from it (appux371 A9, A7, A8)
+handles   # rings and arrows on the selection: any part about any axis in 3 actions, a turned parent, part/model/view axes, Alt pivot, finer stops, a number typed, stopped by a part (handles)
 connect   # Connect: a point on the part, then the point it goes on; 8841-1's column, a turned parent, a pin through two holes, a wheel on either end of an axle, a part down, the walk (connect)
 keys   # a key for every tool; C paints only a selection; Studio's 20 keys do Studio's things under its preset; Mecabricks' and LDCad's; a key set in the sheet, a clash refused with what it clashes with, and the key still set after a restart (appux A11)
 first_build   # Build your first model: offered once on a first visit along the top of the model, Skip in one click and not back after a restart, Help brings it back; to its end by keys and clicks in 25 acts or fewer, a step left undone stays, and any way of doing a step counts (appux A12)

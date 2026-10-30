@@ -30,9 +30,6 @@ EXCUSED = {
     # (Main reads the keymap only while no shared model is being viewed).
     ("src/ui/share_view.gd", "Step through the build (B)"),
     ("src/ui/share_view.gd", "Every part, with BrickLink and Rebrickable lists (P)"),
-    # The Move tool's own words are the handles unit's (B3), which is
-    # changing what Move does; it names R by the keymap there.
-    ("src/ui/edit_verbs.gd", "moving %s — click to put down, R turns, Esc puts back"),
 }
 # Not shown to a person: the keymap itself, the probes, and what the
 # assistant is told (src/ai), which names parts like "Saturn V"...

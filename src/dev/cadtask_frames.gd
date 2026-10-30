@@ -15,6 +15,10 @@
 ##              pointer swept across the model, 60 frames
 ##   select_100 100 parts selected, as shift-click adds each; the frames
 ##              after, the outline drawn
+##   handles    the Rotate tool on those 100: its rings drawn while the
+##              view turns, 60 frames (handles), then one ring dragged
+##              round, 30 frames (handle_drag), held still until the turn
+##              is weighed (caught_up_frames, turned_degrees), and undone
 ##   select_all Ctrl-A
 ##   delete     Delete of those 100, and undo, Ctrl-Z, putting them back
 ##   timeline   B, then Right once (does it step?), then its Next five times: a step
@@ -150,6 +154,11 @@ func _one(path: String) -> Dictionary:
 	row["select_100"]["call_ms"] = select_call
 	row["select_100"]["selected"] = _builder.selection.size()
 
+	# handles: the Rotate tool's rings on those hundred, drawn as the view
+	# turns (APP_UX B3), then one dragged round, and its turn undone.
+	row["handles"] = await _handles_drawn()
+	row["handle_drag"] = await _handle_dragged()
+
 	# delete and undo, by their keys.
 	var before: int = _world.brick_count()
 	_move(middle, Vector2.ZERO, 0)
@@ -204,6 +213,79 @@ func _one(path: String) -> Dictionary:
 	await _frames(10)
 	print("  %s: %s" % [path.get_file(), JSON.stringify(_said(row))])
 	return row
+
+
+## The Rotate tool on the selection: its rings drawn over the model while
+## the view turns, a right-drag across the middle, as orbit's.
+func _handles_drawn() -> Dictionary:
+	var verbs: EditVerbs = _main.get("_verbs")
+	verbs.set_mode("rotate")
+	await _frames(5)
+	var middle: Vector2 = _view.get_center()
+	_press(MOUSE_BUTTON_RIGHT, middle, true)
+	var out: Dictionary = await _timed(60, func(n: int) -> void:
+		_move(middle + Vector2(4.0 * n, 0.0), Vector2(4.0, 0.0), MOUSE_BUTTON_MASK_RIGHT))
+	_press(MOUSE_BUTTON_RIGHT, middle + Vector2(240.0, 0.0), false)
+	await _frames(10)
+	out["drawn"] = verbs.handles.screen_handles().size() if verbs.handles.shown() else 0
+	return out
+
+
+## A ring taken on its near half and dragged round it a frame at a time,
+## the selection drawn turned where it has room; let go, and undone. The
+## first part's y ring first, a turn where it stands: which ring came first
+## on the screen went with the view the orbit left, and one that tipped the
+## parts into the baseplate stopped at once and weighed nothing.
+func _handle_dragged() -> Dictionary:
+	var verbs: EditVerbs = _main.get("_verbs")
+	var ring: Dictionary = {}
+	var start: int = -1
+	var rings: Array = verbs.handles.screen_handles().filter(func(h: Dictionary) -> bool:
+		return h["kind"] == "ring")
+	rings.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return int(a["axis"] != 1) < int(b["axis"] != 1))
+	for handle: Dictionary in rings:
+		var points: PackedVector2Array = handle["points"]
+		for k: int in points.size() - 1:
+			if bool((handle["front"] as Array)[k]) and _view.grow(-20.0).has_point(points[k]) \
+					and verbs.handles.handle_at(points[k]).get("axis") == handle["axis"]:
+				ring = handle
+				start = k
+				break
+		if not ring.is_empty():
+			break
+	if ring.is_empty():
+		verbs.set_mode("select")
+		return {"frames": 0, "skipped": "no ring on the screen"}
+	var points: PackedVector2Array = ring["points"]
+	var depth: int = _builder.history_depth()
+	_move(points[start], Vector2.ZERO, 0)
+	await _frames(2)
+	_press(MOUSE_BUTTON_LEFT, points[start], true)
+	await _frames(2)
+	var out: Dictionary = await _timed(30, func(n: int) -> void:
+		var k: int = (start + n + 1) % (points.size() - 1)
+		_move(points[k], points[k] - points[(k + points.size() - 2) % (points.size() - 1)],
+			MOUSE_BUTTON_MASK_LEFT))
+	# Held still: the frames until the way to where it points is weighed
+	# (a big selection's is spread over frames) and it is drawn there.
+	var waited: int = 0
+	while waited < 600 and verbs.handles.is_dragging() \
+			and not is_equal_approx(float(verbs.handles.drag["value"]),
+				float(verbs.handles.drag["want"])) and verbs.handles.drag["stuck"] == null:
+		await process_frame
+		waited += 1
+	out["caught_up_frames"] = waited
+	out["turned_degrees"] = float(verbs.handles.drag.get("value", 0.0))
+	_press(MOUSE_BUTTON_LEFT, points[(start + 30) % (points.size() - 1)], false)
+	await _frames(10)
+	out["turned"] = _builder.history_depth() - depth
+	if out["turned"] > 0:
+		_key_now(KEY_Z, true)
+		await _frames(10)
+	verbs.set_mode("select")
+	await _frames(5)
+	return out
 
 
 ## View, Stress turned on: the frames that draw the model faded, and then
@@ -302,6 +384,8 @@ func _press(which: int, at: Vector2, down: bool) -> void:
 	event.pressed = down
 	if which == MOUSE_BUTTON_RIGHT and down:
 		event.button_mask = MOUSE_BUTTON_MASK_RIGHT
+	elif which == MOUSE_BUTTON_LEFT and down:
+		event.button_mask = MOUSE_BUTTON_MASK_LEFT
 	event.position = _as_event(at)
 	event.global_position = event.position
 	Input.parse_input_event(event)
