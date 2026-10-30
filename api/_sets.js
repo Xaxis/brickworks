@@ -63,7 +63,7 @@ let catalog = null;
 /// beside this file in a deployment, or assets/generated in a checkout;
 /// null where there is neither.
 export function setCatalog() {
-  if (catalog) return catalog;
+  if (catalog !== null) return catalog || null;
   for (const where of ["./_set_catalog.json", "../assets/generated/set_catalog.json"]) {
     const url = new URL(where, import.meta.url);
     if (existsSync(url)) return useCatalog(JSON.parse(readFileSync(url, "utf8")));
@@ -71,8 +71,13 @@ export function setCatalog() {
   return null;
 }
 
-/// [raw] (tools/set_catalog.py's file) as setCatalog keeps it: a test's own.
+/// [raw] (tools/set_catalog.py's file) as setCatalog keeps it: a test's own,
+/// or null for a deployment with none (the library is LDraw's shelf alone).
 export function useCatalog(raw) {
+  if (raw === null) {
+    catalog = false;
+    return null;
+  }
   const themes = new Map();
   for (const [id, row] of Object.entries(raw?.themes || {})) {
     if (Array.isArray(row)) themes.set(Number(id), { name: word(String(row[0]), 120), parent: Number(row[1]) || 0 });
