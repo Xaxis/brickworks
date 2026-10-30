@@ -140,7 +140,8 @@ async function betaSaid(page) {
     const shown = ["apply-soon", "apply-out", "apply-form", "apply-status"].find((id) => !document.getElementById(id).hidden);
     return { spots: document.getElementById("spots").textContent.trim(), shown,
       words: shown ? document.getElementById(shown).innerText.replace(/\s+/g, " ").trim() : "",
-      eyebrow: document.querySelector(".beta-head .eyebrow").innerText.trim(),
+      // Its words, not as drawn: the eyebrow is drawn in capitals.
+      eyebrow: [...document.querySelectorAll(".beta-head .eyebrow span")].filter((s) => !s.hidden).map((s) => s.textContent).join(" "),
       sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 };
   });
 }
@@ -166,7 +167,7 @@ try {
       const { page, context } = await open("/beta", { width, theme, label: `off ${width}` });
       const said = await betaSaid(page);
       check(`${width}: Coming soon, no form, no count: ${said.shown}, "${said.spots}"`, said.shown === "apply-soon"
-        && /Coming soon/.test(said.eyebrow) && /Coming soon/.test(said.spots) && !said.sideways);
+        && /Coming soon/i.test(said.eyebrow) && /Coming soon/.test(said.spots) && !said.sideways);
       check(`${width}: no Apply button`, await page.evaluate(() => document.getElementById("to-apply").hidden));
       await shot(page, `beta-off-${width}-${theme}.png`, true);
       await context.close();
