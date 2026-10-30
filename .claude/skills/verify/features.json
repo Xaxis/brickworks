@@ -4543,7 +4543,15 @@
       "id": "ui:properties panel",
       "kind": "ui",
       "entry": "src/ui/inspector.gd",
-      "reach": "godot --path .  (select a part; the foot of the left-hand column, under the model tree)",
+      "reach": "godot --path .  (select a part; down the right, under the model tree)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:properties under the bin",
+      "kind": "ui",
+      "entry": "src/ui/inspector.gd",
+      "reach": "godot --path . --resolution 1280x720  (the bin open, select a part: its name, colour, X, Y, Z, Turn, Tilt and Roll under the bin; More opens the rest down the right)",
       "area": "building",
       "tests": []
     },

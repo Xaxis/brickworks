@@ -1586,17 +1586,53 @@ func near_bounds(packed: PackedInt32Array, ignore: int = 0) -> PackedInt64Array:
 
 
 func collides_boxes(packed: PackedInt32Array, ignore: int = 0) -> bool:
+	if packed.is_empty():
+		return false
 	var mine: PackedInt32Array = _bound_of(packed)
 	var plain: bool = _plain(packed)
 	# The buckets of the bound: a bucket holds whatever might reach into it
-	# (_into_buckets), and the boxes are what is tested.
-	for other: int in _near(mine):
-		if other == ignore:
+	# (_into_buckets), and the boxes are what is tested. Each part asked as
+	# its bucket is reached, in the order _near lists them, and the first
+	# that meets answers: gathered whole first, the ones never asked were
+	# most of a replace of all of Orthanc, whose 9,673 refusals each meet
+	# the first neighbour or so (bigmodels).
+	var asked: Dictionary = {ignore: true}
+	for bx: int in range(_floor_div(mine[0], BUCKET), _floor_div(mine[3] - 1, BUCKET) + 1):
+		for by: int in range(_floor_div(mine[1], BUCKET), _floor_div(mine[4] - 1, BUCKET) + 1):
+			for bz: int in range(_floor_div(mine[2], BUCKET), _floor_div(mine[5] - 1, BUCKET) + 1):
+				var here: Variant = _bucket.get(Vector3i(bx, by, bz))
+				if here == null:
+					continue
+				for other: int in here:
+					if asked.has(other):
+						continue
+					asked[other] = true
+					var bound: PackedInt32Array = _bounds.get(other, PackedInt32Array())
+					if _overlaps_pairwise(mine, bound) \
+							and _meets(packed, mine, plain, other, bound):
+						return true
+	return false
+
+
+## [method collides_boxes] for [param packed] moved [param by] whole cells,
+## with their bound and [method _plain] given: worked out once for boxes
+## moved about, as several parts in hand are (Carry), where every move asked
+## them of all of Orthanc's 150,000 boxes again. Nothing is moved unless
+## something is near where they would be.
+func collides_moved(packed: PackedInt32Array, bound: PackedInt32Array, plain: bool,
+		by: Vector3i) -> bool:
+	if packed.is_empty():
+		return false
+	var mine: PackedInt32Array = moved_by(bound, by)
+	var near: PackedInt64Array = _near(mine)
+	if near.is_empty():
+		return false
+	var moved: PackedInt32Array = moved_by(packed, by)
+	for other: int in near:
+		var theirs: PackedInt32Array = _bounds.get(other, PackedInt32Array())
+		if not _overlaps_pairwise(mine, theirs):
 			continue
-		var bound: PackedInt32Array = _bounds.get(other, PackedInt32Array())
-		if not _overlaps_pairwise(mine, bound):
-			continue
-		if _meets(packed, mine, plain, other, bound):
+		if _meets(moved, mine, plain, other, theirs):
 			return true
 	return false
 

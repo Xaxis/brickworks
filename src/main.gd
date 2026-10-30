@@ -38,6 +38,9 @@ var _props_dock: SideDock
 var _stack: PanelStack
 ## The right-hand column's: the model tree over the properties.
 var _side: PanelStack
+## Where the columns take turns, the selection's place, turn and colour under
+## the parts bin as well (Inspector.compact). Null on a phone or a tablet.
+var _bin_props: Inspector
 ## The strip along the top of the model for what is said about it for a
 ## while: the sub-assembly being edited, the offer to seat old parts.
 var _notices: PanelContainer
@@ -1006,6 +1009,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_account_panel.controls_by_name())
 	if _shell != null:
 		named.merge(_shell.controls_by_name())
+	if _bin_props != null:
+		named.merge(_bin_props.controls_by_name())
 	if _seat_offer != null:
 		named.merge(_seat_offer.controls_by_name())
 	if _reload_offer != null:
@@ -5195,6 +5200,16 @@ func _build_ui() -> void:
 		if not bool(ShellPrefs.value("right_column")):
 			ShellPrefs.put("right_column", true)
 			_shell.outliner.set_open(true)
+		# Where the columns take turns, opening the properties folds the
+		# bin: a part put down and typed to its place, and the next one,
+		# cost a rail click each way. So what a part just put down needs is
+		# under the bin too, and the model keeps its share.
+		_bin_props = Inspector.new()
+		_bin_props.shell = _shell
+		_bin_props.compact = true
+		_bin_props.wanted = _columns == "turns"
+		_stack.add_section(_bin_props)
+		_stack.keep_whole(_bin_props)
 	if _phone != null:
 		_phone.shell = _shell
 		_dress_for_phone()
@@ -6282,6 +6297,8 @@ func _fit_panels() -> void:
 	if share == _columns:
 		return
 	_columns = share
+	if _bin_props != null:
+		_bin_props.wanted = share == "turns"
 	_arrange_columns()
 
 

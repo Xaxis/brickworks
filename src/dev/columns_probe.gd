@@ -23,7 +23,9 @@
 ## turns. A part clicked in the model, the Properties rail: every one of its
 ## properties in sight, nothing behind a scroller. The assistant turned on:
 ## it opens down the right, beside the bin where both fit. Its rail's
-## Properties brings them back, and the Parts rail the bin.
+## Properties brings them back, and the Parts rail the bin: where they take
+## turns, with the part still selected, its place, turn and colour under the
+## bin (Inspector.compact) and 12 parts or more in sight (laptop_probe).
 ## columns_saved_probe starts it from a layout kept before the right column
 ## was made (ShellPrefs): the bin folded, the assistant open, the model tree
 ## dragged to 300 and folded; the bin stays folded, the assistant shows, the
@@ -170,14 +172,19 @@ func _first_visit() -> void:
 		and _shell.inspector.is_visible_in_tree() and _fields_out_of_sight().is_empty())
 	await _shot("4_properties_again")
 	# The Parts rail: the bin back, and where one column shows at a time
-	# the right-hand one folded.
+	# the right-hand one folded, and the part still selected has its place,
+	# turn and colour under the bin (laptop_probe), the bin 12 parts or more.
 	await _click(bin_dock.rail().get_global_rect().get_center())
 	await _frames(30)
 	tiles = _tiles_in_sight()
+	var under: Array = _compact_out_of_sight()
 	_check("the Parts rail brings the bin back, %d parts in sight%s" % [tiles,
-		"" if wide else ", the right-hand column folded"], bin_dock.is_open() and tiles >= 24
-		and (wide or not (props_dock.is_open() or chat_dock.is_open())))
+		"" if wide else (", the right-hand column folded, the selected part's place, turn and "
+		+ "colour under it%s" % ("" if under.is_empty() else " (out of sight: %s)"
+		% ", ".join(under)))], bin_dock.is_open() and tiles >= (24 if wide else 12)
+		and (wide or not (props_dock.is_open() or chat_dock.is_open()) and under.is_empty()))
 	_model_keeps_its_share("...and the model")
+	await _shot("4a_bin_and_properties")
 
 	# View, Assistant: a command, not the rail, shows it again.
 	_shell.run("panel_assistant")
@@ -296,6 +303,23 @@ func _name_of(field: Control) -> String:
 	var at: int = field.get_index()
 	var label := field.get_parent().get_child(at - 1) as Label if at > 0 else null
 	return label.text if label != null else field.name
+
+
+## The boxes of the compact properties under the bin that a person cannot
+## see: its place, its turn and its colour's name.
+func _compact_out_of_sight() -> Array:
+	var near: Inspector = _main.get("_bin_props")
+	if near == null or not near.is_visible_in_tree():
+		return ["all of them"]
+	var window := Rect2(Vector2.ZERO, root.get_visible_rect().size)
+	var named: Dictionary = near.controls_by_name()
+	var out: Array = []
+	for name: String in ["prop_x", "prop_y", "prop_z", "prop_turn", "prop_tilt", "prop_roll",
+			"prop_colour"]:
+		var control := named.get(name) as Control
+		if control == null or not window.encloses(control.get_global_rect()):
+			out.append(name.trim_prefix("prop_"))
+	return out
 
 
 ## The model's column, where a click lands on the model.
