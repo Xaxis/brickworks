@@ -55,7 +55,9 @@
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <style>
-.listing { padding: var(--s-5) 0 72px; }
+.listing { padding: 0 0 72px; }
+/* The head across the window, lit from above on its baseplate of studs. */
+.browse-band { padding: var(--s-6) 0 0; }
 /* The bar of filters stays under the header; what the keyboard reaches
    is scrolled clear of both. */
 html { scroll-padding-top: calc(var(--head-h) + 72px); }
@@ -79,7 +81,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 }
 .search:focus-within .hint, .search:has(input:not(:placeholder-shown)) .hint { display: none; }
 @media (width < 600px) {
-	.listing { padding-top: var(--s-4); }
+	.browse-band { padding-top: var(--s-4); }
 	.gallery-head { flex-wrap: nowrap; align-items: center; }
 	.gallery-head .lede, .search .hint { display: none; }
 	.search { flex: 1 1 auto; max-width: none; }
@@ -209,40 +211,46 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 </header>
 
 <main id="main">
-	<section class="wrap wide listing" aria-labelledby="gallery-h">
-		<!-- Answered by gallery.js, never sent: the page asks /api/share itself.
-		     The search is the form; the tabs, Filters and the kinds are its
-		     controls too (form="finder"), laid out under it so the bar of
-		     filters can stay on screen over the whole list. -->
-		<form class="finder" id="finder" role="search" action="/gallery" method="get">
-			<div class="gallery-head">
-				<div class="gallery-title">
-					<h1 id="gallery-h">Gallery</h1>
-					<p class="lede">Models people built in Brickworks and shared. Turn one in 3D, build it step by step, or make it yours.</p>
+	<!-- The page's head, lit as the landing page's opening is (site.css .halo):
+	     the title, the search and the tabs; the list and its bar of filters under it. -->
+	<div class="browse-band halo">
+		<div class="wrap wide">
+			<!-- Answered by gallery.js, never sent: the page asks /api/share itself.
+			     The search is the form; the tabs, Filters and the kinds are its
+			     controls too (form="finder"), laid out under it so the bar of
+			     filters can stay on screen over the whole list. -->
+			<form class="finder" id="finder" role="search" action="/gallery" method="get">
+				<div class="gallery-head">
+					<div class="gallery-title">
+						<h1 id="gallery-h">Gallery</h1>
+						<p class="lede">Models people built in Brickworks and shared. Turn one in 3D, build it step by step, or make it yours.</p>
+					</div>
+					<label class="search">
+						<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
+						<span class="visually-hidden">Search the gallery</span>
+						<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
+							placeholder="Search models, builders, tags" aria-keyshortcuts="/">
+						<kbd class="hint" aria-hidden="true">/</kbd>
+					</label>
 				</div>
-				<label class="search">
-					<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
-					<span class="visually-hidden">Search the gallery</span>
-					<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
-						placeholder="Search models, builders, tags" aria-keyshortcuts="/">
-					<kbd class="hint" aria-hidden="true">/</kbd>
-				</label>
+			</form>
+			<div class="gallery-bar">
+				<!-- Which models, in which order: Top (builds, remixes, Tested), New,
+				     and Following once signed in, when the list says it can. -->
+				<nav class="tabs" id="tabs" aria-label="Which models">
+					<a href="/gallery" data-tab="top" aria-current="page"
+						title="Built most, remixed most and Tested first. Views count for nothing.">Top</a>
+					<a href="/gallery?sort=newest" data-tab="new">New</a>
+					<a href="/gallery?following=1" data-tab="following" hidden>Following</a>
+					<a href="/collections" id="to-collections">Collections</a>
+					<a href="/library" id="to-library">LDraw library</a>
+				</nav>
+				<label class="top-window" id="window-label" hidden><span class="visually-hidden">Top over</span>
+					<select id="window" name="window" form="finder"><option value="">All time</option></select></label>
 			</div>
-		</form>
-		<div class="gallery-bar">
-			<!-- Which models, in which order: Top (builds, remixes, Tested), New,
-			     and Following once signed in, when the list says it can. -->
-			<nav class="tabs" id="tabs" aria-label="Which models">
-				<a href="/gallery" data-tab="top" aria-current="page"
-					title="Built most, remixed most and Tested first. Views count for nothing.">Top</a>
-				<a href="/gallery?sort=newest" data-tab="new">New</a>
-				<a href="/gallery?following=1" data-tab="following" hidden>Following</a>
-				<a href="/collections" id="to-collections">Collections</a>
-				<a href="/library" id="to-library">LDraw library</a>
-			</nav>
-			<label class="top-window" id="window-label" hidden><span class="visually-hidden">Top over</span>
-				<select id="window" name="window" form="finder"><option value="">All time</option></select></label>
 		</div>
+	</div>
+	<section class="wrap wide listing" aria-labelledby="gallery-h">
 		<!-- The bar of filters, on screen over the whole list (sticky under the
 		     header): Filters, then the kinds in a row that scrolls inside itself. -->
 		<div class="toolbar" id="toolbar">
