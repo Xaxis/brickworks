@@ -35,7 +35,7 @@ With a part or a copy in hand, type a number to move it exactly: a small field o
 
 - **3x** moves it 3 studs along x, **-2z** 2 studs back, **2py** 2 plates up. **b** is a brick, **l** an LDraw unit, **mm** a millimetre: **-14ly** is 14 LDU down. A stud is the unit when none is given.
 - A number alone goes the way the ghost last went: **3** after moving it right is 3 studs right.
-- **23.58r** turns it 23.58°, about the joint it is on or upright; **30t** tilts it forwards. Straight after [[R]] or [[T]], a number alone is that turn instead of their step: [[R]] then **30** turns it 30°.
+- **23.58r** turns it 23.58°, about the joint it is on or upright; **30t** tilts it forwards. Straight after [[R]] or [[T]], before the pointer moves, a number alone is that turn instead of their step: [[R]] then **30** turns it 30°.
 - Several at once: **2x-1py**. Sums work too: **40/2+1lx**.
 - On the model, straight after [[R]] or [[T]] turned a selection, a number takes their place the same way, shown in hand until [[Enter]].
 

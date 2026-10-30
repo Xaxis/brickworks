@@ -814,7 +814,7 @@ func _turn_in_hand(turn: Basis, verb: String, words: String) -> int:
 		say.call("no room to %s there" % words)
 		return 0
 	# A number typed straight after takes the place of this turn.
-	_armed = {"verb": verb, "hand": builder.hand_state()}
+	_armed = {"verb": verb, "hand": builder.hand_state(), "pointer": _pointer()}
 	builder.carrying.reshape(turn)
 	edited.call()
 	aim_again.call()
@@ -826,6 +826,12 @@ func _turn_in_hand(turn: Basis, verb: String, words: String) -> int:
 ## The parts last drawn red as in the way, for a probe to read.
 var flashed := PackedInt64Array()
 const IN_THE_WAY := Color(1.0, 0.12, 0.08)
+## The tints as they were under the red now showing, and that red: a
+## flash over one still showing keeps what was under the first, so the
+## last to end puts back what was there before either.
+var _under_red: Dictionary = {}
+var _red: Dictionary = {}
+var _flashes: int = 0
 
 
 ## Draw these parts red for a second, over whatever else is tinted.
@@ -833,15 +839,31 @@ func _flash(ids: PackedInt64Array) -> void:
 	flashed = ids
 	if ids.is_empty() or world == null or not is_inside_tree():
 		return
-	var was: Dictionary = world.tinted_ids().duplicate()
-	var red: Dictionary = was.duplicate()
+	var now: Dictionary = world.tinted_ids()
+	if _red.is_empty() or now != _red:
+		var was_under: Dictionary = _under_red
+		_under_red = now.duplicate()
+		# Red of a flash something else tinted over is not what was under.
+		for brick_id: int in _red:
+			if _under_red.get(brick_id) == IN_THE_WAY:
+				if was_under.has(brick_id):
+					_under_red[brick_id] = was_under[brick_id]
+				else:
+					_under_red.erase(brick_id)
+	_red = _under_red.duplicate()
 	for brick_id: int in ids:
-		red[brick_id] = IN_THE_WAY
-	world.set_tinted(red)
+		_red[brick_id] = IN_THE_WAY
+	world.set_tinted(_red)
+	_flashes += 1
+	var mine: int = _flashes
 	await get_tree().create_timer(1.0).timeout
+	if mine != _flashes:
+		return
 	# Back as it was, unless something else has tinted since.
-	if world.tinted_ids() == red:
-		world.set_tinted(was)
+	if world.tinted_ids() == _red:
+		world.set_tinted(_under_red)
+	_red = {}
+	_under_red = {}
 
 
 # -- locking ------------------------------------------------------------------
@@ -1206,9 +1228,26 @@ func _arm(key: InputEventKey) -> void:
 	var held: bool = key.ctrl_pressed or key.meta_pressed or key.alt_pressed
 	if key.keycode in [KEY_R, KEY_T] and not held and shows_ghost() and builder.has_preview():
 		_armed = {"verb": "turn" if key.keycode == KEY_R else "tilt",
-			"hand": builder.hand_state()}
+			"hand": builder.hand_state(), "pointer": _pointer()}
 		return
 	_armed = {}
+
+
+## R or T in hand is just pressed until the pointer takes the ghost
+## elsewhere, even if it comes back: a number typed after aiming again
+## moves it from there, turned as R left it.
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and _armed.has("pointer") \
+			and (event as InputEventMouseMotion).position.distance_to(_armed["pointer"]) \
+			> AIMED_AGAIN:
+		_armed = {}
+
+
+const AIMED_AGAIN := 6.0
+
+
+func _pointer() -> Vector2:
+	return get_viewport().get_mouse_position() if is_inside_tree() else Vector2.ZERO
 
 
 ## The first digit: what is in hand kept where it stands for the number to

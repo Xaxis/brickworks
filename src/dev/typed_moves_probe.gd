@@ -4,7 +4,7 @@
 ## click, a key, an aim of the pointer somewhere new, and a number typed,
 ## each one; the characters typed are counted too).
 ##
-##   godot --path . --resolution 1400x900 --script src/dev/typed_moves_probe.gd [-- only=SECTION]
+##   godot --path . --resolution 1400x900 --script src/dev/typed_moves_probe.gd [-- only=SECTION,…]
 ##
 ## SECTION is clones (A6: five copies in six actions), wall (A3: the walk's
 ## brick turned in its wall in three), typed (B1: what the field reads, puts
@@ -64,8 +64,13 @@ func _run() -> void:
 		if arg.begins_with("only="):
 			only = arg.substr(5)
 	for section: String in ["reading", "clones", "wall", "typed", "sets"]:
-		if only.is_empty() or only == section:
+		if only.is_empty() or section in only.split(","):
 			print("  -- %s" % section)
+			# Each on an empty floor, whatever ran before it.
+			_verbs.set_mode("select")
+			_builder.clear_selection()
+			_main.call("clear_model")
+			await _frames(4)
 			await call("_" + section)
 			await _rest()
 	print("")
@@ -207,7 +212,8 @@ func _wall() -> void:
 	_camera.frame(AABB(Vector3(-200, -40, -120), Vector3(400, 120, 240)))
 	await _frames(40)
 	_shell.set_turn_step(15)
-	var first: BrickWorld.Brick = _model()[0]
+	# The bottom row's second: a brick on each side and two on it.
+	var first: BrickWorld.Brick = _at(Vector3(-40, 24, 10))
 	var was: Transform3D = first.transform
 	var whole: int = _count()
 	_select_only([first.id])
@@ -219,7 +225,7 @@ func _wall() -> void:
 	var red: Dictionary = _world.tinted_ids()
 	var in_way: Array = Array(_verbs.flashed)
 	_check("R: what is in the way is shown red (%d parts: %s)" % [in_way.size(), in_way],
-		in_way.size() >= 2 and in_way.all(func(id: int) -> bool: return red.has(id)))
+		in_way.size() >= 1 and in_way.all(func(id: int) -> bool: return red.has(id)))
 	_check("...and the brick is in hand, turned 15° (%s)" % _held_yaw(),
 		_builder.is_carrying() and absf(_held_yaw() - 15.0) < 0.01)
 	await _shot("wall_turn_in_hand")
@@ -245,16 +251,25 @@ func _wall() -> void:
 	back = _at(was.origin)
 	_check("R then Esc: back as it was", back != null and back.transform.is_equal_approx(was)
 		and not _builder.is_carrying() and _count() == whole)
-	# T and the Rotate tool, the same.
+	# The Rotate tool, the same.
+	_verbs.set_mode("rotate")
+	await _click(_spot_on(_at(was.origin)))
+	_check("the Rotate tool in the wall: in hand, turned", _builder.is_carrying())
+	await _key(KEY_ESCAPE)
+	_check("...and Esc puts it back", _at(was.origin) != null and _count() == whole)
+	_verbs.set_mode("select")
+	# And T, with a brick in front and one behind: tipped over, a 1 x 4 is
+	# deeper than it is wide.
+	_put("3010", 4, Vector3(-40, 24, 30))
+	_put("3010", 4, Vector3(-40, 24, -10))
+	whole = _count()
+	await _frames(3)
+	back = _at(was.origin)
 	_select_only([back.id] if back != null else [])
 	await _key(KEY_T)
 	_check("T in the wall: in hand, tipped", _builder.is_carrying())
 	await _key(KEY_ESCAPE)
 	_check("...and Esc puts it back", _at(was.origin) != null and _count() == whole)
-	_verbs.set_mode("rotate")
-	await _click(_screen(was.origin + Vector3(0, 0, 0)))
-	_check("the Rotate tool in the wall: in hand, turned", _builder.is_carrying())
-	await _key(KEY_ESCAPE)
 	await create_timer(1.2).timeout
 	_check("the red is gone after a second", _world.tinted_ids().is_empty())
 	# Typed straight after: 30° instead of R's 15.
@@ -267,6 +282,19 @@ func _wall() -> void:
 		absf(_held_yaw() - 30.0) < 0.01)
 	await _key(KEY_ESCAPE)
 	await _key(KEY_ESCAPE)
+
+
+## A point on the screen where this part is the one under the pointer: its
+## top is under the bricks on it, so round its middle.
+func _spot_on(brick: BrickWorld.Brick) -> Vector2:
+	if brick == null:
+		return Vector2.ZERO
+	var middle: Vector2 = _screen(brick.transform.origin + Vector3(0, -12, 0))
+	for r: int in range(0, 60, 4):
+		for d: Vector2 in [Vector2(0, r), Vector2(r, 0), Vector2(-r, 0), Vector2(0, -r)]:
+			if _verbs.brick_at(middle + d) == brick.id:
+				return middle + d
+	return middle
 
 
 func _held_yaw() -> float:
@@ -312,12 +340,14 @@ func _typed() -> void:
 		and not _verbs.typed.is_open() and not _builder.is_pinned())
 	await _key(KEY_Z, true)
 	_check("one undo takes it back", _count() == start)
-	await _key(KEY_Z, true, true)
+	# Six studs along, clear of the ghost however it is turned.
+	_put("3001", 4, ghost.origin + Vector3(120, 0, 0))
+	await _frames(3)
 
-	# Refused: onto the one just put.
+	# Refused: onto a part already there.
 	await _move(spot)
 	await _move(spot + Vector2(1, 0))
-	await _type("3x")
+	await _type("6x")
 	_check("onto a part already there: red, saying so (%s)" % _meaning(),
 		_meaning().contains("no room") and not _builder.can_place())
 	await _key(KEY_ENTER)
@@ -387,6 +417,10 @@ func _typed() -> void:
 	await _key(KEY_ESCAPE)
 
 	# On the model, straight after R: the selection turned by the number.
+	_builder.clear_selection()
+	_main.call("clear_model")
+	_put("3001", 4, Vector3(-60, 24, 20))
+	await _frames(3)
 	var one: BrickWorld.Brick = _model()[0]
 	var facing: Transform3D = one.transform
 	_select_only([one.id])
@@ -426,16 +460,17 @@ func _typed() -> void:
 # -- B1's bar: what CADTASK typed in Properties ------------------------------------
 
 
-## [set file, part, its place (any of x, y, z as the run typed it), what
-## it is]: the parts section 9's runs typed in Properties (docs/CADTASK.md,
-## gap 9) and the pan's first 4262 swung to 23.58 (gap 10).
+## [set file, part, its line among the file's parts, what it is]: the parts section
+## 9's runs typed in Properties (docs/CADTASK.md, gap 9, the runs' build
+## logs: 5762-1's step 18, 8643-1's steps 8 and 9, 8841-1's step 1) and the
+## pan's first 4262 swung to 23.58 (gap 10). The runs typed their places in
+## a model lifted or slid on the floor, so by another number than the file's.
 const PLACES: Array = [
-	["5762-1_Plane.mpd", "3065", {"y": 64.0}, "the 1 x 2's height behind the slopes"],
-	["8643-1_Combination-with-8644.mpd", "3023", {"y": 68.0}, "a plate, its height"],
-	["8643-1_Combination-with-8644.mpd", "50949", {"y": 76.0, "z": -110.0},
-		"the cab top on its sockets"],
-	["8841-1_Balance.mpd", "3703", {"x": 110.0, "y": 162.0}, "the column on its pins"],
-	["8841-1_Balance.mpd", "4262", {"index": 45}, "the pan's 4262 swung 23.58°"],
+	["5762-1_Plane.mpd", "3065", 47, "the 1 x 2's height behind the slopes"],
+	["8643-1_Combination-with-8644.mpd", "3023", 43, "a plate, its height"],
+	["8643-1_Combination-with-8644.mpd", "50949", 44, "the cab top on its sockets"],
+	["8841-1_Balance.mpd", "3703", 21, "the column on its pins"],
+	["8841-1_Balance.mpd", "4262", 45, "the pan's 4262 swung 23.58°"],
 ]
 
 
@@ -480,8 +515,14 @@ func _one_place(place: Array) -> Dictionary:
 		await process_frame
 	_acts["click"] = int(_acts["click"]) + 1
 	_builder.held_color = int(truth[index][1])
-	await _turn_to(want.basis)
+	# Aimed first, as it comes: a part on a joint takes the joint's turn.
+	# Turned with R and T only when the ghost is not turned as it goes.
 	var aim: Dictionary = await _aim_near(want, box)
+	if not bool(aim.get("turned", false)):
+		await _turn_to(want.basis)
+		var again: Dictionary = await _aim_near(want, box)
+		if again.has("at") or not aim.has("at"):
+			aim = again
 	row["aims_tried"] = aim.get("tried", 0)
 	if aim.is_empty() or not aim.has("at"):
 		_check("%s %s: a ghost near its place" % [file.get_slice("_", 0), part], false)
@@ -492,12 +533,31 @@ func _one_place(place: Array) -> Dictionary:
 	row["ghost"] = _ldr_of(ghost)
 	var text: String = _words_for(ghost, want)
 	row["typed"] = text
+	# Whether the file's place has room by the rule a part put down meets.
+	var room: bool = _builder.room_for(part, want, false, true)
+	var blocker: BrickWorld.Brick = _world.get_brick(_builder.room_blocker) \
+		if _builder.room_blocker != 0 else null
+	row["room"] = room
+	if not room:
+		print("    no room where the file has it: %s in the way (%s)" % [
+			blocker.part_id if blocker != null else "?", _ldr_of(blocker.transform)
+			if blocker != null else ""])
 	var before: int = _count()
 	if not text.is_empty():
 		await _type(text)
 		_acts["typed"] = int(_acts["typed"]) + 1
 		_acts["chars"] = int(_acts["chars"]) + text.length()
 		row["meaning"] = _meaning()
+		var shown: Transform3D = _builder.ghost_transform()
+		row["shown"] = _ldr_of(shown)
+		if not _builder.can_place():
+			var fits: bool = _builder.room_for(part, shown, false, true)
+			var against: BrickWorld.Brick = _world.get_brick(_builder.room_blocker) \
+				if _builder.room_blocker != 0 else null
+			print("    typed, it shows at %s: room %s, %s in the way (%s); pinned %s, armed %s" % [
+				row["shown"], fits, against.part_id if against != null else "nothing",
+				_ldr_of(against.transform) if against != null else "", _builder.is_pinned(),
+				_verbs.get("_armed")])
 		await _shot("set_%s_%s" % [file.get_slice("_", 0), part])
 	await _key(KEY_ENTER)
 	_acts["key"] = int(_acts["key"]) + 1
@@ -530,32 +590,43 @@ func _truth_of(file: String) -> Array:
 	return out
 
 
-func _index_of(truth: Array, part: String, where: Dictionary) -> int:
-	if where.has("index"):
-		var at: int = int(where["index"]) - 1
-		return at if at < truth.size() and truth[at][0] == part else -1
-	for n: int in truth.size():
-		if truth[n][0] != part:
-			continue
-		var at: Vector3 = (truth[n][2] as Transform3D).origin
-		var ok: bool = true
-		for axis: String in where:
-			ok = ok and absf(at["xyz".find(axis)] - float(where[axis])) < 0.01
-		if ok:
-			return n
+func _index_of(truth: Array, part: String, line: int) -> int:
+	var at: int = line - 1
+	if at < truth.size() and str(truth[at][0]).begins_with(part):
+		return at
+	print("    the file's part %d is %s, not %s" % [line,
+		truth[at][0] if at < truth.size() else "past its end", part])
 	return -1
 
 
-## Turned to [param basis] by T and R, as a person turns a part in hand,
-## each press counted.
+## Turned by T and R to the quarter turn nearest [param basis], as a person
+## turns a part in hand, each press counted: a part a set has off the
+## quarters is turned the rest of the way by its joint or a typed number.
 func _turn_to(basis: Basis) -> void:
-	for _f: int in 6:
-		for _r: int in 4:
-			if _same_turn(BrickLattice.basis_for(_builder.held_face, _builder.held_rotation), basis):
-				return
-			await _key(KEY_R)
-			_acts["key"] = int(_acts["key"]) + 1
-		await _key(KEY_T)
+	var faces: Array[String] = BrickLattice.FACES
+	var face: String = _builder.held_face
+	var turns: int = _builder.held_rotation
+	var nearest: float = INF
+	for f: String in faces:
+		for r: int in 4:
+			var q := Quaternion((BrickLattice.basis_for(f, r).inverse() * basis).orthonormalized())
+			var angle: float = q.get_angle()
+			angle = minf(angle, TAU - angle)
+			if angle < nearest - 0.001:
+				nearest = angle
+				face = f
+				turns = r
+	var tips: int = posmod(faces.find(face) - maxi(faces.find(_builder.held_face), 0), faces.size())
+	if tips > faces.size() / 2:
+		tips -= faces.size()
+	for _n: int in absi(tips):
+		await _key(KEY_T, false, tips < 0)
+		_acts["key"] = int(_acts["key"]) + 1
+	var quarters: int = posmod(turns - _builder.held_rotation, 4)
+	if quarters == 3:
+		quarters = -1
+	for _n: int in absi(quarters):
+		await _key(KEY_R, false, quarters < 0)
 		_acts["key"] = int(_acts["key"]) + 1
 
 
@@ -571,26 +642,31 @@ func _aim_near(want: Transform3D, box: AABB) -> Dictionary:
 			Vector3(middle.x, box.position.y, middle.z)]:
 		var s: Vector2 = _screen(p)
 		for d: Vector2 in [Vector2.ZERO, Vector2(4, 0), Vector2(-4, 0), Vector2(0, 4),
-				Vector2(0, -4), Vector2(8, 8), Vector2(-8, -8), Vector2(8, -8), Vector2(-8, 8)]:
+				Vector2(0, -4), Vector2(8, 8), Vector2(-8, -8), Vector2(8, -8), Vector2(-8, 8),
+				Vector2(16, 0), Vector2(-16, 0), Vector2(0, 16), Vector2(0, -16)]:
 			points.append(s + d)
 	for site: JointSnap.End in _builder.joint_sites():
-		if site.at.distance_to(want.origin) <= 80.0:
+		if site.at.distance_to(want.origin) <= 120.0:
 			points.append(_screen(site.at))
+	# Turned as it goes first, then on a joint, a typed turn about it away;
+	# the nearest of the best kind. Typed numbers take it the rest.
 	var best: Dictionary = {"tried": points.size()}
-	var nearest: float = 61.0
+	var rank: float = INF
 	for p: Vector2 in points:
 		await _move(p)
 		if not _builder.can_place():
 			continue
 		var g: Transform3D = _builder.ghost_transform()
-		var turned_ok: bool = _same_turn(g.basis, want.basis) or _builder.is_on_joint()
-		if not turned_ok:
+		var turned: bool = _same_turn(g.basis, want.basis)
+		if not turned and not _builder.is_on_joint():
 			continue
-		var far: float = g.origin.distance_to(want.origin)
-		if far < nearest:
-			nearest = far
+		var score: float = g.origin.distance_to(want.origin) + (0.0 if turned else 1000.0)
+		if score < rank:
+			rank = score
 			best["at"] = p
+			best["turned"] = turned
 			best["joint"] = _builder.is_on_joint()
+			best["far"] = g.origin.distance_to(want.origin)
 	return best
 
 
@@ -610,7 +686,7 @@ func _words_for(ghost: Transform3D, want: Transform3D) -> String:
 			else Vector3.UP
 		if axis.dot(about) < 0.0:
 			angle = -angle
-		words += "%sr" % String.num(snappedf(angle, 0.01), 2)
+		words += "%sr" % _figure(snappedf(angle, 0.01))
 		var point: Vector3 = (joint as JointSnap.End).at if joint != null else ghost.origin
 		var about_t := Transform3D(Basis.IDENTITY, point) \
 			* Transform3D(Basis(about, deg_to_rad(snappedf(angle, 0.01))), Vector3.ZERO) \
@@ -629,8 +705,13 @@ func _words_for(ghost: Transform3D, want: Transform3D) -> String:
 		elif is_zero_approx(fposmod(v, 8.0)):
 			unit = "p"
 			n = v / 8.0
-		words += "%s%s%s" % [String.num(n, 2), unit, "xyz"[i]]
+		words += "%s%s%s" % [_figure(n), unit, "xyz"[i]]
 	return words
+
+
+## A number as a person types it: 30, not 30.0.
+static func _figure(n: float) -> String:
+	return str(roundi(n)) if is_equal_approx(n, roundf(n)) else String.num(n, 2)
 
 
 # -- helpers ----------------------------------------------------------------------
