@@ -3934,6 +3934,13 @@
       "entry": "tools/web/paging_flow.mjs",
       "reach": "node tools/web/paging_flow.mjs --url=http://127.0.0.1:8890 --out=DIR   (a local relay_server.mjs: the LDraw library and /u/brickworks); BW_BYPASS=$VERCEL_BYPASS node tools/web/paging_flow.mjs --url=<preview> --out=DIR",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "release train",
+      "entry": "tools/release/train.sh",
+      "reach": "tools/release/train.sh stage TAG BRANCH --after PREV --checks \"...\"; tools/release/train.sh status",
+      "area": "release"
     }
   ]
 }

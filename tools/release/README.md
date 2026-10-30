@@ -12,6 +12,40 @@ tools/release/merge_finish.sh <worktree> "Merge …"
 tools/release/ship.sh <worktree> <tag> site io …       # preview, its checks, then production
 ```
 
+Or all of that in one command, queued behind the release before it:
+
+```sh
+tools/release/train.sh stage rel-m219 stage219 --after rel-m218 \
+  --checks "io gallery" --probes "grab_probe" --units "unit1 unit2" --title "…"
+tools/release/train.sh status                  # each release's step, checks, and what is live
+tools/release/train.sh hold rel-m219 "why"     # train.sh release rel-m219 lifts it
+```
+
+The train waits detached until `rel-m218_lead.out` says `SHIP: deploy:
+brickworks.diy serves`, never on rel-m218's process: its live checks after
+that touch only the live site. It stops if rel-m218 held, failed or never
+began, and gives up at its deadline (`TRAIN_WAIT`, 6 hours). Then
+`release_wt.sh` from origin/main, `merge_unit.sh` of the branch as
+`Merge: <title>` with `MERGE_GATES=ship`, a tree dirty or mid-merge
+refused, `check.sh --lists`, each probe (its exit and its FAIL lines both
+count), and `ship.sh` with the checks, which promotes the very preview its
+checks passed as soon as the battery ends. Once brickworks.diy serves the
+release's sha, it retires the release's worktree and each unit's whose HEAD
+is on main and which holds no file git does not track (`retire_wt.sh`). Its
+spec is a file each in `bench/results/release-out/<tag>.train/` (branch,
+after, checks, probes, units, title, deadline), each read only when its step
+comes: a unit merged into the branch meanwhile brings its checks by an edit
+of `checks`. Its log is `<tag>_train.out`, its result `<tag>.train/result`,
+and a train that stops before the ship writes `<tag>.gave_up` as
+`ship_after.sh` does, so the release staged behind it stops too. It runs
+from a copy of itself: a release fast-forwards the main checkout, this
+script with it, and bash reads a script as it goes. `kill -- -PID` (status
+names the pid) stops a train and what it runs. The lead wrote a chain like
+this by hand for each release from rel-m214 to m218, a promote job beside
+it, and another to retire worktrees afterwards; a held merge left one
+release's tree half-merged (rel-m214), and a retire after a held preview
+took rel-m196's worktree (2026-10-28).
+
 And before a unit says ready, from its own worktree:
 
 ```sh
