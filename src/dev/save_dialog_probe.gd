@@ -113,8 +113,8 @@ func _run() -> void:
 ## engine shuts down corrupts the heap on 4.7.2 (malloc_consolidate, core
 ## dumped, after every check had passed), so the system's own go back first.
 func _quit(code: int) -> void:
-	SaveTo.open_with = Callable(OS, "shell_open")
-	SaveTo.show_with = Callable(OS, "shell_show_in_file_manager")
+	SaveTo.open_with = Callable(Outside, "open_link")
+	SaveTo.show_with = Callable(Outside, "show_in_folder")
 	quit(code)
 
 

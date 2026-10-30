@@ -87,6 +87,11 @@ if [ -z "${XDG_DATA_HOME:-}" ] || [ "$XDG_DATA_HOME" = "$HOME/.local/share" ]; t
   export XDG_DATA_HOME
   echo "  (app data for this run: $XDG_DATA_HOME)"
 fi
+# Nor the person's desktop, which this shell may carry: a run here opens no
+# link and no folder (Outside, in the app), and no window falls back to
+# their Wayland screen when its X11 will not open.
+export BRICKWORKS_OPEN_NOTHING=1
+unset WAYLAND_DISPLAY
 
 # In this machine's queue for heavy jobs, where it has one. Several
 # projects share the box, and the windowed probes starve above a load of
@@ -250,14 +255,15 @@ echo "── on screen ──"
 # Godot quietly fell back to lavapipe there and drew on the CPU.
 # MESA_VK_WSI_DEBUG=sw has Mesa copy each frame to Xvfb itself, and the
 # real GPU draws: a 10-frame scene took 0.33 s of CPU against 8.6 s.
+#
+# Xvfb whenever there is one, then, and a desktop's display only where there
+# is not: an agent's shell carries the owner's DISPLAY, and a window there
+# is on their screen.
 screen=()
-if ! timeout 5 xdpyinfo >/dev/null 2>&1; then
-  if command -v xvfb-run >/dev/null 2>&1; then
-    screen=(env MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24")
-    echo "        no display, so these run on Xvfb"
-  else
-    echo "        no display and no xvfb-run — these will fail"
-  fi
+if command -v xvfb-run >/dev/null 2>&1; then
+  screen=(env MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24")
+elif ! timeout 5 xdpyinfo >/dev/null 2>&1; then
+  echo "        no display and no xvfb-run — these will fail"
 fi
 # And on the GPU, under the box's lease. The godot wrapper draws in
 # software unless the run holds it, so once the lease came in every window

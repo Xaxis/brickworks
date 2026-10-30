@@ -47,6 +47,10 @@ var _roll: SpinBox
 var _hinge: SpinBox
 var _hinge_name: Label
 var _hinged: float = 0.0
+## Two parts selected: Meet swings the hinges between them so they meet
+## (HingeAlign), in the joint row beside Hinge.
+var _meet: Button
+var _meet_name: Label
 var _facts: Label
 var _actions: HBoxContainer
 ## What the model stands on, shown with nothing selected.
@@ -143,7 +147,7 @@ func _ready() -> void:
 	_credit_link = Look.link("Its page", 12)
 	_credit_link.pressed.connect(func() -> void:
 		if not _credit_page.is_empty():
-			OS.shell_open(_credit_page))
+			Outside.open_link(_credit_page))
 	_credit.add_child(_credit_link)
 
 	_scroll = ScrollContainer.new()
@@ -206,6 +210,18 @@ func _ready() -> void:
 	_hinge_name = _place.get_child(_place.get_child_count() - 2)
 	_hinge.value_changed.connect(func(_value: float) -> void: _swung())
 	_show_hinge(null)
+	_meet_name = Label.new()
+	_meet_name.text = "Hinges"
+	_meet_name.add_theme_font_size_override("font_size", 12)
+	_meet_name.modulate = Color(1, 1, 1, 0.7)
+	_meet_name.mouse_filter = Control.MOUSE_FILTER_PASS
+	_place.add_child(_meet_name)
+	_meet = _button("Meet", "Swing the hinges, clips and turntables between the two selected "
+		+ "parts so they meet: a ring closes, a wing meets its strut. One step to undo",
+		_met)
+	_meet.accessibility_name = "Meet"
+	_place.add_child(_meet)
+	_show_meet(false)
 
 	_facts = _text(12, 0.78)
 
@@ -260,6 +276,12 @@ func _number(words: String, says: String) -> SpinBox:
 
 
 func _action(words: String, says: String, does: Callable) -> Button:
+	var button: Button = _button(words, says, does)
+	_actions.add_child(button)
+	return button
+
+
+func _button(words: String, says: String, does: Callable) -> Button:
 	var button := Button.new()
 	button.text = words
 	button.tooltip_text = says
@@ -279,7 +301,6 @@ func _action(words: String, says: String, does: Callable) -> Button:
 		face.content_margin_bottom = 2
 		button.add_theme_stylebox_override(state, face)
 	button.pressed.connect(does)
-	_actions.add_child(button)
 	return button
 
 
@@ -439,6 +460,7 @@ func _show_nothing() -> void:
 	_ids.text = ""
 	for control: Control in [_title, _ids, _colour_row, _place, _facts, _actions, _versions_button]:
 		control.visible = false
+	_show_meet(false)
 
 
 ## How many joined parts the properties count before saying "or more".
@@ -468,6 +490,7 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 	_set_place(brick.transform.origin, _yaw_of(brick.transform.basis),
 		_tilt_of(brick.transform.basis))
 	_show_hinge(shell.builder.hinge_angle())
+	_show_meet(false)
 	# Counted up to a point: on a big model all of it is joined to all of it.
 	var joined: int = SelectBy.connected(shell.world, shell.builder.lattice,
 		[brick.id], shell.store.scenery, JOINED_MOST + 1).size() - 1
@@ -525,6 +548,7 @@ func _show_many(bricks: Array[BrickWorld.Brick]) -> void:
 	# nearest, so typing a number moves the whole group by the difference.
 	_set_place(Vector3(box.position.x, box.position.y, box.position.z), 0.0)
 	_show_hinge(shell.builder.hinge_angle())
+	_show_meet(bricks.size() == 2)
 	_yaw.editable = true
 	var facts := PackedStringArray()
 	facts.append("%s × %s studs, %s tall" % [_studs(box.size.x), _studs(box.size.z),
@@ -583,6 +607,7 @@ func _show_assembly(path: String, count: int) -> void:
 		lines.append("In %s" % Assemblies.label(Assemblies.parent_of(path)))
 	_ids.text = "\n".join(lines) + "\n" + _ids.text
 	_hide_button.disabled = copies == 0
+	_show_meet(false)
 
 
 func _show_colours(codes: Array[int]) -> void:
@@ -670,6 +695,39 @@ func _show_hinge(angle: Variant) -> void:
 	_hinge.step = 0.01
 	_hinge.custom_arrow_step = shell.verbs.turn_step if shell != null else 15.0
 	_hinge.set_value_no_signal(snappedf(_hinged, 0.01))
+
+
+## Meet, offered for two parts.
+func _show_meet(shown: bool) -> void:
+	_meet.visible = shown
+	_meet_name.visible = shown
+
+
+## Meet pressed: the joints between the two selected parts swung so they
+## meet, as one step (HingeAlign), or nothing moved and said why. The
+## model's bodies as the grab last read them, when that is still the model.
+func _met() -> void:
+	var ids: Array = shell.builder.selection.keys()
+	if ids.size() != 2:
+		shell.bar.say("select the two parts that should meet")
+		return
+	var align := HingeAlign.new()
+	align.world = shell.world
+	align.builder = shell.builder
+	align.library = shell.library
+	var drag: Variant = shell.app.get("_grab_drag") if shell.app != null else null
+	var bodies: Bodies = (drag as GrabDrag).read_bodies() if drag is GrabDrag else null
+	if bodies == null or bodies.revision != shell.world.revision:
+		bodies = Bodies.read(shell.world, shell.library, shell.builder.lattice,
+			shell.store.scenery if shell.store != null else {}, shell.builder.locked)
+	align.bodies = bodies
+	if align.solve(int(ids[0]), int(ids[1])) and align.commit() > 0:
+		shell.verbs.edited.call()
+		shell.bar.say(align.said)
+	else:
+		shell.bar.say(align.why if not align.why.is_empty() else "they meet where they stand already")
+	_shown = ""
+	_refresh(true)
 
 
 ## An angle typed in Hinge: the selection swung about its joint by the
@@ -817,6 +875,8 @@ func controls_by_name() -> Dictionary:
 		out["prop_roll"] = _roll
 		if _hinge.visible:
 			out["prop_hinge"] = _hinge
+		if _meet.visible:
+			out["prop_meet"] = _meet
 	return out
 
 

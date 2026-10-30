@@ -301,9 +301,10 @@ comparison with 87087 and 30414), a Technic hole with no bore
   a file carried came back empty and "has no faces". Arrays now; the round
   trip in `element_probe` is what caught it. Same trap as geometry.md's.
 - **This machine's display is live.** `DISPLAY=:0` and `WAYLAND_DISPLAY` are
-  set, so `tools/check.sh`'s "no display, use Xvfb" test passes and windowed
-  probes would open on the owner's screen. Unset both (as above) before
-  running anything windowed, including the suite.
+  set, and Godot falls back to Wayland, the owner's screen, when X11 will
+  not open. Unset both (as above) before running anything windowed by hand;
+  `tools/check.sh` and `tools/probe.sh` use Xvfb with `WAYLAND_DISPLAY`
+  unset themselves (noopen, 2026-10-29).
 - **The web build works, and is only proven from a local export.** Nothing in
   making or placing a part needs Python, the network or the desktop:
   primitives ship in the pck (`assets/ldraw/*` is in every export preset's

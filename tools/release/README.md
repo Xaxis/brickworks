@@ -17,7 +17,7 @@ Or all of that in one command, queued behind the release before it:
 ```sh
 tools/release/train.sh stage rel-m219 stage219 --after rel-m218 \
   --checks "io gallery" --probes "grab_probe" --units "unit1 unit2" --title "…"
-tools/release/train.sh status                  # each release's step, checks, and what is live
+tools/release/train.sh status                  # what is live since when, what is in flight, ETAs
 tools/release/train.sh hold rel-m219 "why"     # train.sh release rel-m219 lifts it
 ```
 
@@ -45,6 +45,17 @@ this by hand for each release from rel-m214 to m218, a promote job beside
 it, and another to retire worktrees afterwards; a held merge left one
 release's tree half-merged (rel-m214), and a retire after a held preview
 took rel-m196's worktree (2026-10-28).
+
+`status` is for the owner as much as the lead. First what brickworks.diy
+serves, which release that is and since when (the end of its deploy), and
+how long a ship takes from begun to served (the median of the last five:
+when `<tag>_lead.out` was made to when `<tag>_prod.log` was last written).
+Then each release in flight, a train or a ship begun by hand: its step,
+its checks passed of all, and when it should serve. A ship under way serves
+about a median ship after it began; one not yet shipping, no sooner than
+the release before it serves and a ship after that. The ETAs need a file
+system that keeps when a file was made (`stat %W`); without one they are
+left out.
 
 And before a unit says ready, from its own worktree:
 

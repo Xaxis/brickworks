@@ -64,17 +64,38 @@ core="$HOME/.claude/claude-core/bin"
 heavy=(); [ -x "$core/heavy" ] && heavy=("$core/heavy")
 gpu=(); [ -x "$core/gpu" ] && gpu=("$core/gpu")
 tail=(); [ $# -gt 0 ] && tail=(-- "$@")
+# This shell's desktop is the owner's, and nothing a probe does opens on it.
+# A probe's run opens no link and no folder (Outside, in the app), and
+# BRICKWORKS_OPEN_NOTHING says so to a run of the app's own scene. Should
+# anything get round that, the programs a desktop opens links and folders
+# with are stubs here, first on PATH, that write down what they were asked,
+# open nothing, and fail the run. A probe that pressed Documentation opened
+# a browser on the owner's screen for seven minutes (2026-10-29). And no
+# WAYLAND_DISPLAY: Godot falls back to Wayland when X11 will not open, and
+# this shell's Wayland is the owner's screen.
+stubs=STUBS
+if [ -z "${PROBE_DRY:-}" ]; then
+  stubs=$(mktemp -d "${TMPDIR:-/tmp}/probe-stubs.$name.XXXXXX")
+  trap 'rm -rf "$stubs"' EXIT
+fi
+asked="$stubs/asked"
+for opener in xdg-open gio gvfs-open kde-open kde-open5 exo-open gnome-open; do
+  [ -n "${PROBE_DRY:-}" ] && break
+  printf '#!/bin/sh\necho "%s $*" >>"%s"\n' "$opener" "$asked" >"$stubs/$opener"
+  chmod +x "$stubs/$opener"
+done
+held=(env -u WAYLAND_DISPLAY PATH="$stubs:$PATH" BRICKWORKS_OPEN_NOTHING=1)
 
 case " $block " in
   *" --headless "*)
     how="headless"
-    cmd=("${heavy[@]}" env XDG_DATA_HOME="$data"
+    cmd=("${heavy[@]}" "${held[@]}" XDG_DATA_HOME="$data"
       godot --headless --path . --script "$file" "${tail[@]}") ;;
   *)
     size=$(grep -oE -- '--resolution [0-9]+x[0-9]+' <<<"$block" | head -1 | cut -d' ' -f2)
     size=${PROBE_SIZE:-${size:-1400x900}}
     how="in a ${size} window on the GPU"
-    cmd=("${heavy[@]}" "${gpu[@]}" env XDG_DATA_HOME="$data" MESA_VK_WSI_DEBUG=sw
+    cmd=("${heavy[@]}" "${gpu[@]}" "${held[@]}" XDG_DATA_HOME="$data" MESA_VK_WSI_DEBUG=sw
       xvfb-run -a --server-args="-screen 0 ${size}x24"
       godot --path . --resolution "$size" --script "$file" "${tail[@]}") ;;
 esac
@@ -98,6 +119,11 @@ if [ "$code" = 0 ] && grep -qE '^[a-z_ ]+probe: SKIPPED' "$out"; then
   code=3
 fi
 rm -f "$out"
+if [ -s "$asked" ]; then
+  echo "probe.sh: $name went round Outside to the desktop's opener, which would have opened these on the owner's screen, so it failed:"
+  sed 's/^/  /' "$asked"
+  [ "$code" = 0 ] && code=1
+fi
 # A folder made here goes when the probe passed, and stays to be read when
 # it failed. One named by PROBE_DATA is the caller's.
 if [ -n "$made" ]; then

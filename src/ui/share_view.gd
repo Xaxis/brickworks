@@ -211,7 +211,7 @@ func _build_bar() -> void:
 
 	var home := Look.link("Brickworks", 13)
 	home.tooltip_text = "Brickworks: design LEGO® models in your browser"
-	home.pressed.connect(func() -> void: OS.shell_open(Deployment.api_base() + "/"))
+	home.pressed.connect(func() -> void: Outside.open_link(Deployment.api_base() + "/"))
 	home.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(home)
 
@@ -268,7 +268,7 @@ func _build_bar() -> void:
 		var click: InputEventMouseButton = event as InputEventMouseButton
 		if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT \
 				and not str(remixed_from.get("url", "")).is_empty():
-			OS.shell_open(str(remixed_from["url"])))
+			Outside.open_link(str(remixed_from["url"])))
 	words.add_child(_about)
 	# Which version, and what changed in it; on an older one, the way to
 	# the newest.
@@ -841,7 +841,7 @@ func gone(title: String, words: String) -> void:
 	comments.show_answer({})
 	_fit_big()
 	_say(title, words, "Go to Brickworks",
-		func() -> void: OS.shell_open(Deployment.api_base() + "/"))
+		func() -> void: Outside.open_link(Deployment.api_base() + "/"))
 
 
 func failed(words: String, again: Callable) -> void:

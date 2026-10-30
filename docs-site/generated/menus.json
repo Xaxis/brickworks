@@ -1,4 +1,45 @@
 {
+	"app_menu": [
+		{
+			"name": "about",
+			"words": "About Brickworks",
+			"key": "",
+			"tip": ""
+		},
+		{
+			"line": true
+		},
+		{
+			"name": "website",
+			"words": "Brickworks website",
+			"key": "",
+			"tip": ""
+		},
+		{
+			"name": "docs",
+			"words": "Documentation",
+			"key": "",
+			"tip": "How everything in Brickworks works, on brickworks.diy"
+		},
+		{
+			"line": true
+		},
+		{
+			"name": "account",
+			"words": "Account…",
+			"key": "",
+			"tip": "Who is signed in, and Sign out"
+		},
+		{
+			"line": true
+		},
+		{
+			"name": "back_to_site",
+			"words": "Back to brickworks.diy",
+			"key": "",
+			"tip": "Leave the app for the website's home page, in this tab"
+		}
+	],
 	"menus": [
 		{
 			"title": "File",
@@ -1288,6 +1329,21 @@
 					"words": "Brickworks website",
 					"key": "",
 					"tip": ""
+				},
+				{
+					"name": "beta_hub",
+					"words": "Beta hub",
+					"key": "",
+					"tip": "For beta testers: what to try, what we know is wrong, and how to tell us"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "feedback",
+					"words": "Send feedback…",
+					"key": "",
+					"tip": "Something wrong, an idea or a question, to the people who make Brickworks"
 				},
 				{
 					"name": "about",

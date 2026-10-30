@@ -18,7 +18,8 @@
 // (a[data-account]) until you are, and then your avatar, carrying how many
 // new things there are for you, which opens the account menu: who you
 // are, Your profile, Notifications and Your feed (each with what is new in
-// it), Saved, Settings, the theme and Sign out. On a phone the header has
+// it), Saved, Settings, Send feedback (and for a beta tester the beta
+// hub), the theme and Sign out. On a phone the header has
 // no room for a fifth thing, so Menu becomes your avatar and holds the
 // same. Which of the two it is is known in this browser at once
 // (account.js keeps the session), and who you are and the counts from the
@@ -27,6 +28,7 @@
 //
 // Everything is put on the page as text.
 import { askToSignIn, call, email, madeUp, signOut, signedIn } from "/account.js";
+import { earlyOn } from "/early.js";
 import { avatarHtml } from "/kit.js";
 
 // A follow sent and not yet answered, kept for this tab until it is
@@ -279,6 +281,24 @@ function accountPart(state) {
     if (location.pathname === href) link.setAttribute("aria-current", "page");
     places.append(link);
   }
+  // Send feedback (web/feedback.js, opened below), and for a beta tester
+  // the beta hub (an early feature: web/early.js), added once the server
+  // has said.
+  const feedback = document.createElement("a");
+  feedback.href = "/feedback";
+  feedback.dataset.feedback = "";
+  feedback.dataset.place = "feedback";
+  feedback.append("Send feedback");
+  places.append(feedback);
+  earlyOn("beta_hub").then((on) => {
+    if (!on || places.querySelector('[data-place="beta-hub"]')) return;
+    const hub = document.createElement("a");
+    hub.href = "/beta-hub";
+    hub.dataset.place = "beta-hub";
+    hub.append("Beta hub");
+    if (location.pathname === "/beta-hub") hub.setAttribute("aria-current", "page");
+    feedback.before(hub);
+  }).catch(() => null);
   part.append(whoIs, places);
   return part;
 }
@@ -427,4 +447,18 @@ document.addEventListener("pager:drawn", (event) => {
 // /feed and /notifications ask once they have opened (web/feed.js,
 // web/notifications.js), so their own count is cleared first.
 showFeedCount({ ask: !["/feed", "/notifications"].includes(location.pathname) }).catch(() => null);
+
+// Send feedback (web/feedback.js): the footer's link, the account menu's
+// and /feedback's buttons, each a[data-feedback] or button[data-feedback]
+// ("bug", "idea" or "question" chooses it first). Loaded when pressed, not
+// before; a click meant for a new tab still opens /feedback there.
+document.addEventListener("click", (event) => {
+  const asked = event.target instanceof Element ? event.target.closest("[data-feedback]") : null;
+  if (!asked || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey
+    || event.altKey) return;
+  event.preventDefault();
+  asked.closest("details")?.removeAttribute("open");
+  import("/feedback.js").then(({ openFeedback }) => openFeedback({ kind: asked.dataset.feedback || "" }))
+    .catch(() => { location.href = "/feedback"; });
+});
 addEventListener("brickworks:signed-in", () => showFeedCount().catch(() => null));

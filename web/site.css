@@ -425,7 +425,9 @@ button.link:hover, a.link:hover { color: var(--ink); background: none; }
    Light, Dark: web/theme.js) in the footer, on Menu and in Settings.
    As tall as a field, with its buttons inside. */
 .segmented {
-	display: inline-flex; gap: 2px; padding: 3px; margin: 0;
+	/* A long one (/admin's six "where it stands") wraps inside its frame
+	   rather than push a phone's page sideways. */
+	display: inline-flex; flex-wrap: wrap; max-width: 100%; gap: 2px; padding: 3px; margin: 0;
 	border: 1px solid var(--line); border-radius: var(--r-2); background: var(--bg-soft);
 }
 .segmented button {
@@ -519,6 +521,17 @@ dialog .consent { margin-top: 10px; }
 dialog .consent .note { margin: 0 0 0 28px; }
 /* The age question's month and year, side by side. */
 dialog .when { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; }
+/* Send feedback (feedback.js): wider, its three kinds in a row, and what
+   goes with it under them, the picture shown small with its Remove. */
+dialog.feedback { width: min(520px, calc(100vw - 32px)); }
+dialog.feedback fieldset { min-width: 0; margin: 0 0 14px; padding: 0; border: 0; }
+dialog.feedback legend { padding: 0; margin: 0 0 6px; font-size: var(--t-small); color: var(--ink-soft); }
+dialog.feedback .kinds { display: flex; flex-wrap: wrap; column-gap: var(--s-4); }
+dialog.feedback .attach .actions { margin: 0 0 6px; }
+dialog.feedback figure.attached { display: grid; grid-template-columns: 120px 1fr; gap: 6px 12px; align-items: center; margin: 0 0 8px; }
+dialog.feedback figure.attached canvas { grid-row: span 2; width: 120px; height: auto; border: 1px solid var(--line); border-radius: var(--r-1); }
+dialog.feedback figcaption { font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere; }
+dialog.feedback .tick span { overflow-wrap: anywhere; }
 /* First steps after a first sign-in (first-steps.js): wider, for a row of
    pills and a grid of cards, its steps counted in the eyebrow. */
 dialog.first-steps { width: min(640px, calc(100vw - 32px)); }
@@ -1046,6 +1059,15 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .setting p { margin: 0 0 6px; color: var(--ink-soft); font-size: var(--t-small); max-width: 70ch; }
 .setting .actions .said { margin: 0; }
 @media (width < 600px) { .setting { grid-template-columns: minmax(0, 1fr); } }
+/* Settings, Feedback: each report sent, its marks (what, where it stands,
+   when), its words as written, and our answers under it. */
+.reports { display: grid; gap: var(--s-3); margin: var(--s-3) 0 0; padding: 0; list-style: none; }
+.reports .report { padding: var(--s-3) var(--s-4); border: 1px solid var(--line); border-radius: var(--r-2); background: var(--panel); }
+.reports .marks { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; margin: 0 0 var(--s-2); }
+.reports .marks small { color: var(--ink-faint); font-size: var(--t-tiny); }
+.reports .words { white-space: pre-line; overflow-wrap: anywhere; color: var(--ink); }
+.reports .answer { margin-top: var(--s-3); padding: var(--s-2) var(--s-3); border-left: 3px solid var(--accent-edge); background: var(--panel-hi); border-radius: 0 var(--r-1) var(--r-1) 0; }
+.reports .answer .who { margin: 0 0 4px; font-size: var(--t-tiny); color: var(--ink-faint); }
 .setting.danger summary { color: var(--bad); }
 .cta.danger, .cta.danger:hover { color: var(--bad); border-color: var(--bad); }
 .dot {

@@ -492,9 +492,21 @@ picture the assistant is shown.
   in shots/stress_list/; `-- time FILE RUNS` times Stress coming on, for a
   base checkout too); `src/dev/stress_sets.gd -- FILE.mpd ...` counts red and
   amber on any sets.
-- `controls panel and hint`: the on-screen list of what the keys do, opened with
-  `,`, `F1` or Help, Keys and controls — and every key on it actually doing that. Its last
-  line says which build this is (`BuildInfo.describe()`): "Brickworks 0.1.0,
+- `controls panel and hint`: the keys sheet, opened with `F1` or Help, Keys and
+  controls, and every key on it actually doing that; Settings (`,`, Tools,
+  Settings…) is the same panel's other face (`ControlsDialog.open()` and
+  `open_keys()`), never shown with it (APP_UX A1: the keys were a scroller one
+  row tall over the settings). The sheet is `SHEET_WIDE` (Main insets it again
+  on `face_changed`, at `wide()`), two columns of whole sections as tall as the
+  window; its box (focused as it opens, not on a touchscreen) keeps the rows
+  whose keys, words or section say every word typed, and the letters typed run
+  no tool; Escape in it closes the sheet. Besides the list it adds each key a
+  menu shows that the list does not name (Open, Save as, the steps, the
+  cut-away, F2, Y), in the menu's words, from `Shell.key_text`.
+  `keysheet_probe` (1280 x 720; PROBE_SIZE=1400x900 too) counts the rows wholly
+  in sight (36 of 85 at 1280 x 720, 51 at 1400 x 900; 20 needed), types "hinge" and "undo" with real
+  keys, and checks `,` and Tools, Settings show the settings and no key. Settings'
+  last line says which build this is (`BuildInfo.describe()`): "Brickworks 0.1.0,
   released 2026-10-10 (3f2a9c1)" in a release, ", development build" from
   source, and on the web the version before the deploy's commit and time. The
   desktop window title carries the version too. `--about` prints the same line

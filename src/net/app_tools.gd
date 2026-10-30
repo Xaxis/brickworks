@@ -119,6 +119,9 @@ const WINDOW_ONLY: Dictionary = {
 	"website": "help for the person",
 	"docs": "help for the person",
 	"about": "help for the person",
+	"back_to_site": "leaves the web app for the website in the person's tab, ending the session's connection",
+	"feedback": "a report from the person to the people who make Brickworks, in their own words",
+	"beta_hub": "help for the person",
 }
 
 ## What a session reads about these, served by read_guide("app") — every

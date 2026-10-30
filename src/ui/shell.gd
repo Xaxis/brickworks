@@ -43,6 +43,8 @@ var see_inside: SeeInside
 var stress: StressView
 ## File, Versions…: src/ui/versions_dialog.gd.
 var versions: VersionsDialog
+## Help, Send feedback… (FeedbackDialog).
+var feedback: FeedbackDialog
 
 ## name -> Command
 var _commands: Dictionary = {}
@@ -110,8 +112,17 @@ const MENUS: Array = [
 	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
 		"mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "measure",
 		"stability", "simulate", "hidden_colours", "reseat", "-", "connector", "settings"]],
-	["Help", ["keys", "tour", "-", "docs", "website", "about"]],
+	["Help", ["keys", "tour", "-", "docs", "website", "beta_hub", "-", "feedback", "about"]],
 ]
+
+## The app's own menu, opened from the mark at the far left of the menu
+## bar (ModelBar.mark), as Blender's logo and Figma's main menu open
+## theirs: the app, its website and docs, your account, and in a browser
+## the way back to the site.
+const APP_MENU: Array = ["about", "-", "website", "docs", "-", "account", "-", "back_to_site"]
+
+## Commands for a browser alone, in no menu elsewhere.
+const WEB_ONLY: Array[String] = ["back_to_site"]
 
 ## Submenu rows are numbered from here, clear of the commands.
 const SUBMENU_ID := 10000
@@ -122,6 +133,15 @@ const ASSISTANT_COMMANDS: Array[String] = ["ask_claude", "brace", "panel_assista
 
 ## Whether the assistant is in the window: [method set_assistant].
 var assistant_shown: bool = true
+
+## Early features' commands, each by the key that turns it on (api/_early.js
+## EARLY): in no menu, and never run, unless the account may use it, a beta
+## tester's ([method set_early]).
+const EARLY_COMMANDS: Dictionary = {"beta_hub": "beta_hub"}
+
+## The early features this account may use, as the deployment said
+## (Account.early).
+var early: Array[String] = []
 
 const SUBMENUS: Dictionary = {
 	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
@@ -212,6 +232,14 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 		_menus.append(_menu(str(menu[0]), menu[1]))
 	for button: MenuButton in _menus:
 		bar.menus.add_child(button)
+	var app_menu: PopupMenu = bar.mark.get_popup()
+	_fill(app_menu, APP_MENU)
+	app_menu.id_pressed.connect(_on_id)
+	app_menu.about_to_popup.connect(func() -> void: _refresh(app_menu))
+	var holds: String = "About, the website, the docs and your account" + (
+		", and back to brickworks.diy" if OS.has_feature("web") else "")
+	bar.mark.tooltip_text = "Brickworks\n" + holds
+	bar.mark.accessibility_description = holds
 
 	toolbar = Toolbar.new()
 	toolbar.shell = self
@@ -313,6 +341,12 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	versions.store = store
 	versions.bar = bar
 	add_child(versions)
+
+	feedback = FeedbackDialog.new()
+	feedback.store = store
+	feedback.world = world
+	feedback.library = library
+	add_child(feedback)
 
 	_about = AcceptDialog.new()
 	_about.title = "About Brickworks"
@@ -477,7 +511,7 @@ func doing(name: String) -> String:
 ## never put off a frame to say so first. (The clipboard is not among
 ## them: in a browser the app keeps its own, EditVerbs.copy.)
 const IN_THE_PRESS: Array[String] = ["open", "import_ldraw", "import_io", "import_lxf",
-	"import_mesh", "mosaic", "brickify", "full_screen", "docs", "website", "quit", "new_window"]
+	"import_mesh", "mosaic", "brickify", "full_screen", "docs", "website", "beta_hub", "quit", "new_window"]
 
 ## The commands that open a tab of their own in a browser (BookletMaker):
 ## run at once there, as those above are.
@@ -616,6 +650,8 @@ func can(name: String) -> bool:
 		return false
 	if not assistant_shown and name in ASSISTANT_COMMANDS:
 		return false
+	if EARLY_COMMANDS.has(name) and not str(EARLY_COMMANDS[name]) in early:
+		return false
 	return not found.can.is_valid() or bool(found.can.call())
 
 
@@ -630,14 +666,14 @@ var read_only: bool = false
 const LOOKING: Array[String] = ["view_default", "view_front", "view_back",
 	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
 	"fit_model", "ortho", "full_screen", "timeline", "parts_list", "instructions",
-	"docs", "website", "about"]
+	"docs", "website", "beta_hub", "feedback", "about", "back_to_site"]
 
 
 ## What may be done while a model is being laid (ModelStore.laying): look
 ## at what is down from another side, and nothing that reads the model.
 const WHILE_LAYING: Array[String] = ["view_default", "view_front", "view_back",
 	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
-	"ortho", "full_screen", "docs", "website", "about"]
+	"ortho", "full_screen", "docs", "website", "beta_hub", "feedback", "about", "back_to_site"]
 
 
 ## -1 for a command that is not a setting; 0 off, 1 on.
@@ -1110,7 +1146,7 @@ func _define() -> void:
 	_add("settings", "Settings…", KEY_COMMA, func() -> void: bar.controls_wanted.emit(),
 		Callable(), "Which way the wheel zooms, and what the middle button does")
 	# Help
-	_add("keys", "Keys and controls", KEY_F1, func() -> void: bar.controls_wanted.emit(),
+	_add("keys", "Keys and controls", KEY_F1, func() -> void: (app.get("_controls") as ControlsDialog).open_keys(),
 		Callable(),
 		"What every button and key does")
 	_add("tour", "Take the tour", 0, func() -> void: tour.start())
@@ -1118,11 +1154,24 @@ func _define() -> void:
 	# out (docs-site/, tools/docs_site.py). The owner asked for it, 2026-10-29.
 	# It opens at the page of the panel in front, where one is (docs_page).
 	_add("docs", "Documentation", 0,
-		func() -> void: OS.shell_open(DocsPages.SITE + docs_page()), Callable(),
+		func() -> void: Outside.open_link(DocsPages.SITE + docs_page()), Callable(),
 		"How everything in Brickworks works, on brickworks.diy")
 	_add("website", "Brickworks website", 0,
-		func() -> void: OS.shell_open("https://brickworks.diy"))
+		func() -> void: Outside.open_link("https://brickworks.diy"))
+	_add("beta_hub", "Beta hub", 0,
+		func() -> void: Outside.open_link(DocsPages.SITE + "/beta-hub"), Callable(),
+		"For beta testers: what to try, what we know is wrong, and how to tell us")
+	_add("feedback", "Send feedback…", 0, _show_feedback, Callable(),
+		"Something wrong, an idea or a question, to the people who make Brickworks")
 	_add("about", "About Brickworks", 0, _show_about)
+	# The web app had no way back to the site but the browser's own Back
+	# (brand373). This tab, the site's own address: a preview's on a preview.
+	# A model not yet written to the browser's storage holds the page
+	# (src/boot/shell.html, beforeunload).
+	_add("back_to_site", "Back to brickworks.diy", 0,
+		func() -> void: JavaScriptBridge.eval("location.assign('/')", true),
+		func() -> bool: return OS.has_feature("web"),
+		"Leave the app for the website's home page, in this tab")
 
 
 ## What a right click on a part offers: the verbs a person reaches for,
@@ -1241,8 +1290,12 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 			if found == null:
 				push_error("no command %s" % item)
 				continue
-			var id: int = _ids.size()
-			_ids.append(item)
+			# One id a command, in every menu it is in, for good: menus made
+			# again (set_assistant) keep the ids those made once hold.
+			var id: int = _ids.find(item)
+			if id < 0:
+				id = _ids.size()
+				_ids.append(item)
 			var shown: int = menu_accel(found.accel)
 			# A key the menu can neither name nor draw goes in the words.
 			var words: String = found.words
@@ -1264,6 +1317,10 @@ func _shown(items: Array) -> Array:
 	var out: Array = []
 	for item: String in items:
 		if not assistant_shown and item in ASSISTANT_COMMANDS:
+			continue
+		if item in WEB_ONLY and not OS.has_feature("web"):
+			continue
+		if EARLY_COMMANDS.has(item) and not str(EARLY_COMMANDS[item]) in early:
 			continue
 		if item == "-" and (out.is_empty() or out.back() == "-"):
 			continue
@@ -1298,11 +1355,23 @@ func name_designer(who: String) -> void:
 	_fill_again()
 
 
+## The account's early features (Account.early): the menus made again with
+## the commands of those it may use, and without the others'.
+func set_early(keys: Array[String]) -> void:
+	if keys == early:
+		return
+	early = keys.duplicate()
+	_fill_again()
+
+
 ## The menus and the menu on a part made again from the commands.
 func _fill_again() -> void:
 	if _menus.is_empty():
 		return
-	_ids.clear()
+	# The ids stay: the toolbar's Select by and the app's menu, made once,
+	# hold them. Cleared, a command's id went to another command: started
+	# with the assistant off and then turned on, Select by colour on the
+	# toolbar ran Help's Documentation and the rest of it nothing (brand373).
 	for n: int in _menus.size():
 		var popup: PopupMenu = _menus[n].get_popup()
 		popup.clear(true)
@@ -1575,6 +1644,17 @@ func docs_page() -> String:
 	return found
 
 
+## Help, Send feedback…: the window pictured as it is, once the menu has
+## gone from it and before the dialog covers it, offered with the report.
+func _show_feedback() -> void:
+	for _n: int in 2:
+		await get_tree().process_frame
+	var window: Image = get_viewport().get_texture().get_image()
+	feedback.account = app.get("_account")
+	feedback.recent = app.get("_log")
+	feedback.open(window)
+
+
 func _show_about() -> void:
 	_about_text.text = ("Brickworks %s\n\nA complete CAD for LEGO® models, built by hand"
 		+ (" or with the assistant" if assistant_shown else "")
@@ -1643,7 +1723,7 @@ func _credits() -> VBoxContainer:
 			var address: String = link[1]
 			var away: LinkButton = Look.link(str(link[0]))
 			away.tooltip_text = address
-			away.pressed.connect(func() -> void: OS.shell_open(address))
+			away.pressed.connect(func() -> void: Outside.open_link(address))
 			top.add_child(away)
 		entry.add_child(top)
 		var words := Label.new()
@@ -2427,6 +2507,8 @@ func controls_by_name() -> Dictionary:
 		out["save_as_name"] = _save_as_name
 		out["save_as_ok"] = _save_as.get_ok_button()
 		out["save_as_cancel"] = _save_as.get_cancel_button()
+	if feedback != null:
+		out.merge(feedback.controls_by_name())
 	# About's links to the licences in full, and the licence open.
 	if _about != null and _about.visible:
 		out["about_ok"] = _about.get_ok_button()

@@ -152,6 +152,8 @@ var _comment_account: Account
 var _comments_waking: bool = false
 var comment_token_for_probe: String = ""
 var _share_panel: SharePanel
+## The app's last log lines (RecentLog), for Help, Send feedback….
+var _log: RecentLog
 var _share_view: ShareView
 ## Build it, in the viewer: the step player, the pages it shows, the line
 ## round each page's new parts, and the page it is on (_enter_build).
@@ -681,6 +683,9 @@ func _tell_page() -> void:
 		# What the last open cost, phase by phase, in ms (ModelStore.open_phases):
 		# tools/web/library_flow.mjs says it.
 		"open_phases": _store.open_phases,
+		# The rows of the app's menu while it is open (ModelBar.mark), for
+		# tools/web/app_menu_flow.mjs: [] while it is shut.
+		"app_menu": _open_rows(_bar.mark.get_popup()) if _bar != null and _bar.mark != null else [],
 		# Who made the model and on what terms, when it is someone else's
 		# (ModelStore.credit): tools/web/library_flow.mjs reads it.
 		"credit": _store.credit,
@@ -801,6 +806,9 @@ func _tell_page() -> void:
 		# offer of it (tools/web/cloud_library_flow.mjs).
 		"saved_models": _saved_models.page_state() if _saved_models != null else {},
 		"room_offer": _full_offer.words() if _full_offer != null else "",
+		# Help, Send feedback…: what is chosen, ticked and said
+		# (FeedbackDialog, tools/web/feedback_flow.mjs).
+		"feedback": _shell.feedback.page_state() if _shell != null and _shell.feedback != null else {},
 		# What came into the feed since it was last opened: the count on
 		# Account and what its panel says (tools/web/follows_flow.mjs).
 		"feed": {"count": _account_panel.feed_count if _account_panel != null else 0,
@@ -882,6 +890,8 @@ func _tell_page() -> void:
 			# and the answer as the deployment keeps it.
 			"age_ask": _account.age_ask,
 			"over_13": _account.over_13,
+			# The beta's early features this account has (Account.early_on).
+			"early": _account.early,
 		}), true)
 	# And where Claude stands: listening here, which of its apps are
 	# connected to the account, and the panel's line about it — what a
@@ -1117,6 +1127,8 @@ func words_shown() -> PackedStringArray:
 			if button != null:
 				_rows_in(button.get_popup(), out)
 		_rows_in(_shell.context, out)
+	if _bar != null and _bar.mark != null:
+		_rows_in(_bar.mark.get_popup(), out)
 	return out
 
 
@@ -1134,6 +1146,15 @@ func _words_in(node: Node, out: PackedStringArray) -> void:
 		out.append((node as AcceptDialog).dialog_text)
 	for child: Node in node.get_children():
 		_words_in(child, out)
+
+
+## A menu's rows as it shows them, a line as "-", while it is open.
+func _open_rows(popup: PopupMenu) -> Array:
+	var out: Array = []
+	if popup.visible:
+		for index: int in popup.item_count:
+			out.append("-" if popup.is_item_separator(index) else popup.get_item_text(index))
+	return out
 
 
 func _rows_in(popup: PopupMenu, out: PackedStringArray) -> void:
@@ -1411,6 +1432,9 @@ func _ready() -> void:
 		return
 	if not OS.has_feature("web"):
 		get_window().title = "Brickworks %s" % BuildInfo.version()
+	# The last log lines, for Help, Send feedback… to offer (RecentLog).
+	_log = RecentLog.new()
+	OS.add_logger(_log)
 	_boot_mark("ready")
 	# Before any window or button is made, so every dialog, menu and button
 	# is made in the app's look, the engine's own among them (Look.dialogs,
@@ -2337,6 +2361,9 @@ func _gated() -> bool:
 func _on_account_changed() -> void:
 	if _bar != null:
 		_bar.show_account(_account.email if _account.signed_in() else "")
+	# A beta tester's early features in the menus (Account.early_on).
+	if _shell != null:
+		_shell.set_early(_account.early if _account.signed_in() else ([] as Array[String]))
 	# A viewer is nobody's session: no connector, ever.
 	if _connector == null or not _viewing.is_empty():
 		return
@@ -2452,7 +2479,7 @@ func _enter_view() -> void:
 		view.opened.connect(_comments_opened)
 		view.send_wanted.connect(_send_comment.bind(view))
 		view.page_wanted.connect(func() -> void:
-			OS.shell_open(SharedModels.link_for(_viewing) + "#comments"))
+			Outside.open_link(SharedModels.link_for(_viewing) + "#comments"))
 	# The viewer's count is for the step the timeline is on.
 	_steps.reveal_upto.connect(func(_order: PackedInt64Array, _count: int, _key: int) -> void:
 		_share_view.comments.set_step(_timeline_page()))
@@ -2845,7 +2872,7 @@ func _open_newest() -> void:
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("location.assign(%s)" % JSON.stringify(address), true)
 	else:
-		OS.shell_open(SharedModels.link_for(_viewing))
+		Outside.open_link(SharedModels.link_for(_viewing))
 
 
 ## Open in Brickworks, from the viewer: the app as everybody else gets
@@ -2857,7 +2884,7 @@ func _open_copy() -> void:
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("location.assign(%s)" % JSON.stringify(address), true)
 	else:
-		OS.shell_open(Deployment.api_base() + address)
+		Outside.open_link(Deployment.api_base() + address)
 
 
 ## Build it: the viewer as a step player, full screen, at [param page] —
@@ -4760,7 +4787,7 @@ func _build_ui() -> void:
 	_inset(_inventory, 860.0, 600.0)
 	get_viewport().size_changed.connect(func() -> void:
 		_inset(_inventory, 860.0, 600.0)
-		_inset(_controls, ControlsDialog.WIDE, ControlsDialog.TALL)
+		_inset(_controls, _controls.wide(), _controls.tall())
 		_inset(_mosaic, MOSAIC_WIDE, MOSAIC_TALL)
 		_inset(_brickify, 400.0, 690.0)
 		_inset(_figures, 1040.0, 660.0)
@@ -4781,7 +4808,10 @@ func _build_ui() -> void:
 
 	_controls = ControlsDialog.new()
 	$HUD.add_child(_controls)
-	_inset(_controls, ControlsDialog.WIDE, ControlsDialog.TALL)
+	_inset(_controls, _controls.wide(), _controls.tall())
+	# The keys sheet is wider and taller than Settings.
+	_controls.face_changed.connect(func() -> void:
+		_inset(_controls, _controls.wide(), _controls.tall()))
 	_bar.controls_wanted.connect(_controls.open)
 	_controls.assistant_chosen.connect(set_assistant)
 	_controls.ai_changed.connect(_chat.refresh_designer)
@@ -5001,6 +5031,8 @@ func _build_ui() -> void:
 	if _phone != null:
 		_phone.shell = _shell
 		_dress_for_phone()
+	# The keys sheet lists the keys the menus show.
+	_controls.shell = _shell
 	# View, Stress: weighed with the status bar's check, at once when it is
 	# turned on, and the part under the pointer said.
 	_shell.stress.hovered = func() -> int: return _hovered
@@ -7169,6 +7201,8 @@ func _watch_other_tabs() -> void:
 ## written first: the autosave waits for a change to settle, and an edit
 ## made just before closing the app was lost.
 func _exit_tree() -> void:
+	if _log != null:
+		OS.remove_logger(_log)
 	if _store != null:
 		_store.write_now()
 	TabSession.release()

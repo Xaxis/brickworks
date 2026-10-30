@@ -83,6 +83,7 @@ for hold in "$S/HOLD" "$S/$TAG.hold"; do
 done
 git -C "$R" merge -q --ff-only "$SHA" || { echo "SHIP: could not fast-forward main"; echo 1 > "$S/$TAG.done"; exit 1; }
 echo "SHIP: main is $SHA"
+echo "deploy: brickworks.diy serves $SHA" > "$S/${TAG}_prod.log"
 echo "<script src=\\"/b/$SHA/index.js\\"></script>" > "$STUB_LIVE"
 echo "SHIP: deploy: brickworks.diy serves $SHA"
 echo 0 > "$S/$TAG.done"
@@ -179,12 +180,26 @@ class Yard:
     def logs(self) -> str:
         return "\n".join(p.read_text() for p in sorted(self.ro.glob("*_train.out")))
 
+    def shipping(self, tag: str) -> None:
+        """TAG's ship begun by hand, its preview made."""
+        self.ro.mkdir(parents=True, exist_ok=True)
+        (self.ro / (tag + "_lead.out")).write_text("SHIP: preview https://preview.invalid/%s\n" % tag)
+
+    def shipped_in(self, tag: str, minutes: int) -> None:
+        """A release before, whose ship served MINUTES after it began."""
+        self.serves(tag)
+        prod = self.ro / (tag + "_prod.log")
+        prod.write_text("deploy: brickworks.diy serves 1111111\n")
+        began = os.stat(self.ro / (tag + "_lead.out")).st_mtime
+        os.utime(prod, (began + minutes * 60 - 10, began + minutes * 60 - 10))
+
     def serves(self, tag: str) -> None:
         """TAG's ship said brickworks.diy serves it, as ship.sh says it."""
         self.ro.mkdir(parents=True, exist_ok=True)
-        (self.ro / (tag + "_lead.out")).write_text(
-            "SHIP: preview https://preview.invalid/%s\nSHIP: main is 1111111\n"
-            "SHIP: deploy: brickworks.diy serves 1111111\n" % tag)
+        # In place, as ship.sh's log grows: the file keeps the time it was made.
+        with open(self.ro / (tag + "_lead.out"), "a") as log:
+            log.write("SHIP: preview https://preview.invalid/%s\nSHIP: main is 1111111\n"
+                      "SHIP: deploy: brickworks.diy serves 1111111\n" % tag)
 
     def stop(self) -> None:
         """Ends every train still running, as `kill -- -PID` would."""
@@ -197,10 +212,31 @@ class Yard:
                 pass
 
 
+def _minute(text: str, after: str) -> float:
+    """The HH:MMZ after AFTER in TEXT, as minutes from now (UTC)."""
+    hhmm = text.split(after, 1)[1][:5]
+    now = time.gmtime()
+    return (int(hhmm[:2]) * 60 + int(hhmm[3:]) - now.tm_hour * 60 - now.tm_min) % 1440
+
+
+def _births(where: Path) -> bool:
+    """Whether this file system keeps when a file was made (stat %W), which ETAs need."""
+    probe = where / "born"
+    probe.write_text("")
+    return subprocess.run(["stat", "-c", "%W", str(probe)], capture_output=True,
+                          text=True).stdout.strip() not in ("", "0")
+
+
 def test_a_train_waits_for_the_release_before_it_then_ships_its_spec_as_edited(tmp_path):
     y = Yard(tmp_path)
     gate = tmp_path / "gate"
+    births = _births(tmp_path)
     try:
+        # Two releases before served 30 minutes after their ships began; the
+        # one just before, t-m1, is shipping by hand.
+        y.shipped_in("t-m0", 30)
+        y.shipped_in("t-m00", 30)
+        y.shipping("t-m1")
         staged = y.train("stage", "t-m2", "stage2", "--after", "t-m1", "--checks", "io",
                          "--probes", "first_probe", "--title", "the first title",
                          STUB_GATE=str(gate), STUB_FLAKY="io")
@@ -211,9 +247,18 @@ def test_a_train_waits_for_the_release_before_it_then_ships_its_spec_as_edited(t
         assert "waits for t-m1 to serve" in y.spec("t-m2", "step")
         assert not (y.wt / "t-m2").exists()
         waiting = y.train("status").stdout
+        assert waiting.startswith("live: brickworks.diy serves 0000000\n"), waiting
+        assert "t-m1: shipping, begun by hand at " in waiting, waiting
+        assert "ship: preview https://preview.invalid/t-m1" in waiting, waiting
         assert "t-m2: stage2 after t-m1, running (pid " in waiting, waiting
         assert "waits for t-m1 to serve (until " in waiting, waiting
         assert "live: not yet; brickworks.diy serves 0000000" in waiting, waiting
+        if births:
+            assert "a ship takes about 30 min from begun to served" in waiting, waiting
+            # t-m1 serves 30 minutes from its start, and t-m2 no sooner than a ship after.
+            assert 29 <= _minute(waiting, "eta: serves about ") <= 31, waiting
+            later = waiting.split("t-m2:", 1)[1]
+            assert "at the earliest" in later and 59 <= _minute(later, "eta: serves ") <= 61, waiting
 
         # Edited after staging, as a unit merged into stage2 meanwhile would.
         spec = y.ro / "t-m2.train"
@@ -233,6 +278,8 @@ def test_a_train_waits_for_the_release_before_it_then_ships_its_spec_as_edited(t
         assert "ship: preview https://preview.invalid/t-m2" in shipping, shipping
         assert "checks: 2 of 4 passed; failed: io (passed alone); 1 to run" in shipping, shipping
         assert "live: not yet (%s); brickworks.diy serves 0000000" % sha in shipping, shipping
+        if births:
+            assert 29 <= _minute(shipping, "eta: serves about ") <= 31, shipping
         gate.write_text("go")
 
         y.until(lambda: y.spec("t-m2", "result"))
@@ -255,6 +302,8 @@ def test_a_train_waits_for_the_release_before_it_then_ships_its_spec_as_edited(t
         assert "kept unitC: files git does not track (notes.txt" in log, log
 
         done = y.train("status", "t-m2").stdout
+        assert done.startswith("live: brickworks.diy serves %s, t-m2's, since " % sha), done
+        assert "eta:" not in done, done
         assert "t-m2: stage2 after t-m1, ended" in done, done
         assert "result: live" in done, done
         assert "checks: 3 of 4 passed; failed: io (passed alone)" in done, done

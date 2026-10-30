@@ -298,10 +298,18 @@ const listed = [...sitemap.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1
 if (sitemap.status !== 200 || !listed.length) fail(`sitemap.xml answered ${sitemap.status} with ${listed.length} pages`);
 // Every model in the gallery is in it, the newest among them.
 if (modelId && !listed.some((loc) => loc.endsWith(`/m/${modelId}`))) fail(`sitemap.xml does not list the newest model, /m/${modelId}`);
-for (const loc of listed) {
-  const r = await get(loc.replace(SITE, "") || "/");
-  if (r.status !== 200) fail(`sitemap lists ${loc}, which answers ${r.status}`);
-}
+// Eight at a time. One at a time, the 1,641 pages took 525 ms each with
+// the CDN cold, as a release's new deployment has it, and 145 s in all
+// warm, in a check that took 612-649 s in every release's battery and
+// live run (rel-m215 to m217); eight at a time, 42 ms each cold and 29 s
+// in all warm, and the whole check 185 s on brickworks.diy (2026-10-30).
+const unread = [...listed];
+await Promise.all(Array.from({ length: 8 }, async () => {
+  for (let loc = unread.shift(); loc; loc = unread.shift()) {
+    const r = await get(loc.replace(SITE, "") || "/");
+    if (r.status !== 200) fail(`sitemap lists ${loc}, which answers ${r.status}`);
+  }
+}));
 const robots = await get("/robots.txt");
 if (robots.status !== 200 || !/Disallow: \/admin/.test(robots.body) || !/Sitemap: https:\/\/brickworks\.diy\/sitemap\.xml/.test(robots.body)) {
   fail(`robots.txt answered ${robots.status} without Disallow: /admin and the sitemap`);

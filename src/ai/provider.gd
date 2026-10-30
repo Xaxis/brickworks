@@ -58,9 +58,18 @@ class Reply extends RefCounted:
 
 
 ## The request for one turn: {url, headers (PackedStringArray), body (String)}.
-## [param tools] as MCP's tools/list gives them.
-func request(_system: String, _tools: Array, _turns: Array) -> Dictionary:
+## [param tools] as MCP's tools/list gives them. With [param stream] it asks
+## for the reply as it is written, as server-sent events that [method reader]
+## puts back together (Streamer).
+func request(_system: String, _tools: Array, _turns: Array, _stream: bool = false) -> Dictionary:
 	return {}
+
+
+## What reads one streamed reply back into the body [method read] takes, so
+## a reply that came in pieces is read as one that came whole; null where
+## this API is not streamed.
+func reader() -> Streamer.Events:
+	return null
 
 
 ## Its reply, read. [param code] is the HTTP status, 0 when no answer came.

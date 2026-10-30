@@ -233,6 +233,15 @@ declare -A CMD=(
   # spot 100; deleting the account erases its application. The checks' own
   # pool of spots, never the 100. Throwaway accounts, deleted after.
   [beta]="tools/web/beta_flow.mjs --url=$P --out=$S/${TAG}_beta"
+  # Feedback (beta374): the /feedback page, the footer's and the account
+  # menu's Send feedback, the dialog on the site at 390 and 1280 (a picture
+  # chosen, removed and chosen again) and in the app (Help, Send
+  # feedback…), the edge's refusals, the settings page and the beta hub;
+  # before supabase/feedback.sql each send is answered "not open here yet",
+  # after it each is kept and listed. The inbox is checked only as refused:
+  # its own run is local, with a throwaway owner (the flow's head).
+  # Throwaway accounts, deleted after.
+  [feedback]="tools/web/feedback_flow.mjs --url=$P --out=$S/${TAG}_feedback"
   [tabs]="tools/web/tabs_flow.mjs --url=$P/app --out=$S/${TAG}_tabs"
   # Two chats, two tabs: the relay's rules alone, then the app in two tabs.
   [tabpair_probe]="tools/web/tabpair_probe.mjs --url=$P"
@@ -324,6 +333,10 @@ declare -A CMD=(
   # ran with no host at all (2026-10-19).
   [app_host]="tools/web/app_host_check.mjs --url=$P/app --host=${BW_APP_HOST:-$R/bench/data/ext-apps-host/basic-host} --out=$S/${TAG}_app_host"
   [focus]="tools/web/focus_check.mjs --url=$P/app $B --out=$S/${TAG}_focus"
+  # The app's own menu (brand373): the mark at the menu bar's far left, at
+  # 1280 and a phone's width, in its colours; its rows; About from it; and
+  # Back to brickworks.diy leaving the app for the site's home page.
+  [app_menu]="tools/web/app_menu_flow.mjs --url=$P/app $B --out=$S/${TAG}_app_menu"
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"

@@ -24,6 +24,10 @@
 ##   answer; where it gives none, one is made here (MADE) and not sent.
 ## - Effort is thinkingConfig's thinkingLevel; the most a reply may write is
 ##   maxOutputTokens.
+## - Streamed (streamGenerateContent, alt=sse), a reply is responses of a few
+##   parts each: words in pieces, a call whole in its part, and a signature
+##   in the part it belongs to or one of its own after it (Chunks joins
+##   them back into the parts it would have come as).
 class_name GeminiNative
 extends Provider
 
@@ -35,7 +39,7 @@ const REFUSED: Array[String] = ["additionalProperties", "$schema", "$id", "$ref"
 	"$defs", "default", "examples", "const", "patternProperties"]
 
 
-func request(system: String, tools: Array, turns: Array) -> Dictionary:
+func request(system: String, tools: Array, turns: Array, stream: bool = false) -> Dictionary:
 	var contents: Array = []
 	for turn: Dictionary in turns:
 		var content: Dictionary = _content_of(turn)
@@ -54,8 +58,68 @@ func request(system: String, tools: Array, turns: Array) -> Dictionary:
 		config["thinkingConfig"] = {"thinkingLevel": str(params["reasoning_effort"])}
 	if not config.is_empty():
 		body["generationConfig"] = config
-	return {"url": address("models/%s:generateContent" % model.trim_prefix("models/")),
+	return {"url": address("models/%s:%s" % [model.trim_prefix("models/"),
+			"streamGenerateContent?alt=sse" if stream else "generateContent"]),
 		"headers": headers(), "body": JSON.stringify(body)}
+
+
+func reader() -> Streamer.Events:
+	return Chunks.new()
+
+
+## Gemini's streamed responses joined into the one it would have sent whole:
+## the parts in order, a piece of words joined to the words before it (the
+## same kind, thought or said), a signature that comes on its own given to
+## the part before it, and the rest (finishReason, usageMetadata) as the
+## last response said it.
+class Chunks extends Streamer.Events:
+	var _parts: Array = []
+	var _candidate: Dictionary = {}
+
+	func take(event: Dictionary) -> Dictionary:
+		# An error said part way is no reply: not finished, so it is asked again.
+		if event.has("error"):
+			return {}
+		for word: String in event:
+			if word != "candidates":
+				message[word] = event[word]
+		var candidates: Array = event.get("candidates", []) if event.get("candidates") is Array else []
+		var out: Dictionary = {}
+		if not candidates.is_empty() and candidates[0] is Dictionary:
+			var candidate: Dictionary = candidates[0]
+			for word: String in candidate:
+				if word != "content":
+					_candidate[word] = candidate[word]
+			var content: Dictionary = candidate.get("content", {}) \
+				if candidate.get("content") is Dictionary else {}
+			for raw: Variant in content.get("parts", []) if content.get("parts") is Array else []:
+				if raw is Dictionary:
+					_join(raw, out)
+			if candidate.has("finishReason"):
+				finished = true
+			_candidate["content"] = {"role": str(content.get("role", "model")), "parts": _parts}
+		if not _candidate.is_empty():
+			message["candidates"] = [_candidate]
+		return out
+
+	## One part, joined to the parts so far; what it said put in [param out].
+	func _join(part: Dictionary, out: Dictionary) -> void:
+		var last: Dictionary = _parts.back() if not _parts.is_empty() else {}
+		var words: bool = part.has("text") and not part.has("functionCall")
+		if words and last.has("text") and not last.has("thoughtSignature") \
+				and bool(last.get("thought", false)) == bool(part.get("thought", false)):
+			last["text"] = str(last["text"]) + str(part["text"])
+			if part.has("thoughtSignature"):
+				last["thoughtSignature"] = part["thoughtSignature"]
+		else:
+			_parts.append(part.duplicate(true))
+		if words and not bool(part.get("thought", false)) and not str(part["text"]).is_empty():
+			out["text"] = str(out.get("text", "")) + str(part["text"])
+		if part.get("functionCall") is Dictionary:
+			var asked: Dictionary = part["functionCall"]
+			if not out.has("fragments"):
+				out["fragments"] = []
+			out["fragments"].append([str(asked.get("name", "")), JSON.stringify(asked.get("args", {}))])
 
 
 func headers() -> PackedStringArray:
