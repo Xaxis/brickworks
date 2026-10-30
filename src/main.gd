@@ -5092,6 +5092,8 @@ func _build_ui() -> void:
 	_verbs.camera = _camera
 	_verbs.together = _together
 	add_child(_verbs)
+	# A double-click in the bin replaces the selection, or puts a fit on it.
+	_bin.verbs = _verbs
 	# A part in hand (Q, the bin, the eyedropper) brings the parts bin out
 	# if it was folded: a laptop's window starts with the assistant
 	# showing, and the part in hand and its colours are in the bin.

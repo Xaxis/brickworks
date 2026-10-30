@@ -174,6 +174,29 @@ geometry in front of them.
   `bin_names_probe` reads every tile in sight at 1280 x 720 (and 1400 x 900
   with PROBE_SIZE), in the bin as it opens and after "slope 45 2x2": its
   part's name, fitted, no two alike.
+  Colour in the bin, and the obvious part in one action (appux2 bin2,
+  2026-10-30). **Only parts made in it** beside the colour's name lists
+  only the parts set inventories have in that colour (`PartsBin.made_in`:
+  the part's `colors` and its mould's, through `PartLibrary.made_as`, the
+  years data the swatches use; a part with none known is left out), and a
+  colour chosen while it is ticked lists again; the status says "N parts
+  made in Sand Green" (Studio's Hide Unavailable Parts in the Selected
+  Color). **Prints**, ticked, in the bin's foot: cleared, no printed or
+  stickered part is listed or folded (`decor() != 0`). **List** shows a
+  row per part (`_make_row`): its picture, name, number, size in studs and
+  how many colours it was made in. A double-click on a tile replaces what
+  is selected with that part (`EditVerbs.replace`, one undo step; LDCad),
+  and on a Fits tile it puts that part on the selection's free connector
+  nearest the camera (`PartFits.put_on`: Connect's `JointSnap.choices` and
+  `pose` on each end, then studs by `Attach`, the first with room; one
+  undo step; Bricksmith's Insert Related); either keeps the selection and
+  the tool it was in. A size and a family's word lists that family's parts
+  first (`PartsBin._named_first`: "1x4 brick" had two Spring Shooters in
+  its first eight). `bin2_probe` at 1280 x 720: Sand Green, every tile in
+  sight made in it; Prints hides every printed tile in one click; three
+  1 x 2 bricks replaced by a double-click in one undo step; two pins into
+  a Technic beam 5 from Fits, each joined; List 20 rows or more; "1x4
+  brick" bricks only. The toggles are not kept between sessions.
 - `fits` (`src/parts/part_fits.gd`, the bin's **Fits** chip after
   Techniques): the parts that fit the selected part, or the one in hand when
   Fits was chosen (a part then taken from its list does not change it): the
@@ -188,7 +211,9 @@ geometry in front of them.
   narrows it ("axle" among a beam's fits). It does not yet know which of
   the selection's connectors are taken. `fits_probe`: twelve pairs, each
   with a part that fits in the first five, about 140 ms an answer over
-  29,668 parts (appux371 B5, 2026-10-30).
+  29,668 parts (appux371 B5, 2026-10-30). A double-click on one of its
+  tiles puts it on the selection where there is room (`PartFits.put_on`,
+  see parts bin above).
 - `previews` (`src/ui/part_thumbnails.gd`, `src/ui/thumb_tile.gd`): each cell is
   a `ThumbTile`. A colour picked points each tile at the new colour
   (`show_part(..., keep)`) and it keeps the picture it had until the new one
@@ -467,10 +492,12 @@ tools/probe.sh picker_folder_probe                # every chooser in Pictures, D
 tools/probe.sh contrast_probe -- --shots=DIR      # every button's edge 3:1, words 4.5:1, a question's default told apart (653 buttons on 2026-10-26); -- --main-only --every lists each
 node tools/web/bin_flow.mjs --url=http://127.0.0.1:9063/ --out=DIR   # both in a browser at 1280 and 390 (serve.py on 9063; Brickognize live)
 godot --headless --path . --script src/dev/vocab_probe.gd           # the words a builder types
-tools/probe.sh search_rank_probe -- quality   # + 26 words builders type (snot, erling, macaroni, 2x4...) each in the first three; a size alone the brick first
+tools/probe.sh search_rank_probe -- quality   # + 26 words builders type (snot, erling, macaroni, 2x4...) each in the first three; a size alone the brick first; "1x4 brick" and six more, that family on the first eight tiles
 tools/probe.sh bin_names_probe                # every tile in sight named in words and fitted, no two alike, its part drawn while it waits; shots/bin_names/
 PROBE_SIZE=1400x900 tools/probe.sh bin_names_probe
 tools/probe.sh fits_probe                     # Fits: twelve pairs each in the first five; the part in hand; typed words narrow it
+tools/probe.sh bin2_probe                     # only parts made in Sand Green; Prints off; List rows; a double-click replaces three bricks, and puts two pins in a beam from Fits; "1x4 brick" bricks first; shots/bin2/
+PROBE_SIZE=1400x900 tools/probe.sh bin2_probe
 # the tiles on the web, on a slow network: drawn as the bin opens, and from the first frame of a search typed (local only)
 PARTS_URL=http://127.0.0.1:8893/parts/ tools/export.sh web
 node tools/web/bin_tiles_flow.mjs --build=build/web --port=8893 --parts=assets/generated/parts --out=shots/bin_tiles
