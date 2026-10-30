@@ -3885,7 +3885,7 @@
       "id": "ui:docked panels",
       "kind": "ui",
       "entry": "src/ui/panel_stack.gd",
-      "reach": "godot --path .  (the parts bin and its colours down the left; the model tree, the properties and the assistant as a tab beside them down the right; fold a header, drag the bar between two; under about 1370 units across one column shows beside the model) and node tools/web/fit_check.mjs; tools/probe.sh columns_probe and columns_saved_probe",
+      "reach": "godot --path .  (the parts bin and its colours down the left; the model tree, the properties and the assistant as a tab beside them down the right; fold a header, drag the bar between two; the model keeps 60% of the width, so under about 1835 units across one column shows beside it at a time) and node tools/web/fit_check.mjs; tools/probe.sh columns_probe and columns_saved_probe",
       "area": "building",
       "tests": []
     },

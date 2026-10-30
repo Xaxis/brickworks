@@ -4489,7 +4489,7 @@ func _build_ui() -> void:
 	_bin_dock.icon = "parts"
 	_bin_dock.holds = "the model tree, the properties and the colours" if _phone != null \
 		else "the parts bin and the colours"
-	_bin_dock.setup(_stack, SideDock.Edge.LEFT, PARTS_WIDE)
+	_bin_dock.setup(_stack, SideDock.Edge.LEFT, _parts_wide(LEAST_ACROSS))
 	layout.add_child(_bin_dock)
 
 	# Tools, Simulate mechanism…'s column, beside the model's rather than
@@ -5955,20 +5955,22 @@ func _art_laid(art: MosaicArt.Art) -> void:
 ## Width below which the two panels cannot both sit beside the model.
 ## Their design widths plus something worth looking at between them.
 const ROOMY := 1040.0
-## How much of the window, across, the model keeps between the two
-## columns, in the interface's units, or the columns take turns. It has 708
-## at the design width (1600), both open, and 499 at 1280 x 720. It was 860,
-## when the right column was the assistant's alone and the model tree and
-## the properties shared the left one with the bin: a laptop's window
-## showed one column at a time, and building meant the bin with 8 parts in
-## sight and the properties behind a scroller. With the tree and the
-## properties down the right, a laptop shows both columns, as Studio does.
-const MODEL_ROOM := 480.0
-## The columns' widths, open, in the interface's units: the parts bin's,
-## six tiles across (PartsBin._tiles_across: a laptop's column is four
-## rows tall, and 1280 x 720 showed 12 parts at four across and 15 at
-## five), and the right-hand column's, which the assistant's panel needs.
-const PARTS_WIDE := 500.0
+## The share of the window's width the model keeps beside the columns
+## (tools/web/fit_check.mjs asks it of a laptop's window: at 1100 x 700 the
+## panels once left no room to build). Both columns show where both fit
+## round it, which is a window about twice as wide as it is tall; else they
+## take turns, one beside the model at a time. Held to a width of 480 units
+## instead, a laptop showed both, and the model had 41% of a 1400 x 900
+## window.
+const MODEL_SHARE := 0.6
+## A tile in the parts bin and the gap after it, in the interface's units
+## (PartsBin._make_cell, _tiles_across), and what the bin's column takes
+## round its tiles: its margins and the scroll bar.
+const TILE_PITCH := 78.0
+const BIN_EDGES := 30.0
+## The fewest tiles across the bin's column is given, as it had at 336.
+const LEAST_ACROSS := 4
+## The right-hand column's width, which the assistant's panel needs.
 const SIDE_WIDE := 340.0
 
 ## How the window shares its width out: "wide" (both columns, as they
@@ -6109,8 +6111,18 @@ func _fit_panels() -> void:
 	var right: bool = _props_dock != null or _chat_dock.visible
 	var rails: float = 2.0 if right else 1.0
 	var drawer: float = maxf(units - SideDock.RAIL_WIDTH * rails - 16.0, 220.0)
+	# What the model leaves the columns, its share kept, the rails showing
+	# whether their columns are open or not. Both columns where both fit
+	# with the bin at its narrowest; else one at a time, and the bin as many
+	# tiles across as the room allows: six in a laptop's 1280 x 720 or
+	# 1400 x 900, five at 1100 x 700.
+	var room: float = units * (1.0 - MODEL_SHARE) - SideDock.RAIL_WIDTH * rails
+	var both: bool = right and room >= _parts_wide(LEAST_ACROSS) + SIDE_WIDE
+	var parts_room: float = room - (SIDE_WIDE if both else 0.0)
+	var parts_wide: float = _parts_wide(maxi(LEAST_ACROSS,
+		floori((parts_room - BIN_EDGES) / TILE_PITCH)))
 	# A drawer is as wide as it was before the bin had a column to itself.
-	_bin_dock.set_open_width(minf(SIDE_WIDE, drawer) if phone else PARTS_WIDE)
+	_bin_dock.set_open_width(minf(SIDE_WIDE, drawer) if phone else parts_wide)
 	# A phone's drawer of the model tree and the properties, sized for a
 	# finger (TouchSizing), is the screen beside its rail: at the desktop's
 	# 336 units then, half a phone, its rows ran off its edge.
@@ -6120,19 +6132,18 @@ func _fit_panels() -> void:
 		if dock != null:
 			dock.set_open_width(minf(SIDE_WIDE, drawer) if phone else SIDE_WIDE)
 
-	# Whether both columns at their own widths leave the model its room:
-	# on a phone's layout with the assistant off (set_assistant) there is
-	# only the one.
-	var both: float = PARTS_WIDE + SideDock.RAIL_WIDTH \
-		+ (SIDE_WIDE + SideDock.RAIL_WIDTH if right else 0.0)
-	var share: String = "drawers" if phone else (
-		"turns" if units - both < MODEL_ROOM else "wide")
+	var share: String = "drawers" if phone else ("wide" if both else "turns")
 	# Only when it changes. Arranging them on every resize would fight
 	# anyone dragging a window edge with a panel deliberately open.
 	if share == _columns:
 		return
 	_columns = share
 	_arrange_columns()
+
+
+## The bin's column wide enough for this many tiles across.
+static func _parts_wide(across: int) -> float:
+	return across * TILE_PITCH + BIN_EDGES
 
 
 ## The part of the window the model is seen in, for the camera to centre

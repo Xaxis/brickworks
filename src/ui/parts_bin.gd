@@ -1705,9 +1705,9 @@ func _fill_grid() -> void:
 
 
 ## How many tiles a row holds: as many as the bin's width has room for, and
-## COLUMNS at the least. The left-hand column is wider where the window has
-## room (Main.PARTS_WIDE), and the parts go across it: four across, a laptop
-## saw 12 of them. A phone's sheet keeps its four, for a finger.
+## COLUMNS at the least. The left-hand column is as wide as the model's
+## share of the window leaves it (Main._fit_panels), and the parts go across
+## it: four across, a laptop saw 12 of them. A phone's sheet keeps its four, for a finger.
 func _tiles_across() -> int:
 	if by_finger:
 		return COLUMNS
