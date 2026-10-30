@@ -959,9 +959,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `measure`: `U` (or Measure on the toolbar) takes out a ruler (`src/ui/measure.gd`):
   click a point, then another, and the label over the model says the
   distance in millimetres and across each axis in studs and plates; points
-  snap to half a stud across and a cell up. While it is out a click places
-  nothing; the right and middle buttons still turn the view; `U` or `Esc` puts
-  it away.
+  snap to half a stud across and a cell up. A point within 14 px of a
+  connector's middle on the part under it (`JointSnap.ends_for`: a pin, hole,
+  axle, bar, clip or hinge) goes on that middle (`Measure._end_near`), its axis
+  drawn through it; with both points on one the label adds the angle between
+  their axes to 0.1° ("37.9° between the two pin holes", `Measure.angle`: the
+  lines' angle, 0 to 90°, unless both are pins or axles), as LDCad's
+  (APP_UX2 7). Works in either view through the camera clicked in. While it is
+  out a click places nothing; the right and middle buttons still turn the
+  view; `U` or `Esc` puts it away. Probe: `handles2_probe` (`angle`).
 - `sub-assemblies`: `Ctrl-G` (Edit or Build, Make a sub-assembly) asks for a
   name and makes the selection a sub-assembly inside the one being edited; a
   click with Select then takes all of it, and every move, turn, hinge, copy,
@@ -1892,6 +1898,33 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   or Move would pick the part up. A press and release on a handle with no move is
   the tool's click. Drawn again only when what it shows changed (IdleDraw).
   Probe: `handles_probe`.
+  Panes, a free turn and angles (APP_UX2 7, `Handles.screen_extras`): Move draws
+  three panes between the arrows (0.28 to 0.68 of an arrow's reach on each of
+  two axes, coloured as the axis they are square to, left out nearer edge on
+  than a quarter of their face), each sliding the selection on its two axes at
+  once, snapped on each (`_on_pane`, `_sweep_on`: grid stops on the straight
+  way, weighed 4 LDU at a time, stopped at the last with room); "x +3 studs, z
+  -2 studs" in the tag and the history; a number typed names the axes, the
+  handles' own ("2x -1z"). Rotate draws a fourth ring at 1.25 of the radius
+  about the view's own axis (`VIEW_AXIS`, the view it is drawn in), its stops
+  measured in its own radius; inside the rings a press is the trackball
+  (`kind "ball"`): a drag rolls it about the line square to the pointer's way
+  in the view's plane, a quarter turn a radius, free, weighed 5° at a time, one
+  undo, no number; a press and release there is still the tool's click. A ring
+  or arrow under the pointer wins over a pane, any of them over the trackball.
+  Probe: `handles2_probe`.
+- `handles2 probe` (`src/dev/handles2_probe.gd`): windowed, about two minutes,
+  `PROBE_SIZE=1280x720` for the small window. `panes`: a 2 x 4 turned 30° slid
+  3 studs along its own x and 2 back along its z by its x-z pane (click, drag:
+  2 actions, one undo), the model's x-z pane, `2x -1z` typed mid-drag, a
+  slanted drag into a 2 x 4 stopped short and the one in the way lit. `outer`:
+  the outer ring dragged 32° turns it 30° about the view's axis (2 actions),
+  `12.5` straight after. `ball`: half the radius to the right rolls it 45°
+  about the view's up; a click inside the rings still turns it the turn step.
+  `angle`: Measure from a 3701's middle hole to one turned 23° and tipped 31°
+  says the angle to 0.1° and the distance between the hole middles; from a
+  point on its top, no angle. `second`: View, Split from the top, the x-z pane
+  dragged in the second view. Pictures in `shots/handles2/WxH/`.
 - `handles probe` (`src/dev/handles_probe.gd`): windowed, about three minutes,
   `PROBE_SIZE=1280x720` for the small window. `rings`: a 2 x 4 turned 20° and
   tipped 10° turned about each of its own axes by 23.58, -41.2 and 67.5° (click,
