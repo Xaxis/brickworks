@@ -440,3 +440,30 @@ const ask = async (op, authorization) => {
 console.log(JSON.stringify({ feature: await ask("feature"), omr: await ask("omr", "Bearer wrong") }));
 """, env=env)
     assert said["feature"][0] == 401 and said["omr"][0] == 401
+
+
+def test_an_arrival_is_held_to_our_checks_before_it_is_staged(tmp_path: Path) -> None:
+    import sys
+    sys.path.insert(0, str(ROOT / "tools"))
+    import library_import
+
+    arrival = {"page": 4515, "set_number": "31153-1", "name": "Modern House",
+               "file": "https://library.ldraw.org/media/omr_models/1858/31153-1.mpd"}
+    sets = {"31153-1": {"number": "31153-1", "name": "Modern House", "theme": "Creator", "year": "2024"}}
+    good = tmp_path / "31153-1.mpd"
+    good.write_text("0 FILE 31153-1.ldr\n0 Modern House\n0 Name: 31153-1.ldr\n0 Author: Johann Eisner [technicbasics]\n"
+                    "0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\n"
+                    "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat\n")
+    entry, why = library_import.entry_of(arrival, good, sets)
+    assert why == "" and entry is not None
+    assert entry["id"] == "omr-31153-1" and entry["licence"] == "CC BY 4.0" and entry["author"] == "Johann Eisner"
+    assert entry["page"] == "https://library.ldraw.org/omr/sets/4515" and entry["parts"] == 2
+    assert entry["theme"] == "Creator" and entry["year"] == 2024 and entry["file"] == "library/omr/31153-1.mpd"
+    # A licence the site cannot pass on, no parts, or no theme and year: refused, with why.
+    closed = tmp_path / "closed.mpd"
+    closed.write_text(good.read_text().replace("Licensed under CC BY 4.0", "Not redistributable"))
+    assert library_import.entry_of(arrival, closed, sets)[1].startswith("no licence")
+    empty = tmp_path / "empty.mpd"
+    empty.write_text("0 FILE e.ldr\n0 Author: X\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\n")
+    assert "no parts" in library_import.entry_of(arrival, empty, sets)[1]
+    assert "theme and year" in library_import.entry_of(arrival, good, {})[1]
