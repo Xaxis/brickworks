@@ -96,6 +96,12 @@ func design(brief: String) -> void:
 	_calls = 0
 	_spend = Brain.Spend.new()
 	_turns = []
+	# A frame first: the app answers initialize and tools/list at once, so
+	# the first word below was said before the panel, which follows the run
+	# as this returns (Main), was listening.
+	await get_tree().process_frame
+	if not _live(run):
+		return
 	var hello: Dictionary = await _ask_app("initialize", {
 		"protocolVersion": CommandSocket.PROTOCOL, "capabilities": {},
 		"clientInfo": {"name": "brickworks-designer", "version": "1"}})
@@ -108,7 +114,7 @@ func design(brief: String) -> void:
 		return
 	_system = FRAME + "\n\n" + str(hello.get("instructions", ""))
 	_turns.append({"role": "user", "content": [{"type": "text", "text": brief}]})
-	progress.emit("%s is reading the brief" % provider.model)
+	progress.emit("%s is reading the brief" % who())
 	await _run(run)
 
 
@@ -121,6 +127,20 @@ func stop() -> void:
 		_http.queue_free()
 		_http = null
 	_end(false, "stopped")
+
+
+## Who designs, by the name a person knows the model by ("GPT-6.1 Sol"):
+## the history's steps and the toolbar say it (docs/PROVIDERS.md, P8).
+func who() -> String:
+	return ProviderSettings.model_name(provider.model) if provider != null else ""
+
+
+## The toolbar's line while it designs, as ClaudeTabView.badge gives Claude's
+## chats: [text, colour, tooltip].
+func badge() -> Array:
+	return ["%s working" % who(), ClaudeTabView.WORKING,
+		"%s is designing in this window, on your own key. Stop is on its card in the "
+			% who() + "assistant's column."]
 
 
 ## Tokens spent so far, as the provider reports them.
@@ -257,9 +277,12 @@ func _wait_for(id: int) -> Dictionary:
 	return result
 
 
+## A call, named as the model's own: its step in the history and the words
+## of its job say who made it (CommandSocket.who_of).
 func _call_app(name: String, input: Variant) -> Dictionary:
 	return await _ask_app("tools/call", {"name": name,
-		"arguments": input if input is Dictionary else {}})
+		"arguments": input if input is Dictionary else {},
+		"_meta": {CommandSocket.WHO_KEY: who()}})
 
 
 ## One JSON-RPC request to the app's MCP server: its result, or {} (and an

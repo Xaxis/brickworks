@@ -208,8 +208,8 @@ So the transcript the loop keeps (`src/ai/provider.gd`) holds MCP's own
 content blocks, and each adapter puts pictures where its API takes them.
 Chat Completions (built): the tool message says "(N pictures, in the next
 message)" and one user message after the turn's answers carries them, each
-named by its call. Responses and Gemini: in the answer itself. Anthropic: as
-`tool_result` blocks.
+named by its call. Responses and Gemini (built): in the answer itself.
+Anthropic (built): as `tool_result` blocks.
 
 ### 4.2 The tools, translated
 
@@ -220,7 +220,9 @@ already match OpenAI's `^[a-zA-Z0-9_-]{1,64}$`.
 
 - **Chat Completions and Responses**: the schema as it is, not strict mode.
   Strict needs every property required and `additionalProperties: false` on
-  every object; most of ours have optional properties.
+  every object; most of ours have optional properties. Responses makes a
+  function strict unless it says `"strict": false`, so `OpenAIResponses` says
+  it on each.
 - **Anthropic**: as it is (`input_schema`), as the in-app assistant sends.
 - **Gemini's own API**: the OpenAPI subset. The adapter drops what Gemini
   refuses and keeps the rest; its unit's probe sends all 61 to the real API
@@ -425,9 +427,9 @@ P9 makes that edit in PLANS.md.
 
 ```
   provider's API  <-- HTTPS, the person's key -->  Provider adapter
-  (OpenAI, Gemini,                                   OpenAIChat (built)
-   Anthropic, a                                      AnthropicMessages, OpenAIResponses,
-   server here)                                      GeminiNative (one file each, next)
+  (OpenAI, Gemini,                                   OpenAIChat, OpenAIResponses,
+   Anthropic, a                                      AnthropicMessages, GeminiNative
+   server here)                                      (one file each, all built)
                                                           ^
                                                           | the transcript: MCP's own blocks
                                                           v
@@ -442,7 +444,12 @@ P9 makes that edit in PLANS.md.
 
 - `src/ai/provider.gd`: `Provider`, the adapter's two methods (`request`,
   `read`), the transcript's shape, and what a refusal is said as.
-- `src/ai/openai_chat.gd`: `OpenAIChat`, Chat Completions.
+- `src/ai/openai_chat.gd`: `OpenAIChat`, Chat Completions, for every server
+  that copies OpenAI's API.
+- `src/ai/openai_responses.gd`: `OpenAIResponses`, OpenAI's Responses, the
+  `openai` preset's: OpenAI's own models.
+- `src/ai/anthropic_messages.gd`, `src/ai/gemini_native.gd`: Anthropic's
+  Messages and Gemini's own API.
 - `src/ai/provider_settings.gd`: `ProviderSettings`, the presets, the key's
   keeping and checking, the choice of provider and model.
 - `src/ai/designer_loop.gd`: `DesignerLoop`, the loop, with the signals
@@ -485,7 +492,8 @@ as on any headless run).
 OPENAI_API_KEY=… godot --path . -- --ask-provider="a small red lighthouse" \
     --provider=openai --provider-model=gpt-6.1-sol --out=lighthouse.ldr
 
-# any OpenAI-compatible server, here the stub
+# the stub: --provider=openai speaks Responses to it, --provider=custom
+# (any OpenAI-compatible server) Chat Completions
 python3 -I tools/provider_stub.py --port 9621 --log stub.jsonl &
 OPENAI_API_KEY=sk-stub-key-for-a-test-only godot --path . -- --ask-provider="a red tower" \
     --provider=openai --provider-base=http://127.0.0.1:9621/v1
@@ -540,10 +548,32 @@ OpenAI's own models), `GeminiNative` (the schema subset, thought signatures,
 multimodal function responses). *Bar:* for each, a stub scripted as
 `provider_loop_probe`'s, strict as that API is; and one real design each where
 a key exists, printed with its numbers.
-*Built (aiset345):* `AnthropicMessages` and `GeminiNative` (not yet Responses),
+*Built (aiset345):* `AnthropicMessages` and `GeminiNative`,
 `provider_apis_probe` against `tools/provider_stub.py`'s two strict APIs. A real
 Test of Claude Sonnet 5.5 on the Anthropic key in .env: tools and pictures
 (2026-10-29). No real design yet; no Gemini key.
+*Built (provider370):* `OpenAIResponses` (`src/ai/openai_responses.gd`), now
+the `openai` preset's adapter; OpenRouter, the compatibility endpoints, the
+servers on the person's computer and `custom` stay on Chat Completions.
+Functions flat with `"strict": false`; the system as `instructions`; a call
+by its `call_id`, answered by a `function_call_output` whose output is a list
+of `input_text` and `input_image` when the answer has pictures; `"store":
+false` with `include: ["reasoning.encrypted_content"]` for a model that
+reasons, and each reply's output items, its reasoning first, sent back as
+they came (reasoning that came without its encrypted content goes back as the
+calls alone, unnamed, which the API takes). The stub's `/v1/responses` is as
+strict as the API where the adapter could go wrong: a function without
+`"strict": false` held to strict mode (the app's 61 fail it, 166 refusals),
+an array without items, an output answering no call and a call never
+answered, and with store false a reasoning item without the encrypted content
+its reply gave ("Item with id 'rs_…' not found") or a `function_call` sent
+back by id without its reasoning. `provider_apis_probe`: 12 offline checks,
+then a whole design (7 answered, nothing refused, view_model's picture and the
+fresh look's three inside the outputs, the tower built and saved), Test (✓ ✓;
+a blind model ✓ ✗ in the brief's words) and the model list, against the stub.
+No OpenAI key in .env (2026-10-29), so no real Test or design yet: with one,
+`OPENAI_API_KEY=… godot --path . -- --ask-provider=… --provider=openai`
+(section 9).
 
 **P4. Streaming**, per adapter, with a `submit_design`'s bricks drawn as they
 are written. *Bar:* the stub streams; the probe sees bricks before the reply
@@ -570,6 +600,22 @@ this machine builds a small brief end to end.
 **P8. Saying who designs.** The history's steps and the toolbar say "Claude's
 design" and "Claude working"; a model on a key gets its own name there. *Bar:*
 the words the lead names, in the probe that reads them.
+*Built (provider370):* who designs is `ProviderSettings.designer_name()`:
+"Claude", or the chosen model by the name its maker gives it, read off its id
+(`model_name`: gpt-6.1-sol is GPT-6.1 Sol, claude-sonnet-5-5 Claude Sonnet
+5.5, a snapshot's date left off). The loop names itself on every call's
+`_meta` (`brickworks/who`), and the app's MCP server names the call's step in
+the history, its job's words and a change to the selection by it; a call that
+names no one is Claude's, as every client's has been. While the loop runs the
+toolbar says "GPT-6.1 Sol working". The words that ask whoever designs follow
+Settings, AI: Ask … about this… and Ask … to brace this… on the menus, the
+panel's Ask button and its brief about a selection, Brick Art's Design with ….
+Product names stay: Claude Code, My Claude, Connect Claude, the connector's
+chats and their "Claude working · tab" line (those are Claude's), the tour and
+the settings' descriptions. `designer_words_probe` (headless) reads each for a
+Claude call and for GPT-6.1 Sol designing through Responses against the stub,
+then Claude's again. Not done: ChatGPT through the connector is still named
+Claude in the history, as the relay does not pass the client's name on a call.
 
 **P9. The plan's word.** `docs/PLANS.md`: `claude_builds` becomes `ai_builds`,
 "AI builds", before U0 creates the product. *Bar:* the dry run of section 10

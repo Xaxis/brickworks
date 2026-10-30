@@ -169,19 +169,15 @@ func _build() -> void:
 	_art_box.add_child(claude)
 	_claude_row = claude
 	_brief = LineEdit.new()
-	_brief.placeholder_text = "Tell Claude: raise the core, make the stars glow…"
 	_brief.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_brief.add_theme_font_size_override("font_size", 12)
 	_brief.text_submitted.connect(func(_text: String) -> void: design_with_claude())
 	claude.add_child(_brief)
 	_ask = Button.new()
-	_ask.text = "Design with Claude"
-	_ask.tooltip_text = ("Claude looks at the picture and plans it as a designer of LEGO® Art "
-		+ "sets would — what stands out, the textures, the stars — with your "
-		+ "key or your own Claude, as the assistant designs")
 	_ask.add_theme_font_size_override("font_size", 12)
 	_ask.pressed.connect(design_with_claude)
 	claude.add_child(_ask)
+	_name_designer()
 
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 8)
@@ -343,7 +339,21 @@ func chosen_panels() -> Vector2i:
 	return Vector2i(int(_panels.value), int(_down.value))
 
 
+## Who designs (Settings, AI), named on the row that asks it: Claude, or the
+## model on the person's key (ProviderSettings.designer_name).
+func _name_designer() -> void:
+	var who: String = ProviderSettings.designer_name()
+	_brief.placeholder_text = "Tell %s: raise the core, make the stars glow…" % who
+	_ask.text = "Design with %s" % who
+	_ask.tooltip_text = ("%s looks at the picture and plans it as a designer of LEGO® Art "
+		% who + "sets would — what stands out, the textures, the stars — "
+		+ ("with your key or your own Claude, as the assistant designs" if who == "Claude"
+			else "on your own key, as the assistant designs"))
+
+
 func show_for(image: Image) -> void:
+	if _ask != null:
+		_name_designer()
 	_image = image
 	_down_chosen = false
 	_preview.texture = ImageTexture.create_from_image(image)

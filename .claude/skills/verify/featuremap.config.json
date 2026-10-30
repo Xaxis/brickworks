@@ -3694,7 +3694,7 @@
       "kind": "lib",
       "label": "designing on Anthropic's Messages or Gemini's own API",
       "entry": "src/ai/anthropic_messages.gd",
-      "reach": "tools/probe.sh provider_apis_probe   (AnthropicMessages and GeminiNative read and written offline, then each designs, is tested and lists its models against tools/provider_stub.py, as strict as each API)",
+      "reach": "tools/probe.sh provider_apis_probe   (AnthropicMessages, GeminiNative and OpenAIResponses read and written offline, then each designs, is tested and lists its models against tools/provider_stub.py, as strict as each API)",
       "area": "assistant"
     },
     {
@@ -3702,6 +3702,27 @@
       "label": "provider apis probe",
       "entry": "src/dev/provider_apis_probe.gd",
       "reach": "tools/probe.sh provider_apis_probe",
+      "area": "assistant"
+    },
+    {
+      "kind": "lib",
+      "label": "designing on OpenAI's Responses",
+      "entry": "src/ai/openai_responses.gd",
+      "reach": "tools/probe.sh provider_apis_probe   (OpenAIResponses read and written offline: flat functions not strict, pictures as input_image inside function_call_output, reasoning items sent back with their encrypted content, store false; then a design, Test and the model list against the stub's strict /v1/responses)",
+      "area": "assistant"
+    },
+    {
+      "kind": "lib",
+      "label": "saying who designs",
+      "entry": "src/ai/provider_settings.gd",
+      "reach": "tools/probe.sh designer_words_probe   (Claude's call and GPT-6.1 Sol's design on a key: the history's steps, a call's job, a change to the selection, the toolbar while it works, Ask … about this…, the panel's Ask and Brick Art's Design with …)",
+      "area": "assistant"
+    },
+    {
+      "kind": "cli",
+      "label": "designer words probe",
+      "entry": "src/dev/designer_words_probe.gd",
+      "reach": "tools/probe.sh designer_words_probe",
       "area": "assistant"
     },
     {

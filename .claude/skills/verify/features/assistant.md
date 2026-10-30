@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, cli:test designs on the owner's own ideas -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, cli:test designs on the owner's own ideas -->
 
 ## Sub-features
 
@@ -115,8 +115,9 @@ fixing what it got wrong.
   `godot_design.log` shows the own look and no `fresh eyes: N s (claude-...)`.
 - `designing with any provider on the person's key`: `src/ai/designer_loop.gd`
   (`DesignerLoop`), `src/ai/provider.gd` (the adapter's shape and the
-  transcript), `src/ai/openai_chat.gd` (Chat Completions: OpenAI and every
-  compatible server), `src/ai/provider_settings.gd` (presets, the key kept per
+  transcript), `src/ai/openai_chat.gd` (Chat Completions: every server that
+  copies OpenAI's API; OpenAI's own models go by `openai_responses.gd`),
+  `src/ai/provider_settings.gd` (presets, the key kept per
   provider on the device or for the visit, never printed). The app's own MCP
   client for any model: `initialize`, `tools/list` and every `tools/call`
   through `CommandSocket.answer_rpc` in process, exactly as Claude's calls run,
@@ -126,7 +127,8 @@ fixing what it got wrong.
   (`job` until it ends). `Main.design_with_provider` (refused while Claude Code
   or another design runs); `--ask-provider=BRIEF --provider=ID
   --provider-model=M --provider-base=URL --provider-effort=E` from a command
-  line. `provider_loop_probe` (in a window) drives a whole design against
+  line. `provider_loop_probe` (in a window; the `custom` preset, Chat
+  Completions) drives a whole design against
   `tools/provider_stub.py`, an OpenAI-compatible stub as strict as OpenAI about
   call pairing, pictures and a tool's array that names no items (refused, as
   OpenAI does; OpenAIChat sends `Provider.portable`, and the probe holds it to
@@ -182,6 +184,40 @@ fixing what it got wrong.
   `/v1/messages` and `/v1beta/models/M:generateContent`, each as strict as
   its API; its stub on 9661, or `-- --port=N`. Not yet run against the real
   APIs (no key in .env, 2026-10-29).
+- `designing on OpenAI's Responses`: `src/ai/openai_responses.gd`
+  (`OpenAIResponses`, the `openai` preset's adapter: OpenAI's own models;
+  every other OpenAI-like host stays on Chat Completions). Functions flat with
+  `strict: false` (Responses makes them strict unless told, and strict refuses
+  the app's optional properties), `instructions` for the system, a call by its
+  `call_id` answered by a `function_call_output` whose output is a list with
+  `input_image` when the answer has pictures, `store: false` and `include:
+  ["reasoning.encrypted_content"]` for a model that reasons, the reply's output
+  items (reasoning first) sent back as they came; reasoning that came without
+  its encrypted content goes back as the calls alone, without ids. Model list
+  and efforts are `OpenAIChat`'s. `provider_apis_probe` reads and writes it
+  offline, then designs (7 answered, view_model's picture and the fresh
+  look's three inside the outputs), Tests and lists against the stub's
+  `/v1/responses`, which refuses a function without `strict: false` as strict
+  mode does, an array without items, an output answering no call or a call
+  never answered, and (store false) a reasoning item without the encrypted
+  content its reply gave or a `function_call` sent back by id without its
+  reasoning. No OpenAI key in .env (2026-10-29), so no real run yet.
+- `saying who designs`: `ProviderSettings.designer_name()` ("Claude", or the
+  chosen model on the person's key by `ProviderSettings.model_name`, e.g.
+  gpt-6.1-sol is "GPT-6.1 Sol") and the call's own name: `DesignerLoop` puts
+  `"_meta": {"brickworks/who": "GPT-6.1 Sol"}` on every `tools/call`, and
+  `CommandSocket.who_of` reads it (no name: Claude) into the history's step
+  ("GPT-6.1 Sol's submit design (6 put down)"), a call's job ("Working on
+  GPT-6.1 Sol's clear_model…") and, through `Assistant.who`, a change to the
+  selection. While the loop runs, the toolbar's line is `DesignerLoop.badge()`
+  ("GPT-6.1 Sol working", `Main._show_badge`), else Claude's tab line as
+  before. The words that ask whoever designs follow Settings, AI: the menus'
+  Ask … about this… and Ask … to brace this… (`Shell.name_designer`), the
+  panel's Ask button and its brief about a selection, Brick Art's Design with
+  … (`MosaicDialog._name_designer`). Product names (Claude Code, Connect
+  Claude, the connector's chats) stay. `designer_words_probe` (headless; its
+  stub on 9681) reads every one for a Claude call and for GPT-6.1 Sol designing
+  through Responses, then Claude's again.
 - `the check by real shapes`: `src/ai/exact_check.gd` over `src/assembly/exact.gd`,
   called from `Assistant._check`, so every check, edit, submission, review and save
   has it: each part BrickNet has is its convex colliders and connector labels
