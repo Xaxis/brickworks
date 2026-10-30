@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing -->
 
 ## Sub-features
 
@@ -709,9 +709,10 @@ plan with Claude as the client.
   (`#who`, `#mail-comments` and `#mail-kinds`), Privacy (`#age-said`,
   `#shows-follows`), Claude (`/api/oauth?op=connections`, Disconnect with a
   confirm), Sign out, and Delete this account (`api/account.js ?op=delete`,
-  their address typed to confirm: the files of their build photos and of
-  photos of their models deleted, then the account, every row of theirs
-  cascading; the site owner's refused). people_flow and account_page_flow
+  their address typed to confirm: while billing is on, their plan erased at
+  Admission first, nothing deleted if it cannot; then the files of their
+  build photos and of photos of their models deleted, then the account,
+  every row of theirs cascading; the site owner's refused). people_flow and account_page_flow
   delete their accounts this way; `documentElement.dataset.settings` says
   `ready` or `signed-out`.
 - `model page action bar` (`web/model-page.js`, `api/share.js` `actionBar`,
@@ -2561,6 +2562,37 @@ plan with Claude as the client.
   user id of the session. Snapshots go in a server-only table, so a cold
   instance answers a paying person while Admission is down; with none, the
   answer is `unknown` and refuses nothing.
+- `paying for Pro` (`api/plans.js` ?op=checkout, ?op=portal, ?op=webhook;
+  `api/_billing.js` returnOrigin, agreed; `supabase/plan_consents.sql`),
+  `your plan on settings` (`web/plan.js`, drawn by `web/settings.js` when
+  `/api/people?op=me` says `billing`), `billing browser flow`
+  (`tools/web/billing_flow.mjs`) and `the stand-in Admission`
+  (`tools/web/admission_stand_in.mjs`, and in a unit's preview's own
+  functions with `tools/deploy.sh --unit --billing-stand-in`): docs/PLANS.md
+  U3 and M7, built dark (2026-10-29, pay348). Only while BRICKWORKS_BILLING
+  is on: Checkout after the step before it (what Pro adds, monthly or
+  yearly, the price, that it renews until cancelled, how to cancel, who
+  sells it, a box nobody ticks but the person), the agreement kept first
+  (four years, the server's alone); the portal for an account that pays;
+  Admission's signed webhook forgetting what is kept of the account. Back
+  to this site's `/settings#plan` (live: brickworks.diy). Off, each POST is
+  the interest form's 422, and /settings draws and asks nothing of plans.
+- `a deleted account's plan ended at Admission` (`api/account.js` ?op=delete,
+  `api/_billing.js` eraseAccount; `web/plan.js` endsWithAccount, drawn by
+  `web/settings.js`): a go-live blocker, built dark (2026-10-29, erase352,
+  Bookwright's ADR-0014 decision 7, Admission's ADR-0004). While
+  BRICKWORKS_BILLING is on, a deletion first asks Admission to erase the
+  customer with `cancelSubscription=true`, so a subscription it pays for
+  ends now (no refund, nothing charged again) before anything of
+  Brickworks' goes; Admission down or refusing our key, nothing is deleted
+  and the answer is a 503 saying so ("We couldn't cancel your Pro plan…"
+  when what is held says they pay). A deletion that stopped later is
+  finished by asking again: erasing finds nothing the second time. The
+  answer adds `plan: {ended}` when a subscription ended. On /settings, while
+  the Plan row shows a subscription, the delete form and the question
+  before it say Pro ends now with nothing charged again, and the page after
+  says it has ended. Off, Admission is never asked and the answer is as it
+  was.
 - `GET /api/plans?op=download`, `GET /api/plans?op=entitlement` (`api/plans.js`)
   and `the desktop's files and token` (`api/_desktop.js`,
   `supabase/desktop_paid_through.sql`): the paid desktop, built dark
@@ -3892,8 +3924,14 @@ node tools/web/download_check.mjs --shots=shots/gallery
 VERCEL_BYPASS=$VERCEL_BYPASS node tools/web/download_check.mjs --url=<deployment>/download --shots=shots/gallery
 ```
 
-Proves it when the gallery lines say 24 cards then 26 after Show more
-(locally), the markup name shown as text and no `img` but the pictures', a
+Proves it when, locally, the first page is drawn as 24 cards with Show more
+and the gallery lines say "24, then 2 by Show more" at 390 and "24, then 2
+by itself" at 1280 (where Show more is first drawn within a screen under the
+window, so `gallery.js` nearEnd brings the next page unasked), 26 cards and
+Show more gone at both; against a deployment that lists more than a page,
+its next page the same way (brickworks.diy on 2026-10-29: "23, then 24 by
+Show more" at both widths, its pick and shelves over the list); the markup
+name shown as text and no `img` but the pictures', a
 model with no picture given none, "86 parts, by Builder 2"; and at 390 and
 1280 px no console error, no sideways scroll, no broken picture
 (`gallery-phone.png`, `gallery-laptop.png`). Locally, since the directory:
@@ -4712,6 +4750,96 @@ refused. On a deployment, only with the switch on for it alone
 on the project): `curl -s <deployment>/api/plans` is the offer, and
 `/api/plans?op=plan` with a test account's session is its plan, Free and
 `builds.limit` 10, `standing` "known", `freshness` "live".
+
+### Paying for Pro: Checkout, the portal, the webhook, built dark
+
+No network: the real client against the stand-in Admission and Supabase
+(`tests/fixtures/billing/`), every request recorded, and the consent
+table's dry run (rolled back):
+
+```sh
+python3 tools/minitest.py tests/test_billing_pay.py
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/plan_consents.sql --dry --try=tools/plan_consents_try.sql --table=plan_consents
+```
+
+The tests pass when all do: Checkout refused (422) without the box, or
+with anything but `consent: true`, and nothing kept or asked of Stripe;
+monthly at 800 and yearly at 8000, each agreement kept before its
+Checkout, the account from the session, back to `/settings` on the host
+asked; no Checkout when the agreement cannot be kept (503), when the price
+shown is not the price (409) or for Pro given (409); the portal 409 for an
+account that never paid, and for one that pays its URL, `flow` passed; a
+webhook unsigned, signed with another secret, changed after signing or ten
+minutes old refused (400) with the kept answer standing, a signed one
+heard and the next answer read afresh (Pro), the same event again
+`again`, and 404 with no secret; `fresh=1` asking Admission again; off,
+every op the interest form's 422 with nothing asked; live return URLs only
+to brickworks.diy; the stand-in answering in-process only for its own key
+and `ADMISSION_URL=stand-in`; the SQL only adding, server-only.
+
+In a browser, on this machine, with the stand-in that can be paid
+(`plan_consents` held by the relay until its file is applied):
+
+```sh
+node tools/web/admission_stand_in.mjs 8891 --hook=http://127.0.0.1:8890/api/plans?op=webhook &
+BRICKWORKS_BILLING=test ADMISSION_KEY=adm_test_00000000000000000000000000000000 ADMISSION_URL=http://127.0.0.1:8891 ADMISSION_WEBHOOK_SECRET=adm_whsec_standin0000000000000000000000 node --env-file=.env tools/web/relay_server.mjs 8890 --hold=plan_consents &
+node --env-file=.env tools/web/billing_flow.mjs --url=http://127.0.0.1:8890 --stand-in=http://127.0.0.1:8891 --out=shots/billing
+```
+
+And on a unit's preview with the stand-in in its functions (`tools/deploy.sh
+--unit --billing-stand-in`), or any deployment with plans off:
+
+```sh
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/billing_flow.mjs --url=<preview> --out=shots/billing
+```
+
+It passes when it ends "billing: all ok". Plans off: GET /api/plans 405,
+op=me with no `billing`, each POST op the interest form's 422, /settings
+with no Plan row and no request for plans. Plans on: the API refusals and
+the webhook as above; /settings's Plan row Free with Upgrade to Pro (axe:
+nothing serious); the step at 1280 light, Yearly first, what Pro adds, the
+terms, the box unticked and Continue off, another interval unticking it,
+Monthly ticked on to `checkout.stripe.test` (stubbed) for the month; back
+with `?billing=cancelled` still Free and said so; at 390 dark
+`?upgrade=year` opening on Yearly, nothing sideways, on to Checkout for the
+year. With `--stand-in` also: paid, the webhook heard, "Pro, $80.00 USD a
+year. Renews", Manage billing to `billing.stripe.test`, Checkout again sent
+to the portal, cancelled, "Pro until". The throwaway account is closed at
+the end. Pictures: settings-plan and consent at 1280 light and 390 dark,
+settings-pro and settings-ending. With `--stand-in`, step 7 pays again and
+deletes the account from /settings: the delete form at 390 dark and 1280
+light says "Your Pro plan ends now, with the account, and you are not
+charged again. Any refund is as the terms of sale say." (Free's said
+nothing of a plan, in 2), the question before it says so too, the page
+after says Pro has ended, the stand-in's `/__stand_in/erased` shows one
+erasure with one subscription ended, and the sign-in service has no such
+account. Pictures: delete-pro-390-dark, delete-pro-1280-light,
+deleted-pro-1280-light.
+
+### A deleted account's plan ended at Admission
+
+No network: `api/account.js`'s deletion against the stand-in Admission and
+Supabase (`tests/fixtures/billing/`), every request recorded:
+
+```sh
+python3 tools/minitest.py tests/test_account_erase.py
+```
+
+It passes when all five do: billing off, the answer exactly
+`{deleted, photos: 0, avatars: 0}` and no request to Admission; Free,
+erased (its usage gone) before Supabase deletes the account, the answer
+unchanged, and the owner's refused before Admission is asked; Pro, the
+subscription ended and the customer erased before the account goes, the
+answer with `plan: {ended: 1}`, the stand-in's customer with no
+subscription after and the kept snapshot emptied; Admission down, 503
+"We couldn't cancel your Pro plan, so nothing was deleted…" for one who
+pays and "We couldn't close your plan with billing…" for one who does not,
+with nothing of either touched (no Connect mark, storage or auth
+request), and a key Admission does not know the same; a deletion whose
+Supabase step failed after Admission erased the account (502) finishing
+when asked again, the second erasure finding nothing and ending nothing.
+The browser half is the billing flow's step 7, above. Billing off, the
+existing deletion flows (account_page, people) prove nothing changed.
 
 ### The documentation (/docs)
 

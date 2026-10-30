@@ -55,3 +55,6 @@ cli:desktop token key  # the owner's key tool for Pro's desktop pass, run once a
 lib:the desktop pass  # checks nothing until Pro opens: the app carries no key yet
 lib:the desktop's files and token  # Pro's signed downloads and pass, switched off until Pro opens
 ui:the Pro screen on the desktop  # shown only once Pro is open and a build is past what was paid for; documented at launch
+api:paying for Pro  # Checkout, the portal and Admission's webhook, switched off until Pro opens (pay348); documented at launch
+ui:your plan on settings  # the Plan row on /settings, drawn only while plans are on; documented at launch
+api:a deleted account's plan ended at Admission  # Pro ended at Admission when an account is deleted, switched off until Pro opens; account deletion itself is in the docs, and this is documented at launch

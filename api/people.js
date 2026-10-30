@@ -173,6 +173,7 @@
 
 import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
+import { billingMode } from "./_billing.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
@@ -454,7 +455,11 @@ async function me(request, response) {
   const counts = await Promise.all(lists.map((list) =>
     db("rpc/collection_count", { method: "POST", body: { list: list.id, private: true } })));
   const said = avatarSaid(avatar);
+  const billing = billingMode();
   return response.status(200).json({
+    // Plans, only while this deployment has them on (api/_billing.js), so
+    // /settings draws the plan's row (web/plan.js); off, not a word of it.
+    ...(billing === "off" ? {} : { billing }),
     profile: people[0] ? { ...people[0], ...(said.picture ? { picture: said.picture } : {}) } : null,
     // Their own picture as their avatar, and whether their profile shows
     // the models they liked (supabase/avatars.sql).

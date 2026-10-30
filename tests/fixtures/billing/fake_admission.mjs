@@ -5,10 +5,42 @@
 // them up. Track follows Admission's rules: over the limit nothing is
 // counted, giving back always fits, and a repeated idempotency key returns
 // its first answer. An owner is on the best plan with every feature
-// unlimited (ADR-0009).
+// unlimited (ADR-0009). Checkout and the portal answer with Stripe-shaped
+// URLs on hosts nobody owns (checkout.stripe.test), holding return URLs to
+// what test mode allows, as Admission's own checkout does
+// (apps/admission/src/server/stripe/checkout.ts holdReturnUrls).
+//
+// It also answers on a unit's preview, in the function's own process
+// (api/_billing.js, tools/deploy.sh --billing-stand-in), so nothing here
+// may import anything: it is copied beside the function on its own.
 
 export const FAKE_KEY = "adm_test_00000000000000000000000000000000";
 export const ADMISSION_URL = "https://admission.test";
+/// The stand-in's webhook signing secret: a test's, nobody's real one.
+export const WEBHOOK_SECRET = "adm_whsec_standin0000000000000000000000";
+
+/// The Admission-Signature header for [body] (a string) at [t] (unix
+/// seconds) under [secret], as Admission signs a webhook: HMAC-SHA256 of
+/// "<t>.<body>".
+export async function signWebhook(body, secret = WEBHOOK_SECRET, t = Math.floor(Date.now() / 1000)) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false,
+    ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(`${t}.${body}`)));
+  return `t=${t},v1=${[...mac].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
+}
+
+/// Where test mode lets Checkout and the portal send someone back: https on
+/// a Vercel preview, or this machine (Admission's holdReturnUrls).
+function returnable(raw) {
+  try {
+    const url = new URL(String(raw));
+    return ["localhost", "127.0.0.1"].includes(url.hostname)
+      || (url.protocol === "https:" && (url.hostname.endsWith(".vercel.app") || url.hostname === "brickworks.diy"));
+  } catch {
+    return false;
+  }
+}
 
 const FEATURES = [
   { key: "ai_builds", name: "AI builds", kind: "allowance", reset: "month", unit: "builds" },
@@ -35,9 +67,15 @@ export function fakeAdmission() {
   const answers = new Map();
   const subs = new Map();
   const overrides = new Map();
+  let sessions = 0;
   const self = {
     /// Every request, as "METHOD /path".
     calls: [],
+    /// What each checkout and portal was asked, in order.
+    checkouts: [],
+    portals: [],
+    /// Each erasure: {customerId, found, canceled}, in order.
+    erasures: [],
     /// Unreachable: every request fails as a network error would.
     down: false,
     owners: new Set(),
@@ -61,7 +99,7 @@ export function fakeAdmission() {
       const auth = new Headers(init.headers).get("authorization");
       if (auth !== `Bearer ${FAKE_KEY}`) return reply(401, error("unauthorized", "Bad key."));
       const body = init.body ? JSON.parse(String(init.body)) : {};
-      return route(method, url.pathname, body);
+      return route(method, url.pathname, body, url.searchParams);
     },
   };
 
@@ -107,7 +145,7 @@ export function fakeAdmission() {
     };
   }
 
-  function route(method, path, body) {
+  function route(method, path, body, query) {
     if (method === "GET" && path === "/v1/plans") {
       return reply(200, {
         mode: "test",
@@ -125,6 +163,28 @@ export function fakeAdmission() {
     }
     const customer = /^\/v1\/customers\/([^/]+)$/.exec(path);
     if (method === "GET" && customer) return reply(200, state(decodeURIComponent(customer[1])));
+    // Erased, as Admission's ADR-0004 has it: one who pays is refused unless
+    // cancelSubscription=true, which ends the subscription now; then usage,
+    // comps, subscriptions and owner marks go. Erasing again finds nothing.
+    if (method === "DELETE" && customer) {
+      const id = decodeURIComponent(customer[1]);
+      const s = subs.get(id);
+      const paying = Boolean(s && s.status !== "canceled");
+      if (paying && query?.get("cancelSubscription") !== "true") {
+        return reply(409, error("active_subscription", "This customer is paying. Let their subscription end, or "
+          + "erase with cancelSubscription=true to end it now (no refund)."));
+      }
+      const used = [...usage.keys()].filter((k) => k.startsWith(`${id}:`));
+      const found = Boolean(s) || overrides.has(id) || self.owners.has(id) || used.length > 0;
+      for (const k of used) usage.delete(k);
+      for (const k of [...answers.keys()]) if (k.startsWith(`${id}:`)) answers.delete(k);
+      subs.delete(id);
+      overrides.delete(id);
+      self.owners.delete(id);
+      const canceled = paying ? [`sub_${id}`] : [];
+      self.erasures.push({ customerId: id, found, canceled });
+      return reply(200, { customerId: id, mode: "test", found, canceled, fingerprint: `erased:${id.length}` });
+    }
     const marking = /^\/v1\/customers\/([^/]+)\/owner$/.exec(path);
     if (method === "PUT" && marking) {
       const id = decodeURIComponent(marking[1]);
@@ -157,6 +217,43 @@ export function fakeAdmission() {
         remaining: e.unlimited ? null : Math.max(0, (e.limit ?? 0) - now), replayed: false };
       answers.set(key, answer);
       return reply(200, answer);
+    }
+    if (method === "POST" && path === "/v1/checkout") {
+      const customerId = String(body.customerId || "");
+      if (!customerId) return reply(400, error("bad_request", "customerId is required."));
+      if (!["month", "year"].includes(body.interval)) return reply(400, error("bad_request", "interval is month or year."));
+      if (!PLANS[body.plan]) return reply(404, error("unknown_plan", `There is no plan "${body.plan}".`));
+      if (body.plan === "free") return reply(409, error("plan_not_for_sale", "\"free\" is the free plan; nothing to buy."));
+      for (const field of ["returnUrl", "cancelUrl"]) {
+        if (body[field] !== undefined && !returnable(body[field])) {
+          return reply(400, error("bad_return_url", `${field} must be on localhost, 127.0.0.1 or an https *.vercel.app preview.`));
+        }
+      }
+      self.checkouts.push(body);
+      sessions += 1;
+      // A subscriber is sent to the portal to change plan, as Admission does.
+      const s = subs.get(customerId);
+      if (s && s.status !== "canceled") {
+        return reply(200, { url: `https://billing.stripe.test/p/session/bps_test_${sessions}`, kind: "portal" });
+      }
+      return reply(200, { url: `https://checkout.stripe.test/c/pay/cs_test_${sessions}#${body.interval}`, kind: "checkout" });
+    }
+    if (method === "POST" && path === "/v1/portal") {
+      const customerId = String(body.customerId || "");
+      if (!returnable(body.returnUrl)) {
+        return reply(400, error("bad_return_url", "returnUrl must be on localhost, 127.0.0.1 or an https *.vercel.app preview."));
+      }
+      if (body.flow !== undefined && !["cancel", "payment_method_update"].includes(body.flow)) {
+        return reply(400, error("bad_request", "flow is cancel or payment_method_update."));
+      }
+      const s = subs.get(customerId);
+      if (!s) return reply(404, error("no_stripe_customer", "This customer hasn't bought anything yet, so there's no billing to manage."));
+      if (body.flow === "cancel" && s.status === "canceled") {
+        return reply(404, error("no_subscription", "This customer has no subscription to cancel."));
+      }
+      self.portals.push(body);
+      sessions += 1;
+      return reply(200, { url: `https://billing.stripe.test/p/session/bps_test_${sessions}`, kind: "portal" });
     }
     return reply(404, error("not_found", "No such endpoint."));
   }
