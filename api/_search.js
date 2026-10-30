@@ -25,12 +25,16 @@
 // Ranked (rank), best first: a set's number asked; then a set whose whole
 // name was typed; then every word in its name; then every word anywhere
 // (name, theme, number or year). A query that names a theme ("harry
-// potter", "modular") counts the theme's sets as named. Books, gear, key
-// chains, magnets, posters and promotions go after real sets unless the
-// query asks for them. Within each, exact words before corrected ones, more
-// of the name typed first, and then the bigger set (its own parts, not the
-// sets packed in it) and the newer. When no set has every word, the sets
-// with the most of them are answered instead (near).
+// potter", "modular") counts the theme's sets as named, and one that is a
+// theme's whole name ("city", "trains", "marvel") puts the theme's sets
+// before those with the word only in their name, when the theme holds most
+// of what was found. Books, gear, key chains, magnets, posters and
+// promotions go after real sets unless the query asks for them. Within
+// each, exact words before corrected ones, more of the name typed first,
+// and then the bigger set (its own parts, not the sets packed in it) and the
+// newer, twenty-five years newer counting as about twice the parts. When
+// no set has every word, the sets with the most of them are answered
+// instead (near).
 
 /// Words a query may hold that a set need not: they narrow nothing.
 export const SMALL = new Set(["the", "a", "an", "of", "and", "lego", "set", "with", "for", "in", "on", "by", "to", "kit"]);
@@ -156,13 +160,30 @@ export function indexOf(items) {
     spelt.set(word, id);
     return id;
   };
+  // How many top themes' names have each word: "super" and "heroes" are in
+  // two, so "marvel" alone names Super Heroes Marvel.
+  const shared = new Map();
+  for (const top of new Set(items.map((item) => (item.theme || [])[0]).filter(Boolean))) {
+    for (const word of new Set(wordsOf(top).filter((one) => !SMALL.has(one)).map(stem))) {
+      shared.set(word, (shared.get(word) || 0) + 1);
+    }
+  }
   const themes = new Map();
   const themeList = [];
   const themeOf = (name) => {
     if (!themes.has(name)) {
       const of = wordsOf(name);
+      // Its words that matter, a bit each, and of those the ones no other
+      // top theme's name has (all of them when each is in another's).
+      let bits = 0;
+      let apart = 0;
+      of.forEach((one, i) => {
+        if (SMALL.has(one) || i > 30) return;
+        bits |= 2 ** i;
+        if ((shared.get(stem(one)) || 0) < 2) apart |= 2 ** i;
+      });
       themes.set(name, themeList.length);
-      themeList.push({ name, words: Int32Array.from(of.map(idOf)), big: of.filter((one) => !SMALL.has(one)).length });
+      themeList.push({ name, words: Int32Array.from(of.map(idOf)), bits, apart: apart || bits });
     }
     return themes.get(name);
   };
@@ -373,9 +394,17 @@ function fill(slot, ids) {
   return { good, at };
 }
 
+/// How many bits [bits] has set.
+function ones(bits) {
+  let n = 0;
+  for (let b = bits; b; b &= b - 1) n += 1;
+  return n;
+}
+
 /// How each theme fills the query's slots: per theme, per slot, how good;
 /// and whether the query names it (every slot in its name, and half of its
-/// name's words or more), how much of it.
+/// name's words or more, or of the words that tell it from the other
+/// themes), how much of it: 1 is its whole name.
 function themesFilled(index, query) {
   return index.themes.map((theme) => {
     const goods = query.slots.map((slot) => fill(slot, theme.words));
@@ -387,9 +416,8 @@ function themesFilled(index, query) {
     const big = query.slots.filter((slot) => !slot.small && !slot.year && !(slot.number && !slot.single.size));
     if (big.length && big.every((slot) => goods[query.slots.indexOf(slot)].good >= PREFIX)) {
       const covered = goods.reduce((bits, one) => bits | one.at, 0);
-      let n = 0;
-      for (let bits = covered; bits; bits &= bits - 1) n += 1;
-      named = theme.big ? Math.min(1, n / theme.big) : 0;
+      named = theme.bits
+        ? Math.max(ones(covered & theme.bits) / ones(theme.bits), ones(covered & theme.apart) / ones(theme.apart)) : 0;
       if (named < 0.5) named = 0;
     }
     return { goods: goods.map((one) => one.good), named };
@@ -470,23 +498,30 @@ export function search(items, q, keep = () => true) {
     // How much of its name was typed: a name typed whole ranks first unless
     // another is ten times its size ("The Batmobile" before the 1989
     // Batmobile, which is before a 23-piece X-Wing).
-    const bits = row.bits;
-    let n = 0;
-    for (let b = covered & bits; b; b &= b - 1) n += 1;
-    let big = 0;
-    for (let b = bits; b; b &= b - 1) big += 1;
-    // A theme the query names counts as half its name typed: "castle" is
-    // the sets named castle first, the Castle theme's after.
-    const cover = Math.max(big ? n / big : 0, named / 2);
+    const big = ones(row.bits);
+    // A theme the query names counts as half its name typed: in the Castle
+    // theme, the sets named castle first.
+    const cover = Math.max(big ? ones(covered & row.bits) / big : 0, named / 2);
     const tier = numbered && every ? 0 : every && inName === needed ? 1 : every ? 2 : 3;
     const gear = row.gear && !query.asksGear ? 1 : 0;
     const quality = Math.round((sum / Math.max(1, needed)) * 20) / 20;
-    const soft = 0.5 * cover + Math.log10(row.own + 1) / 4 + (row.year ? (row.year - 1950) / 2000 : 0);
-    found.push({ item: items[i], at: i, matched, numbered: numbered && every, key: [gear, tier, -quality, -soft] });
+    const soft = 0.5 * cover + Math.log10(row.own + 1) / 4 + (row.year ? (row.year - 1950) / 300 : 0);
+    // Its third place is whether it is out of the theme the query is the
+    // whole name of, when that theme is what the words mean (below).
+    found.push({ item: items[i], at: i, matched, numbered: numbered && every, whole: named === 1, gear: row.gear,
+      key: [gear, tier, 0, -quality, -soft] });
   }
   // Every word in some, so only those; else the ones with the most.
   const kept = full ? found.filter((one) => one.matched === needed) : found;
   if (!full) for (const one of kept) one.key.unshift(-one.matched);
+  // A query that is a theme's whole name ("city", "trains", "marvel") is
+  // that theme: its sets before those with the word only in their name
+  // (LEGO City sets before NINJAGO City), when the theme has more of the sets
+  // found than the rest do ("dinosaurs" is the dinosaurs in any theme, not
+  // 2001's Dinosaurs theme first).
+  let inTheme = 0;
+  for (const one of kept) if (!one.gear) inTheme += one.whole ? 1 : -1;
+  if (full && inTheme > 0) for (const one of kept) one.key[2] = one.whole ? 0 : 1;
   const best = kept.reduce((top, one) => (!top || byKey(one, top) < 0 ? one : top), null);
   return { found: kept, near: !full && kept.length > 0, meant: best ? meantBy(query, index.rows[best.at]) : "" };
 }

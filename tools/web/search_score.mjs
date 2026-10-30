@@ -25,7 +25,9 @@ export function queries(file = path.join(ROOT, "tests/search_queries.tsv")) {
   return readFileSync(file, "utf8").split("\n").filter((line) => line.trim() && !line.startsWith("#"))
     .map((line) => {
       const [q, want, kind] = line.split("\t");
-      return { q, want: want.trim().split(/\s+/), kind: (kind || "").trim() };
+      // One theme:X or every:X (X may have spaces), or set numbers.
+      const wants = want.trim();
+      return { q, want: /^(theme|every):/.test(wants) ? [wants] : wants.split(/\s+/), kind: (kind || "").trim() };
     });
 }
 
@@ -73,8 +75,11 @@ if (args.url) {
 }
 
 const misses = [];
-/// Whether [want] (a set's number, or theme:X for any set of top theme X) is in the answer's first three.
-const has = (answer, want) => (want.startsWith("theme:") ? answer.themes.includes(want.slice(6)) : answer.top.includes(want));
+/// Whether the answer's first three have [want]: a set's number; theme:X, a
+/// set of top theme X; every:X, nothing but sets of top theme X.
+const has = (answer, want) => (want.startsWith("theme:") ? answer.themes.includes(want.slice(6))
+  : want.startsWith("every:") ? answer.themes.length > 0 && answer.themes.every((theme) => theme === want.slice(6))
+    : answer.top.includes(want));
 table.forEach((one, i) => {
   if (!one.want.some((want) => has(answers[i], want))) {
     misses.push({ q: one.q, kind: one.kind, want: one.want, top: answers[i].top, total: answers[i].total });
