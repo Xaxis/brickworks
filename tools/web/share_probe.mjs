@@ -307,9 +307,14 @@ async function main() {
   r = await call(`/m/${id}/embed`);
   check(r.status === 200 && r.text.includes(`href="${base}/m/${id}"`) && r.text.includes('target="_blank"'),
     `the card for an iframe: 200, opening the link in a tab (${r.status})`);
-  check(/<a class="cta small" href="([^"]+)"[^>]*target="_blank"[^>]*>Build it</.test(r.text)
+  // Since rel-m222 the card is a 3D view itself (social375): its picture
+  // turns in place from data-scene, and View in 3D is the picture's own
+  // link; one <base target="_blank"> sends every link to a tab.
+  check(r.text.includes('<base target="_blank">')
+    && /<a class="cta small" href="([^"]+)"[^>]*>Build it</.test(r.text)
     && r.text.match(/<a class="cta small" href="([^"]+)"/)[1] === `${base}/app?view=${id}&amp;build`
-    && r.text.includes(`<a class="link" href="${base}/app?view=${id}" target="_blank"`),
+    && r.text.includes(`<a class="picture" href="${base}/app?view=${id}"`)
+    && r.text.includes(`data-scene="/m/${id}/scene.json"`),
     "its button is Build it, the guided build at step 1, and View in 3D the viewer, each in a tab");
   check(/frame-ancestors \*/.test(r.headers.get("content-security-policy") || ""), "the card may be framed anywhere");
 

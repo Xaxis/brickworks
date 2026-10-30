@@ -1,5 +1,5 @@
 ## Comments pinned to parts: a word on the part it is about, for whoever
-## builds the model with you or after you (Edit, Comments…; PinsView draws
+## builds the model with you or after you (File, Comments…; PinsView draws
 ## them on the model; docs/TOGETHER.md).
 ##
 ## Kept in the model's file, a line each in the head of its main model, as
