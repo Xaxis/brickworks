@@ -17,7 +17,7 @@ Or all of that in one command, queued behind the release before it:
 ```sh
 tools/release/train.sh stage rel-m219 stage219 --after rel-m218 \
   --checks "io gallery" --probes "grab_probe" --units "unit1 unit2" --title "…"
-tools/release/train.sh status                  # each release's step, checks, and what is live
+tools/release/train.sh status                  # what is live since when, what is in flight, ETAs
 tools/release/train.sh hold rel-m219 "why"     # train.sh release rel-m219 lifts it
 ```
 
@@ -25,10 +25,12 @@ The train waits detached until `rel-m218_lead.out` says `SHIP: deploy:
 brickworks.diy serves`, never on rel-m218's process: its live checks after
 that touch only the live site. It stops if rel-m218 held, failed or never
 began, and gives up at its deadline (`TRAIN_WAIT`, 6 hours). Then
-`release_wt.sh` from origin/main, `merge_unit.sh` of the branch as
-`Merge: <title>` with `MERGE_GATES=ship`, a tree dirty or mid-merge
-refused, `check.sh --lists`, each probe (its exit and its FAIL lines both
-count), and `ship.sh` with the checks, which promotes the very preview its
+`release_wt.sh` from origin/main, `merge_unit.sh` of the branch's tip
+then (in the spec's `tip`; a commit to the branch after it waits for the
+next release) as `Merge: <title>` with `MERGE_GATES=ship`, a tree dirty or
+mid-merge refused, `check.sh --lists`, the probes three at a time
+(`TRAIN_PROBES_AT_ONCE`; one failing beside others runs again alone before
+it counts, and its exit and its FAIL lines both count), and `ship.sh` with the checks, which promotes the very preview its
 checks passed as soon as the battery ends. Once brickworks.diy serves the
 release's sha, it retires the release's worktree and each unit's whose HEAD
 is on main and which holds no file git does not track (`retire_wt.sh`). Its
@@ -40,11 +42,24 @@ and a train that stops before the ship writes `<tag>.gave_up` as
 `ship_after.sh` does, so the release staged behind it stops too. It runs
 from a copy of itself: a release fast-forwards the main checkout, this
 script with it, and bash reads a script as it goes. `kill -- -PID` (status
-names the pid) stops a train and what it runs. The lead wrote a chain like
+names the pid) stops a train and what it runs. Restaging a tag that
+stopped clears its worktree and branch when they hold nothing but its merge,
+and refuses when they hold a fix of their own. The lead wrote a chain like
 this by hand for each release from rel-m214 to m218, a promote job beside
 it, and another to retire worktrees afterwards; a held merge left one
 release's tree half-merged (rel-m214), and a retire after a held preview
 took rel-m196's worktree (2026-10-28).
+
+`status` is for the owner as much as the lead. First what brickworks.diy
+serves, which release that is and since when (the end of its deploy), and
+how long a ship takes from begun to served (the median of the last five:
+when `<tag>_lead.out` was made to when `<tag>_prod.log` was last written).
+Then each release in flight, a train or a ship begun by hand: its step,
+its checks passed of all, and when it should serve. A ship under way serves
+about a median ship after it began; one not yet shipping, no sooner than
+the release before it serves and a ship after that. The ETAs need a file
+system that keeps when a file was made (`stat %W`); without one they are
+left out.
 
 And before a unit says ready, from its own worktree:
 

@@ -9,9 +9,12 @@
 ## part's picture is in the file once, however many pages show it; and
 ## the boxes, arrows and words are drawn as PDF draws them, so a step
 ## number or a part's element number is words a reader can find and copy,
-## sharp at any size, in Helvetica, the page's own font. The page is the
-## booklet's, 269 x 199 mm, which fits A4 and US Letter turned on their
-## side (Booklet).
+## sharp at any size. The words are set in Liberation Sans, which has
+## Helvetica's widths letter for letter (the widths the booklet lays its
+## words out by, BookletRead), and the type itself is in the file, so
+## every reader draws the same letters whether it has Helvetica or not.
+## The page is the booklet's, 269 x 199 mm, which fits A4 and US Letter
+## turned on their side (Booklet).
 ##
 ## Written as it goes, into its file or (on the web) into memory to be
 ## downloaded: each page's pictures and words, then the page; and at the
@@ -40,6 +43,14 @@ const _PAGES := 2
 const _FONT := 3
 const _BOLD := 4
 
+## The type, regular and bold: its file (SIL Open Font License 1.1,
+## assets/fonts/OFL.txt) and its PostScript name.
+const TYPE: Array = [["res://assets/fonts/LiberationSans-Regular.ttf", "LiberationSans"],
+	["res://assets/fonts/LiberationSans-Bold.ttf", "LiberationSans-Bold"]]
+## WinAnsi's codes above 127 that are not Latin-1's, by their character.
+const MORE := {0x20AC: 0x80, 0x2026: 0x85, 0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93,
+	0x201D: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97, 0x2122: 0x99}
+
 
 ## Start a PDF going to [param path], or into memory when it is "" (take
 ## it with [method finish]). False when the file cannot be written.
@@ -50,9 +61,121 @@ func begin(path: String, read: BookletRead) -> bool:
 		if _file == null:
 			return false
 	_put(PackedByteArray([37, 80, 68, 70, 45, 49, 46, 52, 10, 37, 226, 227, 207, 211, 10]))
-	_object(_FONT, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>")
-	_object(_BOLD, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>")
+	_font(_FONT, TYPE[0])
+	_font(_BOLD, TYPE[1])
 	return true
+
+
+## The type [param type] ([file, name]) as font [param number], the whole
+## TrueType file in the PDF. A file the app cannot read falls back to the
+## reader's own Helvetica, as the PDF was before, and says so.
+func _font(number: int, type: Array) -> void:
+	var source: FontFile = load(str(type[0])) as FontFile
+	var bytes: PackedByteArray = source.data if source != null else PackedByteArray()
+	var metrics: Dictionary = font_metrics(bytes)
+	if metrics.is_empty():
+		push_error("BookletPdf: %s cannot be read; the PDF's words are left to the reader's Helvetica"
+			% type[0])
+		_object(number, "<< /Type /Font /Subtype /Type1 /BaseFont /%s /Encoding /WinAnsiEncoding >>"
+			% ("Helvetica-Bold" if number == _BOLD else "Helvetica"))
+		return
+	var file: int = _new()
+	_stream(file, "/Length1 %d /Filter /FlateDecode" % bytes.size(),
+		bytes.compress(FileAccess.COMPRESSION_DEFLATE))
+	var descriptor: int = _new()
+	var box: Array = metrics["box"]
+	_object(descriptor, ("<< /Type /FontDescriptor /FontName /%s /Flags 32 /FontBBox [%d %d %d %d] "
+		+ "/ItalicAngle 0 /Ascent %d /Descent %d /CapHeight %d /StemV %d /FontFile2 %d 0 R >>") % [
+		type[1], box[0], box[1], box[2], box[3], metrics["ascent"], metrics["descent"],
+		metrics["cap"], 140 if number == _BOLD else 80, file])
+	_object(number, ("<< /Type /Font /Subtype /TrueType /BaseFont /%s /FirstChar 32 /LastChar 255 "
+		+ "/Widths [%s] /Encoding /WinAnsiEncoding /FontDescriptor %d 0 R >>") % [type[1],
+		" ".join(PackedStringArray((metrics["widths"] as Array).map(
+			func(width: int) -> String: return str(width)))), descriptor])
+
+
+## What a PDF is told of TrueType [param bytes], in thousandths of its em:
+## {box [x0, y0, x1, y1], ascent, descent, cap, widths} with a width for
+## each code from 32 to 255 as WinAnsi reads it. Empty when it is not one.
+static func font_metrics(bytes: PackedByteArray) -> Dictionary:
+	if bytes.size() < 12:
+		return {}
+	var tables: Dictionary = {}
+	for index: int in _u16(bytes, 4):
+		var at: int = 12 + index * 16
+		if at + 16 > bytes.size():
+			return {}
+		tables[bytes.slice(at, at + 4).get_string_from_ascii()] = _u32(bytes, at + 8)
+	for needed: String in ["head", "hhea", "hmtx", "cmap", "OS/2"]:
+		if not tables.has(needed):
+			return {}
+	var head: int = tables["head"]
+	var em: float = maxf(1.0, _u16(bytes, head + 18))
+	var thousandths := func(units: int) -> int: return roundi(units * 1000.0 / em)
+	var os2: int = tables["OS/2"]
+	var glyphs: Dictionary = _glyphs(bytes, tables["cmap"])
+	var hmetrics: int = maxi(1, _u16(bytes, int(tables["hhea"]) + 34))
+	var widths: Array = []
+	for code: int in range(32, 256):
+		var character: int = code
+		for unicode: int in MORE:
+			if MORE[unicode] == code:
+				character = unicode
+		var glyph: int = mini(int(glyphs.get(character, 0)), hmetrics - 1)
+		widths.append(thousandths.call(_u16(bytes, int(tables["hmtx"]) + glyph * 4)))
+	return {"box": [thousandths.call(_i16(bytes, head + 36)), thousandths.call(_i16(bytes, head + 38)),
+			thousandths.call(_i16(bytes, head + 40)), thousandths.call(_i16(bytes, head + 42))],
+		"ascent": thousandths.call(_i16(bytes, os2 + 68)),
+		"descent": thousandths.call(_i16(bytes, os2 + 70)),
+		"cap": thousandths.call(_i16(bytes, os2 + 88)), "widths": widths}
+
+
+## The glyph of each character WinAnsi has, from the font's Unicode map
+## (cmap's Windows Unicode table, format 4): character -> glyph.
+static func _glyphs(bytes: PackedByteArray, cmap: int) -> Dictionary:
+	var table: int = -1
+	for index: int in _u16(bytes, cmap + 2):
+		var record: int = cmap + 4 + index * 8
+		if _u16(bytes, record) == 3 and _u16(bytes, record + 2) == 1:
+			table = cmap + _u32(bytes, record + 4)
+	if table < 0 or _u16(bytes, table) != 4:
+		return {}
+	var segments: int = _u16(bytes, table + 6) / 2
+	var ends: int = table + 14
+	var starts: int = ends + segments * 2 + 2
+	var deltas: int = starts + segments * 2
+	var offsets: int = deltas + segments * 2
+	var wanted: Array = range(32, 256) + MORE.keys()
+	var out: Dictionary = {}
+	for character: int in wanted:
+		for segment: int in segments:
+			if _u16(bytes, ends + segment * 2) < character:
+				continue
+			var start: int = _u16(bytes, starts + segment * 2)
+			if start > character:
+				break
+			var delta: int = _u16(bytes, deltas + segment * 2)
+			var offset: int = _u16(bytes, offsets + segment * 2)
+			var glyph: int = character
+			if offset != 0:
+				glyph = _u16(bytes, offsets + segment * 2 + offset + (character - start) * 2)
+			if glyph != 0:
+				out[character] = (glyph + delta) & 0xFFFF
+			break
+	return out
+
+
+static func _u16(bytes: PackedByteArray, at: int) -> int:
+	return (bytes[at] << 8) | bytes[at + 1] if at + 1 < bytes.size() else 0
+
+
+static func _i16(bytes: PackedByteArray, at: int) -> int:
+	var value: int = _u16(bytes, at)
+	return value - 0x10000 if value >= 0x8000 else value
+
+
+static func _u32(bytes: PackedByteArray, at: int) -> int:
+	return (_u16(bytes, at) << 16) | _u16(bytes, at + 2)
 
 
 ## One page of the booklet, as read (BookletRead.feed).
@@ -293,11 +416,9 @@ static func _rounded(at: Rect2, radius: float) -> String:
 		"%s %s %s %s %s %s c h" % [_n(x0), _n(y0 + c), _n(x0 + c), _n(y0), _n(x0 + r), _n(y0)]])
 
 
-## Words in the Helvetica's own encoding (WinAnsi): Latin-1, and the
-## dashes, quotes, ellipsis and trademark sign; "?" for anything else.
+## Words in the font's encoding (WinAnsi): Latin-1, and the dashes,
+## quotes, ellipsis and trademark sign; "?" for anything else.
 static func win_ansi(text: String) -> PackedByteArray:
-	const MORE := {0x20AC: 0x80, 0x2026: 0x85, 0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93,
-		0x201D: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97, 0x2122: 0x99}
 	var out := PackedByteArray()
 	out.resize(text.length())
 	for index: int in text.length():

@@ -82,6 +82,11 @@
 // answers kept here, the replies written to the project as the comments
 // they are, and the functions the API asks answered over the live ones
 // (tools/web/replies_stand_in.mjs), for tools/web/comments_flow.mjs.
+//
+// --hold=feedback holds supabase/feedback.sql and beta.sql in a Postgres of
+// this machine's own, the files themselves answering every beta_* and
+// feedback_* function, and the 'feedback' bucket in memory
+// (tools/web/feedback_stand_in.mjs), for tools/web/feedback_flow.mjs.
 import http from "node:http";
 import { Readable } from "node:stream";
 import { existsSync, readFileSync, statSync } from "node:fs";
@@ -97,7 +102,7 @@ const withheld = process.argv.includes("--instructions=none");
 // at /__held/<table>, on this machine only.
 const holding = (process.argv.find((a) => a.startsWith("--hold=")) || "").slice(7).split(",").filter(Boolean);
 const tables = holding.filter((name) => !["model_comments", "follows", "gallery_picks", "model_opens", "challenges",
-  "notifications", "replies"].includes(name));
+  "notifications", "replies", "feedback"].includes(name));
 const heldTables = tables.length ? await import("./held_tables.mjs") : null;
 if (heldTables) {
   heldTables.hold(tables, { origin: `http://127.0.0.1:${port}` });
@@ -125,6 +130,9 @@ if (heldNotifications) heldNotifications.hold();
 // Outermost of all: it reads the project's comments and notifications.
 const heldReplies = holding.includes("replies") ? await import("./replies_stand_in.mjs") : null;
 if (heldReplies) heldReplies.hold();
+// Apart from the rest: its functions and bucket are no other stand-in's.
+const heldFeedback = holding.includes("feedback") ? await import("./feedback_stand_in.mjs") : null;
+if (heldFeedback) await heldFeedback.hold();
 const stoodIn = process.argv.includes("--trust-stand-in");
 if (stoodIn) standIn();
 const routes = new Map();
@@ -143,6 +151,8 @@ const MAPPED = [
   [/^\/m\/([A-Za-z0-9]{10})[.]cutout[.]png$/, "share", "cutout"],
   [/^\/m\/([A-Za-z0-9]{10})[.]webp$/, "share", "thumb"],
   [/^\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", "embed"],
+  // What oEmbed asks of a model's link (?url=), as /oembed.
+  [/^\/oembed\/?$/, "share", "oembed"],
   // An older version of it, and that version's picture.
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/?$/, "share", "page"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]png$/, "share", "image"],
@@ -153,6 +163,9 @@ const MAPPED = [
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]mpd$/, "share", "file"],
   [/^\/m\/([A-Za-z0-9]{10})()\/parts[.](json|xml|csv)$/, "share", "parts"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/parts[.](json|xml|csv)$/, "share", "parts"],
+  // The model packed for its page's 3D view, newest or older.
+  [/^\/m\/([A-Za-z0-9]{10})\/scene[.]json$/, "share", "scene"],
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/scene[.]json$/, "share", "scene"],
   // A person's profile and a public collection (api/people.js).
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
@@ -225,11 +238,12 @@ function page(pathname) {
 http.createServer(async (incoming, outgoing) => {
   const url = new URL(incoming.url, "http://127.0.0.1");
   const asked = (heldTables || heldComments || heldFollows || heldDiscovery || heldDesigners || heldChallenges
-    || heldNotifications || heldReplies) && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
+    || heldNotifications || heldReplies || heldFeedback) && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
   if (asked) {
     const rows = heldTables?.rowsOf(asked[1]) ?? heldComments?.rowsOf(asked[1]) ?? heldFollows?.rowsOf(asked[1])
       ?? heldDiscovery?.rowsOf(asked[1]) ?? heldDesigners?.rowsOf(asked[1]) ?? heldChallenges?.rowsOf(asked[1])
-      ?? heldNotifications?.rowsOf(asked[1]) ?? heldReplies?.rowsOf(asked[1]) ?? null;
+      ?? heldNotifications?.rowsOf(asked[1]) ?? heldReplies?.rowsOf(asked[1])
+      ?? (heldFeedback ? await heldFeedback.rowsOf(asked[1]) : null) ?? null;
     outgoing.writeHead(rows ? 200 : 404, { "content-type": "application/json" });
     return outgoing.end(JSON.stringify(rows));
   }

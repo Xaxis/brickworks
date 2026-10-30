@@ -492,9 +492,21 @@ picture the assistant is shown.
   in shots/stress_list/; `-- time FILE RUNS` times Stress coming on, for a
   base checkout too); `src/dev/stress_sets.gd -- FILE.mpd ...` counts red and
   amber on any sets.
-- `controls panel and hint`: the on-screen list of what the keys do, opened with
-  `,`, `F1` or Help, Keys and controls — and every key on it actually doing that. Its last
-  line says which build this is (`BuildInfo.describe()`): "Brickworks 0.1.0,
+- `controls panel and hint`: the keys sheet, opened with `F1` or Help, Keys and
+  controls, and every key on it actually doing that; Settings (`,`, Tools,
+  Settings…) is the same panel's other face (`ControlsDialog.open()` and
+  `open_keys()`), never shown with it (APP_UX A1: the keys were a scroller one
+  row tall over the settings). The sheet is `SHEET_WIDE` (Main insets it again
+  on `face_changed`, at `wide()`), two columns of whole sections as tall as the
+  window; its box (focused as it opens, not on a touchscreen) keeps the rows
+  whose keys, words or section say every word typed, and the letters typed run
+  no tool; Escape in it closes the sheet. Besides the list it adds each key a
+  menu shows that the list does not name (Open, Save as, the steps, the
+  cut-away, F2, Y), in the menu's words, from `Shell.key_text`.
+  `keysheet_probe` (1280 x 720; PROBE_SIZE=1400x900 too) counts the rows wholly
+  in sight (36 of 85 at 1280 x 720, 51 at 1400 x 900; 20 needed), types "hinge" and "undo" with real
+  keys, and checks `,` and Tools, Settings show the settings and no key. Settings'
+  last line says which build this is (`BuildInfo.describe()`): "Brickworks 0.1.0,
   released 2026-10-10 (3f2a9c1)" in a release, ", development build" from
   source, and on the web the version before the deploy's commit and time. The
   desktop window title carries the version too. `--about` prints the same line
@@ -1092,13 +1104,18 @@ picture the assistant is shown.
   (`BookletRead`: the file on the desktop, the tab's sections on the web)
   into a PDF written by hand (`BookletPdf`: the step pictures the booklet's
   own JPEGs as DCTDecode, a part's picture once, boxes and arrows as paths,
-  words as Helvetica text, 269 x 199 mm pages) or a zip of a PNG a page at
-  the pictures' own density (`BookletPng`, drawn with `force_draw`, as the
+  words as text in Liberation Sans, Helvetica's widths, the TrueType file
+  embedded whole as FontFile2 with its WinAnsi widths read from its own
+  hmtx and cmap: `BookletPdf.TYPE`, `font_metrics`; `assets/fonts/`, SIL
+  OFL, credited in `Credits.LIST` "liberation"; 269 x 199 mm pages) or a
+  zip of a PNG a page at 300 dpi (`BookletPng.DPI`, a pHYs chunk saying so,
+  `dpi_chunk`; the words in the same type; drawn with `force_draw`, as the
   web's app tab is out of view and gets no frames). `booklet_pdf_probe`
   presses Instructions and then both Saves as the browser does, and
   `tools/booklet_pdf_check.py` reads the result with poppler and pypdf:
-  page count, page size, every step picture byte for byte, the title and
-  the element numbers as words, the zip's first and last pages against the
+  page count, page size, every font embedded (`pdffonts`), every step
+  picture byte for byte, the title and the element numbers as words, the
+  zip's first and last pages 300 dpi in pixels and pHYs and against the
   PDF drawn by poppler (`--shots` against the browser's own pictures, from
   `booklet_print.mjs --shots-only`). `booklet_flow.mjs` presses both in a
   browser and runs the same check on the downloads.
@@ -1358,6 +1375,22 @@ picture the assistant is shown.
   words, the picture and `path.drawn-arrow`, none on any other page) and the
   exported file (ARROW, PANEL). It ends "...a page laid out by hand and its
   step moved with its arrow..." (47 checks, 2026-10-18, on a local export).
+  **Apply to later pages** (`page_apply_later`; `PageEditor.later_layout`,
+  recorded as one undo by `Shell.place_pages`; over MCP `edit_booklet
+  follow=true`): every later page of the same kind with as many steps
+  takes the page's layout, each step's placed picture, parts list, number
+  and callout moved into its own room (`BookletLooks.rebased`), a parts
+  list or callout only where the later step has one, the list as wide as
+  its own parts need and kept to its side, nothing else placed, and a
+  placed picture's box cut to what the step's list leaves of it
+  (`PageEditor.clear_of`) and shrunk round its centre so the later model is
+  no larger than the booklet draws a step (`Booklet._most` x `_grown`), a
+  page's steps alike; pages of another number of steps are said as left.
+  `booklet_later_probe` lays 42004-1's booklet out at one step a page by
+  the mouse in 9 acts (bar 10) and checks every later page against the
+  first, the cap, nothing on anything or off the page, the callouts where
+  the booklet lays them, Ctrl-Z byte for byte, `follow=true` the same file,
+  and a reopen laid out the same.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,

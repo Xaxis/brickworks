@@ -59,7 +59,7 @@ func _ready() -> void:
 	_pro.visible = false
 	_pro.pressed.connect(func() -> void:
 		visible = false
-		OS.shell_open(Deployment.api_base() + _pro_page))
+		Outside.open_link(Deployment.api_base() + _pro_page))
 	row.add_child(_pro)
 	_close = ReloadOffer.button("Not now", false)
 	_close.pressed.connect(func() -> void: visible = false)

@@ -12,7 +12,7 @@ description: Build steps, the timeline, the booklet Brickworks lays out from the
 
 ## Build steps {#steps}
 
-A model's build steps are the order it goes together in. Press [[E]] as you build: what was put down since the last step becomes one. **Edit › Build steps** moves the selected parts a step earlier ([[Shift+[]]) or later ([[Shift+]]]), makes a step of them ([[Shift+N]]), and moves, merges or deletes the step the timeline is on.
+A model's build steps are the order it goes together in. Press [[E]] as you build: what was put down since the last step becomes one. **Build › Build steps** moves the selected parts a step earlier ([[Shift+[]]) or later ([[Shift+]]]), makes a step of them ([[Shift+N]]), and moves, merges or deletes the step the timeline is on.
 
 <!-- covers
 ui:build steps
@@ -56,13 +56,15 @@ ui:the booklet by hand
 
 **Lay out the page…** on the Booklet row puts the page in your hands: drag its picture, parts list, callout and step number where they go, and a corner to size each. **Add words**, **Add a picture…**, and **Draw an arrow**: drag it, drag its middle to bend it, and set its colour and width. A callout's own pages turn with **Previous** and **Next page**.
 
+Laid out one page the way you like, press **Apply to later pages**: every later page with as many steps gets the same layout, its picture where yours is and drawn no larger than the booklet draws a step, and moved clear of a parts list that grew for a step of many parts. One Undo takes it all back. Set **Per page** first so the pages have the same number of steps.
+
 <!-- covers
 ui:the booklet page by hand
 -->
 
 ## Save it {#save}
 
-Beside **Print**, the booklet has **Save as PDF** and **Save pages as PNG**, a .zip of a picture a page.
+Beside **Print**, the booklet has **Save as PDF** and **Save pages as PNG**, a .zip of a picture a page at 300 dots an inch. The PDF carries its own type, so it reads the same on any computer.
 
 <!-- covers
 ui:the booklet as a PDF and as PNG pages

@@ -1,5 +1,7 @@
 // A Postgres of its own, made, given supabase/beta.sql and thrown away: for
 // db_check.mjs (the database itself) and api_check.mjs (the API against it).
+// startPostgres({also: ["supabase/feedback.sql"]}) gives it more files after
+// beta.sql, in order (tests/fixtures/feedback/, tools/web/feedback_stand_in.mjs).
 //
 //   PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js   node's pg (npm install --prefix /tmp/pg pg@8)
 //   PG_BIN=<a folder with initdb and postgres>        Admission's embedded Postgres has both:
@@ -9,7 +11,7 @@
 //
 // It listens on a socket in a folder of its own, never a port. Supabase's
 // part is stood in for: its three roles, auth.users with the columns the
-// file reads, and the two tables of models it counts.
+// file reads, the two tables of models it counts, and storage's buckets.
 import { spawn, spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -20,7 +22,7 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 export const SQL = readFileSync(path.join(here, "../../../supabase/beta.sql"), "utf8");
 
-export async function startPostgres() {
+export async function startPostgres({ also = [] } = {}) {
   const pg = createRequire(import.meta.url)(process.env.PG_MODULE || "/tmp/pg/node_modules/pg/lib/index.js");
   const bin = process.env.PG_BIN;
   const lib = path.join(bin, "..", "lib");
@@ -58,8 +60,12 @@ export async function startPostgres() {
     create table auth.users (id uuid primary key, email text, created_at timestamptz not null default now(),
       email_confirmed_at timestamptz, last_sign_in_at timestamptz);
     create table public.account_models (owner uuid not null references auth.users (id) on delete cascade, name text);
-    create table public.shared_models (owner uuid not null references auth.users (id) on delete cascade, id text);`);
+    create table public.shared_models (owner uuid not null references auth.users (id) on delete cascade, id text);
+    create schema storage;
+    create table storage.buckets (id text primary key, name text not null, public boolean not null default false,
+      file_size_limit bigint, allowed_mime_types text[]);`);
   await q(SQL);
+  for (const file of also) await q(readFileSync(path.join(here, "../../..", file), "utf8"));
   let n = 0;
   return {
     q,
@@ -76,7 +82,7 @@ export async function startPostgres() {
     /// PostgREST's rpc for a public function: its named arguments, its answer.
     async rpc(name, args) {
       const names = Object.keys(args || {});
-      if (names.some((key) => !/^p_[a-z_]+$/.test(key)) || !/^beta_[a-z_]+$/.test(name)) throw new Error(`no rpc ${name}`);
+      if (names.some((key) => !/^p_[a-z_]+$/.test(key)) || !/^(beta|feedback)_[a-z_]+$/.test(name)) throw new Error(`no rpc ${name}`);
       const sql = `select public.${name}(${names.map((key, at) => `${key} => $${at + 1}`).join(", ")}) as answer`;
       const values = names.map((key) => (args[key] !== null && typeof args[key] === "object" ? JSON.stringify(args[key]) : args[key]));
       return (await q(sql, values))[0].answer;

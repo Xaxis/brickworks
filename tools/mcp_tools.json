@@ -4210,7 +4210,7 @@
       "readOnlyHint": false,
       "title": "Set how a booklet step is printed"
     },
-    "description": "Set how the booklet prints a step, as the timeline's Booklet row and Build, Booklet page do; one undo step, saved with the model (a turn as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read). step= a number from booklet_layout or edit_steps. turn= degrees round from the usual angle and tilt= degrees higher, held for the steps after it until turned again, or turn=\"usual\"; zoom= 0.5 to 3 (in on what the step adds); size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; parts= false leaves its parts list off; sign= false leaves off the turn sign a step turned more than 60 degrees round or 45 up or down gets; callout= false builds the sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or 0 (as they fit) for the whole booklet; highlight= false leaves the new parts unoutlined in the whole booklet. The page by hand, one undo step each and alone in a call: place= moves an item of the step's page to x, y (and w, h) in mm on the 269 x 199 page, as dragging it on Lay out the page does (item picture, parts, callout or number; note with index= for words or a picture added; remove=true takes a note off, back=true puts an item back where the booklet lays it); text= puts words on the step's page; arrow= draws an arrow on it, from x1, y1 to x2, y2, bent through bx, by if given, red (where a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= changes or removes one. What is placed goes with its step when the pages change. booklet_layout says where each is, and what was moved off what it overlapped. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
+    "description": "Set how the booklet prints a step, as the timeline's Booklet row and Build, Booklet page do; one undo step, saved with the model (a turn as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read). step= a number from booklet_layout or edit_steps. turn= degrees round from the usual angle and tilt= degrees higher, held for the steps after it until turned again, or turn=\"usual\"; zoom= 0.5 to 3 (in on what the step adds); size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; parts= false leaves its parts list off; sign= false leaves off the turn sign a step turned more than 60 degrees round or 45 up or down gets; callout= false builds the sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or 0 (as they fit) for the whole booklet; highlight= false leaves the new parts unoutlined in the whole booklet. The page by hand, one undo step each and alone in a call: place= moves an item of the step's page to x, y (and w, h) in mm on the 269 x 199 page, as dragging it on Lay out the page does (item picture, parts, callout or number; note with index= for words or a picture added; remove=true takes a note off, back=true puts an item back where the booklet lays it); text= puts words on the step's page; arrow= draws an arrow on it, from x1, y1 to x2, y2, bent through bx, by if given, red (where a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= changes or removes one. What is placed goes with its step when the pages change. booklet_layout says where each is, and what was moved off what it overlapped. follow=true lays out every later page with as many steps as the page step= is on, as that page is laid out (Apply to later pages), one undo step. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4255,6 +4255,10 @@
           "type": "object"
         },
         "callout": {
+          "type": "boolean"
+        },
+        "follow": {
+          "description": "true: the later pages laid out as step's page is",
           "type": "boolean"
         },
         "highlight": {
@@ -5561,5 +5565,47 @@
       "type": "object"
     },
     "name": "fresh_eyes"
+  },
+  {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Say what it reads as now"
+    },
+    "description": "Answer the final fresh look the first save after the creative pass asks for, from the three pictures it handed you alone: what landed of the changes the first look asked for, what the model reads as, what still reads as a generic box, and done, or the one change that would now most make it read as the subject. Only when a save asks.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "change": {
+          "description": "the one change that would now most make it read as the subject: where on the model, and what to build there; empty when done",
+          "type": "string"
+        },
+        "done": {
+          "description": "true only when it reads as the subject at a glance and nothing in it reads as a generic box, slab or stack; then no change",
+          "type": "boolean"
+        },
+        "generic": {
+          "description": "what reads as a generic box, slab or stack rather than as the subject",
+          "type": "string"
+        },
+        "landed": {
+          "description": "for each change the first look asked for: whether it shows in the pictures and whether it worked",
+          "type": "string"
+        },
+        "reads_as": {
+          "description": "what it reads as at a glance, and what in it reads as the subject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "landed",
+        "reads_as",
+        "generic",
+        "done",
+        "change"
+      ],
+      "type": "object"
+    },
+    "name": "fresh_eyes_final"
   }
 ]

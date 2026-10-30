@@ -23,8 +23,12 @@
 ##   page count, each page's size, each page's step pictures the
 ##   booklet's own JPEGs byte for byte, its title and parts list words
 ##   a reader finds.
+##   does the PDF carry its type (pdffonts: every font embedded)?
 ##   is the zip a PNG a page, the first and the last the booklet's own
-##   pages (the checker draws those from the PDF and compares)?
+##   pages (the checker draws those from the PDF and compares), each 300
+##   dots an inch in its pixels and in its pHYs? On the web (where the
+##   zip is handed over from memory), 300 up to 134 pages, finer than the
+##   web's own pictures beyond?
 ##   how long did each take, and how big is each?
 extends SceneTree
 
@@ -166,6 +170,12 @@ func _from_file(html: String, out: String) -> void:
 
 ## The checker, a reader of PDFs that is not this one, on what was saved.
 func _checked(html: String, pdf: String, zip: String, out: String) -> void:
+	# On the web the zip is handed over from memory: 300 dots an inch up to
+	# 134 pages, finer than the web's own pictures (3.6 px a mm) beyond.
+	var dpi: Array = [14, 134, 324, 1405].map(func(pages: int) -> int:
+		return roundi(BookletPng.web_density(pages) * 25.4))
+	_check("on the web, pages at %s dots an inch for 14, 134, 324 and 1,405 pages" % str(dpi),
+		dpi[0] == 300 and dpi[1] == 300 and dpi[2] < 300 and dpi[3] >= 3.6 * 25.4)
 	var said: Array = []
 	var code: int = OS.execute("python3", [ProjectSettings.globalize_path(
 		"res://tools/booklet_pdf_check.py"), html, pdf, "--zip", zip, "--out", out], said, true)
@@ -244,7 +254,7 @@ func _check(what: String, ok: bool) -> bool:
 ## Every way out: the system's own opener put back first, as a lambda of
 ## this script's left in SaveTo's static breaks the heap at exit.
 func _quit() -> void:
-	SaveTo.open_with = Callable(OS, "shell_open")
+	SaveTo.open_with = Callable(Outside, "open_link")
 	print("booklet_pdf_probe: %s" % ("PASS" if _failures == 0 else "FAIL (%d)" % _failures))
 	if _main != null:
 		_main.queue_free()

@@ -73,6 +73,18 @@
 //                                        month of Pro; and the email
 //   POST /api/admin?op=beta_grant        every month still to give, given at
 //                                        Admission: what runs once Pro launches
+//   GET  /api/admin?op=feedback[&kind=K][&beta=1|0][&status=S][&tests=1]
+//                                        the feedback inbox: every report,
+//                                        newest first, with what was attached
+//                                        and the answers (api/_feedback.js,
+//                                        supabase/feedback.sql)
+//   GET  /api/admin?op=feedback_file&id=N&file=picture|model  a report's file
+//   POST /api/admin?op=feedback_triage&id=N  {status, note}: where it stands
+//                                        (new, seen, planned, fixed,
+//                                        wont_fix), and a note only the owner
+//                                        reads
+//   POST /api/admin?op=feedback_reply&id=N  {words}: emailed to its sender
+//                                        from BETA_REPLY_TO, and kept with it
 //   POST /api/admin?op=plan              {themes: [{month: "2026-11", title,
 //                                        brief}]}: a year of themes at once, up
 //                                        to twelve, each its whole month, told
@@ -102,6 +114,7 @@ import { facesOf, pictureAt } from "./_faces.js";
 import { keyed, readShard, shardOf } from "./_owned.js";
 import { originOf } from "./_oauth.js";
 import { betaDecide, betaGrant, betaQueue } from "./_beta.js";
+import { feedbackFile, feedbackInbox, feedbackReply, feedbackTriage } from "./_feedback.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -155,7 +168,7 @@ export default async function handler(request, response) {
   const op = String(request.query?.op || "");
   const acts = { unlist, bar, unbar, dismiss, untest, uncomment, remove_photo: takePhotoOut,
     remove_avatar: takeAvatarOut, pick, unpick, challenge: setChallenge, end_challenge: endChallenge, plan: planYear,
-    beta_decide: betaDecide, beta_grant: betaGrant };
+    beta_decide: betaDecide, beta_grant: betaGrant, feedback_triage: feedbackTriage, feedback_reply: feedbackReply };
   if (request.method === "POST" && acts[op]) {
     try {
       return await acts[op](request, response, claims);
@@ -167,13 +180,21 @@ export default async function handler(request, response) {
   }
   if (request.method !== "GET") {
     return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar, dismiss, untest, uncomment, remove_photo, "
-      + "remove_avatar, pick, unpick, challenge, end_challenge, plan, beta_decide or beta_grant" });
+      + "remove_avatar, pick, unpick, challenge, end_challenge, plan, beta_decide, beta_grant, feedback_triage or "
+      + "feedback_reply" });
   }
   if (op === "beta") {
     try {
       return await betaQueue(request, response);
     } catch (error) {
       return response.status(502).json({ error: error.message });
+    }
+  }
+  if (op === "feedback" || op === "feedback_file") {
+    try {
+      return await (op === "feedback" ? feedbackInbox : feedbackFile)(request, response);
+    } catch (error) {
+      return response.status(error instanceof AuthError ? error.status : 502).json({ error: error.message });
     }
   }
   if (op === "photo") {

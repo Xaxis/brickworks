@@ -1,6 +1,13 @@
-## What everything does, and the things about it you can change: the
-## wheel, the navigation preset, the floor new models start on, and
-## whether the assistant is in the window at all.
+## Two dialogs in one panel, never both at once: the keys sheet (F1, Help,
+## Keys and controls), which says what everything does, and Settings (",",
+## Tools, Settings…), the things about it you can change: the wheel, the
+## navigation preset, the floor new models start on, and whether the
+## assistant is in the window at all.
+##
+## They were one sheet, the keys a scroller one row tall over the settings,
+## and every key but the first was behind a 6 px scroll bar (APP_UX A1). The
+## keys now have the panel to themselves, two columns of them as tall as the
+## window, and a box that keeps only the rows that say what is typed.
 ##
 ## The strip along the bottom is a reminder, not a reference: it wraps,
 ## it drops the tail when the window is narrow, and it is deliberately
@@ -15,14 +22,25 @@
 ## Each row is drawn the way the strip draws it — keys as keys, the mouse
 ## and fingers as pictures of themselves — with the pointer that control
 ## shows beside it, so the cursor seen over the model can be looked up
-## here. Both follow the two settings below: change what the middle
-## button does and its row changes picture and verb at once.
+## here. Both follow the two settings: change what the middle button does
+## and its row changes picture and verb at once.
+##
+## The keys the menus show and that list does not name (Open, Save as, the
+## steps, the cut-away) are on the sheet too, in the menus' own words and
+## read from the menus' own table (Shell.key_text), so the sheet never
+## leaves out a key a menu shows.
 class_name ControlsDialog
 extends PanelContainer
 
-## How big it would like to be, before the window has its say.
+## How big Settings would like to be, before the window has its say.
 const WIDE := 520.0
 const TALL := 720.0
+## And the keys sheet: two columns of keys, so that more than twenty show at
+## once in a 1280 x 720 window, and as tall as the window.
+const SHEET_WIDE := 960.0
+const SHEET_TALL := 1400.0
+## Narrower than this, the sheet's keys are one column.
+const TWO_COLUMNS := 760.0
 
 ## Interface units: a key or a picture in a row, the column the keys are
 ## right-aligned in (wide enough for 1 to 7), and the pointer's column.
@@ -33,10 +51,17 @@ const POINTER_WIDE := 28.0
 ## drawn a little larger than a key to read at the same size.
 const POINTER_TALL := 26.0
 
-var _rows: VBoxContainer
+## The sheet's columns of keys, side by side.
+var _rows: HBoxContainer
 var _done: Button
+## The menus' commands and their keys (Main gives it once the shell is made).
+var shell: Shell
 
 signal changed
+## The keys sheet shown in place of Settings, or Settings in place of it:
+## the two want different sizes (Main insets it again, at [method wide] and
+## [method tall]).
+signal face_changed
 ## Settings, Assistant (AI): shown, or building by hand only.
 signal assistant_chosen(on: bool)
 ## Settings, Interface size: chosen, for the window to be drawn again at it.
@@ -69,10 +94,21 @@ func _build() -> void:
 	add_child(column)
 
 	var title := Label.new()
-	title.text = "Controls"
+	title.text = "Settings"
 	title.add_theme_font_size_override("font_size", 15)
 	column.add_child(title)
 	_title = title
+
+	# The sheet's box: what is typed keeps the rows whose keys or words say
+	# it, as Blender's F3 and Studio's shortcut page do. Focused as the sheet
+	# opens, so the letters go here and not to the tools they are keys of.
+	_find = LineEdit.new()
+	_find.placeholder_text = "Find a key, or what it does"
+	_find.accessibility_name = "Find a key"
+	_find.clear_button_enabled = true
+	_find.add_theme_font_size_override("font_size", 12)
+	_find.text_changed.connect(func(_typed: String) -> void: _fill())
+	column.add_child(_find)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -80,20 +116,28 @@ func _build() -> void:
 	column.add_child(scroll)
 	_keys = scroll
 
-	_rows = VBoxContainer.new()
+	_rows = HBoxContainer.new()
 	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_rows.add_theme_constant_override("separation", 5)
+	_rows.add_theme_constant_override("separation", 24)
 	scroll.add_child(_rows)
-	_fill()
+	_none = Label.new()
+	_none.add_theme_font_size_override("font_size", 12)
+	_none.add_theme_color_override("font_color", Color(0.72, 0.75, 0.82))
+	_none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_none.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_none.visible = false
+	column.add_child(_none)
+	# Two columns or one, as the sheet is wide or narrow.
+	scroll.resized.connect(func() -> void:
+		if _keys.visible and _columns() != _rows.get_child_count():
+			_fill())
 
-	_rule = HSeparator.new()
-	column.add_child(_rule)
-
-	# The settings, as they were, where the window has room for them all; in
-	# a window too short (a big Interface size on a laptop) they scroll,
-	# with Done below (_fit_settings).
+	# The settings, where the window has room for them all; in a window too
+	# short (a big Interface size on a laptop) they scroll, with Done below
+	# (_fit_settings).
 	_settings = ScrollContainer.new()
 	_settings.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_settings.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(_settings)
 	var lower := VBoxContainer.new()
 	lower.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -126,9 +170,8 @@ func _build() -> void:
 	if OS.has_feature("web"):
 		_read_version.call_deferred()
 
-	# Settings, AI: a page of its own in the dialog, over the keys and the
-	# settings, with the whole height: its form is taller than the room the
-	# settings leave the keys (_fit_settings).
+	# Settings, AI: a page of its own in the dialog, in place of the
+	# settings, with the whole height.
 	_ai_page = ScrollContainer.new()
 	_ai_page.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_ai_page.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -167,16 +210,19 @@ func _build() -> void:
 	done.pressed.connect(func() -> void: visible = false)
 	column.add_child(done)
 	_done = done
+	_show_face("settings")
 
 
-## The settings under the keys: all their height, or what the dialog has
-## left over its title and Done. The keys' list has what is left after them,
-## as it always had (at 1100 x 700 that is a few rows): a row of keys kept
-## for it pushed Assistant (AI) out of sight there (fit_check, 2026-10-24).
+## The settings: all their height, or what the dialog has left over its
+## title and Done, scrolled.
 var _settings: ScrollContainer
 
 
 func _fit_settings() -> void:
+	# Hidden, it is in no measure of the column's, and would be taken out of
+	# one twice.
+	if not _settings.visible:
+		return
 	var lower: Control = _settings.get_child(0)
 	var wants: float = lower.get_combined_minimum_size().y
 	var panel: StyleBox = get_theme_stylebox("panel")
@@ -196,18 +242,148 @@ func _fit_settings() -> void:
 		_settings.custom_minimum_size.y = fits
 
 
-## The bindings, read from the one place they are written down.
+## The bindings, read from the one place they are written down, and those
+## typed into the box: in their sections, each section whole in a column,
+## the columns as near one height as whole sections let them be.
 func _fill() -> void:
 	for child: Node in _rows.get_children():
 		_rows.remove_child(child)
 		child.queue_free()
 	var density: float = Icons.density(self)
+	var words: PackedStringArray = _find.text.to_lower().split(" ", false)
+	var sections: Array[String] = []
+	var in_section: Dictionary = {}   # section -> Array[Binding]
+	for binding: ControlsHint.Binding in bindings():
+		if not _says(binding, words):
+			continue
+		if not in_section.has(binding.section):
+			sections.append(binding.section)
+			in_section[binding.section] = []
+		(in_section[binding.section] as Array).append(binding)
+	var count: int = 0
+	for section: String in sections:
+		count += (in_section[section] as Array).size() + 1
+	var columns: Array[VBoxContainer] = []
+	for _n: int in _columns():
+		var holder := VBoxContainer.new()
+		holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		holder.add_theme_constant_override("separation", 3)
+		_rows.add_child(holder)
+		columns.append(holder)
+	var at: int = 0
+	var placed: int = 0
+	for section: String in sections:
+		var these: Array = in_section[section]
+		# On to the next column once this one holds its share.
+		if placed > 0 and at < columns.size() - 1 \
+				and placed + these.size() * 0.5 > count * float(at + 1) / columns.size():
+			at += 1
+		var holder: VBoxContainer = columns[at]
+		holder.add_child(_heading(section, holder.get_child_count() > 0))
+		for binding: ControlsHint.Binding in these:
+			holder.add_child(_row(binding, density))
+		placed += these.size() + 1
+	_none.visible = sections.is_empty()
+	_none.text = "No key says \"%s\". Every command, with or without a key, is in the menus." \
+		% _find.text.strip_edges()
+
+
+## Escape typed in the box closes the sheet, as it does anywhere else on
+## it: the box would take it only to stop editing, and Main leaves a key
+## typed into a box to the box.
+func _input(event: InputEvent) -> void:
+	var key := event as InputEventKey
+	if visible and key != null and key.pressed and key.keycode == KEY_ESCAPE and _find.has_focus():
+		visible = false
+		get_viewport().set_input_as_handled()
+
+
+## Two columns where the sheet is wide enough for them, else one.
+func _columns() -> int:
+	return 2 if size.x >= TWO_COLUMNS else 1
+
+
+## Whether [param binding]'s keys, words or section say every one of
+## [param words].
+static func _says(binding: ControlsHint.Binding, words: PackedStringArray) -> bool:
+	var said: String = (" ".join(binding.keys) + " " + binding.verb + " " + binding.section).to_lower()
+	for word: String in words:
+		if not said.contains(word):
+			return false
+	return true
+
+
+## The list's own sections, for the keys the menus show that it does not
+## name, by the menu they are in.
+const MENU_SECTIONS: Dictionary = {"File": "Panels", "Edit": "Building", "View": "The view",
+	"Build": "Building", "Tools": "Building", "Help": "Panels"}
+
+
+## Every row the sheet has: the controls list (ControlsHint.for_keyboard),
+## then each key a menu shows that the list does not name, in the menu's
+## words, in the list's section for that menu.
+func bindings() -> Array[ControlsHint.Binding]:
+	var listed: Array[ControlsHint.Binding] = ControlsHint.for_keyboard()
+	if shell == null:
+		return listed
+	var named: Dictionary = {}
+	for binding: ControlsHint.Binding in listed:
+		for key: String in binding.keys:
+			named[key.to_lower()] = true
+	var extra: Dictionary = {}   # section -> Array[Binding]
+	var seen: Dictionary = {}
+	for menu: Array in Shell.MENUS:
+		for name: String in _commands_in(menu[1]):
+			var command: Shell.Command = shell.command(name)
+			if command == null or command.accel == 0 or seen.has(name):
+				continue
+			if not shell.assistant_shown and name in Shell.ASSISTANT_COMMANDS:
+				continue
+			seen[name] = true
+			var key: String = _as_listed(command.accel)
+			if named.has(key.to_lower()):
+				continue
+			named[key.to_lower()] = true
+			var words: String = command.words.trim_suffix("…")
+			var binding := ControlsHint.Binding.new([key], words[0].to_lower() + words.substr(1))
+			binding.section = MENU_SECTIONS.get(menu[0], "Panels")
+			if not extra.has(binding.section):
+				extra[binding.section] = []
+			(extra[binding.section] as Array).append(binding)
+	# Each after the list's own rows of its section.
+	var out: Array[ControlsHint.Binding] = []
 	var section: String = ""
-	for binding: ControlsHint.Binding in ControlsHint.for_keyboard():
-		if binding.section != section:
-			section = binding.section
-			_rows.add_child(_heading(section, _rows.get_child_count() > 0))
-		_rows.add_child(_row(binding, density))
+	for binding: ControlsHint.Binding in listed:
+		if binding.section != section and extra.has(section):
+			out.append_array(extra[section])
+			extra.erase(section)
+		section = binding.section
+		out.append(binding)
+	for rest: String in extra:
+		out.append_array(extra[rest])
+	return out
+
+
+## The commands of a menu, its submenus' too.
+static func _commands_in(items: Array) -> Array[String]:
+	var out: Array[String] = []
+	for item: String in items:
+		if item == "-":
+			continue
+		if item.begins_with(">"):
+			out.append_array(_commands_in(Shell.SUBMENUS.get(item.substr(1), [])))
+		else:
+			out.append(item)
+	return out
+
+
+## A menu's key as the controls list writes it: "Ctrl-shift-S", "F2".
+static func _as_listed(accel: int) -> String:
+	var parts: PackedStringArray = Shell.key_text(accel).split("+")
+	for n: int in parts.size() - 1:
+		if parts[n] != EditVerbs.held_key():
+			parts[n] = parts[n].to_lower()
+	return "-".join(parts)
 
 
 func _heading(text: String, after_something: bool) -> Control:
@@ -464,8 +640,10 @@ var ai_open: LinkButton
 var _ai_page: ScrollContainer
 var _back: LinkButton
 var _title: Label
+## The keys sheet: its box, its list, and what it says when nothing is found.
 var _keys: ScrollContainer
-var _rule: HSeparator
+var _find: LineEdit
+var _none: Label
 
 
 func _ai(row: HBoxContainer) -> void:
@@ -487,24 +665,50 @@ func _show_designer() -> void:
 		else str(kept["model"]) if not str(kept["model"]).is_empty() else "no model chosen")
 
 
-## The AI page in place of the keys and the settings, or back.
+## The AI page in place of the settings, or back.
 func _show_ai(on: bool) -> void:
 	_ai_page.visible = on
-	_keys.visible = not on
-	_rule.visible = not on
 	_settings.visible = not on
-	_title.text = "Settings: AI" if on else "Controls"
+	_title.text = "Settings: AI" if on else "Settings"
 	if on:
 		ai.show_kept()
 		(ai.who_key if ai.who_key.button_pressed else ai.who_claude).grab_focus.call_deferred()
 	else:
 		_show_designer()
+		_fit_settings()
 
 
 ## Settings opened at its AI page.
 func open_ai() -> void:
 	open()
 	_show_ai(true)
+
+
+## "keys" (the sheet) or "settings".
+var _face: String = "settings"
+
+
+func _show_face(face: String) -> void:
+	var keys: bool = face == "keys"
+	_find.visible = keys
+	_keys.visible = keys
+	_none.visible = false
+	_settings.visible = not keys
+	_ai_page.visible = false
+	_title.text = "Keys and controls" if keys else "Settings"
+	if face == _face:
+		return
+	_face = face
+	face_changed.emit()
+
+
+## How wide and how tall the face showing would like to be (Main._inset).
+func wide() -> float:
+	return SHEET_WIDE if _face == "keys" else WIDE
+
+
+func tall() -> float:
+	return SHEET_TALL if _face == "keys" else TALL
 
 
 var _version: Label
@@ -538,8 +742,8 @@ func _read_version() -> void:
 	http.request(str(where))
 
 
+## Settings.
 func open() -> void:
-	_fill()
 	if new_floor != null:
 		new_floor.show_floor(ModelFloor.preferred(), false)
 	if assistant_on != null:
@@ -547,16 +751,31 @@ func open() -> void:
 	if interface_choice != null:
 		interface_choice.select(_interface_index())
 		reduce_motion.set_pressed_no_signal(ShellPrefs.reduce_motion())
-	if _ai_page != null and _ai_page.visible:
-		_show_ai(false)
+	_show_face("settings")
 	_show_designer()
+	_fill()
 	visible = true
+	_fit_settings.call_deferred()
+
+
+## The keys sheet, its box empty and the letters typed going into it. Not
+## on a touchscreen, where the box would bring up a keyboard over the keys.
+func open_keys() -> void:
+	_find.text = ""
+	_show_face("keys")
+	_find.visible = not TouchTools.wanted()
+	_fill()
+	visible = true
+	if _find.visible:
+		_find.grab_focus.call_deferred()
 
 
 ## Its controls, for the page to find (Main._tell_page).
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
+	if _face == "keys":
+		return {"keys_find": _find, "settings_done": _done}
 	var named: Dictionary = {"assistant_on": assistant_on, "assistant_off": assistant_off,
 		"interface_size": interface_choice, "reduce_motion": reduce_motion,
 		"settings_done": _done, "ai_settings": ai_open}

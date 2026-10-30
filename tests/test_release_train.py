@@ -14,7 +14,10 @@ then ships; edits to its spec after staging are what it ships; a hold stops
 it before the merge and before the ship; a tree left dirty or mid-merge, or
 a probe that failed or skipped itself, is never shipped; it stops when the
 release before did not ship, was stopped or died, or at its deadline; and
-status says each step, the checks, and what is live.
+status says each step, the checks, and what is live. Its probes run three
+at a time, one failing beside others again alone. It ships the tip it
+merged when the branch moves on meanwhile, and a restage clears a stopped
+attempt's own merge but never a fix made in it.
 """
 
 from __future__ import annotations
@@ -44,9 +47,15 @@ echo "$R/.claude/worktrees/$1 at $(git -C "$R/.claude/worktrees/$1" log --onelin
     "tools/release/merge_unit.sh": """#!/bin/bash
 # stand-in: the merge as git makes it. STUB_DIRTY leaves a tracked file
 # changed after it, STUB_HALF a merge not committed, each saying it passed.
+# STUB_MERGE_GATE writes GATE.merged once merged, then holds until GATE is
+# there, as the real one's import and gates take a minute or two.
 cd "$1" || exit 1
 if [ -n "${STUB_HALF:-}" ]; then git merge -q --no-ff --no-commit "$2"; exit 0; fi
 git merge -q --no-ff -m "$3" "$2" || exit 2
+if [ -n "${STUB_MERGE_GATE:-}" ]; then
+  : > "$STUB_MERGE_GATE.merged"
+  for _ in $(seq 1 600); do [ -e "$STUB_MERGE_GATE" ] && break; sleep 0.05; done
+fi
 if [ -n "${STUB_DIRTY:-}" ]; then echo dirt >> README; fi
 exit 0
 """,
@@ -83,6 +92,7 @@ for hold in "$S/HOLD" "$S/$TAG.hold"; do
 done
 git -C "$R" merge -q --ff-only "$SHA" || { echo "SHIP: could not fast-forward main"; echo 1 > "$S/$TAG.done"; exit 1; }
 echo "SHIP: main is $SHA"
+echo "deploy: brickworks.diy serves $SHA" > "$S/${TAG}_prod.log"
 echo "<script src=\\"/b/$SHA/index.js\\"></script>" > "$STUB_LIVE"
 echo "SHIP: deploy: brickworks.diy serves $SHA"
 echo 0 > "$S/$TAG.done"
@@ -96,7 +106,16 @@ exit 0
 # lead would while a release is between its merge and its ship. fails says
 # FAIL and exits 0; skips exits 3 and says no FAIL, as probe.sh does for a
 # probe that skipped itself.
+# slow_* runs a second and notes when it began and ended; flaky fails the
+# first time it runs and passes after.
 echo "$1" >> "$RELEASE_OUT/probes_run"
+case "$1" in slow_*)
+  echo "$1 began $(date +%s.%N)" >> "$RELEASE_OUT/probe_times"; sleep 1
+  echo "$1 ended $(date +%s.%N)" >> "$RELEASE_OUT/probe_times" ;;
+esac
+if [ "$1" = flaky ] && [ ! -e "$RELEASE_OUT/flaky_ran" ]; then
+  : > "$RELEASE_OUT/flaky_ran"; echo "  FAIL the stand-in failed beside others"; exit 0
+fi
 if [ "$1" = sets_a_hold ]; then echo "set while it probed" > "$RELEASE_OUT/HOLD"; fi
 if [ "$1" = fails ]; then echo "  FAIL the stand-in failed"; exit 0; fi
 if [ "$1" = skips ]; then echo "skips probe: SKIPPED"; exit 3; fi
@@ -179,12 +198,26 @@ class Yard:
     def logs(self) -> str:
         return "\n".join(p.read_text() for p in sorted(self.ro.glob("*_train.out")))
 
+    def shipping(self, tag: str) -> None:
+        """TAG's ship begun by hand, its preview made."""
+        self.ro.mkdir(parents=True, exist_ok=True)
+        (self.ro / (tag + "_lead.out")).write_text("SHIP: preview https://preview.invalid/%s\n" % tag)
+
+    def shipped_in(self, tag: str, minutes: int) -> None:
+        """A release before, whose ship served MINUTES after it began."""
+        self.serves(tag)
+        prod = self.ro / (tag + "_prod.log")
+        prod.write_text("deploy: brickworks.diy serves 1111111\n")
+        began = os.stat(self.ro / (tag + "_lead.out")).st_mtime
+        os.utime(prod, (began + minutes * 60 - 10, began + minutes * 60 - 10))
+
     def serves(self, tag: str) -> None:
         """TAG's ship said brickworks.diy serves it, as ship.sh says it."""
         self.ro.mkdir(parents=True, exist_ok=True)
-        (self.ro / (tag + "_lead.out")).write_text(
-            "SHIP: preview https://preview.invalid/%s\nSHIP: main is 1111111\n"
-            "SHIP: deploy: brickworks.diy serves 1111111\n" % tag)
+        # In place, as ship.sh's log grows: the file keeps the time it was made.
+        with open(self.ro / (tag + "_lead.out"), "a") as log:
+            log.write("SHIP: preview https://preview.invalid/%s\nSHIP: main is 1111111\n"
+                      "SHIP: deploy: brickworks.diy serves 1111111\n" % tag)
 
     def stop(self) -> None:
         """Ends every train still running, as `kill -- -PID` would."""
@@ -197,10 +230,31 @@ class Yard:
                 pass
 
 
+def _minute(text: str, after: str) -> float:
+    """The HH:MMZ after AFTER in TEXT, as minutes from now (UTC)."""
+    hhmm = text.split(after, 1)[1][:5]
+    now = time.gmtime()
+    return (int(hhmm[:2]) * 60 + int(hhmm[3:]) - now.tm_hour * 60 - now.tm_min) % 1440
+
+
+def _births(where: Path) -> bool:
+    """Whether this file system keeps when a file was made (stat %W), which ETAs need."""
+    probe = where / "born"
+    probe.write_text("")
+    return subprocess.run(["stat", "-c", "%W", str(probe)], capture_output=True,
+                          text=True).stdout.strip() not in ("", "0")
+
+
 def test_a_train_waits_for_the_release_before_it_then_ships_its_spec_as_edited(tmp_path):
     y = Yard(tmp_path)
     gate = tmp_path / "gate"
+    births = _births(tmp_path)
     try:
+        # Two releases before served 30 minutes after their ships began; the
+        # one just before, t-m1, is shipping by hand.
+        y.shipped_in("t-m0", 30)
+        y.shipped_in("t-m00", 30)
+        y.shipping("t-m1")
         staged = y.train("stage", "t-m2", "stage2", "--after", "t-m1", "--checks", "io",
                          "--probes", "first_probe", "--title", "the first title",
                          STUB_GATE=str(gate), STUB_FLAKY="io")
@@ -211,9 +265,18 @@ def test_a_train_waits_for_the_release_before_it_then_ships_its_spec_as_edited(t
         assert "waits for t-m1 to serve" in y.spec("t-m2", "step")
         assert not (y.wt / "t-m2").exists()
         waiting = y.train("status").stdout
+        assert waiting.startswith("live: brickworks.diy serves 0000000\n"), waiting
+        assert "t-m1: shipping, begun by hand at " in waiting, waiting
+        assert "ship: preview https://preview.invalid/t-m1" in waiting, waiting
         assert "t-m2: stage2 after t-m1, running (pid " in waiting, waiting
         assert "waits for t-m1 to serve (until " in waiting, waiting
         assert "live: not yet; brickworks.diy serves 0000000" in waiting, waiting
+        if births:
+            assert "a ship takes about 30 min from begun to served" in waiting, waiting
+            # t-m1 serves 30 minutes from its start, and t-m2 no sooner than a ship after.
+            assert 29 <= _minute(waiting, "eta: serves about ") <= 31, waiting
+            later = waiting.split("t-m2:", 1)[1]
+            assert "at the earliest" in later and 59 <= _minute(later, "eta: serves ") <= 61, waiting
 
         # Edited after staging, as a unit merged into stage2 meanwhile would.
         spec = y.ro / "t-m2.train"
@@ -233,12 +296,14 @@ def test_a_train_waits_for_the_release_before_it_then_ships_its_spec_as_edited(t
         assert "ship: preview https://preview.invalid/t-m2" in shipping, shipping
         assert "checks: 2 of 4 passed; failed: io (passed alone); 1 to run" in shipping, shipping
         assert "live: not yet (%s); brickworks.diy serves 0000000" % sha in shipping, shipping
+        if births:
+            assert 29 <= _minute(shipping, "eta: serves about ") <= 31, shipping
         gate.write_text("go")
 
         y.until(lambda: y.spec("t-m2", "result"))
         assert y.spec("t-m2", "result") == "live", y.logs()
         assert (y.ro / "t-m2_ship_args").read_text().split() == ["io", "gallery", "site", "frames"]
-        assert (y.ro / "probes_run").read_text().split() == ["second_probe", "third_probe"]
+        assert sorted((y.ro / "probes_run").read_text().split()) == ["second_probe", "third_probe"]
         assert y.git(y.r, "log", "-1", "--format=%s", "main") == "Merge: the title as edited"
         assert y.git(y.r, "rev-parse", "--short", "main") == sha
         assert "/b/%s/" % sha in y.live.read_text()
@@ -255,6 +320,8 @@ def test_a_train_waits_for_the_release_before_it_then_ships_its_spec_as_edited(t
         assert "kept unitC: files git does not track (notes.txt" in log, log
 
         done = y.train("status", "t-m2").stdout
+        assert done.startswith("live: brickworks.diy serves %s, t-m2's, since " % sha), done
+        assert "eta:" not in done, done
         assert "t-m2: stage2 after t-m1, ended" in done, done
         assert "result: live" in done, done
         assert "checks: 3 of 4 passed; failed: io (passed alone)" in done, done
@@ -312,6 +379,87 @@ def test_a_tree_left_dirty_or_mid_merge_or_a_failed_probe_is_never_shipped(tmp_p
             assert (y.wt / tag).exists(), "kept for the lead to read"
         assert y.git(y.r, "rev-parse", "main") == y.git(y.r, "rev-parse", "origin/main")
         assert "result: stopped: %s has uncommitted changes" % (y.wt / "t-m2") in y.train("status").stdout
+    finally:
+        y.stop()
+
+
+def test_probes_run_three_at_a_time_and_one_failing_beside_others_runs_again_alone(tmp_path):
+    y = Yard(tmp_path)
+    try:
+        probes = "slow_a slow_b slow_c slow_d flaky"
+        assert y.train("stage", "t-m2", "stage2", "--probes", probes).returncode == 0
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        spans = {}
+        for line in (y.ro / "probe_times").read_text().splitlines():
+            name, what, when = line.split()
+            spans.setdefault(name, {})[what] = float(when)
+        def together(at: float) -> int:
+            return sum(1 for s in spans.values() if s["began"] <= at < s["ended"])
+        most = max(together(s["began"]) for s in spans.values())
+        assert most == 3, "at most %d probes at once: %s" % (most, spans)
+        log = y.logs()
+        assert "probe flaky exit=0 FAIL=1 beside others: again alone" in log, log
+        assert "probe flaky exit=0 FAIL=0" in log, log
+        assert (y.ro / "t-m2_probe_flaky.beside.log").read_text().count("FAIL") == 1
+        assert (y.ro / "probes_run").read_text().split().count("flaky") == 2
+
+        # One at a time, a failure is not run again.
+        (y.ro / "flaky_ran").unlink()
+        assert y.train("stage", "t-m3", "stage2", "--probes", "flaky",
+                       TRAIN_PROBES_AT_ONCE="1").returncode == 0
+        y.until(lambda: y.spec("t-m3", "result"))
+        assert y.spec("t-m3", "result") == "stopped: probes failed: flaky (t-m3_probe_NAME.log)", y.logs()
+    finally:
+        y.stop()
+
+
+def test_a_commit_to_the_branch_while_it_merges_waits_for_the_next_release(tmp_path):
+    y = Yard(tmp_path)
+    gate = tmp_path / "merge_gate"
+    try:
+        tip = y.git(y.r, "rev-parse", "stage2")
+        assert y.train("stage", "t-m2", "stage2", STUB_MERGE_GATE=str(gate)).returncode == 0
+        y.until(lambda: Path(str(gate) + ".merged").exists())
+        y.git(y.r, "branch", "-f", "stage2", "unitB")  # the lead commits to stage2 meanwhile
+        gate.write_text("go")
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        assert y.spec("t-m2", "tip") == tip
+        assert "merges stage2 at %s" % tip[:8] in y.logs(), y.logs()
+        shipped = y.git(y.r, "ls-tree", "--name-only", "main").split()
+        assert "a.txt" in shipped and "b.txt" not in shipped, shipped
+    finally:
+        y.stop()
+
+
+def test_restaging_a_stopped_train_clears_its_merge_but_never_work_of_its_own(tmp_path):
+    y = Yard(tmp_path)
+    try:
+        assert y.train("stage", "t-m2", "stage2", "--probes", "fails").returncode == 0
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result").startswith("stopped: probes failed: fails"), y.logs()
+        assert (y.wt / "t-m2").exists()
+        again = y.train("stage", "t-m2", "stage2")
+        assert again.returncode == 0, again.stdout
+        assert "train: cleared t-m2's attempt before (its merge alone)" in again.stdout, again.stdout
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+
+        # A fix committed in a stopped release's worktree, or one left
+        # uncommitted there, is never restaged over.
+        assert y.train("stage", "t-m3", "stage2", "--probes", "fails").returncode == 0
+        y.until(lambda: y.spec("t-m3", "result"))
+        (y.wt / "t-m3" / "fix.txt").write_text("a fix made in the release\n")
+        y.git(y.wt / "t-m3", "add", "fix.txt")
+        dirty = y.train("stage", "t-m3", "stage2")
+        assert dirty.returncode == 1 and "t-m3 has changes of its own" in dirty.stdout, dirty.stdout
+        y.git(y.wt / "t-m3", "commit", "-q", "-m", "a fix made in the release")
+        own = y.train("stage", "t-m3", "stage2")
+        assert own.returncode == 1 and "a branch t-m3 has commits stage2 lacks" in own.stdout, own.stdout
+        assert "a fix made in the release" in own.stdout, own.stdout
+        assert (y.wt / "t-m3" / "fix.txt").exists()
+        assert y.spec("t-m3", "result").startswith("stopped: probes failed"), "restaged over"
     finally:
         y.stop()
 

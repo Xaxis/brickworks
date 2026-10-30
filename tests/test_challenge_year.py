@@ -5,8 +5,7 @@ one column, empty on every row, new functions the service role alone runs,
 and three of challenges.sql's replaced with the same answers for every
 challenge there is (tools/challenge_year_try.sql proves that in a rolled-back
 dry run), each guarded so applying challenges.sql again alone is refused.
-Achievements (docs/SOCIAL.md U13) are worked out from what a profile shows,
-never kept, and only for a profile shown in public.
+Achievements (docs/SOCIAL.md U13) are only for a profile shown in public.
 """
 
 from __future__ import annotations
@@ -88,9 +87,9 @@ def test_the_stand_in_holds_the_new_functions() -> None:
     assert {"challenge_next", "challenge_past", "challenge_page_at", "challenge_plan"} <= held
 
 
-def test_achievements_are_worked_out_never_kept_and_only_for_a_public_profile() -> None:
+def test_achievements_are_only_for_a_public_profile() -> None:
+    # Kept since supabase/achievements.sql (tests/test_achievements.py), never here.
     assert "achievement" not in code(SQL).lower()
-    assert not any("achievement" in path.read_text().lower() for path in (ROOT / "supabase").glob("*.sql"))
     page = PEOPLE[PEOPLE.index("async function profilePage("):]
     # Only once personOf has said the profile may be shown (none under 13).
     assert page.index("const person = await personOf(handle);") < page.index("achievementsOf(")

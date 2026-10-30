@@ -292,7 +292,7 @@ func connect_claude() -> void:
 	DisplayServer.clipboard_set(shared_address())
 	last_opened = CONNECTORS if had_claude else claude_ai_link()
 	if open_links:
-		OS.shell_open(last_opened)
+		Outside.open_link(last_opened)
 
 
 ## Connected: one click to the Brickworks connector in Claude, for its
@@ -302,7 +302,7 @@ func connect_claude() -> void:
 func open_in_claude() -> void:
 	last_opened = CONNECTORS
 	if open_links:
-		OS.shell_open(CONNECTORS)
+		Outside.open_link(CONNECTORS)
 
 
 ## A Claude chat for this tab (2026-10-17): Claude opened on a new chat
@@ -366,7 +366,7 @@ func start_chat(where: String = "claude.ai") -> void:
 			+ "a.href = u; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); })(%s)"
 			% JSON.stringify(last_opened), true)
 		return
-	OS.shell_open(last_opened)
+	Outside.open_link(last_opened)
 
 
 ## The chats working in this tab now: the ones heard from within

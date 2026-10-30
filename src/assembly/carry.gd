@@ -40,6 +40,11 @@ var turns: int = 0
 ## Whether the parts came off the model (a move, which Escape undoes) or
 ## are a copy (which Escape simply puts away).
 var lifted: bool = false
+## Whether another copy stays in hand after one is put down: a clone and a
+## duplicate (Ctrl-D) go on being put, as Studio's Clone does, until Esc or
+## a right click, as a part from the bin always has; a paste and a move go
+## once. Five window bays took ten clicks (docs/APP_UX.md, A6).
+var repeats: bool = false
 
 var _ghost: MeshInstance3D
 var _materials: Array[ShaderMaterial] = []
@@ -69,25 +74,39 @@ func _ready() -> void:
 ## The parts of these bricks, in a frame of their own, ready to hold.
 static func gather(world: BrickWorld, from: PartLibrary,
 		ids: Array) -> Array:
-	var bricks: Array = []
+	var placed: Array = []
 	for brick_id: int in ids:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		if brick != null and from.mesh_for(brick.part_id) != null:
-			bricks.append(brick)
-	if bricks.is_empty():
+			placed.append({"part": brick.part_id, "color": brick.color_code,
+				"at": brick.transform, "group": brick.group, "unit": brick.unit,
+				"step": brick.step})
+	return framed(placed, from)
+
+
+## Parts given where they stand in the model ({part, color, at, ...}, ``at``
+## in the world), each put in a frame of their own about their pivot
+## ([method pivot_of]), with the pivot kept as ``pivot``.
+static func framed(placed: Array, from: PartLibrary) -> Array:
+	if placed.is_empty():
 		return []
-	var pivot: Vector3 = pivot_of(bricks, from)
+	var box := AABB()
+	var first: bool = true
+	for item: Dictionary in placed:
+		var part: Lbm.PartMesh = from.mesh_for(str(item["part"]))
+		if part == null:
+			continue
+		var here: AABB = ((item["at"] as Transform3D) * part.bounds).abs()
+		box = here if first else box.merge(here)
+		first = false
+	var pivot: Vector3 = _pivot_in(box)
 	var out: Array = []
-	for brick: BrickWorld.Brick in bricks:
-		out.append({
-			"part": brick.part_id,
-			"color": brick.color_code,
-			"at": Transform3D(brick.transform.basis, brick.transform.origin - pivot),
-			"group": brick.group,
-			"unit": brick.unit,
-			"step": brick.step,
-			"pivot": pivot,
-		})
+	for item: Dictionary in placed:
+		var at: Transform3D = item["at"]
+		var mine: Dictionary = item.duplicate()
+		mine["at"] = Transform3D(at.basis, at.origin - pivot)
+		mine["pivot"] = pivot
+		out.append(mine)
 	return out
 
 
@@ -137,6 +156,8 @@ func hold(parts: Array, came_off_the_model: bool) -> void:
 	items = parts.duplicate(true)
 	turns = 0
 	lifted = came_off_the_model
+	_pinned = false
+	_base = []
 	var phase: float = phase_of(items[0].get("pivot", Vector3(10, 0, 10))) \
 		if not items.is_empty() else 10.0
 	_reference = Vector3(phase, 0.0, phase)
@@ -150,6 +171,9 @@ func hold(parts: Array, came_off_the_model: bool) -> void:
 func drop() -> void:
 	items = []
 	lifted = false
+	repeats = false
+	_pinned = false
+	_base = []
 	_covers.clear()
 	_aimed = false
 	_valid = false
@@ -172,6 +196,138 @@ func count() -> int:
 	return items.size()
 
 
+## The parts in hand turned by [param turn] about where they turn round
+## (R's quarters with it), and framed again from where that leaves them,
+## so the group still stands on a stud point at its bottom: what had no
+## room to turn on the model comes into hand turned (EditVerbs.turn_by).
+func reshape(turn: Basis) -> void:
+	var pivot: Vector3 = items[0].get("pivot", Vector3.ZERO) if not items.is_empty() \
+		else Vector3.ZERO
+	var about := Transform3D(turn * Basis(Vector3.UP, turns * PI * 0.5), pivot)
+	var placed: Array = []
+	for item: Dictionary in items:
+		var mine: Dictionary = item.duplicate()
+		var at: Transform3D = about * (item["at"] as Transform3D)
+		mine["at"] = Transform3D(at.basis.orthonormalized(), at.origin)
+		placed.append(mine)
+	var keep: bool = repeats
+	hold(framed(placed, library), lifted)
+	repeats = keep
+
+
+# -- typed: held where it is, moved by a number --------------------------------
+
+
+## While a number is typed (TypedEntry) the group stays where its ghost was
+## when the typing began, whatever the pointer does: its frame is kept, and
+## the parts are moved inside it by what is typed. These are the parts as
+## they were then.
+var _pinned: bool = false
+var _base: Array = []
+
+
+## Keep the group where its ghost stands now. False when it stands nowhere.
+func pin() -> bool:
+	if not is_aimed():
+		return false
+	_pinned = true
+	_base = items.duplicate(true)
+	return true
+
+
+func is_pinned() -> bool:
+	return _pinned
+
+
+## The parts as held before anything was typed: what goes back in hand for
+## the next copy.
+func base_items() -> Array:
+	return _base if _pinned else items
+
+
+## Stop keeping it: the ghost follows the pointer again, the parts as they
+## were before the typing.
+func unpin() -> void:
+	if not _pinned:
+		return
+	_pinned = false
+	items = _base
+	_base = []
+	_covers.clear()
+	_build_ghost()
+	_aimed = false
+	_valid = false
+
+
+## The group, kept where it was pinned, moved in the world by [param by]
+## (turned about any point, moved any amount, to the thousandth of an LDU):
+## shown there, and whether it may go down there. Its covers are worked out
+## for the parts where they now are, and moved by whole cells to the frame
+## as an aimed group's are, so a part off the lattice is as exact here.
+func show_moved(by: Transform3D, lattice: BrickLattice, builder: Builder) -> bool:
+	if not _pinned:
+		return false
+	var inside: Transform3D = _frame.affine_inverse() * by * _frame
+	items = []
+	for item: Dictionary in _base:
+		var mine: Dictionary = item.duplicate()
+		var at: Transform3D = inside * (item["at"] as Transform3D)
+		mine["at"] = Builder._tidy(Transform3D(at.basis.orthonormalized(), at.origin),
+			BrickLattice.is_square_to_grid(at.basis))
+		items.append(mine)
+	_covers.clear()
+	_build_ghost()
+	_stand(lattice, builder)
+	return _valid
+
+
+## Put the group back where it was lifted from, its ghost there: where a
+## selection turned on the model is taken into hand to type its turn.
+func stand_where_lifted(lattice: BrickLattice, builder: Builder) -> void:
+	if items.is_empty():
+		return
+	turns = 0
+	_frame = _frame_at(items[0].get("pivot", _reference))
+	_stand(lattice, builder)
+
+
+## Whether the group fits where its frame is now, and its ghost shown there.
+func _stand(lattice: BrickLattice, builder: Builder) -> void:
+	var whole: PackedInt32Array = _covers_for(builder)[1]
+	var shift := Vector3i(
+		roundi((_frame.origin.x - _reference.x) / BrickLattice.CELL),
+		roundi(_frame.origin.y / BrickLattice.CELL),
+		roundi((_frame.origin.z - _reference.z) / BrickLattice.CELL))
+	var moved: PackedInt32Array = BrickLattice.moved_by(whole, shift)
+	_valid = not whole.is_empty() and _lowest(moved) >= Builder.GROUND_CELL \
+		and not lattice.collides_boxes(moved)
+	_aimed = true
+	_ghost.transform = _frame
+	_ghost.visible = true
+	for material: ShaderMaterial in _materials:
+		material.set_shader_parameter("valid", _valid)
+
+
+## The box round the parts as they stood when pinned, moved in the world
+## by [param by].
+func bounds_moved(by: Transform3D) -> AABB:
+	var box := AABB()
+	var first: bool = true
+	for item: Dictionary in base_items():
+		var part: Lbm.PartMesh = library.mesh_for(str(item["part"]))
+		if part == null:
+			continue
+		var here: AABB = ((by * _frame * (item["at"] as Transform3D)) * part.bounds).abs()
+		box = here if first else box.merge(here)
+		first = false
+	return box
+
+
+## Where the group turns round in the world: its frame's origin.
+func pivot() -> Vector3:
+	return _frame.origin
+
+
 # -- aiming -----------------------------------------------------------------
 
 
@@ -182,6 +338,9 @@ func aim(lattice: BrickLattice, builder: Builder, origin: Vector3,
 	if items.is_empty():
 		return 0
 	var hit: BrickLattice.Hit = lattice.raycast(origin, direction)
+	# Kept where it is while a number is typed.
+	if _pinned:
+		return hit.brick_id
 	var target: Vector3
 	if hit.is_valid():
 		target = BrickLattice.to_ldu(hit.adjacent())
@@ -404,22 +563,8 @@ static func from_ldraw(text: String, from: PartLibrary) -> Array:
 	for placement: LdrModel.Placement in model.flatten(from.parts):
 		if from.parts.has(placement.part_id):
 			placed.append(placement)
-	if placed.is_empty():
-		return []
-	var box := AABB()
-	var first: bool = true
-	for placement: LdrModel.Placement in placed:
-		var part: Lbm.PartMesh = from.mesh_for(placement.part_id)
-		if part == null:
-			continue
-		var here: AABB = (placement.transform * part.bounds).abs()
-		box = here if first else box.merge(here)
-		first = false
-	var pivot: Vector3 = _pivot_in(box)
 	var out: Array = []
 	for placement: LdrModel.Placement in placed:
 		out.append({"part": placement.part_id, "color": placement.color_code,
-			"at": Transform3D(placement.transform.basis,
-				placement.transform.origin - pivot),
-			"group": placement.group, "pivot": pivot})
-	return out
+			"at": placement.transform, "group": placement.group})
+	return framed(out, from)

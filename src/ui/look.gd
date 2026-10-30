@@ -43,6 +43,20 @@ const STRONG_DOWN := Color(0.17, 0.36, 0.75)
 ## One of a choice that is chosen (a tab, a segment): the accent, at least
 ## 3:1 on the face; at 38% it was 2.0:1.
 const CHOSEN := Color(0.36, 0.6, 1.0, 0.65)
+## A menu's row under the pointer or the keyboard's focus: a dark fill,
+## edged in [constant ACCENT], which is what is seen to move (9:1 on the
+## face). The engine's highlight was the grey of a greyed row's words, so a
+## greyed row with the focus read as a blank bar (APP_UX A2): read off the
+## window, its words were 3.2:1 on it, and a greyed row's 1.9:1 on the face.
+const ROW_LIT := Color(0.13, 0.16, 0.22)
+## A row's words, a little whiter than the engine's, so a greyed row is
+## seen to be one beside it.
+const ROW_WORDS := Color(0.95, 0.95, 0.96)
+## A greyed row's words, and every row's key: dimmer than a row that can be
+## used, and 7:1 or better on the face and on [constant ROW_LIT] both, so
+## that the window's own pixels, where 12-unit words are spread thin, still
+## read 4.5:1 or better (keysheet_probe).
+const GREYED := Color(0.72, 0.74, 0.78)
 
 const UNCHECKED := """<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">
 <rect x="1.75" y="1.75" width="12.5" height="12.5" rx="2.5" fill="#ffffff" fill-opacity="0.06"
@@ -126,23 +140,44 @@ static func apply(viewport: Viewport) -> void:
 ## RenderDialog): their dark face, faint edge and round corners for every
 ## dialog's frame, title bar and body (an AcceptDialog, a
 ## ConfirmationDialog, a FileDialog, and the questions a FileDialog asks
-## itself), and on the desktop for every menu and popup (the menu bar's,
-## a part's, a list's, the colour picker's). Put in the default theme
+## itself), every menu (the menu bar's, a part's, a list's), and on the
+## desktop every popup (the colour picker's). Put in the default theme
 ## before the first window is made, as the tick boxes are, so it reaches
 ## every one without touching any; sizes stay the engine's, so nothing in
 ## them moves. The engine's grey sat beside panels in the app's face: the
 ## photo search's question, Build together and the choosers (walk256 DS1,
 ## 2026-10-25), Versions, Saved models and every question the app asks.
-## The web's menus are left as they were: its desktop is held to the pixel
-## against the last release's (tools/web/desktop_same.mjs, File open).
+## The menus are the app's face on the web too, with their rows (menus()):
+## a greyed row must read with the focus on it there as well.
 static func dialogs() -> void:
 	var theme: Theme = ThemeDB.get_default_theme()
 	_face(theme, "embedded_border", "Window", true)
 	_face(theme, "embedded_unfocused_border", "Window", true)
 	_face(theme, "panel", "AcceptDialog", false)
+	_face(theme, "panel", "PopupMenu", true)
 	if not OS.has_feature("web"):
-		_face(theme, "panel", "PopupMenu", true)
 		_face(theme, "panel", "PopupPanel", true)
+	menus(theme)
+
+
+## Every menu's rows, in each state a row has, at 4.5:1 or better on what is
+## behind them (keysheet_probe reads them off the window): a row, its key,
+## one greyed, and each with the pointer or the focus on it.
+static func menus(theme: Theme) -> void:
+	var engine := theme.get_stylebox("hover", "PopupMenu") as StyleBoxFlat
+	if engine == null or engine.has_meta(&"look"):
+		return
+	var lit := engine.duplicate() as StyleBoxFlat
+	lit.bg_color = ROW_LIT
+	lit.border_color = ACCENT
+	lit.set_border_width_all(1)
+	lit.set_corner_radius_all(3)
+	lit.set_meta(&"look", true)
+	theme.set_stylebox("hover", "PopupMenu", lit)
+	theme.set_color("font_color", "PopupMenu", ROW_WORDS)
+	theme.set_color("font_hover_color", "PopupMenu", Color.WHITE)
+	theme.set_color("font_disabled_color", "PopupMenu", GREYED)
+	theme.set_color("font_accelerator_color", "PopupMenu", GREYED)
 
 
 ## Every button of the engine's edged with [constant OUTLINE], inside its

@@ -39,6 +39,9 @@ var _put_on_clipboard: String = ""
 
 ## The key, if it is one of these verbs. True when it was.
 func handle_key(key: InputEventKey) -> bool:
+	# (A number with something in hand, or straight after R or T, is the
+	# typed field's before it comes here: TypedEntry.)
+	_arm(key)
 	var held: bool = key.ctrl_pressed or key.meta_pressed
 	match key.keycode:
 		KEY_C:
@@ -93,6 +96,12 @@ func handle_key(key: InputEventKey) -> bool:
 				aim_again.call()
 				say.call("")
 				return true
+			# Out of Connect: a part from the bin stays in hand to put as
+			# ever, a part it took off the model goes back where it was.
+			if mode == "connect":
+				var placing: bool = connect_tool.holds() and connect_tool.from_hand()
+				set_mode("place" if placing else "select")
+				return true
 			# Out of whatever is carried, and back to Select with nothing
 			# in hand, in one press.
 			if builder.is_carrying():
@@ -134,6 +143,11 @@ func handle_key(key: InputEventKey) -> bool:
 			else:
 				view_tool("pan")
 			return true
+		KEY_N:
+			# N alone is Connect (ConnectTool); Shift-N a new step, Ctrl-N New.
+			if not held and not key.shift_pressed and not key.alt_pressed:
+				start_connect()
+				return true
 		KEY_O:
 			# O the Orbit tool, Z the Zoom tool: the view's own tools, whose
 			# left drag only moves the view. Ctrl-O is Open, Ctrl-Z undo.
@@ -170,6 +184,12 @@ func press(name: String) -> void:
 			edited.call()
 		say.call(words if not words.is_empty() else "nothing of yours to %s" % name)
 		aim_again.call()
+		return
+	# Undo with a part Connect took off the model in hand is that taking off.
+	if name == "undo" and mode == "connect" and connect_tool.holds() \
+			and not connect_tool.from_hand():
+		set_mode("select")
+		say.call("put back where it was")
 		return
 	match name:
 		"undo":
@@ -714,8 +734,10 @@ func hold(parts: Array, what: String) -> int:
 
 
 ## A copy of the selection in hand at once: copy and paste in one key,
-## leaving the clipboard as it was.
-func duplicate_selection() -> int:
+## leaving the clipboard as it was. Put down, another copy stays in hand
+## for the next ([param again]), as the Clone tool's does: not for a copy
+## dragged off with Ctrl, which is let go where the drag ends.
+func duplicate_selection(again: bool = true) -> int:
 	var alive: Array = builder.selection.keys()
 	if alive.is_empty():
 		say.call("select something to duplicate first")
@@ -725,8 +747,10 @@ func duplicate_selection() -> int:
 		return 0
 	builder.cancel_carry()
 	builder.hold_copy(parts)
+	builder.carrying.repeats = again
 	aim_again.call()
-	say.call("holding a copy of %s — click to put it down, R turns, Esc puts away"
+	say.call(("holding a copy of %s — each click puts one down, R turns, Esc or a right click stops"
+		if again else "holding a copy of %s — click to put it down, R turns, Esc puts away")
 		% _parts(parts.size()))
 	return parts.size()
 
@@ -751,32 +775,124 @@ func turn(quarter_turns: int) -> int:
 ## Tip the selection over, forwards as the view looks at it (``way`` -1:
 ## back), a quarter, where it stands: T and Shift-T.
 func tip_selection(way: int) -> int:
-	var axis := Vector3.RIGHT
-	if camera != null:
-		var right: Vector3 = camera.global_transform.basis.x
-		axis = Vector3(signf(right.x), 0, 0) if absf(right.x) >= absf(right.z) \
-			else Vector3(0, 0, signf(right.z))
+	var axis: Vector3 = _level_right()
+	var depth: int = builder.history_depth()
 	var count: int = builder.tip_selection(axis, -way)
 	if count == 0:
-		say.call("no room to tip it over there")
-		return 0
+		return _turn_in_hand(Basis(axis, -way * PI * 0.5), "tilt", "tip it over")
+	_armed = {"verb": "tilt", "depth": depth, "way": way}
 	edited.call()
 	aim_again.call()
-	say.call("tipped %s over — T again, Shift-T back" % _parts(count))
+	say.call("tipped %s over — T again, Shift-T back, or type its angle" % _parts(count))
 	return count
+
+
+## The level axis most nearly to the right as the view looks: what T tips
+## a selection forwards about.
+func _level_right() -> Vector3:
+	if camera == null:
+		return Vector3.RIGHT
+	var right: Vector3 = camera.global_transform.basis.x
+	return Vector3(signf(right.x), 0, 0) if absf(right.x) >= absf(right.z) \
+		else Vector3(0, 0, signf(right.z))
 
 
 ## Turn the selection where it stands by any angle: the turn step, from R
 ## and the Rotate tool.
 func turn_by(degrees: float) -> int:
+	var depth: int = builder.history_depth()
 	var count: int = builder.turn_selection_by(degrees)
 	if count == 0:
-		say.call("no room to turn it there")
-		return 0
+		return _turn_in_hand(Basis(Vector3.UP, deg_to_rad(degrees)), "turn", "turn it")
+	_armed = {"verb": "turn", "depth": depth, "degrees": degrees}
 	edited.call()
 	aim_again.call()
-	say.call("turned %s %+d°" % [_parts(count), roundi(degrees)])
+	say.call("turned %s %+d° — or type its angle" % [_parts(count), roundi(degrees)])
 	return count
+
+
+## A turn or a tip with no room where the selection stands: the parts in
+## the way drawn red for a second, and the selection taken into hand
+## already turned, its ghost where the pointer says, to be put down where
+## it has room. Taking it and putting it down are one step to undo, and Esc
+## puts it back as it was. It was a dead end, "no room to turn it there"
+## and nothing else (docs/APP_UX.md, A3). Studio's arrows turn a part
+## through others; here the collision stays exact and the way on is shown.
+func _turn_in_hand(turn: Basis, verb: String, words: String) -> int:
+	var blocking: PackedInt64Array = builder.refused_by
+	_flash(blocking)
+	var why: String = "what it would hit is lit up" if not blocking.is_empty() \
+		else "it would go through the floor"
+	if builder.selection.size() >= BIG_CHANGE:
+		say.call("no room to %s there — %s" % [words, why])
+		return 0
+	var count: int = builder.lift_selection()
+	if count == 0:
+		say.call("no room to %s there" % words)
+		return 0
+	# A number typed straight after takes the place of this turn.
+	_armed = {"verb": verb, "hand": builder.hand_state(), "pointer": _pointer()}
+	builder.carrying.reshape(turn)
+	edited.call()
+	aim_again.call()
+	say.call("no room to %s there (%s): it is in hand turned — click where it goes, Esc puts it back"
+		% [words, why])
+	return count
+
+
+## The parts last lit up as in the way, for a probe to read.
+var flashed := PackedInt64Array()
+## Red, and amber on a part that is red already: red on a red wall showed
+## nothing.
+const IN_THE_WAY := Color(1.0, 0.12, 0.08)
+const IN_THE_WAY_ON_RED := Color(1.0, 0.86, 0.22)
+## The tints as they were under the red now showing, and that red: a
+## flash over one still showing keeps what was under the first, so the
+## last to end puts back what was there before either.
+var _under_red: Dictionary = {}
+var _red: Dictionary = {}
+var _flashes: int = 0
+
+
+## Light these parts up for a second, over whatever else is tinted.
+func _flash(ids: PackedInt64Array) -> void:
+	flashed = ids
+	if ids.is_empty() or world == null or not is_inside_tree():
+		return
+	var now: Dictionary = world.tinted_ids()
+	if _red.is_empty() or now != _red:
+		var was_under: Dictionary = _under_red
+		_under_red = now.duplicate()
+		# Red of a flash something else tinted over is not what was under.
+		for brick_id: int in _red:
+			if _under_red.get(brick_id) in [IN_THE_WAY, IN_THE_WAY_ON_RED]:
+				if was_under.has(brick_id):
+					_under_red[brick_id] = was_under[brick_id]
+				else:
+					_under_red.erase(brick_id)
+	_red = _under_red.duplicate()
+	for brick_id: int in ids:
+		_red[brick_id] = _lit(brick_id)
+	world.set_tinted(_red)
+	_flashes += 1
+	var mine: int = _flashes
+	await get_tree().create_timer(1.0).timeout
+	if mine != _flashes:
+		return
+	# Back as it was, unless something else has tinted since.
+	if world.tinted_ids() == _red:
+		world.set_tinted(_under_red)
+	_red = {}
+	_under_red = {}
+
+
+func _lit(brick_id: int) -> Color:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	if brick == null or builder.library == null:
+		return IN_THE_WAY
+	var own: Color = builder.library.color(brick.color_code).shown
+	var reddish: bool = (own.h < 0.07 or own.h > 0.93) and own.s > 0.45 and own.v > 0.3
+	return IN_THE_WAY_ON_RED if reddish else IN_THE_WAY
 
 
 # -- locking ------------------------------------------------------------------
@@ -812,7 +928,7 @@ func unlock_all() -> int:
 ## Every verb was a key or a button that acted on a selection made first,
 ## so turning one brick was three gestures: Shift-click it, press R, press
 ## Escape. Studio and Mecabricks both have tools a click acts through.
-const MODES: Array[String] = ["select", "place", "move", "rotate", "hinge",
+const MODES: Array[String] = ["select", "place", "move", "rotate", "hinge", "connect",
 	"clone", "paint", "hide", "delete", "orbit", "pan", "zoom"]
 ## Select is where the app rests, as Studio does: nothing in hand, a click
 ## picks a part out and a drag moves it. A part chosen from the bin (or Q,
@@ -860,12 +976,46 @@ func up_cells() -> int:
 
 
 func set_mode(to: String) -> void:
+	if to == "connect":
+		start_connect()
+		return
 	if not MODES.has(to) or to == mode:
 		return
+	# Another tool ends a clone's run of copies, and Connect's choosing.
+	if builder.is_carrying() and builder.carrying.repeats:
+		put_away()
+	if mode == "connect":
+		connect_tool.end()
 	mode = to
 	if measure != null and measure.active:
 		measure.leave()
 	if to != "place" and not builder.is_carrying():
+		builder.hide_preview()
+	mode_changed.emit(mode)
+	aim_again.call()
+
+
+## Connect (ConnectTool): with a part in hand, its points offered where its
+## ghost stands, or where the view looks when it stands nowhere (the
+## pointer is on the toolbar); with nothing in hand, a click on a part of
+## the model takes it. Again while aiming, another point.
+func start_connect() -> void:
+	var placing: bool = mode == "place" or (mode == "connect" and connect_tool.holds())
+	var at: Variant = null
+	if placing and not builder.has_preview() and camera != null:
+		at = Transform3D(BrickLattice.basis_for(builder.held_face, builder.held_rotation),
+			BrickLattice.to_ldu(BrickLattice.to_cell(camera.focus_now())))
+	if not connect_tool.begin(placing, at):
+		return
+	if mode == "connect":
+		mode_changed.emit(mode)
+		return
+	if builder.is_carrying() and builder.carrying.repeats:
+		put_away()
+	mode = "connect"
+	if measure != null and measure.active:
+		measure.leave()
+	if not connect_tool.holds():
 		builder.hide_preview()
 	mode_changed.emit(mode)
 	aim_again.call()
@@ -931,7 +1081,7 @@ func drag_start(brick_id: int, copy: bool) -> bool:
 	if builder.selection.is_empty():
 		return false
 	if copy:
-		return duplicate_selection() > 0
+		return duplicate_selection(false) > 0
 	return lift() > 0
 
 
@@ -963,8 +1113,10 @@ func hint() -> String:
 	var look: String = "drag turns the view, Shift-drag slides it, scroll zooms"
 	match mode:
 		"select":
+			if builder.is_carrying() and builder.carrying.repeats:
+				return "Select: each click puts a copy down · type a number to move it exactly · Esc or a right click stops"
 			if builder.is_carrying():
-				return "Select: a click puts it down · %s · Esc puts it back" % look
+				return "Select: a click puts it down · type a number to move it exactly · %s · Esc puts it back" % look
 			if over != 0:
 				return "Select: click selects it · drag moves it (on a joint, as the real part moves) · %s-drag copies it · double-click edits inside a sub-assembly" % held
 			return "Select: click lets go of the selection · %s · %s-drag draws a box" % [look, held]
@@ -976,7 +1128,7 @@ func hint() -> String:
 			if builder.is_on_joint():
 				return "Placing %s on %s: click puts it there · R turns it about the joint · T the other way on · Esc lets go" % [
 					named, builder.joint_words()]
-			return "Placing %s: click puts one down · %s, the part stays in hand · Esc lets go" % [
+			return "Placing %s: click puts one down · type a number to move it exactly · %s, the part stays in hand · Esc lets go" % [
 				named, look]
 		"move":
 			return "Move: click a part to pick it up (the selection with it), click again to put it down · %s" % look
@@ -984,8 +1136,12 @@ func hint() -> String:
 			return "Rotate: click a part to turn it %d° (Shift-click back) · %s" % [roundi(turn_step), look]
 		"hinge":
 			return "Hinge: click a part on a hinge, clip or turntable to swing it %d° · %s" % [roundi(SWING), look]
+		"connect":
+			return connect_tool.hint()
 		"clone":
-			return "Clone: click a part to hold a copy of it, then click where it goes · %s" % look
+			if builder.is_carrying():
+				return "Clone: each click puts a copy down · type a number to move it exactly · Esc or a right click stops"
+			return "Clone: click a part to hold a copy of it, then click where each goes · %s" % look
 		"paint":
 			return "Paint: click a part to paint it the colour in hand · %s" % look
 		"hide":
@@ -998,7 +1154,8 @@ func hint() -> String:
 ## Whether the ghost of the part in hand belongs under the pointer: while
 ## placing, and while anything is carried, whatever the tool.
 func shows_ghost() -> bool:
-	return mode == "place" or builder.is_carrying() or builder.is_holding_figure()
+	return mode == "place" or builder.is_carrying() or builder.is_holding_figure() \
+		or (mode == "connect" and connect_tool.holds())
 
 
 ## Nobody can see the model: the tab is out of view or the window
@@ -1059,6 +1216,9 @@ func click(at: Vector2, shift: bool) -> bool:
 	if builder.is_locked(brick_id):
 		say.call("that part is locked — Shift-L unlocks everything")
 		return false
+	if mode == "connect":
+		builder.clear_selection()
+		return connect_tool.take(brick_id)
 	if not builder.selection.has(brick_id):
 		builder.select_brick(brick_id, false)
 	match mode:
@@ -1085,6 +1245,177 @@ func click(at: Vector2, shift: bool) -> bool:
 				say.call("removed %s" % _parts(gone))
 			return gone > 0
 	return false
+
+
+# -- typed: a number while something is in hand --------------------------------
+
+
+## The field a number is typed into, at the pointer (TypedEntry).
+var typed: TypedEntry
+## A point on the part, then the point it goes on (ConnectTool).
+var connect_tool: ConnectTool
+## R or T just pressed, which a number typed straight after takes the place
+## of: {verb, hand} with what was in hand before them (Builder.hand_state),
+## or {verb, depth, degrees or way} for a selection turned on the model,
+## the history's depth before the turn. Empty when the last key was another.
+var _armed: Dictionary = {}
+## How to leave things as they were if the typing is let go of with Esc:
+## {hand} what was in hand as it opened, or {again} the turn on the model
+## to make again; empty for neither.
+var _typed_was: Dictionary = {}
+
+
+func _ready() -> void:
+	var layer := CanvasLayer.new()
+	layer.name = "Typed"
+	# Over the model and its panels, as a tooltip is.
+	layer.layer = 8
+	add_child(layer)
+	typed = TypedEntry.new()
+	typed.may_open = _begin_typing
+	typed.opened_as = func() -> String: return str(_armed.get("verb", "move"))
+	typed.going = func() -> Vector3: return builder.last_way
+	typed.preview = _typed_preview
+	typed.apply = _typed_apply
+	typed.cancel = _typed_cancel
+	typed.still_held = func() -> bool: return builder.is_pinned()
+	typed.clear_of = _hand_on_screen
+	layer.add_child(typed)
+	connect_tool = ConnectTool.new()
+	connect_tool.builder = builder
+	connect_tool.world = world
+	connect_tool.library = library
+	connect_tool.camera = camera
+	connect_tool.say = func(line: String) -> void: say.call(line)
+	connect_tool.edited = func() -> void: edited.call()
+	connect_tool.aim_again = func() -> void: aim_again.call()
+	add_child(connect_tool)
+	builder.placed.connect(func(_id: int, _part: String) -> void:
+		# A click put down what was being typed: the number is spent.
+		if typed.is_open():
+			typed.close()
+		_typed_was = {}
+		_armed = {})
+
+
+## Keep what is in hand before R or T, so a number typed next takes their
+## place; any other key forgets it. Modifier keys alone change nothing.
+func _arm(key: InputEventKey) -> void:
+	if not key.pressed or key.echo or key.keycode in [KEY_SHIFT, KEY_CTRL, KEY_META, KEY_ALT]:
+		return
+	var held: bool = key.ctrl_pressed or key.meta_pressed or key.alt_pressed
+	if key.keycode in [KEY_R, KEY_T] and not held and shows_ghost() and builder.has_preview():
+		_armed = {"verb": "turn" if key.keycode == KEY_R else "tilt",
+			"hand": builder.hand_state(), "pointer": _pointer()}
+		return
+	_armed = {}
+
+
+## R or T in hand is just pressed until the pointer takes the ghost
+## elsewhere, even if it comes back: a number typed after aiming again
+## moves it from there, turned as R left it.
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and _armed.has("pointer") \
+			and (event as InputEventMouseMotion).position.distance_to(_armed["pointer"]) \
+			> AIMED_AGAIN:
+		_armed = {}
+
+
+const AIMED_AGAIN := 6.0
+
+
+func _pointer() -> Vector2:
+	return get_viewport().get_mouse_position() if is_inside_tree() else Vector2.ZERO
+
+
+## The first digit: what is in hand kept where it stands for the number to
+## move it from (Builder.pin_hand). After R or T, they are taken back first,
+## the number standing for them: in hand, what was held before them; on the
+## model, the turn undone and the selection taken into hand where it was,
+## so what is typed shows in hand and is put down with the turn's undo.
+## False when there is nothing to type for.
+func _begin_typing() -> bool:
+	if builder.is_holding_figure() or (measure != null and measure.active) \
+			or connect_tool.stage == "point":
+		return false
+	var armed: Dictionary = _armed
+	_armed = {}
+	_typed_was = {}
+	if armed.has("depth"):
+		if builder.is_carrying() or builder.selection.is_empty() \
+				or builder.history_depth() != int(armed["depth"]) + 1 or not builder.undo():
+			return false
+		if builder.lift_selection() == 0:
+			builder.redo()
+			return false
+		builder.carrying.stand_where_lifted(builder.lattice, builder)
+		_typed_was = {"again": armed}
+		edited.call()
+	elif not shows_ghost() or not builder.has_preview():
+		return false
+	elif armed.has("hand"):
+		_typed_was = {"hand": builder.hand_state()}
+		builder.set_hand_state(armed["hand"])
+		aim_again.call()
+	if not builder.pin_hand():
+		_typed_cancel()
+		return false
+	return true
+
+
+## Where what is in hand stands on the screen, for the field to keep clear
+## of; empty if any of it is behind the view.
+func _hand_on_screen() -> Rect2:
+	var box: AABB = builder.pinned_box()
+	if camera == null or not box.has_volume():
+		return Rect2()
+	var out := Rect2()
+	for n: int in 8:
+		var corner: Vector3 = box.get_endpoint(n)
+		if camera.is_position_behind(corner):
+			return Rect2()
+		var at: Vector2 = camera.unproject_position(corner)
+		out = Rect2(at, Vector2.ZERO) if n == 0 else out.expand(at)
+	return out
+
+
+func _typed_preview(what: Dictionary) -> String:
+	var fits: bool = builder.typed_hand(what["move"], float(what["turn"]), float(what["tilt"]),
+		-_level_right())
+	return "" if fits else "no room there"
+
+
+## Put it down where the number says: one step to undo, as any placement.
+func _typed_apply(what: Dictionary) -> bool:
+	if not builder.typed_hand(what["move"], float(what["turn"]), float(what["tilt"]),
+			-_level_right()):
+		return false
+	var carried: bool = builder.is_carrying()
+	var lifted: bool = carried and builder.carrying.lifted
+	var count: int = builder.carrying.count() if carried else 1
+	if builder.place() == 0:
+		return false
+	_typed_was = {}
+	aim_again.call()
+	say.call("%s %s: %s" % ["moved" if lifted else "put down", _parts(count), what["words"]])
+	return true
+
+
+func _typed_cancel() -> void:
+	var was: Dictionary = _typed_was
+	_typed_was = {}
+	builder.unpin_hand()
+	if was.has("again"):
+		# Back where it stood, and turned again as R or T turned it.
+		put_away()
+		var again: Dictionary = was["again"]
+		if str(again["verb"]) == "turn":
+			turn_by(float(again["degrees"]))
+		else:
+			tip_selection(int(again["way"]))
+	elif was.has("hand"):
+		builder.set_hand_state(was["hand"])
+	aim_again.call()
 
 
 ## Put away what is held. A selection that was being moved goes back.

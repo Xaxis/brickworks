@@ -54,10 +54,10 @@ ui:model page pictures and tabs
 
 - **Build it**, **Open in Brickworks** (a copy in your own models) and **Download** are first.
 - **Like** and **Save** (to your Favourites or one of [your collections](/docs/collections)) sign you in on the way if they need to.
-- **Share** copies the link, or opens your device's share sheet.
+- **Share** opens a sheet with the link and **Copy link**; **Post it to** Reddit, Bluesky, Pinterest, X, Facebook or email, each opening that site's own page for sharing it in a new tab; and the code to embed the model in a page of your own (`/m/<id>/embed`), its picture and name with **Build it**. On a phone the sheet also offers your device's own share sheet. Paste the model's bare link into a blog, Notion or a forum that reads oEmbed and it becomes that embed by itself.
 - **Comment** goes to the comments.
 - **Built** (I built it) says you built it, with a photo of your build if you like; the photo is cleaned of what the camera wrote into it before it is kept.
-- **More** has the code to embed the model in a page of your own (`/m/<id>/embed`) and **Report it**.
+- **More** has **Report it** and the takedown page.
 - On your own model's page, **Enter this month's challenge** sits under Like ([the challenge](/docs/challenges)).
 
 <!-- covers
@@ -71,11 +71,18 @@ ui:enter this month's challenge
 
 Comments are newest first, with **Reply** under each. A comment can name a step of the build: its pill opens the viewer at that step, and the app's timeline counts each step's comments. People 13 and over can comment; a model's owner can turn comments off.
 
+### Mention someone {#mentions}
+
+Type **@** in a comment or a reply and the people on the page are offered: its designer, then whoever commented. Keep typing to narrow it; the arrow keys and **Enter** (or a click) put one in, **Escape** closes the list and keeps what you wrote. Any public profile's `@handle` works typed out in full.
+
+Each person named becomes a link to their page and hears of it in their [notifications](/docs/profiles#notifications), with what you said. Up to three people a comment are told, once each, however often it is edited. Nobody is told twice: the model's designer already hears of every comment, and someone in the conversation hears of each reply. Hiding or deleting the comment takes the notification with it.
+
 <!-- covers
 ui:comment threads on a model page
 ui:comments on a step
 lib:comments on a shared model
 lib:replies to a comment
+lib:mentions in comments
 -->
 
 ## Parts and download {#parts}
@@ -84,6 +91,20 @@ The **Parts** tab lists every part by colour or by kind, each drawn by Brickwork
 
 <!-- covers
 ui:a model's parts and its download
+-->
+
+## What it is based on {#based-on}
+
+Under its name, a model's page credits what it came from. A **remix** names the model it was copied from on Brickworks. Its designer can say more, up to three, with **Say what it is based on** on their own page:
+
+- **An alternate build of** a LEGO® set: built from that set's parts, given by its number such as `6080-1`, which links to the set's page here;
+- **Changed from** a set, or from work elsewhere, given by its `https://` address with its title, and its author and licence when known;
+- **Inspired by** a set or work elsewhere.
+
+Brickworks checks a set's number against the library, and says in words what is wrong with a set it has not got or an address that is not one. A link to work elsewhere is the designer's, and marked as not Brickworks's. Search engines read them in the page too, and each set's page lists the models in the gallery based on it. **Change what it is based on** changes or removes them. An account under 13 does not show a name or link in public, so it is not offered.
+
+<!-- covers
+lib:what a model is based on
 -->
 
 ## More by and similar {#more}

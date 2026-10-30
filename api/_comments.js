@@ -53,11 +53,21 @@
 //
 // A reply is a comment, under every rule of one (the same limits count
 // it); it lives under its comment and is shown only where that is.
+//
+// A comment or reply may name people, @their-handle (2026-10-30,
+// supabase/comment_mentions.sql): read from its words here, as written or
+// edited, and kept by the database for those it may name (a profile shown
+// in public, 13 or over, not its writer; three a comment), who are told in
+// Notifications. Each comment says whom it named (mentions: [{handle,
+// name}]), which the page links; an @handle nobody was told of stays
+// words. Before the file a comment names nobody, and goes as ever.
 
 import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
 import { withFaces } from "./_faces.js";
 import { Unacceptable, count } from "./_directory.js";
+// Who a comment names, read as the page reads it (web/card.js).
+import { mentionsIn } from "./_card.js";
 import { namesTrouble } from "./_names.js";
 import { feedSaid } from "./_follows.js";
 
@@ -180,6 +190,41 @@ export function commentSaid(comment, asked, newest, versions) {
 // ---------------------------------------------------------------------------
 // The requests.
 
+/// The people [who]'s comment [id] names in [text], told and kept
+/// (comment_mention): [{handle, name}], every one it names now. Nobody
+/// before comment_mentions.sql, nor when it could not be asked: the comment
+/// is kept whatever this says.
+async function mention(who, id, text) {
+  const handles = mentionsIn(text);
+  if (!handles.length) return [];
+  try {
+    const said = await call("comment_mention", { account: who, comment_id: id, handles: handles.slice(0, 12) }, () => null);
+    return Array.isArray(said?.mentioned) ? said.mentioned.map((one) => ({ handle: String(one.handle), name: String(one.name) })) : [];
+  } catch (problem) {
+    console.error(`comments: mentions: ${String(problem?.message || problem).slice(0, 160)}`);
+    return [];
+  }
+}
+
+/// Whom each of [comments] named, on each as [mentions] (only those that
+/// name somebody, and only when one has an @ in it). When it could not be
+/// asked, the comments go without: their words are all there.
+async function withMentions(comments) {
+  const asked = comments.filter((one) => String(one.body || "").includes("@")).map((one) => one.id);
+  if (!asked.length) return comments;
+  let rows = [];
+  try {
+    rows = await call("comment_mentions_of", { comment_ids: asked }, () => []);
+  } catch (problem) {
+    console.error(`comments: mentions of: ${String(problem?.message || problem).slice(0, 160)}`);
+  }
+  const named = new Map();
+  for (const row of Array.isArray(rows) ? rows : []) {
+    named.set(Number(row.comment), [...(named.get(Number(row.comment)) || []), { handle: row.handle, name: row.name }]);
+  }
+  return comments.map((one) => (named.has(one.id) ? { ...one, mentions: named.get(one.id) } : one));
+}
+
 /// The link's versions as comments need them: [{n, steps, first_changed}],
 /// newest first. A link with none is its version 1.
 async function versionsOf(id) {
@@ -215,7 +260,7 @@ export async function listComments(request, response) {
   const newest = versions[0].n;
   const asked = given ? Number(given) : newest;
   if (!versions.some((one) => one.n === asked)) throw refused("no_version");
-  const comments = (on.comments || []).map((one) => commentSaid(one, asked, newest, versions));
+  const comments = await withMentions((on.comments || []).map((one) => commentSaid(one, asked, newest, versions)));
   return response.status(200).json(await withFaces({ model: id, ready: true, version: asked, newest, open: on.open === true,
     replies: on.threads === true, count: comments.length, comments, you: await youOn(id, who, on.owner === true) }));
 }
@@ -244,6 +289,8 @@ export async function addComment(request, response, { origin }) {
   if (made?.refused) throw refused(made.refused);
   const versions = await versionsOf(id);
   const comment = commentSaid(made.comment, version, versions[0].n, versions);
+  const mentions = await mention(who, comment.id, text);
+  if (mentions.length) comment.mentions = mentions;
   let told = { state: "none" };
   try {
     if (made.owner && made.owner !== who) {
@@ -275,6 +322,8 @@ export async function addReply(request, response, { origin }) {
   // As said on its own version, as a comment written there is.
   const versions = await versionsOf(made.model);
   const comment = commentSaid(made.comment, made.comment.version, versions[0].n, versions);
+  const mentions = await mention(who, comment.id, text);
+  if (mentions.length) comment.mentions = mentions;
   let told = { state: "none" };
   try {
     if (made.owner && made.owner !== who) {
@@ -306,8 +355,12 @@ export async function changeComment(request, response) {
   // As said on its own version: a page that shows it on another asks the
   // list again.
   const one = changed.comment;
-  return response.status(200).json({ removed: changed.removed === true,
-    comment: commentSaid(one, one.version, one.version, [{ n: one.version, steps: null, first_changed: null }]) });
+  const comment = commentSaid(one, one.version, one.version, [{ n: one.version, steps: null, first_changed: null }]);
+  // An edit names whoever it adds (at most three a comment, ever); the
+  // page links only those its words still name.
+  const mentions = what === "edit" ? await mention(who, comment.id, text) : (await withMentions([comment]))[0].mentions || [];
+  if (mentions.length) comment.mentions = mentions;
+  return response.status(200).json({ removed: changed.removed === true, comment });
 }
 
 export async function setCommentsOpen(request, response) {

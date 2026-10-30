@@ -119,7 +119,7 @@ static func for_strip() -> Array[Binding]:
 			if binding.keys.has(wanted):
 				short.append(binding)
 				break
-	short.append(Binding.new([","], "all controls"))
+	short.append(Binding.new(["F1"], "all keys"))
 	return short
 
 
@@ -194,11 +194,12 @@ static func for_keyboard() -> Array[Binding]:
 	var rest: Array[Binding] = [
 		Binding.new(["P"], "parts"),
 		Binding.new(["M"], "minifigure"),
-		Binding.new(["I"], "brickify a 3D model"),
+		Binding.new(["%s-I" % _hold()], "brickify a 3D model"),
 		Binding.new(["Tab"], "panels"),
 		Binding.new(["F6"], "the keys to the toolbar, the parts and the colours, and back"),
 		Binding.new(["/"], "search"),
-		Binding.new([",", "F1"], "this list"),
+		Binding.new(["F1"], "this list"),
+		Binding.new([","], "settings"),
 		Binding.new(["F11"], "full screen"),
 		Binding.new(["%s-S" % _hold()], "save"),
 	]

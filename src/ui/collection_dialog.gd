@@ -585,7 +585,7 @@ func _need_row(row: Dictionary) -> Control:
 	link.add_theme_font_size_override("font_size", 11)
 	link.tooltip_text = "This part, in this colour, on BrickLink"
 	var url: String = Collection.bricklink_page(str(row["part"]), int(row["colour"]), library)
-	link.pressed.connect(func() -> void: OS.shell_open(url))
+	link.pressed.connect(func() -> void: Outside.open_link(url))
 	line.add_child(link)
 	block.add_child(line)
 	var could := PackedStringArray()
@@ -717,7 +717,7 @@ func _build_row(candidate: Dictionary) -> Control:
 		go.tooltip_text = "The official LDraw model of this set, at library.ldraw.org"
 		var page: String = str(candidate.get("page", ""))
 		go.disabled = page.is_empty()
-		go.pressed.connect(func() -> void: OS.shell_open(OMR_PAGE + page))
+		go.pressed.connect(func() -> void: Outside.open_link(OMR_PAGE + page))
 	row.add_child(go)
 	# The flows' hook is the first row that opens in the app. On the web an
 	# official set's model only links out, and since m95 matched them to their

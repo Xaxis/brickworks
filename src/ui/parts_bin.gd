@@ -408,7 +408,7 @@ func _build_categories() -> void:
 	# The parts reached for lately and the ones kept, beside All: the bin
 	# is searched once per part and then wanted again and again. And the
 	# assistant's worked constructions, each with why it works.
-	_categories = ["All", RECENT, FAVOURITES, TECHNIQUES]
+	_categories = ["All", RECENT, FAVOURITES, TECHNIQUES, FITS]
 	for category: String in LEADING:
 		if counts.has(category):
 			_categories.append(category)
@@ -434,6 +434,10 @@ func _build_categories() -> void:
 			button.text = "%s %d" % [TECHNIQUES, Techniques.all().size()]
 			button.tooltip_text = ("Worked constructions, each with why it works: choose one "
 				+ "to hold it whole, R turns it, a click puts it down")
+		if category == FITS:
+			button.text = FITS
+			button.tooltip_text = ("The parts that fit the selected part, or the one in hand: "
+				+ "a pin in its hole, a bar in its clip, a part on its studs")
 		button.toggle_mode = true
 		button.button_pressed = category == _category
 		FocusGuard.by_keyboard(button)
@@ -621,6 +625,19 @@ func first_found(most: int = 6) -> PackedStringArray:
 
 
 ## The colour Enter in the colour's name would take, or -1.
+## What the first [param most] tiles say, their names as they read, the
+## lines run together.
+func tile_names(most: int = 16) -> PackedStringArray:
+	var out := PackedStringArray()
+	for cell: Node in _grid.get_children():
+		if out.size() >= most:
+			break
+		for label: Node in cell.find_children("*", "Label", true, false):
+			out.append((label as Label).text.replace("\n", " "))
+			break
+	return out
+
+
 func colour_first() -> int:
 	return _found_first
 
@@ -775,6 +792,7 @@ func _on_colour(code: int) -> void:
 		if not tile is ThumbTile:
 			continue
 		var one: ThumbTile = tile
+		one.sketch_colour = _sketch_colour()
 		one.show_part(one.part_id, code, one.printed, true)
 		var ready_now: ImageTexture = thumbnails.peek(one.part_id, code, one.printed) if thumbnails else null
 		if ready_now:
@@ -810,6 +828,11 @@ func show_selection(parts: PackedStringArray, colours: PackedInt32Array) -> void
 	_chosen_parts = by_part
 	_chosen_colours = by_colour
 	_mark_swatches()
+	# Fits answers for what is selected now. Nothing selected leaves it on
+	# what it was about: a part taken from its list deselects.
+	if _category == FITS and not by_part.is_empty():
+		_fits_of = _fits_subject()
+		_run_search(_search.text)
 
 
 ## The part the note and the dots are about: the selected one, all of one
@@ -1017,6 +1040,12 @@ func controls_by_name() -> Dictionary:
 	for child: Node in _grid.get_children():
 		if child.has_meta("technique"):
 			named["technique " + str(child.get_meta("technique"))] = child
+	# The first tiles' pictures, by place, and how big: what a browser check
+	# reads each tile's square of the window by (tools/web/bin_tiles_flow.mjs).
+	for n: int in mini(_grid.get_child_count(), 16):
+		var cell: Node = _grid.get_child(n)
+		if cell.has_meta("tile"):
+			named["tile picture %d" % (n + 1)] = cell.get_meta("tile")
 	named["colour find"] = _colour_find
 	named["all colours"] = _all_colours
 	named["palette"] = _palette_scroll
@@ -1046,6 +1075,8 @@ func show_category(name: String) -> void:
 
 func _on_category(name: String) -> void:
 	_set_parts.clear()
+	if name == FITS:
+		_fits_of = _fits_subject()
 	_category = name
 	for child: Node in _category_row.get_children():
 		var button: Button = child
@@ -1137,6 +1168,8 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 	var needles: PackedStringArray = asked.split(" ", false)
 	if category == RECENT or category == FAVOURITES:
 		return _from_shelf(category, needles)
+	if category == FITS:
+		return _fitting(needles)
 	var wanted_category: String = category.to_lower()
 	if needles.is_empty():
 		return _unasked(wanted_category)
@@ -1160,6 +1193,35 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 	_listed = found
 	_listed_as = _listing
 	return found
+
+
+## What fits the parts [member _fits_of] names, best first, that match what
+## is typed: "pin" among the parts that fit a beam is its pins.
+func _fitting(needles: PackedStringArray) -> Array[PartLibrary.PartInfo]:
+	_set_aside = 0
+	var key: String = "%s %d" % [",".join(_fits_of), library.ids().size()]
+	if _fits_found.is_empty() or str(_fits_found[0]) != key:
+		_fits_found = [key, PartFits.for_parts(library, _fits_of)]
+	var found: Array[PartLibrary.PartInfo] = []
+	for info: PartLibrary.PartInfo in _fits_found[1]:
+		if needles.is_empty() or PartLibrary.matched(info, needles) != PartLibrary.NOT_MATCHED:
+			found.append(info)
+	return found
+
+
+## The parts Fits is about: what is selected, or failing that the part in
+## hand when Fits was chosen. Not the part taken from its list, or the list
+## would change under the pointer as a part was picked from it.
+func _fits_subject() -> PackedStringArray:
+	if not _chosen_parts.is_empty():
+		return PackedStringArray(_chosen_parts.keys())
+	return PackedStringArray([_selected_part]) if not _selected_part.is_empty() \
+		else PackedStringArray()
+
+
+## The parts Fits lists what fits, and its last answer: [key, parts].
+var _fits_of := PackedStringArray()
+var _fits_found: Array = []
 
 
 ## A category's parts with nothing typed, staples first: worked out once a
@@ -1224,6 +1286,8 @@ const RECENT := "Recent"
 const FAVOURITES := "Favourites"
 ## The worked constructions (Techniques), shown as a category beside them.
 const TECHNIQUES := "Techniques"
+## The parts that fit the selected part, or the one in hand (PartFits).
+const FITS := "Fits"
 ## What a construction's picture is asked for by: this and its name.
 const TECHNIQUE := "technique:"
 const STAR := "res://assets/ui/tools/star.svg"
@@ -1673,6 +1737,7 @@ func _fold() -> void:
 	_folded = 0
 	var asked: String = " %s " % PartLibrary.in_ldraw_words(_search.text)
 	if not _guesses.is_empty() or not _set_parts.is_empty() or _category == RECENT or _category == FAVOURITES \
+			or _category == FITS \
 			or asked.contains(" print ") or asked.contains(" sticker "):
 		_display = _results.duplicate()
 		return
@@ -1750,7 +1815,64 @@ func _show_more(most: int = PAGE) -> void:
 	while _shown < limit:
 		_grid.add_child(_make_cell(_display[_shown]))
 		_shown += 1
+	_tell_apart()
 	_update_status()
+
+
+## Tiles whose names begin alike tell themselves apart: a name cut short
+## goes on from the word where it parts from the one nearest it. Searching
+## "slope 45 2x2", seven inverted slopes each read "Slope 45 2×2 Inverted
+## wit…"; now "…Medium Holes", "…without Inner…". Sorted word by word, the
+## name sharing most of a name's words is beside it. Any still alike end
+## in their numbers.
+func _tell_apart() -> void:
+	var labels: Array[Label] = []
+	var words: Array[PackedStringArray] = []
+	var numbers := PackedStringArray()
+	for cell: Node in _grid.get_children():
+		if cell.has_meta("name_label"):
+			var label: Label = cell.get_meta("name_label")
+			labels.append(label)
+			words.append(str(label.get_meta("name")).split(" ", false))
+			numbers.append(str(cell.get_meta("part", "")))
+	var keys := PackedStringArray()
+	for each: PackedStringArray in words:
+		keys.append("\u0001".join(each))
+	var order: Array = range(labels.size())
+	order.sort_custom(func(a: int, b: int) -> bool: return keys[a] < keys[b])
+	var from := PackedInt32Array()
+	from.resize(labels.size())
+	for n: int in range(1, order.size()):
+		var a: int = order[n - 1]
+		var b: int = order[n]
+		var same: int = 0
+		while same < mini(words[a].size(), words[b].size()) and words[a][same] == words[b][same]:
+			same += 1
+		# A name the other runs on from is told by its own end: "Double
+		# Convex" beside "Double Convex with 45 Corner" goes on from "Convex",
+		# where it parts from "Double Concave".
+		if same < words[a].size():
+			from[a] = maxi(from[a], same)
+		if same < words[b].size():
+			from[b] = maxi(from[b], same)
+	for n: int in labels.size():
+		if int(labels[n].get_meta("from", 0)) != from[n]:
+			labels[n].set_meta("from", from[n])
+			_fit_name(labels[n], _name_width(labels[n]))
+	# Two that still read alike, "…Round Bot…" from two names, end in their
+	# numbers: how a builder tells 3660e from 76959 anyway.
+	var alone := PackedStringArray()
+	var alike: Dictionary = {}
+	for label: Label in labels:
+		var text: String = label.text if str(label.get_meta("number", "")).is_empty() \
+			else _name_text(label, _name_width(label), "")
+		alone.append(text)
+		alike[text] = int(alike.get(text, 0)) + 1
+	for n: int in labels.size():
+		var number: String = numbers[n] if int(alike[alone[n]]) > 1 else ""
+		if str(labels[n].get_meta("number", "")) != number:
+			labels[n].set_meta("number", number)
+			_fit_name(labels[n], _name_width(labels[n]))
 
 
 func _update_status() -> void:
@@ -1768,6 +1890,18 @@ func _update_status() -> void:
 		_status.text = "nothing matches" if _techniques_shown == 0 else (
 			"%s: choose one to hold it whole" % Counted.of(_techniques_shown, "worked construction"))
 		_status.tooltip_text = "R turns what is held, a click puts it down, Esc puts it away"
+		return
+	if _category == FITS and _fits_of.is_empty():
+		_status.text = "Select a part, or take one in hand, then choose Fits to see what fits it."
+		_status.tooltip_text = ""
+		return
+	if _category == FITS and total > 0:
+		var about: PartLibrary.PartInfo = library.parts.get(_fits_of[0])
+		_status.text = "What fits %s, the best fits first" % (
+			tile_name(about) if _fits_of.size() == 1 and about != null
+			else "the %d parts selected" % _fits_of.size())
+		_status.tooltip_text = ("A pin in its holes, a bar in its clip, the other half of a hinge, "
+			+ "then what sits on its studs, the most used first")
 		return
 	if total == 0 and _category == RECENT and _search.text.strip_edges().is_empty():
 		_status.text = "The parts you choose will be here, newest first."
@@ -1848,28 +1982,47 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	# prints every tile was a hole where its print should be.
 	var made_print: bool = info.category in [PartPrints.MY_PRINTS, PartPrints.MY_STICKERS]
 	var image := ThumbTile.new(info.id, _selected_color, made_print)
-	image.custom_minimum_size = Vector2(0, _z(60))
+	image.custom_minimum_size = Vector2(0, _z(52))
 	image.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# Until its picture is drawn, the part drawn from what the catalogue
+	# says of it: its footprint, height, studs and colour (PartSketch). On
+	# the web a picture is a fetch and a render away, and the tiles were
+	# grey squares eight seconds in (appux371 A4).
+	image.sketch = info
+	image.sketch_colour = _sketch_colour()
 	box.add_child(image)
 	button.set_meta("tile", image)
 
+	# Its name, in two lines under the picture: a tile said only its number,
+	# and a person new to LDraw's numbers hovered each to learn that 3710 is
+	# a plate 1 x 4 (appux371 A4). The number is on its tooltip.
 	var label := Label.new()
-	var given: String = PartPrints.given_name(info.name) if info.id.begins_with("bw-") else ""
-	label.text = given if not given.is_empty() else info.id
+	var after: String = ""
 	if _set_parts.has(info.id):
-		label.text = "%s  ×%d" % [info.id, int(_set_parts[info.id])]
+		after = "  ×%d" % int(_set_parts[info.id])
 		button.tooltip_text = "%d in %s\n%s" % [int(_set_parts[info.id]), set_shown, button.tooltip_text]
 	if _guesses.has(info.id):
-		label.text = "%s  %d%%" % [info.id, roundi(float(_guesses[info.id]) * 100.0)]
+		after = "  %d%%" % roundi(float(_guesses[info.id]) * 100.0)
 		button.tooltip_text = "Brickognize is %d%% sure of it\n%s" % [
 			roundi(float(_guesses[info.id]) * 100.0), button.tooltip_text]
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.set_meta("name", tile_name(info))
+	label.set_meta("after", after)
+	button.set_meta("name_label", label)
 	label.clip_text = true
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	# Eleven, not nine: at a laptop's 0.92 nine was eight pixels high.
 	label.add_theme_font_size_override("font_size", ceili(_z(11)))
-	label.modulate = Color(1, 1, 1, 0.75)
+	# Brighter than the number was: words are read, a number glanced at.
+	label.modulate = Color(1, 1, 1, 0.86)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var font: Font = label.get_theme_font("font")
+	label.custom_minimum_size.y = ceilf(font.get_height(ceili(_z(11))) * NAME_LINES
+		+ float(label.get_theme_constant("line_spacing")) * (NAME_LINES - 1))
+	# Fitted to the tile's width as it is laid out, and before that to the
+	# width a tile is made at, so its first frame already reads.
+	_fit_name(label, _name_width(label))
+	label.resized.connect(func() -> void: _fit_name(label, label.size.x))
 	if by_finger and _folds.has(info.id):
 		# Its "+N" has the foot's right end, a fingertip (_fold_badge): the
 		# number keeps to the room beside it.
@@ -1905,6 +2058,118 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 		if ready_now:
 			image.show_picture(ready_now, false)
 	return button
+
+
+## How many lines a tile's name has at most.
+const NAME_LINES := 2
+
+## The name a tile shows: what LDraw calls the part, with its padding and
+## its brackets taken out, its sizes as builders write them (1×2) and a
+## slope called a slope: "Plate 1×2", "Brick 1×1 with Stud on 1 Side",
+## "Slope 45 2×2". The whole name and the number are on its tooltip. One
+## of your own prints is called what you called it.
+static func tile_name(info: PartLibrary.PartInfo) -> String:
+	if info.id.begins_with("bw-"):
+		var given: String = PartPrints.given_name(info.name)
+		if not given.is_empty():
+			return given
+	var name: String = Inventory._tidy(info.name)
+	while not name.is_empty() and name[0] in ["=", "~", "_"]:
+		name = name.substr(1)
+	var bare: String = BRACKETED.sub(name, "", true)
+	if not bare.strip_edges().is_empty():
+		name = bare
+	name = SIZE_WORDS.sub(name, "$1×", true)
+	name = name.replace("Slope Brick ", "Slope ")
+	return Inventory._tidy(name)
+
+
+## What a name puts in brackets, "(Thick C-Clip)", which a tile leaves to
+## its tooltip; and a size's " x " between two numbers.
+static var BRACKETED := RegEx.create_from_string("\\s*[(\\[][^)\\]]*[)\\]]")
+static var SIZE_WORDS := RegEx.create_from_string("(\\d) x (?=\\d)")
+
+
+## [param label]'s name in its lines at [param width]: broken between words,
+## and the last line cut with an ellipsis where the name runs on, with the
+## set's count or the photo's certainty after it. Worked out here rather than
+## by the label's own wrapping, so what a tile shows is its text, word for
+## word (bin_names_probe reads it).
+func _fit_name(label: Label, width: float) -> void:
+	if width <= 1.0:
+		return
+	var text: String = _name_text(label, width, str(label.get_meta("number", "")))
+	if label.text != text:
+		label.text = text
+
+
+## What [param label] reads at [param width], [param number] after its name.
+func _name_text(label: Label, width: float, number: String) -> String:
+	var after: String = (" " + number if not number.is_empty() else "") + str(label.get_meta("after", ""))
+	return fit_lines(str(label.get_meta("name", "")), after, label.get_theme_font("font"),
+		label.get_theme_font_size("font_size"), width, NAME_LINES, int(label.get_meta("from", 0)))
+
+
+## The width a name is fitted to: its label's, or before it is laid out the
+## width a tile is made at.
+func _name_width(label: Label) -> float:
+	return label.size.x if label.size.x > 1.0 else _z(74) - _z(6)
+
+
+## [param name] broken into at most [param lines] lines of [param width] in
+## [param font] at [param size], whole words to a line, the last line cut
+## with "…" where the name runs on, and [param after] at the end of it.
+## Cut, its last line starts at word [param from] where that is further
+## on: where the name parts from a tile's beside it (_tell_apart).
+static func fit_lines(name: String, after: String, font: Font, size: int, width: float,
+		lines: int, from: int = 0) -> String:
+	var wide: Callable = func(text: String) -> float:
+		return font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+	var wrapped := PackedStringArray()
+	for word: String in name.split(" ", false):
+		var at: int = wrapped.size() - 1
+		if at >= 0 and float(wide.call("%s %s" % [wrapped[at], word])) <= width:
+			wrapped[at] = "%s %s" % [wrapped[at], word]
+		else:
+			wrapped.append(word)
+	if wrapped.is_empty():
+		wrapped.append("")
+	var last: int = wrapped.size() - 1
+	if wrapped.size() <= lines and float(wide.call(wrapped[last] + after)) <= width:
+		wrapped[last] = wrapped[last] + after
+		return "\n".join(wrapped)
+	if wrapped.size() < lines:
+		wrapped.append(after.strip_edges())
+		return "\n".join(wrapped)
+	var kept: PackedStringArray = wrapped.slice(0, lines - 1)
+	var rest: String = " ".join(wrapped.slice(lines - 1))
+	var words: PackedStringArray = name.split(" ", false)
+	if from > " ".join(kept).split(" ", false).size() and from < words.size():
+		rest = "…" + " ".join(words.slice(from))
+		if float(wide.call(rest + after)) <= width:
+			kept.append(rest + after)
+			return "\n".join(kept)
+	# The most of it that fits, found by halves: a character at a time
+	# measured a long name forty times over.
+	var room: float = width - float(wide.call("…" + after))
+	var fits: int = 0
+	var over: int = rest.length() + 1
+	while over - fits > 1:
+		var middle: int = (fits + over) / 2
+		if float(wide.call(rest.left(middle))) <= room:
+			fits = middle
+		else:
+			over = middle
+	rest = rest.left(fits)
+	kept.append(rest.strip_edges() + "…" + after)
+	return "\n".join(kept)
+
+
+## The colour a tile's stand-in is drawn in: the one in hand, as its
+## picture will be.
+func _sketch_colour() -> Color:
+	var colour: PartLibrary.BrickColor = library.color(_selected_color) if library != null else null
+	return colour.shown if colour != null else Color(0.6, 0.6, 0.6)
 
 
 ## The count in a tile's corner of the prints, stickers and assemblies folded

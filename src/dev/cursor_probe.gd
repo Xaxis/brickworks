@@ -703,7 +703,9 @@ func _the_way_back() -> void:
 	await _move_to(_middle)
 	await _key_tap(KEY_COMMA)
 	_check("comma opens the controls", controls.visible)
-	var on_it: Vector2 = _centre(controls)
+	# Its own face, in the margin over its title: Settings fills the panel,
+	# and its middle is a chooser, under which the pointer is a hand.
+	var on_it: Vector2 = controls.get_global_rect().position + Vector2(controls.size.x * 0.5, 6)
 	await _move_to(on_it)
 	await _expect_shape("over the controls panel", DisplayServer.CURSOR_ARROW)
 	await _key_tap(KEY_ESCAPE)

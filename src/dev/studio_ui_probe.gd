@@ -110,7 +110,8 @@ func _run() -> void:
 	if cells.has(photo_tile):
 		for child: Node in (cells[photo_tile] as Control).get_parent().get_children():
 			if child is Label:
-				cell_name = (child as Label).text
+				# In the lines it fits in.
+				cell_name = (child as Label).text.replace("\n", " ")
 	_check("the bin shows it by its name: \"%s\"" % cell_name, cell_name == "Monument Valley")
 	# And by its picture: its top is a surface of its own, which a plain
 	# picture left out, a red frame round a hole.

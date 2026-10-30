@@ -29,6 +29,9 @@
 ##   say reasons) goes back as its words and calls alone.
 ## - Effort is reasoning.effort; the most a reply may write is
 ##   max_output_tokens.
+## - Streamed, a reply is events: its words and each call's arguments as
+##   deltas while they are written, and at the end response.completed with
+##   the whole response in it, which is the reply read (Items).
 class_name OpenAIResponses
 extends OpenAIChat
 
@@ -36,7 +39,7 @@ extends OpenAIChat
 const ENCRYPTED := "reasoning.encrypted_content"
 
 
-func request(system: String, tools: Array, turns: Array) -> Dictionary:
+func request(system: String, tools: Array, turns: Array, stream: bool = false) -> Dictionary:
 	var items: Array = []
 	for turn: Dictionary in turns:
 		items.append_array(_items_of(turn))
@@ -53,10 +56,40 @@ func request(system: String, tools: Array, turns: Array) -> Dictionary:
 		body["temperature"] = float(params["temperature"])
 	if int(params.get("max_out", 0)) > 0:
 		body["max_output_tokens"] = int(params["max_out"])
+	if stream:
+		body["stream"] = true
 	var headers := PackedStringArray(["content-type: application/json"])
 	if not key.is_empty():
 		headers.append("authorization: Bearer " + key)
 	return {"url": address("responses"), "headers": headers, "body": JSON.stringify(body)}
+
+
+func reader() -> Streamer.Events:
+	return Items.new()
+
+
+## Responses' events: the deltas said as they come, and the response its
+## last event carries (completed, incomplete or failed) as the reply.
+class Items extends Streamer.Events:
+	## Output index -> the name of the function called there.
+	var _names: Dictionary = {}
+
+	func take(event: Dictionary) -> Dictionary:
+		var item: Variant = event.get("item")
+		match str(event.get("type", "")):
+			"response.output_item.added":
+				if item is Dictionary and str((item as Dictionary).get("type", "")) == "function_call":
+					_names[int(event.get("output_index", -1))] = str((item as Dictionary).get("name", ""))
+			"response.function_call_arguments.delta":
+				return {"fragments": [[str(_names.get(int(event.get("output_index", -1)), "")),
+					str(event.get("delta", ""))]]}
+			"response.output_text.delta":
+				return {"text": str(event.get("delta", ""))}
+			"response.completed", "response.incomplete", "response.failed":
+				if event.get("response") is Dictionary:
+					message = event["response"]
+					finished = true
+		return {}
 
 
 ## MCP's tools as Responses' functions: Chat Completions' made flat.

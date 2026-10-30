@@ -22,11 +22,11 @@ static var native: bool = true
 static var showing: FileDialog = null
 ## The file last written for the person: what Show in folder shows.
 static var shown: String = ""
-## How a file is opened and shown in its folder: the system's own. A probe
-## hands in its own, which open nothing on the desktop beside its Xvfb, and
-## one that fails, to see what is said when no browser can be opened.
-static var open_with: Callable = Callable(OS, "shell_open")
-static var show_with: Callable = Callable(OS, "shell_show_in_file_manager")
+## How a file is opened and shown in its folder: Outside's, which opens
+## nothing in a probe. A probe hands in one that fails, to see what is said
+## when no browser can be opened.
+static var open_with: Callable = Callable(Outside, "open_link")
+static var show_with: Callable = Callable(Outside, "show_in_folder")
 
 ## What each kind of file is called in the dialog's list of types.
 const KINDS: Dictionary = {

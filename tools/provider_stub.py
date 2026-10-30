@@ -2,6 +2,7 @@
 """An OpenAI-compatible model that scripts a design, for proving the designer loop.
 
     python3 -I tools/provider_stub.py --port 9621 --log OUT.jsonl [--fail-first N]
+        [--pace S] [--cut-stream N]
 
 POST /v1/chat/completions answers as Chat Completions does, with tool calls a
 real model would make: clear the baseplate and look a part up (two calls in one
@@ -53,6 +54,21 @@ function_calls sent back by id without it.
 
 Each logs what OpenAI's does, and "pictures_in_answers": the pictures inside
 the last tool answers themselves, where these three APIs take them.
+
+A request that asks for its reply streamed ("stream": true, or Gemini's
+:streamGenerateContent?alt=sse) gets the same reply as server-sent events, as
+that API writes them: Chat Completions' chunks of deltas, each call's
+arguments in pieces under its index, the usage in a last chunk when
+stream_options asks, then [DONE]; Anthropic's message_start to message_stop,
+thinking, its signature, words and each tool_use's input in pieces, the usage
+said again at the end; Responses' events, each function_call's arguments as
+deltas, then response.completed with the whole response; Gemini's responses of
+a part each, words in pieces, lines ending in a carriage return and a newline.
+--pace S waits S seconds after each event (0.03), so a reply is still being
+written while its start is read. --cut-stream N closes the connection half way
+through the first streamed reply after N replies, as a dropped connection does.
+A reply's ids come from where it is in the conversation, never from how many
+requests came before, so the same request gets the same reply streamed or whole.
 """
 
 import argparse
@@ -544,14 +560,14 @@ def native_reply(api, view, model):
             reasoning["encrypted_content"] = ENCRYPTED % reply
         output = [reasoning]
         output += [{"type": "function_call", "id": "fc_%d_%d" % (reply, n),
-                    "call_id": "call_%d_%d" % (Stub.seen, n), "name": name,
+                    "call_id": "call_%d_%d" % (reply, n), "name": name,
                     "arguments": json.dumps(args), "status": "completed"}
                    for n, (name, args) in enumerate(calls)]
         if words:
             output.append({"type": "message", "id": "msg_%d" % reply, "role": "assistant",
                            "status": "completed", "content": [
                                {"type": "output_text", "text": words, "annotations": []}]})
-        return 200, {"id": "resp_stub_%d" % Stub.seen, "object": "response", "status": "completed",
+        return 200, {"id": "resp_stub_%d" % reply, "object": "response", "status": "completed",
                      "model": model, "output": output, "error": None, "incomplete_details": None,
                      "usage": {"input_tokens": 1500, "input_tokens_details": {"cached_tokens": 1000},
                                "output_tokens": 40, "output_tokens_details": {"reasoning_tokens": 10},
@@ -560,16 +576,16 @@ def native_reply(api, view, model):
         content = [{"type": "thinking", "thinking": THOUGHT % reply, "signature": SIGNATURE % reply}]
         if words:
             content.append({"type": "text", "text": words})
-        content += [{"type": "tool_use", "id": "toolu_%d_%d" % (Stub.seen, n), "name": name,
+        content += [{"type": "tool_use", "id": "toolu_%d_%d" % (reply, n), "name": name,
                      "input": args} for n, (name, args) in enumerate(calls)]
-        return 200, {"id": "msg_stub_%d" % Stub.seen, "type": "message", "role": "assistant",
+        return 200, {"id": "msg_stub_%d" % reply, "type": "message", "role": "assistant",
                      "model": model, "content": content,
                      "stop_reason": "tool_use" if calls else "end_turn",
                      "usage": {"input_tokens": 500, "cache_read_input_tokens": 1000,
                                "cache_creation_input_tokens": 0, "output_tokens": 40}}
     parts = [{"text": "Thinking it over.", "thought": True}]
     for n, (name, args) in enumerate(calls):
-        part = {"functionCall": {"name": name, "args": args, "id": "fc_%d_%d" % (Stub.seen, n)}}
+        part = {"functionCall": {"name": name, "args": args, "id": "fc_%d_%d" % (reply, n)}}
         if n == 0:
             part["thoughtSignature"] = GEMINI_SIGNATURE % reply
         parts.append(part)
@@ -593,11 +609,123 @@ def _error(api, code, message):
                       else "invalid_request_error", "param": None, "code": None}}
 
 
+def pieces(text, size=24):
+    """[text] as a model writes it: a few characters at a time."""
+    return [text[at:at + size] for at in range(0, len(text), size)]
+
+
+def chat_events(payload, usage):
+    """A completion as Chat Completions streams it: (event name, data) each."""
+    choice = payload["choices"][0]
+    message = choice["message"]
+    head = {"id": payload["id"], "object": "chat.completion.chunk", "model": payload["model"]}
+
+    def chunk(delta, finish=None):
+        return dict(head, choices=[{"index": 0, "delta": delta, "finish_reason": finish}])
+
+    out = [chunk({"role": "assistant", "content": None})]
+    out += [chunk({"content": piece}) for piece in pieces(message.get("content") or "")]
+    for n, call in enumerate(message.get("tool_calls") or []):
+        out.append(chunk({"tool_calls": [{"index": n, "id": call["id"], "type": "function",
+                                          "function": {"name": call["function"]["name"], "arguments": ""}}]}))
+        out += [chunk({"tool_calls": [{"index": n, "function": {"arguments": piece}}]})
+                for piece in pieces(call["function"]["arguments"])]
+    out.append(chunk({}, choice["finish_reason"]))
+    if usage:
+        out.append(dict(head, choices=[], usage=payload["usage"]))
+    return [(None, one) for one in out] + [(None, "[DONE]")]
+
+
+def anthropic_events(payload):
+    """A message as Anthropic streams it."""
+    start = {key: value for key, value in payload.items() if key != "content"}
+    start.update(content=[], stop_reason=None, usage=dict(payload["usage"], output_tokens=1))
+    out = [("message_start", {"type": "message_start", "message": start})]
+    for index, block in enumerate(payload["content"]):
+        def delta(kind, **said):
+            return ("content_block_delta", {"type": "content_block_delta", "index": index,
+                                            "delta": dict(said, type=kind)})
+        if block["type"] == "thinking":
+            opened = {"type": "thinking", "thinking": ""}
+            deltas = [delta("thinking_delta", thinking=piece) for piece in pieces(block["thinking"])]
+            deltas.append(delta("signature_delta", signature=block["signature"]))
+        elif block["type"] == "text":
+            opened = {"type": "text", "text": ""}
+            deltas = [delta("text_delta", text=piece) for piece in pieces(block["text"])]
+        else:
+            opened = dict(block, input={})
+            deltas = [delta("input_json_delta", partial_json=piece)
+                      for piece in pieces(json.dumps(block["input"]))]
+        out.append(("content_block_start", {"type": "content_block_start", "index": index,
+                                            "content_block": opened}))
+        out += deltas
+        out.append(("content_block_stop", {"type": "content_block_stop", "index": index}))
+    out.append(("message_delta", {"type": "message_delta", "delta": {"stop_reason": payload["stop_reason"]},
+                                  "usage": {"output_tokens": payload["usage"]["output_tokens"]}}))
+    out.append(("message_stop", {"type": "message_stop"}))
+    return out
+
+
+def responses_events(payload):
+    """A response as Responses streams it."""
+    begun = dict(payload, status="in_progress", output=[], usage=None)
+    out = [("response.created", {"type": "response.created", "response": begun}),
+           ("response.in_progress", {"type": "response.in_progress", "response": begun})]
+    for index, item in enumerate(payload["output"]):
+        at = {"item_id": item["id"], "output_index": index}
+        if item["type"] == "function_call":
+            out.append(("response.output_item.added", {"type": "response.output_item.added",
+                                                       "output_index": index,
+                                                       "item": dict(item, arguments="", status="in_progress")}))
+            out += [("response.function_call_arguments.delta",
+                     dict(at, type="response.function_call_arguments.delta", delta=piece))
+                    for piece in pieces(item["arguments"])]
+            out.append(("response.function_call_arguments.done",
+                        dict(at, type="response.function_call_arguments.done", arguments=item["arguments"])))
+        elif item["type"] == "message":
+            out.append(("response.output_item.added", {"type": "response.output_item.added",
+                                                       "output_index": index,
+                                                       "item": dict(item, content=[], status="in_progress")}))
+            text = item["content"][0]["text"]
+            out += [("response.output_text.delta", dict(at, type="response.output_text.delta",
+                                                         content_index=0, delta=piece))
+                    for piece in pieces(text)]
+            out.append(("response.output_text.done", dict(at, type="response.output_text.done",
+                                                          content_index=0, text=text)))
+        else:
+            out.append(("response.output_item.added", {"type": "response.output_item.added",
+                                                       "output_index": index, "item": item}))
+        out.append(("response.output_item.done", {"type": "response.output_item.done",
+                                                  "output_index": index, "item": item}))
+    out.append(("response.completed", {"type": "response.completed", "response": payload}))
+    return [(name, dict(data, sequence_number=n)) for n, (name, data) in enumerate(out)]
+
+
+def gemini_events(payload):
+    """A response as Gemini streams it with alt=sse: a part or a piece of one a response."""
+    candidate = payload["candidates"][0]
+    parts = []
+    for part in candidate["content"]["parts"]:
+        if "text" in part and "functionCall" not in part:
+            parts += [dict(part, text=piece) for piece in pieces(part["text"])]
+        else:
+            parts.append(part)
+    out = []
+    for n, part in enumerate(parts):
+        one = {"content": {"role": "model", "parts": [part]}}
+        if n == len(parts) - 1:
+            one["finishReason"] = candidate["finishReason"]
+        out.append((None, {"candidates": [one], "usageMetadata": payload["usageMetadata"]}))
+    return out
+
+
 class Stub(BaseHTTPRequestHandler):
     log_path = ""
     fail_first = 0
     delay = 0.0
     seen = 0
+    pace = 0.03
+    cut_after = -1
 
     def log_message(self, *_args):
         pass
@@ -609,6 +737,43 @@ class Stub(BaseHTTPRequestHandler):
         self.send_header("content-length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)
+
+    def _answer(self, api, status, payload, body, replies, record):
+        """[payload], whole or streamed as the request asked; [record] says which,
+        and whether the stream was cut."""
+        streamed = status == 200 and record["streamed"]
+        cut = streamed and replies == Stub.cut_after
+        if cut:
+            Stub.cut_after = -1
+        record["cut"] = cut
+        with open(Stub.log_path, "a", encoding="utf-8") as log:
+            log.write(json.dumps(record) + "\n")
+        if not streamed:
+            return self._send(status, payload)
+        events = {"chat": lambda: chat_events(payload, (body.get("stream_options") or {}).get("include_usage")),
+                  "anthropic": lambda: anthropic_events(payload),
+                  "responses": lambda: responses_events(payload),
+                  "gemini": lambda: gemini_events(payload)}[api]()
+        # Chunked, as the providers send a stream: HTTP/1.1 for this answer
+        # alone, and the connection closed after it.
+        self.protocol_version = "HTTP/1.1"
+        self.send_response(200)
+        self.send_header("content-type", "text/event-stream")
+        self.send_header("cache-control", "no-cache")
+        self.send_header("transfer-encoding", "chunked")
+        self.send_header("connection", "close")
+        self.end_headers()
+        end = "\r\n" if api == "gemini" else "\n"
+        for n, (name, data) in enumerate(events):
+            if cut and n == len(events) // 2:
+                return None
+            said = data if isinstance(data, str) else json.dumps(data)
+            event = (("event: %s%s" % (name, end) if name else "") + "data: %s%s%s" % (said, end, end)).encode()
+            self.wfile.write(b"%x\r\n%s\r\n" % (len(event), event))
+            self.wfile.flush()
+            time.sleep(Stub.pace)
+        self.wfile.write(b"0\r\n\r\n")
+        return None
 
     def _key_is_stub(self):
         """The key came as STUB_KEY, in the header this request's API puts it in."""
@@ -651,13 +816,16 @@ class Stub(BaseHTTPRequestHandler):
         else:
             wrong, view = gemini_view(body)
             model = urlparse(self.path).path.rsplit("/", 1)[-1].split(":")[0]
+            if self.path.split("?")[0].endswith(":streamGenerateContent") and "alt=sse" not in self.path:
+                wrong.append("alt=sse: the stub streams only server-sent events")
         record = {"n": Stub.seen, "api": api, "path": self.path, "model": model,
                   "key_is_stub": self._key_is_stub(), "tools": len(view["tools"]),
                   "tool_names": sorted(view["tools"]), "system_has_guide": view["guide"],
                   "replies": view["replies"], "pictures_in_answers": view["pictures"],
                   "last_tools": view["said"][:600], "fresh_look_asked": view["fresh"],
                   "problems": wrong, "bytes": size,
-                  "test": view["tools"] == ["record_answer"] or (not view["tools"] and bool(view["last_pictures"]))}
+                  "test": view["tools"] == ["record_answer"] or (not view["tools"] and bool(view["last_pictures"])),
+                  "streamed": bool(body.get("stream")) or ":streamGenerateContent" in self.path}
         if api == "responses":
             record.update({"store": body.get("store"), "include": body.get("include"),
                            "reasoning": body.get("reasoning"),
@@ -667,13 +835,11 @@ class Stub(BaseHTTPRequestHandler):
         if not wrong and Stub.seen <= Stub.fail_first:
             status = 429
         record["status"] = status
-        with open(Stub.log_path, "a", encoding="utf-8") as log:
-            log.write(json.dumps(record) + "\n")
         if status == 429:
-            return self._send(429, _error(api, 429, "Rate limit reached (stub)"))
-        if wrong:
-            return self._send(400, _error(api, 400, "; ".join(wrong)))
-        self._send(status, payload)
+            payload = _error(api, 429, "Rate limit reached (stub)")
+        elif wrong:
+            payload = _error(api, 400, "; ".join(wrong))
+        self._answer(api, status, payload, body, view["replies"], record)
 
     def do_POST(self):
         Stub.seen += 1
@@ -685,7 +851,7 @@ class Stub(BaseHTTPRequestHandler):
         path = urlparse(self.path).path
         if path.endswith("/v1/messages"):
             return self._native("anthropic", body, size)
-        if path.endswith(":generateContent"):
+        if path.endswith(":generateContent") or path.endswith(":streamGenerateContent"):
             return self._native("gemini", body, size)
         if path.endswith("/v1/responses"):
             return self._native("responses", body, size)
@@ -710,6 +876,7 @@ class Stub(BaseHTTPRequestHandler):
             "temperature": body.get("temperature"),
             "max_tokens": body.get("max_tokens", body.get("max_completion_tokens")),
             "reasoning_effort": body.get("reasoning_effort"),
+            "streamed": bool(body.get("stream")),
         }
         time.sleep(Stub.delay)
         tested = None if wrong else test_reply(body, messages)
@@ -718,27 +885,29 @@ class Stub(BaseHTTPRequestHandler):
         if not wrong and Stub.seen <= Stub.fail_first:
             status = 429
         record["status"] = status
-        with open(Stub.log_path, "a", encoding="utf-8") as log:
-            log.write(json.dumps(record) + "\n")
+        replies = record["replies"]
         if status == 429:
-            return self._send(429, {"error": {"message": "Rate limit reached (stub)", "type": "rate_limit"}})
+            return self._answer("chat", 429, {"error": {"message": "Rate limit reached (stub)",
+                                                        "type": "rate_limit"}}, body, replies, record)
         if wrong:
-            return self._send(400, {"error": {"message": "; ".join(wrong), "type": "invalid_request_error"}})
+            return self._answer("chat", 400, {"error": {"message": "; ".join(wrong),
+                                                        "type": "invalid_request_error"}}, body, replies, record)
         if tested is not None and tested[0] != 200:
-            return self._send(*tested)
+            return self._answer("chat", tested[0], tested[1], body, replies, record)
         calls, words = tested[1] if tested is not None else step(messages)
+        reply = replies + 1
         message = {"role": "assistant", "content": words or None}
         if calls:
-            message["tool_calls"] = [{"id": "call_%d_%d" % (Stub.seen, n), "type": "function",
+            message["tool_calls"] = [{"id": "call_%d_%d" % (reply, n), "type": "function",
                                       "function": {"name": name, "arguments": json.dumps(args)}}
                                      for n, (name, args) in enumerate(calls)]
-        self._send(200, {
-            "id": "chatcmpl-stub-%d" % Stub.seen, "object": "chat.completion", "model": body.get("model"),
+        self._answer("chat", 200, {
+            "id": "chatcmpl-stub-%d" % reply, "object": "chat.completion", "model": body.get("model"),
             "choices": [{"index": 0, "message": message,
                          "finish_reason": "tool_calls" if calls else "stop"}],
-            "usage": {"prompt_tokens": size // 4, "completion_tokens": 40,
+            "usage": {"prompt_tokens": len(json.dumps(messages)) // 4, "completion_tokens": 40,
                       "prompt_tokens_details": {"cached_tokens": 1000}},
-        })
+        }, body, replies, record)
 
 
 def main():
@@ -747,10 +916,14 @@ def main():
     parser.add_argument("--log", required=True)
     parser.add_argument("--fail-first", type=int, default=0)
     parser.add_argument("--delay", type=float, default=0.0)
+    parser.add_argument("--pace", type=float, default=0.03)
+    parser.add_argument("--cut-stream", type=int, default=-1)
     args = parser.parse_args()
     Stub.log_path = args.log
     Stub.fail_first = args.fail_first
     Stub.delay = args.delay
+    Stub.pace = args.pace
+    Stub.cut_after = args.cut_stream
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Stub)
     print("provider stub on 127.0.0.1:%d" % args.port, flush=True)
     try:

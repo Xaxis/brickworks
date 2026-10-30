@@ -1988,9 +1988,104 @@ apart, the most on the cover, whose picture the two place half a pixel
 apart.
 
 Not done: A4 or Letter pages of their own (the booklet's page already fits
-both); the text is Helvetica, not embedded, so a reader without it draws a
-font of the same widths; a PNG page is the booklet's pictures' density
-(4.2 px a mm on the castle, 107 dpi), which is the most there is to show.
+both). The type was not embedded and the PNG pages were the pictures'
+density (107 dpi on the castle) until pages, 2026-10-29, below.
+
+
+## One page's layout on every page after it, and saves fit to print (2026-10-29, pages)
+
+Studio's page design lays out one page and applies it to the pages that
+follow ("Apply to followings"). Ours laid a page out by hand a page at a
+time: a 40-page booklet was 40 pages of drags. And the saves stopped short
+of print: the PDF named Helvetica without carrying it, so a reader without
+it drew another font, and the PNG pages were the booklet's pictures'
+density, about 107 dots an inch (APP_UX.md B7).
+
+**Apply to later pages.** Lay out page… has Apply to later pages: every
+later page of steps with as many steps as the page shown (a callout's own
+page: that callout's later pages) is laid out as it is, each step as the
+step in its place there. What that step placed by hand, its picture, parts
+list, number and callout, goes where it is on this page, moved into the
+later step's own room as a placed thing moves with its step
+(`BookletLooks.rebased`); what this page leaves to the booklet, the later
+page does too. A parts list or callout goes only where the later step has
+one. A placed picture is the box its model is fitted to, and a box made
+for page 1's model would blow an early step's two bricks up to fill it:
+on a later page the box is drawn in round its centre so the model is no
+larger than the booklet draws a step, ten millimetres a stud (its own size
+and zoom aside), and a page's steps share one scale, as the booklet's own
+do. A parts list is as wide as its own parts need, wrapped no narrower
+than the page's list or the booklet's own, and keeps to its side of the
+page (a list at the right grows to the left); where a step of many parts
+grows its list into the picture's box, the model goes in the side of the
+box the list leaves it largest room in (`PageEditor.clear_of`). Pages
+with another number of steps are left, and said ("2 with another
+number of steps left as they were (pages 17, 40)"), as are pages where a
+thing had to be moved off another. It is one undo, kept in the file as
+each step's PLACE and PANEL lines, and over MCP `edit_booklet follow=true`
+on any step of the page does the same (`PageEditor.later_layout`,
+`Shell.place_pages`). Set Per page first and every page has as many steps.
+
+`booklet_later_probe` does it as a person does, by the mouse on 42004-1
+(46 of its author's steps, six sub-models): the timeline, Per page to one
+step a page, Lay out page…, the first page's parts list, number and
+picture dragged and the picture's corner dragged, and Apply to later
+pages, 9 acts (the bar is 10). The 45 later pages, one step each, were
+laid out: 38 exactly as page 2, and 7 where the booklet's own callout box
+(a sub-model built on pages of its own, which page 2 has none of) fell on
+the picture or the list and was moved off it into free room beside them,
+and said; no model drawn larger than the booklet draws a step, nothing on
+anything and nothing off a page. Step 35's list of 27 kinds of part is
+142.6 mm wide at the right, and its model goes below it. Ctrl-Z gives the
+file back byte for byte, `follow=true` writes the same file in one undo,
+and the file saved and opened again lays out the same. Its booklet, 68
+pages, saves as an 11.4 MB PDF in 1.1 s and a 58 MB zip of 300 dpi pages
+in 17 s.
+
+Not done: the page editor shows a callout box only for a sub-model built
+inline, so the box of one built on its own pages (the 7 above) is drawn in
+the booklet but cannot be seen or moved in Lay out page…; and the pages'
+pictures are the booklet's step pictures drawn larger, not drawn again at
+300 dots an inch.
+
+**The type in the PDF.** The PDF's words are set in Liberation Sans, whose
+widths are Helvetica's letter for letter (the widths BookletRead lays the
+words out by), and the whole TrueType file is in the PDF, with its widths
+read from the file itself (`BookletPdf.TYPE`, `font_metrics`). It ships in
+`assets/fonts/` under the SIL Open Font License, which goes with it in
+About and the packages' notices (ATTRIBUTION.md). `pdffonts` reads:
+
+```
+name                 type      encoding  emb sub uni
+LiberationSans       TrueType  WinAnsi   yes no  no
+LiberationSans-Bold  TrueType  WinAnsi   yes no  no
+```
+
+where it read `Helvetica Type 1 WinAnsi no` before. The whole file goes in,
+not a subset: both Reserved Font Names forbid shipping a changed copy, and
+a subset made while writing would be code to keep for 0.4 MB a PDF (the
+castle's PDF 49.5 MB before, 49.9 MB now, written in 5.4 s).
+
+The page's pictures (BookletPng) are drawn in the same type, where they
+were drawn in whatever the computer called Helvetica: on the web, which
+has none, Godot's own type, wider than the widths the page was laid out
+by.
+
+**PNG pages at 300 dots an inch.** A page is 3177 x 2350 pixels, and its
+PNG says 300 dots an inch (a pHYs chunk), so a program that prints or
+places it sizes it right. The words, lines and boxes are as sharp as
+print; a step's picture is the booklet's own, drawn smooth to that size,
+as the PDF's is when printed. That costs room and time: the castle's 324
+pages were a 252 MB zip drawn in 67 s, and are 1.24 GB in 5.3 minutes
+(3.8 MB a page); the lighthouse's 14 pages are 17.8 MB in 6 s. On the web
+the zip is handed to the browser whole, from memory, so a booklet there is
+drawn at 300 dots an inch up to 134 pages and as fine as a billion pixels
+allow beyond (`WEB_MOST_PIXELS`: the castle at 193, Orthanc's 1,405 pages
+at 93), never coarser than the web's own pictures and never a zip larger
+than the web's was. `booklet_pdf_probe` on the castle, read by
+`booklet_pdf_check.py`: every font embedded, the first and last PNGs 3177 x
+2350 pixels and saying 300 x 300, and the PDF's pages drawn by poppler at
+300 dpi 2.42 and 1.11 apart of 255 from them.
 
 ## What is left
 

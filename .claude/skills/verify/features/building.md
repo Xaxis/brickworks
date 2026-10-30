@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:palette in a browser, ui:connect by a point, cli:connect probe -->
 
 ## Sub-features
 
@@ -129,7 +129,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `copy paste and duplicate` (`src/assembly/carry.gd`): `Ctrl-C` copies the
   selection, `Ctrl-V` holds a copy as one ghost, `Ctrl-D` holds a copy of the
   selection without touching the clipboard, `Ctrl-X` cuts. A click puts it down
-  as one step and selects it; `R` turns it; `Esc` puts it away. The group's frame
+  as one step and selects it; `R` turns it; `Esc` puts it away. After `Ctrl-D`
+  or a click with the Clone tool another copy stays in hand (`Carry.repeats`,
+  APP_UX A6), as Studio's Clone does, until `Esc`, a right click or another
+  tool; a paste and a `Ctrl`-drag copy go once (`typed_moves_probe -- only=clones`:
+  five copies in six actions, one undo each). The group's frame
   is a stud centre or corner at its bottom, so whole-stud moves and quarter turns
   keep every part on the studs; it drops onto whatever is highest under any of
   its parts, and a side face pushes it out until its edge meets the face. Copy
@@ -138,7 +142,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `move and turn a selection`: `X` with a selection picks it up to follow the
   pointer; a click puts it down (lifting and putting down are one undo); `Esc`
   puts it back. `R` / `Shift-R` turn a selection where it stands, about the
-  same point each time, so four turns come back exactly. Half round (the
+  same point each time, so four turns come back exactly. Where a turn (`R`, `T`,
+  the Rotate tool) has no room, the parts in the way are tinted red (amber on a red part) for a second
+  (`Builder.refused_by`, `EditVerbs._flash`) and the selection comes into hand
+  already turned (`Carry.reshape`): a click puts it down where it fits, lifting
+  and putting down one undo, and `Esc` puts it back as it was (APP_UX A3;
+  `typed_moves_probe -- only=wall`: the walk's brick down at 15 degrees in R, an
+  aim and a click). Half round (the
   properties panel's Turn of 180) goes round the middle on a half stud each
   way and lands on its own footprint, as Mirror does (`mirror_probe`).
 - `select by colour part or connection` (`src/assembly/select_by.gd`): the
@@ -173,9 +183,16 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Account; every command is defined once in `Shell._define` with its words, its
   key (shown beside it in the menu, never answered by the menu: the keys stay
   the app's own) and whether it can be used now — greyed when not, ticked when
-  it is a setting that is on. File: New, Open, Open recent, Import (LDraw,
-  Studio `.io`; LDD `.lxf` greyed, not yet), Save, Save as, Export, Render…
-  (see [view](view.md)), Instructions, Clear, Account, Quit. The toolbar under it: New/Open/Save, Undo/Redo/History,
+  it is a setting that is on. Each command is in one menu (appux371 A7; the
+  `palette probe` counts every menu's ids): File: New, Open, Open recent,
+  Import (LDraw, Studio `.io`; LDD `.lxf` greyed, not yet), Save, Save as,
+  Export, Render… (see [view](view.md)), Clear, Quit. Edit (25 rows) keeps
+  the clipboard, the selection, hide, lock, paint and replace; Build the
+  steps (Next step, Build steps), Instructions, the sub-assemblies and the
+  sections (Exploded view); Help is Keys and the tour, and About, Send feedback,
+  the docs, the website, Beta hub (a tester's) and Account are in the app
+  menu. A phone's More lists the
+  app menu's rows under Help (`Shell.touch_menus`). The toolbar under it: New/Open/Save, Undo/Redo/History,
   the tools, Copy/Paste/Mirror/Select by/Show all, snap and turn step, grid,
   orthographic, fit and three views, Measure, Properties, Timeline,
   Instructions, Render, Parts list — each tooltip its name, key and what it does.
@@ -189,6 +206,45 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   orthographic, `,` Settings; never the engine's "QuoteLeft" or "Comma"). The
   menus can only draw the engine's name for a key, so one it misnames is
   handed the character it then draws (`Shell.menu_accel`).
+- `the app menu` (`ModelBar.mark`, `Shell.APP_MENU`): the mark (web/icon.svg,
+  drawn from its copy `assets/ui/mark.svg`, which `tools/web/make_icons.mjs`
+  writes and `tests/test_mark.py` holds byte for byte) and the app's name,
+  first in the menu bar, where the name in words was. It opens About
+  Brickworks, Brickworks website, Documentation, Account and, in a browser
+  only (`Shell.WEB_ONLY`), Back to brickworks.diy, which takes this tab to the
+  site's own `/` (a preview's on a preview). F6 from the model goes to it
+  first; Return opens it. Where the bar has no room for the name on one line
+  (`ModelBar._fit_mark`), the mark alone. Never on the model, a render or an
+  export. `app menu probe` (windowed) checks it first at the bar's left at
+  the window's width and narrower to 720 units, the bar one line and the
+  bar and toolbar exactly as with the old name in words, the rows, About from
+  them, the keys, and every row of it and of Select by running its own
+  command after the assistant is turned on (`Shell._fill` gives a command one
+  id for good; a menu made again once handed its ids to others).
+  `app menu in a browser` (preview check `app_menu`) does it in a browser at
+  1280 and 390 wide, reads the mark's colours off the canvas, and follows
+  Back to brickworks.diy to the site's header.
+- `find a command` (`src/ui/command_palette.gd`, `Shell.palette`): Ctrl+/
+  (and Ctrl+Shift+P on the desktop; a browser keeps that one), or the app
+  menu's Find a command…, opens a box over the model with the keys in it.
+  Typing filters every command by the words of its name and of its menu
+  (each word typed begins a word there, or is inside the name; at three
+  letters a word of its tooltip): "same colour", "turn left", "xray".
+  Each row says its key and its menu ("Edit › Select by"); one that cannot
+  be used now stays, greyed, saying why (`Shell.why_not`, `Command.needs`),
+  and Return runs nothing. Return runs the lit row through `Shell.run`, as
+  its menu row does; Up, Down, Page Up and Down move; Escape puts it away.
+  The last eight run from it come first (`ShellPrefs` `palette_recent`).
+  `palette probe` (windowed, 1280 x 720; 1400 x 900 by `PROBE_SIZE`) walks
+  every command in `Shell._commands`: typed by its words, reached by Down,
+  Return hands exactly it to the run (a stand-in, so no file dialog,
+  browser or network) or, greyed, nothing; Render opens for real in five
+  presses (Ctrl+/, R, E, N, Return). It also checks no command in two menus,
+  Edit at most 25 rows and 60% of the window, and the menu on a part's
+  Duplicate, Replace, Select the same part and colour, the step moves and
+  Swing on its hinge (`swing`, J), each run from the menu. `palette in a
+  browser` (preview check `palette`) drives it by keys in a browser
+  (`brickworksState.palette`).
 - `tool modes` (`EditVerbs.mode`): Select (the default) and Place (a part in
   hand), and Move, Rotate, Hinge, Clone, Paint, Hide, Delete — a click on a part
   does that tool's one thing to it, or to the whole selection when the part is
@@ -951,6 +1007,21 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   unselected one (`Joints.rounds`). It may press only on the part it is joined
   to; anything else refuses it. The parts stand off the grid afterwards, held
   as turned covers (`Builder.swing_selection`).
+- `meet on hinges` (`src/assembly/hinge_align.gd`, Properties' `Hinges  Meet`
+  with two parts selected; docs/APP_UX.md B4): every hinge, clip and
+  turntable between the two (Bodies' tree, each side back to the body both
+  hang from) swings so a free end of the one meets a free end of the other
+  that takes it — a click hinge's finger in a fork, a pin in its eye, a clip
+  on a bar — with the least bending, the new joint's bend counted too, so a
+  line of eight hinges closes into a regular octagon. Click hinges end on
+  their 22.5° clicks; every part must have room where it ends up and stay
+  above the model's lowest point. One step to undo. Otherwise nothing moves
+  and the status bar says why: not joined, nothing between them turns, no
+  free ends that take each other, "the nearest leaves them N plates apart",
+  "they meet only between the hinges' clicks", or what would run into what.
+  Probes: `hinge_align_probe` (a ring of eight click hinge plates, a wing
+  and its strut, the build check on each, the refusals) and, in a window,
+  `hinge_align_ui_probe` (the ring closed in three actions, one Ctrl+Z).
 - `grab and move on a joint` (`src/ui/grab_drag.gd` over `src/assembly/grab.gd`;
   owner, 2026-10-17): with the Select tool a drag on a part that hangs on a
   joint moves its whole rigid body and everything beyond it about that joint,
@@ -1688,6 +1759,69 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   Technic hole's (`JointSnap.ends_of`, `COUNTERBORE`). Probe: `placing_probe
   -- only=balance`; in a browser, `placing_flow.mjs --only=balance` opens the
   set's file up to its plates and puts both through the interface.
+- `type a number while moving` (`src/ui/typed_entry.gd`, `EditVerbs._begin_typing`,
+  `Builder.pin_hand` / `typed_hand`, `Carry.pin` / `show_moved`, APP_UX B1):
+  with a part or a copy in hand (its ghost aimed), or straight after `R` or `T`,
+  a digit, `.` or `-` opens a field at the pointer. What is in hand stays where
+  its ghost stood; the text is read whole after every key (`TypedEntry.parse`:
+  `3x`, `-2z`, `2py`, `-14ly`, `5mm x`, `23.58r`, `30t`, `40/2+1lx`, `2x-1py`; a
+  stud the unit, a number alone along `Builder.last_way`, or after `R`/`T` a turn
+  or tilt taking their step's place) and shown in hand, red where `room_for` (a
+  part) or the lattice (a group) refuses. `Enter` puts it down through `place()`,
+  one undo; `Esc` leaves it as before typing. On the model, straight after `R`/`T`
+  turned a selection, the turn is undone and the selection lifted where it stood
+  to type its turn instead. The field reads only the keys' characters
+  (`InputEventKey.unicode`, the keypad's codes), as a browser sends them. While it
+  is open it takes every key, so a digit is not a view key then; with nothing in
+  hand the digits are views as before. `R` or `T` stays "just pressed" until the
+  pointer moves 6 px from where it was pressed (`EditVerbs._input`): a number
+  after aiming again moves the part as `R` left it. The field opens under the
+  ghost's screen box (`TypedEntry.clear_of`), not on it. Probe: `typed_moves_probe`
+  (headers its command; sections reading, clones, wall, typed, sets; `only=` takes
+  several, comma-separated). In a browser: `tools/web/typed_flow.mjs` against a
+  local export (`tools/export.sh web`, then `tools/web/serve.py build/web PORT
+  --parts assets/generated/parts --delay 0`): Q, "3x", Enter, Ctrl-Z, "-1py", Esc,
+  read through `window.brickworksState` and `brickworksWords`.
+- `typed moves probe` (`src/dev/typed_moves_probe.gd`): windowed 1400x900, about
+  four minutes. `sets` opens each set's file for the truth, puts the parts before
+  the one typed (found by its line among the file's parts: the runs typed their
+  places in a model lifted on the floor), takes it into hand, aims, turns it with
+  `R`/`T` to the nearest quarter only if the ghost is not turned as it goes,
+  aims again and types the difference; its rows go to `shots/typed/sets.json`
+  with the actions counted (point, click, key, a typed number one; characters
+  beside). Each section starts on an empty floor.
+- `connect by a point` (`src/ui/connect_tool.gd`, `EditVerbs.start_connect`,
+  `Builder.connect_end` / `hold_still` / `follow_by`, APP_UX B2): with a part in hand,
+  `N` (or the toolbar's Connect, Build's tool row) holds it still where its ghost
+  stood (where the view looks if it stood nowhere) and draws its ends
+  (`JointSnap.ends_for`: pins, axles, pin and axle holes, bars, clips, tyres,
+  rims, hinge halves) as blue rings (holes, clips) and dots (pins, axles, bars)
+  on a 2D layer over the view (`ConnectPoints`); the one under the pointer
+  lights amber. A click on one makes it the only end the hand goes
+  on by (`_onto_a_joint` takes `[connect_end]`), so a 1 x 16 on a pin has two
+  ways, not thirty, and of ways joining as many parts `_best_on_joint` takes the
+  one above the floor and then the one turned least from how it stood
+  (`_turned_from_picked`); the click on a point and its release are eaten
+  (`ConnectTool._unhandled_input`), and `place()` refuses while points are
+  offered. `R` turns about the joint, `T` the other way on, `N` again picks
+  another point, `Esc` back to placing. With nothing in hand the tool waits for
+  a part: a click takes it off the model into hand where it stands
+  (`lift_brick`), and its putting down folds with that into one undo
+  (`fold_since`, "connected …"); `Esc` or Undo puts it back. Studs go by the
+  stud grid as before (a part with no ends is said so). In a browser the stage
+  and the points on the page are `window.brickworksState.connect`.
+- `connect probe` (`src/dev/connect_probe.gd`): windowed, about five minutes;
+  `PROBE_SIZE=1280x720` for the small window. `column`: 8841-1's parts 1 to 20
+  from the file, the column taken, aimed at its pin, `N`, its end hole, the pin,
+  a click (bar 6 actions), against the build flow's 25 presses of `T`/`R`
+  without Connect; one undo; another hole puts it on the pin by that hole. `turned`: a
+  1 x 16 by its fourth hole onto a pin in a 1 x 4 turned 30° and tilted 25°, `R`
+  about the joint. `model`: the toolbar's Connect on a column lying on the floor,
+  `Esc` puts it back, then moved onto its pins in one undo. `walk`: 8841-1's nine
+  joint parts of section 9's 25 by Connect, counted, and the run's 744 actions
+  with them in (each part its run's take and colour overhead plus Connect's
+  count, where that is fewer and lands where the file has it) (rows in `shots/connect/walk.json`, pictures in
+  `shots/connect/WxH/`).
 - `typed place and hinge` (`src/ui/inspector.gd`, `Builder.move_selection_by`,
   `Builder.hinge_angle`, 2026-10-17): Properties' X, Y and Z move the
   selection by exactly the difference typed, to the hundredth of an LDU

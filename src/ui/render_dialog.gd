@@ -1016,7 +1016,7 @@ func _again() -> void:
 			_status.text = "The %s was downloaded as %s." % [_last["kind"], _last["name"]]
 		return
 	if output != null and not output.paths.is_empty():
-		OS.shell_show_in_file_manager(output.paths[output.paths.size() - 1])
+		Outside.show_in_folder(output.paths[output.paths.size() - 1])
 
 
 func _on_progress(fraction: float, words: String) -> void:

@@ -56,7 +56,7 @@ const COMMANDS: Dictionary = {
 	"step_*": "edit_steps", "timeline": "edit_steps", "booklet_*": "edit_booklet",
 	"floor_*": "set_floor",
 	"flex": "lay_flex", "reshape_flex": "lay_flex",
-	"pose": "pose_model", "mode_hinge": "pose_model",
+	"pose": "pose_model", "mode_hinge": "pose_model", "swing": "pose_model",
 	"parts_list": "parts_list", "collection": "parts_list", "collection_need": "parts_list",
 	"collection_build": "parts_list",
 	"minifig": "add_minifig", "mosaic": "make_art", "part_maker": "make_part",
@@ -94,6 +94,7 @@ const WINDOW_ONLY: Dictionary = {
 	"rename_assembly": "a session names an assembly when it makes one (edit_model's assemblies)",
 	"view_*": "the person's camera; view_model from= looks from any side",
 	"mode_*": "what the person's mouse does; a session's changes are edit_model's",
+	"mode_connect": "a point on the part in the person's hand, then the point it goes on, by their pointer; a session gives the place and turn (edit_model's add, at= and rot=)",
 	"fit": "the person's camera; view_model frames what it looks at",
 	"explode": "what the person sees; a session weighs each section with evaluate_section and looks with view_model where=",
 	"fit_model": "the person's camera; view_model frames what it looks at",
@@ -114,11 +115,15 @@ const WINDOW_ONLY: Dictionary = {
 	"find_colour": "a field the person types a colour's name into, for their next part; a session gives the LDraw colour code (edit_model's color and recolor)",
 	"reseat": "squares up parts a file left between studs; a session's parts are on the lattice already",
 	"settings": "the person's preferences, whether the assistant is in the window among them: theirs to choose, and with it off the connector is off, so no session is there to ask",
+	"palette": "finds one of the person's commands by its words; a session calls the tool itself",
 	"keys": "help for the person",
 	"tour": "help for the person",
 	"website": "help for the person",
 	"docs": "help for the person",
 	"about": "help for the person",
+	"back_to_site": "leaves the web app for the website in the person's tab, ending the session's connection",
+	"feedback": "a report from the person to the people who make Brickworks, in their own words",
+	"beta_hub": "help for the person",
 }
 
 ## What a session reads about these, served by read_guide("app") — every
@@ -129,8 +134,9 @@ Each change is one undo step.
  - clear_model takes everything off for a new model, as New does; \
 save_model writes it with the person's models, and a new design's first \
 save hands back its pictures for a fresh look, answered with fresh_eyes \
-before any other call; make_part makes a part the LEGO Group has not \
-made, when search_parts finds no real one that will do.
+before any other call, and the first save after the creative pass one \
+last look, answered with fresh_eyes_final; make_part makes a part the \
+LEGO Group has not made, when search_parts finds no real one that will do.
  - set_floor: what the model stands on — a baseplate 8 to 192 studs in \
 eights, in a colour baseplates come in, a grid floor, or nothing (a car \
 or a ship stands on a table). part_of_model=true counts the baseplate as \
@@ -319,6 +325,8 @@ func definitions() -> Array:
 				+ "a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= changes or "
 				+ "removes one. What is placed goes with its step when the pages change. "
 				+ "booklet_layout says where each is, and what was moved off what it overlapped. "
+				+ "follow=true lays out every later page with as many steps as the page step= "
+				+ "is on, as that page is laid out (Apply to later pages), one undo step. "
 				+ "A model with no steps of its own is given the "
 				+ "worked-out ones first, in the same undo step."),
 			"input_schema": {"type": "object", "additionalProperties": false,
@@ -357,6 +365,7 @@ func definitions() -> Array:
 				"sign": {"type": "boolean", "description": "false: no turn sign on the step"},
 				"callout": {"type": "boolean"},
 				"per_page": {"type": "integer", "enum": [0, 1, 2, 4]},
+				"follow": {"type": "boolean", "description": "true: the later pages laid out as step's page is"},
 			}},
 		},
 		{
@@ -1130,6 +1139,8 @@ func _edit_booklet(input: Dictionary) -> String:
 			steps[steps.size() - 1].number]
 	if input.has("place") or input.has("text") or input.has("arrow"):
 		return await _edit_page(input, at)
+	if bool(input.get("follow", false)):
+		return await _follow_page(at)
 	var fields: Dictionary = {}
 	if input.has("highlight"):
 		var on: String = shell.change_look("highlight", at, {"highlight": bool(input["highlight"])})
@@ -1244,6 +1255,38 @@ func _edit_page(input: Dictionary, at: Instructions.Step) -> String:
 	return shell.change_look("place", at, {"item": item, "at": [float(place["x"]),
 		float(place["y"]), float(place.get("w", now.size.x)), float(place.get("h", now.size.y))],
 		"room": room})
+
+
+## The page step [param at] is on laid out on every later page with as
+## many steps, as the page editor's Apply to later pages does: one undo.
+func _follow_page(at: Instructions.Step) -> String:
+	var world: BrickWorld = app.get("_world")
+	var store: ModelStore = app.get("_store")
+	var maker := BookletMaker.new()
+	maker.library = app.get("_library")
+	app.add_child(maker)
+	var pages: Array[Booklet.Page] = await maker.lay_out_only(world, store.scenery, "Model")
+	var plan: Array[Instructions.Step] = maker.plan
+	maker.queue_free()
+	for index: int in pages.size():
+		if pages[index].kind != "steps" \
+				or not pages[index].entries.any(func(entry: Booklet.Entry) -> bool: return entry.number == at.number):
+			continue
+		var later: Dictionary = PageEditor.later_layout(pages, index, plan)
+		if not bool(later["placed_any"]):
+			return ("Nothing on page %d is placed yet: place= its picture, parts list or number "
+				+ "first, then follow=true lays the later pages out the same.") % pages[index].number
+		if (later["laid"] as Array).is_empty():
+			return "No page after page %d has %d steps." % [pages[index].number,
+				pages[index].entries.size()]
+		var said: String = (app.get("_shell") as Shell).place_pages(later["placed"],
+			"page %d's layout on %d later pages" % [pages[index].number, (later["laid"] as Array).size()])
+		if not (later["left"] as Array).is_empty():
+			said += "; pages %s have another number of steps and were left as they were" \
+				% ", ".join(PackedStringArray((later["left"] as Array).map(
+					func(page: int) -> String: return str(page))))
+		return said + ". booklet_layout says where each thing is now."
+	return "Step %d is on no page of steps." % at.number
 
 
 ## Whether an arrow's tip ([param points] x2, y2) is on what step [param

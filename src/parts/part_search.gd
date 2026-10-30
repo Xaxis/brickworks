@@ -105,6 +105,27 @@ const SAME_WORD: Dictionary = {
 	"bushing": ["bush"], "bushings": ["bush"],
 	"half bush": ["bush 1/2"], "half bushing": ["bush 1/2"], "half pin": ["pin 1/2"],
 	"3l pin": ["pin long"], "pin 3l": ["pin long"], "3l pins": ["pin long"],
+	# A click hinge is LDraw's Locking one; a grill its Grille, which "grill"
+	# only began, so the round grille brick led for its name.
+	"click": ["locking"], "grill": ["grille"], "grills": ["grille"],
+}
+
+## The names builders give parts that no catalogue's name has -> the parts
+## each means, which come first among the parts that answer as well (appux371
+## A5, 2026-10-30). "snot" found Technic pins, a letter off their Slot; "erling"
+## and "travis" found nothing; "macaroni" led with a 4 x 4 tile. SNOT is
+## studs not on top: the bricks with studs on their sides and the brackets.
+## The headlight brick is the Erling brick after its designer, the brick with
+## studs on four sides the Travis brick; a macaroni is the 2 x 2 corner
+## round. Each part's own words still find it, and the rest after these.
+const NICKNAMES: Dictionary = {
+	"snot": ["87087", "4070", "11211", "99780", "99781", "44728", "99207", "32952",
+		"26604", "4733", "30414", "52107", "22885"],
+	"erling": ["4070"], "erling brick": ["4070"],
+	"travis": ["4733"], "travis brick": ["4733"],
+	"macaroni": ["85080", "3063b", "27925"], "macaroni brick": ["85080", "3063b"],
+	"macaroni tile": ["27925"],
+	"droid arm": ["30377", "59230"], "battle droid arm": ["30377", "59230"],
 }
 ## Words that tell a part's versions apart, which rank it and which the bin,
 ## where every word must be there, does not require: BrickLink's "Plate,
@@ -188,6 +209,9 @@ var _print_of := PackedInt32Array()
 ## name says what it has, and "Technic Wedge Belt Wheel" is filed a Technic
 ## part, where Wedge 4 x 2 is a wedge.
 var _lead := PackedStringArray()
+## Per part: 1 for a brick named by its size alone, "Brick 2 x 4", what a
+## size typed by itself means; 2 for one with its height, "Brick 1 x 1 x 3".
+var _bare_brick := PackedByteArray()
 ## The families that are a height, and how tall each is in plates, its body
 ## without a stud: what "wedge brick" or "round plate" asks of a part filed in
 ## another family. A tile is a plate with nothing on top.
@@ -235,6 +259,7 @@ func _init(parts: Dictionary, ids: PackedStringArray) -> void:
 		_plainness.append(15 - mini(15, own.size()))
 		var kind: PackedStringArray = words_of(info.family_category())
 		_lead.append(kind[0] if not kind.is_empty() else "")
+		_bare_brick.append(_bare_size(words_of(info.name)))
 		# What BrickLink files as a brick, plate or tile Modified (Rebrickable,
 		# Special): one with something on it, LDraw's "with", and not a round
 		# one, nor a tile with only the groove every tile has. 15573, the
@@ -288,6 +313,19 @@ func _init(parts: Dictionary, ids: PackedStringArray) -> void:
 	for entry: String in numbers:
 		_numbers.append(entry.get_slice(" ", 0))
 		_number_at.append(int(entry.get_slice(" ", 1)))
+
+
+## Whether a name's words are "brick" and a size, nothing else: 1 for a
+## footprint, 2 with a height, 0 for any other name.
+static func _bare_size(words: PackedStringArray) -> int:
+	if words.size() != 4 and words.size() != 6:
+		return 0
+	if words[0] != "brick" or words[2] != "x" or (words.size() == 6 and words[4] != "x"):
+		return 0
+	for n: int in range(1, words.size(), 2):
+		if not words[n].is_valid_float():
+			return 0
+	return words.size() / 2 - 1
 
 
 static func _in_order(index: Dictionary) -> PackedStringArray:
@@ -410,8 +448,8 @@ static func terms_of(asked: String) -> Array[Dictionary]:
 				bracketed[word] = true
 		for word: String in words_of(BRACKETED.sub(text, " ", true)):
 			bracketed.erase(word)
-	var phrases: Array = (SAME_SHAPE.keys() + SAME_WORD.keys()).filter(func(key: String) -> bool:
-		return key.contains(" "))
+	var phrases: Array = (SAME_SHAPE.keys() + SAME_WORD.keys() + NICKNAMES.keys()).filter(
+		func(key: String) -> bool: return key.contains(" "))
 	phrases.sort_custom(func(a: String, b: String) -> bool: return a.length() > b.length())
 	for phrase: String in phrases:
 		if text.contains(" %s " % phrase):
@@ -453,7 +491,10 @@ static func _term(said: String) -> Dictionary:
 		options.append(other.split(" ", false))
 	if NUMBER_WORDS.has(said):
 		options.append(PackedStringArray([NUMBER_WORDS[said]]))
-	return {"said": said, "options": options, "full": full}
+	var term: Dictionary = {"said": said, "options": options, "full": full}
+	if NICKNAMES.has(said):
+		term["parts"] = NICKNAMES[said]
+	return term
 
 
 ## A word and the forms of it a name may use: stud, studs; curve, curved;
@@ -660,7 +701,7 @@ func _numbered(said: String) -> Dictionary:
 func unknown(asked: String) -> PackedStringArray:
 	var out := PackedStringArray()
 	for term: Dictionary in terms_of(asked):
-		if term.has("options") and _matching(_named, term).is_empty() \
+		if term.has("options") and not term.has("parts") and _matching(_named, term).is_empty() \
 				and _matching(_also, term).is_empty() and _matching(_keyed, term).is_empty() \
 				and _numbered(term["said"]).is_empty():
 			out.append(term["said"])
@@ -702,7 +743,8 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 	var shares := PackedFloat32Array()  ## its terms' shares multiplied
 	var matched := PackedInt32Array()   ## terms matched
 	var literal := PackedInt32Array()   ## terms matched in the builder's own words
-	var flags := PackedByteArray()      ## 1 asked for by its number, 2 its number typed
+	var flags := PackedByteArray()      ## 1 asked for by its number, 2 its number typed,
+										## 4 what a builder's name for a part means (NICKNAMES)
 	var required := PackedInt32Array()  ## terms matched that every_word requires
 	score.resize(count_of)
 	required.resize(count_of)
@@ -782,6 +824,11 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 					flags[at] |= 2
 			for at: int in joined[n]:
 				_raise(by_name, named_list, at, 1.0)
+			for id: String in term.get("parts", []):
+				var meant: int = int(_at.get(id, -1))
+				if meant >= 0:
+					_raise(by_name, named_list, meant, 1.0)
+					flags[meant] |= 4
 			if as_words:
 				_matching_into(_keyed, term, loose, by_keyword, keyed_list)
 		var count: int = named_list.size()
@@ -833,14 +880,16 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 	# One key a part, the larger the better, in fields that decide the order
 	# one after another: a part asked for by its number ("2x2 bracket
 	# inverted 99207" is 99207, a 1 x 2 - 2 x 2 bracket LDraw calls Up), then
-	# how many of the words it has, then the number typed itself (3001 before
+	# how many of the words it has, then one a builder's name for a part means
+	# (NICKNAMES), then the number typed itself (3001 before
 	# 3001b, and "3623 print" its prints), then plain before
 	# prints, stickers and other systems' parts, then how well it has them:
 	# all in the builder's own words in its own name (a wedge brick for
 	# "wedge" before a wing that says it only in its keywords), then by its
 	# words' shares multiplied, in three
 	# bands: as good as a word begun, as one a letter off, and less; then a
-	# part filed under a word asked, the thing itself. Then, among the
+	# part filed under a word asked, the thing itself, or for a size alone
+	# the brick of that size and nothing more. Then, among the
 	# parts that answer as well, how much real sets use it: 60596,
 	# the door frame in 850 sets, before 80400a, in 24. Then the plainer name,
 	# what its words are worth, and the catalogue's order. Sorted as numbers.
@@ -862,6 +911,11 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 					if word.length() >= 3 and not named(word):
 						for near: String in _near(word):
 							leads[near] = true
+	# A size alone is a brick's, as builders say it: "2x4" is Brick 2 x 4,
+	# which led after Plate 2 x 4, in more sets (appux371 A5).
+	var size_alone: int = 0
+	if terms.size() == 1 and terms[0].has("sizes"):
+		size_alone = 1 if (terms[0]["tall"] as Array).is_empty() else 2
 	var keys := PackedInt64Array()
 	var needed: int = 0
 	for term: Dictionary in terms:
@@ -878,13 +932,16 @@ func ranked(asked: String, limit: int, every_word: bool = false,
 		var worth: int = mini(1023, roundi(1023.0 * score[at] / maxf(possible, 0.001)))
 		var lead: String = _lead[at]
 		var named_for: int = 1 if leads.has(lead) else 0
-		if named_for == 0:
+		if size_alone > 0:
+			named_for = 1 if _bare_brick[at] == size_alone else 0
+		elif named_for == 0:
 			for start: String in begun:
 				if lead.begins_with(start):
 					named_for = 1
 					break
 		var key: int = flags[at] & 1
 		key = key * 16 + mini(15, has)
+		key = key * 2 + ((flags[at] >> 2) & 1)
 		key = key * 2 + ((flags[at] >> 1) & 1)
 		# A print or a sticker asked for is a part with it on: a sticker
 		# itself, off its sheet, after them.

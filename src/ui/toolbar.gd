@@ -33,7 +33,8 @@ const GROUPS: Array = [
 	[9, [["new", "new"], ["open", "open"], ["save", "save"], ["share", "share"]]],
 	[7, [["undo", "undo"], ["redo", "redo"], ["history", "history"]]],
 	[10, [["mode_select", "pointer"], ["mode_place", "build"], ["mode_move", "move"],
-		["mode_rotate", "rotate"], ["mode_hinge", "swing"], ["mode_clone", "clone"],
+		["mode_rotate", "rotate"], ["mode_hinge", "swing"], ["mode_connect", "connect"],
+		["mode_clone", "clone"],
 		["mode_paint", "paint"], ["mode_hide", "hide"], ["mode_delete", "delete"]]],
 	# Copy and paste are Ctrl-C and Ctrl-V and in Edit; showing everything is
 	# H and in Edit. Off the bar so it stays whole at 1280 wide once the cut,
@@ -63,6 +64,7 @@ const SAYS: Dictionary = {
 	"mode_move": "Click a part to pick it up — the whole selection, if it is in it — and click again to put it down",
 	"mode_rotate": "Click a part to turn it by the turn step; Shift-click turns it back",
 	"mode_hinge": "Click a part on a hinge, clip or turntable to swing it about the joint",
+	"mode_connect": "A point on the part, then the point it goes on: with a part in hand, click the pin, hole or bar it goes on by, then the one it goes on. With nothing in hand, click a part of the model first",
 	"mode_clone": "Click a part to hold a copy of it, then click where the copy goes",
 	"mode_paint": "Click a part to paint it the colour in hand",
 	"mode_hide": "Click a part to hide it, to reach what is behind it",

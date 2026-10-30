@@ -29,6 +29,20 @@ ui:snap and turn step
 lib:occupancy lattice
 -->
 
+## Type a number {#typed}
+
+With a part or a copy in hand, type a number to move it exactly: a small field opens at the pointer, the part stays where its ghost was, and the ghost shows where the number puts it, red where there is no room. [[Enter]] puts it down, one step to undo; [[Esc]] closes the field and the part follows the pointer again.
+
+- **3x** moves it 3 studs along x, **-2z** 2 studs back, **2py** 2 plates up. **b** is a brick, **l** an LDraw unit, **mm** a millimetre: **-14ly** is 14 LDU down. A stud is the unit when none is given.
+- A number alone goes the way the ghost last went: **3** after moving it right is 3 studs right.
+- **23.58r** turns it 23.58°, about the joint it is on or upright; **30t** tilts it forwards. Straight after [[R]] or [[T]], before the pointer moves, a number alone is that turn instead of their step: [[R]] then **30** turns it 30°.
+- Several at once: **2x-1py**. Sums work too: **40/2+1lx**.
+- On the model, straight after [[R]] or [[T]] turned a selection, a number takes their place the same way, shown in hand until [[Enter]].
+
+<!-- covers
+ui:type a number while moving
+-->
+
 Parts sit on a lattice of studs and plates, as real bricks do: a part goes down only where nothing else already is, and a model opened from a file with parts a fraction off their studs can have them squared up with **Tools › Seat parts on their studs**.
 
 <!-- covers
@@ -55,9 +69,19 @@ lib:placing a part by its connectors
 lib:round joints
 -->
 
+## Connect by a point {#connect}
+
+A long Technic beam has many holes, and the one you want is rarely the one the pointer finds first. With the part in hand press [[N]], or choose **Connect** on the toolbar: its pins, holes, axles, bars and clips light up in blue where it stands. Click the one it goes on by, then the pin, hole or bar it goes on: only that point snaps, so a 1 x 16 goes on its pins by its end hole at once. [[R]] turns it about the joint, [[N]] again picks another point, and [[Esc]] goes back to placing as usual.
+
+With nothing in hand, Connect works on a part already in the model: click the part, then its point, then where it goes. The move is one step to undo, and [[Esc]] puts it back where it was. Studs still go on by the stud grid, as every part does.
+
+<!-- covers
+ui:connect by a point
+-->
+
 ## Copy, paste and duplicate {#copy}
 
-Select, then [[Ctrl+C]] and [[Ctrl+V]], or [[Ctrl+D]] to duplicate. The copy is in hand: a click puts it down, [[R]] turns it, [[Esc]] puts it away. [[Ctrl]]-drag on a part copies it straight off. [[Ctrl+X]] cuts.
+Select, then [[Ctrl+C]] and [[Ctrl+V]], or [[Ctrl+D]] to duplicate. The copy is in hand: a click puts it down, [[R]] turns it, [[Esc]] puts it away. After [[Ctrl+D]], or a click with the **Clone** tool, another copy stays in hand for the next, so five window bays are five clicks; [[Esc]] or a right-click stops. [[Ctrl]]-drag on a part copies it straight off. [[Ctrl+X]] cuts.
 
 <!-- covers
 ui:copy paste and duplicate
@@ -65,9 +89,9 @@ ui:copy paste and duplicate
 
 ## Move and turn what is down {#move}
 
-Select parts, then [[X]] lifts them: they follow the pointer, a click puts them down and [[Esc]] puts them back where they were. [[R]] turns a selection where it stands. The arrow keys (or [[W]] [[A]] [[S]] [[D]]) nudge it a stud, and [[Page Up]] and [[Page Down]] raise or lower it.
+Select parts, then [[X]] lifts them: they follow the pointer, a click puts them down and [[Esc]] puts them back where they were. [[R]] turns a selection where it stands. Where it has no room to turn, the parts in the way light up for a second (red, or amber on a red part) and it comes into hand already turned: aim and click to put it where it fits, or [[Esc]] to leave it as it was. [[T]] and the **Rotate** tool do the same. The arrow keys (or [[W]] [[A]] [[S]] [[D]]) nudge it a stud, and [[Page Up]] and [[Page Down]] raise or lower it.
 
-The **Move**, **Rotate** and **Hinge** tools on the toolbar do the same with the mouse alone. Exact positions are typed in [Properties](/docs/panels-and-settings#properties).
+The **Move**, **Rotate** and **Hinge** tools on the toolbar do the same with the mouse alone. Exact positions are typed in [Properties](/docs/panels-and-settings#properties), or as a [number while it is in hand](#typed).
 
 <!-- covers
 ui:move and turn a selection
@@ -96,7 +120,7 @@ ui:hide and show only
 
 ## Sub-assemblies {#sub-assemblies}
 
-Select some parts and press [[Ctrl+G]] to make them a sub-assembly and name it. A click then takes it whole, a double-click edits inside it, and [[Esc]] leaves. Copies made with [[Ctrl+D]] follow the original: change one and they all change, until **Edit › Make this copy unique**. [[Enter]] (or a double-click) edits inside the selected one, [[F2]] renames it, and **Ungroup** ([[Ctrl+Shift+G]]) takes it apart one level.
+Select some parts and press [[Ctrl+G]] to make them a sub-assembly and name it. A click then takes it whole, a double-click edits inside it, and [[Esc]] leaves. Copies made with [[Ctrl+D]] follow the original: change one and they all change, until **Build › Make this copy unique**. [[Enter]] (or a double-click) edits inside the selected one, [[F2]] renames it, and **Ungroup** ([[Ctrl+Shift+G]]) takes it apart one level.
 
 <!-- covers
 ui:sub-assemblies

@@ -39,6 +39,14 @@ whole cycle.
   says plainly what works. Design with it from the assistant's column. Your
   key is kept on your computer in a file encrypted to it, or for the visit
   only, and is never sent to us, logged or saved with a model.
+- Help, Send feedback…: tell us something is wrong, an idea or a question,
+  from the app or from any page of the site. A picture of the window goes
+  with it, which you can remove, and, if you tick them, the version and your
+  system, the model you have open and the app's last log lines, each of which
+  you can read first. Signed in, your reports, where each stands and our
+  answers are on your settings page.
+- For beta testers, Help, Beta hub: what is new to try, what we know is
+  wrong, and the early features your account has.
 
 ## [0.10.0] - 2026-10-28
 

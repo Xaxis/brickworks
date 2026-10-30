@@ -51,6 +51,8 @@
 	position: relative; display: block; border-radius: var(--radius); overflow: hidden;
 	border: 1px solid var(--line); background: var(--picture-ground); aspect-ratio: 1200 / 630;
 	box-shadow: var(--highlight), var(--shadow-2); text-decoration: none; color: inherit;
+	/* A finger up or down it scrolls the page; across it opens the 3D view. */
+	touch-action: pan-y pinch-zoom;
 }
 .model-page .picture img { position: relative; width: 100%; height: 100%; object-fit: cover; transition: transform 320ms var(--ease); }
 @media (hover: hover) { .model-page a.picture:hover img { transform: scale(1.02); } }
@@ -77,6 +79,75 @@
 	content: ""; width: 9px; height: 9px; border: 2px solid currentColor; border-radius: 0; transform: rotate(45deg);
 }
 .model-page .picture:hover .go { filter: brightness(1.07); }
+
+/* The model in 3D in its picture's place (viewer369; web/model-page.js
+   start3d, tools/viewer/inline.js): the picture's own shape over it, so
+   nothing on the page moves as it opens, on the picture's own ground, so
+   the model is where the picture's was in either theme. Until enough of it
+   has come the picture shows through, with how far it has got along its
+   foot (.view3d-bar) and in words (.view3d-said, read out); then the model
+   (.shown), its tools at its foot on the right and the way into the app
+   on the left (.view3d-app). Full screen, the screen's
+   (.full where the browser has none for a page, as an iPhone's). */
+.model-page .view3d {
+	position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 1200 / 630; z-index: 2; container-type: inline-size;
+	border: 1px solid transparent; border-radius: var(--radius); overflow: hidden; pointer-events: none;
+}
+.model-page .view3d[hidden] { display: none; }
+.model-page .view3d.shown {
+	border-color: var(--line); background: var(--picture-ground); pointer-events: auto;
+	transition: background-color 160ms var(--ease);
+}
+/* A picture published before cut-outs was drawn on a ground of its own
+   (--render-top, --render-foot): its model in 3D is put on that one. */
+.model-page .view3d.shown[data-ground="render"] { background: linear-gradient(180deg, var(--render-top), var(--render-foot)); }
+/* Opened by touch, it has hold of the finger once taken hold of (a drag
+   across, two fingers, a tap), and says so with the accent's edge; until
+   then a finger up or down scrolls the page. */
+.model-page .view3d.shown[data-how="touch"][data-engaged] { border-color: var(--accent-edge); }
+.model-page .view3d .stage { position: absolute; inset: 0; visibility: hidden; outline: none; }
+.model-page .view3d.shown .stage { visibility: visible; }
+.model-page .view3d .stage:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); }
+.model-page .view3d .stage canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.model-page .view3d .stage canvas:active { cursor: grabbing; }
+.model-page .view3d-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; }
+.model-page .view3d-bar > span { display: block; width: 0; height: 100%; background: var(--accent); transition: width 160ms linear; }
+.model-page .view3d[data-state="ready"] .view3d-bar, .model-page .view3d[data-state="failed"] .view3d-bar { display: none; }
+.model-page .view3d-said {
+	position: absolute; left: var(--s-3); bottom: var(--s-3); max-width: calc(100% - 2 * var(--s-3)); margin: 0;
+	display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2);
+	padding: 8px 14px; border-radius: var(--radius); background: var(--panel); color: var(--ink);
+	font-size: var(--t-small); box-shadow: var(--shadow-2); pointer-events: auto;
+}
+.model-page .view3d-said[hidden] { display: none; }
+.model-page .view3d-tools {
+	position: absolute; right: var(--s-3); bottom: var(--s-3); display: flex; gap: var(--s-1); pointer-events: auto;
+}
+.model-page .view3d-tools[hidden] { display: none; }
+.model-page .view3d-tools .icon-btn { background: var(--panel); box-shadow: 0 1px 3px var(--shade); }
+.model-page .view3d-tools .icon-btn:hover { background: var(--panel-hi); }
+.model-page .view3d-app { position: absolute; left: var(--s-3); bottom: var(--s-3); box-shadow: 0 1px 3px var(--shade); pointer-events: auto; }
+.model-page .view3d-app[hidden] { display: none; }
+.model-page .view3d-hint {
+	position: absolute; top: var(--s-3); left: 50%; transform: translateX(-50%); margin: 0; max-width: calc(100% - 2 * var(--s-3));
+	padding: 6px 12px; border-radius: var(--r-pill); background: var(--panel); color: var(--ink-soft);
+	font-size: var(--t-tiny); box-shadow: 0 1px 3px var(--shade); pointer-events: none; text-align: center;
+}
+.model-page .view3d-hint[hidden] { display: none; }
+/* A phone's frame has room at its foot for the tools alone: the way into
+   the app goes to its head, and the hint above the tools. */
+@container (width < 520px) {
+	.model-page .view3d-app { top: var(--s-3); bottom: auto; }
+	.model-page .view3d-hint { top: auto; bottom: calc(var(--s-3) + 46px); }
+}
+.model-page .view3d.full, .model-page .view3d:fullscreen {
+	position: fixed; inset: 0; width: auto; height: auto; aspect-ratio: auto; z-index: 90;
+	border: 0; border-radius: 0; background: var(--picture-ground);
+}
+html.view3d-full { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+	.model-page .view3d.shown, .model-page .view3d-bar > span { transition: none; }
+}
 
 /* The strip of its pictures (api/share.js mediaStrip): the one it was
    published with, its owner's photos, then photos of real builds; the one
@@ -107,7 +178,7 @@
 /* On a phone the picture is square: at 390 px it is 358 px tall, not 188,
    and web/model-page.js draws the model as large as its width lets it,
    the picture's own ground carried on above and below a wide one. */
-@media (width < 600px) { .model-page .picture { aspect-ratio: 1 / 1; } }
+@media (width < 600px) { .model-page .picture, .model-page .view3d { aspect-ratio: 1 / 1; } }
 
 /* The page's tabs (api/share.js pageTabs): the kit's .tabs, kept on screen
    under the header as the page scrolls past its parts. */
@@ -121,6 +192,19 @@
 .model-page h1 { font-size: var(--t-h1); margin: 0 0 12px; overflow-wrap: anywhere; line-height: 1.15; }
 .model-page .from { margin: 0 0 10px; color: var(--ink-soft); overflow-wrap: anywhere; }
 .model-page .from a { color: var(--ink); }
+/* What it is based on (api/_bases.js): a line a thing, under its remix
+   line; its designer's own line to change them; and their dialog, a box a
+   thing, at most three. */
+.model-page ul.based-on { list-style: none; padding: 0; }
+.model-page ul.based-on li + li { margin-top: 2px; }
+dialog.bases-dialog { width: min(480px, calc(100vw - 32px)); }
+dialog.bases-dialog .bases-rows { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 12px; }
+/* Each row boxed, over the report dialog's bare fieldsets (below); its
+   Remove at the row's start, as Add another is under them. */
+dialog.report.bases-dialog fieldset { border: 1px solid var(--line); border-radius: var(--r-3); padding: 12px; margin: 0; }
+dialog.report.bases-dialog fieldset > button { justify-self: start; }
+dialog.bases-dialog form label { margin-bottom: 10px; }
+dialog.bases-dialog .actions { margin-top: 16px; }
 /* The facts are words, not controls: a long one ("Moves: ...") wraps. */
 .model-page .facts { margin: 18px 0 12px; align-items: center; }
 .model-page .facts .pill { white-space: normal; max-width: 100%; }
@@ -257,6 +341,7 @@
 	background-color: var(--panel); box-shadow: var(--highlight), var(--shadow-1);
 }
 .challenge-hero > :last-child { margin-bottom: 0; }
+.challenge-hero .share-line { margin: var(--s-3) 0 0; }
 /* The rules and how to enter, each a panel; side by side from 900 px,
    under the brief, with everything else across the page. */
 .challenge #rules-part, .challenge #how {
@@ -362,6 +447,23 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 .model-page .comment-head a:not(.pill), .model-page .comment-head b { color: var(--ink); font-weight: 600; }
 .model-page .comment-head .where { color: var(--ink-soft); }
 .model-page .comment-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+/* An @handle its writer named (docs/SOCIAL.md section 7, item 6): a link
+   to them, in the words' own size. */
+.model-page .comment-body a.mention { font-weight: 600; }
+/* @ in a box: the people on the page to name, under the box, a menu's
+   panel (site.css .menu-list), the one marked as a hovered row. */
+.model-page .mention-pick {
+	list-style: none; margin: 0; padding: 6px; display: grid; max-width: 360px;
+	border-radius: var(--r-3); background: var(--panel); border: 1px solid var(--line-strong);
+	box-shadow: var(--highlight), var(--shadow);
+}
+.model-page .mention-pick[hidden] { display: none; }
+.model-page .mention-pick li {
+	padding: 8px 10px; border-radius: var(--r-1); cursor: pointer; color: var(--ink-soft);
+	overflow-wrap: anywhere; min-height: 24px;
+}
+.model-page .mention-pick li b { color: var(--ink); font-weight: 600; }
+.model-page .mention-pick li[aria-selected="true"], .model-page .mention-pick li:hover { background: var(--panel-hi); color: var(--ink); }
 .model-page .comment .note { margin: 6px 0 0; }
 .model-page .comment-acts { margin: 6px 0 0; display: flex; gap: 14px; flex-wrap: wrap; font-size: var(--t-small); }
 .model-page .comment-acts:empty { display: none; }
@@ -474,6 +576,11 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .notice .what .pill { margin-left: 2px; }
 .notice .what q { display: block; margin-top: 2px; color: var(--ink-soft); }
 .notice .what time { display: block; margin-top: 2px; color: var(--ink-faint); font-size: var(--t-tiny); }
+/* The levels you reached (supabase/achievements.sql), and a challenge
+   (supabase/challenge_notices.sql): the award, or the brick, where a
+   model's picture is. */
+.notice .pic.award, .notice .pic.challenge { display: grid; place-items: center; color: var(--ink-soft); }
+.notice .pic.award .icon, .notice .pic.challenge .icon { width: 40%; height: auto; aspect-ratio: 1; stroke-width: 1.4; }
 @media (width < 600px) {
 	.notice { grid-template-columns: 76px minmax(0, 1fr); gap: var(--s-3); }
 }
@@ -497,6 +604,25 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .earned li.lead b { font-size: var(--t-h2); }
 .earned span { color: var(--ink-soft); font-size: var(--t-small); line-height: 1.35; }
 .earned small { color: var(--ink-faint); font-size: var(--t-micro); font-variant-numeric: tabular-nums; }
+/* Your achievements (/profile?tab=achievements, web/profile.js): a tile a
+   track, its level's name with the award, how far it is to the next as a
+   bar and in words, and the way there; a track not begun dashed. */
+.achievements-list {
+	list-style: none; padding: 0; margin: 0; max-width: 920px;
+	display: grid; gap: var(--s-3); grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+}
+.achievements-list li {
+	display: grid; align-content: start; gap: var(--s-2); padding: var(--s-3) var(--s-4) var(--s-4);
+	border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel);
+}
+.achievements-list li[data-level="0"] { border-style: dashed; background: transparent; }
+.achievements-list h3 { display: flex; align-items: center; gap: var(--s-2); margin: 0; font-size: var(--t-h3); }
+.achievements-list h3 .icon { width: 18px; height: 18px; color: var(--ink-soft); }
+.achievements-list p { margin: 0; font-size: var(--t-small); line-height: 1.45; color: var(--ink-soft); }
+.achievements-list .level { color: var(--ink-faint); font-size: var(--t-tiny); font-variant-numeric: tabular-nums; }
+.achievements-list .reach { height: 6px; border-radius: var(--r-pill); background: var(--line); overflow: hidden; }
+.achievements-list .reach span { display: block; height: 100%; border-radius: inherit; background: var(--accent-edge); }
+.achievements-list .to-next { color: var(--ink); }
 .person.designer .counts { font-size: var(--t-small); }
 .start-with { margin: -8px 0 24px; color: var(--ink-soft); line-height: 2.1; }
 .start-with a:not(.cta) { color: var(--ink); font-weight: 600; }
@@ -692,6 +818,8 @@ dialog.share-sheet { width: min(520px, calc(100vw - 32px)); }
 .share-sheet .copy-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-2) var(--s-3); margin: 0 0 var(--s-4); }
 .share-sheet .copy-row label { flex: 1 1 16em; margin: 0; }
 .share-sheet .actions { margin-top: var(--s-4); }
+.share-sheet .share-to { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-4); }
+.share-sheet .share-to p { flex-basis: 100%; margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
 
 /* The directory of collections as wide as the gallery it is a tab of, its
    title and a line about it over the tabs. */

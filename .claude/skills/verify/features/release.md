@@ -7,7 +7,7 @@ repository of builds only (Xaxis/brickworks-releases), and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, cli:release train, ui:about and the licences, cli:about credits probe, cli:desktop token key -->
+<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, cli:release train, ui:about and the licences, cli:about credits probe, cli:desktop token key, cli:outside probe -->
 
 ## Sub-features
 
@@ -111,11 +111,15 @@ that offers each system its own build. The cycle and its cadence are
 - `release train`: `tools/release/train.sh stage TAG BRANCH --after PREV
   --checks ... --probes ... --units ... --title ...` stages a release and
   ships it in turn, detached: it waits until PREV's `_lead.out` says
-  brickworks.diy serves it, makes the release worktree, merges BRANCH,
-  refuses a dirty or half-merged tree, runs the lists and probes, then
+  brickworks.diy serves it, makes the release worktree, merges BRANCH at
+  its tip then (a later commit waits for the next release), refuses a dirty
+  or half-merged tree, runs the lists and the probes three at a time, then
   `ship.sh`, and retires the worktrees once live. `status` says each one's
-  step, its checks passed of all, and what brickworks.diy serves; `hold TAG`
-  and `release TAG` set and lift a hold. tools/release/README.md has the
+  step, its checks passed of all, and when it should serve, under what
+  brickworks.diy serves and since when; `hold TAG`
+  and `release TAG` set and lift a hold. Restaging a stopped TAG clears
+  its worktree and branch when they hold its merge alone, and refuses when
+  they hold a fix of their own. tools/release/README.md has the
   rest. `tests/test_release_train.py` runs it with stand-ins for the hour's
   work.
   With `RELEASES_TOKEN` set it asks the releases repo's addresses through
@@ -149,6 +153,24 @@ that offers each system its own build. The cycle and its cadence are
   CSP at least as strict as the site's and loads the page as Linux, macOS,
   Windows and an Android phone through the DevTools protocol, then checks
   every link the page has.
+- `outside probe`: nothing a probe or a check does opens on the owner's
+  desktop (noopen, 2026-10-29). Every link and Show in folder goes through
+  `Outside` (src/ui/outside.gd), held in any script's run or with
+  `BRICKWORKS_OPEN_NOTHING`; `tests/test_outside.py` fails a direct call;
+  `tools/probe.sh` stubs the desktop's openers and fails a run that reached
+  one. `src/dev/outside_probe.gd` presses the share panel's Open, Help's
+  Website and Documentation, and the status bar's Show in folder after
+  File, Export, LDraw.
+
+  ```sh
+  tools/probe.sh outside_probe
+  ```
+
+  Proves it when: every line is `ok`, each opener keeps exactly its address
+  (`https://brickworks.diy/m/outside-probe-model`, `https://brickworks.diy`,
+  the docs page) or the exported .ldr's path in `Outside.opened`, it ends
+  `outside probe: all checks passed`, and probe.sh prints no `asked the
+  desktop to open` lines.
 
 ## How to reach it
 
@@ -247,7 +269,7 @@ whose size is one byte off is `FAIL ... answered '200 <size>'`.
 python3 tools/minitest.py tests/test_release_train.py
 ```
 
-Proves it when: `4 passed`, in about 10 s. Each test makes a repository
+Proves it when: `7 passed`, in about 17 s. Each test makes a repository
 with an origin and unit worktrees, and stand-ins for release_wt.sh,
 merge_unit.sh, ship.sh, check.sh and probe.sh (retire_wt.sh is the real
 one), and runs the train detached as staged: it waits for the release
@@ -256,9 +278,22 @@ a hold stops it before the merge and before the ship; a tree left dirty or
 mid-merge is refused, and so is a probe with a FAIL line or a nonzero exit;
 it stops when the release before held, was killed, or died without a word,
 and at its deadline; and `status` reads `checks: 2 of 4 passed; failed: io (passed
-alone); 1 to run` mid-ship and `live: brickworks.diy serves it (SHA)` after.
+alone); 1 to run` mid-ship and `live: brickworks.diy serves it (SHA)` after,
+its first line `live: brickworks.diy serves SHA, TAG's, since HH:MMZ`, and
+a ship begun by hand is listed with its ETA (a median ship after it began)
+and the train behind it a ship after that. Five probes run no more than
+three at once, and one that fails beside others says `beside others: again
+alone` and passes alone (`TRAIN_PROBES_AT_ONCE=1` stops on it). A commit to the branch while it
+merges ships in the next release, not this one (`tip` in the spec is the one
+merged); a restage after a failed probe says `cleared TAG's attempt before
+(its merge alone)` and ships, and one over a fix staged or committed in the
+stopped release's worktree is refused, the fix kept.
 On a real release, `tools/release/train.sh status` while it waits says
-`step: HH:MMZ waits for PREV to serve (until HH:MMZ)`.
+`step: HH:MMZ waits for PREV to serve (until HH:MMZ)`. Against the real
+release-out on 2026-10-30 with rel-m218 shipping by hand: `live:
+brickworks.diy serves e5c5deaf, rel-m217's, since 06:30Z`, `a ship takes
+about 38 min`, and `rel-m218: shipping, begun by hand at 06:36Z ... eta:
+serves about 07:14Z`.
 
 ```sh
 tools/release/releases_repo.sh --dir=<scratch>

@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, cli:test designs on the owner's own ideas -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas -->
 
 ## Sub-features
 
@@ -113,6 +113,22 @@ fixing what it got wrong.
   `Main.design_with_claude_code`). Through the relay:
   `realset.py run --via relay` (with `--no-claude-code` as a browser tab); its
   `godot_design.log` shows the own look and no `fresh eyes: N s (claude-...)`.
+  And once more, last (`FreshEyes.final_look`, design329): at the first whole
+  save after the creative pass (`FreshEyes.reviewed`, which `save_model` calls
+  in place of `next_review`), once the first look named its changes and the
+  pass's result has been said (not "nothing added" at this save; `final_due`),
+  the save hands the pictures and the final question (`final_prompt`: what
+  landed of those changes, then done or the one change) after next_review's
+  words (the pass's line, a close look or reminder), which are never left out.
+  Every call but a save is refused until `fresh_eyes_final` answers
+  (`FreshEyes.final_definition`, always served, its `CommandSocket.HINTS` row
+  read-only; `final_not_yet`); done adds nothing. Once a subject, Claude Code
+  here or not. Measured on the browser-tab path (design329: preferred 63% head
+  to head, 24% against the set to 22%). The log says `fresh eyes: final look,
+  the session's own, asked after the creative pass (it came to: ...)` and
+  `fresh eyes: the session's own final look (N refused): {...}`.
+  `fresh_eyes_probe` chats c14 (Claude Code here, the pass a save hands over),
+  c16 and c17 (none, the pass asked for, and before the first look).
 - `designing with any provider on the person's key`: `src/ai/designer_loop.gd`
   (`DesignerLoop`), `src/ai/provider.gd` (the adapter's shape and the
   transcript), `src/ai/openai_chat.gd` (Chat Completions: every server that
@@ -132,10 +148,10 @@ fixing what it got wrong.
   `tools/provider_stub.py`, an OpenAI-compatible stub as strict as OpenAI about
   call pairing, pictures and a tool's array that names no items (refused, as
   OpenAI does; OpenAIChat sends `Provider.portable`, and the probe holds it to
-  the relay's `portable` in api/mcp.js under node, "the same for 61 tools"),
+  the relay's `portable` in api/mcp.js under node, "the same for 62 tools"),
   its first answer a 429: 6 parts built, the fresh
   look asked with 3 pictures and answered, `stub-tower.ldr` saved, 8 requests
-  (429 then 7 answered) each with the key, the app's instructions and all 61
+  (429 then 7 answered) each with the key, the app's instructions and all 62
   tools, view_model's picture and the look's three reaching the model, and the
   key in no log; then a design stopped while a second stub (`--delay 4`) thinks
   ends once, as stopped, and the next design on the quick one is answered by
@@ -218,6 +234,26 @@ fixing what it got wrong.
   Claude, the connector's chats) stay. `designer_words_probe` (headless; its
   stub on 9681) reads every one for a Claude call and for GPT-6.1 Sol designing
   through Responses, then Claude's again.
+- `a design drawn as any provider writes it`: `src/ai/stream.gd`
+  (`Streamer`, which takes a reader per API: `Streamer.Events`; Anthropic's
+  `Reader`, `OpenAIChat.Chunks`, `OpenAIResponses.Items`, `GeminiNative.Chunks`,
+  each giving back the body the unstreamed request would have had, so
+  `Provider.read` is the same either way). `Provider.request(…, stream = true)`
+  and `Provider.reader()`. `DesignerLoop._ask` streams every reply and feeds a
+  `submit_design`'s fragments to `Assistant.Scanner`, each brick drawn by
+  `Assistant.sketch_brick` and all taken away by `Assistant.clear_sketch` when
+  the reply has come, before its calls run. A stream lost part way is asked
+  again whole at once; one refused where the same request whole passes makes
+  the run ask whole. `tools/provider_stub.py` streams each API as it does
+  (`--pace S` between events, `--cut-stream N` drops one half way).
+  `provider_apis_probe`: the tower drawn 1 to 6 while its reply is still
+  coming on Anthropic, Responses and Gemini (Gemini sends a call whole, so one
+  frame), then one reply asked streamed and whole on all four adapters, the
+  bodies equal and read the same. `provider_loop_probe`: the same drawing on
+  Chat Completions, its usage from the stream's last chunk (`stream_options`),
+  and a stream lost half way: part drawn and taken away, asked whole, the rest
+  streamed, the tower built. The in-app assistant's own stream: `reader_probe`
+  and `dropped_probe` (headless).
 - `the check by real shapes`: `src/ai/exact_check.gd` over `src/assembly/exact.gd`,
   called from `Assistant._check`, so every check, edit, submission, review and save
   has it: each part BrickNet has is its convex colliders and connector labels

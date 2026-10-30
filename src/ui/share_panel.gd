@@ -285,7 +285,7 @@ func setup() -> void:
 	agree.add_child(agree_words)
 	_guidelines = Look.link("guidelines", 11)
 	_guidelines.tooltip_text = "What may be shared here, credit and licences, and what gets a model taken out"
-	_guidelines.pressed.connect(func() -> void: OS.shell_open(guidelines_url()))
+	_guidelines.pressed.connect(func() -> void: Outside.open_link(guidelines_url()))
 	agree.add_child(_guidelines)
 
 	_status = _line("", 12, 0.85)
@@ -312,7 +312,7 @@ func setup() -> void:
 		DisplayServer.clipboard_set(embed)
 		_status.text = "The embed code is on the clipboard: paste it into the page's HTML.")
 	_open_link = _small(row, "Open", "Open the link in the browser")
-	_open_link.pressed.connect(func() -> void: OS.shell_open(url))
+	_open_link.pressed.connect(func() -> void: Outside.open_link(url))
 	_unpublish = Button.new()
 	_unpublish.text = "Unpublish"
 	_unpublish.focus_mode = Control.FOCUS_NONE

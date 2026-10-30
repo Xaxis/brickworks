@@ -27,6 +27,15 @@
 ## baseplate, the example a first visit opens on taken off first
 ## (Assistant.make_room), and never a chat about a selection. With no
 ## pictures, the save says what it said before, word for word.
+##
+## And once more, last (final_look): at the first whole save after the
+## creative pass, the session is handed the model as it stands and what its
+## first look asked, to say what landed, then done, or the one change it
+## most needs. Later looks at the saves that followed the first lost head to
+## head: they took the saves where next_review hands over the creative pass,
+## and the pass ran in 21 of 44 sessions against 30 of 41 (design316). So
+## this one comes only after the pass, and joins what the save says rather
+## than standing in its place.
 class_name FreshEyes
 extends RefCounted
 
@@ -73,6 +82,7 @@ func begin() -> void:
 	fresh = false
 	asked = false
 	last = {}
+	final = {}
 
 
 ## A design from outside stands; [param bare] when nothing stood before it.
@@ -241,3 +251,222 @@ func _pictures() -> Array:
 	for image: Image in images:
 		views.append(await _shot.encode(image))
 	return views
+
+
+# -- the final look, after the creative pass ----------------------------------
+
+
+## The tool a session answers the final look with ([method final_definition]).
+const FINAL_TOOL := "fresh_eyes_final"
+
+## The final look's answer: what landed of what the first look asked, so
+## what is asked now is asked of what stands; then done, or the one change.
+## One: told three again, relay sessions made one of them or none (design316).
+const FINAL: Dictionary = {
+	"type": "object",
+	"properties": {
+		"landed": {"type": "string", "description":
+			"for each change the first look asked for: whether it shows in the pictures "
+			+ "and whether it worked"},
+		"reads_as": SCHEMA["properties"]["reads_as"],
+		"generic": SCHEMA["properties"]["generic"],
+		"done": {"type": "boolean", "description":
+			"true only when it reads as the subject at a glance and nothing in it reads as "
+			+ "a generic box, slab or stack; then no change"},
+		"change": {"type": "string", "description":
+			"the one change that would now most make it read as the subject: where on the "
+			+ "model, and what to build there; empty when done"},
+	},
+	"required": ["landed", "reads_as", "generic", "done", "change"],
+	"additionalProperties": false,
+}
+
+## The final look: {} until it is asked, once a subject. Then {refused}
+## while it waits for the session's answer, its answer {refused, landed,
+## reads_as, generic, done, change}, let go of {refused, unanswered}, or
+## {error} with no pictures.
+var final: Dictionary = {}
+
+
+## A whole save's answer once the first look is past: next_review's, and
+## after it the final look, when the save follows a completed creative pass
+## (final_due). What next_review says comes first, the creative pass's line
+## and any close look or reminder it hands, and is never left out. Not held
+## back for them: of 44 browser-tab sessions (design317t), 30 ended at the
+## save after the first look whatever it handed, a close look or the
+## surface pass, and 24 of those at the save that said what the pass added.
+func reviewed() -> Variant:
+	# Whether the pass's result is said at this save (Assistant._creative_passed).
+	var closing: bool = not assistant._outside_creative.is_empty()
+	var more: Variant = await assistant.next_review()
+	if not final_due(closing):
+		return more
+	var look: Variant = await final_look()
+	if look is String and (look as String).is_empty():
+		return more
+	if more is Array:
+		return (more as Array) + (look as Array if look is Array
+			else [{"type": "text", "text": str(look)}])
+	return Assistant._joined(str(more), look)
+
+
+## Whether this save's answer gets the final look: the first look was
+## answered with its changes; the creative pass was handed and what it added
+## said, at this save or before (and at this one not "nothing added", which
+## asks for a touch and a save first); and it has not been asked for this
+## subject.
+func final_due(closing: bool) -> bool:
+	if not final.is_empty() or not fresh or not last.has("changes") \
+			or assistant._busy or not assistant._outside_standing \
+			or assistant.asked_about_selection():
+		return false
+	if not assistant._outside_creative_handed or not assistant._outside_creative.is_empty():
+		return false
+	return not (closing and assistant._creative_record == "nothing added")
+
+
+## The final look, as the first: the session is handed the pictures and the
+## question to answer with FINAL_TOOL before anything else goes ahead
+## (final_not_yet). "" when no picture could be taken: the save says what
+## it would have.
+func final_look() -> Variant:
+	final = {"asked": true}
+	var views: Array = await _pictures()
+	if views.is_empty():
+		final = {"error": "no pictures"}
+		print("fresh eyes: final look, no pictures, nothing said")
+		return ""
+	final = {"refused": 0}
+	print("fresh eyes: final look, the session's own, asked after the creative pass "
+		+ "(it came to: %s), with %d pictures" % [assistant._creative_record, views.size()])
+	return [{"type": "text", "text": FINAL_OPENING}] \
+		+ final_shown(subject_of(assistant), views, last["changes"]) \
+		+ [{"type": "text", "text": FINAL_ASK % FINAL_TOOL}]
+
+
+## The final look's question: the first's, of the model as it stands, told
+## what the first look asked for, to say first what of it landed.
+static func final_prompt(subject: String, asked: Array) -> String:
+	var listed := PackedStringArray()
+	for n: int in asked.size():
+		listed.append("  %d. %s" % [n + 1, asked[n]])
+	return ("A LEGO® model was built to this brief: \"%s\"\n\n" % subject
+		+ "Below are three pictures of it, all of the same model. You did not build it "
+		+ "and know nothing of how it was made: look at it as a LEGO® set designer would "
+		+ "on first sight, from the pictures alone. Picture quality says nothing.\n\n"
+		+ "A first look at an earlier build of it asked for these changes, the biggest "
+		+ "first:\n%s\nIt has been changed since, and finished. " % "\n".join(listed)
+		+ "First, for each of those changes, whether it shows in the pictures and whether "
+		+ "it worked. Then what it reads as at a glance, and what in it makes it read as "
+		+ "the subject. Then what still reads as a generic box, slab, block or stack rather "
+		+ "than as the subject: its silhouette, its proportions, the shape of each mass, "
+		+ "the features anyone would know the subject by, and its colours.\n\n"
+		+ "If it reads as the subject at a glance with nothing generic left, say it is done "
+		+ "and name no change. Otherwise the one change that would now most make it read "
+		+ "as the subject at a glance: one of those that did not land, said again more "
+		+ "plainly, or a new one. It is one concrete change to how it is built, as a set "
+		+ "designer would make it: which part of the model, and what to build there, said "
+		+ "in bricks, plates, slopes, curves and studs (\"the top storey is as wide as the "
+		+ "one under it: step it in one stud on each side\"). A change to its shape or its "
+		+ "features that the subject itself calls for: not more parts, more of what is "
+		+ "there or a bigger model.\n\n"
+		+ "Everything the brief asks for stays. Each thing it names, and what it says of "
+		+ "it (its colour, where it is, what it is doing), is what the person wants: no "
+		+ "change takes one away, covers it up or builds it as something else. Where one "
+		+ "reads poorly, or stands in another's way, the change makes it read better as "
+		+ "what the brief says it is.")
+
+
+## What the final look shows: as the first (shown), its question
+## final_prompt's.
+static func final_shown(subject: String, views: Array, asked: Array) -> Array:
+	var content: Array = shown(subject, views)
+	content[0] = {"type": "text", "text": final_prompt(subject, asked)}
+	return content
+
+
+## The session's answer to its final look: {landed, reads_as, generic,
+## done, change}, done when it said so (then no change), or {error} when it
+## left out what it was asked.
+static func _final_read(found: Dictionary) -> Dictionary:
+	var read: Dictionary = {}
+	for key: String in ["landed", "reads_as", "generic", "change"]:
+		read[key] = str(found.get(key, "")).strip_edges()
+	read["done"] = bool(found.get("done", false))
+	if read["done"]:
+		read["change"] = ""
+	if str(read["landed"]).is_empty() or str(read["reads_as"]).is_empty() \
+			or str(read["generic"]).is_empty() or (not read["done"] and str(read["change"]).is_empty()):
+		return {"error": "not answered in full"}
+	return read
+
+
+static func _final_json(answer: Dictionary) -> String:
+	return JSON.stringify({"landed": answer["landed"], "reads_as": answer["reads_as"],
+		"generic": answer["generic"], "done": answer["done"], "change": answer["change"]})
+
+
+const FINAL_THEN := ("edit_model, then view_model to see that it reads, then save_model, "
+	+ "keeping what the creative pass added. If you are sure it is wrong for this subject, "
+	+ "say why in a line.")
+
+const FINAL_OPENING := ("Not finished yet: one last look with the fresh pair of eyes, now "
+	+ "the creative pass is in. The judge is shown only the subject, the changes the first "
+	+ "look asked for and the three pictures below, never what you meant it to be or how it "
+	+ "was made, and asked what follows. Answer as that judge: from the pictures alone, "
+	+ "saying what they show, not what you meant each part to be.")
+
+const FINAL_ASK := ("Answer before any other call: %s, with landed (whether each change the "
+	+ "first look asked for shows and worked), reads_as, generic, and done: true, with no "
+	+ "change, only when nothing in it reads as generic; else change, the one change that "
+	+ "would now most make it read as the subject. Then make it: " + FINAL_THEN)
+
+
+## Whether the final look waits for its answer.
+func final_waiting() -> bool:
+	return final.has("refused") and not final.has("done") and not final.has("unanswered")
+
+
+## What a call is told while the session's own final look waits, as
+## not_yet is for the first: "" when it goes ahead. The answer and a save
+## go ahead; anything else is refused, up to MOST_REFUSED times.
+func final_not_yet(tool: String) -> String:
+	if not final_waiting() or tool in [FINAL_TOOL, "save_model"]:
+		return ""
+	if int(final["refused"]) >= MOST_REFUSED:
+		final["unanswered"] = true
+		print("fresh eyes: the session's own final look never answered; %s goes ahead" % tool)
+		return ""
+	final["refused"] = int(final["refused"]) + 1
+	print("fresh eyes: %s refused, the session's own final look unanswered" % tool)
+	return ("Not yet: first answer the final fresh look the save asked for. Call %s with "
+		% FINAL_TOOL + "landed, reads_as, generic, done and change, from the save's three "
+		+ "pictures alone, as the judge would; then make the change.")
+
+
+## The session's own final look, answered with FINAL_TOOL: kept ([member
+## final]); done ends it, and the one change is to be made now.
+func final_answered(input: Dictionary) -> String:
+	if not final_waiting():
+		return "Nothing to answer: the first save after the creative pass asks for this, once."
+	var read: Dictionary = _final_read(input)
+	if read.has("error"):
+		return ("Answer in full: landed, reads_as, generic, and done with change: done true "
+			+ "and no change only when nothing reads as generic, else the one change.")
+	read["refused"] = final["refused"]
+	final = read
+	print("fresh eyes: the session's own final look (%d refused): %s" % [final["refused"],
+		_final_json(final)])
+	if final["done"]:
+		return "Then it is finished as it stands: nothing in it reads as generic."
+	return "Now make it: %s" % FINAL_THEN
+
+
+## FINAL_TOOL, as a session is served it; its annotations are
+## CommandSocket.HINTS'.
+static func final_definition() -> Dictionary:
+	return {"name": FINAL_TOOL, "description": ("Answer the final fresh look the first "
+		+ "save after the creative pass asks for, from the three pictures it handed you "
+		+ "alone: what landed of the changes the first look asked for, what the model reads "
+		+ "as, what still reads as a generic box, and done, or the one change that would now "
+		+ "most make it read as the subject. Only when a save asks."), "input_schema": FINAL}

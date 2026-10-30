@@ -65,6 +65,21 @@ declare -A CMD=(
   # private, gone. Throwaway accounts, deleted after with their model and
   # collection.
   [list_follows]="tools/web/list_follows_flow.mjs --url=$P --out=$S/${TAG}_list_follows"
+  # What a model is based on (docs/SOCIAL.md section 7, item 5,
+  # supabase/model_bases.sql): its designer says it in a dialog, a set
+  # built from and work elsewhere changed; its page credits each, its
+  # structured data and JSON say them, the set's page lists it; a wrong
+  # set or link said in words, somebody else refused; taken away, gone.
+  # Before the file, nothing offered and a list refused in words.
+  # Throwaway accounts, deleted after with their model.
+  [based_on]="tools/web/based_on_flow.mjs --url=$P --out=$S/${TAG}_based_on"
+  # @mentions in comments (docs/SOCIAL.md section 7, item 6,
+  # supabase/comment_mentions.sql): @ in the box offers the people on the
+  # page and Enter puts one in; the comment links them; they are told in
+  # Notifications at 390 px dark, the designer and a reply's thread not
+  # twice. Before the file, a comment names nobody and goes as ever.
+  # Throwaway accounts, deleted after with their model.
+  [mentions]="tools/web/mentions_flow.mjs --url=$P --out=$S/${TAG}_mentions"
   # The collections directory (W12, supabase/collection_directory.sql):
   # /collections lists a throwaway designer's public collection as a card
   # with its cover, name, owner, model count and Follow; her private one
@@ -76,8 +91,10 @@ declare -A CMD=(
   # photo and ten likes on a throwaway designer's model as one group with
   # its picture, the likes one row naming nobody; opened, the count gone;
   # a group read once opened, Mark all read; the feed apart; signed out at
-  # both widths. Throwaway accounts, deleted after; before and after
-  # supabase/notifications.sql (it reads which from the answer).
+  # both widths; once supabase/achievements.sql is applied, the levels
+  # reached as a group of their own, its row opening /profile's
+  # Achievements tab, read once opened. Throwaway accounts, deleted after;
+  # before and after each file (it reads which from the answers).
   [notifications]="tools/web/notifications_flow.mjs --url=$P --out=$S/${TAG}_notifications"
   # A feed you look at (docs/SOCIAL.md U9): /feed signed out and following
   # nobody shows Latest on Brickworks (the newest models as the gallery's
@@ -103,8 +120,9 @@ declare -A CMD=(
   [designers]="tools/web/designers_flow.mjs --url=$P --out=$S/${TAG}_designers"
   # The monthly challenge: set on /admin?tests=1 (a test one, which no
   # visitor sees), entered from a model's page with each broken rule named,
-  # voted in its two groups, ended and won: API routes only, with the bypass
-  # (supabase/challenges.sql).
+  # voted in its two groups, ended and won, the winners told to a voter in
+  # Notifications, and its link's own head: API routes only, with the bypass
+  # (supabase/challenges.sql, supabase/challenge_notices.sql).
   [challenges]="tools/web/challenges_flow.mjs --url=$P --out=$S/${TAG}_challenges"
   # Play in a shared model's view: 8808-1's steering turned by its wheel,
   # by the mouse at 1280 px and a finger at 390, and Reset; the drag's own
@@ -233,6 +251,15 @@ declare -A CMD=(
   # spot 100; deleting the account erases its application. The checks' own
   # pool of spots, never the 100. Throwaway accounts, deleted after.
   [beta]="tools/web/beta_flow.mjs --url=$P --out=$S/${TAG}_beta"
+  # Feedback (beta374): the /feedback page, the footer's and the account
+  # menu's Send feedback, the dialog on the site at 390 and 1280 (a picture
+  # chosen, removed and chosen again) and in the app (Help, Send
+  # feedback…), the edge's refusals, the settings page and the beta hub;
+  # before supabase/feedback.sql each send is answered "not open here yet",
+  # after it each is kept and listed. The inbox is checked only as refused:
+  # its own run is local, with a throwaway owner (the flow's head).
+  # Throwaway accounts, deleted after.
+  [feedback]="tools/web/feedback_flow.mjs --url=$P --out=$S/${TAG}_feedback"
   [tabs]="tools/web/tabs_flow.mjs --url=$P/app --out=$S/${TAG}_tabs"
   # Two chats, two tabs: the relay's rules alone, then the app in two tabs.
   [tabpair_probe]="tools/web/tabpair_probe.mjs --url=$P"
@@ -244,6 +271,14 @@ declare -A CMD=(
   # stranger refused, the owner ending it. Needs supabase/together.sql.
   [together_probe]="tools/web/together_probe.mjs --url=$P"
   [together]="tools/web/together_flow.mjs --url=$P --out=$S/${TAG}_together"
+  # local only: typed_flow.mjs. A number typed with a part in hand, in the
+  # web build (hand371): it runs against tools/web/serve.py's local build,
+  # as its header says, and has no way past a preview's protection yet.
+  # src/dev/typed_moves_probe.gd holds the same on desktop.
+  # local only: bin_tiles_flow.mjs. The parts bin's tiles drawn and named
+  # from their first frame, as the bin opens and after a search, on a slow network: it needs
+  # tools/web/serve.py --parts to serve each part late, which a deployment
+  # does not (parts.md, previews). bin_names_probe holds the same on desktop.
   # local only: together_timing.mjs. A measure with no verdict: where the
   # time of a change goes, stage by stage, as the model grows richer; the
   # flow above holds the bar (docs/TOGETHER.md).
@@ -277,7 +312,10 @@ declare -A CMD=(
   # refusals whether or not supabase/profile_shows.sql is applied, "not open
   # yet" until it is); her page at 390 and 1280, light and dark, signed out
   # and in: avatar, numbers with no count of none, links ugc nofollow,
-  # pins, tabs. The account deleted after, and its row of profile_shows.
+  # pins, tabs; what she earned as she lists, is Tested, posts a build and
+  # is built ten times (levels once supabase/achievements.sql is applied,
+  # which the answer says). The account deleted after, and its row of
+  # profile_shows.
   [profile]="tools/web/profile_flow.mjs --url=$P --out=$S/${TAG}_profile"
   # Your account as your profile (docs/SOCIAL.md U6): a throwaway Ada who
   # set all the old account page could (her name, words, links, banner and
@@ -324,6 +362,14 @@ declare -A CMD=(
   # ran with no host at all (2026-10-19).
   [app_host]="tools/web/app_host_check.mjs --url=$P/app --host=${BW_APP_HOST:-$R/bench/data/ext-apps-host/basic-host} --out=$S/${TAG}_app_host"
   [focus]="tools/web/focus_check.mjs --url=$P/app $B --out=$S/${TAG}_focus"
+  # The app's own menu (brand373): the mark at the menu bar's far left, at
+  # 1280 and a phone's width, in its colours; its rows; About from it; and
+  # Back to brickworks.diy leaving the app for the site's home page.
+  [app_menu]="tools/web/app_menu_flow.mjs --url=$P/app $B --out=$S/${TAG}_app_menu"
+  # Find a command by keys alone (appux371 A9): Ctrl+/, "ren", Return opens
+  # Render; Render first when opened again; Mirror with nothing selected
+  # says why and runs nothing; Escape puts it away.
+  [palette]="tools/web/palette_flow.mjs --url=$P/app $B --out=$S/${TAG}_palette"
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"

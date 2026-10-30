@@ -66,6 +66,11 @@ var user_id: String = ""
 ## Whether this is the owner's account (MASTER_EMAIL on the deployment),
 ## which can open the admin page. The deployment says; the app only shows.
 var master: bool = false
+## Whether this account is a beta tester (its beta application approved),
+## and the early features it may use before everyone (api/_early.js): the
+## deployment says, the app only shows ([method early_on]).
+var tester: bool = false
+var early: Array[String] = []
 ## Signed in from what this device kept, because Supabase could not be
 ## reached to confirm it.
 var offline: bool = false
@@ -448,7 +453,20 @@ func _ask_who(hold: bool = false) -> void:
 		var said: Dictionary = body
 		master = bool(said.get("master", false))
 		_take_age(said.get("age"))
+		var beta: Variant = said.get("beta")
+		tester = beta is Dictionary and bool((beta as Dictionary).get("tester", false))
+		early.clear()
+		if beta is Dictionary and (beta as Dictionary).get("early") is Array:
+			for key: Variant in (beta as Dictionary)["early"]:
+				early.append(str(key))
 	changed.emit()
+
+
+## Whether the early feature [param key] is on for this account: a beta
+## tester's, as the deployment said (api/_early.js EARLY). A gate is one
+## line where the feature is drawn.
+func early_on(key: String) -> bool:
+	return signed_in() and key in early
 
 
 ## The age as the deployment said it: {ask, over_13}, or nothing.
@@ -518,6 +536,8 @@ func _forget(why: String) -> void:
 	email = ""
 	user_id = ""
 	master = false
+	tester = false
+	early.clear()
 	offline = false
 	age_ask = false
 	over_13 = null

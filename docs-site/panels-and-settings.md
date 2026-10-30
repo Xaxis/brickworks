@@ -2,7 +2,7 @@
 panels: ControlsDialog#settings
 ai: The window's parts (menus, toolbar, the parts bin and its colours down the left, the model tree and properties down the right with the assistant as a tab beside them, the status bar), and every setting. Exact positions and hinge angles are typed in Properties.
 rules:
-  - Settings and Keys and controls (F1) are one panel.
+  - Settings (,) and the keys sheet (F1, Help › Keys and controls) are two dialogs; the keys sheet keeps the rows that say what is typed into its box.
   - Properties take X, Y and Z to the hundredth of an LDraw unit.
 title: Panels, layout and settings
 nav: Panels and settings
@@ -55,10 +55,12 @@ ui:what the app is busy with
 
 ## Settings {#settings}
 
-**Tools › Settings…** ([[,]]) and **Help › Keys and controls** ([[F1]]) open one panel: the list of every key and gesture, drawn as keys and pictures of the mouse, and beside it what you can change:
+**Tools › Settings…** ([[,]]) opens Settings, what you can change:
 
 - **Navigate like** Studio, Blender or Mecabricks, and which way the wheel zooms ([The view](/docs/the-view#presets)).
 - **New models start on**: the floor a new model gets.
 - **Interface size** (85 to 150%) and **Reduce motion** ([Accessibility](/docs/accessibility)).
 - **Assistant (AI)**: *Build by hand only*, or *Show the assistant* ([Connect Claude](/docs/connect-claude#assistant-on)), and **AI…**: who designs, Claude or another AI on your own key ([Another AI on your own key](/docs/ai#other-ais)).
-- The app's version, under the list.
+- The app's version, at the foot.
+
+**Help › Keys and controls** ([[F1]]) opens the keys sheet on its own: every key and gesture, drawn as keys and pictures of the mouse, in two columns as tall as the window, with the keys the menus show beside them ([Keyboard shortcuts](/docs/shortcuts)). Type into its box and only the rows whose keys or words say it stay: *hinge*, *undo*, *Ctrl*. The letters go to the box, not to the tools they are keys of; Escape closes it.
