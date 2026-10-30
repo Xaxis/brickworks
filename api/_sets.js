@@ -33,6 +33,14 @@ import { existsSync, readFileSync } from "node:fs";
 import { SIZES, count, escapeHtml } from "./_directory.js";
 import { SET_SORTS } from "./_library.js";
 
+/// How the library's sets are put in order, the first by default: those LDraw
+/// has a model of first, since their picture is the set built, where every
+/// other set's is drawn from a few of its parts (api/_flatlay.js). Newest
+/// first opened the library on 24 of this year's sets, none modelled yet, and
+/// showed no set at all, only parts (the owner, 2026-10-30).
+export const SETS_SORTS = { built: "Built in 3D first", ...SET_SORTS };
+export const FIRST_SORT = "built";
+
 /// A set's number as Rebrickable writes it, "10497-1", "COMCON001-1", "214.1-1": what a
 /// page's address may hold.
 export const SET_NUMBER = /^[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/;
@@ -146,7 +154,7 @@ export function modelsBySet(models) {
 /// q (a set's number or words of its name or theme), theme (a top theme, or
 /// a path to one inside it, "Star Wars > Ultimate Collector Series"),
 /// decade ("1990s"), year, size (the gallery's SIZES), model ("3d": only
-/// those LDraw has a model of), figs ("with" or "none"), sort (SET_SORTS),
+/// those LDraw has a model of), figs ("with" or "none"), sort (SETS_SORTS),
 /// page (from 1). Anything else is left out, as if not asked.
 export function askSets(query = {}) {
   const page = Number.parseInt(String(query.page ?? "1"), 10);
@@ -159,7 +167,7 @@ export function askSets(query = {}) {
     size: Object.hasOwn(SIZES, String(query.size ?? "")) ? String(query.size) : "",
     model: String(query.model ?? "") === "3d" ? "3d" : "",
     figs: ["with", "none"].includes(String(query.figs ?? "")) ? String(query.figs) : "",
-    sort: Object.hasOwn(SET_SORTS, String(query.sort ?? "")) ? String(query.sort) : "newest",
+    sort: Object.hasOwn(SETS_SORTS, String(query.sort ?? "")) ? String(query.sort) : FIRST_SORT,
     page: Number.isFinite(page) ? Math.min(Math.max(page, 1), MOST_PAGES) : 1,
   };
 }
@@ -199,7 +207,9 @@ export function searchCatalog(sets, ask, models = new Map()) {
     return words.every((one) => entry.said.includes(one));
   });
   // A year's biggest sets first: a year holds key rings and promotions too.
+  const built = (entry) => (models.get(entry.set.toLowerCase())?.main ? 1 : 0);
   const order = {
+    built: (a, b) => built(b) - built(a) || b.year - a.year || b.parts - a.parts,
     oldest: (a, b) => a.year - b.year || b.parts - a.parts,
     largest: (a, b) => b.parts - a.parts,
     smallest: (a, b) => a.parts - b.parts,

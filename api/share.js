@@ -242,7 +242,7 @@ import { freshPool, keyed, poolOf, readShard, shardOf } from "./_owned.js";
 // Every set in the catalogue, a page each (sets364), and the picture drawn
 // of one LDraw has no model of.
 import {
-  CREDIT as SETS_CREDIT, PER_PAGE as CATALOG_PER_PAGE, askSets, catalogCard, catalogSet, modelsBySet, ownedOf,
+  CREDIT as SETS_CREDIT, PER_PAGE as CATALOG_PER_PAGE, SETS_SORTS, askSets, catalogCard, catalogSet, modelsBySet, ownedOf,
   searchCatalog, setCatalog, setPage as catalogPage, setsBeside as catalogBeside, sitemapSets, themeTree, titleOf,
   yearsOf,
 } from "./_sets.js";
@@ -2229,7 +2229,7 @@ function catalogList(request, response, catalogue, models, tests) {
     models: found.sets.map((entry) => catalogCard(entry, by)), total: found.total, page: found.page, pages: found.pages,
     per_page: CATALOG_PER_PAGE, of: catalogue.sets.length, with_3d: [...by.values()].filter((one) => one.main).length,
     asked, themes: themeTree(catalogue.sets), decades: decadesThere, years,
-    sizes: Object.fromEntries(Object.entries(SIZES).map(([key, size]) => [key, size.label])), sorts: SET_SORTS,
+    sizes: Object.fromEntries(Object.entries(SIZES).map(([key, size]) => [key, size.label])), sorts: SETS_SORTS,
     credit: SETS_CREDIT,
   });
 }

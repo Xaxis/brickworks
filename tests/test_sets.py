@@ -132,27 +132,30 @@ console.log(JSON.stringify({ n: catalog.sets.length, theme: one.theme, plain: S.
 def test_it_searches_and_filters_every_set() -> None:
     said = node(SETS + """
 console.log(JSON.stringify({
-  browse: ids({}), number: ids({ q: "4488" }), words: ids({ q: "falcon" }), gear: ids({ q: "key chain" }),
+  browse: ids({}), newest: ids({ sort: "newest" }), number: ids({ q: "4488" }), words: ids({ q: "falcon" }), gear: ids({ q: "key chain" }),
   theme: ids({ theme: "Star Wars" }), inner: ids({ theme: "Star Wars > Ultimate Collector Series" }),
   decade: ids({ decade: "2020s" }), year: ids({ year: "2022" }), large: ids({ size: "large" }),
   model: ids({ model: "3d" }), figs: ids({ figs: "with" }), none: ids({ figs: "none", theme: "Technic" }),
   oldest: ids({ sort: "oldest" }), name: ids({ sort: "name" }),
   junk: S.askSets({ sort: "price", size: "huge", decade: "1890s", year: "12", model: "yes", figs: "x", page: "-3" }),
 }));""")
-    # Browsed, the newest first and a year's biggest first; a key chain with no parts left out.
-    assert said["browse"] == ["214.1-1", "10497-1", "42115-1", "10179-1", "4488-1"]
+    # Browsed, the sets built in 3D first, since only their picture is the set:
+    # a library opened on 24 sets drawn from their parts showed no set at all.
+    assert said["browse"] == ["10179-1", "214.1-1", "10497-1", "42115-1", "4488-1"]
+    # Newest first when asked, and a year's biggest first; a key chain with no parts left out.
+    assert said["newest"] == ["214.1-1", "10497-1", "42115-1", "10179-1", "4488-1"]
     # A number is its set first; words find the key chain too.
     assert said["number"] == ["4488-1"]
-    assert said["words"] == ["853900-1", "10179-1", "4488-1"]
+    assert said["words"] == ["10179-1", "853900-1", "4488-1"]
     assert said["gear"] == ["853900-1"]
     assert said["theme"] == ["10179-1", "4488-1"] and said["inner"] == ["10179-1"]
     assert said["decade"] == ["214.1-1", "10497-1", "42115-1"] and said["year"] == ["10497-1"]
-    assert said["large"] == ["10497-1", "42115-1", "10179-1"]
+    assert said["large"] == ["10179-1", "10497-1", "42115-1"]
     assert said["model"] == ["10179-1"]
-    assert said["figs"] == ["10497-1", "10179-1"] and said["none"] == ["214.1-1", "42115-1"]
+    assert said["figs"] == ["10179-1", "10497-1"] and said["none"] == ["214.1-1", "42115-1"]
     assert said["oldest"][0] == "4488-1" and said["name"][0] == "214.1-1"
     assert said["junk"] == {"q": "", "theme": "", "decade": "", "year": 0, "size": "", "model": "", "figs": "",
-                            "sort": "newest", "page": 1}
+                            "sort": "built", "page": 1}
 
 
 @needs_node
