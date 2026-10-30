@@ -28,6 +28,9 @@ const KINDS_WORDS := "a PNG, JPEG, WebP, BMP or SVG"
 signal picked(image: Image, name: String)
 signal failed(why: String)
 
+## The desktop dialog's title: what the picture is for.
+var title: String = "Choose a picture to print"
+
 var _dialog: FileDialog
 var _on_bytes: JavaScriptObject
 
@@ -41,10 +44,10 @@ func ask() -> void:
 		_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 		_dialog.access = FileDialog.ACCESS_FILESYSTEM
 		_dialog.add_filter("*.png, *.jpg, *.jpeg, *.webp, *.bmp, *.svg", "Pictures")
-		_dialog.title = "Choose a picture to print"
 		_dialog.size = Vector2i(760, 520)
 		_dialog.file_selected.connect(read)
 		add_child(_dialog)
+	_dialog.title = title
 	OpenFrom.ask(_dialog, "picture")
 
 

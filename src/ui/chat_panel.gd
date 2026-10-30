@@ -116,9 +116,17 @@ func _build() -> void:
 	backing.content_margin_bottom = 10
 	add_theme_stylebox_override("panel", backing)
 
+	# Scrolled as a whole where the panel is shorter than what it holds: on a
+	# phone on its side the key's form and Connect Claude ran off the foot
+	# (phone, 2026-10-30). Where it fits, the conversation takes the height.
+	var whole := ScrollContainer.new()
+	whole.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(whole)
 	var root := VBoxContainer.new()
 	root.add_theme_constant_override("separation", 8)
-	add_child(root)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	whole.add_child(root)
 
 	var header := HBoxContainer.new()
 	root.add_child(header)

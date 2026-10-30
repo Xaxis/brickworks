@@ -994,54 +994,118 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 	const later = window.brickworksLater = { asked: 0, came: 0, written: 0, files: 0, failed: "", gave_up: false };
 	let laterBytes = null;
 
+	// -- What the start reads, and what waits until it is wanted -------
+	//
+	// The pack the engine waits for holds the code and what it is drawn
+	// with, nothing else (tools/web/pck_split.py), so the scripts compile
+	// while the rest comes rather than after it: a first visit waited for
+	// a pack of 8.4 MB before the engine said a word, most of it not code
+	// (webload, 2026-10-30). What the start reads once the scripts are made (the
+	// catalogue, the models, LDraw's tables) is index.data.pck, asked for
+	// as soon as the engine's own files are here, and index.parts.bin
+	// after it rather than beside it. LDraw's primitives
+	// (index.primitives.bin) and Studio's photographed light
+	// (index.hdri.bin) are asked for by the app the first time it wants
+	// them (window.brickworksPack). Each is written into the engine's files
+	// under /packs/ once the engine has started (the pack whole, a bundle
+	// as its files), then /packs/<name>.here, which the app looks for
+	// (WebPacks). What came and when is window.brickworksPacks
+	// (tools/web/load_check.mjs).
+	const PACKS = { data: ".data.pck", primitives: ".primitives.bin", hdri: ".hdri.bin" };
+	const packs = window.brickworksPacks = {};
+	const packBytes = {};
+	function packState(name) {
+		return packs[name] = packs[name] || { asked: 0, came: 0, written: 0, files: 0, failed: "", gave_up: false };
+	}
+
 	// Fetched by a worker of its own, made now while the page's thread is
 	// free: that thread is the engine's while it starts, a dozen seconds
 	// in one task on a first visit, and a body read there, or a worker
 	// begun then, waited for it, so the parts came after the start rather
 	// than during it (load250). The app holds a part of them asked for
-	// before they are written in (PartLibrary._later_coming).
+	// before they are written in (PartLibrary._later_coming). The worker
+	// fetches what it is given one after another.
 	const FETCH_IN_A_WORKER = "onmessage = function (event) {"
-		+ " fetch(event.data).then(function (answer) {"
+		+ " var each = event.data, n = 0;"
+		+ " (function next() { if (n >= each.length) return; var at = n++;"
+		+ " fetch(each[at]).then(function (answer) {"
 		+ " if (!answer.ok) throw new Error('HTTP ' + answer.status); return answer.arrayBuffer(); })"
-		+ ".then(function (bytes) { postMessage(bytes, [bytes]); },"
-		+ " function (trouble) { postMessage(String(trouble)); }); };";
-	let fetcher = null;
-	try {
-		const script = URL.createObjectURL(new Blob([FETCH_IN_A_WORKER], { type: "text/javascript" }));
-		fetcher = new Worker(script);
-		fetcher.script = script;
-	} catch (e) {}
+		+ ".then(function (bytes) { postMessage({ at: at, bytes: bytes }, [bytes]); },"
+		+ " function (trouble) { postMessage({ at: at, trouble: String(trouble) }); })"
+		+ ".then(next); })(); };";
+	function newFetcher() {
+		try {
+			const script = URL.createObjectURL(new Blob([FETCH_IN_A_WORKER], { type: "text/javascript" }));
+			const worker = new Worker(script);
+			worker.script = script;
+			return worker;
+		} catch (e) {
+			return null;
+		}
+	}
+	let fetcher = newFetcher();
 	function fetchHere(address) {
 		return fetch(address).then(function (answer) {
 			if (!answer.ok) throw new Error("HTTP " + answer.status);
 			return answer.arrayBuffer();
 		});
 	}
-	function fetchBytes(address) {
-		const worker = fetcher;
+	// [addresses], fetched in turn by a worker: a promise for each.
+	function fetchInTurn(addresses) {
+		const worker = fetcher || newFetcher();
 		fetcher = null;
-		if (!worker) return fetchHere(address);
+		if (!worker) return addresses.map(fetchHere);
+		const settled = addresses.map(function () {
+			const one = {};
+			one.promise = new Promise(function (resolve, reject) {
+				one.resolve = resolve;
+				one.reject = reject;
+			});
+			return one;
+		});
+		let left = addresses.length;
 		const done = function () {
 			worker.terminate();
 			URL.revokeObjectURL(worker.script);
 		};
-		return new Promise(function (resolve, reject) {
-			worker.onmessage = function (event) {
-				done();
-				if (event.data instanceof ArrayBuffer) resolve(event.data);
-				else reject(new Error(String(event.data)));
-			};
-			worker.onerror = function () {
-				done();
-				fetchHere(address).then(resolve, reject);
-			};
-			worker.postMessage(new URL(address, location.href).href);
-		});
+		worker.onmessage = function (event) {
+			const reply = event.data;
+			if (reply.bytes instanceof ArrayBuffer) settled[reply.at].resolve(reply.bytes);
+			else settled[reply.at].reject(new Error(String(reply.trouble)));
+			left -= 1;
+			if (left === 0) done();
+		};
+		worker.onerror = function () {
+			done();
+			settled.forEach(function (one, n) { fetchHere(addresses[n]).then(one.resolve, one.reject); });
+		};
+		worker.postMessage(addresses.map(function (address) { return new URL(address, location.href).href; }));
+		return settled.map(function (one) { return one.promise; });
 	}
-	function fetchLater(tries) {
-		if (later.asked && !tries) return;
-		later.asked = performance.now();
-		fetchBytes(LATER_AT).then(function (bytes) {
+	function fetchBytes(address) {
+		return fetchInTurn([address])[0];
+	}
+	// The start's: the data pack, then the rest of the parts. The app asks
+	// for the data pack itself if the engine's progress never said it was
+	// all here (WebPacks.need). Not asked for sooner on a return visit,
+	// where it is in the cache: read from there as the page opened, beside
+	// the engine's own files, the engine started 0.3 s later.
+	let startAsked = false;
+	function fetchStart() {
+		if (startAsked) return;
+		startAsked = true;
+		if (packs.data) {
+			fetchLater(0);
+			return;
+		}
+		const coming = fetchInTurn([GODOT_CONFIG.executable + PACKS.data, LATER_AT]);
+		fetchPack("data", 0, coming[0]);
+		fetchLater(0, coming[1]);
+	}
+	function fetchLater(tries, coming) {
+		if (later.asked && !tries && !coming) return;
+		later.asked = later.asked || performance.now();
+		(coming || fetchBytes(LATER_AT)).then(function (bytes) {
 			later.came = performance.now();
 			laterBytes = bytes;
 			writeLater();
@@ -1051,36 +1115,121 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 			else later.gave_up = true;
 		});
 	}
-	// "BWP1", the count, each file's name and size, then the files.
+	function fetchPack(name, tries, coming) {
+		const state = packState(name);
+		if (state.asked && !tries && !coming) return;
+		state.asked = state.asked || performance.now();
+		(coming || fetchBytes(GODOT_CONFIG.executable + PACKS[name])).then(function (bytes) {
+			state.came = performance.now();
+			packBytes[name] = bytes;
+			writePacks();
+		}).catch(function (trouble) {
+			state.failed = String(trouble);
+			if (tries < 3) {
+				setTimeout(function () { fetchPack(name, tries + 1); }, 2000 * (tries + 1));
+				return;
+			}
+			state.gave_up = true;
+			if (name === "data") fail("Brickworks could not fetch its parts catalogue (" + state.failed + "). Reload the page to try again.");
+		});
+	}
+	window.brickworksPack = function (name) {
+		if (Object.prototype.hasOwnProperty.call(PACKS, name)) fetchPack(name, 0);
+	};
+	function writePacks() {
+		if (!started) return;
+		for (const name of Object.keys(packBytes)) {
+			const bytes = packBytes[name];
+			delete packBytes[name];
+			const state = packs[name];
+			try {
+				if (name === "data") {
+					engine.copyToFS("/packs/index.data.pck", bytes);
+					state.files = 1;
+				} else {
+					state.files = writeBundle(bytes, "/packs/" + name + "/");
+				}
+				engine.copyToFS("/packs/" + name + ".here", new Uint8Array([1]).buffer);
+				state.written = performance.now();
+			} catch (trouble) {
+				state.failed = String(trouble);
+				state.gave_up = true;
+				console.error("could not put " + name + " in place", trouble);
+			}
+		}
+	}
+	// "BWP1", the count, each file's name and size, then the files: written
+	// under [dir]. How many there were.
+	function writeBundle(bytes, dir) {
+		const view = new DataView(bytes);
+		if (view.getUint32(0, true) !== 0x31505742) throw new Error("not a bundle of files");
+		const count = view.getUint32(4, true);
+		const text = new TextDecoder();
+		const names = [];
+		const sizes = [];
+		let at = 8;
+		for (let n = 0; n < count; n++) {
+			const length = view.getUint16(at, true);
+			names.push(text.decode(new Uint8Array(bytes, at + 2, length)));
+			sizes.push(view.getUint32(at + 2 + length, true));
+			at += 6 + length;
+		}
+		for (let n = 0; n < count; n++) {
+			engine.copyToFS(dir + names[n], bytes.slice(at, at + sizes[n]));
+			at += sizes[n];
+		}
+		return count;
+	}
 	function writeLater() {
 		if (!started || !laterBytes) return;
 		const bytes = laterBytes;
 		laterBytes = null;
 		try {
-			const view = new DataView(bytes);
-			if (view.getUint32(0, true) !== 0x31505742) throw new Error("not a parts file");
-			const count = view.getUint32(4, true);
-			const text = new TextDecoder();
-			const names = [];
-			const sizes = [];
-			let at = 8;
-			for (let n = 0; n < count; n++) {
-				const length = view.getUint16(at, true);
-				names.push(text.decode(new Uint8Array(bytes, at + 2, length)));
-				sizes.push(view.getUint32(at + 2 + length, true));
-				at += 6 + length;
-			}
-			for (let n = 0; n < count; n++) {
-				engine.copyToFS("/later/" + names[n], bytes.slice(at, at + sizes[n]));
-				at += sizes[n];
-			}
-			later.files = count;
+			later.files = writeBundle(bytes, "/later/");
 			later.written = performance.now();
 		} catch (trouble) {
 			later.failed = String(trouble);
 			later.gave_up = true;
 			console.error("could not put the rest of the parts in place", trouble);
 		}
+	}
+	// Godot's startGame (its engine.js), with the start's pack put in with
+	// the engine's own when it is here already: on a return visit it often
+	// comes from the cache before the engine starts, and written in with
+	// the engine's pack the app reads it at once rather than a frame after
+	// its scripts are made (WebPacks). Otherwise it is written in once the
+	// engine has started (writePacks).
+	function startEngine(override) {
+		if (typeof engine.init !== "function" || typeof engine.preloadFile !== "function"
+				|| typeof engine.start !== "function" || !engine.config) {
+			return engine.startGame(override);
+		}
+		engine.config.update(override);
+		const pack = engine.config.mainPack || engine.config.executable + ".pck";
+		engine.config.args = ["--main-pack", pack].concat(engine.config.args);
+		return Promise.all([
+			engine.init(engine.config.executable),
+			engine.preloadFile(pack, pack),
+		]).then(function () {
+			const bytes = packBytes.data;
+			if (bytes) {
+				delete packBytes.data;
+				engine.preloadFile(bytes, "/packs/index.data.pck");
+				engine.preloadFile(new Uint8Array([1]).buffer, "/packs/data.here");
+				packs.data.files = 1;
+				packs.data.written = performance.now();
+			}
+			return engine.start();
+		});
+	}
+	// The app is up once it has built its window (its "ui" mark), or said
+	// it cannot be ("stopped"): a frame or more after the engine has
+	// started, since the start's pack is written in only then. Until then
+	// this screen stays, rather than the page's empty canvas.
+	function whenUp(then) {
+		const marks = window.brickworksBoot || {};
+		if (marks.ui || marks.stopped) then();
+		else if (!(packs.data && packs.data.gave_up)) setTimeout(function () { whenUp(then); }, 50);
 	}
 
 	const engine = new Engine(GODOT_CONFIG);
@@ -1096,13 +1245,13 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 		window.brickworksTabLegacy = tab.legacy;
 		window.brickworksTabNew = tab.asNew === true;
 		hereWhenAsked(tab.id);
-		return engine.startGame({
+		return startEngine({
 			onProgress: function (current, total) {
 				if (total > 0) {
 					downloaded = Math.min(1, current / total) * DOWNLOAD_SHARE;
 					if (downloaded >= DOWNLOAD_SHARE) {
 						say("Sorting the bin…");
-						fetchLater(0);
+						fetchStart();
 					}
 				}
 			},
@@ -1110,16 +1259,19 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 	}).then(function () {
 		started = true;
 		pull();
-		fetchLater(0);
+		fetchStart();
+		writePacks();
 		writeLater();
-		running = false;
-		downloaded = 1;
-		creep = 0;
-		render(1);
-		say("Ready");
-		boot.classList.add("done");
-		// The canvas wants focus or the first keystroke goes nowhere.
-		setTimeout(function () { GODOT_CONFIG.canvas.focus(); }, 700);
+		whenUp(function () {
+			running = false;
+			downloaded = 1;
+			creep = 0;
+			render(1);
+			say("Ready");
+			boot.classList.add("done");
+			// The canvas wants focus or the first keystroke goes nowhere.
+			setTimeout(function () { GODOT_CONFIG.canvas.focus(); }, 700);
+		});
 	}, function (error) {
 		fail(String(error));
 		console.error(error);

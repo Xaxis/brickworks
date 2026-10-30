@@ -76,6 +76,10 @@ var floor_hook: Callable = Callable()
 ## what they were, for the step that pins, resolves or opens one again.
 ## Unset, the step does nothing.
 var pins_hook: Callable = Callable()
+## Puts the reference picture as a step left it (ReferenceImage.put) and
+## returns how it was, for the steps that lay, move, size, fade, lock,
+## replace or take it away. Unset, the step does nothing.
+var reference_hook: Callable = Callable()
 
 signal placed(brick_id: int, part_id: String)
 signal removed(brick_id: int)
@@ -459,6 +463,11 @@ func _apply(step: Dictionary) -> Dictionary:
 	if step.get("undo", "") == "pins":
 		return {"undo": "pins", "pins": pins_hook.call(step["pins"]) if pins_hook.is_valid()
 			else step["pins"]}
+
+	# The picture to build over, as it was: its own reverse.
+	if step.get("undo", "") == "reference":
+		return {"undo": "reference", "reference": reference_hook.call(step["reference"])
+			if reference_hook.is_valid() else step["reference"]}
 
 	# What the model stands on: put the floor the step names down, and the
 	# step that puts back the one it replaced is the reverse.

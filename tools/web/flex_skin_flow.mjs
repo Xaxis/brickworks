@@ -129,6 +129,14 @@ for (const model of models) {
     + `${carried.length} carried parts built, settled in ${Math.round(row.settled_ms / 1000)} s`);
   ok(skins.length > 0, `${basename(model)}: its flexible parts drawn (${skins.length})`);
   ok(!/\(flexible\)/.test(said), `${basename(model)}: no flexible part said not shown`);
+  // A build that keeps LDraw's primitives apart fetches them for this
+  // (WebPacks, tools/web/pck_split.py): when, and how many.
+  const primitives = await page.evaluate(() => (window.brickworksPacks || {}).primitives || null);
+  if (primitives) {
+    row.primitives = primitives;
+    console.log(`        LDraw's primitives fetched for it: asked ${(primitives.asked / 1000).toFixed(1)} s, `
+      + `written ${(primitives.written / 1000).toFixed(1)} s, ${primitives.files} files${primitives.failed ? ` (${primitives.failed})` : ""}`);
+  }
   await page.keyboard.press("Escape");
   await page.waitForTimeout(4000);
   await shot(`${basename(model, ".mpd")}.png`);

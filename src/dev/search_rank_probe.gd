@@ -30,6 +30,9 @@
 ## a size alone, and the names they reach for most, every one with a right
 ## part in the first three, and a size alone the brick of that size first.
 ##
+## And a size with a family's word lists that family first (appux2 bin2): the
+## first eight tiles of "1x4 brick" are bricks, where two Spring Shooters were.
+##
 ## And how long the bin takes to answer a first keystroke: one letter or digit,
 ## over the whole catalogue, the results and the tiles that show them; the
 ## 50 ms meant is said, and the probe fails past 150 (KEYSTROKE_GUARD_MS).
@@ -199,6 +202,13 @@ const BUILDER: Array = [
 ]
 ## A size alone and the brick it means, first.
 const SIZE_FIRST: Dictionary = {"2x4": "3001", "1x2": "3004", "2x2": "3003", "1x1": "3005"}
+## A size and a family's word (appux2 bin2, 2026-10-30): the first eight tiles
+## all called by that word. "1x4 brick" listed two Spring Shooter 1 x 4 x 1s,
+## filed under Brick and called a brick by nobody; "1x6 brick" the arch 92950.
+const FAMILY_FIRST: Dictionary = {"1x4 brick": "brick", "brick 1x4": "brick",
+	"1x2 brick": "brick", "2x4 brick": "brick", "1x6 brick": "brick", "1x4 plate": "plate",
+	"2x2 tile": "tile"}
+const FAMILY_TILES := 8
 
 ## The share of queries with a right part in the first three, at least.
 const TOP3_BAR := 0.9
@@ -240,6 +250,7 @@ func _run() -> void:
 		_quality(library, bin, NAMED, "the names builders use (names248)")
 		_quality(library, bin, BUILDER, "the words builders type (appux371 A5), every one", 1.0)
 		_size_first(library, bin)
+		_family_first(library, bin)
 	if only != "quality":
 		await _time(library, bin)
 	bin.queue_free()
@@ -332,6 +343,26 @@ func _size_first(library: PartLibrary, bin: PartsBin) -> void:
 			_failures += 1
 		print("  %s  %-6s bin %-8s search %-8s wanted %s" % ["ok  " if ok else "FAIL", asked,
 			", ".join(tiles), first, wanted])
+
+
+## A size and a family's word lists that family's parts on the bin's first
+## eight tiles, each called so: "1x4 brick" is bricks.
+func _family_first(library: PartLibrary, bin: PartsBin) -> void:
+	print("")
+	print("  a size and a family's word, that family's parts first (bin2)")
+	for asked: String in FAMILY_FIRST:
+		var word := RegEx.create_from_string("\\b%ss?\\b" % FAMILY_FIRST[asked])
+		bin._run_search(asked)
+		var tiles: PackedStringArray = bin.first_found(FAMILY_TILES)
+		var other := PackedStringArray()
+		for id: String in tiles:
+			if word.search(library.parts[id].name.to_lower()) == null:
+				other.append("%s (%s)" % [id, Inventory._tidy(library.parts[id].name)])
+		var ok: bool = tiles.size() == FAMILY_TILES and other.is_empty()
+		if not ok:
+			_failures += 1
+		print("  %s  %-10s %s%s" % ["ok  " if ok else "FAIL", asked, ", ".join(tiles),
+			"" if other.is_empty() else "  not %ss: %s" % [FAMILY_FIRST[asked], ", ".join(other)]])
 
 
 ## The bin's answer to one keystroke, from the text changing to its tiles in

@@ -60,6 +60,8 @@ def test_the_searches_builders_type_find_what_they_mean_first_and_fast() -> None
     assert score["of"] >= 80
     # The bar the lead set: 95% with a set meant in the first three.
     assert score["rate"] >= 0.95, score["misses"]
+    # And a theme's name typed alone, every time.
+    assert not [miss for miss in score["misses"] if miss["kind"] == "theme name"], score["misses"]
     # Server time on the whole catalogue, each search ten times: well under 150 ms.
     assert score["ms"]["p95"] < 150, score["ms"]
 
@@ -100,7 +102,7 @@ def test_a_typed_search_is_in_best_match_order_unless_another_is_chosen() -> Non
     browsed = node(SEARCH + 'console.log(JSON.stringify({ none: S.askSets({}).sort, match: S.askSets({ sort: "match" }).sort }));')
     # Was newest first: 72060-1, a 2027 set with no parts, then Hogwarts' east wing.
     assert said["castle"]["sort"] == "match"
-    assert all("Castle" in one["name"] for one in said["castle"]["top"][:5])
+    assert all(one["theme"] == "Castle" for one in said["castle"]["top"][:5])
     assert said["castle"]["top"][0]["set"] in {"375-2", "6075-2"}
     # The person's own order still works, and best match is no order with nothing typed.
     assert newest["sort"] == "newest" and newest["top"][0]["year"] >= max(one["year"] for one in newest["top"])
@@ -129,6 +131,38 @@ def test_numbers_years_and_names_typed_as_builders_type_them() -> None:
     assert said["ucs falcon"]["top"][0]["set"] == "75192-1"
     assert said["kings castle"]["top"][0]["name"] == "King's Castle"
     assert said["pokemon"]["top"][0]["theme"] == "Pokémon"
+
+
+@needs_catalogue
+def test_a_theme_s_whole_name_is_that_theme_first() -> None:
+    said = found("city", "castle", "pirates", "friends", "marvel", "ninjago", "dinosaurs")
+    # "city" was NINJAGO City, then Lost City; "castle" had Hogwarts third,
+    # "pirates" a Creator ship, "friends" an Icons set, "marvel" a mosaic.
+    for q, theme in (("city", "City"), ("castle", "Castle"), ("pirates", "Pirates"), ("friends", "Friends"),
+                     ("marvel", "Super Heroes Marvel"), ("ninjago", "Ninjago")):
+        assert all(one["theme"] == theme for one in said[q]["top"][:5]), (q, said[q]["top"][:5])
+    # Every LEGO City set before NINJAGO City.
+    city = node("""
+import { setCatalog } from "./api/_sets.js";
+import { byKey, search } from "./api/_search.js";
+const ordered = search(setCatalog().sets, "city").found.sort(byKey).map((one) => one.item);
+const at = ordered.findIndex((one) => one.set === "70620-1");
+console.log(JSON.stringify({ at, before: ordered.slice(0, at).map((one) => one.theme) }));
+""")
+    assert city["at"] > 1000
+    assert all("City" in theme or "World City" in theme for theme in city["before"])
+    # A word that is mostly not its theme's is found anywhere: the dinosaurs
+    # of every theme, not 2001's Dinosaurs theme first.
+    assert said["dinosaurs"]["top"][0]["set"] == "76968-1"
+
+
+@needs_catalogue
+def test_trains_are_today_s_trains() -> None:
+    said = found("trains", "train")
+    # Was 1969's Train Set, then 1964's Train.
+    for q in ("trains", "train"):
+        assert all(one["year"] >= 2015 and "Train" in one["name"] for one in said[q]["top"][:3]), said[q]["top"][:3]
+        assert all(one["year"] >= 2010 for one in said[q]["top"][:5]), said[q]["top"][:5]
 
 
 @needs_catalogue

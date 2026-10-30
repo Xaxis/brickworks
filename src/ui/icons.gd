@@ -78,6 +78,25 @@ static func picture(path: String, tall: float, at_density: float) -> TextureRect
 	return shown
 
 
+## A control's icon so many units tall at this density: the picture drawn
+## at the pixels it is shown at, and said to be [param tall] units, so a
+## Button, a menu or a tree shows it that tall at any density. They draw an
+## icon a texel to a unit, and icon_max_width only shrinks one: where a unit
+## is less than a pixel the icons came out that much smaller, half size at
+## a phone's size and one pixel to the point (0.54; phone, 2026-10-30).
+static func icon_for(path: String, tall: float, at_density: float) -> ImageTexture:
+	var drawn: ImageTexture = texture_for(path, tall, at_density)
+	if drawn == null:
+		return null
+	var key: String = "%s@%d=%d" % [path, drawn.get_height(), roundi(tall)]
+	if not _textures.has(key):
+		var sized := ImageTexture.create_from_image(drawn.get_image())
+		sized.set_size_override(Vector2i(maxi(roundi(tall * drawn.get_width() / drawn.get_height()), 1),
+			maxi(roundi(tall), 1)))
+		_textures[key] = sized
+	return _textures[key]
+
+
 ## The texture for a picture so many units tall at this density, made
 ## once and kept.
 static func texture_for(path: String, tall: float, at_density: float) -> ImageTexture:
