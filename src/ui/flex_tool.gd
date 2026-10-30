@@ -420,10 +420,36 @@ func _aim(at: Vector2) -> void:
 		_hover = Flex.aimed(_anchors_now(), ray[0], ray[1], before)
 	elif stage == "sprockets" and hit.is_valid():
 		_hover_sprocket = Flex.sprocket_of(world.get_brick(hit.brick_id), library)
-	elif stage == "pulleys" and hit.is_valid() and not _item_bricks().has(hit.brick_id):
-		_hover_round = Bands.round_of(world.get_brick(hit.brick_id), library,
-			ray[0] + ray[1] * hit.distance)
+	elif stage == "pulleys" and hit.is_valid():
+		_hover_round = _round_near(ray[0] + ray[1] * hit.distance)
 	_draw()
+
+
+## The round thing a band would go round at [param point], where the
+## pointer meets the model: a pulley, a bush or a wheel there before an
+## axle, which a click on a bush's hole meets first, and before the band's
+## own pieces.
+func _round_near(point: Vector3) -> Bands.Round:
+	var skip: Dictionary = _item_bricks()
+	var cell: Vector3i = BrickLattice.to_cell(point)
+	var seen: Dictionary = {}
+	var best: Bands.Round = null
+	var best_gap: float = INF
+	for dx: int in range(-2, 3):
+		for dy: int in range(-2, 3):
+			for dz: int in range(-2, 3):
+				for brick_id: int in builder.lattice.bricks_at(cell + Vector3i(dx, dy, dz)):
+					if seen.has(brick_id) or skip.has(brick_id):
+						continue
+					seen[brick_id] = true
+					var round: Bands.Round = Bands.round_of(world.get_brick(brick_id), library, point)
+					if round == null:
+						continue
+					var gap: float = round.centre.distance_to(point) + (1000.0 if round.reach > 0.0 else 0.0)
+					if gap < best_gap:
+						best_gap = gap
+						best = round
+	return best
 
 
 ## A click: an end, a sprocket in or out of the loop.
@@ -1139,6 +1165,21 @@ func _moves_in(step: Dictionary, moved: Dictionary, touched: Dictionary) -> void
 ## A band laid again round its round things where they now stand, if a step
 ## moved one ([param moved], as [method _moves_in] gives); else null.
 func _band_followed(pieces: Array, moved: Dictionary) -> Flex.Laid:
+	# Only a band a moved part stood in the loop of is read: reading one
+	# looks at every part near it.
+	var box := AABB((pieces[0]["at"] as Transform3D).origin, Vector3.ZERO)
+	for piece: Dictionary in pieces:
+		box = box.expand((piece["at"] as Transform3D).origin)
+	box = box.grow(4.0)
+	var near: bool = false
+	for brick_id: int in moved:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id) if brick != null else null
+		if mesh != null and (((moved[brick_id] as Array)[0] as Transform3D) * mesh.bounds).intersects(box):
+			near = true
+			break
+	if not near:
+		return null
 	var read: Dictionary = _band_read(pieces, moved)
 	if not bool(read["moved"]) or (read["rounds"] as Array).size() < 2:
 		return null

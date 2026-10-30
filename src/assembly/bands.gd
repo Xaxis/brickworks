@@ -133,7 +133,8 @@ static var _shapes: Dictionary = {}
 ## round an axle, as near [param near] along it as it reaches.
 static func round_of(brick: BrickWorld.Brick, library: PartLibrary, near: Variant = null,
 		at: Variant = null) -> Round:
-	if brick == null or library == null:
+	# A band's own piece, or a spring's, is no pulley.
+	if brick == null or library == null or is_piece_id(brick.part_id):
 		return null
 	var shape: Dictionary = shape_of(library, brick.part_id)
 	if shape.is_empty():
@@ -207,18 +208,17 @@ static func _measure(mesh: Lbm.PartMesh) -> Dictionary:
 	var bins: int = ceili((high - low) / PROFILE_STEP) + 1
 	var farthest := PackedFloat32Array()
 	farthest.resize(bins)
-	var sectors: Array = []
-	for n: int in bins:
-		var row := PackedFloat32Array()
-		row.resize(8)
-		sectors.append(row)
+	# Each bin's farthest in each eighth of a turn, bin by bin: one array, a
+	# packed array in an Array being a copy each time it is read.
+	var sectors := PackedFloat32Array()
+	sectors.resize(bins * 8)
 	var outer: float = 0.0
 	for point: Vector3 in points:
 		var n: int = clampi(roundi((point.x - low) / PROFILE_STEP), 0, bins - 1)
 		var r: float = Vector2(point.y, point.z).length()
 		farthest[n] = maxf(farthest[n], r)
 		var sector: int = posmod(floori((atan2(point.z, point.y) + PI / 8.0) / (PI / 4.0)), 8)
-		(sectors[n] as PackedFloat32Array)[sector] = maxf((sectors[n] as PackedFloat32Array)[sector], r)
+		sectors[n * 8 + sector] = maxf(sectors[n * 8 + sector], r)
 		outer = maxf(outer, r)
 	if outer < 1.0:
 		return {}
@@ -254,14 +254,12 @@ static func _measure(mesh: Lbm.PartMesh) -> Dictionary:
 	var widest: float = 0.0
 	var narrowest: float = INF
 	for n: int in range(maxi(first - margin, 0), mini(last + margin, bins - 1) + 1):
-		var row: PackedFloat32Array = sectors[n]
 		for k: int in 8:
-			if row[k] > 0.0:
-				widest = maxf(widest, row[k])
+			widest = maxf(widest, sectors[n * 8 + k])
 	for k: int in 8:
 		var best: float = 0.0
 		for n: int in range(maxi(first - margin * 2, 0), mini(last + margin * 2, bins - 1) + 1):
-			best = maxf(best, (sectors[n] as PackedFloat32Array)[k])
+			best = maxf(best, sectors[n * 8 + k])
 		narrowest = minf(narrowest, best)
 	if widest <= 0.0 or narrowest < widest * ROUND_ENOUGH:
 		return {}
