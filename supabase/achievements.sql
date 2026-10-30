@@ -174,6 +174,10 @@ $$;
 -- replies.sql's; and each level they reached (kind 'achievement', [model]
 -- null): a row a track each time levels were written down, its highest,
 -- [read] once its group was opened.
+-- REPLACED LATER: challenge_notices.sql replaces this function (the
+-- challenges). Apply challenge_notices.sql again right after this file:
+-- tools/apply_sql.mjs refuses it alone, unless
+-- --again=supabase/challenge_notices.sql.
 create or replace function public.notification_rows(viewer uuid, since timestamptz, until timestamptz)
 returns table (kind text, at timestamptz, model text, item jsonb)
 language sql

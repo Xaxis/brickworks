@@ -477,7 +477,9 @@ const FEED_SEEN = "2026-10-14T00:00:00Z";
 // Sam's notifications (supabase/notifications.sql notification_list): what
 // happened to the tram and the bakery, newest first; the tram's group
 // opened since its photo, so only its newer rows are unread. And a level
-// reached (supabase/achievements.sql), its group not opened yet.
+// reached (supabase/achievements.sql), its group not opened yet; and the
+// challenges (supabase/challenge_notices.sql): who won September's, which
+// Sam voted in, read, and October's opening, not opened yet.
 const NOTICES = [
   { kind: "achievement", at: "2026-10-16T12:00:00Z", on: null, track: "designer", level: 2, of: 6, reached: 3, next: 10,
     read: false },
@@ -493,6 +495,10 @@ const NOTICES = [
     title: "Main Street September", way: "hand", won: true, votes: 9 },
   { kind: "likes", at: "2026-10-01T20:15:00Z", on: "SamModel02", model: "SamModel02", name: "Corner Bakery", likes: 1,
     day: "2026-10-01" },
+  { kind: "challenge_won", at: "2026-10-01T09:00:00Z", on: null, challenge: 2, title: "Castle September", ends_on: "2026-09-30",
+    test: false, picked: false, read: true },
+  { kind: "challenge_open", at: "2026-10-01T00:00:00Z", on: null, challenge: 3, title: "Off-world October", ends_on: "2026-10-31",
+    test: false, read: false },
 ];
 
 // This month's challenge (supabase/challenges.sql), open, two entries in
@@ -843,6 +849,8 @@ const RPC = {
   achievement_levels: ({ account, tests }) => achievementLevels(account, tests === true),
   achievement_mark: () => 0,
   achievement_read: () => ({ read: 0 }),
+  // supabase/challenge_notices.sql
+  challenge_read: () => ({ read: true }),
   follow_state: ({ asker, wanted }) => followState(asker || null, wanted),
   follow_list: ({ wanted }) => followList(wanted),
   // supabase/collection_follows.sql

@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, lib:achievements with levels, ui:your achievements tab, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, lib:achievements with levels, lib:challenge notices, ui:your achievements tab, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow -->
 
 ## Sub-features
 
@@ -1264,10 +1264,18 @@ plan with Claude as the client.
   "", no picture, link `/profile?tab=achievements`, unread until opened:
   each row's `read`); `?op=notifications` and `?op=feed_count` write down
   any level reached first (`achievement_mark`, so it is counted at once).
+  Since `supabase/challenge_notices.sql`, `challenge_open`,
+  `challenge_closing` and `challenge_won` ("“X” is open: enter by the end
+  of 31 October", "The last two days to enter “X”: it closes at the end of
+  31 October", "“X” has ended, and a model you voted for won" or "…: see
+  who won"), a group a challenge (`challenge` its id, `model` "", no
+  picture, name "Challenge: X", link `/challenge?id=N`, `&tests=1` for a
+  test one, unread until opened: each row's `read`).
   `POST ?op=notifications_read {model}` (that group read), `{achievements:
-  true}` (the achievements' group read, `achievement_read`) or `{all:
-  true}` (Mark all read; also clears the count); a model not yours 404,
-  not an id 400.
+  true}` (the achievements' group read, `achievement_read`), `{challenge:
+  N}` (that challenge's, `challenge_read`; no such 404, not a number 400;
+  `kept: false` before the file) or `{all: true}` (Mark all read; also
+  clears the count); a model not yours 404, not an id 400.
   `GET ?op=feed_count` adds `notifications`, `feed` and `me`; `count` is
   the two together (the app's Account reads only `count`). The feed's count
   is only what came after each follow (`feed_new_count`,
@@ -1289,7 +1297,10 @@ plan with Claude as the client.
   `h2` name, `ul.lines` (`li[data-kind]`, an avatar for a person, the like
   or award icon otherwise, New since the last opening, the time); the
   achievements' group `li.notice[data-achievements]`, "Your achievements",
-  the award icon in its `.pic.award`; `#all-read`
+  the award icon in its `.pic.award`; a challenge's
+  `li.notice[data-challenge]`, "Challenge: X", the brick icon in its
+  `.pic.challenge`, its rows the brick (open, last days) or award (who
+  won) icon; `#all-read`
   while any is unread; `#empty` with its ways in; `#not-yet`; signed out,
   Sign in. `html[data-notifications]` is `ready`, `signed-out` or
   `failed`.
@@ -1621,7 +1632,15 @@ plan with Claude as the client.
   You voted in this group, Your entry). `dataset.challenge` is `open`,
   `upcoming`, `ended`, `none`, `not-yet` or `broken`. The gallery's front
   line is `#challenge-line` (`web/gallery.js` `sayChallenge`); a card that
-  won has `small.won` (`data-won`).
+  won has `small.won` (`data-won`). `/challenge?id=N` (tools/deploy.sh routes it,
+  after the site's own headers, to `/api/people?op=challenge_page`; the
+  function holds the page as `_challenge.html`) is the same page with
+  challenge N's own head (`api/_challenges.js` `challengeHead`): title
+  "X · Brickworks challenge", its brief and days ("Open …", "From …", "Ran
+  …: see who won."), its own canonical and `og:url`, the first winner's
+  `/m/<id>.png` (else `/share.png`); a test one `noindex`, and only with
+  `tests=1`; one not there keeps the page's own head. The challenges browser
+  flow reads it raw.
 - `enter this month's challenge` (`web/model-page.js` `challengeEntry`,
   `enterDialog`): for the model's own designer, signed in, `#challenge-entry`
   after `#marks`: Enter this month's challenge (`button[data-enter]`), a
@@ -1702,6 +1721,25 @@ plan with Claude as the client.
   `PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs
   supabase/achievements.sql --dry --try=tools/achievements_try.sql
   --table=achievement_marks`.
+- `challenge notices` (`supabase/challenge_notices.sql`, **not applied to
+  the live project** until the lead applies it; after `achievements.sql`,
+  whose `notification_rows` it replaces, guarded in `supabase/later.tsv`):
+  `notification_rows` adds `challenge_open` (at the first day's start, or
+  when it was told if later) and `challenge_closing` (the start of its last
+  two days; not for an entrant, nor a challenge of two days or fewer), each
+  for an account that may enter (`trust_may_go_public`, not taken out), made
+  before then, a test account only of test challenges, never once it was
+  ended; and `challenge_won` at `settled_at` for a voter who entered nothing
+  (`picked` when a model they voted for won); `[model]` null, each `[read]`
+  from `challenge_reads` (account, challenge, at; cascading from both).
+  `challenge_read(viewer, challenge)` ({read}, or refused `sign_in` /
+  `nobody`); the service role alone. Dry run (with achievements.sql while it
+  is not applied): `PG_MODULE=<pg>/lib/index.js node --env-file=.env
+  tools/apply_sql.mjs supabase/achievements.sql
+  --again=supabase/challenge_notices.sql --dry
+  --try=tools/challenge_notices_try.sql --table=challenge_reads`. On a
+  deployment, the challenges browser flow's Ed (voted, entered nothing) has
+  who won in his Notifications once the file is applied.
 - `your achievements tab` (`web/profile.js` `drawAchievements`,
   `web/profile.html` `data-panel="achievements"`, `.achievements-list` in
   `web/directory.css`): `/profile?tab=achievements`, only once `levels` is

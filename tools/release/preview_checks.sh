@@ -105,8 +105,9 @@ declare -A CMD=(
   [designers]="tools/web/designers_flow.mjs --url=$P --out=$S/${TAG}_designers"
   # The monthly challenge: set on /admin?tests=1 (a test one, which no
   # visitor sees), entered from a model's page with each broken rule named,
-  # voted in its two groups, ended and won: API routes only, with the bypass
-  # (supabase/challenges.sql).
+  # voted in its two groups, ended and won, the winners told to a voter in
+  # Notifications, and its link's own head: API routes only, with the bypass
+  # (supabase/challenges.sql, supabase/challenge_notices.sql).
   [challenges]="tools/web/challenges_flow.mjs --url=$P --out=$S/${TAG}_challenges"
   # Play in a shared model's view: 8808-1's steering turned by its wheel,
   # by the mouse at 1280 px and a finger at 390, and Reset; the drag's own

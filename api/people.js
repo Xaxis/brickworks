@@ -96,7 +96,7 @@
 //   GET  ?op=notifications        (session) what happened to the caller's
 //                                 models, grouped by model; opening it
 //                                 clears its count (api/_notifications.js)
-//   POST ?op=notifications_read   (session) {model} or {all: true}: read
+//   POST ?op=notifications_read   (session) {model}, {challenge}, {achievements: true} or {all: true}: read
 //   GET  ?op=designs              (session) the caller's own models' last 30
 //                                 days: opens, builds finished, remixes,
 //                                 comments, and who built them; &handle=X
@@ -106,6 +106,8 @@
 //                                 rules, its entries in their two groups and
 //                                 once it ended its winners; with the
 //                                 session, whom the caller voted for
+//   GET  ?op=challenge_page&id=N  /challenge?id=N: the page itself, its head
+//                                 challenge N's own (api/_challenges.js)
 //   GET  ?op=challenge_entry&id=X (session) the challenge open now, for X's
 //                                 own designer: whether X is in, and what its
 //                                 rules say of X
@@ -207,7 +209,7 @@ import { FIRST_SCREEN, cardHtml, marksOf, quietMarks } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
 import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, levelAwards, shareSheetHtml } from "./_card.js";
-import { challenge, challengeEntry, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
+import { PAGE_CACHE, challenge, challengeEntry, challengePageHtml, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
@@ -1156,6 +1158,20 @@ const TABS = [["models", "Models"], ["builds", "Builds"], ["collections", "Colle
 /// not in it: web/designs.js asks for them with their sign-in and puts them
 /// in #designs-mine, so this page, which the CDN keeps, is the same for
 /// everybody.
+/// /challenge?id=N (tools/deploy.sh): the challenge page with challenge
+/// N's own title, words and picture in its head (api/_challenges.js
+/// challengeHead). Its security policy and the rest are the route's, the
+/// same as the page served alone.
+async function challengePage(request, response) {
+  const origin = originOf(request);
+  const tests = testsAsked(request.query);
+  const id = /^[1-9][0-9]{0,15}$/.test(String(request.query?.id || "")) ? Number(request.query.id) : null;
+  const body = await challengePageHtml(origin, id, tests);
+  response.setHeader("Content-Type", "text/html; charset=utf-8");
+  response.setHeader("Cache-Control", tests ? TESTS_CACHE : PAGE_CACHE);
+  return response.status(200).end(body);
+}
+
 async function profilePage(request, response) {
   const origin = originOf(request);
   const handle = String(request.query?.handle || "").toLowerCase();
@@ -1448,6 +1464,7 @@ export default async function handler(request, response) {
       if (op === "me") return await me(request, response);
       if (op === "profile") return await profile(request, response);
       if (op === "page") return await profilePage(request, response);
+      if (op === "challenge_page") return await challengePage(request, response);
       if (op === "likes") return await likes(request, response);
       if (op === "avatar") return await avatarServe(request, response);
       if (op === "marks") return await marks(request, response);

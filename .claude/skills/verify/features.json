@@ -128,7 +128,9 @@
       "entry": "api/people.js",
       "reach": "curl -s 'https://brickworks.diy/api/people?op=profile&handle=<handle>'   (and /u/<handle>, /c/<id>; ?op=me, like, favourite, collection, collect with a session)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_challenge_notices.py"
+      ]
     },
     {
       "id": "api:GET/POST /api/share",
@@ -1800,7 +1802,9 @@
       "entry": "src/dev/sign_in.gd",
       "reach": "godot --headless --path . --script src/dev/sign_in.gd -- you@example.com   (needs .env)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_challenge_notices.py"
+      ]
     },
     {
       "id": "cli:signup check",
@@ -2204,6 +2208,7 @@
       "reach": "godot --headless --path . --script src/dev/responsive_probe.gd",
       "area": "assistant",
       "tests": [
+        "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
     },
@@ -2290,6 +2295,7 @@
       "reach": "godot --headless --path . --script src/dev/section_probe.gd",
       "area": "geometry",
       "tests": [
+        "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
     },
@@ -2384,6 +2390,14 @@
       "tests": [
         "tests/test_steps_score.py"
       ]
+    },
+    {
+      "id": "lib:challenge notices",
+      "kind": "lib",
+      "entry": "supabase/challenge_notices.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/achievements.sql --again=supabase/challenge_notices.sql --dry --try=tools/challenge_notices_try.sql --table=challenge_reads   (after achievements.sql; the promises in tests/test_challenge_notices.py; then the challenges browser flow, whose Ed hears who won)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "lib:challenges between months",
@@ -2488,6 +2502,7 @@
       "reach": "godot --headless --path . --script src/dev/rules_probe.gd",
       "area": "assistant",
       "tests": [
+        "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
     },
@@ -2874,6 +2889,7 @@
       "reach": "godot --headless --path . --script src/dev/reference_probe.gd",
       "area": "assistant",
       "tests": [
+        "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
     },
@@ -3304,6 +3320,7 @@
       "reach": "godot --path .  (Mosaic from a picture, then Design with Claude; or ask the assistant for a LEGO Art picture)",
       "area": "view",
       "tests": [
+        "tests/test_challenge_notices.py",
         "tests/test_realset.py"
       ]
     },
@@ -3313,7 +3330,9 @@
       "entry": "api/people.js",
       "reach": "https://brickworks.diy/u/<handle of somebody with a model in the gallery>   (or a local relay_server.mjs --hold=model_opens, /u/<handle>?tests=1 for a test account's; the tiles, Start with their most built, Built by others, the cards by Top builds)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_challenge_notices.py"
+      ]
     },
     {
       "id": "ui:a lighter look where frames are slow",
@@ -3371,7 +3390,9 @@
       "entry": "api/people.js",
       "reach": "https://brickworks.diy/u/<handle> and /profile: ul.awards under the numbers, a challenge won then a level a track (achievementsOf, levelAwards; GET /api/people?op=profile says achievements and levels); the profile browser flow",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_challenge_notices.py"
+      ]
     },
     {
       "id": "ui:admin page",
@@ -3525,7 +3546,9 @@
       "entry": "api/people.js",
       "reach": "https://brickworks.diy/collections  (?sort=followed, ?page=N, ?tests=1; supabase/collection_directory.sql; linked from the gallery's tabs and the footer)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_challenge_notices.py"
+      ]
     },
     {
       "id": "ui:colour the hidden parts",
@@ -4038,6 +4061,7 @@
       "area": "model-io",
       "tests": [
         "tests/test_achievements.py",
+        "tests/test_challenge_notices.py",
         "tests/test_sets.py"
       ]
     },
@@ -4127,7 +4151,9 @@
       "entry": "api/people.js",
       "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen in Edit profile on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_challenge_notices.py"
+      ]
     },
     {
       "id": "ui:properties panel",
@@ -4532,9 +4558,10 @@
       "id": "ui:this month's challenge page",
       "kind": "ui",
       "entry": "web/challenge.js",
-      "reach": "https://brickworks.diy/challenge   (?tests=1 for the flows' test challenge; GET /api/people?op=challenge, with the sign-in for your votes; POST ?op=vote)",
+      "reach": "https://brickworks.diy/challenge   (?tests=1 for the flows' test challenge; ?id=N one challenge, its head its own (api/people.js ?op=challenge_page); GET /api/people?op=challenge, with the sign-in for your votes; POST ?op=vote)",
       "area": "web",
       "tests": [
+        "tests/test_challenge_notices.py",
         "tests/test_challenges.py"
       ]
     },
@@ -4682,6 +4709,7 @@
       "area": "web",
       "tests": [
         "tests/test_achievements.py",
+        "tests/test_challenge_notices.py",
         "tests/test_sets.py"
       ]
     },

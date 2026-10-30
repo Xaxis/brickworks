@@ -9,8 +9,8 @@
 //                                clears the count on the avatar
 //   POST ?op=notifications_read  (session) {model}: that model's read, as
 //                                its group is opened; {achievements: true}:
-//                                the achievements' group read; {all: true}:
-//                                Mark all read
+//                                the achievements' group read; {challenge}:
+//                                that challenge's; {all: true}: Mark all read
 //   GET  ?op=feed_count          (session) {count, notifications, feed, me}:
 //                                what is new for the avatar (the two
 //                                together, as the app's Account says it),
@@ -23,7 +23,9 @@
 // that model. Since achievements.sql, each level of an achievement you
 // reached, in a group of their own: a level is written down as the
 // avatar's count is asked for (achievement_mark), so a page opened after
-// it is reached tells it. Nothing says who followed you: a
+// it is reached tells it. Since challenge_notices.sql, a challenge
+// opening, its last two days (not once you entered it) and, if you voted
+// in it, who won, in a group a challenge. Nothing says who followed you: a
 // follow tells nobody anything (supabase/follows.sql).
 //
 // Until notifications.sql is applied its functions are not there (404),
@@ -66,6 +68,12 @@ const quoted = (text, most) => {
 // ---------------------------------------------------------------------------
 // Pure: what a notification says, and how they are grouped.
 
+/// "3 October", for a day as YYYY-MM-DD (UTC); "" for none.
+const dateWords = (day) => {
+  const at = Date.parse(`${day}T00:00:00Z`);
+  return Number.isFinite(at) ? new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" }) : "";
+};
+
 /// "today", "yesterday" or "on 3 October", for a day as YYYY-MM-DD (UTC).
 export function dayWords(day, now = Date.now()) {
   const at = Date.parse(`${day}T00:00:00Z`);
@@ -73,11 +81,18 @@ export function dayWords(day, now = Date.now()) {
   const today = Math.floor(now / DAY) * DAY;
   if (at === today) return "today";
   if (at === today - DAY) return "yesterday";
-  return `on ${new Date(at).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" })}`;
+  return `on ${dateWords(day)}`;
 }
 
+/// What a challenge tells everybody who may enter it, or who voted in it.
+const CHALLENGE = new Set(["challenge_open", "challenge_closing", "challenge_won"]);
+
+/// A challenge's own page, a test one's as a test asks for it.
+const challengeLink = (row, origin) =>
+  `${origin}/challenge?id=${Number(row.challenge) || 0}${row.test === true ? "&tests=1" : ""}`;
+
 /// One notification as a person reads it: {kind, at, who, by, did, said,
-/// link}. [who] is whoever did it (null for likes and a challenge's end,
+/// link}. [who] is whoever did it (null for likes and the challenges',
 /// which name nobody); [did] the rest of the line; [said] their words.
 export function noticeSaid(row, origin = "", now = Date.now()) {
   const by = row.by && row.by.handle ? { handle: row.by.handle, name: quoted(row.by.name, 40) } : null;
@@ -112,6 +127,14 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
     return { ...base, who: "You", did: `reached ${levelName(row.track, row.reached)}, level ${level} of ${Number(row.of) || level}`,
       link: `${origin}/profile?tab=achievements` };
   }
+  if (CHALLENGE.has(row.kind)) {
+    const title = quoted(row.title || "the challenge", 80);
+    const ends = dateWords(row.ends_on);
+    const did = row.kind === "challenge_open" ? `“${title}” is open: enter by the end of ${ends}`
+      : row.kind === "challenge_closing" ? `The last two days to enter “${title}”: it closes at the end of ${ends}`
+      : row.picked === true ? `“${title}” has ended, and a model you voted for won` : `“${title}” has ended: see who won`;
+    return { ...base, did, link: challengeLink(row, origin) };
+  }
   if (row.kind === "result") {
     const title = quoted(row.title || "the challenge", 80);
     const way = row.way === "assistant" ? "with the assistant" : "by hand";
@@ -130,8 +153,9 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
 /// fresh}. A row is new when it came after the list was last opened
 /// ([seen_at]; never opened, all are), and unread until its model's group
 /// was opened after it ([reads]) or everything was marked read ([read_at]).
-/// The levels reached are a group of their own, [achievements] true, with
-/// no model and no picture, unread until it was opened (each row's [read]).
+/// The levels reached are a group of their own, [achievements] true, and
+/// each challenge's notices one too, [challenge] its id: no model and no
+/// picture, each unread until it was opened (each row's [read]).
 export function noticeGroups(page, origin = "", now = Date.now()) {
   const rows = Array.isArray(page?.rows) ? page.rows : [];
   const models = page?.models && typeof page.models === "object" ? page.models : {};
@@ -143,10 +167,11 @@ export function noticeGroups(page, origin = "", now = Date.now()) {
   let fresh = 0;
   for (const row of rows) {
     const levelled = row.kind === "achievement";
-    const on = levelled ? "achievements" : String(row.on || "");
-    if (!levelled && !ID.test(on)) continue;
+    const challenge = CHALLENGE.has(row.kind) ? Number(row.challenge) || 0 : 0;
+    const on = levelled ? "achievements" : challenge ? `challenge-${challenge}` : String(row.on || "");
+    if (!levelled && !challenge && !ID.test(on)) continue;
     const at = Date.parse(row.at);
-    const readTo = levelled ? (row.read === true ? Infinity : allRead)
+    const readTo = levelled || challenge ? (row.read === true ? Infinity : allRead)
       : Math.max(allRead, reads[on] ? Date.parse(reads[on]) : -Infinity);
     const said = { ...noticeSaid(row, origin, now), new: seen === null || at > seen, unread: at > readTo };
     if (said.unread) unread += 1;
@@ -154,6 +179,10 @@ export function noticeGroups(page, origin = "", now = Date.now()) {
     if (levelled && !groups.has(on)) {
       groups.set(on, { model: "", achievements: true, name: "Your achievements", picture: null,
         link: `${origin}/profile?tab=achievements`, at: row.at, new: false, unread: false, rows: [] });
+    }
+    if (challenge && !groups.has(on)) {
+      groups.set(on, { model: "", challenge, name: `Challenge: ${quoted(row.title || "a challenge", 80)}`, picture: null,
+        link: challengeLink(row, origin), at: row.at, new: false, unread: false, rows: [] });
     }
     if (!groups.has(on)) {
       const card = models[on] || {};
@@ -227,8 +256,14 @@ export async function notificationsRead(request, response) {
     const said = await call("achievement_read", { viewer: asker }, () => ({ missing: true }));
     return response.status(200).json({ read: !said?.missing, kept: !said?.missing });
   }
+  if (body.challenge !== undefined) {
+    if (!Number.isSafeInteger(body.challenge) || body.challenge < 1) throw new Unacceptable("say which challenge, by its number");
+    const said = await call("challenge_read", { viewer: asker, challenge: body.challenge }, () => ({ missing: true }));
+    if (said?.refused) throw new Unacceptable("There is no such challenge.", 404);
+    return response.status(200).json({ read: !said?.missing, kept: !said?.missing });
+  }
   const model = body.all === true ? null : String(body.model ?? "");
-  if (model !== null && !ID.test(model)) throw new Unacceptable("say which model, achievements: true or all: true");
+  if (model !== null && !ID.test(model)) throw new Unacceptable("say which model or challenge, achievements: true or all: true");
   const said = await call("notification_read", { viewer: asker, model }, () => ({ missing: true }));
   if (said && said.missing) {
     // Nothing is kept as read before the file; all read is the feed opened.

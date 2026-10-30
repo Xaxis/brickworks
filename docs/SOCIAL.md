@@ -868,6 +868,21 @@ hold each level. With one designer in the gallery every share would read
 100% or 0%, which says nothing; it is worth adding once there are a few
 hundred designers.
 
+**3 as built** (supabase/challenge_notices.sql): Notifications tell every
+account that may enter (13 or over, not taken out of the gallery) when a
+challenge opens, or when it is told if that is later, and again at the
+start of its last two days unless they entered; and whoever voted without
+entering when its winners are named, saying whether a model they voted for
+won (an entrant already hears it under their model). Each challenge's
+notices are a group of their own, its link the challenge's page, read once
+opened; nothing is kept but when each was read, the rest read from the
+challenges as they are. An account hears only of what came after it was
+made, so a new account is not handed a backlog. Not built: an email when a
+challenge opens. The day's email already tells what is new; a second email
+a month would be the first one the site sends unasked. The challenge's own
+link preview (its title in the card a chat app draws) waits on the share
+sheet's next pass: /challenge's tags are the page's, not each challenge's.
+
 ## Sources
 
 Read 2026-10-22. Where a site refused automated reading, the claim is

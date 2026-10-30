@@ -503,10 +503,12 @@ is on the page, `hidden`, for the script to show.
 - **Notifications** (`/notifications`, `web/directory.css`): `.notices`,
   a list of `.notice` cards, one a model: its 4:3 `.pic`, its name as an
   `h2` at `--t-body`, and `.lines`, each a link with an avatar (who did
-  it) or an icon (likes, a challenge's end, a level reached), `.what` its
-  words, a New `.pill`, a quote and the time. The levels you reached are a
-  card of their own, "Your achievements", the award icon at 40% in its
-  `.pic.award` where a model's picture is. Not opened yet: `.unread`, edged in
+  it) or an icon (likes, a challenge's end, a level reached, a challenge
+  opening), `.what` its words, a New `.pill`, a quote and the time. The
+  levels you reached are a card of their own, "Your achievements", the
+  award icon at 40% in its `.pic.award` where a model's picture is; each
+  challenge you heard of is one too, "Challenge: <title>", the brick icon
+  the same way in its `.pic.challenge`. Not opened yet: `.unread`, edged in
   `--accent-edge` with a `.dot`. The page's head is `.notices-head` (the
   title and Mark all read); `/notifications` and `/feed` share one `.tabs`
   row, each tab's count in `.n`, hidden at none.

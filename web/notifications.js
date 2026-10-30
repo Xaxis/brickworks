@@ -2,9 +2,11 @@
 // what happened to your models, from /api/people?op=notifications, one
 // group a model with its picture, the newest group first: comments, photos
 // of builds, remixes, likes as a number a day (never who), a challenge's
-// end; and each level of an achievement you reached, in a group of their
-// own with the award in the picture's place, its link your profile's
-// Achievements tab. Opening the page clears the count on your avatar (the
+// end; each level of an achievement you reached, in a group of their own
+// with the award in the picture's place, its link your profile's
+// Achievements tab; and a challenge opening, its last two days and who won
+// it, a group a challenge with a brick in the picture's place, its link
+// the challenge's page. Opening the page clears the count on your avatar (the
 // server marks it seen). A group stays marked unread until it is opened,
 // by any of its links, or Mark all read.
 //
@@ -32,7 +34,7 @@ const parsed = (html) => {
   return made.content.firstElementChild;
 };
 
-/// Its model's group (or the achievements') opened: read up to now, here at
+/// Its model's group (or the achievements', or a challenge's) opened: read up to now, here at
 /// once and on the server, which a link followed straight away does not
 /// wait for.
 async function read(group) {
@@ -44,7 +46,8 @@ async function read(group) {
   if (!access) return;
   fetch("/api/people?op=notifications_read", { method: "POST", keepalive: true,
     headers: { authorization: `Bearer ${access}`, "content-type": "application/json" },
-    body: JSON.stringify("achievements" in group.dataset ? { achievements: true } : { model: group.dataset.model }) })
+    body: JSON.stringify("achievements" in group.dataset ? { achievements: true }
+      : group.dataset.challenge ? { challenge: Number(group.dataset.challenge) } : { model: group.dataset.model }) })
     .catch(() => null);
   allRead();
 }
@@ -63,7 +66,8 @@ function line(one) {
   if (one.by && one.by.handle) {
     link.append(parsed(avatarHtml({ handle: one.by.handle, name: one.by.name, picture: one.by.picture }, { size: "small" })));
   }
-  else link.append(parsed(iconHtml(["result", "achievement"].includes(one.kind) ? "award" : one.kind === "likes" ? "like" : "comment")));
+  else link.append(parsed(iconHtml(["result", "achievement", "challenge_won"].includes(one.kind) ? "award"
+    : ["challenge_open", "challenge_closing"].includes(one.kind) ? "build" : one.kind === "likes" ? "like" : "comment")));
   const words = document.createElement("span");
   words.className = "what";
   if (one.who) {
@@ -97,8 +101,9 @@ function group(one, i = 0) {
   item.className = `notice${one.unread ? " unread" : ""}`;
   item.dataset.model = String(one.model || "");
   if (one.achievements) item.dataset.achievements = "";
+  if (one.challenge) item.dataset.challenge = String(Number(one.challenge) || "");
   const picture = document.createElement("a");
-  picture.className = one.achievements ? "pic award" : "pic";
+  picture.className = one.achievements ? "pic award" : one.challenge ? "pic challenge" : "pic";
   picture.href = here(one.link);
   picture.tabIndex = -1;
   picture.setAttribute("aria-hidden", "true");
@@ -114,6 +119,7 @@ function group(one, i = 0) {
     picture.append(img);
   }
   if (one.achievements) picture.append(parsed(iconHtml("award")));
+  if (one.challenge) picture.append(parsed(iconHtml("build")));
   const body = document.createElement("div");
   body.className = "body";
   const title = document.createElement("h2");

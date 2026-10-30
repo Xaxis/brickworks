@@ -2770,7 +2770,7 @@
       "kind": "ui",
       "label": "this month's challenge page",
       "entry": "web/challenge.js",
-      "reach": "https://brickworks.diy/challenge   (?tests=1 for the flows' test challenge; GET /api/people?op=challenge, with the sign-in for your votes; POST ?op=vote)",
+      "reach": "https://brickworks.diy/challenge   (?tests=1 for the flows' test challenge; ?id=N one challenge, its head its own (api/people.js ?op=challenge_page); GET /api/people?op=challenge, with the sign-in for your votes; POST ?op=vote)",
       "area": "web"
     },
     {
@@ -3324,6 +3324,13 @@
       "label": "achievements with levels",
       "entry": "supabase/achievements.sql",
       "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/achievements.sql --dry --try=tools/achievements_try.sql --table=achievement_marks   (after replies.sql; the promises in tests/test_achievements.py; then the profile and notifications browser flows)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "challenge notices",
+      "entry": "supabase/challenge_notices.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/achievements.sql --again=supabase/challenge_notices.sql --dry --try=tools/challenge_notices_try.sql --table=challenge_reads   (after achievements.sql; the promises in tests/test_challenge_notices.py; then the challenges browser flow, whose Ed hears who won)",
       "area": "web"
     },
     {

@@ -259,6 +259,11 @@ for handler in api/*.js; do
   if [ "$route" = share ] || [ "$route" = people ]; then
     cp web/gallery.html "$fn/_site.html"
   fi
+  # /challenge?id=N is the challenge page with that challenge's own head
+  # (api/_challenges.js challengeHead), so a link to one shows it.
+  if [ "$route" = people ]; then
+    cp web/challenge.html "$fn/_challenge.html"
+  fi
   if [ "$route" = share ]; then
     # /sitemap.xml is made there: the site's own pages, from web/sitemap.xml,
     # and every listed model, profile and public collection.
@@ -506,6 +511,8 @@ $docs_moved
         "Content-Security-Policy": "$csp"
       },
       "continue": true },
+    { "src": "/challenge/?", "has": [ { "type": "query", "key": "id", "value": "[1-9][0-9]{0,15}" } ],
+      "dest": "/api/people?op=challenge_page" },
     { "src": "/(app|b/.*)",
       "headers": { "Cross-Origin-Opener-Policy": "same-origin" },
       "continue": true },

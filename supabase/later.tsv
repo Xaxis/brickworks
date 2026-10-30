@@ -27,3 +27,6 @@ made_with.sql	directory_card	modelled_by.sql	'modelled_by', m.modelled_by
 modelled_by.sql	modelled_by_ok	modelled_by_changed.sql	'name', 'page', 'changed'
 replies.sql	notification_rows	achievements.sql	'achievement'::text
 notifications.sql	notification_rows	achievements.sql	'achievement'::text
+notifications.sql	notification_rows	challenge_notices.sql	'challenge_open'::text
+replies.sql	notification_rows	challenge_notices.sql	'challenge_open'::text
+achievements.sql	notification_rows	challenge_notices.sql	'challenge_open'::text
