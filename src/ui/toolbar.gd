@@ -61,22 +61,22 @@ const GROUPS: Array = [
 const SAYS: Dictionary = {
 	"mode_place": "The last part back in hand: a click puts one down, and the next; a drag turns the view and puts nothing down. Esc or a right click lets go",
 	"mode_select": "Where the app rests. Click a part to select it, drag it to move it (Ctrl-drag copies it), drag anywhere else to turn the view, Ctrl-drag a box round several, Alt-click takes a part into hand",
-	"mode_move": "Click a part to pick it up — the whole selection, if it is in it — and click again to put it down",
-	"mode_rotate": "Click a part to turn it by the turn step; Shift-click turns it back",
+	"mode_move": "Click a part for its arrows and drag one to slide it along that axis; click it again to pick it up — the whole selection, if it is in it — and put it down elsewhere",
+	"mode_rotate": "Click a part for its rings and drag one to turn it about that axis, finer further out; click it again to turn it by the turn step, Shift-click back",
 	"mode_hinge": "Click a part on a hinge, clip or turntable to swing it about the joint",
 	"mode_connect": "A point on the part, then the point it goes on: with a part in hand, click the pin, hole or bar it goes on by, then the one it goes on. With nothing in hand, click a part of the model first",
 	"mode_clone": "Click a part to hold a copy of it, then click where the copy goes",
 	"mode_paint": "Click a part to paint it the colour in hand",
 	"mode_hide": "Click a part to hide it, to reach what is behind it",
 	"mode_delete": "Click a part to take it off",
-	"mode_orbit": "A left drag turns the view, wherever it starts. Esc or V is back to Select",
-	"mode_pan": "A left drag slides the view, wherever it starts. Esc or V is back to Select",
-	"mode_zoom": "A left drag up or down zooms; a click zooms in, Shift-click out. Esc or V is back to Select",
+	"mode_orbit": "A left drag turns the view, wherever it starts. Esc or {mode_select} is back to Select",
+	"mode_pan": "A left drag slides the view, wherever it starts. Esc or {mode_select} is back to Select",
+	"mode_zoom": "A left drag up or down zooms; a click zooms in, Shift-click out. Esc or {mode_select} is back to Select",
 	"fit": "Zoom to show the selection, or the whole model",
 	"history": "Every change so far, newest first: choose one to go back to before it",
 	"select": "Select by colour, by part, everything connected, or the opposite",
 	"snap": "What a part snaps to as it is put down, and how far the arrow keys move a selection",
-	"turn": "How far R and the Rotate tool turn a selection",
+	"turn": "How far {rotate_held} and the Rotate tool turn a selection",
 }
 
 const SNAP_CHOICES: Array = [["stud", "Stud"], ["half", "½ stud"],
@@ -204,7 +204,7 @@ func _tell(name: String) -> void:
 	if name == "turn":
 		var turn: String = shell.key_words("rotate_held")
 		button.tooltip_text = "Turn step%s\n%s" % [("   " + turn) if not turn.is_empty() else "",
-			SAYS["turn"]]
+			Keymap.filled(SAYS["turn"], true)]
 		button.accessibility_name = "Turn step" + ((", " + turn) if not turn.is_empty() else "")
 		return
 	if name == "snap":
@@ -214,7 +214,7 @@ func _tell(name: String) -> void:
 		"history": "History", "select": "Select by"}.get(name, name)
 	words = words.trim_suffix("…").trim_suffix(" tool")
 	var key: String = shell.key_words(name)
-	var says: String = SAYS.get(name, command.tip if command != null else "")
+	var says: String = Keymap.filled(SAYS.get(name, command.tip if command != null else ""), true)
 	button.tooltip_text = "%s%s%s" % [words, ("   " + key) if not key.is_empty() else "",
 		("\n" + says) if not says.is_empty() else ""]
 	button.accessibility_name = words + ((", " + key) if not key.is_empty() else "")
@@ -224,6 +224,7 @@ func _tell(name: String) -> void:
 func tell_keys() -> void:
 	for name: String in _buttons:
 		_tell(name)
+		_buttons[name].remove_meta("for_part")
 
 
 func _face(button: Button) -> void:
@@ -362,10 +363,11 @@ func _show_state() -> void:
 	if place != null and str(place.get_meta("for_part", "")) != held:
 		place.set_meta("for_part", held)
 		var info: PartLibrary.PartInfo = shell.library.parts.get(held)
-		place.tooltip_text = "Place %s   Q\n%s" % [
-			Inventory._tidy(info.name) if info != null else held, SAYS["mode_place"]]
-		place.accessibility_name = "Place %s, Q" % [
-			Inventory._tidy(info.name) if info != null else held]
+		var key: String = shell.key_words("mode_place")
+		place.tooltip_text = "Place %s%s\n%s" % [Inventory._tidy(info.name) if info != null else held,
+			("   " + key) if not key.is_empty() else "", SAYS["mode_place"]]
+		place.accessibility_name = "Place %s%s" % [Inventory._tidy(info.name) if info != null else held,
+			(", " + key) if not key.is_empty() else ""]
 	var snap_at: int = SNAP_CHOICES.map(func(c: Array) -> String: return str(c[0])).find(
 		shell.verbs.snap)
 	if _snap != null and snap_at >= 0 and _snap.selected != snap_at:

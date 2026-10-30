@@ -421,8 +421,8 @@ func _build_figure() -> Control:
 	column.add_child(buttons)
 	_actions = buttons
 	_button(buttons, "Keep", _keep, "Keep this figure to use again")
-	var place: Button = _button(buttons, "Place in model", _place,
-		"Stand it on a stud: point, R to turn it, click to put it down")
+	var place: Button = _button(buttons, "Place in model", _place, "")
+	Keymap.tell(place, "Stand it on a stud: point, {rotate_held|to turn it}, click to put it down")
 	place.add_theme_color_override("font_color", Color(1.0, 0.92, 0.55))
 
 	var kept := Label.new()

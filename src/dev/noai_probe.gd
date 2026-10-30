@@ -17,7 +17,7 @@
 ## Claude in Edit and on a part, View, Assistant and Tools, Claude connector,
 ## the Brick Art brief and Design with Claude, Claude in Account — and none
 ## by text: every control shown in the window, every row of every menu and
-## submenu and of the menu on a part, the tour's cards, About, the keys
+## submenu and of the menu on a part, Build your first model's lines, About, the keys
 ## list, the status bar, the parts list, Check stability's and Simulate's
 ## words, Brick Art, Account, My collection and the sign-in screen are
 ## searched for Claude, assistant, AI, Sketch first and Anthropic.
@@ -227,10 +227,10 @@ func _nothing_of_ai(when: String) -> void:
 	found = _ai_in(shell.collection)
 	_ok(found.is_empty(), "nor My collection%s" % _listed(found))
 	shell.collection.close()
-	var stops: Array = shell.tour.call("_stops")
+	var stops: Array = shell.first_build.cards()
 	var tour: String = "\n".join(stops.map(func(stop: Array) -> String:
 		return "%s %s" % [stop[0], stop[1]]))
-	_ok(_ai.search(tour) == null, "the tour is of the CAD alone, %d cards" % stops.size())
+	_ok(_ai.search(tour) == null, "Build your first model is of the CAD alone, %d lines" % stops.size())
 	shell.call("_show_about")
 	# Its words are a label in the dialog since the About rewrite, not the
 	# dialog's own text, which is empty and would pass this unread.
@@ -354,9 +354,9 @@ func _all_of_it_back(how: String) -> void:
 	mosaic.visible = false
 	var account: AccountPanel = _main.get("_account_panel")
 	_ok(account.get("_claude_box").visible, "Account has its Claude section again")
-	var stops: Array = shell.tour.call("_stops")
-	_ok(stops.any(func(stop: Array) -> bool: return stop[0] == "The assistant"),
-		"the tour has the assistant's card again, %d cards" % stops.size())
+	var stops: Array = shell.first_build.cards()
+	_ok(_ai.search(str(stops.back()[1])) != null,
+		"Build your first model ends on the assistant again: %s" % stops.back()[1])
 	shell.call("_show_about")
 	_ok((shell.get("_about_text") as Label).text.contains("with the assistant"),
 		"About says it builds by hand or with the assistant")

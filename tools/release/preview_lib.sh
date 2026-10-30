@@ -53,7 +53,8 @@ reused_preview() {
 }
 
 # The import a worktree needs before it can export the web build.
-# fresh_import.sh imports only when the class list is behind the scripts,
+# fresh_import.sh imports only when the class list is behind the scripts
+# or a resource's import is unmade,
 # waits out an import already running, and fails when it cannot finish. The
 # bare `timeout 900 heavy godot --import` this was spent its time waiting for
 # a slot at load, said nothing, and m155's gate then read a class list

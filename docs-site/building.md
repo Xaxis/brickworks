@@ -72,7 +72,7 @@ lib:round joints
 
 ## Connect by a point {#connect}
 
-A long Technic beam has many holes, and the one you want is rarely the one the pointer finds first. With the part in hand press [[N]], or choose **Connect** on the toolbar: its pins, holes, axles, bars and clips light up in blue where it stands. Click the one it goes on by, then the pin, hole or bar it goes on: only that point snaps, so a 1 x 16 goes on its pins by its end hole at once. [[R]] turns it about the joint, [[N]] again picks another point, and [[Esc]] goes back to placing as usual.
+A long Technic beam has many holes, and the one you want is rarely the one the pointer finds first. With the part in hand press [[N]], or choose **Connect** on the toolbar: its pins, holes, axles, bars and clips light up in blue where it stands. Click the one it goes on by, then the pin, hole or bar it goes on: only that point snaps, so a 1 x 16 goes on its pins by its end hole at once. A pin or an axle goes in from the side you point from, and a wheel goes on an axle where you point along it. [[T]] puts it on the other way, [[R]] turns it about the joint, [[N]] again picks another point, and [[Esc]] goes back to placing as usual.
 
 With nothing in hand, Connect works on a part already in the model: click the part, then its point, then where it goes. The move is one step to undo, and [[Esc]] puts it back where it was. Studs still go on by the stud grid, as every part does.
 
@@ -110,6 +110,21 @@ The **Move**, **Rotate** and **Hinge** tools on the toolbar do the same with the
 <!-- covers
 ui:move and turn a selection
 ui:tool modes
+-->
+
+## Rings and arrows {#handles}
+
+With the **Rotate** tool, a click on a part puts three rings on it; with **Move**, three arrows. Drag a ring to turn the selection about that axis, or an arrow to slide it along one. A click on the part again does the tool's own step: **Rotate** turns it by the turn step, **Move** picks it up.
+
+- The tag beside them says whose axes they are: **Part axes** (the part's own, however the part under it is turned), **Model axes** or **View axes**. Click the tag for the next.
+- They stand where the part hangs from: the pin, hinge or clip it turns on, or the stud [[R]] turns it about. [[Alt]]-click another point to turn about it; [[Alt]]-click empty space to go back.
+- A ring snaps to quarter turns near its middle, to the **Turn** step on the ring, to 5° just outside it and to 1° further out. Faint circles mark where while you drag. An arrow snaps to the **Snap** step, and to the finest step when the pointer is well off its line.
+- Type a number while you drag, or straight after, to make it exact: degrees for a ring (**23.58**), a length for an arrow (**3** studs, **2p** plates). [[Enter]] puts it there; [[Esc]] leaves the drag as it was.
+- Nothing goes through anything: a drag stops at the last place with room, and the part in the way lights up.
+- [[Esc]] or a right-click while dragging puts it back. Each drag is one step to undo.
+
+<!-- covers
+ui:handles on the selection
 -->
 
 ## Mirror, replace and paint {#mirror}

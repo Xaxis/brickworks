@@ -44,6 +44,10 @@ const DEFAULTS: Dictionary = {
 	# Whether the first visit's one line offering the assistant has been
 	# shown (Main._offer_assistant): once, and never again.
 	"assistant_offered": false,
+	# Build your first model (FirstBuild): "" until it is offered or taken,
+	# then "offered", "skipped" or "done". Offered once on a device, on a
+	# first visit, and never again unasked.
+	"first_build": "",
 	# Whether the warning that this browser may clear the person's models
 	# has been shown (StorageOffer): once on a device, and never again.
 	"storage_warned": false,

@@ -73,7 +73,8 @@ func _ready() -> void:
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	tooltip_text = "Click a face, an edge or a corner to look from there; drag to turn the view"
 	accessibility_name = "View cube"
-	accessibility_description = "The keys 1 to 7 look from the front, back, sides, top, bottom and a corner"
+	Keymap.tell(self, "{view_front}, {view_back}, {view_left}, {view_right}, {view_top}, {view_bottom} and "
+		+ "{view_iso} look from the front, back, left, right, top, bottom and a corner", &"accessibility_description")
 	_font = ThemeDB.fallback_font
 	var cube: float = cube_size()
 	var arrow: float = 16.0 if cube < 100.0 else 22.0
@@ -99,10 +100,10 @@ func _ready() -> void:
 	var row: float = row_size()
 	var gap: float = (cube - row * 4.0) / 3.0
 	var kinds: Array = [["cube_pan", "pan", "Slide the view — drag this, or click one of its arrows",
-			"Slide the view: W, A, S and D"],
-		["cube_zoom_out", "zoom_out", "Zoom out — click, hold, or drag up and down", "Zoom out, minus"],
-		["cube_zoom_in", "zoom_in", "Zoom in — click, hold, or drag up and down", "Zoom in, plus"],
-		["cube_fit", "fit", "Fit the selection, or the whole model   F", "Fit, F"]]
+			"Slide the view: {nudge_forward}, {nudge_left}, {nudge_back} and {nudge_right}"],
+		["cube_zoom_out", "zoom_out", "Zoom out — click, hold, or drag up and down", "Zoom out, {zoom_out}"],
+		["cube_zoom_in", "zoom_in", "Zoom in — click, hold, or drag up and down", "Zoom in, {zoom_in}"],
+		["cube_fit", "fit", "Fit the selection, or the whole model   {fit}", "Fit, {fit}"]]
 	for n: int in kinds.size():
 		var made := NavButton.new()
 		made.camera = camera
@@ -112,8 +113,8 @@ func _ready() -> void:
 				fit.call()
 		made.position = Vector2(n * (row + gap), cube + 4.0)
 		made.size = Vector2(row, row)
-		made.tooltip_text = kinds[n][2]
-		made.accessibility_name = kinds[n][3]
+		Keymap.tell(made, kinds[n][2])
+		Keymap.tell(made, kinds[n][3], &"accessibility_name")
 		add_child(made)
 		_arrows[kinds[n][0]] = made
 	set_process(true)

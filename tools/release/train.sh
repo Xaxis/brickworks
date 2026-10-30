@@ -71,6 +71,21 @@ stage() {
     shift 2
   done
   git -C "$R" rev-parse -q --verify "$branch^{commit}" >/dev/null || { echo "train: no branch $branch"; exit 2; }
+  # A name the branch has no check or probe for fails the release an hour
+  # on, "no such check": share, build and sets held rel-m222, as one held
+  # m87 (2026-10-30). Named against the branch's own lists, where it has them.
+  local known name unknown=""
+  if known=$(git -C "$R" show "$branch:tools/release/preview_checks.sh" 2>/dev/null); then
+    known=$(grep -oE '^[[:space:]]*\[[a-z_0-9]+\]=' <<< "$known" | tr -d '[]= \t')
+    for name in $checks; do grep -qx "$name" <<< "$known" || unknown+=" check $name,"; done
+  fi
+  if git -C "$R" cat-file -e "$branch:src/dev" 2>/dev/null; then
+    for name in $probes; do
+      git -C "$R" cat-file -e "$branch:src/dev/$name.gd" 2>/dev/null \
+        || git -C "$R" cat-file -e "$branch:src/dev/${name}_probe.gd" 2>/dev/null || unknown+=" probe $name,"
+    done
+  fi
+  [ -z "$unknown" ] || { echo "train: $branch has no${unknown%,}"; exit 2; }
   if pid=$(runner "$tag"); then
     echo "train: $tag's train runs (pid $pid): edit $RO/$tag.train/, or stop it (kill -- -$pid) first"; exit 1
   fi

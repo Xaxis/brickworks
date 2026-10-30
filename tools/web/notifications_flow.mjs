@@ -156,7 +156,7 @@ const headerDrawn = (page) => page.evaluate(() => {
 
 /// /notifications as drawn: [{model, name, picture, unread, rows: [{kind, text, href, unread, avatar}]}].
 const listDrawn = (page) => page.evaluate(() => [...document.querySelectorAll("#groups .notice")].map((li) => ({
-  model: li.dataset.model, achievements: "achievements" in li.dataset, name: li.querySelector("h2")?.textContent.trim() || "",
+  model: li.dataset.model, achievements: "achievements" in li.dataset, name: li.querySelector("h2 a")?.textContent.trim() || "",
   award: Boolean(li.querySelector(".pic svg.icon use[href$='#award']")),
   picture: li.querySelector(".pic img")?.getAttribute("src") || "",
   pictureShown: Boolean(li.querySelector(".pic img")?.naturalWidth), unread: li.classList.contains("unread"),

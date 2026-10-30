@@ -40,5 +40,18 @@ if command -v shellcheck >/dev/null; then
 else
   echo "ci gate: no shellcheck here, tools/*.sh and tools/release/*.sh not linted (koalaman/shellcheck v0.10.0 into ~/.local/bin)"
 fi
+# The viewer's two bundles are committed builds (the deploy builds nothing),
+# so a change to tools/viewer/ or a merge of two can leave them stale, with
+# nothing else to notice. Its pinned three.js and esbuild are kept apart from
+# the checkout, as downloaded code is, and fetched once.
+deps=${VIEWER_DEPS:-$HOME/.cache/brickworks/viewerdeps}
+if [ ! -d "$deps/node_modules/three" ] || [ ! -d "$deps/node_modules/esbuild" ]; then
+  mkdir -p "$deps" && npm install --prefix "$deps" --ignore-scripts --save-exact three@0.186.1 esbuild@0.28.2 >/dev/null 2>&1
+fi
+if viewer=$(node tools/viewer/build.mjs --deps="$deps" --check 2>&1); then
+  echo "ci gate: viewer bundles ok"
+else
+  echo "ci gate: viewer bundles FAILED"; echo "$viewer" | tail -5 | sed 's/^/  /'; fail=1
+fi
 echo "ci gate: $SECONDS s in its slot"
 exit $fail

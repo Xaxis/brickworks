@@ -416,8 +416,8 @@ func _build_tools() -> Control:
 	column.add_child(HSeparator.new())
 	var undo_row := HBoxContainer.new()
 	column.add_child(undo_row)
-	_button(undo_row, "Undo", _undo, "Take the last change back (Ctrl+Z)")
-	_button(undo_row, "Redo", _redo, "Put it back again (Ctrl+Shift+Z)")
+	Keymap.tell(_button(undo_row, "Undo", _undo, ""), "Take the last change back ({undo})")
+	Keymap.tell(_button(undo_row, "Redo", _redo, ""), "Put it back again ({redo})")
 	column.add_child(_build_picture_panel())
 	return scroll
 
@@ -1082,7 +1082,7 @@ func _save_print() -> void:
 	close()
 
 
-## Escape closes, Ctrl+Z undoes; every other key stops here, as in the
+## Escape closes, the keymap's Undo undoes; every other key stops here, as in the
 ## figure builder, so the model's shortcuts do not act on a model nobody
 ## can see.
 func _input(event: InputEvent) -> void:
@@ -1094,9 +1094,9 @@ func _input(event: InputEvent) -> void:
 	if key.keycode == KEY_ESCAPE:
 		close()
 		get_viewport().set_input_as_handled()
-	elif key.keycode == KEY_Z and key.is_command_or_control_pressed() \
+	elif Keymap.action_of(Keymap.accel_of(key)) in ["undo", "redo"] \
 			and not (get_viewport().gui_get_focus_owner() is LineEdit):
-		if key.shift_pressed:
+		if Keymap.action_of(Keymap.accel_of(key)) == "redo":
 			_redo()
 		else:
 			_undo()

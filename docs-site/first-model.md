@@ -10,9 +10,9 @@ description: Put parts down, colour and turn them, make a step, save the model a
 
 This walks through one small model from an empty baseplate to a link you can send. Everything here works the same in a browser and in the desktop app.
 
-## 1. Take the tour {#tour}
+## 1. Build your first model {#tour}
 
-**Help › Take the tour** shows where everything is, a panel at a time. A first visit opens on an example model; **File › New** clears the baseplate for your own.
+A first visit offers **Build your first model** along the top of the model: seven short steps, each done in the app, not read about. **Start** gives you a baseplate of your own (the example model comes off; a model of yours is kept, and **File › New** asks first if it is not saved). Each step says one thing, frames what to use and names your key for it, and moves on when the app sees it done, whichever way you do it: put a part down, turn it, colour it, move it, copy it, turn the view, and save. **Skip** ends it at any step, and it is not offered again; **Help › Take the tour** brings it back.
 
 <!-- covers
 ui:tour

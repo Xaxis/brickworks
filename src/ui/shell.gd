@@ -32,7 +32,8 @@ var banner: AssemblyBanner
 ## Sections suggested, broken out, exploded and evaluated: src/ui/sections_ui.gd.
 var sections: SectionsUi
 var grid: StudGrid
-var tour: Tour
+## Build your first model, along the top of the model: src/ui/first_build.gd.
+var first_build: FirstBuild
 ## My collection: src/ui/collection_dialog.gd.
 var collection: CollectionDialog
 ## File, Library…: src/ui/library_dialog.gd.
@@ -83,7 +84,9 @@ class Command extends RefCounted:
 	var ticked: Callable = Callable()
 	## One of several of which exactly one is on: the tools.
 	var radio: bool = false
-	var tip: String = ""
+	## Its tooltip, any {command} in it named by its key now (Keymap.filled).
+	var tip: String = "":
+		get: return Keymap.filled(tip, true)
 	## What it waits for while it cannot be used ([method Shell.why_not]).
 	var needs: String = ""
 
@@ -311,9 +314,11 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	grid.floor_layer = app.get("_floor")
 	app.add_child(grid)
 
-	tour = Tour.new()
-	tour.shell = self
-	app.get_node("HUD").add_child(tour)
+	# Offered once on a first visit, and from Help, Take the tour: in the
+	# strip along the top of the model, never over it.
+	first_build = FirstBuild.new()
+	first_build.shell = self
+	notices.add_child(first_build)
 
 	# What the person owns, what this model needs of it, what they could
 	# build: src/ui/collection_dialog.gd. The parts list leads there too.
@@ -906,7 +911,7 @@ func _define() -> void:
 	_add("copy", "Copy", CTRL | KEY_C, func() -> void: verbs.copy(), selected,
 		"Copy the selection")
 	_add("paste", "Paste", CTRL | KEY_V, func() -> void: verbs.paste(), Callable(),
-		"Hold a copy of what was copied: click to put it down, R turns it")
+		"Hold a copy of what was copied: click to put it down, {rotate_held|turns it}")
 	_add("duplicate", "Duplicate", CTRL | KEY_D, func() -> void: verbs.duplicate_selection(),
 		selected, "Hold a copy of the selection, to put down beside it")
 	# src/assembly/pattern.gd, src/ui/pattern_dialog.gd.
@@ -969,7 +974,7 @@ func _define() -> void:
 	# J, which had no command: on the menu on a part, and found by name.
 	_add("swing", "Swing on its hinge", KEY_J, func() -> void: verbs.swing(EditVerbs.SWING),
 		func() -> bool: return builder.hinge_angle() != null,
-		"Swing the selection %d° about the hinge, clip or turntable it hangs from; Shift+J swings it back"
+		"Swing the selection %d° about the hinge, clip or turntable it hangs from; {swing_back|swings it back}"
 		% roundi(EditVerbs.SWING))
 	# src/ai/selection_scope.gd: Claude changes these parts and the room round
 	# them, and nothing else.
@@ -1165,12 +1170,12 @@ func _define() -> void:
 		func() -> void: sections.break_out_or_back(),
 		func() -> bool: return sections.can_target() or not world.broken_out.is_empty(),
 		"Pull the selected section away from the model to work on it, or put it back "
-		+ "exactly where it was (Y again)")
+		+ "exactly where it was ({break_out} again)")
 	_add("put_back", "Put every section back", 0, func() -> void: sections.put_back_all(),
 		func() -> bool: return not world.broken_out.is_empty(),
 		"Every section broken out back exactly where it was")
 	_add("explode", "Exploded view", SHIFT | KEY_Y, func() -> void: sections.toggle_explode(),
-		something, "Every section drawn apart, and back together (Shift+Y again)")
+		something, "Every section drawn apart, and back together ({explode} again)")
 	_ticked("explode", func() -> bool: return sections.is_exploded())
 	_add("panel_outliner", "Model tree", 0, func() -> void: _toggle_section(outliner),
 		Callable(), "The model's sub-assemblies by name, inside one another")
@@ -1243,7 +1248,8 @@ func _define() -> void:
 	_add("keys", "Keys and controls", KEY_F1, func() -> void: (app.get("_controls") as ControlsDialog).open_keys(),
 		Callable(),
 		"What every button and key does")
-	_add("tour", "Take the tour", 0, func() -> void: tour.start())
+	_add("tour", "Take the tour", 0, func() -> void: first_build.start(), Callable(),
+		"Build your first model, seven short steps done in the app")
 	# src/ui/command_palette.gd: Figma's key for its Actions. Ctrl+Shift+P
 	# too on the desktop (handle_key); a browser keeps that one.
 	_add("palette", "Find a command…", CTRL | KEY_SLASH, func() -> void: palette.open(), Callable(),
@@ -2669,7 +2675,7 @@ func covers(point: Vector2) -> bool:
 		if panel != null and panel.is_visible_in_tree() \
 				and panel.get_global_rect().has_point(point):
 			return true
-	return tour != null and tour.visible
+	return false
 
 
 ## Where each control is, for a browser test to press it as a person does.
@@ -2700,6 +2706,8 @@ func controls_by_name() -> Dictionary:
 		out.merge(versions.controls_by_name())
 	if palette != null:
 		out.merge(palette.controls_by_name())
+	if first_build != null:
+		out.merge(first_build.controls_by_name())
 	# Save as's question, for tools/web/dialogs_flow.mjs.
 	if _save_as != null and _save_as.visible:
 		out["save_as_name"] = _save_as_name

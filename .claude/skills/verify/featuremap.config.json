@@ -914,8 +914,8 @@
     {
       "kind": "ui",
       "label": "tour",
-      "entry": "src/ui/tour.gd",
-      "reach": "godot --path .  (Help, Take the tour)",
+      "entry": "src/ui/first_build.gd",
+      "reach": "godot --path .  (Build your first model: offered once along the top of the model on a first visit; Help, Take the tour)",
       "area": "building"
     },
     {
@@ -4164,6 +4164,27 @@
       "label": "connect probe",
       "entry": "src/dev/connect_probe.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/connect_probe.gd  (8841-1's column on its pins in 6 actions or fewer, and the same aim without Connect; a 1 x 16 by its fourth hole on a pin in a brick turned 30 and tilted 25 degrees; the toolbar's Connect on a part down, one undo, Esc puts it back; 8841-1's joint parts by Connect and the walk's actions a part; -- only=column|turned|model|walk; PROBE_SIZE=1280x720)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "handles on the selection",
+      "entry": "src/ui/handles.gd",
+      "reach": "godot --path .  (the Rotate or Move tool, a click on a part: rings or arrows on its own, the model's or the view's axes, the tag beside them says which and a click on it goes to the next; drag a ring to turn it, finer further out, an arrow to slide it; a number typed while dragging or straight after makes it exact; Alt-click picks the point it turns about; it stops where a part is in the way; one undo a drag)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "handles probe",
+      "entry": "src/dev/handles_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/handles_probe.gd  (a part turned about each of its own axes to any angle in 3 actions, and a 1 x 16 on an axle through a brick turned 30 and tilted 25 degrees turned about its joint; arrows along each axis; the part's, model's and view's axes; Alt-click's pivot; quarter, step, 5 and 1 degree stops further out; a number straight after a drag; a ring and an arrow stopped by a part in the way; -- only=rings|arrows|axes|pivot|snaps|typed|stopped; PROBE_SIZE=1280x720)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "first build probe",
+      "entry": "src/dev/first_build_probe.gd",
+      "reach": "tools/probe.sh first_build_probe; PROBE_SIZE=1400x900 tools/probe.sh first_build_probe   (pictures in shots/first_build/)",
       "area": "building"
     },
     {

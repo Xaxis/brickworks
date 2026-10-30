@@ -73,3 +73,6 @@ src/dev/_*
 /assets/generated
 /node_modules
 /tools/web/node_modules
+# The data folder merge_unit.sh and merge_finish.sh give Godot's import: its
+# logs, left untracked, kept every merged worktree from retiring (2026-10-30).
+/.scratch-data/
