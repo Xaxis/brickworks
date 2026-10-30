@@ -43,8 +43,10 @@ sized its own titles, from 26 to 74 px. Now:
   regular `.cta`, 44 px at 16, not a size of their own), Menu and your
   avatar's button (2026-10-26; they were 36-42). The footer: the mark,
   a line of what Brickworks is and the theme, beside four columns of
-  links (Product, Community, Help, Legal, each named by a `.foot-h`),
-  each link 36 px tall under a mouse and a finger's 44 on a phone; then
+  links (Product, Community, Help, Legal, each named by a `.foot-h`), four
+  to a column at most, each link 32 px tall under a mouse and a finger's
+  44 on a phone (at 1280 px it is 407 px tall, the row was 369: a
+  profile there stays under account_page_flow's 2,000 px); then
   every notice docs/TRADEMARKS.md asks for, small and quiet, under a
   line. The row of eleven links it was read as one line nobody scanned.
 - **One type scale** (`--t-display` 42-76 px, `--t-h1` 32-48 px,
@@ -104,7 +106,7 @@ site356, 2026-10-29. And:
 | `--line-strong` | white or ink, 16-20% | a control's edge at rest, a card under the pointer, a menu |
 | `--shadow-1`, `--shadow-2`, `--shadow` | three steps | resting (a card, a ghost button), raised (a card under the pointer, a featured plan), floating (a dialog, a menu, the app's picture) |
 | `--highlight`, `--shine-btn` | an inset line of light | the top edge of a raised surface; a primary button's |
-| `--glow`, `--studs` | the yellow's light from above; a faint grid of studs | a landing page's opening (`.halo`) and its last offer (`.offer`) |
+| `--glow`, `--studs` | the yellow's light from above; a faint grid of studs | a landing page's opening (`.halo`) and its last offer (`.closing`) |
 | `--brick-red`, `-yellow`, `-blue`, `-green` | the bricks' colours, both themes | the 404's wall |
 | `--field` | `--bg-soft` | the fill of every field |
 | `--control-h` | 44 px | a field's and a button's height, so side by side they line up |
@@ -181,7 +183,9 @@ is on the page, `hidden`, for the script to show.
   until site356, now any page's.
 - **The landing kit** (home, `/plans`, `/download`; site356): `.section`
   (a landing page's section, its head a `.section-head`: an `h2.title`
-  and a line, and a way to more at the right), `.halo` (the opening, lit
+  and a line, and a way to more at the right; not `content-visibility`,
+  which drew a full-page screenshot blank under the first screen and hid
+  a section's words from innerText, site356), `.halo` (the opening, lit
   by `--glow` over `--studs`), `.features` of `.feature` panels (a
   `.glyph`, the sprite's icon on the accent's soft tile, an `h3` and a
   line), `.steps` (an `ol`, each step numbered in the accent), `.split`
@@ -191,7 +195,7 @@ is on the page, `hidden`, for the script to show.
   `small` line, the way in, `.ticks`; `.featured` edged and lit in the
   accent), `.ticks` (a list, each with a green tick), `.table.matrix`
   (what each plan has: `tr.group` rows, `.has` and `.hasnt` marks, each
-  with its word for a screen reader) and `.offer` (the last offer).
+  with its word for a screen reader) and `.closing` (the last offer).
 - **Table**: `.table`, a `<table>` of facts in a box that scrolls inside
   itself where the table is wider than the page, never the page: a named
   region the keyboard reaches and scrolls (`role="region"`, its
@@ -251,8 +255,9 @@ is on the page, `hidden`, for the script to show.
   LDraw, and a `small.set` line, its number · theme · year.
 - **Width**: `--page` (1,140 px) for a page of words; `--page-wide`
   (1,600 px) for a page of cards and pictures, `.wrap.wide`: the gallery, a
-  person, a collection, a model's page, the feed and the landing page's
-  row of models; and for the header and the footer on every page, so the
+  person, a collection, a model's page and the feed (the landing page's
+  two strips keep `--page` since site356, in line with its other
+  sections, and scroll inside it); and for the header and the footer on every page, so the
   mark and the account sit where they do on the gallery. Nothing was wider
   than 1,140 px, 59% of a 1920 window, four cards to a row (site273). A
   model's page: from 1200 px its column is 480 px, room for its action

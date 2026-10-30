@@ -987,29 +987,31 @@ details.qa > div p { margin: 0 0 10px; }
    Brickworks is and the theme, beside four columns of links (Product,
    Community, Help, Legal); then the notices, quiet but whole
    (docs/TRADEMARKS.md). site356: the row of eleven links read as one
-   long line nobody scanned. A link is 36 px tall under a mouse and a
-   finger's 44 on a phone. */
+   long line nobody scanned. A link is 32 px tall under a mouse and a
+   finger's 44 on a phone, four to a column at most, so the footer is no
+   taller than the row was by more than a column's height (a profile at
+   1280 px stays under 2,000 px, account_page_flow). */
 
-.site-foot { border-top: 1px solid var(--line); padding: var(--s-8) 0 var(--s-7); color: var(--ink-faint); background: var(--bg-soft); }
-.foot-top { display: grid; gap: var(--s-6) var(--s-7); margin-bottom: var(--s-7); }
+.site-foot { border-top: 1px solid var(--line); padding: var(--s-7) 0 var(--s-6); color: var(--ink-faint); background: var(--bg-soft); }
+.foot-top { display: grid; gap: var(--s-5) var(--s-7); margin-bottom: var(--s-5); }
 @media (width >= 900px) { .foot-top { grid-template-columns: minmax(220px, 1fr) minmax(0, 2.4fr); } }
-.foot-brand { display: grid; align-content: start; justify-items: start; gap: var(--s-3); }
+.foot-brand { display: grid; align-content: start; justify-items: start; gap: var(--s-2); }
 .foot-brand .mark { font-size: var(--t-body); min-height: var(--control-h); margin-left: -4px; }
 .foot-brand .chip { width: 22px; height: 22px; }
 .foot-brand p { margin: 0; max-width: 34ch; color: var(--ink-soft); font-size: var(--t-small); }
-.foot-brand .theme-choice { margin-top: var(--s-2); }
-.foot-links { display: grid; gap: var(--s-5) var(--s-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.foot-brand .theme-choice { margin-top: var(--s-1); }
+.foot-links { display: grid; gap: var(--s-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (width >= 600px) { .foot-links { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.foot-h { margin: 0 0 var(--s-2); color: var(--ink); font-size: var(--t-small); font-weight: 650; }
+.foot-h { margin: 0 0 var(--s-1); color: var(--ink); font-size: var(--t-small); font-weight: 650; }
 .foot-links ul { display: grid; margin: 0; padding: 0; list-style: none; }
 .foot-links a {
 	display: inline-flex; align-items: center; min-height: var(--control-h); color: var(--ink-soft);
 	text-decoration: none; font-size: var(--t-small);
 }
-@media (width >= 600px) { .foot-links a { min-height: 36px; } }
+@media (width >= 600px) { .foot-links a { min-height: 32px; } }
 .foot-links a:hover { color: var(--ink); text-decoration: underline; }
-.legal { padding-top: var(--s-5); border-top: 1px solid var(--line); }
-.legal p { margin: 0 0 6px; max-width: 110ch; font-size: var(--t-micro); line-height: 1.6; }
+.legal { padding-top: var(--s-4); border-top: 1px solid var(--line); }
+.legal p { margin: 0 0 6px; max-width: 150ch; font-size: var(--t-micro); line-height: 1.55; }
 .legal a { color: var(--ink-soft); }
 
 /* -- the landing kit --------------------------------------------------
@@ -1017,7 +1019,7 @@ details.qa > div p { margin: 0 0 10px; }
    page may use: a section's head, a badge, a callout, a row of features
    each with its icon, three steps, a pair of pictures before and after, a
    plan's card and its ticks, a table of what each plan has, and the last
-   offer. site356, 2026-10-29. */
+   offer (.closing; .offer is the download page's own). site356, 2026-10-29. */
 
 /* A section on a landing page: more room above and below than a page's
    section, its title the larger --t-section (h2.title), a line under it,
@@ -1028,7 +1030,8 @@ details.qa > div p { margin: 0 0 10px; }
 .section-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-5); margin: 0 0 var(--s-6); }
 .section-head > div { max-width: 62ch; }
 .section-head h2 { margin: 0; }
-.section-head p { margin: var(--s-3) 0 0; color: var(--ink-soft); font-size: var(--t-lede); text-wrap: pretty; }
+.section-head p:not(.eyebrow) { margin: var(--s-3) 0 0; color: var(--ink-soft); font-size: var(--t-lede); text-wrap: pretty; }
+.section-head .eyebrow { margin-bottom: var(--s-3); }
 .section-head > a { color: var(--ink-soft); font-size: var(--t-small); font-weight: 600; text-decoration: none; padding-block: 6px; }
 .section-head > a:hover { color: var(--ink); text-decoration: underline; }
 .section-head.center { flex-direction: column; align-items: center; text-align: center; }
@@ -1043,6 +1046,11 @@ details.qa > div p { margin: 0 0 10px; }
 }
 .badge.accent { color: var(--ink); background: var(--accent-soft); border-color: var(--accent-edge); }
 .badge.good { color: var(--green); border-color: var(--green); background: transparent; }
+/* A badge that goes somewhere (the landing page's news): a pointer's
+   target of 30 px, its edge firming under the pointer. */
+a.badge { min-height: 30px; padding: 0 12px; font-size: var(--t-tiny); text-decoration: none; }
+a.badge:hover { border-color: var(--ink-faint); }
+a.badge.accent:hover { border-color: var(--accent-edge); background: var(--panel-hi); }
 
 /* A callout: a note, a tip or a warning, its edge the kind's colour (the
    docs' and any page's; it was docs.css's alone). */
@@ -1065,8 +1073,8 @@ details.qa > div p { margin: 0 0 10px; }
 .glyph .icon { width: 22px; height: 22px; }
 
 /* Features: a grid of panels, each its icon, a title and a line; as
-   many to a row as fit at 260 px. */
-.features { display: grid; gap: var(--s-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); margin: 0; padding: 0; list-style: none; }
+   many to a row as fit at 300 px (three on a laptop). */
+.features { display: grid; gap: var(--s-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); margin: 0; padding: 0; list-style: none; }
 .feature {
 	padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--radius);
 	background: var(--panel); box-shadow: var(--highlight);
@@ -1097,7 +1105,10 @@ details.qa > div p { margin: 0 0 10px; }
 .ba .pair { display: grid; gap: var(--s-3); grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .ba .side { position: relative; margin: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--picture-ground); }
 .ba .side img { width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; }
-.ba .side .badge { position: absolute; top: var(--s-2); left: var(--s-2); box-shadow: var(--shadow-1); }
+.ba .side .badge { position: absolute; top: var(--s-2); left: var(--s-2); background: var(--panel); box-shadow: var(--shadow-1); }
+/* Over a picture a badge stands on a ground of its own: the accent's is
+   the yellow itself, as a primary button's. */
+.ba .side .badge.accent { border-color: transparent; background: var(--accent); color: var(--on-accent); }
 .ba > figcaption { padding: var(--s-3) 0 0; }
 
 /* Text beside a picture: the text first, the picture the larger; one over
@@ -1108,7 +1119,7 @@ details.qa > div p { margin: 0 0 10px; }
 	.split.flip { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
 	.split.flip > :first-child { order: 2; }
 }
-.split p { color: var(--ink-soft); max-width: 56ch; }
+.split p:not(.eyebrow) { color: var(--ink-soft); max-width: 56ch; }
 
 /* A plan's card (/plans, the landing page's teaser): its name and badge,
    who it is for, its price, the way in, and its ticks. .featured, the
@@ -1120,13 +1131,13 @@ details.qa > div p { margin: 0 0 10px; }
 .tier.featured { border-color: var(--accent-edge); background-image: var(--glow); box-shadow: var(--highlight), var(--shadow-2); }
 .tier .name { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
 .tier .name h2, .tier .name h3 { margin: 0; }
-.tier p { margin: 0; color: var(--ink-soft); }
+.tier p:not(.eyebrow) { margin: 0; color: var(--ink-soft); }
 .tier .cta { width: 100%; }
 .price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s-2); margin: 0; color: var(--ink-soft); font-size: var(--t-body); }
 .price b { color: var(--ink); font-size: var(--t-h1); font-weight: 760; line-height: 1.1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
 .price small { flex-basis: 100%; color: var(--ink-faint); font-size: var(--t-small); }
 /* A list of what something has, each with a tick in green. */
-.ticks { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; color: var(--ink-soft); font-size: var(--t-small); }
+.ticks { display: grid; align-content: start; gap: var(--s-2); margin: 0; padding: 0; list-style: none; color: var(--ink-soft); font-size: var(--t-small); }
 .ticks li { position: relative; padding-left: 28px; line-height: 1.55; }
 .ticks li::before {
 	content: ""; position: absolute; left: 6px; top: 0.25em; width: 6px; height: 11px;
@@ -1152,12 +1163,12 @@ details.qa > div p { margin: 0 0 10px; }
 
 /* The last offer on a landing page: a panel lit from above on a faint
    baseplate of studs, its words and its ways in at the middle. */
-.offer {
+.closing {
 	padding: clamp(40px, 7vw, 80px) var(--s-5); border: 1px solid var(--line); border-radius: var(--r-4); text-align: center;
 	background-color: var(--panel); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px;
 	box-shadow: var(--highlight), var(--shadow-1);
 }
-.offer .lede { margin-inline: auto; }
+.closing .lede { margin-inline: auto; }
 /* The opening of a landing page, lit the same way. */
 .halo { background-image: var(--glow), var(--studs); background-size: auto, 24px 24px; background-repeat: no-repeat, repeat; }
 
