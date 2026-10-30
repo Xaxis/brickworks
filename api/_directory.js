@@ -527,8 +527,8 @@ let chrome = null;
 // What every page's <head> carries before the site's stylesheet
 // (web/_shell.html): the browser bar's colour in each theme, and the script
 // that sets the theme the person chose before the page is drawn.
-const THEME_HEAD = '<meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)">\n'
-  + '<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">\n'
+const THEME_HEAD = '<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">\n'
+  + '<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">\n'
   + '<script src="/theme.js"></script>';
 
 /// The header and footer every page of the site has, and the theme's lines

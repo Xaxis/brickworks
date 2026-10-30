@@ -26,26 +26,30 @@ sized its own titles, from 26 to 74 px. Now:
   differs, or the header has more than four things. The server's pages
   (/m/, /u/, /c/) take theirs from web/gallery.html (api/_directory.js
   `siteChrome`). Edit `_shell.html`, then run the script; never a page's
-  copy. The header: Gallery · Download · **Open the app** · Account (Sign
-  in until you are, then your avatar: the account menu, below), the
-  account last at the far right (the owner, 2026-10-23: "an obvious
-  pattern"; design_flow.mjs fails a header in another order), from 600
-  px, so a tablet has it too; on a phone the mark, the way in and Menu
+  copy. The header (site356, 2026-10-29, the owner asking for pricing in
+  the site): Gallery · Library · Docs · Pricing in the middle, then
+  **Open the app** · Account (Sign in, a `.cta.ghost`, until you are,
+  then your avatar: the account menu, below), the account last at the
+  far right (the owner, 2026-10-23: "an obvious pattern"; design_flow.mjs
+  fails a header in another order), from 900 px. Four links, as the
+  owner capped them (2026-10-20), and two buttons; Download moved to the
+  footer and Menu (`tests/test_site_shell.py`). Under 900 px the mark, the way in and Menu
   (your avatar, once signed in), the last 16 px from the edge as the
   page's words are, down to 320 px: where the bar has no room for the
   word, the mark is the cube alone, the word wrapped out of sight with
   no breakpoint of its own (design_flow.mjs fails a header that runs
   into the gutter at 320, 360 or 390 px). Everything in it is 44 px
-  tall, a finger's: the mark, its links, Open the app (the regular
-  `.cta`, 44 px at 16, not a size of its own), Menu and your avatar's
-  button (2026-10-26; they were 36-42). The footer: the mark and a row
-  of links (Challenge, Collections, Compare, Plans, FAQ, Changelog,
-  Source, Privacy, Terms, Guidelines, Takedown), each a finger's 44 x 44
-  with its words 12 px apart (at 16 the tenth wraps the Theme choice at
-  1280; with Plans, the eleventh, it still fits at 1280 and wraps under
-  1280), then every notice docs/TRADEMARKS.md asks for, small and quiet.
-- **One type scale** (`--t-display`, `--t-h1` 32-46 px, `--t-h2` 22-26
-  px, `--t-h3` 18 px, `--t-lede`, then the words: `--t-body` 16,
+  tall, a finger's: the mark, its links, Open the app and Sign in (the
+  regular `.cta`, 44 px at 16, not a size of their own), Menu and your
+  avatar's button (2026-10-26; they were 36-42). The footer: the mark,
+  a line of what Brickworks is and the theme, beside four columns of
+  links (Product, Community, Help, Legal, each named by a `.foot-h`),
+  each link 36 px tall under a mouse and a finger's 44 on a phone; then
+  every notice docs/TRADEMARKS.md asks for, small and quiet, under a
+  line. The row of eleven links it was read as one line nobody scanned.
+- **One type scale** (`--t-display` 42-76 px, `--t-h1` 32-48 px,
+  `--t-section` 28-40 px, `--t-h2` 22-26 px, `--t-h3` 18 px, `--t-lede`,
+  then the words: `--t-body` 16,
   `--t-small` 14.5, `--t-tiny` 13, `--t-micro` 12): `h1` is a page's
   title at `--t-h1` on every page; the landing page's one line is
   `h1.display`; `h2` a section's, at `--t-h2` wherever it is (a model's
@@ -54,8 +58,11 @@ sized its own titles, from 26 to 74 px. Now:
   does not size its own titles, and design_flow.mjs fails an h2 or an
   h3 drawn at any other size. There were three sizes of h2 and four of
   h3 (2026-10-26), and `--t-h2` was 23-30 px: one size for every section
-  head made it 22-26, so a settings row or a dialog is not shouting.
-- **One rhythm** (`--s-1` 4 px to `--s-7` 48 px, `--page-top` above a
+  head made it 22-26, so a settings row or a dialog is not shouting. The
+  one exception is a landing page's section title, `h2.title` at
+  `--t-section` (home, plans, download; site356), which design_flow.mjs
+  holds to that step instead.
+- **One rhythm** (`--s-1` 4 px to `--s-8` 64 px, `--page-top` above a
   page's title, `--section` between sections).
 - **Four breakpoints** (2026-10-26): **600, 900, 1200 and 1600 px**, and
   no others, in `site.css`, `directory.css` and a page's own `<style>`.
@@ -84,16 +91,24 @@ tokens: a page that needs one adds a token.
 ## Tokens
 
 The colours (`--bg`, `--bg-soft`, `--panel`, `--panel-hi`, `--line`,
-`--ink`, `--ink-soft`, `--ink-faint`, `--accent`, `--on-accent`,
-`--focus`, `--bad`, `--green`), each with its light value. And:
+`--line-strong`, `--ink`, `--ink-soft`, `--ink-faint`, `--accent`,
+`--on-accent`, `--focus`, `--bad`, `--green`), each with its light value:
+a near-black ground (`#0b0c0e`) and a warm white one (`#fbfbfa`) since
+site356, 2026-10-29. And:
 
 | Token | Value | For |
 |---|---|---|
 | `--accent-edge` | the yellow; `#a67c00` in light | an edge that marks a state: a pressed toggle, the New pill, the older-version box, a checkbox. The yellow is 1.33:1 on the light pages; a yellow button keeps the yellow |
+| `--accent-ink` | the yellow; `#7a5b00` in light | the accent as words: an eyebrow, a group's row in a table (4.5:1 on every surface, measured) |
+| `--accent-soft`, `--accent-hi` | the yellow, see-through; the yellow lit | a badge's or an icon tile's ground, a field being typed in; the top of a primary button |
+| `--line-strong` | white or ink, 16-20% | a control's edge at rest, a card under the pointer, a menu |
+| `--shadow-1`, `--shadow-2`, `--shadow` | three steps | resting (a card, a ghost button), raised (a card under the pointer, a featured plan), floating (a dialog, a menu, the app's picture) |
+| `--highlight`, `--shine-btn` | an inset line of light | the top edge of a raised surface; a primary button's |
+| `--glow`, `--studs` | the yellow's light from above; a faint grid of studs | a landing page's opening (`.halo`) and its last offer (`.offer`) |
 | `--brick-red`, `-yellow`, `-blue`, `-green` | the bricks' colours, both themes | the 404's wall |
 | `--field` | `--bg-soft` | the fill of every field |
 | `--control-h` | 44 px | a field's and a button's height, so side by side they line up |
-| `--r-1`, `--r-2`, `--r-3`, `--r-pill` | 6, 10, 14, 999 px | corners: small (a chip, a code box), a control's, a card's or panel's, a pill's; a circle is 50% |
+| `--r-1`, `--r-2`, `--r-3`, `--r-4`, `--r-pill` | 6, 10, 14, 20, 999 px | corners: small (a chip, a code box), a control's, a card's or panel's, a large surface's (a plan, a dialog, the last offer), a pill's; a circle is 50% |
 | `--control-radius`, `--radius` | `--r-2`, `--r-3` | a control's corners, a card's |
 | `--t-code` | 0.92em | code in a line of words: a monospace face looks larger at one size |
 | `--shade`, `--shine` | dark and light, see-through | a brick's lower edge and top: the 404's wall, a colour's dot |
@@ -131,8 +146,10 @@ is on the page, `hidden`, for the script to show.
   (/admin's challenge days).
 - **Checkbox and radio**: the browser's own, 18 px, in `--accent`. With its
   words: `label.choice` (or `.tick`).
-- **Buttons**: primary `.cta` (yellow, the way in), secondary `.cta.ghost`
-  (and any `button` with no class), quiet `button.link` (underlined words;
+- **Buttons**: primary `.cta` (yellow, the way in, lit from above with
+  `--shine-btn`), secondary `.cta.ghost` (on the panel's ground with an
+  edge of light; any `button` with no class is the same without the
+  ground), quiet `button.link` (underlined words;
   `a.link` for one that goes somewhere, as the embed's View in 3D).
   `.small` (36 px) for a row of actions on a card or a list, `.big` for a
   page's opening offer; a button beside a field is the regular size. A
@@ -156,6 +173,25 @@ is on the page, `hidden`, for the script to show.
   first) and, closed, gives the focus back to what opened it, or to the
   More menu's button when what opened it was folded away with the menu.
 - **Card**: `.card`, a panel of words.
+- **Badge**: `.badge`, a short label that says what kind (Recommended,
+  Two months free): `.accent` on the accent's soft ground and edge,
+  `.good` green. A pill is a fact or a filter; a badge is a label.
+- **Callout**: `.callout`, a note (its edge `--focus`), `.tip` (green),
+  `.warning` (red) or `.accent`; its `.callout-title` first. The docs'
+  until site356, now any page's.
+- **The landing kit** (home, `/plans`, `/download`; site356): `.section`
+  (a landing page's section, its head a `.section-head`: an `h2.title`
+  and a line, and a way to more at the right), `.halo` (the opening, lit
+  by `--glow` over `--studs`), `.features` of `.feature` panels (a
+  `.glyph`, the sprite's icon on the accent's soft tile, an `h3` and a
+  line), `.steps` (an `ol`, each step numbered in the accent), `.split`
+  (words beside a picture, `.flip` the other way round), `.ba` (two
+  pictures of one thing, before and after, each named by a `.badge`),
+  `.tier` (a plan's card: `.name`, who it is for, `.price` with its
+  `small` line, the way in, `.ticks`; `.featured` edged and lit in the
+  accent), `.ticks` (a list, each with a green tick), `.table.matrix`
+  (what each plan has: `tr.group` rows, `.has` and `.hasnt` marks, each
+  with its word for a screen reader) and `.offer` (the last offer).
 - **Table**: `.table`, a `<table>` of facts in a box that scrolls inside
   itself where the table is wider than the page, never the page: a named
   region the keyboard reaches and scrolls (`role="region"`, its
@@ -263,6 +299,9 @@ is on the page, `hidden`, for the script to show.
   zoom two `.icon-btn`s (zoom-out, zoom-in) under it.
 - **Icon**: `.icon`, one of the sprite's (`web/icons.svg`: like, save,
   share, comment, more, build, search, filter, award, zoom-in, zoom-out;
+  and for the landing pages' features, stand, gear, move, file, book,
+  people, devices, camera, spark, eye, monitor, globe, library, download
+  and check;
   `web/kit.js` `iconHtml`),
   drawn in the words' colour. **Icon button**: `.icon-btn` (`iconButtonHtml`), round,
   as tall as a field (`.small` 36 for a card's row), its count beside its
@@ -468,7 +507,8 @@ right from 1200 px (`.docs-toc`, the section being read marked with the
 `--accent-edge`). Its own pieces, on the scale like everything else: keys
 (`kbd`, a cap each, a gesture in words beside them), a block of code
 (`.code`, scrolling inside itself, with Copy), a callout (`.callout`, its
-edge `--focus` for a note, `--green` for a tip, `--bad` for a warning), a
+edge `--focus` for a note, `--green` for a tip, `--bad` for a warning:
+site.css's since site356), a
 table that scrolls inside its frame (`.table`), a picture of the app
 (`.shot`), the start page's cards (`.docs-cards`), previous and next
 (`.docs-pager`), and search (`dialog.docs-search`, Ctrl+K or `/`).

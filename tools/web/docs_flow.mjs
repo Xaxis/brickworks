@@ -152,7 +152,7 @@ for (const width of [390, 1400]) {
     for (const address of ["/docs", LONG, "/docs/mcp-tools"]) {
       const { page, context, errors } = await open(address, { width, dark });
       const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-      const want = dark ? "rgb(14, 16, 19)" : "rgb(244, 245, 247)";
+      const want = dark ? "rgb(11, 12, 14)" : "rgb(251, 251, 250)";
       check(`${address} at ${width} ${theme}: drawn in the theme, nothing sideways, no error`,
         bg === want && (await sideways(page)) <= 0 && !errors.length,
         `background ${bg}, ${await sideways(page)} px sideways, ${errors.join("; ")}`);

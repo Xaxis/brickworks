@@ -3,7 +3,7 @@
   from docs-site/): the pages list down the left, the page in the middle,
   what is on it down the right, and search over all of it. The site's own
   controls, tokens and type are site.css's; this lays them out and draws
-  the few things only docs have (keys, code, callouts, tables, the search
+  the few things only docs have (keys, code, tables, the search
   dialog). Only the scale: every size a --t-*, corner an --r-*, colour a
   token, and the four breakpoints (docs/DESIGN_SYSTEM.md "Docs").
 
@@ -133,16 +133,7 @@ kbd.keys, span.keys { display: inline-flex; flex-wrap: wrap; align-items: center
 .code pre code { padding: 0; border: 0; background: none; font-size: var(--t-small); line-height: 1.6; overflow-wrap: normal; white-space: pre; }
 .code .copy { position: absolute; top: var(--s-2); right: var(--s-2); }
 
-/* A callout: a note, a tip or a warning, its edge the kind's colour. */
-.callout {
-	margin: 0 0 var(--s-5); padding: var(--s-3) var(--s-4); border: 1px solid var(--line);
-	border-left: 4px solid var(--focus); border-radius: var(--r-2); background: var(--panel);
-}
-.callout.tip { border-left-color: var(--green); }
-.callout.warning { border-left-color: var(--bad); }
-.callout p { margin: 0 0 var(--s-2); }
-.callout p:last-child { margin-bottom: 0; }
-.callout .callout-title { color: var(--ink); font-weight: 650; font-size: var(--t-small); }
+/* A callout is site.css's (.callout, .tip, .warning). */
 
 /* Tables scroll inside their frame on a phone. */
 .table { margin: 0 0 var(--s-5); overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r-2); }

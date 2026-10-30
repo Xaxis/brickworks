@@ -21,11 +21,17 @@ def test_every_page_has_the_one_header_and_footer() -> None:
     assert said.returncode == 0, said.stdout + said.stderr
 
 
-def test_the_header_has_four_things_at_most() -> None:
+def test_the_header_has_four_links_and_two_buttons_at_most() -> None:
+    # The owner capped the bar at four links (2026-10-20: "the main nav has
+    # too many links"); asked for pricing in the site (2026-10-29), it is
+    # Gallery, Library, Docs and Pricing, then Open the app and your
+    # account, and Download went to the footer and Menu (site356).
     shell = (ROOT / "web/_shell.html").read_text(encoding="utf-8")
     nav = re.search(r'<nav class="nav" aria-label="Main">(.*?)</nav>', shell, re.S)
     assert nav is not None
-    assert len(re.findall(r"<a ", nav.group(1))) <= 4
+    links = re.findall(r"<a [^>]*>", nav.group(1))
+    buttons = [one for one in links if 'class="cta' in one or "data-account" in one]
+    assert len(links) - len(buttons) <= 4 and len(buttons) <= 2, links
 
 
 def test_the_account_is_last_after_open_the_app() -> None:
@@ -40,7 +46,8 @@ def test_the_account_is_last_after_open_the_app() -> None:
 
 
 def test_each_page_marks_only_itself() -> None:
-    for name, own in {"gallery.html": "/gallery", "download.html": "/download", "profile.html": "/profile"}.items():
+    for name, own in {"gallery.html": "/gallery", "download.html": "/download", "profile.html": "/profile",
+                      "plans.html": "/plans", "library.html": "/library"}.items():
         header = re.search(r'<header class="site-head">.*?</header>',
                            (ROOT / "web" / name).read_text(encoding="utf-8"), re.S).group(0)
         current = re.findall(r'<a [^>]*href="([^"]+)"[^>]*aria-current="page"', header)
