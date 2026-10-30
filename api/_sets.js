@@ -9,9 +9,11 @@
 // it from tools/collection_data.py's shards (api/_owned.js readShard), which
 // the app's My collection already reads. Nothing here asks Rebrickable
 // anything: the catalogue is the copy tools/fetch_data.sh keeps, at most a
-// day old, and no picture of theirs or the LEGO Group's is shown or linked.
-// A set's picture is LDraw's model's render when there is one, else one
-// drawn here from its parts' own geometry (api/_flatlay.js).
+// day old. A set's picture is LDraw's model's render when there is one,
+// else the set's own picture as Rebrickable has it, credited to them and
+// served from here (tools/set_pictures.py fetched it once into our
+// storage; a visitor's browser never asks them), else one drawn here from
+// its parts' own geometry (api/_flatlay.js) for the few with none.
 //
 // The library (/library) lists every set, searched by number or name and
 // filtered by theme (and the theme inside it), decade and year, size,
@@ -34,10 +36,10 @@ import { SIZES, count, escapeHtml } from "./_directory.js";
 import { SET_SORTS } from "./_library.js";
 
 /// How the library's sets are put in order, the first by default: those LDraw
-/// has a model of first, since their picture is the set built, where every
-/// other set's is drawn from a few of its parts (api/_flatlay.js). Newest
-/// first opened the library on 24 of this year's sets, none modelled yet, and
-/// showed no set at all, only parts (the owner, 2026-10-30).
+/// has a model of first, since their picture is the set built in 3D, to
+/// open and build. Newest first opened the library on 24 of this year's
+/// sets, none modelled yet, and showed no set at all, only parts (the owner,
+/// 2026-10-30), before every set had its own picture.
 export const SETS_SORTS = { built: "Built in 3D first", ...SET_SORTS };
 export const FIRST_SORT = "built";
 
@@ -57,6 +59,8 @@ const NEXT_MOST = 12;
 const BRIEF_LOTS = 12;
 /// Where the catalogue's facts come from, credited on every page.
 export const CREDIT = { name: "Rebrickable", url: "https://rebrickable.com/" };
+/// A set's own page there, which its picture is credited to.
+export const creditOf = (entry) => `${CREDIT.url}sets/${encodeURIComponent(entry.set)}/`;
 /// One URL for a crawler a sitemap file: a twentieth of Google's 50,000.
 export const SITEMAP_SETS = 10000;
 
@@ -67,7 +71,8 @@ let catalog = null;
 /// The catalogue as the pages read it: {sets (by number), by (lower-cased
 /// number -> set), themes (id -> {name, parent})}, each set {set, name,
 /// year, theme (its path of names, outermost first), parts, figs, lots,
-/// inside, picks, said (what a search reads)}. From _set_catalog.json
+/// photo (its own picture is in our storage), inside, picks, said (what a
+/// search reads)}. From _set_catalog.json
 /// beside this file in a deployment, or assets/generated in a checkout;
 /// null where there is neither.
 export function setCatalog() {
@@ -101,12 +106,12 @@ export function useCatalog(raw) {
   const sets = [];
   const by = new Map();
   for (const row of Array.isArray(raw?.sets) ? raw.sets : []) {
-    const [number, name, year, theme, parts, figs, lots] = row;
+    const [number, name, year, theme, parts, figs, lots, photo] = row;
     if (!SET_NUMBER.test(String(number)) || by.has(String(number).toLowerCase())) continue;
     const path = pathOf(Number(theme));
     const entry = {
       set: String(number), name: word(String(name), 200) || String(number), year: Number(year) || 0, theme: path,
-      parts: Number(parts) || 0, figs: Number(figs) || 0, lots: Number(lots) || 0,
+      parts: Number(parts) || 0, figs: Number(figs) || 0, lots: Number(lots) || 0, photo: photo === 1,
       inside: (raw.inside?.[number] || []).filter((one) => Array.isArray(one) && SET_NUMBER.test(String(one[0])))
         .map(([other, n]) => [String(other), Number(n) || 1]),
       picks: (raw.picks?.[number] || []).filter((one) => typeof one === "string"),
@@ -256,12 +261,18 @@ export function yearsOf(sets) {
 export const pageOf = (entry) => `/library/set/${entry.set}`;
 
 /// The picture a set is shown by: LDraw's model's render where it has one
-/// (api/share.js set_cover), else the one drawn here from its parts
-/// (api/_flatlay.js); "" for a set with no parts to draw.
+/// (api/share.js set_cover); else its own, Rebrickable's, from our storage
+/// (api/share.js catalog_photo): a card's 4:3 and the page's its own
+/// shape; else the one drawn here from its parts (api/_flatlay.js); "" for
+/// a set with none of these.
 export function pictureOf(entry, model, as = "card") {
   if (model) return `/library/${model.id}${as === "card" ? "" : ".cutout"}.webp`;
+  if (entry.photo) return `${pageOf(entry)}${as === "card" ? "" : ".page"}.webp`;
   return entry.picks.length ? `${pageOf(entry)}.jpg` : "";
 }
+
+/// Whether a set is shown by its own picture: Rebrickable's, credited.
+export const photoOf = (entry, model) => !model && entry.photo;
 
 /// A set as a card (web/card.js cardHtml): its page and picture named,
 /// marked 3D when LDraw has a model of it, and who modelled that.
@@ -386,6 +397,7 @@ export function setPage({ origin, entry, chrome, held = null, inside = [], next 
   const model = held?.main || null;
   const others = [...(model ? [model] : []), ...(held?.more || [])];
   const picture = pictureOf(entry, model, "page");
+  const photo = photoOf(entry, model);
   const small = pictureOf(entry, model, "card");
   const said = [entry.year ? String(entry.year) : "", themeWords(entry)].filter(Boolean).join(", ");
   const description = `LEGO® set ${titleOf(entry)}${said ? ` (${said})` : ""}: `
@@ -399,11 +411,16 @@ export function setPage({ origin, entry, chrome, held = null, inside = [], next 
     `<a href="/library?theme=${encodeURIComponent(entry.theme.slice(0, at + 1).join(" > "))}">${escapeHtml(name)}</a>`)]
     .join(' <span aria-hidden="true">›</span> ');
   const viewer = model ? `/app?new=1&library=${encodeURIComponent(model.id)}` : "";
+  const alt = model ? `LDraw's 3D model of ${entry.name}` : photo ? `${entry.name}, LEGO® set ${entry.set}`
+    : `Some of the parts of ${entry.name}, drawn by Brickworks`;
   const pictureHtml = picture
     ? `<span class="waiting" aria-hidden="true">Loading its picture…</span><img src="${escapeHtml(picture)}" `
-      + `alt="${escapeHtml(model ? `LDraw's 3D model of ${entry.name}` : `Some of the parts of ${entry.name}, drawn by Brickworks`)}" `
-      + `width="1200" height="630" fetchpriority="high">${model ? '<span class="go" aria-hidden="true">View in 3D</span>' : ""}`
+      + `alt="${escapeHtml(alt)}" width="1200" height="630" fetchpriority="high">`
+      + `${model ? '<span class="go" aria-hidden="true">View in 3D</span>' : ""}`
     : `<span class="none">No picture: Rebrickable lists no parts for it</span>`;
+  // Its own picture is Rebrickable's, and said so under it, short.
+  const pictureCredit = photo
+    ? `<p class="picture-credit">Picture: <a href="${escapeHtml(creditOf(entry))}">Rebrickable</a></p>` : "";
   const insideHtml = inside.length
     ? `<section class="words" id="inside" aria-labelledby="inside-h"><h2 id="inside-h">Sets packed in it</h2><ul class="pills">`
       + inside.map(([one, n]) => `<li><a class="pill" href="${pageOf(one)}">${n > 1 ? `${n} × ` : ""}`
@@ -472,7 +489,8 @@ ${chrome.header}
     <div class="media">
     ${viewer ? `<a class="picture" href="${escapeHtml(viewer)}" aria-label="View ${escapeHtml(entry.name)} in 3D" `
       + `data-scene="/library/${escapeHtml(model.id)}/scene.json" data-parts="${Number(model.parts) || 0}">${pictureHtml}</a>`
-    : `<div class="picture">${pictureHtml}</div>`}
+    : `<div class="picture${photo ? " photo" : ""}">${pictureHtml}</div>`}
+    ${pictureCredit}
     </div>
     <div class="side">
       <h1>${escapeHtml(entry.name)}</h1>
@@ -491,8 +509,9 @@ ${chrome.header}
   ${insideHtml}
   ${modelsHtml}
   <section class="words" id="about" aria-labelledby="about-h"><h2 id="about-h">About this page</h2>
-    <p class="credit">Set and inventory data: <a href="${CREDIT.url}">Rebrickable</a>. The parts are drawn by Brickworks from
-    LDraw's geometry; no picture here is the LEGO Group's or Rebrickable's. LEGO® is a trademark of the LEGO Group,
+    <p class="credit">Set and inventory data: <a href="${CREDIT.url}">Rebrickable</a>.${photo
+    ? ` The set's picture is <a href="${escapeHtml(creditOf(entry))}">Rebrickable's</a>.`
+    : ""} The parts are drawn by Brickworks from LDraw's geometry. LEGO® is a trademark of the LEGO Group,
     which does not sponsor, authorise or endorse this site.</p></section>
     </div>
   </div>

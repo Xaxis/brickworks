@@ -43,12 +43,13 @@ Each set has a page at `brickworks.diy/library/set/<number>`, such as [10497-1](
 - when LDraw has a model of it, **Build it in 3D** and the model's own page, which links back.
 - **Based on this set**: the models in the gallery that their designers said were built from it, changed from it or inspired by it ([what a model is based on](/docs/model-pages#based-on)).
 
-Its picture is LDraw's model when there is one; otherwise Brickworks draws a few of its most distinctive parts from their own geometry. No picture on these pages is the LEGO Group's or Rebrickable's. Set and inventory data is Rebrickable's, read from a copy Brickworks takes at most once a day.
+Its picture is LDraw's model when there is one; otherwise the set's own picture, as [Rebrickable](https://rebrickable.com/) has it and credited to them, kept on Brickworks' own storage so your browser never asks them; and for the few sets with no picture anywhere, a few of its most distinctive parts drawn by Brickworks from their own geometry. Set and inventory data is Rebrickable's, read from a copy Brickworks takes at most once a day.
 
 In the app, `/app?parts=<number>` puts a set's parts in the bin. Claude finds every set too: the gallery tool's `library=true` search names the sets LDraw has no model of with their parts list, and `open_model library=` takes a set's number or name.
 
 <!-- covers
 ui:every set's page
+api:a set's own picture
 lib:a set's picture drawn from its parts
 -->
 

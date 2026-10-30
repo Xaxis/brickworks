@@ -3869,7 +3869,7 @@
       "kind": "ui",
       "label": "every set's page",
       "entry": "api/_sets.js",
-      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; Based on this set, the gallery's models based on it (web/set-page.js, ?op=set_based); /library/set/N.jpg its picture drawn from its parts (api/_flatlay.js), /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
+      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; Based on this set, the gallery's models based on it (web/set-page.js, ?op=set_based); its picture: LDraw's render, else its own (Rebrickable's, /library/set/N.webp and N.page.webp, ?op=catalog_photo, credited 'Picture: Rebrickable'), else /library/set/N.jpg drawn from its parts (api/_flatlay.js); /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
       "area": "web"
     },
     {
@@ -3880,10 +3880,24 @@
       "area": "web"
     },
     {
+      "kind": "api",
+      "label": "a set's own picture",
+      "entry": "api/share.js",
+      "reach": "https://brickworks.diy/library/set/7985-1.webp (a card's, 640x480) and /library/set/7985-1.page.webp (its page's)   (setpics: Rebrickable's picture of the set, read from the parts bucket's sets/card/ and sets/page/ by ?op=catalog_photo and kept a year; 404 for a set the store has none of; tests/test_sets.py, tools/web/sets_flow.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "set pictures",
+      "entry": "tools/set_pictures.py",
+      "reach": "python3 tools/set_pictures.py [--fetch|--make|--upload] [--check]   (every set's picture from Rebrickable's CDN once, at most 4 a second, resumable, into vendor/rebrickable/set_pictures/; WebPs made there (--make through heavy); uploaded to the parts bucket's sets/ (additive) and listed in assets/generated/set_pictures.json, which set_catalog.py marks; tools/fetch_data.sh runs it after the day's tables)",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "set catalogue",
       "entry": "tools/set_catalog.py",
-      "reach": "python3 tools/set_catalog.py [--check]   (assets/generated/set_catalog.json from vendor/rebrickable and assets/generated/sets/; deploy.sh runs it and puts it beside the share function)",
+      "reach": "python3 tools/set_catalog.py [--check]   (assets/generated/set_catalog.json from vendor/rebrickable, assets/generated/sets/ and set_pictures.json (which sets have their own picture up); deploy.sh runs it and puts it beside the share function)",
       "area": "web"
     },
     {

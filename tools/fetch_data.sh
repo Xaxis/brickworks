@@ -82,6 +82,14 @@ for table in colors parts elements themes \
     "rebrickable/$table.csv.gz"
 done
 
+# Each set's own picture, for the site's library (tools/set_pictures.py):
+# in the same run as the day's tables, the pictures of the sets not done
+# yet, a new set's among them, fetched once each at most four a second and
+# put in our storage, which the site serves them from. Only where the
+# storage key is (.env): elsewhere it says so and fetches nothing. A run cut
+# short is picked up by the next.
+python3 tools/set_pictures.py || echo "set pictures: not all done (above); the next run starts where this stopped"
+
 # The Official Model Repository once came down here too — real sets as
 # .mpd files, described in this script as "the reference corpus for the
 # AI".  Nothing ever read it.  It was a large download on every fetch
