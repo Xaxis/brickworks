@@ -238,7 +238,7 @@ declare -A CMD=(
   [together_probe]="tools/web/together_probe.mjs --url=$P"
   [together]="tools/web/together_flow.mjs --url=$P --out=$S/${TAG}_together"
   # local only: bin_tiles_flow.mjs. The parts bin's tiles drawn and named
-  # within a second of the bin showing and of a search, on a slow network: it needs
+  # from their first frame, as the bin opens and after a search, on a slow network: it needs
   # tools/web/serve.py --parts to serve each part late, which a deployment
   # does not (parts.md, previews). bin_names_probe holds the same on desktop.
   # local only: together_timing.mjs. A measure with no verdict: where the

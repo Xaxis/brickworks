@@ -464,9 +464,9 @@ tools/probe.sh search_rank_probe -- quality   # + 26 words builders type (snot, 
 tools/probe.sh bin_names_probe                # every tile in sight named in words and fitted, no two alike, its part drawn while it waits; shots/bin_names/
 PROBE_SIZE=1400x900 tools/probe.sh bin_names_probe
 tools/probe.sh fits_probe                     # Fits: twelve pairs each in the first five; the part in hand; typed words narrow it
-# the tiles on the web, on a slow network, drawn within a second of the bin showing and of a search typed (local only)
-PARTS_URL=http://127.0.0.1:8871/parts/ tools/export.sh web
-node tools/web/bin_tiles_flow.mjs --build=build/web --port=8871 --parts=assets/generated/parts --out=shots/bin_tiles
+# the tiles on the web, on a slow network: drawn as the bin opens, and from the first frame of a search typed (local only)
+PARTS_URL=http://127.0.0.1:8893/parts/ tools/export.sh web
+node tools/web/bin_tiles_flow.mjs --build=build/web --port=8893 --parts=assets/generated/parts --out=shots/bin_tiles
 godot --headless --path . --script src/dev/print_search_probe.gd    # a print by what is on it; plain parts unmoved
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd -- only=prints_by_their_print  # typed into the bin; shots/handbuild/prints_by_their_print.png
 godot --headless --path . --script src/dev/search_quality_probe.gd  # how much is worth reading
