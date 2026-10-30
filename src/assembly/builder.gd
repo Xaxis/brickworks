@@ -1351,12 +1351,15 @@ func replace_selection(part_id: String, in_place: bool = false) -> Vector2i:
 		var was: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		var at: Transform3D = brick.transform if in_place \
 			else _in_place_of(brick.transform, was, into)
-		lattice.release(brick_id)
 		var packed: PackedInt32Array = boxes_for(into, at)
-		if lattice.collides_boxes(packed):
-			lattice.occupy_boxes(brick_id, boxes_for(was, brick.transform))
+		# Asked with the old part still standing, left out of the question:
+		# one with no room stays as it was, with nothing to put back. Taken
+		# out and put back each time, the 9,673 parts of Orthanc a 2 x 4 has
+		# no room for were most of a replace's second (bigmodels).
+		if lattice.collides_boxes(packed, brick_id):
 			refused += 1
 			continue
+		lattice.release(brick_id)
 		var made: int = world.add_brick(part_id, brick.color_code, at)
 		if made == 0:
 			lattice.occupy_boxes(brick_id, boxes_for(was, brick.transform))

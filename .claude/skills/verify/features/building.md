@@ -138,7 +138,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   keep every part on the studs; it drops onto whatever is highest under any of
   its parts, and a side face pushes it out until its edge meets the face. Copy
   also writes LDraw lines to the system clipboard (where they were in the model),
-  and LDraw another program put there pastes in.
+  and LDraw another program put there pastes in. The ghost is drawn as
+  instances, one MultiMesh a surface mesh in its parts' colours
+  (`Carry._build_ghost`, `ghost.gdshader`'s `instanced`), and where it would go
+  is worked out again only when the pointer, the turn or the model changed
+  (`Carry.aim`), its footing and bound kept a turn (`_covers_for`,
+  `BrickLattice.collides_moved`): all of Orthanc (10,105 parts) in hand was
+  10,124 ghost nodes and 260 ms an aim. `bigmodels_probe -- only=ghost`; the
+  times are `command_probe --subjects=orthanc --within=paste:1,duplicate:1`.
 - `patterns` (`src/assembly/pattern.gd`, `src/ui/pattern_dialog.gd`; APP_UX B6):
   copies laid out at once. Straight after a `Ctrl-D` or Clone copy is put down,
   `11x` (or `11*`, `*11`) makes it one of 11 in the row, each the same move
@@ -189,6 +196,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   a row does the same, and Escape then lets go of them (`share_view_probe`). The MCP's twin is
   look_at_model's `part=` and `color=`, which list where each one is: no
   session tool sets the person's selection (`AppTools.WINDOW_ONLY`).
+  Everything joined stops once it holds every part, and asks across a side
+  only of a part that may be joined there (`SelectBy.sideways`: the parts
+  whose studs point that way and what stands beside them), after its first
+  256: on Orthanc, joined from all 10,101 took 6.1 to 7.5 s, now a third of a
+  second. `bigmodels_probe -- only=joined`: from one part it finds what asking
+  every side of every part finds.
 - `hide and show only`: `Ctrl-H` hides the selection (`H` alone is the Pan
   tool), `Shift-H` hides everything else, `Alt-H` (or `Ctrl-H` with nothing
   selected) shows all, and the status line names those keys. Hidden parts are not
@@ -938,7 +951,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `--script`, so a probe neither sees nor changes anyone's layout.
 - `replace part`: Edit, Replace with the part in hand swaps every selected part for the part in hand, each
   in its own colour, centred on the stud grid for its own footprint and standing
-  where the old one stood. One step; a part with no room is left.
+  where the old one stood. One step; a part with no room is left. Room is asked
+  with the old part standing and left out of the question
+  (`collides_boxes(packed, brick_id)`), so a refused part is never taken out and
+  put back. `bigmodels_probe -- only=replace`: a 2 x 4 for every part of
+  Orthanc, the parts left standing where they were in the lattice, one undo.
 - `undo history`: History (on the toolbar, and Edit, History) lists the steps in words, newest first ("swapped 2
   parts for Brick 2 x 3", "painted 2 parts"); choosing one goes back to before
   it (`Builder.undo_steps`).
