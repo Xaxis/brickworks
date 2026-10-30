@@ -441,3 +441,98 @@ static func actions() -> Array[String]:
 		out.append(action)
 	return out
 
+
+
+## How a person does [param action] now, for words that name it: its key
+## as the keys list writes it ("Ctrl-shift-L"), or as the menus and
+## tooltips do with [param menus] ("Ctrl+Shift+L"). A message that spells
+## a key out is wrong under Studio's keys or after a person sets their own
+## (tests/test_keys_named.py). A command with no key under these keys is
+## named by its row in the menus ("View › Show everything"), or, in none,
+## by Find a command's key and its words; a key's own action
+## ([constant KEY_ACTIONS]) with none is "", and the words leave it out.
+static func said(action: String, menus: bool = false) -> String:
+	if not has(action):
+		return ""
+	var key: String = written(action) if menus else listed(action)
+	if not key.is_empty() or _is_own(action):
+		return key
+	var row: String = menu_row(action)
+	if not row.is_empty() or action == "palette":
+		return row if not row.is_empty() else words(action)
+	return "%s, %s" % [said("palette", menus), words(action)]
+
+
+## Where [param action] is in the menus: "View › Show everything"; "" for
+## one in none.
+static func menu_row(action: String) -> String:
+	for menu: Array in Shell.MENUS:
+		var row: String = _row_in(menu[1], str(menu[0]), action)
+		if not row.is_empty():
+			return row
+	return _row_in(Shell.APP_MENU, ModelBar.NAME, action)
+
+
+static func _row_in(items: Array, path: String, action: String) -> String:
+	for item: String in items:
+		if item == action:
+			return path + CommandPalette.INTO + words(action)
+		var kind: String = item.substr(1)
+		if item.begins_with(">") and Shell.SUBMENUS.has(kind):
+			var row: String = _row_in(Shell.SUBMENUS[kind],
+				path + CommandPalette.INTO + str(Shell.SUBMENU_WORDS.get(kind, kind)), action)
+			if not row.is_empty():
+				return row
+	return ""
+
+
+static func _is_own(action: String) -> bool:
+	for own_action: Array in KEY_ACTIONS:
+		if own_action[0] == action:
+			return true
+	return false
+
+
+## [param text] with each {action} in it named as [method said] names it,
+## and each {action|does} as "<key> <does>", or, for a command with no key,
+## its row alone; one that comes to nothing is left out with the ", ", "; ",
+## " · ", ": " or " and " before it. "hid 2 parts — {show_all|shows everything}" is
+## "hid 2 parts — alt-H shows everything", and Ctrl-shift-L under Studio's.
+static func filled(text: String, menus: bool = false) -> String:
+	var out: String = ""
+	var at: int = 0
+	for found: RegExMatch in _token.search_all(text):
+		out += text.substr(at, found.get_start() - at)
+		at = found.get_end()
+		var action: String = found.get_string(2)
+		var key: String = said(action, menus)
+		if key.is_empty():
+			continue
+		var does: String = found.get_string(3)
+		var keyed: bool = not (written(action) if menus else listed(action)).is_empty()
+		out += found.get_string(1) + (key + " " + does if keyed and not does.is_empty() else key)
+	return out + text.substr(at)
+
+
+static var _token: RegEx = RegEx.create_from_string(r"(, |; | · |: | and )?\{([a-z0-9_]+)(?:\|([^}]*))?\}")
+
+
+## [param control]'s [param property] (its tooltip, or its name read out)
+## from [param template], its keys filled as the menus write them
+## ([method filled]), and filled again when the keys change ([method retell]).
+## For words set once; words a control's own code sets again use [method filled].
+static func tell(control: Control, template: String, property: StringName = &"tooltip_text") -> void:
+	var told: Dictionary = control.get_meta(&"key_words", {})
+	told[property] = template
+	control.set_meta(&"key_words", told)
+	control.set(property, filled(template, true))
+
+
+## Everything [method tell] said under [param root], with the keys as they
+## are now: after a preset is chosen or a key set (Main).
+static func retell(root: Node) -> void:
+	for node: Node in root.find_children("*", "Control", true, false):
+		if node.has_meta(&"key_words"):
+			var told: Dictionary = node.get_meta(&"key_words")
+			for property: StringName in told:
+				node.set(property, filled(str(told[property]), true))

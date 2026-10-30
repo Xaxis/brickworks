@@ -1532,6 +1532,9 @@ func _ready() -> void:
 		ShellPrefs.frozen = true
 		CustomParts.keeps = false
 	_build_ui()
+	# Told their keys before the menus' commands were learned (the view
+	# cube's Fit), told them again (Keymap.tell).
+	Keymap.retell(self)
 	_boot_mark("ui")
 
 	if not _viewing.is_empty():
@@ -4875,9 +4878,11 @@ func _build_ui() -> void:
 		if _hint != null:
 			_hint.rebuild()
 		# And the keys a preset or the keys sheet set, in the toolbar's
-		# tooltips; the menus read theirs as they open.
+		# tooltips and every other a key is named in (Keymap.tell); the
+		# menus read theirs as they open.
 		if _shell != null:
-			_shell.toolbar.tell_keys())
+			_shell.toolbar.tell_keys()
+		Keymap.retell(get_tree().root))
 	_controls.interface_sized.connect(_match_screen_density)
 	# The keys with the account (KeymapSync): set here, sent there; signed
 	# in somewhere new, the account's are taken if they are the newer.
@@ -5334,8 +5339,8 @@ func _build_ui() -> void:
 		if count == 0:
 			_bar.say("")
 		else:
-			_bar.say("%d selected — %s-C copies, X moves, R turns, C paints, Delete removes"
-				% [count, ControlsHint._hold()]))
+			_bar.say(Keymap.filled("%d selected — {copy|copies}, {lift|moves}, {rotate_held|turns}, {paint|paints}, {delete|removes}")
+				% count))
 	# The world is redrawn whenever anything in it changes, which
 	# includes a selected brick being removed by undo or replaced by the
 	# assistant. Without redrawing the outline then, it is a box round
@@ -5856,7 +5861,7 @@ func _build_mosaic(across: int, dither: bool) -> void:
 	_camera.frame(_built_bounds(), 1.1)
 	_camera.set_view("top")
 	_on_model_changed()
-	_bar.say("%d plates — press P for what to buy" % pixels.size())
+	_bar.say(Keymap.filled("%d plates — press {parts_list} for what to buy") % pixels.size())
 
 
 ## A picture laid in plates is a whole model on its own panels, with nothing
@@ -5964,7 +5969,7 @@ func _art_laid(art: MosaicArt.Art) -> void:
 	var report: Dictionary = await _assistant._checked(art.model(), true)
 	_art_said["pieces"] = int(report.get("pieces", 0))
 	_art_said["ok"] = bool(report.get("ok", false))
-	_bar.say("%s parts on %d × %d panels, %s — press P for what to buy" % [
+	_bar.say(Keymap.filled("%s parts on %d × %d panels, %s — press {parts_list} for what to buy") % [
 		MosaicDialog._comma(art.placements.size()), art.panels.x, art.panels.y,
 		"one piece" if _art_said["pieces"] == 1 and _art_said["ok"]
 		else str(report.get("summary", ""))])
@@ -6413,7 +6418,7 @@ func _find_parts() -> void:
 ## is seen between them.
 func _show_weak(ids: Array, around: Array) -> void:
 	if _verbs.select_found(ids) == 0:
-		_bar.say("it is hidden or locked — Alt-H shows everything, Shift-L unlocks it")
+		_bar.say(Keymap.filled("it is hidden or locked — {show_all|shows everything}, {unlock|unlocks it}"))
 		return
 	var box: AABB = _selection_bounds()
 	for id: Variant in around:
@@ -6440,7 +6445,7 @@ func _show_found(ids: PackedInt64Array, what: String) -> void:
 	var count: int = _verbs.select_found(Array(ids))
 	var left: int = ids.size() - count
 	if count == 0:
-		_bar.say("%s: %s hidden or locked — Alt-H shows everything, Shift-L unlocks it" % [
+		_bar.say(Keymap.filled("%s: %s hidden or locked — {show_all|shows everything}, {unlock|unlocks it}") % [
 			what, "it is" if left == 1 else "all %d are" % left])
 		return
 	_camera.frame(_selection_bounds())
@@ -6633,7 +6638,7 @@ func _hold_figure(figure: Minifig) -> void:
 	for part_id: String in figure.part_ids():
 		if not _library.is_resident(part_id) and _library.request_mesh(part_id, true):
 			fetching += 1
-	_bar.say("placing %s — point at a stud, R to turn, click to stand it there, Esc to stop%s"
+	_bar.say(Keymap.filled("placing %s — point at a stud, {rotate_held|to turn}, click to stand it there, Esc to stop%s")
 		% [figure.name, " (fetching %d parts…)" % fetching if fetching > 0 else ""])
 	_refresh_preview()
 

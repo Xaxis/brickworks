@@ -285,9 +285,8 @@ func _on_apply() -> void:
 	var made: HiddenColours.Plan = plan
 	var changed: int = apply_plan(made)
 	close()
-	say.call("coloured %d hidden %s %s — %s-Z puts them back" % [changed,
-		"part" if changed == 1 else "parts", HiddenColours.MODE_WORDS.get(made.mode, ""),
-		ControlsHint._hold()])
+	say.call(Keymap.filled("coloured %d hidden %s %s — {undo|puts them back}") % [changed,
+		"part" if changed == 1 else "parts", HiddenColours.MODE_WORDS.get(made.mode, "")])
 
 
 func _named() -> String:
@@ -381,8 +380,8 @@ func _build() -> void:
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 8)
 	column.add_child(buttons)
-	_apply = _button(buttons, "Colour them", _on_apply,
-		"Give them these colours, as one step: %s-Z puts them back" % ControlsHint._hold())
+	_apply = _button(buttons, "Colour them", _on_apply, "")
+	Keymap.tell(_apply, "Give them these colours, as one step: {undo|puts them back}")
 	_apply.disabled = true
 	_button(buttons, "Leave it", close, "Keep the model as it is")
 

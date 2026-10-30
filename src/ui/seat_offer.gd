@@ -54,8 +54,8 @@ func _ready() -> void:
 	row.add_child(_words)
 
 	_seat = _button("Seat them on their studs", true)
-	_seat.tooltip_text = "Move each of them the fraction of a stud back onto its studs.\n" \
-		+ "One step: %s-Z puts them back." % ControlsHint._hold()
+	Keymap.tell(_seat, "Move each of them the fraction of a stud back onto its studs.\n"
+		+ "One step: {undo|puts them back}.")
 	_seat.pressed.connect(seat)
 	row.add_child(_seat)
 	_leave = _button("Leave them", false)
@@ -109,9 +109,8 @@ func seat() -> int:
 	visible = false
 	if moved > 0:
 		edited.call()
-		say.call("seated %d %s on %s studs — %s-Z puts %s back" % [moved,
-			"part" if moved == 1 else "parts", "its" if moved == 1 else "their",
-			ControlsHint._hold(), "it" if moved == 1 else "them"])
+		say.call(Keymap.filled("seated %d %s on %s studs — {undo|takes it back}") % [moved,
+			"part" if moved == 1 else "parts", "its" if moved == 1 else "their"])
 	return moved
 
 

@@ -83,7 +83,9 @@ class Command extends RefCounted:
 	var ticked: Callable = Callable()
 	## One of several of which exactly one is on: the tools.
 	var radio: bool = false
-	var tip: String = ""
+	## Its tooltip, any {command} in it named by its key now (Keymap.filled).
+	var tip: String = "":
+		get: return Keymap.filled(tip, true)
 	## What it waits for while it cannot be used ([method Shell.why_not]).
 	var needs: String = ""
 
@@ -906,7 +908,7 @@ func _define() -> void:
 	_add("copy", "Copy", CTRL | KEY_C, func() -> void: verbs.copy(), selected,
 		"Copy the selection")
 	_add("paste", "Paste", CTRL | KEY_V, func() -> void: verbs.paste(), Callable(),
-		"Hold a copy of what was copied: click to put it down, R turns it")
+		"Hold a copy of what was copied: click to put it down, {rotate_held|turns it}")
 	_add("duplicate", "Duplicate", CTRL | KEY_D, func() -> void: verbs.duplicate_selection(),
 		selected, "Hold a copy of the selection, to put down beside it")
 	# src/assembly/pattern.gd, src/ui/pattern_dialog.gd.
@@ -969,7 +971,7 @@ func _define() -> void:
 	# J, which had no command: on the menu on a part, and found by name.
 	_add("swing", "Swing on its hinge", KEY_J, func() -> void: verbs.swing(EditVerbs.SWING),
 		func() -> bool: return builder.hinge_angle() != null,
-		"Swing the selection %d° about the hinge, clip or turntable it hangs from; Shift+J swings it back"
+		"Swing the selection %d° about the hinge, clip or turntable it hangs from; {swing_back|swings it back}"
 		% roundi(EditVerbs.SWING))
 	# src/ai/selection_scope.gd: Claude changes these parts and the room round
 	# them, and nothing else.
@@ -1165,12 +1167,12 @@ func _define() -> void:
 		func() -> void: sections.break_out_or_back(),
 		func() -> bool: return sections.can_target() or not world.broken_out.is_empty(),
 		"Pull the selected section away from the model to work on it, or put it back "
-		+ "exactly where it was (Y again)")
+		+ "exactly where it was ({break_out} again)")
 	_add("put_back", "Put every section back", 0, func() -> void: sections.put_back_all(),
 		func() -> bool: return not world.broken_out.is_empty(),
 		"Every section broken out back exactly where it was")
 	_add("explode", "Exploded view", SHIFT | KEY_Y, func() -> void: sections.toggle_explode(),
-		something, "Every section drawn apart, and back together (Shift+Y again)")
+		something, "Every section drawn apart, and back together ({explode} again)")
 	_ticked("explode", func() -> bool: return sections.is_exploded())
 	_add("panel_outliner", "Model tree", 0, func() -> void: _toggle_section(outliner),
 		Callable(), "The model's sub-assemblies by name, inside one another")

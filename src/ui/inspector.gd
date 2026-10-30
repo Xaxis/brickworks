@@ -505,7 +505,7 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 	if not step.is_empty():
 		lines.append(step)
 	if shell.builder.is_locked(brick.id):
-		lines.append("Locked — Shift-L unlocks everything")
+		lines.append(Keymap.filled("Locked — {unlock|unlocks everything}"))
 	_facts.text = "\n".join(lines)
 	_facts.visible = true
 	_lock_button.disabled = shell.builder.is_locked(brick.id)

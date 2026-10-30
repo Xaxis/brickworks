@@ -197,7 +197,7 @@ func toggle_explode() -> String:
 		_entered_was = shell.assemblies.entered
 		shell.assemblies.enter(at)
 	var said: String = "%d sections apart — click one to choose it; the model is as it was. " \
-		% groups.size() + "Shift+Y puts them back together"
+		% groups.size() + Keymap.filled("{explode|puts them back together}")
 	shell.bar.say(said)
 	return said
 

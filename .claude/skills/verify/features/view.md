@@ -552,6 +552,17 @@ picture the assistant is shown.
   a preview, `preview_checks.sh … keys`). Not proven by a check: the account's
   half before keymap.sql is applied (the API answers `ready: false` and the keys
   stay on the device).
+  Every key a message, tooltip or name read out names is the keymap's now
+  (`Keymap.filled`: "{show_all|shows everything}" is "alt-H shows everything",
+  Ctrl-shift-L under Studio's; a command with no key is named by its menu row,
+  or the palette's key and its words). Tooltips set once are told with
+  `Keymap.tell` and told again on a keys change (`Keymap.retell`, Main);
+  `Command.tip` fills its own. `tests/test_keys_named.py` (in `minitest.py`)
+  fails on a string in `src/` that spells out a key a person can set, Esc, Enter,
+  Tab and the other kept keys aside; its EXCUSED list says why each left is
+  left, and fails when one is gone. `keys_probe` checks the hide message says
+  Ctrl-Shift-L under Studio's and Ctrl-Shift-H under LDCad's; `mould_ui_probe`
+  and `print_ui_probe` press the keymap's Undo and Redo in their editors.
 - `pointer cursors`: `src/ui/cursors.gd`. The pointer says what the mouse will
   do now, by the tool, the keys held and what is under it, as Studio, Mecabricks
   and Blender do. The owner, on the live site (2026-10-11): "we're not seeing the

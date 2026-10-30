@@ -328,7 +328,7 @@ func _put() -> void:
 		say.call("no room for them all: %s" % pattern.refusal(_ids, laid))
 		return
 	edited.call()
-	say.call("%s — one Ctrl+Z takes them all back" % said)
+	say.call(Keymap.filled("%s — one {undo} takes them all back") % said)
 
 
 ## What a probe reads: the kind, the count, the words said, and whether OK

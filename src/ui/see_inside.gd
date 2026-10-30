@@ -101,7 +101,7 @@ func set_cut(on: bool) -> void:
 	if on:
 		_generation = world.generation()
 		cut_along(axis)
-		say.call("cut along %s — drag the slider to move it, K puts the model back" % AXES[axis])
+		say.call(Keymap.filled("cut along %s — drag the slider to move it, {cut|puts the model back}") % AXES[axis])
 	else:
 		world.set_cut(false)
 		builder.lattice.cut = Plane()
@@ -236,12 +236,12 @@ func set_xray(on: bool) -> bool:
 		_xray_path = ""
 		keep = builder.selection.duplicate()
 	else:
-		say.call("select what to see, or edit inside a sub-assembly, then x-ray (I)")
+		say.call(Keymap.filled("select what to see, or edit inside a sub-assembly, then x-ray ({xray})"))
 		return false
 	seeing_through = true
 	_generation = world.generation()
 	_see_through_all_but(keep)
-	say.call("x-ray: everything but %s is see-through — I again to end it" % (
+	say.call(Keymap.filled("x-ray: everything but %s is see-through — {xray|again to end it}") % (
 		"the sub-assembly" if not _xray_path.is_empty() else "the selection"))
 	return true
 
@@ -356,7 +356,7 @@ func _build_bar() -> void:
 	row.add_child(_reading)
 
 	var other: Button = _button("Flip")
-	other.tooltip_text = "Cut away the other side   Shift+K"
+	Keymap.tell(other, "Cut away the other side   {cut_flip}")
 	other.pressed.connect(flip)
 	row.add_child(other)
 
@@ -369,7 +369,7 @@ func _build_bar() -> void:
 	row.add_child(_ghost_box)
 
 	var close: Button = _button("×")
-	close.tooltip_text = "The whole model again   K"
+	Keymap.tell(close, "The whole model again   {cut}")
 	close.pressed.connect(func() -> void: set_cut(false))
 	row.add_child(close)
 

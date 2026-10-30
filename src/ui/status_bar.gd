@@ -85,7 +85,7 @@ func _ready() -> void:
 	row.add_child(show_folder)
 	counts = _cell(row, "How many parts the model has, and whether it would stand up as built")
 	_selected = _cell(row, "How many parts are selected")
-	_settings = _cell(row, "What a part snaps to, and how far R turns a selection: both on the toolbar")
+	_settings = _cell(row, "What a part snaps to, and how far a turn goes: both on the toolbar")
 	_zoom = _cell(row, "How big one stud is on the screen at the middle of the view")
 
 
