@@ -1,5 +1,6 @@
-## The properties of what is selected, in the left-hand column beside
-## the model (PanelStack), under the parts bin and the model tree.
+## The properties of what is selected, in the right-hand column beside
+## the model (PanelStack), under the model tree; and where the columns take
+## turns, a compact one under the parts bin as well ([member compact]).
 ##
 ## One part: what it is, by LDraw's number and BrickLink's; its colour, by
 ## LDraw's name and LEGO's and the shops' numbers; where it stands and
@@ -15,8 +16,21 @@ class_name Inspector
 extends PanelContainer
 
 const WIDE := 252.0
+## A compact one as wide as this or wider has its boxes three across.
+const THREE_ACROSS := 360.0
 
 var shell: Shell
+## A laptop's second, under the parts bin (Main._bin_props): what a part
+## just put down needs, its name, its colour, its place and its turn, in
+## sight with the bin. Where the columns take turns, opening the full
+## Properties down the right folded the bin, so a part typed to its place
+## and the next one cost a rail click each way (docs/APP_UX2.md gap 5).
+## Shown only while something is selected and [member wanted]; the rest is
+## More away, down the right.
+var compact: bool = false
+## For a compact one, Main's say: whether the window's columns take turns.
+var wanted: bool = false
+var _more: LinkButton
 
 var _open: bool = true
 var _header: Button
@@ -62,7 +76,7 @@ var _credit_page: String = ""
 var _joined_button: Button
 var _lock_button: Button
 var _hide_button: Button
-## Edit, Printed versions…, for one part the LEGO Group printed or put a
+## Make, Printed versions…, for one part the LEGO Group printed or put a
 ## sticker on: under its name, with how many there are.
 var _versions_button: Button
 
@@ -119,6 +133,21 @@ func _ready() -> void:
 	_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(_arrow)
+	# A compact one's header is the selection's name, and More opens the
+	# full properties: it folds nothing, and shows only while there is
+	# something to show.
+	if compact:
+		_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_header.clip_text = true
+		_header.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		_count.visible = false
+		_arrow.visible = false
+		_more = Look.link("More", 12)
+		_more.tooltip_text = ("All of its properties, down the right: what it is joined to, its "
+			+ "step in the instructions, Lock and Hide")
+		_more.pressed.connect(func() -> void: shell.run("show_properties"))
+		head.add_child(_more)
+		visible = false
 
 	# Nothing selected: the model's own properties, which is what it
 	# stands on (FloorPicker). Two rows under the header, not the panel's
@@ -131,7 +160,7 @@ func _ready() -> void:
 		shell.app.call("choose_floor", chosen))
 	floor_picker.part_toggled.connect(func(on: bool) -> void:
 		shell.app.call("floor_part_of_model", on))
-	if floor_layer != null:
+	if floor_layer != null and not compact:
 		floor_layer.changed.connect(_show_floor)
 	# And whose it is, when it is someone else's: who made it, its licence
 	# and its page (ModelStore.credit), as the library or the gallery said.
@@ -234,6 +263,16 @@ func _ready() -> void:
 		func() -> void: _act(1))
 	_hide_button = _action("Hide", "Hide it, to reach what is behind it   "
 		+ shell.key_words("hide"), func() -> void: _act(2))
+	# A compact one's colour beside its name, in one row: under the boxes it
+	# cost the bin its third row of parts at 1280 x 720.
+	if compact:
+		_body.remove_child(_colour_row)
+		head.add_child(_colour_row)
+		head.move_child(_colour_row, _more.get_index())
+		_colour_row.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_colour.autowrap_mode = TextServer.AUTOWRAP_OFF
+		_colour.custom_minimum_size = Vector2.ZERO
+		_colour.size_flags_horizontal = Control.SIZE_FILL
 
 	shell.builder.selection_changed.connect(func(_n: int) -> void: _refresh(true))
 	shell.world.rebuilt.connect(func(_b: int, _c: int, _t: int) -> void: _refresh(true))
@@ -382,6 +421,12 @@ func _refresh(_now: bool) -> void:
 		var brick: BrickWorld.Brick = shell.world.get_brick(brick_id)
 		if brick != null:
 			bricks.append(brick)
+	if compact:
+		var shown: bool = wanted and not bricks.is_empty()
+		if visible != shown:
+			visible = shown
+		if not shown:
+			return
 	_count.text = "nothing selected" if bricks.is_empty() else (
 		"1 part" if bricks.size() == 1 else "%d parts" % bricks.size())
 	if bricks.is_empty() != _idle:
@@ -410,6 +455,25 @@ func _refresh(_now: bool) -> void:
 		_show_one(bricks[0])
 	else:
 		_show_many(bricks)
+	if compact:
+		_trim()
+
+
+## A compact one keeps the name, the colour by its name, the place and the
+## turn: the name and the colour in its header's row, the rest of what the
+## full one says down the right.
+func _trim() -> void:
+	_header.text = _title.text
+	for control: Control in [_title, _ids, _versions_button, _facts, _actions]:
+		control.visible = false
+	_colour.text = _colour.text.get_slice("\n", 0)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED and compact and _place != null:
+		var across: int = 6 if size.x >= THREE_ACROSS else 4
+		if _place.columns != across:
+			_place.columns = across
 
 
 func _state_of(bricks: Array[BrickWorld.Brick]) -> String:
@@ -491,6 +555,11 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 		_tilt_of(brick.transform.basis))
 	_show_hinge(shell.builder.hinge_angle())
 	_show_meet(false)
+	_lock_button.disabled = shell.builder.is_locked(brick.id)
+	# A compact one says none of it, and the joined parts and the steps take
+	# a while on a big model.
+	if compact:
+		return
 	# Counted up to a point: on a big model all of it is joined to all of it.
 	var joined: int = SelectBy.connected(shell.world, shell.builder.lattice,
 		[brick.id], shell.store.scenery, JOINED_MOST + 1).size() - 1
@@ -508,7 +577,6 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 		lines.append(Keymap.filled("Locked — {unlock|unlocks everything}"))
 	_facts.text = "\n".join(lines)
 	_facts.visible = true
-	_lock_button.disabled = shell.builder.is_locked(brick.id)
 
 
 func _show_many(bricks: Array[BrickWorld.Brick]) -> void:
@@ -861,7 +929,10 @@ func _step_words(brick_id: int) -> String:
 func controls_by_name() -> Dictionary:
 	if not is_visible_in_tree():
 		return {}
-	var out: Dictionary = {"properties": _header}
+	# A compact one's header folds nothing; More is its way to the rest.
+	var out: Dictionary = {"prop_more": _more} if compact else {"properties": _header}
+	if _open and _colour_row.is_visible_in_tree():
+		out["prop_colour"] = _colour
 	if _credit.visible and _credit_link.visible:
 		out["prop_credit_page"] = _credit_link
 	if _open and _versions_button.is_visible_in_tree():

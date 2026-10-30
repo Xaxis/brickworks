@@ -1,4 +1,4 @@
-## Build, Hose, tube or chain…: laying a flexible part by hand.
+## Make, Hose, tube or chain…: laying a flexible part by hand.
 ##
 ## BrickLink Studio's flex tools, the way a person uses them: choose what
 ## to lay and how long a part it is, click the connector it starts on and
@@ -7,7 +7,7 @@
 ## round. Then drag the bend points to shape it, add one with Add a bend,
 ## and Done. The part is one item, a sub-assembly of its segments, so a
 ## click takes all of it, it saves as the segments any LDraw tool reads,
-## and Edit, Reshape the hose or chain opens it again — after a reopen too,
+## and Make, Reshape the hose or chain opens it again — after a reopen too,
 ## read off its own pieces.
 ##
 ## While it is out it has the left button and the pointer, as the ruler
@@ -298,7 +298,7 @@ func leave() -> void:
 	_draw()
 	if not _item.is_empty():
 		_select_item()
-		say.call("%s laid — Edit, Reshape the hose or chain to change it" % Assemblies.label(_item))
+		say.call(Keymap.filled("%s laid — {reshape_flex|reshapes it}") % Assemblies.label(_item))
 
 
 func _begin() -> void:

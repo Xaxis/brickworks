@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
 
 ## Sub-features
 
@@ -244,7 +244,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   only (`Shell.WEB_ONLY`), Back to brickworks.diy, which takes this tab to the
   site's own `/` (a preview's on a preview). F6 from the model goes to it
   first; Return opens it. Where the bar has no room for the name on one line
-  (`ModelBar._fit_mark`), the mark alone. Never on the model, a render or an
+  (`ModelBar._fit_mark`), the mark alone, and then the model's name box gives
+  way from 200 units to 120 (the Make menu took the 40 the bar had to spare
+  at 720 units across). Never on the model, a render or an
   export. `app menu probe` (windowed) checks it first at the bar's left at
   the window's width and narrower to 720 units, the bar one line and the
   bar and toolbar exactly as with the old name in words, the rows, About from
@@ -301,6 +303,26 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   how many of what, the colours, the size in studs and bricks, the group's
   corner to type over. Folds to its header; scrolls when the column gives it
   less room than it needs.
+- `properties under the bin` (`Inspector.compact`, `Main._bin_props`,
+  2026-10-30, docs/APP_UX2.md gap 5): where the columns take turns (a
+  laptop's 1280 x 720 and 1400 x 900, and 1920 x 1080), opening the properties folded the bin
+  and the bin folded them, so a part put down and typed to its place, and the
+  next one, cost a rail click each way. A second, compact Properties sits
+  between the bin and its colours (`PanelStack.keep_whole`), shown only while
+  something is selected and `_columns` is "turns": the selection's name in
+  its header, its colour by name, X, Y, Z three across and Turn, Tilt, Roll
+  under them (Hinge and Meet when they apply), the same typing as the full
+  one. A colour clicked in the bin's colours under it paints the selection.
+  **More** runs `show_properties`, the full one down the right. Its boxes are
+  published as `prop_x`… and `prop_colour`, `prop_more` while it shows (the
+  full one is folded then), so a flow types into whichever is in sight. A
+  window with room for both columns (`wide`, about twice as wide as it is
+  tall) never shows it; 1920 x 1080 (1600 units) takes turns, and shows it.
+  Probe: `laptop_probe` (1280 x 720 and
+  PROBE_SIZE=1400x900: five parts from tiles in sight, each selected and
+  typed to its place, the first turned and painted, 0 rail clicks, 12 parts
+  or more in sight, the model's 60%); `columns_probe` checks it after the
+  Parts rail brings the bin back.
 - `docked panels` (`src/ui/panel_stack.gd`, `src/ui/side_dock.gd`,
   `Main._fit_panels`, 2026-10-30, appux371's A10): the left column is the
   parts bin with its colours under it, as Studio keeps its parts palette down
@@ -335,7 +357,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   take turns, opening one folding the other side's (`Main._column_opening`),
   and a part put in hand (Q, the bin, the eyedropper) brings the bin out
   (`Main._bring_out_bin`). A first visit opens on the bin; the Properties
-  rail brings out the tree and every property, folding it. The assistant
+  rail brings out the tree and every property, folding it. With a part
+  selected the bin has its place, turn and colour under it as well
+  (`properties under the bin`), so building needs neither rail. The assistant
   turned on opens as the right column's tab, folding the bin where they
   take turns. On a phone or a tablet they are drawers, as before: the drawer down the
   left holds the tree, the properties and the colours, and there is no right
@@ -363,16 +387,31 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `Phone.on()`, decided once at start: the web, a touchscreen, the main
   pointer coarse with no fine one, and the screen under 600 points in its
   short direction; a touch laptop and every desktop keep the desktop layout
-  to the pixel. Then `Main._dress_for_phone` puts the menus, toolbar, key
-  strip, status line (shown only while busy) and view cube away, and
-  `PhoneShell` lays out in points (`Phone.px`, about 1.85 units a point at
-  390): along the top the model's name, Undo and Redo; along the foot one row,
+  to the pixel. And any browser window a phone's size (short side under 600
+  points, long under `Phone.PHONE_LONG`, 1000), whatever points at it: the
+  desktop drawn there was 0.54 of a pixel to the unit at 390 x 844 (a 9 x 15
+  mark, six-pixel words) and ran off the foot at 844 x 390 (phone,
+  2026-10-30); a laptop's 1280 x 590 keeps the desktop. Then
+  `Main._dress_for_phone` puts the menus, toolbar, key strip, status line
+  (shown only while busy) and view cube away, and `PhoneShell` lays out in
+  points (`Phone.px`, about 1.85 units a point at 390): along the top the mark
+  (`phone_app_menu`, published as `app_menu`: the desktop's app menu dropped
+  under it, About to Back to brickworks.diy), the model's name, the
+  assistant's spark while it is on (`phone_assistant`, View, Assistant: its
+  drawer's rail shows only while it is open, so a phone that turned it on had
+  no way to it), Undo and Redo; "Show the assistant" opens its drawer, as it
+  says, the screen's width less its rail, sized for a finger and scrolled
+  whole (`ChatPanel`) where it is taller than the room; both drawers stop
+  above the row of tools (`SideDock.set_phone_rail`'s foot), and Fit and the
+  line over the model step aside while one is open; along the foot one row,
   Parts, Colour (the colour in hand), Turn, Tip, Select (lets go, as a right
   click), Delete (the selection, else the Delete tool) and More; a line over
   the model in touch words (what was just said, `Phone.touch_words`, or what a
-  finger does now); Fit in the corner. Sheets from the foot: the parts bin
+  finger does now; one line on a phone held sideways); Fit in the corner. Sheets from the foot: the parts bin
   (Main's own, `PartsBin.zoom`, a finger's drag scrolling it), half the
-  screen, its handle swiped to the whole screen or away, gone with a pick;
+  screen, its handle swiped to the whole screen or away, gone with a pick
+  (on a phone on its side the whole screen: half was its head and no part,
+  `PhoneShell.HALF_LEAST`);
   the colours, 46-point swatches by group (`PartsBin.choose_colour`, what a
   swatch press does: it paints a selection); More, every menu's commands a
   row each, greyed and lit as the menus are; and a finger held still on a
@@ -381,13 +420,29 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`CadCamera.phone`); a finger that lands on a part with Select moves it and
   the view stays (`finger_taken`). The shared viewer keeps its own. The
   notices strip is drawn for a finger (`Main._for_a_finger`). Proved by
-  `tools/web/phone_flow.mjs` (preview check `phone`), at 390 x 844 and
-  430 x 932 at 3x with touch events: More, New; the parts sheet half, swiped
-  full and back; searched 3001 and picked; six bricks, a door and a roof
+  `tools/web/phone_flow.mjs` (preview check `phone`), at 390 x 844,
+  430 x 932 and 844 x 390 at 3x with touch events: More, New; the parts sheet
+  half, swiped full and back (whole, on its side); searched 3001 and picked; six bricks, a door and a roof
   slope tapped down; Select, a brick tapped, Colour, blue painting it, Undo;
   a held finger's actions; two fingers turning and spreading; at each step
   the app's own audit (`window.brickworksAskPhone`, `Main._phone_audit`):
   every target 44 points or more, no text under 12, nothing off the screen.
+  `tools/web/fit_check.mjs` opens its phone sizes (390 x 844, 844 x 390) as
+  phones, and 844 x 390 again with a mouse (appux2 saw the desktop's key
+  strip over most of a 128-px model there), the model keeping half the
+  height or more (`PHONE_TALL`), and asks the same audit at first and with the assistant turned on in
+  Settings (scrolled into sight, above Done, on a phone on its side): every
+  target 44 or more and on the screen, the mark, the name, Undo, Redo, Parts,
+  More and the assistant's button shown, and nothing over the model but the
+  round Fit in its corner, kept there as the desktop's view cube is
+  (`Main.model_cover`). `tools/web/app_menu_flow.mjs` at 390 x 844 with a
+  mouse: the phone's mark a fingertip square, its menu's rows, About, Back.
+  Every control's icon (the toolbar's, the mark, the phone's bars, the model
+  tree's, orangecheck's, the library's magnifier) is `Icons.icon_for`: drawn
+  at the pixels it is shown at and said to be its size in units, so it is
+  that size at any density. A Button draws an icon a texel to a unit and
+  `icon_max_width` only shrinks it, so below a pixel to the unit (0.54 at a
+  phone's size and 1x) every icon was half size.
   The dialogs More opens are sized for a finger too (`touch dialogs`, below).
   walk256 (T1, T2, 2026-10-25): More is the menus' names, File to Help, each
   a row that a tap opens to its commands and folds again
@@ -991,9 +1046,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `measure`: `U` (or Measure on the toolbar) takes out a ruler (`src/ui/measure.gd`):
   click a point, then another, and the label over the model says the
   distance in millimetres and across each axis in studs and plates; points
-  snap to half a stud across and a cell up. While it is out a click places
-  nothing; the right and middle buttons still turn the view; `U` or `Esc` puts
-  it away.
+  snap to half a stud across and a cell up. A point within 14 px of a
+  connector's middle on the part under it (`JointSnap.ends_for`: a pin, hole,
+  axle, bar, clip or hinge) goes on that middle (`Measure._end_near`), its axis
+  drawn through it; with both points on one the label adds the angle between
+  their axes to 0.1° ("37.9° between the two pin holes", `Measure.angle`: the
+  lines' angle, 0 to 90°, unless both are pins or axles), as LDCad's
+  (APP_UX2 7). Works in either view through the camera clicked in. While it is
+  out a click places nothing; the right and middle buttons still turn the
+  view; `U` or `Esc` puts it away. Probe: `handles2_probe` (`angle`).
 - `sub-assemblies`: `Ctrl-G` (Edit or Build, Make a sub-assembly) asks for a
   name and makes the selection a sub-assembly inside the one being edited; a
   click with Select then takes all of it, and every move, turn, hinge, copy,
@@ -1792,6 +1853,16 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   shaft (`JointSnap.End.back`, `ways`): an axle and nothing else has the
   shaft behind each tip, and a wheel, a bush or a beam on it slides
   (8841-1's belt wheel halfway along its axle; probe: the same section).
+  An axle in hand goes through a hole and stops flush with its far face
+  wherever the hole is aimed at; aimed past that face, its tip goes on
+  through to the pointer, a whole LDU at a time, as far as its shaft runs
+  (`JointSnap._pushed`, the second way's slide, so `Builder._joint_asked`
+  keys the pose on every way's): 8841-1's axle stands 1 LDU past its
+  1 x 16 and took a typed rest. Probe: `placing_probe -- only=axle` (fails
+  without `_pushed`: the tip stayed flush). A 1 x 1 round plate on its side
+  on a light clip's ring seats flush, as 314 of the 325 such seats in the
+  OMR's files are (the plane's four are 1 LDU proud, its author's own);
+  probe: `placing_probe -- only=ring`.
   The build flow's side of it:
   `tests/test_cadtask.py` (a part on its side aimed at by its underside; a
   beam hung from its middle out).
@@ -1924,6 +1995,33 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   or Move would pick the part up. A press and release on a handle with no move is
   the tool's click. Drawn again only when what it shows changed (IdleDraw).
   Probe: `handles_probe`.
+  Panes, a free turn and angles (APP_UX2 7, `Handles.screen_extras`): Move draws
+  three panes between the arrows (0.28 to 0.68 of an arrow's reach on each of
+  two axes, coloured as the axis they are square to, left out nearer edge on
+  than a quarter of their face), each sliding the selection on its two axes at
+  once, snapped on each (`_on_pane`, `_sweep_on`: grid stops on the straight
+  way, weighed 4 LDU at a time, stopped at the last with room); "x +3 studs, z
+  -2 studs" in the tag and the history; a number typed names the axes, the
+  handles' own ("2x -1z"). Rotate draws a fourth ring at 1.25 of the radius
+  about the view's own axis (`VIEW_AXIS`, the view it is drawn in), its stops
+  measured in its own radius; inside the rings a press is the trackball
+  (`kind "ball"`): a drag rolls it about the line square to the pointer's way
+  in the view's plane, a quarter turn a radius, free, weighed 5° at a time, one
+  undo, no number; a press and release there is still the tool's click. A ring
+  or arrow under the pointer wins over a pane, any of them over the trackball.
+  Probe: `handles2_probe`.
+- `handles2 probe` (`src/dev/handles2_probe.gd`): windowed, about two minutes,
+  `PROBE_SIZE=1280x720` for the small window. `panes`: a 2 x 4 turned 30° slid
+  3 studs along its own x and 2 back along its z by its x-z pane (click, drag:
+  2 actions, one undo), the model's x-z pane, `2x -1z` typed mid-drag, a
+  slanted drag into a 2 x 4 stopped short and the one in the way lit. `outer`:
+  the outer ring dragged 32° turns it 30° about the view's axis (2 actions),
+  `12.5` straight after. `ball`: half the radius to the right rolls it 45°
+  about the view's up; a click inside the rings still turns it the turn step.
+  `angle`: Measure from a 3701's middle hole to one turned 23° and tipped 31°
+  says the angle to 0.1° and the distance between the hole middles; from a
+  point on its top, no angle. `second`: View, Split from the top, the x-z pane
+  dragged in the second view. Pictures in `shots/handles2/WxH/`.
 - `handles probe` (`src/dev/handles_probe.gd`): windowed, about three minutes,
   `PROBE_SIZE=1280x720` for the small window. `rings`: a 2 x 4 turned 20° and
   tipped 10° turned about each of its own axes by 23.58, -41.2 and 67.5° (click,
@@ -1959,7 +2057,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
 - `set walk probe` (`src/dev/setwalk_probe.gd`): windowed, about ten
   minutes for both sets; `PROBE_SIZE=1400x900` for the big window. Builds
   8841-1's 25 walk parts (section 9's order) and 5762-1's first 25 from the
-  set's bin: the bin's search clicked, the set's number typed, Build from it;
+  set's bin: the bin's search clicked, the set's number typed, and the
+  model built (`8841-1_Balance`, `5762-1_Plane`) clicked under "Follow a
+  booklet:", which builds from the set and puts each step's parts first;
   then each part's tile (wheel notches, or the scroll bar dragged when it is
   more than a row off), `R` and `T` to its turn, the view by its keys or the
   cube, the pointer aimed with up to four corrections and a click, a joint
@@ -1968,9 +2068,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   input is counted as CADTASK counts it (a click elsewhere a point and a
   click, a key or character 1, a wheel notch 1, a scroll-bar drag 3); the
   view and the turns are judged uncounted and then pressed counted. Bar:
-  12 actions a part or fewer for each set, and every part exact (the set's
-  number and colour, place to 0.05 LDU, turn to 0.002 or one the part looks
-  the same in, by its own mesh). `-- only=8841-1|5762-1`, `shots=1` for
+  8841-1 at 5.5 actions a part or fewer and 5762-1 at 6.36 (without the
+  booklet 6.56 and 6.36; with it 5.12 and 5.88 on 2026-10-30), every part
+  exact (the set's number and colour, place to 0.05 LDU, turn to 0.002 or
+  one the part looks the same in, by its own mesh). The walker looks for a
+  tile once the bin has counted the last part in, and drags the bar down to
+  one the bin has not made yet. `-- only=8841-1|5762-1`, `shots=1` for
   pictures in `shots/setwalk/WxH/`, `from=library` for the same walk taken
   from the whole library (search, the number, the tile, the swatch), the
   figure before the set's bin. Rows in `shots/setwalk/<set>.json`.
@@ -2003,7 +2106,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (a brick with studs on its side) goes onto those studs: a socket on the stud
   nearest the pointer, flat on the face (`Builder._onto_side_studs`).
 - `hoses and chains by hand` (`src/ui/flex_tool.gd`, the laying itself in
-  `src/assembly/flex.gd`): Build, Hose, tube or chain… opens a panel over the
+  `src/assembly/flex.gd`): Make, Hose, tube or chain… opens a panel over the
   model's left edge — what to lay (pneumatic tube, ribbed hose, flex-system
   hose, flexible axle, string with end studs, Technic chain, tread) and how long
   a real part ("The shortest that fits" by default: the shortest that neither
@@ -2018,7 +2121,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   as it was and says so. Each lay is one undo step ("laid …", "reshaped …").
   The item is a sub-assembly of its segments ("Pneumatic Tube 9L#1", a name of
   its own so it is never taken for a copy of another), so a click takes all of
-  it and it saves as its own LDraw sub-model of segments. Edit, Reshape the
+  it and it saves as its own LDraw sub-model of segments. Make, Reshape the
   hose or chain reopens it; after an undo or a reopen it is read off its own
   pieces (`Flex.ends_of_item`, `centreline`): ends on the connectors they are
   at, length the nearest real one's, the fewest bend points that lay it within
@@ -2051,7 +2154,15 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   there in the same undo step (`FlexTool.follow_moved`, from
   `Main._on_model_edited`); its pieces never stop that move
   (`Builder._only_bands`). Reshape reads one back off its pieces. Probe:
-  `springs_probe` (windowed; `PROBE_SIZE=1280x720` for a laptop).
+  `springs_probe` (windowed; `PROBE_SIZE=1280x720` for a laptop). It saves
+  the model and has a second app, a process of its own with an empty data
+  folder (`--reopen=FILE`, beside FILE's `.json` of what it should hold),
+  open it: the three bands bands again, as long, no piece loose, the spring
+  and shock with their turns, and Reshape on each. Then a copy with the made
+  pieces' FILE sections stripped, as another tool may save it, in a fresh app
+  too (made again from their names: 247 of 247); and one band's pieces renamed
+  to one nothing can make, opened: said (named once, counted), the rest open,
+  and a save keeps its lines in their own sub-model.
 - `build a real set by hand in a browser` (`tools/web/cad_task_flow.mjs`,
   `tools/bench/cadtask_klm.py`, 2026-10-16; run by `tools/bench/cadtask.py
   build`, written up in `docs/CADTASK.md`): three small real sets (20 to 80
@@ -2299,7 +2410,8 @@ godot --headless --path . --script src/dev/technic_hand_probe.gd
 MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd
 # a band from the bin round two wedge belt wheels and three, within 1 LDU of
 # the tangents and arcs by hand; turned and tilted; following a wheel nudged;
-# a spring stretched 4 to 6 studs keeping its turns; a shock; saved and opened.
+# a spring stretched 4 to 6 studs keeping its turns; a shock; saved and opened,
+# there and by a fresh app (a second process, nothing built or kept).
 # Pictures and the saved file in shots/springs/
 bash tools/probe.sh springs_probe; PROBE_SIZE=1280x720 bash tools/probe.sh springs_probe
 ```

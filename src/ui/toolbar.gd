@@ -176,6 +176,10 @@ func _item(name: String, icon: String) -> Control:
 		button = menu
 	elif name == "select":
 		var menu := MenuButton.new()
+		# Its rows' keys are the keymap's, as the menus' are (Shell._menu):
+		# answered here too, Alt-C with nothing selected ran Same colour
+		# from this menu, greyed and silent, and never reached the keys.
+		menu.set_disable_shortcuts(true)
 		var choices: PopupMenu = menu.get_popup()
 		shell._fill(choices, Shell.SUBMENUS["select_by"] + ["-", "select_all", "select_none"])
 		choices.id_pressed.connect(shell._on_id)
@@ -292,7 +296,7 @@ func _draw_icons() -> void:
 	_drawn_at = density
 	for name: String in _buttons:
 		var button: Button = _buttons[name]
-		var texture: ImageTexture = Icons.texture_for(
+		var texture: ImageTexture = Icons.icon_for(
 			TOOLS + str(button.get_meta("icon")) + ".svg", ICON, density)
 		if button is OptionButton:
 			# A chooser shows the picture of the item chosen, so every item
@@ -304,9 +308,6 @@ func _draw_icons() -> void:
 		else:
 			button.icon = texture
 		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		if texture != null:
-			button.add_theme_constant_override("icon_max_width",
-				roundi(texture.get_width() / density))
 
 
 ## Fold groups away, least needed first, until the row fits the window.

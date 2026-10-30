@@ -669,7 +669,8 @@
       "reach": "tools/gears.py check   (tools/gears.py measure: how far apart real sets stand their gears)",
       "area": "pipeline",
       "tests": [
-        "tests/test_gears.py"
+        "tests/test_gears.py",
+        "tests/test_pck_split.py"
       ]
     },
     {
@@ -866,7 +867,8 @@
       "reach": "tools/brick.py search_parts '{\"query\":\"wedge\"}' --port=8795",
       "area": "mcp",
       "tests": [
-        "tests/test_elements.py"
+        "tests/test_elements.py",
+        "tests/test_pck_split.py"
       ]
     },
     {
@@ -1578,6 +1580,14 @@
       "tests": []
     },
     {
+      "id": "cli:photographed light in a browser",
+      "kind": "cli",
+      "entry": "tools/web/light_render_flow.mjs",
+      "reach": "node tools/web/light_render_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=OUT [--against=OTHER.png]   (a local export served by tools/web/serve.py, with .env sourced: Quick at 720p lit by Softbox studio, the light fetched only then, and the same picture as a build that carried it in its pack)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:picker folder probe",
       "kind": "cli",
       "entry": "src/dev/picker_folder_probe.gd",
@@ -1757,7 +1767,8 @@
       "reach": "tools/release/train.sh stage TAG BRANCH --after PREV --checks \"...\"; tools/release/train.sh status",
       "area": "release",
       "tests": [
-        "tests/test_realset.py"
+        "tests/test_realset.py",
+        "tests/test_search.py"
       ]
     },
     {
@@ -2016,7 +2027,7 @@
       "id": "cli:springs probe",
       "kind": "cli",
       "entry": "src/dev/springs_probe.gd",
-      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd  (a band round two wedge belt wheels and three, each in 4 actions or fewer, within 1 LDU of the tangents and arcs by hand and in every groove; turned and tilted; a wheel nudged and its band following, one undo; a spring stretched from 4 to 6 studs keeping its turns; a shock from the bin; saved and opened the same; PROBE_SIZE=1280x720)",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd  (a band round two wedge belt wheels and three, each in 4 actions or fewer, within 1 LDU of the tangents and arcs by hand and in every groove; turned and tilted; a wheel nudged and its band following, one undo; a spring stretched from 4 to 6 studs keeping its turns; a shock from the bin; saved and opened the same, there and by a fresh app (a second process with an empty data folder, --reopen=FILE): no band lost or loose, Reshape on each; its made pieces' sections stripped, made again from their names; a band nothing can make said and kept in its sub-model; PROBE_SIZE=1280x720)",
       "area": "building",
       "tests": []
     },
@@ -2887,7 +2898,8 @@
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=actuators   (by hand: drag the rod of 42081-1's arm actuator, or of 42080-1's pneumatic cylinders, out and in; move_part a small actuator's input degrees=360)",
       "area": "building",
       "tests": [
-        "tests/test_gears.py"
+        "tests/test_gears.py",
+        "tests/test_pck_split.py"
       ]
     },
     {
@@ -3850,6 +3862,14 @@
       ]
     },
     {
+      "id": "ui:colour keys",
+      "kind": "ui",
+      "entry": "src/ui/colour_keys.gd",
+      "reach": "tools/probe.sh keys3_probe   (select parts, Shift-1 to Shift-0 paint them a favourite colour, Ctrl-Shift-1 to 0 the model's most used, one Ctrl+Z each; F1, Colours: click a favourite's swatch to choose its colour; Alt-C, P, J, I select the same colour, part, all joined, the opposite; Studio's keys: none on the colours, Shift-V cycles the selection; web: node tools/web/colour_keys_flow.mjs)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:colour the hidden parts",
       "kind": "ui",
       "entry": "src/ui/hidden_colours_panel.gd",
@@ -4101,7 +4121,7 @@
       "id": "ui:hoses and chains by hand",
       "kind": "ui",
       "entry": "src/ui/flex_tool.gd",
-      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Build, Hose, tube or chain\u2026, click two pin holes or two gears; Edit, Reshape the hose or chain)",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Make, Hose, tube or chain\u2026, click two pin holes or two gears; Make, Reshape the hose or chain)",
       "area": "building",
       "tests": []
     },
@@ -4291,7 +4311,7 @@
       "id": "ui:my collection",
       "kind": "ui",
       "entry": "src/ui/collection_dialog.gd",
-      "reach": "godot --path .  (Build, My collection\u2026 / What do I need?\u2026 / What can I build?\u2026; or P, then What do I need?)",
+      "reach": "godot --path .  (File, My collection\u2026 / Build, What do I need?\u2026 / File, What can I build?\u2026; or P, then What do I need?)",
       "area": "collection",
       "tests": []
     },
@@ -4489,7 +4509,7 @@
       "id": "ui:printed versions",
       "kind": "ui",
       "entry": "src/prints/printed_versions.gd",
-      "reach": "godot --headless --path . --script src/dev/decor_probe.gd   (by hand: pick a part, then Edit, Printed versions\u2026, its right-click menu, or Properties' Printed versions\u2026)",
+      "reach": "godot --headless --path . --script src/dev/decor_probe.gd   (by hand: pick a part, then Make, Printed versions\u2026, its right-click menu, or Properties' Printed versions\u2026)",
       "area": "prints",
       "tests": []
     },
@@ -4523,7 +4543,15 @@
       "id": "ui:properties panel",
       "kind": "ui",
       "entry": "src/ui/inspector.gd",
-      "reach": "godot --path .  (select a part; the foot of the left-hand column, under the model tree)",
+      "reach": "godot --path .  (select a part; down the right, under the model tree)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:properties under the bin",
+      "kind": "ui",
+      "entry": "src/ui/inspector.gd",
+      "reach": "godot --path . --resolution 1280x720  (the bin open, select a part: its name, colour, X, Y, Z, Turn, Tilt and Roll under the bin; More opens the rest down the right)",
       "area": "building",
       "tests": []
     },
@@ -4533,6 +4561,14 @@
       "entry": "src/ui/part_shelf.gd",
       "reach": "godot --path .  (Recent and Favourites in the parts bin; right-click a part to keep it)",
       "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "ui:reference picture",
+      "kind": "ui",
+      "entry": "src/ui/reference_image.gd",
+      "reach": "tools/probe.sh refimage_probe   (PROBE_SIZE=1400x900 too; by hand: Make, Reference picture\u2026, a PNG or JPEG, then its width, opacity and Locked)",
+      "area": "view",
       "tests": []
     },
     {

@@ -43,7 +43,7 @@
 //      as the owner turns, framed with Stop; a part the owner clicks is
 //      outlined in the owner's colour there, read off the page's pixels; the
 //      other's own wheel stops the following.
-//   5g. A comment pinned to the part selected, from Edit, Comments…: in the
+//   5g. A comment pinned to the part selected, from File, Comments…: in the
 //      owner's file and the desktop's byte for byte, and none of it sent to
 //      the person under 13 (their file the owner's without it); its mark
 //      pressed, one click on Resolve on its card resolves it everywhere.
@@ -1004,7 +1004,7 @@ try {
   console.log("\n5g. a comment pinned to a part");
   const WORDS = "Roof starts here?";
   const pinField = await menu(owner.page, "edit", "Comm", "pins_field");
-  check("Edit, Comments… opens the Comments panel", Boolean(pinField));
+  check("File, Comments… opens the Comments panel", Boolean(pinField));
   if (pinField) {
     await owner.page.mouse.click(pinField.x, pinField.y);
     await owner.page.keyboard.type(WORDS, { delay: 40 });

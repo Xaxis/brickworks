@@ -56,6 +56,8 @@ ui:the booklet by hand
 
 **Lay out the page…** on the Booklet row puts the page in your hands: drag its picture, parts list, callout and step number where they go, and a corner to size each. **Add words**, **Add a picture…**, and **Draw an arrow**: drag it, drag its middle to bend it, and set its colour and width. A callout's own pages turn with **Previous** and **Next page**.
 
+Words or a picture turn by the round knob above them (it settles on every 15°), or type **Turn** in degrees; **Opacity** fades them. An arrow bends through as many points as you like: drag the dot in the middle of any stretch to add a bend, and double-click a bend to take it out. Drag a guide out of the ruler along the top or the left; what you drag near it lands on it, and dragging the guide back into its ruler takes it away. Guides are never printed. The PDF and the PNG pages print each turn, fade and bend as the page shows it.
+
 Laid out one page the way you like, press **Apply to later pages**: every later page with as many steps gets the same layout, its picture where yours is and drawn no larger than the booklet draws a step, and moved clear of a parts list that grew for a step of many parts. One Undo takes it all back. Set **Per page** first so the pages have the same number of steps.
 
 <!-- covers

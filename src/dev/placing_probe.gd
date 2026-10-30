@@ -12,7 +12,9 @@
 ## 8841-1's Technic plates swung on their pins onto an axle at 66.4
 ## degrees, off every one of the 24 turns (Builder._closings). And a door
 ## held over its frame, which walk180 found stood beside it or on its studs:
-## shut in it on its hinge, and a shutter on its window. Pictures in
+## shut in it on its hinge, and a shutter on its window. And 8841-1's
+## axle pushed through its brick's hole by the pointer to 1 LDU past the far
+## face, and a round plate flush on a light clip's ring. Pictures in
 ## shots/placing/, the rows in shots/placing/placing.json.
 extends SceneTree
 
@@ -70,6 +72,10 @@ func _run() -> void:
 		await _whole_sets()
 	if only.is_empty() or only == "doors":
 		await _doors()
+	if only.is_empty() or only == "axle":
+		await _axle_through()
+	if only.is_empty() or only == "ring":
+		await _round_on_ring()
 	var path: String = ProjectSettings.globalize_path("res://shots/placing/placing.json")
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	var file := FileAccess.open(path, FileAccess.WRITE)
@@ -555,6 +561,102 @@ func _whole_sets() -> void:
 		% [row.get("ghost"), _ldr_of(wheel)], made != null and bool(row.get("on_joint", false))
 		and made.transform.origin.distance_to(wheel.origin) < 0.05 and axle != 0)
 	await _shot("wheel_on_axle")
+
+
+## 8841-1's axle (3706) through its column's 1 x 4 and 1 x 16 Technic
+## bricks, its tip 1 LDU past the 1 x 16's far face. A tip stopped at the far
+## face wherever it was aimed, and the LDU was typed (docs/CADTASK.md
+## section 11). Aimed where the tip comes out, it goes on through to there
+## (JointSnap._pushed); aimed at the hole, it still stops flush with the far
+## face. And on along its line by the pointer, a whole LDU at a time.
+func _axle_through() -> void:
+	print("  8841-1's axle, its tip pushed through past the hole by the pointer")
+	_main.call("clear_model")
+	_put_ldr("3701", 4, [0, -312, 30, 1, 0, 0, 0, 1, 0, 0, 0, 1])
+	var column: int = _put_ldr("3703", 1, [10, -162, 50, 0, -1, 0, 1, 0, 0, 0, 0, 1])
+	_camera.frame(AABB(Vector3(-60, 260, -100), Vector3(120, 80, 140)))
+	_camera.look_from(Vector3(0.5, 0.4, -0.77).normalized())
+	await _frames(60)
+	await _hold("3706")
+	var want: Transform3D = _ldr([0, -302, 1, 0, 0, -1, 0, 1, 0, 1, 0, 0])
+	var hole: JointSnap.End = _nearest_site(column, want)
+	# The tip that comes out past the 1 x 16, where the file has it.
+	var tip: Vector3 = Vector3.INF
+	for end: JointSnap.End in JointSnap.ends_of(_library.mesh_for("3706")):
+		var at: Vector3 = want * end.at
+		if hole != null and at.distance_to(hole.at) < tip.distance_to(hole.at):
+			tip = at
+	if hole == null or hole.kind != "axle_hole" and hole.kind != "pin_hole":
+		_check("the 1 x 16 has a hole to aim the axle at (%s)" % [hole.kind if hole else "none"], false)
+		return
+	# Aimed at the hole: through, its tip flush with the far face, 1 LDU
+	# short of the file.
+	var middle: Vector2 = _screen(hole.at)
+	await _move(middle + Vector2(0, 1))
+	await _move(middle)
+	var flush: Transform3D = _builder.ghost_transform()
+	_check("3706 aimed at the 1 x 16's hole: through it, flush with its far face, 1 LDU short of the file (ghost %s, the file %s)"
+		% [_ldr_of(flush), _ldr_of(want)], _builder.is_on_joint() and _builder.can_place()
+		and _axle_at(flush, want.origin - (tip - want.origin).normalized()))
+	# Aimed where the file has its tip: pushed on through to there.
+	var out: Vector2 = _screen(tip)
+	await _move(out + Vector2(0, 1))
+	await _move(out)
+	var pushed: Transform3D = _builder.ghost_transform()
+	_check("3706 aimed 1 LDU past the 1 x 16's far face: its tip pushed through to there, where the file has it (ghost %s)"
+		% _ldr_of(pushed), _builder.is_on_joint() and _builder.can_place() and _axle_at(pushed, want.origin))
+	# And on, an LDU a step, as the pointer goes along the axle's line.
+	var steps: Array = []
+	for ldu: float in [2.0, 4.0]:
+		var further: Vector3 = tip + (tip - want.origin).normalized() * (ldu - 1.0)
+		await _move(_screen(further))
+		steps.append(snappedf(_builder.ghost_transform().origin.distance_to(flush.origin), 0.01))
+	_check("3706 slid on along its line by the pointer, an LDU at a time: %s LDU past flush, wanted [2, 4]"
+		% [steps], steps == [2.0, 4.0])
+	var row: Dictionary = await _aim_and_put(out, false)
+	var made: BrickWorld.Brick = _world.get_brick(int(row.get("id", 0))) if row.get("put") != null else null
+	_check("3706 put down where its ghost stood, as the file has it (put %s)" % row.get("put"),
+		made != null and _axle_at(made.transform, want.origin))
+	await _shot("axle_through")
+
+
+## Whether an axle at [param at] has its middle at [param middle], to 0.05
+## LDU: an axle is the same end for end.
+func _axle_at(at: Transform3D, middle: Vector3) -> bool:
+	return at.origin.distance_to(middle) < 0.05
+
+
+## A 1 x 1 round plate (6141) on its side on a light clip's ring (4081b), as
+## 10159-1 has one: flush on the ring's face, its stud on the far side. The
+## plane (5762-1) has its four 1 LDU proud of the ring and of each other, and
+## each took a typed rest (docs/CADTASK.md section 11); 314 of the 325 such
+## seats in the OMR's files are flush, 10 are 1 LDU proud, and 224 of 228
+## round plates on another's stud on its side are flush. The seat stays
+## flush; this holds it there.
+func _round_on_ring() -> void:
+	print("  a 1 x 1 round plate on its side on a light clip's ring, flush")
+	_main.call("clear_model")
+	_put_ldr("4081b", 15, [-30, -208, 30, 0, 0, -1, 0, 1, 0, 1, 0, 0])
+	var want: Transform3D = _ldr([-10, -206, 18, 0, 0, 1, 1, 0, 0, 0, 1, 0])
+	_camera.frame(AABB(Vector3(-50, 180, -60), Vector3(60, 50, 60)))
+	_camera.look_from(Vector3(0.5, 0.45, 0.75).normalized())
+	await _frames(60)
+	await _hold("6141")
+	_builder.held_face = BrickLattice.face_of(want.basis)
+	_builder.held_rotation = BrickLattice.turns_about(want.basis, _builder.held_face)
+	# At the ring's face: the plate's underside a stud's height out along
+	# its own down, as a person points at the ring.
+	var bounds: AABB = _library.mesh_for("6141").bounds
+	var up: Vector3 = (want.basis * Vector3.UP).normalized()
+	var under: Vector3 = want * Vector3(bounds.get_center().x, bounds.position.y, bounds.get_center().z)
+	var point: Vector2 = _screen(under - up * 4.0)
+	await _move(point + Vector2(0, 1))
+	await _move(point)
+	var ghost: Transform3D = _builder.ghost_transform()
+	_check("6141 on the ring's face: flush, as 10159-1 has it (ghost %s, the file %s)"
+		% [_ldr_of(ghost), _ldr_of(want)], _builder.has_preview() and _builder.can_place()
+		and ghost.origin.distance_to(want.origin) < 0.05)
+	await _shot("round_on_ring")
 
 
 ## walk180 (2026-10-23) held a door over a 1 x 4 x 6 frame and it stood

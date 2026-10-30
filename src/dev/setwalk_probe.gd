@@ -43,6 +43,12 @@ const WALKS := [
 		18, 19, 20, 21, 22, 23, 24, 25]],
 ]
 const BAR := 12.0
+## Following the set's booklet (PartsBin.build_from's booklet, appux2 bin2
+## follow-up): the step's parts first in the bin. 8841-1's walk was 6.76 a
+## part at 1280 x 720 with the bin most held first, a fifth of it scrolling
+## to parts held once (docs/CADTASK.md section 11); the plane's 6.36, no
+## worse.
+const BOOKLET_BAR: Dictionary = {"8841-1": 5.5, "5762-1": 6.36}
 const EXACT_PLACE := 0.05
 const EXACT_TURN := 0.002
 ## Aims after the first, each a pointer moved by what the ghost is off.
@@ -142,11 +148,11 @@ func _walk(number: String, file: String, order: Array) -> String:
 		_bin.leave_set()
 		await _frames(10)
 	else:
-		await _build_from(number)
+		await _build_from(number, file)
 	var from_bin: Dictionary = _acts.duplicate()
 	var spent: int = _total()
 	if not _from_library:
-		_check("%s's bin from its number typed and Build from it, in %d actions (%s): \"%s\""
+		_check("%s's bin from its number typed and one click (its booklet, else Build from it), in %d actions (%s): \"%s\""
 			% [number, spent, _acts, _bin.set_showing()], _bin.set_showing().begins_with(number))
 	_rows = []
 	var count: int = order.size()
@@ -180,23 +186,40 @@ func _walk(number: String, file: String, order: Array) -> String:
 		file.get_basename(), exact, count, spent, per_part, from_bin.values().reduce(
 		func(a: int, b: int) -> int: return a + b, 0), (Time.get_ticks_msec() - began) / 1000.0 / count,
 		how]
-	_check("%s: %.2f actions a part from the %s, the bar %.0f" % [number, per_part,
-		"whole library" if _from_library else "set's bin", BAR], per_part <= BAR)
+	var bar: float = BAR if _from_library else float(BOOKLET_BAR.get(number, BAR))
+	_check("%s: %.2f actions a part from the %s, the bar %.2f" % [number, per_part,
+		"whole library" if _from_library else "set's bin, following its booklet", bar],
+		per_part <= bar)
 	return line
 
 
-## The set's number typed into the bin's search, and Build from it.
-func _build_from(number: String) -> void:
+## The set's number typed into the bin's search, and the booklet of the
+## model walked chosen among the set's ([param file]'s), which builds from
+## the set's parts; Build from it where the bin offers no such choice.
+func _build_from(number: String, file: String) -> void:
 	var search: LineEdit = _bin.controls_by_name()["part search"]
 	await _act_click(search.get_global_rect().get_center())
 	await _type(number)
 	var go: Button = _bin.controls_by_name()["set build"]
 	var offered: bool = await _until(func() -> bool: return go.is_visible_in_tree(), 1200)
-	print("    typed \"%s\" into the search; %s at %s" % [search.text,
-		"offered: " + go.text if offered else "nothing offered", go.get_global_rect()])
-	await _act_click(go.get_global_rect().get_center())
+	# A lambda's locals are its own copies: the button is read again after.
+	var named: String = "booklet " + file.get_basename()
+	await _until(func() -> bool:
+		var shown: Button = _bin.controls_by_name().get(named)
+		return shown != null and shown.is_visible_in_tree(), 120)
+	var booklet: Button = _bin.controls_by_name().get(named)
+	var chosen: Button = booklet if booklet != null and booklet.is_visible_in_tree() else go
+	print("    typed \"%s\" into the search; %s; %s at %s" % [search.text,
+		"offered: " + go.text if offered else "nothing offered",
+		"its booklet " + chosen.text if chosen == booklet else "no booklet of %s offered" % file,
+		chosen.get_global_rect()])
+	await _act_click(chosen.get_global_rect().get_center())
 	await _until(func() -> bool: return not _bin.set_showing().is_empty(), 600)
 	await _frames(10)
+	var followed: Dictionary = _bin.call("booklet_followed") if _bin.has_method("booklet_followed") else {}
+	print("    the bin follows %s" % ("no booklet" if followed.is_empty()
+		else "%s, step %d of %d, %s first" % [followed["name"], followed["step"], followed["steps"],
+			", ".join(followed["first"])]))
 
 
 ## Part [param n] of the walk taken from the bin and put where the file has
@@ -261,22 +284,36 @@ func _put(truth: Array, n: int, first: bool) -> Dictionary:
 ## same part and colour still in hand from the last is not taken again.
 func _take(part: String, colour: int) -> String:
 	var key: String = Collection.key_of(part, colour, _library)
-	var cell: Button = _cell(key)
-	if cell == null:
+	var bin: SetBin = _bin.get("_set_bin")
+	if bin == null:
+		return ""
+	if not bin.have.has(key):
 		# The file's colour is not the set's (5762-1's old greys, where the
 		# set has Light Bluish Grey): the set's own, as building from it
 		# gives it.
-		for other: Node in (_bin.get("_grid") as GridContainer).get_children():
-			if Collection.part_of(str(other.get_meta("key", ""))) == Collection.part_of(key):
-				cell = other
-				key = str(other.get_meta("key"))
+		var own: String = ""
+		for other: String in bin.order:
+			if Collection.part_of(other) == Collection.part_of(key):
+				own = other
 				break
-	if cell == null:
-		return ""
+		if own.is_empty():
+			return ""
+		key = own
 	if _builder.held_part == Collection.part_of(key) \
 			and _builder.held_color == Collection.colour_of(key) and _builder.has_preview():
 		return key
+	# The bin as a person sees it: counted again a tenth of a second after
+	# a part goes in, and listed again when its booklet's step turns.
+	await _until(func() -> bool: return int(_bin.get("_counted_at")) == _world.revision, 60)
+	await _frames(2)
 	var scroll: ScrollContainer = _bin.controls_by_name()["parts list"]
+	var cell: Button = _cell(key)
+	if cell == null:
+		# Not made yet: the bin makes its tiles as it is scrolled to them.
+		await _drag_bar(scroll, null, key)
+		cell = _cell(key)
+	if cell == null:
+		return ""
 	# More than a row away: the scroll bar dragged, one action. A row or
 	# less: the wheel, a notch an action.
 	var off: float = _off_screen(scroll, cell)
@@ -368,7 +405,9 @@ func _off_screen(scroll: ScrollContainer, cell: Control) -> float:
 ## The list's scroll bar dragged by its grabber until [param cell] is in
 ## sight: the pointer to the grabber, and the drag, its press, its move and
 ## its letting go, as the keystroke-level model counts it (P B P B): three.
-func _drag_bar(scroll: ScrollContainer, cell: Control) -> void:
+## With [param key], the tile is looked for as the bar goes, and the bar
+## dragged down while the bin has not yet made it.
+func _drag_bar(scroll: ScrollContainer, cell: Control, key: String = "") -> void:
 	var bar: VScrollBar = scroll.get_v_scroll_bar()
 	if not bar.is_visible_in_tree():
 		return
@@ -385,7 +424,9 @@ func _drag_bar(scroll: ScrollContainer, cell: Control) -> void:
 	await _frames(2)
 	var at: Vector2 = from
 	for _n: int in 200:
-		var off: float = _off_screen(scroll, cell)
+		if not key.is_empty():
+			cell = _cell(key)
+		var off: float = _off_screen(scroll, cell) if cell != null else 1.0e6
 		if off == 0.0:
 			break
 		at.y += clampf(off * (track.size.y - grab) / maxf(span - bar.page, 1.0), -6.0, 6.0) \
@@ -616,9 +657,22 @@ func _against(box: AABB) -> Array:
 ## the world.
 func _aim_point_for(site: JointSnap.End, mine: JointSnap.End) -> Vector3:
 	if mine.is_male():
+		# Where an axle's tip comes out past the hole, a person points
+		# there: the tip goes on through to the pointer (JointSnap._pushed).
+		if _past_far_face(site, mine) >= 0.5:
+			return mine.at
 		var eye: Vector3 = _camera.global_position
 		return site.aimed(eye, (site.at - eye).normalized())
 	return mine.at
+
+
+## How far past [param site]'s far face the tip [param mine] (where the file
+## has it) comes out, going in by it, in LDU: 0 for a pin's collar or a tip
+## with no shaft behind it, which go no further than through.
+static func _past_far_face(site: JointSnap.End, mine: JointSnap.End) -> float:
+	if not mine.is_male() or mine.reach >= JointSnap.COLLAR or mine.back <= 0.0:
+		return 0.0
+	return maxf((mine.at - site.at).dot(mine.axis) - site.reach, 0.0)
 
 
 # -- the view ----------------------------------------------------------------------
@@ -818,7 +872,9 @@ func _against_file(truth: Array, order: Array) -> PackedStringArray:
 ## The point of [param part] that, where the file has it at [param want], is on
 ## a joint of a part down, and that joint: [index in its points, site], the
 ## nearest the joint's line first and then a pin's or axle's middle nearest
-## the hole's. [] for none.
+## the hole's; of an axle's two tips, the one that comes out nearest past
+## the hole, which is where a person points ([method _aim_point_for]). []
+## for none.
 func _goes_on(part: String, want: Transform3D) -> Array:
 	var best: Array = []
 	var best_off: float = INF
@@ -834,7 +890,8 @@ func _goes_on(part: String, want: Transform3D) -> Array:
 			# second 1 x 8's holes are in line with a pin in the first's.
 			if off > 2.0 or _gap(mine, site) > 2.0:
 				continue
-			off += _gap(mine, site) * 0.01 + site.at.distance_to(eye) * 0.00001
+			off += _gap(mine, site) * 0.01 + site.at.distance_to(eye) * 0.00001 \
+				+ _past_far_face(site, mine) * 0.001
 			if off < best_off:
 				best_off = off
 				best = [n, site]
@@ -852,13 +909,10 @@ static func _gap(a: JointSnap.End, b: JointSnap.End) -> float:
 
 
 ## Where a person points to put [param mine] on [param site]: a hole's middle
-## for a pin or an axle in hand, and where the hole in hand goes, on the pin
-## or along the axle, for a hole.
+## for a pin or an axle in hand, or where an axle's tip comes out past it,
+## and where the hole in hand goes, on the pin or along the axle, for a hole.
 func _aim_for(site: JointSnap.End, mine: JointSnap.End) -> Vector2:
-	if mine.is_male():
-		var eye: Vector3 = _camera.global_position
-		return _screen(site.aimed(eye, (site.at - eye).normalized()))
-	return _screen(mine.at)
+	return _screen(_aim_point_for(site, mine))
 
 
 ## T, R and Shift-R, the fewest that bring the ghost to [param want], as a

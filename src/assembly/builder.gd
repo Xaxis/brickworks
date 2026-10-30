@@ -76,6 +76,10 @@ var floor_hook: Callable = Callable()
 ## what they were, for the step that pins, resolves or opens one again.
 ## Unset, the step does nothing.
 var pins_hook: Callable = Callable()
+## Puts the reference picture as a step left it (ReferenceImage.put) and
+## returns how it was, for the steps that lay, move, size, fade, lock,
+## replace or take it away. Unset, the step does nothing.
+var reference_hook: Callable = Callable()
 
 signal placed(brick_id: int, part_id: String)
 signal removed(brick_id: int)
@@ -459,6 +463,11 @@ func _apply(step: Dictionary) -> Dictionary:
 	if step.get("undo", "") == "pins":
 		return {"undo": "pins", "pins": pins_hook.call(step["pins"]) if pins_hook.is_valid()
 			else step["pins"]}
+
+	# The picture to build over, as it was: its own reverse.
+	if step.get("undo", "") == "reference":
+		return {"undo": "reference", "reference": reference_hook.call(step["reference"])
+			if reference_hook.is_valid() else step["reference"]}
 
 	# What the model stands on: put the floor the step names down, and the
 	# step that puts back the one it replaced is the reverse.
@@ -2461,12 +2470,14 @@ func _part_named(brick_id: int) -> String:
 
 ## Everything the pose on a joint is worked out from, in one string: the
 ## joint, the model as it stands, the part and how it is held, what R and
-## T have chosen, the turn step, and the first way on (which says which
-## face is near and where along a bar the pointer is).
+## T have chosen, the turn step, the first way on (which says which face
+## is near), and how far along each way goes: where along a bar the pointer
+## is, and how far an axle's tip is pushed through (JointSnap._pushed),
+## which is as often the second way's as the first's.
 func _joint_asked(key: String, basis: Basis, options: Array) -> String:
 	return "%s|%d|%s|%s|%d|%d|%s|%s|%s|%s|%s|%s" % [key, world.revision, held_part, basis,
 		_joint_way, _joint_roll, _joint_extra, _joint_chosen, turn_step, options[0][1],
-		options[0][2], _joint_part]
+		options.map(func(option: Array) -> float: return option[2]), _joint_part]
 
 
 ## The pose for one of the ways onto a joint, turned so many steps and

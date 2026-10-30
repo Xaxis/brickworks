@@ -481,8 +481,12 @@ func _observatory() -> void:
 		var frames: int = 0
 		for one: String in SHOWS:
 			frames += roundi(_player.motions().named(one).length() * 12.0) + 1
+		# Named after the motion, "Show it all 2.webp" when an earlier run's is
+		# there: the app never writes over a render (a second run in one
+		# checkout failed here, 2026-10-30).
+		var named := RegEx.create_from_string("Show it all( \\d+)?\\.webp$")
 		_check("render_motion renders it whole: %s, %s" % [said.get_slice(":", 0), str(panel._last.get("name", ""))],
-			said.contains("Rendered %d frames" % frames) and str(panel._last.get("name", "")).ends_with("Show it all.webp")
+			said.contains("Rendered %d frames" % frames) and named.search(str(panel._last.get("name", ""))) != null
 			and int(_off_tolerant(built)[0]) == 0)
 	# A motion of it taken out is said by name, and its line is kept.
 	await _say("define_motion", {"name": "Extend the telescope", "remove": true})

@@ -50,6 +50,24 @@ which models they could build from what they have. Added 2026-10-12.
   followed when a model opens, kept by New, let go by Make a part's and
   Print's own categories. The web build fetches the one shard a set is in
   from the deployment's `/sets/` (about 0.2 s for 10497-1's 140 KB).
+  The step's parts first (appux2 bin2 follow-up, docs/CADTASK.md section
+  11): a set LDraw's repository has a model of follows that model's
+  booklet (`SetBooklet`: `LdrModel.flatten`'s steps, each part in the set
+  bin's key, a colour the set lacks taken as the set's own colour of the
+  part). Its own model (`<number>.mpd`) or its only one by Build from it;
+  with two or more, "Follow a booklet:" offers each by name under the
+  set's line (`controls_by_name` "booklet <file stem>"), which builds from
+  the set and follows that one. The step is worked out from the model like
+  the counts (`SetBooklet.first_open`, `left_in`): the first not yet built,
+  or one turned to by ‹ and › until it is built; the whole step's parts are
+  listed first in its order, marked by an accent line (`in_step` meta), a
+  part put in keeping its place, so the grid is listed again only when the
+  step turns. The step line under the set's says
+  "Balance, step 1 of 5: 24 parts to put in"; Stop lets the booklet go. The
+  file is read from `vendor/omr/files` in a checkout, else the model library
+  (`ModelLibrary.model_text`), parsed off the frame. Not kept in the model:
+  an alternate's booklet is chosen again after the model is opened (its own
+  model's is followed again by itself).
 - `collection sums` (`src/collection/collection.gd`, pure): the pool (sets
   expanded through their inventories, plus loose parts), the shortfall, the
   plan of what could stand in, and coverage. One spelling for both sides: a

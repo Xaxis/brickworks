@@ -133,6 +133,7 @@ const WINDOW_ONLY: Dictionary = {
 	"back_to_site": "leaves the web app for the website in the person's tab, ending the session's connection",
 	"feedback": "a report from the person to the people who make Brickworks, in their own words",
 	"beta_hub": "help for the person",
+	"reference": "a picture from the person's disk, picked in a dialog, for their own eyes to build over; a session is given pictures in the conversation",
 }
 
 ## What a session reads about these, served by read_guide("app") — every
@@ -381,7 +382,7 @@ func definitions() -> Array:
 		},
 		{
 			"name": "lay_flex",
-			"description": ("Lay a hose, tube, string or chain, as Build, Hose, tube or chain "
+			"description": ("Lay a hose, tube, string or chain, as Make, Hose, tube or chain "
 				+ "does: kind ribbed_hose, pneumatic_tube, flex_hose or flex_axle between two "
 				+ "parts' pin holes, axles or pins; string between two studs; chain or tread "
 				+ "round sprockets= (two or more gears in one plane). The real length that "
@@ -688,7 +689,7 @@ func definitions() -> Array:
 		},
 		{
 			"name": "brickify",
-			"description": ("Lay a 3D model in LEGO® bricks, as Build, Brickify a 3D model… does: an "
+			"description": ("Lay a 3D model in LEGO® bricks, as Make, Brickify a 3D model… does: an "
 				+ "OBJ, STL, glTF/GLB, PLY, 3MF, VOX or FBX laid at the size asked (studs along "
 				+ "its longest side) "
 				+ "in slopes, curves and tiles, or plain bricks and plates, as one "
@@ -725,7 +726,7 @@ func definitions() -> Array:
 		{
 			"name": "print_part",
 			"description": ("Print a picture on a part of the model, or stick it on as a "
-				+ "sticker, as Build, Print on a part… and Put a sticker on… do. brick= the "
+				+ "sticker, as Make, Print on a part… and Put a sticker on… do. brick= the "
 				+ "part's number in look_at_model. A print goes on one of the part's "
 				+ "printable areas (area=, the first when omitted; a wrong one is answered "
 				+ "with its areas), and the printed part takes the part's place in its "
@@ -736,7 +737,7 @@ func definitions() -> Array:
 				+ "proportions; flat colours print best), picture_data= a picture's own bytes "
 				+ "as base64 or a data: URI (a PNG or JPEG the person gave you in the "
 				+ "conversation; at most 2 MB, smaller is quicker), or picture_url= an http(s) "
-				+ "link to a PNG, JPEG, WebP or SVG. Or the LEGO Group's own, as Edit, Printed "
+				+ "link to a PNG, JPEG, WebP or SVG. Or the LEGO Group's own, as Make, Printed "
 				+ "versions… does: version= one of the part's printed or stickered versions from "
 				+ "the library (versions=\"words\" lists them) swaps the part for it where it "
 				+ "stands; sticker_part= a sticker the library has (search_parts \"sticker\") "
@@ -2435,8 +2436,8 @@ func _open(input: Dictionary) -> String:
 		return "Could not open %s: %s. The model on the baseplate, %s, is as it was." % [
 			chosen.name, store.not_opened, store.title]
 	bar.opened.emit(placed)
-	return "Opened %s: %d parts. look_at_model to see it." % [chosen.name, placed] \
-		+ _replaced_words(store, unsaved, was) + _opened_motions()
+	return "Opened %s: %d parts%s. look_at_model to see it." % [chosen.name, placed,
+		ModelBar.unshown_words(store)] + _replaced_words(store, unsaved, was) + _opened_motions()
 
 
 ## open_model versions=true version=N: what changed in the model open now
@@ -2853,7 +2854,7 @@ func _brickify(input: Dictionary, work: Working.Job = null) -> String:
 	elif bool(input.get("pick", false)):
 		if OS.has_feature("web"):
 			return ("In a browser the file chooser opens only from the person's own click: ask "
-				+ "them to choose Build, Brickify a 3D model…, then call brickify with neither "
+				+ "them to choose Make, Brickify a 3D model…, then call brickify with neither "
 				+ "url nor pick to lay what they chose.")
 		if DisplayServer.get_name() == "headless":
 			return "This app is running without a window, so there is no file dialog to open."
@@ -2937,7 +2938,7 @@ func _brickify(input: Dictionary, work: Working.Job = null) -> String:
 func _brickify_file(dialog: BrickifyDialog, path: String) -> String:
 	if OS.has_feature("web"):
 		return ("In a browser the app cannot read a file on the person's computer: ask them to "
-			+ "choose Build, Brickify a 3D model…, then call brickify with neither file nor url "
+			+ "choose Make, Brickify a 3D model…, then call brickify with neither file nor url "
 			+ "to lay what they chose.")
 	var at: String = path.uri_decode().trim_prefix("file://") if path.to_lower().begins_with(
 		"file://") else path
@@ -3040,7 +3041,7 @@ func _print_part(input: Dictionary) -> String:
 	var depth: int = builder.history_depth()
 	studio.last_placed = 0
 	# The LEGO Group's own: a printed version of the part, or a sticker of
-	# the library's, as Edit, Printed versions… and a sticker in hand do.
+	# the library's, as Make, Printed versions… and a sticker in hand do.
 	if input.has("versions"):
 		return _versions_of(studio, brick, str(input["versions"]))
 	if input.has("version") or input.has("sticker_part"):

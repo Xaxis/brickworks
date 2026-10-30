@@ -93,6 +93,12 @@ var pins: PinnedComments = PinnedComments.new()
 ## (SetBin.META), never in what is published or exported; a model opened
 ## says it again, and a new one keeps the bin it was begun with.
 var bin_sets: PackedStringArray = PackedStringArray()
+## The picture to build over (Make, Reference picture…), as ReferenceImage
+## keeps it: {on, at, width, opacity, locked, name, picture}, or empty for
+## none. Kept with its saves and the autosave as the app's other lines are
+## (ReferenceImage.META), never in what is published or exported: it is the
+## person's to trace, not part of the model.
+var reference: Dictionary = {}
 ## Who laid its parts, as far as this app knows (2026-10-24): "hand" for a
 ## model begun empty here with every part laid by a person, "assistant"
 ## once Claude laid any (the panel's designer, a session's tools), and
@@ -397,7 +403,9 @@ func _autosaved() -> String:
 	if text.is_empty() or _has_parts(text):
 		return text
 	var name: String = title_in(text, "")
-	_begin_as(name if not name.is_empty() else UNTITLED)
+	# A picture laid to build over comes back with it: the first thing a
+	# person tracing a plan does, before any part.
+	_begin_as(name if not name.is_empty() else UNTITLED, ReferenceImage.read(text))
 	left_empty = true
 	return ""
 
@@ -583,8 +591,9 @@ func begin(name: String) -> void:
 	_begin_as(UNTITLED if wanted.is_empty() or wanted == UNTITLED else _free_name(wanted))
 
 
-## [method begin] under [param named] as it is.
-func _begin_as(named: String) -> void:
+## [method begin] under [param named] as it is, with the picture to build
+## over [param picture] keeps (ReferenceImage.read), or none.
+func _begin_as(named: String, picture: Dictionary = {}) -> void:
 	title = named
 	# Begun empty by the person: the autosave may keep it so.
 	emptied = true
@@ -599,6 +608,7 @@ func _begin_as(named: String) -> void:
 	hidden_scheme = {}
 	pins = PinnedComments.new()
 	bin_sets = PackedStringArray()
+	reference = picture
 	# Begun empty here, who lays each part from now on is known. Named as a
 	# design stands, its parts are still whoever laid them.
 	if world == null or _is_empty():
@@ -685,7 +695,8 @@ func has_unsaved_work() -> bool:
 			and builder.history_depth() == 0 and builder._redo.is_empty() \
 			and _parts_with_awaited() == _opened_parts:
 		return false
-	if world.brick_count() - scenery.size() <= 0:
+	# Nor an empty baseplate, unless a picture to build over is laid on it.
+	if world.brick_count() - scenery.size() <= 0 and reference.is_empty():
 		return false
 	# The model written out and compared only when there is a saved one to
 	# compare it with: on Orthanc that is a third of a second, and New asks
@@ -699,7 +710,10 @@ func has_unsaved_work() -> bool:
 			continue
 		if now.is_empty():
 			now = _brick_lines(to_text(UNTITLED))
-		if _brick_lines(FileAccess.get_file_as_string(kept)) == now:
+		# The picture to build over too (ReferenceImage): changed alone, it is
+		# not what was saved.
+		var text: String = FileAccess.get_file_as_string(kept)
+		if _brick_lines(text) == now and ReferenceImage.same(ReferenceImage.read(text), reference):
 			return false
 	return true
 
@@ -988,7 +1002,8 @@ var _asides: int = 0
 func _set_aside(paced: bool) -> void:
 	if world.generation() != _opens_in:
 		_forget_opens()
-	if not keeps or read_only or laying or _is_empty():
+	# An empty baseplate with a picture laid to build over is kept too.
+	if not keeps or read_only or laying or (_is_empty() and reference.is_empty()):
 		return
 	DirAccess.make_dir_recursive_absolute(TabSession.path(SET_ASIDE))
 	_asides += 1
@@ -1022,10 +1037,11 @@ func _model_text(paced: bool) -> String:
 		await _text_into(made, title, false, {}, FramePace.new())
 		# Changed meanwhile: made again, as it is now.
 		if world.revision == revision:
-			return SetBin.written_into(with_share(str(made[0]), share_id, remixed_from,
-				remixed_from_version, credit, made_with), bin_sets)
-	return SetBin.written_into(with_share(to_text(title), share_id, remixed_from,
-		remixed_from_version, credit, made_with), bin_sets)
+			return ReferenceImage.written_into(SetBin.written_into(with_share(str(made[0]),
+				share_id, remixed_from, remixed_from_version, credit, made_with), bin_sets),
+				reference)
+	return ReferenceImage.written_into(SetBin.written_into(with_share(to_text(title), share_id,
+		remixed_from, remixed_from_version, credit, made_with), bin_sets), reference)
 
 
 ## The copies of [param kept] past the newest [param leaving], deleted.
@@ -1313,8 +1329,16 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	var known: Array = []
 	var missing: Dictionary = {}
 	var waiting: Dictionary = {}
+	var made_again: Dictionary = {}
 	for item: Variant in flattened:
 		var placement: LdrModel.Placement = item
+		# A piece the app makes itself (a band's, a coil's) whose FILE
+		# section the file has lost, as a tool that cannot read one drops
+		# it: made again from its name, as the tool made it. A band went
+		# off the baseplate whole without (springs, 2026-10-30).
+		if not library.parts.has(placement.part_id) and Bands.is_piece_id(placement.part_id) \
+				and not made_again.has(placement.part_id):
+			made_again[placement.part_id] = Bands.piece_part(library, placement.part_id)
 		if not library.parts.has(placement.part_id):
 			missing[placement.part_id] = int(missing.get(placement.part_id, 0)) + 1
 		elif not library.is_resident(placement.part_id):
@@ -1375,6 +1399,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	unshown = missing.duplicate()
 	if source != null and not missing.is_empty():
 		unshown = source.unshown(absent)
+	elif not missing.is_empty():
+		unshown = _unshown_of(absent)
 	# The app's own file carries them itself (_text_into).
 	_absent = absent if source == null else []
 
@@ -1561,6 +1587,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	hidden_scheme = read["hidden"]
 	pins = read["pins"]
 	bin_sets = read["bin"]
+	reference = read["reference"]
 	world.motions = read["motions"]
 	if not world.motions.is_empty():
 		# Where each part stood as the file has it: a joint is measured from
@@ -1575,7 +1602,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	_phase("loaded")
 	out.append({"placed": placed, "missing": missing.size(),
 		"waiting": waiting.size(), "missing_ids": missing, "error": "",
-		"unshown": unshown, "kept": source != null})
+		"unshown": unshown, "kept": source != null or not _absent.is_empty()})
 
 
 ## Why [param text], which places no part, is not a model to open: "" for
@@ -1618,6 +1645,7 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		"floor": ModelFloor.read(text),
 		"set": set_in(text),
 		"bin": SetBin.read(text),
+		"reference": ReferenceImage.read(text),
 		"hidden": HiddenColours.read(text),
 		"motions": Motions.read(text),
 		"pins": PinnedComments.read(text),
@@ -1811,6 +1839,42 @@ static func named_counts(counts: Dictionary, most: int = 6) -> String:
 	return ", ".join(named.slice(0, most)) + (", …" if named.size() > most else "")
 
 
+## [param placements] not on the baseplate, by number, as an open says them
+## (ModelBar.left_out_words): a band or a coil whose pieces could not be made
+## named once, by the sub-model it is, as SourceFile.unshown names someone
+## else's flexible parts, not as the hundred pieces it is drawn with.
+static func _unshown_of(placements: Array) -> Dictionary:
+	var out: Dictionary = {}
+	var counted: Dictionary = {}
+	for item: Variant in placements:
+		var placement: LdrModel.Placement = item
+		var named: String = placement.part_id
+		if Bands.is_piece_id(placement.part_id) and not placement.unit.is_empty():
+			if counted.has(placement.unit):
+				continue
+			counted[placement.unit] = true
+			named = "%s (flexible)" % Assemblies.definition(Assemblies.leaf(placement.unit))
+		out[named] = int(out.get(named, 0)) + 1
+	return out
+
+
+## [param unit] and the sub-models it is in, put among [param instances]
+## where they are not, at [param frame] as the rest are: a sub-model with
+## nothing of it on the baseplate (Assemblies.file_frames finds none) whose
+## parts the file is written with still. Each a definition of its own, as a
+## copy that went its own way is.
+static func _hold_unit(instances: Dictionary, unit: String, frame: Transform3D) -> void:
+	var path: String = ""
+	for leaf: String in unit.split("/", false):
+		path = leaf if path.is_empty() else path + "/" + leaf
+		if instances.has(path):
+			continue
+		var def: String = Assemblies.definition(leaf)
+		while instances.values().any(func(entry: Dictionary) -> bool: return str(entry["def"]) == def):
+			def += "+"
+		instances[path] = {"frame": frame, "def": def}
+
+
 ## The LDraw part a Studio model means by [param part_id].
 ##
 ## Studio draws parts its copy of LDraw had not got yet itself, and names
@@ -1975,6 +2039,8 @@ static func _without_app_lines(text: String) -> String:
 		if line.begins_with(SHARE_META) or line.begins_with(REMIX_META) \
 				or line.begins_with(REMIX_VERSION_META) or line.begins_with(CREDIT_META) \
 				or line.begins_with(MADE_META) or line.begins_with(SetBin.META) \
+				or line.begins_with(ReferenceImage.META) \
+				or line.begins_with(ReferenceImage.PICTURE_META) \
 				or line.begins_with(TITLE_META) or line.begins_with(SharedPages.PAGE.strip_edges()):
 			continue
 		kept.append(line)
@@ -2321,10 +2387,12 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 			var held := LdrModel.Placement.new(waiting.part_id, waiting.color_code,
 				pair[1], waiting.step)
 			held.group = waiting.group
-			# In its sub-model where the file still has it; loose otherwise,
-			# which a tree writes rather than leaving it out.
+			# In its sub-model, as the file had it: one with nothing on the
+			# baseplate (a band whose pieces could not be made) is written
+			# still, not its parts loose in the model.
 			var unit: String = Assemblies.path_from(waiting.group, waiting.unit)
-			held.unit = unit if instances.has(unit) else ""
+			_hold_unit(instances, unit, back)
+			held.unit = unit
 			placements.append(held)
 	for group: Variant in figures:
 		figures[group] = back * (figures[group] as Transform3D)
@@ -2632,9 +2700,9 @@ func _write(path: String, title: String, with_steps: bool = false,
 	if not NewerBuild.may_write(path):
 		refused = NewerBuild.REFUSAL
 		return false
-	var text: String = SetBin.written_into(with_share(written if not written.is_empty()
-		else to_text(title, with_steps), share_id, remixed_from, remixed_from_version, credit,
-		made_with), bin_sets)
+	var text: String = ReferenceImage.written_into(SetBin.written_into(with_share(
+		written if not written.is_empty() else to_text(title, with_steps), share_id,
+		remixed_from, remixed_from_version, credit, made_with), bin_sets), reference)
 	# Never a model of no parts over a file that has some, unless the person
 	# emptied the baseplate ([member emptied]). The autosave fires on its
 	# own a few seconds after any change, so whatever left the baseplate

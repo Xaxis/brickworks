@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture -->
 
 ## Sub-features
 
@@ -101,8 +101,48 @@ picture the assistant is shown.
   overlays and that an idle split draws nothing. `-- unrouted` takes
   `CadCamera.second` away and must fail; so must the probe run on efcc83b1,
   before the second view was its own.
+- `reference picture` (`ReferenceImage`, `src/ui/reference_image.gd`;
+  APP_UX2 refimage): Make › Reference picture… asks for a picture
+  (`PictureFile`) and lays it on the floor under the model, as wide as it
+  (16 studs at least), at 50%, picked out with its corners showing and its
+  settings open (non-exclusive: the model stays to hand). The settings:
+  which plane (the floor, standing behind the model square to From the
+  front or From the right), width in studs (a step of 0.05 is 1 LDU),
+  opacity, Locked, Choose another…, Remove. It is a transparent unshaded
+  quad in the window's world; unlocked, its own `_unhandled_input` takes a
+  Select-tool press that meets it before any part (scenery aside): a click
+  picks it out, a drag slides it, a corner (drawn by `ViewOverlays`)
+  sizes it from the corner across. Locked, it takes nothing, and the click
+  is the model's. Kept in `ModelStore.reference` and written into saves
+  and the autosave after the first line as `0 !BRICKWORKS REFERENCE {…}`
+  and `0 !BRICKWORKS REFERENCE_PICTURE <WebP base64>` (encoded once when
+  chosen, longer side 2048 px at most), stripped by `_without_app_lines`,
+  never in `to_text` (exports, publishing, the assistant). Render and the
+  booklet draw worlds of their own; Export's picture leaves it aside
+  (`Picture.aside`). `refimage_probe` (windowed, 1280x720, PROBE_SIZE=1400x900
+  too) adds it through the menu in 4 actions, types 32.35 studs (647 LDU),
+  measures 40% opacity off the window's pixels against it hidden and at
+  100% with the tone curve straight, clicks through it unlocked (picks the
+  picture) and locked (picks the brick behind, seen from the back), saves,
+  begins a new model (gone), opens the save (the same, drawn the same),
+  and finds none of its magenta in a Render, the booklet's pictures or
+  Export's picture while the window shows it. Every change is one step of
+  the person's history (`{"undo": "reference"}`, `Builder.reference_hook` =
+  `ReferenceImage.put`); a change to the same setting within
+  `ONE_STEP_MS`, or while the opacity slider is held, joins the step before.
+  The probe checks Undo, Redo and Undo for laid, slider dragged (a pause in
+  it), width typed, slid, sized, stood up, locked, Choose another… and
+  Remove. `has_unsaved_work` compares the picture with the saved file's
+  (`ReferenceImage.same`) and counts an empty baseplate with a picture; the
+  autosave of one brings the picture back (`_autosaved`). The probe checks
+  New asks after an opacity change alone, Undo back to saved asks nothing,
+  and `write_now` + `restore()` of a picture on an empty baseplate. Its
+  undo and unsaved checks fail with `builder.record` out of `_kept`, or the
+  picture out of `has_unsaved_work` and `_autosaved`. Browser:
+  `window.brickworksState.reference` (`page_state`: the said() settings, the
+  picture's length, shown, settings open).
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
-  is what everything frames against, baseplate excluded. View > Default view
+  is what everything frames against, baseplate excluded. View > Viewpoint > Default view
   (0, `Main.default_view`) turns to the usual angle and frames what is built,
   the baseplate when nothing is, as Fit does: it turned the camera alone, so
   a view lost in empty space stayed lost (walk180 A2; `default_view_probe`,
@@ -604,6 +644,33 @@ picture the assistant is shown.
   left, and fails when one is gone. `keys_probe` checks the hide message says
   Ctrl-Shift-L under Studio's and Ctrl-Shift-H under LDCad's; `mould_ui_probe`
   and `print_ui_probe` press the keymap's Undo and Redo in their editors.
+- `colour keys` (`src/ui/colour_keys.gd`, APP_UX2 keys3, 2026-10-30): Shift-1
+  to Shift-0 paint the selection one of ten favourite colours, Ctrl-Shift-1 to 0
+  the model's ten most used (1 the most; scenery and the inherit codes 16 and 24
+  are not counted), as a swatch clicked does (`PartsBin.choose_colour`): one
+  change, one undo; with a part in hand the key is its colour. Ctrl-1 to 8 and
+  Alt-1 to 9 are browsers' tab keys, so neither is used. The favourites start as
+  the ten colours LEGO® sets use most; the keys sheet's Colours rows show each
+  as a swatch, and a click on one opens the colours to choose from. Kept in
+  `ShellPrefs` `favourite_colours` and, with the keys, on the account
+  (`api/account.js` `colours`: ten integers, else 422). Studio's preset leaves
+  all twenty unbound, as Studio leaves its FavoriteColor keys. The selection
+  keys: Alt-C same colour, Alt-P same part, Alt-J all joined, Alt-I the
+  opposite (the app's keys); under Studio's, Shift-V cycles same colour, same
+  part, both, all joined, then the part it began from (`Shell.cycle_select`).
+  The toolbar's Select by button no longer answers its rows' keys itself
+  (`set_disable_shortcuts`): its popup ran a greyed command silently. Menus
+  split so each is at most 25 rows and 60% of a 1280 x 720 window: Make (the
+  minifigure, mosaic, brickify, hoses, the part maker and prints), View ›
+  Viewpoint (the views and the model's turns), Comments in File. `keys3_probe`
+  (windowed, 1280 x 720; `PROBE_SIZE=1400x900`) measures every menu as the
+  palette measures Edit, presses the colour keys as a desktop and a browser
+  send them, the four selection keys against their menu rows, Studio's Shift-V,
+  sets favourite 1 in the sheet and starts the app again on its data folder to
+  find it kept. On the web, `tools/web/colour_keys_flow.mjs` (local build:
+  `--url=http://127.0.0.1:PORT/`) selects all, presses Shift-2 and Ctrl+Z.
+  Not proven: Cmd-Shift-3, 4 and 5 on a Mac are the system's screenshot keys,
+  so those three most-used keys need setting there.
 - `pointer cursors`: `src/ui/cursors.gd`. The pointer says what the mouse will
   do now, by the tool, the keys held and what is under it, as Studio, Mecabricks
   and Blender do. The owner, on the live site (2026-10-11): "we're not seeing the
@@ -1413,11 +1480,16 @@ picture the assistant is shown.
   clear behind the model (`Entry.clear`, WebP). The page editor outlines
   what moved in red and says it; `booklet_layout` says "overlapping: ...".
   Arrows: Draw an arrow (`page_add_arrow`), a drag on the canvas, the
-  selected arrow's `page_arrow_start` / `_end` / `_bend` handles,
-  `page_arrow_colour`, `page_arrow_width`, Delete; `0 !BRICKWORKS ARROW
-  RED|BLACK width x1 y1 x2 y2 [bx by]` on the step whose room it points into
-  (Shell.change_look "arrow", "arrow_edit"), printed by `Booklet.drawn_arrow`
-  (`path.drawn-arrow`); `edit_booklet arrow=`, whose answer says whether the
+  selected arrow's `page_arrow_start` / `_end` / `page_arrow_bend_N`
+  handles and `page_arrow_add_N` (the middle of each stretch: drag it to add
+  a bend; double-click a bend to take it out), `page_arrow_colour`,
+  `page_arrow_width`, Delete; `0 !BRICKWORKS ARROW RED|BLACK width x1 y1 x2
+  y2 [bx by ...]` (up to `BookletLooks.MOST_BENDS` bends; `Shell._arrow_of`
+  drops a bend within 1 mm of a straight stretch) on the step whose room it
+  points into (Shell.change_look "arrow", "arrow_edit"), printed by
+  `Booklet.drawn_arrow` (`path.drawn-arrow`; a quadratic through one bend, a
+  Catmull-Rom curve through more, `BookletLooks.arrow_line`); `edit_booklet
+  arrow=`, whose answer says whether the
   tip is on the step's new parts (`AppTools._aimed`, `Entry.adds` from
   `BookletMaker._adds`), and `booklet_layout` gives each step's "its new
   parts at x-x x y-y mm"; `booklet_probe` holds every drawn step's new parts
@@ -1426,7 +1498,24 @@ picture the assistant is shown.
   past `BookletMaker.TURN_ROUND` (60°) round or `TURN_OVER` (45°) up or down
   (`_round_from`); `page_sign_N` on the page editor, Delete / Put back
   (change_look "sign", `0 !BRICKWORKS TURN_SIGN OFF`), `edit_booklet
-  sign=`. A callout's own pages (`kind` "callout" in `page_state`, framed)
+  sign=`. Words and pictures turn by the knob over the selected one
+  (`page_turn_knob`, settling on 15° within 3°, `PageEditor.knob_turn`) or
+  `page_turn`, and fade by `page_opacity` (change_look "note" `turn=`,
+  `opacity=`; `0 !BRICKWORKS NOTE TURN 30 OPACITY 50` after the note's
+  line), printed as CSS `transform:rotate()` / `opacity` on the note
+  (`Booklet.note_style`), read by `BookletRead._turned` into the op's
+  turn, pivot and alpha: the PDF draws it under a `cm` about its middle and
+  an ExtGState `/ca` (`BookletPdf._how`), the PNG under a canvas transform
+  and modulate. Guides: drag out of `page_ruler_top` / `page_ruler_left`
+  (`PageEditor.guide`, change_look "guide", `0 !BRICKWORKS GUIDE X|Y mm` in
+  the booklet's look, `BookletLooks.guides`), drag one back into its ruler
+  to take it away; `Booklet.snapped_to` snaps to a guide within 2.5 mm
+  before anything else; never printed. `page_state` gives "notes" (each
+  one's turn and opacity) and "ruler_guides". `booklet_edit_probe
+  --only=objects` turns a picture 30° and fades words to 50% (three actions
+  or fewer each), bends an arrow through two points, drops words by two
+  guides, and finds each in the HTML, the PDF's content stream and the 300
+  dpi PNG's ink, then undoes them all and reopens the file. A callout's own pages (`kind` "callout" in `page_state`, framed)
   are among the editor's pages; their steps carry the sub-model's looks
   (`BookletMaker._hand_look`, plan index as the entry's "step" meta), are
   settled inside the frame (`Booklet._room_of`), and are drawn with the
@@ -1674,6 +1763,22 @@ picture the assistant is shown.
   at least 0.5% near black (the black wall, seen only through the clear
   glass), no script errors. `--also=models/sports_car.ldr,…` draws those
   models too at Good on white, for pictures.
+- `photographed light in a browser` (`tools/web/light_render_flow.mjs`):
+  the web build does not carry Studio's panoramas in the pack its start
+  waits for (`index.hdri.bin`, `cli:web build and deploy`): the first
+  picture lit by one fetches them, the dialog saying "fetching the
+  photographed light" meanwhile (`StudioRender._prepare`). Opens the
+  example car, presses Render, Quick and 720p, chooses Softbox studio from
+  the light's list with the keys, and renders. Check, with .env sourced,
+  against a local export served by `tools/web/serve.py build/web PORT
+  --parts assets/generated/parts --compressed --cached`: `node
+  tools/web/light_render_flow.mjs --url=http://127.0.0.1:PORT/index.html
+  --out=OUT --against=BEFORE/light.png`, where BEFORE is the same flow's
+  run on a build whose pack still held the light: a 1280x720 PNG; the
+  light not fetched before the render, then fetched and written
+  (`window.brickworksPacks.hdri`); the dialog said so; the picture the
+  same as BEFORE's (no channel more than 24 of 255 apart, mean within 1);
+  no script errors; "light render: all passed".
 - `studio renderer` (`src/render/studio_render.gd`): off screen, in its own
   viewports with a copy of the model staged a slice a frame (`FramePace`): the
   model alone on the sweep, its floor's baseplate left out unless it is part of
@@ -1868,7 +1973,7 @@ godot --headless --path . --script src/dev/art_plan_probe.gd      # an Art plan 
 #   under the same name revision 1 then revision 2 and told to stop); and
 #   the dialog's Design with Claude. Ends "an Art plan is laid as it says".
 # In a browser, on a local web export (tools/export.sh web, then
-# python3 tools/web/serve.py build/web PORT): Build > Mosaic from a picture
+# python3 tools/web/serve.py build/web PORT): Make > Mosaic from a picture
 # (typed, then Enter), a galaxy PNG it makes into the chooser, Build it, and
 # brickworksState.art read for its parts, every one on the baseplate, one
 # piece, Panel N#1 and Frame#1 in the tree; then a brief typed into the

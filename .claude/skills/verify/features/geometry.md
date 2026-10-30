@@ -872,6 +872,22 @@ the orrery on a loaded box) is followed with `job` as a session would
 `user-dirs.dirs` points Downloads at a scratch folder: a recording saves where
 Render does.
 
+Where the motion stops (`Simulation.begin_stops`, docs/MECHANISMS.md section 39):
+over the cycle, forward and back, Simulate finds the first turn where two moving parts
+meet by their exact shapes (said "MEETS", the pair tinted red), a loop's ends
+(`Linkage.reach`), and a motor's stall by the weight it lifts (PF M, L, XL, E-motor,
+9 V; "STALLS ... Gear it down", else its speed at the heaviest). The panel's line under
+the readout says it, **Go to the stop** turns the driver there, the slider and Play go
+no further, and `simulate_mechanism` returns the same lines with its picture taken at
+the stop. `tools/probe.sh motion_probe` (`PROBE_SIZE=1280x720` for the small window,
+`-- only=arm|fourbar|motor`) builds three models part by part and ends on "motion: an
+arm meeting a beam at 140° said there, a four-bar's range against its closed form, a
+motor that stalls lifting its load said and stopped at, and the model never moved": the
+arm meets the beam at 140.54° (to 2°) and -148.23° back; the four-bar's crank goes
++80.47° / -80.48° against ±80.41° (to 1°); the PF M motor through 9:1 stalls at
+25.400°, worked 25.400°, asked 14.67 N·cm against 11, and unloaded goes round at 397
+rpm. On stage225 before it, 19 checks fail. Pictures: `shots/motion/<W>x<H>_*.png`.
+
 Balance: `balance_probe` ends on "balance: the margins, the joints and the
 counterweight come out as worked by hand, the shipped models stand, and the
 worst pose is found". Its cases and their answers by hand: a 1x8 plate on one

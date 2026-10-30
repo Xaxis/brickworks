@@ -109,6 +109,21 @@ var _colour_find: LineEdit
 ## The colour Enter would take there, or -1 (brickworksState.colour_first).
 var _found_first: int = -1
 var _colour_note: Label
+## Only the parts made in the colour in hand, on the colour panel.
+var _only_made: CheckBox
+## Printed and stickered parts shown (on), or plain parts only.
+var _prints: CheckBox
+## The parts as rows rather than tiles (_make_row).
+var _list: Button
+## What a double-click on a tile acts on, as it was at its first press:
+## the selection, while it is what a click acts on (_chosen_parts), and the
+## tool. The first click takes the part in hand, which leaves the selection
+## out of the bin's sight.
+var _pressed_on := PackedInt64Array()
+var _pressed_mode: String = ""
+## The model's verbs: a double-click replaces the selection as Replace does,
+## and puts a part from Fits on it, each said and edited as the verbs say.
+var verbs: EditVerbs
 var _swatches: Dictionary = {}         ## int code -> Swatch
 var _category_row: FlowContainer
 var _category_scroll: ScrollContainer
@@ -265,6 +280,47 @@ func _build() -> void:
 		button.add_theme_font_size_override("font_size", ceili(_z(12)))
 		button.custom_minimum_size = Vector2(least, least)
 		_set_line.add_child(button)
+	# A set with several models in LDraw's repository (8841-1's Desert Racer
+	# and its five alternates): which one's booklet to follow, offered with
+	# the set. Each builds from the set's parts as Build from it does.
+	_set_models = HFlowContainer.new()
+	_set_models.visible = false
+	_set_models.add_theme_constant_override("h_separation", int(_z(4)))
+	_set_models.add_theme_constant_override("v_separation", int(_z(4)))
+	root.add_child(_set_models)
+	# Following a booklet: its step, turned by hand or by itself as the
+	# step's parts go in, and the way to stop following it.
+	_step_line = HBoxContainer.new()
+	_step_line.visible = false
+	_step_line.add_theme_constant_override("separation", int(_z(4)))
+	root.add_child(_step_line)
+	_step_back = Button.new()
+	_step_back.text = "‹"
+	_step_back.tooltip_text = "The step before"
+	_step_back.pressed.connect(func() -> void: turn_step(-1))
+	_step_words = Label.new()
+	_step_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_step_words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_step_words.clip_text = true
+	_step_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_step_words.mouse_filter = Control.MOUSE_FILTER_PASS
+	_step_words.add_theme_font_size_override("font_size", ceili(_z(12)))
+	_step_on = Button.new()
+	_step_on.text = "›"
+	_step_on.tooltip_text = "The step after"
+	_step_on.pressed.connect(func() -> void: turn_step(1))
+	_step_stop = Button.new()
+	_step_stop.text = "Stop"
+	_step_stop.tooltip_text = "Stop following the booklet: the set's parts, most held first"
+	_step_stop.pressed.connect(stop_booklet)
+	_step_line.add_child(_step_back)
+	_step_line.add_child(_step_words)
+	for button: Button in [_step_on, _step_stop]:
+		_step_line.add_child(button)
+	for button: Button in [_step_back, _step_on, _step_stop]:
+		FocusGuard.by_keyboard(button)
+		button.add_theme_font_size_override("font_size", ceili(_z(12)))
+		button.custom_minimum_size = Vector2(maxf(least, _z(24)), least)
 
 	_search = LineEdit.new()
 	# Filled in once the catalogue is loaded; the count differs between
@@ -314,6 +370,12 @@ func _build() -> void:
 		if _grid.columns > 1:
 			_grid.columns = _tiles_across())
 
+	# The status line, and at its end how the parts are shown, as a file
+	# window keeps its views at its foot: with their prints or without, as
+	# tiles or as rows. In a row of their own they would take a row of tiles.
+	var foot := HBoxContainer.new()
+	foot.add_theme_constant_override("separation", int(_z(6)))
+	root.add_child(foot)
 	_status = Label.new()
 	_status.add_theme_font_size_override("font_size", ceili(_z(12)))
 	_status.modulate = Color(1, 1, 1, 0.72)
@@ -321,7 +383,34 @@ func _build() -> void:
 	# of the catalogue went, and truncating that leaves the bin looking
 	# short of parts with no explanation — the thing the line is for.
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	root.add_child(_status)
+	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	foot.add_child(_status)
+	# Studio's button that shows or hides printed and stickered parts: one
+	# click and the bin is plain parts, a minifigure's thousands of printed
+	# torsos and heads with it.
+	_prints = CheckBox.new()
+	_prints.text = "Prints"
+	# As they were left last time (ShellPrefs).
+	_prints.button_pressed = bool(ShellPrefs.value("bin_prints"))
+	_prints.tooltip_text = "Printed and stickered parts: clear it and the bin shows plain parts only"
+	_prints.accessibility_name = "Show printed and stickered parts"
+	_list = Button.new()
+	_list.text = "List"
+	_list.toggle_mode = true
+	_list.tooltip_text = ("The parts as rows: name, number, size and the colours each was made in, "
+		+ "more of them in sight than tiles")
+	_list.accessibility_name = "Show the parts as a list"
+	_list.button_pressed = bool(ShellPrefs.value("bin_list"))
+	for button: Button in [_prints, _list]:
+		FocusGuard.by_keyboard(button)
+		button.add_theme_font_size_override("font_size", ceili(_z(12)))
+		button.custom_minimum_size = Vector2(least, least)
+		button.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		var pref: String = "bin_prints" if button == _prints else "bin_list"
+		button.toggled.connect(func(on: bool) -> void:
+			ShellPrefs.put(pref, on)
+			_run_search(_search.text))
+		foot.add_child(button)
 
 	# The colours are a section of their own at the foot of the column
 	# (Main puts it there), as Studio keeps its colour palette under its
@@ -340,8 +429,23 @@ func _build() -> void:
 	var colour_title := Label.new()
 	colour_title.text = "Colour"
 	colour_title.add_theme_font_size_override("font_size", 13)
-	colour_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	colour_head.add_child(colour_title)
+	# Studio's "Hide Unavailable Parts in the Selected Color": the bin's
+	# parts are those made in the colour in hand, from what the swatches'
+	# dots are read from. Cut short, not pushing the column wider, where
+	# the column is narrow; its tooltip has it whole.
+	_only_made = CheckBox.new()
+	_only_made.text = "Only parts made in it"
+	_only_made.clip_text = true
+	_only_made.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_only_made.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_only_made.add_theme_font_size_override("font_size", 12)
+	FocusGuard.by_keyboard(_only_made)
+	_only_made.set_pressed_no_signal(bool(ShellPrefs.value("bin_only_made")))
+	_only_made.toggled.connect(func(on: bool) -> void:
+		ShellPrefs.put("bin_only_made", on)
+		_run_search(_search.text))
+	colour_head.add_child(_only_made)
 	# A colour by its name or number, as Studio's colour menu filters as you
 	# type. The old greys (7 and 8), all over older sets, show only after
 	# All and look like the bluish greys beside them: a builder building
@@ -806,7 +910,10 @@ static func _palette_key(color: PartLibrary.BrickColor) -> Vector3:
 	return Vector3(1.0, floorf(hue / 20.0), -lab.x)
 
 
-func _on_colour(code: int) -> void:
+## [param again]: the parts listed again where only those made in the colour
+## are shown; not by a search, which lists them itself.
+func _on_colour(code: int, again: bool = true) -> void:
+	var changed: bool = code != _selected_color
 	_selected_color = code
 	# A colour chosen elsewhere — the eyedropper on an old model — that
 	# the short palette does not show opens the long one, or the palette
@@ -822,6 +929,10 @@ func _on_colour(code: int) -> void:
 		swatch.queue_redraw()
 	_say_colour()
 	color_chosen.emit(code)
+	# Only the parts made in it: other parts, listed again.
+	if again and changed and _only_made.button_pressed and _category != TECHNIQUES:
+		_run_search(_search.text)
+		return
 	# Previews are per colour: every tile is pointed at the new one and keeps
 	# the picture it has until that one is drawn. The grid was made again,
 	# every tile blank for the seconds the pictures took (walk180 A3), and
@@ -958,6 +1069,8 @@ func _say_colour() -> void:
 				text += "; it was made in no other"
 	_colour_note.text = text
 	_colour_note.tooltip_text = text
+	_only_made.tooltip_text = ("Only parts made in %s, as set inventories have them: the bin "
+		+ "lists no other while this is ticked") % library.color(_selected_color).name
 
 
 ## One colour in the palette, drawn as what it is: see-through over a
@@ -1088,6 +1201,9 @@ func controls_by_name() -> Dictionary:
 			named["tile picture %d" % (n + 1)] = cell.get_meta("tile")
 	named["colour find"] = _colour_find
 	named["all colours"] = _all_colours
+	named["only made in it"] = _only_made
+	named["prints"] = _prints
+	named["list"] = _list
 	named["palette"] = _palette_scroll
 	if _grid.get_child_count() > 0:
 		named["first part"] = _grid.get_child(0)
@@ -1103,6 +1219,13 @@ func controls_by_name() -> Dictionary:
 	named["set count"] = _set_count
 	named["set build"] = _set_go
 	named["all parts back"] = _set_back
+	for button: Node in _set_models.get_children():
+		if button.has_meta("file"):
+			named["booklet " + str(button.get_meta("file")).get_basename()] = button
+	named["step back"] = _step_back
+	named["step on"] = _step_on
+	named["step words"] = _step_words
+	named["step stop"] = _step_stop
 	if _make_button != null:
 		named["make part"] = _make_button
 	if _print_button != null:
@@ -1197,13 +1320,14 @@ func _run_search(query: String) -> void:
 		_list_set(query.strip_edges())
 		return
 	_listing_set = false
-	_results = _find(query.strip_edges(), _category)
 	# An element number, as a booklet prints it, is a part in a colour: the
-	# colour is taken in hand, so its tile is drawn and placed in it.
+	# colour is taken in hand, so its tile is drawn and placed in it. First,
+	# so the parts made in it are the ones listed.
 	var element: Array = library.part_of_element(query)
 	if not element.is_empty() and int(element[1]) != _selected_color \
 			and library.colors.has(int(element[1])):
-		_on_colour(int(element[1]))
+		_on_colour(int(element[1]), false)
+	_results = _kept(_find(query.strip_edges(), _category))
 	_guesses.clear()
 	_open.clear()
 	_fill_grid()
@@ -1220,7 +1344,15 @@ func _list_set(query: String) -> void:
 			among[info.id] = true
 	_results = []
 	_result_keys = PackedStringArray()
+	# The booklet's step first, as the step shows its parts; then the rest.
+	var keys: PackedStringArray = _step_keys.duplicate()
+	var first: Dictionary = {}
+	for key: String in _step_keys:
+		first[key] = true
 	for key: String in _set_bin.order:
+		if not first.has(key):
+			keys.append(key)
+	for key: String in keys:
 		var info: PartLibrary.PartInfo = library.parts.get(Collection.part_of(key))
 		if info == null:
 			continue
@@ -1230,6 +1362,11 @@ func _list_set(query: String) -> void:
 			continue
 		if not shelf and not needles.is_empty() \
 				and PartLibrary.matched(info, needles) == PartLibrary.NOT_MATCHED:
+			continue
+		# A set's tile is a part in its colour: in the colour in hand, or not.
+		if _only_made.button_pressed and Collection.colour_of(key) != _selected_color:
+			continue
+		if not _prints.button_pressed and info.decor() != 0:
 			continue
 		_results.append(info)
 		_result_keys.append(key)
@@ -1276,10 +1413,75 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 			continue
 		info.listed_in = _listing
 		found.append(info)
+	found = _named_first(found, needles)
 	_set_aside = 0
 	_listed = found
 	_listed_as = _listing
 	return found
+
+
+## [param found] with the parts whose names say each family word asked
+## ([member FAMILIES]: brick, plate, tile...) first, in their order, and then
+## the rest in theirs. "1x4 brick" listed two Spring Shooter 1 x 4 x 1s among
+## its first eight tiles, filed under Brick by LDraw and called a brick by
+## nobody (appux2's walk, 2026-10-30). Unchanged when no word asked is a
+## family's, or every part or none says it.
+static func _named_first(found: Array[PartLibrary.PartInfo],
+		needles: PackedStringArray) -> Array[PartLibrary.PartInfo]:
+	var words: Array[RegEx] = []
+	for needle: String in needles:
+		if FAMILIES.has(needle):
+			words.append(RegEx.create_from_string("\\b%ss?\\b" % needle))
+	if words.is_empty():
+		return found
+	var named: Array[PartLibrary.PartInfo] = []
+	var rest: Array[PartLibrary.PartInfo] = []
+	for info: PartLibrary.PartInfo in found:
+		var lowered: String = info.name.to_lower()
+		var says: bool = true
+		for word: RegEx in words:
+			if word.search(lowered) == null:
+				says = false
+				break
+		if says:
+			named.append(info)
+		else:
+			rest.append(info)
+	if named.is_empty() or rest.is_empty():
+		return found
+	named.append_array(rest)
+	return named
+
+
+## [param found] less what the toggles leave out: every part not made in the
+## colour in hand (Only parts made in it), and every printed and stickered
+## part (Prints cleared). As it was when neither is asked, never copied.
+func _kept(found: Array[PartLibrary.PartInfo]) -> Array[PartLibrary.PartInfo]:
+	var made: bool = _only_made.button_pressed
+	var plain: bool = not _prints.button_pressed
+	if not made and not plain:
+		return found
+	var kept: Array[PartLibrary.PartInfo] = []
+	for info: PartLibrary.PartInfo in found:
+		if plain and info.decor() != 0:
+			continue
+		if made and not made_in(info, _selected_color):
+			continue
+		kept.append(info)
+	return kept
+
+
+## Whether [param info] is known to have been made in colour [param code]:
+## in its own colours or its other moulds', the code read as every colour it
+## may be (PartLibrary.made_as), as the swatches' dots read it. A part nobody
+## knows the colours of is not: "only parts made in it" lists what is known.
+static func made_in(info: PartLibrary.PartInfo, code: int) -> bool:
+	if info.colors.is_empty():
+		return false
+	for made: Variant in PartLibrary.made_as.get(code, [code]):
+		if info.colors.has(made) or info.mould_colors.has(made):
+			return true
+	return false
 
 
 ## What fits the parts [member _fits_of] names, best first, that match what
@@ -1857,7 +2059,8 @@ func _fill_grid() -> void:
 	_cells.clear()
 	_shown = 0
 	_scroll.scroll_vertical = 0
-	_grid.columns = _tiles_across()
+	_grid.columns = 1 if _list.button_pressed else _tiles_across()
+	_grid.add_theme_constant_override("v_separation", 0 if _list.button_pressed else int(_z(4)))
 	_fold()
 	_show_more(FIRST_PAGE)
 
@@ -1971,10 +2174,35 @@ func toggle_fold(part_id: String) -> void:
 func _show_more(most: int = PAGE) -> void:
 	var limit: int = mini(_shown + most, _display.size())
 	while _shown < limit:
-		_grid.add_child(_make_cell(_display[_shown], _result_keys[_shown] if _listing_set else ""))
+		var key: String = _result_keys[_shown] if _listing_set else ""
+		var cell: Control = _make_row(_display[_shown], key) if _list.button_pressed \
+			else _make_cell(_display[_shown], key)
+		if not key.is_empty() and _step_keys.has(key):
+			_mark_step(cell)
+		_grid.add_child(cell)
 		_shown += 1
 	_tell_apart()
 	_update_status()
+
+
+## A tile of the booklet's step, marked: a line of the accent along its
+## top (down a row's side), and said first on its tooltip.
+func _mark_step(cell: Control) -> void:
+	var mark := ColorRect.new()
+	mark.color = Look.ACCENT
+	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _list.button_pressed:
+		mark.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+		mark.offset_right = _z(3)
+	else:
+		mark.set_anchors_preset(Control.PRESET_TOP_WIDE)
+		mark.offset_bottom = _z(3)
+	cell.add_child(mark)
+	cell.set_meta("in_step", true)
+	if _booklet != null:
+		cell.set_meta("plain_tip", "In step %d of %s\n%s" % [_step + 1, _booklet.name,
+			str(cell.get_meta("plain_tip", ""))])
+		cell.tooltip_text = "In step %d of %s\n%s" % [_step + 1, _booklet.name, cell.tooltip_text]
 
 
 ## Tiles whose names begin alike tell themselves apart: a name cut short
@@ -2036,7 +2264,10 @@ func _tell_apart() -> void:
 func _update_status() -> void:
 	var total: int = _display.size()
 	if _listing_set:
-		_status.text = ("%s, by part and colour, the most first" % Counted.of(total, "kind")
+		_status.text = ("%s, the step's %d first, then the most held" % [Counted.of(total, "kind"),
+			_step_keys.size()] if not _step_keys.is_empty()
+			and _search.text.strip_edges().is_empty() and _category == "All"
+			else "%s, by part and colour, the most first" % Counted.of(total, "kind")
 			if _search.text.strip_edges().is_empty() and _category == "All"
 			else "%s of the set's match" % Counted.of(total, "kind") if total > 0
 			else "none of the set's parts match")
@@ -2070,8 +2301,13 @@ func _update_status() -> void:
 		_status.text = "The parts you choose will be here, newest first."
 	elif total == 0 and _category == FAVOURITES and _search.text.strip_edges().is_empty():
 		_status.text = "Right-click any part to keep it here."
+	elif total == 0 and _only_made.button_pressed:
+		_status.text = "No part here is known to be made in %s" % library.color(_selected_color).name
 	elif total == 0:
 		_status.text = "nothing matches"
+	elif _only_made.button_pressed:
+		_status.text = "%s made in %s%s" % [Counted.of(total, "part"),
+			library.color(_selected_color).name, "" if _shown >= total else " — scroll for more"]
 	elif _shown >= total:
 		_status.text = "%s part%s" % [_comma(total), "" if total == 1 else "s"]
 	else:
@@ -2105,35 +2341,9 @@ func _update_status() -> void:
 ## what is left of [param key], its part and colour.
 func _make_cell(info: PartLibrary.PartInfo, key: String = "") -> Control:
 	var colour: int = Collection.colour_of(key) if not key.is_empty() else _selected_color
-	var button := Button.new()
+	var button: Button = _part_button(info, key, colour)
 	button.custom_minimum_size = Vector2(_z(74), _z(84))
-	# LDraw pads its names into columns, "Brick  1 x  2", which reads as
-	# a typo in a tooltip.
-	button.tooltip_text = "%s\n%s\n%d x %d studs, %s" % [
-		info.id, Inventory._tidy(info.name),
-		info.footprint_studs().x, info.footprint_studs().y,
-		_height_text(info)]
-	# The id, on the button, rather than read back out of the tooltip.
-	# The tooltip starts with the id and then a newline, so matching it
-	# by prefix lights 30055 when you pick 3005 — and there is no reason
-	# for a lookup to go through a string meant for a person.
-	button.set_meta("part", info.id)
-	button.toggle_mode = true
-	# Clicked, a tile kept the keys: the arrows then walked the focus round
-	# the grid, and Right never reached the timeline (the CAD task test,
-	# 2026-10-16). So a click leaves the keys with the model, and only Tab
-	# and the arrows bring them here, where Return takes the part.
-	FocusGuard.by_keyboard(button)
-	button.add_theme_stylebox_override("focus", FocusGuard.ring())
-	# Its title, as a screen reader says it, and its number and size after.
-	button.accessibility_name = "%s, %s" % [Inventory._tidy(info.name), info.id]
-	button.accessibility_description = "%d x %d studs, %s" % [
-		info.footprint_studs().x, info.footprint_studs().y, _height_text(info)]
-	button.button_pressed = info.id == _selected_part and colour == _selected_color
-	button.pressed.connect(_on_part.bind(info.id, colour if not key.is_empty() else -1))
-	button.tooltip_text += "\nRight-click to keep it in Favourites, or drag it onto the model"
-	button.gui_input.connect(func(event: InputEvent) -> void:
-		_cell_input(button, info.id, event))
+	var after: String = str(button.get_meta("after"))
 
 	var box := VBoxContainer.new()
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2163,20 +2373,6 @@ func _make_cell(info: PartLibrary.PartInfo, key: String = "") -> Control:
 	# and a person new to LDraw's numbers hovered each to learn that 3710 is
 	# a plate 1 x 4 (appux371 A4). The number is on its tooltip.
 	var label := Label.new()
-	var after: String = ""
-	if not key.is_empty():
-		var colour_named: PartLibrary.BrickColor = library.color(colour)
-		button.tooltip_text = "%s\n%s" % [colour_named.name.replace("_", " ") if colour_named != null
-			else "colour %d" % colour, button.tooltip_text]
-		button.accessibility_name = "%s, %s" % [button.accessibility_name, colour_named.name.replace("_", " ")
-			if colour_named != null else "colour %d" % colour]
-		button.set_meta("key", key)
-		button.set_meta("plain_tip", button.tooltip_text)
-		after = "  " + count_words(_set_bin.left(key, _used) if _set_bin != null else 0)
-	if _guesses.has(info.id):
-		after = "  %d%%" % roundi(float(_guesses[info.id]) * 100.0)
-		button.tooltip_text = "Brickognize is %d%% sure of it\n%s" % [
-			roundi(float(_guesses[info.id]) * 100.0), button.tooltip_text]
 	label.set_meta("name", tile_name(info))
 	label.set_meta("after", after)
 	button.set_meta("name_label", label)
@@ -2234,6 +2430,193 @@ func _make_cell(info: PartLibrary.PartInfo, key: String = "") -> Control:
 	return button
 
 
+## A row of the list for [param info] (List, at the bin's foot), as a details
+## view lists files: its picture small, its name, its number, its size in
+## studs and how many colours it was made in, a set's count after its name.
+## LDCad and a file window list so; a tile shows a dozen where rows show
+## twenty and more (appux371 A4's unbuilt half). Everything a tile does, it
+## does: a click, a drag, a double-click, a right-click, the "+N" of what is
+## folded under it.
+func _make_row(info: PartLibrary.PartInfo, key: String = "") -> Control:
+	var colour: int = Collection.colour_of(key) if not key.is_empty() else _selected_color
+	var button: Button = _part_button(info, key, colour)
+	var tall: float = maxf(_z(ROW), least)
+	button.custom_minimum_size = Vector2(0, tall)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# A table's row, not a stack of buttons: lit as a menu's row is under the
+	# pointer, and every other one a shade lighter to follow across.
+	var striped: bool = _grid.get_child_count() % 2 == 1
+	for state: String in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		button.add_theme_stylebox_override(state, _row_look(state, striped))
+	var line := HBoxContainer.new()
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.set_anchors_preset(Control.PRESET_FULL_RECT)
+	line.offset_left = _z(2)
+	line.offset_right = -_z(4)
+	line.add_theme_constant_override("separation", int(_z(6)))
+	button.add_child(line)
+
+	var made_print: bool = info.category in [PartPrints.MY_PRINTS, PartPrints.MY_STICKERS]
+	var image := ThumbTile.new(info.id, colour, made_print)
+	image.custom_minimum_size = Vector2(tall - _z(2), tall - _z(2))
+	image.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	image.sketch = info
+	image.sketch_colour = _sketch_colour(colour)
+	line.add_child(image)
+	button.set_meta("tile", image)
+	# Its prints' count, in a column of its own so the names line up.
+	var fold_wide: float = maxf(least, ceilf(_z(30.0)))
+	if _folds.has(info.id):
+		var badge: Button = _fold_badge(info)
+		badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		badge.flat = true
+		badge.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		# No button's margins: a row with prints is as tall as one without.
+		for state: String in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+			badge.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+		badge.add_theme_color_override("font_color", Look.ACCENT)
+		badge.add_theme_color_override("font_hover_color", Look.ACCENT_HOVER)
+		badge.add_theme_color_override("font_pressed_color", Look.ACCENT_HOVER)
+		badge.custom_minimum_size = Vector2(fold_wide, 0)
+		badge.size_flags_vertical = Control.SIZE_FILL
+		line.add_child(badge)
+	else:
+		var gap := Control.new()
+		gap.custom_minimum_size.x = fold_wide
+		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		line.add_child(gap)
+
+	var title := Label.new()
+	title.set_meta("name", tile_name(info))
+	title.set_meta("after", str(button.get_meta("after")))
+	title.set_meta("lines", 1)
+	button.set_meta("name_label", title)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.clip_text = true
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	line.add_child(title)
+	var studs: Vector2i = info.footprint_studs()
+	var made: String = "" if info.colors.is_empty() else Counted.of(info.colors.size(), "colour")
+	var cells: Array[Label] = [title]
+	for words: String in [info.id, "%d×%d" % [studs.x, studs.y], made]:
+		var cell := Label.new()
+		cell.text = words
+		cell.modulate = Color(1, 1, 1, 0.62)
+		cell.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		cell.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		line.add_child(cell)
+		cells.append(cell)
+	# Columns that line up down the list: each as wide as its widest likely.
+	var font: Font = title.get_theme_font("font")
+	for n: int in range(1, cells.size()):
+		cells[n].custom_minimum_size.x = ceilf(font.get_string_size(
+			["30000pr0001", "16×16", "99 colours"][n - 1], HORIZONTAL_ALIGNMENT_LEFT, -1,
+			ceili(_z(11))).x)
+	for cell: Label in cells:
+		cell.add_theme_font_size_override("font_size", ceili(_z(11)))
+		cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title.modulate = Color(1, 1, 1, 0.9)
+	_fit_name(title, _name_width(title))
+	title.resized.connect(func() -> void: _fit_name(title, title.size.x))
+
+	var star: TextureRect = Icons.picture(STAR, _z(12.0), Icons.density(self))
+	star.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	star.visible = PartShelf.is_favourite(info.id)
+	line.add_child(star)
+	button.set_meta("star", star)
+
+	_cells[info.id] = image
+	if thumbnails:
+		var ready_now: ImageTexture = thumbnails.peek(info.id, colour, made_print)
+		if ready_now:
+			image.show_picture(ready_now, false)
+	if not key.is_empty():
+		_show_count(button)
+	return button
+
+
+## How tall a row of the list is, in the desktop's units: a line of its
+## eleven-point words and no more, so twenty rows and more are in sight in
+## a laptop's bin.
+const ROW := 17.0
+
+var _row_looks: Dictionary = {}
+
+
+## A list row's face in [param state]: nothing, a faint stripe on every
+## other row, [constant Look.ROW_LIT] edged in the accent under the pointer
+## or the keys, and the accent's own tint for the part in hand.
+func _row_look(state: String, striped: bool) -> StyleBox:
+	var key: String = "%s/%s" % [state, striped]
+	if _row_looks.has(key):
+		return _row_looks[key]
+	var face := StyleBoxFlat.new()
+	face.set_content_margin_all(0)
+	face.set_corner_radius_all(2)
+	face.bg_color = Color(1, 1, 1, 0.035 if striped else 0.0)
+	match state:
+		"hover", "focus":
+			face.bg_color = Look.ROW_LIT if state == "hover" else Color(0, 0, 0, 0)
+			face.border_color = Look.ACCENT
+			face.set_border_width_all(1)
+		"pressed", "hover_pressed":
+			face.bg_color = Color(Look.ACCENT, 0.22 if state == "pressed" else 0.3)
+			face.border_color = Look.ACCENT
+			face.set_border_width_all(1)
+	_row_looks[key] = face
+	return face
+
+
+## The button a tile or a row is made on: what it says, what a click, a drag
+## and a right-click on it do, and [code]"after"[/code], what its name ends
+## in: a set's count, or how sure a photo's answer is.
+func _part_button(info: PartLibrary.PartInfo, key: String, colour: int) -> Button:
+	var button := Button.new()
+	# LDraw pads its names into columns, "Brick  1 x  2", which reads as
+	# a typo in a tooltip.
+	button.tooltip_text = "%s\n%s\n%d x %d studs, %s" % [
+		info.id, Inventory._tidy(info.name),
+		info.footprint_studs().x, info.footprint_studs().y,
+		_height_text(info)]
+	# The id, on the button, rather than read back out of the tooltip.
+	# The tooltip starts with the id and then a newline, so matching it
+	# by prefix lights 30055 when you pick 3005 — and there is no reason
+	# for a lookup to go through a string meant for a person.
+	button.set_meta("part", info.id)
+	button.toggle_mode = true
+	# Clicked, a tile kept the keys: the arrows then walked the focus round
+	# the grid, and Right never reached the timeline (the CAD task test,
+	# 2026-10-16). So a click leaves the keys with the model, and only Tab
+	# and the arrows bring them here, where Return takes the part.
+	FocusGuard.by_keyboard(button)
+	button.add_theme_stylebox_override("focus", FocusGuard.ring())
+	# Its title, as a screen reader says it, and its number and size after.
+	button.accessibility_name = "%s, %s" % [Inventory._tidy(info.name), info.id]
+	button.accessibility_description = "%d x %d studs, %s" % [
+		info.footprint_studs().x, info.footprint_studs().y, _height_text(info)]
+	button.button_pressed = info.id == _selected_part and colour == _selected_color
+	button.pressed.connect(_on_part.bind(info.id, colour if not key.is_empty() else -1))
+	button.tooltip_text += "\nRight-click to keep it in Favourites, or drag it onto the model"
+	button.gui_input.connect(func(event: InputEvent) -> void:
+		_cell_input(button, info.id, event))
+
+	button.set_meta("after", "")
+	if not key.is_empty():
+		var colour_named: PartLibrary.BrickColor = library.color(colour)
+		button.tooltip_text = "%s\n%s" % [colour_named.name.replace("_", " ") if colour_named != null
+			else "colour %d" % colour, button.tooltip_text]
+		button.accessibility_name = "%s, %s" % [button.accessibility_name, colour_named.name.replace("_", " ")
+			if colour_named != null else "colour %d" % colour]
+		button.set_meta("key", key)
+		button.set_meta("plain_tip", button.tooltip_text)
+		button.set_meta("after", "  " + count_words(_set_bin.left(key, _used) if _set_bin != null else 0))
+	if _guesses.has(info.id):
+		button.set_meta("after", "  %d%%" % roundi(float(_guesses[info.id]) * 100.0))
+		button.tooltip_text = "Brickognize is %d%% sure of it\n%s" % [
+			roundi(float(_guesses[info.id]) * 100.0), button.tooltip_text]
+	return button
+
+
 ## How many lines a tile's name has at most.
 const NAME_LINES := 2
 
@@ -2281,13 +2664,17 @@ func _fit_name(label: Label, width: float) -> void:
 func _name_text(label: Label, width: float, number: String) -> String:
 	var after: String = (" " + number if not number.is_empty() else "") + str(label.get_meta("after", ""))
 	return fit_lines(str(label.get_meta("name", "")), after, label.get_theme_font("font"),
-		label.get_theme_font_size("font_size"), width, NAME_LINES, int(label.get_meta("from", 0)))
+		label.get_theme_font_size("font_size"), width, int(label.get_meta("lines", NAME_LINES)),
+		int(label.get_meta("from", 0)))
 
 
 ## The width a name is fitted to: its label's, or before it is laid out the
-## width a tile is made at.
+## width a tile is made at, or a row's name about half the bin's.
 func _name_width(label: Label) -> float:
-	return label.size.x if label.size.x > 1.0 else _z(74) - _z(6)
+	if label.size.x > 1.0:
+		return label.size.x
+	return _z(74) - _z(6) if int(label.get_meta("lines", NAME_LINES)) > 1 \
+		else maxf(_scroll.size.x * 0.5, _z(120))
 
 
 ## [param name] broken into at most [param lines] lines of [param width] in
@@ -2411,7 +2798,19 @@ func _cell_input(button: Button, part_id: String, event: InputEvent) -> void:
 		if press.button_index == MOUSE_BUTTON_RIGHT and press.pressed:
 			_toggle_favourite(part_id)
 			button.accept_event()
+		elif press.button_index == MOUSE_BUTTON_LEFT and press.pressed and press.double_click:
+			# The second press is the double-click's, not the tile's: the
+			# first click took the part in hand already.
+			button.accept_event()
+			_drag_from = Vector2.INF
+			var key: String = str(button.get_meta("key", ""))
+			_double_clicked(part_id, Collection.colour_of(key) if not key.is_empty() else _selected_color)
 		elif press.button_index == MOUSE_BUTTON_LEFT and press.pressed:
+			# What a double-click would act on, before this click takes the
+			# part in hand and the selection out of the bin's sight.
+			_pressed_on = PackedInt64Array(builder.selection.keys()) \
+				if builder != null and not _chosen_parts.is_empty() else PackedInt64Array()
+			_pressed_mode = verbs.mode if verbs != null else ""
 			_drag_from = press.global_position
 			_drag_device = press.device
 			_scrolled = false
@@ -2483,6 +2882,67 @@ func _on_part(part_id: String, colour: int = -1) -> void:
 	_mark_swatches()
 	part_chosen.emit(part_id)
 	_keys_to_model(by_keyboard)
+
+
+## A double-click on a tile, in [param colour] (a set's tile's own): the
+## selection it began on made that part where it stands, one step to undo, as
+## LDCad's double-click in its bin replaces; under Fits, the part put on a free
+## connector of what is selected, as Bricksmith's Insert Related adds the tyre
+## a wheel takes (PartFits.put_on), so a beam's holes fill a pin a
+## double-click. Then the tool it began in, with the parts swapped selected,
+## or still the part a fit went on for the next. With nothing selected, the
+## first click's part in hand is all it does.
+func _double_clicked(part_id: String, colour: int) -> void:
+	var on: PackedInt64Array = _pressed_on
+	_pressed_on = PackedInt64Array()
+	if on.is_empty() or verbs == null or builder == null:
+		return
+	var alive := PackedInt64Array()
+	for brick_id: int in on:
+		if builder.world.get_brick(brick_id) != null:
+			alive.append(brick_id)
+	if alive.is_empty():
+		return
+	if not await _part_here(part_id):
+		verbs.say.call("%s could not be fetched: try again in a moment" % part_id)
+		return
+	# The selection as the double-click found it.
+	var same: bool = builder.selection.size() == alive.size()
+	for brick_id: int in alive:
+		same = same and builder.selection.has(brick_id)
+	if not same:
+		builder.selection.clear()
+		for brick_id: int in alive:
+			builder.selection[brick_id] = true
+		builder.selection_changed.emit(builder.selection.size())
+	if _category == FITS:
+		var eye: Vector3 = verbs.camera.global_position if verbs.camera != null \
+			else builder.world.get_brick(alive[0]).transform.origin + Vector3(0.0, 400.0, 400.0)
+		var put: Dictionary = PartFits.put_on(builder, library, alive, part_id, colour, eye)
+		if int(put["brick"]) != 0:
+			verbs.edited.call()
+		verbs.say.call(str(put["words"]))
+	else:
+		builder.held_part = part_id
+		verbs.replace()
+	if not _pressed_mode.is_empty() and _pressed_mode != "place":
+		verbs.set_mode(_pressed_mode)
+
+
+## Whether [param part_id]'s shape is here to put down: on the web, fetched
+## first, a few seconds at most, as a part taken from the bin is.
+func _part_here(part_id: String) -> bool:
+	if library.is_resident(part_id) or library.mesh_for(part_id) != null:
+		return true
+	library.request_mesh(part_id, true)
+	var asked: int = Time.get_ticks_msec()
+	while not library.is_resident(part_id) and Time.get_ticks_msec() - asked < FETCH_WAIT_MS:
+		await get_tree().process_frame
+	return library.mesh_for(part_id) != null
+
+
+## How long a double-click waits for a part's shape to be fetched.
+const FETCH_WAIT_MS := 8000
 
 
 ## After a part or a construction is chosen from the keyboard: the keys are
@@ -2578,6 +3038,7 @@ func _fill_techniques(query: String) -> void:
 	_shown = 0
 	_scroll.scroll_vertical = 0
 	_grid.columns = 1
+	_grid.add_theme_constant_override("v_separation", int(_z(4)))
 	_techniques_seen = []
 	_techniques_shown = 0
 	var listed: Array = Techniques.all()
@@ -2742,6 +3203,23 @@ var _set_words: Label
 var _set_count: Label
 var _set_go: Button
 var _set_back: Button
+var _set_models: HFlowContainer
+var _step_line: HBoxContainer
+var _step_back: Button
+var _step_words: Label
+var _step_on: Button
+var _step_stop: Button
+## The booklet the set's bin follows (SetBooklet), or null: the step whose
+## parts it lists first, whether that step was turned to by hand (kept
+## until it is built) or by itself (the first step not yet built), and the
+## parts it lists first, by part and colour, in the step's order.
+var _booklet: SetBooklet = null
+var _step: int = 0
+var _step_by_hand: bool = false
+var _step_keys := PackedStringArray()
+## The repository a set's booklet is fetched from where this checkout has
+## no copy of it (Main's ModelLibrary).
+var models: ModelLibrary
 ## What the model uses, by part and colour, as last counted, and at which
 ## of the world's revisions: worked out again whenever the model changes
 ## ([method _recount]), never kept apart from it.
@@ -2784,7 +3262,11 @@ const RECOUNT_MSEC := 100
 ## are left, and the model keeps the choice. Returns how many kinds of part
 ## it shows; 0, the bin as it was and [member trouble] saying why, when no
 ## set of them is known.
-func build_from(numbers: PackedStringArray) -> int:
+##
+## A single set follows the booklet of [param booklet], one of its models'
+## files in LDraw's repository ("8841-1_Balance.mpd"); "" its own model's,
+## or the one model it has: the bin lists the step's parts first.
+func build_from(numbers: PackedStringArray, booklet: String = "") -> int:
 	if _books == null:
 		_books = SetInventories.new()
 		add_child(_books)
@@ -2804,8 +3286,12 @@ func build_from(numbers: PackedStringArray) -> int:
 	print("set bin: %s, %d kinds of part, looked up in %d ms" % [bin.title, bin.order.size(), looked_up_ms])
 	_offer = {}
 	_set_bin = bin
+	_booklet = null
+	_step_keys = PackedStringArray()
 	if store != null:
 		store.bin_sets = bin.sets
+	if normal.size() == 1:
+		await _follow_booklet(normal[0], booklet)
 	_count_chips()
 	# The whole set in sight: what was typed or chosen is let go.
 	_search.text = ""
@@ -2813,9 +3299,112 @@ func build_from(numbers: PackedStringArray) -> int:
 	_category = "All"
 	for child: Node in _category_row.get_children():
 		(child as Button).button_pressed = str(child.get_meta("category", "")) == _category
-	_recount()
+	_recount(false)
 	_run_search("")
 	return bin.order.size()
+
+
+## The set's model [param file] (its own, or its only one, where "") found
+## among LDraw's official models, read, and its booklet followed from the
+## first step not yet built.
+func _follow_booklet(number: String, file: String) -> void:
+	var chosen: Dictionary = {}
+	var its: Array = []
+	for model: Dictionary in await _books.official_models():
+		if str(model["set"]) == number:
+			its.append(model)
+	for model: Dictionary in its:
+		if (file.is_empty() and str(model["file"]) == number + ".mpd") or str(model["file"]) == file:
+			chosen = model
+	if chosen.is_empty() and file.is_empty() and its.size() == 1:
+		chosen = its[0]
+	if chosen.is_empty():
+		return
+	var text: String = await _booklet_text(str(chosen["file"]))
+	if text.is_empty():
+		return
+	# Read off the frame, as a model opened is: a set's file is a few
+	# hundred parts, and the repository's largest tens of thousands.
+	var parsed: Array = []
+	var reading: int = WorkerThreadPool.add_task(func() -> void:
+		parsed.append(LdrModel.parse(text, str(chosen["file"]))))
+	while not WorkerThreadPool.is_task_completed(reading):
+		await get_tree().process_frame
+	WorkerThreadPool.wait_for_task_completion(reading)
+	_booklet = SetBooklet.make(parsed[0], model_name(chosen), str(chosen["file"]), _set_bin, library)
+	_step = 0
+	_step_by_hand = false
+
+
+## A model of a set as a person names it: "Balance" for 8841-1's "Desert
+## Racer — Balance", the set's name for its own.
+static func model_name(model: Dictionary) -> String:
+	var named: String = ModelLibrary.tidy(str(model.get("name", "")))
+	return named.get_slice(" — ", 1) if named.contains(" — ") else named
+
+
+## A model's file from LDraw's repository: this checkout's copy, else the
+## library's (ModelLibrary), "" when neither can be had.
+func _booklet_text(file: String) -> String:
+	if not OS.has_feature("web") and FileAccess.file_exists(ModelLibrary.VENDOR + file):
+		return FileAccess.get_file_as_string(ModelLibrary.VENDOR + file)
+	if models == null:
+		return ""
+	var got: Dictionary = await models.model_text({"file": ModelLibrary.ROOT + "omr/" + file,
+		"name": file.get_basename()})
+	return str(got.get("text", ""))
+
+
+## The booklet turned [param by] steps by hand: its parts first until that
+## step is built, then the bin follows the booklet again.
+func turn_step(by: int) -> void:
+	if _booklet == null:
+		return
+	_step = clampi(_step + by, 0, _booklet.steps.size() - 1)
+	_step_by_hand = true
+	_follow_step(true)
+
+
+## The booklet let go: the set's parts most held first again.
+func stop_booklet() -> void:
+	_booklet = null
+	_follow_step(true)
+
+
+## The booklet followed, or [code]{}[/code]: {"name", "file", "step" (from
+## 1), "steps", "left" (pieces the step still wants), "first" (the keys
+## listed first)}.
+func booklet_followed() -> Dictionary:
+	if _booklet == null or _set_bin == null:
+		return {}
+	var pieces: int = 0
+	for lot: Array in _booklet.left_in(_step, _used):
+		pieces += int(lot[1])
+	return {"name": _booklet.name, "file": _booklet.file, "step": _step + 1,
+		"steps": _booklet.steps.size(), "left": pieces, "first": _step_keys}
+
+
+## Which step the booklet is at, worked out from what the model uses: the
+## first not yet built, or a step turned to by hand until it is built. Its
+## parts are listed first, and the grid listed again when the step turns.
+func _follow_step(relist: bool) -> void:
+	var keys := PackedStringArray()
+	if _booklet != null and _set_bin != null:
+		var open: int = _booklet.first_open(_used)
+		if not _step_by_hand or _booklet.left_in(_step, _used).is_empty():
+			_step_by_hand = false
+			_step = mini(open, _booklet.steps.size() - 1)
+		# The whole step, as its callout shows it: a part put in keeps its
+		# place, so the tiles move only when the step turns.
+		if _step_by_hand or open < _booklet.steps.size():
+			for lot: Array in _booklet.steps[_step]:
+				keys.append(lot[0])
+	_say_step()
+	if keys == _step_keys:
+		return
+	_step_keys = keys
+	if relist and _listing_set:
+		_list_set(_search.text.strip_edges())
 
 
 ## Back to the whole library: the set's counts go with it.
@@ -2827,11 +3416,14 @@ func leave_set() -> void:
 ## The set bin let go, and the model's choice with it.
 func _drop_set() -> void:
 	_set_bin = null
+	_booklet = null
+	_step_keys = PackedStringArray()
 	_used = {}
 	if store != null:
 		store.bin_sets = PackedStringArray()
 	_count_chips()
 	_say_set()
+	_say_step()
 
 
 ## Each category's count on its button: the library's, or building from a
@@ -2896,7 +3488,7 @@ func _follow_model() -> void:
 
 ## The counts worked out again from the model, and every tile and the set's
 ## line told.
-func _recount() -> void:
+func _recount(relist: bool = true) -> void:
 	if _set_bin == null:
 		return
 	var world: BrickWorld = builder.world if builder != null else null
@@ -2907,6 +3499,7 @@ func _recount() -> void:
 		if not str(cell.get_meta("key", "")).is_empty():
 			_show_count(cell as Button)
 	_say_set()
+	_follow_step(relist)
 
 
 ## How many of a tile's part and colour are left, after its name: "×12",
@@ -2946,6 +3539,7 @@ func _say_set() -> void:
 	if _set_line == null:
 		return
 	var offered: SetBin = _offer.get("bin")
+	_offer_models()
 	_set_line.visible = _set_bin != null or offered != null
 	_set_back.visible = _set_bin != null
 	_set_go.visible = offered != null
@@ -2989,17 +3583,82 @@ func _offer_typed(query: String) -> void:
 	if _search.text.strip_edges().to_lower() != query.strip_edges().to_lower():
 		return
 	var bin: SetBin = SetBin.make(PackedStringArray([number]), records, library)
-	_offer = {} if bin == null else {"numbers": PackedStringArray([number]), "bin": bin}
+	# Its models in LDraw's repository, whose booklets the bin can follow.
+	var its: Array = []
+	if bin != null:
+		for model: Dictionary in await _books.official_models():
+			if str(model["set"]) == number:
+				its.append(model)
+		if _search.text.strip_edges().to_lower() != query.strip_edges().to_lower():
+			return
+	_offer = {} if bin == null else {"numbers": PackedStringArray([number]), "bin": bin,
+		"models": its}
 	_say_set()
 
 
-func _take_offer() -> void:
+func _take_offer(booklet: String = "") -> void:
 	if _offer.is_empty():
 		return
 	var numbers: PackedStringArray = _offer["numbers"]
 	if _set_bin != null:
 		numbers = _set_bin.sets + numbers
-	await build_from(numbers)
+	await build_from(numbers, booklet)
+
+
+## The offered set's models, each a button that builds from the set and
+## follows its booklet: shown where it has two or more, and only when the
+## bin is not already a set's (sets added together follow none).
+func _offer_models() -> void:
+	var its: Array = _offer.get("models", [])
+	var shown: bool = _set_bin == null and its.size() >= 2
+	_set_models.visible = shown
+	var files := PackedStringArray()
+	for model: Dictionary in its:
+		files.append(str(model["file"]))
+	if not shown or str(_set_models.get_meta("files", PackedStringArray())) == str(files):
+		return
+	_set_models.set_meta("files", files)
+	for child: Node in _set_models.get_children():
+		_set_models.remove_child(child)
+		child.queue_free()
+	var words := Label.new()
+	words.text = "Follow a booklet:"
+	words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	words.add_theme_font_size_override("font_size", ceili(_z(12)))
+	_set_models.add_child(words)
+	for model: Dictionary in its:
+		var button := Button.new()
+		button.text = model_name(model)
+		button.set_meta("file", str(model["file"]))
+		button.tooltip_text = "Build from %s's parts, following the booklet of %s: each step's parts first" % [
+			str(model["set"]), ModelLibrary.tidy(str(model["name"]))]
+		FocusGuard.by_keyboard(button)
+		button.add_theme_font_size_override("font_size", ceili(_z(12)))
+		button.custom_minimum_size = Vector2(least, least)
+		button.pressed.connect(_take_offer.bind(str(model["file"])))
+		_set_models.add_child(button)
+
+
+## The step line: the booklet followed, its step and what is left of it.
+func _say_step() -> void:
+	if _step_line == null:
+		return
+	_step_line.visible = _booklet != null and _set_bin != null
+	if not _step_line.visible:
+		return
+	var total: int = _booklet.steps.size()
+	var pieces: int = 0
+	for lot: Array in _booklet.left_in(_step, _used):
+		pieces += int(lot[1])
+	_step_words.text = "%s: every step built" % _booklet.name \
+		if _booklet.first_open(_used) >= total and not _step_by_hand \
+		else "%s, step %d of %d: %s to put in" % [_booklet.name, _step + 1, total,
+			Counted.of(pieces, "part")]
+	_step_words.tooltip_text = ("Following the booklet of %s (LDraw's model of it): the step's "
+		+ "parts come first in the bin, marked, and the bin turns to the next step as they go "
+		+ "in. ‹ and › turn it by hand.") % _booklet.name
+	_step_back.disabled = _step <= 0
+	_step_on.disabled = _step >= total - 1
 
 
 ## The parts a photo was answered with, by id -> how sure Brickognize is:

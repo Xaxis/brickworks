@@ -158,7 +158,7 @@ mkdir -p ".vercel/output/static/b/$sha"
 # browser taking brotli is sent (the route below): Vercel compressed them
 # on the fly, which sent the wasm as 9.6 MB and the pack as 21 MB, where
 # export.sh's brotli 11 makes 6.9 and 15 (load250, 2026-10-24).
-SENT_BR="index.wasm index.pck index.parts.bin index.js"
+SENT_BR="index.wasm index.pck index.data.pck index.parts.bin index.primitives.bin index.hdri.bin index.js"
 for f in "$dir"/*; do
   case "$f" in *.gz|*/build.json) continue ;; esac
   case "$f" in *.br) case " $SENT_BR " in *" $(basename "$f" .br) "*) ;; *) continue ;; esac ;; esac
@@ -411,7 +411,10 @@ pages=""
 # wasm only as application/wasm.
 overrides="\"b/$sha/index.wasm.br\": { \"contentType\": \"application/wasm\" },
     \"b/$sha/index.pck.br\": { \"contentType\": \"application/octet-stream\" },
+    \"b/$sha/index.data.pck.br\": { \"contentType\": \"application/octet-stream\" },
     \"b/$sha/index.parts.bin.br\": { \"contentType\": \"application/octet-stream\" },
+    \"b/$sha/index.primitives.bin.br\": { \"contentType\": \"application/octet-stream\" },
+    \"b/$sha/index.hdri.bin.br\": { \"contentType\": \"application/octet-stream\" },
     \"b/$sha/index.js.br\": { \"contentType\": \"application/javascript; charset=utf-8\" }"
 for page in .vercel/output/static/*.html; do
   name=$(basename "$page" .html)
@@ -583,11 +586,11 @@ $docs_moved
       "headers": { "Cache-Control": "public, max-age=31536000, immutable",
         "X-Robots-Tag": "noindex" },
       "continue": true },
-    { "src": "/b/$sha/(index[.](wasm|pck|js|parts[.]bin))",
+    { "src": "/b/$sha/(index[.](wasm|pck|js|data[.]pck|(parts|primitives|hdri)[.]bin))",
       "has": [ { "type": "header", "key": "accept-encoding", "value": ".*br.*" } ],
       "dest": "/b/$sha/\$1.br",
       "headers": { "Content-Encoding": "br", "Vary": "Accept-Encoding" } },
-    { "src": "/b/$sha/(index[.](wasm|pck|js|parts[.]bin))",
+    { "src": "/b/$sha/(index[.](wasm|pck|js|data[.]pck|(parts|primitives|hdri)[.]bin))",
       "headers": { "Vary": "Accept-Encoding" },
       "continue": true },
     { "src": "/img/(.*)",

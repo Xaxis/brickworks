@@ -387,6 +387,10 @@ declare -A CMD=(
   # clicked and Shift-B pressed; Shift-B takes the Paint tool, and still
   # does after the page is loaded again.
   [keys]="tools/web/keys_flow.mjs --url=$P/app $B --out=$S/${TAG}_keys"
+  # Colours on keys (APP_UX2 keys3): the model selected, Shift-2 paints it
+  # favourite 2 in one key and one Ctrl+Z takes it back; Ctrl-Shift-1 the
+  # model's most used colour.
+  [colour_keys]="tools/web/colour_keys_flow.mjs --url=$P/app $B --out=$S/${TAG}_colour_keys"
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"
@@ -491,6 +495,10 @@ declare -A CMD=(
   # (docs/MOTIONS.md), each downloaded and decoded; the page's longest wait
   # held to twice the app's own: alone, below.
   [render]="tools/web/render_flow.mjs --url=$P/app $B --out=$S/${TAG}_render_web"
+  # A picture lit by a photographed place: the light is not in the pack the
+  # start waits for, so it is fetched from the deployment the first time,
+  # and the dialog says so (webload, 2026-10-30).
+  [light_render]="tools/web/light_render_flow.mjs --url=$P/app/index.html $B --out=$S/${TAG}_light_render"
   # Render's Product look under Compatibility: a black wall behind clear
   # glass and a white one behind trans red, drawn on each backdrop, each
   # picture not flat, the red glass red and the black wall dark
