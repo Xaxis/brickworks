@@ -2,9 +2,11 @@
 // what happened to your models, from /api/people?op=notifications, one
 // group a model with its picture, the newest group first: comments, photos
 // of builds, remixes, likes as a number a day (never who), a challenge's
-// end. Opening the page clears the count on your avatar (the server marks
-// it seen). A group stays marked unread until it is opened, by any of its
-// links, or Mark all read.
+// end; and each level of an achievement you reached, in a group of their
+// own with the award in the picture's place, its link your profile's
+// Achievements tab. Opening the page clears the count on your avatar (the
+// server marks it seen). A group stays marked unread until it is opened,
+// by any of its links, or Mark all read.
 //
 // Every word is put on the page as text; an avatar is the kit's, which
 // escapes its own.
@@ -30,8 +32,9 @@ const parsed = (html) => {
   return made.content.firstElementChild;
 };
 
-/// Its model's group opened: read up to now, here at once and on the
-/// server, which a link followed straight away does not wait for.
+/// Its model's group (or the achievements') opened: read up to now, here at
+/// once and on the server, which a link followed straight away does not
+/// wait for.
 async function read(group) {
   if (!group.classList.contains("unread")) return;
   group.classList.remove("unread");
@@ -41,7 +44,8 @@ async function read(group) {
   if (!access) return;
   fetch("/api/people?op=notifications_read", { method: "POST", keepalive: true,
     headers: { authorization: `Bearer ${access}`, "content-type": "application/json" },
-    body: JSON.stringify({ model: group.dataset.model }) }).catch(() => null);
+    body: JSON.stringify("achievements" in group.dataset ? { achievements: true } : { model: group.dataset.model }) })
+    .catch(() => null);
   allRead();
 }
 
@@ -59,7 +63,7 @@ function line(one) {
   if (one.by && one.by.handle) {
     link.append(parsed(avatarHtml({ handle: one.by.handle, name: one.by.name, picture: one.by.picture }, { size: "small" })));
   }
-  else link.append(parsed(iconHtml(one.kind === "result" ? "award" : one.kind === "likes" ? "like" : "comment")));
+  else link.append(parsed(iconHtml(["result", "achievement"].includes(one.kind) ? "award" : one.kind === "likes" ? "like" : "comment")));
   const words = document.createElement("span");
   words.className = "what";
   if (one.who) {
@@ -92,8 +96,9 @@ function group(one, i = 0) {
   const item = document.createElement("li");
   item.className = `notice${one.unread ? " unread" : ""}`;
   item.dataset.model = String(one.model || "");
+  if (one.achievements) item.dataset.achievements = "";
   const picture = document.createElement("a");
-  picture.className = "pic";
+  picture.className = one.achievements ? "pic award" : "pic";
   picture.href = here(one.link);
   picture.tabIndex = -1;
   picture.setAttribute("aria-hidden", "true");
@@ -108,6 +113,7 @@ function group(one, i = 0) {
     img.decoding = "async";
     picture.append(img);
   }
+  if (one.achievements) picture.append(parsed(iconHtml("award")));
   const body = document.createElement("div");
   body.className = "body";
   const title = document.createElement("h2");

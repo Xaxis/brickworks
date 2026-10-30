@@ -11,7 +11,8 @@
   row of numbers, the pinned models) with Edit profile, Settings and Share;
   then tabs: Models and Builds as everybody sees them, and Saved
   (favourites, collections, whom you follow), Sets (what you own and what
-  it builds) and Insights (how your models are doing), which only you see.
+  it builds), Insights (how your models are doing) and Achievements (your
+  level on each track and the way to the next), which only you see.
   Edit profile opens a dialog of everything the profile shows; it saves
   and the page shows it at once. The settings are at /settings.
 
@@ -219,6 +220,7 @@
 					<a href="/profile?tab=saved" data-tab="saved">Saved</a>
 					<a href="/profile?tab=sets" data-tab="sets">Sets</a>
 					<a href="/profile?tab=insights" data-tab="insights">Insights</a>
+					<a href="/profile?tab=achievements" data-tab="achievements" hidden>Achievements</a>
 				</nav>
 
 				<!-- A tab's place while it is drawn the first time (profile.js choose). -->
@@ -303,6 +305,15 @@
 				<div class="tab-panel" data-panel="insights" hidden>
 					<!-- How each model you shared is doing, for you alone (web/designs.js). -->
 					<section class="designs" id="designs" aria-label="Your models, as a designer"></section>
+				</div>
+
+				<div class="tab-panel" data-panel="achievements" hidden>
+					<p class="private">Only you see this tab. Your page shows everybody the levels you reached.</p>
+					<section aria-labelledby="achievements-h">
+						<h2 id="achievements-h">Your achievements</h2>
+						<p class="lead" id="achievements-said">Each track has levels: where you are on it, and what the next one takes.</p>
+						<ul class="achievements-list" id="achievements"></ul>
+					</section>
 				</div>
 			</div>
 

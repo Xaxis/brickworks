@@ -1650,7 +1650,7 @@
       "kind": "ui",
       "label": "your profile page",
       "entry": "web/profile.html",
-      "reach": "https://brickworks.diy/profile   (profile.js: sign in; no profile: name and handle; your page's head with Edit profile, and the tabs Models, Builds, Saved, Sets, Insights, ?tab=)",
+      "reach": "https://brickworks.diy/profile   (profile.js: sign in; no profile: name and handle; your page's head with Edit profile, and the tabs Models, Builds, Saved, Sets, Insights, Achievements, ?tab=)",
       "area": "web"
     },
     {
@@ -3050,7 +3050,7 @@
       "kind": "ui",
       "label": "notifications page",
       "entry": "web/notifications.html",
-      "reach": "https://brickworks.diy/notifications   (notifications.js: signed in, a group a model with its picture, newest first; opening it clears the avatar's count; a group read once opened; Mark all read)",
+      "reach": "https://brickworks.diy/notifications   (notifications.js: signed in, a group a model with its picture, newest first, and the levels you reached in a group of their own; opening it clears the avatar's count; a group read once opened; Mark all read)",
       "area": "web"
     },
     {
@@ -3316,7 +3316,21 @@
       "kind": "ui",
       "label": "achievements on a profile",
       "entry": "api/people.js",
-      "reach": "https://brickworks.diy/u/<handle> and /profile: ul.awards under the numbers (achievementsOf; GET /api/people?op=profile says achievements); the profile browser flow",
+      "reach": "https://brickworks.diy/u/<handle> and /profile: ul.awards under the numbers, a challenge won then a level a track (achievementsOf, levelAwards; GET /api/people?op=profile says achievements and levels); the profile browser flow",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "achievements with levels",
+      "entry": "supabase/achievements.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/achievements.sql --dry --try=tools/achievements_try.sql --table=achievement_marks   (after replies.sql; the promises in tests/test_achievements.py; then the profile and notifications browser flows)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "your achievements tab",
+      "entry": "web/profile.js",
+      "reach": "https://brickworks.diy/profile?tab=achievements   (signed in, once supabase/achievements.sql is applied: a tile a track, its level, how far the next is and the way there); the profile browser flow, locally",
       "area": "web"
     },
     {

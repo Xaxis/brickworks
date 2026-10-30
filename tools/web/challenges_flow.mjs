@@ -664,14 +664,18 @@ try {
     await page.goto(`${site}/u/${ADA}?tests=1`, { waitUntil: "load" });
     // Her win is the first of her achievements under her numbers
     // (api/people.js achievementsOf, docs/SOCIAL.md U13): what it won, the
-    // model and its votes on hover, a link to it; then the rest she earned.
+    // model and its votes on hover, a link to it; then the rest she earned:
+    // her levels once supabase/achievements.sql is there (the answer's
+    // levels), Challenger among them; else the marks of before.
+    const levelled = Array.isArray((await api(`/api/people?op=profile&handle=${ADA}&tests=1`)).body?.levels);
     const won = await page.evaluate((id) => ({ wins: [...document.querySelectorAll('.awards li[data-award="won"] a')].map((a) => ({
       said: a.textContent.replace(/\s+/g, " ").trim(), title: a.title, href: a.getAttribute("href") })),
       awards: [...document.querySelectorAll(".awards li")].map((li) => li.dataset.award).join(","),
       card: [...document.querySelectorAll(`.model[data-id="${id}"] small.won`)].map((s) => s.textContent) }), ids.house);
     check(`Ada's designer page: ${JSON.stringify(won)}`, won.wins.length === 1 && won.wins[0].said === `Won “${TITLE}”, by hand`
       && won.wins[0].title === `Challenge House ${rand}: 2 votes` && won.wins[0].href === `/m/${ids.house}`
-      && won.awards === "won,tested,listed" && won.card.length === 1 && won.card[0] === `Won “${TITLE}”, by hand`);
+      && (levelled ? /^won,designer,(.+,)?challenger$/.test(won.awards) && won.awards.includes(",tested,") : won.awards === "won,tested,listed")
+      && won.card.length === 1 && won.card[0] === `Won “${TITLE}”, by hand`);
     check("...nothing sideways at 390 px", !(await sideways(page)));
     await pictures(page);
     await page.evaluate(() => document.querySelector(".awards")?.scrollIntoView());

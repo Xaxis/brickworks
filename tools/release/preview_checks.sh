@@ -76,8 +76,10 @@ declare -A CMD=(
   # photo and ten likes on a throwaway designer's model as one group with
   # its picture, the likes one row naming nobody; opened, the count gone;
   # a group read once opened, Mark all read; the feed apart; signed out at
-  # both widths. Throwaway accounts, deleted after; before and after
-  # supabase/notifications.sql (it reads which from the answer).
+  # both widths; once supabase/achievements.sql is applied, the levels
+  # reached as a group of their own, its row opening /profile's
+  # Achievements tab, read once opened. Throwaway accounts, deleted after;
+  # before and after each file (it reads which from the answers).
   [notifications]="tools/web/notifications_flow.mjs --url=$P --out=$S/${TAG}_notifications"
   # A feed you look at (docs/SOCIAL.md U9): /feed signed out and following
   # nobody shows Latest on Brickworks (the newest models as the gallery's
@@ -270,7 +272,10 @@ declare -A CMD=(
   # refusals whether or not supabase/profile_shows.sql is applied, "not open
   # yet" until it is); her page at 390 and 1280, light and dark, signed out
   # and in: avatar, numbers with no count of none, links ugc nofollow,
-  # pins, tabs. The account deleted after, and its row of profile_shows.
+  # pins, tabs; what she earned as she lists, is Tested, posts a build and
+  # is built ten times (levels once supabase/achievements.sql is applied,
+  # which the answer says). The account deleted after, and its row of
+  # profile_shows.
   [profile]="tools/web/profile_flow.mjs --url=$P --out=$S/${TAG}_profile"
   # Your account as your profile (docs/SOCIAL.md U6): a throwaway Ada who
   # set all the old account page could (her name, words, links, banner and

@@ -455,13 +455,25 @@ is on the page, `hidden`, for the script to show.
   with `data-follow-list`, its words in `.said`; Share; More with Report
   it); on a phone the cover across the top at 2:1. Then its models as
   `.models`, or a `.state`.
-- **Achievements** (`web/card.js` `awardsHtml`, docs/SOCIAL.md U13):
-  `ul.pills.awards` after a person's `.numbers`, the two in one
-  `.standing` row that wraps (beside them on a laptop, under them on a
-  phone), on their page and on your own, each `li[data-award]` a `.pill` with the award icon (16 px, at its
-  words' height) and its name,
-  what it means as its title; a challenge won is `a.pill.new` to the model
-  that won it. The rarest first; none at all, no row.
+- **Achievements** (`web/card.js` `awardsHtml`, `levelName`, docs/SOCIAL.md
+  U13 and section 7): `ul.pills.awards` after a person's `.numbers`, the
+  two in one `.standing` row that wraps (beside them on a laptop, under
+  them on a phone), on their page and on your own, each `li[data-award]`
+  a `.pill` with the award icon (16 px, at its words' height) and its
+  name, what it means as its title; a challenge won is `a.pill.new` to the
+  model that won it, then a level a track (`data-level`), named by the
+  number it took ("Designer · 10 models", "Built · once", "Builder · first
+  build") with "Level 3 of 6: 12 models listed in the gallery" as its
+  title. The highest first; none at all, no row.
+- **Your achievements** (`/profile?tab=achievements`, `web/profile.js`,
+  `.achievements-list` in `web/directory.css`): a tile a track, as
+  `.earned`'s are (`--panel`, `--line`, `--r-3`), in a grid of 260 px
+  columns: the award and the level's name as an `h3` at `--t-body`, "Level
+  3 of 6" at `--t-tiny` in `--ink-faint`, a 6 px `.reach` bar (`--line`, filled
+  in `--accent-edge`, hidden from a screen reader: the words say it), the
+  number in words, `.to-next` in `--ink` ("13 more to reach Designer · 25
+  models.") and `.how`, the way there, a link where a page helps. A track
+  not begun is dashed on no panel.
 - **A challenge** (`/challenge`, site357): its name, days and brief in
   `.challenge-hero.halo`, a panel lit as a landing page's last offer is;
   then the rules and how to enter, each a panel, side by side from 900 px.
@@ -491,8 +503,10 @@ is on the page, `hidden`, for the script to show.
 - **Notifications** (`/notifications`, `web/directory.css`): `.notices`,
   a list of `.notice` cards, one a model: its 4:3 `.pic`, its name as an
   `h2` at `--t-body`, and `.lines`, each a link with an avatar (who did
-  it) or an icon (likes, a challenge's end), `.what` its words, a New
-  `.pill`, a quote and the time. Not opened yet: `.unread`, edged in
+  it) or an icon (likes, a challenge's end, a level reached), `.what` its
+  words, a New `.pill`, a quote and the time. The levels you reached are a
+  card of their own, "Your achievements", the award icon at 40% in its
+  `.pic.award` where a model's picture is. Not opened yet: `.unread`, edged in
   `--accent-edge` with a `.dot`. The page's head is `.notices-head` (the
   title and Mark all read); `/notifications` and `/feed` share one `.tabs`
   row, each tab's count in `.n`, hidden at none.

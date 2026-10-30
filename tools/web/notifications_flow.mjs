@@ -32,6 +32,13 @@
 //      the file).
 //   7. Mark all read; Bob's empty page; signed out at both widths.
 //
+// Once supabase/achievements.sql is applied (the profile's answer says
+// levels), each level reached is told in a group of its own: Ada's first
+// listed model is Designer · first model (seen as she first opens the list,
+// so not counted again), its group after the tower's, its row opening her
+// profile's Achievements tab, read once opened and after a reload; and
+// Bob's page has his Builder · first build in place of the empty state.
+//
 // Pictures in --out.
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
@@ -149,7 +156,8 @@ const headerDrawn = (page) => page.evaluate(() => {
 
 /// /notifications as drawn: [{model, name, picture, unread, rows: [{kind, text, href, unread, avatar}]}].
 const listDrawn = (page) => page.evaluate(() => [...document.querySelectorAll("#groups .notice")].map((li) => ({
-  model: li.dataset.model, name: li.querySelector("h2")?.textContent.trim() || "",
+  model: li.dataset.model, achievements: "achievements" in li.dataset, name: li.querySelector("h2")?.textContent.trim() || "",
+  award: Boolean(li.querySelector(".pic svg.icon use[href$='#award']")),
   picture: li.querySelector(".pic img")?.getAttribute("src") || "",
   pictureShown: Boolean(li.querySelector(".pic img")?.naturalWidth), unread: li.classList.contains("unread"),
   rows: [...li.querySelectorAll(".lines li")].map((row) => ({ kind: row.dataset.kind,
@@ -178,8 +186,16 @@ try {
   const first = await api("/api/people?op=notifications", { token: ada.access_token });
   const kept = first.body.kept === true;
   console.log(`  --    supabase/notifications.sql ${kept ? "applied: kept marks" : "not applied: the feed of before"}`);
-  check(`her notifications, none yet: ${first.status}, ${first.body.groups?.length} groups`,
-    first.status === 200 && first.body.ready === true && first.body.groups.length === 0);
+  const levelled = Array.isArray((await api(`/api/people?op=profile&handle=${ADA}&tests=1`)).body?.levels);
+  console.log(`  --    supabase/achievements.sql ${levelled ? "applied: levels told" : "not applied: no levels"}`);
+  // Her first model listed is her first level: told, new (she never opened
+  // the list before) and seen as she opens it, so not counted again.
+  const reached = first.body.groups?.find((one) => one.achievements);
+  check(`her notifications, none yet${levelled ? " but her first level" : ""}: ${first.status}, ${first.body.groups?.length} groups`
+    + `${reached ? ` (${reached.rows.map((one) => `${one.who} ${one.did}`).join("; ")})` : ""}`,
+    first.status === 200 && first.body.ready === true && first.body.groups.length === (levelled ? 1 : 0)
+    && (!levelled || (reached?.rows.length === 1 && reached.rows[0].did === "reached Designer · first model, level 1 of 6"
+      && reached.rows[0].new && reached.rows[0].unread)));
   await api("/api/people?op=feed", { token: ada.access_token });
 
   const adaSite = await context({ as: ada });
@@ -258,7 +274,15 @@ try {
   let list = await listDrawn(adaPage);
   const group = list[0];
   check(`one group, the tower: ${list.length}, "${group?.name}", its picture ${group?.picture} drawn ${group?.pictureShown}`,
-    list.length === 1 && group?.model === tower.body.id && group.name.startsWith("Notify Flow Tower") && group.pictureShown);
+    list.length === (levelled ? 2 : 1) && group?.model === tower.body.id && group.name.startsWith("Notify Flow Tower") && group.pictureShown);
+  if (levelled) {
+    const levels = list[1];
+    check(`then her achievements: "${levels?.name}", the award for a picture ${levels?.award}, `
+      + `"${levels?.rows.map((one) => one.text).join("; ")}" → ${levels?.rows[0]?.href}, unread ${levels?.unread}`,
+      levels?.achievements && levels.name === "Your achievements" && levels.award && levels.unread && levels.rows.length === 1
+      && levels.rows[0].kind === "achievement" && /^You reached Designer · first model, level 1 of 6/.test(levels.rows[0].text)
+      && !/New/.test(levels.rows[0].text) && levels.rows[0].href === "/profile?tab=achievements");
+  }
   check(`its rows, newest first: ${group?.rows.map((one) => one.kind).join(", ")}`,
     group?.rows.map((one) => one.kind).join(",") === "likes,photo,comment");
   const likes = group?.rows.find((one) => one.kind === "likes");
@@ -285,7 +309,8 @@ try {
   await phone.goto(`${site}/notifications`, { waitUntil: "load" });
   await until(phone, () => document.documentElement.dataset.notifications === "ready", "the list at 390");
   await phone.waitForFunction(() => [...document.querySelectorAll("#groups .pic img")].every((img) => img.complete), null, { timeout: 15000 }).catch(() => {});
-  check(`at 390 px: ${(await listDrawn(phone)).length} group, nothing sideways`, (await listDrawn(phone)).length === 1 && !(await sideways(phone)));
+  check(`at 390 px: ${(await listDrawn(phone)).length} groups, nothing sideways`, (await listDrawn(phone)).length === (levelled ? 2 : 1)
+    && !(await sideways(phone)));
   await shot(phone, "4_notifications-390-light.png", true);
 
   // --- 5. a row opened, and Back ------------------------------------------
@@ -309,6 +334,27 @@ try {
   await until(adaPage, () => document.documentElement.dataset.notifications === "ready", "the list reloaded");
   list = await listDrawn(adaPage);
   check(`and still read on a reload (${!list[0]?.unread})`, list[0] && !list[0].unread);
+  if (levelled) {
+    // Her achievements' row opens her profile's Achievements tab; back, read.
+    await adaPage.click(".notice[data-achievements] .lines li[data-kind=achievement] a");
+    await adaPage.waitForURL("**/profile?tab=achievements", { timeout: 20000 });
+    await until(adaPage, () => document.querySelector('[data-panel="achievements"]:not([hidden]) #achievements li'), "her Achievements tab");
+    const tile = await adaPage.evaluate(() => {
+      const li = document.querySelector('#achievements li[data-track="designer"]');
+      return { level: li?.dataset.level, name: li?.querySelector("h3")?.textContent.trim(), next: li?.querySelector(".to-next")?.textContent.trim() };
+    });
+    check(`its row opens her Achievements tab: Designer at level ${tile.level}, "${tile.name}", "${tile.next}"`,
+      tile.level === "1" && tile.name === "Designer · first model" && tile.next === "2 more to reach Designer · 3 models.");
+    await shot(adaPage, "5_achievements_tab-1280-dark.png");
+    await adaPage.goBack({ waitUntil: "load" });
+    await until(adaPage, () => document.documentElement.dataset.notifications === "ready", "the list after her achievements");
+    await adaPage.waitForTimeout(600);
+    await adaPage.reload({ waitUntil: "load" });
+    await until(adaPage, () => document.documentElement.dataset.notifications === "ready", "the list reloaded again");
+    list = await listDrawn(adaPage);
+    const levels = list.find((one) => one.achievements);
+    check(`back and reloaded: her achievements read (${levels && !levels.unread})`, levels && !levels.unread);
+  }
   if (kept) {
     // Since U8 a commenter hears of replies on the model, so Bob, who
     // commented, may mark his own read there (replies.sql's notification_read);
@@ -357,8 +403,16 @@ try {
   listen(bobPage, "Bob");
   await bobPage.goto(`${site}/notifications`, { waitUntil: "load" });
   await until(bobPage, () => document.documentElement.dataset.notifications === "ready", "Bob's list");
-  check(`Bob, with no models: the empty state, its ways in (${await bobPage.isVisible("#empty")})`,
-    await bobPage.isVisible("#empty") && (await bobPage.textContent("#empty")).includes("Nothing yet"));
+  if (levelled) {
+    // His photo of his build of the tower is his first level.
+    const his = await listDrawn(bobPage);
+    check(`Bob, with no models: only his achievements, "${his.map((one) => one.rows.map((row) => row.text).join("; ")).join(" | ")}"`,
+      his.length === 1 && his[0].achievements && his[0].rows.length === 1
+      && /^You reached Builder · first build, level 1 of 5/.test(his[0].rows[0].text) && !(await bobPage.isVisible("#empty")));
+  } else {
+    check(`Bob, with no models: the empty state, its ways in (${await bobPage.isVisible("#empty")})`,
+      await bobPage.isVisible("#empty") && (await bobPage.textContent("#empty")).includes("Nothing yet"));
+  }
   await shot(bobPage, "7_empty-1280-light.png");
 
   for (const [width, height, theme] of [[1280, 900, "dark"], [390, 844, "light"], [390, 844, "dark"]]) {

@@ -8,8 +8,9 @@
 //                                with its words and its link; opening it
 //                                clears the count on the avatar
 //   POST ?op=notifications_read  (session) {model}: that model's read, as
-//                                its group is opened; {all: true}: Mark all
-//                                read
+//                                its group is opened; {achievements: true}:
+//                                the achievements' group read; {all: true}:
+//                                Mark all read
 //   GET  ?op=feed_count          (session) {count, notifications, feed, me}:
 //                                what is new for the avatar (the two
 //                                together, as the app's Account says it),
@@ -19,7 +20,10 @@
 // A comment, a photo of a build, a remix, likes (a number a model a day,
 // never who) and a challenge's end; and since replies.sql, a reply to your
 // comment, or after yours in its thread, on anybody's model, grouped under
-// that model. Nothing says who followed you: a
+// that model. Since achievements.sql, each level of an achievement you
+// reached, in a group of their own: a level is written down as the
+// avatar's count is asked for (achievement_mark), so a page opened after
+// it is reached tells it. Nothing says who followed you: a
 // follow tells nobody anything (supabase/follows.sql).
 //
 // Until notifications.sql is applied its functions are not there (404),
@@ -32,7 +36,7 @@ import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
 import { withFaces } from "./_faces.js";
 import { Unacceptable } from "./_directory.js";
-import { pictureOf } from "./_card.js";
+import { levelName, pictureOf } from "./_card.js";
 
 const NOT_THERE = /: 404$/;
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -47,6 +51,10 @@ async function call(name, body, missing) {
     throw trouble;
   }
 }
+
+/// The levels [viewer] reached written down (supabase/achievements.sql),
+/// so what is counted and listed next tells them; nothing before the file.
+const marked = (viewer) => call("achievement_mark", { viewer }, () => 0);
 
 const who = async (request) => (bearer(request) ? (await verify(bearer(request), request)).sub : null);
 
@@ -99,6 +107,11 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
     return { ...base, did: `${n.toLocaleString("en-US")} new ${n === 1 ? "like" : "likes"} ${dayWords(row.day, now)}`.trim(),
       link: `${origin}/m/${model}` };
   }
+  if (row.kind === "achievement") {
+    const level = Number(row.level) || 0;
+    return { ...base, who: "You", did: `reached ${levelName(row.track, row.reached)}, level ${level} of ${Number(row.of) || level}`,
+      link: `${origin}/profile?tab=achievements` };
+  }
   if (row.kind === "result") {
     const title = quoted(row.title || "the challenge", 80);
     const way = row.way === "assistant" ? "with the assistant" : "by hand";
@@ -117,6 +130,8 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
 /// fresh}. A row is new when it came after the list was last opened
 /// ([seen_at]; never opened, all are), and unread until its model's group
 /// was opened after it ([reads]) or everything was marked read ([read_at]).
+/// The levels reached are a group of their own, [achievements] true, with
+/// no model and no picture, unread until it was opened (each row's [read]).
 export function noticeGroups(page, origin = "", now = Date.now()) {
   const rows = Array.isArray(page?.rows) ? page.rows : [];
   const models = page?.models && typeof page.models === "object" ? page.models : {};
@@ -127,13 +142,19 @@ export function noticeGroups(page, origin = "", now = Date.now()) {
   let unread = 0;
   let fresh = 0;
   for (const row of rows) {
-    const on = String(row.on || "");
-    if (!ID.test(on)) continue;
+    const levelled = row.kind === "achievement";
+    const on = levelled ? "achievements" : String(row.on || "");
+    if (!levelled && !ID.test(on)) continue;
     const at = Date.parse(row.at);
-    const readTo = Math.max(allRead, reads[on] ? Date.parse(reads[on]) : -Infinity);
+    const readTo = levelled ? (row.read === true ? Infinity : allRead)
+      : Math.max(allRead, reads[on] ? Date.parse(reads[on]) : -Infinity);
     const said = { ...noticeSaid(row, origin, now), new: seen === null || at > seen, unread: at > readTo };
     if (said.unread) unread += 1;
     if (said.new) fresh += 1;
+    if (levelled && !groups.has(on)) {
+      groups.set(on, { model: "", achievements: true, name: "Your achievements", picture: null,
+        link: `${origin}/profile?tab=achievements`, at: row.at, new: false, unread: false, rows: [] });
+    }
     if (!groups.has(on)) {
       const card = models[on] || {};
       const version = Date.parse(card.updated_at || "") || 0;
@@ -188,7 +209,8 @@ export async function notifications(request, response, { origin }) {
   response.setHeader("Cache-Control", "private, no-store");
   const asker = await who(request);
   if (!asker) throw new Unacceptable("Sign in to see what happened to your models: we email you a code, no password.", 401);
-  // Opened: what was counted is seen now.
+  // Opened: what was counted is seen now, with any level reached since.
+  await marked(asker);
   const page = await call("notification_list", { viewer: asker, mark: true }, () => ({ missing: true }));
   const read = page && page.missing ? await listBefore(asker, true) : page;
   if (!read) return response.status(200).json({ ready: false, groups: [], unread: 0, fresh: 0, kept: false });
@@ -201,8 +223,12 @@ export async function notificationsRead(request, response) {
   const asker = await who(request);
   if (!asker) throw new Unacceptable("Sign in first: we email you a code, no password.", 401);
   const body = request.body && typeof request.body === "object" ? request.body : {};
+  if (body.achievements === true) {
+    const said = await call("achievement_read", { viewer: asker }, () => ({ missing: true }));
+    return response.status(200).json({ read: !said?.missing, kept: !said?.missing });
+  }
   const model = body.all === true ? null : String(body.model ?? "");
-  if (model !== null && !ID.test(model)) throw new Unacceptable("say which model, or all: true");
+  if (model !== null && !ID.test(model)) throw new Unacceptable("say which model, achievements: true or all: true");
   const said = await call("notification_read", { viewer: asker, model }, () => ({ missing: true }));
   if (said && said.missing) {
     // Nothing is kept as read before the file; all read is the feed opened.
@@ -218,10 +244,11 @@ export async function notificationsRead(request, response) {
 /// counts only what came after each follow (supabase/follow_counts.sql): a
 /// new follow's backlog counted, and a new account that followed the house
 /// in First steps had 7 on its avatar at once (walk180, W7). The count of
-/// before until that file is applied.
+/// before until that file is applied. A level reached is written down
+/// first, so it is in the count at once.
 export async function newCounts(asker) {
   const [both, since] = await Promise.all([
-    call("notification_counts", { viewer: asker }, () => ({ missing: true })),
+    marked(asker).then(() => call("notification_counts", { viewer: asker }, () => ({ missing: true }))),
     call("feed_new_count", { viewer: asker }, () => null),
   ]);
   if (both && !both.missing) {

@@ -25,3 +25,5 @@ follow_counts.sql	feed_new_count	list_follow_counts.sql	collection_follows c on
 challenge_year.sql	challenge_list	challenge_list_order.sql	when 'upcoming' then 1
 made_with.sql	directory_card	modelled_by.sql	'modelled_by', m.modelled_by
 modelled_by.sql	modelled_by_ok	modelled_by_changed.sql	'name', 'page', 'changed'
+replies.sql	notification_rows	achievements.sql	'achievement'::text
+notifications.sql	notification_rows	achievements.sql	'achievement'::text

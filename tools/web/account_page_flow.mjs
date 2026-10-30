@@ -185,6 +185,10 @@ try {
   let r = await api("/api/people?op=profile", { method: "POST", token: ada.access_token,
     body: { handle: ADA, name: "Ada Account", bio: "Castles and small machines.\nFor the account page flow." } });
   check(`her profile: ${r.status} /u/${r.json?.handle}`, r.status === 200 && r.json?.handle === ADA);
+  // Once supabase/achievements.sql is applied (the answer says levels),
+  // a profile has the Achievements tab, every track at level 0 to begin.
+  const levelled = Array.isArray((await api(`/api/people?op=profile&handle=${ADA}&tests=1`)).json?.levels);
+  const TABS = `models,builds,saved,sets,insights${levelled ? ",achievements" : ""}`;
   const picture = readFileSync(path.join(root, "web/share.png")).toString("base64");
   // Six: more than a laptop's row (five from 1200 px, site277), so Show
   // more is on the page measured. An account may list six in an hour.
@@ -256,7 +260,7 @@ try {
       const first = (width < 600 ? 2 : 1) * said.columns;
       check(`${label}: tabs ${said.tabs.map((t) => `${t.tab}${t.n ? ` ${t.n}` : ""}${t.current ? "*" : ""}`).join(" · ")}, `
         + `Models open with ${said.cards.length} of her 6 models (${said.columns} columns) and Show more`,
-        said.tabs.map((t) => t.tab).join(",") === "models,builds,saved,sets,insights" && said.tabs[0].current
+        said.tabs.map((t) => t.tab).join(",") === TABS && said.tabs[0].current
         && said.tabs[0].n === "6" && said.tabs.every((t) => t.n !== "0") && said.panel.join() === "models"
         && said.columns >= 2 && first < 6 && said.cards.length === first && said.cards.every((id) => made.includes(id))
         && said.more);
@@ -446,7 +450,7 @@ try {
       check(`${label}: her profile made and drawn at once: "${said.name}", ${said.handle.split(" · ")[0]}, `
         + `tabs ${said.tabs.map((t) => t.tab).join(" · ")}`, said.me && !said.start && said.name === "Bea Start"
         && said.handle.startsWith(`@${BEA}`) && await page.evaluate(() => window.notReloaded === true)
-        && said.tabs.map((t) => t.tab).join(",") === "models,builds,saved,sets,insights");
+        && said.tabs.map((t) => t.tab).join(",") === TABS);
       await shot(page, `started_${width}.png`);
     }
     await context.close();

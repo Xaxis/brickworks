@@ -103,16 +103,57 @@ export function iconButtonHtml({ icon, name, count = 0, one = "", many = "", pre
 /// page and on yours (docs/SOCIAL.md U13): each the award icon and its
 /// name, what it means on hover; a challenge won is a link to the model that
 /// won it. [awards] as api/people.js achievementsOf makes them: [{id, name,
-/// said, model?}]. "" when there is none.
+/// said, model?, level?}]. "" when there is none.
 export function awardsHtml(awards, { id = "" } = {}) {
   const shown = (awards || []).filter((one) => one && one.name);
   if (!shown.length) return "";
   return `<ul class="pills awards"${id ? ` id="${escapeHtml(id)}"` : ""} aria-label="Achievements">${shown.map((one) => {
     const inside = `${iconHtml("award")}${escapeHtml(one.name)}`;
     const said = one.said ? ` title="${escapeHtml(one.said)}"` : "";
-    return `<li data-award="${escapeHtml(one.id)}"${one.model ? ` data-won="${escapeHtml(one.model)}"` : ""}>${one.model
+    const level = Number(one.level) > 0 ? ` data-level="${Number(one.level)}"` : "";
+    return `<li data-award="${escapeHtml(one.id)}"${level}${one.model ? ` data-won="${escapeHtml(one.model)}"` : ""}>${one.model
       ? `<a class="pill new" href="/m/${escapeHtml(one.model)}"${said}>${inside}</a>` : `<span class="pill"${said}>${inside}</span>`}</li>`;
   }).join("")}</ul>`;
+}
+
+/// The tracks of achievements (supabase/achievements.sql, docs/SOCIAL.md
+/// section 7), in its order: each its name, what a level's number counts
+/// ([one, many]: "Designer · 10 models"), what the number is, and the way
+/// to the next level, with a page that helps.
+export const TRACKS = {
+  designer: { name: "Designer", unit: ["model", "models"], what: ["model listed in the gallery", "models listed in the gallery"],
+    how: "Share a model from the app and list it in the gallery.", href: "/docs/sharing#share" },
+  built: { name: "Built", unit: ["time", "times"], what: ["build finished to the last step", "builds finished to the last step"],
+    how: "Each build of one of your models that somebody finishes counts.", href: "" },
+  builder: { name: "Builder", unit: ["build", "builds"], what: ["photo of a real build", "photos of real builds"],
+    how: "Build a model from the gallery and post a photo of it on its page.", href: "/gallery" },
+  remixed: { name: "Remixed", unit: ["time", "times"], what: ["remix", "remixes"],
+    how: "Each remix of one of your models counts.", href: "" },
+  tested: { name: "Tested", unit: ["model", "models"], what: ["model marked Tested", "models marked Tested"],
+    how: "A model is marked Tested when it stands at every step as it is shared.", href: "/docs/sharing#tested" },
+  challenger: { name: "Challenger", unit: ["challenge", "challenges"], what: ["challenge entered", "challenges entered"],
+    how: "Enter this month's building challenge.", href: "/challenge" },
+};
+
+/// A level as its pill says it: "Designer · 10 models", "Designer · first
+/// model", "Built · once".
+export function levelName(track, n) {
+  const one = TRACKS[track];
+  if (!one) return "";
+  const value = Number(n) || 0;
+  const first = one.unit[0] === "time" ? "once" : `first ${one.unit[0]}`;
+  return `${one.name} · ${value === 1 ? first : counted(value, ...one.unit)}`;
+}
+
+/// The levels a person reached, as awardsHtml's pills, the highest first
+/// (the tracks' order between equals). [levels] as achievement_levels gives
+/// them: [{track, n, level, of, reached, next}].
+export function levelAwards(levels) {
+  return (Array.isArray(levels) ? levels : [])
+    .filter((one) => one && TRACKS[one.track] && Number(one.level) > 0)
+    .sort((a, b) => Number(b.level) - Number(a.level))
+    .map((one) => ({ id: one.track, level: Number(one.level), name: levelName(one.track, one.reached),
+      said: `Level ${Number(one.level)} of ${Number(one.of)}: ${counted(one.n, ...TRACKS[one.track].what)}` }));
 }
 
 /// Where Share's sheet posts a page (docs/SOCIAL.md section 7), as

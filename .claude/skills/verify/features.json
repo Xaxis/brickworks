@@ -2266,6 +2266,16 @@
       ]
     },
     {
+      "id": "lib:achievements with levels",
+      "kind": "lib",
+      "entry": "supabase/achievements.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/achievements.sql --dry --try=tools/achievements_try.sql --table=achievement_marks   (after replies.sql; the promises in tests/test_achievements.py; then the profile and notifications browser flows)",
+      "area": "web",
+      "tests": [
+        "tests/test_achievements.py"
+      ]
+    },
+    {
       "id": "lib:add a minifig",
       "kind": "lib",
       "entry": "src/minifig/figure_tool.gd",
@@ -3038,6 +3048,7 @@
       "reach": "godot --headless --path . --script src/dev/tested_probe.gd   (-- --sets FILE ... prints each test and its time; -- --write IN OUT ... writes each IN with its steps carried and OUT.tested.json)",
       "area": "web",
       "tests": [
+        "tests/test_achievements.py",
         "tests/test_discovery.py",
         "tests/test_gallery_crons.py"
       ]
@@ -3358,7 +3369,7 @@
       "id": "ui:achievements on a profile",
       "kind": "ui",
       "entry": "api/people.js",
-      "reach": "https://brickworks.diy/u/<handle> and /profile: ul.awards under the numbers (achievementsOf; GET /api/people?op=profile says achievements); the profile browser flow",
+      "reach": "https://brickworks.diy/u/<handle> and /profile: ul.awards under the numbers, a challenge won then a level a track (achievementsOf, levelAwards; GET /api/people?op=profile says achievements and levels); the profile browser flow",
       "area": "web",
       "tests": []
     },
@@ -3780,7 +3791,8 @@
       "reach": "godot --path .  (select, L locks, Shift-L unlocks everything)",
       "area": "building",
       "tests": [
-        "tests/fixtures/collection/fake_rebrickable.py"
+        "tests/fixtures/collection/fake_rebrickable.py",
+        "tests/test_achievements.py"
       ]
     },
     {
@@ -3942,7 +3954,7 @@
       "id": "ui:notifications page",
       "kind": "ui",
       "entry": "web/notifications.html",
-      "reach": "https://brickworks.diy/notifications   (notifications.js: signed in, a group a model with its picture, newest first; opening it clears the avatar's count; a group read once opened; Mark all read)",
+      "reach": "https://brickworks.diy/notifications   (notifications.js: signed in, a group a model with its picture, newest first, and the levels you reached in a group of their own; opening it clears the avatar's count; a group read once opened; Mark all read)",
       "area": "web",
       "tests": []
     },
@@ -4025,6 +4037,7 @@
       "reach": "godot --path .  (File, Export, then Picture of the model)",
       "area": "model-io",
       "tests": [
+        "tests/test_achievements.py",
         "tests/test_sets.py"
       ]
     },
@@ -4043,7 +4056,8 @@
       "reach": "godot --path .  (aim at an overhang's underside; or tip a plate with T and aim at a side stud)",
       "area": "building",
       "tests": [
-        "tests/fixtures/collection/fake_rebrickable.py"
+        "tests/fixtures/collection/fake_rebrickable.py",
+        "tests/test_achievements.py"
       ]
     },
     {
@@ -4162,7 +4176,8 @@
       "reach": "godot --path .  (select, hold another part, Edit, Replace with the part in hand)",
       "area": "building",
       "tests": [
-        "tests/fixtures/collection/fake_rebrickable.py"
+        "tests/fixtures/collection/fake_rebrickable.py",
+        "tests/test_achievements.py"
       ]
     },
     {
@@ -4220,7 +4235,8 @@
       "reach": "godot --path .  (shift-click, then C paint / arrows nudge / Delete)",
       "area": "building",
       "tests": [
-        "tests/fixtures/collection/fake_rebrickable.py"
+        "tests/fixtures/collection/fake_rebrickable.py",
+        "tests/test_achievements.py"
       ]
     },
     {
@@ -4360,7 +4376,8 @@
       "reach": "godot --path .  (select what hangs from a hinge, clip or turntable; J, Shift-J)",
       "area": "building",
       "tests": [
-        "tests/fixtures/collection/fake_rebrickable.py"
+        "tests/fixtures/collection/fake_rebrickable.py",
+        "tests/test_achievements.py"
       ]
     },
     {
@@ -4568,7 +4585,8 @@
       "reach": "godot --path .  (Cmd-Z, Cmd-Shift-Z)",
       "area": "building",
       "tests": [
-        "tests/fixtures/collection/fake_rebrickable.py"
+        "tests/fixtures/collection/fake_rebrickable.py",
+        "tests/test_achievements.py"
       ]
     },
     {
@@ -4628,6 +4646,17 @@
       "tests": []
     },
     {
+      "id": "ui:your achievements tab",
+      "kind": "ui",
+      "entry": "web/profile.js",
+      "reach": "https://brickworks.diy/profile?tab=achievements   (signed in, once supabase/achievements.sql is applied: a tile a track, its level, how far the next is and the way there); the profile browser flow, locally",
+      "area": "web",
+      "tests": [
+        "tests/test_achievements.py",
+        "tests/test_site_shell.py"
+      ]
+    },
+    {
       "id": "ui:your feed page",
       "kind": "ui",
       "entry": "web/feed.html",
@@ -4652,6 +4681,7 @@
       "reach": "https://brickworks.diy/profile, Edit profile, Choose a picture   (a JPEG, PNG or WebP up to 8 MB, cropped to a circle in the page: dragged, zoomed by the buttons, wheel or two fingers; Use this picture sends the square to POST /api/people?op=avatar, api/_avatars.js makes its own JPEG; Remove the picture; shown wherever the person is by api/_faces.js; taken out on /admin from a report about the profile)",
       "area": "web",
       "tests": [
+        "tests/test_achievements.py",
         "tests/test_sets.py"
       ]
     },
@@ -4674,9 +4704,10 @@
       "id": "ui:your profile page",
       "kind": "ui",
       "entry": "web/profile.html",
-      "reach": "https://brickworks.diy/profile   (profile.js: sign in; no profile: name and handle; your page's head with Edit profile, and the tabs Models, Builds, Saved, Sets, Insights, ?tab=)",
+      "reach": "https://brickworks.diy/profile   (profile.js: sign in; no profile: name and handle; your page's head with Edit profile, and the tabs Models, Builds, Saved, Sets, Insights, Achievements, ?tab=)",
       "area": "web",
       "tests": [
+        "tests/test_achievements.py",
         "tests/test_site_shell.py"
       ]
     },

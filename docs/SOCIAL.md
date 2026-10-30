@@ -854,6 +854,20 @@ on the work you're doing rather than the duration of your activity"
 4 waits for viewer369. Each is done end to end, its browser flow on a
 preview, before the next begins.
 
+**2 as built** (supabase/achievements.sql): six tracks, Designer (models
+listed: 1 3 10 25 50 100), Built (builds finished of them: 1 10 50 100 500
+1000), Builder (photos of real builds: 1 5 10 25 50), Remixed (1 5 25 100),
+Tested (1 5 10 25) and Challenger (challenges entered: 1 3 6 12); a
+challenge won stays a pill of its own. The level shows as its number
+("Designer · 10 models", the level on hover) on the person's page; your
+own profile's Achievements tab has every track, how far the next level is
+and what gets you there, with a link where a page helps. A level reached
+is written down the next time the account opens any page (its avatar's
+count) and told in Notifications, a group of its own. Not built: how many
+hold each level. With one designer in the gallery every share would read
+100% or 0%, which says nothing; it is worth adding once there are a few
+hundred designers.
+
 ## Sources
 
 Read 2026-10-22. Where a site refused automated reading, the claim is

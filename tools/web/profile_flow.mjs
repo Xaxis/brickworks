@@ -28,11 +28,16 @@
 //     brings each, and with no script each is a page of its own;
 //   whom they follow only when they chose to show it, and never a list of
 //     who follows them;
-//   what they earned (docs/SOCIAL.md U13), a row of pills under the
-//     numbers: each challenge won (a link to the model that won it), ten
-//     builds of their models, a model Tested, their first model listed and
-//     their first build finished, the rarest first, worked out from what
-//     the page shows and never kept; none for somebody with nothing yet;
+//   what they earned (docs/SOCIAL.md U13 and section 7), a row of pills
+//     under the numbers: each challenge won (a link to the model that won
+//     it), then their level on each track of supabase/achievements.sql
+//     (Designer, Built, Builder, Remixed, Tested, Challenger), the highest
+//     first, each with its level and number on hover; before that file,
+//     the five marks of before (ten builds, Tested, first model listed,
+//     first build finished); none for somebody with nothing yet;
+//   your own /profile's Achievements tab: a tile a track, in the tracks'
+//     order, at the levels your page shows everybody, how far the next is
+//     and the way there, a track not begun said so;
 //   nothing scrolling sideways, no script error, no refused request.
 //
 // Locally (no --url) nothing leaves this machine: design_stand_in.mjs's
@@ -51,9 +56,11 @@
 // secret key on a deployment; on the relay the table is held in memory,
 // where the dry run (tools/profile_shows_try.sql) proves the cascade.
 // Her achievements, earned by doing each thing: none with a profile alone;
-// First model listed once she lists; Tested once a model of hers is; First
-// build finished once she posts a photo of her build of Bob's model; Ten
-// builds once her castle is built to its last step on ten devices. And Cy,
+// Designer once she lists (Designer · 3 models at her third); Tested once
+// a model of hers is; Builder once she posts a photo of her build of Bob's
+// model; Built · 10 times once her castle is built to its last step on ten
+// devices (before supabase/achievements.sql, which the answer says: First
+// model listed, Tested, First build finished and Ten builds). And Cy,
 // who had a profile and a model in the gallery before saying he is under 13
 // (an account from before the age question): his page, its answer and his
 // achievements are shown to nobody, and his own /profile shows none.
@@ -145,7 +152,8 @@ const drawn = (page) => page.evaluate(() => {
     follows: [...document.querySelectorAll(".follows a")].map((a) => a.getAttribute("href")),
     awards: [...document.querySelectorAll(".profile .awards li")].map((li) => ({ id: li.dataset.award,
       text: li.textContent.replace(/\s+/g, " ").trim(), href: li.querySelector("a")?.getAttribute("href") || "",
-      said: li.querySelector(".pill")?.title || "", icon: Boolean(li.querySelector("svg.icon use[href$='#award']")) })),
+      said: li.querySelector(".pill")?.title || "", icon: Boolean(li.querySelector("svg.icon use[href$='#award']")),
+      level: Number(li.dataset.level) || 0 })),
     // Beside the numbers or under them, never before them.
     awardsAfter: Boolean(document.querySelector(".profile .numbers")?.compareDocumentPosition(document.querySelector(".profile .awards") || document.body)
       & Node.DOCUMENT_POSITION_FOLLOWING) && Boolean(document.querySelector(".profile .awards")),
@@ -248,10 +256,12 @@ async function local() {
           && /gradient/.test(said.bannerGround) && said.bannerGround === said.cardGround);
         check(`${label}: pinned in Robin's order: ${said.pins.join(", ")}`, said.pins.join(",") === `DesignGea1,${stand.MODEL_ID},DesignFox1`);
         check(`${label}: achievements ${said.awards.map((one) => one.text).join(" · ")}, the win a link to the watchtower, each with its icon and what it means`,
-          said.awards.map((one) => one.id).join(",") === "won,ten,tested,listed,built"
+          said.awards.map((one) => one.id).join(",") === "won,built,designer,builder,remixed,tested,challenger"
           && said.awards[0].text === "Won “Castle September”, by hand" && said.awards[0].href === `/m/${stand.MODEL_ID}`
-          && said.awards.slice(1).map((one) => one.text).join("|") === "Ten builds|Tested|First model listed|First build finished"
-          && said.awards.every((one) => one.icon && one.said));
+          && said.awards.slice(1).map((one) => one.text).join("|")
+            === "Built · 50 times|Designer · 3 models|Builder · first build|Remixed · once|Tested · first model|Challenger · first challenge"
+          && said.awards[1].said === "Level 3 of 6: 77 builds finished to the last step"
+          && said.awards.slice(1).every((one) => one.level > 0) && said.awards.every((one) => one.icon && one.said));
         check(`${label}: Models shown, 4 cards; whom Robin follows, shown by choice (${said.follows.join(", ")}); Follow ${said.follow?.shown ? "shown" : "hidden"}`,
           said.panel === "models" && said.cards.length === 4 && said.follows.join(",") === "/u/priya-plays,/u/mika-mocs"
           && Boolean(said.follow?.shown));
@@ -317,7 +327,7 @@ async function local() {
       check(`house ${width} ${theme}: its 7 models, no banner, no pins, no links`, said.cards.length === 7 && !said.banner
         && said.pins.length === 0 && said.links.length === 0);
       check(`house ${width} ${theme}: achievements ${said.awards.map((one) => one.text).join(" · ")}, no challenge won`,
-        said.awards.some((one) => one.id === "listed") && !said.awards.some((one) => one.id === "won"));
+        said.awards.map((one) => one.text).join("|") === "Designer · 3 models" && !said.awards.some((one) => one.id === "won"));
       await shot(house.page, `house_${width}_${theme}.png`);
       await house.page.click('.profile .tabs a[data-tab="builds"]');
       await house.page.waitForLoadState("load");
@@ -392,6 +402,32 @@ async function local() {
     check(`your page ${width} ${theme}: ${mine.join(" · ") || "(none)"}, as /u/sam-builds shows everybody (${shownToAll.join(", ")})`,
       mine.length > 0 && mine.map((one) => one.split(":")[0]).join(",") === shownToAll.join(","));
     await shot(page, `yours_${width}_${theme}.png`, false);
+    // Achievements: every track, where you are on it and the way to the next.
+    await page.click('#tabs a[data-tab="achievements"]');
+    await until(page, () => document.querySelector('[data-panel="achievements"]:not([hidden]) #achievements li'));
+    const tiles = await page.evaluate(() => [...document.querySelectorAll("#achievements li")].map((li) => ({
+      track: li.dataset.track, level: Number(li.dataset.level), name: li.querySelector("h3")?.textContent.trim() || "",
+      icon: Boolean(li.querySelector("h3 svg.icon use[href$='#award']")),
+      lines: [...li.querySelectorAll("p")].map((one) => one.textContent.trim()),
+      bar: li.querySelector(".reach span")?.style.width || "", how: li.querySelector(".how a")?.getAttribute("href") || "",
+      dashed: getComputedStyle(li).borderTopStyle === "dashed" })));
+    const tab = await page.evaluate(() => ({ address: location.search,
+      current: document.querySelector('#tabs [aria-current="page"]')?.dataset.tab || "" }));
+    const levels = Object.fromEntries(tiles.map((one) => [one.track, one.level]));
+    const built = tiles.find((one) => one.track === "built") || { lines: [] };
+    const challenger = tiles.find((one) => one.track === "challenger") || { lines: [] };
+    check(`your page ${width} ${theme}: Achievements (${tab.address}), a tile a track in order: ${tiles.map((one) => `${one.name}:${one.level}`).join(" · ")}`,
+      tab.current === "achievements" && tab.address === "?tab=achievements"
+      && tiles.map((one) => one.track).join(",") === "designer,built,builder,remixed,tested,challenger"
+      && tiles.every((one) => one.icon) && shownToAll.every((id) => levels[id] > 0));
+    check(`your page ${width} ${theme}: Built says where it is and what is next: ${built.lines.join(" / ")} (${built.bar})`,
+      built.name === "Built · once" && built.lines.join("|") === "Level 1 of 6|9 builds finished to the last step.|1 more to reach Built · 10 times.|Each build of one of your models that somebody finishes counts."
+      && built.bar === "90%" && !built.dashed);
+    check(`your page ${width} ${theme}: a track not begun, dashed: ${challenger.lines.join(" / ")}, its way ${challenger.how}`,
+      challenger.level === 0 && challenger.name === "Challenger" && challenger.dashed
+      && challenger.lines.join("|") === "Not reached yet|0 challenges entered.|1 more to reach Challenger · first challenge.|Enter this month's building challenge."
+      && challenger.how === "/challenge" && challenger.bar === "0%");
+    await shot(page, `achievements_${width}_${theme}.png`, false);
     await context.close();
   }
 }
@@ -416,9 +452,15 @@ function stepped(name, count, rand) {
 const finding = (text, count) => ({ v: 1, app: "0.3.0", model: modelHash(text), steps: count, parts: count,
   tests: Object.fromEntries(["stands", "steps", "parts", "whole"].map((name) => [name, { ok: true, why: "The profile flow's model" }])) });
 
+// Whether the site has supabase/achievements.sql (the answer's levels):
+// its tracks' levels, else the marks of before.
+let levelled = null;
+const marksOf = (before, after) => (levelled ? after : before);
+
 /// What [handle]'s page answers it earned (?op=profile), by id: "listed,built".
 async function earned(handle) {
   const r = await api(`/api/people?op=profile&handle=${handle}&tests=1`);
+  if (r.status === 200 && levelled === null) levelled = Array.isArray(r.json?.levels);
   return r.status === 200 ? (r.json?.achievements || []).map((one) => one.id).join(",") : `HTTP ${r.status}`;
 }
 
@@ -442,7 +484,8 @@ async function deployed() {
       body: { handle: ADA, name: "Ada Profile", bio: "Castles and small machines, for the profile flow." } });
     check(`Ada's profile: ${r.status} /u/${r.json?.handle}`, r.status === 200 && r.json?.handle === ADA);
     let marks = await earned(ADA);
-    check(`a profile alone has earned nothing: "${marks}"`, marks === "");
+    check(`a profile alone has earned nothing: "${marks}" (${levelled ? "levels, supabase/achievements.sql" : "the marks of before"})`,
+      marks === "");
     const picture = readFileSync(path.join(root, "web/share.png")).toString("base64");
     for (const [file, name] of [["castle.ldr", "Profile Castle"], ["lighthouse.ldr", "Profile Lighthouse"]]) {
       r = await api("/api/share", { method: "POST", token: ada.access_token, body: { name: `${name} ${rand}`, author: "Ada Profile",
@@ -452,7 +495,7 @@ async function deployed() {
       made.push(r.json?.id);
     }
     marks = await earned(ADA);
-    check(`listed, she has her first model listed: "${marks}"`, marks === "listed");
+    check(`listed, she has her first model listed: "${marks}"`, marks === marksOf("listed", "designer"));
     {
       // A model the app tested as she shared it.
       const text = stepped(`Profile Tested ${rand}`, 6, rand);
@@ -462,7 +505,7 @@ async function deployed() {
       made.push(r.json?.id);
     }
     marks = await earned(ADA);
-    check(`...and Tested: "${marks}"`, marks === "tested,listed");
+    check(`...and Tested, three models listed: "${marks}"`, marks === marksOf("tested,listed", "designer,tested"));
     {
       // Bob lists a model, and Ada posts a photo of her real build of it.
       r = await api("/api/share", { method: "POST", token: bob.access_token, body: { name: `Profile Bob's ${rand}`, author: "Bob Profile",
@@ -477,7 +520,7 @@ async function deployed() {
       check(`her photo of her build of Bob's model: ${start.status}, ${sent?.status ?? "-"}, ${kept.status}`, kept.status === 201);
     }
     marks = await earned(ADA);
-    check(`...and her first build finished: "${marks}"`, marks === "tested,listed,built");
+    check(`...and her first build finished: "${marks}"`, marks === marksOf("tested,listed,built", "designer,builder,tested"));
     {
       // Her castle built to its last step on ten devices (the desktop app's finish).
       const counted = [];
@@ -489,7 +532,8 @@ async function deployed() {
       check(`her castle finished on ten devices: ${counted.filter(Boolean).length} counted`, counted.every(Boolean));
     }
     marks = await earned(ADA);
-    check(`...and ten builds of her models, the rarest first: "${marks}"`, marks === "ten,tested,listed,built");
+    check(`...and ten builds of her models, the rarest first: "${marks}"`,
+      marks === marksOf("ten,tested,listed,built", "designer,built,builder,tested"));
 
     // Refused whether or not profile_shows.sql is applied: each is checked first.
     const refused = [
@@ -529,7 +573,8 @@ async function deployed() {
           check(`${label}: her 3 models; the Models tab shown`, said.panel === "models" && said.cards.length === 3
             && said.cards.every((id) => made.includes(id)) && said.tabs[0].n === "3");
           check(`${label}: what she earned, after her numbers: ${said.awards.map((one) => one.text).join(" · ")}`,
-            said.awards.map((one) => one.id).join(",") === "ten,tested,listed,built" && said.awards.every((one) => one.icon)
+            said.awards.map((one) => one.id).join(",") === marksOf("ten,tested,listed,built", "designer,built,builder,tested")
+            && said.awards.every((one) => one.icon)
             && said.awardsAfter);
           check(applied ? `${label}: links, the lighthouse across the top, pins in her order`
             : `${label}: no links, banner or pins before profile_shows.sql`, applied
@@ -549,7 +594,7 @@ async function deployed() {
       model: readFileSync(path.join(root, "models", "castle.ldr"), "utf8"), image: picture, listed: true } });
     others.push([cys.json?.id, cy]);
     marks = await earned(CY);
-    check(`before: /u/${CY} shows his first model listed ("${marks}")`, r.status === 200 && marks === "listed");
+    check(`before: /u/${CY} shows his first model listed ("${marks}")`, r.status === 200 && marks === marksOf("listed", "designer"));
     // As an account from before the age question stands once it answers
     // under 13: its row says so (answer_age would also take its models out
     // of the gallery; here they stay in it, the harder case).

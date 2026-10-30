@@ -206,7 +206,7 @@ import { withFaces } from "./_faces.js";
 import { FIRST_SCREEN, cardHtml, marksOf, quietMarks } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
-import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
+import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, levelAwards, shareSheetHtml } from "./_card.js";
 import { challenge, challengeEntry, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -517,7 +517,7 @@ async function profile(request, response) {
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : "no-cache");
   if (!person) return response.status(404).json({ error: "nobody has that handle" });
   const origin = originOf(request);
-  const [page, about, built, follows, designer, shows, liked, wins] = await Promise.all([
+  const [page, about, built, follows, designer, shows, liked, wins, levels] = await Promise.all([
     models(origin, { owner: person.account, tests, sort: "top" }, pageOf(request.query || {})),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
     builtBy(origin, person, tests),
@@ -526,6 +526,7 @@ async function profile(request, response) {
     showsOf(person.account),
     likedShown(person.account, tests),
     winsBy(person.account, tests).catch(() => []),
+    levelsOf(person.account, tests),
   ]);
   // What their models earned (supabase/designers.sql), and each card's
   // comments beside its builds and remixes, and what it won: the same
@@ -544,8 +545,10 @@ async function profile(request, response) {
       followers: follows?.followers ?? 0, photos: earned.photos } : null,
     collections: about?.collections ?? [], built, url: `${origin}/u/${person.handle}`,
     links: showcase.links, banner: showcase.banner, pins: showcase.pins,
-    // What they earned (docs/SOCIAL.md U13), as their page has it.
-    achievements: achievementsOf({ about, earned, built, wins }), ...page, models: cards }));
+    // What they earned (docs/SOCIAL.md U13), as their page has it, and
+    // their level on every track, for your own profile's Achievements tab:
+    // null before supabase/achievements.sql.
+    achievements: achievementsOf({ about, earned, built, wins, levels }), levels, ...page, models: cards }));
 }
 
 /// How many models [account] liked, when they chose to show which (and
@@ -1085,15 +1088,19 @@ function numbersHtml(earned, about, follows) {
     + "</ul>";
 }
 
-/// What a person earned here (docs/SOCIAL.md U13), worked out from what
-/// their page already shows and never stored: each challenge their models
-/// won, ten builds finished of their models, a model marked Tested, their
-/// first model in the gallery, their first photo of a real build; the
-/// rarest first. Nothing of a profile not shown in public, as every other
-/// part of it (personOf: none under 13, none taken out).
-export function achievementsOf({ about, earned, built, wins }) {
+/// What a person earned here (docs/SOCIAL.md U13 and section 7): each
+/// challenge their models won, then their level on each track of
+/// supabase/achievements.sql ([levels], from achievement_levels), the
+/// highest first. Before that file is applied ([levels] null), the five
+/// marks of before, worked out from what their page shows: ten builds
+/// finished of their models, a model marked Tested, their first model in
+/// the gallery, their first photo of a real build. Nothing of a profile not
+/// shown in public, as every other part of it (personOf: none under 13,
+/// none taken out).
+export function achievementsOf({ about, earned, built, wins, levels = null }) {
   const out = (wins || []).map((win) => ({ id: "won", name: wonSaid(win), model: win.model,
     said: `${win.name}: ${count(win.votes, "vote")}` }));
+  if (Array.isArray(levels)) return [...out, ...levelAwards(levels)];
   if ((Number(earned?.builds) || 0) >= 10) {
     out.push({ id: "ten", name: "Ten builds", said: "Their models were built to the last step ten times or more" });
   }
@@ -1107,6 +1114,19 @@ export function achievementsOf({ about, earned, built, wins }) {
     out.push({ id: "built", name: "First build finished", said: "They posted a photo of their real build of a model in the gallery" });
   }
   return out;
+}
+
+/// [account]'s level on each track (supabase/achievements.sql
+/// achievement_levels), test models counted with [tests]; null before the
+/// file is applied.
+async function levelsOf(account, tests) {
+  try {
+    const levels = await db("rpc/achievement_levels", { method: "POST", body: { account, tests } });
+    return Array.isArray(levels) ? levels : [];
+  } catch (trouble) {
+    if (NOT_THERE.test(String(trouble?.message || ""))) return null;
+    throw trouble;
+  }
 }
 
 /// A set of photos of real builds: [photos] each with its model's name;
@@ -1145,7 +1165,7 @@ async function profilePage(request, response) {
   const asked = TABS.some(([id]) => id === request.query?.tab) ? String(request.query.tab) : "";
   const number = Number(request.query?.page ?? 1);
   const at = Number.isInteger(number) && number >= 1 && number <= MOST_PAGES ? number : 1;
-  const [shown, about, built, follows, following, designer, wins, shows, liked] = await Promise.all([
+  const [shown, about, built, follows, following, designer, wins, shows, liked, levels] = await Promise.all([
     models(origin, { owner: person.account, tests, sort: "top" }, asked === "models" || !asked ? at : 1),
     db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } }),
     builtBy(origin, person, tests),
@@ -1155,6 +1175,7 @@ async function profilePage(request, response) {
     winsBy(person.account, tests).catch(() => []),
     showsOf(person.account),
     likedShown(person.account, tests),
+    levelsOf(person.account, tests),
   ]);
   const showcase = await showcaseOf(origin, person, shows, tests);
   // Their picture, and the faces of whom they follow, in one lookup.
@@ -1208,7 +1229,7 @@ async function profilePage(request, response) {
   </header>
   ${person.bio ? `<p class="bio">${escapeHtml(person.bio)}</p>` : ""}
   ${links ? `<ul class="links" aria-label="Elsewhere">${links}</ul>` : ""}
-  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins }))}</div>`;
+  <div class="standing">${numbersHtml(earned, about, follows)}${awardsHtml(achievementsOf({ about, earned, built, wins, levels }))}</div>`;
 
   // Pinned: up to three of their models, in the order they chose.
   await withFaces(showcase.pins);

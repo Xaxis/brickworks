@@ -293,6 +293,10 @@ $$;
 -- anybody's, [model] the model it is on. A comment row says the comment it
 -- answers (parent), if any; one under a comment no longer shown is not
 -- told.
+-- REPLACED LATER: achievements.sql replaces this function (each level
+-- reached). Apply achievements.sql again right after this file:
+-- tools/apply_sql.mjs refuses it alone, unless
+-- --again=supabase/achievements.sql.
 create or replace function public.notification_rows(viewer uuid, since timestamptz, until timestamptz)
 returns table (kind text, at timestamptz, model text, item jsonb)
 language sql

@@ -476,8 +476,11 @@ const FEED_SEEN = "2026-10-14T00:00:00Z";
 
 // Sam's notifications (supabase/notifications.sql notification_list): what
 // happened to the tram and the bakery, newest first; the tram's group
-// opened since its photo, so only its newer rows are unread.
+// opened since its photo, so only its newer rows are unread. And a level
+// reached (supabase/achievements.sql), its group not opened yet.
 const NOTICES = [
+  { kind: "achievement", at: "2026-10-16T12:00:00Z", on: null, track: "designer", level: 2, of: 6, reached: 3, next: 10,
+    read: false },
   { kind: "likes", at: "2026-10-16T11:40:00Z", on: "SamModel01", model: "SamModel01", name: "Harbour Tram", likes: 12,
     day: "2026-10-16" },
   { kind: "comment", at: "2026-10-16T09:30:00Z", on: "SamModel01", by: PRIYA, model: "SamModel01", name: "Harbour Tram",
@@ -554,6 +557,10 @@ const ADMIN = {
 
 // ---------------------------------------------------------------------------
 // Reading the world, as the database's functions read it.
+
+// supabase/achievements.sql's ladders, in its order.
+const LADDERS = [["designer", [1, 3, 10, 25, 50, 100]], ["built", [1, 10, 50, 100, 500, 1000]],
+  ["builder", [1, 5, 10, 25, 50]], ["remixed", [1, 5, 25, 100]], ["tested", [1, 5, 10, 25]], ["challenger", [1, 3, 6, 12]]];
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const personOf = (account) => PEOPLE.find((one) => one.account === account) || null;
@@ -694,6 +701,24 @@ function profilePage(handle, tests = false) {
 /// The photos that may be shown, newest first.
 const photosWhere = (test) => PHOTOS.filter((one) => !one.removed_at && !one.hidden_at && !LIVE && test(one)).sort(byTime("at"));
 
+/// achievement_levels: [account]'s number and level on each track, as
+/// designer_page counts them; challenges entered are this month's and
+/// those whose winner is theirs. [] for nobody and one taken out.
+function achievementLevels(account, tests = false) {
+  const person = personOf(account);
+  if (!person || ADMIN.barred.some((one) => one.account === account)) return [];
+  const earned = designerPage(person.handle, tests);
+  const entered = new Set([...CHALLENGE.entries.filter(([model]) => modelOf(model)?.owner === account).map(() => CHALLENGE.id),
+    ...PAST.filter((one) => one.winners.some(([model]) => modelOf(model)?.owner === account)).map((one) => one.id)]);
+  const numbers = { designer: earned.models, built: earned.builds, remixed: earned.remixes, tested: earned.tested,
+    builder: photosWhere((one) => one.account === account && shownModel(one.model)?.listed).length, challenger: entered.size };
+  return LADDERS.map(([track, steps]) => {
+    const n = numbers[track];
+    const level = steps.filter((step) => step <= n).length;
+    return { track, n, level, of: steps.length, reached: level ? steps[level - 1] : null, next: steps[level] ?? null };
+  });
+}
+
 /// designer_page: what a designer's models earned, for anybody.
 function designerPage(handle, tests = false) {
   const person = personNamed(handle);
@@ -814,6 +839,10 @@ const RPC = {
   collection_page: ({ list }) => collectionPage(list),
   collection_count: ({ list, private: hidden }) => collectionCount(list, hidden === true),
   designer_page: ({ wanted, tests }) => designerPage(wanted, tests === true),
+  // supabase/achievements.sql: nothing new is reached here, so none is told.
+  achievement_levels: ({ account, tests }) => achievementLevels(account, tests === true),
+  achievement_mark: () => 0,
+  achievement_read: () => ({ read: 0 }),
   follow_state: ({ asker, wanted }) => followState(asker || null, wanted),
   follow_list: ({ wanted }) => followList(wanted),
   // supabase/collection_follows.sql
@@ -1357,7 +1386,8 @@ function profile(handle, page = 1, tests = false) {
     collections: about.collections, built, url: `${ORIGIN}/u/${person.handle}`, ...cards,
     liked_count: CHOICES.some((one) => one.account === person.account && one.shows_likes) ? likedOf(person.account, tests).length : null,
     achievements: achievementsOf({ about, earned: earned.models ? earned : null, built,
-      wins: RPC.challenge_wins({ owner: person.account }) }),
+      wins: RPC.challenge_wins({ owner: person.account }), levels: achievementLevels(person.account, tests) }),
+    levels: achievementLevels(person.account, tests),
     models: cards.models.map((one) => ({ ...one, comments: earned.cards[one.id]?.comments ?? 0 })) });
 }
 
