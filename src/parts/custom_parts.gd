@@ -104,7 +104,8 @@ static func add(library: PartLibrary, text: String, id: String, keep: bool = tru
 	# Prints and stickers in bins of their own, as the bin shows them.
 	info.category = PartPrints.bin_for(text)
 	read_as_copy(library, info, built.mesh)
-	var skin: bool = is_skin_text(text)
+	# A band's segment or a spring's coil the app made (Bands) is one too.
+	var skin: bool = is_skin_text(text) or Bands.is_piece_id(id)
 	if skin:
 		# A file's hose, not a part to pick from the bin, and not kept.
 		info.category = SKIN_CATEGORY

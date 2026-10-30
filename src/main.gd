@@ -44,6 +44,8 @@ var _notices: PanelContainer
 ## The part of the middle column the model shows through: what floats over
 ## the model (the cut-away's strip) is laid in it.
 var _over_model: Control
+## View, Split: the model straight on beside the main view (SplitView).
+var _split: SplitView
 var _store: ModelStore
 ## The baseplate, the grid floor or nothing under the model.
 var _floor: FloorLayer
@@ -70,7 +72,7 @@ var _connector: ClaudeConnector
 var _together: Together
 var _together_dialog: TogetherDialog
 ## Comments pinned to parts (src/assembly/pinned_comments.gd): drawn on the
-## model, and Edit, Comments….
+## model, and File, Comments….
 var _pins_view: PinsView
 var _pins_dialog: PinsDialog
 ## A Build together link's secret from the page's address (?together=).
@@ -306,6 +308,9 @@ var _ask_went_well: bool = true
 ## Whether a left press this handler saw started the box being drawn.
 ## The watchdog below will not finish one it never saw begin.
 var _box_began: bool = false
+## The view the box is drawn in (CadCamera.MAIN, or SECOND for the second
+## view beside the model): what it takes is what that view shows inside it.
+var _box_view: int = CadCamera.MAIN
 ## A box Escape threw away while the button was still down. Its release
 ## is not a click, and the rest of the drag does not start another box.
 var _box_dropped: bool = false
@@ -744,6 +749,8 @@ func _tell_page() -> void:
 		# tell a click that selected from one that put a part down.
 		"mode": _verbs.mode if _verbs != null else "",
 		"selected": _builder.selection.size(),
+		# View, Split: whether the second view shows.
+		"split": _split != null and _split.is_showing(),
 		# ...and which, the first few: tools/web/centre_check.mjs clicks a
 		# part and asks whether that one was taken.
 		"selection": _builder.selection.keys().slice(0, 12),
@@ -1007,6 +1014,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_brickify.controls_by_name())
 	if _shell != null:
 		named.merge(_shell.status.working.controls_by_name())
+	if _split != null:
+		named.merge(_split.controls_by_name())
 	if _phone != null:
 		named.merge(_phone.controls_by_name())
 	if _mosaic != null and _mosaic.visible:
@@ -1234,6 +1243,8 @@ func _layout_for_page(to_window: Transform2D, per_css: float) -> Dictionary:
 			"part": _world.get_brick(int(one["brick"])).part_id}))
 	return {"view": css.call(cover["view"]), "samples": cover["samples"],
 		"covered": covered, "panels": panels, "columns": _columns,
+		# The second view's picture, while View, Split shows it.
+		"split": css.call(_split.picture_rect()) if _split != null and _split.is_showing() else [],
 		"centre": point.call(_camera.unproject_position(_built_bounds().get_center())),
 		"targets": targets}
 
@@ -1309,6 +1320,10 @@ func _panels_by_name() -> Dictionary:
 func model_cover(across: int = 12, down: int = 8) -> Dictionary:
 	var view: Control = _marquee.get_parent()
 	var rect: Rect2 = view.get_global_rect()
+	# The second view beside it is the model's room too (View, Split), all
+	# but its header, as the cube is.
+	if _split != null and _split.is_showing():
+		rect.end = Vector2(_split.picture_rect().end.x, rect.end.y)
 	var covered: Array = []
 	# Where the interface is drawn, found once: every canvas layer, the
 	# topmost first, and any control drawn straight onto the window.
@@ -1320,6 +1335,8 @@ func model_cover(across: int = 12, down: int = 8) -> Dictionary:
 			var at: Vector2 = rect.position + Vector2((i + 0.5) / across * rect.size.x,
 				(j + 0.5) / down * rect.size.y)
 			if _gizmo != null and _gizmo.is_visible_in_tree() and _gizmo.get_global_rect().has_point(at):
+				continue
+			if _split != null and _split.header_has(at):
 				continue
 			var by: String = _covering(at, canvases)
 			if not by.is_empty():
@@ -4567,6 +4584,19 @@ func _build_ui() -> void:
 	_camera.seen = _model_rect
 	_camera.lens_moved.connect(_hover_again)
 
+	# View, Split: the model straight on beside this column, in the model's
+	# own room and none of the columns' (SplitView). A ray from the screen
+	# over it is its camera's, so a click there places and picks through it.
+	_split = SplitView.new()
+	_split.camera = _camera
+	_split.beside_of = middle
+	_split.world = _world
+	_split.bounds = _built_bounds
+	layout.add_child(_split)
+	_camera.second = _split
+	middle.resized.connect(_split.fit)
+	_split.shown_changed.connect(_hover_again)
+
 	# In the viewport column, at the top, which is where every other 3D
 	# tool puts a view cube.
 	#
@@ -4635,6 +4665,8 @@ func _build_ui() -> void:
 
 	_turning = PivotMark.new()
 	_turning.camera = _camera
+	# The main view's turn, drawn in it alone.
+	_turning.layers = SplitView.MAIN_ONLY
 	add_child(_turning)
 
 
@@ -6533,6 +6565,9 @@ func _on_model_edited() -> void:
 		_lay_baseplate()
 	elif _floor != null:
 		_floor.follow(_model_bounds())
+	# A band or a spring on a part just moved follows it, in the same step.
+	if _flex != null:
+		_flex.follow_moved()
 	# Every other copy of a sub-assembly just edited follows it.
 	if _verbs != null and _verbs.assemblies != null:
 		_verbs.assemblies.after_edit()
@@ -6596,7 +6631,7 @@ func open_together() -> void:
 	_together_dialog.open()
 
 
-## Edit, Comments…: the comments pinned to the model's parts, and a new one
+## File, Comments…: the comments pinned to the model's parts, and a new one
 ## on the part selected.
 func open_pins() -> void:
 	if _pins_dialog == null:
@@ -6693,6 +6728,14 @@ func _hold_figure(figure: Minifig) -> void:
 
 
 func _on_part_chosen(part_id: String) -> void:
+	# A rubber band, a spring or a shock is laid on what it goes round or
+	# between, not put down: Build's flexible part tool takes it.
+	if _flex != null and FlexTool.lays_part(part_id):
+		if _measure != null:
+			_measure.leave()
+		_builder.drop_figure()
+		_flex.open_with(part_id)
+		return
 	_builder.drop_figure()
 	_builder.held_part = part_id
 	# A part picked is a part in hand, to put down.
@@ -7953,6 +7996,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				"box":
 					_marquee.begin(_press_at)
 					_box_began = true
+					_box_view = _camera.view_at(_press_at)
 				_:
 					_start_left_nav(_pending_verb, _press_at)
 		if not _left_nav.is_empty():
@@ -8204,7 +8248,7 @@ func _unhandled_input(event: InputEvent) -> void:
 ## deciding whether a box covers it and far cheaper than anything
 ## exact. A corner behind the camera projects to nonsense, so a brick
 ## with any corner behind it is left out rather than guessed at.
-func _brick_on_screen(brick: BrickWorld.Brick) -> Variant:
+func _brick_on_screen(brick: BrickWorld.Brick, view: int = CadCamera.MAIN) -> Variant:
 	if _store != null and _store.scenery.has(brick.id):
 		return null
 	# Nor what is hidden: a box drawn over a hidden roof takes what is
@@ -8222,9 +8266,9 @@ func _brick_on_screen(brick: BrickWorld.Brick) -> Variant:
 			box.size.x if n & 1 else 0.0,
 			box.size.y if n & 2 else 0.0,
 			box.size.z if n & 4 else 0.0))
-		if _camera.is_position_behind(corner):
+		if _camera.behind(corner, view):
 			return null
-		var at: Vector2 = _camera.unproject_position(corner)
+		var at: Vector2 = _camera.screen_of(corner, view)
 		lo = Vector2(minf(lo.x, at.x), minf(lo.y, at.y))
 		hi = Vector2(maxf(hi.x, at.x), maxf(hi.y, at.y))
 	return Rect2(lo, hi - lo)
@@ -8637,7 +8681,7 @@ func _finish_box(add: bool) -> void:
 		_marquee.finish()
 		return
 	var took: int = _builder.select_in(_marquee.box(),
-		_brick_on_screen, _marquee.takes_touching(), add)
+		_brick_on_screen.bind(_box_view), _marquee.takes_touching(), add)
 	_marquee.finish()
 	_bar.say("took %d" % took if took > 0 else "nothing in there")
 

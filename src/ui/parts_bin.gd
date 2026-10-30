@@ -1338,7 +1338,7 @@ func _unasked(wanted_category: String) -> Array[PartLibrary.PartInfo]:
 ## parts". Counted as they are skipped so the status line can say how many
 ## and where they went — silently dropping 7,738 parts is indistinguishable
 ## from losing them. Static, so the web export works it out once
-## (src/dev/all_order.gd) and a first visit reads it (all_as_packed).
+## (src/dev/write_all_order.gd) and a first visit reads it (all_as_packed).
 static func all_unasked(from: PartLibrary) -> Array:
 	var found: Array[PartLibrary.PartInfo] = []
 	var set_aside: int = 0
@@ -1373,7 +1373,7 @@ static func _category_unasked(from: PartLibrary, wanted_category: String) -> Arr
 	return [found, 0]
 
 
-## All's order as the web export worked it out (src/dev/all_order.gd), for
+## All's order as the web export worked it out (src/dev/write_all_order.gd), for
 ## the catalogue this build carries: on a first visit it was most of a
 ## second of the start, sorting and waiting for the parts LDraw keeps only
 ## for old files (webload, 2026-10-30). Read on the web alone (_unasked).
@@ -1399,7 +1399,7 @@ static func all_as_packed(from: PartLibrary, path: String = ALL_ORDER) -> Array:
 	return [found, head[1].to_int()]
 
 
-## Where the web export writes All's order (src/dev/all_order.gd).
+## Where the web export writes All's order (src/dev/write_all_order.gd).
 const ALL_ORDER := "res://assets/web/all_order.txt"
 
 

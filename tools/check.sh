@@ -60,10 +60,15 @@ twice=$({ printf '%s\n' "${headless[@]%%:*}" | sort | uniq -d
   comm -12 <(printf '%s\n' "${out[@]}" | sort -u) \
     <(printf '%s\n' "${headless[@]%%:*}" "${windowed[@]%%:*}" | sort -u)
 } | sort -u)
-if [ -n "$unlisted$unknown$twice" ]; then
+# A script that is not a probe sharing a probe's name: tools/probe.sh NAME
+# runs src/dev/NAME.gd first, so the probe never ran by that name (webload's
+# export step all_order.gd beside all_order_probe.gd, 2026-10-30).
+shadowed=$(for p in $probes; do [ -f "src/dev/$p.gd" ] && echo "$p"; done)
+if [ -n "$unlisted$unknown$twice$shadowed" ]; then
   [ -z "$unlisted" ] || echo "check: in no list in tools/suite, so never run:" $unlisted
   [ -z "$unknown" ] || echo "check: listed in tools/suite, but no src/dev/NAME_probe.gd:" $unknown
   [ -z "$twice" ] || echo "check: twice in a list in tools/suite, or both out and run:" $twice
+  [ -z "$shadowed" ] || echo "check: tools/probe.sh runs src/dev/NAME.gd, not the probe, for:" $shadowed "(rename the script)"
   echo "  put each probe on one line of tools/suite/headless.txt or windowed.txt, or of out.txt with why it is not"
   exit 1
 fi

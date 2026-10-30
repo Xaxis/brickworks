@@ -115,7 +115,7 @@ plan with Claude as the client.
   The bin's All listing ranks each part once before sorting
   (`PartsBin._sort_for`): the same order in 0.44 s natively, where it
   took 1.2. On the web it is not sorted at all (webload, 2026-10-30):
-  `tools/export.sh` runs `src/dev/all_order.gd` after web_pack.py, which
+  `tools/export.sh` runs `src/dev/write_all_order.gd` after web_pack.py, which
   writes All's order for the web pack's catalogue to
   `assets/web/all_order.txt` with the bin's own code
   (`PartsBin.write_all_order` / `all_unasked`), and the bin reads it on the
@@ -2109,6 +2109,26 @@ plan with Claude as the client.
   all on a deployment (preview_checks.sh `sets_flow`). Locally:
   `node tools/web/relay_server.mjs 8364` serves the pages but not LDraw's
   `/library/<id>` ones.
+- **Search that finds what a builder means** (search, 2026-10-30):
+  `api/_search.js` reads a query word by word (misspelt by edit distance,
+  run together or apart, plurals, accents and apostrophes, set numbers and
+  their start, years, UCS/LOTR) and ranks best match (number; every word
+  in the name, a name typed whole weighed against size; every word
+  anywhere; real sets before Gear, Books, Promotional and key chains unless
+  asked; then own parts, the sets packed in it not counted, and year).
+  `searchCatalog` uses it, `askSets` sorts `match` ("Best match") whenever
+  `q` is typed and no order is asked, and answers `near` (no set has every
+  word: those with the most) and `meant` ("milenium falcon" is millennium
+  falcon); `web/library.js` shows Best match in Order while words are typed
+  (disabled with none) and "Showing sets for …" / "No set has every word you
+  typed. The nearest: …" over the list. The gallery's tsquery
+  (`api/_directory.js searchWords`, given the catalogue's words by
+  `api/share.js`) adds the same alternatives with `|` and `<->`; its order is
+  still its tabs'. Proof: `tests/test_search.py` (each case the owner named,
+  and `tests/search_queries.tsv`, 156 searches with the sets meant, 95%
+  wanted in the first three, p95 under 150 ms), `node
+  tools/web/search_score.mjs [--url=<deployment>]` to score one, and
+  `library_site_flow.mjs` step 2 in a browser.
 - **The sitemap** (`GET /sitemap.xml`, `api/share.js ?op=sitemap`, routed by
   `deploy.sh`, with `web/sitemap.xml` beside the function as `_sitemap.xml`):
   the site's own pages and every listed model, profile with a model in the

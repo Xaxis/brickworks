@@ -49,7 +49,7 @@
 // gallery on the Community shelf. Run against a local export with
 // serve.py --parts-url "$PARTS_URL", the deployment's store.
 // Pictures live_1_sets.png, live_2_8466.png, live_3_community.png.
-import { launch } from "./browser.mjs";
+import { launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 
@@ -449,6 +449,9 @@ try {
   check(`...65 parts, "${await b.title()}"`, bState.bricks === 65 && (await b.title()) === "106-1 UNICEF Van — Brickworks");
   check(`...credited: ${JSON.stringify(bState.credit)}`, bState.credit && bState.credit.by === "Michael Heidemann"
     && bState.credit.licence === "CCAL 2.0" && bState.credit.page === "https://library.ldraw.org/omr/sets/561");
+  // Properties folds while the bin is open at a laptop's width (A10, from
+  // rel-m222): its rail is clicked, as a person opens it to read the credit.
+  await openColumnFor(b, "prop_credit_page");
   check("...its LDraw page in Properties", await until(async () =>
     Boolean(await b.evaluate(() => (window.brickworksControls || {}).prop_credit_page)), 30));
   check(`...and ?library gone from its address: ${b.url()}`, !new URL(b.url()).searchParams.has("library"));

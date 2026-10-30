@@ -106,6 +106,9 @@ var _right_shift: bool = false
 
 var _doing: Doing = Doing.NOTHING
 var _doing_with: int = 0
+## The drag under way began over the second view (View, Split), and moves
+## it rather than this one.
+var _second_drag: bool = false
 ## A right button held down that has not yet moved far enough to count
 ## as a turn rather than a click.
 var _dragging_right: bool = false
@@ -156,6 +159,9 @@ var _lensed: Array = []
 ## The lens moved on with nothing held: what is under a still pointer is
 ## not what was.
 signal lens_moved
+## The view framed a box (a model opened, Fit, the usual view), about
+## [param focus]: the second view's own place comes along (SplitView).
+signal framed(focus: Vector3)
 
 
 ## Where the mark goes.
@@ -403,10 +409,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			# them, how close it is. Both at once, because separating
 			# them would mean choosing one and being wrong half the time.
 			var now: float = _distance_between()
+			var on_second: bool = _second_drag or view_at(_between()) == SECOND
 			if _spread > 0.0 and now > 0.0:
 				var change: float = _spread / now
-				_target_distance = clampf(
-					_target_distance * change, min_distance, max_distance)
+				if on_second:
+					second.zoom_by(change, _between())
+				else:
+					_target_distance = clampf(
+						_target_distance * change, min_distance, max_distance)
 			_spread = now
 
 			# On a phone two fingers turn it, about the point between
@@ -424,7 +434,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			# rather than from the eyeballed constant the mouse was
 			# fixed away from — which on a phone in portrait ran the
 			# model at about three times the finger.
-			_slide_by(drag.relative * 0.5)
+			if on_second:
+				second.slide_by(drag.relative * 0.5)
+			else:
+				_slide_by(drag.relative * 0.5)
 		return
 
 	if _begins_over_interface(event):
@@ -438,6 +451,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	# controls at all on a laptop. That is what this was.
 	if event is InputEventPanGesture:
 		var swipe: InputEventPanGesture = event
+		# The second view cannot turn: two fingers slide it.
+		if view_at(swipe.position) == SECOND:
+			second.slide_by(swipe.delta * TRACKPAD_PAN)
+			return
 		# Turning, because turning is what a viewport is mostly for and
 		# it should be the gesture that needs nothing held. Sliding
 		# takes shift, which is where every tool that has both puts it.
@@ -455,7 +472,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			var factor: float = pinch.factor
 			if ViewPrefs.invert_zoom:
 				factor = 1.0 / factor
-			_zoom_by(1.0 / factor, pinch.position)
+			if view_at(pinch.position) == SECOND:
+				second.zoom_by(1.0 / factor, pinch.position)
+			else:
+				_zoom_by(1.0 / factor, pinch.position)
 		return
 
 	if event is InputEventMouseButton:
@@ -468,10 +488,14 @@ func _unhandled_input(event: InputEvent) -> void:
 				# Sideways scrolling is a trackpad swipe every time; no
 				# mouse wheel goes that way.
 				if button.pressed:
-					_slide_by(Vector2(WHEEL_PAN * (
+					var sideways := Vector2(WHEEL_PAN * (
 						-1.0 if button.button_index == MOUSE_BUTTON_WHEEL_LEFT
-						else 1.0), 0.0))
-					_note("slide")
+						else 1.0), 0.0)
+					if view_at(button.position) == SECOND:
+						second.slide_by(sideways)
+					else:
+						_slide_by(sideways)
+						_note("slide")
 			MOUSE_BUTTON_MIDDLE:
 				# The CAD convention: middle turns it, shift-middle
 				# slides it — or the other way round, for the people who
@@ -488,7 +512,13 @@ func _unhandled_input(event: InputEvent) -> void:
 					# only way back is to frame the whole thing and lose
 					# your place. This re-centres on the point you name
 					# without changing how far away you are.
-					_centre_on(button.position)
+					if view_at(button.position) == SECOND:
+						var under: Variant = pick.call(button.position) if pick.is_valid() \
+							else null
+						if under is Vector3:
+							second.centre_on(under)
+					else:
+						_centre_on(button.position)
 				elif button.pressed:
 					# What the preset says the middle button does
 					# (ViewPrefs.drag_verb); shift gives the other.
@@ -586,6 +616,16 @@ func _wheel(button: InputEventMouseButton) -> void:
 	if ViewPrefs.invert_zoom:
 		up = not up
 	var kind: int = WheelKind.last()
+	if view_at(button.position) == SECOND:
+		# The second view's own: a notch or a pinch zooms it, two fingers or
+		# Shift slide it, since it cannot turn.
+		if kind & WheelKind.TRACKPAD and not kind & WheelKind.PINCH:
+			second.slide_by(Vector2(0.0, WHEEL_PAN if up else -WHEEL_PAN))
+		elif button.shift_pressed and not kind & WheelKind.PINCH:
+			second.slide_by(Vector2(0.0, WHEEL_PAN if up else -WHEEL_PAN))
+		else:
+			second.zoom_by(1.0 / zoom_step if up else zoom_step, button.position)
+		return
 
 	if kind & WheelKind.PINCH:
 		_zoom_by(1.0 / zoom_step if up else zoom_step, button.position)
@@ -614,6 +654,11 @@ func _wheel(button: InputEventMouseButton) -> void:
 func _begin(doing: Doing, with_button: int, at: Vector2) -> void:
 	_doing = doing
 	_doing_with = with_button
+	# Over the second view, which is square on and cannot turn: the drag
+	# slides it (a zoom zooms it), and this view stays as it is.
+	_second_drag = view_at(at) == SECOND
+	if _second_drag:
+		return
 	var aim: Vector3 = _under(at)
 	_grab_depth = maxf((aim - global_position).dot(
 		-global_transform.basis.z), 1.0)
@@ -626,6 +671,10 @@ func _begin(doing: Doing, with_button: int, at: Vector2) -> void:
 ## Public for the left button, which the app owns and lends to the view
 ## only in the Mecabricks preset, on empty space.
 func begin_drag(with_button: int, at: Vector2, verb: String) -> void:
+	# A right drag over the second view does nothing: it is the turning
+	# button out of the box, and that view stays square on.
+	if with_button == MOUSE_BUTTON_RIGHT and view_at(at) == SECOND:
+		return
 	match verb:
 		"turn":
 			_begin(Doing.ORBIT, with_button, at)
@@ -649,6 +698,7 @@ func _end(with_button: int) -> void:
 	_doing_with = 0
 	pivot_shown = false
 	_has_pivot = false
+	_second_drag = false
 
 
 ## Where the pointer is aiming, in the world.
@@ -681,6 +731,9 @@ func _pivot_on(point: Vector3) -> void:
 
 
 func _turn_by(by: Vector2, rate: float) -> void:
+	if _second_drag:
+		second.slide_by(by)
+		return
 	var around_up: float = -by.x * rate * orbit_speed
 	var was: float = _target_pitch
 	_target_pitch = clampf(was - by.y * rate * orbit_speed,
@@ -713,6 +766,9 @@ func _turn_by(by: Vector2, rate: float) -> void:
 ## of the window rather than guessed, so a hundred pixels of drag is a
 ## hundred pixels of movement.
 func _slide_by(by: Vector2) -> void:
+	if _second_drag:
+		second.slide_by(by)
+		return
 	var depth: float = _grab_depth if _doing == Doing.SLIDE \
 		else _target_distance
 	var scale: float = _ldu_per_pixel(depth) * pan_speed
@@ -725,8 +781,8 @@ func _on_focus_plane(at: Vector2) -> Vector3:
 	if not is_inside_tree():
 		return focus
 	var forward: Vector3 = -global_transform.basis.z
-	var origin: Vector3 = ray_origin(at)
-	var towards: Vector3 = ray_normal(at)
+	var origin: Vector3 = ray_origin(at, MAIN)
+	var towards: Vector3 = ray_normal(at, MAIN)
 	var facing: float = towards.dot(forward)
 	if absf(facing) < 0.0001:
 		return focus
@@ -755,6 +811,9 @@ func _ldu_per_pixel(at_depth: float = -1.0) -> float:
 ## does, and for an orbit camera it is one line: the focus moves towards
 ## that point by the same proportion the distance shrinks.
 func _zoom_by(factor: float, at_screen: Vector2 = Vector2.INF) -> void:
+	if _second_drag:
+		second.zoom_by(factor, at_screen)
+		return
 	# Every caller is a wheel, a pinch or a key, none of them a drag, so
 	# this is the one place to say so.
 	if not is_equal_approx(factor, 1.0):
@@ -776,8 +835,8 @@ func _zoom_by(factor: float, at_screen: Vector2 = Vector2.INF) -> void:
 	if forward.length_squared() <= 0.0:
 		return
 	forward = forward.normalized()
-	var origin: Vector3 = ray_origin(at_screen)
-	var towards: Vector3 = ray_normal(at_screen)
+	var origin: Vector3 = ray_origin(at_screen, MAIN)
+	var towards: Vector3 = ray_normal(at_screen, MAIN)
 	var facing: float = towards.dot(forward)
 	if absf(facing) < 0.0001:
 		return
@@ -1107,10 +1166,69 @@ func _put_lens() -> void:
 	_lensed = [_shift, room, projection, size, fov, near, far, h_offset, v_offset]
 
 
+## The views a point of the window can be over: this camera's, and the
+## second view's beside it (View, Split).
+const MAIN := 0
+const SECOND := 1
+
+## The second view beside this one (SplitView), or null. A point over its
+## picture is that view's: a ray through it, and where a point of the model
+## is drawn, are its camera's, so a click, a box, a handle or a Connect point
+## there acts through it, and a wheel or a drag over it moves it, never this.
+var second: SplitView
+
+
+## Which view a point of the window is over: [constant SECOND] over the
+## second view's picture, else [constant MAIN].
+func view_at(at: Vector2) -> int:
+	return SECOND if second != null and second.has_point(at) else MAIN
+
+
+## Whether [param view] is the second view, and it is showing. A drag begun
+## in it says so for every point after, wherever the pointer goes.
+func _in_second(at: Vector2, view: int) -> bool:
+	if second == null or not second.is_showing() or second.pose().is_empty():
+		return false
+	return view == SECOND or (view < 0 and second.has_point(at))
+
+
+## Where a point of the model is drawn in [param view], in the window's units.
+func screen_of(point: Vector3, view: int = MAIN) -> Vector2:
+	if view == SECOND and _in_second(Vector2.ZERO, view):
+		return second.on_screen(point)
+	return unproject_position(point)
+
+
+## Whether a point of the model is behind [param view]'s eye.
+func behind(point: Vector3, view: int = MAIN) -> bool:
+	if view == SECOND and _in_second(Vector2.ZERO, view):
+		return second.behind(point)
+	return is_position_behind(point)
+
+
+## The way [param view]'s eye faces: x to the right, y up, z towards it.
+func eye_basis(view: int = MAIN) -> Basis:
+	if view == SECOND and _in_second(Vector2.ZERO, view):
+		return second.eye().global_transform.basis.orthonormalized()
+	return global_transform.basis.orthonormalized()
+
+
+## [param view]'s camera, and a point of the window as it measures the
+## screen, for what takes a Camera3D (Grab.follow).
+func eye_of(view: int) -> Camera3D:
+	return second.eye() if view == SECOND and _in_second(Vector2.ZERO, view) else self
+
+
+func on_eye(at: Vector2, view: int) -> Vector2:
+	return second.in_picture(at) if view == SECOND and _in_second(at, view) else at
+
+
 ## Where a ray through a point on the screen starts: the eye, or straight-on
 ## the point on the near plane. In the viewport's units, as an event's
-## position is.
-func ray_origin(at: Vector2) -> Vector3:
+## position is. In the view the point is over, or [param view]'s.
+func ray_origin(at: Vector2, view: int = -1) -> Vector3:
+	if _in_second(at, view):
+		return second.ray_through(at)[0]
 	if not is_inside_tree():
 		return global_position
 	var eye: Transform3D = get_camera_transform()
@@ -1121,7 +1239,9 @@ func ray_origin(at: Vector2) -> Vector3:
 
 ## Which way a ray through a point on the screen goes, through the lens the
 ## view is drawn with.
-func ray_normal(at: Vector2) -> Vector3:
+func ray_normal(at: Vector2, view: int = -1) -> Vector3:
+	if _in_second(at, view):
+		return second.ray_through(at)[1]
 	if not is_inside_tree():
 		return -global_transform.basis.z
 	var eye: Transform3D = get_camera_transform()
@@ -1192,6 +1312,7 @@ func frame(box: AABB, margin: float = 1.25) -> void:
 		radius / sin(half) * margin, min_distance, max_distance)
 	if projection == Camera3D.PROJECTION_ORTHOGONAL:
 		size = radius * 2.0 * margin / share
+	framed.emit(_target_focus)
 
 
 ## Point the camera from a named direction, keeping the focus.

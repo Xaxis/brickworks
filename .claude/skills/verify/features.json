@@ -1912,6 +1912,14 @@
       "tests": []
     },
     {
+      "id": "cli:set walk probe",
+      "kind": "cli",
+      "entry": "src/dev/setwalk_probe.gd",
+      "reach": "tools/probe.sh setwalk_probe  (8841-1's 25 walk parts and 5762-1's first 25 built from the set's bin, its number typed and Build from it: each part's tile, R and T, the view's keys or cube, the pointer aimed with its corrections, Connect or a typed rest, every input counted; 12 actions a part or fewer and every part exact; -- only=8841-1|5762-1 shots=1 from=library (the same walk from the whole library); PROBE_SIZE=1400x900)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:sets browser flow",
       "kind": "cli",
       "entry": "tools/web/sets_flow.mjs",
@@ -2005,6 +2013,22 @@
         "tests/test_release_train.py",
         "tests/test_worktree_links_ignored.py"
       ]
+    },
+    {
+      "id": "cli:splitmerge probe",
+      "kind": "cli",
+      "entry": "src/dev/splitmerge_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/splitmerge_probe.gd  (a 2 x 4 plate split on its studs; three 1 x 4 plates merged into a brick; six 1 x 1s into a 2 x 3; five 1 x 2s into two; a merge with no real part said and nothing changed; a 1 x 1 brick and a slope split)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:springs probe",
+      "kind": "cli",
+      "entry": "src/dev/springs_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd  (a band round two wedge belt wheels and three, each in 4 actions or fewer, within 1 LDU of the tangents and arcs by hand and in every groove; turned and tilted; a wheel nudged and its band following, one undo; a spring stretched from 4 to 6 studs keeping its turns; a shock from the bin; saved and opened the same; PROBE_SIZE=1280x720)",
+      "area": "building",
+      "tests": []
     },
     {
       "id": "cli:step count probe",
@@ -3720,6 +3744,14 @@
       "tests": []
     },
     {
+      "id": "ui:bands and springs by hand",
+      "kind": "ui",
+      "entry": "src/assembly/bands.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd   (by hand: pick a rubber belt or a shock absorber in the bin, click the pulleys or the two pin holes; Build, Hose, tube or chain\u2026, Spring or shock; nudge a part it is on and it follows; PROBE_SIZE=1280x720)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:beta page",
       "kind": "ui",
       "entry": "web/beta.html",
@@ -4730,6 +4762,22 @@
       "tests": []
     },
     {
+      "id": "ui:split and merge parts",
+      "kind": "ui",
+      "entry": "src/assembly/split_merge.gd",
+      "reach": "godot --path .  (select; Alt-S splits, Alt-M merges, or the menu on a part)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:split view",
+      "kind": "ui",
+      "entry": "src/ui/split_view.gd",
+      "reach": "tools/probe.sh split_probe   (PROBE_SIZE=1400x900 too; by hand: View, Split or F8, then Front, Top, Side or Back over the second view, and a part put down from it)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:status bar",
       "kind": "ui",
       "entry": "src/ui/status_bar.gd",
@@ -4954,6 +5002,7 @@
       "tests": [
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
+        "tests/test_search.py",
         "tests/test_sets.py"
       ]
     },

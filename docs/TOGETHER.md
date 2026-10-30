@@ -38,8 +38,10 @@ desktop app. Started 2026-10-24 (unit together233).
 7. A reload, a browser restarted, the desktop app started again, or the
    connection lost for a while: the tab goes back into the session by
    itself and catches up, both ways. Changes still on their way when the
-   page goes are not lost: kept in the tab and sent again once it is back,
-   or, when the tab is closed, sent as it goes.
+   page goes are not lost: sent as it goes (a closed tab, the desktop app
+   quit), and kept until the server has them, so whichever page next takes
+   up the tab's place sends them if that could not: the tab reloaded, or
+   the app opened again after it was closed.
 8. The owner presses **End the session**; the model stays theirs and saves
    as it always does. Anyone else presses **Leave**, or is told the owner
    ended it; what was built stays on their baseplate, theirs to keep or not.
@@ -163,16 +165,39 @@ desktop app. Started 2026-10-24 (unit together233).
   comment lines. The owner's own comments in the model a session starts on
   are held to the same rule: any that may not be said stay in the owner's
   model and out of the session's, and the owner is told.
-- **Changes on their way when a page goes.** Every change waiting to be
-  numbered is kept as it is queued: in the tab's own storage on the web
-  (`sessionStorage`), a file of the tab's on the desktop
-  (`TabSession.path("together_pending.json")`). On the web the page also
-  holds a request ready to send them as it goes (`pagehide`, a fetch kept
-  alive past the page, 64 KB at most). Back in after a reload, the tab
-  takes up its old client and counts, waits until it has caught up with
-  what the server had, puts down any of its own that arrived meanwhile
-  (sent as the page went) as numbered, and sends the rest again ("Sent
-  again: 3 parts you changed just before the page went").
+- **Changes on their way when a page goes.** A change is sent the moment
+  it is made, in a fetch kept alive past the page (16 KB at most), and
+  what was changed while one was on its way goes as its answer comes, not
+  at the next frame. Every change waiting to be numbered is also kept, as
+  it is queued, with the tab's session (`TabSession`): on the web in the
+  site's `localStorage` under the session's id
+  (`brickworks.together_pending.<id>`; the tab's `sessionStorage` when the
+  site's is full), on the desktop a file of the session's
+  (`TabSession.path("together_pending.json")`). As it goes, the page sends
+  them itself (`pagehide`, a fetch kept alive, 48 KB at most) and the
+  desktop app sends them in its quit (`Together._exit_tree`, 3 s at most).
+  The page that takes up the session next, this tab reloaded or the next
+  tab opened after it was closed (a tab takes the newest session no open
+  tab holds), goes back into the build by itself, takes up the old client
+  and counts, waits until it has caught up with what the server had, puts
+  down any of its own that arrived meanwhile (sent as the page went) as
+  numbered, and sends the rest again ("Sent again: 3 parts you changed just
+  before the page went"). Sent twice is put down once, by its count.
+
+  Why all three (`tools/web/together_close.mjs`, unit closesend,
+  2026-10-30): a page closed while its thread is in a long frame (the rich
+  car drawn in software, 600 ms and more) is torn down without its
+  `pagehide` ever running, so a change it held never left. With its sends
+  held, so that only the page's going could carry the change, and each
+  frame held 600 ms, 29 of 30 closes lost it, and 6 of 30 at this box's
+  ordinary frames under load; together_flow lost two that way in one run
+  of seven. The tab's copy was in `sessionStorage`, which dies with the
+  tab, and the file naming its session reaches the browser's storage up to
+  half a minute late, so a closed tab's changes had no second chance. Now:
+  30 of 30, one as it went and 29 on the next visit. A change sent as it
+  is made was not lost even at 600 ms frames (30 of 30 before and after):
+  the send leaves in the frame the change is made.
+
 - **A model too big for one request.** Vercel takes at most 4.5 MB a
   request and as much an answer. A snapshot over 3.5 MB of JSON starts the
   session with none (`op=start {stored: n}`), then the owner sends it in

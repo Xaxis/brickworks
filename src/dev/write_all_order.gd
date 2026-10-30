@@ -7,7 +7,7 @@
 ## itself for any other catalogue, or with parts made in the app.
 ## Run by tools/export.sh after tools/web_pack.py:
 ##
-##   godot --headless --path . --script src/dev/all_order.gd
+##   godot --headless --path . --script src/dev/write_all_order.gd
 extends SceneTree
 
 
