@@ -483,6 +483,18 @@ can occupy the same millimetre.
   their own order, and on seams where two parts' faces lie in one plane the order
   decides which shows. Compared that way the Colosseum's base differed by 122
   pixels with no part's visibility changed; in one world, 0.
+  On the desktop the pictures are not read back: the card marks the numbers
+  each holds in a tally of its own (`SeenParts._tallied`, `seen_tally.gdshader`,
+  a point a pixel, the first of each run along a row), eight pictures a frame,
+  each lane sized and aimed as the read-back picture is, and the tally is read
+  once at the end (each side's rows laid over each other for what any side
+  sees). The web's renderer reads back as before (`_tallies`). `bigmodels_probe
+  -- only=hidden`: the tally and the read-back (`read_back = true`) agree part
+  for part, side for side and from a table, on the castle (128 sides x 2) and
+  Orthanc (26 x 1); Orthanc's 128 x 2 in seconds where reading back took 17 to
+  23 s. Lanes in the corner of one the biggest size were a part out on a side
+  in a hundred; a picture twice as fine for both samples was slower and a part
+  out on the castle.
 - `colour the hidden parts` (`src/ui/hidden_colours_panel.gd` over
   `src/assembly/hidden_colours.gd`): Tools, Colour the hidden parts…, and
   `colour_hidden_parts` over MCP (`HiddenColoursPanel.for_session`). Groups the

@@ -149,56 +149,114 @@ static func inverse(world: BrickWorld, selection: Dictionary,
 ##
 ## [param most] stops looking once that many are found: the properties
 ## panel says how many parts one is joined to, and on Orthanc counting all
-## of them held the window for seconds at every click on a part.
+## of them held the window for seconds at every click on a part. Looking
+## stops too once every part is found: with all of Orthanc selected it
+## went on asking each of its 10,101 parts what it was joined to, all of
+## them found already (bigmodels, 2026-10-30).
 static func connected(world: BrickWorld, lattice: BrickLattice,
 		seeds: Array, scenery: Dictionary, most: int = 1 << 30) -> Array:
-	var found: Dictionary = {}
-	var queue: Array = []
-	for seed_id: int in seeds:
-		if world.get_brick(seed_id) != null and not scenery.has(seed_id):
-			found[seed_id] = true
-			queue.append(seed_id)
-	while not queue.is_empty() and found.size() < most:
-		var here: int = queue.pop_back()
-		for other: int in _joined_to(world, lattice, here):
-			if found.has(other) or scenery.has(other):
-				continue
-			found[other] = true
-			queue.append(other)
-	return found.keys()
+	var search := _Search.new(world, lattice, seeds, scenery)
+	most = mini(most, search.everything)
+	while not search.queue.is_empty() and search.found.size() < most:
+		search.step()
+	return search.found.keys()
 
 
 ## [method connected], a slice at a time (FramePace), [param job] counting
 ## what it has found; nothing when it was cancelled.
 static func connected_paced(world: BrickWorld, lattice: BrickLattice,
 		seeds: Array, scenery: Dictionary, job: Working.Job) -> Array:
+	var search := _Search.new(world, lattice, seeds, scenery)
+	while not search.queue.is_empty() and search.found.size() < search.everything:
+		search.step()
+		if job.due():
+			job.count(search.found.size(), search.everything)
+			await job.next()
+			if job.cancelled:
+				return []
+	return search.found.keys()
+
+
+## One look for everything joined to some bricks, a brick at a time.
+class _Search extends RefCounted:
+	var world: BrickWorld
+	var lattice: BrickLattice
+	var scenery: Dictionary
+	## Brick id -> true: found so far, the seeds among them.
 	var found: Dictionary = {}
+	## Found and not yet asked what it is joined to.
 	var queue: Array = []
-	for seed_id: int in seeds:
-		if world.get_brick(seed_id) != null and not scenery.has(seed_id):
-			found[seed_id] = true
-			queue.append(seed_id)
-	var most: int = world.brick_count() - scenery.size()
-	while not queue.is_empty():
+	## How many there are to find: every brick but the scenery.
+	var everything: int = 0
+	## Per ground axis (x, then z), the bricks that can be joined across it
+	## at all (SelectBy.sideways); empty until the look grows past
+	## [constant SIDEWAYS_AFTER].
+	var across: Array = []
+	var asked: int = 0
+
+	## Worked out once a look has gone this far: a click's count in the
+	## properties panel stops long before, and pays nothing for it.
+	const SIDEWAYS_AFTER := 256
+
+	func _init(on: BrickWorld, cells: BrickLattice, seeds: Array, scene: Dictionary) -> void:
+		world = on
+		lattice = cells
+		scenery = scene
+		var standing: int = 0
+		for brick_id: int in scenery:
+			if world.get_brick(brick_id) != null:
+				standing += 1
+		everything = world.brick_count() - standing
+		for seed_id: int in seeds:
+			if world.get_brick(seed_id) != null and not scenery.has(seed_id) \
+					and not found.has(seed_id):
+				found[seed_id] = true
+				queue.append(seed_id)
+
+	## Ask the next brick what it is joined to.
+	func step() -> void:
+		if across.is_empty() and asked == SIDEWAYS_AFTER:
+			across = SelectBy.sideways(world, lattice)
+		asked += 1
 		var here: int = queue.pop_back()
-		for other: int in _joined_to(world, lattice, here):
+		for other: int in SelectBy._joined_to(world, lattice, here, across):
 			if found.has(other) or scenery.has(other):
 				continue
 			found[other] = true
 			queue.append(other)
-		if job.due():
-			job.count(found.size(), most)
-			await job.next()
-			if job.cancelled:
-				return []
-	return found.keys()
+
+
+## For each ground axis (x, then z), every brick that can be joined to
+## another across it: those whose studs point along it, and every brick
+## whose box comes within a cell of one of theirs along it. Any other brick
+## is joined only above and below, and [method _joined_to] need not ask its
+## sides: most of a model's parts, and two of every three of its questions.
+static func sideways(world: BrickWorld, lattice: BrickLattice) -> Array:
+	var out: Array = [{}, {}]
+	for brick: BrickWorld.Brick in world.bricks():
+		var axis: int = _axis_of(brick)
+		if axis < 0:
+			continue
+		var bound: PackedInt32Array = BrickLattice._bound_of(lattice.boxes_of(brick.id))
+		if bound.is_empty():
+			continue
+		var grown: PackedInt32Array = bound.duplicate()
+		grown[axis] -= 1
+		grown[axis + 3] += 1
+		var these: Dictionary = out[axis / 2]
+		these[brick.id] = true
+		for other: int in lattice.near_bounds(grown, brick.id):
+			these[other] = true
+	return out
 
 
 ## The bricks one brick is held to: anything resting on its top or
 ## carrying its bottom, and, for a part whose studs do not point up or
-## down, anything against the faces along its stud axis.
+## down, anything against the faces along its stud axis. With [param
+## across] (see [method sideways]), a brick that cannot be joined across
+## an axis is not asked about it.
 static func _joined_to(world: BrickWorld, lattice: BrickLattice,
-		brick_id: int) -> Array:
+		brick_id: int, across: Array = []) -> Array:
 	var mine: PackedInt32Array = lattice.boxes_of(brick_id)
 	if mine.is_empty():
 		return []
@@ -211,6 +269,8 @@ static func _joined_to(world: BrickWorld, lattice: BrickLattice,
 	# brick finds the panel.
 	var own: int = _stud_axis(world, brick_id)
 	for axis: int in [0, 2]:
+		if not across.is_empty() and not (across[axis / 2] as Dictionary).has(brick_id):
+			continue
 		for other: int in lattice.blockers_boxes(_shell(mine, axis), brick_id):
 			if own == axis or _stud_axis(world, other) == axis:
 				out[other] = true
@@ -223,6 +283,10 @@ static func _stud_axis(world: BrickWorld, brick_id: int) -> int:
 	var brick: BrickWorld.Brick = world.get_brick(brick_id)
 	if brick == null:
 		return -1
+	return _axis_of(brick)
+
+
+static func _axis_of(brick: BrickWorld.Brick) -> int:
 	var face: String = BrickLattice.face_of(brick.transform.basis)
 	if face == "+x" or face == "-x":
 		return 0
