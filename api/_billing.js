@@ -40,10 +40,26 @@
 // for no tokens and counts no AI use. What Free holds back is how many
 // models an account keeps with it (saved_models, api/models.js) and the
 // desktop app.
+//
+// Paying (unit U3): Stripe Checkout and its billing portal are Admission's,
+// asked through checkout and portal on the client (api/plans.js ?op=checkout,
+// ?op=portal), and they send a person back to this site alone
+// (returnOrigin). What someone agreed to before Checkout is kept here
+// (agreed, supabase/plan_consents.sql), as the law on renewals asks.
+// Deleting an account erases it at Admission before anything else goes
+// (eraseAccount, api/account.js ?op=delete), ending what it pays for.
+//
+// A unit's preview proves all of it with no Admission at all: deployed with
+// tools/deploy.sh --unit --billing-stand-in, the stand-in Admission
+// (tests/fixtures/billing/fake_admission.mjs, put beside the function as
+// _admission_stand_in.mjs) answers in the function's own process. Only in
+// test mode, only for the stand-in's own key, and only when ADMISSION_URL
+// asks for it by name: a real key never reaches it.
 
 import { Admission, AdmissionUnavailable } from "./_admission.js";
 import { db } from "./_db.js";
 import { isMaster } from "./_auth.js";
+import { originOf } from "./_oauth.js";
 
 /// Admission's names for Brickworks (docs/PLANS.md, section 1).
 export const PRODUCT = "brickworks";
@@ -94,17 +110,35 @@ export const snapshots = {
 
 let client = null;
 
+/// The stand-in's key (tests/fixtures/billing/fake_admission.mjs FAKE_KEY):
+/// all noughts, which no key Admission makes is.
+export const STAND_IN_KEY = "adm_test_00000000000000000000000000000000";
+let standIn = null;
+
+/// Whether this deployment asks the stand-in, not Admission (above).
+function standingIn(mode, key, env = process.env) {
+  return mode === "test" && key === STAND_IN_KEY && String(env.ADMISSION_URL || "").trim() === "stand-in";
+}
+
+/// The stand-in's fetch, its module loaded when first asked.
+function standInFetch(input, init) {
+  standIn ??= import("./_admission_stand_in.mjs").then((m) => m.fakeAdmission());
+  return standIn.then((fake) => fake.fetch(input, init));
+}
+
 /// The process's client for this mode and key; null while billing is off.
 export function admission() {
   const mode = billingMode();
   if (mode === "off") return null;
   const key = String(process.env.ADMISSION_KEY).trim();
   if (client?.key !== key) {
+    const faked = standingIn(mode, key);
     client = {
       key,
       admission: new Admission({
         key,
-        baseUrl: process.env.ADMISSION_URL?.trim() || undefined,
+        baseUrl: faked ? "https://admission.test" : process.env.ADMISSION_URL?.trim() || undefined,
+        ...(faked ? { fetch: standInFetch } : {}),
         // Kept across a new key: the namespace is the product, not the key.
         namespace: PRODUCT,
         store: snapshots,
@@ -238,4 +272,53 @@ export async function currentOffer() {
     }
     return { billing: a.mode, ...PUBLISHED };
   }
+}
+
+/// Where Checkout and the portal send someone back: this site. In live
+/// mode always brickworks.diy (or PUBLIC_ORIGIN), whatever host the request
+/// came by, since live Admission refuses any other and a request can reach
+/// production through a vercel.app alias; in test mode the deployment
+/// itself, so a preview returns to the preview.
+export function returnOrigin(request, mode = billingMode()) {
+  if (mode === "live") return String(process.env.PUBLIC_ORIGIN || "").replace(/\/+$/, "") || "https://brickworks.diy";
+  return originOf(request);
+}
+
+/// "$8.00 USD a month", as the renewal terms say a price.
+export function charge(amount, currency, interval) {
+  const money = new Intl.NumberFormat("en-US", { style: "currency", currency: currency.toUpperCase(),
+    minimumFractionDigits: 2 }).format(amount / 100);
+  return `${money} ${currency.toUpperCase()} a ${interval}`;
+}
+
+/// The renewal terms as kept with an agreement: what the step before
+/// Checkout says beside its box (web/plan.js), in a line.
+export function renewalTerms(amount, currency, interval) {
+  return `Pro at ${charge(amount, currency, interval)}, plus any tax; charged today, then renews automatically at `
+    + "that price until cancelled; cancel any time in Settings, Manage billing, or at link.com, and Pro stays on "
+    + `to the end of the ${interval} paid for; sold through Link, the merchant of record.`;
+}
+
+/// The account [userId] erased at Admission as it is deleted (Bookwright's
+/// ADR-0014 decision 7, Admission's ADR-0004): a subscription it pays for
+/// ended now, with no refund and nothing charged again, and its usage,
+/// comps and snapshots gone. How many subscriptions that ended; null while
+/// billing is off, when nothing is asked. Throws when Admission could not
+/// do it, and then nothing of the account may go, or a plan would go on
+/// charging an account nobody has. Erasing again finds nothing and ends
+/// nothing, so a deletion that stopped after it can be repeated.
+export async function eraseAccount(userId) {
+  const a = admission();
+  if (!a) return null;
+  const erased = await a.eraseCustomer(userId, { cancelSubscription: true });
+  return erased.canceled?.length ?? 0;
+}
+
+/// Kept in the database: that the account [userId] agreed, just now, to
+/// Pro renewing at [amount] of [currency] each [interval]. Throws when it
+/// cannot be kept, and then nobody goes on to pay: an agreement that is
+/// not kept is one nobody can show was made.
+export async function agreed(userId, interval, amount, currency) {
+  await db("rpc/plan_consent_note", { method: "POST", body: { p_user: userId, p_plan: "pro", p_interval: interval,
+    p_amount: amount, p_currency: currency, p_terms: renewalTerms(amount, currency, interval) } });
 }

@@ -364,6 +364,28 @@ const TABLES = {
       },
     },
   },
+  // supabase/plan_consents.sql: what someone agreed to before paying for
+  // Pro, kept by its one function, answered here whole, with the table's
+  // own refusals (its dry run proves the real ones).
+  plan_consents: {
+    key: ["id"],
+    defaults: () => ({ agreed_at: new Date().toISOString() }),
+    check: () => "",
+    rpc: {
+      async plan_consent_note(real, base, url, init, rows) {
+        const { p_user: account, p_plan: plan, p_interval: interval, p_amount: amount, p_currency: currency,
+          p_terms: terms } = JSON.parse(String(init.body || "{}"));
+        const refused = !["month", "year"].includes(interval) ? "plan_consents_interval"
+          : !(Number.isInteger(amount) && amount >= 0) ? "plan_consents_amount"
+            : !/^[a-z]{3}$/.test(String(currency)) ? "plan_consents_currency"
+              : !(typeof terms === "string" && terms.length >= 1 && terms.length <= 1000) ? "plan_consents_terms" : "";
+        if (refused) return jsonReply(400, { code: "23514", message: `new row violates check constraint "${refused}"` });
+        rows.push({ id: rows.length + 1, account, agreed_at: new Date().toISOString(), plan, billing_interval: interval,
+          amount, currency, terms });
+        return jsonReply(200, null);
+      },
+    },
+  },
   // supabase/versions.sql
   share_versions: {
     key: ["model", "n"],

@@ -3758,6 +3758,41 @@
       "entry": "tools/web/relay_timing.mjs",
       "reach": "node tools/web/relay_server.mjs 8790, then node tools/web/relay_timing.mjs --url=http://127.0.0.1:8790 [--rounds=4]   (with .env sourced; or --url=<preview> with BW_BYPASS)",
       "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "paying for Pro",
+      "entry": "api/plans.js",
+      "reach": "python3 tools/minitest.py tests/test_billing_pay.py   (POST /api/plans?op=checkout {interval, consent: true, amount}, ?op=portal {flow}, ?op=webhook signed by Admission; only with BRICKWORKS_BILLING test or live, off each is the interest form's 422; the agreement kept first in supabase/plan_consents.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "your plan on settings",
+      "entry": "web/plan.js",
+      "reach": "<deployment>/settings#plan signed in, plans on   (the Plan row: Free with Upgrade to Pro and the step before Checkout, Pro with Manage billing, Pro until, Update your card; ?upgrade=month|year opens the step; nothing drawn or asked with plans off)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "billing browser flow",
+      "entry": "tools/web/billing_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/billing_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in, or plans off: nothing answers; --stand-in=<tools/web/admission_stand_in.mjs> on this machine also pays and cancels; preview check [billing])",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the stand-in Admission",
+      "entry": "tools/web/admission_stand_in.mjs",
+      "reach": "node tools/web/admission_stand_in.mjs 8891 --hook=http://127.0.0.1:8890/api/plans?op=webhook   (Admission's API from tests/fixtures/billing/fake_admission.mjs over HTTP for relay_server.mjs with ADMISSION_URL at it; POST /__stand_in/pay or /cancel sends the signed webhook, /__stand_in/erased says what was erased)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "a deleted account's plan ended at Admission",
+      "entry": "api/account.js",
+      "reach": "python3 tools/minitest.py tests/test_account_erase.py   (POST /api/account?op=delete {confirm}: with BRICKWORKS_BILLING test or live the customer is erased at Admission and a subscription ended first, and nothing is deleted when Admission cannot; off, Admission is never asked; billing_flow.mjs --stand-in deletes a paying account from /settings)",
+      "area": "web"
     }
   ]
 }

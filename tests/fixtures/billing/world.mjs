@@ -1,7 +1,8 @@
-// Everything api/_billing.js and api/plans.js talk to, in memory, behind
-// the one fetch: the stand-in Admission (fake_admission.mjs), and the
-// Supabase they use (the snapshot functions of
-// supabase/admission_snapshots.sql, and the keys sessions are signed with).
+// Everything api/_billing.js, api/plans.js and api/account.js's deletion
+// talk to, in memory, behind the one fetch: the stand-in Admission
+// (fake_admission.mjs), and the Supabase they use (the snapshot functions
+// of supabase/admission_snapshots.sql, the keys sessions are signed with,
+// and the auth that deletes an account).
 // Every request any of them is sent is in [calls], so a test can say none
 // was. And api/models.js's account_models (supabase/account_models.sql,
 // account_models_delete.sql, account_models_plan.sql), in [models], kept
@@ -11,6 +12,7 @@
 //   const token = await w.signIn({ sub: "u1", email: "ada@example.com" });
 
 import { webcrypto } from "node:crypto";
+import { Readable } from "node:stream";
 import { ADMISSION_URL, FAKE_KEY, fakeAdmission } from "./fake_admission.mjs";
 
 export const SUPABASE_URL = "https://db.test";
@@ -18,9 +20,16 @@ export const SUPABASE_URL = "https://db.test";
 const b64url = (bytes) => Buffer.from(bytes).toString("base64url");
 
 /// One request through api/plans.js's handler, as Vercel would make it:
-/// {status, json}, and {location} when it redirects.
-export async function askPlans({ method = "GET", query = {}, headers = {}, body } = {}) {
-  const { default: handle } = await import("../../../api/plans.js");
+/// {status, json}, and {location} when it redirects. [raw], a string, is a
+/// body as Vercel's helpers leave it: parsed as JSON into the body, and its
+/// bytes to read again as the request's data (@vercel/node restoreBody).
+export const askPlans = (asked) => ask("plans", asked);
+
+/// One request through api/account.js's handler, as askPlans makes one.
+export const askAccount = (asked) => ask("account", asked);
+
+async function ask(route, { method = "GET", query = {}, headers = {}, body, raw } = {}) {
+  const { default: handle } = await import(`../../../api/${route}.js`);
   let status = 0;
   let json = null;
   let location = null;
@@ -33,7 +42,17 @@ export async function askPlans({ method = "GET", query = {}, headers = {}, body 
     json: (b) => { json = b; return response; },
     end: () => response,
   };
-  await handle({ method, query, headers, body }, response);
+  let request = { method, query, headers, body };
+  if (raw !== undefined) {
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = undefined;
+    }
+    request = Object.assign(Readable.from([Buffer.from(raw)]), { method, query, headers, body: parsed });
+  }
+  await handle(request, response);
   return location === null ? { status, json } : { status, json, location };
 }
 
@@ -89,11 +108,16 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
   }
   const admission = fakeAdmission();
   const snapshots = new Map();
+  // supabase/plan_consents.sql's rows, as plan_consent_note keeps them.
+  const consents = [];
   const signer = await webcrypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
   const jwk = { ...(await webcrypto.subtle.exportKey("jwk", signer.publicKey)), kid: "k1", alg: "ES256" };
   const self = {
     admission,
     snapshots,
+    consents,
+    /// plan_consents.sql not applied: its function answers 404.
+    noConsents: false,
     /// The days supabase/desktop_paid_through.sql keeps, by account.
     paidThrough: new Map(),
     /// GitHub answering an asset's bytes with the bytes (a 200), as its API
@@ -101,6 +125,10 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     githubStreams: false,
     /// The authorization each request to GitHub carried, or null.
     githubAuth: [],
+    /// Accounts Supabase's auth deleted (api/account.js ?op=delete), by id.
+    deleted: [],
+    /// Supabase's auth refusing to delete one, as an outage would.
+    authDown: false,
     /// Every request, "METHOD url" without its query.
     calls: [],
     /// The models each account keeps, by owner, then by name.
@@ -149,6 +177,12 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     }
     if (url.origin !== SUPABASE_URL) throw new TypeError(`nothing here answers ${url.origin}`);
     if (url.pathname === "/auth/v1/.well-known/jwks.json") return json(200, { keys: [jwk] });
+    const user = /^\/auth\/v1\/admin\/users\/([^/]+)$/.exec(url.pathname);
+    if (user && init.method === "DELETE") {
+      if (self.authDown) return json(500, { message: "down" });
+      self.deleted.push(user[1]);
+      return json(200, {});
+    }
     if (self.storeDown) throw new TypeError("fetch failed");
     const asked = JSON.parse(String(init.body || "{}"));
     if (url.pathname === "/rest/v1/rpc/admission_snapshot_get") return json(200, snapshots.get(asked.p_key) ?? null);
@@ -161,7 +195,9 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     }
     if (url.pathname === "/rest/v1/rpc/admission_snapshot_put") {
       snapshots.set(asked.p_key, asked.p_value);
-      return new Response(null, { status: 204 });
+      // 200, not 204: a Response refuses a 204 with a body, which threw
+      // after the snapshot was kept, so the client took every put as failed.
+      return json(200);
     }
     const mine = (owner) => {
       if (!self.models.has(owner)) self.models.set(owner, new Map());
@@ -187,6 +223,12 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     if (url.pathname === "/rest/v1/account_models") {
       const owner = /^eq\.(.+)$/.exec(url.searchParams.get("owner") || "")?.[1];
       return json(200, [...mine(owner)].map(([name, row]) => ({ name, ...row })));
+    }
+    // No orangecheck account made by Connect (supabase/orangecheck_connect_leaving.sql).
+    if (url.pathname === "/rest/v1/rpc/oc_connect_leaving") return json(200, false);
+    if (url.pathname === "/rest/v1/rpc/plan_consent_note" && !self.noConsents) {
+      consents.push(asked);
+      return json(200);
     }
     return json(404, { message: "no such function" });
   };
