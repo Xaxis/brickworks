@@ -48,8 +48,7 @@ var _hinge: SpinBox
 var _hinge_name: Label
 var _hinged: float = 0.0
 ## Two parts selected: Meet swings the hinges between them so they meet
-## (HingeAlign), in the joint row beside Hinge. No CAD tool has it since
-## LDD's Hinge Align went with LDD.
+## (HingeAlign), in the joint row beside Hinge.
 var _meet: Button
 var _meet_name: Label
 var _facts: Label
@@ -876,6 +875,8 @@ func controls_by_name() -> Dictionary:
 		out["prop_roll"] = _roll
 		if _hinge.visible:
 			out["prop_hinge"] = _hinge
+		if _meet.visible:
+			out["prop_meet"] = _meet
 	return out
 
 

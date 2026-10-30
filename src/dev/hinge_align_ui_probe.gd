@@ -66,6 +66,8 @@ func _ring() -> void:
 	_main.call("clear_model")
 	await _frames(6)
 	var ends: Array = []
+	# The plates a person sees and clicks: each end segment's 1 x 4 on top.
+	var tops: Array = []
 	var box := AABB()
 	# Laid in the air over the baseplate, not on its studs: a segment on them
 	# would be held by them, as the real one would.
@@ -73,11 +75,13 @@ func _ring() -> void:
 		var x: float = 100.0 * k - 350.0
 		var fork: int = _put("44302b", 4, Transform3D(Basis(Vector3.UP, PI), Vector3(x - 20.0, LIFT, 0)))
 		var finger: int = _put("44301b", 4, Transform3D(Basis.IDENTITY, Vector3(x + 20.0, LIFT, 0)))
-		_put("3710", 15, Transform3D(Basis.IDENTITY, Vector3(x, LIFT + 8.0, 0)))
+		var top: int = _put("3710", 15, Transform3D(Basis.IDENTITY, Vector3(x, LIFT + 8.0, 0)))
 		if k == 0:
 			ends.append(fork)
+			tops.append(top)
 		if k == 7:
 			ends.append(finger)
+			tops.append(top)
 	for brick: BrickWorld.Brick in _world.bricks():
 		var here: AABB = (brick.transform * _library.mesh_for(brick.part_id).bounds).abs()
 		box = here if box.size == Vector3.ZERO else box.merge(here)
@@ -87,9 +91,9 @@ func _ring() -> void:
 	_builder.clear_selection()
 	_builder.forget_history()
 	_shell.inspector.set_open(true)
-	_camera.frame(box.grow(60.0))
+	_camera.frame(box.grow(20.0), 1.0)
 	_camera.look_from(Vector3(0.25, 0.55, 0.8).normalized())
-	await _frames(90)
+	await _settled()
 	await _shot("ring_before")
 	var depth: int = _builder.history_depth()
 	_acts = 0
@@ -97,16 +101,23 @@ func _ring() -> void:
 	if _shell.verbs.mode != "select":
 		await _key(KEY_V)
 		_acts += 1
-	# The last plate, clicked.
-	await _click_part(int(ends[1]), false)
-	# The first, Shift-clicked.
-	await _click_part(int(ends[0]), true)
-	_check("the two ends are selected", _builder.selection.size() == 2
-		and _builder.selection.has(ends[0]) and _builder.selection.has(ends[1]))
+	# The last segment's top plate, clicked.
+	await _click_part(int(tops[1]), false)
+	# The first's, Shift-clicked.
+	await _click_part(int(tops[0]), true)
+	_check("the two ends are selected (%s)" % [_builder.selection.keys()],
+		_builder.selection.size() == 2 and _builder.selection.has(tops[0])
+		and _builder.selection.has(tops[1]))
 	await _frames(10)
 	var meet: Button = _shell.inspector.controls_by_name().get("prop_meet")
 	_check("Properties offers Meet for the two", meet != null and meet.is_visible_in_tree())
-	if meet == null:
+	if meet == null or not meet.is_visible_in_tree():
+		var hidden: Node = meet
+		while hidden is CanvasItem and (hidden as CanvasItem).visible:
+			hidden = hidden.get_parent()
+		print("    Meet %s; hidden at %s; Properties open %s" % ["missing" if meet == null else "there",
+			hidden.get_path() if hidden != null else "", _shell.inspector.is_open()])
+		await _shot("ring_selected")
 		return
 	var scroll: ScrollContainer = _shell.inspector.get("_scroll")
 	if scroll != null:
@@ -130,7 +141,7 @@ func _ring() -> void:
 	_check("the ring swung: %d of 24 parts moved" % moved, moved >= 18)
 	_camera.frame(_bounds().grow(40.0))
 	_camera.look_from(Vector3(0.2, 0.35, 0.9).normalized())
-	await _frames(30)
+	await _settled()
 	await _shot("ring_closed")
 	# One undo, every part back.
 	await _key(KEY_Z, true)
@@ -170,19 +181,24 @@ func _click_part(brick_id: int, add: bool) -> void:
 	var brick: BrickWorld.Brick = _world.get_brick(brick_id)
 	var box: AABB = (brick.transform * _library.mesh_for(brick.part_id).bounds).abs()
 	var at: Vector2 = _camera.unproject_position(box.get_center())
+	var found: bool = false
 	for along: float in [0.0, -0.3, 0.3, -0.15, 0.15]:
 		var point := Vector3(lerpf(box.position.x, box.end.x, 0.5 + along), box.end.y - 5.0,
 			box.get_center().z)
 		var screen: Vector2 = _camera.unproject_position(point)
 		if _shell.verbs.brick_at(screen) == brick_id:
 			at = screen
+			found = true
 			break
+	if not found:
+		print("    %d not under the pointer at %s (%d is)" % [brick_id, at, _shell.verbs.brick_at(at)])
 	if add:
 		await _shift(true)
 	await _click(at)
 	if add:
 		await _shift(false)
 	await _frames(4)
+	print("    clicked %d at %s: selected %s" % [brick_id, at.round(), _builder.selection.keys()])
 
 
 func _shift(down: bool) -> void:
@@ -194,6 +210,13 @@ func _shift(down: bool) -> void:
 	event.shift_pressed = down
 	Input.parse_input_event(event)
 	await process_frame
+
+
+## The view eased to where it was sent: it eases by the clock, and frames
+## come faster than a screen's here.
+func _settled() -> void:
+	await create_timer(1.5).timeout
+	await _frames(10)
 
 
 func _frames(count: int) -> void:

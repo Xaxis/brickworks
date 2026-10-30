@@ -177,12 +177,11 @@ static func ends_of(mesh: Lbm.PartMesh) -> Array[End]:
 			var sign: float = signf((group[2] as Vector3).dot(way))
 			group[3] = minf(float(group[3]), minf(along, along + connector.length * sign))
 			group[4] = maxf(float(group[4]), maxf(along, along + connector.length * sign))
-			(group[5] as PackedFloat64Array).append(connector.radius)
+			(group[5] as Array).append(connector.radius)
 			found = true
 			break
 		if not found:
-			groups.append([male, connector.position, way, from, to,
-				PackedFloat64Array([connector.radius])])
+			groups.append([male, connector.position, way, from, to, [connector.radius]])
 	for group: Array in groups:
 		var end := End.new()
 		end.family = "round"
@@ -190,7 +189,7 @@ static func ends_of(mesh: Lbm.PartMesh) -> Array[End]:
 		end.way = group[2]
 		end.middle = (group[1] as Vector3) + end.way * ((float(group[3]) + float(group[4])) * 0.5)
 		end.half = (float(group[4]) - float(group[3])) * 0.5
-		end.radii = group[5]
+		end.radii = PackedFloat64Array(group[5])
 		end.words = "hinge"
 		out.append(end)
 	return out
