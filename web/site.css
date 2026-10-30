@@ -425,7 +425,9 @@ button.link:hover, a.link:hover { color: var(--ink); background: none; }
    Light, Dark: web/theme.js) in the footer, on Menu and in Settings.
    As tall as a field, with its buttons inside. */
 .segmented {
-	display: inline-flex; gap: 2px; padding: 3px; margin: 0;
+	/* A long one (/admin's six "where it stands") wraps inside its frame
+	   rather than push a phone's page sideways. */
+	display: inline-flex; flex-wrap: wrap; max-width: 100%; gap: 2px; padding: 3px; margin: 0;
 	border: 1px solid var(--line); border-radius: var(--r-2); background: var(--bg-soft);
 }
 .segmented button {
