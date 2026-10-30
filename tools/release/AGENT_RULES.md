@@ -118,6 +118,11 @@ date says when.
   units ran full batteries at once beside a release: the box sat at 54
   threads against a gate of 30, every check slowed, and the owner waited
   hours for pages that were done.
+- **Wait in steps of ten minutes at most** (a loop of `timeout 600 tail
+  --pid=...`, or a check of the log), never one long blocking wait. The
+  lead's messages reach you only between steps: on 2026-10-29 a unit spent
+  an hour checking pricing copy the lead had already told it to change,
+  because it read the change only when its battery ended.
 - A feature that runs every frame or on a timer: prove a big model's step,
   orbit and select-all cost unchanged (cad_frames.mjs --gate).
 - Add, rename or remove a feature: update .claude/skills/verify/
