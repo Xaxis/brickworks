@@ -61,7 +61,7 @@ lib:sideways building
 
 ## Onto a joint {#joints}
 
-A Technic pin, axle, beam, clip or bar in hand snaps into a hole, onto a pin, an axle or a bar it would really go into. [[R]] turns it about the joint, [[T]] the other way on. A gear pointed onto an axle beside another gear is seated in mesh where the teeth allow, and the status line says what it meshes with, or why not: too far apart, a bush in the way, square spurs.
+A Technic pin, axle, beam, clip or bar in hand snaps into a hole, onto a pin, an axle or a bar it would really go into. [[R]] turns it about the joint, [[T]] the other way on. An axle goes through a hole flush with its far face; point past that face and it goes on through to where you point. A gear pointed onto an axle beside another gear is seated in mesh where the teeth allow, and the status line says what it meshes with, or why not: too far apart, a bush in the way, square spurs.
 
 <!-- covers
 ui:snap onto a joint

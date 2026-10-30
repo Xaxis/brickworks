@@ -12,7 +12,9 @@
 ## 8841-1's Technic plates swung on their pins onto an axle at 66.4
 ## degrees, off every one of the 24 turns (Builder._closings). And a door
 ## held over its frame, which walk180 found stood beside it or on its studs:
-## shut in it on its hinge, and a shutter on its window. Pictures in
+## shut in it on its hinge, and a shutter on its window. And 8841-1's
+## axle pushed through its brick's hole by the pointer to 1 LDU past the far
+## face, and a round plate flush on a light clip's ring. Pictures in
 ## shots/placing/, the rows in shots/placing/placing.json.
 extends SceneTree
 
