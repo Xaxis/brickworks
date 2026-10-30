@@ -43,8 +43,10 @@ sized its own titles, from 26 to 74 px. Now:
   regular `.cta`, 44 px at 16, not a size of their own), Menu and your
   avatar's button (2026-10-26; they were 36-42). The footer: the mark,
   a line of what Brickworks is and the theme, beside four columns of
-  links (Product, Community, Help, Legal, each named by a `.foot-h`),
-  each link 36 px tall under a mouse and a finger's 44 on a phone; then
+  links (Product, Community, Help, Legal, each named by a `.foot-h`), four
+  to a column at most, each link 32 px tall under a mouse and a finger's
+  44 on a phone (at 1280 px it is 407 px tall, the row was 369: a
+  profile there stays under account_page_flow's 2,000 px); then
   every notice docs/TRADEMARKS.md asks for, small and quiet, under a
   line. The row of eleven links it was read as one line nobody scanned.
 - **One type scale** (`--t-display` 42-76 px, `--t-h1` 32-48 px,
@@ -181,7 +183,9 @@ is on the page, `hidden`, for the script to show.
   until site356, now any page's.
 - **The landing kit** (home, `/plans`, `/download`; site356): `.section`
   (a landing page's section, its head a `.section-head`: an `h2.title`
-  and a line, and a way to more at the right), `.halo` (the opening, lit
+  and a line, and a way to more at the right; `.defer` on one under the
+  first screen lays it out only as it nears the window, the home page's
+  first paint; never where a check reads the words with innerText), `.halo` (the opening, lit
   by `--glow` over `--studs`), `.features` of `.feature` panels (a
   `.glyph`, the sprite's icon on the accent's soft tile, an `h3` and a
   line), `.steps` (an `ol`, each step numbered in the accent), `.split`
