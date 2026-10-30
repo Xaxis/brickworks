@@ -254,6 +254,18 @@
 .challenge .next-one > :last-child { margin-bottom: 0; }
 .challenge .past-one { margin: 0 0 var(--s-6); }
 .challenge .past-one .models { margin-top: var(--s-3); }
+/* The rules and how to enter, each a panel; side by side from 900 px,
+   under the brief, with everything else across the page. */
+.challenge #rules-part, .challenge #how {
+	padding: var(--s-4) var(--s-5); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+}
+.challenge #rules-part h2, .challenge #how h2 { margin-top: 0; }
+.challenge #rules-part > :last-child, .challenge #how > :last-child { margin-bottom: 0; }
+@media (width >= 900px) {
+	.challenge { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--s-5); align-items: start; }
+	.challenge > * { grid-column: 1 / -1; }
+	.challenge > #rules-part, .challenge > #how { grid-column: auto; align-self: stretch; }
+}
 
 /* A person, a collection, and your own page. */
 .person { padding: var(--page-top) 0 var(--section); }
