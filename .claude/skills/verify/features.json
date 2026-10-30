@@ -86,7 +86,7 @@
       "id": "api:GET /api/plans",
       "kind": "api",
       "entry": "api/plans.js",
-      "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan; off, 405 as before)",
+      "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan with savedModels {limit, kept} and nothing of AI; off, 405 as before; plans_flow's step 6)",
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",

@@ -4724,7 +4724,11 @@ Plus, a line past 200); then, live, a Resend test address kept for Pro
 yearly (its row, 'plus', read with the secret key), sent again monthly
 with a line and
 changed (still one row), and taken off (none left), the address forgotten
-at the end whatever happened. Before the SQL is applied the form says it
+at the end whatever happened; and /api/plans with nothing of AI in it: plans
+off (every release's deployment, and the stand-in), a GET refused 405 as
+always; on (a unit's preview in test mode), the offer Free 25 and Pro
+unlimited, and a throwaway account's ?op=plan Free with `savedModels`
+{limit: 25, kept: 0}, the account deleted at the end. Before the SQL is applied the form says it
 is not open yet and the flow fails, saying so. The counts:
 `set -a; . ./.env; set +a; python3 tools/plan_interest.py`.
 
@@ -4769,8 +4773,11 @@ with "models: plan" (P0001), rolled back. On a deployment, only with the switch 
 (`--env BRICKWORKS_BILLING=test --env ADMISSION_KEY=<adm_test_ key>`, never
 on the project): `curl -s <deployment>/api/plans` is the offer, and
 `/api/plans?op=plan` with a test account's session is its plan, Free and
-`savedModels.limit` 25, `standing` "known", `freshness` "live"; one POST
-to `/api/models` with that session kept (`{name, version: 1}`).
+`savedModels` {limit: 25, kept: how many it keeps now}, `standing`
+"known", nothing of AI; one POST to `/api/models` with that session kept
+(`{name, version: 1}`); 25 new models kept and the 26th answered 413 in the
+plan's words, a save over one of the 25 kept, and a delete making room for
+the 26th at once (supabase/account_models_plan.sql applied).
 
 ### Paying for Pro: Checkout, the portal, the webhook, built dark
 
