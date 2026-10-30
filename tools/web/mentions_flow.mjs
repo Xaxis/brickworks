@@ -316,7 +316,11 @@ try {
 } finally {
   if (remote && tower && people.pia) await api(`/api/share?op=unpublish&id=${tower}`, { method: "POST", token: people.pia.access_token }).catch(() => {});
   await browser.close();
-  if (remote) for (const email of Object.values(emails)) await deleteAccount(email).catch(() => {});
+}
+if (remote) {
+  const gone = [];
+  for (const email of Object.values(emails)) gone.push(await deleteAccount(email).catch(() => false));
+  check(`the three throwaway accounts deleted (${gone.filter(Boolean).length})`, gone.every(Boolean));
 }
 for (const error of errors) console.log(`  page: ${error}`);
 check("no page errors", errors.length === 0);
