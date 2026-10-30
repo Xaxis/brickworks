@@ -752,6 +752,20 @@
     },
     {
       "kind": "ui",
+      "label": "split and merge parts",
+      "entry": "src/assembly/split_merge.gd",
+      "reach": "godot --path .  (select; Alt-S splits, Alt-M merges, or the menu on a part)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "splitmerge probe",
+      "entry": "src/dev/splitmerge_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/splitmerge_probe.gd  (a 2 x 4 plate split on its studs; three 1 x 4 plates merged into a brick; six 1 x 1s into a 2 x 3; five 1 x 2s into two; a merge with no real part said and nothing changed; a 1 x 1 brick and a slope split)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "place under a part and on side studs",
       "entry": "src/assembly/builder.gd",
       "reach": "godot --path .  (aim at an overhang's underside; or tip a plate with T and aim at a side stud)",

@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:split and merge parts, cli:splitmerge probe, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe -->
 
 ## Sub-features
 
@@ -956,6 +956,21 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   the other axis, it put Orthanc's first step a stud over, onto the 2 x 8s
   beside it, and progress_check's mirror step said "no room to mirror it
   there" on every build back to m87.
+- `split and merge parts` (`src/assembly/split_merge.gd`, APP_UX2 gap 6): `Alt-S`
+  splits the selection by Studio's rules (a plate, brick or tile into 1 x 1s, a
+  1 x 1 brick into three plates, a slope into the 1-wide slope of its angle,
+  length and height, a curved one into the 1-wide curved one); `Alt-M` merges the
+  selected plates, bricks and tiles of each colour into the fewest real parts made
+  in that colour (`PartInfo.colors`), biggest first, three plates high a brick, as
+  far as it goes in one press (Studio merges once a press). Both are on the menu on
+  a part and in Find a command, not in Edit (Edit is at its 25 rows). Each split
+  is checked once a part against the part itself (`SplitMerge._fills`: inside its
+  box, filling its cover, its studs and the places beneath it kept), so a slope
+  is turned the way it slopes; a part a split or merge would run into something
+  with is left. One undo; no session tool (`AppTools.WINDOW_ONLY`).
+  `tools/probe.sh splitmerge_probe` (windowed 1400x900, `PROBE_SIZE=1280x720`
+  too, about 2 min): every bar of APP_UX2 §6 by the real keys, with the joins
+  (`SelectBy.connected`) and the lattice read after each.
 - `measure`: `U` (or Measure on the toolbar) takes out a ruler (`src/ui/measure.gd`):
   click a point, then another, and the label over the model says the
   distance in millimetres and across each axis in studs and plates; points
