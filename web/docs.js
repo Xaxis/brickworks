@@ -51,10 +51,17 @@
   if (toc && "IntersectionObserver" in window) {
     const links = new Map([...toc.querySelectorAll("a")].map((a) => [decodeURIComponent(a.hash.slice(1)), a]));
     const heads = [...links.keys()].map((id) => document.getElementById(id)).filter(Boolean);
+    // Where a heading lands when it is gone to (a link here, or scrolled
+    // into view): under the root's scroll padding and its own scroll margin,
+    // 153 px down. A fixed 140 marked the section before it, and was right
+    // only when the page could not scroll that far (site356: a taller footer
+    // let it, and docs_flow saw "swing" left unmarked).
+    const landed = (head) => parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop || "0")
+      + parseFloat(getComputedStyle(head).scrollMarginTop || "0") + 8;
     const mark = () => {
       let current = heads[0];
       for (const head of heads) {
-        if (head.getBoundingClientRect().top < 140) current = head;
+        if (head.getBoundingClientRect().top < landed(head)) current = head;
       }
       // At the foot of the page, the last section, however short.
       if (innerHeight + scrollY >= document.scrollingElement.scrollHeight - 2) current = heads[heads.length - 1];
