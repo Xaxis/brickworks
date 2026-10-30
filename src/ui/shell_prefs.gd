@@ -74,6 +74,13 @@ const DEFAULTS: Dictionary = {
 	# The commands last run from Find a command (CommandPalette), the latest
 	# first: they come first there.
 	"palette_recent": [],
+	# The keys (Keymap): the preset ("brickworks", "studio", "mecabricks",
+	# "ldcad"), the keys set in the keys sheet over it (a command's name and
+	# its key, 0 for none), and when either last changed, in seconds, so the
+	# newer of this device's and the account's wins (KeymapSync).
+	"key_preset": "brickworks",
+	"keys": {},
+	"keys_at": 0.0,
 }
 
 ## Settings, Interface size: the choices, as shares of the size the window
@@ -89,9 +96,14 @@ static var _loaded: bool = false
 static var frozen: bool = false
 
 
+## Set by a check of what outlives a restart (keys_probe), in a data
+## folder of its own: then a probe's settings are written and read too.
+static var kept_by_a_check: bool = false
+
+
 ## False under --script, so a probe changes nothing on disk.
 static func keeps() -> bool:
-	return not frozen and not OS.get_cmdline_args().has("--script")
+	return not frozen and (kept_by_a_check or not OS.get_cmdline_args().has("--script"))
 
 
 ## Whether the assistant is in the window at all (Settings, Assistant

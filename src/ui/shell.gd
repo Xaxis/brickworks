@@ -452,6 +452,7 @@ func _add(name: String, words: String, accel: int, run: Callable,
 	command.can = can
 	command.tip = tip
 	_commands[name] = command
+	Keymap.learn(name, words, accel)
 	return command
 
 
@@ -749,12 +750,13 @@ func ticked(name: String) -> int:
 	return 1 if bool(found.ticked.call()) else 0
 
 
-## What a command's key reads as, for a tooltip: "Ctrl+Z".
+## What a command's key reads as, for a tooltip: "Ctrl+Z". The key the
+## person's keymap gives it (Keymap), which is the menus' own until a
+## preset or the keys sheet says another.
 func key_words(name: String) -> String:
-	var found: Command = _commands.get(name)
-	if found == null:
+	if not _commands.has(name):
 		return ""
-	return key_text(found.accel)
+	return Keymap.written(name)
 
 
 ## The keys the engine names by what its source calls them — "QuoteLeft",
@@ -1387,17 +1389,13 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 			if id < 0:
 				id = _ids.size()
 				_ids.append(item)
-			var shown: int = menu_accel(found.accel)
-			# A key the menu can neither name nor draw goes in the words.
-			var words: String = found.words
-			if shown == 0 and found.accel != 0:
-				words += "    " + key_text(found.accel)
 			if found.radio:
-				popup.add_radio_check_item(words, id, shown)
+				popup.add_radio_check_item(found.words, id)
 			elif found.ticked.is_valid():
-				popup.add_check_item(words, id, shown)
+				popup.add_check_item(found.words, id)
 			else:
-				popup.add_item(words, id, shown)
+				popup.add_item(found.words, id)
+			_show_key(popup, popup.get_item_index(id), found)
 			if not found.tip.is_empty():
 				popup.set_item_tooltip(popup.get_item_index(id), found.tip)
 
@@ -1490,13 +1488,29 @@ func _fill_again() -> void:
 		context = null
 
 
-## Greyed where it would do nothing, ticked where it is on.
+## A row's key, as the keymap has it now (Keymap): a key the menu can
+## neither name nor draw goes after the row's words, whatever they are.
+func _show_key(popup: PopupMenu, index: int, found: Command) -> void:
+	var accel: int = Keymap.key_of(found.name)
+	var shown: int = menu_accel(accel)
+	var words: String = popup.get_item_text(index).get_slice(KEY_AFTER, 0)
+	popup.set_item_text(index, words + (KEY_AFTER + key_text(accel)
+		if shown == 0 and accel != 0 else ""))
+	popup.set_item_accelerator(index, shown)
+
+
+const KEY_AFTER := "    "
+
+
+## Greyed where it would do nothing, ticked where it is on, and its key the
+## one the keymap gives it now.
 func _refresh(popup: PopupMenu) -> void:
 	for index: int in popup.item_count:
 		var id: int = popup.get_item_id(index)
 		if popup.is_item_separator(index) or id < 0 or id >= _ids.size():
 			continue
 		var name: String = _ids[id]
+		_show_key(popup, index, _commands[name])
 		popup.set_item_disabled(index, not can(name))
 		var on: int = ticked(name)
 		if on >= 0:

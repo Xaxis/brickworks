@@ -4179,6 +4179,13 @@
       "entry": "tools/web/embed_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/embed_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh embed: the deployment's first model in a blog's page, signed out; with no --url, the stand-in's watchtower)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "keys of one's own",
+      "entry": "src/ui/keymap.gd",
+      "reach": "godot --path .  (F1: Keys like BrickLink Studio, Mecabricks or LDCad; click a key on the sheet and press another; kept on the device and, signed in, on the account: GET/POST /api/account?op=keys, supabase/keymap.sql)",
+      "area": "view"
     }
   ]
 }

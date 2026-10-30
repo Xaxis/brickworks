@@ -1,7 +1,8 @@
 ## The app's menus as the documentation lists them: every menu, submenu and
 ## command in order, with its words, its key and its tooltip, written to
 ## docs-site/generated/menus.json for tools/docs_site.py (brickworks.diy/docs,
-## Menus and commands).
+## Menus and commands); and every command's and key's key, for the
+## shortcuts page.
 ##
 ##   godot --headless --path . --script src/dev/docs_menus.gd -- --menus-to=docs-site/generated/menus.json
 ##
@@ -43,8 +44,14 @@ func _run() -> void:
 	# The app's own menu, from the mark (Shell.APP_MENU): every row, the
 	# browser's own among them, as a desktop window shows only some.
 	var app_menu: Array = _items(Shell.APP_MENU, commands, titles)
-	var text: String = JSON.stringify({"app_menu": app_menu, "menus": menus, "on_a_part": context},
-		"\t", false) + "\n"
+	# Each command's and key's key as the keys sheet writes it, with the
+	# app's own keys (Keymap, no preset, none set): the shortcuts page's
+	# rows name actions, not keys (ControlsHint.keyed).
+	var keys: Dictionary = {}
+	for action: String in Keymap.actions():
+		keys[action] = Keymap.listed(action)
+	var text: String = JSON.stringify({"app_menu": app_menu, "menus": menus, "on_a_part": context,
+		"keys": keys}, "\t", false) + "\n"
 	var file := FileAccess.open(out if out.begins_with("/") else ProjectSettings.globalize_path("res://").path_join(out), FileAccess.WRITE)
 	if file == null:
 		print("docs_menus FAIL: could not write %s" % out)

@@ -401,14 +401,13 @@ func _wheel_and_keys() -> void:
 	await _key_down(KEY_RIGHT, false)
 	await _expect("...and let go of", "place")
 
-	# Holding C paints whatever comes under the pointer.
+	# C paints the selection alone (APP_UX A11): held over the model with
+	# nothing selected, the pointer does not say it paints.
 	await _settle()
 	await _move_to(_middle)
 	await _key_down(KEY_C, true)
-	await _expect("C held", "paint")
+	await _expect("C held, nothing selected", "place")
 	await _key_down(KEY_C, false)
-	await _move_to(_middle)
-	await _expect("...and let go of", "place")
 
 
 func _over_the_panels() -> void:
