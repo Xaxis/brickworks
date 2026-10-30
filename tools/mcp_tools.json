@@ -4383,7 +4383,7 @@
       "readOnlyHint": false,
       "title": "Lay a hose, tube or chain"
     },
-    "description": "Lay a hose, tube, string or chain, as Build, Hose, tube or chain does: kind ribbed_hose, pneumatic_tube, flex_hose or flex_axle between two parts' pin holes, axles or pins; string between two studs; chain or tread round sprockets= (two or more gears in one plane). The real length that fits is chosen, and it bends no tighter than the real one can. It goes in as one sub-assembly, named in the answer; item= that name lays it again between new ends.",
+    "description": "Lay a hose, tube, string or chain, as Build, Hose, tube or chain does: kind ribbed_hose, pneumatic_tube, flex_hose or flex_axle between two parts' pin holes, axles or pins; string between two studs; chain or tread round sprockets= (two or more gears in one plane). The real length that fits is chosen, and it bends no tighter than the real one can. It goes in as one sub-assembly, named in the answer; item= that name lays it again between new ends. band: a rubber belt round sprockets= (pulleys, wheels, bushes or axles, in order round the loop); spring: between from= and to=, its turns kept when a part it is on moves. part= picks the band, the spring or the shock absorber by number.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4428,8 +4428,14 @@
             "flex_axle",
             "string",
             "chain",
-            "tread"
+            "tread",
+            "band",
+            "spring"
           ],
+          "type": "string"
+        },
+        "part": {
+          "description": "a band, spring or shock absorber's number (85546, 73129)",
           "type": "string"
         },
         "sprockets": {

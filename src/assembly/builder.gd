@@ -1262,7 +1262,7 @@ func _reposition(to: Callable, words: String = "", by_cells: Variant = null) -> 
 				blocked = true
 				break
 			n += 6
-		if blocked or lattice.collides_boxes(packed):
+		if blocked or lattice.collides_boxes(packed) and not _only_bands(lattice.blockers_boxes(packed)):
 			blocked = true
 			refused_by = _not_scenery(lattice.blockers_boxes(packed))
 			break
@@ -1293,6 +1293,16 @@ func _reposition(to: Callable, words: String = "", by_cells: Variant = null) -> 
 	_history.append(step)
 	_redo.clear()
 	return steps.size()
+
+
+## Whether every one of [param ids] is a rubber band's or a spring's piece
+## (Bands): a part they are on moves, and they stretch after it (FlexTool).
+func _only_bands(ids: PackedInt64Array) -> bool:
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null or not Bands.is_piece_id(brick.part_id):
+			return false
+	return true
 
 
 ## Move each of these bricks to its own new place, as one step: brick id
