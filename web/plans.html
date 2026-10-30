@@ -1,35 +1,38 @@
 <!DOCTYPE html>
 <!--
-  Pricing at /plans: Free and Pro (2026-10-29, the owner's choice;
-  docs/PLANS.md, sections 1 and 9, and gate M1 of section 8). Free is the
-  web app with 10 AI builds a month and everything else the app does
-  today; Pro is $8 a month or $80 a year (two months free) and adds the
-  desktop app and AI builds without a limit.
+  Pricing at /plans: Free and Pro (the owner's model, final on 2026-10-29;
+  docs/PLANS.md sections 1 and 9). AI is never limited, on any plan:
+  people bring their own (Claude or ChatGPT through the connector, Claude
+  Code, or an API key of their own), and Brickworks never meters or pays
+  for it. Free is the whole web app with 25 models kept with the account
+  (api/_billing.js savedModels; saving to the device and exporting have no
+  limit; over 25 nothing is lost, new ones wait until there are fewer).
+  Pro is $8 a month or $80 a year (two months free): every model kept with
+  the account, and the desktop app, which does AI as the web does, plus
+  Claude Code.
 
-  Rebuilt as a pricing page on the design system (site356, 2026-10-29,
-  the owner: "incorporate the pricing pages and tiered system"): the two
-  plans with a Monthly / Yearly choice (yearly first, the price to put
-  first, PLANS.md section 7), what an AI build is, every row of what each
-  has side by side (#compare), the promise to accounts that exist, that
-  education is free, what stays free, and the questions.
+  Built on the design system (site356, 2026-10-29, the owner:
+  "incorporate the pricing pages and tiered system"): Monthly or Yearly
+  (yearly first, PLANS.md section 7), the two plans, the beta while it is
+  open (#beta, from GET /api/plans?op=beta_spots, hidden otherwise), every
+  row side by side (#compare), the promise to accounts that exist,
+  education free, what stays free, and the questions.
 
   While BRICKWORKS_BILLING is off nothing here takes money: there is no
   checkout, no card, no licence check. Pro says Coming soon, and its
   "Tell me when it's ready" opens the interest form (#interest,
   web/plans.js): an email, monthly or yearly and a line, kept by
   /api/plans (supabase/plan_interest.sql) only to write once when Pro
-  opens. When billing is on and Pro is for sale (GET /api/plans says so,
-  api/_billing.js), web/plans.js shows what is marked data-when="sale" in
-  place of data-when="soon": Pro's button goes to /settings?upgrade=month
-  or year#plan, the step before Checkout (web/plan.js, docs/PLANS.md M7),
-  which says the price, the renewal and how to cancel before anyone pays.
+  opens. When billing is on and Pro is for sale (GET /api/plans says so),
+  web/plans.js shows what is marked data-when="sale" in place of
+  data-when="soon": Pro's button goes to /settings?upgrade=month or
+  year#plan, the step before Checkout (web/plan.js, docs/PLANS.md M7).
 
   Until 2026-10-29 this page said Free kept everything, the desktop app
   included. It says plainly what changed, and keeps that promise for
   everyone who had an account before 29 October 2026, when the page
   changed (section 9: Pro as a comp with no end). LEGO® stays out of this
-  page's own words (docs/TRADEMARKS.md Decision 6, section 8 M2). The
-  footer carries the notices as on every page.
+  page's own words (docs/TRADEMARKS.md Decision 6, section 8 M2).
 -->
 <html lang="en">
 <head>
@@ -37,7 +40,7 @@
 <script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Pricing · Brickworks</title>
-<meta name="description" content="Brickworks is free in your browser, with 10 AI builds a month and building by hand without a limit. Pro, coming soon at $8 a month or $80 a year, adds the desktop app and AI builds without a limit. Nothing to pay yet.">
+<meta name="description" content="Brickworks is free in your browser, with AI on your own provider and no limit on it, and 25 models kept with your account. Pro, coming soon at $8 a month or $80 a year, adds the desktop app and every model kept with your account. Nothing to pay yet.">
 <link rel="canonical" href="https://brickworks.diy/plans">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
@@ -45,7 +48,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="Pricing · Brickworks">
-<meta property="og:description" content="Free in your browser. Pro is coming: the desktop app and AI builds without a limit, $8 a month. Nothing takes money yet.">
+<meta property="og:description" content="Free in your browser, AI without a limit. Pro is coming: the desktop app and every model kept with your account, $8 a month. Nothing takes money yet.">
 <meta property="og:url" content="https://brickworks.diy/plans">
 <meta property="og:image" content="https://brickworks.diy/share.png">
 <meta property="og:image:width" content="1200">
@@ -131,8 +134,8 @@ dialog .done .actions { margin-top: var(--s-4); }
 		<div class="wrap">
 			<p class="eyebrow"><span data-when="soon">Pricing · Pro coming soon</span><span data-when="sale" hidden>Pricing</span></p>
 			<h1 id="plans-h"><span data-when="soon">Free in your browser. Pro is coming.</span><span data-when="sale" hidden>Free in your browser. Pro on your desktop.</span></h1>
-			<p class="lede" data-when="soon">Brickworks in any browser is free, with 10 AI builds a month and building by hand without a limit. Pro adds the desktop app and AI builds without a limit. Nothing here takes money yet: say you would use Pro, and we will write once, when it opens.</p>
-			<p class="lede" data-when="sale" hidden>Brickworks in any browser is free, with 10 AI builds a month and building by hand without a limit. Pro adds the desktop app and AI builds without a limit.</p>
+			<p class="lede" data-when="soon">Brickworks in any browser is free, with AI on your own Claude, ChatGPT or key and no limit on it, and 25 models kept with your account. Pro adds the desktop app and keeps every model you make. Nothing here takes money yet: say you would use Pro, and we will write once, when it opens.</p>
+			<p class="lede" data-when="sale" hidden>Brickworks in any browser is free, with AI on your own Claude, ChatGPT or key and no limit on it, and 25 models kept with your account. Pro adds the desktop app and keeps every model you make.</p>
 			<div class="segmented" role="group" aria-label="Billed">
 				<button type="button" data-billing="month" aria-pressed="false">Monthly</button>
 				<button type="button" data-billing="year" aria-pressed="true">Yearly <span class="badge accent">Two months free</span></button>
@@ -150,8 +153,9 @@ dialog .done .actions { margin-top: var(--s-4); }
 				<p>What it has:</p>
 				<ul class="ticks">
 					<li>The web app, in any browser, with nothing to install</li>
-					<li><b>10 AI builds a month</b>, on your own AI plan or key, back on the 1st</li>
-					<li><b>Building by hand without a limit</b></li>
+					<li><b>AI without a limit</b>, on your own Claude, ChatGPT or API key</li>
+					<li><b>25 models kept with your account</b>; saving to your device and exporting without a limit</li>
+					<li>Building by hand without a limit</li>
 					<li>The whole LDraw parts library, and its official models of real sets</li>
 					<li>Physics: whether it stands, and joints that move</li>
 					<li>Booklets to print or save as PDF, renders and exports</li>
@@ -159,30 +163,34 @@ dialog .done .actions { margin-top: var(--s-4); }
 					<li>Parts lists for Rebrickable and BrickLink</li>
 					<li>Publish to the gallery, and challenges</li>
 					<li>Build together, live, by a link</li>
-					<li>Your models kept with your account, up to 500, and every version of a model you share</li>
+					<li>Every version of a model you share</li>
 				</ul>
 			</article>
 
 			<article class="tier featured" id="pro" aria-labelledby="pro-h">
 				<div class="name"><h2 id="pro-h">Pro</h2><span class="pill new" data-when="soon">Coming soon</span></div>
-				<p>The desktop app, and AI builds without a limit.</p>
+				<p>The desktop app, and every model kept with your account.</p>
 				<p class="price"><span data-billed="year"><b data-amount="year">$80</b> a year</span><span data-billed="month" hidden><b data-amount="month">$8</b> a month</span><small data-billed="year">$6.67 a month, billed yearly: two months free</small><small data-billed="month" hidden>Billed monthly. Yearly is two months free.</small></p>
 				<button class="cta" type="button" data-interest="pro" data-when="soon">Tell me when it’s ready</button>
 				<a class="cta" id="pro-upgrade" href="/settings?upgrade=year#plan" data-when="sale" hidden>Upgrade to Pro</a>
 				<p><span data-when="soon">Everything in Free. Coming with Pro:</span><span data-when="sale" hidden>Everything in Free, and:</span></p>
 				<ul class="ticks">
 					<li><b>The desktop app</b> for Windows, macOS and Linux</li>
-					<li>It works offline, with every part on disk</li>
+					<li>It works offline, with every part on disk, and does AI as the web app does, plus Claude Code</li>
 					<li><b>Every version released while you pay is yours to keep</b>, and never locked</li>
-					<li><b>AI builds without a limit</b></li>
+					<li><b>Every model kept with your account</b>, with no limit</li>
 					<li>Yearly is two months free</li>
 				</ul>
 			</article>
 		</div>
 		<div class="after-tiers">
-			<div class="callout accent" id="ai-build">
-				<p class="callout-title">What is an AI build?</p>
-				<p class="what">An AI build is an AI working on a model in one tab: everything it changes there, until it stops for half an hour, counts as one. When it only looks (searches parts, reads the gallery, views the model), nothing is counted, and building by hand never is.</p>
+			<!-- Shown only while the beta is open (web/plans.js asks
+			     /api/plans?op=beta_spots); under the plans, out of the first
+			     screen, so its coming moves nothing in view. -->
+			<div class="callout accent" id="beta" hidden>
+				<p class="callout-title">The beta: 30 days of Pro, free</p>
+				<p class="what">We are looking for 100 testers to use Brickworks for real and tell us honestly how it goes. Each gets 30 days of Pro: every model kept with your account, and the desktop app. No card, nothing to cancel.</p>
+				<p><a href="/beta">Apply for the beta</a></p>
 			</div>
 		</div>
 	</div>
@@ -192,7 +200,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 			<div class="section-head">
 				<div>
 					<h2 class="title" id="compare-h">Every row, side by side</h2>
-					<p>Pro takes nothing out of Free. It adds the desktop app and AI builds without a limit.</p>
+					<p>Pro takes nothing out of Free. It adds the desktop app and every model kept with your account.</p>
 				</div>
 			</div>
 			<div class="table matrix" role="region" aria-labelledby="compare-h" tabindex="0">
@@ -205,7 +213,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 						<tr><th scope="row">Works offline, with every part on disk</th><td><span class="hasnt"><span class="visually-hidden">No</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
 						<tr><th scope="row">Every desktop version released while you pay, yours to keep</th><td><span class="hasnt"><span class="visually-hidden">No</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
 						<tr class="group"><th scope="rowgroup" colspan="3">Designing</th></tr>
-						<tr><th scope="row">AI builds, on your own AI plan or key</th><td>10 a month</td><td>No limit</td></tr>
+						<tr><th scope="row">AI, on your own Claude, ChatGPT or API key</th><td>No limit</td><td>No limit</td></tr>
 						<tr><th scope="row">Building by hand</th><td>No limit</td><td>No limit</td></tr>
 						<tr><th scope="row">Fresh eyes on every new AI design</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
 						<tr><th scope="row">The whole LDraw parts library, and its models of real sets</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
@@ -216,7 +224,8 @@ dialog .done .actions { margin-top: var(--s-4); }
 						<tr><th scope="row">Parts lists for Rebrickable and BrickLink</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
 						<tr><th scope="row">Build together, live, by a link</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
 						<tr><th scope="row">Publish to the gallery, and challenges</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
-						<tr><th scope="row">Models kept with your account</th><td>Up to 500</td><td>Up to 500</td></tr>
+						<tr><th scope="row">Models kept with your account</th><td>25</td><td>Unlimited</td></tr>
+						<tr><th scope="row">Saving to your device, and exporting</th><td>No limit</td><td>No limit</td></tr>
 						<tr><th scope="row">Every version of a model you share</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
 						<tr><th scope="row">Price</th><td>$0</td><td>$8 a month, or $80 a year</td></tr>
 					</tbody>
@@ -230,7 +239,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 			<div class="asides">
 				<section class="card" id="had" aria-labelledby="had-h">
 					<h2 id="had-h">Have an account? You keep everything</h2>
-					<p>Every account made before 29 October 2026, when this page changed, gets Pro, free and with no end date: the desktop app, every version of it, and AI builds without a limit. There is nothing to do: it is on your account when Pro opens.</p>
+					<p>Every account made before 29 October 2026, when this page changed, gets Pro, free and with no end date: the desktop app, every version of it, and every model kept with your account. There is nothing to do: it is on your account when Pro opens.</p>
 				</section>
 				<section class="card" id="edu" aria-labelledby="edu-h">
 					<h2 id="edu-h">Education is free</h2>
@@ -239,12 +248,12 @@ dialog .done .actions { margin-top: var(--s-4); }
 			</div>
 			<section class="keeps" aria-labelledby="keep-h">
 				<h2 id="keep-h">What stays free</h2>
-				<p class="what">Pro adds the desktop app and AI builds without a limit. It takes nothing out of Free, which keeps all of this:</p>
+				<p class="what">Pro adds the desktop app and every model kept with your account. It takes nothing out of Free, which keeps all of this:</p>
 				<ul class="keep">
 					<li><b>The web app.</b> In any browser, on a computer, a tablet or a phone.</li>
-					<li><b>Building by hand, without a limit.</b> Only an AI’s building is counted.</li>
-					<li><b>Everything else the app does today.</b> Saving with your account, Build together, booklets and PDFs, renders, exports, photo search, parts lists, publishing, the gallery and challenges.</li>
-					<li><b>Your models.</b> Nothing is ever deleted or locked: on any plan, or none, the app opens, edits and exports everything you made.</li>
+					<li><b>AI and building by hand, without a limit.</b> Bring your own AI: Claude or ChatGPT through the connector, Claude Code, or an API key of your own.</li>
+					<li><b>Everything else the app does today.</b> Saving to your device, 25 models kept with your account, Build together, booklets and PDFs, renders, exports, photo search, parts lists, publishing, the gallery and challenges.</li>
+					<li><b>Your models.</b> Nothing is ever deleted or locked: on any plan, or none, the app opens, edits and exports everything you made. With more than 25 kept with your account you keep every one; a new one goes there once you are under 25 again.</li>
 					<li><b>What you downloaded.</b> Every desktop version you download keeps working. Until Pro opens, the desktop app is free to download.</li>
 				</ul>
 			</section>
@@ -256,11 +265,15 @@ dialog .done .actions { margin-top: var(--s-4); }
 			<div class="section-head"><div><h2 class="title" id="ask-h">Questions</h2></div></div>
 			<details class="qa" id="changed">
 				<summary>This page said the desktop app was free. What changed?</summary>
-				<div><p>Until 29 October 2026 it said Free kept everything, the desktop app included. The plan changed: Free is the web app with 10 AI builds a month, and the desktop app and AI builds past 10 come with Pro. Everyone who had an account before then keeps both, free, with no end date. Nothing anyone has today is taken away.</p></div>
+				<div><p>Until 29 October 2026 it said Free kept everything, the desktop app included. The plan changed: Free is the web app, with AI without a limit and 25 models kept with your account, and the desktop app and every model kept with your account come with Pro. Everyone who had an account before then keeps both, free, with no end date. Nothing anyone has today is taken away.</p></div>
+			</details>
+			<details class="qa" id="ai">
+				<summary>Is AI limited on Free?</summary>
+				<div><p>No. AI has no limit on any plan, because you bring your own: Claude or ChatGPT through the connector, Claude Code, or your own API key for any provider. Brickworks never meters it or pays for its tokens.</p></div>
 			</details>
 			<details class="qa">
 				<summary>Why Pro at all?</summary>
-				<div><p>To pay for what Brickworks costs to run and to make: the server every AI build goes through, the storage your models are kept in, and a desktop app built and tested for three systems. The AI itself runs on your own plan or key, so Brickworks never sells model use or takes a cut of it.</p></div>
+				<div><p>To pay for what Brickworks costs to run and to make: the servers the app and the connector run on, the storage your models are kept in, and a desktop app built and tested for three systems. The AI itself runs on your own plan or key, so Brickworks never sells model use or takes a cut of it.</p></div>
 			</details>
 			<details class="qa">
 				<summary>Can I pay now?</summary>
@@ -269,7 +282,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 			</details>
 			<details class="qa">
 				<summary>What if I stop paying for Pro?</summary>
-				<div><p>Nothing stops. Every desktop version released while you paid stays yours and keeps working, online or off, and your account goes back to Free: the web app, and 10 AI builds a month. Nothing you made is deleted or locked.</p></div>
+				<div><p>Nothing stops. Every desktop version released while you paid stays yours and keeps working, online or off, and your account goes back to Free: the web app, and 25 models kept with your account. Every model already there stays; a new one goes there once you are under 25. Nothing you made is deleted or locked.</p></div>
 			</details>
 			<details class="qa">
 				<summary>What does the form keep?</summary>
@@ -368,27 +381,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 			</nav>
 		</div>
 		<div class="legal">
-			<p>
-				Models in the gallery are made and shared by the people credited, or by
-				someone who chose not to be; Brickworks does not check them before they
-				are listed. Something that should not be there? Press Report on its
-				page, or see <a href="/takedown">takedown requests</a>.
-			</p>
-			<p>
-				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
-				community, licensed
-				<a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a> and
-				<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
-				LDraw™ is a trademark owned and licensed by the Estate of James
-				Jessiman. This site is not affiliated with or endorsed by LDraw.org.
-				Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
-			</p>
-			<p>
-				LEGO® is a trademark of the LEGO Group of companies which does not
-				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
-				Minifigure and the Brick and Knob configurations are also trademarks
-				of the LEGO Group. BrickLink is a trademark of the LEGO Group too.
-			</p>
+			<p>LEGO® is a trademark of the LEGO Group of companies, which does not sponsor or endorse this site. Parts from the LDraw™ library (CC BY). <a href="/terms#notices">Notices</a></p>
 		</div>
 	</div>
 </footer>

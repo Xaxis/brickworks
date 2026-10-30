@@ -14,7 +14,9 @@
 //      and Pro at $80 a year, then $8 a month once Monthly is pressed
 //      (site356: Yearly first); every row side by side (#compare); Pro
 //      Coming soon, with Tell me when it's ready and no way to pay shown
-//      (billing is off); what an AI build is; accounts that exist keep
+//      (billing is off); AI without a limit and no AI builds anywhere,
+//      25 models kept with your account on Free and any number on Pro;
+//      the beta's callout shown only while the beta is open; accounts that exist keep
 //      everything; education free; what stays free; nothing sideways; the
 //      footer links /plans; the privacy page says what the form keeps.
 //   2. At 390 px, Pro's button opens the form with yearly chosen. An
@@ -126,8 +128,12 @@ try {
       check(`${at}: Monthly shows $8 a month (${monthly})`, monthly.startsWith("$8 a month") && !monthly.includes("$80 a year"));
       await page.click('[data-billing="year"]');
       const table = await page.$$eval("#compare tbody tr", (all) => all.map((one) => one.innerText.replace(/\s+/g, " ").trim()));
-      check(`${at}: every row side by side (${table.length} rows), AI builds 10 a month or no limit`,
-        table.length > 10 && table.some((one) => /AI builds.*10 a month.*No limit/.test(one)));
+      check(`${at}: every row side by side (${table.length} rows), 25 models kept on Free, unlimited on Pro`,
+        table.length > 10 && table.some((one) => /Models kept with your account 25 Unlimited/.test(one)));
+      const betaOpen = await page.evaluate(() => fetch("/api/plans?op=beta_spots", { headers: { accept: "application/json" } })
+        .then((r) => r.json().then((b) => r.ok && b?.beta === "open")).catch(() => false));
+      check(`${at}: the beta's callout ${betaOpen ? "shown, the beta open" : "hidden, the beta not open"}`,
+        (await page.isVisible("#beta")) === betaOpen);
       check(`${at}: no way to pay shown while billing is off`, !(await page.isVisible("#pro-upgrade")));
       check(`${at}: Pro marked Coming soon, Free not`, !tiers[0]?.soon && tiers[1]?.soon);
       check(`${at}: Pro has Tell me when it's ready, Free not`,
@@ -135,13 +141,13 @@ try {
       check(`${at}: the two side by side on a wide screen, one under the other on a phone`,
         width < 600 ? tiers[0].top < tiers[1].top : tiers[0].top === tiers[1].top);
       const body = await words(page, "main");
-      check(`${at}: what an AI build is`, /An AI build is an AI working on a model/.test(body));
+      check(`${at}: AI without a limit, and no AI builds anywhere`, /AI without a limit/.test(body) && !/AI build/i.test(body));
       check(`${at}: accounts that exist keep everything`,
         /Every account made before 29 October 2026, when this page changed, gets Pro, free and with no end date/.test(body));
       check(`${at}: education is free`, /Education is free/.test(body));
       check(`${at}: what stays free: the web app, by hand, everything else, nothing taken out`,
         /What stays free/.test(body) && /It takes nothing out of Free/.test(body) && /The web app\./.test(body)
-        && /Building by hand, without a limit\./.test(body) && /Everything else the app does today\./.test(body));
+        && /AI and building by hand, without a limit\./.test(body) && /Everything else the app does today\./.test(body));
       check(`${at}: no Claude builds, and no free desktop`,
         !/Claude build/i.test(body) && !/desktop app (is|stays) free(?! to download)/i.test(body));
       check(`${at}: nothing on the page takes money (no checkout, no card form)`,
