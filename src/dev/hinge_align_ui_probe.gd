@@ -90,6 +90,13 @@ func _ring() -> void:
 		rest[brick.id] = brick.transform
 	_builder.clear_selection()
 	_builder.forget_history()
+	# Where the parts bin and the right-hand column take turns
+	# (Main._fit_panels), Properties' column is opened by its rail, as a
+	# person opens it.
+	var dock: SideDock = SideDock.of(_shell.inspector)
+	if dock != null and not dock.is_open():
+		await _click(dock.rail().get_global_rect().get_center())
+		await _frames(30)
 	_shell.inspector.set_open(true)
 	_camera.frame(box.grow(20.0), 1.0)
 	_camera.look_from(Vector3(0.25, 0.55, 0.8).normalized())
