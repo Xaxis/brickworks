@@ -99,9 +99,7 @@ func _two_pulleys() -> void:
 	print("  a band round two wedge belt wheels five studs apart")
 	var a: int = _put("4185a", Transform3D(Basis.IDENTITY, Vector3(0, 60, 0)))
 	var b: int = _put("4185a", Transform3D(Basis.IDENTITY, Vector3(100, 60, 0)))
-	# The wheels right of the middle, clear of the tool's panel over the
-	# model's top left.
-	await _look_at(AABB(Vector3(-120, 40, -10), Vector3(300, 120, 20)))
+	await _look_at(AABB(Vector3(-40, 20, -10), Vector3(180, 80, 20)))
 	await _shot("1_before")
 	var before: int = _count()
 	var depth: int = _builder.history_depth()
@@ -109,13 +107,12 @@ func _two_pulleys() -> void:
 	_check("picking the band from the bin opens the tool on it (%s, %s)" % [_flex.stage, _flex._told.text],
 		_flex.active and _flex.stage == "pulleys" and _flex._band == BAND)
 	await _move(_screen(_rim(a)))
-	var over: Control = root.gui_get_hovered_control()
-	_check("pointing at a wheel lights it (%s over it)" % (over.name if over != null else "nothing"),
-		_flex._hover_round != null and _flex._hover_round.brick == a)
-	await _click(_screen(_rim(a)))
+	_check("pointing at a wheel lights it", _flex._hover_round != null
+		and _flex._hover_round.brick == a)
+	await _click_on(_rim(a))
 	actions += 1
 	_check("a click puts the band round it (%s)" % _flex._told.text, _flex._rounds.size() == 1)
-	await _click(_screen(_rim(b)))
+	await _click_on(_rim(b))
 	actions += 1
 	await _frames(10)
 	var item: String = _flex._item
@@ -148,7 +145,7 @@ func _triangle() -> void:
 	var depth: int = _builder.history_depth()
 	var actions: int = await _pick_from_bin(BAND)
 	for brick_id: int in [a, b, c]:
-		await _click(_screen(_rim(brick_id)))
+		await _click_on(_rim(brick_id))
 		actions += 1
 	await _frames(10)
 	var item: String = _flex._item
@@ -273,8 +270,8 @@ func _spring() -> void:
 		var springs: Array = _flex._spring_choices()
 		_flex._length_picker.select(springs.find("70038"))
 		_flex._length_picker.item_selected.emit(springs.find("70038"))
-	await _click(_screen((holes[0] as Flex.Anchor).at))
-	await _click(_screen((holes[1] as Flex.Anchor).at))
+	await _click_on((holes[0] as Flex.Anchor).at)
+	await _click_on((holes[1] as Flex.Anchor).at)
 	await _frames(10)
 	var item: String = _flex._item
 	_check("two clicks lay it (%s; %s)" % [item, _flex._told.text], not item.is_empty()
@@ -337,8 +334,8 @@ func _shock() -> void:
 	var actions: int = await _pick_from_bin("73129")
 	_check("picking it from the bin opens the tool on it (%s)" % _flex._told.text,
 		_flex.active and _flex.kind == "spring" and _flex._spring == "73129")
-	await _click(_screen(_hole_of(a).at))
-	await _click(_screen(_hole_of(b).at))
+	await _click_on(_hole_of(a).at)
+	await _click_on(_hole_of(b).at)
 	actions += 2
 	await _frames(10)
 	var item: String = _flex._item
@@ -535,11 +532,25 @@ func _tile(part: String) -> Vector2:
 	return Vector2.ZERO
 
 
+## Framed from the front, in the model's lower right: the tool's panel
+## stands over its top left, and in a laptop's window it covers half of it,
+## so a person turns the view to have what they click beside it.
 func _look_at(box: AABB) -> void:
 	_camera.set_view("front")
 	await _frames(3)
-	_camera.frame(box, 1.8)
+	var wider := AABB(box.position - Vector3(box.size.x * 1.2, box.size.y * 0.2, 0),
+		box.size + Vector3(box.size.x * 1.2, box.size.y * 0.7, 0))
+	_camera.frame(wider, 1.15)
 	await _frames(30)
+
+
+## A click on the model at [param point], said to fail when something over
+## the model would take it instead.
+func _click_on(point: Vector3) -> void:
+	var at: Vector2 = _screen(point)
+	if _flex.panel.visible and _flex.panel.get_global_rect().has_point(at):
+		_check("%s is clear of the tool's panel" % str(at.round()), false)
+	await _click(at)
 
 
 func _screen(point: Vector3) -> Vector2:

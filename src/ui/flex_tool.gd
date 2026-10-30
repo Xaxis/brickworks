@@ -1441,6 +1441,11 @@ func _build_panel() -> void:
 	_length_picker = OptionButton.new()
 	_length_picker.add_theme_font_size_override("font_size", 12)
 	_length_picker.focus_mode = Control.FOCUS_NONE
+	# As wide as the panel: a shock's name ("... Stiff with Spring with Tight
+	# Coils at Ends") widened it over half a laptop's model. Its list shows
+	# each name whole.
+	_length_picker.fit_to_longest_item = false
+	_length_picker.clip_text = true
 	_length_picker.item_selected.connect(choose_length)
 	column.add_child(_length_picker)
 	_told = Label.new()
