@@ -1319,32 +1319,103 @@ func _unasked(wanted_category: String) -> Array[PartLibrary.PartInfo]:
 	if _unasked_cache.has(key):
 		_set_aside = int(_unasked_cache[key][1])
 		return _unasked_cache[key][0]
+	var made: Array = []
+	if wanted_category == "all":
+		if OS.has_feature("web"):
+			made = all_as_packed(library)
+		if made.is_empty():
+			made = all_unasked(library)
+	else:
+		made = _category_unasked(library, wanted_category)
+	_set_aside = int(made[1])
+	_unasked_cache[key] = made
+	return made[0]
+
+
+## All with nothing typed: [its parts, staples first, and how many were set
+## aside]. Stickers and superseded parts are still findable by name or by
+## their own button; they are just not what anyone means by "show me the
+## parts". Counted as they are skipped so the status line can say how many
+## and where they went — silently dropping 7,738 parts is indistinguishable
+## from losing them. Static, so the web export works it out once
+## (src/dev/all_order.gd) and a first visit reads it (all_as_packed).
+static func all_unasked(from: PartLibrary) -> Array:
 	var found: Array[PartLibrary.PartInfo] = []
 	var set_aside: int = 0
-	for id: String in library.ids():
-		var info: PartLibrary.PartInfo = library.parts[id]
+	var old: Dictionary = from.superseded_ids()
+	for id: String in from.ids():
+		var info: PartLibrary.PartInfo = from.parts[id]
 		if info.is_redirect():
 			continue
 		if not info.reachable:
 			continue  # no geometry anywhere in this build
-		if wanted_category == "all" and library.superseded(id):
+		if old.has(id):
 			continue
-		if wanted_category == "all":
-			# Stickers and superseded parts are still findable by name or
-			# by their own button; they are just not what anyone means by
-			# "show me the parts". Counted as they are skipped so the
-			# status line can say how many and where they went — silently
-			# dropping 7,738 parts is indistinguishable from losing them.
-			if _is_buried(info.category):
-				set_aside += 1
-				continue
-		elif info.category.to_lower() != wanted_category:
+		if _is_buried(info.category):
+			set_aside += 1
 			continue
 		found.append(info)
-	_set_aside = set_aside
 	_sort_for(found, "")
-	_unasked_cache[key] = [found, set_aside]
-	return found
+	return [found, set_aside]
+
+
+## One category's parts with nothing typed, staples first: [its parts, 0].
+static func _category_unasked(from: PartLibrary, wanted_category: String) -> Array:
+	var found: Array[PartLibrary.PartInfo] = []
+	for id: String in from.ids():
+		var info: PartLibrary.PartInfo = from.parts[id]
+		if info.is_redirect() or not info.reachable:
+			continue
+		if info.category.to_lower() != wanted_category:
+			continue
+		found.append(info)
+	_sort_for(found, "")
+	return [found, 0]
+
+
+## All's order as the web export worked it out (src/dev/all_order.gd), for
+## the catalogue this build carries: on a first visit it was most of a
+## second of the start, sorting and waiting for the parts LDraw keeps only
+## for old files (webload, 2026-10-30). Read on the web alone (_unasked).
+## The file's first line is the catalogue's part count and the number set
+## aside, then a part a line. Empty, so All is worked out here, for a
+## catalogue of another size, or with parts made here, which it does not hold.
+static func all_as_packed(from: PartLibrary, path: String = ALL_ORDER) -> Array:
+	if not from.custom.is_empty() or not FileAccess.file_exists(path):
+		return []
+	var lines: PackedStringArray = FileAccess.get_file_as_string(path).split("\n", false)
+	if lines.is_empty():
+		return []
+	var head: PackedStringArray = lines[0].split(" ", false)
+	if head.size() != 2 or head[0].to_int() != from.ids().size():
+		return []
+	var found: Array[PartLibrary.PartInfo] = []
+	found.resize(lines.size() - 1)
+	for n: int in range(1, lines.size()):
+		var info: PartLibrary.PartInfo = from.parts.get(lines[n])
+		if info == null:
+			return []
+		found[n - 1] = info
+	return [found, head[1].to_int()]
+
+
+## Where the web export writes All's order (src/dev/all_order.gd).
+const ALL_ORDER := "res://assets/web/all_order.txt"
+
+
+## Write All's order for [param from] to [param path], as all_as_packed reads
+## it: [its parts, how many set aside], or [] if it could not be written.
+static func write_all_order(from: PartLibrary, path: String = ALL_ORDER) -> Array:
+	var made: Array = all_unasked(from)
+	var lines := PackedStringArray(["%d %d" % [from.ids().size(), int(made[1])]])
+	for info: PartLibrary.PartInfo in made[0]:
+		lines.append(info.id)
+	var out: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	if out == null:
+		return []
+	out.store_string("\n".join(lines) + "\n")
+	out.close()
+	return made
 
 
 ## Category and catalogue size -> [its parts with nothing typed, set aside].

@@ -193,6 +193,14 @@ esac
 rm -rf assets/ldraw/p && cp -R vendor/ldraw/p assets/ldraw/p \
   || { echo "export FAILED: could not copy the LDraw primitives"; exit 1; }
 godot --headless --import >/dev/null 2>&1 || true
+# The parts bin's All in order for the web pack's catalogue, worked out here
+# once rather than on every first visit (src/dev/all_order.gd, webload).
+case "$target" in
+  web|web-nothreads|all)
+    rm -f assets/web/all_order.txt
+    godot --headless --path . --script src/dev/all_order.gd 2>&1 | grep -E '^all_order'
+    [ -s assets/web/all_order.txt ] || { echo "export FAILED: no assets/web/all_order.txt (src/dev/all_order.gd)"; exit 1; } ;;
+esac
 case "$target" in
   web) build_web "Web" build/web ;;
   web-nothreads) build_web "Web (no threads)" build/web-nothreads ;;

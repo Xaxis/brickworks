@@ -56,6 +56,15 @@ With --compressed a file with a .br beside it (tools/export.sh) is sent
 as that, to a browser that takes brotli, as the deployment sends it
 (tools/deploy.sh): what tools/web/load_check.mjs times a local export by.
 
+With --cached the build is cached as the deployment caches it: the page
+asked again each visit (no-cache, as /app is), the engine, its packs and
+everything else under the build's folder kept (immutable, as /b/<sha>/
+is). Without it every file is no-store, so a return visit fetched all
+of it again and load_check's --warm timed a second first visit:
+
+    tools/web/serve.py build/web 9240 --parts assets/generated/parts --delay 0 \
+        --accounts --compressed --cached
+
 With --library it stands in for the parts store's library (src/net/
 model_library.gd) and the gallery's list, as the library screen and
 open_model library= read them: /api/account names this server as the
@@ -98,6 +107,7 @@ class Handler(SimpleHTTPRequestHandler):
     library: Path | None = None
     omr: Path | None = None
     compressed: bool = False
+    cached: bool = False
     # Where to sign in, as /api/account says it with --accounts.
     accounts: dict[str, object] = {}
 
@@ -119,8 +129,17 @@ class Handler(SimpleHTTPRequestHandler):
     def end_headers(self) -> None:
         self.send_header("Cross-Origin-Opener-Policy", "same-origin")
         self.send_header("Cross-Origin-Embedder-Policy", "require-corp")
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", self._kept())
         super().end_headers()
+
+    def _kept(self) -> str:
+        """The Cache-Control the deployment sends this address (--cached)."""
+        path = self.path.split("?", 1)[0]
+        if not self.cached or path.startswith(("/api/", "/m/", "/library/")) or path == "/version.json":
+            return "no-store"
+        if path in ("/", "/index.html"):
+            return "no-cache"
+        return "public, max-age=31536000, immutable"
 
     def do_GET(self) -> None:  # noqa: N802 - the name http.server calls
         path = self.path.split("?", 1)[0]
@@ -273,6 +292,8 @@ def main() -> int:
     parser.add_argument("--omr", default="vendor/omr/files", help="where library/omr/ is read from")
     parser.add_argument("--compressed", action="store_true",
                         help="send a file's .br sibling to a browser that takes brotli")
+    parser.add_argument("--cached", action="store_true",
+                        help="cache the build as the deployment does: the page no-cache, its files immutable")
     parser.add_argument("--share", action="append", default=[],
                         help="answer /api/share?id= and /m/<id> with this model (FILE, or ID=FILE)")
     parser.add_argument("--accounts", action="store_true",
@@ -296,6 +317,7 @@ def main() -> int:
     if args.parts_url:
         Handler.parts_url = args.parts_url
     Handler.compressed = args.compressed
+    Handler.cached = args.cached
     if args.library:
         Handler.library = Path(args.library).resolve()
         Handler.omr = Path(args.omr).resolve()
@@ -305,6 +327,7 @@ def main() -> int:
           + (f", parts from {args.parts} after {args.delay:.0f} ms" if args.parts else "")
           + (f", parts at {args.parts_url}" if args.parts_url else "")
           + (", .br where there is one" if args.compressed else "")
+          + (", cached as deployed" if args.cached else "")
           + (", with accounts" if args.accounts else ""),
           flush=True)
     server.serve_forever()
