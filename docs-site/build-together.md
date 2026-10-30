@@ -33,7 +33,7 @@ Open the link, or paste it in **File › Build together…** and press **Join**.
 - **Undo takes back only your own changes**, never someone else's.
 - **Follow** beside a name in **File › Build together…** puts your view where theirs is, and keeps it there as they turn it. Move the view yourself, or press **Stop**, to stop.
 - A short chat is there for people 13 and over.
-- A reload goes back into the session by itself, and sends what you had just changed. Leaving ends nothing for the others, even if you started the session.
+- A reload goes back into the session by itself, and sends what you had just changed. So does closing the tab or quitting the app: what you had just changed is sent as it closes, or, if it could not be, the next time you open Brickworks. Leaving ends nothing for the others, even if you started the session.
 
 ## Comments on parts {#comments}
 

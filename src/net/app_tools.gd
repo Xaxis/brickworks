@@ -115,6 +115,7 @@ const WINDOW_ONLY: Dictionary = {
 	"panel_*": "the window's panels",
 	"show_properties": "the window's panels",
 	"full_screen": "the window's panels",
+	"split_view": "the window's panels: a second view of the person's; view_model from= looks from any side",
 	"rotate_held": "the part in the person's hand; a session gives rot= and face=",
 	"tip_held": "the part in the person's hand; a session gives rot= and face=",
 	"measure": "a ruler for the person; a session's coordinates are already studs and plates",
@@ -384,7 +385,10 @@ func definitions() -> Array:
 				+ "round sprockets= (two or more gears in one plane). The real length that "
 				+ "fits is chosen, and it bends no tighter than the real one can. It goes in "
 				+ "as one sub-assembly, named in the answer; item= that name lays it again "
-				+ "between new ends."),
+				+ "between new ends. band: a rubber belt round sprockets= (pulleys, wheels, "
+				+ "bushes or axles, in order round the loop); spring: between from= and to=, "
+				+ "its turns kept when a part it is on moves. part= picks the band, the "
+				+ "spring or the shock absorber by number."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["kind"], "properties": {
 				"kind": {"type": "string", "enum": FlexTool.KIND_ORDER},
@@ -393,6 +397,7 @@ func definitions() -> Array:
 					"description": "part numbers of the gears a chain or tread goes round"},
 				"color": {"type": "integer", "description": "LDraw colour; black when omitted"},
 				"item": {"type": "string", "description": "a hose already laid, by its name in an earlier answer"},
+				"part": {"type": "string", "description": "a band, spring or shock absorber's number (85546, 73129)"},
 			}},
 		},
 		{
@@ -1437,7 +1442,15 @@ func _lay_flex(input: Dictionary) -> String:
 	var chain: bool = str(Flex.KINDS[kind]["family"]) == "links"
 	var anchors: Array = []
 	var sprockets: Array = []
-	if chain:
+	if kind == "band":
+		for raw: Variant in input.get("sprockets", []):
+			var brick: BrickWorld.Brick = _brick(int(raw))
+			if brick == null or Bands.round_of(brick, library) == null:
+				return "#%d is not round: a band goes round a pulley, a wheel, a bush or an axle." % int(raw)
+			sprockets.append(brick.id)
+		if sprockets.size() < 2:
+			return "Give sprockets= two or more round parts' numbers, in order round the loop."
+	elif chain:
 		for raw: Variant in input.get("sprockets", []):
 			var brick: BrickWorld.Brick = _brick(int(raw))
 			if brick == null or Flex.sprocket_of(brick, library) == null:
@@ -1480,7 +1493,8 @@ func _lay_flex(input: Dictionary) -> String:
 		if best.is_empty():
 			return "Both ends are the same connector; give two."
 		anchors = best
-	var laid: Flex.Laid = await flex.lay(kind, anchors, sprockets, colour, item)
+	var laid: Flex.Laid = await flex.lay(kind, anchors, sprockets, colour, item,
+		str(input.get("part", "")))
 	if laid == null or laid.pieces.is_empty():
 		var why: String = "" if laid == null else "; ".join(laid.warnings)
 		return "Nothing laid%s." % (": " + why if not why.is_empty() else
