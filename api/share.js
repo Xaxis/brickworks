@@ -2100,8 +2100,10 @@ async function catalogSetPage(response, origin, number) {
   const entry = catalogSet(number);
   if (!entry) return html(response, 404, gonePage(origin, number.slice(0, 40), false));
   const catalogue = setCatalog();
-  const by = modelsBySet(await librarySets().catch(() => []));
-  const lots = entry.lots ? catalogLots(await catalogRows(entry, origin)) : null;
+  // LDraw's shelf and the set's shard, each a fetch, asked at once.
+  const [models, rows] = await Promise.all([librarySets().catch(() => []), entry.lots ? catalogRows(entry, origin) : null]);
+  const by = modelsBySet(models);
+  const lots = entry.lots ? catalogLots(rows) : null;
   const inside = entry.inside.map(([one, n]) => [catalogSet(one), n]).filter(([one]) => one);
   const next = catalogBeside(catalogue.sets, entry).map((one) => catalogCard(one, by));
   return html(response, 200, catalogPage({ origin, entry, chrome: siteChrome(), held: by.get(entry.set.toLowerCase()) || null,
