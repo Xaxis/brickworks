@@ -4445,6 +4445,9 @@ var _sizes_said: Dictionary = {}
 ## The Claude chat whose call is running, as the relay names it, or "" (the
 ## desktop's port, a tab's own address): set by CommandSocket around each call.
 var chat: String = ""
+## Who made the call that is running, by name, for the history's step:
+## Claude, or the model on the person's key (CommandSocket.who_of).
+var who: String = "Claude"
 
 
 ## A chat begins a sitting in this tab (ClaudeConnector._sitting): it is told
@@ -22173,11 +22176,11 @@ func _gather_focus_step(was: Dictionary) -> String:
 	if not focus.step.is_empty() and is_same(builder.last_step(), focus.step):
 		focus.own_steps = own + focus.own_steps
 		focus.step["steps"] = steps + (focus.step["steps"] as Array)
-		focus.step["words"] = "Claude's change to the selection (%s)" \
-			% SelectionScope.words_for(focus.own_steps)
+		focus.step["words"] = "%s's change to the selection (%s)" \
+			% [who, SelectionScope.words_for(focus.own_steps)]
 	else:
 		focus.own_steps = own
-		builder.record(steps, "Claude's change to the selection (%s)" % words)
+		builder.record(steps, "%s's change to the selection (%s)" % [who, words])
 		focus.step = builder.last_step()
 	if ClaudeStep.lays({"steps": steps}):
 		laid_parts.emit()

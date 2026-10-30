@@ -387,6 +387,11 @@ func designing_elsewhere() -> bool:
 func refresh_designer() -> void:
 	_show_settings()
 	_show_for_key(OwnKey.has_key())
+	# The words that ask it name it.
+	if not _working:
+		_send.text = _send_words()
+	if _chip != null and _chip.visible:
+		_input.placeholder_text = ABOUT_PLACEHOLDER.replace("Claude", ProviderSettings.designer_name())
 
 
 ## Words put in the brief's box for the person to send or change, never
@@ -480,7 +485,7 @@ func ask_about(selected: Array, words: String = "") -> void:
 		_status.text = "Select the parts to ask about first."
 		return
 	_show_chip()
-	_input.placeholder_text = ABOUT_PLACEHOLDER
+	_input.placeholder_text = ABOUT_PLACEHOLDER.replace("Claude", ProviderSettings.designer_name())
 	if not words.is_empty():
 		_input.text = words
 	# With no key, the Claude on this machine is the way to ask that works.
@@ -524,9 +529,11 @@ func _show_chip() -> void:
 	_show_sketch_first()
 
 
-## What the button says: a request about a selection asks, a brief builds.
+## What the button says: a request about a selection asks whoever designs
+## (Claude, or the model on the person's key), a brief builds.
 func _send_words() -> String:
-	return "Ask Claude" if _chip != null and _chip.visible else "Build it"
+	return "Ask %s" % ProviderSettings.designer_name() if _chip != null and _chip.visible \
+		else "Build it"
 
 
 # -- sketch first ---------------------------------------------------------------

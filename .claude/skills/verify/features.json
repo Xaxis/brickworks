@@ -729,6 +729,14 @@
       "tests": []
     },
     {
+      "id": "cli:designer words probe",
+      "kind": "cli",
+      "entry": "src/dev/designer_words_probe.gd",
+      "reach": "tools/probe.sh designer_words_probe",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:designers browser flow",
       "kind": "cli",
       "entry": "tools/web/designers_flow.mjs",
@@ -2493,7 +2501,15 @@
       "id": "lib:designing on Anthropic's Messages or Gemini's own API",
       "kind": "lib",
       "entry": "src/ai/anthropic_messages.gd",
-      "reach": "tools/probe.sh provider_apis_probe   (AnthropicMessages and GeminiNative read and written offline, then each designs, is tested and lists its models against tools/provider_stub.py, as strict as each API)",
+      "reach": "tools/probe.sh provider_apis_probe   (AnthropicMessages, GeminiNative and OpenAIResponses read and written offline, then each designs, is tested and lists its models against tools/provider_stub.py, as strict as each API)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:designing on OpenAI's Responses",
+      "kind": "lib",
+      "entry": "src/ai/openai_responses.gd",
+      "reach": "tools/probe.sh provider_apis_probe   (OpenAIResponses read and written offline: flat functions not strict, pictures as input_image inside function_call_output, reasoning items sent back with their encrypted content, store false; then a design, Test and the model list against the stub's strict /v1/responses)",
       "area": "assistant",
       "tests": []
     },
@@ -2905,6 +2921,14 @@
       "entry": "src/parts/model_store.gd",
       "reach": "godot --headless --path . --script src/dev/store_probe.gd",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "lib:saying who designs",
+      "kind": "lib",
+      "entry": "src/ai/provider_settings.gd",
+      "reach": "tools/probe.sh designer_words_probe   (Claude's call and GPT-6.1 Sol's design on a key: the history's steps, a call's job, a change to the selection, the toolbar while it works, Ask \u2026 about this\u2026, the panel's Ask and Brick Art's Design with \u2026)",
+      "area": "assistant",
       "tests": []
     },
     {

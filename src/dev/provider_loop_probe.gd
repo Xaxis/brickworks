@@ -97,7 +97,7 @@ func _end_to_end() -> void:
 	while Time.get_ticks_msec() < until:
 		await process_frame
 
-	var provider: Provider = ProviderSettings.provider_for("openai", "gpt-6.1-sol", key,
+	var provider: Provider = ProviderSettings.provider_for("custom", "gpt-6.1-sol", key,
 		"http://127.0.0.1:%d/v1" % _stub_port)
 	var started: bool = _main.call("design_with_provider", BRIEF, provider)
 	_check("the design starts", started)
@@ -177,7 +177,7 @@ func _stopped_then_again() -> void:
 	var endings: Array = []
 	loop.finished.connect(func(ok: bool, summary: String) -> void: endings.append([ok, summary]))
 	_check("a design on the slow provider starts", _main.call("design_with_provider", BRIEF,
-		ProviderSettings.provider_for("openai", "gpt-6.1-sol", key,
+		ProviderSettings.provider_for("custom", "gpt-6.1-sol", key,
 			"http://127.0.0.1:%d/v1" % _slow_port)))
 	await _seconds(1.0)
 	_check("...and is busy while it thinks", loop.busy())
@@ -185,7 +185,7 @@ func _stopped_then_again() -> void:
 	_check("stopped: finished once, as stopped: %s" % str(endings),
 		endings == [[false, "stopped"]] and not loop.busy())
 	_check("another starts at once on the quick one", _main.call("design_with_provider", BRIEF,
-		ProviderSettings.provider_for("openai", "gpt-6.1-sol", key,
+		ProviderSettings.provider_for("custom", "gpt-6.1-sol", key,
 			"http://127.0.0.1:%d/v1" % _stub_port)))
 	var until: int = Time.get_ticks_msec() + 240000
 	while endings.size() < 2 and Time.get_ticks_msec() < until:
@@ -216,7 +216,10 @@ func _after(asked: Array, replies: int) -> Dictionary:
 ## Chat Completions, read and written, with no network.
 func _adapter() -> void:
 	print("── the Chat Completions adapter ──")
-	var chat: Provider = ProviderSettings.provider_for("openai", "gpt-6.1-sol", "sk-x")
+	# OpenAI's own models are spoken to in Responses (provider_apis_probe);
+	# Chat Completions at OpenAI's address is any server that copies it.
+	var chat: Provider = ProviderSettings.provider_for("custom", "gpt-6.1-sol", "sk-x",
+		"https://api.openai.com/v1")
 	var picture: Dictionary = {"type": "image", "mimeType": "image/png", "data": "iVBORw0KGgo="}
 	var turns: Array = [
 		{"role": "user", "content": [{"type": "text", "text": "a tower"}]},

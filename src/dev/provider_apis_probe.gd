@@ -1,13 +1,14 @@
-## Do Anthropic's Messages and Gemini's own API design here, as Chat
-## Completions does?
+## Do Anthropic's Messages, Gemini's own API and OpenAI's Responses design
+## here, as Chat Completions does?
 ##
 ##   godot --path . --resolution 1400x900 --script src/dev/provider_apis_probe.gd
 ##
-## AnthropicMessages and GeminiNative, each one file beside OpenAIChat
-## (docs/PROVIDERS.md, P3). First each read and written with no network:
-## where the tools go, a tool's answer with its picture in it, the reply's
-## own blocks sent back untouched (Anthropic's thinking and its signature,
-## Gemini's thoughtSignature), the effort, the most out, a refusal. Then each
+## AnthropicMessages, GeminiNative and OpenAIResponses, each one file beside
+## OpenAIChat (docs/PROVIDERS.md, P3). First each read and written with no
+## network: where the tools go, a tool's answer with its picture in it, the
+## reply's own blocks sent back untouched (Anthropic's thinking and its
+## signature, Gemini's thoughtSignature, Responses' reasoning items with their
+## encrypted content), the effort, the most out, a refusal. Then each
 ## against tools/provider_stub.py on 127.0.0.1:9661, as strict as that API
 ## (its header says how): a whole design through the app's own 61 tools (the
 ## tower built, the fresh look asked with its three pictures in the tool's
@@ -43,6 +44,7 @@ func _run() -> void:
 	await process_frame
 	_anthropic_offline()
 	_gemini_offline()
+	_responses_offline()
 	_key = "sk-ant-stub-" + Crypto.new().generate_random_bytes(16).hex_encode()
 	_log = ProjectSettings.globalize_path("user://apis-stub.jsonl")
 	OS.set_environment("STUB_KEY", _key)
@@ -62,13 +64,16 @@ func _run() -> void:
 	(_main.get("_store") as ModelStore).keeps = false
 	await _design("anthropic", "http://127.0.0.1:%d/v1" % _stub_port)
 	await _design("gemini_native", "http://127.0.0.1:%d/v1beta" % _stub_port)
+	await _design("openai", "http://127.0.0.1:%d/v1" % _stub_port)
 	await _tests("anthropic", "http://127.0.0.1:%d/v1" % _stub_port)
 	await _tests("gemini_native", "http://127.0.0.1:%d/v1beta" % _stub_port)
+	await _tests("openai", "http://127.0.0.1:%d/v1" % _stub_port)
 	_check("the key in no line the stub kept", not FileAccess.get_file_as_string(_log).contains(_key))
 	if _stub > 0:
 		OS.kill(_stub)
 	print("")
-	print("provider apis: Anthropic's Messages and Gemini's own API designed, tested and listed"
+	print("provider apis: Anthropic's Messages, Gemini's own API and OpenAI's Responses designed, "
+		+ "tested and listed"
 		if _failures == 0 else "provider apis: %d FAILED" % _failures)
 	_main.queue_free()
 	await process_frame
@@ -206,6 +211,87 @@ func _gemini_offline() -> void:
 		and refused.error.contains("API key not valid"))
 
 
+func _responses_offline() -> void:
+	print("\n── OpenAI's Responses, read and written ──")
+	var made: Provider = ProviderSettings.provider_for("openai", "gpt-6.1-sol", "sk-x", "",
+		{"reasoning_effort": "high", "max_out": 9000})
+	_check("OpenAI's own models are spoken to in Responses, every other host in Chat Completions",
+		made is OpenAIResponses and ProviderSettings.provider_for("openrouter", "openai/gpt-6.1-sol",
+			"sk-or-x") is OpenAIChat and not (ProviderSettings.provider_for("openrouter", "m",
+			"sk-or-x") is OpenAIResponses) and not (ProviderSettings.provider_for("custom", "m", "")
+			is OpenAIResponses))
+	var kept: Array = [{"type": "reasoning", "id": "rs_1", "summary": [], "encrypted_content": "sealed"},
+		{"type": "function_call", "id": "fc_1", "call_id": "a", "name": "view_model", "arguments": "{}"},
+		{"type": "function_call", "id": "fc_2", "call_id": "b", "name": "search_parts",
+			"arguments": "{\"query\":\"slope\"}"}]
+	var asked: Dictionary = made.request("rules", TOOLS, _turns(kept))
+	var body: Dictionary = JSON.parse_string(str(asked["body"]))
+	_check("to OpenAI's own /responses, the key as a bearer: %s" % asked["url"],
+		asked["url"] == "https://api.openai.com/v1/responses"
+		and (asked["headers"] as PackedStringArray).has("authorization: Bearer sk-x"))
+	_check("the system as instructions; nothing kept at OpenAI; the reasoning asked for encrypted",
+		body["instructions"] == "rules" and body["store"] == false
+		and body["include"] == ["reasoning.encrypted_content"])
+	_check("effort as reasoning.effort, the most out as max_output_tokens",
+		body["reasoning"] == {"effort": "high"} and int(body["max_output_tokens"]) == 9000
+		and not body.has("temperature") and not body.has("max_completion_tokens"))
+	_check("the tools flat and not strict, every array saying its items",
+		body["tools"][1] == _as_sent({"type": "function", "name": "search_parts", "description": "Find.",
+			"strict": false, "parameters": TOOLS[1]["inputSchema"]})
+		and body["tools"][0]["parameters"] == {"type": "object", "properties": {}})
+	var items: Array = body["input"]
+	_check("the brief as input_text; the reply's items sent back as they came, its reasoning with it",
+		items[0] == {"role": "user", "content": [{"type": "input_text", "text": "a tower"}]}
+		and items.slice(1, 4) == kept)
+	_check("each call answered by its call_id, the picture inside its answer, the failure said",
+		items[4]["type"] == "function_call_output" and items[4]["call_id"] == "a"
+		and items[4]["output"] == [{"type": "input_text", "text": "From the corner:"}, {"type":
+			"input_image", "image_url": "data:image/png;base64,iVBORw0KGgo=", "detail": "auto"}]
+		and items[5] == {"type": "function_call_output", "call_id": "b",
+			"output": "Error: nothing like that"})
+	var bare: Array = kept.duplicate(true)
+	(bare[0] as Dictionary).erase("encrypted_content")
+	var sent: Array = JSON.parse_string(str(made.request("r", [], _turns(bare))["body"]))["input"]
+	_check("reasoning that came without its encrypted content: the calls go back alone, unnamed",
+		sent.slice(1, 3) == [{"type": "function_call", "call_id": "a", "name": "view_model",
+			"arguments": "{}"}, {"type": "function_call", "call_id": "b", "name": "search_parts",
+			"arguments": "{\"query\":\"slope\"}"}] and str(sent[3]["type"]) == "function_call_output")
+	var theirs: Array = JSON.parse_string(str(made.request("r", [], _turns(null))["body"]))["input"]
+	_check("a reply with nothing kept (another API's) goes as function_calls of its call ids",
+		theirs[1] == {"type": "function_call", "call_id": "a", "name": "view_model", "arguments": "{}"})
+	var plain: Provider = ProviderSettings.provider_for("openai", "gpt-4.1", "sk-x", "",
+		{"temperature": 0.3})
+	var plain_body: Dictionary = JSON.parse_string(str(plain.request("r", [], [])["body"]))
+	_check("a model that does not reason: no reasoning asked for, its temperature sent",
+		not plain_body.has("include") and not plain_body.has("reasoning")
+		and is_equal_approx(float(plain_body["temperature"]), 0.3))
+	var output: Array = kept + [{"type": "message", "id": "msg_1", "role": "assistant", "content": [
+		{"type": "output_text", "text": "Looking.", "annotations": []}]}]
+	var reply: Provider.Reply = made.read(200, JSON.stringify({"status": "completed", "error": null,
+		"output": output, "usage": {"input_tokens": 100, "input_tokens_details": {"cached_tokens": 60},
+		"output_tokens": 5}}).to_utf8_buffer())
+	_check("a reply read: its calls by call_id, its words, its items kept whole, its tokens",
+		reply.ok and reply.stop == "tools" and reply.calls.size() == 2 and reply.calls[0]["id"] == "a"
+		and reply.calls[1]["input"] == {"query": "slope"} and reply.text == "Looking."
+		and reply.kept == output and reply.spend.fresh == 40 and reply.spend.cached == 60
+		and reply.spend.made == 5)
+	var cut: Provider.Reply = made.read(200, JSON.stringify({"status": "incomplete", "error": null,
+		"incomplete_details": {"reason": "max_output_tokens"}, "output": []}).to_utf8_buffer())
+	var garbled: Provider.Reply = made.read(200, JSON.stringify({"status": "completed", "error": null,
+		"output": [{"type": "function_call", "call_id": "c", "name": "view_model",
+			"arguments": "{\"from\": "}]}).to_utf8_buffer())
+	var refused: Provider.Reply = made.read(401, JSON.stringify({"error": {"message":
+		"Incorrect API key provided.", "type": "invalid_request_error", "param": null, "code":
+		"invalid_api_key"}}).to_utf8_buffer())
+	var failed: Provider.Reply = made.read(200, JSON.stringify({"status": "failed", "output": [],
+		"error": {"code": "server_error", "message": "The model failed."}}).to_utf8_buffer())
+	_check("cut off said as such; arguments not JSON kept to send back; a refused key not asked "
+		+ "again; a failure of OpenAI's own asked again: %s" % refused.error,
+		cut.ok and cut.stop == "length" and garbled.ok and garbled.calls[0].has("unread")
+		and not refused.ok and not refused.again and refused.error.contains("Incorrect API key")
+		and not failed.ok and failed.again)
+
+
 ## A whole design on [param id]'s adapter, through the stub.
 func _design(id: String, base: String) -> void:
 	print("\n── a design on %s, against the strict stub ──" % id)
@@ -239,8 +325,8 @@ func _design(id: String, base: String) -> void:
 	_check("%s7 answered: %s" % ["the rate limit asked again, then " if id == "anthropic" else "",
 		str(statuses)], statuses == [429, 200, 200, 200, 200, 200, 200, 200] if id == "anthropic"
 		else statuses == [200, 200, 200, 200, 200, 200, 200])
-	_check("nothing the API would refuse (signatures back, calls answered in order, schema "
-		+ "Gemini takes): %s" % str(refused), refused.is_empty())
+	_check("nothing the API would refuse (signatures and reasoning back, calls answered in "
+		+ "order, schema it takes): %s" % str(refused), refused.is_empty())
 	_check("each with the key in the API's own header, the app's instructions and all its tools",
 		whole and not asked.is_empty())
 	var looked: Dictionary = _after(asked, 3)
