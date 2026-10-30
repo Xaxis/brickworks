@@ -2325,7 +2325,10 @@ func edit_look(op: String) -> void:
 			editor.open()
 		return
 	var steps: StepsBar = app.get("_steps")
-	bar.say(change_look(op, steps.booklet_step()))
+	# A view turned on a callout's step poses that step apart from the
+	# callout (BookletMaker._callout); the rest is for the page it is on.
+	var view: bool = op.begins_with("turn") or op.begins_with("tilt") or op.ends_with("_view")
+	bar.say(change_look(op, steps.current_step() if view else steps.booklet_step()))
 
 
 ## The edits of what is on a step's page (the page laid out by hand), which
@@ -2641,7 +2644,7 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 	builder.record(undo, words)
 	store.adopt()
 	store.touch()
-	steps.refresh(number)
+	steps.refresh(number, at.callout_step)
 	# Seen as the booklet will draw it.
 	if camera != null and (op.begins_with("turn") or op.begins_with("tilt")
 			or op == "usual_view" or op == "set" and fields.has("turn")):

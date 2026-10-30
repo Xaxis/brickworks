@@ -677,9 +677,20 @@ func _callout(attach: Instructions.Step, built: Array[Instructions.Step],
 		if first >= 0:
 			entry.set_meta("step", first + at)
 		# Laid out by hand when it has pages of its own: what its designer
-		# placed on its page, as a step of the model's (the rest of the
-		# step's look, a turn or a zoom, is the callout's own).
+		# placed on its page, as a step of the model's (its zoom and size are
+		# the callout's own).
 		_hand_look(entry, built[at])
+		# Posed apart: turned as its designer turned this step of the
+		# sub-model (its 0 ROTSTEP), held for the steps after it as a turn
+		# of the model's is, from the way the callout faces, and framed on
+		# the assembly as seen from there. Every step had the callout's
+		# facing, whatever its file said.
+		var turn: Dictionary = BookletLooks.turn_at(_world, built[at].authored_in,
+			built[at].authored_step)
+		if not turn.is_empty():
+			entry.fixed = true
+			entry.from = BookletLooks.direction(turn, callout.from)
+			entry.subject = BookletStudio.extent(boxes, entry.from)
 		callout.steps.append(entry)
 	_callouts[callout] = [stage, spans]
 	return callout

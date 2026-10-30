@@ -157,8 +157,8 @@ of them, "earlier"/"later"/"merge"/"delete" act on a step by its number.
  - booklet_layout reads the booklet's pages and how each step is printed, \
 changing nothing; edit_booklet sets one step's view (turn=, tilt=, \
 "usual"), zoom=, size=, page= ("new", "alone"), parts=, callout= and the \
-booklet's per_page=, as the timeline's Booklet row does; place=, text= and \
-arrow= lay a page out by hand.
+booklet's per_page=, as the timeline's Booklet row does; place=, text=, \
+arrow= and guide= lay a page out by hand; callout_step= poses a callout's step.
  - lay_flex: a hose, a pneumatic tube, a flexible axle, a string or a \
 chain, laid between two connectors (pin holes, axles, studs) of two parts \
 by number, or round two sprockets; item= lays an existing one again.
@@ -327,15 +327,20 @@ func definitions() -> Array:
 				+ "a step turned more than 60 degrees round or 45 up or down gets; callout= false builds the "
 				+ "sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or "
 				+ "0 (as they fit) for the whole booklet; highlight= false leaves the new parts "
-				+ "unoutlined in the whole booklet. The page by hand, one undo step each and "
+				+ "unoutlined in the whole booklet. callout_step= with step= is a step inside the "
+				+ "callout that step puts on, from 1: turn= and tilt= pose it apart, from the "
+				+ "way the callout faces. The page by hand, one undo step each and "
 				+ "alone in a call: place= moves an item of the step's page to x, y (and w, h) "
 				+ "in mm on the 269 x 199 page, as dragging it on Lay out the page does "
 				+ "(item picture, parts, callout or number; note with index= for words or a "
-				+ "picture added; remove=true takes a note off, back=true puts an item back "
+				+ "picture added, turn= degrees clockwise and opacity= percent turning and fading it; "
+				+ "remove=true takes a note off, back=true puts an item back "
 				+ "where the booklet lays it); text= puts words on the step's page; arrow= draws "
-				+ "an arrow on it, from x1, y1 to x2, y2, bent through bx, by if given, red (where "
-				+ "a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= changes or "
-				+ "removes one. What is placed goes with its step when the pages change. "
+				+ "an arrow on it, from x1, y1 to x2, y2, bent through bends= [[x, y], ...] if given, "
+				+ "red (where a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= "
+				+ "changes, bends or removes one; guide= {axis x (upright) or y (across), at mm} "
+				+ "lays a guide on every page, which what is dragged snaps to, never printed "
+				+ "(was= moves one, remove=true takes it off). What is placed goes with its step when the pages change. "
 				+ "booklet_layout says where each is, and what was moved off what it overlapped. "
 				+ "follow=true lays out every later page with as many steps as the page step= "
 				+ "is on, as that page is laid out (Apply to later pages), one undo step. "
@@ -344,13 +349,16 @@ func definitions() -> Array:
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["step"], "properties": {
 				"step": {"type": "integer"},
+				"callout_step": {"type": "integer", "description": "a step inside the callout step= puts on, from 1"},
 				"highlight": {"type": "boolean"},
-				"place": {"type": "object", "description": "{item, x, y, w, h, index, remove}: w and h kept when omitted",
+				"place": {"type": "object", "description": "{item, x, y, w, h, index, turn, opacity, remove}: w and h kept when omitted",
 					"properties": {
 						"item": {"type": "string", "enum": ["picture", "parts", "callout", "number", "note"]},
 						"x": {"type": "number"}, "y": {"type": "number"},
 						"w": {"type": "number"}, "h": {"type": "number"},
 						"index": {"type": "integer", "description": "which note, from 0, for item note"},
+						"turn": {"type": "number", "description": "item note: degrees clockwise about its middle, -180 to 180"},
+						"opacity": {"type": "number", "description": "item note: percent, 5 to 100"},
 						"remove": {"type": "boolean"},
 						"back": {"type": "boolean", "description": "true: where the booklet lays it out again"}}},
 				"text": {"type": "object", "description": "{words, x, y, w, h, size}: mm, size the letters' height (4 when omitted)",
@@ -359,10 +367,12 @@ func definitions() -> Array:
 						"x": {"type": "number"}, "y": {"type": "number"},
 						"w": {"type": "number"}, "h": {"type": "number"},
 						"size": {"type": "number"}}},
-				"arrow": {"type": "object", "description": "{x1, y1, x2, y2, bx, by, colour, width, index, remove}: mm; colour red or black, width 0.45, 0.9 or 1.4; index= an arrow of the step's page to change, remove=true to take it off",
+				"arrow": {"type": "object", "description": "{x1, y1, x2, y2, bends, colour, width, index, remove}: mm; colour red or black, width 0.45, 0.9 or 1.4; index= an arrow of the step's page to change (bends= alone keeps its ends), remove=true to take it off",
 					"properties": {
 						"x1": {"type": "number"}, "y1": {"type": "number"},
 						"x2": {"type": "number"}, "y2": {"type": "number"},
+						"bends": {"type": "array", "items": {"type": "array", "items": {"type": "number"}},
+							"description": "[[x, y], ...]: the points it bends through, in order, up to 12; [] straightens it"},
 						"bx": {"type": "number"}, "by": {"type": "number"},
 						"colour": {"type": "string", "enum": ["red", "black"]},
 						"width": {"type": "number"},
@@ -378,6 +388,12 @@ func definitions() -> Array:
 				"callout": {"type": "boolean"},
 				"per_page": {"type": "integer", "enum": [0, 1, 2, 4]},
 				"follow": {"type": "boolean", "description": "true: the later pages laid out as step's page is"},
+				"guide": {"type": "object", "description": "{axis, at, was, remove}: mm from the page's left (x) or top (y)",
+					"properties": {
+						"axis": {"type": "string", "enum": ["x", "y"]},
+						"at": {"type": "number"},
+						"was": {"type": "number", "description": "where the guide to move or take off is"},
+						"remove": {"type": "boolean"}}},
 			}},
 		},
 		{
@@ -1156,6 +1172,25 @@ func _edit_booklet(input: Dictionary) -> String:
 	if at == null:
 		return "There is no step %d: the steps run 1 to %d." % [int(input.get("step", 0)),
 			steps[steps.size() - 1].number]
+	if input.has("callout_step"):
+		var inside: Instructions.Step = _step_numbered(steps, at.number,
+			maxi(1, int(input["callout_step"])))
+		if inside == null or int(input["callout_step"]) < 1:
+			return ("Step %d puts on no sub-assembly built in a callout." % at.number) \
+				if not at.attaches() or at.callout_steps <= 0 \
+				else "Step %d's callout has steps 1 to %d." % [at.number, at.callout_steps]
+		at = inside
+		var whole: Array = input.keys().filter(func(field: String) -> bool:
+			return not field in ["step", "callout_step", "turn", "tilt", "place", "text", "arrow", "guide"])
+		if not whole.is_empty():
+			return ("A callout's step takes turn= and tilt=, and on a callout with pages of its "
+				+ "own place=, text= and arrow=; %s= is the callout's own, set on step %d.") \
+				% [str(whole[0]), at.number]
+	if int(input.has("place")) + int(input.has("text")) + int(input.has("arrow")) \
+			+ int(input.has("guide")) > 1:
+		return "One at a time: place=, text=, arrow= or guide=, each its own undo step."
+	if input.has("guide"):
+		return _lay_guide(input["guide"], at)
 	if input.has("place") or input.has("text") or input.has("arrow"):
 		return await _edit_page(input, at)
 	if bool(input.get("follow", false)):
@@ -1202,10 +1237,52 @@ func _edit_booklet(input: Dictionary) -> String:
 	var now: String = ""
 	if at.authored_step >= 0 or AuthorSteps.any(world, store.scenery):
 		var again: Instructions.Step = _step_numbered(Instructions.plan(world, library,
-			store.scenery, {}, true), at.number)
+			store.scenery, {}, true), at.number, at.callout_step)
 		if again != null and again.authored_step >= 0:
 			now = BookletLooks.said(world, again.authored_in, again.authored_step)
-	return said + (("; step %d is now: %s" % [at.number, now]) if not now.is_empty() else "")
+			if again.in_callout() and now.is_empty():
+				now = "seen as the callout faces"
+	var named: String = ("step %d's callout step %d" % [at.number, at.callout_step]) \
+		if at.in_callout() else "step %d" % at.number
+	return said + (("; %s is now: %s" % [named, now]) if not now.is_empty() else "")
+
+
+## A guide on every page of the booklet (Shell.change_look "guide"), as
+## dragging one out of the page editor's ruler lays it: one undo.
+func _lay_guide(given: Variant, at: Instructions.Step) -> String:
+	var guide: Dictionary = given if given is Dictionary else {}
+	var axis: String = str(guide.get("axis", ""))
+	if not axis in ["x", "y"]:
+		return "guide= {axis: \"x\" (upright, at= mm from the left) or \"y\" (across, from the top), at}."
+	var most: float = Booklet.PAGE.x if axis == "x" else Booklet.PAGE.y
+	var fields: Dictionary = {"axis": axis, "at": null, "was": guide.get("was")}
+	if bool(guide.get("remove", false)):
+		fields["was"] = guide.get("was", guide.get("at"))
+		if fields["was"] == null:
+			return "guide= {axis, at, remove: true}: at= is the guide to take off."
+	elif not guide.has("at") or float(guide["at"]) < 0.0 or float(guide["at"]) > most:
+		return "guide= at= is 0 to %s mm from the page's %s." % [BookletLooks._number(most),
+			"left" if axis == "x" else "top"]
+	else:
+		fields["at"] = float(guide["at"])
+	var had: Dictionary = BookletLooks.guides(app.get("_world"))
+	var said: String = (app.get("_shell") as Shell).change_look("guide", at, fields)
+	var now: Dictionary = BookletLooks.guides(app.get("_world"))
+	if now == had:
+		return "No guide %s at %s mm to %s: the guides are %s." % [
+			"upright" if axis == "x" else "across", BookletLooks._number(float(fields["was"])),
+			"take off" if fields["at"] == null else "move", _guides_said(now)] \
+			if fields["was"] != null else said
+	return "%s; the guides now: %s. Nothing printed shows them." % [said, _guides_said(now)]
+
+
+static func _guides_said(guides: Dictionary) -> String:
+	var each := PackedStringArray()
+	for axis: String in ["x", "y"]:
+		for at: Variant in guides.get(axis, []):
+			each.append("%s at %s mm" % ["upright" if axis == "x" else "across",
+				BookletLooks._number(float(at))])
+	return "none" if each.is_empty() else ", ".join(each)
 
 
 ## The page by hand (Shell.change_look "place", "note", "text"), as the
@@ -1213,9 +1290,10 @@ func _edit_booklet(input: Dictionary) -> String:
 ## the step has on its page now, as the page editor keeps it.
 func _edit_page(input: Dictionary, at: Instructions.Step) -> String:
 	var shell: Shell = app.get("_shell")
-	if int(input.has("place")) + int(input.has("text")) + int(input.has("arrow")) > 1:
-		return "One at a time: place=, text= or arrow=, each its own undo step."
 	var entry: Booklet.Entry = await _laid_entry(at)
+	if at.in_callout() and (entry == null or entry.panel.size.x <= 0.0):
+		return ("Step %d's callout is built in a box on step %d's page: lay out that page, "
+			+ "or callout=false gives the callout pages of its own.") % [at.number, at.number]
 	var room: Variant = BookletLooks.said_rect(entry.panel) if entry != null else null
 	if input.has("arrow"):
 		var arrow: Dictionary = input["arrow"] if input["arrow"] is Dictionary else {}
@@ -1223,27 +1301,36 @@ func _edit_page(input: Dictionary, at: Instructions.Step) -> String:
 		for name: String in ["x1", "y1", "x2", "y2"]:
 			if arrow.has(name):
 				points.append(float(arrow[name]))
-		if arrow.has("bx") and arrow.has("by") and points.size() == 4:
-			points.append_array([float(arrow["bx"]), float(arrow["by"])])
+		var bends: Variant = _bends_of(arrow)
+		if bends is String:
+			return bends
 		if arrow.has("index"):
-			var fields: Dictionary = {"index": int(arrow["index"]), "room": room}
+			var index: int = int(arrow["index"])
+			var fields: Dictionary = {"index": index, "room": room}
 			if bool(arrow.get("remove", false)):
 				fields["remove"] = true
+			elif points.is_empty() and bends != null and entry != null \
+					and index >= 0 and index < entry.drawn_arrows.size():
+				# Bent alone: its ends kept where they are on the page.
+				var had: Array = BookletLooks.arrow_points(entry.drawn_arrows[index])
+				if not had.is_empty():
+					points = [(had[0] as Vector2).x, (had[0] as Vector2).y,
+						(had[1] as Vector2).x, (had[1] as Vector2).y]
 			if points.size() >= 4:
-				fields["at"] = points
+				fields["at"] = points + (bends if bends != null else [])
 			for name: String in ["colour", "width"]:
 				if arrow.has(name):
 					fields[name] = arrow[name]
 			var changed: String = shell.change_look("arrow_edit", at, fields)
-			if points.size() >= 4 and not fields.has("remove"):
-				changed += _aimed(entry, at.number, points, int(arrow["index"]))
+			if arrow.has("x2") and arrow.has("y2") and not fields.has("remove"):
+				changed += _aimed(entry, at.number, points, index)
 			return changed
 		if points.size() < 4:
 			return "arrow= {x1, y1, x2, y2} in mm: where it starts and where it points."
 		var index: int = entry.drawn_arrows.size() if entry != null else 0
-		return shell.change_look("arrow", at, {"at": points, "colour": str(arrow.get("colour", "red")),
-			"width": float(arrow.get("width", 0.9)), "room": room}) \
-			+ _aimed(entry, at.number, points, index)
+		return shell.change_look("arrow", at, {"at": points + (bends if bends != null else []),
+			"colour": str(arrow.get("colour", "red")), "width": float(arrow.get("width", 0.9)),
+			"room": room}) + _aimed(entry, at.number, points, index)
 	if input.has("text"):
 		var given: Variant = input["text"]
 		var text: Dictionary = given if given is Dictionary else {"words": str(given)}
@@ -1260,12 +1347,27 @@ func _edit_page(input: Dictionary, at: Instructions.Step) -> String:
 		if bool(place.get("remove", false)):
 			fields["remove"] = true
 		else:
-			var now: Rect2 = _now_at(entry, "note", int(place.get("index", -1)))
-			fields["at"] = [float(place.get("x", now.position.x)), float(place.get("y", now.position.y)),
-				float(place.get("w", now.size.x)), float(place.get("h", now.size.y))]
+			# Turned about its middle and faded, as the page editor's knob and
+			# Opacity do; moved too only where x, y, w or h is given.
+			if place.has("opacity"):
+				var percent: float = float(place["opacity"])
+				if percent < BookletLooks.FAINTEST * 100.0 or percent > 100.0:
+					return "opacity= is percent, %d to 100: 50 is half seen." \
+						% roundi(BookletLooks.FAINTEST * 100.0)
+				fields["opacity"] = percent / 100.0
+			if place.has("turn"):
+				fields["turn"] = float(place["turn"])
+			if not (fields.has("turn") or fields.has("opacity")) \
+					or ["x", "y", "w", "h"].any(func(name: String) -> bool: return place.has(name)):
+				var now: Rect2 = _now_at(entry, "note", int(place.get("index", -1)))
+				fields["at"] = [float(place.get("x", now.position.x)), float(place.get("y", now.position.y)),
+					float(place.get("w", now.size.x)), float(place.get("h", now.size.y))]
 		return shell.change_look("note", at, fields)
 	if not BookletLooks.ITEMS.has(item):
 		return "place= {item: picture, parts, callout, number or note, x, y, w, h} in mm."
+	if place.has("turn") or place.has("opacity"):
+		return ("turn= and opacity= turn and fade words or a picture added: place= {item: "
+			+ "\"note\", index, turn, opacity}. The step's %s is drawn as the booklet draws it.") % item
 	if bool(place.get("back", false)):
 		return shell.change_look("place", at, {"item": item, "at": null, "room": room})
 	if not place.has("x") or not place.has("y"):
@@ -1341,9 +1443,36 @@ func _laid_entry(at: Instructions.Step) -> Booklet.Entry:
 		if page.kind != "steps":
 			continue
 		for entry: Booklet.Entry in page.entries:
-			if entry.number == at.number:
-				return entry
+			if entry.number != at.number:
+				continue
+			# A callout's step: on its own pages, or in the box on this one.
+			if at.in_callout():
+				return entry.callout.steps[at.callout_step - 1] if entry.callout != null \
+					and at.callout_step <= entry.callout.steps.size() else null
+			return entry
 	return null
+
+
+## The points [param arrow] (edit_booklet's arrow=) bends through, flat
+## [bx, by, ...]: its bends=, or bx and by; null when it gives none, or
+## what is wrong with them.
+static func _bends_of(arrow: Dictionary) -> Variant:
+	if arrow.has("bx") and arrow.has("by") and not arrow.has("bends"):
+		return [float(arrow["bx"]), float(arrow["by"])]
+	if not arrow.has("bends"):
+		return null
+	var given: Variant = arrow["bends"]
+	var flat: Array = []
+	for point: Variant in given if given is Array else [null]:
+		if point is Array and (point as Array).size() == 2:
+			flat.append_array([float(point[0]), float(point[1])])
+		elif point is Dictionary and (point as Dictionary).has("x") and (point as Dictionary).has("y"):
+			flat.append_array([float(point["x"]), float(point["y"])])
+		else:
+			return "bends= is [[x, y], ...] in mm: the points the arrow bends through, in order."
+	if flat.size() / 2 > BookletLooks.MOST_BENDS:
+		return "An arrow bends through at most %d points." % BookletLooks.MOST_BENDS
+	return flat
 
 
 ## Where [param item] of [param entry]'s page is laid out, in page mm.
@@ -1364,10 +1493,19 @@ static func _now_at(entry: Booklet.Entry, item: String, index: int = -1) -> Rect
 
 ## The step of the model with this number: the one that puts a callout on,
 ## not a step inside it, which carries the same number.
-static func _step_numbered(steps: Array[Instructions.Step], number: int) -> Instructions.Step:
+## The step numbered [param number], the model's own; with [param inside],
+## that step of the callout it puts on (a callout's steps carry the number of
+## the step that puts it on).
+static func _step_numbered(steps: Array[Instructions.Step], number: int,
+		inside: int = 0) -> Instructions.Step:
 	var found: Instructions.Step = null
 	for step: Instructions.Step in steps:
-		if step.number == number and (found == null or step.callout_step == 0):
+		if step.number != number:
+			continue
+		if inside > 0:
+			if step.callout_step == inside:
+				return step
+		elif found == null or step.callout_step == 0:
 			found = step
 	return found
 

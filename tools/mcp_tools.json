@@ -4210,13 +4210,23 @@
       "readOnlyHint": false,
       "title": "Set how a booklet step is printed"
     },
-    "description": "Set how the booklet prints a step, as the timeline's Booklet row and Build, Booklet page do; one undo step, saved with the model (a turn as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read). step= a number from booklet_layout or edit_steps. turn= degrees round from the usual angle and tilt= degrees higher, held for the steps after it until turned again, or turn=\"usual\"; zoom= 0.5 to 3 (in on what the step adds); size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; parts= false leaves its parts list off; sign= false leaves off the turn sign a step turned more than 60 degrees round or 45 up or down gets; callout= false builds the sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or 0 (as they fit) for the whole booklet; highlight= false leaves the new parts unoutlined in the whole booklet. The page by hand, one undo step each and alone in a call: place= moves an item of the step's page to x, y (and w, h) in mm on the 269 x 199 page, as dragging it on Lay out the page does (item picture, parts, callout or number; note with index= for words or a picture added; remove=true takes a note off, back=true puts an item back where the booklet lays it); text= puts words on the step's page; arrow= draws an arrow on it, from x1, y1 to x2, y2, bent through bx, by if given, red (where a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= changes or removes one. What is placed goes with its step when the pages change. booklet_layout says where each is, and what was moved off what it overlapped. follow=true lays out every later page with as many steps as the page step= is on, as that page is laid out (Apply to later pages), one undo step. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
+    "description": "Set how the booklet prints a step, as the timeline's Booklet row and Build, Booklet page do; one undo step, saved with the model (a turn as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read). step= a number from booklet_layout or edit_steps. turn= degrees round from the usual angle and tilt= degrees higher, held for the steps after it until turned again, or turn=\"usual\"; zoom= 0.5 to 3 (in on what the step adds); size= 0.6 to 2 on the page; page= \"new\", \"alone\" or \"auto\"; parts= false leaves its parts list off; sign= false leaves off the turn sign a step turned more than 60 degrees round or 45 up or down gets; callout= false builds the sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or 0 (as they fit) for the whole booklet; highlight= false leaves the new parts unoutlined in the whole booklet. callout_step= with step= is a step inside the callout that step puts on, from 1: turn= and tilt= pose it apart, from the way the callout faces. The page by hand, one undo step each and alone in a call: place= moves an item of the step's page to x, y (and w, h) in mm on the 269 x 199 page, as dragging it on Lay out the page does (item picture, parts, callout or number; note with index= for words or a picture added, turn= degrees clockwise and opacity= percent turning and fading it; remove=true takes a note off, back=true puts an item back where the booklet lays it); text= puts words on the step's page; arrow= draws an arrow on it, from x1, y1 to x2, y2, bent through bends= [[x, y], ...] if given, red (where a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= changes, bends or removes one; guide= {axis x (upright) or y (across), at mm} lays a guide on every page, which what is dragged snaps to, never printed (was= moves one, remove=true takes it off). What is placed goes with its step when the pages change. booklet_layout says where each is, and what was moved off what it overlapped. follow=true lays out every later page with as many steps as the page step= is on, as that page is laid out (Apply to later pages), one undo step. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "arrow": {
-          "description": "{x1, y1, x2, y2, bx, by, colour, width, index, remove}: mm; colour red or black, width 0.45, 0.9 or 1.4; index= an arrow of the step's page to change, remove=true to take it off",
+          "description": "{x1, y1, x2, y2, bends, colour, width, index, remove}: mm; colour red or black, width 0.45, 0.9 or 1.4; index= an arrow of the step's page to change (bends= alone keeps its ends), remove=true to take it off",
           "properties": {
+            "bends": {
+              "description": "[[x, y], ...]: the points it bends through, in order, up to 12; [] straightens it",
+              "items": {
+                "items": {
+                  "type": "number"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
             "bx": {
               "type": "number"
             },
@@ -4257,9 +4267,36 @@
         "callout": {
           "type": "boolean"
         },
+        "callout_step": {
+          "description": "a step inside the callout step= puts on, from 1",
+          "type": "integer"
+        },
         "follow": {
           "description": "true: the later pages laid out as step's page is",
           "type": "boolean"
+        },
+        "guide": {
+          "description": "{axis, at, was, remove}: mm from the page's left (x) or top (y)",
+          "properties": {
+            "at": {
+              "type": "number"
+            },
+            "axis": {
+              "enum": [
+                "x",
+                "y"
+              ],
+              "type": "string"
+            },
+            "remove": {
+              "type": "boolean"
+            },
+            "was": {
+              "description": "where the guide to move or take off is",
+              "type": "number"
+            }
+          },
+          "type": "object"
         },
         "highlight": {
           "type": "boolean"
@@ -4285,7 +4322,7 @@
           "type": "integer"
         },
         "place": {
-          "description": "{item, x, y, w, h, index, remove}: w and h kept when omitted",
+          "description": "{item, x, y, w, h, index, turn, opacity, remove}: w and h kept when omitted",
           "properties": {
             "back": {
               "description": "true: where the booklet lays it out again",
@@ -4308,8 +4345,16 @@
               ],
               "type": "string"
             },
+            "opacity": {
+              "description": "item note: percent, 5 to 100",
+              "type": "number"
+            },
             "remove": {
               "type": "boolean"
+            },
+            "turn": {
+              "description": "item note: degrees clockwise about its middle, -180 to 180",
+              "type": "number"
             },
             "w": {
               "type": "number"
