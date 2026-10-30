@@ -162,15 +162,25 @@ def test_the_page_takes_no_money_and_keeps_its_promises() -> None:
     assert "Every account made before 29 October 2026, when this page changed, gets Pro, free and with no end date" in plain
     assert "Education is free" in plain
     # The desktop app is never listed in Free, and AI builds are not Claude's.
-    assert "desktop" not in re.search(r'<ul class="rows">.*?</ul>', PAGE, re.S).group(0)
+    free_list = re.search(r'<article class="tier" id="free".*?<ul class="ticks">(.*?)</ul>', PAGE, re.S).group(1)
+    assert "desktop" not in free_list
     assert "Claude build" not in PAGE
     # Free says today's limit for models kept with an account, never less.
     most = int(re.search(r"export const MOST_MODELS = (\d+);", MODELS).group(1))
-    free = re.search(r'<article class="card tier" id="free".*?</article>', PAGE, re.S).group(0)
+    free = re.search(r'<article class="tier" id="free".*?</article>', PAGE, re.S).group(0)
     said = [int(n) for n in re.findall(r"up to (\d+)", free)]
     assert said == [most], f"Free says up to {said}, the account keeps {most}"
-    tiers = re.findall(r'<article class="card tier" id="([a-z]+)"', PAGE)
+    tiers = re.findall(r'<article class="tier[^"]*" id="([a-z]+)"', PAGE)
     assert tiers == ["free", "pro"], tiers
-    pro = re.search(r'<article class="card tier" id="pro".*?</article>', PAGE, re.S).group(0)
+    pro = re.search(r'<article class="tier featured" id="pro".*?</article>', PAGE, re.S).group(0)
     assert "Coming soon" in pro and "Coming with Pro" in pro and 'data-interest="pro"' in pro
-    assert re.sub(r"<[^>]+>", "", re.search(r'<p class="price">(.*?)</p>', pro).group(1)) == "$8 a month, or $80 a year"
+    # Pro's price, yearly first and monthly a press away (site356), each
+    # said whole; and the table says both.
+    price = re.search(r'<p class="price">(.*?)</p>', pro).group(1)
+    shown = {interval: re.sub(r"<[^>]+>", "", words) for interval, words in
+             re.findall(r'<span data-billed="(month|year)"[^>]*>(.*?)</span>', price)}
+    assert shown == {"year": "$80 a year", "month": "$8 a month"}, shown
+    assert "<td>$8 a month, or $80 a year</td>" in PAGE
+    # Billing off is how the page is written: Pro's way to pay is hidden,
+    # and goes to the step before Checkout, never to a payment itself.
+    assert re.search(r'<a class="cta" id="pro-upgrade" href="/settings\?upgrade=year#plan" data-when="sale" hidden>', pro)

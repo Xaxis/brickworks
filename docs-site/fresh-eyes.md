@@ -12,7 +12,7 @@ lib:fresh eyes at the first save
 
 ## What happens {#what-happens}
 
-1. The AI builds a new design on an empty baseplate and saves it.
+1. The AI makes a new design on an empty baseplate and saves it.
 2. The save hands back three pictures of the model (a corner, the front and a close look) with your whole request, in your own words.
 3. It answers as a judge shown nothing but those: **what the model reads as**, **what reads as a generic box**, and **the three changes a set designer would make first**, the biggest first. It is told of no real set; what the subject needs is its own to say.
 4. Then it makes those changes, and goes on.

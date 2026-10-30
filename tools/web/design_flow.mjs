@@ -23,15 +23,16 @@
 //   a page that scrolls sideways at 390 px;
 //   a count of none shown ("0 likes", "following 0"): a count is said once
 //     there is one (docs/SOCIAL.md);
-//   a header out of its order: Gallery, Download, Open the app, then your
-//     account (Sign in, or your avatar) last at the far right; on a phone
-//     Open the app, then Menu (your avatar signed in). The owner,
+//   a header out of its order: Gallery, Library, Docs, Pricing, Open the
+//     app, then your account (Sign in, or your avatar) last at the far
+//     right; under 900 px Open the app, then Menu (your avatar signed in)
+//     (site356, 2026-10-29: Download went to the footer and Menu). The owner,
 //     2026-10-23: "the user account circle obviously is the item that goes
 //     to the far right with the 'Open the app' button to the left of it";
 //   a header whose last item is closer than the page's 16 px gutter to the
 //     screen's right edge, on a phone at 320, 360 and 390 px;
-//   a heading off the type scale: an h2 not at --t-h2 or an h3 not at
-//     --t-h3, as drawn. There were three sizes of h2 and four of h3 (site273,
+//   a heading off the type scale: an h2 not at --t-h2 (a landing page's
+//     h2.title at --t-section) or an h3 not at --t-h3, as drawn. There were three sizes of h2 and four of h3 (site273,
 //     2026-10-26): a model's About it at 18 px under More by at 30;
 //   and, in any stylesheet or page style the page has, a font size, a
 //     corner or a colour off the token scale (site.css :root): a size not
@@ -254,15 +255,19 @@ function headings(scope) {
     probe.remove();
     return size;
   };
-  const want = { H2: step("--t-h2"), H3: step("--t-h3") };
+  const want = { H2: step("--t-h2"), H3: step("--t-h3"), TITLE: step("--t-section") };
   const found = [];
   for (const el of where.querySelectorAll("h2, h3")) {
     if (!el.getClientRects().length || getComputedStyle(el).visibility === "hidden") continue;
     if (!scope && el.closest("dialog")) continue;
     const size = parseFloat(getComputedStyle(el).fontSize);
-    if (Math.abs(size - want[el.tagName]) > 0.25) {
+    // A landing page's section title (h2.title) is a step of its own,
+    // --t-section (site356).
+    const kind = el.tagName === "H2" && el.classList.contains("title") ? "TITLE" : el.tagName;
+    if (Math.abs(size - want[kind]) > 0.25) {
       const words = el.textContent.trim().replace(/\s+/g, " ").slice(0, 32);
-      found.push([`${el.tagName.toLowerCase()} "${words}"`, `${Math.round(size * 10) / 10} px, off the scale's ${el.tagName === "H2" ? "--t-h2" : "--t-h3"} (${Math.round(want[el.tagName] * 10) / 10} px here)`]);
+      const token = { H2: "--t-h2", H3: "--t-h3", TITLE: "--t-section" }[kind];
+      found.push([`${el.tagName.toLowerCase()} "${words}"`, `${Math.round(size * 10) / 10} px, off the scale's ${token} (${Math.round(want[kind] * 10) / 10} px here)`]);
     }
   }
   return found;
@@ -301,9 +306,10 @@ function headerItems() {
 async function headerOrder(page, signedIn) {
   const said = await page.evaluate(headerItems);
   if (!said) return [];
-  const wide = page.viewportSize().width >= 600;
+  const wide = page.viewportSize().width >= 900;
   const account = signedIn ? "avatar" : wide ? "Sign in" : "Menu";
-  const want = wide ? ["Brickworks", "Gallery", "Download", "Open the app", account] : ["Brickworks", "Open the app", account];
+  const want = wide ? ["Brickworks", "Gallery", "Library", "Docs", "Pricing", "Open the app", account]
+    : ["Brickworks", "Open the app", account];
   const words = said.items.map((one) => one.word);
   const findings = [];
   if (words.join(" | ") !== want.join(" | ")) findings.push(["the header", `reads ${words.join(", ")}, not ${want.join(", ")}`]);

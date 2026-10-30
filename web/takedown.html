@@ -41,12 +41,18 @@
 <meta name="twitter:title" content="Takedown requests for the Brickworks gallery">
 <meta name="twitter:description" content="Something in the gallery is yours, or should not be there? Tell us here.">
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
-<meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
 <style>
+/* Laid out here; the head, the list of what is on the page, the tabs, the
+   panels and every field are site.css's. */
+.takedown .parts { min-width: 0; max-width: 760px; }
+.takedown .part + .part { margin-top: var(--s-7); }
+.takedown .part > p { color: var(--ink-soft); }
+.takedown .form-card { max-width: none; margin-top: var(--s-5); }
 .takedown .statements { border: 1px solid var(--line); border-radius: var(--r-2); padding: 10px 14px 12px; display: grid; gap: 10px; min-width: 0; }
 .takedown .statements legend { font-size: var(--t-small); color: var(--ink-soft); padding: 0 4px; }
 .takedown .tick { color: var(--ink-soft); }
@@ -60,17 +66,21 @@
 		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
 		<nav class="nav" aria-label="Main">
 			<a href="/gallery">Gallery</a>
-			<a href="/download">Download</a>
+			<a href="/library">Library</a>
+			<a href="/docs">Docs</a>
+			<a href="/plans">Pricing</a>
 			<a class="cta" href="/app">Open the app</a>
-			<a href="/profile" data-account>Sign in</a>
+			<a class="cta ghost" href="/profile" data-account>Sign in</a>
 		</nav>
 		<details class="menu">
 			<summary>Menu</summary>
 			<div class="menu-list">
 				<nav aria-label="Menu">
 					<a href="/gallery">Gallery</a>
-					<a href="/download">Download</a>
+					<a href="/library">Library</a>
 					<a href="/docs">Docs</a>
+					<a href="/plans">Pricing</a>
+					<a href="/download">Download</a>
 					<a href="/profile" data-account>Sign in</a>
 				</nav>
 				<div class="theme-choice"><span aria-hidden="true">Theme</span>
@@ -86,127 +96,167 @@
 </header>
 
 <main id="main">
-	<div class="wrap person takedown">
-		<p class="eyebrow">Takedown requests</p>
-		<h1>Something here is yours, or should not be</h1>
-		<p class="lede">The gallery shows what people chose to share. Brickworks does
-			not check each model before it is listed, so tell us when one should not
-			be there, and the site's owner takes it out.</p>
+	<div class="page-hero">
+		<div class="wrap">
+			<p class="eyebrow">Takedown requests</p>
+			<h1>Something here is yours, or should not be</h1>
+			<p class="lede">The gallery shows what people chose to share. Brickworks does not check each model before it is listed, so tell us when one should not be there, and the site's owner takes it out.</p>
+			<nav class="tabs" aria-label="The site’s rules"><a href="/terms">Terms of use</a><a href="/privacy">Privacy</a><a href="/guidelines">Community guidelines</a><a href="/takedown" aria-current="page">Takedown requests</a></nav>
+		</div>
+	</div>
+	<div class="wrap page-body page-grid takedown">
+		<nav class="page-toc" aria-labelledby="toc-title">
+			<p class="page-toc-title" id="toc-title">On this page</p>
+			<ul>
+				<li><a href="#how-h">The quick way</a></li>
+				<li><a href="#claim-h">If it is your work, or your mark</a></li>
+				<li><a href="#counter-h">If your model was taken out by mistake</a></li>
+				<li><a href="#agent-h">Brickworks’ copyright agent</a></li>
+				<li><a href="#else-h">Anything else</a></li>
+			</ul>
+		</nav>
+		<div class="parts">
+			<section class="part" aria-labelledby="how-h">
+				<h2 id="how-h">The quick way</h2>
+				<p>Every model's page, every profile and every collection has a
+					<b>Report</b> button. Choose what is wrong and send it; you do not need
+					an account.</p>
+			</section>
 
-		<section aria-labelledby="how-h">
-			<h2 id="how-h">The quick way</h2>
-			<p>Every model's page, every profile and every collection has a
-				<b>Report</b> button. Choose what is wrong and send it; you do not need
-				an account.</p>
-		</section>
+			<section class="part" aria-labelledby="claim-h">
+				<h2 id="claim-h">If it is your work, or your mark</h2>
+				<p>Give the page's address, say what is yours and how, and how to reach
+					you. While we look, we may take it out of the gallery; once we agree, it
+					stays out, and the same model published again cannot be listed. Its own
+					link is its sharer's to take down; we tell them.</p>
+				<form class="profile-form card form-card" id="claim">
+					<label>The page in the gallery
+						<input id="where" required placeholder="https://brickworks.diy/m/…" inputmode="url"></label>
+					<label>What is wrong
+						<select id="why">
+							<option value="copied">It copies my work</option>
+							<option value="trademark">It uses a name or a mark that is mine</option>
+							<option value="personal">It shows my personal information</option>
+							<option value="offensive">It is hateful or abusive</option>
+							<option value="other">Something else</option>
+						</select></label>
+					<label>What is yours, and how
+						<textarea id="what" maxlength="820" rows="4" required
+							placeholder="Where your original is, and anything that shows it is yours."></textarea></label>
+					<label>How to reach you
+						<input id="contact" type="email" maxlength="200" required autocomplete="email"></label>
+					<fieldset class="statements" id="copyright">
+						<legend>For a copy of your work, a copyright notice also needs</legend>
+						<label>Your full name, as your signature
+							<input id="signature" maxlength="80" autocomplete="name"></label>
+						<label class="tick"><input type="checkbox" id="good-faith"> I believe in good faith that
+							this use is not allowed by the owner of the work, their agent or the law.</label>
+						<label class="tick"><input type="checkbox" id="accurate"> What I have said is accurate,
+							and on pain of perjury I own the work or may act for its owner.</label>
+					</fieldset>
+					<div class="actions"><button class="cta" type="submit" id="send">Send the request</button></div>
+					<p class="said" id="said" role="status"></p>
+				</form>
+			</section>
 
-		<section aria-labelledby="claim-h">
-			<h2 id="claim-h">If it is your work, or your mark</h2>
-			<p>Give the page's address, say what is yours and how, and how to reach
-				you. While we look, we may take it out of the gallery; once we agree, it
-				stays out, and the same model published again cannot be listed. Its own
-				link is its sharer's to take down; we tell them.</p>
-			<form class="profile-form" id="claim">
-				<label>The page in the gallery
-					<input id="where" required placeholder="https://brickworks.diy/m/…" inputmode="url"></label>
-				<label>What is wrong
-					<select id="why">
-						<option value="copied">It copies my work</option>
-						<option value="trademark">It uses a name or a mark that is mine</option>
-						<option value="personal">It shows my personal information</option>
-						<option value="offensive">It is hateful or abusive</option>
-						<option value="other">Something else</option>
-					</select></label>
-				<label>What is yours, and how
-					<textarea id="what" maxlength="820" rows="4" required
-						placeholder="Where your original is, and anything that shows it is yours."></textarea></label>
-				<label>How to reach you
-					<input id="contact" type="email" maxlength="200" required autocomplete="email"></label>
-				<fieldset class="statements" id="copyright">
-					<legend>For a copy of your work, a copyright notice also needs</legend>
+			<section class="part" aria-labelledby="counter-h">
+				<h2 id="counter-h">If your model was taken out by mistake</h2>
+				<p>When a model comes out of the gallery because somebody said it was theirs, and
+					you made it or have the right to share it, send a counter-notice. We pass it on
+					to whoever asked for the takedown. Unless they tell us within ten to fourteen
+					working days that they have gone to court over it, it can be listed again.</p>
+				<form class="profile-form card form-card" id="counter">
+					<label>The model's address
+						<input id="counter-where" required placeholder="https://brickworks.diy/m/…" inputmode="url"></label>
+					<label>Why it was a mistake
+						<textarea id="counter-why" maxlength="480" rows="3" required
+							placeholder="That you made it, or what lets you share it."></textarea></label>
 					<label>Your full name, as your signature
-						<input id="signature" maxlength="80" autocomplete="name"></label>
-					<label class="tick"><input type="checkbox" id="good-faith"> I believe in good faith that
-						this use is not allowed by the owner of the work, their agent or the law.</label>
-					<label class="tick"><input type="checkbox" id="accurate"> What I have said is accurate,
-						and on pain of perjury I own the work or may act for its owner.</label>
-				</fieldset>
-				<div class="actions"><button class="cta" type="submit" id="send">Send the request</button></div>
-				<p class="said" id="said" role="status"></p>
-			</form>
-		</section>
+						<input id="counter-name" maxlength="80" required autocomplete="name"></label>
+					<label>Your postal address and phone number
+						<input id="counter-address" maxlength="200" required autocomplete="street-address"></label>
+					<label>Your email
+						<input id="counter-contact" type="email" maxlength="200" required autocomplete="email"></label>
+					<label class="tick"><input type="checkbox" id="counter-perjury" required> On pain of perjury,
+						I believe in good faith that it was taken out by mistake or because it was misidentified.</label>
+					<label class="tick"><input type="checkbox" id="counter-court" required> I consent to the
+						federal district court for my address (or, outside the United States, any district where
+						Brickworks may be found), and will accept service from whoever asked for the takedown.</label>
+					<div class="actions"><button class="cta" type="submit" id="counter-send">Send the counter-notice</button></div>
+					<p class="said" id="counter-said" role="status"></p>
+				</form>
+			</section>
 
-		<section aria-labelledby="counter-h">
-			<h2 id="counter-h">If your model was taken out by mistake</h2>
-			<p>When a model comes out of the gallery because somebody said it was theirs, and
-				you made it or have the right to share it, send a counter-notice. We pass it on
-				to whoever asked for the takedown. Unless they tell us within ten to fourteen
-				working days that they have gone to court over it, it can be listed again.</p>
-			<form class="profile-form" id="counter">
-				<label>The model's address
-					<input id="counter-where" required placeholder="https://brickworks.diy/m/…" inputmode="url"></label>
-				<label>Why it was a mistake
-					<textarea id="counter-why" maxlength="480" rows="3" required
-						placeholder="That you made it, or what lets you share it."></textarea></label>
-				<label>Your full name, as your signature
-					<input id="counter-name" maxlength="80" required autocomplete="name"></label>
-				<label>Your postal address and phone number
-					<input id="counter-address" maxlength="200" required autocomplete="street-address"></label>
-				<label>Your email
-					<input id="counter-contact" type="email" maxlength="200" required autocomplete="email"></label>
-				<label class="tick"><input type="checkbox" id="counter-perjury" required> On pain of perjury,
-					I believe in good faith that it was taken out by mistake or because it was misidentified.</label>
-				<label class="tick"><input type="checkbox" id="counter-court" required> I consent to the
-					federal district court for my address (or, outside the United States, any district where
-					Brickworks may be found), and will accept service from whoever asked for the takedown.</label>
-				<div class="actions"><button class="cta" type="submit" id="counter-send">Send the counter-notice</button></div>
-				<p class="said" id="counter-said" role="status"></p>
-			</form>
-		</section>
+			<section class="part" aria-labelledby="agent-h">
+				<h2 id="agent-h">Brickworks' copyright agent</h2>
+				<!-- OWNER: once the agent is registered at https://www.copyright.gov/dmca-directory/,
+				     replace the line below with: the designated agent for notices under the DMCA is
+				     [name], [postal address], [phone], [email], as registered with the US Copyright Office. -->
+				<p id="agent">The forms on this page reach the site's owner, who answers notices and
+					counter-notices.</p>
+			</section>
 
-		<section aria-labelledby="agent-h">
-			<h2 id="agent-h">Brickworks' copyright agent</h2>
-			<!-- OWNER: once the agent is registered at https://www.copyright.gov/dmca-directory/,
-			     replace the line below with: the designated agent for notices under the DMCA is
-			     [name], [postal address], [phone], [email], as registered with the US Copyright Office. -->
-			<p id="agent">The forms on this page reach the site's owner, who answers notices and
-				counter-notices.</p>
-		</section>
-
-		<section aria-labelledby="else-h">
-			<h2 id="else-h">Anything else</h2>
-			<p>A problem with the app itself goes to
-				<a href="https://github.com/Xaxis/brickworks-releases/issues">GitHub</a>, where
-				it is answered in the open.</p>
-		</section>
+			<section class="part" aria-labelledby="else-h">
+				<h2 id="else-h">Anything else</h2>
+				<p>A problem with the app itself goes to
+					<a href="https://github.com/Xaxis/brickworks-releases/issues">GitHub</a>, where
+					it is answered in the open.</p>
+			</section>
+		</div>
 	</div>
 </main>
 
 <footer class="site-foot">
 	<div class="wrap">
 		<div class="foot-top">
-			<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
-			<nav class="foot-links" aria-label="More">
-				<a href="/challenge">Challenge</a>
-				<a href="/collections">Collections</a>
-				<a href="/library">LDraw library</a>
-				<a href="/compare">Compare</a>
-				<a href="/plans">Plans</a>
-				<a href="/docs">Docs</a>
-				<a href="/faq">FAQ</a>
-				<a href="/changelog">Changelog</a>
-				<a href="/privacy">Privacy</a>
-				<a href="/terms">Terms</a>
-				<a href="/guidelines">Guidelines</a>
-				<a href="/takedown">Takedown</a>
-			</nav>
-			<div class="theme-choice"><span aria-hidden="true">Theme</span>
-				<div class="segmented" role="group" aria-label="Theme">
-					<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
-					<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
-					<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+			<div class="foot-brand">
+				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>A CAD for LEGO® models with an AI designer, in your browser and on your desktop.</p>
+				<div class="theme-choice"><span aria-hidden="true">Theme</span>
+					<div class="segmented" role="group" aria-label="Theme">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+					</div>
 				</div>
 			</div>
+			<nav class="foot-links" aria-label="More">
+				<div>
+					<p class="foot-h" id="foot-product">Product</p>
+					<ul aria-labelledby="foot-product">
+						<li><a href="/app">Open the app</a></li>
+						<li><a href="/download">Download</a></li>
+						<li><a href="/plans">Pricing</a></li>
+						<li><a href="/compare">Compare</a></li>
+						<li><a href="/changelog">Changelog</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-community">Community</p>
+					<ul aria-labelledby="foot-community">
+						<li><a href="/gallery">Gallery</a></li>
+						<li><a href="/library">LDraw library</a></li>
+						<li><a href="/challenge">Challenge</a></li>
+						<li><a href="/collections">Collections</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-help">Help</p>
+					<ul aria-labelledby="foot-help">
+						<li><a href="/docs">Docs</a></li>
+						<li><a href="/faq">FAQ</a></li>
+						<li><a href="/guidelines">Guidelines</a></li>
+						<li><a href="/takedown">Takedown</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-legal">Legal</p>
+					<ul aria-labelledby="foot-legal">
+						<li><a href="/privacy">Privacy</a></li>
+						<li><a href="/terms">Terms</a></li>
+					</ul>
+				</div>
+			</nav>
 		</div>
 		<div class="legal">
 			<p>

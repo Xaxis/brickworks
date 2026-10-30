@@ -918,9 +918,13 @@ plan with Claude as the client.
   operator's line (`#operator`) marked for the owner to fill in, and
   `#paid-plans` (2026-10-29): Free and Pro when they open, sold by Atypic
   through Link, renewal, cancelling and refunds as Atypic's policy says,
-  mirroring Bookwright's terms. The FAQ's "Is Brickworks free?" and "What
-  is an AI build?" (`#ai-builds`) and the download page's `#pro-note` say
-  the same as /plans: downloads free until Pro opens, every version kept.
+  mirroring Bookwright's terms. The FAQ's "Is Brickworks free?" (`#free`),
+  "Is AI limited on any plan?" (`#ai`: never, on any plan; people bring
+  their own) and "I made my account before 29 October 2026" (`#had-account`)
+  and the download page's `#pro-note` say the same as /plans: downloads
+  free until Pro opens, every version kept. The terms, the privacy page,
+  the guidelines and /takedown share one row of `.tabs` in their head
+  (site359, 2026-10-29).
 - `age question` (`web/account.js` `askAgeIfAsked`, `src/ui/sign_in_gate.gd`,
   `api/account.js` `?op=age`, `api/_trust.js`, `supabase/trust.sql`): asked
   once, after a first sign-in, on the site and in the app — "When were you
@@ -930,7 +934,13 @@ plan with Claude as the client.
   asked yet is told to answer first before anything new goes public.
 - `age browser flow` (`tools/web/age_flow.mjs`) and `report digest browser
   flow` (`tools/web/digest_flow.mjs`): below.
-- `design system` (`web/site.css`, `docs/DESIGN_SYSTEM.md`, 2026-10-19): the
+- `design system` (`web/site.css`, `docs/DESIGN_SYSTEM.md`, 2026-10-19;
+  rebuilt by site356, 2026-10-29: deeper grounds, three elevations, the
+  accent as words and as a tint, and the landing kit: `.badge`, `.callout`,
+  `.glyph`, `.features`, `.steps`, `.split`, `.ba`, `.tier` and `.ticks`,
+  `.table.matrix`, `.closing`, `.halo`, `.section` with `h2.title` at
+  `--t-section`; the footer four columns; `_kit` shows each, and
+  `design_flow` judges them there): the
   site's controls, in one place and both schemes: a field (every input,
   select, textarea and file picker, styled by element at zero specificity,
   so none is the browser's; a dropdown is the text box with its own arrow),
@@ -2393,7 +2403,23 @@ plan with Claude as the client.
   asks that `/` links it there, and the three `/challenges` redirects (red
   on m166).
 - `landing page` (`web/index.html`, `web/landing.js`, `web/site.css`, the
-  pictures in `web/img/`): rebuilt 2026-10-20 (the owner: "complete garbage";
+  pictures in `web/img/`): rebuilt again by site356 (2026-10-29, the owner:
+  "next level UI/UX", the way Linear, Vercel or Stripe sell theirs), on the
+  design system's landing kit, in the order a visitor asks: the opening
+  (`.halo`: a badge to /docs/fresh-eyes, `h1.display` "Design LEGO®
+  models with AI, in your browser", Open the app and Download for desktop,
+  the app's picture), `#how` (three `.steps`), `#assistant` (the AI
+  designer: fresh eyes, with `img/fresh-before-*` and `img/fresh-after-*`,
+  the chameleon from bench/results/ideas-2026-10-27-critic315-vs-main315a,
+  the same brief built without and with, as a `.ba`; its caption is
+  `#also`, where the strips are asked), `#community` (two live strips:
+  `#made`, the gallery's Top, and `#sets`, the LDraw library by Most parts,
+  `/api/share?op=library&sort=largest`; `data-strip` and `data-sets` on
+  `<html>` say how many, `none` when that strip is hidden, and the section
+  goes when both do), `#features` (three pictures from the app over six
+  `.feature`s with their icons), `#platforms` (the web and the desktop),
+  `#plans` (Free and Pro, as /plans has them) and `#start` (`.closing`).
+  Before that, rebuilt 2026-10-20 (the owner: "complete garbage";
   before that, 2026-10-13, "overly wordy and verbose and none elegant ...
   brickworks is much more than an ai tool, its also a fully advanced expert cad
   system"). It shows rather than says: the hero is one line ("A complete CAD
@@ -2422,8 +2448,9 @@ plan with Claude as the client.
   gear trains went on the page the day Tools, Simulate mechanism merged, not
   before. Every
   page shares `/site.css` (every text colour 4.5:1 or better on its background
-  in both schemes), a skip link, a sticky bar with a `<details>` menu under 860
-  px (no script: the CSP runs none inline) whose last item keeps the 16 px
+  in both schemes), a skip link, a sticky bar (Gallery, Library, Docs and
+  Pricing, then Open the app and Sign in, since site356) with a `<details>`
+  menu under 900 px (no script: the CSP runs none inline) whose last item keeps the 16 px
   gutter at every phone width (under 390 px the mark is the cube alone, its
   name still Brickworks), and one footer: the header and
   footer are `web/_shell.html`, written into every page by `tools/site_shell.py`
@@ -2437,9 +2464,12 @@ plan with Claude as the client.
   page fetched (`encodedBodySize`), scrolled to its foot, at 390 and 1280 px
   against the live one (2026-10-20: 206/264 KB at load/scrolled on a phone and
   146/204 on a laptop, where the page before took 228/418 and 195/234). `img/manifest.json` says where each came from and holds
-  its alt text. `FAQ page` (`web/faq.html`): the two ways to bring Claude, each
-  as numbered steps with what it costs (`#claude`), the questions (FAQPage
-  JSON-LD, the same answers), the dimensions (a `.table`). Since 2026-10-24:
+  its alt text. `FAQ page` (`web/faq.html`): the three ways to bring your
+  own AI (your Claude plan, Claude Code, your own key), each as numbered
+  steps with what it costs (`#claude`), then the questions in groups (Plans
+  and price `#plans`, Your AI, Your account, Sharing, Files and parts,
+  About), each group listed in the `.page-toc` beside them (FAQPage JSON-LD,
+  the same answers), the dimensions (a `.table`). Since 2026-10-24:
   signing in (`#sign-in`: `ui:sign in with orangecheck`, and on the desktop
   `ui:sign in with orangecheck on the desktop`, from 0.8.0), building
   together (`#together`, `ui:build together`; the desktop from 0.8.0),
@@ -2451,8 +2481,14 @@ plan with Claude as the client.
   holds and what Brickworks never sees — each claim is in
   `src/account/account.gd`, `api/otp.js`, `api/mcp.js`, `src/ai/own_key.gd` and
   the CSP in `deploy.sh`; change one, change the page. `changelog page`
-  (`web/changelog.html`) and `404 page` (`web/404.html`, `noindex`) use the same
-  bar and foot. `robots.txt` keeps `/admin`, `/api/`, `/oauth/` and `/b/` out and
+  (`web/changelog.html`, each release's name and date in a `.release-head`
+  beside its `.release-notes`, sticky from 900 px; tools/site.py writes
+  them) and `404 page` (`web/404.html`, `noindex`, with four ways on) use
+  the same bar and foot. Every page that is not a landing page (these, the
+  docs' start, settings, the legal pages, /compare, /feed, /notifications,
+  /admin) opens on site.css's `.page-hero` and, where it has parts, keeps
+  a `.page-toc` beside them in a `.page-grid` (site359, 2026-10-29; see
+  docs/DESIGN_SYSTEM.md "An inner page"). `robots.txt` keeps `/admin`, `/api/`, `/oauth/` and `/b/` out and
   names `sitemap.xml`, which lists `/`, `/download`, `/changelog`, `/faq` and
   `/privacy`. The mark is `web/icon.svg`, a cube with a corner cut away
   (no brick, no studs: docs/TRADEMARKS.md, Decisions); `tools/web/make_icons.mjs`
@@ -2536,7 +2572,13 @@ plan with Claude as the client.
 - `plans page` (`web/plans.html`, `web/plans.js`), `POST /api/plans`
   (`api/plans.js`, `supabase/plan_interest.sql`) and `plan interest counts`
   (`tools/plan_interest.py`): Plans (2026-10-28, plans323; Free and Pro
-  since 2026-10-29, gate M1 of docs/PLANS.md, plansite346). Free ($0: the
+  since 2026-10-29, gate M1 of docs/PLANS.md, plansite346; a pricing page
+  since site356: Monthly or Yearly, yearly first, `[data-billing]` showing
+  `[data-billed]`; every row side by side in `#compare`, a `.table.matrix`;
+  when GET /api/plans says Pro is for sale, `web/plans.js` shows the
+  `data-when="sale"` parts, Pro's Upgrade to Pro going to
+  `/settings?upgrade=month|year#plan` with the choice made, and Admission's
+  prices; off, the page as written, Coming soon). Free ($0: the
   web app, 10 AI builds a month, building by hand without a limit,
   everything else the app does today, at today's limits) and Pro ($8 a
   month or $80 a year: the desktop app, every version released while you
@@ -4715,7 +4757,9 @@ BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/plans_flow.mjs --url=<pr
 ```
 
 It passes when it ends "plans: all ok": at 390 and 1400 px, light and
-dark, Free and Pro and their prices, Coming soon on Pro, what an AI build
+dark, Free and Pro and their prices ($80 a year first, $8 a month once
+Monthly is pressed), every row side by side, no way to pay shown with
+billing off, Coming soon on Pro, what an AI build
 is, accounts that exist keeping everything, education, what stays free, no
 Claude builds and no free desktop, nothing sideways, the footer's link, and
 /privacy's line; at 390 px the form opened from Pro with yearly, a bad
@@ -4896,7 +4940,13 @@ The pages are made, not kept: `tools/docs_site.py` turns `docs-site/*.md`
 (in `docs-site/_nav.json`'s order) into `docs.html`, `docs/<page>.html` and
 `docs/search.json`, and `tools/site.py` runs it at every deploy, as it
 writes the changelog. `web/docs.css` lays them out and `web/docs.js` is the
-pages list on a phone, Ctrl+K search, On this page and Copy. Four pages are
+pages list on a phone, Ctrl+K search, On this page and Copy. Each page's
+head (`.docs-head`) says its part of the docs as an `.eyebrow` over its
+title; the start page's head is lit and holds a search as wide as its
+words (`.docs-search-open.big`); under every page, where to ask
+(`.docs-help`), then previous and next, each naming its part. A page that
+moved (`docs-site/_moved.json`: `ai-builds` and `claude-builds` to
+`how-ai-works`, 2026-10-29, when AI stopped being counted) answers 308. Four pages are
 made from their sources: the MCP tool reference from `tools/mcp_tools.json`,
 the shortcuts from `ControlsHint.for_keyboard()` and the menus' keys, the
 menus from `docs-site/generated/menus.json`, and the changelog from
