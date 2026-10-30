@@ -1,0 +1,20 @@
+# The gallery's weekly AI showcase (tools/showcase.py run): one brief
+# designed on the owner's path, rendered in the Product look and kept as a
+# draft of the showcase account. It skips, with a line in
+# bench/results/showcase/showcase.log, when heavy is busy or Claude's limits
+# are spent, and never retries. Nothing it makes is public until somebody
+# runs tools/showcase.py publish.
+#
+# Installed by tools/install_showcase_timer.sh, which writes the checkout's
+# path for @ROOT@. Started by brickworks-showcase.timer.
+[Unit]
+Description=Brickworks weekly AI showcase draft
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@ROOT@
+Environment=PATH=@PATH@
+ExecStart=/usr/bin/python3 @ROOT@/tools/showcase.py run
+TimeoutStartSec=5h
+Nice=10
