@@ -4186,6 +4186,13 @@
       "entry": "src/ui/keymap.gd",
       "reach": "godot --path .  (F1: Keys like BrickLink Studio, Mecabricks or LDCad; click a key on the sheet and press another; kept on the device and, signed in, on the account: GET/POST /api/account?op=keys, supabase/keymap.sql)",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "patterns",
+      "entry": "src/assembly/pattern.gd",
+      "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, Round or Along a hose, a count In all, the copies shown as they will go; one Ctrl+Z takes them all back)",
+      "area": "building"
     }
   ]
 }

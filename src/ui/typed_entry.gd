@@ -34,6 +34,8 @@
 ##   "t 30"          a tilt in degrees, forwards as the view looks;
 ##   "x 40/2+1"      sums, as Figma's fields take;
 ##   "x2 y-1p"       several at once.
+## Straight after a copy is put down, "5x" and "/5" are copies instead
+## ([member reads], Pattern).
 ## A number alone after R is a turn, after T a tilt, and takes the place of
 ## R's or T's own step.
 class_name TypedEntry
@@ -58,6 +60,13 @@ var still_held: Callable = func() -> bool: return true
 ## Where what is in hand stands on the screen, which the field opens
 ## under (or over) rather than on: an empty rect for anywhere.
 var clear_of: Callable = func() -> Rect2: return Rect2()
+## What its owner reads in the text before [method parse] does: a reading
+## of its own, with parse's "words", "error" and "empty" (and "hint" while
+## empty) and whatever its [member preview] and [member apply] want, or {}
+## to leave the text to parse. Straight after a copy, "5x" is five in a
+## row and "/5" cuts the gap in five (Pattern), and "*" or "/" opens the
+## field.
+var reads: Callable = func(_text: String) -> Dictionary: return {}
 
 ## What a number alone is: "move", "turn" (after R) or "tilt" (after T).
 var verb: String = "move"
@@ -135,7 +144,8 @@ func try_open(key: InputEventKey) -> bool:
 			or key.alt_pressed:
 		return false
 	var c: String = _character(key)
-	if c.is_empty() or not (c.is_valid_int() or c == "." or c == "-"):
+	if c.is_empty() or not (c.is_valid_int() or c == "." or c == "-"
+			or (c in ["*", "/"] and not (reads.call(c) as Dictionary).is_empty())):
 		return false
 	var focused: Control = get_viewport().gui_get_focus_owner()
 	if focused is LineEdit or focused is TextEdit:
@@ -214,13 +224,15 @@ func _submit() -> void:
 
 ## Read the text again, show it in hand, and say what it does.
 func _read() -> void:
-	typed = parse(text, verb, way)
+	typed = reads.call(text)
+	if typed.is_empty():
+		typed = parse(text, verb, way)
 	_shown.text = text
 	if not str(typed["error"]).is_empty():
 		_say(str(typed["error"]), true)
 		return
 	if bool(typed["empty"]):
-		_say(_hint(), false)
+		_say(str(typed.get("hint", _hint())), false)
 		return
 	var refused: String = preview.call(typed)
 	if refused.is_empty():

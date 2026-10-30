@@ -1275,9 +1275,18 @@ func _ready() -> void:
 	typed.may_open = _begin_typing
 	typed.opened_as = func() -> String: return str(_armed.get("verb", "move"))
 	typed.going = func() -> Vector3: return builder.last_way
-	typed.preview = _typed_preview
-	typed.apply = _typed_apply
-	typed.cancel = _typed_cancel
+	# Straight after a copy, "5x" and "/5" are copies (Pattern), not a move.
+	typed.reads = _copies_read
+	typed.preview = func(what: Dictionary) -> String:
+		if what.has("copies"):
+			return _copies_shown(what)
+		pattern.hide_copies()
+		return _typed_preview(what)
+	typed.apply = func(what: Dictionary) -> bool:
+		return _copies_put(what) if what.has("copies") else _typed_apply(what)
+	typed.cancel = func() -> void:
+		pattern.hide_copies()
+		_typed_cancel()
 	typed.still_held = func() -> bool: return builder.is_pinned()
 	typed.clear_of = _hand_on_screen
 	layer.add_child(typed)
@@ -1290,12 +1299,19 @@ func _ready() -> void:
 	connect_tool.edited = func() -> void: edited.call()
 	connect_tool.aim_again = func() -> void: aim_again.call()
 	add_child(connect_tool)
+	pattern = Pattern.new()
+	pattern.builder = builder
+	pattern.world = world
+	pattern.library = library
+	pattern.keep = typed.is_open
+	add_child(pattern)
 	builder.placed.connect(func(_id: int, _part: String) -> void:
 		# A click put down what was being typed: the number is spent.
 		if typed.is_open():
 			typed.close()
 		_typed_was = {}
-		_armed = {})
+		_armed = {}
+		_note_copy())
 
 
 ## Keep what is in hand before R or T, so a number typed next takes their
@@ -1416,6 +1432,88 @@ func _typed_cancel() -> void:
 	elif was.has("hand"):
 		builder.set_hand_state(was["hand"])
 	aim_again.call()
+
+
+# -- "5x" and "/5" after a copy (Pattern) -----------------------------------------
+
+
+## Copies laid out at once, shown first (Pattern).
+var pattern: Pattern
+## The copy a clone or Ctrl-D last put down, for "5x" or "/5" typed next:
+## {ids: its parts, at: where they stand, step: the move from where it was
+## copied from (the original, or the copy put down before it), depth: the
+## history's depth after it}. Empty when the last put was not one.
+var _copied: Dictionary = {}
+
+
+## A copy just put down, with another in hand (A6): what it was copied
+## from is the copy before it, put down the step before, or else what the
+## copy in hand was gathered from (Carry's pivot and frame).
+func _note_copy() -> void:
+	var before: Array = []
+	if not builder.is_carrying() or not builder.carrying.repeats:
+		_copied = {}
+		return
+	var ids: Array = builder.selection.keys()
+	var now: Array = []
+	for brick_id: int in ids:
+		now.append(world.get_brick(brick_id).transform)
+	if not _copied.is_empty() and int(_copied["depth"]) + 1 == builder.history_depth():
+		before = _copied["at"]
+	else:
+		for item: Dictionary in builder.carrying.items:
+			before.append(Transform3D(Basis.IDENTITY, item.get("pivot", Vector3.ZERO))
+				* (item["at"] as Transform3D))
+	var step: Variant = Pattern.step_between(before, now)
+	_copied = {} if step == null else {"ids": ids, "at": now, "step": step,
+		"depth": builder.history_depth()}
+
+
+## "5x" or "/5" read as copies, while the copy put down last is still the
+## last change; {} otherwise, and for anything else typed.
+func _copies_read(text: String) -> Dictionary:
+	if _copied.is_empty() or int(_copied["depth"]) != builder.history_depth():
+		return {}
+	for brick_id: int in _copied["ids"]:
+		if world.get_brick(brick_id) == null:
+			return {}
+	return Pattern.read(text, _copied["step"])
+
+
+## The copies "5x" or "/5" makes, from the copy put down last.
+func _copies_moves(what: Dictionary) -> Array[Transform3D]:
+	var step: Transform3D = _copied["step"]
+	if bool(what["divide"]):
+		# Between where it was copied from and where it went: moves from
+		# the copy, which stands a whole step on.
+		var back: Transform3D = step.affine_inverse()
+		var out: Array[Transform3D] = []
+		for move: Transform3D in Pattern.divided(step, int(what["copies"]) + 1):
+			out.append(move * back)
+		return out
+	return Pattern.repeated(step, int(what["copies"]))
+
+
+func _copies_shown(what: Dictionary) -> String:
+	builder.carrying.hide_ghost()
+	return pattern.show_copies(_copied["ids"], _copies_moves(what))
+
+
+## Put them down, one undo with the copy they repeat; the copy in hand
+## stays for the next.
+func _copies_put(what: Dictionary) -> bool:
+	var depth: int = int(_copied["depth"]) - 1
+	var made: PackedInt64Array = pattern.put(_copied["ids"], _copies_moves(what),
+		"put down %s" % _parts(int(what["copies"]) * (_copied["ids"] as Array).size()))
+	if made.is_empty():
+		return false
+	builder.fold_since(depth, "a row of %d copies" % (int(what["copies"]) + 1))
+	_copied = {}
+	builder.unpin_hand()
+	edited.call()
+	aim_again.call()
+	say.call("%s — Esc puts the copy in hand away" % what["words"])
+	return true
 
 
 ## Put away what is held. A selection that was being moved goes back.
