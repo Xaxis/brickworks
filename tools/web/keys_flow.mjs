@@ -9,10 +9,16 @@
 //
 // F1 opens the sheet; "paint" typed in its box finds the Paint tool's row;
 // a click on its key, then Shift-B, sets it. Shift-B takes the Paint tool.
-// The page is loaded again, and Shift-B takes the Paint tool still. The
-// browser's profile is a new one each run, so nothing set by a run before
-// is there to find.
+// The page is loaded again, and Shift-B takes the Paint tool still.
+//
+// The page is signed in as the flows' shared test account (browser.mjs), and
+// a key set signed in is kept on the account too (api/account.js ?op=keys):
+// once keymap.sql was applied, one run's Shift-B was there for the next to
+// find, and for every other flow (rel-m222, 2026-10-30). So the account's
+// keys are put back to the app's own before the run and after it, and a
+// browser of its own, signed in to the same account, must find the key.
 import { launch } from "./browser.mjs";
+import { canSignIn, mintSession } from "./session.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -33,15 +39,41 @@ const ok = (passed, line) => {
   return passed;
 };
 
+const site = url.replace(/\/app\/?(\?.*)?$/, "").replace(/\/$/, "");
+const session = canSignIn() ? await mintSession().catch(() => null) : null;
+// The account's keys: read, or kept with [body]. Null where there is no
+// account to ask (a local server has no /api).
+async function accountKeys(body) {
+  if (!session) return null;
+  const bypass = args.bypass ? `&x-vercel-protection-bypass=${args.bypass}` : "";
+  try {
+    const answer = await fetch(`${site}/api/account?op=keys${bypass}`, {
+      method: body ? "POST" : "GET",
+      headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (answer.status === 404) return null;
+    return answer.ok ? await answer.json() : { status: answer.status };
+  } catch {
+    return null;
+  }
+}
+const plainKeys = () => accountKeys({ preset: "brickworks", own: {}, at: Math.floor(Date.now() / 1000) });
+const reset = await plainKeys();
+if (reset !== null) ok(!reset.status, `the account's keys put back to the app's own first (${JSON.stringify(reset)})`);
+
 const browser = await launch();
-const page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
 const errors = [];
 // The engine's own errors; a missing file the local server has not (an
 // /api route) is not the app's.
-page.on("console", (m) => {
-  if (/SCRIPT ERROR|USER SCRIPT ERROR|Uncaught/.test(m.text())) errors.push(m.text());
-});
-page.on("pageerror", (e) => errors.push(String(e)));
+function listen(one) {
+  one.on("console", (m) => {
+    if (/SCRIPT ERROR|USER SCRIPT ERROR|Uncaught/.test(m.text())) errors.push(m.text());
+  });
+  one.on("pageerror", (e) => errors.push(String(e)));
+}
+let page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+listen(page);
 
 const wait = (ms) => page.waitForTimeout(ms);
 const state = () => page.evaluate(() => window.brickworksState || {});
@@ -132,8 +164,30 @@ await wait(1000);
 said = await words();
 ok(said.includes("B") && said.includes("the Paint tool: click a part to paint it"), "...and the sheet's Paint tool row says B");
 await page.screenshot({ path: `${out}/keys_after_reload.png` });
+
+// Kept on the account as well: a browser of its own, signed in to the same
+// account and with nothing of this one's, has the key too.
+if (reset !== null) {
+  let kept = null;
+  for (let n = 0; n < 20 && !kept?.keys?.own?.mode_paint; n++) {
+    kept = await accountKeys();
+    await wait(500);
+  }
+  ok(Boolean(kept?.keys?.own?.mode_paint), `the account keeps it (${JSON.stringify(kept?.keys?.own ?? kept)})`);
+  await page.close();
+  page = await browser.newPage({ viewport: { width: 1400, height: 900 } });
+  listen(page);
+  await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
+  await started();
+  ok(await shiftB() === "paint", "a browser of its own, signed in to the account: Shift-B takes the Paint tool");
+}
 ok(errors.length === 0, `no script error in the console${errors.length ? `: ${errors[0]}` : ""}`);
 
 await browser.close();
+// Every other flow signs in as the same account and must find the app's own keys.
+if (reset !== null) {
+  const after = await plainKeys();
+  ok(after && !after.status, `the account's keys put back to the app's own after (${JSON.stringify(after)})`);
+}
 console.log(`\nkeys (web): ${failed === 0 ? "every check passed" : `${failed} FAILED`}`);
 process.exit(failed === 0 ? 0 : 1);
