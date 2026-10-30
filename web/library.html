@@ -88,8 +88,8 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 /* The bar of filters, as the gallery's: kept under the header as the list
    scrolls, on the page's ground carried out to the window's edges (a
    shadow, which nothing scrolls to), with the header's edge under it once
-   stuck (browse.js data-stuck); the themes fade out at the edge while
-   there are more of them. */
+   stuck (browse.js data-stuck). Its themes are a scroller (site.css)
+   that starts at Filters, not out in the gutter: inset. */
 .toolbar {
 	position: sticky; top: var(--head-h); z-index: 6; display: flex; align-items: center; gap: var(--s-2); min-width: 0;
 	margin: 0 0 var(--s-3); padding: var(--s-2) 0;
@@ -99,12 +99,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 	background: var(--bg); box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax);
 }
 .toolbar[data-stuck]::before { box-shadow: 0 0 0 100vmax var(--bg), 0 1px 0 100vmax var(--line); clip-path: inset(0 -100vmax -1px); }
-.toolbar .pills.row {
-	flex: 1; min-width: 0;
-	mask-image: linear-gradient(90deg, var(--ink) calc(100% - 48px), transparent);
-	-webkit-mask-image: linear-gradient(90deg, var(--ink) calc(100% - 48px), transparent);
-}
-.toolbar .pills.row[data-end] { mask-image: none; -webkit-mask-image: none; }
+.toolbar .pills.scroller { flex: 1; min-width: 0; }
 .filters { flex: none; }
 .filters summary .n {
 	display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill);
@@ -217,7 +212,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 					</div>
 				</div>
 			</details>
-			<div class="pills row" id="themes" role="group" aria-label="Theme">
+			<div class="pills scroller inset" id="themes" role="group" aria-label="Theme">
 				<button type="button" class="pill" data-pick="" aria-pressed="true">All</button>
 			</div>
 		</div>

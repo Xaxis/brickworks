@@ -740,8 +740,8 @@ import { browseBar } from "/browse.js";
     else if (loading) pressed = true;
     else next(false);
   });
-  // "/" to search, the bar of filters' edge once stuck, the kinds' fade.
-  browseBar({ search: q, above: document.querySelector(".gallery-bar"), bar: $("toolbar"), row: $("kinds") });
+  // "/" to search, and the bar of filters' edge once stuck.
+  browseBar({ search: q, above: document.querySelector(".gallery-bar"), bar: $("toolbar") });
   addEventListener("scroll", nearEnd, { passive: true });
   addEventListener("resize", nearEnd, { passive: true });
   sayFilters();

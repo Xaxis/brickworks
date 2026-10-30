@@ -33,3 +33,7 @@ $("cards").innerHTML = [
   { id: "KitModel03", name: "Sports car", parts: 187, author: "Sam", image: "x", owned: { pieces: 187, have: 120 },
     won: [{ title: "October: things that move", way: "hand" }] },
 ].map((model) => cardHtml(model)).join("");
+// A row of eight, more than any window shows: the scroller's fades and its
+// Previous and Next.
+$("row").innerHTML = Array.from({ length: 8 }, (_, n) => cardHtml({ id: `KitRow0${n}`, name: `Model ${n + 1} in a row`,
+  parts: 120 + 37 * n, author: people[n % 4].name })).join("");

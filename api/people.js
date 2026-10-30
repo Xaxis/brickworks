@@ -1212,7 +1212,7 @@ async function profilePage(request, response) {
   // Pinned: up to three of their models, in the order they chose.
   await withFaces(showcase.pins);
   const pinned = showcase.pins.length ? `<section class="pinned" aria-labelledby="pinned-h"><h2 id="pinned-h">Pinned</h2>
-    <div class="models row">${showcase.pins.map((card) => cardHtml({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 },
+    <div class="models scroller" role="group" aria-labelledby="pinned-h">${showcase.pins.map((card) => cardHtml({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 },
       { earned: Boolean(earned), eager: true })).join("")}</div></section>` : "";
 
   // The tab, and the cards on the page.

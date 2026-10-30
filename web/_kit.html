@@ -50,6 +50,31 @@ main > section.specimen { display: grid; gap: var(--s-3); padding: var(--s-6) 0;
 			<a href="#tabs-h">About</a>
 		</nav>
 	</section>
+	<section class="specimen" aria-labelledby="scroller-h">
+		<div class="scroller-head">
+			<h2 id="scroller-h">Scroller</h2>
+			<a href="#scroller-h">See all</a>
+		</div>
+		<div class="models scroller" id="row" role="group" aria-labelledby="scroller-h"></div>
+		<div class="pills scroller" role="group" aria-label="Kind">
+			<button type="button" class="pill" aria-pressed="true">All</button>
+			<button type="button" class="pill">Buildings</button>
+			<button type="button" class="pill">Vehicles</button>
+			<button type="button" class="pill">Trains</button>
+			<button type="button" class="pill">Ships</button>
+			<button type="button" class="pill">Aircraft</button>
+			<button type="button" class="pill">Space</button>
+			<button type="button" class="pill">Castles</button>
+			<button type="button" class="pill">Mechs</button>
+			<button type="button" class="pill">Creatures</button>
+			<button type="button" class="pill">Minifigure scale</button>
+			<button type="button" class="pill">Microscale</button>
+			<button type="button" class="pill">Technic</button>
+			<button type="button" class="pill">Mosaics</button>
+			<button type="button" class="pill">Furniture</button>
+			<button type="button" class="pill">Gardens</button>
+		</div>
+	</section>
 	<section class="specimen" aria-labelledby="avatars-h">
 		<h2 id="avatars-h">Avatars</h2>
 		<div class="row" id="avatars"></div>

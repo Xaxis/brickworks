@@ -661,7 +661,6 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 	.skeleton-card .bone:nth-child(3) { height: calc(24px + 2px + var(--t-tiny) * 1.5); padding: 6px 0 calc(var(--t-tiny) * 1.5 + 8px); }
 }
 @media (width >= 900px) { .skeleton-card .words { padding: 10px 14px 12px; } }
-.models.row .skeleton-card { scroll-snap-align: start; }
 @keyframes breathe { 50% { opacity: 0.55; } }
 
 .card {
@@ -670,12 +669,11 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 }
 .card p { margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
 
-/* A table of facts, in a .table that scrolls inside itself where it is
-   wider than the page, never the page: a named region the keyboard can
-   reach and scroll (role="region", aria-label, tabindex="0"). Each row's
-   name is its th[scope="row"]; a number is .n. In .table.wide, many
-   columns, the row's name stays in view as the rest scrolls past it. */
-.table { overflow-x: auto; position: relative; }
+/* A table of facts, in a .table: a scroller (below) where it is wider
+   than the page, and a named region the keyboard can reach and scroll
+   (role="region", aria-label, tabindex="0"). Each row's name is its
+   th[scope="row"]; a number is .n. In .table.wide, many columns, the
+   row's name stays in view as the rest scrolls past it. */
 .table table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--t-small); }
 .table th, .table td { padding: 9px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
 .table thead th { color: var(--ink-faint); font-weight: 500; font-size: var(--t-tiny); vertical-align: bottom; }
@@ -697,18 +695,21 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
    name and a like button sit above it, links and buttons of their own.
    .models lays them out: two to a row on a phone, then three, four, five
    and six from 600, 900, 1200 and 1600 px, so a card is 180-280 px wide
-   at every width; .models.row is one row that scrolls inside itself,
-   never the page. */
+   at every width. .models.scroller is one row of them that scrolls
+   (the scroller, below), a card 180-300 px wide: as many as a grid has
+   at that width less a half, so the next one always shows in part. */
 .models { display: grid; gap: var(--s-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (width >= 600px) { .models { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (width >= 900px) { .models { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; } }
 @media (width >= 1200px) { .models { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
 @media (width >= 1600px) { .models { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
-.models.row {
-	grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(200px, 260px);
-	overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding: 2px 2px 10px;
+.models.scroller {
+	grid-template-columns: none; grid-auto-flow: column; padding-block: 2px 10px;
+	grid-auto-columns: clamp(180px, (100% - var(--s-4)) / 1.5, 300px);
 }
-.models.row .model { scroll-snap-align: start; }
+@media (width >= 600px) { .models.scroller { grid-auto-columns: clamp(180px, (100% - 2 * var(--s-4)) / 2.5, 300px); } }
+@media (width >= 900px) { .models.scroller { grid-auto-columns: clamp(180px, (100% - 4 * 18px) / 4.5, 300px); } }
+@media (width >= 1200px) { .models.scroller { grid-auto-columns: clamp(180px, (100% - 5 * 18px) / 5.5, 300px); } }
 /* Beside a rail or in a narrower column: more to a row. Cards that each
    carry a button under them (a challenge's entries): fewer, one to a row
    on a phone, so the button's words fit. */
@@ -823,18 +824,18 @@ summary.pill::-webkit-details-marker { display: none; }
    icon at its words' height before its name. */
 .pills.awards .icon { width: 16px; height: 16px; margin-left: -2px; }
 .pills { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
-/* One row of them that scrolls sideways inside itself (the gallery's
-   kinds), never the page. A pressed one is chosen, edged in the accent. */
-.pills.row { flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding: 2px; }
-.pills.row > * { flex: none; }
+/* .pills.scroller: one row of them that scrolls (the gallery's kinds,
+   the library's themes). A pressed one is chosen, edged in the accent. */
+.pills.scroller { flex-wrap: nowrap; padding-block: 2px; }
 button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: var(--accent-edge); background: var(--panel-hi); }
 
 /* Tabs: a row of links or buttons, the one shown aria-current (or
-   aria-selected in a tablist) underlined in the accent's edge. On a phone
-   the row scrolls inside itself, never the page. A count in .n. */
+   aria-selected in a tablist) underlined in the accent's edge. A
+   scroller by its own class (below): on a phone the row scrolls inside
+   itself. A count in .n. */
 .tabs {
 	display: flex; gap: var(--s-1); margin: 0 0 var(--s-5); padding: 0; list-style: none;
-	overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; border-bottom: 1px solid var(--line);
+	border-bottom: 1px solid var(--line);
 }
 .tabs a, .tabs button {
 	flex: none; display: inline-flex; align-items: center; gap: var(--s-2); min-height: var(--control-h);
@@ -844,6 +845,76 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .tabs a:hover, .tabs button:hover { color: var(--ink); background: none; }
 .tabs [aria-current="page"], .tabs [aria-current="true"], .tabs [aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent-edge); }
 .tabs .n { color: var(--ink-faint); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* The scroller: the one way anything on the site scrolls sideways
+   (docs/DESIGN_SYSTEM.md "Scroller", web/scroller.js). It scrolls inside
+   itself, never the page, and a swipe past its end never takes the
+   browser back a page. A row of items is its component's class and
+   .scroller (.models, .pills, .media-strip, .build-strip); .tabs is one
+   by its own class. A box wider than its room scrolls the same way, but
+   freely, with no snapping, gutter or buttons: a .table, the docs'
+   .code, /admin's .card.scroller.
+
+   Where it has more, its edge fades (scroller.js says which, data-more:
+   "start", "end" or both), over the item cut there: its start as far as
+   an item comes to rest (16 px), its end wider, where a row of pills or
+   tabs may be cut between two and the fade is all that says so. Its
+   scrollbar is thin
+   and drawn while the pointer or the focus is in it, its room kept the
+   while, so nothing moves when it is. Positioned, so a .visually-hidden
+   heading inside it scrolls with it rather than push the page sideways. */
+:where(.scroller, .tabs, .table, .code > pre) {
+	position: relative; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-behavior: smooth;
+	scrollbar-width: thin; scrollbar-color: transparent transparent;
+}
+:where(.scroller, .tabs, .table, .code > pre):is(:hover, :focus-within) { scrollbar-color: var(--line-strong) transparent; }
+:where(.scroller, .tabs, .table, .code > pre)[data-more="start"] { mask-image: linear-gradient(to right, transparent, var(--ink) 16px); }
+:where(.scroller, .tabs, .table, .code > pre)[data-more="end"] { mask-image: linear-gradient(to left, transparent, var(--ink) 40px); }
+:where(.scroller, .tabs, .table, .code > pre)[data-more="start end"] {
+	mask-image: linear-gradient(to right, transparent, var(--ink) 16px, var(--ink) calc(100% - 40px), transparent);
+}
+@media (prefers-reduced-motion: reduce) { :where(.scroller, .tabs, .table, .code > pre) { scroll-behavior: auto; } }
+/* A row of items: each comes to rest with its start at the row's, clear
+   of the fade (scroll-padding), as does one the keyboard focuses, whose
+   ring is drawn inside it so the row does not cut it off. A .scroller
+   row reaches into the page's 16 px gutter: its first item starts at the
+   page's edge, under the words over it, and a phone's runs to the edge
+   of the screen. */
+:where(.scroller:not(.card), .tabs) { scroll-snap-type: x mandatory; scroll-padding-inline: 16px; }
+:where(.scroller:not(.card), .tabs) > * { flex: none; scroll-snap-align: start; }
+:where(.scroller:not(.card), .tabs) :focus-visible { outline-offset: -3px; }
+.scroller:not(.card) { margin-inline: -16px; padding-inline: 16px; }
+/* .inset: a row that does not start at the page's edge (after a control,
+   inside a panel) keeps to its own box. */
+.scroller.inset { margin-inline: 0; padding-inline: 0; }
+/* A row's head: its name, and where the row is the start of a longer
+   list, See all to it at the far end. */
+.scroller-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 var(--s-4); margin: 0 0 var(--s-3); }
+.scroller-head > a { padding-block: 6px; color: var(--ink-soft); font-size: var(--t-small); }
+.scroller-head > a:hover { color: var(--ink); }
+/* Previous and Next (scroller.js), for a mouse: a finger swipes. Beside
+   the row's two ends, over its fade, each hidden at its end; a page of
+   items a press, and what comes to rest is clear of them. Drawn where
+   the browser can tie them to the row (anchor positioning); elsewhere the
+   row scrolls as it does under a finger. */
+.icon-btn.scroller-go { display: none; }
+@media (hover: hover) and (pointer: fine) {
+	@supports (anchor-name: --row) {
+		.icon-btn.scroller-go {
+			display: inline-flex; position: absolute; z-index: 1; top: anchor(center); translate: 0 -50%;
+			background: var(--panel); box-shadow: var(--highlight), var(--shadow-1);
+		}
+		.icon-btn.scroller-go:hover { background: var(--panel-hi); }
+		.scroller-go.back { left: anchor(left); }
+		.scroller-go.next { right: anchor(right); }
+		.scroller:not(.card) { scroll-padding-inline: 44px; }
+		.scroller:not(.card)[data-more="start"] { mask-image: linear-gradient(to right, transparent, var(--ink) 44px); }
+		.scroller:not(.card)[data-more="end"] { mask-image: linear-gradient(to left, transparent, var(--ink) 44px); }
+		.scroller:not(.card)[data-more="start end"] {
+			mask-image: linear-gradient(to right, transparent, var(--ink) 44px, var(--ink) calc(100% - 44px), transparent);
+		}
+	}
+}
 
 /* An avatar: a person's picture, or one made from their handle (web/kit.js
    avatarHtml): a round tile in one of eight colours and its first letter,
@@ -1266,7 +1337,7 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 
 /* .page-grid: what is on the page (.page-toc) down the left from 900 px,
    sticky under the header, and the parts beside it; over them, in one
-   row of pills that scrolls, on a phone and a tablet. */
+   row of pills that scrolls (ul.scroller), on a phone and a tablet. */
 .page-grid { display: grid; gap: var(--s-5) var(--s-8); grid-template-columns: minmax(0, 1fr); align-items: start; }
 @media (width >= 900px) { .page-grid { grid-template-columns: 220px minmax(0, 1fr); } }
 .page-toc { min-width: 0; }
@@ -1279,8 +1350,7 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 .page-toc a:hover { color: var(--ink); }
 @media (width < 900px) {
 	.page-toc-title { display: none; }
-	.page-toc ul { display: flex; gap: var(--s-2); overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; padding: 2px; }
-	.page-toc li { flex: none; }
+	.page-toc ul { display: flex; gap: var(--s-2); padding-block: 2px; }
 	.page-toc a {
 		display: inline-flex; align-items: center; min-height: 36px; padding: 0 var(--s-3);
 		border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--panel);
@@ -1289,6 +1359,8 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 @media (width >= 900px) {
 	.page-toc { position: sticky; top: calc(var(--head-h) + var(--s-5)); }
 	.page-toc ul { border-left: 1px solid var(--line); }
+	/* A list down the side, not a row: nothing to scroll. */
+	.page-toc ul.scroller { overflow: visible; margin-inline: 0; padding-inline: 0; }
 	.page-toc a {
 		display: block; margin-left: -1px; padding: 6px 0 6px var(--s-3); border-left: 2px solid transparent; line-height: 1.4;
 	}

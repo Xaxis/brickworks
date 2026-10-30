@@ -674,7 +674,7 @@ plan with Claude as the client.
   links (`ul.links`, https, `rel="ugc nofollow noopener"`, said as their
   domain); one row of numbers (`ul.numbers li[data-stat]`: builds,
   remixes, models, likes, followers `[data-followers]`, following, each
-  `hidden` at none); wins as pills; Pinned (`.pinned .models.row`, up to
+  `hidden` at none); wins as pills; Pinned (`.pinned .models.scroller`, up to
   three, their order); then `nav.tabs` Models · Builds · Collections, each
   a page of its own (`?tab=`; the default the first with something in it),
   a count `.n` once there is one, `.tab-panel[data-panel]`: Models 24 a page
@@ -758,7 +758,7 @@ plan with Claude as the client.
   models, `directory_models` with `owner`, by Top builds) and `#similar`
   (`directory_models` by its kind and by each of its first three tags,
   ranked by tags shared, then kind, then Top builds; never what anybody
-  looked at), each a `.models.row` of cards drawn only with three, six at
+  looked at), each a `.models.scroller` of cards drawn only with three, six at
   most, and no card the page shows already (the model, its listed
   remixes, More by's); with neither row, `#from-gallery`, More in the
   gallery: the gallery's Top, however few, so the last screen always has
@@ -766,7 +766,7 @@ plan with Claude as the client.
   database error is no row, never a 500. No new SQL.
 - `model page pictures and tabs` (`api/share.js` `mediaStrip`, `pageTabs`,
   `web/model-page.js` `startPictures`, `startTabs`, 2026-10-22,
-  docs/SOCIAL.md U4): under the picture, `#pictures.media-strip`: the
+  docs/SOCIAL.md U4): under the picture, `#pictures.media-strip.scroller`: the
   published picture first (`aria-current`), then its owner's own photos
   (`data-own`; build photos posted by the model's owner, through the same
   pipeline, so no new table), then photos of real builds, newest first,
@@ -971,7 +971,7 @@ plan with Claude as the client.
   `tools/site_shell.py`), one type scale (`--t-*`) and rhythm (`--s-*`,
   `--page-top`, `--section`), the page template (`.page`, `.page-head`,
   `.prose`), the one model card (`.model`, in `.models`, `.models.compact`
-  or `.models.row`), `.state`, `.subnav`, `.settings`/`.setting` and
+  or `.models.scroller`), `.state`, `.subnav`, `.settings`/`.setting` and
   `.danger`. Since 2026-10-22 (docs/SOCIAL.md U2) only the token scale:
   every font size `var(--t-*)`, every corner `var(--r-*)` (or
   `--radius`, `--control-radius`, `0`, `50%`), every colour a token, in
@@ -1077,9 +1077,33 @@ plan with Claude as the client.
   `.menu-list`, closed by a click elsewhere or Escape. `web/_kit.html` at
   `/_kit` (served by the stand-in, never deployed: tools/site.py skips
   "_" names) shows each.
+- `scroller` (`web/scroller.js`, site.css "the scroller",
+  docs/DESIGN_SYSTEM.md "Scroller", scroll367, 2026-10-30): every row
+  that scrolls sideways is one primitive: `.models.scroller` (the landing
+  strips, the gallery's shelves, Pinned on /u/ and /profile, a model
+  page's More by / Similar with a See all in `.scroller-head`),
+  `.pills.scroller` (the gallery's and library's kinds, `.inset` in a
+  toolbar), `#pictures.media-strip.scroller`, `.build-strip.scroller`,
+  `nav.tabs`, an inner page's `.page-toc ul.scroller` under 900 px, and
+  the boxes `.table`, docs `.code > pre` and /admin's `.card.scroller`. It
+  scrolls inside itself (`overscroll-behavior-x: contain`, never the
+  page), a row snaps to its items' starts and bleeds into the 16 px
+  gutter, `data-more` fades only the sides with more, Previous and Next
+  (`.icon-btn.small.scroller-go`, after the row, anchor-positioned at its
+  ends) page by what is in view for a mouse and hide at their own end, a
+  row is named (`role="group"` + its heading; a table `role="region"`,
+  `tools/docs_site.py` `named_tables` for the docs), one with nothing
+  inside to focus takes `tabindex="0"` while it overflows, the scrollbar is
+  thin and shown on hover and focus, smooth only without reduced motion.
+  `/_kit` shows a row of cards and a row of pills. `design_flow` judges
+  every one on every page at start and end (below).
 - `design browser flow` (`tools/web/design_flow.mjs`, preview check
   `[design]`): every page and dialog, below. Its pages and the states it
   opens are `tools/web/site_pages.mjs`, shared with the accessibility flow.
+  Since 2026-10-30 (scroll367) also every scroller: named, contained,
+  thin bar, a row snapped, reachable by keyboard when it overflows, and
+  scrolled to each end its `data-more` and fade right, its Previous or
+  Next hidden at its own end, shown to a mouse only, never over the view.
 - `accessibility browser flow` (`tools/web/a11y_flow.mjs`, preview check
   `[a11y]`) and `keyboard browser flow` (`tools/web/keyboard_flow.mjs`,
   `[keyboard]`): axe and the accessibility tree's names on every page,
