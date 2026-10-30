@@ -82,6 +82,8 @@ var _stop: OptionButton
 var _focus: HSlider
 var _lens_note: Label
 var _samples: OptionButton
+## The choices, which scroll: a browser test scrolls one into view as a person does.
+var _choices: ScrollContainer
 var _frames: Array[Button] = []
 var _frames_note: Label
 var _motion: OptionButton
@@ -408,6 +410,7 @@ func _build() -> void:
 
 	# The choices.
 	var scroll := ScrollContainer.new()
+	_choices = scroll
 	scroll.custom_minimum_size = Vector2(360, 0)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	body.add_child(scroll)
@@ -1081,6 +1084,7 @@ func controls_by_name() -> Dictionary:
 	named_controls["render_close"] = _close_button
 	named_controls["render_light"] = _light
 	named_controls["render_view"] = _view
+	named_controls["render_choices"] = _choices
 	return named_controls
 
 
