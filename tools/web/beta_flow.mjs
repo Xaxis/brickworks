@@ -87,13 +87,17 @@ async function rpc(name, body) {
   return reply.json();
 }
 
-/// Resend's word on an email it sent: its last event ("delivered").
+/// Resend's word on an email it sent: its last event ("delivered"), or
+/// "accepted" where this machine's key may only send (Resend answers 401
+/// restricted_api_key to a read): Resend took it, with its id, for a test
+/// inbox that takes everything, and that is all such a key can learn.
 async function resendSaid(id) {
   const key = process.env.RESEND_API_KEY || "";
   if (!key) return "no RESEND_API_KEY here to ask";
   for (let tries = 0; tries < 10; tries += 1) {
     const reply = await fetch(`https://api.resend.com/emails/${id}`, { headers: { authorization: `Bearer ${key}` } });
     const said = await reply.json().catch(() => ({}));
+    if (reply.status === 401 && said.name === "restricted_api_key") return "accepted";
     if (said.last_event && said.last_event !== "queued" && said.last_event !== "sent") return said.last_event;
     await new Promise((done) => setTimeout(done, 3000));
   }
@@ -251,7 +255,8 @@ try {
     check(`kept: ${kinds.join(", ")}`, kinds.includes("received:sent") || kinds.includes("received:dry"));
     const sent = mail.find((one) => one.kind === "approved");
     if (sent?.state === "sent") {
-      check(`approved email delivered to ${address("a")}: ${await resendSaid(sent.sent_id)}`, (await resendSaid(sent.sent_id)) === "delivered");
+      const word = await resendSaid(sent.sent_id);
+      check(`approved email to ${address("a")}, Resend ${sent.sent_id}: ${word}`, ["delivered", "accepted"].includes(word));
     } else {
       check(`approved email kept as ${sent?.state} (no mail key on this deployment: a unit's preview)`, sent?.state === "dry");
     }
@@ -269,7 +274,10 @@ try {
       && r.json?.application?.status === "declined" && ["sent", "dry"].includes(r.json?.mail));
     const declinedMail = (await rpc("beta_mail_of", { p_account: b.kept.user_id })).find((one) => one.kind === "declined");
     check(`the decline's email kept: ${declinedMail?.state} "${declinedMail?.subject}"`, Boolean(declinedMail));
-    if (declinedMail?.state === "sent") check("and delivered", (await resendSaid(declinedMail.sent_id)) === "delivered");
+    if (declinedMail?.state === "sent") {
+      const word = await resendSaid(declinedMail.sent_id);
+      check(`and Resend says: ${word}`, ["delivered", "accepted"].includes(word));
+    }
     ({ page, context } = await open("/beta", { width: 390, who: b, label: "declined" }));
     said = await betaSaid(page);
     check(`the page: "${said.words.slice(0, 100)}"`, /Not this time/.test(said.words) && /apply again from/.test(said.words));
