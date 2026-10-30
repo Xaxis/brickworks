@@ -301,6 +301,13 @@ declare -A CMD=(
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"
+  # ChatGPT connecting, stood in for (docs/PROVIDERS.md P1): discovery, its
+  # real client document named on the sign-in page and its code refused
+  # without its signature; a client holding its own key signs in with a
+  # signed assertion, lists the tools in the form OpenAI takes, and calls
+  # one into a throwaway account's tab; Claude's list as before. The page
+  # at 390 and 1280, light and dark, in a browser. The account deleted after.
+  [chatgpt]="tools/web/chatgpt_flow.mjs --url=$P $B --out=$S/${TAG}_chatgpt"
   # local only: signup_check.mjs. It asks the Supabase project, not a
   # deployment, whether anybody can make an account without the code:
   # public sign-up off, confirmation on (account.md). canary below holds

@@ -27,6 +27,9 @@ let project = null; // { url, key }: where codes are redeemed
 let session = null; // { access, email }
 let email = "";
 let client = "Claude"; // who is asking, as the server names it
+// The page's title for Claude, as it always was; another app's is set by
+// speakAs.
+const CLAUDE_TITLE = document.title;
 
 function show(step) {
   for (const id of STEPS) $(id).classList.toggle("hide", id !== step);
@@ -38,6 +41,19 @@ function show(step) {
 function say(text, bad = false) {
   $("say").textContent = text;
   $("say").classList.toggle("bad", bad);
+}
+
+/// The page in [label]'s words: its name wherever the page names who is
+/// asking, and what is Claude's alone (its settings, Connect Claude) shown
+/// only when [claude], where everything reads as it always has.
+function speakAs(label, claude) {
+  client = label;
+  for (const name of document.querySelectorAll(".client")) name.textContent = label;
+  for (const one of document.querySelectorAll(".for-claude")) one.classList.toggle("hide", !claude);
+  for (const one of document.querySelectorAll(".for-other")) one.classList.toggle("hide", claude);
+  $("chats").textContent = claude ? "Claude conversations"
+    : label === "An MCP client" ? "conversations" : `${label} conversations`;
+  document.title = claude ? CLAUDE_TITLE : `Connect ${label} to Brickworks`;
 }
 
 function busy(button, on, label) {
@@ -146,6 +162,10 @@ async function remembered() {
 }
 
 async function start() {
+  // Before the server says who is asking: Claude's words for a request from
+  // one of Claude's own addresses, as the page always had, and no app's
+  // name for any other, so ChatGPT's person never reads "Claude".
+  if (!String(request.client_id || "").startsWith("https://claude.ai/")) speakAs("your app", false);
   // What the request is, before anything is asked of the person.
   let checked;
   try {
@@ -157,6 +177,7 @@ async function start() {
     return show("refused");
   }
   if (checked.refuse) {
+    if (checked.client && !checked.claude) speakAs(checked.client, false);
     $("refused-why").textContent = checked.refuse;
     return show("refused");
   }
@@ -175,8 +196,7 @@ async function start() {
     return show("refused");
   }
 
-  client = checked.client;
-  for (const name of document.querySelectorAll(".client")) name.textContent = client;
+  speakAs(checked.client, Boolean(checked.claude));
   const back = $("back-to");
   back.replaceChildren();
   if (checked.loopback) {
