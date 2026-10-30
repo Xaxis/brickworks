@@ -224,6 +224,9 @@ try {
     const fresh = await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers });
     const again = await fresh.newPage();
     const reply = await again.goto(`${site}/library/set/${PLAIN}`, { waitUntil: "load", timeout: 120000 });
+    // Its first paint, once there is one: a page whose pictures come at once
+    // can be loaded before a browser drawing in software has painted it.
+    await until(again, () => performance.getEntriesByName("first-contentful-paint").length > 0, null, 10);
     const next = await again.evaluate(() => ({ paint: performance.getEntriesByName("first-contentful-paint")[0]?.startTime || 0,
       served: performance.getEntriesByType("navigation")[0]?.responseStart || 0 }));
     console.log(`  a visitor after it: first paint ${Math.round(next.paint)} ms (its first byte at ${Math.round(next.served)} ms, `
