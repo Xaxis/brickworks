@@ -106,12 +106,9 @@
 .docs-head .lede { margin-bottom: 0; }
 /* The start page's head is lit as a landing page's opening is. */
 .docs-head.start {
-	position: relative; isolation: isolate; margin-inline: calc(-1 * var(--s-4)); padding: var(--s-6) var(--s-4);
-	border: 0; border-radius: var(--r-4); background-image: var(--glow); background-repeat: no-repeat;
-}
-.docs-head.start::before {
-	content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
-	background-image: var(--studs); background-size: 24px 24px; mask-image: linear-gradient(180deg, #000 10%, transparent 90%);
+	margin-inline: calc(-1 * var(--s-4)); padding: var(--s-6) var(--s-4); border: 0; border-radius: var(--r-4);
+	background-image: var(--glow), linear-gradient(180deg, transparent 10%, var(--bg) 90%), var(--studs);
+	background-size: auto, auto, 24px 24px; background-repeat: no-repeat, no-repeat, repeat;
 }
 .docs-article h2 { margin: var(--s-7) 0 var(--s-3); scroll-margin-top: calc(var(--head-h) + var(--s-4)); }
 .docs-article h3 { margin: var(--s-6) 0 var(--s-2); scroll-margin-top: calc(var(--head-h) + var(--s-4)); }

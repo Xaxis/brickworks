@@ -1223,17 +1223,14 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
    of parts keeps what is on it in view beside them.
 
    .page-hero: the head, the whole width: the yellow's light from above
-   over the baseplate of studs, which fade out under the words. Its .wrap
+   over the baseplate of studs, which fade into the ground under the words
+   (a gradient over them, not a mask: one layer to paint). Its .wrap
    holds the .eyebrow, the h1, the .lede and, under them, .hero-meta (a
    date, a count) or .actions. */
 .page-hero {
-	position: relative; isolation: isolate; padding: var(--page-top) 0 var(--s-7);
-	border-bottom: 1px solid var(--line); background-image: var(--glow); background-repeat: no-repeat;
-}
-.page-hero::before {
-	content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
-	background-image: var(--studs); background-size: 24px 24px;
-	mask-image: linear-gradient(180deg, #000 10%, transparent 90%);
+	padding: var(--page-top) 0 var(--s-7); border-bottom: 1px solid var(--line);
+	background-image: var(--glow), linear-gradient(180deg, transparent 10%, var(--bg) 90%), var(--studs);
+	background-size: auto, auto, 24px 24px; background-repeat: no-repeat, no-repeat, repeat;
 }
 .page-hero h1 { max-width: 22ch; }
 .page-hero .lede { margin-bottom: 0; }
