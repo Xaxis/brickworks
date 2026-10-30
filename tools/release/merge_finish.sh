@@ -27,6 +27,14 @@ mkdir -p .scratch-data
 # again what is unmade, or says what is and stops here.
 tools/fresh_import.sh || { echo "$(basename "$0"): $PWD is not imported whole; its import said:"; tail -5 .scratch-data/import.log | sed 's/^/  /'; exit 1; }
 echo "imported"
+# A unit that did not commit the .uid its import made beside a new script
+# or shader brings the script alone; this import made one, and it goes in
+# the merge (tests/test_script_uids.py fails a release without it).
+uids=$(git ls-files --others --exclude-standard -- '*.gd.uid' '*.gdshader.uid' '*.gdshaderinc.uid')
+if [ -n "$uids" ]; then
+  echo "$uids" | xargs -d '\n' git add -- && git "${ID[@]}" commit -q --amend --no-edit \
+    && echo "with the .uid of $(echo "$uids" | wc -l) new scripts: $(git log --oneline -1)"
+fi
 "$HERE/parse_gate.sh" "$W" || exit 3
 if ! git diff --quiet HEAD^1 HEAD -- src/net src/ai tools/mcp_tools.json 2>/dev/null; then
   ~/.claude/claude-core/bin/heavy env XDG_DATA_HOME="$PWD/.scratch-data" timeout 1200 godot --headless --path . --script src/dev/mcp_sync_probe.gd -- --write 2>&1 | grep -E "^  (ok|FAIL)|in step"

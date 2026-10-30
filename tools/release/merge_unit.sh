@@ -64,6 +64,14 @@ mkdir -p .scratch-data
 # again what is unmade, or says what is and stops here.
 tools/fresh_import.sh || { echo "$(basename "$0"): $PWD is not imported whole; its import said:"; tail -5 .scratch-data/import.log | sed 's/^/  /'; exit 1; }
 echo "imported"
+# A unit that did not commit the .uid its import made beside a new script
+# or shader brings the script alone; this import made one, and it goes in
+# the merge (tests/test_script_uids.py fails a release without it).
+uids=$(git ls-files --others --exclude-standard -- '*.gd.uid' '*.gdshader.uid' '*.gdshaderinc.uid')
+if [ -n "$uids" ]; then
+  echo "$uids" | xargs -d '\n' git add -- && git "${ID[@]}" commit -q --amend --no-edit \
+    && echo "with the .uid of $(echo "$uids" | wc -l) new scripts: $(git log --oneline -1)"
+fi
 # A probe the merge brings in that no suite list names fails the merge here,
 # not hours later in a full suite (drag_cost and seated, then step_link).
 if grep -q -- '--lists' tools/check.sh 2>/dev/null && ! tools/check.sh --lists >/dev/null 2>&1; then
