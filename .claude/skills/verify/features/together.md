@@ -84,10 +84,16 @@ app, joined by a link (docs/TOGETHER.md).
   the parts, and the app takes none from the parts). Not drawn when `ModelStore.read_only`
   (a shared link's viewer). Controls: `pins_field`, `pins_pin`,
   `pins_close`, `pins_resolve_N`, `pin_mark_N`, `pin_resolve` (the card's).
-- Changes on their way when a page goes: kept as queued (sessionStorage on
-  the web, `together_pending.json` in the tab's folder on the desktop), sent
-  by a kept-alive fetch at `pagehide`, and sent again after the reload
-  (`_restore_pending`, `timing.restored`).
+- Changes on their way when a page goes: each send a kept-alive fetch
+  (`KEPT_ALIVE_SEND`), and kept as queued with the tab's session
+  (localStorage `brickworks.together_pending.<TabSession id>` on the web,
+  `together_pending.json` in the session's folder on the desktop); sent by
+  a kept-alive fetch at `pagehide`, by the desktop's quit
+  (`Together._exit_tree`, a blocking send of `GOODBYE_MS` at most), and
+  sent again by the next page to take up the session: the tab reloaded, or
+  the next tab after it was closed (`_restore_pending`, `timing.restored`).
+  A page closed mid-frame never runs `pagehide`; only the kept copy brings
+  those (tools/web/together_close.mjs).
 - A model over 4 MB (`supabase/together_big.sql`, not applied until the
   lead does): `op=start {stored}`, `op=upload`, `op=snapshot`
   (`Together.parts_above`, 3.5 MB; parts of 2 MB). Without the table a big
@@ -123,6 +129,14 @@ signed in as someone else.
   `together probe: all passed`: the house byte for byte after join, ~55 of 60
   random edits, the same hash on both, the same part moved by both ending in
   one place, each undo its own and one leaving a part changed since.
+  Section 4f: a change held as the copy quits reaches the owner in the
+  quit itself (`Build together: 1 change ... sent as the app quit: taken`).
+- A page closed with a change on its way, about 10 minutes for 30 rounds:
+  `node tools/web/together_close.mjs --url=http://127.0.0.1:9011
+  --rounds=30 --held --frame=600` (the relay holding the together tables).
+  Expect `together_close: none lost`, each round "as it went" or "on the
+  next visit". With `--frame=600` most go on the next visit: a page closed
+  in a long frame runs no `pagehide`. Before the fix: 29 of 30 lost.
 - Whole thing, about 30 minutes, two SwiftShader browsers and a headless
   desktop copy: `node tools/web/together_flow.mjs --url=http://127.0.0.1:9011
   --out=DIR` (`--desktop=no` without the desktop's half). Expect

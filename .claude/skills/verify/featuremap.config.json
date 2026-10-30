@@ -4249,6 +4249,20 @@
       "entry": "src/parts/model_diff.gd",
       "reach": "tools/probe.sh compare_probe   (by part, colour and place, the fewest changes: ten alike with one moved to the end is 1 moved; a session reads it with open_model versions=true version=N)",
       "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "bands and springs by hand",
+      "entry": "src/assembly/bands.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd   (by hand: pick a rubber belt or a shock absorber in the bin, click the pulleys or the two pin holes; Build, Hose, tube or chain…, Spring or shock; nudge a part it is on and it follows; PROBE_SIZE=1280x720)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "springs probe",
+      "entry": "src/dev/springs_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd  (a band round two wedge belt wheels and three, each in 4 actions or fewer, within 1 LDU of the tangents and arcs by hand and in every groove; turned and tilted; a wheel nudged and its band following, one undo; a spring stretched from 4 to 6 studs keeping its turns; a shock from the bin; saved and opened the same; PROBE_SIZE=1280x720)",
+      "area": "building"
     }
   ]
 }
