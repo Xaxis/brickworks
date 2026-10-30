@@ -271,6 +271,10 @@ declare -A CMD=(
   # stranger refused, the owner ending it. Needs supabase/together.sql.
   [together_probe]="tools/web/together_probe.mjs --url=$P"
   [together]="tools/web/together_flow.mjs --url=$P --out=$S/${TAG}_together"
+  # local only: typed_flow.mjs. A number typed with a part in hand, in the
+  # web build (hand371): it runs against tools/web/serve.py's local build,
+  # as its header says, and has no way past a preview's protection yet.
+  # src/dev/typed_moves_probe.gd holds the same on desktop.
   # local only: bin_tiles_flow.mjs. The parts bin's tiles drawn and named
   # from their first frame, as the bin opens and after a search, on a slow network: it needs
   # tools/web/serve.py --parts to serve each part late, which a deployment
