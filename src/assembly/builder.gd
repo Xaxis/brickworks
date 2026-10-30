@@ -72,6 +72,10 @@ var scenery: Dictionary = {}
 ## the step that changes what the model stands on. Unset, the step does
 ## nothing.
 var floor_hook: Callable = Callable()
+## Sets the comments pinned to parts (PinnedComments.set_words) and returns
+## what they were, for the step that pins, resolves or opens one again.
+## Unset, the step does nothing.
+var pins_hook: Callable = Callable()
 
 signal placed(brick_id: int, part_id: String)
 signal removed(brick_id: int)
@@ -450,6 +454,11 @@ func _apply(step: Dictionary) -> Dictionary:
 		lattice.occupy_boxes(moving,
 			boxes_for(library.mesh_for(was.part_id), to))
 		return {"undo": "move", "brick": moving, "transform": previous}
+
+	# Comments pinned to parts: the whole set as it was, its own reverse.
+	if step.get("undo", "") == "pins":
+		return {"undo": "pins", "pins": pins_hook.call(step["pins"]) if pins_hook.is_valid()
+			else step["pins"]}
 
 	# What the model stands on: put the floor the step names down, and the
 	# step that puts back the one it replaced is the reverse.
@@ -989,6 +998,166 @@ func tip_selection(axis: Vector3, quarters: int) -> int:
 	var lay: Transform3D = Transform3D(Basis.IDENTITY, shift) * around
 	return _reposition(func(at: Transform3D) -> Transform3D:
 		return _tidy(lay * at, true), "tipped %s over" % _many(alive.size()))
+
+
+# -- handles: the selection turned or slid by a drag (Handles) ----------------
+
+
+## What a handle's drag holds while the button is down: each part's place
+## and cover as it began ({was, covers}), to put back exactly when it ends
+## with no move. Empty when nothing is dragged.
+var _dragged: Dictionary = {}
+
+
+## A handle's drag begun on the selection (Handles, docs/APP_UX.md B3): its
+## parts taken out of the lattice, so each place the drag asks about is
+## weighed against the rest of the model alone. Nothing else changes until
+## [method drag_end]: the parts, the history and the revision stay as they
+## were, and the drag is drawn by BrickWorld.set_drawn. How many parts it
+## holds; 0 when nothing selected is there to move.
+func drag_begin() -> int:
+	drag_end(Transform3D.IDENTITY)
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty():
+		return 0
+	var was: Dictionary = {}
+	var covers: Dictionary = {}
+	for brick_id: int in alive:
+		was[brick_id] = world.get_brick(brick_id).transform
+		covers[brick_id] = lattice.cover_of(brick_id)
+		lattice.release(brick_id)
+	_dragged = {"was": was, "covers": covers}
+	return alive.size()
+
+
+func is_dragging() -> bool:
+	return not _dragged.is_empty()
+
+
+## Where each part of the drag stands moved by [param by], a move in the
+## model's frame: brick id -> Transform3D.
+func drag_places(by: Transform3D) -> Dictionary:
+	var out: Dictionary = {}
+	var was: Dictionary = _dragged.get("was", {})
+	for brick_id: int in was:
+		out[brick_id] = _dragged_to(by, was[brick_id])
+	return out
+
+
+func _dragged_to(by: Transform3D, was: Transform3D) -> Transform3D:
+	var to: Transform3D = by * was
+	to = Transform3D(to.basis.orthonormalized(), to.origin)
+	return _tidy(to, BrickLattice.is_square_to_grid(to.basis))
+
+
+## Whether every part of the drag has room moved by [param by]: each by
+## the rule a part put down has it ([method room_for]: nothing in its way
+## but what it joins as real parts join), none below the ground. What was
+## in the way is in [member refused_by].
+func drag_fits(by: Transform3D) -> bool:
+	return drag_room(by) >= 0
+
+
+## [method drag_fits] a piece at a time, so a big selection's test can be
+## spread over frames: the parts checked in order from the [param from]th
+## until the clock (Time.get_ticks_usec) passes [param until], 0 for no end,
+## at least one a call. How many are clear so far, all of them when every
+## one fits; -1 at the first with no room.
+func drag_room(by: Transform3D, from: int = 0, until: int = 0) -> int:
+	refused_by = PackedInt64Array()
+	var was: Dictionary = _dragged.get("was", {})
+	var ids: Array = was.keys()
+	var n: int = from
+	while n < ids.size():
+		if until != 0 and n > from and Time.get_ticks_usec() >= until:
+			return n
+		var brick: BrickWorld.Brick = world.get_brick(ids[n])
+		var to: Transform3D = _dragged_to(by, was[ids[n]])
+		if brick != null and not _clear_round(brick.part_id, to) \
+				and not room_for(brick.part_id, to, true):
+			if room_blocker != 0:
+				refused_by = PackedInt64Array([room_blocker])
+			return -1
+		n += 1
+	return n
+
+
+## Whether nothing of the model, nor the ground, is within a cell of the
+## box round [param part_id]'s cover at [param at]: room there for certain,
+## its cover not worked out. A turned part's is worked out cell by cell
+## (5 to 10 ms for a tyre) and kept for each angle, and a drag asks at a new
+## angle every 5°. False says only that [method room_for] must decide.
+func _clear_round(part_id: String, at: Transform3D) -> bool:
+	var part: Lbm.PartMesh = library.mesh_for(part_id)
+	if part == null:
+		return false
+	var whole: AABB = part.bounds
+	for box: AABB in part.boxes:
+		whole = whole.merge(box)
+	var lo := Vector3(INF, INF, INF)
+	var hi := Vector3(-INF, -INF, -INF)
+	for n: int in 8:
+		var corner: Vector3 = at * whole.get_endpoint(n)
+		lo = lo.min(corner)
+		hi = hi.max(corner)
+	var from: Vector3i = BrickLattice.to_cell(lo) - Vector3i.ONE
+	var to: Vector3i = BrickLattice.to_cell(hi) + Vector3i(2, 2, 2)
+	if from.y < GROUND_CELL:
+		return false
+	return lattice.blockers_boxes(PackedInt32Array([from.x, from.y, from.z, to.x, to.y, to.z])) \
+		.is_empty()
+
+
+## The drag let go: the parts moved by [param by] as one step to undo,
+## [param words] its name in the history, and back in the lattice there. No
+## move, or no room there any longer (another hand built in the way
+## meanwhile), puts every cover back as it was. How many moved.
+func drag_end(by: Transform3D, words: String = "") -> int:
+	if _dragged.is_empty():
+		return 0
+	var was: Dictionary = _dragged["was"]
+	var covers: Dictionary = _dragged["covers"]
+	var places: Dictionary = {}
+	var moves: bool = not by.is_equal_approx(Transform3D.IDENTITY) and drag_fits(by)
+	if moves:
+		places = drag_places(by)
+	_dragged = {}
+	if not moves:
+		for brick_id: int in was:
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			if brick == null:
+				continue
+			if not (covers[brick_id][0] as PackedInt32Array).is_empty():
+				lattice.occupy_moved(brick_id, covers[brick_id], Vector3i.ZERO)
+			else:
+				lattice.occupy_boxes(brick_id, boxes_for(library.mesh_for(brick.part_id),
+					was[brick_id]))
+		return 0
+	var steps: Array = []
+	for brick_id: int in places:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			continue
+		steps.append({"undo": "move", "brick": brick_id, "transform": was[brick_id]})
+		world.move_brick(brick_id, places[brick_id])
+		lattice.occupy_boxes(brick_id, boxes_for(library.mesh_for(brick.part_id),
+			places[brick_id]))
+	record(steps, words if not words.is_empty() else "moved %s" % _many(steps.size()))
+	_turned_last = ""
+	return steps.size()
+
+
+## The round joint the selection hangs from ([method _joint_of]): {point,
+## axis}, where a handle's rings stand by default; empty for none, or for a
+## selection too big to ask ([constant HINGED_MOST]).
+func hung_from() -> Dictionary:
+	var alive: PackedInt64Array = _living_selection()
+	if alive.is_empty() or alive.size() > HINGED_MOST:
+		return {}
+	var joint: Dictionary = _joint_of(alive)
+	if joint.is_empty():
+		return {}
+	return {"point": joint["point"], "axis": (joint["axis"] as Vector3).normalized()}
 
 
 ## The box round some bricks, each moved by ``by`` first.

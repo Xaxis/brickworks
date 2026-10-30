@@ -40,6 +40,8 @@ import { pageAsked, pager } from "/pager.js";
   const grid = $("models");
   const q = $("q");
   const sort = $("sort");
+  // The order a list is in unless asked (api/_sets.js FIRST_SORT): sets built in 3D first.
+  const FIRST_SORT = "built";
   const size = $("size");
   const decade = $("decade");
   let filled = false;
@@ -76,8 +78,8 @@ import { pageAsked, pager } from "/pager.js";
       if (pick(name) && !(name === "year" && decadeOf(pick(name)) !== chosen(decade))) asked.set(name, pick(name));
     }
     if (chosen(size)) asked.set("size", chosen(size));
-    const order = chosen(sort) || "newest";
-    if (!address || order !== "newest") asked.set("sort", order);
+    const order = chosen(sort) || FIRST_SORT;
+    if (!address || order !== FIRST_SORT) asked.set("sort", order);
     if (address && page > 1) asked.set("page", String(page));
     return asked;
   }
@@ -175,7 +177,7 @@ import { pageAsked, pager } from "/pager.js";
 
   /// How many filters are on, on the Filters button.
   function sayFilters() {
-    const on = [chosen(size), chosen(decade), chosen(sort) && chosen(sort) !== "newest", ...MORE.map(([name]) => pick(name))]
+    const on = [chosen(size), chosen(decade), chosen(sort) && chosen(sort) !== FIRST_SORT, ...MORE.map(([name]) => pick(name))]
       .filter(Boolean).length;
     const n = $("filters-said");
     n.textContent = on ? String(on) : "";
@@ -301,7 +303,7 @@ import { pageAsked, pager } from "/pager.js";
   $("filters-clear").addEventListener("click", () => {
     size.value = decade.value = "";
     for (const select of Object.values(extra)) select.value = "";
-    sort.value = "newest";
+    sort.value = FIRST_SORT;
     ask();
   });
   $("clear").addEventListener("click", () => {

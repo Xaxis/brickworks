@@ -86,6 +86,8 @@ const CREDIT_META := "0 !BRICKWORKS CREDIT "
 ## The hidden parts' colours chosen for this model (HiddenColours.Plan
 ## .scheme), for the booklet to show; empty when none were.
 var hidden_scheme: Dictionary = {}
+## Comments pinned to its parts (PinnedComments), kept in its file.
+var pins: PinnedComments = PinnedComments.new()
 ## Who laid its parts, as far as this app knows (2026-10-24): "hand" for a
 ## model begun empty here with every part laid by a person, "assistant"
 ## once Claude laid any (the panel's designer, a session's tools), and
@@ -590,6 +592,7 @@ func _begin_as(named: String) -> void:
 	credit = {}
 	from_set = ""
 	hidden_scheme = {}
+	pins = PinnedComments.new()
 	# Begun empty here, who lays each part from now on is known. Named as a
 	# design stands, its parts are still whoever laid them.
 	if world == null or _is_empty():
@@ -1550,6 +1553,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	model_floor = said if said != null else ModelFloor.preferred()
 	from_set = read["set"]
 	hidden_scheme = read["hidden"]
+	pins = read["pins"]
 	world.motions = read["motions"]
 	if not world.motions.is_empty():
 		# Where each part stood as the file has it: a joint is measured from
@@ -1608,6 +1612,7 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		"set": set_in(text),
 		"hidden": HiddenColours.read(text),
 		"motions": Motions.read(text),
+		"pins": PinnedComments.read(text),
 	}
 
 
@@ -1912,6 +1917,7 @@ func _source_asked(title_now: String) -> Dictionary:
 		"unit_steps": world.unit_steps.duplicate(true) if source.authored else {},
 		"floor": model_floor, "hidden": hidden_scheme.duplicate(true),
 		"motions": _motion_lines(), "looks": world.step_looks.duplicate(true),
+		"pins": pins.lines(world, _lift_now()),
 		"authored": AuthorSteps.any(world, scenery), "set": from_set}
 
 
@@ -1946,6 +1952,7 @@ static func _source_written(asked: Dictionary) -> Variant:
 	kept = ground.written_into(kept) if ground != null else kept
 	kept = HiddenColours.written_into(kept, asked["hidden"])
 	kept = Motions.written_into(kept, asked["motions"])
+	kept = PinnedComments.written_into(kept, asked["pins"])
 	kept = _looks_into(kept, asked["looks"], asked["authored"])
 	var number: String = asked["set"]
 	return kept if set_in(kept) == number else with_set(kept, number)
@@ -2341,6 +2348,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	text = model_floor.written_into(text) if model_floor != null else text
 	text = HiddenColours.written_into(text, hidden_scheme)
 	text = Motions.written_into(text, _motion_lines())
+	text = PinnedComments.written_into(text, pins.lines(world, _lift_now()))
 	text = _with_looks(text, true)
 	if model != world:
 		model.free()

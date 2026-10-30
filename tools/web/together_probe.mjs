@@ -19,6 +19,13 @@
 //      working reaches the others; an account under 13 joins, is told it has
 //      no chat, cannot say anything, and reads the log with the lines taken
 //      out.
+//   3c. Comments pinned to parts (B8): the owner's comment in the model a
+//      session starts on reaches someone 13 or over who joins, not an
+//      account under 13; a comment pinned is numbered, one with words a
+//      stranger may not be shown refused, and an account under 13 can pin
+//      none and reads the log with them taken out; one starting a session
+//      keeps its own out of it. A big model's are kept in its session's
+//      row, checked, and not sent to an account under 13.
 //   4. A third account with no link, or a made-up one, is refused; so is a
 //      send or a poll from an account that never joined. The owner takes
 //      the second out: its next poll, its send and joining again by the
@@ -64,9 +71,12 @@ const brick = (x, colour = 4) => ["3001.dat", colour, at(x), "", "", -1];
 
 try {
   console.log("1. start and join");
+  // With a comment pinned to a part, as the app's file and keys carry it.
+  const pinned = { id: "aa11", part: "3001", colour: 4, at: [0, 0, 0], text: "Roof starts here" };
   const started = await ask(tokens[0], "start", {
     title: "Probe house",
-    snapshot: { text: "0 Probe house\n", lift: 0, bricks: [["0.1", ...brick(0)], ["0.2", ...brick(20)]] },
+    snapshot: { text: `0 Probe house\n0 !BRICKWORKS PIN ${JSON.stringify(pinned)}\n`, lift: 0,
+      bricks: [["0.1", ...brick(0)], ["0.2", ...brick(20)]], meta: { "~pin:aa11": JSON.stringify(pinned) } },
   });
   check("the owner starts a session and is given a link", started.status === 200 && /\/app\?together=/.test(started.value.link || ""),
     `${started.status}`);
@@ -150,6 +160,55 @@ try {
   check("...and is not shown the others' lines", kidOps.length > 0 && !kidOps.some((op) => op.changes["~chat"] !== undefined),
     `${kidOps.length} changes read`);
   after = (seenNow.value.ops || []).length ? seenNow.value.ops[seenNow.value.ops.length - 1].seq : after;
+
+  console.log("3c. comments pinned to parts");
+  check("someone 13 or over joining has the owner's comment, its key and its line",
+    joined.value.snapshot?.meta?.["~pin:aa11"] && joined.value.snapshot.text.includes("Roof starts here"));
+  check("...an account under 13 joining has neither", !kidJoin.value.snapshot?.meta?.["~pin:aa11"]
+    && !kidJoin.value.snapshot?.text.includes("Roof starts here") && kidJoin.value.snapshot?.text.includes("Probe house"));
+  const pin = (id, text) => ({ [`~pin:${id}`]: JSON.stringify({ ...pinned, id, text }) });
+  const pinSent = await ask(tokens[1], "send", { s, client: "guestab", ops: [{ cid: 502, changes: pin("bb22", "Door here?") }] });
+  check("someone 13 or over pins a comment", pinSent.status === 200, `${pinSent.status}`);
+  const pinRude = await ask(tokens[1], "send", { s, client: "guestab", ops: [{ cid: 503, changes: pin("cc33", "you bastard") }] });
+  check("...one with words a stranger may not be shown is refused", pinRude.status === 422, `${pinRude.status}`);
+  const kidPins = await ask(tokens[3], "send", { s, client: "kidabc", ops: [{ cid: 1, changes: pin("dd44", "hi") }] });
+  check("...an account under 13 cannot pin one", kidPins.status === 422, `${kidPins.status}`);
+  const kidSees = await ask(tokens[3], "poll", { s, after: kidOps.length ? kidOps[kidOps.length - 1].seq : 0, seen: "x" });
+  const ownerSees = await ask(tokens[0], "poll", { s, after, seen: "x" });
+  check("the owner reads the comment pinned; the account under 13 reads its change with the comment taken out",
+    (ownerSees.value.ops || []).some((op) => String(op.changes["~pin:bb22"] || "").includes("Door here?"))
+    && (kidSees.value.ops || []).length > 0 && !(kidSees.value.ops || []).some((op) => Object.keys(op.changes)
+      .some((key) => key.startsWith("~pin:"))), `${(kidSees.value.ops || []).length} changes read`);
+  const ownerRead = ownerSees.value.ops || [];
+  if (ownerRead.length) after = ownerRead[ownerRead.length - 1].seq;
+  // A session an account under 13 starts on a model with its own comment:
+  // the comment stays in its model, out of the session's.
+  const kidStarts = await ask(tokens[3], "start", { title: "Kid's house",
+    snapshot: { text: `0 Kid's house\n0 !BRICKWORKS PIN ${JSON.stringify(pinned)}\n`, lift: 0,
+      bricks: [["0.1", ...brick(0)]], meta: { "~pin:aa11": JSON.stringify(pinned) } } });
+  const kidsJoined = kidStarts.status === 200 ? await ask(tokens[1], "join", { s: kidStarts.value.s }) : null;
+  check("an account under 13 starting a session keeps its comment out of it, and is told",
+    kidStarts.status === 200 && JSON.stringify(kidStarts.value.held) === '["~pin:aa11"]' && /13/.test(kidStarts.value.chat || "")
+    && kidsJoined?.status === 200 && !kidsJoined.value.snapshot?.meta?.["~pin:aa11"]
+    && !kidsJoined.value.snapshot?.text.includes("Roof starts here"), `${kidStarts.status} ${JSON.stringify(kidStarts.value.held)}`);
+  if (kidStarts.status === 200) await ask(tokens[3], "end", { s: kidStarts.value.s });
+  // A big model's comments are kept in its session's row, not in its parts:
+  // checked there, and none sent to an account under 13.
+  const bigStarts = await ask(tokens[0], "start", { title: "Big house", stored: 1, bytes: 100,
+    pins: { ...pin("aa11", "Roof starts here"), ...pin("ee55", "you bastard") } });
+  if (bigStarts.status === 413) {
+    console.log("  (a big model: not here; its parts need supabase/together_big.sql)");
+  } else {
+    const [grown, kidGrown] = bigStarts.status === 200 ? await Promise.all([ask(tokens[1], "join", { s: bigStarts.value.s }),
+      ask(tokens[3], "join", { s: bigStarts.value.s })]) : [null, null];
+    const pins = grown?.value.snapshot?.pins || {};
+    check("a big model's comments: in its session, the one not to be said held back, none to an account under 13",
+      bigStarts.status === 200 && JSON.stringify(bigStarts.value.held) === '["~pin:ee55"]'
+      && String(pins["~pin:aa11"] || "").includes("Roof starts here") && !pins["~pin:ee55"]
+      && kidGrown?.status === 200 && kidGrown.value.snapshot?.stored === 1 && kidGrown.value.snapshot.pins === undefined,
+      `${bigStarts.status} ${JSON.stringify(bigStarts.value.held)}; ${Object.keys(pins)}; ${JSON.stringify(kidGrown?.value.snapshot)}`);
+    if (bigStarts.status === 200) await ask(tokens[0], "end", { s: bigStarts.value.s });
+  }
 
   console.log("4. who may not");
   const guessed = await ask(tokens[2], "join", { s: "x".repeat(32) });

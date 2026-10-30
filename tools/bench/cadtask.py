@@ -579,7 +579,8 @@ FRAME_NEAR = 0.1
 DESKTOP_BUDGET_MS = 16.7
 WEB_BUDGET_MS = 33.0
 ## The interactions the budget is for, as each runner names them.
-INTERACTIONS = ["idle", "orbit", "place", "select_100", "select_all", "delete", "undo", "step"]
+INTERACTIONS = ["idle", "orbit", "place", "select_100", "handles", "handle_drag", "select_all",
+                "delete", "undo", "step"]
 
 
 def choose_frames(info: dict[str, tuple[int, int]], sizes=FRAME_SIZES,

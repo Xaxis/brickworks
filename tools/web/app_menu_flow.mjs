@@ -15,7 +15,7 @@
 // About Brickworks; then Back to brickworks.diy, the last row, puts the
 // page at the site's own address, its header's mark showing. Pictures in
 // --out; it fails if a step does not happen or a script error is thrown.
-import { launch, START_MS } from "./browser.mjs";
+import { controlsWith, launch, START_MS } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -63,9 +63,17 @@ for (const [width, height] of [[1280, 800], [390, 844]]) {
     await page.close();
     continue;
   }
+  // The map is told again as the layout settles: at 390 x 844 the mark left
+  // it for two seconds while the phone's toolbar was laid out (rel-m223), and
+  // a single read three seconds in found nothing. Read it once it is back.
   await page.waitForTimeout(3000);
-  const where = await controls();
+  const where = await controlsWith(page, ["app_menu"], 30000);
   const mark = where.app_menu;
+  if (!check("...and still there once the layout settles", Boolean(mark))) {
+    await page.screenshot({ path: `${out}/${size}_mark_gone.png` }).catch(() => {});
+    await page.close();
+    continue;
+  }
   const row = Object.entries(where).filter(([, at]) => Math.abs(at.y - mark.y) < 8);
   const leftMost = row.every(([name, at]) => name === "app_menu" || at.x > mark.x);
   check(`...at the top left (${mark.x - mark.w / 2}, ${mark.y - mark.h / 2}; ${mark.w} x ${mark.h}), `

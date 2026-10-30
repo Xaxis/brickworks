@@ -44,6 +44,9 @@ var see_inside: SeeInside
 var stress: StressView
 ## File, Versions…: src/ui/versions_dialog.gd.
 var versions: VersionsDialog
+## Compare with a save, from Versions… or File, Compare with…:
+## src/ui/compare_view.gd.
+var compare: CompareView
 ## Edit, Pattern…: copies in a row, round, or along a hose (Pattern).
 var pattern_dialog: PatternDialog
 ## Help, Send feedback… (FeedbackDialog).
@@ -106,10 +109,10 @@ const ALT := KEY_MASK_ALT
 ## any of them by name.
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", ">recent", ">import", "-", "save", "save_as",
-		"versions", "-", "share", "together", ">export", "render", "-", "clear", "quit"]],
+		"versions", "compare", "-", "share", "together", ">export", "render", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
-		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
+		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror", "comments"]],
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
@@ -367,6 +370,27 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	versions.store = store
 	versions.bar = bar
 	add_child(versions)
+	# Compare with a save: its panel where View, Stress's is, the two never
+	# open at once (_define's stress).
+	compare = CompareView.new()
+	compare.world = world
+	compare.library = library
+	compare.store = store
+	compare.camera = camera
+	compare.assemblies = assemblies
+	compare.stress = stress
+	compare.say = bar.say
+	compare.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	compare.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	compare.offset_right = -14.0
+	compare.offset_left = -14.0 - CompareView.WIDE
+	compare.offset_top = ViewCube.size_for().y + 26.0
+	over_model.add_child(compare)
+	versions.compare = func(version: ModelVersions.Version) -> void: compare.open_with(version)
+	# A save is of the model it was made of.
+	for replaced: Signal in [bar.started_new, bar.cleared]:
+		replaced.connect(func() -> void: compare.close(false))
+	bar.opened.connect(func(_n: int) -> void: compare.close(false))
 
 	pattern_dialog = PatternDialog.new()
 	pattern_dialog.builder = builder
@@ -736,6 +760,7 @@ const NEEDS: Dictionary = {
 	"xray": "Select a part first", "cut_flip": "Turn on Cut away first",
 	"stress": "Put a part on the baseplate first",
 	"split_view": "The window is too small for two views",
+	"compare": "Save the model first: each save is kept to compare with",
 	"reshape_flex": "Select a hose or chain",
 	"floor_part": "Stand the model on a baseplate first",
 	"back_to_site": "In a browser only",
@@ -857,7 +882,11 @@ func _define() -> void:
 		"Keep a copy of this model under another name")
 	# src/ui/versions_dialog.gd, src/parts/model_versions.gd.
 	_add("versions", "Versions…", 0, func() -> void: versions.open(), Callable(),
-		"The last %d saves of this model, to open one again" % ModelVersions.KEPT)
+		"The last %d saves of this model, to open one again or compare it with" % ModelVersions.KEPT)
+	# src/ui/compare_view.gd, src/parts/model_diff.gd.
+	_add("compare", "Compare with…", 0, func() -> void: versions.open(true),
+		func() -> bool: return not store.versions().is_empty(),
+		"What changed since one of this model's saves: added green, removed red, moved amber")
 	_add("export_ldraw", "LDraw model (.ldr, or .mpd with its sub-models)", 0,
 		func() -> void: await bar._on_export(), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
@@ -890,6 +919,9 @@ func _define() -> void:
 	# src/net/together.gd, src/ui/together_dialog.gd.
 	_add("together", "Build together…", 0, func() -> void: app.call("open_together"), Callable(),
 		"Build this model with someone else, live, each in their own browser or the app")
+	# src/assembly/pinned_comments.gd, src/ui/pins_dialog.gd.
+	_add("comments", "Comments…", 0, func() -> void: app.call("open_pins"), Callable(),
+		"Comments pinned to the model's parts, kept with it, and a new one on the part selected")
 	_add("clear", "Clear the baseplate…", 0, bar._ask_to_clear, something,
 		"Empty the baseplate. Asks first: it cannot be undone")
 	_add("account", "Account…", 0, func() -> void: bar.account_wanted.emit(),
@@ -1094,7 +1126,14 @@ func _define() -> void:
 			or not assemblies.entered.is_empty()),
 		"Everything but the selection, or the sub-assembly being edited, see-through")
 	_ticked("xray", func() -> bool: return see_inside.seeing_through)
-	_add("stress", "Stress", 0, func() -> void: stress.set_on(not stress.on),
+	_add("stress", "Stress", 0, func() -> void:
+		# The two draw with one layer (BrickWorld.set_stress): Stress, asked
+		# for while comparing, takes over where the comparison is.
+		if compare.is_open():
+			compare.close(false)
+			stress.set_on(true)
+			return
+		stress.set_on(not stress.on),
 		func() -> bool: return stress.on or world.brick_count() > store.scenery.size(),
 		"Every part tinted by how near its weakest joint is to letting go: red past its "
 		+ "studs' working load, amber within twice it")
@@ -1310,14 +1349,15 @@ func _define() -> void:
 ## Duplicate, Replace, the same part or colour, the step moves and the
 ## swing on a hinge each needed a key or a menu (appux371 A8): here, with
 ## their keys, among what selects, hides, copies and changes the part.
-const ON_A_PART: Array = ["ask_claude", "brace", "-", "select_connected", "select_part",
+const ON_A_PART: Array = ["ask_claude", "brace", "comments", "-", "select_connected", "select_part",
 	"select_colour", "-", "hide", "isolate", "-", "copy", "duplicate", "delete", "-", "paint",
 	"replace", "printed_versions", "swing", "-", "step_prev", "step_next", "make_submodel", "-",
 	"show_properties"]
 
 ## A row's words on a part where the menus' would not say it: Select by's
 ## "Same part" there is the same as the part clicked.
-const ON_A_PART_WORDS: Dictionary = {"select_connected": "Select everything joined to it",
+const ON_A_PART_WORDS: Dictionary = {"comments": "Comment on it…",
+	"select_connected": "Select everything joined to it",
 	"select_part": "Select the same part", "select_colour": "Select the same colour"}
 var context: PopupMenu
 var _brace_id: int = -1
@@ -2721,6 +2761,8 @@ func controls_by_name() -> Dictionary:
 		out.merge(stress.panel.controls_by_name())
 	if versions != null:
 		out.merge(versions.controls_by_name())
+	if compare != null:
+		out.merge(compare.controls_by_name())
 	if palette != null:
 		out.merge(palette.controls_by_name())
 	if first_build != null:

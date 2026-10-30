@@ -1,7 +1,7 @@
 ---
 tools: save_model, open_model
-panels: SavedModelsDialog#open, VersionsDialog#versions, LibraryDialog#library
-ai: Saving and opening models, their last 20 versions, the library of real sets, and the files Brickworks opens (LDraw, Studio, LDD, 3D models). An assistant saves with save_model and opens a saved model, a version, a gallery model or a library set with open_model.
+panels: SavedModelsDialog#open, VersionsDialog#versions, CompareView#compare, LibraryDialog#library
+ai: Saving and opening models, their last 20 versions and what changed since each, the library of real sets, and the files Brickworks opens (LDraw, Studio, LDD, 3D models). An assistant saves with save_model and opens a saved model, a version, a gallery model or a library set with open_model; open_model versions=true version=N reads what changed since that save, opening nothing.
 rules:
   - Saved names are unique: a save under a name another model has is refused.
   - Opening over unsaved changes asks first; open_model takes discard_changes.
@@ -53,6 +53,17 @@ ui:working model that could not open
 <!-- covers
 ui:versions of a model
 lib:model versions
+-->
+
+## Compare with a save {#compare}
+
+**File › Compare with…**, or **Compare** on a row of **File › Versions…**, shows what changed since that save, on the model itself. Parts added since are green, parts taken away are red ghosts where they stood, parts moved or turned are amber with a faint ghost where they were, and parts painted another colour are violet. Everything that did not change is faded. A part moved by less than half an LDU has not moved, and of several identical parts the fewest changes are shown: one brick moved to the end of a row is one moved part, not one taken away and one added.
+
+The panel over the model counts each kind. **Next** and **Previous** step through the changes one by one, and the view frames each. Comparing changes nothing: the model, its undo history and whether it is saved stay as they were. **Close** or [[Esc]] puts the view back. While you are editing inside a sub-assembly, only that sub-assembly is compared, and the panel says so.
+
+<!-- covers
+ui:compare with a save
+lib:model diff
 -->
 
 ## The library {#library}

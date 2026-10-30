@@ -143,7 +143,13 @@
 					"name": "versions",
 					"words": "Versions…",
 					"key": "",
-					"tip": "The last 20 saves of this model, to open one again"
+					"tip": "The last 20 saves of this model, to open one again or compare it with"
+				},
+				{
+					"name": "compare",
+					"words": "Compare with…",
+					"key": "",
+					"tip": "What changed since one of this model's saves: added green, removed red, moved amber"
 				},
 				{
 					"line": true
@@ -409,6 +415,12 @@
 					"words": "Mirror",
 					"key": "Shift+M",
 					"tip": "Make the selection its mirror image, left to right as you see it"
+				},
+				{
+					"name": "comments",
+					"words": "Comments…",
+					"key": "",
+					"tip": "Comments pinned to the model's parts, kept with it, and a new one on the part selected"
 				}
 			]
 		},
@@ -1290,6 +1302,12 @@
 			"tip": "Ask Claude to make this joint hold: what it carries, on what, and its margin, asked for you"
 		},
 		{
+			"name": "comments",
+			"words": "Comments…",
+			"key": "",
+			"tip": "Comments pinned to the model's parts, kept with it, and a new one on the part selected"
+		},
+		{
 			"line": true
 		},
 		{
@@ -1442,6 +1460,7 @@
 		"save": "Ctrl-S",
 		"save_as": "Ctrl-shift-S",
 		"versions": "",
+		"compare": "",
 		"export_ldraw": "",
 		"export_io": "",
 		"export_3d": "",
@@ -1454,6 +1473,7 @@
 		"instructions": "",
 		"share": "",
 		"together": "",
+		"comments": "",
 		"clear": "",
 		"account": "",
 		"quit": "Ctrl-Q",

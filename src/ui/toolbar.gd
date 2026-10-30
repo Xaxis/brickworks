@@ -61,8 +61,8 @@ const GROUPS: Array = [
 const SAYS: Dictionary = {
 	"mode_place": "The last part back in hand: a click puts one down, and the next; a drag turns the view and puts nothing down. Esc or a right click lets go",
 	"mode_select": "Where the app rests. Click a part to select it, drag it to move it (Ctrl-drag copies it), drag anywhere else to turn the view, Ctrl-drag a box round several, Alt-click takes a part into hand",
-	"mode_move": "Click a part to pick it up — the whole selection, if it is in it — and click again to put it down",
-	"mode_rotate": "Click a part to turn it by the turn step; Shift-click turns it back",
+	"mode_move": "Click a part for its arrows and drag one to slide it along that axis; click it again to pick it up — the whole selection, if it is in it — and put it down elsewhere",
+	"mode_rotate": "Click a part for its rings and drag one to turn it about that axis, finer further out; click it again to turn it by the turn step, Shift-click back",
 	"mode_hinge": "Click a part on a hinge, clip or turntable to swing it about the joint",
 	"mode_connect": "A point on the part, then the point it goes on: with a part in hand, click the pin, hole or bar it goes on by, then the one it goes on. With nothing in hand, click a part of the model first",
 	"mode_clone": "Click a part to hold a copy of it, then click where the copy goes",

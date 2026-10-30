@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe -->
 
 ## Sub-features
 
@@ -265,7 +265,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `tool modes` (`EditVerbs.mode`): Select (the default) and Place (a part in
   hand), and Move, Rotate, Hinge, Clone, Paint, Hide, Delete — a click on a part
   does that tool's one thing to it, or to the whole selection when the part is
-  in it (`EditVerbs.click`). The tool in use is lit on the toolbar and ticked
+  in it (`EditVerbs.click`). Move and Rotate first pick a part out that is not
+  selected, its handles on it (`handles on the selection`); a click on it again
+  picks it up or turns it a turn step, as before. The tool in use is lit on the toolbar and ticked
   in Tools. Only Place shows the ghost; a part carried by a drag, Move or Clone
   shows its own. `V` is Select, `Q` Place; `Esc` closes whatever is up and goes
   back to Select with nothing in hand, in one press.
@@ -1858,6 +1860,52 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (`fold_since`, "connected …"); `Esc` or Undo puts it back. Studs go by the
   stud grid as before (a part with no ends is said so). In a browser the stage
   and the points on the page are `window.brickworksState.connect`.
+- `handles on the selection` (`src/ui/handles.gd`, `Builder.drag_begin` /
+  `drag_fits` / `drag_room` / `drag_end` / `hung_from`, APP_UX B3): with the Rotate tool, rings
+  on the selection; with Move, arrows. They are on the first selected part's own
+  axes, the model's or the view's: the tag beside them ("Part axes") says which,
+  and a click on it goes to the next (`Handles.frame`). They stand where the
+  selection hangs from: the round joint `_joint_of` finds (60 parts or fewer),
+  else the stud R turns about (`Carry.pivot_of`), else the middle of a part off
+  the grid; Alt-click on the model picks another point (a pin, hole or bar of the
+  part there if one is within a few pixels), Alt-click on nothing goes back
+  (`EditVerbs.pick_at` → `Handles.pick_pivot`). Rings are 64 to 120 px round the
+  selection on the screen. A ring's drag snaps to 90° inside 0.6 of its radius,
+  the toolbar's turn step on it, 5° past 1.3 and 1° past 2.0 (`Handles.ZONES`,
+  guide circles drawn while dragging); an arrow's to the snap, or 2 LDU further
+  than a radius from its line. While the button is held the model does not
+  change: the selection is drawn moved (`BrickWorld.set_drawn`), out of the
+  lattice (`drag_begin`), each snapped stop and the way to it weighed by
+  `room_for` (5° or 4 LDU apart, 3 ms a frame and one part over at most:
+  `drag_room` goes on part by part in the frames after, and a part with nothing
+  near it is cleared without its cover worked out, `_clear_round`; 92 parts of
+  4883-1 turned 90° take about 45 frames of 20 ms, not one of 1.4 s; let go, the
+  rest of the way is weighed then; a selection over 300 parts is weighed once
+  when let go), and it stops at the last with room, the part in
+  the way lit (`EditVerbs._flash`). Let go, one step to undo (`drag_end`, "turned
+  1 part +23.58° about its own x"). A digit while dragging, or straight after
+  (until the pointer moves 6 px or another key), opens the typed field for the
+  handle (`TypedEntry`, routed by `Handles.wants_typing` / `is_typing`): degrees
+  for a ring, a length along an arrow (`3`, `2p`, `x 1`); after a drag it takes
+  the drag's place in one undo, and Esc puts the drag back as it was let go. Esc
+  or a right click while dragging puts it back; the release that follows is eaten,
+  or Move would pick the part up. A press and release on a handle with no move is
+  the tool's click. Drawn again only when what it shows changed (IdleDraw).
+  Probe: `handles_probe`.
+- `handles probe` (`src/dev/handles_probe.gd`): windowed, about three minutes,
+  `PROBE_SIZE=1280x720` for the small window. `rings`: a 2 x 4 turned 20° and
+  tipped 10° turned about each of its own axes by 23.58, -41.2 and 67.5° (click,
+  drag, number: 3 actions each, one undo each), and a 1 x 16 on an axle through a
+  3701 turned 30° and tilted 25°, its rings on the joint, turned 23.58° about the
+  axle, its hole still on it. `arrows`: each of its own axes, on the snap; `3`
+  typed mid-drag; Esc mid-drag. `axes`: the tag's three, then each ring and arrow
+  of the model's and the view's axes. `pivot`: Alt-click on its end, a turn about
+  it, Alt-click on nothing. `snaps`: the view's z ring swept at 0.4, 1.0, 1.65 and
+  2.4 of its radius (90, 15, 5 and 1° stops). `typed`: `30` after a drag, then
+  `12` and Esc. `stopped`: a 1 x 4 turned into a 1 x 1, a 2 x 4 slid into another,
+  each stopped and the one in the way lit. Pictures in `shots/handles/WxH/`.
+  `cadtask_frames` times the rings drawn on 100 parts while the view turns
+  (`handles`) and one dragged round (`handle_drag`).
 - `connect probe` (`src/dev/connect_probe.gd`): windowed, about five minutes;
   `PROBE_SIZE=1280x720` for the small window. `column`: 8841-1's parts 1 to 20
   from the file, the column taken, aimed at its pin, `N`, its end hole, the pin,

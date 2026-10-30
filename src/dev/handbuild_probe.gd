@@ -468,6 +468,10 @@ func _the_shell() -> void:
 	await _click((buttons["mode_rotate"] as Button).get_global_rect().get_center())
 	var facing: Basis = _world.get_brick(red).transform.basis
 	await _click(on_red)
+	_check("the Rotate tool's first click picks the part out, its rings on it, unturned",
+		_builder.selection.has(red) and verbs.handles.shown()
+		and _world.get_brick(red).transform.basis.is_equal_approx(facing))
+	await _click(on_red)
 	var turned: Basis = _world.get_brick(red).transform.basis
 	_check("the Rotate tool turns a part a quarter where it stands",
 		turned.is_equal_approx(Basis(Vector3.UP, PI * 0.5) * facing)
@@ -503,6 +507,9 @@ func _the_shell() -> void:
 
 	await _click((buttons["mode_move"] as Button).get_global_rect().get_center())
 	var was: Vector3 = _world.get_brick(blue).transform.origin
+	await _click(on_blue)
+	_check("the Move tool's first click picks the part out, its arrows on it",
+		_builder.selection.has(blue) and verbs.handles.shown() and not _builder.is_carrying())
 	await _click(on_blue)
 	_check("the Move tool picks the part clicked up", _builder.is_carrying())
 	var there: Vector2 = _screen(Vector3(140, 0, -100))

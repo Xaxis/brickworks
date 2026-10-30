@@ -16,18 +16,37 @@ desktop app. Started 2026-10-24 (unit together233).
    it happens, and everything else the model is: its name, the floor,
    motions, build steps, the booklet's looks, the colours of hidden parts,
    sections broken out, and parts made in the app (a print, a sticker, a
-   made part). Each sees who is in the session (here or away), and where
-   each other person is working: a dot with their name in the view, on the
-   part under their pointer or where the part in their hand would go.
-   **Undo** and **Redo** are each person's own.
-4. A short chat in the panel, for people 13 and over (below).
-5. A reload, a browser restarted, the desktop app started again, or the
+   made part). Each sees who is in the session (here or away, each with a
+   swatch of their colour), and where each other person is working: a dot
+   with their name in the view, on the part under their pointer or where
+   the part in their hand would go, and the parts they have selected
+   outlined in their colour. **Undo** and **Redo** are each person's own.
+4. **Follow** beside a name in the panel: this view goes where theirs goes,
+   framed in their colour with "Following Ann" and **Stop**, until this
+   person turns, slides or zooms the view themselves, presses Stop, or the
+   other leaves.
+5. **A comment pinned to a part**: a part selected, **Edit, Comments…** (or
+   the part's right-click, **Comment on it…**), words, **Pin**. Its mark,
+   a numbered dot in the writer's colour, stands over the part and goes
+   with it; pressed, a card says who wrote it and when, with **Resolve**,
+   one click (Ctrl+Z brings it back). The panel lists every comment with
+   **Show** and **Resolve** (resolved ones under **Show resolved**, with
+   **Open again**). Comments are kept in the model's file, so a save, an
+   open, the autosave and a shared link's file all keep them; in a session
+   everyone 13 and over sees them as they are pinned (below).
+6. A short chat in the panel, for people 13 and over (below).
+7. A reload, a browser restarted, the desktop app started again, or the
    connection lost for a while: the tab goes back into the session by
-   itself and catches up, both ways.
-6. The owner presses **End the session**; the model stays theirs and saves
+   itself and catches up, both ways. Changes still on their way when the
+   page goes are not lost: kept in the tab and sent again once it is back,
+   or, when the tab is closed, sent as it goes.
+8. The owner presses **End the session**; the model stays theirs and saves
    as it always does. Anyone else presses **Leave**, or is told the owner
    ended it; what was built stays on their baseplate, theirs to keep or not.
    The owner can **Remove** a person: the link no longer lets them in.
+   The owner's page closing or reloading ends nothing: the others go on,
+   and the owner goes back in as its owner. (Studio's Build Together ends
+   for everyone when its host leaves.)
 
 ## How it works
 
@@ -101,7 +120,72 @@ desktop app. Started 2026-10-24 (unit together233).
   it is working (`op=point`: the ghost of the part in hand, or the part
   under the mouse), kept on its row of `together_people`; a waiting request
   answers as soon as someone's moves, and each side draws the others' as a
-  dot and their name in a colour each, over the parts.
+  dot and their name in a colour each, over the parts: the same size on
+  the screen however near the view is, as a cursor is, so it never hides
+  the part it points at.
+- **Selections and views.** The same `op=point` carries the uids of the
+  parts this side has selected (at most 500) and its view (`CadCamera.aim`,
+  rounded), sent when any of the three changes. The server keeps them on
+  the person's row and re-reads the rows every 250 ms while a request
+  waits (every 100 ms while somebody else's pointer moved in the last
+  2 s), answering as soon as one changed. Each side outlines each other
+  person's selection with its own silhouette outline (`SelectionOutline`)
+  in that person's colour, drawn again when the parts move. A person's
+  colour is their place in the session's list of people, the same on every
+  side (`Together.colour_of`).
+- **Follow** (`Together.follow`) turns this view to the person's view as
+  each poll brings it (`CadCamera.aim_at`), and keeps the view it set: the
+  first frame the view is not what Follow set, this person moved it, and
+  following stops. It stops too when they leave. The frame and the name
+  are drawn over the model's column (`banner_parent`).
+- **Comments pinned to parts** (`src/assembly/pinned_comments.gd`) are a
+  line each in the head of the model's main file, after its motions and
+  its floor, which other programs read past:
+  `0 !BRICKWORKS PIN {"id","part","colour","at","text","by","tint","when"}`
+  with `"resolved":true` once resolved. "at" is where its part stands in
+  the file (LDraw's coordinates), as a motion names its joint: the part is
+  found again by number, colour and place when the file opens, and the pin
+  goes with it as it moves. A pin whose part was taken off stays where the
+  part was. In a session each comment is a key of its own, `~pin:<id>`,
+  naming its part by uid, so two people pinning at once both keep theirs,
+  and moving a pinned part sends nothing of its pin. Pinning and resolving
+  are each one undo of the builder's (`"pins"` steps), so Ctrl+Z takes them
+  back per person like any edit. The marks are drawn by `PinsView` over
+  the model's column; not on a model shared by link opened to look at.
+- **Comments and chat's rule.** A comment is words to the others, so in a
+  session it follows chat's rule (below): an account that may not chat may
+  not pin or resolve one (the server refuses with 422, and the panel says
+  why), the words are filtered as a chat line's, and **an account under
+  13 is sent no comments**: the server takes their keys out of its ops and
+  out of the model it joins on (a model sent in parts carries none in its
+  parts: its comments go in the session's row, checked, and are left out
+  of the answer to an account under 13). Its file is the others' without the
+  comment lines. The owner's own comments in the model a session starts on
+  are held to the same rule: any that may not be said stay in the owner's
+  model and out of the session's, and the owner is told.
+- **Changes on their way when a page goes.** Every change waiting to be
+  numbered is kept as it is queued: in the tab's own storage on the web
+  (`sessionStorage`), a file of the tab's on the desktop
+  (`TabSession.path("together_pending.json")`). On the web the page also
+  holds a request ready to send them as it goes (`pagehide`, a fetch kept
+  alive past the page, 64 KB at most). Back in after a reload, the tab
+  takes up its old client and counts, waits until it has caught up with
+  what the server had, puts down any of its own that arrived meanwhile
+  (sent as the page went) as numbered, and sends the rest again ("Sent
+  again: 3 parts you changed just before the page went").
+- **A model too big for one request.** Vercel takes at most 4.5 MB a
+  request and as much an answer. A snapshot over 3.5 MB of JSON starts the
+  session with none (`op=start {stored: n}`), then the owner sends it in
+  parts of 2 MB (`op=upload`), and whoever joins reads them back
+  (`op=snapshot`), waiting for a part not yet there. Its comments are not
+  in the parts: `op=start` carries them, the server checks them and keeps
+  them in the session's row, and whoever joins takes them from there and
+  none from the parts. The parts are kept in
+  `together_snapshot_parts` (`supabase/together_big.sql`); until that is
+  applied a big model is refused as before. Sends are cut at 1.5 MB and
+  1,000 parts an op, and a poll's answer at 3 MB, so a big model's first
+  change (a select all moved) goes too. Joining matches 25,600 parts to
+  their uids by place in 12 s on this box (it was 68 s, a search per part).
 - **Chat** is a line of words in the same numbered log (`~chat`), shown in
   the panel and on the status line. Who may: comments' rule
   (`supabase/comments.sql`, `comments_guard`): an account that answered
@@ -113,7 +197,8 @@ desktop app. Started 2026-10-24 (unit together233).
   neither say anything nor read the others' lines (its copy of each chat op
   comes with the words taken out), and the panel tells it why. Building
   together itself stays theirs, as a link is (`trust.sql`: an account under
-  13 shares by link like anyone).
+  13 shares by link like anyone). Comments pinned to parts follow the same
+  rule in a session (above).
 - **Claude in a session tab.** A connected Claude's edits change the model
   in that tab like any other, so they reach everyone (proven with a real MCP
   `edit_model` through the deployment's relay). Its `undo` presses the same
@@ -148,6 +233,14 @@ database plus up to 100 ms. Measured on a preview with the project's tables
 A browser drawing in software takes a few hundred milliseconds a frame, so
 the browser rows are mostly frames on both sides; on a real graphics card
 they should come close to the first rows, which is not measured yet.
+
+The pointer, from one person's mouse moving onto a part to the frame the
+other's page drew their dot in (this box's server, 2026-10-30): two desktop
+copies 248 ms p50, 352 ms p95 (`together_probe.gd`, 20 moves); two
+browsers on the car after the 50 edits 314 ms and 627 ms (`together_flow.mjs`,
+40 of 40 moves); on the rich car 1,133 ms and 2,000 ms, every one of the 40
+within 500 ms and four of the drawing page's frames, which were 617 ms at
+the median there.
 
 **Where the time went, and the fix (2026-10-24, `tools/web/together_timing.mjs`).**
 Each of the seven kinds of change made in turn on the car, ten paints after
@@ -188,12 +281,16 @@ and 4.0 s on the preview with another browser check beside it.
   like anyone, as it shares a model by link like anyone. Its name is never
   shown: everyone appears by their profile's name only when a visitor may
   be shown it (`shown_publicly`), and otherwise as "Builder 2", never by an
-  email. It has no chat (above).
+  email. It has no chat, and is sent no comments pinned to parts (above).
 
 ## Against the best named tool
 
-Studio's Build Together co-edits over a LAN or a relay [st-bt]; LEGO's own
-takes turns. Here:
+Studio's Build Together co-edits over a LAN or a relay [st-bt], and the
+session ends for everyone when its host leaves; LEGO's own takes turns.
+Figma is the bar for working on one thing at once: each person's
+cursor and selection in their colour, following someone's view by their
+avatar (observation mode), and comments pinned to the canvas, resolved by
+a click. Here:
 
 - in a browser or the desktop app, joined by a link, nothing to install;
 - the same model byte for byte on every side once nothing is on its way,
@@ -202,9 +299,14 @@ takes turns. Here:
 - Undo is each person's own and never takes back another's part;
 - every way of editing is carried, read off the model as it changes rather
   than from each tool, and everything the model is besides its parts;
-- each person's pointer in the others' view, and a chat with the trust
-  rules a children's audience needs;
-- a reload or a dropped connection goes back in and catches up by itself;
+- each person's pointer and selection in the others' view, in their
+  colour, and Follow on their name, as Figma has them;
+- comments pinned to parts, resolved in one click, kept in the model's
+  own file and going with their part as it moves;
+- a chat and comments with the trust rules a children's audience needs;
+- a reload or a dropped connection goes back in and catches up by itself,
+  with nothing changed just before it lost; the owner leaving ends nothing;
+- a model over 4 MB starts a session (in parts);
 - a person's own Claude, connected to their tab, builds for everyone.
 
 [st-bt]: https://studiohelp.bricklink.com/hc/en-us/articles/6477757327767
@@ -213,8 +315,22 @@ takes turns. Here:
 
 - `tools/web/together_probe.mjs`: the server's half from three accounts.
 - `src/dev/together_probe.gd`: two desktop copies in one process (60 edits,
-  the same part moved by both, each undo its own, the end); with `--join`
-  the desktop's half of the flow.
+  the same part moved by both, each undo its own, the end); the others'
+  selection outlined in their colour, the pointer timed over 20 moves,
+  Follow and its stop; a comment pinned, byte for byte on both, resolved
+  from the other side, two pinned at once, the file opened again; a copy
+  going with three changes on their way and coming back; a session begun
+  again on the car (someone else's file, a part moved, one in a step of its
+  own) in one request and in parts, byte for byte; 25,600 parts (a
+  snapshot over 4 MB) started in parts and joined byte for byte. With
+  `--join` the desktop's half of the flow.
+- `src/dev/together_pins_probe.gd`: the real app at 1280x720 and 1400x900,
+  read off its pixels: a comment pinned from Edit, Comments…, its mark in
+  its colour over its part, its card, one click on Resolve, Ctrl+Z, saved
+  and opened again on the same part; another person's selection outlined
+  and pointer drawn in their colour, the dot gone when they point nowhere
+  and its size kept with the view 2.5 times nearer; Follow from the panel, the frame,
+  following a turn, stopped by the wheel and by Stop.
 - `tools/web/together_flow.mjs`: two browsers and the desktop in one
   session: 50 random edits interleaved, byte-identical after; then each
   kind of the model's own state from either side (the name typed, the
@@ -224,8 +340,18 @@ takes turns. Here:
   way; a reload and a lost connection going back in; the owner's pointer
   drawn in the other's view; the chat, and an under-13 refused it; a real
   MCP `edit_model` from the owner's connected Claude reaching the other
-  browser; a stranger refused; the owner ending it. Red on m165 (no Build
-  together in the File menu).
+  browser; the pointer timed, Follow, the selection outlined in the owner's
+  colour (read off the page); a comment pinned and resolved, none of it
+  sent to the person under 13, kept in a shared link's file; a reload and
+  a closed page with changes on their way, the owner's page reloaded; a
+  stranger refused; the owner ending it; a session begun again on the car
+  as all that left it, in one request and then in parts. The pointer is
+  timed over 40 moves from the mouse moving to the frame the second page
+  drew its dot in, twice: on the car after the 50 edits, p95 under 1 s
+  strictly; on the rich car, as the change measure is there, p95 under
+  1 s or 95 of 100 within 500 ms and four of that page's frames (each
+  move's own, this box's software drawing, half a second and more). Both
+  say the stages and what the check reading the page saw. Red on m165 (no Build together in the File menu).
 
 ## Not done yet
 
@@ -318,10 +444,25 @@ takes turns. Here:
   again for up to 5 s before calling it apart, then prints the lines that
   differ: a stale read passes, and a real difference is named. On the
   91db1843 preview every check of the desktop passed, the reload's too.
-- **Changes still on their way when a page goes** (the last half second
-  or so before a reload) are not sent; the session's own copy comes back.
-- **A model over 4 MB of text** cannot start a session (Vercel's limit for a
-  request); the session's changes are paged 500 at a time when joining.
+- **A file written from the owner's can put one STEP line elsewhere**
+  (found by the flow's section 8, 2026-10-30; not Build together's, and the
+  same on a plain start): parts in no step of the author's (ones Claude or
+  a check put down in a model with its author's steps) are in a step of
+  their own at the end of the owner's file, and in the step before it in
+  the joiner's, which is written back from the owner's file it opened
+  (`ModelStore._source_asked`, `src/parts/source_file.gd`). The session's
+  parts and steps are the same on both sides; only the file differs. The
+  flow allows that one difference and says so.
+- **A model over 4 MB needs `supabase/together_big.sql` applied**; until
+  then it is refused as before. A browser opening one is as slow as the
+  page is (25,600 parts join in 12 s on the desktop).
+- **Comments have no replies, mentions or report button**, and a shared
+  link's page and its viewer do not show them (they are in the file it
+  serves, and in a copy opened in the app). An account under 13 opening a
+  copy of a shared model in the app sees the comments the file has, as it
+  sees the file's other words.
+- **Follow follows the view**, not the step or the panel open; Figma's
+  spotlight (everyone made to follow one person) is not here.
 - **A conflict is told by time**: a change of another's numbered within
   1.5 s of one's own on the same part is said to have overtaken it.
 - **Chat has no report button** and no history past the session; a session
