@@ -247,6 +247,13 @@ func _build() -> void:
 	_set_words.mouse_filter = Control.MOUSE_FILTER_PASS
 	_set_words.add_theme_font_size_override("font_size", ceili(_z(12)))
 	_set_line.add_child(_set_words)
+	# What is left, beside the name and never cut short by it: two sets'
+	# names fill a narrow bin.
+	_set_count = Label.new()
+	_set_count.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_set_count.mouse_filter = Control.MOUSE_FILTER_PASS
+	_set_count.add_theme_font_size_override("font_size", ceili(_z(12)))
+	_set_line.add_child(_set_count)
 	_set_go = Button.new()
 	_set_go.pressed.connect(_take_offer)
 	_set_back = Button.new()
@@ -1093,6 +1100,7 @@ func controls_by_name() -> Dictionary:
 		if named.has("first fold"):
 			break
 	named["set words"] = _set_words
+	named["set count"] = _set_count
 	named["set build"] = _set_go
 	named["all parts back"] = _set_back
 	if _make_button != null:
@@ -2660,6 +2668,7 @@ var _telling: ConfirmationDialog
 var _set_bin: SetBin = null
 var _set_line: HBoxContainer
 var _set_words: Label
+var _set_count: Label
 var _set_go: Button
 var _set_back: Button
 ## What the model uses, by part and colour, as last counted, and at which
@@ -2870,21 +2879,25 @@ func _say_set() -> void:
 	_set_back.visible = _set_bin != null
 	_set_go.visible = offered != null
 	if offered != null:
-		_set_words.text = "%s, %s pieces" % [offered.title, _comma(offered.pieces)]
+		_set_words.text = offered.title
+		_set_count.text = "%s pieces" % _comma(offered.pieces)
 		_set_go.text = "Add its parts" if _set_bin != null else "Build from it"
 		_set_go.tooltip_text = ("Its parts added to the bin's, counted together" if _set_bin != null
 			else "The bin becomes this set's parts, each counting how many are left as you build")
-		_set_words.tooltip_text = _set_words.text
+		_set_words.tooltip_text = "%s, %s" % [_set_words.text, _set_count.text]
+		_set_count.tooltip_text = _set_words.tooltip_text
 		return
 	if _set_bin == null:
 		return
 	var sums: Dictionary = _set_bin.tally(_used, library)
-	_set_words.text = "%s: %s of %s left%s" % [_set_bin.title, _comma(int(sums["left"])),
-		_comma(_set_bin.pieces), ", %s over" % _comma(int(sums["over"])) if int(sums["over"]) > 0 else ""]
+	_set_words.text = _set_bin.title + ":"
+	_set_count.text = "%s of %s left%s" % [_comma(int(sums["left"])), _comma(_set_bin.pieces),
+		", %s over" % _comma(int(sums["over"])) if int(sums["over"]) > 0 else ""]
 	_set_words.tooltip_text = ("Building from the parts of %s. Each part put down takes one from its "
 		+ "count; undo or a delete gives it back. A part with none left can still be used: the bin "
 		+ "says how many over the set the model is.%s") % [_set_bin.title,
 		"" if _set_bin.unshown == 0 else "\n%s of its pieces are of parts this build cannot show." % _comma(_set_bin.unshown)]
+	_set_count.tooltip_text = _set_words.tooltip_text
 
 
 ## A set's number typed into the search: offered on the set's line once its

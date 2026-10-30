@@ -14,7 +14,10 @@
 ##   - a part with one in the set, put down, says "none left" and is greyed;
 ##     it can still be put down, and then says "1 over", as the line does;
 ##   - saved, the model keeps the choice; the bin put back to every part, the
-##     saved model opened makes it the set's again, with what it uses counted.
+##     saved model opened makes it the set's again, with what it uses counted;
+##   - a collection of two 10497-1s and a 31120-1 Medieval Castle, Build from
+##     them all in its panel makes one bin of the three, a part both sets have
+##     counting the copies added up.
 ## Each count is read from what the tile says, so a bin whose counts never
 ## changed fails at the first part put down.
 extends SceneTree
@@ -22,6 +25,8 @@ extends SceneTree
 const SET := "10497-1"
 const TITLE := "10497-1 Galaxy Explorer"
 const SAVED := "Setbin Probe"
+## A set with some of 10497-1's parts too (85984 in Light Bluish Grey).
+const OTHER := "31120-1"
 
 var _failures: int = 0
 var _shots: String = ""
@@ -96,7 +101,10 @@ func _cell(key: String) -> Button:
 
 ## The set's line at the bin's top, as it reads.
 func _line() -> String:
-	return (_bin.controls_by_name()["set words"] as Label).text
+	var named: Dictionary = _bin.controls_by_name()
+	var words: String = (named["set words"] as Label).text
+	var count: String = (named["set count"] as Label).text
+	return "%s %s" % [words, count] if words.ends_with(":") else "%s, %s" % [words, count]
 
 
 ## Take the tile of [param key] as a click does, and put its part down at
@@ -115,6 +123,7 @@ func _put_down(key: String, x: float, z: float) -> int:
 
 
 func _run() -> void:
+	CollectionStore.where = OS.get_temp_dir().path_join("brickworks_setbin_%d.json" % OS.get_process_id())
 	await process_frame
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
@@ -282,6 +291,44 @@ func _run() -> void:
 	_check("...with what the model uses counted: %s, %s" % [_count_on(single), _line()],
 		_count_on(single) == "1 over" and _line().ends_with(", 1 over"))
 	DirAccess.remove_absolute(path)
+
+	print("\nor from a collection's sets, counted together")
+	var dialog: CollectionDialog = _shell.collection
+	var mine := Collection.new()
+	mine.sets = [{"set": SET, "qty": 2, "spares": false}, {"set": OTHER, "qty": 1, "spares": false}]
+	dialog.store.collection = mine
+	await dialog.store.refresh_pool()
+	dialog.store.changed.emit()
+	dialog.open("own")
+	await _frames(5)
+	var every: Button = dialog.controls_by_name().get("collection_build_all")
+	_check("its Sets have Build from them all", every != null and every.is_visible_in_tree())
+	await _shot("collection")
+	# A part both sets have that the model doesn't use, and how many the
+	# three copies hold of it.
+	var theirs: Dictionary = (await books.lookup(PackedStringArray([OTHER]))).get(OTHER, {})
+	var used: Dictionary = SetBin.used_in(world, store.scenery, library)
+	var both: String = ""
+	var held: int = 0
+	for row: Array in theirs.get("p", []):
+		var key: String = Collection.key_of(str(row[0]), int(row[1]), library)
+		if want.has(key) and not used.has(key) and (both.is_empty() or key == both):
+			both = key
+			held += int(row[2])
+	held += 2 * int(want.get(both, 0))
+	var together: String = "2 × %s and %s Medieval Castle" % [TITLE, OTHER]
+	if every != null:
+		every.pressed.emit()
+	await _until(func() -> bool: return _bin.set_showing() == together, 600)
+	_bin.call("_show_more", 100000)
+	await _until(func() -> bool: return _count_on(both) == "×%d" % held, 60)
+	_check("the bin is all three: \"%s\", the panel closed" % _bin.set_showing(),
+		_bin.set_showing() == together and not dialog.visible)
+	_check("%s, which both sets have, counts the three copies: %s (2 × %d and %d)" % [both,
+		_count_on(both), int(want.get(both, 0)), held - 2 * int(want.get(both, 0))],
+		not both.is_empty() and _count_on(both) == "×%d" % held)
+	await _shot("together")
+	DirAccess.remove_absolute(CollectionStore.where)
 
 	if _failures == 0:
 		print("setbin probe: a set's parts, counted down as they are used, kept with the model")

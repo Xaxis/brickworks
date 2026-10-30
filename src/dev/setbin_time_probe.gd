@@ -102,6 +102,7 @@ func _run() -> void:
 		var fills: Array = [[], []]       ## the library's, the set's
 		var frames: Array = [[], []]
 		var kinds: int = 0
+		var set_bin: SetBin = null
 		# Which goes first changes each round, so neither always has the
 		# machine as the other left it.
 		for round: int in 4:
@@ -112,6 +113,7 @@ func _run() -> void:
 					kinds = await _bin.build_from(PackedStringArray([number]))
 					if kinds == 0:
 						break
+					set_bin = _bin.set_bin()
 				fills[which].append(await _fill())
 				frames[which].append_array(await _scroll())
 			if kinds == 0:
@@ -119,7 +121,6 @@ func _run() -> void:
 		if kinds == 0:
 			_check("%s is in the inventories" % number, false)
 			continue
-		var set_bin: SetBin = _bin.set_bin()
 		var whole: Array = [_median(fills[0]), _median(frames[0]), _p95(frames[0])]
 		var mine: Array = [_median(fills[1]), _median(frames[1]), _p95(frames[1])]
 		print("%s (%s pieces, %d kinds shown) against the whole library: fill %.1f against %.1f ms, "
@@ -136,6 +137,9 @@ func _run() -> void:
 	for n: int in 3000:
 		world.add_brick(parts[n % parts.size()], [4, 1, 14, 71, 72, 0][n % 6],
 			Transform3D(Basis.IDENTITY, Vector3(20.0 * (n % 60), 24.0 * (n / 3600), 20.0 * ((n / 60) % 60))))
+	# The last round's last turn may have been the library's.
+	if _bin.set_bin() == null:
+		await _bin.build_from(PackedStringArray([SETS[-1]]))
 	var recounts: Array = []
 	for _n: int in 11:
 		var began: int = Time.get_ticks_usec()
