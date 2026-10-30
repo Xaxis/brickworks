@@ -17,9 +17,9 @@ lib:directory
 ## Tabs and filters {#tabs}
 
 - **Top** puts first the models most people have built, over this week, this month or all time; **New** the newest; **Following**, signed in, the people you follow; **Collections** the [directory of collections](/docs/collections#directory).
-- **Kinds** are pills across the top: buildings, vehicles, space, Technic and more.
-- **Filters** opens a sheet: the order, the size, how it was made (by hand, with Claude, from the LDraw library), with instructions, Technic, and **Tested** only.
-- Search by a name, a builder, a tag or a description. The address keeps it all (`/gallery?q=castle&kind=space&sort=newest`), so a search can be shared.
+- **Kinds** are pills across the top: buildings, vehicles, space, Technic and more. They and **Filters** stay in view under the header as you scroll.
+- **Filters** opens a sheet: the order, the size, how it was made (by hand, with Claude, from the LDraw library), with instructions, Technic, and **Tested** only. Each filter that is on shows as a pill under the bar; press one to drop it, or **Clear all**.
+- Search by a name, a builder, a tag or a description: the cards change as you type, and [[/]] jumps to the search from anywhere on the page. The address keeps it all (`/gallery?q=castle&kind=space&sort=newest`), so a search can be shared.
 
 Pages load as you scroll, three times, then **Show more**; Back returns you to the same card.
 
