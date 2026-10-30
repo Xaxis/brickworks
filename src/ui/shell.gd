@@ -116,6 +116,7 @@ const MENUS: Array = [
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
+		"reference",
 		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "-",
 		"turn_left",
 		"turn_right", "-", "panel_parts",
@@ -1107,6 +1108,10 @@ func _define() -> void:
 		"Lines between the studs of the baseplate, for counting them")
 	_ticked("grid", func() -> bool: return grid.visible)
 	_define_floor()
+	# A picture to build over (src/ui/reference_image.gd).
+	_add("reference", "Reference picture…", 0, func() -> void:
+		(app.get("_reference") as ReferenceImage).open(), Callable(),
+		"A photo, plan or drawing laid on the floor or stood behind the model, to build over")
 	_add("cut", "Cut away", KEY_K, func() -> void: see_inside.set_cut(not see_inside.cutting),
 		something, "A plane through the model, dragged along X, Y or Z, to see and work inside it")
 	_ticked("cut", func() -> bool: return see_inside.cutting)

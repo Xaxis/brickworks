@@ -93,6 +93,12 @@ var pins: PinnedComments = PinnedComments.new()
 ## (SetBin.META), never in what is published or exported; a model opened
 ## says it again, and a new one keeps the bin it was begun with.
 var bin_sets: PackedStringArray = PackedStringArray()
+## The picture to build over (View, Reference picture…), as ReferenceImage
+## keeps it: {on, at, width, opacity, locked, name, picture}, or empty for
+## none. Kept with its saves and the autosave as the app's other lines are
+## (ReferenceImage.META), never in what is published or exported: it is the
+## person's to trace, not part of the model.
+var reference: Dictionary = {}
 ## Who laid its parts, as far as this app knows (2026-10-24): "hand" for a
 ## model begun empty here with every part laid by a person, "assistant"
 ## once Claude laid any (the panel's designer, a session's tools), and
@@ -599,6 +605,7 @@ func _begin_as(named: String) -> void:
 	hidden_scheme = {}
 	pins = PinnedComments.new()
 	bin_sets = PackedStringArray()
+	reference = {}
 	# Begun empty here, who lays each part from now on is known. Named as a
 	# design stands, its parts are still whoever laid them.
 	if world == null or _is_empty():
@@ -1022,10 +1029,11 @@ func _model_text(paced: bool) -> String:
 		await _text_into(made, title, false, {}, FramePace.new())
 		# Changed meanwhile: made again, as it is now.
 		if world.revision == revision:
-			return SetBin.written_into(with_share(str(made[0]), share_id, remixed_from,
-				remixed_from_version, credit, made_with), bin_sets)
-	return SetBin.written_into(with_share(to_text(title), share_id, remixed_from,
-		remixed_from_version, credit, made_with), bin_sets)
+			return ReferenceImage.written_into(SetBin.written_into(with_share(str(made[0]),
+				share_id, remixed_from, remixed_from_version, credit, made_with), bin_sets),
+				reference)
+	return ReferenceImage.written_into(SetBin.written_into(with_share(to_text(title), share_id,
+		remixed_from, remixed_from_version, credit, made_with), bin_sets), reference)
 
 
 ## The copies of [param kept] past the newest [param leaving], deleted.
@@ -1561,6 +1569,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	hidden_scheme = read["hidden"]
 	pins = read["pins"]
 	bin_sets = read["bin"]
+	reference = read["reference"]
 	world.motions = read["motions"]
 	if not world.motions.is_empty():
 		# Where each part stood as the file has it: a joint is measured from
@@ -1618,6 +1627,7 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		"floor": ModelFloor.read(text),
 		"set": set_in(text),
 		"bin": SetBin.read(text),
+		"reference": ReferenceImage.read(text),
 		"hidden": HiddenColours.read(text),
 		"motions": Motions.read(text),
 		"pins": PinnedComments.read(text),
@@ -1975,6 +1985,8 @@ static func _without_app_lines(text: String) -> String:
 		if line.begins_with(SHARE_META) or line.begins_with(REMIX_META) \
 				or line.begins_with(REMIX_VERSION_META) or line.begins_with(CREDIT_META) \
 				or line.begins_with(MADE_META) or line.begins_with(SetBin.META) \
+				or line.begins_with(ReferenceImage.META) \
+				or line.begins_with(ReferenceImage.PICTURE_META) \
 				or line.begins_with(TITLE_META) or line.begins_with(SharedPages.PAGE.strip_edges()):
 			continue
 		kept.append(line)
@@ -2632,9 +2644,9 @@ func _write(path: String, title: String, with_steps: bool = false,
 	if not NewerBuild.may_write(path):
 		refused = NewerBuild.REFUSAL
 		return false
-	var text: String = SetBin.written_into(with_share(written if not written.is_empty()
-		else to_text(title, with_steps), share_id, remixed_from, remixed_from_version, credit,
-		made_with), bin_sets)
+	var text: String = ReferenceImage.written_into(SetBin.written_into(with_share(
+		written if not written.is_empty() else to_text(title, with_steps), share_id,
+		remixed_from, remixed_from_version, credit, made_with), bin_sets), reference)
 	# Never a model of no parts over a file that has some, unless the person
 	# emptied the baseplate ([member emptied]). The autosave fires on its
 	# own a few seconds after any change, so whatever left the baseplate

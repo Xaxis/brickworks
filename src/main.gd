@@ -46,6 +46,8 @@ var _notices: PanelContainer
 var _over_model: Control
 ## View, Split: the model straight on beside the main view (SplitView).
 var _split: SplitView
+## The picture to build over (View, Reference picture…).
+var _reference: ReferenceImage
 var _store: ModelStore
 ## The baseplate, the grid floor or nothing under the model.
 var _floor: FloorLayer
@@ -5248,6 +5250,19 @@ func _build_ui() -> void:
 	_update_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_update_offer)
 
+	# View, Reference picture…: a picture to build over, kept in the model's
+	# file and never in a picture of it (src/ui/reference_image.gd).
+	_reference = ReferenceImage.new()
+	_reference.name = "ReferenceImage"
+	_reference.store = _store
+	_reference.camera = _camera
+	_reference.builder = _builder
+	_reference.verbs = _verbs
+	_reference.bounds = _built_bounds
+	_reference.over_panel = _over_panel_at
+	_reference.say = _bar.say
+	add_child(_reference)
+
 	# Export's picture and shop lists: src/ui/exports.gd.
 	_exports = Exports.new()
 	_exports.world = _world
@@ -5263,6 +5278,7 @@ func _build_ui() -> void:
 	_exports.picture.aside = [_builder, _turning, _shell.see_inside.frame, _floor.grid_node(),
 		_floor.shadow_node(), _shell.grid]
 	_exports.picture.shown_again = _verbs.apply_hidden
+	_exports.picture.aside.append(_reference)
 
 	# This browser may clear the models, which are only in it: said once,
 	# above the model, with the ways to keep a copy (_watch_other_tabs asks).

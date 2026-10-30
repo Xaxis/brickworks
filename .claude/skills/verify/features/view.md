@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:reference picture, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
 
 ## Sub-features
 
@@ -101,6 +101,32 @@ picture the assistant is shown.
   overlays and that an idle split draws nothing. `-- unrouted` takes
   `CadCamera.second` away and must fail; so must the probe run on efcc83b1,
   before the second view was its own.
+- `reference picture` (`ReferenceImage`, `src/ui/reference_image.gd`;
+  APP_UX2 refimage): View › Reference picture… asks for a picture
+  (`PictureFile`) and lays it on the floor under the model, as wide as it
+  (16 studs at least), at 50%, picked out with its corners showing and its
+  settings open (non-exclusive: the model stays to hand). The settings:
+  which plane (the floor, standing behind the model square to From the
+  front or From the right), width in studs (a step of 0.05 is 1 LDU),
+  opacity, Locked, Choose another…, Remove. It is a transparent unshaded
+  quad in the window's world; unlocked, its own `_unhandled_input` takes a
+  Select-tool press that meets it before any part (scenery aside): a click
+  picks it out, a drag slides it, a corner (drawn by `ViewOverlays`)
+  sizes it from the corner across. Locked, it takes nothing, and the click
+  is the model's. Kept in `ModelStore.reference` and written into saves
+  and the autosave after the first line as `0 !BRICKWORKS REFERENCE {…}`
+  and `0 !BRICKWORKS REFERENCE_PICTURE <WebP base64>` (encoded once when
+  chosen, longer side 2048 px at most), stripped by `_without_app_lines`,
+  never in `to_text` (exports, publishing, the assistant). Render and the
+  booklet draw worlds of their own; Export's picture leaves it aside
+  (`Picture.aside`). `refimage_probe` (windowed, 1280x720, PROBE_SIZE=1400x900
+  too) adds it through the menu in 4 actions, types 32.35 studs (647 LDU),
+  measures 40% opacity off the window's pixels against it hidden and at
+  100% with the tone curve straight, clicks through it unlocked (picks the
+  picture) and locked (picks the brick behind, seen from the back), saves,
+  begins a new model (gone), opens the save (the same, drawn the same),
+  and finds none of its magenta in a Render, the booklet's pictures or
+  Export's picture while the window shows it.
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
   is what everything frames against, baseplate excluded. View > Default view
   (0, `Main.default_view`) turns to the usual angle and frames what is built,

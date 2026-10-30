@@ -81,6 +81,21 @@ ui:floor
 ui:stud grid
 -->
 
+## A picture to build over {#reference}
+
+**View › Reference picture…** lays a photo, a plan or a drawing (PNG, JPEG, WebP, BMP or SVG) in the scene to build over: on the floor under the model, or standing behind it as the front or the side view sees it. It opens as wide as the model, half see-through, with its corners showing.
+
+- **Width** is typed in studs, to a twentieth of a stud. Drag a corner to size it from the corner across; drag the picture to slide it.
+- **Opacity** fades it from 0 to 100%.
+- **Locked** leaves the mouse to the model: a click through the picture picks the part behind it. Unlocked, a click on the picture picks it out.
+- **Choose another…** swaps the picture and keeps where it lies; **Remove** takes it away.
+
+The picture is kept in the model's file, on lines other LDraw programs ignore, so it opens again with the model. It is never in a render, the instructions, the parts list, an export or a shared link.
+
+<!-- covers
+ui:reference picture
+-->
+
 ## Pointers and speed {#pointers}
 
 The pointer shows what a drag will do: a hand to slide, an arrow round to turn, a magnifier to zoom, a brush to paint. When the model is still, the app stops drawing, so it costs nothing to leave open; on a slow computer it uses a lighter look while you move, and the full look as soon as you stop. Quitting with a big model mid-way waits for its work to finish, so the last save is whole.
