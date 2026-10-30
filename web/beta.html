@@ -48,8 +48,10 @@
 .beta-head { padding: var(--page-top) 0 var(--s-7); text-align: center; }
 .beta-head h1 { max-width: 20ch; margin-inline: auto; }
 .beta-head .lede { margin: 0 auto var(--s-5); max-width: 62ch; }
-/* The count, one line, held at its height before it is known. */
-.spots { min-height: 1.6em; margin: 0 0 var(--s-5); font-size: var(--t-lede); }
+/* The count, held at its height before it is known: a line, and on a
+   phone two, where "Coming soon" and "All 100 spots are taken" wrap. */
+.spots { min-height: 1lh; margin: 0 0 var(--s-5); font-size: var(--t-lede); }
+@media (width < 600px) { .spots { min-height: 2lh; } }
 .spots .bone { display: inline-block; width: 14em; max-width: 80%; vertical-align: middle; }
 .beta .narrow { width: min(100% - 32px, 980px); }
 .beta .section-head { margin-bottom: var(--s-5); }
