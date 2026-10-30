@@ -114,7 +114,8 @@ that offers each system its own build. The cycle and its cadence are
   brickworks.diy serves it, makes the release worktree, merges BRANCH,
   refuses a dirty or half-merged tree, runs the lists and probes, then
   `ship.sh`, and retires the worktrees once live. `status` says each one's
-  step, its checks passed of all, and what brickworks.diy serves; `hold TAG`
+  step, its checks passed of all, and when it should serve, under what
+  brickworks.diy serves and since when; `hold TAG`
   and `release TAG` set and lift a hold. tools/release/README.md has the
   rest. `tests/test_release_train.py` runs it with stand-ins for the hour's
   work.
@@ -256,9 +257,16 @@ a hold stops it before the merge and before the ship; a tree left dirty or
 mid-merge is refused, and so is a probe with a FAIL line or a nonzero exit;
 it stops when the release before held, was killed, or died without a word,
 and at its deadline; and `status` reads `checks: 2 of 4 passed; failed: io (passed
-alone); 1 to run` mid-ship and `live: brickworks.diy serves it (SHA)` after.
+alone); 1 to run` mid-ship and `live: brickworks.diy serves it (SHA)` after,
+its first line `live: brickworks.diy serves SHA, TAG's, since HH:MMZ`, and
+a ship begun by hand is listed with its ETA (a median ship after it began)
+and the train behind it a ship after that.
 On a real release, `tools/release/train.sh status` while it waits says
-`step: HH:MMZ waits for PREV to serve (until HH:MMZ)`.
+`step: HH:MMZ waits for PREV to serve (until HH:MMZ)`. Against the real
+release-out on 2026-10-30 with rel-m218 shipping by hand: `live:
+brickworks.diy serves e5c5deaf, rel-m217's, since 06:30Z`, `a ship takes
+about 38 min`, and `rel-m218: shipping, begun by hand at 06:36Z ... eta:
+serves about 07:14Z`.
 
 ```sh
 tools/release/releases_repo.sh --dir=<scratch>
