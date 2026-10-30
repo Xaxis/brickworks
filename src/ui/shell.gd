@@ -1512,9 +1512,9 @@ func _shown(items: Array) -> Array:
 	return out
 
 
-## The menus as a phone's More lists them (PhoneShell). A phone has no mark
-## to open the app's menu from, so its rows go under Help, where About and
-## the docs were before; finding a command by typing is for a keyboard.
+## The menus as a phone's More lists them (PhoneShell). The app's menu's
+## rows go under Help too, where About and the docs were before the phone's
+## bar had the mark; finding a command by typing is for a keyboard.
 static func touch_menus() -> Array:
 	var out: Array = []
 	for menu: Array in MENUS:

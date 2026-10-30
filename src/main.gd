@@ -1017,7 +1017,8 @@ func _page_controls() -> Dictionary:
 	if _split != null:
 		named.merge(_split.controls_by_name())
 	if _phone != null:
-		named.merge(_phone.controls_by_name())
+		# Over the bar's: its mark is hidden, and the phone's is the app's menu.
+		named.merge(_phone.controls_by_name(), true)
 	if _mosaic != null and _mosaic.visible:
 		named.merge(_mosaic.controls_by_name())
 	if _controls != null:
@@ -1315,7 +1316,8 @@ func _panels_by_name() -> Dictionary:
 ## The model's part of the window, sampled: the points of a grid over it
 ## that a click would not reach the model at, and what it would reach
 ## instead. The view cube is the one thing kept over the model, so the
-## points under it are not asked about. Read by tools/web/fit_check.mjs
+## points under it are not asked about; on a phone, which has no cube, the
+## round Fit in its corner (PhoneShell). Read by tools/web/fit_check.mjs
 ## through the page, and by probes directly.
 func model_cover(across: int = 12, down: int = 8) -> Dictionary:
 	var view: Control = _marquee.get_parent()
@@ -1325,6 +1327,7 @@ func model_cover(across: int = 12, down: int = 8) -> Dictionary:
 	if _split != null and _split.is_showing():
 		rect.end = Vector2(_split.picture_rect().end.x, rect.end.y)
 	var covered: Array = []
+	var fit: Control = _phone.controls_by_name().get("phone_fit") if _phone != null else null
 	# Where the interface is drawn, found once: every canvas layer, the
 	# topmost first, and any control drawn straight onto the window.
 	var canvases: Array[Node] = []
@@ -1337,6 +1340,8 @@ func model_cover(across: int = 12, down: int = 8) -> Dictionary:
 			if _gizmo != null and _gizmo.is_visible_in_tree() and _gizmo.get_global_rect().has_point(at):
 				continue
 			if _split != null and _split.header_has(at):
+				continue
+			if fit != null and fit.is_visible_in_tree() and fit.get_global_rect().has_point(at):
 				continue
 			var by: String = _covering(at, canvases)
 			if not by.is_empty():
@@ -6131,7 +6136,11 @@ func _offer_assistant(notes: Control) -> void:
 		face.content_margin_top = 2
 		face.content_margin_bottom = 3
 		_offer_show.add_theme_stylebox_override(state, face)
-	_offer_show.pressed.connect(func() -> void: set_assistant(true))
+	# Shown, as it says: where the columns are drawers (a phone), turning it
+	# on leaves its drawer folded, and the button did nothing to be seen.
+	_offer_show.pressed.connect(func() -> void:
+		set_assistant(true)
+		_chat_dock.set_open(true))
 	_offer.add_child(_offer_show)
 	_offer_close = Button.new()
 	_offer_close.text = "×"
@@ -6221,6 +6230,10 @@ func _fit_panels() -> void:
 	for dock: SideDock in [_props_dock, _chat_dock]:
 		if dock != null:
 			dock.set_open_width(minf(SIDE_WIDE, drawer) if phone else SIDE_WIDE)
+	# And the assistant's, likewise: at 340 units it was half a phone, its
+	# words six points tall.
+	if _phone != null and not Phone.wide():
+		_chat_dock.set_open_width(units - Phone.px(get_viewport(), Phone.TARGET + 4.0))
 
 	var share: String = "drawers" if phone else ("wide" if both else "turns")
 	# Only when it changes. Arranging them on every resize would fight
@@ -8356,14 +8369,19 @@ func _dress_for_phone() -> void:
 	_hint_area.custom_minimum_size.y = _phone.foot_height()
 	_gizmo.visible = false
 	var rail: float = Phone.px(get_viewport(), Phone.TARGET)
-	_bin_dock.set_phone_rail(rail)
-	_chat_dock.set_phone_rail(rail)
+	_bin_dock.set_phone_rail(rail, _phone.foot_height())
+	_chat_dock.set_phone_rail(rail, _phone.foot_height())
 	_camera.phone = true
 	_camera.touch_over = _over_panel_at
 	# The model tree and the properties, in the drawer down the left, sized
 	# for a finger as a dialog is; on a tablet the drawer takes the parts
 	# panel's place while it is open (PhoneShell.dock_toggled).
 	_touch.size_panel(_stack)
+	# And the assistant in its drawer down the right.
+	_touch.size_panel(_chat)
+	_chat_dock.toggled.connect(func(open: bool) -> void:
+		if open:
+			_touch.fit_panel.call_deferred(_chat))
 	_bin_dock.toggled.connect(_phone.dock_toggled)
 	_bin_dock.toggled.connect(func(open: bool) -> void:
 		_show_notices()

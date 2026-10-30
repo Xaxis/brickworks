@@ -350,16 +350,31 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `Phone.on()`, decided once at start: the web, a touchscreen, the main
   pointer coarse with no fine one, and the screen under 600 points in its
   short direction; a touch laptop and every desktop keep the desktop layout
-  to the pixel. Then `Main._dress_for_phone` puts the menus, toolbar, key
-  strip, status line (shown only while busy) and view cube away, and
-  `PhoneShell` lays out in points (`Phone.px`, about 1.85 units a point at
-  390): along the top the model's name, Undo and Redo; along the foot one row,
+  to the pixel. And any browser window a phone's size (short side under 600
+  points, long under `Phone.PHONE_LONG`, 1000), whatever points at it: the
+  desktop drawn there was 0.54 of a pixel to the unit at 390 x 844 (a 9 x 15
+  mark, six-pixel words) and ran off the foot at 844 x 390 (phone,
+  2026-10-30); a laptop's 1280 x 590 keeps the desktop. Then
+  `Main._dress_for_phone` puts the menus, toolbar, key strip, status line
+  (shown only while busy) and view cube away, and `PhoneShell` lays out in
+  points (`Phone.px`, about 1.85 units a point at 390): along the top the mark
+  (`phone_app_menu`, published as `app_menu`: the desktop's app menu dropped
+  under it, About to Back to brickworks.diy), the model's name, the
+  assistant's spark while it is on (`phone_assistant`, View, Assistant: its
+  drawer's rail shows only while it is open, so a phone that turned it on had
+  no way to it), Undo and Redo; "Show the assistant" opens its drawer, as it
+  says, the screen's width less its rail, sized for a finger and scrolled
+  whole (`ChatPanel`) where it is taller than the room; both drawers stop
+  above the row of tools (`SideDock.set_phone_rail`'s foot), and Fit and the
+  line over the model step aside while one is open; along the foot one row,
   Parts, Colour (the colour in hand), Turn, Tip, Select (lets go, as a right
   click), Delete (the selection, else the Delete tool) and More; a line over
   the model in touch words (what was just said, `Phone.touch_words`, or what a
   finger does now); Fit in the corner. Sheets from the foot: the parts bin
   (Main's own, `PartsBin.zoom`, a finger's drag scrolling it), half the
-  screen, its handle swiped to the whole screen or away, gone with a pick;
+  screen, its handle swiped to the whole screen or away, gone with a pick
+  (on a phone on its side the whole screen: half was its head and no part,
+  `PhoneShell.HALF_LEAST`);
   the colours, 46-point swatches by group (`PartsBin.choose_colour`, what a
   swatch press does: it paints a selection); More, every menu's commands a
   row each, greyed and lit as the menus are; and a finger held still on a
@@ -368,13 +383,27 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`CadCamera.phone`); a finger that lands on a part with Select moves it and
   the view stays (`finger_taken`). The shared viewer keeps its own. The
   notices strip is drawn for a finger (`Main._for_a_finger`). Proved by
-  `tools/web/phone_flow.mjs` (preview check `phone`), at 390 x 844 and
-  430 x 932 at 3x with touch events: More, New; the parts sheet half, swiped
-  full and back; searched 3001 and picked; six bricks, a door and a roof
+  `tools/web/phone_flow.mjs` (preview check `phone`), at 390 x 844,
+  430 x 932 and 844 x 390 at 3x with touch events: More, New; the parts sheet
+  half, swiped full and back (whole, on its side); searched 3001 and picked; six bricks, a door and a roof
   slope tapped down; Select, a brick tapped, Colour, blue painting it, Undo;
   a held finger's actions; two fingers turning and spreading; at each step
   the app's own audit (`window.brickworksAskPhone`, `Main._phone_audit`):
   every target 44 points or more, no text under 12, nothing off the screen.
+  `tools/web/fit_check.mjs` opens its phone sizes (390 x 844, 844 x 390) as
+  phones and asks the same audit at first and with the assistant turned on in
+  Settings (scrolled into sight, above Done, on a phone on its side): every
+  target 44 or more and on the screen, the mark, the name, Undo, Redo, Parts,
+  More and the assistant's button shown, and nothing over the model but the
+  round Fit in its corner, kept there as the desktop's view cube is
+  (`Main.model_cover`). `tools/web/app_menu_flow.mjs` at 390 x 844 with a
+  mouse: the phone's mark a fingertip square, its menu's rows, About, Back.
+  Every control's icon (the toolbar's, the mark, the phone's bars, the model
+  tree's, orangecheck's, the library's magnifier) is `Icons.icon_for`: drawn
+  at the pixels it is shown at and said to be its size in units, so it is
+  that size at any density. A Button draws an icon a texel to a unit and
+  `icon_max_width` only shrinks it, so below a pixel to the unit (0.54 at a
+  phone's size and 1x) every icon was half size.
   The dialogs More opens are sized for a finger too (`touch dialogs`, below).
   walk256 (T1, T2, 2026-10-25): More is the menus' names, File to Help, each
   a row that a tap opens to its commands and folds again
