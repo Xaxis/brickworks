@@ -596,7 +596,7 @@ func definitions() -> Array:
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"name": {"type": "string", "description": "a model's name from the list"},
 				"link": {"type": "string", "description": "a gallery model's link id, or its /m/ address"},
-				"library": {"type": "string", "description": "a library id from gallery library=true, like omr-10179-1"},
+				"library": {"type": "string", "description": "a library id from gallery library=true, like omr-10179-1, or a set's number or name"},
 				"versions": {"type": "boolean", "description": "list name='s saves kept as versions"},
 				"version": {"type": "integer", "description": "open this save of name=, 1 the newest"},
 				"discard_changes": {"type": "boolean"},
@@ -2471,6 +2471,19 @@ func _parts_against_box(store: ModelStore, number: String) -> String:
 		" (%s)" % "; ".join(said) if not said.is_empty() else ""]
 
 
+## The library id of LDraw's model of the set [said] names: its number
+## ("10179" is 10179-1) or the only one its words name; "" for none.
+func _library_id_of(books: ModelLibrary, said: String) -> String:
+	var every: Array = await books.models()
+	var number: String = SetInventories.normal(said)
+	for entry: Dictionary in every:
+		if str(entry["set"]).to_lower() == number and str(entry.get("alternate_of", "")).is_empty():
+			return str(entry["id"])
+	var found: Dictionary = ModelLibrary.search(every, {"q": said.left(100), "theme": "", "decade": "",
+		"size": "", "sort": "newest", "page": 1})
+	return str(found["models"][0]["id"]) if int(found["total"]) == 1 else ""
+
+
 ## open_model library=: LDraw's model of a real set, from the library File,
 ## Library… shows (ModelLibrary), opened in place of what is on the baseplate
 ## as open_model name= opens one, credited to whoever made it
@@ -2482,8 +2495,14 @@ func _open_library(id: String, discard: bool) -> String:
 	var books: ModelLibrary = app.get("_model_library")
 	if books == null:
 		return "This app has no library."
+	# A set's number ("10179", "10179-1") or its name, as well as an id:
+	# LDraw's model of that set, when the library has one (sets364).
 	if not ModelLibrary.is_id(id):
-		return "library is an id from gallery library=true, like omr-10179-1."
+		var said: String = id
+		id = await _library_id_of(books, said)
+		if id.is_empty():
+			return ("LDraw's library has no 3D model of %s. Every set's parts list is on the site: "
+				+ "%s/library/set/<number>; gallery library=true q= finds a set.") % [said, Deployment.api_base()]
 	var unsaved: bool = store.has_unsaved_work()
 	var was: String = store.title
 	if unsaved and not discard:

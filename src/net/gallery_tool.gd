@@ -79,7 +79,8 @@ static func definition() -> Dictionary:
 			+ "models earned and their models. library=true: LDraw's models of real sets instead, "
 			+ "matching q (a name or a set number), theme, decade (\"1990s\") and size, sorted "
 			+ "newest, oldest, largest, smallest or name; each with its library id, which "
-			+ "open_model library= opens, and its maker and licence. "
+			+ "open_model library= opens, and its maker and licence; with q, sets it has no 3D "
+			+ "model of too, each with its parts list. "
 			+ "Read-only: nothing on the baseplate changes, and "
 			+ "liking, following and commenting are the person's own, on the site. Credit its "
 			+ "builder and keep to its licence in anything made from it."),
@@ -153,10 +154,15 @@ func _library(input: Dictionary) -> String:
 			str(input.get("decade", "")), size]:
 		if not one.is_empty():
 			said.append(one)
+	# Every other set in the catalogue that answers (api/_sets.js), with no
+	# model to open: its parts list instead.
+	var others: PackedStringArray = await _catalogue_sets(words) if not words.is_empty() else PackedStringArray()
 	var heading: String = "LDraw's models of real sets%s, %s, page %d of %d (%s in all)" % [
 		" (" + ", ".join(said) + ")" if not said.is_empty() else "",
 		str(ModelLibrary.SORT_WORDS[sort]).to_lower(), int(found["page"]), int(found["pages"]),
 		_count(int(found["total"]))]
+	if int(found["total"]) == 0 and not others.is_empty():
+		return "\n".join(PackedStringArray(["%s: none." % heading]) + others)
 	if int(found["total"]) == 0:
 		return "%s: nothing matches. Fewer words, or no theme, finds more." % heading
 	var lines := PackedStringArray(["%s:" % heading])
@@ -171,7 +177,35 @@ func _library(input: Dictionary) -> String:
 		lines.append("More: page=%d." % (int(found["page"]) + 1))
 	lines.append(("open_model library=<id> opens one in place of the model on the baseplate. Each is "
 		+ "made by the LDraw member named, under its licence: credit them in anything made from it."))
-	return "\n".join(lines)
+	return "\n".join(lines + others)
+
+
+## The sets of the site's catalogue [words] finds that LDraw has no 3D model
+## of (api/share.js ?op=library), at most a page, each with its parts list's
+## address: lines to follow the library's, none when there are none or the
+## site cannot be asked.
+func _catalogue_sets(words: String) -> PackedStringArray:
+	var answer: Dictionary = await _ask("/api/share?op=library&q=" + words.uri_encode(), 256 * 1024)
+	var body: Variant = _json(answer)
+	# The catalogue's answer says how many LDraw has a model of; a site before
+	# it lists LDraw's models alone, which the library above has.
+	if int(answer["code"]) != 200 or not body is Dictionary or not (body as Dictionary).get("models") is Array \
+			or not (body as Dictionary).has("with_3d"):
+		return PackedStringArray()
+	var lines := PackedStringArray()
+	for card: Variant in (body as Dictionary)["models"]:
+		var set: Variant = (card as Dictionary).get("library") if card is Dictionary else null
+		if not set is Dictionary or bool((set as Dictionary).get("model3d", false)):
+			continue
+		var number: String = str((set as Dictionary).get("set", ""))
+		lines.append("- %s %s — %s parts, %s, %d: no 3D model; its parts: %s/library/set/%s" % [number,
+			str((card as Dictionary).get("name", "")), _count(int((card as Dictionary).get("parts", 0))),
+			str((set as Dictionary).get("theme", "")), int((set as Dictionary).get("year", 0)),
+			Deployment.api_base(), number])
+	if lines.is_empty():
+		return lines
+	return PackedStringArray(["Sets with no 3D model (open_model library= cannot open them; their parts can "
+		+ "be built from):"]) + lines
 
 
 ## The person's session for the gallery's own question about them (mine=1):
