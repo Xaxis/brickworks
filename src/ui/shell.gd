@@ -109,7 +109,7 @@ const MENUS: Array = [
 		"versions", "-", "share", "together", ">export", "render", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
-		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
+		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror", "comments"]],
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
@@ -889,6 +889,9 @@ func _define() -> void:
 	# src/net/together.gd, src/ui/together_dialog.gd.
 	_add("together", "Build together…", 0, func() -> void: app.call("open_together"), Callable(),
 		"Build this model with someone else, live, each in their own browser or the app")
+	# src/assembly/pinned_comments.gd, src/ui/pins_dialog.gd.
+	_add("comments", "Comments…", 0, func() -> void: app.call("open_pins"), Callable(),
+		"Comments pinned to the model's parts, kept with it, and a new one on the part selected")
 	_add("clear", "Clear the baseplate…", 0, bar._ask_to_clear, something,
 		"Empty the baseplate. Asks first: it cannot be undone")
 	_add("account", "Account…", 0, func() -> void: bar.account_wanted.emit(),
@@ -1296,14 +1299,15 @@ func _define() -> void:
 ## Duplicate, Replace, the same part or colour, the step moves and the
 ## swing on a hinge each needed a key or a menu (appux371 A8): here, with
 ## their keys, among what selects, hides, copies and changes the part.
-const ON_A_PART: Array = ["ask_claude", "brace", "-", "select_connected", "select_part",
+const ON_A_PART: Array = ["ask_claude", "brace", "comments", "-", "select_connected", "select_part",
 	"select_colour", "-", "hide", "isolate", "-", "copy", "duplicate", "delete", "-", "paint",
 	"replace", "printed_versions", "swing", "-", "step_prev", "step_next", "make_submodel", "-",
 	"show_properties"]
 
 ## A row's words on a part where the menus' would not say it: Select by's
 ## "Same part" there is the same as the part clicked.
-const ON_A_PART_WORDS: Dictionary = {"select_connected": "Select everything joined to it",
+const ON_A_PART_WORDS: Dictionary = {"comments": "Comment on it…",
+	"select_connected": "Select everything joined to it",
 	"select_part": "Select the same part", "select_colour": "Select the same colour"}
 var context: PopupMenu
 var _brace_id: int = -1

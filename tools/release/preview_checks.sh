@@ -275,6 +275,13 @@ declare -A CMD=(
   # browsers and the desktop app in one session: joined by the link, 50
   # edits interleaved and byte-identical after, each undo its own, a
   # stranger refused, the owner ending it. Needs supabase/together.sql.
+  # And B8: the pointer within 1 s at p95, Follow, the selection in the
+  # owner's colour off the page's pixels, a comment pinned and resolved in
+  # one click (none of it sent to the person under 13) and kept in a shared
+  # link's file, a reload and a closed page with changes on their way, the
+  # owner's page reloaded ending nothing; then a session on a model sent in
+  # parts, which needs supabase/together_big.sql (refused without it, and
+  # said so: "the API's database needs supabase/together_big.sql").
   [together_probe]="tools/web/together_probe.mjs --url=$P"
   [together]="tools/web/together_flow.mjs --url=$P --out=$S/${TAG}_together"
   # local only: typed_flow.mjs. A number typed with a part in hand, in the

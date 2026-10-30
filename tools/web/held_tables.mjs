@@ -364,6 +364,16 @@ const TABLES = {
       },
     },
   },
+  // supabase/together_big.sql: a big model's snapshot, in parts of at most 3 MB.
+  together_snapshot_parts: {
+    key: ["session", "n"],
+    parents: [{ column: "session", table: "together_sessions", on: "id" }],
+    defaults: () => ({ at: new Date().toISOString() }),
+    check(row) {
+      if (!Number.isInteger(row.n) || row.n < 0 || row.n >= 64) return "together_snapshot_parts_n_check";
+      return String(row.text).length > 3000000 ? "together_snapshot_parts_text_check" : "";
+    },
+  },
   // supabase/plan_consents.sql: what someone agreed to before paying for
   // Pro, kept by its one function, answered here whole, with the table's
   // own refusals (its dry run proves the real ones).

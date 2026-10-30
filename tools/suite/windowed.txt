@@ -75,3 +75,4 @@ handles   # rings and arrows on the selection: any part about any axis in 3 acti
 connect   # Connect: a point on the part, then the point it goes on; 8841-1's column, a turned parent, a pin through two holes, a wheel on either end of an axle, a part down, the walk (connect)
 keys   # a key for every tool; C paints only a selection; Studio's 20 keys do Studio's things under its preset; Mecabricks' and LDCad's; a key set in the sheet, a clash refused with what it clashes with, and the key still set after a restart (appux A11)
 first_build   # Build your first model: offered once on a first visit along the top of the model, Skip in one click and not back after a restart, Help brings it back; to its end by keys and clicks in 25 acts or fewer, a step left undone stays, and any way of doing a step counts (appux A12)
+together_pins   # Build together in the app: a comment pinned, resolved in one click, saved and opened; the others in their colours; Follow (B8)

@@ -81,6 +81,7 @@ const WINDOW_ONLY: Dictionary = {
 	"share": "publishes the model on the web as the person, for anyone with the link and, ticked, in the public gallery: theirs to decide",
 	"account": "signing in is the person's",
 	"together": "lets another account build in the person's model, by a link they send: theirs to decide",
+	"comments": "a comment pinned to a part is a person's own words to the people who build the model with them; a session says what it has to say in its own replies",
 	"quit": "closes the app the session is driving",
 	"new_window": "opens another tab or window for the person, on a model of its own; a session works in the tab it is connected to, and clear_model begins a new model there",
 	"connector": "connects Claude to this tab; a session is already connected",
