@@ -63,6 +63,8 @@ lib:best of two
 ui:choose the AI that designs
 lib:designing with any provider on the person's key
 lib:designing on Anthropic's Messages or Gemini's own API
+lib:designing on OpenAI's Responses
+lib:saying who designs
 -->
 
 1. **Provider**: OpenAI, the Anthropic API, Google Gemini, OpenRouter, Mistral, Groq, Together, DeepSeek, xAI, or a server that speaks OpenAI's Chat Completions: Ollama, LM Studio or vLLM on your own computer, or any other at an **Address** you give.
@@ -71,6 +73,8 @@ lib:designing on Anthropic's Messages or Gemini's own API
 4. **Temperature**, the most a reply may write, and the **reasoning effort**, where the model takes them.
 5. **Test** asks the model for one tool call and to name the colour of one small picture, and says plainly what works: an AI that cannot call tools cannot design, and one that cannot see pictures cannot judge its own work. Each test costs less than a cent.
 6. **Design with it** goes back to the assistant panel, ready for your brief. The panel then designs with the AI you chose.
+
+The app then names the AI wherever it said Claude for the one designing: the toolbar says *GPT-6.1 Sol working* while it works, its steps in **Edit › History** are its own (*GPT-6.1 Sol's submit design*), and **Ask GPT-6.1 Sol about this…** asks it about the selection. OpenAI's own models are reached through OpenAI's Responses API, which hands the model the pictures it asks for as the answer to its own call, and carries its reasoning from one step to the next.
 
 ### Where your key is kept {#key-custody}
 

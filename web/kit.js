@@ -5,8 +5,10 @@
 // icon button are pure string functions made in web/card.js, which draws
 // them on every card and which a deployment copies alone beside its
 // functions, so a server page draws them as a browser does: passed on from
-// here, so a page asks the kit for the whole kit.
+// here, so a page asks the kit for the whole kit. And every scroller on the
+// page (web/scroller.js).
 export { ICONS, avatarHtml, avatarTone, awardsHtml, iconButtonHtml, iconHtml } from "./card.js";
+import "./scroller.js";
 
 const AGO = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });

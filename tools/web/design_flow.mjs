@@ -21,6 +21,13 @@
 //     (text boxes, dropdowns, text areas, file pickers) in type, height,
 //     corners, border or fill; the checkboxes; the buttons of one size;
 //   a page that scrolls sideways at 390 px;
+//   a scroller (site.css "the scroller", web/scroller.js) with no name, a
+//     swipe past its end that would scroll the page, a scrollbar that is
+//     not thin, a row that does not snap, an edge faded with nothing past
+//     it or not faded with more, one that overflows with nothing the
+//     keyboard can reach, or a row's Previous or Next shown at its own
+//     end, missing under a mouse, shown to a finger, or over what is in
+//     view: each scrolled to its end and back, as a person would;
 //   a count of none shown ("0 likes", "following 0"): a count is said once
 //     there is one (docs/SOCIAL.md);
 //   a header out of its order: Gallery, Library, Docs, Pricing, Open the
@@ -282,6 +289,65 @@ function zeroCounts() {
     .map((match) => match[0].replace(/\s+/g, " "));
 }
 
+/// What is wrong with the page's scrollers, as [what, why]: each one shown
+/// (site.css "the scroller"), at its start and its end, then put back where
+/// it was. Runs in the page.
+async function scrollers() {
+  const frames = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(done))));
+  const named = (el) => Boolean(el?.getAttribute("aria-label") || el?.getAttribute("aria-labelledby"));
+  const focusable = "a[href], button, input, select, textarea, summary, [tabindex]";
+  // Previous and Next are shown to a mouse where the browser can tie them to the row.
+  const pointer = matchMedia("(hover: hover) and (pointer: fine)").matches && CSS.supports("anchor-name: --a");
+  const showing = (el) => getComputedStyle(el).display !== "none";
+  const found = [];
+  for (const el of document.querySelectorAll(".scroller, .tabs, .table, .code > pre")) {
+    if (!el.getClientRects().length || el.closest("[aria-hidden='true']")) continue;
+    const who = `${el.localName}${el.id ? `#${el.id}` : ""}.${[...el.classList].join(".")}`;
+    const style = getComputedStyle(el);
+    if (!named(el) && !named(el.closest("nav, [role=group], [role=region]"))) {
+      found.push([who, "has no name: a role and aria-label, or a place in a named nav or group"]);
+    }
+    if (style.overscrollBehaviorX !== "contain") found.push([who, `lets a swipe past its end scroll the page (overscroll ${style.overscrollBehaviorX})`]);
+    if (style.scrollbarWidth !== "thin") found.push([who, `has a ${style.scrollbarWidth} scrollbar, not a thin one`]);
+    const row = el.matches(".scroller:not(.card), .tabs");
+    if (row && style.scrollSnapType !== "x mandatory") found.push([who, `is a row that does not snap (${style.scrollSnapType})`]);
+    const most = el.scrollWidth - el.clientWidth;
+    if (most > 1 && el.tabIndex < 0 && !el.querySelector(focusable)) found.push([who, "overflows, and the keyboard cannot reach it"]);
+    const go = row && el.matches(".scroller") ? [el.nextElementSibling, el.nextElementSibling?.nextElementSibling] : [];
+    if (go.length && !go.every((button) => button?.matches(".scroller-go"))) found.push([who, "has no Previous and Next after it"]);
+    const was = el.scrollLeft;
+    for (const to of most > 1 ? [0, most] : [0]) {
+      el.scrollTo({ left: to, behavior: "instant" });
+      await frames();
+      const at = el.scrollLeft;
+      const want = [most > 1 && at > 1 && "start", most > 1 && at < most - 1 && "end"].filter(Boolean).join(" ");
+      const where = most > 1 ? `scrolled to ${at > 1 ? "its end" : "its start"}` : "fitting";
+      const more = el.getAttribute("data-more") || "";
+      if (more !== want) found.push([who, `${where} says it has more at "${more}", not "${want}"`]);
+      const mask = getComputedStyle(el).maskImage;
+      const faded = Boolean(mask) && mask !== "none";
+      if (faded !== Boolean(want)) found.push([who, `${where}: ${want ? `more at its ${want}, and no fade` : "an edge faded with nothing past it"}`]);
+      if (!go.length || !go.every((button) => button?.matches(".scroller-go"))) continue;
+      const box = el.getBoundingClientRect();
+      const view = [box.left + parseFloat(style.scrollPaddingLeft), box.right - parseFloat(style.scrollPaddingRight)];
+      for (const [button, has] of [[go[0], want.includes("start")], [go[1], want.includes("end")]]) {
+        const words = button.getAttribute("aria-label");
+        if (!pointer) {
+          if (showing(button)) found.push([who, `"${words}" is shown to a finger, which swipes`]);
+          continue;
+        }
+        if (showing(button) !== has) found.push([who, `${where}: "${words}" is ${has ? "hidden with more to go to" : "shown at its own end"}`]);
+        if (!showing(button)) continue;
+        const r = button.getBoundingClientRect();
+        if (r.right > view[0] + 0.5 && r.left < view[1] - 0.5) found.push([who, `"${words}" is over what is in view`]);
+        if (r.top < box.top - 1 || r.bottom > box.bottom + 1) found.push([who, `"${words}" is not beside the row (${Math.round(r.top - box.top)} px from its top)`]);
+      }
+    }
+    el.scrollTo({ left: was, behavior: "instant" });
+  }
+  return found;
+}
+
 /// The header as a person reads it, left to right: the mark, what is shown
 /// of the main nav, and Menu, each with where it is drawn. Your account
 /// signed in, on a laptop or on Menu, is "avatar". Runs in the page; null
@@ -377,6 +443,7 @@ async function judge(page, label, what, scope, file, more = []) {
     said.findings.push(["the page", "scrolls sideways at 390 px"]);
   }
   if (!scope) {
+    said.findings.push(...await page.evaluate(scrollers));
     for (const words of await page.evaluate(zeroCounts)) said.findings.push(["the page", `shows a count of none: "${words}"`]);
     for (const [sheet, selector, declaration] of await page.evaluate(offScale)) {
       const key = `${sheet} | ${selector} | ${declaration}`;

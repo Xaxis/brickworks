@@ -59,5 +59,5 @@ product_render   # Render's Product look: product shaders on the render's copy o
 library_search   # the library searched as a person types: Ctrl+F, Escape clears, Enter opens the first, nothing found said (search334); by hand, PROBE_SIZE=390x844 tools/probe.sh library_search --phone for the layout for a finger, where Enter only asks
 provider_loop   # a model on an OpenAI-compatible provider designs on the person's key through the app's own MCP tools in process: built, the fresh look answered from its pictures, saved; the adapter and the key's keeping (provider339)
 ai_settings   # Settings, AI: another AI chosen, its key kept encrypted and in no log or save, its models listed, Test (tools and pictures) against the stub, and a design started from the assistant's column (aiset345)
-provider_apis   # Anthropic's Messages and Gemini's own API: each designs, is tested and lists its models against a stub as strict as the API (aiset345)
 set_parts  # /app?parts=10497-1&brief=…: the set's parts in the bin, the most used first, and the brief drafted, not sent (sets364)
+provider_apis   # Anthropic's Messages, Gemini's own API and OpenAI's Responses: each designs, is tested and lists its models against a stub as strict as the API (aiset345, provider370)

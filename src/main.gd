@@ -2059,6 +2059,7 @@ func design_with_provider(brief: String, provider: Provider) -> bool:
 	if _designer == null:
 		_designer = DesignerLoop.new()
 		add_child(_designer)
+		_designer.finished.connect(func(_ok: bool, _summary: String) -> void: _show_badge())
 	# The one MCP server this app already answers with, so a call from the
 	# loop and one from Claude wait their turns in one queue.
 	var rpc: CommandSocket = _commands
@@ -2077,7 +2078,17 @@ func design_with_provider(brief: String, provider: Provider) -> bool:
 	if _assistant != null:
 		_assistant.asked(brief)
 	_designer.design(brief)
+	_show_badge()
 	return true
+
+
+## The toolbar's quiet line: the model on the person's key while it designs
+## (DesignerLoop.badge), else this tab and Claude (ClaudeTabView.badge).
+func _show_badge() -> void:
+	if _bar == null:
+		return
+	_bar.show_claude_tab(_designer.badge() if _designer != null and _designer.busy()
+		else ClaudeTabView.badge(_connector))
 
 
 ## The loop designing with another provider, if one has started.
@@ -4657,15 +4668,12 @@ func _build_ui() -> void:
 	add_child(_together)
 	# The toolbar's quiet line about this tab and Claude (ClaudeTabView.badge),
 	# as the chats in it change, and twice a minute for their "2 min ago".
-	var badge := func() -> void:
-		if _bar != null:
-			_bar.show_claude_tab(ClaudeTabView.badge(_connector))
-	_connector.listening.connect(func(_on: bool, _address: String) -> void: badge.call())
-	_connector.chats_changed.connect(func(_now: Array) -> void: badge.call())
+	_connector.listening.connect(func(_on: bool, _address: String) -> void: _show_badge())
+	_connector.chats_changed.connect(func(_now: Array) -> void: _show_badge())
 	var badge_clock := Timer.new()
 	badge_clock.wait_time = 30.0
 	badge_clock.autostart = true
-	badge_clock.timeout.connect(badge)
+	badge_clock.timeout.connect(_show_badge)
 	add_child(badge_clock)
 	# On again with the same address if it was on last time, so the
 	# connector added to Claude keeps working from one visit to the next —
@@ -4777,6 +4785,9 @@ func _build_ui() -> void:
 	_bar.controls_wanted.connect(_controls.open)
 	_controls.assistant_chosen.connect(set_assistant)
 	_controls.ai_changed.connect(_chat.refresh_designer)
+	_controls.ai_changed.connect(func() -> void:
+		if _shell != null:
+			_shell.name_designer(ProviderSettings.designer_name()))
 	# Design with it: the assistant's column, open, its brief to type in.
 	_controls.ai_design_wanted.connect(func() -> void:
 		if not ShellPrefs.assistant_shown():
@@ -4985,6 +4996,8 @@ func _build_ui() -> void:
 	_shell.assistant_shown = ShellPrefs.assistant_shown()
 	add_child(_shell)
 	_shell.build(column, _stack, _notices.get_child(0) as Control, _over_model)
+	# Who designs, named in the commands that ask it (Settings, AI).
+	_shell.name_designer(ProviderSettings.designer_name())
 	if _phone != null:
 		_phone.shell = _shell
 		_dress_for_phone()

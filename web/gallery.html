@@ -8,8 +8,8 @@
   then Top · New · Following (signed in), Top over all time, this month or
   this week; the kinds as a row of pills; the rest (the order, the size,
   instructions, Technic, Tested, hand-built or with the assistant) in one
-  Filters button; then the cards, two to a row on a phone, four on a
-  laptop. Top is the default: builds finished, remixes and the Tested mark
+  Filters button; then the cards, two to a row on a phone, three on a
+  tablet and four from a laptop up. Top is the default: builds finished, remixes and the Tested mark
   (supabase/discovery.sql), never views.
 
   What is listed comes from /api/share?op=list (api/share.js), a page at
@@ -17,10 +17,11 @@
   (Top over all time, nothing asked) has this week's pick as its first
   card and, after the first rows, the shelves: what a signed-in person can
   build now, and small builds once there are three (/api/share?op=shelves,
-  supabase/discovery.sql). The next page comes as you near the bottom,
-  three times, then Show more; the address keeps the question and how many
-  pages are shown (/gallery?q=castle&page=3), so a search can be sent to
-  somebody, and Back from a model comes back to its card. gallery.js draws
+  supabase/discovery.sql). It is paged as every list of the site is
+  (web/pager.js, site.css .pager): Show more, the count and the numbered
+  links; the address keeps the question and the last page shown
+  (/gallery?q=castle&page=3), so a search can be sent to somebody, and
+  Back from a model comes back to its card. gallery.js draws
   it, every name and credit as text and never as markup: they were typed
   by strangers. No inline script, because the site's content security
   policy allows none it has not hashed. The look is /site.css, shared with
@@ -98,8 +99,8 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 /* The bar of filters: Filters, then the kinds, kept under the header as
    the list scrolls, on the page's ground carried out to the window's
    edges (a shadow, which nothing scrolls to), with the header's edge
-   under it once it is stuck (gallery.js data-stuck). Its kinds fade out
-   at the edge while there are more of them. */
+   under it once it is stuck (gallery.js data-stuck). Its kinds are a
+   scroller (site.css) that starts at Filters, not out in the gutter: inset. */
 .toolbar {
 	position: sticky; top: var(--head-h); z-index: 6; display: flex; align-items: center; gap: var(--s-2); min-width: 0;
 	margin: 0 0 var(--s-4); padding: var(--s-2) 0;
@@ -109,12 +110,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 	background: var(--bg); box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax);
 }
 .toolbar[data-stuck]::before { box-shadow: 0 0 0 100vmax var(--bg), 0 1px 0 100vmax var(--line); clip-path: inset(0 -100vmax -1px); }
-.toolbar .pills.row {
-	flex: 1; min-width: 0;
-	mask-image: linear-gradient(90deg, var(--ink) calc(100% - 48px), transparent);
-	-webkit-mask-image: linear-gradient(90deg, var(--ink) calc(100% - 48px), transparent);
-}
-.toolbar .pills.row[data-end] { mask-image: none; -webkit-mask-image: none; }
+.toolbar .pills.scroller { flex: 1; min-width: 0; }
 .filters { flex: none; }
 .filters summary .n {
 	display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill);
@@ -131,10 +127,10 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 [data-gallery="asking"] #feed { opacity: 0.55; transition: opacity var(--motion) var(--ease); }
 
 /* The cards: this week's pick first on the front, then the list; the
-   shelves (what you can build now, small builds) across the grid after
-   its first whole rows: twelve places at two, three or four to a row,
-   fifteen at five, eighteen at six. The list's cards are #models' own,
-   laid out in this grid. */
+   shelves (today's spotlight, what you can build now, small builds)
+   across the grid after its first whole rows: twelve places, at two,
+   three or four to a row. The list's cards are #models' own, laid out in
+   this grid. */
 .feed #models { display: contents; }
 .feed > .pick { min-width: 0; display: grid; }
 .feed > .shelves {
@@ -142,32 +138,29 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 	margin: var(--s-3) 0; min-width: 0;
 }
 .shelves > * { min-width: 0; }
-@media (width < 1200px) {
-	.feed[data-front="pick"] #models > .model:nth-child(n+12),
-	.feed[data-front="plain"] #models > .model:nth-child(n+13) { order: 2; }
-}
-@media (1200px <= width < 1600px) {
-	.feed[data-front="pick"] #models > .model:nth-child(n+15),
-	.feed[data-front="plain"] #models > .model:nth-child(n+16) { order: 2; }
-}
-@media (width >= 1600px) {
-	.feed[data-front="pick"] #models > .model:nth-child(n+18),
-	.feed[data-front="plain"] #models > .model:nth-child(n+19) { order: 2; }
-}
-.pick-card .why { margin: 2px 0 0; color: var(--ink); font-size: var(--t-tiny); font-weight: 600; }
+.feed[data-front="pick"] #models > .model:nth-child(n+12),
+.feed[data-front="plain"] #models > .model:nth-child(n+13) { order: 2; }
+.pick-card .why, #spotlight .why { margin: 2px 0 0; color: var(--ink); font-size: var(--t-tiny); font-weight: 600; }
 /* The week's pick, edged as what is chosen is. */
 .feed .pick-card { border-color: var(--accent-edge); }
-.shelves h2 { margin: 0; }
-.shelf-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
-.shelf-head a { font-size: var(--t-small); color: var(--ink-soft); }
-.shelf-said { margin: 4px 0 12px; color: var(--ink-soft); font-size: var(--t-small); }
+/* A shelf's head is a row's (site.css .scroller-head), its words under it. */
+.shelf-said { margin: calc(-1 * var(--s-2)) 0 var(--s-3); color: var(--ink-soft); font-size: var(--t-small); }
+/* Today in the gallery (gallery362): today's featured model and today's
+   set, a shelf as the others are, in a panel lit as a landing page's last
+   offer is (site.css .closing), each card edged as what is chosen is. */
+#spotlight {
+	padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--r-4);
+	background-color: var(--panel); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px;
+	box-shadow: var(--highlight), var(--shadow-1);
+}
+#spotlight-models .model { border-color: var(--accent-edge); }
+@media (width < 600px) { #spotlight { padding: var(--s-4); } }
 
 .feed > #challenge-line { grid-column: 1 / -1; margin: 0; }
 .listing .state { margin-top: var(--s-2); }
 .state .actions { margin-top: var(--s-3); }
 .score-said { margin: var(--s-5) 0 0; color: var(--ink-faint); font-size: var(--t-small); }
-.more { margin-top: 26px; }
-/* The way to add yours, at the foot of the list: the kit's last offer. */
+/* The way to add yours, at the foot of the list: the kit's last offer (.closing). */
 .yours { padding: 0 0 var(--section); border-top: 0; }
 .yours h2 { margin: 0 0 var(--s-3); }
 .yours .actions { margin-top: var(--s-5); }
@@ -274,7 +267,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 					</div>
 				</div>
 			</details>
-			<div class="pills row" id="kinds" role="group" aria-label="Kind">
+			<div class="pills scroller inset" id="kinds" role="group" aria-label="Kind">
 				<button type="button" class="pill" data-kind="" aria-pressed="true">All</button>
 			</div>
 		</div>
@@ -282,6 +275,10 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 		     links here with, an order, a size, a box ticked), each a pill to
 		     let go of, and Clear all. -->
 		<div class="pills chips" id="chips" hidden></div>
+		<!-- The list's pager (web/pager.js, site.css .pager): Show earlier over a
+		     page opened by its address, and under the list the count, Show more
+		     and the numbered links. -->
+		<p class="pager-earlier" data-pager-earlier="models" hidden><a class="cta ghost" href="/gallery" data-pager-go="earlier">Show earlier</a></p>
 		<div class="models feed" id="feed">
 			<!-- This month's challenge, in one line (gallery.js sayChallenge,
 			     supabase/challenges.sql): across the grid's first row, drawn
@@ -293,12 +290,10 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 				<h2 class="visually-hidden" id="pick-h">This week’s pick</h2>
 				<div id="pick-card"></div>
 			</section>
-			<!-- Three rows of skeletons at six a row (site.css .skeleton) where the first page's
+			<!-- Four rows of skeletons at four a row (site.css .skeleton) where the first page's
 			     cards go, taken out when it comes (gallery.js), so nothing under
 			     them moves. web/card.js skeletonHtml draws the same. -->
 			<div id="models">
-				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
 				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
 				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
 				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
@@ -322,27 +317,28 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 				     daily cron kept them (api/_featured.js); each card says which by its
 				     data-slot, featured or library (gallery.js drawShelves). -->
 				<section class="shelf" id="spotlight" aria-labelledby="spotlight-h" hidden>
-					<div class="shelf-head">
+					<div class="scroller-head">
 						<h2 id="spotlight-h">Today in the gallery</h2>
 						<a id="spotlight-library" href="/library">Browse the LDraw library</a>
 					</div>
-					<div class="models row" id="spotlight-models"></div>
+					<p class="shelf-said">A model from the gallery and a set from the LDraw library, chosen each day.</p>
+					<div class="models scroller" id="spotlight-models" role="group" aria-labelledby="spotlight-h"></div>
 				</section>
 				<section class="shelf" id="ready" aria-labelledby="ready-h" hidden>
-					<div class="shelf-head">
+					<div class="scroller-head">
 						<h2 id="ready-h">You can build now</h2>
 						<a id="ready-all" href="/gallery?sort=owned" hidden>Everything by the parts you own</a>
 					</div>
 					<p class="shelf-said" id="ready-said"></p>
-					<div class="models row" id="ready-models"></div>
+					<div class="models scroller" id="ready-models" role="group" aria-labelledby="ready-h"></div>
 				</section>
 				<section class="shelf" id="small" aria-labelledby="small-h" hidden>
-					<div class="shelf-head">
+					<div class="scroller-head">
 						<h2 id="small-h">Small builds</h2>
 						<a id="small-all" href="/gallery?size=small" hidden>See every small build</a>
 					</div>
 					<p class="shelf-said">Under 200 parts, an evening’s build: the most built and remixed first.</p>
-					<div class="models row" id="small-models"></div>
+					<div class="models scroller" id="small-models" role="group" aria-labelledby="small-h"></div>
 				</section>
 			</div>
 		</div>
@@ -364,19 +360,22 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 			<div class="actions"><a class="cta ghost small" id="quiet-go" href="/gallery"></a></div>
 		</div>
 		<p class="state" id="broken" hidden>
-			The gallery did not load just now. Try again in a minute.
+			The gallery did not load just now.
+			<button type="button" class="link" id="retry">Retry</button>
 		</p>
 		<noscript>
 			<p class="state">The gallery is drawn with a little JavaScript, which is off in this browser.</p>
 		</noscript>
 		<p class="score-said" id="score-said" hidden></p>
-		<div class="actions center more">
-			<button class="cta ghost" id="more" type="button" hidden>Show more</button>
-		</div>
+		<nav class="pager" data-pager="models" aria-label="Pages of models" data-size="24" data-noun="model|models" hidden>
+			<p class="pager-count" hidden></p>
+			<a class="cta ghost pager-more" href="/gallery?page=2" data-pager-go="more" hidden>Show more</a>
+			<p class="visually-hidden" role="status" data-pager-said></p>
+		</nav>
 	</section>
 
 	<section class="wrap wide yours" aria-labelledby="yours-h">
-		<div class="offer">
+		<div class="closing">
 			<h2 id="yours-h">Put yours here</h2>
 			<p class="lede">
 				In the app, choose <b>File › Share…</b>, give the model a name, say

@@ -1,0 +1,341 @@
+#!/bin/bash
+# train.sh : a release staged in one command, which ships when its turn comes.
+#
+#   train.sh stage TAG BRANCH [--after PREV] [--checks "..."] [--probes "..."]
+#                             [--units "..."] [--title "..."]
+#   train.sh status [TAG...]
+#   train.sh hold TAG [REASON]          train.sh release TAG
+#
+# stage writes TAG's spec in $RELEASE_OUT/TAG.train/, a file each (branch,
+# after, checks, probes, units, title), and starts the train detached
+# (setsid: a background job dies with the Claude session that began it). It
+# logs to $RELEASE_OUT/TAG_train.out. Each file is read only when its step
+# comes, so a unit merged into BRANCH meanwhile brings its checks by an edit
+# of TAG.train/checks, until the ship begins.
+#
+# The train waits until PREV's ship says brickworks.diy serves it, never on
+# PREV's process: what ship.sh does after that touches only the live site.
+# It stops if PREV held, failed or never began, and gives up at its deadline
+# (TRAIN_WAIT, 6 hours from staging; TAG.train/deadline, editable). Then it
+# makes the release worktree from origin/main (release_wt.sh), merges BRANCH
+# as the user (merge_unit.sh), refuses a tree left dirty or mid-merge, runs
+# check.sh --lists and the probes, and ships (ship.sh, which promotes the
+# very preview its checks passed). Once brickworks.diy serves the release it
+# retires the release's worktree, and each unit's whose work is all on main.
+# A hold ($RELEASE_OUT/HOLD for all, TAG.hold for one) stops it before the
+# merge and again before the ship, until lifted; ship.sh itself stops at it
+# before main moves.
+#
+# This replaces the chain scripts the lead wrote by hand for each release,
+# rel-m214 to m218, and the promote job beside them that ship.sh now does.
+set -u
+HERE=${TRAIN_HOME:-$(cd "$(dirname "$0")" && pwd)}
+export TRAIN_HOME="$HERE"
+R=$(dirname "$(git -C "$HERE" rev-parse --path-format=absolute --git-common-dir)")
+RO=$(realpath -m "${RELEASE_OUT:-$R/bench/results/release-out}")
+export RELEASE_OUT="$RO"
+WT=$R/.claude/worktrees
+LIVE=${TRAIN_LIVE:-https://brickworks.diy/app}
+POLL=${TRAIN_POLL:-15}
+
+usage() { sed -n '4,7p' "$HERE/train.sh"; exit 2; }
+
+# TAG's train if it is running, by the pid it wrote, and only while that pid
+# still runs this train: a pid is reused once its process ends.
+runner() {
+  local pid; pid=$(cat "$RO/$1.train/pid" 2>/dev/null) || return 1
+  case "$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)" in
+    *"train.sh run $1 ") echo "$pid" ;;
+    *) return 1 ;;
+  esac
+}
+
+# The build brickworks.diy/app names, /b/SHA/: the page itself says which.
+serving() { curl -s --max-time 20 "$LIVE" 2>/dev/null | grep -o '/b/[^/"]*/' | head -1; }
+
+# A spec file's words, into the array named.
+words() { read -r -d '' -a "$1" < "$SPEC/$2" || true; }
+
+stage() {
+  [ $# -ge 2 ] || usage
+  local tag=$1 branch=$2 after="" checks="" probes="" units="" title="" pid
+  shift 2
+  case "$tag" in ""|*[!A-Za-z0-9._-]*) echo "train: '$tag' is not a tag"; exit 2 ;; esac
+  while [ $# -gt 0 ]; do
+    [ $# -ge 2 ] || { echo "train: $1 wants a value"; exit 2; }
+    case "$1" in
+      --after) after=$2 ;; --checks) checks=$2 ;; --probes) probes=$2 ;;
+      --units) units=$2 ;; --title) title=$2 ;;
+      *) echo "train: no option $1"; exit 2 ;;
+    esac
+    shift 2
+  done
+  git -C "$R" rev-parse -q --verify "$branch^{commit}" >/dev/null || { echo "train: no branch $branch"; exit 2; }
+  if pid=$(runner "$tag"); then
+    echo "train: $tag's train runs (pid $pid): edit $RO/$tag.train/, or stop it (kill -- -$pid) first"; exit 1
+  fi
+  [ -e "$WT/$tag" ] && { echo "train: $WT/$tag exists: retire it (retire_wt.sh $tag) or stage another tag"; exit 1; }
+  SPEC=$RO/$tag.train
+  mkdir -p "$SPEC" || exit 1
+  rm -f "$SPEC"/{pid,step,result,sha,shipped}
+  echo "$branch" > "$SPEC/branch"; echo "$after" > "$SPEC/after"
+  echo "$checks" > "$SPEC/checks"; echo "$probes" > "$SPEC/probes"; echo "$units" > "$SPEC/units"
+  echo "${title:-$branch}" > "$SPEC/title"
+  echo $(( $(date +%s) + ${TRAIN_WAIT:-21600} )) > "$SPEC/deadline"
+  # This is TAG's latest attempt: a result an attempt before left would tell
+  # the release staged after it that this one had ended (m178 held on
+  # m177's, 2026-10-26).
+  rm -f "$RO/$tag.done" "$RO/$tag.gave_up"
+  for log in lead train; do
+    [ -e "$RO/${tag}_$log.out" ] && mv -f "$RO/${tag}_$log.out" "$RO/${tag}_$log.prev.out"
+  done
+  # The train runs from a copy: a release fast-forwards the main checkout,
+  # this script with it, and bash reads a script as it goes.
+  cp "$HERE/train.sh" "$SPEC/train.sh" || exit 1
+  setsid -f nohup bash "$SPEC/train.sh" run "$tag" > "$RO/${tag}_train.out" 2>&1 < /dev/null
+  echo "train: $tag staged: ${after:+waits for $after to serve, then }merges $branch and ships"
+  echo "  spec $SPEC/ (editable until it ships), log $RO/${tag}_train.out"
+}
+
+hold() {
+  [ $# -ge 1 ] || usage
+  local tag=$1; shift
+  echo "${*:-held by hand}, $(date -u +%FT%H:%MZ)" > "$RO/$tag.hold"
+  echo "train: $tag held: its train waits before its merge or its ship, and a ship under way stops before main moves"
+}
+
+release() {
+  [ $# -eq 1 ] || usage
+  rm -f "$RO/$1.hold"
+  echo "train: $1 released"
+  [ -e "$RO/HOLD" ] && echo "train: but $RO/HOLD still holds every release ($(cat "$RO/HOLD"))"
+  return 0
+}
+
+# --- the train itself (stage starts it as `run TAG`) ---
+
+say() { echo "$(date -u +%H:%M:%SZ) $TAG: $*"; }
+
+# The step it is on, in TAG.train/step (status reads it), said once.
+step() {
+  [ "$(cut -d' ' -f2- "$SPEC/step" 2>/dev/null)" = "$*" ] && return
+  echo "$(date -u +%H:%MZ) $*" > "$SPEC/step"; say "$*"
+}
+
+past_deadline() { [ "$(date +%s)" -gt "$(cat "$SPEC/deadline" 2>/dev/null || echo 0)" ]; }
+
+# The end, in TAG.train/result. Before the ship begins, TAG.gave_up too, as
+# ship_after.sh writes: ship.sh writes TAG.done once it has begun.
+finish() {
+  echo "$1" > "$SPEC/result"
+  [ -e "$SPEC/shipped" ] || [ "$1" = live ] || echo "$1" > "$RO/$TAG.gave_up"
+  step "${1}"
+  [ "$1" = live ] && exit 0
+  exit 1
+}
+stop() { finish "stopped: $*"; }
+
+# Where PREV stands: "live", "failed: why", or nothing while it is to come.
+prev_state() {
+  local p=$1 code res
+  grep -q '^SHIP: deploy: brickworks.diy serves' "$RO/${p}_lead.out" 2>/dev/null && { echo live; return; }
+  code=$(cat "$RO/$p.done" 2>/dev/null)
+  [ "$code" = 0 ] && { echo live; return; }
+  [ -n "$code" ] && { echo "failed: $p's ship ended exit $code, and brickworks.diy never served it"; return; }
+  [ -e "$RO/$p.gave_up" ] && { echo "failed: $p never shipped: $(cat "$RO/$p.gave_up")"; return; }
+  [ -d "$RO/$p.train" ] || return
+  res=$(cat "$RO/$p.train/result" 2>/dev/null)
+  [ -n "$res" ] && { echo "failed: $p's train ended: $res"; return; }
+  # A train killed, or lost with the machine, writes no result.
+  [ -e "$RO/$p.train/pid" ] && ! runner "$p" >/dev/null && [ ! -e "$RO/$p.train/result" ] \
+    && echo "failed: $p's train is not running and wrote no result"
+}
+
+# Waits while a hold is set, before $1 (the merge, the ship).
+unheld() {
+  local h
+  while :; do
+    h=""
+    for f in "$RO/HOLD" "$RO/$TAG.hold"; do [ -e "$f" ] && h="$f: $(cat "$f")" && break; done
+    [ -z "$h" ] && return
+    past_deadline && stop "held before $1 at its deadline ($h)"
+    step "held before $1 by $h"
+    sleep "$POLL"
+  done
+}
+
+# Never ships a half-merged tree: a held merge_unit once left a unit's files
+# staged in rel-m214. The sha is the one ship.sh and the deploy will name.
+tree_ok() {
+  local dirty
+  git -C "$W" rev-parse -q --verify MERGE_HEAD >/dev/null && stop "$W is mid-merge"
+  [ -e "$(git -C "$W" rev-parse --git-dir)/merging" ] && stop "a merge in $W is still running its gates"
+  dirty=$(git -C "$W" status --porcelain --untracked-files=no)
+  [ -z "$dirty" ] || { echo "$dirty" | head -5; stop "$W has uncommitted changes"; }
+  git -C "$W" merge-base --is-ancestor "$BRANCH" HEAD || stop "$BRANCH is not merged in $W"
+  git -C "$W" rev-parse --short HEAD > "$SPEC/sha"
+}
+
+# The release's worktree, and each unit's whose work is all on main. A unit
+# still working past what shipped keeps its worktree: site357 went on to
+# pagination after its pages were merged into rel-m215 (2026-10-30), and a
+# retire between two of its commands would take files it had not added.
+retire() {
+  local w d head extra
+  cd "$R" || return
+  bash "$HERE/retire_wt.sh" "$TAG" 2>&1 | tail -1
+  words units units
+  for w in "${units[@]}"; do
+    d=$WT/$w
+    head=$(git -C "$d" rev-parse HEAD 2>/dev/null) || { say "unit $w: no worktree"; continue; }
+    git -C "$R" merge-base --is-ancestor "$head" main || { say "kept $w: it has work main lacks"; continue; }
+    extra=$(git -C "$d" ls-files --others --exclude-standard | grep -vE '\.(uid|import)$' | head -3 | paste -sd' ')
+    [ -z "$extra" ] || { say "kept $w: files git does not track ($extra)"; continue; }
+    git -C "$R" worktree unlock "$d" 2>/dev/null
+    bash "$HERE/retire_wt.sh" "$w" 2>&1 | tail -1
+  done
+}
+
+run() {
+  TAG=$1; SPEC=$RO/$TAG.train; W=$WT/$TAG
+  cd "$R" || exit 1
+  echo $$ > "$SPEC/pid"
+  local prev st base probe code fails out bad=""
+  # Killed (kill -- -PID stops what it runs too): no result would leave the
+  # release staged after it waiting until its deadline. nohup has HUP ignored.
+  trap 'stop "killed"' TERM INT
+
+  while prev=$(cat "$SPEC/after" 2>/dev/null) && [ -n "$prev" ]; do
+    st=$(prev_state "$prev")
+    case "$st" in
+      live) say "$prev: brickworks.diy serves it"; break ;;
+      failed:*) stop "${st#failed: }" ;;
+    esac
+    past_deadline && stop "gave up waiting for $prev at the deadline"
+    step "waits for $prev to serve (until $(date -u -d "@$(cat "$SPEC/deadline")" +%H:%MZ))"
+    sleep "$POLL"
+  done
+
+  unheld "the merge"
+  base=${TRAIN_BASE:-origin/main}
+  timeout 300 git -C "$R" fetch -q origin 2>&1 | tail -1
+  [ -e "$W" ] && stop "$W exists"
+  # A branch of this name left by an attempt before: only one whose work is
+  # all on main goes (-d, never -D).
+  if git -C "$R" rev-parse -q --verify "refs/heads/$TAG" >/dev/null; then
+    git -C "$R" branch -d "$TAG" >/dev/null 2>&1 || stop "a branch $TAG has work main lacks"
+  fi
+  step "makes $W from $base ($(git -C "$R" rev-parse --short "$base" 2>/dev/null))"
+  bash "$HERE/release_wt.sh" "$TAG" "$base" || stop "release_wt.sh could not make $W"
+
+  BRANCH=$(cat "$SPEC/branch")
+  step "merges $BRANCH"
+  if ! MERGE_GATES=ship bash "$HERE/merge_unit.sh" "$W" "$BRANCH" "Merge: $(cat "$SPEC/title")" \
+      > "$RO/${TAG}_merge.log" 2>&1; then
+    tail -5 "$RO/${TAG}_merge.log"
+    git -C "$W" merge --abort 2>/dev/null; git -C "$W" reset -q --hard HEAD
+    stop "the merge of $BRANCH held ($RO/${TAG}_merge.log); $W is back where it began"
+  fi
+  tree_ok
+  say "merged: $(git -C "$W" log --oneline -1 | cut -c1-100)"
+
+  step "check.sh --lists"
+  out=$(cd "$W" && bash tools/check.sh --lists 2>&1) || { echo "$out" | tail -3; stop "check.sh --lists fails in $W"; }
+  words probes probes
+  for probe in "${probes[@]}"; do
+    step "probe $probe"
+    (cd "$W" && bash tools/probe.sh "$probe") > "$RO/${TAG}_probe_$probe.log" 2>&1
+    code=$?
+    fails=$(grep -cE '^\s*FAIL' "$RO/${TAG}_probe_$probe.log")
+    say "probe $probe exit=$code FAIL=$fails"
+    # Either holds: probe.sh exits 1 for a script that did not load, 2 for a
+    # probe not run and 3 for one that skipped itself, none with a FAIL line.
+    [ "$code" = 0 ] && [ "$fails" = 0 ] || bad="$bad $probe"
+  done
+  [ -z "$bad" ] || stop "probes failed:$bad (${TAG}_probe_NAME.log)"
+
+  unheld "the ship"
+  tree_ok
+  words checks checks
+  # Ship begun: from here ship.sh writes TAG.done, and shipped is what it was given.
+  echo "${checks[*]}" > "$SPEC/shipped"
+  step "ships $(cat "$SPEC/sha") with ${#checks[@]} checks named (and site, frames)"
+  env LIVE_WAIT="${LIVE_WAIT:-10800}" bash "$W/tools/release/ship.sh" "$W" "$TAG" "${checks[@]}" \
+    > "$RO/${TAG}_lead.out" 2>&1
+  code=$?
+  tail -n 4 "$RO/${TAG}_lead.out"
+  if ! grep -q "^SHIP: deploy: brickworks.diy serves $(cat "$SPEC/sha")" "$RO/${TAG}_lead.out"; then
+    finish "not live: ship.sh ended exit $code: $(grep '^SHIP:' "$RO/${TAG}_lead.out" | tail -1 | cut -c1-160)"
+  fi
+  step "live; retiring"
+  retire
+  # Live, whatever the live checks after said: main has it and brickworks.diy serves it.
+  [ "$code" = 0 ] || say "live, but ship.sh ended exit $code: its live checks ($RO/${TAG}_live.out)"
+  finish live
+}
+
+# --- status ---
+
+show() {
+  local t=$1 d=$RO/$1.train after pid res pv total passed failed n left sha
+  [ -d "$d" ] || { echo "$t: not staged"; return; }
+  after=$(cat "$d/after" 2>/dev/null)
+  if pid=$(runner "$t"); then pid="running (pid $pid)"; else pid="ended"; fi
+  echo "$t: $(cat "$d/branch")${after:+ after $after}, $pid"
+  res=$(cat "$d/result" 2>/dev/null)
+  if [ -n "$res" ]; then
+    echo "  result: $res"
+  else
+    echo "  step: $(cat "$d/step" 2>/dev/null || echo "not begun")"
+  fi
+  [ -z "$res" ] && [ -e "$d/shipped" ] && [ -s "$RO/${t}_lead.out" ] \
+    && echo "  ship: $(grep '^SHIP:' "$RO/${t}_lead.out" | tail -1 | cut -c7-140)"
+  # The checks of this attempt's battery only: one before left its own.
+  pv=$RO/${t}_pv.out
+  if [ -e "$d/shipped" ] && [ "$pv" -nt "$d/shipped" ]; then
+    total=$( (cat "$d/shipped"; echo site frames) | tr ' ' '\n' | grep -v '^$' | sort -u | wc -l)
+    passed=$(grep -c ' exit=0 ' "$pv")
+    failed=""
+    for n in $(grep -E ' exit=[^0]' "$pv" | awk '{print $1}'); do
+      if grep -q ' exit=0 ' "$RO/${t}_alone_$n.out" 2>/dev/null; then failed="$failed $n (passed alone)"; else failed="$failed $n"; fi
+    done
+    left=$(( total - $(grep -c ' exit=' "$pv") ))
+    echo "  checks: $passed of $total passed${failed:+; failed:$failed}$( [ "$left" -gt 0 ] && echo "; $left to run")"
+  fi
+  sha=$(cat "$d/sha" 2>/dev/null)
+  case "$LIVE_NOW" in
+    "") echo "  live: brickworks.diy did not answer" ;;
+    "${sha:-none}"*) echo "  live: brickworks.diy serves it ($sha)" ;;
+    *) echo "  live: not yet${sha:+ ($sha)}; brickworks.diy serves $LIVE_NOW" ;;
+  esac
+}
+
+status() {
+  local tags=() d t
+  if [ $# -gt 0 ]; then
+    tags=("$@")
+  else
+    # Running, or ended in the last 12 hours.
+    for d in "$RO"/*.train; do
+      [ -d "$d" ] || continue
+      t=$(basename "$d" .train)
+      runner "$t" >/dev/null || [ $(( $(date +%s) - $(stat -c %Y "$d/step" 2>/dev/null || echo 0) )) -lt 43200 ] || continue
+      tags+=("$t")
+    done
+  fi
+  [ ${#tags[@]} -gt 0 ] || { echo "train: none staged or running in $RO"; return; }
+  LIVE_NOW=$(serving); LIVE_NOW=${LIVE_NOW#/b/}; LIVE_NOW=${LIVE_NOW%/}
+  for t in $(printf '%s\n' "${tags[@]}" | sort -V); do show "$t"; done
+  for h in "$RO"/HOLD "$RO"/*.hold; do [ -e "$h" ] && echo "hold: $(basename "$h"): $(cat "$h")"; done
+  return 0
+}
+
+cmd=${1:-}; shift || true
+case "$cmd" in
+  stage) stage "$@" ;;
+  status) status "$@" ;;
+  hold) hold "$@" ;;
+  release) release "$@" ;;
+  run) [ $# -eq 1 ] || usage; run "$1" ;;
+  *) usage ;;
+esac

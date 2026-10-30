@@ -920,7 +920,9 @@ function buildPhotos(box) {
     let row = strip();
     if (!row) {
       row = document.createElement("div");
-      row.className = "build-strip";
+      row.className = "build-strip scroller";
+      row.setAttribute("role", "group");
+      row.setAttribute("aria-labelledby", "builds-h");
       document.querySelector("#builds .no-builds")?.replaceWith(row);
     }
     const figure = document.createElement("figure");

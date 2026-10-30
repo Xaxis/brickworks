@@ -64,7 +64,10 @@ function numbers(model) {
 function builders(model) {
   const photos = (model.photos || []).filter((one) => ID.test(String(one.id)));
   if (!photos.length) return null;
-  const strip = make("div", "build-strip");
+  // Inside the model's row, not at the page's edge: inset.
+  const strip = make("div", "build-strip scroller inset");
+  strip.setAttribute("role", "group");
+  strip.setAttribute("aria-label", `Builds of ${model.name}`);
   for (const one of photos) {
     const picture = document.createElement("img");
     picture.src = `/api/people?op=photo_file&id=${one.id}`;

@@ -31,14 +31,14 @@
 // Locally the list is a made-up one of 26 models — one with no picture, one
 // whose name is markup — so the check sees two pages and a name that must
 // be shown as the text it is; against a deployment, what it lists. The
-// first page is drawn with Show more; the next comes by itself where Show
-// more was within a screen under the window (locally at 1280), else when
-// it is pressed (at 390), and locally Show more is then gone. Pressed as a
-// person does, while the page the scroll to it asked for by itself is on
-// its way: locally a later page takes LATER_PAGE_MS to come, so the press
-// lands then, and one press is enough (a press then was lost before
-// 2026-10-29: Show more was disabled). A deployment that lists more than a
-// page is paged the same way.
+// first page is drawn with Show more (web/pager.js), and the next only
+// when it is pressed, never by itself. Brought into view, Show more asks
+// for the next page ahead; pressed as a person does while that page is
+// still on its way (locally a later page takes LATER_PAGE_MS to come), the
+// press is kept and the page drawn as it comes, one press enough and the
+// page asked for once (a press then was lost before 2026-10-29: Show more
+// was disabled); locally Show more is then gone. A deployment that lists
+// more than a page is paged the same way.
 // No error in the console (a refused script or fetch is one), and no
 // sideways scroll on a phone or a laptop. --shots gets gallery-phone.png and
 // gallery-laptop.png. Locally the made-up list answers a search and a kind
@@ -464,15 +464,12 @@ for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
   page.on("console", (m) => { if (m.type() === "error") said.push(m.text()); });
   page.on("pageerror", (e) => said.push(String(e)));
   const fail = (text) => problems.push(`gallery at ${label} width: ${text}`);
-  // The list as first drawn, before the page can bring the next page by
-  // itself (web/gallery.js nearEnd: once Show more is within a screen under
-  // the window, as the made-up list's first page ends at 1280). Read as
-  // data-pages is first said, which is before nearEnd runs.
+  // The list as first drawn, read as data-pages is first said.
   await page.addInitScript(() => {
     new MutationObserver((changes, watch) => {
       if (document.documentElement.dataset.pages !== "1") return;
       watch.disconnect();
-      const more = document.getElementById("more");
+      const more = document.querySelector(".pager-more");
       window.firstDrawn = { cards: document.querySelectorAll("#models .model").length, more: !more.hidden,
         top: Math.round(more.getBoundingClientRect().top), within: innerHeight * 2,
         where: location.pathname + location.search, state: document.documentElement.dataset.gallery };
@@ -493,7 +490,7 @@ for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
       href: a.querySelector("a.open").getAttribute("href"), name: a.querySelector("b").textContent,
       about: [a.querySelector(".parts")?.textContent, a.querySelector(".who")?.textContent].filter(Boolean).join(", by "),
       img: (a.querySelector("img") || {}).src || "" })),
-    more: !document.getElementById("more").hidden,
+    more: Boolean(document.querySelector(".pager-more")) && !document.querySelector(".pager-more").closest("[hidden]"),
     empty: !document.getElementById("empty").hidden,
     stray: document.querySelectorAll('#models img[src="x"], #models img:not([src*="/m/"])').length,
     title: document.title,
@@ -515,44 +512,33 @@ for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
     if ((seen.cards[1] || {}).img) fail("a model with no picture was given one");
     if ((seen.cards[2] || {}).about !== "86 parts, by Builder 2") fail(`a credit reads "${(seen.cards[2] || {}).about}"`);
   }
-  // The next page: by itself where Show more was first drawn within a
-  // screen under the window, else when it is pressed. A deployment's own
-  // list too, when it lists more than a page: releases check only that,
-  // and this half went stale for three days unseen (2026-10-29).
+  // The next page: only when Show more is pressed. Brought into view, it
+  // is asked for ahead and not drawn; pressed while it is on its way, as a
+  // person does, at the place on the screen, the press is kept and the
+  // page drawn when it comes, never lost. A deployment's own list too,
+  // when it lists more than a page: releases check only that, and this
+  // half went stale for three days unseen (2026-10-29).
   if (drawn && drawn.more) {
-    const near = drawn.top <= drawn.within;
-    if (!near) {
-      if (seen.cards.length !== drawn.cards || !seen.more) fail(`Show more ${drawn.top}px down, the list is ${seen.cards.length} cards before it is pressed, Show more ${seen.more ? "shown" : "hidden"}`);
-      if (seen.more) {
-        // Brought into view first, at once: that scroll asks for the next
-        // page by itself (nearEnd). Pressed while it is on its way, as a
-        // person does, at the place on the screen: a press then is served
-        // by that page when it comes, never lost. (Playwright's own click
-        // waits for a disabled button, which a person's press does not.)
-        await page.evaluate(() => document.getElementById("more").scrollIntoView({ block: "center", behavior: "instant" }));
-        await page.waitForFunction(() => document.documentElement.dataset.auto, null, { timeout: 5000 }).catch(() => {});
-        if (!args.url) {
-          const until = Date.now() + 5000;
-          while (!laterOut && Date.now() < until) await page.waitForTimeout(20);
-        }
-        const out = laterOut;
-        const box = await page.locator("#more").boundingBox();
-        if (box) await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
-        if (!args.url && out !== 1) fail(`Show more was pressed with ${out} later pages on their way, not while the one asked by itself was`);
-      }
+    await page.evaluate(() => document.querySelector(".pager-more").scrollIntoView({ block: "center", behavior: "instant" }));
+    if (!args.url) {
+      const until = Date.now() + 5000;
+      while (!laterOut && Date.now() < until) await page.waitForTimeout(20);
     }
+    const out = laterOut;
+    const before = await page.evaluate(() => document.querySelectorAll("#models .model").length);
+    if (before !== drawn.cards) fail(`brought into view, the list is ${before} cards before Show more is pressed, not ${drawn.cards}`);
+    const box = await page.locator(".pager-more").boundingBox();
+    if (box) await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+    if (!args.url && out !== 1) fail(`Show more was pressed with ${out} later pages on their way, not while the one asked ahead was`);
     const came = await page.waitForFunction((had) => document.querySelectorAll("#models .model").length > had, drawn.cards, { timeout: 10000 }).catch(() => null);
     await page.waitForTimeout(300);
-    const auto = await page.evaluate(() => document.documentElement.dataset.auto || "0");
     seen = await look();
-    // Pressed, the scroll to it may have asked for it by itself (auto 1):
-    // either way it is drawn by the press.
-    if (!came || (near && auto !== "1") || (!args.url && (seen.cards.length !== 26 || seen.more))) {
-      fail(`${near ? `with Show more ${drawn.top}px down, by itself` : "after Show more"}, ${seen.cards.length} cards (auto ${auto}), Show more ${seen.more ? "still shown" : "gone"}`);
+    if (!came || (!args.url && (seen.cards.length !== 26 || seen.more))) {
+      fail(`after Show more, ${seen.cards.length} cards, Show more ${seen.more ? "still shown" : "gone"}`);
     }
-    // One page asked for, whether it came by itself or by the press.
+    // One page asked for: ahead, and the press served by it.
     if (!args.url && laterAsked !== 1) fail(`the second page was asked for ${laterAsked} times`);
-    paged = ` (${drawn.cards}, then ${seen.cards.length - drawn.cards} ${near ? "by itself" : "by Show more"}, Show more first at ${drawn.top}px)`;
+    paged = ` (${drawn.cards}, then ${seen.cards.length - drawn.cards} by Show more, pressed while it was on its way)`;
   }
   if (!args.url) {
     // The question: typed, picked, found nothing, cleared; each in the address.
@@ -587,7 +573,7 @@ for (const [label, width] of [["phone", 390], ["laptop", 1280]]) {
     // The one answer here that is meant to be refused, which the browser
     // logs as a failed load; anything else said meanwhile still counts.
     const before = said.length;
-    // Its first page as drawn: at 1280 the second comes by itself after.
+    // Its first page as drawn.
     await page.goto(`${galleryTarget}?kind=nope&q=x`, { waitUntil: "load" });
     await page.waitForFunction(() => window.firstDrawn, null, { timeout: 10000 }).catch(() => {});
     await page.waitForTimeout(500);

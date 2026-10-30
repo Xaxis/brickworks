@@ -40,8 +40,19 @@ signature and all. Gemini: function declarations in its OpenAPI subset (no
 additionalProperties, no object without properties), each functionCall
 answered by a functionResponse of its name and id, in order, the
 thoughtSignature on a call's part sent back exactly, pictures as inlineData.
+And in OpenAI's Responses (POST /v1/responses, a bearer key), as strict as
+it is where its adapter could go wrong: functions flat and, unless they say
+"strict": false, held to strict mode (every property required,
+additionalProperties false: the app's schemas fail it); every array saying
+what its items are; each function_call answered by a function_call_output of
+its call_id, and none answering no call; pictures as input_image data: URLs,
+in a message or in a function_call_output's output; and with "store": false,
+every reply's reasoning item sent back carrying the encrypted content the
+reply gave it (given only when "include" asks for it), and none of its
+function_calls sent back by id without it.
+
 Each logs what OpenAI's does, and "pictures_in_answers": the pictures inside
-the last tool answers themselves, where these two APIs take them.
+the last tool answers themselves, where these three APIs take them.
 """
 
 import argparse
@@ -388,6 +399,132 @@ def gemini_view(body):
                  "last_pictures": last}
 
 
+ENCRYPTED = "stub-encrypted-%d"
+CONTENT_TYPES = ("input_text", "input_image")
+
+
+def strict_problems(name, schema, where=()):
+    """What strict mode refuses in a function's [schema], in OpenAI's words."""
+    out = []
+    if not isinstance(schema, dict):
+        return out
+    if schema.get("type") == "object":
+        if schema.get("additionalProperties") is not False:
+            out.append("Invalid schema for function '%s': In context=%r, 'additionalProperties' is "
+                       "required to be supplied and to be false." % (name, where))
+        properties = schema.get("properties") or {}
+        missing = [key for key in properties if key not in (schema.get("required") or [])]
+        if missing:
+            out.append("Invalid schema for function '%s': In context=%r, 'required' is required to "
+                       "be supplied and to be an array including every key in properties. Missing "
+                       "'%s'." % (name, where, missing[0]))
+        for key, one in properties.items():
+            out += strict_problems(name, one, where + ("properties", key))
+    if isinstance(schema.get("items"), dict):
+        out += strict_problems(name, schema["items"], where + ("items",))
+    return out
+
+
+def content_problems(parts, where):
+    """What Responses refuses in a list of content parts."""
+    out = []
+    for part in parts:
+        kind = part.get("type") if isinstance(part, dict) else None
+        if kind not in CONTENT_TYPES:
+            out.append("Invalid value: %r at %s. Supported values are: 'input_text', 'input_image', "
+                       "and 'input_file'." % (kind, where))
+        elif kind == "input_image" and not DATA_URL.match(str(part.get("image_url", ""))):
+            out.append("%s: an input_image that is not a data: URL" % where)
+        elif kind == "input_text" and not isinstance(part.get("text"), str):
+            out.append("%s: an input_text with no text" % where)
+    return out
+
+
+def responses_view(body):
+    """A Responses request read: (problems, view)."""
+    out = []
+    tools = body.get("tools") or []
+    for tool in tools:
+        name = tool.get("name", "")
+        if tool.get("type") != "function" or not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", name) \
+                or "function" in tool:
+            out.append("tools: %r is not a flat function with a valid name" % name)
+            continue
+        params = tool.get("parameters") or {}
+        if params.get("type") != "object":
+            out.append("tools: %s's parameters are not an object schema" % name)
+        for where in bare_arrays(params):
+            out.append("Invalid schema for function '%s': In context=%r, array schema missing items."
+                       % (name, where))
+        if tool.get("strict") is not False:
+            out += strict_problems(name, params)
+    store = body.get("store", True) is not False
+    encrypted = "reasoning.encrypted_content" in (body.get("include") or [])
+    called, answered, replies, reasoned, in_reply = [], set(), 0, set(), False
+    answers, pictures, all_answers, last_pictures = [], 0, [], []
+    for n, item in enumerate(body.get("input") or []):
+        kind = item.get("type") or ("message" if "role" in item else None)
+        mine = kind in ("reasoning", "function_call") or (kind == "message"
+                                                           and item.get("role") == "assistant")
+        if mine and not in_reply:
+            # A reply is a run of the model's own items: reasoning, calls, words.
+            replies += 1
+            answers, pictures = [], 0
+        in_reply = mine
+        if kind == "reasoning":
+            rs = str(item.get("id"))
+            reasoned.add(rs)
+            if not store and item.get("encrypted_content") != ENCRYPTED % int(rs.split("_")[-1]):
+                out.append("Item with id '%s' not found. Items are not persisted when `store` is set "
+                           "to false. Try again with `store` set to true, or remove this item from "
+                           "your input." % rs)
+        elif kind == "function_call":
+            fc = item.get("id")
+            if fc and not store and "rs_" + fc.split("_")[1] not in reasoned:
+                out.append("Item '%s' of type 'function_call' was provided without its required "
+                           "'reasoning' item: 'rs_%s'." % (fc, fc.split("_")[1]))
+            try:
+                json.loads(item.get("arguments"))
+            except (TypeError, ValueError):
+                out.append("input[%d]: arguments that are not JSON" % n)
+            called.append(item.get("call_id"))
+        elif kind == "function_call_output":
+            call = item.get("call_id")
+            if call not in called:
+                out.append("No tool call found for function call output with call_id %s." % call)
+            answered.add(call)
+            output = item.get("output")
+            if isinstance(output, list):
+                out += content_problems(output, "input[%d].output" % n)
+                pictures += sum(1 for part in output if isinstance(part, dict)
+                                and part.get("type") == "input_image")
+                answers.append("\n".join(part.get("text", "") for part in output
+                                         if isinstance(part, dict) and part.get("type") == "input_text"))
+            elif isinstance(output, str):
+                answers.append(output)
+            else:
+                out.append("input[%d].output: a string or a list of content" % n)
+                answers.append("")
+            all_answers.append(answers[-1])
+        elif kind != "message" or item.get("role") not in ("user", "assistant", "system", "developer"):
+            out.append("input[%d]: Invalid value: %r." % (n, kind))
+        elif item.get("role") == "user" and isinstance(item.get("content"), list):
+            out += content_problems(item["content"], "input[%d].content" % n)
+            last_pictures = [part["image_url"].split(",", 1)[1] for part in item["content"]
+                             if isinstance(part, dict) and part.get("type") == "input_image"
+                             and DATA_URL.match(str(part.get("image_url", "")))]
+    for call in called:
+        if call not in answered:
+            out.append("No tool output found for function call %s." % call)
+    if not str(body.get("instructions") or "").strip():
+        out.append("instructions: no text")
+    return out, {"replies": replies, "said": "\n".join(answers), "pictures": pictures,
+                 "fresh": "fresh pair of eyes" in "\n".join(all_answers),
+                 "tools": [t.get("name", "") for t in tools],
+                 "guide": "HOW TO WORK" in str(body.get("instructions")),
+                 "last_pictures": last_pictures, "encrypted": encrypted}
+
+
 def native_reply(api, view, model):
     """Test's answer or the design's next step, in [api]'s own shape: (status, payload)."""
     if view["tools"] == ["record_answer"]:
@@ -396,13 +533,29 @@ def native_reply(api, view, model):
     elif not view["tools"] and view["last_pictures"]:
         if model == "stub-blind":
             message = "This model does not support image input."
-            return 400, ({"type": "error", "error": {"type": "invalid_request_error", "message": message}}
-                         if api == "anthropic" else
-                         {"error": {"code": 400, "message": message, "status": "INVALID_ARGUMENT"}})
+            return 400, _error(api, 400, message)
         calls, words = [], colour_of_base64(view["last_pictures"][-1]).capitalize() + "."
     else:
         calls, words = scripted(view["replies"], view["said"])
     reply = view["replies"] + 1
+    if api == "responses":
+        reasoning = {"type": "reasoning", "id": "rs_%d" % reply, "summary": []}
+        if view["encrypted"]:
+            reasoning["encrypted_content"] = ENCRYPTED % reply
+        output = [reasoning]
+        output += [{"type": "function_call", "id": "fc_%d_%d" % (reply, n),
+                    "call_id": "call_%d_%d" % (Stub.seen, n), "name": name,
+                    "arguments": json.dumps(args), "status": "completed"}
+                   for n, (name, args) in enumerate(calls)]
+        if words:
+            output.append({"type": "message", "id": "msg_%d" % reply, "role": "assistant",
+                           "status": "completed", "content": [
+                               {"type": "output_text", "text": words, "annotations": []}]})
+        return 200, {"id": "resp_stub_%d" % Stub.seen, "object": "response", "status": "completed",
+                     "model": model, "output": output, "error": None, "incomplete_details": None,
+                     "usage": {"input_tokens": 1500, "input_tokens_details": {"cached_tokens": 1000},
+                               "output_tokens": 40, "output_tokens_details": {"reasoning_tokens": 10},
+                               "total_tokens": 1540}}
     if api == "anthropic":
         content = [{"type": "thinking", "thinking": THOUGHT % reply, "signature": SIGNATURE % reply}]
         if words:
@@ -426,6 +579,18 @@ def native_reply(api, view, model):
                                  "finishReason": "STOP"}],
                  "usageMetadata": {"promptTokenCount": 1500, "cachedContentTokenCount": 1000,
                                    "candidatesTokenCount": 30, "thoughtsTokenCount": 10}}
+
+
+def _error(api, code, message):
+    """A refusal in [api]'s own shape."""
+    if api == "anthropic":
+        return {"type": "error", "error": {"type": "rate_limit_error" if code == 429
+                                           else "invalid_request_error", "message": message}}
+    if api == "gemini":
+        return {"error": {"code": code, "message": message,
+                          "status": "RESOURCE_EXHAUSTED" if code == 429 else "INVALID_ARGUMENT"}}
+    return {"error": {"message": message, "type": "rate_limit_exceeded" if code == 429
+                      else "invalid_request_error", "param": None, "code": None}}
 
 
 class Stub(BaseHTTPRequestHandler):
@@ -474,11 +639,14 @@ class Stub(BaseHTTPRequestHandler):
             {"id": name, "object": "model", "owned_by": "stub", "display_name": name} for name in MODELS]})
 
     def _native(self, api, body, size):
-        """A request in Anthropic's or Gemini's own shape."""
+        """A request in Anthropic's, Gemini's or Responses' own shape."""
         if api == "anthropic":
             wrong, view = anthropic_view(body)
             if not self.headers.get("anthropic-version"):
                 wrong.append("anthropic-version: header is required")
+            model = body.get("model")
+        elif api == "responses":
+            wrong, view = responses_view(body)
             model = body.get("model")
         else:
             wrong, view = gemini_view(body)
@@ -490,6 +658,10 @@ class Stub(BaseHTTPRequestHandler):
                   "last_tools": view["said"][:600], "fresh_look_asked": view["fresh"],
                   "problems": wrong, "bytes": size,
                   "test": view["tools"] == ["record_answer"] or (not view["tools"] and bool(view["last_pictures"]))}
+        if api == "responses":
+            record.update({"store": body.get("store"), "include": body.get("include"),
+                           "reasoning": body.get("reasoning"),
+                           "max_output_tokens": body.get("max_output_tokens")})
         time.sleep(Stub.delay)
         status, payload = (400, None) if wrong else native_reply(api, view, model)
         if not wrong and Stub.seen <= Stub.fail_first:
@@ -498,15 +670,9 @@ class Stub(BaseHTTPRequestHandler):
         with open(Stub.log_path, "a", encoding="utf-8") as log:
             log.write(json.dumps(record) + "\n")
         if status == 429:
-            message = "Rate limit reached (stub)"
-            return self._send(429, {"type": "error", "error": {"type": "rate_limit_error", "message": message}}
-                              if api == "anthropic" else
-                              {"error": {"code": 429, "message": message, "status": "RESOURCE_EXHAUSTED"}})
+            return self._send(429, _error(api, 429, "Rate limit reached (stub)"))
         if wrong:
-            message = "; ".join(wrong)
-            return self._send(400, {"type": "error", "error": {"type": "invalid_request_error", "message": message}}
-                              if api == "anthropic" else
-                              {"error": {"code": 400, "message": message, "status": "INVALID_ARGUMENT"}})
+            return self._send(400, _error(api, 400, "; ".join(wrong)))
         self._send(status, payload)
 
     def do_POST(self):
@@ -521,6 +687,8 @@ class Stub(BaseHTTPRequestHandler):
             return self._native("anthropic", body, size)
         if path.endswith(":generateContent"):
             return self._native("gemini", body, size)
+        if path.endswith("/v1/responses"):
+            return self._native("responses", body, size)
         messages = body.get("messages") or []
         wrong = problems(body) if self.path.endswith("/chat/completions") else ["no such path " + self.path]
         auth = self.headers.get("authorization") or ""

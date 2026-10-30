@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, lib:achievements with levels, lib:challenge notices, ui:your achievements tab, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, lib:achievements with levels, lib:challenge notices, ui:your achievements tab, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow -->
 
 ## Sub-features
 
@@ -41,12 +41,19 @@ plan with Claude as the client.
   here", where a release's preview answers 422 for the missing token.
   A release goes through `tools/release/` (README there): a staging
   worktree, each ready unit merged as the user with a parse gate, then
-  `ship.sh WORKTREE TAG CHECK...` (preview, its browser checks, production,
-  the live site). Checked by running it: `ship.sh` says `SHIP: brickworks.diy
-  serves <sha>` and the live site check and share probe pass. A production
-  deploy that fails, or a site that does not serve `/b/<sha>/` after it,
-  fails the ship before the live checks (m174's deploy lost a size to a
-  timed-out connection and its ship still said done 0, 2026-10-26).
+  `ship.sh WORKTREE TAG CHECK...` (preview, its browser checks, that very
+  preview promoted with `tools/deploy.sh --promote=URL`, the live site).
+  Checked by running it: `ship.sh` says `SHIP: deploy: brickworks.diy serves
+  <sha>` and the live site check and share probe pass. A promotion that
+  fails falls back to `deploy.sh --prod`; a production deploy that fails,
+  or a site that does not serve `/b/<sha>/` after it, fails the ship before
+  the live checks (m174's deploy lost a size to a timed-out connection and
+  its ship still said done 0, 2026-10-26). `--promote` refuses a deployment
+  whose `/version.json` names another commit than its checkout's HEAD:
+  `tools/deploy.sh --promote=<unit preview>` says "deploy FAILED: ... is a
+  build of <sha>, not <sha>" and promotes nothing. The battery's timing
+  checks (preview_checks.sh `SOLO`) run as `heavy --solo`; each one's line
+  in `<tag>_calm.log` says the load it began at and beside what.
 - `what a first visit waits for` (load250, 2026-10-24): a browser taking
   brotli is sent the build as `tools/export.sh` compressed it, brotli 11
   (`deploy.sh` routes `index.wasm`, `index.pck`, `index.js` and
@@ -674,12 +681,13 @@ plan with Claude as the client.
   links (`ul.links`, https, `rel="ugc nofollow noopener"`, said as their
   domain); one row of numbers (`ul.numbers li[data-stat]`: builds,
   remixes, models, likes, followers `[data-followers]`, following, each
-  `hidden` at none); wins as pills; Pinned (`.pinned .models.row`, up to
+  `hidden` at none); wins as pills; Pinned (`.pinned .models.scroller`, up to
   three, their order); then `nav.tabs` Models · Builds · Collections, each
   a page of its own (`?tab=`; the default the first with something in it),
   a count `.n` once there is one, `.tab-panel[data-panel]`: Models 24 a page
-  (`[data-models]`, Show more `a[data-more]` appends the next page from
-  `?op=profile&page=N`, a link to `?page=N` with no script), Builds
+  (`#models[data-models]`, paged by the site's one pager, `ui:a list's
+  pages`: `?page=N` drawn by the server with its numbered links, Show more
+  reading the next page's own HTML), Builds
   (`.builds-made`, `.builds-of`, photos in `.build-grid` columns),
   Collections (`a.list-card`, a `.mosaic` of up to four pictures); an empty
   tab says what goes there (`.state`); whom they follow (`section.follows`)
@@ -758,7 +766,7 @@ plan with Claude as the client.
   models, `directory_models` with `owner`, by Top builds) and `#similar`
   (`directory_models` by its kind and by each of its first three tags,
   ranked by tags shared, then kind, then Top builds; never what anybody
-  looked at), each a `.models.row` of cards drawn only with three, six at
+  looked at), each a `.models.scroller` of cards drawn only with three, six at
   most, and no card the page shows already (the model, its listed
   remixes, More by's); with neither row, `#from-gallery`, More in the
   gallery: the gallery's Top, however few, so the last screen always has
@@ -766,7 +774,7 @@ plan with Claude as the client.
   database error is no row, never a 500. No new SQL.
 - `model page pictures and tabs` (`api/share.js` `mediaStrip`, `pageTabs`,
   `web/model-page.js` `startPictures`, `startTabs`, 2026-10-22,
-  docs/SOCIAL.md U4): under the picture, `#pictures.media-strip`: the
+  docs/SOCIAL.md U4): under the picture, `#pictures.media-strip.scroller`: the
   published picture first (`aria-current`), then its owner's own photos
   (`data-own`; build photos posted by the model's owner, through the same
   pipeline, so no new table), then photos of real builds, newest first,
@@ -971,7 +979,7 @@ plan with Claude as the client.
   `tools/site_shell.py`), one type scale (`--t-*`) and rhythm (`--s-*`,
   `--page-top`, `--section`), the page template (`.page`, `.page-head`,
   `.prose`), the one model card (`.model`, in `.models`, `.models.compact`
-  or `.models.row`), `.state`, `.subnav`, `.settings`/`.setting` and
+  or `.models.scroller`), `.state`, `.subnav`, `.settings`/`.setting` and
   `.danger`. Since 2026-10-22 (docs/SOCIAL.md U2) only the token scale:
   every font size `var(--t-*)`, every corner `var(--r-*)` (or
   `--radius`, `--control-radius`, `0`, `50%`), every colour a token, in
@@ -1077,9 +1085,33 @@ plan with Claude as the client.
   `.menu-list`, closed by a click elsewhere or Escape. `web/_kit.html` at
   `/_kit` (served by the stand-in, never deployed: tools/site.py skips
   "_" names) shows each.
+- `scroller` (`web/scroller.js`, site.css "the scroller",
+  docs/DESIGN_SYSTEM.md "Scroller", scroll367, 2026-10-30): every row
+  that scrolls sideways is one primitive: `.models.scroller` (the landing
+  strips, the gallery's shelves, Pinned on /u/ and /profile, a model
+  page's More by / Similar with a See all in `.scroller-head`),
+  `.pills.scroller` (the gallery's and library's kinds, `.inset` in a
+  toolbar), `#pictures.media-strip.scroller`, `.build-strip.scroller`,
+  `nav.tabs`, an inner page's `.page-toc ul.scroller` under 900 px, and
+  the boxes `.table`, docs `.code > pre` and /admin's `.card.scroller`. It
+  scrolls inside itself (`overscroll-behavior-x: contain`, never the
+  page), a row snaps to its items' starts and bleeds into the 16 px
+  gutter, `data-more` fades only the sides with more, Previous and Next
+  (`.icon-btn.small.scroller-go`, after the row, anchor-positioned at its
+  ends) page by what is in view for a mouse and hide at their own end, a
+  row is named (`role="group"` + its heading; a table `role="region"`,
+  `tools/docs_site.py` `named_tables` for the docs), one with nothing
+  inside to focus takes `tabindex="0"` while it overflows, the scrollbar is
+  thin and shown on hover and focus, smooth only without reduced motion.
+  `/_kit` shows a row of cards and a row of pills. `design_flow` judges
+  every one on every page at start and end (below).
 - `design browser flow` (`tools/web/design_flow.mjs`, preview check
   `[design]`): every page and dialog, below. Its pages and the states it
   opens are `tools/web/site_pages.mjs`, shared with the accessibility flow.
+  Since 2026-10-30 (scroll367) also every scroller: named, contained,
+  thin bar, a row snapped, reachable by keyboard when it overflows, and
+  scrolled to each end its `data-more` and fade right, its Previous or
+  Next hidden at its own end, shown to a mouse only, never over the view.
 - `accessibility browser flow` (`tools/web/a11y_flow.mjs`, preview check
   `[a11y]`) and `keyboard browser flow` (`tools/web/keyboard_flow.mjs`,
   `[keyboard]`): axe and the accessibility tree's names on every page,
@@ -1246,9 +1278,15 @@ plan with Claude as the client.
   `details.menu`'s summary becomes the avatar (`.account-btn`), its list
   the site's links, the same `.account-part`, the theme and Sign out. Who
   you are and the counts come from `GET ?op=feed_count` (`me`,
-  `notifications`, `feed`), kept in `sessionStorage["brickworks.me"]` so
-  the next page draws at once (cleared by `signOut()`); /feed and
-  /notifications ask only once they have opened.
+  `notifications`, `feed`), kept in `localStorage["brickworks.me"]` (for
+  the signed-in address) so the next page, a new tab and the next visit
+  draw at once (cleared by `signOut()`); /feed and /notifications ask only
+  once they have opened. With nothing kept the avatar is a blank circle
+  (`.avatar.unknown`, no letter or tone) and `.menu-who` two `.bone` bars
+  until the answer: the address's letter only for an account with no
+  profile, never before the name's (avatar368, 2026-10-30;
+  `account_page_flow.mjs` records every letter the header shows, cold, in
+  a new tab and on a return visit).
 - `notifications apart from the feed` (`api/_notifications.js`,
   `supabase/notifications.sql`, **not applied to the live project** until
   the lead applies it): `GET ?op=notifications` (session; marks them
@@ -1964,27 +2002,27 @@ plan with Claude as the client.
   Tested only, and Clear the filters; in `#chips` each that is on (a tag,
   an order, a size, made, a box ticked) a pill to take off, and Clear all
   from two. Then the
-  cards (`web/card.js`, `like: true`), two to a row under 900 px, three to
-  1200, four above; on the front (Top, all time, nothing asked) this week's
-  pick first and the shelves after the first rows (`ui:the gallery's front
-  shelves`). A card's heart likes it from the card, signed in, at once
-  (`POST /api/people?op=like`), and asks to sign in when not. The next page
-  comes by itself as Show more comes within a screen of the window, three
-  times (`data-auto`), then waits for Show more; a page that came by itself
-  is put in only while the end of the list is under the screen, and waits
-  (Show more pressable, drawing it at once) while Put yours here or the
-  footer shows (site277: it pushed them down, CLS 0.51 signed in at 1280);
-  Show more stays pressable while that page is on its way, and a press then
-  draws it as soon as it comes (it was disabled, and the press lost, until
-  2026-10-29; `/library` the same);
-  the shelves' cards are lazy; the address keeps the question and
-  how many pages (`/gallery?q=castle&kind=space&sort=newest&page=3`), put back
-  with `replaceState`, so it can be sent; a card opened is kept in the
-  history's state and Back puts it where it was (`data-back` its id or
-  `lost`). States: `#empty` (nothing listed, with Open the app), `#nothing`
-  (nothing matches, with Clear), `#quiet` (Following with nobody, or a quiet
-  week, with its way back), `#broken`. `data-gallery` on `<html>` is `asking`,
-  `ready` or `broken`, `data-pages` how many are shown. An address asking
+  cards (`web/card.js`, `like: true`), two to a row under 600 px, three to
+  900, four above (the owner, 2026-10-29); on the front (Top, all time,
+  nothing asked, page 1) this week's pick first and the shelves after the
+  first twelve places (`ui:the gallery's front shelves`, each a
+  `.scroller-head` over a `.models.scroller`; Today in the gallery in a
+  lit panel). A
+  card's heart likes it from the card, signed in, at once
+  (`POST /api/people?op=like`), and asks to sign in when not. Paged by the
+  site's one pager (`ui:a list's pages`): nothing comes by itself; Show
+  more puts the next page after these (asked ahead once it nears the
+  screen, a press while it comes kept: #81), the count "Showing models
+  1–48", the numbered links; the shelves' cards are lazy; the address keeps
+  the question and the last page shown
+  (`/gallery?q=castle&kind=space&sort=newest&page=3`), put back with
+  `replaceState`, so it can be sent, and opens that page alone with Show
+  earlier over it; Back from a card puts its pages back and the card where
+  it was (`data-back` its id or `lost`). States: `#empty` (nothing listed,
+  with Open the app), `#nothing` (nothing matches, with Clear), `#quiet`
+  (Following with nobody, or a quiet week, with its way back), `#broken`
+  (with Retry). `data-gallery` on `<html>` is `asking`, `ready` or
+  `broken`, `data-pages` the last page shown. An address asking
   what the list does not know gets the whole gallery and its address put
   right; an answer to an older question is thrown away. `tests=1` asks the
   list with test models in on every question. Before `supabase/gallery_tabs.sql`
@@ -1993,6 +2031,40 @@ plan with Claude as the client.
   `gallery_models`, its cards carrying `comments`.
 - `gallery browser flow` (`tools/web/gallery_flow.mjs`, preview check
   `[gallery]`): below.
+- `a list's pages` (`web/pager.js`, site.css `.pager`, site357 2026-10-30):
+  the one pager every list has: `/gallery`, `/library`, `/u/<handle>`'s
+  Models and Likes, `/c/<id>`, `/collections` and `/challenge`'s two groups
+  (`?hand-page=N`, `?assistant-page=N`). Pages of 24; under the list the
+  count, Show more (`a.pager-more`, never by itself) and the numbered
+  links (`ol.pager-pages`, real links); over a page opened at `?page=N`,
+  Show earlier (`[data-pager-earlier]`). `pagerHtml` draws the same markup
+  on the server (`api/_pager.js` passes `web/pager.js` through; a
+  deployment copies it beside each function, `tools/deploy.sh`) and in
+  the browser; a server page's `nav[data-source="page"]` reads its next
+  page's own HTML, and its head links the pages either side. After a
+  press the keyboard is on the first new card and `[data-pager-said]`
+  says "24 more models"; Back restores the pages and the card
+  (`history.state.pagers`). Not on shelves. Feed and notifications take it
+  with site359. The kit page (`/_kit`) shows it.
+- `paging browser flow` (`tools/web/paging_flow.mjs`, site357): the pager
+  on two lists, the LDraw library (drawn from JSON) and a person's models
+  (drawn by the server, `--profile=/u/brickworks`, 49 in the live
+  database): page 1's count, Show more and numbers, nothing by itself at
+  the foot; Show more from the keyboard (48 cards, `?page=2`, the keyboard
+  on card 25, "24 more ..."); a press while page 3 is held 1.5 s kept
+  (skeletons meanwhile, #81); `?page=3` opened afresh with Show earlier;
+  Back from card 31 with an unload listener (no back-forward cache) puts
+  the pages and the card back within 100 px; page 1's number a real link;
+  at 390 one row of numbers, Previous and Next as arrows.
+
+  ```sh
+  node --env-file=.env tools/web/relay_server.mjs 8890 &
+  node tools/web/paging_flow.mjs --url=http://127.0.0.1:8890 --out=DIR
+  BW_BYPASS=$VERCEL_BYPASS node tools/web/paging_flow.mjs --url=<preview> --out=DIR
+  ```
+
+  Proves it when it ends "paging_flow: all passed" (locally 2026-10-30:
+  the library's 1,575 sets in 66 pages, /u/brickworks's 49 in 3).
 - `seed the gallery` (`src/dev/gallery_seed.gd`, `tools/web/gallery_seed.mjs`):
   the project's own showcase models, listed by the project's account
   (`gallery@brickworks.diy`, signed in as the tests are) so the gallery is not
@@ -2999,6 +3071,7 @@ plan with Claude as the client.
 ```sh
 tools/deploy.sh                 # a preview URL
 tools/deploy.sh --prod          # the one brickworks.diy points at
+tools/deploy.sh --promote=URL   # brickworks.diy onto a checked deployment of HEAD (ship.sh's)
 tools/deploy.sh --no-export     # deploy what is already in build/web
 node tools/web/check.mjs --url=https://brickworks.diy/app --out=shots/deploy.png
 VERCEL_BYPASS=… node tools/web/site_check.mjs --url=<deployment> --out=shots/site
@@ -4178,15 +4251,13 @@ VERCEL_BYPASS=$VERCEL_BYPASS node tools/web/download_check.mjs --url=<deployment
 ```
 
 Proves it when, locally, the first page is drawn as 24 cards with Show more
-and the gallery lines say "24, then 2 by Show more" at 390 (pressed once, at
-its place on the screen, while the page the scroll to it asked for by itself
-is on its way: the made-up list gives a later page after 1.5 s, and asked
-for it once) and "24, then 2
-by itself" at 1280 (where Show more is first drawn within a screen under the
-window, so `gallery.js` nearEnd brings the next page unasked), 26 cards and
-Show more gone at both; against a deployment that lists more than a page,
-its next page the same way (brickworks.diy on 2026-10-29: "23, then 24 by
-Show more" at both widths, its pick and shelves over the list); the markup
+and the gallery lines say "24, then 2 by Show more, pressed while it was on
+its way" at 390 and 1280 (Show more brought into view asks for the next
+page ahead, web/pager.js, and nothing is drawn; pressed once, at its place
+on the screen, while that page is still coming: the made-up list gives a
+later page after 1.5 s, and is asked for it once), 26 cards and Show more
+gone at both (site357, 2026-10-30); against a deployment that lists more
+than a page, its next page the same way; the markup
 name shown as text and no `img` but the pictures', a
 model with no picture given none, "86 parts, by Builder 2"; and at 390 and
 1280 px no console error, no sideways scroll, no broken picture

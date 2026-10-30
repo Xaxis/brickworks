@@ -5,7 +5,9 @@
 ## this file is the second, and who() says which the person chose (Settings,
 ## AI). A provider is a preset (where its API is, what its keys look like,
 ## which adapter speaks it) or "custom", any server that speaks OpenAI's Chat
-## Completions at an address the person gives.
+## Completions at an address the person gives. OpenAI's own models are spoken
+## to in its Responses API (OpenAIResponses); every server that copies
+## OpenAI's API, in Chat Completions (OpenAIChat).
 ##
 ## The key:
 ##
@@ -35,7 +37,7 @@ extends RefCounted
 ## pictures, suggested first, best first (docs/PROVIDERS.md says how they
 ## were chosen); the person may name any other.
 const PRESETS: Dictionary = {
-	"openai": {"name": "OpenAI", "adapter": "openai_chat",
+	"openai": {"name": "OpenAI", "adapter": "openai_responses",
 		"base": "https://api.openai.com/v1", "prefix": "sk-", "env": "OPENAI_API_KEY",
 		"needs_key": true, "models": ["gpt-6.1-sol", "gpt-6-astra", "gpt-6.1-terra"]},
 	"anthropic": {"name": "Anthropic API", "adapter": "anthropic_messages",
@@ -110,6 +112,8 @@ static func provider_for(id: String, model: String, key: String, base: String = 
 	match str(preset["adapter"]):
 		"openai_chat":
 			made = OpenAIChat.new()
+		"openai_responses":
+			made = OpenAIResponses.new()
 		"anthropic_messages":
 			made = AnthropicMessages.new()
 		"gemini_native":
@@ -297,6 +301,54 @@ static func set_who(who_is: String) -> void:
 	var file: ConfigFile = _cfg()
 	file.set_value("designer", "who", WHO_KEY if who_is == WHO_KEY else WHO_CLAUDE)
 	file.save(where)
+
+
+## Who designs, by the name a person knows it by: "Claude", or the model
+## chosen on the person's key ("GPT-6.1 Sol"). The history's steps, the
+## toolbar and the words that ask it say this (docs/PROVIDERS.md, P8).
+static func designer_name() -> String:
+	if who() != WHO_KEY:
+		return "Claude"
+	var kept: Dictionary = chosen()
+	var named: String = model_name(str(kept["model"]))
+	return named if not named.is_empty() else str(PRESETS[kept["provider"]]["name"])
+
+
+## Pieces of a model's id said in capitals.
+const CAPITALS: Array[String] = ["gpt", "glm"]
+static var _snapshot := RegEx.create_from_string("^\\d{4,}$")
+static var _point := RegEx.create_from_string("^\\d{1,2}$")
+
+
+## [param model] by the name its maker gives it, read off its id: gpt-6.1-sol
+## is GPT-6.1 Sol, claude-sonnet-5-5 Claude Sonnet 5.5, gemini-4-argon Gemini
+## 4 Argon, and openai/gpt-6.1-sol on OpenRouter GPT-6.1 Sol. A snapshot's
+## date is left off (gpt-6.1-sol-2026-09-30 is GPT-6.1 Sol), as the makers'
+## own names leave it off.
+static func model_name(model: String) -> String:
+	var pieces: PackedStringArray = _bare(model).split("-", false)
+	# o3 and o4-mini: OpenAI's own names for them are their ids.
+	if not pieces.is_empty() and pieces[0].begins_with("o") and pieces[0].substr(1, 1).is_valid_int():
+		return _bare(model)
+	var out: String = ""
+	var n: int = 0
+	while n < pieces.size():
+		var piece: String = pieces[n]
+		if _snapshot.search(piece) != null:
+			break
+		if CAPITALS.has(piece.to_lower()):
+			piece = piece.to_upper()
+		elif _point.search(piece) != null and n + 1 < pieces.size() \
+				and _point.search(pieces[n + 1]) != null:
+			# claude-opus-5-5: version 5.5.
+			piece += "." + pieces[n + 1]
+			n += 1
+		else:
+			piece = piece.left(1).to_upper() + piece.substr(1)
+		var joined: bool = out.ends_with("GPT") or out.ends_with("GLM")
+		out += ("-" if joined else " " if not out.is_empty() else "") + piece
+		n += 1
+	return out if not out.is_empty() else model
 
 
 ## The choice as kept: {provider, model, base, params}, the provider's own.

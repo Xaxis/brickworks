@@ -7,11 +7,11 @@
 //
 // The question lives in the address (?q=castle&theme=Town&sort=oldest),
 // put back with replaceState as it changes, so a search can be sent to
-// somebody and a reload asks it again; and so does how many pages are
-// shown (&page=3). The next page comes as the end of the list nears the
-// screen, three times, then only by Show more, which gives the footer
-// back. A card opened is kept in the history's state, so Back from its
-// page asks the same pages again and puts that card where it was. A search
+// somebody and a reload asks it again. The list is paged as every list of
+// the site is (web/pager.js): Show more, the last page shown in the
+// address (&page=3), Show earlier over a page opened by its address, the
+// count and the numbered links (up to the last of 1,200 pages), and Back
+// putting the same pages and the card left where they were. A search
 // waits for typing to stop; a filter asks at once; an answer that comes
 // back after a newer question was asked is thrown away.
 //
@@ -24,11 +24,13 @@
 // (#sub), a year in the decade (#year), only those with a 3D model
 // (#model) and minifigures (#figs). Each is taken from the page where it
 // has one by that id, and made at the end of the menu where not.
-import { FIRST_SCREEN, counted, modelCard } from "/card.js";
+import { FIRST_SCREEN, counted, modelCard, skeletonHtml } from "/card.js";
 // Filters closing on a click elsewhere, as a "more" menu does.
 import "/kit.js";
 // "/" to search, and the bar of filters kept under the header, as the gallery's.
 import { browseBar } from "/browse.js";
+// The site's one way to page a list.
+import { pageAsked, pager } from "/pager.js";
 
 (function () {
   "use strict";
@@ -36,18 +38,13 @@ import { browseBar } from "/browse.js";
   const ID = /^[a-z]{2,8}-[A-Za-z0-9._-]{1,120}$/;
   const $ = (id) => document.getElementById(id);
   const grid = $("models");
-  const more = $("more");
   const q = $("q");
   const sort = $("sort");
   const size = $("size");
   const decade = $("decade");
-  const AUTO = 3;
-  let page = 0;
-  let auto = 0;
-  let pages = 1;
-  let asking = 0;
-  let loading = false;
   let filled = false;
+  // The list's pages (web/pager.js), made once the functions it calls are.
+  let paged = null;
   let theme = "";
   // Every set there is, once the first answer says.
   let every = 0;
@@ -66,8 +63,8 @@ import { browseBar } from "/browse.js";
   const chosen = (select) => (filled ? select.value : select.dataset.wanted || "");
 
   /// The question the controls ask, as a query string; for the address,
-  /// the order left out when it is the default, and how many pages.
-  function question({ address = false } = {}) {
+  /// the order left out when it is the default, and page [page].
+  function question({ address = false, page = paged ? paged.state.last : 1 } = {}) {
     const asked = new URLSearchParams();
     const words = q.value.trim().slice(0, 100);
     if (words) asked.set("q", words);
@@ -85,8 +82,8 @@ import { browseBar } from "/browse.js";
     return asked;
   }
 
-  function addressOf() {
-    const query = question({ address: true }).toString();
+  function addressOf(page) {
+    const query = question({ address: true, page }).toString();
     return query ? `/library?${query}` : "/library";
   }
 
@@ -188,132 +185,89 @@ import { browseBar } from "/browse.js";
 
   const searching = () => Boolean(q.value.trim() || theme || chosen(size) || chosen(decade) || MORE.some(([name]) => pick(name)));
 
-  // Show more's press while a page that came by itself waits to be drawn,
-  // or is still on its way (pressed): it is drawn as soon as it is here
-  // (gallery.js).
-  let release = null;
-  let pressed = false;
+  const tests = new URLSearchParams(location.search).get("tests") === "1";
 
-  /// Resolves once the end of the list is under the screen, so a page put
-  /// there moves only what is out of sight, or once Show more is pressed
-  /// (gallery.js outOfSight).
-  function outOfSight() {
-    const under = () => grid.getBoundingClientRect().bottom > innerHeight;
-    if (pressed || under()) return Promise.resolve();
-    return new Promise((done) => {
-      const look = () => { if (under()) release(); };
-      release = () => {
-        removeEventListener("scroll", look);
-        release = null;
-        done();
-      };
-      addEventListener("scroll", look, { passive: true });
-    });
-  }
-
-  /// The next page of the list ([fresh]: the first, in place of what is
-  /// shown); [byItself] (not asked for by a press) drawn once out of sight.
-  async function next(fresh, byItself = false) {
-    const mine = ++asking;
-    if (release) release();
-    loading = true;
-    pressed = false;
-    more.disabled = !byItself;
+  /// Page [n] of the list as cards.
+  async function load(n) {
     const asked = question();
-    asked.set("page", String(fresh ? 1 : page + 1));
+    asked.set("page", String(n));
     // The OMR's arrivals staged for the lead to let out, which only a list
     // asked with tests shows (api/share.js), as the gallery asks its own.
-    if (new URLSearchParams(location.search).get("tests") === "1") asked.set("tests", "1");
-    try {
-      const reply = await fetch(`/api/share?op=library&${asked}`, { headers: { accept: "application/json" } });
-      if (reply.status !== 200) throw new Error(String(reply.status));
-      const data = await reply.json();
-      if (mine !== asking) return;
-      if (byItself) {
-        await outOfSight();
-        if (mine !== asking) return;
+    if (tests) asked.set("tests", "1");
+    const reply = await fetch(`/api/share?op=library&${asked}`, { headers: { accept: "application/json" } });
+    if (reply.status !== 200) throw new Error(String(reply.status));
+    const data = await reply.json();
+    // A page past the end is answered with the last: none, so the pager
+    // opens the first and puts the address right.
+    if (Number.isFinite(data.page) && data.page !== n) return { items: [], pages: Number(data.pages) || 1, data };
+    // As many pictures asked for at once as the first screen shows, when
+    // this page is the first drawn.
+    const eager = document.documentElement.dataset.library !== "ready"
+      ? [...grid.children].filter((one) => one.getBoundingClientRect().top < innerHeight).length || FIRST_SCREEN : 0;
+    const items = (data.models || []).filter((model) => ID.test(String(model && model.id)))
+      .map((model, i) => modelCard(model, { eager: i < eager }));
+    return { items, pages: Number(data.pages) || 1, total: Number(data.total) || 0, data };
+  }
+
+  /// What the page says once a page of the list is drawn.
+  function drawn({ answer, fresh }) {
+    const data = answer.data || {};
+    if (!filled) {
+      // The catalogue's (api/_sets.js): its own filters, made once.
+      if (Array.isArray(data.years)) {
+        years = data.years.map(Number);
+        inner = new Map((data.themes || []).map((one) => [String(one.name), Array.isArray(one.sub) ? one.sub : []]));
+        for (const one of MORE) moreFilter(one);
+        fill(extra.model, [["3d", "Only with a 3D model"]]);
+        fill(extra.figs, [["with", "With minifigures"], ["none", "Without"]]);
       }
-      if (!filled) {
-        // The catalogue's (api/_sets.js): its own filters, made once.
-        if (Array.isArray(data.years)) {
-          years = data.years.map(Number);
-          inner = new Map((data.themes || []).map((one) => [String(one.name), Array.isArray(one.sub) ? one.sub : []]));
-          for (const one of MORE) moreFilter(one);
-          fill(extra.model, [["3d", "Only with a 3D model"]]);
-          fill(extra.figs, [["with", "With minifigures"], ["none", "Without"]]);
-        }
-        fillThemes(data.themes);
-        fill(sort, Object.entries(data.sorts || {}));
-        fill(size, Object.entries(data.sizes || {}));
-        fill(decade, (data.decades || []).map((one) => [one, one]));
-        filled = true;
-      }
-      every = Number(data.of) || every;
-      fillMore(years);
-      // As many pictures asked for at once as the first screen shows.
-      const eager = fresh ? [...grid.children].filter((one) => one.getBoundingClientRect().top < innerHeight).length
-        || FIRST_SCREEN : 0;
-      if (fresh) grid.replaceChildren();
-      page = Number(data.page) || (fresh ? 1 : page + 1);
-      pages = Number(data.pages) || 1;
-      for (const model of data.models || []) {
-        const id = String(model && model.id);
-        if (!ID.test(id) || grid.querySelector(`.model[data-id="${id}"]`)) continue;
-        grid.append(modelCard(model, { eager: grid.children.length < eager }));
-      }
+      fillThemes(data.themes);
+      fill(sort, Object.entries(data.sorts || {}));
+      fill(size, Object.entries(data.sizes || {}));
+      fill(decade, (data.decades || []).map((one) => [one, one]));
+      filled = true;
+    }
+    every = Number(data.of) || every;
+    fillMore(years);
+    if (fresh) {
       const total = Number(data.total) || 0;
       $("found-said").textContent = !total ? "" : searching()
         ? `${counted(total, "set")} of ${every.toLocaleString("en-US")}` : counted(total, "set");
-      $("loading").hidden = true;
-      $("broken").hidden = true;
-      $("nothing").hidden = grid.children.length > 0;
-      more.hidden = page >= pages;
-      drawThemes();
-      sayFilters();
-      history.replaceState(history.state, "", addressOf());
-      document.documentElement.dataset.library = "ready";
-      document.documentElement.dataset.pages = String(page);
-    } catch {
-      if (mine !== asking) return;
-      for (const bones of grid.querySelectorAll(".skeleton")) bones.remove();
-      $("loading").hidden = true;
-      $("broken").hidden = false;
-      document.documentElement.dataset.library = "broken";
-    } finally {
-      if (mine === asking) {
-        loading = false;
-        more.disabled = false;
-      }
     }
+    $("loading").hidden = true;
+    $("broken").hidden = true;
+    $("nothing").hidden = grid.children.length > 0;
+    drawThemes();
+    sayFilters();
+    document.documentElement.dataset.library = "ready";
+    document.documentElement.dataset.pages = String(paged.state.last);
+  }
+
+  /// The first page that did not come: said in place of the list, with Retry.
+  function failed({ fresh }) {
+    if (!fresh) return;
+    for (const bones of grid.querySelectorAll(".skeleton")) bones.remove();
+    $("loading").hidden = true;
+    $("broken").hidden = false;
+    document.documentElement.dataset.library = "broken";
   }
 
   /// Ask again from the first page.
   function ask() {
-    page = 0;
-    auto = 0;
-    history.replaceState(null, "", addressOf());
+    history.replaceState(null, "", addressOf(1));
     sayFilters();
     drawThemes();
     document.documentElement.dataset.library = "asking";
-    return next(true);
+    return paged.restart(1);
   }
 
-  /// The next page by itself as the end of the list comes within a screen
-  /// of the window, the first three times; then Show more.
-  function nearEnd() {
-    if (loading || page >= pages || more.hidden || auto >= AUTO) return;
-    if (more.getBoundingClientRect().top > innerHeight * 2) return;
-    auto += 1;
-    next(false, true).then(nearEnd);
-  }
+  paged = pager({ list: grid, load, href: addressOf, noun: ["set", "sets"], drawn, failed,
+    skeleton: () => {
+      const made = document.createElement("template");
+      made.innerHTML = skeletonHtml();
+      return made.content.firstElementChild;
+    } });
 
-  // A card opened: kept, so Back puts it where it was.
-  grid.addEventListener("click", (event) => {
-    const opened = event.target.closest("a[href]")?.closest(".model");
-    if (opened && ID.test(String(opened.dataset.id))) {
-      history.replaceState({ card: opened.dataset.id, top: Math.round(opened.getBoundingClientRect().top) }, "", addressOf());
-    }
-  });
   $("themes").addEventListener("click", (event) => {
     const pill = event.target.closest("[data-pick]");
     if (!pill) return;
@@ -332,9 +286,6 @@ import { browseBar } from "/browse.js";
   // A theme inside a theme is asked as its path: "Star Wars > Ultimate Collector Series".
   [theme, wanted.sub = ""] = (given.get("theme") || "").slice(0, 300).split(" > ").map((one) => one.trim());
   for (const name of ["year", "model", "figs"]) wanted[name] = given.get(name) || "";
-  const shown = Math.min(Math.max(Number.parseInt(given.get("page") || "1", 10) || 1, 1), 20);
-  const back = history.state && ID.test(String(history.state.card)) ? history.state : null;
-  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 
   let typing = 0;
   q.addEventListener("input", () => {
@@ -360,26 +311,16 @@ import { browseBar } from "/browse.js";
     theme = "";
     ask();
   });
-  more.addEventListener("click", () => {
-    if (release) release();
-    else if (loading) pressed = true;
-    else next(false);
+  browseBar({ search: q, above: document.querySelector(".library-bar"), bar: $("toolbar") });
+  $("retry").addEventListener("click", () => {
+    $("broken").hidden = true;
+    $("loading").hidden = false;
+    document.documentElement.dataset.library = "asking";
+    paged.start(paged.state.last || 1, { restore: false });
   });
-  browseBar({ search: q, above: document.querySelector(".library-bar"), bar: $("toolbar"), row: $("themes") });
-  addEventListener("scroll", nearEnd, { passive: true });
-  addEventListener("resize", nearEnd, { passive: true });
   sayFilters();
 
-  // The pages the address shows, then the card Back came to, where it was.
-  (async () => {
-    await next(true);
-    while (page < shown && page < pages) await next(false);
-    auto = Math.min(AUTO, page - 1);
-    if (back) {
-      const card = document.querySelector(`#models .model[data-id="${back.card}"]`);
-      if (card) scrollTo({ top: Math.max(0, scrollY + card.getBoundingClientRect().top - (Number(back.top) || 0)), behavior: "instant" });
-      document.documentElement.dataset.back = card ? back.card : "lost";
-    }
-    nearEnd();
-  })();
+  // The page the address shows (and, Back, the pages before it that were
+  // shown, and the card left where it was: web/pager.js).
+  paged.start(pageAsked(location.search));
 })();

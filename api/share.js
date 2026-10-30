@@ -1038,11 +1038,13 @@ async function nextOf(origin, id, model, own) {
   return next;
 }
 
-/// A row of cards the page ends with, or nothing for none.
-function nextRow(key, title, cards) {
+/// A row of cards the page ends with, or nothing for none; [all], the
+/// list it is the start of, is See all beside its name.
+function nextRow(key, title, cards, all = "") {
   if (!cards.length) return "";
-  return `<section class="next" id="${key}" aria-labelledby="${key}-h"><h2 id="${key}-h">${title}</h2>`
-    + `<div class="models row">${cards.map((card) => cardHtml(card)).join("")}</div></section>`;
+  return `<section class="next" id="${key}" aria-labelledby="${key}-h"><div class="scroller-head"><h2 id="${key}-h">${title}</h2>`
+    + `${all ? `<a href="${escapeHtml(all)}">See all</a>` : ""}</div>`
+    + `<div class="models scroller" role="group" aria-labelledby="${key}-h">${cards.map((card) => cardHtml(card)).join("")}</div></section>`;
 }
 
 /// The action bar: Like, Save, Share, Comment, I built it and More, each an
@@ -1259,9 +1261,11 @@ ${header}
   ${versionsSection(id, versions, version)}
     </div>
   </div>
-  ${model.by ? nextRow("more-by", `More by <a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>`, next.by) : ""}
-  ${nextRow("similar", set ? `More ${escapeHtml(set.theme || "sets")} from the LDraw library` : "Similar models", next.like)}
-  ${nextRow("from-gallery", "More in the gallery", next.gallery || [])}
+  ${model.by ? nextRow("more-by", `More by <a href="/u/${escapeHtml(model.by.handle)}">${escapeHtml(model.by.name)}</a>`, next.by,
+    `/u/${model.by.handle}`) : ""}
+  ${nextRow("similar", set ? `More ${escapeHtml(set.theme || "sets")} from the LDraw library` : "Similar models", next.like,
+    set?.theme ? `/library?theme=${encodeURIComponent(set.theme)}` : "")}
+  ${nextRow("from-gallery", "More in the gallery", next.gallery || [], "/gallery")}
 </article>
 </main>
 ${footer}
@@ -1281,7 +1285,7 @@ function mediaStrip(model, picture, photos, small = picture) {
   const thumb = (src, alt, attrs) => `<a class="thumb" ${attrs}><img src="${src}" alt="${escapeHtml(alt)}" `
     + `width="96" height="72" loading="${shown++ < 5 ? "eager" : "lazy"}" decoding="async"></a>`;
   const file = (photo) => `/api/people?op=photo_file&amp;id=${photo.id}`;
-  return `<div class="media-strip" id="pictures" role="group" aria-label="Its pictures"${photos.length ? "" : " hidden"}>`
+  return `<div class="media-strip scroller" id="pictures" role="group" aria-label="Its pictures"${photos.length ? "" : " hidden"}>`
     + (picture ? thumb(small, `${model.name}, as it was published`,
       `href="${picture}" data-picture="${picture}" aria-current="true"`) : "")
     + photos.map((photo) => thumb(file(photo), photo.own ? `${model.name}, a photo by its designer`
@@ -1373,7 +1377,7 @@ function buildsSection(id, model, photos) {
     <h2 id="builds-h">Built by people</h2>
     ${builds ? `<p class="built-line">Built to the last step ${builds === 1 ? "once" : `${count(builds, "time")}`}, `
       + "by people following its steps in Brickworks.</p>" : ""}
-    ${photos.length ? `<div class="build-strip">${photos.map((photo) => buildFigure(model, photo)).join("")}</div>`
+    ${photos.length ? `<div class="build-strip scroller" role="group" aria-labelledby="builds-h">${photos.map((photo) => buildFigure(model, photo)).join("")}</div>`
       : `<p class="note no-builds">${builds ? "No photos of a real build yet. Built it? Add yours."
         : "Nobody has built it yet. Built it? Add a photo of yours."}</p>`}
     <div class="add-build" id="add-build" data-id="${id}">
