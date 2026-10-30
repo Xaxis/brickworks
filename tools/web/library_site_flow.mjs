@@ -4,14 +4,16 @@
 //
 //   BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/library_site_flow.mjs --url=<preview> --out=DIR [--no-app]
 //
-//   1. /library at 390 and 1400 px, light and dark: the whole shelf counted
-//      (1,500 sets or more), its cards each with its cover drawn, its name,
-//      its set's number and who modelled it; nothing sideways; the gallery's
-//      tab and the footer link to it.
+//   1. /library at 390 and 1400 px, light and dark: every set in the
+//      catalogue since sets364 (20,000 or more), its cards each with its
+//      picture drawn, its name and its set's number, those LDraw modelled
+//      marked 3D with who modelled them; nothing sideways; the gallery's tab
+//      and the footer link to it.
 //   2. Searched by a set's number, 10179: its one card, the Millennium
-//      Falcon; then a theme's pill, Star Wars, every card of it; and the
-//      address keeps the question.
-//   3. Its card opens its page, /library/omr-10179-1, at both widths and in
+//      Falcon, which opens its set's page (/library/set/10179-1, sets_flow);
+//      then a theme's pill, Star Wars, every card of it; and the address
+//      keeps the question.
+//   3. Its LDraw model's page, /library/omr-10179-1, at both widths and in
 //      both themes: its title, its cover drawn, Modelled by Roland Dahl for
 //      LDraw's Official Model Repository (a link to its page there), CC BY
 //      2.0 with the licence's link, its facts (parts, steps, set, theme,
@@ -44,6 +46,8 @@ mkdirSync(out, { recursive: true });
 const bypass = process.env.BW_BYPASS || "";
 const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 const SET = "omr-10179-1";
+/// Its card in the list of every set (api/_sets.js catalogCard).
+const CARD = "set-10179-1";
 
 let failed = 0;
 const check = (what, ok) => {
@@ -78,6 +82,7 @@ async function until(page, test, arg = null, seconds = 30) {
 const cards = (page) => page.$$eval("#models .model, .next .model", (all) => all.map((one) => ({
   id: one.dataset.id, name: one.querySelector("a.open")?.textContent.trim(), href: one.querySelector("a.open")?.getAttribute("href"),
   set: one.querySelector("small.set")?.textContent.trim() || "", by: one.querySelector("[data-modelled-by]")?.textContent.trim() || "",
+  model3d: one.dataset.model3d === "yes", pictured: Boolean(one.querySelector(".frame img")),
   drawn: (one.querySelector(".frame img")?.naturalWidth || 0) > 0 })));
 const sideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 
@@ -97,15 +102,17 @@ try {
       check(`${at}: in the ${dark ? "dark" : "light"} theme (${theme})`, theme === (dark ? "dark" : "light"));
       const said = await page.locator("#found-said").innerText().catch(() => "");
       const every = Number(said.replace(/[^0-9]/g, ""));
-      check(`${at}: the whole shelf, "${said}"`, every >= 1500);
-      // The first screen's pictures are asked at once: each drawn.
+      check(`${at}: every set, "${said}"`, every >= 20000);
+      // The first screen's pictures are asked at once: each drawn (a set
+      // LDraw has no model of has its parts drawn the first time it is asked).
       await until(page, () => [...document.querySelectorAll("#models .model .frame img")].slice(0, 4)
-        .every((img) => img.complete && img.naturalWidth > 0), null, 30);
+        .every((img) => img.complete && img.naturalWidth > 0), null, 60);
       const shown = await cards(page);
       check(`${at}: a page of cards, 24 (${shown.length})`, shown.length === 24);
-      check(`${at}: the first four with their covers drawn`, shown.slice(0, 4).every((one) => one.drawn));
-      check(`${at}: each card a set's page, its number and who modelled it`, shown.every((one) =>
-        /^\/library\/[a-z]+-[A-Za-z0-9_-]+$/.test(one.href || "") && /^[0-9A-Za-z-]+ · /.test(one.set) && /^Modelled by \S/.test(one.by)));
+      check(`${at}: the first four pictures drawn`, shown.filter((one) => one.pictured).slice(0, 4).every((one) => one.drawn));
+      check(`${at}: each card a set's page and its number, one marked 3D naming who modelled it`, shown.every((one) =>
+        /^\/library\/set\/[A-Za-z0-9.-]+$/.test(one.href || "") && /^[0-9A-Za-z.-]+ · /.test(one.set)
+        && (!one.model3d || /^Modelled by \S/.test(one.by))));
       const wide = await sideways(page);
       check(`${at}: nothing sideways (${wide} px past the window)`, wide <= 0);
       check(`${at}: the footer links /library`, Boolean(await page.$('.site-foot a[href="/library"]')));
@@ -127,10 +134,11 @@ try {
     await until(page, () => document.documentElement.dataset.library === "ready", null, 60);
     await page.fill("#q", "10179");
     const found = await until(page, (set) => document.documentElement.dataset.library === "ready"
-      && [...document.querySelectorAll("#models .model")].map((one) => one.dataset.id).join() === set, SET, 30);
+      && [...document.querySelectorAll("#models .model")].map((one) => one.dataset.id).join() === set, CARD, 30);
     const shown = await cards(page);
-    check(`10179 finds the Millennium Falcon alone (${shown.map((one) => `${one.id} ${one.name}`).join(", ")})`,
-      found && shown.length === 1 && shown[0].name === "Millennium Falcon");
+    check(`10179 finds the Millennium Falcon alone, marked 3D (${shown.map((one) => `${one.id} ${one.name}`).join(", ")})`,
+      found && shown.length === 1 && shown[0].name === "Millennium Falcon" && shown[0].model3d);
+    check(`...its card opens its set's page (${shown[0]?.href})`, shown[0]?.href === "/library/set/10179-1");
     check(`the address keeps it (${new URL(page.url()).search})`, new URL(page.url()).searchParams.get("q") === "10179");
     await page.fill("#q", "");
     await page.click('#themes [data-pick="Star Wars"]');
@@ -147,11 +155,11 @@ try {
     for (const dark of [false, true]) {
       const at = `${width} px ${dark ? "dark" : "light"}`;
       const made = await context({ width, dark });
-      const { page } = await opened(made, "/library?q=10179");
-      await until(page, (set) => document.querySelector(`#models .model[data-id="${set}"]`), SET, 60);
+      // From its set's page (/library/set/10179-1), which links its model's.
+      const { page } = await opened(made, "/library/set/10179-1");
       await Promise.all([page.waitForURL(`**/library/${SET}`, { timeout: 60000 }).catch(() => null),
-        page.click(`#models .model[data-id="${SET}"] a.open`)]);
-      check(`${at}: its card opens /library/${SET}`, new URL(page.url()).pathname === `/library/${SET}`);
+        page.click(`.side a[href="/library/${SET}"]`)]);
+      check(`${at}: its set's page opens /library/${SET}`, new URL(page.url()).pathname === `/library/${SET}`);
       const drawn = await until(page, () => (document.querySelector(".model-page .picture img")?.naturalWidth || 0) > 0, null, 30);
       check(`${at}: its cover drawn`, drawn);
       const facts = await page.evaluate(() => ({

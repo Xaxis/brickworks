@@ -1036,6 +1036,7 @@ func show_category(name: String) -> void:
 
 
 func _on_category(name: String) -> void:
+	_set_parts.clear()
 	_category = name
 	for child: Node in _category_row.get_children():
 		var button: Button = child
@@ -1044,6 +1045,7 @@ func _on_category(name: String) -> void:
 
 
 func _on_search_typed(text: String) -> void:
+	_set_parts.clear()
 	# Debounced: a held key would otherwise scan the library per character.
 	# A first key after a pause is answered at once, and the keys that follow
 	# it quickly once they stop.
@@ -1086,6 +1088,12 @@ func _process(_delta: float) -> void:
 
 func _run_search(query: String) -> void:
 	if library == null:
+		return
+	# A set's parts stay shown when the bin asks again by itself (its
+	# catalogue arriving on the web, a shelf's count): only a search typed or
+	# a category chosen puts them away (_on_search_typed, _on_category).
+	if not _set_parts.is_empty():
+		_fill_grid()
 		return
 	_guesses.clear()
 	if _category == TECHNIQUES:
@@ -1642,7 +1650,7 @@ func _fold() -> void:
 	_folds = {}
 	_folded = 0
 	var asked: String = " %s " % PartLibrary.in_ldraw_words(_search.text)
-	if not _guesses.is_empty() or _category == RECENT or _category == FAVOURITES \
+	if not _guesses.is_empty() or not _set_parts.is_empty() or _category == RECENT or _category == FAVOURITES \
 			or asked.contains(" print ") or asked.contains(" sticker "):
 		_display = _results.duplicate()
 		return
@@ -1725,6 +1733,10 @@ func _show_more(most: int = PAGE) -> void:
 
 func _update_status() -> void:
 	var total: int = _display.size()
+	if not _set_parts.is_empty():
+		_status.text = "The parts of %s, the most used first" % set_shown
+		_status.tooltip_text = "Search or choose a category to see every part again"
+		return
 	if not _guesses.is_empty():
 		_status.text = "From your photo, most likely first, as Brickognize sees it" + (
 			"" if _guessed_colour.is_empty() else ", in %s" % _guessed_colour)
@@ -1822,6 +1834,9 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	var label := Label.new()
 	var given: String = PartPrints.given_name(info.name) if info.id.begins_with("bw-") else ""
 	label.text = given if not given.is_empty() else info.id
+	if _set_parts.has(info.id):
+		label.text = "%s  ×%d" % [info.id, int(_set_parts[info.id])]
+		button.tooltip_text = "%d in %s\n%s" % [int(_set_parts[info.id]), set_shown, button.tooltip_text]
 	if _guesses.has(info.id):
 		label.text = "%s  %d%%" % [info.id, roundi(float(_guesses[info.id]) * 100.0)]
 		button.tooltip_text = "Brickognize is %d%% sure of it\n%s" % [
@@ -2246,6 +2261,51 @@ var _photo_button: Button
 var _picker: PickImage
 var _brickognize: Brickognize
 var _telling: ConfirmationDialog
+## A set's parts, shown as the bin's results (show_set, /app?parts=<set>):
+## id -> how many of it the set has, and which set, in words. Empty once
+## anything else is shown.
+var _set_parts: Dictionary = {}
+var set_shown: String = ""
+
+
+## A set's parts as the bin's results (sets364): each part its inventory
+## has ([lots]: [[part, colour, qty], ...], tools/collection_data.py's), the
+## most used first, as the photo's answer is shown; [title] says which set.
+## Its parts in every colour are one tile, the colour in hand the bin's.
+## Returns how many parts it could show.
+func show_set(title: String, lots: Array) -> int:
+	var counts: Dictionary = {}
+	for row: Variant in lots:
+		if not row is Array or (row as Array).size() < 3:
+			continue
+		var id: String = library.resolve(str(row[0]))
+		counts[id] = int(counts.get(id, 0)) + int(row[2])
+	var found: Array[PartLibrary.PartInfo] = []
+	for id: String in counts:
+		var info: PartLibrary.PartInfo = library.parts.get(id)
+		if info != null and info.reachable and not info.is_redirect():
+			found.append(info)
+	found.sort_custom(func(a: PartLibrary.PartInfo, b: PartLibrary.PartInfo) -> bool:
+		return int(counts[a.id]) > int(counts[b.id]) if int(counts[a.id]) != int(counts[b.id]) else a.id < b.id)
+	if found.is_empty():
+		return 0
+	if _category == TECHNIQUES:
+		_category = "All"
+		for child: Node in _category_row.get_children():
+			(child as Button).button_pressed = str(child.get_meta("category", "")) == _category
+	_guesses.clear()
+	_results = found
+	_set_parts = counts
+	set_shown = title
+	_fill_grid()
+	return found.size()
+
+
+## Which set's parts the bin shows, or "" when it shows anything else.
+func set_showing() -> String:
+	return set_shown if not _set_parts.is_empty() else ""
+
+
 ## The parts a photo was answered with, by id -> how sure Brickognize is:
 ## the bin's results while they are shown, and empty once anything else is.
 var _guesses: Dictionary = {}
@@ -2357,6 +2417,7 @@ func show_guesses(guesses: Array) -> void:
 		_category = "All"
 		for child: Node in _category_row.get_children():
 			(child as Button).button_pressed = str(child.get_meta("category", "")) == _category
+	_set_parts.clear()
 	_results = found
 	_guesses = scores
 	# In the colour the photo shows, taken in hand as an element number's

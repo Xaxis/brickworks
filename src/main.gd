@@ -132,6 +132,11 @@ var _shared: SharedModels
 ## (TabSession.open_another), and the tab it was chosen in keeps its model.
 var _model_library: ModelLibrary
 var _from_library: String = ""
+## A set whose parts the bin opens on (/app?parts=10497-1, a set's page on
+## the site, sets364), and words to start the assistant's brief with
+## (&brief=), put in its box for the person to send or change.
+var _bin_set: String = ""
+var _brief_draft: String = ""
 ## The world's generation the view was framed in as a big model was first
 ## drawn (ModelStore.shown), -1 for none: not framed again once it is whole.
 var _framed_in: int = -1
@@ -699,6 +704,8 @@ func _tell_page() -> void:
 		"colour": _builder.held_color,
 		# ...and the parts the bin lists first, as its tiles read.
 		"found": _bin.first_found() if _bin != null else [],
+		# ...and which set's parts they are (/app?parts=, sets364).
+		"bin_set": _bin.set_showing() if _bin != null else "",
 		# ...and the colour Enter in the colour's name would take.
 		"colour_first": _bin.colour_first() if _bin != null else -1,
 		"custom": _library.custom.keys(),
@@ -1457,6 +1464,10 @@ func _ready() -> void:
 		_copying = _argument("--copy")
 	if _from_library.is_empty() and ModelLibrary.is_id(_argument("--library")):
 		_from_library = _argument("--library")
+	if _bin_set.is_empty() and RegEx.create_from_string("^[A-Za-z0-9][A-Za-z0-9.-]{0,29}$").search(_argument("--parts")) != null:
+		_bin_set = _argument("--parts")
+	if _brief_draft.is_empty():
+		_brief_draft = _argument("--brief").strip_edges().left(BRIEF_MOST)
 	if _together_wanted.is_empty():
 		_together_wanted = Together.secret_in(_argument("--together"))
 	# And which version of it, a number or nothing.
@@ -1545,6 +1556,7 @@ func _ready() -> void:
 	_first_open_done = true
 	_maybe_copy()
 	_maybe_open_library()
+	_maybe_fill_bin()
 	_maybe_join_together()
 	# Somebody with saved models: the browser is asked to keep them, as it
 	# is at a first save (StorageKeep, ModelStore._write).
@@ -3230,6 +3242,39 @@ func _maybe_copy() -> void:
 	_store.save_as(kept)
 	_bar.say("“%s” is in your models now, yours to change — the shared one stays as it was; %s"
 		% [kept, ModelBar.credit_words(_store.credit)])
+
+
+## The longest brief an address may draft.
+const BRIEF_MOST := 2000
+
+
+## /app?parts=<set>: the bin shows that set's parts, from its inventory
+## (SetInventories, the shards My collection reads), and &brief= is put in
+## the assistant's box, not sent. Once, at the first open.
+func _maybe_fill_bin() -> void:
+	if not _brief_draft.is_empty() and _chat != null:
+		_chat.draft(_brief_draft)
+		_brief_draft = ""
+	if _bin_set.is_empty() or _bin == null:
+		return
+	var number: String = SetInventories.normal(_bin_set)
+	_bin_set = ""
+	# Taken off the address, so a reload is the app's own.
+	_set_address("")
+	var books := SetInventories.new()
+	add_child(books)
+	var found: Dictionary = await books.lookup(PackedStringArray([number]))
+	books.queue_free()
+	if not found.has(number):
+		_bar.say("could not find set %s's parts%s" % [number,
+			": " + books.trouble if not books.trouble.is_empty() else ""])
+		return
+	var record: Dictionary = found[number]
+	var title: String = "%s %s" % [number, str(record.get("n", ""))]
+	var shown: int = _bin.show_set(title.strip_edges(), record.get("p", []))
+	if _bin_dock != null and not _bin_dock.is_open():
+		_bin_dock.set_open(true)
+	_bar.say("the parts of %s are in the bin: %d kinds of part" % [title.strip_edges(), shown])
 
 
 ## A model of the library opened in this tab (?library=<id>, from

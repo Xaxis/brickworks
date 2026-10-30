@@ -480,10 +480,34 @@ export function inventoryOf(text, given = partsTable()) {
     if (!library.has(part)) continue;
     bricks.push({ ...placed, part });
   }
+  const { add, done } = lotMaker(library, given);
+  const inItems = new Set();
+  for (const item of itemsAmong(bricks).values()) {
+    const real = realPart(given, item.kind, item.bricks);
+    if (!real) continue;
+    const tally = new Map();
+    for (const brick of item.bricks) tally.set(brick.colour, (tally.get(brick.colour) || 0) + 1);
+    let colour = item.bricks[0].colour;
+    for (const [code, n] of tally) if (n > tally.get(colour)) colour = code;
+    add(real, colour);
+    for (const brick of item.bricks) inItems.add(brick);
+  }
+  for (const brick of bricks) {
+    if (inItems.has(brick) || !isPiece(library, brick.part)) continue;
+    add(brick.part, brick.colour);
+  }
+  return done();
+}
+
+/// What makes a list's lots, as inventoryOf and inventoryOfLots both make
+/// them: add(part, colour, n) counts n of a part in a colour into its lot,
+/// done() is {pieces, lots} in the app's order (by how many of a part
+/// there are, its colours together).
+function lotMaker(library, given) {
   const lots = [];
   const byKey = new Map();
   let pieces = 0;
-  const add = (part, code) => {
+  const add = (part, code, n = 1) => {
     const key = `${part}:${code}`;
     let lot = byKey.get(key);
     if (!lot) {
@@ -506,31 +530,38 @@ export function inventoryOf(text, given = partsTable()) {
       byKey.set(key, lot);
       lots.push(lot);
     }
-    lot.count += 1;
-    pieces += 1;
+    lot.count += n;
+    pieces += n;
   };
-  const inItems = new Set();
-  for (const item of itemsAmong(bricks).values()) {
-    const real = realPart(given, item.kind, item.bricks);
-    if (!real) continue;
-    const tally = new Map();
-    for (const brick of item.bricks) tally.set(brick.colour, (tally.get(brick.colour) || 0) + 1);
-    let colour = item.bricks[0].colour;
-    for (const [code, n] of tally) if (n > tally.get(colour)) colour = code;
-    add(real, colour);
-    for (const brick of item.bricks) inItems.add(brick);
+  const done = () => {
+    const perPart = new Map();
+    for (const lot of lots) perPart.set(lot.part, (perPart.get(lot.part) || 0) + lot.count);
+    const before = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+    lots.sort((a, b) => perPart.get(b.part) - perPart.get(a.part)
+      || (a.part !== b.part ? (a.name !== b.name ? before(a.name, b.name) : before(a.part, b.part)) : 0)
+      || b.count - a.count || before(a.colour_name, b.colour_name));
+    return { pieces, lots };
+  };
+  return { add, done };
+}
+
+/// A set's parts list from its inventory (tools/collection_data.py's
+/// shards: [[part, colour, qty]], already in LDraw's numbers), in the lots a
+/// model's list has, so a set's page draws and exports it as a model's page
+/// does (sets364). A part the catalogue has moved is listed as the part it
+/// means today; one it does not know keeps its number and has no picture.
+export function inventoryOfLots(rows, given = partsTable()) {
+  if (!given) throw new Error("there is no parts table here");
+  const library = makeLibrary(given);
+  const { add, done } = lotMaker(library, given);
+  for (const row of Array.isArray(rows) ? rows : []) {
+    const [part, colour, qty] = row;
+    const n = Number(qty);
+    const code = Number(colour);
+    if (typeof part !== "string" || !part || !Number.isInteger(n) || n < 1 || !Number.isInteger(code)) continue;
+    add(library.has(part) ? library.resolve(part) : part, code, n);
   }
-  for (const brick of bricks) {
-    if (inItems.has(brick) || !isPiece(library, brick.part)) continue;
-    add(brick.part, brick.colour);
-  }
-  const perPart = new Map();
-  for (const lot of lots) perPart.set(lot.part, (perPart.get(lot.part) || 0) + lot.count);
-  const before = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
-  lots.sort((a, b) => perPart.get(b.part) - perPart.get(a.part)
-    || (a.part !== b.part ? (a.name !== b.name ? before(a.name, b.name) : before(a.part, b.part)) : 0)
-    || b.count - a.count || before(a.colour_name, b.colour_name));
-  return { pieces, lots };
+  return done();
 }
 
 // ---------------------------------------------------------------------------

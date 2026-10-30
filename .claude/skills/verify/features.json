@@ -1713,6 +1713,14 @@
       "tests": []
     },
     {
+      "id": "cli:set catalogue",
+      "kind": "cli",
+      "entry": "tools/set_catalog.py",
+      "reach": "python3 tools/set_catalog.py [--check]   (assets/generated/set_catalog.json from vendor/rebrickable and assets/generated/sets/; deploy.sh runs it and puts it beside the share function)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:set inventories",
       "kind": "cli",
       "entry": "tools/collection_data.py",
@@ -1721,6 +1729,22 @@
       "tests": [
         "tests/test_collection.py"
       ]
+    },
+    {
+      "id": "cli:set parts probe",
+      "kind": "cli",
+      "entry": "src/dev/set_parts_probe.gd",
+      "reach": "tools/probe.sh set_parts_probe   (/app?parts=10497-1&brief=: the set's parts in the bin, most used first, and the brief drafted, not sent)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:sets browser flow",
+      "kind": "cli",
+      "entry": "tools/web/sets_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/sets_flow.mjs --url=<preview> --out=DIR [--no-app]   (preview_checks.sh sets_flow: the library's every set, a set with and without a 3D model, parts with our pictures, weight and first paint (the first visit after a deploy said with its slowest fetches, a visitor after it held to 2.5 s), Parts you own for a throwaway, Open its parts landing in the app's bin, the sitemaps)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "cli:share browser flow",
@@ -2221,6 +2245,14 @@
       "entry": "src/parts/tab_session.gd",
       "reach": "node tools/web/relay_server.mjs 8790 --static=build/web, then node tools/web/tabs_flow.mjs --url=http://127.0.0.1:8790/app   (by hand: two tabs of /app, a different model in each, reload each)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "lib:a set's picture drawn from its parts",
+      "kind": "lib",
+      "entry": "api/_flatlay.js",
+      "reach": "https://brickworks.diy/library/set/10497-1.jpg   (its most distinctive parts, tools/set_catalog.py picks, drawn from their own geometry in the store and written as a JPEG; tests/test_sets.py)",
+      "area": "web",
       "tests": []
     },
     {
@@ -3184,7 +3216,8 @@
       "reach": "python3 tools/minitest.py tests/test_modelled_by.py; BW_BYPASS=$VERCEL_BYPASS node tools/web/share_probe.mjs --url=<preview>   (theLibrary); PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/modelled_by_changed.sql --dry --try=tools/modelled_by_changed_try.sql --table=shared_models   (.env sourced; rolled back; the lead applies it without --dry; then a card and /m/<id> of the LDraw shelf say Modelled by)",
       "area": "web",
       "tests": [
-        "tests/test_modelled_by.py"
+        "tests/test_modelled_by.py",
+        "tests/test_sets.py"
       ]
     },
     {
@@ -3249,6 +3282,7 @@
         "tests/test_gallery_crons.py",
         "tests/test_library.py",
         "tests/test_library_site.py",
+        "tests/test_sets.py",
         "tests/test_site_shell.py"
       ]
     },
@@ -3613,6 +3647,14 @@
       "kind": "ui",
       "entry": "web/model-page.js",
       "reach": "signed in, on your own model's page /m/<id>: Enter this month's challenge under Like (GET /api/people?op=challenge_entry&id=X; POST ?op=enter, ?op=withdraw)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:every set's page",
+      "kind": "ui",
+      "entry": "api/_sets.js",
+      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; /library/set/N.jpg its picture drawn from its parts (api/_flatlay.js), /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
       "area": "web",
       "tests": []
     },
@@ -3982,7 +4024,9 @@
       "entry": "src/ui/picture.gd",
       "reach": "godot --path .  (File, Export, then Picture of the model)",
       "area": "model-io",
-      "tests": []
+      "tests": [
+        "tests/test_sets.py"
+      ]
     },
     {
       "id": "ui:place and remove",
@@ -4463,7 +4507,8 @@
       "area": "web",
       "tests": [
         "tests/test_gallery_crons.py",
-        "tests/test_library_site.py"
+        "tests/test_library_site.py",
+        "tests/test_sets.py"
       ]
     },
     {
@@ -4606,7 +4651,9 @@
       "entry": "web/picture.js",
       "reach": "https://brickworks.diy/profile, Edit profile, Choose a picture   (a JPEG, PNG or WebP up to 8 MB, cropped to a circle in the page: dragged, zoomed by the buttons, wheel or two fingers; Use this picture sends the square to POST /api/people?op=avatar, api/_avatars.js makes its own JPEG; Remove the picture; shown wherever the person is by api/_faces.js; taken out on /admin from a report about the profile)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_sets.py"
+      ]
     },
     {
       "id": "ui:your plan on settings",

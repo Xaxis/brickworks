@@ -17,6 +17,13 @@
 //
 // Every name goes on the page as text (web/card.js escapes what it draws),
 // and a link is made from a set's id alone, and only an id that is one.
+//
+// Every set in the catalogue (sets364, api/_sets.js): the list says so by
+// its years and its themes' own themes, and the Filters menu then has four
+// more, each a <select> like its own: the theme inside the one chosen
+// (#sub), a year in the decade (#year), only those with a 3D model
+// (#model) and minifigures (#figs). Each is taken from the page where it
+// has one by that id, and made at the end of the menu where not.
 import { FIRST_SCREEN, counted, modelCard } from "/card.js";
 // Filters closing on a click elsewhere, as a "more" menu does.
 import "/kit.js";
@@ -26,7 +33,7 @@ import { browseBar } from "/browse.js";
 (function () {
   "use strict";
 
-  const ID = /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/;
+  const ID = /^[a-z]{2,8}-[A-Za-z0-9._-]{1,120}$/;
   const $ = (id) => document.getElementById(id);
   const grid = $("models");
   const more = $("more");
@@ -44,6 +51,15 @@ import { browseBar } from "/browse.js";
   let theme = "";
   // Every set there is, once the first answer says.
   let every = 0;
+  // The catalogue's own filters, once the list says it has them: name -> select.
+  const extra = {};
+  // The themes inside each top theme, as the list says them.
+  let inner = new Map();
+  // What the address asked of them, until they are made.
+  const wanted = {};
+  const MORE = [["sub", "Inside the theme", "Any"], ["year", "Year", "Any year in the decade"],
+    ["model", "3D model", "With or without"], ["figs", "Minifigures", "With or without"]];
+  const pick = (name) => (extra[name] ? (filled ? extra[name].value : extra[name].dataset.wanted || "") : wanted[name] || "");
 
   /// What a select says: until the first answer fills it in, what the
   /// address asked of it.
@@ -55,8 +71,13 @@ import { browseBar } from "/browse.js";
     const asked = new URLSearchParams();
     const words = q.value.trim().slice(0, 100);
     if (words) asked.set("q", words);
-    if (theme) asked.set("theme", theme);
+    if (theme) asked.set("theme", pick("sub") ? `${theme} > ${pick("sub")}` : theme);
     if (chosen(decade)) asked.set("decade", chosen(decade));
+    // A year only in the decade chosen: another decade chosen since leaves it.
+    const decadeOf = (year) => `${String(year).slice(0, 3)}0s`;
+    for (const name of ["year", "model", "figs"]) {
+      if (pick(name) && !(name === "year" && decadeOf(pick(name)) !== chosen(decade))) asked.set(name, pick(name));
+    }
     if (chosen(size)) asked.set("size", chosen(size));
     const order = chosen(sort) || "newest";
     if (!address || order !== "newest") asked.set("sort", order);
@@ -81,6 +102,55 @@ import { browseBar } from "/browse.js";
     }
     if ([...select.options].some((o) => o.value === keep)) select.value = keep;
   }
+
+  /// One of the catalogue's filters: the page's own select by that id, or
+  /// one made at the end of the Filters menu as its others are.
+  function moreFilter([name, label, any]) {
+    let select = $(name);
+    if (!select) {
+      const menu = $("filters").querySelector(".menu-list");
+      const holder = document.createElement("label");
+      holder.append(`${label} `);
+      select = document.createElement("select");
+      select.id = name;
+      select.name = name;
+      select.setAttribute("form", "finder");
+      holder.append(select);
+      menu.insertBefore(holder, menu.querySelector(".actions"));
+    }
+    if (!select.options.length) {
+      const first = document.createElement("option");
+      first.value = "";
+      first.textContent = any;
+      select.append(first);
+    }
+    select.dataset.wanted = wanted[name] || "";
+    select.addEventListener("change", ask);
+    extra[name] = select;
+  }
+
+  /// The theme inside the one chosen, and the years of the decade chosen:
+  /// what each may hold follows the other filters.
+  function fillMore(years) {
+    if (extra.sub) {
+      const keep = extra.sub.dataset.wanted || extra.sub.value;
+      extra.sub.dataset.wanted = "";
+      extra.sub.replaceChildren(extra.sub.options[0]);
+      for (const one of inner.get(theme) || []) extra.sub.append(new Option(`${one.name} (${one.n})`, one.name));
+      extra.sub.value = [...extra.sub.options].some((o) => o.value === keep) ? keep : "";
+      extra.sub.disabled = extra.sub.options.length < 2;
+    }
+    if (extra.year) {
+      const keep = extra.year.dataset.wanted || extra.year.value;
+      extra.year.dataset.wanted = "";
+      const from = Number(String(chosen(decade)).slice(0, 4));
+      extra.year.replaceChildren(extra.year.options[0]);
+      for (const year of years.filter((one) => from && one >= from && one < from + 10)) extra.year.append(new Option(String(year), String(year)));
+      extra.year.value = [...extra.year.options].some((o) => o.value === keep) ? keep : "";
+      extra.year.disabled = extra.year.options.length < 2;
+    }
+  }
+  let years = [];
 
   /// The themes as pills, once the list says what they are, each with how
   /// many sets it has on hover.
@@ -108,14 +178,15 @@ import { browseBar } from "/browse.js";
 
   /// How many filters are on, on the Filters button.
   function sayFilters() {
-    const on = [chosen(size), chosen(decade), chosen(sort) && chosen(sort) !== "newest"].filter(Boolean).length;
+    const on = [chosen(size), chosen(decade), chosen(sort) && chosen(sort) !== "newest", ...MORE.map(([name]) => pick(name))]
+      .filter(Boolean).length;
     const n = $("filters-said");
     n.textContent = on ? String(on) : "";
     n.hidden = !on;
     $("filters").querySelector("summary").setAttribute("aria-label", on ? `Filters, ${on} on` : "Filters");
   }
 
-  const searching = () => Boolean(q.value.trim() || theme || chosen(size) || chosen(decade));
+  const searching = () => Boolean(q.value.trim() || theme || chosen(size) || chosen(decade) || MORE.some(([name]) => pick(name)));
 
   // Show more's press while a page that came by itself waits to be drawn,
   // or is still on its way (pressed): it is drawn as soon as it is here
@@ -163,6 +234,14 @@ import { browseBar } from "/browse.js";
         if (mine !== asking) return;
       }
       if (!filled) {
+        // The catalogue's (api/_sets.js): its own filters, made once.
+        if (Array.isArray(data.years)) {
+          years = data.years.map(Number);
+          inner = new Map((data.themes || []).map((one) => [String(one.name), Array.isArray(one.sub) ? one.sub : []]));
+          for (const one of MORE) moreFilter(one);
+          fill(extra.model, [["3d", "Only with a 3D model"]]);
+          fill(extra.figs, [["with", "With minifigures"], ["none", "Without"]]);
+        }
         fillThemes(data.themes);
         fill(sort, Object.entries(data.sorts || {}));
         fill(size, Object.entries(data.sizes || {}));
@@ -170,6 +249,7 @@ import { browseBar } from "/browse.js";
         filled = true;
       }
       every = Number(data.of) || every;
+      fillMore(years);
       // As many pictures asked for at once as the first screen shows.
       const eager = fresh ? [...grid.children].filter((one) => one.getBoundingClientRect().top < innerHeight).length
         || FIRST_SCREEN : 0;
@@ -238,6 +318,7 @@ import { browseBar } from "/browse.js";
     const pill = event.target.closest("[data-pick]");
     if (!pill) return;
     theme = pill.dataset.pick;
+    if (extra.sub) extra.sub.value = "";
     ask();
   });
 
@@ -248,7 +329,9 @@ import { browseBar } from "/browse.js";
   for (const [select, name] of [[sort, "sort"], [size, "size"], [decade, "decade"]]) {
     select.dataset.wanted = given.get(name) || "";
   }
-  theme = (given.get("theme") || "").slice(0, 200);
+  // A theme inside a theme is asked as its path: "Star Wars > Ultimate Collector Series".
+  [theme, wanted.sub = ""] = (given.get("theme") || "").slice(0, 300).split(" > ").map((one) => one.trim());
+  for (const name of ["year", "model", "figs"]) wanted[name] = given.get(name) || "";
   const shown = Math.min(Math.max(Number.parseInt(given.get("page") || "1", 10) || 1, 1), 20);
   const back = history.state && ID.test(String(history.state.card)) ? history.state : null;
   if ("scrollRestoration" in history) history.scrollRestoration = "manual";
@@ -266,12 +349,14 @@ import { browseBar } from "/browse.js";
   for (const control of [sort, size, decade]) control.addEventListener("change", ask);
   $("filters-clear").addEventListener("click", () => {
     size.value = decade.value = "";
+    for (const select of Object.values(extra)) select.value = "";
     sort.value = "newest";
     ask();
   });
   $("clear").addEventListener("click", () => {
     q.value = "";
     size.value = decade.value = "";
+    for (const select of Object.values(extra)) select.value = "";
     theme = "";
     ask();
   });
