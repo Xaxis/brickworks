@@ -185,6 +185,13 @@
     },
     {
       "kind": "ui",
+      "label": "keys of one's own",
+      "entry": "src/ui/keymap.gd",
+      "reach": "godot --path .  (F1: Keys like BrickLink Studio, Mecabricks or LDCad; click a key on the sheet and press another; kept on the device and, signed in, on the account: GET/POST /api/account?op=keys, supabase/keymap.sql)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "pointer cursors",
       "entry": "src/ui/cursors.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/cursor_probe.gd   (in a browser: node tools/web/cursor_check.mjs --url=<a preview>/app)",

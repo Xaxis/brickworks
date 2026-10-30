@@ -348,7 +348,7 @@ static func why_not(action: String, accel: int) -> String:
 		return "the browser keeps %s for itself" % listed_key(accel)
 	var holder: String = action_of(accel)
 	if not holder.is_empty() and holder != action:
-		return "%s is already %s" % [listed_key(accel), words(holder)]
+		return "%s is already the key for %s" % [listed_key(accel), words(holder)]
 	return ""
 
 

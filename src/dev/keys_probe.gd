@@ -336,7 +336,7 @@ func _set_a_key() -> void:
 	await _press(KEY_B, SHIFT)
 	said = (_sheet.get("_said") as Label).text
 	_check("Shift-B for the Rotate tool is refused, saying whose it is: \"%s\"" % said,
-		Keymap.key_of("mode_rotate") == rotate and said.contains("already Paint tool"))
+		Keymap.key_of("mode_rotate") == rotate and said.contains("already the key for Paint tool"))
 	await _shot("key_refused")
 	chip = _sheet.controls_by_name().get("key_mode_rotate")
 	await _click_chip(chip)

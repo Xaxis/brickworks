@@ -4006,6 +4006,14 @@
       "tests": []
     },
     {
+      "id": "ui:keys of one's own",
+      "kind": "ui",
+      "entry": "src/ui/keymap.gd",
+      "reach": "godot --path .  (F1: Keys like BrickLink Studio, Mecabricks or LDCad; click a key on the sheet and press another; kept on the device and, signed in, on the account: GET/POST /api/account?op=keys, supabase/keymap.sql)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:landing page",
       "kind": "ui",
       "entry": "web/index.html",

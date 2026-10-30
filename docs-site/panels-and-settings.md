@@ -18,6 +18,18 @@ ui:status bar
 ui:controls panel and hint
 -->
 
+## Your own keys {#keys}
+
+Every tool has a key: [[Shift+X]] Move, [[Shift+O]] Rotate, [[Shift+I]] Hinge, [[Shift+V]] Clone, [[Shift+P]] Paint, [[Shift+G]] Hide and [[Shift+Delete]] Delete. [[C]] paints what is selected; with nothing selected, it says how to paint.
+
+Coming from another program? In the keys sheet ([[F1]]), or in Settings, **Keys like** puts on the keys of BrickLink Studio, Mecabricks or LDCad: with Studio's, [[V]] is Select, [[C]] Clone, [[H]] Hinge, [[L]] Hide, [[Ctrl+G]] makes a sub-model, the arrows turn the part, and [[W]] [[A]] [[S]] [[D]] move it.
+
+To set a key yourself, click it in the keys sheet and press the one you want. [[Esc]] keeps the old key, [[Backspace]] leaves it with none. A key another command already has is refused, and the sheet says whose it is. A few keys are kept for themselves ([[Esc]], [[Enter]], [[Tab]], [[F1]]), and in a browser the browser's own ([[Ctrl+N]], [[Ctrl+T]], [[Ctrl+W]]). **Back to these keys** drops the ones you set. Your keys stay on this computer, and when you are signed in they go with your account to any browser or computer you sign in on.
+
+<!-- covers
+ui:keys of one's own
+-->
+
 ## Docked panels {#panels}
 
 Fold a panel by its header, and drag the bar between two to share the room. A click on a column's strip folds it away to the edge, and another brings it back. In a window narrower than about 1,260 pixels, one column shows beside the model at a time. **View** turns each panel on or off, and [[Tab]] shows or hides them all. Brickworks remembers the layout, the folds and the snap you chose, and starts with them next time.

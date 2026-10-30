@@ -366,6 +366,10 @@ declare -A CMD=(
   # Render; Render first when opened again; Mirror with nothing selected
   # says why and runs nothing; Escape puts it away.
   [palette]="tools/web/palette_flow.mjs --url=$P/app $B --out=$S/${TAG}_palette"
+  # A key of one's own (appux A11): F1, "paint", the Paint tool's key
+  # clicked and Shift-B pressed; Shift-B takes the Paint tool, and still
+  # does after the page is loaded again.
+  [keys]="tools/web/keys_flow.mjs --url=$P/app $B --out=$S/${TAG}_keys"
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"

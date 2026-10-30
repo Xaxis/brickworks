@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
 
 ## Sub-features
 
@@ -524,6 +524,34 @@ picture the assistant is shown.
   controls with corresponding icons"). `cursor_probe` checks the panel draws
   pictures and caps and that its middle row follows the setting, and saves
   `shots/cursors/help_dialog.png` and `strip.png` to look at.
+- `keys of one's own` (`src/ui/keymap.gd`, `src/account/keymap_sync.gd`,
+  APP_UX A11, 2026-10-30): every tool has a key (Shift-X Move, Shift-O Rotate,
+  Shift-I Hinge, Shift-V Clone, Shift-P Paint, Shift-G Hide, Shift-Delete
+  Delete), C paints the selection alone (with nothing selected it says how to
+  paint), and the sheet's "Keys like" (and Settings') puts on BrickLink
+  Studio's, Mecabricks' or LDCad's keys. Clicking a key's chip on the sheet and
+  pressing another sets it; Esc keeps it, Backspace leaves none; a key that is
+  another's is refused saying whose, the keys kept for themselves (Esc, Enter,
+  Tab, F1, F6, Space, Home, End, Backspace) and, on the web, the browser's own
+  (Ctrl-N, T, W, Tab, R) are refused too. "Back to these keys" drops one's own.
+  `Keymap.read()` turns each key into the key the handlers already answer
+  (`EditVerbs`, `Shell`, `Main._key_pressed`) or into a command run by name;
+  layers are own, preset, Brickworks' tool keys, then the handlers' own, and a
+  key a higher layer takes unbinds the lower. Kept in `ShellPrefs` (`key_preset`,
+  `keys`, `keys_at`) and, signed in, on the account: `GET/POST
+  /api/account?op=keys` (`profiles.keys`, `supabase/keymap.sql`, additive), the
+  newer of device and account winning. `keys_probe` (windowed, 1280 x 720;
+  `PROBE_SIZE=1400x900` too; `--shots=DIR`) presses each tool's key, Studio's
+  twenty keys under its preset (V H C L, Ctrl-L, Ctrl-Shift-L, Ctrl-Shift-V,
+  WASD, the arrows and Shift-arrows, Ctrl-G, Ctrl-U, Ctrl-T, Ctrl-0, Ctrl-= and
+  -, Ctrl-F), Mecabricks' and LDCad's, sets Shift-B in the sheet with a clash
+  and Tab refused, and starts the app again on its data folder to find Shift-B
+  still the Paint tool's. `controls_probe -- --preset=studio|mecabricks|ldcad`
+  presses every advertised key under each preset. On the web,
+  `tools/web/keys_flow.mjs` sets Shift-B and reloads the page (local build or
+  a preview, `preview_checks.sh … keys`). Not proven by a check: the account's
+  half before keymap.sql is applied (the API answers `ready: false` and the keys
+  stay on the device).
 - `pointer cursors`: `src/ui/cursors.gd`. The pointer says what the mouse will
   do now, by the tool, the keys held and what is under it, as Studio, Mecabricks
   and Blender do. The owner, on the live site (2026-10-11): "we're not seeing the
@@ -545,7 +573,6 @@ picture the assistant is shown.
   | the Orbit, Pan, Zoom tools (Shift: the other verb, Zoom out) | `orbit` `hand` `zoom_in` | pictures |
   | Space held / Alt held (Alt-Shift slides, Ctrl-Alt zooms) | `hand` / `orbit` | pictures |
   | a wheel notch, swipe, pinch or key, for 350 ms | `zoom_in` `zoom_out` `hand` `orbit` | pictures |
-  | C held | `paint` | bucket |
   | buttons, sliders, the view cube / text fields / a splitter | (the control's) | pointing hand / I-beam / Godot's split arrows |
 
   The tools' pointers show over parts and over nothing alike, as the three

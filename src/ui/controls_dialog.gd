@@ -429,7 +429,9 @@ func _take_key(key: InputEventKey) -> void:
 	var accel: int = 0 if key.keycode == KEY_BACKSPACE else Keymap.accel_of(key)
 	var trouble: String = Keymap.bind(action, accel)
 	if not trouble.is_empty():
-		_say("%s: not set, %s" % [Keymap.listed_key(accel), trouble])
+		var kept: String = Keymap.listed(action)
+		_say("%s keeps %s: %s" % [Keymap.words(action),
+			kept if not kept.is_empty() else "no key", trouble])
 		_fill()
 		return
 	_say("%s is now %s" % [Keymap.words(action),
