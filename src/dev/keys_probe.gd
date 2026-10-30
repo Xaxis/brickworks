@@ -268,7 +268,8 @@ func _mecabricks_and_ldcad() -> void:
 	print("\n  Keys like Mecabricks, then LDCad")
 	Keymap.use("mecabricks")
 	_scene()
-	for pair: Array in [[KEY_W, "select"], [KEY_D, "clone"], [KEY_M, "move"]]:
+	for pair: Array in [[KEY_W, "select"], [KEY_D, "clone"], [KEY_M, "move"],
+			[KEY_S, "connect"]]:
 		_verbs.set_mode("zoom")
 		await _press(pair[0])
 		_check("Mecabricks' %s: the %s tool (%s)" % [OS.get_keycode_string(pair[0]), pair[1],
@@ -276,6 +277,7 @@ func _mecabricks_and_ldcad() -> void:
 	await _press(KEY_ESCAPE)
 	_check("...and D held slides no view: it is the Clone tool's",
 		not Keymap.held_as_ever(KEY_D))
+	_check("...nor S: it is Connect's", not Keymap.held_as_ever(KEY_S))
 	Keymap.use("ldcad")
 	_scene()
 	var ids: Array = _ids()

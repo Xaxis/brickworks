@@ -87,10 +87,9 @@ const DONE_AS: Dictionary = {"part_left": SHIFT | KEY_R, "part_right": KEY_R,
 ## move pin, C centres on the selection, Z fits, V switches the projection,
 ## H hides, Ctrl-Shift-H shows all, Insert the part again.
 ##
-## The connect unit's Connect joins these as one line each, by its
-## command's name: "connect": KEY_S under Mecabricks; Studio's and the
-## app's own leave it unbound until a key is chosen. A name no command has
-## is passed over, so the line may go in before the command does.
+## Connect is the app's N; Studio's keep that, having none of their own.
+## A name no command has is passed over, so a line may go in before its
+## command does.
 const PRESET_KEYS: Dictionary = {
 	"brickworks": {
 		"mode_move": SHIFT | KEY_X, "mode_rotate": SHIFT | KEY_O, "mode_hinge": SHIFT | KEY_I,
@@ -112,7 +111,7 @@ const PRESET_KEYS: Dictionary = {
 	},
 	"mecabricks": {
 		"mode_select": KEY_W, "mode_clone": KEY_D, "mode_move": KEY_M, "reshape_flex": KEY_F,
-		"nudge_forward": 0, "nudge_left": 0, "nudge_back": 0, "nudge_right": 0,
+		"mode_connect": KEY_S, "nudge_forward": 0, "nudge_left": 0, "nudge_back": 0, "nudge_right": 0,
 	},
 	"ldcad": {
 		"mode_move": KEY_M, "fit_selection": KEY_C, "fit_model": KEY_Z, "ortho": KEY_V,
