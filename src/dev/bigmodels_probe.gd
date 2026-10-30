@@ -245,8 +245,8 @@ func _ghost() -> void:
 		instances == surfaces and drawn < surfaces / 10)
 	# Aimed in the middle of the view, the ghost shows there.
 	var middle: Vector2 = root.get_visible_rect().size * 0.5
-	carry.aim(_builder.lattice, _builder, camera.project_ray_origin(middle),
-		camera.project_ray_normal(middle))
+	carry.aim(_builder.lattice, _builder, camera.ray_origin(middle),
+		camera.ray_normal(middle))
 	await _frames(4)
 	var image_after: Image = await _screen()
 	var changed: int = 0
