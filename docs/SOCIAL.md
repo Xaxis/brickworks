@@ -883,6 +883,17 @@ a month would be the first one the site sends unasked. Each challenge's
 own link, `/challenge?id=N`, has its own preview: its title, its brief and
 days, and a winner's picture once it has one.
 
+**4 as built**: the embed's picture is the model in 3D, as its page's is:
+View in 3D on it, a click or the first drag across turns the model in the
+frame, in somebody else's page, with viewer369's own view (the same code,
+budget and touch rules: a phone's finger up or down scrolls their page
+until the model is taken hold of). Nothing of it loads until asked; the
+embed is still a picture and a bar, about 8 KB of script. Full screen is
+the screen's where the page allowed it (the share sheet's code and oEmbed's
+both do), and every link opens a tab of its own, since the app cannot run
+in a frame. Sketchfab's embed is its viewer [SK-EO]; this is Brickworks'
+model, its steps a click away in Build it.
+
 **5 as built** (supabase/model_bases.sql): a model's designer says what it
 is based on, up to three: an alternate build of a LEGO® set (built from its
 parts, Rebrickable's word), changed from a set or from work elsewhere, or

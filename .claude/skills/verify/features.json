@@ -876,6 +876,14 @@
       "tests": []
     },
     {
+      "id": "cli:embed browser flow",
+      "kind": "cli",
+      "entry": "tools/web/embed_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/embed_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh embed: the deployment's first model in a blog's page, signed out; with no --url, the stand-in's watchtower)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:empty open probe",
       "kind": "cli",
       "entry": "src/dev/empty_open_probe.gd",
@@ -3568,7 +3576,7 @@
       "id": "ui:a model in 3D on its page",
       "kind": "ui",
       "entry": "tools/viewer/inline.js",
-      "reach": "https://brickworks.diy/m/<id>, /library/<id> and /library/set/<n> with an LDraw model: View in 3D on the picture (or a click, or the first drag across it) turns the model in 3D in the picture's place (web/model-page.js start3d imports /viewer3d.js, built by tools/viewer/build.mjs from tools/viewer/inline.js and view.js, the card's scene); its scene /m/<id>/scene.json, /m/<id>/v/<n>/scene.json, /library/<id>/scene.json (api/share.js ?op=scene|set_scene, api/_parts.js sceneOf), its parts' geometry from the part store",
+      "reach": "https://brickworks.diy/m/<id>, /library/<id> and /library/set/<n> with an LDraw model: View in 3D on the picture (or a click, or the first drag across it) turns the model in 3D in the picture's place (web/start3d.js imports /viewer3d.js, built by tools/viewer/build.mjs from tools/viewer/inline.js and view.js, the card's scene); its scene /m/<id>/scene.json, /m/<id>/v/<n>/scene.json, /library/<id>/scene.json (api/share.js ?op=scene|set_scene, api/_parts.js sceneOf), its parts' geometry from the part store",
       "area": "web",
       "tests": []
     },
@@ -4823,6 +4831,14 @@
       "entry": "assets/splash.png",
       "reach": "godot --path .  (the mark on the app's dark face while the app loads, on the desktop)",
       "area": "release",
+      "tests": []
+    },
+    {
+      "id": "ui:the embed in 3D",
+      "kind": "ui",
+      "entry": "web/embed.js",
+      "reach": "https://brickworks.diy/m/<id>/embed in an iframe (the share sheet's embed code): View in 3D on its picture turns the model in the frame (web/start3d.js imports /viewer3d.js; web/view3d.css; api/share.js embedCard and embedCsp); node tools/web/embed_flow.mjs --out=DIR on the stand-in",
+      "area": "web",
       "tests": []
     },
     {
