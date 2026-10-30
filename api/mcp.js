@@ -39,7 +39,8 @@
 //                             (?visible=0|1): sent by the page itself every
 //                             ten seconds and whenever it goes in or out of
 //                             view, whatever the app is busy with
-//   /api/mcp?t=T&op=close     the tab stops listening, or the page has gone
+//   /api/mcp?t=T&op=close     the tab stops listening, or the page has gone;
+//                             closed until it says hello again
 //   /api/mcp?t=T&op=chats     which Claude chats work in this tab
 //   /api/mcp?t=T&op=keep&chat=C  the person keeps chat C in this tab; any
 //                             other chat working in it is moved off
@@ -1434,19 +1435,28 @@ async function helloFromTab(channel, instance, request, response) {
 
 // The tab's side: say it is listening, then take the next request.
 async function nextForTab(channel, instance, request, response) {
-  const seen = { channel, seen_at: new Date().toISOString(), open: true };
+  const seen = { seen_at: new Date().toISOString() };
   const used = usedFrom(request.query?.used);
   const model = modelFrom(request.query?.model);
   if (used) seen.used_at = used;
   if (model !== null) seen.model = model;
   // Seen, in the one step that checks it may be: this page is the one
-  // listening, and a signed-in page switched the connector on. Where
-  // either is not so nothing is written, and why is read after.
+  // listening, a signed-in page switched the connector on, and it has not
+  // closed since. Where any is not so nothing is written, and why is read
+  // after.
+  //
+  // A tab that has closed stays closed until it says hello again
+  // (2026-10-29, relay338). An ask for work used to mark it open, and one
+  // that reached the relay after the page's close (a long poll still on its
+  // way as the page went, or a close beacon that overtook it) opened a tab
+  // that was gone: a chat's next call waited on it, or a new chat was told
+  // two tabs were open and asked to choose. A page that is in fact still
+  // there, one the browser kept to go back to, is told to say hello
+  // (claude_connector.gd does on a 401), and its hello opens it.
   const mine = instance ? `&or=(instance.is.null,instance.eq.${instance})` : "";
   const said = (await columns()) ? "answered_at" : "channel";
-  const [marked] = await db(`relay_tabs?channel=eq.${channel}&owner=not.is.null${mine}&select=${said}`, {
-    method: "PATCH", body: seen, prefer: "return=representation",
-  }) || [];
+  const [marked] = await db(`relay_tabs?channel=eq.${channel}&owner=not.is.null&open=is.true${mine}`
+    + `&select=${said}`, { method: "PATCH", body: seen, prefer: "return=representation" }) || [];
   if (!marked) {
     const tab = await tabOf(channel);
     if (instance && tab && tab.instance && tab.instance !== instance) {
@@ -1460,8 +1470,11 @@ async function nextForTab(channel, instance, request, response) {
         error: "switch the connector on while signed in to Brickworks",
       });
     }
-    // It changed in between: seen, as it is now.
-    await db("relay_tabs", { method: "POST", body: seen, prefer: "resolution=merge-duplicates" });
+    if (!tab.open) {
+      return response.status(401).json({ error: "this tab's connector has closed: say hello to open it again" });
+    }
+    // Opened again in between, by a hello: seen, as it is now.
+    await db(`relay_tabs?channel=eq.${channel}&open=is.true`, { method: "PATCH", body: seen });
   }
   if (Math.random() < 0.05) await db("rpc/relay_sweep", { method: "POST", body: {} });
   // A tab a chat is working with looks often; an idle one as it did.

@@ -321,7 +321,13 @@ plan with Claude as the client.
   `--resume`) stopped and told it is a new chat here that cannot undo what it
   did before, as chat B's first choice is and chat A's, the account's first,
   is not, and `server/discover` answered "method not found" by the relay
-  with no tab asked. 36 checks, seconds; deletes its throwaway account.
+  with no tab asked. Then a tab that has closed stays closed (2026-10-29,
+  relay338): an ask for work that reaches the relay after the close (a long
+  poll still on its way as the page went) is answered 401, say hello again,
+  and opens nothing; the tab is not listed, and its fresh hello lists it
+  again. It used to mark the tab open, and a chat's next call waited on a
+  gone tab or was asked to choose between two; against that relay those two
+  checks fail. 41 checks, seconds; deletes its throwaway account.
 - `relay timing` (`tools/web/relay_timing.mjs`, `--url=` a local relay or a
   preview, `--rounds=4`): what a call through the relay costs when the tab
   answers at once. A throwaway account (deleted at the end), a stand-in tab
