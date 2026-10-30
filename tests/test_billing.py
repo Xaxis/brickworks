@@ -206,10 +206,15 @@ return { mine, owner, nobody, offer, odd, owners: [...w.admission.owners] };
     if got is None:
         return
     mine, owner = got["mine"], got["owner"]
-    assert mine["status"] == 200 and mine["json"]["plan"]["key"] == "free" and mine["json"]["savedModels"] == {"limit": 25}
+    # The plan's limit on models kept with the account, and how many it keeps now.
+    assert mine["status"] == 200 and mine["json"]["plan"]["key"] == "free"
+    assert mine["json"]["savedModels"] == {"limit": 25, "kept": 0}
+    # Nothing of AI, which no plan limits.
+    for answer in (mine["json"], owner["json"]):
+        assert not re.search(r"build", json.dumps(answer), re.I), answer
     # The owner (MASTER_EMAIL) is reported to Admission, and has everything.
     assert got["owners"] == ["u-own"]
-    assert owner["json"]["owner"] is True and owner["json"]["savedModels"] == {"limit": None}
+    assert owner["json"]["owner"] is True and owner["json"]["savedModels"] == {"limit": None, "kept": 0}
     assert owner["json"]["desktop"] is True
     assert got["nobody"] == {"status": 401, "json": {"error": "sign in to Brickworks first"}}
     assert got["odd"]["status"] == 404
@@ -217,7 +222,7 @@ return { mine, owner, nobody, offer, odd, owners: [...w.admission.owners] };
     assert got["offer"]["status"] == 200 and offer["billing"] == "test" and offer["forSale"] is True
     assert offer["free"]["savedModels"] == 25 and offer["free"]["desktop"] is False
     assert offer["pro"]["savedModels"] == "unlimited" and offer["pro"]["desktop"] is True
-    assert not [key for key in offer["free"] if "build" in key.lower()], list(offer["free"])
+    assert not re.search(r"build", json.dumps(offer), re.I), offer
     assert offer["pro"]["prices"] == {"month": 800, "year": 8000}
 
 

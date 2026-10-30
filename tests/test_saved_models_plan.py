@@ -10,7 +10,9 @@ is recorded, so "Admission was not asked" is read, not hoped:
 - Free: 25 new models kept, the 26th refused with the plan's words and a
   way to Pro, and not kept; a save over one it has, or the same model
   again, kept at the limit; a delete makes room at once;
-- Pro, a comp of Pro and the owner keep any number;
+- Pro, a comp of Pro and the owner keep any number, the owner even before
+  they ever opened /plans (the save reports them to Admission first);
+- ?op=plan says the plan's limit and how many the account keeps now;
 - a plan not known (Admission down, nothing kept of the account) refuses
   nothing, and neither does a deployment without
   supabase/account_models_plan.sql;
@@ -53,7 +55,7 @@ def run(body: str, **world) -> dict | None:
     if shutil.which("node") is None:
         return None
     script = (
-        "import { world, askModels } from './tests/fixtures/billing/world.mjs';"
+        "import { world, askModels, askPlans } from './tests/fixtures/billing/world.mjs';"
         f"const w = await world({json.dumps(world)});"
         + HELPERS
         + f"const out = await (async () => {{ {body} }})();"
@@ -153,6 +155,41 @@ return { out, owners: [...w.admission.owners], fns: [...new Set(w.saves.map((s) 
     # The owner (MASTER_EMAIL) is reported to Admission, which gives them everything.
     assert got["owners"] == ["u-own"]
     assert got["fns"] == ["save_account_model"]
+
+
+def test_the_owner_who_never_opened_plans_keeps_a_26th() -> None:
+    got = run("""
+const before = [...w.admission.owners];
+const me = await as('u-own', 'owner@example.com');
+const saves = await saveMany(me, 26);
+return { before, statuses: saves.map((s) => s.status), owners: [...w.admission.owners], kept: kept('u-own').length };
+""", billing="test")
+    if got is None:
+        return
+    # Admission knew nothing of the owner until the first save said so.
+    assert got["before"] == [] and got["owners"] == ["u-own"]
+    assert got["statuses"] == [200] * 26 and got["kept"] == 26
+
+
+def test_the_plan_says_its_limit_and_how_many_are_kept() -> None:
+    got = run("""
+const me = await as('u-free');
+const plan = async () => (await askPlans({ query: { op: 'plan' }, headers: me })).json.savedModels;
+const empty = await plan();
+await saveMany(me, 25);
+const full = await plan();
+await askModels({ method: 'DELETE', headers: me, query: { name: 'Model 1', version: '1' } });
+const freed = await plan();
+w.admission.subscribe('u-pro');
+const pro = (await askPlans({ query: { op: 'plan' }, headers: await as('u-pro') })).json.savedModels;
+return { empty, full, freed, pro };
+""", billing="test")
+    if got is None:
+        return
+    assert got["empty"] == {"limit": 25, "kept": 0}
+    assert got["full"] == {"limit": 25, "kept": 25}
+    assert got["freed"] == {"limit": 25, "kept": 24}
+    assert got["pro"] == {"limit": None, "kept": 0}
 
 
 def test_a_plan_not_known_refuses_nobody() -> None:
