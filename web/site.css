@@ -1278,5 +1278,3 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 	.page-toc a:hover { border-left-color: var(--line-strong); }
 	.page-toc a[aria-current="true"] { color: var(--ink); border-left-color: var(--accent-edge); }
 }
-/* A part of such a page lands under the header, not behind it. */
-.page-grid :is(section, h2, h3)[id] { scroll-margin-top: calc(var(--head-h) + var(--s-5)); }
