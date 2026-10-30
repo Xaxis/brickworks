@@ -68,6 +68,17 @@
 // Checkout and the portal come back to /settings#plan on this site
 // (returnOrigin): ?billing=done, cancelled or portal says from where.
 //
+// And the beta (api/_beta.js, supabase/beta.sql), answered in every mode,
+// BRICKWORKS_BETA deciding it:
+//
+//   GET  /api/plans?op=beta        {beta: off}, or {beta: open, pool, early,
+//                                  test, application}: the spots left, and
+//                                  signed in, where your application stands
+//   POST /api/plans?op=beta        signed in, the form: kept, and emailed
+//   GET  /api/plans?op=beta_spots  {beta: off} or {beta: open, cap, left},
+//                                  signed out and cached a minute
+//   GET  /api/plans?op=beta_daily  Vercel's cron (/api/plans/beta-daily)
+//
 // And the paid desktop (api/_desktop.js, units U5 and U6), answered in
 // every mode, so a page or an app can ask before it knows which:
 //
@@ -101,6 +112,7 @@ import {
   admission, agreed, billingMode, charge, currentOffer, entitlementOf, mayDesktop, mostModels, reportOwner,
   returnOrigin,
 } from "./_billing.js";
+import { betaDaily, betaRoute, betaSpots } from "./_beta.js";
 import { db, dbConfigured } from "./_db.js";
 import { NoSuchFile, publicUrl, signedUrl, signingKey, tagOf, tokenFor } from "./_desktop.js";
 
@@ -404,6 +416,9 @@ export default async function handler(request, response) {
   // kept by any cache.
   response.setHeader("Cache-Control", "no-store");
   const op = String(request.query?.op || "");
+  if (op === "beta") return betaRoute(request, response);
+  if (request.method === "GET" && op === "beta_spots") return betaSpots(request, response);
+  if (request.method === "GET" && op === "beta_daily") return betaDaily(request, response);
   if (request.method === "GET" && op === "download") return download(request, response);
   if (request.method === "GET" && op === "entitlement") return entitlement(request, response);
   if (request.method === "GET" && billingMode() !== "off") return planned(request, response);

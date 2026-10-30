@@ -70,6 +70,19 @@ async function fillAll() {
   if (section && !shown.some(Boolean)) section.hidden = true;
 }
 
+// The beta's line under the last offer, only while it is open
+// (GET /api/plans?op=beta_spots: {beta: "open", left} or anything else).
+async function beta() {
+  const line = document.getElementById("beta");
+  if (!line) return;
+  try {
+    const reply = await fetch("/api/plans?op=beta_spots", { headers: { accept: "application/json" } });
+    const body = await reply.json().catch(() => null);
+    if (reply.ok && body?.beta === "open") line.hidden = false;
+  } catch { /* no line */ }
+}
+beta();
+
 if (section) {
   if (near && "IntersectionObserver" in window) {
     const watch = new IntersectionObserver((seen) => {

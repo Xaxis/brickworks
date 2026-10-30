@@ -213,6 +213,20 @@
       ]
     },
     {
+      "id": "api:applying to the beta",
+      "kind": "api",
+      "entry": "api/plans.js",
+      "reach": "curl -s '<deployment>/api/plans?op=beta'; curl -s '<deployment>/api/plans?op=beta_spots' (signed out, cached a minute: {beta, cap, left}); POST it signed in with {build, ai, background, background_line, link, terms, emails}   (off: {beta: off} and POST 403; open: 401 signed out, 422 with why, 409 a second time; python3 tools/minitest.py tests/test_beta.py)",
+      "area": "web",
+      "tests": [
+        "tests/test_beta.py",
+        "tests/test_billing_pay.py",
+        "tests/test_desktop.py",
+        "tests/test_saved_models_plan.py",
+        "tests/test_site_shell.py"
+      ]
+    },
+    {
       "id": "api:paying for Pro",
       "kind": "api",
       "entry": "api/plans.js",
@@ -392,6 +406,14 @@
       "entry": "src/dev/best_of_two_walk_probe.gd",
       "reach": "env -u ANTHROPIC_API_KEY tools/probe.sh best_of_two_walk_probe --brief=\"a small red post box\" --port=PORT --record=FILE.json   (in a window on the GPU; spends two design sessions and a pick)",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "cli:beta browser flow",
+      "kind": "cli",
+      "entry": "tools/web/beta_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in --beta-open, or the beta off: Coming soon and refused; preview check [beta])",
+      "area": "web",
       "tests": []
     },
     {
@@ -2997,6 +3019,14 @@
       "tests": []
     },
     {
+      "id": "lib:the beta's spots and months",
+      "kind": "lib",
+      "entry": "api/_beta.js",
+      "reach": "python3 tools/minitest.py tests/test_beta.py   (the form checked at the edge, signals, spots 1-100 one at a time under the pool's lock in supabase/beta.sql, the month given at Admission's ADR-0015 comp or left pending until Pro launches, the emails, the daily run at /api/plans/beta-daily)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:the check by real shapes",
       "kind": "lib",
       "entry": "src/ai/exact_check.gd",
@@ -3343,6 +3373,16 @@
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/balance_view_probe.gd   (by hand: Tools, Check stability)",
       "area": "geometry",
       "tests": []
+    },
+    {
+      "id": "ui:beta page",
+      "kind": "ui",
+      "entry": "web/beta.html",
+      "reach": "<deployment>/beta   (BRICKWORKS_BETA off: Coming soon, no form, no count; open: the spots left live, signed out Sign in to apply, signed in the form (web/beta.js), applied where it stands; tools/web/beta_flow.mjs)",
+      "area": "web",
+      "tests": [
+        "tests/test_beta.py"
+      ]
     },
     {
       "id": "ui:box select",
@@ -4341,6 +4381,14 @@
       "entry": "src/assembly/author_steps.gd",
       "reach": "godot --headless --path . --script src/dev/io_probe.gd   (by hand: open a Studio, LDCad or LeoCAD model; B opens the timeline in Author's steps; Shift-[ / Shift-] / Shift-N, Edit, Build steps, and the timeline's Earlier, Later, Merge with next, Delete step)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:the beta's owner queue",
+      "kind": "ui",
+      "entry": "web/beta-admin.html",
+      "reach": "<deployment>/beta-admin as MASTER_EMAIL (?tests=1 the checks' pool): GET /api/admin?op=beta, POST ?op=beta_decide&account=U {decision, note}, POST ?op=beta_grant",
+      "area": "web",
       "tests": []
     },
     {
