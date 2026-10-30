@@ -328,6 +328,7 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	feedback = FeedbackDialog.new()
 	feedback.store = store
 	feedback.world = world
+	feedback.library = library
 	add_child(feedback)
 
 	_about = AcceptDialog.new()

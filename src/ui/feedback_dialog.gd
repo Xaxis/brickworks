@@ -33,6 +33,8 @@ const WIDE := 460
 var account: Account
 var store: ModelStore
 var world: BrickWorld
+## For counting the model's parts as the status bar does (Inventory.pieces_in).
+var library: PartLibrary
 var recent: RecentLog
 ## How a report goes: (body: Dictionary, token: String) -> {code, body}.
 ## The deployment's API; a probe stands in for it.
@@ -198,7 +200,10 @@ func open(window: Image, kind: String = "") -> void:
 	_picture_shown(_picture != null)
 	_version.button_pressed = false
 	_version.text = "The app's version and your system: %s" % _about_here()
-	var parts: int = world.bricks().size() if world != null else 0
+	var parts: int = 0
+	if world != null:
+		parts = Inventory.pieces_in(world, library, store.scenery if store != null else {}) if library != null \
+			else world.bricks().size()
 	_model.button_pressed = false
 	_model.disabled = parts == 0
 	_model.text = ("The model you have open, as a file: “%s”, %d %s" % [_model_name(), parts,
@@ -206,7 +211,8 @@ func open(window: Image, kind: String = "") -> void:
 	var lines: PackedStringArray = recent.last(LOG_LINES) if recent != null else PackedStringArray()
 	_log.button_pressed = false
 	_log.disabled = lines.is_empty()
-	_log.text = "The app's last log lines (%d), which say what it was doing" % lines.size()
+	_log.text = ("The app's last log lines (%d), which say what it was doing" % lines.size()) if not lines.is_empty() \
+		else "The app's last log lines (there are none yet)"
 	_log_text.text = "\n".join(lines)
 	_log_text.visible = false
 	_show_log.text = "Show the log lines"
