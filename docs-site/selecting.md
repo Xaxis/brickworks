@@ -1,4 +1,9 @@
 ---
+tools: selection, edit_selection
+ai: Selecting parts by click, box, colour, part or connection, and what a selection can do. Asked about a selection, an assistant reads it with selection and changes only it with edit_selection.
+rules:
+  - edit_selection may change only the selected parts and the room just round them; more room must be asked for (room, why).
+  - A change that reaches outside the selection is refused whole.
 title: Selecting and editing
 nav: Selecting and editing
 description: Choose one part, many, or every part like it, and what you can do to a selection.

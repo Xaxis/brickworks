@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe -->
 
 ## Sub-features
 
@@ -867,6 +867,17 @@ Whether what you built is still there tomorrow, and still means the same thing.
   the last look went. Save on a model nobody has named (Untitled) asks what
   to call it first, in a dialog like Save as's, and refuses a name a saved
   model has (`ModelBar.ask_name`; controls `save_name`, `save_name_ok`).
+- `a plan's limit on models kept with the account`
+  (`supabase/account_models_plan.sql`, savecap360, 2026-10-29): Free keeps 25
+  new models with the account; an update, or the same model again, at the
+  limit is kept, a delete makes room at once, and the owner, Pro and a comp
+  of Pro keep any number. A plan Admission does not know refuses nobody, and
+  with plans off Admission is never asked. Prove it with
+  `python3 tools/minitest.py tests/test_saved_models_plan.py`, then the SQL
+  rolled back: `PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node
+  tools/apply_sql.mjs supabase/account_models_plan.sql --dry
+  --try=tools/account_models_plan_try.sql --table=account_models` (.env
+  sourced; the lead applies it without --dry).
 - `a returning person opens on their latest model` (`Main._open_theirs`,
   `CloudModels.looked` and `newest`, 2026-10-24, walk239's A16 and walk180's
   D2): a start with no working model on this device opens the model saved

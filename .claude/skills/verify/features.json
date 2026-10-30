@@ -1551,7 +1551,7 @@
       "id": "cli:put the documentation together",
       "kind": "cli",
       "entry": "tools/docs_site.py",
-      "reach": "python3 tools/docs_site.py --check   (every feature here on a docs page or in docs-site/internal.txt, every link resolves; python3 tools/docs_site.py OUT writes the pages, as tools/site.py does at deploy)",
+      "reach": "python3 tools/docs_site.py --check   (every feature here on a docs page or in docs-site/internal.txt, every link resolves; python3 tools/docs_site.py OUT writes the pages, as tools/site.py does at deploy; --write writes what the docs make and commit: each tool's doc's copy of its words, src/ai/connector_guide.gd and src/ui/docs_pages.gd, and --check fails while any differs, a tool has no doc or its example breaks its schema)",
       "area": "web",
       "tests": [
         "tests/test_docs_site.py"
@@ -3133,7 +3133,9 @@
       "entry": "src/net/app_tools.gd",
       "reach": "godot --headless --path . --script src/dev/app_tools_probe.gd   (over MCP: set_floor, edit_steps, lay_flex, pose_model, animate_model, simulate_mechanism, undo, open_model, parts_list, render_model, export_model)",
       "area": "mcp",
-      "tests": []
+      "tests": [
+        "tests/test_docs_site.py"
+      ]
     },
     {
       "id": "lib:true colour",
@@ -3580,7 +3582,7 @@
       "id": "ui:documentation",
       "kind": "ui",
       "entry": "web/docs.js",
-      "reach": "https://brickworks.diy/docs   (and /docs/<page>: the pages list, On this page, Ctrl+K or / to search, previous and next; made from docs-site/ by tools/docs_site.py at deploy; linked from every page's footer, Menu on a phone, and the app's Help, Documentation)",
+      "reach": "https://brickworks.diy/docs   (and /docs/<page>: the pages list, On this page, Ctrl+K or / to search, previous and next; made from docs-site/ by tools/docs_site.py at deploy; linked from every page's footer, Menu on a phone, and the app's Help, Documentation, which opens the page of the panel in front, from the pages' panels: heads (src/ui/docs_pages.gd); /docs/llms.txt is the same for an assistant)",
       "area": "web",
       "tests": [
         "tests/test_docs_site.py",

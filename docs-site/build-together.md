@@ -1,4 +1,9 @@
 ---
+panels: TogetherDialog
+ai: Build together puts several people on one model live, by a link, in browsers or the desktop app: each sees the others' parts and pointers.
+rules:
+  - Undo takes back only a person's own changes.
+  - The chat is for people 13 and over.
 title: Build together
 nav: Build together
 description: Build one model with other people, live, each in their own browser or the desktop app.

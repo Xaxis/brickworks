@@ -1,4 +1,10 @@
 ---
+tools: edit_steps, booklet_layout, edit_booklet
+panels: PageEditor#lay-out
+ai: Build steps, the timeline, the booklet laid out from them as a set's is, each step's page set by hand, and saving it as PDF or PNG pages. An assistant edits steps with edit_steps, reads the booklet's pages with booklet_layout, and sets a step's page with edit_booklet.
+rules:
+  - A step's turn is saved as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read.
+  - A model from Studio, LDCad or LeoCAD keeps its author's own steps.
 title: Instructions and booklets
 nav: Instructions and booklets
 description: Build steps, the timeline, the booklet Brickworks lays out from them, laying a page out by hand, and saving it as a PDF.

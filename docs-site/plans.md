@@ -1,4 +1,9 @@
 ---
+ai: Two plans. Free: the whole web app, AI never limited, and up to 25 models kept with the account. Pro, coming soon at $8 a month or $80 a year: the desktop app and any number of models kept with the account. Nothing takes money yet.
+rules:
+  - AI is never limited on any plan: people bring their own, so Brickworks never counts it or bills for it.
+  - Accounts made before 29 October 2026 keep Pro, free, with no end date.
+  - Saving to the device and exporting are never limited, and models are never deleted or locked.
 title: Plans and billing
 nav: Plans and billing
 description: Free in your browser, with AI never limited; Pro, coming soon, adds the desktop app and any number of models kept with your account. Nothing takes money yet.

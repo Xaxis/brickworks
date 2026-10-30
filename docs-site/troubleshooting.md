@@ -1,4 +1,8 @@
 ---
+ai: What goes wrong and what people ask: an updated tab, Claude not seeing a new tool, asking before every tool, the wrong tab, a missing part, a slow computer, a model that will not stand.
+rules:
+  - A tool missing in Claude: a new conversation, then reconnect in Claude (Customize › Connectors); in Claude Code, /mcp and Reconnect.
+  - Disconnect Claude in Brickworks ends the connection, which must then be allowed again.
 title: Troubleshooting and FAQ
 nav: Troubleshooting and FAQ
 description: Answers to what goes wrong and what people ask, from updates and Claude's tools to files and parts.

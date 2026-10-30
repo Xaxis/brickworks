@@ -1,4 +1,11 @@
 ---
+tools: save_model, open_model
+panels: SavedModelsDialog#open, VersionsDialog#versions, LibraryDialog#library
+ai: Saving and opening models, their last 20 versions, the library of real sets, and the files Brickworks opens (LDraw, Studio, LDD, 3D models). An assistant saves with save_model and opens a saved model, a version, a gallery model or a library set with open_model.
+rules:
+  - Saved names are unique: a save under a name another model has is refused.
+  - Opening over unsaved changes asks first; open_model takes discard_changes.
+  - Free keeps up to 25 models with the account; Pro keeps any number.
 title: Saving, opening and files
 nav: Saving and files
 description: Where models are kept, versions, the library of real sets, and every file Brickworks opens.

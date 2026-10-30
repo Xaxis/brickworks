@@ -1,4 +1,8 @@
 ---
+ai: Whichever AI designs, it proposes real parts and Brickworks decides: each part where it fits, every part held, the model standing. A design that fails comes back part by part to be fixed. The AI is given patterns, real sets' pieces and its own best earlier work, and is never limited on any plan.
+rules:
+  - AI is never limited: people bring their own, and its maker bills them, never Brickworks.
+  - What lands on the baseplate is one undo step.
 title: How the AI works
 nav: How the AI works
 description: What the AI works with, what the app checks before a part goes down, and how to ask for what you mean. AI is never limited, on any plan.

@@ -1,4 +1,8 @@
 ---
+ai: Claude Code builds in Brickworks through the connector (claude mcp add --transport http brickworks https://brickworks.diy/api/mcp) or straight into a desktop window over its local port, with tools/brickworks_mcp.py as the bridge.
+rules:
+  - The desktop window must be started with --mcp; the bridge relays to 127.0.0.1:8787.
+  - When a tool is missing, /mcp, brickworks, Reconnect.
 title: Claude Code
 nav: Claude Code
 description: Build in Brickworks from Claude Code, over the connector or straight into a desktop window.
