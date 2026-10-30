@@ -46,7 +46,7 @@ var most_chars: int = 1_000_000
 ## provider's own fault) is asked again.
 var tries: int = 4
 ## Seconds one reply may take: a reasoning model at high effort thinks for
-## minutes before it answers.
+## minutes before it answers. Streamed, the most it may go without a word.
 var reply_timeout: float = 600.0
 
 ## What the model is told before the app's own instructions. The model is
@@ -66,9 +66,15 @@ var _running: bool = false
 var _replies: int = 0
 var _calls: int = 0
 var _spend := Brain.Spend.new()
-## The request in the air, one of its own each time: a stopped run's request
-## is freed, never reused, so its reply cannot reach the next run.
-var _http: HTTPRequest = null
+## The request in the air (an HTTPRequest, or a Streamer), one of its own
+## each time: a stopped run's request is ended, never reused, so its reply
+## cannot reach the next run.
+var _asking: Node = null
+## Whether this run asks for its replies streamed: while the provider
+## streams and has not refused a stream the same request whole passes.
+var _streams: bool = false
+## Whether a streamed reply of this run has drawn bricks still standing.
+var _sketched: bool = false
 ## Which run is current: every wait of a run checks it is still this one.
 var _run_number: int = 0
 var _next_id: int = 0
@@ -96,6 +102,7 @@ func design(brief: String) -> void:
 	_calls = 0
 	_spend = Brain.Spend.new()
 	_turns = []
+	_streams = provider.reader() != null
 	# A frame first: the app answers initialize and tools/list at once, so
 	# the first word below was said before the panel, which follows the run
 	# as this returns (Main), was listening.
@@ -122,10 +129,13 @@ func design(brief: String) -> void:
 func stop() -> void:
 	if not _running:
 		return
-	if _http != null:
-		_http.cancel_request()
-		_http.queue_free()
-		_http = null
+	if _asking is HTTPRequest:
+		(_asking as HTTPRequest).cancel_request()
+		_asking.queue_free()
+	elif _asking is Streamer:
+		# It ends itself, and its wait with it (_ask).
+		(_asking as Streamer).stop()
+	_asking = null
 	_end(false, "stopped")
 
 
@@ -208,6 +218,12 @@ func _run(run: int) -> void:
 
 
 ## One reply from the provider, asked again while its refusal may pass.
+##
+## Streamed while the run streams. A stream lost part way is asked again
+## whole at once, as the in-app assistant asks again (Assistant._send); one
+## the provider refuses where the same request whole passes (a server that
+## copies the API but not its stream_options) makes the rest of the run ask
+## whole.
 func _reply(run: int) -> Provider.Reply:
 	var reply: Provider.Reply = null
 	for attempt: int in tries:
@@ -216,24 +232,78 @@ func _reply(run: int) -> Provider.Reply:
 			await get_tree().create_timer(2.0 * pow(2.0, attempt - 1)).timeout
 			if not _live(run):
 				return reply
-		var asked: Dictionary = provider.request(_system, _tools, _turns)
-		var http := HTTPRequest.new()
-		http.timeout = reply_timeout
-		add_child(http)
-		_http = http
-		var reply_raw: Array = [HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(),
-			PackedByteArray()]
-		if http.request(str(asked["url"]), asked["headers"], HTTPClient.METHOD_POST,
-				str(asked["body"])) == OK:
-			reply_raw = await http.request_completed
-		if _http == http:
-			_http = null
-			http.queue_free()
-		var code: int = int(reply_raw[1]) if int(reply_raw[0]) == HTTPRequest.RESULT_SUCCESS else 0
-		reply = provider.read(code, reply_raw[3])
+		var answer: Array = await _ask(_streams)
+		if not _live(run):
+			return reply
+		var code: int = _code_of(answer)
+		if _streams and code != 200 and (code == 0 or not Provider.transient(code)):
+			answer = await _ask(false)
+			if not _live(run):
+				return reply
+			if code != 0 and _code_of(answer) == 200:
+				_streams = false
+			code = _code_of(answer)
+		reply = provider.read(code, answer[3])
 		if reply.ok or not reply.again:
 			return reply
 	return reply
+
+
+## The next reply asked for, [param stream]ed or whole: what came, as
+## HTTPRequest gives it (result, code, headers, body).
+##
+## Streamed, a submit_design's bricks are drawn as they are written, as the
+## in-app assistant draws its own (Assistant.sketch_brick), and taken away
+## again when the reply has come: its calls run next, and the design they
+## build takes their place.
+func _ask(stream: bool) -> Array:
+	var asked: Dictionary = provider.request(_system, _tools, _turns, stream)
+	var came: Array = [HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray()]
+	if stream:
+		var streamer := Streamer.new()
+		streamer.quiet_seconds = reply_timeout
+		add_child(streamer)
+		_asking = streamer
+		var scanner := Assistant.Scanner.new()
+		streamer.fragment.connect(func(tool: String, piece: String) -> void:
+			if tool != "submit_design" or rpc.assistant == null:
+				return
+			for raw: Dictionary in scanner.feed(piece):
+				if raw.has("part"):
+					_sketched = true
+					rpc.assistant.sketch_brick(raw))
+		# Kept as it comes rather than awaited: a stream that cannot start
+		# says so before run returns.
+		streamer.done.connect(func(reply: Array) -> void: came.assign(reply))
+		await streamer.run(str(asked["url"]), asked["headers"], str(asked["body"]),
+			provider.reader())
+		if _asking == streamer:
+			_asking = null
+		streamer.queue_free()
+		_unsketch()
+		return came
+	var http := HTTPRequest.new()
+	http.timeout = reply_timeout
+	add_child(http)
+	_asking = http
+	if http.request(str(asked["url"]), asked["headers"], HTTPClient.METHOD_POST,
+			str(asked["body"])) == OK:
+		came = await http.request_completed
+	if _asking == http:
+		_asking = null
+		http.queue_free()
+	return came
+
+
+static func _code_of(answer: Array) -> int:
+	return int(answer[1]) if int(answer[0]) == HTTPRequest.RESULT_SUCCESS else 0
+
+
+## The bricks a streamed reply drew, taken away.
+func _unsketch() -> void:
+	if _sketched and rpc != null and rpc.assistant != null:
+		rpc.assistant.clear_sketch()
+	_sketched = false
 
 
 ## One call the model made, answered by the app as a call from Claude is.
@@ -342,4 +412,5 @@ func _end(ok: bool, summary: String) -> void:
 	if not _running:
 		return
 	_running = false
+	_unsketch()
 	finished.emit(ok, summary)

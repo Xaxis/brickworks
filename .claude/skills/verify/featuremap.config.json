@@ -3719,6 +3719,13 @@
       "area": "assistant"
     },
     {
+      "kind": "lib",
+      "label": "a design drawn as any provider writes it",
+      "entry": "src/ai/stream.gd",
+      "reach": "tools/probe.sh provider_apis_probe   (Anthropic's, Gemini's and Responses' replies streamed: the tower drawn brick by brick before its reply ends, gone before it is built; one reply streamed and whole on all four adapters, the same body read back); tools/probe.sh provider_loop_probe   (the same on Chat Completions, its usage from the last chunk, and a stream lost half way asked again whole)",
+      "area": "assistant"
+    },
+    {
       "kind": "cli",
       "label": "designer words probe",
       "entry": "src/dev/designer_words_probe.gd",

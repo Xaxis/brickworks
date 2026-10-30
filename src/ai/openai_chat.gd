@@ -21,11 +21,14 @@
 ##   says how for Responses alone), so the pictures of a turn's answers follow
 ##   them in one user message, each named by the call it came from. view_model
 ##   and the fresh look's three pictures reach the model that way.
+## - Streamed, a reply is chunks of deltas, a call's arguments in pieces under
+##   its index, and its usage in a last chunk of its own when stream_options
+##   asks (Chunks puts them back into the one reply).
 class_name OpenAIChat
 extends Provider
 
 
-func request(system: String, tools: Array, turns: Array) -> Dictionary:
+func request(system: String, tools: Array, turns: Array, stream: bool = false) -> Dictionary:
 	var messages: Array = [{"role": "system", "content": system}]
 	for turn: Dictionary in turns:
 		messages.append_array(_messages_of(turn))
@@ -41,11 +44,85 @@ func request(system: String, tools: Array, turns: Array) -> Dictionary:
 		# max_tokens; most servers that copy the API know only max_tokens.
 		body["max_completion_tokens" if base_url.contains("api.openai.com")
 			else "max_tokens"] = int(params["max_out"])
+	if stream:
+		body["stream"] = true
+		body["stream_options"] = {"include_usage": true}
 	var headers := PackedStringArray(["content-type: application/json"])
 	if not key.is_empty():
 		headers.append("authorization: Bearer " + key)
 	return {"url": address("chat/completions"), "headers": headers,
 		"body": JSON.stringify(body)}
+
+
+func reader() -> Streamer.Events:
+	return Chunks.new()
+
+
+## Chat Completions' chunks put back into the completion they came from: the
+## deltas' words joined, each call's arguments joined under its index, the
+## finish reason, and the usage.
+class Chunks extends Streamer.Events:
+	var _said: Dictionary = {"role": "assistant", "content": null}
+	var _calls: Array = []
+	var _finish: Variant = null
+
+	func take(event: Dictionary) -> Dictionary:
+		# An error said part way is no reply: not finished, so it is asked again.
+		if event.has("error"):
+			return {}
+		for word: String in event:
+			if not (word in ["choices", "object", "usage"]):
+				message[word] = event[word]
+		message["object"] = "chat.completion"
+		if event.get("usage") is Dictionary:
+			message["usage"] = event["usage"]
+		var out: Dictionary = {}
+		var choices: Array = event.get("choices", []) if event.get("choices") is Array else []
+		if not choices.is_empty() and choices[0] is Dictionary:
+			var choice: Dictionary = choices[0]
+			var delta: Dictionary = choice.get("delta", {}) if choice.get("delta") is Dictionary else {}
+			for word: String in delta:
+				if word == "tool_calls" and delta[word] is Array:
+					out["fragments"] = _called(delta[word])
+				elif word == "role":
+					_said[word] = delta[word]
+				# An empty piece adds nothing: a reply of calls alone keeps
+				# its content null, as it comes whole.
+				elif delta[word] is String and not (delta[word] as String).is_empty():
+					_said[word] = (str(_said[word]) if _said.get(word) is String else "") \
+						+ str(delta[word])
+			if delta.get("content") is String and not (delta["content"] as String).is_empty():
+				out["text"] = delta["content"]
+			if choice.get("finish_reason") is String:
+				_finish = choice["finish_reason"]
+				finished = true
+		var said: Dictionary = _said.duplicate()
+		if not _calls.is_empty():
+			said["tool_calls"] = _calls
+		message["choices"] = [{"index": 0, "message": said, "finish_reason": _finish}]
+		return out
+
+	## The pieces of calls in one delta, joined to the calls so far: each
+	## piece as [name, arguments].
+	func _called(pieces: Array) -> Array:
+		var out: Array = []
+		for raw: Variant in pieces:
+			if not (raw is Dictionary):
+				continue
+			var piece: Dictionary = raw
+			var index: int = int(piece.get("index", _calls.size()))
+			while _calls.size() <= index:
+				_calls.append({"id": "", "type": "function", "function": {"name": "", "arguments": ""}})
+			var call: Dictionary = _calls[index]
+			if piece.get("id") is String and not (piece["id"] as String).is_empty():
+				call["id"] = piece["id"]
+			var function: Dictionary = piece.get("function", {}) if piece.get("function") is Dictionary else {}
+			if function.get("name") is String and not (function["name"] as String).is_empty():
+				call["function"]["name"] = function["name"]
+			if function.get("arguments") is String:
+				call["function"]["arguments"] += function["arguments"]
+				out.append([call["function"]["name"], function["arguments"]])
+		return out
 
 
 ## MCP's tools as functions, portable.

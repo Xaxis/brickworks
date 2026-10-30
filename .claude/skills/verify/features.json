@@ -2200,6 +2200,14 @@
       "tests": []
     },
     {
+      "id": "lib:a design drawn as any provider writes it",
+      "kind": "lib",
+      "entry": "src/ai/stream.gd",
+      "reach": "tools/probe.sh provider_apis_probe   (Anthropic's, Gemini's and Responses' replies streamed: the tower drawn brick by brick before its reply ends, gone before it is built; one reply streamed and whole on all four adapters, the same body read back); tools/probe.sh provider_loop_probe   (the same on Chat Completions, its usage from the last chunk, and a stream lost half way asked again whole)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "lib:a model that tips falls",
       "kind": "lib",
       "entry": "src/assembly/topple.gd",
