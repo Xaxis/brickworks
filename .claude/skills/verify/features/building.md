@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe -->
 
 ## Sub-features
 
@@ -1957,6 +1957,24 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   middle is on the other's shaft (`_gap`): #17's pin into the back of its beam,
   #25's belt wheel by its hole on the axle, each a check. Rows in
   `shots/connect/walk.json`, pictures in `shots/connect/WxH/`.
+- `set walk probe` (`src/dev/setwalk_probe.gd`): windowed, about ten
+  minutes for both sets; `PROBE_SIZE=1400x900` for the big window. Builds
+  8841-1's 25 walk parts (section 9's order) and 5762-1's first 25 from the
+  set's bin: the bin's search clicked, the set's number typed, Build from it;
+  then each part's tile (wheel notches, or the scroll bar dragged when it is
+  more than a row off), `R` and `T` to its turn, the view by its keys or the
+  cube, the pointer aimed with up to four corrections and a click, a joint
+  part by its joint or by Connect (`N`, its end, the point it goes on), and
+  a typed rest (`-1lz`, Enter) where the pointer cannot slide it. Every
+  input is counted as CADTASK counts it (a click elsewhere a point and a
+  click, a key or character 1, a wheel notch 1, a scroll-bar drag 3); the
+  view and the turns are judged uncounted and then pressed counted. Bar:
+  12 actions a part or fewer for each set, and every part exact (the set's
+  number and colour, place to 0.05 LDU, turn to 0.002 or one the part looks
+  the same in, by its own mesh). `-- only=8841-1|5762-1`, `shots=1` for
+  pictures in `shots/setwalk/WxH/`, `from=library` for the same walk taken
+  from the whole library (search, the number, the tile, the swatch), the
+  figure before the set's bin. Rows in `shots/setwalk/<set>.json`.
 - `typed place and hinge` (`src/ui/inspector.gd`, `Builder.move_selection_by`,
   `Builder.hinge_angle`, 2026-10-17): Properties' X, Y and Z move the
   selection by exactly the difference typed, to the hundredth of an LDU
@@ -2011,6 +2029,30 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   the booklet and a shared link count a laid hose, tube, flexible axle or
   string as the one part sold (`Flex.items_in`, `Flex.real_part`, see
   [model-io](model-io.md)); a chain or a tread as its links.
+- `bands and springs by hand` (`src/assembly/bands.gd`, the tool's part in
+  `src/ui/flex_tool.gd`, LDCad's path and spring the reference): a rubber belt
+  (85543, 85545, 85546, u151) or a shock absorber picked in the bin opens the
+  flexible part tool on it instead of putting it down (`Main._on_part_chosen`,
+  `FlexTool.lays_part`); a bare spring is Build, Hose, tube or chain…, Spring
+  or shock. A band: click the pulleys, wheels, bushes or axles it goes round in
+  order (pointing lights one yellow; a groove before an axle). Each click lays
+  it again: tangent runs and arcs (`Bands.loop`), each round wrapped on the
+  side the order turns at it, its centreline the band's half thickness out of
+  the groove measured off the part's mesh (`Bands.round_of`, so it needs a
+  renderer: a headless run finds nothing round). The band is "The band that
+  fits" (the longest no longer than the loop) or one chosen; slack or more
+  than twice stretched is said. A spring: two clicks on pin holes, pins, axle
+  holes or axles; its coil gets as many turns as its length gives at its
+  pitch, and keeps them when stretched or squeezed; a shock is its cylinder,
+  coil and rod on pins beside the holes, 88 to 110 LDU between its eyes. Both
+  are sub-assemblies of pieces the app makes (`bw-belt-<band>`, `bw-coil-
+  <spring>-<turns>`, saved inside the file as LDraw can read them, never in
+  the bin), counted as the real band or shock. Making or reshaping is one undo
+  step however many clicks. Nudging or moving a part one is on lays it again
+  there in the same undo step (`FlexTool.follow_moved`, from
+  `Main._on_model_edited`); its pieces never stop that move
+  (`Builder._only_bands`). Reshape reads one back off its pieces. Probe:
+  `springs_probe` (windowed; `PROBE_SIZE=1280x720` for a laptop).
 - `build a real set by hand in a browser` (`tools/web/cad_task_flow.mjs`,
   `tools/bench/cadtask_klm.py`, 2026-10-16; run by `tools/bench/cadtask.py
   build`, written up in `docs/CADTASK.md`): three small real sets (20 to 80
@@ -2256,10 +2298,16 @@ godot --headless --path . --script src/dev/technic_hand_probe.gd
 # round two gears by two clicks; saved, reopened and reshaped from its pieces.
 # Pictures in shots/flex/
 MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd
+# a band from the bin round two wedge belt wheels and three, within 1 LDU of
+# the tangents and arcs by hand; turned and tilted; following a wheel nudged;
+# a spring stretched 4 to 6 studs keeping its turns; a shock; saved and opened.
+# Pictures and the saved file in shots/springs/
+bash tools/probe.sh springs_probe; PROBE_SIZE=1280x720 bash tools/probe.sh springs_probe
 ```
 
 Proves it when: each exits 0 with no `FAIL` line, and ends on its sentence —
 `snap` says "hand placement lands where the assistant would put it",
+`springs` says "springs: bands round two wheels and three, ...",
 `technic_hand` says "by hand: a pin into a hole, ... and check_design agrees",
 `handbuild` says "by hand: ... all work as a person uses them", `outline` says
 "a selection is drawn as a line round its silhouette, never over it, ..." (look
