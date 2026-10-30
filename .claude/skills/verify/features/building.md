@@ -2067,8 +2067,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (a brick with studs on its side) goes onto those studs: a socket on the stud
   nearest the pointer, flat on the face (`Builder._onto_side_studs`).
 - `hoses and chains by hand` (`src/ui/flex_tool.gd`, the laying itself in
-  `src/assembly/flex.gd`): Make, Hose, tube or chain… opens a panel over the
-  model's left edge — what to lay (pneumatic tube, ribbed hose, flex-system
+  `src/assembly/flex.gd`): Make, Hose, tube or chain… opens a panel in a column
+  beside the model's (main's `_tool_column`, Simulate's too), never over it:
+  over the model's left edge it covered the left one of two gears a chain was
+  to go round at 1400 x 900 (keys3). Opening it folds the parts column, Done
+  puts it back; where nothing folds and the column would take a part in sight
+  out of the model's room, the view steps back by as much as the room
+  narrowed. In the panel, what to lay (pneumatic tube, ribbed hose, flex-system
   hose, flexible axle, string with end studs, Technic chain, tread) and how long
   a real part ("The shortest that fits" by default: the shortest that neither
   falls short nor bends tighter than it goes). The tool has the left button,
@@ -2087,8 +2092,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   pieces (`Flex.ends_of_item`, `centreline`): ends on the connectors they are
   at, length the nearest real one's, the fewest bend points that lay it within
   a few LDU of where it lies. `window.brickworksFlex` says the stage, the item,
-  and where on screen each connector, sprocket and bend point is. Probe:
-  `flex_ui_probe` (windowed). The parts list, the shop lists, the counts line,
+  and where on screen each connector, sprocket and bend point is. Probes:
+  `flex_ui_probe` (windowed); `flex_room_probe` (windowed, 1280 x 720 and
+  `PROBE_SIZE=1400x900`) turns round flex_pose_flow's model at two heights and
+  finds every pin hole and gear in the model's room with nothing over it, lays
+  the chain by two clicks, and keeps a zoomed-in model's edge parts in sight
+  when the column narrows the room. The parts list, the shop lists, the counts line,
   the booklet and a shared link count a laid hose, tube, flexible axle or
   string as the one part sold (`Flex.items_in`, `Flex.real_part`, see
   [model-io](model-io.md)); a chain or a tread as its links.
@@ -2369,6 +2378,10 @@ godot --headless --path . --script src/dev/technic_hand_probe.gd
 # round two gears by two clicks; saved, reopened and reshaped from its pieces.
 # Pictures in shots/flex/
 MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd
+# the hose tool's panel beside the model, over no pin hole or gear at any of
+# 24 views, a chain laid by two clicks, a zoomed-in model kept in sight.
+# Pictures in shots/flex_room/
+bash tools/probe.sh flex_room_probe; PROBE_SIZE=1400x900 bash tools/probe.sh flex_room_probe
 # a band from the bin round two wedge belt wheels and three, within 1 LDU of
 # the tangents and arcs by hand; turned and tilted; following a wheel nudged;
 # a spring stretched 4 to 6 studs keeping its turns; a shock; saved and opened,
@@ -2380,6 +2393,9 @@ bash tools/probe.sh springs_probe; PROBE_SIZE=1280x720 bash tools/probe.sh sprin
 Proves it when: each exits 0 with no `FAIL` line, and ends on its sentence —
 `snap` says "hand placement lands where the assistant would put it",
 `springs` says "springs: bands round two wheels and three, ...",
+`flex_room` says "flex room: the hose tool's panel is beside the model and over
+none of it" (look at `shots/flex_room/*.png`: the panel in a dark column at the
+left, the gears and bricks to its right),
 `technic_hand` says "by hand: a pin into a hole, ... and check_design agrees",
 `handbuild` says "by hand: ... all work as a person uses them", `outline` says
 "a selection is drawn as a line round its silhouette, never over it, ..." (look
