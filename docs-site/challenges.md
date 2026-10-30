@@ -7,7 +7,7 @@ nav: The monthly challenge
 description: Each month's theme, how to enter a model, how voting works, and how a month ends.
 ---
 
-[brickworks.diy/challenge](/challenge) is this month's challenge: a theme and its rules, the entries so far, and the votes.
+[brickworks.diy/challenge](/challenge) is this month's challenge: a theme and its rules, the entries so far, and the votes. **Share** under its brief opens the sheet a model's page has, with the challenge's own link (`/challenge?id=<n>`), which still opens this challenge after the next one begins.
 
 <!-- covers
 ui:this month's challenge page

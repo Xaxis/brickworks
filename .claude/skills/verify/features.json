@@ -3838,7 +3838,7 @@
       "id": "ui:model page action bar",
       "kind": "ui",
       "entry": "web/model-page.js",
-      "reach": "https://brickworks.diy/m/<id>   (Like, Save: Favourites and your collections, Share: the link copied or the share sheet, Comment, I built it, More: the embed code, Report it; Like and Save sign in on the way)",
+      "reach": "https://brickworks.diy/m/<id>   (Like, Save: Favourites and your collections, Share: the share sheet with its link, Post it to each network and the embed code, Comment, I built it, More: Report it; Like and Save sign in on the way)",
       "area": "web",
       "tests": []
     },
@@ -4251,7 +4251,7 @@
       "id": "ui:shared model page and card",
       "kind": "ui",
       "entry": "web/share-page.js",
-      "reach": "https://brickworks.diy/m/<id>  and  /m/<id>/embed   (served by api/share.js; web/directory.css, web/share-page.js counts the view)",
+      "reach": "https://brickworks.diy/m/<id>  and  /m/<id>/embed  and  /oembed?url=https://brickworks.diy/m/<id>   (served by api/share.js; web/directory.css, web/share-page.js counts the view)",
       "area": "web",
       "tests": []
     },

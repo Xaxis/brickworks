@@ -480,6 +480,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})[.]mpd", "dest": "/api/share?op=file&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/parts[.](json|xml|csv)", "dest": "/api/share?op=parts&id=\$1&as=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
+    { "src": "/oembed/?", "dest": "/api/share?op=oembed" },
     { "src": "/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$1" },
     { "src": "/c/([A-Za-z0-9]{10})/?", "dest": "/api/people?op=list_page&id=\$1" },
     { "src": "/collections/?", "dest": "/api/people?op=collections_page" },

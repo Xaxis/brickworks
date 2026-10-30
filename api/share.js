@@ -23,6 +23,10 @@
 //                            /m/X/v/N.cutout.png
 //   GET  ?op=embed&id=X      /m/X/embed: a card for a blog or a forum to
 //                            put in an iframe
+//   GET  ?op=oembed&url=L    /oembed: oEmbed's answer for a model's link
+//                            L (its card's iframe, name, credit and
+//                            picture), which /m/X's head names for
+//                            WordPress, a forum or Iframely to find
 //   GET  ?op=file&id=X       /m/X.mpd: the model's file, as it is stored,
 //                            to download (with v=N, /m/X/v/N.mpd, version
 //                            N's), named for the model
@@ -239,7 +243,7 @@ import { challengeLine, withWins } from "./_challenges.js";
 import { MADE_WITH, cardHtml, marksOf, quietMarks } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
-import { avatarHtml, iconButtonHtml, iconHtml } from "./_card.js";
+import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
 // Whose picture to show beside their name (supabase/avatars.sql).
 import { withFaces } from "./_faces.js";
 // The public collections a model is in, each a card with its cover
@@ -808,7 +812,7 @@ ${canonical ? `<link rel="canonical" href="${escapeHtml(canonical)}">\n` : ""}<m
 <meta name="twitter:title" content="${escapeHtml(title)}">
 <meta name="twitter:description" content="${escapeHtml(description)}">
 <meta name="twitter:image" content="${escapeHtml(image)}">
-<link rel="icon" href="/icon.svg" type="image/svg+xml">
+${link.embed ? `<link rel="alternate" type="application/json+oembed" href="${escapeHtml(`${origin}/oembed?url=${encodeURIComponent(link.url)}&format=json`)}" title="${escapeHtml(row ? row.name : title)}">\n` : ""}<link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">`;
 }
 
@@ -1083,24 +1087,15 @@ function actionBar(origin, id, model, url = links(origin, id).url) {
     + shareSheet(origin, id, model, url);
 }
 
-/// Share's sheet (docs/SOCIAL.md U14), the site's dialog: the page's link
-/// and the code that embeds its card (/m/X/embed) in somebody else's page,
-/// each with Copy, and on a phone its own share sheet too (web/model-page.js
-/// shows that button where the browser has one). Closed, with no script.
+/// Share's sheet (docs/SOCIAL.md U14 and section 7), web/card.js's, the
+/// same on every page with Share: the page's link, the networks to post it
+/// to, and the code that embeds its card (/m/X/embed) in somebody else's
+/// page. A set has no embed.
 function shareSheet(origin, id, model, url) {
-  return `<dialog class="share-sheet" id="share-sheet" aria-labelledby="share-h">`
-    + `<h2 id="share-h">Share ${escapeHtml(model.name)}</h2>`
-    + `<p>Its link opens this page, where anybody can turn it in 3D and build it, with no account.</p>`
-    + `<form method="dialog">`
-    + `<div class="copy-row"><label>Its link<input id="share-link" value="${escapeHtml(url)}" readonly spellcheck="false"></label>`
-    + `<button type="button" class="cta" data-copy="share-link">Copy link</button></div>`
-    + (links(origin, id).embed ? `<div class="copy-row"><label>Embed it in a page <small>Its picture and name, opening it here, light or dark to suit whoever looks at it</small>`
-    + `<textarea id="share-embed" rows="4" readonly spellcheck="false">${escapeHtml(links(origin, id).embed)}</textarea></label>`
-    + `<button type="button" class="cta ghost" data-copy="share-embed">Copy code</button></div>` : "")
-    + `<p class="said" role="status"></p>`
-    + `<div class="actions"><button type="button" class="cta ghost" data-share-app hidden>Share with another app</button>`
-    + `<button class="cta ghost" value="close">Close</button></div>`
-    + `</form></dialog>`;
+  const link = links(origin, id);
+  return shareSheetHtml({ url, name: model.name, text: `${model.name} on Brickworks`,
+    about: "Its link opens this page, where anybody can turn it in 3D and build it, with no account.",
+    image: model.has_image || model.library ? link.image : "", embed: link.embed });
 }
 
 /// /m/X: the model's own page. Its picture first, with the strip of its
@@ -1495,6 +1490,71 @@ ${footer || `<footer><small>${NOTICE}</small></footer>`}
 </html>`;
 }
 
+/// The model a link names for oEmbed: its id from /m/X, /m/X/, /m/X/embed
+/// or an older version's /m/X/v/N, on this site (any of its addresses, a
+/// preview's too) or brickworks.diy; null for any other link.
+export function oembedId(link, origin) {
+  let url;
+  try {
+    url = new URL(String(link || ""));
+  } catch {
+    return null;
+  }
+  const ours = [new URL(origin).host, "brickworks.diy", "www.brickworks.diy"];
+  if (!/^https?:$/.test(url.protocol) || !ours.includes(url.host)) return null;
+  const found = url.pathname.match(/^\/m\/([A-Za-z0-9]{10})(?:\/v\/[1-9][0-9]{0,5}|\/embed)?\/?$/);
+  return found ? found[1] : null;
+}
+
+/// The embed's size for oEmbed: 560 x 420, four to three, made smaller to
+/// fit within [maxwidth] and [maxheight] when a consumer asks.
+export function oembedSize(maxwidth, maxheight) {
+  let width = 560;
+  let height = 420;
+  const most = (value) => (Number.isFinite(Number(value)) && Number(value) >= 1 ? Math.floor(Number(value)) : Infinity);
+  if (most(maxwidth) < width) [width, height] = [most(maxwidth), Math.round((most(maxwidth) * 3) / 4)];
+  if (most(maxheight) < height) [width, height] = [Math.round((most(maxheight) * 4) / 3), most(maxheight)];
+  return { width, height };
+}
+
+/// /oembed?url=<a model's link> (docs/SOCIAL.md section 7, oembed.com): what
+/// WordPress, Ghost, Notion, a Discourse forum or Iframely asks to put a
+/// model's card in a page from its bare link, as Sketchfab's /oembed is
+/// asked for its viewer ([SK-O]). A rich answer, the card's iframe
+/// (/m/X/embed) at four to three, its name, whom it credits, its picture;
+/// JSON only (501 for format=xml, as the spec says), 404 for a link that
+/// is not a model shared here, and only what its page says to anybody.
+async function oembed(request, response, origin) {
+  const format = String(request.query?.format || "json");
+  if (format !== "json") return response.status(501).json({ error: "JSON only: format=json" });
+  const id = oembedId(request.query?.url, origin);
+  if (!id) return response.status(404).json({ error: "name a model's link: url=https://brickworks.diy/m/<id>" });
+  const row = await publishedRow(id);
+  if (!row) return response.status(404).json({ error: "There is no model shared at that link." });
+  const model = { ...row, by: await profileOf(id, row.author) };
+  const link = links(origin, id);
+  const { width, height } = oembedSize(request.query?.maxwidth, request.query?.maxheight);
+  const credit = creditName(model);
+  response.setHeader("Cache-Control", SHARED_CACHE);
+  return response.status(200).json({
+    version: "1.0",
+    type: "rich",
+    provider_name: "Brickworks",
+    provider_url: origin,
+    title: row.name,
+    ...(credit ? { author_name: credit } : {}),
+    ...(model.by && model.by.handle && !modelledByOf(model.modelled_by) ? { author_url: `${origin}/u/${model.by.handle}` } : {}),
+    html: `<iframe src="${escapeHtml(`${link.url}/embed`)}" width="${width}" height="${height}" style="border:0;max-width:100%" `
+      + `title="${escapeHtml(`${row.name}, a Brickworks model`)}" loading="lazy"></iframe>`,
+    width,
+    height,
+    thumbnail_url: row.has_image ? link.image : `${origin}/share.png`,
+    thumbnail_width: 1200,
+    thumbnail_height: 630,
+    cache_age: 3600,
+  });
+}
+
 /// /m/X/embed: a card sized for an iframe. The app itself cannot run in
 /// somebody else's page — its threaded engine needs the page to be
 /// cross-origin isolated, which only the top window can ask for — so the
@@ -1784,6 +1844,7 @@ async function read(request, response) {
   if (op === "list") return gallery(request, response, origin);
   if (op === "shelves") return shelves(request, response, origin);
   if (op === "sitemap") return sitemap(response, origin);
+  if (op === "oembed") return oembed(request, response, origin);
   // The LDraw library's sets (api/_library.js): /library's list, and each
   // set's page, cover, file and parts.
   // With tests=1, the OMR's arrivals staged for the lead to let out too

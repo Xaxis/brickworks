@@ -16,6 +16,7 @@
 import { age, askAgeIfAsked, askToSignIn, call, signOut, signedIn } from "/account.js";
 import { followsSent, showFeedCount } from "/follow.js";
 import { avatarHtml, awardsHtml, toast } from "/kit.js";
+import { openShare, sheetFor } from "/share-sheet.js";
 
 // What only a signed-in page draws (card.js, designs.js), fetched as the
 // page starts when this browser has a sign-in, and not at all when not:
@@ -776,22 +777,14 @@ async function load() {
   document.documentElement.dataset.profile = "ready";
 }
 
-for (const button of document.querySelectorAll("[data-share-page]")) button.addEventListener("click", async () => {
-  const url = `${location.origin}/u/${handleOf()}`;
-  if (navigator.share && matchMedia("(pointer: coarse)").matches) {
-    try {
-      await navigator.share({ title: `${mine.profile.name} on Brickworks`, url });
-      return;
-    } catch (trouble) {
-      if (trouble?.name === "AbortError") return;
-    }
-  }
-  try {
-    await navigator.clipboard.writeText(url);
-    toast("Link copied");
-  } catch {
-    toast(`Could not copy it: your page is ${url}`);
-  }
+// Share your page: the sheet every page's Share opens (web/share-sheet.js),
+// made for your /u/ page as it is now, its banner the picture a post pins.
+for (const button of document.querySelectorAll("[data-share-page]")) button.addEventListener("click", () => {
+  const banner = $("banner-shown").querySelector("img")?.getAttribute("src")?.match(/^\/m\/([A-Za-z0-9]{10})\./)?.[1];
+  const name = mine?.profile?.name || handleOf();
+  openShare(sheetFor({ url: `${location.origin}/u/${handleOf()}`, name, text: `${name} on Brickworks`,
+    about: "Its link opens your page, as everybody sees it: your models, your builds and your collections.",
+    image: banner ? `${location.origin}/m/${banner}.png` : "" }));
 });
 $("sign-in").addEventListener("click", async () => {
   if (await askToSignIn()) {

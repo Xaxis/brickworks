@@ -115,6 +115,52 @@ export function awardsHtml(awards, { id = "" } = {}) {
   }).join("")}</ul>`;
 }
 
+/// Where Share's sheet posts a page (docs/SOCIAL.md section 7), as
+/// Sketchfab's and Mecabricks' do: each network's own page for sharing a
+/// link, opened in a tab of its own, so nothing of theirs loads here and
+/// nothing goes to them until somebody chooses one (D13). [text] is what
+/// the post says; Pinterest pins a picture, so it is offered only with one.
+export function shareTargets({ url, text, image = "" }) {
+  const u = encodeURIComponent(url);
+  const t = encodeURIComponent(text);
+  return [
+    ["reddit", "Reddit", `https://www.reddit.com/submit?url=${u}&title=${t}`],
+    ["bluesky", "Bluesky", `https://bsky.app/intent/compose?text=${encodeURIComponent(`${text} ${url}`)}`],
+    image ? ["pinterest", "Pinterest", `https://www.pinterest.com/pin/create/button/?url=${u}`
+      + `&media=${encodeURIComponent(image)}&description=${t}`] : null,
+    ["x", "X", `https://x.com/intent/tweet?url=${u}&text=${t}`],
+    ["facebook", "Facebook", `https://www.facebook.com/sharer/sharer.php?u=${u}`],
+    ["email", "Email", `mailto:?subject=${t}&body=${u}`],
+  ].filter(Boolean);
+}
+
+/// Share's sheet, every page's (docs/SOCIAL.md U14 and section 7): the
+/// site's dialog with the page's link and Copy, the networks to post it to
+/// (shareTargets), the code that embeds it where it has one ([embed]), and
+/// a way to the phone's own share sheet, which web/share-sheet.js shows
+/// where the browser has one. [name] heads it, [about] says what the link
+/// opens, [text] is what a post says. Closed, and inert with no script.
+export function shareSheetHtml({ url, name, about = "", text = name, image = "", embed = "" }) {
+  const to = shareTargets({ url, text, image }).map(([key, label, href]) => `<a class="cta ghost small" data-to="${key}" `
+    + `href="${escapeHtml(href)}"${key === "email" ? "" : ' target="_blank" rel="noopener noreferrer"'}>${label}`
+    + `${key === "email" ? "" : '<span class="visually-hidden"> (opens in a new tab)</span>'}</a>`).join("");
+  return `<dialog class="share-sheet" id="share-sheet" aria-labelledby="share-h" data-title="${escapeHtml(text)}">`
+    + `<h2 id="share-h">Share ${escapeHtml(name)}</h2>`
+    + (about ? `<p>${escapeHtml(about)}</p>` : "")
+    + `<form method="dialog">`
+    + `<div class="copy-row"><label>Its link<input id="share-link" value="${escapeHtml(url)}" readonly spellcheck="false"></label>`
+    + `<button type="button" class="cta" data-copy="share-link">Copy link</button></div>`
+    + `<div class="share-to" role="group" aria-labelledby="share-to-h"><p id="share-to-h">Post it to</p>${to}</div>`
+    + (embed ? `<div class="copy-row"><label>Embed it in a page <small>Its picture and name, opening it here, `
+      + `light or dark to suit whoever looks at it</small>`
+      + `<textarea id="share-embed" rows="4" readonly spellcheck="false">${escapeHtml(embed)}</textarea></label>`
+      + `<button type="button" class="cta ghost" data-copy="share-embed">Copy code</button></div>` : "")
+    + `<p class="said" role="status"></p>`
+    + `<div class="actions"><button type="button" class="cta ghost" data-share-app hidden>Share with another app</button>`
+    + `<button class="cta ghost" value="close">Close</button></div>`
+    + `</form></dialog>`;
+}
+
 /// A card's like, as a screen reader says it: "Like Watchtower".
 export const likeName = (name) => `Like ${String(name || "").trim() || "it"}`;
 

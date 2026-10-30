@@ -54,10 +54,10 @@ ui:model page pictures and tabs
 
 - **Build it**, **Open in Brickworks** (a copy in your own models) and **Download** are first.
 - **Like** and **Save** (to your Favourites or one of [your collections](/docs/collections)) sign you in on the way if they need to.
-- **Share** copies the link, or opens your device's share sheet.
+- **Share** opens a sheet with the link and **Copy link**; **Post it to** Reddit, Bluesky, Pinterest, X, Facebook or email, each opening that site's own page for sharing it in a new tab; and the code to embed the model in a page of your own (`/m/<id>/embed`), its picture and name with **Build it**. On a phone the sheet also offers your device's own share sheet. Paste the model's bare link into a blog, Notion or a forum that reads oEmbed and it becomes that embed by itself.
 - **Comment** goes to the comments.
 - **Built** (I built it) says you built it, with a photo of your build if you like; the photo is cleaned of what the camera wrote into it before it is kept.
-- **More** has the code to embed the model in a page of your own (`/m/<id>/embed`) and **Report it**.
+- **More** has **Report it** and the takedown page.
 - On your own model's page, **Enter this month's challenge** sits under Like ([the challenge](/docs/challenges)).
 
 <!-- covers

@@ -11,6 +11,7 @@
 // as text, never as markup; a link is built from a model's id alone.
 import { askToSignIn, call, signedIn } from "/account.js";
 import { counted, modelCard } from "/card.js";
+import { openShare, sheetFor } from "/share-sheet.js";
 
 const $ = (id) => document.getElementById(id);
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -151,6 +152,13 @@ function draw() {
     : c.state === "upcoming" ? `Opens on ${dayOf(c.starts_on)}, until ${dayOf(c.ends_on)}`
       : `Ran from ${dayOf(c.starts_on)} to ${dayOf(c.ends_on)}: it has ended`;
   $("brief").textContent = c.brief;
+  // Share: its own page, which stays this challenge's after the next opens.
+  const days = c.state === "upcoming" ? `opens ${dayOf(c.starts_on)}` : `${dayOf(c.starts_on)} to ${dayOf(c.ends_on)}`;
+  $("share").hidden = false;
+  $("share").onclick = () => openShare(sheetFor({ url: `${location.origin}${pageOf(c.id)}`, name: c.title,
+    text: `${c.title}: a Brickworks building challenge, ${days}`,
+    about: c.state === "ended" ? "Its link opens this challenge: its brief, its entries and its winners."
+      : "Its link opens this challenge: its brief, its rules and how to enter." }));
   const rules = $("rules");
   rules.replaceChildren(...(c.rules_said || []).map((text) => {
     const item = document.createElement("li");

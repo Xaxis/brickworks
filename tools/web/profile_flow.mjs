@@ -206,6 +206,8 @@ async function open(pathname, { width, theme, signedIn = null, label }) {
     const keep = { writeText: async (text) => { window.copiedText = String(text); } };
     try {
       Object.defineProperty(navigator, "clipboard", { value: keep, configurable: true });
+      // The share sheet uses the clipboard only on a secure page (web/share-sheet.js copy).
+      Object.defineProperty(window, "isSecureContext", { value: true, configurable: true });
     } catch { /* kept as the browser has it */ }
   });
   const page = await context.newPage();
@@ -256,10 +258,24 @@ async function local() {
         // Jo follows Robin; Robin does not follow Jo: nobody's followers are listed.
         check(`${label}: no list of who follows Robin`, !(await page.content()).includes("jo-bricks"));
         if (width >= 600 && who === "out") {
+          // Share opens the site's share sheet (docs/SOCIAL.md section 7):
+          // the page's link, Copy link said in the sheet, and Post it to,
+          // Pinterest pinning Robin's banner.
           await page.click("button[data-share]");
-          const told = await until(page, () => document.querySelector("body > .toast.shown")?.textContent === "Link copied");
-          const copied = await page.evaluate(() => window.copiedText || "");
-          check(`${label}: Share copies the page's link ("${copied}") and says so`, told && copied === `${stand.ORIGIN}/u/${stand.HANDLE}`);
+          const sheet = await until(page, () => document.querySelector("dialog.share-sheet[open]")
+            && document.activeElement?.id === "share-link");
+          await page.click('dialog.share-sheet [data-copy="share-link"]');
+          const told = await until(page, () => document.querySelector("dialog.share-sheet .said")?.textContent === "Link copied");
+          const got = await page.evaluate(() => ({ copied: window.copiedText || "", link: document.getElementById("share-link")?.value,
+            to: [...document.querySelectorAll("dialog.share-sheet .share-to a[data-to]")].map((a) => `${a.dataset.to} ${a.href}`) }));
+          const url = `${stand.ORIGIN}/u/${stand.HANDLE}`;
+          check(`${label}: Share opens its sheet on the page's link (${got.link}); Copy link copies it ("${got.copied}") and says so; `
+            + `Post it to ${got.to.map((one) => one.split(" ")[0]).join(", ")}`, Boolean(sheet) && told && got.link === url && got.copied === url
+            && ["reddit", "bluesky", "pinterest", "x", "facebook", "email"].every((to) => got.to.some((one) => one.startsWith(`${to} `)
+              && one.includes(encodeURIComponent(url))))
+            && got.to.some((one) => one.startsWith("pinterest ") && one.includes(encodeURIComponent("/m/"))));
+          await page.keyboard.press("Escape");
+          await until(page, () => !document.querySelector("dialog.share-sheet[open]"));
           await page.click(".profile-head .more-menu summary");
           check(`${label}: More opens with Report it`, await until(page, () => document.querySelector(".profile-head .more-menu[open] button[data-report]")?.offsetParent !== null));
           await page.keyboard.press("Escape");

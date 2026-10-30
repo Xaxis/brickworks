@@ -345,15 +345,24 @@ is on the page, `hidden`, for the script to show.
   (Like, Save, Share, Comment, I built it) with the more menu at its end;
   one row across the column on a phone. `api/share.js` `actionBar`,
   `web/model-page.js`.
-- **Share's sheet** (docs/SOCIAL.md U14): `dialog.share-sheet`, the site's
-  dialog made wider for the embed code, opened by Share: the page's link
-  (selected as it opens) and the embed code, each a field in a `.copy-row`
-  with its Copy beside it (under it on a phone), Copy link the primary;
-  what was copied said in the sheet's own `.said` status line, since the
-  toast is behind a modal dialog for a screen reader too; Share with
-  another app (the phone's own sheet, given the link) only where the
-  browser has one; Close, and Escape, back on Share. `api/share.js`
-  `shareSheet`, `web/model-page.js`. The embed (`/m/<id>/embed`) loads
+- **Share's sheet** (docs/SOCIAL.md U14 and section 7): `dialog.share-sheet`,
+  the site's dialog made wider for the embed code, the same on every page
+  with Share (a model's, a set's, a person's, your own, a collection's, the
+  challenge's): the page's link (selected as it opens) in a `.copy-row`
+  with Copy beside it (under it on a phone), Copy link the primary; then
+  `.share-to`, "Post it to" and a `.cta.ghost.small` link to each
+  network's own share page (Reddit, Bluesky, Pinterest where there is a
+  picture, X, Facebook, Email), each opening in a new tab, nothing of
+  theirs loaded until one is pressed; then the embed code where the page
+  has one, its own `.copy-row`; what was copied or opened said in the
+  sheet's own `.said` status line, since the toast is behind a modal
+  dialog for a screen reader too; Share with another app (the phone's own
+  sheet, given the link) only where the browser has one; Close, and
+  Escape, back on Share. One renderer, `web/card.js` `shareSheetHtml`, drawn
+  by the server's pages and by `web/share-sheet.js` `sheetFor` for a page
+  that draws itself; `web/share-sheet.js` makes it work. A model's page
+  names its oEmbed (`/oembed?url=`) in its head, so its bare link becomes
+  the embed in a page that reads oEmbed. The embed (`/m/<id>/embed`) loads
   `web/theme.js` as every page does, so it is in the theme its viewer chose
   where their browser lets a frame read the site's own storage, else their
   device's; `<html data-embed>`, so it never asks their account. Its

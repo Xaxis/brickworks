@@ -994,6 +994,7 @@ const PAGES = [
   [/^\/m\/([A-Za-z0-9]{10})[.]cutout[.]png$/, "share", "cutout"],
   [/^\/m\/([A-Za-z0-9]{10})[.]webp$/, "share", "thumb"],
   [/^\/m\/([A-Za-z0-9]{10})\/embed\/?$/, "share", "embed"],
+  [/^\/oembed\/?$/, "share", "oembed"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/?$/, "share", "page"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]png$/, "share", "image"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]cutout[.]png$/, "share", "cutout"],
@@ -1014,7 +1015,8 @@ function routeOf(pathname) {
     const found = pattern.exec(pathname);
     if (!found) continue;
     if (name === "share") {
-      return { name, query: { op, id: found[1], ...(found[2] ? { v: found[2] } : {}), ...(found[3] ? { as: found[3] } : {}) } };
+      return { name, query: { op, ...(found[1] ? { id: found[1] } : {}), ...(found[2] ? { v: found[2] } : {}),
+        ...(found[3] ? { as: found[3] } : {}) } };
     }
     return { name, query: op === "page" ? { op, handle: found[1] } : { op, id: found[1] } };
   }
@@ -2034,7 +2036,7 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
       return route.fulfill({ status: said.status, contentType: "application/json", body: asProject(JSON.stringify(said.json)) });
     }
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
-    if (/^\/(m|u|c)\//.test(url.pathname) || /^\/collections\/?$/.test(url.pathname)) {
+    if (/^\/(m|u|c)\//.test(url.pathname) || /^\/(collections|oembed)\/?$/.test(url.pathname)) {
       const made = await serverPage(api, url.pathname + url.search);
       // With the security policy the server sends with it. A picture the
       // server makes (/m/X.cutout.png) as the bytes and type it answered:

@@ -206,7 +206,7 @@ import { withFaces } from "./_faces.js";
 import { FIRST_SCREEN, cardHtml, marksOf, quietMarks } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
-import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml } from "./_card.js";
+import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
 import { challenge, challengeEntry, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -1201,7 +1201,8 @@ async function profilePage(request, response) {
       ${follows && follows.ready ? `<p class="follow-line"><button type="button" class="cta ghost follow"
         data-follow="${escapeHtml(person.handle)}" hidden>Follow</button><span class="said" role="status"></span></p>
       <a class="cta ghost" href="/profile?edit=1" data-edit-own hidden>Edit profile</a>` : ""}
-      ${iconButtonHtml({ icon: "share", name: "Share", attrs: `data-share="${escapeHtml(url)}" hidden` })}
+      ${iconButtonHtml({ icon: "share", name: "Share",
+        attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
       ${more}
     </div>
   </header>
@@ -1276,7 +1277,10 @@ async function profilePage(request, response) {
     <p class="note">${name} chose to show whom they follow.</p>
     <ul class="pills">${following.map((one) => `<li><a class="pill" href="/u/${escapeHtml(one.handle)}">`
       + `${avatarHtml({ handle: one.handle, name: one.name, picture: one.picture }, { size: "small" })}${escapeHtml(one.name)}</a></li>`).join("")}</ul></section>` : ""}
-</div>`;
+</div>
+${shareSheetHtml({ url, name: person.name, text: `${person.name} on Brickworks`,
+    about: "Its link opens their page: their models, their builds and their collections.",
+    image: showcase.banner ? `${origin}/m/${showcase.banner}.png` : shown.models[0]?.image || "" })}`;
   const told = earned
     ? `${count(earned.models, "model")} by ${person.name}, ${count(earned.builds, "build")} finished and ${count(earned.remixes, "remix", "remixes")}: designed in Brickworks.`
     : `${count(about?.models ?? 0, "model")} by ${person.name}, built in Brickworks and shared in its gallery.`;
@@ -1328,14 +1332,18 @@ async function listPage(request, response) {
       <div class="acts">
         ${ready ? `<p class="follow-line"><button type="button" class="cta ghost follow" data-follow-list="${id}" hidden>Follow</button>`
           + `<span class="said" role="status"></span></p>` : ""}
-        ${iconButtonHtml({ icon: "share", name: "Share", attrs: `data-share="${escapeHtml(url)}" hidden` })}
+        ${iconButtonHtml({ icon: "share", name: "Share",
+          attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
         ${more}
       </div>
     </div>
   </header>
   ${shown.models.length ? `<div class="models">${shown.models.map((card, i) => cardHtml(card, { eager: i < FIRST_SCREEN })).join("")}</div>`
     : `<p class="state">Nothing in it is in the gallery just now. The models put in it show here once they are.</p>`}
-</div>`;
+</div>
+${shareSheetHtml({ url, name: list.name, text: `${list.name}, a collection on Brickworks`,
+    about: `Its link opens this collection: the models in it, and who collected them.`,
+    image: first && first.image ? first.image : "" })}`;
   return html(response, 200, page(origin, {
     title: `${list.name} — a collection in the Brickworks gallery`,
     about: list.description ? list.description.replace(/\s+/g, " ").slice(0, 160)

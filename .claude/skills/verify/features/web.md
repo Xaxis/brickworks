@@ -669,8 +669,8 @@ plan with Claude as the client.
   `/profile`'s `#banner-shown`) if any; the head (`header.profile-head`: `.avatar.huge` made from
   the handle by `web/card.js` `avatarHtml` through `api/_card.js`, `h1`,
   `@handle · [data-role] Designer|Builder · since`, Follow, Share
-  `button[data-share]` (copies the link, "Link copied" toast; the share sheet
-  on a touch screen), More `details.more-menu` with Report it); the bio;
+  `button[data-share]` (the `share sheet`, on the page's link, its banner
+  the picture Pinterest pins), More `details.more-menu` with Report it); the bio;
   links (`ul.links`, https, `rel="ugc nofollow noopener"`, said as their
   domain); one row of numbers (`ul.numbers li[data-stat]`: builds,
   remixes, models, likes, followers `[data-followers]`, following, each
@@ -706,8 +706,8 @@ plan with Claude as the client.
   building here since", `#bio-shown`, `#links-shown` ugc nofollow,
   `#numbers` with no count of none, `#pinned`), read from `?op=profile`
   with `tests=1` (only ever your own), and Edit profile (`#edit`), Settings
-  (`#to-settings`), Share (`#share`: the share sheet on a phone, else the
-  link copied and a toast) and More (`#view` your page as others see it,
+  (`#to-settings`), Share (`#share`: the `share sheet` for your `/u/` page,
+  made by `web/share-sheet.js` `sheetFor`) and More (`#view` your page as others see it,
   `#to-feed`). Then `#tabs`, each a `?tab=` of the address, drawn when
   first opened: Models (8 cards at a time, `#models-more`), Builds (yours
   and others' of your models), and, only yours, Saved (`#favourites` with
@@ -1412,12 +1412,28 @@ plan with Claude as the client.
   footer of every page.
 - `collections browser flow` (`tools/web/collections_flow.mjs`, preview
   check `[collections]`): below, under "The collections directory".
-- `share sheet` (`api/share.js` `shareSheet`, `web/model-page.js`,
-  docs/SOCIAL.md U14): Share on a model's page opens `dialog.share-sheet`,
-  `#share-link` and `#share-embed` with `[data-copy]`, `[data-share-app]`
-  where `navigator.share` is; `html[data-shared]` `open`, `copied`,
-  `embed`, `sheet` or `failed`. The embed `/m/X/embed` loads `web/theme.js`
-  (`<html data-embed>`: never the account).
+- `share sheet` (`web/card.js` `shareSheetHtml` and `shareTargets`,
+  `web/share-sheet.js`, docs/SOCIAL.md U14 and section 7): Share on a
+  model's, a set's, a person's (`/u/`), your own (`/profile` `#share`), a
+  collection's (`/c/`) and the challenge's page (`/challenge` `#share`, its
+  own `/challenge?id=N`) opens one `dialog.share-sheet`: `#share-link` with
+  `[data-copy]`, `.share-to` `a[data-to]` reddit, bluesky, pinterest (only
+  with a picture), x, facebook, email (each the network's own share page
+  with the link, a new tab, `noopener`), `#share-embed` where the page has
+  one (a model's), `[data-share-app]` where `navigator.share` is;
+  `html[data-shared]` `open`, `copied`, `embed`, `sheet`, a network's key
+  or `failed`. The server's pages draw it in their markup, `/profile` and
+  `/challenge` with `sheetFor`. The embed `/m/X/embed` loads
+  `web/theme.js` (`<html data-embed>`: never the account).
+- `oembed` (`api/share.js` `oembed`, `/oembed?url=<a model's link>`):
+  oEmbed's JSON for `/m/X` (also `/m/X/`, `/m/X/embed`, `/m/X/v/N`, on this
+  site or brickworks.diy): `type` rich, the embed's iframe at 560 x 420, made
+  four to three within `maxwidth`/`maxheight`, `title`, `author_name` and
+  `author_url` as the page credits, `thumbnail_url` its PNG; 501 for
+  `format=xml`, 404 for any other link or a model not shared. A model's
+  page names it in its head (`link[rel=alternate][type="application/json+oembed"]`).
+  `curl -s 'https://brickworks.diy/oembed?url=https://brickworks.diy/m/<id>'`;
+  `model_page_flow.mjs` step 16.
 - `list follows browser flow` (`tools/web/list_follows_flow.mjs`, preview
   check `[list_follows]`): below, under "A collection followed".
 - `Top builds and this week's pick` (`supabase/discovery.sql`, 2026-10-19):

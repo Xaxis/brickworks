@@ -275,6 +275,20 @@ try {
       await shot(page, `profile_${width}_${theme}.png`);
       await shot(page, `profile_${width}_${theme}_fold.png`, false);
       if (theme === "dark") {
+        // Share your page (docs/SOCIAL.md section 7): the share sheet on her
+        // /u/ page's link, Pinterest pinning her banner's picture.
+        await page.click("#share");
+        await until(page, () => document.querySelector("dialog.share-sheet[open]"));
+        const sheet = await page.evaluate(() => ({ link: document.getElementById("share-link")?.value || "",
+          heading: document.getElementById("share-h")?.textContent || "", focused: document.activeElement?.id || "",
+          pin: document.querySelector('dialog.share-sheet a[data-to="pinterest"]')?.href || "",
+          to: [...document.querySelectorAll("dialog.share-sheet a[data-to]")].map((a) => a.dataset.to) }));
+        check(`${label}: Share opens "${sheet.heading}" on her page's link (${sheet.link}), Post it to ${sheet.to.join(", ")}`,
+          sheet.link === `${site}/u/${ADA}` && sheet.heading === "Share Ada Account" && sheet.focused === "share-link"
+          && sheet.to.join() === "reddit,bluesky,pinterest,x,facebook,email"
+          && new URL(sheet.pin).searchParams.get("media") === `${site}/m/${made[1]}.png`);
+        await page.keyboard.press("Escape");
+        await until(page, () => !document.querySelector("dialog.share-sheet[open]"));
         // --- 4. Edit profile ---------------------------------------------------
         await page.click("#edit");
         await until(page, () => document.querySelector("dialog#edit-dialog[open]"));

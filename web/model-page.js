@@ -21,6 +21,7 @@
 import { askToSignIn, call, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { avatarHtml } from "/kit.js";
+import { wireShare } from "/share-sheet.js";
 
 // The comments' own loader, once they are listed (startComments), for
 // Comment in the action bar to list them again after signing in.
@@ -33,7 +34,7 @@ if (marks && /^[A-Za-z0-9]{10}$/.test(id || "")) start();
 else if (marks && /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/.test(id || "")) {
   const sheet = document.getElementById("share-sheet");
   const share = marks.querySelector("[data-share]");
-  if (sheet && share) shareSheet(share, sheet);
+  if (sheet && share) wireShare(share, sheet);
 }
 // This month's challenge (supabase/challenges.sql), for the model's own
 // designer: Enter this month's challenge, or that it is in.
@@ -1017,81 +1018,9 @@ function tabCount(tab, n) {
   shown.textContent = value.toLocaleString("en-US");
 }
 
-/// [text] on the clipboard: the browser's clipboard where the page may use
-/// it (a secure page), else the older way, through a selection. Whether it
-/// went.
-async function copy(text) {
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    // The older way, below.
-  }
-  const box = document.createElement("textarea");
-  box.value = text;
-  box.setAttribute("readonly", "");
-  box.className = "visually-hidden";
-  document.body.append(box);
-  box.select();
-  let done = false;
-  try {
-    done = document.execCommand("copy");
-  } catch {
-    done = false;
-  }
-  box.remove();
-  return done;
-}
-
-/// Share's sheet (api/share.js shareSheet, docs/SOCIAL.md U14): the site's
-/// dialog with the page's link and the embed code, each copied by its own
-/// button and said so in the sheet (the toast, outside a dialog that is
-/// open, is behind it for a screen reader too); and where the browser has a
-/// share sheet of its own, a phone's, a way to it, given the link. The
-/// link is selected as it opens, so a keyboard's copy takes it too.
-/// Escape and Close close it, back on Share.
-function shareSheet(share, sheet) {
-  const said = sheet.querySelector(".said");
-  const link = sheet.querySelector("#share-link");
-  const app = sheet.querySelector("[data-share-app]");
-  const url = link.value;
-  const title = document.querySelector("main h1")?.textContent || document.title;
-  share.addEventListener("click", () => {
-    app.hidden = !(typeof navigator.share === "function" && (!navigator.canShare || navigator.canShare({ url })));
-    said.textContent = "";
-    sheet.showModal();
-    document.documentElement.dataset.shared = "open";
-    link.focus();
-    link.select();
-  });
-  const COPIED = { "share-link": ["Link copied", "copied"], "share-embed": ["Embed code copied: paste it into your page", "embed"] };
-  for (const button of sheet.querySelectorAll("[data-copy]")) {
-    button.addEventListener("click", async () => {
-      const field = sheet.querySelector(`#${button.dataset.copy}`);
-      const [words, mark] = COPIED[button.dataset.copy];
-      const done = await copy(field.value);
-      said.textContent = done ? words : "It did not copy just now: select it and copy it yourself";
-      document.documentElement.dataset.shared = done ? mark : "failed";
-      if (!done) field.select();
-    });
-  }
-  app.addEventListener("click", async () => {
-    try {
-      await navigator.share({ title, url });
-      document.documentElement.dataset.shared = "sheet";
-      sheet.close();
-    } catch (trouble) {
-      // Closed without sharing: the sheet stays.
-      if (trouble && trouble.name !== "AbortError") said.textContent = "That did not open just now: copy the link instead";
-    }
-  });
-}
-
 /// The action bar (api/share.js actionBar): Like; Save, which opens your
 /// lists, Favourites first (docs/SOCIAL.md D2); Share, which opens its sheet
-/// (shareSheet); Comment and I built it, which go to their sections; and
+/// (web/share-sheet.js); Comment and I built it, which go to their sections; and
 /// More: Report it, Takedown requests, and the owner's own. Like and Save
 /// ask to sign in first when this browser is not.
 function start() {
@@ -1242,7 +1171,7 @@ function start() {
   });
 
   const sheet = document.getElementById("share-sheet");
-  if (sheet) shareSheet(share, sheet);
+  if (sheet) wireShare(share, sheet);
 
   // The box is everybody's: sending it signs a visitor in.
   comment.addEventListener("click", () => {

@@ -1,38 +1,22 @@
 // A person's page, /u/<handle> (api/people.js profilePage): Share, and the
 // next page of their models without leaving this one.
 //
-// Share is the phone's own share sheet where there is one, else the page's
-// link copied and said so in the toast. Show more asks /api/people for the
-// next page of the person's models (or of the models they liked, on their
-// Likes tab) and puts its cards after these, the same cards the server
-// draws (web/card.js); with no script it is a link to that page. Hidden
-// until this is here to make them work.
+// Share opens the page's share sheet (web/share-sheet.js). Show more asks
+// /api/people for the next page of the person's models (or of the models
+// they liked, on their Likes tab) and puts its cards after these, the same
+// cards the server draws (web/card.js); with no script it is a link to
+// that page. Hidden until this is here to make them work.
 import { modelCard } from "/card.js";
 import { toast } from "/kit.js";
+import { wireShare } from "/share-sheet.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const person = document.querySelector(".person[data-handle]");
 
-for (const button of document.querySelectorAll("button[data-share]")) {
-  button.hidden = false;
-  button.addEventListener("click", async () => {
-    const url = button.dataset.share || location.href;
-    if (navigator.share && matchMedia("(pointer: coarse)").matches) {
-      try {
-        await navigator.share({ title: document.title, url });
-        return;
-      } catch (trouble) {
-        if (trouble?.name === "AbortError") return;
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      toast("Link copied");
-    } catch {
-      toast("Could not copy it: the address is in the bar above");
-    }
-  });
-}
+// Share opens the page's sheet (web/share-sheet.js): its link, the
+// networks to post it to, and the phone's own sheet where there is one.
+const sheet = document.getElementById("share-sheet");
+for (const button of document.querySelectorAll("button[data-share]")) if (sheet) wireShare(button, sheet);
 
 const more = document.querySelector("a[data-more]");
 const grid = document.querySelector("[data-models]");

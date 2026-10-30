@@ -470,6 +470,21 @@ try {
     }
     await pictures(page);
     await shot(page, `5_challenge_visitor-${width}.png`);
+    // Share (docs/SOCIAL.md section 7): the site's sheet on the challenge's
+    // own page, so a link posted now opens this one after the next begins.
+    await page.click("#share");
+    await until(page, () => document.querySelector("dialog.share-sheet[open]"), "its share sheet");
+    const sheet = await page.evaluate(() => ({ link: document.getElementById("share-link")?.value || "",
+      heading: document.getElementById("share-h")?.textContent || "", focused: document.activeElement?.id || "",
+      to: [...document.querySelectorAll("dialog.share-sheet a[data-to]")].map((a) => [a.dataset.to, a.href]) }));
+    const reddit = new URL(sheet.to.find(([to]) => to === "reddit")?.[1] || "http://none/");
+    check(`...Share opens "${sheet.heading}" on ${sheet.link.replace(site, "")}; Reddit's title "${reddit.searchParams.get("title")}"; `
+      + `Post it to ${sheet.to.map(([to]) => to).join(", ")}`, sheet.heading === `Share ${TITLE}` && sheet.focused === "share-link"
+      && sheet.link === `${site}/challenge?id=${ids.challenge}&tests=1` && reddit.searchParams.get("url") === sheet.link
+      && new RegExp(`^${TITLE}: a Brickworks building challenge, \\d+ \\w+ \\d{4} to \\d+ \\w+ \\d{4}$`).test(reddit.searchParams.get("title") || "")
+      && sheet.to.map(([to]) => to).join() === "reddit,bluesky,x,facebook,email");
+    await shot(page, `5_challenge_share-${width}.png`, false);
+    await page.keyboard.press("Escape");
     if (width === 390) {
       await page.click(`.kept[data-entry="${ids.house}"] button`);
       const asked = await page.waitForSelector("dialog.sign-in[open]", { timeout: 10000 }).then(() => true).catch(() => false);

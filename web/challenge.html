@@ -15,6 +15,10 @@
   challenges that ran, each with its winners as the gallery's cards and a
   link to its own page, /challenge?id=N, which draws it as this one is.
 
+  Share (docs/SOCIAL.md section 7) opens the site's share sheet
+  (web/share-sheet.js) with the challenge's own page, /challenge?id=N, so a
+  link posted while one runs still opens it once the next has begun.
+
   challenge.js draws it from /api/people?op=challenge, every name as text
   and never as markup, with the gallery's own cards (directory.css). No
   inline script: the site's content security policy allows none it has not
@@ -97,6 +101,8 @@
 			<h1 id="title">This month’s challenge</h1>
 			<p class="handle" id="days"></p>
 			<p class="bio" id="brief"></p>
+			<p class="share-line"><button type="button" class="icon-btn labelled" id="share" data-share aria-label="Share"
+				aria-haspopup="dialog" aria-controls="share-sheet" hidden><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#share"></use></svg><span class="word">Share</span></button></p>
 		</div>
 		<p class="note" id="loading">Fetching the challenge…</p>
 		<p class="note" id="none" hidden>There is no challenge just now. The next one is set here: look again soon.</p>
