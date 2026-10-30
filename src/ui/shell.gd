@@ -44,6 +44,9 @@ var see_inside: SeeInside
 var stress: StressView
 ## File, Versions…: src/ui/versions_dialog.gd.
 var versions: VersionsDialog
+## Compare with a save, from Versions… or File, Compare with…:
+## src/ui/compare_view.gd.
+var compare: CompareView
 ## Edit, Pattern…: copies in a row, round, or along a hose (Pattern).
 var pattern_dialog: PatternDialog
 ## Help, Send feedback… (FeedbackDialog).
@@ -106,7 +109,7 @@ const ALT := KEY_MASK_ALT
 ## any of them by name.
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", ">recent", ">import", "-", "save", "save_as",
-		"versions", "-", "share", "together", ">export", "render", "-", "clear", "quit"]],
+		"versions", "compare", "-", "share", "together", ">export", "render", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
@@ -367,6 +370,27 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	versions.store = store
 	versions.bar = bar
 	add_child(versions)
+	# Compare with a save: its panel where View, Stress's is, the two never
+	# open at once (_define's stress).
+	compare = CompareView.new()
+	compare.world = world
+	compare.library = library
+	compare.store = store
+	compare.camera = camera
+	compare.assemblies = assemblies
+	compare.stress = stress
+	compare.say = bar.say
+	compare.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	compare.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	compare.offset_right = -14.0
+	compare.offset_left = -14.0 - CompareView.WIDE
+	compare.offset_top = ViewCube.size_for().y + 26.0
+	over_model.add_child(compare)
+	versions.compare = func(version: ModelVersions.Version) -> void: compare.open_with(version)
+	# A save is of the model it was made of.
+	for replaced: Signal in [bar.started_new, bar.cleared]:
+		replaced.connect(func() -> void: compare.close(false))
+	bar.opened.connect(func(_n: int) -> void: compare.close(false))
 
 	pattern_dialog = PatternDialog.new()
 	pattern_dialog.builder = builder
@@ -735,6 +759,7 @@ const NEEDS: Dictionary = {
 	"put_back": "No section is broken out",
 	"xray": "Select a part first", "cut_flip": "Turn on Cut away first",
 	"stress": "Put a part on the baseplate first",
+	"compare": "Save the model first: each save is kept to compare with",
 	"reshape_flex": "Select a hose or chain",
 	"floor_part": "Stand the model on a baseplate first",
 	"back_to_site": "In a browser only",
@@ -856,7 +881,11 @@ func _define() -> void:
 		"Keep a copy of this model under another name")
 	# src/ui/versions_dialog.gd, src/parts/model_versions.gd.
 	_add("versions", "Versions…", 0, func() -> void: versions.open(), Callable(),
-		"The last %d saves of this model, to open one again" % ModelVersions.KEPT)
+		"The last %d saves of this model, to open one again or compare it with" % ModelVersions.KEPT)
+	# src/ui/compare_view.gd, src/parts/model_diff.gd.
+	_add("compare", "Compare with…", 0, func() -> void: versions.open(true),
+		func() -> bool: return not store.versions().is_empty(),
+		"What changed since one of this model's saves: added green, removed red, moved amber")
 	_add("export_ldraw", "LDraw model (.ldr, or .mpd with its sub-models)", 0,
 		func() -> void: await bar._on_export(), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
@@ -1093,7 +1122,14 @@ func _define() -> void:
 			or not assemblies.entered.is_empty()),
 		"Everything but the selection, or the sub-assembly being edited, see-through")
 	_ticked("xray", func() -> bool: return see_inside.seeing_through)
-	_add("stress", "Stress", 0, func() -> void: stress.set_on(not stress.on),
+	_add("stress", "Stress", 0, func() -> void:
+		# The two draw with one layer (BrickWorld.set_stress): Stress, asked
+		# for while comparing, takes over where the comparison is.
+		if compare.is_open():
+			compare.close(false)
+			stress.set_on(true)
+			return
+		stress.set_on(not stress.on),
 		func() -> bool: return stress.on or world.brick_count() > store.scenery.size(),
 		"Every part tinted by how near its weakest joint is to letting go: red past its "
 		+ "studs' working load, amber within twice it")
@@ -2704,6 +2740,8 @@ func controls_by_name() -> Dictionary:
 		out.merge(stress.panel.controls_by_name())
 	if versions != null:
 		out.merge(versions.controls_by_name())
+	if compare != null:
+		out.merge(compare.controls_by_name())
 	if palette != null:
 		out.merge(palette.controls_by_name())
 	if first_build != null:

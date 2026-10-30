@@ -44,6 +44,8 @@ var _gallery: GalleryTool
 const COMMANDS: Dictionary = {
 	"new": "clear_model", "clear": "clear_model", "open": "open_model", "library": "open_model",
 	"save": "save_model", "save_as": "save_model", "versions": "open_model",
+	# open_model versions=true version=N reads what changed since that save.
+	"compare": "open_model",
 	"export_all": "export_model",
 	"export_ldraw": "export_model", "export_io": "export_model", "export_3d": "export_model",
 	"export_picture": "export_model", "export_bricklink": "export_model",
@@ -183,7 +185,9 @@ is held still when named Frame.
  - open_model: lists the person's saved models and the examples, and \
 opens one. Over changes not saved it is refused unless discard_changes=true, \
 and undo brings back what it replaced. Each save is kept, the \
-last 20: name= with versions=true lists a model's, version=N opens one. \
+last 20: name= with versions=true lists a model's, version=N opens one; \
+versions=true with version=N opens nothing and says what changed since that \
+save, part by part, as File, Compare with… draws it. \
 link= opens a copy of a gallery model, as Open in Brickworks does; \
 library= opens LDraw's model of a real set (gallery library=true finds them).
  - parts_list: the model's parts by part and colour with element ids; \
@@ -598,7 +602,10 @@ func definitions() -> Array:
 				+ "app, with their part counts; name= opens one in place of what is on the "
 				+ "baseplate, as File, Open does. Each save is kept as a version, the last 20, "
 				+ "as File, Versions… shows: versions=true lists name='s, newest first, and "
-				+ "version=N opens the Nth. link= a gallery model's link id (gallery) opens a "
+				+ "version=N opens the Nth; versions=true with version=N opens nothing and says "
+				+ "what changed in the model open now since that save, as Compare draws it: "
+				+ "each part added, removed, moved or turned, and recoloured, by number. "
+				+ "link= a gallery model's link id (gallery) opens a "
 				+ "copy of it saved in the person's models, as Open in Brickworks on its page "
 				+ "does. library= an id from gallery library=true (\"omr-10179-1\") opens LDraw's "
 				+ "model of that real set, credited to whoever made it, as File, Library… does. "
@@ -610,7 +617,7 @@ func definitions() -> Array:
 				"link": {"type": "string", "description": "a gallery model's link id, or its /m/ address"},
 				"library": {"type": "string", "description": "a library id from gallery library=true, like omr-10179-1, or a set's number or name"},
 				"versions": {"type": "boolean", "description": "list name='s saves kept as versions"},
-				"version": {"type": "integer", "description": "open this save of name=, 1 the newest"},
+				"version": {"type": "integer", "description": "open this save of name=, 1 the newest; with versions=true, compare the model open now with it"},
 				"discard_changes": {"type": "boolean"},
 			}},
 		},
@@ -2348,6 +2355,10 @@ func _open(input: Dictionary) -> String:
 	if not str(input.get("library", "")).strip_edges().is_empty():
 		return await _open_library(str(input["library"]).strip_edges(),
 			bool(input.get("discard_changes", false)))
+	# A model's saves with no name: the model open now's.
+	if name.is_empty() and bool(input.get("versions", false)) and not store.example \
+			and store.title != ModelStore.UNTITLED:
+		name = store.title
 	if name.is_empty():
 		var said := PackedStringArray()
 		said.append("Open now: %s." % store.title)
@@ -2376,6 +2387,8 @@ func _open(input: Dictionary) -> String:
 	if bool(input.get("versions", false)):
 		if kept.is_empty():
 			return "No saves of %s are kept as versions yet: each save from now on is." % chosen.name
+		if input.has("version"):
+			return _compare(chosen, kept, int(input["version"]))
 		var rows := PackedStringArray(["%s's saves, newest first (version=N opens one):"
 			% chosen.name])
 		for n: int in kept.size():
@@ -2407,6 +2420,32 @@ func _open(input: Dictionary) -> String:
 	bar.opened.emit(placed)
 	return "Opened %s: %d parts. look_at_model to see it." % [chosen.name, placed] \
 		+ _replaced_words(store, unsaved, was) + _opened_motions()
+
+
+## open_model versions=true version=N: what changed in the model open now
+## since its save [param version] of [param kept], as File, Compare with…
+## matches it (ModelDiff), and inside the sub-assembly the person is editing
+## when they are; opening nothing and drawing nothing.
+func _compare(chosen: ModelStore.Entry, kept: Array[ModelVersions.Version], version: int) -> String:
+	var store: ModelStore = app.get("_store")
+	if version < 1 or version > kept.size():
+		return "%s has %d versions: version is 1 (the newest) to %d. versions=true lists them." % [
+			chosen.name, kept.size(), kept.size()]
+	if chosen.example or chosen.name.to_lower() != store.title.to_lower():
+		return ("A save is compared with the model open now, %s; %s is not open. open_model "
+			+ "name=%s opens it first.") % [store.title, chosen.name, chosen.name]
+	var text: String = ModelVersions.read(kept[version - 1].path)
+	if text.is_empty():
+		return "That save of %s could not be read." % chosen.name
+	var shell: Shell = app.get("_shell")
+	var inside: String = shell.assemblies.entered if shell != null and shell.assemblies != null \
+		else ""
+	var library: PartLibrary = app.get("_library")
+	var diff: ModelDiff = ModelDiff.between(ModelDiff.parts_of_text(text, library, inside),
+		ModelDiff.parts_of_world(app.get("_world"), store.scenery, store.lift(), store.awaited,
+			inside))
+	return CompareView.said_of(diff, kept[version - 1], inside, library) \
+		+ "\nNothing was opened or changed. File, Compare with… shows the person the same."
 
 
 ## Why an open is refused: the person's changes would go, and a session
