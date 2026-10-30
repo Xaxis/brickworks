@@ -2615,7 +2615,7 @@
       "kind": "ui",
       "label": "the gallery's front shelves",
       "entry": "web/gallery.js",
-      "reach": "https://brickworks.diy/gallery   (nothing asked: This week's pick and Small builds, from /api/share?op=shelves; signed in, You can build now and each card's share, with mine=1; Sort › Top builds says how it weighs, Sort › Parts I own with a collection)",
+      "reach": "https://brickworks.diy/gallery   (nothing asked: This week's pick, Today in the gallery (the featured model and the set from the LDraw library) and Small builds, from /api/share?op=shelves; signed in, You can build now and each card's share, with mine=1; Sort › Top builds says how it weighs, Sort › Parts I own with a collection)",
       "area": "web"
     },
     {
@@ -3806,6 +3806,27 @@
       "label": "a plan's limit on models kept with the account",
       "entry": "supabase/account_models_plan.sql",
       "reach": "python3 tools/minitest.py tests/test_saved_models_plan.py; PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/account_models_plan.sql --dry --try=tools/account_models_plan_try.sql --table=account_models   (.env sourced; rolled back; the lead applies it without --dry. Free keeps 25 new models, an update or the same model again at the limit kept, a delete makes room at once, the owner, Pro and a comp of Pro any number, a plan not known refuses nobody; plans off, Admission never asked and the save sent as before)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the gallery's daily choice",
+      "entry": "api/_featured.js",
+      "reach": "curl -H \"Authorization: Bearer $CRON_SECRET\" <a deployment>/api/share/feature   (Vercel's cron at 00:07 UTC: this week's pick on a week's first run, today's featured model, today's LDraw set, each kept once; a second run the same day says unchanged; supabase/gallery_crons.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the weekly look at the OMR",
+      "entry": "api/_omr_watch.js",
+      "reach": "curl -H \"Authorization: Bearer $CRON_SECRET\" '<a deployment>/api/share/omr?dry=1'   (Vercel's cron on Mondays at 05:37 UTC without dry=1: what LDraw's OMR has that the library has not, written to library_arrivals)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the weekly AI showcase",
+      "entry": "tools/showcase.py",
+      "reach": "python3 tools/showcase.py run --dry-run   (the gates and the next brief; run designs one in a heavy slot and keeps it as a draft; drafts, publish RUN; the timer: tools/install_showcase_timer.sh, left off)",
       "area": "web"
     }
   ]
