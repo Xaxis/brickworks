@@ -804,7 +804,7 @@ func turn_by(degrees: float) -> int:
 func _turn_in_hand(turn: Basis, verb: String, words: String) -> int:
 	var blocking: PackedInt64Array = builder.refused_by
 	_flash(blocking)
-	var why: String = "the parts in red are in the way" if not blocking.is_empty() \
+	var why: String = "what it would hit is lit up" if not blocking.is_empty() \
 		else "it would go through the floor"
 	if builder.selection.size() >= BIG_CHANGE:
 		say.call("no room to %s there — %s" % [words, why])
@@ -823,9 +823,12 @@ func _turn_in_hand(turn: Basis, verb: String, words: String) -> int:
 	return count
 
 
-## The parts last drawn red as in the way, for a probe to read.
+## The parts last lit up as in the way, for a probe to read.
 var flashed := PackedInt64Array()
+## Red, and amber on a part that is red already: red on a red wall showed
+## nothing.
 const IN_THE_WAY := Color(1.0, 0.12, 0.08)
+const IN_THE_WAY_ON_RED := Color(1.0, 0.86, 0.22)
 ## The tints as they were under the red now showing, and that red: a
 ## flash over one still showing keeps what was under the first, so the
 ## last to end puts back what was there before either.
@@ -834,7 +837,7 @@ var _red: Dictionary = {}
 var _flashes: int = 0
 
 
-## Draw these parts red for a second, over whatever else is tinted.
+## Light these parts up for a second, over whatever else is tinted.
 func _flash(ids: PackedInt64Array) -> void:
 	flashed = ids
 	if ids.is_empty() or world == null or not is_inside_tree():
@@ -845,14 +848,14 @@ func _flash(ids: PackedInt64Array) -> void:
 		_under_red = now.duplicate()
 		# Red of a flash something else tinted over is not what was under.
 		for brick_id: int in _red:
-			if _under_red.get(brick_id) == IN_THE_WAY:
+			if _under_red.get(brick_id) in [IN_THE_WAY, IN_THE_WAY_ON_RED]:
 				if was_under.has(brick_id):
 					_under_red[brick_id] = was_under[brick_id]
 				else:
 					_under_red.erase(brick_id)
 	_red = _under_red.duplicate()
 	for brick_id: int in ids:
-		_red[brick_id] = IN_THE_WAY
+		_red[brick_id] = _lit(brick_id)
 	world.set_tinted(_red)
 	_flashes += 1
 	var mine: int = _flashes
@@ -864,6 +867,15 @@ func _flash(ids: PackedInt64Array) -> void:
 		world.set_tinted(_under_red)
 	_red = {}
 	_under_red = {}
+
+
+func _lit(brick_id: int) -> Color:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	if brick == null or builder.library == null:
+		return IN_THE_WAY
+	var own: Color = builder.library.color(brick.color_code).shown
+	var reddish: bool = (own.h < 0.07 or own.h > 0.93) and own.s > 0.45 and own.v > 0.3
+	return IN_THE_WAY_ON_RED if reddish else IN_THE_WAY
 
 
 # -- locking ------------------------------------------------------------------
@@ -1211,6 +1223,7 @@ func _ready() -> void:
 	typed.apply = _typed_apply
 	typed.cancel = _typed_cancel
 	typed.still_held = func() -> bool: return builder.is_pinned()
+	typed.clear_of = _hand_on_screen
 	layer.add_child(typed)
 	builder.placed.connect(func(_id: int, _part: String) -> void:
 		# A click put down what was being typed: the number is spent.
@@ -1282,6 +1295,22 @@ func _begin_typing() -> bool:
 		_typed_cancel()
 		return false
 	return true
+
+
+## Where what is in hand stands on the screen, for the field to keep clear
+## of; empty if any of it is behind the view.
+func _hand_on_screen() -> Rect2:
+	var box: AABB = builder.pinned_box()
+	if camera == null or not box.has_volume():
+		return Rect2()
+	var out := Rect2()
+	for n: int in 8:
+		var corner: Vector3 = box.get_endpoint(n)
+		if camera.is_position_behind(corner):
+			return Rect2()
+		var at: Vector2 = camera.unproject_position(corner)
+		out = Rect2(at, Vector2.ZERO) if n == 0 else out.expand(at)
+	return out
 
 
 func _typed_preview(what: Dictionary) -> String:

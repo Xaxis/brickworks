@@ -79,7 +79,7 @@ ui:copy paste and duplicate
 
 ## Move and turn what is down {#move}
 
-Select parts, then [[X]] lifts them: they follow the pointer, a click puts them down and [[Esc]] puts them back where they were. [[R]] turns a selection where it stands. Where it has no room to turn, the parts in the way flash red and it comes into hand already turned: aim and click to put it where it fits, or [[Esc]] to leave it as it was. [[T]] and the **Rotate** tool do the same. The arrow keys (or [[W]] [[A]] [[S]] [[D]]) nudge it a stud, and [[Page Up]] and [[Page Down]] raise or lower it.
+Select parts, then [[X]] lifts them: they follow the pointer, a click puts them down and [[Esc]] puts them back where they were. [[R]] turns a selection where it stands. Where it has no room to turn, the parts in the way light up for a second (red, or amber on a red part) and it comes into hand already turned: aim and click to put it where it fits, or [[Esc]] to leave it as it was. [[T]] and the **Rotate** tool do the same. The arrow keys (or [[W]] [[A]] [[S]] [[D]]) nudge it a stud, and [[Page Up]] and [[Page Down]] raise or lower it.
 
 The **Move**, **Rotate** and **Hinge** tools on the toolbar do the same with the mouse alone. Exact positions are typed in [Properties](/docs/panels-and-settings#properties), or as a [number while it is in hand](#typed).
 

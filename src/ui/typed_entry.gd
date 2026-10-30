@@ -55,6 +55,9 @@ var apply: Callable = func(_typed: Dictionary) -> bool: return false
 var cancel: Callable = func() -> void: pass
 ## Whether what the field moves is still in hand; the field closes when not.
 var still_held: Callable = func() -> bool: return true
+## Where what is in hand stands on the screen, which the field opens
+## under (or over) rather than on: an empty rect for anywhere.
+var clear_of: Callable = func() -> Rect2: return Rect2()
 
 ## What a number alone is: "move", "turn" (after R) or "tilt" (after T).
 var verb: String = "move"
@@ -96,10 +99,23 @@ func _init() -> void:
 	column.add_theme_constant_override("separation", 1)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(column)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 1)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(row)
 	_shown = Label.new()
 	_shown.name = "Typed"
 	_shown.add_theme_font_size_override("font_size", 16)
-	column.add_child(_shown)
+	row.add_child(_shown)
+	# The caret drawn, not a character: the web build's font has no "▏",
+	# and showed a box for it.
+	var caret := ColorRect.new()
+	caret.name = "Caret"
+	caret.color = SAID
+	caret.custom_minimum_size = Vector2(2, 18)
+	caret.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	caret.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(caret)
 	_meaning = Label.new()
 	_meaning.name = "Meaning"
 	_meaning.add_theme_font_size_override("font_size", 12)
@@ -199,7 +215,7 @@ func _submit() -> void:
 ## Read the text again, show it in hand, and say what it does.
 func _read() -> void:
 	typed = parse(text, verb, way)
-	_shown.text = text + "▏"
+	_shown.text = text
 	if not str(typed["error"]).is_empty():
 		_say(str(typed["error"]), true)
 		return
@@ -233,8 +249,16 @@ func _place_near(at: Vector2) -> void:
 	reset_size()
 	var room: Vector2 = get_viewport_rect().size
 	var size_now: Vector2 = get_combined_minimum_size()
+	var y: float = at.y + 18.0
+	var keep: Rect2 = clear_of.call()
+	if keep.has_area():
+		# Under what is in hand, or over it where the window ends: the field
+		# on the ghost hid what the number was moving.
+		y = keep.end.y + 10.0
+		if y + size_now.y > room.y - 8.0:
+			y = keep.position.y - size_now.y - 10.0
 	position = Vector2(clampf(at.x + 18.0, 0.0, maxf(room.x - size_now.x - 220.0, 0.0)),
-		clampf(at.y + 18.0, 0.0, maxf(room.y - size_now.y - 8.0, 0.0)))
+		clampf(y, 0.0, maxf(room.y - size_now.y - 8.0, 0.0)))
 
 
 static func _character(key: InputEventKey) -> String:

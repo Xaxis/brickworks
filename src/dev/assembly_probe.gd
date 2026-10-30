@@ -151,6 +151,10 @@ func _copies_follow() -> void:
 	await _move(spot)
 	await _move(spot + Vector2(1, 0))
 	await _click(spot + Vector2(1, 0))
+	# Another copy stays in hand for the next (docs/APP_UX.md, A6): Esc
+	# lets it go, as a person does before working on the one put down.
+	_check("...and another copy stays in hand for the next", _builder.is_carrying())
+	await _key(KEY_ESCAPE)
 	var copy: PackedInt64Array = _tree.ids_under("Wing#2")
 	_check("put down, it is a second copy of Wing, not a new sub-assembly (%d parts in Wing#2)"
 		% copy.size(), copy.size() == 3)

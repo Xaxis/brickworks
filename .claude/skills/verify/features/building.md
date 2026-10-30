@@ -143,7 +143,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   pointer; a click puts it down (lifting and putting down are one undo); `Esc`
   puts it back. `R` / `Shift-R` turn a selection where it stands, about the
   same point each time, so four turns come back exactly. Where a turn (`R`, `T`,
-  the Rotate tool) has no room, the parts in the way are tinted red for a second
+  the Rotate tool) has no room, the parts in the way are tinted red (amber on a red part) for a second
   (`Builder.refused_by`, `EditVerbs._flash`) and the selection comes into hand
   already turned (`Carry.reshape`): a click puts it down where it fits, lifting
   and putting down one undo, and `Esc` puts it back as it was (APP_UX A3;
@@ -1698,13 +1698,23 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   to type its turn instead. The field reads only the keys' characters
   (`InputEventKey.unicode`, the keypad's codes), as a browser sends them. While it
   is open it takes every key, so a digit is not a view key then; with nothing in
-  hand the digits are views as before. Probe: `typed_moves_probe` (headers its
-  command; sections reading, clones, wall, typed, sets).
+  hand the digits are views as before. `R` or `T` stays "just pressed" until the
+  pointer moves 6 px from where it was pressed (`EditVerbs._input`): a number
+  after aiming again moves the part as `R` left it. The field opens under the
+  ghost's screen box (`TypedEntry.clear_of`), not on it. Probe: `typed_moves_probe`
+  (headers its command; sections reading, clones, wall, typed, sets; `only=` takes
+  several, comma-separated). In a browser: `tools/web/typed_flow.mjs` against a
+  local export (`tools/export.sh web`, then `tools/web/serve.py build/web PORT
+  --parts assets/generated/parts --delay 0`): Q, "3x", Enter, Ctrl-Z, "-1py", Esc,
+  read through `window.brickworksState` and `brickworksWords`.
 - `typed moves probe` (`src/dev/typed_moves_probe.gd`): windowed 1400x900, about
   four minutes. `sets` opens each set's file for the truth, puts the parts before
-  the one typed, takes it into hand, turns it with `R`/`T`, aims near its place
-  and types the difference; its rows go to `shots/typed/sets.json` with the
-  actions counted (point, click, key, a typed number one; characters beside).
+  the one typed (found by its line among the file's parts: the runs typed their
+  places in a model lifted on the floor), takes it into hand, aims, turns it with
+  `R`/`T` to the nearest quarter only if the ghost is not turned as it goes,
+  aims again and types the difference; its rows go to `shots/typed/sets.json`
+  with the actions counted (point, click, key, a typed number one; characters
+  beside). Each section starts on an empty floor.
 - `typed place and hinge` (`src/ui/inspector.gd`, `Builder.move_selection_by`,
   `Builder.hinge_angle`, 2026-10-17): Properties' X, Y and Z move the
   selection by exactly the difference typed, to the hundredth of an LDU

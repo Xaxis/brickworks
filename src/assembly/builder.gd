@@ -3598,7 +3598,10 @@ func typed_hand(move: Vector3, turn: float, tilt: float, tilt_axis: Vector3) -> 
 	at = _tidy(Transform3D(at.basis.orthonormalized(), at.origin),
 		BrickLattice.is_square_to_grid(at.basis))
 	_ghost_transform = at
-	_ghost_valid = room_for(held_part, at, false, true)
+	# Not typed down through the floor, unless it was held below it (on a
+	# joint under the model) when the number began.
+	_ghost_valid = room_for(held_part, at, false, true) \
+		and (not _below_ground(held_part, at) or _below_ground(held_part, _typed_from))
 	_seated_on = 0
 	var part: Lbm.PartMesh = library.mesh_for(held_part)
 	if part != null:
@@ -3606,9 +3609,27 @@ func typed_hand(move: Vector3, turn: float, tilt: float, tilt_axis: Vector3) -> 
 	return _ghost_valid
 
 
+func _below_ground(part_id: String, at: Transform3D) -> bool:
+	var part: Lbm.PartMesh = library.mesh_for(part_id)
+	if part == null:
+		return false
+	var packed: PackedInt32Array = boxes_for(part, at)
+	var n: int = 1
+	while n < packed.size():
+		if packed[n] < GROUND_CELL:
+			return true
+		n += 6
+	return false
+
+
 static func _about(point: Vector3, turn: Basis) -> Transform3D:
 	return Transform3D(Basis.IDENTITY, point) * Transform3D(turn, Vector3.ZERO) \
 		* Transform3D(Basis.IDENTITY, -point)
+
+
+## The box round what is in hand where it was pinned, or an empty one.
+func pinned_box() -> AABB:
+	return _box_after(Transform3D.IDENTITY) if is_pinned() else AABB()
 
 
 ## The box round what is in hand where it was pinned, moved by [param by].

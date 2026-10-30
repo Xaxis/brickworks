@@ -217,6 +217,8 @@ func _wall() -> void:
 	var was: Transform3D = first.transform
 	var whole: int = _count()
 	_select_only([first.id])
+	# The pointer where the click that selected it was.
+	await _move(_spot_on(first))
 	await _frames(4)
 	await _shot("wall_before")
 	_count_from()
@@ -224,8 +226,9 @@ func _wall() -> void:
 	_acts["key"] = int(_acts["key"]) + 1
 	var red: Dictionary = _world.tinted_ids()
 	var in_way: Array = Array(_verbs.flashed)
-	_check("R: what is in the way is shown red (%d parts: %s)" % [in_way.size(), in_way],
-		in_way.size() >= 1 and in_way.all(func(id: int) -> bool: return red.has(id)))
+	_check("R: what is in the way is lit up, amber on the red wall (%d parts: %s)" % [
+		in_way.size(), in_way], in_way.size() >= 1 and in_way.all(func(id: int) -> bool:
+			return red.get(id) == EditVerbs.IN_THE_WAY_ON_RED))
 	_check("...and the brick is in hand, turned 15° (%s)" % _held_yaw(),
 		_builder.is_carrying() and absf(_held_yaw() - 15.0) < 0.01)
 	await _shot("wall_turn_in_hand")
@@ -271,7 +274,7 @@ func _wall() -> void:
 	await _key(KEY_ESCAPE)
 	_check("...and Esc puts it back", _at(was.origin) != null and _count() == whole)
 	await create_timer(1.2).timeout
-	_check("the red is gone after a second", _world.tinted_ids().is_empty())
+	_check("the light is gone after a second", _world.tinted_ids().is_empty())
 	# Typed straight after: 30° instead of R's 15.
 	_verbs.set_mode("select")
 	back = _at(was.origin)
@@ -323,6 +326,10 @@ func _typed() -> void:
 	await _type("3x")
 	_check("3x opens the field at the pointer, saying %s" % _meaning(), _verbs.typed.is_open()
 		and _meaning().begins_with("x +3 studs"))
+	var under: Rect2 = _verbs.call("_hand_on_screen")
+	_check("...under the part in hand, not on it (%s, the part %s)" % [
+		_verbs.typed.get_global_rect(), under], under.has_area()
+		and not _verbs.typed.get_global_rect().intersects(under))
 	_check("...and the ghost stands 3 studs along x (%s)" % _builder.ghost_transform().origin,
 		_builder.ghost_transform().origin.is_equal_approx(ghost.origin + Vector3(60, 0, 0)))
 	await _move(spot + Vector2(40, 30))
@@ -368,6 +375,13 @@ func _typed() -> void:
 	_check("3py puts it 3 plates up (%s)" % (put.transform.origin if put != null else null),
 		put != null and put.transform.origin.is_equal_approx(ghost.origin + Vector3(0, 24, 0)))
 	await _key(KEY_Z, true)
+	# Not down through the floor.
+	await _move(spot)
+	await _move(spot + Vector2(1, 0))
+	await _type("-1py")
+	_check("-1py on the floor: no room, it would go through it (%s)" % _meaning(),
+		_meaning().contains("no room") and not _builder.can_place())
+	await _key(KEY_ESCAPE)
 
 	# A number alone goes the way the ghost last went.
 	await _move(_screen(Vector3(-140, 0, 0)))
