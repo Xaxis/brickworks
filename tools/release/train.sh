@@ -274,10 +274,67 @@ run() {
   finish live
 }
 
-# --- status ---
+# --- status: what is live since when, what is in flight at which step, and when it should serve ---
+
+hm() { date -u -d "@$1" +%H:%MZ; }
+ago() {
+  local m=$(( ( $(date +%s) - $1 ) / 60 ))
+  if [ "$m" -ge 60 ]; then echo "$(( m / 60 ))h$(printf %02d $(( m % 60 )))m"; else echo "${m}m"; fi
+}
+
+# A ship's minutes from begun to served, the median of the last five that
+# served: begun when its _lead.out was made, served when its deploy ended.
+ship_minutes() {
+  local e f t b
+  stat -c '%Y %n' "$RO"/*_prod.log 2>/dev/null | sort -rn | head -10 | while read -r e f; do
+    t=$(basename "$f" _prod.log)
+    grep -q '^SHIP: deploy: brickworks.diy serves' "$RO/${t}_lead.out" 2>/dev/null || continue
+    b=$(stat -c %W "$RO/${t}_lead.out")
+    [ "$b" -gt 0 ] && [ "$e" -gt "$b" ] && echo $(( (e - b + 59) / 60 ))
+  done | head -5 | sort -n | awk '{m[NR] = $1} END {if (NR) print m[int((NR + 1) / 2)]}'
+}
+
+# When TAG should serve, or nothing: a ship under way (a train's or one
+# begun by hand) from its start and the median ship.
+eta_of() {
+  [ -n "${ETA[$1]:-}" ] && { echo "${ETA[$1]}"; return; }
+  local f=$RO/${1}_lead.out b
+  [ -n "$SHIP_MIN" ] && [ -e "$f" ] && [ ! -e "$RO/$1.done" ] || return
+  grep -q '^SHIP: deploy: brickworks.diy serves' "$f" && return
+  b=$(stat -c %W "$f")
+  [ "$b" -gt 0 ] && echo $(( b + SHIP_MIN * 60 ))
+}
+
+# The battery's line: TAG's checks passed of TOTAL (0: not known), those that
+# failed, and how many are still to run.
+checks_line() {
+  local t=$1 total=$2 pv=$RO/${1}_pv.out passed failed="" n ran
+  passed=$(grep -c ' exit=0 ' "$pv"); ran=$(grep -c ' exit=' "$pv")
+  for n in $(grep -E ' exit=[^0]' "$pv" | awk '{print $1}'); do
+    if grep -q ' exit=0 ' "$RO/${t}_alone_$n.out" 2>/dev/null; then failed="$failed $n (passed alone)"; else failed="$failed $n"; fi
+  done
+  if [ "$total" -gt 0 ]; then
+    echo "  checks: $passed of $total passed${failed:+; failed:$failed}$( [ "$ran" -lt "$total" ] && echo "; $(( total - ran )) to run")"
+  else
+    echo "  checks: $passed passed so far${failed:+; failed:$failed}"
+  fi
+}
+
+# A ship begun by hand, not by a train: what it last said, its checks so far,
+# and when it should serve.
+show_hand() {
+  local t=$1 f=$RO/${1}_lead.out pv=$RO/${1}_pv.out last eta
+  last=$(grep '^SHIP:' "$f" | tail -1 | cut -c7-140)
+  echo "$t: shipping, begun by hand at $(hm "$(stat -c %W "$f")")"
+  echo "  ship: ${last:-its gates (ci_gate, the import, the parse gate, the tool list)}"
+  [ -e "$pv" ] && [ "$(stat -c %W "$pv")" -ge "$(stat -c %W "$f")" ] && checks_line "$t" 0
+  eta=$(eta_of "$t")
+  [ -n "$eta" ] && { ETA[$t]=$eta; echo "  eta: serves about $(hm "$eta")"; }
+  return 0
+}
 
 show() {
-  local t=$1 d=$RO/$1.train after pid res pv total passed failed n left sha
+  local t=$1 d=$RO/$1.train after pid res total sha
   [ -d "$d" ] || { echo "$t: not staged"; return; }
   after=$(cat "$d/after" 2>/dev/null)
   if pid=$(runner "$t"); then pid="running (pid $pid)"; else pid="ended"; fi
@@ -291,16 +348,26 @@ show() {
   [ -z "$res" ] && [ -e "$d/shipped" ] && [ -s "$RO/${t}_lead.out" ] \
     && echo "  ship: $(grep '^SHIP:' "$RO/${t}_lead.out" | tail -1 | cut -c7-140)"
   # The checks of this attempt's battery only: one before left its own.
-  pv=$RO/${t}_pv.out
-  if [ -e "$d/shipped" ] && [ "$pv" -nt "$d/shipped" ]; then
+  if [ -e "$d/shipped" ] && [ "$RO/${t}_pv.out" -nt "$d/shipped" ]; then
     total=$( (cat "$d/shipped"; echo site frames) | tr ' ' '\n' | grep -v '^$' | sort -u | wc -l)
-    passed=$(grep -c ' exit=0 ' "$pv")
-    failed=""
-    for n in $(grep -E ' exit=[^0]' "$pv" | awk '{print $1}'); do
-      if grep -q ' exit=0 ' "$RO/${t}_alone_$n.out" 2>/dev/null; then failed="$failed $n (passed alone)"; else failed="$failed $n"; fi
-    done
-    left=$(( total - $(grep -c ' exit=' "$pv") ))
-    echo "  checks: $passed of $total passed${failed:+; failed:$failed}$( [ "$left" -gt 0 ] && echo "; $left to run")"
+    checks_line "$t" "$total"
+  fi
+  # Shipping: its start and the median ship. Before that, a lower bound:
+  # no sooner than the release before it serves, and a ship after.
+  local eta prev_eta now; now=$(date +%s)
+  if [ -z "$res" ] && [ -n "$SHIP_MIN" ]; then
+    if [ -e "$d/shipped" ]; then
+      eta=$(eta_of "$t")
+      if [ -n "$eta" ] && [ "$eta" -ge "$now" ]; then echo "  eta: serves about $(hm "$eta")"
+      elif [ -n "$eta" ]; then echo "  eta: was $(hm "$eta"), $(ago "$eta") past a median ship"; fi
+    else
+      eta=$now
+      prev_eta=$( [ -n "$after" ] && eta_of "$after")
+      [ -n "$prev_eta" ] && [ "$prev_eta" -gt "$eta" ] && eta=$prev_eta
+      eta=$(( eta + SHIP_MIN * 60 ))
+      echo "  eta: serves $(hm "$eta") at the earliest"
+    fi
+    [ -n "$eta" ] && ETA[$t]=$eta
   fi
   sha=$(cat "$d/sha" 2>/dev/null)
   case "$LIVE_NOW" in
@@ -311,7 +378,24 @@ show() {
 }
 
 status() {
-  local tags=() d t
+  local tags=() d t f lt m since=0 who=""
+  local -A ETA=()
+  LIVE_NOW=$(serving); LIVE_NOW=${LIVE_NOW#/b/}; LIVE_NOW=${LIVE_NOW%/}
+  SHIP_MIN=$(ship_minutes)
+  # What is live, and since when: the release whose ship said it serves this
+  # build, from the end of its deploy.
+  if [ -z "$LIVE_NOW" ]; then
+    echo "live: brickworks.diy did not answer"
+  else
+    for f in $(grep -l "^SHIP: deploy: brickworks.diy serves ${LIVE_NOW:0:7}" "$RO"/*_lead.out "$RO"/*_ship.log 2>/dev/null); do
+      lt=$(basename "$f"); lt=${lt%_lead.out}; lt=${lt%_ship.log}
+      m=$(stat -c %Y "$RO/${lt}_prod.log" 2>/dev/null || stat -c %Y "$f")
+      [ "$m" -gt "$since" ] && since=$m && who=$lt
+    done
+    [ -n "$who" ] && who=", ${who}'s, since $(hm "$since") ($(ago "$since") ago)"
+    echo "live: brickworks.diy serves $LIVE_NOW$who"
+  fi
+  [ -n "$SHIP_MIN" ] && echo "a ship takes about $SHIP_MIN min from begun to served (the median of the last five)"
   if [ $# -gt 0 ]; then
     tags=("$@")
   else
@@ -322,10 +406,18 @@ status() {
       runner "$t" >/dev/null || [ $(( $(date +%s) - $(stat -c %Y "$d/step" 2>/dev/null || echo 0) )) -lt 43200 ] || continue
       tags+=("$t")
     done
+    # And a ship begun by hand that has not ended (ship.sh writes TAG.done as it ends).
+    for f in "$RO"/*_lead.out; do
+      [ -e "$f" ] || continue
+      t=$(basename "$f" _lead.out)
+      [ -d "$RO/$t.train" ] || [ -e "$RO/$t.done" ] && continue
+      [ $(( $(date +%s) - $(stat -c %Y "$f") )) -lt 43200 ] && tags+=("$t")
+    done
   fi
   [ ${#tags[@]} -gt 0 ] || { echo "train: none staged or running in $RO"; return; }
-  LIVE_NOW=$(serving); LIVE_NOW=${LIVE_NOW#/b/}; LIVE_NOW=${LIVE_NOW%/}
-  for t in $(printf '%s\n' "${tags[@]}" | sort -V); do show "$t"; done
+  for t in $(printf '%s\n' "${tags[@]}" | sort -V); do
+    if [ -d "$RO/$t.train" ] || [ ! -e "$RO/${t}_lead.out" ]; then show "$t"; else show_hand "$t"; fi
+  done
   for h in "$RO"/HOLD "$RO"/*.hold; do [ -e "$h" ] && echo "hold: $(basename "$h"): $(cat "$h")"; done
   return 0
 }
