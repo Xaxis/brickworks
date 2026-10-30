@@ -196,7 +196,10 @@ geometry in front of them.
   sight made in it; Prints hides every printed tile in one click; three
   1 x 2 bricks replaced by a double-click in one undo step; two pins into
   a Technic beam 5 from Fits, each joined; List 20 rows or more; "1x4
-  brick" bricks only. The toggles are not kept between sessions.
+  brick" bricks only. The three toggles are kept between sessions
+  (`ShellPrefs` `bin_only_made`, `bin_prints`, `bin_list`): `bin2_probe`
+  ticks them, starts the app again headless in the same data folder
+  (`-- --after-restart`) and reads them back there.
 - `fits` (`src/parts/part_fits.gd`, the bin's **Fits** chip after
   Techniques): the parts that fit the selected part, or the one in hand when
   Fits was chosen (a part then taken from its list does not change it): the
@@ -496,7 +499,7 @@ tools/probe.sh search_rank_probe -- quality   # + 26 words builders type (snot, 
 tools/probe.sh bin_names_probe                # every tile in sight named in words and fitted, no two alike, its part drawn while it waits; shots/bin_names/
 PROBE_SIZE=1400x900 tools/probe.sh bin_names_probe
 tools/probe.sh fits_probe                     # Fits: twelve pairs each in the first five; the part in hand; typed words narrow it
-tools/probe.sh bin2_probe                     # only parts made in Sand Green; Prints off; List rows; a double-click replaces three bricks, and puts two pins in a beam from Fits; "1x4 brick" bricks first; shots/bin2/
+tools/probe.sh bin2_probe                     # only parts made in Sand Green; Prints off; List rows; a double-click replaces three bricks, and puts two pins in a beam from Fits; "1x4 brick" bricks first; 8841-1's Balance booklet, each step's parts first; the toggles kept over a restart; shots/bin2/
 PROBE_SIZE=1400x900 tools/probe.sh bin2_probe
 # the tiles on the web, on a slow network: drawn as the bin opens, and from the first frame of a search typed (local only)
 PARTS_URL=http://127.0.0.1:8893/parts/ tools/export.sh web

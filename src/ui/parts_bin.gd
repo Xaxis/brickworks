@@ -280,6 +280,47 @@ func _build() -> void:
 		button.add_theme_font_size_override("font_size", ceili(_z(12)))
 		button.custom_minimum_size = Vector2(least, least)
 		_set_line.add_child(button)
+	# A set with several models in LDraw's repository (8841-1's Desert Racer
+	# and its five alternates): which one's booklet to follow, offered with
+	# the set. Each builds from the set's parts as Build from it does.
+	_set_models = HFlowContainer.new()
+	_set_models.visible = false
+	_set_models.add_theme_constant_override("h_separation", int(_z(4)))
+	_set_models.add_theme_constant_override("v_separation", int(_z(4)))
+	root.add_child(_set_models)
+	# Following a booklet: its step, turned by hand or by itself as the
+	# step's parts go in, and the way to stop following it.
+	_step_line = HBoxContainer.new()
+	_step_line.visible = false
+	_step_line.add_theme_constant_override("separation", int(_z(4)))
+	root.add_child(_step_line)
+	_step_back = Button.new()
+	_step_back.text = "‹"
+	_step_back.tooltip_text = "The step before"
+	_step_back.pressed.connect(func() -> void: turn_step(-1))
+	_step_words = Label.new()
+	_step_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_step_words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_step_words.clip_text = true
+	_step_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_step_words.mouse_filter = Control.MOUSE_FILTER_PASS
+	_step_words.add_theme_font_size_override("font_size", ceili(_z(12)))
+	_step_on = Button.new()
+	_step_on.text = "›"
+	_step_on.tooltip_text = "The step after"
+	_step_on.pressed.connect(func() -> void: turn_step(1))
+	_step_stop = Button.new()
+	_step_stop.text = "Stop"
+	_step_stop.tooltip_text = "Stop following the booklet: the set's parts, most held first"
+	_step_stop.pressed.connect(stop_booklet)
+	_step_line.add_child(_step_back)
+	_step_line.add_child(_step_words)
+	for button: Button in [_step_on, _step_stop]:
+		_step_line.add_child(button)
+	for button: Button in [_step_back, _step_on, _step_stop]:
+		FocusGuard.by_keyboard(button)
+		button.add_theme_font_size_override("font_size", ceili(_z(12)))
+		button.custom_minimum_size = Vector2(maxf(least, _z(24)), least)
 
 	_search = LineEdit.new()
 	# Filled in once the catalogue is loaded; the count differs between
@@ -349,7 +390,8 @@ func _build() -> void:
 	# torsos and heads with it.
 	_prints = CheckBox.new()
 	_prints.text = "Prints"
-	_prints.button_pressed = true
+	# As they were left last time (ShellPrefs).
+	_prints.button_pressed = bool(ShellPrefs.value("bin_prints"))
 	_prints.tooltip_text = "Printed and stickered parts: clear it and the bin shows plain parts only"
 	_prints.accessibility_name = "Show printed and stickered parts"
 	_list = Button.new()
@@ -358,12 +400,16 @@ func _build() -> void:
 	_list.tooltip_text = ("The parts as rows: name, number, size and the colours each was made in, "
 		+ "more of them in sight than tiles")
 	_list.accessibility_name = "Show the parts as a list"
+	_list.button_pressed = bool(ShellPrefs.value("bin_list"))
 	for button: Button in [_prints, _list]:
 		FocusGuard.by_keyboard(button)
 		button.add_theme_font_size_override("font_size", ceili(_z(12)))
 		button.custom_minimum_size = Vector2(least, least)
 		button.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		button.toggled.connect(func(_on: bool) -> void: _run_search(_search.text))
+		var pref: String = "bin_prints" if button == _prints else "bin_list"
+		button.toggled.connect(func(on: bool) -> void:
+			ShellPrefs.put(pref, on)
+			_run_search(_search.text))
 		foot.add_child(button)
 
 	# The colours are a section of their own at the foot of the column
@@ -395,7 +441,10 @@ func _build() -> void:
 	_only_made.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_only_made.add_theme_font_size_override("font_size", 12)
 	FocusGuard.by_keyboard(_only_made)
-	_only_made.toggled.connect(func(_on: bool) -> void: _run_search(_search.text))
+	_only_made.set_pressed_no_signal(bool(ShellPrefs.value("bin_only_made")))
+	_only_made.toggled.connect(func(on: bool) -> void:
+		ShellPrefs.put("bin_only_made", on)
+		_run_search(_search.text))
 	colour_head.add_child(_only_made)
 	# A colour by its name or number, as Studio's colour menu filters as you
 	# type. The old greys (7 and 8), all over older sets, show only after
@@ -1170,6 +1219,13 @@ func controls_by_name() -> Dictionary:
 	named["set count"] = _set_count
 	named["set build"] = _set_go
 	named["all parts back"] = _set_back
+	for button: Node in _set_models.get_children():
+		if button.has_meta("file"):
+			named["booklet " + str(button.get_meta("file")).get_basename()] = button
+	named["step back"] = _step_back
+	named["step on"] = _step_on
+	named["step words"] = _step_words
+	named["step stop"] = _step_stop
 	if _make_button != null:
 		named["make part"] = _make_button
 	if _print_button != null:
@@ -1288,7 +1344,15 @@ func _list_set(query: String) -> void:
 			among[info.id] = true
 	_results = []
 	_result_keys = PackedStringArray()
+	# The booklet's step first, as the step shows its parts; then the rest.
+	var keys: PackedStringArray = _step_keys.duplicate()
+	var first: Dictionary = {}
+	for key: String in _step_keys:
+		first[key] = true
 	for key: String in _set_bin.order:
+		if not first.has(key):
+			keys.append(key)
+	for key: String in keys:
 		var info: PartLibrary.PartInfo = library.parts.get(Collection.part_of(key))
 		if info == null:
 			continue
@@ -2111,11 +2175,34 @@ func _show_more(most: int = PAGE) -> void:
 	var limit: int = mini(_shown + most, _display.size())
 	while _shown < limit:
 		var key: String = _result_keys[_shown] if _listing_set else ""
-		_grid.add_child(_make_row(_display[_shown], key) if _list.button_pressed
-			else _make_cell(_display[_shown], key))
+		var cell: Control = _make_row(_display[_shown], key) if _list.button_pressed \
+			else _make_cell(_display[_shown], key)
+		if not key.is_empty() and _step_keys.has(key):
+			_mark_step(cell)
+		_grid.add_child(cell)
 		_shown += 1
 	_tell_apart()
 	_update_status()
+
+
+## A tile of the booklet's step, marked: a line of the accent along its
+## top (down a row's side), and said first on its tooltip.
+func _mark_step(cell: Control) -> void:
+	var mark := ColorRect.new()
+	mark.color = Look.ACCENT
+	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _list.button_pressed:
+		mark.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+		mark.offset_right = _z(3)
+	else:
+		mark.set_anchors_preset(Control.PRESET_TOP_WIDE)
+		mark.offset_bottom = _z(3)
+	cell.add_child(mark)
+	cell.set_meta("in_step", true)
+	if _booklet != null:
+		cell.set_meta("plain_tip", "In step %d of %s\n%s" % [_step + 1, _booklet.name,
+			str(cell.get_meta("plain_tip", ""))])
+		cell.tooltip_text = "In step %d of %s\n%s" % [_step + 1, _booklet.name, cell.tooltip_text]
 
 
 ## Tiles whose names begin alike tell themselves apart: a name cut short
@@ -2177,7 +2264,10 @@ func _tell_apart() -> void:
 func _update_status() -> void:
 	var total: int = _display.size()
 	if _listing_set:
-		_status.text = ("%s, by part and colour, the most first" % Counted.of(total, "kind")
+		_status.text = ("%s, the step's %d first, then the most held" % [Counted.of(total, "kind"),
+			_step_keys.size()] if not _step_keys.is_empty()
+			and _search.text.strip_edges().is_empty() and _category == "All"
+			else "%s, by part and colour, the most first" % Counted.of(total, "kind")
 			if _search.text.strip_edges().is_empty() and _category == "All"
 			else "%s of the set's match" % Counted.of(total, "kind") if total > 0
 			else "none of the set's parts match")
@@ -3113,6 +3203,23 @@ var _set_words: Label
 var _set_count: Label
 var _set_go: Button
 var _set_back: Button
+var _set_models: HFlowContainer
+var _step_line: HBoxContainer
+var _step_back: Button
+var _step_words: Label
+var _step_on: Button
+var _step_stop: Button
+## The booklet the set's bin follows (SetBooklet), or null: the step whose
+## parts it lists first, whether that step was turned to by hand (kept
+## until it is built) or by itself (the first step not yet built), and the
+## parts it lists first, by part and colour, in the step's order.
+var _booklet: SetBooklet = null
+var _step: int = 0
+var _step_by_hand: bool = false
+var _step_keys := PackedStringArray()
+## The repository a set's booklet is fetched from where this checkout has
+## no copy of it (Main's ModelLibrary).
+var models: ModelLibrary
 ## What the model uses, by part and colour, as last counted, and at which
 ## of the world's revisions: worked out again whenever the model changes
 ## ([method _recount]), never kept apart from it.
@@ -3155,7 +3262,11 @@ const RECOUNT_MSEC := 100
 ## are left, and the model keeps the choice. Returns how many kinds of part
 ## it shows; 0, the bin as it was and [member trouble] saying why, when no
 ## set of them is known.
-func build_from(numbers: PackedStringArray) -> int:
+##
+## A single set follows the booklet of [param booklet], one of its models'
+## files in LDraw's repository ("8841-1_Balance.mpd"); "" its own model's,
+## or the one model it has: the bin lists the step's parts first.
+func build_from(numbers: PackedStringArray, booklet: String = "") -> int:
 	if _books == null:
 		_books = SetInventories.new()
 		add_child(_books)
@@ -3175,8 +3286,12 @@ func build_from(numbers: PackedStringArray) -> int:
 	print("set bin: %s, %d kinds of part, looked up in %d ms" % [bin.title, bin.order.size(), looked_up_ms])
 	_offer = {}
 	_set_bin = bin
+	_booklet = null
+	_step_keys = PackedStringArray()
 	if store != null:
 		store.bin_sets = bin.sets
+	if normal.size() == 1:
+		await _follow_booklet(normal[0], booklet)
 	_count_chips()
 	# The whole set in sight: what was typed or chosen is let go.
 	_search.text = ""
@@ -3184,9 +3299,112 @@ func build_from(numbers: PackedStringArray) -> int:
 	_category = "All"
 	for child: Node in _category_row.get_children():
 		(child as Button).button_pressed = str(child.get_meta("category", "")) == _category
-	_recount()
+	_recount(false)
 	_run_search("")
 	return bin.order.size()
+
+
+## The set's model [param file] (its own, or its only one, where "") found
+## among LDraw's official models, read, and its booklet followed from the
+## first step not yet built.
+func _follow_booklet(number: String, file: String) -> void:
+	var chosen: Dictionary = {}
+	var its: Array = []
+	for model: Dictionary in await _books.official_models():
+		if str(model["set"]) == number:
+			its.append(model)
+	for model: Dictionary in its:
+		if (file.is_empty() and str(model["file"]) == number + ".mpd") or str(model["file"]) == file:
+			chosen = model
+	if chosen.is_empty() and file.is_empty() and its.size() == 1:
+		chosen = its[0]
+	if chosen.is_empty():
+		return
+	var text: String = await _booklet_text(str(chosen["file"]))
+	if text.is_empty():
+		return
+	# Read off the frame, as a model opened is: a set's file is a few
+	# hundred parts, and the repository's largest tens of thousands.
+	var parsed: Array = []
+	var reading: int = WorkerThreadPool.add_task(func() -> void:
+		parsed.append(LdrModel.parse(text, str(chosen["file"]))))
+	while not WorkerThreadPool.is_task_completed(reading):
+		await get_tree().process_frame
+	WorkerThreadPool.wait_for_task_completion(reading)
+	_booklet = SetBooklet.make(parsed[0], model_name(chosen), str(chosen["file"]), _set_bin, library)
+	_step = 0
+	_step_by_hand = false
+
+
+## A model of a set as a person names it: "Balance" for 8841-1's "Desert
+## Racer — Balance", the set's name for its own.
+static func model_name(model: Dictionary) -> String:
+	var named: String = ModelLibrary.tidy(str(model.get("name", "")))
+	return named.get_slice(" — ", 1) if named.contains(" — ") else named
+
+
+## A model's file from LDraw's repository: this checkout's copy, else the
+## library's (ModelLibrary), "" when neither can be had.
+func _booklet_text(file: String) -> String:
+	if not OS.has_feature("web") and FileAccess.file_exists(ModelLibrary.VENDOR + file):
+		return FileAccess.get_file_as_string(ModelLibrary.VENDOR + file)
+	if models == null:
+		return ""
+	var got: Dictionary = await models.model_text({"file": ModelLibrary.ROOT + "omr/" + file,
+		"name": file.get_basename()})
+	return str(got.get("text", ""))
+
+
+## The booklet turned [param by] steps by hand: its parts first until that
+## step is built, then the bin follows the booklet again.
+func turn_step(by: int) -> void:
+	if _booklet == null:
+		return
+	_step = clampi(_step + by, 0, _booklet.steps.size() - 1)
+	_step_by_hand = true
+	_follow_step(true)
+
+
+## The booklet let go: the set's parts most held first again.
+func stop_booklet() -> void:
+	_booklet = null
+	_follow_step(true)
+
+
+## The booklet followed, or [code]{}[/code]: {"name", "file", "step" (from
+## 1), "steps", "left" (pieces the step still wants), "first" (the keys
+## listed first)}.
+func booklet_followed() -> Dictionary:
+	if _booklet == null or _set_bin == null:
+		return {}
+	var pieces: int = 0
+	for lot: Array in _booklet.left_in(_step, _used):
+		pieces += int(lot[1])
+	return {"name": _booklet.name, "file": _booklet.file, "step": _step + 1,
+		"steps": _booklet.steps.size(), "left": pieces, "first": _step_keys}
+
+
+## Which step the booklet is at, worked out from what the model uses: the
+## first not yet built, or a step turned to by hand until it is built. Its
+## parts are listed first, and the grid listed again when the step turns.
+func _follow_step(relist: bool) -> void:
+	var keys := PackedStringArray()
+	if _booklet != null and _set_bin != null:
+		var open: int = _booklet.first_open(_used)
+		if not _step_by_hand or _booklet.left_in(_step, _used).is_empty():
+			_step_by_hand = false
+			_step = mini(open, _booklet.steps.size() - 1)
+		# The whole step, as its callout shows it: a part put in keeps its
+		# place, so the tiles move only when the step turns.
+		if _step_by_hand or open < _booklet.steps.size():
+			for lot: Array in _booklet.steps[_step]:
+				keys.append(lot[0])
+	_say_step()
+	if keys == _step_keys:
+		return
+	_step_keys = keys
+	if relist and _listing_set:
+		_list_set(_search.text.strip_edges())
 
 
 ## Back to the whole library: the set's counts go with it.
@@ -3198,11 +3416,14 @@ func leave_set() -> void:
 ## The set bin let go, and the model's choice with it.
 func _drop_set() -> void:
 	_set_bin = null
+	_booklet = null
+	_step_keys = PackedStringArray()
 	_used = {}
 	if store != null:
 		store.bin_sets = PackedStringArray()
 	_count_chips()
 	_say_set()
+	_say_step()
 
 
 ## Each category's count on its button: the library's, or building from a
@@ -3267,7 +3488,7 @@ func _follow_model() -> void:
 
 ## The counts worked out again from the model, and every tile and the set's
 ## line told.
-func _recount() -> void:
+func _recount(relist: bool = true) -> void:
 	if _set_bin == null:
 		return
 	var world: BrickWorld = builder.world if builder != null else null
@@ -3278,6 +3499,7 @@ func _recount() -> void:
 		if not str(cell.get_meta("key", "")).is_empty():
 			_show_count(cell as Button)
 	_say_set()
+	_follow_step(relist)
 
 
 ## How many of a tile's part and colour are left, after its name: "×12",
@@ -3317,6 +3539,7 @@ func _say_set() -> void:
 	if _set_line == null:
 		return
 	var offered: SetBin = _offer.get("bin")
+	_offer_models()
 	_set_line.visible = _set_bin != null or offered != null
 	_set_back.visible = _set_bin != null
 	_set_go.visible = offered != null
@@ -3360,17 +3583,82 @@ func _offer_typed(query: String) -> void:
 	if _search.text.strip_edges().to_lower() != query.strip_edges().to_lower():
 		return
 	var bin: SetBin = SetBin.make(PackedStringArray([number]), records, library)
-	_offer = {} if bin == null else {"numbers": PackedStringArray([number]), "bin": bin}
+	# Its models in LDraw's repository, whose booklets the bin can follow.
+	var its: Array = []
+	if bin != null:
+		for model: Dictionary in await _books.official_models():
+			if str(model["set"]) == number:
+				its.append(model)
+		if _search.text.strip_edges().to_lower() != query.strip_edges().to_lower():
+			return
+	_offer = {} if bin == null else {"numbers": PackedStringArray([number]), "bin": bin,
+		"models": its}
 	_say_set()
 
 
-func _take_offer() -> void:
+func _take_offer(booklet: String = "") -> void:
 	if _offer.is_empty():
 		return
 	var numbers: PackedStringArray = _offer["numbers"]
 	if _set_bin != null:
 		numbers = _set_bin.sets + numbers
-	await build_from(numbers)
+	await build_from(numbers, booklet)
+
+
+## The offered set's models, each a button that builds from the set and
+## follows its booklet: shown where it has two or more, and only when the
+## bin is not already a set's (sets added together follow none).
+func _offer_models() -> void:
+	var its: Array = _offer.get("models", [])
+	var shown: bool = _set_bin == null and its.size() >= 2
+	_set_models.visible = shown
+	var files := PackedStringArray()
+	for model: Dictionary in its:
+		files.append(str(model["file"]))
+	if not shown or str(_set_models.get_meta("files", PackedStringArray())) == str(files):
+		return
+	_set_models.set_meta("files", files)
+	for child: Node in _set_models.get_children():
+		_set_models.remove_child(child)
+		child.queue_free()
+	var words := Label.new()
+	words.text = "Follow a booklet:"
+	words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	words.add_theme_font_size_override("font_size", ceili(_z(12)))
+	_set_models.add_child(words)
+	for model: Dictionary in its:
+		var button := Button.new()
+		button.text = model_name(model)
+		button.set_meta("file", str(model["file"]))
+		button.tooltip_text = "Build from %s's parts, following the booklet of %s: each step's parts first" % [
+			str(model["set"]), ModelLibrary.tidy(str(model["name"]))]
+		FocusGuard.by_keyboard(button)
+		button.add_theme_font_size_override("font_size", ceili(_z(12)))
+		button.custom_minimum_size = Vector2(least, least)
+		button.pressed.connect(_take_offer.bind(str(model["file"])))
+		_set_models.add_child(button)
+
+
+## The step line: the booklet followed, its step and what is left of it.
+func _say_step() -> void:
+	if _step_line == null:
+		return
+	_step_line.visible = _booklet != null and _set_bin != null
+	if not _step_line.visible:
+		return
+	var total: int = _booklet.steps.size()
+	var pieces: int = 0
+	for lot: Array in _booklet.left_in(_step, _used):
+		pieces += int(lot[1])
+	_step_words.text = "%s: every step built" % _booklet.name \
+		if _booklet.first_open(_used) >= total and not _step_by_hand \
+		else "%s, step %d of %d: %s to put in" % [_booklet.name, _step + 1, total,
+			Counted.of(pieces, "part")]
+	_step_words.tooltip_text = ("Following the booklet of %s (LDraw's model of it): the step's "
+		+ "parts come first in the bin, marked, and the bin turns to the next step as they go "
+		+ "in. ‹ and › turn it by hand.") % _booklet.name
+	_step_back.disabled = _step <= 0
+	_step_on.disabled = _step >= total - 1
 
 
 ## The parts a photo was answered with, by id -> how sure Brickognize is:

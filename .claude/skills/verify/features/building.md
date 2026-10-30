@@ -2016,7 +2016,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
 - `set walk probe` (`src/dev/setwalk_probe.gd`): windowed, about ten
   minutes for both sets; `PROBE_SIZE=1400x900` for the big window. Builds
   8841-1's 25 walk parts (section 9's order) and 5762-1's first 25 from the
-  set's bin: the bin's search clicked, the set's number typed, Build from it;
+  set's bin: the bin's search clicked, the set's number typed, and the
+  model built (`8841-1_Balance`, `5762-1_Plane`) clicked under "Follow a
+  booklet:", which builds from the set and puts each step's parts first;
   then each part's tile (wheel notches, or the scroll bar dragged when it is
   more than a row off), `R` and `T` to its turn, the view by its keys or the
   cube, the pointer aimed with up to four corrections and a click, a joint
@@ -2025,9 +2027,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   input is counted as CADTASK counts it (a click elsewhere a point and a
   click, a key or character 1, a wheel notch 1, a scroll-bar drag 3); the
   view and the turns are judged uncounted and then pressed counted. Bar:
-  12 actions a part or fewer for each set, and every part exact (the set's
-  number and colour, place to 0.05 LDU, turn to 0.002 or one the part looks
-  the same in, by its own mesh). `-- only=8841-1|5762-1`, `shots=1` for
+  8841-1 at 5.5 actions a part or fewer and 5762-1 at 6.36 (without the
+  booklet 6.56 and 6.36; with it 5.12 and 5.88 on 2026-10-30), every part
+  exact (the set's number and colour, place to 0.05 LDU, turn to 0.002 or
+  one the part looks the same in, by its own mesh). The walker looks for a
+  tile once the bin has counted the last part in, and drags the bar down to
+  one the bin has not made yet. `-- only=8841-1|5762-1`, `shots=1` for
   pictures in `shots/setwalk/WxH/`, `from=library` for the same walk taken
   from the whole library (search, the number, the tile, the swatch), the
   figure before the set's bin. Rows in `shots/setwalk/<set>.json`.
