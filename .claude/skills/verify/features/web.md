@@ -2634,11 +2634,11 @@ plan with Claude as the client.
   `data-when="sale"` parts, Pro's Upgrade to Pro going to
   `/settings?upgrade=month|year#plan` with the choice made, and Admission's
   prices; off, the page as written, Coming soon). Free ($0: the
-  web app, 10 AI builds a month, building by hand without a limit,
-  everything else the app does today, at today's limits) and Pro ($8 a
-  month or $80 a year: the desktop app, every version released while you
-  pay kept, AI builds without a limit), Pro marked Coming soon; what an AI
-  build is; every account made before Pro opens gets Pro with no end;
+  web app, AI on your own Claude, ChatGPT or key with no limit, 25 models
+  kept with the account, saving to the device and exporting without a
+  limit) and Pro ($8 a month or $80 a year: the desktop app, every version
+  released while you pay kept, every model kept with the account), Pro
+  marked Coming soon; AI never counted on either; every account made before Pro opens gets Pro with no end;
   education free; what stays free; five questions, one saying what changed.
   Nothing takes money (BRICKWORKS_BILLING off). Pro's Tell me when it's
   ready opens the interest form (a `dialog`): email, monthly or yearly, a
@@ -2654,8 +2654,8 @@ plan with Claude as the client.
   `supabase/admission_snapshots.sql`): Free and Pro from Admission, built
   dark (2026-10-29, docs/PLANS.md unit U1, billing336). BRICKWORKS_BILLING
   is the one switch: off (unset) asks nothing and limits nothing; test or
-  live with its own kind of ADMISSION_KEY reads an account's plan, Claude
-  builds (10 a month on Free) and the desktop flag, keyed by the Supabase
+  live with its own kind of ADMISSION_KEY reads an account's plan, its saved-models
+  cap (25 on Free, none on Pro; AI is never counted) and the desktop flag, keyed by the Supabase
   user id of the session. Snapshots go in a server-only table, so a cold
   instance answers a paying person while Admission is down; with none, the
   answer is `unknown` and refuses nothing.
@@ -4853,8 +4853,8 @@ BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/plans_flow.mjs --url=<pr
 It passes when it ends "plans: all ok": at 390 and 1400 px, light and
 dark, Free and Pro and their prices ($80 a year first, $8 a month once
 Monthly is pressed), every row side by side, no way to pay shown with
-billing off, Coming soon on Pro, what an AI build
-is, accounts that exist keeping everything, education, what stays free, no
+billing off, Coming soon on Pro, AI with no limit on
+either plan, 25 models kept on Free, accounts that exist keeping everything, education, what stays free, no
 Claude builds and no free desktop, nothing sideways, the footer's link, and
 /privacy's line; at 390 px the form opened from Pro with yearly, a bad
 address refused on the page and by the API (and a plan off the list, now
