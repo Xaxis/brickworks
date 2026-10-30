@@ -693,28 +693,56 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
    width, rows line up, and the space is held before the picture comes.
    Its name is the link, stretched over the whole card; the designer's
    name and a like button sit above it, links and buttons of their own.
-   .models lays them out: two to a row on a phone, then three, four, five
-   and six from 600, 900, 1200 and 1600 px, so a card is 180-280 px wide
-   at every width. .models.scroller is one row of them that scrolls
-   (the scroller, below), a card 180-300 px wide: as many as a grid has
-   at that width less a half, so the next one always shows in part. */
+   .models lays them out: two to a row on a phone, three from 600 px and
+   four from 900 px up (the owner, 2026-10-29: four a row on a desktop), so
+   a page of 24 is whole rows at every width and a model is shown up to
+   380 px wide. .models.scroller is one row of them that scrolls (the
+   scroller, below), a card 180-300 px wide: as many as a grid has at that
+   width less a half, so the next one always shows in part. */
 .models { display: grid; gap: var(--s-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (width >= 600px) { .models { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (width >= 900px) { .models { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; } }
-@media (width >= 1200px) { .models { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
-@media (width >= 1600px) { .models { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (width >= 900px) { .models { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-5); } }
 .models.scroller {
 	grid-template-columns: none; grid-auto-flow: column; padding-block: 2px 10px;
 	grid-auto-columns: clamp(180px, (100% - var(--s-4)) / 1.5, 300px);
 }
 @media (width >= 600px) { .models.scroller { grid-auto-columns: clamp(180px, (100% - 2 * var(--s-4)) / 2.5, 300px); } }
-@media (width >= 900px) { .models.scroller { grid-auto-columns: clamp(180px, (100% - 4 * 18px) / 4.5, 300px); } }
-@media (width >= 1200px) { .models.scroller { grid-auto-columns: clamp(180px, (100% - 5 * 18px) / 5.5, 300px); } }
+@media (width >= 900px) { .models.scroller { grid-auto-columns: clamp(180px, (100% - 4 * var(--s-5)) / 4.5, 300px); } }
 /* Beside a rail or in a narrower column: more to a row. Cards that each
    carry a button under them (a challenge's entries): fewer, one to a row
    on a phone, so the button's words fit. */
 .models.compact { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
 .models.wide { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
+
+/* A list's pages (web/pager.js; one markup, pagerHtml, for the server's
+   pages and the browser's): Show earlier over a page opened by its
+   address; under the list the count, Show more (the way on, a secondary
+   button) and the numbered links, each a 40 px target, the pages shown
+   on the accent's soft ground and the last of them edged in the accent.
+   Under 600 px only the numbers next to it, the first and the last are
+   left, and Previous and Next are their arrows. While a page comes, Show
+   more is aria-busy and its cards' skeletons hold their places. */
+.pager-earlier { display: flex; justify-content: center; margin: 0 0 var(--s-5); }
+.pager { display: flex; flex-direction: column; align-items: center; gap: var(--s-3); margin: var(--s-6) 0 0; text-align: center; }
+.pager-earlier[hidden], .pager[hidden], .pager [hidden] { display: none; }
+.pager-count { margin: 0; color: var(--ink-soft); font-size: var(--t-small); font-variant-numeric: tabular-nums; }
+.pager-more { min-width: min(100%, 220px); }
+.pager-more[aria-busy="true"] { cursor: progress; opacity: 0.7; }
+.pager-pages { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px; margin: var(--s-1) 0 0; padding: 0; list-style: none; }
+.pager-pages a {
+	display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 40px; height: 40px; padding: 0 10px;
+	border-radius: var(--r-2); color: var(--ink-soft); font-size: var(--t-small); font-variant-numeric: tabular-nums; text-decoration: none;
+}
+.pager-pages a:hover { background: var(--panel-hi); color: var(--ink); }
+.pager-pages a[data-shown] { background: var(--accent-soft); color: var(--ink); }
+.pager-pages a[aria-current="page"] { box-shadow: inset 0 0 0 1px var(--accent-edge); color: var(--ink); font-weight: 650; }
+.pager-pages .gap { min-width: 16px; color: var(--ink-faint); }
+@media (width < 600px) {
+	.pager-pages [data-far] { display: none; }
+	.pager-pages .step .words {
+		position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+	}
+}
 .model {
 	position: relative; display: flex; flex-direction: column; color: inherit; min-width: 0;
 	border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line);
@@ -890,6 +918,7 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 /* A row's head: its name, and where the row is the start of a longer
    list, See all to it at the far end. */
 .scroller-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 var(--s-4); margin: 0 0 var(--s-3); }
+.scroller-head > h2 { margin: 0; }
 .scroller-head > a { padding-block: 6px; color: var(--ink-soft); font-size: var(--t-small); }
 .scroller-head > a:hover { color: var(--ink); }
 /* Previous and Next (scroller.js), for a mouse: a finger swipes. Beside

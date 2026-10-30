@@ -291,6 +291,8 @@ for handler in api/*.js; do
   # The one model card (web/card.js), which api/_card.js passes through in
   # a checkout: here the file itself, so a function needs no web/.
   cp web/card.js "$fn/_card.js"
+  # And the one pager (web/pager.js), which api/_pager.js passes through.
+  cp web/pager.js "$fn/_pager.js"
   # A part's geometry as the app reads it (web/lbm.js), which api/_lbm.js
   # passes through in a checkout: the pictures the share function draws of
   # a set's parts (api/_flatlay.js).

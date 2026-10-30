@@ -246,15 +246,46 @@ is on the page, `hidden`, for the script to show.
   comments. Then a line each for what it has (Moves, what your collection
   holds, what it won). No card ends in a row of its own for its numbers:
   it held only an empty heart on every card, a fifth of its height. In
-  `.models` (a grid: two to a row on a phone, then three, four, five and
-  six from 600, 900, 1200 and 1600 px, a card 180-280 px wide at every
-  width), `.models.compact` (more to a row, beside a rail), `.models.wide`
-  (fewer, one to a row on a phone, for cards that carry a button under
-  them) or `.models.scroller` (one row of them, a Scroller).
+  `.models` (a grid: two to a row on a phone, three from 600 px and four
+  from 900 px up, the owner's four a row on a desktop, 2026-10-29, so a
+  page of 24 is whole rows at every width), `.models.compact` (more to a
+  row, beside a rail), `.models.wide` (fewer, one to a row on a phone, for
+  cards that carry a button under them) or `.models.scroller` (one row of
+  them, a Scroller).
   A set of the LDraw library (`/library`, library333) is the same card:
   its name the link to `/library/<id>`, its cover (the app's own
   renderer's, the model on nothing), "Modelled by" whoever modelled it for
   LDraw, and a `small.set` line, its number · theme · year.
+- **A list's pages** (`web/pager.js`, `.pager`; site357, the owner's "a
+  consistent best practice pagination system", 2026-10-29): every list
+  pages the same way, the gallery, the LDraw library, a person's models
+  and likes, a collection, the collections directory and a challenge's
+  entries. Pages of 24 (`PAGE_SIZE`). Under the list: the count
+  (`.pager-count`, "Showing 25–72 of 1,234 models", or "Showing models
+  1–48" where the list cannot say how many), Show more (`a.cta.ghost.pager-more`,
+  the way on: the next page put after these when pressed, never by itself
+  as the end nears; asked for ahead once it nears the screen, so a press
+  is answered at once, and a press while it is still coming is kept), and
+  the numbered links (`ol.pager-pages`: Previous, the first, a window round
+  the last page shown, the last, Next, each a real link to `?page=N`; the
+  pages shown on the accent's soft ground, the last of them `aria-current`
+  and edged; under 600 px only the numbers beside it, the first and the
+  last, and Previous and Next as their arrows). Over the list, on a page
+  opened at `?page=N`: Show earlier (`.pager-earlier`), which puts the page
+  before it back above it. The address says the last page shown, put back
+  as each comes; after a press the keyboard is on the first new card and a
+  screen reader hears "24 more models" (`[data-pager-said]`); Back puts the
+  same pages back and the card left where it was; a page that does not
+  come says so where the count is and Show more says Retry. One list, one
+  pager, all in one markup that `pagerHtml` makes for the server's pages
+  and the browser's alike, with `<link rel="prev">` and `rel="next"` in a
+  server page's head (`pagerLinks`). A server page needs only
+  `<script src="/pager.js" type="module">`: its `nav` with
+  `data-source="page"` is paged by reading the next page's own HTML. A
+  page that draws its own list calls `pager({ list, load, href, drawn })`,
+  `load(n)` answering `{ items, more, pages, total }`, and `start()`; a
+  card put in later fires `pager:drawn` on the list (`web/follow.js` wires
+  a collection's Follow on it). Not for shelves (`.models.scroller`).
 - **Width**: `--page` (1,140 px) for a page of words; `--page-wide`
   (1,600 px) for a page of cards and pictures, `.wrap.wide`: the gallery, a
   person, a collection, a model's page and the feed (the landing page's
@@ -333,8 +364,8 @@ is on the page, `hidden`, for the script to show.
     as an item comes to rest (16 px), its end wider (40 px), since a row
     of pills or tabs can be cut between two. A row of cards sizes its
     cards to the row, as many as a grid has at that width less a half
-    (1.5 on a phone, 2.5 from 600 px, 4.5 from 900, 5.5 from 1200; a card
-    180-300 px), so the next one always shows in part;
+    (1.5 on a phone, 2.5 from 600 px, 4.5 from 900, beside the grid's
+    four; a card 180-300 px), so the next one always shows in part;
   - **comes to rest on an item**: each item's start snaps to the row's
     (`scroll-snap-type: x mandatory`), clear of the fade
     (`scroll-padding-inline`). A `.scroller` row reaches into the page's
@@ -370,10 +401,10 @@ is on the page, `hidden`, for the script to show.
   - **holds still**: the buttons are positioned, the fades a mask, and a
     card's picture its 4:3 before it comes, so nothing moves as it loads;
   - **ends in See all** where it is the start of a longer list: in its
-    head, `.scroller-head` (its `h2` and the link at the far end), or the
-    page's own (`.section-head`, the gallery's `.shelf-head`); a row that
-    is the whole of something (pinned models, a model's pictures) has
-    none.
+    head, `.scroller-head` (its `h2` and the link at the far end: the
+    gallery's shelves, the feed's latest), or a landing section's
+    `.section-head`; a row that is the whole of something (pinned
+    models, a model's pictures) has none.
 
   `design_flow.mjs` judges every scroller on every page, at its start
   and its end, at 390 and 1280 px in both themes: named, contained, its

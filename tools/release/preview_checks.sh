@@ -157,8 +157,9 @@ declare -A CMD=(
   # The gallery as a person uses it (docs/SOCIAL.md U3): at 390 the first
   # card's picture within 330 px, at 1280 four whole cards; Top, New and
   # Following, Top over this week, a kind and Made; a like from a card;
-  # endless three times then Show more; Back to the same card; the empty
-  # gallery; and api/share.js before and after supabase/gallery_tabs.sql.
+  # paged by Show more alone (web/pager.js), never by itself; Back to the
+  # same card; the empty gallery; and api/share.js before and after
+  # supabase/gallery_tabs.sql.
   # The deployment's pages, the API answered by the stand-in's crowd.
   [gallery]="tools/web/gallery_flow.mjs --url=$P --out=$S/${TAG}_gallery"
   # local only: card_check.mjs. It compares the cards the checkout's api/
@@ -189,6 +190,12 @@ declare -A CMD=(
   # Share; and Open in Brickworks opening 106-1 in the app. The store's own
   # index and files: no account, no database.
   [library_site]="tools/web/library_site_flow.mjs --url=$P --out=$S/${TAG}_library_site"
+  # The site's one pager (web/pager.js, site357) on the LDraw library and a
+  # person's models: the count and numbered links, Show more from the
+  # keyboard to the first new card, a press kept while its page is on its
+  # way (#81), ?page=3 opened afresh with Show earlier, Back to the same
+  # pages and card, and the pager's fit at 390. The live database's lists.
+  [paging]="tools/web/paging_flow.mjs --url=$P --out=$S/${TAG}_paging"
   # Every set in the catalogue a page (sets364, api/_sets.js): /library's
   # whole catalogue found by number and filtered (3D, theme and year); a set
   # with no model (10497-1) with its picture drawn from its parts, its parts

@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow -->
 
 ## Sub-features
 
@@ -685,8 +685,9 @@ plan with Claude as the client.
   three, their order); then `nav.tabs` Models · Builds · Collections, each
   a page of its own (`?tab=`; the default the first with something in it),
   a count `.n` once there is one, `.tab-panel[data-panel]`: Models 24 a page
-  (`[data-models]`, Show more `a[data-more]` appends the next page from
-  `?op=profile&page=N`, a link to `?page=N` with no script), Builds
+  (`#models[data-models]`, paged by the site's one pager, `ui:a list's
+  pages`: `?page=N` drawn by the server with its numbered links, Show more
+  reading the next page's own HTML), Builds
   (`.builds-made`, `.builds-of`, photos in `.build-grid` columns),
   Collections (`a.list-card`, a `.mosaic` of up to four pictures); an empty
   tab says what goes there (`.state`); whom they follow (`section.follows`)
@@ -1904,27 +1905,27 @@ plan with Claude as the client.
   Tested only, and Clear the filters; in `#chips` each that is on (a tag,
   an order, a size, made, a box ticked) a pill to take off, and Clear all
   from two. Then the
-  cards (`web/card.js`, `like: true`), two to a row under 900 px, three to
-  1200, four above; on the front (Top, all time, nothing asked) this week's
-  pick first and the shelves after the first rows (`ui:the gallery's front
-  shelves`). A card's heart likes it from the card, signed in, at once
-  (`POST /api/people?op=like`), and asks to sign in when not. The next page
-  comes by itself as Show more comes within a screen of the window, three
-  times (`data-auto`), then waits for Show more; a page that came by itself
-  is put in only while the end of the list is under the screen, and waits
-  (Show more pressable, drawing it at once) while Put yours here or the
-  footer shows (site277: it pushed them down, CLS 0.51 signed in at 1280);
-  Show more stays pressable while that page is on its way, and a press then
-  draws it as soon as it comes (it was disabled, and the press lost, until
-  2026-10-29; `/library` the same);
-  the shelves' cards are lazy; the address keeps the question and
-  how many pages (`/gallery?q=castle&kind=space&sort=newest&page=3`), put back
-  with `replaceState`, so it can be sent; a card opened is kept in the
-  history's state and Back puts it where it was (`data-back` its id or
-  `lost`). States: `#empty` (nothing listed, with Open the app), `#nothing`
-  (nothing matches, with Clear), `#quiet` (Following with nobody, or a quiet
-  week, with its way back), `#broken`. `data-gallery` on `<html>` is `asking`,
-  `ready` or `broken`, `data-pages` how many are shown. An address asking
+  cards (`web/card.js`, `like: true`), two to a row under 600 px, three to
+  900, four above (the owner, 2026-10-29); on the front (Top, all time,
+  nothing asked, page 1) this week's pick first and the shelves after the
+  first twelve places (`ui:the gallery's front shelves`, each a
+  `.scroller-head` over a `.models.scroller`; Today in the gallery in a
+  lit panel). A
+  card's heart likes it from the card, signed in, at once
+  (`POST /api/people?op=like`), and asks to sign in when not. Paged by the
+  site's one pager (`ui:a list's pages`): nothing comes by itself; Show
+  more puts the next page after these (asked ahead once it nears the
+  screen, a press while it comes kept: #81), the count "Showing models
+  1–48", the numbered links; the shelves' cards are lazy; the address keeps
+  the question and the last page shown
+  (`/gallery?q=castle&kind=space&sort=newest&page=3`), put back with
+  `replaceState`, so it can be sent, and opens that page alone with Show
+  earlier over it; Back from a card puts its pages back and the card where
+  it was (`data-back` its id or `lost`). States: `#empty` (nothing listed,
+  with Open the app), `#nothing` (nothing matches, with Clear), `#quiet`
+  (Following with nobody, or a quiet week, with its way back), `#broken`
+  (with Retry). `data-gallery` on `<html>` is `asking`, `ready` or
+  `broken`, `data-pages` the last page shown. An address asking
   what the list does not know gets the whole gallery and its address put
   right; an answer to an older question is thrown away. `tests=1` asks the
   list with test models in on every question. Before `supabase/gallery_tabs.sql`
@@ -1933,6 +1934,40 @@ plan with Claude as the client.
   `gallery_models`, its cards carrying `comments`.
 - `gallery browser flow` (`tools/web/gallery_flow.mjs`, preview check
   `[gallery]`): below.
+- `a list's pages` (`web/pager.js`, site.css `.pager`, site357 2026-10-30):
+  the one pager every list has: `/gallery`, `/library`, `/u/<handle>`'s
+  Models and Likes, `/c/<id>`, `/collections` and `/challenge`'s two groups
+  (`?hand-page=N`, `?assistant-page=N`). Pages of 24; under the list the
+  count, Show more (`a.pager-more`, never by itself) and the numbered
+  links (`ol.pager-pages`, real links); over a page opened at `?page=N`,
+  Show earlier (`[data-pager-earlier]`). `pagerHtml` draws the same markup
+  on the server (`api/_pager.js` passes `web/pager.js` through; a
+  deployment copies it beside each function, `tools/deploy.sh`) and in
+  the browser; a server page's `nav[data-source="page"]` reads its next
+  page's own HTML, and its head links the pages either side. After a
+  press the keyboard is on the first new card and `[data-pager-said]`
+  says "24 more models"; Back restores the pages and the card
+  (`history.state.pagers`). Not on shelves. Feed and notifications take it
+  with site359. The kit page (`/_kit`) shows it.
+- `paging browser flow` (`tools/web/paging_flow.mjs`, site357): the pager
+  on two lists, the LDraw library (drawn from JSON) and a person's models
+  (drawn by the server, `--profile=/u/brickworks`, 49 in the live
+  database): page 1's count, Show more and numbers, nothing by itself at
+  the foot; Show more from the keyboard (48 cards, `?page=2`, the keyboard
+  on card 25, "24 more ..."); a press while page 3 is held 1.5 s kept
+  (skeletons meanwhile, #81); `?page=3` opened afresh with Show earlier;
+  Back from card 31 with an unload listener (no back-forward cache) puts
+  the pages and the card back within 100 px; page 1's number a real link;
+  at 390 one row of numbers, Previous and Next as arrows.
+
+  ```sh
+  node --env-file=.env tools/web/relay_server.mjs 8890 &
+  node tools/web/paging_flow.mjs --url=http://127.0.0.1:8890 --out=DIR
+  BW_BYPASS=$VERCEL_BYPASS node tools/web/paging_flow.mjs --url=<preview> --out=DIR
+  ```
+
+  Proves it when it ends "paging_flow: all passed" (locally 2026-10-30:
+  the library's 1,575 sets in 66 pages, /u/brickworks's 49 in 3).
 - `seed the gallery` (`src/dev/gallery_seed.gd`, `tools/web/gallery_seed.mjs`):
   the project's own showcase models, listed by the project's account
   (`gallery@brickworks.diy`, signed in as the tests are) so the gallery is not
@@ -4119,15 +4154,13 @@ VERCEL_BYPASS=$VERCEL_BYPASS node tools/web/download_check.mjs --url=<deployment
 ```
 
 Proves it when, locally, the first page is drawn as 24 cards with Show more
-and the gallery lines say "24, then 2 by Show more" at 390 (pressed once, at
-its place on the screen, while the page the scroll to it asked for by itself
-is on its way: the made-up list gives a later page after 1.5 s, and asked
-for it once) and "24, then 2
-by itself" at 1280 (where Show more is first drawn within a screen under the
-window, so `gallery.js` nearEnd brings the next page unasked), 26 cards and
-Show more gone at both; against a deployment that lists more than a page,
-its next page the same way (brickworks.diy on 2026-10-29: "23, then 24 by
-Show more" at both widths, its pick and shelves over the list); the markup
+and the gallery lines say "24, then 2 by Show more, pressed while it was on
+its way" at 390 and 1280 (Show more brought into view asks for the next
+page ahead, web/pager.js, and nothing is drawn; pressed once, at its place
+on the screen, while that page is still coming: the made-up list gives a
+later page after 1.5 s, and is asked for it once), 26 cards and Show more
+gone at both (site357, 2026-10-30); against a deployment that lists more
+than a page, its next page the same way; the markup
 name shown as text and no `img` but the pictures', a
 model with no picture given none, "86 parts, by Builder 2"; and at 390 and
 1280 px no console error, no sideways scroll, no broken picture

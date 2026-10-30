@@ -3920,6 +3920,20 @@
       "entry": "src/dev/designer_words_probe.gd",
       "reach": "tools/probe.sh designer_words_probe",
       "area": "assistant"
+    },
+    {
+      "kind": "ui",
+      "label": "a list's pages",
+      "entry": "web/pager.js",
+      "reach": "every list's foot: /gallery, /library, /u/<handle> (Models, Likes), /c/<id>, /collections, /challenge (each group); Show more, the count, the numbered links, ?page=N with Show earlier; all at once on /_kit",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "paging browser flow",
+      "entry": "tools/web/paging_flow.mjs",
+      "reach": "node tools/web/paging_flow.mjs --url=http://127.0.0.1:8890 --out=DIR   (a local relay_server.mjs: the LDraw library and /u/brickworks); BW_BYPASS=$VERCEL_BYPASS node tools/web/paging_flow.mjs --url=<preview> --out=DIR",
+      "area": "web"
     }
   ]
 }
