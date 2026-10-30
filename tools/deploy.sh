@@ -263,7 +263,7 @@ for handler in api/*.js; do
     # /sitemap.xml is made there: the site's own pages, from web/sitemap.xml,
     # and every listed model, profile and public collection.
     cp web/sitemap.xml "$fn/_sitemap.xml"
-    if ! node tools/web/part_facts.mjs "$fn/_part_facts.json" --parts="$fn/_parts_table.json" | sed 's/^/deploy: /'; then
+    if ! node tools/web/part_facts.mjs "$fn/_part_facts.json" --parts="$fn/_parts_table.json" --scene="$fn/_scene_table.json" | sed 's/^/deploy: /'; then
       echo "deploy FAILED: no part facts for /api/share (tools/web/part_facts.mjs)"; exit 1
     fi
     # Every set in Rebrickable's catalogue, a page each at /library/set/<n>
@@ -471,6 +471,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/?", "dest": "/api/share?op=page&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]mpd", "dest": "/api/share?op=file&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/parts[.](json|xml|csv)", "dest": "/api/share?op=parts&id=\$1&v=\$2&as=\$3" },
+    { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/scene[.]json", "dest": "/api/share?op=scene&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]png", "dest": "/api/share?op=image&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]cutout[.]png", "dest": "/api/share?op=cutout&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/?", "dest": "/api/share?op=page&id=\$1" },
@@ -479,6 +480,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})[.]webp", "dest": "/api/share?op=thumb&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]mpd", "dest": "/api/share?op=file&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/parts[.](json|xml|csv)", "dest": "/api/share?op=parts&id=\$1&as=\$2" },
+    { "src": "/m/([A-Za-z0-9]{10})/scene[.]json", "dest": "/api/share?op=scene&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },
     { "src": "/u/([a-z0-9-]{3,24})/?", "dest": "/api/people?op=page&handle=\$1" },
     { "src": "/c/([A-Za-z0-9]{10})/?", "dest": "/api/people?op=list_page&id=\$1" },
@@ -493,6 +495,7 @@ $docs_moved
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.](cutout|cover)[.]webp", "dest": "/api/share?op=set_cover&id=\$1&as=\$2" },
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.]mpd", "dest": "/api/share?op=set_file&id=\$1" },
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})/parts[.](json|xml|csv)", "dest": "/api/share?op=set_parts&id=\$1&as=\$2" },
+    { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})/scene[.]json", "dest": "/api/share?op=set_scene&id=\$1" },
     { "src": "/parts/(.*[.](lbm|bwx))", "headers": {
         "Cache-Control": "public, max-age=31536000, immutable" } },
     { "src": "/(.*)",

@@ -2105,7 +2105,7 @@
       "kind": "cli",
       "label": "build the viewer",
       "entry": "tools/viewer/build.mjs",
-      "reach": "node tools/viewer/build.mjs --deps=DIR [--check]   (DIR: three@0.186.1 and esbuild@0.28.2 installed apart, as its head says; writes api/_viewer_page.js)",
+      "reach": "node tools/viewer/build.mjs --deps=DIR [--check]   (DIR: three@0.186.1 and esbuild@0.28.2 installed apart, as its head says; writes api/_viewer_page.js, the card, and web/viewer3d.js, a model page's 3D view, both from tools/viewer/view.js)",
       "area": "mcp"
     },
     {
@@ -2988,6 +2988,13 @@
       "label": "parts page probe",
       "entry": "src/dev/parts_page_probe.gd",
       "reach": "tools/probe.sh parts_page_probe [-- FILE.mpd ...]   (headless; the app's Inventory.of and ShopLists of four Library sets, or the files given, against the page's list, tools/web/parts_check.mjs, lot by lot and word for word)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a model in 3D on its page",
+      "entry": "tools/viewer/inline.js",
+      "reach": "https://brickworks.diy/m/<id>, /library/<id> and /library/set/<n> with an LDraw model: View in 3D on the picture (or a click, or the first drag across it) turns the model in 3D in the picture's place (web/model-page.js start3d imports /viewer3d.js, built by tools/viewer/build.mjs from tools/viewer/inline.js and view.js, the card's scene); its scene /m/<id>/scene.json, /m/<id>/v/<n>/scene.json, /library/<id>/scene.json (api/share.js ?op=scene|set_scene, api/_parts.js sceneOf), its parts' geometry from the part store",
       "area": "web"
     },
     {

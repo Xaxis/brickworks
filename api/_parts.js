@@ -26,6 +26,7 @@
 // a made part, which no shop sells.
 
 import { existsSync, readFileSync } from "node:fs";
+import { deflateSync } from "node:zlib";
 
 let table = null;
 
@@ -624,3 +625,165 @@ export function paletteOf(given = partsTable()) {
   return palette;
 }
 const palettes = new WeakMap();
+
+// ---------------------------------------------------------------------------
+// The model in 3D, for a page to turn (viewer369): every part the file
+// places, packed as the app packs its model for the viewer Claude shows
+// (src/net/model_scene.gd, read by tools/viewer/scene.js), so the page's 3D
+// view and that viewer draw from one format and one store.
+
+let shapes = null;
+
+/// What packing needs of each part beyond the parts table: its box, in the
+/// app's axes (+Y up, LDU), how many triangles it is drawn with, and the
+/// colours it is moulded in apart from the one it is placed in (a printed
+/// face, a tyre). {parts: id -> [min x y z, max x y z, triangles, fixed...]}.
+/// Apart from the parts table, which every page of the share function
+/// reads, since only a 3D view asks for it.
+export function deriveSceneTable(catalogue) {
+  const round = (v) => Math.round(Number(v) * 10) / 10;
+  const parts = {};
+  for (const part of catalogue.parts || []) {
+    const low = part.bounds_min || [-10, -24, -10];
+    const high = part.bounds_max || [10, 0, 10];
+    parts[String(part.id)] = [...low.map(round), ...high.map(round), Number(part.triangles) || 0,
+      ...(part.fixed_colors || []).map(Number).filter(Number.isInteger)];
+  }
+  return { parts };
+}
+
+/// The scene table: _scene_table.json beside this file in a deployment
+/// (tools/web/part_facts.mjs --scene), else worked out of the catalogue in a
+/// checkout. Null where there is neither.
+export function sceneTable() {
+  if (shapes) return shapes;
+  const beside = new URL("./_scene_table.json", import.meta.url);
+  if (existsSync(beside)) {
+    shapes = JSON.parse(readFileSync(beside, "utf8"));
+    return shapes;
+  }
+  const at = new URL("../assets/generated/catalogue.json", import.meta.url);
+  if (existsSync(at)) {
+    shapes = deriveSceneTable(JSON.parse(readFileSync(at, "utf8")));
+    return shapes;
+  }
+  return null;
+}
+
+/// A row of LDraw's twelve numbers in the app's axes (LdrModel.to_transform:
+/// conjugated by the flip diag(1, -1, -1)) as a place and a turn, the turn a
+/// unit quaternion [x, y, z, w]. What is not a turn (a hose segment
+/// stretched, a part mirrored) is drawn as the turn nearest it, as the app's
+/// own packing draws it.
+function placeOf(m) {
+  const place = [m[0], -m[1], -m[2]];
+  // Row-major, flipped on both sides.
+  let r = [m[3], -m[4], -m[5], -m[6], m[7], m[8], -m[9], m[10], m[11]];
+  // Each column a unit, and a mirror undone across x.
+  for (let c = 0; c < 3; c += 1) {
+    const n = Math.hypot(r[c], r[3 + c], r[6 + c]) || 1;
+    for (let k = 0; k < 3; k += 1) r[k * 3 + c] /= n;
+  }
+  const det = r[0] * (r[4] * r[8] - r[5] * r[7]) - r[1] * (r[3] * r[8] - r[5] * r[6]) + r[2] * (r[3] * r[7] - r[4] * r[6]);
+  if (det < 0) r = [-r[0], r[1], r[2], -r[3], r[4], r[5], -r[6], r[7], r[8]];
+  const [a, b, c, d, e, f, g, h, i] = r;
+  const trace = a + e + i;
+  let q;
+  if (trace > 0) {
+    const s = Math.sqrt(trace + 1) * 2;
+    q = [(h - f) / s, (c - g) / s, (d - b) / s, s / 4];
+  } else if (a > e && a > i) {
+    const s = Math.sqrt(1 + a - e - i) * 2;
+    q = [s / 4, (b + d) / s, (c + g) / s, (h - f) / s];
+  } else if (e > i) {
+    const s = Math.sqrt(1 + e - a - i) * 2;
+    q = [(b + d) / s, s / 4, (f + h) / s, (c - g) / s];
+  } else {
+    const s = Math.sqrt(1 + i - a - e) * 2;
+    q = [(c + g) / s, (f + h) / s, s / 4, (d - b) / s];
+  }
+  const n = Math.hypot(...q) || 1;
+  return { place, turn: q.map((v) => v / n) };
+}
+
+/// The model in [text] packed as ModelScene.packed packs one: {v, of, root,
+/// step, origin, meshes, colours, count, bricks, triangles}, [root] where
+/// each part's geometry is (root + hash + ".lbm"). Every part the catalogue
+/// draws is in it, through the sub-models; a part the file carries, or one
+/// nobody knows, is left out, having no geometry in the store. [of] says
+/// what it is of. Null where there is no table to pack with.
+export function sceneOf(text, root, of = "", given = partsTable(), table = sceneTable()) {
+  if (!given || !table) return null;
+  const model = parse(String(text).replace(/^﻿/, ""));
+  const library = makeLibrary(given);
+  const placed = [];
+  for (const one of flatten(model, library)) {
+    // BrickLink Studio's name for a part, and a copy of a catalogue part
+    // carried in the file and named for it as LDraw's model repository names
+    // one ("42100 - 4185a"), which the app draws as that part
+    // (CustomParts.read_as_copy).
+    const copy = one.part.lastIndexOf(" - ");
+    const studio = library.has(one.part) ? one.part
+      : one.part.startsWith("bl_") && library.has(one.part.slice(3)) ? one.part.slice(3)
+        : copy > 0 && library.has(one.part.slice(copy + 3).trim()) ? one.part.slice(copy + 3).trim() : one.part;
+    const part = library.resolve(studio);
+    const info = library.info(part);
+    if (!info || !/^[0-9a-f]{8,64}$/.test(info.mesh)) continue;
+    placed.push({ part, info, colour: one.colour, ...placeOf(one.m) });
+  }
+  const n = placed.length;
+  const meshes = [];
+  const meshOf = new Map();
+  const colours = [];
+  const colourOf = new Map();
+  const colourIndex = (code) => {
+    if (colourOf.has(code)) return colourOf.get(code);
+    const row = given.colours[code];
+    const direct = code >= 0x2000000;
+    const hex = direct ? (code & 0xffffff).toString(16).padStart(6, "0") : row ? row[1] : "ff00ff";
+    colourOf.set(code, colours.length);
+    colours.push([code, direct ? `#${hex.toUpperCase()}` : row ? String(row[0]).replace(/_/g, " ") : `Colour ${code}`,
+      hex, !direct && row && Number.isInteger(row[6]) ? row[6] : 255]);
+    return colourOf.get(code);
+  };
+  let triangles = 0;
+  const low = [Infinity, Infinity, Infinity];
+  const high = [-Infinity, -Infinity, -Infinity];
+  for (const one of placed) {
+    for (let k = 0; k < 3; k += 1) {
+      low[k] = Math.min(low[k], one.place[k]);
+      high[k] = Math.max(high[k], one.place[k]);
+    }
+  }
+  const origin = n ? low.map((v, k) => Math.round((v + high[k]) / 2)) : [0, 0, 0];
+  const reach = n ? Math.max(...high.map((v, k) => Math.abs(v - origin[k])), ...low.map((v, k) => Math.abs(origin[k] - v))) : 0;
+  let step = 0.25;
+  while (reach / step > 32000) step *= 2;
+  const raw = Buffer.alloc(n * 4 + n * 2 + n * 2 + n + (n % 2) + n * 6 + n * 8);
+  const atMesh = n * 4;
+  const atColour = atMesh + n * 2;
+  const atFlags = atColour + n * 2;
+  const atPlace = atFlags + n + (n % 2);
+  const atTurn = atPlace + n * 6;
+  const clamp = (v) => Math.max(-32767, Math.min(32767, Math.round(v)));
+  placed.forEach((one, k) => {
+    raw.writeUInt32LE(1, k * 4);
+    if (!meshOf.has(one.part)) {
+      const row = table.parts[one.part] || [];
+      const box = row.length >= 6 ? row.slice(0, 6) : [-10, -24, -10, 10, 0, 10];
+      meshOf.set(one.part, { at: meshes.length, triangles: Number(row[6]) || 0 });
+      meshes.push([one.part, one.info.mesh, tidy(one.info.name), ...box]);
+      for (const fixed of row.slice(7)) colourIndex(fixed);
+    }
+    const mesh = meshOf.get(one.part);
+    triangles += mesh.triangles;
+    raw.writeUInt16LE(mesh.at, atMesh + k * 2);
+    raw.writeUInt16LE(colourIndex(one.colour), atColour + k * 2);
+    for (let axis = 0; axis < 3; axis += 1) {
+      raw.writeInt16LE(clamp((one.place[axis] - origin[axis]) / step), atPlace + (axis * n + k) * 2);
+    }
+    for (let c = 0; c < 4; c += 1) raw.writeInt16LE(clamp(one.turn[c] * 32767), atTurn + (c * n + k) * 2);
+  });
+  return { v: 1, of, root, step, origin, meshes, colours, count: n,
+    bricks: deflateSync(raw).toString("base64"), triangles };
+}

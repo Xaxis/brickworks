@@ -125,13 +125,12 @@ try {
 
     // 1. The link, as somebody follows it.
     await page.goto(`${site}/m/${id}`, { waitUntil: "domcontentloaded", timeout: 120000 });
-    // On a deployment the link is the model's own page, whose View in 3D (its
-    // picture) opens the viewer, Build it the step player at step 1 (the
-    // local relay goes straight on), as play found.
-    const cta = await page.$('.model-page a.picture[href^="/app?view="]').catch(() => null);
-    if (cta) {
-      await Promise.all([page.waitForURL(/\/app\?view=/, { timeout: 180000 }), cta.tap()]);
-    }
+    // On a deployment the link is the model's own page, whose picture links
+    // the viewer, Build it the step player at step 1 (the local relay goes
+    // straight on), as play found. A tap on the picture turns the model in
+    // 3D on the page itself (viewer369), so its link is followed instead.
+    const viewer = await page.$eval('.model-page a.picture[href^="/app?view="]', (a) => a.href).catch(() => "");
+    if (viewer) await page.goto(viewer, { waitUntil: "domcontentloaded", timeout: 180000 });
     await until(page, () => ((window.brickworksShare || {}).view || {}).state === "ready",
       "the shared model opened", 600);
     const bricks = (await page.evaluate(() => window.brickworksState)).bricks;

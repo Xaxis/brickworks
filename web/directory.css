@@ -51,6 +51,8 @@
 	position: relative; display: block; border-radius: var(--radius); overflow: hidden;
 	border: 1px solid var(--line); background: var(--picture-ground); aspect-ratio: 1200 / 630;
 	box-shadow: var(--highlight), var(--shadow-2); text-decoration: none; color: inherit;
+	/* A finger up or down it scrolls the page; across it opens the 3D view. */
+	touch-action: pan-y pinch-zoom;
 }
 .model-page .picture img { position: relative; width: 100%; height: 100%; object-fit: cover; transition: transform 320ms var(--ease); }
 @media (hover: hover) { .model-page a.picture:hover img { transform: scale(1.02); } }
@@ -77,6 +79,75 @@
 	content: ""; width: 9px; height: 9px; border: 2px solid currentColor; border-radius: 0; transform: rotate(45deg);
 }
 .model-page .picture:hover .go { filter: brightness(1.07); }
+
+/* The model in 3D in its picture's place (viewer369; web/model-page.js
+   start3d, tools/viewer/inline.js): the picture's own shape over it, so
+   nothing on the page moves as it opens, on the picture's own ground, so
+   the model is where the picture's was in either theme. Until enough of it
+   has come the picture shows through, with how far it has got along its
+   foot (.view3d-bar) and in words (.view3d-said, read out); then the model
+   (.shown), its tools at its foot on the right and the way into the app
+   on the left (.view3d-app). Full screen, the screen's
+   (.full where the browser has none for a page, as an iPhone's). */
+.model-page .view3d {
+	position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 1200 / 630; z-index: 2; container-type: inline-size;
+	border: 1px solid transparent; border-radius: var(--radius); overflow: hidden; pointer-events: none;
+}
+.model-page .view3d[hidden] { display: none; }
+.model-page .view3d.shown {
+	border-color: var(--line); background: var(--picture-ground); pointer-events: auto;
+	transition: background-color 160ms var(--ease);
+}
+/* A picture published before cut-outs was drawn on a ground of its own
+   (--render-top, --render-foot): its model in 3D is put on that one. */
+.model-page .view3d.shown[data-ground="render"] { background: linear-gradient(180deg, var(--render-top), var(--render-foot)); }
+/* Opened by touch, it has hold of the finger once taken hold of (a drag
+   across, two fingers, a tap), and says so with the accent's edge; until
+   then a finger up or down scrolls the page. */
+.model-page .view3d.shown[data-how="touch"][data-engaged] { border-color: var(--accent-edge); }
+.model-page .view3d .stage { position: absolute; inset: 0; visibility: hidden; outline: none; }
+.model-page .view3d.shown .stage { visibility: visible; }
+.model-page .view3d .stage:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); }
+.model-page .view3d .stage canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+.model-page .view3d .stage canvas:active { cursor: grabbing; }
+.model-page .view3d-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; }
+.model-page .view3d-bar > span { display: block; width: 0; height: 100%; background: var(--accent); transition: width 160ms linear; }
+.model-page .view3d[data-state="ready"] .view3d-bar, .model-page .view3d[data-state="failed"] .view3d-bar { display: none; }
+.model-page .view3d-said {
+	position: absolute; left: var(--s-3); bottom: var(--s-3); max-width: calc(100% - 2 * var(--s-3)); margin: 0;
+	display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2);
+	padding: 8px 14px; border-radius: var(--radius); background: var(--panel); color: var(--ink);
+	font-size: var(--t-small); box-shadow: var(--shadow-2); pointer-events: auto;
+}
+.model-page .view3d-said[hidden] { display: none; }
+.model-page .view3d-tools {
+	position: absolute; right: var(--s-3); bottom: var(--s-3); display: flex; gap: var(--s-1); pointer-events: auto;
+}
+.model-page .view3d-tools[hidden] { display: none; }
+.model-page .view3d-tools .icon-btn { background: var(--panel); box-shadow: 0 1px 3px var(--shade); }
+.model-page .view3d-tools .icon-btn:hover { background: var(--panel-hi); }
+.model-page .view3d-app { position: absolute; left: var(--s-3); bottom: var(--s-3); box-shadow: 0 1px 3px var(--shade); pointer-events: auto; }
+.model-page .view3d-app[hidden] { display: none; }
+.model-page .view3d-hint {
+	position: absolute; top: var(--s-3); left: 50%; transform: translateX(-50%); margin: 0; max-width: calc(100% - 2 * var(--s-3));
+	padding: 6px 12px; border-radius: var(--r-pill); background: var(--panel); color: var(--ink-soft);
+	font-size: var(--t-tiny); box-shadow: 0 1px 3px var(--shade); pointer-events: none; text-align: center;
+}
+.model-page .view3d-hint[hidden] { display: none; }
+/* A phone's frame has room at its foot for the tools alone: the way into
+   the app goes to its head, and the hint above the tools. */
+@container (width < 520px) {
+	.model-page .view3d-app { top: var(--s-3); bottom: auto; }
+	.model-page .view3d-hint { top: auto; bottom: calc(var(--s-3) + 46px); }
+}
+.model-page .view3d.full, .model-page .view3d:fullscreen {
+	position: fixed; inset: 0; width: auto; height: auto; aspect-ratio: auto; z-index: 90;
+	border: 0; border-radius: 0; background: var(--picture-ground);
+}
+html.view3d-full { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+	.model-page .view3d.shown, .model-page .view3d-bar > span { transition: none; }
+}
 
 /* The strip of its pictures (api/share.js mediaStrip): the one it was
    published with, its owner's photos, then photos of real builds; the one
@@ -110,7 +181,7 @@
 /* On a phone the picture is square: at 390 px it is 358 px tall, not 188,
    and web/model-page.js draws the model as large as its width lets it,
    the picture's own ground carried on above and below a wide one. */
-@media (width < 600px) { .model-page .picture { aspect-ratio: 1 / 1; } }
+@media (width < 600px) { .model-page .picture, .model-page .view3d { aspect-ratio: 1 / 1; } }
 
 /* The page's tabs (api/share.js pageTabs): the kit's .tabs, kept on screen
    under the header as the page scrolls past its parts. */

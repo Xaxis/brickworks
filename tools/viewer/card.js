@@ -18,17 +18,9 @@
 //
 // Without WebGL, or a scene, or the geometry, it is the turntable of
 // pictures it was before.
-import {
-  Box3, BufferAttribute, BufferGeometry, CanvasTexture, Color, DirectionalLight, DoubleSide,
-  EdgesGeometry, FrontSide, Group, HemisphereLight, InstancedMesh, LineBasicMaterial, LineSegments,
-  Matrix4, Mesh, MeshBasicMaterial, MeshStandardMaterial, NeutralToneMapping, PerspectiveCamera,
-  PlaneGeometry, PMREMGenerator, Quaternion, Raycaster, Scene, Sphere, Spherical, SRGBColorSpace,
-  Vector2, Vector3, WebGLRenderer,
-} from "three";
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { INHERIT, parseLbm } from "../../web/lbm.js";
+import { Color, Quaternion, Vector3 } from "three";
 import { SCENERY, sceneShape, unpack } from "./scene.js";
+import { CLAY, View, shapes, webglWorks } from "./view.js";
 
 const PROTOCOL = "2026-01-26";
 const SIDES = { corner: "Front right", "back right": "Back right", "far corner": "Back left",
@@ -39,12 +31,8 @@ const DOING = { submit_design: "Building it…", edit_model: "Changing it…",
 // of it (src/render/balance_mark.gd CLOSE and TIPS).
 const CLOSE = new Color(1.0, 0.76, 0.22);
 const TIPS = new Color(0.97, 0.32, 0.26);
-const CLAY = new Color(0xc9ced6);
 const PICKED = 0xffd84d;
 const NEW_IN_STEP = 0x3b9eff;
-// Where the camera starts: the app's front-right corner (ModelShot "corner").
-const CORNER = new Vector3(0.72, 0.52, 0.72).normalize();
-const FETCHING = 12;
 
 const $ = (id) => document.getElementById(id);
 const root = document.documentElement;
@@ -134,18 +122,7 @@ async function viewer(kind, args = {}) {
 }
 
 // Whether this frame can draw in 3D at all, asked once.
-const webgl = (() => {
-  try {
-    const probe = document.createElement("canvas");
-    const gl = probe.getContext("webgl2") || probe.getContext("webgl");
-    if (!gl) return false;
-    const lose = gl.getExtension("WEBGL_lose_context");
-    if (lose) lose.loseContext();
-    return true;
-  } catch {
-    return false;
-  }
-})();
+const webgl = webglWorks();
 card.webgl = webgl;
 
 function context(given) {
@@ -422,508 +399,38 @@ function note(words, ms = 0) {
 }
 
 // ── The model in 3D ─────────────────────────────────────────────────────────
-// Each part's geometry once, fetched by its hash; the bricks drawn as
-// instances of it, a mesh per surface, in their colours.
-const shapes = new Map();
-// Once a fetch from the declared origin has failed (a host that does not
-// let the page reach it), every part comes through the host instead.
-let throughHost = false;
+// The scene itself, and each part's geometry, are view.js's; what is the
+// card's is where the geometry comes from: the store the scene names, or,
+// once a fetch from it has failed (a host that does not let the page reach
+// it), through the host, every part.
+let shapeStore = null;
+let shapeRoot = "";
 function shapeOf(mesh) {
-  if (!mesh.hash) return Promise.resolve(null);
-  if (!shapes.has(mesh.hash)) {
-    const direct = () => fetch(scene.root + mesh.hash + ".lbm", { cache: "force-cache" })
-      .then((answer) => { if (!answer.ok) throw new Error(`HTTP ${answer.status}`); return answer.arrayBuffer(); });
-    const hosted = () => ask("resources/read", { uri: `brickworks://viewer/part/${mesh.hash}` }, 60000).then((read) => {
-      const blob = read && read.contents && read.contents[0] && read.contents[0].blob;
-      if (typeof blob !== "string") throw new Error("no geometry");
-      const raw = atob(blob);
-      const bytes = new Uint8Array(raw.length);
-      for (let k = 0; k < raw.length; k++) bytes[k] = raw.charCodeAt(k);
-      card.geometryThroughHost = (card.geometryThroughHost || 0) + 1;
-      return bytes.buffer;
-    });
-    const loaded = (throughHost ? hosted() : direct().catch((trouble) => {
-      if (!can("serverResources")) throw trouble;
-      card.errors.push(`fetch ${mesh.part}: ${trouble.message}; through the host instead`);
-      throughHost = true;
-      return hosted();
-    }))
-      .then((buffer) => parseLbm(buffer))
-      .catch((trouble) => { card.errors.push(`${mesh.part}: ${trouble.message}`); return null; });
-    shapes.set(mesh.hash, loaded);
+  if (!shapeStore || shapeRoot !== scene.root) {
+    shapeRoot = scene.root;
+    shapeStore = shapes(scene.root, { errors: card.errors, fallback: () => can("serverResources"),
+      hosted: (one) => ask("resources/read", { uri: `brickworks://viewer/part/${one.hash}` }, 60000).then((read) => {
+        const blob = read && read.contents && read.contents[0] && read.contents[0].blob;
+        if (typeof blob !== "string") throw new Error("no geometry");
+        const raw = atob(blob);
+        const bytes = new Uint8Array(raw.length);
+        for (let k = 0; k < raw.length; k++) bytes[k] = raw.charCodeAt(k);
+        card.geometryThroughHost = (card.geometryThroughHost || 0) + 1;
+        return bytes.buffer;
+      }) });
   }
-  return shapes.get(mesh.hash);
+  return shapeStore(mesh);
 }
 
-function geometryOf(surface) {
-  const g = new BufferGeometry();
-  g.setAttribute("position", new BufferAttribute(surface.position, 3));
-  g.setAttribute("normal", new BufferAttribute(surface.normal, 3));
-  g.setIndex(new BufferAttribute(surface.index, 1));
-  g.computeBoundingSphere();
-  g.computeBoundingBox();
-  return g;
-}
-
-// A part made in the person's tab has no file to fetch: its box stands in.
-function boxOf(bounds) {
-  const [x0, y0, z0, x1, y1, z1] = bounds.length === 6 && bounds.every(Number.isFinite) ? bounds : [-10, -24, -10, 10, 0, 10];
-  const p = [x0, y0, z0, x1, y0, z0, x1, y1, z0, x0, y1, z0, x0, y0, z1, x1, y0, z1, x1, y1, z1, x0, y1, z1];
-  const faces = [[0, 3, 2, 1, 0, 0, -1], [4, 5, 6, 7, 0, 0, 1], [0, 1, 5, 4, 0, -1, 0], [3, 7, 6, 2, 0, 1, 0], [0, 4, 7, 3, -1, 0, 0], [1, 2, 6, 5, 1, 0, 0]];
-  const position = new Float32Array(72);
-  const normal = new Float32Array(72);
-  const index = new Uint16Array(36);
-  faces.forEach((f, k) => {
-    for (let c = 0; c < 4; c++) {
-      position.set(p.slice(f[c] * 3, f[c] * 3 + 3), (k * 4 + c) * 3);
-      normal.set([f[4], f[5], f[6]], (k * 4 + c) * 3);
-    }
-    index.set([k * 4, k * 4 + 1, k * 4 + 2, k * 4, k * 4 + 2, k * 4 + 3], k * 6);
-  });
-  return { bounds, surfaces: [{ colour: INHERIT, twoSided: false, position, normal, index }] };
-}
-
-class View {
-  constructor(stage, d) {
-    this.stage = stage;
-    this.d = d;
-    this.scene = new Scene();
-    this.groups = [];
-    this.byMesh = new Map();
-    this.look = null;
-    this.outlined = new Group();
-    this.outlined.renderOrder = 10;
-    this.scene.add(this.outlined);
-    this.edges = new Map();
-    this.colours = d.colours.map((c) => new Color().setHex(parseInt(c.hex, 16), SRGBColorSpace));
-    this.colourByCode = new Map(d.colours.map((c, k) => [c.code, k]));
-    this.loaded = 0;
-    this.meshesWanted = 0;
-    this.bounds = this.measure();
-    this.camera = new PerspectiveCamera(35, 4 / 3, 1, 100000);
-    this.materials = new Map();
-    this.frameQueued = false;
-    this.moving = 0;
-    this.idleSince = performance.now();
-  }
-
-  // The model's box from where its bricks are and how big each part is,
-  // before any geometry has come.
-  measure() {
-    const box = new Box3();
-    const model = new Box3();
-    const corner = new Vector3();
-    const q = new Quaternion();
-    const d = this.d;
-    for (let i = 0; i < d.n; i++) {
-      const b = d.meshes[d.mesh[i]]?.bounds;
-      const p = d.position.subarray(i * 3, i * 3 + 3);
-      const ground = d.flags[i] & SCENERY;
-      q.set(d.turn[i * 4], d.turn[i * 4 + 1], d.turn[i * 4 + 2], d.turn[i * 4 + 3]);
-      if (!b || b.length !== 6 || !b.every(Number.isFinite)) {
-        box.expandByPoint(corner.set(p[0], p[1], p[2]));
-        if (!ground) model.expandByPoint(corner);
-        continue;
-      }
-      for (let k = 0; k < 8; k++) {
-        corner.set(k & 1 ? b[3] : b[0], k & 2 ? b[4] : b[1], k & 4 ? b[5] : b[2]).applyQuaternion(q);
-        box.expandByPoint(corner.set(corner.x + p[0], corner.y + p[1], corner.z + p[2]));
-        if (!ground) model.expandByPoint(corner);
-      }
-    }
-    if (box.isEmpty()) box.set(new Vector3(-40, 0, -40), new Vector3(40, 40, 40));
-    // The model without the ground it stands on: what "the left" is of.
-    this.modelBounds = model.isEmpty() ? box.clone() : model;
-    return box;
-  }
-
-  // The renderer, made when the card is on screen and let go when it has
-  // been off it a while: a long conversation has a card for every build,
-  // and a browser keeps only so many WebGL contexts.
-  start() {
-    if (this.renderer) return;
-    const canvas = document.createElement("canvas");
-    canvas.setAttribute("aria-hidden", "true");
-    const renderer = new WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "low-power" });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.outputColorSpace = SRGBColorSpace;
-    renderer.toneMapping = NeutralToneMapping;
-    renderer.toneMappingExposure = 1.0;
-    renderer.setClearColor(0x000000, 0);
-    this.renderer = renderer;
-    canvas.addEventListener("webglcontextlost", (event) => { event.preventDefault(); this.lost(); });
-    this.stage.append(canvas);
-    const pmrem = new PMREMGenerator(renderer);
-    this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    this.scene.environmentIntensity = 0.55;
-    pmrem.dispose();
-    if (!this.lights) {
-      this.lights = true;
-      this.scene.add(new HemisphereLight(0xffffff, 0x8d8a85, 0.9));
-      const key = new DirectionalLight(0xffffff, 1.5);
-      key.position.set(0.5, 1, 0.8);
-      this.scene.add(key);
-      const fill = new DirectionalLight(0xffffff, 0.35);
-      fill.position.set(-0.8, 0.3, -0.5);
-      this.scene.add(fill);
-      this.scene.add(this.shadow());
-    }
-    this.controls = new OrbitControls(this.camera, canvas);
-    this.controls.enableDamping = !still;
-    this.controls.dampingFactor = 0.12;
-    this.controls.screenSpacePanning = true;
-    this.controls.zoomToCursor = true;
-    this.controls.rotateSpeed = 0.85;
-    this.controls.addEventListener("change", () => this.render());
-    this.controls.addEventListener("start", () => { this.interacted = true; this.controls.autoRotate = false; this.moving += 1; });
-    this.controls.addEventListener("end", () => { this.moving = Math.max(0, this.moving - 1); this.idleSince = performance.now(); });
-    this.touch();
-    this.size();
-    if (!this.framed) this.frame();
-    else { this.controls.target.copy(this.target); this.camera.position.copy(this.eye); }
-    // A slow turn as it arrives, as the pictures turned: a few seconds, then
-    // still, since a page in a conversation does not move for ever.
-    this.controls.autoRotate = !still && !this.interacted && !this.turned;
-    this.controls.autoRotateSpeed = 1.6;
-    if (this.controls.autoRotate) {
-      this.turned = true;
-      setTimeout(() => { if (this.controls) this.controls.autoRotate = false; }, 7000);
-    }
-    this.render();
-  }
-
-  // On a touch screen inline, one finger across turns the model and one
-  // finger up or down scrolls the conversation; full screen, it is all the
-  // model's.
-  touch() {
-    if (!this.controls) return;
-    const full = root.classList.contains("full");
-    this.renderer.domElement.style.touchAction = full ? "none" : "pan-y";
-  }
-
-  stop(keepPicture) {
-    if (!this.renderer) return;
-    if (keepPicture) {
-      try { this.render(true); this.still = this.renderer.domElement.toDataURL("image/webp", 0.85); } catch { this.still = ""; }
-    }
-    this.eye = this.camera.position.clone();
-    this.target = this.controls.target.clone();
-    this.controls.dispose();
-    this.controls = null;
-    const canvas = this.renderer.domElement;
-    this.renderer.dispose();
-    this.renderer.forceContextLoss();
-    canvas.remove();
-    this.renderer = null;
-  }
-
-  lost() {
-    card.errors.push("the WebGL context was lost");
-    const shot = this.still;
-    this.stop(false);
+// What the card gives the scene: its timings, its errors, and the touch
+// shared with the conversation until it is full screen.
+const viewOptions = () => ({ still, errors: card.errors, shapeOf,
+  mark: (what) => { if (!card.timings[what]) mark(what); },
+  touchAction: () => (root.classList.contains("full") ? "none" : "pan-y"),
+  lost: (shot) => {
     if (shot) { $("picture").src = shot; $("picture").hidden = false; }
-    this.stage.classList.remove("three");
-  }
-
-  // A soft shadow on the ground under the model.
-  shadow() {
-    const c = document.createElement("canvas");
-    c.width = c.height = 128;
-    const g = c.getContext("2d");
-    const fade = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-    fade.addColorStop(0, "rgba(0,0,0,0.32)");
-    fade.addColorStop(0.55, "rgba(0,0,0,0.14)");
-    fade.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = fade;
-    g.fillRect(0, 0, 128, 128);
-    const size = this.bounds.getSize(new Vector3());
-    const centre = this.bounds.getCenter(new Vector3());
-    const plane = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ map: new CanvasTexture(c), transparent: true, depthWrite: false }));
-    plane.rotation.x = -Math.PI / 2;
-    plane.scale.set(Math.max(size.x, 40) * 1.7, Math.max(size.z, 40) * 1.7, 1);
-    plane.position.set(centre.x, this.bounds.min.y - 0.4, centre.z);
-    plane.renderOrder = -1;
-    return plane;
-  }
-
-  frame() {
-    this.framed = true;
-    // The model, not the baseplate it stands on, which runs off the edges
-    // as it does in the app's own pictures.
-    const sphere = this.modelBounds.getBoundingSphere(new Sphere());
-    const r = Math.max(sphere.radius, 20);
-    // Whichever way the frame is narrower, so a tall frame shows it whole too.
-    const up = (this.camera.fov * Math.PI) / 360;
-    const across = Math.atan(Math.tan(up) * this.camera.aspect);
-    const fit = r / Math.sin(Math.min(up, across)) * 1.02;
-    this.controls.target.copy(sphere.center);
-    this.camera.position.copy(sphere.center).addScaledVector(CORNER, fit);
-    this.camera.near = Math.max(0.5, fit / 400);
-    this.camera.far = fit * 30;
-    this.camera.updateProjectionMatrix();
-    this.controls.minDistance = r * 0.15;
-    this.controls.maxDistance = fit * 6;
-    this.home = { eye: this.camera.position.clone(), target: sphere.center.clone() };
-    this.controls.update();
-  }
-
-  reset() {
-    if (!this.controls || !this.home) return;
-    this.controls.target.copy(this.home.target);
-    this.camera.position.copy(this.home.eye);
-    this.controls.update();
-    this.render();
-  }
-
-  // Turned by the keys: round, up and down, nearer and further.
-  orbitBy(round, up) {
-    if (!this.controls) return;
-    const offset = this.camera.position.clone().sub(this.controls.target);
-    const s = new Spherical().setFromVector3(offset);
-    s.theta += round;
-    s.phi = Math.min(Math.PI - 0.05, Math.max(0.05, s.phi + up));
-    offset.setFromSpherical(s);
-    this.camera.position.copy(this.controls.target).add(offset);
-    this.interacted = true;
-    this.controls.autoRotate = false;
-    this.controls.update();
-    this.render();
-  }
-  zoomBy(factor) {
-    if (!this.controls) return;
-    const offset = this.camera.position.clone().sub(this.controls.target);
-    const length = Math.min(this.controls.maxDistance, Math.max(this.controls.minDistance, offset.length() * factor));
-    this.camera.position.copy(this.controls.target).add(offset.setLength(length));
-    this.controls.update();
-    this.render();
-  }
-
-  size() {
-    if (!this.renderer) return;
-    const w = Math.max(1, this.stage.clientWidth);
-    const h = Math.max(1, this.stage.clientHeight);
-    this.renderer.setSize(w, h, false);
-    this.camera.aspect = w / h;
-    this.camera.updateProjectionMatrix();
-    this.render();
-  }
-
-  // Drawn when something changed, and every frame only while it moves.
-  render(now) {
-    if (!this.renderer) return;
-    if (now) { this.draw(); return; }
-    if (this.frameQueued) return;
-    this.frameQueued = true;
-    requestAnimationFrame(() => {
-      this.frameQueued = false;
-      if (!this.renderer) return;
-      const moved = this.controls.update();
-      this.draw();
-      if (moved || this.controls.autoRotate || this.moving) this.render();
-    });
-  }
-  draw() {
-    this.renderer.render(this.scene, this.camera);
-    if (!card.timings.first3d && this.loaded > 0) mark("first3d");
-    if (!card.timings.complete3d && this.loaded >= this.meshesWanted && this.meshesWanted > 0) mark("complete3d");
-  }
-
-  material(twoSided, alpha) {
-    const key = `${twoSided ? 2 : 1}:${alpha}`;
-    if (!this.materials.has(key)) {
-      const m = new MeshStandardMaterial({ color: 0xffffff, roughness: 0.32, metalness: 0.0,
-        side: twoSided ? DoubleSide : FrontSide });
-      if (alpha < 255) {
-        m.transparent = true;
-        m.opacity = Math.max(0.25, alpha / 255);
-        m.depthWrite = false;
-      }
-      this.materials.set(key, m);
-    }
-    return this.materials.get(key);
-  }
-
-  // Every part's geometry, fetched a few at a time; each part's bricks
-  // drawn as soon as its own geometry is in.
-  async load(progress) {
-    const d = this.d;
-    const by = new Map();
-    for (let i = 0; i < d.n; i++) {
-      const m = d.mesh[i];
-      if (!by.has(m)) by.set(m, []);
-      by.get(m).push(i);
-    }
-    const order = [...by.entries()].sort((a, b) => b[1].length - a[1].length);
-    this.meshesWanted = order.length;
-    let next = 0;
-    const work = async () => {
-      while (next < order.length) {
-        const [m, bricks] = order[next++];
-        const mesh = d.meshes[m] || { part: "?", hash: "", bounds: [] };
-        const shape = (await shapeOf(mesh)) || boxOf(mesh.bounds);
-        this.add(m, shape, bricks);
-        this.loaded += 1;
-        progress(this.loaded / this.meshesWanted);
-        this.render();
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(FETCHING, order.length) }, work));
-  }
-
-  add(m, shape, bricks) {
-    const d = this.d;
-    const parts = [];
-    // Clear parts apart from the solid ones, so each is drawn after them.
-    const clear = new Map();
-    for (const i of bricks) {
-      const alpha = this.d.colours[d.colour[i]]?.alpha ?? 255;
-      const key = alpha < 255 ? alpha : 255;
-      if (!clear.has(key)) clear.set(key, []);
-      clear.get(key).push(i);
-    }
-    const geometries = [];
-    shape.surfaces.forEach((surface, s) => {
-      const geometry = geometries[s] = geometryOf(surface);
-      for (const [alpha, which] of clear) {
-        const inherit = surface.colour === INHERIT;
-        const fixed = inherit ? null : this.colourByCode.get(surface.colour);
-        const fixedAlpha = fixed === undefined || fixed === null ? 255 : d.colours[fixed].alpha;
-        const instanced = new InstancedMesh(geometry, this.material(surface.twoSided, inherit ? alpha : fixedAlpha), which.length);
-        instanced.userData = { bricks: Int32Array.from(which), fixed: inherit ? -1 : (fixed ?? -2), mesh: m, surface: s };
-        if (alpha < 255 || fixedAlpha < 255) instanced.renderOrder = 2;
-        instanced.frustumCulled = false;
-        this.groups.push(instanced);
-        this.scene.add(instanced);
-        parts.push(instanced);
-      }
-    });
-    this.byMesh.set(m, { shape, groups: parts, geometries });
-    this.paint(parts);
-  }
-
-  // Where each brick is, whether it is shown, and in what colour, from
-  // what the card is showing (this.look).
-  paint(groups = this.groups) {
-    const d = this.d;
-    const matrix = new Matrix4();
-    const p = new Vector3();
-    const q = new Quaternion();
-    const one = new Vector3(1, 1, 1);
-    const none = new Vector3(0, 0, 0);
-    const c = new Color();
-    for (const g of groups) {
-      const { bricks, fixed } = g.userData;
-      for (let k = 0; k < bricks.length; k++) {
-        const i = bricks[k];
-        const look = this.look ? this.look(i) : null;
-        p.set(d.position[i * 3], d.position[i * 3 + 1], d.position[i * 3 + 2]);
-        q.set(d.turn[i * 4], d.turn[i * 4 + 1], d.turn[i * 4 + 2], d.turn[i * 4 + 3]);
-        matrix.compose(p, q, look && look.hidden ? none : one);
-        g.setMatrixAt(k, matrix);
-        if (look && look.colour) c.copy(look.colour);
-        else if (fixed >= 0) c.copy(this.colours[fixed]);
-        else if (fixed === -2) c.setHex(0x9a9a9a);
-        else c.copy(this.colours[d.colour[i]] || CLAY);
-        g.setColorAt(k, c);
-      }
-      g.instanceMatrix.needsUpdate = true;
-      if (g.instanceColor) g.instanceColor.needsUpdate = true;
-      g.computeBoundingSphere();
-    }
-    this.render();
-  }
-
-  // The brick under a point of the stage, by its index in the scene, or -1.
-  pick(x, y) {
-    if (!this.renderer) return -1;
-    const rect = this.renderer.domElement.getBoundingClientRect();
-    const at = new Vector2(((x - rect.left) / rect.width) * 2 - 1, -((y - rect.top) / rect.height) * 2 + 1);
-    const ray = new Raycaster();
-    ray.setFromCamera(at, this.camera);
-    const hits = ray.intersectObjects(this.groups, false);
-    for (const hit of hits) {
-      const i = hit.object.userData.bricks[hit.instanceId];
-      if (i !== undefined && !(this.d.flags[i] & SCENERY)) return i;
-    }
-    return -1;
-  }
-
-  // Lines round each of [which]'s parts: the picked part, or what a step adds.
-  outline(which, colour) {
-    for (const line of [...this.outlined.children]) { this.outlined.remove(line); }
-    const d = this.d;
-    const matrix = new Matrix4();
-    const material = new LineBasicMaterial({ color: colour, transparent: true, opacity: 0.95, depthTest: false });
-    const behind = new LineBasicMaterial({ color: colour, transparent: true, opacity: 0.95 });
-    for (const i of which) {
-      const entry = this.byMesh.get(d.mesh[i]);
-      if (!entry) continue;
-      matrix.compose(new Vector3(d.position[i * 3], d.position[i * 3 + 1], d.position[i * 3 + 2]),
-        new Quaternion(d.turn[i * 4], d.turn[i * 4 + 1], d.turn[i * 4 + 2], d.turn[i * 4 + 3]), new Vector3(1, 1, 1));
-      entry.shape.surfaces.forEach((surface, s) => {
-        const key = `${d.mesh[i]}:${s}`;
-        if (!this.edges.has(key)) this.edges.set(key, new EdgesGeometry(entry.geometries[s] || geometryOf(surface), 28));
-        const line = new LineSegments(this.edges.get(key), which.length > 12 ? behind : material);
-        line.matrixAutoUpdate = false;
-        line.matrix.copy(matrix);
-        line.renderOrder = 10;
-        this.outlined.add(line);
-      });
-    }
-    this.render();
-  }
-
-  themed() { this.render(); }
-
-  // What a check can read of the stage: whether the model is drawn, by the
-  // share of pixels that are not the background, read the moment after a
-  // frame is drawn.
-  sample() {
-    if (!this.renderer) return null;
-    this.draw();
-    const gl = this.renderer.getContext();
-    const w = gl.drawingBufferWidth;
-    const h = gl.drawingBufferHeight;
-    const pixels = new Uint8Array(w * h * 4);
-    gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-    let drawn = 0;
-    let warm = 0;
-    let grey = 0;
-    const colours = new Set();
-    for (let k = 0; k < pixels.length; k += 16) {
-      // The model, not the soft shadow under it (a third opaque at most).
-      if (pixels[k + 3] > 200) {
-        const [r, g, b] = [pixels[k], pixels[k + 1], pixels[k + 2]];
-        drawn += 1;
-        colours.add((r >> 4) << 8 | (g >> 4) << 4 | (b >> 4));
-        // The check's amber to red, and its clay.
-        if (r > 150 && r - b > 80 && r - g > 25) warm += 1;
-        if (Math.max(r, g, b) - Math.min(r, g, b) < 18 && r > 120) grey += 1;
-      }
-    }
-    const of = pixels.length / 16;
-    return { width: w, height: h, drawn: drawn / of, colours: colours.size, warm: warm / of, grey: grey / of };
-  }
-
-  instances() {
-    let shown = 0;
-    const seen = new Set();
-    for (const g of this.groups) {
-      for (const i of g.userData.bricks) {
-        if (seen.has(i) || this.d.flags[i] & SCENERY) continue;
-        seen.add(i);
-        if (!(this.look && this.look(i)?.hidden)) shown += 1;
-      }
-    }
-    return shown;
-  }
-
-  angle() {
-    if (!this.controls) return null;
-    return { round: this.controls.getAzimuthalAngle(), up: this.controls.getPolarAngle(),
-      distance: this.camera.position.distanceTo(this.controls.target) };
-  }
-}
+    $("stage").classList.remove("three");
+  } });
 
 async function three(s) {
   if (!s) return;
@@ -939,7 +446,7 @@ async function three(s) {
   card.of = s.of;
   card.bricks = d.n;
   card.models = d.meshes.length;
-  const next = new View($("stage"), d);
+  const next = new View($("stage"), d, viewOptions());
   try {
     next.start();
   } catch (trouble) {

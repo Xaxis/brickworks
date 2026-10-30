@@ -319,8 +319,8 @@ is on the page, `hidden`, for the script to show.
   on a square canvas with the circle it is cut to, dragged and zoomed, the
   zoom two `.icon-btn`s (zoom-out, zoom-in) under it.
 - **Icon**: `.icon`, one of the sprite's (`web/icons.svg`: like, save,
-  share, comment, more, build, search, filter, award, zoom-in, zoom-out;
-  and for the landing pages' features, stand, gear, move, file, book,
+  share, comment, more, build, search, filter, award, zoom-in, zoom-out,
+  reset, expand, shrink, close; and for the landing pages' features, stand, gear, move, file, book,
   people, devices, camera, spark, eye, monitor, globe, library, download
   and check;
   `web/kit.js` `iconHtml`),
@@ -341,6 +341,31 @@ is on the page, `hidden`, for the script to show.
   the icons and the icon button (`web/kit.js` passes them on to the
   browser's pages), and the server imports them through `api/_card.js`,
   which `tools/deploy.sh` replaces with `web/card.js` itself.
+- **3D view**: `.view3d` (viewer369; `web/model-page.js` `start3d`,
+  `tools/viewer/inline.js`, built into `web/viewer3d.js`), the model in 3D
+  in its picture's place on a model's page and a set's: the picture's own
+  box laid over it, so nothing on the page moves, on the picture's ground
+  (`--picture-ground`, or `--render-top` to `--render-foot` for a picture
+  drawn on a ground of its own), in either theme. The picture says View in
+  3D (`.go`) and is a button for it; its link stays the app's, for a
+  middle click and a page without scripts. Nothing of it is fetched until
+  it is asked for: then `/viewer3d.js` (three.js and all, about 150 KB
+  over the wire) and the model's `scene.json`, its parts' geometry from
+  the part store as the MCP card's (`tools/viewer/view.js`, one scene for
+  both). While its parts come, the picture shows through with how far it
+  has got along its foot (`.view3d-bar`) and in words (`.view3d-said`,
+  `role="status"`); a failure says why there, with Try again, and leaves
+  the picture. Its tools are `.icon-btn.small`s on `--panel` at its foot
+  on the right (`.view3d-tools`, a `role="toolbar"`: Zoom out, Zoom in,
+  Reset the view, Full screen as a toggle, Back to the picture) and
+  Open in the app a link pill on the left (`.view3d-app`). Turned by a
+  drag, zoomed by the wheel once pressed (before that the wheel scrolls
+  the page), the keys with it focused (arrows, + and −, 0, F). On a touch
+  screen a finger up or down scrolls the page until the person takes hold
+  (a drag across, two fingers, a tap: edged in `--accent-edge`). Still for
+  `prefers-reduced-motion`. A model past what the device turns smoothly
+  (3 million triangles under a coarse pointer, 9 otherwise) asks first:
+  Turn it anyway, or Open in the app.
 - **Action bar**: `.action-bar`, a model's page's row of icon buttons
   (Like, Save, Share, Comment, I built it) with the more menu at its end;
   one row across the column on a phone. `api/share.js` `actionBar`,

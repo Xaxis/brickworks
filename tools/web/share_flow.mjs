@@ -370,8 +370,9 @@ try {
     await press(visitor, "build_close");
     await until(visitor, () => !((window.brickworksShare || {}).build || {}).open, "the step player closed", 60).catch(() => null);
   }
-  await visitor.goto(link, { waitUntil: "load", timeout: 120000 });
-  await visitor.click('.model-page a.picture[href^="/app?view="]');
+  // The picture's link, followed: a click on it turns the model in 3D on
+  // the page itself (viewer369, model_page_flow.mjs 17).
+  await visitor.goto(new URL(onPage.go, link).href, { waitUntil: "load", timeout: 120000 });
   const viewing = await until(visitor, () => {
     const v = (window.brickworksShare || {}).view || {};
     return v.state === "ready" || v.state === "gone" || v.state === "failed" ? v : null;
