@@ -379,8 +379,12 @@ try {
       await shot(page, `profile_${width}_${theme}_fold.png`, false);
       if (theme === "dark") {
         // Share your page (docs/SOCIAL.md section 7): the share sheet on her
-        // /u/ page's link, Pinterest pinning her banner's picture.
-        await page.click("#share");
+        // /u/ page's link, Pinterest pinning her banner's picture. On a phone
+        // Share is in More.
+        if (width < 600) {
+          await page.click(".acts .more-menu summary");
+          await page.click(".acts .menu-list .share-item");
+        } else await page.click("#share");
         await until(page, () => document.querySelector("dialog.share-sheet[open]"));
         const sheet = await page.evaluate(() => ({ link: document.getElementById("share-link")?.value || "",
           heading: document.getElementById("share-h")?.textContent || "", focused: document.activeElement?.id || "",

@@ -4116,6 +4116,20 @@
       "entry": "tools/viewer/inline.js",
       "reach": "https://brickworks.diy/m/<id>, /library/<id> and /library/set/<n> with an LDraw model: View in 3D on the picture (or a click, or the first drag across it) turns the model in 3D in the picture's place (web/model-page.js start3d imports /viewer3d.js, built by tools/viewer/build.mjs from tools/viewer/inline.js and view.js, the card's scene); its scene /m/<id>/scene.json, /m/<id>/v/<n>/scene.json, /library/<id>/scene.json (api/share.js ?op=scene|set_scene, api/_parts.js sceneOf), its parts' geometry from the part store",
       "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "mentions in comments",
+      "entry": "supabase/comment_mentions.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/achievements.sql --again=supabase/challenge_notices.sql,supabase/comment_mentions.sql --dry --try=tools/comment_mentions_try.sql --table=comment_mentions   (after challenge_notices.sql; the promises in tests/test_comment_mentions.py; then node tools/web/mentions_flow.mjs --out=DIR, the stand-in's picker, link and notice)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "mentions browser flow",
+      "entry": "tools/web/mentions_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/mentions_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh mentions: throwaway Pia, Max and Lia; before comment_mentions.sql, a comment posts naming nobody; with no --url, the stand-in's whole of it)",
+      "area": "web"
     }
   ]
 }

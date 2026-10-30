@@ -71,11 +71,18 @@ ui:enter this month's challenge
 
 Comments are newest first, with **Reply** under each. A comment can name a step of the build: its pill opens the viewer at that step, and the app's timeline counts each step's comments. People 13 and over can comment; a model's owner can turn comments off.
 
+### Mention someone {#mentions}
+
+Type **@** in a comment or a reply and the people on the page are offered: its designer, then whoever commented. Keep typing to narrow it; the arrow keys and **Enter** (or a click) put one in, **Escape** closes the list and keeps what you wrote. Any public profile's `@handle` works typed out in full.
+
+Each person named becomes a link to their page and hears of it in their [notifications](/docs/profiles#notifications), with what you said. Up to three people a comment are told, once each, however often it is edited. Nobody is told twice: the model's designer already hears of every comment, and someone in the conversation hears of each reply. Hiding or deleting the comment takes the notification with it.
+
 <!-- covers
 ui:comment threads on a model page
 ui:comments on a step
 lib:comments on a shared model
 lib:replies to a comment
+lib:mentions in comments
 -->
 
 ## Parts and download {#parts}

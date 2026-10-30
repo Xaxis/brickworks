@@ -558,6 +558,17 @@ is on the page, `hidden`, for the script to show.
   then Save and Cancel; what is wrong said in the dialog's `.said`. A
   set's page lists the gallery's models based on it as Based on this set,
   a `section.next` with `.models.scroller`, before More <theme>.
+  A comment's `@handle` (docs/SOCIAL.md section 7, item 6) is `a.mention`
+  in its words, a link in the words' own size at weight 600, to the person's page
+  with their name as its title. `@` in the comment box or a reply box opens
+  `ul.mention-pick` under it, a menu's panel (`--panel`, `--line-strong`,
+  the menu's radius and shadow) of up to six people, the name in bold and the
+  `@handle` small; the one chosen by the arrows, or under the pointer, is
+  `--panel-hi`. The box stays a textbox of several lines (a combobox is
+  one line): `aria-autocomplete="list"`, `aria-controls` the list, its
+  `aria-activedescendant` the one marked, and a `.visually-hidden`
+  `role=status` says how many are offered. Escape closes the list and
+  nothing else.
 - **An LDraw set's page** (`/library/<id>`, library333) is a model's page,
   drawn by the same `sharePage`: its `.crumbs` the LDraw library and its
   theme; Open in Brickworks the column's `.cta` (the app opens it as its
@@ -629,7 +640,7 @@ is on the page, `hidden`, for the script to show.
 - **Your achievements** (`/profile?tab=achievements`, `web/profile.js`,
   `.achievements-list` in `web/directory.css`): a tile a track, as
   `.earned`'s are (`--panel`, `--line`, `--r-3`), in a grid of 260 px
-  columns: the award and the level's name as an `h3` at `--t-body`, "Level
+  columns: the award and the level's name as an `h3` at `--t-h3`, "Level
   3 of 6" at `--t-tiny` in `--ink-faint`, a 6 px `.reach` bar (`--line`, filled
   in `--accent-edge`, hidden from a screen reader: the words say it), the
   number in words, `.to-next` in `--ink` ("13 more to reach Designer · 25

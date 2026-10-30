@@ -25,8 +25,10 @@
 // avatar's count is asked for (achievement_mark), so a page opened after
 // it is reached tells it. Since challenge_notices.sql, a challenge
 // opening, its last two days (not once you entered it) and, if you voted
-// in it, who won, in a group a challenge. Nothing says who followed you: a
-// follow tells nobody anything (supabase/follows.sql).
+// in it, who won, in a group a challenge. Since comment_mentions.sql, a
+// comment or reply that names you (@your-handle), under its model, unless
+// you hear of it already as its designer or in its thread. Nothing says
+// who followed you: a follow tells nobody anything (supabase/follows.sql).
 //
 // Until notifications.sql is applied its functions are not there (404),
 // and what the feed tells of your models is read from the feed of before
@@ -107,6 +109,12 @@ export function noticeSaid(row, origin = "", now = Date.now()) {
   if (row.kind === "reply") {
     return { ...base, who: base.who || "A builder",
       did: row.yours === false ? `replied to a comment you answered${onStep}` : `replied to your comment${onStep}`,
+      said: quoted(row.said, 240), link: `${origin}/m/${model}#comment-${Number(row.comment)}` };
+  }
+  if (row.kind === "mention") {
+    // Named in a comment or a reply (supabase/comment_mentions.sql).
+    return { ...base, who: base.who || "A builder",
+      did: `mentioned you in ${row.parent ? "a reply" : "a comment"}${onStep}`,
       said: quoted(row.said, 240), link: `${origin}/m/${model}#comment-${Number(row.comment)}` };
   }
   if (row.kind === "photo") {

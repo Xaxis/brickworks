@@ -497,3 +497,42 @@ export function basedHtml(said) {
   return `<ul class="from based-on" id="based-on" aria-label="What it is based on">`
     + `${said.map((one) => `<li data-how="${one.how}">${line(one)}</li>`).join("")}</ul>`;
 }
+
+// ---------------------------------------------------------------------------
+// @mentions in a comment (api/_comments.js, docs/SOCIAL.md section 7, item 6).
+
+/// @handle in a comment's words: a handle as people.sql allows one, not
+/// inside a word or an address (ada@example.org names nobody), and not run
+/// on into more of one.
+const MENTION = /(^|[^A-Za-z0-9_.@/-])@([A-Za-z0-9][A-Za-z0-9-]{1,22}[A-Za-z0-9])(?![A-Za-z0-9_-])/g;
+
+/// The handles [text] names, lower case, each once, in the order named.
+export function mentionsIn(text) {
+  const found = [];
+  for (const match of String(text || "").matchAll(MENTION)) {
+    const handle = match[2].toLowerCase();
+    if (!handle.includes("--") && !found.includes(handle)) found.push(handle);
+  }
+  return found;
+}
+
+/// [text] in pieces for a page to draw: a string for words, and
+/// {handle, name, at} for each @handle that is one of [mentions] (whom the
+/// server told), [at] as it was typed. A handle nobody was told of stays
+/// words.
+export function mentionPieces(text, mentions) {
+  const told = new Map((mentions || []).filter((one) => one && one.handle).map((one) => [String(one.handle), one]));
+  const pieces = [];
+  let from = 0;
+  const words = String(text || "");
+  for (const match of told.size ? words.matchAll(MENTION) : []) {
+    const one = told.get(match[2].toLowerCase());
+    if (!one) continue;
+    const start = match.index + match[1].length;
+    if (start > from) pieces.push(words.slice(from, start));
+    pieces.push({ handle: one.handle, name: one.name || one.handle, at: words.slice(start, start + 1 + match[2].length) });
+    from = start + 1 + match[2].length;
+  }
+  if (from < words.length) pieces.push(words.slice(from));
+  return pieces;
+}

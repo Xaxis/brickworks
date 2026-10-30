@@ -1240,6 +1240,14 @@
       ]
     },
     {
+      "id": "cli:mentions browser flow",
+      "kind": "cli",
+      "entry": "tools/web/mentions_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/mentions_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh mentions: throwaway Pia, Max and Lia; before comment_mentions.sql, a comment posts naming nobody; with no --url, the stand-in's whole of it)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:minifig browser flow",
       "kind": "cli",
       "entry": "tools/web/minifig_flow.mjs",
@@ -2821,6 +2829,16 @@
       "reach": "godot --headless --path . --script src/dev/mechanism_probe.gd   (real sets: src/dev/mechanism_sets.gd)",
       "area": "geometry",
       "tests": []
+    },
+    {
+      "id": "lib:mentions in comments",
+      "kind": "lib",
+      "entry": "supabase/comment_mentions.sql",
+      "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/achievements.sql --again=supabase/challenge_notices.sql,supabase/comment_mentions.sql --dry --try=tools/comment_mentions_try.sql --table=comment_mentions   (after challenge_notices.sql; the promises in tests/test_comment_mentions.py; then node tools/web/mentions_flow.mjs --out=DIR, the stand-in's picker, link and notice)",
+      "area": "web",
+      "tests": [
+        "tests/test_comment_mentions.py"
+      ]
     },
     {
       "id": "lib:mesh fetch",

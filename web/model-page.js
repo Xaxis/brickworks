@@ -17,11 +17,13 @@
 // comment, Report on each, Remove on one's own, Hide and Show on each and
 // comments off or on for the model's owner, replies as comments. What a
 // stranger wrote is set as text, never as markup, and a link in it stays
-// words.
+// words; an @handle the server told (docs/SOCIAL.md section 7, item 6) is
+// a link to that profile, and typing @ in a box offers the people on the
+// page (pickMentions).
 import { askToSignIn, call, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { avatarHtml } from "/kit.js";
-import { HOWS, basedHtml } from "/card.js";
+import { HOWS, basedHtml, mentionPieces } from "/card.js";
 import { wireShare } from "/share-sheet.js";
 
 // The comments' own loader, once they are listed (startComments), for
@@ -563,6 +565,21 @@ function startComments(section) {
   /// The viewer at [at], a step of version [of]: Build it, opened there.
   const viewerAt = (of, at) => `/app?view=${model}${of === newest ? "" : `&v=${of}`}&step=${at}`;
 
+  /// Who a comment may name here: the designer, then everybody who said
+  /// something on the page, newest first, each once; {handle, name}.
+  function people() {
+    const found = new Map();
+    const designer = document.querySelector(".shared-by a.who");
+    const handle = /^\/u\/([a-z0-9-]{3,24})$/.exec(designer?.getAttribute("href") || "");
+    if (handle) found.set(handle[1], { handle: handle[1], name: designer.querySelector(".names b")?.textContent || handle[1] });
+    for (const one of [...(state?.comments || [])].reverse()) {
+      if (one.handle && !found.has(one.handle)) found.set(one.handle, { handle: one.handle, name: one.by || one.handle });
+      for (const named of one.mentions || []) if (!found.has(named.handle)) found.set(named.handle, named);
+    }
+    return [...found.values()];
+  }
+  pickMentions(box, people);
+
   /// Somebody signed out may say something: the box is everybody's, and
   /// sending signs them in first. Whether they may then is the server's.
   const mayTry = () => state.you?.may_write || (!state.you?.signed_in && state.open);
@@ -618,7 +635,19 @@ function startComments(section) {
     }
     const words = document.createElement("p");
     words.className = "comment-body";
-    words.textContent = one.body;
+    // Words as text; each @handle its writer named, a link to them.
+    for (const piece of mentionPieces(one.body, one.mentions)) {
+      if (typeof piece === "string") {
+        words.append(piece);
+        continue;
+      }
+      const link = document.createElement("a");
+      link.className = "mention";
+      link.href = `/u/${encodeURIComponent(piece.handle)}`;
+      link.title = piece.name;
+      link.textContent = piece.at;
+      words.append(link);
+    }
     main.append(head, words);
     if (one.hidden) {
       const note = document.createElement("p");
@@ -782,6 +811,7 @@ function startComments(section) {
       field.addEventListener("input", () => {
         replying = { id: to, text: field.value };
       });
+      pickMentions(field, people);
       made.addEventListener("submit", (event) => {
         event.preventDefault();
         sendReply(to, field, post);
@@ -1675,4 +1705,96 @@ function basesDialog(current) {
   });
   dialog.showModal();
   list.querySelector("select")?.focus();
+}
+
+/// @ in [field] offers [people]() whose handle or name starts with what
+/// follows it, at most six, under the field: Up and Down move, Enter or
+/// Tab puts the one marked in as @handle, Escape closes it (and only it).
+/// The field stays a box of several lines to a screen reader (a combobox
+/// is one line), its list a listbox it controls, the one marked its active
+/// descendant, and a status says when the list is there. Anybody may be
+/// named by typing their handle; this offers the ones on the page.
+function pickMentions(field, people) {
+  const list = document.createElement("ul");
+  list.className = "mention-pick";
+  list.id = `${field.id || "box"}-people`;
+  list.setAttribute("role", "listbox");
+  list.setAttribute("aria-label", "People to name");
+  list.hidden = true;
+  const said = document.createElement("span");
+  said.className = "visually-hidden";
+  said.setAttribute("role", "status");
+  field.after(list, said);
+  field.setAttribute("aria-autocomplete", "list");
+  field.setAttribute("aria-controls", list.id);
+  let shown = [];
+  let at = 0;
+  let typed = null;
+
+  const close = () => {
+    list.hidden = true;
+    shown = [];
+    typed = null;
+    said.textContent = "";
+    field.removeAttribute("aria-activedescendant");
+  };
+  const mark = (to) => {
+    at = (to + shown.length) % shown.length;
+    [...list.children].forEach((item, n) => item.setAttribute("aria-selected", String(n === at)));
+    field.setAttribute("aria-activedescendant", list.children[at].id);
+  };
+  const choose = (n) => {
+    const one = shown[n];
+    if (!one || !typed) return;
+    const before = field.value.slice(0, typed.start);
+    const after = field.value.slice(field.selectionStart);
+    const put = `@${one.handle}${/^\s/.test(after) ? "" : " "}`;
+    field.value = `${before}${put}${after}`;
+    // After the space that ends it, so the list does not open again on it.
+    const caret = before.length + put.length + (/^\s/.test(after) ? 1 : 0);
+    field.setSelectionRange(caret, caret);
+    close();
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  const look = () => {
+    const upto = field.value.slice(0, field.selectionStart);
+    const found = /(^|[^A-Za-z0-9_.@/-])@([A-Za-z0-9-]{0,23})$/.exec(upto);
+    if (!found || field.selectionStart !== field.selectionEnd) return close();
+    const asked = found[2].toLowerCase();
+    shown = people().filter((one) => one.handle.startsWith(asked) || one.name.toLowerCase().startsWith(asked)).slice(0, 6);
+    if (!shown.length) return close();
+    typed = { start: upto.length - found[2].length - 1 };
+    list.replaceChildren(...shown.map((one, n) => {
+      const item = document.createElement("li");
+      item.id = `${list.id}-${n}`;
+      item.setAttribute("role", "option");
+      const name = document.createElement("b");
+      name.textContent = one.name;
+      const handle = document.createElement("small");
+      handle.textContent = `@${one.handle}`;
+      item.append(name, " ", handle);
+      // Chosen without the field losing its focus.
+      item.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        choose(n);
+      });
+      return item;
+    }));
+    list.hidden = false;
+    const words = `${shown.length} ${shown.length === 1 ? "person" : "people"} to name: up and down to choose, Enter to put one in`;
+    if (said.textContent !== words) said.textContent = words;
+    mark(0);
+  };
+  field.addEventListener("input", look);
+  field.addEventListener("click", look);
+  field.addEventListener("blur", close);
+  field.addEventListener("keydown", (event) => {
+    if (list.hidden) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") mark(at + (event.key === "ArrowDown" ? 1 : -1));
+    else if (event.key === "Enter" || event.key === "Tab") choose(at);
+    else if (event.key === "Escape") close();
+    else return;
+    event.preventDefault();
+    event.stopPropagation();
+  });
 }

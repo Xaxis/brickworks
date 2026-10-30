@@ -898,6 +898,19 @@ public. Not built: picking the set from a search in the dialog (its
 number is typed, and refused in words when the library has not got it),
 and a work elsewhere's picture.
 
+**6 as built** (supabase/comment_mentions.sql): `@` in a comment or a reply
+offers the people on the page, the designer first, then the commenters
+and those they named, as Behance and Sketchfab do; arrows and Enter, or a
+click, put one in, and any public profile's handle works typed out. Each
+named becomes a link to their page and is told in Notifications with what
+was said, at most three a comment however often it is edited, so an edit
+cannot spam. Never twice: the designer already hears of every comment, and
+someone in the conversation of each reply. Only profiles shown in public,
+13 or over, can be named, and only by someone 13 or over; hiding or
+deleting the comment takes the notice with it. Not built: offering anyone
+beyond the page's people (a search of every profile as one types), and an
+email for a mention.
+
 ## Sources
 
 Read 2026-10-22. Where a site refused automated reading, the claim is

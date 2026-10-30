@@ -76,6 +76,10 @@ $$;
 -- they reached, as achievements.sql's; and the challenges (kinds
 -- challenge_open, challenge_closing and challenge_won, [model] null), each
 -- [read] once its group was opened after it.
+-- REPLACED LATER: comment_mentions.sql replaces this function (the
+-- mentions). Apply comment_mentions.sql again right after this file:
+-- tools/apply_sql.mjs refuses it alone, unless
+-- --again=supabase/comment_mentions.sql.
 create or replace function public.notification_rows(viewer uuid, since timestamptz, until timestamptz)
 returns table (kind text, at timestamptz, model text, item jsonb)
 language sql

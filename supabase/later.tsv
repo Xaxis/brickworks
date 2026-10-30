@@ -30,3 +30,7 @@ notifications.sql	notification_rows	achievements.sql	'achievement'::text
 notifications.sql	notification_rows	challenge_notices.sql	'challenge_open'::text
 replies.sql	notification_rows	challenge_notices.sql	'challenge_open'::text
 achievements.sql	notification_rows	challenge_notices.sql	'challenge_open'::text
+notifications.sql	notification_rows	comment_mentions.sql	'mention'::text
+replies.sql	notification_rows	comment_mentions.sql	'mention'::text
+achievements.sql	notification_rows	comment_mentions.sql	'mention'::text
+challenge_notices.sql	notification_rows	comment_mentions.sql	'mention'::text

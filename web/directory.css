@@ -447,6 +447,23 @@ dialog.report legend { font-size: var(--t-small); color: var(--ink-soft); margin
 .model-page .comment-head a:not(.pill), .model-page .comment-head b { color: var(--ink); font-weight: 600; }
 .model-page .comment-head .where { color: var(--ink-soft); }
 .model-page .comment-body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--ink); }
+/* An @handle its writer named (docs/SOCIAL.md section 7, item 6): a link
+   to them, in the words' own size. */
+.model-page .comment-body a.mention { font-weight: 600; }
+/* @ in a box: the people on the page to name, under the box, a menu's
+   panel (site.css .menu-list), the one marked as a hovered row. */
+.model-page .mention-pick {
+	list-style: none; margin: 0; padding: 6px; display: grid; max-width: 360px;
+	border-radius: var(--r-3); background: var(--panel); border: 1px solid var(--line-strong);
+	box-shadow: var(--highlight), var(--shadow);
+}
+.model-page .mention-pick[hidden] { display: none; }
+.model-page .mention-pick li {
+	padding: 8px 10px; border-radius: var(--r-1); cursor: pointer; color: var(--ink-soft);
+	overflow-wrap: anywhere; min-height: 24px;
+}
+.model-page .mention-pick li b { color: var(--ink); font-weight: 600; }
+.model-page .mention-pick li[aria-selected="true"], .model-page .mention-pick li:hover { background: var(--panel-hi); color: var(--ink); }
 .model-page .comment .note { margin: 6px 0 0; }
 .model-page .comment-acts { margin: 6px 0 0; display: flex; gap: 14px; flex-wrap: wrap; font-size: var(--t-small); }
 .model-page .comment-acts:empty { display: none; }
@@ -599,7 +616,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel);
 }
 .achievements-list li[data-level="0"] { border-style: dashed; background: transparent; }
-.achievements-list h3 { display: flex; align-items: center; gap: var(--s-2); margin: 0; font-size: var(--t-body); }
+.achievements-list h3 { display: flex; align-items: center; gap: var(--s-2); margin: 0; font-size: var(--t-h3); }
 .achievements-list h3 .icon { width: 18px; height: 18px; color: var(--ink-soft); }
 .achievements-list p { margin: 0; font-size: var(--t-small); line-height: 1.45; color: var(--ink-soft); }
 .achievements-list .level { color: var(--ink-faint); font-size: var(--t-tiny); font-variant-numeric: tabular-nums; }
