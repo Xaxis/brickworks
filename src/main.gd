@@ -6523,6 +6523,9 @@ func _on_model_edited() -> void:
 		_lay_baseplate()
 	elif _floor != null:
 		_floor.follow(_model_bounds())
+	# A band or a spring on a part just moved follows it, in the same step.
+	if _flex != null:
+		_flex.follow_moved()
 	# Every other copy of a sub-assembly just edited follows it.
 	if _verbs != null and _verbs.assemblies != null:
 		_verbs.assemblies.after_edit()
@@ -6683,6 +6686,14 @@ func _hold_figure(figure: Minifig) -> void:
 
 
 func _on_part_chosen(part_id: String) -> void:
+	# A rubber band, a spring or a shock is laid on what it goes round or
+	# between, not put down: Build's flexible part tool takes it.
+	if _flex != null and FlexTool.lays_part(part_id):
+		if _measure != null:
+			_measure.leave()
+		_builder.drop_figure()
+		_flex.open_with(part_id)
+		return
 	_builder.drop_figure()
 	_builder.held_part = part_id
 	# A part picked is a part in hand, to put down.

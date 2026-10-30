@@ -62,6 +62,22 @@ var _preview: Flex.Laid = null
 ## Items laid this session, path -> what they were laid from, so a reshape
 ## starts from what the person chose rather than from the pieces.
 var _items: Dictionary = {}
+## A band's round things in the order picked, each {brick, near} with near
+## where it was clicked in the brick's own frame (where along an axle).
+var _rounds: Array = []
+var _hover_round: Bands.Round = null
+## The band chosen ("" for the one that fits) and the band laid.
+var _band: String = ""
+## The spring or shock absorber, and the turns its coil was made with (0
+## until it is laid: then as many as its length gives, kept as it moves).
+var _spring: String = "70038"
+var _turns: int = 0
+## How deep the history was when this band or spring was first laid or
+## opened to reshape: every laying since is one step (Builder.fold_since).
+var _depth: int = -1
+var _session_words: String = ""
+## The history step [method follow_moved] looked at last.
+var _followed: Dictionary = {}
 
 var _mesh: ImmediateMesh
 var _lines: MeshInstance3D
@@ -80,7 +96,7 @@ var _told_page: String = ""
 var _told_page_at: int = 0
 
 const KIND_ORDER: Array[String] = ["pneumatic_tube", "ribbed_hose", "flex_hose", "flex_axle",
-	"string", "chain", "tread"]
+	"string", "chain", "tread", "band", "spring"]
 const HANDLE_PIXELS := 14.0
 
 
@@ -103,6 +119,25 @@ func _ready() -> void:
 # -- in and out ---------------------------------------------------------------
 
 
+## Whether picking [param part_id] from the bin lays it with this tool: a
+## rubber band, a spring or a 6.5L shock absorber.
+static func lays_part(part_id: String) -> bool:
+	return Bands.BANDS.has(part_id) or not Bands.spring_of(part_id).is_empty()
+
+
+## Out with a band, a spring or a shock picked from the bin: the round
+## things or the two ends it goes on are clicked next.
+func open_with(part_id: String) -> void:
+	if Bands.BANDS.has(part_id):
+		kind = "band"
+		_band = part_id
+	elif not Bands.spring_of(part_id).is_empty():
+		kind = "spring"
+		_spring = part_id
+	_select_kind_quietly()
+	open()
+
+
 ## Out, for a new part: choose and click its first end.
 func open() -> void:
 	active = true
@@ -110,8 +145,11 @@ func open() -> void:
 	_laid = null
 	_real_id = ""
 	_length_kept = false
+	_depth = -1
+	_turns = 0
 	_ends.clear()
 	_sprockets.clear()
+	_rounds.clear()
 	_controls = PackedVector3Array()
 	_colour = builder.held_color if builder != null else 0
 	builder.clear_selection()
@@ -132,9 +170,16 @@ func reshape(path: String) -> bool:
 	kind = found
 	_item = path
 	_laid = null
+	_depth = builder.history_depth()
 	builder.clear_selection()
 	builder.hide_preview()
 	_colour = int(pieces[0]["color"])
+	for piece: Dictionary in pieces:
+		# A spring's coil is spring steel and a shock's rod black: the
+		# colour chosen is its cylinder's.
+		if not str(piece["part"]).begins_with(Bands.COIL_PREFIX) and str(piece["part"]) != Bands.SHOCK_ROD:
+			_colour = int(piece["color"])
+			break
 	_select_kind_quietly()
 	length_choice = -1
 	_length_kept = true
@@ -147,14 +192,23 @@ func reshape(path: String) -> bool:
 		_sprockets.assign(known["sprockets"])
 		_controls = known["controls"]
 		_real_id = str(known["real"])
+		_rounds = (known.get("rounds", []) as Array).duplicate(true)
+		_band = str(known.get("band", _band))
+		_spring = str(known.get("spring", _spring))
+		_turns = int(known.get("turns", 0))
 	else:
 		_recover(pieces)
 	_fill_lengths()
-	stage = "sprockets" if _is_chain() else "shaping"
+	stage = "sprockets" if _is_chain() else ("pulleys" if _is_band() else "shaping")
 	panel.visible = true
 	_laid = _lay_now()
-	_tell("Drag a bend point to reshape it; Add a bend for another. Done when it is right."
-		if not _is_chain() else "Click a sprocket to put it in the loop or take it out.")
+	if _is_band():
+		_tell("Click a round thing to put the band round it too, or take it off.")
+	elif _is_spring():
+		_tell("Move a part it is on and it follows; pick another spring or shock in the list.")
+	else:
+		_tell("Drag a bend point to reshape it; Add a bend for another. Done when it is right."
+			if not _is_chain() else "Click a sprocket to put it in the loop or take it out.")
 	_show_buttons()
 	_show_result()
 	_draw()
@@ -168,7 +222,7 @@ func reshape(path: String) -> bool:
 ## result, or null when the ends make nothing; [method laid_item] is its
 ## path. One undo step, as a laying by hand is.
 func lay(of_kind: String, anchors: Array, sprockets: Array, colour: int,
-		item: String = "") -> Flex.Laid:
+		item: String = "", part: String = "") -> Flex.Laid:
 	if _laying or not Flex.KINDS.has(of_kind):
 		return null
 	var was_active: bool = active
@@ -178,18 +232,33 @@ func lay(of_kind: String, anchors: Array, sprockets: Array, colour: int,
 	_real_id = ""
 	_length_kept = false
 	length_choice = -1
+	_depth = -1
+	_turns = 0
 	_ends.clear()
 	_sprockets.clear()
+	_rounds.clear()
 	_controls = PackedVector3Array()
 	_colour = colour
+	if of_kind == "band":
+		_band = part if Bands.BANDS.has(part) else ""
+	elif of_kind == "spring":
+		_spring = part if not Bands.spring_of(part).is_empty() else "70038"
 	for anchor: Flex.Anchor in anchors:
 		var record: Dictionary = _end_record(anchor, Vector2.ZERO)
 		# Out of the face toward the other end, not the one the person's
 		# camera happens to look at.
 		record.erase("eye")
 		_ends.append(record)
-	_sprockets.assign(sprockets)
-	stage = "sprockets" if _is_chain() else "shaping"
+	if of_kind == "band":
+		# Round the round things named, in the order named.
+		for brick_id: Variant in sprockets:
+			var brick: BrickWorld.Brick = world.get_brick(int(brick_id))
+			var round: Bands.Round = Bands.round_of(brick, library)
+			if round != null:
+				_rounds.append({"brick": round.brick, "near": brick.transform.affine_inverse() * round.centre})
+	else:
+		_sprockets.assign(sprockets)
+	stage = "sprockets" if _is_chain() else ("pulleys" if _is_band() else "shaping")
 	await _put()
 	var laid: Flex.Laid = _laid
 	if not was_active:
@@ -235,12 +304,19 @@ func leave() -> void:
 func _begin() -> void:
 	_ends.clear()
 	_sprockets.clear()
+	_rounds.clear()
 	_controls = PackedVector3Array()
 	_hover = null
+	_hover_round = null
+	_turns = 0
+	_depth = -1
 	_fill_lengths()
 	if _is_chain():
 		stage = "sprockets"
 		_tell("Click the sprockets or gears it goes round, two or more, all in one plane.")
+	elif _is_band():
+		stage = "pulleys"
+		_tell("Click the pulleys, wheels, bushes or axles it goes round, in order round the loop.")
 	else:
 		stage = "start"
 		_tell("Click the %s it starts on." % _connector_words())
@@ -252,8 +328,24 @@ func _is_chain() -> bool:
 	return str(Flex.KINDS[kind]["family"]) == "links"
 
 
+func _is_band() -> bool:
+	return kind == "band"
+
+
+func _is_spring() -> bool:
+	return kind == "spring"
+
+
+## The kinds laid as pieces of the app's making, every laying of one
+## making or reshaping one undo step.
+func _is_made() -> bool:
+	return _is_band() or _is_spring()
+
+
 func _connector_words() -> String:
 	var takes: Array = Flex.KINDS[kind].get("takes", [])
+	if _is_spring() and Bands.SHOCKS.has(_spring):
+		takes = ["pin_hole", "pin"]
 	var words: PackedStringArray = PackedStringArray()
 	for one: Variant in takes:
 		words.append({"pin_hole": "pin hole", "axle_hole": "axle hole", "pin": "pin",
@@ -323,10 +415,14 @@ func _aim(at: Vector2) -> void:
 	var before: float = hit.distance + BrickLattice.STUD * 1.2 if hit.is_valid() else INF
 	_hover = null
 	_hover_sprocket = null
+	_hover_round = null
 	if stage == "start" or stage == "end":
 		_hover = Flex.aimed(_anchors_now(), ray[0], ray[1], before)
 	elif stage == "sprockets" and hit.is_valid():
 		_hover_sprocket = Flex.sprocket_of(world.get_brick(hit.brick_id), library)
+	elif stage == "pulleys" and hit.is_valid() and not _item_bricks().has(hit.brick_id):
+		_hover_round = Bands.round_of(world.get_brick(hit.brick_id), library,
+			ray[0] + ray[1] * hit.distance)
 	_draw()
 
 
@@ -361,6 +457,45 @@ func click(at: Vector2) -> void:
 			else:
 				_tell("Click another sprocket.")
 				_draw()
+		"pulleys":
+			if _hover_round == null:
+				say.call("that is not round: a band goes round a pulley, a wheel, a bush or an axle")
+				return
+			pick_round(_hover_round)
+
+
+## A round thing clicked: into the band's loop, after the last one picked,
+## or out of it if it is in it already. Laid once there are two.
+func pick_round(round: Bands.Round) -> void:
+	var brick: BrickWorld.Brick = world.get_brick(round.brick)
+	if brick == null:
+		return
+	var at: int = -1
+	for n: int in _rounds.size():
+		if int(_rounds[n]["brick"]) == round.brick:
+			at = n
+	if at >= 0:
+		_rounds.remove_at(at)
+	else:
+		_rounds.append({"brick": round.brick, "near": brick.transform.affine_inverse() * round.centre})
+	_hover_round = null
+	if _rounds.size() >= 2:
+		_put()
+	else:
+		_tell("Click the next one it goes round.")
+		_draw()
+
+
+## The round things picked, where their bricks are now.
+func _rounds_now() -> Array:
+	var out: Array = []
+	for record: Dictionary in _rounds:
+		var brick: BrickWorld.Brick = world.get_brick(int(record["brick"]))
+		var round: Bands.Round = Bands.round_of(brick, library,
+			brick.transform * (record["near"] as Vector3)) if brick != null else null
+		if round != null:
+			out.append(round)
+	return out
 
 
 ## What is kept of an end picked: its connector in its brick's own frame,
@@ -410,6 +545,8 @@ func _item_bricks() -> Dictionary:
 
 ## The bend points shown to be dragged.
 func handles() -> PackedVector3Array:
+	if _is_made():
+		return PackedVector3Array()
 	if _laid != null and Flex.KINDS[kind].get("hangs", false) and _controls.is_empty():
 		return _laid.controls
 	return _controls
@@ -511,6 +648,10 @@ func clear_bends() -> void:
 
 ## What the choices come to now, without putting anything down.
 func _compute() -> Flex.Laid:
+	if _is_band():
+		return _compute_band()
+	if _is_spring():
+		return _compute_spring()
 	if _is_chain():
 		var sprockets: Array = []
 		for brick_id: int in _sprockets:
@@ -558,6 +699,69 @@ func _compute() -> Flex.Laid:
 	return best
 
 
+## A band round the round things picked: the band chosen, or the one that
+## fits the loop they make.
+func _compute_band() -> Flex.Laid:
+	var rounds: Array = _rounds_now()
+	if rounds.size() < 2:
+		return null
+	var band: String = _band
+	if band.is_empty():
+		var trial: Dictionary = Bands.loop(rounds, float(Bands.BANDS["85543"]["half"]))
+		band = Bands.band_for(float(trial.get("length", 0.0)))
+	_real_id = band
+	return Bands.lay_band(band, rounds, Bands.SEGMENT_PREFIX + band)
+
+
+## A spring or a shock between the two ends picked, its coil the turns it
+## was made with: as many as its length gives when it is first laid, or a
+## shock's own spring's.
+func _compute_spring() -> Flex.Laid:
+	if _ends.size() < 2:
+		return null
+	var ends: Array = spring_ends()
+	var spring: String = Bands.spring_of(_spring)
+	var turns: int = _turns
+	if turns <= 0:
+		var length: float = (ends[0] as Vector3).distance_to(ends[1])
+		if Bands.SHOCKS.has(_spring):
+			length = Bands.SHOCK_LONGEST - Bands.SHOCK_SEAT - Bands.SHOCK_COLLAR
+		turns = Bands.turns_for(spring, length)
+	_real_id = _spring
+	return Bands.lay_spring(_spring, ends[0], ends[1], ends[2], "%s%s-%d" % [Bands.COIL_PREFIX,
+		spring, turns], turns)
+
+
+## Where a spring's two ends go on the connectors picked, and the way a
+## shock's pin holes run: [a, b, across]. A spring ends at a hole's face
+## toward the other end, or round a pin's middle; a shock's pin hole goes on
+## the same pin as a beam's hole, beside it on the side the first end was
+## picked from, or round a pin.
+func spring_ends() -> Array:
+	var anchors: Array = [_anchor_of(_ends[0]), _anchor_of(_ends[1])]
+	var shock: bool = Bands.SHOCKS.has(_spring)
+	var out: Array = []
+	var aside := Vector3.ZERO
+	for n: int in 2:
+		var anchor: Flex.Anchor = anchors[n]
+		var other: Flex.Anchor = anchors[1 - n]
+		if str(_ends[n].get("free", "")) == "yes":
+			out.append(anchor.at)
+		elif not anchor.is_hole():
+			out.append(anchor.middle())
+		elif shock:
+			if aside == Vector3.ZERO:
+				aside = anchor.axis * float(int(_ends[n].get("side", _ends[n].get("eye", 1))))
+			out.append(anchor.at + (aside if aside.dot(anchor.axis) >= 0.0 else -aside).normalized()
+				* Bands.SHOCK_ASIDE * absf(aside.normalized().dot(anchor.axis)))
+		else:
+			var side: int = int(_ends[n].get("side", Flex.side_toward(anchor, other.at,
+				int(_ends[n].get("eye", 1)))))
+			out.append(anchor.at + anchor.axis * float(side) * anchor.reach)
+	out.append(anchors[0].axis)
+	return out
+
+
 func _lay_now() -> Flex.Laid:
 	var laid: Flex.Laid = _compute()
 	_preview = null
@@ -582,6 +786,12 @@ func _put() -> void:
 	var wanted: Dictionary = {}
 	for piece: Dictionary in laid.pieces:
 		wanted[str(piece["part"])] = true
+	# A band's and a spring's pieces are of the app's making: made here.
+	for part: Variant in wanted:
+		if Bands.is_piece_id(str(part)) and not Bands.piece_part(library, str(part)):
+			_laying = false
+			_status.text = "could not make %s" % str(part)
+			return
 	if not await _fetch(wanted.keys()):
 		_laying = false
 		_status.text = "could not fetch the parts for it; try again"
@@ -595,15 +805,33 @@ func _put() -> void:
 		_item = Assemblies.join(assemblies.entered, assemblies.unused_name(name) + "#1")
 	var adds: Array = []
 	for piece: Dictionary in laid.pieces:
-		adds.append({"part": piece["part"], "color": _colour, "at": piece["at"], "path": _item})
+		adds.append({"part": piece["part"], "color": int(piece.get("color", _colour)), "at": piece["at"],
+			"path": _item})
 	var steps: Array = builder.swap_bricks(assemblies.ids_under(_item), adds)
-	builder.record(steps, ("laid %s" if first else "reshaped %s") % Assemblies.label(_item))
+	var depth: int = builder.history_depth()
+	var words: String = ("laid %s" if first else "reshaped %s") % Assemblies.label(_item)
+	builder.record(steps, words)
+	if _is_made():
+		# Made or reshaped in one go, however many clicks it took.
+		if _depth < 0:
+			_depth = depth
+			_session_words = words
+		else:
+			builder.fold_since(_depth, _session_words)
+		if _is_spring():
+			_turns = laid.links
 	_laid = laid
 	_length_kept = true
 	_items[_item] = {"kind": kind, "ends": _ends.duplicate(true), "sprockets": _sprockets.duplicate(),
-		"controls": _controls.duplicate(), "real": _real_id, "ids": _ids_of(_item)}
+		"controls": _controls.duplicate(), "real": _real_id, "ids": _ids_of(_item),
+		"rounds": _rounds.duplicate(true), "band": _band, "spring": _spring, "turns": _turns}
 	_laying = false
-	if stage != "sprockets":
+	if _is_band():
+		_tell("Click another to put the band round it too, or one it is round to take it off. Done when it is right.")
+	elif _is_spring():
+		stage = "shaping"
+		_tell("Move a part it is on and it follows. Done when it is right.")
+	elif stage != "sprockets":
 		stage = "shaping"
 		_tell("Drag a bend point to reshape it, or Add a bend. Done when it is right.")
 	else:
@@ -670,6 +898,12 @@ func _recover(pieces: Array) -> void:
 		for sprocket: Flex.Sprocket in Flex.sprockets_of_item(world, library, pieces):
 			_sprockets.append(sprocket.brick)
 		return
+	if _is_band():
+		_recover_band(pieces)
+		return
+	if _is_spring():
+		_recover_spring(pieces)
+		return
 	var ports: Array = Flex.ends_of_item(kind, pieces)
 	var skip: Dictionary = {}
 	for piece: Dictionary in pieces:
@@ -709,12 +943,272 @@ func _recover(pieces: Array) -> void:
 		return _compute(), line, own)
 
 
+## A band's round things read off its pieces: every one whose groove its
+## loop lies on, in the order the loop goes round them.
+func _recover_band(pieces: Array) -> void:
+	var read: Dictionary = _band_read(pieces)
+	_band = str(read["band"])
+	_real_id = _band
+	_rounds = read["rounds"]
+
+
+## What [method _recover_band] reads: {"band", "rounds" (each {brick,
+## near}), "moved" (whether one of them is in [param moved])}. Each brick in
+## [param moved] (id -> [where it was, where it is]) is read where it was:
+## a band round a pulley a step moved is round it as it stood. Its pieces
+## are put end to end (each runs from its origin to the next one's) for the
+## order the loop goes round them.
+func _band_read(pieces: Array, moved: Dictionary = {}) -> Dictionary:
+	var out: Dictionary = {"band": "", "rounds": [], "moved": false}
+	var starts: Dictionary = {}
+	var skip: Dictionary = {}
+	for piece: Dictionary in pieces:
+		skip[int(piece["id"])] = true
+		var its: String = Bands.band_of_piece(str(piece["part"]))
+		if its.is_empty():
+			continue
+		out["band"] = its
+		var at: Transform3D = piece["at"]
+		starts[Vector3i((at.origin * 20.0).round())] = at
+	if starts.is_empty() or not Bands.BANDS.has(str(out["band"])):
+		return out
+	var half: float = float((Bands.BANDS[str(out["band"])] as Dictionary)["half"])
+	var chain := PackedVector3Array()
+	var here: Transform3D = starts.values()[0]
+	for _n: int in starts.size():
+		chain.append(here.origin)
+		var key := Vector3i(((here.origin - here.basis.y) * 20.0).round())
+		if not starts.has(key) or chain.size() >= starts.size():
+			break
+		here = starts[key]
+	var box := AABB(chain[0], Vector3.ZERO)
+	for point: Vector3 in chain:
+		box = box.expand(point)
+	box = box.grow(half + 4.0)
+	var found: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if skip.has(brick.id) or brick.hidden:
+			continue
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		var was: Transform3D = (moved[brick.id] as Array)[0] if moved.has(brick.id) else brick.transform
+		if mesh == null or not (was * mesh.bounds).intersects(box):
+			continue
+		var round: Bands.Round = Bands.round_of(brick, library, null, was)
+		if round == null:
+			continue
+		var on: int = 0
+		var first: int = -1
+		var plane := Vector3.ZERO
+		for n: int in chain.size():
+			var gap: Vector3 = chain[n] - round.centre
+			var along: float = gap.dot(round.axis)
+			if absf(along) > round.reach + 1.0:
+				continue
+			if absf((gap - round.axis * along).length() - (round.radius + half)) < 0.75:
+				on += 1
+				if first < 0:
+					first = n
+					plane = round.centre + round.axis * along
+		if on >= 2:
+			found.append([first, {"brick": brick.id, "near": was.affine_inverse() * plane}])
+			if moved.has(brick.id):
+				out["moved"] = true
+	found.sort_custom(func(x: Array, y: Array) -> bool: return int(x[0]) < int(y[0]))
+	for one: Array in found:
+		(out["rounds"] as Array).append(one[1])
+	return out
+
+
+## A spring's ends read off its pieces, on the connectors they are at, and
+## the turns its coil was made with.
+func _recover_spring(pieces: Array) -> void:
+	var read: Dictionary = Bands.spring_read(pieces)
+	if read.is_empty():
+		return
+	_spring = str(read["part"])
+	_turns = int(read["turns"])
+	_real_id = _spring
+	var shock: bool = Bands.SHOCKS.has(_spring)
+	var skip: Dictionary = {}
+	for piece: Dictionary in pieces:
+		skip[int(piece["id"])] = true
+	var anchors: Array = Flex.anchors_in(world, library, "spring", skip)
+	for n: int in 2:
+		var tip: Vector3 = read["a"] if n == 0 else read["b"]
+		var matched: Dictionary = {}
+		for anchor: Flex.Anchor in anchors:
+			if not anchor.is_hole():
+				if anchor.middle().distance_to(tip) < 0.5:
+					matched = _end_record(anchor, Vector2.ZERO)
+			else:
+				for side: int in [1, -1]:
+					var reach: float = Bands.SHOCK_ASIDE if shock else anchor.reach
+					if (anchor.at + anchor.axis * float(side) * reach).distance_to(tip) < 0.5:
+						matched = _end_record(anchor, Vector2.ZERO)
+						matched["side"] = side
+						break
+			if not matched.is_empty():
+				break
+		if matched.is_empty():
+			matched = {"brick": 0, "kind": "free", "at": tip, "axis": read["across"], "reach": 0.0,
+				"free": "yes", "lead": 0.0}
+		_ends.append(matched)
+
+
+# -- following a part moved ----------------------------------------------------------
+
+
+## Bands and springs on parts the newest step moved, laid again where those
+## parts now stand, in the same undo step (Main, after every edit). A pulley
+## moved takes its band with it; a beam moved stretches or squeezes the
+## spring on it, its coil the turns it had. One whose own pieces the step
+## moved or laid went with them, and an undo or a redo brings back pieces
+## that followed already (Builder.settled). How many followed.
+func follow_moved() -> int:
+	if _laying or builder == null or assemblies == null:
+		return 0
+	var step: Dictionary = builder.last_step()
+	if step.is_empty() or is_same(step, _followed) or is_same(step, builder.settled):
+		return 0
+	_followed = step
+	var moved: Dictionary = {}
+	var touched: Dictionary = {}
+	_moves_in(step, moved, touched)
+	if moved.is_empty():
+		return 0
+	var steps: Array = []
+	var count: int = 0
+	var items: Dictionary = Flex.items_in(world)
+	for path: String in items:
+		var item: Dictionary = items[path]
+		var its: String = str(item["kind"])
+		if its != "band" and its != "spring":
+			continue
+		var pieces: Array = []
+		var still: bool = true
+		for brick: BrickWorld.Brick in item["bricks"]:
+			if touched.has(brick.id):
+				still = false
+				break
+			pieces.append({"part": brick.part_id, "at": brick.transform, "color": brick.color_code,
+				"id": brick.id})
+		if not still or pieces.is_empty():
+			continue
+		var laid: Flex.Laid = _band_followed(pieces, moved) if its == "band" \
+			else _spring_followed(pieces, moved)
+		if laid == null:
+			continue
+		if laid.pieces.is_empty():
+			say.call("%s stays where it was: %s" % [Assemblies.label(path), "; ".join(laid.warnings)])
+			continue
+		var colours: Dictionary = {}
+		for piece: Dictionary in pieces:
+			colours[str(piece["part"])] = int(piece["color"])
+		var adds: Array = []
+		for piece: Dictionary in laid.pieces:
+			var part: String = str(piece["part"])
+			adds.append({"part": part, "color": int(colours.get(part, piece.get("color", _colour))),
+				"at": piece["at"], "path": path})
+		steps.append_array(builder.swap_bricks(assemblies.ids_under(path), adds))
+		_items.erase(path)
+		count += 1
+	if not steps.is_empty():
+		builder.extend_last(steps)
+		_followed = builder.last_step()
+	return count
+
+
+## The bricks a history step moved, id -> [where it was, where it is], and
+## every brick it touched at all.
+func _moves_in(step: Dictionary, moved: Dictionary, touched: Dictionary) -> void:
+	if step.get("undo", "") == "group":
+		for inner: Variant in step.get("steps", []):
+			_moves_in(inner, moved, touched)
+		return
+	if not step.has("brick"):
+		return
+	var brick_id: int = builder._live(int(step["brick"]))
+	touched[brick_id] = true
+	if step.get("undo", "") != "move" or moved.has(brick_id):
+		return
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	if brick != null and not brick.transform.is_equal_approx(step["transform"]):
+		moved[brick_id] = [step["transform"], brick.transform]
+
+
+## A band laid again round its round things where they now stand, if a step
+## moved one ([param moved], as [method _moves_in] gives); else null.
+func _band_followed(pieces: Array, moved: Dictionary) -> Flex.Laid:
+	var read: Dictionary = _band_read(pieces, moved)
+	if not bool(read["moved"]) or (read["rounds"] as Array).size() < 2:
+		return null
+	var rounds: Array = []
+	for one: Dictionary in read["rounds"]:
+		var brick: BrickWorld.Brick = world.get_brick(int(one["brick"]))
+		var round: Bands.Round = Bands.round_of(brick, library, brick.transform * (one["near"] as Vector3))
+		if round == null:
+			return null
+		rounds.append(round)
+	var band: String = str(read["band"])
+	return Bands.lay_band(band, rounds, Bands.SEGMENT_PREFIX + band)
+
+
+## A spring laid again between its ends where the parts holding them now
+## stand, each end carried as its part moved, if a step moved one; else
+## null. Its coil keeps its turns, squeezed or stretched.
+func _spring_followed(pieces: Array, moved: Dictionary) -> Flex.Laid:
+	var read: Dictionary = Bands.spring_read(pieces)
+	if read.is_empty():
+		return null
+	var ends: Array = [read["a"], read["b"]]
+	var across: Vector3 = read["across"]
+	var shock: bool = Bands.SHOCKS.has(str(read["part"]))
+	var any: bool = false
+	for n: int in 2:
+		var tip: Vector3 = ends[n]
+		for brick_id: int in moved:
+			var was: Transform3D = (moved[brick_id] as Array)[0]
+			var now: Transform3D = (moved[brick_id] as Array)[1]
+			if not _holds(brick_id, was, tip, shock):
+				continue
+			var carry: Transform3D = now * was.affine_inverse()
+			ends[n] = carry * tip
+			if n == 0:
+				across = (carry.basis * across).normalized()
+			any = true
+			break
+	if not any:
+		return null
+	var spring: String = str(read["spring"])
+	var turns: int = int(read["turns"])
+	return Bands.lay_spring(str(read["part"]), ends[0], ends[1], across,
+		"%s%s-%d" % [Bands.COIL_PREFIX, spring, turns], turns)
+
+
+## Whether the brick [param brick_id], standing at [param at], holds a
+## spring's end at [param tip]: round one of its pins, at a face of one of
+## its holes, or (a shock's) beside one.
+func _holds(brick_id: int, at: Transform3D, tip: Vector3, shock: bool) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	if brick == null:
+		return false
+	for anchor: Flex.Anchor in Flex.anchors_of(library.mesh_for(brick.part_id), at, brick_id):
+		if anchor.is_male() and anchor.middle().distance_to(tip) < 0.5:
+			return true
+		if anchor.is_hole():
+			var reach: float = Bands.SHOCK_ASIDE if shock else anchor.reach
+			for side: int in [1, -1]:
+				if (anchor.at + anchor.axis * float(side) * reach).distance_to(tip) < 0.5:
+					return true
+	return false
+
+
 # -- what is shown -------------------------------------------------------------------
 
 
 func _show_result(laid: Flex.Laid = null) -> void:
 	# The length the part is, once it is laid, in the picker.
-	if _length_kept and not _is_chain() and _length_picker != null:
+	if _length_kept and not _is_chain() and not _is_made() and _length_picker != null:
 		var lengths: Array = Flex.lengths_of(library, kind)
 		for n: int in lengths.size():
 			if str(lengths[n]["id"]) == _real_id and _length_picker.selected != n + 1:
@@ -724,7 +1218,13 @@ func _show_result(laid: Flex.Laid = null) -> void:
 		_status.text = ""
 		return
 	var lines := PackedStringArray()
-	if _is_chain():
+	if _is_made():
+		var name: String = Flex.item_name(kind, library, _real_id) if library.parts.has(_real_id) \
+			else str(Flex.KINDS[kind]["label"])
+		if not shown.pieces.is_empty():
+			lines.append("%s, %s." % [name, ", ".join(shown.notes)])
+		lines.append_array(shown.warnings)
+	elif _is_chain():
 		if shown.pieces.is_empty():
 			lines.append_array(shown.warnings)
 		else:
@@ -745,10 +1245,11 @@ func _tell(words: String) -> void:
 
 
 func _show_buttons() -> void:
-	var shaping: bool = stage == "shaping" and not _is_chain()
+	var shaping: bool = stage == "shaping" and not _is_chain() and not _is_made()
 	_add_bend.visible = shaping
 	_clear_bends.visible = shaping and not _controls.is_empty()
-	_again.visible = stage != "start" and stage != "sprockets" or not _sprockets.is_empty()
+	_again.visible = (stage != "start" and stage != "sprockets" and stage != "pulleys") \
+		or not _sprockets.is_empty() or not _rounds.is_empty()
 
 
 func _draw() -> void:
@@ -792,6 +1293,14 @@ func _draw() -> void:
 		mark.call(_hover_sprocket.centre, _hover_sprocket.axis, _hover_sprocket.radius + 3.0,
 			Color(1.0, 0.85, 0.2))
 		any = true
+	if _hover_round != null:
+		mark.call(_hover_round.centre, _hover_round.axis, _hover_round.radius + 3.0,
+			Color(1.0, 0.85, 0.2))
+		any = true
+	if stage == "pulleys":
+		for round: Bands.Round in _rounds_now():
+			mark.call(round.centre, round.axis, round.radius + 1.5, Color(0.35, 0.95, 0.5))
+			any = true
 	var shown: PackedVector3Array = handles() if stage == "shaping" else PackedVector3Array()
 	while _balls.size() < shown.size():
 		var ball := MeshInstance3D.new()
@@ -891,12 +1400,7 @@ func _build_panel() -> void:
 	_length_picker = OptionButton.new()
 	_length_picker.add_theme_font_size_override("font_size", 12)
 	_length_picker.focus_mode = Control.FOCUS_NONE
-	_length_picker.item_selected.connect(func(index: int) -> void:
-		length_choice = index - 1
-		if index == 0:
-			_length_kept = false
-		if stage == "shaping":
-			_put())
+	_length_picker.item_selected.connect(choose_length)
 	column.add_child(_length_picker)
 	_told = Label.new()
 	_told.add_theme_font_size_override("font_size", 12)
@@ -945,6 +1449,41 @@ func _select_kind_quietly() -> void:
 		(_kind_buttons[key] as Button).set_pressed_no_signal(key == kind)
 
 
+## The length picker's [param index] chosen: a hose's real part ("The
+## shortest that fits" first), a band, or a spring or a shock. What is being
+## laid is laid again with it.
+func choose_length(index: int) -> void:
+	if _is_band():
+		var bands: Array = _band_choices()
+		_band = "" if index <= 0 or index > bands.size() else str(bands[index - 1])
+		if _rounds.size() >= 2:
+			_put()
+		return
+	if _is_spring():
+		var springs: Array = _spring_choices()
+		if index >= 0 and index < springs.size() and str(springs[index]) != _spring:
+			_spring = str(springs[index])
+			_turns = 0
+			if _ends.size() >= 2:
+				_put()
+		return
+	length_choice = index - 1
+	if index == 0:
+		_length_kept = false
+	if stage == "shaping":
+		_put()
+
+
+## The bands the library has, and the springs and shocks.
+func _band_choices() -> Array:
+	return Bands.BANDS.keys().filter(func(id: String) -> bool: return library.parts.has(id))
+
+
+func _spring_choices() -> Array:
+	return (Bands.SHOCKS.keys() + Bands.SPRINGS.keys()).filter(func(id: String) -> bool:
+		return library.parts.has(id))
+
+
 ## Lay a [param chosen] next: the ends are picked again, and what is laid
 ## stays.
 func choose_kind(chosen: String) -> void:
@@ -956,6 +1495,9 @@ func choose_kind(chosen: String) -> void:
 	_length_kept = false
 	_item = ""
 	_laid = null
+	_rounds.clear()
+	_turns = 0
+	_depth = -1
 	_select_kind_quietly()
 	_begin()
 	_draw()
@@ -967,6 +1509,20 @@ func _fill_lengths() -> void:
 	_length_picker.clear()
 	_length_picker.visible = not _is_chain()
 	if _is_chain():
+		return
+	if _is_band():
+		_length_picker.add_item("The band that fits")
+		var bands: Array = _band_choices()
+		for band: String in bands:
+			_length_picker.add_item("%s — %.0f LDU round" % [Flex.item_name(kind, library, band),
+				Bands.natural_length(band)])
+		_length_picker.select(bands.find(_band) + 1)
+		return
+	if _is_spring():
+		var springs: Array = _spring_choices()
+		for part: String in springs:
+			_length_picker.add_item(Flex.item_name(kind, library, part))
+		_length_picker.select(maxi(springs.find(_spring), 0))
 		return
 	_length_picker.add_item("The shortest that fits")
 	for one: Dictionary in Flex.lengths_of(library, kind):
