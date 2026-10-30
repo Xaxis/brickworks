@@ -26,6 +26,12 @@
 // last page, so it is drawn before anything is asked. Nothing is asked of
 // the server for a visitor who is not signed in.
 //
+// More like a designer (2026-10-30, docs/SOCIAL.md section 7, item 9): on a
+// person's page, a section with data-alike="<handle>" is filled with up to
+// six designers whose work is closest to theirs (api/_alike.js), each a
+// row with Follow in place, never you nor anybody you follow already;
+// shown only when somebody is close.
+//
 // Everything is put on the page as text.
 import { askToSignIn, call, email, madeUp, signOut, signedIn } from "/account.js";
 import { earlyOn } from "/early.js";
@@ -190,6 +196,63 @@ export async function followButton(button, known = null) {
     draw();
     say(state.you_follow ? kind.followed : "");
   });
+}
+
+/// A person to follow, as a row (site.css .person-row): their avatar and
+/// their name, each a link to their profile, a line about them ([words]),
+/// and Follow, drawn at once from [known], how the page already knows it
+/// stands (followButton). The feed's designers to follow, and More like.
+export function personRow(one, words, known) {
+  const item = document.createElement("li");
+  item.className = "person-row";
+  item.dataset.handle = one.handle;
+  const toProfile = (inner, attrs = {}) => {
+    const link = document.createElement("a");
+    link.href = `/u/${encodeURIComponent(one.handle)}`;
+    for (const [name, value] of Object.entries(attrs)) link.setAttribute(name, value);
+    link.append(inner);
+    return link;
+  };
+  const face = document.createElement("template");
+  face.innerHTML = avatarHtml({ handle: one.handle, name: one.name, picture: one.picture });
+  item.append(toProfile(face.content.firstElementChild, { tabindex: "-1", "aria-hidden": "true", class: "face" }));
+  const names = document.createElement("div");
+  names.className = "names";
+  const name = document.createElement("b");
+  name.textContent = String(one.name || one.handle);
+  const line = document.createElement("small");
+  line.textContent = words || `@${one.handle}`;
+  names.append(toProfile(name), line);
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "cta ghost small follow";
+  button.dataset.follow = one.handle;
+  button.textContent = "Follow";
+  const told = document.createElement("span");
+  told.className = "said";
+  told.setAttribute("role", "status");
+  item.append(names, button, told);
+  followButton(button, known).catch(() => null);
+  return item;
+}
+
+const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
+
+/// More like the designer whose page this is: [box] (data-alike, their
+/// handle) filled with whom the API finds closest, as you may be shown
+/// them, and shown once there is one. html[data-alike] says how it went.
+async function showAlike(box) {
+  const tests = new URLSearchParams(location.search).get("tests") === "1" ? "&tests=1" : "";
+  // A follow just sent from another page is in the answer.
+  await followsSent();
+  const answer = await call(`/api/people?op=alike&handle=${encodeURIComponent(box.dataset.alike)}${tests}`)
+    .catch(() => null);
+  const designers = answer && answer.status === 200 && Array.isArray(answer.body.designers)
+    ? answer.body.designers.filter((one) => one && HANDLE.test(String(one.handle))) : [];
+  box.querySelector(".people-list").replaceChildren(...designers.map((one) => personRow(one, String(one.said || ""),
+    { you_follow: false, mine: false, signed_in: signedIn(), may: true, why_not: "", ...(one.follow || {}) })));
+  box.hidden = designers.length === 0;
+  document.documentElement.dataset.alike = !answer || answer.status !== 200 ? "broken" : designers.length ? "shown" : "none";
 }
 
 // Who you are and what is new, from the last page, so the next is drawn at
@@ -434,6 +497,7 @@ async function followLists(buttons) {
 }
 
 for (const button of document.querySelectorAll("button[data-follow]")) followButton(button).catch(() => null);
+for (const box of document.querySelectorAll("[data-alike]")) showAlike(box).catch(() => null);
 /// Collections' Follow buttons: all asked at once when there are several.
 function followAll(buttons) {
   if (buttons.length > 1) followLists(buttons).catch(() => null);

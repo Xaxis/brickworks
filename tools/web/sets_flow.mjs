@@ -8,9 +8,17 @@
 //      set's page; found by number (10497 is 10497-1 first); "Only with a 3D
 //      model" leaves only cards marked 3D; Star Wars in 2007 by the address
 //      leaves only those.
-//   2. A set with no 3D model, 10497-1 Galaxy Explorer: its page, its
-//      picture drawn from its parts (/library/set/10497-1.jpg, a JPEG), its
-//      facts, Rebrickable credited, CreativeWork and no Product; its parts
+//   1b. A theme of sets none of which LDraw modelled, Atlantis (the owner,
+//      2026-10-30: "it has those stupid images with a few parts in them"):
+//      every card the set's own picture (/library/set/N.webp, a WebP from
+//      this site), none drawn from its parts, every one drawn, the list's
+//      "Set pictures: Rebrickable" under them, and no picture asked of
+//      anywhere but this site.
+//   2. A set with no 3D model, 10497-1 Galaxy Explorer: its page, its own
+//      picture (/library/set/10497-1.page.webp, Rebrickable's, served from
+//      here) with "Picture: Rebrickable" under it, the one drawn from its
+//      parts still served (/library/set/10497-1.jpg, a JPEG) for a set with
+//      none, its facts, Rebrickable credited, CreativeWork and no Product; its parts
 //      list's first lots drawn with our own pictures; and the page's weight
 //      and first paint, measured (1,278 parts): the first visit after a
 //      deploy is said, with what it waited on longest, and a visitor after
@@ -34,7 +42,7 @@
 // Fails too when a script error reaches the console. Pictures in --out.
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { launch } from "./browser.mjs";
+import { allPictures, launch } from "./browser.mjs";
 import { deleteAccount, mintSession, signInContext } from "./session.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -72,7 +80,18 @@ async function until(page, test, arg = null, seconds = 30) {
 }
 const cards = (page) => page.$$eval("#models .model", (all) => all.map((one) => ({ id: one.dataset.id,
   href: one.querySelector("a.open")?.getAttribute("href"), set: one.querySelector("small.set")?.textContent.trim() || "",
-  model3d: one.dataset.model3d === "yes" })));
+  model3d: one.dataset.model3d === "yes", picture: one.querySelector(".frame img")?.getAttribute("src") || "",
+  drawn: one.querySelector(".frame img")?.naturalWidth || 0 })));
+/// Every address [page] asks of anywhere but [site] from now on, the visit
+/// counter's aside (browser.mjs answers it here).
+function elsewhere(page) {
+  const asked = [];
+  page.on("request", (request) => {
+    const url = request.url();
+    if (!url.startsWith(site) && !/^(data|blob):/.test(url) && !url.startsWith("https://overlook.technology/")) asked.push(url);
+  });
+  return asked;
+}
 
 const browser = await launch({ signedOut: true });
 const signedIn = args["no-app"] ? null : await launch();
@@ -113,6 +132,31 @@ try {
     await page.close();
   }
 
+  // 1b. Atlantis: none of it modelled in LDraw, every card its own picture.
+  {
+    console.log("a theme LDraw modelled none of, Atlantis");
+    const page = await made.newPage();
+    watch(page, "/library?theme=Atlantis");
+    const asked = elsewhere(page);
+    await page.goto(`${site}/library?theme=Atlantis`, { waitUntil: "load", timeout: 120000 });
+    await until(page, () => document.documentElement.dataset.library === "ready", null, 60);
+    await allPictures(page, 60000);
+    const shown = await cards(page);
+    const own = shown.filter((one) => /^\/library\/set\/[A-Za-z0-9.-]+\.webp$/.test(one.picture));
+    check(`every card the set's own picture (${own.length} of ${shown.length}: ${shown.slice(0, 2).map((one) => one.picture).join(", ")})`,
+      shown.length >= 20 && own.length === shown.length);
+    check(`none drawn from its parts, every one drawn (${shown.filter((one) => one.drawn > 0).length})`,
+      !shown.some((one) => one.picture.endsWith(".jpg")) && shown.every((one) => one.drawn > 0));
+    const answer = await get(own[0]?.picture || "/library/set/7985-1.webp");
+    check(`a card's picture is a WebP from this site (${answer.status()}, ${answer.headers()["content-type"]})`,
+      answer.status() === 200 && answer.headers()["content-type"] === "image/webp");
+    const credit = (await page.textContent("#pictures-credit").catch(() => "")).trim();
+    check(`the pictures credited under them: "${credit}"`, credit === "Set pictures: Rebrickable");
+    check(`nothing asked of anywhere else (${asked.slice(0, 2).join(", ") || "none"})`, asked.length === 0);
+    await page.screenshot({ path: path.join(out, "atlantis.png") });
+    await page.close();
+  }
+
   // 2. A set with no 3D model, its weight and first paint.
   {
     console.log(`a set with no 3D model, ${PLAIN}`);
@@ -122,6 +166,8 @@ try {
     const facts = await page.evaluate(() => ({
       title: document.querySelector("h1")?.textContent.trim(), picture: document.querySelector(".picture img")?.getAttribute("src"),
       drawn: document.querySelector(".picture img")?.naturalWidth || 0,
+      pictureCredit: document.querySelector(".picture-credit")?.textContent.trim() || "",
+      pictureLink: document.querySelector(".picture-credit a")?.getAttribute("href") || "",
       pills: [...document.querySelectorAll(".facts .pill")].map((one) => one.textContent.trim()),
       credit: document.querySelector(".credit")?.textContent.replace(/\s+/g, " ").trim() || "",
       data: [...document.querySelectorAll('script[type="application/ld+json"]')].map((one) => one.textContent).join(""),
@@ -129,9 +175,14 @@ try {
       paint: performance.getEntriesByName("first-contentful-paint")[0]?.startTime || 0,
     }));
     check(`its page answers (${answer?.status()}): "${facts.title}"`, answer?.status() === 200 && facts.title === "Galaxy Explorer");
-    const picture = await get(`/library/set/${PLAIN}.jpg`);
-    check(`its picture is drawn from its parts (${facts.picture}, ${facts.drawn} px wide, ${picture.headers()["content-type"]})`,
-      facts.picture === `/library/set/${PLAIN}.jpg` && facts.drawn === 1200 && picture.headers()["content-type"] === "image/jpeg");
+    const picture = await get(`/library/set/${PLAIN}.page.webp`);
+    check(`its picture is its own, from this site (${facts.picture}, ${facts.drawn} px wide, ${picture.headers()["content-type"]})`,
+      facts.picture === `/library/set/${PLAIN}.page.webp` && facts.drawn > 0 && picture.headers()["content-type"] === "image/webp");
+    check(`credited under it: "${facts.pictureCredit}" (${facts.pictureLink})`, facts.pictureCredit === "Picture: Rebrickable"
+      && facts.pictureLink === `https://rebrickable.com/sets/${PLAIN}/`);
+    const drawn = await get(`/library/set/${PLAIN}.jpg`);
+    check(`the picture drawn from its parts still answers, for a set with none (${drawn.status()}, ${drawn.headers()["content-type"]})`,
+      drawn.status() === 200 && drawn.headers()["content-type"] === "image/jpeg");
     check(`its facts: ${facts.pills.join(" · ")}`, facts.pills.includes("1,278 parts") && facts.pills.includes("4 minifigures")
       && facts.pills.includes("2022") && facts.pills.includes("Icons"));
     check("Rebrickable credited", /^Set and inventory data: Rebrickable\./.test(facts.credit));
@@ -173,6 +224,9 @@ try {
     const fresh = await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers });
     const again = await fresh.newPage();
     const reply = await again.goto(`${site}/library/set/${PLAIN}`, { waitUntil: "load", timeout: 120000 });
+    // Its first paint, once there is one: a page whose pictures come at once
+    // can be loaded before a browser drawing in software has painted it.
+    await until(again, () => performance.getEntriesByName("first-contentful-paint").length > 0, null, 10);
     const next = await again.evaluate(() => ({ paint: performance.getEntriesByName("first-contentful-paint")[0]?.startTime || 0,
       served: performance.getEntriesByType("navigation")[0]?.responseStart || 0 }));
     console.log(`  a visitor after it: first paint ${Math.round(next.paint)} ms (its first byte at ${Math.round(next.served)} ms, `

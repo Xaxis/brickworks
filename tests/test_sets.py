@@ -28,18 +28,21 @@ sys.path.insert(0, str(ROOT / "tools"))
 needs_node = pytest.mark.skipif(shutil.which("node") is None, reason="no node here")
 
 # Six sets as tools/set_catalog.py writes them: a theme inside a theme, a
-# set with an LDraw model, one with sets packed in it, one with no parts.
+# set with an LDraw model, one with sets packed in it, one with no parts;
+# and whose own picture is in our storage (the last column, setpics): the
+# Falcon's, though its LDraw model's render is shown, and the Lamborghini's,
+# though its parts could be drawn. The Galaxy Explorer has none of its own.
 CATALOG = {
     "format": 1,
     "themes": {"1": ["Technic", None], "158": ["Star Wars", None], "171": ["Ultimate Collector Series", 158],
                "721": ["Icons", None], "501": ["Gear", None]},
     "sets": [
-        ["10179-1", "Millennium Falcon", 2007, 171, 5205, 5, 295],
-        ["10497-1", "Galaxy Explorer", 2022, 721, 1278, 4, 302],
-        ["42115-1", "Lamborghini Sián FKP 37", 2020, 1, 3696, 0, 380],
-        ["4488-1", "Millennium Falcon - Mini", 2003, 158, 87, 0, 40],
-        ["853900-1", "Key Chain Falcon", 2019, 501, 0, 0, 0],
-        ["214.1-1", "Bricks and Plates", 2026, 1, 12, 0, 3],
+        ["10179-1", "Millennium Falcon", 2007, 171, 5205, 5, 295, 1],
+        ["10497-1", "Galaxy Explorer", 2022, 721, 1278, 4, 302, 0],
+        ["42115-1", "Lamborghini Sián FKP 37", 2020, 1, 3696, 0, 380, 1],
+        ["4488-1", "Millennium Falcon - Mini", 2003, 158, 87, 0, 40, 0],
+        ["853900-1", "Key Chain Falcon", 2019, 501, 0, 0, 0, 0],
+        ["214.1-1", "Bricks and Plates", 2026, 1, 12, 0, 3, 0],
     ],
     "inside": {"10179-1": [["4488-1", 2]]},
     "picks": {"10497-1": ["3068bp58/15", "3009p50/1"], "42115-1": ["68577/82"]},
@@ -106,6 +109,19 @@ def test_the_whole_catalogue_is_written() -> None:
     assert made["themes"]["171"][1] == 158
     assert len(made["picks"]["10497-1"]) == set_catalog.PICKS
     assert all(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.-]{0,29}", row[0]) for row in made["sets"])
+    # Each row says whether the set's own picture is up (tools/set_pictures.py's list).
+    assert all(len(row) == 8 and row[7] in (0, 1) for row in made["sets"])
+    assert {row[0] for row in made["sets"] if row[7]} <= set_catalog.photos()
+
+
+def test_the_sets_with_their_own_picture_are_those_listed_as_up(tmp_path: Path) -> None:
+    import set_catalog
+    listed = tmp_path / "set_pictures.json"
+    assert set_catalog.photos(listed) == set()
+    listed.write_text(json.dumps({"made": "2026-10-30", "sets": ["7985-1", "10497-1", 7]}))
+    assert set_catalog.photos(listed) == {"7985-1", "10497-1"}
+    listed.write_text("not json")
+    assert set_catalog.photos(listed) == set()
 
 
 @needs_node
@@ -171,6 +187,8 @@ console.log(JSON.stringify({ falcon: card("10179-1"), explorer: card("10497-1"),
     assert said["falcon"]["modelled_by"] == {"name": "Roland Dahl", "page": "https://library.ldraw.org/omr/sets/320"}
     assert said["explorer"]["library"]["picture"] == "/library/set/10497-1.jpg"
     assert said["chain"]["library"]["picture"] == ""
+    # Its own picture is in storage, but LDraw's model is the set built: the render still.
+    assert "/library/set/10179-1" not in said["falcon"]["library"]["picture"]
     falcon = said["falconHtml"]
     assert 'href="/library/set/10179-1"' in falcon and 'src="/library/omr-10179-1.webp"' in falcon
     assert 'class="pill good model3d"' in falcon and 'data-model3d="yes"' in falcon
@@ -179,6 +197,39 @@ console.log(JSON.stringify({ falcon: card("10179-1"), explorer: card("10497-1"),
     assert 'href="/library/set/10497-1"' in explorer and 'src="/library/set/10497-1.jpg"' in explorer
     assert "model3d" not in explorer and "Modelled by" not in explorer
     assert "No picture" in said["chainHtml"]
+
+
+@needs_node
+def test_a_set_with_no_render_shows_its_own_picture_not_its_parts() -> None:
+    # The owner, 2026-10-30: "it has those stupid images with a few parts in
+    # them". A set LDraw has no model of shows its own picture, Rebrickable's,
+    # from this site, credited; its parts are drawn only for one with none.
+    said = node(SETS + """
+import { cardHtml } from "./web/card.js";
+const chrome = { head: "", header: "<header></header>", footer: "<footer></footer>" };
+const entry = S.catalogSet("42115-1");
+const card = S.catalogCard(entry, models);
+console.log(JSON.stringify({ card, html: cardHtml(card), page: S.setPage({ origin: "https://brickworks.test", entry, chrome,
+  cardHtml, next: [S.catalogCard(S.catalogSet("10497-1"), models)] }), photo: entry.photo,
+  plain: S.setPage({ origin: "https://brickworks.test", entry: S.catalogSet("10497-1"), chrome, cardHtml }) }));""")
+    assert said["photo"] is True
+    assert said["card"]["library"]["picture"] == "/library/set/42115-1.webp"
+    assert 'src="/library/set/42115-1.webp"' in said["html"] and ".jpg" not in said["html"]
+    page = said["page"]
+    # The page's own, whole on its ground, credited under it and in About this page.
+    assert '<div class="picture photo"><span class="waiting"' in page
+    assert 'src="/library/set/42115-1.page.webp"' in page and 'alt="Lamborghini Sián FKP 37, LEGO® set 42115-1"' in page
+    assert '<p class="picture-credit">Picture: <a href="https://rebrickable.com/sets/42115-1/">Rebrickable</a></p>' in page
+    assert "The set's picture is <a href=\"https://rebrickable.com/sets/42115-1/\">Rebrickable's</a>." in page
+    assert '<meta property="og:image" content="https://brickworks.test/library/set/42115-1.webp">' in page
+    assert "/library/set/42115-1.jpg" not in page and "drawn by Brickworks\"" not in page
+    # From this site alone: no visitor's browser asks Rebrickable for it.
+    assert "cdn.rebrickable" not in page
+    # The set beside it with none of its own: its parts drawn, and nothing of Rebrickable's credited for it.
+    assert 'src="/library/set/10497-1.jpg"' in page
+    plain = said["plain"]
+    assert 'src="/library/set/10497-1.jpg"' in plain and "picture-credit" not in plain and '"picture photo"' not in plain
+    assert "The set's picture is" not in plain
 
 
 @needs_node
@@ -288,6 +339,67 @@ console.log(JSON.stringify({ list: { status: list.status, total: list.body.total
     assert said["first"] == 5 and said["past"] == 404
     # What somebody owns is theirs: nobody signed in is refused, and nothing asked of the database.
     assert said["owned"] == 401 and said["db"] == 0
+
+
+@needs_node
+def test_the_site_serves_a_set_s_own_picture_from_our_storage() -> None:
+    said = node(SITE + """
+const webp = Buffer.concat([Buffer.from("RIFF"), Buffer.alloc(4), Buffer.from("WEBPVP8 "), Buffer.alloc(20)]);
+globalThis.fetch = async (url) => {
+  asked.push(String(url));
+  if (/\\/sets\\/(card|page)\\/42115-1\\.webp$/.test(String(url))) return new Response(webp);
+  if (String(url).endsWith("/sets/card/4488-1.webp")) return new Response("<html>not a picture</html>");
+  return new Response("", { status: 404 });
+};
+const answer = async (query) => {
+  const got = await call(query);
+  return { status: got.status, type: got.headers["content-type"] || "", cache: got.headers["cache-control"] || "",
+    riff: got.body.startsWith("RIFF") };
+};
+console.log(JSON.stringify({ card: await answer({ op: "catalog_photo", set: "42115-1", as: "card" }),
+  page: await answer({ op: "catalog_photo", set: "42115-1".toUpperCase(), as: "page" }),
+  none: await answer({ op: "catalog_photo", set: "10497-1", as: "card" }),
+  html: await answer({ op: "catalog_photo", set: "4488-1", as: "card" }),
+  bogus: await answer({ op: "catalog_photo", set: "42115-1", as: "../card" }),
+  nosuch: await answer({ op: "catalog_photo", set: "nosuch-1", as: "card" }),
+  asked: asked.filter((one) => one.includes("/sets/")) }));""")
+    year = "public, max-age=604800, s-maxage=31536000, stale-while-revalidate=31536000"
+    assert said["card"] == {"status": 200, "type": "image/webp", "cache": year, "riff": True}
+    assert said["page"] == {"status": 200, "type": "image/webp", "cache": year, "riff": True}
+    # None in the store, something that is not a WebP, a size there is not, a set there is not: nothing.
+    for one in ("none", "html", "bogus", "nosuch"):
+        assert said[one]["status"] == 404 and said[one]["cache"] == "no-store", one
+    # Read from the parts store by the set's own number, and never from anywhere else.
+    assert said["asked"] == ["https://store.test/parts/sets/card/42115-1.webp", "https://store.test/parts/sets/page/42115-1.webp",
+                             "https://store.test/parts/sets/card/10497-1.webp", "https://store.test/parts/sets/card/4488-1.webp"]
+
+
+@needs_node
+def test_a_set_s_picture_waits_out_a_busy_store() -> None:
+    # Storage answers a page of new pictures at once with 429 SlowDown
+    # ("too many connections issued to the database"): seen 7 in 200, 24 at a time.
+    said = node(SITE + """
+const webp = Buffer.concat([Buffer.from("RIFF"), Buffer.alloc(4), Buffer.from("WEBPVP8 "), Buffer.alloc(20)]);
+const slow = () => new Response('{"statusCode":"429","error":"too_many_connections","code":"SlowDown"}', { status: 429 });
+const times = {};
+globalThis.fetch = async (url) => {
+  const name = String(url).split("/parts/")[1];
+  times[name] = (times[name] || 0) + 1;
+  if (name === "sets/card/42115-1.webp") return times[name] < 3 ? slow() : new Response(webp);
+  if (name === "sets/page/42115-1.webp") return times[name] < 2 ? new Response("", { status: 503 }) : new Response(webp);
+  if (name === "sets/card/10179-1.webp") return slow();
+  return new Response("", { status: 404 });
+};
+const status = async (query) => (await call(query)).status;
+console.log(JSON.stringify({ card: await status({ op: "catalog_photo", set: "42115-1", as: "card" }),
+  page: await status({ op: "catalog_photo", set: "42115-1", as: "page" }),
+  busy: await status({ op: "catalog_photo", set: "10179-1", as: "card" }),
+  none: await status({ op: "catalog_photo", set: "10497-1", as: "card" }), times }));""")
+    assert said["card"] == 200 and said["page"] == 200
+    # Busy every time: given up after three; not there: asked once.
+    assert said["busy"] == 404 and said["none"] == 404
+    assert said["times"] == {"sets/card/42115-1.webp": 3, "sets/page/42115-1.webp": 2,
+                             "sets/card/10179-1.webp": 3, "sets/card/10497-1.webp": 1}
 
 
 @needs_node

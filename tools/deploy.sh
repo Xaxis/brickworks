@@ -256,8 +256,10 @@ fi
 # pictures (.webp the card's, .cutout.webp the page's, .cover.webp the app's
 # cover), its file (.mpd) and its parts (api/_library.js; /library is
 # web/library.html); and every set in Rebrickable's catalogue, each a page
-# at /library/set/<number> with its parts and its picture drawn from them
-# (.jpg), and the sets' sitemaps under /sitemaps/ (api/_sets.js). /api/people is who shares them and what is done with them
+# at /library/set/<number> with its parts, its own picture (.webp the
+# card's, .page.webp the page's: Rebrickable's, in the parts bucket under
+# sets/, tools/set_pictures.py) or one drawn from its parts where it has
+# none (.jpg), and the sets' sitemaps under /sitemaps/ (api/_sets.js). /api/people is who shares them and what is done with them
 # (supabase/people.sql): profiles at /u/<handle>, collections at /c/<id>,
 # likes and favourites; the site's header and footer beside it too, as
 # _site.html. The viewer is /app?view=<id>: /app is the app's page itself,
@@ -556,6 +558,8 @@ $docs_moved
     { "src": "/collections/?", "dest": "/api/people?op=collections_page" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})/parts[.](json|xml|csv)", "dest": "/api/share?op=catalog_parts&set=\$1&as=\$2" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]jpg", "dest": "/api/share?op=catalog_picture&set=\$1" },
+    { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]page[.]webp", "dest": "/api/share?op=catalog_photo&set=\$1&as=page" },
+    { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]webp", "dest": "/api/share?op=catalog_photo&set=\$1&as=card" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})/?", "dest": "/api/share?op=catalog_set&set=\$1" },
     { "src": "/sitemaps/index[.]xml", "dest": "/api/share?op=sitemap_index" },
     { "src": "/sitemaps/sets-([1-9][0-9]{0,2})[.]xml", "dest": "/api/share?op=sitemap_sets&n=\$1" },

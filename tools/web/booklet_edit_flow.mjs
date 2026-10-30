@@ -266,9 +266,14 @@ try {
   ok(back5 && /a page alone/.test(still), `...and step 5 is still alone: "${still}"`);
 
   // The page by hand: step 4's page in Lay out page…, its picture dragged by
-  // the mouse and let go a millimetre and a half below the top margin, which
-  // it snaps onto; its parts list widened by its corner; words added and
-  // typed; a picture added from a file; Ctrl-Z and Ctrl-Shift-Z on it.
+  // the mouse and let go a millimetre below the top margin, which it snaps
+  // onto; its parts list widened by its corner; words added and typed; a
+  // picture added from a file; Ctrl-Z and Ctrl-Shift-Z on it. Not a
+  // millimetre and a half: the picture is as tall as the room between the
+  // margins, so its middle is 3 mm above the page's, and let go 1.5 mm down
+  // it is as near the page's middle as the margin. Which one a whole-pixel
+  // mouse lands nearer turned on the page's scale, and the rulers changed
+  // it (rel-m226, 2026-10-30).
   ok(await toStep(4), `step 4 for its page: "${(await timeline()).caption}"`);
   await press("booklet_lay_out");
   const editor = async () => (await state()).page_editor || {};
@@ -289,7 +294,7 @@ try {
     const picture = "page_picture_4";
     const was = opened4.items[picture];
     const from = await where(picture);
-    const by = { x: 30, y: 9 + 1.5 - was[1] };
+    const by = { x: 30, y: 9 + 1 - was[1] };
     await page.mouse.move(from.x, from.y);
     await page.mouse.down();
     for (let n = 1; n <= 10; n++) {

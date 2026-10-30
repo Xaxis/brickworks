@@ -1,11 +1,10 @@
-// A set's picture where LDraw has no 3D model of it (sets364): a flat lay
-// of its most distinctive parts (tools/set_catalog.py picks them), each
-// drawn here from the geometry the app draws it from, as a model page's
-// Parts list draws a lot (web/part-pictures.js): orthographic from the
-// parts bin's corner, lit by its key and its fill, colour 16 in the lot's
-// colour, with an outline. Never a photograph: the LEGO Group's and
-// Rebrickable's pictures are theirs, and nothing of theirs is shown or
-// fetched.
+// A set's picture where LDraw has no 3D model of it and Rebrickable no
+// picture of it (sets364; since setpics every other set has its own,
+// api/_sets.js pictureOf): a flat lay of its most distinctive parts
+// (tools/set_catalog.py picks them), each drawn here from the geometry the
+// app draws it from, as a model page's Parts list draws a lot
+// (web/part-pictures.js): orthographic from the parts bin's corner, lit by
+// its key and its fill, colour 16 in the lot's colour, with an outline.
 //
 // Drawn in plain JavaScript, a triangle at a time into a depth buffer at
 // twice the size and halved, then written as a JPEG (api/_jpeg.js): a

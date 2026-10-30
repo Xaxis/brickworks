@@ -61,11 +61,15 @@ ui:first steps after a first sign-in
 
 **Follow** on a designer's page or a model's page puts what they make in your feed. Your profile counts who you follow and who follows you.
 
+**More like** on a designer's page lists up to six designers whose models share the most with theirs: the same themes, tags and parts. Each has **Follow** beside it. It never lists you or anyone you follow already, and it is not shown when nobody is close.
+
 **Share** on anybody's page, and on your own, opens the sheet a model's page has: the page's link to copy, and **Post it to** Reddit, Bluesky, Pinterest (with the banner's picture), X, Facebook or email.
 
 <!-- covers
 ui:follow a person and the count on Account
 lib:follows and the feed
+ui:more like on a profile
+lib:more like a designer
 -->
 
 ## Your feed {#feed}

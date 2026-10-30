@@ -65,6 +65,7 @@
       "area": "web",
       "tests": [
         "tests/test_feedback.py",
+        "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
       ]
     },
@@ -130,7 +131,8 @@
       "reach": "curl -s 'https://brickworks.diy/api/people?op=profile&handle=<handle>'   (and /u/<handle>, /c/<id>; ?op=me, like, favourite, collection, collect with a session)",
       "area": "web",
       "tests": [
-        "tests/test_challenge_notices.py"
+        "tests/test_challenge_notices.py",
+        "tests/test_gallery_builds.py"
       ]
     },
     {
@@ -153,6 +155,7 @@
       "area": "account",
       "tests": [
         "tests/test_feedback.py",
+        "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
       ]
     },
@@ -215,7 +218,24 @@
       "area": "web",
       "tests": [
         "tests/test_feedback.py",
+        "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
+      ]
+    },
+    {
+      "id": "api:a set's own picture",
+      "kind": "api",
+      "entry": "api/share.js",
+      "reach": "https://brickworks.diy/library/set/7985-1.webp (a card's, 640x480) and /library/set/7985-1.page.webp (its page's)   (setpics: Rebrickable's picture of the set, read from the parts bucket's sets/card/ and sets/page/ by ?op=catalog_photo and kept a year; 404 for a set the store has none of; tests/test_sets.py, tools/web/sets_flow.mjs)",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_achievements.py",
+        "tests/test_challenge_notices.py",
+        "tests/test_feedback.py",
+        "tests/test_library_site.py",
+        "tests/test_model_bases.py",
+        "tests/test_sets.py"
       ]
     },
     {
@@ -526,6 +546,7 @@
       "reach": "tools/release.py build   (all three, into dist/<version>/; linux, mac or windows for one)",
       "area": "release",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
@@ -648,6 +669,7 @@
       "reach": "gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.1.0  (its .github/workflows/release.yml there)",
       "area": "release",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
@@ -1064,6 +1086,14 @@
       "tests": []
     },
     {
+      "id": "cli:gallery builds browser flow",
+      "kind": "cli",
+      "entry": "tools/web/gallery_builds_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/gallery_builds_flow.mjs --url=<preview or local relay> --out=DIR   (preview_checks.sh gallery_builds: throwaway Ann, Bo, Cy and Di; five photos, a hidden, a reported and an under-13 builder's left out; 1280 light signed in, 390 dark signed out, the empty tab)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:gallery tool probe",
       "kind": "cli",
       "entry": "src/dev/gallery_tool_probe.gd",
@@ -1328,6 +1358,14 @@
       "kind": "cli",
       "entry": "tools/web/moderation_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/moderation_flow.mjs --url=<deployment> --out=shots/moderation   (.env sourced, MASTER_EMAIL)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:more like browser flow",
+      "kind": "cli",
+      "entry": "tools/web/alike_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/alike_flow.mjs --url=<preview or local relay> --out=DIR   (preview_checks.sh alike: throwaway Ann, Bo, Cy, Di and Fay; hidden alone, the closest first signed out at 1280 light, signed in at 390 dark never yourself or whom you follow, Follow in place)",
       "area": "web",
       "tests": []
     },
@@ -1700,6 +1738,7 @@
       "reach": "tools/release.py publish --draft, then tools/release.py publish",
       "area": "release",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
@@ -1890,7 +1929,7 @@
       "id": "cli:set catalogue",
       "kind": "cli",
       "entry": "tools/set_catalog.py",
-      "reach": "python3 tools/set_catalog.py [--check]   (assets/generated/set_catalog.json from vendor/rebrickable and assets/generated/sets/; deploy.sh runs it and puts it beside the share function)",
+      "reach": "python3 tools/set_catalog.py [--check]   (assets/generated/set_catalog.json from vendor/rebrickable, assets/generated/sets/ and set_pictures.json (which sets have their own picture up); deploy.sh runs it and puts it beside the share function)",
       "area": "web",
       "tests": []
     },
@@ -1909,6 +1948,14 @@
       "kind": "cli",
       "entry": "src/dev/set_parts_probe.gd",
       "reach": "tools/probe.sh set_parts_probe   (/app?parts=10497-1&brief=: the set's parts in the bin, most used first, and the brief drafted, not sent)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:set pictures",
+      "kind": "cli",
+      "entry": "tools/set_pictures.py",
+      "reach": "python3 tools/set_pictures.py [--fetch|--make|--upload] [--check]   (every set's picture from Rebrickable's CDN once, at most 4 a second, resumable, into vendor/rebrickable/set_pictures/; WebPs made there (--make through heavy); uploaded to the parts bucket's sets/ (additive) and listed in assets/generated/set_pictures.json, which set_catalog.py marks; tools/fetch_data.sh runs it after the day's tables)",
       "area": "web",
       "tests": []
     },
@@ -2009,6 +2056,7 @@
       "reach": "tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz --window",
       "area": "release",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
@@ -2490,6 +2538,7 @@
       "area": "account",
       "tests": [
         "tests/test_feedback.py",
+        "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
       ]
     },
@@ -2553,6 +2602,7 @@
       "reach": "godot --headless --path . --script src/dev/brickify_probe.gd",
       "area": "brickify",
       "tests": [
+        "tests/test_alike.py",
         "tests/test_gallery_tabs.py"
       ]
     },
@@ -2613,6 +2663,14 @@
       "tests": [
         "tests/test_steps_score.py"
       ]
+    },
+    {
+      "id": "lib:builds in the gallery",
+      "kind": "lib",
+      "entry": "api/_builds.js",
+      "reach": "/api/people?op=builds&page=N   (galleryBuilds: newest first, 24 a page; not hidden, no report waiting, builder and owner shown in public, the model in the gallery; tests/test_gallery_builds.py)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "lib:challenge notices",
@@ -2998,6 +3056,14 @@
       ]
     },
     {
+      "id": "lib:more like a designer",
+      "kind": "lib",
+      "entry": "api/_alike.js",
+      "reach": "/api/people?op=alike&handle=X   (designersAlike: shared themes and tags, parts and followers in common from supabase/designers_alike.sql once applied; never the person, the asker or whom they follow; tests/test_alike.py; dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/designers_alike.sql --dry --try=tools/designers_alike_try.sql --table=model_needs)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:motions",
       "kind": "lib",
       "entry": "src/assembly/motions.gd",
@@ -3252,6 +3318,7 @@
       "area": "web",
       "tests": [
         "tests/test_feedback.py",
+        "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
       ]
     },
@@ -3617,7 +3684,8 @@
       "reach": "https://brickworks.diy/u/<handle of somebody with a model in the gallery>   (or a local relay_server.mjs --hold=model_opens, /u/<handle>?tests=1 for a test account's; the tiles, Start with their most built, Built by others, the cards by Top builds)",
       "area": "web",
       "tests": [
-        "tests/test_challenge_notices.py"
+        "tests/test_challenge_notices.py",
+        "tests/test_gallery_builds.py"
       ]
     },
     {
@@ -3693,7 +3761,8 @@
       "reach": "https://brickworks.diy/u/<handle> and /profile: ul.awards under the numbers, a challenge won then a level a track (achievementsOf, levelAwards; GET /api/people?op=profile says achievements and levels); the profile browser flow",
       "area": "web",
       "tests": [
-        "tests/test_challenge_notices.py"
+        "tests/test_challenge_notices.py",
+        "tests/test_gallery_builds.py"
       ]
     },
     {
@@ -3858,7 +3927,8 @@
       "reach": "https://brickworks.diy/collections  (?sort=followed, ?page=N, ?tests=1; supabase/collection_directory.sql; linked from the gallery's tabs and the footer)",
       "area": "web",
       "tests": [
-        "tests/test_challenge_notices.py"
+        "tests/test_challenge_notices.py",
+        "tests/test_gallery_builds.py"
       ]
     },
     {
@@ -4027,7 +4097,7 @@
       "id": "ui:every set's page",
       "kind": "ui",
       "entry": "api/_sets.js",
-      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; Based on this set, the gallery's models based on it (web/set-page.js, ?op=set_based); /library/set/N.jpg its picture drawn from its parts (api/_flatlay.js), /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
+      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; Based on this set, the gallery's models based on it (web/set-page.js, ?op=set_based); its picture: LDraw's render, else its own (Rebrickable's, /library/set/N.webp and N.page.webp, ?op=catalog_photo, credited 'Picture: Rebrickable'), else /library/set/N.jpg drawn from its parts (api/_flatlay.js); /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
       "area": "web",
       "tests": []
     },
@@ -4240,7 +4310,8 @@
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
-        "tests/test_library_site.py"
+        "tests/test_library_site.py",
+        "tests/test_sets.py"
       ]
     },
     {
@@ -4273,6 +4344,14 @@
       "entry": "src/ui/storage_offer.gd",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/keep_flow.mjs --url=<deployment>/app --out=shots/keep   (with .env sourced)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "ui:more like on a profile",
+      "kind": "ui",
+      "entry": "web/follow.js",
+      "reach": "https://brickworks.diy/u/<handle>   (More like <name>, under their work: up to six designers with Follow in place, hidden when nobody is close; api/people.js profilePage section#alike, follow.js showAlike)",
+      "area": "web",
       "tests": []
     },
     {
@@ -4536,7 +4615,8 @@
       "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen in Edit profile on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
       "area": "web",
       "tests": [
-        "tests/test_challenge_notices.py"
+        "tests/test_challenge_notices.py",
+        "tests/test_gallery_builds.py"
       ]
     },
     {
@@ -4735,6 +4815,7 @@
       "area": "account",
       "tests": [
         "tests/test_feedback.py",
+        "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
       ]
     },
@@ -4986,6 +5067,21 @@
       "tests": []
     },
     {
+      "id": "ui:the gallery's builds tab",
+      "kind": "ui",
+      "entry": "web/builds.html",
+      "reach": "https://brickworks.diy/builds   (?page=N, ?tests=1; a tab of /gallery and /library; web/builds.js reads /api/people?op=builds a page at a time, each card web/card.js buildCardHtml; locally relay_server.mjs serves /builds)",
+      "area": "web",
+      "tests": [
+        "tests/test_designers.py",
+        "tests/test_discovery.py",
+        "tests/test_gallery_builds.py",
+        "tests/test_gallery_crons.py",
+        "tests/test_library_site.py",
+        "tests/test_model_page.py"
+      ]
+    },
+    {
       "id": "ui:the gallery's front shelves",
       "kind": "ui",
       "entry": "web/gallery.js",
@@ -5007,7 +5103,8 @@
       "area": "mcp",
       "tests": [
         "tests/test_billing_pay.py",
-        "tests/test_library_site.py"
+        "tests/test_library_site.py",
+        "tests/test_sets.py"
       ]
     },
     {
