@@ -292,7 +292,10 @@ def test_the_flat_lay_is_laid_out_in_cells() -> None:
 import { cells, drawFlatLay } from "./api/_flatlay.js";
 const empty = drawFlatLay([], {}, { width: 40, height: 20 });
 console.log(JSON.stringify({ six: cells(6, 1200, 630).map((c) => [Math.round(c.x), Math.round(c.y)]),
-  four: cells(4, 1200, 630).length, one: cells(1, 1200, 630)[0].w, ground: [...empty.data.slice(0, 4)] }));""")
+  four: cells(4, 1200, 630).length, one: cells(1, 1200, 630)[0].w, ground: [...empty.data.slice(0, 4)],
+  foot: [...empty.data.slice(-4)] }));""")
     assert said["six"] == [[38, 38], [413, 38], [787, 38], [38, 315], [413, 315], [787, 315]]
     assert said["four"] == 4 and round(said["one"]) == 1124
-    assert said["ground"] == [238, 241, 245, 255]
+    # On the renders' own ground, top to foot (site.css --render-top, --render-foot).
+    assert said["ground"] == [237, 239, 244, 255]
+    assert said["foot"] == [204, 211, 221, 255]

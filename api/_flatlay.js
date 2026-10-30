@@ -20,8 +20,11 @@ import { INHERIT, parseLbm } from "./_lbm.js";
 export const WIDTH = 1200;
 export const HEIGHT = 630;
 const OVER = 2;
-/// The ground: the site's light card colour, a little cooler.
-const GROUND = [238, 241, 245];
+/// The ground, top to foot: the renders' own (site.css --render-top and
+/// --render-foot), which a model page on a phone carries on above and below
+/// a picture shorter than its frame (web/model-page.js fitPicture).
+const GROUND_TOP = [237, 239, 244];
+const GROUND_FOOT = [204, 211, 221];
 const unit = (v) => {
   const n = Math.hypot(...v) || 1;
   return v.map((x) => x / n);
@@ -69,7 +72,11 @@ export function drawFlatLay(parts, palette = {}, { width = WIDTH, height = HEIGH
   const colour = new Float32Array(W * H * 3);
   const depth = new Float32Array(W * H).fill(-Infinity);
   const owner = new Int16Array(W * H).fill(-1);
-  for (let p = 0; p < W * H; p += 1) colour.set(GROUND, p * 3);
+  for (let y = 0; y < H; y += 1) {
+    // By the picture's own row, so its first is the top's and its last the foot's.
+    const ground = GROUND_TOP.map((v, c) => v + ((GROUND_FOOT[c] - v) * Math.floor(y / OVER)) / Math.max(1, height - 1));
+    for (let x = 0; x < W; x += 1) colour.set(ground, (y * W + x) * 3);
+  }
   const places = cells(parts.length, W, H);
   parts.forEach((part, which) => {
     let geometry;
