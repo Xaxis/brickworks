@@ -1383,6 +1383,14 @@
       "tests": []
     },
     {
+      "id": "cli:outside probe",
+      "kind": "cli",
+      "entry": "src/dev/outside_probe.gd",
+      "reach": "tools/probe.sh outside_probe   (the share panel's Open, Website, Documentation and Show in folder after an export open nothing and are kept in Outside.opened; probe.sh's opener stubs fail the run if anything reaches the desktop)",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:own copies read as their parts",
       "kind": "cli",
       "entry": "src/dev/own_copies_probe.gd",

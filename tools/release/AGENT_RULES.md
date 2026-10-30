@@ -39,6 +39,12 @@ date says when.
 - Probes run as `tools/probe.sh NAME` (it reads the probe's header: headless
   in a heavy slot, or windowed on the GPU). Every other Godot run gets its own
   XDG_DATA_HOME. Never touch ~/.local/share/godot/app_userdata/Brickworks/.
+- Nothing you run opens on the owner's desktop, which your shell carries. A
+  link or Show in folder goes through `Outside` (src/ui/outside.gd), which
+  opens nothing in a script's run and keeps it in `Outside.opened` for the
+  probe to read; never `OS.shell_open` (tests/test_outside.py fails it). A
+  window goes on Xvfb with `WAYLAND_DISPLAY` unset: probe.sh and check.sh do
+  both, and stub the desktop's openers.
 - CPU-heavy work under `~/.claude/claude-core/bin/heavy`, GPU work under
   `~/.claude/claude-core/bin/gpu`. When either waits, wait: `--status` says
   why. Never bypass, never give your jobs a label of their own, never set

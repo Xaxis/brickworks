@@ -7,7 +7,7 @@ repository of builds only (Xaxis/brickworks-releases), and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, ui:about and the licences, cli:about credits probe, cli:desktop token key -->
+<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, ui:about and the licences, cli:about credits probe, cli:desktop token key, cli:outside probe -->
 
 ## Sub-features
 
@@ -139,6 +139,24 @@ that offers each system its own build. The cycle and its cadence are
   CSP at least as strict as the site's and loads the page as Linux, macOS,
   Windows and an Android phone through the DevTools protocol, then checks
   every link the page has.
+- `outside probe`: nothing a probe or a check does opens on the owner's
+  desktop (noopen, 2026-10-29). Every link and Show in folder goes through
+  `Outside` (src/ui/outside.gd), held in any script's run or with
+  `BRICKWORKS_OPEN_NOTHING`; `tests/test_outside.py` fails a direct call;
+  `tools/probe.sh` stubs the desktop's openers and fails a run that reached
+  one. `src/dev/outside_probe.gd` presses the share panel's Open, Help's
+  Website and Documentation, and the status bar's Show in folder after
+  File, Export, LDraw.
+
+  ```sh
+  tools/probe.sh outside_probe
+  ```
+
+  Proves it when: every line is `ok`, each opener keeps exactly its address
+  (`https://brickworks.diy/m/outside-probe-model`, `https://brickworks.diy`,
+  the docs page) or the exported .ldr's path in `Outside.opened`, it ends
+  `outside probe: all checks passed`, and probe.sh prints no `asked the
+  desktop to open` lines.
 
 ## How to reach it
 

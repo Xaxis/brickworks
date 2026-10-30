@@ -219,7 +219,7 @@ func _check(what: String, ok: bool) -> bool:
 ## Callable holding this script's lambda corrupts the heap at exit (4.7.2,
 ## save_dialog_probe).
 func _quit() -> void:
-	SaveTo.open_with = Callable(OS, "shell_open")
+	SaveTo.open_with = Callable(Outside, "open_link")
 	print("")
 	print("booklet stream probe: %s" % ("all checks passed" if _failures == 0
 		else "%d check(s) FAILED" % _failures))

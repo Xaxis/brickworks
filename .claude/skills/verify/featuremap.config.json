@@ -3916,6 +3916,13 @@
     },
     {
       "kind": "cli",
+      "label": "outside probe",
+      "entry": "src/dev/outside_probe.gd",
+      "reach": "tools/probe.sh outside_probe   (the share panel's Open, Website, Documentation and Show in folder after an export open nothing and are kept in Outside.opened; probe.sh's opener stubs fail the run if anything reaches the desktop)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
       "label": "app menu in a browser",
       "entry": "tools/web/app_menu_flow.mjs",
       "reach": "node tools/web/app_menu_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks app_menu: the mark at 1280 and 390, its rows, About, Back to brickworks.diy landing on the site)",

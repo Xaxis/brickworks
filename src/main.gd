@@ -2455,7 +2455,7 @@ func _enter_view() -> void:
 		view.opened.connect(_comments_opened)
 		view.send_wanted.connect(_send_comment.bind(view))
 		view.page_wanted.connect(func() -> void:
-			OS.shell_open(SharedModels.link_for(_viewing) + "#comments"))
+			Outside.open_link(SharedModels.link_for(_viewing) + "#comments"))
 	# The viewer's count is for the step the timeline is on.
 	_steps.reveal_upto.connect(func(_order: PackedInt64Array, _count: int, _key: int) -> void:
 		_share_view.comments.set_step(_timeline_page()))
@@ -2848,7 +2848,7 @@ func _open_newest() -> void:
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("location.assign(%s)" % JSON.stringify(address), true)
 	else:
-		OS.shell_open(SharedModels.link_for(_viewing))
+		Outside.open_link(SharedModels.link_for(_viewing))
 
 
 ## Open in Brickworks, from the viewer: the app as everybody else gets
@@ -2860,7 +2860,7 @@ func _open_copy() -> void:
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("location.assign(%s)" % JSON.stringify(address), true)
 	else:
-		OS.shell_open(Deployment.api_base() + address)
+		Outside.open_link(Deployment.api_base() + address)
 
 
 ## Build it: the viewer as a step player, full screen, at [param page] —
