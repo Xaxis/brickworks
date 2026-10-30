@@ -52,9 +52,11 @@ try {
     background_line: "Ten years of Technic", link: "rebrickable.com/users/ada/mocs/", terms: true, emails: true };
   out.off_post = await askPlans({ method: "POST", query: { op: "beta" }, headers: { authorization: `Bearer ${ada}` }, body: form });
   out.off_calls = w.calls.slice(before);
+  out.spots_off = await askPlans({ query: { op: "beta_spots" } });
 
   process.env.BRICKWORKS_BETA = "open";
   out.open_signed_out = await askPlans({ query: { op: "beta" } });
+  out.spots_open = await askPlans({ query: { op: "beta_spots" }, headers: { authorization: "Bearer not-a-token" } });
   out.post_signed_out = await askPlans({ method: "POST", query: { op: "beta" }, body: form });
   // Refused at the edge, each in words.
   const refusals = {
@@ -138,6 +140,20 @@ try {
   out.grant_mail = mails.map((one) => one.subject);
   out.grant_again = await askAdmin({ method: "POST", query: { op: "beta_grant" }, headers: asOwner });
   out.queue_pending = (await askAdmin({ query: { op: "beta", tests: "1" }, headers: asOwner })).json?.counts;
+
+  // A month Admission gave once and that has ended (or was revoked):
+  // asked again, Admission answers the old one unchanged, and the queue says
+  // so rather than counting it given.
+  const onceId = await db.user("delivered+beta-once@resend.dev");
+  const once = await w.signIn({ sub: onceId, email: "delivered+beta-once@resend.dev" });
+  await askPlans({ method: "POST", query: { op: "beta" }, headers: { authorization: `Bearer ${once}` }, body: form });
+  await w.admission.fetch(`https://admission.test/v1/customers/${onceId}/comps/beta`, { method: "PUT",
+    headers: { authorization: "Bearer adm_test_00000000000000000000000000000000" }, body: JSON.stringify({ plan: "pro", days: 30 }) });
+  w.admission.endedComp(onceId, "beta");
+  out.once = (await approve(onceId)).json;
+  out.once_again = (await askAdmin({ method: "POST", query: { op: "beta_grant" }, headers: asOwner })).json;
+  out.once_queue = (await askAdmin({ query: { op: "beta", tests: "1", status: "approved" }, headers: asOwner })).json
+    ?.applications?.find((one) => one.account === onceId);
 
   // Declined: emailed kindly, and may apply again in 30 days.
   const deeId = await db.user("delivered+beta-dee@resend.dev");

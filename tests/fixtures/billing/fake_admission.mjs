@@ -94,6 +94,12 @@ export function fakeAdmission() {
     comp(customerId, plan, until = null) {
       overrides.set(customerId, { plan, until });
     },
+    /// The product's comp [reason] for [customerId] ended now, as running
+    /// out or the owner's Revoke would.
+    endedComp(customerId, reason) {
+      const c = apiComps.get(`${customerId}:${reason}`);
+      if (c) c.revoked = true;
+    },
     /// How many of the product's own comps may be on at once (ADR-0015):
     /// Brickworks' is 100; null is the owner never having set it.
     apiCompsLimit: 100,
@@ -233,10 +239,12 @@ export function fakeAdmission() {
       if ((body.days === undefined) === (body.until === undefined)) {
         return reply(400, error("bad_request", "send days or until, not both"));
       }
+      if (body.days !== undefined && !(Number.isInteger(body.days) && body.days >= 1 && body.days <= MOST_COMP_DAYS)) {
+        return reply(400, error("bad_request", `days is 1 to ${MOST_COMP_DAYS}.`));
+      }
       const now = Date.now();
       const until = body.days !== undefined ? now + Number(body.days) * DAY_MS : Date.parse(body.until);
-      if (!Number.isFinite(until) || until <= now || until > now + MOST_COMP_DAYS * DAY_MS
-        || (body.days !== undefined && !(Number.isInteger(body.days) && body.days >= 1))) {
+      if (!Number.isFinite(until) || until <= now || until > now + MOST_COMP_DAYS * DAY_MS) {
         return reply(400, error("bad_until", `A comp ends in the future, at most ${MOST_COMP_DAYS} days from now.`));
       }
       const on = [...apiComps.values()].filter((c) => !c.revoked && Date.parse(c.until) > now).length;

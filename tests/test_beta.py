@@ -215,6 +215,27 @@ def test_off_the_page_says_coming_and_the_api_takes_nothing() -> None:
     assert got["off_calls"] == []
 
 
+def test_the_spots_are_public_cached_and_say_nothing_of_anyone() -> None:
+    got = api()
+    if got is None:
+        return
+    assert got["spots_off"] == {"status": 200, "json": {"beta": "off"}}
+    # A bad sign-in changes nothing: none is read.
+    assert got["spots_open"] == {"status": 200, "json": {"beta": "open", "cap": 100, "left": 100}}
+
+
+def test_a_month_given_once_and_ended_is_said_not_counted() -> None:
+    got = api()
+    if got is None:
+        return
+    said = got["once"]["month"]
+    assert said["comp"] == "pending" and "one reason gives one month, ever" in said["said"]
+    # Granting again asks, is answered the same, and says so again.
+    assert got["once_again"]["granted"] == 0 and got["once_again"]["pending"] == 1
+    assert any("one month, ever" in one for one in got["once_again"]["said"])
+    assert got["once_queue"]["comp"] == "pending" and "ended or was revoked" in got["once_queue"]["comp_said"]
+
+
 def test_signed_out_is_asked_to_sign_in() -> None:
     got = api()
     if got is None:

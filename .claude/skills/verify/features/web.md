@@ -2660,7 +2660,14 @@ plan with Claude as the client.
   billing is the pool's mode (live for the 100, test for the checks'), else
   pending "Starts when Pro launches"; 403 api_comps_off and 409
   api_comps_full are said in the queue and Grant pending months gives them
-  later (also the daily cron, once Pro launches). Emails (received,
+  later (also the daily cron, once Pro launches). Admission gives a reason
+  once, ever: a month given before that has ended or was revoked is said in
+  the queue ("one reason gives one month, ever"), never counted as given.
+  `GET /api/plans?op=beta_spots` is the public `{beta, cap, left}` for the
+  pricing and home callouts (no sign-in read, cached a minute). Proven
+  against Admission's real test mode on 2026-10-30 with throwaways: comp
+  made at approval, ?op=plan Pro until +30 days, a repeat 200 with the same
+  until, endComp, deletion erasing the customer. Emails (received,
   approved, declined, started, reminder) through Resend, plain and HTML,
   kept in beta_mail; a unit's preview has no mail key, so a test inbox's is
   `dry`. Prove: `python3 tools/minitest.py tests/test_beta.py` (PG_BIN and

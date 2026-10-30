@@ -20,6 +20,9 @@
 //   POST /api/plans?op=beta        signed in, the form (applicationOf): 200
 //                                  with the same, 401 signed out, 403 off,
 //                                  409 applied already, 422 with why
+//   GET  /api/plans?op=beta_spots  {beta: off} or {beta: open, cap, left}:
+//                                  signed out, cached a minute, for the
+//                                  pricing and home pages' callouts
 //   GET  /api/plans?op=beta_daily  Vercel's cron (/api/plans/beta-daily):
 //                                  months given that wait for Admission,
 //                                  reminders three days before a month
@@ -368,6 +371,11 @@ export async function sendMail(kind, to, data) {
 /// checks' test.
 const modeOf = (test) => (test ? "test" : "live");
 
+/// What the owner's queue says of an account whose beta month Admission
+/// gave once already and which has ended or was revoked.
+export const GIVEN_ONCE = "Admission gave this account its beta month once already, and it has ended or was revoked: "
+  + "one reason gives one month, ever. To give another, comp it by hand in Admission.";
+
 /// What the owner's queue says when Admission did not give a month.
 export function compSaid(trouble) {
   if (trouble instanceof AdmissionError && trouble.code === "api_comps_off") {
@@ -400,10 +408,15 @@ export async function approveMonth(who, now = Date.now()) {
     try {
       const c = await a.comp({ customerId: who.account, reason: "beta", plan: "pro", days: DAYS });
       const until = c?.plan?.source === "override" && c.plan.until ? Date.parse(c.plan.until) : NaN;
-      // Admission's until is when it made the comp and 30 days: a repeat
-      // answers the first one, so its start is read from its end.
-      const ends = Number.isFinite(until) ? until : now + DAYS * DAY_MS;
-      kept = { comp: "granted", starts: new Date(ends - DAYS * DAY_MS).toISOString(), ends: new Date(ends).toISOString() };
+      if (Number.isFinite(until) && until > now) {
+        // Admission's until is when it made the comp and 30 days: a repeat
+        // answers the first one, so its start is read from its end.
+        kept = { comp: "granted", starts: new Date(until - DAYS * DAY_MS).toISOString(), ends: new Date(until).toISOString() };
+      } else {
+        // A repeat of a comp that has ended or was revoked: Admission gives
+        // one a reason, ever, and changes nothing. Said, never taken for a month.
+        kept = { comp: "pending", said: GIVEN_ONCE };
+      }
     } catch (trouble) {
       console.error(`beta: comp: ${trouble?.code || trouble?.name || "error"}: ${String(trouble?.message || trouble).slice(0, 120)}`);
       kept = { comp: "pending", said: compSaid(trouble) };
@@ -498,6 +511,23 @@ export async function betaRoute(request, response) {
     console.error(`beta: ${String(trouble?.message || trouble).slice(0, 160)}`);
     if (notYet(trouble)) return say(response, 503, "The beta is not open here yet.");
     return say(response, 503, "That did not go just now. Try again in a minute.");
+  }
+}
+
+/// GET /api/plans?op=beta_spots: whether the beta is open and how many of
+/// the 100 spots are left, for any page (pricing, home) to show or not.
+/// Nobody's sign-in is read and nothing about an applicant is said, so it
+/// may be kept a minute by any cache.
+export async function betaSpots(request, response) {
+  response.setHeader("Cache-Control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
+  if (betaMode() === "off" || !dbConfigured()) return response.status(200).json({ beta: "off" });
+  try {
+    const { pool } = await db("rpc/beta_status", { method: "POST", body: { p_account: null } });
+    return response.status(200).json({ beta: "open", cap: pool.cap, left: pool.left });
+  } catch (trouble) {
+    console.error(`beta: spots: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    response.setHeader("Cache-Control", "no-store");
+    return response.status(503).json({ beta: "unknown" });
   }
 }
 

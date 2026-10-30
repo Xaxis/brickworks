@@ -5,7 +5,7 @@ blob hash, so a fix upstream can be found and brought over.
 
 | Here | From | Commit | Blob |
 | --- | --- | --- | --- |
-| api/_admission.js | Admission packages/client/src/index.ts | 76dfd2b | 3550e036dd13 |
+| api/_admission.js | Admission packages/client/src/index.ts | 0932894 | 8e9083c6a1a6 |
 
 **api/_admission.js** is Admission's client with its types taken out, and
 nothing else changed: Vercel runs `api/` here as plain JavaScript modules
@@ -25,12 +25,5 @@ git -C $A log -1 --format=%h -- packages/client/src/index.ts       # the commit
 git -C $A rev-parse --short=12 HEAD:packages/client/src/index.ts    # the blob
 ```
 
-and update the row. **One exception, until Admission's client has them:**
-`comp` and `endComp` (ADR-0015, a product's own comps, for the beta's
-month of Pro: api/_beta.js) were added to the copy by hand on 2026-10-29,
-in the shape Admission's ADR-0015 gives them (`PUT` and `DELETE
-/v1/customers/{id}/comps/{reason}`), while Admission built them. Bring the
-next client over as above; it replaces both.
-
-tests/test_billing.py runs it against a stand-in
+and update the row. tests/test_billing.py runs it against a stand-in
 Admission (tests/fixtures/fake_admission.mjs).

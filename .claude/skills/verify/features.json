@@ -206,7 +206,7 @@
       "id": "api:applying to the beta",
       "kind": "api",
       "entry": "api/plans.js",
-      "reach": "curl -s '<deployment>/api/plans?op=beta'; POST it signed in with {build, ai, background, background_line, link, terms, emails}   (off: {beta: off} and POST 403; open: 401 signed out, 422 with why, 409 a second time; python3 tools/minitest.py tests/test_beta.py)",
+      "reach": "curl -s '<deployment>/api/plans?op=beta'; curl -s '<deployment>/api/plans?op=beta_spots' (signed out, cached a minute: {beta, cap, left}); POST it signed in with {build, ai, background, background_line, link, terms, emails}   (off: {beta: off} and POST 403; open: 401 signed out, 422 with why, 409 a second time; python3 tools/minitest.py tests/test_beta.py)",
       "area": "web",
       "tests": [
         "tests/test_beta.py",
