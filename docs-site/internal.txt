@@ -58,6 +58,7 @@ ui:the Pro screen on the desktop  # shown only once Pro is open and a build is p
 api:paying for Pro  # Checkout, the portal and Admission's webhook, switched off until Pro opens (pay348); documented at launch
 ui:your plan on settings  # the Plan row on /settings, drawn only while plans are on; documented at launch
 api:a deleted account's plan ended at Admission  # Pro ended at Admission when an account is deleted, switched off until Pro opens; account deletion itself is in the docs, and this is documented at launch
+cli:set catalogue   # tools/set_catalog.py writes the catalogue the set pages read at deploy (sets364); nobody runs it but deploy.sh
 lib:the weekly look at the OMR  # a cron's: what LDraw's OMR added waits for the lead before the library shows it (ldraw-library.md)
 cli:the weekly AI showcase  # the box's own timer: drafts a person looks at before anything is published
 ui:the beta's owner queue  # the owner's own page: the beta's applications, decided by hand

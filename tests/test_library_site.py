@@ -177,6 +177,9 @@ globalThis.fetch = async (url) => {{
   if (path === "library/covers/omr-10179-1.webp" || path === "library/pages/omr-106-1.webp") return new Response(webp);
   return new Response("", {{ status: 400 }});
 }};
+// The LDraw shelf alone, as a deployment without the sets' catalogue
+// (api/_sets.js, tests/test_sets.py) answers it.
+(await import("./api/_sets.js")).useCatalog(null);
 const {{ default: handler }} = await import("./api/share.js");
 async function call(query) {{
   const headers = {{}};
