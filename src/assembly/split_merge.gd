@@ -132,8 +132,7 @@ static func split_selection(builder: Builder) -> Dictionary:
 ## What [param part_id] splits into: [[piece id, its place in the part's
 ## frame]], or [] when it does not split (a 1 x 1 plate, or a part that is
 ## none of Studio's kinds). Each split is checked against the part itself
-## before it is ever used: the pieces stand inside its cover and fill it,
-## its studs are theirs, and the studs beneath it take theirs.
+## before it is ever used ([method _fills]).
 static func split_of(library: PartLibrary, part_id: String) -> Array:
 	_tables(library)
 	if _splits.has(part_id):
@@ -349,7 +348,7 @@ static func merge_selection(builder: Builder) -> Dictionary:
 					put.append(_part_for(library, world, frame, item))
 				var gone := PackedInt64Array(olds.keys())
 				if not _room_for(builder, gone, put):
-					refused += 1
+					refused += gone.size()
 					continue
 				removes.append_array(gone)
 				adds.append_array(put)
@@ -363,6 +362,8 @@ static func merge_selection(builder: Builder) -> Dictionary:
 		"a " + Inventory._tidy(library.parts[str(adds[0]["part"])].name) if adds.size() == 1
 		else str(adds.size())]
 	var made: PackedInt64Array = _swap(builder, ids, removes, adds, words)
+	if refused > 0:
+		words += " — %d had no room" % refused
 	return {"changed": removes.size(), "made": made.size(), "words": words}
 
 

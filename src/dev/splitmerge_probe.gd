@@ -119,7 +119,7 @@ func _split_plate() -> void:
 	await _key(KEY_Z, true)
 	var back: BrickWorld.Brick = _only_part("3020")
 	_check("one Ctrl+Z puts the 2 x 4 plate back where it was, and takes the eight off",
-		back != null and back.transform.is_equal_approx(was) and _count("3024") == 0
+		made.size() == 8 and back != null and back.transform.is_equal_approx(was) and _count("3024") == 0
 		and _world.brick_count() == before.size())
 
 
@@ -159,7 +159,8 @@ func _merge_stack() -> void:
 	_check("it is in the lattice and runs into nothing", _all_clear(made))
 	await _shot("merge_after")
 	await _key(KEY_Z, true)
-	_check("one Ctrl+Z puts the three plates back", _count("3710") == 3 and _count("3010") == 0)
+	_check("one Ctrl+Z puts the three plates back", brick != null and _count("3710") == 3
+		and _world.get_brick(brick.id) == null)
 
 
 func _merge_square() -> void:
@@ -388,8 +389,11 @@ func _joined(brick_id: int) -> Array:
 	return SelectBy.connected(_world, _builder.lattice, [brick_id], store.scenery)
 
 
-## Each part has its cover in the lattice, and the cover meets no other part's.
+## Each part has its cover in the lattice, and the cover meets no other part's;
+## false for none.
 func _all_clear(ids: Array) -> bool:
+	if ids.is_empty():
+		return false
 	for brick_id: int in ids:
 		var cover: PackedInt32Array = _builder.lattice.cover_of(brick_id)[0]
 		if cover.is_empty() or _builder.lattice.collides_boxes(cover, brick_id):
