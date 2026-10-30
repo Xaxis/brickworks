@@ -170,7 +170,7 @@ is on the page, `hidden`, for the script to show.
   `--shine-btn`), secondary `.cta.ghost` (on the panel's ground with an
   edge of light; any `button` with no class is the same without the
   ground), quiet `button.link` (underlined words;
-  `a.link` for one that goes somewhere, as the embed's View in 3D).
+  `a.link` for one that goes somewhere).
   `.small` (36 px) for a row of actions on a card or a list, `.big` for a
   page's opening offer; a button beside a field is the regular size. A
   toggle that is on (`aria-pressed="true"`) has the accent edge. A
@@ -466,9 +466,10 @@ is on the page, `hidden`, for the script to show.
   the icons and the icon button (`web/kit.js` passes them on to the
   browser's pages), and the server imports them through `api/_card.js`,
   which `tools/deploy.sh` replaces with `web/card.js` itself.
-- **3D view**: `.view3d` (viewer369; `web/model-page.js` `start3d`,
-  `tools/viewer/inline.js`, built into `web/viewer3d.js`), the model in 3D
-  in its picture's place on a model's page and a set's: the picture's own
+- **3D view**: `.view3d` (viewer369; `web/start3d.js` the way in,
+  `tools/viewer/inline.js`, built into `web/viewer3d.js`; its looks in
+  `web/view3d.css`, under `.model-page` or `.embed`), the model in 3D
+  in its picture's place on a model's page, a set's and the embed: the picture's own
   box laid over it, so nothing on the page moves, on the picture's ground
   (`--picture-ground`, or `--render-top` to `--render-foot` for a picture
   drawn on a ground of its own), in either theme, and from where the
@@ -518,10 +519,15 @@ is on the page, `hidden`, for the script to show.
   `web/theme.js` as every page does, so it is in the theme its viewer chose
   where their browser lets a frame read the site's own storage, else their
   device's; `<html data-embed>`, so it never asks their account. Its
-  picture, then a bar: the name and credit (a link to the model's page),
-  View in 3D as an `a.link` (hidden under 400 px, where the bar has no room
-  for it), and Build it, `.cta.small`, the guided build at step 1 as the
-  model's page's is; each opens a tab of its own.
+  picture, saying View in 3D (`.go`) and the way into the 3D view there in
+  the frame as on the model's page (docs/SOCIAL.md section 7, item 4:
+  `main.embed`, `web/embed.js`; the view edge to edge over the picture,
+  no edge or corners of its own; nothing of it fetched until asked, the
+  same budget and touch rules), then a bar: the name and credit (a link to
+  the model's page) and Build it, `.cta.small`, the guided build at step 1
+  as the model's page's is. Every link opens a tab of its own
+  (`<base target="_blank">`), the 3D view's Open in the app too: the app
+  cannot run in a frame.
 - **A model's page** (`/m/<id>`, `web/directory.css`, docs/SOCIAL.md U4):
   `.media`, the picture and under it `.media-strip.scroller`, a row of
   thumbnails, the one shown large `aria-current` and edged

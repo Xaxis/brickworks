@@ -1,0 +1,90 @@
+/* The model in 3D in its picture's place (viewer369; web/start3d.js,
+   tools/viewer/inline.js), wherever a picture is the way into it: a
+   model's page, a set's page (.model-page) and the embed (.embed, the
+   frame somebody else's page shows, api/share.js embedCard). Each place
+   sets where the view sits over its picture; the rest is here. */
+
+/* View in 3D on the picture: the way in. */
+:is(.model-page, .embed) .picture .go {
+	position: absolute; right: var(--s-4); bottom: var(--s-4); display: inline-flex; align-items: center; gap: var(--s-2);
+	min-height: 40px; padding: 0 var(--s-4); border-radius: var(--r-pill);
+	background: var(--accent); color: var(--on-accent); font-weight: 650; font-size: var(--t-small);
+	box-shadow: 0 6px 18px -6px var(--shade);
+}
+/* A turning cube before its words: the picture is a way into the model in 3D. */
+:is(.model-page, .embed) .picture .go::before {
+	content: ""; width: 9px; height: 9px; border: 2px solid currentColor; border-radius: 0; transform: rotate(45deg);
+}
+:is(.model-page, .embed) .picture:hover .go { filter: brightness(1.07); }
+
+/* The model in 3D in its picture's place (viewer369; web/start3d.js
+   and tools/viewer/inline.js): the picture's own shape over it, so
+   nothing on the page moves as it opens, on the picture's own ground, so
+   the model is where the picture's was in either theme. Until enough of it
+   has come the picture shows through, with how far it has got along its
+   foot (.view3d-bar) and in words (.view3d-said, read out); then the model
+   (.shown), its tools at its foot on the right and the way into the app
+   on the left (.view3d-app). Full screen, the screen's
+   (.full where the browser has none for a page, as an iPhone's). */
+:is(.model-page, .embed) .view3d {
+	position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 1200 / 630; z-index: 2; container-type: inline-size;
+	border: 1px solid transparent; border-radius: var(--radius); overflow: hidden; pointer-events: none;
+}
+:is(.model-page, .embed) .view3d[hidden] { display: none; }
+/* On a phone a model's page has a square picture (directory.css), and the
+   view is its shape too. */
+@media (width < 600px) { .model-page .view3d { aspect-ratio: 1 / 1; } }
+:is(.model-page, .embed) .view3d.shown {
+	border-color: var(--line); background: var(--picture-ground); pointer-events: auto;
+	transition: background-color 160ms var(--ease);
+}
+/* A picture published before cut-outs was drawn on a ground of its own
+   (--render-top, --render-foot): its model in 3D is put on that one. */
+:is(.model-page, .embed) .view3d.shown[data-ground="render"] { background: linear-gradient(180deg, var(--render-top), var(--render-foot)); }
+/* Opened by touch, it has hold of the finger once taken hold of (a drag
+   across, two fingers, a tap), and says so with the accent's edge; until
+   then a finger up or down scrolls the page. */
+:is(.model-page, .embed) .view3d.shown[data-how="touch"][data-engaged] { border-color: var(--accent-edge); }
+:is(.model-page, .embed) .view3d .stage { position: absolute; inset: 0; visibility: hidden; outline: none; }
+:is(.model-page, .embed) .view3d.shown .stage { visibility: visible; }
+:is(.model-page, .embed) .view3d .stage:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); }
+:is(.model-page, .embed) .view3d .stage canvas { display: block; width: 100%; height: 100%; cursor: grab; }
+:is(.model-page, .embed) .view3d .stage canvas:active { cursor: grabbing; }
+:is(.model-page, .embed) .view3d-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; }
+:is(.model-page, .embed) .view3d-bar > span { display: block; width: 0; height: 100%; background: var(--accent); transition: width 160ms linear; }
+:is(.model-page, .embed) .view3d[data-state="ready"] .view3d-bar, :is(.model-page, .embed) .view3d[data-state="failed"] .view3d-bar { display: none; }
+:is(.model-page, .embed) .view3d-said {
+	position: absolute; left: var(--s-3); bottom: var(--s-3); max-width: calc(100% - 2 * var(--s-3)); margin: 0;
+	display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2);
+	padding: 8px 14px; border-radius: var(--radius); background: var(--panel); color: var(--ink);
+	font-size: var(--t-small); box-shadow: var(--shadow-2); pointer-events: auto;
+}
+:is(.model-page, .embed) .view3d-said[hidden] { display: none; }
+:is(.model-page, .embed) .view3d-tools {
+	position: absolute; right: var(--s-3); bottom: var(--s-3); display: flex; gap: var(--s-1); pointer-events: auto;
+}
+:is(.model-page, .embed) .view3d-tools[hidden] { display: none; }
+:is(.model-page, .embed) .view3d-tools .icon-btn { background: var(--panel); box-shadow: 0 1px 3px var(--shade); }
+:is(.model-page, .embed) .view3d-tools .icon-btn:hover { background: var(--panel-hi); }
+:is(.model-page, .embed) .view3d-app { position: absolute; left: var(--s-3); bottom: var(--s-3); box-shadow: 0 1px 3px var(--shade); pointer-events: auto; }
+:is(.model-page, .embed) .view3d-app[hidden] { display: none; }
+:is(.model-page, .embed) .view3d-hint {
+	position: absolute; top: var(--s-3); left: 50%; transform: translateX(-50%); margin: 0; max-width: calc(100% - 2 * var(--s-3));
+	padding: 6px 12px; border-radius: var(--r-pill); background: var(--panel); color: var(--ink-soft);
+	font-size: var(--t-tiny); box-shadow: 0 1px 3px var(--shade); pointer-events: none; text-align: center;
+}
+:is(.model-page, .embed) .view3d-hint[hidden] { display: none; }
+/* A phone's frame has room at its foot for the tools alone: the way into
+   the app goes to its head, and the hint above the tools. */
+@container (width < 520px) {
+	:is(.model-page, .embed) .view3d-app { top: var(--s-3); bottom: auto; }
+	:is(.model-page, .embed) .view3d-hint { top: auto; bottom: calc(var(--s-3) + 46px); }
+}
+:is(.model-page, .embed) .view3d.full, :is(.model-page, .embed) .view3d:fullscreen {
+	position: fixed; inset: 0; width: auto; height: auto; aspect-ratio: auto; z-index: 90;
+	border: 0; border-radius: 0; background: var(--picture-ground);
+}
+html.view3d-full { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) {
+	:is(.model-page, .embed) .view3d.shown, :is(.model-page, .embed) .view3d-bar > span { transition: none; }
+}

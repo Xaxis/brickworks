@@ -54,7 +54,7 @@ ui:model page pictures and tabs
 
 - **Build it**, **Open in Brickworks** (a copy in your own models) and **Download** are first.
 - **Like** and **Save** (to your Favourites or one of [your collections](/docs/collections)) sign you in on the way if they need to.
-- **Share** opens a sheet with the link and **Copy link**; **Post it to** Reddit, Bluesky, Pinterest, X, Facebook or email, each opening that site's own page for sharing it in a new tab; and the code to embed the model in a page of your own (`/m/<id>/embed`), its picture and name with **Build it**. On a phone the sheet also offers your device's own share sheet. Paste the model's bare link into a blog, Notion or a forum that reads oEmbed and it becomes that embed by itself.
+- **Share** opens a sheet with the link and **Copy link**; **Post it to** Reddit, Bluesky, Pinterest, X, Facebook or email, each opening that site's own page for sharing it in a new tab; and the code to embed the model in a page of your own (`/m/<id>/embed`), its picture and name with **Build it**; **View in 3D** on the embed's picture turns the model right there in that page, as on its own page. On a phone the sheet also offers your device's own share sheet. Paste the model's bare link into a blog, Notion or a forum that reads oEmbed and it becomes that embed by itself.
 - **Comment** goes to the comments.
 - **Built** (I built it) says you built it, with a photo of your build if you like; the photo is cleaned of what the camera wrote into it before it is kept.
 - **More** has **Report it** and the takedown page.
@@ -62,6 +62,7 @@ ui:model page pictures and tabs
 
 <!-- covers
 ui:model page action bar
+ui:the embed in 3D
 lib:real builds: finishes counted and photos of builds
 lib:a build photo made safe
 ui:enter this month's challenge

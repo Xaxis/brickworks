@@ -200,6 +200,12 @@ declare -A CMD=(
   # lists, Favourites first; More's embed code; More by and Similar only
   # with three cards. Signed in, the API answered by the stand-in.
   [model_page]="tools/web/model_page_flow.mjs --url=$P --out=$S/${TAG}_model_page"
+  # The embed in 3D (docs/SOCIAL.md section 7, item 4): /m/<id>/embed in a
+  # blog's page, the deployment's first model; nothing of the 3D view until
+  # View in 3D, then the model in the frame, full screen, the app a tab of
+  # its own; on a phone the blog scrolls until the model is taken hold of,
+  # and a model past the phone's budget asks first. Signed out, reads only.
+  [embed]="tools/web/embed_flow.mjs --url=$P --out=$S/${TAG}_embed"
   # The LDraw library on the site (library333): /library at 390 and 1400 px,
   # light and dark, the whole shelf with every card's cover, number and
   # modeller; found by a set's number, 10179, and by a theme's pill; the

@@ -754,7 +754,7 @@ function links(origin, id) {
     image: `${url}.png`,
     viewer: `${origin}/app?view=${id}`,
     embed: `<iframe src="${url}/embed" width="560" height="420" style="border:0;max-width:100%" `
-      + `title="A Brickworks model" loading="lazy"></iframe>`,
+      + `title="A Brickworks model" loading="lazy" allowfullscreen></iframe>`,
   };
 }
 
@@ -1214,6 +1214,7 @@ ${pageHead(origin, model, id, title, { about, canonical: links(origin, id).url }
 ${old ? '<meta name="robots" content="noindex">\n' : ""}${head}
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
+<link rel="stylesheet" href="/view3d.css">
 <script src="/share-page.js" defer></script>
 <script src="/model-page.js" type="module"></script>
 <script src="/report.js" type="module"></script>
@@ -1566,7 +1567,7 @@ async function oembed(request, response, origin) {
     ...(credit ? { author_name: credit } : {}),
     ...(model.by && model.by.handle && !modelledByOf(model.modelled_by) ? { author_url: `${origin}/u/${model.by.handle}` } : {}),
     html: `<iframe src="${escapeHtml(`${link.url}/embed`)}" width="${width}" height="${height}" style="border:0;max-width:100%" `
-      + `title="${escapeHtml(`${model.name}, a Brickworks model`)}" loading="lazy"></iframe>`,
+      + `title="${escapeHtml(`${model.name}, a Brickworks model`)}" loading="lazy" allowfullscreen></iframe>`,
     width,
     height,
     thumbnail_url: model.has_image ? link.image : `${origin}/share.png`,
@@ -1576,12 +1577,17 @@ async function oembed(request, response, origin) {
   });
 }
 
-/// /m/X/embed: a card sized for an iframe. The app itself cannot run in
-/// somebody else's page — its threaded engine needs the page to be
-/// cross-origin isolated, which only the top window can ask for — so the
-/// card opens it in a tab of its own: Build it, the guided build at step 1
-/// as the model's page's Build it is, and View in 3D quietly beside it
-/// where the frame has room. Its picture and name open the model's page.
+/// /m/X/embed: a card sized for an iframe. Its picture is the model in 3D
+/// as its page's is (docs/SOCIAL.md section 7, item 4): View in 3D on it,
+/// a click on it or the first drag across it turns it there, in the frame
+/// (web/start3d.js, web/embed.js); none of the 3D code comes until then,
+/// and a model past what the device turns smoothly asks first, as on the
+/// page. The app itself cannot run in somebody else's page — its threaded
+/// engine needs the page to be cross-origin isolated, which only the top
+/// window can ask for — so Build it (the guided build at step 1, as the
+/// page's Build it is) and Open in the app open it in a tab of its own, as
+/// every link here does (<base target>, the 3D view's own links too). Its
+/// name opens the model's page.
 ///
 /// In the theme whoever looks at it chose (docs/SOCIAL.md U14): web/theme.js,
 /// as on every page, sets the one they chose on brickworks.diy where their
@@ -1595,32 +1601,38 @@ function embedCard(origin, id, row) {
 <head>
 ${pageHead(origin, row, id, `${row.name} — a Brickworks model`)}
 ${siteChrome().head}
+<base target="_blank">
 <link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/view3d.css">
+<script src="/embed.js" type="module"></script>
 <style>
-  /* The site's colours, type and corners (site.css); only the card's layout here. */
+  /* The site's colours, type and corners (site.css); the 3D view's
+     (view3d.css); only the card's layout here. */
   body { background: var(--panel); }
   main { display: flex; flex-direction: column; height: 100vh; }
-  /* The model on the theme's studio ground, as a card's frame has it. */
-  a.picture { flex: 1; min-height: 0; display: block; background: var(--picture-ground); }
+  /* The model on the theme's studio ground, as a card's frame has it, and
+     the 3D view over it, edge to edge. A finger up or down it scrolls the
+     page around the frame; across it turns the model. */
+  .media { flex: 1; min-height: 0; position: relative; }
+  a.picture { display: block; height: 100%; background: var(--picture-ground); touch-action: pan-y pinch-zoom; }
   a.picture img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .embed .view3d { inset: 0; width: auto; aspect-ratio: auto; border: 0; border-radius: 0; }
   .embed-bar { display: flex; align-items: center; gap: var(--s-3); padding: 10px 14px; border-top: 1px solid var(--line); }
   .embed-bar .words { flex: 1; min-width: 0; display: grid; color: inherit; text-decoration: none; }
   .embed-bar .words:hover b { text-decoration: underline; }
   .embed-bar b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .embed-bar small { color: var(--ink-soft); font-size: var(--t-small); }
-  .embed-bar a.link { flex: none; font-size: var(--t-small); }
-  /* A phone's column: the name and Build it, the viewer a click on from it. */
-  @media (max-width: 400px) { .embed-bar a.link { display: none; } }
 </style>
 </head>
 <body>
-<main>
-<a class="picture" href="${escapeHtml(link.url)}" target="_blank" rel="noopener" tabindex="-1" aria-hidden="true">
-  <img src="${row.has_image ? `/m/${id}.png` : "/share.png"}" alt=""></a>
+<main class="embed">
+<div class="media">
+<a class="picture" href="${escapeHtml(link.viewer)}" rel="noopener" aria-label="View ${escapeHtml(row.name)} in 3D"
+  data-scene="/m/${id}/scene.json"><img src="${row.has_image ? `/m/${id}.png` : "/share.png"}" alt=""><span class="go" aria-hidden="true">View in 3D</span></a>
+</div>
 <div class="embed-bar">
-  <a class="words" href="${escapeHtml(link.url)}" target="_blank" rel="noopener"><b>${escapeHtml(row.name)}</b><small>${escapeHtml(describe(row))} · Brickworks</small><span class="visually-hidden"> (opens in a new tab)</span></a>
-  <a class="link" href="${escapeHtml(link.viewer)}" target="_blank" rel="noopener">View in 3D<span class="visually-hidden"> (opens in a new tab)</span></a>
-  <a class="cta small" href="${escapeHtml(`${link.viewer}&build`)}" target="_blank" rel="noopener" title="Build it with real bricks, one step at a time from step 1: no account needed">Build it<span class="visually-hidden"> (opens in a new tab)</span></a>
+  <a class="words" href="${escapeHtml(link.url)}" rel="noopener"><b>${escapeHtml(row.name)}</b><small>${escapeHtml(describe(row))} · Brickworks</small><span class="visually-hidden"> (opens in a new tab)</span></a>
+  <a class="cta small" href="${escapeHtml(`${link.viewer}&build`)}" rel="noopener" title="Build it with real bricks, one step at a time from step 1: no account needed">Build it<span class="visually-hidden"> (opens in a new tab)</span></a>
 </div>
 </main>
 </body>
@@ -1680,10 +1692,19 @@ function pageCsp() {
   return "default-src 'none'; script-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; "
     + `connect-src 'self'${others.map((one) => ` ${one}`).join("")}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
 }
-// The site's stylesheet ('self'), so the card is drawn in the site's colours,
-// and its theme's script (web/theme.js), so in the colours its viewer chose.
-const EMBED_CSP = "default-src 'none'; script-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; "
-  + "base-uri 'none'; form-action 'none'; frame-ancestors *";
+/// The embed's: the site's stylesheets ('self'), so the card is drawn in
+/// the site's colours; its theme's script (web/theme.js), so in the colours
+/// its viewer chose; the 3D view's (web/embed.js, /viewer3d.js), its model
+/// from here and each part's geometry from the parts store, as the page's
+/// 3D view has them. Framed by anybody.
+function embedCsp() {
+  let store = "";
+  try {
+    store = new URL(storeRoot()).origin;
+  } catch { /* none: the 3D view says it cannot draw it */ }
+  return "default-src 'none'; script-src 'self'; img-src 'self'; style-src 'self' 'unsafe-inline'; "
+    + `connect-src 'self'${store ? ` ${store}` : ""}; base-uri 'none'; form-action 'none'; frame-ancestors *`;
+}
 
 /// What the CDN may keep, and for how long: what every visitor is shown
 /// (the list, a page, a picture) for half a minute, and given while it
@@ -1697,7 +1718,7 @@ export const SHARED_CACHE = "public, max-age=0, s-maxage=30, stale-while-revalid
 
 function html(response, status, body, { embed = false, cache = SHARED_CACHE } = {}) {
   response.setHeader("Content-Type", "text/html; charset=utf-8");
-  response.setHeader("Content-Security-Policy", embed ? EMBED_CSP : pageCsp());
+  response.setHeader("Content-Security-Policy", embed ? embedCsp() : pageCsp());
   response.setHeader("X-Content-Type-Options", "nosniff");
   response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   response.setHeader("Cache-Control", cache);

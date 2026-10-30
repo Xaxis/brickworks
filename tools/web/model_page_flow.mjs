@@ -68,9 +68,10 @@
 //      chosen on a dark computer is light, dark chosen on a light one dark,
 //      and with no choice the computer's. Its button is Build it, the
 //      guided build at step 1 as the page's Build it is (/app?view=<id>
-//      &build), View in 3D a quiet link beside it to the viewer, and its
-//      picture and name the model's page, each in a tab of its own; in a
-//      frame a phone's column wide the bar still fits, Build it whole.
+//      &build), its picture saying View in 3D, a button that turns it there
+//      (tools/web/embed_flow.mjs drives it), and its name the model's page,
+//      each link a tab of its own; in a frame a phone's column wide the bar
+//      still fits, Build it whole.
 //  16. Its parts (site278): a Parts tab and section saying one count, the
 //      app's (api/_parts.js); the list asked for only as the section nears
 //      the screen and drawn into the space kept for it, nothing under it
@@ -992,17 +993,18 @@ try {
           const shown = (el) => Boolean(el) && getComputedStyle(el).display !== "none" && el.getClientRects().length > 0;
           const said = (a) => a ? { href: a.getAttribute("href"), tab: a.target === "_blank", text: a.textContent.trim(),
             shown: shown(a), right: a.getBoundingClientRect().right, left: a.getBoundingClientRect().left } : null;
-          return { build: said(document.querySelector(".embed-bar a.cta")), view: said(document.querySelector(".embed-bar a.link")),
+          return { build: said(document.querySelector(".embed-bar a.cta")), view: said(document.querySelector("a.picture .go")),
             name: said(document.querySelector(".embed-bar a.words")), picture: said(document.querySelector("a.picture")),
+            base: document.querySelector("base")?.target || "", role: document.querySelector("a.picture")?.getAttribute("role") || "",
             wide: document.documentElement.scrollWidth, room: innerWidth };
         });
         if (width === 560) {
+          // Every link a tab of its own (<base target>): the app cannot run in a frame.
           check(`${label}: its button is Build it, the guided build at step 1 (${card.build?.href}), in a tab of its own`,
-            card.build?.text.startsWith("Build it") && card.build?.href === `${base}/app?view=${id}&build` && card.build?.tab);
-          check(`${label}: View in 3D a quiet link to the viewer (${card.view?.href})`,
-            card.view?.shown && card.view?.text.startsWith("View in 3D") && card.view?.href === `${base}/app?view=${id}` && card.view?.tab);
-          check(`${label}: its picture and its name the model's page (${card.picture?.href}, ${card.name?.href})`,
-            card.picture?.href === `${base}/m/${id}` && card.name?.href === `${base}/m/${id}` && card.picture?.tab && card.name?.tab);
+            card.build?.text.startsWith("Build it") && card.build?.href === `${base}/app?view=${id}&build` && card.base === "_blank");
+          check(`${label}: its picture says View in 3D, a button that turns it here (${card.role}; the viewer ${card.picture?.href} without its script)`,
+            card.view?.shown && card.view?.text === "View in 3D" && card.role === "button" && card.picture?.href === `${base}/app?view=${id}`);
+          check(`${label}: its name the model's page (${card.name?.href})`, card.name?.href === `${base}/m/${id}`);
         } else {
           check(`${label}: the bar fits (${card.wide} of ${card.room} px), Build it whole (${Math.round(card.build?.left)} to `
             + `${Math.round(card.build?.right)}), the name beside it (${card.name ? Math.round(card.name.right - card.name.left) : 0} px)`,
