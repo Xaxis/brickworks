@@ -1023,6 +1023,14 @@ details.qa > div p { margin: 0 0 10px; }
    section, its title the larger --t-section (h2.title), a line under it,
    and a way to more of it at the right. */
 .section { padding: var(--section) 0; }
+/* .defer: a section under the first screen laid out only as it nears the
+   window. The rebuilt home page laid out 2.6 times what the old one did
+   before its first paint (79 ms to 30 under SwiftShader, site356), and
+   painted 40 ms later. Its height is kept once drawn ("auto"), so nothing
+   above the window moves as a reader scrolls back. Not for a page whose
+   words a check reads with innerText: a section not yet laid out has
+   none (the plans flow failed on /plans with it). */
+.defer { content-visibility: auto; contain-intrinsic-size: auto 900px; }
 .section + .section { border-top: 1px solid var(--line); }
 .title { font-size: var(--t-section); line-height: 1.08; letter-spacing: -0.035em; font-weight: 740; }
 .section-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-5); margin: 0 0 var(--s-6); }
