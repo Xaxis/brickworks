@@ -1497,9 +1497,10 @@ ${siteChrome().head}
   /* The site's colours, type and corners (site.css); only the card's layout here. */
   body { background: var(--panel); }
   main { display: flex; flex-direction: column; height: 100vh; }
-  a.picture { flex: 1; min-height: 0; display: block; }
-  a.picture img { width: 100%; height: 100%; object-fit: cover; background: var(--bg-soft); }
-  .embed-bar { display: flex; align-items: center; gap: var(--s-3); padding: 10px 14px; }
+  /* The model on the theme's studio ground, as a card's frame has it. */
+  a.picture { flex: 1; min-height: 0; display: block; background: var(--picture-ground); }
+  a.picture img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .embed-bar { display: flex; align-items: center; gap: var(--s-3); padding: 10px 14px; border-top: 1px solid var(--line); }
   .embed-bar .words { flex: 1; min-width: 0; display: grid; color: inherit; text-decoration: none; }
   .embed-bar .words:hover b { text-decoration: underline; }
   .embed-bar b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

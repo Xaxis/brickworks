@@ -17,7 +17,7 @@ api:/api/models
 -->
 
 > [!NOTE]
-> A browser can clear what a site keeps when it runs short of space. If yours might, Brickworks says so once, and your account's copy is what keeps your models safe. An account keeps up to 500 models: near the limit it says so, and **Delete old models…** makes room.
+> A browser can clear what a site keeps when it runs short of space. If yours might, Brickworks says so once, and your account's copy is what keeps your models safe. An account keeps up to 500 models today; once Pro opens, Free keeps 25 and Pro any number ([Plans](/docs/plans)). Near the limit it says so, and **Delete old models…** makes room.
 
 <!-- covers
 ui:models may be cleared warning

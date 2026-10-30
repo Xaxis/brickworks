@@ -23,10 +23,15 @@
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <style>
-.lost { min-height: calc(100vh - 61px - 220px); display: grid; place-items: center; padding: 72px 0; text-align: center; }
+/* Laid out here; the head, the buttons and the icons' tiles are
+   site.css's. The head is the whole first screen, its words at the middle. */
+.lost { display: grid; place-items: center; min-height: calc(70vh - var(--head-h)); text-align: center; border-bottom: 0; }
+.lost h1, .lost .lede { margin-inline: auto; }
+.lost .lede { margin-bottom: 0; }
+.lost .actions { margin-top: var(--s-6); }
 /* A block missing from its course: the wall is the site, the gap is this page.
    Plain blocks, no studs: our own pictures draw no brick and knob. */
-.wall { display: grid; grid-template-columns: repeat(4, 56px); gap: 6px; justify-content: center; margin: 0 auto 34px; }
+.wall { display: grid; grid-template-columns: repeat(4, 56px); gap: 6px; justify-content: center; margin: 0 auto var(--s-6); }
 .wall span {
 	height: 28px; border-radius: var(--r-1); position: relative;
 	box-shadow: inset 0 -3px 0 var(--shade), inset 0 1px 0 var(--shine);
@@ -35,8 +40,17 @@
 .wall .y { background: var(--brick-yellow); }
 .wall .b { background: var(--brick-blue); }
 .wall .g { background: var(--brick-green); }
-.wall .gap { background: transparent; box-shadow: inset 0 0 0 2px var(--line); }
-.code { font-size: var(--t-small); font-weight: 650; letter-spacing: 0.08em; color: var(--ink-faint); margin: 0 0 8px; }
+.wall .gap { background: transparent; box-shadow: inset 0 0 0 2px var(--line-strong); }
+/* Where to go: a panel each, its icon, its name and a line. */
+.ways { display: grid; gap: var(--s-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); margin: 0; padding: 0; list-style: none; }
+.ways a {
+	display: grid; gap: var(--s-1); height: 100%; padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--radius);
+	background: var(--panel); box-shadow: var(--highlight); color: var(--ink-soft); font-size: var(--t-small); text-decoration: none;
+	transition: border-color var(--motion) var(--ease), box-shadow var(--motion) var(--ease);
+}
+.ways a:hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
+.ways .glyph { margin-bottom: var(--s-3); }
+.ways b { color: var(--ink); font-size: var(--t-body); font-weight: 650; }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -77,28 +91,29 @@
 </header>
 
 <main id="main">
-	<div class="wrap lost">
-		<div>
+	<div class="lost page-hero">
+		<div class="wrap">
 			<div class="wall" aria-hidden="true">
 				<span class="r"></span><span class="y"></span><span class="b"></span><span class="g"></span>
 				<span class="y"></span><span class="gap"></span><span class="r"></span><span class="b"></span>
 				<span class="b"></span><span class="g"></span><span class="y"></span><span class="r"></span>
 			</div>
-			<p class="code">404</p>
+			<p class="eyebrow">404 · Not found</p>
 			<h1>This brick is missing.</h1>
-			<p class="lede" style="margin-inline:auto">
-				There is no page at this address. The link may be old or
-				mistyped; everything Brickworks has is one of these away.
-			</p>
+			<p class="lede">There is no page at this address. The link may be old or mistyped; everything Brickworks has is one of these away.</p>
 			<div class="actions center">
 				<a class="cta big" href="/app">Open Brickworks</a>
 				<a class="cta ghost big" href="/">Go to the home page</a>
 			</div>
-			<p class="note">
-				Or the <a href="/download">desktop downloads</a> and the
-				<a href="/changelog">changelog</a>.
-			</p>
 		</div>
+	</div>
+	<div class="wrap page-body">
+		<ul class="ways" aria-label="Where to go">
+			<li><a href="/gallery"><span class="glyph" aria-hidden="true"><svg class="icon"><use href="/icons.svg#eye"/></svg></span><b>Gallery</b><span>Models people shared, to build and remix.</span></a></li>
+			<li><a href="/docs"><span class="glyph" aria-hidden="true"><svg class="icon"><use href="/icons.svg#book"/></svg></span><b>Docs</b><span>Every tool in the app, and how to bring your own AI.</span></a></li>
+			<li><a href="/plans"><span class="glyph" aria-hidden="true"><svg class="icon"><use href="/icons.svg#check"/></svg></span><b>Pricing</b><span>Free in your browser, with AI never limited.</span></a></li>
+			<li><a href="/download"><span class="glyph" aria-hidden="true"><svg class="icon"><use href="/icons.svg#download"/></svg></span><b>Download</b><span>The desktop app, and what changed in each release.</span></a></li>
+		</ul>
 	</div>
 </main>
 

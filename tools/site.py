@@ -108,6 +108,9 @@ def render(found: list[dict], releases: dict) -> str:
         release = by_version.get(version, {})
         date = release.get("date") or section["date"]
         parts.append(f'<article class="release" id="{anchor}" aria-labelledby="{anchor}-h">')
+        # Its name and date in a head of their own, which stays beside the
+        # notes as they scroll on a laptop (web/changelog.html).
+        parts.append('<div class="release-head">')
         if unreleased:
             parts.append(f'<h2 id="{anchor}-h">On the web now</h2>')
             parts.append('<p class="when">In the app at <a href="/app">brickworks.diy/app</a>; '
@@ -119,6 +122,7 @@ def render(found: list[dict], releases: dict) -> str:
                 links.append(f'<a href="{html.escape(release["page"])}">On GitHub</a>')
             when = f'<time datetime="{html.escape(date)}">{day(date)}</time>' if date else ""
             parts.append(f'<p class="when">{when}{" · " if when else ""}{" · ".join(links)}</p>')
+        parts.append('</div>\n<div class="release-notes">')
         open_list = False
         for kind, text in blocks:
             if kind != "li" and open_list:
@@ -135,7 +139,7 @@ def render(found: list[dict], releases: dict) -> str:
                 parts.append(f"<p>{inline(text)}</p>")
         if open_list:
             parts.append("</ul>")
-        parts.append("</article>")
+        parts.append("</div>\n</article>")
     return "\n".join(parts)
 
 
