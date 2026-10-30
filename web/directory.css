@@ -254,6 +254,12 @@
 .challenge .next-one > :last-child { margin-bottom: 0; }
 .challenge .past-one { margin: 0 0 var(--s-6); }
 .challenge .past-one .models { margin-top: var(--s-3); }
+/* The challenge's name, days and brief, a panel lit from above. */
+.challenge-hero {
+	margin: 0 0 var(--s-2); padding: clamp(24px, 4vw, 48px); border: 1px solid var(--line); border-radius: var(--r-4);
+	background-color: var(--panel); box-shadow: var(--highlight), var(--shadow-1);
+}
+.challenge-hero > :last-child { margin-bottom: 0; }
 /* The rules and how to enter, each a panel; side by side from 900 px,
    under the brief, with everything else across the page. */
 .challenge #rules-part, .challenge #how {

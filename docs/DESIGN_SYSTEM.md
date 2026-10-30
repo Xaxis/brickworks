@@ -375,12 +375,13 @@ is on the page, `hidden`, for the script to show.
   its theme as `.models.row`. `/library` is the gallery's layout (`.tabs`
   with LDraw library marked, then the bar of filters: Filters and a
   `.pills.row` of themes).
-- **A page to browse** (the gallery and `/library`, site357): its head
-  (`.gallery-head`, `.library-head`), the title and a `.lede` under it
+- **A page to browse** (the gallery and `/library`, site357): a band
+  across the window (`.browse-band.halo`, lit as a landing page opens)
+  holding its head (`.gallery-head`, `.library-head`), the title and a `.lede` under it
   with the search beside them, which "/" focuses from anywhere but a
   field (`web/browse.js`, said by a `kbd.hint` on the field until it is
   used; under 600 px the lede and the hint are left out and the search
-  sits beside the title); the tabs; then **the bar of filters**
+  sits beside the title) and the tabs; then **the bar of filters**
   (`.toolbar`), Filters and the kinds or themes as a `.pills.row`, sticky
   under the header over the whole list, on the page's ground carried to
   the window's edges, with the header's edge under it once stuck
@@ -431,6 +432,9 @@ is on the page, `hidden`, for the script to show.
   words' height) and its name,
   what it means as its title; a challenge won is `a.pill.new` to the model
   that won it. The rarest first; none at all, no row.
+- **A challenge** (`/challenge`, site357): its name, days and brief in
+  `.challenge-hero.halo`, a panel lit as a landing page's last offer is;
+  then the rules and how to enter, each a panel, side by side from 900 px.
 - **A challenge, between months** (`/challenge`, docs/SOCIAL.md U12):
   under the one shown, Coming next (`#next`, a `.card` of its theme and
   days) and Past challenges (`#past`, each an `article.past-one`: its name
