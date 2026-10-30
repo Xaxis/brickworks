@@ -2076,8 +2076,11 @@ plan with Claude as the client.
   run together or apart, plurals, accents and apostrophes, set numbers and
   their start, years, UCS/LOTR) and ranks best match (number; every word
   in the name, a name typed whole weighed against size; every word
-  anywhere; real sets before Gear, Books, Promotional and key chains unless
-  asked; then own parts, the sets packed in it not counted, and year).
+  anywhere; a theme's whole name, "marvel" naming Super Heroes Marvel by
+  the words no other theme has, puts that theme's sets first when it holds
+  most of what was found ("city", not "dinosaurs"); real sets before Gear,
+  Books, Promotional and key chains unless asked; then own parts, the sets
+  packed in it not counted, and year, 25 years about twice the parts).
   `searchCatalog` uses it, `askSets` sorts `match` ("Best match") whenever
   `q` is typed and no order is asked, and answers `near` (no set has every
   word: those with the most) and `meant` ("milenium falcon" is millennium
@@ -2087,8 +2090,8 @@ plan with Claude as the client.
   (`api/_directory.js searchWords`, given the catalogue's words by
   `api/share.js`) adds the same alternatives with `|` and `<->`; its order is
   still its tabs'. Proof: `tests/test_search.py` (each case the owner named,
-  and `tests/search_queries.tsv`, 156 searches with the sets meant, 95%
-  wanted in the first three, p95 under 150 ms), `node
+  and `tests/search_queries.tsv`, 173 searches with the sets meant, 95%
+  wanted in the first three and every "theme name" row, p95 under 150 ms), `node
   tools/web/search_score.mjs [--url=<deployment>]` to score one, and
   `library_site_flow.mjs` step 2 in a browser.
 - **The sitemap** (`GET /sitemap.xml`, `api/share.js ?op=sitemap`, routed by
