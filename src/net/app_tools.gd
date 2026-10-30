@@ -94,6 +94,8 @@ const WINDOW_ONLY: Dictionary = {
 	"lock": "keeps the person's own mouse off parts; a session changes only the parts it names",
 	"unlock": "keeps the person's own mouse off parts; a session changes only the parts it names",
 	"mirror": "a session lays the mirror image itself, with edit_model's add or the mirror shape",
+	"split_parts": "a session lays the parts it wants itself, with edit_model's remove and add; Split is the person's shortcut for that",
+	"merge_parts": "a session lays the parts it wants itself, with edit_model's remove and add; Merge is the person's shortcut for that",
 	"leave_submodel": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
 	"enter_assembly": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
 	"leave_assembly": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
@@ -131,6 +133,7 @@ const WINDOW_ONLY: Dictionary = {
 	"back_to_site": "leaves the web app for the website in the person's tab, ending the session's connection",
 	"feedback": "a report from the person to the people who make Brickworks, in their own words",
 	"beta_hub": "help for the person",
+	"reference": "a picture from the person's disk, picked in a dialog, for their own eyes to build over; a session is given pictures in the conversation",
 }
 
 ## What a session reads about these, served by read_guide("app") — every
@@ -385,7 +388,10 @@ func definitions() -> Array:
 				+ "round sprockets= (two or more gears in one plane). The real length that "
 				+ "fits is chosen, and it bends no tighter than the real one can. It goes in "
 				+ "as one sub-assembly, named in the answer; item= that name lays it again "
-				+ "between new ends."),
+				+ "between new ends. band: a rubber belt round sprockets= (pulleys, wheels, "
+				+ "bushes or axles, in order round the loop); spring: between from= and to=, "
+				+ "its turns kept when a part it is on moves. part= picks the band, the "
+				+ "spring or the shock absorber by number."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["kind"], "properties": {
 				"kind": {"type": "string", "enum": FlexTool.KIND_ORDER},
@@ -394,6 +400,7 @@ func definitions() -> Array:
 					"description": "part numbers of the gears a chain or tread goes round"},
 				"color": {"type": "integer", "description": "LDraw colour; black when omitted"},
 				"item": {"type": "string", "description": "a hose already laid, by its name in an earlier answer"},
+				"part": {"type": "string", "description": "a band, spring or shock absorber's number (85546, 73129)"},
 			}},
 		},
 		{
@@ -1438,7 +1445,15 @@ func _lay_flex(input: Dictionary) -> String:
 	var chain: bool = str(Flex.KINDS[kind]["family"]) == "links"
 	var anchors: Array = []
 	var sprockets: Array = []
-	if chain:
+	if kind == "band":
+		for raw: Variant in input.get("sprockets", []):
+			var brick: BrickWorld.Brick = _brick(int(raw))
+			if brick == null or Bands.round_of(brick, library) == null:
+				return "#%d is not round: a band goes round a pulley, a wheel, a bush or an axle." % int(raw)
+			sprockets.append(brick.id)
+		if sprockets.size() < 2:
+			return "Give sprockets= two or more round parts' numbers, in order round the loop."
+	elif chain:
 		for raw: Variant in input.get("sprockets", []):
 			var brick: BrickWorld.Brick = _brick(int(raw))
 			if brick == null or Flex.sprocket_of(brick, library) == null:
@@ -1481,7 +1496,8 @@ func _lay_flex(input: Dictionary) -> String:
 		if best.is_empty():
 			return "Both ends are the same connector; give two."
 		anchors = best
-	var laid: Flex.Laid = await flex.lay(kind, anchors, sprockets, colour, item)
+	var laid: Flex.Laid = await flex.lay(kind, anchors, sprockets, colour, item,
+		str(input.get("part", "")))
 	if laid == null or laid.pieces.is_empty():
 		var why: String = "" if laid == null else "; ".join(laid.warnings)
 		return "Nothing laid%s." % (": " + why if not why.is_empty() else
@@ -2420,8 +2436,8 @@ func _open(input: Dictionary) -> String:
 		return "Could not open %s: %s. The model on the baseplate, %s, is as it was." % [
 			chosen.name, store.not_opened, store.title]
 	bar.opened.emit(placed)
-	return "Opened %s: %d parts. look_at_model to see it." % [chosen.name, placed] \
-		+ _replaced_words(store, unsaved, was) + _opened_motions()
+	return "Opened %s: %d parts%s. look_at_model to see it." % [chosen.name, placed,
+		ModelBar.unshown_words(store)] + _replaced_words(store, unsaved, was) + _opened_motions()
 
 
 ## open_model versions=true version=N: what changed in the model open now

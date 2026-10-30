@@ -23,7 +23,8 @@
 ## pinned to a part on one side seen on the other, resolved there, and
 ## still on its part after the file is written and opened again; changes
 ## held on their way when a copy goes (a page reloaded) sent again by the
-## copy that comes back in its place, and on both sides after. Last, a model
+## copy that comes back in its place, and on both sides after; and one on
+## its way as the app quits, sent in the quit. Last, a model
 ## of 25,600 parts, its snapshot over 4 MB, starts a session in parts and
 ## the other has it byte for byte (--big=no leaves that out; it needs
 ## supabase/together_big.sql, or the relay holding together_snapshot_parts).
@@ -469,8 +470,31 @@ func _reload(a: Dictionary, b: Dictionary) -> Dictionary:
 		and (a["world"] as BrickWorld).get_brick(ta.brick_of(red)).color_code == 15
 		and (a["world"] as BrickWorld).get_brick(ta.brick_of(blue)).transform.origin.x > -2000.0
 		and ta.model_hash() == tc.model_hash(), trouble)
-	tc.keeps_place = false
-	return back
+
+	print("4f. the app quits with a change on its way")
+	# Held, as above, so only the quit itself can send it: the copy taken out
+	# of the tree, as the app's quit takes it (Together._exit_tree).
+	await tc.check_edit({"op": "hold", "on": true})
+	var last: Dictionary = await tc.check_edit({"op": "place", "part": "3003", "colour": 4, "x": -1200, "y": 48, "z": 800})
+	var queued: int = tc.waiting()
+	var quitting: int = Time.get_ticks_msec()
+	tc.get_parent().remove_child(tc)
+	var quit_ms: int = Time.get_ticks_msec() - quitting
+	var took: int = await _within(func() -> bool: return ta.brick_of(str(last.get("uid", ""))) != 0, 10000)
+	_check("a change on its way as the app quits (%d waiting) is sent in the quit (%d ms), the owner has it %d ms after"
+		% [queued, quit_ms, took], bool(last.get("ok", false)) and queued >= 1 and took >= 0
+		and quit_ms <= Together.GOODBYE_MS + 500)
+	var again: Dictionary = await _side("", b["account"] as Account)
+	var td: Together = again["together"]
+	td.keeps_place = true
+	trouble = await td.join(Together.kept_secret(), true)
+	await _settle([a, again], 30000)
+	_check("...and the app opened again is back in, with nothing left to send again (%d restored)"
+		% int(td.timing.get("restored", 0)), trouble.is_empty() and ta.model_hash() == td.model_hash()
+		and int(td.timing.get("restored", 0)) == 0, trouble)
+	tc.queue_free()
+	td.keeps_place = false
+	return again
 
 
 ## A session begun again on the model as the last one left it, with build

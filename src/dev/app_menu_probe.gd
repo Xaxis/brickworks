@@ -12,7 +12,8 @@
 ## across, the bar stays one line, and the bar and the toolbar under it are
 ## where they were, the same size and showing the same tools, as with the
 ## app's name in words where the mark is now. Its name beside it while
-## there is room, the mark alone where there is not.
+## there is room, the mark alone where there is not, the room counted with
+## Account's count, so the count's coming moves nothing in the bar.
 ##
 ## Clicked, it opens About Brickworks, Send feedback, Find a command, the
 ## website, the docs and Account (a beta tester's Beta hub with them; in a
@@ -86,12 +87,13 @@ func _run() -> void:
 	if not _check("the menu bar has the mark", mark != null and mark.is_visible_in_tree()):
 		_finish()
 		return
-	# Drawn at the screen's density: so many pixels, 18 units tall whatever
-	# the density (ModelBar.MARK_TALL).
-	var tall: float = mark.icon.get_height() / Icons.density(mark) if mark.icon != null else 0.0
-	_check("...a picture, %s pixels, %.1f units tall" % [
-		str(mark.icon.get_size()) if mark.icon != null else "none", tall],
-		absf(tall - ModelBar.MARK_TALL) < 1.5)
+	# Drawn at the screen's density: so many pixels, shown 18 units tall
+	# whatever the density (ModelBar.MARK_TALL, Icons.icon_for).
+	var pixels: Vector2i = mark.icon.get_image().get_size() if mark.icon != null else Vector2i.ZERO
+	var tall: float = mark.icon.get_height() if mark.icon != null else 0.0
+	_check("...a picture, %s pixels, %.1f units tall" % [str(pixels), tall],
+		absf(tall - ModelBar.MARK_TALL) < 1.5
+		and absf(pixels.y - ModelBar.MARK_TALL * Icons.density(mark)) < 1.5)
 	_check("...named for a screen reader: \"%s\", \"%s\"" % [mark.accessibility_name,
 		mark.accessibility_description], mark.accessibility_name == "Brickworks"
 		and mark.accessibility_description.contains("About"))
@@ -107,6 +109,7 @@ func _run() -> void:
 		root.content_scale_factor = own * widths[0] / across
 		await _frames(12)
 		await _at_width(mark)
+		await _count_moves_nothing(mark)
 	await _name_gives_way(mark)
 	root.content_scale_factor = own
 	await _frames(12)
@@ -156,9 +159,33 @@ func _at_width(mark: MenuButton) -> void:
 	await _shot("bar_%d" % roundi(room.x))
 
 
+## Account's count coming, as it does seconds in for someone signed in,
+## moves nothing before it in the bar: the mark keeps its name or its lack
+## of one, the menus and the model's name stay where they are. The name
+## that fitted beside "Account" went as the count came, and every control
+## of the row moved twice in two seconds (rel-m223's app_menu_flow).
+func _count_moves_nothing(mark: MenuButton) -> void:
+	var before: Array = _bar_places(mark)
+	_bar.show_feed_count(85)
+	await _frames(12)
+	var after: Array = _bar_places(mark)
+	_check("...Account's count coming (\"%s\") moves nothing before it: the mark %s, %s" % [
+		_bar.account_words(), "named" if not mark.text.is_empty() else "alone", str(after)],
+		before == after)
+	_bar.show_feed_count(0)
+	await _frames(12)
+
+
+## The mark's words, and where it, the menus and the model's name are.
+func _bar_places(mark: MenuButton) -> Array:
+	var name: Control = _bar.controls_by_name()["model_name"]
+	return [mark.text, mark.get_global_rect(), _bar.menus.get_global_rect(), name.get_global_rect()]
+
+
 ## At the narrowest, with this tab's Claude line showing too, the name
-## goes and the mark stays, the bar one line; the line gone, it is back.
+## goes and the mark stays, the bar one line; the line gone, it is as it was.
 func _name_gives_way(mark: MenuButton) -> void:
+	var was: String = mark.text
 	_bar.show_claude_tab(["Tab 3", Color(0.55, 0.57, 0.6), "Claude knows this tab as 3."])
 	await _frames(12)
 	var lines: Dictionary = {}
@@ -170,7 +197,7 @@ func _name_gives_way(mark: MenuButton) -> void:
 	await _shot("bar_%d_claude_tab" % roundi(root.get_visible_rect().size.x))
 	_bar.show_claude_tab(["", Color.TRANSPARENT, ""])
 	await _frames(12)
-	_check("...and the line gone, its name is back (\"%s\")" % mark.text, mark.text == "Brickworks")
+	_check("...and the line gone, the mark as it was (\"%s\")" % mark.text, mark.text == was)
 
 
 ## The bar's height, the toolbar's top and how many of its controls show.

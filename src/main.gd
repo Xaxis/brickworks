@@ -46,6 +46,8 @@ var _notices: PanelContainer
 var _over_model: Control
 ## View, Split: the model straight on beside the main view (SplitView).
 var _split: SplitView
+## The picture to build over (View, Reference picture…).
+var _reference: ReferenceImage
 var _store: ModelStore
 ## The baseplate, the grid floor or nothing under the model.
 var _floor: FloorLayer
@@ -72,7 +74,7 @@ var _connector: ClaudeConnector
 var _together: Together
 var _together_dialog: TogetherDialog
 ## Comments pinned to parts (src/assembly/pinned_comments.gd): drawn on the
-## model, and Edit, Comments….
+## model, and File, Comments….
 var _pins_view: PinsView
 var _pins_dialog: PinsDialog
 ## A Build together link's secret from the page's address (?together=).
@@ -751,6 +753,9 @@ func _tell_page() -> void:
 		"selected": _builder.selection.size(),
 		# View, Split: whether the second view shows.
 		"split": _split != null and _split.is_showing(),
+		# View, Reference picture…: the picture to build over, as the model
+		# keeps it (ReferenceImage.page_state).
+		"reference": _reference.page_state() if _reference != null else {},
 		# ...and which, the first few: tools/web/centre_check.mjs clicks a
 		# part and asks whether that one was taken.
 		"selection": _builder.selection.keys().slice(0, 12),
@@ -1017,7 +1022,8 @@ func _page_controls() -> Dictionary:
 	if _split != null:
 		named.merge(_split.controls_by_name())
 	if _phone != null:
-		named.merge(_phone.controls_by_name())
+		# Over the bar's: its mark is hidden, and the phone's is the app's menu.
+		named.merge(_phone.controls_by_name(), true)
 	if _mosaic != null and _mosaic.visible:
 		named.merge(_mosaic.controls_by_name())
 	if _controls != null:
@@ -1315,7 +1321,8 @@ func _panels_by_name() -> Dictionary:
 ## The model's part of the window, sampled: the points of a grid over it
 ## that a click would not reach the model at, and what it would reach
 ## instead. The view cube is the one thing kept over the model, so the
-## points under it are not asked about. Read by tools/web/fit_check.mjs
+## points under it are not asked about; on a phone, which has no cube, the
+## round Fit in its corner (PhoneShell). Read by tools/web/fit_check.mjs
 ## through the page, and by probes directly.
 func model_cover(across: int = 12, down: int = 8) -> Dictionary:
 	var view: Control = _marquee.get_parent()
@@ -1325,6 +1332,7 @@ func model_cover(across: int = 12, down: int = 8) -> Dictionary:
 	if _split != null and _split.is_showing():
 		rect.end = Vector2(_split.picture_rect().end.x, rect.end.y)
 	var covered: Array = []
+	var fit: Control = _phone.controls_by_name().get("phone_fit") if _phone != null else null
 	# Where the interface is drawn, found once: every canvas layer, the
 	# topmost first, and any control drawn straight onto the window.
 	var canvases: Array[Node] = []
@@ -1337,6 +1345,8 @@ func model_cover(across: int = 12, down: int = 8) -> Dictionary:
 			if _gizmo != null and _gizmo.is_visible_in_tree() and _gizmo.get_global_rect().has_point(at):
 				continue
 			if _split != null and _split.header_has(at):
+				continue
+			if fit != null and fit.is_visible_in_tree() and fit.get_global_rect().has_point(at):
 				continue
 			var by: String = _covering(at, canvases)
 			if not by.is_empty():
@@ -1503,9 +1513,23 @@ func _ready() -> void:
 	_enable_antialiasing()
 	_match_screen_density()
 	_watch_frame_cost()
+	# On the web the catalogue, the models and LDraw's tables come in a pack
+	# of their own, fetched while the scripts were made (WebPacks): written
+	# in once this first frame ends, and waited for until then, nothing
+	# moving and the page's own screen still up. Nothing drawn either
+	# (GpuFence.hold): a frame drawn in software under that screen was most
+	# of the wait.
+	if not WebPacks.here(WebPacks.DATA):
+		get_tree().paused = true
+		GpuFence.hold()
+		await WebPacks.need(WebPacks.DATA)
+		GpuFence.let_go()
+		get_tree().paused = false
+		_boot_mark("data")
 	_library = PartLibrary.new()
 	var started: int = Time.get_ticks_msec()
 	if not _library.load_catalogue():
+		_boot_mark("stopped")
 		_title.text = "No catalogue"
 		_status.text = "Run tools/build_meshes.py to generate assets/generated/."
 		# Nothing below was built, so there is nothing for _process to
@@ -5124,6 +5148,8 @@ func _build_ui() -> void:
 	_verbs.camera = _camera
 	_verbs.together = _together
 	add_child(_verbs)
+	# A double-click in the bin replaces the selection, or puts a fit on it.
+	_bin.verbs = _verbs
 	# A part in hand (Q, the bin, the eyedropper) brings the parts bin out
 	# if it was folded: a laptop's window starts with the assistant
 	# showing, and the part in hand and its colours are in the bin.
@@ -5180,6 +5206,8 @@ func _build_ui() -> void:
 	_measure = Measure.new()
 	_measure.lattice = _builder.lattice
 	_measure.camera = _camera
+	_measure.world = _world
+	_measure.library = _library
 	_measure.label = _viewport_label(13)
 	_measure.label.visible = false
 	_measure.label.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -5248,6 +5276,21 @@ func _build_ui() -> void:
 	_update_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_update_offer)
 
+	# View, Reference picture…: a picture to build over, kept in the model's
+	# file and never in a picture of it (src/ui/reference_image.gd).
+	_reference = ReferenceImage.new()
+	_reference.name = "ReferenceImage"
+	_reference.store = _store
+	_reference.camera = _camera
+	_reference.builder = _builder
+	_reference.verbs = _verbs
+	_reference.bounds = _built_bounds
+	_reference.over_panel = _over_panel_at
+	_reference.say = _bar.say
+	add_child(_reference)
+	# Each change to it one step of Undo.
+	_builder.reference_hook = _reference.put
+
 	# Export's picture and shop lists: src/ui/exports.gd.
 	_exports = Exports.new()
 	_exports.world = _world
@@ -5263,6 +5306,7 @@ func _build_ui() -> void:
 	_exports.picture.aside = [_builder, _turning, _shell.see_inside.frame, _floor.grid_node(),
 		_floor.shadow_node(), _shell.grid]
 	_exports.picture.shown_again = _verbs.apply_hidden
+	_exports.picture.aside.append(_reference)
 
 	# This browser may clear the models, which are only in it: said once,
 	# above the model, with the ways to keep a copy (_watch_other_tabs asks).
@@ -6117,7 +6161,11 @@ func _offer_assistant(notes: Control) -> void:
 		face.content_margin_top = 2
 		face.content_margin_bottom = 3
 		_offer_show.add_theme_stylebox_override(state, face)
-	_offer_show.pressed.connect(func() -> void: set_assistant(true))
+	# Shown, as it says: where the columns are drawers (a phone), turning it
+	# on leaves its drawer folded, and the button did nothing to be seen.
+	_offer_show.pressed.connect(func() -> void:
+		set_assistant(true)
+		_chat_dock.set_open(true))
 	_offer.add_child(_offer_show)
 	_offer_close = Button.new()
 	_offer_close.text = "×"
@@ -6207,6 +6255,10 @@ func _fit_panels() -> void:
 	for dock: SideDock in [_props_dock, _chat_dock]:
 		if dock != null:
 			dock.set_open_width(minf(SIDE_WIDE, drawer) if phone else SIDE_WIDE)
+	# And the assistant's, likewise: at 340 units it was half a phone, its
+	# words six points tall.
+	if _phone != null and not Phone.wide():
+		_chat_dock.set_open_width(units - Phone.px(get_viewport(), Phone.TARGET + 4.0))
 
 	var share: String = "drawers" if phone else ("wide" if both else "turns")
 	# Only when it changes. Arranging them on every resize would fight
@@ -6551,6 +6603,9 @@ func _on_model_edited() -> void:
 		_lay_baseplate()
 	elif _floor != null:
 		_floor.follow(_model_bounds())
+	# A band or a spring on a part just moved follows it, in the same step.
+	if _flex != null:
+		_flex.follow_moved()
 	# Every other copy of a sub-assembly just edited follows it.
 	if _verbs != null and _verbs.assemblies != null:
 		_verbs.assemblies.after_edit()
@@ -6614,7 +6669,7 @@ func open_together() -> void:
 	_together_dialog.open()
 
 
-## Edit, Comments…: the comments pinned to the model's parts, and a new one
+## File, Comments…: the comments pinned to the model's parts, and a new one
 ## on the part selected.
 func open_pins() -> void:
 	if _pins_dialog == null:
@@ -6711,6 +6766,14 @@ func _hold_figure(figure: Minifig) -> void:
 
 
 func _on_part_chosen(part_id: String) -> void:
+	# A rubber band, a spring or a shock is laid on what it goes round or
+	# between, not put down: Build's flexible part tool takes it.
+	if _flex != null and FlexTool.lays_part(part_id):
+		if _measure != null:
+			_measure.leave()
+		_builder.drop_figure()
+		_flex.open_with(part_id)
+		return
 	_builder.drop_figure()
 	_builder.held_part = part_id
 	# A part picked is a part in hand, to put down.
@@ -6808,7 +6871,10 @@ func _tell_bin_selection() -> void:
 func _open(path: String) -> int:
 	var placed: int = _store.open(path)
 	if not _store.awaited.is_empty():
-		_bar.say("%d bricks — fetching %d more…" % [placed, _store.awaited.size()])
+		_bar.say("%d bricks — fetching %d more…%s" % [placed, _store.awaited.size(),
+			ModelBar.unshown_words(_store)])
+	elif not ModelBar.unshown_words(_store).is_empty():
+		_bar.say("opened %s%s" % [_store.title, ModelBar.unshown_words(_store)])
 	return placed
 
 
@@ -7811,7 +7877,8 @@ func _open_theirs() -> void:
 	var placed: int = await _bar.open_with_progress(path)
 	if placed >= 0:
 		_bar.opened.emit(placed)
-		_bar.say("Opened %s, the model you saved last" % _cloud.newest)
+		_bar.say("Opened %s, the model you saved last%s" % [_cloud.newest,
+			ModelBar.unshown_words(_store)])
 
 
 ## Whether [method _open_theirs] has opened one this start.
@@ -8331,14 +8398,19 @@ func _dress_for_phone() -> void:
 	_hint_area.custom_minimum_size.y = _phone.foot_height()
 	_gizmo.visible = false
 	var rail: float = Phone.px(get_viewport(), Phone.TARGET)
-	_bin_dock.set_phone_rail(rail)
-	_chat_dock.set_phone_rail(rail)
+	_bin_dock.set_phone_rail(rail, _phone.foot_height())
+	_chat_dock.set_phone_rail(rail, _phone.foot_height())
 	_camera.phone = true
 	_camera.touch_over = _over_panel_at
 	# The model tree and the properties, in the drawer down the left, sized
 	# for a finger as a dialog is; on a tablet the drawer takes the parts
 	# panel's place while it is open (PhoneShell.dock_toggled).
 	_touch.size_panel(_stack)
+	# And the assistant in its drawer down the right.
+	_touch.size_panel(_chat)
+	_chat_dock.toggled.connect(func(open: bool) -> void:
+		if open:
+			_touch.fit_panel.call_deferred(_chat))
 	_bin_dock.toggled.connect(_phone.dock_toggled)
 	_bin_dock.toggled.connect(func(open: bool) -> void:
 		_show_notices()

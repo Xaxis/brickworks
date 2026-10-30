@@ -135,7 +135,7 @@ func _ready() -> void:
 	for name: String in ["show_all", "hide", "lock", "unlock", "accept"]:
 		var path: String = TOOLS + name + ".svg"
 		if FileAccess.file_exists(path):
-			_icons[name] = Icons.texture_for(path, 14.0, density)
+			_icons[name] = Icons.icon_for(path, 14.0, density)
 	assemblies.changed.connect(func() -> void: _refresh(true))
 	assemblies.entered_changed.connect(func(_path: String) -> void: _refresh(true))
 	shell.world.rebuilt.connect(func(_b: int, _c: int, _t: int) -> void: _refresh(false))

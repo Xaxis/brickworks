@@ -7,7 +7,7 @@
 ##   PROBE_SIZE=1400x900 tools/probe.sh together_pins_probe
 ##   ... -- --shots=DIR    each step pictured there
 ##
-## The comment, with no session: a part selected, Edit, Comments… (the
+## The comment, with no session: a part selected, File, Comments… (the
 ## command, as the menu and the part's right-click run it), words typed and
 ## Pin pressed. Its mark is drawn on the part, in its colour, read off the
 ## window's pixels; pressed, its card opens, and one click on Resolve takes
@@ -107,7 +107,7 @@ func _pins() -> void:
 		return
 	_builder.select_brick(part, false)
 	await _frames(5)
-	_check("Edit, Comments… runs", _shell.run("comments"))
+	_check("File, Comments… runs", _shell.run("comments"))
 	await _frames(20)
 	var dialog: PinsDialog = _main.get("_pins_dialog")
 	_check("...and opens the Comments panel", dialog != null and dialog.visible)

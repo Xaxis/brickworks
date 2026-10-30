@@ -201,10 +201,14 @@ static func _read_library(key: String) -> String:
 
 
 ## The file [param key] (normalised) is in a checkout's LDraw library or a
-## build's primitives, or "".
+## build's primitives, or "". On the web the primitives are not in the pack
+## but fetched the first time a part is built from LDraw's text, and read
+## where the page wrote them (WebPacks.primitive).
 static func library_path(key: String) -> String:
 	var places: Array = [LIBRARY + "p/" + key, SHIPPED + key] if withheld \
 		else [LIBRARY + "parts/" + key, LIBRARY + "p/" + key, SHIPPED + key]
+	if OS.has_feature("web"):
+		places.append(WebPacks.primitive(key))
 	for path: String in places:
 		if FileAccess.file_exists(path):
 			return path
@@ -3145,9 +3149,20 @@ static func warm() -> Array[Result]:
 ## caller makes it ([method with_mesh]).
 static func build(text: String, id: String, others: Dictionary = {},
 		library: bool = true, cover: Lbm.PartMesh = null, meshed: bool = true) -> Result:
+	_ask_for_primitives()
 	var forge := PartForge.new()
 	forge._use_library = library
 	return forge._build(text, id, others, cover, meshed)
+
+
+## On the web, LDraw's primitives asked for by the first part built from
+## LDraw's text on the page's thread, so they are coming for it and here
+## for the next: one built before they are says which files it lacks, as
+## any reference this build has not got. A build on a worker cannot ask;
+## the paths that start those wait for them first (CustomParts).
+static func _ask_for_primitives() -> void:
+	if OS.has_feature("web") and OS.get_thread_caller_id() == OS.get_main_thread_id():
+		WebPacks.ask(WebPacks.PRIMITIVES)
 
 
 ## [param built], built without its mesh ([method build]), with it made.
@@ -3172,6 +3187,7 @@ static func with_mesh(built: Result) -> Result:
 ## without [param meshed], as build is (CustomParts.begin_skins).
 static func build_skin(text: String, id: String, others: Dictionary = {},
 		library: bool = true, meshed: bool = true) -> Result:
+	_ask_for_primitives()
 	var forge := PartForge.new()
 	forge._use_library = library
 	var result := Result.new()
