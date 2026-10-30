@@ -1,0 +1,21 @@
+{
+  "about": "The weekly AI showcase's briefs (tools/showcase.py): owner-style ideas, in the words a person types them, never the bench's subjects (tools/bench/ideas_briefs.py) and never a real set's name or a licensed character. Taken in turn, each once before any is made again. Add a brief under a new id; a brief's words, once made, stay as they were.",
+  "briefs": [
+    {"id": "lighthouse-keeper", "title": "A lighthouse keeper's island",
+     "brief": "A small rocky island with a red and white lighthouse, the keeper's cottage beside it with a vegetable patch, a rowing boat tied at a little wooden jetty and a seagull on the rail. About 32 by 32 studs."},
+    {"id": "clockwork-owl", "title": "A clockwork owl",
+     "brief": "A clockwork owl perched on a branch, brass and dark brown, with big round eyes, folded wings you can tell would open, and a wind-up key in its back. Desk-sized, about 15 cm tall."},
+    {"id": "night-market", "title": "A night market stall",
+     "brief": "A street-food stall at a night market: a striped awning, lanterns strung overhead, a counter with steaming pots and noodles, two stools, a cook and a customer. Compact, on a 16 by 16 base."},
+    {"id": "mountain-railway", "title": "A mountain railway station",
+     "brief": "A tiny alpine railway station on a slope: a platform with a bench and a clock, a little red train with two carriages, pine trees and snow on the roofs. Around 400 pieces."},
+    {"id": "deep-sea-rover", "title": "A deep-sea research rover",
+     "brief": "A yellow deep-sea research rover crawling over the sea bed on tracks, with a domed cockpit for one pilot, floodlights, a grabbing arm holding a sample jar, and a curious octopus nearby."},
+    {"id": "beekeepers-garden", "title": "A beekeeper's garden",
+     "brief": "A cottage garden with three beehives, flower beds in bloom, a beekeeper in a white suit holding a smoking can, a picket fence and a wheelbarrow. On a 32 by 16 base."},
+    {"id": "sky-pirate-airship", "title": "A sky pirates' airship",
+     "brief": "A small airship for sky pirates: a wooden hull hanging under a patched balloon, propellers at the back, a crow's nest, a captain at the wheel and a treasure chest on deck. Around 600 pieces."},
+    {"id": "observatory-dome", "title": "A hilltop observatory",
+     "brief": "A hilltop observatory with a white dome that opens over a big telescope, a narrow stair up the side, an astronomer with a notebook and a starry sign by the door. About 24 by 24 studs."}
+  ]
+}

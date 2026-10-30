@@ -43,10 +43,14 @@ sized its own titles, from 26 to 74 px. Now:
   regular `.cta`, 44 px at 16, not a size of their own), Menu and your
   avatar's button (2026-10-26; they were 36-42). The footer: the mark,
   a line of what Brickworks is and the theme, beside four columns of
-  links (Product, Community, Help, Legal, each named by a `.foot-h`),
-  each link 36 px tall under a mouse and a finger's 44 on a phone; then
-  every notice docs/TRADEMARKS.md asks for, small and quiet, under a
-  line. The row of eleven links it was read as one line nobody scanned.
+  links (Product, Community, Help, Legal, each named by a `.foot-h`), four
+  to a column at most, each link 32 px tall under a mouse and a finger's
+  44 on a phone (at 1280 px it is 407 px tall, the row was 369: a
+  profile there stays under account_page_flow's 2,000 px); then, under a
+  line, one short paragraph (2026-10-29, the owner on three paragraphs of
+  small print: "a dumpster fire"): the LEGO Group's disclaimer and other
+  marks word for word (tests/test_trademarks.py), the LDraw library in a
+  few words, and Notices, every notice whole at /terms#notices. The row of eleven links it was read as one line nobody scanned.
 - **One type scale** (`--t-display` 42-76 px, `--t-h1` 32-48 px,
   `--t-section` 28-40 px, `--t-h2` 22-26 px, `--t-h3` 18 px, `--t-lede`,
   then the words: `--t-body` 16,
@@ -181,7 +185,9 @@ is on the page, `hidden`, for the script to show.
   until site356, now any page's.
 - **The landing kit** (home, `/plans`, `/download`; site356): `.section`
   (a landing page's section, its head a `.section-head`: an `h2.title`
-  and a line, and a way to more at the right), `.halo` (the opening, lit
+  and a line, and a way to more at the right; not `content-visibility`,
+  which drew a full-page screenshot blank under the first screen and hid
+  a section's words from innerText, site356), `.halo` (the opening, lit
   by `--glow` over `--studs`), `.features` of `.feature` panels (a
   `.glyph`, the sprite's icon on the accent's soft tile, an `h3` and a
   line), `.steps` (an `ol`, each step numbered in the accent), `.split`
@@ -256,8 +262,9 @@ is on the page, `hidden`, for the script to show.
   sections, and scroll inside it); and for the header and the footer on every page, so the
   mark and the account sit where they do on the gallery. Nothing was wider
   than 1,140 px, 59% of a 1920 window, four cards to a row (site273). A
-  model's page: from 1200 px its column is 420 px and its picture the
-  rest; on a phone (under 600 px) its picture is square, the model drawn
+  model's page: from 1200 px its column is 480 px, room for its action
+  bar in one row inside the panel it is from 900 px (site357), and its
+  picture the rest; on a phone (under 600 px) its picture is square, the model drawn
   as large as its width lets it (`web/model-page.js` `fitPicture`, by
   transform alone, so nothing shifts).
 - **Page**: `main.page` (or a `.wrap.page-head` first under `<main>`): the
@@ -387,7 +394,26 @@ is on the page, `hidden`, for the script to show.
   alone, its sheet with no embed; its facts as pills, the theme and year
   `a.pill` links back to the shelf; About and Parts its only tabs; more of
   its theme as `.models.row`. `/library` is the gallery's layout (`.tabs`
-  with LDraw library marked, Filters, a `.pills.row` of themes).
+  with LDraw library marked, then the bar of filters: Filters and a
+  `.pills.row` of themes).
+- **A page to browse** (the gallery and `/library`, site357): a band
+  across the window (`.browse-band.halo`, lit as a landing page opens)
+  holding its head (`.gallery-head`, `.library-head`), the title and a `.lede` under it
+  with the search beside them, which "/" focuses from anywhere but a
+  field (`web/browse.js`, said by a `kbd.hint` on the field until it is
+  used; under 600 px the lede and the hint are left out and the search
+  sits beside the title) and the tabs; then **the bar of filters**
+  (`.toolbar`), Filters and the kinds or themes as a `.pills.row`, sticky
+  under the header over the whole list, on the page's ground carried to
+  the window's edges, with the header's edge under it once stuck
+  (`data-stuck`), its row of pills fading out at its edge while there are
+  more (`data-end`). Under it, `#chips`: each filter that is on (a tag,
+  an order other than the tabs', a size, how it was made, a box ticked)
+  a pill to let go of, and Clear all once there are two. A search asks
+  200 ms after typing stops, and the cards it will replace step back
+  while it is asked (`[data-gallery="asking"]`). Its styles are each
+  page's own `<style>`, the same in both, so neither waits on a sheet
+  more before it is drawn.
 - **Toast**: `web/kit.js` `toast("Link copied")`: one line at the foot of
   the screen, in the page's colours the other way round, read out
   (`role="status"`, on the page empty from its load, since a screen
@@ -427,6 +453,9 @@ is on the page, `hidden`, for the script to show.
   words' height) and its name,
   what it means as its title; a challenge won is `a.pill.new` to the model
   that won it. The rarest first; none at all, no row.
+- **A challenge** (`/challenge`, site357): its name, days and brief in
+  `.challenge-hero.halo`, a panel lit as a landing page's last offer is;
+  then the rules and how to enter, each a panel, side by side from 900 px.
 - **A challenge, between months** (`/challenge`, docs/SOCIAL.md U12):
   under the one shown, Coming next (`#next`, a `.card` of its theme and
   days) and Past challenges (`#past`, each an `article.past-one`: its name

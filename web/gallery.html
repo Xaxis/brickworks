@@ -55,28 +55,80 @@
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <style>
-.listing { padding: var(--s-4) 0 72px; }
+.listing { padding: 0 0 72px; }
+/* The head across the window, lit from above on its baseplate of studs. */
+.browse-band { padding: var(--s-6) 0 0; }
+/* The bar of filters stays under the header; what the keyboard reaches
+   is scrolled clear of both. */
+html { scroll-padding-top: calc(var(--head-h) + 72px); }
 
-/* The question, compact: a title and the search on one line, the tabs
-   (and Top's time) under them, then Filters and the kinds in one row that
-   scrolls inside itself. */
-.finder { display: grid; gap: var(--s-3); margin: 0 0 var(--s-4); }
-.gallery-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-5); }
+/* The head: the title and a line under it, the search beside them (under
+   600 px the search beside the title, the line left out, so the first
+   card's picture is on the first screen). */
+.finder { margin: 0 0 var(--s-4); }
+.gallery-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-6); }
+.gallery-title { min-width: 0; }
 .gallery-head h1 { margin: 0; }
-.search { position: relative; flex: 1 1 200px; max-width: 480px; margin-left: auto; }
-.search input { width: 100%; padding-left: 40px; }
+.gallery-head .lede { margin: var(--s-2) 0 0; max-width: 60ch; color: var(--ink-soft); font-size: var(--t-lede); }
+.search { position: relative; flex: 1 1 320px; max-width: 440px; }
+.search input { width: 100%; padding-left: 40px; padding-right: 40px; }
 .search .icon { position: absolute; left: 12px; top: 12px; color: var(--ink-faint); pointer-events: none; }
-/* Its tabs scroll inside themselves on a phone: without min-width the grid's
-   column grew to all four tabs and Top's time, and the page scrolled sideways. */
+/* "/" puts the cursor in the search: said on the field until it is used. */
+.search .hint {
+	position: absolute; right: 10px; top: 11px; display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px;
+	border: 1px solid var(--line); border-radius: var(--r-1); background: var(--panel); color: var(--ink-faint);
+	font: inherit; font-size: var(--t-micro); line-height: 1; pointer-events: none;
+}
+.search:focus-within .hint, .search:has(input:not(:placeholder-shown)) .hint { display: none; }
+@media (width < 600px) {
+	.browse-band { padding-top: var(--s-4); }
+	.gallery-head { flex-wrap: nowrap; align-items: center; }
+	.gallery-head .lede, .search .hint { display: none; }
+	.search { flex: 1 1 auto; max-width: none; }
+	.search input { padding-right: 12px; }
+}
+
+/* Which models: the tabs, and Top's time at the row's end. Its tabs
+   scroll inside themselves on a phone: without min-width the row grew to
+   all of them and Top's time, and the page scrolled sideways. */
 .gallery-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-width: 0; border-bottom: 1px solid var(--line); }
 .gallery-bar .tabs { flex: 1; margin: 0; border-bottom: 0; }
-.gallery-bar .window { flex: none; }
-.gallery-filters { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
-.gallery-filters .pills.row { flex: 1; min-width: 0; }
+.gallery-bar .top-window { flex: none; }
+
+/* The bar of filters: Filters, then the kinds, kept under the header as
+   the list scrolls, on the page's ground carried out to the window's
+   edges (a shadow, which nothing scrolls to), with the header's edge
+   under it once it is stuck (gallery.js data-stuck). Its kinds fade out
+   at the edge while there are more of them. */
+.toolbar {
+	position: sticky; top: var(--head-h); z-index: 6; display: flex; align-items: center; gap: var(--s-2); min-width: 0;
+	margin: 0 0 var(--s-4); padding: var(--s-2) 0;
+}
+.toolbar::before {
+	content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+	background: var(--bg); box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax);
+}
+.toolbar[data-stuck]::before { box-shadow: 0 0 0 100vmax var(--bg), 0 1px 0 100vmax var(--line); clip-path: inset(0 -100vmax -1px); }
+.toolbar .pills.row {
+	flex: 1; min-width: 0;
+	mask-image: linear-gradient(90deg, var(--ink) calc(100% - 48px), transparent);
+	-webkit-mask-image: linear-gradient(90deg, var(--ink) calc(100% - 48px), transparent);
+}
+.toolbar .pills.row[data-end] { mask-image: none; -webkit-mask-image: none; }
 .filters { flex: none; }
-.filters summary .n { color: var(--ink); font-weight: 700; }
+.filters summary .n {
+	display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill);
+	background: var(--accent); color: var(--on-accent); font-size: var(--t-micro); font-weight: 700;
+}
+.filters summary .n[hidden] { display: none; }
 .filters .sheet { width: min(340px, calc(100vw - 32px)); gap: var(--s-3); padding: var(--s-4); }
 .filters .sheet .actions { justify-content: space-between; }
+/* What is asked beyond the tabs and the kinds, each to let go of. */
+.chips { margin: calc(-1 * var(--s-2)) 0 var(--s-4); }
+.chips[hidden] { display: none; }
+
+/* While a new question is asked, the cards it will replace step back. */
+[data-gallery="asking"] #feed { opacity: 0.55; transition: opacity var(--motion) var(--ease); }
 
 /* The cards: this week's pick first on the front, then the list; the
    shelves (what you can build now, small builds) across the grid after
@@ -103,6 +155,8 @@
 	.feed[data-front="plain"] #models > .model:nth-child(n+19) { order: 2; }
 }
 .pick-card .why { margin: 2px 0 0; color: var(--ink); font-size: var(--t-tiny); font-weight: 600; }
+/* The week's pick, edged as what is chosen is. */
+.feed .pick-card { border-color: var(--accent-edge); }
 .shelves h2 { margin: 0; }
 .shelf-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
 .shelf-head a { font-size: var(--t-small); color: var(--ink-soft); }
@@ -113,9 +167,10 @@
 .state .actions { margin-top: var(--s-3); }
 .score-said { margin: var(--s-5) 0 0; color: var(--ink-faint); font-size: var(--t-small); }
 .more { margin-top: 26px; }
-.yours { padding: 40px 0 88px; border-top: 1px solid var(--line); }
-.yours h2 { font-size: var(--t-h2); }
-.yours p { color: var(--ink-soft); max-width: 66ch; margin: 0 0 16px; }
+/* The way to add yours, at the foot of the list: the kit's last offer. */
+.yours { padding: 0 0 var(--section); border-top: 0; }
+.yours h2 { margin: 0 0 var(--s-3); }
+.yours .actions { margin-top: var(--s-5); }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -156,18 +211,29 @@
 </header>
 
 <main id="main">
-	<section class="wrap wide listing" aria-labelledby="gallery-h">
-		<!-- Answered by gallery.js, never sent: the page asks /api/share itself. -->
-		<form class="finder" id="finder" role="search" action="/gallery" method="get">
-			<div class="gallery-head">
-				<h1 id="gallery-h">Gallery</h1>
-				<label class="search">
-					<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
-					<span class="visually-hidden">Search the gallery</span>
-					<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
-						placeholder="Search models, builders, tags">
-				</label>
-			</div>
+	<!-- The page's head, lit as the landing page's opening is (site.css .halo):
+	     the title, the search and the tabs; the list and its bar of filters under it. -->
+	<div class="browse-band halo">
+		<div class="wrap wide">
+			<!-- Answered by gallery.js, never sent: the page asks /api/share itself.
+			     The search is the form; the tabs, Filters and the kinds are its
+			     controls too (form="finder"), laid out under it so the bar of
+			     filters can stay on screen over the whole list. -->
+			<form class="finder" id="finder" role="search" action="/gallery" method="get">
+				<div class="gallery-head">
+					<div class="gallery-title">
+						<h1 id="gallery-h">Gallery</h1>
+						<p class="lede">Models people built in Brickworks and shared. Turn one in 3D, build it step by step, or make it yours.</p>
+					</div>
+					<label class="search">
+						<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
+						<span class="visually-hidden">Search the gallery</span>
+						<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
+							placeholder="Search models, builders, tags" aria-keyshortcuts="/">
+						<kbd class="hint" aria-hidden="true">/</kbd>
+					</label>
+				</div>
+			</form>
 			<div class="gallery-bar">
 				<!-- Which models, in which order: Top (builds, remixes, Tested), New,
 				     and Following once signed in, when the list says it can. -->
@@ -179,37 +245,43 @@
 					<a href="/collections" id="to-collections">Collections</a>
 					<a href="/library" id="to-library">LDraw library</a>
 				</nav>
-				<label class="window" id="window-label" hidden><span class="visually-hidden">Top over</span>
-					<select id="window" name="window"><option value="">All time</option></select></label>
+				<label class="top-window" id="window-label" hidden><span class="visually-hidden">Top over</span>
+					<select id="window" name="window" form="finder"><option value="">All time</option></select></label>
 			</div>
-			<div class="gallery-filters">
-				<details class="filters more-menu" id="filters">
-					<summary class="pill"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#filter"></use></svg>
-						Filters <span class="n" id="filters-said" hidden></span></summary>
-					<div class="menu-list sheet">
-						<label>Order
-							<select id="sort" name="sort"><option value="top">Top builds</option></select></label>
-						<label>Size
-							<select id="size" name="size"><option value="">Any size</option></select></label>
-						<label id="made-label" hidden>Made
-							<select id="made" name="made"><option value="">By hand or with the assistant</option></select></label>
-						<label class="tick" title="Steps laid out by whoever built it. Every model has a booklet Brickworks works out.">
-							<input type="checkbox" id="instructions" name="instructions" value="1"> Has instructions</label>
-						<label class="tick"><input type="checkbox" id="technic" name="technic" value="1"> Technic or mechanism</label>
-						<label class="tick" title="Brickworks built it by its own steps as it was published: it stands at every step, every step can be reached, every part is made in its colour and nothing is loose.">
-							<input type="checkbox" id="tested" name="tested" value="1"> Tested only</label>
-						<div class="actions">
-							<button type="button" class="link" id="filters-clear">Clear the filters</button>
-						</div>
+		</div>
+	</div>
+	<section class="wrap wide listing" aria-labelledby="gallery-h">
+		<!-- The bar of filters, on screen over the whole list (sticky under the
+		     header): Filters, then the kinds in a row that scrolls inside itself. -->
+		<div class="toolbar" id="toolbar">
+			<details class="filters more-menu" id="filters">
+				<summary class="pill"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#filter"></use></svg>
+					Filters <span class="n" id="filters-said" hidden></span></summary>
+				<div class="menu-list sheet">
+					<label>Order
+						<select id="sort" name="sort" form="finder"><option value="top">Top builds</option></select></label>
+					<label>Size
+						<select id="size" name="size" form="finder"><option value="">Any size</option></select></label>
+					<label id="made-label" hidden>Made
+						<select id="made" name="made" form="finder"><option value="">By hand or with the assistant</option></select></label>
+					<label class="tick" title="Steps laid out by whoever built it. Every model has a booklet Brickworks works out.">
+						<input type="checkbox" id="instructions" name="instructions" value="1" form="finder"> Has instructions</label>
+					<label class="tick"><input type="checkbox" id="technic" name="technic" value="1" form="finder"> Technic or mechanism</label>
+					<label class="tick" title="Brickworks built it by its own steps as it was published: it stands at every step, every step can be reached, every part is made in its colour and nothing is loose.">
+						<input type="checkbox" id="tested" name="tested" value="1" form="finder"> Tested only</label>
+					<div class="actions">
+						<button type="button" class="link" id="filters-clear">Clear the filters</button>
 					</div>
-				</details>
-				<div class="pills row" id="kinds" role="group" aria-label="Kind">
-					<button type="button" class="pill" data-kind="" aria-pressed="true">All</button>
 				</div>
+			</details>
+			<div class="pills row" id="kinds" role="group" aria-label="Kind">
+				<button type="button" class="pill" data-kind="" aria-pressed="true">All</button>
 			</div>
-			<!-- A tag asked for (a tag on a model's page links here), to let go of. -->
-			<div class="pills" id="chips" hidden></div>
-		</form>
+		</div>
+		<!-- What is asked beyond the tabs and the kinds (a tag a model's page
+		     links here with, an order, a size, a box ticked), each a pill to
+		     let go of, and Clear all. -->
+		<div class="pills chips" id="chips" hidden></div>
 		<div class="models feed" id="feed">
 			<!-- This month's challenge, in one line (gallery.js sayChallenge,
 			     supabase/challenges.sql): across the grid's first row, drawn
@@ -246,6 +318,16 @@
 			</div>
 			<!-- The front's shelves, after the first rows: hidden while anything is asked. -->
 			<div class="shelves" id="shelves" hidden>
+				<!-- Today's featured model and today's set from the LDraw library, as the
+				     daily cron kept them (api/_featured.js); each card says which by its
+				     data-slot, featured or library (gallery.js drawShelves). -->
+				<section class="shelf" id="spotlight" aria-labelledby="spotlight-h" hidden>
+					<div class="shelf-head">
+						<h2 id="spotlight-h">Today in the gallery</h2>
+						<a id="spotlight-library" href="/library">Browse the LDraw library</a>
+					</div>
+					<div class="models row" id="spotlight-models"></div>
+				</section>
 				<section class="shelf" id="ready" aria-labelledby="ready-h" hidden>
 					<div class="shelf-head">
 						<h2 id="ready-h">You can build now</h2>
@@ -294,16 +376,18 @@
 	</section>
 
 	<section class="wrap wide yours" aria-labelledby="yours-h">
-		<h2 id="yours-h">Put yours here</h2>
-		<p>
-			In the app, choose <b>File › Share…</b>, give the model a name, say
-			a little about it, tag it and choose its licence, and tick
-			<b>List it in the gallery</b>. It is a copy as it is then; publish
-			again to update it, or untick the box to take it out of the gallery
-			and keep the link. Made with the assistant or Brickify? Tag it
-			<b>ai-designed</b> or <b>brickify</b>, and its card says so.
-		</p>
-		<div class="actions"><a class="cta" href="/app">Open the app</a></div>
+		<div class="offer">
+			<h2 id="yours-h">Put yours here</h2>
+			<p class="lede">
+				In the app, choose <b>File › Share…</b>, give the model a name, say
+				a little about it, tag it and choose its licence, and tick
+				<b>List it in the gallery</b>. It is a copy as it is then; publish
+				again to update it, or untick the box to take it out of the gallery
+				and keep the link. Made with the assistant or Brickify? Tag it
+				<b>ai-designed</b> or <b>brickify</b>, and its card says so.
+			</p>
+			<div class="actions center"><a class="cta" href="/app">Open the app</a></div>
+		</div>
 	</section>
 </main>
 
@@ -312,7 +396,7 @@
 		<div class="foot-top">
 			<div class="foot-brand">
 				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
-				<p>A CAD for LEGO® models with an AI designer, in your browser and on your desktop.</p>
+				<p>A CAD for LEGO® models, with an AI designer.</p>
 				<div class="theme-choice"><span aria-hidden="true">Theme</span>
 					<div class="segmented" role="group" aria-label="Theme">
 						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
@@ -328,7 +412,6 @@
 						<li><a href="/app">Open the app</a></li>
 						<li><a href="/download">Download</a></li>
 						<li><a href="/plans">Pricing</a></li>
-						<li><a href="/compare">Compare</a></li>
 						<li><a href="/changelog">Changelog</a></li>
 					</ul>
 				</div>
@@ -346,8 +429,8 @@
 					<ul aria-labelledby="foot-help">
 						<li><a href="/docs">Docs</a></li>
 						<li><a href="/faq">FAQ</a></li>
+						<li><a href="/compare">Compare</a></li>
 						<li><a href="/guidelines">Guidelines</a></li>
-						<li><a href="/takedown">Takedown</a></li>
 					</ul>
 				</div>
 				<div>
@@ -355,32 +438,13 @@
 					<ul aria-labelledby="foot-legal">
 						<li><a href="/privacy">Privacy</a></li>
 						<li><a href="/terms">Terms</a></li>
+						<li><a href="/takedown">Takedown</a></li>
 					</ul>
 				</div>
 			</nav>
 		</div>
 		<div class="legal">
-			<p>
-				Models in the gallery are made and shared by the people credited, or by
-				someone who chose not to be; Brickworks does not check them before they
-				are listed. Something that should not be there? Press Report on its
-				page, or see <a href="/takedown">takedown requests</a>.
-			</p>
-			<p>
-				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
-				community, licensed
-				<a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a> and
-				<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
-				LDraw™ is a trademark owned and licensed by the Estate of James
-				Jessiman. This site is not affiliated with or endorsed by LDraw.org.
-				Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
-			</p>
-			<p>
-				LEGO® is a trademark of the LEGO Group of companies which does not
-				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
-				Minifigure and the Brick and Knob configurations are also trademarks
-				of the LEGO Group. BrickLink is a trademark of the LEGO Group too.
-			</p>
+			<p>LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group. Parts from the LDraw™ library (CC BY). <a href="/terms#notices">Notices</a></p>
 		</div>
 	</div>
 </footer>

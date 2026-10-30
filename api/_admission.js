@@ -188,6 +188,7 @@ class Outage extends Error {
         super("unreachable", { cause });
     }
 }
+const compPath = (customerId, reason) => `/v1/customers/${encodeURIComponent(customerId)}/comps/${encodeURIComponent(reason)}`;
 export class Admission {
     mode;
     key;
@@ -338,6 +339,37 @@ export class Admission {
             return;
         const value = await this.requestOrThrow("PUT", `/v1/customers/${encodeURIComponent(customerId)}/owner`, { owner });
         await this.hold(customerId, { at: this.now(), value });
+    }
+    /**
+     * Comp this customer one of the product's plans for a while (ADR-0015), e.g. a beta tester the
+     * product approved: for `days` (1 to 31) or `until` (at most 31 days off). Once per customer and
+     * `reason`, ever: asking again, even after it ended or was ended, changes nothing and answers how
+     * things are, so a retry can't renew it. Off until the owner lets the product's key comp; throws
+     * AdmissionError "api_comps_off", "api_comps_full" (the owner's limit of comps on at once is
+     * reached), "unknown_plan", "default_plan", "plan_retired" or "bad_until". Returns the customer's
+     * state, which this client then holds.
+     */
+    async comp(input) {
+        const { customerId, reason, plan, days, until } = input;
+        const value = await this.requestOrThrow("PUT", compPath(customerId, reason), {
+            plan,
+            ...(days !== undefined ? { days } : {}),
+            ...(until !== undefined
+                ? { until: until instanceof Date ? until.toISOString() : until }
+                : {}),
+        });
+        await this.hold(customerId, { at: this.now(), value });
+        return value;
+    }
+    /**
+     * End the comp this product gave the customer with `reason`, if it's still on; one the owner gave
+     * stays. The reason stays used. Throws AdmissionError "unknown_comp" when there never was one.
+     * Returns the customer's state, which this client then holds.
+     */
+    async endComp(customerId, reason) {
+        const value = await this.requestOrThrow("DELETE", compPath(customerId, reason));
+        await this.hold(customerId, { at: this.now(), value });
+        return value;
     }
     /** Everything Admission holds about a customer, for a data request. */
     async exportCustomer(customerId) {

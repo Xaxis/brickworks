@@ -42,6 +42,7 @@
         "tests/test_cadtask.py",
         "tests/test_collection.py",
         "tests/test_designers.py",
+        "tests/test_gallery_crons.py",
         "tests/test_library.py",
         "tests/test_library_site.py",
         "tests/test_refresh_catalogue.py",
@@ -86,7 +87,7 @@
       "id": "api:GET /api/plans",
       "kind": "api",
       "entry": "api/plans.js",
-      "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan; off, 405 as before)",
+      "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan with savedModels {limit, kept} and nothing of AI; off, 405 as before; plans_flow's step 6)",
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
@@ -136,6 +137,7 @@
       "reach": "curl -s 'https://brickworks.diy/api/share?id=<id>'   (and /m/<id>, /m/<id>.png, /m/<id>/embed; POST with a session publishes, ?op=unpublish takes down)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_crons.py",
         "tests/test_library_site.py"
       ]
     },
@@ -208,6 +210,20 @@
       "area": "web",
       "tests": [
         "tests/test_model_page.py"
+      ]
+    },
+    {
+      "id": "api:applying to the beta",
+      "kind": "api",
+      "entry": "api/plans.js",
+      "reach": "curl -s '<deployment>/api/plans?op=beta'; curl -s '<deployment>/api/plans?op=beta_spots' (signed out, cached a minute: {beta, cap, left}); POST it signed in with {build, ai, background, background_line, link, terms, emails}   (off: {beta: off} and POST 403; open: 401 signed out, 422 with why, 409 a second time; python3 tools/minitest.py tests/test_beta.py)",
+      "area": "web",
+      "tests": [
+        "tests/test_beta.py",
+        "tests/test_billing_pay.py",
+        "tests/test_desktop.py",
+        "tests/test_saved_models_plan.py",
+        "tests/test_site_shell.py"
       ]
     },
     {
@@ -393,6 +409,14 @@
       "tests": []
     },
     {
+      "id": "cli:beta browser flow",
+      "kind": "cli",
+      "entry": "tools/web/beta_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in --beta-open, or the beta off: Coming soon and refused; preview check [beta])",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:big models stay fast",
       "kind": "cli",
       "entry": "src/dev/bigmodel_probe.gd",
@@ -484,6 +508,7 @@
       "tests": [
         "tests/test_billing.py",
         "tests/test_brickbench.py",
+        "tests/test_gallery_crons.py",
         "tests/test_update_parts.py"
       ]
     },
@@ -1917,6 +1942,14 @@
       "tests": []
     },
     {
+      "id": "cli:the weekly AI showcase",
+      "kind": "cli",
+      "entry": "tools/showcase.py",
+      "reach": "python3 tools/showcase.py run --dry-run   (the gates and the next brief; run designs one in a heavy slot and keeps it as a draft; drafts, publish RUN; the timer: tools/install_showcase_timer.sh, left off)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:theme browser flow",
       "kind": "cli",
       "entry": "tools/web/theme_flow.mjs",
@@ -2486,7 +2519,9 @@
       "entry": "src/assembly/flex.gd",
       "reach": "godot --headless --path . --script src/dev/flex_probe.gd",
       "area": "geometry",
-      "tests": []
+      "tests": [
+        "tests/test_gallery_crons.py"
+      ]
     },
     {
       "id": "lib:follows and the feed",
@@ -2971,7 +3006,8 @@
       "reach": "godot --headless --path . --script src/dev/tested_probe.gd   (-- --sets FILE ... prints each test and its time; -- --write IN OUT ... writes each IN with its steps carried and OUT.tested.json)",
       "area": "web",
       "tests": [
-        "tests/test_discovery.py"
+        "tests/test_discovery.py",
+        "tests/test_gallery_crons.py"
       ]
     },
     {
@@ -2980,6 +3016,14 @@
       "entry": "src/parts/part_tool.gd",
       "reach": "godot --headless --path . --script src/dev/part_tool_probe.gd",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "lib:the beta's spots and months",
+      "kind": "lib",
+      "entry": "api/_beta.js",
+      "reach": "python3 tools/minitest.py tests/test_beta.py   (the form checked at the edge, signals, spots 1-100 one at a time under the pool's lock in supabase/beta.sql, the month given at Admission's ADR-0015 comp or left pending until Pro launches, the emails, the daily run at /api/plans/beta-daily)",
+      "area": "web",
       "tests": []
     },
     {
@@ -3015,12 +3059,22 @@
       "tests": []
     },
     {
+      "id": "lib:the gallery's daily choice",
+      "kind": "lib",
+      "entry": "api/_featured.js",
+      "reach": "curl -H \"Authorization: Bearer $CRON_SECRET\" <a deployment>/api/share/feature   (Vercel's cron at 00:07 UTC: this week's pick on a week's first run, today's featured model, today's LDraw set, each kept once; a second run the same day says unchanged; supabase/gallery_crons.sql)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:the house's profile",
       "kind": "lib",
       "entry": "supabase/house.sql",
       "reach": "PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/house.sql --dry --again=supabase/house.sql --try=tools/house_try.sql --table=people   (.env sourced; rolled back; the lead applies it without --dry; then https://brickworks.diy/u/brickworks)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_gallery_crons.py"
+      ]
     },
     {
       "id": "lib:the model in Claude",
@@ -3063,6 +3117,14 @@
       "entry": "src/net/viewer_tools.gd",
       "reach": "godot --headless --path . --script src/dev/viewer_tools_probe.gd   (viewer_scene, viewer_check, viewer_steps, viewer_parts, viewer_pick, called as the relay calls them, each read back off the model)",
       "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "lib:the weekly look at the OMR",
+      "kind": "lib",
+      "entry": "api/_omr_watch.js",
+      "reach": "curl -H \"Authorization: Bearer $CRON_SECRET\" '<a deployment>/api/share/omr?dry=1'   (Vercel's cron on Mondays at 05:37 UTC without dry=1: what LDraw's OMR has that the library has not, written to library_arrivals)",
+      "area": "web",
       "tests": []
     },
     {
@@ -3184,6 +3246,7 @@
       "reach": "https://brickworks.diy/library?q=10179&theme=Star%20Wars&sort=oldest&page=2   (every set the app's Library opens, as the gallery's cards: cover, name, number, theme, year, modeller; search, themes as pills, Filters: order, size, years; web/library.js reads /api/share?op=library a page at a time; linked from the gallery's tabs and every page's footer)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_crons.py",
         "tests/test_library.py",
         "tests/test_library_site.py",
         "tests/test_site_shell.py"
@@ -3312,6 +3375,16 @@
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/balance_view_probe.gd   (by hand: Tools, Check stability)",
       "area": "geometry",
       "tests": []
+    },
+    {
+      "id": "ui:beta page",
+      "kind": "ui",
+      "entry": "web/beta.html",
+      "reach": "<deployment>/beta   (BRICKWORKS_BETA off: Coming soon, no form, no count; open: the spots left live, signed out Sign in to apply, signed in the form (web/beta.js), applied where it stands; tools/web/beta_flow.mjs)",
+      "area": "web",
+      "tests": [
+        "tests/test_beta.py"
+      ]
     },
     {
       "id": "ui:box select",
@@ -4313,6 +4386,14 @@
       "tests": []
     },
     {
+      "id": "ui:the beta's owner queue",
+      "kind": "ui",
+      "entry": "web/beta-admin.html",
+      "reach": "<deployment>/beta-admin as MASTER_EMAIL (?tests=1 the checks' pool): GET /api/admin?op=beta, POST ?op=beta_decide&account=U {decision, note}, POST ?op=beta_grant",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:the booklet",
       "kind": "ui",
       "entry": "src/render/booklet_maker.gd",
@@ -4356,7 +4437,7 @@
       "id": "ui:the gallery's front shelves",
       "kind": "ui",
       "entry": "web/gallery.js",
-      "reach": "https://brickworks.diy/gallery   (nothing asked: This week's pick and Small builds, from /api/share?op=shelves; signed in, You can build now and each card's share, with mine=1; Sort \u203a Top builds says how it weighs, Sort \u203a Parts I own with a collection)",
+      "reach": "https://brickworks.diy/gallery   (nothing asked: This week's pick, Today in the gallery (the featured model and the set from the LDraw library) and Small builds, from /api/share?op=shelves; signed in, You can build now and each card's share, with mine=1; Sort \u203a Top builds says how it weighs, Sort \u203a Parts I own with a collection)",
       "area": "web",
       "tests": [
         "tests/test_gallery_tabs.py",
@@ -4381,6 +4462,7 @@
       "reach": "every page of brickworks.diy: System, Light or Dark at the foot of the page, on Menu at a phone's width, and in Settings on /profile; kept in the browser and, signed in, on the account (GET/POST /api/account?op=theme, supabase/theme.sql)",
       "area": "web",
       "tests": [
+        "tests/test_gallery_crons.py",
         "tests/test_library_site.py"
       ]
     },

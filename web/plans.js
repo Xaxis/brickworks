@@ -1,6 +1,7 @@
 // /plans (web/plans.html): the Monthly / Yearly choice, which price Pro
 // shows; Pro's way in, which is the interest form while Pro is not for
-// sale and the step before Checkout once it is; and the interest form.
+// sale and the step before Checkout once it is; the beta's callout while
+// the beta is open; and the interest form.
 //
 // Monthly or Yearly ([data-billing], Yearly first) shows the prices that
 // say it ([data-billed]), chooses it in the form, and is where Upgrade to
@@ -58,7 +59,11 @@ async function onSale() {
   let offer = null;
   try {
     const answer = await fetch("/api/plans", { headers: { accept: "application/json" } });
-    if (answer.ok) offer = await answer.json();
+    // Read whatever it says, refused or not: an answer whose words are never
+    // read stays open, and the page never goes quiet (plans_flow's
+    // networkidle waited 30 s for the 405 billing off gives).
+    const said = await answer.json().catch(() => null);
+    if (answer.ok) offer = said;
   } catch { /* coming soon, as written */ }
   if (!offer || offer.forSale !== true) return;
   for (const one of document.querySelectorAll("[data-when]")) one.hidden = one.dataset.when !== "sale";
@@ -71,6 +76,21 @@ async function onSale() {
   document.documentElement.dataset.plans = "sale";
 }
 onSale();
+
+/// The beta's callout under the plans, only while the beta is open
+/// (GET /api/plans?op=beta_spots, beta361: {beta: "open", cap, left}; off,
+/// unknown or a refusal and it stays hidden). Out of the first screen, so
+/// its coming moves nothing in view.
+async function beta() {
+  const callout = $("beta");
+  if (!callout) return;
+  try {
+    const answer = await fetch("/api/plans?op=beta_spots", { headers: { accept: "application/json" } });
+    const said = await answer.json().catch(() => null);
+    if (answer.ok && said?.beta === "open") callout.hidden = false;
+  } catch { /* hidden, as written */ }
+}
+beta();
 
 /// The form, fresh, for [plan].
 function open(plan) {

@@ -20,6 +20,8 @@
 import { FIRST_SCREEN, counted, modelCard } from "/card.js";
 // Filters closing on a click elsewhere, as a "more" menu does.
 import "/kit.js";
+// "/" to search, and the bar of filters kept under the header, as the gallery's.
+import { browseBar } from "/browse.js";
 
 (function () {
   "use strict";
@@ -148,6 +150,9 @@ import "/kit.js";
     more.disabled = !byItself;
     const asked = question();
     asked.set("page", String(fresh ? 1 : page + 1));
+    // The OMR's arrivals staged for the lead to let out, which only a list
+    // asked with tests shows (api/share.js), as the gallery asks its own.
+    if (new URLSearchParams(location.search).get("tests") === "1") asked.set("tests", "1");
     try {
       const reply = await fetch(`/api/share?op=library&${asked}`, { headers: { accept: "application/json" } });
       if (reply.status !== 200) throw new Error(String(reply.status));
@@ -251,7 +256,7 @@ import "/kit.js";
   let typing = 0;
   q.addEventListener("input", () => {
     clearTimeout(typing);
-    typing = setTimeout(ask, 350);
+    typing = setTimeout(ask, 200);
   });
   $("finder").addEventListener("submit", (event) => {
     event.preventDefault();
@@ -275,6 +280,7 @@ import "/kit.js";
     else if (loading) pressed = true;
     else next(false);
   });
+  browseBar({ search: q, above: document.querySelector(".library-bar"), bar: $("toolbar"), row: $("themes") });
   addEventListener("scroll", nearEnd, { passive: true });
   addEventListener("resize", nearEnd, { passive: true });
   sayFilters();

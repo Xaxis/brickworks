@@ -50,7 +50,9 @@ async function fill({ strip, row, ask, id, said }) {
   let models = [];
   try {
     const reply = await fetch(ask, { headers: { accept: "application/json" } });
-    if (reply.ok) models = (await reply.json()).models || [];
+    // Read even a refusal: an answer never read keeps the page busy.
+    const body = await reply.json().catch(() => null);
+    if (reply.ok) models = body?.models || [];
   } catch { /* no strip */ }
   const listed = models.filter((m) => m && id.test(String(m.id)) && pictureOf(m)).slice(0, MOST);
   const drawn = (await Promise.all(listed.map((m) => ready(m).catch(() => null)))).filter(Boolean);
@@ -67,6 +69,19 @@ async function fillAll() {
   const shown = await Promise.all(STRIPS.map(fill));
   if (section && !shown.some(Boolean)) section.hidden = true;
 }
+
+// The beta's line under the last offer, only while it is open
+// (GET /api/plans?op=beta_spots: {beta: "open", left} or anything else).
+async function beta() {
+  const line = document.getElementById("beta");
+  if (!line) return;
+  try {
+    const reply = await fetch("/api/plans?op=beta_spots", { headers: { accept: "application/json" } });
+    const body = await reply.json().catch(() => null);
+    if (reply.ok && body?.beta === "open") line.hidden = false;
+  } catch { /* no line */ }
+}
+beta();
 
 if (section) {
   if (near && "IntersectionObserver" in window) {

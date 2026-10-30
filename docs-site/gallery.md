@@ -21,9 +21,9 @@ lib:directory
 ## Tabs and filters {#tabs}
 
 - **Top** puts first the models most people have built, over this week, this month or all time; **New** the newest; **Following**, signed in, the people you follow; **Collections** the [directory of collections](/docs/collections#directory).
-- **Kinds** are pills across the top: buildings, vehicles, space, Technic and more.
-- **Filters** opens a sheet: the order, the size, how it was made (by hand, with Claude, from the LDraw library), with instructions, Technic, and **Tested** only.
-- Search by a name, a builder, a tag or a description. The address keeps it all (`/gallery?q=castle&kind=space&sort=newest`), so a search can be shared.
+- **Kinds** are pills across the top: buildings, vehicles, space, Technic and more. They and **Filters** stay in view under the header as you scroll.
+- **Filters** opens a sheet: the order, the size, how it was made (by hand, with Claude, from the LDraw library), with instructions, Technic, and **Tested** only. Each filter that is on shows as a pill under the bar; press one to drop it, or **Clear all**.
+- Search by a name, a builder, a tag or a description: the cards change as you type, and [[/]] jumps to the search from anywhere on the page. The address keeps it all (`/gallery?q=castle&kind=space&sort=newest`), so a search can be shared.
 
 Pages load as you scroll, three times, then **Show more**; Back returns you to the same card.
 
@@ -34,11 +34,14 @@ lib:Top builds and this week's pick
 
 ## The front shelves {#shelves}
 
-Before you search, the gallery shows **This week's pick**, chosen by Brickworks, and **Small builds** for an afternoon. Signed in with [your collection](/docs/collection), **You can build now** shows models you own every part for, and **Sort › Parts I own** ranks the rest by how much of each you have. **Sort › Top builds** says how it weighs each model.
+Before you search, the gallery shows **This week's pick**, chosen by Brickworks, **Today in the gallery** and **Small builds** for an afternoon.
+
+**This week's pick** and **Today in the gallery** change by themselves. Every day Brickworks features one model, chosen from what people did with it in the past 30 days: likes, builds finished, comments and remixes, with a little extra for being new. A model featured once doesn't come back for four weeks. Beside it is one set from [the LDraw library](/docs/ldraw-library), each day from a different theme and decade, and never the same set twice in 90 days. The week's pick is chosen on Monday the same way, from the past seven days. Everyone sees the same choice all day; nothing is drawn at random. Signed in with [your collection](/docs/collection), **You can build now** shows models you own every part for, and **Sort › Parts I own** ranks the rest by how much of each you have. **Sort › Top builds** says how it weighs each model.
 
 <!-- covers
 ui:the gallery's front shelves
 lib:build with what I own
+lib:the gallery's daily choice
 -->
 
 ## A card {#card}

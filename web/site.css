@@ -987,29 +987,31 @@ details.qa > div p { margin: 0 0 10px; }
    Brickworks is and the theme, beside four columns of links (Product,
    Community, Help, Legal); then the notices, quiet but whole
    (docs/TRADEMARKS.md). site356: the row of eleven links read as one
-   long line nobody scanned. A link is 36 px tall under a mouse and a
-   finger's 44 on a phone. */
+   long line nobody scanned. A link is 32 px tall under a mouse and a
+   finger's 44 on a phone, four to a column at most, so the footer is no
+   taller than the row was by more than a column's height (a profile at
+   1280 px stays under 2,000 px, account_page_flow). */
 
-.site-foot { border-top: 1px solid var(--line); padding: var(--s-8) 0 var(--s-7); color: var(--ink-faint); background: var(--bg-soft); }
-.foot-top { display: grid; gap: var(--s-6) var(--s-7); margin-bottom: var(--s-7); }
+.site-foot { border-top: 1px solid var(--line); padding: var(--s-7) 0 var(--s-6); color: var(--ink-faint); background: var(--bg-soft); }
+.foot-top { display: grid; gap: var(--s-5) var(--s-7); margin-bottom: var(--s-5); }
 @media (width >= 900px) { .foot-top { grid-template-columns: minmax(220px, 1fr) minmax(0, 2.4fr); } }
-.foot-brand { display: grid; align-content: start; justify-items: start; gap: var(--s-3); }
+.foot-brand { display: grid; align-content: start; justify-items: start; gap: var(--s-2); }
 .foot-brand .mark { font-size: var(--t-body); min-height: var(--control-h); margin-left: -4px; }
 .foot-brand .chip { width: 22px; height: 22px; }
 .foot-brand p { margin: 0; max-width: 34ch; color: var(--ink-soft); font-size: var(--t-small); }
-.foot-brand .theme-choice { margin-top: var(--s-2); }
-.foot-links { display: grid; gap: var(--s-5) var(--s-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.foot-brand .theme-choice { margin-top: var(--s-1); }
+.foot-links { display: grid; gap: var(--s-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @media (width >= 600px) { .foot-links { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-.foot-h { margin: 0 0 var(--s-2); color: var(--ink); font-size: var(--t-small); font-weight: 650; }
+.foot-h { margin: 0 0 var(--s-1); color: var(--ink); font-size: var(--t-small); font-weight: 650; }
 .foot-links ul { display: grid; margin: 0; padding: 0; list-style: none; }
 .foot-links a {
 	display: inline-flex; align-items: center; min-height: var(--control-h); color: var(--ink-soft);
 	text-decoration: none; font-size: var(--t-small);
 }
-@media (width >= 600px) { .foot-links a { min-height: 36px; } }
+@media (width >= 600px) { .foot-links a { min-height: 32px; } }
 .foot-links a:hover { color: var(--ink); text-decoration: underline; }
-.legal { padding-top: var(--s-5); border-top: 1px solid var(--line); }
-.legal p { margin: 0 0 6px; max-width: 110ch; font-size: var(--t-micro); line-height: 1.6; }
+.legal { padding-top: var(--s-4); border-top: 1px solid var(--line); }
+.legal p { margin: 0 0 6px; max-width: 150ch; font-size: var(--t-micro); line-height: 1.55; }
 .legal a { color: var(--ink-soft); }
 
 /* -- the landing kit --------------------------------------------------
@@ -1023,6 +1025,14 @@ details.qa > div p { margin: 0 0 10px; }
    section, its title the larger --t-section (h2.title), a line under it,
    and a way to more of it at the right. */
 .section { padding: var(--section) 0; }
+/* .defer: a section under the first screen laid out only as it nears the
+   window. The rebuilt home page laid out 2.6 times what the old one did
+   before its first paint (79 ms to 30 under SwiftShader, site356), and
+   painted 40 ms later. Its height is kept once drawn ("auto"), so nothing
+   above the window moves as a reader scrolls back. Not for a page whose
+   words a check reads with innerText: a section not yet laid out has
+   none (the plans flow failed on /plans with it). */
+.defer { content-visibility: auto; contain-intrinsic-size: auto 900px; }
 .section + .section { border-top: 1px solid var(--line); }
 .title { font-size: var(--t-section); line-height: 1.08; letter-spacing: -0.035em; font-weight: 740; }
 .section-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-5); margin: 0 0 var(--s-6); }

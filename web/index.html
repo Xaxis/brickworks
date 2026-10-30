@@ -147,12 +147,12 @@
 		<div class="wrap">
 			<a class="badge accent" href="/docs/fresh-eyes">New: fresh eyes for every AI design <span aria-hidden="true">→</span></a>
 			<h1 class="display" id="hero-h">Design LEGO® models with AI, <em>in your browser</em></h1>
-			<p class="lede">Describe a model and watch an AI build it from real parts, or build it by hand. A complete CAD that checks it stands, opens your Studio files and prints the booklet. Nothing to install, and free.</p>
+			<p class="lede">Describe a model and watch an AI put it together from real parts, or build it by hand. A complete CAD that checks it stands, opens your Studio files and prints the booklet. Nothing to install, and free.</p>
 			<div class="actions center">
 				<a class="cta big" href="/app">Open the app <span class="arrow" aria-hidden="true">→</span></a>
 				<a class="cta ghost big" href="/download">Download for desktop</a>
 			</div>
-			<p class="note">On a computer, tablet or phone. The AI runs on your own Claude plan or key, and is off until you turn it on.</p>
+			<p class="note">On a computer, tablet or phone. The AI is your own Claude, ChatGPT or key, without a limit, and is off until you turn it on.</p>
 			<figure class="shot hero-shot">
 				<div class="window" aria-hidden="true"><i></i><i></i><i></i><span>brickworks.diy/app</span></div>
 				<img src="/img/hero-1200.webp"
@@ -164,7 +164,7 @@
 		</div>
 	</section>
 
-	<section class="section" id="how" aria-labelledby="how-h">
+	<section class="section defer" id="how" aria-labelledby="how-h">
 		<div class="wrap">
 			<div class="section-head">
 				<div>
@@ -181,7 +181,7 @@
 		</div>
 	</section>
 
-	<section class="section designer" id="assistant" aria-labelledby="assistant-h">
+	<section class="section defer designer" id="assistant" aria-labelledby="assistant-h">
 		<div class="wrap split">
 			<div>
 				<p class="eyebrow">The AI designer</p>
@@ -222,7 +222,7 @@
 	     pictures; until then a row of skeletons holds each strip's place, so
 	     the page under it does not move when it comes. Taken away only when
 	     it cannot be read. Eight, as many as the cards (landing.js MOST). -->
-	<section class="section" id="community" aria-labelledby="made-h">
+	<section class="section defer" id="community" aria-labelledby="made-h">
 		<div class="wrap strip" id="made">
 			<div class="section-head">
 				<div>
@@ -264,7 +264,7 @@
 		</div>
 	</section>
 
-	<section class="section" id="features" aria-labelledby="features-h">
+	<section class="section defer" id="features" aria-labelledby="features-h">
 		<div class="wrap">
 			<div class="section-head">
 				<div>
@@ -310,7 +310,7 @@
 		</div>
 	</section>
 
-	<section class="section" id="platforms" aria-labelledby="platforms-h">
+	<section class="section defer" id="platforms" aria-labelledby="platforms-h">
 		<div class="wrap">
 			<div class="section-head">
 				<div>
@@ -333,13 +333,13 @@
 		</div>
 	</section>
 
-	<section class="section" id="plans" aria-labelledby="plans-h">
+	<section class="section defer" id="plans" aria-labelledby="plans-h">
 		<div class="wrap">
 			<div class="section-head center">
 				<div>
 					<p class="eyebrow">Pricing</p>
 					<h2 class="title" id="plans-h">Free in your browser. Pro is coming.</h2>
-					<p>Start free and stay free. Pro adds the desktop app and AI builds without a limit.</p>
+					<p>Start free and stay free, with AI on your own provider and no limit on it. Pro adds the desktop app and keeps every model you make.</p>
 				</div>
 			</div>
 			<div class="plans-teaser">
@@ -348,8 +348,8 @@
 					<p class="price"><b>$0</b></p>
 					<ul class="ticks">
 						<li>The web app, in any browser</li>
-						<li><b>10 AI builds a month</b></li>
-						<li>Building by hand without a limit</li>
+						<li><b>AI without a limit</b>, on your own provider</li>
+						<li>25 models kept with your account</li>
 					</ul>
 					<a class="cta ghost" href="/app">Open the app</a>
 				</article>
@@ -359,7 +359,7 @@
 					<ul class="ticks">
 						<li>Everything in Free</li>
 						<li><b>The desktop app</b> for Windows, macOS and Linux</li>
-						<li><b>AI builds without a limit</b></li>
+						<li><b>Every model kept with your account</b></li>
 					</ul>
 					<a class="cta" href="/plans">See the plans</a>
 				</article>
@@ -368,7 +368,7 @@
 		</div>
 	</section>
 
-	<section class="section" id="start" aria-labelledby="start-h">
+	<section class="section defer" id="start" aria-labelledby="start-h">
 		<div class="wrap">
 			<div class="closing">
 				<h2 class="title" id="start-h">Build something today</h2>
@@ -377,6 +377,10 @@
 					<a class="cta big" href="/app">Open the app <span class="arrow" aria-hidden="true">→</span></a>
 					<a class="cta ghost big" href="/gallery">Browse the gallery</a>
 				</div>
+				<!-- Shown only while the beta is open (web/landing.js asks
+				     /api/plans?op=beta_spots): the page's last panel, so its
+				     coming moves nothing above it. -->
+				<p class="note" id="beta" hidden>Beta: 100 testers get a month of Pro, free. <a href="/beta">Apply</a></p>
 			</div>
 		</div>
 	</section>
@@ -387,7 +391,7 @@
 		<div class="foot-top">
 			<div class="foot-brand">
 				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
-				<p>A CAD for LEGO® models with an AI designer, in your browser and on your desktop.</p>
+				<p>A CAD for LEGO® models, with an AI designer.</p>
 				<div class="theme-choice"><span aria-hidden="true">Theme</span>
 					<div class="segmented" role="group" aria-label="Theme">
 						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
@@ -403,7 +407,6 @@
 						<li><a href="/app">Open the app</a></li>
 						<li><a href="/download">Download</a></li>
 						<li><a href="/plans">Pricing</a></li>
-						<li><a href="/compare">Compare</a></li>
 						<li><a href="/changelog">Changelog</a></li>
 					</ul>
 				</div>
@@ -421,8 +424,8 @@
 					<ul aria-labelledby="foot-help">
 						<li><a href="/docs">Docs</a></li>
 						<li><a href="/faq">FAQ</a></li>
+						<li><a href="/compare">Compare</a></li>
 						<li><a href="/guidelines">Guidelines</a></li>
-						<li><a href="/takedown">Takedown</a></li>
 					</ul>
 				</div>
 				<div>
@@ -430,32 +433,13 @@
 					<ul aria-labelledby="foot-legal">
 						<li><a href="/privacy">Privacy</a></li>
 						<li><a href="/terms">Terms</a></li>
+						<li><a href="/takedown">Takedown</a></li>
 					</ul>
 				</div>
 			</nav>
 		</div>
 		<div class="legal">
-			<p>
-				Models in the gallery are made and shared by the people credited, or by
-				someone who chose not to be; Brickworks does not check them before they
-				are listed. Something that should not be there? Press Report on its
-				page, or see <a href="/takedown">takedown requests</a>.
-			</p>
-			<p>
-				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
-				community, licensed
-				<a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a> and
-				<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
-				LDraw™ is a trademark owned and licensed by the Estate of James
-				Jessiman. This site is not affiliated with or endorsed by LDraw.org.
-				Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
-			</p>
-			<p>
-				LEGO® is a trademark of the LEGO Group of companies which does not
-				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
-				Minifigure and the Brick and Knob configurations are also trademarks
-				of the LEGO Group. BrickLink is a trademark of the LEGO Group too.
-			</p>
+			<p>LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group. Parts from the LDraw™ library (CC BY). <a href="/terms#notices">Notices</a></p>
 		</div>
 	</div>
 </footer>
