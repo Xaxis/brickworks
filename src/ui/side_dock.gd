@@ -72,8 +72,17 @@ func open_width() -> float:
 var _phone_rail: float = 0.0
 
 
-func set_phone_rail(width: float) -> void:
+## The panel and its rail also stop [param foot] above the screen's foot,
+## where the phone's row of tools lies over them: the assistant's Connect
+## Claude went under it at 844 x 390, with no scrolling that could bring it
+## out.
+func set_phone_rail(width: float, foot: float = 0.0) -> void:
 	_phone_rail = width
+	content.offset_bottom = -foot
+	var under := Control.new()
+	under.custom_minimum_size.y = foot
+	under.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_rails.add_child(under)
 	_update_rail()
 
 

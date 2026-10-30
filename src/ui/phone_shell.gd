@@ -9,7 +9,8 @@
 ## toolbar, the key strip and the status line (Main hides them), laid out
 ## in points through Phone.px:
 ##
-##   along the top    the model's name, Undo and Redo
+##   along the top    the mark (the app's menu), the model's name, the
+##                    assistant while it is on, Undo and Redo
 ##   along the foot   one row of what a phone builder reaches for: Parts,
 ##                    Colour, Turn, Tip, Select, Delete, and More, where
 ##                    every command of every menu is
@@ -48,6 +49,8 @@ var _row: PanelContainer
 var _pill: PanelContainer
 var _pill_words: Label
 var _fit: Button
+var _mark: Button
+var _assistant: Button
 var _name: LineEdit
 var _colour_button: Button
 var _tool_buttons: Dictionary = {}
@@ -67,6 +70,11 @@ const TOP := 52.0
 const ROW := 72.0
 ## A tablet's panel, across: the parts bin's own width and its margins.
 const SIDE := 400.0
+## The least a sheet opened half way is, in points: its head and a row of
+## what it holds. Half a phone held sideways, 195 of its 390, was the Parts
+## sheet's Done, search and tabs and not one part, so none could be tapped
+## (phone, 2026-10-30); a sheet there opens whole.
+const HALF_LEAST := 300.0
 ## The least a tablet's panels leave the model across.
 const MODEL_LEAST := 300.0
 ## A tablet's row button, across, and its name field.
@@ -139,13 +147,21 @@ func _build() -> void:
 	wide = Phone.wide()
 	_name = (app.get("_bar") as ModelBar).get("_name")
 
-	# Along the top: the name, Undo, Redo.
+	# Along the top: the app's menu, the name, the assistant, Undo, Redo.
 	_top = _bar_panel()
 	_pin(_top, 0.0, 0.0, 1.0, 0.0, Rect2(0, 0, 0, p(TOP)))
 	add_child(_top)
 	var top_row := HBoxContainer.new()
 	top_row.add_theme_constant_override("separation", ceili(p(6)))
 	_top.add_child(top_row)
+	# The mark first, as the desktop's bar and the site's header have it:
+	# the app's own menu, the way back to the site in it. The menu is the
+	# desktop's (ModelBar.mark), which Shell fills and keeps.
+	_mark = _icon_button(ModelBar.MARK, p(Phone.TARGET))
+	_mark.name = "phone_app_menu"
+	_mark.accessibility_name = ModelBar.NAME
+	_mark.pressed.connect(_open_app_menu)
+	top_row.add_child(_mark)
 	if _name.get_parent() != null:
 		_name.get_parent().remove_child(_name)
 	_name.custom_minimum_size = Vector2(p(WIDE_NAME if wide else 120.0), p(Phone.TARGET))
@@ -158,8 +174,26 @@ func _build() -> void:
 		gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		top_row.add_child(gap)
+	# The assistant, while it is on: its drawer's rail shows only while the
+	# drawer is open, so without this a phone that turned it on had no way
+	# to it but More, View, Assistant.
+	_assistant = Button.new()
+	_assistant.name = "phone_assistant"
+	_assistant.accessibility_name = "Assistant"
+	_assistant.custom_minimum_size = Vector2(p(Phone.TARGET + 4.0), p(Phone.TARGET + 4.0))
+	_faces(_assistant, p(10))
+	var spark := RowPicture.new()
+	spark.kind = "assistant"
+	spark.phone = self
+	spark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_pin(spark, 0.0, 0.0, 1.0, 1.0, Rect2())
+	_assistant.add_child(spark)
+	_assistant.pressed.connect(func() -> void: shell.run("panel_assistant"))
+	_assistant.visible = shell != null and shell.assistant_shown
+	top_row.add_child(_assistant)
+	_tool_buttons["assistant"] = _assistant
 	for one: Array in [["undo", "undo"], ["redo", "redo"]]:
-		var button: Button = _icon_button(str(one[1]), p(Phone.TARGET + 4.0))
+		var button: Button = _icon_button(Toolbar.TOOLS + str(one[1]) + ".svg", p(Phone.TARGET + 4.0))
 		button.name = "phone_" + str(one[0])
 		var what: String = str(one[0])
 		button.pressed.connect(func() -> void: shell.run(what))
@@ -205,7 +239,7 @@ func _build() -> void:
 	add_child(_pill)
 
 	# Fit, in the model's top corner, where the view cube is on a desktop.
-	_fit = _icon_button("fit", p(Phone.TARGET + 4.0))
+	_fit = _icon_button(Toolbar.TOOLS + "fit.svg", p(Phone.TARGET + 4.0))
 	_fit.name = "phone_fit"
 	var round_face := StyleBoxFlat.new()
 	round_face.bg_color = Color(0.11, 0.12, 0.14, 0.78)
@@ -297,11 +331,19 @@ func _icon_button(icon: String, across: float) -> Button:
 	button.custom_minimum_size = Vector2(across, across)
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_faces(button, p(10))
-	button.icon = Icons.texture_for(Toolbar.TOOLS + icon + ".svg", p(26), Icons.density(self))
-	if button.icon != null:
-		button.add_theme_constant_override("icon_max_width",
-			roundi(button.icon.get_width() / Icons.density(self)))
+	button.icon = Icons.icon_for(icon, p(26), Icons.density(self))
 	return button
+
+
+## The app's own menu, dropped under the mark: the desktop's, so its rows,
+## their state and what each runs are the desktop's (Shell.APP_MENU), and
+## TouchSizing makes its rows a fingertip tall.
+func _open_app_menu() -> void:
+	var menu: PopupMenu = (app.get("_bar") as ModelBar).mark.get_popup()
+	var scale: Vector2 = _mark.get_global_transform_with_canvas().get_scale()
+	menu.reset_size()
+	menu.position = Vector2i(_mark.get_screen_position() + Vector2(0.0, _mark.size.y * scale.y))
+	menu.popup()
 
 
 ## One of the row's buttons: a picture over a word.
@@ -321,10 +363,7 @@ func _tool(what: String, word: String, icon: String) -> Button:
 	button.clip_text = true
 	_faces(button, p(10))
 	if not icon.is_empty():
-		button.icon = Icons.texture_for(Toolbar.TOOLS + icon + ".svg", p(24), Icons.density(self))
-		if button.icon != null:
-			button.add_theme_constant_override("icon_max_width",
-				roundi(button.icon.get_width() / Icons.density(self)))
+		button.icon = Icons.icon_for(Toolbar.TOOLS + icon + ".svg", p(24), Icons.density(self))
 	else:
 		# Colour and More draw their own picture over the word.
 		var drawn := RowPicture.new()
@@ -512,9 +551,13 @@ func _show_tools() -> void:
 	var verbs: EditVerbs = app.get("_verbs")
 	if builder == null or verbs == null or _tool_buttons.is_empty():
 		return
+	if _assistant != null and _assistant.visible != shell.assistant_shown:
+		_assistant.visible = shell.assistant_shown
 	var holding: bool = verbs.shows_ghost() or builder.is_carrying()
 	var selected: bool = not builder.selection.is_empty()
 	_lit("select", verbs.mode == "select" and not holding)
+	var chat: SideDock = app.get("_chat_dock")
+	_lit("assistant", chat != null and chat.is_open())
 	_lit("delete", verbs.mode == "delete")
 	_lit("parts", _parts.is_open())
 	_lit("colour", _colours.is_open())
@@ -603,10 +646,15 @@ func _lay_pill() -> void:
 		at.y = minf(at.y, steps.get_global_rect().position.y - size_now.y - p(6))
 	if _pill.position != at:
 		_pill.position = at
-	# A phone's sheets cover it; a tablet's panels stand beside it.
-	var shown: bool = not words.is_empty() and (wide or not _any_open())
+	# A phone's sheets and drawers cover it; a tablet's panels stand beside
+	# it. Fit steps aside for a drawer too: over the assistant's it sat on
+	# New chat. Over a sheet it stays, above or beside it.
+	var drawer: bool = not wide and _drawer_open()
+	var shown: bool = not words.is_empty() and not drawer and (wide or not _any_open())
 	if _pill.visible != shown:
 		_pill.visible = shown
+	if _fit.visible == drawer:
+		_fit.visible = not drawer
 	if wide:
 		_lay_beside(free)
 	else:
@@ -641,6 +689,16 @@ func _fit_top() -> float:
 	if notices != null and notices.is_visible_in_tree():
 		top = maxf(top, notices.get_global_rect().end.y + p(8))
 	return top
+
+
+## Whether one of Main's drawers is open over the model: the model tree's
+## and the properties' down the left, or the assistant's down the right.
+func _drawer_open() -> bool:
+	for name: String in ["_bin_dock", "_chat_dock"]:
+		var dock: SideDock = app.get(name)
+		if dock != null and dock.is_visible_in_tree() and dock.is_open():
+			return true
+	return false
 
 
 func _any_open() -> bool:
@@ -793,6 +851,11 @@ func _fill_colours() -> void:
 			swatch.custom_minimum_size = Vector2(p(Phone.TARGET + 2.0), p(Phone.TARGET + 2.0))
 			swatch.set_pressed_no_signal(color.code == chosen)
 			swatch.name = "swatch_%d" % color.code
+			# A finger dragged over them scrolls the sheet, as over More's
+			# rows: held sideways the blues and the rest are under the foot,
+			# and a drag that began on a swatch moved nothing (phone,
+			# 2026-10-30).
+			swatch.mouse_filter = Control.MOUSE_FILTER_PASS
 			var code: int = color.code
 			swatch.pressed.connect(func() -> void:
 				bin.choose_colour(code)
@@ -804,6 +867,7 @@ func _fill_colours() -> void:
 	everything.custom_minimum_size = Vector2(0, p(Phone.TARGET + 4.0))
 	everything.add_theme_font_size_override("font_size", ceili(p(15)))
 	everything.focus_mode = Control.FOCUS_NONE
+	everything.mouse_filter = Control.MOUSE_FILTER_PASS
 	everything.pressed.connect(func() -> void:
 		_all_colours = not _all_colours
 		_fill_colours())
@@ -817,6 +881,8 @@ func controls_by_name() -> Dictionary:
 		out["phone_" + what] = _tool_buttons[what]
 	out["phone_fit"] = _fit
 	out["phone_name"] = _name
+	# The desktop's mark is hidden here: this one is the app's menu.
+	out["app_menu"] = _mark
 	for sheet: Sheet in _sheets:
 		if not sheet.is_open():
 			continue
@@ -852,7 +918,7 @@ func state() -> Dictionary:
 
 
 ## A picture drawn over a row button's word, where there is no icon: the
-## colour in hand, or More's three dots.
+## colour in hand, More's three dots, or the assistant's spark.
 class RowPicture extends Control:
 	var kind: String = ""
 	var phone: PhoneShell
@@ -880,6 +946,18 @@ class RowPicture extends Control:
 			_drawn = colour
 			draw_circle(middle, phone.p(11), Color(1, 1, 1, 0.85))
 			draw_circle(middle, phone.p(9.5), colour)
+		elif kind == "assistant":
+			# The spark its rail has (SideDock), in the middle of the button.
+			var ink := Color(1, 1, 1, 0.9)
+			var centre: Vector2 = size * 0.5
+			for one: Array in [[centre + Vector2(-phone.p(1.5), phone.p(1.5)), phone.p(10.0)],
+					[centre + Vector2(phone.p(7.0), -phone.p(7.0)), phone.p(4.3)]]:
+				var c: Vector2 = one[0]
+				var r: float = one[1]
+				var w: float = r * 0.28
+				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -r), c + Vector2(w, -w),
+					c + Vector2(r, 0), c + Vector2(w, w), c + Vector2(0, r), c + Vector2(-w, w),
+					c + Vector2(-r, 0), c + Vector2(-w, -w)]), ink)
 		else:
 			for n: int in 3:
 				draw_circle(middle + Vector2(phone.p(7) * (n - 1), 0), phone.p(2.2),
@@ -991,6 +1069,8 @@ class Sheet extends PanelContainer:
 		return state != "closed"
 
 	func open(how: String = "half") -> void:
+		if how == "half" and not _halves():
+			how = "full"
 		state = how if edge == "foot" else "side"
 		visible = true
 		_height = _height_for(how)
@@ -1009,6 +1089,11 @@ class Sheet extends PanelContainer:
 
 	func _room() -> Vector2:
 		return get_viewport().get_visible_rect().size
+
+	## Whether half the screen holds more than the sheet's head
+	## (PhoneShell.HALF_LEAST): not on a phone on its side.
+	func _halves() -> bool:
+		return _height_for("half") >= phone.p(PhoneShell.HALF_LEAST)
 
 	func _height_for(how: String) -> float:
 		var room: Vector2 = _room()
@@ -1070,7 +1155,7 @@ class Sheet extends PanelContainer:
 			return
 		if _height < room.y * 0.28:
 			close()
-		elif _height < (half + full) * 0.5:
+		elif _height < (half + full) * 0.5 and _halves():
 			state = "half"
 			_height = half
 			_place()
