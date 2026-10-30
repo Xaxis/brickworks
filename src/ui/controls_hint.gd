@@ -60,9 +60,10 @@ static func keyed(pressed: Array, does: String, shows: String = "") -> Binding:
 	var keys: Array = []
 	var actions: Array = []
 	for entry: String in pressed:
-		# A gesture has a hyphen or a space in it; an action, neither. One
-		# the keymap does not know yet (the menus not made) has no key.
-		if not entry.contains("-") and not entry.contains(" "):
+		# A gesture is one of GESTURES or has a hyphen or a space in it; an
+		# action, none of those. One the keymap does not know yet (the menus
+		# not made) has no key.
+		if not entry in GESTURES and not entry.contains("-") and not entry.contains(" "):
 			var key: String = Keymap.listed(entry)
 			keys.append(key if not key.is_empty() else NO_KEY)
 			actions.append(entry)
@@ -76,6 +77,8 @@ static func keyed(pressed: Array, does: String, shows: String = "") -> Binding:
 
 ## What a key's place says when its action has none.
 const NO_KEY := "no key"
+## The gestures a row names in one word (keyed): not actions.
+const GESTURES := ["click", "drag", "scroll", "pinch", "tap", "hold", "arrows", "edges"]
 
 
 ## Ordered by how often a beginner reaches for it, because that is the
@@ -292,8 +295,7 @@ static func _view_bindings() -> Array:
 	out.append_array([
 		Binding.new(["middle double-click"], "turn about that point"),
 		Binding.new(["shift-2 fingers"], "slide", "hand"),
-		Binding.new(["scroll", "pinch"], "zoom to the pointer", "zoom_in"),
-		keyed(["zoom_in", "zoom_out"], "zoom in, zoom out", "zoom_in"),
+		keyed(["scroll", "pinch", "zoom_in", "zoom_out"], "zoom to the pointer", "zoom_in"),
 		Binding.new(["shift-scroll"], "slide", "hand"),
 		Binding.new(["shift-arrows"], "slide the view", "hand"),
 		keyed(["turn_left", "turn_right"], "turn the model"),

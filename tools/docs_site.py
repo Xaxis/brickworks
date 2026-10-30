@@ -649,14 +649,19 @@ def keyboard() -> list[tuple[str, list[tuple[list[str], str, bool]]]]:
         return text[start.end(): start.end() + (end.start() if end else len(text))]
 
     # A keyed() row names actions, each the key the app gives it (Keymap),
-    # read off the window into menus.json's keys; anything with a hyphen or
-    # a space is a gesture, written as it is (ControlsHint.keyed).
+    # read off the window into menus.json's keys; a gesture word, or
+    # anything with a hyphen or a space, is written as it is
+    # (ControlsHint.keyed and its GESTURES).
     keys_of = menus_data().get("keys", {})
+    gestures = re.search(r"^const GESTURES := \[(.*?)\]", text, re.M)
+    if not gestures:
+        raise SystemExit("docs: src/ui/controls_hint.gd has no GESTURES; the shortcuts page reads it")
+    one_word = set(re.findall(r'"([^"]+)"', gestures.group(1)))
 
     def keyed(names: list[str]) -> list[str]:
         out = []
         for name in names:
-            if "-" in name or " " in name:
+            if name in one_word or "-" in name or " " in name:
                 out.append(name)
             elif name not in keys_of:
                 raise SystemExit(f"docs: the keys sheet names {name}, which docs-site/generated/menus.json "

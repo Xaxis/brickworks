@@ -9,6 +9,9 @@
 ## Ctrl-= for +, LDCad's Insert for Q. A check whose action the preset
 ## leaves with no key (Studio's paint, Mecabricks' F) says so and is not
 ## pressed; one whose key the preset gave to something else is the same.
+## Run with no preset, it then runs itself again under each of the others,
+## each in a run of its own, and fails if one does: the suite lists a probe
+## once (tools/check.sh --lists).
 ##
 ## The hint along the bottom is a promise. A key listed there that does
 ## nothing is worse than no hint at all, because the person concludes the
@@ -436,10 +439,29 @@ func _run() -> void:
 	_assert("Cmd-Z takes a brick back off, %d -> %d" % [before + 1, world.brick_count()],
 		world.brick_count() == before)
 
+	if _preset.is_empty():
+		for other: String in Keymap.PRESETS:
+			if other != "brickworks":
+				_under(other)
 	print("")
 	print("%d failed" % _failures if _failures else "every advertised key does something")
 	_finished = true
 	quit(1 if _failures else 0)
+
+
+## This probe again under [param preset], in a run of its own: its lines
+## that passed over a key or failed, and whether it passed.
+func _under(preset: String) -> void:
+	print("\n  keys like %s, in a run of its own" % Keymap.PRESET_NAMES[preset])
+	var output: Array = []
+	var code: int = OS.execute(OS.get_executable_path(), ["--headless", "--path",
+		ProjectSettings.globalize_path("res://"), "--script", "res://src/dev/controls_probe.gd",
+		"--", "--preset=" + preset], output, true)
+	for line: String in "\n".join(output).split("\n"):
+		if line.begins_with("  --") or line.contains("FAIL"):
+			print("  " + line)
+	_assert("every advertised key does something with keys like %s (exit %d)"
+		% [Keymap.PRESET_NAMES[preset], code], code == 0)
 
 
 ## The app quitting part way through ends the probe with exit code 0 and

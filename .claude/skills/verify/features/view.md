@@ -546,8 +546,8 @@ picture the assistant is shown.
   WASD, the arrows and Shift-arrows, Ctrl-G, Ctrl-U, Ctrl-T, Ctrl-0, Ctrl-= and
   -, Ctrl-F), Mecabricks' and LDCad's, sets Shift-B in the sheet with a clash
   and Tab refused, and starts the app again on its data folder to find Shift-B
-  still the Paint tool's. `controls_probe -- --preset=studio|mecabricks|ldcad`
-  presses every advertised key under each preset. On the web,
+  still the Paint tool's. `controls_probe` presses every advertised key, then
+  runs itself again under each preset (one alone: `-- --preset=studio`). On the web,
   `tools/web/keys_flow.mjs` sets Shift-B and reloads the page (local build or
   a preview, `preview_checks.sh … keys`). Not proven by a check: the account's
   half before keymap.sql is applied (the API answers `ready: false` and the keys

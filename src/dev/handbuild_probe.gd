@@ -2179,7 +2179,9 @@ func _menus_show_the_real_keys() -> void:
 					engine_names.append("%s: %s" % [list.get_item_text(index), shown])
 			var id: int = list.get_item_id(index)
 			var name: String = shell._ids[id] if id >= 0 and id < shell._ids.size() else ""
-			var bound: int = shell.command(name).accel if not name.is_empty() else accel
+			# The key that does it is the keymap's (Keymap.key_of): the tools'
+			# keys are there, not in the command table (APP_UX A11).
+			var bound: int = Keymap.key_of(name) if not name.is_empty() else accel
 			if (accel & ~KEY_CODE_MASK) != (bound & ~KEY_CODE_MASK):
 				wrong.append("%s: %s" % [list.get_item_text(index), shown])
 	_check("no menu writes a key by the engine's name for it (%s)" % ", ".join(engine_names),
