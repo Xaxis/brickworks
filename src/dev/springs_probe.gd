@@ -8,6 +8,14 @@
 ## bin. Saved, opened again, and found the same.
 ##
 ##   godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd
+##   godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd -- --reopen=FILE
+##
+## Then the file it saved is opened again by a second app, a process of its
+## own started with an empty data folder: nothing of the first's, its made
+## parts never built and none kept. Its bands must come back as bands, as
+## long as they were, none of their pieces loose; its spring and shock with
+## their turns; and Reshape must read each back. --reopen=FILE is that second
+## run alone, of a file saved beside FILE's .json of what it should hold.
 ##
 ## The loop is measured off the parts laid, not the tool's own sums: the
 ## pieces' lengths added up against the tangents and arcs worked out by hand
@@ -74,6 +82,20 @@ func _run() -> void:
 			break
 		await process_frame
 	_main.call("clear_model")
+	var again: String = ""
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--reopen="):
+			again = argument.trim_prefix("--reopen=")
+	if not again.is_empty():
+		await _reopened(again)
+		print("")
+		if _failures == 0:
+			print("springs reopened: a fresh app opened %s with its bands, spring and shock whole"
+				% again.get_file())
+		else:
+			print("springs reopened: %d FAILED" % _failures)
+		quit(1 if _failures > 0 else 0)
+		return
 
 	await _two_pulleys()
 	await _triangle()
@@ -82,6 +104,7 @@ func _run() -> void:
 	await _spring()
 	await _shock()
 	await _saved_and_opened()
+	_in_a_fresh_app()
 
 	print("")
 	if _failures == 0:
@@ -370,6 +393,15 @@ func _saved_and_opened() -> void:
 	file.store_string(text)
 	file.close()
 	print("    saved: shots/springs/saved.ldr")
+	# What a fresh app must find in it (_reopened).
+	var lengths: Array = bands.values()
+	lengths.sort()
+	var turns_kept: Array = springs.values().map(func(r: Dictionary) -> int: return int(r["turns"]))
+	turns_kept.sort()
+	var wanted: FileAccess = FileAccess.open(ProjectSettings.globalize_path("res://shots/springs/saved.json"),
+		FileAccess.WRITE)
+	wanted.store_string(JSON.stringify({"parts": _count(), "bands": lengths, "turns": turns_kept}))
+	wanted.close()
 	_check("the file carries the pieces it is made of (%d FILE sections)" % text.count("0 FILE "),
 		text.contains("0 FILE bw-belt-85546.dat") and text.contains("0 FILE bw-coil-70038-"))
 	var before: int = _count()
@@ -389,20 +421,16 @@ func _saved_and_opened() -> void:
 				bands_again.append(_length_of(pieces))
 			"spring":
 				springs_again.append(Bands.spring_read(pieces))
-	var lengths: Array = bands.values()
-	lengths.sort()
 	bands_again.sort()
 	var same: bool = lengths.size() == bands_again.size()
 	for n: int in mini(lengths.size(), bands_again.size()):
 		same = same and absf(float(lengths[n]) - float(bands_again[n])) < 0.01
 	_check("its %d bands are bands again, as long as they were (%s)" % [bands_again.size(),
 		", ".join(bands_again.map(func(x: float) -> String: return "%.1f" % x))], same and lengths.size() == 3)
-	var turns: Array = springs.values().map(func(r: Dictionary) -> int: return int(r["turns"]))
 	var turns_again: Array = springs_again.map(func(r: Dictionary) -> int: return int(r["turns"]))
-	turns.sort()
 	turns_again.sort()
 	_check("its springs are springs again, their turns kept (%s)" % str(turns_again),
-		turns == turns_again and turns.size() == 2)
+		turns_kept == turns_again and turns_kept.size() == 2)
 	var reshaped: String = _item_named("Spring", 0)
 	var ids: PackedInt64Array = _tree.ids_under(reshaped)
 	_select(Array(ids))
@@ -420,6 +448,135 @@ func _saved_and_opened() -> void:
 	_check("and a band read back, round its %d wheels" % _flex._rounds.size(),
 		_flex.active and _flex.kind == "band" and _flex._rounds.size() >= 2)
 	_flex.leave()
+
+
+# -- a fresh app -------------------------------------------------------------------
+
+
+## The file saved, opened by a second app: this probe again, as a process of
+## its own (--reopen), with a data folder made empty for it. Its lines are
+## shown here, and it must pass.
+func _in_a_fresh_app() -> void:
+	print("  opened by a fresh app")
+	var saved: String = ProjectSettings.globalize_path("res://shots/springs/saved.ldr")
+	var mine: String = OS.get_environment("XDG_DATA_HOME")
+	var fresh: String = (mine if not mine.is_empty()
+		else ProjectSettings.globalize_path("res://shots/springs")) + "/reopen_%d" % Time.get_ticks_msec()
+	DirAccess.make_dir_recursive_absolute(fresh)
+	_check("its data folder is new and empty (%s)" % fresh,
+		DirAccess.get_files_at(fresh).is_empty() and DirAccess.get_directories_at(fresh).is_empty())
+	OS.set_environment("XDG_DATA_HOME", fresh)
+	# This run's own command (its renderer and script), at its window's size
+	# (Godot keeps no --resolution in its arguments) and with the project
+	# named whole, with --reopen after it.
+	var size: Vector2i = DisplayServer.window_get_size()
+	var command: PackedStringArray = ["--path", ProjectSettings.globalize_path("res://"),
+		"--resolution", "%dx%d" % [size.x, size.y]]
+	var skip: bool = false
+	for argument: String in OS.get_cmdline_args():
+		if argument == "--" or argument == "++":
+			break
+		if not skip and argument not in ["--path", "--resolution"]:
+			command.append(argument)
+		skip = argument in ["--path", "--resolution"]
+	command.append_array(["--", "--reopen=" + saved])
+	var said: Array = []
+	var code: int = OS.execute(OS.get_executable_path(), command, said, true)
+	OS.set_environment("XDG_DATA_HOME", mine)
+	var last: String = ""
+	for line: String in "\n".join(PackedStringArray(said)).split("\n"):
+		if line.begins_with("  ") or line.contains("SCRIPT ERROR") or line.contains("Parse Error"):
+			print("  " + line)
+		elif line.begins_with("springs reopened"):
+			print("  " + line)
+			last = line
+	_check("the second app exits 0 and says so (%d: %s)" % [code, last],
+		code == 0 and last.begins_with("springs reopened: a fresh app"))
+
+
+## [param path] opened as a person opens a file (Main._open, as File, Open
+## and the command line do) in an app that has never built its made parts,
+## and checked against the .json saved beside it.
+func _reopened(path: String) -> void:
+	var known: Variant = JSON.parse_string(FileAccess.get_file_as_string(path.get_basename() + ".json"))
+	_check("what it should hold is beside it", known is Dictionary)
+	if not (known is Dictionary):
+		return
+	var made: Array = _library.custom.keys().filter(func(id: String) -> bool: return Bands.is_piece_id(id))
+	var kept: PackedStringArray = DirAccess.get_files_at(CustomParts.dir) \
+		if DirAccess.dir_exists_absolute(CustomParts.dir) else PackedStringArray()
+	_check("a fresh app: no band or coil piece built or kept (%d built, %d kept)" % [made.size(),
+		kept.size()], made.is_empty() and kept.is_empty())
+	var placed: int = _main.call("_open", path)
+	for _n: int in 600:
+		await process_frame
+		if _store.awaited.is_empty() and _count() >= int(known["parts"]):
+			break
+	await _frames(10)
+	await _look_at(_model_box())
+	await _shot("9_reopened")
+	_check("it opens whole: %d parts of %d (%d placed at once)" % [_count(), int(known["parts"]), placed],
+		_count() == int(known["parts"]))
+	var items: Dictionary = Flex.items_in(_world)
+	var lengths: Array = []
+	var turns: Array = []
+	var in_bands: int = 0
+	var shocks: int = 0
+	var band_paths: Array = []
+	var spring_paths: Array = []
+	for item_path: String in items:
+		var pieces: Array = _pieces(item_path)
+		if str(items[item_path]["kind"]) == "band":
+			lengths.append(_length_of(pieces))
+			in_bands += pieces.size()
+			band_paths.append(item_path)
+		elif str(items[item_path]["kind"]) == "spring":
+			turns.append(int(Bands.spring_read(pieces).get("turns", 0)))
+			if Flex.real_part(_library, "spring", pieces) == "73129":
+				shocks += 1
+			spring_paths.append(item_path)
+	lengths.sort()
+	turns.sort()
+	var loose: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id.begins_with(Bands.SEGMENT_PREFIX):
+			loose += 1
+	loose -= in_bands
+	var same: bool = lengths.size() == (known["bands"] as Array).size()
+	for n: int in mini(lengths.size(), (known["bands"] as Array).size()):
+		same = same and absf(float(lengths[n]) - float(known["bands"][n])) < 0.01
+	_check("its %d bands are bands, as long as they were (%s), and %d of their pieces loose"
+		% [lengths.size(), ", ".join(lengths.map(func(x: float) -> String: return "%.2f" % x)), loose],
+		same and lengths.size() == 3 and loose == 0)
+	_check("its spring and its shock, their turns kept (%s), the shock counted as 73129 (%d)"
+		% [str(turns), shocks], turns == (known["turns"] as Array).map(func(x: Variant) -> int:
+			return int(x)) and shocks == 1)
+	for band: String in band_paths:
+		_select(Array(_tree.ids_under(band)))
+		_shell.run("reshape_flex")
+		await _frames(5)
+		_check("Reshape reads %s back round its %d wheels" % [Assemblies.label(band), _flex._rounds.size()],
+			_flex.active and _flex.kind == "band" and _flex._rounds.size() >= 2)
+		_flex.leave()
+	for spring: String in spring_paths:
+		_select(Array(_tree.ids_under(spring)))
+		_shell.run("reshape_flex")
+		await _frames(5)
+		_check("Reshape reads %s back on its two pin holes, %d turns" % [Assemblies.label(spring),
+			_flex._turns], _flex.active and _flex.kind == "spring" and _flex._ends.size() == 2
+			and _flex._ends.all(func(e: Dictionary) -> bool: return str(e.get("free", "")) != "yes"))
+		_flex.leave()
+
+
+func _model_box() -> AABB:
+	var box := AABB()
+	var first: bool = true
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		box = AABB(brick.transform.origin, Vector3.ZERO) if first else box.expand(brick.transform.origin)
+		first = false
+	return box.grow(40.0)
 
 
 # -- helpers -------------------------------------------------------------------------
