@@ -87,6 +87,8 @@ var _told_page_most_us: int = 0
 var _deployment: Deployment
 ## Who is signed in. Everyone using Brickworks is (src/account/account.gd).
 var _account: Account
+## The keys with the account: src/account/keymap_sync.gd.
+var _keymap_sync: KeymapSync
 ## Over everything until someone is signed in, when a person is in front
 ## of the window to sign in (see [method _gate_wanted]).
 var _gate: SignInGate
@@ -4868,8 +4870,21 @@ func _build_ui() -> void:
 	# it is wrong the moment somebody changes it.
 	_controls.changed.connect(func() -> void:
 		if _hint != null:
-			_hint.rebuild())
+			_hint.rebuild()
+		# And the keys a preset or the keys sheet set, in the toolbar's
+		# tooltips; the menus read theirs as they open.
+		if _shell != null:
+			_shell.toolbar.tell_keys())
 	_controls.interface_sized.connect(_match_screen_density)
+	# The keys with the account (KeymapSync): set here, sent there; signed
+	# in somewhere new, the account's are taken if they are the newer.
+	_keymap_sync = KeymapSync.new()
+	_keymap_sync.account = _account
+	add_child(_keymap_sync)
+	_controls.keys_set.connect(_keymap_sync.send)
+	_keymap_sync.taken.connect(func() -> void: _controls.changed.emit())
+	_account.changed.connect(_keymap_sync.account_changed)
+	_keymap_sync.account_changed()
 
 	_picker = PickImage.new()
 	add_child(_picker)
@@ -5079,8 +5094,11 @@ func _build_ui() -> void:
 	if _phone != null:
 		_phone.shell = _shell
 		_dress_for_phone()
-	# The keys sheet lists the keys the menus show.
+	# The keys sheet lists the keys the menus show, and the strip reads the
+	# keymap, which knows the menus' keys now.
 	_controls.shell = _shell
+	if _hint != null:
+		_hint.rebuild()
 	# View, Stress: weighed with the status bar's check, at once when it is
 	# turned on, and the part under the pointer said.
 	_shell.stress.hovered = func() -> int: return _hovered
@@ -7151,12 +7169,16 @@ func _steer_from_keys(delta: float) -> void:
 		_held_for = 0.0
 		return
 	var free: bool = _builder.selection.is_empty()
+	# Only a key that still does what it always did: one a preset gave to
+	# a tool (Mecabricks' W, D) does not slide the view while held.
+	var held := func(code: Key) -> bool:
+		return Input.is_key_pressed(code) and Keymap.held_as_ever(code)
 	var zoom: int = 0
-	if Input.is_key_pressed(KEY_EQUAL) or Input.is_key_pressed(KEY_PLUS) \
-			or Input.is_key_pressed(KEY_KP_ADD) or (free and Input.is_key_pressed(KEY_PAGEUP)):
+	if held.call(KEY_EQUAL) or held.call(KEY_PLUS) \
+			or held.call(KEY_KP_ADD) or (free and held.call(KEY_PAGEUP)):
 		zoom += 1
-	if Input.is_key_pressed(KEY_MINUS) or Input.is_key_pressed(KEY_KP_SUBTRACT) \
-			or (free and Input.is_key_pressed(KEY_PAGEDOWN)):
+	if held.call(KEY_MINUS) or held.call(KEY_KP_SUBTRACT) \
+			or (free and held.call(KEY_PAGEDOWN)):
 		zoom -= 1
 	var arrows := Vector2.ZERO
 	var wasd := Vector2.ZERO
@@ -7164,12 +7186,12 @@ func _steer_from_keys(delta: float) -> void:
 		or Input.is_key_pressed(KEY_ALT)
 	if free and not _steps.is_playing_back():
 		arrows = Vector2(
-			float(Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_LEFT)),
-			float(Input.is_key_pressed(KEY_UP)) - float(Input.is_key_pressed(KEY_DOWN)))
+			float(held.call(KEY_RIGHT)) - float(held.call(KEY_LEFT)),
+			float(held.call(KEY_UP)) - float(held.call(KEY_DOWN)))
 		if not modified:
 			wasd = Vector2(
-				float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)),
-				float(Input.is_key_pressed(KEY_W)) - float(Input.is_key_pressed(KEY_S)))
+				float(held.call(KEY_D)) - float(held.call(KEY_A)),
+				float(held.call(KEY_W)) - float(held.call(KEY_S)))
 	if zoom == 0 and arrows == Vector2.ZERO and wasd == Vector2.ZERO:
 		_held_for = 0.0
 		return
@@ -8670,9 +8692,6 @@ func _cursor_state() -> Cursors.Situation:
 	now.shift = not typing and Input.is_key_pressed(KEY_SHIFT)
 	now.ctrl = not typing and Input.is_key_pressed(
 		KEY_META if EditVerbs.on_mac() else KEY_CTRL)
-	# Held, C paints whatever comes under the pointer: the key repeats,
-	# and each repeat paints what is there.
-	now.painting = not typing and Input.is_key_pressed(KEY_C)
 	var moment: String = _camera.moment()
 	now.moment = "hand" if moment == "slide" else moment
 	now.playing = _playback != null and _playback.is_playing()
@@ -8701,7 +8720,7 @@ func _cursor_state() -> Cursors.Situation:
 	# of a turn of the view, a line through the model under the pointer,
 	# which a held view or the view's last move puts aside anyway.
 	if not now.in_hand and not now.dragging() and now.tool.is_empty() \
-			and now.moment.is_empty() and not now.playing and not now.painting:
+			and now.moment.is_empty() and not now.playing:
 		now.over_part = _brick_under_pointer() != 0
 	return now
 
@@ -8787,6 +8806,19 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if focused is LineEdit or focused is TextEdit:
 		return
 	var key: InputEventKey = event
+	# The key as the person's keymap has it (Keymap): the key that does
+	# what it is bound to, a command no key does out of the box, or nothing,
+	# for a key a preset took off what it did. A shared model's viewer has
+	# only the keys that look, as they always were.
+	if _viewing.is_empty() and _shell != null:
+		var meant: Variant = Keymap.read(key, _steps != null and _steps.is_playing_back())
+		if meant == null:
+			return
+		if meant is String:
+			if not key.echo and not _store.laying:
+				_key_action(meant)
+			return
+		key = meant
 	# A command's key is that command, as from its menu: timed, and said on
 	# the status bar first when it is slow (Shell.attend). Echoes are a key
 	# held down, never put off.
@@ -8800,6 +8832,22 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		_key_pressed(key)
 	else:
 		_shell.attend(command, _key_pressed.bind(key))
+
+
+## What a key bound by the keymap does where no key did it before: a
+## command, run as its menu runs it, or Studio's Shift and an arrow, a turn
+## of the selection by 45° (a part in hand turns a quarter, as R turns it).
+func _key_action(action: String) -> void:
+	match action:
+		"part_left_45", "part_right_45":
+			var way: int = -1 if action == "part_left_45" else 1
+			if _builder.is_carrying() or _builder.selection.is_empty():
+				_builder.rotate_held(way)
+				_refresh_preview()
+			else:
+				_verbs.turn_by(45.0 * way)
+		_:
+			_shell.run(action)
 
 
 func _key_pressed(key: InputEventKey) -> void:
@@ -8937,22 +8985,18 @@ func _key_pressed(key: InputEventKey) -> void:
 			if (key.ctrl_pressed or key.meta_pressed) and _brickify != null:
 				_brickify.ask()
 		KEY_C:
-			# Paint the selection if there is one, or what is under the
-			# cursor if there is not.
+			# Paints the selection, and only the selection, as Ctrl-C copies
+			# it: with nothing selected it painted whatever was under the
+			# pointer (APP_UX A11). Clicking parts to paint is the Paint tool.
 			if not _builder.selection.is_empty():
 				var painted: int = _builder.paint_selection(_builder.held_color)
 				if painted > 0:
 					_on_model_edited()
 					_bar.say("painted %d" % painted)
-			else:
-				# The brick under the pointer, found by the pointer: with
-				# nothing in hand there is no ghost to say which it is.
-				var under: int = _brick_under_pointer()
-				# With a part in hand, the brick its ghost was last aimed at.
-				if under == 0 and _verbs.mode == "place":
-					under = _builder.hovered_brick()
-				if _builder.paint_brick(under, _builder.held_color):
-					_on_model_edited()
+			elif not key.echo:
+				var tool: String = Keymap.listed("mode_paint")
+				_bar.say("select parts to paint them%s" % (", or click parts with the Paint tool (%s)"
+					% tool if not tool.is_empty() else ", or click parts with the Paint tool"))
 		KEY_DELETE, KEY_BACKSPACE:
 			await _delete_selection()
 		KEY_G:

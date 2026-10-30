@@ -70,6 +70,9 @@ signal interface_sized
 signal ai_changed
 ## Settings, AI, Design with it: the assistant's brief is wanted.
 signal ai_design_wanted
+## The keys' preset chosen, or a key set (Keymap): for the account to have
+## them too (KeymapSync).
+signal keys_set
 
 
 func _ready() -> void:
@@ -106,9 +109,32 @@ func _build() -> void:
 	_find.placeholder_text = "Find a key, or what it does"
 	_find.accessibility_name = "Find a key"
 	_find.clear_button_enabled = true
+	_find.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_find.add_theme_font_size_override("font_size", 12)
 	_find.text_changed.connect(func(_typed: String) -> void: _fill())
-	column.add_child(_find)
+	# Beside it, whose keys these are: the app's, or the program a person
+	# comes from (Keymap), and a way back from keys of their own.
+	_find_row = HBoxContainer.new()
+	_find_row.add_theme_constant_override("separation", 10)
+	_find_row.add_child(_find)
+	keys_choice = _keys_like(_find_row)
+	keys_reset = Look.link("Back to these keys", 12)
+	keys_reset.accessibility_name = "Back to the preset's keys"
+	keys_reset.tooltip_text = "Forget the keys set here, and have the preset's alone"
+	keys_reset.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	keys_reset.pressed.connect(func() -> void:
+		Keymap.reset()
+		_say("every key is the preset's again")
+		_keys_changed())
+	_find_row.add_child(keys_reset)
+	column.add_child(_find_row)
+	# What setting a key did, or why it could not.
+	_said = Label.new()
+	_said.add_theme_font_size_override("font_size", 12)
+	_said.add_theme_color_override("font_color", Color(0.72, 0.75, 0.82))
+	_said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_said.text = HOW_TO_SET
+	column.add_child(_said)
 
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -256,6 +282,11 @@ func _fill() -> void:
 	for binding: ControlsHint.Binding in bindings():
 		if not _says(binding, words):
 			continue
+		# A row with no key at all is for whoever looks for it by name, to
+		# give it one: a hundred of them would bury the keys there are.
+		if words.is_empty() and Array(binding.keys).all(
+				func(key: String) -> bool: return key == ControlsHint.NO_KEY):
+			continue
 		if not in_section.has(binding.section):
 			sections.append(binding.section)
 			in_section[binding.section] = []
@@ -293,9 +324,117 @@ func _fill() -> void:
 ## typed into a box to the box.
 func _input(event: InputEvent) -> void:
 	var key := event as InputEventKey
+	if visible and key != null and key.pressed and not _setting.is_empty():
+		get_viewport().set_input_as_handled()
+		_take_key(key)
+		return
 	if visible and key != null and key.pressed and key.keycode == KEY_ESCAPE and _find.has_focus():
 		visible = false
 		get_viewport().set_input_as_handled()
+
+
+## "Keys like": the app's own keys, or a program's a person comes from
+## (Keymap.PRESETS), in [param row].
+func _keys_like(row: HBoxContainer) -> OptionButton:
+	var words := Label.new()
+	words.text = "Keys like"
+	words.add_theme_font_size_override("font_size", 12)
+	row.add_child(words)
+	var choice := OptionButton.new()
+	choice.focus_mode = Control.FOCUS_NONE
+	choice.accessibility_name = "Keys like"
+	choice.add_theme_font_size_override("font_size", 12)
+	for name: String in Keymap.PRESETS:
+		choice.add_item(str(Keymap.PRESET_NAMES[name]))
+	choice.select(Keymap.PRESETS.find(Keymap.preset()))
+	choice.item_selected.connect(func(index: int) -> void:
+		Keymap.use(Keymap.PRESETS[index])
+		_say("keys like %s" % Keymap.PRESET_NAMES[Keymap.preset()])
+		_keys_changed())
+	row.add_child(choice)
+	return choice
+
+
+## The keys changed here: the sheet, both choices, the strip, the menus.
+func _keys_changed() -> void:
+	for choice: OptionButton in [keys_choice, keys_choice_settings]:
+		if choice != null:
+			choice.select(Keymap.PRESETS.find(Keymap.preset()))
+	keys_reset.visible = not Keymap.own().is_empty()
+	_fill()
+	changed.emit()
+	keys_set.emit()
+
+
+func _say(text: String) -> void:
+	_said.text = text[0].to_upper() + text.substr(1) + "."
+
+
+## A key's chip on the sheet that a click (or Return, from the keys) sets:
+## the next key pressed is [param action]'s.
+func _settable(drawn: Control, action: String, key: String) -> Control:
+	var chip := PanelContainer.new()
+	var plain := StyleBoxFlat.new()
+	plain.bg_color = Color(0, 0, 0, 0)
+	plain.set_corner_radius_all(5)
+	plain.set_content_margin_all(1)
+	var lit: StyleBoxFlat = plain.duplicate()
+	lit.border_color = Color(0.45, 0.65, 1.0, 0.9)
+	lit.set_border_width_all(1)
+	chip.add_theme_stylebox_override("panel", plain)
+	chip.add_child(drawn)
+	chip.focus_mode = Control.FOCUS_ALL
+	chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	chip.accessibility_name = "%s: %s. Set its key" % [Keymap.words(action),
+		key if key != ControlsHint.NO_KEY else "no key"]
+	chip.set_meta("action", action)
+	chip.focus_entered.connect(func() -> void: chip.add_theme_stylebox_override("panel", lit))
+	chip.focus_exited.connect(func() -> void:
+		if _setting.get("chip") != chip:
+			chip.add_theme_stylebox_override("panel", plain))
+	chip.gui_input.connect(func(event: InputEvent) -> void:
+		var click := event as InputEventMouseButton
+		var key_press := event as InputEventKey
+		if (click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT) \
+				or (key_press != null and key_press.pressed and not key_press.echo
+					and key_press.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]):
+			chip.accept_event()
+			_start_setting(action, chip, lit))
+	return chip
+
+
+func _start_setting(action: String, chip: PanelContainer, lit: StyleBox) -> void:
+	_setting = {"action": action, "chip": chip}
+	chip.add_theme_stylebox_override("panel", lit)
+	for child: Node in chip.get_children():
+		chip.remove_child(child)
+		child.queue_free()
+	chip.add_child(ControlsHint.cap("press a key", KEY_TALL, 12))
+	_say("press the key for %s; Esc keeps %s" % [Keymap.words(action),
+		Keymap.listed(action) if Keymap.key_of(action) != 0 else "it with none"])
+
+
+## The key pressed while one is being set: that action's, unless it is
+## another's or not to be set, which is said and nothing changes.
+func _take_key(key: InputEventKey) -> void:
+	if key.keycode in [KEY_SHIFT, KEY_CTRL, KEY_META, KEY_ALT, KEY_CAPSLOCK]:
+		return
+	var action: String = _setting["action"]
+	_setting = {}
+	if key.keycode == KEY_ESCAPE:
+		_say("%s kept" % Keymap.words(action))
+		_fill()
+		return
+	var accel: int = 0 if key.keycode == KEY_BACKSPACE else Keymap.accel_of(key)
+	var trouble: String = Keymap.bind(action, accel)
+	if not trouble.is_empty():
+		_say("%s: not set, %s" % [Keymap.listed_key(accel), trouble])
+		_fill()
+		return
+	_say("%s is now %s" % [Keymap.words(action),
+		Keymap.listed_key(accel) if accel != 0 else "with no key"])
+	_keys_changed()
 
 
 ## Two columns where the sheet is wide enough for them, else one.
@@ -328,24 +467,20 @@ func bindings() -> Array[ControlsHint.Binding]:
 		return listed
 	var named: Dictionary = {}
 	for binding: ControlsHint.Binding in listed:
-		for key: String in binding.keys:
-			named[key.to_lower()] = true
+		for n: int in binding.keys.size():
+			named[binding.actions[n] if not binding.actions[n].is_empty()
+				else binding.keys[n].to_lower()] = true
 	var extra: Dictionary = {}   # section -> Array[Binding]
-	var seen: Dictionary = {}
 	for menu: Array in Shell.MENUS:
 		for name: String in _commands_in(menu[1]):
 			var command: Shell.Command = shell.command(name)
-			if command == null or command.accel == 0 or seen.has(name):
+			if command == null or named.has(name):
 				continue
 			if not shell.assistant_shown and name in Shell.ASSISTANT_COMMANDS:
 				continue
-			seen[name] = true
-			var key: String = _as_listed(command.accel)
-			if named.has(key.to_lower()):
-				continue
-			named[key.to_lower()] = true
+			named[name] = true
 			var words: String = command.words.trim_suffix("…")
-			var binding := ControlsHint.Binding.new([key], words[0].to_lower() + words.substr(1))
+			var binding := ControlsHint.keyed([name], words[0].to_lower() + words.substr(1))
 			binding.section = MENU_SECTIONS.get(menu[0], "Panels")
 			if not extra.has(binding.section):
 				extra[binding.section] = []
@@ -377,15 +512,6 @@ static func _commands_in(items: Array) -> Array[String]:
 	return out
 
 
-## A menu's key as the controls list writes it: "Ctrl-shift-S", "F2".
-static func _as_listed(accel: int) -> String:
-	var parts: PackedStringArray = Shell.key_text(accel).split("+")
-	for n: int in parts.size() - 1:
-		if parts[n] != EditVerbs.held_key():
-			parts[n] = parts[n].to_lower()
-	return "-".join(parts)
-
-
 func _heading(text: String, after_something: bool) -> Control:
 	var heading := Label.new()
 	heading.text = text
@@ -410,13 +536,18 @@ func _row(binding: ControlsHint.Binding, density: float) -> Control:
 	keys.alignment = BoxContainer.ALIGNMENT_END
 	keys.custom_minimum_size = Vector2(KEYS_WIDE, 0)
 	keys.add_theme_constant_override("separation", 6)
-	for key: String in binding.keys:
+	for n: int in binding.keys.size():
+		var key: String = binding.keys[n]
+		var action: String = binding.actions[n]
 		var drawn: Control = ControlsHint.draw_key(key, KEY_TALL, 12, density)
+		if not action.is_empty() and Keymap.settable(action):
+			drawn = _settable(drawn, action, key)
 		# The words are still there for anyone who wants them, under
 		# the pointer: a picture of a mouse is quicker to read than
 		# "middle-drag" and slower to be sure of.
 		drawn.tooltip_text = key
-		drawn.mouse_filter = Control.MOUSE_FILTER_PASS
+		if drawn.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+			drawn.mouse_filter = Control.MOUSE_FILTER_PASS
 		keys.add_child(drawn)
 	row.add_child(keys)
 
@@ -507,6 +638,12 @@ func _presets(column: VBoxContainer) -> void:
 		# moment that changes.
 		_fill()
 		changed.emit())
+	# And the keys, after the same programs (Keymap): the keys sheet has
+	# the same choice, and sets single keys.
+	var keys_row := HBoxContainer.new()
+	keys_row.add_theme_constant_override("separation", 8)
+	column.add_child(keys_row)
+	keys_choice_settings = _keys_like(keys_row)
 
 
 ## Settings, Interface size and Reduce motion (ShellPrefs): for eyes that
@@ -643,6 +780,19 @@ var _title: Label
 ## The keys sheet: its box, its list, and what it says when nothing is found.
 var _keys: ScrollContainer
 var _find: LineEdit
+## The box's row, with whose keys these are beside it, and what setting a
+## key did.
+var _find_row: HBoxContainer
+var _said: Label
+## The keys' preset (Keymap) on the sheet, and the way back to it alone.
+var keys_choice: OptionButton
+var keys_reset: LinkButton
+## Settings' own, beside the navigation preset: the same choice.
+var keys_choice_settings: OptionButton
+## The action whose key is being set, and its chip: empty when none is.
+var _setting: Dictionary = {}
+
+const HOW_TO_SET := "Click a key to set your own; Esc keeps it, Backspace leaves it with none."
 var _none: Label
 
 
@@ -690,7 +840,9 @@ var _face: String = "settings"
 
 func _show_face(face: String) -> void:
 	var keys: bool = face == "keys"
-	_find.visible = keys
+	_find_row.visible = keys
+	_said.visible = keys
+	_setting = {}
 	_keys.visible = keys
 	_none.visible = false
 	_settings.visible = not keys
@@ -744,6 +896,8 @@ func _read_version() -> void:
 
 ## Settings.
 func open() -> void:
+	if keys_choice_settings != null:
+		keys_choice_settings.select(Keymap.PRESETS.find(Keymap.preset()))
 	if new_floor != null:
 		new_floor.show_floor(ModelFloor.preferred(), false)
 	if assistant_on != null:
@@ -764,6 +918,9 @@ func open_keys() -> void:
 	_find.text = ""
 	_show_face("keys")
 	_find.visible = not TouchTools.wanted()
+	keys_choice.select(Keymap.PRESETS.find(Keymap.preset()))
+	keys_reset.visible = not Keymap.own().is_empty()
+	_said.text = HOW_TO_SET
 	_fill()
 	visible = true
 	if _find.visible:
@@ -775,7 +932,13 @@ func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
 	if _face == "keys":
-		return {"keys_find": _find, "settings_done": _done}
+		var named: Dictionary = {"keys_find": _find, "settings_done": _done,
+			"keys_like": keys_choice, "keys_reset": keys_reset}
+		# Each key's chip by its action, for a flow to set one by clicking it.
+		for chip: Node in _rows.find_children("*", "PanelContainer", true, false):
+			if chip.has_meta("action") and (chip as Control).is_visible_in_tree():
+				named["key_" + str(chip.get_meta("action"))] = chip
+		return named
 	var named: Dictionary = {"assistant_on": assistant_on, "assistant_off": assistant_off,
 		"interface_size": interface_choice, "reduce_motion": reduce_motion,
 		"settings_done": _done, "ai_settings": ai_open}

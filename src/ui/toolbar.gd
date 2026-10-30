@@ -158,10 +158,9 @@ func _item(name: String, icon: String) -> Control:
 			_turn.add_item("%d°" % roundi(degrees))
 		_turn.item_selected.connect(func(index: int) -> void:
 			shell.set_turn_step(TURN_CHOICES[index]))
-		_turn.tooltip_text = "Turn step   R\n" + SAYS["turn"]
-		_turn.accessibility_name = "Turn step, R"
 		_turn.accessibility_description = SAYS["turn"]
 		_buttons["turn"] = _turn
+		_tell("turn")
 		return _turn
 	var button: Button
 	if name == "history":
@@ -189,6 +188,25 @@ func _item(name: String, icon: String) -> Control:
 		button.toggle_mode = true
 		button.button_group = _tools
 	_face(button)
+	button.set_meta("icon", icon)
+	_buttons[name] = button
+	_tell(name)
+	return button
+
+
+## A button's tooltip and what a screen reader says on it: its words and
+## its key ("Select, V"), then what it does. Told again when the keys
+## change (Keymap): a key set in the keys sheet is the one shown.
+func _tell(name: String) -> void:
+	var button: Control = _buttons[name]
+	if name == "turn":
+		var turn: String = shell.key_words("rotate_held")
+		button.tooltip_text = "Turn step%s\n%s" % [("   " + turn) if not turn.is_empty() else "",
+			SAYS["turn"]]
+		button.accessibility_name = "Turn step" + ((", " + turn) if not turn.is_empty() else "")
+		return
+	if name == "snap":
+		return
 	var command: Shell.Command = shell.command(name)
 	var words: String = command.words if command != null else {
 		"history": "History", "select": "Select by"}.get(name, name)
@@ -197,13 +215,13 @@ func _item(name: String, icon: String) -> Control:
 	var says: String = SAYS.get(name, command.tip if command != null else "")
 	button.tooltip_text = "%s%s%s" % [words, ("   " + key) if not key.is_empty() else "",
 		("\n" + says) if not says.is_empty() else ""]
-	# What a screen reader says on it: its words and its key ("Select, V"),
-	# then what it does.
 	button.accessibility_name = words + ((", " + key) if not key.is_empty() else "")
 	button.accessibility_description = says
-	button.set_meta("icon", icon)
-	_buttons[name] = button
-	return button
+
+
+func tell_keys() -> void:
+	for name: String in _buttons:
+		_tell(name)
 
 
 func _face(button: Button) -> void:

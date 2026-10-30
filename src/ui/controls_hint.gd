@@ -41,11 +41,41 @@ class Binding extends RefCounted:
 	## Which part of the full list it belongs in. Only the controls
 	## panel shows these.
 	var section: String = ""
+	## Beside each key, the action it is the key of (Keymap), which the
+	## keys sheet lets a person set; "" for a gesture or a key nobody sets.
+	var actions: PackedStringArray = []
 
 	func _init(pressed: Array, does: String, shows: String = "") -> void:
 		keys = PackedStringArray(pressed)
 		verb = does
 		cursor = shows
+		actions.resize(keys.size())
+
+
+## A binding whose keys are actions' (Keymap), each the key the keymap
+## gives it now, and the rest gestures written as they are: ["alt-click",
+## "pick"]. An action with no key is [constant NO_KEY], for the sheet to
+## offer one; the strip leaves it out.
+static func keyed(pressed: Array, does: String, shows: String = "") -> Binding:
+	var keys: Array = []
+	var actions: Array = []
+	for entry: String in pressed:
+		# A gesture has a hyphen or a space in it; an action, neither. One
+		# the keymap does not know yet (the menus not made) has no key.
+		if not entry.contains("-") and not entry.contains(" "):
+			var key: String = Keymap.listed(entry)
+			keys.append(key if not key.is_empty() else NO_KEY)
+			actions.append(entry)
+		else:
+			keys.append(entry)
+			actions.append("")
+	var binding := Binding.new(keys, does, shows)
+	binding.actions = PackedStringArray(actions)
+	return binding
+
+
+## What a key's place says when its action has none.
+const NO_KEY := "no key"
 
 
 ## Ordered by how often a beginner reaches for it, because that is the
@@ -101,7 +131,7 @@ static func for_touch() -> Array[Binding]:
 ## something the handler does not do.
 ##
 ## Six and a pointer, which fits one row at any width worth supporting.
-const ON_THE_STRIP := ["click", "drag", "shift-drag", "space-drag", "scroll", "Q"]
+const ON_THE_STRIP := ["click", "drag", "shift-drag", "space-drag", "scroll", "mode_place"]
 
 
 ## What the strip along the bottom shows: the handful somebody reaches
@@ -116,7 +146,8 @@ static func for_strip() -> Array[Binding]:
 	var short: Array[Binding] = []
 	for wanted: String in ON_THE_STRIP:
 		for binding: Binding in for_keyboard():
-			if binding.keys.has(wanted):
+			var at: int = binding.actions.find(wanted)
+			if binding.keys.has(wanted) or (at >= 0 and binding.keys[at] != NO_KEY):
 				short.append(binding)
 				break
 	short.append(Binding.new(["F1"], "all keys"))
@@ -143,27 +174,41 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["drag"], "on a part on a joint, move it as the real one moves (Esc puts it back); on another part, carry it; anywhere else, turn the view", "orbit"),
 		Binding.new(["hold, then drag"], "on a part at the end of joints (a hand, a hook), held still a moment first: move it by the whole chain back to what stays"),
 		Binding.new(["%s-drag" % _hold()], "copy a part; on nothing, draw a box round several", "box"),
-		Binding.new(["alt-click", "G"], "take that part into hand"),
-		Binding.new(["Q"], "the last part back in hand"),
+		keyed(["alt-click", "pick"], "take that part into hand"),
+		keyed(["mode_place"], "the last part back in hand"),
 		Binding.new(["right-click"], "let go of the part in hand"),
-		Binding.new(["R", "shift-R"], "turn the part in hand, or the selection"),
-		Binding.new(["T", "shift-T"], "tip it over"),
-		Binding.new(["[", "]"], "colour"),
-		Binding.new(["shift-C"], "a colour by its name or number"),
-		Binding.new(["E"], "next step: what was put down since the last step makes one"),
-		Binding.new(["C"], "paint", "paint"),
-		Binding.new(["X"], "lift, or move the selection"),
-		Binding.new(["%s-C" % _hold(), "%s-V" % _hold()], "copy, paste"),
-		Binding.new(["%s-D" % _hold()], "duplicate"),
-		Binding.new(["%s-X" % _hold()], "cut"),
-		Binding.new(["shift-M"], "mirror the selection"),
-		Binding.new(["J", "shift-J"], "swing the selection on its hinge"),
-		Binding.new(["%s-G" % _hold(), "%s-shift-G" % _hold()], "make a sub-model, or leave one"),
-		# The command symbol, U+2318, is not in the font this ships, so
-		# it drew as an empty box followed by a Z — which has been on
-		# screen since the strip was written. Words render everywhere.
-		Binding.new(["%s-Z" % _hold()], "undo"),
-		Binding.new(["%s-shift-Z" % _hold()], "redo"),
+		keyed(["rotate_held", "turn_back"], "turn the part in hand, or the selection"),
+		keyed(["tip_held", "tip_back"], "tip it over"),
+		# With a part or a selection in hand, or just after R or T, a number
+		# is typed rather than pressed (TypedEntry): a digit is no view then,
+		# and "-" no zoom.
+		Binding.new(["1", ".", "-"], "with a part in hand: type a number to move or turn it exactly, Enter puts it down"),
+		keyed(["part_left", "part_right", "part_forward", "part_back"], "turn or tip the part, as Studio's arrows"),
+		keyed(["part_left_45", "part_right_45"], "turn the selection by 45°"),
+		keyed(["colour_back", "colour_on"], "colour"),
+		keyed(["find_colour"], "a colour by its name or number"),
+		keyed(["step_close"], "next step: what was put down since the last step makes one"),
+		keyed(["paint"], "paint the selection"),
+		keyed(["lift"], "lift, or move the selection"),
+		keyed(["copy", "paste"], "copy, paste"),
+		keyed(["duplicate"], "duplicate"),
+		keyed(["cut_parts"], "cut"),
+		keyed(["mirror"], "mirror the selection"),
+		keyed(["swing", "swing_back"], "swing the selection on its hinge"),
+		keyed(["make_submodel", "leave_submodel"], "make a sub-model, or leave one"),
+		keyed(["undo"], "undo"),
+		keyed(["redo"], "redo"),
+	])
+	_section(everything, "Tools", [
+		keyed(["mode_select"], "the Select tool"),
+		keyed(["mode_move"], "the Move tool: click a part to pick it up, click to put it down"),
+		keyed(["mode_rotate"], "the Rotate tool: click a part to turn it"),
+		keyed(["mode_hinge"], "the Hinge tool: click a part on a hinge to swing it"),
+		keyed(["mode_clone"], "the Clone tool: click a part, then click where each copy goes"),
+		keyed(["mode_paint"], "the Paint tool: click a part to paint it"),
+		keyed(["mode_hide"], "the Hide tool: click a part to hide it"),
+		keyed(["mode_delete"], "the Delete tool: click a part to take it off"),
+		keyed(["measure"], "measure between two points"),
 	])
 	_section(everything, "Selecting", [
 		# Left drags a box. This strip said shift-drag for a while
@@ -172,43 +217,46 @@ static func for_keyboard() -> Array[Binding]:
 		# from the same place the handler gets it.
 		Binding.new(["shift-click", "%s-click" % _hold()], "add to the selection, or take away", "select"),
 		Binding.new(["shift-double-click"], "every brick like it"),
-		Binding.new(["%s-A" % _hold()], "select all"),
-		Binding.new(["arrows", "W", "A", "S", "D"],
-			"move the selection; with none, turn or slide the view"),
-		Binding.new(["Page Up", "Page Down"], "raise or lower the selection"),
-		Binding.new(["Delete"], "remove the selection"),
-		Binding.new(["%s-H" % _hold()], "hide the selection; with none, show all"),
-		Binding.new(["shift-H"], "show only the selection"),
-		Binding.new(["alt-H"], "show everything"),
-		Binding.new(["V"], "the Select tool"),
-		Binding.new(["L", "shift-L"], "lock the selection, unlock everything"),
+		keyed(["select_all"], "select all"),
+		keyed(["select_none"], "select nothing"),
+		keyed(["select_inverse"], "select the opposite"),
+		keyed(["arrow_left", "arrow_right", "arrow_up", "arrow_down"],
+			"move the selection; with none, turn the view"),
+		keyed(["nudge_left", "nudge_right", "nudge_forward", "nudge_back"],
+			"move the selection; with none, slide the view"),
+		keyed(["raise", "lower"], "raise or lower the selection"),
+		keyed(["delete"], "remove the selection"),
+		keyed(["hide"], "hide the selection; with none, show all"),
+		keyed(["isolate"], "show only the selection"),
+		keyed(["show_all"], "show everything"),
+		keyed(["lock", "unlock"], "lock the selection, unlock everything"),
 		Binding.new(["Esc"], "out of whatever is open, then back to Select with nothing in hand"),
 	])
 	_section(everything, "The view", _view_bindings())
 	_section(everything, "The timeline", [
-		Binding.new(["B"], "timeline"),
-		Binding.new(["left", "right"], "the step before, the step after"),
+		keyed(["timeline"], "timeline"),
+		Binding.new(["Left", "Right"], "the step before, the step after"),
 		Binding.new(["space"], "play the timeline"),
 		Binding.new(["Home", "End"], "its start and end"),
 	])
 	var rest: Array[Binding] = [
-		Binding.new(["P"], "parts"),
-		Binding.new(["M"], "minifigure"),
-		Binding.new(["%s-I" % _hold()], "brickify a 3D model"),
+		keyed(["parts_list"], "parts"),
+		keyed(["minifig"], "minifigure"),
+		keyed(["brickify"], "brickify a 3D model"),
 		Binding.new(["Tab"], "panels"),
 		Binding.new(["F6"], "the keys to the toolbar, the parts and the colours, and back"),
-		Binding.new(["/"], "search"),
+		keyed(["search"], "search"),
 		Binding.new(["F1"], "this list"),
-		Binding.new([","], "settings"),
-		Binding.new(["F11"], "full screen"),
-		Binding.new(["%s-S" % _hold()], "save"),
+		keyed(["settings"], "settings"),
+		keyed(["full_screen"], "full screen"),
+		keyed(["save"], "save"),
 	]
 	# The page is closed by its tab, so a browser is not told about a
 	# key that does nothing there.
 	if not OS.has_feature("web"):
 		# Ctrl+N is the browser's new window, and never reaches the page.
-		rest.append(Binding.new(["%s-N" % _hold()], "new model"))
-		rest.append(Binding.new(["%s-Q" % _hold()], "quit"))
+		rest.append(keyed(["new"], "new model"))
+		rest.append(keyed(["quit"], "quit"))
 	_section(everything, "Panels", rest)
 	return everything
 
@@ -231,7 +279,7 @@ static func _view_bindings() -> Array:
 		Binding.new(["alt-drag"], "turn, whatever is under the pointer", "orbit"),
 		Binding.new(["alt-shift-drag"], "slide", "hand"),
 		Binding.new(["%s-alt-drag" % _hold()], "zoom", "zoom_in"),
-		Binding.new(["O", "H", "Z"], "the Orbit, Pan and Zoom tools: a drag only moves the view"),
+		keyed(["mode_orbit", "mode_pan", "mode_zoom"], "the Orbit, Pan and Zoom tools: a drag only moves the view"),
 	])
 	out.append(Binding.new(["right-drag", "2 fingers"], right, cursor_of.call(right)))
 	out.append(Binding.new(["shift-right-drag"], ViewPrefs.drag_verb(MOUSE_BUTTON_RIGHT, true),
@@ -244,16 +292,18 @@ static func _view_bindings() -> Array:
 	out.append_array([
 		Binding.new(["middle double-click"], "turn about that point"),
 		Binding.new(["shift-2 fingers"], "slide", "hand"),
-		Binding.new(["scroll", "pinch", "+", "-"], "zoom to the pointer", "zoom_in"),
+		Binding.new(["scroll", "pinch"], "zoom to the pointer", "zoom_in"),
+		keyed(["zoom_in", "zoom_out"], "zoom in, zoom out", "zoom_in"),
 		Binding.new(["shift-scroll"], "slide", "hand"),
 		Binding.new(["shift-arrows"], "slide the view", "hand"),
-		Binding.new(["shift-Q", "shift-E"], "turn the model"),
-		Binding.new(["F"], "frame the selection, or everything"),
-		Binding.new(["U"], "measure between two points"),
-		Binding.new(["`"], "square on, and back to perspective"),
-		Binding.new(["1", "2", "3", "4", "5", "6", "7"],
-			"front, back, left, right, top, bottom, three-quarter (the keypad too)"),
-		Binding.new(["0"], "the usual view"),
+		keyed(["turn_left", "turn_right"], "turn the model"),
+		keyed(["fit"], "frame the selection, or everything"),
+		keyed(["fit_model"], "frame the whole model"),
+		keyed(["fit_selection"], "frame the selection"),
+		keyed(["ortho"], "square on, and back to perspective"),
+		keyed(["view_front", "view_back", "view_left", "view_right", "view_top", "view_bottom",
+			"view_iso"], "front, back, left, right, top, bottom, three-quarter (the keypad too)"),
+		keyed(["view_default"], "the usual view"),
 	])
 	return out
 
