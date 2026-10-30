@@ -71,16 +71,18 @@ for (const [width, height] of [[1280, 800], [390, 844]]) {
   check(`...at the top left (${mark.x - mark.w / 2}, ${mark.y - mark.h / 2}; ${mark.w} x ${mark.h}), `
     + `left of everything in its row: ${row.map(([name]) => name).join(", ")}`,
     mark.x - mark.w / 2 < 24 && mark.y - mark.h / 2 < 24 && leftMost);
-  // Its colours, read off the canvas at its left end, where the picture is.
-  const colours = await page.evaluate(({ x, y, h }) => {
-    const canvas = document.querySelector("canvas");
-    const per = canvas.width / canvas.clientWidth;
-    const probe = document.createElement("canvas");
-    probe.width = Math.round(h * per);
-    probe.height = Math.round(h * per);
-    const ctx = probe.getContext("2d");
-    ctx.drawImage(canvas, (x - h / 2) * per, (y - h / 2) * per, h * per, h * per, 0, 0, probe.width, probe.height);
-    const { data } = ctx.getImageData(0, 0, probe.width, probe.height);
+  // Its colours, read off a picture of its left end, where the mark is: the
+  // page's own picture, as a person sees it (the canvas read back between
+  // frames can be blank, the app drawing only what changes).
+  const square = { x: Math.max(0, mark.x - mark.w / 2), y: Math.max(0, mark.y - mark.h / 2), width: mark.h, height: mark.h };
+  const shot = (await page.screenshot({ clip: square })).toString("base64");
+  const colours = await page.evaluate(async (png) => {
+    const bytes = Uint8Array.from(atob(png), (c) => c.charCodeAt(0));
+    const picture = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
+    const canvas = new OffscreenCanvas(picture.width, picture.height);
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(picture, 0, 0);
+    const { data } = ctx.getImageData(0, 0, picture.width, picture.height);
     const near = (i, [r, g, b]) => Math.abs(data[i] - r) + Math.abs(data[i + 1] - g) + Math.abs(data[i + 2] - b) < 60;
     const found = { yellow: 0, red: 0, blue: 0 };
     for (let i = 0; i < data.length; i += 4) {
@@ -89,9 +91,11 @@ for (const [width, height] of [[1280, 800], [390, 844]]) {
       if (near(i, [0x2a, 0x6f, 0xc4])) found.blue += 1;
     }
     return found;
-  }, { x: mark.x - mark.w / 2 + mark.h / 2, y: mark.y, h: mark.h });
+  }, shot);
+  // Some of each: at a phone's width and one pixel to the point the mark is
+  // a few pixels across, its edges blended.
   check(`...drawn in the mark's colours: ${JSON.stringify(colours)} pixels`,
-    colours.yellow > 4 && colours.red > 4 && colours.blue > 4);
+    colours.yellow > 0 && colours.red > 0 && colours.blue > 0);
   await page.screenshot({ path: `${out}/${size}_bar.png`, clip: { x: 0, y: 0, width, height: Math.min(height, 90) } });
 
   await page.mouse.click(mark.x, mark.y);
