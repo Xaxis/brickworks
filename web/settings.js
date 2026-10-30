@@ -2,7 +2,8 @@
 // emails you, orangecheck linked or not (api/orangecheck.js), your age
 // answer, whom your profile shows you follow and whether it shows the
 // models you liked (supabase/avatars.sql), the Claude apps that may work
-// in your tabs, signing out and deleting the account. Your profile itself (name, handle, words, links, pins) is
+// in your tabs, your feedback with where each report stands and our answers
+// (api/_feedback.js), signing out and deleting the account. Your profile itself (name, handle, words, links, pins) is
 // changed on /profile, with Edit profile (docs/SOCIAL.md U6, D9).
 //
 // Signed in with the app's own sign-in in this browser (account.js). Every
@@ -24,6 +25,42 @@ function make(tag, className = "", ...inside) {
   if (className) made.className = className;
   for (const one of inside) if (one !== null && one !== undefined && one !== "") made.append(one);
   return made;
+}
+
+const KINDS = { bug: "Something wrong", idea: "An idea", question: "A question" };
+const STANDS = { new: "Received", seen: "Read", planned: "Planned", fixed: "Fixed", wont_fix: "Not planned" };
+
+/// Your feedback: each report, newest first, with where it stands and our
+/// answers (GET /api/plans?op=feedback). Not open here, it says so.
+async function feedback() {
+  const answer = await call("/api/plans?op=feedback");
+  const list = $("reports");
+  if (answer.status !== 200) {
+    $("feedback-said").textContent = answer.status === 503 ? "Feedback is not open here yet."
+      : "Your reports did not load just now.";
+    return;
+  }
+  const reports = Array.isArray(answer.body.reports) ? answer.body.reports : [];
+  $("feedback-said").textContent = reports.length
+    ? `What you sent us, where each stands, and our answers${answer.body.beta ? ". As a beta tester, yours are marked as a tester's" : ""}.`
+    : "Nothing sent yet. Something wrong, an idea or a question: we read every one ourselves.";
+  list.replaceChildren(...reports.map((one) => {
+    const item = make("li", "report");
+    item.dataset.report = String(one.id);
+    item.dataset.status = one.status;
+    const marks = make("p", "marks", make("span", "pill", KINDS[one.kind] || "A report"),
+      make("span", `pill${one.status === "fixed" ? " good" : one.status === "new" ? "" : " new"}`, STANDS[one.status] || one.status),
+      one.beta ? make("span", "pill", "Beta") : null, make("small", "", when(one.at)));
+    const words = make("p", "words", one.words.length > 600 ? `${one.words.slice(0, 600)}…` : one.words);
+    const sent = [one.picture ? "a picture" : "", one.model ? "the model" : ""].filter(Boolean);
+    item.append(marks, words);
+    if (sent.length) item.append(make("p", "with", `With ${sent.join(" and ")}.`));
+    for (const reply of one.replies || []) {
+      item.append(make("div", "answer", make("p", "who", `Our answer, ${when(reply.at)}`), make("p", "words", reply.words)));
+    }
+    return item;
+  }));
+  list.hidden = reports.length === 0;
 }
 
 /// The Claude connection: which Claude apps may work in your tabs, and a
@@ -196,7 +233,7 @@ async function load() {
     document.documentElement.dataset.settings = "signed-out";
     return;
   }
-  const parts = Promise.all([orangecheck().catch(() => null), claude().catch(() => null)]);
+  const parts = Promise.all([orangecheck().catch(() => null), claude().catch(() => null), feedback().catch(() => null)]);
   const ageNow = age().catch(() => null);
   const answer = await call("/api/people?op=me");
   if (answer.status === 401) {

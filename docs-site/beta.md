@@ -29,7 +29,7 @@ The month starts the day you are approved, or the day Pro launches if that is la
 
 ## What we ask {#ask}
 
-Use Brickworks for real, on things you want to build, and tell us honestly what works and what does not when we ask, by email.
+Use Brickworks for real, on things you want to build, and tell us honestly what works and what does not: **Send feedback** in the app's Help menu or the site's footer, whenever something is wrong or you have an idea. As a tester you also have the [beta hub](/docs/feedback#beta-hub), with what is new to try and what we know is wrong.
 
 ## Applying {#apply}
 

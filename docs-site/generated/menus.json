@@ -1290,6 +1290,21 @@
 					"tip": ""
 				},
 				{
+					"name": "beta_hub",
+					"words": "Beta hub",
+					"key": "",
+					"tip": "For beta testers: what to try, what we know is wrong, and how to tell us"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "feedback",
+					"words": "Send feedback…",
+					"key": "",
+					"tip": "Something wrong, an idea or a question, to the people who make Brickworks"
+				},
+				{
 					"name": "about",
 					"words": "About Brickworks",
 					"key": "",

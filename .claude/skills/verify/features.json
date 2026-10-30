@@ -64,6 +64,7 @@
       "reach": "curl -s https://brickworks.diy/api/account",
       "area": "web",
       "tests": [
+        "tests/test_feedback.py",
         "tests/test_model_page.py"
       ]
     },
@@ -148,6 +149,7 @@
       "reach": "curl -s -X POST -H 'authorization: Bearer <session>' -d '{\"month\":3,\"year\":2000}' https://brickworks.diy/api/account?op=age",
       "area": "account",
       "tests": [
+        "tests/test_feedback.py",
         "tests/test_model_page.py"
       ]
     },
@@ -209,6 +211,7 @@
       "reach": "python3 tools/minitest.py tests/test_account_erase.py   (POST /api/account?op=delete {confirm}: with BRICKWORKS_BILLING test or live the customer is erased at Admission and a subscription ended first, and nothing is deleted when Admission cannot; off, Admission is never asked; billing_flow.mjs --stand-in deletes a paying account from /settings)",
       "area": "web",
       "tests": [
+        "tests/test_feedback.py",
         "tests/test_model_page.py"
       ]
     },
@@ -222,6 +225,7 @@
         "tests/test_beta.py",
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
+        "tests/test_feedback.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
@@ -236,6 +240,22 @@
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
+        "tests/test_saved_models_plan.py",
+        "tests/test_site_shell.py"
+      ]
+    },
+    {
+      "id": "api:sending feedback",
+      "kind": "api",
+      "entry": "api/plans.js",
+      "reach": "curl -s -X POST '<deployment>/api/plans?op=feedback' -H 'content-type: application/json' -d '{\"kind\":\"idea\",\"words\":\"...\",\"email\":\"delivered@resend.dev\"}'; GET it signed in for your own   (422 with why; 429 past the hour's rate; 503 \"not open here yet\" before supabase/feedback.sql; python3 tools/minitest.py tests/test_feedback.py)",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_account_erase.py",
+        "tests/test_billing_pay.py",
+        "tests/test_desktop.py",
+        "tests/test_feedback.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
@@ -873,6 +893,22 @@
       "kind": "cli",
       "entry": "tools/web/feed_flow.mjs",
       "reach": "node --env-file=.env tools/web/feed_flow.mjs --url=http://127.0.0.1:8840 --out=DIR   (a local relay_server.mjs 8840, nothing held; or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:feedback browser flow",
+      "kind": "cli",
+      "entry": "tools/web/feedback_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/feedback_flow.mjs --url=<deployment> --out=DIR   (before feedback.sql: the dialogs and \"not open yet\"; all of it on a local server with --hold=feedback and --owner, see its head; preview check [feedback])",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:feedback probe",
+      "kind": "cli",
+      "entry": "src/dev/feedback_probe.gd",
+      "reach": "tools/probe.sh feedback_probe [--shots=DIR]   (windowed: Help, Send feedback\u2026 opens, attaches, refuses, sends to a stand-in; Beta hub only for a tester)",
       "area": "web",
       "tests": []
     },
@@ -1583,6 +1619,8 @@
       "reach": "python3 tools/site.py /tmp/site",
       "area": "web",
       "tests": [
+        "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_feedback.py",
         "tests/test_release_train.py"
       ]
     },
@@ -1974,6 +2012,14 @@
       "tests": []
     },
     {
+      "id": "cli:the feedback stand-in",
+      "kind": "cli",
+      "entry": "tools/web/feedback_stand_in.mjs",
+      "reach": "node tools/web/relay_server.mjs 9060 --static=build/web --hold=feedback   (supabase/beta.sql and feedback.sql in a Postgres of this machine's own, PG_BIN and PG_MODULE set; GET /__held/feedback)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:the menus written for the docs",
       "kind": "cli",
       "entry": "src/dev/docs_menus.gd",
@@ -2294,6 +2340,7 @@
       "reach": "BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/account_probe.gd   (with tools/web/relay_server.mjs 8790 and .env)",
       "area": "account",
       "tests": [
+        "tests/test_feedback.py",
         "tests/test_model_page.py"
       ]
     },
@@ -2554,11 +2601,27 @@
       "tests": []
     },
     {
+      "id": "lib:early features for beta testers",
+      "kind": "lib",
+      "entry": "api/_early.js",
+      "reach": "curl -s '<deployment>/api/account' -H 'authorization: Bearer T'   (beta: {tester, early}; the site's earlyOn(key), web/early.js; the app's Account.early_on(key) and Shell.EARLY_COMMANDS)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:element maker",
       "kind": "lib",
       "entry": "src/parts/element_maker.gd",
       "reach": "godot --headless --path . --script src/dev/element_files_probe.gd",
       "area": "elements",
+      "tests": []
+    },
+    {
+      "id": "lib:feedback kept and answered",
+      "kind": "lib",
+      "entry": "api/_feedback.js",
+      "reach": "python3 tools/minitest.py tests/test_feedback.py   (checked at the edge, rated by account, place, inbox and in all in supabase/feedback.sql, the picture and model in the private 'feedback' bucket, the owner's inbox, triage and emailed answers, deleted with the account, the daily sweep)",
+      "area": "web",
       "tests": []
     },
     {
@@ -2921,7 +2984,9 @@
       "entry": "supabase/replies.sql",
       "reach": "PG_MODULE=<pg>/lib/index.js node tools/apply_sql.mjs supabase/replies.sql --dry --try=tools/replies_try.sql --table=model_comments   (.env sourced; then the comments browser flow, and tools/web/replies_stand_in.mjs holds it for a local run)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_feedback.py"
+      ]
     },
     {
       "id": "lib:rigid bodies and joints",
@@ -2996,6 +3061,7 @@
       "reach": "imported by model-page.js and profile.js: the app's session in this browser, or a code by email in a dialog",
       "area": "web",
       "tests": [
+        "tests/test_feedback.py",
         "tests/test_model_page.py"
       ]
     },
@@ -3473,7 +3539,8 @@
       "reach": "<deployment>/beta   (BRICKWORKS_BETA off: Coming soon, no form, no count; open: the spots left live, signed out Sign in to apply, signed in the form (web/beta.js), applied where it stands; tools/web/beta_flow.mjs)",
       "area": "web",
       "tests": [
-        "tests/test_beta.py"
+        "tests/test_beta.py",
+        "tests/test_feedback.py"
       ]
     },
     {
@@ -3659,6 +3726,8 @@
       "reach": "every page of brickworks.diy: its controls (fields, checkboxes, buttons, dialog, card) in one place (docs/DESIGN_SYSTEM.md)",
       "area": "web",
       "tests": [
+        "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_feedback.py",
         "tests/test_release_train.py"
       ]
     },
@@ -3755,6 +3824,8 @@
       "reach": "https://brickworks.diy/gallery?q=castle&kind=space&sort=newest&page=2   (Top, New, Following signed in; Top over ?window=week or month; kinds as pills; Filters: order, size, made, instructions, Technic, Tested; gallery.js reads /api/share?op=list a page at a time; locally relay_server.mjs serves /gallery)",
       "area": "web",
       "tests": [
+        "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_feedback.py",
         "tests/test_gallery_tabs.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py"
@@ -4084,6 +4155,8 @@
       "reach": "godot --path .  (File, Export, then Picture of the model)",
       "area": "model-io",
       "tests": [
+        "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_feedback.py",
         "tests/test_sets.py"
       ]
     },
@@ -4230,7 +4303,9 @@
       "entry": "web/report.js",
       "reach": "https://brickworks.diy/m/<id>, /u/<handle>, /c/<id>   (Report it opens a dialog; /api/people?op=report)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_feedback.py"
+      ]
     },
     {
       "id": "ui:save as a studio model",
@@ -4291,6 +4366,26 @@
       "tests": []
     },
     {
+      "id": "ui:send feedback",
+      "kind": "ui",
+      "entry": "web/feedback.js",
+      "reach": "<deployment>/feedback, or Send feedback in any page's footer or the account menu   (web/feedback.html; the dialog: something wrong, an idea or a question, the words, an address signed out, a picture taken or chosen (shown, removable), the page and browser ticked; POST /api/plans?op=feedback; tools/web/feedback_flow.mjs)",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_account_erase.py",
+        "tests/test_feedback.py"
+      ]
+    },
+    {
+      "id": "ui:send feedback in the app",
+      "kind": "ui",
+      "entry": "src/ui/feedback_dialog.gd",
+      "reach": "godot --path .  (Help, Send feedback\u2026: the window's picture taken before the dialog covers it, removable; ticks for the version and system, the open model as a file and the last log lines (RecentLog), each shown before it goes; sent to the deployment's /api/plans?op=feedback; tools/probe.sh feedback_probe)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:setting the monthly challenge",
       "kind": "ui",
       "entry": "web/admin.js",
@@ -4329,6 +4424,7 @@
       "reach": "https://brickworks.diy/profile signed out, Sign in, then Sign in with orangecheck",
       "area": "account",
       "tests": [
+        "tests/test_feedback.py",
         "tests/test_model_page.py"
       ]
     },
@@ -4460,7 +4556,7 @@
       "id": "ui:the account menu",
       "kind": "ui",
       "entry": "web/follow.js",
-      "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, the theme and Sign out (at 390 px, Menu is the avatar and holds the same)",
+      "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback (and Beta hub for a beta tester, web/early.js), the theme and Sign out (at 390 px, Menu is the avatar and holds the same)",
       "area": "web",
       "tests": []
     },
@@ -4487,6 +4583,16 @@
       "reach": "godot --headless --path . --script src/dev/io_probe.gd   (by hand: open a Studio, LDCad or LeoCAD model; B opens the timeline in Author's steps; Shift-[ / Shift-] / Shift-N, Edit, Build steps, and the timeline's Earlier, Later, Merge with next, Delete step)",
       "area": "view",
       "tests": []
+    },
+    {
+      "id": "ui:the beta hub",
+      "kind": "ui",
+      "entry": "web/beta-hub.html",
+      "reach": "<deployment>/beta-hub   (signed out: sign in; not a tester: for testers; a tester: what's new, known issues, early features, how to tell us; GET /api/plans?op=beta_hub; Help, Beta hub in the app for a tester)",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/feedback/api_check.mjs"
+      ]
     },
     {
       "id": "ui:the beta's owner queue",
@@ -4543,6 +4649,8 @@
       "reach": "https://brickworks.diy/gallery   (nothing asked: This week's pick, Today in the gallery (the featured model and the set from the LDraw library) and Small builds, from /api/share?op=shelves; signed in, You can build now and each card's share, with mine=1; Sort \u203a Top builds says how it weighs, Sort \u203a Parts I own with a collection)",
       "area": "web",
       "tests": [
+        "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_feedback.py",
         "tests/test_gallery_tabs.py",
         "tests/test_release_train.py",
         "tests/test_site_shell.py"
@@ -4558,6 +4666,14 @@
         "tests/test_billing_pay.py",
         "tests/test_library_site.py"
       ]
+    },
+    {
+      "id": "ui:the owner's feedback inbox",
+      "kind": "ui",
+      "entry": "web/admin-feedback.js",
+      "reach": "<deployment>/admin#feedback as MASTER_EMAIL (?tests=1 the checks' own): GET /api/admin?op=feedback&kind&status&beta, ?op=feedback_file&id&file=picture|model, POST ?op=feedback_triage&id {status, note}, ?op=feedback_reply&id {words}",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "ui:theme choice",
@@ -4696,6 +4812,16 @@
       "tests": []
     },
     {
+      "id": "ui:your feedback on settings",
+      "kind": "ui",
+      "entry": "web/settings.js",
+      "reach": "https://brickworks.diy/settings#feedback signed in   (each report, where it stands, a tester's marked, our answers; never the owner's note)",
+      "area": "web",
+      "tests": [
+        "tests/test_billing_pay.py"
+      ]
+    },
+    {
       "id": "ui:your models as a designer",
       "kind": "ui",
       "entry": "web/designs.js",
@@ -4712,6 +4838,8 @@
       "reach": "https://brickworks.diy/profile, Edit profile, Choose a picture   (a JPEG, PNG or WebP up to 8 MB, cropped to a circle in the page: dragged, zoomed by the buttons, wheel or two fingers; Use this picture sends the square to POST /api/people?op=avatar, api/_avatars.js makes its own JPEG; Remove the picture; shown wherever the person is by api/_faces.js; taken out on /admin from a report about the profile)",
       "area": "web",
       "tests": [
+        "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_feedback.py",
         "tests/test_sets.py"
       ]
     },
@@ -4744,7 +4872,7 @@
       "id": "ui:your settings page",
       "kind": "ui",
       "entry": "web/settings.html",
-      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Sign out, Delete account)",
+      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Feedback, Sign out, Delete account)",
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py"

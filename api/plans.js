@@ -77,7 +77,17 @@
 //   POST /api/plans?op=beta        signed in, the form: kept, and emailed
 //   GET  /api/plans?op=beta_spots  {beta: off} or {beta: open, cap, left},
 //                                  signed out and cached a minute
-//   GET  /api/plans?op=beta_daily  Vercel's cron (/api/plans/beta-daily)
+//   GET  /api/plans?op=beta_daily  Vercel's cron (/api/plans/beta-daily),
+//                                  feedback's sweep with it
+//   GET  /api/plans?op=beta_hub    a tester's: what is new to try, the known
+//                                  issues and the early features
+//                                  (api/_early.js); 403 for anyone else
+//
+// And feedback (api/_feedback.js, supabase/feedback.sql), from anywhere,
+// signed in or out:
+//
+//   POST /api/plans?op=feedback    a report: {id, beta, attached, said}
+//   GET  /api/plans?op=feedback    signed in, your own and where each stands
 //
 // And the paid desktop (api/_desktop.js, units U5 and U6), answered in
 // every mode, so a page or an app can ask before it knows which:
@@ -112,7 +122,8 @@ import {
   admission, agreed, billingMode, charge, currentOffer, entitlementOf, mayDesktop, mostModels, reportOwner,
   returnOrigin,
 } from "./_billing.js";
-import { betaDaily, betaRoute, betaSpots } from "./_beta.js";
+import { betaDaily, betaHub, betaRoute, betaSpots } from "./_beta.js";
+import { feedbackRoute } from "./_feedback.js";
 import { db, dbConfigured } from "./_db.js";
 import { NoSuchFile, publicUrl, signedUrl, signingKey, tagOf, tokenFor } from "./_desktop.js";
 
@@ -417,7 +428,9 @@ export default async function handler(request, response) {
   response.setHeader("Cache-Control", "no-store");
   const op = String(request.query?.op || "");
   if (op === "beta") return betaRoute(request, response);
+  if (op === "feedback") return feedbackRoute(request, response, placeOf(request));
   if (request.method === "GET" && op === "beta_spots") return betaSpots(request, response);
+  if (request.method === "GET" && op === "beta_hub") return betaHub(request, response);
   if (request.method === "GET" && op === "beta_daily") return betaDaily(request, response);
   if (request.method === "GET" && op === "download") return download(request, response);
   if (request.method === "GET" && op === "entitlement") return entitlement(request, response);

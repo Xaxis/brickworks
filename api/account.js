@@ -10,7 +10,9 @@
 //               and whether it is the owner's (MASTER_EMAIL), which is
 //               what puts the admin page in the account panel; and its age
 //               as kept ({ask, over_13}: supabase/trust.sql), which is
-//               what puts the age question after a first sign-in.
+//               what puts the age question after a first sign-in; and
+//               whether it is a beta tester, with the early features it
+//               may use ({tester, early}: api/_early.js).
 //
 //   POST ?op=age, with a token and {month, year}: the answer to the age
 //   question (2026-10-18). Worked out here into whether that is 13 or over
@@ -35,7 +37,8 @@
 //   with its own email, signed in with orangecheck, a code emailed in the
 //   last five minutes first, as unlinking asks. The files of the build photos it posted, of those
 //   posted of its models, and of its own picture as its avatar
-//   (supabase/avatars.sql), are deleted from storage first, by name, since
+//   (supabase/avatars.sql), and of its feedback's pictures and models
+//   (supabase/feedback.sql), are deleted from storage first, by name, since
 //   storage keeps no link to the account; then the account itself, and
 //   with it every row that names it (each table's owner column cascades:
 //   its models, versions, comments, favourites,
@@ -68,6 +71,7 @@
 
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
+import { earlyFor } from "./_early.js";
 import { orangecheckOffer } from "./_oc_config.js";
 import { ageOf, answerAge, birthOf, thirteenOrOver } from "./_trust.js";
 
@@ -142,15 +146,20 @@ export default async function handler(request, response) {
   }
 
   // Whether to ask the age question. Not knowing (the database out of
-  // reach, or trust.sql not applied) asks nothing.
+  // reach, or trust.sql not applied) asks nothing. And whether this is a
+  // beta tester, and so which early features it may use (api/_early.js),
+  // asked at the same time: not knowing (feedback.sql not applied) is not
+  // one.
   let age = null;
+  let tester = false;
   if (dbConfigured()) {
-    try {
-      const kept = await ageOf(claims.sub);
-      if (kept.ready) age = { ask: kept.ask, over_13: kept.over_13 };
-    } catch (trouble) {
-      console.error(`account: no age: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    const [kept, isTester] = await Promise.allSettled([ageOf(claims.sub),
+      db("rpc/beta_tester", { method: "POST", body: { p_account: claims.sub } })]);
+    if (kept.status === "fulfilled" && kept.value.ready) age = { ask: kept.value.ask, over_13: kept.value.over_13 };
+    if (kept.status === "rejected") {
+      console.error(`account: no age: ${String(kept.reason?.message || kept.reason).slice(0, 120)}`);
     }
+    tester = isTester.status === "fulfilled" && isTester.value === true;
   }
 
   return response.status(200).json({
@@ -158,6 +167,7 @@ export default async function handler(request, response) {
     signed_in: true,
     email: claims.email || null,
     master: isMaster(claims),
+    beta: { tester, early: earlyFor(tester) },
     ...(age ? { age } : {}),
   });
 }
@@ -432,10 +442,14 @@ async function deleteAccount(request, response) {
         body: JSON.stringify({ prefixes: avatars.map((one) => `${one.id}.jpg`) }), signal: AbortSignal.timeout(20000) });
       if (!files.ok) throw new Error(`storage DELETE avatars: ${files.status}`);
     }
+    // The files of its feedback (api/_feedback.js): its reports go with the
+    // account, their files by name first. Imported here, not above: this
+    // route answers every start of the app.
+    const feedback = await (await import("./_feedback.js")).deleteFeedbackOf(account);
     const gone = await fetch(`${base}/auth/v1/admin/users/${account}`, {
       method: "DELETE", headers: { apikey: key, authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(20000) });
     if (!gone.ok && gone.status !== 404) throw new Error(`auth DELETE: ${gone.status}`);
-    return response.status(200).json({ deleted: true, photos: photos.length, avatars: avatars.length,
+    return response.status(200).json({ deleted: true, photos: photos.length, avatars: avatars.length, feedback,
       ...(kept ? { orangecheck: { kept: true, said: kept } } : {}), ...(ended ? { plan: { ended } } : {}) });
   } catch (trouble) {
     console.error(`account: not deleted: ${String(trouble?.message || trouble).slice(0, 120)}`);

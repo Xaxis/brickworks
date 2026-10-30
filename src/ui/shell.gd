@@ -43,6 +43,8 @@ var see_inside: SeeInside
 var stress: StressView
 ## File, Versions…: src/ui/versions_dialog.gd.
 var versions: VersionsDialog
+## Help, Send feedback… (FeedbackDialog).
+var feedback: FeedbackDialog
 
 ## name -> Command
 var _commands: Dictionary = {}
@@ -110,7 +112,7 @@ const MENUS: Array = [
 	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
 		"mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "measure",
 		"stability", "simulate", "hidden_colours", "reseat", "-", "connector", "settings"]],
-	["Help", ["keys", "tour", "-", "docs", "website", "about"]],
+	["Help", ["keys", "tour", "-", "docs", "website", "beta_hub", "-", "feedback", "about"]],
 ]
 
 ## Submenu rows are numbered from here, clear of the commands.
@@ -122,6 +124,15 @@ const ASSISTANT_COMMANDS: Array[String] = ["ask_claude", "brace", "panel_assista
 
 ## Whether the assistant is in the window: [method set_assistant].
 var assistant_shown: bool = true
+
+## Early features' commands, each by the key that turns it on (api/_early.js
+## EARLY): in no menu, and never run, unless the account may use it, a beta
+## tester's ([method set_early]).
+const EARLY_COMMANDS: Dictionary = {"beta_hub": "beta_hub"}
+
+## The early features this account may use, as the deployment said
+## (Account.early).
+var early: Array[String] = []
 
 const SUBMENUS: Dictionary = {
 	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
@@ -314,6 +325,11 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	versions.bar = bar
 	add_child(versions)
 
+	feedback = FeedbackDialog.new()
+	feedback.store = store
+	feedback.world = world
+	add_child(feedback)
+
 	_about = AcceptDialog.new()
 	_about.title = "About Brickworks"
 	# The mark beside the words, as an About box has it: the app's own icon
@@ -477,7 +493,7 @@ func doing(name: String) -> String:
 ## never put off a frame to say so first. (The clipboard is not among
 ## them: in a browser the app keeps its own, EditVerbs.copy.)
 const IN_THE_PRESS: Array[String] = ["open", "import_ldraw", "import_io", "import_lxf",
-	"import_mesh", "mosaic", "brickify", "full_screen", "docs", "website", "quit", "new_window"]
+	"import_mesh", "mosaic", "brickify", "full_screen", "docs", "website", "beta_hub", "quit", "new_window"]
 
 ## The commands that open a tab of their own in a browser (BookletMaker):
 ## run at once there, as those above are.
@@ -616,6 +632,8 @@ func can(name: String) -> bool:
 		return false
 	if not assistant_shown and name in ASSISTANT_COMMANDS:
 		return false
+	if EARLY_COMMANDS.has(name) and not str(EARLY_COMMANDS[name]) in early:
+		return false
 	return not found.can.is_valid() or bool(found.can.call())
 
 
@@ -630,14 +648,14 @@ var read_only: bool = false
 const LOOKING: Array[String] = ["view_default", "view_front", "view_back",
 	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
 	"fit_model", "ortho", "full_screen", "timeline", "parts_list", "instructions",
-	"docs", "website", "about"]
+	"docs", "website", "beta_hub", "feedback", "about"]
 
 
 ## What may be done while a model is being laid (ModelStore.laying): look
 ## at what is down from another side, and nothing that reads the model.
 const WHILE_LAYING: Array[String] = ["view_default", "view_front", "view_back",
 	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
-	"ortho", "full_screen", "docs", "website", "about"]
+	"ortho", "full_screen", "docs", "website", "beta_hub", "feedback", "about"]
 
 
 ## -1 for a command that is not a setting; 0 off, 1 on.
@@ -1122,6 +1140,11 @@ func _define() -> void:
 		"How everything in Brickworks works, on brickworks.diy")
 	_add("website", "Brickworks website", 0,
 		func() -> void: OS.shell_open("https://brickworks.diy"))
+	_add("beta_hub", "Beta hub", 0,
+		func() -> void: OS.shell_open(DocsPages.SITE + "/beta-hub"), Callable(),
+		"For beta testers: what to try, what we know is wrong, and how to tell us")
+	_add("feedback", "Send feedback…", 0, _show_feedback, Callable(),
+		"Something wrong, an idea or a question, to the people who make Brickworks")
 	_add("about", "About Brickworks", 0, _show_about)
 
 
@@ -1265,6 +1288,8 @@ func _shown(items: Array) -> Array:
 	for item: String in items:
 		if not assistant_shown and item in ASSISTANT_COMMANDS:
 			continue
+		if EARLY_COMMANDS.has(item) and not str(EARLY_COMMANDS[item]) in early:
+			continue
 		if item == "-" and (out.is_empty() or out.back() == "-"):
 			continue
 		out.append(item)
@@ -1295,6 +1320,15 @@ func name_designer(who: String) -> void:
 	brace.words = "Ask %s to brace this…" % who
 	brace.tip = ("Ask %s to make this joint hold: what it carries, on what, and its margin, "
 		% who + "asked for you")
+	_fill_again()
+
+
+## The account's early features (Account.early): the menus made again with
+## the commands of those it may use, and without the others'.
+func set_early(keys: Array[String]) -> void:
+	if keys == early:
+		return
+	early = keys.duplicate()
 	_fill_again()
 
 
@@ -1573,6 +1607,17 @@ func docs_page() -> String:
 		if shown:
 			found = DocsPages.PANELS[name]
 	return found
+
+
+## Help, Send feedback…: the window pictured as it is, once the menu has
+## gone from it and before the dialog covers it, offered with the report.
+func _show_feedback() -> void:
+	for _n: int in 2:
+		await get_tree().process_frame
+	var window: Image = get_viewport().get_texture().get_image()
+	feedback.account = app.get("_account")
+	feedback.recent = app.get("_log")
+	feedback.open(window)
 
 
 func _show_about() -> void:
@@ -2427,6 +2472,8 @@ func controls_by_name() -> Dictionary:
 		out["save_as_name"] = _save_as_name
 		out["save_as_ok"] = _save_as.get_ok_button()
 		out["save_as_cancel"] = _save_as.get_cancel_button()
+	if feedback != null:
+		out.merge(feedback.controls_by_name())
 	# About's links to the licences in full, and the licence open.
 	if _about != null and _about.visible:
 		out["about_ok"] = _about.get_ok_button()
