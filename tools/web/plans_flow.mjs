@@ -28,10 +28,18 @@
 //      for Pro, now monthly with the line.
 //   5. Take it off: its words, and no row left. Whatever happens, the
 //      address is forgotten at the end: only ours, nothing else touched.
+//   6. The plans as /api/plans says them (api/_billing.js), with nothing
+//      of AI, which no plan limits (2026-10-29). Plans off, as every
+//      release's deployment is, a GET refused as it always was. On (a
+//      unit's preview with plans in test mode): Free keeps 25 models with
+//      the account and Pro any number, and a throwaway account's own plan
+//      (?op=plan, delivered+plansapi-<random>@resend.dev, deleted at the
+//      end) says its limit, 25, and that it keeps 0.
 //
 // Pictures in --out: plans_<width>_<theme>.png, the form open, the thanks.
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
+import { canSignIn, deleteAccount, mintSession } from "./session.mjs";
 import { mkdirSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
@@ -53,6 +61,9 @@ mkdirSync(out, { recursive: true });
 const bypass = process.env.BW_BYPASS || "";
 const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 const EMAIL = `delivered+plans-${randomBytes(4).toString("hex")}@resend.dev`;
+// An account of its own for its plan, made only where plans are on.
+const ACCOUNT = `delivered+plansapi-${randomBytes(4).toString("hex")}@resend.dev`;
+let madeAccount = false;
 
 let failed = 0;
 const check = (what, ok) => {
@@ -230,9 +241,44 @@ try {
     if (left) check(`no row left for it (${left.length})`, left.length === 0);
   }
   await made.close();
+
+  // 6. The plans as the API says them.
+  console.log("6. The plans as /api/plans says them");
+  const api = await context({ width: 1400, dark: false });
+  const apiPage = await api.newPage();
+  await apiPage.goto(`${site}/plans`, { waitUntil: "domcontentloaded" });
+  const ask = (route, token = "") => apiPage.evaluate(async ([r, t]) => {
+    const reply = await fetch(r, { headers: t ? { authorization: `Bearer ${t}` } : {} });
+    return { status: reply.status, body: await reply.json().catch(() => null) };
+  }, [route, token]);
+  const offer = await ask("/api/plans");
+  const aiFree = (body) => !/build/i.test(JSON.stringify(body));
+  if (offer.status === 405) {
+    check(`plans off: a GET refused as it always was (${offer.status}), nothing of a plan`,
+      !/savedModels|build/i.test(JSON.stringify(offer.body)));
+  } else {
+    const o = offer.body || {};
+    check(`the offer: ${offer.status}, Free keeps ${o.free?.savedModels}, Pro ${o.pro?.savedModels}`,
+      offer.status === 200 && o.free?.savedModels === 25 && o.pro?.savedModels === "unlimited");
+    check(`...and nothing of AI in it (${Object.keys(o.free || {}).join(", ")})`, aiFree(o));
+    if (standIn || !canSignIn()) {
+      check("a throwaway account's plan: needs the deployment's project keys (.env)", false);
+    } else {
+      madeAccount = true;
+      const session = await mintSession(ACCOUNT);
+      const mine = await ask("/api/plans?op=plan", session.access_token);
+      const m = mine.body || {};
+      check(`its plan: ${mine.status} ${JSON.stringify({ plan: m.plan?.key, standing: m.standing, savedModels: m.savedModels })}`,
+        mine.status === 200 && m.plan?.key === "free" && m.standing === "known"
+        && m.savedModels?.limit === 25 && m.savedModels?.kept === 0);
+      check(`...and nothing of AI in it (${Object.keys(m).join(", ")})`, aiFree(m));
+    }
+  }
+  await api.close();
 } catch (trouble) {
   check(`the flow ran (${String(trouble?.stack || trouble).split("\n").slice(0, 3).join(" | ")})`, false);
 } finally {
+  if (madeAccount) await deleteAccount(ACCOUNT).catch(() => {});
   if (!standIn) await forgetOurs();
   await browser.close();
 }
