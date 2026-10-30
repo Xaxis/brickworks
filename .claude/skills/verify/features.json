@@ -1742,7 +1742,7 @@
       "id": "cli:sets browser flow",
       "kind": "cli",
       "entry": "tools/web/sets_flow.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/sets_flow.mjs --url=<preview> --out=DIR [--no-app]   (preview_checks.sh sets_flow: the library's every set, a set with and without a 3D model, parts with our pictures, weight and first paint, Parts you own for a throwaway, Open its parts landing in the app's bin, the sitemaps)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/sets_flow.mjs --url=<preview> --out=DIR [--no-app]   (preview_checks.sh sets_flow: the library's every set, a set with and without a 3D model, parts with our pictures, weight and first paint (the first visit after a deploy said with its slowest fetches, a visitor after it held to 2.5 s), Parts you own for a throwaway, Open its parts landing in the app's bin, the sitemaps)",
       "area": "web",
       "tests": []
     },

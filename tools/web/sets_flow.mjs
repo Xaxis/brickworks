@@ -12,9 +12,9 @@
 //      picture drawn from its parts (/library/set/10497-1.jpg, a JPEG), its
 //      facts, Rebrickable credited, CreativeWork and no Product; its parts
 //      list's first lots drawn with our own pictures; and the page's weight
-//      and first paint, measured (1,278 parts): the first visit may wake the
-//      function (said), and a visitor after it, in a browser of their own, is
-//      what is held to 2.5 s.
+//      and first paint, measured (1,278 parts): the first visit after a
+//      deploy is said, with what it waited on longest, and a visitor after
+//      it, in a browser of their own, is what is held to 2.5 s.
 //   3. A set with one, 10179-1 Millennium Falcon: its LDraw model's render,
 //      Build it in 3D, the model's page, which links back.
 //   4. Parts you own: a throwaway account (a Resend test address, its session
@@ -154,14 +154,22 @@ try {
       return { requests: all.length, sent: sum((one) => one.transferSize || 0), body: sum((one) => one.decodedBodySize || 0),
         html: all[0]?.transferSize || 0, json: performance.getEntriesByType("resource").find((one) => one.name.endsWith("/parts.json"))?.transferSize || 0 };
     });
-    const served = await page.evaluate(() => Math.round(performance.getEntriesByType("navigation")[0]?.responseStart || 0));
+    const { served, slowest } = await page.evaluate(() => ({
+      served: Math.round(performance.getEntriesByType("navigation")[0]?.responseStart || 0),
+      slowest: performance.getEntriesByType("resource").filter((one) => one.startTime < 3000)
+        .sort((a, b) => b.duration - a.duration).slice(0, 3)
+        .map((one) => `${new URL(one.name).pathname} ${Math.round(one.duration)} ms`),
+    }));
     console.log(`  the page of a 1,278-part set: first paint ${Math.round(facts.paint)} ms (its first byte at ${served} ms), `
       + `${weight.requests} requests, ${Math.round(weight.sent / 1024)} kB over the wire (${Math.round(weight.body / 1024)} kB unpacked), `
-      + `the page ${Math.round(weight.html / 1024)} kB, its parts list ${Math.round(weight.json / 1024)} kB`);
+      + `the page ${Math.round(weight.html / 1024)} kB, its parts list ${Math.round(weight.json / 1024)} kB; `
+      + `its slowest fetches: ${slowest.join(", ")}`);
     await page.close();
-    // The first visit after a deploy may wake the function, which every page
-    // of the site's shares: a visitor after it, in a browser of their own
-    // (nothing of the first in its cache), is what a page is held to.
+    // The first visit after a deploy was 2.6 s to paint with its first byte
+    // at 40 ms (sets364, two previews), and 0.2 to 0.4 s on the same
+    // deployment after: what it waits on is said above. A visitor after it,
+    // in a browser of their own (nothing of the first in its cache), is what
+    // a page is held to.
     const fresh = await browser.newContext({ viewport: { width: 1280, height: 900 }, extraHTTPHeaders: headers });
     const again = await fresh.newPage();
     const reply = await again.goto(`${site}/library/set/${PLAIN}`, { waitUntil: "load", timeout: 120000 });
