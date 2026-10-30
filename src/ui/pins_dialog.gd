@@ -173,7 +173,7 @@ func _row(pin: PinnedComments.Pin, number: int, why: String) -> Control:
 	settle.focus_mode = Control.FOCUS_NONE
 	settle.disabled = not why.is_empty()
 	settle.tooltip_text = why if not why.is_empty() else ("Back on the model" if pin.resolved
-		else "Done with it: kept with the model, out of the view (Ctrl+Z brings it back)")
+		else Keymap.filled(PinsView.RESOLVE_TIP, true))
 	settle.pressed.connect(func() -> void:
 		together.resolve_comment(pin.id, not pin.resolved)
 		fill())

@@ -26,6 +26,8 @@ signal list_wanted
 const MARK := 22.0
 const CARD_WIDTH := 280.0
 const DEFAULT_TINT := Color("#4c6ef5")
+## Resolve's tooltip, its Undo key filled from the keymap (Keymap.filled).
+const RESOLVE_TIP := "Done with it: kept with the model, out of the view ({undo|brings it back})"
 
 ## pin id -> its mark.
 var _marks: Dictionary = {}
@@ -57,7 +59,7 @@ func _ready() -> void:
 	_card_resolve = Button.new()
 	_card_resolve.text = "Resolve"
 	_card_resolve.focus_mode = Control.FOCUS_NONE
-	_card_resolve.tooltip_text = "Done with it: kept with the model, out of the view (Ctrl+Z brings it back)"
+	_card_resolve.tooltip_text = Keymap.filled(RESOLVE_TIP, true)
 	_card_resolve.pressed.connect(_resolve_shown)
 	row.add_child(_card_resolve)
 	var all := Button.new()
@@ -156,7 +158,7 @@ func open_card(id: String) -> void:
 	var why: String = together.comment_words() if together != null else ""
 	_card_resolve.disabled = not why.is_empty()
 	_card_resolve.tooltip_text = why if not why.is_empty() \
-		else "Done with it: kept with the model, out of the view (Ctrl+Z brings it back)"
+		else Keymap.filled(RESOLVE_TIP, true)
 	var mark: Button = _marks.get(id)
 	var at: Vector2 = mark.get_screen_position() + Vector2(MARK + 6, -4) if mark != null \
 		else get_screen_position() + size / 2.0
