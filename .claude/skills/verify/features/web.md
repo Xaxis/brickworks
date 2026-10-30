@@ -79,7 +79,7 @@ plan with Claude as the client.
   The bin's All listing ranks each part once before sorting
   (`PartsBin._sort_for`): the same order in 0.44 s natively, where it
   took 1.2. On the web it is not sorted at all (webload, 2026-10-30):
-  `tools/export.sh` runs `src/dev/all_order.gd` after web_pack.py, which
+  `tools/export.sh` runs `src/dev/write_all_order.gd` after web_pack.py, which
   writes All's order for the web pack's catalogue to
   `assets/web/all_order.txt` with the bin's own code
   (`PartsBin.write_all_order` / `all_unasked`), and the bin reads it on the

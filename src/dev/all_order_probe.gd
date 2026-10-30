@@ -6,7 +6,7 @@
 ## A first visit to the web app spent most of a second of its start working
 ## out the parts bin's All with nothing typed: sorting twenty thousand parts
 ## and waiting for the parts LDraw keeps only for old files (webload,
-## 2026-10-30). The web export now works it out once (src/dev/all_order.gd)
+## 2026-10-30). The web export now works it out once (src/dev/write_all_order.gd)
 ## and the bin reads it (PartsBin.all_as_packed). Read back here, the order
 ## must be the one the bin works out itself, part for part, with as many set
 ## aside; and it must not be read for a catalogue of another size, one that
