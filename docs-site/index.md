@@ -3,7 +3,7 @@ ai: Brickworks is a CAD app for LEGO® bricks, in a browser at brickworks.diy/ap
 rules:
   - Models are made of real LDraw parts in colours each was really made in.
   - AI is never limited on any plan: people bring their own AI.
-  - Write LEGO® only as an adjective: LEGO® bricks, LEGO® Art.
+  - Write LEGO® only as an adjective: LEGO® bricks, LEGO® Art sets.
 title: Brickworks documentation
 nav: Introduction
 description: How to build, design with Claude, share and print instructions in Brickworks, the CAD app for LEGO® bricks that runs in a browser and on the desktop.
