@@ -72,7 +72,7 @@ let catalog = null;
 /// The catalogue as the pages read it: {sets (by number), by (lower-cased
 /// number -> set), themes (id -> {name, parent})}, each set {set, name,
 /// year, theme (its path of names, outermost first), parts, figs, lots,
-/// inside, picks, said (what a search reads)}. From _set_catalog.json
+/// inside, picks}. From _set_catalog.json
 /// beside this file in a deployment, or assets/generated in a checkout;
 /// null where there is neither.
 export function setCatalog() {
@@ -116,7 +116,6 @@ export function useCatalog(raw) {
         .map(([other, n]) => [String(other), Number(n) || 1]),
       picks: (raw.picks?.[number] || []).filter((one) => typeof one === "string"),
     };
-    entry.said = `${entry.name} ${entry.set} ${path.join(" ")}`.toLowerCase();
     sets.push(entry);
     by.set(entry.set.toLowerCase(), entry);
   }
