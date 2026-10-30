@@ -77,6 +77,8 @@ ui:balance readout
 
 **Tools › Simulate mechanism…**, then click an axle or a crank: the gear train turns from it, and the panel says how fast each part goes, each arm's period, what locks it, and whether the model stays standing as it turns. It reads the model as it is and changes nothing.
 
+It also says where the motion stops. Over the whole cycle it finds the first angle where two moving parts meet, names them and tints them red. It gives the range of a crank or a linkage in degrees. When a motor turns the train (Power Functions M, L or XL, an E-motor or a 9 V motor), it weighs the motor's torque against the load it lifts, and says where the motor stalls. Play and the slider stop there, and **Go to the stop** shows it.
+
 <!-- covers
 ui:simulate mechanism
 lib:mechanisms
