@@ -197,3 +197,4 @@ fling             # a list thrown by a finger glides as iOS's does at 0.5 to 4 p
 feature_kinds   # the feature pass offers a piece by what it is, its head noun: no gearbox for a crown, no cue rack for a pool, no cone for a beacon (design285)
 tested_seeds    # the gallery's 30 real LDraw sets fail the Tested mark no more than they did, and still for their files' own faults (tested301)
 desktop_pass     # the paid desktop's check at start: a server-signed token verifies, a changed one does not; built while paid opens, later asks; 44 days' grace; billing off opens at once (desk347)
+plan_full         # the plan keeps no more models with the account: its words and See Pro (savecap360)

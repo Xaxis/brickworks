@@ -244,6 +244,18 @@ export function sitePages({ remote = "" } = {}) {
       } },
     { name: "admin", path: "/admin", admin: true,
       ready: (page, { signedIn }) => (signedIn ? until(page, () => !document.querySelector("#view")?.classList.contains("hide")) : true) },
+    // The beta (web/beta.html): the spots and the form signed in; signed
+    // out, Sign in to apply's dialog, as a person opens it.
+    { name: "beta", path: "/beta",
+      ready: (page) => until(page, () => document.getElementById("apply-wait")?.hidden === true),
+      open: async (page, { signedIn }) => {
+        if (signedIn) return [];
+        await page.click("#sign-in");
+        const opened = await until(page, () => document.querySelector("dialog.sign-in[open]"));
+        return [[opened ? "sign in" : "sign in (missing)", "dialog.sign-in"]];
+      } },
+    { name: "beta-admin", path: "/beta-admin", admin: true,
+      ready: (page, { signedIn }) => (signedIn ? until(page, () => document.getElementById("view")?.hidden === false) : true) },
     { name: "authorize", path: AUTHORIZE,
       ready: (page) => until(page, () => [...document.querySelectorAll("main section")].some((s) => !s.classList.contains("hide"))) },
     { name: "compare", path: "/compare" },

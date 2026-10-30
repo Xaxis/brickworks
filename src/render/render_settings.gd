@@ -37,7 +37,7 @@ const LOOKS: Dictionary = {
 var quality: int = Quality.GOOD
 ## How the plastic and the set are drawn: "window", as the window draws
 ## them, or "product", as a product shot is lit and finished (StudioRender:
-## plastic with a gloss and rounded edges, clear parts that bend the light,
+## plastic with a gloss and rounded edges, clear parts that tint what is behind,
 ## a key, fill and rim over a studio's light, and AgX's film-like tones).
 var look: String = "window"
 var size: Vector2i = Vector2i(1920, 1080)

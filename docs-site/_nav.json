@@ -4,5 +4,5 @@
   {"title": "Designing with AI", "pages": ["ai", "connector", "claude-code", "fresh-eyes", "how-ai-works"]},
   {"title": "The website", "pages": ["gallery", "sharing", "model-pages", "profiles", "collections", "challenges", "build-together", "ldraw-library", "account"]},
   {"title": "Instructions and exports", "pages": ["instructions", "exports"]},
-  {"title": "Reference", "pages": ["shortcuts", "mcp-tools", "accessibility", "plans", "troubleshooting", "changelog"]}
+  {"title": "Reference", "pages": ["shortcuts", "mcp-tools", "accessibility", "plans", "beta", "troubleshooting", "changelog"]}
 ]

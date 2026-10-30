@@ -5,8 +5,9 @@ Admission and Supabase (tests/fixtures/billing/), through the real client
 (api/_admission.js, UPSTREAM.md). Every request either of them is sent is
 recorded, so "nothing was asked" is a fact the tests read, not a hope:
 
-- an account's entitlement: Free with 10 Claude builds and none used, Pro
-  with no limit and the desktop, a comp, the owner (MASTER_EMAIL);
+- an account's entitlement: Free keeping 25 models with the account, Pro
+  any number and the desktop, a comp, the owner (MASTER_EMAIL); AI is
+  never limited, so no plan says anything of it;
 - Admission unreachable: a cold instance answers from the snapshot kept in
   the database; with no snapshot, an answer that refuses nothing, so
   nobody who pays is ever locked out;
@@ -21,7 +22,6 @@ import json
 import re
 import shutil
 import subprocess
-from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -50,15 +50,9 @@ def run(body: str, **world) -> dict | None:
     return json.loads(done.stdout.strip().splitlines()[-1])
 
 
-def next_month() -> str:
-    now = datetime.now(timezone.utc)
-    year, month = (now.year + 1, 1) if now.month == 12 else (now.year, now.month + 1)
-    return f"{year:04d}-{month:02d}-01T00:00:00.000Z"
-
-
 ASK = """
 const e = await billing.entitlementOf(WHO);
-return { e, build: billing.mayBuild(e), desktop: billing.mayDesktop(e), calls: w.calls };
+return { e, most: billing.mostModels(e), desktop: billing.mayDesktop(e), calls: w.calls };
 """
 
 
@@ -66,36 +60,31 @@ def ask(setup: str, who: str, **world) -> dict | None:
     return run(setup + ASK.replace("WHO", json.dumps(who)), billing="test", **world)
 
 
-def test_free_has_ten_ai_builds_and_none_used() -> None:
+def test_free_keeps_25_models_with_the_account() -> None:
     got = ask("", "u-free")
     if got is None:
         return
     e = got["e"]
     assert e["billing"] == "test" and e["standing"] == "known" and e["freshness"] == "live"
     assert e["plan"] == {"key": "free", "name": "Free", "source": "default", "until": None}
-    assert e["builds"] == {"limit": 10, "used": 0, "remaining": 10, "resetsAt": next_month()}
+    assert e["savedModels"] == {"limit": 25} and got["most"] == 25
     assert e["desktop"] is False and e["owner"] is False and e["subscription"] is None
-    assert got["build"] is True and got["desktop"] is False
+    assert got["desktop"] is False
+    # Nothing of AI: no plan limits it.
+    assert not [key for key in e if "build" in key.lower()], list(e)
     # The account and the plans, from Admission; the snapshot read and kept.
     assert "GET https://admission.test/v1/customers/u-free" in got["calls"]
     assert "POST https://db.test/rest/v1/rpc/admission_snapshot_put" in got["calls"]
 
 
-def test_free_with_its_ten_used_may_not_build() -> None:
-    got = ask("w.admission.setUsed('u-free', 'ai_builds', 10);", "u-free")
-    if got is None:
-        return
-    assert got["e"]["builds"]["remaining"] == 0 and got["build"] is False
-
-
 def test_pro_has_no_limit_and_the_desktop() -> None:
-    got = ask("w.admission.subscribe('u-pro'); w.admission.setUsed('u-pro', 'ai_builds', 400);", "u-pro")
+    got = ask("w.admission.subscribe('u-pro');", "u-pro")
     if got is None:
         return
     e = got["e"]
     assert e["plan"] == {"key": "pro", "name": "Pro", "source": "subscription", "until": None}
-    assert e["builds"] == {"limit": None, "used": 400, "remaining": None, "resetsAt": next_month()}
-    assert e["desktop"] is True and got["build"] is True and got["desktop"] is True
+    assert e["savedModels"] == {"limit": None} and got["most"] is None
+    assert e["desktop"] is True and got["desktop"] is True
     assert e["subscription"]["status"] == "active" and e["subscription"]["endsAt"] is None
 
 
@@ -105,19 +94,19 @@ def test_a_comp_gives_pro_until_it_ends() -> None:
         return
     e = got["e"]
     assert e["plan"] == {"key": "pro", "name": "Pro", "source": "override", "until": "2027-10-29T00:00:00.000Z"}
-    assert e["builds"]["limit"] is None and e["desktop"] is True and e["subscription"] is None
+    assert e["savedModels"]["limit"] is None and e["desktop"] is True and e["subscription"] is None
+    assert got["most"] is None
 
 
 def test_down_a_cold_instance_answers_from_the_kept_snapshot() -> None:
     got = run("""
 w.admission.subscribe('u-pro');
-w.admission.setUsed('u-free', 'ai_builds', 10);
 const before = [await billing.entitlementOf('u-pro'), await billing.entitlementOf('u-free')];
 billing.forgetClient();
 w.age(10 * 60_000);
 w.admission.down = true;
 const after = [await billing.entitlementOf('u-pro'), await billing.entitlementOf('u-free')];
-return { before, after, may: after.map(billing.mayBuild), desk: after.map(billing.mayDesktop),
+return { before, after, most: after.map(billing.mostModels), desk: after.map(billing.mayDesktop),
          kept: [...w.snapshots.keys()] };
 """, billing="test")
     if got is None:
@@ -127,7 +116,7 @@ return { before, after, may: after.map(billing.mayBuild), desk: after.map(billin
     assert pro["standing"] == "known" and pro["freshness"] == "stale"
     assert pro["plan"]["key"] == "pro" and pro["desktop"] is True and got["desk"] == [True, False]
     # And Free stays Free at its limit: an outage is never more than you had.
-    assert free["plan"]["key"] == "free" and free["builds"]["remaining"] == 0 and got["may"] == [True, False]
+    assert free["plan"]["key"] == "free" and free["savedModels"] == {"limit": 25} and got["most"] == [None, 25]
     assert {"admission:v2:brickworks:test:c:u-pro", "admission:v2:brickworks:test:c:u-free"} <= set(got["kept"])
 
 
@@ -153,15 +142,15 @@ w.admission.down = true;
 w.storeDown = true;
 const bare = await billing.entitlementOf('u-pro');
 const all = [never, guessed, bare];
-return { all, may: all.map(billing.mayBuild), desk: all.map(billing.mayDesktop) };
+return { all, most: all.map(billing.mostModels), desk: all.map(billing.mayDesktop) };
 """, billing="test")
     if got is None:
         return
     for e in got["all"]:
         assert e["standing"] == "unknown" and e["billing"] == "test"
         # Nothing to refuse on, and nothing lasting to grant on.
-        assert e["plan"] is None and e["builds"] is None and e["desktop"] is None
-    assert got["may"] == [True, True, True] and got["desk"] == [True, True, True]
+        assert e["plan"] is None and e["savedModels"] is None and e["desktop"] is None
+    assert got["most"] == [None, None, None] and got["desk"] == [True, True, True]
 
 
 def test_off_asks_nothing_at_all() -> None:
@@ -171,13 +160,13 @@ const offer = await billing.currentOffer();
 await billing.reportOwner({ sub: 'u1', email: 'owner@example.com' });
 const token = await w.signIn({ sub: 'u1', email: 'ada@example.com' });
 const routes = [await askPlans(), await askPlans({ query: { op: 'plan' }, headers: { authorization: `Bearer ${token}` } })];
-return { e, offer, routes, may: [billing.mayBuild(e), billing.mayDesktop(e)], calls: w.calls,
+return { e, offer, routes, may: [billing.mostModels(e), billing.mayDesktop(e)], calls: w.calls,
          client: billing.admission() };
 """)
     if got is None:
         return
     assert got["calls"] == [], got["calls"]
-    assert got["e"]["standing"] == "off" and got["e"]["billing"] == "off" and got["may"] == [True, True]
+    assert got["e"]["standing"] == "off" and got["e"]["billing"] == "off" and got["may"] == [None, True]
     assert got["offer"] is None and got["client"] is None
     # A GET to /api/plans, with or without a session, as before plans.
     assert got["routes"] == [{"status": 405, "json": REFUSED_GET}] * 2
@@ -217,16 +206,23 @@ return { mine, owner, nobody, offer, odd, owners: [...w.admission.owners] };
     if got is None:
         return
     mine, owner = got["mine"], got["owner"]
-    assert mine["status"] == 200 and mine["json"]["plan"]["key"] == "free" and mine["json"]["builds"]["limit"] == 10
+    # The plan's limit on models kept with the account, and how many it keeps now.
+    assert mine["status"] == 200 and mine["json"]["plan"]["key"] == "free"
+    assert mine["json"]["savedModels"] == {"limit": 25, "kept": 0}
+    # Nothing of AI, which no plan limits.
+    for answer in (mine["json"], owner["json"]):
+        assert not re.search(r"build", json.dumps(answer), re.I), answer
     # The owner (MASTER_EMAIL) is reported to Admission, and has everything.
     assert got["owners"] == ["u-own"]
-    assert owner["json"]["owner"] is True and owner["json"]["builds"]["limit"] is None and owner["json"]["desktop"] is True
+    assert owner["json"]["owner"] is True and owner["json"]["savedModels"] == {"limit": None, "kept": 0}
+    assert owner["json"]["desktop"] is True
     assert got["nobody"] == {"status": 401, "json": {"error": "sign in to Brickworks first"}}
     assert got["odd"]["status"] == 404
     offer = got["offer"]["json"]
     assert got["offer"]["status"] == 200 and offer["billing"] == "test" and offer["forSale"] is True
-    assert offer["free"]["claudeBuilds"] == 10 and offer["free"]["desktop"] is False
-    assert offer["pro"]["claudeBuilds"] == "unlimited" and offer["pro"]["desktop"] is True
+    assert offer["free"]["savedModels"] == 25 and offer["free"]["desktop"] is False
+    assert offer["pro"]["savedModels"] == "unlimited" and offer["pro"]["desktop"] is True
+    assert not re.search(r"build", json.dumps(offer), re.I), offer
     assert offer["pro"]["prices"] == {"month": 800, "year": 8000}
 
 
@@ -234,7 +230,7 @@ def test_the_offer_when_admission_never_answered_is_the_published_one_not_for_sa
     got = run("w.admission.down = true; return await billing.currentOffer();", billing="test")
     if got is None:
         return
-    assert got["forSale"] is False and got["free"]["claudeBuilds"] == 10
+    assert got["forSale"] is False and got["free"]["savedModels"] == 25 and got["pro"]["savedModels"] == "unlimited"
     assert got["pro"]["prices"] == {"month": 800, "year": 8000}
 
 

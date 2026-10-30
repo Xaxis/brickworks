@@ -64,6 +64,15 @@
 //                                        makes it a test one, which only a
 //                                        page asked with tests=1 shows
 //   POST /api/admin?op=end_challenge&challenge=N  challenge N ended now
+//   GET  /api/admin?op=beta[&status=S][&tests=1]  the beta's applications,
+//                                        with what was read of each, and its
+//                                        spots (api/_beta.js, supabase/beta.sql)
+//   POST /api/admin?op=beta_decide&account=U  {decision: approve | decline,
+//                                        note}: decided, recorded with who and
+//                                        when; approved, the next spot and its
+//                                        month of Pro; and the email
+//   POST /api/admin?op=beta_grant        every month still to give, given at
+//                                        Admission: what runs once Pro launches
 //   POST /api/admin?op=plan              {themes: [{month: "2026-11", title,
 //                                        brief}]}: a year of themes at once, up
 //                                        to twelve, each its whole month, told
@@ -92,6 +101,7 @@ import { AvatarRefusal, removeAvatar } from "./_avatars.js";
 import { facesOf, pictureAt } from "./_faces.js";
 import { keyed, readShard, shardOf } from "./_owned.js";
 import { originOf } from "./_oauth.js";
+import { betaDecide, betaGrant, betaQueue } from "./_beta.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -144,10 +154,11 @@ export default async function handler(request, response) {
   }
   const op = String(request.query?.op || "");
   const acts = { unlist, bar, unbar, dismiss, untest, uncomment, remove_photo: takePhotoOut,
-    remove_avatar: takeAvatarOut, pick, unpick, challenge: setChallenge, end_challenge: endChallenge, plan: planYear };
+    remove_avatar: takeAvatarOut, pick, unpick, challenge: setChallenge, end_challenge: endChallenge, plan: planYear,
+    beta_decide: betaDecide, beta_grant: betaGrant };
   if (request.method === "POST" && acts[op]) {
     try {
-      return await acts[op](request, response);
+      return await acts[op](request, response, claims);
     } catch (error) {
       return response.status(error instanceof AuthError || error instanceof BuildRefusal
         || error instanceof AvatarRefusal ? error.status : 502)
@@ -156,7 +167,14 @@ export default async function handler(request, response) {
   }
   if (request.method !== "GET") {
     return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar, dismiss, untest, uncomment, remove_photo, "
-      + "remove_avatar, pick, unpick, challenge, end_challenge or plan" });
+      + "remove_avatar, pick, unpick, challenge, end_challenge, plan, beta_decide or beta_grant" });
+  }
+  if (op === "beta") {
+    try {
+      return await betaQueue(request, response);
+    } catch (error) {
+      return response.status(502).json({ error: error.message });
+    }
   }
   if (op === "photo") {
     const file = await photoFileForAdmin(String(request.query?.photo || "")).catch(() => null);

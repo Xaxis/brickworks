@@ -13,8 +13,9 @@
 //      to a row and five whole cards on the first screen, the cards marked
 //      once (no row of marks, none that nearly every card carries, no
 //      card ending in a row that holds only its like); Top the tab shown,
-//      its window All time; nothing scrolls sideways; a picture of it in
-//      each theme;
+//      its window All time; nothing scrolls sideways; Today in the
+//      gallery's model card has its like and its set's card none, and its
+//      why says only what is true; a picture of it in each theme;
 //   2. Top, New and Following: New is the newest first and says so in the
 //      address; Top over this week is the week's builds and remixes, no
 //      pick, no shelves; a kind's pill and Made in Filters ask the list
@@ -189,6 +190,10 @@ const drawn = (page) => page.evaluate(() => {
     quiet: document.getElementById("quiet").hidden ? "" : document.getElementById("quiet").textContent.replace(/\s+/g, " ").trim(),
     empty: document.getElementById("empty").hidden ? "" : document.getElementById("empty").textContent.replace(/\s+/g, " ").trim(),
     zero: /(^|\s)0 (likes?|views?|built|comments?|remix)/.test(document.getElementById("feed").innerText),
+    // Today in the gallery: each card's slot, whether it has a like, and its why.
+    spot: document.getElementById("spotlight").hidden ? [] : [...document.querySelectorAll("#spotlight-models .model")]
+      .map((el) => ({ slot: el.dataset.slot, like: Boolean(el.querySelector("[data-like]")),
+        why: el.querySelector(".why")?.textContent || "" })),
   };
 });
 
@@ -220,6 +225,14 @@ try {
           .map(([mark, share]) => `${mark} ${Math.round(share * 100)}%`).join(", ")}), no card ending in its like alone (${seen.lonelyLike})`);
       check(seen.tab === "top" && seen.window === "" && seen.tabs.join(",") === "top,new" && seen.pick && !seen.zero,
         `${width} ${theme}: Top shown over all time, tabs ${seen.tabs.join(" · ")} signed out, this week's pick first (${seen.pick}), no count of 0`);
+      // Today in the gallery (api/_featured.js): a model's card has its like
+      // and a set's none; and the why says only what is true: Gatehouse
+      // Starter is Tested, listed in May, and nobody did anything with it in
+      // the past 30 days, so neither "New" nor a count.
+      const [featured, set] = [seen.spot.find((one) => one.slot === "featured"), seen.spot.find((one) => one.slot === "library")];
+      check(seen.spot.map((one) => one.slot).join(",") === "featured,library" && featured?.like && !set?.like
+        && featured?.why === "Tested",
+        `${width} ${theme}: Today in the gallery: ${seen.spot.map((one) => `${one.slot} ${one.like ? "with" : "without"} a like, "${one.why}"`).join("; ")}`);
       await shot(page, `gallery_${width}_${theme}_fold.png`);
       await shot(page, `gallery_${width}_${theme}.png`, true);
       await context.close();
@@ -425,7 +438,10 @@ try {
     check(came && held.pages === 1 && held.yours === was,
       `flung to the foot, the next page waits: ${held.pages} page drawn, Put yours here at ${Math.round(held.yours)} px, was ${Math.round(was)}`);
     await page.click("#more");
-    const drew = await until(page, () => Number(document.documentElement.dataset.pages) === 2, null, 1000);
+    // The page that waited, at once; the next may come by itself after it,
+    // in the same frame, when the end is still within two screens (as it is
+    // with Today in the gallery's shelf above), so 2 or more.
+    const drew = await until(page, () => Number(document.documentElement.dataset.pages) >= 2, null, 1000);
     check(drew, "Show more draws the page that waited, at once");
     await context.close();
   }

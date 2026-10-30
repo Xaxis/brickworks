@@ -13,6 +13,11 @@
   Claude with a code that Claude trades for a token (api/oauth.js); the
   relay then sends Claude's calls to their open Brickworks tab.
 
+  ChatGPT, or any other app, comes the same way (2026-10-29): the page names
+  it (clientLabel, api/_oauth.js), and where it says Claude it says that
+  app instead; what is Claude's alone (.for-claude, Claude's settings) is
+  shown to Claude alone. For Claude the page reads as it always has.
+
   Served at /oauth/authorize by deploy.sh's routes, with no
   cross-origin-isolation headers (the app's build needs them, a sign-in
   page opened from claude.ai must not cut itself off from it). The script
@@ -100,17 +105,17 @@ footer p { margin: 8px 0 0; color: var(--ink-faint); font-size: var(--t-micro); 
 	<div class="card">
 		<!-- Checking the request, before anything else is shown. -->
 		<section id="checking">
-			<h1>Connecting Claude…</h1>
+			<h1>Connecting <span class="client">Claude</span>…</h1>
 			<p class="soft">Checking this request.</p>
 		</section>
 
 		<!-- Nowhere safe to send the person back to. -->
 		<section id="refused" class="hide">
-			<h1>This link cannot connect Claude</h1>
+			<h1>This link cannot connect <span class="client">Claude</span></h1>
 			<p class="soft" id="refused-why"></p>
-			<p class="faint">Nothing has been connected. Go back to Claude and
-				add Brickworks again — in Brickworks, <b>Connect Claude</b> in the
-				assistant panel does it in one click.</p>
+			<p class="faint">Nothing has been connected. Go back to <span class="client">Claude</span> and
+				add Brickworks again<span class="for-claude"> — in Brickworks, <b>Connect Claude</b> in the
+				assistant panel does it in one click</span>.</p>
 		</section>
 
 		<!-- Who is signing in. -->
@@ -154,9 +159,12 @@ footer p { margin: 8px 0 0; color: var(--ink-faint); font-size: var(--t-micro); 
 				<li>and save it there.</li>
 			</ul>
 			<p class="faint">Nothing else: not your email, your other models, or
-				your Claude conversations. You are not asked again while it stays
+				your <span id="chats">Claude conversations</span>. You are not asked again while it stays
 				connected; Disconnect it any time from Account in Brickworks.</p>
-			<p class="faint">Which tools Claude may use without asking is Claude’s
+			<p class="faint for-other hide">Which tools <span class="client">Claude</span> may use without
+				asking is <span class="client">Claude</span>’s own setting. To connect again later, connect the
+				Brickworks you added there rather than adding it again.</p>
+			<p class="faint for-claude">Which tools Claude may use without asking is Claude’s
 				own setting: in Claude, Customize › Connectors › Brickworks, Tool
 				permissions. To connect again later, press Connect on that
 				Brickworks rather than adding it again. <a href="/faq#tool-permissions" target="_blank" rel="noopener">More</a></p>

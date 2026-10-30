@@ -160,11 +160,20 @@ So the relay unit (P1, section 10):
 
 1. In ChatGPT: **chatgpt.com/plugins**, the **+** button, **Add custom MCP
    server**.
-2. Name: Brickworks. URL: `https://brickworks.diy/api/mcp`. Authentication:
-   OAuth. Acknowledge the warning, **Create**.
-3. ChatGPT opens Brickworks' sign-in: the email code, then **Allow**.
-4. With Brickworks open in a browser tab and signed in, in a ChatGPT chat with
-   Brickworks turned on: "build a small red house in Brickworks".
+2. Name: Brickworks, a description. Connection: a public endpoint,
+   `https://brickworks.diy/api/mcp`. Authentication: OAuth.
+3. Read the risk warning, **I understand and want to continue**, then
+   **Create as a plugin**.
+4. ChatGPT opens Brickworks' sign-in ("Let ChatGPT build in Brickworks?",
+   back to chatgpt.com): the email code, then **Allow**.
+5. Review the 63 tools ChatGPT found, install the plugin.
+6. With Brickworks open in a browser tab and signed in, a new ChatGPT chat,
+   `@` and **Brickworks**: "build a small red house in Brickworks". The tab
+   listens by itself once the account has any connection
+   (`ClaudeConnector`, as for Claude).
+
+These are in `docs/CONNECTING.md` too, with what is known only once the
+owner's account has done it.
 
 ### Other MCP clients
 
@@ -401,7 +410,7 @@ Each new path, against that:
 
 | Path | Counted | Same as the plans? |
 |---|---|---|
-| ChatGPT, or any connector client | At the relay, by the stretch, whatever the client | **Yes**: the relay counts calls to a tab, not who makes them |
+| ChatGPT, or any connector client | At the relay, by the stretch, whatever the client | **Yes**: the relay counts calls to a tab, not who makes them. Checked in P1 (chatgpt344): the only thing the relay does differently for a client that is not Claude's is the shape of `tools/list` (`portable`); a call's routing, its tab and the `readOnlyHint` a stretch is judged by come from the tab's own list, the same for every client, so U2's count applies to ChatGPT unchanged |
 | A model on the person's key, web | `POST /api/builds` before a run, as the own-key Anthropic path | **Yes** |
 | A model on the person's key, desktop | Not counted: the desktop is Pro, and Pro has no limit | **Yes** ("Desktop builds count only through the relay") |
 
@@ -496,6 +505,26 @@ ChatGPT's real document and a test key standing in for its signing key
 documents pass as before; on a preview, the owner's ChatGPT account connects
 and builds a small model, the lead or owner watching (a real account, by
 hand).
+
+*Done (chatgpt344, 2026-10-29), but the owner's real connection.* A client
+whose document prefers `private_key_jwt` must sign: RS256 by a key at its
+`jwks_uri` (https, the document's own origin), iss = sub = client_id, aud this
+server's issuer or token endpoint, exp within the hour, jti spent once
+(`api/_assertion.js`; `oc_spend` under `oauth:` keys). A document that lists
+methods with no preference is a public client when it lists `none`, its
+assertion checked if sent. Registration takes `private_key_jwt` with inline
+`jwks`. `supabase/oauth_keys.sql` (applied, additive) keeps `jwks_uri`,
+`jwks` and the new `auth_method`; Claude's rows never name them. The
+metadata lists `private_key_jwt` and RS256. Any client but Claude's gets the
+tool list with every array's `items` said (OpenAI refuses `attach.align`'s
+bare array) and all three hints. Proofs: `tests/test_oauth_clients.py` (16),
+`tools/web/chatgpt_flow.mjs` (check `chatgpt`: ChatGPT's real document up to
+its signature, then a key-holding stand-in all the way to a call in a tab),
+`oauth_probe.mjs` unchanged. The own-key OpenAI adapter
+(`src/ai/openai_chat.gd`) sent the same bare array, which OpenAI's API
+refuses ("array schema missing items"); it now sends the same portable list
+(`Provider.portable`), which `provider_loop_probe` holds to the relay's for
+all 61 tools, against a stub that refuses a bare array as OpenAI does.
 
 **P2. The settings panel (desktop).** Section 6, with Test. The chat panel
 designs with the chosen model. *Bar:* a probe drives the panel (choose,

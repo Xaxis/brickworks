@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, api:GET /api/plans?op=download, api:GET /api/plans?op=entitlement, lib:the desktop's files and token, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow -->
 
 ## Sub-features
 
@@ -111,8 +111,12 @@ plan with Claude as the client.
   everybody, which Claude signs in to with OAuth (`api/oauth.js`, see
   [account](account.md)) — each call then goes to that account's open tab on
   any device (`accountTabs`; which tab, exactly, is below; the handshake and
-  tool list from that tab, else the account's last, else the fullest recent
-  one, so Claude can add it before the app is opened) — and one tab's private
+  tool list from that tab once it has said hello, else the tools of the app
+  build the deployment serves, `tools/mcp_tools.json` put beside the function
+  by `deploy.sh` (`ownTools`), with the guidance of a hello of that same list
+  (`guidanceOf`), so Claude can add it before the app is opened; never
+  another tab's list, which had been a test build's: 69 tools for 68,
+  2026-10-29, `tests/test_relay_hello.py`) — and one tab's private
   address (`/api/mcp?t=<token>`), the way from 2026-10-09, still answered for
   everyone who added one (`oneTab`).
   **Several tabs, one account** (2026-10-13): each tab is a connector of its
@@ -317,7 +321,13 @@ plan with Claude as the client.
   `--resume`) stopped and told it is a new chat here that cannot undo what it
   did before, as chat B's first choice is and chat A's, the account's first,
   is not, and `server/discover` answered "method not found" by the relay
-  with no tab asked. 36 checks, seconds; deletes its throwaway account.
+  with no tab asked. Then a tab that has closed stays closed (2026-10-29,
+  relay338): an ask for work that reaches the relay after the close (a long
+  poll still on its way as the page went) is answered 401, say hello again,
+  and opens nothing; the tab is not listed, and its fresh hello lists it
+  again. It used to mark the tab open, and a chat's next call waited on a
+  gone tab or was asked to choose between two; against that relay those two
+  checks fail. 41 checks, seconds; deletes its throwaway account.
 - `relay timing` (`tools/web/relay_timing.mjs`, `--url=` a local relay or a
   preview, `--rounds=4`): what a call through the relay costs when the tab
   answers at once. A throwaway account (deleted at the end), a stand-in tab
@@ -330,7 +340,14 @@ plan with Claude as the client.
   writes beside it; the answer is taken and deleted in one step; and each
   side naps on a wake (`nap`/`wake` in api/mcp.js), so one instance serving
   both hands each over at once, else Claude's call looks from 40 ms up to
-  350 ms and the tab's ask for work every 350 ms. The same answers: 42 of 42
+  350 ms and the tab's ask for work every 350 ms, or every 100 ms while it
+  answered a call in the last minute (`relay_tabs.answered_at`,
+  `supabase/relay_cost.sql`). A call reads which tools its tab serves from
+  the tab's row (`relay_tabs.list`, written beside the hello, nulled by a
+  trigger when a hello is written without it), not the 248 KB hello. Both
+  columns only once that file is applied: whether they are there is asked
+  once an instance (`columns()`), and again a minute after a no, so until
+  then the relay runs as it did without them. The same answers: 42 of 42
   identical to the relay before, for a scripted 40 calls with the headless
   app as the tab.
 - `two windows probe` (`src/dev/tabpair_probe.gd -- 8790`): the desktop's side
@@ -1423,7 +1440,41 @@ plan with Claude as the client.
   Small builds (sideways inside itself on a phone, See every small build
   past eight); a card's "✓ You have every part" / "You have N of its M
   parts · P%"; under Sort › Top builds the line saying how it weighs.
-  `document.documentElement.dataset.shelves` is `ready` once drawn.
+  `document.documentElement.dataset.shelves` is `ready` once drawn. Today
+  in the gallery (`#spotlight`, gallery362): the featured model and the
+  set from the LDraw library the daily cron kept, each card's `data-slot`
+  `featured` or `library`, a mark and a why ("2 likes, 1 build finished in
+  the past 30 days"; "Castle, 1980s"); hidden while the cron has kept none.
+  The featured model's why is the API's `featured.said` (`featuredSaid`:
+  "New in the past 30 days" only for a model listed in them, "Tested" only
+  when it is, no line when neither); the set's card has no like.
+  gallery_flow checks both on the stand-in's Gatehouse Starter and King's
+  Castle.
+- `the gallery's daily choice` (`api/_featured.js`, `supabase/gallery_crons.sql`,
+  gallery362): `curl -H "Authorization: Bearer $CRON_SECRET" <preview>/api/share/feature`
+  answers `{outcome: done, pick, featured, library}` (each `{item, made}`) the
+  first time on a day and `unchanged` with the same three after; without the
+  secret 401. `?op=shelves` then has `featured`, `library` and the kept
+  `pick` (`kept: <Monday>`), the owner's own pick still first; with tests=1
+  the pick stays the week's worked-out one. Each run is a row of
+  `cron_runs` (`select * from cron_runs_of('gallery_feature', 5)`, through
+  apply_sql's pooler); `cron_locks` holds a run's lease (300 s). The rules
+  and the lock: `tests/test_gallery_crons.py`; the SQL:
+  `tools/gallery_crons_try.sql` in a dry run.
+- `the weekly look at the OMR` (`api/_omr_watch.js`): `.../api/share/omr?dry=1`
+  with the secret asks LDraw's OMR (its front page's Latest Models, then the
+  pages past the highest known, a second apart, stopping after three
+  missing) and lists `found` without writing; without dry=1 it writes them
+  to `library_arrivals` (`found`). A staged arrival shows on
+  `/library?tests=1` and its page with tests=1, never to a visitor.
+- `the weekly AI showcase` (`tools/showcase.py`): `run --dry-run` prints the
+  gates (heavy's queue, Claude's limits) and the next brief; `run` designs
+  it on the owner's path in a heavy slot, renders it in the Product look on
+  the GPU and writes `bench/results/showcase/<date>-<brief>/draft.json`,
+  `render.png` and a line in `showcase.log`; `drafts`; `publish RUN` shares
+  one listed as the showcase account. The timer:
+  `tools/install_showcase_timer.sh` then `systemctl --user list-timers
+  brickworks-showcase.timer` (installed, not enabled). `tests/test_showcase.py`.
 - `choosing this week's pick` (`web/admin.js`, `api/admin.js`): This week's
   pick on `/admin` (what visitors see, the open choices with End, the
   week's best five with Make it the pick), and Make it the pick beside every
@@ -1717,7 +1768,9 @@ plan with Claude as the client.
   is `/library` (`web/library.html`, `web/library.js`), every set of the
   app's Library as the gallery's cards, a page of 24 at a time from
   `/api/share?op=library` (`api/_library.js` `searchSets`, the app's
-  `ModelLibrary.search` in JS); `ui:an LDraw set's page` is
+  `ModelLibrary.search` in JS), laid out as the gallery is (site357: the
+  search beside the title, "/" focusing it, and `#toolbar`, Filters and the
+  themes, sticky under the header, `web/browse.js`); `ui:an LDraw set's page` is
   `/library/<id>`, `sharePage` with `model.library` (`setModel`), crediting
   every modeller its file names (`authorsIn`) with LDraw's page and its CC
   BY licence, Open in Brickworks `/app?new=1&library=<id>` as the app's
@@ -1777,17 +1830,22 @@ plan with Claude as the client.
 - `gallery page` (`web/gallery.html`, `web/gallery.js`): `/gallery`, its
   `.html` redirecting to it as every page's does (`deploy.sh`'s page loop; the
   local relay maps `/gallery` itself). Since U3 (docs/SOCIAL.md, 2026-10-22)
-  the work first: the title and a search (`#q`, asked 350 ms after typing
-  stops, at once on Enter) on one line; the tabs `#tabs [data-tab]` Top · New
+  the work first: the title and a search (`#q`, asked 200 ms after typing
+  stops, at once on Enter; "/" from anywhere but a field focuses it,
+  `web/browse.js`, site357) on one line; the tabs `#tabs [data-tab]` Top · New
   · Following (Following only signed in and once the list says `following:
   true`), one `aria-current`; Top over `#window` (All time, This month, This
   week: `window=month` or `week`, offered when the list sends `windows`); the kinds as
   `#kinds button.pill[data-kind]`, one `aria-pressed`, a row that scrolls
-  inside itself; `#filters` (a `.more-menu` whose summary says how many are on)
+  inside itself, beside `#filters` in `#toolbar`, the bar of filters that
+  stays under the header over the whole list (`data-stuck` once the tabs
+  have gone under it); `#filters` (a `.more-menu` whose summary says how many are on)
   holding the order (Top builds, Newest, Most liked, Most built, Most remixed,
   Parts I own signed in; never Most viewed), Size, `#made` (Hand-built, With the
   assistant: offered when the list sends `mades`), Has instructions, Technic,
-  Tested only, and Clear the filters; a tag as a chip to take off. Then the
+  Tested only, and Clear the filters; in `#chips` each that is on (a tag,
+  an order, a size, made, a box ticked) a pill to take off, and Clear all
+  from two. Then the
   cards (`web/card.js`, `like: true`), two to a row under 900 px, three to
   1200, four above; on the front (Top, all time, nothing asked) this week's
   pick first and the shelves after the first rows (`ui:the gallery's front
@@ -1798,6 +1856,9 @@ plan with Claude as the client.
   is put in only while the end of the list is under the screen, and waits
   (Show more pressable, drawing it at once) while Put yours here or the
   footer shows (site277: it pushed them down, CLS 0.51 signed in at 1280);
+  Show more stays pressable while that page is on its way, and a press then
+  draws it as soon as it comes (it was disabled, and the press lost, until
+  2026-10-29; `/library` the same);
   the shelves' cards are lazy; the address keeps the question and
   how many pages (`/gallery?q=castle&kind=space&sort=newest&page=3`), put back
   with `replaceState`, so it can be sent; a card opened is kept in the
@@ -2651,6 +2712,45 @@ plan with Claude as the client.
   changed. Proven live against the public repo: `signedUrl` gave a
   release-assets.githubusercontent.com URL whose first bytes (a Range
   request) are the AppImage's ELF header.
+- `beta page` (`web/beta.html`, `web/beta.js`), `applying to the beta`
+  (`api/plans.js` ?op=beta, ?op=beta_daily), `the beta's spots and months`
+  (`api/_beta.js`, `supabase/beta.sql`), `the beta's owner queue`
+  (`web/beta-admin.html`, `web/beta-admin.js`, `api/admin.js` ?op=beta,
+  ?op=beta_decide, ?op=beta_grant) and `beta browser flow`
+  (`tools/web/beta_flow.mjs`): the beta (2026-10-29, beta361), dark behind
+  BRICKWORKS_BETA (off unless "open"; production's off). Off: /beta says
+  Coming soon with no form and no count, GET ?op=beta is `{beta: off}` and
+  asks nothing, POST is 403. Open: the spots left (`N of 100 spots left`),
+  signed out Sign in to apply (the sign-in dialog), signed in the form (what
+  you'd build 20-800, AI, background and a line up to 160, a link https up
+  to 300, two boxes), checked again at the edge (422 with why), one an
+  account (409; a declined one again after 30 days), then where it stands.
+  Spots 1-100 one at a time under the pool's row lock: proven on a
+  throwaway Postgres (`tests/fixtures/beta/db_check.mjs`: two at once at
+  99 give 100 and "full"; 120 from ten connections give 1-100 once each).
+  Test accounts (resend.dev) have their own pool, 'test', so no check takes
+  a real spot; `beta_test_pool(n)` sets it. Approval gives the month at
+  Admission (ADR-0015, `PUT /v1/customers/{id}/comps/beta`, 30 days) when
+  billing is the pool's mode (live for the 100, test for the checks'), else
+  pending "Starts when Pro launches"; 403 api_comps_off and 409
+  api_comps_full are said in the queue and Grant pending months gives them
+  later (also the daily cron, once Pro launches). Admission gives a reason
+  once, ever: a month given before that has ended or was revoked is said in
+  the queue ("one reason gives one month, ever"), never counted as given.
+  `GET /api/plans?op=beta_spots` is the public `{beta, cap, left}` for the
+  pricing and home callouts (no sign-in read, cached a minute). Proven
+  against Admission's real test mode on 2026-10-30 with throwaways: comp
+  made at approval, ?op=plan Pro until +30 days, a repeat 200 with the same
+  until, endComp, deletion erasing the customer. Emails (received,
+  approved, declined, started, reminder) through Resend, plain and HTML,
+  kept in beta_mail; a unit's preview has no mail key, so a test inbox's is
+  `dry`. Prove: `python3 tools/minitest.py tests/test_beta.py` (PG_BIN and
+  PG_MODULE found, else its database tests return), then on a preview from
+  `tools/deploy.sh --unit --billing-stand-in --beta-open`:
+  `BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs
+  --url=<preview> --out=DIR` (ends "beta: all ok"); on any other deployment
+  the same flow checks Coming soon and the refusal. Needs supabase/beta.sql
+  applied.
 - `compare media` (`tools/web/compare_media.mjs`): retakes every picture and clip
   of `/compare` from the live app in a real, headed Chromium window on
   SwiftShader, its tabs and address bar in the picture (ffmpeg's x11grab):
@@ -3960,7 +4060,10 @@ VERCEL_BYPASS=$VERCEL_BYPASS node tools/web/download_check.mjs --url=<deployment
 ```
 
 Proves it when, locally, the first page is drawn as 24 cards with Show more
-and the gallery lines say "24, then 2 by Show more" at 390 and "24, then 2
+and the gallery lines say "24, then 2 by Show more" at 390 (pressed once, at
+its place on the screen, while the page the scroll to it asked for by itself
+is on its way: the made-up list gives a later page after 1.5 s, and asked
+for it once) and "24, then 2
 by itself" at 1280 (where Show more is first drawn within a screen under the
 window, so `gallery.js` nearEnd brings the next page unasked), 26 cards and
 Show more gone at both; against a deployment that lists more than a page,
@@ -4758,7 +4861,11 @@ Plus, a line past 200); then, live, a Resend test address kept for Pro
 yearly (its row, 'plus', read with the secret key), sent again monthly
 with a line and
 changed (still one row), and taken off (none left), the address forgotten
-at the end whatever happened. Before the SQL is applied the form says it
+at the end whatever happened; and /api/plans with nothing of AI in it: plans
+off (every release's deployment, and the stand-in), a GET refused 405 as
+always; on (a unit's preview in test mode), the offer Free 25 and Pro
+unlimited, and a throwaway account's ?op=plan Free with `savedModels`
+{limit: 25, kept: 0}, the account deleted at the end. Before the SQL is applied the form says it
 is not open yet and the flow fails, saying so. The counts:
 `set -a; . ./.env; set +a; python3 tools/plan_interest.py`.
 
@@ -4768,25 +4875,46 @@ No network: the real client against a stand-in Admission and Supabase
 (`tests/fixtures/billing/`), every request recorded.
 
 ```sh
-python3 tools/minitest.py tests/test_billing.py
+python3 tools/minitest.py tests/test_billing.py tests/test_saved_models_plan.py
 PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/admission_snapshots.sql --dry --try=tools/admission_snapshots_try.sql --table=admission_snapshots
+PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/account_models_plan.sql --dry --try=tools/account_models_plan_try.sql --table=account_models
 ```
 
-The tests pass when all do: Free with 10 builds and none used (and none
-left at 10 used), Pro with no limit and the desktop, a comp until its date,
+AI is never limited, on any plan (the owner, 2026-10-29): what Free holds
+back is how many models an account keeps with it (Admission's
+saved_models, a cap: Free 25, Pro any number) and the desktop app.
+test_billing passes when all do: Free keeping 25 models and nothing of AI
+in its entitlement or the offer, Pro with no limit and the desktop, a comp until its date,
 the owner (MASTER_EMAIL) reported and given everything, a cold instance
 answering from the database's snapshot while Admission is down (Pro stays
-Pro, Free stays at its limit), no snapshot answered `unknown` (refuses
+Pro, Free stays at its 25), no snapshot answered `unknown` (refuses
 nothing), and with the switch off, or a mode without its own kind of key,
 not one request and a GET to /api/plans refused with 405 as before. The
 dry run: the table empty, row security with no policy, both functions the
 server's alone, a snapshot kept and kept over, a key not the client's
 refused, a row 90 days old gone at the next write, anon and signed-in
-refused. On a deployment, only with the switch on for it alone
+refused. test_saved_models_plan passes when api/models.js, plans off, never
+asks Admission and sends each save to the database exactly as before (30
+saves, save_account_model, the same seven arguments in order); Free keeps 25
+new models and the 26th is answered 413 {full: "plan", pro: "/plans",
+error: "Free keeps 25 models in your account. Delete one, or get Pro for
+unlimited."} and not kept; at 25 a save over a model it has and the same
+model again are kept; a delete makes room at once; Pro, a comp of Pro and the
+owner keep 30; a plan not known keeps 30; a Free snapshot held while
+Admission is down still keeps 25; and without account_models_plan.sql a
+save is kept and the log says so. The second dry run: two new models under
+a limit two above what the account has, an update and the same model again
+at the limit kept, a delete then a new one in its place, anon and
+signed-in unable to call the function, and a third new model ending the run
+with "models: plan" (P0001), rolled back. On a deployment, only with the switch on for it alone
 (`--env BRICKWORKS_BILLING=test --env ADMISSION_KEY=<adm_test_ key>`, never
 on the project): `curl -s <deployment>/api/plans` is the offer, and
 `/api/plans?op=plan` with a test account's session is its plan, Free and
-`builds.limit` 10, `standing` "known", `freshness` "live".
+`savedModels` {limit: 25, kept: how many it keeps now}, `standing`
+"known", nothing of AI; one POST to `/api/models` with that session kept
+(`{name, version: 1}`); 25 new models kept and the 26th answered 413 in the
+plan's words, a save over one of the 25 kept, and a delete making room for
+the 26th at once (supabase/account_models_plan.sql applied).
 
 ### Paying for Pro: Checkout, the portal, the webhook, built dark
 
@@ -4852,6 +4980,34 @@ after says Pro has ended, the stand-in's `/__stand_in/erased` shows one
 erasure with one subscription ended, and the sign-in service has no such
 account. Pictures: delete-pro-390-dark, delete-pro-1280-light,
 deleted-pro-1280-light.
+
+And against Admission's own test mode, in Stripe's sandbox with no money
+(billtest358, 2026-10-29): `tools/deploy.sh --unit --billing-test`, which
+gives that deployment alone `ADMISSION_TEST_KEY` and, when set,
+`ADMISSION_TEST_WEBHOOK_SECRET` from .env. The steps are by hand, as a
+throwaway Resend account, closed at the end. `GET /api/plans` says Pro is
+for sale at 800 and 8000 usd, and `?op=plan` says Free (default). POST
+`?op=checkout` is 422 without `consent`; with it, `{kind: "checkout"}` and
+a `checkout.stripe.com/c/pay/cs_test_…` URL, which a browser shows at
+"$8.00 per month" or "$80.00 per year". `plan_consents` keeps a row for
+each, read through the pooler (the table refuses REST). Each new Checkout
+for an account ends the one before ("You're all done here"), so open the
+last one made. Admission never sends test webhooks to a preview, since
+that would mean storing the bypass in its URL. So a delivery is replayed
+as its sender builds one (apps/admission/src/server/webhooks/deliver.ts):
+`{id, type: "customer.updated", createdAt, mode, seq, data: {customerId,
+reason, customer}}`, where `customer` is exactly `GET /v1/customers/{id}`
+under the test key. It is JSON.stringify'd and signed `t=<unix>,v1=<hex
+HMAC-SHA256 of "t.body">` with the .env secret, which the client's own
+`verifyWebhook` checks first. Posted after a sandbox payment, while
+`?op=plan` still answers Free `cached`: a wrong secret and a `t` 600 s old
+each get 400, and the plan stays Free. The good one gets 200 `{heard}`,
+the account's `admission_snapshots` value goes to `at: 0`, and
+`?op=plan` answers Pro `live`. /settings then says "Pro, $8.00 USD a
+month. Renews …". Admission's real delivery to us is proven only on
+production, at go-live. `?op=delete` erases the customer at
+Admission: `get_customer` in test mode then says `seen: false`, with no
+subscriptions.
 
 ### A deleted account's plan ended at Admission
 
