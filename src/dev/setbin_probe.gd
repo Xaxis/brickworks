@@ -102,9 +102,7 @@ func _cell(key: String) -> Button:
 ## The set's line at the bin's top, as it reads.
 func _line() -> String:
 	var named: Dictionary = _bin.controls_by_name()
-	var words: String = (named["set words"] as Label).text
-	var count: String = (named["set count"] as Label).text
-	return "%s %s" % [words, count] if words.ends_with(":") else "%s, %s" % [words, count]
+	return "%s: %s" % [(named["set words"] as Label).text, (named["set count"] as Label).text]
 
 
 ## Take the tile of [param key] as a click does, and put its part down at

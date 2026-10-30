@@ -247,8 +247,8 @@ func _build() -> void:
 	_set_words.mouse_filter = Control.MOUSE_FILTER_PASS
 	_set_words.add_theme_font_size_override("font_size", ceili(_z(12)))
 	_set_line.add_child(_set_words)
-	# What is left, beside the name and never cut short by it: two sets'
-	# names fill a narrow bin.
+	# What is left, at the line's end by All parts, never cut short by the
+	# name: two sets' names fill a narrow bin.
 	_set_count = Label.new()
 	_set_count.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_set_count.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -2890,7 +2890,7 @@ func _say_set() -> void:
 	if _set_bin == null:
 		return
 	var sums: Dictionary = _set_bin.tally(_used, library)
-	_set_words.text = _set_bin.title + ":"
+	_set_words.text = _set_bin.title
 	_set_count.text = "%s of %s left%s" % [_comma(int(sums["left"])), _comma(_set_bin.pieces),
 		", %s over" % _comma(int(sums["over"])) if int(sums["over"]) > 0 else ""]
 	_set_words.tooltip_text = ("Building from the parts of %s. Each part put down takes one from its "

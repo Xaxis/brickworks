@@ -41,8 +41,10 @@ which models they could build from what they have. Added 2026-10-12.
   they are worked out again from the model's bricks (`SetBin.used_in`, its
   baseplate left out), so a part put down, undo, delete and an open all
   count alike. None left: greyed, still placeable, then "N over" on the tile
-  and the line. A tile taken takes its colour. A search and the categories
-  pick among the set's parts; All parts on the line goes back. Kept in the
+  and the line, whose count sits by All parts and is never cut short by long
+  names. A tile taken takes its colour. A search and the categories pick
+  among the set's parts, each category counting the set's kinds and the
+  empty ones hidden; All parts on the line goes back. Kept in the
   model's saves and autosave as `0 !BRICKWORKS BIN <numbers>` after the first
   line (never in what is published or exported, as the share line is);
   followed when a model opens, kept by New, let go by Make a part's and
