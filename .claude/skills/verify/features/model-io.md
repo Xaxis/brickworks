@@ -837,8 +837,15 @@ Whether what you built is still there tomorrow, and still means the same thing.
   come (`ModelStore.awaited`), or that the catalogue has not got
   (`ModelStore._absent` for the app's own file; `SourceFile` keeps someone
   else's) is autosaved like any other, those parts written where the file had
-  them, and reopens with every part, the missing ones awaited and put down when
-  they come. Until 2026-10-20 the store wrote nothing of such a model (the flag
+  them, in their sub-model even when nothing else of it is on the baseplate
+  (`ModelStore._hold_unit`: until 2026-10-30 such a sub-model's parts went out
+  loose in the model), and reopens with every part, the missing ones awaited
+  and put down when they come. An open of a saved model says what it could not
+  show as Open from a file does (`ModelBar.unshown_words`: "— 1 not shown, kept
+  in the file (Rubber Belt Round 33 2 (flexible))"), a band or coil named once;
+  the app's own band and coil pieces (`bw-belt-*`, `bw-coil-*`) whose FILE
+  section a file lost are made again from their names (`Bands.piece_part`, in
+  `ModelStore._open_into`); `springs_probe` proves all three. Until 2026-10-20 the store wrote nothing of such a model (the flag
   `whole`, now gone), so one part that never came lost everything done to it
   for the session; and the app's own file dropped a part the catalogue lacks
   once edited. What still guards a file: nothing written loses a part it had,

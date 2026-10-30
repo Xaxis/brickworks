@@ -94,6 +94,8 @@ const WINDOW_ONLY: Dictionary = {
 	"lock": "keeps the person's own mouse off parts; a session changes only the parts it names",
 	"unlock": "keeps the person's own mouse off parts; a session changes only the parts it names",
 	"mirror": "a session lays the mirror image itself, with edit_model's add or the mirror shape",
+	"split_parts": "a session lays the parts it wants itself, with edit_model's remove and add; Split is the person's shortcut for that",
+	"merge_parts": "a session lays the parts it wants itself, with edit_model's remove and add; Merge is the person's shortcut for that",
 	"leave_submodel": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
 	"enter_assembly": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
 	"leave_assembly": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
@@ -131,6 +133,7 @@ const WINDOW_ONLY: Dictionary = {
 	"back_to_site": "leaves the web app for the website in the person's tab, ending the session's connection",
 	"feedback": "a report from the person to the people who make Brickworks, in their own words",
 	"beta_hub": "help for the person",
+	"reference": "a picture from the person's disk, picked in a dialog, for their own eyes to build over; a session is given pictures in the conversation",
 }
 
 ## What a session reads about these, served by read_guide("app") — every
@@ -2433,8 +2436,8 @@ func _open(input: Dictionary) -> String:
 		return "Could not open %s: %s. The model on the baseplate, %s, is as it was." % [
 			chosen.name, store.not_opened, store.title]
 	bar.opened.emit(placed)
-	return "Opened %s: %d parts. look_at_model to see it." % [chosen.name, placed] \
-		+ _replaced_words(store, unsaved, was) + _opened_motions()
+	return "Opened %s: %d parts%s. look_at_model to see it." % [chosen.name, placed,
+		ModelBar.unshown_words(store)] + _replaced_words(store, unsaved, was) + _opened_motions()
 
 
 ## open_model versions=true version=N: what changed in the model open now

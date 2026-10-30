@@ -109,13 +109,14 @@ const ALT := KEY_MASK_ALT
 ## any of them by name.
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", ">recent", ">import", "-", "save", "save_as",
-		"versions", "compare", "-", "share", "together", ">export", "render", "-", "clear", "quit"]],
+		"versions", "compare", "-", "share", "together", "comments", ">export", "render", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
-		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror", "comments"]],
+		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
+		"reference",
 		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "-",
 		"turn_left",
 		"turn_right", "-", "panel_parts",
@@ -561,6 +562,7 @@ func work_size(name: String) -> int:
 
 ## The commands whose work grows with the selection rather than the model.
 const ON_THE_SELECTION: Array[String] = ["mirror", "replace", "duplicate", "pattern", "paint",
+	"split_parts", "merge_parts",
 	"cut_parts", "copy", "delete", "hide", "isolate", "lock", "make_submodel",
 	"leave_submodel", "make_unique", "rotate_held", "tip_held"]
 
@@ -608,6 +610,7 @@ const STEPPED_SLOW_FROM := 2000
 ## baseplate.
 const SLOW_FROM: Dictionary = {
 	"mirror": 200, "replace": 200, "duplicate": 300, "pattern": 300, "paste": 300,
+	"split_parts": 300, "merge_parts": 300,
 	"cut_parts": 600,
 	"paint": 600, "hide": 3000, "isolate": 3000, "leave_submodel": 2000,
 	"make_unique": 2000,
@@ -662,6 +665,7 @@ const DOING: Dictionary = {
 	"hide": "Hiding…", "isolate": "Showing only the selection…", "show_all": "Showing everything…",
 	"lock": "Locking…", "unlock": "Unlocking…", "paint": "Painting…",
 	"replace": "Replacing…", "mirror": "Mirroring…",
+	"split_parts": "Splitting…", "merge_parts": "Merging…",
 	"make_submodel": "Making a sub-assembly…", "leave_submodel": "Ungrouping…",
 	"make_unique": "Making the copy unique…",
 	"timeline": "Opening the timeline…", "parts_list": "Listing the parts…",
@@ -1004,6 +1008,13 @@ func _define() -> void:
 		"Swap the part for one of the prints or stickered versions the LEGO Group made of it")
 	_add("mirror", "Mirror", SHIFT | KEY_M, func() -> void: verbs.mirror(), selected,
 		"Make the selection its mirror image, left to right as you see it")
+	# src/assembly/split_merge.gd: Studio's Split and Merge, on its keys.
+	_add("split_parts", "Split into smaller parts", ALT | KEY_S,
+		func() -> void: SplitMerge.split(verbs), selected,
+		"Plates, bricks and tiles into 1 x 1s, a 1 x 1 brick into three plates, slopes into 1-wide slopes, on the same studs")
+	_add("merge_parts", "Merge into bigger parts", ALT | KEY_M,
+		func() -> void: SplitMerge.merge(verbs), selected,
+		"The selected plates, bricks and tiles of a colour into the fewest real parts made in it: three plates high a brick")
 	# J, which had no command: on the menu on a part, and found by name.
 	_add("swing", "Swing on its hinge", KEY_J, func() -> void: verbs.swing(EditVerbs.SWING),
 		func() -> bool: return builder.hinge_angle() != null,
@@ -1107,6 +1118,10 @@ func _define() -> void:
 		"Lines between the studs of the baseplate, for counting them")
 	_ticked("grid", func() -> bool: return grid.visible)
 	_define_floor()
+	# A picture to build over (src/ui/reference_image.gd).
+	_add("reference", "Reference picture…", 0, func() -> void:
+		(app.get("_reference") as ReferenceImage).open(), Callable(),
+		"A photo, plan or drawing laid on the floor or stood behind the model, to build over")
 	_add("cut", "Cut away", KEY_K, func() -> void: see_inside.set_cut(not see_inside.cutting),
 		something, "A plane through the model, dragged along X, Y or Z, to see and work inside it")
 	_ticked("cut", func() -> bool: return see_inside.cutting)
@@ -1351,6 +1366,7 @@ func _define() -> void:
 ## their keys, among what selects, hides, copies and changes the part.
 const ON_A_PART: Array = ["ask_claude", "brace", "comments", "-", "select_connected", "select_part",
 	"select_colour", "-", "hide", "isolate", "-", "copy", "duplicate", "delete", "-", "paint",
+	"split_parts", "merge_parts",
 	"replace", "printed_versions", "swing", "-", "step_prev", "step_next", "make_submodel", "-",
 	"show_properties"]
 
@@ -1501,9 +1517,9 @@ func _shown(items: Array) -> Array:
 	return out
 
 
-## The menus as a phone's More lists them (PhoneShell). A phone has no mark
-## to open the app's menu from, so its rows go under Help, where About and
-## the docs were before; finding a command by typing is for a keyboard.
+## The menus as a phone's More lists them (PhoneShell). The app's menu's
+## rows go under Help too, where About and the docs were before the phone's
+## bar had the mark; finding a command by typing is for a keyboard.
 static func touch_menus() -> Array:
 	var out: Array = []
 	for menu: Array in MENUS:
@@ -2185,6 +2201,10 @@ func handle_key(key: InputEventKey) -> bool:
 			# laid out at once.
 			if held and key.shift_pressed and not key.alt_pressed:
 				return run("pattern")
+		# Studio's Alt+S and Alt+M (SplitMerge).
+		KEY_S, KEY_M:
+			if key.alt_pressed and not held and not key.shift_pressed:
+				return run("split_parts" if key.keycode == KEY_S else "merge_parts")
 	return false
 
 

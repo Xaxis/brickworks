@@ -169,13 +169,26 @@ const MARKER_COLOURS: Array[Color] = [Color("#e8590c"), Color("#1c7ed6"), Color(
 ## (TabSession.path), so a reload or a restart goes back into it by itself.
 var keeps_place: bool = true
 const KEPT_FILE := "together.txt"
-## This side's changes on their way, kept with the tab as they are made
-## (sessionStorage in a browser, which a reload keeps and no other tab
-## sees; a file of the tab's on the desktop), so a page that goes in the
-## middle of a change sends them again when it comes back
-## ([method _restore_pending]). And in a browser the page sends them itself
-## as it goes (pagehide, a fetch kept alive), for a tab closed for good.
+## This side's changes on their way, kept with the tab's session
+## (TabSession) as they are made: in a browser the site's localStorage under
+## the session's id, which the page that takes the session up next reads,
+## this tab reloaded or the next tab opened after it was closed; a file of
+## the session's on the desktop. That page goes back into the session and
+## sends them ([method _restore_pending]). And as it goes, the page sends
+## them itself (pagehide, a fetch kept alive), and the desktop app as it
+## quits ([method _exit_tree]).
+##
+## The page's own send as it goes is not enough alone: a page closed while
+## its thread is in a long frame (a model drawn in software, 600 ms and
+## more) is torn down without its pagehide ever running, and what it held
+## never left (tools/web/together_close.mjs, 2026-10-30: 29 of 30 lost with
+## each frame held 600 ms, none since).
 const PENDING_KEY := "together_pending.json"
+## A change sent is a fetch kept alive past the page up to this size, so one
+## on its way as the page closes still arrives. A page's fetches kept alive
+## take 64 KB at most between them: the send as it goes takes the rest.
+const KEPT_ALIVE_SEND := 16000
+const KEPT_ALIVE_GOODBYE := 48000
 ## The last number the server had when this side joined: changes are sent
 ## once those are down, so what a page sent before it went is known first.
 var _catch_up_to: int = 0
@@ -517,6 +530,7 @@ func join(address: String, rejoining: bool = false) -> String:
 		# Ended, or this account taken out: not gone back into after a reload.
 		if int(got[0]) in [403, 404, 410] and secret_in(kept_secret()) == token:
 			_forget_place()
+			_forget_pending()
 		return _trouble(got, "Could not join")
 	var body: Dictionary = got[1]
 	var snapshot: Variant = body.get("snapshot")
@@ -587,7 +601,8 @@ func join(address: String, rejoining: bool = false) -> String:
 ## counts), so one the server numbered before the page went is known by its
 ## count and put down once, and shown here at once over the session's.
 func _restore_pending() -> void:
-	var kept: Variant = JSON.parse_string(_kept_pending_words())
+	var words: String = _kept_pending_words()
+	var kept: Variant = JSON.parse_string(words) if not words.is_empty() else null
 	if not kept is Dictionary or str((kept as Dictionary).get("s", "")) != _token:
 		_forget_pending()
 		return
@@ -1093,7 +1108,13 @@ func _flush() -> void:
 		_in_flight = maxi(0, _in_flight - going.size())
 		said.emit("Could not reach the session; trying again.")
 		await get_tree().create_timer(1.0).timeout
+		_sending = false
+		return
 	_sending = false
+	# What was changed meanwhile goes now, not at the next frame: a frame
+	# drawn in software is 600 ms and more, all of it a change not yet on
+	# its way if the page is closed.
+	_flush()
 
 
 ## Whether [param changes] are words to the others (a chat line, a comment),
@@ -1112,6 +1133,60 @@ func _flush_all() -> void:
 	while live and (_sending or _in_flight < _pending.size()) and Time.get_ticks_msec() < until:
 		_flush()
 		await get_tree().process_frame
+
+
+## The most the desktop app's quit waits for its changes on their way to be
+## taken.
+const GOODBYE_MS := 3000
+
+
+## The desktop app quitting (its window closed, File, Quit) with changes on
+## their way: sent in the quit itself, as a page sends them as it goes,
+## since nothing awaited finishes then. Kept in the session's file until
+## the server has them, so if this fails the app sends them when it is
+## next opened.
+func _exit_tree() -> void:
+	if OS.has_feature("web") or not live or not send_as_page_goes or _session_token.is_empty():
+		return
+	_capture()
+	if _pending.is_empty():
+		return
+	var ops: Array = []
+	for op: Dictionary in _pending:
+		ops.append({"cid": op["cid"], "changes": op["changes"]})
+	var began: int = Time.get_ticks_msec()
+	var code: int = _send_now(JSON.stringify({"s": _token, "client": _client, "ops": ops}, "", false, true))
+	print("Build together: %d change%s on their way sent as the app quit: %s in %d ms" % [ops.size(),
+		"" if ops.size() == 1 else "s", "taken" if code == 200 else "not taken (%d), kept for next time" % code,
+		Time.get_ticks_msec() - began])
+	if code == 200:
+		_forget_pending()
+
+
+## [param body] to op=send, the answer waited for here (GOODBYE_MS at most):
+## its status, or 0.
+func _send_now(body: String) -> int:
+	var where: Dictionary = Streamer.split_url("%s/api/together?op=send" % base_url)
+	var client := HTTPClient.new()
+	var until: int = Time.get_ticks_msec() + GOODBYE_MS
+	if client.connect_to_host(where["host"], where["port"], TLSOptions.client() if where["tls"] else null) != OK:
+		return 0
+	while client.get_status() in [HTTPClient.STATUS_RESOLVING, HTTPClient.STATUS_CONNECTING] \
+			and Time.get_ticks_msec() < until:
+		client.poll()
+		OS.delay_msec(5)
+	var headers := PackedStringArray(["authorization: Bearer " + _session_token, "content-type: application/json"])
+	headers.append_array(extra_headers)
+	if client.get_status() != HTTPClient.STATUS_CONNECTED \
+			or client.request(HTTPClient.METHOD_POST, where["path"], headers, body) != OK:
+		client.close()
+		return 0
+	while client.get_status() == HTTPClient.STATUS_REQUESTING and Time.get_ticks_msec() < until:
+		client.poll()
+		OS.delay_msec(5)
+	var code: int = client.get_response_code() if client.has_response() else 0
+	client.close()
+	return code
 
 
 # -- changes from the session -------------------------------------------------
@@ -1904,27 +1979,38 @@ func _keep_pending() -> void:
 		return
 	var going: Variant = null
 	var body: String = JSON.stringify({"s": _token, "client": _client, "ops": ops}, "", false, true)
-	# A fetch kept alive past the page takes 64 KB at most.
-	if send_as_page_goes and not _session_token.is_empty() and body.length() < 60000:
-		var headers: Dictionary = {"authorization": "Bearer " + _session_token, "content-type": "application/json"}
-		for line: String in extra_headers:
-			headers[line.get_slice(":", 0).strip_edges()] = line.substr(line.find(":") + 1).strip_edges()
-		going = {"url": "%s/api/together?op=send" % base_url, "headers": headers, "body": body}
-	JavaScriptBridge.eval(("(() => { try { sessionStorage.setItem('brickworks.%s', %s); } catch (e) {}"
+	if send_as_page_goes and not _session_token.is_empty() and body.to_utf8_buffer().size() < KEPT_ALIVE_GOODBYE:
+		going = {"url": "%s/api/together?op=send" % base_url, "headers": _page_headers(_session_token),
+			"body": body}
+	# localStorage, or this tab's sessionStorage when the site's is full.
+	JavaScriptBridge.eval(("(() => { const key = %s, words = %s;"
+		+ " try { localStorage.setItem(key, words); try { sessionStorage.removeItem(key); } catch (e) {} }"
+		+ " catch (e) { try { localStorage.removeItem(key); sessionStorage.setItem(key, words); } catch (e) {} }"
 		+ " window.brickworksTogetherLeaving = %s;"
 		+ " if (!window.brickworksTogetherGoodbye) { window.brickworksTogetherGoodbye = true;"
 		+ " window.addEventListener('pagehide', () => { const going = window.brickworksTogetherLeaving;"
 		+ " if (going) try { fetch(going.url, {method: 'POST', headers: going.headers, body: going.body,"
-		+ " keepalive: true}); } catch (e) {} }); } })()") % [PENDING_KEY, JSON.stringify(words),
+		+ " keepalive: true}); } catch (e) {} }); } })()") % [JSON.stringify(_page_key()), JSON.stringify(words),
 		JSON.stringify(going)], true)
+
+
+## Where a browser keeps this tab's changes on their way: by its session's
+## id, which the next page to take the session up reads.
+static func _page_key() -> String:
+	return "brickworks.together_pending." + TabSession.id()
+
+
+## What a browser kept of this tab's changes on their way, or "".
+static func _page_kept() -> String:
+	var got: Variant = JavaScriptBridge.eval(("(() => { const key = %s; try { return localStorage.getItem(key)"
+		+ " || sessionStorage.getItem(key) || ''; } catch (e) { return ''; } })()") % JSON.stringify(_page_key()),
+		true)
+	return str(got) if got != null else ""
 
 
 func _kept_pending_words() -> String:
 	if OS.has_feature("web"):
-		var got: Variant = JavaScriptBridge.eval(
-			"(() => { try { return sessionStorage.getItem('brickworks.%s') || ''; } catch (e) { return ''; } })()"
-			% PENDING_KEY, true)
-		return str(got) if got != null else ""
+		return _page_kept()
 	var path: String = TabSession.path(PENDING_KEY)
 	return FileAccess.get_file_as_string(path) if keeps_place and FileAccess.file_exists(path) else ""
 
@@ -1933,8 +2019,9 @@ func _forget_pending() -> void:
 	if not keeps_place:
 		return
 	if OS.has_feature("web"):
-		JavaScriptBridge.eval(("(() => { try { sessionStorage.removeItem('brickworks.%s'); } catch (e) {}"
-			+ " window.brickworksTogetherLeaving = undefined; })()") % PENDING_KEY, true)
+		JavaScriptBridge.eval(("(() => { const key = %s; try { localStorage.removeItem(key); } catch (e) {}"
+			+ " try { sessionStorage.removeItem(key); } catch (e) {}"
+			+ " window.brickworksTogetherLeaving = undefined; })()") % JSON.stringify(_page_key()), true)
 	elif FileAccess.file_exists(TabSession.path(PENDING_KEY)):
 		DirAccess.remove_absolute(TabSession.path(PENDING_KEY))
 
@@ -1942,9 +2029,18 @@ func _forget_pending() -> void:
 ## The session this tab was in when it was reloaded or closed, or "".
 static func kept_secret() -> String:
 	var path: String = TabSession.path(KEPT_FILE)
-	if not FileAccess.file_exists(path):
-		return ""
-	return secret_in(FileAccess.get_file_as_string(path))
+	if FileAccess.file_exists(path):
+		return secret_in(FileAccess.get_file_as_string(path))
+	# A browser stores user:// on its own schedule, half a minute and more
+	# on a loaded machine (ModelStore._tell_page_wrote): a tab closed sooner
+	# has not this file, but its changes on their way, kept at once, name
+	# the session too.
+	if OS.has_feature("web"):
+		var words: String = _page_kept()
+		var kept: Variant = JSON.parse_string(words) if not words.is_empty() else null
+		if kept is Dictionary:
+			return secret_in(str((kept as Dictionary).get("s", "")))
+	return ""
 
 
 # -- each person's own undo ---------------------------------------------------
@@ -2283,20 +2379,27 @@ func _ask_page(op: String, body: Dictionary, session: String, timeout: float) ->
 		JavaScriptBridge.get_interface("window").brickworksTogetherAnswer = _page_answer
 	_page_asked += 1
 	var id: int = _page_asked
-	var headers: Dictionary = {"authorization": "Bearer " + session, "content-type": "application/json"}
-	for line: String in extra_headers:
-		headers[line.get_slice(":", 0).strip_edges()] = line.substr(line.find(":") + 1).strip_edges()
+	var words: String = JSON.stringify(body, "", false, true)
+	# Changes on their way go on to the server if the page is closed meanwhile.
+	var kept_alive: bool = op == "send" and words.to_utf8_buffer().size() < KEPT_ALIVE_SEND
 	JavaScriptBridge.eval(("(() => { const stop = new AbortController(); setTimeout(() => stop.abort(), %d);"
-		+ " fetch(%s, {method: 'POST', headers: %s, body: %s, signal: stop.signal})"
+		+ " fetch(%s, {method: 'POST', headers: %s, body: %s, signal: stop.signal, keepalive: %s})"
 		+ ".then(async (r) => window.brickworksTogetherAnswer(%d, r.status, await r.text()))"
 		+ ".catch(() => window.brickworksTogetherAnswer(%d, 0, '')); })()") % [int(timeout * 1000.0),
-		JSON.stringify("%s/api/together?op=%s" % [base_url, op]), JSON.stringify(headers),
-		JSON.stringify(JSON.stringify(body, "", false, true)), id, id], true)
+		JSON.stringify("%s/api/together?op=%s" % [base_url, op]), JSON.stringify(_page_headers(session)),
+		JSON.stringify(words), "true" if kept_alive else "false", id, id], true)
 	while not _page_answers.has(id):
 		await _page_answered
 	var got: Array = _page_answers[id]
 	_page_answers.erase(id)
 	return [int(got[0]), _parsed(str(got[1]))]
+
+
+func _page_headers(session: String) -> Dictionary:
+	var headers: Dictionary = {"authorization": "Bearer " + session, "content-type": "application/json"}
+	for line: String in extra_headers:
+		headers[line.get_slice(":", 0).strip_edges()] = line.substr(line.find(":") + 1).strip_edges()
+	return headers
 
 
 func _on_page_answer(args: Array) -> void:

@@ -963,6 +963,13 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 		await _build()
 	_stage.library = library
 	_stage.product = settings.look == "product"
+	# On the web a photographed place's light is fetched the first time a
+	# picture is lit by one (WebPacks): the set waits for it, saying so. The
+	# product look's softbox is the full renderer's alone (_dress).
+	if (HDRIS.has(settings.lighting) or (settings.look == "product" and full_renderer())) \
+			and not WebPacks.here(WebPacks.HDRI):
+		progress.emit(0.0, "fetching the photographed light")
+		await WebPacks.need(WebPacks.HDRI)
 	progress.emit(0.0, "setting up the model")
 	if not await _stage_model(world):
 		return false
@@ -1835,7 +1842,7 @@ func _panorama(lighting: String) -> StudioPanorama:
 	if not HDRIS.has(lighting):
 		return null
 	if not _panoramas.has(lighting):
-		var made: StudioPanorama = StudioPanorama.read(str(HDRIS[lighting][1]))
+		var made: StudioPanorama = StudioPanorama.read(WebPacks.hdri(str(HDRIS[lighting][1])))
 		if made == null:
 			return null
 		_panoramas[lighting] = made

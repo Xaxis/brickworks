@@ -3,6 +3,11 @@
 # Merge an agent's unit into a staging worktree as the user. The feature map
 # is regenerated into the merge commit, and Godot re-imports so new
 # class_names resolve; forgetting that broke probes after merges twice.
+#
+# Several units at once: MERGE_ONLY=1 for each but the last, which runs the
+# gates once for all of them given MERGE_BASE=<the commit before the first>.
+# Each merge's import and gates waited 15 minutes for heavy, so three units
+# took most of an hour (2026-10-30).
 set -u
 # Before the cd below: $0 may be relative to where it was called from.
 HERE=$(cd "$(dirname "$0")" && pwd)
@@ -52,6 +57,8 @@ fi
 git add .claude/skills/verify/features.json 2>/dev/null
 git "${ID[@]}" commit -q -m "$MSG" || exit 1
 git log --oneline -1
+[ "${MERGE_ONLY:-}" = 1 ] && exit 0
+BASE=${MERGE_BASE:-HEAD^1}
 # Imported in every mode: a probe run on the staged worktree before it
 # ships finds no class_names without it (rel-m79's grab_probe, "Could not
 # find type BrickWorld", the third time a missed import cost a run).
@@ -83,8 +90,8 @@ if [ "${MERGE_GATES:-}" = ship ]; then
   ~/.claude/claude-core/bin/featuremap check 2>&1 | tail -1
   exit 0
 fi
-"$HERE/parse_gate.sh" "$W" || exit 3
-if ! git diff --quiet HEAD^1 HEAD -- src/net src/ai tools/mcp_tools.json 2>/dev/null; then
+"$HERE/parse_gate.sh" "$W" "$BASE" || exit 3
+if ! git diff --quiet "$BASE" HEAD -- src/net src/ai tools/mcp_tools.json 2>/dev/null; then
   ~/.claude/claude-core/bin/heavy env XDG_DATA_HOME="$PWD/.scratch-data" timeout 1200 godot --headless --path . --script src/dev/mcp_sync_probe.gd -- --write 2>&1 | grep -E "^  (ok|FAIL)|in step" 
   if ! git diff --quiet -- tools/mcp_tools.json; then
     git add tools/mcp_tools.json
