@@ -72,6 +72,10 @@
 //                                 caller's own on it, and for its owner the
 //                                 hidden ones (api/_builds.js)
 //   GET  ?op=photo_file&id=P      photo P, the JPEG made from what was sent
+//   GET  ?op=builds&page=N        the gallery's Builds tab: everybody's
+//                                 photos of real builds, newest first, 24
+//                                 a page, each with its model and builder
+//                                 (api/_builds.js galleryBuilds)
 //   POST ?op=photo_start          (session) {model, type, size}: where the
 //                                 phone sends a photo of its build, at most
 //                                 8 MB, straight to storage
@@ -83,6 +87,10 @@
 //                                 them and may (api/_follows.js)
 //   POST ?op=follow               (session) {handle, on}: follow, or let go
 //   GET  ?op=following&handle=X   whom X follows, when they chose to show it
+//   GET  ?op=alike&handle=X       up to six designers whose work is closest
+//                                 to X's, to follow; with the session never
+//                                 the caller nor whom they follow
+//                                 (api/_alike.js)
 //   POST ?op=follow_choice        (session) {shows}: show whom I follow
 //   GET  ?op=feed&before=ISO      (session) the caller's feed, newest first,
 //                                 each row with its model's card; its first
@@ -185,7 +193,8 @@ import { handleTrouble, namesTrouble } from "./_names.js";
 import { publicTrouble, sendDigest, shownPublicly } from "./_trust.js";
 import { PICTURE_CACHE } from "./_photo.js";
 import {
-  BuildRefusal, MAX_WORDS, hidePhoto, keepPhoto, photoFile, photoRow, photosWhere, reportPhoto, startPhoto,
+  BuildRefusal, MAX_WORDS, galleryBuilds, hidePhoto, keepPhoto, photoFile, photoRow, photosWhere, reportPhoto,
+  startPhoto,
 } from "./_builds.js";
 import {
   addComment, addReply, changeComment, chooseMail, commentModel, listComments, mailChoice, sendCommentDigests,
@@ -198,6 +207,7 @@ import { feedCount, notifications, notificationsRead } from "./_notifications.js
 import { DIRECTORY_PAGE, coversOf, directoryCardHtml, directoryOf, getListFollows, listCardHtml, listFollow, listFollowsOf,
   mosaicHtml } from "./_lists.js";
 import { designerOf, designs } from "./_designers.js";
+import { designersAlike } from "./_alike.js";
 import {
   AvatarRefusal, avatarFile, avatarOf, avatarSaid, chooseLikes, dropAvatar, keepAvatar, likedRows, likesChoiceOf,
   likesCount,
@@ -218,6 +228,8 @@ const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
 export const PER_PAGE = 24;
 const MOST_PAGES = 400;
+// Kept briefly by the CDN, as the gallery's list is (api/share.js).
+const SHARED_CACHE = "public, max-age=0, s-maxage=30, stale-while-revalidate=30";
 export const MOST_LISTS = 50;
 export const MOST_IN_A_LIST = 500;
 export const MOST_FAVOURITES = 2000;
@@ -952,6 +964,29 @@ async function photos(request, response) {
     mine: mine.map((one) => photoSaid(origin, one)), left: account ? Math.max(0, 3 - mine.length) : null }));
 }
 
+/// More like X: the designers closest to X's work, each with how the caller
+/// stands with them, so Follow is drawn at once. Signed out the same for
+/// everybody, so kept briefly by the CDN; signed in, the caller's own.
+async function alike(request, response) {
+  const asker = bearer(request) ? await signedIn(request) : null;
+  const tests = testsAsked(request.query);
+  const person = await personOf(String(request.query?.handle || "").toLowerCase());
+  response.setHeader("Cache-Control", asker || tests ? "private, no-store" : SHARED_CACHE);
+  if (!person) return response.status(404).json({ error: "nobody here has that handle" });
+  const designers = await designersAlike(person, asker, tests);
+  return response.status(200).json(await withFaces({ handle: person.handle, name: person.name, designers }));
+}
+
+/// The gallery's Builds tab, page N: the same for everybody, so kept briefly
+/// by the CDN, as the gallery's list is; a probe's (tests=1) never.
+async function builds(request, response) {
+  const tests = testsAsked(request.query);
+  const page = pageOf(request.query || {});
+  const said = await galleryBuilds({ origin: originOf(request), page, tests, shown: shownPublicly });
+  response.setHeader("Cache-Control", tests ? TESTS_CACHE : SHARED_CACHE);
+  return response.status(200).json(await withFaces({ page, ...said }));
+}
+
 async function photoServe(request, response) {
   const file = await photoFile(String(request.query?.id || ""), shownPublicly);
   if (!file) return response.status(404).setHeader("Cache-Control", "no-store").end("");
@@ -1343,6 +1378,13 @@ async function profilePage(request, response) {
     <p class="note">${name} chose to show whom they follow.</p>
     <ul class="pills">${following.map((one) => `<li><a class="pill" href="/u/${escapeHtml(one.handle)}">`
       + `${avatarHtml({ handle: one.handle, name: one.name, picture: one.picture }, { size: "small" })}${escapeHtml(one.name)}</a></li>`).join("")}</ul></section>` : ""}
+  ${counts.models ? `<!-- More like them (api/_alike.js): drawn by web/follow.js for whoever
+       asks, never them nor whom they follow, and shown only once somebody is close. -->
+  <section class="alike" id="alike" data-alike="${escapeHtml(person.handle)}" aria-labelledby="alike-h" hidden>
+    <h2 id="alike-h">More like ${name}</h2>
+    <p class="note">Designers whose models share the most with ${name}’s: themes, tags and parts.</p>
+    <ul class="people-list" id="alike-people"></ul>
+  </section>` : ""}
 </div>
 ${shareSheetHtml({ url, name: person.name, text: `${person.name} on Brickworks`,
     about: "Its link opens their page: their models, their builds and their collections.",
@@ -1518,9 +1560,11 @@ export default async function handler(request, response) {
       if (op === "comments") return await listComments(request, response);
       if (op === "photos") return await photos(request, response);
       if (op === "photo_file") return await photoServe(request, response);
+      if (op === "builds") return await builds(request, response);
       if (op === "follows") return await getFollows(request, response);
       if (op === "list_follows") return await getListFollows(request, response);
       if (op === "following") return await getFollowing(request, response);
+      if (op === "alike") return await alike(request, response);
       if (op === "feed") return await feed(request, response, { origin: originOf(request) });
       if (op === "latest") return await latest(request, response, { origin: originOf(request) });
       if (op === "feed_count") return await feedCount(request, response);

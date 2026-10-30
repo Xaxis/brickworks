@@ -18,7 +18,9 @@
 // and a shared model's /m/<id>, /m/<id>.png, /m/<id>.webp and /m/<id>/embed,
 // and an older version's /m/<id>/v/<n> and /m/<id>/v/<n>.png
 // (api/share.js), a profile's /u/<handle> and a collection's /c/<id>
-// (api/people.js).
+// (api/people.js), an LDraw set's /library/<id> with its pictures, file,
+// parts and scene, and every set's /library/set/<n> with its pictures, so
+// the library's pages are seen here with every picture they have live.
 // Other files in web/ are served as they are.
 //
 // No client address is passed on, so api/otp.js's per-address limit has
@@ -174,10 +176,22 @@ const MAPPED = [
   // The sitemap, with every listed model in it (api/share.js).
   [/^\/sitemap\.xml$/, "share", "sitemap"],
   // Every set in the catalogue (api/_sets.js): its page, its parts, its
-  // picture, and the sitemaps of the sets' pages.
+  // own picture (a card's, and its page's), the one drawn of its parts, and
+  // the sitemaps of the sets' pages.
   [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/parts[.](json|xml|csv)$/, "share", "catalog_parts"],
   [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]jpg$/, "share", "catalog_picture"],
+  [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.](page)[.]webp$/, "share", "catalog_photo"],
+  [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]webp$/, "share", "catalog_photo"],
   [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/?$/, "share", "catalog_set"],
+  // A set of the LDraw library: its page, its pictures (the card's, the
+  // page's and the app's cover, api/share.js set_cover), its file, its parts
+  // and its scene, from the store as the deployment serves them.
+  [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/?$/, "share", "set"],
+  [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.]webp$/, "share", "set_cover"],
+  [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})()[.](cutout|cover)[.]webp$/, "share", "set_cover"],
+  [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.]mpd$/, "share", "set_file"],
+  [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})()\/parts[.](json|xml|csv)$/, "share", "set_parts"],
+  [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/scene[.]json$/, "share", "set_scene"],
   [/^\/sitemaps\/index[.]xml$/, "share", "sitemap_index"],
   [/^\/sitemaps\/sets-([1-9][0-9]{0,2})[.]xml$/, "share", "sitemap_sets"],
   // The daily cron's clean-up of files no published row owns.
@@ -286,7 +300,9 @@ http.createServer(async (incoming, outgoing) => {
     if (captured[3] && mapped[1] === "share") query.as = captured[3];
     if (captured[1] && mapped[2] === "page" && mapped[1] === "people") query.handle = captured[1];
     if (captured[1] && mapped[2] === "list_page") query.id = captured[1];
-    if (captured[1] && mapped[2].startsWith("catalog_")) Object.assign(query, { set: captured[1], as: captured[2] || "json" });
+    if (captured[1] && mapped[2].startsWith("catalog_")) {
+      Object.assign(query, { set: captured[1], as: captured[2] || (mapped[2] === "catalog_photo" ? "card" : "json") });
+    }
     if (captured[1] && mapped[2] === "sitemap_sets") query.n = captured[1];
   }
   // The app is at /app, which the deployment sends on to the build with

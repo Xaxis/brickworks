@@ -363,3 +363,85 @@ export async function photosReported(reports) {
 export async function reportPhoto(report, photo) {
   await db("report_photos", { method: "POST", body: { report, photo } });
 }
+
+// ---------------------------------------------------------------------------
+// The gallery's Builds tab (docs/SOCIAL.md section 7, item 8): everybody's
+// photos of real builds, newest first, a page of the gallery's own 24 at a
+// time. A photo is in it while it may be shown anywhere (not hidden by the
+// model's owner, not taken out, its builder shown in public) and, here,
+// while no report of it waits for the site's owner: one page of every
+// builder's photos is more than one model's strip, so a photo somebody
+// says should not be there waits out of it until it is looked at. Its
+// model listed in the gallery, published and not taken out, by an account
+// not taken out; a test model's only when asked for.
+
+export const BUILDS_PAGE = 24;
+
+/// What the database is asked for page [page] of the Builds tab: a
+/// PostgREST path on build_photos, with its model's name and owner, and one
+/// row more than the page holds, which says whether there is another.
+/// [barred]: accounts taken out; [waiting]: photos a report waits on.
+export function buildsQuery({ page = 1, tests = false, barred = [], waiting = [] }) {
+  const asked = new URLSearchParams({ select: "id,model,account,words,width,height,at,shared_models!inner(name,owner)",
+    removed_at: "is.null", hidden_at: "is.null", "shared_models.published": "is.true",
+    "shared_models.listed": "is.true", "shared_models.barred": "is.false" });
+  if (!tests) asked.set("shared_models.test", "is.false");
+  if (barred.length) {
+    asked.set("account", `not.in.(${barred.join(",")})`);
+    asked.set("shared_models.owner", `not.in.(${barred.join(",")})`);
+  }
+  if (waiting.length) asked.set("id", `not.in.(${waiting.join(",")})`);
+  asked.set("order", "at.desc,id.desc");
+  asked.set("limit", String(BUILDS_PAGE + 1));
+  asked.set("offset", String((page - 1) * BUILDS_PAGE));
+  return `build_photos?${asked}`;
+}
+
+/// One printable line of what a builder typed, or null.
+const lineOf = (text) => String(text ?? "").replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim() || null;
+
+/// The page made of buildsQuery's [rows]: {photos, more}, each photo with
+/// its model's name and its builder's {handle, name} from [people]
+/// (account -> person; none for a builder with no profile), less any by
+/// the accounts in [unshown] (not shown in public: under 13, or taken
+/// out since). Its words as one line, every word as typed: the page
+/// escapes them.
+export function buildsPage(rows, { origin = "", people = {}, unshown = [] }) {
+  const out = new Set(unshown);
+  const shown = rows.slice(0, BUILDS_PAGE).filter((row) => ID.test(String(row.id)) && ID.test(String(row.model))
+    && !out.has(row.account));
+  return {
+    photos: shown.map((row) => ({ id: row.id, model: row.model, model_name: String(row.shared_models?.name || ""),
+      words: lineOf(row.words), width: Number(row.width) || null, height: Number(row.height) || null, at: row.at,
+      by: people[row.account] ? { handle: people[row.account].handle, name: people[row.account].name } : null,
+      url: `${origin}/api/people?op=photo_file&id=${row.id}`, page: `${origin}/m/${row.model}#photo-${row.id}` })),
+    more: rows.length > BUILDS_PAGE,
+  };
+}
+
+/// Page [page] of the Builds tab: {photos, more}, as buildsPage makes it.
+/// [shown] says whether an account may be shown in public (api/_trust.js
+/// shownPublicly). Before builds.sql, none.
+export async function galleryBuilds({ origin = "", page = 1, tests = false, shown }) {
+  let barred;
+  let waiting;
+  let rows;
+  try {
+    [barred, waiting] = await Promise.all([
+      db("barred_accounts?select=account"),
+      db("report_photos?select=photo,reports!inner(resolved_at)&reports.resolved_at=is.null"),
+    ]);
+    rows = await db(buildsQuery({ page, tests, barred: barred.map((one) => one.account),
+      waiting: [...new Set(waiting.map((one) => one.photo))].filter((id) => ID.test(String(id))) }));
+  } catch (trouble) {
+    if (notYet(trouble)) return { photos: [], more: false };
+    throw trouble;
+  }
+  const accounts = [...new Set(rows.slice(0, BUILDS_PAGE).map((row) => row.account))];
+  const [people, allowed] = await Promise.all([
+    accounts.length ? db(`people?account=in.(${accounts.join(",")})&select=account,handle,name`) : [],
+    Promise.all(accounts.map(async (one) => [one, await shown(one)])),
+  ]);
+  return buildsPage(rows, { origin, people: Object.fromEntries(people.map((one) => [one.account, one])),
+    unshown: allowed.filter(([, may]) => !may).map(([one]) => one) });
+}

@@ -1516,7 +1516,29 @@ picture the assistant is shown.
   --only=objects` turns a picture 30° and fades words to 50% (three actions
   or fewer each), bends an arrow through two points, drops words by two
   guides, and finds each in the HTML, the PDF's content stream and the 300
-  dpi PNG's ink, then undoes them all and reopens the file. A callout's own pages (`kind` "callout" in `page_state`, framed)
+  dpi PNG's ink, then undoes them all and reopens the file. Over MCP (pages3):
+  `edit_booklet place={item: "note", index, turn, opacity}` (opacity a
+  percent, 5 to 100; below 5 refused), `arrow={index, bends: [[x, y], ...]}`
+  (ends kept when only bends are given; `bx`, `by` still one bend) and
+  `guide={axis, at, was, remove}` (`AppTools._lay_guide`), one undo each;
+  `booklet_layout` reads the guides ("Guides on every page, never printed:
+  ..."), each note's turn and opacity and each arrow's bends. `_settle`
+  judges a turned note by its turned outline (`Booklet.overlaps`,
+  `outline`, `outline_box`; `_free_spot` keeps it on the page by that
+  outline). A callout's step is posed apart (`BookletMaker._callout`: the
+  sub-model step's `BookletLooks.turn_at`, `direction(turn, callout.from)`,
+  its subject from there; `Callout.cell_view` and `extent()` for the inline
+  cells): the timeline's view buttons on a callout step pose that step
+  (`Shell.edit_look` uses `current_step()` for turn/tilt/views,
+  `StepsBar.refresh(number, inside)` stays on it, the Booklet row says
+  "<callout> step N turned 45°"), and `edit_booklet callout_step=` with
+  turn=/tilt= (other fields refused as the callout's own; place=/text=/arrow=
+  only on a callout with pages of its own). `booklet_layout` says "(its step
+  2 turned 45°, ...)". 30050-1's sub-models' own ABS ROTSTEPs now pose its
+  callouts' steps. `pages3_probe` (windowed, 1280x720, 10183-1's tank car)
+  proves all three, with the PDF holding the posed picture and the page's
+  PNG measuring no overlap (a turned corner may reach `Booklet.OVERLAP`,
+  0.6 mm, into its neighbour, as an unturned edge may). A callout's own pages (`kind` "callout" in `page_state`, framed)
   are among the editor's pages; their steps carry the sub-model's looks
   (`BookletMaker._hand_look`, plan index as the entry's "step" meta), are
   settled inside the frame (`Booklet._room_of`), and are drawn with the

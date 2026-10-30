@@ -922,6 +922,41 @@ deleting the comment takes the notice with it. Not built: offering anyone
 beyond the page's people (a search of every profile as one types), and an
 email for a mention.
 
+**8 as built**: Builds, a tab of the gallery beside Top, New and
+Collections, at `/builds` (its own page, as Collections and the LDraw
+library are, so it has no bar of filters a photo means nothing to).
+Everybody's photos of real builds, newest first, 24 to a page with the
+gallery's paging, each as the gallery's card (the photo cut to 4:3, shown
+whole at its model's page): its model's name, a link to the photo on that
+page, who built it, a link to their profile, when, and what they said. A
+photo is left out once its model's owner hides it, while a report of it
+waits for the site's owner, and when its builder or the model's owner was
+taken out or is not shown in public (under 13); only a model in the
+gallery has its builds there. Empty, the tab says what a build is and how
+to add one: I built it on a model's page. No SQL. Not built: a smaller
+copy of each photo for the card (the card shows the kept photo, at most
+2048 px, as the model's page's strip does), and masonry (D4): the cards
+are the gallery's, so Show more puts a page after the last without moving
+what was there.
+
+**9 as built** (supabase/designers_alike.sql): More like <name>, on a
+person's page under their work, up to six designers whose models in the
+gallery share the most with theirs. Each theme (a model's kind; "Something
+else" is none) and each tag in common counts one, ai-designed and brickify
+aside; the parts both use, colours aside, count up to three, as the share
+of the parts either uses. One theme or tag in common, or a third of the
+parts, is close; between equals, more of the person's followers following
+them comes first. Never the person, never whoever is looking, never anybody
+they follow already; only profiles that may be followed (13 or over, shown
+in public, not taken out). Each has Follow in place; the section is hidden
+when nobody is close. Who follows whom only orders the list and is never
+said (D1); a signed-in answer is never kept by the CDN. Until the SQL is
+applied, the themes and tags alone (the parts and the followers in common
+need the database's own function: about 4 ms on today's gallery, 0.6 s at
+2,000 designers, measured in the dry run). Not built: a "why" beyond the
+line of what they share, and suggestions on your own page or in the feed
+from this (the feed's designers to follow are U9's, by Top builds).
+
 ## Sources
 
 Read 2026-10-22. Where a site refused automated reading, the claim is

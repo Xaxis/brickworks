@@ -199,6 +199,8 @@ class Callout extends RefCounted:
 	## callout box off (BookletLooks.callout_on).
 	var own_pages: bool = false
 
+	## A cell's view: a step posed apart (BookletMaker._callout) from its
+	## own side, framed on the assembly as seen from there.
 	func cell_view(index: int, px_per_mm: float) -> BookletStudio.View:
 		var cell: Rect2 = cells[index]
 		var k: float = cell_scale * px_per_mm
@@ -206,10 +208,21 @@ class Callout extends RefCounted:
 		var room := Rect2(Vector2(0.0, top), Vector2(cell.size.x, cell.size.y - top))
 		var target: Vector2 = room.get_center() * px_per_mm
 		var size: Vector2 = cell.size * px_per_mm
-		var middle: Vector2 = subject.get_center()
-		return BookletStudio.View.new(from, Vector2(
+		var seen: Entry = steps[index] if inline and index < steps.size() else null
+		var middle: Vector2 = (seen.subject if seen != null else subject).get_center()
+		return BookletStudio.View.new(seen.from if seen != null else from, Vector2(
 			middle.x - (target.x - size.x * 0.5) / k,
 			middle.y + (target.y - size.y * 0.5) / k), k)
+
+	## What every cell must hold, on the view plane in LDU: the finished
+	## assembly as the callout faces it, or as a step posed apart sees it,
+	## the larger each way.
+	func extent() -> Vector2:
+		var most: Vector2 = subject.size
+		if inline:
+			for step: Entry in steps:
+				most = most.max(step.subject.size)
+		return most.max(Vector2(1.0, 1.0))
 
 
 class Page extends RefCounted:
@@ -533,7 +546,10 @@ static func _by_hand(entry: Entry) -> void:
 ## the nearest free room of its size on the page, or, for a picture, a
 ## callout or a picture of the designer's, smaller (down to half), and is
 ## said in [member Page.overlaps], for the page editor and a session to say.
-## One with no room anywhere stays, and is said as not moved.
+## One with no room anywhere stays, and is said as not moved. Words or a
+## picture its designer turned are judged by their turned outline, which is
+## what the page draws: by its box, one turned 30° beside another was left
+## lying on it.
 static func _settle(page: Page) -> void:
 	page.overlaps.clear()
 	var by_hand: bool = page.entries.any(func(entry: Entry) -> bool:
@@ -543,12 +559,13 @@ static func _settle(page: Page) -> void:
 		entry.clear = by_hand
 	var kept: Array = []
 	for thing: Dictionary in things_on(page):
-		var under: Dictionary = _under(thing["rect"], kept)
+		var turn: float = float(thing.get("turn", 0.0))
+		var under: Dictionary = _under(thing["rect"], kept, turn)
 		if under.is_empty():
 			kept.append(thing)
 			continue
 		var spot: Array = _free_spot(thing["rect"], kept, _room_of(page),
-			str(thing["kind"]) in ["picture", "callout", "image"])
+			str(thing["kind"]) in ["picture", "callout", "image"], turn)
 		var said: Dictionary = {"step": (thing["entry"] as Entry).number, "item": thing["kind"],
 			"on_step": (under["entry"] as Entry).number, "on_item": under["kind"],
 			"moved": not spot.is_empty()}
@@ -626,7 +643,8 @@ static func things_on(page: Page) -> Array:
 			var note: Variant = entry.notes[at]
 			if note is Dictionary and ((note as Dictionary).has("text") or (note as Dictionary).has("image")):
 				notes.append({"entry": entry, "kind": "text" if (note as Dictionary).has("text") else "image",
-					"rect": BookletLooks.rect_of(note.get("at", [])), "index": at})
+					"rect": BookletLooks.rect_of(note.get("at", [])), "index": at,
+					"turn": BookletLooks.turn_of(note)})
 	return placed + laid + notes
 
 
@@ -654,20 +672,66 @@ const SIGN := 1.25
 const SIGN_GAP := 2.0
 
 
-## The first of [param kept] that [param rect] overlaps, or {}.
-static func _under(rect: Rect2, kept: Array) -> Dictionary:
+## The first of [param kept] that [param rect], turned [param turn]
+## degrees about its middle, overlaps, or {}.
+static func _under(rect: Rect2, kept: Array, turn: float = 0.0) -> Dictionary:
 	for thing: Dictionary in kept:
-		var shared: Rect2 = rect.intersection(thing["rect"])
-		if shared.size.x > OVERLAP and shared.size.y > OVERLAP:
+		if overlaps(rect, turn, thing["rect"], float(thing.get("turn", 0.0))):
 			return thing
 	return {}
 
 
+## Whether [param a] and [param b], each turned clockwise about its middle
+## by [param a_turn] and [param b_turn] degrees as the page draws it, share
+## more than OVERLAP mm both ways.
+static func overlaps(a: Rect2, a_turn: float, b: Rect2, b_turn: float) -> bool:
+	var shared: Rect2 = outline_box(a, a_turn).intersection(outline_box(b, b_turn))
+	if shared.size.x <= OVERLAP or shared.size.y <= OVERLAP:
+		return false
+	if is_zero_approx(a_turn) and is_zero_approx(b_turn):
+		return true
+	for part: PackedVector2Array in Geometry2D.intersect_polygons(outline(a, a_turn),
+			outline(b, b_turn)):
+		var box := Rect2(part[0], Vector2.ZERO)
+		for point: Vector2 in part:
+			box = box.expand(point)
+		if box.size.x > OVERLAP and box.size.y > OVERLAP:
+			return true
+	return false
+
+
+## [param rect]'s corners turned clockwise about its middle by [param turn]
+## degrees, as CSS's rotate() turns a word or picture on the page.
+static func outline(rect: Rect2, turn: float) -> PackedVector2Array:
+	var middle: Vector2 = rect.get_center()
+	var out := PackedVector2Array()
+	for corner: Vector2 in [rect.position, Vector2(rect.end.x, rect.position.y), rect.end,
+			Vector2(rect.position.x, rect.end.y)]:
+		out.append(middle + (corner - middle).rotated(deg_to_rad(turn)))
+	return out
+
+
+## The box round [method outline].
+static func outline_box(rect: Rect2, turn: float) -> Rect2:
+	if is_zero_approx(turn):
+		return rect
+	var corners: PackedVector2Array = outline(rect, turn)
+	var box := Rect2(corners[0], Vector2.ZERO)
+	for corner: Vector2 in corners:
+		box = box.expand(corner)
+	return box
+
+
 ## The nearest room on the page, on a 2 mm grid from where [param rect] was,
-## that overlaps none of [param kept]: [rect, scale], or [].
-static func _free_spot(rect: Rect2, kept: Array, area: Rect2, can_shrink: bool) -> Array:
+## that overlaps none of [param kept]: [rect, scale], or []. One turned
+## [param turn] degrees is kept inside [param area] by its turned outline.
+static func _free_spot(rect: Rect2, kept: Array, area: Rect2, can_shrink: bool,
+		turn: float = 0.0) -> Array:
+	var whole: Rect2 = area
 	for scale: float in ([1.0, 0.85, 0.7, 0.55] if can_shrink else [1.0]):
 		var size: Vector2 = rect.size * scale
+		var out: Vector2 = (outline_box(Rect2(Vector2.ZERO, size), turn).size - size) * 0.5
+		area = whole.grow_individual(-out.x, -out.y, -out.x, -out.y)
 		if size.x > area.size.x or size.y > area.size.y:
 			continue
 		var best: Rect2 = Rect2()
@@ -678,7 +742,7 @@ static func _free_spot(rect: Rect2, kept: Array, area: Rect2, can_shrink: bool) 
 			while y + size.y <= area.end.y + 0.01:
 				var at := Rect2(Vector2(x, y), size)
 				var away: float = at.get_center().distance_squared_to(rect.get_center())
-				if away < nearest and _under(at, kept).is_empty():
+				if away < nearest and _under(at, kept, turn).is_empty():
 					best = at
 					nearest = away
 				y += 2.0
@@ -851,13 +915,13 @@ static func _cell_scale(callout: Callout, panel: Rect2, count: int) -> float:
 	var top: float = CALLOUT_NUMBER + 1.0 if callout.inline else 1.0
 	var widest: float = (panel.size.x * 0.56 - PAD * (count + 1)) / count
 	var tallest: float = panel.size.y * 0.4 - top - PAD * 2.0
-	var size: Vector2 = callout.subject.size.max(Vector2(1.0, 1.0))
+	var size: Vector2 = callout.extent()
 	return minf(MOST_SCALE * 0.8, minf((widest - 2.0) / size.x, (tallest - 2.0) / size.y))
 
 
 static func _cell_size(callout: Callout, scale: float) -> Vector2:
 	var top: float = CALLOUT_NUMBER + 1.0 if callout.inline else 1.0
-	return callout.subject.size * scale + Vector2(2.0, 2.0 + top)
+	return callout.extent() * scale + Vector2(2.0, 2.0 + top)
 
 
 ## Whether the callout's steps fit in a box on a whole page's panel at a
@@ -879,7 +943,7 @@ static func _cells(callout: Callout) -> void:
 		callout.cells.append(Rect2(callout.box.position
 			+ Vector2(PAD + index * (cell.x + PAD), PAD), cell))
 	var top: float = CALLOUT_NUMBER + 1.0 if callout.inline else 1.0
-	var size: Vector2 = callout.subject.size.max(Vector2(1.0, 1.0))
+	var size: Vector2 = callout.extent()
 	callout.cell_scale = minf((cell.x - 2.0) / size.x, (cell.y - 2.0 - top) / size.y)
 
 
