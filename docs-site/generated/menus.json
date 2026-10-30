@@ -167,6 +167,12 @@
 					"tip": "Build this model with someone else, live, each in their own browser or the app"
 				},
 				{
+					"name": "comments",
+					"words": "Comments…",
+					"key": "",
+					"tip": "Comments pinned to the model's parts, kept with it, and a new one on the part selected"
+				},
+				{
 					"submenu": "export",
 					"words": "Export",
 					"items": [
@@ -415,12 +421,6 @@
 					"words": "Mirror",
 					"key": "Shift+M",
 					"tip": "Make the selection its mirror image, left to right as you see it"
-				},
-				{
-					"name": "comments",
-					"words": "Comments…",
-					"key": "",
-					"tip": "Comments pinned to the model's parts, kept with it, and a new one on the part selected"
 				}
 			]
 		},
