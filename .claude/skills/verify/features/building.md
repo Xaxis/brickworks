@@ -1924,7 +1924,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   middle is on the other's shaft (`_gap`): #17's pin into the back of its beam,
   #25's belt wheel by its hole on the axle, each a check. Rows in
   `shots/connect/walk.json`, pictures in `shots/connect/WxH/`.
-- `set walk probe` (`src/dev/setwalk_probe.gd`): windowed, about fifteen
+- `set walk probe` (`src/dev/setwalk_probe.gd`): windowed, about ten
   minutes for both sets; `PROBE_SIZE=1400x900` for the big window. Builds
   8841-1's 25 walk parts (section 9's order) and 5762-1's first 25 from the
   set's bin: the bin's search clicked, the set's number typed, Build from it;

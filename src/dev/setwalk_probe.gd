@@ -26,7 +26,8 @@
 ## from=library takes each part from the whole library instead, as section
 ## 9's run did: the search, the number, the tile and the colour's swatch.
 ## PROBE_SIZE=1400x900 runs it at the larger window. Pictures go to
-## shots/setwalk/WxH/ with shots=1, the rows to shots/setwalk/<set>.json.
+## shots/setwalk/WxH/ with shots=1 (WxH-library/ from the library), the
+## rows beside them as <set>.json.
 extends SceneTree
 
 const SETS := "res://vendor/omr/files/"
@@ -169,7 +170,7 @@ func _walk(number: String, file: String, order: Array) -> String:
 		", ".join(wrong.slice(0, 4)) if not wrong.is_empty() else "none off"],
 		wrong.is_empty() and exact == count)
 	var per_part: float = float(spent) / count
-	var path: String = ProjectSettings.globalize_path("res://shots/setwalk/%s.json" % number)
+	var path: String = _out("%s.json" % number)
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	var out := FileAccess.open(path, FileAccess.WRITE)
 	out.store_string(JSON.stringify({"set": number, "file": file, "bin": from_bin,
@@ -179,8 +180,8 @@ func _walk(number: String, file: String, order: Array) -> String:
 		file.get_basename(), exact, count, spent, per_part, from_bin.values().reduce(
 		func(a: int, b: int) -> int: return a + b, 0), (Time.get_ticks_msec() - began) / 1000.0 / count,
 		how]
-	_check("%s: %.2f actions a part from the bin, the bar %.0f" % [number, per_part, BAR],
-		per_part <= BAR)
+	_check("%s: %.2f actions a part from the %s, the bar %.0f" % [number, per_part,
+		"whole library" if _from_library else "set's bin", BAR], per_part <= BAR)
 	return line
 
 
@@ -1262,13 +1263,19 @@ func _type(text: String) -> void:
 		await _frames(2)
 
 
+## Where a run's file goes: shots/setwalk/WxH/, or WxH-library/ for the
+## walk from the whole library, so runs at once do not write over another's.
+func _out(name: String) -> String:
+	var size: Vector2i = DisplayServer.window_get_size()
+	return ProjectSettings.globalize_path("res://shots/setwalk/%dx%d%s/%s" % [size.x, size.y,
+		"-library" if _from_library else "", name])
+
+
 func _shot(name: String) -> void:
 	await _frames(4)
 	await RenderingServer.frame_post_draw
 	var image: Image = root.get_texture().get_image()
-	var size: Vector2i = DisplayServer.window_get_size()
-	var path: String = ProjectSettings.globalize_path("res://shots/setwalk/%dx%d/%s.png" % [
-		size.x, size.y, name])
+	var path: String = _out("%s.png" % name)
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	image.save_png(path)
 	print("    picture: %s" % path)
