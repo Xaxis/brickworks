@@ -5,7 +5,9 @@
 // them up. Track follows Admission's rules: over the limit nothing is
 // counted, giving back always fits, and a repeated idempotency key returns
 // its first answer. An owner is on the best plan with every feature
-// unlimited (ADR-0009). Checkout and the portal answer with Stripe-shaped
+// unlimited (ADR-0009). A product's own comp (ADR-0015, the beta's month) is
+// one a customer and reason, ever, within apiCompsLimit. Checkout and the
+// portal answer with Stripe-shaped
 // URLs on hosts nobody owns (checkout.stripe.test), holding return URLs to
 // what test mode allows, as Admission's own checkout does
 // (apps/admission/src/server/stripe/checkout.ts holdReturnUrls).
@@ -62,11 +64,17 @@ const error = (code, message) => ({ error: { code, message } });
 const reply = (status, body) => new Response(JSON.stringify(body), {
   status, headers: { "content-type": "application/json" } });
 
+/// The longest a product's own comp lasts (Admission's ADR-0015).
+const MOST_COMP_DAYS = 31;
+const DAY_MS = 86_400_000;
+
 export function fakeAdmission() {
   const usage = new Map();
   const answers = new Map();
   const subs = new Map();
   const overrides = new Map();
+  /// The product's own comps (ADR-0015), "customer:reason" to {plan, until, revoked}.
+  const apiComps = new Map();
   let sessions = 0;
   const self = {
     /// Every request, as "METHOD /path".
@@ -86,6 +94,11 @@ export function fakeAdmission() {
     comp(customerId, plan, until = null) {
       overrides.set(customerId, { plan, until });
     },
+    /// How many of the product's own comps may be on at once (ADR-0015):
+    /// Brickworks' is 100; null is the owner never having set it.
+    apiCompsLimit: 100,
+    /// Each comp a product asked for: {customerId, reason, made}, in order.
+    compsAsked: [],
     /// The owner's set_usage.
     setUsed(customerId, feature, n) {
       usage.set(`${customerId}:${feature}`, n);
@@ -103,10 +116,18 @@ export function fakeAdmission() {
     },
   };
 
+  /// The product's comps on now for [customerId], latest ending first.
+  function compsOn(customerId, now = Date.now()) {
+    return [...apiComps.entries()].filter(([k, c]) => k.startsWith(`${customerId}:`) && !c.revoked
+      && Date.parse(c.until) > now).map(([, c]) => c).sort((x, y) => Date.parse(y.until) - Date.parse(x.until));
+  }
+
   function planOf(customerId) {
     if (self.owners.has(customerId)) return { key: "pro", source: "override", until: null };
     const o = overrides.get(customerId);
     if (o) return { key: o.plan, source: "override", until: o.until };
+    const comp = compsOn(customerId)[0];
+    if (comp) return { key: comp.plan, source: "override", until: comp.until };
     const s = subs.get(customerId);
     if (s && s.status !== "canceled") return { key: s.plan, source: "subscription" };
     return { key: "free", source: "default" };
@@ -180,10 +201,51 @@ export function fakeAdmission() {
       for (const k of [...answers.keys()]) if (k.startsWith(`${id}:`)) answers.delete(k);
       subs.delete(id);
       overrides.delete(id);
+      for (const k of [...apiComps.keys()]) if (k.startsWith(`${id}:`)) apiComps.delete(k);
       self.owners.delete(id);
       const canceled = paying ? [`sub_${id}`] : [];
       self.erasures.push({ customerId: id, found, canceled });
       return reply(200, { customerId: id, mode: "test", found, canceled, fingerprint: `erased:${id.length}` });
+    }
+    // A product's own comp (ADR-0015): one a customer and reason, ever; a
+    // repeat answers the first unchanged (200), even once it has ended.
+    const comping = /^\/v1\/customers\/([^/]+)\/comps\/([^/]+)$/.exec(path);
+    if (comping && (method === "PUT" || method === "DELETE")) {
+      const id = decodeURIComponent(comping[1]);
+      const reason = decodeURIComponent(comping[2]);
+      if (!/^[a-z0-9][a-z0-9_-]{0,39}$/.test(reason)) return reply(400, error("bad_request", "reason is 1-40 of a-z, 0-9, _ and -."));
+      const key = `${id}:${reason}`;
+      if (method === "DELETE") {
+        const c = apiComps.get(key);
+        if (!c) return reply(404, error("unknown_comp", `This customer has no comp "${reason}" from the product.`));
+        if (Date.parse(c.until) > Date.now()) c.revoked = true;
+        return reply(200, state(id));
+      }
+      if (apiComps.has(key)) {
+        self.compsAsked.push({ customerId: id, reason, made: false });
+        return reply(200, state(id));
+      }
+      if (self.apiCompsLimit === null) {
+        return reply(403, error("api_comps_off", "This product's keys can't comp: the owner turns API comps on in Admission."));
+      }
+      if (!PLANS[body.plan]) return reply(404, error("unknown_plan", `There is no plan "${body.plan}".`));
+      if (body.plan === "free") return reply(400, error("default_plan", "\"free\" is the default plan: everyone has it."));
+      if ((body.days === undefined) === (body.until === undefined)) {
+        return reply(400, error("bad_request", "send days or until, not both"));
+      }
+      const now = Date.now();
+      const until = body.days !== undefined ? now + Number(body.days) * DAY_MS : Date.parse(body.until);
+      if (!Number.isFinite(until) || until <= now || until > now + MOST_COMP_DAYS * DAY_MS
+        || (body.days !== undefined && !(Number.isInteger(body.days) && body.days >= 1))) {
+        return reply(400, error("bad_until", `A comp ends in the future, at most ${MOST_COMP_DAYS} days from now.`));
+      }
+      const on = [...apiComps.values()].filter((c) => !c.revoked && Date.parse(c.until) > now).length;
+      if (on >= self.apiCompsLimit) {
+        return reply(409, error("api_comps_full", `This product's keys already have ${on} comps on, its limit in test mode.`));
+      }
+      apiComps.set(key, { plan: body.plan, until: new Date(until).toISOString(), revoked: false });
+      self.compsAsked.push({ customerId: id, reason, made: true });
+      return reply(201, state(id));
     }
     const marking = /^\/v1\/customers\/([^/]+)\/owner$/.exec(path);
     if (method === "PUT" && marking) {

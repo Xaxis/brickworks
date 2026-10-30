@@ -26,6 +26,9 @@ export const askPlans = (asked) => ask("plans", asked);
 /// One request through api/account.js's handler, as askPlans makes one.
 export const askAccount = (asked) => ask("account", asked);
 
+/// One request through api/admin.js's handler, as askPlans makes one.
+export const askAdmin = (asked) => ask("admin", asked);
+
 async function ask(route, { method = "GET", query = {}, headers = {}, body, raw } = {}) {
   const { default: handle } = await import(`../../../api/${route}.js`);
   let status = 0;

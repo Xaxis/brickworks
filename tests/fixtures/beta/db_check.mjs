@@ -6,90 +6,23 @@
 //   PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js PG_BIN=<postgres's bin> \
 //     node tests/fixtures/beta/db_check.mjs
 //
-// PG_BIN holds initdb and postgres (Admission's embedded Postgres has
-// both: ~/Projects/admission.sh/node_modules/.pnpm/@embedded-postgres+
-// linux-x64@*/node_modules/@embedded-postgres/linux-x64/native/bin). The
-// server listens on a socket in a folder of its own, never a port, and is
-// stopped and deleted at the end. Supabase's part is stood in for: its
-// three roles, auth.users with the columns the file reads, and the two
-// tables of models it counts. Prints one JSON object, each scenario's
-// findings by name.
-import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
-import { createRequire } from "node:module";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
+// The Postgres is pg.mjs's, stopped and deleted at the end. Prints one
+// JSON object, each scenario's findings by name.
+import { SQL, startPostgres } from "./pg.mjs";
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const SQL = readFileSync(path.join(here, "../../../supabase/beta.sql"), "utf8");
-const pg = createRequire(import.meta.url)(process.env.PG_MODULE || "/tmp/pg/node_modules/pg/lib/index.js");
-const bin = process.env.PG_BIN;
-const lib = path.join(bin, "..", "lib");
-const env = { ...process.env, LD_LIBRARY_PATH: `${lib}${process.env.LD_LIBRARY_PATH ? `:${process.env.LD_LIBRARY_PATH}` : ""}` };
-
-// The socket's folder is short, under the system's own temporary folder: a
-// socket's path is at most 107 bytes. The data goes in BETA_DB_DIR if set.
-const dir = mkdtempSync(path.join(tmpdir(), "beta-"));
-const store = mkdtempSync(path.join(process.env.BETA_DB_DIR || tmpdir(), "beta-db-"));
-const data = path.join(store, "data");
-const made = spawnSync(path.join(bin, "initdb"), ["-D", data, "-U", "postgres", "-A", "trust", "--no-sync"], { env });
-if (made.status !== 0) {
-  console.error(String(made.stderr));
-  process.exit(1);
-}
-const server = spawn(path.join(bin, "postgres"), ["-D", data, "-k", dir, "-c", "listen_addresses=", "-c", "fsync=off",
-  "-c", "max_connections=60"], { env, stdio: ["ignore", "ignore", "pipe"] });
-let log = "";
-server.stderr.on("data", (chunk) => { log += chunk; });
-
-const connect = async () => {
-  const client = new pg.Client({ host: dir, user: "postgres", database: "postgres" });
-  await client.connect();
-  return client;
-};
-let admin;
-for (let tries = 0; ; tries += 1) {
-  try {
-    admin = await connect();
-    break;
-  } catch (trouble) {
-    if (tries > 100) {
-      console.error(log || String(trouble));
-      process.exit(1);
-    }
-    await new Promise((done) => setTimeout(done, 100));
-  }
-}
-
+const db = await startPostgres();
+const { q, one, connect, user } = db;
 const out = {};
-const q = async (sql, params = [], client = admin) => (await client.query(sql, params)).rows;
-const one = async (sql, params = [], client = admin) => Object.values((await q(sql, params, client))[0] || {})[0];
 
 try {
-  await q(`create role anon nologin; create role authenticated nologin; create role service_role nologin;
-    create schema auth;
-    create table auth.users (id uuid primary key, email text, created_at timestamptz not null default now(),
-      email_confirmed_at timestamptz, last_sign_in_at timestamptz);
-    create table public.account_models (owner uuid not null references auth.users (id) on delete cascade, name text);
-    create table public.shared_models (owner uuid not null references auth.users (id) on delete cascade, id text);`);
-  await q(SQL);
   // Applying it again changes nothing.
   await q(SQL);
   out.pools = await q("select pool, cap, given from public.beta_pools order by pool");
 
-  let n = 0;
-  const user = async (email, { made = "2026-11-01T00:00:00Z", confirmed = true } = {}) => {
-    n += 1;
-    const id = `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-    await q("insert into auth.users (id, email, created_at, email_confirmed_at, last_sign_in_at) values ($1, $2, $3, $4, $4)",
-      [id, email, made, confirmed ? made : null]);
-    return id;
-  };
   const apply = (id, signals = {}) => one(
     "select public.beta_apply($1, $2, 'claude', 'lego', 'Ten years of Technic', 'https://rebrickable.com/users/x/mocs/', '2026-10-29', $3)",
     [id, "A working crane with a slewing ring and a two-speed winch", JSON.stringify(signals)]);
-  const decide = (id, what, client = admin, note = null) => one("select public.beta_decide($1, $2, $3, 'owner@example.com')",
+  const decide = (id, what, client = undefined, note = null) => one("select public.beta_decide($1, $2, $3, 'owner@example.com')",
     [id, what, note], client);
 
   // Applying, once.
@@ -159,7 +92,7 @@ try {
   await q("delete from public.beta_applications where pool = 'beta'; update public.beta_pools set given = 0 where pool = 'beta'");
   const dee = await user("dee@example.com");
   await apply(dee);
-  out.decline = await decide(dee, "decline", admin, "Not yet: tell us more about what you would build");
+  out.decline = await decide(dee, "decline", undefined, "Not yet: tell us more about what you would build");
   out.decline_again = await decide(dee, "decline");
   out.apply_too_soon = await apply(dee);
   await q("update public.beta_applications set decided_at = now() - interval '31 days' where account = $1", [dee]);
@@ -259,10 +192,6 @@ try {
   out.spot_twice = await tries("postgres", `update public.beta_applications set status = 'approved', spot = 1
     where account in (select account from public.beta_applications where pool = 'beta' and spot is null limit 2)`);
 } finally {
-  await admin.end().catch(() => {});
-  server.kill("SIGINT");
-  await new Promise((done) => server.on("exit", done));
-  rmSync(dir, { recursive: true, force: true });
-  rmSync(store, { recursive: true, force: true });
+  await db.stop();
 }
 console.log(JSON.stringify(out));

@@ -339,6 +339,27 @@ export class Admission {
         const value = await this.requestOrThrow("PUT", `/v1/customers/${encodeURIComponent(customerId)}/owner`, { owner });
         await this.hold(customerId, { at: this.now(), value });
     }
+    /**
+     * Comp this customer `plan` for `days` (1–31) or `until` (an ISO time at most 31 days ahead),
+     * with the product's own key, e.g. for an approved beta tester (ADR-0015). One comp per customer
+     * and `reason`, ever: asking again answers the first one unchanged, even after it has ended, so a
+     * retry can never extend it. Returns the customer's answer. Throws AdmissionError
+     * "api_comps_off" (403) until the owner sets the product's limit, "api_comps_full" (409) at it.
+     */
+    async comp(input) {
+        const { customerId, reason, ...body } = input;
+        await this.forget(customerId);
+        const value = await this.requestOrThrow("PUT", `/v1/customers/${encodeURIComponent(customerId)}/comps/${encodeURIComponent(reason)}`, body);
+        await this.hold(customerId, { at: this.now(), value });
+        return value;
+    }
+    /** End the comp this product's key made for this customer with `reason` (ADR-0015). */
+    async endComp(customerId, reason) {
+        await this.forget(customerId);
+        const value = await this.requestOrThrow("DELETE", `/v1/customers/${encodeURIComponent(customerId)}/comps/${encodeURIComponent(reason)}`);
+        await this.hold(customerId, { at: this.now(), value });
+        return value;
+    }
     /** Everything Admission holds about a customer, for a data request. */
     async exportCustomer(customerId) {
         return this.requestOrThrow("GET", `/v1/customers/${encodeURIComponent(customerId)}/export`);
