@@ -2063,7 +2063,15 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   there in the same undo step (`FlexTool.follow_moved`, from
   `Main._on_model_edited`); its pieces never stop that move
   (`Builder._only_bands`). Reshape reads one back off its pieces. Probe:
-  `springs_probe` (windowed; `PROBE_SIZE=1280x720` for a laptop).
+  `springs_probe` (windowed; `PROBE_SIZE=1280x720` for a laptop). It saves
+  the model and has a second app, a process of its own with an empty data
+  folder (`--reopen=FILE`, beside FILE's `.json` of what it should hold),
+  open it: the three bands bands again, as long, no piece loose, the spring
+  and shock with their turns, and Reshape on each. Then a copy with the made
+  pieces' FILE sections stripped, as another tool may save it, in a fresh app
+  too (made again from their names: 247 of 247); and one band's pieces renamed
+  to one nothing can make, opened: said (named once, counted), the rest open,
+  and a save keeps its lines in their own sub-model.
 - `build a real set by hand in a browser` (`tools/web/cad_task_flow.mjs`,
   `tools/bench/cadtask_klm.py`, 2026-10-16; run by `tools/bench/cadtask.py
   build`, written up in `docs/CADTASK.md`): three small real sets (20 to 80
@@ -2311,7 +2319,8 @@ godot --headless --path . --script src/dev/technic_hand_probe.gd
 MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd
 # a band from the bin round two wedge belt wheels and three, within 1 LDU of
 # the tangents and arcs by hand; turned and tilted; following a wheel nudged;
-# a spring stretched 4 to 6 studs keeping its turns; a shock; saved and opened.
+# a spring stretched 4 to 6 studs keeping its turns; a shock; saved and opened,
+# there and by a fresh app (a second process, nothing built or kept).
 # Pictures and the saved file in shots/springs/
 bash tools/probe.sh springs_probe; PROBE_SIZE=1280x720 bash tools/probe.sh springs_probe
 ```

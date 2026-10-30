@@ -6867,7 +6867,10 @@ func _tell_bin_selection() -> void:
 func _open(path: String) -> int:
 	var placed: int = _store.open(path)
 	if not _store.awaited.is_empty():
-		_bar.say("%d bricks — fetching %d more…" % [placed, _store.awaited.size()])
+		_bar.say("%d bricks — fetching %d more…%s" % [placed, _store.awaited.size(),
+			ModelBar.unshown_words(_store)])
+	elif not ModelBar.unshown_words(_store).is_empty():
+		_bar.say("opened %s%s" % [_store.title, ModelBar.unshown_words(_store)])
 	return placed
 
 
@@ -7870,7 +7873,8 @@ func _open_theirs() -> void:
 	var placed: int = await _bar.open_with_progress(path)
 	if placed >= 0:
 		_bar.opened.emit(placed)
-		_bar.say("Opened %s, the model you saved last" % _cloud.newest)
+		_bar.say("Opened %s, the model you saved last%s" % [_cloud.newest,
+			ModelBar.unshown_words(_store)])
 
 
 ## Whether [method _open_theirs] has opened one this start.

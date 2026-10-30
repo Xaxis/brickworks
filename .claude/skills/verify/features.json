@@ -2026,7 +2026,7 @@
       "id": "cli:springs probe",
       "kind": "cli",
       "entry": "src/dev/springs_probe.gd",
-      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd  (a band round two wedge belt wheels and three, each in 4 actions or fewer, within 1 LDU of the tangents and arcs by hand and in every groove; turned and tilted; a wheel nudged and its band following, one undo; a spring stretched from 4 to 6 studs keeping its turns; a shock from the bin; saved and opened the same; PROBE_SIZE=1280x720)",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd  (a band round two wedge belt wheels and three, each in 4 actions or fewer, within 1 LDU of the tangents and arcs by hand and in every groove; turned and tilted; a wheel nudged and its band following, one undo; a spring stretched from 4 to 6 studs keeping its turns; a shock from the bin; saved and opened the same, there and by a fresh app (a second process with an empty data folder, --reopen=FILE): no band lost or loose, Reshape on each; its made pieces' sections stripped, made again from their names; a band nothing can make said and kept in its sub-model; PROBE_SIZE=1280x720)",
       "area": "building",
       "tests": []
     },
