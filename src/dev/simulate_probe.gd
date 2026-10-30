@@ -114,8 +114,13 @@ func _gear_train() -> void:
 	var depth: int = _builder.history_depth()
 	var revision: int = _world.revision
 
-	_check("Tools has Simulate mechanism", _shell.can("simulate")
-		and "simulate" in (Shell.MENUS[4][1] as Array))
+	# By its name: Make came in before Tools (keys3), and the fifth menu was
+	# Make's from then.
+	var tools: Array = []
+	for menu: Array in Shell.MENUS:
+		if menu[0] == "Tools":
+			tools = menu[1]
+	_check("Tools has Simulate mechanism", _shell.can("simulate") and "simulate" in tools)
 	# The parts column open, as a person building by hand has it.
 	var bin: SideDock = _main.get("_bin_dock")
 	bin.set_open(true, false)
