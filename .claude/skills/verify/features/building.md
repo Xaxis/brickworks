@@ -2005,7 +2005,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   the model and has a second app, a process of its own with an empty data
   folder (`--reopen=FILE`, beside FILE's `.json` of what it should hold),
   open it: the three bands bands again, as long, no piece loose, the spring
-  and shock with their turns, and Reshape on each.
+  and shock with their turns, and Reshape on each. Then a copy with the made
+  pieces' FILE sections stripped, as another tool may save it, in a fresh app
+  too (made again from their names: 247 of 247); and one band's pieces renamed
+  to one nothing can make, opened: said (named once, counted), the rest open,
+  and a save keeps its lines in their own sub-model.
 - `build a real set by hand in a browser` (`tools/web/cad_task_flow.mjs`,
   `tools/bench/cadtask_klm.py`, 2026-10-16; run by `tools/bench/cadtask.py
   build`, written up in `docs/CADTASK.md`): three small real sets (20 to 80

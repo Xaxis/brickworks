@@ -16,6 +16,11 @@
 ## long as they were, none of their pieces loose; its spring and shock with
 ## their turns; and Reshape must read each back. --reopen=FILE is that second
 ## run alone, of a file saved beside FILE's .json of what it should hold.
+## A second fresh app does the same with the made pieces' FILE sections
+## stripped from the file (stripped.ldr), as another tool may save it: they
+## are made again from their names. And one band's pieces renamed to a band
+## there is none of (unknown.ldr) open here: the open names it once and
+## counts it, the rest is there, and a save keeps its lines in its sub-model.
 ##
 ## The loop is measured off the parts laid, not the tool's own sums: the
 ## pieces' lengths added up against the tangents and arcs worked out by hand
@@ -41,6 +46,7 @@ var _shell: Shell
 var _flex: FlexTool
 var _tree: Assemblies
 var _bin: PartsBin
+var _bar: ModelBar
 var _size: String = ""
 
 
@@ -73,6 +79,7 @@ func _run() -> void:
 	_shell = _main.get("_shell")
 	_flex = _main.get("_flex")
 	_bin = _main.get("_bin")
+	_bar = _main.get("_bar")
 	_tree = _shell.assemblies
 	var size: Vector2i = DisplayServer.window_get_size()
 	_size = "%dx%d" % [size.x, size.y]
@@ -104,7 +111,10 @@ func _run() -> void:
 	await _spring()
 	await _shock()
 	await _saved_and_opened()
-	_in_a_fresh_app()
+	_in_a_fresh_app("saved")
+	_stripped()
+	_in_a_fresh_app("stripped")
+	await _cannot_be_made()
 
 	print("")
 	if _failures == 0:
@@ -453,12 +463,12 @@ func _saved_and_opened() -> void:
 # -- a fresh app -------------------------------------------------------------------
 
 
-## The file saved, opened by a second app: this probe again, as a process of
-## its own (--reopen), with a data folder made empty for it. Its lines are
-## shown here, and it must pass.
-func _in_a_fresh_app() -> void:
-	print("  opened by a fresh app")
-	var saved: String = ProjectSettings.globalize_path("res://shots/springs/saved.ldr")
+## shots/springs/[param name].ldr opened by a second app: this probe again,
+## as a process of its own (--reopen), with a data folder made empty for it.
+## Its lines are shown here, and it must pass.
+func _in_a_fresh_app(name: String) -> void:
+	print("  %s.ldr opened by a fresh app" % name)
+	var saved: String = _shots(name + ".ldr")
 	var mine: String = OS.get_environment("XDG_DATA_HOME")
 	var fresh: String = (mine if not mine.is_empty()
 		else ProjectSettings.globalize_path("res://shots/springs")) + "/reopen_%d" % Time.get_ticks_msec()
@@ -577,6 +587,90 @@ func _model_box() -> AABB:
 		box = AABB(brick.transform.origin, Vector3.ZERO) if first else box.expand(brick.transform.origin)
 		first = false
 	return box.grow(40.0)
+
+
+## The saved file as another tool may save it: the FILE sections of the
+## pieces the app makes (bw-belt-*, bw-coil-*) gone, every line placing them
+## kept. A fresh app makes them again from their names (stripped.ldr). And
+## that with one band's pieces renamed to a band there is none of
+## (bw-belt-99999), which nothing can make (unknown.ldr).
+func _stripped() -> void:
+	var kept := PackedStringArray()
+	var dropping: bool = false
+	for line: String in FileAccess.get_file_as_string(_shots("saved.ldr")).split("\n"):
+		if line.begins_with("0 FILE "):
+			dropping = Bands.is_piece_id(line.trim_prefix("0 FILE ").strip_edges().get_basename())
+		if not dropping:
+			kept.append(line)
+		elif line.strip_edges() == "0 NOFILE":
+			dropping = false
+	var stripped: String = "\n".join(kept)
+	_write(_shots("stripped.ldr"), stripped)
+	_write(_shots("stripped.json"), FileAccess.get_file_as_string(_shots("saved.json")))
+	var unknown := PackedStringArray()
+	var section: String = ""
+	_renamed = 0
+	for line: String in stripped.split("\n"):
+		if line.begins_with("0 FILE "):
+			section = line.trim_prefix("0 FILE ").strip_edges()
+			if not _renamed_in.is_empty() and section != _renamed_in:
+				section = ""
+		elif not section.is_empty() and line.begins_with("1 ") and line.ends_with(" bw-belt-85546.dat"):
+			line = line.trim_suffix("85546.dat") + "99999.dat"
+			_renamed_in = section
+			_renamed += 1
+		unknown.append(line)
+	_write(_shots("unknown.ldr"), "\n".join(unknown))
+	print("    stripped.ldr: %d made pieces' sections gone; unknown.ldr: %d of %s's pieces bw-belt-99999"
+		% [FileAccess.get_file_as_string(_shots("saved.ldr")).count("\n0 FILE bw-"), _renamed, _renamed_in])
+
+
+var _renamed: int = 0
+var _renamed_in: String = ""
+
+
+## unknown.ldr opened: the band whose pieces cannot be made is said, named
+## once and counted, and kept in the file, in its sub-model, by a save.
+func _cannot_be_made() -> void:
+	print("  unknown.ldr opened: a band of pieces that cannot be made")
+	var placed: int = _main.call("_open", _shots("unknown.ldr"))
+	await _frames(10)
+	var said: String = _bar.status_text()
+	_check("the open says so, the band named once (%s)" % said,
+		said.contains("1 not shown, kept in the file") and said.contains("(flexible)"))
+	var expected: int = int(JSON.parse_string(FileAccess.get_file_as_string(_shots("saved.json")))["parts"])
+	_check("the rest opens: %d parts of %d less its %d pieces" % [placed, expected, _renamed],
+		_renamed > 0 and placed == expected - _renamed and _count() == placed)
+	var text: String = _store.to_text("Springs Probe")
+	_write(_shots("unknown_saved.ldr"), text)
+	var holder: String = ""
+	var main: String = ""
+	var held: int = 0
+	var section: String = ""
+	for line: String in text.split("\n"):
+		if line.begins_with("0 FILE "):
+			section = line.trim_prefix("0 FILE ").strip_edges()
+			if main.is_empty():
+				main = section
+		elif line.begins_with("1 ") and line.ends_with(" bw-belt-99999.dat"):
+			held += 1
+			holder = section if holder.is_empty() or holder == section else "(more than one)"
+	var placed_in_main: bool = false
+	for line: String in text.get_slice("0 NOFILE", 0).split("\n"):
+		placed_in_main = placed_in_main or (line.begins_with("1 ") and line.ends_with(" " + holder))
+	_check("a save keeps all %d of its lines, in a sub-model of their own (%s) the model places, not loose"
+		% [held, holder], held == _renamed and holder != main and not holder.is_empty()
+		and holder != "(more than one)" and placed_in_main)
+
+
+func _shots(name: String) -> String:
+	return ProjectSettings.globalize_path("res://shots/springs/" + name)
+
+
+func _write(path: String, text: String) -> void:
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
 
 
 # -- helpers -------------------------------------------------------------------------

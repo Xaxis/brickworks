@@ -2433,8 +2433,8 @@ func _open(input: Dictionary) -> String:
 		return "Could not open %s: %s. The model on the baseplate, %s, is as it was." % [
 			chosen.name, store.not_opened, store.title]
 	bar.opened.emit(placed)
-	return "Opened %s: %d parts. look_at_model to see it." % [chosen.name, placed] \
-		+ _replaced_words(store, unsaved, was) + _opened_motions()
+	return "Opened %s: %d parts%s. look_at_model to see it." % [chosen.name, placed,
+		ModelBar.unshown_words(store)] + _replaced_words(store, unsaved, was) + _opened_motions()
 
 
 ## open_model versions=true version=N: what changed in the model open now

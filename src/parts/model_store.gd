@@ -1313,8 +1313,16 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	var known: Array = []
 	var missing: Dictionary = {}
 	var waiting: Dictionary = {}
+	var made_again: Dictionary = {}
 	for item: Variant in flattened:
 		var placement: LdrModel.Placement = item
+		# A piece the app makes itself (a band's, a coil's) whose FILE
+		# section the file has lost, as a tool that cannot read one drops
+		# it: made again from its name, as the tool made it. A band went
+		# off the baseplate whole without (springs, 2026-10-30).
+		if not library.parts.has(placement.part_id) and Bands.is_piece_id(placement.part_id) \
+				and not made_again.has(placement.part_id):
+			made_again[placement.part_id] = Bands.piece_part(library, placement.part_id)
 		if not library.parts.has(placement.part_id):
 			missing[placement.part_id] = int(missing.get(placement.part_id, 0)) + 1
 		elif not library.is_resident(placement.part_id):
@@ -1375,6 +1383,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	unshown = missing.duplicate()
 	if source != null and not missing.is_empty():
 		unshown = source.unshown(absent)
+	elif not missing.is_empty():
+		unshown = _unshown_of(absent)
 	# The app's own file carries them itself (_text_into).
 	_absent = absent if source == null else []
 
@@ -1575,7 +1585,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	_phase("loaded")
 	out.append({"placed": placed, "missing": missing.size(),
 		"waiting": waiting.size(), "missing_ids": missing, "error": "",
-		"unshown": unshown, "kept": source != null})
+		"unshown": unshown, "kept": source != null or not _absent.is_empty()})
 
 
 ## Why [param text], which places no part, is not a model to open: "" for
@@ -1809,6 +1819,42 @@ static func named_counts(counts: Dictionary, most: int = 6) -> String:
 	for id: String in counts:
 		named.append(id if int(counts[id]) == 1 else "%s ×%d" % [id, int(counts[id])])
 	return ", ".join(named.slice(0, most)) + (", …" if named.size() > most else "")
+
+
+## [param placements] not on the baseplate, by number, as an open says them
+## (ModelBar.left_out_words): a band or a coil whose pieces could not be made
+## named once, by the sub-model it is, as SourceFile.unshown names someone
+## else's flexible parts, not as the hundred pieces it is drawn with.
+static func _unshown_of(placements: Array) -> Dictionary:
+	var out: Dictionary = {}
+	var counted: Dictionary = {}
+	for item: Variant in placements:
+		var placement: LdrModel.Placement = item
+		var named: String = placement.part_id
+		if Bands.is_piece_id(placement.part_id) and not placement.unit.is_empty():
+			if counted.has(placement.unit):
+				continue
+			counted[placement.unit] = true
+			named = "%s (flexible)" % Assemblies.definition(Assemblies.leaf(placement.unit))
+		out[named] = int(out.get(named, 0)) + 1
+	return out
+
+
+## [param unit] and the sub-models it is in, put among [param instances]
+## where they are not, at [param frame] as the rest are: a sub-model with
+## nothing of it on the baseplate (Assemblies.file_frames finds none) whose
+## parts the file is written with still. Each a definition of its own, as a
+## copy that went its own way is.
+static func _hold_unit(instances: Dictionary, unit: String, frame: Transform3D) -> void:
+	var path: String = ""
+	for leaf: String in unit.split("/", false):
+		path = leaf if path.is_empty() else path + "/" + leaf
+		if instances.has(path):
+			continue
+		var def: String = Assemblies.definition(leaf)
+		while instances.values().any(func(entry: Dictionary) -> bool: return str(entry["def"]) == def):
+			def += "+"
+		instances[path] = {"frame": frame, "def": def}
 
 
 ## The LDraw part a Studio model means by [param part_id].
@@ -2321,10 +2367,12 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 			var held := LdrModel.Placement.new(waiting.part_id, waiting.color_code,
 				pair[1], waiting.step)
 			held.group = waiting.group
-			# In its sub-model where the file still has it; loose otherwise,
-			# which a tree writes rather than leaving it out.
+			# In its sub-model, as the file had it: one with nothing on the
+			# baseplate (a band whose pieces could not be made) is written
+			# still, not its parts loose in the model.
 			var unit: String = Assemblies.path_from(waiting.group, waiting.unit)
-			held.unit = unit if instances.has(unit) else ""
+			_hold_unit(instances, unit, back)
+			held.unit = unit
 			placements.append(held)
 	for group: Variant in figures:
 		figures[group] = back * (figures[group] as Transform3D)

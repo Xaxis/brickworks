@@ -710,6 +710,9 @@ func open_with_progress(path: String) -> int:
 	if not store.not_opened.is_empty():
 		_say("could not open %s: %s" % [path.get_file(), store.not_opened])
 		return -1
+	# What it could not show, said as a file's open says it.
+	if not unshown_words(store).is_empty():
+		_say("opened %s%s" % [store.title, unshown_words(store)])
 	return placed
 
 
@@ -785,6 +788,17 @@ static func left_out_words(result: Dictionary, again: bool = true) -> String:
 	if again and int(result.get("waiting", 0)) > 0:
 		note += " — %d are still arriving, open it again in a moment" % int(result["waiting"])
 	return note
+
+
+## What the open just made left off the baseplate (ModelStore.unshown), as
+## [method left_out_words] says a file's; "" for nothing. Kept in the file
+## either way: the app's own writes them back (ModelStore._absent), someone
+## else's carries them (SourceFile).
+static func unshown_words(store: ModelStore) -> String:
+	if not store.not_opened.is_empty():
+		return ""
+	return left_out_words({"missing": store.unshown.size(), "unshown": store.unshown,
+		"kept": true}, false)
 
 
 ## Who made a model and on what terms, in a line: "LDraw model by Roland
