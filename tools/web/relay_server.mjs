@@ -83,6 +83,7 @@
 // they are, and the functions the API asks answered over the live ones
 // (tools/web/replies_stand_in.mjs), for tools/web/comments_flow.mjs.
 import http from "node:http";
+import { Readable } from "node:stream";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { standIn, standInRoute } from "./trust_stand_in.mjs";
@@ -296,12 +297,14 @@ http.createServer(async (incoming, outgoing) => {
       body = raw;
     }
   }
-  const request = {
+  // And its bytes to read again as data, as Vercel's helpers leave them
+  // (@vercel/node restoreBody): a signed webhook is checked against them.
+  const request = Object.assign(Readable.from([Buffer.from(raw)]), {
     method: incoming.method,
     query,
     headers: incoming.headers,
     body,
-  };
+  });
 
   const response = {
     statusCode: 200,
