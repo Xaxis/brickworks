@@ -3891,6 +3891,14 @@
       "tests": []
     },
     {
+      "id": "ui:meet on hinges",
+      "kind": "ui",
+      "entry": "src/assembly/hinge_align.gd",
+      "reach": "godot --path .  (select two parts with hinges between them; Properties, Hinges, Meet)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:menus and toolbar",
       "kind": "ui",
       "entry": "src/ui/shell.gd",

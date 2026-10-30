@@ -62,3 +62,4 @@ ai_settings   # Settings, AI: another AI chosen, its key kept encrypted and in n
 set_parts  # /app?parts=10497-1&brief=…: the set's parts in the bin, the most used first, and the brief drafted, not sent (sets364)
 provider_apis   # Anthropic's Messages, Gemini's own API and OpenAI's Responses: each designs, is tested and lists its models against a stub as strict as the API (aiset345, provider370)
 app_menu   # the mark's menu at the menu bar's start, its rows, keys, and the bar and toolbar unmoved (brand373)
+hinge_align_ui    # Meet in Properties: the ring closed in three actions (click, Shift-click, Meet), one Ctrl+Z takes it back (hingealign)
