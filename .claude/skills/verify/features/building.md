@@ -2027,10 +2027,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   input is counted as CADTASK counts it (a click elsewhere a point and a
   click, a key or character 1, a wheel notch 1, a scroll-bar drag 3); the
   view and the turns are judged uncounted and then pressed counted. Bar:
-  8841-1 at 5.5 actions a part or fewer and 5762-1 at 6.36 (each what it
-  was before the booklet: 6.76 and 6.36), every part exact (the set's
-  number and colour, place to 0.05 LDU, turn to 0.002 or one the part looks
-  the same in, by its own mesh). `-- only=8841-1|5762-1`, `shots=1` for
+  8841-1 at 5.5 actions a part or fewer and 5762-1 at 6.36 (without the
+  booklet 6.56 and 6.36; with it 5.12 and 5.88 on 2026-10-30), every part
+  exact (the set's number and colour, place to 0.05 LDU, turn to 0.002 or
+  one the part looks the same in, by its own mesh). The walker looks for a
+  tile once the bin has counted the last part in, and drags the bar down to
+  one the bin has not made yet. `-- only=8841-1|5762-1`, `shots=1` for
   pictures in `shots/setwalk/WxH/`, `from=library` for the same walk taken
   from the whole library (search, the number, the tile, the swatch), the
   figure before the set's bin. Rows in `shots/setwalk/<set>.json`.

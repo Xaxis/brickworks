@@ -2136,7 +2136,7 @@ scroll bar (24 actions with their points). Of the plane's 159: 66 points,
 stage225 as it stands. What still costs actions, and who could take it:
 
 - **The step's parts first in the set's bin** (bin2, `parts_bin.gd`):
-  done, below: 8841-1 from 6.76 to 5.32 a part.
+  done, below: 8841-1 from 6.56 to 5.12 a part with snap2's axle.
 - **An axle slid along its hole by the pointer** (whoever holds
   `joint_snap.gd`): a slide for a male end, as a female end has one, would
   take the typed rest off an axle that is not yet where it goes.
@@ -2176,20 +2176,21 @@ move only when the step turns (`SetBooklet`, `PartsBin._follow_step`).
 Studio's step list and a booklet's parts callout are the model: the parts
 of the step and no hunting.
 
-| set, 25 parts, 1280 x 720 | stage225, the set's bin | following its booklet |
+| set, 25 parts, 1280 x 720 | stage225 with snap2, the set's bin | following its booklet |
 |---|---|---|
-| 8841-1 Balance | 169, 6.76 a part, 8 drags and 8 notches | **133, 5.32**, no drag, no notch |
+| 8841-1 Balance | 164, 6.56 a part, 8 drags and 8 notches | **128, 5.12**, no drag, no notch |
 | 5762-1 Plane | 159, 6.36 a part, 2 drags and 4 notches | **147, 5.88**, no drag, no notch |
 
-The runs' lines: `8841-1_Balance: 25/25 exact; 133 actions (5.32 a part,
+The runs' lines: `8841-1_Balance: 25/25 exact; 128 actions (5.12 a part,
 the bin's 10 among them)` and `5762-1_Plane: 25/25 exact; 147 actions
 (5.88 a part, the bin's 10 among them)`. The bar is 5.5 for 8841-1 and
-6.36 for the plane; the same probe on stage225 fails with `FAIL 8841-1:
-6.76 actions a part from the set's bin, following its booklet, the bar
-5.50`, its bin offering no booklet. Choosing the booklet costs nothing: it
-is the click Build from it was. Of 8841-1's 36 fewer actions, 32 were the
-scrolling (8 drags of the bar with their points, 24, and 8 notches) and 4
-points of the pointer; of the plane's 12, 10 and 2.
+6.36 for the plane; the same probe on stage225 (7d13c5f3) fails with
+`FAIL 8841-1: 6.56 actions a part from the set's bin, following its
+booklet, the bar 5.50`, its bin offering no booklet. Before snap2's axle
+the booklet alone took 8841-1 from 6.76 to 5.32. Choosing the booklet
+costs nothing: it is the click Build from it was. Of 8841-1's 36 fewer
+actions, 32 were the scrolling (8 drags of the bar with their points, 24,
+and 8 notches) and 4 points of the pointer; of the plane's 12, 10 and 2.
 
 Not proven here: an alternate's booklet is chosen again after the model
 is reopened (the model keeps the set, not the booklet; its own model's is
