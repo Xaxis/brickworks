@@ -470,13 +470,19 @@ def test_a_check_or_probe_the_branch_has_no_name_for_is_refused_when_staged(tmp_
         y.put("tools/release/preview_checks.sh", 'CMD=(\n  [io]="tools/web/io.mjs"\n  [sets_flow]="x"\n)\n')
         y.put("src/dev/fits_probe.gd", "extends SceneTree\n")
         y.put("src/dev/offgrid.gd", "extends SceneTree\n")
+        y.put("src/dev/together_probe.gd", "extends SceneTree\n")
+        y.put("tools/suite/out.txt", "together   # needs the relay\n")
         y.git(y.r, "checkout", "-q", "stage2")
-        y.git(y.r, "add", "tools/release/preview_checks.sh", "src/dev")
+        y.git(y.r, "add", "tools/release/preview_checks.sh", "src/dev", "tools/suite")
         y.git(y.r, "commit", "-q", "-m", "the branch's lists")
         y.git(y.r, "checkout", "-q", "main")
         bad = y.train("stage", "t-m2", "stage2", "--checks", "io sets share", "--probes", "fits nope offgrid")
         assert bad.returncode == 2, bad.stdout + bad.stderr
         assert "train: stage2 has no check sets, check share, probe nope" in bad.stdout, bad.stdout
+        # 2026-10-30: together, kept out of runs for want of the relay, skipped itself and held rel-m225.
+        out = y.train("stage", "t-m2", "stage2", "--probes", "fits together")
+        assert out.returncode == 2, out.stdout + out.stderr
+        assert "train: stage2 has no runnable probe together (needs the relay)" in out.stdout, out.stdout
         assert not (y.ro / "t-m2.train" / "pid").exists() and y.spec("t-m2", "checks") == ""
         good = y.train("stage", "t-m2", "stage2", "--checks", "io sets_flow", "--probes", "fits offgrid")
         assert good.returncode == 0, good.stdout + good.stderr

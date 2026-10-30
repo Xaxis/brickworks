@@ -657,9 +657,22 @@ func _against(box: AABB) -> Array:
 ## the world.
 func _aim_point_for(site: JointSnap.End, mine: JointSnap.End) -> Vector3:
 	if mine.is_male():
+		# Where an axle's tip comes out past the hole, a person points
+		# there: the tip goes on through to the pointer (JointSnap._pushed).
+		if _past_far_face(site, mine) >= 0.5:
+			return mine.at
 		var eye: Vector3 = _camera.global_position
 		return site.aimed(eye, (site.at - eye).normalized())
 	return mine.at
+
+
+## How far past [param site]'s far face the tip [param mine] (where the file
+## has it) comes out, going in by it, in LDU: 0 for a pin's collar or a tip
+## with no shaft behind it, which go no further than through.
+static func _past_far_face(site: JointSnap.End, mine: JointSnap.End) -> float:
+	if not mine.is_male() or mine.reach >= JointSnap.COLLAR or mine.back <= 0.0:
+		return 0.0
+	return maxf((mine.at - site.at).dot(mine.axis) - site.reach, 0.0)
 
 
 # -- the view ----------------------------------------------------------------------
@@ -859,7 +872,9 @@ func _against_file(truth: Array, order: Array) -> PackedStringArray:
 ## The point of [param part] that, where the file has it at [param want], is on
 ## a joint of a part down, and that joint: [index in its points, site], the
 ## nearest the joint's line first and then a pin's or axle's middle nearest
-## the hole's. [] for none.
+## the hole's; of an axle's two tips, the one that comes out nearest past
+## the hole, which is where a person points ([method _aim_point_for]). []
+## for none.
 func _goes_on(part: String, want: Transform3D) -> Array:
 	var best: Array = []
 	var best_off: float = INF
@@ -875,7 +890,8 @@ func _goes_on(part: String, want: Transform3D) -> Array:
 			# second 1 x 8's holes are in line with a pin in the first's.
 			if off > 2.0 or _gap(mine, site) > 2.0:
 				continue
-			off += _gap(mine, site) * 0.01 + site.at.distance_to(eye) * 0.00001
+			off += _gap(mine, site) * 0.01 + site.at.distance_to(eye) * 0.00001 \
+				+ _past_far_face(site, mine) * 0.001
 			if off < best_off:
 				best_off = off
 				best = [n, site]
@@ -893,13 +909,10 @@ static func _gap(a: JointSnap.End, b: JointSnap.End) -> float:
 
 
 ## Where a person points to put [param mine] on [param site]: a hole's middle
-## for a pin or an axle in hand, and where the hole in hand goes, on the pin
-## or along the axle, for a hole.
+## for a pin or an axle in hand, or where an axle's tip comes out past it,
+## and where the hole in hand goes, on the pin or along the axle, for a hole.
 func _aim_for(site: JointSnap.End, mine: JointSnap.End) -> Vector2:
-	if mine.is_male():
-		var eye: Vector3 = _camera.global_position
-		return _screen(site.aimed(eye, (site.at - eye).normalized()))
-	return _screen(mine.at)
+	return _screen(_aim_point_for(site, mine))
 
 
 ## T, R and Shift-R, the fewest that bring the ghost to [param want], as a

@@ -2145,6 +2145,22 @@ stage225 as it stands. What still costs actions, and who could take it:
 - **Connect's typed slide along its joint** (`edit_verbs.gd`): not needed
   on this walk, where the ghost onto the joint was always fewer actions.
 
+**Since (snap2).** An axle's tip aimed past the far face of its hole now
+goes on through to the pointer, a whole LDU a step (`JointSnap._pushed`);
+aimed at the hole it still stops flush. 8841-1's axle went on by its ghost
+with nothing typed: 7 actions at 1280 x 720 (was 12) and 6 at 1400 x 900
+(was 11), the set 164 (6.56 a part) and 172 (6.88). The plane's round
+plates are not the seat's: the file has each 1 LDU proud of the ring and of
+the plate under it, where 314 of the 325 round plates on that ring in the
+OMR's files sit flush, as do 224 of 228 on another's stud on its side. The
+seat stays flush, and those four keep their typed rest. The 1 x 16 at
+1400 x 900 is the walker's view, not the snap: after its click on the view
+cube for (-1, 0, -1) the eye was still at the default view's height on the
+default side, from where the 1 x 16's place is behind the column (the
+pointer's line meets the column 28 LDU in front of it), so the pointer was
+on the near half of the pin, inside the column, and no way on that had
+room. At 1280 x 720 the walker looked from the back and it took 8.
+
 **The step's parts first (bin2, 2026-10-30).** The set's bin follows the
 booklet of the model being built. Typing a set's number offers, beside
 Build from it, each of its models in LDraw's repository by name ("Follow
