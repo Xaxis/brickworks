@@ -173,7 +173,8 @@ func place() -> int:
 	below = 0.0
 	if is_carrying():
 		return _put_carried()
-	if not _ghost_valid:
+	# Kept where it stands while Connect asks for the point it goes on by.
+	if not _ghost_valid or connect_picking:
 		return 0
 	if not held_figure.is_empty():
 		return _place_figure()
@@ -2018,7 +2019,10 @@ func _on_exact_fetched(part_id: String) -> void:
 func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 		hit: BrickLattice.Hit) -> bool:
 	_joint_site = null
-	var held: Array = JointSnap.ends_for(library, held_part)
+	# Connect's chosen point alone, when there is one: a 1 x 16 on two pins
+	# by the hole the person picked, not by whichever of its 30 ways T is on.
+	var held: Array = JointSnap.ends_for(library, held_part) if connect_end == null \
+		else [connect_end]
 	if held.is_empty() or world == null:
 		return false
 	# A little past what the line met: a hole's middle is inside the part
@@ -2041,8 +2045,10 @@ func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 	if options.is_empty():
 		return false
 	var key: String = "%d|%s|%s|%s" % [site.brick, site.kind, site.at, site.axis]
-	if held_part != _joint_part:
-		_joint_part = held_part
+	var held_key: String = held_part if connect_end == null \
+		else "%s@%s%s" % [held_part, connect_end.at, connect_end.axis]
+	if held_key != _joint_part:
+		_joint_part = held_key
 		_joint_way = 0
 		_joint_roll = 0
 		_joint_extra = 0.0
@@ -2276,9 +2282,9 @@ func _part_named(brick_id: int) -> String:
 ## T have chosen, the turn step, and the first way on (which says which
 ## face is near and where along a bar the pointer is).
 func _joint_asked(key: String, basis: Basis, options: Array) -> String:
-	return "%s|%d|%s|%s|%d|%d|%s|%s|%s|%s|%s" % [key, world.revision, held_part, basis,
+	return "%s|%d|%s|%s|%d|%d|%s|%s|%s|%s|%s|%s" % [key, world.revision, held_part, basis,
 		_joint_way, _joint_roll, _joint_extra, _joint_chosen, turn_step, options[0][1],
-		options[0][2]]
+		options[0][2], _joint_part]
 
 
 ## The pose for one of the ways onto a joint, turned so many steps and
@@ -2371,8 +2377,12 @@ const _JOINT_TRIES := 64
 
 func _best_on_joint(options: Array, site: JointSnap.End, basis: Basis) -> void:
 	var best_joins: int = -1
+	var best_under: float = INF
+	var best_turned: float = INF
 	if _joint_last_fits:
 		best_joins = _joins_made(_joint_last_at)
+		best_under = _under_ground(_joint_last_at)
+		best_turned = _turned_from_picked(_joint_last_at)
 	var tries: int = 0
 	for n: int in options.size():
 		var way: int = posmod(_joint_way + n, options.size())
@@ -2394,13 +2404,39 @@ func _best_on_joint(options: Array, site: JointSnap.End, basis: Basis) -> void:
 			if not room_for(held_part, at, true, true):
 				continue
 			var joins: int = _joins_made(at)
-			if joins > best_joins:
+			# Of two that join as many, the one above the ground: a 1 x 16
+			# by its end hole on two pins stood up them, not down through
+			# the floor, which holds a part that hangs below the model.
+			var under: float = _under_ground(at)
+			# And of those, the one turned least from how it stood when
+			# Connect's point was picked on it.
+			var turned: float = _turned_from_picked(at)
+			if joins > best_joins or (joins == best_joins and (under < best_under - 0.5
+					or (under < best_under + 0.5 and turned < best_turned - 0.01))):
 				best_joins = joins
+				best_under = under
+				best_turned = turned
 				_joint_way = way
 				_joint_roll = int(turn[0])
 				_joint_extra = float(turn[1])
 				_joint_last_at = at
 				_joint_last_fits = true
+
+
+## How far [param at] is turned from the pose the part stood in when
+## Connect's point was picked on it; 0 with no point picked.
+func _turned_from_picked(at: Transform3D) -> float:
+	if connect_end == null or _connect_from == null:
+		return 0.0
+	var from: Basis = (_connect_from as Transform3D).basis
+	return (at.basis.x - from.x).length() + (at.basis.y - from.y).length() \
+		+ (at.basis.z - from.z).length()
+
+
+## How far the part in hand at [param at] reaches below the ground, in LDU.
+func _under_ground(at: Transform3D) -> float:
+	var part: Lbm.PartMesh = library.mesh_for(held_part)
+	return maxf(0.0, -part.lowest_at(at)) if part != null else 0.0
 
 
 ## R on a joint: the next stop about it, a step on, or sooner where the
@@ -3448,11 +3484,18 @@ func tip_held(steps: int = 1) -> void:
 		# Swung onto another end, if this way can be: the first such turn.
 		_joint_extra = 0.0
 		if not _joint_options.is_empty():
-			var closings: Array = _closings(_joint_options,
-				posmod(_joint_way, _joint_options.size()), _joint_site, _joint_basis)
+			var way: int = posmod(_joint_way, _joint_options.size())
+			var closings: Array = _closings(_joint_options, way, _joint_site, _joint_basis)
 			if not closings.is_empty():
 				_joint_roll = 0
 				_joint_extra = closings[0]
+				# The first with room above the ground, as the way on is chosen.
+				for closing: float in closings:
+					var at: Transform3D = _joint_pose(_joint_options, way, 0, _joint_site,
+						_joint_basis, closing)
+					if room_for(held_part, at, true, true) and _under_ground(at) < 0.5:
+						_joint_extra = closing
+						break
 		return
 	var faces: Array[String] = BrickLattice.FACES
 	var at: int = maxi(faces.find(held_face), 0)
@@ -3497,6 +3540,8 @@ func can_place() -> bool:
 
 
 func hide_preview() -> void:
+	if connect_picking:
+		return
 	unpin_hand()
 	_ghost.visible = false
 	_ghost_valid = false
@@ -3504,6 +3549,52 @@ func hide_preview() -> void:
 	_hide_figure_ghosts()
 	if carrying != null:
 		carrying.hide_ghost()
+
+
+# -- connect: a point on the part in hand, onto a point of a part down -----
+
+
+## The end of the part in hand (JointSnap.End, in its own frame) that alone
+## goes onto the joint the pointer is aimed at, as Connect chose it; null
+## for any of its ends, as the hand has always gone (ConnectTool).
+var connect_end: JointSnap.End = null
+## Whether Connect is asking which point of the part in hand it goes on by:
+## the ghost is kept where it stands, and a click puts nothing down.
+var connect_picking: bool = false
+## The pose the part in hand stood in while its point was picked.
+var _connect_from: Variant = null
+
+
+## Hold the part in hand still where its ghost stands, or at [param at],
+## for Connect's points to be picked off it. False when it stands nowhere.
+func hold_still(at: Variant = null) -> bool:
+	if is_carrying() or not held_figure.is_empty():
+		return false
+	if at != null:
+		var part: Lbm.PartMesh = library.mesh_for(held_part)
+		if part == null:
+			return false
+		_ghost_transform = at
+		_ghost_valid = true
+		_joint_site = null
+		_show_ghost(part)
+	if not has_preview():
+		return false
+	connect_picking = true
+	_typed_from = _ghost_transform
+	_connect_from = _ghost_transform
+	return true
+
+
+## Let the part in hand follow the pointer again, by [param end] alone (or
+## by any of its ends, for null).
+func follow_by(end: JointSnap.End) -> void:
+	connect_picking = false
+	connect_end = end
+	if end == null:
+		_connect_from = null
+	_typed_from = null
+	_joint_last = ""
 
 
 # -- typed: what is in hand moved by a number -----------------------------

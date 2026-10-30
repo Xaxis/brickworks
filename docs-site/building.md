@@ -69,6 +69,16 @@ lib:placing a part by its connectors
 lib:round joints
 -->
 
+## Connect by a point {#connect}
+
+A long Technic beam has many holes, and the one you want is rarely the one the pointer finds first. With the part in hand press [[N]], or choose **Connect** on the toolbar: its pins, holes, axles, bars and clips light up in blue where it stands. Click the one it goes on by, then the pin, hole or bar it goes on: only that point snaps, so a 1 x 16 goes on its pins by its end hole at once. [[R]] turns it about the joint, [[N]] again picks another point, and [[Esc]] goes back to placing as usual.
+
+With nothing in hand, Connect works on a part already in the model: click the part, then its point, then where it goes. The move is one step to undo, and [[Esc]] puts it back where it was. Studs still go on by the stud grid, as every part does.
+
+<!-- covers
+ui:connect by a point
+-->
+
 ## Copy, paste and duplicate {#copy}
 
 Select, then [[Ctrl+C]] and [[Ctrl+V]], or [[Ctrl+D]] to duplicate. The copy is in hand: a click puts it down, [[R]] turns it, [[Esc]] puts it away. After [[Ctrl+D]], or a click with the **Clone** tool, another copy stays in hand for the next, so five window bays are five clicks; [[Esc]] or a right-click stops. [[Ctrl]]-drag on a part copies it straight off. [[Ctrl+X]] cuts.

@@ -94,6 +94,7 @@ const WINDOW_ONLY: Dictionary = {
 	"rename_assembly": "a session names an assembly when it makes one (edit_model's assemblies)",
 	"view_*": "the person's camera; view_model from= looks from any side",
 	"mode_*": "what the person's mouse does; a session's changes are edit_model's",
+	"mode_connect": "a point on the part in the person's hand, then the point it goes on, by their pointer; a session gives the place and turn (edit_model's add, at= and rot=)",
 	"fit": "the person's camera; view_model frames what it looks at",
 	"explode": "what the person sees; a session weighs each section with evaluate_section and looks with view_model where=",
 	"fit_model": "the person's camera; view_model frames what it looks at",

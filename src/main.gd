@@ -778,6 +778,9 @@ func _tell_page() -> void:
 		# whether the ghost is on one and may go down there, for
 		# tools/web/technic_flow.mjs to aim a pin at a hole as a person does.
 		"joints": _joint_places(to_window, per_css),
+		# ...and Connect's stage, the points of the part in hand it offers on
+		# the page and the one picked (ConnectTool).
+		"connect": _verbs.connect_tool.page_state(to_window, per_css) if _verbs != null else {},
 		"on_joint": _builder.is_on_joint(),
 		"can_place": _builder.can_place(),
 		# Where the ghost stands, for tools/web/idle_check.mjs to know the

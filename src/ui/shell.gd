@@ -1179,7 +1179,7 @@ func _define() -> void:
 	# Tools
 	for tool: Array in [["select", "Select", KEY_V], ["place", "Place the part in hand", KEY_Q],
 			["move", "Move", 0], ["rotate", "Rotate", 0], ["hinge", "Hinge", 0],
-			["clone", "Clone", 0], ["paint", "Paint", 0], ["hide", "Hide", 0],
+			["connect", "Connect", KEY_N], ["clone", "Clone", 0], ["paint", "Paint", 0], ["hide", "Hide", 0],
 			["delete", "Delete", 0], ["orbit", "Orbit", KEY_O], ["pan", "Pan", KEY_H],
 			["zoom", "Zoom", KEY_Z]]:
 		var which: String = tool[0]

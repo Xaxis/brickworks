@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:palette in a browser -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:palette in a browser, ui:connect by a point, cli:connect probe -->
 
 ## Sub-features
 
@@ -1790,6 +1790,38 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   aims again and types the difference; its rows go to `shots/typed/sets.json`
   with the actions counted (point, click, key, a typed number one; characters
   beside). Each section starts on an empty floor.
+- `connect by a point` (`src/ui/connect_tool.gd`, `EditVerbs.start_connect`,
+  `Builder.connect_end` / `hold_still` / `follow_by`, APP_UX B2): with a part in hand,
+  `N` (or the toolbar's Connect, Build's tool row) holds it still where its ghost
+  stood (where the view looks if it stood nowhere) and draws its ends
+  (`JointSnap.ends_for`: pins, axles, pin and axle holes, bars, clips, tyres,
+  rims, hinge halves) as blue rings (holes, clips) and dots (pins, axles, bars)
+  on a 2D layer over the view (`ConnectPoints`); the one under the pointer
+  lights amber. A click on one makes it the only end the hand goes
+  on by (`_onto_a_joint` takes `[connect_end]`), so a 1 x 16 on a pin has two
+  ways, not thirty, and of ways joining as many parts `_best_on_joint` takes the
+  one above the floor and then the one turned least from how it stood
+  (`_turned_from_picked`); the click on a point and its release are eaten
+  (`ConnectTool._unhandled_input`), and `place()` refuses while points are
+  offered. `R` turns about the joint, `T` the other way on, `N` again picks
+  another point, `Esc` back to placing. With nothing in hand the tool waits for
+  a part: a click takes it off the model into hand where it stands
+  (`lift_brick`), and its putting down folds with that into one undo
+  (`fold_since`, "connected …"); `Esc` or Undo puts it back. Studs go by the
+  stud grid as before (a part with no ends is said so). In a browser the stage
+  and the points on the page are `window.brickworksState.connect`.
+- `connect probe` (`src/dev/connect_probe.gd`): windowed, about five minutes;
+  `PROBE_SIZE=1280x720` for the small window. `column`: 8841-1's parts 1 to 20
+  from the file, the column taken, aimed at its pin, `N`, its end hole, the pin,
+  a click (bar 6 actions), against the build flow's 25 presses of `T`/`R`
+  without Connect; one undo; another hole puts it on the pin by that hole. `turned`: a
+  1 x 16 by its fourth hole onto a pin in a 1 x 4 turned 30° and tilted 25°, `R`
+  about the joint. `model`: the toolbar's Connect on a column lying on the floor,
+  `Esc` puts it back, then moved onto its pins in one undo. `walk`: 8841-1's nine
+  joint parts of section 9's 25 by Connect, counted, and the run's 744 actions
+  with them in (each part its run's take and colour overhead plus Connect's
+  count, where that is fewer and lands where the file has it) (rows in `shots/connect/walk.json`, pictures in
+  `shots/connect/WxH/`).
 - `typed place and hinge` (`src/ui/inspector.gd`, `Builder.move_selection_by`,
   `Builder.hinge_angle`, 2026-10-17): Properties' X, Y and Z move the
   selection by exactly the difference typed, to the hundredth of an LDU
