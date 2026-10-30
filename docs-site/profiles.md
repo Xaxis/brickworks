@@ -80,7 +80,7 @@ ui:the app's Account count
 
 ## Notifications {#notifications}
 
-[brickworks.diy/notifications](/notifications) says what happened to your models: comments, replies, photos of builds and likes, grouped by model with its picture, newest first. Each level of an [achievement](#achievements) you reach is there too, in a group of its own. So is each [challenge](/docs/challenges#told): when it opens, its last two days, and who won one you voted in. Opening it clears the count on your avatar; **Mark all read** clears them all.
+[brickworks.diy/notifications](/notifications) says what happened to your models: comments, replies, photos of builds and likes, grouped by model with its picture, newest first. A comment that [mentions you](/docs/model-pages#mentions) is there too, under its model. Each level of an [achievement](#achievements) you reach is there too, in a group of its own. So is each [challenge](/docs/challenges#told): when it opens, its last two days, and who won one you voted in. Opening it clears the count on your avatar; **Mark all read** clears them all.
 
 <!-- covers
 ui:notifications page

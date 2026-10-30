@@ -68,6 +68,8 @@ import { encode as encodeJpeg } from "../../api/_jpeg.js";
 // What a model is based on (supabase/model_bases.sql): a designer's list
 // checked, and said, as the API checks and says it.
 import { basesAsked, basesSaid } from "../../api/_bases.js";
+// Who a comment names (@handle), read as the API reads it.
+import { mentionsIn } from "../../web/card.js";
 
 export const ORIGIN = "http://design.test";
 export const DB = "https://stub.supabase.test";
@@ -277,7 +279,8 @@ const COMMENTS = [
   { id: 103, model: MODEL_ID, version: 2, step: 5, author: PRIYA, at: "2026-10-17T08:40:00Z", edited_at: "2026-10-17T08:52:00Z",
     body: "Step 5 had me stuck for a minute: the hinge goes under the wall, not over. Lovely once it clicks." },
   { id: 104, model: "DesignGea1", version: 1, step: 2, author: JO, at: "2026-09-03T11:00:00Z",
-    body: "Runs smoothly with the 8-tooth gear swapped for a 12." },
+    body: "Runs smoothly with the 8-tooth gear swapped for a 12. @sam-builds, your tram's bogies could use the same.",
+    mentions: [SAM] },
   { id: 105, model: "SamModel01", version: 1, step: 2, author: PRIYA, at: "2026-10-16T09:30:00Z",
     body: "The pantograph is a clever trick." },
   { id: 106, model: "DesignRmx1", version: 1, step: null, author: NOBODY, at: "2026-10-18T02:00:00Z",
@@ -290,7 +293,7 @@ const COMMENTS = [
   { id: 109, model: MODEL_ID, version: 2, step: 5, author: ROBIN, at: "2026-10-17T09:05:00Z", parent: 103,
     body: "Thank you, Priya. I will add an arrow to step 5's page so nobody else gets stuck." },
   { id: 110, model: MODEL_ID, version: 2, step: 5, author: JO, at: "2026-10-17T12:30:00Z", parent: 103,
-    body: "Same here. Under, then it clicks." },
+    body: "Same here, @priya-plays. Under, then it clicks.", mentions: [PRIYA] },
 ].map((comment) => ({ edited_at: null, hidden_at: null, removed_at: null, removed_by: null, parent: null, ...comment }));
 
 // Collections, newest first, each with its models in the order they were added (newest first).
@@ -490,6 +493,9 @@ const NOTICES = [
     day: "2026-10-16" },
   { kind: "comment", at: "2026-10-16T09:30:00Z", on: "SamModel01", by: PRIYA, model: "SamModel01", name: "Harbour Tram",
     step: 2, comment: 105, said: "The pantograph is a clever trick." },
+  { kind: "mention", at: "2026-10-15T08:00:00Z", on: "DesignGea1", by: JO, model: "DesignGea1", name: "Two-Speed Gearbox",
+    step: 2, parent: null, comment: 104,
+    said: "Runs smoothly with the 8-tooth gear swapped for a 12. @sam-builds, your tram's bogies could use the same." },
   { kind: "photo", at: "2026-10-14T19:10:00Z", on: "SamModel01", by: JO, model: "SamModel01", name: "Harbour Tram",
     photo: "PhotoEee05", words: "Ran it round the whole layout.", yours: true },
   { kind: "remix", at: "2026-10-13T12:00:00Z", on: "SamModel01", by: MIKA, model: "MikaTram01", name: "Night Tram",
@@ -573,6 +579,10 @@ const LADDERS = [["designer", [1, 3, 10, 25, 50, 100]], ["built", [1, 10, 50, 10
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const personOf = (account) => PEOPLE.find((one) => one.account === account) || null;
+/// Whom [text], written by [writer], names among the stand-in's people, as
+/// comment_mention keeps them: profiles, not its writer, at most three.
+const namedIn = (text, writer) => mentionsIn(text).map((handle) => PEOPLE.find((one) => one.handle === handle))
+  .filter((one) => one && one.account !== writer).slice(0, 3).map((one) => one.account);
 const personNamed = (handle) => PEOPLE.find((one) => one.handle === String(handle || "").toLowerCase()) || null;
 const modelOf = (id) => MODELS.find((one) => one.id === id) || CROWD.find((one) => one.id === id) || null;
 const shownModel = (id) => {
@@ -1268,7 +1278,10 @@ function commentSaid(comment, shown, versions, asker) {
   }
   const where = comment.step ? `on step ${comment.step} of version ${comment.version}` : `on version ${comment.version}`;
   const author = personOf(comment.author);
-  return { id: comment.id, version: comment.version, step: comment.step, on_step: onStep, body: comment.body, at: comment.at,
+  // Who it names (supabase/comment_mentions.sql), as api/_comments.js says it.
+  const mentions = (comment.mentions || []).map(personOf).filter(Boolean).map((one) => ({ handle: one.handle, name: one.name }));
+  return { ...(mentions.length ? { mentions } : {}), id: comment.id, version: comment.version, step: comment.step, on_step: onStep,
+    body: comment.body, at: comment.at,
     edited_at: comment.edited_at, by: author?.name ?? null, handle: author?.handle ?? null,
     by_owner: comment.author === modelOf(comment.model)?.owner, mine: Boolean(asker) && comment.author === asker,
     hidden: Boolean(comment.hidden_at), older: comment.version < newest,
@@ -1617,7 +1630,7 @@ function people(method, params, body, who, state) {
     if (!to) return answer(404, { error: "That comment is not there any more, so it cannot be answered." });
     const thread = to.parent ? COMMENTS.find((one) => one.id === to.parent) : to;
     const made = { ...thread, id: 900, author: who, at: "2026-10-18T12:00:00Z", body: String(body?.body || ""),
-      parent: thread.id, edited_at: null, hidden_at: null };
+      parent: thread.id, edited_at: null, hidden_at: null, mentions: namedIn(String(body?.body || ""), who) };
     return answer(201, { comment: commentSaid(made, thread.version, commentVersions(thread.model), who) });
   }
   // Following a collection: as it would stand, kept nowhere.

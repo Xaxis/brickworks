@@ -73,6 +73,13 @@ declare -A CMD=(
   # Before the file, nothing offered and a list refused in words.
   # Throwaway accounts, deleted after with their model.
   [based_on]="tools/web/based_on_flow.mjs --url=$P --out=$S/${TAG}_based_on"
+  # @mentions in comments (docs/SOCIAL.md section 7, item 6,
+  # supabase/comment_mentions.sql): @ in the box offers the people on the
+  # page and Enter puts one in; the comment links them; they are told in
+  # Notifications at 390 px dark, the designer and a reply's thread not
+  # twice. Before the file, a comment names nobody and goes as ever.
+  # Throwaway accounts, deleted after with their model.
+  [mentions]="tools/web/mentions_flow.mjs --url=$P --out=$S/${TAG}_mentions"
   # The collections directory (W12, supabase/collection_directory.sql):
   # /collections lists a throwaway designer's public collection as a card
   # with its cover, name, owner, model count and Follow; her private one
