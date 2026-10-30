@@ -314,7 +314,10 @@ is on the page, `hidden`, for the script to show.
   (a byline), 40, `.big` 64 (your account), `.huge` 112 (a profile; 80 under 600 px). It is
   decoration beside the name, so `aria-hidden`. A person's own picture
   (`.avatar.pictured`, supabase/avatars.sql) fills the same circle over its
-  tile, and only this site's address for one is drawn. **Cropper**:
+  tile, and only this site's address for one is drawn. Somebody not known
+  yet (your own in the header before the server has said who you are) is
+  `.avatar.unknown`: the same circle blank on `--panel-hi`, never a letter
+  or colour that may not be theirs. **Cropper**:
   `.cropper` in `dialog.crop-dialog` (`web/picture.js`), the picture chosen
   on a square canvas with the circle it is cut to, dragged and zoomed, the
   zoom two `.icon-btn`s (zoom-out, zoom-in) under it.

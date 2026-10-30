@@ -1246,9 +1246,15 @@ plan with Claude as the client.
   `details.menu`'s summary becomes the avatar (`.account-btn`), its list
   the site's links, the same `.account-part`, the theme and Sign out. Who
   you are and the counts come from `GET ?op=feed_count` (`me`,
-  `notifications`, `feed`), kept in `sessionStorage["brickworks.me"]` so
-  the next page draws at once (cleared by `signOut()`); /feed and
-  /notifications ask only once they have opened.
+  `notifications`, `feed`), kept in `localStorage["brickworks.me"]` (for
+  the signed-in address) so the next page, a new tab and the next visit
+  draw at once (cleared by `signOut()`); /feed and /notifications ask only
+  once they have opened. With nothing kept the avatar is a blank circle
+  (`.avatar.unknown`, no letter or tone) and `.menu-who` two `.bone` bars
+  until the answer: the address's letter only for an account with no
+  profile, never before the name's (avatar368, 2026-10-30;
+  `account_page_flow.mjs` records every letter the header shows, cold, in
+  a new tab and on a return visit).
 - `notifications apart from the feed` (`api/_notifications.js`,
   `supabase/notifications.sql`, **not applied to the live project** until
   the lead applies it): `GET ?op=notifications` (session; marks them

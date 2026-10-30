@@ -16,7 +16,11 @@
 //      shown. Nothing of it may be lost or changed by the new pages.
 //   2. Signed out, /profile and /settings say what an account is and offer
 //      Sign in, at both widths and themes, nothing sideways.
-//   3. Signed in, /profile at 1280 and 390 in both themes: her head as
+//   3. Signed in, the header's avatar from the first paint (avatar368):
+//      Ada's blank until the server says who she is and then her name's
+//      letter, never her address's, cold, in a new tab and on a reload;
+//      Bea's (no profile) blank and then her address's, the real answer.
+//      Then /profile at 1280 and 390 in both themes: her head as
 //      /u/<handle> draws it (name, @handle, words, links ugc nofollow, the
 //      banner, her pins in her order, numbers with no count of none), the
 //      tabs Models · Builds · Saved · Sets · Insights, Models open with one
@@ -133,6 +137,52 @@ async function open(pathname, { width, theme, who = null, label }) {
 
 const sideways = (page) => page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
 
+/// Every state of the header's avatars from the first paint, in a page's
+/// window.headerSeen: each avatar as "letter tone" (" unknown" blank) and
+/// what .menu-who says, each once, in the order first seen. Recorded on
+/// every change, before the browser could paint it.
+function watchHeader() {
+  const seen = { avatars: [], who: [] };
+  window.headerSeen = seen;
+  const add = (list, one) => {
+    if (!list.includes(one)) list.push(one);
+  };
+  new MutationObserver(() => {
+    for (const face of document.querySelectorAll(".site-head .avatar")) {
+      add(seen.avatars, `${face.textContent} ${[...face.classList].find((c) => /^(c[1-8]|unknown)$/.test(c)) || ""}`);
+    }
+    for (const who of document.querySelectorAll(".site-head .menu-who > span:not(.avatar)")) add(seen.who, who.textContent.trim());
+  }).observe(document, { subtree: true, childList: true, characterData: true, attributes: true });
+}
+
+/// What the header's avatar showed from the first paint on [page] once
+/// [go] has loaded it, the server's answer has come and been drawn, and
+/// the avatar is [letter].
+async function headerSeen(page, go, letter) {
+  const answered = page.waitForResponse((reply) => reply.url().includes("op=feed_count"), { timeout: 30000 }).catch(() => null);
+  await go();
+  const reply = await answered;
+  await page.waitForTimeout(500);
+  const drawn = Boolean(reply) && await until(page,
+    (want) => document.querySelector(".site-head .nav .account-menu .avatar")?.textContent === want, letter);
+  return { drawn, seen: await page.evaluate(() => window.headerSeen) };
+}
+
+/// A context signed in as [who] in every tab, its access token too so no tab
+/// renews the sign-in, and nothing else of a last visit: the cold start.
+async function coldContext(who, options) {
+  const context = await browser.newContext({ ...options, extraHTTPHeaders: headers });
+  const access = JSON.stringify({ token: who.access_token, until: Date.now() + 50 * 60 * 1000, email: who.kept.email });
+  await context.addInitScript(([key, value, token]) => {
+    try {
+      if (!localStorage.getItem(key)) localStorage.setItem(key, value);
+      if (!sessionStorage.getItem("brickworks.access")) sessionStorage.setItem("brickworks.access", token);
+    } catch { /* a browser that keeps nothing */ }
+  }, [STORAGE_KEY, JSON.stringify(who.kept), access]);
+  await context.addInitScript(watchHeader);
+  return context;
+}
+
 /// What /profile shows, read as a person reads it.
 const profileSaid = (page) => page.evaluate(() => {
   const box = (el) => (el ? el.getBoundingClientRect() : null);
@@ -229,6 +279,55 @@ try {
         await context.close();
       }
     }
+  }
+
+  // --- 3. Signed in: the header's avatar, from the first paint ---------------
+  // Its letter was the address's ("d" of delivered+…) until the server's
+  // answer said the name's, on every new tab and every visit (2026-10-30).
+  console.log("3. the header's avatar from the first paint");
+  {
+    const context = await coldContext(ada, { viewport: { width: 1280, height: 900 }, colorScheme: "dark" });
+    const letter = "A";
+    const address = adaEmail[0].toUpperCase();
+    let tone = "";
+    let page = null;
+    for (const visit of ["cold", "a new tab", "a reload"]) {
+      if (visit !== "a reload") {
+        page = await context.newPage();
+        listen(page, `header ${visit}`);
+      }
+      const where = site + (visit === "cold" ? "/faq" : "/terms");
+      const { drawn, seen } = await headerSeen(page, () => (visit === "a reload" ? page.reload({ waitUntil: "load" })
+        : page.goto(where, { waitUntil: "load", timeout: 60000 })), letter);
+      const shown = seen?.avatars || [];
+      tone ||= (shown.find((face) => face.startsWith(`${letter} `)) || "").split(" ")[1];
+      const named = shown.filter((face) => face !== " unknown");
+      const who = seen?.who || [];
+      check(`${visit}: the header's avatar showed ${shown.map((face) => `"${face}"`).join(", ")}: `
+        + `${visit === "cold" ? "blank, then" : "at once"} her name's ${letter}, never her address's ${address}`,
+        drawn && named.length > 0 && named.every((face) => face === `${letter} ${tone}`)
+        && (visit === "cold" ? shown[0] === " unknown" : !shown.includes(" unknown")));
+      check(`${visit}: the account menu said ${who.map((said) => `"${said}"`).join(", ")}, never her address`,
+        who.length > 0 && who.every((said) => !said.includes(adaEmail) && !said.startsWith("Signed in"))
+        && who.at(-1) === `Ada Account@${ADA}`);
+    }
+    await context.close();
+  }
+  {
+    // Bea has no profile: her address's letter is the answer, after the blank.
+    const context = await coldContext(bea, { viewport: { width: 390, height: 844 }, colorScheme: "light",
+      deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const page = await context.newPage();
+    listen(page, "header no profile");
+    // As written: the tile shows it in capitals (text-transform).
+    const letter = beaEmail[0];
+    const { drawn, seen } = await headerSeen(page, () => page.goto(`${site}/faq`, { waitUntil: "load", timeout: 60000 }), letter);
+    const shown = seen?.avatars || [];
+    check(`no profile: the header's avatar showed ${shown.map((face) => `"${face}"`).join(", ")}: blank, then her address's ${letter}`,
+      drawn && shown.length === 2 && shown[0] === " unknown" && shown[1].startsWith(`${letter} c`));
+    check(`no profile: the account menu said ${(seen?.who || []).map((said) => `"${said}"`).join(", ")}`,
+      seen?.who?.at(-1) === `Signed in${beaEmail}`);
+    await context.close();
   }
 
   // --- 3. Signed in: her profile ---------------------------------------------
@@ -403,8 +502,9 @@ try {
         await page.click("#to-settings");
         await until(page, () => document.documentElement.dataset.settings === "ready", null, 30000);
         await page.click("#sign-out");
-        check("Sign out: the page asks her to sign in", await until(page, () => document.documentElement.dataset.settings === "signed-out"
-          && !document.getElementById("signed-out").hidden));
+        check("Sign out: the page asks her to sign in, and who the header's avatar was is forgotten", await until(page,
+          () => document.documentElement.dataset.settings === "signed-out" && !document.getElementById("signed-out").hidden
+          && localStorage.getItem("brickworks.me") === null));
       }
       await context.close();
     }

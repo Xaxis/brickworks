@@ -349,6 +349,10 @@ a:focus-visible { border-radius: var(--r-1); }
 .menu-who span { display: grid; min-width: 0; }
 .menu-who b { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .menu-who small { color: var(--ink-faint); font-size: var(--t-tiny); overflow-wrap: anywhere; }
+/* Your name and handle before the server has said them: a line's height each. */
+.menu-who .bone { height: 0.95em; }
+.menu-who .bone.wide { width: 128px; }
+.menu-who .bone.short { width: 88px; }
 .account-part nav { display: grid; }
 .account-part nav a { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
 .account-part nav a[aria-current="page"] { color: var(--ink); background: var(--panel-hi); }
@@ -858,6 +862,9 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .avatar.c3 { background: var(--avatar-3); } .avatar.c4 { background: var(--avatar-4); }
 .avatar.c5 { background: var(--avatar-5); } .avatar.c6 { background: var(--avatar-6); }
 .avatar.c7 { background: var(--avatar-7); } .avatar.c8 { background: var(--avatar-8); }
+/* Somebody not known yet (your own in the header before the server has
+   said who you are): the same circle, blank, on the neutral ground. */
+.avatar.unknown { background: var(--panel-hi); box-shadow: inset 0 0 0 1px var(--line-strong); }
 
 /* A picture of your own cropped to a circle (web/picture.js, Edit
    profile's Choose a picture): the picture on a square canvas, the circle
