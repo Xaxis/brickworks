@@ -98,6 +98,21 @@ ui:move and turn a selection
 ui:tool modes
 -->
 
+## Rings and arrows {#handles}
+
+With the **Rotate** tool, a click on a part puts three rings on it; with **Move**, three arrows. Drag a ring to turn the selection about that axis, or an arrow to slide it along one. A click on the part again does the tool's own step: **Rotate** turns it by the turn step, **Move** picks it up.
+
+- The tag beside them says whose axes they are: **Part axes** (the part's own, however the part under it is turned), **Model axes** or **View axes**. Click the tag for the next.
+- They stand where the part hangs from: the pin, hinge or clip it turns on, or the stud [[R]] turns it about. [[Alt]]-click another point to turn about it; [[Alt]]-click empty space to go back.
+- A ring snaps to quarter turns near its middle, to the **Turn** step on the ring, to 5° just outside it and to 1° further out. Faint circles mark where while you drag. An arrow snaps to the **Snap** step, and to the finest step when the pointer is well off its line.
+- Type a number while you drag, or straight after, to make it exact: degrees for a ring (**23.58**), a length for an arrow (**3** studs, **2p** plates). [[Enter]] puts it there; [[Esc]] leaves the drag as it was.
+- Nothing goes through anything: a drag stops at the last place with room, and the part in the way lights up.
+- [[Esc]] or a right-click while dragging puts it back. Each drag is one step to undo.
+
+<!-- covers
+ui:handles on the selection
+-->
+
 ## Mirror, replace and paint {#mirror}
 
 - **Edit › Mirror** ([[Shift+M]]) mirrors the selection, swapping each part for its left- or right-handed twin where there is one.

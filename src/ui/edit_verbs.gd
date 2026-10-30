@@ -1055,8 +1055,11 @@ func take_last_part() -> void:
 
 
 ## Alt-click: the part under the pointer, in its colour, into hand —
-## Studio's eyedropper.
+## Studio's eyedropper. With the handles on a selection (Move, Rotate), the
+## point they turn about instead.
 func pick_at(at: Vector2) -> bool:
+	if handles.shown():
+		return handles.pick_pivot(at)
 	var brick_id: int = brick_at(at)
 	var brick: BrickWorld.Brick = world.get_brick(brick_id) if brick_id != 0 else null
 	if brick == null:
@@ -1131,9 +1134,15 @@ func hint() -> String:
 			return "Placing %s: click puts one down · type a number to move it exactly · %s, the part stays in hand · Esc lets go" % [
 				named, look]
 		"move":
-			return "Move: click a part to pick it up (the selection with it), click again to put it down · %s" % look
+			if handles.shown():
+				return "Move: drag an arrow to slide it, a number typed makes it exact · click it again to pick it up · Alt-click picks the point the arrows start from · %s" % look
+			return "Move: click a part for its arrows, again to pick it up (the selection with it) · %s" % look
 		"rotate":
-			return "Rotate: click a part to turn it %d° (Shift-click back) · %s" % [roundi(turn_step), look]
+			if handles.shown():
+				return "Rotate: drag a ring to turn it, finer further out, a number typed makes it exact · click it again to turn it %d° · Alt-click picks the point it turns about · %s" % [
+					roundi(turn_step), look]
+			return "Rotate: click a part for its rings, again to turn it %d° (Shift-click back) · %s" % [
+				roundi(turn_step), look]
 		"hinge":
 			return "Hinge: click a part on a hinge, clip or turntable to swing it %d° · %s" % [roundi(SWING), look]
 		"connect":
@@ -1221,6 +1230,10 @@ func click(at: Vector2, shift: bool) -> bool:
 		return connect_tool.take(brick_id)
 	if not builder.selection.has(brick_id):
 		builder.select_brick(brick_id, false)
+		# Move and Rotate: the first click picks the part out, its handles
+		# on it (Handles); a click on it again is the tool's one thing.
+		if mode == "move" or mode == "rotate":
+			return true
 	match mode:
 		"move":
 			return lift() > 0
@@ -1254,6 +1267,8 @@ func click(at: Vector2, shift: bool) -> bool:
 var typed: TypedEntry
 ## A point on the part, then the point it goes on (ConnectTool).
 var connect_tool: ConnectTool
+## Rings and arrows on the selection, with the Rotate and Move tools.
+var handles: Handles
 ## R or T just pressed, which a number typed straight after takes the place
 ## of: {verb, hand} with what was in hand before them (Builder.hand_state),
 ## or {verb, depth, degrees or way} for a selection turned on the model,
@@ -1272,14 +1287,27 @@ func _ready() -> void:
 	layer.layer = 8
 	add_child(layer)
 	typed = TypedEntry.new()
-	typed.may_open = _begin_typing
-	typed.opened_as = func() -> String: return str(_armed.get("verb", "move"))
-	typed.going = func() -> Vector3: return builder.last_way
-	typed.preview = _typed_preview
-	typed.apply = _typed_apply
-	typed.cancel = _typed_cancel
-	typed.still_held = func() -> bool: return builder.is_pinned()
-	typed.clear_of = _hand_on_screen
+	# A number while a handle is dragged, or straight after, is the
+	# handles' (Handles); otherwise it moves what is in hand.
+	typed.may_open = func() -> bool:
+		return handles.begin_typing() if handles.wants_typing() else _begin_typing()
+	typed.opened_as = func() -> String:
+		return handles.typed_verb() if handles.wants_typing() else str(_armed.get("verb", "move"))
+	typed.going = func() -> Vector3:
+		return handles.typed_way() if handles.is_typing() else builder.last_way
+	typed.preview = func(what: Dictionary) -> String:
+		return handles.typed_preview(what) if handles.is_typing() else _typed_preview(what)
+	typed.apply = func(what: Dictionary) -> bool:
+		return handles.typed_apply(what) if handles.is_typing() else _typed_apply(what)
+	typed.cancel = func() -> void:
+		if handles.is_typing():
+			handles.typed_cancel()
+		else:
+			_typed_cancel()
+	typed.still_held = func() -> bool:
+		return handles.is_dragging() if handles.is_typing() else builder.is_pinned()
+	typed.clear_of = func() -> Rect2:
+		return handles.on_screen() if handles.is_typing() else _hand_on_screen()
 	layer.add_child(typed)
 	connect_tool = ConnectTool.new()
 	connect_tool.builder = builder
@@ -1290,6 +1318,16 @@ func _ready() -> void:
 	connect_tool.edited = func() -> void: edited.call()
 	connect_tool.aim_again = func() -> void: aim_again.call()
 	add_child(connect_tool)
+	handles = Handles.new()
+	handles.builder = builder
+	handles.world = world
+	handles.library = library
+	handles.camera = camera
+	handles.verbs = self
+	handles.say = func(line: String) -> void: say.call(line)
+	handles.edited = func() -> void: edited.call()
+	handles.flash = _flash
+	add_child(handles)
 	builder.placed.connect(func(_id: int, _part: String) -> void:
 		# A click put down what was being typed: the number is spent.
 		if typed.is_open():
