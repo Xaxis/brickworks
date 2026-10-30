@@ -214,8 +214,7 @@ func _solve(one: int, other: int) -> bool:
 	var body_one: int = int(bodies.body_of[one])
 	var body_other: int = int(bodies.body_of[other])
 	if body_one == body_other:
-		return _no("%s and %s are held as one already: no joint between them turns"
-			% [_named(one), _named(other)])
+		return _no("they are held as one already: no joint between them turns")
 	if not _chain_between(body_one, body_other):
 		return false
 	# What may meet: a free end of either part's body that takes a free end
@@ -226,8 +225,7 @@ func _solve(one: int, other: int) -> bool:
 			if (mine[1] as End).takes(theirs[1]):
 				pairs.append([mine, theirs])
 	if pairs.is_empty():
-		return _no("%s and %s have no free hinge ends that take each other: a click hinge's finger and fork, a pin and its eye, or a clip and a bar"
-			% [_named(one), _named(other)])
+		return _no("they have no free ends that take each other: a click hinge's finger and fork, a hinge's pin and its eye, or a clip and a bar")
 	pairs.sort_custom(func(a: Array, b: Array) -> bool:
 		return _start_gap(a) < _start_gap(b))
 	var found: Array = []   ## [cost, turns, pair]
@@ -252,8 +250,8 @@ func _solve(one: int, other: int) -> bool:
 				found.append([_cost(turned), turned, pair])
 	if found.is_empty():
 		gap = nearest
-		return _no("no swing of the %s between %s and %s makes them meet: the nearest leaves them %s apart"
-			% [_joints_words(), _named(one), _named(other), _plates_words(nearest)])
+		return _no("no swing of the %s between them makes them meet: the nearest leaves them %s apart"
+			% [_joints_words(), _plates_words(nearest)])
 	found.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
 	var refused: String = ""
 	for kept: Array in found:
@@ -261,13 +259,13 @@ func _solve(one: int, other: int) -> bool:
 		var turned: PackedFloat64Array = _on_clicks(kept[1])
 		if turned.is_empty():
 			if refused.is_empty():
-				refused = "they meet only between the hinges' clicks"
+				refused = "they meet only between the hinges' clicks: no setting of the clicks closes the gap"
 			continue
 		var pose: Dictionary = _pose(turned)
 		var blocked: Array = _blocked(pose)
 		if not blocked.is_empty():
 			if refused.is_empty() or refused.begins_with("they meet only"):
-				refused = "they would meet, but %s would %s" % [_named(int(blocked[0])),
+				refused = "they could meet, but %s would %s" % [_named(int(blocked[0])),
 					"go through the floor" if int(blocked[1]) < 0 else "run into %s" % _named(int(blocked[1]))]
 			continue
 		placed = pose
@@ -277,10 +275,9 @@ func _solve(one: int, other: int) -> bool:
 			turns.append(rad_to_deg(turned[n]))
 			lines.append([_point[n], _axis[n]])
 		met = [int(_one[0]), int(_other[0]), (_one[1] as End).words]
-		said = "%s meets %s: %s" % [_capital(_named(int(_one[0]))), _named(int(_other[0])),
-			_turned_words(turns)]
+		said = "met: %s" % _turned_words(turns)
 		return true
-	return _no("%s and %s cannot meet: %s" % [_named(one), _named(other), refused])
+	return _no(refused)
 
 
 func _no(words: String) -> bool:
@@ -309,9 +306,7 @@ func _chain_between(body_one: int, body_other: int) -> bool:
 			common = body
 			break
 	if common < 0:
-		return _no("%s and %s are not joined: Meet swings the joints between two parts of one model"
-			% [_named(int((bodies.members[body_one] as PackedInt64Array)[0])),
-			_named(int((bodies.members[body_other] as PackedInt64Array)[0]))])
+		return _no("they are not joined: Meet swings the joints between two parts of one model")
 	for ups: Array in [ups_one, ups_other]:
 		var side: Array = []
 		for body: int in ups:
@@ -348,9 +343,7 @@ func _chain_between(body_one: int, body_other: int) -> bool:
 				if not rest.has(brick_id):
 					rest[brick_id] = world.get_brick(brick_id).transform
 	if _links.is_empty():
-		return _no("no hinge, clip or turntable between %s and %s turns"
-			% [_named(int((bodies.members[body_one] as PackedInt64Array)[0])),
-			_named(int((bodies.members[body_other] as PackedInt64Array)[0]))])
+		return _no("no hinge, clip or turntable between them turns")
 	for n: int in _links.size():
 		if _detent[n] > 0.0:
 			var square: Array = _square_of_joint(n)
@@ -812,8 +805,7 @@ func commit() -> int:
 		world.move_brick(brick_id, to)
 		builder.lattice.release(brick_id)
 		builder.lattice.occupy_boxes(brick_id, builder.boxes_for(library.mesh_for(brick.part_id), to))
-	builder.record(steps, "swung %s so %s meets %s" % [_joints_words(), _named(int(met[0])),
-		_named(int(met[1]))])
+	builder.record(steps, "swung %s so two parts meet" % _joints_words())
 	return steps.size()
 
 
@@ -824,10 +816,6 @@ func _named(brick_id: int) -> String:
 	var brick: BrickWorld.Brick = world.get_brick(brick_id)
 	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
 	return "the %s" % (Inventory._tidy(info.name) if info != null else "part")
-
-
-static func _capital(words: String) -> String:
-	return words.substr(0, 1).to_upper() + words.substr(1)
 
 
 ## "the 7 joints", "the hinge".

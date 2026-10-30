@@ -199,3 +199,4 @@ tested_seeds    # the gallery's 30 real LDraw sets fail the Tested mark no more 
 desktop_pass     # the paid desktop's check at start: a server-signed token verifies, a changed one does not; built while paid opens, later asks; 44 days' grace; billing off opens at once (desk347)
 plan_full         # the plan keeps no more models with the account: its words and See Pro (savecap360)
 docs_pages        # Help, Documentation opens the page of the panel in front, from the docs' own heads; the words a session is told are the docs' (docs363)
+hinge_align       # Meet: a ring of eight click hinge plates closes at 45° each, a wing meets its strut, the build check passes on both; too far, clicks that never close and unjoined parts refused with words, nothing moved (hingealign)

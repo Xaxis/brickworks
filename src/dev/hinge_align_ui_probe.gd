@@ -23,6 +23,11 @@ var _failures: int = 0
 var _acts: int = 0
 var _tag: String = ""
 
+var _held_shift: bool = false
+
+## How high the ring is laid, LDU.
+const LIFT := 96.0
+
 
 func _initialize() -> void:
 	_run()
@@ -62,11 +67,13 @@ func _ring() -> void:
 	await _frames(6)
 	var ends: Array = []
 	var box := AABB()
+	# Laid in the air over the baseplate, not on its studs: a segment on them
+	# would be held by them, as the real one would.
 	for k: int in 8:
 		var x: float = 100.0 * k - 350.0
-		var fork: int = _put("44302b", 4, Transform3D(Basis(Vector3.UP, PI), Vector3(x - 20.0, 0, 0)))
-		var finger: int = _put("44301b", 4, Transform3D(Basis.IDENTITY, Vector3(x + 20.0, 0, 0)))
-		_put("3710", 15, Transform3D(Basis.IDENTITY, Vector3(x, 8, 0)))
+		var fork: int = _put("44302b", 4, Transform3D(Basis(Vector3.UP, PI), Vector3(x - 20.0, LIFT, 0)))
+		var finger: int = _put("44301b", 4, Transform3D(Basis.IDENTITY, Vector3(x + 20.0, LIFT, 0)))
+		_put("3710", 15, Transform3D(Basis.IDENTITY, Vector3(x, LIFT + 8.0, 0)))
 		if k == 0:
 			ends.append(fork)
 		if k == 7:
@@ -82,7 +89,7 @@ func _ring() -> void:
 	_shell.inspector.set_open(true)
 	_camera.frame(box.grow(60.0))
 	_camera.look_from(Vector3(0.25, 0.55, 0.8).normalized())
-	await _frames(30)
+	await _frames(90)
 	await _shot("ring_before")
 	var depth: int = _builder.history_depth()
 	_acts = 0
@@ -156,20 +163,30 @@ func _bounds() -> AABB:
 	return box
 
 
-## A click on the part's top, Shift held when [param add].
+## A click on the part where the view shows it, Shift held when [param
+## add]: the first of a few points on its top the pointer finds it at, as a
+## person aims at what they see.
 func _click_part(brick_id: int, add: bool) -> void:
 	var brick: BrickWorld.Brick = _world.get_brick(brick_id)
 	var box: AABB = (brick.transform * _library.mesh_for(brick.part_id).bounds).abs()
-	var top: Vector3 = Vector3(box.get_center().x, box.end.y - 3.0, box.get_center().z)
+	var at: Vector2 = _camera.unproject_position(box.get_center())
+	for along: float in [0.0, -0.3, 0.3, -0.15, 0.15]:
+		var point := Vector3(lerpf(box.position.x, box.end.x, 0.5 + along), box.end.y - 5.0,
+			box.get_center().z)
+		var screen: Vector2 = _camera.unproject_position(point)
+		if _shell.verbs.brick_at(screen) == brick_id:
+			at = screen
+			break
 	if add:
-		_shift(true)
-	await _click(_camera.unproject_position(top))
+		await _shift(true)
+	await _click(at)
 	if add:
-		_shift(false)
+		await _shift(false)
 	await _frames(4)
 
 
 func _shift(down: bool) -> void:
+	_held_shift = down
 	var event := InputEventKey.new()
 	event.keycode = KEY_SHIFT
 	event.physical_keycode = KEY_SHIFT
@@ -194,7 +211,7 @@ func _click(at: Vector2) -> void:
 	var motion := InputEventMouseMotion.new()
 	motion.position = _as_event(at)
 	motion.global_position = motion.position
-	motion.shift_pressed = Input.is_key_pressed(KEY_SHIFT)
+	motion.shift_pressed = _held_shift
 	Input.parse_input_event(motion)
 	await _frames(3)
 	var whole: Vector2 = _as_event(at).floor()
@@ -204,7 +221,7 @@ func _click(at: Vector2) -> void:
 		event.pressed = down
 		event.position = whole
 		event.global_position = whole
-		event.shift_pressed = Input.is_key_pressed(KEY_SHIFT)
+		event.shift_pressed = _held_shift
 		Input.parse_input_event(event)
 		await _frames(2)
 	_acts += 1
