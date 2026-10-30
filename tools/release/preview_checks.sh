@@ -215,6 +215,17 @@ declare -A CMD=(
   # the step before Checkout and Checkout, the portal and the webhook. A
   # throwaway account, closed at the end.
   [billing]="tools/web/billing_flow.mjs --url=$P --out=$S/${TAG}_billing"
+  # The beta (api/_beta.js, supabase/beta.sql): on a deployment with the
+  # beta off, as every release's is, /beta says Coming soon with no form and
+  # no count and the API refuses an application. On a unit's preview from
+  # tools/deploy.sh --unit --billing-stand-in --beta-open: signed out sent
+  # to sign in; a throwaway applies once from the form at 390; the owner's
+  # queue shows its signals and approves it, the next spot and its month
+  # given in Admission's test mode; the emails kept (delivered where there
+  # is a mail key); a decline; two approvals at once at 99 given make one
+  # spot 100; deleting the account erases its application. The checks' own
+  # pool of spots, never the 100. Throwaway accounts, deleted after.
+  [beta]="tools/web/beta_flow.mjs --url=$P --out=$S/${TAG}_beta"
   [tabs]="tools/web/tabs_flow.mjs --url=$P/app --out=$S/${TAG}_tabs"
   # Two chats, two tabs: the relay's rules alone, then the app in two tabs.
   [tabpair_probe]="tools/web/tabpair_probe.mjs --url=$P"

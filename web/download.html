@@ -15,6 +15,11 @@
   site's content security policy allows none that it has not hashed.
   tools/web/download_check.mjs checks each system's offer against it.
 
+  On the design system since site356 (2026-10-29): the opening lit as the
+  landing page's is (.halo), the picture of the app on a large surface's
+  corners, and what is new in a card with its version. Still 150 words at
+  most before anything is opened (tools/web/download_check.mjs).
+
   The desktop app comes with Pro once Pro opens (docs/PLANS.md, gate M1,
   2026-10-29). Until then every download is free and nothing is gated;
   the page says so once, under the button (#pro-note), with the promise
@@ -45,16 +50,18 @@
 <meta name="twitter:title" content="Download Brickworks">
 <meta name="twitter:description" content="Brickworks for Linux, macOS and Windows, with every part on disk so it builds offline.">
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
-<meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <style>
 /* The download and how to start it, then a picture of what it is: side
    by side on a laptop, one under the other on a phone. Only layout here;
    every control is site.css's. */
-.get { display: grid; gap: var(--s-6); align-items: start; padding: var(--page-top) 0 var(--s-7); }
-@media (width >= 900px) { .get { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--s-7); } }
+.get { border-bottom: 1px solid var(--line); }
+.get > .wrap { display: grid; gap: var(--s-6); align-items: start; padding: var(--page-top) 0 var(--s-8); }
+@media (width >= 900px) { .get > .wrap { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--s-7); } }
+.get .shot { border-radius: var(--r-4); }
 .offer .note { margin: var(--s-3) 0 0; }
 .offer .note a { color: var(--ink-soft); }
 .offer .state { margin-top: var(--s-5); }
@@ -67,7 +74,9 @@
 .copy-row .cmd { flex: 1; min-width: 0; margin: 0; }
 .copy-row button { flex: none; }
 .news { padding: var(--s-7) 0 var(--section); }
-.news > * { max-width: 640px; }
+.news .card { max-width: 720px; }
+.news .card > * { max-width: 640px; }
+.news h2 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
 .news ul { margin: 0 0 var(--s-3); padding-left: 20px; color: var(--ink-soft); }
 .news li { margin: 0 0 6px; }
 .news .note a { color: var(--ink-soft); }
@@ -81,17 +90,21 @@
 		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
 		<nav class="nav" aria-label="Main">
 			<a href="/gallery">Gallery</a>
-			<a href="/download" aria-current="page">Download</a>
+			<a href="/library">Library</a>
+			<a href="/docs">Docs</a>
+			<a href="/plans">Pricing</a>
 			<a class="cta" href="/app">Open the app</a>
-			<a href="/profile" data-account>Sign in</a>
+			<a class="cta ghost" href="/profile" data-account>Sign in</a>
 		</nav>
 		<details class="menu">
 			<summary>Menu</summary>
 			<div class="menu-list">
 				<nav aria-label="Menu">
 					<a href="/gallery">Gallery</a>
-					<a href="/download" aria-current="page">Download</a>
+					<a href="/library">Library</a>
 					<a href="/docs">Docs</a>
+					<a href="/plans">Pricing</a>
+					<a href="/download" aria-current="page">Download</a>
 					<a href="/profile" data-account>Sign in</a>
 				</nav>
 				<div class="theme-choice"><span aria-hidden="true">Theme</span>
@@ -107,8 +120,10 @@
 </header>
 
 <main id="main">
-	<section class="wrap get" aria-labelledby="get-h">
+	<section class="get halo" aria-labelledby="get-h">
+		<div class="wrap">
 		<div class="offer">
+			<p class="eyebrow">Windows, macOS and Linux</p>
 			<h1 id="get-h">Download Brickworks</h1>
 			<p class="lede" data-pitch="computer">The same builder as the web app, with every part on disk, so it works offline.</p>
 			<p class="lede" data-pitch="mobile" hidden>The desktop app is for a computer. Here, open the web app: it is the same builder, with nothing to install.</p>
@@ -175,9 +190,11 @@
 				width="2400" height="1350" fetchpriority="high" decoding="async"
 				alt="The Brickworks builder with a castle of 2,438 parts open and its gatehouse selected: menus and a toolbar across the top; down the left the parts bin, the model tree of its sub-assemblies, and the gatehouse's properties; the view cube at top right; and in the middle a stone castle with towers, a moat and a courtyard, the gatehouse outlined in yellow.">
 		</figure>
+		</div>
 	</section>
 
 	<section class="wrap news" id="notes" aria-labelledby="notes-h" hidden>
+		<div class="card">
 		<h2 id="notes-h">What is new</h2>
 		<!-- A release's few lines, written for this page when it is published
 		     (docs/RELEASING.md, step 6). A release without them here shows the
@@ -232,57 +249,64 @@
 		</ul>
 		<ul id="notes-list" hidden></ul>
 		<p class="note"><span id="notes-date"></span><a id="notes-link" href="/changelog">The full changelog</a> · <a href="https://github.com/Xaxis/brickworks-releases/releases">Older versions</a></p>
+		</div>
 	</section>
 </main>
 
 <footer class="site-foot">
 	<div class="wrap">
 		<div class="foot-top">
-			<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
-			<nav class="foot-links" aria-label="More">
-				<a href="/challenge">Challenge</a>
-				<a href="/collections">Collections</a>
-				<a href="/library">LDraw library</a>
-				<a href="/compare">Compare</a>
-				<a href="/plans">Plans</a>
-				<a href="/docs">Docs</a>
-				<a href="/faq">FAQ</a>
-				<a href="/changelog">Changelog</a>
-				<a href="/privacy">Privacy</a>
-				<a href="/terms">Terms</a>
-				<a href="/guidelines">Guidelines</a>
-				<a href="/takedown">Takedown</a>
-			</nav>
-			<div class="theme-choice"><span aria-hidden="true">Theme</span>
-				<div class="segmented" role="group" aria-label="Theme">
-					<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
-					<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
-					<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+			<div class="foot-brand">
+				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>A CAD for LEGO® models, with an AI designer.</p>
+				<div class="theme-choice"><span aria-hidden="true">Theme</span>
+					<div class="segmented" role="group" aria-label="Theme">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+					</div>
 				</div>
 			</div>
+			<nav class="foot-links" aria-label="More">
+				<div>
+					<p class="foot-h" id="foot-product">Product</p>
+					<ul aria-labelledby="foot-product">
+						<li><a href="/app">Open the app</a></li>
+						<li><a href="/download">Download</a></li>
+						<li><a href="/plans">Pricing</a></li>
+						<li><a href="/changelog">Changelog</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-community">Community</p>
+					<ul aria-labelledby="foot-community">
+						<li><a href="/gallery">Gallery</a></li>
+						<li><a href="/library">LDraw library</a></li>
+						<li><a href="/challenge">Challenge</a></li>
+						<li><a href="/collections">Collections</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-help">Help</p>
+					<ul aria-labelledby="foot-help">
+						<li><a href="/docs">Docs</a></li>
+						<li><a href="/faq">FAQ</a></li>
+						<li><a href="/compare">Compare</a></li>
+						<li><a href="/guidelines">Guidelines</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-legal">Legal</p>
+					<ul aria-labelledby="foot-legal">
+						<li><a href="/privacy">Privacy</a></li>
+						<li><a href="/terms">Terms</a></li>
+						<li><a href="/takedown">Takedown</a></li>
+					</ul>
+				</div>
+			</nav>
 		</div>
 		<div class="legal">
-			<p>
-				Models in the gallery are made and shared by the people credited, or by
-				someone who chose not to be; Brickworks does not check them before they
-				are listed. Something that should not be there? Press Report on its
-				page, or see <a href="/takedown">takedown requests</a>.
-			</p>
-			<p>
-				Part geometry is derived from the LDraw™ Parts Library, © the LDraw
-				community, licensed
-				<a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a> and
-				<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.
-				LDraw™ is a trademark owned and licensed by the Estate of James
-				Jessiman. This site is not affiliated with or endorsed by LDraw.org.
-				Catalog data: <a href="https://rebrickable.com/downloads/">Rebrickable</a>.
-			</p>
-			<p>
-				LEGO® is a trademark of the LEGO Group of companies which does not
-				sponsor, authorize or endorse this site. LEGO® Art, Technic, the
-				Minifigure and the Brick and Knob configurations are also trademarks
-				of the LEGO Group. BrickLink is a trademark of the LEGO Group too.
-			</p>
+			<p>LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group. Parts from the LDraw™ library (CC BY). <a href="/terms#notices">Notices</a></p>
 		</div>
 	</div>
 </footer>

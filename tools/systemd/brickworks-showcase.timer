@@ -1,0 +1,12 @@
+# Once a week, Sunday night, when the box is quietest; a run missed while
+# the box was off is not made up (the next week's comes instead).
+[Unit]
+Description=Brickworks weekly AI showcase draft, on Sundays
+
+[Timer]
+OnCalendar=Sun *-*-* 02:30:00
+RandomizedDelaySec=20m
+Persistent=false
+
+[Install]
+WantedBy=timers.target

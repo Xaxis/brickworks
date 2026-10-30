@@ -57,8 +57,8 @@ const bypass = process.env.BW_BYPASS || process.env.VERCEL_BYPASS || "";
 const headers = remote && bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 
 // The two backgrounds and bars (web/site.css --bg, web/theme.js).
-const BG = { dark: "rgb(14, 16, 19)", light: "rgb(244, 245, 247)" };
-const BAR = { dark: "#0e1013", light: "#f4f5f7" };
+const BG = { dark: "rgb(11, 12, 14)", light: "rgb(251, 251, 250)" };
+const BAR = { dark: "#0b0c0e", light: "#fbfbfa" };
 
 let passed = 0;
 let failed = 0;

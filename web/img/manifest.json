@@ -189,5 +189,31 @@
   "subject": "a shared model's page, for the docs (docs-site/model-pages.md)",
   "alt": "A model's page: its picture with View in 3D, its tabs, and beside it Build it, Open in Brickworks, Download and the action bar.",
   "caption": "A shared model's page."
+ },
+ {
+  "slug": "fresh-before",
+  "files": {
+   "400": "fresh-before-400.webp",
+   "720": "fresh-before-720.webp"
+  },
+  "width": 720,
+  "height": 540,
+  "source": "bench/results/ideas-2026-10-27-main315a/chameleon/views_corner.png (1024 x 1024, the bench's corner view of its design for the brief 'A chameleon on a twisty branch, catching a fly with its tongue shot out...'), cropped to 22,140 992 x 744 (4:3) and scaled to 400 and 720 wide, WebP at quality 82 (PIL), 2026-10-29. Judged blind against each other in ideas-2026-10-27-critic315-vs-main315a: the design with fresh eyes won all five dimensions both ways round (this is main315a's, without fresh eyes)",
+  "subject": "an AI's design without fresh eyes (the landing page's before)",
+  "alt": "A chameleon built in bricks without fresh eyes: a boxy green body striped in orange and blue on a brown branch over a dark stand, its tail a flat squared-off spiral behind it and its pink tongue held straight out.",
+  "caption": "Without fresh eyes."
+ },
+ {
+  "slug": "fresh-after",
+  "files": {
+   "400": "fresh-after-400.webp",
+   "720": "fresh-after-720.webp"
+  },
+  "width": 720,
+  "height": 540,
+  "source": "bench/results/ideas-2026-10-27-critic315/chameleon/views_corner.png (1024 x 1024, the bench's corner view of its design for the brief 'A chameleon on a twisty branch, catching a fly with its tongue shot out...'), cropped to 22,140 992 x 744 (4:3) and scaled to 400 and 720 wide, WebP at quality 82 (PIL), 2026-10-29. Judged blind against each other in ideas-2026-10-27-critic315-vs-main315a: the design with fresh eyes won all five dimensions both ways round (this is critic315's, with fresh eyes)",
+  "subject": "an AI's design with fresh eyes (the landing page's after)",
+  "alt": "The same brief built with fresh eyes: a slimmer chameleon with turret eyes and a crest along its back, its tail curled in a round spiral and its tongue out to a fly, on a twisting branch over a grey-edged stand with plants, rocks and a nameplate.",
+  "caption": "With fresh eyes."
  }
 ]

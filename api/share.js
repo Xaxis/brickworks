@@ -105,6 +105,15 @@
 //   GET  ?op=mine            the session's own links
 //   GET  ?op=sweep           the daily clean-up (Vercel's cron, with
 //                            CRON_SECRET): files no published row owns
+//   GET  ?op=feature         the daily choice of the gallery's front (Vercel's
+//                            cron, with CRON_SECRET): this week's pick,
+//                            today's featured model and today's set from the
+//                            LDraw library (api/_featured.js)
+//   GET  ?op=omr             the weekly look at LDraw's Official Model
+//                            Repository for what the library has not got
+//                            (Vercel's cron, with CRON_SECRET; dry=1 says
+//                            what it would write and writes nothing:
+//                            api/_omr_watch.js)
 //
 // Where it is kept and who may touch it is in supabase/shared_models.sql.
 // In short: a visitor's read asks for a published row and its public
@@ -178,10 +187,19 @@
 // by part and colour, is counted from its file as it is published and
 // kept (model_needs), so that a signed-in person's share of every model in
 // the gallery is one join in the database (&mine=1).
+//
+// A front that changes by itself (gallery362, 2026-10-29,
+// supabase/gallery_crons.sql): once a day the cron chooses this week's pick
+// (on a week's first run), today's featured model and today's set from the
+// LDraw library, from what people did (api/_featured.js), and keeps them;
+// ?op=shelves reads what was kept. The owner's own pick still wins, and a
+// list asked with tests keeps the pick worked out from the week, as the
+// probes expect it.
 
-import { randomBytes, timingSafeEqual } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
+import { isCron } from "./_cron.js";
 import { db, dbConfigured } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
@@ -192,6 +210,9 @@ import {
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
 import { libraryCredit, storeFile, storeRoot } from "./_omr_credit.js";
+// What the front leads with, chosen once a day; and the weekly look at the OMR.
+import { featuredSaid, runFeatures } from "./_featured.js";
+import { runOmrWatch } from "./_omr_watch.js";
 // The LDraw library's sets, each a page made as a model's is (library333).
 import {
   FROM as SET_FROM, PER_PAGE as SET_PER_PAGE, SET_ID, SET_SORTS, askOf, authorsIn, decades, fileSteps, librarySet,
@@ -1757,11 +1778,15 @@ async function read(request, response) {
   if (op === "mine") return mine(request, response, origin);
   if (op === "tested") return testedOwn(request, response);
   if (op === "sweep") return sweep(request, response);
+  if (op === "feature") return feature(request, response);
+  if (op === "omr") return omrWatch(request, response);
   if (op === "list") return gallery(request, response, origin);
   if (op === "shelves") return shelves(request, response, origin);
   if (op === "sitemap") return sitemap(response, origin);
   // The LDraw library's sets (api/_library.js): /library's list, and each
   // set's page, cover, file and parts.
+  // With tests=1, the OMR's arrivals staged for the lead to let out too
+  // (tools/library_import.py), which nobody else is shown.
   if (op === "library") return library(request, response);
   if (op === "catalog_set") return catalogSetPage(response, origin, String(request.query?.set || ""));
   if (op === "catalog_parts") {
@@ -1771,10 +1796,10 @@ async function read(request, response) {
   if (op === "catalog_owned") return catalogOwned(request, response, origin, String(request.query?.set || ""));
   if (op === "sitemap_index") return sitemapIndex(response, origin);
   if (op === "sitemap_sets") return sitemapOfSets(response, origin, String(request.query?.n || ""));
-  if (op === "set") return setPage(response, origin, id);
-  if (op === "set_cover") return setCover(response, id, String(request.query?.as || "card"));
-  if (op === "set_file") return setFile(response, id);
-  if (op === "set_parts") return setParts(response, id, String(request.query?.as || "json"));
+  if (op === "set") return setPage(response, origin, id, testsAsked(request.query || {}));
+  if (op === "set_cover") return setCover(response, id, String(request.query?.as || "card"), testsAsked(request.query || {}));
+  if (op === "set_file") return setFile(response, id, testsAsked(request.query || {}));
+  if (op === "set_parts") return setParts(response, id, String(request.query?.as || "json"), testsAsked(request.query || {}));
 
   // A version asked for, where there can be one: the page, its picture and
   // the model. The gallery's small picture says which upload it is with a
@@ -1911,7 +1936,16 @@ async function read(request, response) {
 // ---------------------------------------------------------------------------
 // The LDraw library (library333): /library's sets a page at a time, and each
 // set's page, cover, file and parts, from the app's own index and files in
-// the parts store (api/_library.js). Nothing here reads the database.
+// the parts store (api/_library.js). Nothing here reads the database but a
+// list asked with tests, for the OMR's arrivals staged (gallery362).
+
+/// The library's sets as a list asked with [tests] shows them: the store's
+/// index, which an arrival joins when the lead lets it out
+/// (tools/library_import.py publish), and for tests the OMR's arrivals
+/// staged too. Only a list asked with tests reads the database; before
+/// supabase/gallery_crons.sql is applied, it gets the index alone.
+const libraryOf = (tests = false) => (tests ? { arrivals: () => db("rpc/library_arrival_entries", {
+  method: "POST", body: { tests: true } }).catch(() => []) } : {});
 
 /// What the CDN keeps of the shelf and a set's page: the store's index
 /// changes a few times a year, so an hour, given while it asks again for a
@@ -1923,16 +1957,17 @@ const COVER_CACHE = "public, max-age=86400, s-maxage=604800, stale-while-revalid
 /// cards, web/card.js), total, page, pages, per_page, of (every set), asked,
 /// themes [{name, n}], decades, sizes, sorts}.
 async function library(request, response) {
-  const every = await librarySets();
+  const tests = testsAsked(request.query || {});
+  const every = await librarySets(libraryOf(tests));
   const catalogue = setCatalog();
-  if (catalogue) return catalogList(request, response, catalogue, every);
+  if (catalogue) return catalogList(request, response, catalogue, every, tests);
   if (!every.length) {
     return response.status(503).setHeader("Cache-Control", "no-store")
       .json({ error: "The LDraw library cannot be read just now. Try again in a minute." });
   }
   const asked = askOf(request.query || {});
   const found = searchSets(every, asked);
-  response.setHeader("Cache-Control", SET_CACHE);
+  response.setHeader("Cache-Control", tests ? TESTS_CACHE : SET_CACHE);
   return response.status(200).json({ ...found, models: found.models.map(setCard), per_page: SET_PER_PAGE,
     of: every.length, asked, themes: themes(every), decades: decades(every),
     sizes: Object.fromEntries(Object.entries(SIZES).map(([key, size]) => [key, size.label])), sorts: SET_SORTS });
@@ -1950,15 +1985,15 @@ function setsBeside(every, entry) {
 
 /// /library/X: a set's page, made as a model's is (sharePage), its parts and
 /// steps and every modeller read from its own file.
-async function setPage(response, origin, id) {
-  const entry = await librarySet(id);
+async function setPage(response, origin, id, tests = false) {
+  const entry = await librarySet(id, libraryOf(tests));
   if (!entry) return html(response, 404, gonePage(origin, id, false));
   const text = await storeFile(entry).catch(() => null);
   const parts = text ? partsOf(entry.file, Buffer.from(text)) : null;
   const model = setModel(entry, { authors: authorsIn(text), steps: fileSteps(text) });
-  const next = { by: [], like: setsBeside(await librarySets(), entry), gallery: [] };
+  const next = { by: [], like: setsBeside(await librarySets(libraryOf(tests)), entry), gallery: [] };
   return html(response, 200, sharePage(origin, id, model, [], null, null, [], next, null, undefined, parts),
-    { cache: SET_CACHE });
+    { cache: tests ? TESTS_CACHE : SET_CACHE });
 }
 
 /// A set's pictures, each drawn by the app's own renderer
@@ -1972,8 +2007,8 @@ async function setPage(response, origin, id) {
 /// picture shows within the hour once it is up.
 const SET_PICTURES = { card: "cards", cutout: "pages", cover: "" };
 
-async function setCover(response, id, as = "card") {
-  const entry = await librarySet(id);
+async function setCover(response, id, as = "card", tests = false) {
+  const entry = await librarySet(id, libraryOf(tests));
   const root = storeRoot();
   const read = async (path) => {
     const answer = await fetch(`${root}${path}`).catch(() => null);
@@ -1992,8 +2027,8 @@ async function setCover(response, id, as = "card") {
 
 /// /library/X.mpd: its file, as LDraw has it, from the store itself: the
 /// largest is 36 MB, past what a function may answer with.
-async function setFile(response, id) {
-  const entry = await librarySet(id);
+async function setFile(response, id, tests = false) {
+  const entry = await librarySet(id, libraryOf(tests));
   const root = storeRoot();
   if (!entry || !root) {
     return response.status(404).setHeader("Cache-Control", "no-store").json({ error: "The LDraw library has no such set." });
@@ -2004,8 +2039,8 @@ async function setFile(response, id) {
 }
 
 /// /library/X/parts.json, .xml and .csv: its parts, as a model's are.
-async function setParts(response, id, as) {
-  const entry = await librarySet(id);
+async function setParts(response, id, as, tests = false) {
+  const entry = await librarySet(id, libraryOf(tests));
   if (!entry) {
     return response.status(404).setHeader("Cache-Control", "no-store").json({ error: "The LDraw library has no such set." });
   }
@@ -2031,12 +2066,12 @@ const PICTURE_CACHE = "public, max-age=604800, s-maxage=31536000, stale-while-re
 /// /library's sets from the catalogue, LDraw's models of them marked:
 /// {models (the cards, web/card.js), total, page, pages, per_page, of,
 /// asked, themes [{name, n, sub}], decades, years, sizes, sorts}.
-function catalogList(request, response, catalogue, models) {
+function catalogList(request, response, catalogue, models, tests) {
   const asked = askSets(request.query || {});
   const by = modelsBySet(models);
   const found = searchCatalog(catalogue.sets, asked, by);
   const { decades: decadesThere, years } = yearsOf(catalogue.sets);
-  response.setHeader("Cache-Control", SET_CACHE);
+  response.setHeader("Cache-Control", tests ? TESTS_CACHE : SET_CACHE);
   return response.status(200).json({
     models: found.sets.map((entry) => catalogCard(entry, by)), total: found.total, page: found.page, pages: found.pages,
     per_page: CATALOG_PER_PAGE, of: catalogue.sets.length, with_3d: [...by.values()].filter((one) => one.main).length,
@@ -2373,6 +2408,10 @@ async function keepNeeds(id, needs) {
   }
 }
 
+/// What a featured model's choice weighed, as the page says it.
+const featuredWhy = (why) => ({ likes: Number(why?.likes) || 0, builds: Number(why?.builds) || 0,
+  comments: Number(why?.comments) || 0, remixes: Number(why?.remixes) || 0, tested: why?.tested === true });
+
 /// The week's numbers of a pick, as the page says them.
 const weekOf = (week) => ({ builds: Number(week?.builds) || 0, remixes: Number(week?.remixes) || 0,
   tested: week?.tested === true, score: Number(week?.score) || 0 });
@@ -2386,7 +2425,7 @@ async function shelves(request, response, origin) {
   const tests = testsAsked(request.query || {});
   const mine = await whoseOwn(request, origin);
   const notYet = (trouble) => (/: 404$/.test(String(trouble?.message || "")) ? null : Promise.reject(trouble));
-  const [pick, small, ready, challenge] = await Promise.all([
+  const [pick, small, ready, challenge, kept] = await Promise.all([
     db("rpc/gallery_pick", { method: "POST", body: { tests } }).catch(notYet),
     db("rpc/directory_models", { method: "POST", body: { query: {
       most: SIZES.small.most, sort: "top", size: SHELF + 1, ...(tests ? { tests: true } : {}),
@@ -2396,21 +2435,38 @@ async function shelves(request, response, origin) {
       pool: mine.account, buildable: true, sort: "top", size: SHELF + 1, ...(tests ? { tests: true } : {}) } } }) : null,
     // The monthly challenge open now, or the next (supabase/challenges.sql).
     challengeLine(tests),
+    // What the cron chose (supabase/gallery_crons.sql): none before it is applied.
+    db("rpc/gallery_features_now", { method: "POST", body: { tests } }).catch(notYet),
   ]);
+  const shown = (card) => Boolean(card && ID.test(String(card.id || "")));
+  // The week's pick the cron kept, unless the owner chose one; a list asked
+  // with tests keeps the pick worked out from its own week.
+  const keptPick = !tests && pick?.chosen !== true && shown(kept?.pick?.card) ? kept.pick : null;
+  const thePick = keptPick || (pick && shown(pick.card) ? pick : null);
+  const featured = shown(kept?.featured?.card) && kept.featured.card.id !== thePick?.card?.id ? kept.featured : null;
+  const set = kept?.library?.item ? await librarySet(kept.library.item) : null;
   const cards = {
     ready: (ready || []).slice(0, SHELF).map((row) => ownedCard(origin, row)),
-    pick: pick && pick.card && ID.test(String(pick.card.id || "")) ? cardOf(origin, pick.card) : null,
+    pick: thePick ? cardOf(origin, thePick.card) : null,
+    featured: featured ? cardOf(origin, featured.card) : null,
     small: await withWins((small || []).slice(0, SHELF).map((row) => ownedCard(origin, row)), tests),
   };
-  if (mine) await withLiked([...cards.ready, ...(cards.pick ? [cards.pick] : []), ...cards.small], mine.account);
+  const lead = [cards.pick, cards.featured].filter(Boolean);
+  if (mine) await withLiked([...cards.ready, ...lead, ...cards.small], mine.account);
   await withFaces(cards);
   response.setHeader("Cache-Control", tests || mine ? TESTS_CACHE : SHARED_CACHE);
   return response.status(200).json({
     ...(mine ? { mine: mine.pool, ready: { models: cards.ready, more: (ready || []).length > SHELF } } : {}),
     pick: cards.pick ? {
-      chosen: pick.chosen === true, until: pick.chosen === true ? pick.until ?? null : null,
-      week: weekOf(pick.week), model: cards.pick,
+      chosen: thePick.chosen === true, until: thePick.chosen === true ? thePick.until ?? null : null,
+      week: weekOf(thePick.week), model: cards.pick, ...(keptPick ? { kept: keptPick.day } : {}),
     } : null,
+    // Today's featured model and today's set from the LDraw library, as the
+    // cron kept them (api/_featured.js): what people did, and which theme.
+    featured: cards.featured ? { day: featured.day, why: featuredWhy(featured.why),
+      said: featuredSaid(featured.why, featured.card.listed_at, featured.day), model: cards.featured } : null,
+    library: set ? { day: kept.library.day, why: { theme: themeOf(set), decade: set.year ? `${Math.floor(set.year / 10) * 10}s` : "" },
+      model: setCard(set) } : null,
     small: { size: "small", label: SIZES.small.label, most: SIZES.small.most, models: cards.small,
       more: (small || []).length > SHELF },
     challenge,
@@ -2786,15 +2842,6 @@ async function unpublish(request, response) {
 
 const SWEEP_AGE_MS = 60 * 60 * 1000;
 
-/// Vercel's cron sends "Bearer <CRON_SECRET>"; nobody else has it.
-function isCron(request) {
-  const secret = process.env.CRON_SECRET || "";
-  if (!secret) return false;
-  const given = Buffer.from(String(request.headers?.authorization || ""));
-  const want = Buffer.from(`Bearer ${secret}`);
-  return given.length === want.length && timingSafeEqual(given, want);
-}
-
 async function sweep(request, response) {
   response.setHeader("Cache-Control", "no-store");
   if (!isCron(request)) return response.status(401).json({ error: "the sweep is the cron's" });
@@ -2833,6 +2880,40 @@ async function sweep(request, response) {
   }
   return response.status(200).json({ looked_at: files.length, kept: files.length - gone.length, removed: gone,
     originals });
+}
+
+// The front's daily choice (api/_featured.js) and the weekly look at the OMR
+// (api/_omr_watch.js): each the cron's alone, under its own lock, and each
+// run written down (supabase/gallery_crons.sql cron_runs), however it ends.
+
+/// Who ran a cron, for its log: Vercel's, or somebody by hand with the secret.
+const holderOf = (request) => (/^vercel-cron\b/.test(String(request.headers?.["user-agent"] || "")) ? "vercel-cron" : "by-hand");
+
+async function feature(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  if (!isCron(request)) return response.status(401).json({ error: "the front's choice is the cron's" });
+  return response.status(200).json(await runFeatures({ db, sets: () => librarySets(), holder: holderOf(request) }));
+}
+
+/// How LDraw's site is asked, as tools/omr.py asks it: named, and briefly.
+const OMR_AGENT = "brickworks (https://brickworks.diy)";
+
+async function omrWatch(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  if (!isCron(request)) return response.status(401).json({ error: "the look at the OMR is the cron's" });
+  // When the store's index was last written: a file of a set it has, changed
+  // after that, is an update.
+  const root = storeRoot();
+  const head = root ? await fetch(`${root}library/index.json`, { method: "HEAD" }).catch(() => null) : null;
+  const indexAt = Date.parse(head?.headers.get("last-modified") || "") || 0;
+  const fetchText = async (url) => {
+    const answer = await fetch(url, { headers: { "user-agent": OMR_AGENT }, signal: AbortSignal.timeout(20000) })
+      .catch(() => null);
+    return { status: answer ? answer.status : 0, text: answer && answer.ok ? await answer.text() : "" };
+  };
+  const done = await runOmrWatch({ db, fetchText, sets: () => librarySets(), indexAt, holder: holderOf(request),
+    dry: request.query?.dry === "1" });
+  return response.status(200).json({ ...done, index_at: indexAt ? new Date(indexAt).toISOString() : null });
 }
 
 export default async function handler(request, response) {

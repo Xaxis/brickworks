@@ -1,45 +1,60 @@
 /*
-  The look every page of brickworks.diy shares: the landing page, the
-  downloads, the changelog and the 404. The app is a canvas and has its
-  own; this follows it — dark by default, yellow for the way in, and the
-  mark from web/icon.svg.
+  The design system every page of brickworks.diy shares (docs/DESIGN_SYSTEM.md):
+  its tokens, then its components. The app is a canvas and has its own
+  look; this follows it: near-black by default, warm yellow for the way
+  in, and the mark from web/icon.svg.
 
-  Its controls are here and nowhere else (docs/DESIGN_SYSTEM.md): a field
-  (text box, dropdown, text area, file picker), a checkbox, the buttons,
-  the dialog, the card. A page lays them out; it does not restyle them.
-  Each unit used to copy the styles it needed, and what a copy missed was
-  drawn by the browser: the age question's month was a bare dropdown
-  beside a full-size year box. tools/web/design_flow.mjs keeps it so.
+  Its controls are here and nowhere else: a field (text box, dropdown,
+  text area, file picker), a checkbox, the buttons, the dialog, the card,
+  the badge, the callout, a plan's card. A page lays them out; it does not
+  restyle them. Each unit used to copy the styles it needed, and what a
+  copy missed was drawn by the browser: the age question's month was a
+  bare dropdown beside a full-size year box. tools/web/design_flow.mjs
+  keeps it so.
 
   Contrast is measured, not eyeballed: every text colour here is at least
   4.5:1 on each surface it sits on, and an edge that marks a state 3:1, in
-  both themes (WCAG AA; tests/test_site_contrast.py). The old "faint" grey
-  was 42% white, 3.4:1, and it was on half the small print.
+  both themes (WCAG AA; tests/test_site_contrast.py).
 
   Two themes, the person's choice (System, Light or Dark: web/theme.js
   sets data-theme on <html> before the page is drawn). Dark is the set
   below; the light set is chosen, or the system's when nothing was.
+
+  site356 (2026-10-29, the owner: "next level UI/UX"): a deeper ground, a
+  line that is quieter and one that is firmer, three steps of elevation
+  (--shadow-1, --shadow-2, --shadow), a top-edge highlight on every raised
+  surface, the yellow as a soft tint (--accent-soft) and as words
+  (--accent-ink), and a fifth corner for the largest surfaces.
 */
 :root {
-	--bg: #0e1013;
-	--bg-soft: #13161b;
-	--panel: #181c22;
-	--panel-hi: #1f242c;
-	--line: rgba(255, 255, 255, 0.1);
-	--ink: #eef0f4;
-	--ink-soft: #b7bcc5;
-	--ink-faint: #8d939d;
+	--bg: #0b0c0e;
+	--bg-soft: #101215;
+	--panel: #15171b;
+	--panel-hi: #1c1f24;
+	--line: rgba(255, 255, 255, 0.08);
+	/* A firmer edge: a control's at rest, a card under the pointer. */
+	--line-strong: rgba(255, 255, 255, 0.16);
+	--ink: #f3f4f6;
+	--ink-soft: #b4b9c2;
+	--ink-faint: #8b929d;
 	--red: #d0332f;
 	--yellow: #f2cd37;
 	--blue: #2a6fc4;
 	--green: #57c97e;
 	--accent: var(--yellow);
+	/* The top of a primary button: the yellow lit from above. */
+	--accent-hi: #ffdc55;
 	--on-accent: #17130a;
 	/* An edge in the accent that marks a state (a pressed toggle, the New
 	   pill, the older-version box): the yellow is 1.33:1 on the light
 	   pages, so the light set darkens it to 3:1. A yellow button keeps
 	   the yellow. */
 	--accent-edge: var(--yellow);
+	/* The accent as words (an eyebrow, a plan's saving): 4.5:1 on every
+	   surface, so darker again in light. */
+	--accent-ink: var(--yellow);
+	/* The accent as a ground: a badge, an icon's tile, the chosen plan. */
+	--accent-soft: rgba(242, 205, 55, 0.12);
 	--focus: #7cb8ff;
 	--bad: #ef7a72;
 	/* The 404's wall: four bricks, the same in both themes. */
@@ -51,7 +66,7 @@
 	   shadow, its top in light. And the dim behind an open dialog. */
 	--shade: rgba(0, 0, 0, 0.3);
 	--shine: rgba(255, 255, 255, 0.18);
-	--scrim: rgba(0, 0, 0, 0.55);
+	--scrim: rgba(0, 0, 0, 0.6);
 	/* What a model's picture stands on (a card's frame, its page's picture):
 	   the app draws it with nothing behind the model since 2026-10-24
 	   (docs/SOCIAL.md U15), so the ground is the theme's, lighter at the top
@@ -73,11 +88,13 @@
 	   with the same corners; every field has the same fill. */
 	--field: var(--bg-soft);
 	--control-h: 44px;
-	/* Four corners: small (a chip, a code box), a control's, a card's or a
-	   panel's, and a pill's; a circle is 50%. */
+	/* Five corners: small (a chip, a code box), a control's, a card's or a
+	   panel's, a large surface's (a plan, the app's picture, a band), and a
+	   pill's; a circle is 50%. */
 	--r-1: 6px;
 	--r-2: 10px;
 	--r-3: 14px;
+	--r-4: 20px;
 	--r-pill: 999px;
 	--control-radius: var(--r-2);
 	--radius: var(--r-3);
@@ -92,8 +109,8 @@
 	   page's one line, a page's title, a section's, a card's; the lede;
 	   then the words, small print, the smallest, and a count's. Each page
 	   used to size its own titles, from 26 to 74 px. */
-	--t-display: clamp(40px, 6.6vw, 68px);
-	--t-h1: clamp(32px, 4.6vw, 46px);
+	--t-display: clamp(42px, 7vw, 76px);
+	--t-h1: clamp(32px, 4.6vw, 48px);
 	--t-h2: clamp(22px, 2.4vw, 26px);
 	--t-h3: 18px;
 	--t-lede: clamp(17px, 1.9vw, 19px);
@@ -101,14 +118,29 @@
 	--t-small: 14.5px;
 	--t-tiny: 13px;
 	--t-micro: 12px;
+	/* A section's title on the landing pages (home, plans, download): the
+	   step between a page's title and a section's. */
+	--t-section: clamp(28px, 3.6vw, 40px);
 	/* Code in a line of words: a monospace face looks larger at one size. */
 	--t-code: 0.92em;
 	/* And one rhythm: the space above a page's title, between its sections,
 	   and the steps between. */
-	--s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
+	--s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 64px;
 	--page-top: clamp(40px, 6vw, 72px);
-	--section: clamp(56px, 8vw, 96px);
-	--shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.75);
+	--section: clamp(64px, 9vw, 112px);
+	/* Elevation, three steps: resting on the page (a card, a ghost
+	   button), raised (a card under the pointer, a menu), and floating (a
+	   dialog, the app's picture). And the light along a raised surface's
+	   top edge, and a primary button's. */
+	--shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35);
+	--shadow-2: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 32px -12px rgba(0, 0, 0, 0.7);
+	--shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.8);
+	--highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+	--shine-btn: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+	/* The warm light over a landing page's opening and its last offer. */
+	--glow: radial-gradient(60% 55% at 50% 0%, rgba(242, 205, 55, 0.14), transparent 70%);
+	/* The baseplate under it: a grid of studs, faint. */
+	--studs: radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.07) 1px, transparent 1.5px);
 	/* Motion (docs/DESIGN_SYSTEM.md "Motion"): how long a control takes to
 	   answer the pointer, and an opening's; one easing for both. None of it
 	   under reduced motion. */
@@ -124,37 +156,55 @@
    when nothing was chosen. CSS cannot say "this attribute or this media
    query" in one rule; tests/test_site_contrast.py fails if they differ. */
 :root[data-theme="light"] {
-	--bg: #f4f5f7;
-	--bg-soft: #eceef2;
+	--bg: #fbfbfa;
+	--bg-soft: #f3f3f1;
 	--panel: #ffffff;
-	--panel-hi: #f7f8fa;
-	--line: rgba(15, 20, 28, 0.12);
-	--ink: #12161c;
-	--ink-soft: #424954;
-	--ink-faint: #5b626d;
+	--panel-hi: #f7f7f5;
+	--line: rgba(17, 19, 23, 0.1);
+	--line-strong: rgba(17, 19, 23, 0.2);
+	--ink: #111317;
+	--ink-soft: #454a54;
+	--ink-faint: #5b616b;
 	--green: #1f7a3d;
 	--accent-edge: #a67c00;
+	--accent-ink: #7a5b00;
+	--accent-soft: rgba(242, 205, 55, 0.22);
 	--focus: #1f5fbf;
 	--bad: #b42318;
+	--scrim: rgba(17, 19, 23, 0.45);
+	--shadow-1: 0 1px 2px rgba(16, 24, 40, 0.07);
+	--shadow-2: 0 1px 2px rgba(16, 24, 40, 0.06), 0 12px 32px -12px rgba(16, 24, 40, 0.2);
 	--shadow: 0 30px 60px -32px rgba(20, 30, 50, 0.35);
+	--highlight: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+	--glow: radial-gradient(60% 55% at 50% 0%, rgba(242, 205, 55, 0.3), transparent 70%);
+	--studs: radial-gradient(circle at 1px 1px, rgba(17, 19, 23, 0.08) 1px, transparent 1.5px);
 	--picture-ground: linear-gradient(180deg, #edeff5, #ccd4de);
 	color-scheme: light;
 }
 @media (prefers-color-scheme: light) {
 	:root:not([data-theme]) {
-		--bg: #f4f5f7;
-		--bg-soft: #eceef2;
+		--bg: #fbfbfa;
+		--bg-soft: #f3f3f1;
 		--panel: #ffffff;
-		--panel-hi: #f7f8fa;
-		--line: rgba(15, 20, 28, 0.12);
-		--ink: #12161c;
-		--ink-soft: #424954;
-		--ink-faint: #5b626d;
+		--panel-hi: #f7f7f5;
+		--line: rgba(17, 19, 23, 0.1);
+		--line-strong: rgba(17, 19, 23, 0.2);
+		--ink: #111317;
+		--ink-soft: #454a54;
+		--ink-faint: #5b616b;
 		--green: #1f7a3d;
 		--accent-edge: #a67c00;
-			--focus: #1f5fbf;
+		--accent-ink: #7a5b00;
+		--accent-soft: rgba(242, 205, 55, 0.22);
+		--focus: #1f5fbf;
 		--bad: #b42318;
+		--scrim: rgba(17, 19, 23, 0.45);
+		--shadow-1: 0 1px 2px rgba(16, 24, 40, 0.07);
+		--shadow-2: 0 1px 2px rgba(16, 24, 40, 0.06), 0 12px 32px -12px rgba(16, 24, 40, 0.2);
 		--shadow: 0 30px 60px -32px rgba(20, 30, 50, 0.35);
+		--highlight: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+		--glow: radial-gradient(60% 55% at 50% 0%, rgba(242, 205, 55, 0.3), transparent 70%);
+		--studs: radial-gradient(circle at 1px 1px, rgba(17, 19, 23, 0.08) 1px, transparent 1.5px);
 		--picture-ground: linear-gradient(180deg, #edeff5, #ccd4de);
 		color-scheme: light;
 	}
@@ -171,7 +221,9 @@ body {
 		Roboto, Helvetica, Arial, sans-serif;
 	-webkit-font-smoothing: antialiased;
 	text-rendering: optimizeLegibility;
+	font-optical-sizing: auto;
 }
+::selection { background: var(--accent); color: var(--on-accent); }
 img { max-width: 100%; height: auto; display: block; }
 a { color: inherit; text-underline-offset: 0.18em; text-decoration-thickness: 1px; }
 a:hover { text-decoration-thickness: 2px; }
@@ -203,15 +255,15 @@ a:focus-visible { border-radius: var(--r-1); }
 
 .site-head {
 	position: sticky; top: 0; z-index: 20;
-	backdrop-filter: saturate(1.4) blur(14px);
-	-webkit-backdrop-filter: saturate(1.4) blur(14px);
-	background: color-mix(in srgb, var(--bg) 84%, transparent);
+	backdrop-filter: saturate(1.6) blur(16px);
+	-webkit-backdrop-filter: saturate(1.6) blur(16px);
+	background: color-mix(in srgb, var(--bg) 78%, transparent);
 	border-bottom: 1px solid var(--line);
 }
 .bar { display: flex; align-items: center; gap: 12px; min-height: 60px; }
 .mark {
 	display: inline-flex; align-items: center; gap: 10px;
-	font-weight: 680; letter-spacing: -0.02em; font-size: var(--t-h3);
+	font-weight: 700; letter-spacing: -0.025em; font-size: var(--t-h3);
 	text-decoration: none; padding: 6px 4px;
 }
 /* The mark (web/icon.svg): a cube with a corner cut away. The .chip every
@@ -228,15 +280,20 @@ a:focus-visible { border-radius: var(--r-1); }
 	flex-wrap: wrap; align-content: flex-start; row-gap: 0; line-height: var(--control-h);
 }
 .site-head .mark .chip { margin-block: 9px; }
-.nav { margin-left: auto; display: flex; align-items: center; gap: 2px; }
-.nav a:not(.cta) {
+/* The nav fills the bar after the mark: its four links in the middle of
+   what is left, Open the app and your account at the far right (the
+   first link and Open the app each take half the room that is over). */
+.nav { flex: 1; display: flex; align-items: center; gap: 2px; }
+.nav > a:not(.cta) {
 	display: inline-flex; align-items: center; min-height: var(--control-h);
-	text-decoration: none; color: var(--ink-soft); font-size: var(--t-body);
-	padding: 0 12px; border-radius: var(--r-2); white-space: nowrap;
+	text-decoration: none; color: var(--ink-soft); font-size: var(--t-small); font-weight: 520;
+	padding: 0 14px; border-radius: var(--r-pill); white-space: nowrap;
 }
-.nav a:hover, .nav a[aria-current="page"] { color: var(--ink); background: var(--panel); }
-.nav .cta { margin-left: 8px; }
-.nav a.cta, .nav a.cta:hover { color: var(--on-accent); background: var(--accent); }
+.nav > a:not(.cta):first-child { margin-left: auto; }
+.nav > a:not(.cta):hover { color: var(--ink); background: var(--panel); }
+.nav > a:not(.cta)[aria-current="page"] { color: var(--ink); background: var(--panel); box-shadow: inset 0 0 0 1px var(--line); }
+.nav > .cta { margin-left: 8px; }
+.nav > .cta:not(.ghost) { margin-left: auto; }
 
 /* On a phone: the mark, the way in, and a menu for the rest. A <details>
    so it opens with no script, which the site's security policy would
@@ -245,14 +302,15 @@ a:focus-visible { border-radius: var(--r-1); }
 .menu summary {
 	list-style: none; cursor: pointer; display: inline-flex; align-items: center; min-height: var(--control-h);
 	padding: 0 14px; border-radius: var(--control-radius);
-	border: 1px solid var(--line); font-size: var(--t-body); color: var(--ink);
+	border: 1px solid var(--line-strong); font-size: var(--t-body); color: var(--ink); background: var(--panel);
+	box-shadow: var(--highlight);
 }
 .menu summary::-webkit-details-marker { display: none; }
 .menu[open] summary { background: var(--panel); }
 .menu-list {
-	position: absolute; right: 0; top: calc(100% + 8px); min-width: 210px;
+	position: absolute; right: 0; top: calc(100% + 8px); min-width: 220px;
 	display: grid; padding: 6px; border-radius: var(--r-3);
-	background: var(--panel); border: 1px solid var(--line); box-shadow: var(--shadow);
+	background: var(--panel); border: 1px solid var(--line-strong); box-shadow: var(--highlight), var(--shadow);
 }
 .menu-list nav { display: grid; }
 .menu-list a { text-decoration: none; padding: 10px 12px; border-radius: var(--r-1); color: var(--ink-soft); }
@@ -298,17 +356,19 @@ a:focus-visible { border-radius: var(--r-1); }
 /* Sign out last, a menu's button as any other, under a line. */
 .menu-list > :has(+ .sign-out) { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .menu-list > .sign-out { margin-top: 6px; }
-/* On a phone the mark, Open the app and Menu fill the bar, and the last
-   keeps the page's 16 px gutter (design_flow.mjs fails it closer): Open
-   the app drops the margin that set it apart from the links Menu now
-   holds, the bar's gaps close to 8 px, and Open the app and Menu give a
-   little a side, so the word still fits at 390. A tablet has the laptop's
-   bar: it fits from 600 px. */
-@media (width < 600px) {
-	.nav a:not(.cta), .nav .account-menu { display: none; }
+/* Under 900 px the mark, Open the app and Menu fill the bar (the four
+   links and Sign in are on Menu), and the last keeps the page's 16 px
+   gutter (design_flow.mjs fails it closer). On a phone the bar's gaps
+   close to 8 px, and Open the app and Menu give a little a side, so the
+   word still fits at 390. The whole bar fits from 900 px (site356: four
+   links and two buttons, where it was two and two from 600). */
+@media (width < 900px) {
+	.nav > a:not(.cta), .nav > a[data-account], .nav .account-menu { display: none; }
 	.menu { display: block; }
+}
+@media (width < 600px) {
 	.site-head .bar { gap: var(--s-2); }
-	.site-head .nav .cta { margin-left: 0; padding-inline: 10px; }
+	.site-head .nav .cta { margin-left: auto; padding-inline: 10px; }
 	.site-head .menu summary:not(.account-btn) { padding-inline: 10px; }
 }
 
@@ -325,14 +385,26 @@ a:focus-visible { border-radius: var(--r-1); }
 	text-decoration: none; cursor: pointer;
 	background: var(--accent); color: var(--on-accent); border: 1px solid transparent;
 }
-.cta:hover { filter: brightness(1.07); }
-.cta.ghost, :where(button) { background: transparent; color: var(--ink); border-color: var(--line); }
+/* The primary one lit from above, with its own edge of light and a
+   shadow under it: it is the way in, and looks pressable. */
+.cta:not(.ghost) {
+	background: linear-gradient(180deg, var(--accent-hi), var(--accent));
+	box-shadow: var(--shine-btn), var(--shadow-1);
+}
+.cta:hover { filter: brightness(1.06); }
+.cta.ghost, :where(button) { background: transparent; color: var(--ink); border-color: var(--line-strong); }
+/* A secondary button that stands on the page as a primary one does: on
+   the panel's ground, with an edge of light and a shadow. */
+.cta.ghost { background: var(--panel); box-shadow: var(--highlight), var(--shadow-1); }
 /* Not a primary button's: :where(button):hover weighs as much as .cta, and
    came after it, so a yellow button went white under the pointer. */
-.cta.ghost:hover, :where(button:not(.cta)):hover { background: var(--panel); filter: none; }
+.cta.ghost:hover, :where(button:not(.cta)):hover { background: var(--panel-hi); filter: none; }
 .cta.ghost[aria-pressed="true"] { border-color: var(--accent-edge); }
 .cta.small { min-height: 36px; padding: 5px 12px; font-size: var(--t-small); }
 .cta.big { min-height: 52px; padding: 13px 26px; font-size: var(--t-h3); border-radius: var(--control-radius); }
+/* A way on, its arrow after the words, nudged under the pointer. */
+.cta .arrow { display: inline-block; transition: transform var(--motion) var(--ease); }
+.cta:hover .arrow { transform: translateX(3px); }
 summary.cta { width: fit-content; list-style: none; }
 summary.cta::-webkit-details-marker { display: none; }
 button.link, a.link {
@@ -354,10 +426,10 @@ button.link:hover, a.link:hover { color: var(--ink); background: none; }
 }
 .segmented button {
 	min-height: 36px; padding: 5px 12px; border-radius: var(--r-1); border: 1px solid transparent;
-	font-size: var(--t-small); font-weight: 600; line-height: 24px; color: var(--ink-soft); background: transparent;
+	font-size: var(--t-small); font-weight: 600; line-height: 24px; color: var(--ink-soft); background: transparent; box-shadow: none;
 }
 .segmented button:hover { color: var(--ink); background: var(--panel); }
-.segmented button[aria-pressed="true"] { color: var(--ink); background: var(--panel); border-color: var(--accent-edge); }
+.segmented button[aria-pressed="true"] { color: var(--ink); background: var(--panel); border-color: var(--accent-edge); box-shadow: var(--shadow-1); }
 /* On a phone its buttons are a finger's 44 px (the footer's theme too). */
 @media (width < 600px) { .segmented button { min-height: var(--control-h); } }
 /* Its words beside it: what is being chosen. */
@@ -371,7 +443,13 @@ button.link:hover, a.link:hover { color: var(--ink); background: none; }
 :where(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea) {
 	min-width: 0; max-width: 100%; min-height: var(--control-h); margin: 0; padding: 9px 12px;
 	font: inherit; font-size: var(--t-body); line-height: 24px; color: var(--ink);
-	background-color: var(--field); border: 1px solid var(--line); border-radius: var(--control-radius);
+	background-color: var(--field); border: 1px solid var(--line-strong); border-radius: var(--control-radius);
+}
+:where(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea):hover { border-color: var(--ink-faint); }
+/* A field being typed in is ringed in the accent's edge as well as the
+   keyboard's ring, so a mouse's click shows where the words go too. */
+:where(input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="file"]), select, textarea):focus {
+	border-color: var(--accent-edge); box-shadow: 0 0 0 3px var(--accent-soft);
 }
 :where(input, textarea)::placeholder { color: var(--ink-faint); }
 /* A dropdown is the text box with an arrow in the page's ink; its first,
@@ -420,10 +498,10 @@ fieldset.date .dropdowns {
    (account.js), report it (report.js). */
 
 dialog {
-	width: min(420px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: var(--radius);
-	background: var(--panel); color: var(--ink); padding: 22px; box-shadow: var(--shadow);
+	width: min(420px, calc(100vw - 32px)); border: 1px solid var(--line-strong); border-radius: var(--r-4);
+	background: var(--panel); color: var(--ink); padding: 24px; box-shadow: var(--highlight), var(--shadow);
 }
-dialog::backdrop { background: var(--scrim); }
+dialog::backdrop { background: var(--scrim); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
 dialog h2 { margin: 0 0 6px; }
 dialog p { color: var(--ink-soft); margin: 0 0 14px; }
 dialog form label { margin-bottom: 14px; }
@@ -473,19 +551,21 @@ dialog.first-steps .actions { margin-top: var(--s-5); }
 
 h1, h2, h3 { text-wrap: balance; }
 h1 {
-	margin: 0 0 var(--s-3); font-size: var(--t-h1); line-height: 1.08;
-	letter-spacing: -0.035em; font-weight: 720;
+	margin: 0 0 var(--s-3); font-size: var(--t-h1); line-height: 1.06;
+	letter-spacing: -0.035em; font-weight: 740;
 }
 /* The landing page's one line, and nowhere else. */
-.display { font-size: var(--t-display); line-height: 1.02; letter-spacing: -0.04em; }
+.display { font-size: var(--t-display); line-height: 1; letter-spacing: -0.045em; font-weight: 760; }
+/* Words in a title that are the point, in the accent's ink. */
+.display em, h1 em, .title em { font-style: normal; color: var(--accent-ink); }
 h2 {
 	margin: 0 0 var(--s-2); font-size: var(--t-h2); line-height: 1.15;
 	letter-spacing: -0.025em; font-weight: 690;
 }
 h3 { margin: 0 0 6px; font-size: var(--t-h3); line-height: 1.3; letter-spacing: -0.01em; font-weight: 650; }
 .eyebrow {
-	display: inline-block; margin: 0 0 14px; font-size: var(--t-tiny); font-weight: 650;
-	letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft);
+	display: inline-block; margin: 0 0 14px; font-size: var(--t-tiny); font-weight: 680;
+	letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent-ink);
 }
 .lede { margin: 0 0 var(--s-5); font-size: var(--t-lede); color: var(--ink-soft); max-width: 60ch; text-wrap: pretty; }
 .sub { margin: 0 0 var(--s-5); color: var(--ink-soft); max-width: 66ch; font-size: var(--t-lede); text-wrap: pretty; }
@@ -582,7 +662,7 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 
 .card {
 	background: var(--panel); border: 1px solid var(--line);
-	border-radius: var(--radius); padding: 22px;
+	border-radius: var(--radius); padding: 24px; box-shadow: var(--highlight), var(--shadow-1);
 }
 .card p { margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
 
@@ -633,9 +713,9 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 .model {
 	position: relative; display: flex; flex-direction: column; color: inherit; min-width: 0;
 	border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line);
-	background: var(--panel); box-shadow: var(--shadow);
+	background: var(--panel); box-shadow: var(--highlight), var(--shadow-1);
 }
-.model:hover { border-color: var(--ink-faint); }
+.model:hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
 .model:hover b { text-decoration: underline; text-decoration-thickness: 1px; }
 .model .frame { position: relative; aspect-ratio: 4 / 3; background: var(--picture-ground); overflow: hidden; }
 .model .frame img { width: 100%; height: 100%; object-fit: cover; }
@@ -721,7 +801,7 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
    .pills. */
 .pill {
 	display: inline-flex; align-items: center; gap: var(--s-1); min-height: 24px; padding: 1px 10px;
-	border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--panel);
+	border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--panel);
 	font: inherit; font-size: var(--t-tiny); font-weight: 500; line-height: 20px; white-space: nowrap;
 	color: var(--ink-soft); text-decoration: none;
 }
@@ -868,21 +948,29 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 
 .shot {
 	margin: 0; border-radius: var(--radius); overflow: hidden;
-	border: 1px solid var(--line); background: var(--bg-soft); box-shadow: var(--shadow);
+	border: 1px solid var(--line); background: var(--bg-soft); box-shadow: var(--highlight), var(--shadow);
 }
+/* A window's bar over a picture of the app, with its address in it: the
+   point that it runs in a browser, made without a word. */
+.window { display: flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px;
+	background: var(--panel-hi); border-bottom: 1px solid var(--line); }
+.window i { width: 10px; height: 10px; border-radius: 50%; background: var(--line-strong); flex: none; }
+.window span { flex: 0 1 340px; margin-inline: auto; padding: 3px 12px; border-radius: var(--r-1);
+	background: var(--bg-soft); font-size: var(--t-micro); color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .shot img { width: 100%; }
 figcaption { padding: 12px 16px 14px; font-size: var(--t-small); color: var(--ink-soft); }
 figcaption b { display: block; color: var(--ink); font-size: var(--t-small); font-weight: 640; }
 
 .stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); list-style: none; margin: 0; padding: 0; }
-.stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 16px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 18px 16px; box-shadow: var(--highlight); }
 .stat b { display: block; font-size: var(--t-h2); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1.15; }
 .stat span { font-size: var(--t-small); color: var(--ink-soft); }
 
 details.qa {
 	border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel);
-	padding: 0 20px;
+	padding: 0 20px; box-shadow: var(--highlight);
 }
+details.qa:hover { border-color: var(--line-strong); }
 details.qa + details.qa { margin-top: 10px; }
 details.qa summary {
 	cursor: pointer; padding: 16px 0; font-weight: 620; font-size: var(--t-body);
@@ -895,27 +983,202 @@ details.qa > div { padding: 0 0 18px; color: var(--ink-soft); }
 details.qa > div p { margin: 0 0 10px; }
 
 /* -- the foot ------------------------------------------------------
-   One footer on every page (web/_shell.html): the mark and a row of
-   links, then the notices, quiet but whole (docs/TRADEMARKS.md). The
-   links 12 px apart: at 16 the tenth, Collections, put the Theme choice on
-   a row of its own at 1280 px, every page a row taller. */
+   One footer on every page (web/_shell.html): the mark, a line of what
+   Brickworks is and the theme, beside four columns of links (Product,
+   Community, Help, Legal); then the notices, quiet but whole
+   (docs/TRADEMARKS.md). site356: the row of eleven links read as one
+   long line nobody scanned. A link is 32 px tall under a mouse and a
+   finger's 44 on a phone, four to a column at most, so the footer is no
+   taller than the row was by more than a column's height (a profile at
+   1280 px stays under 2,000 px, account_page_flow). */
 
-.site-foot { border-top: 1px solid var(--line); padding: var(--s-6) 0 var(--s-7); color: var(--ink-faint); background: var(--bg-soft); }
-.foot-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3) var(--s-5); margin-bottom: var(--s-4); }
-.foot-top .mark { font-size: var(--t-body); min-height: var(--control-h); }
-.foot-top .chip { width: 22px; height: 22px; }
-/* Its links a finger's 44 x 44: 6 px a side, so the words stay 12 px
-   apart (at 16 the tenth link wraps the Theme choice at 1280) and the
-   row starts on the page's edge. */
-.foot-links { display: flex; flex-wrap: wrap; margin: 0 -6px 0 auto; }
+.site-foot { border-top: 1px solid var(--line); padding: var(--s-7) 0 var(--s-6); color: var(--ink-faint); background: var(--bg-soft); }
+.foot-top { display: grid; gap: var(--s-5) var(--s-7); margin-bottom: var(--s-5); }
+@media (width >= 900px) { .foot-top { grid-template-columns: minmax(220px, 1fr) minmax(0, 2.4fr); } }
+.foot-brand { display: grid; align-content: start; justify-items: start; gap: var(--s-2); }
+.foot-brand .mark { font-size: var(--t-body); min-height: var(--control-h); margin-left: -4px; }
+.foot-brand .chip { width: 22px; height: 22px; }
+.foot-brand p { margin: 0; max-width: 34ch; color: var(--ink-soft); font-size: var(--t-small); }
+.foot-brand .theme-choice { margin-top: var(--s-1); }
+.foot-links { display: grid; gap: var(--s-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (width >= 600px) { .foot-links { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.foot-h { margin: 0 0 var(--s-1); color: var(--ink); font-size: var(--t-small); font-weight: 650; }
+.foot-links ul { display: grid; margin: 0; padding: 0; list-style: none; }
 .foot-links a {
-	display: inline-flex; align-items: center; justify-content: center; min-width: var(--control-h); min-height: var(--control-h);
-	padding: 0 6px; color: var(--ink-soft); text-decoration: none; font-size: var(--t-small);
+	display: inline-flex; align-items: center; min-height: var(--control-h); color: var(--ink-soft);
+	text-decoration: none; font-size: var(--t-small);
 }
-@media (width < 600px) { .foot-links { margin-left: -6px; } }
+@media (width >= 600px) { .foot-links a { min-height: 32px; } }
 .foot-links a:hover { color: var(--ink); text-decoration: underline; }
-.legal p { margin: 0 0 6px; max-width: 110ch; font-size: var(--t-micro); line-height: 1.6; }
+.legal { padding-top: var(--s-4); border-top: 1px solid var(--line); }
+.legal p { margin: 0 0 6px; max-width: 150ch; font-size: var(--t-micro); line-height: 1.55; }
 .legal a { color: var(--ink-soft); }
+
+/* -- the landing kit --------------------------------------------------
+   What the landing pages (home, plans, download) are made of, and any
+   page may use: a section's head, a badge, a callout, a row of features
+   each with its icon, three steps, a pair of pictures before and after, a
+   plan's card and its ticks, a table of what each plan has, and the last
+   offer (.closing; .offer is the download page's own). site356, 2026-10-29. */
+
+/* A section on a landing page: more room above and below than a page's
+   section, its title the larger --t-section (h2.title), a line under it,
+   and a way to more of it at the right. */
+.section { padding: var(--section) 0; }
+/* .defer: a section under the first screen laid out only as it nears the
+   window. The rebuilt home page laid out 2.6 times what the old one did
+   before its first paint (79 ms to 30 under SwiftShader, site356), and
+   painted 40 ms later. Its height is kept once drawn ("auto"), so nothing
+   above the window moves as a reader scrolls back. Not for a page whose
+   words a check reads with innerText: a section not yet laid out has
+   none (the plans flow failed on /plans with it). */
+.defer { content-visibility: auto; contain-intrinsic-size: auto 900px; }
+.section + .section { border-top: 1px solid var(--line); }
+.title { font-size: var(--t-section); line-height: 1.08; letter-spacing: -0.035em; font-weight: 740; }
+.section-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-5); margin: 0 0 var(--s-6); }
+.section-head > div { max-width: 62ch; }
+.section-head h2 { margin: 0; }
+.section-head p:not(.eyebrow) { margin: var(--s-3) 0 0; color: var(--ink-soft); font-size: var(--t-lede); text-wrap: pretty; }
+.section-head .eyebrow { margin-bottom: var(--s-3); }
+.section-head > a { color: var(--ink-soft); font-size: var(--t-small); font-weight: 600; text-decoration: none; padding-block: 6px; }
+.section-head > a:hover { color: var(--ink); text-decoration: underline; }
+.section-head.center { flex-direction: column; align-items: center; text-align: center; }
+.section-head.center > div { margin-inline: auto; }
+
+/* A badge: a short label beside a title or on a card (Two months free,
+   Recommended). A pill is a fact or a filter; a badge says what kind. */
+.badge {
+	display: inline-flex; align-items: center; gap: var(--s-1); min-height: 22px; padding: 0 8px;
+	border: 1px solid var(--line-strong); border-radius: var(--r-pill); background: var(--panel-hi);
+	color: var(--ink-soft); font-size: var(--t-micro); font-weight: 650; line-height: 20px; white-space: nowrap;
+}
+.badge.accent { color: var(--ink); background: var(--accent-soft); border-color: var(--accent-edge); }
+.badge.good { color: var(--green); border-color: var(--green); background: transparent; }
+/* A badge that goes somewhere (the landing page's news): a pointer's
+   target of 30 px, its edge firming under the pointer. */
+a.badge { min-height: 30px; padding: 0 12px; font-size: var(--t-tiny); text-decoration: none; }
+a.badge:hover { border-color: var(--ink-faint); }
+a.badge.accent:hover { border-color: var(--accent-edge); background: var(--panel-hi); }
+
+/* A callout: a note, a tip or a warning, its edge the kind's colour (the
+   docs' and any page's; it was docs.css's alone). */
+.callout {
+	margin: 0 0 var(--s-5); padding: var(--s-3) var(--s-4); border: 1px solid var(--line);
+	border-left: 4px solid var(--focus); border-radius: var(--r-2); background: var(--panel);
+}
+.callout.tip { border-left-color: var(--green); }
+.callout.warning { border-left-color: var(--bad); }
+.callout.accent { border-left-color: var(--accent-edge); }
+.callout p { margin: 0 0 var(--s-2); }
+.callout p:last-child { margin-bottom: 0; }
+.callout .callout-title { color: var(--ink); font-weight: 650; font-size: var(--t-small); }
+
+/* An icon on a tile of the accent's soft ground (a feature's). */
+.glyph {
+	display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: var(--r-2);
+	border: 1px solid var(--line); background: var(--accent-soft); color: var(--accent-ink);
+}
+.glyph .icon { width: 22px; height: 22px; }
+
+/* Features: a grid of panels, each its icon, a title and a line; as
+   many to a row as fit at 300 px (three on a laptop). */
+.features { display: grid; gap: var(--s-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); margin: 0; padding: 0; list-style: none; }
+.feature {
+	padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--radius);
+	background: var(--panel); box-shadow: var(--highlight);
+}
+.feature h3 { margin: var(--s-4) 0 var(--s-1); }
+.feature p { margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+
+/* Steps: three panels in order, each numbered in the accent. */
+.steps { counter-reset: step; display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); margin: 0; padding: 0; list-style: none; }
+@media (width >= 900px) { .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.steps > li {
+	counter-increment: step; display: flex; flex-direction: column; padding: var(--s-5);
+	border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--highlight);
+}
+.steps > li::before {
+	content: counter(step); display: inline-grid; place-items: center; width: 32px; height: 32px; margin-bottom: var(--s-4);
+	border-radius: 50%; background: linear-gradient(180deg, var(--accent-hi), var(--accent)); color: var(--on-accent);
+	font-size: var(--t-small); font-weight: 760; box-shadow: var(--shine-btn);
+}
+.steps h3 { margin: 0 0 var(--s-1); }
+.steps p { margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+.steps .shot { margin-top: auto; }
+.steps p + .shot { margin-top: var(--s-4); }
+
+/* Two pictures of one thing, before and after, side by side, each named
+   by a badge over its corner; what they show under them. */
+.ba { margin: 0; }
+.ba .pair { display: grid; gap: var(--s-3); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ba .side { position: relative; margin: 0; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--picture-ground); }
+.ba .side img { width: 100%; height: auto; aspect-ratio: 1; object-fit: cover; }
+.ba .side .badge { position: absolute; top: var(--s-2); left: var(--s-2); background: var(--panel); box-shadow: var(--shadow-1); }
+/* Over a picture a badge stands on a ground of its own: the accent's is
+   the yellow itself, as a primary button's. */
+.ba .side .badge.accent { border-color: transparent; background: var(--accent); color: var(--on-accent); }
+.ba > figcaption { padding: var(--s-3) 0 0; }
+
+/* Text beside a picture: the text first, the picture the larger; one over
+   the other under 900 px. .flip puts the picture first on a laptop. */
+.split { display: grid; gap: var(--s-6) clamp(24px, 5vw, 72px); align-items: center; }
+@media (width >= 900px) {
+	.split { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
+	.split.flip { grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); }
+	.split.flip > :first-child { order: 2; }
+}
+.split p:not(.eyebrow) { color: var(--ink-soft); max-width: 56ch; }
+
+/* A plan's card (/plans, the landing page's teaser): its name and badge,
+   who it is for, its price, the way in, and its ticks. .featured, the
+   one to choose, edged and lit in the accent. */
+.tier {
+	position: relative; display: flex; flex-direction: column; gap: var(--s-3); min-width: 0; padding: var(--s-6) var(--s-5);
+	border: 1px solid var(--line); border-radius: var(--r-4); background: var(--panel); box-shadow: var(--highlight), var(--shadow-1);
+}
+.tier.featured { border-color: var(--accent-edge); background-image: var(--glow); box-shadow: var(--highlight), var(--shadow-2); }
+.tier .name { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+.tier .name h2, .tier .name h3 { margin: 0; }
+.tier p:not(.eyebrow) { margin: 0; color: var(--ink-soft); }
+.tier .cta { width: 100%; }
+.price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s-2); margin: 0; color: var(--ink-soft); font-size: var(--t-body); }
+.price b { color: var(--ink); font-size: var(--t-h1); font-weight: 760; line-height: 1.1; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.price small { flex-basis: 100%; color: var(--ink-faint); font-size: var(--t-small); }
+/* A list of what something has, each with a tick in green. */
+.ticks { display: grid; align-content: start; gap: var(--s-2); margin: 0; padding: 0; list-style: none; color: var(--ink-soft); font-size: var(--t-small); }
+.ticks li { position: relative; padding-left: 28px; line-height: 1.55; }
+.ticks li::before {
+	content: ""; position: absolute; left: 6px; top: 0.25em; width: 6px; height: 11px;
+	border: solid var(--green); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.ticks b { color: var(--ink); font-weight: 620; }
+
+/* What each plan has, side by side (.table.matrix): the plans' columns
+   centred, a row of a group's name across them, and a tick or a dash. */
+.table.matrix { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); box-shadow: var(--highlight); }
+.table.matrix th, .table.matrix td { padding: 12px 16px; }
+.table.matrix thead th { color: var(--ink); font-size: var(--t-small); font-weight: 650; }
+.table.matrix td, .table.matrix thead th + th { text-align: center; }
+.table.matrix tbody th { color: var(--ink); font-weight: 520; }
+.table.matrix tr.group th { padding-top: var(--s-5); color: var(--accent-ink); font-size: var(--t-tiny); font-weight: 680; letter-spacing: 0.08em; text-transform: uppercase; }
+.table.matrix tbody tr:last-child > * { border-bottom: 0; }
+.has, .hasnt { position: relative; display: inline-block; width: 18px; height: 18px; vertical-align: middle; }
+.has::before {
+	content: ""; position: absolute; left: 6px; top: 1px; width: 6px; height: 12px;
+	border: solid var(--green); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.hasnt::before { content: ""; position: absolute; left: 3px; top: 8px; width: 12px; height: 2px; border-radius: var(--r-1); background: var(--ink-faint); }
+
+/* The last offer on a landing page: a panel lit from above on a faint
+   baseplate of studs, its words and its ways in at the middle. */
+.closing {
+	padding: clamp(40px, 7vw, 80px) var(--s-5); border: 1px solid var(--line); border-radius: var(--r-4); text-align: center;
+	background-color: var(--panel); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px;
+	box-shadow: var(--highlight), var(--shadow-1);
+}
+.closing .lede { margin-inline: auto; }
+/* The opening of a landing page, lit the same way. */
+.halo { background-image: var(--glow), var(--studs); background-size: auto, 24px 24px; background-repeat: no-repeat, repeat; }
 
 /* -- motion ---------------------------------------------------------
    Every control and card answers the pointer in --motion (150 ms): its
@@ -925,7 +1188,7 @@ details.qa > div p { margin: 0 0 10px; }
    moves under reduced motion, as the toast did not (site273: two
    transitions on the whole site, both the toast's). */
 .cta, :where(button), .icon-btn, .pill, .tabs a, .tabs button, .segmented button, .nav a, .menu summary,
-.menu-list a, .menu-list > button, .foot-links a, .model, .list-card, details.qa, .media-strip .thumb,
+.menu-list a, .menu-list > button, .foot-links a, .model, .list-card, details.qa, .media-strip .thumb, .feature, .tier,
 :where(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea) {
 	transition: color var(--motion) var(--ease), background-color var(--motion) var(--ease),
 		border-color var(--motion) var(--ease), box-shadow var(--motion) var(--ease),
@@ -939,6 +1202,7 @@ summary.pill:active, .segmented button:active, .menu summary:active { transform:
 .model:active, .list-card:active { transform: scale(0.99); }
 @media (hover: hover) {
 	.model:hover, .list-card:hover { transform: translateY(-2px); }
+	.feature:hover { border-color: var(--line-strong); }
 	.model:active, .list-card:active { transform: translateY(-1px) scale(0.99); }
 }
 dialog[open] { animation: rise var(--motion-open) var(--ease); }

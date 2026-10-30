@@ -4,7 +4,8 @@
     "assets/**",
     "build/**",
     "shots/**",
-    "tests/fixtures/billing/**"
+    "tests/fixtures/billing/**",
+    "tests/fixtures/beta/**"
   ],
   "manual": [
     {
@@ -2615,7 +2616,7 @@
       "kind": "ui",
       "label": "the gallery's front shelves",
       "entry": "web/gallery.js",
-      "reach": "https://brickworks.diy/gallery   (nothing asked: This week's pick and Small builds, from /api/share?op=shelves; signed in, You can build now and each card's share, with mine=1; Sort › Top builds says how it weighs, Sort › Parts I own with a collection)",
+      "reach": "https://brickworks.diy/gallery   (nothing asked: This week's pick, Today in the gallery (the featured model and the set from the LDraw library) and Small builds, from /api/share?op=shelves; signed in, You can build now and each card's share, with mine=1; Sort › Top builds says how it weighs, Sort › Parts I own with a collection)",
       "area": "web"
     },
     {
@@ -3210,7 +3211,7 @@
       "kind": "lib",
       "label": "models kept with the account",
       "entry": "src/account/cloud_models.gd",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (with .env sourced; supabase/account_models.sql and account_models_delete.sql applied; the desktop's half: desktop_cloud_probe)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (with .env sourced; supabase/account_models.sql and account_models_delete.sql applied; the desktop's half: desktop_cloud_probe; a plan that keeps no more, Free's 25: tools/probe.sh plan_full_probe)",
       "area": "model-io"
     },
     {
@@ -3224,7 +3225,7 @@
       "kind": "ui",
       "label": "account full offer",
       "entry": "src/ui/account_full_offer.gd",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (its step 6: nearly full at 450 of 500 models, full at 500, Delete old models…)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (its step 6: nearly full at 450 of 500 models, full at 500, Delete old models…); tools/probe.sh plan_full_probe   (the plan full, plans on: \"Free keeps 25 models in your account. Delete one, or get Pro for unlimited.\" with Delete old models…, See Pro and Not now, said at every save; a delete makes room)",
       "area": "model-io"
     },
     {
@@ -3238,7 +3239,7 @@
       "kind": "api",
       "label": "/api/models",
       "entry": "api/models.js",
-      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/models   (401 signed out; with a session GET the list and how full, GET ?name=X one model, POST {name, base, model} a save, DELETE ?name=X&version=N a delete)",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/models   (401 signed out; with a session GET the list and how full, GET ?name=X one model, POST {name, base, model} a save, DELETE ?name=X&version=N a delete; plans on, a new model past the plan's limit 413 {full: \"plan\", error, pro: \"/plans\"}: python3 tools/minitest.py tests/test_saved_models_plan.py)",
       "area": "model-io"
     },
     {
@@ -3560,7 +3561,7 @@
       "kind": "lib",
       "label": "plans from Admission",
       "entry": "api/_billing.js",
-      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, AI builds and desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
+      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, how many models it keeps with it (saved_models: Free 25, Pro any number; AI never limited) and the desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
       "area": "web"
     },
     {
@@ -3574,7 +3575,7 @@
       "kind": "api",
       "label": "GET /api/plans",
       "entry": "api/plans.js",
-      "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan; off, 405 as before)",
+      "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan with savedModels {limit, kept} and nothing of AI; off, 405 as before; plans_flow's step 6)",
       "area": "web"
     },
     {
@@ -3835,6 +3836,69 @@
       "entry": "tools/web/product_render_flow.mjs",
       "reach": "node tools/web/product_render_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=OUT   (a local export served by tools/web/serve.py, with .env sourced; or --url=<a preview>/app --bypass=$VERCEL_BYPASS: Product under Compatibility on each backdrop, the red glass red and the clear see-through)",
       "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "a plan's limit on models kept with the account",
+      "entry": "supabase/account_models_plan.sql",
+      "reach": "python3 tools/minitest.py tests/test_saved_models_plan.py; PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/account_models_plan.sql --dry --try=tools/account_models_plan_try.sql --table=account_models   (.env sourced; rolled back; the lead applies it without --dry. Free keeps 25 new models, an update or the same model again at the limit kept, a delete makes room at once, the owner, Pro and a comp of Pro any number, a plan not known refuses nobody; plans off, Admission never asked and the save sent as before)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the gallery's daily choice",
+      "entry": "api/_featured.js",
+      "reach": "curl -H \"Authorization: Bearer $CRON_SECRET\" <a deployment>/api/share/feature   (Vercel's cron at 00:07 UTC: this week's pick on a week's first run, today's featured model, today's LDraw set, each kept once; a second run the same day says unchanged; supabase/gallery_crons.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the weekly look at the OMR",
+      "entry": "api/_omr_watch.js",
+      "reach": "curl -H \"Authorization: Bearer $CRON_SECRET\" '<a deployment>/api/share/omr?dry=1'   (Vercel's cron on Mondays at 05:37 UTC without dry=1: what LDraw's OMR has that the library has not, written to library_arrivals)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the weekly AI showcase",
+      "entry": "tools/showcase.py",
+      "reach": "python3 tools/showcase.py run --dry-run   (the gates and the next brief; run designs one in a heavy slot and keeps it as a draft; drafts, publish RUN; the timer: tools/install_showcase_timer.sh, left off)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "beta page",
+      "entry": "web/beta.html",
+      "reach": "<deployment>/beta   (BRICKWORKS_BETA off: Coming soon, no form, no count; open: the spots left live, signed out Sign in to apply, signed in the form (web/beta.js), applied where it stands; tools/web/beta_flow.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "applying to the beta",
+      "entry": "api/plans.js",
+      "reach": "curl -s '<deployment>/api/plans?op=beta'; curl -s '<deployment>/api/plans?op=beta_spots' (signed out, cached a minute: {beta, cap, left}); POST it signed in with {build, ai, background, background_line, link, terms, emails}   (off: {beta: off} and POST 403; open: 401 signed out, 422 with why, 409 a second time; python3 tools/minitest.py tests/test_beta.py)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the beta's spots and months",
+      "entry": "api/_beta.js",
+      "reach": "python3 tools/minitest.py tests/test_beta.py   (the form checked at the edge, signals, spots 1-100 one at a time under the pool's lock in supabase/beta.sql, the month given at Admission's ADR-0015 comp or left pending until Pro launches, the emails, the daily run at /api/plans/beta-daily)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the beta's owner queue",
+      "entry": "web/beta-admin.html",
+      "reach": "<deployment>/beta-admin as MASTER_EMAIL (?tests=1 the checks' pool): GET /api/admin?op=beta, POST ?op=beta_decide&account=U {decision, note}, POST ?op=beta_grant",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "beta browser flow",
+      "entry": "tools/web/beta_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in --beta-open, or the beta off: Coming soon and refused; preview check [beta])",
+      "area": "web"
     }
   ]
 }

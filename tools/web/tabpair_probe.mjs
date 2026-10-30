@@ -27,6 +27,9 @@
 //      undo what it did before; the account's first chat is not told that.
 //      And Claude Code's first request, server/discover, is answered by the
 //      relay ("method not found"), no tab asked.
+//   7. A tab that has closed stays closed: an ask for work that reaches the
+//      relay after the close is told to say hello again and opens nothing;
+//      the tab is not listed, and a fresh hello lists it again.
 import { createHash, randomBytes } from "node:crypto";
 import { mintSession } from "./session.mjs";
 
@@ -306,6 +309,25 @@ check("...and its choice says it cannot undo what it did before the resume",
 await wait(500);
 check(`...no tab asked server/discover (${[...tabs, fort].map((t) => t.did.filter((n) => n === "server/discover").length).join(", ")})`,
   [...tabs, fort].every((t, n) => !t.did.slice(asked[n]).includes("server/discover")));
+
+console.log("\n7. a tab that has closed stays closed");
+// A page's last ask for work can reach the relay after its close: a long
+// poll still on its way as the page went, or a close beacon that overtook
+// it. It used to mark the tab open again, so a chat's next call waited on
+// a tab that was gone, or a new chat was asked to choose between two
+// (list_changed on relay338's preview, 2026-10-29).
+const gone = new Tab(fresh("g"), "Gone Page");
+check(`a third tab, “${gone.model}”, says hello`, (await gone.hello()) === 204);
+const lister = await chat(token);
+check("...and is listed", (await lister.call("tabs")).words.includes(`${gone.id}:`));
+await fetch(gone.url("close"), { method: "POST", headers: extra });
+// On a relay that opens it again the ask waits for work: let go of it then.
+const late = await fetch(gone.url("next", `&used=5&model=${encodeURIComponent(gone.model)}`),
+  { method: "POST", headers: extra, signal: AbortSignal.timeout(4000) }).then((r) => r.status).catch(() => "waiting for work");
+check(`an ask for work that comes after its close is told to say hello again: ${late}`, late === 401);
+check("...and the tab is not listed as open", !(await lister.call("tabs")).words.includes(`${gone.id}:`));
+check(`its fresh hello (${await gone.hello()}) lists it again`, (await lister.call("tabs")).words.includes(`${gone.id}:`));
+await fetch(gone.url("close"), { method: "POST", headers: extra });
 
 for (const tab of [...tabs, fort]) await tab.close();
 await Promise.race([Promise.all([...loops, fortLoop]), wait(30000)]);

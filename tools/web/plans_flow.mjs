@@ -11,8 +11,12 @@
 // open yet, and the flow says so and fails.
 //
 //   1. /plans at 390 and 1400 px, light and dark: Free and Pro with $0,
-//      and $8 a month or $80 a year; Pro Coming soon, with Tell me when
-//      it's ready; what an AI build is; accounts that exist keep
+//      and Pro at $80 a year, then $8 a month once Monthly is pressed
+//      (site356: Yearly first); every row side by side (#compare); Pro
+//      Coming soon, with Tell me when it's ready and no way to pay shown
+//      (billing is off); AI without a limit and no AI builds anywhere,
+//      25 models kept with your account on Free and any number on Pro;
+//      the beta's callout shown only while the beta is open; accounts that exist keep
 //      everything; education free; what stays free; nothing sideways; the
 //      footer links /plans; the privacy page says what the form keeps.
 //   2. At 390 px, Pro's button opens the form with yearly chosen. An
@@ -26,10 +30,18 @@
 //      for Pro, now monthly with the line.
 //   5. Take it off: its words, and no row left. Whatever happens, the
 //      address is forgotten at the end: only ours, nothing else touched.
+//   6. The plans as /api/plans says them (api/_billing.js), with nothing
+//      of AI, which no plan limits (2026-10-29). Plans off, as every
+//      release's deployment is, a GET refused as it always was. On (a
+//      unit's preview with plans in test mode): Free keeps 25 models with
+//      the account and Pro any number, and a throwaway account's own plan
+//      (?op=plan, delivered+plansapi-<random>@resend.dev, deleted at the
+//      end) says its limit, 25, and that it keeps 0.
 //
 // Pictures in --out: plans_<width>_<theme>.png, the form open, the thanks.
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
+import { canSignIn, deleteAccount, mintSession } from "./session.mjs";
 import { mkdirSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import path from "node:path";
@@ -51,6 +63,9 @@ mkdirSync(out, { recursive: true });
 const bypass = process.env.BW_BYPASS || "";
 const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 const EMAIL = `delivered+plans-${randomBytes(4).toString("hex")}@resend.dev`;
+// An account of its own for its plan, made only where plans are on.
+const ACCOUNT = `delivered+plansapi-${randomBytes(4).toString("hex")}@resend.dev`;
+let madeAccount = false;
 
 let failed = 0;
 const check = (what, ok) => {
@@ -98,29 +113,41 @@ try {
       check(`${at}: /plans answers 200`, said?.status() === 200);
       const theme = await page.evaluate(() => getComputedStyle(document.documentElement).colorScheme);
       check(`${at}: drawn in the ${dark ? "dark" : "light"} theme (${theme})`, theme === (dark ? "dark" : "light"));
-      const tiers = await page.$$eval(".tier", (all) => all.map((one) => ({
+      const tiers = await page.$$eval(".tiers .tier", (all) => all.map((one) => ({
         name: one.querySelector("h2")?.textContent.trim(),
-        price: one.querySelector(".price")?.textContent.replace(/\s+/g, " ").trim(),
+        price: one.querySelector(".price b")?.closest("span, p")?.innerText.replace(/\s+/g, " ").trim(),
         soon: Boolean(one.querySelector(".pill.new")?.textContent.includes("Coming soon")),
         ask: one.querySelector("[data-interest]")?.textContent.trim() || "",
         top: Math.round(one.getBoundingClientRect().top) })));
       check(`${at}: Free and Pro (${tiers.map((one) => one.name).join(", ")})`,
         tiers.map((one) => one.name).join() === "Free,Pro");
-      check(`${at}: $0, and $8 a month or $80 a year (${tiers.map((one) => one.price).join(" | ")})`,
-        tiers[0]?.price === "$0" && tiers[1]?.price === "$8 a month, or $80 a year");
+      check(`${at}: $0, and $80 a year to start with (${tiers.map((one) => one.price).join(" | ")})`,
+        tiers[0]?.price === "$0" && tiers[1]?.price === "$80 a year");
+      await page.click('[data-billing="month"]');
+      const monthly = await page.$eval("#pro .price", (el) => el.innerText.replace(/\s+/g, " ").trim());
+      check(`${at}: Monthly shows $8 a month (${monthly})`, monthly.startsWith("$8 a month") && !monthly.includes("$80 a year"));
+      await page.click('[data-billing="year"]');
+      const table = await page.$$eval("#compare tbody tr", (all) => all.map((one) => one.innerText.replace(/\s+/g, " ").trim()));
+      check(`${at}: every row side by side (${table.length} rows), 25 models kept on Free, unlimited on Pro`,
+        table.length > 10 && table.some((one) => /Models kept with your account 25 Unlimited/.test(one)));
+      const betaOpen = await page.evaluate(() => fetch("/api/plans?op=beta_spots", { headers: { accept: "application/json" } })
+        .then((r) => r.json().then((b) => r.ok && b?.beta === "open")).catch(() => false));
+      check(`${at}: the beta's callout ${betaOpen ? "shown, the beta open" : "hidden, the beta not open"}`,
+        (await page.isVisible("#beta")) === betaOpen);
+      check(`${at}: no way to pay shown while billing is off`, !(await page.isVisible("#pro-upgrade")));
       check(`${at}: Pro marked Coming soon, Free not`, !tiers[0]?.soon && tiers[1]?.soon);
       check(`${at}: Pro has Tell me when it's ready, Free not`,
         /Tell me when it.s ready/.test(tiers[1]?.ask) && !tiers[0]?.ask);
       check(`${at}: the two side by side on a wide screen, one under the other on a phone`,
         width < 600 ? tiers[0].top < tiers[1].top : tiers[0].top === tiers[1].top);
       const body = await words(page, "main");
-      check(`${at}: what an AI build is`, /An AI build is an AI working on a model/.test(body));
+      check(`${at}: AI without a limit, and no AI builds anywhere`, /AI without a limit/.test(body) && !/AI build/i.test(body));
       check(`${at}: accounts that exist keep everything`,
         /Every account made before 29 October 2026, when this page changed, gets Pro, free and with no end date/.test(body));
       check(`${at}: education is free`, /Education is free/.test(body));
       check(`${at}: what stays free: the web app, by hand, everything else, nothing taken out`,
         /What stays free/.test(body) && /It takes nothing out of Free/.test(body) && /The web app\./.test(body)
-        && /Building by hand, without a limit\./.test(body) && /Everything else the app does today\./.test(body));
+        && /AI and building by hand, without a limit\./.test(body) && /Everything else the app does today\./.test(body));
       check(`${at}: no Claude builds, and no free desktop`,
         !/Claude build/i.test(body) && !/desktop app (is|stays) free(?! to download)/i.test(body));
       check(`${at}: nothing on the page takes money (no checkout, no card form)`,
@@ -220,9 +247,44 @@ try {
     if (left) check(`no row left for it (${left.length})`, left.length === 0);
   }
   await made.close();
+
+  // 6. The plans as the API says them.
+  console.log("6. The plans as /api/plans says them");
+  const api = await context({ width: 1400, dark: false });
+  const apiPage = await api.newPage();
+  await apiPage.goto(`${site}/plans`, { waitUntil: "domcontentloaded" });
+  const ask = (route, token = "") => apiPage.evaluate(async ([r, t]) => {
+    const reply = await fetch(r, { headers: t ? { authorization: `Bearer ${t}` } : {} });
+    return { status: reply.status, body: await reply.json().catch(() => null) };
+  }, [route, token]);
+  const offer = await ask("/api/plans");
+  const aiFree = (body) => !/build/i.test(JSON.stringify(body));
+  if (offer.status === 405) {
+    check(`plans off: a GET refused as it always was (${offer.status}), nothing of a plan`,
+      !/savedModels|build/i.test(JSON.stringify(offer.body)));
+  } else {
+    const o = offer.body || {};
+    check(`the offer: ${offer.status}, Free keeps ${o.free?.savedModels}, Pro ${o.pro?.savedModels}`,
+      offer.status === 200 && o.free?.savedModels === 25 && o.pro?.savedModels === "unlimited");
+    check(`...and nothing of AI in it (${Object.keys(o.free || {}).join(", ")})`, aiFree(o));
+    if (standIn || !canSignIn()) {
+      check("a throwaway account's plan: needs the deployment's project keys (.env)", false);
+    } else {
+      madeAccount = true;
+      const session = await mintSession(ACCOUNT);
+      const mine = await ask("/api/plans?op=plan", session.access_token);
+      const m = mine.body || {};
+      check(`its plan: ${mine.status} ${JSON.stringify({ plan: m.plan?.key, standing: m.standing, savedModels: m.savedModels })}`,
+        mine.status === 200 && m.plan?.key === "free" && m.standing === "known"
+        && m.savedModels?.limit === 25 && m.savedModels?.kept === 0);
+      check(`...and nothing of AI in it (${Object.keys(m).join(", ")})`, aiFree(m));
+    }
+  }
+  await api.close();
 } catch (trouble) {
   check(`the flow ran (${String(trouble?.stack || trouble).split("\n").slice(0, 3).join(" | ")})`, false);
 } finally {
+  if (madeAccount) await deleteAccount(ACCOUNT).catch(() => {});
   if (!standIn) await forgetOurs();
   await browser.close();
 }
