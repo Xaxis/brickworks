@@ -209,7 +209,7 @@ try {
   await adaPage.click(".site-head .account-menu summary");
   header = await headerDrawn(adaPage);
   check(`its menu: "${header.who}", ${header.places.join(", ")}, sign out ${header.signOut}`,
-    header.who === `Ada Notify @${ADA}` && header.places.join(",") === "profile,notifications,feed,saved,settings" && header.signOut);
+    header.who === `Ada Notify @${ADA}` && header.places.join(",") === "profile,notifications,feed,saved,settings,feedback" && header.signOut);
   await shot(adaPage, "1_account_menu-1280-dark.png");
   await adaPage.keyboard.press("Escape");
 
