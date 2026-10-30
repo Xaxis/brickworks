@@ -934,8 +934,8 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 			background: var(--panel); box-shadow: var(--highlight), var(--shadow-1);
 		}
 		.icon-btn.scroller-go:hover { background: var(--panel-hi); }
-		.scroller-go.back { left: anchor(left); }
-		.scroller-go.next { right: anchor(right); }
+		.scroller-go.scroller-back { left: anchor(left); }
+		.scroller-go.scroller-next { right: anchor(right); }
 		.scroller:not(.card) { scroll-padding-inline: 44px; }
 		.scroller:not(.card)[data-more="start"] { mask-image: linear-gradient(to right, transparent, var(--ink) 44px); }
 		.scroller:not(.card)[data-more="end"] { mask-image: linear-gradient(to left, transparent, var(--ink) 44px); }

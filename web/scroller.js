@@ -41,7 +41,10 @@ function buttonsFor(el) {
   const make = (way, words, icon) => {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `icon-btn small scroller-go ${way}`;
+    // Its own names: a bare "next" was also the model page's rows
+    // (section.next), whose top margin it took, and a flow counting
+    // the page's last row of cards found this button (rel-m218).
+    button.className = `icon-btn small scroller-go scroller-${way}`;
     button.setAttribute("aria-label", name ? `${words}: ${name}` : words);
     button.innerHTML = iconHtml(icon);
     button.hidden = true;
