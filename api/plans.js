@@ -28,8 +28,13 @@
 //                            for sale: {billing, free, pro, forSale}
 //   GET /api/plans?op=plan   the signed-in account's own (a session, as
 //                            "Authorization: Bearer …"): {billing,
-//                            standing, plan, owner, builds, desktop,
-//                            subscription, freshness}; 401 without one.
+//                            standing, plan, owner, savedModels: {limit,
+//                            kept}, desktop, subscription, freshness}:
+//                            the most models the plan keeps with the
+//                            account (null for no limit) and how many it
+//                            keeps now (null when that cannot be read);
+//                            nothing of AI, which no plan limits. 401
+//                            without one.
 //                            &fresh=1 asks Admission again past what is
 //                            kept: back from Checkout, until Stripe's word
 //                            has reached it.
@@ -104,7 +109,8 @@ import { createHmac } from "node:crypto";
 import { AdmissionError, AdmissionUnavailable, verifyWebhook, WebhookError } from "./_admission.js";
 import { AuthError, bearer, verify } from "./_auth.js";
 import {
-  admission, agreed, billingMode, charge, currentOffer, entitlementOf, mayDesktop, reportOwner, returnOrigin,
+  admission, agreed, billingMode, charge, currentOffer, entitlementOf, mayDesktop, mostModels, reportOwner,
+  returnOrigin,
 } from "./_billing.js";
 import { betaDaily, betaRoute, betaSpots } from "./_beta.js";
 import { db, dbConfigured } from "./_db.js";
@@ -190,7 +196,19 @@ async function planned(request, response) {
   if (!claims) return response;
   await reportOwner(claims);
   if (request.query?.fresh === "1") await admission().forget(claims.sub);
-  return response.status(200).json(await entitlementOf(claims.sub));
+  const [e, kept] = await Promise.all([entitlementOf(claims.sub), modelsKept(claims.sub)]);
+  return response.status(200).json({ ...e, savedModels: { limit: mostModels(e), kept } });
+}
+
+/// How many models [userId] keeps with the account now
+/// (supabase/account_models_delete.sql), or null when that cannot be read.
+async function modelsKept(userId) {
+  try {
+    const kept = await db("rpc/account_models_kept", { method: "POST", body: { p_owner: userId } });
+    return Number.isInteger(kept?.models) ? kept.models : null;
+  } catch {
+    return null;
+  }
 }
 
 export const INTERVALS = ["month", "year"];

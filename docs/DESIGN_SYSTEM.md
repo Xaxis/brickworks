@@ -183,9 +183,9 @@ is on the page, `hidden`, for the script to show.
   until site356, now any page's.
 - **The landing kit** (home, `/plans`, `/download`; site356): `.section`
   (a landing page's section, its head a `.section-head`: an `h2.title`
-  and a line, and a way to more at the right; `.defer` on one under the
-  first screen lays it out only as it nears the window, the home page's
-  first paint; never where a check reads the words with innerText), `.halo` (the opening, lit
+  and a line, and a way to more at the right; not `content-visibility`,
+  which drew a full-page screenshot blank under the first screen and hid
+  a section's words from innerText, site356), `.halo` (the opening, lit
   by `--glow` over `--studs`), `.features` of `.feature` panels (a
   `.glyph`, the sprite's icon on the accent's soft tile, an `h3` and a
   line), `.steps` (an `ol`, each step numbered in the accent), `.split`

@@ -35,7 +35,7 @@
       "id": "api:/api/models",
       "kind": "api",
       "entry": "api/models.js",
-      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/models   (401 signed out; with a session GET the list and how full, GET ?name=X one model, POST {name, base, model} a save, DELETE ?name=X&version=N a delete)",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/models   (401 signed out; with a session GET the list and how full, GET ?name=X one model, POST {name, base, model} a save, DELETE ?name=X&version=N a delete; plans on, a new model past the plan's limit 413 {full: \"plan\", error, pro: \"/plans\"}: python3 tools/minitest.py tests/test_saved_models_plan.py)",
       "area": "model-io",
       "tests": [
         "tests/test_bench.py",
@@ -86,12 +86,12 @@
       "id": "api:GET /api/plans",
       "kind": "api",
       "entry": "api/plans.js",
-      "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan; off, 405 as before)",
+      "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan with savedModels {limit, kept} and nothing of AI; off, 405 as before; plans_flow's step 6)",
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
-        "tests/test_site_shell.py"
+        "tests/test_saved_models_plan.py"
       ]
     },
     {
@@ -103,7 +103,7 @@
       "tests": [
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
-        "tests/test_site_shell.py"
+        "tests/test_saved_models_plan.py"
       ]
     },
     {
@@ -115,7 +115,7 @@
       "tests": [
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
-        "tests/test_site_shell.py"
+        "tests/test_saved_models_plan.py"
       ]
     },
     {
@@ -179,7 +179,7 @@
       "tests": [
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
-        "tests/test_site_shell.py"
+        "tests/test_saved_models_plan.py"
       ]
     },
     {
@@ -203,19 +203,6 @@
       ]
     },
     {
-      "id": "api:applying to the beta",
-      "kind": "api",
-      "entry": "api/plans.js",
-      "reach": "curl -s '<deployment>/api/plans?op=beta'; curl -s '<deployment>/api/plans?op=beta_spots' (signed out, cached a minute: {beta, cap, left}); POST it signed in with {build, ai, background, background_line, link, terms, emails}   (off: {beta: off} and POST 403; open: 401 signed out, 422 with why, 409 a second time; python3 tools/minitest.py tests/test_beta.py)",
-      "area": "web",
-      "tests": [
-        "tests/test_beta.py",
-        "tests/test_billing_pay.py",
-        "tests/test_desktop.py",
-        "tests/test_site_shell.py"
-      ]
-    },
-    {
       "id": "api:paying for Pro",
       "kind": "api",
       "entry": "api/plans.js",
@@ -225,7 +212,7 @@
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
-        "tests/test_site_shell.py"
+        "tests/test_saved_models_plan.py"
       ]
     },
     {
@@ -386,14 +373,6 @@
       "entry": "src/dev/best_of_two_walk_probe.gd",
       "reach": "env -u ANTHROPIC_API_KEY tools/probe.sh best_of_two_walk_probe --brief=\"a small red post box\" --port=PORT --record=FILE.json   (in a window on the GPU; spends two design sessions and a pick)",
       "area": "assistant",
-      "tests": []
-    },
-    {
-      "id": "cli:beta browser flow",
-      "kind": "cli",
-      "entry": "tools/web/beta_flow.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in --beta-open, or the beta off: Coming soon and refused; preview check [beta])",
-      "area": "web",
       "tests": []
     },
     {
@@ -2163,6 +2142,14 @@
       "tests": []
     },
     {
+      "id": "lib:a plan's limit on models kept with the account",
+      "kind": "lib",
+      "entry": "supabase/account_models_plan.sql",
+      "reach": "python3 tools/minitest.py tests/test_saved_models_plan.py; PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/account_models_plan.sql --dry --try=tools/account_models_plan_try.sql --table=account_models   (.env sourced; rolled back; the lead applies it without --dry. Free keeps 25 new models, an update or the same model again at the limit kept, a delete makes room at once, the owner, Pro and a comp of Pro any number, a plan not known refuses nobody; plans off, Admission never asked and the save sent as before)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:a rebrickable account",
       "kind": "lib",
       "entry": "src/collection/rebrickable_account.gd",
@@ -2612,7 +2599,7 @@
       "id": "lib:models kept with the account",
       "kind": "lib",
       "entry": "src/account/cloud_models.gd",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (with .env sourced; supabase/account_models.sql and account_models_delete.sql applied; the desktop's half: desktop_cloud_probe)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (with .env sourced; supabase/account_models.sql and account_models_delete.sql applied; the desktop's half: desktop_cloud_probe; a plan that keeps no more, Free's 25: tools/probe.sh plan_full_probe)",
       "area": "model-io",
       "tests": []
     },
@@ -2710,7 +2697,7 @@
       "id": "lib:plans from Admission",
       "kind": "lib",
       "entry": "api/_billing.js",
-      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, AI builds and desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
+      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, how many models it keeps with it (saved_models: Free 25, Pro any number; AI never limited) and the desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
       "area": "web",
       "tests": []
     },
@@ -2971,14 +2958,6 @@
       "tests": []
     },
     {
-      "id": "lib:the beta's spots and months",
-      "kind": "lib",
-      "entry": "api/_beta.js",
-      "reach": "python3 tools/minitest.py tests/test_beta.py   (the form checked at the edge, signals, spots 1-100 one at a time under the pool's lock in supabase/beta.sql, the month given at Admission's ADR-0015 comp or left pending until Pro launches, the emails, the daily run at /api/plans/beta-daily)",
-      "area": "web",
-      "tests": []
-    },
-    {
       "id": "lib:the check by real shapes",
       "kind": "lib",
       "entry": "src/ai/exact_check.gd",
@@ -3179,8 +3158,7 @@
       "area": "web",
       "tests": [
         "tests/test_library.py",
-        "tests/test_library_site.py",
-        "tests/test_site_shell.py"
+        "tests/test_library_site.py"
       ]
     },
     {
@@ -3237,7 +3215,7 @@
       "id": "ui:account full offer",
       "kind": "ui",
       "entry": "src/ui/account_full_offer.gd",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (its step 6: nearly full at 450 of 500 models, full at 500, Delete old models\u2026)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (its step 6: nearly full at 450 of 500 models, full at 500, Delete old models\u2026); tools/probe.sh plan_full_probe   (the plan full, plans on: \"Free keeps 25 models in your account. Delete one, or get Pro for unlimited.\" with Delete old models\u2026, See Pro and Not now, said at every save; a delete makes room)",
       "area": "model-io",
       "tests": []
     },
@@ -3304,16 +3282,6 @@
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/balance_view_probe.gd   (by hand: Tools, Check stability)",
       "area": "geometry",
       "tests": []
-    },
-    {
-      "id": "ui:beta page",
-      "kind": "ui",
-      "entry": "web/beta.html",
-      "reach": "<deployment>/beta   (BRICKWORKS_BETA off: Coming soon, no form, no count; open: the spots left live, signed out Sign in to apply, signed in the form (web/beta.js), applied where it stands; tools/web/beta_flow.mjs)",
-      "area": "web",
-      "tests": [
-        "tests/test_beta.py"
-      ]
     },
     {
       "id": "ui:box select",
@@ -3940,7 +3908,7 @@
       "tests": [
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
-        "tests/test_site_shell.py"
+        "tests/test_saved_models_plan.py"
       ]
     },
     {
@@ -4314,14 +4282,6 @@
       "tests": []
     },
     {
-      "id": "ui:the beta's owner queue",
-      "kind": "ui",
-      "entry": "web/beta-admin.html",
-      "reach": "<deployment>/beta-admin as MASTER_EMAIL (?tests=1 the checks' pool): GET /api/admin?op=beta, POST ?op=beta_decide&account=U {decision, note}, POST ?op=beta_grant",
-      "area": "web",
-      "tests": []
-    },
-    {
       "id": "ui:the booklet",
       "kind": "ui",
       "entry": "src/render/booklet_maker.gd",
@@ -4546,7 +4506,8 @@
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
-        "tests/test_plans.py"
+        "tests/test_plans.py",
+        "tests/test_saved_models_plan.py"
       ]
     },
     {

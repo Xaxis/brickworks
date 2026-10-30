@@ -20,7 +20,7 @@
 import { call } from "/account.js";
 
 const ATYPIC = { terms: "https://atypic.ai/terms", refunds: "https://atypic.ai/refunds", support: "support@atypic.ai" };
-// Days as Admission keeps them, in UTC: a month's builds come back on the 1st.
+// Days as Admission keeps them, in UTC.
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const dated = (iso) => (Number.isFinite(Date.parse(iso || "")) ? DAY.format(new Date(iso)) : "");
 // How long Stripe's word may take before the page says it is taking a while.
@@ -86,8 +86,8 @@ function upgrade(offer, start, opener) {
   title.id = "upgrade-title";
   dialog.setAttribute("aria-labelledby", title.id);
   const adds = make("p", "", "Pro has everything Free has, and two things more: ",
-    make("b", "", "AI builds with no monthly limit"), " (Free has ",
-    String(offer.free.claudeBuilds === "unlimited" ? "no limit" : `${offer.free.claudeBuilds} a month`), "), and ",
+    make("b", "", "any number of models kept with your account"), " (Free keeps ",
+    String(offer.free.savedModels === "unlimited" ? "any number" : offer.free.savedModels), "), and ",
     make("b", "", "the desktop app"), " for Windows, macOS and Linux, which works offline with every part on your "
       + "computer. Every version released while you pay is yours to keep. ", link("/plans", "Compare the plans"), ".");
   // Monthly or yearly: the site's segmented control, the chosen one pressed.
@@ -220,11 +220,8 @@ function standing(mine, offer, status) {
     const until = mine.plan.until ? ` until ${dated(mine.plan.until)}` : "";
     return { state: "given", lines: [make("b", "", `Pro, given to you${until}.`), " Nothing to pay."] };
   }
-  const b = mine.builds;
-  const builds = b && b.limit !== null
-    ? `${b.remaining} of your ${b.limit} AI builds left this month${b.resetsAt ? `; back to ${b.limit} on ${dated(b.resetsAt)}` : ""}.`
-    : "";
-  const lines = [make("b", "", "Free."), builds ? ` ${builds}` : ""];
+  const most = mine.savedModels?.limit;
+  const lines = [make("b", "", "Free."), Number.isInteger(most) ? ` Up to ${most} models kept with your account.` : ""];
   if (!pro || !offer.forSale) return { state: "free", lines, more: "Pro opens soon." };
   const prices = ["month", "year"].filter((i) => Number.isInteger(pro.prices[i]))
     .map((i) => `${short(pro.prices[i], pro.currency || "usd")} a ${i}`).join(" or ");
@@ -232,7 +229,7 @@ function standing(mine, offer, status) {
   up.type = "button";
   up.id = "upgrade-go";
   up.addEventListener("click", () => upgrade(offer, null, up));
-  return { state: "free", lines, more: `Pro: AI builds with no limit, and the desktop app, at ${prices}.`,
+  return { state: "free", lines, more: `Pro: any number of models kept with your account, and the desktop app, at ${prices}.`,
     buttons: [up], upgrade: (start) => upgrade(offer, start, up) };
 }
 

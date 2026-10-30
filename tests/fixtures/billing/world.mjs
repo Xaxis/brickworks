@@ -4,7 +4,9 @@
 // of supabase/admission_snapshots.sql, the keys sessions are signed with,
 // and the auth that deletes an account).
 // Every request any of them is sent is in [calls], so a test can say none
-// was.
+// was. And api/models.js's account_models (supabase/account_models.sql,
+// account_models_delete.sql, account_models_plan.sql), in [models], kept
+// as those functions keep it.
 //
 //   const w = await world({ billing: "test" });
 //   const token = await w.signIn({ sub: "u1", email: "ada@example.com" });
@@ -57,6 +59,40 @@ async function ask(route, { method = "GET", query = {}, headers = {}, body, raw 
   return location === null ? { status, json } : { status, json, location };
 }
 
+/// One request through api/models.js's handler: {status, json}.
+export async function askModels({ method = "GET", query = {}, headers = {}, body } = {}) {
+  const { default: handle } = await import("../../../api/models.js");
+  let status = 0;
+  let json = null;
+  const response = {
+    setHeader: () => response,
+    status: (s) => { status = s; return response; },
+    json: (b) => { json = b; return response; },
+    end: () => response,
+  };
+  await handle({ method, query, headers, body }, response);
+  return { status, json };
+}
+
+/// save_account_model and save_account_model_within on [mine] (an
+/// account's models, by name): what they answer, and whether it is a
+/// refusal. The 500 and 64 MB are not held here.
+function saveModel(mine, a, most) {
+  const there = mine.get(a.p_name);
+  if (there && there.sum === a.p_sum) return { name: a.p_name, version: there.version, same: true };
+  const row = { version: 1, sum: a.p_sum, model: a.p_model, parts: a.p_parts, raw_bytes: a.p_raw_bytes,
+    saved_at: new Date().toISOString() };
+  if (there && there.version === a.p_base) {
+    mine.set(a.p_name, { ...row, version: there.version + 1 });
+    return { name: a.p_name, version: there.version + 1 };
+  }
+  let free = a.p_name;
+  for (let n = 2; mine.has(free); n += 1) free = `${a.p_name} ${n}`;
+  if (most !== null && mine.size + 1 > most) return { refused: "models: plan" };
+  mine.set(free, row);
+  return { name: free, version: 1, ...(there ? { conflict: free } : {}) };
+}
+
 export const GITHUB = "https://api.github.com";
 const RELEASES = "/repos/Xaxis/brickworks-releases/releases";
 /// v0.10.0's assets as GitHub lists them, by id.
@@ -98,6 +134,12 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     authDown: false,
     /// Every request, "METHOD url" without its query.
     calls: [],
+    /// The models each account keeps, by owner, then by name.
+    models: new Map(),
+    /// Each save the database was asked, {fn, body}, as sent.
+    saves: [],
+    /// supabase/account_models_plan.sql not applied.
+    noPlanSql: false,
     /// The snapshot store unreachable, as a database outage.
     storeDown: false,
     /// Every kept snapshot made [ms] older, as time passing would.
@@ -159,6 +201,31 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
       // 200, not 204: a Response refuses a 204 with a body, which threw
       // after the snapshot was kept, so the client took every put as failed.
       return json(200);
+    }
+    const mine = (owner) => {
+      if (!self.models.has(owner)) self.models.set(owner, new Map());
+      return self.models.get(owner);
+    };
+    const save = /^\/rest\/v1\/rpc\/(save_account_model(_within)?)$/.exec(url.pathname);
+    if (save) {
+      self.saves.push({ fn: save[1], body: String(init.body) });
+      if (save[2] && self.noPlanSql) return json(404, { code: "PGRST202", message: "Could not find the function" });
+      const kept = saveModel(mine(asked.p_owner), asked, save[2] ? asked.p_most : null);
+      return kept.refused ? json(400, { code: "P0001", message: kept.refused }) : json(200, kept);
+    }
+    if (url.pathname === "/rest/v1/rpc/delete_account_model") {
+      const there = mine(asked.p_owner).get(asked.p_name);
+      if (!there) return json(200, { name: asked.p_name, gone: true });
+      if (there.version !== asked.p_version) return json(200, { name: asked.p_name, kept: there.version });
+      mine(asked.p_owner).delete(asked.p_name);
+      return json(200, { name: asked.p_name, deleted: true });
+    }
+    if (url.pathname === "/rest/v1/rpc/account_models_kept") {
+      return json(200, { models: mine(asked.p_owner).size, bytes: 0 });
+    }
+    if (url.pathname === "/rest/v1/account_models") {
+      const owner = /^eq\.(.+)$/.exec(url.searchParams.get("owner") || "")?.[1];
+      return json(200, [...mine(owner)].map(([name, row]) => ({ name, ...row })));
     }
     // No orangecheck account made by Connect (supabase/orangecheck_connect_leaving.sql).
     if (url.pathname === "/rest/v1/rpc/oc_connect_leaving") return json(200, false);

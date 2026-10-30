@@ -45,13 +45,13 @@ function returnable(raw) {
 }
 
 const FEATURES = [
-  { key: "ai_builds", name: "AI builds", kind: "allowance", reset: "month", unit: "builds" },
   { key: "desktop", name: "Desktop app", kind: "flag", reset: null, unit: null },
+  { key: "saved_models", name: "Saved models", kind: "cap", reset: null, unit: "models" },
 ];
 
 const PLANS = {
-  free: { name: "Free", rank: 0, includes: { ai_builds: 10 } },
-  pro: { name: "Pro", rank: 10, includes: { ai_builds: null, desktop: null } },
+  free: { name: "Free", rank: 0, includes: { saved_models: 25 } },
+  pro: { name: "Pro", rank: 10, includes: { desktop: null, saved_models: null } },
 };
 
 /// The first of next month, UTC: when a monthly allowance starts again.
@@ -151,6 +151,8 @@ export function fakeAdmission() {
       const enabled = included && (limit === null || limit > 0);
       if (f.kind === "flag") {
         features[f.key] = { kind: "flag", enabled };
+      } else if (f.kind === "cap") {
+        features[f.key] = { kind: "cap", enabled, limit, unlimited };
       } else {
         const used = self.used(customerId, f.key);
         features[f.key] = { kind: "allowance", enabled, limit, unlimited, used,
