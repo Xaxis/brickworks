@@ -62,7 +62,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 .finder { margin: 0 0 var(--s-4); }
 .library-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-6); }
 .library-title { min-width: 0; }
-.library-head h1 { margin: 0; letter-spacing: -0.03em; line-height: 1.05; }
+.library-head h1 { margin: 0; }
 .library-head .lede { margin: var(--s-2) 0 0; max-width: 64ch; color: var(--ink-soft); font-size: var(--t-lede); }
 .search { position: relative; flex: 1 1 320px; max-width: 440px; }
 .search input { width: 100%; padding-left: 40px; padding-right: 40px; }
@@ -117,14 +117,10 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 .found-said { margin: 0 0 var(--s-3); }
 .listing .state { margin-top: var(--s-2); }
 .more { margin-top: 26px; }
-/* The way to add yours: a panel of its own at the foot of the list. */
-.yours {
-	margin: 0 auto var(--section); padding: var(--s-6); border: 1px solid var(--line); border-radius: var(--radius);
-	background: linear-gradient(135deg, var(--panel-hi), var(--panel));
-}
-.yours h2 { margin: 0 0 var(--s-2); font-size: var(--t-h2); }
-.yours p { color: var(--ink-soft); max-width: 66ch; margin: 0 0 var(--s-4); }
-@media (width < 600px) { .yours { padding: var(--s-5) var(--s-4); } }
+/* The way to add yours, at the foot of the list: the kit's last offer. */
+.yours { padding: 0 0 var(--section); border-top: 0; }
+.yours h2 { margin: 0 0 var(--s-3); }
+.yours .actions { margin-top: var(--s-5); }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -258,15 +254,17 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 	</section>
 
 	<section class="wrap wide yours" aria-labelledby="yours-h">
-		<h2 id="yours-h">Who made these</h2>
-		<p>
-			Each is a model of a real set that somebody built in LDraw, piece by piece, for
-			<a href="https://library.ldraw.org/omr">LDraw’s Official Model Repository</a>, and shared
-			under a Creative Commons licence that lets anyone use it as long as they credit them. Every
-			card and page names who modelled it and links to its page there. In the app, the same
-			shelf is <b>File › Library…</b>; a set opened from it keeps its credit when you share it.
-		</p>
-		<div class="actions"><a class="cta" href="/app">Open the app</a></div>
+		<div class="offer">
+			<h2 id="yours-h">Who made these</h2>
+			<p class="lede">
+				Each is a model of a real set that somebody built in LDraw, piece by piece, for
+				<a href="https://library.ldraw.org/omr">LDraw’s Official Model Repository</a>, and shared
+				under a Creative Commons licence that lets anyone use it as long as they credit them. Every
+				card and page names who modelled it and links to its page there. In the app, the same
+				shelf is <b>File › Library…</b>; a set opened from it keeps its credit when you share it.
+			</p>
+			<div class="actions center"><a class="cta" href="/app">Open the app</a></div>
+		</div>
 	</section>
 </main>
 

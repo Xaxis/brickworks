@@ -29,7 +29,7 @@
 @media (width >= 900px) {
 	.model-page .side {
 		padding: var(--s-4); border: 1px solid var(--line); border-radius: var(--radius);
-		background: var(--panel); box-shadow: var(--shadow);
+		background: var(--panel); box-shadow: var(--highlight), var(--shadow-2);
 	}
 	.model-page .side .facts { padding-top: var(--s-4); border-top: 1px solid var(--line); }
 }
@@ -50,7 +50,7 @@
 .model-page .picture {
 	position: relative; display: block; border-radius: var(--radius); overflow: hidden;
 	border: 1px solid var(--line); background: var(--picture-ground); aspect-ratio: 1200 / 630;
-	box-shadow: var(--shadow); text-decoration: none; color: inherit;
+	box-shadow: var(--highlight), var(--shadow-2); text-decoration: none; color: inherit;
 }
 .model-page .picture img { position: relative; width: 100%; height: 100%; object-fit: cover; transition: transform 320ms var(--ease); }
 @media (hover: hover) { .model-page a.picture:hover img { transform: scale(1.02); } }
@@ -258,6 +258,7 @@
    under the brief, with everything else across the page. */
 .challenge #rules-part, .challenge #how {
 	padding: var(--s-4) var(--s-5); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
+	box-shadow: var(--highlight);
 }
 .challenge #rules-part h2, .challenge #how h2 { margin-top: 0; }
 .challenge #rules-part > :last-child, .challenge #how > :last-child { margin-bottom: 0; }
@@ -625,9 +626,11 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 .list-cards { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
 .list-card {
 	display: flex; flex-direction: column; min-width: 0; text-decoration: none; color: inherit;
-	border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--panel); box-shadow: var(--shadow);
+	border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--panel);
+	box-shadow: var(--highlight), var(--shadow-1);
 }
-.list-card:hover { border-color: var(--ink-faint); }
+/* Lit and lifted under a mouse as a model's card is (site.css .model). */
+.list-card:hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
 .list-card:hover b { text-decoration: underline; text-decoration-thickness: 1px; }
 /* A collection's cover (api/_lists.js mosaicHtml), on its card and at the
    head of its page. */
