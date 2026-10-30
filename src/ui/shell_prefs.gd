@@ -85,6 +85,9 @@ const DEFAULTS: Dictionary = {
 	"key_preset": "brickworks",
 	"keys": {},
 	"keys_at": 0.0,
+	# The ten favourite colours on keys (ColourKeys), set in the keys sheet;
+	# empty, the ones out of the box.
+	"favourite_colours": [],
 }
 
 ## Settings, Interface size: the choices, as shares of the size the window

@@ -218,7 +218,7 @@ var _counted: Dictionary = {}
 
 func _menus() -> void:
 	print("\n  the menus, every row in every state, read off the window")
-	for title: String in ["File", "Edit", "View", "Build", "Tools", "Help"]:
+	for title: String in ["File", "Edit", "View", "Build", "Make", "Tools", "Help"]:
 		var button: MenuButton = _shell.menu(title)
 		if button == null:
 			continue

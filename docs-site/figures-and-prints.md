@@ -12,7 +12,7 @@ description: Build a minifigure from real parts, draw prints and stickers, and m
 
 ## The minifigure builder {#minifig}
 
-**Build › Minifigure builder…** ([[M]]) makes a figure from real parts: headgear, head, torso, arms, hands, legs and accessories, each chosen in its slot, in any colour it was made in. Stand it in the model when it is done. Claude can add one too (`add_minifig`).
+**Make › Minifigure builder…** ([[M]]) makes a figure from real parts: headgear, head, torso, arms, hands, legs and accessories, each chosen in its slot, in any colour it was made in. Stand it in the model when it is done. Claude can add one too (`add_minifig`).
 
 <!-- covers
 ui:minifig builder
@@ -31,7 +31,7 @@ lib:custom moulds
 
 ## Prints {#prints}
 
-Hold a part and choose **Print…** in the parts bin, or **Build › Print on a part…** for the part selected: draw the print and it is printed on the face where it stands. In the minifigure builder, **Draw a print…** does the same for a torso or a face. The print is saved with the model.
+Hold a part and choose **Print…** in the parts bin, or **Make › Print on a part…** for the part selected: draw the print and it is printed on the face where it stands. In the minifigure builder, **Draw a print…** does the same for a torso or a face. The print is saved with the model.
 
 <!-- covers
 ui:print designer
@@ -41,7 +41,7 @@ lib:custom prints
 
 ## Stickers {#stickers}
 
-**Build › Put a sticker on…**, click a face of the model, then draw the sticker that goes there. The model's stickers are laid out on a sticker sheet you can print, as a set's sheet is.
+**Make › Put a sticker on…**, click a face of the model, then draw the sticker that goes there. The model's stickers are laid out on a sticker sheet you can print, as a set's sheet is.
 
 <!-- covers
 lib:stickers
@@ -50,7 +50,7 @@ lib:sticker sheet
 
 ## Printed versions {#printed-versions}
 
-Select a part and choose **Build › Printed versions…** (or from its right-click menu, or in Properties) to swap it for one of the printed or stickered versions the LEGO Group made of it. A BrickLink Studio model's own prints and stickers come in with it.
+Select a part and choose **Make › Printed versions…** (or from its right-click menu, or in Properties) to swap it for one of the printed or stickered versions the LEGO Group made of it. A BrickLink Studio model's own prints and stickers come in with it.
 
 <!-- covers
 ui:printed versions
@@ -59,7 +59,7 @@ lib:studio decorations
 
 ## Make a part {#make-a-part}
 
-When no real part will do, **Make a part…** in the parts bin (or **Build › Part maker…**, starting from the part in hand) makes one of your own: change its size, its studs, its holes and its shape, and it is built as a real part would be, with studs and connections that snap. Made parts are kept in your parts library and saved inside each model that uses them, so the file opens anywhere. Claude can make one too, when nothing in the catalogue fits (`make_part`).
+When no real part will do, **Make a part…** in the parts bin (or **Make › Part maker…**, starting from the part in hand) makes one of your own: change its size, its studs, its holes and its shape, and it is built as a real part would be, with studs and connections that snap. Made parts are kept in your parts library and saved inside each model that uses them, so the file opens anywhere. Claude can make one too, when nothing in the catalogue fits (`make_part`).
 
 <!-- covers
 ui:make a part

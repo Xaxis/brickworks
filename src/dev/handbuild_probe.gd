@@ -394,7 +394,7 @@ func _the_shell() -> void:
 	var tools: Toolbar = shell.toolbar
 	var titles: Array = bar.menus.get_children().map(func(m: MenuButton) -> String: return m.text)
 	_check("the menus are along the top: %s" % ", ".join(titles),
-		titles == ["File", "Edit", "View", "Build", "Tools", "Help"])
+		titles == ["File", "Edit", "View", "Build", "Make", "Tools", "Help"])
 	_check("the toolbar is under them", tools.is_visible_in_tree()
 		and tools.get_global_rect().position.y >= bar.get_global_rect().end.y - 1.0)
 	_check("the status bar is along the foot of the window",
@@ -2457,10 +2457,11 @@ func _menus_show_the_real_keys() -> void:
 	_check("...and every key shown has the modifiers it is pressed with (%s)" % ", ".join(wrong),
 		wrong.is_empty())
 	var view: PopupMenu = shell.menu("View").get_popup()
-	var left_at: int = view.get_item_index(shell.menu_id("turn_left"))
-	_check("View says Shift+Q turns the model left (%s)" % OS.get_keycode_string(
-		view.get_item_accelerator(left_at)),
-		OS.get_keycode_string(view.get_item_accelerator(left_at)) == "Shift+Q")
+	var viewpoint: PopupMenu = view.find_child("viewpoint", false, false) as PopupMenu
+	var left_at: int = viewpoint.get_item_index(shell.menu_id("turn_left"))
+	_check("View › Viewpoint says Shift+Q turns the model left (%s)" % OS.get_keycode_string(
+		viewpoint.get_item_accelerator(left_at)),
+		OS.get_keycode_string(viewpoint.get_item_accelerator(left_at)) == "Shift+Q")
 	var ortho_at: int = view.get_item_index(shell.menu_id("ortho"))
 	_check("...and orthographic is ` (%s), as the toolbar's tip writes it (%s)" % [
 		OS.get_keycode_string(view.get_item_accelerator(ortho_at)), shell.key_words("ortho")],
@@ -2561,9 +2562,9 @@ func _right_click_a_part() -> void:
 		menu != null and menu.visible)
 	_check("...on that part, selected", _builder.selection.keys() == [blue])
 	_check("...with the verbs a person reaches for", ", ".join(words).begins_with(
-		"Ask Claude about this…, Select everything joined to it, Select the same part, "
-		+ "Select the same colour, Hide, Show only the selection, Copy, Duplicate, Delete, "
-		+ "Paint with")
+		"Ask Claude about this…, Comment on it…, Select everything joined to it, "
+		+ "Select the same part, Select the same colour, Hide, Show only the selection, Copy, "
+		+ "Duplicate, Delete, Paint with")
 		and words.has("Copy") and words.has("Delete") and words.has("Make a sub-assembly…")
 		and words.has("Properties"))
 	await _shot("first_timer_part_menu")

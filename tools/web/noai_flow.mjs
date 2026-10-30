@@ -177,11 +177,11 @@ async function aPart() {
   const layout = await page.evaluate(() => window.brickworksLayout);
   return layout && layout.targets && layout.targets[0] ? layout.targets[0] : null;
 }
-// Build > Mosaic from a picture…, and the picture into the chooser it opens.
+// Make > Mosaic from a picture…, and the picture into the chooser it opens.
 async function brickArt() {
   for (let n = 0; n < 3; n++) {
     page.choosers.length = 0;
-    await click("menu_build");
+    await click("menu_make");
     await page.keyboard.type("Mosaic", { delay: 120 });
     await wait(800);
     await key("Enter", 500);
@@ -230,7 +230,7 @@ await key("Control+k", 2000);
 s = await state();
 ok(s.assistant === false && s.columns.assistant === false, "Ctrl+K on a selection opens nothing");
 await key("Escape");
-ok(await brickArt(), "Build, Mosaic from a picture… opens Brick Art on the picture");
+ok(await brickArt(), "Make, Mosaic from a picture… opens Brick Art on the picture");
 const art = await controls();
 ok(!art.mosaic_claude && !art.mosaic_brief, "Brick Art has no brief for Claude and no Design with Claude");
 await noAi("Brick Art");

@@ -1,4 +1,4 @@
-## Edit, Comments…: the comments pinned to this model's parts
+## File, Comments…: the comments pinned to this model's parts
 ## (PinnedComments), and a new one on the part selected.
 ##
 ## A field and Pin for the part selected (the first, when several are);

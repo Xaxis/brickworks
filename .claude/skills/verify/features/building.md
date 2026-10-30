@@ -231,7 +231,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   only (`Shell.WEB_ONLY`), Back to brickworks.diy, which takes this tab to the
   site's own `/` (a preview's on a preview). F6 from the model goes to it
   first; Return opens it. Where the bar has no room for the name on one line
-  (`ModelBar._fit_mark`), the mark alone. Never on the model, a render or an
+  (`ModelBar._fit_mark`), the mark alone, and then the model's name box gives
+  way from 200 units to 120 (the Make menu took the 40 the bar had to spare
+  at 720 units across). Never on the model, a render or an
   export. `app menu probe` (windowed) checks it first at the bar's left at
   the window's width and narrower to 720 units, the bar one line and the
   bar and toolbar exactly as with the old name in words, the rows, About from
@@ -1953,7 +1955,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (a brick with studs on its side) goes onto those studs: a socket on the stud
   nearest the pointer, flat on the face (`Builder._onto_side_studs`).
 - `hoses and chains by hand` (`src/ui/flex_tool.gd`, the laying itself in
-  `src/assembly/flex.gd`): Build, Hose, tube or chain… opens a panel over the
+  `src/assembly/flex.gd`): Make, Hose, tube or chain… opens a panel over the
   model's left edge — what to lay (pneumatic tube, ribbed hose, flex-system
   hose, flexible axle, string with end studs, Technic chain, tread) and how long
   a real part ("The shortest that fits" by default: the shortest that neither
@@ -1968,7 +1970,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   as it was and says so. Each lay is one undo step ("laid …", "reshaped …").
   The item is a sub-assembly of its segments ("Pneumatic Tube 9L#1", a name of
   its own so it is never taken for a copy of another), so a click takes all of
-  it and it saves as its own LDraw sub-model of segments. Edit, Reshape the
+  it and it saves as its own LDraw sub-model of segments. Make, Reshape the
   hose or chain reopens it; after an undo or a reopen it is read off its own
   pieces (`Flex.ends_of_item`, `centreline`): ends on the connectors they are
   at, length the nearest real one's, the fewest bend points that lay it within

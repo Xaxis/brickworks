@@ -27,7 +27,7 @@
 ## CustomParts/ with PE_TEX lines (StudioDecor.studio_text) and read back as
 ## Studio's: the same pictures and, at every corner, the same coordinates.
 ##
-## Printed versions: a plain 2 x 2 tile has hundreds; Edit, Printed
+## Printed versions: a plain 2 x 2 tile has hundreds; Make, Printed
 ## versions… offers the plain part first and then them; one chosen swaps the
 ## tile where it stands, in its colour, one undo; the plain one swaps back; a
 ## part that is no version is refused.
@@ -352,7 +352,7 @@ func _printed_versions() -> void:
 		not words.is_empty() and words.size() < versions.size())
 	_builder.selection.clear()
 	_builder.selection[tile] = true
-	_check("Edit, Printed versions… is offered for it", _studio.offers_versions())
+	_check("Make, Printed versions… is offered for it", _studio.offers_versions())
 	_studio.open_versions()
 	var offered: PackedStringArray = _studio.versions.offered()
 	_check("...and opens on the plain part, then its versions: %s…" % ", ".join(offered.slice(0, 3)),

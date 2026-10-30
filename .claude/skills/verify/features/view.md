@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
 
 ## Sub-features
 
@@ -61,7 +61,7 @@ picture the assistant is shown.
   page (`cube_turn_left` …, `cube_pan`, `cube_zoom_in`, `cube_fit`, and
   `cube_<face>` for the faces in view). `gizmo_probe` clicks each.
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
-  is what everything frames against, baseplate excluded. View > Default view
+  is what everything frames against, baseplate excluded. View > Viewpoint > Default view
   (0, `Main.default_view`) turns to the usual angle and frames what is built,
   the baseplate when nothing is, as Fit does: it turned the camera alone, so
   a view lost in empty space stayed lost (walk180 A2; `default_view_probe`,
@@ -563,6 +563,33 @@ picture the assistant is shown.
   left, and fails when one is gone. `keys_probe` checks the hide message says
   Ctrl-Shift-L under Studio's and Ctrl-Shift-H under LDCad's; `mould_ui_probe`
   and `print_ui_probe` press the keymap's Undo and Redo in their editors.
+- `colour keys` (`src/ui/colour_keys.gd`, APP_UX2 keys3, 2026-10-30): Shift-1
+  to Shift-0 paint the selection one of ten favourite colours, Ctrl-Shift-1 to 0
+  the model's ten most used (1 the most; scenery and the inherit codes 16 and 24
+  are not counted), as a swatch clicked does (`PartsBin.choose_colour`): one
+  change, one undo; with a part in hand the key is its colour. Ctrl-1 to 8 and
+  Alt-1 to 9 are browsers' tab keys, so neither is used. The favourites start as
+  the ten colours LEGO® sets use most; the keys sheet's Colours rows show each
+  as a swatch, and a click on one opens the colours to choose from. Kept in
+  `ShellPrefs` `favourite_colours` and, with the keys, on the account
+  (`api/account.js` `colours`: ten integers, else 422). Studio's preset leaves
+  all twenty unbound, as Studio leaves its FavoriteColor keys. The selection
+  keys: Alt-C same colour, Alt-P same part, Alt-J all joined, Alt-I the
+  opposite (the app's keys); under Studio's, Shift-V cycles same colour, same
+  part, both, all joined, then the part it began from (`Shell.cycle_select`).
+  The toolbar's Select by button no longer answers its rows' keys itself
+  (`set_disable_shortcuts`): its popup ran a greyed command silently. Menus
+  split so each is at most 25 rows and 60% of a 1280 x 720 window: Make (the
+  minifigure, mosaic, brickify, hoses, the part maker and prints), View ›
+  Viewpoint (the views and the model's turns), Comments in File. `keys3_probe`
+  (windowed, 1280 x 720; `PROBE_SIZE=1400x900`) measures every menu as the
+  palette measures Edit, presses the colour keys as a desktop and a browser
+  send them, the four selection keys against their menu rows, Studio's Shift-V,
+  sets favourite 1 in the sheet and starts the app again on its data folder to
+  find it kept. On the web, `tools/web/colour_keys_flow.mjs` (local build:
+  `--url=http://127.0.0.1:PORT/`) selects all, presses Shift-2 and Ctrl+Z.
+  Not proven: Cmd-Shift-3, 4 and 5 on a Mac are the system's screenshot keys,
+  so those three most-used keys need setting there.
 - `pointer cursors`: `src/ui/cursors.gd`. The pointer says what the mouse will
   do now, by the tool, the keys held and what is under it, as Studio, Mecabricks
   and Blender do. The owner, on the live site (2026-10-11): "we're not seeing the
@@ -1827,7 +1854,7 @@ godot --headless --path . --script src/dev/art_plan_probe.gd      # an Art plan 
 #   under the same name revision 1 then revision 2 and told to stop); and
 #   the dialog's Design with Claude. Ends "an Art plan is laid as it says".
 # In a browser, on a local web export (tools/export.sh web, then
-# python3 tools/web/serve.py build/web PORT): Build > Mosaic from a picture
+# python3 tools/web/serve.py build/web PORT): Make > Mosaic from a picture
 # (typed, then Enter), a galaxy PNG it makes into the chooser, Build it, and
 # brickworksState.art read for its parts, every one on the baseplate, one
 # piece, Panel N#1 and Frame#1 in the tree; then a brief typed into the

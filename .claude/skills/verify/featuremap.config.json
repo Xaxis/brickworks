@@ -1083,7 +1083,7 @@
       "kind": "ui",
       "label": "my collection",
       "entry": "src/ui/collection_dialog.gd",
-      "reach": "godot --path .  (Build, My collection… / What do I need?… / What can I build?…; or P, then What do I need?)",
+      "reach": "godot --path .  (File, My collection… / Build, What do I need?… / File, What can I build?…; or P, then What do I need?)",
       "area": "collection"
     },
     {
@@ -1286,7 +1286,7 @@
       "kind": "ui",
       "label": "hoses and chains by hand",
       "entry": "src/ui/flex_tool.gd",
-      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Build, Hose, tube or chain…, click two pin holes or two gears; Edit, Reshape the hose or chain)",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Make, Hose, tube or chain…, click two pin holes or two gears; Make, Reshape the hose or chain)",
       "area": "building"
     },
     {
@@ -1860,7 +1860,7 @@
       "kind": "ui",
       "label": "printed versions",
       "entry": "src/prints/printed_versions.gd",
-      "reach": "godot --headless --path . --script src/dev/decor_probe.gd   (by hand: pick a part, then Edit, Printed versions…, its right-click menu, or Properties' Printed versions…)",
+      "reach": "godot --headless --path . --script src/dev/decor_probe.gd   (by hand: pick a part, then Make, Printed versions…, its right-click menu, or Properties' Printed versions…)",
       "area": "prints"
     },
     {
@@ -4206,6 +4206,13 @@
       "label": "keys of one's own",
       "entry": "src/ui/keymap.gd",
       "reach": "godot --path .  (F1: Keys like BrickLink Studio, Mecabricks or LDCad; click a key on the sheet and press another; kept on the device and, signed in, on the account: GET/POST /api/account?op=keys, supabase/keymap.sql)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "colour keys",
+      "entry": "src/ui/colour_keys.gd",
+      "reach": "tools/probe.sh keys3_probe   (select parts, Shift-1 to Shift-0 paint them a favourite colour, Ctrl-Shift-1 to 0 the model's most used, one Ctrl+Z each; F1, Colours: click a favourite's swatch to choose its colour; Alt-C, P, J, I select the same colour, part, all joined, the opposite; Studio's keys: none on the colours, Shift-V cycles the selection; web: node tools/web/colour_keys_flow.mjs)",
       "area": "view"
     },
     {

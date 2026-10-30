@@ -70,7 +70,7 @@ var _connector: ClaudeConnector
 var _together: Together
 var _together_dialog: TogetherDialog
 ## Comments pinned to parts (src/assembly/pinned_comments.gd): drawn on the
-## model, and Edit, Comments….
+## model, and File, Comments….
 var _pins_view: PinsView
 var _pins_dialog: PinsDialog
 ## A Build together link's secret from the page's address (?together=).
@@ -1155,8 +1155,8 @@ func words_shown() -> PackedStringArray:
 	var out := PackedStringArray()
 	_words_in(get_tree().root, out)
 	if _shell != null:
-		for title: String in ["File", "Edit", "View", "Build", "Tools", "Help"]:
-			var button: MenuButton = _shell.menu(title)
+		for menu: Array in Shell.MENUS:
+			var button: MenuButton = _shell.menu(str(menu[0]))
 			if button != null:
 				_rows_in(button.get_popup(), out)
 		_rows_in(_shell.context, out)
@@ -5157,7 +5157,7 @@ func _build_ui() -> void:
 	add_child(_measure)
 	_verbs.measure = _measure
 
-	# Build, Hose, tube or chain…: src/ui/flex_tool.gd, its panel over the
+	# Make, Hose, tube or chain…: src/ui/flex_tool.gd, its panel over the
 	# model's left edge.
 	_flex = FlexTool.new()
 	_flex.world = _world
@@ -5830,7 +5830,7 @@ func _built_bounds() -> AABB:
 	return everything
 
 
-## View > Default view (0): the view the app opens on, turned to its usual
+## View > Viewpoint > Default view (0): the view the app opens on, turned to its usual
 ## angle and framed on what is built, the baseplate when nothing is. It
 ## turned the camera alone and kept the focus and the zoom, so a view lost
 ## in empty space stayed lost and only Fit found the model (walk180 A2);
@@ -6556,7 +6556,7 @@ func open_render() -> void:
 	_render.open()
 
 
-## Build, Hose, tube or chain…; Edit, Reshape the hose or chain.
+## Make, Hose, tube or chain…; Make, Reshape the hose or chain.
 func open_flex() -> void:
 	if _measure != null:
 		_measure.leave()
@@ -6582,7 +6582,7 @@ func open_together() -> void:
 	_together_dialog.open()
 
 
-## Edit, Comments…: the comments pinned to the model's parts, and a new one
+## File, Comments…: the comments pinned to the model's parts, and a new one
 ## on the part selected.
 func open_pins() -> void:
 	if _pins_dialog == null:
@@ -8889,8 +8889,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 ## What a key bound by the keymap does where no key did it before: a
-## command, run as its menu runs it, or Studio's Shift and an arrow, a turn
-## of the selection by 45° (a part in hand turns a quarter, as R turns it).
+## command, run as its menu runs it, a colour key or Studio's Shift-V
+## (Shell.run_key), or Studio's Shift and an arrow, a turn of the selection
+## by 45° (a part in hand turns a quarter, as R turns it).
 func _key_action(action: String) -> void:
 	match action:
 		"part_left_45", "part_right_45":
@@ -8901,7 +8902,7 @@ func _key_action(action: String) -> void:
 			else:
 				_verbs.turn_by(45.0 * way)
 		_:
-			_shell.run(action)
+			await _shell.run_key(action)
 
 
 func _key_pressed(key: InputEventKey) -> void:

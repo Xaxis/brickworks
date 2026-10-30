@@ -58,7 +58,7 @@ asking for an API key.
 - `the window's commands over mcp`: `src/net/app_tools.gd` (AppTools), what
   the person does from the menus besides designing, as tools a session has
   and the design loop does not: `set_floor` (View, Floor), `edit_steps`
-  (Edit, Build steps; the timeline), `lay_flex` (Build, Hose, tube or
+  (Edit, Build steps; the timeline), `lay_flex` (Make, Hose, tube or
   chain; Reshape), `pose_model` (Build, Pose; the hinge tool),
   `animate_model` (its keys kept as the motion "Animation", played once to
   render), `list_motions`, `define_motion` (tracks=, driver=, or
@@ -72,8 +72,8 @@ asking for an API key.
   Undo and Redo), `open_model` (File, Open), `parts_list` (Build, Parts
   list; My collection, What do I need, What can I build), `render_model`
   (File, Render), `export_model` (File, Export, and Instructions),
-  `brickify` (Build, Brickify a 3D model…; File, Import, 3D model),
-  `print_part` (Build, Print on a part… and Put a sticker on…),
+  `brickify` (Make, Brickify a 3D model…; File, Import, 3D model),
+  `print_part` (Make, Print on a part… and Put a sticker on…),
   `suggest_sections`, `make_sections`, `break_out_section` and
   `evaluate_section` (Build, Suggest sections, the model tree's Accept,
   Break out, Put back and Evaluate the section…; see [building](building.md)'s

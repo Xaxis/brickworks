@@ -207,7 +207,7 @@ func _sweep() -> void:
 	await _panel("Render", render)
 	render.close()
 	await _frames(10)
-	for title: String in ["File", "Edit", "View", "Build", "Tools", "Help"]:
+	for title: String in ["File", "Edit", "View", "Build", "Make", "Tools", "Help"]:
 		var button: MenuButton = shell.menu(title)
 		if button != null:
 			await _rows(title, button.get_popup())

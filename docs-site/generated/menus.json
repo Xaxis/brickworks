@@ -90,6 +90,18 @@
 					"tip": "Any of LDraw's models of real sets, or a model the community shared, opened in a new window"
 				},
 				{
+					"name": "collection",
+					"words": "My collection…",
+					"key": "",
+					"tip": "The sets and parts you own: from Rebrickable, BrickLink, or typed in"
+				},
+				{
+					"name": "collection_build",
+					"words": "What can I build?…",
+					"key": "",
+					"tip": "Models ranked by how much of each you already own"
+				},
+				{
 					"submenu": "recent",
 					"words": "Open recent",
 					"items": []
@@ -165,6 +177,12 @@
 					"words": "Build together…",
 					"key": "",
 					"tip": "Build this model with someone else, live, each in their own browser or the app"
+				},
+				{
+					"name": "comments",
+					"words": "Comments…",
+					"key": "",
+					"tip": "Comments pinned to the model's parts, kept with it, and a new one on the part selected"
 				},
 				{
 					"submenu": "export",
@@ -415,12 +433,6 @@
 					"words": "Mirror",
 					"key": "Shift+M",
 					"tip": "Make the selection its mirror image, left to right as you see it"
-				},
-				{
-					"name": "comments",
-					"words": "Comments…",
-					"key": "",
-					"tip": "Comments pinned to the model's parts, kept with it, and a new one on the part selected"
 				}
 			]
 		},
@@ -428,55 +440,73 @@
 			"title": "View",
 			"items": [
 				{
-					"name": "view_default",
-					"words": "Default view",
-					"key": "0",
-					"tip": "Look at the model default view"
-				},
-				{
-					"name": "view_front",
-					"words": "From the front",
-					"key": "1",
-					"tip": "Look at the model from the front"
-				},
-				{
-					"name": "view_back",
-					"words": "From the back",
-					"key": "2",
-					"tip": "Look at the model from the back"
-				},
-				{
-					"name": "view_left",
-					"words": "From the left",
-					"key": "3",
-					"tip": "Look at the model from the left"
-				},
-				{
-					"name": "view_right",
-					"words": "From the right",
-					"key": "4",
-					"tip": "Look at the model from the right"
-				},
-				{
-					"name": "view_top",
-					"words": "From above",
-					"key": "5",
-					"tip": "Look at the model from above"
-				},
-				{
-					"name": "view_bottom",
-					"words": "From below",
-					"key": "6",
-					"tip": "Look at the model from below"
-				},
-				{
-					"name": "view_iso",
-					"words": "Isometric",
-					"key": "7",
-					"tip": "Look at the model isometric"
-				},
-				{
-					"line": true
+					"submenu": "viewpoint",
+					"words": "Viewpoint",
+					"items": [
+						{
+							"name": "view_default",
+							"words": "Default view",
+							"key": "0",
+							"tip": "Look at the model default view"
+						},
+						{
+							"name": "view_front",
+							"words": "From the front",
+							"key": "1",
+							"tip": "Look at the model from the front"
+						},
+						{
+							"name": "view_back",
+							"words": "From the back",
+							"key": "2",
+							"tip": "Look at the model from the back"
+						},
+						{
+							"name": "view_left",
+							"words": "From the left",
+							"key": "3",
+							"tip": "Look at the model from the left"
+						},
+						{
+							"name": "view_right",
+							"words": "From the right",
+							"key": "4",
+							"tip": "Look at the model from the right"
+						},
+						{
+							"name": "view_top",
+							"words": "From above",
+							"key": "5",
+							"tip": "Look at the model from above"
+						},
+						{
+							"name": "view_bottom",
+							"words": "From below",
+							"key": "6",
+							"tip": "Look at the model from below"
+						},
+						{
+							"name": "view_iso",
+							"words": "Isometric",
+							"key": "7",
+							"tip": "Look at the model isometric"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "turn_left",
+							"words": "Turn the model left",
+							"key": "Shift+Q",
+							"tip": ""
+						},
+						{
+							"name": "turn_right",
+							"words": "Turn the model right",
+							"key": "Shift+E",
+							"tip": ""
+						}
+					]
 				},
 				{
 					"name": "mode_orbit",
@@ -728,21 +758,6 @@
 					"line": true
 				},
 				{
-					"name": "turn_left",
-					"words": "Turn the model left",
-					"key": "Shift+Q",
-					"tip": ""
-				},
-				{
-					"name": "turn_right",
-					"words": "Turn the model right",
-					"key": "Shift+E",
-					"tip": ""
-				},
-				{
-					"line": true
-				},
-				{
 					"name": "panel_parts",
 					"words": "Parts bin",
 					"key": "",
@@ -985,25 +1000,10 @@
 					"tip": "Every part this model needs, by colour and count"
 				},
 				{
-					"line": true
-				},
-				{
-					"name": "collection",
-					"words": "My collection…",
-					"key": "",
-					"tip": "The sets and parts you own: from Rebrickable, BrickLink, or typed in"
-				},
-				{
 					"name": "collection_need",
 					"words": "What do I need?…",
 					"key": "",
 					"tip": "What this model uses that you do not own, and what could stand in"
-				},
-				{
-					"name": "collection_build",
-					"words": "What can I build?…",
-					"key": "",
-					"tip": "Models ranked by how much of each you already own"
 				},
 				{
 					"line": true
@@ -1076,22 +1076,12 @@
 					"words": "Exploded view",
 					"key": "Shift+Y",
 					"tip": "Every section drawn apart, and back together (Shift+Y again)"
-				},
-				{
-					"line": true
-				},
-				{
-					"name": "flex",
-					"words": "Hose, tube or chain…",
-					"key": "",
-					"tip": "Lay a hose, a tube, a string or a chain from one connector to another, along a curve"
-				},
-				{
-					"name": "reshape_flex",
-					"words": "Reshape the hose or chain",
-					"key": "",
-					"tip": "Drag the selected hose's bend, or put its chain round other sprockets"
-				},
+				}
+			]
+		},
+		{
+			"title": "Make",
+			"items": [
 				{
 					"name": "minifig",
 					"words": "Minifigure builder…",
@@ -1109,6 +1099,24 @@
 					"words": "Brickify a 3D model…",
 					"key": "Ctrl+I",
 					"tip": "Bring in an OBJ, STL, PLY, 3MF, VOX, FBX or glTF model — a sculpt, a scan, anything — and lay it in bricks at the size you choose"
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "flex",
+					"words": "Hose, tube or chain…",
+					"key": "",
+					"tip": "Lay a hose, a tube, a string or a chain from one connector to another, along a curve"
+				},
+				{
+					"name": "reshape_flex",
+					"words": "Reshape the hose or chain",
+					"key": "",
+					"tip": "Drag the selected hose's bend, or put its chain round other sprockets"
+				},
+				{
+					"line": true
 				},
 				{
 					"name": "part_maker",
@@ -1133,21 +1141,6 @@
 					"words": "Printed versions…",
 					"key": "",
 					"tip": "Swap the part for one of the prints or stickered versions the LEGO Group made of it"
-				},
-				{
-					"line": true
-				},
-				{
-					"name": "rotate_held",
-					"words": "Turn the part in hand",
-					"key": "R",
-					"tip": ""
-				},
-				{
-					"name": "tip_held",
-					"words": "Tip the part in hand on its side",
-					"key": "T",
-					"tip": ""
 				}
 			]
 		},
@@ -1185,6 +1178,12 @@
 					"tip": ""
 				},
 				{
+					"name": "mode_connect",
+					"words": "Connect tool",
+					"key": "N",
+					"tip": ""
+				},
+				{
 					"name": "mode_clone",
 					"words": "Clone tool",
 					"key": "",
@@ -1206,6 +1205,21 @@
 					"name": "mode_delete",
 					"words": "Delete tool",
 					"key": "",
+					"tip": ""
+				},
+				{
+					"line": true
+				},
+				{
+					"name": "rotate_held",
+					"words": "Turn the part in hand",
+					"key": "R",
+					"tip": ""
+				},
+				{
+					"name": "tip_held",
+					"words": "Tip the part in hand on its side",
+					"key": "T",
 					"tip": ""
 				},
 				{
@@ -1443,6 +1457,27 @@
 		"part_back": "",
 		"part_left_45": "",
 		"part_right_45": "",
+		"select_cycle": "",
+		"favourite_1": "shift-1",
+		"favourite_2": "shift-2",
+		"favourite_3": "shift-3",
+		"favourite_4": "shift-4",
+		"favourite_5": "shift-5",
+		"favourite_6": "shift-6",
+		"favourite_7": "shift-7",
+		"favourite_8": "shift-8",
+		"favourite_9": "shift-9",
+		"favourite_10": "shift-0",
+		"most_used_1": "Ctrl-shift-1",
+		"most_used_2": "Ctrl-shift-2",
+		"most_used_3": "Ctrl-shift-3",
+		"most_used_4": "Ctrl-shift-4",
+		"most_used_5": "Ctrl-shift-5",
+		"most_used_6": "Ctrl-shift-6",
+		"most_used_7": "Ctrl-shift-7",
+		"most_used_8": "Ctrl-shift-8",
+		"most_used_9": "Ctrl-shift-9",
+		"most_used_10": "Ctrl-shift-0",
 		"new": "Ctrl-N",
 		"new_window": "Ctrl-shift-N",
 		"open": "Ctrl-O",
@@ -1481,13 +1516,13 @@
 		"delete": "Delete",
 		"select_all": "Ctrl-A",
 		"select_none": "",
-		"select_colour": "",
-		"select_part": "",
+		"select_colour": "alt-C",
+		"select_part": "alt-P",
 		"select_alike": "",
 		"select_find": "",
-		"select_connected": "",
+		"select_connected": "alt-J",
 		"select_submodel": "",
-		"select_inverse": "",
+		"select_inverse": "alt-I",
 		"hide": "Ctrl-H",
 		"isolate": "shift-H",
 		"show_all": "alt-H",

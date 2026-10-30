@@ -176,6 +176,10 @@ func _item(name: String, icon: String) -> Control:
 		button = menu
 	elif name == "select":
 		var menu := MenuButton.new()
+		# Its rows' keys are the keymap's, as the menus' are (Shell._menu):
+		# answered here too, Alt-C with nothing selected ran Same colour
+		# from this menu, greyed and silent, and never reached the keys.
+		menu.set_disable_shortcuts(true)
 		var choices: PopupMenu = menu.get_popup()
 		shell._fill(choices, Shell.SUBMENUS["select_by"] + ["-", "select_all", "select_none"])
 		choices.id_pressed.connect(shell._on_id)

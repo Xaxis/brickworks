@@ -46,7 +46,7 @@ lib:axles and gears on a line
 
 ## Hoses, tubes and chains {#flex}
 
-**Build › Hose, tube or chain…**, then click two pin holes (or two connectors) to lay a hose, a pneumatic tube, a string or a flexible axle between them along a natural curve; click round two sprockets for a chain. **Build › Reshape the hose or chain** drags a hose's bend, or puts a chain round other sprockets.
+**Make › Hose, tube or chain…**, then click two pin holes (or two connectors) to lay a hose, a pneumatic tube, a string or a flexible axle between them along a natural curve; click round two sprockets for a chain. **Make › Reshape the hose or chain** drags a hose's bend, or puts a chain round other sprockets.
 
 <!-- covers
 ui:hoses and chains by hand

@@ -1,6 +1,6 @@
 ## Printed parts and stickers for the whole model, not only figures: what
 ## the parts bin's "Print…" and "Sticker…" open, the model's sticker sheet,
-## and Edit, Printed versions…, which swaps a part for one of the prints the
+## and Make, Printed versions…, which swaps a part for one of the prints the
 ## LEGO Group made of it.
 ##
 ## "Print…" opens the print designer on the part in hand (a 2 x 2 tile
@@ -28,7 +28,7 @@ var overlay: Node
 
 var editor: PrintEditor
 var sheet: StickerSheetDialog
-## Edit, Printed versions…, and the thumbnails it draws them with.
+## Make, Printed versions…, and the thumbnails it draws them with.
 var versions: PrintedVersions
 var thumbnails: PartThumbnails
 var _picking: Control
@@ -300,7 +300,7 @@ func versions_of(part_id: String, words: String = "") -> Array[PartLibrary.PartI
 		return Array(wanted).all(func(word: String) -> bool: return said.contains(word)))
 
 
-## Edit, Printed versions…: the selection's versions to choose from, or
+## Make, Printed versions…: the selection's versions to choose from, or
 ## why there are none.
 func open_versions() -> void:
 	var ids: PackedInt64Array = _selected_alike()
@@ -339,7 +339,7 @@ func _selected_alike() -> PackedInt64Array:
 
 ## Swap the parts numbered [param ids] for [param version] — a printed or
 ## stickered version of theirs, or the plain part again — each in its own
-## colour where it stands, as one step of undo: Edit, Printed versions…'s
+## colour where it stands, as one step of undo: Make, Printed versions…'s
 ## choice, and print_part's version=. What came of it.
 func swap_to(ids: PackedInt64Array, version: String) -> String:
 	var info: PartLibrary.PartInfo = library.parts.get(version)

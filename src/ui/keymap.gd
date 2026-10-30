@@ -14,8 +14,9 @@
 ##
 ## Every action is a command of the menus, by its name there, or one of
 ## [constant KEY_ACTIONS], what a key does that is in no menu (the other
-## way of R, the arrows, the colours). Each has the key that does it out of
-## the box, which the handlers answer, or none, when it is only run.
+## way of R, the arrows, the colours), or a colour key (ColourKeys). Each
+## has the key that does it out of the box, which the handlers answer, or
+## none, when it is only run.
 ##
 ## Kept on this device with the layout (ShellPrefs "key_preset" and
 ## "keys"), and with the account for somebody signed in (KeymapSync), so a
@@ -63,6 +64,8 @@ const KEY_ACTIONS: Array = [
 	["part_back", "tip the part in hand, or the selection, back", 0],
 	["part_left_45", "turn the selection 45° left", 0],
 	["part_right_45", "turn the selection 45° right", 0],
+	# Studio's Cycle Select Mode (Shell.cycle_select).
+	["select_cycle", "select the same colour, the same part, both, or all joined, in turn", 0],
 ]
 
 ## The key each of those 0s is done by: a press of it reaches the handlers
@@ -76,12 +79,17 @@ const DONE_AS: Dictionary = {"part_left": SHIFT | KEY_R, "part_right": KEY_R,
 ##
 ## The app's own preset gives the tools that had none theirs: Shift and a
 ## letter, beside the key that does the same to a selection (X lifts,
-## Shift-X the Move tool) or near it.
+## Shift-X the Move tool) or near it. And the selections a person makes
+## most, Alt and the letter they start with (Alt-C the same colour, Alt-P
+## the same part, Alt-J all joined, Alt-I the opposite): every letter alone
+## is a tool or a verb, and Alt with these is no browser's. The colour keys
+## are ColourKeys'.
 ##
 ## Studio's are its shortcut page's defaults (studiohelp 5706320095255):
 ## its tools V, H, C and L, Ctrl-L to hide, its arrows that turn, WASD that
-## move, Ctrl-U to release a sub-model and Ctrl-T for a step. Studio leaves
-## Paint, Connect and Frame selection with no key, and so does this.
+## move, Ctrl-U to release a sub-model, Ctrl-T for a step and Shift-V to
+## cycle the select modes. Studio leaves Paint, Connect, Frame selection and
+## its favourite colours with no key, and so does this.
 ## Mecabricks': W selects, D clones, M moves, F reshapes a flexible part;
 ## its S, snap, is Connect's. LDCad's (melkert.net/LDCad/docs/keys): M the
 ## move pin, C centres on the selection, Z fits, V switches the projection,
@@ -95,11 +103,13 @@ const PRESET_KEYS: Dictionary = {
 		"mode_move": SHIFT | KEY_X, "mode_rotate": SHIFT | KEY_O, "mode_hinge": SHIFT | KEY_I,
 		"mode_clone": SHIFT | KEY_V, "mode_paint": SHIFT | KEY_P, "mode_hide": SHIFT | KEY_G,
 		"mode_delete": SHIFT | KEY_DELETE,
+		"select_colour": ALT | KEY_C, "select_part": ALT | KEY_P,
+		"select_connected": ALT | KEY_J, "select_inverse": ALT | KEY_I,
 	},
 	"studio": {
 		"mode_select": KEY_V, "mode_hinge": KEY_H, "mode_clone": KEY_C, "mode_hide": KEY_L,
 		"hide": CTRL | KEY_L, "show_all": CTRL | SHIFT | KEY_L,
-		"select_inverse": CTRL | SHIFT | KEY_V,
+		"select_inverse": CTRL | SHIFT | KEY_V, "select_cycle": SHIFT | KEY_V,
 		"make_submodel": CTRL | KEY_G, "leave_submodel": CTRL | KEY_U,
 		"step_new": CTRL | KEY_T,
 		"part_left": KEY_LEFT, "part_right": KEY_RIGHT,
@@ -172,6 +182,9 @@ static func _learn_own() -> void:
 	for action: Array in KEY_ACTIONS:
 		_native[action[0]] = action[2]
 		_words[action[0]] = action[1]
+	for action: String in ColourKeys.ACTIONS:
+		_native[action] = 0
+		_words[action] = ColourKeys.words(action)
 
 
 ## The preset chosen: one of [constant PRESETS].
@@ -248,11 +261,16 @@ static func listed_key(accel: int) -> String:
 
 
 ## A key press as a key and its modifiers: Shift with a symbol is the key
-## under it, as the desktop names it and a browser does not.
+## under it, as the desktop names it and a browser does not. Shift with a
+## key of the digit row is that digit, wherever the layout has the symbol
+## (the colour keys, ColourKeys): a UK keyboard's Shift-3 is £, and a French
+## one's digits are all shifted.
 static func accel_of(key: InputEventKey) -> int:
 	var code: int = key.keycode
 	if key.shift_pressed and UNSHIFTED.has(code):
 		code = UNSHIFTED[code]
+	if key.shift_pressed and key.physical_keycode >= KEY_0 and key.physical_keycode <= KEY_9:
+		code = key.physical_keycode
 	var accel: int = code
 	if key.ctrl_pressed or key.meta_pressed:
 		accel |= CTRL
@@ -364,6 +382,12 @@ static func reset() -> void:
 	_changed()
 
 
+## A change kept with the keys but made elsewhere (a favourite colour,
+## ColourKeys): when, as for a key.
+static func touched() -> void:
+	_changed()
+
+
 ## A change made here: when, for the newer of this device's keys and the
 ## account's to win (KeymapSync).
 static func _changed() -> void:
@@ -372,9 +396,10 @@ static func _changed() -> void:
 
 
 ## The keys as the account keeps them: the preset, the keys set over it,
-## and when.
+## the favourite colours (ColourKeys) and when.
 static func kept() -> Dictionary:
-	return {"preset": preset(), "own": own(), "at": float(ShellPrefs.value("keys_at"))}
+	return {"preset": preset(), "own": own(), "colours": ColourKeys.favourites(),
+		"at": float(ShellPrefs.value("keys_at"))}
 
 
 ## The account's keys, taken here as they are (KeymapSync). False when
@@ -391,6 +416,8 @@ static func take(theirs: Dictionary) -> bool:
 			mine[action] = int(key)
 	ShellPrefs.put("key_preset", chosen)
 	ShellPrefs.put("keys", mine)
+	# An account kept before there were favourites has none to give.
+	ColourKeys.take(theirs.get("colours"))
 	ShellPrefs.put("keys_at", float(theirs.get("at", 0.0)))
 	_built = false
 	return true
@@ -412,9 +439,9 @@ static func _build() -> void:
 		var native: int = int(_native[action])
 		if native != 0 and not _native_of.has(native):
 			_native_of[native] = action
-	var layers: Array = [own(), PRESET_KEYS[preset()]]
+	var layers: Array = [own(), _preset_layer(preset())]
 	if preset() != "brickworks":
-		layers.append(PRESET_KEYS["brickworks"])
+		layers.append(_preset_layer("brickworks"))
 	layers.append(_native)
 	for at: int in layers.size():
 		var layer: Dictionary = layers[at]
@@ -430,6 +457,11 @@ static func _build() -> void:
 			_bound[action] = key
 			if key != 0:
 				_by_key[key] = action
+
+
+## A preset's keys: its own lines, over its colour keys (ColourKeys).
+static func _preset_layer(name: String) -> Dictionary:
+	return ColourKeys.preset_keys(name).merged(PRESET_KEYS[name], true)
 
 
 ## Every action, for the sheet and the checks: commands first, as the
@@ -487,6 +519,8 @@ static func _row_in(items: Array, path: String, action: String) -> String:
 
 
 static func _is_own(action: String) -> bool:
+	if ColourKeys.owns(action):
+		return true
 	for own_action: Array in KEY_ACTIONS:
 		if own_action[0] == action:
 			return true

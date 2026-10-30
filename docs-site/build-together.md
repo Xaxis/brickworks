@@ -37,7 +37,7 @@ Open the link, or paste it in **File › Build together…** and press **Join**.
 
 ## Comments on parts {#comments}
 
-Select a part, then **Edit › Comments…** (or right-click the part, **Comment on it…**), write, and press **Pin**. A numbered dot in your colour stands over the part and moves with it. Press it to read the comment, and **Resolve** when it is done with; **Ctrl+Z** brings it back. **Edit › Comments…** lists them all, with resolved ones under **Show resolved**.
+Select a part, then **File › Comments…** (or right-click the part, **Comment on it…**), write, and press **Pin**. A numbered dot in your colour stands over the part and moves with it. Press it to read the comment, and **Resolve** when it is done with; **Ctrl+Z** brings it back. **File › Comments…** lists them all, with resolved ones under **Show resolved**.
 
 Comments are kept in the model's file, so saving, opening and sharing by link keep them. A shared link's page does not show them. In a session everyone 13 and over sees them as they are pinned.
 

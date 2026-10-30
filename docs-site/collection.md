@@ -11,7 +11,7 @@ description: Tell Brickworks the sets and parts you own, then see what a model n
 
 ## Your sets and parts {#my-collection}
 
-**Build › My collection…** keeps the sets and loose parts you own. Bring them in from your Rebrickable account (with your own Rebrickable key), from a BrickLink or Rebrickable list, or type them in. Each set is counted out into its parts. Your collection is kept with your account, so it is there on every device you sign in on.
+**File › My collection…** keeps the sets and loose parts you own. Bring them in from your Rebrickable account (with your own Rebrickable key), from a BrickLink or Rebrickable list, or type them in. Each set is counted out into its parts. Your collection is kept with your account, so it is there on every device you sign in on.
 
 <!-- covers
 ui:my collection
@@ -35,4 +35,4 @@ The choice is saved with the model, so opening it brings the set's parts back to
 
 ## What can I build? {#build}
 
-**Build › What can I build?…** ranks models by how much of each you already own. On the website, [the gallery](/docs/gallery) can sort by **Parts I own**, and its *You can build now* shelf shows models you have every part for.
+**File › What can I build?…** ranks models by how much of each you already own. On the website, [the gallery](/docs/gallery) can sort by **Parts I own**, and its *You can build now* shelf shows models you have every part for.
