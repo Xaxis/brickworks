@@ -33,12 +33,6 @@ EXCUSED = {
     # The Move tool's own words are the handles unit's (B3), which is
     # changing what Move does; it names R by the keymap there.
     ("src/ui/edit_verbs.gd", "moving %s — click to put down, R turns, Esc puts back"),
-    # Connect's site choice is the connect2 unit's, rewriting these lines.
-    ("src/ui/connect_tool.gd", "Connect: aim the part at the model first, then N"),
-    ("src/ui/connect_tool.gd", "Connect: aim its %s at a %s · N picks another point · Esc stops"),
-    ("src/ui/connect_tool.gd", "Connect: the %s picked — click the %s it goes on, R turns it about the joint"),
-    ("src/ui/connect_tool.gd",
-     "Connect: by its %s on %s · click puts it there · R turns it about the joint · T the other way on · N another point · Esc stops"),
 }
 # Not shown to a person: the keymap itself, the probes, and what the
 # assistant is told (src/ai), which names parts like "Saturn V"...

@@ -250,6 +250,16 @@ func _turned() -> void:
 		_builder.is_on_joint() and _off_line(mine.at, site) < 0.05
 		and absf(mine.axis.dot(site.axis)) > 0.999)
 	_check("and it has room there", _builder.can_place())
+	# Its words name the keys as they are: Connect is S under Mecabricks'.
+	var keys_were: String = Keymap.preset()
+	Keymap.use("mecabricks")
+	var told: String = _verbs.hint()
+	var named: String = "%s turns it about the joint · %s the other way on · %s another point" % [
+		Keymap.listed("rotate_held"), Keymap.listed("tip_held"), Keymap.listed("mode_connect")]
+	var connect_key: String = Keymap.listed("mode_connect")
+	Keymap.use(keys_were)
+	_check("under Mecabricks' keys its words name %s for another point (\"%s\")" % [connect_key, told],
+		connect_key == "S" and told.contains(named))
 	await _shot("turned_aimed")
 	await _act_key(KEY_R)
 	await _move(aim + Vector2(0, 1))
