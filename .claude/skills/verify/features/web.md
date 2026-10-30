@@ -943,7 +943,13 @@ plan with Claude as the client.
   asked yet is told to answer first before anything new goes public.
 - `age browser flow` (`tools/web/age_flow.mjs`) and `report digest browser
   flow` (`tools/web/digest_flow.mjs`): below.
-- `design system` (`web/site.css`, `docs/DESIGN_SYSTEM.md`, 2026-10-19): the
+- `design system` (`web/site.css`, `docs/DESIGN_SYSTEM.md`, 2026-10-19;
+  rebuilt by site356, 2026-10-29: deeper grounds, three elevations, the
+  accent as words and as a tint, and the landing kit: `.badge`, `.callout`,
+  `.glyph`, `.features`, `.steps`, `.split`, `.ba`, `.tier` and `.ticks`,
+  `.table.matrix`, `.closing`, `.halo`, `.section` with `h2.title` at
+  `--t-section`; the footer four columns; `_kit` shows each, and
+  `design_flow` judges them there): the
   site's controls, in one place and both schemes: a field (every input,
   select, textarea and file picker, styled by element at zero specificity,
   so none is the browser's; a dropdown is the text box with its own arrow),
@@ -2440,7 +2446,23 @@ plan with Claude as the client.
   asks that `/` links it there, and the three `/challenges` redirects (red
   on m166).
 - `landing page` (`web/index.html`, `web/landing.js`, `web/site.css`, the
-  pictures in `web/img/`): rebuilt 2026-10-20 (the owner: "complete garbage";
+  pictures in `web/img/`): rebuilt again by site356 (2026-10-29, the owner:
+  "next level UI/UX", the way Linear, Vercel or Stripe sell theirs), on the
+  design system's landing kit, in the order a visitor asks: the opening
+  (`.halo`: a badge to /docs/fresh-eyes, `h1.display` "Design LEGO®
+  models with AI, in your browser", Open the app and Download for desktop,
+  the app's picture), `#how` (three `.steps`), `#assistant` (the AI
+  designer: fresh eyes, with `img/fresh-before-*` and `img/fresh-after-*`,
+  the chameleon from bench/results/ideas-2026-10-27-critic315-vs-main315a,
+  the same brief built without and with, as a `.ba`; its caption is
+  `#also`, where the strips are asked), `#community` (two live strips:
+  `#made`, the gallery's Top, and `#sets`, the LDraw library by Most parts,
+  `/api/share?op=library&sort=largest`; `data-strip` and `data-sets` on
+  `<html>` say how many, `none` when that strip is hidden, and the section
+  goes when both do), `#features` (three pictures from the app over six
+  `.feature`s with their icons), `#platforms` (the web and the desktop),
+  `#plans` (Free and Pro, as /plans has them) and `#start` (`.closing`).
+  Before that, rebuilt 2026-10-20 (the owner: "complete garbage";
   before that, 2026-10-13, "overly wordy and verbose and none elegant ...
   brickworks is much more than an ai tool, its also a fully advanced expert cad
   system"). It shows rather than says: the hero is one line ("A complete CAD
@@ -2469,8 +2491,9 @@ plan with Claude as the client.
   gear trains went on the page the day Tools, Simulate mechanism merged, not
   before. Every
   page shares `/site.css` (every text colour 4.5:1 or better on its background
-  in both schemes), a skip link, a sticky bar with a `<details>` menu under 860
-  px (no script: the CSP runs none inline) whose last item keeps the 16 px
+  in both schemes), a skip link, a sticky bar (Gallery, Library, Docs and
+  Pricing, then Open the app and Sign in, since site356) with a `<details>`
+  menu under 900 px (no script: the CSP runs none inline) whose last item keeps the 16 px
   gutter at every phone width (under 390 px the mark is the cube alone, its
   name still Brickworks), and one footer: the header and
   footer are `web/_shell.html`, written into every page by `tools/site_shell.py`
@@ -2583,7 +2606,13 @@ plan with Claude as the client.
 - `plans page` (`web/plans.html`, `web/plans.js`), `POST /api/plans`
   (`api/plans.js`, `supabase/plan_interest.sql`) and `plan interest counts`
   (`tools/plan_interest.py`): Plans (2026-10-28, plans323; Free and Pro
-  since 2026-10-29, gate M1 of docs/PLANS.md, plansite346). Free ($0: the
+  since 2026-10-29, gate M1 of docs/PLANS.md, plansite346; a pricing page
+  since site356: Monthly or Yearly, yearly first, `[data-billing]` showing
+  `[data-billed]`; every row side by side in `#compare`, a `.table.matrix`;
+  when GET /api/plans says Pro is for sale, `web/plans.js` shows the
+  `data-when="sale"` parts, Pro's Upgrade to Pro going to
+  `/settings?upgrade=month|year#plan` with the choice made, and Admission's
+  prices; off, the page as written, Coming soon). Free ($0: the
   web app, 10 AI builds a month, building by hand without a limit,
   everything else the app does today, at today's limits) and Pro ($8 a
   month or $80 a year: the desktop app, every version released while you
@@ -4762,7 +4791,9 @@ BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/plans_flow.mjs --url=<pr
 ```
 
 It passes when it ends "plans: all ok": at 390 and 1400 px, light and
-dark, Free and Pro and their prices, Coming soon on Pro, what an AI build
+dark, Free and Pro and their prices ($80 a year first, $8 a month once
+Monthly is pressed), every row side by side, no way to pay shown with
+billing off, Coming soon on Pro, what an AI build
 is, accounts that exist keeping everything, education, what stays free, no
 Claude builds and no free desktop, nothing sideways, the footer's link, and
 /privacy's line; at 390 px the form opened from Pro with yearly, a bad

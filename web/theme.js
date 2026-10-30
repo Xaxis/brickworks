@@ -5,7 +5,7 @@
 // button chooses.
 (() => {
   const KEY = "brickworks.theme";
-  const BAR = { dark: "#0e1013", light: "#f4f5f7" };
+  const BAR = { dark: "#0b0c0e", light: "#fbfbfa" };
   const root = document.documentElement;
   const read = (key) => {
     try {

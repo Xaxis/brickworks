@@ -21,7 +21,7 @@ CSS = (ROOT / "web/site.css").read_text(encoding="utf-8")
 # What the site's words are drawn in, and what they sit on: the page, the
 # footer and every field (bg-soft), a card, a dialog or a menu (panel), and
 # a row under the pointer (panel-hi).
-TEXT = ["--ink", "--ink-soft", "--ink-faint", "--bad", "--green"]
+TEXT = ["--ink", "--ink-soft", "--ink-faint", "--accent-ink", "--bad", "--green"]
 SURFACES = ["--bg", "--bg-soft", "--panel", "--panel-hi", "--field"]
 # What marks a state without words: a pressed toggle's edge, the keyboard's
 # focus ring.

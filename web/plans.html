@@ -1,29 +1,42 @@
 <!DOCTYPE html>
 <!--
-  Plans at /plans: Free and Pro, Pro coming soon (2026-10-29, the owner's
-  choice; docs/PLANS.md, section 1, and gate M1 of section 8). Free is the
+  Pricing at /plans: Free and Pro (2026-10-29, the owner's choice;
+  docs/PLANS.md, sections 1 and 9, and gate M1 of section 8). Free is the
   web app with 10 AI builds a month and everything else the app does
-  today; Pro is $8 a month or $80 a year and adds the desktop app and AI
-  builds without a limit. Nothing here takes money: BRICKWORKS_BILLING is
-  off, so there is no checkout, no card, no licence check, and nothing in
-  the app locks or limits anybody yet. Pro's "Tell me when it's ready"
-  opens the interest form (#interest, web/plans.js): an email, monthly or
-  yearly and a line, kept by /api/plans (supabase/plan_interest.sql) only
-  to write once when Pro opens.
+  today; Pro is $8 a month or $80 a year (two months free) and adds the
+  desktop app and AI builds without a limit.
+
+  Rebuilt as a pricing page on the design system (site356, 2026-10-29,
+  the owner: "incorporate the pricing pages and tiered system"): the two
+  plans with a Monthly / Yearly choice (yearly first, the price to put
+  first, PLANS.md section 7), what an AI build is, every row of what each
+  has side by side (#compare), the promise to accounts that exist, that
+  education is free, what stays free, and the questions.
+
+  While BRICKWORKS_BILLING is off nothing here takes money: there is no
+  checkout, no card, no licence check. Pro says Coming soon, and its
+  "Tell me when it's ready" opens the interest form (#interest,
+  web/plans.js): an email, monthly or yearly and a line, kept by
+  /api/plans (supabase/plan_interest.sql) only to write once when Pro
+  opens. When billing is on and Pro is for sale (GET /api/plans says so,
+  api/_billing.js), web/plans.js shows what is marked data-when="sale" in
+  place of data-when="soon": Pro's button goes to /settings?upgrade=month
+  or year#plan, the step before Checkout (web/plan.js, docs/PLANS.md M7),
+  which says the price, the renewal and how to cancel before anyone pays.
 
   Until 2026-10-29 this page said Free kept everything, the desktop app
   included. It says plainly what changed, and keeps that promise for
-  everyone who had an account before 29 October 2026, when the page changed (section 9: Pro as a comp
-  with no end). Pro's lines are said as coming, since none is built.
-  LEGO® stays out of this page's own words (docs/TRADEMARKS.md Decision 6,
-  section 8 M2). The footer carries the notices as on every page.
+  everyone who had an account before 29 October 2026, when the page
+  changed (section 9: Pro as a comp with no end). LEGO® stays out of this
+  page's own words (docs/TRADEMARKS.md Decision 6, section 8 M2). The
+  footer carries the notices as on every page.
 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Plans · Brickworks</title>
+<title>Pricing · Brickworks</title>
 <meta name="description" content="Brickworks is free in your browser, with 10 AI builds a month and building by hand without a limit. Pro, coming soon at $8 a month or $80 a year, adds the desktop app and AI builds without a limit. Nothing to pay yet.">
 <link rel="canonical" href="https://brickworks.diy/plans">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -31,7 +44,7 @@
 <link rel="apple-touch-icon" href="/favicon-180.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
-<meta property="og:title" content="Plans · Brickworks">
+<meta property="og:title" content="Pricing · Brickworks">
 <meta property="og:description" content="Free in your browser. Pro is coming: the desktop app and AI builds without a limit, $8 a month. Nothing takes money yet.">
 <meta property="og:url" content="https://brickworks.diy/plans">
 <meta property="og:image" content="https://brickworks.diy/share.png">
@@ -39,34 +52,36 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://brickworks.diy/share.png">
-<meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <style>
-/* Free and Pro side by side from 720 px, their rows shared (a subgrid)
+/* Only layout here; the plan's card, its ticks, the table and the
+   callouts are site.css's (the landing kit). */
+.plans-head { padding: var(--page-top) 0 var(--s-7); text-align: center; }
+.plans-head h1 { max-width: 18ch; margin-inline: auto; }
+.plans-head .lede { margin: 0 auto var(--s-6); max-width: 64ch; }
+/* Free and Pro side by side from 900 px, their rows shared (a subgrid)
    so names, prices, buttons and lists line up whatever each says; one
-   under another on a phone. Only layout here; every control is site.css's. */
-.tiers { display: grid; gap: var(--s-4); margin: 0; }
-.tier { display: grid; align-content: start; gap: var(--s-3); min-width: 0; }
-@media (width >= 720px) {
-	.tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(6, auto); column-gap: var(--s-4); row-gap: 0; }
-	.tier { grid-row: span 6; grid-template-rows: subgrid; }
+   under another below. */
+.plans .narrow { width: min(100% - 32px, 980px); }
+.tiers { display: grid; gap: var(--s-4); }
+@media (width >= 900px) {
+	.tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(6, auto); row-gap: 0; }
+	.tiers .tier { display: grid; grid-row: span 6; grid-template-rows: subgrid; align-content: start; }
 }
-.tier .name { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
-.tier .name h2 { margin: 0; }
-.tier .price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--s-2); color: var(--ink-soft); font-size: var(--t-body); }
-.tier .price b { color: var(--ink); font-size: var(--t-h1); font-weight: 720; line-height: 1.1; letter-spacing: -0.03em; }
-.tier .cta { width: 100%; }
-.tier .rows { margin: 0; padding-left: 20px; color: var(--ink-soft); font-size: var(--t-small); }
-.tier .rows li { margin: 0 0 6px; }
-.tier .rows b { color: var(--ink); font-weight: 620; }
-.plans .what { max-width: 75ch; }
-/* Accounts that exist, and education: side by side from 720 px. */
-.asides { display: grid; gap: var(--s-4); margin-top: var(--s-4); }
-@media (width >= 720px) { .asides { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.asides h2 { margin-bottom: var(--s-1); }
-.asides p { margin: 0; }
+.tier .ticks { margin-top: var(--s-1); }
+.after-tiers { margin-top: var(--s-5); }
+.after-tiers .callout { margin: 0; }
+.plans .section-head { margin-bottom: var(--s-5); }
+.plans .what { max-width: 75ch; color: var(--ink-soft); }
+/* Accounts that exist, and education: side by side from 900 px. */
+.asides { display: grid; gap: var(--s-4); }
+@media (width >= 900px) { .asides { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.asides h2 { margin-bottom: var(--s-2); }
+.asides p { margin: 0; color: var(--ink-soft); }
+.keeps { margin-top: var(--s-7); }
 .keep { margin: 0; padding-left: 20px; color: var(--ink-soft); max-width: 75ch; }
 .keep li { margin: 0 0 10px; }
 .keep b { color: var(--ink); font-weight: 620; }
@@ -82,17 +97,21 @@ dialog .done .actions { margin-top: var(--s-4); }
 		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
 		<nav class="nav" aria-label="Main">
 			<a href="/gallery">Gallery</a>
-			<a href="/download">Download</a>
+			<a href="/library">Library</a>
+			<a href="/docs">Docs</a>
+			<a href="/plans" aria-current="page">Pricing</a>
 			<a class="cta" href="/app">Open the app</a>
-			<a href="/profile" data-account>Sign in</a>
+			<a class="cta ghost" href="/profile" data-account>Sign in</a>
 		</nav>
 		<details class="menu">
 			<summary>Menu</summary>
 			<div class="menu-list">
 				<nav aria-label="Menu">
 					<a href="/gallery">Gallery</a>
-					<a href="/download">Download</a>
+					<a href="/library">Library</a>
 					<a href="/docs">Docs</a>
+					<a href="/plans" aria-current="page">Pricing</a>
+					<a href="/download">Download</a>
 					<a href="/profile" data-account>Sign in</a>
 				</nav>
 				<div class="theme-choice"><span aria-hidden="true">Theme</span>
@@ -107,97 +126,169 @@ dialog .done .actions { margin-top: var(--s-4); }
 	</div>
 </header>
 
-<main id="main" class="wrap page plans">
-	<div class="page-head">
-		<p class="eyebrow">Plans · Pro coming soon</p>
-		<h1>Free in your browser. Pro is coming.</h1>
-		<p class="lede">Brickworks in any browser is free, with 10 AI builds a month and building by hand without a limit. Pro adds the desktop app and AI builds without a limit. Nothing here takes money yet: say you would use Pro, and we will write once, when it opens.</p>
-	</div>
-
-	<div class="tiers">
-		<article class="card tier" id="free" aria-labelledby="free-h">
-			<div class="name"><h2 id="free-h">Free</h2></div>
-			<p>The web app, on any computer, tablet or phone.</p>
-			<p class="price"><b>$0</b></p>
-			<a class="cta ghost" href="/app">Open the app</a>
-			<p>What it has:</p>
-			<ul class="rows">
-				<li>The web app, in any browser, with nothing to install</li>
-				<li><b>10 AI builds a month</b>, on your own AI plan or key, back on the 1st</li>
-				<li><b>Building by hand without a limit</b></li>
-				<li>The whole LDraw parts library, and its official models of real sets</li>
-				<li>Physics: whether it stands, and joints that move</li>
-				<li>Booklets to print or save as PDF, renders and exports</li>
-				<li>Find a part from a photo</li>
-				<li>Parts lists for Rebrickable and BrickLink</li>
-				<li>Publish to the gallery, and challenges</li>
-				<li>Build together, live, by a link</li>
-				<li>Your models kept with your account, up to 500, and every version of a model you share</li>
-			</ul>
-		</article>
-
-		<article class="card tier" id="pro" aria-labelledby="pro-h">
-			<div class="name"><h2 id="pro-h">Pro</h2><span class="pill new">Coming soon</span></div>
-			<p>The desktop app, and AI builds without a limit.</p>
-			<p class="price"><b>$8</b> a month, or $80 a year</p>
-			<button class="cta" type="button" data-interest="pro">Tell me when it’s ready</button>
-			<p>Everything in Free. Coming with Pro:</p>
-			<ul class="rows">
-				<li><b>The desktop app</b> for Windows, macOS and Linux</li>
-				<li>It works offline, with every part on disk</li>
-				<li><b>Every version released while you pay is yours to keep</b>, and never locked</li>
-				<li><b>AI builds without a limit</b></li>
-				<li>Yearly is two months free</li>
-			</ul>
-		</article>
-	</div>
-	<p class="note what" id="ai-build">An AI build is an AI working on a model in one tab: everything it changes there, until it stops for half an hour, counts as one. When it only looks (searches parts, reads the gallery, views the model), nothing is counted, and building by hand never is.</p>
-
-	<div class="asides">
-		<section class="card" id="had" aria-labelledby="had-h">
-			<h2 id="had-h">Have an account? You keep everything</h2>
-			<p>Every account made before 29 October 2026, when this page changed, gets Pro, free and with no end date: the desktop app, every version of it, and AI builds without a limit. There is nothing to do: it is on your account when Pro opens.</p>
-		</section>
-		<section class="card" id="edu" aria-labelledby="edu-h">
-			<h2 id="edu-h">Education is free</h2>
-			<p>Students and teachers can have Pro free, a year at a time and again when you ask, with a school email or a short form once Pro opens; for a school, the same for each teacher. Teaching? Say so in the form’s line.</p>
-		</section>
-	</div>
-
-	<section aria-labelledby="keep-h">
-		<h2 id="keep-h">What stays free</h2>
-		<p class="what">Pro adds the desktop app and AI builds without a limit. It takes nothing out of Free, which keeps all of this:</p>
-		<ul class="keep">
-			<li><b>The web app.</b> In any browser, on a computer, a tablet or a phone.</li>
-			<li><b>Building by hand, without a limit.</b> Only an AI’s building is counted.</li>
-			<li><b>Everything else the app does today.</b> Saving with your account, Build together, booklets and PDFs, renders, exports, photo search, parts lists, publishing, the gallery and challenges.</li>
-			<li><b>Your models.</b> Nothing is ever deleted or locked: on any plan, or none, the app opens, edits and exports everything you made.</li>
-			<li><b>What you downloaded.</b> Every desktop version you download keeps working. Until Pro opens, the desktop app is free to download.</li>
-		</ul>
+<main id="main" class="plans">
+	<section class="plans-head halo" aria-labelledby="plans-h">
+		<div class="wrap">
+			<p class="eyebrow"><span data-when="soon">Pricing · Pro coming soon</span><span data-when="sale" hidden>Pricing</span></p>
+			<h1 id="plans-h"><span data-when="soon">Free in your browser. Pro is coming.</span><span data-when="sale" hidden>Free in your browser. Pro on your desktop.</span></h1>
+			<p class="lede" data-when="soon">Brickworks in any browser is free, with 10 AI builds a month and building by hand without a limit. Pro adds the desktop app and AI builds without a limit. Nothing here takes money yet: say you would use Pro, and we will write once, when it opens.</p>
+			<p class="lede" data-when="sale" hidden>Brickworks in any browser is free, with 10 AI builds a month and building by hand without a limit. Pro adds the desktop app and AI builds without a limit.</p>
+			<div class="segmented" role="group" aria-label="Billed">
+				<button type="button" data-billing="month" aria-pressed="false">Monthly</button>
+				<button type="button" data-billing="year" aria-pressed="true">Yearly <span class="badge accent">Two months free</span></button>
+			</div>
+		</div>
 	</section>
 
-	<section aria-labelledby="ask-h">
-		<h2 id="ask-h">Questions</h2>
-		<details class="qa" id="changed">
-			<summary>This page said the desktop app was free. What changed?</summary>
-			<div><p>Until 29 October 2026 it said Free kept everything, the desktop app included. The plan changed: Free is the web app with 10 AI builds a month, and the desktop app and AI builds past 10 come with Pro. Everyone who had an account before then keeps both, free, with no end date. Nothing anyone has today is taken away.</p></div>
-		</details>
-		<details class="qa">
-			<summary>Why Pro at all?</summary>
-			<div><p>To pay for what Brickworks costs to run and to make: the server every AI build goes through, the storage your models are kept in, and a desktop app built and tested for three systems. The AI itself runs on your own plan or key, so Brickworks never sells model use or takes a cut of it.</p></div>
-		</details>
-		<details class="qa">
-			<summary>Can I pay now?</summary>
-			<div><p>No. Pro is not on sale yet, and nothing here takes a card. When it opens, its price, how it renews and how to cancel are said here and in the <a href="/terms#paid-plans">terms</a> before you pay.</p></div>
-		</details>
-		<details class="qa">
-			<summary>What if I stop paying for Pro?</summary>
-			<div><p>Nothing stops. Every desktop version released while you paid stays yours and keeps working, online or off, and your account goes back to Free: the web app, and 10 AI builds a month. Nothing you made is deleted or locked.</p></div>
-		</details>
-		<details class="qa">
-			<summary>What does the form keep?</summary>
-			<div><p>Your email, monthly or yearly, and your line, only to write to you once when Pro opens. To take it off, open the form, type the address and choose <b>take it off</b>. More in <a href="/privacy#plans">privacy</a>.</p></div>
-		</details>
+	<div class="wrap narrow">
+		<div class="tiers">
+			<article class="tier" id="free" aria-labelledby="free-h">
+				<div class="name"><h2 id="free-h">Free</h2></div>
+				<p>The web app, on any computer, tablet or phone.</p>
+				<p class="price"><b>$0</b></p>
+				<a class="cta ghost" href="/app">Open the app</a>
+				<p>What it has:</p>
+				<ul class="ticks">
+					<li>The web app, in any browser, with nothing to install</li>
+					<li><b>10 AI builds a month</b>, on your own AI plan or key, back on the 1st</li>
+					<li><b>Building by hand without a limit</b></li>
+					<li>The whole LDraw parts library, and its official models of real sets</li>
+					<li>Physics: whether it stands, and joints that move</li>
+					<li>Booklets to print or save as PDF, renders and exports</li>
+					<li>Find a part from a photo</li>
+					<li>Parts lists for Rebrickable and BrickLink</li>
+					<li>Publish to the gallery, and challenges</li>
+					<li>Build together, live, by a link</li>
+					<li>Your models kept with your account, up to 500, and every version of a model you share</li>
+				</ul>
+			</article>
+
+			<article class="tier featured" id="pro" aria-labelledby="pro-h">
+				<div class="name"><h2 id="pro-h">Pro</h2><span class="pill new" data-when="soon">Coming soon</span></div>
+				<p>The desktop app, and AI builds without a limit.</p>
+				<p class="price"><span data-billed="year"><b data-amount="year">$80</b> a year</span><span data-billed="month" hidden><b data-amount="month">$8</b> a month</span><small data-billed="year">$6.67 a month, billed yearly: two months free</small><small data-billed="month" hidden>Billed monthly. Yearly is two months free.</small></p>
+				<button class="cta" type="button" data-interest="pro" data-when="soon">Tell me when it’s ready</button>
+				<a class="cta" id="pro-upgrade" href="/settings?upgrade=year#plan" data-when="sale" hidden>Upgrade to Pro</a>
+				<p><span data-when="soon">Everything in Free. Coming with Pro:</span><span data-when="sale" hidden>Everything in Free, and:</span></p>
+				<ul class="ticks">
+					<li><b>The desktop app</b> for Windows, macOS and Linux</li>
+					<li>It works offline, with every part on disk</li>
+					<li><b>Every version released while you pay is yours to keep</b>, and never locked</li>
+					<li><b>AI builds without a limit</b></li>
+					<li>Yearly is two months free</li>
+				</ul>
+			</article>
+		</div>
+		<div class="after-tiers">
+			<div class="callout accent" id="ai-build">
+				<p class="callout-title">What is an AI build?</p>
+				<p class="what">An AI build is an AI working on a model in one tab: everything it changes there, until it stops for half an hour, counts as one. When it only looks (searches parts, reads the gallery, views the model), nothing is counted, and building by hand never is.</p>
+			</div>
+		</div>
+	</div>
+
+	<section class="section" id="compare" aria-labelledby="compare-h">
+		<div class="wrap narrow">
+			<div class="section-head">
+				<div>
+					<h2 class="title" id="compare-h">Every row, side by side</h2>
+					<p>Pro takes nothing out of Free. It adds the desktop app and AI builds without a limit.</p>
+				</div>
+			</div>
+			<div class="table matrix" role="region" aria-labelledby="compare-h" tabindex="0">
+				<table>
+					<thead><tr><th scope="col"><span class="visually-hidden">What it has</span></th><th scope="col">Free</th><th scope="col">Pro</th></tr></thead>
+					<tbody>
+						<tr class="group"><th scope="rowgroup" colspan="3">Where</th></tr>
+						<tr><th scope="row">The web app, in any browser</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
+						<tr><th scope="row">The desktop app for Windows, macOS and Linux</th><td><span class="hasnt"><span class="visually-hidden">No</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
+						<tr><th scope="row">Works offline, with every part on disk</th><td><span class="hasnt"><span class="visually-hidden">No</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
+						<tr><th scope="row">Every desktop version released while you pay, yours to keep</th><td><span class="hasnt"><span class="visually-hidden">No</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
+						<tr class="group"><th scope="rowgroup" colspan="3">Designing</th></tr>
+						<tr><th scope="row">AI builds, on your own AI plan or key</th><td>10 a month</td><td>No limit</td></tr>
+						<tr><th scope="row">Building by hand</th><td>No limit</td><td>No limit</td></tr>
+						<tr><th scope="row">Fresh eyes on every new AI design</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
+						<tr><th scope="row">The whole LDraw parts library, and its models of real sets</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
+						<tr><th scope="row">Physics: whether it stands, and joints that move</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
+						<tr><th scope="row">Find a part from a photo</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
+						<tr class="group"><th scope="rowgroup" colspan="3">Making and sharing</th></tr>
+						<tr><th scope="row">Booklets to print or save as PDF, renders and exports</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
+						<tr><th scope="row">Parts lists for Rebrickable and BrickLink</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
+						<tr><th scope="row">Build together, live, by a link</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
+						<tr><th scope="row">Publish to the gallery, and challenges</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
+						<tr><th scope="row">Models kept with your account</th><td>Up to 500</td><td>Up to 500</td></tr>
+						<tr><th scope="row">Every version of a model you share</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
+						<tr><th scope="row">Price</th><td>$0</td><td>$8 a month, or $80 a year</td></tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</section>
+
+	<section class="section" id="promises" aria-labelledby="keep-h">
+		<div class="wrap narrow">
+			<div class="asides">
+				<section class="card" id="had" aria-labelledby="had-h">
+					<h2 id="had-h">Have an account? You keep everything</h2>
+					<p>Every account made before 29 October 2026, when this page changed, gets Pro, free and with no end date: the desktop app, every version of it, and AI builds without a limit. There is nothing to do: it is on your account when Pro opens.</p>
+				</section>
+				<section class="card" id="edu" aria-labelledby="edu-h">
+					<h2 id="edu-h">Education is free</h2>
+					<p>Students and teachers can have Pro free, a year at a time and again when you ask, with a school email or a short form once Pro opens; for a school, the same for each teacher. Teaching? Say so in the form’s line.</p>
+				</section>
+			</div>
+			<section class="keeps" aria-labelledby="keep-h">
+				<h2 id="keep-h">What stays free</h2>
+				<p class="what">Pro adds the desktop app and AI builds without a limit. It takes nothing out of Free, which keeps all of this:</p>
+				<ul class="keep">
+					<li><b>The web app.</b> In any browser, on a computer, a tablet or a phone.</li>
+					<li><b>Building by hand, without a limit.</b> Only an AI’s building is counted.</li>
+					<li><b>Everything else the app does today.</b> Saving with your account, Build together, booklets and PDFs, renders, exports, photo search, parts lists, publishing, the gallery and challenges.</li>
+					<li><b>Your models.</b> Nothing is ever deleted or locked: on any plan, or none, the app opens, edits and exports everything you made.</li>
+					<li><b>What you downloaded.</b> Every desktop version you download keeps working. Until Pro opens, the desktop app is free to download.</li>
+				</ul>
+			</section>
+		</div>
+	</section>
+
+	<section class="section" id="questions" aria-labelledby="ask-h">
+		<div class="wrap narrow">
+			<div class="section-head"><div><h2 class="title" id="ask-h">Questions</h2></div></div>
+			<details class="qa" id="changed">
+				<summary>This page said the desktop app was free. What changed?</summary>
+				<div><p>Until 29 October 2026 it said Free kept everything, the desktop app included. The plan changed: Free is the web app with 10 AI builds a month, and the desktop app and AI builds past 10 come with Pro. Everyone who had an account before then keeps both, free, with no end date. Nothing anyone has today is taken away.</p></div>
+			</details>
+			<details class="qa">
+				<summary>Why Pro at all?</summary>
+				<div><p>To pay for what Brickworks costs to run and to make: the server every AI build goes through, the storage your models are kept in, and a desktop app built and tested for three systems. The AI itself runs on your own plan or key, so Brickworks never sells model use or takes a cut of it.</p></div>
+			</details>
+			<details class="qa">
+				<summary>Can I pay now?</summary>
+				<div><p data-when="soon">No. Pro is not on sale yet, and nothing here takes a card. When it opens, its price, how it renews and how to cancel are said here and in the <a href="/terms#paid-plans">terms</a> before you pay.</p>
+					<p data-when="sale" hidden>Yes: choose Monthly or Yearly, then Upgrade to Pro. Before you pay, the next step says the price, that it renews until you cancel and how to cancel, as the <a href="/terms#paid-plans">terms</a> do.</p></div>
+			</details>
+			<details class="qa">
+				<summary>What if I stop paying for Pro?</summary>
+				<div><p>Nothing stops. Every desktop version released while you paid stays yours and keeps working, online or off, and your account goes back to Free: the web app, and 10 AI builds a month. Nothing you made is deleted or locked.</p></div>
+			</details>
+			<details class="qa">
+				<summary>What does the form keep?</summary>
+				<div><p>Your email, monthly or yearly, and your line, only to write to you once when Pro opens. To take it off, open the form, type the address and choose <b>take it off</b>. More in <a href="/privacy#plans">privacy</a>.</p></div>
+			</details>
+		</div>
+	</section>
+
+	<section class="section" aria-labelledby="start-h">
+		<div class="wrap narrow">
+			<div class="closing">
+				<h2 class="title" id="start-h">Start building, free</h2>
+				<p class="lede">Open Brickworks in any browser: nothing to install, and no card.</p>
+				<div class="actions center">
+					<a class="cta big" href="/app">Open the app <span class="arrow" aria-hidden="true">→</span></a>
+					<a class="cta ghost big" href="/download">Download for desktop</a>
+				</div>
+			</div>
+		</div>
 	</section>
 
 	<dialog id="interest" aria-labelledby="interest-h">
@@ -227,28 +318,54 @@ dialog .done .actions { margin-top: var(--s-4); }
 <footer class="site-foot">
 	<div class="wrap">
 		<div class="foot-top">
-			<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
-			<nav class="foot-links" aria-label="More">
-				<a href="/challenge">Challenge</a>
-				<a href="/collections">Collections</a>
-				<a href="/library">LDraw library</a>
-				<a href="/compare">Compare</a>
-				<a href="/plans">Plans</a>
-				<a href="/docs">Docs</a>
-				<a href="/faq">FAQ</a>
-				<a href="/changelog">Changelog</a>
-				<a href="/privacy">Privacy</a>
-				<a href="/terms">Terms</a>
-				<a href="/guidelines">Guidelines</a>
-				<a href="/takedown">Takedown</a>
-			</nav>
-			<div class="theme-choice"><span aria-hidden="true">Theme</span>
-				<div class="segmented" role="group" aria-label="Theme">
-					<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
-					<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
-					<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+			<div class="foot-brand">
+				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>A CAD for LEGO® models, with an AI designer.</p>
+				<div class="theme-choice"><span aria-hidden="true">Theme</span>
+					<div class="segmented" role="group" aria-label="Theme">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+					</div>
 				</div>
 			</div>
+			<nav class="foot-links" aria-label="More">
+				<div>
+					<p class="foot-h" id="foot-product">Product</p>
+					<ul aria-labelledby="foot-product">
+						<li><a href="/app">Open the app</a></li>
+						<li><a href="/download">Download</a></li>
+						<li><a href="/plans">Pricing</a></li>
+						<li><a href="/changelog">Changelog</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-community">Community</p>
+					<ul aria-labelledby="foot-community">
+						<li><a href="/gallery">Gallery</a></li>
+						<li><a href="/library">LDraw library</a></li>
+						<li><a href="/challenge">Challenge</a></li>
+						<li><a href="/collections">Collections</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-help">Help</p>
+					<ul aria-labelledby="foot-help">
+						<li><a href="/docs">Docs</a></li>
+						<li><a href="/faq">FAQ</a></li>
+						<li><a href="/compare">Compare</a></li>
+						<li><a href="/guidelines">Guidelines</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-legal">Legal</p>
+					<ul aria-labelledby="foot-legal">
+						<li><a href="/privacy">Privacy</a></li>
+						<li><a href="/terms">Terms</a></li>
+						<li><a href="/takedown">Takedown</a></li>
+					</ul>
+				</div>
+			</nav>
 		</div>
 		<div class="legal">
 			<p>

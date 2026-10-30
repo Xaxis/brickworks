@@ -92,7 +92,8 @@
       "tests": [
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
-        "tests/test_saved_models_plan.py"
+        "tests/test_saved_models_plan.py",
+        "tests/test_site_shell.py"
       ]
     },
     {
@@ -104,7 +105,8 @@
       "tests": [
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
-        "tests/test_saved_models_plan.py"
+        "tests/test_saved_models_plan.py",
+        "tests/test_site_shell.py"
       ]
     },
     {
@@ -116,7 +118,8 @@
       "tests": [
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
-        "tests/test_saved_models_plan.py"
+        "tests/test_saved_models_plan.py",
+        "tests/test_site_shell.py"
       ]
     },
     {
@@ -185,7 +188,8 @@
       "tests": [
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
-        "tests/test_saved_models_plan.py"
+        "tests/test_saved_models_plan.py",
+        "tests/test_site_shell.py"
       ]
     },
     {
@@ -218,7 +222,8 @@
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
-        "tests/test_saved_models_plan.py"
+        "tests/test_saved_models_plan.py",
+        "tests/test_site_shell.py"
       ]
     },
     {
@@ -3211,7 +3216,8 @@
       "tests": [
         "tests/test_gallery_crons.py",
         "tests/test_library.py",
-        "tests/test_library_site.py"
+        "tests/test_library_site.py",
+        "tests/test_site_shell.py"
       ]
     },
     {
@@ -3963,7 +3969,8 @@
       "tests": [
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
-        "tests/test_saved_models_plan.py"
+        "tests/test_saved_models_plan.py",
+        "tests/test_site_shell.py"
       ]
     },
     {
