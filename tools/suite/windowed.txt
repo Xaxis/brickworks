@@ -68,3 +68,4 @@ feedback   # Help, Send feedback… attaches what the person chooses and sends i
 columns   # the bin's parts, every property and the assistant in sight at once at 1280 x 720: the tree and the properties down the right (layout, A10)
 columns_saved   # a layout kept before the right column loads as it was left (layout, A10)
 booklet_later   # Apply to later pages: 42004-1's booklet laid out from its first page in 9 acts (pages, B7)
+bin_names  # every tile in the parts bin names its part in words, no two alike, and draws its part from the catalogue while its picture comes; at 1280x720 (appux371 A4)

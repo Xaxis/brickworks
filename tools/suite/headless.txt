@@ -174,7 +174,7 @@ default_view   # View > Default view frames what is built, an empty baseplate to
 open_list_time   # File › Open says when each model was saved by the local clock (walk180 D4)
 made_with   # who laid a model's parts, said as it is published (social230)
 photo_search_stub   # the bin's camera: said before the first photo, nothing sent without one, every failure in words, Brickognize stubbed (bin238)
-search_rank   # 68 held-out queries and 31 in builders' names, BrickLink's, Rebrickable's, Technic's and element numbers in their colour (names248): the part an expert expects in the bin's first three tiles and search_parts'; a first keystroke under 50 ms (search242)
+search_rank   # 68 held-out queries and 31 in builders' names, BrickLink's, Rebrickable's, Technic's and element numbers in their colour (names248): the part an expert expects in the bin's first three tiles and search_parts'; 26 words builders type (snot, erling, macaroni, 2x4...) every one in the first three, a size alone the brick first (appux371 A5); a first keystroke under 50 ms (search242)
 oc_listener       # the desktop's orangecheck listener: split requests, 404s, a no, a cancel (oc237)
 step_edit_cost   # a one-part step edit on the Wizard's Tower under 300 ms of its own work, its plan the plan read afresh, the undo exact (race244)
 floor_gears
@@ -202,3 +202,4 @@ docs_pages        # Help, Documentation opens the page of the panel in front, fr
 designer_words   # who designs is named: Claude for a Claude call, GPT-6.1 Sol for a model on a key, in the history, a job, a change to the selection, the toolbar and the ask words (provider370)
 outside         # a probe pressing the share panel's Open, Website, Documentation and Show in folder opens nothing on the desktop and keeps each in Outside.opened (noopen)
 hinge_align       # Meet: a ring of eight click hinge plates closes at 45° each, a wing meets its strut, the build check passes on both; too far, clicks that never close and unjoined parts refused with words, nothing moved (hingealign)
+fits  # the bin's Fits: twelve pairs a builder knows (a beam and its pin, a clip and a bar, a jumper and a 1 x 1 round...) each with a part that fits in the first five; the part in hand; typed words narrow it (appux371 B5)
