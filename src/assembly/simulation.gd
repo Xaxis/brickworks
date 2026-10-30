@@ -16,6 +16,13 @@
 ## base resting on a plate is held with it), else the largest rigid part.
 ## Periods are counted in that frame, the sidereal one: a planet's arm goes
 ## round once against the base in that many turns of the reference.
+##
+## Where the motion stops ([method begin_stops], docs/MECHANISMS.md section
+## 39): the first turn of the driver where a moving part meets another, by
+## their exact shapes, over the whole cycle; how far the driver goes either
+## way (its range), as far as what meets and its loop's closing let it; and
+## where a motor that turns it stalls, its torque against the weight it
+## lifts through the train.
 class_name Simulation
 extends RefCounted
 
@@ -34,6 +41,24 @@ const MARKS := ["crank", "driver", "drive", "motor", "handle"]
 ## base: a frame held to the rest by what the parts do not record (friction,
 ## a part the reader misses), named so by a person or a session.
 const BASES := ["base", "frame", "stand", "chassis"]
+
+## The motors a model is driven from, by part: what it is called, its torque
+## stalled (N·cm) and its speed with no load (rpm), at 9 V, as Philippe
+## Hurbain measured them (philohome.com/motors/motorcomp.htm; stalled torque
+## there is "VERY imprecise", read off the most weight each lifted). A
+## motor's output is the axle hole in its face, which turns in its case:
+## read so here, it turns the axle in it.
+const MOTORS := {
+	"58120c01": ["Power Functions M motor", 11.0, 405.0],
+	"58120": ["Power Functions M motor", 11.0, 405.0],
+	"99499c01": ["Power Functions L motor", 18.0, 390.0],
+	"99499": ["Power Functions L motor", 18.0, 390.0],
+	"58121c01": ["Power Functions XL motor", 40.0, 220.0],
+	"58121": ["Power Functions XL motor", 40.0, 220.0],
+	"87577": ["Power Functions E-motor", 3.4, 780.0],
+	"47154c01": ["9 V geared motor", 6.0, 460.0],
+	"71427": ["9 V mini-motor", 6.0, 360.0],
+}
 
 ## A body turns when its rate is more than this, in turns of the driver's.
 const STILL := 1e-6
@@ -83,6 +108,10 @@ var scenery_ids: Dictionary = {}
 var travels: Dictionary = {}
 ## Grab's degrees for a turn of the driver here: its line may run the other way.
 var _grab_sign: float = 1.0
+## Each motor's brick id -> its part, and each body a motor turns -> the
+## motor's brick id.
+var motors: Dictionary = {}
+var motored: Dictionary = {}
 
 
 ## Read the mechanism in [param bricks] (BrickWorld.Brick), the parts in
@@ -105,6 +134,9 @@ static func read(bricks: Array, from: PartLibrary, scenery: Dictionary = {}) -> 
 		var path: String = Assemblies.path_of(brick)
 		var label: String = Assemblies.label(path) if not path.is_empty() else ""
 		labels[brick.id] = label
+		if MOTORS.has(brick.part_id):
+			out.motors[brick.id] = brick.part_id
+			mesh = Simulation.turning_output(mesh)
 		list.append({"key": brick.id, "part": brick.part_id, "at": brick.transform, "mesh": mesh})
 		if scenery.has(brick.id):
 			held.append(brick.id)
@@ -123,7 +155,53 @@ static func read(bricks: Array, from: PartLibrary, scenery: Dictionary = {}) -> 
 		if named_base:
 			out.base_said += ", with the sub-assemblies named as its frame"
 	out._name_bodies(labels)
+	out._find_motors()
 	return out
+
+
+## [param mesh] with a motor's output, the axle hole in its face, read as a
+## round hole: the axle in it turns against the case, as it does in the real
+## motor, where read as it is drawn it is keyed to the case and stands still.
+static func turning_output(mesh: Lbm.PartMesh) -> Lbm.PartMesh:
+	var out := Lbm.PartMesh.new()
+	out.bounds = mesh.bounds
+	out.boxes = mesh.boxes
+	out.sockets = mesh.sockets
+	out.cell_ldu = mesh.cell_ldu
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind != "axle_hole":
+			out.connectors.append(connector)
+			continue
+		var round := Lbm.Connector.new()
+		round.kind = "pin_hole"
+		round.gender = connector.gender
+		round.position = connector.position
+		round.axis = connector.axis
+		round.length = connector.length
+		round.radius = connector.radius
+		out.connectors.append(round)
+	return out
+
+
+## The bodies the motors turn: each whose joint with a motor's case runs
+## through the motor's output.
+func _find_motors() -> void:
+	motored.clear()
+	for key: int in motors:
+		var piece: Mechanism.Piece = model.parts.get(key)
+		var drawn: Lbm.PartMesh = library.mesh_for(str(motors[key])) if library != null else null
+		if piece == null or drawn == null:
+			continue
+		var case: int = model.body_of(key)
+		for connector: Lbm.Connector in drawn.connectors:
+			if connector.kind != "axle_hole":
+				continue
+			var point: Vector3 = piece.at * connector.position
+			var way: Vector3 = (piece.at.basis * connector.axis).normalized()
+			for joint: Mechanism.Joint in model.joints:
+				if (joint.a == case or joint.b == case) \
+						and Mechanism._same_line(joint.point, joint.way.normalized(), point, way):
+					motored[joint.b if joint.a == case else joint.a] = key
 
 
 ## What a frame named so holds still, with [param held] (the baseplate's):
@@ -283,9 +361,12 @@ func can_drive(body: int) -> bool:
 	return body >= 0 and body != model.ground and model.joint_of(body) != null
 
 
-## The body the model marks as its driver (a sub-assembly named Crank,
-## Motor, Handle, Driver), or -1.
+## The body the model marks as its driver: what a motor's output turns, else
+## a sub-assembly named Crank, Motor, Handle, Driver; or -1.
 func marked() -> int:
+	for body: int in motored:
+		if can_drive(body):
+			return body
 	for body: int in names:
 		if not can_drive(body):
 			continue
@@ -721,6 +802,654 @@ func furthest_out(hull: PackedVector2Array, frames: Array) -> Dictionary:
 	return best
 
 
+# -- where it stops ----------------------------------------------------------------------
+
+
+## A moving part is tested where it has gone at most this far since the last
+## test, LDU (Grab's PATH_LDU): no part is thin enough to step through. A
+## slow part is tested less often than a fast one, and a round one turning
+## about its own axis only once it goes somewhere ([method _as_tested]).
+const STEP_LDU := 2.0
+## Nor a step more than this, turns of the driver, nor less.
+const MOST_STEP := 1.0 / 72.0
+const LEAST_STEP := 1e-6
+## The first turn where two parts meet is found to within this, turns
+## (0.01°).
+const MEET_TO := 0.01 / 360.0
+## How far back the driver is turned for the far end of its range, turns.
+const BACK_TURNS := 1.0
+## How much of the cycle is checked at most, turns of the driver.
+const MOST_CHECKED := 64.0
+## A joint's parts are forgiven the pieces its line goes through within this,
+## LDU, as Grab forgives them (PAIR_ACROSS_SLACK).
+const ON_THE_LINE := 0.25
+## A part named so, whose bounds are as wide as deep about one of its axes, is
+## round about that axis (Grab's _round_on): turning about it, it sweeps only
+## where it is.
+const ROUND_WORDS: Array[String] = ["tyre", "tire", "wheel", "gear", "pulley", "rim", "round",
+	"bush", "disk", "cone", "axle", "pin"]
+## g·LDU per radian to N·cm: grams to kg, g, LDU (0.4 mm) to metres, and N·m
+## to N·cm.
+const TORQUE_N_CM := 0.001 * Balance.GRAVITY * Balance.MM_PER_LDU * 0.001 * 100.0
+## The parts stood still are found near a moving one in cells this big, LDU.
+const GRID := 40.0
+
+## Whether [method stops_step] is done.
+var stops_done: bool = true
+## Forward from where it was built, as Play turns it: the first turn of the
+## driver where a moving part meets another, {turns, clear (the last turn
+## checked clear), key (the moving part), other, depth (LDU)}; empty when
+## nothing meets. [member meets_back] the same, turning back.
+var meets: Dictionary = {}
+var meets_back: Dictionary = {}
+## How far the loop the driver closes lets it go, turns, back and on;
+## -INF and INF where it lets it go round.
+var loop_reach := Vector2(-INF, INF)
+## How far it was checked, turns, back and on.
+var checked := Vector2.ZERO
+## The motor that turns the driver (its brick id, 0 for none), where it
+## stalls {turns, needs (N·cm)}, and where it is asked most {turns, needs}.
+var motor: int = 0
+var stall: Dictionary = {}
+var heaviest: Dictionary = {}
+## Parts with no exact shape, which nothing is judged against.
+var unshaped: int = 0
+
+var _sweep: Dictionary = {}
+var _shapes: Dictionary = {}      ## brick id -> Exact.Shape
+var _corners: Dictionary = {}     ## brick id -> its bounds' eight corners
+var _body: Dictionary = {}        ## brick id -> its body
+var _tested: Dictionary = {}      ## brick id -> [where it was last tested, the turn]
+var _round: Dictionary = {}       ## brick id -> [its middle, the axis it is round about]
+var _grams: Dictionary = {}       ## brick id -> [grams, the middle of its shape]
+var _standing: Array = []         ## Exact.Item of each part that does not move
+var _standing_keys := PackedInt64Array()
+var _grid: Dictionary = {}        ## Vector3i -> PackedInt32Array of _standing
+var _forgiven: Dictionary = {}    ## Vector2i(lower, higher) -> Exact.Forgiven, null or true
+
+
+## Begin finding where the driver's motion stops: [param span] turns on, as
+## Play turns it (the cycle), and a turn back, unless it came round on with
+## nothing meeting (going back then passes the same places). [method
+## stops_step] goes on with it a little at a time.
+func begin_stops(span: float) -> void:
+	meets = {}
+	meets_back = {}
+	stall = {}
+	heaviest = {}
+	loop_reach = Vector2(-INF, INF)
+	checked = Vector2.ZERO
+	motor = int(motored.get(driver, 0))
+	stops_done = moving.is_empty()
+	if stops_done:
+		return
+	if grab != null and grab.linkage != null and not grab.linkage.is_slide():
+		loop_reach = _loop_reach()
+	_ready_to_meet()
+	_sweep = {"way": 1.0, "to": minf(clampf(span, 1.0, MOST_CHECKED), loop_reach.y)}
+	_sweep_from(0.0)
+
+
+## Go on finding where it stops for at most [param budget_ms]; true once done.
+func stops_step(budget_ms: float) -> bool:
+	if stops_done:
+		return true
+	var began: int = Time.get_ticks_usec()
+	while float(Time.get_ticks_usec() - began) / 1000.0 < budget_ms:
+		if not _sweep_one():
+			continue
+		if float(_sweep["way"]) > 0.0 and not (meets.is_empty() and _comes_round(checked.y)):
+			_sweep = {"way": -1.0, "to": maxf(-BACK_TURNS, loop_reach.x)}
+			_sweep_from(0.0)
+			continue
+		if checked.x == 0.0:
+			# Round on with nothing meeting, and back to where it began: going
+			# back passes the same places.
+			checked.x = -checked.y
+		stops_done = true
+		# A loop's pose kept where it was built again.
+		placed(0.0)
+		return true
+	return false
+
+
+## Where the driver stops going on, turns: where something meets, a motor
+## stalls or its loop goes no further; INF for nowhere.
+func stop_on() -> float:
+	var at: float = loop_reach.y
+	if not meets.is_empty():
+		at = minf(at, float(meets["turns"]))
+	if not stall.is_empty():
+		at = minf(at, float(stall["turns"]))
+	return at
+
+
+## And going back, turns; -INF for nowhere.
+func stop_back() -> float:
+	var at: float = loop_reach.x
+	if not meets_back.is_empty():
+		at = maxf(at, float(meets_back["turns"]))
+	return at
+
+
+## The two parts that meet first going on, or none.
+func meeting_pair() -> Array:
+	if meets.is_empty():
+		return []
+	return [int(meets["key"]), int(meets["other"])]
+
+
+## How far the driver's loop closes either way from where it was built, a
+## turn at most: Linkage walked there and asked for the last of the way.
+func _loop_reach() -> Vector2:
+	var loop: Linkage = grab.linkage
+	var start: Array = loop.kept_state()
+	var out := Vector2(-INF, INF)
+	for way: float in [1.0, -1.0]:
+		loop.restore_kept(start)
+		var asked: float = way * TAU * _grab_sign
+		_walk_loop(asked)
+		var got: float = loop.reach(asked)
+		if absf(got - asked) > 1e-4:
+			out[1 if way > 0.0 else 0] = got / (TAU * _grab_sign)
+	loop.restore_kept(start)
+	return out
+
+
+## Each part's shape, reach and weight, and what stands still put in a grid
+## to be found near what moves.
+func _ready_to_meet() -> void:
+	_shapes.clear()
+	_corners.clear()
+	_body.clear()
+	_round.clear()
+	_grams.clear()
+	_standing.clear()
+	_standing_keys = PackedInt64Array()
+	_grid.clear()
+	_forgiven.clear()
+	unshaped = 0
+	var moves: Dictionary = {}
+	for key: Variant in moving:
+		moves[int(key)] = true
+	for key: int in model.parts:
+		var piece: Mechanism.Piece = model.parts[key]
+		var shape: Exact.Shape = Exact.shape_for(library, piece.part)
+		if shape == null or not shape.has_pieces():
+			unshaped += 1
+			shape = null
+		else:
+			_shapes[key] = shape
+		if not moves.has(key):
+			if shape != null:
+				var item := Exact.Item.new(shape, piece.at)
+				for cell: Vector3i in Simulation._cells(item):
+					var there: PackedInt32Array = _grid.get(cell, PackedInt32Array())
+					there.append(_standing.size())
+					_grid[cell] = there
+				_standing.append(item)
+				_standing_keys.append(key)
+			continue
+		if piece.mesh != null:
+			var box: AABB = piece.mesh.bounds
+			var corners := PackedVector3Array()
+			for n: int in 8:
+				corners.append(box.position + box.size * Vector3(n & 1, (n >> 1) & 1, (n >> 2) & 1))
+			_corners[key] = corners
+			_body[key] = model.body_of(key)
+			var round: int = Simulation._round_axis(library.parts.get(piece.part), box)
+			if round >= 0:
+				_round[key] = [box.get_center(), Vector3(round == 0, round == 1, round == 2)]
+			var info: PartLibrary.PartInfo = library.parts.get(piece.part)
+			if info != null:
+				_grams[key] = [Stability.grams(info), box.get_center()]
+
+
+## The axis [param info]'s part is round about (0, 1 or 2 of its own), or -1:
+## named as round, and as wide as deep about it to 2 LDU (a gear, a wheel,
+## an axle, a pin, a bush, a round brick).
+static func _round_axis(info: PartLibrary.PartInfo, box: AABB) -> int:
+	if info == null:
+		return -1
+	var name: String = info.name.to_lower()
+	var named: bool = false
+	for word: String in ROUND_WORDS:
+		if name.contains(word):
+			named = true
+			break
+	if not named:
+		return -1
+	var best: int = -1
+	for k: int in 3:
+		var across: float = absf(box.size[(k + 1) % 3] - box.size[(k + 2) % 3])
+		if across <= 2.0 and (best < 0 or across < absf(box.size[(best + 1) % 3]
+				- box.size[(best + 2) % 3])):
+			best = k
+	return best
+
+
+## Where [param key] is tested with the part at [param at]: a part round
+## about its own axis, turned about it alone since it was built, sweeps only
+## where it is, so it is tested as it was built moved to where its middle has
+## gone (Grab's _shape_at). An axle turning in its hole, a gear on its pin,
+## then never meet them for being drawn in facets; and are not tested again
+## till they go somewhere.
+func _as_tested(key: int, at: Transform3D) -> Transform3D:
+	var round: Array = _round.get(key, [])
+	if round.is_empty() or not model.rest.has(key):
+		return at
+	var stood: Basis = (model.rest[key] as Transform3D).basis
+	var axis: Vector3 = round[1]
+	if absf((at.basis * axis).normalized().dot((stood * axis).normalized())) < 1.0 - 1e-6:
+		return at
+	var middle: Vector3 = round[0]
+	return Transform3D(stood, at * middle - stood * middle)
+
+
+static func _cells(item: Exact.Item) -> Array:
+	var out: Array = []
+	var lo := Vector3i((item.lo / GRID).floor())
+	var hi := Vector3i((item.hi / GRID).floor())
+	for x: int in range(lo.x, hi.x + 1):
+		for y: int in range(lo.y, hi.y + 1):
+			for z: int in range(lo.z, hi.z + 1):
+				out.append(Vector3i(x, y, z))
+	return out
+
+
+func _sweep_from(at: float) -> void:
+	var pose: Dictionary = placed(at)
+	_sweep["at"] = at
+	_sweep["step"] = 1.0 / 360.0
+	_sweep["pose"] = pose
+	_sweep["weight"] = _weight_up(pose)
+	_sweep["needs"] = NAN
+	_sweep["needs_at"] = 0.0
+	# Where it was built every part is let be.
+	_tested.clear()
+	for key: Variant in pose:
+		_tested[key] = [_as_tested(int(key), pose[key]), at]
+
+
+## One step of the sweep: on to the next turn where nothing has gone more
+## than [constant STEP_LDU], and what meets there. True when this way is done.
+func _sweep_one() -> bool:
+	var way: float = _sweep["way"]
+	var at: float = _sweep["at"]
+	var to: float = _sweep["to"]
+	if (to - at) * way <= LEAST_STEP:
+		return true
+	var step: float = _sweep["step"]
+	var next: float = at + way * step
+	if (to - next) * way < 0.0:
+		next = to
+	var pose: Dictionary = placed(next)
+	var was: Dictionary = _sweep["pose"]
+	var travel: float = 0.0
+	var moved: Dictionary = {}
+	var shown: Dictionary = {}
+	for key: Variant in pose:
+		shown[key] = _as_tested(int(key), pose[key])
+		var gone: float = _moved(int(key), _as_tested(int(key), was.get(key, pose[key])), shown[key])
+		moved[key] = gone
+		travel = maxf(travel, gone)
+	if travel > STEP_LDU and absf(next - at) > LEAST_STEP * 2.0:
+		_sweep["step"] = absf(next - at) * 0.5
+		return false
+	# A part is tested before another step like this one would take it more
+	# than STEP_LDU from where it was last tested, and every part at the end.
+	var last: bool = (to - next) * way <= LEAST_STEP
+	var due: Dictionary = {}
+	for key: Variant in pose:
+		var tested: Array = _tested.get(key, [shown[key], at])
+		if last or _moved(int(key), tested[0], shown[key]) + float(moved[key]) > STEP_LDU:
+			due[key] = true
+	var hit: Dictionary = {} if due.is_empty() else _meeting(pose, due)
+	if not hit.is_empty():
+		var found: Dictionary = _first_meeting(_clear_for(hit, at), next, hit)
+		if way > 0.0:
+			meets = found
+			checked.y = float(found["turns"])
+		else:
+			meets_back = found
+			checked.x = float(found["turns"])
+		return true
+	for key: Variant in due:
+		_tested[key] = [shown[key], next]
+	if way > 0.0 and motor != 0:
+		_weigh_step(at, next, pose)
+	_sweep["at"] = next
+	_sweep["pose"] = pose
+	if way > 0.0:
+		checked.y = next
+	else:
+		checked.x = next
+	# The next step as long as takes the part that goes furthest most of
+	# STEP_LDU.
+	var grow: float = 2.0 if travel <= 0.0 else clampf(STEP_LDU * 0.9 / travel, 0.5, 2.0)
+	_sweep["step"] = clampf(absf(next - at) * grow, LEAST_STEP, MOST_STEP)
+	return last
+
+
+## How far any point of a part has gone from [param from] to [param to],
+## LDU: a corner of its bounds' furthest (a turn and a slide move each point
+## by an affine sum of where it is, which is greatest at a corner).
+func _moved(key: int, from: Transform3D, to: Transform3D) -> float:
+	var most: float = 0.0
+	for corner: Vector3 in _corners.get(key, PackedVector3Array()):
+		most = maxf(most, (from * corner).distance_to(to * corner))
+	return most
+
+
+## The last turn where the parts that met were tested clear: the first
+## meeting is looked for from there.
+func _clear_for(hit: Dictionary, at: float) -> float:
+	var clear: float = at
+	for key: Variant in [hit["key"], hit["other"]]:
+		if _tested.has(key):
+			var turn: float = float((_tested[key] as Array)[1])
+			clear = minf(clear, turn) if float(_sweep["way"]) > 0.0 else maxf(clear, turn)
+	return clear
+
+
+## Whether turning on for [param span] turns brings every moving body back
+## where it was built (each turns a whole number of times), so turning back
+## passes the same places.
+func _comes_round(span: float) -> bool:
+	if grab != null or absf(span - roundf(span)) > 1e-6:
+		return false
+	for body: Variant in rates:
+		var times: float = float(rates[body]) * span
+		if absf(times - roundf(times)) > 1e-6:
+			return false
+	return true
+
+
+## Bisected between [param clear] (nothing meets) and [param met] (something
+## does) to [constant MEET_TO]: the first turn where they meet.
+func _first_meeting(clear: float, met: float, hit: Dictionary) -> Dictionary:
+	var low: float = clear
+	var high: float = met
+	for _n: int in 40:
+		if absf(high - low) <= MEET_TO:
+			break
+		var middle: float = (low + high) * 0.5
+		var there: Dictionary = _meeting(placed(middle))
+		if there.is_empty():
+			low = middle
+		else:
+			high = middle
+			hit = there
+	var out: Dictionary = hit.duplicate()
+	out["turns"] = high
+	out["clear"] = low
+	return out
+
+
+## The first moving part that meets another at [param pose] (brick id ->
+## Transform3D), by their exact shapes: {key, other, depth}, or empty. Only
+## the parts in [param due] (with what they reach) when it is given.
+func _meeting(pose: Dictionary, due: Dictionary = {}) -> Dictionary:
+	var items: Array = []
+	var keys: Array = []
+	var turned: Dictionary = {}   ## index -> Exact.Item as it is turned, where that differs
+	for key: Variant in pose:
+		var shape: Exact.Shape = _shapes.get(int(key))
+		if shape == null:
+			continue
+		var tested: Transform3D = _as_tested(int(key), pose[key])
+		if tested != pose[key]:
+			turned[items.size()] = Exact.Item.new(shape, pose[key])
+		items.append(Exact.Item.new(shape, tested))
+		keys.append(int(key))
+	var every: bool = due.is_empty()
+	for pair: Vector2i in Exact.candidates(items, Exact.TAU):
+		var one: int = keys[pair.x]
+		var other: int = keys[pair.y]
+		if not every and not due.has(one) and not due.has(other):
+			continue
+		# One body of the gear reading never moves against itself.
+		if grab == null and _body.get(one, -1) == _body.get(other, -2):
+			continue
+		var hit: Dictionary = _judge(one, items[pair.x], turned.get(pair.x, items[pair.x]), other,
+			items[pair.y], turned.get(pair.y, items[pair.y]))
+		if not hit.is_empty():
+			return hit
+	for n: int in items.size():
+		if not every and not due.has(keys[n]):
+			continue
+		var item: Exact.Item = items[n]
+		var seen: Dictionary = {}
+		for cell: Vector3i in Simulation._cells(item):
+			for s: int in _grid.get(cell, PackedInt32Array()):
+				if seen.has(s):
+					continue
+				seen[s] = true
+				var other: Exact.Item = _standing[s]
+				if minf(item.hi.x, other.hi.x) - maxf(item.lo.x, other.lo.x) <= Exact.TAU \
+						or minf(item.hi.y, other.hi.y) - maxf(item.lo.y, other.lo.y) <= Exact.TAU \
+						or minf(item.hi.z, other.hi.z) - maxf(item.lo.z, other.lo.z) <= Exact.TAU:
+					continue
+				var key: int = _standing_keys[s]
+				if pose.has(key):
+					continue
+				var hit: Dictionary = _judge(keys[n], item, turned.get(n, item), key, other, other)
+				if not hit.is_empty():
+					return hit
+	return {}
+
+
+## Whether two parts, the first moving, meet: as they were built they are
+## let be, and what they were built into each other by, a joint's own pieces
+## on its line, and toothed parts in mesh are forgiven ([method _forgive]).
+## Each comes as it is tested ([method _as_tested]) and as it is turned: two
+## that have not turned against each other are let be, the rest judged as
+## tested.
+func _judge(key: int, item: Exact.Item, item_turned: Exact.Item, other: int, other_item: Exact.Item,
+		other_turned: Exact.Item) -> Dictionary:
+	var rest_one: Transform3D = model.rest.get(key, item_turned.at)
+	var rest_other: Transform3D = model.rest.get(other, other_turned.at)
+	var now: Transform3D = item_turned.at.affine_inverse() * other_turned.at
+	var was: Transform3D = rest_one.affine_inverse() * rest_other
+	if now.origin.distance_to(was.origin) < 0.01 \
+			and Quaternion(now.basis.orthonormalized() * was.basis.orthonormalized().inverse()).get_angle() < 1e-4:
+		return {}
+	var low: int = mini(key, other)
+	var pair := Vector2i(low, maxi(key, other))
+	if not _forgiven.has(pair):
+		_forgiven[pair] = _forgive(pair.x, pair.y)
+	var but: Variant = _forgiven[pair]
+	if but is bool:
+		return {}
+	var a: Exact.Item = item if key == low else other_item
+	var b: Exact.Item = other_item if key == low else item
+	var hit: Dictionary = Exact.clash(a, b) if but == null else Exact.clash_but(a, b, but)
+	if hit.is_empty():
+		return {}
+	return {"key": key, "other": other, "depth": float(hit["depth"])}
+
+
+## What two parts are forgiven when one moves against the other: true for two
+## toothed parts in mesh, gears or a pinion and its rack, whose teeth pass
+## through each other's drawn shapes as they go round (Grab forgives a pair
+## built into each other whole); else the pieces each joint between their
+## bodies runs through (a pin in its hole, a beam on it), and the pairs of
+## pieces built into each other; null for nothing.
+func _forgive(a: int, b: int) -> Variant:
+	var piece_a: Mechanism.Piece = model.parts[a]
+	var piece_b: Mechanism.Piece = model.parts[b]
+	var shape_a: Exact.Shape = _shapes[a]
+	var shape_b: Exact.Shape = _shapes[b]
+	var at_rest: Array = Exact.overlaps(Exact.Item.new(shape_a, piece_a.at), Exact.Item.new(shape_b, piece_b.at))
+	if Simulation._toothed(piece_a.part) and Simulation._toothed(piece_b.part):
+		if not at_rest.is_empty():
+			return true
+		for coupling: Mechanism.Coupling in model.couplings:
+			if (coupling.one.key == a and coupling.other.key == b) \
+					or (coupling.one.key == b and coupling.other.key == a):
+				return true
+	var but := Exact.Forgiven.new()
+	for hit: Array in at_rest:
+		but.pairs[(int(hit[2]) << 20) | int(hit[1])] = true
+	var body_a: int = model.body_of(a)
+	var body_b: int = model.body_of(b)
+	for joint: Mechanism.Joint in model.joints:
+		if not ((joint.a == body_a and joint.b == body_b) or (joint.a == body_b and joint.b == body_a)):
+			continue
+		var on_a: PackedByteArray = Exact.through(shape_a, piece_a.at.affine_inverse() * joint.point,
+			(piece_a.at.basis.inverse() * joint.way).normalized(), ON_THE_LINE)
+		var on_b: PackedByteArray = Exact.through(shape_b, piece_b.at.affine_inverse() * joint.point,
+			(piece_b.at.basis.inverse() * joint.way).normalized(), ON_THE_LINE)
+		but.a_pieces = Simulation._either(but.a_pieces, on_a)
+		but.b_pieces = Simulation._either(but.b_pieces, on_b)
+	return null if but.is_empty() else but
+
+
+static func _toothed(part: String) -> bool:
+	return not Mechanism.spec_of(part).is_empty() or not Mechanism.entry_of("racks", part).is_empty()
+
+
+static func _either(one: PackedByteArray, other: PackedByteArray) -> PackedByteArray:
+	if one.is_empty():
+		return other
+	var out: PackedByteArray = one.duplicate()
+	for n: int in mini(out.size(), other.size()):
+		out[n] = 1 if out[n] == 1 or other[n] == 1 else 0
+	return out
+
+
+## How high the weight of what moves stands at [param pose]: the sum of each
+## moving part's grams times the height of its middle, g·LDU.
+func _weight_up(pose: Dictionary) -> float:
+	var sum: float = 0.0
+	for key: Variant in pose:
+		var it: Array = _grams.get(int(key), [])
+		if not it.is_empty():
+			sum += float(it[0]) * ((pose[key] as Transform3D) * (it[1] as Vector3)).y
+	return sum
+
+
+## The torque the weight asks of the motor over a step, N·cm: how much higher
+## it stands for each radian of the driver, by virtual work. Where it first
+## asks more than the motor gives, the motor stalls: found between the
+## middles of the two steps either side.
+func _weigh_step(at: float, next: float, pose: Dictionary) -> void:
+	var weight: float = _weight_up(pose)
+	var needs: float = (weight - float(_sweep["weight"])) / ((next - at) * TAU) * TORQUE_N_CM
+	var middle: float = (at + next) * 0.5
+	_sweep["weight"] = weight
+	if heaviest.is_empty() or needs > float(heaviest["needs"]):
+		heaviest = {"turns": middle, "needs": needs}
+	var gives: float = float((MOTORS[motors[motor]] as Array)[1])
+	if stall.is_empty() and needs > gives:
+		var was: float = float(_sweep["needs"])
+		var turns: float = middle
+		if not is_nan(was) and needs > was:
+			turns = lerpf(float(_sweep["needs_at"]), middle, (gives - was) / (needs - was))
+		stall = {"turns": maxf(turns, 0.0), "needs": needs}
+	_sweep["needs"] = needs
+	_sweep["needs_at"] = middle
+
+
+## Where it stops, in words: what meets, the range, and the motor.
+func stop_lines() -> PackedStringArray:
+	var lines := PackedStringArray()
+	if moving.is_empty():
+		return lines
+	var driver_name: String = str(names.get(driver, "the driver"))
+	if not meets.is_empty():
+		lines.append(("MEETS: at %s of %s's turn, %s meets %s, %s LDU into it. Move one of them, "
+			+ "or keep the turn short of it.") % [Simulation.angle(float(meets["turns"])), driver_name,
+			_part_said(int(meets["key"])), _part_said(int(meets["other"])),
+			Simulation.figure(snappedf(float(meets["depth"]), 0.1))])
+	lines.append(range_line())
+	if motor != 0:
+		lines.append(motor_line())
+	if unshaped > 0:
+		lines.append("%d part%s with no exact shape %s not checked for meeting." % [unshaped,
+			"" if unshaped == 1 else "s", "is" if unshaped == 1 else "are"])
+	return lines
+
+
+## The driver's range: from how far back to how far on it goes, and what
+## stops it at each end.
+func range_line() -> String:
+	var driver_name: String = str(names.get(driver, "the driver"))
+	var back: float = stop_back()
+	var on: float = stop_on()
+	var on_free: bool = on == INF
+	var back_free: bool = back == -INF
+	if on_free and back_free:
+		return "Range: %s turns all the way round either way; nothing meets over %s of the cycle." % [
+			driver_name, Simulation.angle(checked.y)]
+	var line: String = "Range of %s: " % driver_name
+	if back_free:
+		line += "to %s on; back, nothing meets over %s" % [Simulation.angle(on), Simulation.angle(-checked.x)]
+	elif on_free:
+		line += "to %s back; on, nothing meets over %s" % [Simulation.angle(back), Simulation.angle(checked.y)]
+	else:
+		line += "%s to %s, %s in all" % [Simulation.angle(back), Simulation.angle(on), Simulation.angle(on - back)]
+	var whys := PackedStringArray()
+	if not back_free:
+		whys.append("back, " + _why_stopped(back, meets_back, loop_reach.x, {}))
+	if not on_free:
+		whys.append("on, " + _why_stopped(on, meets, loop_reach.y, stall))
+	var said: String = "; ".join(whys)
+	return "%s. %s." % [line, said.left(1).to_upper() + said.substr(1)]
+
+
+## Why it stops going on, said: "Arm (#12 3004) meets Stand (#20 32524)".
+func stopped_said() -> String:
+	return _why_stopped(stop_on(), meets, loop_reach.y, stall)
+
+
+func _why_stopped(at: float, met: Dictionary, reach: float, stalled: Dictionary) -> String:
+	if not stalled.is_empty() and at == float(stalled["turns"]):
+		return "its motor stalls"
+	if not met.is_empty() and at == float(met["turns"]):
+		return "%s meets %s" % [_part_said(int(met["key"])), _part_said(int(met["other"]))]
+	if at == reach:
+		return "the loop it closes goes no further"
+	return "it stops"
+
+
+## What the motor is asked: where it stalls, or at its heaviest and how fast
+## it then goes, by the weight of what moves alone (no friction).
+func motor_line() -> String:
+	var it: Array = MOTORS[motors[motor]]
+	var said: String = "%s (#%d %s)" % [it[0], motor, motors[motor]]
+	var gives: float = float(it[1])
+	if not stall.is_empty():
+		return ("STALLS: the %s at %s of its turn: the weight it lifts asks more than the %s N·cm "
+			+ "it gives at 9 V, %s at most (by the parts' weight, without friction). Gear it "
+			+ "down, or lighten what it lifts.") % [said, Simulation.angle(float(stall["turns"])),
+			Simulation.figure(gives), Simulation.figure(snappedf(float(heaviest.get("needs",
+				stall["needs"])), 0.1))]
+	if heaviest.is_empty() or float(heaviest["needs"]) <= 0.0:
+		return "The %s turns it with nothing to lift: %s rpm, its speed with no load." % [said,
+			Simulation.figure(float(it[2]))]
+	var needs: float = float(heaviest["needs"])
+	return ("The %s turns it: at its heaviest, at %s, it is asked %s of its %s N·cm and slows "
+		+ "from %s to %s rpm (by the parts' weight, without friction).") % [said,
+		Simulation.angle(float(heaviest["turns"])), Simulation.figure(snappedf(needs, 0.1)),
+		Simulation.figure(gives), Simulation.figure(float(it[2])),
+		Simulation.figure(roundf(float(it[2]) * (1.0 - needs / gives)))]
+
+
+## A part said with its body's name: "Arm (#12 3004)".
+func _part_said(key: int) -> String:
+	return "%s (#%d %s)" % [names.get(model.body_of(key), "?"), key, _part(key)]
+
+
+## A turn of the driver in degrees, to a tenth: "140.5°", "-80.4°"; a turn
+## or more, "2.75 turns".
+static func angle(turns: float) -> String:
+	if absf(turns) >= 1.0 - 1e-6:
+		var said: String = Simulation.figure(snappedf(turns, 0.01))
+		return "%s turn%s" % [said, "" if said in ["1", "-1"] else "s"]
+	return "%s°" % Simulation.figure(snappedf(turns * 360.0, 0.1))
+
+
 # -- what it found, said ------------------------------------------------------------
 
 
@@ -870,8 +1599,8 @@ func _part(key: int) -> String:
 
 ## Each moving part's tint, by how fast its body turns against the driver:
 ## blue slow, orange fast, on a scale of how many times over; the meshes
-## that lock it red, free bodies amber, floating gears violet. Brick id ->
-## Color.
+## that lock it and the two parts that meet first red, free bodies amber,
+## floating gears violet. Brick id -> Color.
 func tints() -> Dictionary:
 	var out: Dictionary = {}
 	var fastest: float = 0.0
@@ -898,6 +1627,8 @@ func tints() -> Dictionary:
 	for pair: Array in solved.get("meshes", []):
 		out[int(pair[0])] = LOCKED
 		out[int(pair[1])] = LOCKED
+	for key: int in meeting_pair():
+		out[key] = LOCKED
 	return out
 
 
