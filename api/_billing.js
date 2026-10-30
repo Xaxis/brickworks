@@ -33,7 +33,13 @@
 //            this could be someone who pays, and grant nothing lasting on
 //            it either (a desktop token, U6): ask again later
 //
-// mayBuild and mayDesktop say that rule once for the routes that use it.
+// mostModels and mayDesktop say that rule once for the routes that use it.
+//
+// AI is never limited, on any plan (the owner, 2026-10-29): people bring
+// their own, their Claude or ChatGPT or their own key, and Brickworks pays
+// for no tokens and counts no AI use. What Free holds back is how many
+// models an account keeps with it (saved_models, api/models.js) and the
+// desktop app.
 
 import { Admission, AdmissionUnavailable } from "./_admission.js";
 import { db } from "./_db.js";
@@ -41,13 +47,13 @@ import { isMaster } from "./_auth.js";
 
 /// Admission's names for Brickworks (docs/PLANS.md, section 1).
 export const PRODUCT = "brickworks";
-export const BUILDS = "ai_builds";
+export const SAVED_MODELS = "saved_models";
 export const DESKTOP = "desktop";
 
 /// What /plans says when Admission cannot: section 1 of docs/PLANS.md.
 export const PUBLISHED = Object.freeze({
-  free: { key: "free", name: "Free", claudeBuilds: 10, desktop: false, prices: {}, currency: "usd" },
-  pro: { key: "pro", name: "Pro", claudeBuilds: "unlimited", desktop: true, prices: { month: 800, year: 8000 },
+  free: { key: "free", name: "Free", savedModels: 25, desktop: false, prices: {}, currency: "usd" },
+  pro: { key: "pro", name: "Pro", savedModels: "unlimited", desktop: true, prices: { month: 800, year: 8000 },
     currency: "usd" },
   forSale: false,
 });
@@ -114,8 +120,8 @@ export function forgetClient() {
   client = null;
 }
 
-const OFF = Object.freeze({ billing: "off", standing: "off", plan: null, owner: false, builds: null, desktop: null,
-  subscription: null, freshness: null });
+const OFF = Object.freeze({ billing: "off", standing: "off", plan: null, owner: false, savedModels: null,
+  desktop: null, subscription: null, freshness: null });
 
 const unknown = (billing) => ({ ...OFF, billing, standing: "unknown" });
 
@@ -125,7 +131,7 @@ function entitlementFrom(billing, c) {
   // held, or its plan lapsed while Admission was away. A guess is not
   // enough to refuse anybody.
   if (c.freshness === "default") return unknown(billing);
-  const builds = c.features?.[BUILDS];
+  const saved = c.features?.[SAVED_MODELS];
   const desktop = c.features?.[DESKTOP];
   const s = c.subscription;
   return {
@@ -133,14 +139,8 @@ function entitlementFrom(billing, c) {
     standing: "known",
     plan: { key: c.plan.key, name: c.plan.name, source: c.plan.source, until: c.plan.until ?? null },
     owner: c.owner === true,
-    builds: builds?.kind === "allowance"
-      ? {
-        limit: builds.unlimited ? null : (builds.limit ?? 0),
-        used: builds.used,
-        remaining: builds.unlimited ? null : (builds.remaining ?? 0),
-        resetsAt: builds.resetsAt,
-      }
-      : null,
+    // How many models it keeps with the account: limit null for no limit.
+    savedModels: saved?.kind === "cap" ? { limit: saved.unlimited ? null : (saved.limit ?? 0) } : null,
     desktop: desktop?.enabled === true,
     subscription: s
       ? { status: s.status, interval: s.interval, periodEnd: s.currentPeriodEnd, endsAt: s.endsAt,
@@ -168,11 +168,13 @@ export async function entitlementOf(userId) {
   }
 }
 
-/// Whether [e] lets its account start an AI build: unless Admission said
-/// this month's are used. Only reads; counting one is the relay's (U2).
-export function mayBuild(e) {
-  if (e.standing !== "known" || !e.builds) return true;
-  return e.builds.limit === null || e.builds.remaining > 0;
+/// The most models [e] lets its account keep with it, or null for no
+/// limit: Pro's and so a comp's of Pro, the owner's (Admission gives the
+/// owner every feature unlimited), and any account whose plan is not known
+/// or says nothing of it.
+export function mostModels(e) {
+  if (e.standing !== "known" || !e.savedModels) return null;
+  return e.savedModels.limit;
 }
 
 /// Whether [e] lets its account have the desktop app now (U5, U6).
@@ -210,7 +212,7 @@ export function offerOf(plans) {
     const prices = {};
     for (const price of p.prices) prices[price.interval] = price.amount;
     return {
-      offer: { key, name: p.name, claudeBuilds: amountOf(p.includes, BUILDS),
+      offer: { key, name: p.name, savedModels: amountOf(p.includes, SAVED_MODELS),
         desktop: desktop === "unlimited" || (typeof desktop === "number" && desktop > 0), prices,
         currency: p.prices[0]?.currency ?? "usd" },
       status: p.status,
