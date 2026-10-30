@@ -1812,6 +1812,16 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   shaft (`JointSnap.End.back`, `ways`): an axle and nothing else has the
   shaft behind each tip, and a wheel, a bush or a beam on it slides
   (8841-1's belt wheel halfway along its axle; probe: the same section).
+  An axle in hand goes through a hole and stops flush with its far face
+  wherever the hole is aimed at; aimed past that face, its tip goes on
+  through to the pointer, a whole LDU at a time, as far as its shaft runs
+  (`JointSnap._pushed`, the second way's slide, so `Builder._joint_asked`
+  keys the pose on every way's): 8841-1's axle stands 1 LDU past its
+  1 x 16 and took a typed rest. Probe: `placing_probe -- only=axle` (fails
+  without `_pushed`: the tip stayed flush). A 1 x 1 round plate on its side
+  on a light clip's ring seats flush, as 314 of the 325 such seats in the
+  OMR's files are (the plane's four are 1 LDU proud, its author's own);
+  probe: `placing_probe -- only=ring`.
   The build flow's side of it:
   `tests/test_cadtask.py` (a part on its side aimed at by its underside; a
   beam hung from its middle out).

@@ -516,14 +516,16 @@ static func step_of(held: End, site: End, fine: float) -> float:
 ## joint's axis the part goes (a pin from the near or the far face of a
 ## beam, a beam the right way up or over); slide is, for a clip or a bar,
 ## where along the other the middle of this one goes, in LDU from the
-## other's start. [param from] is where the pointer's line starts, which
-## says which face is near.
+## other's start, and for an axle's tip how far past the hole's far face
+## it goes ([method _pushed]). [param from] is where the pointer's line
+## starts, which says which face is near.
 static func ways(held: End, site: End, from: Vector3, way: Vector3) -> Array:
 	var middle: Vector3 = site.at + site.axis * (site.reach * 0.5) if site.is_round() \
 		else site.at
 	var near: int = 1 if site.axis.dot(from - middle) >= 0.0 else -1
 	if held.is_male():
-		return [[near, 0.0], [-near, 0.0]]
+		return [[near, _pushed(held, site, near, from, way)],
+			[-near, _pushed(held, site, -near, from, way)]]
 	if held.is_hole() and site.kind == "axle" and site.back > 0.0:
 		# Along an axle to where the pointer is, a whole LDU at a time: from
 		# its hole just on the tip to its far side at the other tip. A wheel
@@ -572,6 +574,29 @@ static func ways(held: End, site: End, from: Vector3, way: Vector3) -> Array:
 	return out
 
 
+## A line seen more nearly end on than this (the cosine of the pointer's
+## line to it) is not slid along by the pointer: a hair across the screen
+## is a long way along it.
+const END_ON := 0.9
+
+
+## How far past a hole's far face an axle's tip in hand goes on through it,
+## going in from [param side], in whole LDU: to where the pointer is along
+## the hole's line once it is past that face, and no further than the shaft
+## behind the tip runs (End.back), less an LDU to stay in the hole. While
+## the pointer is on the hole or short of it the tip stops at the far face,
+## as it always has, so a hole aimed at anywhere still takes an axle through
+## flush. A pin's collar stops at the mouth, and a tip with no shaft known
+## behind it goes through and no further. 8841-1's axle stands 1 LDU past
+## its 1 x 16's far face, and the pointer could not say so: it was typed
+## (docs/CADTASK.md section 11).
+static func _pushed(held: End, site: End, side: int, from: Vector3, way: Vector3) -> float:
+	if held.reach >= COLLAR or held.back <= 0.0 or absf(site.axis.dot(way)) > END_ON:
+		return 0.0
+	var past: float = -side * site.along_nearest(from, way) - site.reach
+	return clampf(roundf(past), 0.0, held.back - 1.0)
+
+
 ## Where the part goes to put [param held] (in its own frame) on
 ## [param site] (in the world): the way it goes and where along it, from
 ## [method ways], and turned [param roll] degrees about the joint. Starts
@@ -595,10 +620,12 @@ static func pose(held: End, site: End, side: int, slide: float, roll: float,
 	var target: Vector3
 	var anchor: Vector3 = held.at
 	if held.is_male():
-		# Into a hole from one face: the part's end points into it.
+		# Into a hole from one face: the part's end points into it, an
+		# axle's tip on through it by its slide ([method _pushed]).
 		facing = along * -side
 		var mouth: Vector3 = site.at + along * (site.reach * side)
-		target = mouth if held.reach >= COLLAR else site.at - along * (site.reach * side)
+		target = mouth if held.reach >= COLLAR \
+			else site.at - along * ((site.reach + slide) * side)
 	elif held.is_hole():
 		# Over a pin, against its collar; over an axle's tip, flush with it.
 		facing = along * side
