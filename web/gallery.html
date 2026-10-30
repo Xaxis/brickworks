@@ -154,8 +154,8 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 .shelf-said { margin: 4px 0 12px; color: var(--ink-soft); font-size: var(--t-small); }
 /* Today in the gallery (gallery362): today's featured model and today's
    set, in a panel lit as a landing page's last offer is (site.css
-   .closing), each card edged as what is chosen is; from 600 px its two
-   cards side by side, and from 900 px its words beside them. */
+   .closing), each card edged as what is chosen is, and from 900 px its
+   words beside its cards. How its row scrolls is the row's own (site.css). */
 #spotlight {
 	display: grid; gap: var(--s-4); padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--r-4);
 	background-color: var(--panel); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px;
@@ -165,12 +165,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 #spotlight .shelf-head { flex-direction: column; align-items: flex-start; justify-content: center; gap: var(--s-2); }
 #spotlight .shelf-said { margin: 0; max-width: 42ch; }
 #spotlight-models .model { border-color: var(--accent-edge); }
-/* On a phone its row scrolls inside the panel, as every shelf's does: two
-   cards side by side there left a card's marks no room. */
 @media (width < 600px) { #spotlight { padding: var(--s-4); } }
-@media (width >= 600px) {
-	#spotlight-models.row { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; padding: 0; }
-}
 @media (width >= 900px) {
 	#spotlight { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-6); align-items: center; padding: var(--s-6); }
 }
