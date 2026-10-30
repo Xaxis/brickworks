@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -52,7 +53,7 @@ MODELS = [
 ]
 
 
-def node(script: str) -> object:
+def node(script: str) -> Any:
     done = subprocess.run(["node", "--input-type=module", "-e", script], cwd=ROOT, capture_output=True, text=True,
                           timeout=120)
     assert done.returncode == 0, done.stderr[-2000:]
