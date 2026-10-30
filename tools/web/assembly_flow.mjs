@@ -219,15 +219,15 @@ await type("Kit car");
 await key("Enter", 1200);
 await key("Control+s", 2500);
 const saved = await tree();
-// A new model, then the saved one back from Open's list: the first saved
-// model is the second entry, under "From a file".
+// A new model, then the saved one back from Open's list, found by typing
+// its name as a person can: counted rows went stale when the list gained
+// "From the library…" and "Rename or delete…" above the saves (10-22).
 await page.mouse.click(fresh.x, fresh.y);
 await wait(1500);
 for (let n = 0; n < 10 && (await state()).bricks > 0; n++) await key("Enter", 1500);
 check(`a new model is empty (${(await state()).bricks})`, (await state()).bricks === 0);
 await click(await controlAt("open"));
-await key("ArrowDown", 300);
-await key("ArrowDown", 300);
+await type("Kit car");
 await key("Enter", 4000);
 now = await until((s) => s.bricks > 0, 20);
 const reopened = now.tree || {};
