@@ -61,3 +61,4 @@ provider_loop   # a model on an OpenAI-compatible provider designs on the person
 ai_settings   # Settings, AI: another AI chosen, its key kept encrypted and in no log or save, its models listed, Test (tools and pictures) against the stub, and a design started from the assistant's column (aiset345)
 provider_apis   # Anthropic's Messages and Gemini's own API: each designs, is tested and lists its models against a stub as strict as the API (aiset345)
 set_parts  # /app?parts=10497-1&brief=…: the set's parts in the bin, the most used first, and the brief drafted, not sent (sets364)
+keysheet   # F1 opens the keys sheet alone: 20+ rows in sight at 1280 x 720, typed into it keeps the rows that say it, the menus' keys on it; "," opens Settings without a key; every menu row in each state 4.5:1 or better off the pixels (APP_UX A1, A2)

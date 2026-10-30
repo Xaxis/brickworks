@@ -1110,7 +1110,7 @@ func _define() -> void:
 	_add("settings", "Settings…", KEY_COMMA, func() -> void: bar.controls_wanted.emit(),
 		Callable(), "Which way the wheel zooms, and what the middle button does")
 	# Help
-	_add("keys", "Keys and controls", KEY_F1, func() -> void: bar.controls_wanted.emit(),
+	_add("keys", "Keys and controls", KEY_F1, func() -> void: (app.get("_controls") as ControlsDialog).open_keys(),
 		Callable(),
 		"What every button and key does")
 	_add("tour", "Take the tour", 0, func() -> void: tour.start())
