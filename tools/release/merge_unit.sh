@@ -55,7 +55,14 @@ git log --oneline -1
 # Imported in every mode: a probe run on the staged worktree before it
 # ships finds no class_names without it (rel-m79's grab_probe, "Could not
 # find type BrickWorld", the third time a missed import cost a run).
-~/.claude/claude-core/bin/heavy env XDG_DATA_HOME="$PWD/.scratch-data" timeout 900 godot --headless --path . --import >/dev/null 2>&1
+mkdir -p .scratch-data
+~/.claude/claude-core/bin/heavy env XDG_DATA_HOME="$PWD/.scratch-data" timeout 900 godot --headless --path . --import > .scratch-data/import.log 2>&1
+# An import ended early (its timeout, or a pass that leaves some out) still
+# writes the class list, and a probe needing a font or a picture fails far
+# from the cause: rel-m222's booklet_pdf, its font "cannot be read" after
+# its train's import ran out its 900 s (2026-10-30). fresh_import imports
+# again what is unmade, or says what is and stops here.
+tools/fresh_import.sh || { echo "$(basename "$0"): $PWD is not imported whole; its import said:"; tail -5 .scratch-data/import.log | sed 's/^/  /'; exit 1; }
 echo "imported"
 # A probe the merge brings in that no suite list names fails the merge here,
 # not hours later in a full suite (drag_cost and seated, then step_link).

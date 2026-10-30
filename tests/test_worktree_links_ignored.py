@@ -49,3 +49,21 @@ def test_the_check_sees_a_link_left_unignored(tmp_path: Path) -> None:
     (repo / ".gitignore").write_text((ROOT / ".gitignore").read_text())
     (repo / "a_link_of_no_rule").symlink_to(tmp_path)
     assert "a_link_of_no_rule" in _untracked(repo)
+
+
+def test_the_merges_data_folder_is_ignored(tmp_path: Path) -> None:
+    # merge_unit.sh and merge_finish.sh run Godot with its data in the
+    # worktree; what Godot writes there must not hold the worktree back.
+    folders: set[str] = set()
+    for script in ("merge_unit.sh", "merge_finish.sh"):
+        text = (ROOT / "tools/release" / script).read_text()
+        folders |= set(re.findall(r'XDG_DATA_HOME="\$PWD/([^"/]+)"', text))
+    assert folders, "no XDG_DATA_HOME=\"$PWD/...\" in the merge scripts"
+    repo = tmp_path / "repo"
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    (repo / ".gitignore").write_text((ROOT / ".gitignore").read_text())
+    for folder in folders:
+        (repo / folder / "godot/logs").mkdir(parents=True)
+        (repo / folder / "godot/logs/godot.log").write_text("a log")
+    shown = [path for path in _untracked(repo) if path != ".gitignore"]
+    assert not shown, f"git lists what Godot writes in the merges' data folder: {shown}"
