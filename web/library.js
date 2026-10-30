@@ -15,6 +15,12 @@
 // waits for typing to stop; a filter asks at once; an answer that comes
 // back after a newer question was asked is thrown away.
 //
+// Words typed are read as api/_search.js reads them, misspelt or run
+// together, and the list is then in best match order ("Best match" in the
+// Order filter) unless the person chose another order; the line over the
+// list says what a misspelling was taken to mean, or that no set has every
+// word and these are the nearest (search, 2026-10-30).
+//
 // Every name goes on the page as text (web/card.js escapes what it draws),
 // and a link is made from a set's id alone, and only an id that is one.
 //
@@ -40,8 +46,16 @@ import { pageAsked, pager } from "/pager.js";
   const grid = $("models");
   const q = $("q");
   const sort = $("sort");
-  // The order a list is in unless asked (api/_sets.js FIRST_SORT): sets built in 3D first.
+  // The order a list is in unless asked (api/_sets.js FIRST_SORT): sets built
+  // in 3D first; and with words typed, best match (MATCH_SORT).
   const FIRST_SORT = "built";
+  const MATCH_SORT = "match";
+  // The order the person chose, "" for the default.
+  let ownSort = "";
+  const typed = () => Boolean(q.value.trim());
+  const defaultSort = () => (typed() ? MATCH_SORT : FIRST_SORT);
+  /// The order asked: the person's own, but best match only with words typed.
+  const order = () => (ownSort && !(ownSort === MATCH_SORT && !typed()) ? ownSort : defaultSort());
   const size = $("size");
   const decade = $("decade");
   let filled = false;
@@ -78,8 +92,7 @@ import { pageAsked, pager } from "/pager.js";
       if (pick(name) && !(name === "year" && decadeOf(pick(name)) !== chosen(decade))) asked.set(name, pick(name));
     }
     if (chosen(size)) asked.set("size", chosen(size));
-    const order = chosen(sort) || FIRST_SORT;
-    if (!address || order !== FIRST_SORT) asked.set("sort", order);
+    if (!address || order() !== defaultSort()) asked.set("sort", order());
     if (address && page > 1) asked.set("page", String(page));
     return asked;
   }
@@ -175,9 +188,19 @@ import { pageAsked, pager } from "/pager.js";
     }
   }
 
+  /// The Order filter as the list is ordered: Best match while words are
+  /// typed, and not to be chosen with none.
+  function showSort() {
+    const best = [...sort.options].find((one) => one.value === MATCH_SORT);
+    if (best) best.disabled = !typed();
+    // Until the list says what orders there are, fill takes it from here.
+    sort.dataset.wanted = filled ? "" : order();
+    if ([...sort.options].some((one) => one.value === order())) sort.value = order();
+  }
+
   /// How many filters are on, on the Filters button.
   function sayFilters() {
-    const on = [chosen(size), chosen(decade), chosen(sort) && chosen(sort) !== FIRST_SORT, ...MORE.map(([name]) => pick(name))]
+    const on = [chosen(size), chosen(decade), order() !== defaultSort(), ...MORE.map(([name]) => pick(name))]
       .filter(Boolean).length;
     const n = $("filters-said");
     n.textContent = on ? String(on) : "";
@@ -225,6 +248,7 @@ import { pageAsked, pager } from "/pager.js";
       }
       fillThemes(data.themes);
       fill(sort, Object.entries(data.sorts || {}));
+      showSort();
       fill(size, Object.entries(data.sizes || {}));
       fill(decade, (data.decades || []).map((one) => [one, one]));
       filled = true;
@@ -233,8 +257,19 @@ import { pageAsked, pager } from "/pager.js";
     fillMore(years);
     if (fresh) {
       const total = Number(data.total) || 0;
-      $("found-said").textContent = !total ? "" : searching()
+      const many = !total ? "" : searching()
         ? `${counted(total, "set")} of ${every.toLocaleString("en-US")}` : counted(total, "set");
+      // What a misspelling was taken to mean, or that these are the nearest.
+      const meant = typeof data.meant === "string" ? data.meant.slice(0, 100) : "";
+      if (total && data.near === true) {
+        $("found-said").replaceChildren(`No set has every word you typed. The nearest: ${many}`);
+      } else if (total && meant) {
+        const words = document.createElement("strong");
+        words.textContent = meant;
+        $("found-said").replaceChildren("Showing sets for ", words, ` · ${many}`);
+      } else {
+        $("found-said").textContent = many;
+      }
     }
     $("loading").hidden = true;
     $("broken").hidden = true;
@@ -282,9 +317,11 @@ import { pageAsked, pager } from "/pager.js";
   // answer: what the selects may hold is filled in when the list says.
   const given = new URLSearchParams(location.search);
   q.value = (given.get("q") || "").slice(0, 100);
-  for (const [select, name] of [[sort, "sort"], [size, "size"], [decade, "decade"]]) {
+  ownSort = given.get("sort") || "";
+  for (const [select, name] of [[size, "size"], [decade, "decade"]]) {
     select.dataset.wanted = given.get(name) || "";
   }
+  showSort();
   // A theme inside a theme is asked as its path: "Star Wars > Ultimate Collector Series".
   [theme, wanted.sub = ""] = (given.get("theme") || "").slice(0, 300).split(" > ").map((one) => one.trim());
   for (const name of ["year", "model", "figs"]) wanted[name] = given.get(name) || "";
@@ -292,6 +329,7 @@ import { pageAsked, pager } from "/pager.js";
   let typing = 0;
   q.addEventListener("input", () => {
     clearTimeout(typing);
+    showSort();
     typing = setTimeout(ask, 200);
   });
   $("finder").addEventListener("submit", (event) => {
@@ -299,11 +337,16 @@ import { pageAsked, pager } from "/pager.js";
     clearTimeout(typing);
     ask();
   });
-  for (const control of [sort, size, decade]) control.addEventListener("change", ask);
+  for (const control of [size, decade]) control.addEventListener("change", ask);
+  sort.addEventListener("change", () => {
+    ownSort = sort.value === defaultSort() ? "" : sort.value;
+    ask();
+  });
   $("filters-clear").addEventListener("click", () => {
     size.value = decade.value = "";
     for (const select of Object.values(extra)) select.value = "";
-    sort.value = FIRST_SORT;
+    ownSort = "";
+    showSort();
     ask();
   });
   $("clear").addEventListener("click", () => {
@@ -311,6 +354,7 @@ import { pageAsked, pager } from "/pager.js";
     size.value = decade.value = "";
     for (const select of Object.values(extra)) select.value = "";
     theme = "";
+    showSort();
     ask();
   });
   browseBar({ search: q, above: document.querySelector(".library-bar"), bar: $("toolbar") });
