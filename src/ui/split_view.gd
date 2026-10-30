@@ -25,8 +25,8 @@
 ##
 ## It takes its width from the model's own column, beside it, and none from
 ## the bin or the right-hand column. A window with less than [constant LEAST]
-## a view (a phone, a narrow tablet) keeps one view: View › Split is greyed
-## with why, and the split comes back when the window is wide enough again.
+## points a view, a phone, or a tablet held upright keeps one view: View ›
+## Split is greyed with why, and the split comes back when there is room.
 ## Off out of the box, and kept on this device (ShellPrefs "split",
 ## "split_side").
 ##
@@ -50,7 +50,7 @@ const FROM: Dictionary = {
 ## The render layer of what is drawn in the main view only. Layer 20 is the
 ## floor's shadow (FloorLayer) and a render's warm light's (StudioRender).
 const MAIN_ONLY := 1 << 18
-## The least width of each view, in the window's units: two of them is the
+## The least width of each view, in points (Room): two of them is the
 ## model's column at the least for a split.
 const LEAST := 320.0
 ## How often the model's size is asked again while it changes, ms: it is
@@ -157,7 +157,20 @@ static func wanted() -> bool:
 
 ## Whether the model's column has room for two views.
 func fits() -> bool:
-	return room() >= LEAST * 2.0
+	return room() >= least()
+
+
+## The model's column a split needs, in the window's units: [constant LEAST]
+## points a view, counted in points because a phone at three pixels to the
+## point lays some 900 units across its 390 points, and had room for two in
+## units (fit_check, 2026-10-30). None is enough on a phone (a short side
+## under Phone.NARROW points) or a tablet held upright.
+func least() -> float:
+	var across: float = Room.across()
+	var down: float = Room.down()
+	if minf(across, down) < Phone.NARROW or (Phone.on() and across < down):
+		return INF
+	return LEAST * 2.0 * get_viewport().get_visible_rect().size.x / maxf(across, 1.0)
 
 
 ## The model's column, shown as one view or two: the row's width less the

@@ -735,7 +735,7 @@ const NEEDS: Dictionary = {
 	"put_back": "No section is broken out",
 	"xray": "Select a part first", "cut_flip": "Turn on Cut away first",
 	"stress": "Put a part on the baseplate first",
-	"split_view": "The window is too narrow for two views",
+	"split_view": "The window is too small for two views",
 	"reshape_flex": "Select a hose or chain",
 	"floor_part": "Stand the model on a baseplate first",
 	"back_to_site": "In a browser only",

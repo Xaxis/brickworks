@@ -75,9 +75,12 @@ picture the assistant is shown.
   is over its picture. Overlays stay in the main view: the pivot mark is on
   `SplitView.MAIN_ONLY` (render layer 19), the view cube and the handles are
   2D over the main view. Off out of the box, kept per device (ShellPrefs
-  `split`, `split_side`); greyed with "The window is too narrow for two views"
-  where the model's column cannot give each view 320 px (phones, a tablet
-  held upright). Published to the page as `brickworksState.split`,
+  `split`, `split_side`); greyed with "The window is too small for two views"
+  where the model's column cannot give each view 320 points (`Room`, not
+  units: a phone at 3x lays 900 units across 390 points), on a phone (short
+  side under `Phone.NARROW`) and on a touch tablet held upright. fit_check
+  with F8 pressed showed the split on both its phones until it was counted
+  in points. Published to the page as `brickworksState.split`,
   `brickworksLayout.split`, and the controls `split_front` … `split_close`.
   `split_probe` (1280x720 and 1400x900) puts an 87087 on a side stud of a
   2 x 2 from the main view and from the second one, counting the actions (the

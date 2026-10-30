@@ -122,11 +122,11 @@ func _command() -> void:
 		keyed.values().all(func(action: Variant) -> bool: return action == "split_view"))
 
 
-## A window too narrow for two views: View › Split greyed, saying why, and the
+## A window too small for two views: View › Split greyed, saying why, and the
 ## key does nothing.
 func _too_narrow() -> void:
-	print("  -- too narrow (the model's column %.0f, under %.0f)"
-		% [_split.room(), SplitView.LEAST * 2.0])
+	print("  -- too small (the model's column %.0f, under %.0f)"
+		% [_split.room(), _split.least()])
 	_check("View › Split is greyed (%s)" % _shell.why_not("split_view"),
 		not _shell.can("split_view") and not _shell.why_not("split_view").is_empty())
 	await _key(KEY_F8)
