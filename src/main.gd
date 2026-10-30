@@ -725,6 +725,8 @@ func _tell_page() -> void:
 		"tile_names": _bin.tile_names() if _bin != null else [],
 		# ...and which set's parts they are (/app?parts=, sets364).
 		"bin_set": _bin.set_showing() if _bin != null else "",
+		# ...and what its first tiles count, part/colour -> left (SetBin).
+		"bin_left": _bin.counts_shown() if _bin != null else {},
 		# ...and the colour Enter in the colour's name would take.
 		"colour_first": _bin.colour_first() if _bin != null else -1,
 		"custom": _library.custom.keys(),
@@ -3324,20 +3326,13 @@ func _maybe_fill_bin() -> void:
 	_bin_set = ""
 	# Taken off the address, so a reload is the app's own.
 	_set_address("")
-	var books := SetInventories.new()
-	add_child(books)
-	var found: Dictionary = await books.lookup(PackedStringArray([number]))
-	books.queue_free()
-	if not found.has(number):
-		_bar.say("could not find set %s's parts%s" % [number,
-			": " + books.trouble if not books.trouble.is_empty() else ""])
+	var shown: int = await _bin.build_from(PackedStringArray([number]))
+	if shown == 0:
+		_bar.say("could not find set %s's parts: %s" % [number, _bin.trouble])
 		return
-	var record: Dictionary = found[number]
-	var title: String = "%s %s" % [number, str(record.get("n", ""))]
-	var shown: int = _bin.show_set(title.strip_edges(), record.get("p", []))
 	if _bin_dock != null and not _bin_dock.is_open():
 		_bin_dock.set_open(true)
-	_bar.say("the parts of %s are in the bin: %d kinds of part" % [title.strip_edges(), shown])
+	_bar.say("building from the parts of %s: %d kinds of part" % [_bin.set_showing(), shown])
 
 
 ## A model of the library opened in this tab (?library=<id>, from
@@ -4431,6 +4426,7 @@ func _build_ui() -> void:
 	_bin.library = _library
 	_bin.thumbnails = _thumbnails
 	_bin.builder = _builder
+	_bin.store = _store
 	# On a phone the bin is the parts sheet's, drawn in points (PhoneShell).
 	if _phone_wanted():
 		var per_point: float = Phone.per_point(get_viewport())

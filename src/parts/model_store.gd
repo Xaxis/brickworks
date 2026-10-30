@@ -86,6 +86,11 @@ const CREDIT_META := "0 !BRICKWORKS CREDIT "
 ## The hidden parts' colours chosen for this model (HiddenColours.Plan
 ## .scheme), for the booklet to show; empty when none were.
 var hidden_scheme: Dictionary = {}
+## The sets whose parts the bin is built from for this model (SetBin), or
+## none. Kept with its saves and the autosave as the app's other lines are
+## (SetBin.META), never in what is published or exported; a model opened
+## says it again, and a new one keeps the bin it was begun with.
+var bin_sets: PackedStringArray = PackedStringArray()
 ## Who laid its parts, as far as this app knows (2026-10-24): "hand" for a
 ## model begun empty here with every part laid by a person, "assistant"
 ## once Claude laid any (the panel's designer, a session's tools), and
@@ -590,6 +595,7 @@ func _begin_as(named: String) -> void:
 	credit = {}
 	from_set = ""
 	hidden_scheme = {}
+	bin_sets = PackedStringArray()
 	# Begun empty here, who lays each part from now on is known. Named as a
 	# design stands, its parts are still whoever laid them.
 	if world == null or _is_empty():
@@ -1013,10 +1019,10 @@ func _model_text(paced: bool) -> String:
 		await _text_into(made, title, false, {}, FramePace.new())
 		# Changed meanwhile: made again, as it is now.
 		if world.revision == revision:
-			return with_share(str(made[0]), share_id, remixed_from, remixed_from_version, credit,
-				made_with)
-	return with_share(to_text(title), share_id, remixed_from, remixed_from_version, credit,
-		made_with)
+			return SetBin.written_into(with_share(str(made[0]), share_id, remixed_from,
+				remixed_from_version, credit, made_with), bin_sets)
+	return SetBin.written_into(with_share(to_text(title), share_id, remixed_from,
+		remixed_from_version, credit, made_with), bin_sets)
 
 
 ## The copies of [param kept] past the newest [param leaving], deleted.
@@ -1550,6 +1556,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	model_floor = said if said != null else ModelFloor.preferred()
 	from_set = read["set"]
 	hidden_scheme = read["hidden"]
+	bin_sets = read["bin"]
 	world.motions = read["motions"]
 	if not world.motions.is_empty():
 		# Where each part stood as the file has it: a joint is measured from
@@ -1606,6 +1613,7 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		"made": made_in(text),
 		"floor": ModelFloor.read(text),
 		"set": set_in(text),
+		"bin": SetBin.read(text),
 		"hidden": HiddenColours.read(text),
 		"motions": Motions.read(text),
 	}
@@ -1959,7 +1967,7 @@ static func _without_app_lines(text: String) -> String:
 	for line: String in text.split("\n"):
 		if line.begins_with(SHARE_META) or line.begins_with(REMIX_META) \
 				or line.begins_with(REMIX_VERSION_META) or line.begins_with(CREDIT_META) \
-				or line.begins_with(MADE_META) \
+				or line.begins_with(MADE_META) or line.begins_with(SetBin.META) \
 				or line.begins_with(TITLE_META) or line.begins_with(SharedPages.PAGE.strip_edges()):
 			continue
 		kept.append(line)
@@ -2616,9 +2624,9 @@ func _write(path: String, title: String, with_steps: bool = false,
 	if not NewerBuild.may_write(path):
 		refused = NewerBuild.REFUSAL
 		return false
-	var text: String = with_share(written if not written.is_empty()
+	var text: String = SetBin.written_into(with_share(written if not written.is_empty()
 		else to_text(title, with_steps), share_id, remixed_from, remixed_from_version, credit,
-		made_with)
+		made_with), bin_sets)
 	# Never a model of no parts over a file that has some, unless the person
 	# emptied the baseplate ([member emptied]). The autosave fires on its
 	# own a few seconds after any change, so whatever left the baseplate

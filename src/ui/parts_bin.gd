@@ -233,11 +233,38 @@ func _build() -> void:
 	_stickers_button.pressed.connect(func() -> void: stickers_wanted.emit())
 	head.add_child(_stickers_button)
 
+	# Building from a set: one line naming it and what is left of it, with
+	# the way back to every part; and a set typed into the search, offered.
+	_set_line = HBoxContainer.new()
+	_set_line.visible = false
+	_set_line.add_theme_constant_override("separation", int(_z(6)))
+	root.add_child(_set_line)
+	_set_words = Label.new()
+	_set_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_set_words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_set_words.clip_text = true
+	_set_words.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_set_words.mouse_filter = Control.MOUSE_FILTER_PASS
+	_set_words.add_theme_font_size_override("font_size", ceili(_z(12)))
+	_set_line.add_child(_set_words)
+	_set_go = Button.new()
+	_set_go.pressed.connect(_take_offer)
+	_set_back = Button.new()
+	_set_back.text = "All parts"
+	_set_back.tooltip_text = "Every part in the library again, the set's counts put away"
+	_set_back.pressed.connect(leave_set)
+	for button: Button in [_set_go, _set_back]:
+		FocusGuard.by_keyboard(button)
+		button.add_theme_font_size_override("font_size", ceili(_z(12)))
+		button.custom_minimum_size = Vector2(least, least)
+		_set_line.add_child(button)
+
 	_search = LineEdit.new()
 	# Filled in once the catalogue is loaded; the count differs between
 	# the desktop build and the web pack.
 	_search.placeholder_text = "Search parts…"
 	_search.accessibility_name = "Search parts"
+	_search.tooltip_text = "A part by its name or number; a set's number, 10497-1, to build from its parts"
 	_search.clear_button_enabled = true
 	_search.text_changed.connect(_on_search_typed)
 	if zoom != 1.0:
@@ -382,6 +409,9 @@ func populate() -> void:
 	_build_categories()
 	_build_swatches()
 	_run_search("")
+	# The model's own set bin, now there is a catalogue to show it from.
+	if store != null and _set_bin == null and not store.bin_sets.is_empty():
+		_follow_model()
 
 
 ## The category buttons, taken from what the catalogue actually holds.
@@ -789,7 +819,8 @@ func _on_colour(code: int) -> void:
 	# scrolled back to its top.
 	for cell: Node in _grid.get_children():
 		var tile: Variant = cell.get_meta("tile") if cell.has_meta("tile") else null
-		if not tile is ThumbTile:
+		# A set's tile is its own part and colour.
+		if not tile is ThumbTile or not str(cell.get_meta("key", "")).is_empty():
 			continue
 		var one: ThumbTile = tile
 		one.sketch_colour = _sketch_colour()
@@ -1059,6 +1090,9 @@ func controls_by_name() -> Dictionary:
 				break
 		if named.has("first fold"):
 			break
+	named["set words"] = _set_words
+	named["set build"] = _set_go
+	named["all parts back"] = _set_back
 	if _make_button != null:
 		named["make part"] = _make_button
 	if _print_button != null:
@@ -1068,13 +1102,17 @@ func controls_by_name() -> Dictionary:
 
 
 ## Show one category's parts, as its button would.
+## A part just made (Custom, My prints) is in no set: the bin goes back to
+## the whole library to show it.
 func show_category(name: String) -> void:
 	if _categories.has(name):
+		if _set_bin != null:
+			_drop_set()
 		_on_category(name)
 
 
+## Within a set's parts, a category and a search pick among them.
 func _on_category(name: String) -> void:
-	_set_parts.clear()
 	if name == FITS:
 		_fits_of = _fits_subject()
 	_category = name
@@ -1085,7 +1123,6 @@ func _on_category(name: String) -> void:
 
 
 func _on_search_typed(text: String) -> void:
-	_set_parts.clear()
 	# Debounced: a held key would otherwise scan the library per character.
 	# A first key after a pause is answered at once, and the keys that follow
 	# it quickly once they stop.
@@ -1102,6 +1139,13 @@ func _process(_delta: float) -> void:
 	if _pending and Time.get_ticks_msec() - _search_at >= SEARCH_DEBOUNCE:
 		_pending = false
 		_run_search(_search.text)
+
+	# Building from a set: the model changed, so the counts are worked out
+	# again from it, a tenth of a second apart at most while it goes on.
+	if _set_bin != null and builder != null and builder.world != null \
+			and builder.world.revision != _counted_at \
+			and Time.get_ticks_msec() - _counted_msec >= RECOUNT_MSEC:
+		_recount()
 
 	# Grow the grid as it is scrolled. Checking here rather than on a
 	# scroll signal covers the case where the window is resized and the
@@ -1129,17 +1173,20 @@ func _process(_delta: float) -> void:
 func _run_search(query: String) -> void:
 	if library == null:
 		return
-	# A set's parts stay shown when the bin asks again by itself (its
-	# catalogue arriving on the web, a shelf's count): only a search typed or
-	# a category chosen puts them away (_on_search_typed, _on_category).
-	if not _set_parts.is_empty():
-		_fill_grid()
-		return
+	_offer_typed(query)
 	_guesses.clear()
 	if _category == TECHNIQUES:
+		_listing_set = false
 		_results = []
 		_fill_techniques(query.strip_edges())
 		return
+	# Building from a set: what is typed and the category chosen pick among
+	# its parts, and the bin asking again by itself (its catalogue arriving
+	# on the web, a shelf's count) keeps them.
+	if _set_bin != null:
+		_list_set(query.strip_edges())
+		return
+	_listing_set = false
 	_results = _find(query.strip_edges(), _category)
 	# An element number, as a booklet prints it, is a part in a colour: the
 	# colour is taken in hand, so its tile is drawn and placed in it.
@@ -1148,6 +1195,36 @@ func _run_search(query: String) -> void:
 			and library.colors.has(int(element[1])):
 		_on_colour(int(element[1]))
 	_guesses.clear()
+	_open.clear()
+	_fill_grid()
+
+
+## The set's parts, a tile each part and colour in the set's order, those
+## that answer what is typed and the category chosen.
+func _list_set(query: String) -> void:
+	var needles: PackedStringArray = PartLibrary.in_ldraw_words(query).split(" ", false)
+	var among: Dictionary = {}
+	var shelf: bool = _category in [RECENT, FAVOURITES, FITS]
+	if shelf:
+		for info: PartLibrary.PartInfo in _find(query, _category):
+			among[info.id] = true
+	_results = []
+	_result_keys = PackedStringArray()
+	for key: String in _set_bin.order:
+		var info: PartLibrary.PartInfo = library.parts.get(Collection.part_of(key))
+		if info == null:
+			continue
+		if shelf and not among.has(info.id):
+			continue
+		if not shelf and _category != "All" and info.category != _category:
+			continue
+		if not shelf and not needles.is_empty() \
+				and PartLibrary.matched(info, needles) == PartLibrary.NOT_MATCHED:
+			continue
+		_results.append(info)
+		_result_keys.append(key)
+	_set_aside = 0
+	_listing_set = true
 	_open.clear()
 	_fill_grid()
 
@@ -1736,7 +1813,7 @@ func _fold() -> void:
 	_folds = {}
 	_folded = 0
 	var asked: String = " %s " % PartLibrary.in_ldraw_words(_search.text)
-	if not _guesses.is_empty() or not _set_parts.is_empty() or _category == RECENT or _category == FAVOURITES \
+	if not _guesses.is_empty() or _listing_set or _category == RECENT or _category == FAVOURITES \
 			or _category == FITS \
 			or asked.contains(" print ") or asked.contains(" sticker "):
 		_display = _results.duplicate()
@@ -1813,7 +1890,7 @@ func toggle_fold(part_id: String) -> void:
 func _show_more(most: int = PAGE) -> void:
 	var limit: int = mini(_shown + most, _display.size())
 	while _shown < limit:
-		_grid.add_child(_make_cell(_display[_shown]))
+		_grid.add_child(_make_cell(_display[_shown], _result_keys[_shown] if _listing_set else ""))
 		_shown += 1
 	_tell_apart()
 	_update_status()
@@ -1877,9 +1954,14 @@ func _tell_apart() -> void:
 
 func _update_status() -> void:
 	var total: int = _display.size()
-	if not _set_parts.is_empty():
-		_status.text = "The parts of %s, the most used first" % set_shown
-		_status.tooltip_text = "Search or choose a category to see every part again"
+	if _listing_set:
+		_status.text = ("%s, by part and colour, the most first" % Counted.of(total, "kind")
+			if _search.text.strip_edges().is_empty() and _category == "All"
+			else "%s of the set's match" % Counted.of(total, "kind") if total > 0
+			else "none of the set's parts match")
+		if _shown < total:
+			_status.text += " — scroll for more"
+		_status.tooltip_text = "All parts, on the line at the top, gives every part again"
 		return
 	if not _guesses.is_empty():
 		_status.text = "From your photo, most likely first, as Brickognize sees it" + (
@@ -1938,7 +2020,10 @@ func _update_status() -> void:
 		_status.text = "%s is not in this build of the app\n%s" % [typed, _status.text]
 
 
-func _make_cell(info: PartLibrary.PartInfo) -> Control:
+## A tile for [param info]; for a set's, in its own colour and counting
+## what is left of [param key], its part and colour.
+func _make_cell(info: PartLibrary.PartInfo, key: String = "") -> Control:
+	var colour: int = Collection.colour_of(key) if not key.is_empty() else _selected_color
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(_z(74), _z(84))
 	# LDraw pads its names into columns, "Brick  1 x  2", which reads as
@@ -1963,8 +2048,8 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	button.accessibility_name = "%s, %s" % [Inventory._tidy(info.name), info.id]
 	button.accessibility_description = "%d x %d studs, %s" % [
 		info.footprint_studs().x, info.footprint_studs().y, _height_text(info)]
-	button.button_pressed = info.id == _selected_part
-	button.pressed.connect(_on_part.bind(info.id))
+	button.button_pressed = info.id == _selected_part and colour == _selected_color
+	button.pressed.connect(_on_part.bind(info.id, colour if not key.is_empty() else -1))
 	button.tooltip_text += "\nRight-click to keep it in Favourites, or drag it onto the model"
 	button.gui_input.connect(func(event: InputEvent) -> void:
 		_cell_input(button, info.id, event))
@@ -1981,7 +2066,7 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	# on is a surface of its own, which a plain picture leaves out: under My
 	# prints every tile was a hole where its print should be.
 	var made_print: bool = info.category in [PartPrints.MY_PRINTS, PartPrints.MY_STICKERS]
-	var image := ThumbTile.new(info.id, _selected_color, made_print)
+	var image := ThumbTile.new(info.id, colour, made_print)
 	image.custom_minimum_size = Vector2(0, _z(52))
 	image.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	# Until its picture is drawn, the part drawn from what the catalogue
@@ -1989,7 +2074,7 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	# the web a picture is a fetch and a render away, and the tiles were
 	# grey squares eight seconds in (appux371 A4).
 	image.sketch = info
-	image.sketch_colour = _sketch_colour()
+	image.sketch_colour = _sketch_colour(colour)
 	box.add_child(image)
 	button.set_meta("tile", image)
 
@@ -1998,9 +2083,15 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 	# a plate 1 x 4 (appux371 A4). The number is on its tooltip.
 	var label := Label.new()
 	var after: String = ""
-	if _set_parts.has(info.id):
-		after = "  ×%d" % int(_set_parts[info.id])
-		button.tooltip_text = "%d in %s\n%s" % [int(_set_parts[info.id]), set_shown, button.tooltip_text]
+	if not key.is_empty():
+		var colour_named: PartLibrary.BrickColor = library.color(colour)
+		button.tooltip_text = "%s\n%s" % [colour_named.name.replace("_", " ") if colour_named != null
+			else "colour %d" % colour, button.tooltip_text]
+		button.accessibility_name = "%s, %s" % [button.accessibility_name, colour_named.name.replace("_", " ")
+			if colour_named != null else "colour %d" % colour]
+		button.set_meta("key", key)
+		button.set_meta("plain_tip", button.tooltip_text)
+		after = "  " + count_words(_set_bin.left(key, _used) if _set_bin != null else 0)
 	if _guesses.has(info.id):
 		after = "  %d%%" % roundi(float(_guesses[info.id]) * 100.0)
 		button.tooltip_text = "Brickognize is %d%% sure of it\n%s" % [
@@ -2054,9 +2145,11 @@ func _make_cell(info: PartLibrary.PartInfo) -> Control:
 
 	_cells[info.id] = image
 	if thumbnails:
-		var ready_now: ImageTexture = thumbnails.peek(info.id, _selected_color, made_print)
+		var ready_now: ImageTexture = thumbnails.peek(info.id, colour, made_print)
 		if ready_now:
 			image.show_picture(ready_now, false)
+	if not key.is_empty():
+		_show_count(button)
 	return button
 
 
@@ -2167,8 +2260,9 @@ static func fit_lines(name: String, after: String, font: Font, size: int, width:
 
 ## The colour a tile's stand-in is drawn in: the one in hand, as its
 ## picture will be.
-func _sketch_colour() -> Color:
-	var colour: PartLibrary.BrickColor = library.color(_selected_color) if library != null else null
+func _sketch_colour(code: int = -1) -> Color:
+	var colour: PartLibrary.BrickColor = library.color(_selected_color if code < 0 else code) \
+		if library != null else null
 	return colour.shown if colour != null else Color(0.6, 0.6, 0.6)
 
 
@@ -2278,7 +2372,8 @@ func _cell_input(button: Button, part_id: String, event: InputEvent) -> void:
 		# No tooltip while it is carried: it followed the pointer out.
 		button.set_meta("tip", button.tooltip_text)
 		button.tooltip_text = ""
-		_on_part(part_id)
+		var key: String = str(button.get_meta("key", ""))
+		_on_part(part_id, Collection.colour_of(key) if not key.is_empty() else -1)
 	part_drag_moved.emit(motion.global_position)
 	button.accept_event()
 
@@ -2292,17 +2387,18 @@ static func _height_text(info: PartLibrary.PartInfo) -> String:
 	return "%d plates" % plates
 
 
-func _on_part(part_id: String) -> void:
+## [param colour], a set's tile's own, is taken in hand with the part.
+func _on_part(part_id: String, colour: int = -1) -> void:
 	var by_keyboard: bool = FocusGuard.keys_with_a_control(get_viewport())
+	if colour >= 0 and colour != _selected_color:
+		_on_colour(colour)
 	_selected_part = part_id
 	PartShelf.used(part_id)
 	_refresh_shelf()
 	# The clicked one stays lit. This set every cell unpressed including
 	# the one just pressed, so choosing a part looked like choosing
 	# nothing — the only sign anything had happened was the ghost.
-	for child: Node in _grid.get_children():
-		if child is Button:
-			(child as Button).button_pressed = str(child.get_meta("part", "")) == part_id
+	_light(part_id)
 	_mark_swatches()
 	part_chosen.emit(part_id)
 	_keys_to_model(by_keyboard)
@@ -2332,10 +2428,18 @@ func show_held(part_id: String, color_code: int) -> void:
 	_refresh_shelf()
 	if color_code != _selected_color:
 		_on_colour(color_code)
+	_light(part_id)
+	_mark_swatches()
+
+
+## The tile of [param part_id] lit, and no other: a set's, only in the
+## colour in hand.
+func _light(part_id: String) -> void:
 	for child: Node in _grid.get_children():
 		if child is Button:
-			(child as Button).button_pressed = str(child.get_meta("part", "")) == part_id
-	_mark_swatches()
+			var key: String = str(child.get_meta("key", ""))
+			(child as Button).button_pressed = str(child.get_meta("part", "")) == part_id \
+				and (key.is_empty() or Collection.colour_of(key) == _selected_color)
 
 
 func selected_color() -> int:
@@ -2548,49 +2652,240 @@ var _photo_button: Button
 var _picker: PickImage
 var _brickognize: Brickognize
 var _telling: ConfirmationDialog
-## A set's parts, shown as the bin's results (show_set, /app?parts=<set>):
-## id -> how many of it the set has, and which set, in words. Empty once
-## anything else is shown.
-var _set_parts: Dictionary = {}
-var set_shown: String = ""
+## The parts of a set, or of several, the bin is built from (SetBin), or
+## null for the whole library. Chosen by [method build_from]; kept with the
+## model ([member ModelStore.bin_sets]) and followed when another is opened.
+var _set_bin: SetBin = null
+var _set_line: HBoxContainer
+var _set_words: Label
+var _set_go: Button
+var _set_back: Button
+## What the model uses, by part and colour, as last counted, and at which
+## of the world's revisions: worked out again whenever the model changes
+## ([method _recount]), never kept apart from it.
+var _used: Dictionary = {}
+var _counted_at: int = -1
+var _counted_msec: int = 0
+## The grid lists the set's parts, a tile each part and colour, in
+## [member _result_keys]' colours; not while a photo's answer or the
+## techniques are shown over them.
+var _listing_set: bool = false
+var _result_keys := PackedStringArray()
+## A set typed into the search ([member SET_TYPED]), offered on the set's
+## line once its inventory is found: {"numbers", "bin"}.
+var _offer: Dictionary = {}
+var _books: SetInventories
+## Why [method build_from] found nothing, in words; how long its last
+## lookup took (on the web, the inventory's fetch).
+var trouble: String = ""
+var looked_up_ms: int = 0
+## The model the choice is kept with.
+var store: ModelStore:
+	set(value):
+		store = value
+		if store != null:
+			store.loaded.connect(func(_name: String, _bricks: int) -> void: _follow_model())
+			store.begun.connect(func(_name: String) -> void:
+				if _set_bin != null:
+					store.bin_sets = _set_bin.sets)
+## A set's number as a person types it to build from it: "10497-1", or
+## "set 10497". A bare number is a part's.
+static var SET_TYPED := RegEx.create_from_string(
+	"^(?:set\\s+([0-9a-z]{2,12}(?:-[0-9]{1,2})?)|([0-9]{3,8}-[0-9]{1,2}))$")
+## How often the counts are worked out at most while the model changes
+## frame after frame (a part dragged): once settled, at once.
+const RECOUNT_MSEC := 100
 
 
-## A set's parts as the bin's results (sets364): each part its inventory
-## has ([lots]: [[part, colour, qty], ...], tools/collection_data.py's), the
-## most used first, as the photo's answer is shown; [title] says which set.
-## Its parts in every colour are one tile, the colour in hand the bin's.
-## Returns how many parts it could show.
-func show_set(title: String, lots: Array) -> int:
-	var counts: Dictionary = {}
-	for row: Variant in lots:
-		if not row is Array or (row as Array).size() < 3:
-			continue
-		var id: String = library.resolve(str(row[0]))
-		counts[id] = int(counts.get(id, 0)) + int(row[2])
-	var found: Array[PartLibrary.PartInfo] = []
-	for id: String in counts:
-		var info: PartLibrary.PartInfo = library.parts.get(id)
-		if info != null and info.reachable and not info.is_redirect():
-			found.append(info)
-	found.sort_custom(func(a: PartLibrary.PartInfo, b: PartLibrary.PartInfo) -> bool:
-		return int(counts[a.id]) > int(counts[b.id]) if int(counts[a.id]) != int(counts[b.id]) else a.id < b.id)
-	if found.is_empty():
+## Build from the parts of [param numbers] (set numbers, one a copy): the
+## bin becomes those sets' parts by part and colour, each counting how many
+## are left, and the model keeps the choice. Returns how many kinds of part
+## it shows; 0, the bin as it was and [member trouble] saying why, when no
+## set of them is known.
+func build_from(numbers: PackedStringArray) -> int:
+	if _books == null:
+		_books = SetInventories.new()
+		add_child(_books)
+	var normal := PackedStringArray()
+	for number: String in numbers:
+		if not SetInventories.normal(number).is_empty():
+			normal.append(SetInventories.normal(number))
+	var began: int = Time.get_ticks_msec()
+	var records: Dictionary = await _books.lookup(normal)
+	looked_up_ms = Time.get_ticks_msec() - began
+	var bin: SetBin = SetBin.make(normal, records, library)
+	if bin == null:
+		trouble = _books.trouble if not _books.trouble.is_empty() \
+			else "no set %s is known" % " or ".join(normal)
 		return 0
-	if _category == TECHNIQUES:
-		_category = "All"
-		for child: Node in _category_row.get_children():
-			(child as Button).button_pressed = str(child.get_meta("category", "")) == _category
-	_guesses.clear()
-	_results = found
-	_set_parts = counts
-	set_shown = title
-	_fill_grid()
-	return found.size()
+	trouble = ""
+	print("set bin: %s, %d kinds of part, looked up in %d ms" % [bin.title, bin.order.size(), looked_up_ms])
+	_offer = {}
+	_set_bin = bin
+	if store != null:
+		store.bin_sets = bin.sets
+	# The whole set in sight: what was typed or chosen is let go.
+	_search.text = ""
+	_pending = false
+	_category = "All"
+	for child: Node in _category_row.get_children():
+		(child as Button).button_pressed = str(child.get_meta("category", "")) == _category
+	_recount()
+	_run_search("")
+	return bin.order.size()
 
 
-## Which set's parts the bin shows, or "" when it shows anything else.
+## Back to the whole library: the set's counts go with it.
+func leave_set() -> void:
+	_drop_set()
+	_run_search(_search.text)
+
+
+## The set bin let go, and the model's choice with it.
+func _drop_set() -> void:
+	_set_bin = null
+	_used = {}
+	if store != null:
+		store.bin_sets = PackedStringArray()
+	_say_set()
+
+
+## Which sets the bin is built from, in words, or "" for the whole library.
 func set_showing() -> String:
-	return set_shown if not _set_parts.is_empty() else ""
+	return _set_bin.title if _set_bin != null else ""
+
+
+## The set bin, or null.
+func set_bin() -> SetBin:
+	return _set_bin
+
+
+## What the first [param most] of a set's tiles count, part/colour -> how
+## many are left, for a browser check (brickworksState.bin_left).
+func counts_shown(most: int = 8) -> Dictionary:
+	var out: Dictionary = {}
+	if _set_bin == null or not _listing_set:
+		return out
+	for n: int in mini(most, _result_keys.size()):
+		out[_result_keys[n]] = _set_bin.left(_result_keys[n], _used)
+	return out
+
+
+## The model opened says which sets its bin was built from, or none.
+func _follow_model() -> void:
+	if library == null or _category_row == null or _category_row.get_child_count() == 0:
+		return   # Not populated yet: populate() follows it.
+	var wanted: PackedStringArray = store.bin_sets
+	if _set_bin != null and _set_bin.sets == wanted:
+		_recount()
+		return
+	if wanted.is_empty():
+		if _set_bin != null:
+			_drop_set()
+			_run_search(_search.text)
+		return
+	if await build_from(wanted) == 0:
+		_say_set()
+
+
+## The counts worked out again from the model, and every tile and the set's
+## line told.
+func _recount() -> void:
+	if _set_bin == null:
+		return
+	var world: BrickWorld = builder.world if builder != null else null
+	_counted_at = world.revision if world != null else -1
+	_counted_msec = Time.get_ticks_msec()
+	_used = SetBin.used_in(world, builder.scenery, library) if world != null else {}
+	for cell: Node in _grid.get_children():
+		if not str(cell.get_meta("key", "")).is_empty():
+			_show_count(cell as Button)
+	_say_set()
+
+
+## How many of a tile's part and colour are left, after its name: "×12",
+## "none left" or "1 over", greyed when none are; and on its tooltip.
+func _show_count(button: Button) -> void:
+	var key: String = button.get_meta("key")
+	var left: int = _set_bin.left(key, _used) if _set_bin != null else 0
+	var label: Label = button.get_meta("name_label")
+	var words: String = count_words(left)
+	if str(label.get_meta("after", "")) != "  " + words:
+		label.set_meta("after", "  " + words)
+		_fit_name(label, _name_width(label))
+	var spent: bool = left <= 0
+	(button.get_meta("tile") as Control).modulate = Color(1, 1, 1, 0.38) if spent else Color.WHITE
+	label.modulate = Color(1, 1, 1, 0.55) if spent else Color(1, 1, 1, 0.86)
+	var held: int = int(_set_bin.have.get(key, 0)) if _set_bin != null else 0
+	button.tooltip_text = "%s of the %d in %s%s\n%s" % [
+		"None left" if left == 0 else ("%d over" % -left if left < 0 else "%d left" % left), held,
+		_set_bin.title if _set_bin != null else "", " — it can still be used" if spent else "",
+		str(button.get_meta("plain_tip", ""))]
+
+
+## A count left as a tile says it.
+static func count_words(left: int) -> String:
+	if left > 0:
+		return "×%d" % left
+	return "none left" if left == 0 else "%d over" % -left
+
+
+## The set's line at the bin's top: the sets and the parts left, with the
+## way back to the whole library; or a set typed into the search, offered.
+func _say_set() -> void:
+	if _set_line == null:
+		return
+	var offered: SetBin = _offer.get("bin")
+	_set_line.visible = _set_bin != null or offered != null
+	_set_back.visible = _set_bin != null
+	_set_go.visible = offered != null
+	if offered != null:
+		_set_words.text = "%s, %s pieces" % [offered.title, _comma(offered.pieces)]
+		_set_go.text = "Add its parts" if _set_bin != null else "Build from it"
+		_set_go.tooltip_text = ("Its parts added to the bin's, counted together" if _set_bin != null
+			else "The bin becomes this set's parts, each counting how many are left as you build")
+		_set_words.tooltip_text = _set_words.text
+		return
+	if _set_bin == null:
+		return
+	var sums: Dictionary = _set_bin.tally(_used, library)
+	_set_words.text = "%s: %s of %s left%s" % [_set_bin.title, _comma(int(sums["left"])),
+		_comma(_set_bin.pieces), ", %s over" % _comma(int(sums["over"])) if int(sums["over"]) > 0 else ""]
+	_set_words.tooltip_text = ("Building from the parts of %s. Each part put down takes one from its "
+		+ "count; undo or a delete gives it back. A part with none left can still be used: the bin "
+		+ "says how many over the set the model is.%s") % [_set_bin.title,
+		"" if _set_bin.unshown == 0 else "\n%s of its pieces are of parts this build cannot show." % _comma(_set_bin.unshown)]
+
+
+## A set's number typed into the search: offered on the set's line once its
+## inventory is found, for as long as the search still says it.
+func _offer_typed(query: String) -> void:
+	var said: RegExMatch = SET_TYPED.search(query.strip_edges().to_lower())
+	if said == null:
+		if not _offer.is_empty():
+			_offer = {}
+			_say_set()
+		return
+	var number: String = SetInventories.normal(said.get_string(1) if not said.get_string(1).is_empty()
+		else said.get_string(2))
+	if _books == null:
+		_books = SetInventories.new()
+		add_child(_books)
+	var records: Dictionary = await _books.lookup(PackedStringArray([number]))
+	if _search.text.strip_edges().to_lower() != query.strip_edges().to_lower():
+		return
+	var bin: SetBin = SetBin.make(PackedStringArray([number]), records, library)
+	_offer = {} if bin == null else {"numbers": PackedStringArray([number]), "bin": bin}
+	_say_set()
+
+
+func _take_offer() -> void:
+	if _offer.is_empty():
+		return
+	var numbers: PackedStringArray = _offer["numbers"]
+	if _set_bin != null:
+		numbers = _set_bin.sets + numbers
+	await build_from(numbers)
 
 
 ## The parts a photo was answered with, by id -> how sure Brickognize is:
@@ -2704,7 +2999,7 @@ func show_guesses(guesses: Array) -> void:
 		_category = "All"
 		for child: Node in _category_row.get_children():
 			(child as Button).button_pressed = str(child.get_meta("category", "")) == _category
-	_set_parts.clear()
+	_listing_set = false
 	_results = found
 	_guesses = scores
 	# In the colour the photo shows, taken in hand as an element number's
