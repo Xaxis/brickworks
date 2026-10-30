@@ -172,8 +172,14 @@ past_deadline() { [ "$(date +%s)" -gt "$(cat "$SPEC/deadline" 2>/dev/null || ech
 # The end, in TAG.train/result. Before the ship begins, TAG.gave_up too, as
 # ship_after.sh writes: ship.sh writes TAG.done once it has begun.
 finish() {
-  echo "$1" > "$SPEC/result"
-  [ -e "$SPEC/shipped" ] || [ "$1" = live ] || echo "$1" > "$RO/$TAG.gave_up"
+  # TAG.gave_up before the result, each written whole: prev_state reads
+  # gave_up first, and a train behind that looked between the two writes
+  # said "t-m7's train ended" where it says "never shipped" (a ci_gate at
+  # load 22, 2026-10-30).
+  if ! [ -e "$SPEC/shipped" ] && [ "$1" != live ]; then
+    echo "$1" > "$RO/$TAG.gave_up.$$" && mv "$RO/$TAG.gave_up.$$" "$RO/$TAG.gave_up"
+  fi
+  echo "$1" > "$SPEC/result.$$" && mv "$SPEC/result.$$" "$SPEC/result"
   step "${1}"
   [ "$1" = live ] && exit 0
   exit 1
