@@ -3677,6 +3677,41 @@
     },
     {
       "kind": "ui",
+      "label": "every set's page",
+      "entry": "api/_sets.js",
+      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; /library/set/N.jpg its picture drawn from its parts (api/_flatlay.js), /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a set's picture drawn from its parts",
+      "entry": "api/_flatlay.js",
+      "reach": "https://brickworks.diy/library/set/10497-1.jpg   (its most distinctive parts, tools/set_catalog.py picks, drawn from their own geometry in the store and written as a JPEG; tests/test_sets.py)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "set catalogue",
+      "entry": "tools/set_catalog.py",
+      "reach": "python3 tools/set_catalog.py [--check]   (assets/generated/set_catalog.json from vendor/rebrickable and assets/generated/sets/; deploy.sh runs it and puts it beside the share function)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "sets browser flow",
+      "entry": "tools/web/sets_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/sets_flow.mjs --url=<preview> --out=DIR [--no-app]   (preview_checks.sh sets_flow: the library's every set, a set with and without a 3D model, parts with our pictures, weight and first paint, Parts you own for a throwaway, Open its parts landing in the app's bin, the sitemaps)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "set parts probe",
+      "entry": "src/dev/set_parts_probe.gd",
+      "reach": "tools/probe.sh set_parts_probe   (/app?parts=10497-1&brief=: the set's parts in the bin, most used first, and the brief drafted, not sent)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
       "label": "choose the AI that designs",
       "entry": "src/ui/ai_settings.gd",
       "reach": "godot --path .  (Tools, Settings…, AI…: Claude, or another AI on your own API key: provider, address, key with Show and Remember, the provider's own model list filtered, temperature, max output, reasoning effort, Test, Design with it; the assistant's column then designs with it)   tools/probe.sh ai_settings_probe",
