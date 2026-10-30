@@ -255,7 +255,7 @@ is on the page, `hidden`, for the script to show.
   row of models; and for the header and the footer on every page, so the
   mark and the account sit where they do on the gallery. Nothing was wider
   than 1,140 px, 59% of a 1920 window, four cards to a row (site273). A
-  model's page: from 1200 px its column is 452 px, room for its action
+  model's page: from 1200 px its column is 480 px, room for its action
   bar in one row inside the panel it is from 900 px (site357), and its
   picture the rest; on a phone (under 600 px) its picture is square, the model drawn
   as large as its width lets it (`web/model-page.js` `fitPicture`, by

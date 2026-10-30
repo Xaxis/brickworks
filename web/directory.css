@@ -36,7 +36,7 @@
 /* From 1200 px the panel's words have the room the action bar needs in one row. */
 @media (width >= 1200px) { .model-page .side { padding: var(--s-5); } }
 .model-page .rest { grid-area: rest; min-width: 0; }
-@media (width >= 1200px) { .model-page .top { grid-template-columns: minmax(0, 1fr) 452px; } }
+@media (width >= 1200px) { .model-page .top { grid-template-columns: minmax(0, 1fr) 480px; } }
 @media (width < 900px) {
 	.model-page { padding-top: 12px; }
 	.model-page .crumbs { margin-bottom: 10px; }
