@@ -197,6 +197,7 @@ static func for_keyboard() -> Array[Binding]:
 		keyed(["duplicate"], "duplicate"),
 		keyed(["cut_parts"], "cut"),
 		keyed(["mirror"], "mirror the selection"),
+		keyed(["split_parts", "merge_parts"], "split the selection into smaller parts, or merge it into bigger ones"),
 		keyed(["swing", "swing_back"], "swing the selection on its hinge"),
 		keyed(["make_submodel", "leave_submodel"], "make a sub-model, or leave one"),
 		keyed(["undo"], "undo"),

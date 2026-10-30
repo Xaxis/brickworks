@@ -74,7 +74,7 @@ app, joined by a link (docs/TOGETHER.md).
 - Comments pinned to parts (`src/assembly/pinned_comments.gd`
   `PinnedComments`, kept on `ModelStore.pins`; `src/ui/pins_view.gd`
   `PinsView`, the marks over the model's column; `src/ui/pins_dialog.gd`
-  `PinsDialog`, Edit, Comments…, the `comments` Shell command, also on a
+  `PinsDialog`, File, Comments…, the `comments` Shell command, also on a
   part's right-click): a `0 !BRICKWORKS PIN {json}` line each in the
   file's head; a builder `"pins"` undo step each (`Builder.pins_hook`); in
   a session a `~pin:<id>` key each with its part by uid. Chat's rule in a
@@ -155,7 +155,7 @@ signed in as someone else.
   1 s or 95% within 500 ms and four of that page's own frames, as the
   change measure; stages send, reach, frame, Follow and its frame, the owner's selected part outlined
   in their colour off the second page's pixels, the wheel stopping it; a
-  comment pinned from Edit, Comments… and resolved by one click on its
+  comment pinned from File, Comments… and resolved by one click on its
   card, in the owner's and the desktop's files and not the under-13's; the
   shared link's .mpd keeping it and its page not showing it; a reload and a
   closed page with changes on their way, the owner's page reloaded; and

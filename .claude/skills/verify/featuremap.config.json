@@ -941,13 +941,6 @@
     },
     {
       "kind": "ui",
-      "label": "split view",
-      "entry": "src/ui/split_view.gd",
-      "reach": "tools/probe.sh split_probe   (PROBE_SIZE=1400x900 too; by hand: View, Split or F8, then Front, Top, Side or Back over the second view, and a part put down from it)",
-      "area": "view"
-    },
-    {
-      "kind": "ui",
       "label": "navigation presets",
       "entry": "src/camera/view_prefs.gd",
       "reach": "godot --path .  (Settings, Navigate like: Studio, Blender or Mecabricks; then drag with each button)",
@@ -4147,13 +4140,6 @@
     },
     {
       "kind": "cli",
-      "label": "first build probe",
-      "entry": "src/dev/first_build_probe.gd",
-      "reach": "tools/probe.sh first_build_probe; PROBE_SIZE=1400x900 tools/probe.sh first_build_probe   (pictures in shots/first_build/)",
-      "area": "building"
-    },
-    {
-      "kind": "cli",
       "label": "palette probe",
       "entry": "src/dev/palette_probe.gd",
       "reach": "tools/probe.sh palette_probe; PROBE_SIZE=1400x900 tools/probe.sh palette_probe   (pictures in shots/palette/)",
@@ -4178,6 +4164,34 @@
       "label": "connect probe",
       "entry": "src/dev/connect_probe.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/connect_probe.gd  (8841-1's column on its pins in 6 actions or fewer, and the same aim without Connect; a 1 x 16 by its fourth hole on a pin in a brick turned 30 and tilted 25 degrees; the toolbar's Connect on a part down, one undo, Esc puts it back; 8841-1's joint parts by Connect and the walk's actions a part; -- only=column|turned|model|walk; PROBE_SIZE=1280x720)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "set walk probe",
+      "entry": "src/dev/setwalk_probe.gd",
+      "reach": "tools/probe.sh setwalk_probe  (8841-1's 25 walk parts and 5762-1's first 25 built from the set's bin, its number typed and Build from it: each part's tile, R and T, the view's keys or cube, the pointer aimed with its corrections, Connect or a typed rest, every input counted; 12 actions a part or fewer and every part exact; -- only=8841-1|5762-1 shots=1 from=library (the same walk from the whole library); PROBE_SIZE=1400x900)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "handles on the selection",
+      "entry": "src/ui/handles.gd",
+      "reach": "godot --path .  (the Rotate or Move tool, a click on a part: rings or arrows on its own, the model's or the view's axes, the tag beside them says which and a click on it goes to the next; drag a ring to turn it, finer further out, an arrow to slide it; a number typed while dragging or straight after makes it exact; Alt-click picks the point it turns about; it stops where a part is in the way; one undo a drag)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "handles probe",
+      "entry": "src/dev/handles_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/handles_probe.gd  (a part turned about each of its own axes to any angle in 3 actions, and a 1 x 16 on an axle through a brick turned 30 and tilted 25 degrees turned about its joint; arrows along each axis; the part's, model's and view's axes; Alt-click's pivot; quarter, step, 5 and 1 degree stops further out; a number straight after a drag; a ring and an arrow stopped by a part in the way; -- only=rings|arrows|axes|pivot|snaps|typed|stopped; PROBE_SIZE=1280x720)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "first build probe",
+      "entry": "src/dev/first_build_probe.gd",
+      "reach": "tools/probe.sh first_build_probe; PROBE_SIZE=1400x900 tools/probe.sh first_build_probe   (pictures in shots/first_build/)",
       "area": "building"
     },
     {
@@ -4210,20 +4224,6 @@
     },
     {
       "kind": "ui",
-      "label": "handles on the selection",
-      "entry": "src/ui/handles.gd",
-      "reach": "godot --path .  (the Rotate or Move tool, a click on a part: rings or arrows on its own, the model's or the view's axes, the tag beside them says which and a click on it goes to the next; drag a ring to turn it, finer further out, an arrow to slide it; a number typed while dragging or straight after makes it exact; Alt-click picks the point it turns about; it stops where a part is in the way; one undo a drag)",
-      "area": "building"
-    },
-    {
-      "kind": "cli",
-      "label": "handles probe",
-      "entry": "src/dev/handles_probe.gd",
-      "reach": "godot --path . --resolution 1400x900 --script src/dev/handles_probe.gd  (a part turned about each of its own axes to any angle in 3 actions, and a 1 x 16 on an axle through a brick turned 30 and tilted 25 degrees turned about its joint; arrows along each axis; the part's, model's and view's axes; Alt-click's pivot; quarter, step, 5 and 1 degree stops further out; a number straight after a drag; a ring and an arrow stopped by a part in the way; -- only=rings|arrows|axes|pivot|snaps|typed|stopped; PROBE_SIZE=1280x720)",
-      "area": "building"
-    },
-    {
-      "kind": "ui",
       "label": "compare with a save",
       "entry": "src/ui/compare_view.gd",
       "reach": "tools/probe.sh compare_probe   (File, Compare with…, or Compare on a row of Versions…: added green, removed a red ghost, moved or turned amber with a faint ghost, recoloured violet, the rest faded; the panel's counts, Previous and Next; Esc or Close puts the view back)",
@@ -4238,6 +4238,13 @@
     },
     {
       "kind": "ui",
+      "label": "split view",
+      "entry": "src/ui/split_view.gd",
+      "reach": "tools/probe.sh split_probe   (PROBE_SIZE=1400x900 too; by hand: View, Split or F8, then Front, Top, Side or Back over the second view, and a part put down from it)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "bands and springs by hand",
       "entry": "src/assembly/bands.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd   (by hand: pick a rubber belt or a shock absorber in the bin, click the pulleys or the two pin holes; Build, Hose, tube or chain…, Spring or shock; nudge a part it is on and it follows; PROBE_SIZE=1280x720)",
@@ -4248,6 +4255,20 @@
       "label": "springs probe",
       "entry": "src/dev/springs_probe.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd  (a band round two wedge belt wheels and three, each in 4 actions or fewer, within 1 LDU of the tangents and arcs by hand and in every groove; turned and tilted; a wheel nudged and its band following, one undo; a spring stretched from 4 to 6 studs keeping its turns; a shock from the bin; saved and opened the same; PROBE_SIZE=1280x720)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "split and merge parts",
+      "entry": "src/assembly/split_merge.gd",
+      "reach": "godot --path .  (select; Alt-S splits, Alt-M merges, or the menu on a part)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "splitmerge probe",
+      "entry": "src/dev/splitmerge_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/splitmerge_probe.gd  (a 2 x 4 plate split on its studs; three 1 x 4 plates merged into a brick; six 1 x 1s into a 2 x 3; five 1 x 2s into two; a merge with no real part said and nothing changed; a 1 x 1 brick and a slope split)",
       "area": "building"
     }
   ]

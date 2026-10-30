@@ -1,5 +1,5 @@
 ## The comments pinned to parts, drawn on the model (PinnedComments): a round
-## mark in its writer's colour over its part, numbered as Edit, Comments…
+## mark in its writer's colour over its part, numbered as File, Comments…
 ## lists them. Pressed, a card says who wrote it and what, with Resolve,
 ## one click. Resolved ones are not drawn; the Comments panel lists them.
 ##
