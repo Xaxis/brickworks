@@ -35,7 +35,7 @@
       "id": "api:/api/models",
       "kind": "api",
       "entry": "api/models.js",
-      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/models   (401 signed out; with a session GET the list and how full, GET ?name=X one model, POST {name, base, model} a save, DELETE ?name=X&version=N a delete)",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/models   (401 signed out; with a session GET the list and how full, GET ?name=X one model, POST {name, base, model} a save, DELETE ?name=X&version=N a delete; plans on, a new model past the plan's limit 413 {full: \"plan\", error, pro: \"/plans\"}: python3 tools/minitest.py tests/test_saved_models_plan.py)",
       "area": "model-io",
       "tests": [
         "tests/test_bench.py",
@@ -90,7 +90,8 @@
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
-        "tests/test_desktop.py"
+        "tests/test_desktop.py",
+        "tests/test_saved_models_plan.py"
       ]
     },
     {
@@ -101,7 +102,8 @@
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
-        "tests/test_desktop.py"
+        "tests/test_desktop.py",
+        "tests/test_saved_models_plan.py"
       ]
     },
     {
@@ -112,7 +114,8 @@
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
-        "tests/test_desktop.py"
+        "tests/test_desktop.py",
+        "tests/test_saved_models_plan.py"
       ]
     },
     {
@@ -149,7 +152,11 @@
       "entry": "api/mcp.js",
       "reach": "node tools/web/relay_server.mjs 8790, then godot --headless --path . --script src/dev/connector_probe.gd -- 8790",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/fixtures/oauth/world.mjs",
+        "tests/fixtures/relay/world.mjs",
+        "tests/test_oauth_clients.py"
+      ]
     },
     {
       "id": "api:POST /api/orangecheck",
@@ -175,7 +182,8 @@
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
-        "tests/test_desktop.py"
+        "tests/test_desktop.py",
+        "tests/test_saved_models_plan.py"
       ]
     },
     {
@@ -207,8 +215,17 @@
       "tests": [
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
-        "tests/test_desktop.py"
+        "tests/test_desktop.py",
+        "tests/test_saved_models_plan.py"
       ]
+    },
+    {
+      "id": "cli:ChatGPT connector flow",
+      "kind": "cli",
+      "entry": "tools/web/chatgpt_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/chatgpt_flow.mjs --url=<deployment or relay_server> [--out=shots/chatgpt]   (with .env sourced)",
+      "area": "account",
+      "tests": []
     },
     {
       "id": "cli:LDraw files in storage",
@@ -1450,6 +1467,14 @@
       "tests": []
     },
     {
+      "id": "cli:product look in a browser",
+      "kind": "cli",
+      "entry": "tools/web/product_render_flow.mjs",
+      "reach": "node tools/web/product_render_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=OUT   (a local export served by tools/web/serve.py, with .env sourced; or --url=<a preview>/app --bypass=$VERCEL_BYPASS: Product under Compatibility on each backdrop, the red glass red and the clear see-through)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:profile browser flow",
       "kind": "cli",
       "entry": "tools/web/profile_flow.mjs",
@@ -2137,6 +2162,14 @@
       "tests": []
     },
     {
+      "id": "lib:a plan's limit on models kept with the account",
+      "kind": "lib",
+      "entry": "supabase/account_models_plan.sql",
+      "reach": "python3 tools/minitest.py tests/test_saved_models_plan.py; PG_MODULE=/tmp/pg/node_modules/pg/lib/index.js node tools/apply_sql.mjs supabase/account_models_plan.sql --dry --try=tools/account_models_plan_try.sql --table=account_models   (.env sourced; rolled back; the lead applies it without --dry. Free keeps 25 new models, an update or the same model again at the limit kept, a delete makes room at once, the owner, Pro and a comp of Pro any number, a plan not known refuses nobody; plans off, Admission never asked and the save sent as before)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:a rebrickable account",
       "kind": "lib",
       "entry": "src/collection/rebrickable_account.gd",
@@ -2586,7 +2619,7 @@
       "id": "lib:models kept with the account",
       "kind": "lib",
       "entry": "src/account/cloud_models.gd",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (with .env sourced; supabase/account_models.sql and account_models_delete.sql applied; the desktop's half: desktop_cloud_probe)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (with .env sourced; supabase/account_models.sql and account_models_delete.sql applied; the desktop's half: desktop_cloud_probe; a plan that keeps no more, Free's 25: tools/probe.sh plan_full_probe)",
       "area": "model-io",
       "tests": []
     },
@@ -2684,7 +2717,7 @@
       "id": "lib:plans from Admission",
       "kind": "lib",
       "entry": "api/_billing.js",
-      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, AI builds and desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
+      "reach": "python3 tools/minitest.py tests/test_billing.py   (BRICKWORKS_BILLING off|test|live, each with its own kind of ADMISSION_KEY; off asks nothing; an account's plan, how many models it keeps with it (saved_models: Free 25, Pro any number; AI never limited) and the desktop; snapshots in supabase/admission_snapshots.sql answer while Admission is down, none refuses nobody)",
       "area": "web",
       "tests": []
     },
@@ -2708,7 +2741,7 @@
       "id": "lib:product look",
       "kind": "lib",
       "entry": "src/render/plastic_product.gdshader",
-      "reach": "tools/probe.sh product_render_probe  (windowed, on the GPU: Render's Product look draws in the product shaders, each backdrop as named, depth of field softens, the window's frame cost and environment unchanged; sixteen colour swatches on the white sweep against LDraw: black black, the colours and clear colours near their own, no shadow hatching)  /  tools/probe.sh render_probe -- --model=models/sports_car.ldr --look=product --gradient=1 --backdrop=#f5f6f8 --quality=best --size=1280x720 --picture=OUT.png",
+      "reach": "tools/probe.sh product_render_probe  (windowed, on the GPU: Render's Product look draws in the product shaders, each backdrop as named, depth of field softens, the window's frame cost and environment unchanged; sixteen colour swatches on the white sweep against LDraw: black black, the colours and clear colours near their own, no shadow hatching; a clear wall shows a clear red one behind it, and on nothing is glass, not black)  /  tools/probe.sh render_probe -- --model=models/sports_car.ldr --look=product --gradient=1 --backdrop=#f5f6f8 --quality=best --size=1280x720 --picture=OUT.png",
       "area": "view",
       "tests": []
     },
@@ -3196,13 +3229,15 @@
       "entry": "src/ui/access.gd",
       "reach": "godot --path .  (Tab from the model into the frame, Return on a part and Return again to put it down; Settings, Interface size and Reduce motion; with Orca running, each control said by its name)",
       "area": "building",
-      "tests": []
+      "tests": [
+        "tests/fixtures/relay/world.mjs"
+      ]
     },
     {
       "id": "ui:account full offer",
       "kind": "ui",
       "entry": "src/ui/account_full_offer.gd",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (its step 6: nearly full at 450 of 500 models, full at 500, Delete old models\u2026)",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment>/app --bypass=$VERCEL_BYPASS --out=shots/cloud   (its step 6: nearly full at 450 of 500 models, full at 500, Delete old models\u2026); tools/probe.sh plan_full_probe   (the plan full, plans on: \"Free keeps 25 models in your account. Delete one, or get Pro for unlimited.\" with Delete old models\u2026, See Pro and Not now, said at every save; a delete makes room)",
       "area": "model-io",
       "tests": []
     },
@@ -3894,7 +3929,8 @@
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
-        "tests/test_desktop.py"
+        "tests/test_desktop.py",
+        "tests/test_saved_models_plan.py"
       ]
     },
     {
@@ -4492,7 +4528,8 @@
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
         "tests/test_desktop.py",
-        "tests/test_plans.py"
+        "tests/test_plans.py",
+        "tests/test_saved_models_plan.py"
       ]
     },
     {

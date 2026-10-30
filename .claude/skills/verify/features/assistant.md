@@ -128,7 +128,10 @@ fixing what it got wrong.
   --provider-model=M --provider-base=URL --provider-effort=E` from a command
   line. `provider_loop_probe` (in a window) drives a whole design against
   `tools/provider_stub.py`, an OpenAI-compatible stub as strict as OpenAI about
-  call pairing and pictures, its first answer a 429: 6 parts built, the fresh
+  call pairing, pictures and a tool's array that names no items (refused, as
+  OpenAI does; OpenAIChat sends `Provider.portable`, and the probe holds it to
+  the relay's `portable` in api/mcp.js under node, "the same for 61 tools"),
+  its first answer a 429: 6 parts built, the fresh
   look asked with 3 pictures and answered, `stub-tower.ldr` saved, 8 requests
   (429 then 7 answered) each with the key, the app's instructions and all 61
   tools, view_model's picture and the look's three reaching the model, and the
@@ -177,7 +180,8 @@ fixing what it got wrong.
   `gemini_native`. `provider_apis_probe` (in a window) reads and writes each
   offline, then designs, tests and lists models against the stub's
   `/v1/messages` and `/v1beta/models/M:generateContent`, each as strict as
-  its API. Not yet run against the real APIs (no key in .env, 2026-10-29).
+  its API; its stub on 9661, or `-- --port=N`. Not yet run against the real
+  APIs (no key in .env, 2026-10-29).
 - `the check by real shapes`: `src/ai/exact_check.gd` over `src/assembly/exact.gd`,
   called from `Assistant._check`, so every check, edit, submission, review and save
   has it: each part BrickNet has is its convex colliders and connector labels

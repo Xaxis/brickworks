@@ -117,15 +117,18 @@ import { browseBar } from "/browse.js";
 
   const searching = () => Boolean(q.value.trim() || theme || chosen(size) || chosen(decade));
 
-  // Show more's press while a page that came by itself waits to be drawn.
+  // Show more's press while a page that came by itself waits to be drawn,
+  // or is still on its way (pressed): it is drawn as soon as it is here
+  // (gallery.js).
   let release = null;
+  let pressed = false;
 
   /// Resolves once the end of the list is under the screen, so a page put
   /// there moves only what is out of sight, or once Show more is pressed
   /// (gallery.js outOfSight).
   function outOfSight() {
     const under = () => grid.getBoundingClientRect().bottom > innerHeight;
-    if (under()) return Promise.resolve();
+    if (pressed || under()) return Promise.resolve();
     return new Promise((done) => {
       const look = () => { if (under()) release(); };
       release = () => {
@@ -143,7 +146,8 @@ import { browseBar } from "/browse.js";
     const mine = ++asking;
     if (release) release();
     loading = true;
-    more.disabled = true;
+    pressed = false;
+    more.disabled = !byItself;
     const asked = question();
     asked.set("page", String(fresh ? 1 : page + 1));
     try {
@@ -152,7 +156,6 @@ import { browseBar } from "/browse.js";
       const data = await reply.json();
       if (mine !== asking) return;
       if (byItself) {
-        more.disabled = false;
         await outOfSight();
         if (mine !== asking) return;
       }
@@ -269,7 +272,11 @@ import { browseBar } from "/browse.js";
     theme = "";
     ask();
   });
-  more.addEventListener("click", () => (release ? release() : next(false)));
+  more.addEventListener("click", () => {
+    if (release) release();
+    else if (loading) pressed = true;
+    else next(false);
+  });
   browseBar({ search: q, above: document.querySelector(".library-bar"), bar: $("toolbar"), row: $("themes") });
   addEventListener("scroll", nearEnd, { passive: true });
   addEventListener("resize", nearEnd, { passive: true });

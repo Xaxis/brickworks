@@ -341,7 +341,11 @@ try {
   const phonePage = await phone.newPage();
   listen(phonePage, "visitor's phone");
   await phonePage.goto(`${site}/gallery?tests=1`, { waitUntil: "load" });
-  await until(phonePage, () => document.documentElement.dataset.shelves === "ready", "the front with the chosen pick");
+  // The shelves are said ready as they come, and drawn with the list's
+  // first page (gallery.js next): read before that, the pick was not there
+  // yet and said "" (fixes354's preview, 2026-10-29).
+  await until(phonePage, () => document.documentElement.dataset.gallery === "ready"
+    && document.documentElement.dataset.shelves === "ready", "the front with the chosen pick");
   drawn = await frontDrawn(phonePage);
   check(`...and says so on a phone: "${drawn.why}"`, drawn.pick === ids.shed && drawn.why === "Chosen by Brickworks"
     && drawn.chosen === "yes" && !(await sideways(phonePage)));
@@ -436,7 +440,8 @@ try {
   const adaPage = await adaPhone.newPage();
   listen(adaPage, "Ada 390");
   await adaPage.goto(`${site}/gallery?tests=1`, { waitUntil: "load" });
-  await until(adaPage, () => document.documentElement.dataset.shelves === "ready", "Ada's front");
+  await until(adaPage, () => document.documentElement.dataset.gallery === "ready"
+    && document.documentElement.dataset.shelves === "ready", "Ada's front");
   drawn = await frontDrawn(adaPage);
   check(`Ada, with no collection: asked to tell what she owns, no shares, no Parts I own`,
     drawn.ready && /Tell Brickworks what you own/.test(drawn.readySaid) && drawn.owned === 0 && !drawn.sorts.includes("owned"));

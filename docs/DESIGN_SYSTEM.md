@@ -587,7 +587,9 @@ and after scrolling, every page at 390 and 1280 px.
   (the gallery's, a screen ahead) is put in only while the end of the list
   is under the screen. Come while what is under the list shows (Put yours
   here, the footer), it waits, and Show more draws it at once: put in then,
-  it pushed them down under a person's eyes (site277, CLS 0.51).
+  it pushed them down under a person's eyes (site277, CLS 0.51). Show more
+  stays pressable while that page is on its way, and a press then draws it
+  as soon as it comes.
 - **Signed in at once**: a page that is yours (/profile, /settings, /feed,
   /notifications) knows from the session kept in this browser that you
   are signed in, so it never says "Looking for your sign-in…" while it

@@ -146,6 +146,9 @@ func _end_to_end() -> void:
 	var names: Array = asked[1]["tool_names"] if asked.size() > 1 else []
 	_check("...the tool list as the app serves it, fresh_eyes and job in it",
 		names.has("fresh_eyes") and names.has("job") and names.has("submit_design"))
+	var same: String = _as_relay((_main.get("_connector").get("rpc") as CommandSocket).served_tools()) \
+		if _main.get("_connector") != null else "no connector to ask"
+	_check("...portable as ChatGPT's is: %s" % same, same.begins_with("the same"))
 	var looked: Dictionary = _after(asked, 3)
 	_check("view_model's picture reached the model, after its tool message: %d"
 		% int(looked.get("pictures_after_tools", 0)), int(looked.get("pictures_after_tools", 0)) >= 1)
@@ -309,6 +312,31 @@ func _keys() -> void:
 		and ProviderSettings.load_key("openai") == OS.get_environment("OPENAI_API_KEY"))
 	_check("shown only as a fingerprint: %s" % ProviderSettings.fingerprint(key),
 		not ProviderSettings.fingerprint(key).contains("k".repeat(10)))
+
+
+## Whether Provider.portable makes of [param tools] what the relay's portable
+## (api/mcp.js) makes of them, the one rule in the two languages it runs in:
+## "the same for N tools", or which differ, or why it could not be asked.
+func _as_relay(tools: Array) -> String:
+	var given: String = ProjectSettings.globalize_path("user://portable-tools.json")
+	var ours: String = ProjectSettings.globalize_path("user://portable-ours.json")
+	FileAccess.open(given, FileAccess.WRITE).store_string(JSON.stringify(tools))
+	FileAccess.open(ours, FileAccess.WRITE).store_string(JSON.stringify(Provider.portable(tools)))
+	var script: String = "import { readFileSync } from 'node:fs'; import { pathToFileURL } from 'node:url';" \
+		+ " const [, given, ours, relay] = process.argv;" \
+		+ " const { portable } = await import(pathToFileURL(relay).href);" \
+		+ " const sorted = (v) => JSON.stringify(v, (k, o) => o && typeof o === 'object' && !Array.isArray(o)" \
+		+ " ? Object.fromEntries(Object.keys(o).sort().map((n) => [n, o[n]])) : o);" \
+		+ " const theirs = JSON.parse(readFileSync(given, 'utf8')).map(portable);" \
+		+ " const mine = JSON.parse(readFileSync(ours, 'utf8'));" \
+		+ " const differ = theirs.filter((t, i) => sorted(t) !== sorted(mine[i])).map((t) => t.name);" \
+		+ " console.log(differ.length || theirs.length !== mine.length ? 'differ: ' + differ.join(', ')" \
+		+ " : 'the same for ' + theirs.length + ' tools');"
+	var said: Array = []
+	var code: int = OS.execute("node", ["--input-type=module", "-e", script, given, ours,
+		ProjectSettings.globalize_path("res://api/mcp.js")], said, true)
+	var lines: PackedStringArray = "\n".join(said).strip_edges().split("\n")
+	return lines[lines.size() - 1] if code == 0 else "node said %d: %s" % [code, "\n".join(said).left(200)]
 
 
 func _requests() -> Array:

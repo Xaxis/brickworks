@@ -121,8 +121,8 @@ uniform vec4 cut_plane = vec4(0.0, 1.0, 0.0, 1.0e9);
 //   chrome, metal and pearl as metals reflecting the studio itself (its
 //   sky), not the window's drawn one.
 //
-//   Clear parts that bend what is behind them and tint it, rather than
-//   veiling it.
+//   Clear parts that tint what is behind them, rather than veiling it,
+//   through every wall and tube of them (plastic_product_glass).
 //
 // The body's top, in the part's own coordinates: a brick's studs stand
 // above its box's body, so the box's top is the studs' and the brick's own
@@ -132,14 +132,17 @@ uniform float bevel_ldu : hint_range(0.0, 4.0) = 0.6;
 // At least this many pixels across, or the round's highlight, a line a
 // pixel wide, came out as dashes along every edge at Good's six frames.
 uniform float bevel_pixels : hint_range(0.0, 4.0) = 2.2;
+#ifdef PLASTIC_TRANSPARENT
+// A picture with no backdrop (StudioRender): with nothing behind clear
+// plastic to tint, it is blended as the window's is, its colour carried in
+// the picture's alpha, and plastic_product_glass lets everything through.
+uniform bool over_nothing = false;
+#endif
 varying vec3 local_normal;
 // The part's own axes in view space, for the bent normal.
 varying flat vec3 axis_x;
 varying flat vec3 axis_y;
 varying flat vec3 axis_z;
-#ifdef PLASTIC_TRANSPARENT
-uniform sampler2D behind_texture : hint_screen_texture, filter_linear_mipmap, repeat_disable;
-#endif
 #endif
 
 // FINISHES. Numbered as PartLibrary.BrickColor.Finish numbers them.
@@ -317,6 +320,42 @@ vec3 bevelled(vec3 at, vec3 n, float width, float pixel, float small) {
 	q = mix(q, vec3(width), axis);
 	return normalize(sign(p) * q);
 }
+
+// The normal at a stud's top edge, rounded as a moulded stud's is: on the
+// top or the side of a stud on the body's top (6 LDU round, standing to the
+// top of the part's box, on the 20 LDU grid from its corner), within
+// [param width] of the rim; [param n] itself anywhere else. The box's
+// round leaves every stud with a knife edge, which caught no light.
+vec3 stud_rim(vec3 at, vec3 n, float width, float small) {
+	float top = part_box_max.y;
+	if (part_box_max.x <= part_box_min.x || at.y < part_body_top + 0.5 || at.y > top + 0.3) {
+		return n;
+	}
+	vec2 centre = part_box_min.xz + 10.0 + 20.0 * floor((at.xz - part_box_min.xz) / 20.0);
+	vec2 d = at.xz - centre;
+	float r = length(d);
+	width = min(width, 2.0);
+	if (r > 6.3 || r < 0.001) {
+		return n;
+	}
+	vec2 out_from = d / r;
+	// Out from the stud's axis and up, as bevelled()'s q: how far into the
+	// round each way, seen whole when it is a pixel or two across.
+	vec2 q;
+	if (n.y > 0.97) {
+		float into = max(r - (6.0 - width), 0.0);
+		q = vec2(mix(into, width * 0.6, small * step(0.0001, into)), width);
+	} else if (abs(n.y) < 0.2 && dot(n.xz, out_from) > 0.9 && r > 5.7) {
+		float into = max(at.y - (top - width), 0.0);
+		q = vec2(width, mix(into, width * 0.6, small * step(0.0001, into)));
+	} else {
+		return n;
+	}
+	if (min(q.x, q.y) <= 0.0) {
+		return n;
+	}
+	return normalize(vec3(out_from.x * q.x, q.y, out_from.y * q.x));
+}
 #endif
 
 void fragment() {
@@ -398,15 +437,23 @@ void fragment() {
 	// spread, as a pixel's worth of a curved edge reflects a spread of the
 	// studio, not one point of it.
 	float on_round = 0.0;
+	// How far it is round an edge, 0 on the flat: a face's own normal is
+	// not exactly the box's axis, so a test of bent against unbent alone
+	// counted whole faces.
+	float rounded = 0.0;
 	{
 		vec3 n_local = normalize(local_normal);
 		float width = max(bevel_ldu, bevel_pixels * pixel_ldu);
 		float small = smoothstep(bevel_ldu, bevel_ldu * 3.0, width);
 		vec3 bent = bevelled(local_position, n_local, width, pixel_ldu, small);
+		if (bent == n_local) {
+			bent = stud_rim(local_position, n_local, width, small);
+		}
 		if (bent != n_local) {
 			normal = normalize(axis_x * bent.x + axis_y * bent.y + axis_z * bent.z);
 			NORMAL = normal;
 			on_round = small;
+			rounded = smoothstep(0.02, 0.3, length(bent - n_local));
 		}
 	}
 #endif
@@ -603,40 +650,37 @@ void fragment() {
 	BACKLIGHT = glass_backlight;
 #endif
 #if defined(PLASTIC_PRODUCT) && defined(PLASTIC_TRANSPARENT)
-	// Clear plastic as glass: what is behind it, bent by its surface and
-	// tinted by its colour, and the sky reflected off it towards the edges.
-	// Only what is opaque is behind it here (the engine copies the picture
-	// once, before the clear parts): a clear part behind another is not
-	// seen through it. Opal and milky plastic scatter rather than bend, and
-	// stay as they are.
-	if (finish == FINISH_PLASTIC || finish == FINISH_FLUORESCENT || finish == FINISH_GLITTER) {
-		vec2 bend = normal.xy * 0.035 * (0.35 + 0.65 * grazing);
-		vec3 behind = textureLod(behind_texture, SCREEN_UV - bend, glass_roughness * 3.0).rgb;
-		if (!linearise) {
-			behind = srgb_to_linear(behind);
-		}
-		// What gets through is the colour itself: LDConfig gives a clear
-		// colour as the part looks against white, so white behind it comes
-		// out as that colour, and smoked plastic lets little through. A hue
-		// kept at full strength with a sixth of the light let past untinted
-		// washed every clear colour to a pastel: trans dark blue #0020a0
-		// came out #7e86d9.
-		float reflected = 0.04 + 0.96 * pow(grazing, 5.0);
-		vec3 seen = behind * body_linear * (1.0 - reflected);
-		ALBEDO = body * 0.04;
-		ALPHA = 1.0;
+	// Clear plastic as glass. What comes through it is the picture behind,
+	// already tinted by plastic_product_glass, the pass drawn before this
+	// one; this pass only adds what glass gives back: the sky and the lights
+	// reflected off every surface of it, the inner ones too, which is what
+	// outlines a clear brick's tubes and far walls. Added, as reflected
+	// light is, so the surfaces need no order. Opal and milky plastic
+	// scatter rather than let light through, and are blended over what is
+	// behind as before.
+	if (!over_nothing
+			&& (finish == FINISH_PLASTIC || finish == FINISH_FLUORESCENT || finish == FINISH_GLITTER)) {
+		ALBEDO = vec3(0.0);
+		ALPHA = 0.0;
 		ROUGHNESS = 0.04;
-		// Low: at Good and Best the engine lights a clear part's reflection
-		// from its global illumination, where the white sweep is at full
-		// strength, and at glass's own 0.5 that laid a white veil over the
-		// whole part (trans red #c91a09 came out #d74e47). Its edges still
-		// reflect, as Fresnel has them.
-		SPECULAR = 0.15;
+		// Low face on: at Good and Best the engine lights a clear part's
+		// reflection from its global illumination, where the white sweep
+		// is at full strength, and at glass's own 0.5 that laid a white veil
+		// over the whole part (trans red #c91a09 came out #d74e47). Its
+		// edges still reflect, as Fresnel has them, and its rounded edges
+		// catch the key and the rim as lines of light.
+		SPECULAR = mix(0.15, 0.7, rounded);
 		BACKLIGHT = vec3(0.0);
 		METALLIC = 0.0;
 		CLEARCOAT = 0.0;
-		vec3 own = emission + seen;
-		EMISSION = linearise ? own : linear_to_srgb(own);
+		EMISSION = linearise ? emission : linear_to_srgb(emission);
+	} else {
+		// Premultiplied by hand (Compatibility has no PREMUL_ALPHA_FACTOR):
+		// the plastic's own colour by how much of it there is, its
+		// reflection whole, as a reflection is.
+		ALBEDO *= ALPHA;
+		BACKLIGHT *= ALPHA;
+		EMISSION *= ALPHA;
 	}
 #endif
 

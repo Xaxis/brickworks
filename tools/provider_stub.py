@@ -13,7 +13,9 @@ carries the whole conversation each time, as a real provider needs.
 It is as strict as OpenAI where the loop could go wrong: a reply's tool calls
 must each be answered by a tool message before anything else, a picture must be
 a data: URL in a user message, and the tools must be functions with object
-parameters. Anything else is a 400 with OpenAI's kind of words. Each request is
+parameters in which every array says what its items are ("array schema missing
+items", which OpenAI answers the app's attach.align with, given as the app
+serves it). Anything else is a 400 with OpenAI's kind of words. Each request is
 written to --log as one line: what it carried, never the key itself (only
 whether it was the one STUB_KEY names). --fail-first N answers the first N
 requests 429, as a rate limit would; --delay S waits S seconds before each
@@ -128,6 +130,25 @@ def test_reply(body, messages):
     return None
 
 
+def bare_arrays(schema, where=()):
+    """Where in [schema] an array does not say what its items are, as the
+    context OpenAI names in refusing it."""
+    found = []
+    if not isinstance(schema, dict):
+        return found
+    if schema.get("type") == "array" and "items" not in schema:
+        found.append(where)
+    for name, one in (schema.get("properties") or {}).items():
+        found += bare_arrays(one, where + ("properties", name))
+    for key in ("items", "additionalProperties"):
+        if isinstance(schema.get(key), dict):
+            found += bare_arrays(schema[key], where + (key,))
+    for key in ("anyOf", "oneOf", "allOf"):
+        for n, one in enumerate(schema.get(key) or []):
+            found += bare_arrays(one, where + (key, n))
+    return found
+
+
 def problems(body):
     """What OpenAI would refuse in this request, or []."""
     out = []
@@ -138,6 +159,10 @@ def problems(body):
             out.append("tools: %r is not a function with a valid name" % fn.get("name"))
         elif (fn.get("parameters") or {}).get("type") != "object":
             out.append("tools: %s's parameters are not an object schema" % fn["name"])
+        else:
+            for where in bare_arrays(fn["parameters"]):
+                out.append("Invalid schema for function '%s': In context=%r, array schema missing items."
+                           % (fn["name"], where))
     messages = body.get("messages") or []
     if not messages or messages[0].get("role") != "system":
         out.append("messages: the first is not the system prompt")

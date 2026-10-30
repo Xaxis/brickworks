@@ -32,9 +32,33 @@ then `/mcp` in Claude Code and *Authenticate* (or `claude mcp login brickworks`
 from a shell). The browser opens on the same Brickworks sign-in; Allow, and
 Claude Code holds the token.
 
-Then, with Brickworks open and signed in in any browser, they ask Claude to
-"build a small red house in Brickworks". Claude's calls go to that account's
-open tab, on whichever device it is.
+**ChatGPT** (2026-10-29, docs/PROVIDERS.md P1; OpenAI's steps from
+<https://developers.openai.com/apps-sdk/deploy/connect-chatgpt>, read that day;
+which ChatGPT plans may add one is the account's and workspace's policy):
+
+1. In ChatGPT, **chatgpt.com/plugins**, the **+** button, **Add custom MCP
+   server**.
+2. Name **Brickworks**, a description, Connection: a public endpoint,
+   `https://brickworks.diy/api/mcp`; Authentication: **OAuth**.
+3. Read the risk warning, **I understand and want to continue**, then
+   **Create as a plugin**.
+4. ChatGPT opens Brickworks' sign-in, which says *Let ChatGPT build in
+   Brickworks?* and *You will go back to chatgpt.com*: the email code (or
+   nothing, if Brickworks is signed in in that browser), then **Allow**.
+5. ChatGPT lists the tools it found (63: the app's and the relay's `tabs` and
+   `select_tab`); install the plugin. Then a new chat, `@` in the prompt box,
+   **Brickworks**.
+
+ChatGPT names itself by `https://chatgpt.com/oauth/client.json`, which says it
+signs its token requests with a key at `https://chatgpt.com/oauth/jwks.json`
+(`private_key_jwt`); Brickworks checks every one (`api/_assertion.js`). Its
+connection is listed in Account as **ChatGPT**, and Disconnect ends it as it
+ends Claude's. A changed tool list is picked up with **Refresh** on the
+plugin's page at chatgpt.com/plugins, then a new chat.
+
+Then, with Brickworks open and signed in in any browser, they ask Claude (or
+ChatGPT) to "build a small red house in Brickworks". The calls go to that
+account's open tab, on whichever device it is.
 
 The private per-browser addresses that came before
 (`https://brickworks.diy/api/mcp?t=…`, pasted by hand) keep working for
@@ -263,7 +287,9 @@ From <https://claude.com/docs/connectors/building/authentication> unless noted:
 | MCP address | `https://brickworks.diy/api/mcp` (`api/mcp.js`) — no token: 401, `resource_metadata` and `scope="build"` |
 | Protected resource metadata | `/.well-known/oauth-protected-resource` and `…/api/mcp` |
 | Authorization server metadata | `/.well-known/oauth-authorization-server` (and with any path after it); issuer = the site |
-| Client identity | CIMD (Claude's and Claude Code's documents, read and kept an hour) or registration at `/oauth/register` |
+| Client identity | CIMD (Claude's, Claude Code's and ChatGPT's documents, read and kept an hour) or registration at `/oauth/register` |
+| Client authentication | Claude and Claude Code: public clients, PKCE the proof. ChatGPT: `private_key_jwt` (RFC 7523), an RS256 assertion its `jwks_uri` keys check, aud this server, jti spent once (`api/_assertion.js`, `supabase/oauth_keys.sql`); the metadata lists it, so ChatGPT signs, and a client whose document prefers it must. A registered client may sign with keys it gives (`jwks`), or hold a secret |
+| Tools for other clients | Claude is given the tab's tool list as it is. Any other client (ChatGPT) the same tools with every array's `items` said (OpenAI's function calling refuses an array that names none: the app's `attach.align`) and `destructiveHint: false` on the tools that only look, so each states all three hints as OpenAI asks (`portable` in `api/mcp.js`) |
 | Sign-in and consent | `/oauth/authorize` → `web/authorize.html`: the app's email code, or the app's session in that browser; one question naming who asks and where the answer goes, asked once: while the account still holds a connection to that same client (its id, the same return address, this server) a connection made again is answered with a code at once (`op=remembered`, 2026-10-14). Disconnect, a revocation or a replayed refresh token end it, and the next connection asks |
 | Tool annotations | every tool carries MCP's `annotations` — `title`, `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint` — from one table in the app (`CommandSocket.HINTS`; the relay's `tabs` and `select_tab` in `api/mcp.js`). Claude reads them in deciding what to ask about; the per-tool switches in Claude's own connector settings are Claude's, and the person's choices there stand |
 | Tokens | `/oauth/token`: S256 PKCE, exact return address (loopback: any port), resource checked; access an hour, refresh rotated, both kept only as SHA-256 |
@@ -281,7 +307,9 @@ proves the relay's half, both ways in.
 The endpoints are in `api/oauth.js`, the tables in `supabase/oauth.sql`, and
 the proofs in `tools/web/oauth_probe.mjs` (every endpoint and refusal),
 `src/dev/connector_probe.gd` (an app tab answering Claude signed in to its
-account) and `tools/web/oauth_flow.mjs` (the whole thing in a browser on a
+account), `tools/web/oauth_flow.mjs` (the whole thing in a browser on a
+deployment), and for ChatGPT `tests/test_oauth_clients.py` (the assertion's
+every refusal) and `tools/web/chatgpt_flow.mjs` (ChatGPT stood in for, on a
 deployment). `.claude/skills/verify/features/account.md` says how to run them.
 
 ## Not done
@@ -289,6 +317,13 @@ deployment). `.claude/skills/verify/features/account.md` says how to run them.
 - **A listing in the Connectors Directory** would make Brickworks findable in
   Claude and give a permanent Connect page. It needs a submission and
   Anthropic's review; the owner's to decide.
+- **ChatGPT with the owner's own account.** Everything up to ChatGPT's
+  signature is proven against its real document; the signature itself only
+  ChatGPT can make, so the first real connection (the steps above) is the
+  proof of it. If it fails at the token, the function log says why
+  (`oauth token: refused …`). Not known until then: how ChatGPT shows the
+  tools' pictures, whether it draws the model card (MCP Apps), and whether it
+  acts on `notifications/tools/list_changed`.
 - **A sign-in that knows the person's Claude login.** Brickworks never asks
   for one and never sees one: Claude holds a Brickworks token, never the other
   way round.
