@@ -1,4 +1,8 @@
 ---
+ai: A walk through one small model by hand: put parts down, change them, make a build step, save, check that it stands, and share it. The same steps an assistant takes with tools: edit_model, edit_steps, save_model, check_design.
+rules:
+  - A step is everything put down since the last one (E).
+  - The first save asks for a name; File › Versions keeps the last 20 saves.
 title: Your first model
 nav: Your first model
 description: Put parts down, colour and turn them, make a step, save the model and share it, in about ten minutes.

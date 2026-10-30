@@ -1,4 +1,9 @@
 ---
+tools: parts_list
+panels: CollectionDialog#my-collection
+ai: The sets and parts a person owns, kept with their account: what a model needs that they lack, and what they can build now. parts_list which=need lists what is missing, which=buildable what the collection can build.
+rules:
+  - The collection comes from Rebrickable (with the person's own key), a BrickLink or Rebrickable list, or typed in.
 title: My collection
 nav: My collection
 description: Tell Brickworks the sets and parts you own, then see what a model needs that you do not have, and what you can build now.

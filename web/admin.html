@@ -31,21 +31,15 @@
 <link rel="stylesheet" href="/site.css">
 <style>
   /* The site's colours, type and controls (site.css); here only this
-     page's layout. */
-  .wrap { max-width: 1040px; padding: 38px 0 80px; }
-  h1 { font-size: var(--t-h2); letter-spacing: -0.02em; margin: 0 0 4px; line-height: 1.2; }
-  .sub { color: var(--ink-soft); margin: 0 0 26px; font-size: var(--t-lede); }
+     page's layout. Its head, its numbers (.stats) and its panels are
+     site.css's, as every page's are (site359). */
+  .page-hero .mark { display: flex; width: fit-content; margin: 0 0 var(--s-5); min-height: var(--control-h); }
   .card { padding: 20px; }
   .card p + p { margin-top: 8px; }
   .row { display: flex; gap: 9px; align-items: center; margin-top: 16px; }
   .note { margin: 0; font-size: var(--t-tiny); color: var(--ink-soft); }
   .note.bad { color: var(--bad); }
-  .stats { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-           margin: 22px 0; }
-  .stat { background: var(--panel); border: 1px solid var(--line);
-          border-radius: var(--r-2); padding: 14px 16px; }
-  .stat b { display: block; font-size: var(--t-h2); letter-spacing: -0.02em; }
-  .stat span { font-size: var(--t-micro); color: var(--ink-faint); }
+  .admin .stats { margin: 0 0 22px; }
   /* A table wider than a phone scrolls inside its card; positioned, so a
      header's words for a screen reader (.visually-hidden) scroll with it
      rather than push the page sideways. */
@@ -60,7 +54,7 @@
   .hide { display: none; }
   .warn { border-color: var(--accent-edge); background: color-mix(in srgb, var(--accent) 12%, transparent); margin-bottom: 14px; }
   .foot { margin-top: 30px; color: var(--ink-faint); font-size: var(--t-micro); }
-  h2 { margin: 34px 0 4px; }
+  .admin > div > h2 { margin: var(--s-7) 0 4px; padding-top: var(--s-5); border-top: 1px solid var(--line); }
   h2 + .note { margin: 0 0 12px; }
   td.model { max-width: 320px; overflow-wrap: anywhere; }
   td.said { min-width: 200px; max-width: 320px; overflow-wrap: anywhere; white-space: pre-line; }
@@ -96,11 +90,18 @@
 #year-months legend { padding: 0; margin: 0 0 6px; font-weight: 600; }
 </style>
 
-<main class="wrap">
-  <h1>Accounts</h1>
-  <p class="sub">Everyone who uses Brickworks signs in with their email
-     address. This is who has, and whose Claude connectors there are.</p>
-  <p class="note"><a href="/beta-admin">Beta testers</a>: the beta’s applications, to approve or decline.</p>
+<main id="main">
+  <div class="page-hero">
+    <div class="wrap">
+      <a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+      <p class="eyebrow">Admin</p>
+      <h1>Accounts</h1>
+      <p class="lede">Everyone who uses Brickworks signs in with their email
+         address. This is who has, and whose Claude connectors there are.</p>
+      <p class="hero-meta"><span><a href="/beta-admin">Beta testers</a>: the beta’s applications, to approve or decline.</span></p>
+    </div>
+  </div>
+  <div class="wrap page-body admin">
 
   <div id="gate" class="card">
     <p id="gate-note" class="note">Checking your sign-in…</p>
@@ -266,7 +267,7 @@
     <h2>In the gallery</h2>
     <p class="note">What anyone can see at <a href="/gallery">/gallery</a>.
        Take out takes a model out of it for good: its link goes on
-       working, and its owner cannot list it again.
+       working, and its owner cannot list it again.</p>
     <div class="card scroller" tabindex="0" role="region" aria-label="In the gallery" style="padding:4px 4px 0">
       <table>
         <thead><tr>
@@ -300,6 +301,7 @@
     <a href="/">Brickworks</a> · this page is not indexed and shows nothing
     to anyone but the owner's account.
   </p>
+  </div>
 </main>
 
 <script type="module" src="/admin.js"></script>

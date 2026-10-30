@@ -135,3 +135,54 @@ def test_a_feature_named_twice_or_unknown_is_said() -> None:
         assert "twice" in str(said)
     else:
         raise AssertionError("a feature covered twice on one page was let through")
+
+
+def test_a_tools_words_changed_by_hand_fail_until_its_doc_is_read_again(monkeypatch) -> None:
+    """The tool list's words and each tool's doc cannot part quietly: a
+    description changed by hand fails the check, and so does a doc whose
+    tool is gone; written again (--write), the doc matches."""
+    _, pages = docs_site.load()
+    assert not docs_site.tool_problems(pages)
+    real = docs_site.app_tools()
+    changed = [dict(tool) for tool in real]
+    changed[0]["description"] += " And one more sentence."
+    monkeypatch.setattr(docs_site, "app_tools", lambda: changed)
+    problems = docs_site.tool_problems(pages)
+    assert any(f"docs-site/tools/{changed[0]['name']}.md is behind" in p for p in problems), problems
+    doc = docs_site.tool_docs()[changed[0]["name"]]
+    rewritten = docs_site.with_said(doc, changed[0])
+    assert rewritten.count("And one more sentence.") == 1 and doc.notes in rewritten
+    monkeypatch.setattr(docs_site, "app_tools", lambda: real[1:])
+    problems = docs_site.tool_problems(pages)
+    assert any(p.startswith(f"docs-site/tools/{real[0]['name']}.md is the doc of no tool") for p in problems), problems
+
+
+def test_an_example_a_tool_would_refuse_is_said() -> None:
+    schema = {"type": "object", "additionalProperties": False, "required": ["name"],
+              "properties": {"name": {"type": "string"}, "view": {"type": "string", "enum": ["front", "top"]},
+                             "bricks": {"type": "array", "items": {"type": "integer"}}}}
+    assert docs_site.schema_problems({"name": "x", "view": "top", "bricks": [1, 2]}, schema, "t") == []
+    said = docs_site.schema_problems({"view": "side", "bricks": [1, "2"], "colour": 4}, schema, "t")
+    assert said == ["t lacks name, which it needs", 't.view is "side", not one of [\'front\', \'top\']',
+                    't.bricks[1] is "2", not integer', "t has colour, which the tool does not take"], said
+
+
+def _gd_read(literal: str) -> str:
+    """A GDScript triple-quoted string as Godot reads it: a backslash at a
+    line's end joins the lines, and a doubled backslash is one."""
+    assert literal.startswith('"""') and literal.endswith('"""')
+    body = literal[3:-3]
+    return re.sub(r"\\(\\|\n)", lambda m: "\\" if m.group(1) == "\\" else "", body)
+
+
+def test_the_words_a_session_is_told_are_the_pages_exactly() -> None:
+    """src/ai/connector_guide.gd holds design-session.md's said blocks to the
+    byte: the generator's line breaks are GDScript's to join again."""
+    said = docs_site.said_blocks()
+    made = docs_site.connector_guide()
+    for name, (const, _) in docs_site.SAID_BLOCKS.items():
+        literal = re.search(rf'^const {const} := ("""[\s\S]*?""")$', made, re.M).group(1)
+        assert _gd_read(literal) == said[name], name
+    tricky = 'a "quoted" path C:\\x\\ and ' + "word " * 40
+    assert _gd_read(docs_site.gd_string(tricky)) == tricky
+    assert "You design LEGO® models with this app's tools" in said["head"]

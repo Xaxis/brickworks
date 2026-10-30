@@ -1,4 +1,9 @@
 ---
+tools: view_model, set_floor
+ai: Turning, sliding and zooming the camera, navigation presets, cutting away and X-ray, stress colours, and the floor the model stands on. An assistant looks from a side with view_model and sets the floor with set_floor.
+rules:
+  - view_model looks from corner, top, front, back, left or right; corner shows the shape best.
+  - Floors are a baseplate (16, 32 or 48 studs, or any size in eights to 192), a grid, or none.
 title: The view
 nav: The view
 description: Turn, slide and zoom the camera, choose how the mouse navigates, and see inside a model.

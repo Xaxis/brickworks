@@ -526,7 +526,8 @@ plan with Claude as the client.
   its picture and name the model's page, **Build it** (`.cta.small`) the
   guided build at step 1 (`/app?view=<id>&build`, as the page's Build it),
   and View in 3D a quiet `a.link` to the viewer, hidden in a frame under
-  400 px. `model_page_flow` step 15 holds the links at 560 px and the bar
+  400 px. The picture stands on `--picture-ground`, as a card's frame does,
+  and a line parts it from the bar. `model_page_flow` step 15 holds the links at 560 px and the bar
   whole at 340 px; `share_probe` the links in the markup.
   **Who can do what:** a visitor's read asks, as the server, for a published
   row's public columns alone (`api/share.js` `publishedRow`; until oc205 it
@@ -931,9 +932,13 @@ plan with Claude as the client.
   operator's line (`#operator`) marked for the owner to fill in, and
   `#paid-plans` (2026-10-29): Free and Pro when they open, sold by Atypic
   through Link, renewal, cancelling and refunds as Atypic's policy says,
-  mirroring Bookwright's terms. The FAQ's "Is Brickworks free?" and "What
-  is an AI build?" (`#ai-builds`) and the download page's `#pro-note` say
-  the same as /plans: downloads free until Pro opens, every version kept.
+  mirroring Bookwright's terms. The FAQ's "Is Brickworks free?" (`#free`),
+  "Is AI limited on any plan?" (`#ai`: never, on any plan; people bring
+  their own) and "I made my account before 29 October 2026" (`#had-account`)
+  and the download page's `#pro-note` say the same as /plans: downloads
+  free until Pro opens, every version kept. The terms, the privacy page,
+  the guidelines and /takedown share one row of `.tabs` in their head
+  (site359, 2026-10-29).
 - `age question` (`web/account.js` `askAgeIfAsked`, `src/ui/sign_in_gate.gd`,
   `api/account.js` `?op=age`, `api/_trust.js`, `supabase/trust.sql`): asked
   once, after a first sign-in, on the site and in the app — "When were you
@@ -2514,9 +2519,12 @@ plan with Claude as the client.
   page fetched (`encodedBodySize`), scrolled to its foot, at 390 and 1280 px
   against the live one (2026-10-20: 206/264 KB at load/scrolled on a phone and
   146/204 on a laptop, where the page before took 228/418 and 195/234). `img/manifest.json` says where each came from and holds
-  its alt text. `FAQ page` (`web/faq.html`): the two ways to bring Claude, each
-  as numbered steps with what it costs (`#claude`), the questions (FAQPage
-  JSON-LD, the same answers), the dimensions (a `.table`). Since 2026-10-24:
+  its alt text. `FAQ page` (`web/faq.html`): the three ways to bring your
+  own AI (your Claude plan, Claude Code, your own key), each as numbered
+  steps with what it costs (`#claude`), then the questions in groups (Plans
+  and price `#plans`, Your AI, Your account, Sharing, Files and parts,
+  About), each group listed in the `.page-toc` beside them (FAQPage JSON-LD,
+  the same answers), the dimensions (a `.table`). Since 2026-10-24:
   signing in (`#sign-in`: `ui:sign in with orangecheck`, and on the desktop
   `ui:sign in with orangecheck on the desktop`, from 0.8.0), building
   together (`#together`, `ui:build together`; the desktop from 0.8.0),
@@ -2528,8 +2536,14 @@ plan with Claude as the client.
   holds and what Brickworks never sees — each claim is in
   `src/account/account.gd`, `api/otp.js`, `api/mcp.js`, `src/ai/own_key.gd` and
   the CSP in `deploy.sh`; change one, change the page. `changelog page`
-  (`web/changelog.html`) and `404 page` (`web/404.html`, `noindex`) use the same
-  bar and foot. `robots.txt` keeps `/admin`, `/api/`, `/oauth/` and `/b/` out and
+  (`web/changelog.html`, each release's name and date in a `.release-head`
+  beside its `.release-notes`, sticky from 900 px; tools/site.py writes
+  them) and `404 page` (`web/404.html`, `noindex`, with four ways on) use
+  the same bar and foot. Every page that is not a landing page (these, the
+  docs' start, settings, the legal pages, /compare, /feed, /notifications,
+  /admin) opens on site.css's `.page-hero` and, where it has parts, keeps
+  a `.page-toc` beside them in a `.page-grid` (site359, 2026-10-29; see
+  docs/DESIGN_SYSTEM.md "An inner page"). `robots.txt` keeps `/admin`, `/api/`, `/oauth/` and `/b/` out and
   names `sitemap.xml`, which lists `/`, `/download`, `/changelog`, `/faq` and
   `/privacy`. The mark is `web/icon.svg`, a cube with a corner cut away
   (no brick, no studs: docs/TRADEMARKS.md, Decisions); `tools/web/make_icons.mjs`
@@ -2620,11 +2634,11 @@ plan with Claude as the client.
   `data-when="sale"` parts, Pro's Upgrade to Pro going to
   `/settings?upgrade=month|year#plan` with the choice made, and Admission's
   prices; off, the page as written, Coming soon). Free ($0: the
-  web app, 10 AI builds a month, building by hand without a limit,
-  everything else the app does today, at today's limits) and Pro ($8 a
-  month or $80 a year: the desktop app, every version released while you
-  pay kept, AI builds without a limit), Pro marked Coming soon; what an AI
-  build is; every account made before Pro opens gets Pro with no end;
+  web app, AI on your own Claude, ChatGPT or key with no limit, 25 models
+  kept with the account, saving to the device and exporting without a
+  limit) and Pro ($8 a month or $80 a year: the desktop app, every version
+  released while you pay kept, every model kept with the account), Pro
+  marked Coming soon; AI never counted on either; every account made before Pro opens gets Pro with no end;
   education free; what stays free; five questions, one saying what changed.
   Nothing takes money (BRICKWORKS_BILLING off). Pro's Tell me when it's
   ready opens the interest form (a `dialog`): email, monthly or yearly, a
@@ -2640,8 +2654,8 @@ plan with Claude as the client.
   `supabase/admission_snapshots.sql`): Free and Pro from Admission, built
   dark (2026-10-29, docs/PLANS.md unit U1, billing336). BRICKWORKS_BILLING
   is the one switch: off (unset) asks nothing and limits nothing; test or
-  live with its own kind of ADMISSION_KEY reads an account's plan, Claude
-  builds (10 a month on Free) and the desktop flag, keyed by the Supabase
+  live with its own kind of ADMISSION_KEY reads an account's plan, its saved-models
+  cap (25 on Free, none on Pro; AI is never counted) and the desktop flag, keyed by the Supabase
   user id of the session. Snapshots go in a server-only table, so a cold
   instance answers a paying person while Admission is down; with none, the
   answer is `unknown` and refuses nothing.
@@ -4839,8 +4853,8 @@ BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/plans_flow.mjs --url=<pr
 It passes when it ends "plans: all ok": at 390 and 1400 px, light and
 dark, Free and Pro and their prices ($80 a year first, $8 a month once
 Monthly is pressed), every row side by side, no way to pay shown with
-billing off, Coming soon on Pro, what an AI build
-is, accounts that exist keeping everything, education, what stays free, no
+billing off, Coming soon on Pro, AI with no limit on
+either plan, 25 models kept on Free, accounts that exist keeping everything, education, what stays free, no
 Claude builds and no free desktop, nothing sideways, the footer's link, and
 /privacy's line; at 390 px the form opened from Pro with yearly, a bad
 address refused on the page and by the API (and a plan off the list, now
@@ -5027,7 +5041,13 @@ The pages are made, not kept: `tools/docs_site.py` turns `docs-site/*.md`
 (in `docs-site/_nav.json`'s order) into `docs.html`, `docs/<page>.html` and
 `docs/search.json`, and `tools/site.py` runs it at every deploy, as it
 writes the changelog. `web/docs.css` lays them out and `web/docs.js` is the
-pages list on a phone, Ctrl+K search, On this page and Copy. Four pages are
+pages list on a phone, Ctrl+K search, On this page and Copy. Each page's
+head (`.docs-head`) says its part of the docs as an `.eyebrow` over its
+title; the start page's head is lit and holds a search as wide as its
+words (`.docs-search-open.big`); under every page, where to ask
+(`.docs-help`), then previous and next, each naming its part. A page that
+moved (`docs-site/_moved.json`: `ai-builds` and `claude-builds` to
+`how-ai-works`, 2026-10-29, when AI stopped being counted) answers 308. Four pages are
 made from their sources: the MCP tool reference from `tools/mcp_tools.json`,
 the shortcuts from `ControlsHint.for_keyboard()` and the menus' keys, the
 menus from `docs-site/generated/menus.json`, and the changelog from
@@ -5057,7 +5077,36 @@ going there, `/` and Escape, the pages list behind Browse the docs at 390
 and down the left at 1400 with the page marked, On this page following the
 scroll, and a deep link landing with its heading in view. Pictures in
 `--out`. The app's way in is Help, Documentation (`src/ui/shell.gd`,
-command `docs`).
+command `docs`), which opens the page of the panel in front.
+
+#### One source for people and assistants
+
+A page's head names the MCP tools it explains (`tools:`), the app's panels
+it is the page of (`panels:`, `ClassName#section`), and says to an
+assistant what the feature is (`ai:`) and its rules (`rules:`). Every tool
+the app or the relay serves has `docs-site/tools/<name>.md`: an `example:`
+call held to its input schema, words for people, and a copy of the tool
+list's words. From them: the tool reference (`/docs/mcp-tools`, with each
+example and the pages that explain it), `/docs/llms.txt`, Help's page for
+each panel (`src/ui/docs_pages.gd`), and the words every session is told
+first (`src/ai/connector_guide.gd`, from `docs-site/design-session.md`'s
+```` ```said ```` blocks; Assistant.GUIDE_HEAD and METHOD and
+ClaudeConnector.CONNECTED_NOTE are its constants).
+
+```sh
+python3 tools/docs_site.py --write      # writes nothing on a clean checkout
+python3 tools/docs_site.py --check      # the drift checks, in the Python suite too
+tools/probe.sh docs_pages_probe         # Help opens the panel's page; the words are the docs'
+```
+
+`--check` fails when a tool has no doc, a doc no tool, an example breaks
+its schema, a page names a tool or panel there is none of, a page people
+read has no `ai:`, or a made file is not what the docs make: change a
+tool's description in `tools/mcp_tools.json` by hand and it names that
+tool's doc; `--write` copies the new words in for review. The probe ends
+"docs pages: all passed": nothing open is `/docs`, Settings open is its
+page, Brickify over Settings is Brickify's, every panel named is a class,
+and the head, the method and the connector's note are ConnectorGuide's.
 
 ### The site for everyone: axe, names and the keyboard
 

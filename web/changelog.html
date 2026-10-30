@@ -37,19 +37,31 @@
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <style>
-.log { padding: 24px 0 88px; }
-.log > * { max-width: 760px; }
-.release { padding: 34px 0; border-top: 1px solid var(--line); }
+/* Laid out here; the head and the words are site.css's. Each release is
+   a step down a line: its name and date beside its notes from 900 px,
+   staying in view while they scroll, marked by a dot in the accent. */
+.log { padding-top: var(--s-5); }
+.release { position: relative; display: grid; gap: var(--s-2) var(--s-7); padding: var(--s-6) 0; border-top: 1px solid var(--line); }
 .release:first-child { border-top: 0; }
-.release h2 { font-size: var(--t-h2); margin-bottom: 4px; }
-.release h3 { margin: var(--s-5) 0 var(--s-2); }
-.release .when { margin: 0 0 16px; color: var(--ink-faint); font-size: var(--t-small); }
+.release-head h2 { margin-bottom: var(--s-1); }
+.release .when { margin: 0; color: var(--ink-faint); font-size: var(--t-small); }
 .release .when a { color: var(--ink-soft); padding-block: 6px; }
-.release > p { color: var(--ink-soft); margin: 0 0 12px; }
-.release ul { margin: 0; padding-left: 20px; }
-.release li { margin: 0 0 10px; color: var(--ink-soft); }
-.release li::marker { color: var(--ink-faint); }
-.release code { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-1); padding: 1px 5px; }
+.release-notes { min-width: 0; max-width: 760px; }
+.release-notes h3 { margin: var(--s-5) 0 var(--s-2); }
+.release-notes h3:first-child { margin-top: 0; }
+.release-notes > p { color: var(--ink-soft); margin: 0 0 12px; }
+.release-notes ul { margin: 0; padding-left: 20px; }
+.release-notes li { margin: 0 0 10px; color: var(--ink-soft); }
+.release-notes li::marker { color: var(--ink-faint); }
+.release-notes code { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-1); padding: 1px 5px; }
+@media (width >= 900px) {
+	.release { grid-template-columns: 240px minmax(0, 1fr); padding: var(--s-7) 0; }
+	.release-head { position: sticky; top: calc(var(--head-h) + var(--s-5)); align-self: start; padding-left: var(--s-5); }
+	.release-head::before {
+		content: ""; position: absolute; left: 0; top: 0.55em; width: 9px; height: 9px; border-radius: 50%;
+		background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft);
+	}
+}
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -90,20 +102,18 @@
 </header>
 
 <main id="main">
-	<div class="wrap page-head">
-		<p class="eyebrow">Changelog</p>
-		<h1>What changed</h1>
-		<p class="lede">
-			The web app at brickworks.diy is updated continuously; a desktop
-			release is a snapshot of it with every part inside, so it works
-			offline. Newest first.
-		</p>
-		<div class="actions">
-			<a class="cta" href="/app">Open the app</a>
-			<a class="cta ghost" href="/download">Download for desktop</a>
+	<div class="page-hero">
+		<div class="wrap">
+			<p class="eyebrow">Changelog</p>
+			<h1>What changed</h1>
+			<p class="lede">The web app at brickworks.diy is updated continuously; a desktop release is a snapshot of it with every part inside, so it works offline. Newest first.</p>
+			<div class="actions">
+				<a class="cta" href="/app">Open the app</a>
+				<a class="cta ghost" href="/download">Download for desktop</a>
+			</div>
 		</div>
 	</div>
-	<div class="wrap log">
+	<div class="wrap page-body log">
 <!--changelog-->
 	</div>
 </main>

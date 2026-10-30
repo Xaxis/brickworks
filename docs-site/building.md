@@ -1,4 +1,12 @@
 ---
+tools: edit_model, look_at_model, check_design, attachment_points, where_to_attach, make_unique, clear_model, undo, suggest_sections, make_sections, break_out_section, evaluate_section
+ai: How parts go down, snap, turn and move once placed, and how a model is grouped into sub-assemblies and sections. An assistant does the same with edit_model and edit_selection, reads the model with look_at_model, and checks a change with check_design before making it.
+rules:
+  - Positions are studs across (x), plates up (y) and studs deep (z); 3 plates make a brick.
+  - One LDraw unit is 0.4 mm: a stud is 8 mm (20 LDU), a brick 9.6 mm (24 LDU), a plate 3.2 mm (8 LDU).
+  - A part goes down only where nothing else is, on studs or joints it really fits.
+  - Copies of a sub-assembly follow the original until made unique (make_unique).
+  - Every change, an assistant's included, is one undo step.
 title: Placing and moving parts
 nav: Placing and moving parts
 description: How a part goes down, turns, snaps to studs and joints, and moves once it is there.
@@ -106,7 +114,7 @@ lib:angled sections
 
 ## Undo and history {#undo}
 
-[[Ctrl+Z]] undoes and [[Ctrl+Shift+Z]] redoes. **History** on the toolbar (or **Edit › History**) lists the steps you can go back to. Whatever an AI builds is one undo step too.
+[[Ctrl+Z]] undoes and [[Ctrl+Shift+Z]] redoes. **History** on the toolbar (or **Edit › History**) lists the steps you can go back to. Whatever the AI puts down is one undo step too.
 
 <!-- covers
 ui:undo and redo
