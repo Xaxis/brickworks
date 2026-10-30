@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:signup check, api:GET /api/otp/canary, cli:canary check, lib:the desktop pass, ui:the Pro screen on the desktop, cli:desktop pass probe -->
+<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, cli:ChatGPT connector flow, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:signup check, api:GET /api/otp/canary, cli:canary check, lib:the desktop pass, ui:the Pro screen on the desktop, cli:desktop pass probe -->
 
 ## Sub-features
 
@@ -193,7 +193,40 @@ they have. A Claude connector belongs to the account that switched it on.
   `op=approve` with the session and follows the answer back to Claude. Signed
   in (either way), the page first asks `op=remembered`, and an account already
   connected to that app goes straight back with its code, asked nothing ("You
-  allowed Claude before…").
+  allowed Claude before…"). **Another app** (2026-10-29): `op=check` says
+  `claude` (Claude or Claude Code) and the label, also on a refusal where the
+  client is known; for any other app (ChatGPT) the page names it wherever it
+  said Claude, its title is "Connect <app> to Brickworks", Claude's settings
+  paragraph and Connect Claude (`.for-claude`) are hidden and a neutral one
+  (`.for-other`) shown, and before the check a request whose client_id is not
+  claude.ai's says "your app". For Claude the page reads as before.
+- `ChatGPT, and any client that signs` (`api/oauth.js`, `api/_assertion.js`,
+  `supabase/oauth_keys.sql`, 2026-10-29, docs/PROVIDERS.md P1): ChatGPT's
+  document (`https://chatgpt.com/oauth/client.json`) says `private_key_jwt`;
+  the metadata lists it with `token_endpoint_auth_signing_alg_values_supported:
+  ["RS256"]`, so ChatGPT signs. A document's way is the one it prefers
+  (`token_endpoint_auth_method`), else "none" if it lists it, else signing;
+  keys only at an https `jwks_uri` on the document's own origin (kept an hour,
+  read again at once for an unknown kid, at most once a minute). A client that
+  signs must send `client_assertion` (RS256; iss = sub = client_id; aud the
+  issuer or `/oauth/token`; exp ahead and within an hour; jti spent once in
+  `oc_spend` under `oauth:<sha256>`); an assertion is checked whoever sends it.
+  Registration takes `private_key_jwt` with inline `jwks` only. Claude's rows
+  never name the new columns. The label is "ChatGPT" by a chatgpt.com return
+  address (`clientLabel`); the relay gives any client but Claude's the tool list
+  with every array's `items` said and all three hints (`toolsWithTabs`,
+  `portable`), Claude's word for word as before. Tests:
+  `tests/test_oauth_clients.py` (minitest/pytest, node).
+- `ChatGPT connector flow` (`tools/web/chatgpt_flow.mjs`, check `chatgpt`):
+  discovery; ChatGPT's real document named on the page, its code refused
+  without its signature and with another key's; a stand-in client holding its
+  own key registers, trades a code with an assertion, initializes as
+  `openai-mcp`, lists 63 tools (no bare arrays, three hints each), calls
+  `search_parts` into a played tab of a throwaway account; refresh with a
+  fresh assertion, the same one again and none refused; Claude Code's list on
+  the same account the tab's as sent. `--out`: the page at 390/1280 light and
+  dark, no word of Claude, Allow landing at chatgpt.com (stood in). Passed
+  locally against `relay_server.mjs` 2026-10-29.
 - `share panel` (`src/ui/share_panel.gd`, File › Share… and Share on the
   toolbar, `tool_share`; since 2026-10-12): publishes the open model as the
   signed-in account (`POST /api/share`, [web](web.md)) — its LDraw

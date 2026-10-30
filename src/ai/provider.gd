@@ -134,6 +134,52 @@ static func images_of(blocks: Array) -> Array:
 		return block is Dictionary and str((block as Dictionary).get("type", "")) == "image")
 
 
+## [param tools] as a client other than Claude is given them: the relay's
+## portable list (api/mcp.js portable, which ChatGPT is given), for a model on
+## the person's key. Every array says what its items are, as OpenAI's function
+## calling refuses one that does not ("array schema missing items": the app's
+## attach.align), and a tool that only looks says it destroys nothing. The
+## same rules as the relay's: provider_loop_probe holds the two to one answer
+## for the app's tools. Claude's own list is the app's, untouched.
+static func portable(tools: Array) -> Array:
+	var out: Array = []
+	for tool: Variant in tools:
+		var one: Dictionary = (tool as Dictionary).duplicate()
+		for name: String in ["inputSchema", "input_schema"]:
+			if one.has(name):
+				one[name] = items_said(one[name])
+		var hints: Variant = one.get("annotations")
+		if hints is Dictionary and typeof((hints as Dictionary).get("readOnlyHint")) == TYPE_BOOL \
+				and bool((hints as Dictionary)["readOnlyHint"]) and not (hints as Dictionary).has("destructiveHint"):
+			one["annotations"] = (hints as Dictionary).merged({"destructiveHint": false})
+		out.append(one)
+	return out
+
+
+## [param schema] with every array saying what its items are: {}, anything,
+## where it said nothing, which is what it meant.
+static func items_said(schema: Variant) -> Variant:
+	if schema is Array:
+		return (schema as Array).map(func(one: Variant) -> Variant: return items_said(one))
+	if not (schema is Dictionary):
+		return schema
+	var out: Dictionary = {}
+	for word: Variant in schema:
+		var value: Variant = schema[word]
+		if str(word) == "properties" and value is Dictionary:
+			var properties: Dictionary = {}
+			for name: Variant in value:
+				properties[name] = items_said(value[name])
+			out[word] = properties
+		elif ["items", "additionalProperties", "anyOf", "oneOf", "allOf", "not"].has(str(word)):
+			out[word] = items_said(value)
+		else:
+			out[word] = value
+	if str(out.get("type", "")) == "array" and not out.has("items"):
+		out["items"] = {}
+	return out
+
+
 ## [param text] as JSON, or null, quietly: a refusal's empty body and a weaker
 ## model's broken arguments are expected here, and JSON.parse_string says each
 ## in the console as an engine error, which buries anything real.

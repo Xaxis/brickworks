@@ -117,10 +117,11 @@ export async function hadClaude(owner) {
   return Boolean((await accountRecord(owner)).claude_connected_at);
 }
 
-/// Which Claude a connection is, in words for the panel: Claude (claude.ai
-/// and the Claude apps share one list of connectors), Claude Code (a
-/// program on somebody's machine, sent back to it on a loopback address),
-/// or whatever another client called itself.
+/// Which app a connection is, in words for the panel and the sign-in page:
+/// Claude (claude.ai and the Claude apps share one list of connectors),
+/// Claude Code (a program on somebody's machine, sent back to it on a
+/// loopback address), ChatGPT (sent back to chatgpt.com), or whatever
+/// another client called itself.
 export function clientLabel(grant) {
   const info = grant.client_info && typeof grant.client_info === "object" ? grant.client_info : {};
   const said = `${grant.client_name || ""} ${info.name || ""}`.toLowerCase();
@@ -131,8 +132,16 @@ export function clientLabel(grant) {
     host = "";
   }
   if (/(^|\.)claude\.(ai|com)$/.test(host)) return "Claude";
+  if (/(^|\.)chatgpt\.com$/.test(host)) return "ChatGPT";
   if (said.includes("claude code") || said.includes("claude-code")) return "Claude Code";
   if (LOOPBACK.test(host) && said.includes("claude")) return "Claude Code";
   const name = String(grant.client_name || info.name || "").trim();
   return name ? name.slice(0, 60) : "An MCP client";
+}
+
+/// Whether [label] (clientLabel's) is one of Claude's apps: what the
+/// sign-in page's Claude words and the relay's tool list as Claude has
+/// always had it are for.
+export function isClaude(label) {
+  return label === "Claude" || label === "Claude Code";
 }

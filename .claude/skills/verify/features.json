@@ -149,7 +149,10 @@
       "entry": "api/mcp.js",
       "reach": "node tools/web/relay_server.mjs 8790, then godot --headless --path . --script src/dev/connector_probe.gd -- 8790",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/fixtures/oauth/world.mjs",
+        "tests/test_oauth_clients.py"
+      ]
     },
     {
       "id": "api:POST /api/orangecheck",
@@ -209,6 +212,14 @@
         "tests/test_billing_pay.py",
         "tests/test_desktop.py"
       ]
+    },
+    {
+      "id": "cli:ChatGPT connector flow",
+      "kind": "cli",
+      "entry": "tools/web/chatgpt_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/chatgpt_flow.mjs --url=<deployment or relay_server> [--out=shots/chatgpt]   (with .env sourced)",
+      "area": "account",
+      "tests": []
     },
     {
       "id": "cli:LDraw files in storage",
@@ -1447,6 +1458,14 @@
       "entry": "tools/web/studio_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/studio_flow.mjs --url=<a preview>/app --out=shots/studio_web   (with .env sourced)",
       "area": "prints",
+      "tests": []
+    },
+    {
+      "id": "cli:product look in a browser",
+      "kind": "cli",
+      "entry": "tools/web/product_render_flow.mjs",
+      "reach": "node tools/web/product_render_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=OUT   (a local export served by tools/web/serve.py, with .env sourced; or --url=<a preview>/app --bypass=$VERCEL_BYPASS: Product under Compatibility on each backdrop, the red glass red and the clear see-through)",
+      "area": "view",
       "tests": []
     },
     {
@@ -2708,7 +2727,7 @@
       "id": "lib:product look",
       "kind": "lib",
       "entry": "src/render/plastic_product.gdshader",
-      "reach": "tools/probe.sh product_render_probe  (windowed, on the GPU: Render's Product look draws in the product shaders, each backdrop as named, depth of field softens, the window's frame cost and environment unchanged; sixteen colour swatches on the white sweep against LDraw: black black, the colours and clear colours near their own, no shadow hatching)  /  tools/probe.sh render_probe -- --model=models/sports_car.ldr --look=product --gradient=1 --backdrop=#f5f6f8 --quality=best --size=1280x720 --picture=OUT.png",
+      "reach": "tools/probe.sh product_render_probe  (windowed, on the GPU: Render's Product look draws in the product shaders, each backdrop as named, depth of field softens, the window's frame cost and environment unchanged; sixteen colour swatches on the white sweep against LDraw: black black, the colours and clear colours near their own, no shadow hatching; a clear wall shows a clear red one behind it, and on nothing is glass, not black)  /  tools/probe.sh render_probe -- --model=models/sports_car.ldr --look=product --gradient=1 --backdrop=#f5f6f8 --quality=best --size=1280x720 --picture=OUT.png",
       "area": "view",
       "tests": []
     },
