@@ -1,4 +1,10 @@
 ---
+tools: add_minifig, print_part, make_part
+panels: MinifigDialog#minifig, MouldEditor#mould, PrintEditor#prints, ElementDialog#make-a-part
+ai: Minifigures from real parts, prints and stickers drawn on parts, the printed versions real parts came in, and parts made when no real one will do. An assistant adds a figure with add_minifig, prints or stickers a part with print_part, and makes a part with make_part.
+rules:
+  - A print or a made part is saved inside the model, so the file opens anywhere.
+  - make_part only when nothing in the catalogue fits; search_parts first.
 title: Minifigures, prints and made parts
 nav: Figures, prints and made parts
 description: Build a minifigure from real parts, draw prints and stickers, and make a part the LEGO Group never made.

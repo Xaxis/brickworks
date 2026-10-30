@@ -1,4 +1,9 @@
 ---
+panels: AccountPanel#account-panel
+ai: Signing in (an email code or orangecheck, no password), the age question, what Brickworks keeps, and deleting the account. Account in the app shows the saved models, the Claude connection and the tabs.
+rules:
+  - Comments, the Build together chat and following are for people 13 and over.
+  - Deleting the account ends Claude's connection too.
 title: Your account and privacy
 nav: Your account and privacy
 description: Signing in, the age question, what Brickworks keeps, and deleting your account.

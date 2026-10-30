@@ -1,4 +1,9 @@
 ---
+ai: The same Brickworks runs in a browser tab and as a desktop app; a model is the same file in both and saved models follow the account. Each browser tab or desktop window holds its own model, and the desktop window opens a local MCP port with --mcp.
+rules:
+  - Each browser tab is its own model, with its own id (/app?tab=<id>).
+  - The desktop's MCP port is 127.0.0.1:8787 (--mcp=PORT for another window).
+  - A tab told it has been updated saves nothing to saved models until it is reloaded.
 title: The web app and the desktop app
 nav: Web and desktop
 description: Open Brickworks in a browser or install it, sign in, and what each one does that the other does not.

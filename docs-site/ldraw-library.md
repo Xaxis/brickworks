@@ -1,4 +1,8 @@
 ---
+ai: The LDraw community's models of real sets, opened in the app (File › Library) or browsed at /library, and the LDraw Parts Library every part comes from. An assistant searches them with gallery library=true and opens one with open_model library=.
+rules:
+  - One LDraw unit is 0.4 mm exactly; files go to and from LDCad, LeoCAD and Studio unchanged.
+  - Each set says who modelled it and under which licence.
 title: The LDraw library
 nav: The LDraw library
 description: Open a model of a real set from the LDraw community's library, and where Brickworks' parts come from.

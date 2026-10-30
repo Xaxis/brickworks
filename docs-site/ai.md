@@ -1,4 +1,12 @@
 ---
+tools: submit_design, choose_sketch, plan_scale, find_reference, how_real_sets_build_this, find_techniques, show_technique, place_technique, restyle_model, add_rooms
+panels: AiSettings#other-ais
+ai: How an AI designs in Brickworks: Claude or another AI on the person's own key, in the assistant panel, through the connector or Claude Code. It proposes parts and the app decides: every design is checked and sent back with what failed. A design starts with plan_scale, find_reference and how_real_sets_build_this, then submit_design.
+rules:
+  - The app builds what is submitted, checks it holds together, and refuses what does not.
+  - A sketch is under 150 parts; three sketches, then choose_sketch one.
+  - Asked about a selection, change only it (selection, edit_selection), never submit_design.
+  - A whole design is one undo step.
 title: Designing with AI
 nav: The assistant
 description: How an AI designs in Brickworks: Claude or another AI on your own key, the assistant panel, sketches, and asking about a selection.

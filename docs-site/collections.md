@@ -1,4 +1,7 @@
 ---
+ai: Collections gather models: Favourites and a person's own, public or private, each public one with its page at /c/<id> and listed in the directory at /collections.
+rules:
+  - A private collection is its owner's alone.
 title: Collections
 nav: Collections
 description: Gather models into collections of your own, follow other people's, and browse every public one.

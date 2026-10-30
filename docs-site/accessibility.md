@@ -1,4 +1,7 @@
 ---
+ai: Using Brickworks with the keyboard alone, a screen reader (the desktop app from 0.8.0), a bigger interface (85 to 150%) and reduced motion, and how the website and these docs meet the same needs.
+rules:
+  - In a browser the app draws its own controls, which a screen reader cannot reach; its keys all work.
 title: Accessibility
 nav: Accessibility
 description: Using Brickworks with a keyboard alone, a screen reader, a bigger interface and less motion.

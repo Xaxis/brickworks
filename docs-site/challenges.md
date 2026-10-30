@@ -1,4 +1,7 @@
 ---
+ai: The monthly challenge at /challenge: a theme with rules, entries from people's own shared models, votes, and winners named when the month ends.
+rules:
+  - A model that breaks a rule is refused with each broken rule named.
 title: The monthly challenge
 nav: The monthly challenge
 description: Each month's theme, how to enter a model, how voting works, and how a month ends.

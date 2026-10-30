@@ -1,4 +1,12 @@
 ---
+tools: tabs, select_tab
+panels: ClaudeTabView#tabs
+ai: The connector at https://brickworks.diy/api/mcp lets Claude (claude.ai and its apps, and Claude Code) and ChatGPT build in the person's open Brickworks tab. Each tab has a short id; a chat works in one tab, chosen with select_tab or target, and long work runs as jobs.
+rules:
+  - With several tabs open, a chat's first change waits until it chooses one: select_tab, or target on a call.
+  - A client waits about three minutes for an answer; renders, booklets, Studio files and recordings answer with a job number.
+  - An assistant's undo stops at a step another chat made.
+  - The person allows the connector once; Disconnect Claude in Account ends it.
 title: The Claude connector
 nav: The Claude connector
 description: Connect Brickworks to Claude on your Claude plan, choose which tab each chat builds in, and see the model in 3D inside Claude.

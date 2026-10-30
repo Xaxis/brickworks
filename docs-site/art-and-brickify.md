@@ -1,4 +1,11 @@
 ---
+tools: make_art, brickify, look_at_picture
+panels: MosaicDialog#mosaic, BrickifyDialog#brickify
+ai: A picture laid as a LEGO® Art mosaic of plates and round tiles, and any 3D model (OBJ, STL, PLY, 3MF, VOX, FBX, glTF, GLB) laid in bricks. An assistant lays a mosaic with make_art (it replaces what is on the baseplate) and a 3D model with brickify (a job).
+rules:
+  - A mosaic panel is 16 x 16 studs; make_art takes 1 to 6 panels each way.
+  - brickify's size is studs along the model's longest side, 6 to 64 (24 when not said).
+  - A file fetched by link is at most 96 MB.
 title: Mosaics and brickify
 nav: Mosaics and brickify
 description: Turn a picture into a wall of plates, as LEGO® Art sets are, and turn any 3D model into bricks.
