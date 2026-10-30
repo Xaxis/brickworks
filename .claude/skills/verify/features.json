@@ -972,6 +972,14 @@
       "tests": []
     },
     {
+      "id": "cli:first build probe",
+      "kind": "cli",
+      "entry": "src/dev/first_build_probe.gd",
+      "reach": "tools/probe.sh first_build_probe; PROBE_SIZE=1400x900 tools/probe.sh first_build_probe   (pictures in shots/first_build/)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:first design undo probe",
       "kind": "cli",
       "entry": "src/dev/first_design_undo_probe.gd",
@@ -4940,8 +4948,8 @@
     {
       "id": "ui:tour",
       "kind": "ui",
-      "entry": "src/ui/tour.gd",
-      "reach": "godot --path .  (Help, Take the tour)",
+      "entry": "src/ui/first_build.gd",
+      "reach": "godot --path .  (Build your first model: offered once along the top of the model on a first visit; Help, Take the tour)",
       "area": "building",
       "tests": []
     },

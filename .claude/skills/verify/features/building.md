@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:palette in a browser, ui:connect by a point, cli:connect probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe -->
 
 ## Sub-features
 
@@ -865,10 +865,33 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`submit_design` `floor`, `floor_colour`): none for a vehicle, a baseplate
   in its ground's colour for a scene, made part of the build when the design
   is done, and says so in the chat.
-- `tour` (`src/ui/tour.gd`): Help, Take the tour: eight cards, each lighting a
-  part of the window (menus, toolbar, parts bin, the model, properties, status
-  bar, assistant) with the rest dimmed; Next/Back or the arrows, Esc leaves.
-  Seven with the assistant off: its card goes with it.
+- `tour` (`src/ui/first_build.gd`, `FirstBuild`): Build your first model
+  (APP_UX A12), a line in the strip along the top of the model, never over
+  it. Offered once on a device (`first_build` in `user://shell.cfg`: offered,
+  skipped or done), on a first visit, to a person in front of the window once
+  signed in, and only while the example car is untouched: never to a viewer,
+  a model opened from a link, a phone, or someone whose own model came back.
+  Nothing changes until **Start**, which takes the car off for "My first
+  model" (`Main._make_room`), or over the person's own model runs File, New,
+  which asks first when it is unsaved. **Skip** ends it in one click; Help,
+  Take the tour brings it back. Seven steps, each one short line naming the
+  key the person's keymap gives (`Keymap.written`) and a frame round what to
+  use: a part put down (the bin), turned (Rotate tool, R), coloured (the
+  palette), moved (Move tool, W A S D), copied (Clone tool, Ctrl+D), the view
+  turned (the view cube; the drag the view preset turns with, or 1 to 7), and
+  saved (Save, Ctrl+S); then Done. A step moves on when the model, the view
+  or the store shows it done, whatever way it was asked for: it reads the
+  model as the step began against the model now, never the input. The last
+  line names the assistant only while it is shown. `first build probe`
+  (windowed, 1280 x 720; 1400 x 900 by `PROBE_SIZE`) checks the offer by
+  itself with the car untouched and nothing covering the model, Skip in one
+  click, not offered again in a run of its own on the same data folder, then
+  Help to Done by keys and clicks in 25 acts or fewer (a part put down
+  unturned, a turn in hand not yet put down and the wheel's zoom each leave
+  their step where it is), and each step again another way (File, New over
+  a saved model, R on a selection, a colour clicked with it selected, a drag,
+  Edit, Copy and Paste, 1, File, Save). `columns probe` checks its first step
+  brings the bin out of its fold and frames its parts.
 - `assistant on or off` (`src/ui/controls_dialog.gd`, `ShellPrefs.assistant_shown`,
   `Main.set_assistant`): Tools, Settings…, **Assistant (AI)**: "Build by hand
   only" or "Show the assistant", kept on this device (`assistant` in
@@ -877,7 +900,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   switch are in it), no Ask Claude in Edit or on a part and Ctrl+K does
   nothing, no View, Assistant or Tools, Claude connector…, no brief or Design
   with Claude in Brick Art, no Claude in Account, the sign-in screen, My
-  collection or About, and the tour without its card. The connector is held
+  collection or About, and Build your first model without its last line about it. The connector is held
   off (`ClaudeConnector.hold`): nothing switches it on, a sign-in or a
   connection to the account included, and Settings says "Claude connections
   are off while the assistant is off". On again, all of it is back and the

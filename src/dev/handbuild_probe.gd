@@ -693,19 +693,15 @@ func _the_shell() -> void:
 	_check("...and shows it", shell.key_strip_shown())
 	_check("a probe keeps no layout on this machine", not ShellPrefs.keeps())
 
-	# Help, Take the tour.
+	# Help, Take the tour: Build your first model, offered along the top of
+	# the model (first_build_probe walks it to its end).
 	shell.run("tour")
 	await _frames(5)
-	_check("Help, Take the tour starts it", shell.tour.visible)
-	await _key(KEY_RIGHT)
-	await _key(KEY_RIGHT)
-	await _frames(5)
-	_check("...Next goes on, lighting the toolbar (%s)" % shell.tour._heading.text,
-		shell.tour._heading.text.begins_with("The toolbar")
-		and shell.tour._lit.encloses(tools.get_global_rect()))
+	_check("Help, Take the tour offers Build your first model (%s)" % shell.first_build.step_name(),
+		shell.first_build.step_name() == "offer")
 	await _shot("tour")
-	await _key(KEY_ESCAPE)
-	_check("...and Escape leaves it", not shell.tour.visible)
+	await _click(shell.first_build.controls_by_name()["first_build_skip"].get_global_rect().get_center())
+	_check("...and Skip leaves it", not shell.first_build.is_running())
 	_builder.clear_selection()
 	await _frames(3)
 	await _shot("shell")
