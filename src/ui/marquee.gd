@@ -23,6 +23,11 @@ var _drawing: bool = false
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# In the window's units, as the pointer's are, and over the second view
+	# beside the model too (View, Split), which is drawn after the model's
+	# column: a box is drawn in whichever view it is dragged in.
+	top_level = true
+	z_index = 1
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	visible = false
 
