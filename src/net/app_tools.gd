@@ -94,6 +94,8 @@ const WINDOW_ONLY: Dictionary = {
 	"lock": "keeps the person's own mouse off parts; a session changes only the parts it names",
 	"unlock": "keeps the person's own mouse off parts; a session changes only the parts it names",
 	"mirror": "a session lays the mirror image itself, with edit_model's add or the mirror shape",
+	"split_parts": "a session lays the parts it wants itself, with edit_model's remove and add; Split is the person's shortcut for that",
+	"merge_parts": "a session lays the parts it wants itself, with edit_model's remove and add; Merge is the person's shortcut for that",
 	"leave_submodel": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
 	"enter_assembly": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
 	"leave_assembly": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",

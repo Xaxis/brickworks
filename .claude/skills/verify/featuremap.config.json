@@ -4256,6 +4256,20 @@
       "entry": "src/dev/springs_probe.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd  (a band round two wedge belt wheels and three, each in 4 actions or fewer, within 1 LDU of the tangents and arcs by hand and in every groove; turned and tilted; a wheel nudged and its band following, one undo; a spring stretched from 4 to 6 studs keeping its turns; a shock from the bin; saved and opened the same; PROBE_SIZE=1280x720)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "split and merge parts",
+      "entry": "src/assembly/split_merge.gd",
+      "reach": "godot --path .  (select; Alt-S splits, Alt-M merges, or the menu on a part)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "splitmerge probe",
+      "entry": "src/dev/splitmerge_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/splitmerge_probe.gd  (a 2 x 4 plate split on its studs; three 1 x 4 plates merged into a brick; six 1 x 1s into a 2 x 3; five 1 x 2s into two; a merge with no real part said and nothing changed; a 1 x 1 brick and a slope split)",
+      "area": "building"
     }
   ]
 }

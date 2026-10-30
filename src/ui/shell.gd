@@ -561,6 +561,7 @@ func work_size(name: String) -> int:
 
 ## The commands whose work grows with the selection rather than the model.
 const ON_THE_SELECTION: Array[String] = ["mirror", "replace", "duplicate", "pattern", "paint",
+	"split_parts", "merge_parts",
 	"cut_parts", "copy", "delete", "hide", "isolate", "lock", "make_submodel",
 	"leave_submodel", "make_unique", "rotate_held", "tip_held"]
 
@@ -608,6 +609,7 @@ const STEPPED_SLOW_FROM := 2000
 ## baseplate.
 const SLOW_FROM: Dictionary = {
 	"mirror": 200, "replace": 200, "duplicate": 300, "pattern": 300, "paste": 300,
+	"split_parts": 300, "merge_parts": 300,
 	"cut_parts": 600,
 	"paint": 600, "hide": 3000, "isolate": 3000, "leave_submodel": 2000,
 	"make_unique": 2000,
@@ -662,6 +664,7 @@ const DOING: Dictionary = {
 	"hide": "Hiding…", "isolate": "Showing only the selection…", "show_all": "Showing everything…",
 	"lock": "Locking…", "unlock": "Unlocking…", "paint": "Painting…",
 	"replace": "Replacing…", "mirror": "Mirroring…",
+	"split_parts": "Splitting…", "merge_parts": "Merging…",
 	"make_submodel": "Making a sub-assembly…", "leave_submodel": "Ungrouping…",
 	"make_unique": "Making the copy unique…",
 	"timeline": "Opening the timeline…", "parts_list": "Listing the parts…",
@@ -1004,6 +1007,13 @@ func _define() -> void:
 		"Swap the part for one of the prints or stickered versions the LEGO Group made of it")
 	_add("mirror", "Mirror", SHIFT | KEY_M, func() -> void: verbs.mirror(), selected,
 		"Make the selection its mirror image, left to right as you see it")
+	# src/assembly/split_merge.gd: Studio's Split and Merge, on its keys.
+	_add("split_parts", "Split into smaller parts", ALT | KEY_S,
+		func() -> void: SplitMerge.split(verbs), selected,
+		"Plates, bricks and tiles into 1 x 1s, a 1 x 1 brick into three plates, slopes into 1-wide slopes, on the same studs")
+	_add("merge_parts", "Merge into bigger parts", ALT | KEY_M,
+		func() -> void: SplitMerge.merge(verbs), selected,
+		"The selected plates, bricks and tiles of a colour into the fewest real parts made in it: three plates high a brick")
 	# J, which had no command: on the menu on a part, and found by name.
 	_add("swing", "Swing on its hinge", KEY_J, func() -> void: verbs.swing(EditVerbs.SWING),
 		func() -> bool: return builder.hinge_angle() != null,
@@ -1351,6 +1361,7 @@ func _define() -> void:
 ## their keys, among what selects, hides, copies and changes the part.
 const ON_A_PART: Array = ["ask_claude", "brace", "comments", "-", "select_connected", "select_part",
 	"select_colour", "-", "hide", "isolate", "-", "copy", "duplicate", "delete", "-", "paint",
+	"split_parts", "merge_parts",
 	"replace", "printed_versions", "swing", "-", "step_prev", "step_next", "make_submodel", "-",
 	"show_properties"]
 
@@ -2185,6 +2196,10 @@ func handle_key(key: InputEventKey) -> bool:
 			# laid out at once.
 			if held and key.shift_pressed and not key.alt_pressed:
 				return run("pattern")
+		# Studio's Alt+S and Alt+M (SplitMerge).
+		KEY_S, KEY_M:
+			if key.alt_pressed and not held and not key.shift_pressed:
+				return run("split_parts" if key.keycode == KEY_S else "merge_parts")
 	return false
 
 

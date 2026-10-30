@@ -1374,6 +1374,18 @@
 			"tip": "Paint the selection the colour in hand"
 		},
 		{
+			"name": "split_parts",
+			"words": "Split into smaller parts",
+			"key": "Alt+S",
+			"tip": "Plates, bricks and tiles into 1 x 1s, a 1 x 1 brick into three plates, slopes into 1-wide slopes, on the same studs"
+		},
+		{
+			"name": "merge_parts",
+			"words": "Merge into bigger parts",
+			"key": "Alt+M",
+			"tip": "The selected plates, bricks and tiles of a colour into the fewest real parts made in it: three plates high a brick"
+		},
+		{
 			"name": "replace",
 			"words": "Replace with the part in hand",
 			"key": "",
@@ -1504,6 +1516,8 @@
 		"replace": "",
 		"printed_versions": "",
 		"mirror": "shift-M",
+		"split_parts": "alt-S",
+		"merge_parts": "alt-M",
 		"swing": "J",
 		"ask_claude": "Ctrl-K",
 		"brace": "",
