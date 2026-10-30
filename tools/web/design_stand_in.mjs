@@ -65,6 +65,9 @@ import { achievementsOf } from "../../api/people.js";
 // API gives it; and the pictures themselves, made here.
 import { facesOn, pictureAt } from "../../api/_faces.js";
 import { encode as encodeJpeg } from "../../api/_jpeg.js";
+// What a model is based on (supabase/model_bases.sql): a designer's list
+// checked, and said, as the API checks and says it.
+import { basesAsked, basesSaid } from "../../api/_bases.js";
 
 export const ORIGIN = "http://design.test";
 export const DB = "https://stub.supabase.test";
@@ -836,8 +839,23 @@ const TABLES = {
   profile_choices: () => CHOICES,
 };
 
+// What the watchtower is based on (supabase/model_bases.sql): a set built
+// from, and work elsewhere changed, under its remix line. A list its
+// designer saves here is kept until the stand-in stops, as the table
+// keeps it, so the page the server makes says it after.
+const BASES = [
+  { model: MODEL_ID, n: 1, how: "alternate", set_number: "6080-1", url: null, title: null, author: null, licence: null },
+  { model: MODEL_ID, n: 2, how: "changed", set_number: null, url: "https://example.org/river-tower",
+    title: "A river tower, with its water gate", author: "Mira Holm", licence: "CC BY 4.0" },
+];
+
 // The functions the handlers call (rpc/<name>), each with what it was sent.
 const RPC = {
+  // supabase/model_bases.sql
+  model_bases_of: ({ model_ids }) => BASES.filter((row) => (model_ids || []).includes(row.model)),
+  set_based: ({ set_number }) => [...new Set(BASES.filter((row) => String(row.set_number).toLowerCase()
+    === String(set_number).toLowerCase()).map((row) => row.model))].map((id) => ({ ...card(modelOf(id)),
+    based: BASES.find((row) => row.model === id).how })),
   directory_model: ({ model_id }) => modelPage(model_id),
   directory_models: ({ query }) => listModels(query || {}),
   gallery_models: ({ query }) => listModels(query || {}),
@@ -1042,6 +1060,8 @@ const PAGES = [
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
   [/^\/collections\/?$/, "people", "collections_page"],
+  // A LEGO® set's page (api/_sets.js), from this checkout's catalogue.
+  [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/?$/, "share", "catalog_set"],
 ];
 
 /// Which handler makes [pathname], and what it is asked. A path under /m/,
@@ -1051,6 +1071,7 @@ function routeOf(pathname) {
   for (const [pattern, name, op] of PAGES) {
     const found = pattern.exec(pathname);
     if (!found) continue;
+    if (op === "catalog_set") return { name, query: { op, set: found[1] } };
     if (name === "share") {
       return { name, query: { op, ...(found[1] ? { id: found[1] } : {}), ...(found[2] ? { v: found[2] } : {}),
         ...(found[3] ? { as: found[3] } : {}) } };
@@ -1180,6 +1201,25 @@ const LIST_WORDS = { sign_in: "Sign in to follow collections: we email you a cod
 const answer = (status, json) => ({ status, json });
 const YES = new Set(["1", "true", "yes", "on"]);
 const asked = (value) => YES.has(String(value ?? "").toLowerCase());
+
+/// POST ?op=bases {model, bases}: checked as api/_bases.js checks it, and
+/// kept for the model's designer alone, the whole list.
+function putBases(body, who) {
+  if (!who) return answer(401, { error: SIGN_IN });
+  const m = shownModel(String(body?.model || ""));
+  if (!m) return answer(404, { error: "There is no shared model at that link." });
+  if (m.owner !== who) return answer(403, { error: "Only its designer says what it is based on." });
+  let kept;
+  try {
+    kept = basesAsked(body?.bases);
+  } catch (trouble) {
+    return answer(trouble.status || 400, { error: trouble.message });
+  }
+  BASES.splice(0, BASES.length, ...BASES.filter((row) => row.model !== m.id), ...kept.map((one, at) => ({ model: m.id,
+    n: at + 1, how: one.how, set_number: one.set || null, url: one.url || null, title: one.title || null,
+    author: one.author || null, licence: one.licence || null })));
+  return answer(200, { bases: basesSaid(RPC.model_bases_of({ model_ids: [m.id] })) });
+}
 
 /// cardOf: a card as a client is given it, with the asker's share of its
 /// parts when the list was asked with theirs.
@@ -1710,11 +1750,23 @@ function galleryQuery(params, mine, who) {
 }
 
 /// /api/share: the gallery's list and front, and a model's own page's asks.
-function share(method, params, who, state = {}) {
+function share(method, params, who, state = {}, body = undefined) {
   const op = params.get("op") || "";
   const id = params.get("id") || "";
   const mine = asked(params.get("mine"));
   if (mine && !who) return answer(401, { error: SIGN_IN });
+  // What a model is based on (api/_bases.js): its page's lines, and its
+  // designer's list taken as kept, which nothing here keeps.
+  if (op === "bases") {
+    if (method === "POST") return putBases(body, who);
+    const m = shownModel(id);
+    if (!m) return answer(404, { error: "There is no shared model at that link." });
+    return answer(200, { bases: basesSaid(RPC.model_bases_of({ model_ids: [id] })), mine: who === m.owner, ready: true });
+  }
+  if (op === "set_based") {
+    return answer(200, { set: params.get("set"), models: state.empty ? [] : RPC.set_based({ set_number: params.get("set") })
+      .map((row) => ({ ...apiCard(row), based: row.based })) });
+  }
   // A view counted, a build finished: it went.
   if (method === "POST") return answer(200, { counted: true });
   const pool = mine ? { mine: POOL } : {};
@@ -1965,7 +2017,7 @@ function answered({ url, method = "GET", body, state = {} }) {
         : answer(422, { error: "That is not an email address." });
     }
     case "people": return people(verb, params, body, who, state);
-    case "share": return share(verb, params, who, state);
+    case "share": return share(verb, params, who, state, body);
     case "admin": return admin(verb, params, who, state);
     case "oauth": return oauth(verb, params, body, who);
     // What you own (api/collection.js): the sets and loose parts.
@@ -2074,7 +2126,7 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
       return route.fulfill({ status: said.status, contentType: "application/json", body: asProject(JSON.stringify(said.json)) });
     }
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
-    if (/^\/(m|u|c)\//.test(url.pathname) || /^\/(collections|oembed)\/?$/.test(url.pathname)) {
+    if (/^\/(m|u|c|library\/set)\//.test(url.pathname) || /^\/(collections|oembed)\/?$/.test(url.pathname)) {
       const made = await serverPage(api, url.pathname + url.search);
       // With the security policy the server sends with it. A picture the
       // server makes (/m/X.cutout.png) as the bytes and type it answered:

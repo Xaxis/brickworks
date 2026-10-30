@@ -140,7 +140,8 @@
       "area": "web",
       "tests": [
         "tests/test_gallery_crons.py",
-        "tests/test_library_site.py"
+        "tests/test_library_site.py",
+        "tests/test_model_bases.py"
       ]
     },
     {
@@ -391,6 +392,14 @@
       "kind": "cli",
       "entry": "tools/web/avatar_flow.mjs",
       "reach": "node tools/web/avatar_flow.mjs --out=DIR   (the stand-in's people, nothing leaves the machine); node --env-file=.env tools/web/relay_server.mjs 8871 --hold=profile_avatars,profile_choices &  node --env-file=.env tools/web/avatar_flow.mjs --url=http://127.0.0.1:8871 --out=DIR   (throwaway accounts, deleted after; or BW_BYPASS=$VERCEL_BYPASS ... --url=<preview>, which says not open yet until supabase/avatars.sql is applied)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:based on browser flow",
+      "kind": "cli",
+      "entry": "tools/web/based_on_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/based_on_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh based_on: throwaway Ivy and Jon; before model_bases.sql, nothing offered and a list refused in words (503); with no --url, the stand-in's whole of it)",
       "area": "web",
       "tests": []
     },
@@ -2767,7 +2776,8 @@
       "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most; with neither, More in the gallery, its Top)",
       "area": "web",
       "tests": [
-        "tests/test_library_site.py"
+        "tests/test_library_site.py",
+        "tests/test_model_bases.py"
       ]
     },
     {
@@ -3269,6 +3279,14 @@
       "tests": []
     },
     {
+      "id": "lib:what a model is based on",
+      "kind": "lib",
+      "entry": "api/_bases.js",
+      "reach": "node tools/web/based_on_flow.mjs --out=DIR   (the stand-in: Say what it is based on on a model's page, a set and a link said, refused in words, its page's lines, structured data and JSON, the set's page's Based on this set, taken away; supabase/model_bases.sql dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/model_bases.sql --dry --try=tools/model_bases_try.sql --table=model_bases; tests/test_model_bases.py)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:what moves in a model",
       "kind": "lib",
       "entry": "src/assembly/playable.gd",
@@ -3746,7 +3764,7 @@
       "id": "ui:every set's page",
       "kind": "ui",
       "entry": "api/_sets.js",
-      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; /library/set/N.jpg its picture drawn from its parts (api/_flatlay.js), /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
+      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; Based on this set, the gallery's models based on it (web/set-page.js, ?op=set_based); /library/set/N.jpg its picture drawn from its parts (api/_flatlay.js), /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
       "area": "web",
       "tests": []
     },

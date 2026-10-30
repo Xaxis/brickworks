@@ -100,6 +100,10 @@
 //                            cover; op=set_file (/library/X.mpd) its file,
 //                            op=set_parts (/library/X/parts.json, .xml,
 //                            .csv) its parts
+//   GET  ?op=bases&id=X      what X is based on, and whether the caller may
+//                            change it; POST ?op=bases {model, bases} its
+//                            designer's list; GET ?op=set_based&set=N the
+//                            models based on set N (api/_bases.js)
 //   POST ?op=seen&id=X       its page was looked at: counted once a day per
 //                            visitor, and never for a robot
 //   POST ?op=built&id=X      {device, v?}: built to its last step, in the
@@ -238,9 +242,11 @@ import {
 } from "./_sets.js";
 import { flatLayJpeg } from "./_flatlay.js";
 import { challengeLine, withWins } from "./_challenges.js";
+// What a model is based on (docs/SOCIAL.md section 7, item 5).
+import { bases, basesOf, basesPut, setBased } from "./_bases.js";
 // The one model card, the browser's too (web/card.js): a model's remixes,
 // more by its designer and similar models.
-import { MADE_WITH, cardHtml, marksOf, quietMarks } from "./_card.js";
+import { MADE_WITH, basedHtml, cardHtml, marksOf, quietMarks } from "./_card.js";
 // The kit, made in the card's file: the designer's avatar and the action
 // bar's buttons.
 import { avatarHtml, iconButtonHtml, iconHtml, shareSheetHtml } from "./_card.js";
@@ -890,6 +896,9 @@ function setFacts(set, parts) {
 function structured(origin, id, model) {
   const url = links(origin, id).url;
   const parent = (model.from || [])[0];
+  // The model it remixes, and what else it credits (api/_bases.js).
+  const basedOn = [...(parent && parent.id ? [`${origin}/m/${parent.id}`] : []),
+    ...(model.based || []).map((one) => (one.set ? `${origin}${one.href}` : one.href))];
   const data = {
     "@context": "https://schema.org", "@type": "CreativeWork", name: model.name, url,
     description: model.description || describe(model), image: model.has_image ? links(origin, id).image : undefined,
@@ -897,7 +906,7 @@ function structured(origin, id, model) {
       url: modelledByOf(model.modelled_by)?.page || (model.by ? `${origin}/u/${model.by.handle}` : undefined) } : undefined,
     license: LICENCES[model.licence]?.url || undefined, dateCreated: model.listed_at || undefined,
     keywords: (model.tags || []).join(", ") || undefined,
-    isBasedOn: parent && parent.id ? `${origin}/m/${parent.id}` : undefined,
+    isBasedOn: basedOn.length ? basedOn : undefined,
     interactionStatistic: [
       { "@type": "InteractionCounter", interactionType: "https://schema.org/ViewAction", userInteractionCount: Number(model.views) || 0 },
       { "@type": "InteractionCounter", interactionType: "https://schema.org/LikeAction", userInteractionCount: Number(model.likes) || 0 },
@@ -1236,6 +1245,7 @@ ${header}
       ${actionBar(origin, id, model, old ? `${origin}/m/${id}/v/${version.n}` : links(origin, id).url)}
       <ul class="facts pills">${mark ? `<li class="tested">${testedMark(mark, counted)}</li>` : ""}${facts}</ul>
       ${fromLine}
+      ${basedHtml(model.based || [])}
       <p class="tested-note" id="tested-note" data-id="${id}" data-version="${version.n}" role="note" hidden></p>
     </div>
     <div class="rest">
@@ -1849,6 +1859,8 @@ async function read(request, response) {
   if (op === "shelves") return shelves(request, response, origin);
   if (op === "sitemap") return sitemap(response, origin);
   if (op === "oembed") return oembed(request, response, origin);
+  if (op === "bases") return bases(request, response);
+  if (op === "set_based") return setBased(request, response, origin);
   // The LDraw library's sets (api/_library.js): /library's list, and each
   // set's page, cover, file and parts.
   // With tests=1, the OMR's arrivals staged for the lead to let out too
@@ -1891,11 +1903,14 @@ async function read(request, response) {
     // The collections it is in, with their covers: a test model's own page
     // counts a test account's too, as it offers test models.
     const tests = own?.test === true;
-    const [mark, photos, next, { counted, parts }, lists] = await Promise.all([markOf(db, id, shown.n),
+    const [mark, photos, next, { counted, parts }, lists, based] = await Promise.all([markOf(db, id, shown.n),
       photosWhere(`model=eq.${id}`, shownPublicly), nextOf(origin, id, page, own),
       countedOf(versionFile(id, shown.n, versions[0].n, "mpd")),
       listsOf(id, tests).then(async (found) => ({ ...found,
-        covers: found.lists.length ? await coversOf(found.lists, tests).catch(() => new Map()) : new Map() }))]);
+        covers: found.lists.length ? await coversOf(found.lists, tests).catch(() => new Map()) : new Map() })),
+      basesOf(id).catch(() => null)]);
+    // What it is based on, under its remix line and in its structured data.
+    page.based = based || [];
     // The owner's own photos first, as its pictures (docs/SOCIAL.md U4),
     // then the builds of everybody else, newest first.
     const ordered = photos.map((photo) => ({ ...photo, own: Boolean(own && photo.account === own.owner) }))
@@ -1968,7 +1983,8 @@ async function read(request, response) {
   if (!model) return response.status(410).json({ error: "This model is no longer shared.", unpublished: true });
   // The mark this version passed, for the viewer's bar; a failure is its
   // owner's alone (?op=tested), so here it is no mark at all.
-  const [mark, builds, by] = await Promise.all([markOf(db, id, shown.n), buildsOf(id), profileOf(id, row.author)]);
+  const [mark, builds, by, based] = await Promise.all([markOf(db, id, shown.n), buildsOf(id), profileOf(id, row.author),
+    basesOf(id).catch(() => null)]);
   const tested = publicMark(mark);
   return response.status(200).json({
     tested,
@@ -1994,6 +2010,9 @@ async function read(request, response) {
     kind: row.kind ?? null,
     remixed_from: from ? { id: from.id, name: from.name, url: `${origin}/m/${from.id}`,
       version: remixVersion(versions) } : null,
+    // What else it credits (api/_bases.js): a set built from or changed, a
+    // work elsewhere; a set's href its page here.
+    based_on: (based || []).map((one) => ({ ...one, href: one.set ? `${origin}${one.href}` : one.href })),
     ...links(origin, id),
     model: model.toString("utf8"),
   });
@@ -3011,6 +3030,7 @@ export default async function handler(request, response) {
     if (op === "unpublish") return await unpublish(request, response);
     if (op === "seen") return await seen(request, response);
     if (op === "built") return await built(request, response);
+    if (op === "bases") return await basesPut(request, response);
     if (op === "") return await publish(request, response);
     return response.status(400).json({ error: `unknown op ${op}` });
   } catch (trouble) {

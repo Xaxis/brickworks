@@ -879,9 +879,24 @@ opened; nothing is kept but when each was read, the rest read from the
 challenges as they are. An account hears only of what came after it was
 made, so a new account is not handed a backlog. Not built: an email when a
 challenge opens. The day's email already tells what is new; a second email
-a month would be the first one the site sends unasked. The challenge's own
-link preview (its title in the card a chat app draws) waits on the share
-sheet's next pass: /challenge's tags are the page's, not each challenge's.
+a month would be the first one the site sends unasked. Each challenge's
+own link, `/challenge?id=N`, has its own preview: its title, its brief and
+days, and a winner's picture once it has one.
+
+**5 as built** (supabase/model_bases.sql): a model's designer says what it
+is based on, up to three: an alternate build of a LEGO® set (built from its
+parts, Rebrickable's word), changed from a set or from work elsewhere, or
+inspired by one. A set is given by its number, checked against the
+catalogue and linked to its page here; work elsewhere by its https address,
+its title, and its author and licence when known, said as written and
+linked as theirs (nofollow ugc). The lines sit under the remix line on the
+model's page, in its structured data (`isBasedOn`) and its JSON
+(`based_on`); each set's page lists the
+gallery's models based on it, Based on this set, which no peer can do
+without a page per set. Under 13, not offered: a name and a link shown in
+public. Not built: picking the set from a search in the dialog (its
+number is typed, and refused in words when the library has not got it),
+and a work elsewhere's picture.
 
 ## Sources
 

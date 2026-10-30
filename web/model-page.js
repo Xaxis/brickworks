@@ -21,6 +21,7 @@
 import { askToSignIn, call, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { avatarHtml } from "/kit.js";
+import { HOWS, basedHtml } from "/card.js";
 import { wireShare } from "/share-sheet.js";
 
 // The comments' own loader, once they are listed (startComments), for
@@ -39,6 +40,12 @@ else if (marks && /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/.test(id || "")) {
 // This month's challenge (supabase/challenges.sql), for the model's own
 // designer: Enter this month's challenge, or that it is in.
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) challengeEntry();
+// What it is based on (api/_bases.js), for the model's own designer: Say
+// what it is based on, or Change it, in a dialog of at most three; the
+// page's lines drawn again from what was kept. <html data-bases> says how
+// many its designer's page shows, "not-open" before model_bases.sql
+// (tools/web/based_on_flow.mjs reads it).
+if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) basesOwn();
 const comments = document.getElementById("comments");
 if (comments && /^[A-Za-z0-9]{10}$/.test(comments.dataset.id || "")) startComments(comments);
 
@@ -1383,4 +1390,189 @@ function enterDialog(said) {
     await challengeEntry();
   });
   dialog.showModal();
+}
+
+// ---------------------------------------------------------------------------
+// What it is based on (api/_bases.js, docs/SOCIAL.md section 7, item 5).
+
+/// For the model's own designer alone (the answer's mine): a line under
+/// what the page says it is based on, Say what it is based on or Change
+/// what it is based on, which opens the dialog.
+async function basesOwn() {
+  const answer = await call(`/api/share?op=bases&id=${id}`);
+  if (answer.status !== 200 || !answer.body.mine) return;
+  // Before supabase/model_bases.sql there is nowhere to keep a list.
+  if (!answer.body.ready) {
+    document.documentElement.dataset.bases = "not-open";
+    return;
+  }
+  let line = document.getElementById("bases-own");
+  if (!line) {
+    line = document.createElement("p");
+    line.id = "bases-own";
+    line.className = "from bases-own";
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "link";
+    edit.addEventListener("click", () => basesDialog(line.bases || []));
+    line.append(edit);
+    const side = document.querySelector(".model-page .side");
+    const after = document.getElementById("based-on") || side?.querySelector(":scope > p.from:not(.modelled-by)")
+      || side?.querySelector(":scope > .facts");
+    if (!after) return;
+    after.after(line);
+  }
+  showBases(line, answer.body.bases || []);
+}
+
+/// The page's lines for [said], and its designer's line to change them.
+function showBases(line, said) {
+  line.bases = said;
+  document.getElementById("based-on")?.remove();
+  if (said.length) {
+    const made = document.createElement("template");
+    made.innerHTML = basedHtml(said);
+    line.before(made.content.firstElementChild);
+  }
+  line.querySelector("button").textContent = said.length ? "Change what it is based on" : "Say what it is based on";
+  document.documentElement.dataset.bases = String(said.length);
+}
+
+/// The dialog: at most three, each how it is based on it, then a set's
+/// number or a link, and for a link its title, author and licence. The
+/// server checks the set against the catalogue and says what is wrong in
+/// words.
+function basesDialog(current) {
+  const dialog = document.createElement("dialog");
+  dialog.className = "sign-in report bases-dialog";
+  const title = document.createElement("h2");
+  title.textContent = "What it is based on";
+  title.id = "bases-title";
+  dialog.setAttribute("aria-labelledby", title.id);
+  const lede = document.createElement("p");
+  lede.textContent = "A LEGO® set you built it from or changed, or work elsewhere you changed or took ideas from. "
+    + "Its page credits each, at most three.";
+  const form = document.createElement("form");
+  form.noValidate = true;
+  const list = document.createElement("ol");
+  list.className = "bases-rows";
+  const add = document.createElement("button");
+  add.type = "button";
+  add.className = "link";
+  add.textContent = "Add another";
+  const field = (labelText, input) => {
+    const label = document.createElement("label");
+    label.className = "field";
+    label.append(document.createTextNode(labelText), input);
+    return label;
+  };
+  const text = (name, most, hint = "") => {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.name = name;
+    input.maxLength = most;
+    input.autocomplete = "off";
+    if (hint) input.placeholder = hint;
+    return input;
+  };
+  const counted = () => {
+    [...list.children].forEach((row, at) => { row.querySelector("legend").textContent = `Based on, ${at + 1} of ${list.children.length}`; });
+    add.hidden = list.children.length >= 3;
+  };
+  const addRow = (one = {}) => {
+    const row = document.createElement("li");
+    const box = document.createElement("fieldset");
+    const legend = document.createElement("legend");
+    legend.className = "visually-hidden";
+    const how = document.createElement("select");
+    how.name = "how";
+    for (const [value, words] of [["alternate", "An alternate build of a set"], ["changed", HOWS.changed],
+      ["inspired", HOWS.inspired]]) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = words;
+      how.append(option);
+    }
+    how.value = one.how && HOWS[one.how] ? one.how : "alternate";
+    const what = text("what", 300, "6080-1, or https://…");
+    what.value = one.set || one.url || "";
+    const linked = document.createElement("div");
+    linked.className = "link-fields";
+    const named = text("title", 120);
+    named.value = one.url ? one.name || "" : "";
+    const author = text("author", 80);
+    author.value = one.author || "";
+    const licence = text("licence", 60, "CC BY 4.0");
+    licence.value = one.licence || "";
+    linked.append(field("Its title", named), field("Its author", author), field("Its licence", licence));
+    const shown = () => { linked.hidden = !/^\s*https?:/i.test(what.value); };
+    what.addEventListener("input", shown);
+    shown();
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "link";
+    remove.textContent = "Remove";
+    remove.addEventListener("click", () => {
+      row.remove();
+      counted();
+      add.focus();
+    });
+    box.append(legend, field("How", how), field("A set's number, or a link", what), linked, remove);
+    row.append(box);
+    list.append(row);
+    counted();
+    return row;
+  };
+  for (const one of current.slice(0, 3)) addRow(one);
+  if (!current.length) addRow();
+  add.addEventListener("click", () => addRow().querySelector("select").focus());
+  const status = document.createElement("div");
+  status.className = "said";
+  status.setAttribute("role", "status");
+  const send = document.createElement("button");
+  send.className = "cta";
+  send.type = "submit";
+  send.textContent = "Save";
+  const close = document.createElement("button");
+  close.className = "cta ghost";
+  close.type = "button";
+  close.textContent = "Cancel";
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  actions.append(send, close);
+  form.append(list, add, actions, status);
+  dialog.append(title, lede, form);
+  document.body.append(dialog);
+  const end = () => {
+    dialog.close();
+    dialog.remove();
+    document.querySelector("#bases-own button")?.focus();
+  };
+  close.addEventListener("click", end);
+  dialog.addEventListener("cancel", end);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const bases = [...list.querySelectorAll("fieldset")].map((box) => {
+      const value = (name) => box.querySelector(`[name="${name}"]`).value.trim();
+      const what = value("what");
+      if (!what) return null;
+      return /^https?:/i.test(what)
+        ? { how: value("how"), url: what, title: value("title"), author: value("author"), licence: value("licence") }
+        : { how: value("how"), set: what };
+    }).filter(Boolean);
+    send.disabled = true;
+    status.textContent = "Saving…";
+    const answer = await call("/api/share?op=bases", { method: "POST", body: { model: id, bases } });
+    send.disabled = false;
+    if (answer.status !== 200) {
+      status.textContent = answer.body.error || "That did not go just now. Try again in a minute.";
+      document.documentElement.dataset.basesRefused = String(answer.status);
+      return;
+    }
+    const line = document.getElementById("bases-own");
+    if (line) showBases(line, answer.body.bases || []);
+    end();
+  });
+  dialog.showModal();
+  list.querySelector("select")?.focus();
 }

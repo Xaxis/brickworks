@@ -478,3 +478,22 @@ export function modelCard(model, options) {
   return document.importNode(made.content.firstElementChild, true);
 }
 let watching = false;
+
+// ---------------------------------------------------------------------------
+// What a model is based on (api/_bases.js, docs/SOCIAL.md section 7, item 5).
+
+/// How a model is based on something, as its line begins.
+export const HOWS = { alternate: "An alternate build of", changed: "Changed from", inspired: "Inspired by" };
+
+/// A model's lines under its remix line, one a thing it is based on: "An
+/// alternate build of set 6080-1 King's Castle", "Changed from “A castle”
+/// by Someone (CC BY 4.0)". "" for none. Every word escaped.
+export function basedHtml(said) {
+  if (!said.length) return "";
+  const line = (one) => (one.set
+    ? `${HOWS[one.how]} <a href="${escapeHtml(one.href)}">set ${escapeHtml(one.name ? `${one.set} ${one.name}` : one.set)}</a>`
+    : `${HOWS[one.how]} <a href="${escapeHtml(one.href)}" rel="nofollow ugc noopener">“${escapeHtml(one.name)}”</a>`
+      + `${one.author ? ` by ${escapeHtml(one.author)}` : ""}${one.licence ? ` (${escapeHtml(one.licence)})` : ""}`);
+  return `<ul class="from based-on" id="based-on" aria-label="What it is based on">`
+    + `${said.map((one) => `<li data-how="${one.how}">${line(one)}</li>`).join("")}</ul>`;
+}

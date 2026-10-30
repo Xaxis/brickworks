@@ -86,6 +86,20 @@ The **Parts** tab lists every part by colour or by kind, each drawn by Brickwork
 ui:a model's parts and its download
 -->
 
+## What it is based on {#based-on}
+
+Under its name, a model's page credits what it came from. A **remix** names the model it was copied from on Brickworks. Its designer can say more, up to three, with **Say what it is based on** on their own page:
+
+- **An alternate build of** a LEGO® set: built from that set's parts, given by its number such as `6080-1`, which links to the set's page here;
+- **Changed from** a set, or from work elsewhere, given by its `https://` address with its title, and its author and licence when known;
+- **Inspired by** a set or work elsewhere.
+
+Brickworks checks a set's number against the library, and says in words what is wrong with a set it has not got or an address that is not one. A link to work elsewhere is the designer's, and marked as not Brickworks's. Search engines read them in the page too, and each set's page lists the models in the gallery based on it. **Change what it is based on** changes or removes them. An account under 13 does not show a name or link in public, so it is not offered.
+
+<!-- covers
+lib:what a model is based on
+-->
+
 ## More by and similar {#more}
 
 At the foot of the page: **More by** the designer, their other models by Top builds, and **Similar models** by kind and shared tags.

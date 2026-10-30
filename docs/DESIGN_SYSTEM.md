@@ -504,7 +504,17 @@ is on the page, `hidden`, for the script to show.
   owner's and its step as `a.pill`, then `.replies` under a 2 px `--line`
   rule, each reply with the `.small` avatar and no card of its own, and a
   reply's box (`form.reply-new`, a field and `.cta.small` with
-  `.cta.ghost.small` Cancel) under the thread.
+  `.cta.ghost.small` Cancel) under the thread. What it is based on
+  (docs/SOCIAL.md section 7, item 5) is `ul.from.based-on` under the remix
+  line, a line each in the remix line's words and size, its link the set's
+  page or the work's address; its designer's Say (or Change) what it is
+  based on is a `button.link` in a `p.from` under them, and opens the
+  site's dialog (`dialog.report.bases-dialog`): a boxed `fieldset` a row
+  (How, a set's number or a link, and for a link its title, author and
+  licence), Remove at the row's start, Add another under them up to three,
+  then Save and Cancel; what is wrong said in the dialog's `.said`. A
+  set's page lists the gallery's models based on it as Based on this set,
+  a `section.next` with `.models.scroller`, before More <theme>.
 - **An LDraw set's page** (`/library/<id>`, library333) is a model's page,
   drawn by the same `sharePage`: its `.crumbs` the LDraw library and its
   theme; Open in Brickworks the column's `.cta` (the app opens it as its

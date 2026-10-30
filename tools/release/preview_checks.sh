@@ -65,6 +65,14 @@ declare -A CMD=(
   # private, gone. Throwaway accounts, deleted after with their model and
   # collection.
   [list_follows]="tools/web/list_follows_flow.mjs --url=$P --out=$S/${TAG}_list_follows"
+  # What a model is based on (docs/SOCIAL.md section 7, item 5,
+  # supabase/model_bases.sql): its designer says it in a dialog, a set
+  # built from and work elsewhere changed; its page credits each, its
+  # structured data and JSON say them, the set's page lists it; a wrong
+  # set or link said in words, somebody else refused; taken away, gone.
+  # Before the file, nothing offered and a list refused in words.
+  # Throwaway accounts, deleted after with their model.
+  [based_on]="tools/web/based_on_flow.mjs --url=$P --out=$S/${TAG}_based_on"
   # The collections directory (W12, supabase/collection_directory.sql):
   # /collections lists a throwaway designer's public collection as a card
   # with its cover, name, owner, model count and Follow; her private one
