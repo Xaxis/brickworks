@@ -81,7 +81,7 @@ func _run() -> void:
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("only="):
 			only = arg.substr(5)
-	for section: String in ["column", "turned", "model", "walk"]:
+	for section: String in ["column", "turned", "through", "model", "walk"]:
 		if only.is_empty() or section in only.split(","):
 			print("  -- %s" % section)
 			await _rest()
@@ -271,6 +271,108 @@ func _turned() -> void:
 	await _shot("turned_after")
 
 
+# -- a long pin through two holes, a wheel on either end of an axle ----------------
+
+
+func _through() -> void:
+	_main.call("clear_model")
+	await _frames(4)
+	var turn := Basis(Vector3.UP, deg_to_rad(30.0)) * Basis(Vector3.RIGHT, deg_to_rad(25.0))
+	var middle: JointSnap.End = _middle_hole("3701")
+	var along: Vector3 = (turn * middle.axis).normalized()
+	# Two 1 x 4s face to face, their middle holes in line.
+	var holes: Array = []
+	for n: int in 2:
+		var at := Transform3D(turn, Vector3(0, 400, 0) + along * 20.0 * n)
+		var id: int = _world.add_brick("3701", 4, at)
+		_builder.register(id, "3701", at)
+		holes.append(middle.placed(at, id))
+	var front: JointSnap.End = holes[0]
+	_camera.frame(AABB(front.at - Vector3(70, 70, 70), Vector3(140, 140, 140)), 1.4)
+	_camera.look_from((-along + Vector3(0.2, 0.5, 0.15)).normalized())
+	await _frames(40)
+	var pins: Array = JointSnap.ends_for(_library, "6558")
+	var pin_end: int = 0
+	_count_from()
+	await _hold("6558", 0)
+	var aim: Vector2 = _screen(front.at)
+	await _act_move(aim)
+	await _act_key(KEY_N)
+	await _act_click(_point_on_screen(pin_end))
+	await _act_move(aim)
+	# From one tip to the other: the 3L pin's whole length.
+	var tips_at: Array = []
+	for end: JointSnap.End in pins:
+		if end.kind == "pin":
+			var placed: JointSnap.End = end.placed(_builder.ghost_transform(), 0)
+			tips_at.append(placed.at + placed.axis * placed.reach)
+	var gaps: Array = holes.map(func(hole: JointSnap.End) -> float:
+		return hole.at.distance_to(Geometry3D.get_closest_point_to_segment(hole.at, tips_at[0],
+			tips_at[1])))
+	_check("a 3L pin by an end, pointed at the front hole of two 1 x 4s turned 30° and tilted 25°: through both (%.3f, %.3f LDU off its line), joining both (%d)"
+		% [gaps[0], gaps[1], _builder.call("_joins_made", _builder.ghost_transform())],
+		_builder.is_on_joint() and gaps[0] < 0.05 and gaps[1] < 0.05 and _builder.can_place()
+		and int(_builder.call("_joins_made", _builder.ghost_transform())) == 2)
+	var depth: int = _builder.history_depth()
+	await _act_click(aim)
+	_check("put down in %d actions from the bin, one step to undo (%d)" % [_total(),
+		_builder.history_depth() - depth], _newest() != null and _newest().part_id == "6558"
+		and _builder.history_depth() - depth == 1)
+	await _shot("through_pin")
+	await _key(KEY_ESCAPE)
+	await _key(KEY_ESCAPE)
+
+	# An axle through a 1 x 4 turned and tilted, its middle in the hole: the
+	# belt wheel by its hole onto each end of it, where it is pointed at.
+	_main.call("clear_model")
+	await _frames(4)
+	var brick_at := Transform3D(turn, Vector3(0, 400, 0))
+	var brick: int = _world.add_brick("3701", 4, brick_at)
+	_builder.register(brick, "3701", brick_at)
+	var hole: JointSnap.End = middle.placed(brick_at, brick)
+	var tips: Array = JointSnap.ends_of(_library.mesh_for("3706")).filter(
+		func(end: JointSnap.End) -> bool: return end.kind == "axle")
+	var axle_at: Transform3D = JointSnap.pose(tips[0], hole, 1, 0.0, 0.0, Basis.IDENTITY)
+	var ends_now: Array = tips.map(func(end: JointSnap.End) -> Vector3: return axle_at * end.at)
+	axle_at.origin += hole.at - (ends_now[0] + ends_now[1]) * 0.5
+	var axle: int = _world.add_brick("3706", 0, axle_at)
+	_builder.register(axle, "3706", axle_at)
+	_camera.frame(AABB(hole.at - Vector3(90, 90, 90), Vector3(180, 180, 180)), 1.2)
+	_camera.look_from((along.cross(Vector3.UP).normalized() + Vector3(0.0, 1.2, 0.0)).normalized())
+	await _frames(40)
+	var wheel: Array = JointSnap.ends_for(_library, "4185a")
+	var by: int = -1
+	for n: int in wheel.size():
+		if (wheel[n] as JointSnap.End).kind == "axle_hole":
+			by = n
+	for tip_end: JointSnap.End in tips:
+		var end_at: JointSnap.End = tip_end.placed(axle_at, axle)
+		var near_tip: Vector3 = end_at.at - end_at.axis * 18.0
+		await _hold("4185a", 7)
+		var at: Vector2 = _screen(near_tip)
+		await _move(at)
+		await _key(KEY_N)
+		await _click(_point_on_screen(by))
+		await _move(at)
+		var on: JointSnap.End = _end_at("4185a", by, _builder.ghost_transform())
+		var out: float = (on.at - hole.at).dot(end_at.axis)
+		_check("the belt wheel by its hole on the end of the axle pointed at: %.3f LDU off its line, %.0f LDU out from the brick toward that end"
+			% [_off_line(on.at, end_at), out], _builder.is_on_joint()
+			and _off_line(on.at, end_at) < 0.05 and out > 20.0 and _builder.can_place())
+		await _click(at)
+		await _key(KEY_ESCAPE)
+		await _key(KEY_ESCAPE)
+	await _shot("through_wheels")
+
+
+## Of [param part]'s pin holes along its length, the middle one, in its own frame.
+func _middle_hole(part: String) -> JointSnap.End:
+	var holes: Array = JointSnap.ends_of(_library.mesh_for(part)).filter(
+		func(end: JointSnap.End) -> bool: return end.kind == "pin_hole")
+	holes.sort_custom(func(a: JointSnap.End, b: JointSnap.End) -> bool: return a.at.x < b.at.x)
+	return holes[holes.size() / 2]
+
+
 # -- the toolbar's Connect on a part already down ------------------------------
 
 
@@ -367,7 +469,7 @@ func _walk() -> void:
 			continue
 		var end_index: int = pair[0]
 		var site: JointSnap.End = pair[1]
-		await _look_at_joint(site, want, part)
+		await _look_at_joint(site, want, part, _meeting(site, _end_at(part, end_index, want)))
 		# Of a pin through two holes, by the half in the hole in sight.
 		pair = _goes_on(part, want, _camera.global_position)
 		end_index = pair[0]
@@ -391,9 +493,19 @@ func _walk() -> void:
 		exact = put != null and put.part_id == part and _near(put.transform, want)
 		await _key(KEY_ESCAPE)
 		await _key(KEY_ESCAPE)
+		# The two Connect once missed: a pin into the back of a beam with
+		# another in front, in from the face pointed at with no T (not on
+		# through to the beam in front), and the belt wheel by its hole on
+		# the axle (not over a half pin all inside the brick behind it).
+		if index == 17 or index == 25:
+			_check("8841-1 #%d %s by its %s goes on where the file has it, in %d actions, %d of them T and R (%s)"
+				% [index, part, kind, _total(), turns, _ldr_of(put.transform) if put != null
+				else _ldr_of(_builder.ghost_transform())], exact and (index != 17 or turns == 0))
 		var flow: Array = WALK_JOINTS[index]
 		# Where Connect did not bring it to the file's place, the run's own.
-		var with_connect: int = int(flow[1]) + _total() if exact else 1 << 20
+		# The tile's click is in the run's cost of taking it ([1]), so the
+		# click _hold counts is not added again.
+		var with_connect: int = int(flow[1]) + _total() - 1 if exact else 1 << 20
 		# A person reaches for Connect where it saves something: a pin goes
 		# in either end alike.
 		var used: int = mini(int(flow[0]), with_connect)
@@ -449,8 +561,10 @@ func _goes_on(part: String, want: Transform3D, eye: Vector3 = Vector3.INF) -> Ar
 			var off: float = _off_line(mine.at, site)
 			if off > 2.0:
 				continue
-			# The half of a pin that is in the hole, not the half out of it.
-			off += _shaft_middle(mine).distance_to(_shaft_middle(site)) * 0.01
+			# The half of a pin that is in the hole, not the half out of it,
+			# and a wheel by its hole on the axle, not by one over a half pin
+			# that is all inside the brick behind it.
+			off += _gap(mine, site) * 0.01
 			if eye != Vector3.INF:
 				off += site.at.distance_to(eye) * 0.00001
 			if off < best_off:
@@ -459,14 +573,31 @@ func _goes_on(part: String, want: Transform3D, eye: Vector3 = Vector3.INF) -> Ar
 	return best
 
 
-## A pin's or an axle's middle, from its collar out; a hole's own.
-static func _shaft_middle(end: JointSnap.End) -> Vector3:
-	return end.at + end.axis * end.reach * 0.5 if end.is_male() else end.at
+## How far the middle of the hole of two ends is from the shaft of the
+## pin or axle (from its collar out, or back along an axle from its tip);
+## between two of another kind, how far apart they are.
+static func _gap(a: JointSnap.End, b: JointSnap.End) -> float:
+	var male: JointSnap.End = a if a.is_male() else b
+	var other: JointSnap.End = b if male == a else a
+	if not male.is_male() or other.is_male():
+		return a.at.distance_to(b.at)
+	var from: Vector3 = male.at - male.axis * male.back
+	var to: Vector3 = male.at + male.axis * male.reach
+	return other.at.distance_to(Geometry3D.get_closest_point_to_segment(other.at, from, to))
+
+
+## Where the hole of [param mine] and [param site] meet: the one a person
+## looks for while putting the part on.
+static func _meeting(site: JointSnap.End, mine: JointSnap.End) -> Vector3:
+	return site.at if mine.is_male() else mine.at
 
 
 ## The view turned to the side a joint opens to, the part's place framed, as
 ## a person turns to see the pin a part goes on.
-func _look_at_joint(site: JointSnap.End, want: Transform3D, part: String) -> void:
+## With [param meeting], from the other side where that has it the more in
+## sight: a pin into the back of a beam with another in front of it.
+func _look_at_joint(site: JointSnap.End, want: Transform3D, part: String,
+		meeting: Vector3 = Vector3.INF) -> void:
 	var box: AABB = (want * _library.mesh_for(part).bounds).abs()
 	_camera.frame(box.merge(AABB(site.at, Vector3.ZERO)).grow(30.0), 1.3)
 	var holder: BrickWorld.Brick = _world.get_brick(site.brick)
@@ -476,6 +607,22 @@ func _look_at_joint(site: JointSnap.End, want: Transform3D, part: String) -> voi
 		else -site.axis
 	_camera.look_from((outward + Vector3(0.25, 0.7, 0.35)).normalized())
 	await _frames(40)
+	var hidden: float = _hidden_by(meeting) if meeting != Vector3.INF else 0.0
+	if hidden <= 15.0:
+		return
+	_camera.look_from((-outward + Vector3(0.25, 0.7, 0.35)).normalized())
+	await _frames(40)
+	if _hidden_by(meeting) >= hidden:
+		_camera.look_from((outward + Vector3(0.25, 0.7, 0.35)).normalized())
+		await _frames(40)
+
+
+## How far before [param point] the line from the eye meets a part down,
+## in LDU: 0 when nothing stands between.
+func _hidden_by(point: Vector3) -> float:
+	var eye: Vector3 = _camera.global_position
+	var hit: BrickLattice.Hit = _builder.lattice.raycast(eye, (point - eye).normalized())
+	return maxf(0.0, eye.distance_to(point) - hit.distance) if hit.is_valid() else 0.0
 
 
 ## T, R and Shift-R, the fewest that bring the ghost to [param want], as a

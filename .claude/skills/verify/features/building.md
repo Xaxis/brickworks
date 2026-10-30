@@ -1824,7 +1824,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   on by (`_onto_a_joint` takes `[connect_end]`), so a 1 x 16 on a pin has two
   ways, not thirty, and of ways joining as many parts `_best_on_joint` takes the
   one above the floor and then the one turned least from how it stood
-  (`_turned_from_picked`); the click on a point and its release are eaten
+  (`_turned_from_picked`); a pin or an axle picked goes in from the face
+  pointed at while it has room there, not on through to a beam behind for one
+  join more (`_best_on_joint` stops after the first way); the click on a point and its release are eaten
   (`ConnectTool._unhandled_input`), and `place()` refuses while points are
   offered. `R` turns about the joint, `T` the other way on, `N` again picks
   another point, `Esc` back to placing. With nothing in hand the tool waits for
@@ -1839,12 +1841,18 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   a click (bar 6 actions), against the build flow's 25 presses of `T`/`R`
   without Connect; one undo; another hole puts it on the pin by that hole. `turned`: a
   1 x 16 by its fourth hole onto a pin in a 1 x 4 turned 30° and tilted 25°, `R`
-  about the joint. `model`: the toolbar's Connect on a column lying on the floor,
+  about the joint. `through`: a 3L pin into the front hole of two 1 x 4s,
+  turned and tilted, through both; the belt wheel by its axle hole onto each end
+  of an axle through a turned 1 x 4, where it is pointed at. `model`: the toolbar's Connect on a column lying on the floor,
   `Esc` puts it back, then moved onto its pins in one undo. `walk`: 8841-1's nine
   joint parts of section 9's 25 by Connect, counted, and the run's 744 actions
   with them in (each part its run's take and colour overhead plus Connect's
-  count, where that is fewer and lands where the file has it) (rows in `shots/connect/walk.json`, pictures in
-  `shots/connect/WxH/`).
+  count less the tile's click the overhead holds, where that is fewer and lands
+  where the file has it; bar 18 a part). The view turns to the side the joint is
+  in sight from (`_look_at_joint`), and the point picked is the one whose hole's
+  middle is on the other's shaft (`_gap`): #17's pin into the back of its beam,
+  #25's belt wheel by its hole on the axle, each a check. Rows in
+  `shots/connect/walk.json`, pictures in `shots/connect/WxH/`.
 - `typed place and hinge` (`src/ui/inspector.gd`, `Builder.move_selection_by`,
   `Builder.hinge_angle`, 2026-10-17): Properties' X, Y and Z move the
   selection by exactly the difference typed, to the hundredth of an LDU
