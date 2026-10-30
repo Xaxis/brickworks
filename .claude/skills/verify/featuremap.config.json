@@ -3803,6 +3803,13 @@
       "area": "view"
     },
     {
+      "kind": "cli",
+      "label": "photographed light in a browser",
+      "entry": "tools/web/light_render_flow.mjs",
+      "reach": "node tools/web/light_render_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=OUT [--against=OTHER.png]   (a local export served by tools/web/serve.py, with .env sourced: Quick at 720p lit by Softbox studio, the light fetched only then, and the same picture as a build that carried it in its pack)",
+      "area": "view"
+    },
+    {
       "kind": "lib",
       "label": "a plan's limit on models kept with the account",
       "entry": "supabase/account_models_plan.sql",

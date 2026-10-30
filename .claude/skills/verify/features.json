@@ -669,7 +669,8 @@
       "reach": "tools/gears.py check   (tools/gears.py measure: how far apart real sets stand their gears)",
       "area": "pipeline",
       "tests": [
-        "tests/test_gears.py"
+        "tests/test_gears.py",
+        "tests/test_pck_split.py"
       ]
     },
     {
@@ -866,7 +867,8 @@
       "reach": "tools/brick.py search_parts '{\"query\":\"wedge\"}' --port=8795",
       "area": "mcp",
       "tests": [
-        "tests/test_elements.py"
+        "tests/test_elements.py",
+        "tests/test_pck_split.py"
       ]
     },
     {
@@ -1575,6 +1577,14 @@
       "entry": "tools/web/people_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/people_flow.mjs --url=<deployment> --out=shots/people   (.env sourced)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:photographed light in a browser",
+      "kind": "cli",
+      "entry": "tools/web/light_render_flow.mjs",
+      "reach": "node tools/web/light_render_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=OUT [--against=OTHER.png]   (a local export served by tools/web/serve.py, with .env sourced: Quick at 720p lit by Softbox studio, the light fetched only then, and the same picture as a build that carried it in its pack)",
+      "area": "view",
       "tests": []
     },
     {
@@ -2863,7 +2873,8 @@
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=actuators   (by hand: drag the rod of 42081-1's arm actuator, or of 42080-1's pneumatic cylinders, out and in; move_part a small actuator's input degrees=360)",
       "area": "building",
       "tests": [
-        "tests/test_gears.py"
+        "tests/test_gears.py",
+        "tests/test_pck_split.py"
       ]
     },
     {

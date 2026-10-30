@@ -56,8 +56,9 @@ plan with Claude as the client.
   in `<tag>_calm.log` says the load it began at and beside what.
 - `what a first visit waits for` (load250, 2026-10-24): a browser taking
   brotli is sent the build as `tools/export.sh` compressed it, brotli 11
-  (`deploy.sh` routes `index.wasm`, `index.pck`, `index.js` and
-  `index.parts.bin` under `/b/<sha>/` to the `.br` beside each, with
+  (`deploy.sh` routes `index.wasm`, `index.pck`, `index.js`,
+  `index.data.pck`, `index.parts.bin`, `index.primitives.bin` and
+  `index.hdri.bin` under `/b/<sha>/` to the `.br` beside each, with
   `Content-Encoding: br`, `Vary` and the file's own type; any other browser
   gets the file, compressed by Vercel as before, which sent 9.6 MB of wasm
   and 21 MB of pack where 11 makes 6.9 and 7.4). The web presets leave
@@ -75,7 +76,42 @@ plan with Claude as the client.
   preloads the wasm and pack from its head. `window.brickworksLater` says
   when it was asked, came and was written, and how many files;
   `window.brickworksBoot` when each stage of the start was reached
-  (`Main._boot_mark`: ready, catalogue, ui, model, on the page's clock).
+  (`Main._boot_mark`: ready, data, catalogue, ui, model, on the page's
+  clock). The pack Godot exports is cut in four after it (webload,
+  2026-10-30, `tools/web/pck_split.py`, its docstring), so the engine
+  waits for the code alone: `index.pck` keeps the scripts, shaders and
+  scenes (3.3 MB brotli), and the two tables read as their classes load,
+  before the data pack is mounted (`gears.json`, `known_fits.json`:
+  `AT_CLASS_LOAD`); `index.data.pck` (the catalogue and the rest of
+  `assets/web/`, `models/`, LDraw's tables, and the booklet PDF's fonts,
+  2.9 MB) is
+  fetched by the page's worker as soon as the engine's files are in,
+  before `index.parts.bin`, and mounted by `Main._ready` before the
+  catalogue (`WebPacks.here`; the tree paused and nothing drawn while it
+  waits, `GpuFence.hold`, since a frame drawn in software under the
+  page's screen made the wait 0.4 s where it is 0.1; a return visit
+  often hands it to the engine beside its pack, the shell's
+  `startEngine`, and waits for nothing). `index.primitives.bin` (LDraw's primitives, 1.0 MB) is
+  asked for the first time a part is built from LDraw's text
+  (`PartForge`, `CustomParts._primitives_here`, which says "Fetching
+  LDraw's primitives…") and `index.hdri.bin` (Studio's six panoramas,
+  0.9 MB) the first time Studio lights a picture by one
+  (`StudioRender._prepare`, "fetching the photographed light"). Those two
+  are BWP1 bundles written as files under `/packs/<name>/`, since a pack
+  mounted while workers open files is not safe. `window.brickworksPacks`
+  says when each was asked, came and was written; the data pack that
+  never comes after three tries stops the start with "Brickworks could
+  not fetch its parts catalogue". Before the engine starts: 10.3 MB
+  where it was 15.4 (the pack 3.3 where it was 8.4). A file Godot
+  imported goes where its source does (`imported_from`). Measured with
+  `load_check --runs=1 --warm` against 13557e53's export in turn, four
+  pairs at 20 Mbps/40 ms and load 10-18, medians: the banner 4.75 s where
+  it was 6.70 (each pair 1.8 to 2.0 s sooner), the scripts the same
+  (4.40), the data pack's wait 0.1 s, the bin usable 12.9 s where it was
+  14.95; a return visit at `Main._ready` 4.8 s where it was 5.1, fetching
+  nothing more. `python3 tools/minitest.py tests/test_pck_split.py`
+  (6 tests) splits a pack made in Godot's format and reads every file
+  back, byte for byte, from the one place it went.
   The bin's All listing ranks each part once before sorting
   (`PartsBin._sort_for`): the same order in 0.44 s natively, where it
   took 1.2. On the web it is not sorted at all (webload, 2026-10-30):
@@ -101,8 +137,10 @@ plan with Claude as the client.
   ThreadTime, which load does not stretch), and the bytes before it.
   `--profiles=broadband,slow --warm` for the full table; `--laps` prints
   every `brickworksBoot` mark, and each median row is followed by the
-  start's parts (banner, scripts to `Main._ready`, catalogue, interface,
-  model, first frames). Locally, serve the export with `serve.py
+  start's parts (banner, scripts to `Main._ready`, data, catalogue,
+  interface, model, first frames; data is the wait for index.data.pck
+  once the scripts are made, and each run says when that pack was asked,
+  came and was written). Locally, serve the export with `serve.py
   --accounts --compressed --cached` (the header's form): `--cached` sends
   the deployment's cache headers (the page no-cache, the build immutable),
   without which every file is no-store and `--warm` timed a second first
@@ -5542,8 +5580,9 @@ sticky header, with nothing moving (reduced motion asked).
   **Control-test with a string that has shipped for ages before concluding
   anything.** What *is* greppable is packed data: `assets/generated/catalogue.json`
   goes in as JSON, so
-  `curl --compressed <build>/index.pck | grep -a '"castle":{"sets"'` really does
-  prove the catalogue that shipped. For code, the honest proof is the stamp —
+  `curl --compressed <build>/index.data.pck | grep -a '"castle":{"sets"'` really
+  does prove the catalogue that shipped (in `index.pck` before webload's split,
+  2026-10-30). For code, the honest proof is the stamp —
   `/app` names `/b/<sha>/index.js`, and that sha names the tree.
 - **A 200 from the landing page says nothing about how it renders.** That was
   the whole of the deploy's landing check, and what it missed for as long as the
