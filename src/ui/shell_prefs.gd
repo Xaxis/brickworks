@@ -85,6 +85,10 @@ const DEFAULTS: Dictionary = {
 	"key_preset": "brickworks",
 	"keys": {},
 	"keys_at": 0.0,
+	# View, Split: a straight-on view beside the model (SplitView), off out
+	# of the box, and the side it looks from.
+	"split": false,
+	"split_side": "front",
 }
 
 ## Settings, Interface size: the choices, as shares of the size the window

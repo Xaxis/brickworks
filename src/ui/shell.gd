@@ -117,7 +117,7 @@ const MENUS: Array = [
 		"turn_left",
 		"turn_right", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
-		"full_screen"]],
+		"split_view", "full_screen"]],
 	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list", "-",
 		"collection", "collection_need", "collection_build", "-", "make_submodel",
 		"leave_submodel", "enter_assembly", "leave_assembly", "rename_assembly", "make_unique", "-",
@@ -735,6 +735,7 @@ const NEEDS: Dictionary = {
 	"put_back": "No section is broken out",
 	"xray": "Select a part first", "cut_flip": "Turn on Cut away first",
 	"stress": "Put a part on the baseplate first",
+	"split_view": "The window is too narrow for two views",
 	"reshape_flex": "Select a hose or chain",
 	"floor_part": "Stand the model on a baseplate first",
 	"back_to_site": "In a browser only",
@@ -1120,6 +1121,19 @@ func _define() -> void:
 		"What it is, its colour by every name, where it stands and what it is joined to")
 	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown()))
 	_ticked("panel_keys", key_strip_shown)
+	# A straight-on view beside the model (SplitView). F8: LDCad's Space,
+	# which swaps its split for one large view, is the app's to slide the
+	# view and play the timeline, and F8 is no preset's.
+	_add("split_view", "Split", KEY_F8, func() -> void:
+		var split: SplitView = app.get("_split")
+		split.set_on(not split.is_showing()),
+		func() -> bool:
+			var split: SplitView = app.get("_split")
+			return split != null and (split.is_showing() or split.fits()),
+		"A second view beside the model, square on from the front, top, side or back")
+	_ticked("split_view", func() -> bool:
+		var split: SplitView = app.get("_split")
+		return split != null and split.is_showing())
 	_add("full_screen", "Full screen", KEY_F11, _toggle_full_screen)
 	_ticked("full_screen", func() -> bool:
 		return DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN \
@@ -2067,6 +2081,9 @@ func handle_key(key: InputEventKey) -> bool:
 		KEY_F11:
 			run("full_screen")
 			return true
+		KEY_F8:
+			if not held and not key.shift_pressed and not key.alt_pressed:
+				return run("split_view")
 		KEY_F1:
 			run("keys")
 			return true

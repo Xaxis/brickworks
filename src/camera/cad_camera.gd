@@ -1107,10 +1107,20 @@ func _put_lens() -> void:
 	_lensed = [_shift, room, projection, size, fov, near, far, h_offset, v_offset]
 
 
+## Another view drawn over part of the window (SplitView.ray_at): given a
+## point on the screen, the ray through it in that view, [origin,
+## direction], or null where that view is not. A ray from there is that
+## view's, so a click in it places and picks through its own camera.
+var beside: Callable = Callable()
+
+
 ## Where a ray through a point on the screen starts: the eye, or straight-on
 ## the point on the near plane. In the viewport's units, as an event's
 ## position is.
 func ray_origin(at: Vector2) -> Vector3:
+	var other: Variant = beside.call(at) if beside.is_valid() else null
+	if other != null:
+		return (other as Array)[0]
 	if not is_inside_tree():
 		return global_position
 	var eye: Transform3D = get_camera_transform()
@@ -1122,6 +1132,9 @@ func ray_origin(at: Vector2) -> Vector3:
 ## Which way a ray through a point on the screen goes, through the lens the
 ## view is drawn with.
 func ray_normal(at: Vector2) -> Vector3:
+	var other: Variant = beside.call(at) if beside.is_valid() else null
+	if other != null:
+		return (other as Array)[1]
 	if not is_inside_tree():
 		return -global_transform.basis.z
 	var eye: Transform3D = get_camera_transform()

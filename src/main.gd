@@ -44,6 +44,8 @@ var _notices: PanelContainer
 ## The part of the middle column the model shows through: what floats over
 ## the model (the cut-away's strip) is laid in it.
 var _over_model: Control
+## View, Split: the model straight on beside the main view (SplitView).
+var _split: SplitView
 var _store: ModelStore
 ## The baseplate, the grid floor or nothing under the model.
 var _floor: FloorLayer
@@ -1297,6 +1299,10 @@ func _panels_by_name() -> Dictionary:
 func model_cover(across: int = 12, down: int = 8) -> Dictionary:
 	var view: Control = _marquee.get_parent()
 	var rect: Rect2 = view.get_global_rect()
+	# The second view beside it is the model's room too (View, Split), all
+	# but its header, as the cube is.
+	if _split != null and _split.is_showing():
+		rect.end = Vector2(_split.picture_rect().end.x, rect.end.y)
 	var covered: Array = []
 	# Where the interface is drawn, found once: every canvas layer, the
 	# topmost first, and any control drawn straight onto the window.
@@ -1308,6 +1314,8 @@ func model_cover(across: int = 12, down: int = 8) -> Dictionary:
 			var at: Vector2 = rect.position + Vector2((i + 0.5) / across * rect.size.x,
 				(j + 0.5) / down * rect.size.y)
 			if _gizmo != null and _gizmo.is_visible_in_tree() and _gizmo.get_global_rect().has_point(at):
+				continue
+			if _split != null and _split.header_has(at):
 				continue
 			var by: String = _covering(at, canvases)
 			if not by.is_empty():
@@ -4547,6 +4555,19 @@ func _build_ui() -> void:
 	_camera.seen = _model_rect
 	_camera.lens_moved.connect(_hover_again)
 
+	# View, Split: the model straight on beside this column, in the model's
+	# own room and none of the columns' (SplitView). A ray from the screen
+	# over it is its camera's, so a click there places and picks through it.
+	_split = SplitView.new()
+	_split.camera = _camera
+	_split.beside_of = middle
+	_split.world = _world
+	_split.bounds = _built_bounds
+	layout.add_child(_split)
+	_camera.beside = _split.ray_at
+	middle.resized.connect(_split.fit)
+	_split.shown_changed.connect(_hover_again)
+
 	# In the viewport column, at the top, which is where every other 3D
 	# tool puts a view cube.
 	#
@@ -4615,6 +4636,8 @@ func _build_ui() -> void:
 
 	_turning = PivotMark.new()
 	_turning.camera = _camera
+	# The main view's turn, drawn in it alone.
+	_turning.layers = SplitView.MAIN_ONLY
 	add_child(_turning)
 
 
