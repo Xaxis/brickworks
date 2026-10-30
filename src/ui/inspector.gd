@@ -62,7 +62,7 @@ var _credit_page: String = ""
 var _joined_button: Button
 var _lock_button: Button
 var _hide_button: Button
-## Edit, Printed versions…, for one part the LEGO Group printed or put a
+## Make, Printed versions…, for one part the LEGO Group printed or put a
 ## sticker on: under its name, with how many there are.
 var _versions_button: Button
 

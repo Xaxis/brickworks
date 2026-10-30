@@ -85,6 +85,9 @@ const DEFAULTS: Dictionary = {
 	"key_preset": "brickworks",
 	"keys": {},
 	"keys_at": 0.0,
+	# The ten favourite colours on keys (ColourKeys), set in the keys sheet;
+	# empty, the ones out of the box.
+	"favourite_colours": [],
 	# View, Split: a straight-on view beside the model (SplitView), off out
 	# of the box, the side it looks from, and its own zoom (LDU across its
 	# height; 0 while it follows the main view's) and how far what it looks

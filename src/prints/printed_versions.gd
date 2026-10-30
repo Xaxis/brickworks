@@ -1,4 +1,4 @@
-## Edit, Printed versions…: the prints and stickered versions the LEGO Group
+## Make, Printed versions…: the prints and stickered versions the LEGO Group
 ## made of the part picked out, as the library has them, each drawn with its
 ## print, to swap it for: a plain 2 x 2 tile made a control panel, a
 ## minifigure's plain torso made a uniform, a printed one made plain again.

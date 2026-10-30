@@ -8,7 +8,7 @@
 // with everything else, which no desktop probe vouches for. This opens a
 // small model through Open… > From a file (two Technic bricks with holes,
 // two gears, and a crane: a turret on a turntable and an arm on a hinge,
-// each a sub-model), then: Build, Hose, tube or chain… by the menu and the
+// each a sub-model), then: Make, Hose, tube or chain… by the menu and the
 // keys a person uses there; a click on one pin hole and another, which lays
 // a pneumatic tube; Technic chain and a click on each gear, which lays a
 // chain round them; Done. Build, Motions…, New motion: a click on the
@@ -204,9 +204,9 @@ try {
   await shot("1_model.png");
 
   // A pneumatic tube from one pin hole to the other.
-  await menu("build", "Hose");
+  await menu("make", "Hose");
   const asking = await until(flex, (f) => f.active && f.stage === "start", 30);
-  check(Boolean(asking), `Build, Hose, tube or chain… opens the tool (${asking && asking.told})`);
+  check(Boolean(asking), `Make, Hose, tube or chain… opens the tool (${asking && asking.told})`);
   const holes = ((await flex()).targets || []).filter((t) => t.kind === "pin_hole" && t.part === "3700");
   check(holes.length >= 2, `the two bricks' holes are there to click (${holes.length})`);
   holes.sort((a, b) => a.x - b.x);

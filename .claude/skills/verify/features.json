@@ -3862,6 +3862,14 @@
       ]
     },
     {
+      "id": "ui:colour keys",
+      "kind": "ui",
+      "entry": "src/ui/colour_keys.gd",
+      "reach": "tools/probe.sh keys3_probe   (select parts, Shift-1 to Shift-0 paint them a favourite colour, Ctrl-Shift-1 to 0 the model's most used, one Ctrl+Z each; F1, Colours: click a favourite's swatch to choose its colour; Alt-C, P, J, I select the same colour, part, all joined, the opposite; Studio's keys: none on the colours, Shift-V cycles the selection; web: node tools/web/colour_keys_flow.mjs)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:colour the hidden parts",
       "kind": "ui",
       "entry": "src/ui/hidden_colours_panel.gd",
@@ -4113,7 +4121,7 @@
       "id": "ui:hoses and chains by hand",
       "kind": "ui",
       "entry": "src/ui/flex_tool.gd",
-      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Build, Hose, tube or chain\u2026, click two pin holes or two gears; Edit, Reshape the hose or chain)",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Make, Hose, tube or chain\u2026, click two pin holes or two gears; Make, Reshape the hose or chain)",
       "area": "building",
       "tests": []
     },
@@ -4303,7 +4311,7 @@
       "id": "ui:my collection",
       "kind": "ui",
       "entry": "src/ui/collection_dialog.gd",
-      "reach": "godot --path .  (Build, My collection\u2026 / What do I need?\u2026 / What can I build?\u2026; or P, then What do I need?)",
+      "reach": "godot --path .  (File, My collection\u2026 / Build, What do I need?\u2026 / File, What can I build?\u2026; or P, then What do I need?)",
       "area": "collection",
       "tests": []
     },
@@ -4501,7 +4509,7 @@
       "id": "ui:printed versions",
       "kind": "ui",
       "entry": "src/prints/printed_versions.gd",
-      "reach": "godot --headless --path . --script src/dev/decor_probe.gd   (by hand: pick a part, then Edit, Printed versions\u2026, its right-click menu, or Properties' Printed versions\u2026)",
+      "reach": "godot --headless --path . --script src/dev/decor_probe.gd   (by hand: pick a part, then Make, Printed versions\u2026, its right-click menu, or Properties' Printed versions\u2026)",
       "area": "prints",
       "tests": []
     },
@@ -4551,7 +4559,7 @@
       "id": "ui:reference picture",
       "kind": "ui",
       "entry": "src/ui/reference_image.gd",
-      "reach": "tools/probe.sh refimage_probe   (PROBE_SIZE=1400x900 too; by hand: View, Reference picture\u2026, a PNG or JPEG, then its width, opacity and Locked)",
+      "reach": "tools/probe.sh refimage_probe   (PROBE_SIZE=1400x900 too; by hand: Make, Reference picture\u2026, a PNG or JPEG, then its width, opacity and Locked)",
       "area": "view",
       "tests": []
     },

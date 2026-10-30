@@ -184,7 +184,7 @@ func open(ids: Array) -> void:
 	var hoses: bool = not _hoses.is_empty()
 	(_kinds["path"] as Button).disabled = not hoses
 	(_kinds["path"] as Button).tooltip_text = "" if hoses \
-		else "Lay a hose first: Build, Hose, tube or chain…"
+		else Keymap.filled("Lay a hose first: {flex}")
 	if kind == "path" and not hoses:
 		kind = "row"
 	_every.value = _own_size()

@@ -133,7 +133,7 @@ printed at true size.
   asked for by a pane laid over the view (`ask_for_face`), so the click goes to
   nothing else; Escape or the right button says no.
 
-In the menus too (2026-10-13): Build, Print on a part… (`print_part`) and
+In the menus too (2026-10-13): Make, Print on a part… (`print_part`) and
 Put a sticker on… (`sticker`), the bin's Print… and the sheet's Draw a
 sticker. A session does both with the `print_part` tool
 (`src/net/app_tools.gd`): `brick=` a part, the picture as `svg=` or

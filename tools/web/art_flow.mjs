@@ -1,5 +1,5 @@
 // A picture laid in LEGO Art in a real browser: chosen through the page's
-// own file chooser from Build > Mosaic from a picture, built in LEGO Art, and
+// own file chooser from Make > Mosaic from a picture, built in LEGO Art, and
 // checked — every part on the baseplate, each panel its own sub-assembly, one
 // piece. Then Design with Claude, which hands the picture to the assistant.
 //
@@ -8,7 +8,7 @@
 //   BW_BYPASS=$VERCEL_BYPASS node tools/web/art_flow.mjs --url=https://<a preview>/app --out=shots/art_web
 //
 // The picture is made here, 96 x 64 pixels: a dark sky, a tilted pale disc,
-// a bright core and a few stars, written as a PNG into --out. The Build menu
+// a bright core and a few stars, written as a PNG into --out. The Make menu
 // is opened with a click and the item reached by typing its name and Enter,
 // as a person at a keyboard does (a key press lets a page open its chooser).
 // It fails if no chooser comes up, the dialog never shows, the Art does not
@@ -141,14 +141,14 @@ async function click(name) {
   await page.waitForTimeout(1500);
 }
 
-// Build > Mosaic from a picture…, then the picture into the chooser it opens.
+// Make > Mosaic from a picture…, then the picture into the chooser it opens.
 // Tried again if no chooser came, since the app reads a key at its next frame
 // and a software frame can take seconds.
 async function choosePicture() {
   let chooser = null;
   for (let n = 0; n < 3 && !chooser; n++) {
     page.choosers.length = 0;
-    await click("menu_build");
+    await click("menu_make");
     await page.keyboard.type("Mosaic", { delay: 120 });
     await page.waitForTimeout(800);
     await page.keyboard.press("Enter");
@@ -164,7 +164,7 @@ await page.goto(first, { waitUntil: "domcontentloaded", timeout: 120000 });
 ok(await until(async () => Boolean((await controls()).open), 400, "app"), "the app came up");
 await page.waitForTimeout(Number(args.load || 15000));
 
-ok(await choosePicture(), "Build > Mosaic from a picture… brings up the page's file chooser");
+ok(await choosePicture(), "Make > Mosaic from a picture… brings up the page's file chooser");
 ok(await until(async () => Boolean((await controls()).mosaic_build), 120, "dialog"),
   "the picture dialog comes up for galaxy.png, in Brick Art");
 // Its picture of the result and what it comes to are worked out a moment

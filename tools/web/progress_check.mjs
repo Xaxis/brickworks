@@ -540,7 +540,7 @@ try {
     let chooser = null;
     for (let n = 0; n < 3 && !chooser; n++) {
       page.choosers.length = 0;
-      const menu = await h.where("menu_build");
+      const menu = await h.where("menu_make");
       await page.mouse.click(menu.x, menu.y);
       await page.waitForTimeout(1500);
       await page.keyboard.type("Mosaic", { delay: 120 });

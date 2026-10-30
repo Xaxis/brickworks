@@ -1,4 +1,4 @@
-## View, Reference picture…: a photo, a plan or a drawing laid in the scene
+## Make, Reference picture…: a photo, a plan or a drawing laid in the scene
 ## to build over, as Studio's Add Reference Image lays one (docs/APP_UX2.md,
 ## refimage). A PNG or a JPEG (or a WebP, BMP or SVG: PictureFile) on a plane
 ## on the floor, or standing behind the model as the front view or the side
@@ -412,7 +412,7 @@ func _while_pressed(event: InputEvent) -> void:
 		builder.clear_selection()
 	set_selected(true)
 	say.call("the reference picture: drag it to slide it, a corner to size it; "
-		+ "View › Reference picture… types its width, or locks it")
+		+ "Make › Reference picture… types its width, or locks it")
 
 
 ## The press dragged to [param at]: a corner sizes it from the one across,
