@@ -92,6 +92,13 @@ func _run() -> void:
 		face_paper.composite().get_pixel(middle - 38, 74).v < 0.3
 		and face_paper.composite().get_pixel(middle + 38, 74).v < 0.3
 		and face_paper.composite().get_pixel(middle, 74).a == 0.0)
+	# The editor's own Undo and Redo keys are the keymap's.
+	var drawn: PackedByteArray = face_paper.composite().get_data()
+	await _chord(Keymap.key_of("undo"))
+	var undone: bool = face_paper.composite().get_data() != drawn
+	await _chord(Keymap.key_of("redo"))
+	_check("%s takes the last stroke back, %s puts it back" % [Keymap.listed("undo"), Keymap.listed("redo")],
+		undone and face_paper.composite().get_data() == drawn)
 	await _click_tab("Back of the head")
 	await _draw_hair()
 	await _frames(10)
@@ -513,6 +520,21 @@ func _key(code: Key, text: String = "") -> void:
 		event.pressed = down
 		if not text.is_empty():
 			event.unicode = text.unicode_at(0)
+		Input.parse_input_event(event)
+		await process_frame
+	await _frames(3)
+
+
+## A key with its modifiers, as the keymap writes it (Keymap.key_of).
+func _chord(accel: int) -> void:
+	for down: bool in [true, false]:
+		var event := InputEventKey.new()
+		event.keycode = (accel & KEY_CODE_MASK) as Key
+		event.physical_keycode = event.keycode
+		event.ctrl_pressed = accel & KEY_MASK_CMD_OR_CTRL != 0
+		event.shift_pressed = accel & KEY_MASK_SHIFT != 0
+		event.alt_pressed = accel & KEY_MASK_ALT != 0
+		event.pressed = down
 		Input.parse_input_event(event)
 		await process_frame
 	await _frames(3)

@@ -121,7 +121,7 @@ func _ready() -> void:
 		var button := Button.new()
 		button.text = str(row[1])
 		button.name = str(row[0])
-		button.tooltip_text = str(row[2])
+		Keymap.tell(button, str(row[2]))
 		button.focus_mode = Control.FOCUS_NONE
 		button.add_theme_font_size_override("font_size", 11)
 		var id: String = row[0]
@@ -156,8 +156,8 @@ const STRIP: Array = [
 	["sections_evaluate", "Evaluate…",
 		"The chosen section on its own: parts, weight, whether it holds together and stands, what joins it, its steps"],
 	["sections_break_out", "Break out",
-		"Pull the chosen section away from the model to work on it (Y); again puts it back"],
-	["sections_explode", "Exploded view", "Every section apart, and back together (Shift+Y)"],
+		"Pull the chosen section away from the model to work on it ({break_out}); again puts it back"],
+	["sections_explode", "Exploded view", "Every section apart, and back together ({explode})"],
 ]
 
 ## The tree's state but for the suggestion, when it was last drawn.

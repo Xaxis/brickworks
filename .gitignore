@@ -64,3 +64,15 @@ tools/web/package-lock.json
 # working notes, not the suite. Twenty-six of them reached main because
 # the commits that followed used "git add -A".
 src/dev/_*
+
+# A worktree made by tools/release/release_wt.sh links these to the main
+# checkout's. The rules above end in "/" and so match only a folder, never
+# the link: every unit's worktree listed them as untracked, and the release
+# train kept them all as holding work of their own (rel-m221b, 2026-10-30).
+/vendor
+/assets/generated
+/node_modules
+/tools/web/node_modules
+# The data folder merge_unit.sh and merge_finish.sh give Godot's import: its
+# logs, left untracked, kept every merged worktree from retiring (2026-10-30).
+/.scratch-data/

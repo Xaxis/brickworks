@@ -870,7 +870,7 @@ func _let_go() -> void:
 		if _picked != null:
 			_picked = by * (_picked as Vector3)
 		edited.call()
-		say.call("%s — type a number to make it exact, Ctrl-Z undoes it" % words)
+		say.call(Keymap.filled("%s — type a number to make it exact, {undo|undoes it}") % words)
 		_after = {"drag": was, "value": value, "depth": depth,
 			"at": was.get("pointer", Vector2.ZERO)}
 		return

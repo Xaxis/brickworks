@@ -87,6 +87,8 @@ var _told_page_most_us: int = 0
 var _deployment: Deployment
 ## Who is signed in. Everyone using Brickworks is (src/account/account.gd).
 var _account: Account
+## The keys with the account: src/account/keymap_sync.gd.
+var _keymap_sync: KeymapSync
 ## Over everything until someone is signed in, when a person is in front
 ## of the window to sign in (see [method _gate_wanted]).
 var _gate: SignInGate
@@ -1530,6 +1532,9 @@ func _ready() -> void:
 		ShellPrefs.frozen = true
 		CustomParts.keeps = false
 	_build_ui()
+	# Told their keys before the menus' commands were learned (the view
+	# cube's Fit), told them again (Keymap.tell).
+	Keymap.retell(self)
 	_boot_mark("ui")
 
 	if not _viewing.is_empty():
@@ -4489,7 +4494,7 @@ func _build_ui() -> void:
 	_bin_dock.icon = "parts"
 	_bin_dock.holds = "the model tree, the properties and the colours" if _phone != null \
 		else "the parts bin and the colours"
-	_bin_dock.setup(_stack, SideDock.Edge.LEFT, PARTS_WIDE)
+	_bin_dock.setup(_stack, SideDock.Edge.LEFT, _parts_wide(LEAST_ACROSS))
 	layout.add_child(_bin_dock)
 
 	# Tools, Simulate mechanism…'s column, beside the model's rather than
@@ -4871,8 +4876,23 @@ func _build_ui() -> void:
 	# it is wrong the moment somebody changes it.
 	_controls.changed.connect(func() -> void:
 		if _hint != null:
-			_hint.rebuild())
+			_hint.rebuild()
+		# And the keys a preset or the keys sheet set, in the toolbar's
+		# tooltips and every other a key is named in (Keymap.tell); the
+		# menus read theirs as they open.
+		if _shell != null:
+			_shell.toolbar.tell_keys()
+		Keymap.retell(get_tree().root))
 	_controls.interface_sized.connect(_match_screen_density)
+	# The keys with the account (KeymapSync): set here, sent there; signed
+	# in somewhere new, the account's are taken if they are the newer.
+	_keymap_sync = KeymapSync.new()
+	_keymap_sync.account = _account
+	add_child(_keymap_sync)
+	_controls.keys_set.connect(_keymap_sync.send)
+	_keymap_sync.taken.connect(func() -> void: _controls.changed.emit())
+	_account.changed.connect(_keymap_sync.account_changed)
+	_keymap_sync.account_changed()
 
 	_picker = PickImage.new()
 	add_child(_picker)
@@ -5082,8 +5102,11 @@ func _build_ui() -> void:
 	if _phone != null:
 		_phone.shell = _shell
 		_dress_for_phone()
-	# The keys sheet lists the keys the menus show.
+	# The keys sheet lists the keys the menus show, and the strip reads the
+	# keymap, which knows the menus' keys now.
 	_controls.shell = _shell
+	if _hint != null:
+		_hint.rebuild()
 	# View, Stress: weighed with the status bar's check, at once when it is
 	# turned on, and the part under the pointer said.
 	_shell.stress.hovered = func() -> int: return _hovered
@@ -5316,8 +5339,8 @@ func _build_ui() -> void:
 		if count == 0:
 			_bar.say("")
 		else:
-			_bar.say("%d selected — %s-C copies, X moves, R turns, C paints, Delete removes"
-				% [count, ControlsHint._hold()]))
+			_bar.say(Keymap.filled("%d selected — {copy|copies}, {lift|moves}, {rotate_held|turns}, {paint|paints}, {delete|removes}")
+				% count))
 	# The world is redrawn whenever anything in it changes, which
 	# includes a selected brick being removed by undo or replaced by the
 	# assistant. Without redrawing the outline then, it is a box round
@@ -5838,7 +5861,7 @@ func _build_mosaic(across: int, dither: bool) -> void:
 	_camera.frame(_built_bounds(), 1.1)
 	_camera.set_view("top")
 	_on_model_changed()
-	_bar.say("%d plates — press P for what to buy" % pixels.size())
+	_bar.say(Keymap.filled("%d plates — press {parts_list} for what to buy") % pixels.size())
 
 
 ## A picture laid in plates is a whole model on its own panels, with nothing
@@ -5946,7 +5969,7 @@ func _art_laid(art: MosaicArt.Art) -> void:
 	var report: Dictionary = await _assistant._checked(art.model(), true)
 	_art_said["pieces"] = int(report.get("pieces", 0))
 	_art_said["ok"] = bool(report.get("ok", false))
-	_bar.say("%s parts on %d × %d panels, %s — press P for what to buy" % [
+	_bar.say(Keymap.filled("%s parts on %d × %d panels, %s — press {parts_list} for what to buy") % [
 		MosaicDialog._comma(art.placements.size()), art.panels.x, art.panels.y,
 		"one piece" if _art_said["pieces"] == 1 and _art_said["ok"]
 		else str(report.get("summary", ""))])
@@ -5955,20 +5978,22 @@ func _art_laid(art: MosaicArt.Art) -> void:
 ## Width below which the two panels cannot both sit beside the model.
 ## Their design widths plus something worth looking at between them.
 const ROOMY := 1040.0
-## How much of the window, across, the model keeps between the two
-## columns, in the interface's units, or the columns take turns. It has 708
-## at the design width (1600), both open, and 499 at 1280 x 720. It was 860,
-## when the right column was the assistant's alone and the model tree and
-## the properties shared the left one with the bin: a laptop's window
-## showed one column at a time, and building meant the bin with 8 parts in
-## sight and the properties behind a scroller. With the tree and the
-## properties down the right, a laptop shows both columns, as Studio does.
-const MODEL_ROOM := 480.0
-## The columns' widths, open, in the interface's units: the parts bin's,
-## six tiles across (PartsBin._tiles_across: a laptop's column is four
-## rows tall, and 1280 x 720 showed 12 parts at four across and 15 at
-## five), and the right-hand column's, which the assistant's panel needs.
-const PARTS_WIDE := 500.0
+## The share of the window's width the model keeps beside the columns
+## (tools/web/fit_check.mjs asks it of a laptop's window: at 1100 x 700 the
+## panels once left no room to build). Both columns show where both fit
+## round it, which is a window about twice as wide as it is tall; else they
+## take turns, one beside the model at a time. Held to a width of 480 units
+## instead, a laptop showed both, and the model had 41% of a 1400 x 900
+## window.
+const MODEL_SHARE := 0.6
+## A tile in the parts bin and the gap after it, in the interface's units
+## (PartsBin._make_cell, _tiles_across), and what the bin's column takes
+## round its tiles: its margins and the scroll bar.
+const TILE_PITCH := 78.0
+const BIN_EDGES := 30.0
+## The fewest tiles across the bin's column is given, as it had at 336.
+const LEAST_ACROSS := 4
+## The right-hand column's width, which the assistant's panel needs.
 const SIDE_WIDE := 340.0
 
 ## How the window shares its width out: "wide" (both columns, as they
@@ -6109,8 +6134,18 @@ func _fit_panels() -> void:
 	var right: bool = _props_dock != null or _chat_dock.visible
 	var rails: float = 2.0 if right else 1.0
 	var drawer: float = maxf(units - SideDock.RAIL_WIDTH * rails - 16.0, 220.0)
+	# What the model leaves the columns, its share kept, the rails showing
+	# whether their columns are open or not. Both columns where both fit
+	# with the bin at its narrowest; else one at a time, and the bin as many
+	# tiles across as the room allows: six in a laptop's 1280 x 720 or
+	# 1400 x 900, five at 1100 x 700.
+	var room: float = units * (1.0 - MODEL_SHARE) - SideDock.RAIL_WIDTH * rails
+	var both: bool = right and room >= _parts_wide(LEAST_ACROSS) + SIDE_WIDE
+	var parts_room: float = room - (SIDE_WIDE if both else 0.0)
+	var parts_wide: float = _parts_wide(maxi(LEAST_ACROSS,
+		floori((parts_room - BIN_EDGES) / TILE_PITCH)))
 	# A drawer is as wide as it was before the bin had a column to itself.
-	_bin_dock.set_open_width(minf(SIDE_WIDE, drawer) if phone else PARTS_WIDE)
+	_bin_dock.set_open_width(minf(SIDE_WIDE, drawer) if phone else parts_wide)
 	# A phone's drawer of the model tree and the properties, sized for a
 	# finger (TouchSizing), is the screen beside its rail: at the desktop's
 	# 336 units then, half a phone, its rows ran off its edge.
@@ -6120,19 +6155,18 @@ func _fit_panels() -> void:
 		if dock != null:
 			dock.set_open_width(minf(SIDE_WIDE, drawer) if phone else SIDE_WIDE)
 
-	# Whether both columns at their own widths leave the model its room:
-	# on a phone's layout with the assistant off (set_assistant) there is
-	# only the one.
-	var both: float = PARTS_WIDE + SideDock.RAIL_WIDTH \
-		+ (SIDE_WIDE + SideDock.RAIL_WIDTH if right else 0.0)
-	var share: String = "drawers" if phone else (
-		"turns" if units - both < MODEL_ROOM else "wide")
+	var share: String = "drawers" if phone else ("wide" if both else "turns")
 	# Only when it changes. Arranging them on every resize would fight
 	# anyone dragging a window edge with a panel deliberately open.
 	if share == _columns:
 		return
 	_columns = share
 	_arrange_columns()
+
+
+## The bin's column wide enough for this many tiles across.
+static func _parts_wide(across: int) -> float:
+	return across * TILE_PITCH + BIN_EDGES
 
 
 ## The part of the window the model is seen in, for the camera to centre
@@ -6384,7 +6418,7 @@ func _find_parts() -> void:
 ## is seen between them.
 func _show_weak(ids: Array, around: Array) -> void:
 	if _verbs.select_found(ids) == 0:
-		_bar.say("it is hidden or locked — Alt-H shows everything, Shift-L unlocks it")
+		_bar.say(Keymap.filled("it is hidden or locked — {show_all|shows everything}, {unlock|unlocks it}"))
 		return
 	var box: AABB = _selection_bounds()
 	for id: Variant in around:
@@ -6411,7 +6445,7 @@ func _show_found(ids: PackedInt64Array, what: String) -> void:
 	var count: int = _verbs.select_found(Array(ids))
 	var left: int = ids.size() - count
 	if count == 0:
-		_bar.say("%s: %s hidden or locked — Alt-H shows everything, Shift-L unlocks it" % [
+		_bar.say(Keymap.filled("%s: %s hidden or locked — {show_all|shows everything}, {unlock|unlocks it}") % [
 			what, "it is" if left == 1 else "all %d are" % left])
 		return
 	_camera.frame(_selection_bounds())
@@ -6604,7 +6638,7 @@ func _hold_figure(figure: Minifig) -> void:
 	for part_id: String in figure.part_ids():
 		if not _library.is_resident(part_id) and _library.request_mesh(part_id, true):
 			fetching += 1
-	_bar.say("placing %s — point at a stud, R to turn, click to stand it there, Esc to stop%s"
+	_bar.say(Keymap.filled("placing %s — point at a stud, {rotate_held|to turn}, click to stand it there, Esc to stop%s")
 		% [figure.name, " (fetching %d parts…)" % fetching if fetching > 0 else ""])
 	_refresh_preview()
 
@@ -7154,12 +7188,16 @@ func _steer_from_keys(delta: float) -> void:
 		_held_for = 0.0
 		return
 	var free: bool = _builder.selection.is_empty()
+	# Only a key that still does what it always did: one a preset gave to
+	# a tool (Mecabricks' W, D) does not slide the view while held.
+	var held := func(code: Key) -> bool:
+		return Input.is_key_pressed(code) and Keymap.held_as_ever(code)
 	var zoom: int = 0
-	if Input.is_key_pressed(KEY_EQUAL) or Input.is_key_pressed(KEY_PLUS) \
-			or Input.is_key_pressed(KEY_KP_ADD) or (free and Input.is_key_pressed(KEY_PAGEUP)):
+	if held.call(KEY_EQUAL) or held.call(KEY_PLUS) \
+			or held.call(KEY_KP_ADD) or (free and held.call(KEY_PAGEUP)):
 		zoom += 1
-	if Input.is_key_pressed(KEY_MINUS) or Input.is_key_pressed(KEY_KP_SUBTRACT) \
-			or (free and Input.is_key_pressed(KEY_PAGEDOWN)):
+	if held.call(KEY_MINUS) or held.call(KEY_KP_SUBTRACT) \
+			or (free and held.call(KEY_PAGEDOWN)):
 		zoom -= 1
 	var arrows := Vector2.ZERO
 	var wasd := Vector2.ZERO
@@ -7167,12 +7205,12 @@ func _steer_from_keys(delta: float) -> void:
 		or Input.is_key_pressed(KEY_ALT)
 	if free and not _steps.is_playing_back():
 		arrows = Vector2(
-			float(Input.is_key_pressed(KEY_RIGHT)) - float(Input.is_key_pressed(KEY_LEFT)),
-			float(Input.is_key_pressed(KEY_UP)) - float(Input.is_key_pressed(KEY_DOWN)))
+			float(held.call(KEY_RIGHT)) - float(held.call(KEY_LEFT)),
+			float(held.call(KEY_UP)) - float(held.call(KEY_DOWN)))
 		if not modified:
 			wasd = Vector2(
-				float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)),
-				float(Input.is_key_pressed(KEY_W)) - float(Input.is_key_pressed(KEY_S)))
+				float(held.call(KEY_D)) - float(held.call(KEY_A)),
+				float(held.call(KEY_W)) - float(held.call(KEY_S)))
 	if zoom == 0 and arrows == Vector2.ZERO and wasd == Vector2.ZERO:
 		_held_for = 0.0
 		return
@@ -8673,9 +8711,6 @@ func _cursor_state() -> Cursors.Situation:
 	now.shift = not typing and Input.is_key_pressed(KEY_SHIFT)
 	now.ctrl = not typing and Input.is_key_pressed(
 		KEY_META if EditVerbs.on_mac() else KEY_CTRL)
-	# Held, C paints whatever comes under the pointer: the key repeats,
-	# and each repeat paints what is there.
-	now.painting = not typing and Input.is_key_pressed(KEY_C)
 	var moment: String = _camera.moment()
 	now.moment = "hand" if moment == "slide" else moment
 	now.playing = _playback != null and _playback.is_playing()
@@ -8704,7 +8739,7 @@ func _cursor_state() -> Cursors.Situation:
 	# of a turn of the view, a line through the model under the pointer,
 	# which a held view or the view's last move puts aside anyway.
 	if not now.in_hand and not now.dragging() and now.tool.is_empty() \
-			and now.moment.is_empty() and not now.playing and not now.painting:
+			and now.moment.is_empty() and not now.playing:
 		now.over_part = _brick_under_pointer() != 0
 	return now
 
@@ -8790,6 +8825,19 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if focused is LineEdit or focused is TextEdit:
 		return
 	var key: InputEventKey = event
+	# The key as the person's keymap has it (Keymap): the key that does
+	# what it is bound to, a command no key does out of the box, or nothing,
+	# for a key a preset took off what it did. A shared model's viewer has
+	# only the keys that look, as they always were.
+	if _viewing.is_empty() and _shell != null:
+		var meant: Variant = Keymap.read(key, _steps != null and _steps.is_playing_back())
+		if meant == null:
+			return
+		if meant is String:
+			if not key.echo and not _store.laying:
+				_key_action(meant)
+			return
+		key = meant
 	# A command's key is that command, as from its menu: timed, and said on
 	# the status bar first when it is slow (Shell.attend). Echoes are a key
 	# held down, never put off.
@@ -8803,6 +8851,22 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		_key_pressed(key)
 	else:
 		_shell.attend(command, _key_pressed.bind(key))
+
+
+## What a key bound by the keymap does where no key did it before: a
+## command, run as its menu runs it, or Studio's Shift and an arrow, a turn
+## of the selection by 45° (a part in hand turns a quarter, as R turns it).
+func _key_action(action: String) -> void:
+	match action:
+		"part_left_45", "part_right_45":
+			var way: int = -1 if action == "part_left_45" else 1
+			if _builder.is_carrying() or _builder.selection.is_empty():
+				_builder.rotate_held(way)
+				_refresh_preview()
+			else:
+				_verbs.turn_by(45.0 * way)
+		_:
+			_shell.run(action)
 
 
 func _key_pressed(key: InputEventKey) -> void:
@@ -8940,22 +9004,18 @@ func _key_pressed(key: InputEventKey) -> void:
 			if (key.ctrl_pressed or key.meta_pressed) and _brickify != null:
 				_brickify.ask()
 		KEY_C:
-			# Paint the selection if there is one, or what is under the
-			# cursor if there is not.
+			# Paints the selection, and only the selection, as Ctrl-C copies
+			# it: with nothing selected it painted whatever was under the
+			# pointer (APP_UX A11). Clicking parts to paint is the Paint tool.
 			if not _builder.selection.is_empty():
 				var painted: int = _builder.paint_selection(_builder.held_color)
 				if painted > 0:
 					_on_model_edited()
 					_bar.say("painted %d" % painted)
-			else:
-				# The brick under the pointer, found by the pointer: with
-				# nothing in hand there is no ghost to say which it is.
-				var under: int = _brick_under_pointer()
-				# With a part in hand, the brick its ghost was last aimed at.
-				if under == 0 and _verbs.mode == "place":
-					under = _builder.hovered_brick()
-				if _builder.paint_brick(under, _builder.held_color):
-					_on_model_edited()
+			elif not key.echo:
+				var tool: String = Keymap.listed("mode_paint")
+				_bar.say("select parts to paint them%s" % (", or click parts with the Paint tool (%s)"
+					% tool if not tool.is_empty() else ", or click parts with the Paint tool"))
 		KEY_DELETE, KEY_BACKSPACE:
 			await _delete_selection()
 		KEY_G:

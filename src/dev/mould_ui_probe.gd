@@ -104,6 +104,13 @@ func _run() -> void:
 	for v: int in mould.positions.size():
 		lifted = maxf(lifted, mould.positions[v].y - original[v].y)
 	_check("the fringe swept up %.1f LDU" % lifted, lifted > 4.0)
+	# The editor's own Undo and Redo keys are the keymap's.
+	var swept: PackedVector3Array = mould.positions.duplicate()
+	await _chord(Keymap.key_of("undo"))
+	var undone: bool = mould.positions == original
+	await _chord(Keymap.key_of("redo"))
+	_check("%s takes the sweep back, %s puts it back" % [Keymap.listed("undo"), Keymap.listed("redo")],
+		undone and mould.positions == swept)
 	# The back drawn down longer.
 	var nape: Vector3 = _surface(Vector3(0, -10, -40), Vector3(0, -8, -10))
 	await _drag_on([nape, nape + Vector3(0, -3, -1), nape + Vector3(0, -6, -2)])
@@ -334,6 +341,21 @@ func _key(code: Key, text: String = "") -> void:
 		event.pressed = down
 		if not text.is_empty():
 			event.unicode = text.unicode_at(0)
+		Input.parse_input_event(event)
+		await process_frame
+	await _frames(3)
+
+
+## A key with its modifiers, as the keymap writes it (Keymap.key_of).
+func _chord(accel: int) -> void:
+	for down: bool in [true, false]:
+		var event := InputEventKey.new()
+		event.keycode = (accel & KEY_CODE_MASK) as Key
+		event.physical_keycode = event.keycode
+		event.ctrl_pressed = accel & KEY_MASK_CMD_OR_CTRL != 0
+		event.shift_pressed = accel & KEY_MASK_SHIFT != 0
+		event.alt_pressed = accel & KEY_MASK_ALT != 0
+		event.pressed = down
 		Input.parse_input_event(event)
 		await process_frame
 	await _frames(3)

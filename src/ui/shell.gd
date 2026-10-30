@@ -32,7 +32,8 @@ var banner: AssemblyBanner
 ## Sections suggested, broken out, exploded and evaluated: src/ui/sections_ui.gd.
 var sections: SectionsUi
 var grid: StudGrid
-var tour: Tour
+## Build your first model, along the top of the model: src/ui/first_build.gd.
+var first_build: FirstBuild
 ## My collection: src/ui/collection_dialog.gd.
 var collection: CollectionDialog
 ## File, Library…: src/ui/library_dialog.gd.
@@ -43,6 +44,8 @@ var see_inside: SeeInside
 var stress: StressView
 ## File, Versions…: src/ui/versions_dialog.gd.
 var versions: VersionsDialog
+## Edit, Pattern…: copies in a row, round, or along a hose (Pattern).
+var pattern_dialog: PatternDialog
 ## Help, Send feedback… (FeedbackDialog).
 var feedback: FeedbackDialog
 ## Find a command (Ctrl+/): src/ui/command_palette.gd.
@@ -81,7 +84,9 @@ class Command extends RefCounted:
 	var ticked: Callable = Callable()
 	## One of several of which exactly one is on: the tools.
 	var radio: bool = false
-	var tip: String = ""
+	## Its tooltip, any {command} in it named by its key now (Keymap.filled).
+	var tip: String = "":
+		get: return Keymap.filled(tip, true)
 	## What it waits for while it cannot be used ([method Shell.why_not]).
 	var needs: String = ""
 
@@ -103,7 +108,7 @@ const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", ">recent", ">import", "-", "save", "save_as",
 		"versions", "-", "share", "together", ">export", "render", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
-		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
+		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
@@ -309,9 +314,11 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	grid.floor_layer = app.get("_floor")
 	app.add_child(grid)
 
-	tour = Tour.new()
-	tour.shell = self
-	app.get_node("HUD").add_child(tour)
+	# Offered once on a first visit, and from Help, Take the tour: in the
+	# strip along the top of the model, never over it.
+	first_build = FirstBuild.new()
+	first_build.shell = self
+	notices.add_child(first_build)
 
 	# What the person owns, what this model needs of it, what they could
 	# build: src/ui/collection_dialog.gd. The parts list leads there too.
@@ -360,6 +367,19 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	versions.store = store
 	versions.bar = bar
 	add_child(versions)
+
+	pattern_dialog = PatternDialog.new()
+	pattern_dialog.builder = builder
+	pattern_dialog.world = world
+	pattern_dialog.library = library
+	pattern_dialog.say = bar.say
+	pattern_dialog.edited = func() -> void: verbs.edited.call()
+	pattern_dialog.pattern.builder = builder
+	pattern_dialog.pattern.world = world
+	pattern_dialog.pattern.library = library
+	# Its copies are drawn in the model's world, not the dialog's window.
+	add_child(pattern_dialog.pattern)
+	add_child(pattern_dialog)
 
 	feedback = FeedbackDialog.new()
 	feedback.store = store
@@ -452,6 +472,7 @@ func _add(name: String, words: String, accel: int, run: Callable,
 	command.can = can
 	command.tip = tip
 	_commands[name] = command
+	Keymap.learn(name, words, accel)
 	return command
 
 
@@ -515,7 +536,7 @@ func work_size(name: String) -> int:
 
 
 ## The commands whose work grows with the selection rather than the model.
-const ON_THE_SELECTION: Array[String] = ["mirror", "replace", "duplicate", "paint",
+const ON_THE_SELECTION: Array[String] = ["mirror", "replace", "duplicate", "pattern", "paint",
 	"cut_parts", "copy", "delete", "hide", "isolate", "lock", "make_submodel",
 	"leave_submodel", "make_unique", "rotate_held", "tip_held"]
 
@@ -562,7 +583,8 @@ const STEPPED_SLOW_FROM := 2000
 ## build? reads the collection against every set, whatever is on the
 ## baseplate.
 const SLOW_FROM: Dictionary = {
-	"mirror": 200, "replace": 200, "duplicate": 300, "paste": 300, "cut_parts": 600,
+	"mirror": 200, "replace": 200, "duplicate": 300, "pattern": 300, "paste": 300,
+	"cut_parts": 600,
 	"paint": 600, "hide": 3000, "isolate": 3000, "leave_submodel": 2000,
 	"make_unique": 2000,
 	"step_close": 300, "step_new": 300, "step_prev": 300, "step_next": 300, "step_earlier": 300,
@@ -749,12 +771,13 @@ func ticked(name: String) -> int:
 	return 1 if bool(found.ticked.call()) else 0
 
 
-## What a command's key reads as, for a tooltip: "Ctrl+Z".
+## What a command's key reads as, for a tooltip: "Ctrl+Z". The key the
+## person's keymap gives it (Keymap), which is the menus' own until a
+## preset or the keys sheet says another.
 func key_words(name: String) -> String:
-	var found: Command = _commands.get(name)
-	if found == null:
+	if not _commands.has(name):
 		return ""
-	return key_text(found.accel)
+	return Keymap.written(name)
 
 
 ## The keys the engine names by what its source calls them — "QuoteLeft",
@@ -888,9 +911,15 @@ func _define() -> void:
 	_add("copy", "Copy", CTRL | KEY_C, func() -> void: verbs.copy(), selected,
 		"Copy the selection")
 	_add("paste", "Paste", CTRL | KEY_V, func() -> void: verbs.paste(), Callable(),
-		"Hold a copy of what was copied: click to put it down, R turns it")
+		"Hold a copy of what was copied: click to put it down, {rotate_held|turns it}")
 	_add("duplicate", "Duplicate", CTRL | KEY_D, func() -> void: verbs.duplicate_selection(),
 		selected, "Hold a copy of the selection, to put down beside it")
+	# src/assembly/pattern.gd, src/ui/pattern_dialog.gd.
+	_add("pattern", "Pattern…", CTRL | SHIFT | KEY_D, func() -> void:
+		if builder.is_carrying():
+			verbs.put_away()
+		pattern_dialog.open(builder.selection.keys()), selected,
+		"Copies of the selection in a row, round, or along a hose, put down at once")
 	_add("delete", "Delete", KEY_DELETE, func() -> void: await verbs.press("delete"),
 		selected, "Take the selection off the model")
 	_add("select_all", "Select all", CTRL | KEY_A, func() -> void: verbs.select_by("all"),
@@ -945,7 +974,7 @@ func _define() -> void:
 	# J, which had no command: on the menu on a part, and found by name.
 	_add("swing", "Swing on its hinge", KEY_J, func() -> void: verbs.swing(EditVerbs.SWING),
 		func() -> bool: return builder.hinge_angle() != null,
-		"Swing the selection %d° about the hinge, clip or turntable it hangs from; Shift+J swings it back"
+		"Swing the selection %d° about the hinge, clip or turntable it hangs from; {swing_back|swings it back}"
 		% roundi(EditVerbs.SWING))
 	# src/ai/selection_scope.gd: Claude changes these parts and the room round
 	# them, and nothing else.
@@ -1141,12 +1170,12 @@ func _define() -> void:
 		func() -> void: sections.break_out_or_back(),
 		func() -> bool: return sections.can_target() or not world.broken_out.is_empty(),
 		"Pull the selected section away from the model to work on it, or put it back "
-		+ "exactly where it was (Y again)")
+		+ "exactly where it was ({break_out} again)")
 	_add("put_back", "Put every section back", 0, func() -> void: sections.put_back_all(),
 		func() -> bool: return not world.broken_out.is_empty(),
 		"Every section broken out back exactly where it was")
 	_add("explode", "Exploded view", SHIFT | KEY_Y, func() -> void: sections.toggle_explode(),
-		something, "Every section drawn apart, and back together (Shift+Y again)")
+		something, "Every section drawn apart, and back together ({explode} again)")
 	_ticked("explode", func() -> bool: return sections.is_exploded())
 	_add("panel_outliner", "Model tree", 0, func() -> void: _toggle_section(outliner),
 		Callable(), "The model's sub-assemblies by name, inside one another")
@@ -1219,7 +1248,8 @@ func _define() -> void:
 	_add("keys", "Keys and controls", KEY_F1, func() -> void: (app.get("_controls") as ControlsDialog).open_keys(),
 		Callable(),
 		"What every button and key does")
-	_add("tour", "Take the tour", 0, func() -> void: tour.start())
+	_add("tour", "Take the tour", 0, func() -> void: first_build.start(), Callable(),
+		"Build your first model, seven short steps done in the app")
 	# src/ui/command_palette.gd: Figma's key for its Actions. Ctrl+Shift+P
 	# too on the desktop (handle_key); a browser keeps that one.
 	_add("palette", "Find a command…", CTRL | KEY_SLASH, func() -> void: palette.open(), Callable(),
@@ -1387,17 +1417,13 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 			if id < 0:
 				id = _ids.size()
 				_ids.append(item)
-			var shown: int = menu_accel(found.accel)
-			# A key the menu can neither name nor draw goes in the words.
-			var words: String = found.words
-			if shown == 0 and found.accel != 0:
-				words += "    " + key_text(found.accel)
 			if found.radio:
-				popup.add_radio_check_item(words, id, shown)
+				popup.add_radio_check_item(found.words, id)
 			elif found.ticked.is_valid():
-				popup.add_check_item(words, id, shown)
+				popup.add_check_item(found.words, id)
 			else:
-				popup.add_item(words, id, shown)
+				popup.add_item(found.words, id)
+			_show_key(popup, popup.get_item_index(id), found)
 			if not found.tip.is_empty():
 				popup.set_item_tooltip(popup.get_item_index(id), found.tip)
 
@@ -1490,13 +1516,29 @@ func _fill_again() -> void:
 		context = null
 
 
-## Greyed where it would do nothing, ticked where it is on.
+## A row's key, as the keymap has it now (Keymap): a key the menu can
+## neither name nor draw goes after the row's words, whatever they are.
+func _show_key(popup: PopupMenu, index: int, found: Command) -> void:
+	var accel: int = Keymap.key_of(found.name)
+	var shown: int = menu_accel(accel)
+	var words: String = popup.get_item_text(index).get_slice(KEY_AFTER, 0)
+	popup.set_item_text(index, words + (KEY_AFTER + key_text(accel)
+		if shown == 0 and accel != 0 else ""))
+	popup.set_item_accelerator(index, shown)
+
+
+const KEY_AFTER := "    "
+
+
+## Greyed where it would do nothing, ticked where it is on, and its key the
+## one the keymap gives it now.
 func _refresh(popup: PopupMenu) -> void:
 	for index: int in popup.item_count:
 		var id: int = popup.get_item_id(index)
 		if popup.is_item_separator(index) or id < 0 or id >= _ids.size():
 			continue
 		var name: String = _ids[id]
+		_show_key(popup, index, _commands[name])
 		popup.set_item_disabled(index, not can(name))
 		var on: int = ticked(name)
 		if on >= 0:
@@ -2081,6 +2123,11 @@ func handle_key(key: InputEventKey) -> bool:
 			if not key.shift_pressed and not held and not key.alt_pressed \
 					and can("step_close"):
 				return run("step_close")
+		KEY_D:
+			# Ctrl+D alone is Duplicate (EditVerbs); with Shift, its copies
+			# laid out at once.
+			if held and key.shift_pressed and not key.alt_pressed:
+				return run("pattern")
 	return false
 
 
@@ -2628,7 +2675,7 @@ func covers(point: Vector2) -> bool:
 		if panel != null and panel.is_visible_in_tree() \
 				and panel.get_global_rect().has_point(point):
 			return true
-	return tour != null and tour.visible
+	return false
 
 
 ## Where each control is, for a browser test to press it as a person does.
@@ -2659,6 +2706,8 @@ func controls_by_name() -> Dictionary:
 		out.merge(versions.controls_by_name())
 	if palette != null:
 		out.merge(palette.controls_by_name())
+	if first_build != null:
+		out.merge(first_build.controls_by_name())
 	# Save as's question, for tools/web/dialogs_flow.mjs.
 	if _save_as != null and _save_as.visible:
 		out["save_as_name"] = _save_as_name

@@ -275,8 +275,8 @@ func _tidy(depth: int = -1) -> void:
 	var inventory: Variant = _main.get("_inventory")
 	if inventory != null and inventory.is_showing():
 		inventory.hide_list()
-	if _shell.tour != null and _shell.tour.is_running():
-		_shell.tour.stop()
+	if _shell.first_build != null and _shell.first_build.is_running():
+		_shell.first_build.stop()
 	if _shell.see_inside.cutting:
 		_shell.see_inside.set_cut(false)
 	if _shell.see_inside.seeing_through:

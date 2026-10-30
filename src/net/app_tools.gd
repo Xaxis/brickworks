@@ -52,6 +52,9 @@ const COMMANDS: Dictionary = {
 	"undo": "undo", "redo": "undo",
 	"cut_parts": "edit_model", "copy": "edit_model", "paste": "edit_model",
 	"duplicate": "edit_model", "delete": "edit_model", "paint": "edit_model",
+	# A session repeats a named section stepped or round a centre
+	# (edit_model's repeat_section; submit_design's repeat pattern).
+	"pattern": "edit_model",
 	"replace": "edit_model", "make_submodel": "edit_model",
 	"step_*": "edit_steps", "timeline": "edit_steps", "booklet_*": "edit_booklet",
 	"floor_*": "set_floor",
@@ -134,8 +137,9 @@ Each change is one undo step.
  - clear_model takes everything off for a new model, as New does; \
 save_model writes it with the person's models, and a new design's first \
 save hands back its pictures for a fresh look, answered with fresh_eyes \
-before any other call; make_part makes a part the LEGO Group has not \
-made, when search_parts finds no real one that will do.
+before any other call, and the first save after the creative pass one \
+last look, answered with fresh_eyes_final; make_part makes a part the \
+LEGO Group has not made, when search_parts finds no real one that will do.
  - set_floor: what the model stands on — a baseplate 8 to 192 studs in \
 eights, in a colour baseplates come in, a grid floor, or nothing (a car \
 or a ship stands on a table). part_of_model=true counts the baseplate as \

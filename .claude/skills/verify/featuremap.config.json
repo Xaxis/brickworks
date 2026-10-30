@@ -914,8 +914,8 @@
     {
       "kind": "ui",
       "label": "tour",
-      "entry": "src/ui/tour.gd",
-      "reach": "godot --path .  (Help, Take the tour)",
+      "entry": "src/ui/first_build.gd",
+      "reach": "godot --path .  (Build your first model: offered once along the top of the model on a first visit; Help, Take the tour)",
       "area": "building"
     },
     {
@@ -936,7 +936,7 @@
       "kind": "ui",
       "label": "view cube",
       "entry": "src/ui/view_cube.gd",
-      "reach": "godot --path . --resolution 1200x800 --script src/dev/handles_probe.gd",
+      "reach": "godot --path . --resolution 1200x800 --script src/dev/gizmo_probe.gd",
       "area": "view"
     },
     {
@@ -1055,7 +1055,7 @@
       "kind": "ui",
       "label": "docked panels",
       "entry": "src/ui/panel_stack.gd",
-      "reach": "godot --path .  (the parts bin and its colours down the left; the model tree, the properties and the assistant as a tab beside them down the right; fold a header, drag the bar between two; under about 1370 units across one column shows beside the model) and node tools/web/fit_check.mjs; tools/probe.sh columns_probe and columns_saved_probe",
+      "reach": "godot --path .  (the parts bin and its colours down the left; the model tree, the properties and the assistant as a tab beside them down the right; fold a header, drag the bar between two; the model keeps 60% of the width, so under about 1835 units across one column shows beside it at a time) and node tools/web/fit_check.mjs; tools/probe.sh columns_probe and columns_saved_probe",
       "area": "building"
     },
     {
@@ -2014,7 +2014,7 @@
       "kind": "lib",
       "label": "fresh eyes at the first save",
       "entry": "src/ai/fresh_eyes.gd",
-      "reach": "tools/probe.sh fresh_eyes_probe   (in a window: a new design's first save hands the session the three pictures and the judge's question, answered with fresh_eyes before any other call, once a subject; with a stand-in Claude Code on PATH, never started for it, and with none)",
+      "reach": "tools/probe.sh fresh_eyes_probe   (in a window: a new design's first save hands the session the three pictures and the judge's question, answered with fresh_eyes before any other call, once a subject; with a stand-in Claude Code on PATH, never started for it, and with none; once more at the first save after the creative pass, answered with fresh_eyes_final)",
       "area": "assistant"
     },
     {
@@ -4114,7 +4114,7 @@
       "kind": "ui",
       "label": "a model in 3D on its page",
       "entry": "tools/viewer/inline.js",
-      "reach": "https://brickworks.diy/m/<id>, /library/<id> and /library/set/<n> with an LDraw model: View in 3D on the picture (or a click, or the first drag across it) turns the model in 3D in the picture's place (web/model-page.js start3d imports /viewer3d.js, built by tools/viewer/build.mjs from tools/viewer/inline.js and view.js, the card's scene); its scene /m/<id>/scene.json, /m/<id>/v/<n>/scene.json, /library/<id>/scene.json (api/share.js ?op=scene|set_scene, api/_parts.js sceneOf), its parts' geometry from the part store",
+      "reach": "https://brickworks.diy/m/<id>, /library/<id> and /library/set/<n> with an LDraw model: View in 3D on the picture (or a click, or the first drag across it) turns the model in 3D in the picture's place (web/start3d.js imports /viewer3d.js, built by tools/viewer/build.mjs from tools/viewer/inline.js and view.js, the card's scene); its scene /m/<id>/scene.json, /m/<id>/v/<n>/scene.json, /library/<id>/scene.json (api/share.js ?op=scene|set_scene, api/_parts.js sceneOf), its parts' geometry from the part store",
       "area": "web"
     },
     {
@@ -4178,6 +4178,41 @@
       "label": "handles probe",
       "entry": "src/dev/handles_probe.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/handles_probe.gd  (a part turned about each of its own axes to any angle in 3 actions, and a 1 x 16 on an axle through a brick turned 30 and tilted 25 degrees turned about its joint; arrows along each axis; the part's, model's and view's axes; Alt-click's pivot; quarter, step, 5 and 1 degree stops further out; a number straight after a drag; a ring and an arrow stopped by a part in the way; -- only=rings|arrows|axes|pivot|snaps|typed|stopped; PROBE_SIZE=1280x720)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "first build probe",
+      "entry": "src/dev/first_build_probe.gd",
+      "reach": "tools/probe.sh first_build_probe; PROBE_SIZE=1400x900 tools/probe.sh first_build_probe   (pictures in shots/first_build/)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "the embed in 3D",
+      "entry": "web/embed.js",
+      "reach": "https://brickworks.diy/m/<id>/embed in an iframe (the share sheet's embed code): View in 3D on its picture turns the model in the frame (web/start3d.js imports /viewer3d.js; web/view3d.css; api/share.js embedCard and embedCsp); node tools/web/embed_flow.mjs --out=DIR on the stand-in",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "embed browser flow",
+      "entry": "tools/web/embed_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/embed_flow.mjs --url=<preview> --out=DIR   (preview_checks.sh embed: the deployment's first model in a blog's page, signed out; with no --url, the stand-in's watchtower)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "keys of one's own",
+      "entry": "src/ui/keymap.gd",
+      "reach": "godot --path .  (F1: Keys like BrickLink Studio, Mecabricks or LDCad; click a key on the sheet and press another; kept on the device and, signed in, on the account: GET/POST /api/account?op=keys, supabase/keymap.sql)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "patterns",
+      "entry": "src/assembly/pattern.gd",
+      "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, Round or Along a hose, a count In all, the copies shown as they will go; one Ctrl+Z takes them all back)",
       "area": "building"
     }
   ]

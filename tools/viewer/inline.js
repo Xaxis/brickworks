@@ -5,13 +5,14 @@
 // until they want to".
 //
 // Built by tools/viewer/build.mjs into web/viewer3d.js, three.js and all,
-// which web/model-page.js imports only when somebody asks for the model in
+// which web/start3d.js imports only when somebody asks for the model in
 // 3D (View in 3D on the picture, a click on it, or the first drag across
-// it): a visit that never asks loads none of it. It draws the scene the
+// it), on a model's page or in its embed: a visit that never asks loads
+// none of it. It draws the scene the
 // card in Claude draws (view.js, scene.js), from the same part store
 // (web/lbm.js), packed by the site from the model's file (api/_parts.js
 // sceneOf, /m/<id>/scene.json), in the frame the picture was in, on the
-// picture's own ground (directory.css .view3d), so nothing moves.
+// picture's own ground (web/view3d.css .view3d), so nothing moves.
 //
 // Mouse: drag to turn, right-drag to pan, the wheel to zoom once the model
 // has been pressed (before that the wheel scrolls the page). Touch: one

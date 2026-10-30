@@ -447,6 +447,7 @@ ${entry.parts > 0 ? "" : '<meta name="robots" content="noindex">\n'}<meta proper
 ${chrome.head}
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
+<link rel="stylesheet" href="/view3d.css">
 <script src="/model-page.js" type="module"></script>
 <script src="/set-page.js" type="module"></script>
 ${structured(origin, entry, small, description)}

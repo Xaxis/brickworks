@@ -2545,6 +2545,12 @@ func _best_on_joint(options: Array, site: JointSnap.End, basis: Basis) -> void:
 		best_turned = _turned_from_picked(_joint_last_at)
 	var tries: int = 0
 	for n: int in options.size():
+		# Connect's pin or axle goes in from the face pointed at, as a
+		# person pushes one in, while it has room there: not on through to
+		# the beam behind for one join more (8841-1's pin into the back of
+		# its beam, out to the column).
+		if n > 0 and _joint_last_fits and connect_end != null and connect_end.is_male():
+			break
 		var way: int = posmod(_joint_way + n, options.size())
 		var step: float = JointSnap.step_of(options[way][0], site, turn_step)
 		var quarter: int = maxi(roundi(90.0 / step), 1)

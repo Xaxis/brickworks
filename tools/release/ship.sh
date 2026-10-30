@@ -113,6 +113,12 @@ fi
 for hold in "$S/HOLD" "$S/${TAG}.hold"; do
   [ -e "$hold" ] && { echo "SHIP: held by $hold ($(cat "$hold" 2>/dev/null))"; exit 1; }
 done
+# Godot's import makes a .uid beside each script with none. One the release
+# now carries, made here untracked, would stop the fast-forward; the
+# release's wins, as in merge_unit.sh (stage223's 106, 2026-10-30).
+for f in $(git -C $R diff --name-only main "$SHA" -- '*.uid'); do
+  if [ -f "$R/$f" ] && ! git -C $R ls-files --error-unmatch "$f" >/dev/null 2>&1; then rm "${R:?}/${f:?}"; fi
+done
 git -C $R merge --ff-only "$SHA" >/dev/null && env -u GITHUB_TOKEN git -C $R push -q origin main || { echo "SHIP: could not fast-forward or push main"; exit 1; }
 # The main checkout's scripts moved, its class list did not: a bench run
 # from it drew no pictures ("TouchSizing not declared", 2026-10-27). Its

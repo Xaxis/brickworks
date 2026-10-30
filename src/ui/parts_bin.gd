@@ -316,8 +316,8 @@ func _build() -> void:
 	_colour_find = LineEdit.new()
 	_colour_find.placeholder_text = "Name or number"
 	_colour_find.accessibility_name = "Find a colour by name or number"
-	_colour_find.tooltip_text = ("A colour by its name or number, every colour there is: "
-		+ "Enter takes the first (Shift-C)")
+	Keymap.tell(_colour_find, "A colour by its name or number, every colour there is: "
+		+ "Enter takes the first ({find_colour})")
 	_colour_find.clear_button_enabled = true
 	_colour_find.custom_minimum_size = Vector2(132, 0)
 	_colour_find.add_theme_font_size_override("font_size", 12)
@@ -432,8 +432,8 @@ func _build_categories() -> void:
 				else "The parts you keep: right-click any part to add it or take it out")
 		if category == TECHNIQUES:
 			button.text = "%s %d" % [TECHNIQUES, Techniques.all().size()]
-			button.tooltip_text = ("Worked constructions, each with why it works: choose one "
-				+ "to hold it whole, R turns it, a click puts it down")
+			button.tooltip_text = Keymap.filled("Worked constructions, each with why it works: choose one "
+				+ "to hold it whole, {rotate_held|turns it}, a click puts it down", true)
 		if category == FITS:
 			button.text = FITS
 			button.tooltip_text = ("The parts that fit the selected part, or the one in hand: "
@@ -1705,9 +1705,9 @@ func _fill_grid() -> void:
 
 
 ## How many tiles a row holds: as many as the bin's width has room for, and
-## COLUMNS at the least. The left-hand column is wider where the window has
-## room (Main.PARTS_WIDE), and the parts go across it: four across, a laptop
-## saw 12 of them. A phone's sheet keeps its four, for a finger.
+## COLUMNS at the least. The left-hand column is as wide as the model's
+## share of the window leaves it (Main._fit_panels), and the parts go across
+## it: four across, a laptop saw 12 of them. A phone's sheet keeps its four, for a finger.
 func _tiles_across() -> int:
 	if by_finger:
 		return COLUMNS
@@ -1889,7 +1889,7 @@ func _update_status() -> void:
 	if _category == TECHNIQUES:
 		_status.text = "nothing matches" if _techniques_shown == 0 else (
 			"%s: choose one to hold it whole" % Counted.of(_techniques_shown, "worked construction"))
-		_status.tooltip_text = "R turns what is held, a click puts it down, Esc puts it away"
+		_status.tooltip_text = Keymap.filled("{rotate_held|turns what is held}, a click puts it down, Esc puts it away", true)
 		return
 	if _category == FITS and _fits_of.is_empty():
 		_status.text = "Select a part, or take one in hand, then choose Fits to see what fits it."

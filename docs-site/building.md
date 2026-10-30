@@ -1,4 +1,5 @@
 ---
+panels: PatternDialog#patterns
 tools: edit_model, look_at_model, check_design, attachment_points, where_to_attach, make_unique, clear_model, undo, suggest_sections, make_sections, break_out_section, evaluate_section
 ai: How parts go down, snap, turn and move once placed, and how a model is grouped into sub-assemblies and sections. An assistant does the same with edit_model and edit_selection, reads the model with look_at_model, and checks a change with check_design before making it.
 rules:
@@ -71,7 +72,7 @@ lib:round joints
 
 ## Connect by a point {#connect}
 
-A long Technic beam has many holes, and the one you want is rarely the one the pointer finds first. With the part in hand press [[N]], or choose **Connect** on the toolbar: its pins, holes, axles, bars and clips light up in blue where it stands. Click the one it goes on by, then the pin, hole or bar it goes on: only that point snaps, so a 1 x 16 goes on its pins by its end hole at once. [[R]] turns it about the joint, [[N]] again picks another point, and [[Esc]] goes back to placing as usual.
+A long Technic beam has many holes, and the one you want is rarely the one the pointer finds first. With the part in hand press [[N]], or choose **Connect** on the toolbar: its pins, holes, axles, bars and clips light up in blue where it stands. Click the one it goes on by, then the pin, hole or bar it goes on: only that point snaps, so a 1 x 16 goes on its pins by its end hole at once. A pin or an axle goes in from the side you point from, and a wheel goes on an axle where you point along it. [[T]] puts it on the other way, [[R]] turns it about the joint, [[N]] again picks another point, and [[Esc]] goes back to placing as usual.
 
 With nothing in hand, Connect works on a part already in the model: click the part, then its point, then where it goes. The move is one step to undo, and [[Esc]] puts it back where it was. Studs still go on by the stud grid, as every part does.
 
@@ -85,6 +86,19 @@ Select, then [[Ctrl+C]] and [[Ctrl+V]], or [[Ctrl+D]] to duplicate. The copy is 
 
 <!-- covers
 ui:copy paste and duplicate
+-->
+
+## Patterns {#patterns}
+
+A fence, a colonnade, a round tower or a wheel's spokes are copies laid out at once:
+
+- **Straight after a copy:** put a [[Ctrl+D]] copy down one step along, then type `11x` and [[Enter]] to make it one of 11 in the row, each the same step again. `/4` cuts the gap between the copy and where it came from in four, putting three between. One [[Ctrl+Z]] takes the copy and all the rest back.
+- **Edit › Pattern…** ([[Ctrl+Shift+D]]) copies the selection **In a row** along x, z or up, **Round** what it stands on, the joint it hangs on or the middle of the floor, or **Along a hose** laid in the model. **In all** counts the selection: 16 is a ring of sixteen.
+
+The copies are drawn where they will go as you type, each checked for room. One with no room is red, says what is in its way, and nothing goes down until they all fit.
+
+<!-- covers
+ui:patterns
 -->
 
 ## Move and turn what is down {#move}

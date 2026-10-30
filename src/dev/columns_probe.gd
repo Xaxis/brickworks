@@ -11,11 +11,19 @@
 ## what is selected on the right; Figma, Blender and Onshape all put the
 ## inspector on the right.
 ##
-## On a first visit, nothing selected: at least 24 parts wholly in sight in
-## the bin, and the model tree and the properties open down the right. A part
-## clicked in the model: every one of its properties in sight, nothing behind
-## a scroller. The assistant turned on: it opens down the right and the bin
-## stays open, at this size and wider. Its rail's Properties brings them back.
+## And the model keeps 60% of the window's width throughout, which
+## tools/web/fit_check.mjs asks of a laptop's window: at 1100 x 700 the
+## panels once left no room to build, and with both columns open at 1400 x
+## 900 the model had 41%. So a laptop's columns take turns, one beside the
+## model at a time, and the bin is as wide as the model's share leaves it.
+##
+## On a first visit, nothing selected: the bin open with at least 24 parts
+## wholly in sight, and the model tree and the properties down the right,
+## open where both columns fit and folded to their rail where they take
+## turns. A part clicked in the model, the Properties rail: every one of its
+## properties in sight, nothing behind a scroller. The assistant turned on:
+## it opens down the right, beside the bin where both fit. Its rail's
+## Properties brings them back, and the Parts rail the bin.
 ## columns_saved_probe starts it from a layout kept before the right column
 ## was made (ShellPrefs): the bin folded, the assistant open, the model tree
 ## dragged to 300 and folded; the bin stays folded, the assistant shows, the
@@ -92,7 +100,7 @@ func _run() -> void:
 	print("")
 	if _failures == 0:
 		print("columns: %s" % ("a layout kept before the right column loads as it was left"
-			if _saved else "the bin's parts, every property and the assistant in sight at once"))
+			if _saved else "the bin's parts and every property in sight, the model keeping its share"))
 	else:
 		print("columns: %d FAILED" % _failures)
 	quit(1 if _failures > 0 else 0)
@@ -101,39 +109,55 @@ func _run() -> void:
 func _first_visit() -> void:
 	var bin_dock: SideDock = _main.get("_bin_dock")
 	var props_dock: SideDock = _main.get("_props_dock")
+	var chat_dock: SideDock = _main.get("_chat_dock")
+	var wide: bool = _main.get("_columns") == "wide"
 	var tiles: int = _tiles_in_sight()
-	_check("the parts bin is open, %d parts wholly in sight" % tiles,
-		bin_dock.is_open() and tiles >= 24)
-	_check("the model tree and the properties are open down the right",
-		props_dock != null and props_dock.is_open() and _shell.inspector.is_visible_in_tree()
-		and _shell.outliner.is_visible_in_tree()
-		and _shell.inspector.get_global_rect().position.x > _model_rect().end.x - 1.0)
-	var model: Rect2 = _model_rect()
-	_check("the model keeps %d units across between them" % model.size.x, model.size.x >= 480.0)
+	_check("the parts bin is open, %d parts wholly in sight, %d across"
+		% [tiles, _bin._grid.columns], bin_dock.is_open() and tiles >= 24)
+	if wide:
+		_check("the model tree and the properties are open down the right",
+			props_dock != null and props_dock.is_open() and _shell.inspector.is_visible_in_tree()
+			and _shell.outliner.is_visible_in_tree()
+			and _shell.inspector.get_global_rect().position.x > _model_rect().end.x - 1.0)
+	else:
+		_check("the model tree and the properties are folded to their rail down the right",
+			props_dock != null and not props_dock.is_open()
+			and props_dock.rail().is_visible_in_tree()
+			and props_dock.rail().get_global_rect().position.x >= _model_rect().end.x - 1.0)
+	_model_keeps_its_share("the model")
 	await _shot("1_first_visit")
 
-	# A part clicked in the model, as a person picks one out.
+	# A part clicked in the model, as a person picks one out; where one
+	# column shows at a time, the Properties rail brings them out.
 	var picked: bool = await _click_a_part()
 	_check("a part clicked in the model is selected", picked)
 	await _frames(20)
+	if props_dock != null and not props_dock.is_open():
+		await _click(props_dock.rail().get_global_rect().get_center())
+		await _frames(30)
+		_check("the Properties rail opens them and folds the bin",
+			props_dock.is_open() and not bin_dock.is_open())
 	var hidden: Array = _fields_out_of_sight()
 	_check("with it selected every property is in sight, none behind a scroller%s"
 		% ("" if hidden.is_empty() else " (out of sight: %s)" % ", ".join(hidden)),
 		_shell.inspector.is_visible_in_tree() and hidden.is_empty())
+	_model_keeps_its_share("...and the model")
 	_say_geometry()
 	await _shot("2_part_selected")
 
 	# The assistant turned on, as Settings or the first visit's offer does.
 	_main.call("set_assistant", true)
 	await _frames(40)
-	var chat_dock: SideDock = _main.get("_chat_dock")
 	tiles = _tiles_in_sight()
 	_check("the assistant turned on opens down the right (%s)" % _main.get("_columns"),
 		chat_dock.is_open() and (_main.get("_chat") as Control).is_visible_in_tree())
-	_check("and the parts bin stays open beside it, %d parts in sight" % tiles,
-		bin_dock.is_open() and tiles >= 24)
-	model = _model_rect()
-	_check("the model keeps %d units across" % model.size.x, model.size.x >= 480.0)
+	if wide:
+		_check("and the parts bin stays open beside it, %d parts in sight" % tiles,
+			bin_dock.is_open() and tiles >= 24)
+	else:
+		_check("and the parts bin is folded to its rail", not bin_dock.is_open()
+			and bin_dock.rail().is_visible_in_tree())
+	_model_keeps_its_share("the model")
 	await _shot("3_assistant")
 
 	# Its rail's Properties, as a person clicks it.
@@ -144,8 +168,16 @@ func _first_visit() -> void:
 	_check("the Properties rail brings the properties back, the assistant folded",
 		props_dock != null and props_dock.is_open() and not chat_dock.is_open()
 		and _shell.inspector.is_visible_in_tree() and _fields_out_of_sight().is_empty())
-	_check("and the bin is still open", bin_dock.is_open())
 	await _shot("4_properties_again")
+	# The Parts rail: the bin back, and where one column shows at a time
+	# the right-hand one folded.
+	await _click(bin_dock.rail().get_global_rect().get_center())
+	await _frames(30)
+	tiles = _tiles_in_sight()
+	_check("the Parts rail brings the bin back, %d parts in sight%s" % [tiles,
+		"" if wide else ", the right-hand column folded"], bin_dock.is_open() and tiles >= 24
+		and (wide or not (props_dock.is_open() or chat_dock.is_open())))
+	_model_keeps_its_share("...and the model")
 
 	# View, Assistant: a command, not the rail, shows it again.
 	_shell.run("panel_assistant")
@@ -165,29 +197,30 @@ func _first_visit() -> void:
 	_shell.run("panel_properties")
 	await _frames(30)
 
-	# The tour's Properties stop brings them out from behind the assistant's
-	# tab and lights them in the right column.
+	# Build your first model, from Help, Take the tour: Start, and its first
+	# step brings the bin out from behind the assistant's column and frames
+	# its parts, its line along the top of the model, not over it, and the
+	# model keeping its share.
 	_shell.run("panel_assistant")
 	await _frames(30)
 	_shell.run("tour")
 	await _frames(5)
-	var tour: Tour = _shell.tour
-	for _n: int in 8:
-		if tour._heading.text.begins_with("Properties") or not tour.visible:
-			break
-		await _click(tour._next.get_global_rect().get_center())
-		await _frames(20)
-	# The stop lights its panel again once the column has opened and the
-	# window laid itself out round it (Tour._opened): a time, not frames.
+	var first: FirstBuild = _shell.first_build
+	await _click((first.controls_by_name()["first_build_go"] as Control).get_global_rect().get_center())
 	await create_timer(SideDock.SLIDE_SECONDS + 0.2).timeout
 	await _frames(5)
-	_check("the tour's Properties stop opens the right column and lights them (%s: %s round %s)"
-		% [tour._heading.text, tour._lit, _shell.inspector.get_global_rect()],
-		tour._heading.text.begins_with("Properties")
-		and props_dock != null and props_dock.is_open()
-		and tour._lit.encloses(_shell.inspector.get_global_rect()))
-	await _shot("4b_tour_properties")
-	tour.stop()
+	var parts: Control = _bin.controls_by_name()["parts list"]
+	var lit: Rect2 = (first.get("_frame") as Control).get("lit")
+	_check("Build your first model's first step opens the bin and frames its parts (%s: %s round %s)"
+		% [first.step_name(), lit, parts.get_global_rect()],
+		first.step_name() == "put" and bin_dock.is_open() and lit.encloses(parts.get_global_rect()))
+	var below: Rect2 = (_main.get("_over_model") as Control).get_global_rect()
+	_check("...its line along the top of the model, not over it (%s above %s)"
+		% [first.get_global_rect(), below],
+		first.is_visible_in_tree() and first.get_global_rect().end.y <= below.position.y + 1.0)
+	_model_keeps_its_share("...and the model")
+	await _shot("4b_first_build")
+	first.stop()
 	await _frames(5)
 
 
@@ -268,6 +301,14 @@ func _name_of(field: Control) -> String:
 ## The model's column, where a click lands on the model.
 func _model_rect() -> Rect2:
 	return _main.call("_model_rect")
+
+
+## The model's share of the window's width, at least what fit_check.mjs asks
+## of a laptop's window (Main.MODEL_SHARE).
+func _model_keeps_its_share(what: String) -> void:
+	var share: float = _model_rect().size.x / root.get_visible_rect().size.x
+	_check("%s keeps %d%% of the width, %d units (%s)" % [what, floori(share * 100.0),
+		_model_rect().size.x, _main.get("_columns")], share >= 0.6)
 
 
 ## A part of the model clicked: the one nearest the middle of its column

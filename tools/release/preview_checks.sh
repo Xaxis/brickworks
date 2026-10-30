@@ -200,6 +200,12 @@ declare -A CMD=(
   # lists, Favourites first; More's embed code; More by and Similar only
   # with three cards. Signed in, the API answered by the stand-in.
   [model_page]="tools/web/model_page_flow.mjs --url=$P --out=$S/${TAG}_model_page"
+  # The embed in 3D (docs/SOCIAL.md section 7, item 4): /m/<id>/embed in a
+  # blog's page, the deployment's first model; nothing of the 3D view until
+  # View in 3D, then the model in the frame, full screen, the app a tab of
+  # its own; on a phone the blog scrolls until the model is taken hold of,
+  # and a model past the phone's budget asks first. Signed out, reads only.
+  [embed]="tools/web/embed_flow.mjs --url=$P --out=$S/${TAG}_embed"
   # The LDraw library on the site (library333): /library at 390 and 1400 px,
   # light and dark, the whole shelf with every card's cover, number and
   # modeller; found by a set's number, 10179, and by a theme's pill; the
@@ -271,6 +277,10 @@ declare -A CMD=(
   # stranger refused, the owner ending it. Needs supabase/together.sql.
   [together_probe]="tools/web/together_probe.mjs --url=$P"
   [together]="tools/web/together_flow.mjs --url=$P --out=$S/${TAG}_together"
+  # local only: typed_flow.mjs. A number typed with a part in hand, in the
+  # web build (hand371): it runs against tools/web/serve.py's local build,
+  # as its header says, and has no way past a preview's protection yet.
+  # src/dev/typed_moves_probe.gd holds the same on desktop.
   # local only: bin_tiles_flow.mjs. The parts bin's tiles drawn and named
   # from their first frame, as the bin opens and after a search, on a slow network: it needs
   # tools/web/serve.py --parts to serve each part late, which a deployment
@@ -366,6 +376,10 @@ declare -A CMD=(
   # Render; Render first when opened again; Mirror with nothing selected
   # says why and runs nothing; Escape puts it away.
   [palette]="tools/web/palette_flow.mjs --url=$P/app $B --out=$S/${TAG}_palette"
+  # A key of one's own (appux A11): F1, "paint", the Paint tool's key
+  # clicked and Shift-B pressed; Shift-B takes the Paint tool, and still
+  # does after the page is loaded again.
+  [keys]="tools/web/keys_flow.mjs --url=$P/app $B --out=$S/${TAG}_keys"
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"

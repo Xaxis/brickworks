@@ -648,11 +648,33 @@ def keyboard() -> list[tuple[str, list[tuple[list[str], str, bool]]]]:
         end = re.search(r"^(static func|func|const|class|##)", text[start.end():], re.M)
         return text[start.end(): start.end() + (end.start() if end else len(text))]
 
+    # A keyed() row names actions, each the key the app gives it (Keymap),
+    # read off the window into menus.json's keys; a gesture word, or
+    # anything with a hyphen or a space, is written as it is
+    # (ControlsHint.keyed and its GESTURES).
+    keys_of = menus_data().get("keys", {})
+    gestures = re.search(r"^const GESTURES := \[(.*?)\]", text, re.M)
+    if not gestures:
+        raise SystemExit("docs: src/ui/controls_hint.gd has no GESTURES; the shortcuts page reads it")
+    one_word = set(re.findall(r'"([^"]+)"', gestures.group(1)))
+
+    def keyed(names: list[str]) -> list[str]:
+        out = []
+        for name in names:
+            if name in one_word or "-" in name or " " in name:
+                out.append(name)
+            elif name not in keys_of:
+                raise SystemExit(f"docs: the keys sheet names {name}, which docs-site/generated/menus.json "
+                                 "does not: write it again with src/dev/docs_menus.gd")
+            elif keys_of[name]:
+                out.append(keys_of[name])
+        return out
+
     def bindings(chunk: str) -> list[tuple[list[str], str, bool]]:
         rows = []
         # What follows this is the desktop's alone: a browser keeps the keys.
         desktop = chunk.find('if not OS.has_feature("web")')
-        for m in re.finditer(r"Binding\.new\(", chunk):
+        for m in re.finditer(r"\b(?:Binding\.new|keyed)\(", chunk):
             depth, j = 1, m.end()
             while depth and j < len(chunk):
                 depth += {"(": 1, ")": -1}.get(chunk[j], 0)
@@ -667,6 +689,8 @@ def keyboard() -> list[tuple[str, list[tuple[list[str], str, bool]]]]:
                     keys_end = at + 1
                     break
             keys_ = _binding_keys(call[:keys_end])
+            if m.group(0).startswith("keyed"):
+                keys_ = keyed(keys_)
             rest = call[keys_end:].lstrip(", \n\t")
             said = re.match(r'"((?:[^"\\]|\\.)*)"', rest)
             if said:
@@ -677,7 +701,7 @@ def keyboard() -> list[tuple[str, list[tuple[list[str], str, bool]]]]:
                 does = "turn or slide, as the navigation preset (Settings, Navigate like) has it"
             rows.append((keys_, does.replace('\\"', '"'), 0 <= desktop < m.start()))
         if not rows:
-            raise SystemExit("docs: no Binding.new rows where the shortcuts page looks in controls_hint.gd")
+            raise SystemExit("docs: no Binding.new or keyed rows where the shortcuts page looks in controls_hint.gd")
         return rows
 
     kb = body("for_keyboard")
@@ -696,7 +720,7 @@ def keyboard() -> list[tuple[str, list[tuple[list[str], str, bool]]]]:
         else:
             sections.append((name, bindings(body("_view_bindings"))))
     if len(sections) < 4:
-        raise SystemExit(f"docs: read {len(sections)} sections of keys from controls_hint.gd, expected the five")
+        raise SystemExit(f"docs: read {len(sections)} sections of keys from controls_hint.gd, expected the six")
     sections.append(("On a touchscreen", bindings(body("for_touch"))))
     return sections
 
@@ -735,11 +759,16 @@ def menus_data() -> dict:
 def shortcuts() -> str:
     out = ["Made from the list the app's own **Keys and controls** panel draws ([[F1]] or [[,]] in the app), "
            "and from the menus' keys, so it says exactly what the app answers to.\n",
+           "These are the app's own keys. To use BrickLink Studio's, Mecabricks' or LDCad's instead, or to set "
+           "your own, see [Your own keys](/docs/panels-and-settings#keys).\n",
            "> [!NOTE]\n> On a Mac, press Cmd wherever this page says Ctrl.\n"]
     for section, rows in keyboard():
         out.append(f"## {section}\n")
         body = []
         for keys_, does, desktop in rows:
+            # A command with no key of the app's own: one a person may set.
+            if not keys_:
+                continue
             shown = " ".join(key_html(k) for k in keys_)
             note = ' <span class="pill">Desktop app</span>' if desktop else ""
             body.append(f"<tr><td>{shown}</td><td>{html.escape(does[:1].upper() + does[1:])}{note}</td></tr>")
