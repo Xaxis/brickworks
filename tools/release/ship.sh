@@ -1,7 +1,7 @@
 #!/bin/bash
 # ship.sh WORKTREE TAG CHECK... : a release from a staging worktree.
 # Preview deploy, the browser checks named, and only if every one passes:
-# main fast-forwarded and pushed, production deployed, the live site
+# main fast-forwarded and pushed, that very preview promoted, the live site
 # checked. Release jobs take BOX_HEAVY_PRIORITY, as other projects' do.
 set -u
 TAG=$2
@@ -119,8 +119,22 @@ git -C $R merge --ff-only "$SHA" >/dev/null && env -u GITHUB_TOKEN git -C $R pus
 # import takes 10+ minutes, so it runs beside the deploy, not before it.
 (cd "$R" && setsid nohup bash tools/fresh_import.sh > "$S/${TAG}_main_import.log" 2>&1 &)
 echo "SHIP: main is $SHA, authors: $(git -C $R log --since='1 day ago' --format='%an <%ae>' | sort | uniq -c | tr '\n' ' ')"
-timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh --prod > $S/${TAG}_prod.log 2>&1
-deployed=$?
+# The build the checks passed goes live itself (deploy.sh --promote): the
+# preview is a production build no domain points at yet. m214 waited
+# minutes more on deploy.sh --prod, which built, uploaded and checked the
+# same commit again, and the lead promoted the preview by hand (2026-10-30).
+# Never a unit's preview, which lacks secrets production needs: this one
+# was made above without --unit, or is this TAG's own, reused, whose log
+# would say so. Should the promotion not go, production is deployed afresh,
+# as it was before.
+: > "$S/${TAG}_prod.log"
+deployed=0
+if grep -q "a unit's preview" "$S/${TAG}_preview.log" \
+    || ! timeout 900 tools/deploy.sh --promote="$URL" >> "$S/${TAG}_prod.log" 2>&1; then
+  echo "SHIP: $URL not promoted; deploying production afresh"
+  timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh --prod >> "$S/${TAG}_prod.log" 2>&1
+  deployed=$?
+fi
 grep -E "serves|deploy FAILED" $S/${TAG}_prod.log | sed 's/^/SHIP: /'
 # A failed deploy is a failed ship. m174's lost one size of its start check
 # to a timed-out connection, was never promoted, and still wrote done 0: its

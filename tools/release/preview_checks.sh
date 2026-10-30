@@ -449,7 +449,7 @@ NAMES="${*:-$ORDER}"
 LIVE_DB="$(git rev-parse --path-format=absolute --git-common-dir)/live-db"
 live() { grep -qE 'deleteAccount\(|auth/v1/admin/users' "${CMD[$1]%% *}" 2>/dev/null; }
 run() {
-  local name="$1" t0 lock
+  local name="$1" solo="${2:-}" t0 lock
   t0=$(date +%s)
   # A name not in the map ran bare node, which exits 0 at once: technic
   # "passed" in 0 s without running (2026-10-13).
@@ -470,8 +470,11 @@ run() {
   # 2,600 s at load 40: dialogs_1024 ran out at 2,700 (fig257, 2026-10-25).
   local limit=2700
   case "$name" in dialogs*) limit=3600 ;; esac
-  "$H" timeout "$limit" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1 {lock}>&-
+  "$H" $solo timeout "$limit" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1 {lock}>&-
   local code=$?
+  # heavy --solo says the load it began at, after how long, and beside what.
+  local began; began=$(sed -n 's/^heavy: solo //p' "$S/${TAG}_$name.log" | head -1)
+  [ -n "$solo" ] && echo "$name began ${began:-with no word from heavy}" >> "$S/${TAG}_calm.log"
   live "$name" && echo "$(date '+%F %T') left $TAG $name exit=$code" >> "$LIVE_DB.log"
   exec {lock}>&-
   echo "$name exit=$code fails=$(grep -c 'FAIL' "$S/${TAG}_$name.log") $(( $(date +%s) - t0 ))s :: $(grep -vE '^\s*$' "$S/${TAG}_$name.log" | tail -1 | cut -c1-200)" >> "$S/$TAG.out"
@@ -520,20 +523,12 @@ while :; do
 done
 # Timing checks measure the app's own work, which still slows when the box is
 # busy: m87's play and m98's grab held at load 20-42 and passed alone at 3-10
-# (2026-10-19). Each waits for the one-minute load to fall under CALM_LOAD,
-# from one budget of CALM_WAIT seconds for the whole battery, so a busy box
-# delays a release by minutes, never hours; then it runs anyway. The load
-# each began at goes in TAG_calm.log, to read beside a timing failure.
-calm_left=${CALM_WAIT:-900}
-calm() {
-  local load waited=0
-  while :; do
-    load=$(cut -d' ' -f1 /proc/loadavg)
-    awk -v l="$load" -v c="${CALM_LOAD:-12}" 'BEGIN { exit !(l < c) }' && break
-    [ "$calm_left" -le 0 ] && break
-    sleep 15; waited=$((waited + 15)); calm_left=$((calm_left - 15))
-  done
-  echo "$1 began at load $load after ${waited}s" >> "$S/${TAG}_calm.log"
-}
-for n in $ALONE; do calm "$n"; run "$n"; done
+# (2026-10-19). Each runs as heavy --solo: it waits until none of the
+# project's other jobs holds a slot, bar long ones (a bench run), and none
+# queued after the first of them starts until the last ends. Waiting for
+# the load to fall instead held m214 ten minutes while four agents' deploys
+# and flows kept it at 13-42 (2026-10-30). After BOX_HEAVY_SOLO_WAIT
+# (600 s) it runs anyway. The load each began at, and beside what, goes in
+# TAG_calm.log, to read beside a timing failure.
+for n in $ALONE; do run "$n" --solo; done
 echo "done" >> "$S/$TAG.out"

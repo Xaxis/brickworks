@@ -136,10 +136,22 @@ What each one guards against, all learned the hard way on 2026-10-13:
   release runs its own scripts and knows its own checks. m87 was started
   from main's copy and held on "no such check" for the three it added
   (2026-10-19). `RELEASE_HERE` pins a copy on purpose.
-- A timing check (the SOLO ones) waits for the one-minute load to fall under
-  `CALM_LOAD` (12), from one `CALM_WAIT` budget (900 s) for the battery, then
-  runs anyway; `<tag>_calm.log` says the load each began at. m87's play and
-  m98's grab held at load 20-42 and passed alone at 3-10 (2026-10-19).
+- A timing check (the SOLO ones) runs as `heavy --solo`: it waits until none
+  of the project's other jobs holds a slot, bar long ones held over
+  `BOX_HEAVY_SOLO_WAIT` (600 s, a bench run), and none queued after the
+  first of them starts until the last ends; after 600 s it runs anyway.
+  `<tag>_calm.log` says the load each began at, after how long, and beside
+  what. m87's play and m98's grab held at load 20-42 and passed alone at
+  3-10 (2026-10-19). Waiting for the load to fall instead held m214 ten
+  minutes while four agents' deploys and flows kept it at 13-42 (2026-10-30).
+- `ship.sh` sends live the very preview its checks passed (`tools/deploy.sh
+  --promote=URL`): the preview is a production build no domain points at
+  yet, so that takes seconds, and it ends once brickworks.diy names the
+  build (`SHIP: deploy: brickworks.diy serves <sha>`). `deploy.sh --promote`
+  takes only a build of its checkout's own commit, by the preview's
+  `version.json`, and ship.sh never a unit's preview (`--unit`, without
+  production's secrets). Should the promotion not go, it deploys production
+  afresh with `deploy.sh --prod`, as releases did before.
 - `ship.sh` takes `BOX_HEAVY_PRIORITY` for the release only. Probe batches
   must not take it: it holds every other agent's work. After promoting, it
   waits 90 s for the CDN before checking the live site.
