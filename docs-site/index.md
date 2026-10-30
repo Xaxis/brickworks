@@ -25,7 +25,7 @@ Brickworks is a CAD app for LEGO® bricks. It runs at [brickworks.diy/app](/app)
 ## Find your way
 
 - **Building** covers the builder itself: [placing and moving parts](/docs/building), [selecting](/docs/selecting), [the parts bin](/docs/parts-bin), [the view](/docs/the-view), [joints and mechanisms](/docs/joints-and-mechanisms), [minifigures and prints](/docs/figures-and-prints), [mosaics and brickify](/docs/art-and-brickify), [your collection](/docs/collection), [files](/docs/saving-and-files), [panels and settings](/docs/panels-and-settings) and [every menu command](/docs/menus).
-- **Designing with AI** explains [the assistant](/docs/ai), [the Claude connector](/docs/connector), [Claude Code](/docs/claude-code), [fresh eyes](/docs/fresh-eyes) and [how the AI builds](/docs/how-ai-builds).
+- **Designing with AI** explains [the assistant](/docs/ai), [the Claude connector](/docs/connector), [Claude Code](/docs/claude-code), [fresh eyes](/docs/fresh-eyes) and [how the AI works](/docs/how-ai-works).
 - **The website** is the community around the app: [the gallery](/docs/gallery), [sharing](/docs/sharing), [a model's page](/docs/model-pages), [profiles and your feed](/docs/profiles), [collections](/docs/collections), [the monthly challenge](/docs/challenges), [Build together](/docs/build-together), [the LDraw library](/docs/ldraw-library) and [your account](/docs/account).
 - **Instructions and exports**: [booklets](/docs/instructions), and [every file and picture the app makes](/docs/exports).
 - **Reference**: [shortcuts](/docs/shortcuts), [the MCP tool reference](/docs/mcp-tools), [accessibility](/docs/accessibility), [plans](/docs/plans), [troubleshooting](/docs/troubleshooting) and [the changelog](/docs/changelog).

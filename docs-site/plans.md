@@ -40,7 +40,7 @@ The whole web app, on any computer, tablet or phone:
 
 ## AI is never limited {#ai}
 
-On every plan. You bring your own AI: your Claude plan through [the connector](/docs/connector) or [Claude Code](/docs/claude-code), or [your own API key](/docs/ai#api-key), for Claude or [another AI](/docs/ai#other-ais). Its maker bills your plan or key for what it does, never Brickworks, so Brickworks never counts it or pays for it. How it builds is in [How the AI builds](/docs/how-ai-builds).
+On every plan. You bring your own AI: your Claude plan through [the connector](/docs/connector) or [Claude Code](/docs/claude-code), or [your own API key](/docs/ai#api-key), for Claude or [another AI](/docs/ai#other-ais). Its maker bills your plan or key for what it does, never Brickworks, so Brickworks never counts it or pays for it. How it builds is in [How the AI works](/docs/how-ai-works).
 
 ## Have an account? {#existing-accounts}
 

@@ -914,9 +914,13 @@ plan with Claude as the client.
   operator's line (`#operator`) marked for the owner to fill in, and
   `#paid-plans` (2026-10-29): Free and Pro when they open, sold by Atypic
   through Link, renewal, cancelling and refunds as Atypic's policy says,
-  mirroring Bookwright's terms. The FAQ's "Is Brickworks free?" and "What
-  is an AI build?" (`#ai-builds`) and the download page's `#pro-note` say
-  the same as /plans: downloads free until Pro opens, every version kept.
+  mirroring Bookwright's terms. The FAQ's "Is Brickworks free?" (`#free`),
+  "Is AI limited on any plan?" (`#ai`: never, on any plan; people bring
+  their own) and "I made my account before 29 October 2026" (`#had-account`)
+  and the download page's `#pro-note` say the same as /plans: downloads
+  free until Pro opens, every version kept. The terms, the privacy page,
+  the guidelines and /takedown share one row of `.tabs` in their head
+  (site359, 2026-10-29).
 - `age question` (`web/account.js` `askAgeIfAsked`, `src/ui/sign_in_gate.gd`,
   `api/account.js` `?op=age`, `api/_trust.js`, `supabase/trust.sql`): asked
   once, after a first sign-in, on the site and in the app — "When were you
@@ -2453,9 +2457,12 @@ plan with Claude as the client.
   page fetched (`encodedBodySize`), scrolled to its foot, at 390 and 1280 px
   against the live one (2026-10-20: 206/264 KB at load/scrolled on a phone and
   146/204 on a laptop, where the page before took 228/418 and 195/234). `img/manifest.json` says where each came from and holds
-  its alt text. `FAQ page` (`web/faq.html`): the two ways to bring Claude, each
-  as numbered steps with what it costs (`#claude`), the questions (FAQPage
-  JSON-LD, the same answers), the dimensions (a `.table`). Since 2026-10-24:
+  its alt text. `FAQ page` (`web/faq.html`): the three ways to bring your
+  own AI (your Claude plan, Claude Code, your own key), each as numbered
+  steps with what it costs (`#claude`), then the questions in groups (Plans
+  and price `#plans`, Your AI, Your account, Sharing, Files and parts,
+  About), each group listed in the `.page-toc` beside them (FAQPage JSON-LD,
+  the same answers), the dimensions (a `.table`). Since 2026-10-24:
   signing in (`#sign-in`: `ui:sign in with orangecheck`, and on the desktop
   `ui:sign in with orangecheck on the desktop`, from 0.8.0), building
   together (`#together`, `ui:build together`; the desktop from 0.8.0),
@@ -2467,8 +2474,14 @@ plan with Claude as the client.
   holds and what Brickworks never sees — each claim is in
   `src/account/account.gd`, `api/otp.js`, `api/mcp.js`, `src/ai/own_key.gd` and
   the CSP in `deploy.sh`; change one, change the page. `changelog page`
-  (`web/changelog.html`) and `404 page` (`web/404.html`, `noindex`) use the same
-  bar and foot. `robots.txt` keeps `/admin`, `/api/`, `/oauth/` and `/b/` out and
+  (`web/changelog.html`, each release's name and date in a `.release-head`
+  beside its `.release-notes`, sticky from 900 px; tools/site.py writes
+  them) and `404 page` (`web/404.html`, `noindex`, with four ways on) use
+  the same bar and foot. Every page that is not a landing page (these, the
+  docs' start, settings, the legal pages, /compare, /feed, /notifications,
+  /admin) opens on site.css's `.page-hero` and, where it has parts, keeps
+  a `.page-toc` beside them in a `.page-grid` (site359, 2026-10-29; see
+  docs/DESIGN_SYSTEM.md "An inner page"). `robots.txt` keeps `/admin`, `/api/`, `/oauth/` and `/b/` out and
   names `sitemap.xml`, which lists `/`, `/download`, `/changelog`, `/faq` and
   `/privacy`. The mark is `web/icon.svg`, a cube with a corner cut away
   (no brick, no studs: docs/TRADEMARKS.md, Decisions); `tools/web/make_icons.mjs`
@@ -4871,7 +4884,13 @@ The pages are made, not kept: `tools/docs_site.py` turns `docs-site/*.md`
 (in `docs-site/_nav.json`'s order) into `docs.html`, `docs/<page>.html` and
 `docs/search.json`, and `tools/site.py` runs it at every deploy, as it
 writes the changelog. `web/docs.css` lays them out and `web/docs.js` is the
-pages list on a phone, Ctrl+K search, On this page and Copy. Four pages are
+pages list on a phone, Ctrl+K search, On this page and Copy. Each page's
+head (`.docs-head`) says its part of the docs as an `.eyebrow` over its
+title; the start page's head is lit and holds a search as wide as its
+words (`.docs-search-open.big`); under every page, where to ask
+(`.docs-help`), then previous and next, each naming its part. A page that
+moved (`docs-site/_moved.json`: `ai-builds` and `claude-builds` to
+`how-ai-works`, 2026-10-29, when AI stopped being counted) answers 308. Four pages are
 made from their sources: the MCP tool reference from `tools/mcp_tools.json`,
 the shortcuts from `ControlsHint.for_keyboard()` and the menus' keys, the
 menus from `docs-site/generated/menus.json`, and the changelog from

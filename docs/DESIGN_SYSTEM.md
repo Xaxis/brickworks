@@ -264,6 +264,20 @@ is on the page, `hidden`, for the script to show.
   space above the title, an optional `.page-head` (`.eyebrow`, `h1`,
   `.lede`), then its sections. `.prose` for a page of words (the FAQ's
   width, the legal pages), narrower and quieter.
+- **An inner page** (site359, 2026-10-29): every page that is not a
+  landing page opens on `.page-hero`, the whole width, lit by `--glow`
+  over `--studs` that fade out under the words (the landing pages'
+  `.halo`, quieter), its `.wrap` holding the `.eyebrow`, the `h1`, the
+  `.lede`, then `.hero-meta` (a date) or `.actions`; a head that ends in
+  `.tabs` (the legal pages and /takedown, /feed and /notifications) sits
+  them on its line. Then `.page-body`, and for a page of parts
+  `.page-grid`: `.page-toc` ("On this page", or Settings' list) down the
+  left from 900 px, sticky under the header, its part marked in
+  `--accent-edge`; under 900 px a row of pills that scrolls inside itself.
+  The FAQ, the legal pages, /takedown, /settings, /compare, /changelog,
+  /feed, /notifications, /admin and the 404. Before, each opened on a bare
+  title of its own making and read as another product beside the new home
+  and pricing.
 - **Empty**: `.state`, a dashed box for what has nothing yet.
 - **Segmented**: `.segmented`, a few buttons in a row, the chosen one
   `aria-pressed="true"` and edged in `--accent-edge`, as tall as a field
@@ -493,7 +507,15 @@ edge `--focus` for a note, `--green` for a tip, `--bad` for a warning:
 site.css's since site356), a
 table that scrolls inside its frame (`.table`), a picture of the app
 (`.shot`), the start page's cards (`.docs-cards`), previous and next
-(`.docs-pager`), and search (`dialog.docs-search`, Ctrl+K or `/`).
+(`.docs-pager`, each naming its part of the docs), and search
+(`dialog.docs-search`, Ctrl+K or `/`). Since site359 (2026-10-29) each
+page's head (`.docs-head`) says its part of the docs as an `.eyebrow`;
+the start page's is lit and opens on a search as wide as its words
+(`.docs-search-open.big`); the pages list stands apart on a line of its
+own, the page being read on the accent's soft ground; code, tables, the
+start page's cards and previous and next are raised panels with the
+system's edge of light; and `.docs-help` under every page says where to
+ask.
 The site's buttons, pills and dialog are site.css's. `tools/web/docs_flow.mjs`
 looks at it at 390 and 1400 px in both themes.
 
