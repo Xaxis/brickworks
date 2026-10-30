@@ -91,10 +91,13 @@
 <main id="main">
 	<div class="wrap person challenge" id="challenge">
 		<nav class="crumbs" id="crumbs" aria-label="Where it is" hidden><a href="/challenge">Challenges</a> › <span id="crumb"></span></nav>
-		<p class="eyebrow" id="eyebrow">Monthly challenge</p>
-		<h1 id="title">This month’s challenge</h1>
-		<p class="handle" id="days"></p>
-		<p class="bio" id="brief"></p>
+		<!-- The challenge itself, lit as a landing page's last offer is (site.css .halo). -->
+		<div class="challenge-hero halo">
+			<p class="eyebrow" id="eyebrow">Monthly challenge</p>
+			<h1 id="title">This month’s challenge</h1>
+			<p class="handle" id="days"></p>
+			<p class="bio" id="brief"></p>
+		</div>
 		<p class="note" id="loading">Fetching the challenge…</p>
 		<p class="note" id="none" hidden>There is no challenge just now. The next one is set here: look again soon.</p>
 		<p class="note" id="broken" hidden>The challenge did not load just now. Try again in a minute.</p>

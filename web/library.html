@@ -51,33 +51,78 @@
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <style>
-.listing { padding: var(--s-4) 0 72px; }
+.listing { padding: 0 0 72px; }
+/* The head across the window, lit from above on its baseplate of studs. */
+.browse-band { padding: var(--s-6) 0 0; }
+/* The bar of filters stays under the header; what the keyboard reaches
+   is scrolled clear of both. */
+html { scroll-padding-top: calc(var(--head-h) + 72px); }
 
-/* The question, as the gallery lays it out: a title and the search on one
-   line, the line about the library, the tabs, then Filters and the themes
-   in one row that scrolls inside itself. */
-.finder { display: grid; gap: var(--s-3); margin: 0 0 var(--s-4); }
-.library-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3) var(--s-5); }
+/* The head, as the gallery's: the title and a line under it, the search
+   beside them (under 600 px the search beside the title, the line left
+   out, so the first card's picture is on the first screen). */
+.finder { margin: 0 0 var(--s-4); }
+.library-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-6); }
+.library-title { min-width: 0; }
 .library-head h1 { margin: 0; }
-.search { position: relative; flex: 1 1 200px; max-width: 480px; margin-left: auto; }
-.search input { width: 100%; padding-left: 40px; }
+.library-head .lede { margin: var(--s-2) 0 0; max-width: 64ch; color: var(--ink-soft); font-size: var(--t-lede); }
+.search { position: relative; flex: 1 1 320px; max-width: 440px; }
+.search input { width: 100%; padding-left: 40px; padding-right: 40px; }
 .search .icon { position: absolute; left: 12px; top: 12px; color: var(--ink-faint); pointer-events: none; }
-.finder .lede { margin: 0; }
+/* "/" puts the cursor in the search: said on the field until it is used. */
+.search .hint {
+	position: absolute; right: 10px; top: 11px; display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px;
+	border: 1px solid var(--line); border-radius: var(--r-1); background: var(--panel); color: var(--ink-faint);
+	font: inherit; font-size: var(--t-micro); line-height: 1; pointer-events: none;
+}
+.search:focus-within .hint, .search:has(input:not(:placeholder-shown)) .hint { display: none; }
+@media (width < 600px) {
+	.browse-band { padding-top: var(--s-4); }
+	.library-head .lede, .search .hint { display: none; }
+	.search { flex: 1 1 100%; max-width: none; }
+	.search input { padding-right: 12px; }
+}
 .library-bar { min-width: 0; border-bottom: 1px solid var(--line); }
 .library-bar .tabs { margin: 0; border-bottom: 0; }
-.library-filters { display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
-.library-filters .pills.row { flex: 1; min-width: 0; }
+
+/* The bar of filters, as the gallery's: kept under the header as the list
+   scrolls, on the page's ground carried out to the window's edges (a
+   shadow, which nothing scrolls to), with the header's edge under it once
+   stuck (browse.js data-stuck); the themes fade out at the edge while
+   there are more of them. */
+.toolbar {
+	position: sticky; top: var(--head-h); z-index: 6; display: flex; align-items: center; gap: var(--s-2); min-width: 0;
+	margin: 0 0 var(--s-3); padding: var(--s-2) 0;
+}
+.toolbar::before {
+	content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+	background: var(--bg); box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax);
+}
+.toolbar[data-stuck]::before { box-shadow: 0 0 0 100vmax var(--bg), 0 1px 0 100vmax var(--line); clip-path: inset(0 -100vmax -1px); }
+.toolbar .pills.row {
+	flex: 1; min-width: 0;
+	mask-image: linear-gradient(90deg, var(--ink) calc(100% - 48px), transparent);
+	-webkit-mask-image: linear-gradient(90deg, var(--ink) calc(100% - 48px), transparent);
+}
+.toolbar .pills.row[data-end] { mask-image: none; -webkit-mask-image: none; }
 .filters { flex: none; }
-.filters summary .n { color: var(--ink); font-weight: 700; }
+.filters summary .n {
+	display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: var(--r-pill);
+	background: var(--accent); color: var(--on-accent); font-size: var(--t-micro); font-weight: 700;
+}
+.filters summary .n[hidden] { display: none; }
 .filters .sheet { width: min(340px, calc(100vw - 32px)); gap: var(--s-3); padding: var(--s-4); }
 .filters .sheet .actions { justify-content: space-between; }
+/* While a new question is asked, the cards it will replace step back. */
+[data-library="asking"] #models { opacity: 0.55; transition: opacity var(--motion) var(--ease); }
 
 .found-said { margin: 0 0 var(--s-3); }
 .listing .state { margin-top: var(--s-2); }
 .more { margin-top: 26px; }
-.yours { padding: 40px 0 88px; border-top: 1px solid var(--line); }
-.yours h2 { font-size: var(--t-h2); }
-.yours p { color: var(--ink-soft); max-width: 66ch; margin: 0 0 16px; }
+/* The way to add yours, at the foot of the list: the kit's last offer. */
+.yours { padding: 0 0 var(--section); border-top: 0; }
+.yours h2 { margin: 0 0 var(--s-3); }
+.yours .actions { margin-top: var(--s-5); }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -118,20 +163,30 @@
 </header>
 
 <main id="main">
-	<section class="wrap wide listing" aria-labelledby="library-h">
-		<!-- Answered by library.js, never sent: the page asks /api/share itself. -->
-		<form class="finder" id="finder" role="search" action="/library" method="get">
-			<div class="library-head">
-				<h1 id="library-h">LDraw library</h1>
-				<label class="search">
-					<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
-					<span class="visually-hidden">Search the LDraw library</span>
-					<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
-						placeholder="Search sets by name, number or theme">
-				</label>
-			</div>
-			<p class="lede">Models of real LEGO® sets from LDraw’s Official Model Repository, each credited to
-				who modelled it. Open one to turn it in 3D, list its parts, and build it in Brickworks.</p>
+	<!-- The page's head, lit as the landing page's opening is (site.css .halo):
+	     the title, the search and the tabs; the list and its bar of filters under it. -->
+	<div class="browse-band halo">
+		<div class="wrap wide">
+			<!-- Answered by library.js, never sent: the page asks /api/share itself.
+			     The search is the form; Filters and the themes are its controls too
+			     (form="finder"), laid out under it as the gallery's are, so the bar
+			     of filters can stay on screen over the whole list. -->
+			<form class="finder" id="finder" role="search" action="/library" method="get">
+				<div class="library-head">
+					<div class="library-title">
+						<h1 id="library-h">LDraw library</h1>
+						<p class="lede">Models of real LEGO® sets from LDraw’s Official Model Repository, each credited to
+							who modelled it. Open one to turn it in 3D, list its parts, and build it in Brickworks.</p>
+					</div>
+					<label class="search">
+						<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
+						<span class="visually-hidden">Search the LDraw library</span>
+						<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
+							placeholder="Search sets by name, number or theme" aria-keyshortcuts="/">
+						<kbd class="hint" aria-hidden="true">/</kbd>
+					</label>
+				</div>
+			</form>
 			<div class="library-bar">
 				<!-- The gallery's own tabs, this one marked: the community's models are a tab away. -->
 				<nav class="tabs" aria-label="The gallery">
@@ -141,27 +196,31 @@
 					<a href="/library" aria-current="page">LDraw library</a>
 				</nav>
 			</div>
-			<div class="library-filters">
-				<details class="filters more-menu" id="filters">
-					<summary class="pill"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#filter"></use></svg>
-						Filters <span class="n" id="filters-said" hidden></span></summary>
-					<div class="menu-list sheet">
-						<label>Order
-							<select id="sort" name="sort"><option value="newest">Newest sets</option></select></label>
-						<label>Size
-							<select id="size" name="size"><option value="">Any size</option></select></label>
-						<label>Years
-							<select id="decade" name="decade"><option value="">Any year</option></select></label>
-						<div class="actions">
-							<button type="button" class="link" id="filters-clear">Clear the filters</button>
-						</div>
+		</div>
+	</div>
+	<section class="wrap wide listing" aria-labelledby="library-h">
+		<!-- The bar of filters, on screen over the whole list (sticky under the
+		     header): Filters, then the themes in a row that scrolls inside itself. -->
+		<div class="toolbar" id="toolbar">
+			<details class="filters more-menu" id="filters">
+				<summary class="pill"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#filter"></use></svg>
+					Filters <span class="n" id="filters-said" hidden></span></summary>
+				<div class="menu-list sheet">
+					<label>Order
+						<select id="sort" name="sort" form="finder"><option value="newest">Newest sets</option></select></label>
+					<label>Size
+						<select id="size" name="size" form="finder"><option value="">Any size</option></select></label>
+					<label>Years
+						<select id="decade" name="decade" form="finder"><option value="">Any year</option></select></label>
+					<div class="actions">
+						<button type="button" class="link" id="filters-clear">Clear the filters</button>
 					</div>
-				</details>
-				<div class="pills row" id="themes" role="group" aria-label="Theme">
-					<button type="button" class="pill" data-pick="" aria-pressed="true">All</button>
 				</div>
+			</details>
+			<div class="pills row" id="themes" role="group" aria-label="Theme">
+				<button type="button" class="pill" data-pick="" aria-pressed="true">All</button>
 			</div>
-		</form>
+		</div>
 		<p class="note found-said" id="found-said" aria-live="polite"></p>
 		<!-- Three rows of skeletons at six a row (site.css .skeleton) where the
 		     first page's cards go, taken out when it comes, so nothing under
@@ -203,15 +262,17 @@
 	</section>
 
 	<section class="wrap wide yours" aria-labelledby="yours-h">
-		<h2 id="yours-h">Who made these</h2>
-		<p>
-			Each is a model of a real set that somebody built in LDraw, piece by piece, for
-			<a href="https://library.ldraw.org/omr">LDraw’s Official Model Repository</a>, and shared
-			under a Creative Commons licence that lets anyone use it as long as they credit them. Every
-			card and page names who modelled it and links to its page there. In the app, the same
-			shelf is <b>File › Library…</b>; a set opened from it keeps its credit when you share it.
-		</p>
-		<div class="actions"><a class="cta" href="/app">Open the app</a></div>
+		<div class="offer">
+			<h2 id="yours-h">Who made these</h2>
+			<p class="lede">
+				Each is a model of a real set that somebody built in LDraw, piece by piece, for
+				<a href="https://library.ldraw.org/omr">LDraw’s Official Model Repository</a>, and shared
+				under a Creative Commons licence that lets anyone use it as long as they credit them. Every
+				card and page names who modelled it and links to its page there. In the app, the same
+				shelf is <b>File › Library…</b>; a set opened from it keeps its credit when you share it.
+			</p>
+			<div class="actions center"><a class="cta" href="/app">Open the app</a></div>
+		</div>
 	</section>
 </main>
 
