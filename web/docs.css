@@ -190,7 +190,14 @@ kbd.keys, span.keys { display: inline-flex; flex-wrap: wrap; align-items: center
 .docs-cards a:hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
 @media (hover: hover) { .docs-cards a:hover { transform: translateY(-2px); } }
 @media (prefers-reduced-motion: reduce) { .docs-cards a:hover { transform: none; } }
-.docs-cards a strong::after { content: " →"; color: var(--accent-ink); }
+/* Its way on, a chevron drawn, not a glyph: the arrow is in none of the
+   site's own faces, and looking for one that has it held /docs' first
+   paint back by about 30 ms on this box (site359, measured). */
+.docs-cards a strong::after, .docs-pager .next span::after, .docs-pager .prev span::before {
+	content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 0 2px 8px;
+	border: solid var(--accent-ink); border-width: 2px 2px 0 0; transform: rotate(45deg);
+}
+.docs-pager .prev span::before { margin: 0 8px 2px 0; transform: rotate(-135deg); }
 .docs-cards a strong { display: block; margin-bottom: var(--s-1); color: var(--ink); font-size: var(--t-body); }
 
 /* Where to ask, under every page. */
@@ -212,8 +219,6 @@ kbd.keys, span.keys { display: inline-flex; flex-wrap: wrap; align-items: center
 }
 .docs-pager a:hover { border-color: var(--line-strong); box-shadow: var(--highlight), var(--shadow-2); }
 .docs-pager small { display: block; margin-bottom: 2px; color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 500; }
-.docs-pager .prev span::before { content: "← "; color: var(--accent-ink); }
-.docs-pager .next span::after { content: " →"; color: var(--accent-ink); }
 .docs-pager .next { grid-column: -2; text-align: right; }
 
 /* -- what is on this page ------------------------------------------- */
