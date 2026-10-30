@@ -117,6 +117,24 @@ export function chooseModel(signals, { day, recent = [], gapDays = FEATURED_GAP_
   };
 }
 
+/// What a featured model's card says of why it is featured, from its
+/// choice's [why] and when it was listed ([listedAt]): what people did with
+/// it in the past FEATURED_DAYS days; or, when they did nothing there, that
+/// it is new (listed within those days before [day]) and that it is Tested,
+/// each only when it is. "" when none of them is true.
+export function featuredSaid(why = {}, listedAt = null, day = dayOf()) {
+  const done = [["likes", "like", "likes"], ["builds", "build finished", "builds finished"],
+    ["comments", "comment", "comments"], ["remixes", "remix", "remixes"]]
+    .map(([key, one, many]) => [count(why?.[key]), one, many]).filter(([n]) => n > 0)
+    .map(([n, one, many]) => `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`);
+  if (done.length) return `${done.join(", ")} in the past ${FEATURED_DAYS} days`;
+  const listed = Date.parse(listedAt || "");
+  const fresh = Number.isFinite(listed) && Date.parse(`${daysFrom(day, 1)}T00:00:00Z`) - listed <= FEATURED_DAYS * DAY_MS;
+  const tested = why?.tested === true;
+  if (fresh) return `New in the past ${FEATURED_DAYS} days${tested ? ", and Tested" : ""}`;
+  return tested ? "Tested" : "";
+}
+
 /// A set's top theme and decade, as the library filters by them.
 const themeOf = (set) => String(set.theme || "").split(" > ")[0].split(" / ")[0].trim();
 const decadeOf = (set) => (Number(set.year) > 0 ? `${Math.floor(Number(set.year) / 10) * 10}s` : "");

@@ -199,7 +199,7 @@ import {
 import { namesTrouble } from "./_names.js";
 import { libraryCredit, storeFile, storeRoot } from "./_omr_credit.js";
 // What the front leads with, chosen once a day; and the weekly look at the OMR.
-import { runFeatures } from "./_featured.js";
+import { featuredSaid, runFeatures } from "./_featured.js";
 import { runOmrWatch } from "./_omr_watch.js";
 // The LDraw library's sets, each a page made as a model's is (library333).
 import {
@@ -2271,7 +2271,8 @@ async function shelves(request, response, origin) {
     } : null,
     // Today's featured model and today's set from the LDraw library, as the
     // cron kept them (api/_featured.js): what people did, and which theme.
-    featured: cards.featured ? { day: featured.day, why: featuredWhy(featured.why), model: cards.featured } : null,
+    featured: cards.featured ? { day: featured.day, why: featuredWhy(featured.why),
+      said: featuredSaid(featured.why, featured.card.listed_at, featured.day), model: cards.featured } : null,
     library: set ? { day: kept.library.day, why: { theme: themeOf(set), decade: set.year ? `${Math.floor(set.year / 10) * 10}s` : "" },
       model: setCard(set) } : null,
     small: { size: "small", label: SIZES.small.label, most: SIZES.small.most, models: cards.small,

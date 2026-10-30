@@ -129,16 +129,6 @@ import { toast } from "/kit.js";
     return line ? line[0].toUpperCase() + line.slice(1) : "";
   }
 
-  /// Why today's featured model is, in a line: what people did with it in
-  /// the past 30 days, or that it is new.
-  function whyFeatured(why = {}) {
-    const said = [["likes", "like"], ["builds", "build finished"], ["comments", "comment"], ["remixes", "remix"]]
-      .filter(([key]) => why[key] > 0).map(([key, one]) => counted(why[key], one, key === "remixes" ? "remixes"
-        : key === "builds" ? "builds finished" : undefined));
-    if (said.length) return `${said.join(", ")} in the past 30 days`;
-    return why.tested ? "New, and Tested" : "New in the gallery";
-  }
-
   /// What a select says: until the first answer fills it in, what the
   /// address asked of it.
   const chosen = (select) => (filled ? select.value : select.dataset.wanted || "");
@@ -285,13 +275,16 @@ import { toast } from "/kit.js";
       grid.querySelector(`.model[data-id="${pick.model.id}"]`)?.remove();
     }
     // Today's featured model and set (api/_featured.js), each marked as
-    // the pick is, and why.
+    // the pick is, and why: the featured model's in the API's words
+    // (featuredSaid: only what is true of it), the set's its theme and
+    // decade. A set is nobody's to like: its card has no like.
     const spot = shown && front ? [["featured", front.featured, ID, "Featured today"],
       ["library", front.library, SET_ID, "LDraw library"]]
       .filter(([, one, valid]) => one && one.model && valid.test(String(one.model.id))) : [];
     $("spotlight").hidden = spot.length === 0;
     $("spotlight-models").replaceChildren(...spot.map(([slot, one, , label]) => {
-      const drawn = card(slot === "featured" ? { ...one.model, ...(listed.get(String(one.model.id)) || {}) } : one.model);
+      const drawn = slot === "featured" ? card({ ...one.model, ...(listed.get(String(one.model.id)) || {}) })
+        : modelCard(one.model);
       drawn.dataset.slot = slot;
       const frame = drawn.querySelector(".frame");
       const marks = frame.querySelector(".marks") || frame.appendChild(document.createElement("div"));
@@ -300,11 +293,13 @@ import { toast } from "/kit.js";
       mark.className = "pill new";
       mark.textContent = label;
       marks.prepend(mark);
-      const why = document.createElement("p");
-      why.className = "why";
-      why.textContent = slot === "featured" ? whyFeatured(one.why)
-        : [one.why?.theme, one.why?.decade].filter(Boolean).join(", ");
-      (drawn.querySelector(".by") || drawn.querySelector(".words"))?.after(why);
+      const said = slot === "featured" ? String(one.said || "") : [one.why?.theme, one.why?.decade].filter(Boolean).join(", ");
+      if (said) {
+        const why = document.createElement("p");
+        why.className = "why";
+        why.textContent = said;
+        (drawn.querySelector(".by") || drawn.querySelector(".words"))?.after(why);
+      }
       return drawn;
     }));
     // A shelf of one or two looks broken: three at least (D12).

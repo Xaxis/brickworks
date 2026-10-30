@@ -467,3 +467,29 @@ def test_an_arrival_is_held_to_our_checks_before_it_is_staged(tmp_path: Path) ->
     empty.write_text("0 FILE e.ldr\n0 Author: X\n0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt\n")
     assert "no parts" in library_import.entry_of(arrival, empty, sets)[1]
     assert "theme and year" in library_import.entry_of(arrival, good, {})[1]
+
+
+def test_a_featured_model_s_why_says_only_what_is_true() -> None:
+    said = node("""
+import * as F from "./api/_featured.js";
+const day = "2026-10-30";
+const none = { likes: 0, builds: 0, comments: 0, remixes: 0 };
+console.log(JSON.stringify({
+  done: F.featuredSaid({ ...none, likes: 2, builds: 1, tested: true }, "2026-05-03T10:00:00Z", day),
+  one: F.featuredSaid({ ...none, comments: 1 }, null, day),
+  oldTested: F.featuredSaid({ ...none, tested: true }, "2026-05-03T10:00:00Z", day),
+  oldPlain: F.featuredSaid({ ...none, tested: false }, "2026-05-03T10:00:00Z", day),
+  newTested: F.featuredSaid({ ...none, tested: true }, "2026-10-20T10:00:00Z", day),
+  newPlain: F.featuredSaid(none, "2026-10-01T00:00:00Z", day),
+  monthAndADay: F.featuredSaid(none, "2026-09-29T23:00:00Z", day),
+  unknown: F.featuredSaid({}, null, day),
+}));
+""")
+    assert said == {
+        "done": "2 likes, 1 build finished in the past 30 days",
+        "one": "1 comment in the past 30 days",
+        # Nothing done in 30 days: "New" only for a model listed in them.
+        "oldTested": "Tested", "oldPlain": "",
+        "newTested": "New in the past 30 days, and Tested", "newPlain": "New in the past 30 days",
+        "monthAndADay": "", "unknown": "",
+    }

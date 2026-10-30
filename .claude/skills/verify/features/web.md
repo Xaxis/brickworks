@@ -1418,6 +1418,11 @@ plan with Claude as the client.
   set from the LDraw library the daily cron kept, each card's `data-slot`
   `featured` or `library`, a mark and a why ("2 likes, 1 build finished in
   the past 30 days"; "Castle, 1980s"); hidden while the cron has kept none.
+  The featured model's why is the API's `featured.said` (`featuredSaid`:
+  "New in the past 30 days" only for a model listed in them, "Tested" only
+  when it is, no line when neither); the set's card has no like.
+  gallery_flow checks both on the stand-in's Gatehouse Starter and King's
+  Castle.
 - `the gallery's daily choice` (`api/_featured.js`, `supabase/gallery_crons.sql`,
   gallery362): `curl -H "Authorization: Bearer $CRON_SECRET" <preview>/api/share/feature`
   answers `{outcome: done, pick, featured, library}` (each `{item, made}`) the
