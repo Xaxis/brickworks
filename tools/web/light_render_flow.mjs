@@ -4,6 +4,7 @@
 //
 //   python3 tools/web/serve.py build/web 9463 --parts assets/generated/parts --delay 0 --compressed --cached &
 //   node tools/web/light_render_flow.mjs --url=http://127.0.0.1:9463/index.html --out=DIR [--against=OTHER.png]
+//   node tools/web/light_render_flow.mjs --url=https://<preview>.vercel.app/app/index.html --bypass=$VERCEL_BYPASS --out=DIR
 //
 // Opens the render dialog on the example car, chooses Softbox studio
 // (photographed), Quick and 720p, renders, and keeps the PNG. Fails if no
@@ -24,6 +25,10 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   return [k, rest.join("=") || true];
 }));
 const url = args.url || "http://127.0.0.1:9463/index.html";
+// A preview is behind Vercel's protection: the bypass, once, as a cookie.
+const first = args.bypass
+  ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${args.bypass}&x-vercel-set-bypass-cookie=true`
+  : url;
 const out = path.resolve(args.out || "shots/light_render_web");
 const tolerance = Number(args.tolerance || 24);
 mkdirSync(out, { recursive: true });
@@ -95,7 +100,7 @@ async function compare(one, other) {
 }
 
 try {
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 180000 });
+  await page.goto(first, { waitUntil: "domcontentloaded", timeout: 180000 });
   const until = Date.now() + 300000;
   while (!(await page.evaluate(() => Boolean((window.brickworksControls || {}).tool_render)))) {
     if (Date.now() > until) throw new Error("the toolbar's Render never appeared");
