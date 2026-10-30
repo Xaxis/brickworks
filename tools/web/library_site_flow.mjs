@@ -11,6 +11,10 @@
 //      and the footer link to it.
 //   2. Searched by a set's number, 10179: its one card, the Millennium
 //      Falcon, which opens its set's page (/library/set/10179-1, sets_flow);
+//      words misspelt, "milenium falcon": "Showing sets for millennium
+//      falcon", the Millennium Falcon first, in best match order as Order
+//      says; Oldest chosen keeps the falcons, oldest first; no set with
+//      every word, the nearest said; and cleared, Order the default again;
 //      then a theme's pill, Star Wars, every card of it; and the address
 //      keeps the question.
 //   3. Its LDraw model's page, /library/omr-10179-1, at both widths and in
@@ -140,7 +144,42 @@ try {
       found && shown.length === 1 && shown[0].name === "Millennium Falcon" && shown[0].model3d);
     check(`...its card opens its set's page (${shown[0]?.href})`, shown[0]?.href === "/library/set/10179-1");
     check(`the address keeps it (${new URL(page.url()).search})`, new URL(page.url()).searchParams.get("q") === "10179");
+    // Words as a builder types them (search, api/_search.js): misspelt, the
+    // line over the list says what they were taken to mean, the list is in
+    // best match order and Order says so; the person's own order still
+    // works; and with nothing typed, Order is the library's own again.
+    const state = () => page.evaluate(() => ({ said: document.getElementById("found-said").textContent.trim(),
+      order: document.getElementById("sort").selectedOptions[0]?.textContent.trim(),
+      sort: new URL(location.href).searchParams.get("sort") }));
+    await page.fill("#q", "milenium falcon");
+    await until(page, () => document.documentElement.dataset.library === "ready"
+      && /millennium falcon/.test(document.getElementById("found-said").textContent), null, 30);
+    const meant = await state();
+    const falcons = await cards(page);
+    check(`"milenium falcon": "${meant.said}", first ${falcons[0]?.name}`,
+      /^Showing sets for millennium falcon · \d+ sets of [\d,]+$/.test(meant.said) && falcons[0]?.name === "Millennium Falcon");
+    check(`...in best match order, which Order says (${meant.order}), the address not asking it (${meant.sort})`,
+      meant.order === "Best match" && meant.sort === null);
+    await page.click("#filters summary");
+    await page.selectOption("#sort", "oldest");
+    await until(page, () => document.documentElement.dataset.library === "ready"
+      && new URL(location.href).searchParams.get("sort") === "oldest", null, 30);
+    const oldest = await cards(page);
+    check(`...Oldest first when chosen, still the falcons (${oldest.slice(0, 2).map((one) => one.set).join("; ")})`,
+      oldest.length > 2 && oldest.every((one) => /Falcon/.test(one.name))
+      && Number(oldest[0].set.match(/\b(19|20)\d\d\b/)?.[0]) <= Number(oldest[oldest.length - 1].set.match(/\b(19|20)\d\d\b/)?.[0]));
+    await page.selectOption("#sort", "built");
+    await page.click("#filters summary");
+    await page.fill("#q", "castle xyzzy");
+    await until(page, () => document.documentElement.dataset.library === "ready"
+      && /nearest/.test(document.getElementById("found-said").textContent), null, 30);
+    const near = await state();
+    check(`no set with every word: "${near.said}", the nearest shown (${(await cards(page)).length})`,
+      /^No set has every word you typed\. The nearest: /.test(near.said) && (await cards(page)).length > 0);
     await page.fill("#q", "");
+    await until(page, () => document.documentElement.dataset.library === "ready" && !new URL(location.href).searchParams.get("q"), null, 30);
+    const cleared = await state();
+    check(`...cleared, Order is ${cleared.order} again`, cleared.order === "Built in 3D first" && !cleared.sort);
     await page.click('#themes [data-pick="Star Wars"]');
     await until(page, () => document.documentElement.dataset.library === "ready"
       && document.querySelector('#themes [data-pick="Star Wars"]')?.getAttribute("aria-pressed") === "true", null, 30);

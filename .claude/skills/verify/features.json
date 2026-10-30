@@ -4951,6 +4951,7 @@
       "tests": [
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
+        "tests/test_search.py",
         "tests/test_sets.py"
       ]
     },
