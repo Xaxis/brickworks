@@ -1104,13 +1104,18 @@ picture the assistant is shown.
   (`BookletRead`: the file on the desktop, the tab's sections on the web)
   into a PDF written by hand (`BookletPdf`: the step pictures the booklet's
   own JPEGs as DCTDecode, a part's picture once, boxes and arrows as paths,
-  words as Helvetica text, 269 x 199 mm pages) or a zip of a PNG a page at
-  the pictures' own density (`BookletPng`, drawn with `force_draw`, as the
+  words as text in Liberation Sans, Helvetica's widths, the TrueType file
+  embedded whole as FontFile2 with its WinAnsi widths read from its own
+  hmtx and cmap: `BookletPdf.TYPE`, `font_metrics`; `assets/fonts/`, SIL
+  OFL, credited in `Credits.LIST` "liberation"; 269 x 199 mm pages) or a
+  zip of a PNG a page at 300 dpi (`BookletPng.DPI`, a pHYs chunk saying so,
+  `dpi_chunk`; the words in the same type; drawn with `force_draw`, as the
   web's app tab is out of view and gets no frames). `booklet_pdf_probe`
   presses Instructions and then both Saves as the browser does, and
   `tools/booklet_pdf_check.py` reads the result with poppler and pypdf:
-  page count, page size, every step picture byte for byte, the title and
-  the element numbers as words, the zip's first and last pages against the
+  page count, page size, every font embedded (`pdffonts`), every step
+  picture byte for byte, the title and the element numbers as words, the
+  zip's first and last pages 300 dpi in pixels and pHYs and against the
   PDF drawn by poppler (`--shots` against the browser's own pictures, from
   `booklet_print.mjs --shots-only`). `booklet_flow.mjs` presses both in a
   browser and runs the same check on the downloads.
@@ -1370,6 +1375,22 @@ picture the assistant is shown.
   words, the picture and `path.drawn-arrow`, none on any other page) and the
   exported file (ARROW, PANEL). It ends "...a page laid out by hand and its
   step moved with its arrow..." (47 checks, 2026-10-18, on a local export).
+  **Apply to later pages** (`page_apply_later`; `PageEditor.later_layout`,
+  recorded as one undo by `Shell.place_pages`; over MCP `edit_booklet
+  follow=true`): every later page of the same kind with as many steps
+  takes the page's layout, each step's placed picture, parts list, number
+  and callout moved into its own room (`BookletLooks.rebased`), a parts
+  list or callout only where the later step has one, the list as wide as
+  its own parts need and kept to its side, nothing else placed, and a
+  placed picture's box cut to what the step's list leaves of it
+  (`PageEditor.clear_of`) and shrunk round its centre so the later model is
+  no larger than the booklet draws a step (`Booklet._most` x `_grown`), a
+  page's steps alike; pages of another number of steps are said as left.
+  `booklet_later_probe` lays 42004-1's booklet out at one step a page by
+  the mouse in 9 acts (bar 10) and checks every later page against the
+  first, the cap, nothing on anything or off the page, the callouts where
+  the booklet lays them, Ctrl-Z byte for byte, `follow=true` the same file,
+  and a reopen laid out the same.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,
