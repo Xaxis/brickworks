@@ -148,6 +148,101 @@ static func for_parts(library: PartLibrary, subjects: PackedStringArray,
 	return out
 
 
+## Put [param part_id], in [param colour], on a free connector of one of the
+## bricks [param on] (the selection), as Bricksmith's Insert Related adds the
+## tyre a wheel takes: a double-click on a tile of Fits (PartsBin). By what
+## Connect puts a part on by (JointSnap): the first of their connectors one of
+## the part's ends goes on, nearest [param eye] first, by the first way on it
+## from that side that has room; then a part that sits on studs on the first
+## stud it has room on, and one that takes studs under the first tube
+## (Attach). A connector with a part in it already has no room. One step to
+## undo. {brick, words}: the brick put down, 0 for none, and in words what was
+## done or why nothing was.
+static func put_on(builder: Builder, library: PartLibrary, on: PackedInt64Array,
+		part_id: String, colour: int, eye: Vector3) -> Dictionary:
+	var info: PartLibrary.PartInfo = library.parts.get(part_id)
+	var named: String = Inventory._tidy(info.name) if info != null else part_id
+	if library.mesh_for(part_id) == null:
+		return {"brick": 0, "words": "%s is not here yet" % named}
+	var bricks: Array[BrickWorld.Brick] = []
+	for brick_id: int in on:
+		var brick: BrickWorld.Brick = builder.world.get_brick(brick_id)
+		if brick != null and library.mesh_for(brick.part_id) != null:
+			bricks.append(brick)
+	if bricks.is_empty():
+		return {"brick": 0, "words": "select the part it goes on first"}
+	builder.below = 0.0
+
+	var held: Array = JointSnap.ends_for(library, part_id)
+	var sites: Array = []
+	for brick: BrickWorld.Brick in bricks:
+		for end: JointSnap.End in JointSnap.ends_for(library, brick.part_id):
+			sites.append(end.placed(brick.transform, brick.id))
+	sites.sort_custom(func(a: JointSnap.End, b: JointSnap.End) -> bool:
+		return a.middle().distance_squared_to(eye) < b.middle().distance_squared_to(eye))
+	var mated: int = 0
+	for site: JointSnap.End in sites:
+		var way: Vector3 = (site.middle() - eye).normalized()
+		for choice: Array in JointSnap.choices(held, site, eye, way):
+			mated += 1
+			var at: Transform3D = JointSnap.pose(choice[0], site, int(choice[1]), float(choice[2]),
+				0.0, Basis.IDENTITY)
+			if not builder.room_for(part_id, at, true, true):
+				continue
+			var made: int = _put(builder, part_id, colour, at, site.brick)
+			if made != 0:
+				var under: BrickWorld.Brick = builder.world.get_brick(site.brick)
+				var theirs: PartLibrary.PartInfo = library.parts.get(under.part_id)
+				return {"brick": made, "words": "put %s on %s" % [named, JointSnap.describe(site,
+					Inventory._tidy(theirs.name) if theirs != null else under.part_id)]}
+
+	# On studs, or under them: a 1 x 1 round plate on a jumper's.
+	var mine: Array = Attach.points_of(library, part_id)
+	for wanted: Array in [[Exact.STUD, Exact.HOLE, "on the studs of"],
+			[Exact.HOLE, Exact.STUD, "under"]]:
+		var targets: Array = []     ## [how far from the eye, brick, its point]
+		for brick: BrickWorld.Brick in bricks:
+			for point: Attach.Point in Attach.points_of(library, brick.part_id):
+				if point.kind == int(wanted[0]):
+					targets.append([((brick.transform * point.frame).origin).distance_squared_to(eye),
+						brick, point])
+		targets.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) < float(b[0]))
+		for target: Array in targets:
+			var brick: BrickWorld.Brick = target[1]
+			for point: Attach.Point in mine:
+				if point.kind != int(wanted[1]) or not Attach.compatible(target[2], point):
+					continue
+				mated += 1
+				var posed: Dictionary = Attach.pose(brick.transform, target[2], point)
+				if not posed.has("at") or not builder.room_for(part_id, posed["at"], true, true):
+					continue
+				var made: int = _put(builder, part_id, colour, posed["at"], brick.id)
+				if made != 0:
+					var theirs: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+					return {"brick": made, "words": "put %s %s %s" % [named, wanted[2],
+						Inventory._tidy(theirs.name) if theirs != null else brick.part_id]}
+	if mated == 0:
+		return {"brick": 0, "words": "%s has nothing that goes on what is selected" % named}
+	return {"brick": 0, "words": "no room for %s on what is selected: every place it goes on is taken"
+		% named}
+
+
+## Down at [param at] as one step, in the sub-assembly of the brick
+## [param by] it goes on and in the step a part put down by hand goes in.
+static func _put(builder: Builder, part_id: String, colour: int, at: Transform3D,
+		by: int) -> int:
+	var made: int = builder.put_part(part_id, colour, at)
+	if made == 0:
+		return 0
+	var brick: BrickWorld.Brick = builder.world.get_brick(made)
+	var beside: BrickWorld.Brick = builder.world.get_brick(by)
+	if beside != null:
+		builder.set_path(brick, Assemblies.path_of(beside))
+	brick.step = int(builder.place_step.call(Assemblies.path_of(brick))) \
+		if builder.place_step.is_valid() else -1
+	return made
+
+
 ## The name of a part's other half, lowercase, where LDraw numbers the two
 ## halves of one part apart: "Hinge 1 x 2 Top" for "Hinge 1 x 2 Base".
 static func _other_half(name: String) -> String:

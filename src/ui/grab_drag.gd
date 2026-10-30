@@ -57,6 +57,9 @@ var world: BrickWorld
 var builder: Builder
 var library: PartLibrary
 var camera: CadCamera
+## The view the press was in (CadCamera.MAIN, or SECOND beside it: View,
+## Split): the drag is that view's wherever the pointer goes.
+var _view: int = CadCamera.MAIN
 ## The model's sub-assemblies: a copy posed is made its own first.
 var assemblies: Assemblies
 var scenery: Dictionary = {}
@@ -175,8 +178,9 @@ func press(brick_id: int, screen: Vector2, selection: Dictionary = {}, chained: 
 		last_words = "busy"
 		return true
 	_held_seen_usec = Time.get_ticks_usec()
-	var origin: Vector3 = camera.ray_origin(screen)
-	var direction: Vector3 = camera.ray_normal(screen)
+	_view = camera.view_at(screen)
+	var origin: Vector3 = camera.ray_origin(screen, _view)
+	var direction: Vector3 = camera.ray_normal(screen, _view)
 	var hit: BrickLattice.Hit = builder.lattice.raycast(origin, direction)
 	var at: Vector3 = origin + direction.normalized() * hit.distance if hit.is_valid() \
 		else world.get_brick(brick_id).transform.origin
@@ -323,7 +327,8 @@ func motion(screen: Vector2) -> void:
 	if grab == null or grab.state != "moves":
 		return
 	var started: int = Time.get_ticks_usec()
-	grab.follow(camera.ray_origin(screen), camera.ray_normal(screen), screen, camera)
+	grab.follow(camera.ray_origin(screen, _view), camera.ray_normal(screen, _view),
+		camera.on_eye(screen, _view), camera.eye_of(_view))
 	var following: float = float(Time.get_ticks_usec() - started) / 1000.0
 	if following > worst_follow_ms:
 		worst_follow_said = "solving %.1f ms, %d room tests %.1f ms" % [grab.frame_solve_ms,
@@ -392,8 +397,8 @@ func _count_frame(started: int) -> void:
 ## through where the end is, facing the eye.
 func _chain_motion(screen: Vector2) -> void:
 	var started: int = Time.get_ticks_usec()
-	var origin: Vector3 = camera.ray_origin(screen)
-	var direction: Vector3 = camera.ray_normal(screen).normalized()
+	var origin: Vector3 = camera.ray_origin(screen, _view)
+	var direction: Vector3 = camera.ray_normal(screen, _view).normalized()
 	var short: float = chain.reach_ray(origin, direction)
 	world.set_drawn(chain.placed)
 	_tell("%s%s" % [_capital(chain.said), "" if short < 2.0
@@ -2079,8 +2084,8 @@ func _handle(body: int, link: Bodies.Link, only: PackedInt64Array = PackedInt64A
 			if camera.is_position_behind(spot):
 				continue
 			var screen: Vector2 = camera.unproject_position(spot)
-			var hit: BrickLattice.Hit = builder.lattice.raycast(camera.ray_origin(screen),
-				camera.ray_normal(screen))
+			var hit: BrickLattice.Hit = builder.lattice.raycast(
+				camera.ray_origin(screen, CadCamera.MAIN), camera.ray_normal(screen, CadCamera.MAIN))
 			if hit.is_valid() and hit.brick_id == key:
 				var found: Dictionary = {"screen": screen, "part": brick.part_id, "kind": link.kind, "id": key}
 				# Its joint's line where the spot turns about it: the middle of

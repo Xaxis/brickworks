@@ -198,11 +198,30 @@ export async function chooseAssistant(page, on) {
     if (tries % 8 === 0) await page.keyboard.press("Comma");
     await page.waitForTimeout(500);
   }
-  const where = (await named())[choice];
+  let where = (await named())[choice];
+  if (!where) return false;
+  // Below the foot of a short screen (a phone on its side: Settings is
+  // taller than 390 points), scrolled up into sight as a person scrolls,
+  // and read again once it stands still (Main._page_places). In sight is
+  // whole and above Done, which stands over the dialog's foot: half under
+  // it at 844 x 390, the click went to Done and closed Settings.
+  const pageSize = page.viewportSize();
+  const done = (await named()).settings_done;
+  const foot = done ? done.y - done.h / 2 : pageSize.height;
+  const hidden = (at) => at.y - at.h / 2 < 0 || at.y + at.h / 2 > foot;
+  for (let tries = 0; tries < 12 && where && hidden(where); tries++) {
+    await page.mouse.move(pageSize.width / 2, pageSize.height / 2);
+    await page.mouse.wheel(0, where.y - pageSize.height / 2);
+    await page.waitForTimeout(500);
+    where = null;
+    for (let n = 0; n < 12 && !where; n++) {
+      where = (await named())[choice];
+      if (!where) await page.waitForTimeout(250);
+    }
+  }
   if (!where) return false;
   await page.mouse.click(where.x, where.y);
   for (let tries = 0; tries < 40 && (await now()) !== on; tries++) await page.waitForTimeout(250);
-  const done = (await named()).settings_done;
   if (done) await page.mouse.click(done.x, done.y);
   await page.waitForTimeout(1500);
   return (await now()) === on;

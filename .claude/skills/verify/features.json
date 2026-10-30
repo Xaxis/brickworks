@@ -669,7 +669,8 @@
       "reach": "tools/gears.py check   (tools/gears.py measure: how far apart real sets stand their gears)",
       "area": "pipeline",
       "tests": [
-        "tests/test_gears.py"
+        "tests/test_gears.py",
+        "tests/test_pck_split.py"
       ]
     },
     {
@@ -866,7 +867,8 @@
       "reach": "tools/brick.py search_parts '{\"query\":\"wedge\"}' --port=8795",
       "area": "mcp",
       "tests": [
-        "tests/test_elements.py"
+        "tests/test_elements.py",
+        "tests/test_pck_split.py"
       ]
     },
     {
@@ -1578,6 +1580,14 @@
       "tests": []
     },
     {
+      "id": "cli:photographed light in a browser",
+      "kind": "cli",
+      "entry": "tools/web/light_render_flow.mjs",
+      "reach": "node tools/web/light_render_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=OUT [--against=OTHER.png]   (a local export served by tools/web/serve.py, with .env sourced: Quick at 720p lit by Softbox studio, the light fetched only then, and the same picture as a build that carried it in its pack)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:picker folder probe",
       "kind": "cli",
       "entry": "src/dev/picker_folder_probe.gd",
@@ -1757,7 +1767,8 @@
       "reach": "tools/release/train.sh stage TAG BRANCH --after PREV --checks \"...\"; tools/release/train.sh status",
       "area": "release",
       "tests": [
-        "tests/test_realset.py"
+        "tests/test_realset.py",
+        "tests/test_search.py"
       ]
     },
     {
@@ -1902,6 +1913,14 @@
       "tests": []
     },
     {
+      "id": "cli:set walk probe",
+      "kind": "cli",
+      "entry": "src/dev/setwalk_probe.gd",
+      "reach": "tools/probe.sh setwalk_probe  (8841-1's 25 walk parts and 5762-1's first 25 built from the set's bin, its number typed and Build from it: each part's tile, R and T, the view's keys or cube, the pointer aimed with its corrections, Connect or a typed rest, every input counted; 12 actions a part or fewer and every part exact; -- only=8841-1|5762-1 shots=1 from=library (the same walk from the whole library); PROBE_SIZE=1400x900)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:sets browser flow",
       "kind": "cli",
       "entry": "tools/web/sets_flow.mjs",
@@ -1995,6 +2014,22 @@
         "tests/test_release_train.py",
         "tests/test_worktree_links_ignored.py"
       ]
+    },
+    {
+      "id": "cli:splitmerge probe",
+      "kind": "cli",
+      "entry": "src/dev/splitmerge_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/splitmerge_probe.gd  (a 2 x 4 plate split on its studs; three 1 x 4 plates merged into a brick; six 1 x 1s into a 2 x 3; five 1 x 2s into two; a merge with no real part said and nothing changed; a 1 x 1 brick and a slope split)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:springs probe",
+      "kind": "cli",
+      "entry": "src/dev/springs_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd  (a band round two wedge belt wheels and three, each in 4 actions or fewer, within 1 LDU of the tangents and arcs by hand and in every groove; turned and tilted; a wheel nudged and its band following, one undo; a spring stretched from 4 to 6 studs keeping its turns; a shock from the bin; saved and opened the same, there and by a fresh app (a second process with an empty data folder, --reopen=FILE): no band lost or loose, Reshape on each; its made pieces' sections stripped, made again from their names; a band nothing can make said and kept in its sub-model; PROBE_SIZE=1280x720)",
+      "area": "building",
+      "tests": []
     },
     {
       "id": "cli:step count probe",
@@ -2863,7 +2898,8 @@
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=actuators   (by hand: drag the rod of 42081-1's arm actuator, or of 42080-1's pneumatic cylinders, out and in; move_part a small actuator's input degrees=360)",
       "area": "building",
       "tests": [
-        "tests/test_gears.py"
+        "tests/test_gears.py",
+        "tests/test_pck_split.py"
       ]
     },
     {
@@ -3709,6 +3745,14 @@
       "tests": []
     },
     {
+      "id": "ui:bands and springs by hand",
+      "kind": "ui",
+      "entry": "src/assembly/bands.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd   (by hand: pick a rubber belt or a shock absorber in the bin, click the pulleys or the two pin holes; Build, Hose, tube or chain\u2026, Spring or shock; nudge a part it is on and it follows; PROBE_SIZE=1280x720)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:beta page",
       "kind": "ui",
       "entry": "web/beta.html",
@@ -4465,7 +4509,7 @@
       "id": "ui:printed versions",
       "kind": "ui",
       "entry": "src/prints/printed_versions.gd",
-      "reach": "godot --headless --path . --script src/dev/decor_probe.gd   (by hand: pick a part, then Edit, Printed versions\u2026, its right-click menu, or Properties' Printed versions\u2026)",
+      "reach": "godot --headless --path . --script src/dev/decor_probe.gd   (by hand: pick a part, then Make, Printed versions\u2026, its right-click menu, or Properties' Printed versions\u2026)",
       "area": "prints",
       "tests": []
     },
@@ -4509,6 +4553,14 @@
       "entry": "src/ui/part_shelf.gd",
       "reach": "godot --path .  (Recent and Favourites in the parts bin; right-click a part to keep it)",
       "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "ui:reference picture",
+      "kind": "ui",
+      "entry": "src/ui/reference_image.gd",
+      "reach": "tools/probe.sh refimage_probe   (PROBE_SIZE=1400x900 too; by hand: Make, Reference picture\u2026, a PNG or JPEG, then its width, opacity and Locked)",
+      "area": "view",
       "tests": []
     },
     {
@@ -4724,6 +4776,22 @@
       "entry": "src/assembly/joint_snap.gd",
       "reach": "godot --headless --path . --script src/dev/technic_hand_probe.gd  (a pin, axle, beam, clip or bar in hand, aimed at a hole, pin, axle or bar; R turns it about the joint, T the other way on)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:split and merge parts",
+      "kind": "ui",
+      "entry": "src/assembly/split_merge.gd",
+      "reach": "godot --path .  (select; Alt-S splits, Alt-M merges, or the menu on a part)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:split view",
+      "kind": "ui",
+      "entry": "src/ui/split_view.gd",
+      "reach": "tools/probe.sh split_probe   (PROBE_SIZE=1400x900 too; by hand: View, Split or F8, then Front, Top, Side or Back over the second view, and a part put down from it)",
+      "area": "view",
       "tests": []
     },
     {
@@ -4951,6 +5019,7 @@
       "tests": [
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
+        "tests/test_search.py",
         "tests/test_sets.py"
       ]
     },

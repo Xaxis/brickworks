@@ -53,6 +53,14 @@ ui:hoses and chains by hand
 lib:flexible parts along a path
 -->
 
+## Rubber bands and springs {#bands}
+
+Pick a rubber belt in the parts bin, then click the pulleys, wheels, bushes or axles it goes round, in order round the loop. It wraps each one in its groove, on the side the loop turns, and says how far it is stretched. Pick a shock absorber in the bin, or **Build › Hose, tube or chain…, Spring or shock**, and click the two pin holes or pins it goes between. Its coil keeps its turns as it is stretched or squeezed. Move a part a band or a spring is on and it follows, in the same undo step. Both save in the file as LDraw parts.
+
+<!-- covers
+ui:bands and springs by hand
+-->
+
 ## Check stability {#stability}
 
 **Tools › Check stability** weighs the model: where its centre of mass is against its footprint, whether it would stand, and which joints carry more than they can hold. Those parts are selected and tinted, so you can see what to brace. [View › Stress](/docs/the-view#stress) shows the same for every part as you build.

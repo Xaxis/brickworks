@@ -296,7 +296,7 @@ func _draw_icons() -> void:
 	_drawn_at = density
 	for name: String in _buttons:
 		var button: Button = _buttons[name]
-		var texture: ImageTexture = Icons.texture_for(
+		var texture: ImageTexture = Icons.icon_for(
 			TOOLS + str(button.get_meta("icon")) + ".svg", ICON, density)
 		if button is OptionButton:
 			# A chooser shows the picture of the item chosen, so every item
@@ -308,9 +308,6 @@ func _draw_icons() -> void:
 		else:
 			button.icon = texture
 		button.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		if texture != null:
-			button.add_theme_constant_override("icon_max_width",
-				roundi(texture.get_width() / density))
 
 
 ## Fold groups away, least needed first, until the row fits the window.

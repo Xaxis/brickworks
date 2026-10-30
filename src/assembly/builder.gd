@@ -76,6 +76,10 @@ var floor_hook: Callable = Callable()
 ## what they were, for the step that pins, resolves or opens one again.
 ## Unset, the step does nothing.
 var pins_hook: Callable = Callable()
+## Puts the reference picture as a step left it (ReferenceImage.put) and
+## returns how it was, for the steps that lay, move, size, fade, lock,
+## replace or take it away. Unset, the step does nothing.
+var reference_hook: Callable = Callable()
 
 signal placed(brick_id: int, part_id: String)
 signal removed(brick_id: int)
@@ -459,6 +463,11 @@ func _apply(step: Dictionary) -> Dictionary:
 	if step.get("undo", "") == "pins":
 		return {"undo": "pins", "pins": pins_hook.call(step["pins"]) if pins_hook.is_valid()
 			else step["pins"]}
+
+	# The picture to build over, as it was: its own reverse.
+	if step.get("undo", "") == "reference":
+		return {"undo": "reference", "reference": reference_hook.call(step["reference"])
+			if reference_hook.is_valid() else step["reference"]}
 
 	# What the model stands on: put the floor the step names down, and the
 	# step that puts back the one it replaced is the reverse.
@@ -1262,7 +1271,7 @@ func _reposition(to: Callable, words: String = "", by_cells: Variant = null) -> 
 				blocked = true
 				break
 			n += 6
-		if blocked or lattice.collides_boxes(packed):
+		if blocked or lattice.collides_boxes(packed) and not _only_bands(lattice.blockers_boxes(packed)):
 			blocked = true
 			refused_by = _not_scenery(lattice.blockers_boxes(packed))
 			break
@@ -1293,6 +1302,16 @@ func _reposition(to: Callable, words: String = "", by_cells: Variant = null) -> 
 	_history.append(step)
 	_redo.clear()
 	return steps.size()
+
+
+## Whether every one of [param ids] is a rubber band's or a spring's piece
+## (Bands): a part they are on moves, and they stretch after it (FlexTool).
+func _only_bands(ids: PackedInt64Array) -> bool:
+	for brick_id: int in ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null or not Bands.is_piece_id(brick.part_id):
+			return false
+	return true
 
 
 ## Move each of these bricks to its own new place, as one step: brick id

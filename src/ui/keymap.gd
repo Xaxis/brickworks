@@ -96,6 +96,9 @@ const DONE_AS: Dictionary = {"part_left": SHIFT | KEY_R, "part_right": KEY_R,
 ## H hides, Ctrl-Shift-H shows all, Insert the part again.
 ##
 ## Connect is the app's N; Studio's keep that, having none of their own.
+## LDCad's Space swaps its split views for one large one, and Space is kept
+## for itself here (FIXED): View › Split keeps its F8 in LDCad's keys, as
+## in every preset, none of which gives F8 to anything else.
 ## A name no command has is passed over, so a line may go in before its
 ## command does.
 const PRESET_KEYS: Dictionary = {

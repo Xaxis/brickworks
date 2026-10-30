@@ -377,11 +377,8 @@ func _draw_mark() -> void:
 	if is_equal_approx(density, _mark_drawn_at):
 		return
 	_mark_drawn_at = density
-	var texture: ImageTexture = Icons.texture_for(MARK, MARK_TALL, density)
-	mark.icon = texture
+	mark.icon = Icons.icon_for(MARK, MARK_TALL, density)
 	mark.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	if texture != null:
-		mark.add_theme_constant_override("icon_max_width", roundi(texture.get_width() / density))
 
 
 var _mark_drawn_at: float = 0.0
@@ -404,6 +401,15 @@ func _fit_mark() -> void:
 		var control: Control = child as Control
 		if control != null and control != mark and control.visible and not (mine and control == _name):
 			wide += control.get_combined_minimum_size().x + gap
+	# Account as wide as its count makes it ("Account · 99+"), whether the
+	# count has come or not: it comes seconds in, signed in, and the name
+	# that fitted beside "Account" went, every control of the row moving
+	# twice in two seconds (rel-m223's app_menu_flow found the mark gone).
+	if _account != null and _account.visible:
+		var font: Font = _account.get_theme_font("font")
+		var size: int = _account.get_theme_font_size("font_size")
+		wide += maxf(0.0, font.get_string_size("Account · 99+", HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
+			- font.get_string_size(_account.text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x)
 	var word: float = mark.get_theme_font("font").get_string_size(NAME, HORIZONTAL_ALIGNMENT_LEFT,
 		-1, mark.get_theme_font_size("font_size")).x + mark.get_theme_constant("h_separation")
 	var bare: float = mark.get_combined_minimum_size().x - (0.0 if mark.text.is_empty() else word)
@@ -725,6 +731,9 @@ func open_with_progress(path: String) -> int:
 	if not store.not_opened.is_empty():
 		_say("could not open %s: %s" % [path.get_file(), store.not_opened])
 		return -1
+	# What it could not show, said as a file's open says it.
+	if not unshown_words(store).is_empty():
+		_say("opened %s%s" % [store.title, unshown_words(store)])
 	return placed
 
 
@@ -800,6 +809,17 @@ static func left_out_words(result: Dictionary, again: bool = true) -> String:
 	if again and int(result.get("waiting", 0)) > 0:
 		note += " — %d are still arriving, open it again in a moment" % int(result["waiting"])
 	return note
+
+
+## What the open just made left off the baseplate (ModelStore.unshown), as
+## [method left_out_words] says a file's; "" for nothing. Kept in the file
+## either way: the app's own writes them back (ModelStore._absent), someone
+## else's carries them (SourceFile).
+static func unshown_words(store: ModelStore) -> String:
+	if not store.not_opened.is_empty():
+		return ""
+	return left_out_words({"missing": store.unshown.size(), "unshown": store.unshown,
+		"kept": true}, false)
 
 
 ## Who made a model and on what terms, in a line: "LDraw model by Roland

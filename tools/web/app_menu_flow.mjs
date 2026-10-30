@@ -7,10 +7,12 @@
 //   node tools/web/app_menu_flow.mjs --url=<preview>/app --bypass=… [--out=shots/app_menu_web]
 //   node tools/web/app_menu_flow.mjs --url=http://127.0.0.1:8761/index.html
 //
-// At 1280 x 800, and at a phone's width with a mouse (390 x 844, the
-// desktop's layout at 720 units across): the mark is the left-most control
-// of the bar's row (window.brickworksControls.app_menu), drawn in its
-// yellow, red and blue; a click opens its menu with exactly its rows
+// At 1280 x 800, and at a phone's size with a mouse (390 x 844, the phone's
+// layout, which any window a phone's size gets: Phone): the mark is the
+// left-most control of the bar's row (window.brickworksControls.app_menu),
+// drawn in its yellow, red and blue, and at the phone's size a fingertip
+// square, 44 points or more each way (it was 9 x 15 in the desktop's layout
+// drawn there, 2026-10-30); a click opens its menu with exactly its rows
 // (window.brickworksState.app_menu); Down and Return on the first open
 // About Brickworks; then Back to brickworks.diy, the last row, puts the
 // page at the site's own address, its header's mark showing. Pictures in
@@ -64,8 +66,9 @@ for (const [width, height] of [[1280, 800], [390, 844]]) {
     continue;
   }
   // The map is told again as the layout settles: at 390 x 844 the mark left
-  // it for two seconds while the phone's toolbar was laid out (rel-m223), and
-  // a single read three seconds in found nothing. Read it once it is back.
+  // it for two seconds as Account's count came and the name beside the mark
+  // went (rel-m223), and a single read three seconds in found nothing. Read
+  // it once it is back.
   await page.waitForTimeout(3000);
   const where = await controlsWith(page, ["app_menu"], 30000);
   const mark = where.app_menu;
@@ -79,6 +82,8 @@ for (const [width, height] of [[1280, 800], [390, 844]]) {
   check(`...at the top left (${mark.x - mark.w / 2}, ${mark.y - mark.h / 2}; ${mark.w} x ${mark.h}), `
     + `left of everything in its row: ${row.map(([name]) => name).join(", ")}`,
     mark.x - mark.w / 2 < 24 && mark.y - mark.h / 2 < 24 && leftMost);
+  if (width < 600) check(`...a fingertip square at a phone's size: ${mark.w} x ${mark.h}, 44 or more each way`,
+    mark.w >= 44 && mark.h >= 44);
   // Its colours, read off a picture of its left end, where the mark is: the
   // page's own picture, as a person sees it (the canvas read back between
   // frames can be blank, the app drawing only what changes).

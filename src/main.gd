@@ -44,6 +44,10 @@ var _notices: PanelContainer
 ## The part of the middle column the model shows through: what floats over
 ## the model (the cut-away's strip) is laid in it.
 var _over_model: Control
+## View, Split: the model straight on beside the main view (SplitView).
+var _split: SplitView
+## The picture to build over (Make, Reference picture…).
+var _reference: ReferenceImage
 var _store: ModelStore
 ## The baseplate, the grid floor or nothing under the model.
 var _floor: FloorLayer
@@ -306,6 +310,9 @@ var _ask_went_well: bool = true
 ## Whether a left press this handler saw started the box being drawn.
 ## The watchdog below will not finish one it never saw begin.
 var _box_began: bool = false
+## The view the box is drawn in (CadCamera.MAIN, or SECOND for the second
+## view beside the model): what it takes is what that view shows inside it.
+var _box_view: int = CadCamera.MAIN
 ## A box Escape threw away while the button was still down. Its release
 ## is not a click, and the rest of the drag does not start another box.
 var _box_dropped: bool = false
@@ -744,6 +751,11 @@ func _tell_page() -> void:
 		# tell a click that selected from one that put a part down.
 		"mode": _verbs.mode if _verbs != null else "",
 		"selected": _builder.selection.size(),
+		# View, Split: whether the second view shows.
+		"split": _split != null and _split.is_showing(),
+		# Make, Reference picture…: the picture to build over, as the model
+		# keeps it (ReferenceImage.page_state).
+		"reference": _reference.page_state() if _reference != null else {},
 		# ...and which, the first few: tools/web/centre_check.mjs clicks a
 		# part and asks whether that one was taken.
 		"selection": _builder.selection.keys().slice(0, 12),
@@ -1007,8 +1019,11 @@ func _page_controls() -> Dictionary:
 		named.merge(_brickify.controls_by_name())
 	if _shell != null:
 		named.merge(_shell.status.working.controls_by_name())
+	if _split != null:
+		named.merge(_split.controls_by_name())
 	if _phone != null:
-		named.merge(_phone.controls_by_name())
+		# Over the bar's: its mark is hidden, and the phone's is the app's menu.
+		named.merge(_phone.controls_by_name(), true)
 	if _mosaic != null and _mosaic.visible:
 		named.merge(_mosaic.controls_by_name())
 	if _controls != null:
@@ -1234,6 +1249,8 @@ func _layout_for_page(to_window: Transform2D, per_css: float) -> Dictionary:
 			"part": _world.get_brick(int(one["brick"])).part_id}))
 	return {"view": css.call(cover["view"]), "samples": cover["samples"],
 		"covered": covered, "panels": panels, "columns": _columns,
+		# The second view's picture, while View, Split shows it.
+		"split": css.call(_split.picture_rect()) if _split != null and _split.is_showing() else [],
 		"centre": point.call(_camera.unproject_position(_built_bounds().get_center())),
 		"targets": targets}
 
@@ -1304,12 +1321,18 @@ func _panels_by_name() -> Dictionary:
 ## The model's part of the window, sampled: the points of a grid over it
 ## that a click would not reach the model at, and what it would reach
 ## instead. The view cube is the one thing kept over the model, so the
-## points under it are not asked about. Read by tools/web/fit_check.mjs
+## points under it are not asked about; on a phone, which has no cube, the
+## round Fit in its corner (PhoneShell). Read by tools/web/fit_check.mjs
 ## through the page, and by probes directly.
 func model_cover(across: int = 12, down: int = 8) -> Dictionary:
 	var view: Control = _marquee.get_parent()
 	var rect: Rect2 = view.get_global_rect()
+	# The second view beside it is the model's room too (View, Split), all
+	# but its header, as the cube is.
+	if _split != null and _split.is_showing():
+		rect.end = Vector2(_split.picture_rect().end.x, rect.end.y)
 	var covered: Array = []
+	var fit: Control = _phone.controls_by_name().get("phone_fit") if _phone != null else null
 	# Where the interface is drawn, found once: every canvas layer, the
 	# topmost first, and any control drawn straight onto the window.
 	var canvases: Array[Node] = []
@@ -1320,6 +1343,10 @@ func model_cover(across: int = 12, down: int = 8) -> Dictionary:
 			var at: Vector2 = rect.position + Vector2((i + 0.5) / across * rect.size.x,
 				(j + 0.5) / down * rect.size.y)
 			if _gizmo != null and _gizmo.is_visible_in_tree() and _gizmo.get_global_rect().has_point(at):
+				continue
+			if _split != null and _split.header_has(at):
+				continue
+			if fit != null and fit.is_visible_in_tree() and fit.get_global_rect().has_point(at):
 				continue
 			var by: String = _covering(at, canvases)
 			if not by.is_empty():
@@ -1486,9 +1513,23 @@ func _ready() -> void:
 	_enable_antialiasing()
 	_match_screen_density()
 	_watch_frame_cost()
+	# On the web the catalogue, the models and LDraw's tables come in a pack
+	# of their own, fetched while the scripts were made (WebPacks): written
+	# in once this first frame ends, and waited for until then, nothing
+	# moving and the page's own screen still up. Nothing drawn either
+	# (GpuFence.hold): a frame drawn in software under that screen was most
+	# of the wait.
+	if not WebPacks.here(WebPacks.DATA):
+		get_tree().paused = true
+		GpuFence.hold()
+		await WebPacks.need(WebPacks.DATA)
+		GpuFence.let_go()
+		get_tree().paused = false
+		_boot_mark("data")
 	_library = PartLibrary.new()
 	var started: int = Time.get_ticks_msec()
 	if not _library.load_catalogue():
+		_boot_mark("stopped")
 		_title.text = "No catalogue"
 		_status.text = "Run tools/build_meshes.py to generate assets/generated/."
 		# Nothing below was built, so there is nothing for _process to
@@ -4553,6 +4594,19 @@ func _build_ui() -> void:
 	_camera.seen = _model_rect
 	_camera.lens_moved.connect(_hover_again)
 
+	# View, Split: the model straight on beside this column, in the model's
+	# own room and none of the columns' (SplitView). A ray from the screen
+	# over it is its camera's, so a click there places and picks through it.
+	_split = SplitView.new()
+	_split.camera = _camera
+	_split.beside_of = middle
+	_split.world = _world
+	_split.bounds = _built_bounds
+	layout.add_child(_split)
+	_camera.second = _split
+	middle.resized.connect(_split.fit)
+	_split.shown_changed.connect(_hover_again)
+
 	# In the viewport column, at the top, which is where every other 3D
 	# tool puts a view cube.
 	#
@@ -4621,6 +4675,8 @@ func _build_ui() -> void:
 
 	_turning = PivotMark.new()
 	_turning.camera = _camera
+	# The main view's turn, drawn in it alone.
+	_turning.layers = SplitView.MAIN_ONLY
 	add_child(_turning)
 
 
@@ -5092,6 +5148,8 @@ func _build_ui() -> void:
 	_verbs.camera = _camera
 	_verbs.together = _together
 	add_child(_verbs)
+	# A double-click in the bin replaces the selection, or puts a fit on it.
+	_bin.verbs = _verbs
 	# A part in hand (Q, the bin, the eyedropper) brings the parts bin out
 	# if it was folded: a laptop's window starts with the assistant
 	# showing, and the part in hand and its colours are in the bin.
@@ -5148,6 +5206,8 @@ func _build_ui() -> void:
 	_measure = Measure.new()
 	_measure.lattice = _builder.lattice
 	_measure.camera = _camera
+	_measure.world = _world
+	_measure.library = _library
 	_measure.label = _viewport_label(13)
 	_measure.label.visible = false
 	_measure.label.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -5216,6 +5276,21 @@ func _build_ui() -> void:
 	_update_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_update_offer)
 
+	# Make, Reference picture…: a picture to build over, kept in the model's
+	# file and never in a picture of it (src/ui/reference_image.gd).
+	_reference = ReferenceImage.new()
+	_reference.name = "ReferenceImage"
+	_reference.store = _store
+	_reference.camera = _camera
+	_reference.builder = _builder
+	_reference.verbs = _verbs
+	_reference.bounds = _built_bounds
+	_reference.over_panel = _over_panel_at
+	_reference.say = _bar.say
+	add_child(_reference)
+	# Each change to it one step of Undo.
+	_builder.reference_hook = _reference.put
+
 	# Export's picture and shop lists: src/ui/exports.gd.
 	_exports = Exports.new()
 	_exports.world = _world
@@ -5231,6 +5306,7 @@ func _build_ui() -> void:
 	_exports.picture.aside = [_builder, _turning, _shell.see_inside.frame, _floor.grid_node(),
 		_floor.shadow_node(), _shell.grid]
 	_exports.picture.shown_again = _verbs.apply_hidden
+	_exports.picture.aside.append(_reference)
 
 	# This browser may clear the models, which are only in it: said once,
 	# above the model, with the ways to keep a copy (_watch_other_tabs asks).
@@ -6085,7 +6161,11 @@ func _offer_assistant(notes: Control) -> void:
 		face.content_margin_top = 2
 		face.content_margin_bottom = 3
 		_offer_show.add_theme_stylebox_override(state, face)
-	_offer_show.pressed.connect(func() -> void: set_assistant(true))
+	# Shown, as it says: where the columns are drawers (a phone), turning it
+	# on leaves its drawer folded, and the button did nothing to be seen.
+	_offer_show.pressed.connect(func() -> void:
+		set_assistant(true)
+		_chat_dock.set_open(true))
 	_offer.add_child(_offer_show)
 	_offer_close = Button.new()
 	_offer_close.text = "×"
@@ -6175,6 +6255,10 @@ func _fit_panels() -> void:
 	for dock: SideDock in [_props_dock, _chat_dock]:
 		if dock != null:
 			dock.set_open_width(minf(SIDE_WIDE, drawer) if phone else SIDE_WIDE)
+	# And the assistant's, likewise: at 340 units it was half a phone, its
+	# words six points tall.
+	if _phone != null and not Phone.wide():
+		_chat_dock.set_open_width(units - Phone.px(get_viewport(), Phone.TARGET + 4.0))
 
 	var share: String = "drawers" if phone else ("wide" if both else "turns")
 	# Only when it changes. Arranging them on every resize would fight
@@ -6519,6 +6603,9 @@ func _on_model_edited() -> void:
 		_lay_baseplate()
 	elif _floor != null:
 		_floor.follow(_model_bounds())
+	# A band or a spring on a part just moved follows it, in the same step.
+	if _flex != null:
+		_flex.follow_moved()
 	# Every other copy of a sub-assembly just edited follows it.
 	if _verbs != null and _verbs.assemblies != null:
 		_verbs.assemblies.after_edit()
@@ -6679,6 +6766,14 @@ func _hold_figure(figure: Minifig) -> void:
 
 
 func _on_part_chosen(part_id: String) -> void:
+	# A rubber band, a spring or a shock is laid on what it goes round or
+	# between, not put down: Build's flexible part tool takes it.
+	if _flex != null and FlexTool.lays_part(part_id):
+		if _measure != null:
+			_measure.leave()
+		_builder.drop_figure()
+		_flex.open_with(part_id)
+		return
 	_builder.drop_figure()
 	_builder.held_part = part_id
 	# A part picked is a part in hand, to put down.
@@ -6776,7 +6871,10 @@ func _tell_bin_selection() -> void:
 func _open(path: String) -> int:
 	var placed: int = _store.open(path)
 	if not _store.awaited.is_empty():
-		_bar.say("%d bricks — fetching %d more…" % [placed, _store.awaited.size()])
+		_bar.say("%d bricks — fetching %d more…%s" % [placed, _store.awaited.size(),
+			ModelBar.unshown_words(_store)])
+	elif not ModelBar.unshown_words(_store).is_empty():
+		_bar.say("opened %s%s" % [_store.title, ModelBar.unshown_words(_store)])
 	return placed
 
 
@@ -7779,7 +7877,8 @@ func _open_theirs() -> void:
 	var placed: int = await _bar.open_with_progress(path)
 	if placed >= 0:
 		_bar.opened.emit(placed)
-		_bar.say("Opened %s, the model you saved last" % _cloud.newest)
+		_bar.say("Opened %s, the model you saved last%s" % [_cloud.newest,
+			ModelBar.unshown_words(_store)])
 
 
 ## Whether [method _open_theirs] has opened one this start.
@@ -7939,6 +8038,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				"box":
 					_marquee.begin(_press_at)
 					_box_began = true
+					_box_view = _camera.view_at(_press_at)
 				_:
 					_start_left_nav(_pending_verb, _press_at)
 		if not _left_nav.is_empty():
@@ -8190,7 +8290,7 @@ func _unhandled_input(event: InputEvent) -> void:
 ## deciding whether a box covers it and far cheaper than anything
 ## exact. A corner behind the camera projects to nonsense, so a brick
 ## with any corner behind it is left out rather than guessed at.
-func _brick_on_screen(brick: BrickWorld.Brick) -> Variant:
+func _brick_on_screen(brick: BrickWorld.Brick, view: int = CadCamera.MAIN) -> Variant:
 	if _store != null and _store.scenery.has(brick.id):
 		return null
 	# Nor what is hidden: a box drawn over a hidden roof takes what is
@@ -8208,9 +8308,9 @@ func _brick_on_screen(brick: BrickWorld.Brick) -> Variant:
 			box.size.x if n & 1 else 0.0,
 			box.size.y if n & 2 else 0.0,
 			box.size.z if n & 4 else 0.0))
-		if _camera.is_position_behind(corner):
+		if _camera.behind(corner, view):
 			return null
-		var at: Vector2 = _camera.unproject_position(corner)
+		var at: Vector2 = _camera.screen_of(corner, view)
 		lo = Vector2(minf(lo.x, at.x), minf(lo.y, at.y))
 		hi = Vector2(maxf(hi.x, at.x), maxf(hi.y, at.y))
 	return Rect2(lo, hi - lo)
@@ -8298,14 +8398,19 @@ func _dress_for_phone() -> void:
 	_hint_area.custom_minimum_size.y = _phone.foot_height()
 	_gizmo.visible = false
 	var rail: float = Phone.px(get_viewport(), Phone.TARGET)
-	_bin_dock.set_phone_rail(rail)
-	_chat_dock.set_phone_rail(rail)
+	_bin_dock.set_phone_rail(rail, _phone.foot_height())
+	_chat_dock.set_phone_rail(rail, _phone.foot_height())
 	_camera.phone = true
 	_camera.touch_over = _over_panel_at
 	# The model tree and the properties, in the drawer down the left, sized
 	# for a finger as a dialog is; on a tablet the drawer takes the parts
 	# panel's place while it is open (PhoneShell.dock_toggled).
 	_touch.size_panel(_stack)
+	# And the assistant in its drawer down the right.
+	_touch.size_panel(_chat)
+	_chat_dock.toggled.connect(func(open: bool) -> void:
+		if open:
+			_touch.fit_panel.call_deferred(_chat))
 	_bin_dock.toggled.connect(_phone.dock_toggled)
 	_bin_dock.toggled.connect(func(open: bool) -> void:
 		_show_notices()
@@ -8623,7 +8728,7 @@ func _finish_box(add: bool) -> void:
 		_marquee.finish()
 		return
 	var took: int = _builder.select_in(_marquee.box(),
-		_brick_on_screen, _marquee.takes_touching(), add)
+		_brick_on_screen.bind(_box_view), _marquee.takes_touching(), add)
 	_marquee.finish()
 	_bar.say("took %d" % took if took > 0 else "nothing in there")
 

@@ -1,5 +1,5 @@
 // The app on a phone, built for a finger: a small house built by touch alone
-// at 390 x 844 and 430 x 932, at three device pixels to the point, with
+// at 390 x 844, 430 x 932 and 844 x 390, at three device pixels to the point, with
 // touch events (Chromium's phone emulation), in SwiftShader.
 //
 //   tools/export.sh web
@@ -8,8 +8,10 @@
 //   node tools/web/phone_flow.mjs --url=http://127.0.0.1:8811/ --out=shots/phone
 //   BW_BYPASS=… node tools/web/phone_flow.mjs --url=<preview>/app --out=DIR
 //
-// At each size (walk180's P1: the desktop shrunk, 14-point buttons, 9-point
-// swatches, a drawer over half the model, "right-click" and "Shift-drag"):
+// At each size, and held sideways at 844 x 390 (walk180's P1: the desktop
+// shrunk, 14-point buttons, 9-point swatches, a drawer over half the model,
+// "right-click" and "Shift-drag"; phone, 2026-10-30: on its side no part
+// could be picked):
 //
 //   1. The phone layout is on (window.brickworksControls names its row);
 //      Fit clear of the notices strip over the model (walk256 T2: it sat
@@ -18,7 +20,9 @@
 //      them (walk256 T2: every command at once, one long list); File
 //      tapped opens it, and New: a model of its own.
 //   3. Parts: the sheet comes up half the screen, the model above it; its
-//      handle swiped up takes the whole screen, and down again half.
+//      handle swiped up takes the whole screen, and down again half. On a
+//      phone on its side (844 x 390) it comes up whole: half was its head
+//      and not one part (PhoneShell.HALF_LEAST).
 //   4. Searched for a 2 x 4 brick, its tile tapped: in hand, the sheet gone.
 //      A 1 x 2 brick, which has its prints folded under it: a tap on its
 //      picture takes it, and only its "+N", a fingertip, opens them
@@ -49,7 +53,7 @@ const first = bypass
   ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`
   : url;
 const out = String(args.out || "shots/phone");
-const SIZES = String(args.sizes || "390x844,430x932").split(",");
+const SIZES = String(args.sizes || "390x844,430x932,844x390").split(",");
 mkdirSync(out, { recursive: true });
 
 let failed = 0;
@@ -116,6 +120,19 @@ try {
       }
       await touch("touchEnd", []);
       await page.waitForTimeout(500);
+    };
+    // A target in a sheet below the screen's foot, brought into sight by a
+    // finger's drag as a person scrolls (a phone on its side shows four rows
+    // of the colours: blue, under the foot, was tapped where it could not be
+    // seen), and read again once it stands still (Main._page_places).
+    const reach = async (name, seconds = 5) => {
+      let at = await where(name, seconds);
+      for (let n = 0; n < 6 && at && at.y + at.h / 2 > height - 2; n++) {
+        const from = { x: width / 2, y: height * 0.7 };
+        await drag(from, { x: from.x, y: from.y - Math.min(at.y + at.h - height * 0.7, height * 0.4) });
+        at = await where(name, 5);
+      }
+      return at;
     };
     // What a finger has and what is said, asked of the app, and judged.
     const audit = async (what) => {
@@ -277,11 +294,14 @@ try {
     // 3. The parts sheet, and its handle.
     await press("phone_parts");
     let phone = await sheetNow();
-    check(`Parts: a sheet half the screen high (${phone.sheet} ${phone.sheet_state})`,
-      phone.sheet === "Parts" && phone.sheet_state === "half");
+    // Half a phone on its side is too little for a sheet (PhoneShell.HALF_LEAST).
+    const halves = height * 0.5 >= 300;
+    check(`Parts: a sheet ${halves ? "half the screen" : "the whole screen, on its side,"} high (${phone.sheet} ${phone.sheet_state})`,
+      phone.sheet === "Parts" && phone.sheet_state === (halves ? "half" : "full"));
     const view = (await controls()).view;
     const handle = await where("phone_sheet_parts");
-    if (handle) {
+    if (!halves) await audit("parts_full");
+    if (handle && halves) {
       check(`the model shows above it (sheet's top at ${handle.y - handle.h / 2} of ${height})`,
         handle.y - handle.h / 2 > height * 0.4);
       await audit("parts_half");
@@ -376,7 +396,7 @@ try {
       await press("phone_colour");
       phone = await sheetNow();
       check(`Colour: the swatch sheet (${phone.sheet})`, phone.sheet === "Colour");
-      const blue = await where("phone_swatch_1", 5);
+      const blue = await reach("phone_swatch_1");
       await audit("colours");
       if (check("a blue swatch to tap", Boolean(blue))) {
         const was = await page.evaluate(() => window.brickworksPhone && window.brickworksPhone.phone);

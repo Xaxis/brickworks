@@ -104,7 +104,8 @@ static func add(library: PartLibrary, text: String, id: String, keep: bool = tru
 	# Prints and stickers in bins of their own, as the bin shows them.
 	info.category = PartPrints.bin_for(text)
 	read_as_copy(library, info, built.mesh)
-	var skin: bool = is_skin_text(text)
+	# A band's segment or a spring's coil the app made (Bands) is one too.
+	var skin: bool = is_skin_text(text) or Bands.is_piece_id(id)
 	if skin:
 		# A file's hose, not a part to pick from the bin, and not kept.
 		info.category = SKIN_CATEGORY
@@ -781,6 +782,20 @@ static func copied_parts(library: PartLibrary, model: LdrModel) -> PackedStringA
 	return out
 
 
+## LDraw's primitives, which the web fetches the first time a part is built
+## from LDraw's text (WebPacks): waited for before what a file carries, its
+## flexible parts or a kept part are built on workers, which cannot ask for
+## them, and before what they lack is fetched from the library, which has
+## no primitives. The status bar says so; a megabyte, a moment.
+static func _primitives_here() -> void:
+	if WebPacks.here(WebPacks.PRIMITIVES):
+		return
+	var job: Working.Job = Working.begin("Fetching LDraw's primitives…")
+	if not await WebPacks.need(WebPacks.PRIMITIVES):
+		push_warning("LDraw's primitives did not come: parts drawn from them are not shown")
+	job.end()
+
+
 ## Fetch what [param named] (a callable giving the names still unreached)
 ## names, until it names nothing that can be had: [method fetch_sources]'s
 ## loop, for a file or for kept parts.
@@ -790,6 +805,8 @@ static func _fetch_until(library: PartLibrary, named: Callable) -> void:
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	if tree == null:
 		return
+	if not WebPacks.here(WebPacks.PRIMITIVES) and not named.call().is_empty():
+		await _primitives_here()
 	# The network's failures of last time are asked again.
 	for key: String in _unfetched.keys():
 		if bool(_unfetched[key][1]):
@@ -1090,6 +1107,8 @@ static func _add_skin(library: PartLibrary, built: PartForge.Result, text: Strin
 ## any worker reading the library has finished (PartLibrary.being_read), as
 ## adding waits for those.
 static func warm_skins(library: PartLibrary, model: LdrModel) -> void:
+	if not model.generated.is_empty():
+		await _primitives_here()
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	var begun: Array = await WorkerTasks.awaited(func() -> Variant:
 		return begin_skins(library, model, PackedStringArray()),

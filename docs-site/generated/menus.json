@@ -791,6 +791,12 @@
 					"line": true
 				},
 				{
+					"name": "split_view",
+					"words": "Split",
+					"key": "F8",
+					"tip": "A second view beside the model, square on from the front, top, side or back"
+				},
+				{
 					"name": "full_screen",
 					"words": "Full screen",
 					"key": "F11",
@@ -1101,6 +1107,12 @@
 					"tip": "Bring in an OBJ, STL, PLY, 3MF, VOX, FBX or glTF model — a sculpt, a scan, anything — and lay it in bricks at the size you choose"
 				},
 				{
+					"name": "reference",
+					"words": "Reference picture…",
+					"key": "",
+					"tip": "A photo, plan or drawing laid on the floor or stood behind the model, to build over"
+				},
+				{
 					"line": true
 				},
 				{
@@ -1382,6 +1394,18 @@
 			"tip": "Paint the selection the colour in hand"
 		},
 		{
+			"name": "split_parts",
+			"words": "Split into smaller parts",
+			"key": "Alt+S",
+			"tip": "Plates, bricks and tiles into 1 x 1s, a 1 x 1 brick into three plates, slopes into 1-wide slopes, on the same studs"
+		},
+		{
+			"name": "merge_parts",
+			"words": "Merge into bigger parts",
+			"key": "Alt+M",
+			"tip": "The selected plates, bricks and tiles of a colour into the fewest real parts made in it: three plates high a brick"
+		},
+		{
 			"name": "replace",
 			"words": "Replace with the part in hand",
 			"key": "",
@@ -1533,6 +1557,8 @@
 		"replace": "",
 		"printed_versions": "",
 		"mirror": "shift-M",
+		"split_parts": "alt-S",
+		"merge_parts": "alt-M",
 		"swing": "J",
 		"ask_claude": "Ctrl-K",
 		"brace": "",
@@ -1596,6 +1622,7 @@
 		"floor_colour_7": "",
 		"floor_part": "",
 		"floor_default": "",
+		"reference": "",
 		"cut": "K",
 		"cut_x": "",
 		"cut_y": "",
@@ -1611,6 +1638,7 @@
 		"panel_properties": "",
 		"show_properties": "",
 		"panel_keys": "",
+		"split_view": "F8",
 		"full_screen": "F11",
 		"timeline": "B",
 		"parts_list": "P",

@@ -6,9 +6,17 @@
 ## dialogs still want those units, and keep them; what a finger touches is
 ## laid out in points instead, through [method px].
 ##
-## Only where touch is the main input and the screen is narrow both ways
-## round: a laptop with a touchscreen has a mouse beside it and keeps the
-## desktop layout to the pixel, and a phone held sideways is still a phone.
+## Where touch is the main input and the screen is narrow both ways round:
+## a laptop with a touchscreen has a mouse beside it and keeps the desktop
+## layout to the pixel, and a phone held sideways is still a phone.
+##
+## And in any browser window a phone's size, whatever points at it. The
+## desktop's frame needs about 720 units across and 620 down: in 390 x 844
+## points that is 0.54 of a pixel to the unit, so the mark was 9 x 15
+## pixels, a toolbar button 16 and the words 6 (phone, 2026-10-30); in
+## 844 x 390 it had 480 units down, and Settings and the assistant's rail
+## ran off the foot. No pointer makes those readable, and this layout's
+## points work for a mouse as for a finger.
 ##
 ## A tablet too (tablet247): it was given the desktop driven by fingers,
 ## targets 24 to 37 points, tooltips that never come and nothing for a
@@ -27,6 +35,11 @@ const TARGET := 44.0
 
 ## The smallest text a phone shows, in points.
 const LEAST_TEXT := 12.0
+
+## A window's long side under this, its short one under NARROW, is a
+## phone's whatever points at it: the largest phone is 430 x 932. A laptop's
+## browser 1280 x 590 (1080p at 150%) keeps the desktop.
+const PHONE_LONG := 1000.0
 
 ## A short side from NARROW up to this is a tablet's: an iPad mini's 744
 ## to an iPad Pro's 1032, Android's 800. Past it, the desktop.
@@ -59,14 +72,18 @@ static func tablet_factor(across: float, down: float) -> float:
 
 
 static func _wanted() -> bool:
-	if not OS.has_feature("web") or not DisplayServer.is_touchscreen_available():
+	if not OS.has_feature("web"):
+		return false
+	var short: float = minf(Room.across(), Room.down())
+	if short < NARROW and maxf(Room.across(), Room.down()) < PHONE_LONG:
+		return true
+	if not DisplayServer.is_touchscreen_available():
 		return false
 	# The main pointer coarse and no fine one: a finger, with no mouse.
 	var coarse: Variant = JavaScriptBridge.eval(
 		"matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches", true)
 	if not bool(coarse):
 		return false
-	var short: float = minf(Room.across(), Room.down())
 	_wide = short >= NARROW
 	return short < TABLET
 

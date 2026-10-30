@@ -123,10 +123,7 @@ func open(source: String = "") -> void:
 	visible = true
 	# Drawn for the screen it is on now: a browser's ratio is known only
 	# once the page is up.
-	var magnifier: ImageTexture = Icons.texture_for(MAGNIFIER, MAGNIFIER_TALL, Icons.density(self))
-	if magnifier != null:
-		magnifier.set_size_override(Vector2i(int(MAGNIFIER_TALL), int(MAGNIFIER_TALL)))
-	_search.right_icon = magnifier
+	_search.right_icon = Icons.icon_for(MAGNIFIER, MAGNIFIER_TALL, Icons.density(self))
 	_show(source if not source.is_empty() else _source)
 
 

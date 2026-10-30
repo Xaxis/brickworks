@@ -53,7 +53,8 @@
 //      as the page goes; counted only if they changed the model): back in,
 //      they are sent again from the tab and everyone has them; a page
 //      closed with two on their way (what it had ready said): they reach
-//      the owner as it goes, and the person is back in by the link. The
+//      the owner as it goes, or once the person is back in by the link
+//      (a page closed in a long frame sends nothing as it goes). The
 //      owner's page reloaded ends nothing: the other builds meanwhile, and
 //      the owner is back in, still its owner.
 //   7. The owner ends it, from the panel: the other browser and the desktop
@@ -1079,7 +1080,8 @@ try {
   const guestUids = (await textOf(guest.page)).uids;
   await ask(guest.page, [{ op: "hold", on: true, goodbye: false }]);
   // Each counted only if it changed the model: a paint in the colour a part
-  // already has, or a move a part above refuses, sends nothing.
+  // already has, or a move a part above refuses, sends nothing and answers
+  // not ok, which is no fault (two runs failed on it, 2026-10-30).
   let changed = 0;
   const changing = async (edit) => {
     const was = (await textOf(guest.page)).hash;
@@ -1093,7 +1095,7 @@ try {
   await wait(1500);
   const holding = (await together(guest.page)).waiting;
   check(`changes on their way as the page reloads (${changed} of 3 changed the model, ${holding} waiting);`
-    + " the owner has none of them", r1?.ok && r2?.ok && r3?.ok && changed >= 2 && holding >= changed
+    + " the owner has none of them", r1?.ok && changed >= 2 && holding >= changed
     && !(await textOf(owner.page)).uids.includes(r1.uid));
   await guest.page.reload({ waitUntil: "domcontentloaded", timeout: 180000 });
   const rejoined = await until(async () => (await together(guest.page)).live, "the reloaded page back in", 300)
@@ -1119,13 +1121,17 @@ try {
   const closed = guest.page.waitForEvent("close", { timeout: 60000 }).then(() => true).catch(() => false);
   await guest.page.close({ runBeforeUnload: true });
   const gone = await closed;
-  const arrived = await until(async () => (await textOf(owner.page)).uids.includes(c1?.uid), "the closed page's part", 30)
-    .catch(() => false);
-  check("the closed page's changes reach the owner as it goes", arrived,
-    `ready: ${leaving}; page ${gone ? "closed" : "still open"}`);
+  const reached = async () => (await textOf(owner.page)).uids.includes(c1?.uid);
+  const went = await until(reached, "the closed page's part", 30).catch(() => false);
   guest.page = await guest.context.newPage();
   guest.page.on("pageerror", (e) => console.log(`        [page error] ${String(e).slice(0, 160)}`));
   await joinBy(guest.page, started.link);
+  // As it went, or else once the person is back: a page closed while its
+  // thread is in a long frame never runs its pagehide, and the next page
+  // to take up its session sends them (together_close.mjs).
+  const arrived = went || await until(reached, "the closed page's part, once back", 60).catch(() => false);
+  check(`the closed page's changes reach the owner, ${went ? "as it went" : arrived ? "once the person was back"
+    : "neither as it went nor once the person was back"}`, arrived, `ready: ${leaving}; page ${gone ? "closed" : "still open"}`);
   await sameAsOwner("the second person back in by the link");
   // The owner's page goes too: the session goes on without them (Studio's
   // ends for everyone when its host leaves), and they come back into it.

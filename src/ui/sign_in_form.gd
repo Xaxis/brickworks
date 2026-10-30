@@ -237,7 +237,7 @@ func _orangecheck_offered() -> bool:
 
 ## The mark on the orangecheck button, drawn at the pixels it is shown at.
 func _draw_mark() -> void:
-	_orangecheck.icon = Icons.texture_for(ORANGECHECK_MARK, MARK_TALL, Icons.density(self))
+	_orangecheck.icon = Icons.icon_for(ORANGECHECK_MARK, MARK_TALL, Icons.density(self))
 
 
 ## To the site's sign-in, which comes back to this very address; on the
