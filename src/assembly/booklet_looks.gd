@@ -182,9 +182,10 @@ static func turn_at(world: BrickWorld, section: String, step: int) -> Dictionary
 
 ## The direction a step is drawn from for a turn ([method turn_at]): the
 ## booklet's usual angle (BookletStudio.FRONT) turned round by y degrees
-## and tilted by x; ABS from straight in front, LDraw's 0 0 0.
-static func direction(turn: Dictionary) -> Vector3:
-	var front: Vector3 = BookletStudio.FRONT.normalized()
+## and tilted by x; ABS from straight in front, LDraw's 0 0 0. A callout's
+## step turns from the way the callout faces, [param usual].
+static func direction(turn: Dictionary, usual: Vector3 = BookletStudio.FRONT) -> Vector3:
+	var front: Vector3 = usual.normalized()
 	var yaw: float = atan2(front.x, front.z)
 	var pitch: float = asin(front.y)
 	var by: Vector3 = _vector(turn.get("turn", [0, 0, 0]))
@@ -1242,6 +1243,14 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 		+ "each step's new parts are where its picture shows them: point an arrow there. A step "
 		+ "left to the booklet is seen from the front here, and may be drawn turned round: "
 		+ "give it turn= to be sure.")
+	var lines: Dictionary = guides(world)
+	if not (lines["x"] as Array).is_empty() or not (lines["y"] as Array).is_empty():
+		var each := PackedStringArray()
+		for axis: String in ["x", "y"]:
+			for at: Variant in lines[axis]:
+				each.append("%s at %s mm" % ["upright" if axis == "x" else "across",
+					_number(snappedf(float(at), 0.1))])
+		told.append("Guides on every page, never printed: %s." % ", ".join(each))
 	var characters: int = 0
 	var off: Dictionary = {}
 	for page: Booklet.Page in pages:
@@ -1255,18 +1264,26 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 			var how := PackedStringArray()
 			if not entry.look.is_empty():
 				var named: String = entry.look.get_slice("|", 0)
-				# A callout's step on its own pages: what was placed on its page
-				# only; its view is the callout's.
-				var own_line: String = said(world, named, entry.look.get_slice("|", 1).to_int(),
-					entry.in_callout)
+				var step: int = entry.look.get_slice("|", 1).to_int()
+				# A callout's step on its own pages: its turn and what was placed
+				# on its page; its zoom and size are the callout's.
+				if entry.in_callout and not turn_said(world, named, step).is_empty():
+					how.append(turn_said(world, named, step))
+				var own_line: String = said(world, named, step, entry.in_callout)
 				if not own_line.is_empty():
 					how.append(own_line)
 			if entry.adds.size.x > 0.0:
 				how.append("its new parts at %s" % adds_said(entry.adds))
 			if entry.callout != null:
-				how.append("puts on the %s%s, %s" % [entry.callout.name,
+				var posed := PackedStringArray()
+				for sub: Booklet.Entry in entry.callout.steps if entry.callout.inline else []:
+					if sub.fixed and not sub.look.is_empty():
+						posed.append("its step %d %s" % [sub.number, turn_said(world,
+							sub.look.get_slice("|", 0), sub.look.get_slice("|", 1).to_int())])
+				how.append("puts on the %s%s, %s%s" % [entry.callout.name,
 					" x%d" % entry.callout.times if entry.callout.times > 1 else "",
-					"built in a callout box" if entry.callout.inline else "built on its own pages"])
+					"built in a callout box" if entry.callout.inline else "built on its own pages",
+					(" (%s)" % ", ".join(posed)) if not posed.is_empty() else ""])
 			each.append("%d%s" % [entry.number, (" (" + "; ".join(how) + ")") if not how.is_empty()
 				else ""])
 		var line: String = "  page %d%s: step%s %s" % [page.number,
@@ -1296,23 +1313,12 @@ static func adds_said(adds: Rect2) -> String:
 ## zoom 1.5x, new page", or "".
 static func said(world: BrickWorld, section: String, step: int, placed_only: bool = false) -> String:
 	var parts := PackedStringArray()
-	var turn: Dictionary = turn_at(world, section, step) if not placed_only else {}
 	var own: Dictionary = of(world, section, step)
 	if placed_only:
 		own = {"place": own.get("place", {}), "notes": own.get("notes", []),
 			"arrows": own.get("arrows", [])}
-	if not turn.is_empty():
-		var by: Vector3 = _vector(turn["turn"])
-		var bits := PackedStringArray()
-		if str(turn.get("how", "REL")) == "ABS":
-			# Measured from straight in front, as LDraw's ABS is.
-			bits.append("seen from %d° round and %d° up" % [roundi(by.y), roundi(by.x)])
-		else:
-			if not is_zero_approx(by.y):
-				bits.append("turned %d°" % roundi(by.y))
-			if not is_zero_approx(by.x):
-				bits.append("tilted %d°" % roundi(by.x))
-		parts.append(", ".join(bits) + ("" if own.has("turn") else " (from before)"))
+	elif not turn_said(world, section, step).is_empty():
+		parts.append(turn_said(world, section, step))
 	if own.has("zoom"):
 		parts.append("zoom %sx" % _number(float(own["zoom"])))
 	if own.has("size"):
@@ -1355,6 +1361,27 @@ static func said(world: BrickWorld, section: String, step: int, placed_only: boo
 	if own.has("sign") and not bool(own["sign"]):
 		parts.append("no turn sign")
 	return ", ".join(parts)
+
+
+## How a step is turned, as the timeline and a session read it: "turned
+## 45°, tilted 15°", or "seen from 55° round and 35° up" for LDraw's ABS,
+## with " (from before)" when it is held from a step before it; "" seen
+## from the usual angle.
+static func turn_said(world: BrickWorld, section: String, step: int) -> String:
+	var turn: Dictionary = turn_at(world, section, step)
+	if turn.is_empty():
+		return ""
+	var by: Vector3 = _vector(turn["turn"])
+	var bits := PackedStringArray()
+	if str(turn.get("how", "REL")) == "ABS":
+		# Measured from straight in front, as LDraw's ABS is.
+		bits.append("seen from %d° round and %d° up" % [roundi(by.y), roundi(by.x)])
+	else:
+		if not is_zero_approx(by.y):
+			bits.append("turned %d°" % roundi(by.y))
+		if not is_zero_approx(by.x):
+			bits.append("tilted %d°" % roundi(by.x))
+	return ", ".join(bits) + ("" if of(world, section, step).has("turn") else " (from before)")
 
 
 ## An arrow as a session reads it: "a red arrow from 20, 30 to 60, 80 mm,
