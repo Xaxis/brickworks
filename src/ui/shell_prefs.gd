@@ -93,6 +93,11 @@ const DEFAULTS: Dictionary = {
 	"split_side": "front",
 	"split_zoom": 0.0,
 	"split_pan": [],
+	# The parts bin's own (PartsBin): only the parts made in the colour in
+	# hand, printed and stickered parts shown, and the bin as a list.
+	"bin_only_made": false,
+	"bin_prints": true,
+	"bin_list": false,
 }
 
 ## Settings, Interface size: the choices, as shares of the size the window

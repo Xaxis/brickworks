@@ -25,7 +25,16 @@
 ## * a Technic beam selected and Fits chosen, a double-click on the pin's tile
 ##   puts a pin in one of its holes, joined to it as a real pin is (Joints), one
 ##   action and one step; a second double-click, a second pin in another hole;
-## * "1x4 brick" typed: the first eight tiles are all bricks.
+## * "1x4 brick" typed: the first eight tiles are all bricks;
+## * "8841-1" typed, its six models offered as booklets, and Balance chosen:
+##   the bin is the set's parts with step 1's ten kinds first, marked, the
+##   step line saying so; › turns to step 2 and its parts come first, ‹ back,
+##   and Stop lists the set most held first again (the step's parts first:
+##   docs/CADTASK.md section 11, setwalk_probe for the actions it saves);
+## * Only parts made in it ticked, Prints cleared and List chosen, and the
+##   app started again on the same data folder: all three as they were left
+##   (ShellPrefs; run by tools/probe.sh, which gives the run a folder of its
+##   own).
 ##
 ## Also at 1400 x 900 (PROBE_SIZE=1400x900). Pictures go to shots/bin2/.
 extends SceneTree
@@ -41,6 +50,10 @@ const PIN := "2780"
 ## The bar's least: tiles in sight at 1280 x 720, and the list's rows.
 const TILES_LEAST := 24
 const ROWS_LEAST := 20
+## 8841-1 Desert Racer and its alternate Balance, five steps in LDraw's
+## model: step 1 puts in 24 parts of ten kinds, step 2 one.
+const SET := "8841-1"
+const BOOKLET := "8841-1_Balance"
 
 var _failures: int = 0
 var _main: Node
@@ -67,7 +80,14 @@ func _check(what: String, ok: bool) -> void:
 
 
 func _run() -> void:
+	var after_restart: bool = OS.get_cmdline_user_args().has("--after-restart")
+	# The bin's choices are written as the app writes them, in this run's
+	# own data folder only (keys_probe's way).
+	ShellPrefs.kept_by_a_check = _own_data_folder()
 	await process_frame
+	if after_restart:
+		await _after_restart()
+		return
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
 	# The app opens and autosaves this machine's own model: put back as it was.
@@ -103,6 +123,8 @@ func _run() -> void:
 	await _replace()
 	await _fits()
 	await _family()
+	await _booklet()
+	await _kept()
 
 	_put_back_autosave()
 	print("")
@@ -361,6 +383,155 @@ func _family() -> void:
 		first.size() == 8 and bricks == 8)
 	await _shot("1x4_brick")
 	await _type("")
+
+
+## A set's booklet followed: the step's parts first.
+func _booklet() -> void:
+	print("")
+	print("  \"%s\" typed, its models offered, Balance's booklet chosen" % SET)
+	await _type(SET)
+	await _until(func() -> bool:
+		var now: Dictionary = _bin.controls_by_name()
+		return now.has("booklet " + BOOKLET) and (now["booklet " + BOOKLET] as Button).is_visible_in_tree(), 600)
+	# Read again: a lambda's locals are its own copies.
+	var named: Dictionary = _bin.controls_by_name()
+	var offered := PackedStringArray()
+	for name: String in named:
+		if name.begins_with("booklet "):
+			offered.append((named[name] as Button).text)
+	_check("the set's models are offered as booklets (%s)" % ", ".join(offered),
+		named.has("booklet " + BOOKLET) and offered.size() >= 6)
+	if not named.has("booklet " + BOOKLET):
+		return
+	var choice: Button = named["booklet " + BOOKLET]
+	_acts = 0
+	await _click(choice.get_global_rect().get_center())
+	await _until(func() -> bool: return not _bin.booklet_followed().is_empty(), 600)
+	await _frames(10)
+	var followed: Dictionary = _bin.booklet_followed()
+	var first: PackedStringArray = followed.get("first", PackedStringArray())
+	var keys: PackedStringArray = _shown_keys(first.size())
+	var marked: int = _marked(first.size())
+	var words: Label = _bin.controls_by_name()["step words"]
+	_check("one click (%d) builds from %s, step 1 of Balance's %d: \"%s\"" % [_acts,
+		_bin.set_showing(), int(followed.get("steps", 0)), words.text], _acts == 1
+		and _bin.set_showing().begins_with(SET) and int(followed.get("step", 0)) == 1
+		and words.text.begins_with("Balance, step 1 of"))
+	_check("the step's %d kinds are the first tiles, each marked (%d): %s" % [first.size(), marked,
+		", ".join(keys)], first.size() == 10 and keys == first and marked == first.size())
+	var sight: Array = _in_sight()
+	_check("...and each of them in sight without scrolling (%d tiles in sight)" % sight.size(),
+		sight.size() >= first.size() and PackedStringArray(sight.slice(0, first.size())) == _parts_of(first))
+	var status: Label = _bin.get("_status")
+	_check("...and the bin's foot says so: \"%s\"" % status.text.get_slice("\n", 0),
+		status.text.begins_with("52 kinds, the step's 10 first"))
+	await _shot("booklet_step_1")
+	var on: Button = _bin.controls_by_name()["step on"]
+	await _click(on.get_global_rect().get_center())
+	await _frames(10)
+	followed = _bin.booklet_followed()
+	var second: PackedStringArray = followed.get("first", PackedStringArray())
+	_check("› turns to step 2, its parts first (%s): \"%s\"" % [", ".join(second), words.text],
+		int(followed.get("step", 0)) == 2 and not second.is_empty()
+		and _shown_keys(second.size()) == second)
+	var back: Button = _bin.controls_by_name()["step back"]
+	await _click(back.get_global_rect().get_center())
+	await _frames(10)
+	_check("‹ turns back to step 1 (%s)" % words.text,
+		int(_bin.booklet_followed().get("step", 0)) == 1 and _shown_keys(first.size()) == first)
+	var stop: Button = _bin.controls_by_name()["step stop"]
+	await _click(stop.get_global_rect().get_center())
+	await _frames(10)
+	var order: PackedStringArray = _bin.set_bin().order.slice(0, 6)
+	_check("Stop: no booklet, the set most held first again (%s)" % ", ".join(_shown_keys(6)),
+		_bin.booklet_followed().is_empty() and not words.is_visible_in_tree()
+		and _shown_keys(6) == order and _marked(10) == 0)
+	await _click((_bin.controls_by_name()["all parts back"] as Button).get_global_rect().get_center())
+	await _frames(6)
+	await _type("")
+
+
+## The set's keys of the first [param most] tiles.
+func _shown_keys(most: int) -> PackedStringArray:
+	var out := PackedStringArray()
+	for cell: Node in _grid().get_children():
+		if out.size() >= most:
+			break
+		out.append(str(cell.get_meta("key", "")))
+	return out
+
+
+## How many of the first [param most] tiles are marked as the step's.
+func _marked(most: int) -> int:
+	var count: int = 0
+	for n: int in mini(most, _grid().get_child_count()):
+		if bool(_grid().get_child(n).get_meta("in_step", false)):
+			count += 1
+	return count
+
+
+func _parts_of(keys: PackedStringArray) -> PackedStringArray:
+	var out := PackedStringArray()
+	for key: String in keys:
+		out.append(Collection.part_of(key))
+	return out
+
+
+## The bin's three choices left as a person leaves them, and the app
+## started again on the same data folder: a run of its own reads them.
+func _kept() -> void:
+	print("")
+	print("  Only parts made in it, Prints and List, kept when the app starts again")
+	if not ShellPrefs.kept_by_a_check:
+		_check("a data folder of this run's own to keep them in (run by tools/probe.sh)", false)
+		return
+	var named: Dictionary = _bin.controls_by_name()
+	for name: String in ["only made in it", "prints", "list"]:
+		await _click((named[name] as Button).get_global_rect().get_center())
+		await _frames(6)
+	var left: Array = [(named["only made in it"] as Button).button_pressed,
+		(named["prints"] as Button).button_pressed, (named["list"] as Button).button_pressed]
+	_check("ticked, cleared and chosen: %s" % [left], left == [true, false, true])
+	var output: Array = []
+	var code: int = OS.execute(OS.get_executable_path(), ["--headless", "--path",
+		ProjectSettings.globalize_path("res://"), "--script", "res://src/dev/bin2_probe.gd",
+		"--", "--after-restart"], output, true)
+	for line: String in "\n".join(output).split("\n"):
+		if line.begins_with("  ok") or line.begins_with("  FAIL"):
+			print("  " + line)
+	_check("the app started again, on the same data folder, has them so (exit %d)" % code, code == 0)
+	# Back as a first visit has them.
+	for name: String in ["only made in it", "prints", "list"]:
+		await _click((named[name] as Button).get_global_rect().get_center())
+		await _frames(6)
+
+
+## The second run: the bin's three choices as the first run left them.
+func _after_restart() -> void:
+	_main = load("res://src/main.tscn").instantiate()
+	root.add_child(_main)
+	await _until(func() -> bool:
+		var bin: PartsBin = _main.get("_bin")
+		return bin != null and int(bin.get("_offerable")) > 0, 1200)
+	await _frames(10)
+	_bin = _main.get("_bin")
+	var named: Dictionary = _bin.controls_by_name()
+	_check("Only parts made in it still ticked",
+		(named["only made in it"] as Button).button_pressed)
+	_check("Prints still cleared", not (named["prints"] as Button).button_pressed)
+	_check("List still chosen, the bin in rows (%d across)" % _grid().columns,
+		(named["list"] as Button).button_pressed and _grid().columns == 1)
+	_main.queue_free()
+	await process_frame
+	quit(1 if _failures else 0)
+
+
+## Whether user:// is this run's own (probe.sh's XDG_DATA_HOME), never the
+## person's.
+func _own_data_folder() -> bool:
+	var data: String = OS.get_environment("XDG_DATA_HOME")
+	return not data.is_empty() and data.simplify_path() \
+		!= OS.get_environment("HOME").path_join(".local/share").simplify_path()
 
 
 # -- the window, as a person uses it --------------------------------------------

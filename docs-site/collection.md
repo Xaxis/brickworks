@@ -31,6 +31,8 @@ Build something else from a set you own, as an alternate build. Type the set's n
 
 The parts bin becomes that set's parts, a tile for each part in each colour, with how many are left. Taking a tile takes its colour too. Each part you put down takes one from its count, and undo or a delete gives it back. A part with none left is greyed and can still be used: the bin then says how many over the set the model is. The line at the top of the bin names the set and how many of its parts are left; **All parts** goes back to every part. A search or a category picks among the set's parts, and typing another set's number offers to add its parts.
 
+Where the LDraw community has made a model of the set, the bin follows its booklet: the parts of the step you are on come first, each marked with a line along its top, and the line under the set's says which step it is and how many parts it still wants. As those parts go in, the bin turns to the next step by itself; **‹** and **›** turn it by hand, and **Stop** lists the set's parts most held first again. A set with several models, such as *8841-1*'s Desert Racer and its five alternates, offers them by name under *Follow a booklet:* when you type its number: choose the one you are building.
+
 The choice is saved with the model, so opening it brings the set's parts back to the bin.
 
 ## What can I build? {#build}

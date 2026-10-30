@@ -54,7 +54,7 @@ Tick **Only parts made in it** beside the colour's name and the bin lists only t
 
 ## Swap, list and plain parts {#swap}
 
-Double-click a part in the bin to swap what is selected for it: three red bricks become three red masonry bricks in one step, in their places and colour, and [[Ctrl+Z]] swaps them back. **List**, under the bin, shows a row per part with its number, its size in studs and how many colours it was made in. Clear **Prints** beside it and printed and stickered parts leave the bin.
+Double-click a part in the bin to swap what is selected for it: three red bricks become three red masonry bricks in one step, in their places and colour, and [[Ctrl+Z]] swaps them back. **List**, under the bin, shows a row per part with its number, its size in studs and how many colours it was made in. Clear **Prints** beside it and printed and stickered parts leave the bin. **Only parts made in it**, **Prints** and **List** stay as you left them the next time you open Brickworks.
 
 <!-- covers
 ui:palette
