@@ -64,7 +64,6 @@ provider_apis   # Anthropic's Messages, Gemini's own API and OpenAI's Responses:
 app_menu   # the mark's menu at the menu bar's start, its rows, keys, and the bar and toolbar unmoved (brand373)
 hinge_align_ui    # Meet in Properties: the ring closed in three actions (click, Shift-click, Meet), one Ctrl+Z takes it back (hingealign)
 keysheet   # F1 opens the keys sheet alone: 20+ rows in sight at 1280 x 720, typed into it keeps the rows that say it, the menus' keys on it; "," opens Settings without a key; every menu row in each state 4.5:1 or better off the pixels (APP_UX A1, A2)
-feedback   # Help, Send feedback… attaches what the person chooses and sends it; Beta hub is a tester's alone (beta374)
 columns   # the bin's parts, every property and the assistant in sight at once at 1280 x 720: the tree and the properties down the right (layout, A10)
 columns_saved   # a layout kept before the right column loads as it was left (layout, A10)
 booklet_later   # Apply to later pages: 42004-1's booklet laid out from its first page in 9 acts (pages, B7)
