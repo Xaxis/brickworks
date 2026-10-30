@@ -23,8 +23,9 @@ import { INHERIT, parseLbm } from "../../web/lbm.js";
 import { SCENERY } from "./scene.js";
 
 export const CLAY = new Color(0xc9ced6);
-// Where the camera starts: the app's front-right corner (ModelShot "corner").
-const CORNER = new Vector3(0.72, 0.52, 0.72).normalize();
+// Where the camera starts, unless told (from): the app's front-right corner
+// (ModelShot "corner").
+const CORNER = [0.72, 0.52, 0.72];
 const FETCHING = 12;
 
 // Whether this browser can draw in 3D at all.
@@ -101,8 +102,9 @@ export class View {
   constructor(stage, d, given = {}) {
     this.stage = stage;
     this.d = d;
-    this.o = { still: false, spin: true, fov: 35, errors: [], mark: () => {}, touchAction: () => "pan-y", lost: () => {},
+    this.o = { still: false, spin: true, fov: 35, from: CORNER, errors: [], mark: () => {}, touchAction: () => "pan-y", lost: () => {},
       shapeOf: () => Promise.resolve(null), ...given };
+    this.from = new Vector3(...this.o.from).normalize();
     this.marked = new Set();
     this.scene = new Scene();
     this.groups = [];
@@ -285,7 +287,7 @@ export class View {
     const { centre, distance } = this.fitting(sphere.center);
     const fit = Math.max(distance, 20) * 1.05;
     this.controls.target.copy(centre);
-    this.camera.position.copy(centre).addScaledVector(CORNER, fit);
+    this.camera.position.copy(centre).addScaledVector(this.from, fit);
     this.camera.near = Math.max(0.5, fit / 400);
     this.camera.far = fit * 30;
     this.camera.updateProjectionMatrix();
@@ -295,8 +297,8 @@ export class View {
     this.controls.update();
   }
 
-  // Where the camera looks and how far from it it stands, from the corner's
-  // height, for every corner of every part to be in the frame across and
+  // Where the camera looks and how far from it it stands, from the height
+  // it starts at (this.from), for every corner of every part to be in the frame across and
   // up, with the model in the middle of the frame: at the corner itself, or
   // at each of 16 turns about it where it turns on arrival, so it stays
   // whole as it turns. {centre, distance}. (The bounding sphere, used
@@ -306,11 +308,12 @@ export class View {
     const points = this.corners;
     const tanUp = Math.tan((this.camera.fov * Math.PI) / 360);
     const tanAcross = tanUp * this.camera.aspect;
-    const level = Math.hypot(CORNER.x, CORNER.z);
+    const level = Math.hypot(this.from.x, this.from.z);
+    const round = Math.atan2(this.from.x, this.from.z);
     const turns = this.o.spin && !this.o.still ? 16 : 1;
     const axes = (k) => {
-      const a = Math.PI / 4 + (k * Math.PI) / 8;
-      const back = new Vector3(Math.sin(a) * level, CORNER.y, Math.cos(a) * level);
+      const a = round + (k * Math.PI) / 8;
+      const back = new Vector3(Math.sin(a) * level, this.from.y, Math.cos(a) * level);
       const right = new Vector3(Math.cos(a), 0, -Math.sin(a));
       return { back, right, up: new Vector3().crossVectors(back, right) };
     };
@@ -397,8 +400,25 @@ export class View {
     const w = Math.max(1, this.stage.clientWidth);
     const h = Math.max(1, this.stage.clientHeight);
     this.renderer.setSize(w, h, false);
+    const was = this.camera.aspect;
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    // A new shape (full screen, a phone turned): where it starts is fitted
+    // to it again, and the model taken there if it was there; full screen
+    // on a phone had cut the model off at both sides.
+    if (this.framed && this.controls && Math.abs(this.camera.aspect / was - 1) > 0.01) {
+      const home = this.home;
+      const there = home && this.camera.position.distanceTo(home.eye) < 1e-3 * home.eye.distanceTo(home.target)
+        && this.controls.target.distanceTo(home.target) < 1e-3 * home.eye.distanceTo(home.target);
+      const eye = this.camera.position.clone();
+      const target = this.controls.target.clone();
+      this.frame();
+      if (!there) {
+        this.controls.target.copy(target);
+        this.camera.position.copy(eye);
+        this.controls.update();
+      }
+    }
     this.render();
   }
 
@@ -601,7 +621,13 @@ export class View {
       }
     }
     const of = pixels.length / 16;
-    return { width: w, height: h, drawn: drawn / of, colours: colours.size, warm: warm / of, grey: grey / of };
+    // Whether the model runs off the frame: any of it on its outermost
+    // pixels, left, right, top or bottom.
+    const solid = (x, y) => pixels[(y * w + x) * 4 + 3] > 200;
+    let cut = false;
+    for (let y = 0; y < h && !cut; y++) cut = solid(0, y) || solid(w - 1, y);
+    for (let x = 0; x < w && !cut; x++) cut = solid(x, 0) || solid(x, h - 1);
+    return { width: w, height: h, drawn: drawn / of, colours: colours.size, warm: warm / of, grey: grey / of, cut };
   }
 
   instances() {

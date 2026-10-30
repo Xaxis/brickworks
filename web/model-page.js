@@ -197,7 +197,7 @@ function start3d(big) {
     const closed = () => { big.focus({ preventScroll: true }); };
     viewing = import("/viewer3d.js")
       .then((made) => made.open3d(shell, { scene: big.dataset.scene, name, app: big.getAttribute("href"), how,
-        timings: { asked }, closed }))
+        look: big.dataset.scene.startsWith("/library/") ? "corner" : "app", timings: { asked }, closed }))
       .catch(() => {
         // Not even the code came: said, and asked again on the next try.
         shell.dataset.state = "failed";

@@ -34,10 +34,13 @@ export const BUDGET = { coarse: 3e6, fine: 9e6 };
 // The share of the parts' geometry in before the model takes the picture's
 // place, as the card does: the most-used parts come first.
 const SHOWN_AT = 0.25;
-// A long lens, the camera stood well back: the page's picture is drawn
-// square on (ModelShot's orthographic camera), and the card's 35 degrees
-// bent a big model away from it as the 3D took its place.
-const FOV = 20;
+// Where the picture was taken from, so the model turns from there and the
+// 3D takes its place without a jump. A gallery model's picture is the
+// app's view as it was shared, mostly where the app opens a model
+// (CadCamera: turned 35 degrees to the left and 26 up, a 45 degree lens);
+// a library set's is ModelShot's corner, square on, which a long lens
+// stands in for (the card's 35 degrees bent a big model away from it).
+const LOOKS = { app: { from: [-0.5155, 0.4384, 0.7362], fov: 28 }, corner: { from: [0.72, 0.52, 0.72], fov: 20 } };
 const TURN = Math.PI / 12;
 const ZOOM = 0.85;
 
@@ -50,7 +53,8 @@ const state = window.brickworks3d = window.brickworks3d || { state: "closed", ti
 
 /// The 3D view in [shell] (web/model-page.js's .view3d, over the picture):
 /// {close, open} for the page. [given]: scene (its address), name, app (the
-/// app's address for it, Open in Brickworks), timings (what model-page.js
+/// app's address for it, Open in the app), look (where its picture was
+/// taken from: "app" or "corner", LOOKS), timings (what model-page.js
 /// has marked already), how it was asked for (the pointer's type, or
 /// "key"), and closed, called when the person goes back to the picture.
 export function open3d(shell, given) {
@@ -202,7 +206,7 @@ export function open3d(shell, given) {
     });
     // Still as it arrives, where the picture was: the person turns it.
     view = new View(stage, data, {
-      still, spin: false, fov: FOV, errors, touchAction, shapeOf: counted,
+      still, spin: false, ...(LOOKS[given.look] || LOOKS.corner), errors, touchAction, shapeOf: counted,
       mark: (what) => {
         // Timed to the frame drawn, not to when it was asked for: a pixel
         // read back waits for the graphics (SwiftShader draws in seconds
@@ -260,23 +264,26 @@ export function open3d(shell, given) {
     state.full = yes;
     if (view) { view.touch(); requestAnimationFrame(() => view && view.size()); }
   }
+  // The window's at once, then the screen's as the browser gives it: a
+  // browser drawing a big model slowly took a second or more to say yes,
+  // and the button did nothing until then.
   async function toggleFull() {
     if (full) {
-      if (fullscreen()) await (document.exitFullscreen || document.webkitExitFullscreen).call(document).catch(() => {});
       setFull(false);
+      if (fullscreen()) await (document.exitFullscreen || document.webkitExitFullscreen).call(document)?.catch(() => {});
       return;
     }
-    const ask = shell.requestFullscreen || shell.webkitRequestFullscreen;
-    if (ask) {
-      try {
-        await ask.call(shell);
-        state.fullscreen = "browser";
-      } catch {
-        state.fullscreen = "window";
-      }
-    } else state.fullscreen = "window";
+    state.fullscreen = "window";
     setFull(true);
     stage.focus({ preventScroll: true });
+    const ask = shell.requestFullscreen || shell.webkitRequestFullscreen;
+    if (!ask) return;
+    try {
+      await ask.call(shell);
+      if (full) state.fullscreen = "browser";
+      // Left again before the browser said yes.
+      else if (fullscreen()) await (document.exitFullscreen || document.webkitExitFullscreen).call(document)?.catch(() => {});
+    } catch { /* the window's it stays */ }
   }
   const leftFull = () => { if (full && !fullscreen() && state.fullscreen === "browser") setFull(false); };
   document.addEventListener("fullscreenchange", leftFull);

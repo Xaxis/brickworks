@@ -855,7 +855,9 @@ plan with Claude as the client.
   `web/model-page.js` `start3d`, `directory.css` `.view3d`, docs/DESIGN_SYSTEM.md
   "3D view"): View in 3D on a model's picture (/m/<id>, /library/<id>, and
   /library/set/<n> with an LDraw model) turns it in 3D in the picture's
-  frame, nothing on the page moving. `/viewer3d.js` (built by
+  frame, nothing on the page moving, from where the picture was taken (a
+  gallery model's from the app's opening view, a library set's from
+  ModelShot's corner: `inline.js` LOOKS). `/viewer3d.js` (built by
   `tools/viewer/build.mjs` beside the card, from the same
   `tools/viewer/view.js`; about 580 KB, 150 KB gzipped) is imported only
   then; its scene is `/m/<id>/scene.json` (`/m/<id>/v/<n>/scene.json`,

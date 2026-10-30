@@ -88,14 +88,14 @@
 //      (a deployment's first model), signed out: none of the 3D view's code
 //      (viewer3d.js, three.js and all) asked for until View in 3D is used;
 //      then it in the picture's frame, nothing on the page moving; a
-//      non-empty frame drawn, timed to a pixel read back (SwiftShader draws
-//      late); its tools named, and Open in the app the picture's own link;
+//      frame drawn with the model whole in it, timed to a pixel read back
+//      (SwiftShader draws late); its tools named, and Open in the app the picture's own link;
 //      on a laptop the arrows turn it, + zooms in, 0 and Reset the view go
-//      back to where it started; Full screen fills the window and goes
-//      back to the frame; on a phone a swipe up the 3D
-//      view scrolls the page and leaves the model as it was (touch-action
-//      pan-y until the person takes hold), a swipe across turns it; Back to
-//      the picture puts the picture back. Its costs said: the code's bytes,
+//      back to where it started; Full screen fills the window, the model
+//      fitted to it, and goes back to the frame as it was; on a phone a
+//      swipe up the 3D view scrolls the page and leaves the model as it was
+//      (touch-action pan-y until the person takes hold), a swipe across
+//      turns it; Back to the picture puts the picture back. Its costs said: the code's bytes,
 //      the scene's, the geometry's, and the first frame from the click.
 //
 // Pictures in --out: each page whole and its first screen (-fold), and
@@ -470,8 +470,8 @@ async function threeD(page, label, stem, phone) {
     + `${((got.triangles || 0) / 1e6).toFixed(2)}M triangles; code ${got.code ? `${kb(got.code.sent)} sent, ${kb(got.code.size)}` : "?"} `
     + `in ${from("code")}, scene ${kb(got.scene)}, geometry ${kb(got.geometry)}; first frame ${from("first3d")}, all drawn ${from("complete3d")}`,
   came && got.state === "ready" && got.code && got.code.size > 100000 && got.parts > 0 && got.shown === got.parts && !got.errors.length);
-  check(`${label}: a frame with the model in it (${got.sample ? `${(got.sample.drawn * 100).toFixed(1)}% of it, ${got.sample.colours} colours` : "none"})`,
-    Boolean(got.sample && got.sample.drawn > 0.01));
+  check(`${label}: a frame with the model in it, whole (${got.sample ? `${(got.sample.drawn * 100).toFixed(1)}% of it, ${got.sample.colours} colours${got.sample.cut ? ", cut off at an edge" : ""}` : "none"})`,
+    Boolean(got.sample && got.sample.drawn > 0.01 && !got.sample.cut));
   check(`${label}: in the picture's frame (${after.shell} over ${was.picture}), nothing on the page moved (${was.height} px tall, then ${after.height})`,
     JSON.stringify(after.shell) === JSON.stringify(was.picture) && JSON.stringify(after.picture) === JSON.stringify(was.picture)
       && after.height === was.height && after.y === was.y);
@@ -540,22 +540,25 @@ async function threeD(page, label, stem, phone) {
   }
   // Full screen, and back into the frame.
   await page.click('.view3d-tools [data-act="full"]');
-  await page.waitForTimeout(400);
+  await until(page, () => window.brickworks3d.full && window.brickworks3d.fullscreen !== "window", null, 8000);
+  await page.waitForTimeout(300);
   const full = await page.evaluate(() => {
     const r = document.querySelector(".model-page .view3d").getBoundingClientRect();
     const b = document.querySelector('.view3d-tools [data-act="full"]');
     return { box: [r.left, r.top, r.width, r.height].map(Math.round), viewport: [innerWidth, innerHeight], full: window.brickworks3d.full,
       how: window.brickworks3d.fullscreen, pressed: b.getAttribute("aria-pressed"), name: b.getAttribute("aria-label"),
-      sample: window.brickworks3d.sample() };
+      sample: window.brickworks3d.sample(), angle: window.brickworks3d.angle() };
   });
   if (out) await page.screenshot({ path: path.join(out, `${stem}_3d_full.png`) });
-  check(`${label}: Full screen fills the screen (${full.box} in ${full.viewport}, the ${full.how}'s), pressed, "${full.name}", the model drawn (${full.sample ? (full.sample.drawn * 100).toFixed(1) : 0}%)`,
+  check(`${label}: Full screen fills the screen (${full.box} in ${full.viewport}, the ${full.how}'s), pressed, "${full.name}", the model drawn whole, fitted to it (${full.sample ? (full.sample.drawn * 100).toFixed(1) : 0}%${full.sample?.cut ? ", cut off at an edge" : ""}, ${Math.round(home.distance)} to ${Math.round(full.angle?.distance)} away)`,
     full.full && full.box[0] === 0 && full.box[1] === 0 && full.box[2] >= full.viewport[0] - 1 && full.box[3] >= full.viewport[1] - 1
-      && full.pressed === "true" && full.name === "Leave full screen" && full.sample && full.sample.drawn > 0.01);
+      && full.pressed === "true" && full.name === "Leave full screen" && full.sample && full.sample.drawn > 0.01 && !full.sample.cut);
   await page.click('.view3d-tools [data-act="full"]');
-  await page.waitForTimeout(400);
+  await until(page, () => !window.brickworks3d.full && !document.fullscreenElement, null, 8000);
+  await page.waitForTimeout(300);
   const left = await page.evaluate(frameOf);
-  check(`${label}: and leaving it puts it back in the frame (${left.shell})`, !left.full && JSON.stringify(left.shell) === JSON.stringify(was.picture));
+  check(`${label}: and leaving it puts it back in the frame (${left.shell}), as it started`, !left.full && JSON.stringify(left.shell) === JSON.stringify(was.picture)
+    && near(left.angle, home));
   await page.click('.view3d-tools [data-act="close"]');
   await page.waitForTimeout(200);
   const closed = await page.evaluate(frameOf);

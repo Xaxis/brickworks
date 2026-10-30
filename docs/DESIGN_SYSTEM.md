@@ -346,7 +346,9 @@ is on the page, `hidden`, for the script to show.
   in its picture's place on a model's page and a set's: the picture's own
   box laid over it, so nothing on the page moves, on the picture's ground
   (`--picture-ground`, or `--render-top` to `--render-foot` for a picture
-  drawn on a ground of its own), in either theme. The picture says View in
+  drawn on a ground of its own), in either theme, and from where the
+  picture was taken (a gallery model's from where the app opens a model, a
+  library set's from ModelShot's corner). The picture says View in
   3D (`.go`) and is a button for it; its link stays the app's, for a
   middle click and a page without scripts. Nothing of it is fetched until
   it is asked for: then `/viewer3d.js` (three.js and all, about 150 KB
