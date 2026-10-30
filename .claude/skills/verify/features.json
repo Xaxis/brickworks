@@ -1997,6 +1997,14 @@
       ]
     },
     {
+      "id": "cli:springs probe",
+      "kind": "cli",
+      "entry": "src/dev/springs_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd  (a band round two wedge belt wheels and three, each in 4 actions or fewer, within 1 LDU of the tangents and arcs by hand and in every groove; turned and tilted; a wheel nudged and its band following, one undo; a spring stretched from 4 to 6 studs keeping its turns; a shock from the bin; saved and opened the same; PROBE_SIZE=1280x720)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:step count probe",
       "kind": "cli",
       "entry": "src/dev/step_count_probe.gd",
@@ -3709,6 +3717,14 @@
       "tests": []
     },
     {
+      "id": "ui:bands and springs by hand",
+      "kind": "ui",
+      "entry": "src/assembly/bands.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd   (by hand: pick a rubber belt or a shock absorber in the bin, click the pulleys or the two pin holes; Build, Hose, tube or chain\u2026, Spring or shock; nudge a part it is on and it follows; PROBE_SIZE=1280x720)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:beta page",
       "kind": "ui",
       "entry": "web/beta.html",
@@ -4951,6 +4967,7 @@
       "tests": [
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
+        "tests/test_search.py",
         "tests/test_sets.py"
       ]
     },
