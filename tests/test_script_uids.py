@@ -1,4 +1,4 @@
-"""Every script Godot scans has its .uid committed beside it.
+"""Every script and shader Godot scans has its .uid committed beside it.
 
 Godot's import makes a .uid beside each script that has none. Left
 untracked, it differs in every checkout, keeps every merged worktree from
@@ -29,10 +29,14 @@ def _scanned(path: str) -> bool:
     return not any((ROOT.joinpath(*parts[:n]) / ".gdignore").exists() for n in range(1, len(parts)))
 
 
+# The kinds Godot gives a .uid of its own.
+KINDS = ("*.gd", "*.gdshader", "*.gdshaderinc")
+
+
 def test_every_scanned_script_has_its_uid_committed() -> None:
-    uids = _tracked("*.gd.uid")
-    missing = sorted(gd for gd in _tracked("*.gd") if _scanned(gd) and gd + ".uid" not in uids)
-    assert not missing, (f"{len(missing)} scripts have no .uid committed, e.g. {missing[:5]}: "
+    uids = _tracked("*.uid")
+    missing = sorted(f for kind in KINDS for f in _tracked(kind) if _scanned(f) and f + ".uid" not in uids)
+    assert not missing, (f"{len(missing)} scripts and shaders have no .uid committed, e.g. {missing[:5]}: "
                          "commit the .uid Godot's import made beside each")
 
 
