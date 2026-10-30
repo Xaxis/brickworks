@@ -198,16 +198,17 @@ is on the page, `hidden`, for the script to show.
   accent), `.ticks` (a list, each with a green tick), `.table.matrix`
   (what each plan has: `tr.group` rows, `.has` and `.hasnt` marks, each
   with its word for a screen reader) and `.closing` (the last offer).
-- **Table**: `.table`, a `<table>` of facts in a box that scrolls inside
-  itself where the table is wider than the page, never the page: a named
-  region the keyboard reaches and scrolls (`role="region"`, its
-  `aria-label` or `aria-labelledby`, `tabindex="0"`). Each row's name is
+- **Table**: `.table`, a `<table>` of facts in a box, a Scroller (below)
+  where the table is wider than the page: a named region the keyboard
+  reaches and scrolls (`role="region"`, its `aria-label` or
+  `aria-labelledby`, `tabindex="0"`; the docs name each by the heading
+  over it, `tools/docs_site.py` `named_tables`). Each row's name is
   its `th scope="row"`; a number is `.n`, right-aligned in even figures.
   `.table.wide` is many columns, /compare's field: each at least 130 px,
   its headings in the ink, and each row's name kept in view on the page's
   ground while the rest scrolls past it on a phone. The FAQ's dimensions
   and /compare's field (2026-10-24, from the FAQ's own copy); /admin's
-  tables still carry theirs.
+  tables still carry theirs, each in a `.card.scroller`.
 - **Command**: `code.cmd`, a line to type in a terminal, in a box of its
   own that wraps, so a long one (a checksum check) never runs past the
   edge of a phone. The download page puts a Copy (`.cta.ghost.small`)
@@ -245,16 +246,46 @@ is on the page, `hidden`, for the script to show.
   comments. Then a line each for what it has (Moves, what your collection
   holds, what it won). No card ends in a row of its own for its numbers:
   it held only an empty heart on every card, a fifth of its height. In
-  `.models` (a grid: two to a row on a phone, then three, four, five and
-  six from 600, 900, 1200 and 1600 px, a card 180-280 px wide at every
-  width), `.models.compact` (more to a row, beside a rail), `.models.wide`
-  (fewer, one to a row on a phone, for cards that carry a button under
-  them) or `.models.row` (one row that scrolls inside itself, never the
-  page).
+  `.models` (a grid: two to a row on a phone, three from 600 px and four
+  from 900 px up, the owner's four a row on a desktop, 2026-10-29, so a
+  page of 24 is whole rows at every width), `.models.compact` (more to a
+  row, beside a rail), `.models.wide` (fewer, one to a row on a phone, for
+  cards that carry a button under them) or `.models.scroller` (one row of
+  them, a Scroller).
   A set of the LDraw library (`/library`, library333) is the same card:
   its name the link to `/library/<id>`, its cover (the app's own
   renderer's, the model on nothing), "Modelled by" whoever modelled it for
   LDraw, and a `small.set` line, its number · theme · year.
+- **A list's pages** (`web/pager.js`, `.pager`; site357, the owner's "a
+  consistent best practice pagination system", 2026-10-29): every list
+  pages the same way, the gallery, the LDraw library, a person's models
+  and likes, a collection, the collections directory and a challenge's
+  entries. Pages of 24 (`PAGE_SIZE`). Under the list: the count
+  (`.pager-count`, "Showing 25–72 of 1,234 models", or "Showing models
+  1–48" where the list cannot say how many), Show more (`a.cta.ghost.pager-more`,
+  the way on: the next page put after these when pressed, never by itself
+  as the end nears; asked for ahead once it nears the screen, so a press
+  is answered at once, and a press while it is still coming is kept), and
+  the numbered links (`ol.pager-pages`: Previous, the first, a window round
+  the last page shown, the last, Next, each a real link to `?page=N`; the
+  pages shown on the accent's soft ground, the last of them `aria-current`
+  and edged; under 600 px only the numbers beside it, the first and the
+  last, and Previous and Next as their arrows). Over the list, on a page
+  opened at `?page=N`: Show earlier (`.pager-earlier`), which puts the page
+  before it back above it. The address says the last page shown, put back
+  as each comes; after a press the keyboard is on the first new card and a
+  screen reader hears "24 more models" (`[data-pager-said]`); Back puts the
+  same pages back and the card left where it was; a page that does not
+  come says so where the count is and Show more says Retry. One list, one
+  pager, all in one markup that `pagerHtml` makes for the server's pages
+  and the browser's alike, with `<link rel="prev">` and `rel="next"` in a
+  server page's head (`pagerLinks`). A server page needs only
+  `<script src="/pager.js" type="module">`: its `nav` with
+  `data-source="page"` is paged by reading the next page's own HTML. A
+  page that draws its own list calls `pager({ list, load, href, drawn })`,
+  `load(n)` answering `{ items, more, pages, total }`, and `start()`; a
+  card put in later fires `pager:drawn` on the list (`web/follow.js` wires
+  a collection's Follow on it). Not for shelves (`.models.scroller`).
 - **Width**: `--page` (1,140 px) for a page of words; `--page-wide`
   (1,600 px) for a page of cards and pictures, `.wrap.wide`: the gallery, a
   person, a collection, a model's page and the feed (the landing page's
@@ -280,7 +311,7 @@ is on the page, `hidden`, for the script to show.
   them on its line. Then `.page-body`, and for a page of parts
   `.page-grid`: `.page-toc` ("On this page", or Settings' list) down the
   left from 900 px, sticky under the header, its part marked in
-  `--accent-edge`; under 900 px a row of pills that scrolls inside itself.
+  `--accent-edge`; under 900 px a row of pills, its `ul.scroller`.
   The FAQ, the legal pages, /takedown, /settings, /compare, /changelog,
   /feed, /notifications, /admin and the 404. Before, each opened on a bare
   title of its own making and read as another product beside the new home
@@ -297,16 +328,91 @@ is on the page, `hidden`, for the script to show.
   height, 32 px, and takes the pointer's edge. `.good` green (Tested),
   `.new` edged in `--accent-edge`, `.tag` says "#" first, `small` inside
   for a quieter part (a handle). A row of them is `ul.pills` or
-  `div.pills`; `.pills.row` keeps them on one line that scrolls inside
-  itself (the gallery's kinds), and a chosen button pill is
+  `div.pills`; `.pills.scroller` keeps them on one line, a Scroller (the
+  gallery's kinds, the library's themes), and a chosen button pill is
   `aria-pressed="true"`, edged in `--accent-edge`. The one pill: a model's facts and tags, its Tested mark,
   the gallery's tag filter, a comment's Designer and its step, the feed's New,
   whom you follow on your account. There were seven copies.
 - **Tabs**: `.tabs`, a row of links or buttons, the one shown
   `aria-current="page"` (or `aria-selected` in a tablist), underlined in
-  `--accent-edge`, a count in `.n`; on a phone the row scrolls inside
-  itself. For the gallery's Top · New · Following and a profile's Models
-  · Builds · Collections (docs/SOCIAL.md U3, U5).
+  `--accent-edge`, a count in `.n`; a Scroller by its own class, which
+  on a phone scrolls inside itself. For the gallery's Top · New ·
+  Following and a profile's Models · Builds · Collections (docs/SOCIAL.md
+  U3, U5).
+- **Scroller** (scroll367, 2026-10-30, the owner: "the inline horizontal
+  scroll elements… follow our style pattern for how that should best
+  practice work"): **the one way anything on the site scrolls sideways.**
+  There were seven, each a unit's own: rows of cards, of pills, of
+  pictures and of builds, the tabs, the tables and the docs' code, one
+  fading at its edge, most with no scrollbar and no other sign of more,
+  none with a way through for a mouse. `site.css` "the scroller" and
+  `web/scroller.js` (loaded by `web/kit.js`, so every page with the kit
+  has it; /admin imports it). A row of items is its component's class and
+  `.scroller`: `.models.scroller` (cards), `.pills.scroller`,
+  `.media-strip.scroller` (a model's pictures), `.build-strip.scroller`
+  (photos of real builds), a `ul.scroller` of links (an inner page's
+  contents on a phone). `.tabs` is one by its own class. A **box** wider
+  than its room scrolls the same way, but freely, with no snapping,
+  gutter or buttons: a `.table`, the docs' `.code`, /admin's
+  `.card.scroller`. Every one:
+  - **scrolls inside itself, never the page**, and a swipe past its end
+    never takes the browser back a page (`overscroll-behavior-x:
+    contain`); a finger's swipe carries on as the phone's own does;
+  - **says there is more**: its edge fades (a mask) on a side with more
+    and only there (`scroller.js` keeps `data-more`, "start", "end" or
+    both, as it scrolls, changes size and fills); its start fades as far
+    as an item comes to rest (16 px), its end wider (40 px), since a row
+    of pills or tabs can be cut between two. A row of cards sizes its
+    cards to the row, as many as a grid has at that width less a half
+    (1.5 on a phone, 2.5 from 600 px, 4.5 from 900, beside the grid's
+    four; a card 180-300 px), so the next one always shows in part;
+  - **comes to rest on an item**: each item's start snaps to the row's
+    (`scroll-snap-type: x mandatory`), clear of the fade
+    (`scroll-padding-inline`). A `.scroller` row reaches into the page's
+    16 px gutter (`margin-inline: -16px`, as much padding), so its first
+    item starts at the page's edge, under the words over it, and on a
+    phone the row runs to the screen's edge. `.scroller.inset` is a row
+    that does not start at the page's edge (the gallery's kinds, after
+    Filters; builds inside a designer's row) and keeps to its box;
+  - **has Previous and Next for a mouse** (`@media (hover: hover) and
+    (pointer: fine)`): `.icon-btn.small.scroller-go` buttons, made by
+    `scroller.js` after the row and tied to its two ends by anchor
+    positioning, on the panel's ground over its fade, each hidden at its
+    own end (the focus, if it was on one, goes to the other). A press
+    scrolls a page of items: on, the first not wholly in view comes to
+    rest first; back, the first in view goes to the far end. With them
+    the row's scroll-padding and fades are 44 px, so what comes to rest
+    is never under one. Their names say which row ("Next: Made in
+    Brickworks"). A finger swipes, and has none; a browser that cannot
+    tie them to the row has none either, and scrolls as a finger does;
+  - **is named and reached by the keyboard**: a row of links or buttons
+    is a `nav`, or `role="group"` with `aria-label` or `aria-labelledby`
+    (not `region`, which the section it is in already is); a box is
+    `role="region"` with its name. A row's items take the focus, and
+    the browser scrolls one focused whole into view, its ring drawn
+    inside it so the row does not cut it off; a box with nothing to
+    focus takes the focus itself (`tabindex="0"`; a table carries it,
+    and `scroller.js` gives it to any other, a block of code, while it
+    overflows);
+  - **shows its scrollbar**, thin, while the pointer or the focus is in
+    it (`scrollbar-color` only, its room kept, so nothing moves);
+  - **is smooth**, a press of Previous or Next or a tab marked on a
+    model's page gliding there, but for reduced motion;
+  - **holds still**: the buttons are positioned, the fades a mask, and a
+    card's picture its 4:3 before it comes, so nothing moves as it loads;
+  - **ends in See all** where it is the start of a longer list: in its
+    head, `.scroller-head` (its `h2` and the link at the far end: the
+    gallery's shelves, the feed's latest), or a landing section's
+    `.section-head`; a row that is the whole of something (pinned
+    models, a model's pictures) has none.
+
+  `design_flow.mjs` judges every scroller on every page, at its start
+  and its end, at 390 and 1280 px in both themes: named, contained, its
+  scrollbar thin, a row snapping, a fade on each side with more and on
+  no other, the keyboard able to reach one with nothing to focus, and a
+  row's Previous and Next shown only to a mouse, hidden at their own
+  ends and never over what is in view. `web/_kit.html` shows a row of
+  cards and a row of pills.
 - **Avatar**: `.avatar`, a person's picture or one made from their handle
   (`web/kit.js` `avatarHtml`: a round tile in one of eight colours, the
   same for a handle on every page, and the first letter of their name;
@@ -314,7 +420,10 @@ is on the page, `hidden`, for the script to show.
   (a byline), 40, `.big` 64 (your account), `.huge` 112 (a profile; 80 under 600 px). It is
   decoration beside the name, so `aria-hidden`. A person's own picture
   (`.avatar.pictured`, supabase/avatars.sql) fills the same circle over its
-  tile, and only this site's address for one is drawn. **Cropper**:
+  tile, and only this site's address for one is drawn. Somebody not known
+  yet (your own in the header before the server has said who you are) is
+  `.avatar.unknown`: the same circle blank on `--panel-hi`, never a letter
+  or colour that may not be theirs. **Cropper**:
   `.cropper` in `dialog.crop-dialog` (`web/picture.js`), the picture chosen
   on a square canvas with the circle it is cut to, dragged and zoomed, the
   zoom two `.icon-btn`s (zoom-out, zoom-in) under it.
@@ -322,7 +431,7 @@ is on the page, `hidden`, for the script to show.
   share, comment, more, build, search, filter, award, zoom-in, zoom-out;
   and for the landing pages' features, stand, gear, move, file, book,
   people, devices, camera, spark, eye, monitor, globe, library, download
-  and check;
+  and check; and back and next, a Scroller's Previous and Next;
   `web/kit.js` `iconHtml`),
   drawn in the words' colour. **Icon button**: `.icon-btn` (`iconButtonHtml`), round,
   as tall as a field (`.small` 36 for a card's row), its count beside its
@@ -362,8 +471,8 @@ is on the page, `hidden`, for the script to show.
   for it), and Build it, `.cta.small`, the guided build at step 1 as the
   model's page's is; each opens a tab of its own.
 - **A model's page** (`/m/<id>`, `web/directory.css`, docs/SOCIAL.md U4):
-  `.media`, the picture and under it `.media-strip`, a row of thumbnails
-  that scrolls inside itself, the one shown large `aria-current` and edged
+  `.media`, the picture and under it `.media-strip.scroller`, a row of
+  thumbnails, the one shown large `aria-current` and edged
   in `--accent-edge`; `.side`, the column that stays beside it on a laptop;
   and `.page-tabs`, the kit's `.tabs` as links to the parts of the page,
   sticky under the header, with a ground of its own only once stuck. The
@@ -393,9 +502,9 @@ is on the page, `hidden`, for the script to show.
   Library does) and Download beside it; an action bar of Share and More
   alone, its sheet with no embed; its facts as pills, the theme and year
   `a.pill` links back to the shelf; About and Parts its only tabs; more of
-  its theme as `.models.row`. `/library` is the gallery's layout (`.tabs`
+  its theme as `.models.scroller`. `/library` is the gallery's layout (`.tabs`
   with LDraw library marked, then the bar of filters: Filters and a
-  `.pills.row` of themes).
+  `.pills.scroller` of themes).
 - **A page to browse** (the gallery and `/library`, site357): a band
   across the window (`.browse-band.halo`, lit as a landing page opens)
   holding its head (`.gallery-head`, `.library-head`), the title and a `.lede` under it
@@ -403,11 +512,10 @@ is on the page, `hidden`, for the script to show.
   field (`web/browse.js`, said by a `kbd.hint` on the field until it is
   used; under 600 px the lede and the hint are left out and the search
   sits beside the title) and the tabs; then **the bar of filters**
-  (`.toolbar`), Filters and the kinds or themes as a `.pills.row`, sticky
-  under the header over the whole list, on the page's ground carried to
-  the window's edges, with the header's edge under it once stuck
-  (`data-stuck`), its row of pills fading out at its edge while there are
-  more (`data-end`). Under it, `#chips`: each filter that is on (a tag,
+  (`.toolbar`), Filters and the kinds or themes as a
+  `.pills.scroller.inset`, sticky under the header over the whole list,
+  on the page's ground carried to the window's edges, with the header's
+  edge under it once stuck (`data-stuck`). Under it, `#chips`: each filter that is on (a tag,
   an order other than the tabs', a size, how it was made, a box ticked)
   a pill to let go of, and Clear all once there are two. A search asks
   200 ms after typing stops, and the cards it will replace step back
@@ -430,7 +538,7 @@ is on the page, `hidden`, for the script to show.
   U5): the head (`.profile-head`: a `.huge` avatar, the name, the handle,
   Follow, Share and More; on your own page Edit profile where Follow
   would be), `.numbers` (one row of counts, each `<b>` and
-  its word, hidden at none), `.pinned` (a `.models.row`), the `.tabs`, and
+  its word, hidden at none), `.pinned` (a `.models.scroller`), the `.tabs`, and
   two cards of its own: `.list-card` (a collection, its cover) and
   `.build-grid` (photos of builds in columns, any shape).
 - **A collection's cover**: `.mosaic` (`api/_lists.js` `mosaicHtml`), up
@@ -531,10 +639,10 @@ folded behind **Browse the docs** under 900 px), the page in the middle
 right from 1200 px (`.docs-toc`, the section being read marked with the
 `--accent-edge`). Its own pieces, on the scale like everything else: keys
 (`kbd`, a cap each, a gesture in words beside them), a block of code
-(`.code`, scrolling inside itself, with Copy), a callout (`.callout`, its
+(`.code`, a Scroller as a box, with Copy), a callout (`.callout`, its
 edge `--focus` for a note, `--green` for a tip, `--bad` for a warning:
 site.css's since site356), a
-table that scrolls inside its frame (`.table`), a picture of the app
+table, a Scroller in its frame (`.table`), a picture of the app
 (`.shot`), the start page's cards (`.docs-cards`), previous and next
 (`.docs-pager`, each naming its part of the docs), and search
 (`dialog.docs-search`, Ctrl+K or `/`). Since site359 (2026-10-29) each
@@ -590,7 +698,7 @@ and after scrolling, every page at 390 and 1280 px.
   nothing that counts cards counts it. Its bars are a typical row of
   cards' words: a name of two lines, the designer's line (two lines on a
   card under 190 px wide, where their name and the model's size wrap: a
-  container query, as a row that scrolls holds 200 px cards on a phone)
+  container query, as a Scroller's row holds cards 180-300 px wide)
   and one line of what it has. As many as the cards it stands for: five
   skeletons in a row that scrolls spread wider and taller than its eight
   cards. `card_check` fails a page's copy that is not `skeletonHtml`'s.
@@ -656,8 +764,8 @@ does for every page, so a page need not:
   back on the button that opened them, as it closes a dialog.
 - **Names**: an icon button says its name and count; a card's like says
   which model ("Like Riverside Watchtower, 96 likes"); a comment's Reply
-  says whose ("Reply to Jo Lindqvist"). A table that scrolls sideways is a
-  named region the keyboard can reach and scroll.
+  says whose ("Reply to Jo Lindqvist"). Anything that scrolls sideways
+  is named, and the keyboard can reach and scroll it (Scroller).
 - **Targets**: every link and button 24 px at least (a card's name too);
   everything in the header and the footer 44 x 44 (the footer's links
   pad out to it); a link on a line of its own (a crumb, Older versions,
@@ -699,7 +807,8 @@ and opens every dialog, at 390 and 1280 px, light and dark, signed out and
 signed in, and fails on what a person would notice: a visible control the
 browser drew its own way, controls of one kind on a page that differ from
 each other (the fields in type, height, corners, border or fill; the
-buttons of one size), a page that scrolls sideways on a phone, a count of
+buttons of one size), a page that scrolls sideways on a phone, a
+scroller off its rules (Scroller), a count of
 none shown ("0 likes"), an h2 or h3 drawn off `--t-h2` or `--t-h3`
 (2026-10-26: red on a planted `.prose h2` at the h3's size), and any
 rule in the page's stylesheets, its own style or a `style=""` with a font size, corner or colour off the scale

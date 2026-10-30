@@ -9,8 +9,8 @@
 //
 //   1. the first screen: at 390 the first card's picture starts within
 //      330 px of the top, two cards to a row, four cards' names on the
-//      first two screens; at 1280 five
-//      to a row and five whole cards on the first screen, the cards marked
+//      first two screens; at 1280 four
+//      to a row and four whole cards on the first screen, the cards marked
 //      once (no row of marks, none that nearly every card carries, no
 //      card ending in a row that holds only its like); Top the tab shown,
 //      its window All time; nothing scrolls sideways; Today in the
@@ -21,17 +21,17 @@
 //      pick, no shelves; a kind's pill and Made in Filters ask the list
 //      and mark their cards; Following, signed in, is only the people Sam
 //      follows, and is not offered signed out; a search (words, New, a
-//      size, two pages) sent to somebody shows them the same cards;
+//      size, two pages) sent to somebody shows them its second page, with
+//      Show earlier bringing back the first, the same cards in order;
 //   3. a like from a card: signed out it asks to sign in; signed in the
 //      heart is pressed and its count one more at once, and the model's own
 //      page shows it liked;
-//   4. endless: the next page comes by itself three times as the end
-//      nears, put in while the end is under the screen, then waits for
-//      Show more, which brings a fifth; the address says page=5. Flung to
-//      the foot of the page, the page that comes waits, moving nothing in
-//      view, and Show more draws it at once;
+//   4. paged (web/pager.js): scrolled to the end six times, nothing comes
+//      by itself; Show more four times brings five pages, none twice, the
+//      address page=5, the count "Showing models 1–120", the keyboard on
+//      the first new card; flung to the foot of the page, nothing moves;
 //   5. Back from a model deep in the list comes back to its card, within
-//      100 px of where it was, with the page asked again (an unload
+//      100 px of where it was, with the five pages asked again (an unload
 //      listener keeps it out of the back-forward cache, which would keep
 //      the page as it was);
 //   6. the cold start: an empty gallery says what goes there and how in,
@@ -147,7 +147,7 @@ const drawn = (page) => page.evaluate(() => {
   const firstPicture = Math.min(...cards.map((el) => el.querySelector(".frame").getBoundingClientRect().top));
   // To a row: the most cards that share a top, outside the shelves' rows.
   const rows = {};
-  for (const el of cards.filter((one) => !one.closest(".models.row"))) {
+  for (const el of cards.filter((one) => !one.closest(".models.scroller"))) {
     const top = Math.round(el.getBoundingClientRect().top);
     rows[top] = (rows[top] || 0) + 1;
   }
@@ -185,7 +185,10 @@ const drawn = (page) => page.evaluate(() => {
     sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
     pages: Number(document.documentElement.dataset.pages || 0),
     auto: Number(document.documentElement.dataset.auto || 0),
-    more: !document.getElementById("more").hidden,
+    more: !document.querySelector(".pager-more").hidden && !document.querySelector("nav.pager").hidden,
+    earlier: !document.querySelector("[data-pager-earlier]").hidden,
+    count: document.querySelector(".pager-count").hidden ? "" : document.querySelector(".pager-count").textContent,
+    focused: [...document.querySelectorAll("#models .model")].findIndex((el) => el.contains(document.activeElement)),
     states: ["empty", "nothing", "quiet", "broken"].filter((id) => !document.getElementById(id).hidden),
     quiet: document.getElementById("quiet").hidden ? "" : document.getElementById("quiet").textContent.replace(/\s+/g, " ").trim(),
     empty: document.getElementById("empty").hidden ? "" : document.getElementById("empty").textContent.replace(/\s+/g, " ").trim(),
@@ -216,8 +219,8 @@ try {
         check(seen.names.length >= 4 && seen.names[3] <= 2 * 844,
           `390 ${theme}: four cards' names on the first two screens, the fourth's ending at ${seen.names[3]} px (${2 * 844} at most)`);
       } else {
-        check(seen.whole >= 5 && seen.columns === 5 && !seen.sideways,
-          `1280 ${theme}: ${seen.whole} whole cards on the first screen (5 at least), ${seen.columns} to a row, nothing sideways`);
+        check(seen.whole >= 4 && seen.columns === 4 && !seen.sideways,
+          `1280 ${theme}: ${seen.whole} whole cards on the first screen (4 at least), ${seen.columns} to a row, nothing sideways`);
       }
       const common = Object.entries(seen.markShare).filter(([, share]) => share >= 0.9).map(([mark]) => mark);
       check(seen.markRows <= 1 && !common.length && seen.lonelyLike === 0,
@@ -311,22 +314,26 @@ try {
     await page.selectOption("#size", "medium");
     await until(page, () => location.search.includes("size=medium") && document.documentElement.dataset.gallery === "ready");
     await page.click("#filters summary");
-    await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+    await page.click(".pager-more");
     await until(page, () => Number(document.documentElement.dataset.pages) === 2);
     const sent = await drawn(page);
     await context.close();
-    // Two pages at least: five shorter cards a row bring a third with the
-    // same scroll (site277).
+    // Opened by somebody else: the page the address says, page 2, and Show
+    // earlier over it bringing back page 1 above it.
     const pages = Number(/[?&]page=(\d+)/.exec(sent.address)?.[1] || 0);
     const other = await visit({ width: 390, theme: "dark" });
     await gallery(other.page, sent.address);
-    await until(other.page, (n) => Number(document.documentElement.dataset.pages) === n, pages);
+    const second = await drawn(other.page);
+    await other.page.click("[data-pager-earlier] a");
+    await until(other.page, () => document.querySelectorAll("#models .model").length === 48);
     const got = await drawn(other.page);
     const controls = await other.page.evaluate(() => ({ q: document.getElementById("q").value,
       size: document.getElementById("size").value, on: document.getElementById("filters-said").textContent }));
-    check(pages >= 2 && sent.ids.length === 24 * pages && got.ids.join(",") === sent.ids.join(",")
-      && got.tab === "new" && controls.q === "crowd" && controls.size === "medium" && controls.on === "1",
-      `a search sent to somebody: ${sent.address}, ${sent.ids.length} cards; opened at 390 in the dark, ${got.ids.length} cards, `
+    check(pages === 2 && sent.ids.length === 48 && second.ids.join(",") === sent.ids.slice(24).join(",") && second.earlier
+      && got.ids.join(",") === sent.ids.join(",") && got.tab === "new" && controls.q === "crowd" && controls.size === "medium"
+      && controls.on === "1",
+      `a search sent to somebody: ${sent.address}, ${sent.ids.length} cards; opened at 390 in the dark, its page 2 `
+      + `(${second.ids.length} cards, Show earlier ${second.earlier ? "over it" : "MISSING"}), then ${got.ids.length} cards, `
       + `${got.ids.join(",") === sent.ids.join(",") ? "the same, in the same order" : "NOT the same"}, New, "${controls.q}", ${controls.size}, Filters ${controls.on}`);
     await shot(other.page, "2_search_sent_390_dark.png");
     await other.context.close();
@@ -397,52 +404,53 @@ try {
     await context.close();
   }
 
-  // --- 4. Endless, then Show more ---------------------------------------------
-  console.log("endless, then Show more");
+  // --- 4. Paged: Show more, never by itself -----------------------------------
+  console.log("paged: Show more, never by itself");
   let deep = null;
   {
     const { context, page } = await visit({ width: 1280 });
     await gallery(page);
     // Down the list as a person reads it: its end 100 px under the screen
-    // each time, which asks for the next page and puts it in out of sight.
+    // each time, which once asked for the next page by itself.
     for (let at = 0; at < 6; at += 1) {
       await page.evaluate(() => scrollBy({ top: document.getElementById("feed").getBoundingClientRect().bottom - innerHeight - 100,
         behavior: "instant" }));
       await page.waitForTimeout(700);
     }
     let seen = await drawn(page);
-    check(seen.pages === 4 && seen.auto === 3 && seen.more && /[?&]page=4\b/.test(seen.address),
-      `scrolled to the end six times: ${seen.pages} pages (three came by themselves, auto ${seen.auto}), Show more ${seen.more ? "shown" : "hidden"}, ${seen.address}`);
+    check(seen.pages === 1 && seen.more && !/[?&]page=/.test(seen.address) && /^Showing models 1–24$/.test(seen.count),
+      `scrolled to the end six times: ${seen.pages} page, Show more ${seen.more ? "shown" : "hidden"}, "${seen.count}", ${seen.address}`);
     await shot(page, "4_show_more_1280.png");
-    await page.click("#more");
-    await until(page, () => Number(document.documentElement.dataset.pages) === 5);
+    for (let n = 2; n <= 5; n += 1) {
+      await page.click(".pager-more");
+      await until(page, (want) => Number(document.documentElement.dataset.pages) === want, n);
+    }
     seen = await drawn(page);
-    check(seen.pages === 5 && /[?&]page=5\b/.test(seen.address) && seen.ids.length === new Set(seen.ids).size,
-      `Show more brought a fifth page: ${seen.ids.length} cards, none twice, ${seen.address}`);
+    check(seen.pages === 5 && /[?&]page=5\b/.test(seen.address) && seen.ids.length === new Set(seen.ids).size
+      && seen.count === "Showing models 1–120" && seen.focused === seen.ids.length - 24,
+      `Show more four times: five pages, ${seen.ids.length} cards, none twice, "${seen.count}", the keyboard on card `
+      + `${seen.focused + 1}, ${seen.address}`);
     deep = { address: seen.address, id: seen.ids[100], at: 101 };
     await context.close();
   }
   {
-    // Flung to the foot: Put yours here shows when the next page comes,
-    // which waits rather than push it down (CLS 0.51 at 1280, site277).
+    // Flung to the foot: nothing comes by itself, so Put yours here stays
+    // where it is (a page put in by itself there pushed it down: CLS 0.51
+    // at 1280, site277); Show more then draws the next page.
     const { context, page } = await visit({ width: 1280 });
     await gallery(page);
     const was = await page.evaluate(() => {
       scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" });
       return document.querySelector(".yours").getBoundingClientRect().top;
     });
-    const came = await until(page, () => document.documentElement.dataset.auto === "1" && !document.getElementById("more").disabled);
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1500);
     const held = await page.evaluate(() => ({ pages: Number(document.documentElement.dataset.pages),
       yours: document.querySelector(".yours").getBoundingClientRect().top }));
-    check(came && held.pages === 1 && held.yours === was,
-      `flung to the foot, the next page waits: ${held.pages} page drawn, Put yours here at ${Math.round(held.yours)} px, was ${Math.round(was)}`);
-    await page.click("#more");
-    // The page that waited, at once; the next may come by itself after it,
-    // in the same frame, when the end is still within two screens (as it is
-    // with Today in the gallery's shelf above), so 2 or more.
-    const drew = await until(page, () => Number(document.documentElement.dataset.pages) >= 2, null, 1000);
-    check(drew, "Show more draws the page that waited, at once");
+    check(held.pages === 1 && held.yours === was,
+      `flung to the foot, nothing comes by itself: ${held.pages} page drawn, Put yours here at ${Math.round(held.yours)} px, was ${Math.round(was)}`);
+    await page.click(".pager-more");
+    const drew = await until(page, () => Number(document.documentElement.dataset.pages) === 2, null, 5000);
+    check(drew, "Show more draws the next page");
     await context.close();
   }
 

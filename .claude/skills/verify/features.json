@@ -480,7 +480,8 @@
       "area": "release",
       "tests": [
         "tests/test_release.py",
-        "tests/test_release_links.py"
+        "tests/test_release_links.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -600,7 +601,8 @@
       "area": "release",
       "tests": [
         "tests/test_release.py",
-        "tests/test_release_links.py"
+        "tests/test_release_links.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -725,6 +727,14 @@
       "kind": "cli",
       "entry": "src/main.gd",
       "reach": "godot --path . -- --ask-provider=\"a red tower\" --provider=openai --provider-model=gpt-6.1-sol [--provider-base=URL] [--out=FILE]   (the key from the provider's environment variable or the one kept; never printed)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "cli:designer words probe",
+      "kind": "cli",
+      "entry": "src/dev/designer_words_probe.gd",
+      "reach": "tools/probe.sh designer_words_probe",
       "area": "assistant",
       "tests": []
     },
@@ -1391,6 +1401,14 @@
       "tests": []
     },
     {
+      "id": "cli:paging browser flow",
+      "kind": "cli",
+      "entry": "tools/web/paging_flow.mjs",
+      "reach": "node tools/web/paging_flow.mjs --url=http://127.0.0.1:8890 --out=DIR   (a local relay_server.mjs: the LDraw library and /u/brickworks); BW_BYPASS=$VERCEL_BYPASS node tools/web/paging_flow.mjs --url=<preview> --out=DIR",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:part counts probe",
       "kind": "cli",
       "entry": "src/dev/part_counts_probe.gd",
@@ -1544,7 +1562,8 @@
       "area": "release",
       "tests": [
         "tests/test_release.py",
-        "tests/test_release_links.py"
+        "tests/test_release_links.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -1563,7 +1582,9 @@
       "entry": "tools/site.py",
       "reach": "python3 tools/site.py /tmp/site",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_release_train.py"
+      ]
     },
     {
       "id": "cli:quit probe",
@@ -1596,6 +1617,16 @@
       "reach": "node tools/web/relay_server.mjs 8790, then node tools/web/relay_timing.mjs --url=http://127.0.0.1:8790 [--rounds=4]   (with .env sourced; or --url=<preview> with BW_BYPASS)",
       "area": "web",
       "tests": []
+    },
+    {
+      "id": "cli:release train",
+      "kind": "cli",
+      "entry": "tools/release/train.sh",
+      "reach": "tools/release/train.sh stage TAG BRANCH --after PREV --checks \"...\"; tools/release/train.sh status",
+      "area": "release",
+      "tests": [
+        "tests/test_realset.py"
+      ]
     },
     {
       "id": "cli:reload browser flow",
@@ -1826,7 +1857,8 @@
       "area": "release",
       "tests": [
         "tests/test_release.py",
-        "tests/test_release_links.py"
+        "tests/test_release_links.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -2493,7 +2525,15 @@
       "id": "lib:designing on Anthropic's Messages or Gemini's own API",
       "kind": "lib",
       "entry": "src/ai/anthropic_messages.gd",
-      "reach": "tools/probe.sh provider_apis_probe   (AnthropicMessages and GeminiNative read and written offline, then each designs, is tested and lists its models against tools/provider_stub.py, as strict as each API)",
+      "reach": "tools/probe.sh provider_apis_probe   (AnthropicMessages, GeminiNative and OpenAIResponses read and written offline, then each designs, is tested and lists its models against tools/provider_stub.py, as strict as each API)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:designing on OpenAI's Responses",
+      "kind": "lib",
+      "entry": "src/ai/openai_responses.gd",
+      "reach": "tools/probe.sh provider_apis_probe   (OpenAIResponses read and written offline: flat functions not strict, pictures as input_image inside function_call_output, reasoning items sent back with their encrypted content, store false; then a design, Test and the model list against the stub's strict /v1/responses)",
       "area": "assistant",
       "tests": []
     },
@@ -2908,6 +2948,14 @@
       "tests": []
     },
     {
+      "id": "lib:saying who designs",
+      "kind": "lib",
+      "entry": "src/ai/provider_settings.gd",
+      "reach": "tools/probe.sh designer_words_probe   (Claude's call and GPT-6.1 Sol's design on a key: the history's steps, a call's job, a change to the selection, the toolbar while it works, Ask \u2026 about this\u2026, the panel's Ask and Brick Art's Design with \u2026)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "lib:sections suggested",
       "kind": "lib",
       "entry": "src/assembly/sections.gd",
@@ -3313,6 +3361,14 @@
       "tests": []
     },
     {
+      "id": "ui:a list's pages",
+      "kind": "ui",
+      "entry": "web/pager.js",
+      "reach": "every list's foot: /gallery, /library, /u/<handle> (Models, Likes), /c/<id>, /collections, /challenge (each group); Show more, the count, the numbered links, ?page=N with Show earlier; all at once on /_kit",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:a model's parts and its download",
       "kind": "ui",
       "entry": "api/_parts.js",
@@ -3602,7 +3658,9 @@
       "entry": "web/site.css",
       "reach": "every page of brickworks.diy: its controls (fields, checkboxes, buttons, dialog, card) in one place (docs/DESIGN_SYSTEM.md)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_release_train.py"
+      ]
     },
     {
       "id": "ui:docked panels",
@@ -3698,6 +3756,7 @@
       "area": "web",
       "tests": [
         "tests/test_gallery_tabs.py",
+        "tests/test_release_train.py",
         "tests/test_site_shell.py"
       ]
     },
@@ -4485,6 +4544,7 @@
       "area": "web",
       "tests": [
         "tests/test_gallery_tabs.py",
+        "tests/test_release_train.py",
         "tests/test_site_shell.py"
       ]
     },

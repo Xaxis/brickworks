@@ -203,10 +203,12 @@ import {
 import { withFaces } from "./_faces.js";
 // The one model card, the browser's too (web/card.js): the page needs no
 // script to show its models.
-import { FIRST_SCREEN, cardHtml, marksOf, quietMarks } from "./_card.js";
+import { FIRST_SCREEN, cardHtml, marksOf, quietMarks, skeletonHtml } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
 import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml } from "./_card.js";
+// The site's one pager (web/pager.js), on every list these pages draw.
+import { pagerHtml, pagerLinks } from "./_pager.js";
 import { challenge, challengeEntry, enter, vote, winsBy, withWins, withdraw, wonSaid } from "./_challenges.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -1004,7 +1006,7 @@ function html(response, status, body, { tests = false } = {}) {
   return response.status(status).end(body);
 }
 
-function head(origin, { title, about, url, image, robots = "", mine = false, share = false }) {
+function head(origin, { title, about, url, image, robots = "", mine = false, share = false, paged = "" }) {
   return `<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${escapeHtml(title)}</title>
@@ -1022,24 +1024,27 @@ ${url ? `<meta property="og:url" content="${escapeHtml(url)}">\n` : ""}<meta pro
 <meta name="twitter:image" content="${escapeHtml(image || `${origin}/share.png`)}">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
-${siteChrome().head}
+${paged}${siteChrome().head}
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
 <script src="/report.js" type="module"></script>
-<script src="/follow.js" type="module"></script>${mine ? `
+<script src="/follow.js" type="module"></script>${paged ? `
+<script src="/pager.js" type="module"></script>` : ""}${mine ? `
 <script src="/designs.js" type="module"></script>` : ""}${mine || share ? `
 <script src="/person.js" type="module"></script>` : ""}`;
 }
 
 /// A page of the directory. [cards]: the models its cards are drawn for,
 /// whose marks that nearly all carry are left off (web/card.js quietMarks).
-function page(origin, { title, about, url, image, robots, main, mine = false, share = false, cards = [] }) {
+/// [paged]: the page before and after this one, for its head
+/// (web/pager.js pagerLinks), when it holds a list that is paged.
+function page(origin, { title, about, url, image, robots, main, mine = false, share = false, cards = [], paged = "" }) {
   const { header, footer } = siteChrome();
   const quiet = quietMarks(cards.map(marksOf));
   return `<!doctype html>
 <html lang="en">
 <head>
-${head(origin, { title, about, url, image, robots, mine, share })}
+${head(origin, { title, about, url, image, robots, mine, share, paged })}
 </head>
 <body${quiet ? ` data-quiet="${quiet}"` : ""}>
 <a class="skip" href="#main">Skip to content</a>
@@ -1136,6 +1141,19 @@ const TABS = [["models", "Models"], ["builds", "Builds"], ["collections", "Colle
 /// not in it: web/designs.js asks for them with their sign-in and puts them
 /// in #designs-mine, so this page, which the CDN keeps, is the same for
 /// everybody.
+/// How many a list has, as [n] says, when it agrees with a page of it
+/// ([at], [shown] on it, [more] after it): else -1, and the pager says only
+/// which are shown. A profile's numbers are counted apart from its pages.
+const agreed = (n, at, shown, more) => {
+  const upTo = (at - 1) * PER_PAGE + shown;
+  return Number.isInteger(n) && (more ? n > upTo : n === upTo) ? n : -1;
+};
+
+/// A page of a list past its end (a list grown shorter, or an address
+/// made by hand): said, with the way to its first page.
+const pastEnd = (at, href) => `<p class="state">There is no page ${at.toLocaleString("en-US")} here. `
+  + `<a class="link" href="${escapeHtml(href(1))}">Back to the first page</a>.</p>`;
+
 async function profilePage(request, response) {
   const origin = originOf(request);
   const handle = String(request.query?.handle || "").toLowerCase();
@@ -1178,6 +1196,9 @@ async function profilePage(request, response) {
   };
   const name = escapeHtml(person.name);
   const since = Date.parse(person.created_at || "");
+  // Page n of a tab's list (web/pager.js): the tab said when it was asked.
+  const pageHref = (which) => (n) => `/u/${person.handle}${query({ ...(asked ? { tab: which } : {}), ...(n > 1 ? { page: n } : {}) })}`;
+  let paged = "";
 
   // The head: who they are, what they said, where else they are, their
   // numbers, and what can be done here.
@@ -1212,7 +1233,7 @@ async function profilePage(request, response) {
   // Pinned: up to three of their models, in the order they chose.
   await withFaces(showcase.pins);
   const pinned = showcase.pins.length ? `<section class="pinned" aria-labelledby="pinned-h"><h2 id="pinned-h">Pinned</h2>
-    <div class="models row">${showcase.pins.map((card) => cardHtml({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 },
+    <div class="models scroller" role="group" aria-labelledby="pinned-h">${showcase.pins.map((card) => cardHtml({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 },
       { earned: Boolean(earned), eager: true })).join("")}</div></section>` : "";
 
   // The tab, and the cards on the page.
@@ -1222,6 +1243,10 @@ async function profilePage(request, response) {
     const cards = (await withWins(await withFaces(shown.models), tests))
       .map((card) => ({ ...card, comments: earned?.cards[card.id]?.comments ?? 0 }));
     drawn.push(...cards);
+    const pager = pagerHtml({ id: "models", first: shown.page, shown: cards.length, more: shown.more,
+      total: agreed(counts.models, shown.page, cards.length, shown.more), href: pageHref("models"), source: "page",
+      skeleton: skeletonHtml() });
+    paged = pagerLinks({ at: shown.page, more: shown.more, href: pageHref("models") });
     const first = shown.page === 1 ? cards[0] : null;
     // The model to start with: the first by Top builds, once somebody built it.
     const start = earned && first && first.builds > 0 ? first : null;
@@ -1229,11 +1254,11 @@ async function profilePage(request, response) {
       <a href="/m/${start.id}">${escapeHtml(start.name)}</a>, ${escapeHtml(count(start.builds, "build"))} finished${start.tested ? ", Tested" : ""}.
       <a class="cta small" href="/app?view=${start.id}&amp;build">Build it</a></p>` : ""}
     ${earned && counts.models > 1 && earned.builds + earned.remixes > 0 ? `<p class="note">Most built first: a build finished counts most, then a remix and the Tested mark.</p>` : ""}
-    <div class="models" data-models data-page="${shown.page}">${cards.map((card, i) => cardHtml(card, { earned: Boolean(earned),
+    ${pager.earlier}
+    <div class="models" id="models" data-models data-page="${shown.page}">${cards.map((card, i) => cardHtml(card, { earned: Boolean(earned),
       eager: i < (showcase.pins.length ? 4 : FIRST_SCREEN) })).join("")}</div>
-    ${shown.more || shown.page > 1 ? `<p class="paging">${shown.more ? `<a class="cta ghost" data-more="${shown.page + 1}"
-      href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: "models", page: shown.page + 1 }))}">Show more</a>` : ""}${shown.page > 1
-      ? ` <a href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: "models" }))}">Back to the first</a>` : ""}</p>` : ""}`
+    ${pager.after}`
+      : shown.page > 1 ? pastEnd(shown.page, pageHref("models"))
       : `<p class="state">Nothing in the gallery yet. The models ${name} shares in the gallery with their name show here.</p>`;
   } else if (tab === "builds") {
     panel = counts.builds ? `${built.length ? `<section class="builds-made" aria-labelledby="built-h"><h2 id="built-h">Built by ${name}</h2>
@@ -1247,11 +1272,15 @@ async function profilePage(request, response) {
     const page = await likedPage(origin, person, at, tests);
     const cards = page ? await withWins(await withFaces(page.models), tests) : [];
     drawn.push(...cards);
+    const pager = page ? pagerHtml({ id: "models", first: page.page, shown: cards.length, more: page.more,
+      total: agreed(counts.likes, page.page, cards.length, page.more), href: pageHref("likes"), source: "page",
+      skeleton: skeletonHtml() }) : null;
+    if (page) paged = pagerLinks({ at: page.page, more: page.more, href: pageHref("likes") });
     panel = cards.length ? `<p class="note">${name} chose to show the models they liked, newest first.</p>
-    <div class="models" data-models data-page="${page.page}">${cards.map((card, i) => cardHtml(card, { eager: i < 4 })).join("")}</div>
-    ${page.more || page.page > 1 ? `<p class="paging">${page.more ? `<a class="cta ghost" data-more="${page.page + 1}"
-      href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: "likes", page: page.page + 1 }))}">Show more</a>` : ""}${page.page > 1
-      ? ` <a href="/u/${escapeHtml(person.handle)}${escapeHtml(query({ tab: "likes" }))}">Back to the first</a>` : ""}</p>` : ""}`
+    ${pager.earlier}
+    <div class="models" id="models" data-models data-page="${page.page}">${cards.map((card, i) => cardHtml(card, { eager: i < 4 })).join("")}</div>
+    ${pager.after}`
+      : page && page.page > 1 ? pastEnd(page.page, pageHref("likes"))
       : `<p class="state">No likes yet. The models ${name} likes in the gallery show here, as they chose.</p>`;
   } else {
     const covers = lists.length ? await coversOf(lists, tests) : new Map();
@@ -1284,7 +1313,7 @@ async function profilePage(request, response) {
   return html(response, 200, page(origin, {
     title: `${person.name} (@${person.handle}) — ${earned ? "a designer in" : "models built in"} Brickworks`,
     about: person.bio ? person.bio.replace(/\s+/g, " ").slice(0, 160) : told,
-    url, image: picture, main, mine: true, cards: drawn,
+    url, image: picture, main, mine: true, cards: drawn, paged,
   }), { tests });
 }
 
@@ -1300,12 +1329,23 @@ async function listPage(request, response) {
   const tests = testsAsked(request.query);
   const list = await listFor(id, null, tests);
   if (!list) return html(response, 404, missingPage(origin, "There is no collection here"), { tests });
+  const asked = Number(request.query?.page ?? 1);
+  const at = Number.isInteger(asked) && asked >= 1 && asked <= MOST_PAGES ? asked : 1;
   const [shown, covers, follows] = await Promise.all([
-    withFaces(await models(origin, { collection: id, sort: "added", tests }, 1)),
+    withFaces(await models(origin, { collection: id, sort: "added", tests }, at)),
     coversOf([list], tests),
     listFollowsOf(id).catch(() => null),
   ]);
   const url = `${origin}/c/${id}`;
+  // Page n of its models (web/pager.js).
+  const pageHref = (n) => {
+    const said = new URLSearchParams();
+    if (n > 1) said.set("page", String(n));
+    if (tests) said.set("tests", "1");
+    return `/c/${id}${said.size ? `?${said}` : ""}`;
+  };
+  const pager = pagerHtml({ id: "models", first: shown.page, shown: shown.models.length, more: shown.more,
+    href: pageHref, source: "page", skeleton: skeletonHtml() });
   const by = list.by ? `<a href="/u/${escapeHtml(list.by.handle)}">${escapeHtml(list.by.name)}</a>` : "a Brickworks builder";
   const first = shown.models[0];
   const updated = Date.parse(list.updated_at || "");
@@ -1333,7 +1373,10 @@ async function listPage(request, response) {
       </div>
     </div>
   </header>
-  ${shown.models.length ? `<div class="models">${shown.models.map((card, i) => cardHtml(card, { eager: i < FIRST_SCREEN })).join("")}</div>`
+  ${shown.models.length ? `${pager.earlier}
+  <div class="models" id="models">${shown.models.map((card, i) => cardHtml(card, { eager: i < FIRST_SCREEN })).join("")}</div>
+  ${pager.after}`
+    : at > 1 ? pastEnd(at, pageHref)
     : `<p class="state">Nothing in it is in the gallery just now. The models put in it show here once they are.</p>`}
 </div>`;
   return html(response, 200, page(origin, {
@@ -1341,6 +1384,7 @@ async function listPage(request, response) {
     about: list.description ? list.description.replace(/\s+/g, " ").slice(0, 160)
       : `${count(list.count, "model")} built in Brickworks, collected by ${list.by ? list.by.name : "a builder"}.`,
     url, image: first && first.image ? first.image : "", main, share: true, cards: shown.models,
+    paged: pagerLinks({ at: shown.page, more: shown.more, href: pageHref }),
   }), { tests });
 }
 
@@ -1373,17 +1417,14 @@ async function collectionsPage(request, response) {
   const tab = (which, words) => `<a href="${escapeHtml(keep({ sort: which, page: 1 }))}" data-sort="${which}"`
     + `${which === sort ? ' aria-current="page"' : ""}>${escapeHtml(words)}</a>`;
   const pages = Math.max(1, Math.ceil(listed.total / DIRECTORY_PAGE));
-  const pager = listed.total > DIRECTORY_PAGE ? `<nav class="actions center more" aria-label="Pages">`
-    + (at > 1 ? `<a class="cta ghost" rel="prev" href="${escapeHtml(keep({ sort, page: at - 1 }))}">Previous</a>` : "")
-    + `<span class="note">Page ${at.toLocaleString("en-US")} of ${pages.toLocaleString("en-US")}</span>`
-    + (at < pages ? `<a class="cta ghost" rel="next" href="${escapeHtml(keep({ sort, page: at + 1 }))}">Next</a>` : "")
-    + "</nav>" : "";
+  const pageHref = (n) => keep({ sort, page: n });
+  const pager = pagerHtml({ id: "collections", first: at, shown: rows.length, pages, total: listed.total,
+    size: DIRECTORY_PAGE, noun: ["collection", "collections"], href: pageHref, source: "page" });
   const empty = !listed.ready
     ? `<p class="state" id="collections-empty">Collections are not listed on Brickworks yet. Each one has its own page `
       + "in the meantime, linked from its owner's profile and from the models in it.</p>"
     : at > 1 && !rows.length
-    ? `<p class="state" id="collections-empty">There is no page ${at.toLocaleString("en-US")}. `
-      + `<a class="link" href="${escapeHtml(keep({ sort, page: 1 }))}">Back to the first page</a>.</p>`
+    ? pastEnd(at, pageHref).replace('<p class="state">', '<p class="state" id="collections-empty">')
     : `<p class="state" id="collections-empty">No public collections yet. Anyone can make one: on a model's page, `
       + "press Save to put it in a collection, then make the collection public on your profile. It is listed here "
       + "once a model in it is in the gallery.</p>";
@@ -1391,14 +1432,16 @@ async function collectionsPage(request, response) {
   <div class="page-head"><h1>Collections</h1>
   <p class="lede">Models put together by the people who build them. Follow one to see what goes in it next.</p></div>
   <nav class="tabs" aria-label="Which collections first">${tab("recent", "Recently added to")}${tab("followed", "Most followed")}</nav>
-  ${rows.length ? `<div class="list-cards" id="collections">${rows.map((list) => directoryCardHtml(list, covers)).join("")}</div>` : empty}
-  ${pager}
+  ${rows.length ? `${pager.earlier}
+  <div class="list-cards" id="collections">${rows.map((list) => directoryCardHtml(list, covers)).join("")}</div>
+  ${pager.after}` : empty}
   <p class="crumbs" id="collections-gallery"><a href="/gallery">Models in the gallery</a></p>
 </div>`;
   return html(response, 200, page(origin, {
     title: "Collections — the Brickworks gallery",
     about: "Collections of models built in Brickworks, made by the people who build them: follow one to see what is put in it.",
     url: `${origin}${keep({ sort, page: at })}`, robots: at > 1 || sort !== "recent" ? "noindex" : "", image: "", main,
+    paged: rows.length ? pagerLinks({ at, more: at < pages, href: pageHref }) : "",
   }), { tests });
 }
 

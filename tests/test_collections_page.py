@@ -80,8 +80,9 @@ def test_the_public_collections_are_cards_newest_first_and_a_private_one_never()
     assert '<a href="/collections" data-sort="recent" aria-current="page">Recently added to</a>' in html
     assert '<a href="/collections?sort=followed" data-sort="followed">Most followed</a>' in html
     assert '<a href="/gallery">Models in the gallery</a>' in html
-    # Three fit one page: no pager.
-    assert 'aria-label="Pages"' not in html
+    # Three fit one page: the pager is there for the script, and hidden.
+    assert '<nav class="pager" data-pager="collections" aria-label="Pages of collections" hidden' in html
+    assert '<script src="/pager.js" type="module"></script>' not in html
 
 
 def test_most_followed_puts_the_followed_one_first() -> None:
@@ -101,14 +102,28 @@ def test_pages_link_on_and_back_and_a_page_past_the_end_says_so() -> None:
                  directory={"status": 200, "json": {"sort": "followed", "page": 2, "size": 24, "total": 60, "rows": [row]}})
     if said is None:
         return
-    pager = re.search(r'<nav class="actions center more" aria-label="Pages">[\s\S]*?</nav>', said[0]["html"])
+    html = said[0]["html"]
+    # The site's one pager (web/pager.js): Show earlier over the list, then
+    # the count, Show more and the numbered links, each a real link, and the
+    # page either side in the head.
+    pager = re.search(r'<nav class="pager" data-pager="collections"[^>]*>[\s\S]*?</nav>', html)
     assert pager, "no pager"
-    assert '<a class="cta ghost" rel="prev" href="/collections?sort=followed">Previous</a>' in pager.group(0)
-    assert "Page 2 of 3" in pager.group(0)
-    assert '<a class="cta ghost" rel="next" href="/collections?sort=followed&amp;page=3">Next</a>' in pager.group(0)
+    nav = pager.group(0)
+    assert ' data-first="2" data-last="2" data-pages="3" data-total="60" data-more="1"' in nav
+    assert '<p class="pager-count">Showing 25 of 60 collections</p>' in nav
+    assert '<a class="cta ghost pager-more" href="/collections?sort=followed&amp;page=3" data-pager-go="more">Show more</a>' in nav
+    assert '<li class="step prev"><a href="/collections?sort=followed" rel="prev">' in nav
+    assert '<a href="/collections?sort=followed&amp;page=2" aria-label="Page 2" data-shown aria-current="page">2</a>' in nav
+    assert '<a href="/collections?sort=followed&amp;page=3" aria-label="Page 3">3</a>' in nav
+    assert '<li class="step next"><a href="/collections?sort=followed&amp;page=3" rel="next">' in nav
+    assert ('<p class="pager-earlier" data-pager-earlier="collections"><a class="cta ghost" href="/collections?sort=followed" '
+            'data-pager-go="earlier">Show earlier</a></p>') in html
+    assert '<link rel="prev" href="/collections?sort=followed">' in html
+    assert '<link rel="next" href="/collections?sort=followed&amp;page=3">' in html
+    assert '<script src="/pager.js" type="module"></script>' in html
     past = pages("/collections?page=5")
     assert past and past[0]["status"] == 200
-    assert 'id="collections-empty">There is no page 5.' in past[0]["html"]
+    assert 'id="collections-empty">There is no page 5 here.' in past[0]["html"]
     assert '<a class="link" href="/collections">Back to the first page</a>' in past[0]["html"]
     assert not cards(past[0]["html"])
 

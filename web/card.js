@@ -63,12 +63,17 @@ const PICTURE = /^\/api\/people\?op=avatar&id=[A-Za-z0-9]{10}$/;
 /// A person's avatar: their picture when they have one (supabase/avatars.sql),
 /// else a tile in their handle's colour with the first letter of their
 /// name. Never a figure's likeness (docs/TRADEMARKS.md, docs/SOCIAL.md D11).
-/// [size] is "small", "", "big" or "huge"; it is decoration beside their
-/// name, so hidden from a screen reader.
+/// Given none of the three, somebody not known yet (your own in the header
+/// before the server has said who you are, or an orangecheck account's with
+/// no profile): the circle blank, no letter or colour that might not be
+/// theirs. [size] is "small", "", "big" or "huge"; it is decoration beside
+/// their name, so hidden from a screen reader.
 export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size = "", id = "" } = {}) {
-  const letter = [...String(name || handle || "?").trim()][0] || "?";
   const pictured = PICTURE.test(String(picture || ""));
-  const classes = ["avatar", size, `c${avatarTone(handle || name)}`, pictured ? "pictured" : ""].filter(Boolean).join(" ");
+  const known = Boolean(handle || name || pictured);
+  const letter = known ? [...String(name || handle || "?").trim()][0] || "?" : "";
+  const classes = ["avatar", size, known ? `c${avatarTone(handle || name)}` : "unknown", pictured ? "pictured" : ""]
+    .filter(Boolean).join(" ");
   return `<span class="${classes}"${id ? ` id="${escapeHtml(id)}"` : ""} aria-hidden="true">${pictured
     ? `<img src="${escapeHtml(picture)}" alt="" width="112" height="112" loading="lazy" decoding="async">` : escapeHtml(letter)}</span>`;
 }
@@ -76,7 +81,7 @@ export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size
 /// The icons there are (web/icons.svg).
 export const ICONS = ["like", "save", "share", "comment", "more", "build", "search", "filter", "award", "zoom-in", "zoom-out",
   "stand", "gear", "move", "file", "book", "people", "devices", "camera", "spark", "eye", "monitor", "globe", "library",
-  "download", "check"];
+  "download", "check", "back", "next"];
 
 /// An icon from the sprite, in the words' colour.
 export function iconHtml(name) {

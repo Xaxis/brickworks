@@ -2,6 +2,9 @@
 # Put the web build on Vercel and prove it runs there.
 #   tools/deploy.sh                 a preview URL, for looking at
 #   tools/deploy.sh --prod          the one the domain points at
+#   tools/deploy.sh --promote=URL   the domain onto URL, a deployment of this
+#                                   commit already made and checked (a
+#                                   release's preview), with no new build
 #   tools/deploy.sh --unit          a unit's preview (unit_preview.sh), without
 #                                   the secrets unreviewed code is not to hold
 #   tools/deploy.sh --unit --billing-stand-in
@@ -36,10 +39,11 @@ set -uo pipefail
 # shipping something else entirely.
 cd "$(dirname "$0")/.." || exit 1
 
-prod=0; unit=0; stand_in=0; billing_test=0; beta_open=0; do_export=1; do_check=1; dir=build/web
+prod=0; unit=0; stand_in=0; billing_test=0; beta_open=0; do_export=1; do_check=1; dir=build/web; promote=""
 for a in "$@"; do
   case "$a" in
     --prod) prod=1 ;;
+    --promote=*) promote="${a#--promote=}" ;;
     --unit) unit=1 ;;
     --billing-stand-in) stand_in=1 ;;
     --billing-test) billing_test=1 ;;
@@ -51,6 +55,7 @@ for a in "$@"; do
   esac
 done
 if [ "$prod" = 1 ] && [ "$unit" = 1 ]; then echo "deploy: --unit is a preview, never --prod"; exit 2; fi
+if [ -n "$promote" ] && [ $# -gt 1 ]; then echo "deploy: --promote=URL takes no other option"; exit 2; fi
 if [ "$stand_in" = 1 ] && [ "$unit" = 0 ]; then echo "deploy: --billing-stand-in is a unit's preview's alone (--unit)"; exit 2; fi
 if [ "$billing_test" = 1 ] && [ "$unit" = 0 ]; then echo "deploy: --billing-test is a unit's preview's alone (--unit)"; exit 2; fi
 if [ "$billing_test" = 1 ] && [ "$stand_in" = 1 ]; then echo "deploy: --billing-test or --billing-stand-in, not both"; exit 2; fi
@@ -67,6 +72,59 @@ if [ "$billing_test" = 1 ] && [ -n "${ADMISSION_TEST_WEBHOOK_SECRET:-}" ] \
   echo "deploy: ADMISSION_TEST_WEBHOOK_SECRET is not an adm_whsec_ secret"; exit 2
 fi
 if [ -z "${VERCEL_TOKEN:-}" ]; then echo "deploy FAILED: no VERCEL_TOKEN (.env or environment)"; exit 1; fi
+
+# The domain onto deployment $1, a build of commit $2, done only once
+# brickworks.diy names that build.
+go_live() {
+  local url=$1 sha=$2 log scope live=""
+  log="$(mktemp "${TMPDIR:-/tmp}/brickworks-promote.XXXXXX")"
+  echo "deploy: promoting the checked build"
+  # --scope, which deploy does not need and promote does: deploy reads
+  # the team out of .vercel/project.json and promote looks the
+  # deployment up under whatever the token's default team is, which is
+  # not this one. "Deployment belongs to a different team" is what that
+  # looks like.
+  scope="$(sed -n 's/.*"orgId":"\([^"]*\)".*/\1/p' .vercel/project.json)"
+  if ! npx --yes vercel@48 promote "$url" --yes --scope "$scope" \
+      --token "$VERCEL_TOKEN" >"$log" 2>&1; then
+    tail -20 "$log"; rm -f "$log"; echo "deploy FAILED: could not promote $url"; return 1
+  fi
+  rm -f "$log"
+  # Promoted is not the same as live. The domain went on answering with
+  # the previous build for seconds to a minute after promote returned,
+  # twice, and a check run straight after "done" measured the old build
+  # and nearly reported it as the new one. Done means the domain says so.
+  for _ in $(seq 1 60); do
+    # /app is the page itself now, which names its build's files; a
+    # deployment from before that redirected to /b/<sha>/ instead.
+    live="$(curl -s --max-time 20 https://brickworks.diy/app | grep -o '/b/[^/"]*/' | head -1 || true)"
+    [ -z "$live" ] && live="$(curl -s -o /dev/null -w '%{redirect_url}' https://brickworks.diy/app || true)"
+    case "$live" in */b/"$sha"/*) break ;; esac
+    sleep 3
+  done
+  case "$live" in
+    */b/"$sha"/*) echo "deploy: brickworks.diy serves $sha" ;;
+    *) echo "deploy FAILED: promoted, but brickworks.diy still serves ${live:-nothing} after 3 minutes"; return 1 ;;
+  esac
+  echo "deploy done $url"
+  echo "             https://brickworks.diy"
+}
+
+# --promote=URL: the build a release's checks passed goes live itself. Its
+# preview is a production build no domain points at yet (--prod
+# --skip-domain, below), so this takes seconds, where --prod built and
+# uploaded the same commit again and checked that, minutes on a busy box,
+# and sent live a build the checks never saw (m214, 2026-10-30). Only a
+# build of this checkout's commit, by the version.json it serves, so never
+# one "-dirty". Never a unit's preview (--unit), which lacks secrets
+# production needs: ship.sh promotes only the preview it made itself.
+if [ -n "$promote" ]; then
+  sha="$(git rev-parse --short HEAD)"
+  built="$(curl -s --max-time 30 ${VERCEL_BYPASS:+-H "x-vercel-protection-bypass: $VERCEL_BYPASS"} \
+    "$promote/version.json" | sed -n 's/.*"commit": *"\([^"]*\)".*/\1/p')"
+  [ "$built" = "$sha" ] || { echo "deploy FAILED: $promote is a build of ${built:-nothing it names}, not $sha"; exit 1; }
+  go_live "$promote" "$sha"; exit
+fi
 
 # Every part the catalogue names must be in object storage before a build
 # that names it ships: the web build fetches meshes from there, not from the
@@ -233,6 +291,8 @@ for handler in api/*.js; do
   # The one model card (web/card.js), which api/_card.js passes through in
   # a checkout: here the file itself, so a function needs no web/.
   cp web/card.js "$fn/_card.js"
+  # And the one pager (web/pager.js), which api/_pager.js passes through.
+  cp web/pager.js "$fn/_pager.js"
   # A part's geometry as the app reads it (web/lbm.js), which api/_lbm.js
   # passes through in a checkout: the pictures the share function draws of
   # a set's parts (api/_flatlay.js).
@@ -682,36 +742,7 @@ if [ "$prod" = 1 ]; then
   # Promoted only now, with the same build that just passed. Nothing
   # is rebuilt in between, so what goes to the domain is the artefact
   # that was checked rather than another one like it.
-  echo "deploy: promoting the checked build"
-  # --scope, which deploy does not need and promote does: deploy reads
-  # the team out of .vercel/project.json and promote looks the
-  # deployment up under whatever the token's default team is, which is
-  # not this one. "Deployment belongs to a different team" is what that
-  # looks like.
-  scope="$(sed -n 's/.*"orgId":"\([^"]*\)".*/\1/p' .vercel/project.json)"
-  if ! npx --yes vercel@48 promote "$url" --yes --scope "$scope" \
-      --token "$VERCEL_TOKEN" >"$log" 2>&1; then
-    tail -20 "$log"; echo "deploy FAILED: could not promote $url"; exit 1
-  fi
-  # Promoted is not the same as live. The domain went on answering with
-  # the previous build for seconds to a minute after promote returned,
-  # twice, and a check run straight after "done" measured the old build
-  # and nearly reported it as the new one. Done means the domain says so.
-  live=""
-  for _ in $(seq 1 60); do
-    # /app is the page itself now, which names its build's files; a
-    # deployment from before that redirected to /b/<sha>/ instead.
-    live="$(curl -s --max-time 20 https://brickworks.diy/app | grep -o '/b/[^/"]*/' | head -1 || true)"
-    [ -z "$live" ] && live="$(curl -s -o /dev/null -w '%{redirect_url}' https://brickworks.diy/app || true)"
-    case "$live" in */b/"$sha"/*) break ;; esac
-    sleep 3
-  done
-  case "$live" in
-    */b/"$sha"/*) echo "deploy: brickworks.diy serves $sha" ;;
-    *) echo "deploy FAILED: promoted, but brickworks.diy still serves ${live:-nothing} after 3 minutes"; exit 1 ;;
-  esac
-  echo "deploy done $url"
-  echo "             https://brickworks.diy"
+  go_live "$url" "$sha" || exit 1
 else
   echo "deploy done $url"
 fi

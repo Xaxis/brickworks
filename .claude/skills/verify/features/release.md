@@ -7,7 +7,7 @@ repository of builds only (Xaxis/brickworks-releases), and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, ui:about and the licences, cli:about credits probe, cli:desktop token key -->
+<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:move the downloads to the releases repository, cli:check every release link, cli:release train, ui:about and the licences, cli:about credits probe, cli:desktop token key -->
 
 ## Sub-features
 
@@ -108,6 +108,16 @@ that offers each system its own build. The cycle and its cadence are
   yet cannot go out. `tests/test_release_links.py` runs it against a server
   on this machine that redirects as GitHub does: all there, a file missing,
   a file of another size.
+- `release train`: `tools/release/train.sh stage TAG BRANCH --after PREV
+  --checks ... --probes ... --units ... --title ...` stages a release and
+  ships it in turn, detached: it waits until PREV's `_lead.out` says
+  brickworks.diy serves it, makes the release worktree, merges BRANCH,
+  refuses a dirty or half-merged tree, runs the lists and probes, then
+  `ship.sh`, and retires the worktrees once live. `status` says each one's
+  step, its checks passed of all, and what brickworks.diy serves; `hold TAG`
+  and `release TAG` set and lift a hold. tools/release/README.md has the
+  rest. `tests/test_release_train.py` runs it with stand-ins for the hour's
+  work.
   With `RELEASES_TOKEN` set it asks the releases repo's addresses through
   GitHub's API with the token instead (a release by tag, a file as its
   asset's bytes, followed to the signed URL, the token never sent past the
@@ -156,6 +166,7 @@ python3 tools/release.py publish --draft --tag=v0.0.0-upload-test --target=main 
 gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.1.0
 tools/release/releases_repo.sh --dir=<scratch>      # a dry run: about 5 GB downloaded
 tools/release/release_links.sh                      # this checkout's web/releases.json
+tools/release/train.sh status                       # each release staged: its step, checks, what is live
 ```
 
 ## How to check it
@@ -231,6 +242,23 @@ addresses in ... answer`, exit 0 (2026-10-27, main's manifest: 51
 addresses, 31 s). Against a manifest naming a repository that does not
 exist, each address is `FAIL ... answered '404 ...'` and it exits 1; a file
 whose size is one byte off is `FAIL ... answered '200 <size>'`.
+
+```sh
+python3 tools/minitest.py tests/test_release_train.py
+```
+
+Proves it when: `4 passed`, in about 10 s. Each test makes a repository
+with an origin and unit worktrees, and stand-ins for release_wt.sh,
+merge_unit.sh, ship.sh, check.sh and probe.sh (retire_wt.sh is the real
+one), and runs the train detached as staged: it waits for the release
+before it, then ships the checks, probes and title as edited after staging;
+a hold stops it before the merge and before the ship; a tree left dirty or
+mid-merge is refused, and so is a probe with a FAIL line or a nonzero exit;
+it stops when the release before held, was killed, or died without a word,
+and at its deadline; and `status` reads `checks: 2 of 4 passed; failed: io (passed
+alone); 1 to run` mid-ship and `live: brickworks.diy serves it (SHA)` after.
+On a real release, `tools/release/train.sh status` while it waits says
+`step: HH:MMZ waits for PREV to serve (until HH:MMZ)`.
 
 ```sh
 tools/release/releases_repo.sh --dir=<scratch>

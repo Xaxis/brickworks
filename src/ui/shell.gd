@@ -1279,6 +1279,27 @@ func set_assistant(on: bool) -> void:
 	if on == assistant_shown:
 		return
 	assistant_shown = on
+	_fill_again()
+
+
+## Who designs (Settings, AI), named in the commands that ask it: Ask Claude
+## about this…, or Ask GPT-6.1 Sol about this… while a model on the person's
+## key designs (ProviderSettings.designer_name).
+func name_designer(who: String) -> void:
+	var ask: Command = _commands.get("ask_claude")
+	if ask == null or ask.words == "Ask %s about this…" % who:
+		return
+	ask.words = "Ask %s about this…" % who
+	ask.tip = "Ask %s to change the selected parts, and only them, or ask about them" % who
+	var brace: Command = _commands["brace"]
+	brace.words = "Ask %s to brace this…" % who
+	brace.tip = ("Ask %s to make this joint hold: what it carries, on what, and its margin, "
+		% who + "asked for you")
+	_fill_again()
+
+
+## The menus and the menu on a part made again from the commands.
+func _fill_again() -> void:
 	if _menus.is_empty():
 		return
 	_ids.clear()

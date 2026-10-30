@@ -13,13 +13,13 @@
 //
 // The question lives in the address (?q=castle&kind=space&sort=newest&...),
 // put back with replaceState as it changes, so a search can be sent to
-// somebody and a reload asks it again; and so does how many pages are
-// shown (&page=3). The next page comes as the end of the list nears the
-// screen, three times, then only by Show more, which gives the footer
-// back (D5). A card opened is kept in the history's state, so Back from
-// its page asks the same pages again and puts that card where it was. A
-// search waits for typing to stop; a filter asks at once; an answer that
-// comes back after a newer question was asked is thrown away.
+// somebody and a reload asks it again. The list is paged as every list of
+// the site is (web/pager.js): Show more, the last page shown in the
+// address (&page=3), Show earlier over a page opened by its address, the
+// count and the numbered links, and Back putting the same pages and the
+// card left where they were. A search waits for typing to stop; a filter
+// asks at once; an answer that comes back after a newer question was
+// asked is thrown away.
 //
 // The front of it, Top over all time with nothing asked, has this week's
 // pick as its first card (/api/share?op=shelves): the one the daily cron
@@ -45,11 +45,13 @@
 // talk to itself and a short list of others.
 //
 // Each card is web/card.js's, the one every page of the site draws.
-import { FIRST_SCREEN, counted, iconButtonHtml, likeName, modelCard } from "/card.js";
+import { FIRST_SCREEN, counted, iconButtonHtml, likeName, modelCard, skeletonHtml } from "/card.js";
 // The toast, and Filters closing on a click elsewhere as a "more" menu does.
 import { toast } from "/kit.js";
 // "/" to search, and the bar of filters kept under the header.
 import { browseBar } from "/browse.js";
+// The site's one way to page a list.
+import { pageAsked, pager } from "/pager.js";
 
 (function () {
   "use strict";
@@ -60,7 +62,6 @@ import { browseBar } from "/browse.js";
   const $ = (id) => document.getElementById(id);
   const feed = $("feed");
   const grid = $("models");
-  const more = $("more");
   const form = $("finder");
   const q = $("q");
   const sort = $("sort");
@@ -71,21 +72,18 @@ import { browseBar } from "/browse.js";
   const technic = $("technic");
   const tested = $("tested");
   const shelves = $("shelves");
-  // Which page was asked last, and how many the end of the list fetched
-  // by itself: three, then Show more.
-  const AUTO = 3;
-  let page = 0;
-  let auto = 0;
-  let hasMore = false;
   // What the front's shelves are, once asked: null until then.
   let front = null;
   let weights = null;
   // The site's sign-in (web/account.js) while this browser has one: the
   // list and the shelves are then asked with it, and mine=1.
   let own = null;
-  let asking = 0;
-  let loading = false;
   let filled = false;
+  // The shelves, which the first page waits for (askShelves).
+  let hold = null;
+  // Whether the front's pick is one of the first page's, drawn in its own
+  // place and not again in the list's.
+  let pickTaken = false;
   // What the list said it can answer: Following, Made and Top's windows.
   let offers = { following: false, made: false, windows: false };
   // The question's own words, beside the controls that hold the rest.
@@ -145,12 +143,16 @@ import { browseBar } from "/browse.js";
   /// The front: Top over all time, everybody's, nothing asked.
   const atFront = () => order() === "top" && !following && !chosen(windowed) && !searching();
 
+  // The list's pages (web/pager.js), made once the functions it calls are.
+  let paged = null;
+  const shownPage = () => (paged ? paged.state.last : 1);
+
   /// The question the controls ask, as a query string: for the list
   /// (sort always said, the list's own default being newest), or for the
-  /// address (Top left out, the page's default, and how many pages). With
-  /// [over], as it would be with those changed: a tab's own address.
+  /// address (Top left out, the page's default, and the last page shown).
+  /// With [over], as it would be with those changed: a tab's own address.
   function question({ address = false, over = {} } = {}) {
-    const at = { kind, tag, following, sort: order(), window: chosen(windowed), page, ...over };
+    const at = { kind, tag, following, sort: order(), window: chosen(windowed), page: shownPage(), ...over };
     const asked = new URLSearchParams();
     const words = q.value.trim().slice(0, 100);
     if (words) asked.set("q", words);
@@ -288,7 +290,8 @@ import { browseBar } from "/browse.js";
   /// The shelves, drawn from [front]: the pick as the first card and the
   /// shelves after the first rows, on the gallery's front alone.
   function drawShelves() {
-    const shown = atFront();
+    // The front's first page alone: a page opened by its address has none.
+    const shown = atFront() && (!paged || paged.state.first <= 1);
     const pick = shown && front && front.pick && front.pick.model && ID.test(String(front.pick.model.id)) ? front.pick : null;
     const small = shown && front && front.small ? (front.small.models || []).filter((m) => m && ID.test(String(m.id))) : [];
     $("pick").hidden = !pick;
@@ -454,71 +457,49 @@ import { browseBar } from "/browse.js";
     }
   }
 
-  // Show more's press while a page that came by itself waits to be drawn
-  // (outOfSight): it is drawn then. And one while that page is still on its
-  // way (pressed): it is drawn as soon as it comes. Show more was disabled
-  // while it came, and a press then was lost (gallery350, 2026-10-29).
-  let release = null;
-  let pressed = false;
+  /// The address asked what the list does not know (a kind that is not
+  /// one, say, Parts I own signed out, or Following before it can be
+  /// answered): the whole gallery instead, and the address put right.
+  class Unknown extends Error {}
 
-  /// Resolves once the end of the list is under the screen, so a page put
-  /// there moves only what is out of sight, or once Show more is pressed.
-  /// Put in while Put yours here and the footer showed, a page moved them
-  /// down under a person's eyes (CLS 0.51 at 1280 signed in, whose pages
-  /// come slower: site277).
-  function outOfSight() {
-    const under = () => feed.getBoundingClientRect().bottom > innerHeight;
-    if (pressed || under()) return Promise.resolve();
-    return new Promise((done) => {
-      const look = () => { if (under()) release(); };
-      release = () => {
-        removeEventListener("scroll", look);
-        release = null;
-        done();
-      };
-      addEventListener("scroll", look, { passive: true });
-    });
+  /// Page [n] of the list as cards, once the shelves the first page waits
+  /// for have come too, so the pick, the challenge and the cards are drawn
+  /// in one frame (each drawn as it came moved the others).
+  async function load(n) {
+    const asked = question();
+    asked.set("page", String(n));
+    const reply = await askApi(`/api/share?op=list&${asked}`);
+    if ((reply.status === 400 || reply.status === 401) && !filled && [...question({ address: true }).keys()]
+      .some((key) => !["tests", "page"].includes(key))) throw new Unknown();
+    if (reply.status !== 200) throw new Error(String(reply.status));
+    if (hold) await hold;
+    const data = reply.body;
+    // As many pictures asked for at once as the first screen shows at this
+    // width, when this page is the first drawn: the places of what it
+    // replaces (its skeletons, at first) that are on it. Twelve left the
+    // third row lazy at 1920.
+    const first = document.documentElement.dataset.gallery !== "ready";
+    const eager = first ? [...grid.children].filter((one) => one.getBoundingClientRect().top < innerHeight).length
+      || FIRST_SCREEN : 0;
+    // A card once: the front's pick leads, and the list goes on without it.
+    const pick = n === 1 && atFront() && front && front.pick && front.pick.model ? String(front.pick.model.id) : "";
+    const items = [];
+    if (n === 1) pickTaken = false;
+    for (const model of data.models || []) {
+      const id = String(model && model.id);
+      if (!ID.test(id)) continue;
+      listed.set(id, model);
+      if (id !== pick) items.push(card(model, items.length < eager));
+      else pickTaken = true;
+    }
+    return { items, more: Boolean(data.more), data };
   }
 
-  /// The next page of the list ([fresh]: the first, in place of what is
-  /// shown), drawn once [hold] (the shelves, on the first) has come too,
-  /// and [byItself] (not asked for by a press) once it is out of sight.
-  /// Resolves once it is drawn.
-  async function next(fresh, hold = null, byItself = false) {
-    const mine = ++asking;
-    if (release) release();
-    loading = true;
-    pressed = false;
-    more.disabled = !byItself;
-    const asked = question();
-    asked.set("page", String(fresh ? 1 : page + 1));
-    try {
-      const reply = await askApi(`/api/share?op=list&${asked}`);
-      // An address that asks what the list does not know (a kind that is
-      // not one, say, Parts I own signed out, or Following before it can
-      // be answered): the whole gallery instead, and the address put right.
-      if ((reply.status === 400 || reply.status === 401) && !filled && [...question({ address: true }).keys()]
-        .some((key) => key !== "tests")) {
-        for (const select of [size, sort, made, windowed]) select.dataset.wanted = "";
-        q.value = "";
-        instructions.checked = technic.checked = tested.checked = false;
-        kind = tag = "";
-        following = false;
-        page = 0;
-        history.replaceState(null, "", tests ? "/gallery?tests=1" : "/gallery");
-        return next(true);
-      }
-      if (reply.status !== 200) throw new Error(String(reply.status));
-      const data = reply.body;
-      if (mine !== asking) return;
-      if (hold) {
-        await hold;
-        if (mine !== asking) return;
-      }
-      if (byItself) {
-        await outOfSight();
-        if (mine !== asking) return;
-      }
+  /// What the page says once a page of the list is drawn: on the first,
+  /// the controls the list offers, the tabs, the shelves and the challenge.
+  function drawn({ answer, fresh }) {
+    const data = answer.data || {};
+    if (fresh) {
       offers = { following: data.following === true, made: Array.isArray(data.mades),
         windows: Array.isArray(data.windows) };
       if (!filled) {
@@ -529,79 +510,66 @@ import { browseBar } from "/browse.js";
         fill(windowed, data.windows);
         filled = true;
       }
-      if (data.score) weights = data.score;
-      // As many pictures asked for at once as the first screen shows at
-      // this width: the places of what the list replaces (its skeletons, at
-      // first) that are on it. Twelve left the third row lazy at 1920.
-      const eager = fresh ? [...grid.children].filter((one) => one.getBoundingClientRect().top < innerHeight).length
-        || FIRST_SCREEN : 0;
-      if (fresh) grid.replaceChildren();
-      page = Number(data.page) || (fresh ? 1 : page + 1);
-      // A card once: the front's pick leads, and a page that shifted
-      // while it was read does not repeat one.
-      const pick = !$("pick").hidden && front && front.pick && front.pick.model ? String(front.pick.model.id) : "";
-      if (fresh) listed.clear();
-      for (const model of data.models || []) {
-        const id = String(model && model.id);
-        if (!ID.test(id)) continue;
-        listed.set(id, model);
-        if (id === pick || grid.querySelector(`.model[data-id="${id}"]`)) continue;
-        grid.append(card(model, grid.children.length < eager));
-      }
-      hasMore = Boolean(data.more);
-      $("loading").hidden = true;
-      $("broken").hidden = true;
-      sayNone();
+    }
+    if (data.score) weights = data.score;
+    $("loading").hidden = true;
+    $("broken").hidden = true;
+    sayNone();
+    if (fresh) {
       $("found").textContent = grid.children.length
         ? `${counted(grid.children.length, "model")}${data.more ? ", more below" : ""}` : "";
-      more.hidden = !hasMore;
-      drawTabs();
-      sayFilters();
-      sayScore();
-      drawShelves();
-      if (hold) sayChallenge();
-      history.replaceState(history.state, "", addressOf());
-      document.documentElement.dataset.gallery = "ready";
-      document.documentElement.dataset.pages = String(page);
-    } catch {
-      if (mine !== asking) return;
-      for (const bones of grid.querySelectorAll(".skeleton")) bones.remove();
-      $("loading").hidden = true;
-      $("broken").hidden = false;
-      document.documentElement.dataset.gallery = "broken";
-    } finally {
-      if (mine === asking) {
-        loading = false;
-        more.disabled = false;
-      }
     }
+    drawTabs();
+    sayFilters();
+    sayScore();
+    drawShelves();
+    if (hold) {
+      hold = null;
+      sayChallenge();
+    }
+    document.documentElement.dataset.gallery = "ready";
+    // The pages shown, as the address says the last of them.
+    document.documentElement.dataset.pages = String(paged.state.last);
+  }
+
+  /// A page that did not come: the first, said in place of the list, with
+  /// Retry (Show more's own says so in its place, web/pager.js).
+  function failed({ fresh, trouble }) {
+    if (trouble instanceof Unknown) {
+      for (const select of [size, sort, made, windowed]) select.dataset.wanted = "";
+      q.value = "";
+      instructions.checked = technic.checked = tested.checked = false;
+      kind = tag = "";
+      following = false;
+      history.replaceState(null, "", tests ? "/gallery?tests=1" : "/gallery");
+      paged.restart(1);
+      return;
+    }
+    if (!fresh) return;
+    for (const bones of grid.querySelectorAll(".skeleton")) bones.remove();
+    $("loading").hidden = true;
+    $("broken").hidden = false;
+    document.documentElement.dataset.gallery = "broken";
   }
 
   /// Ask again from the first page, with the address saying what was asked.
   function ask() {
-    page = 0;
-    auto = 0;
-    history.replaceState(null, "", addressOf());
+    history.replaceState(null, "", addressOf({ page: 1 }));
     sayFilters();
     drawTabs();
     drawShelves();
     sayScore();
     document.documentElement.dataset.gallery = "asking";
-    return next(true);
+    return paged.restart(1);
   }
 
-  /// The next page by itself as the end of the list comes within a screen
-  /// of the window, the first three times; then Show more stays for a
-  /// person to press. A screen ahead, so it is mostly drawn before the end
-  /// is in view (outOfSight); a person who got there first sees Show more.
-  function nearEnd() {
-    if (loading || !hasMore || more.hidden || auto >= AUTO) return;
-    const box = more.getBoundingClientRect();
-    if (box.top > innerHeight * 2) return;
-    auto += 1;
-    document.documentElement.dataset.auto = String(auto);
-    next(false, null, true).then(nearEnd);
-  }
+  paged = pager({ list: grid, load, href: (n) => addressOf({ page: n }), noun: ["model", "models"], drawn, failed,
+    counted: () => grid.querySelectorAll(".model").length + (pickTaken && paged.state.first <= 1 && !$("pick").hidden ? 1 : 0),
+    skeleton: () => {
+      const made = document.createElement("template");
+      made.innerHTML = skeletonHtml();
+      return made.content.firstElementChild;
+    } });
 
   // --- a like from a card ---------------------------------------------------
 
@@ -649,14 +617,6 @@ import { browseBar } from "/browse.js";
     if (button) {
       event.preventDefault();
       like(button);
-      return;
-    }
-    // A card opened (its page, or its designer's): kept, so Back puts it
-    // where it was.
-    const link = event.target.closest("a[href]");
-    const opened = link && link.closest(".model");
-    if (opened && ID.test(String(opened.dataset.id))) {
-      history.replaceState({ card: opened.dataset.id, top: Math.round(opened.getBoundingClientRect().top) }, "", addressOf());
     }
   });
 
@@ -705,11 +665,6 @@ import { browseBar } from "/browse.js";
   kind = (given.get("kind") || "").slice(0, 24);
   tag = (given.get("tag") || "").slice(0, 24);
   following = given.get("following") === "1";
-  // How many pages the address shows: asked again, in order.
-  const pages = Math.min(Math.max(Number.parseInt(given.get("page") || "1", 10) || 1, 1), 20);
-  // Where the card opened last was, for Back.
-  const back = history.state && ID.test(String(history.state.card)) ? history.state : null;
-  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
 
   let typing = 0;
   q.addEventListener("input", () => {
@@ -735,21 +690,22 @@ import { browseBar } from "/browse.js";
     kind = tag = "";
     ask();
   });
-  more.addEventListener("click", () => {
-    if (release) release();
-    else if (loading) pressed = true;
-    else next(false);
-  });
-  // "/" to search, the bar of filters' edge once stuck, the kinds' fade.
-  browseBar({ search: q, above: document.querySelector(".gallery-bar"), bar: $("toolbar"), row: $("kinds") });
-  addEventListener("scroll", nearEnd, { passive: true });
-  addEventListener("resize", nearEnd, { passive: true });
+  // "/" to search, and the bar of filters' edge once stuck.
+  browseBar({ search: q, above: document.querySelector(".gallery-bar"), bar: $("toolbar") });
   sayFilters();
   drawTabs();
 
+  $("retry").addEventListener("click", () => {
+    $("broken").hidden = true;
+    $("loading").hidden = false;
+    document.documentElement.dataset.gallery = "asking";
+    paged.start(shownPage(), { restore: false });
+  });
+
   // Signed in or not, before the first question: a module of the site's,
-  // asked for only when this browser keeps a sign-in. Then the pages the
-  // address shows, and the card Back came to, where it was.
+  // asked for only when this browser keeps a sign-in. Then the page the
+  // address shows (and, Back, the pages before it that were shown, and
+  // the card left where it was: web/pager.js).
   (async () => {
     try {
       const account = await import("/account.js");
@@ -758,19 +714,7 @@ import { browseBar } from "/browse.js";
       own = null;
     }
     drawTabs();
-    const shelvesAsked = askShelves({ draw: false });
-    await next(true, shelvesAsked);
-    while (page < pages && hasMore) await next(false);
-    auto = Math.min(AUTO, page - 1);
-    if (back) {
-      // The pick and the shelves move the cards after them: drawn first.
-      if (atFront()) await shelvesAsked;
-      const card = document.querySelector(`#feed .model[data-id="${back.card}"]`);
-      // At once, not the page's smooth scroll (site.css), which a person
-      // coming back would watch run down the list.
-      if (card) scrollTo({ top: Math.max(0, scrollY + card.getBoundingClientRect().top - (Number(back.top) || 0)), behavior: "instant" });
-      document.documentElement.dataset.back = card ? back.card : "lost";
-    }
-    nearEnd();
+    hold = askShelves({ draw: false });
+    await paged.start(pageAsked(location.search));
   })();
 })();

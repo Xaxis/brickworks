@@ -1,6 +1,7 @@
 // The kit page's specimens (web/_kit.html), drawn as the pages draw them.
 import { cardHtml } from "/card.js";
 import { ICONS, avatarHtml, iconButtonHtml, iconHtml, toast } from "/kit.js";
+import { pagerHtml } from "/pager.js";
 
 const $ = (id) => document.getElementById(id);
 const people = [{ handle: "robin", name: "Robin Castell" }, { handle: "sam-builds", name: "Sam" },
@@ -33,3 +34,14 @@ $("cards").innerHTML = [
   { id: "KitModel03", name: "Sports car", parts: 187, author: "Sam", image: "x", owned: { pieces: 187, have: 120 },
     won: [{ title: "October: things that move", way: "hand" }] },
 ].map((model) => cardHtml(model)).join("");
+// A list's pages, as every list draws them; its links go nowhere here.
+{
+  const made = pagerHtml({ id: "kit-pages", first: 2, last: 3, shown: 48, pages: 66, total: 1575, noun: ["set", "sets"],
+    href: (n) => `#pages-h-${n}` });
+  $("pages").innerHTML = `${made.earlier}<p class="note" id="kit-pages">(pages 2 and 3 of the list)</p>${made.after}`;
+}
+
+// A row of eight, more than any window shows: the scroller's fades and its
+// Previous and Next.
+$("row").innerHTML = Array.from({ length: 8 }, (_, n) => cardHtml({ id: `KitRow0${n}`, name: `Model ${n + 1} in a row`,
+  parts: 120 + 37 * n, author: people[n % 4].name })).join("");

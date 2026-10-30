@@ -391,7 +391,7 @@ func answer_rpc(request: Dictionary) -> Variant:
 				jobs.running() != null or _in_hand > 0))
 		asked.emit(name)
 		var call := ToolJobs.Entry.new()
-		var called: Array = await _call(name, input, call, chat_of(params))
+		var called: Array = await _call(name, input, call, chat_of(params), who_of(params))
 		if not bool(called[1]):
 			return _result(sent_id, {"isError": true, "content": [
 				{"type": "text", "text": QUEUED_OUT}]})
@@ -775,7 +775,8 @@ var jobs := ToolJobs.new()
 ## known to be long at once, any other once it has run for 20 s. It keeps
 ## the app until the work ends. While a job holds the app every other call
 ## is told so at once, and [code]job[/code] says how it is going.
-func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: String = "") -> Array:
+func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: String = "",
+		who: String = CLAUDE) -> Array:
 	if name == ToolJobs.TOOL:
 		return [await jobs.answer(input), true]
 	# The fresh look a new design's first save asked for: answered first.
@@ -800,7 +801,7 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 		assistant.progress.connect(_heard)
 	var doing: Callable = func() -> String:
 		return (_doing.left(1).to_upper() + _doing.substr(1) + "…") if not _doing.is_empty() \
-			else "Working on Claude's %s…" % name
+			else "Working on %s's %s…" % [who, name]
 	if name in ["clear_model", "save_model", "review_model"]:
 		return [await jobs.call_tool(name, {}, func(_work: Working.Job) -> Variant:
 			# One step too: a review lays a feature's piece, saving can hand
@@ -810,10 +811,12 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 			var held: Dictionary = _held()
 			_at_work += 1
 			assistant.chat = chat
+			assistant.who = who
 			var said: Variant = await _run_own(name, input)
 			assistant.chat = ""
+			assistant.who = CLAUDE
 			_at_work -= 1
-			_one_step(name, before, chat)
+			_one_step(name, before, chat, who)
 			_hand_and_view_back(held)
 			return said, doing, entry), true]
 	if not await _take_a_turn():
@@ -830,7 +833,7 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 		var answer: Variant = "Cancelled before it began: nothing was done."
 		await _until_whole()
 		if work == null or not work.cancelled:
-			answer = await _run(name, input, work, chat)
+			answer = await _run(name, input, work, chat, who)
 		_hand_back()
 		return answer, doing, entry), true]
 
@@ -847,7 +850,8 @@ func _heard(note: String) -> void:
 ## A tool that takes the app's turn: the window's commands (AppTools), told
 ## the Working job it reports to when it is a job, or the assistant's. What
 ## it changes is one step of the history (see [method _one_step]).
-func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "") -> Variant:
+func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
+		who: String = CLAUDE) -> Variant:
 	# A design going down on the example a first visit opens on: the example
 	# off first, before the call's step begins (Assistant.make_room), so the
 	# design is a model of its own and its Undo leaves that model empty.
@@ -858,6 +862,7 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "")
 	var answer: Variant
 	_at_work += 1
 	assistant.chat = chat
+	assistant.who = who
 	if _the_app_tools().has(name):
 		_the_app_tools().chat = chat
 		answer = await _the_app_tools().run(name, input, work)
@@ -865,8 +870,9 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "")
 	else:
 		answer = await assistant.use_tool(name, input)
 	assistant.chat = ""
+	assistant.who = CLAUDE
 	_at_work -= 1
-	_one_step(name, before, chat)
+	_one_step(name, before, chat, who)
 	_hand_and_view_back(held)
 	return answer
 
@@ -904,13 +910,13 @@ func _before_change(name: String) -> Dictionary:
 
 
 ## Whatever a call from outside changed, as one step of the history, named
-## as Claude's. An edit_model from a session went into no history at all, so
+## as [param who]'s: Claude's, or the model's on the person's key. An edit_model from a session went into no history at all, so
 ## the person's Undo after it took back their own last part and left
 ## Claude's edit standing. A call that keeps its own history (the window's
 ## commands, an edit about a selection) has its steps folded into one, with
 ## whatever it changed that they do not name; any other has the difference
 ## made one step.
-func _one_step(name: String, before: Dictionary, chat: String = "") -> void:
+func _one_step(name: String, before: Dictionary, chat: String = "", who: String = CLAUDE) -> void:
 	if before.is_empty():
 		return
 	var builder: Builder = assistant.builder
@@ -924,7 +930,7 @@ func _one_step(name: String, before: Dictionary, chat: String = "") -> void:
 		# round nothing, and a baseplate part of the build came back scenery.
 		ClaudeStep.record(builder, assistant.world, assistant.scenery, {"was": before["was"],
 			"steps": [before["kept"], builder.steps_now()[1]],
-			"generation": before["generation"], "words": "Claude's %s" % name.replace("_", " ")},
+			"generation": before["generation"], "words": "%s's %s" % [who, name.replace("_", " ")]},
 			int(before["depth"]))
 		builder.fold_since(int(before["depth"]))
 		_mark(builder, chat)
@@ -937,7 +943,7 @@ func _one_step(name: String, before: Dictionary, chat: String = "") -> void:
 	var steps: Array = SelectionScope.steps_back(before["was"], assistant.world,
 		assistant.scenery)
 	if not steps.is_empty():
-		builder.record(steps, "Claude's %s (%s)" % [name.replace("_", " "),
+		builder.record(steps, "%s's %s (%s)" % [who, name.replace("_", " "),
 			SelectionScope.words_for(steps)])
 		_mark(builder, chat)
 		_laid(builder.last_step())
@@ -956,6 +962,21 @@ func _laid(step: Dictionary) -> void:
 ## does not take back the other's (AppTools._undo). Kept in the step
 ## itself, which is the history's own record of it.
 const CHAT_KEY := "brickworks/chat"
+
+
+## Who a call is from, by name, for its step in the history and the words
+## of its job: the model on the person's key names itself on the call's
+## _meta (DesignerLoop); a call that names no one is Claude's, as every
+## other client of these tools has been (docs/PROVIDERS.md, P8).
+const WHO_KEY := "brickworks/who"
+const CLAUDE := "Claude"
+
+
+static func who_of(params: Dictionary) -> String:
+	var meta: Variant = params.get("_meta")
+	var named: String = str((meta as Dictionary).get(WHO_KEY, "")).strip_edges().left(60) \
+		if meta is Dictionary else ""
+	return named if not named.is_empty() else CLAUDE
 
 
 static func chat_of(params: Dictionary) -> String:
