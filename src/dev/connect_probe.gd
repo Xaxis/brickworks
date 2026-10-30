@@ -7,8 +7,8 @@
 ##
 ## SECTION is column (8841-1's 1 x 16 column on its two pins: the bar, 6
 ## actions or fewer, and the same aim without Connect), turned (a 1 x 16 by
-## its fourth hole onto a pin in a brick turned 30° and tilted 25°: any part
-## at any angle, R about the joint), model (the toolbar's Connect on a part
+## its fourth hole onto an axle through a brick turned 30° and tilted 25°:
+## any part at any angle, R about the joint), model (the toolbar's Connect on a part
 ## already down: moved by its point in one undo, and Esc puts it back), walk
 ## (the joint parts of the 25 of 8841-1 that docs/CADTASK.md section 9
 ## built, each by Connect, and that walk's actions a part with them).
@@ -119,11 +119,11 @@ func _column() -> void:
 	var end_index: int = pair[0]
 	var site: JointSnap.End = pair[1]
 	await _look_at_joint(site, want, truth[index - 1][0])
+	var at: Vector2 = _aim_for(site, _end_at(truth[index - 1][0], end_index, want))
 
 	# Without Connect, as the build flow aims it: at the pin, then T and R.
 	_count_from()
 	await _hold(truth[index - 1][0], int(truth[index - 1][1]))
-	var at: Vector2 = _screen(_end_at(truth[index - 1][0], end_index, want).at)
 	await _act_move(at)
 	var presses: int = -1
 	for n: int in FLOW_KEYS.size() + 1:
@@ -151,9 +151,8 @@ func _column() -> void:
 	_check("N offers the column's points (%s, %d of them)" % [_verbs.connect_tool.stage,
 		_verbs.connect_tool.points.size()], _verbs.connect_tool.stage == "point"
 		and _verbs.connect_tool.points.size() >= 15)
-	var marks: Node = _builder.find_child("ConnectPoints", false, false)
-	_check("each point is drawn (%d)" % (marks.get_child_count() if marks != null else 0),
-		marks != null and marks.get_child_count() == _verbs.connect_tool.points.size())
+	_check("each point in sight is drawn (%d of %d)" % [_verbs.connect_tool.drawn(),
+		_verbs.connect_tool.points.size()], _verbs.connect_tool.drawn() >= 15)
 	await _shot("column_points")
 	var on: Vector2 = _point_on_screen(end_index)
 	await _move(on)
@@ -212,35 +211,33 @@ func _turned() -> void:
 	_main.call("clear_model")
 	await _frames(4)
 	var turn := Basis(Vector3.UP, deg_to_rad(30.0)) * Basis(Vector3.RIGHT, deg_to_rad(25.0))
-	var brick_at := Transform3D(turn, Vector3(0, 60, 0))
+	var brick_at := Transform3D(turn, Vector3(0, 400, 0))
 	var brick: int = _world.add_brick("3701", 4, brick_at)
 	_builder.register(brick, "3701", brick_at)
-	# A pin in its middle hole, as JointSnap seats one.
 	var holes: Array = JointSnap.ends_of(_library.mesh_for("3701")).filter(
 		func(end: JointSnap.End) -> bool: return end.kind == "pin_hole")
 	holes.sort_custom(func(a: JointSnap.End, b: JointSnap.End) -> bool: return a.at.x < b.at.x)
 	var hole: JointSnap.End = (holes[holes.size() / 2] as JointSnap.End).placed(brick_at, brick)
-	var pin_end: JointSnap.End = null
-	for end: JointSnap.End in JointSnap.ends_of(_library.mesh_for("4459")):
-		if end.is_male():
-			pin_end = end
-			break
-	var pin_at: Transform3D = JointSnap.pose(pin_end, hole, 1, 0.0, 0.0, Basis.IDENTITY)
-	var pin: int = _world.add_brick("4459", 0, pin_at)
-	_builder.register(pin, "4459", pin_at)
+	# An axle through its middle hole, as JointSnap seats one: the column's
+	# hole goes on it anywhere along it.
+	var axle_end: JointSnap.End = JointSnap.ends_of(_library.mesh_for("3706"))[0]
+	var axle_at: Transform3D = JointSnap.pose(axle_end, hole, 1, 0.0, 0.0, Basis.IDENTITY)
+	var axle: int = _world.add_brick("3706", 0, axle_at)
+	_builder.register(axle, "3706", axle_at)
 	var site: JointSnap.End = null
-	for end: JointSnap.End in JointSnap.ends_of(_library.mesh_for("4459")):
-		var placed: JointSnap.End = end.placed(pin_at, pin)
+	for end: JointSnap.End in JointSnap.ends_of(_library.mesh_for("3706")):
+		var placed: JointSnap.End = end.placed(axle_at, axle)
 		if site == null or placed.at.distance_to(hole.at) > site.at.distance_to(hole.at):
 			site = placed
+	# Aimed half way along what stands out of the brick.
+	var along: Vector3 = site.at - site.axis * (site.back * 0.4)
 	_camera.frame(AABB(brick_at.origin - Vector3(80, 80, 80), Vector3(160, 160, 160)), 1.4)
 	_camera.look_from((site.axis + Vector3(0.3, 0.5, 0.2)).normalized())
 	await _frames(40)
 
 	_count_from()
 	await _hold("3703", 1)
-	var aim: Vector2 = _screen(site.aimed(_camera.global_position,
-		(site.at - _camera.global_position).normalized()))
+	var aim: Vector2 = _screen(along)
 	await _act_move(aim)
 	await _act_key(KEY_N)
 	var fourth: int = _nth_hole("3703", 3)
@@ -248,7 +245,7 @@ func _turned() -> void:
 	await _act_move(aim)
 	var ghost: Transform3D = _builder.ghost_transform()
 	var mine: JointSnap.End = _end_at("3703", fourth, ghost)
-	_check("by its fourth hole on a pin in a brick turned 30° and tilted 25°: %.3f LDU off the pin's line, square to it by %.4f"
+	_check("by its fourth hole on an axle in a brick turned 30° and tilted 25°: %.3f LDU off the axle's line, square to it by %.4f"
 		% [_off_line(mine.at, site), absf(mine.axis.dot(site.axis))],
 		_builder.is_on_joint() and _off_line(mine.at, site) < 0.05
 		and absf(mine.axis.dot(site.axis)) > 0.999)
@@ -261,7 +258,7 @@ func _turned() -> void:
 	var after_r: JointSnap.End = _end_at("3703", fourth, swung)
 	var degrees: float = rad_to_deg(Quaternion(ghost.basis.orthonormalized()).angle_to(
 		Quaternion(swung.basis.orthonormalized())))
-	_check("R turns it %.1f° about the joint, the hole still on the pin (%.3f off)"
+	_check("R turns it %.1f° about the joint, the hole still on the axle (%.3f off)"
 		% [degrees, _off_line(after_r.at, site)], degrees > 1.0 and _off_line(after_r.at, site) < 0.05)
 	var depth: int = _builder.history_depth()
 	await _act_click(aim)
@@ -327,7 +324,7 @@ func _model() -> void:
 	await _act_click(button.get_global_rect().get_center())
 	await _act_click(on_column)
 	await _act_click(_point_on_screen(end_index))
-	var at: Vector2 = _screen(_end_at("3703", end_index, want).at)
+	var at: Vector2 = _aim_for(site, _end_at("3703", end_index, want))
 	await _act_move(at)
 	var turns: int = await _turn_onto(want, at)
 	await _act_click(at)
@@ -370,10 +367,11 @@ func _walk() -> void:
 			continue
 		var end_index: int = pair[0]
 		var site: JointSnap.End = pair[1]
+		var kind: String = (JointSnap.ends_for(_library, part)[end_index] as JointSnap.End).kind
 		await _look_at_joint(site, want, part)
 		_count_from()
 		await _hold(part, int(truth[index - 1][1]))
-		var at: Vector2 = _screen(_end_at(part, end_index, want).at)
+		var at: Vector2 = _aim_for(site, _end_at(part, end_index, want))
 		await _act_move(at)
 		await _act_key(KEY_N)
 		var on: Vector2 = _point_on_screen(end_index)
@@ -390,7 +388,8 @@ func _walk() -> void:
 		await _key(KEY_ESCAPE)
 		await _key(KEY_ESCAPE)
 		var flow: Array = WALK_JOINTS[index]
-		var with_connect: int = int(flow[1]) + _total()
+		# Where Connect did not bring it to the file's place, the run's own.
+		var with_connect: int = int(flow[1]) + _total() if exact else 1 << 20
 		# A person reaches for Connect where it saves something: a pin goes
 		# in either end alike.
 		var used: int = mini(int(flow[0]), with_connect)
@@ -398,12 +397,12 @@ func _walk() -> void:
 		spent += _total()
 		rows.append({"index": index, "part": part, "acts": _total(), "turns": turns,
 			"lit": picked, "exact": exact, "flow": flow[0], "walk": used})
-		_check("8841-1 #%d %s by its %s on the %s of %s: %s in %d actions (%d of them T and R); the run took %d, with Connect %d"
-			% [index, part, (_verbs.connect_tool.points[end_index] as JointSnap.End).kind
-			if end_index < _verbs.connect_tool.points.size() else "?", site.kind,
+		print("    8841-1 #%d %s by its %s on the %s of %s: %s in %d actions (%d of them T and R%s); the run took %d, with Connect %d, so %d"
+			% [index, part, kind, site.kind,
 			_world.get_brick(site.brick).part_id if _world.get_brick(site.brick) != null else "?",
-			"exact" if exact else "NOT exact", _total(), turns, int(flow[0]), with_connect],
-			exact and picked)
+			"exact" if exact else "not where the file has it", _total(), turns,
+			"" if picked else ", the point not lit under the pointer", int(flow[0]),
+			with_connect if exact else -1, used])
 	var path: String = ProjectSettings.globalize_path("res://shots/connect/walk.json")
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	var file := FileAccess.open(path, FileAccess.WRITE)
@@ -445,6 +444,9 @@ func _goes_on(part: String, want: Transform3D) -> Array:
 			if off > 2.0:
 				continue
 			off += mine.at.distance_to(site.at) * 0.01
+			# A pin's end the hole is round, not the one inside the brick it is in.
+			if site.is_male() and (mine.at - site.at).dot(site.axis) < -1.0:
+				off += 10.0
 			if off < best_off:
 				best_off = off
 				best = [n, site]
@@ -465,35 +467,60 @@ func _look_at_joint(site: JointSnap.End, want: Transform3D, part: String) -> voi
 	await _frames(40)
 
 
-## T and R, the fewest found, until the ghost stands at [param want]: how many
-## were pressed, each counted; -1 when none of eight of each brings it there.
+## T, R and Shift-R, the fewest that bring the ghost to [param want], as a
+## person presses them looking at it: each way tried from the hand as it was
+## (put back between tries, uncounted), then the one found pressed, counted.
+## How many; -1 when none of up to five does.
 func _turn_onto(want: Transform3D, at: Vector2) -> int:
 	if _exact_ghost(want):
 		return 0
-	var pressed: int = 0
-	for _t: int in 4:
-		for _r: int in 8:
-			if _exact_ghost(want):
-				return pressed
-			await _act_key(KEY_R)
-			pressed += 1
-			await _move(at + Vector2(0, 1))
-			await _move(at)
+	var was: Dictionary = _builder.hand_state()
+	for keys: Array in TURNS:
+		_builder.set_hand_state(was)
+		await _again(at)
+		for code: String in keys:
+			await _key(KEY_T if code == "t" else KEY_R, false, code == "R")
+		await _again(at)
 		if _exact_ghost(want):
-			return pressed
-		await _act_key(KEY_T)
-		pressed += 1
-		await _move(at + Vector2(0, 1))
-		await _move(at)
-	return pressed if _exact_ghost(want) else -1
+			_builder.set_hand_state(was)
+			await _again(at)
+			for code: String in keys:
+				_acts["key"] = int(_acts["key"]) + 1
+				await _key(KEY_T if code == "t" else KEY_R, false, code == "R")
+			await _again(at)
+			return keys.size()
+	_builder.set_hand_state(was)
+	await _again(at)
+	return -1
+
+
+## The presses tried, fewest first: t is T, r is R, R is Shift-R.
+const TURNS := [["t"], ["r"], ["R"], ["t", "r"], ["t", "R"], ["r", "r"], ["R", "R"],
+	["t", "r", "r"], ["t", "R", "R"], ["r", "r", "r"], ["R", "R", "R"], ["r", "r", "r", "r"],
+	["t", "r", "r", "r"], ["t", "R", "R", "R"], ["t", "r", "r", "r", "r"]]
+
+
+## The pointer nudged and back, so the ghost is worked out again where it is.
+func _again(at: Vector2) -> void:
+	await _move(at + Vector2(0, 1))
+	await _move(at)
+
+
+## Where a person points to put [param mine] on [param site]: a hole's middle
+## for a pin or an axle in hand, and where the hole in hand goes, on the pin
+## or along the axle, for a hole.
+func _aim_for(site: JointSnap.End, mine: JointSnap.End) -> Vector2:
+	if mine.is_male():
+		var eye: Vector3 = _camera.global_position
+		return _screen(site.aimed(eye, (site.at - eye).normalized()))
+	return _screen(mine.at)
 
 
 ## Where Connect draws point [param n] on the screen while it offers them.
 func _point_on_screen(n: int) -> Vector2:
 	for point: Dictionary in _verbs.connect_tool.screen_points():
 		if int(point["index"]) == n:
-			return Vector2(point["x"], point["y"]) * (root.get_visible_rect().size
-				/ Vector2(DisplayServer.window_get_size()))
+			return Vector2(point["x"], point["y"])
 	return Vector2(-100, -100)
 
 

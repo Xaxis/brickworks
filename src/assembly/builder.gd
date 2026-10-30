@@ -2377,8 +2377,10 @@ const _JOINT_TRIES := 64
 
 func _best_on_joint(options: Array, site: JointSnap.End, basis: Basis) -> void:
 	var best_joins: int = -1
+	var best_under: float = INF
 	if _joint_last_fits:
 		best_joins = _joins_made(_joint_last_at)
+		best_under = _under_ground(_joint_last_at)
 	var tries: int = 0
 	for n: int in options.size():
 		var way: int = posmod(_joint_way + n, options.size())
@@ -2400,13 +2402,24 @@ func _best_on_joint(options: Array, site: JointSnap.End, basis: Basis) -> void:
 			if not room_for(held_part, at, true, true):
 				continue
 			var joins: int = _joins_made(at)
-			if joins > best_joins:
+			# Of two that join as many, the one above the ground: a 1 x 16
+			# by its end hole on two pins stood up them, not down through
+			# the floor, which holds a part that hangs below the model.
+			var under: float = _under_ground(at)
+			if joins > best_joins or (joins == best_joins and under < best_under - 0.5):
 				best_joins = joins
+				best_under = under
 				_joint_way = way
 				_joint_roll = int(turn[0])
 				_joint_extra = float(turn[1])
 				_joint_last_at = at
 				_joint_last_fits = true
+
+
+## How far the part in hand at [param at] reaches below the ground, in LDU.
+func _under_ground(at: Transform3D) -> float:
+	var part: Lbm.PartMesh = library.mesh_for(held_part)
+	return maxf(0.0, -part.lowest_at(at)) if part != null else 0.0
 
 
 ## R on a joint: the next stop about it, a step on, or sooner where the
@@ -3454,11 +3467,18 @@ func tip_held(steps: int = 1) -> void:
 		# Swung onto another end, if this way can be: the first such turn.
 		_joint_extra = 0.0
 		if not _joint_options.is_empty():
-			var closings: Array = _closings(_joint_options,
-				posmod(_joint_way, _joint_options.size()), _joint_site, _joint_basis)
+			var way: int = posmod(_joint_way, _joint_options.size())
+			var closings: Array = _closings(_joint_options, way, _joint_site, _joint_basis)
 			if not closings.is_empty():
 				_joint_roll = 0
 				_joint_extra = closings[0]
+				# The first with room above the ground, as the way on is chosen.
+				for closing: float in closings:
+					var at: Transform3D = _joint_pose(_joint_options, way, 0, _joint_site,
+						_joint_basis, closing)
+					if room_for(held_part, at, true, true) and _under_ground(at) < 0.5:
+						_joint_extra = closing
+						break
 		return
 	var faces: Array[String] = BrickLattice.FACES
 	var at: int = maxi(faces.find(held_face), 0)

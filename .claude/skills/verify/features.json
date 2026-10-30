@@ -727,6 +727,14 @@
       "tests": []
     },
     {
+      "id": "cli:connect probe",
+      "kind": "cli",
+      "entry": "src/dev/connect_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/connect_probe.gd  (8841-1's column on its pins in 6 actions or fewer, and the same aim without Connect; a 1 x 16 by its fourth hole on a pin in a brick turned 30 and tilted 25 degrees; the toolbar's Connect on a part down, one undo, Esc puts it back; 8841-1's joint parts by Connect and the walk's actions a part; -- only=column|turned|model|walk; PROBE_SIZE=1280x720)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:contrast probe",
       "kind": "cli",
       "entry": "src/dev/contrast_probe.gd",
@@ -3777,6 +3785,14 @@
       "entry": "web/authorize.html",
       "reach": "https://brickworks.diy/oauth/authorize?...   (Claude sends people here; tools/web/oauth_flow.mjs drives it)",
       "area": "account",
+      "tests": []
+    },
+    {
+      "id": "ui:connect by a point",
+      "kind": "ui",
+      "entry": "src/ui/connect_tool.gd",
+      "reach": "godot --path .  (a part in hand, N or the toolbar's Connect: its pins, holes, axles, bars and clips drawn in blue; click one, then the pin or hole it goes on; R turns it about the joint, Esc stops. With nothing in hand the tool takes the part clicked off the model, one undo with its putting down)",
+      "area": "building",
       "tests": []
     },
     {

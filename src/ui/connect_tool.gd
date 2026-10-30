@@ -31,9 +31,6 @@ extends Node
 ## How near the pointer has to be to a point to pick it, in the window's
 ## pixels at the window's own scale.
 const PICK := 18.0
-## How big a point is drawn, in LDU: a ring round a hole, a peg along a pin.
-const RING := 5.0
-const PEG := 2.6
 
 var builder: Builder
 var world: BrickWorld
@@ -62,7 +59,6 @@ var _taken: String = ""
 ## The part and pose the points are drawn for.
 var _part: String = ""
 var _at := Transform3D.IDENTITY
-var _marks: Node3D
 var _eat_release: bool = false
 
 
@@ -339,78 +335,68 @@ func _scale() -> float:
 # -- the points drawn ------------------------------------------------------------
 
 
-## A ring round each hole and a peg along each pin, drawn over the part so
-## the ones inside it show, as Studio draws its connectors in blue.
+## A ring for each hole and a dot for each pin, axle, bar and clip, drawn
+## over the model at a size the screen keeps, so the ones inside the part
+## and the ones on a part its own colour both show, as Studio draws its
+## connectors in blue.
+const DOT := 6.0
+const EDGE := Color(0.05, 0.07, 0.12, 0.9)
+const FILL := Color(0.30, 0.58, 1.0)
+const LIT := Color(1.0, 0.85, 0.3)
+
+
 func _draw_marks() -> void:
-	_drop_marks()
-	_marks = Node3D.new()
-	_marks.name = "ConnectPoints"
-	builder.add_child(_marks)
-	for n: int in points.size():
-		var end_at: JointSnap.End = (points[n] as JointSnap.End).placed(_at, 0)
-		var mark := MeshInstance3D.new()
-		if end_at.is_male() or end_at.is_round():
-			var peg := CylinderMesh.new()
-			peg.top_radius = PEG
-			peg.bottom_radius = PEG
-			peg.height = clampf(end_at.reach if end_at.is_round() else
-				minf(end_at.reach, BrickLattice.STUD), 4.0, BrickLattice.STUD)
-			peg.radial_segments = 12
-			peg.rings = 1
-			mark.mesh = peg
-		else:
-			var ring := TorusMesh.new()
-			ring.inner_radius = RING * 0.62
-			ring.outer_radius = RING
-			ring.rings = 16
-			ring.ring_segments = 8
-			mark.mesh = ring
-		mark.material_override = _material(false)
-		mark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		# Cylinders and tori stand along Y: turned so Y runs along the point.
-		mark.transform = Transform3D(_along(end_at.axis), _middle(n))
-		_marks.add_child(mark)
+	if _overlay == null:
+		var layer := CanvasLayer.new()
+		layer.name = "ConnectPoints"
+		# Over the model, under the menus and dialogs.
+		layer.layer = 2
+		add_child(layer)
+		_overlay = Control.new()
+		_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_overlay.draw.connect(_draw_points)
+		layer.add_child(_overlay)
+	_overlay.visible = true
+	_overlay.queue_redraw()
 
 
 func _light() -> void:
-	if _marks == null:
-		return
-	for n: int in _marks.get_child_count():
-		var mark: MeshInstance3D = _marks.get_child(n)
-		mark.material_override = _material(n == lit)
-		mark.scale = Vector3.ONE * (1.35 if n == lit else 1.0)
+	if _overlay != null:
+		_overlay.queue_redraw()
 
 
 func _drop_marks() -> void:
-	if _marks != null:
-		_marks.queue_free()
-		_marks = null
+	if _overlay != null:
+		_overlay.visible = false
 
 
-static var _lit_material: StandardMaterial3D
-static var _plain_material: StandardMaterial3D
+## How many points are drawn now, for a probe.
+func drawn() -> int:
+	return screen_points().size() if _overlay != null and _overlay.visible else 0
 
 
-static func _material(lit_up: bool) -> StandardMaterial3D:
-	if lit_up and _lit_material != null:
-		return _lit_material
-	if not lit_up and _plain_material != null:
-		return _plain_material
-	var made := StandardMaterial3D.new()
-	made.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	made.no_depth_test = true
-	made.render_priority = 10
-	made.albedo_color = Look.ACCENT_HOVER if lit_up else Color(0.25, 0.52, 1.0)
-	if lit_up:
-		_lit_material = made
-	else:
-		_plain_material = made
-	return made
+func _process(_delta: float) -> void:
+	# Drawn again as the view turns: a point round the back comes into sight.
+	if stage == "point" and _overlay != null and _overlay.visible:
+		_overlay.queue_redraw()
 
 
-## A basis whose Y is [param axis].
-static func _along(axis: Vector3) -> Basis:
-	var y: Vector3 = axis.normalized()
-	var x: Vector3 = Vector3.UP.cross(y) if absf(y.y) < 0.99 else Vector3.RIGHT.cross(y)
-	x = x.normalized()
-	return Basis(x, y, x.cross(y).normalized()).orthonormalized()
+func _draw_points() -> void:
+	var scale: float = _scale()
+	for point: Dictionary in screen_points():
+		var at := Vector2(point["x"], point["y"])
+		var lit_up: bool = int(point["index"]) == lit
+		var r: float = DOT * scale * (1.4 if lit_up else 1.0)
+		var colour: Color = LIT if lit_up else FILL
+		var end_at: JointSnap.End = points[int(point["index"])]
+		if end_at.is_hole() or end_at.is_wrap() or end_at.is_hinge():
+			# A hole is a ring: what goes into it, round its middle.
+			_overlay.draw_arc(at, r, 0.0, TAU, 24, EDGE, 4.0 * scale, true)
+			_overlay.draw_arc(at, r, 0.0, TAU, 24, colour, 2.2 * scale, true)
+		else:
+			_overlay.draw_circle(at, r + 1.5 * scale, EDGE)
+			_overlay.draw_circle(at, r, colour)
+
+
+var _overlay: Control

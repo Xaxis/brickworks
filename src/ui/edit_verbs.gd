@@ -143,6 +143,11 @@ func handle_key(key: InputEventKey) -> bool:
 			else:
 				view_tool("pan")
 			return true
+		KEY_N:
+			# N alone is Connect (ConnectTool); Shift-N a new step, Ctrl-N New.
+			if not held and not key.shift_pressed and not key.alt_pressed:
+				start_connect()
+				return true
 		KEY_O:
 			# O the Orbit tool, Z the Zoom tool: the view's own tools, whose
 			# left drag only moves the view. Ctrl-O is Open, Ctrl-Z undo.
