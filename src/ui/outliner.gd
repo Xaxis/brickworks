@@ -470,10 +470,18 @@ func _on_selected() -> void:
 	if path.is_empty() or path == SUGGESTED:
 		_update_strip()
 		return
+	# After the tree's own signal returns: choosing a row in another level
+	# enters it, which draws the tree again, and the tree was still walking
+	# the rows that freed (assembly_probe crashed on it, 2026-10-30).
 	if path.begins_with(SUGGESTION):
-		_select_suggestion(path.trim_prefix(SUGGESTION).to_int())
-		_update_strip()
+		_select_suggestion.call_deferred(path.trim_prefix(SUGGESTION).to_int())
+		_update_strip.call_deferred()
 		return
+	_choose.call_deferred(path)
+
+
+## A row's parts selected.
+func _choose(path: String) -> void:
 	# To the level where this row is one thing to click: the assembly it
 	# is in, entered (or the model, for a row at the top).
 	if Assemblies.parent_of(path) != assemblies.entered:

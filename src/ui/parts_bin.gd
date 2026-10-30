@@ -275,6 +275,10 @@ func _build() -> void:
 	_grid.add_theme_constant_override("v_separation", int(_z(4)))
 	_scroll.add_child(_grid)
 	_sight = ThumbTile.Sight.new(_scroll, _grid)
+	_scroll.resized.connect(func() -> void:
+		# Not the techniques, a list of one across (_fill_techniques).
+		if _grid.columns > 1:
+			_grid.columns = _tiles_across())
 
 	_status = Label.new()
 	_status.add_theme_font_size_override("font_size", ceili(_z(12)))
@@ -654,7 +658,10 @@ func _fit_palette() -> void:
 		_category_scroll.custom_minimum_size.y = _chip_tall * rows \
 			+ float(_category_row.get_theme_constant("v_separation")) * (rows - 1)
 	var wants: float = _palette.get_combined_minimum_size().y
-	var tall: float = clampf(minf(wants, tall_column * PALETTE_SHARE), PALETTE_FLOOR,
+	# A laptop's short column keeps its room for parts: a row and a half of
+	# colours there, the rest a scroll or a search away.
+	var share: float = PALETTE_SHARE if tall_column >= SHORT else 0.0
+	var tall: float = clampf(minf(wants, tall_column * share), PALETTE_FLOOR,
 		maxf(wants, PALETTE_FLOOR))
 	tall = roundf(tall)
 	if absf(_palette_scroll.custom_minimum_size.y - tall) > 0.5:
@@ -680,7 +687,8 @@ const PALETTE_SHARE := 0.14
 const PALETTE_FLOOR := 48.0
 ## A row of parts: a cell and the space under it.
 const PARTS_LEAST := 88.0
-## A column shorter than this shows one row of categories, not two.
+## A column shorter than this shows one row of categories, not two, and
+## the palette at its floor.
 const SHORT := 700.0
 var _chip_tall: float = 0.0
 
@@ -1626,9 +1634,22 @@ func _fill_grid() -> void:
 	_cells.clear()
 	_shown = 0
 	_scroll.scroll_vertical = 0
-	_grid.columns = COLUMNS
+	_grid.columns = _tiles_across()
 	_fold()
 	_show_more(FIRST_PAGE)
+
+
+## How many tiles a row holds: as many as the bin's width has room for, and
+## COLUMNS at the least. The left-hand column is wider where the window has
+## room (Main.PARTS_WIDE), and the parts go across it: four across, a laptop
+## saw 12 of them. A phone's sheet keeps its four, for a finger.
+func _tiles_across() -> int:
+	if by_finger:
+		return COLUMNS
+	var gap: float = float(_grid.get_theme_constant("h_separation"))
+	var room: float = _scroll.size.x - _scroll.get_v_scroll_bar().get_combined_minimum_size().x
+	# A tile is _z(74) across (_make_cell).
+	return maxi(COLUMNS, floori((room + gap) / (_z(74) + gap)))
 
 
 ## How many tiles a search shows at once, before the rest are added as the

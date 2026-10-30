@@ -131,6 +131,9 @@ export async function controlsWith(page, names, ms = 10000, { any = false } = {}
 
 // The assistant's controls, which live in the right-hand column.
 const ASSISTANT = /^(key_field|use_key|change_key|brief|build|stop|connect_claude|claude_|connector_)/;
+// The model tree's and the properties' controls: down the right-hand
+// column, which the assistant shares, or a phone's drawer down the left.
+const PROPERTIES = /^(prop_|properties$|outliner|sections_)/;
 
 /// Open the column a control lives in, if it is folded, by its rail — as a
 /// person does. A window under the design width (1600 units across: every
@@ -147,7 +150,7 @@ export async function openColumnFor(page, name) {
   const everything = await page.evaluate(() => window.brickworksState || {});
   const state = everything.columns || null;
   if (!state) return false;
-  const column = ASSISTANT.test(name) ? "assistant" : "parts";
+  const column = ASSISTANT.test(name) ? "assistant" : PROPERTIES.test(name) ? "properties" : "parts";
   if (column === "assistant" && everything.assistant === false) return turnAssistantOn(page);
   if (state[column] !== false) return false;
   const rail = await page.evaluate((n) => (window.brickworksControls || {})[n], `${column}_rail`);

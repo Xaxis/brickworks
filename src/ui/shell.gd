@@ -364,11 +364,11 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	outliner.set_open(bool(ShellPrefs.value("outliner_open")))
 
 
-## A section of the left-hand column, from the View menu or the toolbar:
-## with its column folded, the column opens with it open (a narrow window
-## folds the assistant to make room); else it folds or opens.
+## A section of a side column, from the View menu or the toolbar: with its
+## column folded, the column opens with it open (a narrow window folds the
+## other side to make room); else it folds or opens.
 func _toggle_section(section: Control) -> void:
-	var dock: SideDock = app.get("_bin_dock")
+	var dock: SideDock = SideDock.of(section)
 	if not dock.is_open():
 		section.call("set_open", true)
 		dock.set_open(true)
@@ -377,7 +377,7 @@ func _toggle_section(section: Control) -> void:
 
 
 func _section_shown(section: Control) -> bool:
-	return (app.get("_bin_dock") as SideDock).is_open() and bool(section.call("is_open"))
+	return SideDock.of(section).is_open() and bool(section.call("is_open"))
 
 
 ## Define one command.
@@ -980,7 +980,7 @@ func _define() -> void:
 		"What is selected: its part, colour, where it stands and what it is joined to")
 	_ticked("panel_properties", func() -> bool: return _section_shown(inspector))
 	_add("show_properties", "Properties", 0, func() -> void:
-		(app.get("_bin_dock") as SideDock).set_open(true)
+		SideDock.of(inspector).set_open(true)
 		inspector.set_open(true), selected,
 		"What it is, its colour by every name, where it stands and what it is joined to")
 	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown()))

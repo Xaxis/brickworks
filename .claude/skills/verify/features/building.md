@@ -196,12 +196,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   in Tools. Only Place shows the ghost; a part carried by a drag, Move or Clone
   shows its own. `V` is Select, `Q` Place; `Esc` closes whatever is up and goes
   back to Select with nothing in hand, in one press.
-- `properties panel` (`src/ui/inspector.gd`): in the left-hand column, under
-  the parts bin and the model tree and over the colours (`docked panels`);
-  View, Properties with the column folded opens it with them. Nothing
-  selected, it is its header alone ("nothing selected", `Inspector.is_idle`)
-  and the parts grid has its room: an empty Properties took 200 px of the
-  column at 1440 x 900, and the grid had room for two rows (2026-10-12). One part: its name, LDraw and BrickLink numbers, its colour by
+- `properties panel` (`src/ui/inspector.gd`): in the right-hand column, under
+  the model tree (`docked panels`); View, Properties with the column folded,
+  or showing the assistant, opens it on them (`SideDock.of`). Nothing
+  selected, it is its header and the floor alone ("nothing selected",
+  `Inspector.is_idle`) and the tree has the column. With a part selected it
+  is as tall as all it holds (`PanelStack.keep_whole`), the tree giving back
+  room: at 1280 x 720 every field is in sight, where in the left column it
+  showed X and Y and the rest behind a scroller (appux371, 2026-10-30).
+  Probe: `columns_probe`. One part: its name, LDraw and BrickLink numbers, its colour by
   LDraw's name and code, LEGO's name and number, BrickLink's and Rebrickable's;
   X, Y, Z in LDU and its turn in degrees, typed over or stepped to move or turn
   it (refused and put back where there is no room); what it is joined to,
@@ -210,35 +213,44 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   how many of what, the colours, the size in studs and bricks, the group's
   corner to type over. Folds to its header; scrolls when the column gives it
   less room than it needs.
-- `docked panels` (`src/ui/panel_stack.gd`, `Main._fit_panels`): the left
-  column holds everything for building by hand, the parts bin with the model
-  tree, the properties and the colours under it (`PanelStack`), as Studio
-  keeps its palettes down the left with the colours at the foot, and Blender
-  stacks its outliner over its properties. The colours are as tall as the
-  column says (`PartsBin._fit_palette`: 14% of it, two category rows from a
-  700-unit column), so a part taken into hand, a brick selected or the tree
-  opened moves the parts grid's foot and never the palette; the grid takes
-  the rest — four rows and more at 1440 x 900 with nothing selected, where it
-  had two; the right column is the assistant's alone. (Stacked over the
-  assistant they would not fit: waiting for a key it asks for 783 units of a
-  laptop column's 666 to 883.) The tree and the properties fold to their
-  headers (the tree starts folded) and the bar between two drags the height
-  of the one that is not the bin; the bin has the rest. The model's part of
-  the window is what is left, with nothing over it but the view cube: the
-  tree and the properties floated over its top corners, where clicks meant
-  for a part landed on them, and at 1100 x 700 they left no room to build.
-  The sub-assembly banner and the offer to seat old parts are in a strip above
-  the model (`Main._notices`), not over it. Below 1600 units across (every
-  laptop: 1100 x 700, 1280 x 720, 1440 x 900 at any density) the columns take
-  turns: opening one folds the other (`Main._column_opening`) and the model
-  keeps over 60% of the width. A first visit shows the assistant, the parts
-  bin folded to its rail (`narrow_side` "assistant": designing with Claude is
-  what the landing page sends people in for); a person who switches keeps
-  their choice, and a part put in hand (Q, the bin, the eyedropper) brings
-  the bin out (`Main._bring_out_bin`). On a phone they are drawers, as
-  before, and nothing brings one out over the model. Each rail carries its
-  icon and its name ("Parts", "Assistant"), tinted with the accent down its
-  edge while folded, and switching is one click on it. A folded column's
+- `docked panels` (`src/ui/panel_stack.gd`, `src/ui/side_dock.gd`,
+  `Main._fit_panels`, 2026-10-30, appux371's A10): the left column is the
+  parts bin with its colours under it, as Studio keeps its parts palette down
+  the left, 500 units wide for six tiles across (`Main.PARTS_WIDE`,
+  `PartsBin._tiles_across`: as many as the width holds, four on a phone);
+  the right column is the model tree over the properties, as
+  Figma, Blender and Onshape keep the inspector on the right, with the
+  assistant as a tab beside them (`SideDock.share_edge`: the two rails one
+  over another in one strip, one of the two showing; opening one while the
+  other shows swaps them where they stand). In one column with the bin the
+  tree and the properties left it 8 parts in sight at 1280 x 720 and the
+  properties X and Y. The colours are as tall as the column says
+  (`PartsBin._fit_palette`: 14% of it, two category rows from a 700-unit
+  column; under that a row and a half of colours and one row of
+  categories, so a laptop's 1280 x 720 has four rows of six parts in
+  sight), so a part taken into hand moves the parts grid's foot and never
+  the palette. In the right column the tree has its dragged height and the
+  properties the rest, all they hold in sight (`PanelStack.keep_whole`);
+  with nothing selected the tree has the column (`PanelStack._filler`). The
+  bar between two drags the height of the one that does not fill. The tree
+  comes out of its fold once, the first time a device has the right column
+  (`right_column`): folded, the column was an empty Properties. The model's
+  part of the window is what is left, with nothing over it but the view cube:
+  the tree and the properties floated over its top corners, where clicks
+  meant for a part landed on them. The sub-assembly banner and the offer to
+  seat old parts are in a strip above the model (`Main._notices`), not over
+  it. Both columns show while the model keeps 480 units across
+  (`MODEL_ROOM`): 1280 x 720 (1391 units) keeps 499; under about 1370 units
+  (a window under about 1,260 px) the columns take turns, opening one folding
+  the other side's (`Main._column_opening`), and a part put in hand (Q, the
+  bin, the eyedropper) brings the bin out (`Main._bring_out_bin`). The
+  assistant turned on opens as the right column's tab, the bin open beside
+  it. On a phone or a tablet they are drawers, as before: the drawer down the
+  left holds the tree, the properties and the colours, and there is no right
+  column. Each rail carries its icon and its name ("Parts", "Properties",
+  "Assistant"), tinted with the accent down its edge while folded, and
+  switching is one click on it. Probe: `columns_probe` (1280 x 720; `--
+  --saved` loads a layout kept before the right column). A folded column's
   content is hidden, not clipped: its fields cannot take the keys and the
   page is not told its buttons are there. The 3D view is centred on the
   model's part of the window, and glides over as a column folds or opens
@@ -809,11 +821,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`set_assistant(true)`). The desktop's `--mcp` port is asked for on the
   command line and is not held.
 - `remembered layout` (`src/ui/shell_prefs.gd`): the columns open or folded
-  (`parts_open`, `assistant_open` for a wide window; `narrow_side`, "parts" or
-  "assistant", for which one a narrow window shows; a first visit opens on the
-  parts, the assistant folded until asked for), the model tree and the
-  properties folded and their heights in the column (`tree_height`,
-  `properties_height`), the key
+  (`parts_open`, and the right column's tab, `assistant_open` or else
+  `properties_open`, for a wide window; `narrow_side`, "parts", "properties"
+  or "assistant", for which one a narrow window shows; a first visit opens on
+  the parts and the properties, the assistant folded until asked for; a
+  layout kept before the right column loads as it was, the assistant open
+  being its tab), the model tree and the properties folded and their heights
+  in their column (`tree_height`, `properties_height`), the key
   strip, the grid, the snap and the turn step are kept in `user://shell.cfg`
   and come back next time; a narrow window shows one column without
   forgetting how a wide one had them. Not read or written under
@@ -870,8 +884,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   hand (`Assemblies.unmirror`). Probe: `assembly_probe` (windowed), which saves
   as Save does (with the steps) and finds each copy the one it was, and also
   opens `vendor/omr`'s 31037 and finds its two propellers as two copies.
-- `model tree`: under the parts bin in the left-hand column (View, Model
-  tree, or its header) lists the
+- `model tree`: at the top of the right-hand column, over the properties
+  (View, Model tree, or its header) lists the
   model and its sub-assemblies inside one another with their part counts. A
   row selects its parts, a double-click edits inside it, `F2` renames it in
   place, its eye and lock hide and lock it whole, and dragging a row onto

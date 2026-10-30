@@ -664,11 +664,14 @@ func _the_shell() -> void:
 	await _shot("grid")
 	shell.run("grid")
 	_check("...and takes them away", not shell.grid.visible)
-	# The properties are under the parts bin, in the left-hand column.
-	var column: SideDock = _main.get("_bin_dock")
-	_check("the properties are in the column beside the model, under the parts bin (%s in %s)"
+	# The properties are down the right, under the model tree, the parts bin
+	# having the left to itself (docs/APP_UX.md A10).
+	var column: SideDock = _main.get("_props_dock")
+	_check("the properties are in the right-hand column, the parts bin's on the left (%s in %s)"
 		% [str(inspector.get_global_rect()), str(column.get_global_rect())],
-		not column.is_open() or column.get_global_rect().encloses(inspector.get_global_rect()))
+		SideDock.of(inspector) == column and column.get_global_rect().position.x
+		> (_main.get("_bin_dock") as SideDock).get_global_rect().end.x
+		and (not column.is_open() or column.get_global_rect().encloses(inspector.get_global_rect())))
 	if not column.is_open():
 		shell.run("panel_properties")
 		await _frames(30)
@@ -1878,9 +1881,11 @@ func _a_small_laptop() -> void:
 	var scale: float = root.get_final_transform().get_scale().y
 	_check("this window is drawn at %.2f" % scale, scale >= 0.9 - 0.001)
 	var shell: Shell = _main.get("_shell")
-	# One column beside the model, docked: nothing over the model, and the
-	# model keeps most of the width. The model tree and the properties lay
-	# over its top corners, beside both columns, and it had 53%.
+	# Both columns beside the model, docked: nothing over the model, and the
+	# model keeps its room between them (Main.MODEL_ROOM). The model tree
+	# and the properties lay over its top corners, beside both columns; one
+	# column showed at a time after that, the bin with 8 parts in sight and
+	# the properties behind a scroller (appux371 A10).
 	var cover: Dictionary = _main.call("model_cover")
 	var across: float = root.get_visible_rect().size.x
 	var model: Rect2 = cover["view"]
@@ -1888,8 +1893,9 @@ func _a_small_laptop() -> void:
 		% [(cover["covered"] as Array).size(), int(cover["samples"])],
 		(cover["covered"] as Array).is_empty())
 	if DisplayServer.window_get_size() == Vector2i(1280, 720):
-		_check("...and the model keeps %.0f%% of the width (columns %s)" % [
-			100.0 * model.size.x / across, _main.get("_columns")], model.size.x >= across * 0.6)
+		_check("...and the model keeps %.0f units of %.0f, both columns beside it (columns %s)"
+			% [model.size.x, across, _main.get("_columns")],
+			model.size.x >= 480.0 and _main.get("_columns") == "wide")
 	await _shot("laptop_1280x720")
 	await _key(KEY_COMMA)
 	var controls: ControlsDialog = _main.get("_controls")
@@ -2486,6 +2492,10 @@ func _the_grid_has_room() -> void:
 	if _bricks_near(Vector3(-60, 0, 20)).is_empty():
 		_put("3001", 4, Vector3(-60, 24, 20))
 	dock.set_open(true)
+	# The properties are down the right, a tab beside the assistant's,
+	# which the step before left showing: brought back by their rail.
+	if _main.get("_props_dock") != null:
+		await _show_column("_props_dock")
 	shell.outliner.set_open(false)
 	shell.inspector.set_open(true)
 	_builder.clear_selection()
@@ -2727,8 +2737,8 @@ func _show_column(dock_name: String) -> void:
 		return
 	await _click(dock.rail().get_global_rect().get_center())
 	await _frames(30)
-	_check("its rail opens the %s" % ("parts bin, the model tree and the properties"
-		if dock_name == "_bin_dock" else "assistant"), dock.is_open())
+	_check("its rail opens the %s" % {"_bin_dock": "parts bin",
+		"_props_dock": "model tree and the properties"}.get(dock_name, "assistant"), dock.is_open())
 
 
 func _frames(count: int) -> void:
