@@ -32,7 +32,7 @@ ui:keys of one's own
 
 ## Docked panels {#panels}
 
-Fold a panel by its header, and drag the bar between two to share the room. A click on a column's strip folds it away to the edge, and another brings it back. In a window narrower than about 1,260 pixels, one column shows beside the model at a time. **View** turns each panel on or off, and [[Tab]] shows or hides them all. Brickworks remembers the layout, the folds and the snap you chose, and starts with them next time.
+Fold a panel by its header, and drag the bar between two to share the room. A click on a column's strip folds it away to the edge, and another brings it back. The model keeps at least 60% of the window's width, so in most windows one column shows beside it at a time, and opening one folds the other; a window about twice as wide as it is tall shows both. **View** turns each panel on or off, and [[Tab]] shows or hides them all. Brickworks remembers the layout, the folds and the snap you chose, and starts with them next time.
 
 <!-- covers
 ui:docked panels

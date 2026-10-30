@@ -859,7 +859,8 @@ func _text_fields_give_keys_back() -> void:
 	if not any.is_empty():
 		_select_only([(any[0] as BrickWorld.Brick).id])
 		await _frames(20)
-		await _show_column("_bin_dock")
+		# The properties' column, as a person opens it by its rail.
+		await _show_column(_column_of(shell.inspector))
 		var x_field: LineEdit = shell.inspector._x.get_line_edit()
 		var was_x: float = (any[0] as BrickWorld.Brick).transform.origin.x
 		await _click(x_field.get_global_rect().get_center())
@@ -1887,11 +1888,11 @@ func _a_small_laptop() -> void:
 	var scale: float = root.get_final_transform().get_scale().y
 	_check("this window is drawn at %.2f" % scale, scale >= 0.9 - 0.001)
 	var shell: Shell = _main.get("_shell")
-	# Both columns beside the model, docked: nothing over the model, and the
-	# model keeps its room between them (Main.MODEL_ROOM). The model tree
-	# and the properties lay over its top corners, beside both columns; one
-	# column showed at a time after that, the bin with 8 parts in sight and
-	# the properties behind a scroller (appux371 A10).
+	# One column beside the model, docked: nothing over the model, and the
+	# model keeps most of the width (Main.MODEL_SHARE). The model tree and
+	# the properties lay over its top corners, beside both columns, and it
+	# had 53%; both columns open, with the tree and the properties down the
+	# right, it had 41% of 1400 x 900.
 	var cover: Dictionary = _main.call("model_cover")
 	var across: float = root.get_visible_rect().size.x
 	var model: Rect2 = cover["view"]
@@ -1899,9 +1900,8 @@ func _a_small_laptop() -> void:
 		% [(cover["covered"] as Array).size(), int(cover["samples"])],
 		(cover["covered"] as Array).is_empty())
 	if DisplayServer.window_get_size() == Vector2i(1280, 720):
-		_check("...and the model keeps %.0f units of %.0f, both columns beside it (columns %s)"
-			% [model.size.x, across, _main.get("_columns")],
-			model.size.x >= 480.0 and _main.get("_columns") == "wide")
+		_check("...and the model keeps %.0f%% of the width (columns %s)" % [
+			100.0 * model.size.x / across, _main.get("_columns")], model.size.x >= across * 0.6)
 	await _shot("laptop_1280x720")
 	await _key(KEY_COMMA)
 	var controls: ControlsDialog = _main.get("_controls")
@@ -2064,11 +2064,11 @@ func _floor_menu() -> void:
 	# The model's own properties: nothing selected, the floor and its
 	# colour under the header, and "Part of the model".
 	_builder.clear_selection()
+	await _show_column(_column_of(shell.inspector))
 	await _frames(10)
 	var picker: FloorPicker = shell.inspector.floor_picker
 	_check("with nothing selected, the properties say what the model stands on",
-		picker.is_visible_in_tree() or not shell.inspector.is_open()
-		or not (_main.get("_bin_dock") as SideDock).is_open())
+		picker.is_visible_in_tree() or not shell.inspector.is_open())
 	picker.show_floor(_store.model_floor, false)
 	var choose: OptionButton = picker._kind
 	choose.select(1)
@@ -2766,8 +2766,10 @@ func _the_grid_has_room() -> void:
 		_put("3001", 4, Vector3(-60, 24, 20))
 	dock.set_open(true)
 	# The properties are down the right, a tab beside the assistant's,
-	# which the step before left showing: brought back by their rail.
-	if _main.get("_props_dock") != null:
+	# which the step before left showing: brought back by their rail where
+	# both columns show. Where they take turns, the bin keeps its column.
+	var both: bool = _main.get("_columns") == "wide"
+	if both and _main.get("_props_dock") != null:
 		await _show_column("_props_dock")
 	shell.outliner.set_open(false)
 	shell.inspector.set_open(true)
@@ -2796,9 +2798,10 @@ func _the_grid_has_room() -> void:
 	var red: int = _bricks_near(Vector3(-60, 0, 20))[0]
 	_select_only([red])
 	await _frames(12)
-	_check("...and so does a brick selected, its properties open (%s)"
-		% white.get_global_rect().position, white.get_global_rect().position == was
-		and shell.inspector._title.is_visible_in_tree())
+	_check("...and so does a brick selected, %s (%s)" % ["its properties open" if both
+		else "the bin still open", white.get_global_rect().position],
+		white.get_global_rect().position == was and dock.is_open()
+		and (not both or shell.inspector._title.is_visible_in_tree()))
 	await _shot("first_timer_grid_selected_" + named)
 	shell.outliner.set_open(true)
 	await _frames(12)
@@ -3004,6 +3007,16 @@ func _one_column_at_a_time() -> void:
 
 ## Open a side column by its rail, as a person does, if it is folded: a
 ## window with room for one column beside the model shows one at a time.
+## The name of the column a panel is in, for _show_column: the properties'
+## and the model tree's are down the right, or a phone's drawer.
+func _column_of(panel: Control) -> String:
+	var dock: SideDock = SideDock.of(panel)
+	for named: String in ["_bin_dock", "_props_dock", "_chat_dock"]:
+		if _main.get(named) == dock:
+			return named
+	return "_bin_dock"
+
+
 func _show_column(dock_name: String) -> void:
 	var dock: SideDock = _main.get(dock_name)
 	if dock.is_open():
