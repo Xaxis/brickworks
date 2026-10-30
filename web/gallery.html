@@ -246,6 +246,16 @@
 			</div>
 			<!-- The front's shelves, after the first rows: hidden while anything is asked. -->
 			<div class="shelves" id="shelves" hidden>
+				<!-- Today's featured model and today's set from the LDraw library, as the
+				     daily cron kept them (api/_featured.js); each card says which by its
+				     data-slot, featured or library (gallery.js drawShelves). -->
+				<section class="shelf" id="spotlight" aria-labelledby="spotlight-h" hidden>
+					<div class="shelf-head">
+						<h2 id="spotlight-h">Today in the gallery</h2>
+						<a id="spotlight-library" href="/library">Browse the LDraw library</a>
+					</div>
+					<div class="models row" id="spotlight-models"></div>
+				</section>
 				<section class="shelf" id="ready" aria-labelledby="ready-h" hidden>
 					<div class="shelf-head">
 						<h2 id="ready-h">You can build now</h2>

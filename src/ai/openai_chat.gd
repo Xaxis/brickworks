@@ -8,9 +8,11 @@
 ## Where it differs from the transcript (Provider):
 ##
 ## - The tools go as {"type": "function", "function": {name, description,
-##   parameters}}, MCP's inputSchema as the parameters, untouched: not strict
-##   mode, which would refuse most of the app's schemas (every property
-##   required, additionalProperties false on every object).
+##   parameters}}, MCP's inputSchema as the parameters in the portable form
+##   ChatGPT is given too (Provider.portable): every array says what its items
+##   are, which OpenAI refuses a request without ("array schema missing
+##   items"). Not strict mode, which would refuse most of the app's schemas
+##   (every property required, additionalProperties false on every object).
 ## - A call's arguments come as a string of JSON, which a weaker model can get
 ##   wrong: such a call is kept as "unread" and answered with what was wrong,
 ##   so the model can say it again.
@@ -46,10 +48,10 @@ func request(system: String, tools: Array, turns: Array) -> Dictionary:
 		"body": JSON.stringify(body)}
 
 
-## MCP's tools as functions.
+## MCP's tools as functions, portable.
 static func functions(tools: Array) -> Array:
 	var out: Array = []
-	for tool: Variant in tools:
+	for tool: Variant in Provider.portable(tools):
 		var one: Dictionary = tool
 		var schema: Variant = one.get("inputSchema", one.get("input_schema", {}))
 		if not (schema is Dictionary) or (schema as Dictionary).is_empty():

@@ -23,7 +23,7 @@
 ## (RenderSettings.look) is a product shot's: the copy of the model drawn in
 ## plastic_body's PLASTIC_PRODUCT shaders (a gloss over the plastic, edges
 ## rounded where they catch the light, chrome and metal reflecting the
-## studio, clear parts that bend what is behind them), lit by a key, a fill
+## studio, clear parts that tint what is behind them), lit by a key, a fill
 ## and a rim over a softbox studio's own light (an HDR panorama, which is
 ## also what everything glossy reflects), with screen-space bounce light
 ## and reflections on the desktop, and graded through AgX, a film-like
@@ -968,6 +968,15 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 		return false
 	if _bounds.size.length() <= 0.0:
 		return false
+	# The product look's glass tints what is behind it, and on nothing (a
+	# picture with no backdrop) there is nothing to tint: it would come out
+	# clear. There it is blended over what is behind as the window's is,
+	# its colour in the picture's alpha.
+	for batch: GeometryInstance3D in _product_glass():
+		var material := batch.material_override as ShaderMaterial
+		while material != null:
+			material.set_shader_parameter("over_nothing", settings.transparent)
+			material = material.next_pass as ShaderMaterial
 	# The set (the sweep, the floor, the contact shadow) is laid under the
 	# model and everything its parts sweep; the camera frames that too, or
 	# with [member RenderSettings.on_what_moves] only what the parts sweep.

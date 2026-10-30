@@ -2,7 +2,7 @@
 // plastic_body.gdshaderinc. Only a render's copy of the model draws with it.
 
 shader_type spatial;
-render_mode blend_mix, depth_draw_opaque, cull_disabled, diffuse_burley, specular_schlick_ggx, depth_prepass_alpha;
+render_mode blend_premul_alpha, depth_draw_opaque, cull_disabled, diffuse_burley, specular_schlick_ggx, depth_prepass_alpha;
 
 #define PLASTIC_TRANSPARENT
 #define PLASTIC_PRODUCT

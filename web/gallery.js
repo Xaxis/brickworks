@@ -22,9 +22,12 @@
 // comes back after a newer question was asked is thrown away.
 //
 // The front of it, Top over all time with nothing asked, has this week's
-// pick as its first card (/api/share?op=shelves): worked out from the
-// past seven days' builds, remixes and Tested marks unless the site's
-// owner chose one. After the first rows, its shelves: what a signed-in
+// pick as its first card (/api/share?op=shelves): the one the daily cron
+// kept for the week (api/_featured.js), worked out from the past seven
+// days' builds, remixes and Tested marks while it has none, unless the
+// site's owner chose one. After the first rows, its shelves: today's
+// featured model and today's set from the LDraw library, as the cron kept
+// them; what a signed-in
 // person can build now, every part in their collection, and small builds,
 // the Size filter's Small by Top builds, once there are three of them
 // (D12: a shelf of one looks broken).
@@ -50,6 +53,8 @@ import { toast } from "/kit.js";
   "use strict";
 
   const ID = /^[A-Za-z0-9]{10}$/;
+  // A set of the LDraw library's (api/_library.js SET_ID).
+  const SET_ID = /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/;
   const $ = (id) => document.getElementById(id);
   const feed = $("feed");
   const grid = $("models");
@@ -269,6 +274,34 @@ import { toast } from "/kit.js";
       // Not twice on one screen: the pick leads, the list goes on without it.
       grid.querySelector(`.model[data-id="${pick.model.id}"]`)?.remove();
     }
+    // Today's featured model and set (api/_featured.js), each marked as
+    // the pick is, and why: the featured model's in the API's words
+    // (featuredSaid: only what is true of it), the set's its theme and
+    // decade. A set is nobody's to like: its card has no like.
+    const spot = shown && front ? [["featured", front.featured, ID, "Featured today"],
+      ["library", front.library, SET_ID, "LDraw library"]]
+      .filter(([, one, valid]) => one && one.model && valid.test(String(one.model.id))) : [];
+    $("spotlight").hidden = spot.length === 0;
+    $("spotlight-models").replaceChildren(...spot.map(([slot, one, , label]) => {
+      const drawn = slot === "featured" ? card({ ...one.model, ...(listed.get(String(one.model.id)) || {}) })
+        : modelCard(one.model);
+      drawn.dataset.slot = slot;
+      const frame = drawn.querySelector(".frame");
+      const marks = frame.querySelector(".marks") || frame.appendChild(document.createElement("div"));
+      marks.className = "marks";
+      const mark = document.createElement("span");
+      mark.className = "pill new";
+      mark.textContent = label;
+      marks.prepend(mark);
+      const said = slot === "featured" ? String(one.said || "") : [one.why?.theme, one.why?.decade].filter(Boolean).join(", ");
+      if (said) {
+        const why = document.createElement("p");
+        why.className = "why";
+        why.textContent = said;
+        (drawn.querySelector(".by") || drawn.querySelector(".words"))?.after(why);
+      }
+      return drawn;
+    }));
     // A shelf of one or two looks broken: three at least (D12).
     $("small").hidden = small.length < 3;
     // Lazy, under the first rows: map's index is no [eager] (it made seven
@@ -299,7 +332,7 @@ import { toast } from "/kit.js";
         + "parts list here, so what is in them is not counted.";
     }
     // Nothing listed at all: the empty gallery says so, with no shelf.
-    shelves.hidden = ($("small").hidden && $("ready").hidden) || grid.children.length === 0;
+    shelves.hidden = ($("small").hidden && $("ready").hidden && $("spotlight").hidden) || grid.children.length === 0;
     feed.dataset.front = !shown ? "" : pick ? "pick" : "plain";
   }
 
@@ -382,8 +415,11 @@ import { toast } from "/kit.js";
   }
 
   // Show more's press while a page that came by itself waits to be drawn
-  // (outOfSight): it is drawn then.
+  // (outOfSight): it is drawn then. And one while that page is still on its
+  // way (pressed): it is drawn as soon as it comes. Show more was disabled
+  // while it came, and a press then was lost (gallery350, 2026-10-29).
   let release = null;
+  let pressed = false;
 
   /// Resolves once the end of the list is under the screen, so a page put
   /// there moves only what is out of sight, or once Show more is pressed.
@@ -392,7 +428,7 @@ import { toast } from "/kit.js";
   /// come slower: site277).
   function outOfSight() {
     const under = () => feed.getBoundingClientRect().bottom > innerHeight;
-    if (under()) return Promise.resolve();
+    if (pressed || under()) return Promise.resolve();
     return new Promise((done) => {
       const look = () => { if (under()) release(); };
       release = () => {
@@ -412,7 +448,8 @@ import { toast } from "/kit.js";
     const mine = ++asking;
     if (release) release();
     loading = true;
-    more.disabled = true;
+    pressed = false;
+    more.disabled = !byItself;
     const asked = question();
     asked.set("page", String(fresh ? 1 : page + 1));
     try {
@@ -439,7 +476,6 @@ import { toast } from "/kit.js";
         if (mine !== asking) return;
       }
       if (byItself) {
-        more.disabled = false;
         await outOfSight();
         if (mine !== asking) return;
       }
@@ -659,7 +695,11 @@ import { toast } from "/kit.js";
     kind = tag = "";
     ask();
   });
-  more.addEventListener("click", () => (release ? release() : next(false)));
+  more.addEventListener("click", () => {
+    if (release) release();
+    else if (loading) pressed = true;
+    else next(false);
+  });
   addEventListener("scroll", nearEnd, { passive: true });
   addEventListener("resize", nearEnd, { passive: true });
   sayFilters();

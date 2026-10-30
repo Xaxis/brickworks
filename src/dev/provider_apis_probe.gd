@@ -13,10 +13,10 @@
 ## tower built, the fresh look asked with its three pictures in the tool's
 ## answer and answered, saved, its first answer a rate limit), Test (tools
 ## and pictures; pictures refused), and the provider's list of its models.
-## In a window, for the pictures.
+## In a window, for the pictures. The stub's port is 9661, or -- --port=N.
 extends SceneTree
 
-const PORT := 9661
+var _stub_port: int = _port()
 const BRIEF := "A slender red tower, six bricks tall"
 
 var _failures: int = 0
@@ -32,6 +32,13 @@ func _initialize() -> void:
 	_run()
 
 
+static func _port() -> int:
+	for argument: String in OS.get_cmdline_user_args():
+		if argument.begins_with("--port="):
+			return int(argument.trim_prefix("--port="))
+	return 9661
+
+
 func _run() -> void:
 	await process_frame
 	_anthropic_offline()
@@ -40,7 +47,7 @@ func _run() -> void:
 	_log = ProjectSettings.globalize_path("user://apis-stub.jsonl")
 	OS.set_environment("STUB_KEY", _key)
 	_stub = OS.create_process("python3", ["-I",
-		ProjectSettings.globalize_path("res://tools/provider_stub.py"), "--port", str(PORT),
+		ProjectSettings.globalize_path("res://tools/provider_stub.py"), "--port", str(_stub_port),
 		"--log", _log, "--fail-first", "1"])
 	OS.unset_environment("STUB_KEY")
 	_check("the stub provider starts (pid %d)" % _stub, _stub > 0)
@@ -53,10 +60,10 @@ func _run() -> void:
 	_world = _main.get("_world")
 	_assistant = _main.get("_assistant")
 	(_main.get("_store") as ModelStore).keeps = false
-	await _design("anthropic", "http://127.0.0.1:%d/v1" % PORT)
-	await _design("gemini_native", "http://127.0.0.1:%d/v1beta" % PORT)
-	await _tests("anthropic", "http://127.0.0.1:%d/v1" % PORT)
-	await _tests("gemini_native", "http://127.0.0.1:%d/v1beta" % PORT)
+	await _design("anthropic", "http://127.0.0.1:%d/v1" % _stub_port)
+	await _design("gemini_native", "http://127.0.0.1:%d/v1beta" % _stub_port)
+	await _tests("anthropic", "http://127.0.0.1:%d/v1" % _stub_port)
+	await _tests("gemini_native", "http://127.0.0.1:%d/v1beta" % _stub_port)
 	_check("the key in no line the stub kept", not FileAccess.get_file_as_string(_log).contains(_key))
 	if _stub > 0:
 		OS.kill(_stub)

@@ -54,6 +54,8 @@ import { noticeGroups } from "../../api/_notifications.js";
 import { LATEST, designersFrom } from "../../api/_follows.js";
 // What a handle may not be, as the API says it (a new account's First steps).
 import { handleTrouble } from "../../api/_names.js";
+// What a featured model's card says (gallery362).
+import { featuredSaid } from "../../api/_featured.js";
 // The interest form on /plans, checked as the API checks it, and its words.
 import { GONE, KEPT, entryOf } from "../../api/plans.js";
 import { Refusal as BetaRefusal, applicationOf } from "../../api/_beta.js";
@@ -368,6 +370,8 @@ const CONNECTIONS = [{ id: "5f0c7a52-8d0e-4f53-9b7e-2d1f3c4b5a69", client: "Clau
 
 // This week's pick, worked out (not chosen) from the past seven days.
 const PICK = { model: MODEL_ID, week: { builds: 9, remixes: 1, tested: true, score: 34 } };
+// Today's featured model on the gallery's front (gallery362).
+const FEATURED = "DesignPar1";
 const WEEK = [
   { model: MODEL_ID, week: { builds: 9, remixes: 1, tested: true, score: 34 } },
   { model: "PriyaSpc01", week: { builds: 5, remixes: 0, tested: true, score: 20 } },
@@ -1704,6 +1708,21 @@ function share(method, params, who, state = {}) {
         model: shown(listModels({ size: 1000, ...own }).find((one) => one.id === PICK.model)) },
       small: { size: "small", label: SIZES.small.label, most: SIZES.small.most, models: small.slice(0, SHELF).map(shown),
         more: small.length > SHELF }, score: SCORE,
+      // Today in the gallery, as the daily cron keeps it (api/_featured.js):
+      // Gatehouse Starter, listed in May and Tested, with nothing done with
+      // it in the past 30 days; and a set of the LDraw library, which no one
+      // likes from a card.
+      ...(state.empty || LIVE ? {} : (() => {
+        const day = new Date().toISOString().slice(0, 10);
+        const why = { likes: 0, builds: 0, comments: 0, remixes: 0, tested: true };
+        const featured = listModels({ size: 1000, ...own }).find((one) => one.id === FEATURED);
+        return {
+          featured: featured ? { day, why, said: featuredSaid(why, featured.listed_at, day), model: shown(featured) } : null,
+          library: { day, why: { theme: "Castle", decade: "1980s" }, model: { id: "omr-6080-1", name: "King's Castle",
+            parts: 674, licence: "cc-by-2.0", modelled_by: { name: "Stefan Frenz", page: "https://library.ldraw.org/omr/sets/9" },
+            library: { set: "6080-1", theme: "Castle", year: 1984 } } },
+        };
+      })()),
       challenge: { id: CHALLENGE.id, title: CHALLENGE.title, state: CHALLENGE.state, starts_on: CHALLENGE.starts_on,
         ends_on: CHALLENGE.ends_on } });
   }

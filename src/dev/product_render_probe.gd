@@ -171,6 +171,7 @@ func _run() -> void:
 	_say("...and its environment is as it was", now == window_look)
 
 	await _swatches(library)
+	await _glass(library)
 
 	print("")
 	print("%d failed" % _failures if _failures
@@ -272,15 +273,67 @@ func _swatches(library: PartLibrary) -> void:
 		found["dark bluish grey"][0] < 6.0)
 	_say("red, yellow, blue, green, white and tan near their own: mean dE %.2f" % bright,
 		bright < 5.0)
-	_say("the clear colours near their own: mean dE %.2f" % clear, clear < 6.0)
+	_say("the clear colours near their own: mean dE %.2f, render342's 4.11 held" % clear, clear < 4.5)
 	_say("a light grey face the key lights is smooth, not hatched: %.4f" % found["light bluish grey"][2],
 		found["light bluish grey"][2] < 0.012)
+
+
+## Clear plastic you can see through, and see clear plastic through (render353):
+## a wall of trans-clear 1 x 4s three high on the white sweep, and right
+## behind it a wall of trans-red ones. Before, a clear part showed only what
+## is opaque behind it, drawn one surface deep over a copy of the picture
+## without the clear parts: the red wall was not there behind the clear one,
+## whose face showed the sweep, #d0d0d0 (red by 0.00), and a clear brick on
+## the plain sweep was one flat tint that read as solid. Now each surface of
+## every clear part tints what is behind it (plastic_product_glass), so the
+## clear wall's face shows the red wall through it (#a85251, red by 0.34).
+## And on nothing (no backdrop, a transparent picture) the glass is blended,
+## its colour in the alpha (lightness 0.65), where it was drawn black (alpha
+## 1.00, lightness 0.16) and would otherwise have come out clear.
+const SEE_RED := 0.25
+func _glass(library: PartLibrary) -> void:
+	_world.clear()
+	var ids: Array = []
+	for level: int in 3:
+		ids.append(_world.add_brick("3010", 47, Transform3D(Basis.IDENTITY,
+			Vector3(0.0, 24.0 * float(level + 1), 10.0))))
+		_world.add_brick("3010", 36, Transform3D(Basis.IDENTITY,
+			Vector3(0.0, 24.0 * float(level + 1), -10.0)))
+	for _n: int in 10:
+		await process_frame
+	var mesh: Lbm.PartMesh = library.mesh_for("3010")
+	var low: Vector3 = mesh.bounds.position
+	var high: Vector3 = mesh.bounds.end
+	high.y = minf(high.y, BrickWorld._body_top(mesh))
+	var front: Array = [Vector3(low.x, low.y, high.z), Vector3(high.x, low.y, high.z),
+		Vector3(high.x, high.y, high.z), Vector3(low.x, high.y, high.z)]
+	var settings: RenderSettings = _settings("product", "white")
+	settings.size = Vector2i(1280, 720)
+	var image: Image = await _render.render(_world, settings)
+	if image == null:
+		_say("the glass walls draw", false)
+		return
+	image.save_png(OUT + "product_glass.png")
+	var face: Array = _face(image, front, _render.staged_transform(ids[1]), settings.size)
+	var seen: Color = face[0]
+	var red: float = seen.r - (seen.g + seen.b) * 0.5
+	_say("a clear wall shows the clear red wall behind it: its face #%s, red by %.2f, at least %.2f"
+		% [seen.to_html(false), red, SEE_RED], red >= SEE_RED)
+	settings.transparent = true
+	var nothing: Image = await _render.render(_world, settings)
+	if nothing == null:
+		_say("the glass walls draw on nothing", false)
+		return
+	nothing.save_png(OUT + "product_glass_on_nothing.png")
+	var bare: Array = _face(nothing, front, _render.staged_transform(ids[1]), settings.size)
+	_say("on nothing the clear wall is glass, neither gone nor black: alpha %.2f, lightness %.2f"
+		% [bare[4], bare[2]], bare[4] > 0.3 and bare[2] > 0.35)
 
 
 ## A face of a brick at [param at], in its own coordinates [param corners],
 ## its middle (a fifth in from each edge) as drawn: [mean colour, averaged
 ## in linear light; pixels; mean lightness; grain, the mean of each
-## pixel's lightness against its four neighbours'].
+## pixel's lightness against its four neighbours'; mean alpha].
 func _face(image: Image, corners: Array, at: Transform3D, size: Vector2i) -> Array:
 	var shot: StudioRender.Shot = _render.last_shot
 	var quad: Array = []
@@ -300,6 +353,7 @@ func _face(image: Image, corners: Array, at: Transform3D, size: Vector2i) -> Arr
 	var sum := Vector3.ZERO
 	var lightness: float = 0.0
 	var grain: float = 0.0
+	var alpha: float = 0.0
 	var count: int = 0
 	for y: int in range(maxi(int(lo.y), 1), mini(int(hi.y) + 1, image.get_height() - 1)):
 		for x: int in range(maxi(int(lo.x), 1), mini(int(hi.x) + 1, image.get_width() - 1)):
@@ -309,14 +363,16 @@ func _face(image: Image, corners: Array, at: Transform3D, size: Vector2i) -> Arr
 			var linear: Color = here.srgb_to_linear()
 			sum += Vector3(linear.r, linear.g, linear.b)
 			lightness += here.get_luminance()
+			alpha += here.a
 			grain += absf(4.0 * here.get_luminance() - image.get_pixel(x - 1, y).get_luminance()
 				- image.get_pixel(x + 1, y).get_luminance() - image.get_pixel(x, y - 1).get_luminance()
 				- image.get_pixel(x, y + 1).get_luminance())
 			count += 1
 	if count == 0:
-		return [Color(0, 0, 0), 0, 0.0, 0.0]
+		return [Color(0, 0, 0), 0, 0.0, 0.0, 0.0]
 	sum /= float(count)
-	return [Color(sum.x, sum.y, sum.z).linear_to_srgb(), count, lightness / count, grain / count]
+	return [Color(sum.x, sum.y, sum.z).linear_to_srgb(), count, lightness / count, grain / count,
+		alpha / count]
 
 
 static func _inside(point: Vector2, quad: Array) -> bool:

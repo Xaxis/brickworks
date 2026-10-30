@@ -312,6 +312,13 @@ declare -A CMD=(
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"
+  # ChatGPT connecting, stood in for (docs/PROVIDERS.md P1): discovery, its
+  # real client document named on the sign-in page and its code refused
+  # without its signature; a client holding its own key signs in with a
+  # signed assertion, lists the tools in the form OpenAI takes, and calls
+  # one into a throwaway account's tab; Claude's list as before. The page
+  # at 390 and 1280, light and dark, in a browser. The account deleted after.
+  [chatgpt]="tools/web/chatgpt_flow.mjs --url=$P $B --out=$S/${TAG}_chatgpt"
   # local only: signup_check.mjs. It asks the Supabase project, not a
   # deployment, whether anybody can make an account without the code:
   # public sign-up off, confirmation on (account.md). canary below holds
@@ -401,6 +408,11 @@ declare -A CMD=(
   # (docs/MOTIONS.md), each downloaded and decoded; the page's longest wait
   # held to twice the app's own: alone, below.
   [render]="tools/web/render_flow.mjs --url=$P/app $B --out=$S/${TAG}_render_web"
+  # Render's Product look under Compatibility: a black wall behind clear
+  # glass and a white one behind trans red, drawn on each backdrop, each
+  # picture not flat, the red glass red and the black wall dark
+  # through the clear (docs/RENDERING.md, section 5b): alone, below.
+  [product_render]="tools/web/product_render_flow.mjs --url=$P/app $B --out=$S/${TAG}_product_render_web"
   # Build it from a shared link on a slowed phone: each page turn timed, and
   # the first step's arrival; publishes from a throwaway account, deleted after.
   # A shared link built on a throttled phone: every step and turn timed and
@@ -467,7 +479,7 @@ run() {
 # together measures how fast a change crosses between two browsers: with
 # placing beside it its plain p95 read 1,123 ms against 516-864 alone
 # (2026-10-24).
-SOLO=" idle arrival progress cursor render_open render grab share_steps frames play discovery oc together load "
+SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together load "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # Two at a time, a slot taking the next check as soon as it is free. Two
