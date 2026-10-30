@@ -6,7 +6,9 @@
 ## few seconds, and nothing offered to help. Now Save says so plainly here,
 ## and offers the saved models to delete, the oldest first
 ## (SavedModelsDialog). Full, it is said after every save until there is
-## room; nearly full, once a session.
+## room; nearly full, once a session. And when the plan keeps no more (Free
+## keeps 25 with the account, savecap360), the plan's words, with Pro's
+## page beside the way to delete one.
 class_name AccountFullOffer
 extends PanelContainer
 
@@ -15,6 +17,8 @@ var make_room: Callable = func() -> void: pass
 
 var _words: Label
 var _room: Button
+var _pro: Button
+var _pro_page: String = ""
 var _close: Button
 var _told_near: bool = false
 
@@ -50,17 +54,27 @@ func _ready() -> void:
 		visible = false
 		make_room.call())
 	row.add_child(_room)
+	_pro = ReloadOffer.button("See Pro", false)
+	_pro.tooltip_text = "Pro keeps any number of models with your account"
+	_pro.visible = false
+	_pro.pressed.connect(func() -> void:
+		visible = false
+		OS.shell_open(Deployment.api_base() + _pro_page))
+	row.add_child(_pro)
 	_close = ReloadOffer.button("Not now", false)
 	_close.pressed.connect(func() -> void: visible = false)
 	row.add_child(_close)
 
 
 ## Say [param words] (CloudModels.short_words): a full account every time,
-## a nearly full one once.
-func tell(words: String) -> void:
+## a nearly full one once; [param pro], Pro's page, when it is the plan
+## that keeps no more.
+func tell(words: String, pro: String = "") -> void:
 	if words.is_empty():
 		return
-	var full: bool = words.begins_with("Your account is full")
+	_pro_page = pro
+	_pro.visible = not pro.is_empty()
+	var full: bool = words.begins_with("Your account is full") or not pro.is_empty()
 	if not full and _told_near:
 		return
 	_told_near = _told_near or not full
@@ -77,4 +91,9 @@ func words() -> String:
 
 
 func controls_by_name() -> Dictionary:
-	return {"room_delete_old": _room, "room_not_now": _close} if visible else {}
+	if not visible:
+		return {}
+	var named: Dictionary = {"room_delete_old": _room, "room_not_now": _close}
+	if _pro.visible:
+		named["room_see_pro"] = _pro
+	return named

@@ -1017,6 +1017,8 @@ BW_BYPASS=$VERCEL_BYPASS node tools/web/cloud_library_flow.mjs --url=<deployment
 # the desktop's half, against the functions on this machine (a throwaway account)
 set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8891 &
 BRICKWORKS_API=http://127.0.0.1:8891 tools/probe.sh desktop_cloud_probe
+# a plan that keeps no more (Free's 25, plans on): its words, Delete old models and See Pro
+tools/probe.sh plan_full_probe
 ```
 
 `versions_probe` proves it when it ends "a model's last 20 saves are kept and
@@ -1047,7 +1049,15 @@ build from before 2026-10-23 the second browser finds nothing to open, and the
 unnamed model's Save asks nothing; on one from before 2026-10-24 Open has no
 Rename or delete. `desktop_cloud_probe` proves the desktop's when it ends
 "desktop_cloud probe: all good" (on 9ae8ebe0, before it, 21 checks fail:
-CloudModels is off off the web).
+CloudModels is off off the web). `plan_full_probe` proves the plan's side when
+it ends "plan_full probe: PASS": 26 saved models looked at against a stand-in
+account that keeps 25, the 26th refused, the offer above the model saying
+"Free keeps 25 models in your account. Delete one, or get Pro for unlimited."
+with Delete old models…, See Pro and Not now at every save, and a delete here
+making room at the next look (a build from before 2026-10-29 has no
+CloudModels.PLAN, and the probe does not load). The deployment's half, which decides the
+25: `tests/test_saved_models_plan.py` and supabase/account_models_plan.sql's
+dry run (web.md, Plans from Admission).
 
 And the round trip, which is the one to run after touching the writer:
 

@@ -11,6 +11,7 @@ ui:plans page
 api:GET /api/plans
 api:POST /api/plans
 lib:plans from Admission
+lib:a plan's limit on models kept with the account
 -->
 
 ## Free {#free}

@@ -41,6 +41,15 @@
 // transaction per account, so no script of requests at once gets past it
 // (save_account_model: 500 models, 64 MB as stored).
 //
+// And how many a plan keeps, while plans are on (api/_billing.js): Free
+// keeps 25, Pro and the owner any number (Admission's saved_models). Only a
+// model new to the account counts, held in the same transaction
+// (save_account_model_within, supabase/account_models_plan.sql): a save
+// over one it has never does, and a delete makes room at once. Past it the
+// save is answered 413 {full: "plan", error, pro: "/plans"}, and kept in
+// the browser or on the computer as before. Plans off, Admission is not
+// asked and the save is as it always was; a plan not known refuses nothing.
+//
 // The database is reached as the server alone (api/_db.js): no key a page
 // holds can read or write the table. Until account_models.sql is applied
 // the list says off and the rest 503, and the app keeps its models in the
@@ -60,6 +69,7 @@ const SHARED_TEST = "delivered+brickworks-tests@resend.dev";
 import { createHash } from "node:crypto";
 import { gunzipSync } from "node:zlib";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
+import { entitlementOf, mostModels, reportOwner } from "./_billing.js";
 import { db, dbConfigured } from "./_db.js";
 
 // As supabase/account_models.sql holds them.
@@ -254,14 +264,21 @@ export default async function handler(request, response) {
   if (!Number.isInteger(base) || base < 0) return response.status(422).json({ error: "base is the version the save was made from, or 0." });
   const model = modelOf(body.model);
   if (model.trouble) return response.status(/too big/.test(model.trouble) ? 413 : 422).json({ error: model.trouble });
+  // The plan's limit: nothing asked while plans are off.
+  await reportOwner(claims);
+  const plan = await entitlementOf(owner);
+  const most = mostModels(plan);
   let kept;
   try {
     kept = await saved({
       p_owner: owner, p_name: name, p_base: base, p_model: body.model, p_raw_bytes: model.raw.length,
       p_parts: partsIn(model.text), p_sum: createHash("sha256").update(model.raw).digest("hex"),
-    });
+    }, most);
   } catch (trouble) {
     return unreached(trouble, "not saved");
+  }
+  if (kept.full === "plan") {
+    return response.status(413).json({ full: "plan", pro: "/plans", error: keepsAtMost(plan.plan.name, most) });
   }
   // full says which, for the app to word it for where the model is kept
   // (a browser, a computer) and to offer to delete old ones.
@@ -286,21 +303,35 @@ async function keptBy(owner) {
   }
 }
 
-/// save_account_model, as the server: what it kept, or {full} with its
-/// refusal ("too many", "too big"), which PostgREST answers 400 with the
+/// What a save past the plan's limit is answered with.
+export function keepsAtMost(plan, most) {
+  return `${plan} keeps ${most} models in your account. Delete one, or get Pro for unlimited.`;
+}
+
+/// save_account_model, as the server, or save_account_model_within for a
+/// plan that keeps at most [most]: what it kept, or {full} with its refusal
+/// ("too many", "too big", "plan"), which PostgREST answers 400 with the
 /// words that api/_db.js does not pass on.
-async function saved(args) {
+async function saved(args, most = null) {
+  const within = most !== null;
+  const name = within ? "save_account_model_within" : "save_account_model";
   const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
   const key = process.env.SUPABASE_SECRET_KEY;
-  const answer = await fetch(`${base}/rest/v1/rpc/save_account_model`, {
+  const answer = await fetch(`${base}/rest/v1/rpc/${name}`, {
     method: "POST",
     headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
-    body: JSON.stringify(args),
+    body: JSON.stringify(within ? { ...args, p_most: most } : args),
     signal: AbortSignal.timeout(20000),
   });
   if (answer.ok) return answer.json();
   const said = await answer.json().catch(() => ({}));
-  const full = /^models: (too many|too big)$/.exec(String(said?.message || ""));
+  const full = /^models: (too many|too big|plan)$/.exec(String(said?.message || ""));
   if (answer.status === 400 && full) return { full: full[1] };
-  throw new Error(`database POST rpc/save_account_model: ${answer.status}`);
+  // A mistake of ours is never the person's to pay for: kept without the
+  // plan's limit until the file is applied.
+  if (within && answer.status === 404) {
+    console.error("models: supabase/account_models_plan.sql is not applied here; saved without the plan's limit");
+    return saved(args);
+  }
+  throw new Error(`database POST rpc/${name}: ${answer.status}`);
 }

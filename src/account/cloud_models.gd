@@ -87,8 +87,9 @@ signal kept_as(from: String, to: String)
 ## another device, and so here.
 signal deleted_elsewhere(name: String)
 ## The account is full or nearly, said after a save: [param words] say
-## how full, plainly, for an offer to delete old models (AccountFullOffer).
-signal short_of_room(words: String)
+## how full, plainly, for an offer to delete old models (AccountFullOffer);
+## [param pro] is where Pro is when it is the plan that is full, else "".
+signal short_of_room(words: String, pro: String)
 ## A look at the account ended, its models here as it keeps them: [member
 ## newest] names the one saved last.
 signal looked
@@ -106,6 +107,10 @@ var refused: Dictionary = {}
 ## most_models, most_bytes}, bytes left out by a deployment without
 ## account_models_delete.sql.
 var room: Dictionary = {}
+## The plan's words when it keeps no more models (Free keeps 25: the
+## deployment's, api/models.js full "plan"), and where Pro is.
+var plan_words: String = ""
+var pro_page: String = ""
 ## Whether the models here are all kept with the account too, as the last
 ## look found.
 static var keeping: bool = false
@@ -329,12 +334,14 @@ func _sync_once() -> void:
 				room = (now["body"] as Dictionary)["kept"]
 		var words: String = short_words()
 		if not words.is_empty():
-			short_of_room.emit(words)
+			short_of_room.emit(words, pro_page if _plan_full() else "")
 
 
 ## How full the account is, plainly, when it is full or nearly: "" when it
 ## has room. From its list, as the last look had it, and what it refused.
 func short_words() -> String:
+	if _plan_full():
+		return plan_words
 	if room.is_empty():
 		return ""
 	var models: int = int(room.get("models", 0))
@@ -359,6 +366,11 @@ func short_words() -> String:
 			+ "Delete models you no longer need to make room.") % [which, here()]
 	return ("Your account is nearly full: it has %s. Delete models you no longer need, "
 		+ "or new saves will be kept only %s.") % [which, here()]
+
+
+## Whether the account's plan refused a model here for keeping no more.
+func _plan_full() -> bool:
+	return not plan_words.is_empty() and refused.values().has(FULL + PLAN)
 
 
 ## Where a model is kept when not with the account, in words.
@@ -446,8 +458,10 @@ func _local_names() -> PackedStringArray:
 
 
 ## What the account says when it is full (api/models.js), the start of
-## what [member refused] holds for a model it would not keep for that.
+## what [member refused] holds for a model it would not keep for that; and
+## what it says when the plan keeps no more.
 const FULL := "full: "
+const PLAN := "plan"
 
 
 ## Send the model called [param name], made from [param base]: "kept" when
@@ -463,6 +477,9 @@ func _send(name: String, text: String, base: int) -> String:
 		var why: String = str((body as Dictionary).get("error", "")) if body is Dictionary else ""
 		var full: String = str((body as Dictionary).get("full", "")) if body is Dictionary else ""
 		if not full.is_empty():
+			if full == PLAN:
+				plan_words = why
+				pro_page = str((body as Dictionary).get("pro", "/plans"))
 			why = FULL + full
 			if str(refused.get(name, "")) != why:
 				_saved = true
