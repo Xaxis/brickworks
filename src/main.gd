@@ -704,6 +704,8 @@ func _tell_page() -> void:
 		"colour": _builder.held_color,
 		# ...and the parts the bin lists first, as its tiles read.
 		"found": _bin.first_found() if _bin != null else [],
+		# ...and the names on those tiles (tools/web/bin_tiles_flow.mjs).
+		"tile_names": _bin.tile_names() if _bin != null else [],
 		# ...and which set's parts they are (/app?parts=, sets364).
 		"bin_set": _bin.set_showing() if _bin != null else "",
 		# ...and the colour Enter in the colour's name would take.

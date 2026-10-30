@@ -621,6 +621,19 @@ func first_found(most: int = 6) -> PackedStringArray:
 
 
 ## The colour Enter in the colour's name would take, or -1.
+## What the first [param most] tiles say, their names as they read, the
+## lines run together.
+func tile_names(most: int = 16) -> PackedStringArray:
+	var out := PackedStringArray()
+	for cell: Node in _grid.get_children():
+		if out.size() >= most:
+			break
+		for label: Node in cell.find_children("*", "Label", true, false):
+			out.append((label as Label).text.replace("\n", " "))
+			break
+	return out
+
+
 func colour_first() -> int:
 	return _found_first
 
@@ -1018,6 +1031,12 @@ func controls_by_name() -> Dictionary:
 	for child: Node in _grid.get_children():
 		if child.has_meta("technique"):
 			named["technique " + str(child.get_meta("technique"))] = child
+	# The first tiles' pictures, by place, and how big: what a browser check
+	# reads each tile's square of the window by (tools/web/bin_tiles_flow.mjs).
+	for n: int in mini(_grid.get_child_count(), 16):
+		var cell: Node = _grid.get_child(n)
+		if cell.has_meta("tile"):
+			named["tile picture %d" % (n + 1)] = cell.get_meta("tile")
 	named["colour find"] = _colour_find
 	named["all colours"] = _all_colours
 	named["palette"] = _palette_scroll

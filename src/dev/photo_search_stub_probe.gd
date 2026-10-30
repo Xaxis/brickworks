@@ -124,7 +124,8 @@ func _run() -> void:
 	if _bin._grid.get_child_count() > 0:
 		for node: Node in _bin._grid.get_child(0).find_children("*", "Label", true, false):
 			label = (node as Label).text
-	_check("each says how sure Brickognize is (\"%s\")" % label, label == "3001  72%")
+	_check("each names its part and says how sure Brickognize is (\"%s\")" % label.replace("\n", " "),
+		label.replace("\n", " ") == "%s  72%%" % PartsBin.tile_name(_bin.library.parts["3001"]))
 	_check("what has no part here is said (\"%s\")" % _bin._status.tooltip_text,
 		_bin._status.tooltip_text.contains("bogus-77"))
 

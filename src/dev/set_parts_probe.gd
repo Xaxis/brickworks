@@ -76,12 +76,18 @@ func _run() -> void:
 	_check("every tile is one of the set's parts", every)
 	var status: Label = bin.get("_status")
 	_check("its status line names the set: \"%s\"" % status.text, status.text.contains("10497-1 Galaxy Explorer"))
+	# Its tile names it and counts it: "Plate 1×2  ×12" (appux371 A4 put
+	# the part's name where its number was).
 	var label: String = ""
 	for cell: Node in bin.get("_grid").get_children():
+		if str(cell.get_meta("part", "")) != most:
+			continue
 		for child: Node in cell.find_children("*", "Label", true, false):
-			if (child as Label).text.begins_with(most + "  ×"):
-				label = (child as Label).text
-	_check("its tile counts how many the set has: \"%s\"" % label, label == "%s  ×%d" % [most, int(counts[most])])
+			label = (child as Label).text
+	var named: String = PartsBin.tile_name(bin.library.parts[most])
+	_check("its tile names it and counts how many the set has: \"%s\"" % label.replace("\n", " "),
+		label.ends_with("  ×%d" % int(counts[most]))
+		and named.begins_with(label.replace("\n", " ").get_slice("  ×", 0).trim_suffix("…")))
 
 	# The bin asking again by itself, as it does when the web build's
 	# catalogue arrives after the set was shown: the set stays.

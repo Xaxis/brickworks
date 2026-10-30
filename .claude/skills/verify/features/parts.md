@@ -128,6 +128,20 @@ geometry in front of them.
   "also" is in the shared data only once `tools/refresh_catalogue.py` has
   run with this `tools/rebrickable.py`; until then 300123 (a blue 2 x 4 only
   "also" has) finds nothing.
+  And the words builders type (appux371 A5, 2026-10-30): their own names
+  for parts no catalogue uses, `PartSearch.NICKNAMES` (snot: the bricks with
+  studs on their sides and the brackets; erling the headlight brick 4070;
+  travis 4733; macaroni the 2 x 2 corner rounds; droid arm 30377), whose
+  parts come first among those answering as many words (a key bit under
+  how many words a part has); `SAME_WORD` click → locking, grill → grille;
+  `ALSO_KNOWN_AS` cheese grater → the 18° grille slope (before "cheese" is
+  taken for a cheese slope). A size typed alone is the brick of that size
+  first (`PartSearch._bare_brick`: "2x4" is 3001, then 3020; "1x1x3" the
+  brick with that height). Before: "snot" listed Technic pins (a letter off
+  Slot), "erling" and "travis" nothing, "macaroni" a 4 x 4 tile first, "2x4"
+  the plate first. `search_rank_probe`'s BUILDER list holds 26 such words,
+  every one with a right part in the first three of the bin and
+  search_parts (100% both), and four sizes alone with the brick first.
 - `parts bin`: the panel that shows the results, with a category filter and the
   current colour applied to the thumbnails. It searches through `PartSearch`
   (every word, ranked as search_parts ranks), and folds each print, sticker
@@ -148,6 +162,29 @@ geometry in front of them.
   A drag did nothing and carried the tooltip along (2026-10-12). **Make a part…** in its header
   opens the element maker, and made parts lead the categories as Custom —
   see [elements](elements.md).
+  Each tile is named in words under its picture (`PartsBin.tile_name`:
+  LDraw's name without its padding or brackets, sizes as 1×2, a Slope Brick a
+  Slope), in at most two lines fitted to the tile by `fit_lines` (words whole,
+  the last line cut with "…"), with a set's count or a photo's certainty
+  after it; the number is on its tooltip and for a screen reader (appux371
+  A4: a tile said only "3710"). `bin_names_probe` reads every tile in sight
+  at 1280 x 720 (and 1400 x 900 with PROBE_SIZE): its part's name, fitted,
+  no two alike.
+- `fits` (`src/parts/part_fits.gd`, the bin's **Fits** chip after
+  Techniques): the parts that fit the selected part, or the one in hand when
+  Fits was chosen (a part then taken from its list does not change it): the
+  other half by name (a hinge's Top for its Base), a connector made for one
+  of its own (`PartFits.TAKES`: a pin for a pin hole, an axle for an axle
+  hole, a bar for a clip, a click hinge's fork for its finger, a socket for
+  a ball), one that goes in loose (an axle in a pin hole), the parts that sit
+  whole on its studs (a 1 x 1 round on a jumper), then what it sits on;
+  within each, the most used. From the catalogue alone (connector counts,
+  and a clip or a bar by its name, since the catalogue counts rounds, not
+  their width), so it answers on the web before any geometry. What is typed
+  narrows it ("axle" among a beam's fits). It does not yet know which of
+  the selection's connectors are taken. `fits_probe`: twelve pairs, each
+  with a part that fits in the first five, about 140 ms an answer over
+  29,668 parts (appux371 B5, 2026-10-30).
 - `previews` (`src/ui/part_thumbnails.gd`, `src/ui/thumb_tile.gd`): each cell is
   a `ThumbTile`. A colour picked points each tile at the new colour
   (`show_part(..., keep)`) and it keeps the picture it had until the new one
@@ -157,8 +194,11 @@ geometry in front of them.
   material driven by `TIME`: no script runs per waiting tile; only on a tile
   in sight, `ThumbTile.in_sight`, set by `ThumbTile.Sight`, because a shader
   reading `TIME` anywhere on the window has every frame drawn — see the
-  gotcha below), the part number
-  under it; the picture fades in over it (0.2 s); a part that cannot be drawn
+  gotcha below), with the part drawn in its place from what the catalogue
+  says of it (`PartSketch`, the bin's tiles: its footprint, height, studs,
+  a slope's fall, a round part round, a beam's holes, in the colour in hand
+  as a ghost; on the web the tiles were grey squares eight seconds in,
+  appux371 A4), its name under it; the picture fades in over it (0.2 s); a part that cannot be drawn
   (no geometry, a failed fetch) shows a brick outline and "no preview", and is
   tried again after 30 s if it comes back into sight. The bin tells
   `PartThumbnails.watch` which tiles are in sight (`ThumbTile.Sight`: the rows on
@@ -416,6 +456,13 @@ tools/probe.sh picker_folder_probe                # every chooser in Pictures, D
 tools/probe.sh contrast_probe -- --shots=DIR      # every button's edge 3:1, words 4.5:1, a question's default told apart (653 buttons on 2026-10-26); -- --main-only --every lists each
 node tools/web/bin_flow.mjs --url=http://127.0.0.1:9063/ --out=DIR   # both in a browser at 1280 and 390 (serve.py on 9063; Brickognize live)
 godot --headless --path . --script src/dev/vocab_probe.gd           # the words a builder types
+tools/probe.sh search_rank_probe -- quality   # + 26 words builders type (snot, erling, macaroni, 2x4...) each in the first three; a size alone the brick first
+tools/probe.sh bin_names_probe                # every tile in sight named in words and fitted, no two alike, its part drawn while it waits; shots/bin_names/
+PROBE_SIZE=1400x900 tools/probe.sh bin_names_probe
+tools/probe.sh fits_probe                     # Fits: twelve pairs each in the first five; the part in hand; typed words narrow it
+# the tiles on the web, on a slow network, within a second of the bin showing (local only)
+PARTS_URL=http://127.0.0.1:8871/parts/ tools/export.sh web
+node tools/web/bin_tiles_flow.mjs --build=build/web --port=8871 --parts=assets/generated/parts --out=shots/bin_tiles
 godot --headless --path . --script src/dev/print_search_probe.gd    # a print by what is on it; plain parts unmoved
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd -- only=prints_by_their_print  # typed into the bin; shots/handbuild/prints_by_their_print.png
 godot --headless --path . --script src/dev/search_quality_probe.gd  # how much is worth reading

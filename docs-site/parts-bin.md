@@ -9,7 +9,7 @@ nav: The parts bin
 description: Find any part by name, number, shape or a photo, keep the ones you use, and choose its colour.
 ---
 
-The parts bin is the top of the left-hand column. [[P]] opens it, and [[/]] goes straight to its search.
+The parts bin is the top of the left-hand column. [[P]] opens it, and [[/]] goes straight to its search. Each part's name is under its picture, *Plate 1×2*, *Brick 1×1 with Stud on 1 Side*; its number is on its tooltip. While a picture is still coming, the part is drawn in its place from its size and studs, so no tile is ever a blank square.
 
 <!-- covers
 ui:parts bin
@@ -17,7 +17,7 @@ ui:parts bin
 
 ## Search {#search}
 
-Type what you want in words: *2x4 brick*, *slope 45*, *wheel*, *window*, a part number like *3001*, or what is printed on it, with *print*: *control panel print*. The bin understands builders' words, so *SNOT* finds bricks with side studs and *cheese* finds the small slopes. Every part comes from the LDraw library, and its geometry is fetched the first time it is used and kept.
+Type what you want in words: *2x4 brick*, *slope 45*, *wheel*, *window*, a part number like *3001*, or what is printed on it, with *print*: *control panel print*. The bin understands builders' words: *SNOT* finds bricks with side studs and brackets, *cheese* the small slopes, *Erling* the headlight brick, *Travis* the brick with studs on four sides, *macaroni* the curved corners, *jumper*, *click hinge* and *cheese grater* what builders mean by them. A size alone is a brick: *2x4* lists Brick 2 × 4 first. Every part comes from the LDraw library, and its geometry is fetched the first time it is used and kept.
 
 <!-- covers
 lib:part search
@@ -41,6 +41,10 @@ ui:recent and favourite parts
 ui:techniques in the bin
 lib:worked constructions
 -->
+
+## What fits {#fits}
+
+Select a part in the model, or take one in hand, and choose **Fits** beside Techniques: the bin lists the parts that fit it, the best fits first. A beam lists its pins, a clip its bars, a bar its clips, a hinge's base its top, a click hinge its other half, a ball its socket, and a jumper the 1 × 1 parts that sit on its stud; then the parts that sit on its studs, the ones real sets use most first. Type to narrow it: *axle* among a beam's fits lists the axles that go through it. Picking a part from the list keeps it on the part you asked about.
 
 ## Colours {#colours}
 

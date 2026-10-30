@@ -237,6 +237,10 @@ declare -A CMD=(
   # stranger refused, the owner ending it. Needs supabase/together.sql.
   [together_probe]="tools/web/together_probe.mjs --url=$P"
   [together]="tools/web/together_flow.mjs --url=$P --out=$S/${TAG}_together"
+  # local only: bin_tiles_flow.mjs. The parts bin's tiles drawn and named
+  # within a second of the bin showing, on a slow network: it needs
+  # tools/web/serve.py --parts to serve each part late, which a deployment
+  # does not (parts.md, previews). bin_names_probe holds the same on desktop.
   # local only: together_timing.mjs. A measure with no verdict: where the
   # time of a change goes, stage by stage, as the model grows richer; the
   # flow above holds the bar (docs/TOGETHER.md).
