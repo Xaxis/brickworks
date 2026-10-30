@@ -1238,6 +1238,10 @@ details[open] > .menu-list { animation: drop var(--motion-open) var(--ease); }
 .page-hero h1 { max-width: 22ch; }
 .page-hero .lede { margin-bottom: 0; }
 .page-hero .actions { margin-top: var(--s-5); }
+/* A head that ends in .tabs (the legal pages, /feed and /notifications):
+   the tabs sit on the head's line, the one shown underlined on it. */
+.page-hero:has(> .wrap > .tabs:last-child) { padding-bottom: 0; }
+.page-hero > .wrap > .tabs:last-child { margin: var(--s-5) 0 -1px; border-bottom: 0; }
 .hero-meta {
 	display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); margin: var(--s-4) 0 0; padding: 0;
 	list-style: none; color: var(--ink-faint); font-size: var(--t-small);

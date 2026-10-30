@@ -9,7 +9,8 @@
 
   Paid plans (#paid-plans, 2026-10-29, gate M1 of docs/PLANS.md): Free and
   Pro as /plans says them, said as coming, since nothing is sold while
-  BRICKWORKS_BILLING is off. Its structure and its promises are Bookwright's
+  BRICKWORKS_BILLING is off. AI is never limited on any plan (the owner,
+  2026-10-29); Free keeps 25 models with the account. Its structure and its promises are Bookwright's
   (bookwright.diy/terms, "Plans" and "Paying for Pro"), sold the same way
   (section 8, M5), and nothing more: what Pro includes lives on /plans.
 -->
@@ -38,6 +39,11 @@
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
+<style>
+/* Laid out here; the head, the list of what is on the page, the tabs and
+   the words are site.css's. */
+.legal-text > h2:first-child { margin-top: 0; }
+</style>
 <script src="/follow.js" type="module"></script>
 </head>
 <body>
@@ -76,54 +82,73 @@
 	</div>
 </header>
 
-<main id="main" class="wrap page prose">
-	<h1>Terms of use</h1>
-	<p class="lede">
-		Brickworks is a CAD for LEGO® models: this website, the app in
-		your browser and on your computer, and a gallery of what people share.
-		Using any of it means these terms. They say what the site does and what
-		it asks of you, in plain words.
-	</p>
-	<!-- OWNER: add the operator's legal name and a contact address here, e.g.
-	     brickworks.diy is run by [the operator's legal name]. Write to [a contact address]
-	     about anything on this page. Until then the line below names the site's public
-	     contact, as the privacy page does. -->
-	<p id="operator">Questions about these terms: <a href="https://github.com/Xaxis/brickworks-releases/issues">open an issue</a>, or use <b>Report</b> on anything shared.</p>
+<main id="main">
+	<div class="page-hero">
+		<div class="wrap">
+			<p class="eyebrow">Legal</p>
+			<h1>Terms of use</h1>
+			<p class="lede">Brickworks is a CAD for LEGO® models: this website, the app in your browser and on your computer, and a gallery of what people share. Using any of it means these terms. They say what the site does and what it asks of you, in plain words.</p>
+			<p class="hero-meta">Updated 29 October 2026</p>
+			<nav class="tabs" aria-label="The site’s rules"><a href="/terms" aria-current="page">Terms of use</a><a href="/privacy">Privacy</a><a href="/guidelines">Community guidelines</a><a href="/takedown">Takedown requests</a></nav>
+		</div>
+	</div>
+	<div class="wrap page-body page-grid">
+		<nav class="page-toc" aria-labelledby="toc-title">
+			<p class="page-toc-title" id="toc-title">On this page</p>
+			<ul>
+				<li><a href="#your-account">Your account</a></li>
+				<li><a href="#your-age">Your age</a></li>
+				<li><a href="#your-models">Your models</a></li>
+				<li><a href="#the-rules">The rules</a></li>
+				<li><a href="#something-here-is-yours">Something here is yours</a></li>
+				<li><a href="#the-ai-designer">The AI designer</a></li>
+				<li><a href="#paid-plans">Paid plans, when they open</a></li>
+				<li><a href="#no-promises-we-cannot-keep">No promises we cannot keep</a></li>
+				<li><a href="#lego">LEGO®</a></li>
+				<li><a href="#when-these-change">When these change</a></li>
+			</ul>
+		</nav>
+		<article class="prose legal-text">
+			<!-- OWNER: add the operator's legal name and a contact address here, e.g.
+			     brickworks.diy is run by [the operator's legal name]. Write to [a contact address]
+			     about anything on this page. Until then the line below names the site's public
+			     contact, as the privacy page does. -->
+			<p id="operator">Questions about these terms: <a href="https://github.com/Xaxis/brickworks-releases/issues">open an issue</a>, or use <b>Report</b> on anything shared.</p>
 
-	<h2>Your account</h2>
-	<p>An account is your email address. You sign in with a code we email you; there is no password, so whoever reads your inbox can sign in as you. Keep it to yourself. One person, one account.</p>
+			<h2 id="your-account">Your account</h2>
+			<p>An account is your email address. You sign in with a code we email you; there is no password, so whoever reads your inbox can sign in as you. Keep it to yourself. One person, one account.</p>
 
-	<h2>Your age</h2>
-	<p>At your first sign-in you are asked when you were born. Brickworks keeps only whether you are 13 or over, and when you said so, never the date. Under 13, you can build, keep your models and share them by link like anyone. The gallery, a public profile, a name shown on a link, and comments and photos when they come, are for people 13 and over.</p>
+			<h2 id="your-age">Your age</h2>
+			<p>At your first sign-in you are asked when you were born. Brickworks keeps only whether you are 13 or over, and when you said so, never the date. Under 13, you can build, keep your models and share them by link like anyone. The gallery, a public profile, a name shown on a link, and comments and photos when they come, are for people 13 and over.</p>
 
-	<h2>Your models</h2>
-	<p>What you build is yours. It is saved in your browser or on your computer, not on our server, until you publish it. When you do, you choose a licence for it (<a href="/guidelines#licences">the three are here</a>): that says what others may do with it, and you keep the copyright.</p>
-	<p>Publishing lets Brickworks keep a copy, show it at its link and, if you list it, in the gallery; make its pictures, steps, booklet and parts list; and let others open a copy in their own Brickworks as its licence allows. Unpublish takes the copy down. Publish only what you have the right to share.</p>
+			<h2 id="your-models">Your models</h2>
+			<p>What you build is yours. It is saved in your browser or on your computer, not on our server, until you publish it. When you do, you choose a licence for it (<a href="/guidelines#licences">the three are here</a>): that says what others may do with it, and you keep the copyright.</p>
+			<p>Publishing lets Brickworks keep a copy, show it at its link and, if you list it, in the gallery; make its pictures, steps, booklet and parts list; and let others open a copy in their own Brickworks as its licence allows. Unpublish takes the copy down. Publish only what you have the right to share.</p>
 
-	<h2>The rules</h2>
-	<p>What you publish keeps to the <a href="/guidelines">community guidelines</a>: credit, no copied designs passed off as yours, no photos of children, designs made with the AI designer or Brickify said to be so, and the rest. Publishing means you agree to them. They also say what gets a model or an account taken out.</p>
+			<h2 id="the-rules">The rules</h2>
+			<p>What you publish keeps to the <a href="/guidelines">community guidelines</a>: credit, no copied designs passed off as yours, no photos of children, designs made with the AI designer or Brickify said to be so, and the rest. Publishing means you agree to them. They also say what gets a model or an account taken out.</p>
 
-	<h2>Something here is yours</h2>
-	<p>Use the <b>Report</b> button on its page, or a <a href="/takedown">takedown request</a>. The same page says how to answer one, if your model was taken out and you think that was a mistake.</p>
+			<h2 id="something-here-is-yours">Something here is yours</h2>
+			<p>Use the <b>Report</b> button on its page, or a <a href="/takedown">takedown request</a>. The same page says how to answer one, if your model was taken out and you think that was a mistake.</p>
 
-	<h2>The AI designer</h2>
-	<p>It runs on your own Claude plan or your own Anthropic API key, never on ours, so Anthropic’s terms apply to what you send it. What it designs is yours to use like anything you build here.</p>
+			<h2 id="the-ai-designer">The AI designer</h2>
+			<p>It runs on your own AI: your Claude plan, or your own API key for Claude or another AI, never on ours, so its maker’s terms apply to what you send it, and Brickworks never limits it or bills for it. What it designs is yours to use like anything you build here.</p>
 
-	<h2 id="paid-plans">Paid plans, when they open</h2>
-	<p>Brickworks has a Free plan, and a paid plan, Pro, is coming. Nothing is sold yet, and nothing here takes money. What each plan includes, and what Pro costs in US dollars, is on the <a href="/plans">plans page</a>, and will be on your account page before you buy. Once Pro opens, Free counts AI builds, 10 a month: when they are used, you keep everything and can still open, edit, export and build by hand, and they come back on the 1st. Don’t get around a plan’s limits with several free accounts.</p>
-	<p>Pro will be sold by Atypic through Link: Sold through Link, LLC, an affiliate of Stripe, is the merchant of record. Link takes the payment, works out any sales tax, VAT or GST and shows it before you pay, and emails your receipts. Buying Pro also means <a href="https://atypic.ai/terms">Atypic’s terms of service</a> and <a href="https://link.com/terms#sold-through-link-terms">Link’s terms</a>. Pro is billed monthly or yearly, as you choose, and renews automatically at the same price until you cancel. If the price ever changes, you will be told by email before it applies to you, and can cancel before then.</p>
-	<p>You can cancel at any time, from your account page or at link.com. Pro stays on to the end of the month or year you have paid for, and then your account moves to Free. How cancelling and refunds work is in Atypic’s <a href="https://atypic.ai/refunds">refund and cancellation policy</a>; Link may also refund within 60 days of a purchase under its own policy.</p>
+			<h2 id="paid-plans">Paid plans, when they open</h2>
+			<p>Brickworks has a Free plan, and a paid plan, Pro, is coming. Nothing is sold yet, and nothing here takes money. What each plan includes, and what Pro costs in US dollars, is on the <a href="/plans">plans page</a>, and will be on your account page before you buy. AI is never limited, on any plan: it runs on your own AI plan or key. Once Pro opens, Free keeps up to 25 models with your account and Pro any number; saving to your device and exporting are never limited, and every account made before 29 October 2026 keeps Pro, free and with no end date. Don’t get around a plan’s limits with several free accounts.</p>
+			<p>Pro will be sold by Atypic through Link: Sold through Link, LLC, an affiliate of Stripe, is the merchant of record. Link takes the payment, works out any sales tax, VAT or GST and shows it before you pay, and emails your receipts. Buying Pro also means <a href="https://atypic.ai/terms">Atypic’s terms of service</a> and <a href="https://link.com/terms#sold-through-link-terms">Link’s terms</a>. Pro is billed monthly or yearly, as you choose, and renews automatically at the same price until you cancel. If the price ever changes, you will be told by email before it applies to you, and can cancel before then.</p>
+			<p>You can cancel at any time, from your account page or at link.com. Pro stays on to the end of the month or year you have paid for, and then your account moves to Free. How cancelling and refunds work is in Atypic’s <a href="https://atypic.ai/refunds">refund and cancellation policy</a>; Link may also refund within 60 days of a purchase under its own policy.</p>
 
-	<h2>No promises we cannot keep</h2>
-	<p>Brickworks is offered as it is. We work to keep it running and what you share safe, but we cannot promise it never breaks or loses something: keep your own copy of anything that matters (File › Save). We may change, pause or end any part of the site, and take out of it what breaks these terms.</p>
+			<h2 id="no-promises-we-cannot-keep">No promises we cannot keep</h2>
+			<p>Brickworks is offered as it is. We work to keep it running and what you share safe, but we cannot promise it never breaks or loses something: keep your own copy of anything that matters (File › Save). We may change, pause or end any part of the site, and take out of it what breaks these terms.</p>
 
-	<h2>LEGO®</h2>
-	<p>Brickworks is not made, sponsored, authorised or endorsed by the LEGO Group. LEGO® is a trademark of the LEGO Group, used here as its Fair Play policy asks: as an adjective, for the bricks, sets and models this app is for.</p>
+			<h2 id="lego">LEGO®</h2>
+			<p>Brickworks is not made, sponsored, authorised or endorsed by the LEGO Group. LEGO® is a trademark of the LEGO Group, used here as its Fair Play policy asks: as an adjective, for the bricks, sets and models this app is for.</p>
 
-	<h2>When these change</h2>
-	<p>The date below changes, and a change that matters to you is said on the <a href="/changelog">changelog</a>. This page says what the site does; it is not legal advice.</p>
-
-	<p class="note">Updated 29 October 2026.</p>
+			<h2 id="when-these-change">When these change</h2>
+			<p>The date below changes, and a change that matters to you is said on the <a href="/changelog">changelog</a>. This page says what the site does; it is not legal advice.</p>
+		</article>
+	</div>
 </main>
 
 <footer class="site-foot">

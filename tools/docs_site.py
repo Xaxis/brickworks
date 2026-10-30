@@ -688,10 +688,12 @@ def pager(order: list[Page], page: Page) -> str:
     parts = []
     if at > 0:
         prev = order[at - 1]
-        parts.append(f'<a class="prev" rel="prev" href="{prev.url}"><small>Previous</small>{html.escape(prev.nav)}</a>')
+        parts.append(f'<a class="prev" rel="prev" href="{prev.url}"><small>Previous · {html.escape(prev.section)}</small>'
+                     f'<span>{html.escape(prev.nav)}</span></a>')
     if at + 1 < len(order):
         nxt = order[at + 1]
-        parts.append(f'<a class="next" rel="next" href="{nxt.url}"><small>Next</small>{html.escape(nxt.nav)}</a>')
+        parts.append(f'<a class="next" rel="next" href="{nxt.url}"><small>Next · {html.escape(nxt.section)}</small>'
+                     f'<span>{html.escape(nxt.nav)}</span></a>')
     return f'<nav class="docs-pager" aria-label="Previous and next page">{"".join(parts)}</nav>'
 
 
@@ -703,6 +705,12 @@ def document(nav: list[dict], pages: dict[str, Page], order: list[Page], page: P
               + ("" if page.name == "index" else f' <span aria-hidden="true">›</span> {html.escape(page.section)}')
               + "</nav>")
     lede = f'<p class="lede">{inline(page.description)}</p>' if page.description else ""
+    # The start page opens on its search, as a docs site's front door does;
+    # every other page says which part of the docs it is in, over its title.
+    eyebrow = html.escape("Documentation" if page.name == "index" else page.section)
+    start = (f'<button type="button" class="docs-search-open big" data-docs-search aria-label="Search the docs">{ICON_SEARCH}'
+             '<span>Search the docs</span><kbd class="keys"><kbd>Ctrl</kbd><kbd>K</kbd></kbd></button>'
+             if page.name == "index" else "")
     return f"""<!DOCTYPE html>
 <!-- Made by tools/docs_site.py from docs-site/{page.name}.md: edit that, not this. -->
 <html lang="en">
@@ -747,10 +755,15 @@ def document(nav: list[dict], pages: dict[str, Page], order: list[Page], page: P
 <main id="main" class="docs-main" tabindex="-1">
 {crumbs}
 <article class="docs-article">
+<header class="docs-head{' start' if page.name == 'index' else ''}">
+<p class="eyebrow">{eyebrow}</p>
 <h1>{html.escape(page.title)}</h1>
 {lede}
+{start}
+</header>
 {page.html}
 </article>
+<p class="docs-help">Something missing, or not as the app does it? <a href="https://github.com/Xaxis/brickworks-releases/issues">Say so on GitHub</a>, or see <a href="/faq">the questions people ask</a>.</p>
 {pager(order, page)}
 </main>
 {toc(page)}

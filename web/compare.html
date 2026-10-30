@@ -51,12 +51,11 @@
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <style>
-.page h1 { max-width: 18ch; }
-.page .lede { margin-bottom: 0; }
-.points { display: grid; gap: clamp(44px, 7vw, 88px); margin: clamp(44px, 7vw, 80px) 0 0; padding: 0; list-style: none; }
+/* Laid out here; the head, the pictures' frames, the table, the section
+   heads and the last offer are site.css's. */
+.points { display: grid; gap: clamp(44px, 7vw, 88px); margin: 0; padding: 0; list-style: none; }
 .point { display: grid; gap: clamp(18px, 3.5vw, 48px); grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: center; }
 .point:nth-child(even) .shot { order: 2; }
-.point h2 { font-size: var(--t-h2); }
 .point p { margin: 0; color: var(--ink-soft); max-width: 46ch; text-wrap: pretty; }
 .point .them { margin-top: 12px; font-size: var(--t-small); color: var(--ink-faint); }
 .shot img, .shot video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; background: var(--bg-soft); }
@@ -65,10 +64,10 @@
 	.point { grid-template-columns: 1fr; }
 	.point:nth-child(even) .shot { order: 0; }
 }
-.close { margin-top: clamp(56px, 8vw, 96px); padding-top: clamp(32px, 5vw, 48px); border-top: 1px solid var(--line); }
-.close h2 { font-size: var(--t-h2); }
-.close p { color: var(--ink-soft); max-width: 62ch; margin: 0 0 24px; }
-.close .sources { margin: 40px 0 0; font-size: var(--t-tiny); color: var(--ink-faint); max-width: 90ch; }
+.part { margin-top: var(--section); }
+.closing .lede { max-width: 62ch; }
+.sources-part { margin-top: var(--s-6); }
+.sources { margin: 0; font-size: var(--t-tiny); color: var(--ink-faint); max-width: 90ch; }
 .sources a { color: var(--ink-soft); }
 </style>
 <script src="/follow.js" type="module"></script>
@@ -109,223 +108,225 @@
 	</div>
 </header>
 
-<main id="main" class="wrap page">
-	<h1>Studio exists. Why Brickworks?</h1>
-	<p class="lede">
-		BrickLink Studio is the community’s standard, and it does a lot well:
-		parts from the BrickLink catalogue, photoreal renders, an instruction
-		maker. Mecabricks, LeoCAD and LDCad have strengths of their own. Here is
-		Brickworks beside them: six points shown in the app on real models, then
-		the whole field, row by row, and where the others still lead.
-	</p>
-
-	<ol class="points">
-		<li class="point">
-			<figure class="shot">
-				<video data-play muted loop playsinline preload="none" controls
-					poster="/img/compare-tabs.webp" width="1200" height="750"
-					aria-label="A Chromium window at brickworks.diy/app with three tabs open, a castle, a Technic go-kart and an orrery of the Sun and eight planets, each brought to the front in turn and each showing its own model in the builder.">
-					<source src="/img/compare-tabs.webm" type="video/webm">
-					<source src="/img/compare-tabs.mp4" type="video/mp4">
-				</video>
-			</figure>
-			<div>
-				<h2>In a browser, nothing to install</h2>
-				<p>Open brickworks.diy/app on any computer, or on a tablet or a phone, laid out for a finger. Every tab is its own project, and your models follow you to every device you sign in on. Desktop apps too.</p>
-				<p class="them">Studio is a desktop app for Windows and Mac.</p>
+<main id="main">
+	<div class="page-hero">
+		<div class="wrap">
+			<p class="eyebrow">Compare</p>
+			<h1>Studio exists. Why Brickworks?</h1>
+			<p class="lede">BrickLink Studio is the community’s standard, and it does a lot well: parts from the BrickLink catalogue, photoreal renders, an instruction maker. Mecabricks, LeoCAD and LDCad have strengths of their own. Here is Brickworks beside them: six points shown in the app on real models, then the whole field, row by row, and where the others still lead.</p>
+			<div class="actions">
+				<a class="cta" href="/app">Open the app</a>
+				<a class="cta ghost" href="#field-h">See the whole field</a>
 			</div>
-		</li>
-		<li class="point">
-			<figure class="shot">
-				<video data-play muted loop playsinline preload="none" controls
-					poster="/img/compare-stability.webp" width="1200" height="750"
-					aria-label="A tree of LEGO® bricks in the builder: Tools, Check stability is chosen, and the base the tree stands on is drawn green on the baseplate with a line down from its centre of mass, which falls 2 studs inside the back edge.">
-					<source src="/img/compare-stability.webm" type="video/webm">
-					<source src="/img/compare-stability.mp4" type="video/mp4">
-				</video>
-			</figure>
-			<div>
-				<h2>Will it stand? Will it hold?</h2>
-				<p>Check stability weighs each joint against what its studs can hold, and the centre of mass against the base, in every pose the hinges reach. View › Stress lists the weakest joints, worst first, and says what would fix each.</p>
-				<p class="them">Studio’s check flags weak parts and groups that can’t stand, and calls itself “very conservative”. LDD had none.</p>
-			</div>
-		</li>
-		<li class="point">
-			<figure class="shot">
-				<video data-play muted loop playsinline preload="none" controls
-					poster="/img/compare-simulate.webp" width="1200" height="750"
-					aria-label="Tools, Simulate mechanism on an orrery of the Sun and eight planets: the panel lists each planet's year against NASA's, Mercury 0.24 Earth years against 0.2408 and Mars 1.875 against 1.8808, and the gears, tinted blue for slow and orange for fast, turn the planets' arms round the central shaft.">
-					<source src="/img/compare-simulate.webm" type="video/webm">
-					<source src="/img/compare-simulate.mp4" type="video/mp4">
-				</video>
-			</figure>
-			<div>
-				<h2>Gear trains turn at their real ratios</h2>
-				<p>A gear put down by hand seats in mesh with the one beside it. Simulate turns the crank and every gear follows: this orrery keeps all eight planets’ years within 0.35% of NASA’s.</p>
-				<p class="them">Studio’s animations build the model or circle the camera. LDCad turns a mechanism by a script you write.</p>
-			</div>
-		</li>
-		<li class="point">
-			<figure class="shot">
-				<img src="/img/compare-io-640.webp"
-					srcset="/img/compare-io-640.webp 640w, /img/compare-io-1200.webp 1200w"
-					sizes="(min-width: 1180px) 670px, (min-width: 760px) 58vw, 100vw"
-					width="1200" height="750" loading="lazy" decoding="async"
-					alt="The File menu over a tree of LEGO® bricks, with Export open and BrickLink Studio model (.io) lit, among LDraw, 3D model, a picture, a BrickLink wanted list and a Rebrickable parts list.">
-			</figure>
-			<div>
-				<h2>Your Studio files, in and out</h2>
-				<p>Open a Studio <code>.io</code>, locked ones too, with the parts only Studio has, and save back to <code>.io</code>. LDD’s <code>.lxf</code> opens as well.</p>
-				<p class="them">An <code>.io</code> saved here has not yet been tried in Studio itself.</p>
-			</div>
-		</li>
-		<li class="point">
-			<figure class="shot">
-				<img src="/img/compare-export3d-640.webp"
-					srcset="/img/compare-export3d-640.webp 640w, /img/compare-export3d-1200.webp 1200w"
-					sizes="(min-width: 1180px) 670px, (min-width: 760px) 58vw, 100vw"
-					width="1200" height="750" loading="lazy" decoding="async"
-					alt="Export a 3D model, over a Technic go-kart: the model as a 3D file at its real size, for Blender, AR or a 3D printer, with the list of formats open: GLB, glTF, OBJ with its colours, and STL to 3D print.">
-			</figure>
-			<div>
-				<h2>STL, OBJ and GLB</h2>
-				<p>True to size, for a 3D printer, Blender or the web.</p>
-				<p class="them">Studio’s 3D exports are COLLADA and POV-Ray.</p>
-			</div>
-		</li>
-		<li class="point">
-			<figure class="shot">
-				<img src="/img/compare-booklet-640.webp"
-					srcset="/img/compare-booklet-640.webp 640w, /img/compare-booklet-1200.webp 1200w"
-					sizes="(min-width: 1180px) 670px, (min-width: 760px) 58vw, 100vw"
-					width="1200" height="750" loading="lazy" decoding="async"
-					alt="The go-kart's building instructions in a browser tab of their own beside the app's tabs: step 17, a box of the one part it adds above a drawing of the nearly finished kart, a progress bar along the foot, and Print at the top.">
-			</figure>
-			<div>
-				<h2>Instructions in one press</h2>
-				<p>A booklet with the parts for every step, laid out for you, then by hand if you like: each step’s view, the page breaks, callouts, new parts outlined. Print it, or save it as a PDF or as PNG pages.</p>
-				<p class="them">Studio’s Instruction Maker lays out pages and saves them as PDF and PNG too.</p>
-			</div>
-		</li>
-	</ol>
-
-	<section aria-labelledby="field-h">
-		<h2 id="field-h">Beside the field</h2>
-		<div class="table wide" role="region" aria-label="Brickworks, Studio, Mecabricks, LeoCAD and LDCad, row by row" tabindex="0">
-			<table>
-				<thead><tr><th scope="col"><span class="visually-hidden">What</span></th><th scope="col">Brickworks</th><th scope="col">BrickLink Studio</th><th scope="col">Mecabricks</th><th scope="col">LeoCAD</th><th scope="col">LDCad</th></tr></thead>
-				<tbody>
-					<tr><th scope="row">Runs on</th><td>Any browser, tablets and phones too; Windows, macOS, Linux</td><td>Windows, macOS</td><td>A browser; touch screens work</td><td>Windows, macOS, Linux</td><td>Windows, Linux</td></tr>
-					<tr><th scope="row">Price</th><td>Free</td><td>Free</td><td>Free; render credits</td><td>Free, open source</td><td>Free for personal use</td></tr>
-					<tr><th scope="row">Connections</th><td>Studs, pins, axles and clips join where the real ones do; exact collision</td><td>Connectors snap; hinges; collision optional</td><td>Snapped by hand, point to point</td><td>A grid; no connectivity</td><td>Connection snapping</td></tr>
-					<tr><th scope="row">Finding a part</th><td>By LDraw’s, BrickLink’s or Rebrickable’s name, an element number or a photo; worked constructions</td><td>BrickLink numbers, words, size; a palette of sub-assemblies</td><td>Its own library</td><td>LDraw’s library; search, palettes</td><td>LDraw’s library; bins, set inventories</td></tr>
-					<tr><th scope="row">Will it stand?</th><td>Joints weighed against what their studs hold; the weakest listed, with what would fix it</td><td>Weak parts tinted; “very conservative”</td><td>—</td><td>—</td><td>—</td></tr>
-					<tr><th scope="row">Gears</th><td>Seat in mesh by hand; trains turn at their ratios</td><td>Posed by hand</td><td>Posed by hand</td><td>Posed by hand</td><td>Turned by a script</td></tr>
-					<tr><th scope="row">Instructions</th><td>Worked out, then laid out by hand; print, PDF and PNG</td><td>Instruction Maker; PDF and PNG</td><td>—</td><td>Steps; print, HTML</td><td>Steps</td></tr>
-					<tr><th scope="row">Rendering</th><td>Real time; Render to 4K, turntables</td><td>Path traced (Eyesight); POV-Ray</td><td>A render farm; a Blender add-on</td><td>POV-Ray; Blender</td><td>POV-Ray</td></tr>
-					<tr><th scope="row">Flexible parts</th><td>Hoses, chains and tread by their ends; no bands or springs</td><td>The Flex tool</td><td>Paths and springs</td><td>Hoses, flex axles, strings, shock absorbers</td><td>Paths, rubber bands, springs</td></tr>
-					<tr><th scope="row">Making parts</th><td>Any size or any change, in the app; prints and stickers</td><td>PartDesigner, a separate app</td><td>Prints; no new shapes</td><td>Textures; a minifig wizard</td><td>Textures; flexible parts by template</td></tr>
-					<tr><th scope="row">Files</th><td>In: LDraw, <code>.io</code>, <code>.lxf</code>, and 3D models to brickify. Out: LDraw, <code>.io</code>, glTF, OBJ, STL</td><td>In: <code>.io</code>, LDraw, <code>.lxf</code>. Out: LDraw, LXFML, COLLADA, POV-Ray</td><td>In: LDD, Studio. Out: OBJ, DAE, STL</td><td>In: LDraw, LDD. Out: OBJ, 3DS, COLLADA</td><td>LDraw; glTF out</td></tr>
-					<tr><th scope="row">Shops and collections</th><td>BrickLink and Rebrickable lists; your collection; no prices</td><td>BrickLink prices; a wanted list in one click; your collection</td><td>CSV, BrickLink XML</td><td>BrickLink XML</td><td>Rebrickable inventories as bins</td></tr>
-					<tr><th scope="row">Building together</th><td>Live, by a link: pointers, chat, your own Undo; the desktop app from 0.8.0</td><td>Build Together, live</td><td>—</td><td>—</td><td>—</td></tr>
-					<tr><th scope="row">Sharing</th><td>A gallery with remixes, comments, embeds and the Tested mark</td><td>A gallery</td><td>A public library, embeds</td><td>—</td><td>—</td></tr>
-					<tr><th scope="row">Accessibility</th><td>A screen reader and the keys alone, in desktop 0.8.0</td><td>Remappable keys</td><td>—</td><td>High-contrast studs and edges</td><td>—</td></tr>
-					<tr><th scope="row">AI design</th><td>Claude designs and edits; off until you turn it on</td><td>— (Sculpture is rule-based)</td><td>—</td><td>—</td><td>—</td></tr>
-				</tbody>
-			</table>
 		</div>
-		<p class="note">— where none was found. Studio 2.26.9, LeoCAD 26.09 and LDCad 1.7 beta; the sources are at the foot of the page. LDD, retired in 2022, and Bricksmith, last released in 2022, are left out.</p>
-	</section>
+	</div>
+	<div class="wrap page-body">
+		<ol class="points">
+			<li class="point">
+				<figure class="shot">
+					<video data-play muted loop playsinline preload="none" controls
+						poster="/img/compare-tabs.webp" width="1200" height="750"
+						aria-label="A Chromium window at brickworks.diy/app with three tabs open, a castle, a Technic go-kart and an orrery of the Sun and eight planets, each brought to the front in turn and each showing its own model in the builder.">
+						<source src="/img/compare-tabs.webm" type="video/webm">
+						<source src="/img/compare-tabs.mp4" type="video/mp4">
+					</video>
+				</figure>
+				<div>
+					<h2>In a browser, nothing to install</h2>
+					<p>Open brickworks.diy/app on any computer, or on a tablet or a phone, laid out for a finger. Every tab is its own project, and your models follow you to every device you sign in on. Desktop apps too.</p>
+					<p class="them">Studio is a desktop app for Windows and Mac.</p>
+				</div>
+			</li>
+			<li class="point">
+				<figure class="shot">
+					<video data-play muted loop playsinline preload="none" controls
+						poster="/img/compare-stability.webp" width="1200" height="750"
+						aria-label="A tree of LEGO® bricks in the builder: Tools, Check stability is chosen, and the base the tree stands on is drawn green on the baseplate with a line down from its centre of mass, which falls 2 studs inside the back edge.">
+						<source src="/img/compare-stability.webm" type="video/webm">
+						<source src="/img/compare-stability.mp4" type="video/mp4">
+					</video>
+				</figure>
+				<div>
+					<h2>Will it stand? Will it hold?</h2>
+					<p>Check stability weighs each joint against what its studs can hold, and the centre of mass against the base, in every pose the hinges reach. View › Stress lists the weakest joints, worst first, and says what would fix each.</p>
+					<p class="them">Studio’s check flags weak parts and groups that can’t stand, and calls itself “very conservative”. LDD had none.</p>
+				</div>
+			</li>
+			<li class="point">
+				<figure class="shot">
+					<video data-play muted loop playsinline preload="none" controls
+						poster="/img/compare-simulate.webp" width="1200" height="750"
+						aria-label="Tools, Simulate mechanism on an orrery of the Sun and eight planets: the panel lists each planet's year against NASA's, Mercury 0.24 Earth years against 0.2408 and Mars 1.875 against 1.8808, and the gears, tinted blue for slow and orange for fast, turn the planets' arms round the central shaft.">
+						<source src="/img/compare-simulate.webm" type="video/webm">
+						<source src="/img/compare-simulate.mp4" type="video/mp4">
+					</video>
+				</figure>
+				<div>
+					<h2>Gear trains turn at their real ratios</h2>
+					<p>A gear put down by hand seats in mesh with the one beside it. Simulate turns the crank and every gear follows: this orrery keeps all eight planets’ years within 0.35% of NASA’s.</p>
+					<p class="them">Studio’s animations build the model or circle the camera. LDCad turns a mechanism by a script you write.</p>
+				</div>
+			</li>
+			<li class="point">
+				<figure class="shot">
+					<img src="/img/compare-io-640.webp"
+						srcset="/img/compare-io-640.webp 640w, /img/compare-io-1200.webp 1200w"
+						sizes="(min-width: 1180px) 670px, (min-width: 760px) 58vw, 100vw"
+						width="1200" height="750" loading="lazy" decoding="async"
+						alt="The File menu over a tree of LEGO® bricks, with Export open and BrickLink Studio model (.io) lit, among LDraw, 3D model, a picture, a BrickLink wanted list and a Rebrickable parts list.">
+				</figure>
+				<div>
+					<h2>Your Studio files, in and out</h2>
+					<p>Open a Studio <code>.io</code>, locked ones too, with the parts only Studio has, and save back to <code>.io</code>. LDD’s <code>.lxf</code> opens as well.</p>
+					<p class="them">An <code>.io</code> saved here has not yet been tried in Studio itself.</p>
+				</div>
+			</li>
+			<li class="point">
+				<figure class="shot">
+					<img src="/img/compare-export3d-640.webp"
+						srcset="/img/compare-export3d-640.webp 640w, /img/compare-export3d-1200.webp 1200w"
+						sizes="(min-width: 1180px) 670px, (min-width: 760px) 58vw, 100vw"
+						width="1200" height="750" loading="lazy" decoding="async"
+						alt="Export a 3D model, over a Technic go-kart: the model as a 3D file at its real size, for Blender, AR or a 3D printer, with the list of formats open: GLB, glTF, OBJ with its colours, and STL to 3D print.">
+				</figure>
+				<div>
+					<h2>STL, OBJ and GLB</h2>
+					<p>True to size, for a 3D printer, Blender or the web.</p>
+					<p class="them">Studio’s 3D exports are COLLADA and POV-Ray.</p>
+				</div>
+			</li>
+			<li class="point">
+				<figure class="shot">
+					<img src="/img/compare-booklet-640.webp"
+						srcset="/img/compare-booklet-640.webp 640w, /img/compare-booklet-1200.webp 1200w"
+						sizes="(min-width: 1180px) 670px, (min-width: 760px) 58vw, 100vw"
+						width="1200" height="750" loading="lazy" decoding="async"
+						alt="The go-kart's building instructions in a browser tab of their own beside the app's tabs: step 17, a box of the one part it adds above a drawing of the nearly finished kart, a progress bar along the foot, and Print at the top.">
+				</figure>
+				<div>
+					<h2>Instructions in one press</h2>
+					<p>A booklet with the parts for every step, laid out for you, then by hand if you like: each step’s view, the page breaks, callouts, new parts outlined. Print it, or save it as a PDF or as PNG pages.</p>
+					<p class="them">Studio’s Instruction Maker lays out pages and saves them as PDF and PNG too.</p>
+				</div>
+			</li>
+		</ol>
 
-	<section aria-labelledby="lead-h">
-		<h2 id="lead-h">Where the others still lead</h2>
-		<div class="prose">
-			<p><b>Renders.</b> Studio’s Eyesight is a path tracer, and Mecabricks has a render farm and a Blender add-on. Render here builds a picture from frames drawn in real time; for a path-traced one, export a GLB to Blender.</p>
-			<p><b>Prices.</b> Studio is BrickLink’s own app: it shows BrickLink’s prices and puts a model on a wanted list in one click. Brickworks writes the wanted list and the Rebrickable list, with no prices.</p>
-			<p><b>Rubber bands and springs.</b> LDCad shapes a rubber band round the circles it passes, and builds springs and shock absorbers. Brickworks lays hoses, chains and tread, not bands or springs.</p>
-			<p><b>Years.</b> Studio has years of users, a tutorial at first launch and official videos. Brickworks has an eight-card tour.</p>
-		</div>
-	</section>
+		<section class="part" aria-labelledby="field-h">
+			<div class="section-head"><div><h2 class="title" id="field-h">Beside the field</h2><p>Brickworks, Studio, Mecabricks, LeoCAD and LDCad, row by row.</p></div></div>
+			<div class="table wide" role="region" aria-label="Brickworks, Studio, Mecabricks, LeoCAD and LDCad, row by row" tabindex="0">
+				<table>
+					<thead><tr><th scope="col"><span class="visually-hidden">What</span></th><th scope="col">Brickworks</th><th scope="col">BrickLink Studio</th><th scope="col">Mecabricks</th><th scope="col">LeoCAD</th><th scope="col">LDCad</th></tr></thead>
+					<tbody>
+						<tr><th scope="row">Runs on</th><td>Any browser, tablets and phones too; Windows, macOS, Linux</td><td>Windows, macOS</td><td>A browser; touch screens work</td><td>Windows, macOS, Linux</td><td>Windows, Linux</td></tr>
+						<tr><th scope="row">Price</th><td>Free</td><td>Free</td><td>Free; render credits</td><td>Free, open source</td><td>Free for personal use</td></tr>
+						<tr><th scope="row">Connections</th><td>Studs, pins, axles and clips join where the real ones do; exact collision</td><td>Connectors snap; hinges; collision optional</td><td>Snapped by hand, point to point</td><td>A grid; no connectivity</td><td>Connection snapping</td></tr>
+						<tr><th scope="row">Finding a part</th><td>By LDraw’s, BrickLink’s or Rebrickable’s name, an element number or a photo; worked constructions</td><td>BrickLink numbers, words, size; a palette of sub-assemblies</td><td>Its own library</td><td>LDraw’s library; search, palettes</td><td>LDraw’s library; bins, set inventories</td></tr>
+						<tr><th scope="row">Will it stand?</th><td>Joints weighed against what their studs hold; the weakest listed, with what would fix it</td><td>Weak parts tinted; “very conservative”</td><td>—</td><td>—</td><td>—</td></tr>
+						<tr><th scope="row">Gears</th><td>Seat in mesh by hand; trains turn at their ratios</td><td>Posed by hand</td><td>Posed by hand</td><td>Posed by hand</td><td>Turned by a script</td></tr>
+						<tr><th scope="row">Instructions</th><td>Worked out, then laid out by hand; print, PDF and PNG</td><td>Instruction Maker; PDF and PNG</td><td>—</td><td>Steps; print, HTML</td><td>Steps</td></tr>
+						<tr><th scope="row">Rendering</th><td>Real time; Render to 4K, turntables</td><td>Path traced (Eyesight); POV-Ray</td><td>A render farm; a Blender add-on</td><td>POV-Ray; Blender</td><td>POV-Ray</td></tr>
+						<tr><th scope="row">Flexible parts</th><td>Hoses, chains and tread by their ends; no bands or springs</td><td>The Flex tool</td><td>Paths and springs</td><td>Hoses, flex axles, strings, shock absorbers</td><td>Paths, rubber bands, springs</td></tr>
+						<tr><th scope="row">Making parts</th><td>Any size or any change, in the app; prints and stickers</td><td>PartDesigner, a separate app</td><td>Prints; no new shapes</td><td>Textures; a minifig wizard</td><td>Textures; flexible parts by template</td></tr>
+						<tr><th scope="row">Files</th><td>In: LDraw, <code>.io</code>, <code>.lxf</code>, and 3D models to brickify. Out: LDraw, <code>.io</code>, glTF, OBJ, STL</td><td>In: <code>.io</code>, LDraw, <code>.lxf</code>. Out: LDraw, LXFML, COLLADA, POV-Ray</td><td>In: LDD, Studio. Out: OBJ, DAE, STL</td><td>In: LDraw, LDD. Out: OBJ, 3DS, COLLADA</td><td>LDraw; glTF out</td></tr>
+						<tr><th scope="row">Shops and collections</th><td>BrickLink and Rebrickable lists; your collection; no prices</td><td>BrickLink prices; a wanted list in one click; your collection</td><td>CSV, BrickLink XML</td><td>BrickLink XML</td><td>Rebrickable inventories as bins</td></tr>
+						<tr><th scope="row">Building together</th><td>Live, by a link: pointers, chat, your own Undo; the desktop app from 0.8.0</td><td>Build Together, live</td><td>—</td><td>—</td><td>—</td></tr>
+						<tr><th scope="row">Sharing</th><td>A gallery with remixes, comments, embeds and the Tested mark</td><td>A gallery</td><td>A public library, embeds</td><td>—</td><td>—</td></tr>
+						<tr><th scope="row">Accessibility</th><td>A screen reader and the keys alone, in desktop 0.8.0</td><td>Remappable keys</td><td>—</td><td>High-contrast studs and edges</td><td>—</td></tr>
+						<tr><th scope="row">AI design</th><td>Claude designs and edits; off until you turn it on</td><td>— (Sculpture is rule-based)</td><td>—</td><td>—</td><td>—</td></tr>
+					</tbody>
+				</table>
+			</div>
+			<p class="note">— where none was found. Studio 2.26.9, LeoCAD 26.09 and LDCad 1.7 beta; the sources are at the foot of the page. LDD, retired in 2022, and Bricksmith, last released in 2022, are left out.</p>
+		</section>
 
-	<section class="close" aria-labelledby="assistant-h">
-		<h2 id="assistant-h">And an assistant, only if you want one</h2>
-		<p>
-			Claude, on your own plan or key, checks the physics and designs on
-			request. It is off until you turn it on in Settings, Assistant.
-			<a href="/faq#claude">How it works</a>
-		</p>
-		<div class="actions">
-			<a class="cta big" href="/app">Open Brickworks</a>
-			<a class="cta ghost big" href="/download">Download</a>
-		</div>
-		<p class="sources">
-			Sources, read 12 and 13 October 2026, the versions rechecked 24 October.
-			Studio:
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5404381697559">what it is</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5412087360919">snapping</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5412820155927">collision</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6502499385111">part search</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6501498505111-Stability-check">stability check</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6507015818263">animation</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5626403887511">Instruction Maker</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5628123432215">its export</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6505772624023">Eyesight</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6506022103447">POV-Ray</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6481921905303">Flex tool</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5872512112663">PartDesigner</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6502277722647">import</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6502197862679">export formats</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5705572363159">prices</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5705925898135-Upload-as-a-Wanted-List">wanted list</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/20062101879447">My Collection</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6477757327767">Build Together</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5705436653847">Gallery</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5706320095255">shortcuts</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6476848743447">tutorial</a>,
-			<a href="https://www.youtube.com/watch?v=4ekcte_3Ow4">video</a>,
-			<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6508264220183">Sculpture</a>,
-			<a href="https://www.bricklink.com/v3/studio/download.page">release notes</a>.
-			Mecabricks:
-			<a href="https://www.mecabricks.com/en/forum/topic/2638">online only</a>,
-			<a href="https://www.eurobricks.com/forum/forums/topic/103517-digital-tools-for-tablets">touch</a>,
-			<a href="https://brickset.com/article/52336/let-s-build-in-mecabricks">building</a>,
-			<a href="https://forums.ldraw.org/post-38924.html">its library</a>,
-			<a href="https://www.mecabricks.com/en/forum/topic/76253">no collision</a>,
-			<a href="https://brickset.com/article/52611/mecabricks-the-render-farm">render farm</a>,
-			<a href="https://www.mecabricks.com/en/shop/product/4">Blender add-on</a>,
-			<a href="https://www.eurobricks.com/forum/forums/topic/170705-mecabricks-new-flexible-part-tools">flexible parts</a>,
-			<a href="https://brickset.com/article/53013/mecabricks-the-part-manager">Part Manager</a>,
-			<a href="https://www.mecabricks.com/en/forum/topic/4504">no custom shapes</a>,
-			<a href="https://forums.ldraw.org/post-27390.html">LDD import</a>,
-			<a href="https://mecabricks.com/en/models/7l2BlMpnv0N">a model’s page</a>.
-			LeoCAD:
-			<a href="https://www.leocad.org/">site</a>,
-			<a href="https://www.leocad.org/download.html">download</a>,
-			<a href="https://github.com/leozide/leocad/issues/841">no connectivity</a>,
-			<a href="https://www.leocad.org/docs/library.html">library</a>,
-			<a href="https://www.eurobricks.com/forum/forums/topic/143937-detection-of-colision">no physics</a>,
-			<a href="https://www.leocad.org/docs/history.html">history</a>,
-			<a href="https://www.leocad.org/docs/texmap.html">textures</a>,
-			<a href="https://github.com/leozide/leocad/releases">releases</a>,
-			<a href="https://github.com/leozide/leocad/releases/tag/v26.09">its 26.09</a>.
-			LDCad:
-			<a href="http://www.melkert.net/LDCad/download">download</a>,
-			<a href="http://www.melkert.net/LDCad/faq">FAQ</a>,
-			<a href="https://forums.ldraw.org/post-54435.html">snapping</a>,
-			<a href="http://www.melkert.net/LDCad/docs/gui">interface</a>,
-			<a href="https://forums.ldraw.org/post-44312.html">collision script</a>,
-			<a href="http://www.melkert.net/LDCad/docs/scriptAPI">script API</a>,
-			<a href="https://forums.ldraw.org/post-24178.html">steps</a>,
-			<a href="http://www.melkert.net/LDCad/features">features</a>,
-			<a href="http://www.melkert.net/LDCad/tech/meta">flexible parts</a>,
-			<a href="https://forums.ldraw.org/post-51059.html">1.7 beta</a>,
-			<a href="https://forums.ldraw.org/post-36851.html">Rebrickable bins</a>.
-			LDD:
-			<a href="https://www.lego.com/en-us/service/help-topics/article/about-lego-digital-designer">retired</a>,
-			<a href="https://www.brothers-brick.com/2022/01/12/lego-fully-discontinuing-lego-digital-designer-in-favor-of-bricklink-studio">in 2022</a>,
-			<a href="https://wireless-earth.de/private/invisiblehand_eng.html">no stability check</a>.
-		</p>
-	</section>
+		<section class="part" aria-labelledby="lead-h">
+			<div class="section-head"><div><h2 class="title" id="lead-h">Where the others still lead</h2></div></div>
+			<div class="prose">
+				<p><b>Renders.</b> Studio’s Eyesight is a path tracer, and Mecabricks has a render farm and a Blender add-on. Render here builds a picture from frames drawn in real time; for a path-traced one, export a GLB to Blender.</p>
+				<p><b>Prices.</b> Studio is BrickLink’s own app: it shows BrickLink’s prices and puts a model on a wanted list in one click. Brickworks writes the wanted list and the Rebrickable list, with no prices.</p>
+				<p><b>Rubber bands and springs.</b> LDCad shapes a rubber band round the circles it passes, and builds springs and shock absorbers. Brickworks lays hoses, chains and tread, not bands or springs.</p>
+				<p><b>Years.</b> Studio has years of users, a tutorial at first launch and official videos. Brickworks has an eight-card tour.</p>
+			</div>
+		</section>
+
+		<section class="part closing" aria-labelledby="assistant-h">
+			<h2 class="title" id="assistant-h">And an assistant, only if you want one</h2>
+			<p class="lede">Your own AI, Claude on your plan or Claude or another AI on your own key, checks the physics and designs on request, never limited on any plan. It is off until you turn it on in Settings, Assistant. <a href="/faq#claude">How it works</a></p>
+			<div class="actions center">
+				<a class="cta big" href="/app">Open Brickworks</a>
+				<a class="cta ghost big" href="/download">Download</a>
+			</div>
+		</section>
+		<section class="part sources-part" aria-label="Sources">
+			<p class="sources">
+				Sources, read 12 and 13 October 2026, the versions rechecked 24 October.
+				Studio:
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5404381697559">what it is</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5412087360919">snapping</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5412820155927">collision</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6502499385111">part search</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6501498505111-Stability-check">stability check</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6507015818263">animation</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5626403887511">Instruction Maker</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5628123432215">its export</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6505772624023">Eyesight</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6506022103447">POV-Ray</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6481921905303">Flex tool</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5872512112663">PartDesigner</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6502277722647">import</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6502197862679">export formats</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5705572363159">prices</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5705925898135-Upload-as-a-Wanted-List">wanted list</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/20062101879447">My Collection</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6477757327767">Build Together</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5705436653847">Gallery</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/5706320095255">shortcuts</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6476848743447">tutorial</a>,
+				<a href="https://www.youtube.com/watch?v=4ekcte_3Ow4">video</a>,
+				<a href="https://studiohelp.bricklink.com/hc/en-us/articles/6508264220183">Sculpture</a>,
+				<a href="https://www.bricklink.com/v3/studio/download.page">release notes</a>.
+				Mecabricks:
+				<a href="https://www.mecabricks.com/en/forum/topic/2638">online only</a>,
+				<a href="https://www.eurobricks.com/forum/forums/topic/103517-digital-tools-for-tablets">touch</a>,
+				<a href="https://brickset.com/article/52336/let-s-build-in-mecabricks">building</a>,
+				<a href="https://forums.ldraw.org/post-38924.html">its library</a>,
+				<a href="https://www.mecabricks.com/en/forum/topic/76253">no collision</a>,
+				<a href="https://brickset.com/article/52611/mecabricks-the-render-farm">render farm</a>,
+				<a href="https://www.mecabricks.com/en/shop/product/4">Blender add-on</a>,
+				<a href="https://www.eurobricks.com/forum/forums/topic/170705-mecabricks-new-flexible-part-tools">flexible parts</a>,
+				<a href="https://brickset.com/article/53013/mecabricks-the-part-manager">Part Manager</a>,
+				<a href="https://www.mecabricks.com/en/forum/topic/4504">no custom shapes</a>,
+				<a href="https://forums.ldraw.org/post-27390.html">LDD import</a>,
+				<a href="https://mecabricks.com/en/models/7l2BlMpnv0N">a model’s page</a>.
+				LeoCAD:
+				<a href="https://www.leocad.org/">site</a>,
+				<a href="https://www.leocad.org/download.html">download</a>,
+				<a href="https://github.com/leozide/leocad/issues/841">no connectivity</a>,
+				<a href="https://www.leocad.org/docs/library.html">library</a>,
+				<a href="https://www.eurobricks.com/forum/forums/topic/143937-detection-of-colision">no physics</a>,
+				<a href="https://www.leocad.org/docs/history.html">history</a>,
+				<a href="https://www.leocad.org/docs/texmap.html">textures</a>,
+				<a href="https://github.com/leozide/leocad/releases">releases</a>,
+				<a href="https://github.com/leozide/leocad/releases/tag/v26.09">its 26.09</a>.
+				LDCad:
+				<a href="http://www.melkert.net/LDCad/download">download</a>,
+				<a href="http://www.melkert.net/LDCad/faq">FAQ</a>,
+				<a href="https://forums.ldraw.org/post-54435.html">snapping</a>,
+				<a href="http://www.melkert.net/LDCad/docs/gui">interface</a>,
+				<a href="https://forums.ldraw.org/post-44312.html">collision script</a>,
+				<a href="http://www.melkert.net/LDCad/docs/scriptAPI">script API</a>,
+				<a href="https://forums.ldraw.org/post-24178.html">steps</a>,
+				<a href="http://www.melkert.net/LDCad/features">features</a>,
+				<a href="http://www.melkert.net/LDCad/tech/meta">flexible parts</a>,
+				<a href="https://forums.ldraw.org/post-51059.html">1.7 beta</a>,
+				<a href="https://forums.ldraw.org/post-36851.html">Rebrickable bins</a>.
+				LDD:
+				<a href="https://www.lego.com/en-us/service/help-topics/article/about-lego-digital-designer">retired</a>,
+				<a href="https://www.brothers-brick.com/2022/01/12/lego-fully-discontinuing-lego-digital-designer-in-favor-of-bricklink-studio">in 2022</a>,
+				<a href="https://wireless-earth.de/private/invisiblehand_eng.html">no stability check</a>.
+			</p>
+		</section>
+	</div>
 </main>
 
 <footer class="site-foot">

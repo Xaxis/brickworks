@@ -80,15 +80,21 @@
 </header>
 
 <main id="main">
-	<div class="wrap page notices-page">
-		<div class="page-head notices-head">
-			<h1>Notifications</h1>
-			<button class="cta ghost small" type="button" id="all-read" hidden>Mark all read</button>
+	<div class="page-hero">
+		<div class="wrap">
+			<p class="eyebrow">For you</p>
+			<div class="notices-head">
+				<h1>Notifications</h1>
+				<button class="cta ghost small" type="button" id="all-read" hidden>Mark all read</button>
+			</div>
+			<p class="lede">Comments, photos of builds, remixes and likes on your models, replies to your comments, and the challenges you enter.</p>
+			<nav class="tabs" aria-label="What is new for you">
+				<a href="/notifications" aria-current="page">Notifications <span class="n" data-count="notifications" hidden></span></a>
+				<a href="/feed">Your feed <span class="n" data-count="feed" hidden></span></a>
+			</nav>
 		</div>
-		<nav class="tabs" aria-label="What is new for you">
-			<a href="/notifications" aria-current="page">Notifications <span class="n" data-count="notifications" hidden></span></a>
-			<a href="/feed">Your feed <span class="n" data-count="feed" hidden></span></a>
-		</nav>
+	</div>
+	<div class="wrap page-body notices-page">
 
 		<section id="signed-out" hidden>
 			<p class="lede">Sign in to see what happens to your models: comments, photos of

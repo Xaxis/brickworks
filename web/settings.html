@@ -45,8 +45,14 @@
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/oc-button.css">
 <style>
-/* Laid out here; every control is site.css's. */
-.settings-page { max-width: 820px; }
+/* Laid out here; the head, the list of settings beside them, the panel
+   and every control are site.css's. */
+.settings-col { min-width: 0; max-width: 820px; }
+.settings-page .setting[id] { scroll-margin-top: calc(var(--head-h) + var(--s-5)); }
+/* Signed out, there is nothing to list: the words take the width. */
+.settings-page:has(#signed-out:not([hidden])) { grid-template-columns: minmax(0, 1fr); }
+.settings-page:has(#signed-out:not([hidden])) .page-toc { display: none; }
+#young { margin: 0 0 var(--s-4); }
 .connections { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 8px; }
 .connections li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px;
 	font-size: var(--t-small); color: var(--ink-soft); }
@@ -92,150 +98,167 @@
 </header>
 
 <main id="main">
-	<div class="wrap page settings-page">
-		<div class="page-head">
+	<div class="page-hero">
+		<div class="wrap">
 			<p class="eyebrow"><a href="/profile" id="to-profile">Your profile</a></p>
 			<h1>Settings</h1>
+			<p class="lede">Your profile, how Brickworks looks, what it emails you, what others see of you, and the AI that works in your tabs.</p>
 		</div>
-		<!-- The panel's place while what it says is asked (settings.js). -->
-		<div class="settings skeleton" id="loading" role="status">
-			<span class="visually-hidden">Looking for your sign-in…</span>
-			<div class="setting" aria-hidden="true"><div><span class="bone short"></span><span class="bone wide"></span><span class="bone"></span></div><span class="bone button"></span></div>
-			<div class="setting" aria-hidden="true"><div><span class="bone short"></span><span class="bone wide"></span><span class="bone"></span></div><span class="bone button"></span></div>
-			<div class="setting" aria-hidden="true"><div><span class="bone short"></span><span class="bone wide"></span><span class="bone"></span></div><span class="bone button"></span></div>
-			<div class="setting" aria-hidden="true"><div><span class="bone short"></span><span class="bone wide"></span><span class="bone"></span></div><span class="bone button"></span></div>
-			<div class="setting" aria-hidden="true"><div><span class="bone short"></span><span class="bone wide"></span><span class="bone"></span></div><span class="bone button"></span></div>
-			<div class="setting" aria-hidden="true"><div><span class="bone short"></span><span class="bone wide"></span><span class="bone"></span></div><span class="bone button"></span></div>
-		</div>
+	</div>
+	<div class="wrap page-body page-grid settings-page">
+		<nav class="page-toc" aria-labelledby="toc-title">
+			<p class="page-toc-title" id="toc-title">Settings</p>
+			<ul>
+				<li><a href="#profile-part">Profile</a></li>
+				<li><a href="#theme-part">Appearance</a></li>
+				<li><a href="#email-part">Email</a></li>
+				<li><a href="#privacy-part">Privacy</a></li>
+				<li><a href="#claude-part">Claude</a></li>
+				<li><a href="#sign-out-part">Sign out</a></li>
+				<li><a href="#delete-part">Delete account</a></li>
+			</ul>
+		</nav>
+		<div class="settings-col">
+			<!-- The panel's place while what it says is asked (settings.js). -->
+			<div class="settings skeleton" id="loading" role="status">
+				<span class="visually-hidden">Looking for your sign-in…</span>
+				<div class="setting" aria-hidden="true"><div><span class="bone short"></span><span class="bone wide"></span><span class="bone"></span></div><span class="bone button"></span></div>
+				<div class="setting" aria-hidden="true"><div><span class="bone short"></span><span class="bone wide"></span><span class="bone"></span></div><span class="bone button"></span></div>
+				<div class="setting" aria-hidden="true"><div><span class="bone short"></span><span class="bone wide"></span><span class="bone"></span></div><span class="bone button"></span></div>
+				<div class="setting" aria-hidden="true"><div><span class="bone short"></span><span class="bone wide"></span><span class="bone"></span></div><span class="bone button"></span></div>
+				<div class="setting" aria-hidden="true"><div><span class="bone short"></span><span class="bone wide"></span><span class="bone"></span></div><span class="bone button"></span></div>
+				<div class="setting" aria-hidden="true"><div><span class="bone short"></span><span class="bone wide"></span><span class="bone"></span></div><span class="bone button"></span></div>
+			</div>
 
-		<section id="signed-out" hidden>
-			<p class="lede">Sign in to choose what Brickworks emails you, what your profile shows and which Claude
-				apps can work in your tabs. We email you a code: no password.</p>
-			<div class="actions"><button class="cta big" id="sign-in" type="button">Sign in</button></div>
-		</section>
+			<section id="signed-out" hidden>
+				<p class="lede">Sign in to choose what Brickworks emails you, what your profile shows and which Claude
+					apps can work in your tabs. We email you a code: no password.</p>
+				<div class="actions"><button class="cta big" id="sign-in" type="button">Sign in</button></div>
+			</section>
 
-		<div id="signed-in" hidden>
-			<p class="note" id="young" hidden>Public profiles and public collections are for people
-				13 and over, so this account keeps its collections and favourites to itself. Building,
-				your models and sharing them by link are all yours.</p>
-			<div class="settings">
-				<div class="setting" id="profile-part">
-					<div>
-						<h2>Profile</h2>
-						<p id="profile-line">Your name, handle, words, links and pinned models are on your profile.</p>
-					</div>
-					<a class="cta ghost" href="/profile?edit=1" id="edit-profile">Edit profile</a>
-				</div>
-
-				<div class="setting" id="theme-part">
-					<div>
-						<h2>Appearance</h2>
-						<p>System follows your computer’s light or dark setting. Kept in this browser,
-							and on your account, so your other browsers follow it once you sign in.</p>
-					</div>
-					<div class="segmented" role="group" aria-label="Theme">
-						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
-						<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
-						<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
-					</div>
-				</div>
-
-				<div class="setting" id="email-part">
-					<div class="wide">
-						<h2>Email</h2>
-						<p id="who"></p>
-					</div>
-					<div class="wide" id="mail" hidden>
-						<p>Brickworks emails you only what you ask for here, from the address sign-in codes
-							come from. Off until you turn it on.</p>
-						<label class="choice"><input type="checkbox" id="mail-comments">
-							Email me when somebody comments on a model I shared: at most one email a day</label>
-						<div id="mail-kinds" hidden>
-							<p>And in the same email, at most one a day, what came into your feed:</p>
-							<label class="choice"><input type="checkbox" id="mail-models" data-kind="models">
-								New models from people I follow</label>
-							<label class="choice"><input type="checkbox" id="mail-versions" data-kind="versions">
-								New versions of their models</label>
-							<label class="choice"><input type="checkbox" id="mail-photos" data-kind="photos">
-								Photos of builds: of my models, and by people I follow</label>
-							<label class="choice"><input type="checkbox" id="mail-remixes" data-kind="remixes">
-								Remixes of my models</label>
+			<div id="signed-in" hidden>
+				<p class="note" id="young" hidden>Public profiles and public collections are for people
+					13 and over, so this account keeps its collections and favourites to itself. Building,
+					your models and sharing them by link are all yours.</p>
+				<div class="settings">
+					<div class="setting" id="profile-part">
+						<div>
+							<h2>Profile</h2>
+							<p id="profile-line">Your name, handle, words, links and pinned models are on your profile.</p>
 						</div>
-						<p class="said" id="mail-said" role="status"></p>
+						<a class="cta ghost" href="/profile?edit=1" id="edit-profile">Edit profile</a>
 					</div>
-				</div>
 
-				<div class="setting" id="oc-part" hidden>
-					<div>
-						<h2>orangecheck</h2>
-						<p id="oc-said"></p>
+					<div class="setting" id="theme-part">
+						<div>
+							<h2>Appearance</h2>
+							<p>System follows your computer’s light or dark setting. Kept in this browser,
+								and on your account, so your other browsers follow it once you sign in.</p>
+						</div>
+						<div class="segmented" role="group" aria-label="Theme">
+							<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+							<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+							<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+						</div>
 					</div>
-					<div class="actions">
-						<button class="cta ghost" type="button" id="oc-go" data-oc-sign-in hidden><span data-oc-mark></span>Link orangecheck</button>
-						<button class="cta ghost danger" type="button" id="oc-unlink" hidden>Unlink</button>
-					</div>
-					<form class="wide code-form" id="oc-code" hidden>
-						<label><span id="oc-code-said">The code we emailed you</span>
-							<input id="oc-code-field" type="text" inputmode="numeric" autocomplete="one-time-code" required></label>
-						<div class="actions"><button class="cta" type="submit" id="oc-code-go">Confirm</button></div>
-					</form>
-					<p class="said wide" id="oc-status" role="status"></p>
-				</div>
 
-				<div class="setting" id="privacy-part">
-					<div class="wide">
-						<h2>Privacy</h2>
-						<p id="age-said">Brickworks asks everyone once whether they are 13 or over, and keeps only that answer.</p>
+					<div class="setting" id="email-part">
+						<div class="wide">
+							<h2>Email</h2>
+							<p id="who"></p>
+						</div>
+						<div class="wide" id="mail" hidden>
+							<p>Brickworks emails you only what you ask for here, from the address sign-in codes
+								come from. Off until you turn it on.</p>
+							<label class="choice"><input type="checkbox" id="mail-comments">
+								Email me when somebody comments on a model I shared: at most one email a day</label>
+							<div id="mail-kinds" hidden>
+								<p>And in the same email, at most one a day, what came into your feed:</p>
+								<label class="choice"><input type="checkbox" id="mail-models" data-kind="models">
+									New models from people I follow</label>
+								<label class="choice"><input type="checkbox" id="mail-versions" data-kind="versions">
+									New versions of their models</label>
+								<label class="choice"><input type="checkbox" id="mail-photos" data-kind="photos">
+									Photos of builds: of my models, and by people I follow</label>
+								<label class="choice"><input type="checkbox" id="mail-remixes" data-kind="remixes">
+									Remixes of my models</label>
+							</div>
+							<p class="said" id="mail-said" role="status"></p>
+						</div>
 					</div>
-					<div class="wide" id="follows-choice" hidden>
-						<p>Your profile shows how many people follow you and how many you follow, never who.
-							Nobody is told you followed them, and following is not a way to write to anybody.</p>
-						<label class="choice"><input type="checkbox" id="shows-follows">
-							Show on my profile whom I follow</label>
-						<p class="said" id="follows-said" role="status"></p>
-					</div>
-					<div class="wide" id="likes-choice" hidden>
-						<p>A model shows how many people liked it, never who. You may show on your profile the
-							models you liked, as a tab of their cards; off until you turn it on.</p>
-						<label class="choice"><input type="checkbox" id="shows-likes">
-							Show on my profile the models I liked</label>
-						<p class="said" id="likes-said" role="status"></p>
-					</div>
-				</div>
 
-				<div class="setting" id="claude-part">
-					<div>
-						<h2>Claude</h2>
-						<p id="claude-said">Whether your Claude can work in your Brickworks tabs.</p>
-						<ul class="connections" id="connections"></ul>
-					</div>
-					<a class="cta ghost" href="/faq#claude" id="claude-how">How to connect</a>
-				</div>
-
-				<div class="setting" id="sign-out-part">
-					<div>
-						<h2>Sign out</h2>
-						<p>This browser forgets its sign-in. Your account and everything in it stay.</p>
-					</div>
-					<button class="cta ghost" type="button" id="sign-out">Sign out</button>
-				</div>
-
-				<div class="setting danger" id="delete-part">
-					<details class="wide">
-						<summary class="cta ghost">Delete this account…</summary>
-						<form class="delete-form" id="delete-form">
-							<p>Your models come out of the gallery and their links stop working; your
-								profile, favourites, collections, comments, follows, photos, the sets you own and your
-								Claude connections are deleted with the account. It cannot be undone.</p>
-							<label>Type your email address to confirm
-								<input id="delete-confirm" type="email" autocomplete="off" required></label>
-							<label id="delete-code-part" hidden><span id="delete-code-said">The code we emailed you</span>
-								<input id="delete-code" type="text" inputmode="numeric" autocomplete="one-time-code"></label>
-							<div class="actions"><button class="cta ghost danger" type="submit" id="delete-go">Delete my account</button>
-								<button class="cta ghost danger" type="button" id="delete-oc" data-oc-sign-in hidden><span data-oc-mark></span>Sign in with orangecheck to delete</button></div>
-							<p class="said" id="delete-said" role="status"></p>
+					<div class="setting" id="oc-part" hidden>
+						<div>
+							<h2>orangecheck</h2>
+							<p id="oc-said"></p>
+						</div>
+						<div class="actions">
+							<button class="cta ghost" type="button" id="oc-go" data-oc-sign-in hidden><span data-oc-mark></span>Link orangecheck</button>
+							<button class="cta ghost danger" type="button" id="oc-unlink" hidden>Unlink</button>
+						</div>
+						<form class="wide code-form" id="oc-code" hidden>
+							<label><span id="oc-code-said">The code we emailed you</span>
+								<input id="oc-code-field" type="text" inputmode="numeric" autocomplete="one-time-code" required></label>
+							<div class="actions"><button class="cta" type="submit" id="oc-code-go">Confirm</button></div>
 						</form>
-					</details>
+						<p class="said wide" id="oc-status" role="status"></p>
+					</div>
+
+					<div class="setting" id="privacy-part">
+						<div class="wide">
+							<h2>Privacy</h2>
+							<p id="age-said">Brickworks asks everyone once whether they are 13 or over, and keeps only that answer.</p>
+						</div>
+						<div class="wide" id="follows-choice" hidden>
+							<p>Your profile shows how many people follow you and how many you follow, never who.
+								Nobody is told you followed them, and following is not a way to write to anybody.</p>
+							<label class="choice"><input type="checkbox" id="shows-follows">
+								Show on my profile whom I follow</label>
+							<p class="said" id="follows-said" role="status"></p>
+						</div>
+						<div class="wide" id="likes-choice" hidden>
+							<p>A model shows how many people liked it, never who. You may show on your profile the
+								models you liked, as a tab of their cards; off until you turn it on.</p>
+							<label class="choice"><input type="checkbox" id="shows-likes">
+								Show on my profile the models I liked</label>
+							<p class="said" id="likes-said" role="status"></p>
+						</div>
+					</div>
+
+					<div class="setting" id="claude-part">
+						<div>
+							<h2>Claude</h2>
+							<p id="claude-said">Whether your Claude can work in your Brickworks tabs.</p>
+							<ul class="connections" id="connections"></ul>
+						</div>
+						<a class="cta ghost" href="/faq#claude" id="claude-how">How to connect</a>
+					</div>
+
+					<div class="setting" id="sign-out-part">
+						<div>
+							<h2>Sign out</h2>
+							<p>This browser forgets its sign-in. Your account and everything in it stay.</p>
+						</div>
+						<button class="cta ghost" type="button" id="sign-out">Sign out</button>
+					</div>
+
+					<div class="setting danger" id="delete-part">
+						<details class="wide">
+							<summary class="cta ghost">Delete this account…</summary>
+							<form class="delete-form" id="delete-form">
+								<p>Your models come out of the gallery and their links stop working; your
+									profile, favourites, collections, comments, follows, photos, the sets you own and your
+									Claude connections are deleted with the account. It cannot be undone.</p>
+								<label>Type your email address to confirm
+									<input id="delete-confirm" type="email" autocomplete="off" required></label>
+								<label id="delete-code-part" hidden><span id="delete-code-said">The code we emailed you</span>
+									<input id="delete-code" type="text" inputmode="numeric" autocomplete="one-time-code"></label>
+								<div class="actions"><button class="cta ghost danger" type="submit" id="delete-go">Delete my account</button>
+									<button class="cta ghost danger" type="button" id="delete-oc" data-oc-sign-in hidden><span data-oc-mark></span>Sign in with orangecheck to delete</button></div>
+								<p class="said" id="delete-said" role="status"></p>
+							</form>
+						</details>
+					</div>
 				</div>
 			</div>
 		</div>

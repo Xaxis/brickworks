@@ -33,6 +33,9 @@
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <style>
+/* Laid out here; the head, the list of what is on the page, the tabs and
+   the words are site.css's. */
+.legal-text > h2:first-child { margin-top: 0; }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -72,57 +75,80 @@
 	</div>
 </header>
 
-<main id="main" class="wrap page prose">
-	<h1>Privacy</h1>
-	<p class="lede">
-		Your account is your email address, and that is nearly all there is of
-		you here: the address, when you last signed in, which Claude apps you
-		connected, and for a day the network address a sign-in code was asked
-		from, so the form cannot be used to flood an inbox.
-	</p>
+<main id="main">
+	<div class="page-hero">
+		<div class="wrap">
+			<p class="eyebrow">Legal</p>
+			<h1>Privacy</h1>
+			<p class="lede">Your account is your email address, and that is nearly all there is of you here: the address, when you last signed in, which Claude apps you connected, and for a day the network address a sign-in code was asked from, so the form cannot be used to flood an inbox.</p>
+			<p class="hero-meta">Updated 28 October 2026</p>
+			<nav class="tabs" aria-label="The site’s rules"><a href="/terms">Terms of use</a><a href="/privacy" aria-current="page">Privacy</a><a href="/guidelines">Community guidelines</a><a href="/takedown">Takedown requests</a></nav>
+		</div>
+	</div>
+	<div class="wrap page-body page-grid">
+		<nav class="page-toc" aria-labelledby="toc-title">
+			<p class="page-toc-title" id="toc-title">On this page</p>
+			<ul>
+				<li><a href="#your-email-address">Your email address</a></li>
+				<li><a href="#signing-in-with-orangecheck">Signing in with orangecheck</a></li>
+				<li><a href="#your-api-key">Your API key</a></li>
+				<li><a href="#a-photo-to-find-a-part">A photo to find a part</a></li>
+				<li><a href="#your-claude-login">Your Claude login</a></li>
+				<li><a href="#your-conversations">Your conversations</a></li>
+				<li><a href="#your-models">Your models</a></li>
+				<li><a href="#your-public-page">Your public page</a></li>
+				<li><a href="#your-notifications">Your notifications</a></li>
+				<li><a href="#your-theme">Your theme</a></li>
+				<li><a href="#plans">Plans, coming soon</a></li>
+				<li><a href="#deleting-your-account">Deleting your account</a></li>
+				<li><a href="#your-visit">Your visit</a></li>
+			</ul>
+		</nav>
+		<article class="prose legal-text">
+			<h2 id="your-email-address">Your email address</h2>
+			<p>Your account. You sign in with a code we email you and stay signed in on that browser or computer until you sign out. It is used to sign you in and for nothing else.</p>
 
-	<h2>Your email address</h2>
-	<p>Your account. You sign in with a code we email you and stay signed in on that browser or computer until you sign out. It is used to sign you in and for nothing else.</p>
+			<h2 id="signing-in-with-orangecheck">Signing in with orangecheck</h2>
+			<p>If you sign in with orangecheck instead, it is orangecheck’s own window you sign in to, with a Bitcoin wallet, email, Google or GitHub; Brickworks never learns which, nor your address or your wallet. It is given an id for you (<code>did:oc:</code> and 32 characters), kept with your account so the same id signs you in to it again, and for each sign-in orangecheck’s handle for it, so that signing out everywhere on orangecheck signs you out here too. Such an account has no email address: Brickworks emails it nothing, and it is deleted by signing in with orangecheck again. An account with an email address can link orangecheck under Settings, after a code we email you, and unlink it there; we email you when either happens. orangecheck keeps its own account of you, under its own <a href="https://ochk.io/privacy">privacy policy</a>.</p>
+			<p>Signing in with your email, you may tick <b>Also create my orangecheck account</b> under the orangecheck button. Only then, Brickworks asks orangecheck to make you an orangecheck account, and sends it your Brickworks account’s id and, since you have just signed in with a code we emailed you, that address, as one you showed is yours: signing in to ochk.app with it then offers you the account to claim. orangecheck keeps an id for you made from your Brickworks id, and of the address only a keyed hash; Brickworks keeps the orangecheck id it gives back. Unticked, nothing is sent. Deleting your Brickworks account deletes that orangecheck account too, unless you have claimed it at ochk.app, when it is yours to keep or delete there. If orangecheck will not delete it (once it holds something of yours, say), your Brickworks account is deleted all the same and you are told that the orangecheck account stays yours at ochk.app.</p>
 
-	<h2>Signing in with orangecheck</h2>
-	<p>If you sign in with orangecheck instead, it is orangecheck’s own window you sign in to, with a Bitcoin wallet, email, Google or GitHub; Brickworks never learns which, nor your address or your wallet. It is given an id for you (<code>did:oc:</code> and 32 characters), kept with your account so the same id signs you in to it again, and for each sign-in orangecheck’s handle for it, so that signing out everywhere on orangecheck signs you out here too. Such an account has no email address: Brickworks emails it nothing, and it is deleted by signing in with orangecheck again. An account with an email address can link orangecheck under Settings, after a code we email you, and unlink it there; we email you when either happens. orangecheck keeps its own account of you, under its own <a href="https://ochk.io/privacy">privacy policy</a>.</p>
-	<p>Signing in with your email, you may tick <b>Also create my orangecheck account</b> under the orangecheck button. Only then, Brickworks asks orangecheck to make you an orangecheck account, and sends it your Brickworks account’s id and, since you have just signed in with a code we emailed you, that address, as one you showed is yours: signing in to ochk.app with it then offers you the account to claim. orangecheck keeps an id for you made from your Brickworks id, and of the address only a keyed hash; Brickworks keeps the orangecheck id it gives back. Unticked, nothing is sent. Deleting your Brickworks account deletes that orangecheck account too, unless you have claimed it at ochk.app, when it is yours to keep or delete there. If orangecheck will not delete it (once it holds something of yours, say), your Brickworks account is deleted all the same and you are told that the orangecheck account stays yours at ochk.app.</p>
+			<h2 id="your-api-key">Your API key</h2>
+			<p>Kept in your browser, or for this visit only, and sent only to Anthropic. The page’s security policy lets it talk to itself, Anthropic, Wikimedia for reference pictures, Rebrickable, Brickognize when you ask it to name a part from a photo, its own parts store and sign-in service, and the visit counter below, and nothing else.</p>
 
-	<h2>Your API key</h2>
-	<p>Kept in your browser, or for this visit only, and sent only to Anthropic. The page’s security policy lets it talk to itself, Anthropic, Wikimedia for reference pictures, Rebrickable, Brickognize when you ask it to name a part from a photo, its own parts store and sign-in service, and the visit counter below, and nothing else.</p>
+			<h2 id="a-photo-to-find-a-part">A photo to find a part</h2>
+			<p>The camera in the parts search sends the one photo you choose straight from your browser to <a href="https://brickognize.com">Brickognize</a>, a separate service that names LEGO® parts from pictures; Brickworks never sees or keeps it. Their terms let them keep what is sent to them and learn from it, so the app says so before the first photo goes, and nothing is sent until you choose one.</p>
 
-	<h2>A photo to find a part</h2>
-	<p>The camera in the parts search sends the one photo you choose straight from your browser to <a href="https://brickognize.com">Brickognize</a>, a separate service that names LEGO® parts from pictures; Brickworks never sees or keeps it. Their terms let them keep what is sent to them and learn from it, so the app says so before the first photo goes, and nothing is sent until you choose one.</p>
+			<h2 id="your-claude-login">Your Claude login</h2>
+			<p>Never asked for. Claude signs in to Brickworks as you, with your email code and your Allow, and holds a Brickworks token, never the other way round. <b>Disconnect Claude</b> under Account ends it everywhere at once. That you connected Claude, and when, is kept past it, so connecting again sends you to the Brickworks you already have in Claude.</p>
 
-	<h2>Your Claude login</h2>
-	<p>Never asked for. Claude signs in to Brickworks as you, with your email code and your Allow, and holds a Brickworks token, never the other way round. <b>Disconnect Claude</b> under Account ends it everywhere at once. That you connected Claude, and when, is kept past it, so connecting again sends you to the Brickworks you already have in Claude.</p>
+			<h2 id="your-conversations">Your conversations</h2>
+			<p>A small relay carries Claude’s tool calls to your open tab and the answers back, and deletes each message the moment it is answered. Claude’s tokens are kept only as hashes.</p>
 
-	<h2>Your conversations</h2>
-	<p>A small relay carries Claude’s tool calls to your open tab and the answers back, and deletes each message the moment it is answered. Claude’s tokens are kept only as hashes.</p>
+			<h2 id="your-models">Your models</h2>
+			<p>Saved in your browser or on your computer and, while you are signed in, kept with your account on the server too, so they open wherever you sign in. Only you can open them there, and deleting your account deletes them. A model is put online for others only when you share it by link, and taken down when you say.</p>
+			<p>A photo you add on a model’s page, of your build, or on your own model of the model itself, is public on that page. It is made anew from its pixels, so nothing else in the file is kept: not where or when it was taken, nor the phone. A model’s designer can hide any photo on their model.</p>
 
-	<h2>Your models</h2>
-	<p>Saved in your browser or on your computer and, while you are signed in, kept with your account on the server too, so they open wherever you sign in. Only you can open them there, and deleting your account deletes them. A model is put online for others only when you share it by link, and taken down when you say.</p>
-	<p>A photo you add on a model’s page, of your build, or on your own model of the model itself, is public on that page. It is made anew from its pixels, so nothing else in the file is kept: not where or when it was taken, nor the phone. A model’s designer can hide any photo on their model.</p>
+			<h2 id="your-public-page">Your public page</h2>
+			<p>If you make a profile, its page shows the name, handle and words you chose, and the models you shared in the gallery with your name. You can add up to two links of yours elsewhere, choose one of those models’ pictures to run across the top and pin up to three of them; all of it is public, kept on the server with your account, and changed or cleared under Settings. Your picture there is made from your handle, a coloured circle and a letter, unless you choose one of your own in Edit profile: then only the circle you cropped it to leaves your device, and it is made anew from its pixels, as a photo of a build is, so nothing else in the file is kept. It is public wherever your name is, and deleted when you take it off or choose another. Links on it are marked as yours, not ours, and a visitor who follows one leaves Brickworks. Who follows you is never listed, only how many, and the same for a public collection of yours: how many follow it, never who, and you are not told. Which models you liked is shown only if you choose it under Settings, as a Likes tab on your page; it is off until you turn it on.</p>
 
-	<h2>Your public page</h2>
-	<p>If you make a profile, its page shows the name, handle and words you chose, and the models you shared in the gallery with your name. You can add up to two links of yours elsewhere, choose one of those models’ pictures to run across the top and pin up to three of them; all of it is public, kept on the server with your account, and changed or cleared under Settings. Your picture there is made from your handle, a coloured circle and a letter, unless you choose one of your own in Edit profile: then only the circle you cropped it to leaves your device, and it is made anew from its pixels, as a photo of a build is, so nothing else in the file is kept. It is public wherever your name is, and deleted when you take it off or choose another. Links on it are marked as yours, not ours, and a visitor who follows one leaves Brickworks. Who follows you is never listed, only how many, and the same for a public collection of yours: how many follow it, never who, and you are not told. Which models you liked is shown only if you choose it under Settings, as a Likes tab on your page; it is off until you turn it on.</p>
+			<h2 id="your-notifications">Your notifications</h2>
+			<p>What happens to your models (comments, photos of builds, remixes, likes, a challenge’s end) is shown to you alone, on Notifications. To say what is new, Brickworks keeps when you last opened it and which of your models’ notifications you have opened since, with your account and nothing else. Likes are told as a number: who liked your model is never shown, and nobody is told who follows them.</p>
 
-	<h2>Your notifications</h2>
-	<p>What happens to your models (comments, photos of builds, remixes, likes, a challenge’s end) is shown to you alone, on Notifications. To say what is new, Brickworks keeps when you last opened it and which of your models’ notifications you have opened since, with your account and nothing else. Likes are told as a number: who liked your model is never shown, and nobody is told who follows them.</p>
+			<h2 id="your-theme">Your theme</h2>
+			<p>System, Light or Dark, chosen at the foot of any page. Kept in your browser so the next page opens in it, and, once you are signed in, on your account so your other browsers follow it. A setting, not tracking: nothing else is kept with it, and nobody else sees it.</p>
 
-	<h2>Your theme</h2>
-	<p>System, Light or Dark, chosen at the foot of any page. Kept in your browser so the next page opens in it, and, once you are signed in, on your account so your other browsers follow it. A setting, not tracking: nothing else is kept with it, and nobody else sees it.</p>
+			<h2 id="plans">Plans, coming soon</h2>
+			<p>If you ask on <a href="/plans">Plans</a> to hear when Pro opens, your email is kept with monthly or yearly, as you chose, and any line you wrote, only to write to you once when Pro opens. Nothing else is sent to it, and it is not tied to an account. To stop floods, where the form was sent from is counted for a day, as a key nobody can turn back into your address. To take your email off, open the form there, type the address and choose <b>take it off</b>: it is deleted at once.</p>
 
-	<h2 id="plans">Plans, coming soon</h2>
-	<p>If you ask on <a href="/plans">Plans</a> to hear when Pro opens, your email is kept with monthly or yearly, as you chose, and any line you wrote, only to write to you once when Pro opens. Nothing else is sent to it, and it is not tied to an account. To stop floods, where the form was sent from is counted for a day, as a key nobody can turn back into your address. To take your email off, open the form there, type the address and choose <b>take it off</b>: it is deleted at once.</p>
+			<h2 id="deleting-your-account">Deleting your account</h2>
+			<p>On <a href="/profile">your account</a>, under Settings: <b>Delete this account</b>, with your address typed to confirm (an orangecheck account signs in with orangecheck again instead). The account goes, and with it everything of yours on the server: the models you shared and their versions, comments, favourites, collections, follows, the photos of your builds and of your models, your profile’s links, banner, pins and picture, the sets you own, your Claude connections, your theme, what you read of your notifications and your orangecheck id. It cannot be undone.</p>
 
-	<h2>Deleting your account</h2>
-	<p>On <a href="/profile">your account</a>, under Settings: <b>Delete this account</b>, with your address typed to confirm (an orangecheck account signs in with orangecheck again instead). The account goes, and with it everything of yours on the server: the models you shared and their versions, comments, favourites, collections, follows, the photos of your builds and of your models, your profile’s links, banner, pins and picture, the sets you own, your Claude connections, your theme, what you read of your notifications and your orangecheck id. It cannot be undone.</p>
+			<h2 id="your-visit">Your visit</h2>
+			<p>We count visits with our own privacy-friendly analytics. It sets no cookies and stores nothing on your device; your IP address is used only to make a daily anonymous count and is never stored. To opt out on this site, open any page with <a href="/?ov_ignore=1">?ov_ignore=1</a>. Shared models, people’s pages and signing in are never counted.</p>
 
-	<h2>Your visit</h2>
-	<p>We count visits with our own privacy-friendly analytics. It sets no cookies and stores nothing on your device; your IP address is used only to make a daily anonymous count and is never stored. To opt out on this site, open any page with <a href="/?ov_ignore=1">?ov_ignore=1</a>. Shared models, people’s pages and signing in are never counted.</p>
-
-	<p class="note">Questions about any of it: <a href="https://github.com/Xaxis/brickworks-releases/issues">open an issue on GitHub</a>. Updated 28 October 2026.</p>
+			<p class="note">Questions about any of it: <a href="https://github.com/Xaxis/brickworks-releases/issues">open an issue on GitHub</a>.</p>
+		</article>
+	</div>
 </main>
 
 <footer class="site-foot">
