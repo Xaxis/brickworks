@@ -65,6 +65,7 @@
       "area": "web",
       "tests": [
         "tests/test_feedback.py",
+        "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
       ]
     },
@@ -130,7 +131,8 @@
       "reach": "curl -s 'https://brickworks.diy/api/people?op=profile&handle=<handle>'   (and /u/<handle>, /c/<id>; ?op=me, like, favourite, collection, collect with a session)",
       "area": "web",
       "tests": [
-        "tests/test_challenge_notices.py"
+        "tests/test_challenge_notices.py",
+        "tests/test_gallery_builds.py"
       ]
     },
     {
@@ -153,6 +155,7 @@
       "area": "account",
       "tests": [
         "tests/test_feedback.py",
+        "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
       ]
     },
@@ -215,6 +218,7 @@
       "area": "web",
       "tests": [
         "tests/test_feedback.py",
+        "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
       ]
     },
@@ -1062,6 +1066,14 @@
       "tests": []
     },
     {
+      "id": "cli:gallery builds browser flow",
+      "kind": "cli",
+      "entry": "tools/web/gallery_builds_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/gallery_builds_flow.mjs --url=<preview or local relay> --out=DIR   (preview_checks.sh gallery_builds: throwaway Ann, Bo, Cy and Di; five photos, a hidden, a reported and an under-13 builder's left out; 1280 light signed in, 390 dark signed out, the empty tab)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:gallery tool probe",
       "kind": "cli",
       "entry": "src/dev/gallery_tool_probe.gd",
@@ -1326,6 +1338,14 @@
       "kind": "cli",
       "entry": "tools/web/moderation_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/moderation_flow.mjs --url=<deployment> --out=shots/moderation   (.env sourced, MASTER_EMAIL)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:more like browser flow",
+      "kind": "cli",
+      "entry": "tools/web/alike_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/alike_flow.mjs --url=<preview or local relay> --out=DIR   (preview_checks.sh alike: throwaway Ann, Bo, Cy, Di and Fay; hidden alone, the closest first signed out at 1280 light, signed in at 390 dark never yourself or whom you follow, Follow in place)",
       "area": "web",
       "tests": []
     },
@@ -2455,6 +2475,7 @@
       "area": "account",
       "tests": [
         "tests/test_feedback.py",
+        "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
       ]
     },
@@ -2518,6 +2539,7 @@
       "reach": "godot --headless --path . --script src/dev/brickify_probe.gd",
       "area": "brickify",
       "tests": [
+        "tests/test_alike.py",
         "tests/test_gallery_tabs.py"
       ]
     },
@@ -2578,6 +2600,14 @@
       "tests": [
         "tests/test_steps_score.py"
       ]
+    },
+    {
+      "id": "lib:builds in the gallery",
+      "kind": "lib",
+      "entry": "api/_builds.js",
+      "reach": "/api/people?op=builds&page=N   (galleryBuilds: newest first, 24 a page; not hidden, no report waiting, builder and owner shown in public, the model in the gallery; tests/test_gallery_builds.py)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "lib:challenge notices",
@@ -2962,6 +2992,14 @@
       ]
     },
     {
+      "id": "lib:more like a designer",
+      "kind": "lib",
+      "entry": "api/_alike.js",
+      "reach": "/api/people?op=alike&handle=X   (designersAlike: shared themes and tags, parts and followers in common from supabase/designers_alike.sql once applied; never the person, the asker or whom they follow; tests/test_alike.py; dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/designers_alike.sql --dry --try=tools/designers_alike_try.sql --table=model_needs)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "lib:motions",
       "kind": "lib",
       "entry": "src/assembly/motions.gd",
@@ -3216,6 +3254,7 @@
       "area": "web",
       "tests": [
         "tests/test_feedback.py",
+        "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
       ]
     },
@@ -3581,7 +3620,8 @@
       "reach": "https://brickworks.diy/u/<handle of somebody with a model in the gallery>   (or a local relay_server.mjs --hold=model_opens, /u/<handle>?tests=1 for a test account's; the tiles, Start with their most built, Built by others, the cards by Top builds)",
       "area": "web",
       "tests": [
-        "tests/test_challenge_notices.py"
+        "tests/test_challenge_notices.py",
+        "tests/test_gallery_builds.py"
       ]
     },
     {
@@ -3657,7 +3697,8 @@
       "reach": "https://brickworks.diy/u/<handle> and /profile: ul.awards under the numbers, a challenge won then a level a track (achievementsOf, levelAwards; GET /api/people?op=profile says achievements and levels); the profile browser flow",
       "area": "web",
       "tests": [
-        "tests/test_challenge_notices.py"
+        "tests/test_challenge_notices.py",
+        "tests/test_gallery_builds.py"
       ]
     },
     {
@@ -3814,7 +3855,8 @@
       "reach": "https://brickworks.diy/collections  (?sort=followed, ?page=N, ?tests=1; supabase/collection_directory.sql; linked from the gallery's tabs and the footer)",
       "area": "web",
       "tests": [
-        "tests/test_challenge_notices.py"
+        "tests/test_challenge_notices.py",
+        "tests/test_gallery_builds.py"
       ]
     },
     {
@@ -4224,6 +4266,14 @@
       "tests": []
     },
     {
+      "id": "ui:more like on a profile",
+      "kind": "ui",
+      "entry": "web/follow.js",
+      "reach": "https://brickworks.diy/u/<handle>   (More like <name>, under their work: up to six designers with Follow in place, hidden when nobody is close; api/people.js profilePage section#alike, follow.js showAlike)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:mosaic",
       "kind": "ui",
       "entry": "src/ui/mosaic_dialog.gd",
@@ -4484,7 +4534,8 @@
       "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen in Edit profile on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
       "area": "web",
       "tests": [
-        "tests/test_challenge_notices.py"
+        "tests/test_challenge_notices.py",
+        "tests/test_gallery_builds.py"
       ]
     },
     {
@@ -4667,6 +4718,7 @@
       "area": "account",
       "tests": [
         "tests/test_feedback.py",
+        "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
       ]
     },
@@ -4900,6 +4952,21 @@
       "reach": "https://brickworks.diy/m/<id>/embed in an iframe (the share sheet's embed code): View in 3D on its picture turns the model in the frame (web/start3d.js imports /viewer3d.js; web/view3d.css; api/share.js embedCard and embedCsp); node tools/web/embed_flow.mjs --out=DIR on the stand-in",
       "area": "web",
       "tests": []
+    },
+    {
+      "id": "ui:the gallery's builds tab",
+      "kind": "ui",
+      "entry": "web/builds.html",
+      "reach": "https://brickworks.diy/builds   (?page=N, ?tests=1; a tab of /gallery and /library; web/builds.js reads /api/people?op=builds a page at a time, each card web/card.js buildCardHtml; locally relay_server.mjs serves /builds)",
+      "area": "web",
+      "tests": [
+        "tests/test_designers.py",
+        "tests/test_discovery.py",
+        "tests/test_gallery_builds.py",
+        "tests/test_gallery_crons.py",
+        "tests/test_library_site.py",
+        "tests/test_model_page.py"
+      ]
     },
     {
       "id": "ui:the gallery's front shelves",

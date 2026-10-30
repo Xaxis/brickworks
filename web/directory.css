@@ -640,6 +640,14 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 /* A designer's own numbers on their page, under the work (api/people.js). */
 .profile #designs-mine { margin: var(--s-7) 0 0; }
 .profile .follows .pill .avatar { margin-left: -6px; }
+/* More like them (api/_alike.js, web/follow.js): up to six people to follow,
+   a row each (site.css .person-row), side by side where two or three fit,
+   each under a rule so the columns read alike. */
+.profile .alike { margin-top: var(--s-7); }
+.profile .alike h2 { margin: 0 0 var(--s-1); }
+.profile .alike .note { margin: 0 0 var(--s-3); }
+.profile .alike .people-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); column-gap: var(--s-6); }
+.profile .alike .person-row { border-top: 1px solid var(--line); }
 @media (width < 600px) {
 	.profile .banner { aspect-ratio: 2 / 1; }
 	.profile-head { grid-template-columns: auto minmax(0, 1fr); }

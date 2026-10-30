@@ -21,7 +21,7 @@
 // Every word is put on the page as text; a card and an avatar are the kit's,
 // which escape their own.
 import { askToSignIn, call, signOut, signedIn } from "/account.js";
-import { followButton, followsSent, showFeedCount, showTabCounts } from "/follow.js";
+import { followsSent, personRow, showFeedCount, showTabCounts } from "/follow.js";
 import { ago, avatarHtml } from "/kit.js";
 import { FIRST_SCREEN, modelCard } from "/card.js";
 
@@ -146,30 +146,8 @@ function row(one, eager = false) {
 /// A designer to follow: their avatar, their name (to their profile), the
 /// models of theirs that earned most, and Follow.
 function person(one) {
-  const item = document.createElement("li");
-  item.className = "person-row";
-  item.dataset.handle = one.handle;
-  item.append(toProfile(one, parsed(avatarHtml({ handle: one.handle, name: one.name, picture: one.picture })),
-    { tabindex: "-1", "aria-hidden": "true", class: "face" }));
-  const names = document.createElement("div");
-  names.className = "names";
-  const name = document.createElement("b");
-  name.textContent = String(one.name || one.handle);
-  const made = document.createElement("small");
   const models = Array.isArray(one.models) ? one.models.slice(0, 2).map((model) => String(model.name)) : [];
-  made.textContent = models.length ? models.join(" · ") : `@${one.handle}`;
-  names.append(toProfile(one, name), made);
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "cta ghost small follow";
-  button.dataset.follow = one.handle;
-  button.textContent = "Follow";
-  const told = document.createElement("span");
-  told.className = "said";
-  told.setAttribute("role", "status");
-  item.append(names, button, told);
-  followButton(button, { you_follow: false, mine: false, signed_in: signedIn(), may: true, why_not: "" }).catch(() => null);
-  return item;
+  return personRow(one, models.join(" · "), { you_follow: false, mine: false, signed_in: signedIn(), may: true, why_not: "" });
 }
 
 /// A photo of a build in Latest, as a profile's builds show one.
