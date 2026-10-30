@@ -111,12 +111,15 @@ that offers each system its own build. The cycle and its cadence are
 - `release train`: `tools/release/train.sh stage TAG BRANCH --after PREV
   --checks ... --probes ... --units ... --title ...` stages a release and
   ships it in turn, detached: it waits until PREV's `_lead.out` says
-  brickworks.diy serves it, makes the release worktree, merges BRANCH,
-  refuses a dirty or half-merged tree, runs the lists and probes, then
+  brickworks.diy serves it, makes the release worktree, merges BRANCH at
+  its tip then (a later commit waits for the next release), refuses a dirty
+  or half-merged tree, runs the lists and probes, then
   `ship.sh`, and retires the worktrees once live. `status` says each one's
   step, its checks passed of all, and when it should serve, under what
   brickworks.diy serves and since when; `hold TAG`
-  and `release TAG` set and lift a hold. tools/release/README.md has the
+  and `release TAG` set and lift a hold. Restaging a stopped TAG clears
+  its worktree and branch when they hold its merge alone, and refuses when
+  they hold a fix of their own. tools/release/README.md has the
   rest. `tests/test_release_train.py` runs it with stand-ins for the hour's
   work.
   With `RELEASES_TOKEN` set it asks the releases repo's addresses through
@@ -266,7 +269,7 @@ whose size is one byte off is `FAIL ... answered '200 <size>'`.
 python3 tools/minitest.py tests/test_release_train.py
 ```
 
-Proves it when: `4 passed`, in about 10 s. Each test makes a repository
+Proves it when: `6 passed`, in about 14 s. Each test makes a repository
 with an origin and unit worktrees, and stand-ins for release_wt.sh,
 merge_unit.sh, ship.sh, check.sh and probe.sh (retire_wt.sh is the real
 one), and runs the train detached as staged: it waits for the release
@@ -278,7 +281,11 @@ and at its deadline; and `status` reads `checks: 2 of 4 passed; failed: io (pass
 alone); 1 to run` mid-ship and `live: brickworks.diy serves it (SHA)` after,
 its first line `live: brickworks.diy serves SHA, TAG's, since HH:MMZ`, and
 a ship begun by hand is listed with its ETA (a median ship after it began)
-and the train behind it a ship after that.
+and the train behind it a ship after that. A commit to the branch while it
+merges ships in the next release, not this one (`tip` in the spec is the one
+merged); a restage after a failed probe says `cleared TAG's attempt before
+(its merge alone)` and ships, and one over a fix staged or committed in the
+stopped release's worktree is refused, the fix kept.
 On a real release, `tools/release/train.sh status` while it waits says
 `step: HH:MMZ waits for PREV to serve (until HH:MMZ)`. Against the real
 release-out on 2026-10-30 with rel-m218 shipping by hand: `live:

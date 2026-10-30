@@ -74,10 +74,10 @@ stage() {
   if pid=$(runner "$tag"); then
     echo "train: $tag's train runs (pid $pid): edit $RO/$tag.train/, or stop it (kill -- -$pid) first"; exit 1
   fi
-  [ -e "$WT/$tag" ] && { echo "train: $WT/$tag exists: retire it (retire_wt.sh $tag) or stage another tag"; exit 1; }
+  clear_attempt "$tag" "$branch" || exit 1
   SPEC=$RO/$tag.train
   mkdir -p "$SPEC" || exit 1
-  rm -f "$SPEC"/{pid,step,result,sha,shipped}
+  rm -f "$SPEC"/{pid,step,result,sha,tip,shipped}
   echo "$branch" > "$SPEC/branch"; echo "$after" > "$SPEC/after"
   echo "$checks" > "$SPEC/checks"; echo "$probes" > "$SPEC/probes"; echo "$units" > "$SPEC/units"
   echo "${title:-$branch}" > "$SPEC/title"
@@ -95,6 +95,29 @@ stage() {
   setsid -f nohup bash "$SPEC/train.sh" run "$tag" > "$RO/${tag}_train.out" 2>&1 < /dev/null
   echo "train: $tag staged: ${after:+waits for $after to serve, then }merges $branch and ships"
   echo "  spec $SPEC/ (editable until it ships), log $RO/${tag}_train.out"
+}
+
+# An attempt before that stopped leaves its worktree, kept for the lead to
+# read, and its merge on a branch of TAG's name. Restaging takes both when
+# they hold nothing but that merge; rel-m221 was cleared by hand before each
+# of its restages (2026-10-30).
+clear_attempt() {
+  local tag=$1 branch=$2 own
+  local ref="refs/heads/$tag"
+  git -C "$R" rev-parse -q --verify "$ref" >/dev/null || ref=""
+  [ -e "$WT/$tag" ] || [ -n "$ref" ] || return 0
+  if [ -e "$WT/$tag" ] && [ -n "$(git -C "$WT/$tag" status --porcelain --untracked-files=no)" ]; then
+    echo "train: $WT/$tag has changes of its own: retire it (retire_wt.sh $tag) or stage another tag"; return 1
+  fi
+  if [ -n "$ref" ]; then
+    own=$(git -C "$R" log --oneline --no-merges "$ref" --not "${TRAIN_BASE:-origin/main}" "$branch" | head -3)
+    [ -z "$own" ] || { echo "train: a branch $tag has commits $branch lacks:"; echo "$own"; return 1; }
+  fi
+  if [ -e "$WT/$tag" ]; then
+    bash "$HERE/retire_wt.sh" "$tag" >/dev/null || { echo "train: retire_wt.sh kept $WT/$tag"; return 1; }
+  fi
+  [ -z "$ref" ] || git -C "$R" branch -q -D "$tag" || return 1
+  echo "train: cleared $tag's attempt before (its merge alone)"
 }
 
 hold() {
@@ -172,7 +195,7 @@ tree_ok() {
   [ -e "$(git -C "$W" rev-parse --git-dir)/merging" ] && stop "a merge in $W is still running its gates"
   dirty=$(git -C "$W" status --porcelain --untracked-files=no)
   [ -z "$dirty" ] || { echo "$dirty" | head -5; stop "$W has uncommitted changes"; }
-  git -C "$W" merge-base --is-ancestor "$BRANCH" HEAD || stop "$BRANCH is not merged in $W"
+  git -C "$W" merge-base --is-ancestor "$TIP" HEAD || stop "$BRANCH at ${TIP:0:8} is not merged in $W"
   git -C "$W" rev-parse --short HEAD > "$SPEC/sha"
 }
 
@@ -229,8 +252,13 @@ run() {
   bash "$HERE/release_wt.sh" "$TAG" "$base" || stop "release_wt.sh could not make $W"
 
   BRANCH=$(cat "$SPEC/branch")
-  step "merges $BRANCH"
-  if ! MERGE_GATES=ship bash "$HERE/merge_unit.sh" "$W" "$BRANCH" "Merge: $(cat "$SPEC/title")" \
+  # Its tip as it is now: a commit to BRANCH after this goes in the next
+  # release instead of stopping this one, as one the lead made while rel-m221
+  # merged stopped it (2026-10-30).
+  TIP=$(git -C "$R" rev-parse -q --verify "$BRANCH^{commit}") || stop "no branch $BRANCH"
+  echo "$TIP" > "$SPEC/tip"
+  step "merges $BRANCH at ${TIP:0:8}"
+  if ! MERGE_GATES=ship bash "$HERE/merge_unit.sh" "$W" "$TIP" "Merge: $(cat "$SPEC/title")" \
       > "$RO/${TAG}_merge.log" 2>&1; then
     tail -5 "$RO/${TAG}_merge.log"
     git -C "$W" merge --abort 2>/dev/null; git -C "$W" reset -q --hard HEAD

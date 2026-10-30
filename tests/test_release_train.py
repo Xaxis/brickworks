@@ -14,7 +14,9 @@ then ships; edits to its spec after staging are what it ships; a hold stops
 it before the merge and before the ship; a tree left dirty or mid-merge, or
 a probe that failed or skipped itself, is never shipped; it stops when the
 release before did not ship, was stopped or died, or at its deadline; and
-status says each step, the checks, and what is live.
+status says each step, the checks, and what is live. It ships the tip it
+merged when the branch moves on meanwhile, and a restage clears a stopped
+attempt's own merge but never a fix made in it.
 """
 
 from __future__ import annotations
@@ -44,9 +46,15 @@ echo "$R/.claude/worktrees/$1 at $(git -C "$R/.claude/worktrees/$1" log --onelin
     "tools/release/merge_unit.sh": """#!/bin/bash
 # stand-in: the merge as git makes it. STUB_DIRTY leaves a tracked file
 # changed after it, STUB_HALF a merge not committed, each saying it passed.
+# STUB_MERGE_GATE writes GATE.merged once merged, then holds until GATE is
+# there, as the real one's import and gates take a minute or two.
 cd "$1" || exit 1
 if [ -n "${STUB_HALF:-}" ]; then git merge -q --no-ff --no-commit "$2"; exit 0; fi
 git merge -q --no-ff -m "$3" "$2" || exit 2
+if [ -n "${STUB_MERGE_GATE:-}" ]; then
+  : > "$STUB_MERGE_GATE.merged"
+  for _ in $(seq 1 600); do [ -e "$STUB_MERGE_GATE" ] && break; sleep 0.05; done
+fi
 if [ -n "${STUB_DIRTY:-}" ]; then echo dirt >> README; fi
 exit 0
 """,
@@ -361,6 +369,56 @@ def test_a_tree_left_dirty_or_mid_merge_or_a_failed_probe_is_never_shipped(tmp_p
             assert (y.wt / tag).exists(), "kept for the lead to read"
         assert y.git(y.r, "rev-parse", "main") == y.git(y.r, "rev-parse", "origin/main")
         assert "result: stopped: %s has uncommitted changes" % (y.wt / "t-m2") in y.train("status").stdout
+    finally:
+        y.stop()
+
+
+def test_a_commit_to_the_branch_while_it_merges_waits_for_the_next_release(tmp_path):
+    y = Yard(tmp_path)
+    gate = tmp_path / "merge_gate"
+    try:
+        tip = y.git(y.r, "rev-parse", "stage2")
+        assert y.train("stage", "t-m2", "stage2", STUB_MERGE_GATE=str(gate)).returncode == 0
+        y.until(lambda: Path(str(gate) + ".merged").exists())
+        y.git(y.r, "branch", "-f", "stage2", "unitB")  # the lead commits to stage2 meanwhile
+        gate.write_text("go")
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        assert y.spec("t-m2", "tip") == tip
+        assert "merges stage2 at %s" % tip[:8] in y.logs(), y.logs()
+        shipped = y.git(y.r, "ls-tree", "--name-only", "main").split()
+        assert "a.txt" in shipped and "b.txt" not in shipped, shipped
+    finally:
+        y.stop()
+
+
+def test_restaging_a_stopped_train_clears_its_merge_but_never_work_of_its_own(tmp_path):
+    y = Yard(tmp_path)
+    try:
+        assert y.train("stage", "t-m2", "stage2", "--probes", "fails").returncode == 0
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result").startswith("stopped: probes failed: fails"), y.logs()
+        assert (y.wt / "t-m2").exists()
+        again = y.train("stage", "t-m2", "stage2")
+        assert again.returncode == 0, again.stdout
+        assert "train: cleared t-m2's attempt before (its merge alone)" in again.stdout, again.stdout
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+
+        # A fix committed in a stopped release's worktree, or one left
+        # uncommitted there, is never restaged over.
+        assert y.train("stage", "t-m3", "stage2", "--probes", "fails").returncode == 0
+        y.until(lambda: y.spec("t-m3", "result"))
+        (y.wt / "t-m3" / "fix.txt").write_text("a fix made in the release\n")
+        y.git(y.wt / "t-m3", "add", "fix.txt")
+        dirty = y.train("stage", "t-m3", "stage2")
+        assert dirty.returncode == 1 and "t-m3 has changes of its own" in dirty.stdout, dirty.stdout
+        y.git(y.wt / "t-m3", "commit", "-q", "-m", "a fix made in the release")
+        own = y.train("stage", "t-m3", "stage2")
+        assert own.returncode == 1 and "a branch t-m3 has commits stage2 lacks" in own.stdout, own.stdout
+        assert "a fix made in the release" in own.stdout, own.stdout
+        assert (y.wt / "t-m3" / "fix.txt").exists()
+        assert y.spec("t-m3", "result").startswith("stopped: probes failed"), "restaged over"
     finally:
         y.stop()
 
