@@ -41,6 +41,7 @@ Each set has a page at `brickworks.diy/library/set/<number>`, such as [10497-1](
 - **Open its parts in Brickworks**, which opens the app with the set's parts in the parts bin, the most used first;
 - **Design with these parts**, which opens the app with the assistant on and a brief naming the set's parts in its box, for your own AI to design with when you send it;
 - when LDraw has a model of it, **Build it in 3D** and the model's own page, which links back.
+- **Based on this set**: the models in the gallery that their designers said were built from it, changed from it or inspired by it ([what a model is based on](/docs/model-pages#based-on)).
 
 Its picture is LDraw's model when there is one; otherwise Brickworks draws a few of its most distinctive parts from their own geometry. No picture on these pages is the LEGO Group's or Rebrickable's. Set and inventory data is Rebrickable's, read from a copy Brickworks takes at most once a day.
 
@@ -57,4 +58,4 @@ Every part in Brickworks is from the [LDraw Parts Library](https://library.ldraw
 
 ## Credits {#credits}
 
-**Help › About Brickworks** names every piece of other people's work Brickworks is built with, the LDraw library among them, with its terms. LDraw™ is a trademark owned and licensed by the Estate of James Jessiman; Brickworks is not affiliated with or endorsed by LDraw.org. Catalogue data is from [Rebrickable](https://rebrickable.com/downloads/).
+**Brickworks › About Brickworks** (the mark at the left of the menu bar) names every piece of other people's work Brickworks is built with, the LDraw library among them, with its terms. LDraw™ is a trademark owned and licensed by the Estate of James Jessiman; Brickworks is not affiliated with or endorsed by LDraw.org. Catalogue data is from [Rebrickable](https://rebrickable.com/downloads/).

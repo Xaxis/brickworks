@@ -151,6 +151,10 @@ func _copies_follow() -> void:
 	await _move(spot)
 	await _move(spot + Vector2(1, 0))
 	await _click(spot + Vector2(1, 0))
+	# Another copy stays in hand for the next (docs/APP_UX.md, A6): Esc
+	# lets it go, as a person does before working on the one put down.
+	_check("...and another copy stays in hand for the next", _builder.is_carrying())
+	await _key(KEY_ESCAPE)
 	var copy: PackedInt64Array = _tree.ids_under("Wing#2")
 	_check("put down, it is a second copy of Wing, not a new sub-assembly (%d parts in Wing#2)"
 		% copy.size(), copy.size() == 3)
@@ -373,10 +377,9 @@ func _saved_and_read_back() -> void:
 func _the_model_tree() -> void:
 	print("  the model tree")
 	var outliner: Outliner = _shell.outliner
-	# Under the parts bin in the left-hand column, folded to its header
-	# until it is wanted: opened as a person opens it, by its rail if the
-	# column is folded and then by its name.
-	var column: SideDock = _main.get("_bin_dock")
+	# Over the properties in the right-hand column: opened as a person opens
+	# it, by its rail if the column is folded and then by its name.
+	var column: SideDock = SideDock.of(outliner)
 	if not column.is_open():
 		await _click(column.rail().get_global_rect().get_center())
 		await _frames(30)
@@ -398,7 +401,16 @@ func _the_model_tree() -> void:
 		rows.size() == 4 and rows[1].begins_with("Plane") and rows[2].begins_with("Wing"))
 	# A row selects its parts.
 	var wing_row: TreeItem = outliner._find(outliner._tree.get_root(), "Plane#1/Wing#1")
+	# The wing is in the plane, a level down: choosing it enters the plane,
+	# which draws the tree again. Not while the tree's own signal is still
+	# walking its rows, which freed them under it and crashed this probe.
+	var whole: Array[bool] = []
+	var watch: Callable = func() -> void: whole.append(is_instance_valid(wing_row))
+	outliner._tree.item_selected.connect(watch)
 	wing_row.select(0)
+	outliner._tree.item_selected.disconnect(watch)
+	_check("...its row still there when the tree's signal returns (%s)" % str(whole),
+		whole == [true])
 	await _frames(3)
 	if _builder.selection.is_empty():
 		outliner._on_selected()

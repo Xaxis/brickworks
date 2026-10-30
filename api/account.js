@@ -28,6 +28,15 @@
 //   "system", not chosen, ready false, and POST keeps nothing (kept
 //   false); neither is an error, since the browser keeps it all the same.
 //
+//   GET ?op=keys, with a token: the app's keys this account set ({keys:
+//   {preset, own, at} or null, ready}), and POST ?op=keys with {preset,
+//   own, at} to keep them (2026-10-30, supabase/keymap.sql): the preset
+//   (brickworks, studio, mecabricks or ldcad), the keys set over it (a
+//   command's name and its key) and when, so a new browser or computer has
+//   a person's keys once they sign in (src/account/keymap_sync.gd). Until
+//   keymap.sql is applied, GET answers null, ready false, and POST keeps
+//   nothing (kept false): the app keeps them on the device all the same.
+//
 //   POST ?op=delete, with a token and {confirm: <the account's address>}:
 //   the account deleted, and everything of it (2026-10-20). The address
 //   typed again is the confirmation, so a stray click or a stolen page
@@ -97,8 +106,11 @@ export default async function handler(request, response) {
   if (String(request.query?.op || "") === "theme" && ["GET", "POST"].includes(request.method)) {
     return theme(request, response);
   }
+  if (String(request.query?.op || "") === "keys" && ["GET", "POST"].includes(request.method)) {
+    return keys(request, response);
+  }
   if (request.method !== "GET") {
-    return response.status(405).json({ error: "GET, or POST ?op=age, ?op=theme or ?op=delete" });
+    return response.status(405).json({ error: "GET, or POST ?op=age, ?op=theme, ?op=keys or ?op=delete" });
   }
 
   const enabled = authConfigured();
@@ -268,6 +280,91 @@ async function theme(request, response) {
     notHere(trouble);
     if (NO_COLUMN.test(String(trouble?.message || ""))) return response.status(200).json({ theme: wanted, kept: false });
     return response.status(502).json({ error: "Brickworks could not keep that just now. It is kept in this browser." });
+  }
+}
+
+const KEY_PRESETS = ["brickworks", "studio", "mecabricks", "ldcad"];
+// A command's name (src/ui/shell.gd, src/ui/keymap.gd) and a key with its
+// modifiers as Godot writes one, under 2^31. The app has some 150.
+const KEY_ACTION = /^[a-z0-9_]{1,48}$/;
+const MOST_KEYS = 400;
+let saidNoKeys = false;
+
+/// The app's keys as an account sends them, or why not: {preset, own, at}.
+export function keysOf(body) {
+  const preset = String(body?.preset || "");
+  if (!KEY_PRESETS.includes(preset)) return { trouble: "The keys' preset is brickworks, studio, mecabricks or ldcad." };
+  const own = body?.own;
+  if (own === null || typeof own !== "object" || Array.isArray(own)) return { trouble: "The keys set are a command's name and its key." };
+  const entries = Object.entries(own);
+  if (entries.length > MOST_KEYS) return { trouble: `At most ${MOST_KEYS} keys.` };
+  const kept = {};
+  for (const [action, key] of entries) {
+    if (!KEY_ACTION.test(action) || !Number.isInteger(key) || key < 0 || key >= 2 ** 31) {
+      return { trouble: "The keys set are a command's name and its key." };
+    }
+    kept[action] = key;
+  }
+  const at = Number(body?.at);
+  if (!Number.isFinite(at) || at < 0) return { trouble: "When the keys were set is a time in seconds." };
+  return { keys: { preset, own: kept, at } };
+}
+
+/// The app's keys on the account: read (GET) or kept (POST {preset, own, at}).
+async function keys(request, response) {
+  response.setHeader("Cache-Control", "private, no-store");
+  if (!authConfigured()) return response.status(503).json({ error: "Accounts are not configured here." });
+  let claims;
+  try {
+    claims = await verify(bearer(request), request);
+  } catch (error) {
+    const status = error instanceof AuthError ? error.status : 401;
+    return response.status(status).json({ error: error.message });
+  }
+  const notHere = (trouble) => {
+    if (NO_COLUMN.test(String(trouble?.message || "")) && !saidNoKeys) {
+      saidNoKeys = true;
+      console.error("account: supabase/keymap.sql is not applied here; the keys are kept on the device only");
+    } else if (!NO_COLUMN.test(String(trouble?.message || ""))) {
+      console.error(`account: no keys: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    }
+  };
+  if (request.method === "GET") {
+    const none = { keys: null, ready: false };
+    if (!dbConfigured()) return response.status(200).json(none);
+    try {
+      const rows = await db(`profiles?id=eq.${claims.sub}&select=keys`);
+      const kept = rows?.[0]?.keys ? keysOf(rows[0].keys).keys || null : null;
+      return response.status(200).json({ keys: kept, ready: true });
+    } catch (trouble) {
+      notHere(trouble);
+      return response.status(200).json(none);
+    }
+  }
+  let body = request.body;
+  if (typeof body === "string") {
+    try {
+      body = JSON.parse(body);
+    } catch {
+      body = {};
+    }
+  }
+  const sent = keysOf(body);
+  if (sent.trouble) return response.status(422).json({ error: sent.trouble });
+  if (!dbConfigured()) return response.status(200).json({ keys: sent.keys, kept: false });
+  try {
+    const changed = await db(`profiles?id=eq.${claims.sub}`, { method: "PATCH", body: { keys: sent.keys },
+      prefer: "return=representation" });
+    // An account older than schema.sql's trigger has no row: one is made.
+    if (!changed?.length) {
+      await db("profiles?on_conflict=id", { method: "POST", body: { id: claims.sub, email: claims.email || null, keys: sent.keys },
+        prefer: "resolution=merge-duplicates,return=minimal" });
+    }
+    return response.status(200).json({ keys: sent.keys, kept: true });
+  } catch (trouble) {
+    notHere(trouble);
+    if (NO_COLUMN.test(String(trouble?.message || ""))) return response.status(200).json({ keys: sent.keys, kept: false });
+    return response.status(502).json({ error: "Brickworks could not keep that just now. The keys are kept on this device." });
   }
 }
 

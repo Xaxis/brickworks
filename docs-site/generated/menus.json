@@ -7,6 +7,21 @@
 			"tip": ""
 		},
 		{
+			"name": "feedback",
+			"words": "Send feedback…",
+			"key": "",
+			"tip": "Something wrong, an idea or a question, to the people who make Brickworks"
+		},
+		{
+			"line": true
+		},
+		{
+			"name": "palette",
+			"words": "Find a command…",
+			"key": "Ctrl+/",
+			"tip": "Any command by its name or its menu: type a few letters, then Enter"
+		},
+		{
 			"line": true
 		},
 		{
@@ -20,6 +35,12 @@
 			"words": "Documentation",
 			"key": "",
 			"tip": "How everything in Brickworks works, on brickworks.diy"
+		},
+		{
+			"name": "beta_hub",
+			"words": "Beta hub",
+			"key": "",
+			"tip": "For beta testers: what to try, what we know is wrong, and how to tell us"
 		},
 		{
 			"line": true
@@ -197,12 +218,6 @@
 					"tip": "A photo-real picture or turntable of the model, on a backdrop, in studio light"
 				},
 				{
-					"name": "instructions",
-					"words": "Instructions…",
-					"key": "",
-					"tip": "Building instructions for this model, step by step"
-				},
-				{
 					"line": true
 				},
 				{
@@ -210,12 +225,6 @@
 					"words": "Clear the baseplate…",
 					"key": "",
 					"tip": "Empty the baseplate. Asks first: it cannot be undone"
-				},
-				{
-					"name": "account",
-					"words": "Account…",
-					"key": "",
-					"tip": "Who is signed in, and Sign out"
 				},
 				{
 					"name": "quit",
@@ -271,6 +280,12 @@
 					"words": "Duplicate",
 					"key": "Ctrl+D",
 					"tip": "Hold a copy of the selection, to put down beside it"
+				},
+				{
+					"name": "pattern",
+					"words": "Pattern…",
+					"key": "Ctrl+Shift+D",
+					"tip": "Copies of the selection in a row, round, or along a hose, put down at once"
 				},
 				{
 					"name": "delete",
@@ -363,9 +378,6 @@
 					"tip": "Bring back whatever is hidden"
 				},
 				{
-					"line": true
-				},
-				{
 					"name": "lock",
 					"words": "Lock the selection",
 					"key": "L",
@@ -393,151 +405,10 @@
 					"tip": "Swap the selection for the part you hold, each in its own colour"
 				},
 				{
-					"name": "printed_versions",
-					"words": "Printed versions…",
-					"key": "",
-					"tip": "Swap the part for one of the prints or stickered versions the LEGO Group made of it"
-				},
-				{
 					"name": "mirror",
 					"words": "Mirror",
 					"key": "Shift+M",
 					"tip": "Make the selection its mirror image, left to right as you see it"
-				},
-				{
-					"line": true
-				},
-				{
-					"name": "ask_claude",
-					"words": "Ask Claude about this…",
-					"key": "Ctrl+K",
-					"tip": "Ask Claude to change the selected parts, and only them, or ask about them"
-				},
-				{
-					"line": true
-				},
-				{
-					"name": "make_submodel",
-					"words": "Make a sub-assembly…",
-					"key": "Ctrl+G",
-					"tip": "Name the selection as a sub-assembly: it moves as one, saves as a sub-model, and its copies follow it"
-				},
-				{
-					"name": "leave_submodel",
-					"words": "Ungroup",
-					"key": "Ctrl+Shift+G",
-					"tip": "Take the selected sub-assembly apart one level"
-				},
-				{
-					"name": "enter_assembly",
-					"words": "Edit inside the sub-assembly",
-					"key": "Enter",
-					"tip": "Work on its parts one by one; what you put down goes into it (double-click does this too)"
-				},
-				{
-					"name": "leave_assembly",
-					"words": "Done editing the sub-assembly",
-					"key": "",
-					"tip": ""
-				},
-				{
-					"name": "rename_assembly",
-					"words": "Rename the sub-assembly…",
-					"key": "F2",
-					"tip": ""
-				},
-				{
-					"name": "make_unique",
-					"words": "Make this copy unique",
-					"key": "",
-					"tip": "Cut this copy loose, so editing it changes no other"
-				},
-				{
-					"line": true
-				},
-				{
-					"name": "break_out",
-					"words": "Break out the section",
-					"key": "Y",
-					"tip": "Pull the selected section away from the model to work on it, or put it back exactly where it was (Y again)"
-				},
-				{
-					"name": "put_back",
-					"words": "Put every section back",
-					"key": "",
-					"tip": "Every section broken out back exactly where it was"
-				},
-				{
-					"line": true
-				},
-				{
-					"submenu": "steps",
-					"words": "Build steps",
-					"items": [
-						{
-							"name": "step_close",
-							"words": "Next step",
-							"key": "E",
-							"tip": "The parts put down since the last step make a step, and the next part starts another"
-						},
-						{
-							"line": true
-						},
-						{
-							"name": "step_prev",
-							"words": "Move to previous step",
-							"key": "Shift+[",
-							"tip": "The selected parts a step earlier in the build steps"
-						},
-						{
-							"name": "step_next",
-							"words": "Move to next step",
-							"key": "Shift+]",
-							"tip": "The selected parts a step later in the build steps, in a new step from the last"
-						},
-						{
-							"name": "step_new",
-							"words": "New step from selection",
-							"key": "Shift+N",
-							"tip": "The selected parts in a step of their own, after the step the timeline is on"
-						},
-						{
-							"line": true
-						},
-						{
-							"name": "step_earlier",
-							"words": "Step earlier",
-							"key": "",
-							"tip": "The step the timeline is on, before the one ahead of it"
-						},
-						{
-							"name": "step_later",
-							"words": "Step later",
-							"key": "",
-							"tip": "The step the timeline is on, after the one that follows it"
-						},
-						{
-							"name": "step_merge",
-							"words": "Merge with the next step",
-							"key": "",
-							"tip": "The step the timeline is on and the next made one"
-						},
-						{
-							"name": "step_delete",
-							"words": "Delete the step",
-							"key": "",
-							"tip": "Take out the step the timeline is on; its parts join the step before"
-						}
-					]
-				},
-				{
-					"line": true
-				},
-				{
-					"name": "reshape_flex",
-					"words": "Reshape the hose or chain",
-					"key": "",
-					"tip": "Drag the selected hose's bend, or put its chain round other sprockets"
 				}
 			]
 		},
@@ -842,12 +713,6 @@
 					"tip": "Every part tinted by how near its weakest joint is to letting go: red past its studs' working load, amber within twice it"
 				},
 				{
-					"name": "explode",
-					"words": "Exploded view",
-					"key": "Shift+Y",
-					"tip": "Every section drawn apart, and back together (Shift+Y again)"
-				},
-				{
 					"line": true
 				},
 				{
@@ -920,6 +785,57 @@
 					"words": "Next step",
 					"key": "E",
 					"tip": "The parts put down since the last step make a step, and the next part starts another"
+				},
+				{
+					"submenu": "steps",
+					"words": "Build steps",
+					"items": [
+						{
+							"name": "step_prev",
+							"words": "Move to previous step",
+							"key": "Shift+[",
+							"tip": "The selected parts a step earlier in the build steps"
+						},
+						{
+							"name": "step_next",
+							"words": "Move to next step",
+							"key": "Shift+]",
+							"tip": "The selected parts a step later in the build steps, in a new step from the last"
+						},
+						{
+							"name": "step_new",
+							"words": "New step from selection",
+							"key": "Shift+N",
+							"tip": "The selected parts in a step of their own, after the step the timeline is on"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "step_earlier",
+							"words": "Step earlier",
+							"key": "",
+							"tip": "The step the timeline is on, before the one ahead of it"
+						},
+						{
+							"name": "step_later",
+							"words": "Step later",
+							"key": "",
+							"tip": "The step the timeline is on, after the one that follows it"
+						},
+						{
+							"name": "step_merge",
+							"words": "Merge with the next step",
+							"key": "",
+							"tip": "The step the timeline is on and the next made one"
+						},
+						{
+							"name": "step_delete",
+							"words": "Delete the step",
+							"key": "",
+							"tip": "Take out the step the timeline is on; its parts join the step before"
+						}
+					]
 				},
 				{
 					"name": "pose",
@@ -1099,10 +1015,22 @@
 					"tip": "Work on its parts one by one; what you put down goes into it (double-click does this too)"
 				},
 				{
-					"name": "select_submodel",
-					"words": "Same sub-model",
+					"name": "leave_assembly",
+					"words": "Done editing the sub-assembly",
 					"key": "",
 					"tip": ""
+				},
+				{
+					"name": "rename_assembly",
+					"words": "Rename the sub-assembly…",
+					"key": "F2",
+					"tip": ""
+				},
+				{
+					"name": "make_unique",
+					"words": "Make this copy unique",
+					"key": "",
+					"tip": "Cut this copy loose, so editing it changes no other"
 				},
 				{
 					"line": true
@@ -1126,6 +1054,12 @@
 					"tip": "Pull the selected section away from the model to work on it, or put it back exactly where it was (Y again)"
 				},
 				{
+					"name": "put_back",
+					"words": "Put every section back",
+					"key": "",
+					"tip": "Every section broken out back exactly where it was"
+				},
+				{
 					"name": "explode",
 					"words": "Exploded view",
 					"key": "Shift+Y",
@@ -1139,6 +1073,12 @@
 					"words": "Hose, tube or chain…",
 					"key": "",
 					"tip": "Lay a hose, a tube, a string or a chain from one connector to another, along a curve"
+				},
+				{
+					"name": "reshape_flex",
+					"words": "Reshape the hose or chain",
+					"key": "",
+					"tip": "Drag the selected hose's bend, or put its chain round other sprockets"
 				},
 				{
 					"name": "minifig",
@@ -1175,6 +1115,12 @@
 					"words": "Put a sticker on…",
 					"key": "",
 					"tip": "Click a face of the model, then draw the sticker that goes on it"
+				},
+				{
+					"name": "printed_versions",
+					"words": "Printed versions…",
+					"key": "",
+					"tip": "Swap the part for one of the prints or stickered versions the LEGO Group made of it"
 				},
 				{
 					"line": true
@@ -1287,6 +1233,12 @@
 					"line": true
 				},
 				{
+					"name": "ask_claude",
+					"words": "Ask Claude about this…",
+					"key": "Ctrl+K",
+					"tip": "Ask Claude to change the selected parts, and only them, or ask about them"
+				},
+				{
 					"name": "connector",
 					"words": "Claude connector…",
 					"key": "",
@@ -1312,42 +1264,6 @@
 				{
 					"name": "tour",
 					"words": "Take the tour",
-					"key": "",
-					"tip": ""
-				},
-				{
-					"line": true
-				},
-				{
-					"name": "docs",
-					"words": "Documentation",
-					"key": "",
-					"tip": "How everything in Brickworks works, on brickworks.diy"
-				},
-				{
-					"name": "website",
-					"words": "Brickworks website",
-					"key": "",
-					"tip": ""
-				},
-				{
-					"name": "beta_hub",
-					"words": "Beta hub",
-					"key": "",
-					"tip": "For beta testers: what to try, what we know is wrong, and how to tell us"
-				},
-				{
-					"line": true
-				},
-				{
-					"name": "feedback",
-					"words": "Send feedback…",
-					"key": "",
-					"tip": "Something wrong, an idea or a question, to the people who make Brickworks"
-				},
-				{
-					"name": "about",
-					"words": "About Brickworks",
 					"key": "",
 					"tip": ""
 				}
@@ -1377,6 +1293,18 @@
 			"tip": ""
 		},
 		{
+			"name": "select_part",
+			"words": "Same part",
+			"key": "",
+			"tip": ""
+		},
+		{
+			"name": "select_colour",
+			"words": "Same colour",
+			"key": "",
+			"tip": ""
+		},
+		{
 			"line": true
 		},
 		{
@@ -1395,22 +1323,16 @@
 			"line": true
 		},
 		{
-			"name": "paint",
-			"words": "Paint the selection",
-			"key": "C",
-			"tip": "Paint the selection the colour in hand"
-		},
-		{
-			"name": "printed_versions",
-			"words": "Printed versions…",
-			"key": "",
-			"tip": "Swap the part for one of the prints or stickered versions the LEGO Group made of it"
-		},
-		{
 			"name": "copy",
 			"words": "Copy",
 			"key": "Ctrl+C",
 			"tip": "Copy the selection"
+		},
+		{
+			"name": "duplicate",
+			"words": "Duplicate",
+			"key": "Ctrl+D",
+			"tip": "Hold a copy of the selection, to put down beside it"
 		},
 		{
 			"name": "delete",
@@ -1420,6 +1342,45 @@
 		},
 		{
 			"line": true
+		},
+		{
+			"name": "paint",
+			"words": "Paint the selection",
+			"key": "C",
+			"tip": "Paint the selection the colour in hand"
+		},
+		{
+			"name": "replace",
+			"words": "Replace with the part in hand",
+			"key": "",
+			"tip": "Swap the selection for the part you hold, each in its own colour"
+		},
+		{
+			"name": "printed_versions",
+			"words": "Printed versions…",
+			"key": "",
+			"tip": "Swap the part for one of the prints or stickered versions the LEGO Group made of it"
+		},
+		{
+			"name": "swing",
+			"words": "Swing on its hinge",
+			"key": "J",
+			"tip": "Swing the selection 15° about the hinge, clip or turntable it hangs from; Shift+J swings it back"
+		},
+		{
+			"line": true
+		},
+		{
+			"name": "step_prev",
+			"words": "Move to previous step",
+			"key": "Shift+[",
+			"tip": "The selected parts a step earlier in the build steps"
+		},
+		{
+			"name": "step_next",
+			"words": "Move to next step",
+			"key": "Shift+]",
+			"tip": "The selected parts a step later in the build steps, in a new step from the last"
 		},
 		{
 			"name": "make_submodel",
@@ -1436,5 +1397,217 @@
 			"key": "",
 			"tip": "What it is, its colour by every name, where it stands and what it is joined to"
 		}
-	]
+	],
+	"keys": {
+		"turn_back": "shift-R",
+		"tip_back": "shift-T",
+		"swing_back": "shift-J",
+		"colour_back": "[",
+		"colour_on": "]",
+		"pick": "G",
+		"lift": "X",
+		"nudge_forward": "W",
+		"nudge_left": "A",
+		"nudge_back": "S",
+		"nudge_right": "D",
+		"arrow_up": "Up",
+		"arrow_down": "Down",
+		"arrow_left": "Left",
+		"arrow_right": "Right",
+		"raise": "Page Up",
+		"lower": "Page Down",
+		"zoom_in": "=",
+		"zoom_out": "-",
+		"search": "/",
+		"part_left": "",
+		"part_right": "",
+		"part_forward": "",
+		"part_back": "",
+		"part_left_45": "",
+		"part_right_45": "",
+		"new": "Ctrl-N",
+		"new_window": "Ctrl-shift-N",
+		"open": "Ctrl-O",
+		"library": "",
+		"import_ldraw": "",
+		"import_io": "",
+		"import_lxf": "",
+		"import_mesh": "",
+		"save": "Ctrl-S",
+		"save_as": "Ctrl-shift-S",
+		"versions": "",
+		"export_ldraw": "",
+		"export_io": "",
+		"export_3d": "",
+		"export_picture": "",
+		"export_bricklink": "",
+		"export_all": "",
+		"export_rebrickable": "",
+		"render": "",
+		"pose": "",
+		"instructions": "",
+		"share": "",
+		"together": "",
+		"clear": "",
+		"account": "",
+		"quit": "Ctrl-Q",
+		"undo": "Ctrl-Z",
+		"redo": "Ctrl-shift-Z",
+		"cut_parts": "Ctrl-X",
+		"copy": "Ctrl-C",
+		"paste": "Ctrl-V",
+		"duplicate": "Ctrl-D",
+		"delete": "Delete",
+		"select_all": "Ctrl-A",
+		"select_none": "",
+		"select_colour": "",
+		"select_part": "",
+		"select_alike": "",
+		"select_find": "",
+		"select_connected": "",
+		"select_submodel": "",
+		"select_inverse": "",
+		"hide": "Ctrl-H",
+		"isolate": "shift-H",
+		"show_all": "alt-H",
+		"lock": "L",
+		"unlock": "shift-L",
+		"find_colour": "shift-C",
+		"paint": "C",
+		"replace": "",
+		"printed_versions": "",
+		"mirror": "shift-M",
+		"swing": "J",
+		"ask_claude": "Ctrl-K",
+		"brace": "",
+		"step_prev": "shift-[",
+		"step_next": "shift-]",
+		"step_new": "shift-N",
+		"step_close": "E",
+		"step_earlier": "",
+		"step_later": "",
+		"step_merge": "",
+		"step_delete": "",
+		"booklet_turn_left": "",
+		"booklet_turn_right": "",
+		"booklet_tilt_up": "",
+		"booklet_tilt_down": "",
+		"booklet_this_view": "",
+		"booklet_usual_view": "",
+		"booklet_zoom_in": "",
+		"booklet_zoom_out": "",
+		"booklet_bigger": "",
+		"booklet_smaller": "",
+		"booklet_new_page": "",
+		"booklet_alone": "",
+		"booklet_parts": "",
+		"booklet_callout": "",
+		"booklet_per_page": "",
+		"booklet_lay_out": "",
+		"booklet_highlight": "",
+		"flex": "",
+		"reshape_flex": "",
+		"view_default": "0",
+		"view_front": "1",
+		"view_back": "2",
+		"view_left": "3",
+		"view_right": "4",
+		"view_top": "5",
+		"view_bottom": "6",
+		"view_iso": "7",
+		"fit_model": "shift-F",
+		"fit_selection": "",
+		"fit": "F",
+		"ortho": "`",
+		"grid": "",
+		"floor_16": "",
+		"floor_32": "",
+		"floor_48": "",
+		"floor_custom": "",
+		"floor_grid": "",
+		"floor_none": "",
+		"floor_colour_2": "",
+		"floor_colour_10": "",
+		"floor_colour_288": "",
+		"floor_colour_19": "",
+		"floor_colour_28": "",
+		"floor_colour_71": "",
+		"floor_colour_72": "",
+		"floor_colour_378": "",
+		"floor_colour_1": "",
+		"floor_colour_15": "",
+		"floor_colour_0": "",
+		"floor_colour_7": "",
+		"floor_part": "",
+		"floor_default": "",
+		"cut": "K",
+		"cut_x": "",
+		"cut_y": "",
+		"cut_z": "",
+		"cut_flip": "shift-K",
+		"cut_ghosts": "",
+		"xray": "I",
+		"stress": "",
+		"turn_left": "shift-Q",
+		"turn_right": "shift-E",
+		"panel_parts": "",
+		"panel_assistant": "",
+		"panel_properties": "",
+		"show_properties": "",
+		"panel_keys": "",
+		"full_screen": "F11",
+		"timeline": "B",
+		"parts_list": "P",
+		"collection": "",
+		"collection_need": "",
+		"collection_build": "",
+		"make_submodel": "Ctrl-G",
+		"leave_submodel": "Ctrl-shift-G",
+		"enter_assembly": "Enter",
+		"leave_assembly": "",
+		"rename_assembly": "F2",
+		"make_unique": "",
+		"suggest_sections": "",
+		"evaluate_section": "",
+		"break_out": "Y",
+		"put_back": "",
+		"explode": "shift-Y",
+		"panel_outliner": "",
+		"minifig": "M",
+		"mosaic": "",
+		"brickify": "Ctrl-I",
+		"part_maker": "",
+		"print_part": "",
+		"sticker": "",
+		"rotate_held": "R",
+		"tip_held": "T",
+		"mode_select": "V",
+		"mode_place": "Q",
+		"mode_move": "shift-X",
+		"mode_rotate": "shift-O",
+		"mode_hinge": "shift-I",
+		"mode_clone": "shift-V",
+		"mode_paint": "shift-P",
+		"mode_hide": "shift-G",
+		"mode_delete": "shift-Delete",
+		"mode_orbit": "O",
+		"mode_pan": "H",
+		"mode_zoom": "Z",
+		"measure": "U",
+		"stability": "",
+		"simulate": "",
+		"hidden_colours": "",
+		"reseat": "",
+		"connector": "",
+		"settings": ",",
+		"keys": "F1",
+		"tour": "",
+		"palette": "Ctrl-/",
+		"docs": "",
+		"website": "",
+		"beta_hub": "",
+		"feedback": "",
+		"about": "",
+		"back_to_site": ""
+	}
 }

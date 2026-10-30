@@ -50,7 +50,7 @@ lib:sticker sheet
 
 ## Printed versions {#printed-versions}
 
-Select a part and choose **Edit › Printed versions…** (or from its right-click menu, or in Properties) to swap it for one of the printed or stickered versions the LEGO Group made of it. A BrickLink Studio model's own prints and stickers come in with it.
+Select a part and choose **Build › Printed versions…** (or from its right-click menu, or in Properties) to swap it for one of the printed or stickered versions the LEGO Group made of it. A BrickLink Studio model's own prints and stickers come in with it.
 
 <!-- covers
 ui:printed versions

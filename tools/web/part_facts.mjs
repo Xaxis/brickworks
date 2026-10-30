@@ -12,6 +12,11 @@
 // every part's name, kind and shop numbers and every colour's, which
 // tools/deploy.sh puts beside the share function as _parts_table.json.
 //
+// --scene writes what a model's 3D view is packed with (api/_parts.js
+// deriveSceneTable: each part's box, triangles and moulded colours), which
+// tools/deploy.sh puts beside the share function as _scene_table.json, read
+// only when a page's 3D view asks for its model.
+//
 // tools/deploy.sh writes it beside the share function as _part_facts.json:
 // the catalogue is 15 MB and a function reads this in a millisecond. In a
 // checkout the function works the same facts out of the catalogue itself,
@@ -19,7 +24,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { derivePartFacts } from "../../api/_directory.js";
 import { deriveOwnedFacts } from "../../api/_owned.js";
-import { deriveTable } from "../../api/_parts.js";
+import { deriveSceneTable, deriveTable } from "../../api/_parts.js";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
@@ -59,4 +64,15 @@ if (partsOut) {
   writeFileSync(partsOut, text);
   console.log(`parts table: ${Object.keys(table.parts).length} parts, ${Object.keys(table.colours).length} colours, `
     + `${Object.keys(table.elements).length} elements, ${(text.length / 1048576).toFixed(2)} MB`);
+}
+const sceneOut = (process.argv.find((a) => a.startsWith("--scene=")) || "").slice(8);
+if (sceneOut) {
+  const shapes = deriveSceneTable(read);
+  if (Object.keys(shapes.parts).length < 10000) {
+    console.error(`part_facts: the scene table has ${Object.keys(shapes.parts).length} parts, which is not the catalogue`);
+    process.exit(1);
+  }
+  const text = JSON.stringify(shapes);
+  writeFileSync(sceneOut, text);
+  console.log(`scene table: ${Object.keys(shapes.parts).length} parts' boxes, ${(text.length / 1048576).toFixed(2)} MB`);
 }

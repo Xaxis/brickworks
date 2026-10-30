@@ -357,8 +357,18 @@ for (const page of [...PAGES.map((p) => p.path), "/no-such-page"]) {
   // The clips too (/compare's), their posters, and every script a page names:
   // a clip that is not there shows only its poster, and nothing says so.
   for (const m of html.matchAll(/<(?:source|script|video)\b[^>]*\s(?:src|poster)="([^"]+)"/g)) pictures.push(m[1]);
-  const styles = [...html.matchAll(/<link\b[^>]*href="([^"]+)"/g)].map((m) => m[1]);
+  // A model page's oEmbed discovery link (api/share.js) is not loaded by the
+  // page: it names its answer by its question, so it is asked for whole.
+  const alternates = [...html.matchAll(/<link\b[^>]*\brel="alternate"[^>]*\bhref="([^"]+)"/g)].map((m) => m[1]);
+  const styles = [...html.matchAll(/<link\b[^>]*href="([^"]+)"/g)].map((m) => m[1]).filter((one) => !alternates.includes(one));
   let count = 0;
+  for (const href of new Set(alternates)) {
+    const key = new URL(href.replace(/&amp;/g, "&"), base + page);
+    if (key.origin !== new URL(base).origin && key.origin !== SITE) continue;
+    const r = await get(key.pathname + key.search);
+    if (r.status !== 200) fail(`${page} names ${key.pathname}${key.search}, which answers ${r.status}`);
+    count += 1;
+  }
   for (const href of new Set(hrefs)) {
     if (href.startsWith("mailto:")) continue;
     if (href.startsWith("#")) {

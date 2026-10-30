@@ -1,20 +1,26 @@
-## The left-hand column: the parts bin, and under it the model tree, the
-## properties of what is selected and the colours — everything for building
-## by hand in one column, as Studio keeps its palettes down the left with
-## the colours at the foot, and the model's structure over the selection's
-## properties as Blender stacks its outliner over its properties. The
-## assistant has the right-hand column to itself.
+## A column of panels, one under another. Down the left, the parts bin and
+## its colours under it, as Studio keeps its parts palette down the left
+## with the colours at the foot. Down the right, the model tree over the
+## properties of what is selected, as Blender stacks its outliner over its
+## properties, and Figma, Blender and Onshape all keep the inspector on the
+## right (Main). A phone keeps the tree and the properties in its drawer
+## down the left, over the colours.
 ##
 ## The tree and the properties floated over the model's top corners, where
 ## a click meant for a part landed on a panel, and in a window 1100 across
-## they left no room to build. Docked here, the model has the middle.
+## they left no room to build. Then they shared the left column with the
+## bin, which at 1280 x 720 left it 8 parts in sight and the properties
+## their X and Y, the rest behind a scroller (appux371, 2026-10-30).
 ##
 ## The tree and the properties fold to their header (a click on its name),
-## and the properties fold themselves while nothing is selected. The bar
-## between two sections drags the height of the one that is not the bin;
-## the bin has whatever is left, so its parts grid takes the room. The
-## colours are as tall as the column says (PartsBin._fit_palette), never
-## as anything else does. The heights are remembered (ShellPrefs), as the
+## and the properties fold themselves while nothing is selected, the tree
+## taking the column. The bar between two sections drags the height of the
+## one that does not fill. The section kept under no name fills what is left
+## (the bin); in a column with none, the lowest with something to show (the
+## properties, and the tree while nothing is selected). The colours are as
+## tall as the column says (PartsBin._fit_palette), never as anything else
+## does. A section kept whole (keep_whole) is never put behind its scroller
+## to keep another tall. The heights are remembered (ShellPrefs), as the
 ## folds are.
 class_name PanelStack
 extends Container
@@ -31,6 +37,8 @@ var _kept_as: Dictionary = {}
 var _wanted: Dictionary = {}
 ## One bar between each two sections, shown when it can be dragged.
 var _bars: Array[Bar] = []
+## The sections kept whole: section -> true.
+var _whole: Dictionary = {}
 
 
 func _init() -> void:
@@ -56,6 +64,34 @@ func add_section(section: Control, kept_as: String = "") -> void:
 
 func sections() -> Array[Control]:
 	return _sections
+
+
+## Keep [param section] whole while it is open: as tall as all it holds
+## where the column has room, the others giving theirs back. The properties
+## a part is moved by typing into, every field of them in sight, not the
+## model tree kept at the height it was dragged to with Turn and Roll behind
+## a scroller.
+func keep_whole(section: Control) -> void:
+	_whole[section] = true
+	queue_sort()
+
+
+## How tall [param section] is with nothing behind a scroller: its least,
+## and what each scroller in it holds beyond what it shows at its least.
+static func whole_height(section: Control) -> float:
+	var tall: float = section.get_combined_minimum_size().y
+	var looking: Array[Node] = [section]
+	while not looking.is_empty():
+		for child: Node in looking.pop_back().get_children():
+			var scroll := child as ScrollContainer
+			if scroll == null:
+				if child is Control and (child as Control).visible:
+					looking.append(child)
+			elif scroll.visible and scroll.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED \
+					and scroll.get_child_count() > 0 and scroll.get_child(0) is Control:
+				tall += maxf(0.0, (scroll.get_child(0) as Control).get_combined_minimum_size().y
+					- scroll.get_combined_minimum_size().y)
+	return tall
 
 
 ## The backing a section of the column wears: the column's own colour,
@@ -96,11 +132,16 @@ func _rebuild_bars() -> void:
 
 
 ## The section that fills what is left: the one kept under no name, or
-## the lowest open one while that is folded.
+## the lowest open one with something to show while that is folded, or
+## with none, the lowest open one. Properties with nothing selected give
+## the column to the model tree over them.
 func _filler() -> Control:
 	for section: Control in _sections:
 		if str(_kept_as[section]).is_empty() and _is_open(section):
 			return section
+	for n: int in range(_sections.size() - 1, -1, -1):
+		if _is_open(_sections[n]) and not _is_idle(_sections[n]):
+			return _sections[n]
 	for n: int in range(_sections.size() - 1, -1, -1):
 		if _is_open(_sections[n]):
 			return _sections[n]
@@ -132,6 +173,8 @@ func heights(room: float) -> Array[float]:
 	for n: int in _sections.size():
 		var section: Control = _sections[n]
 		var floor_of: float = section.get_combined_minimum_size().y if section.visible else 0.0
+		if _whole.has(section) and _is_open(section) and not _is_idle(section):
+			floor_of = maxf(floor_of, whole_height(section))
 		least.append(floor_of)
 		if not section.visible:
 			out.append(0.0)
@@ -166,7 +209,10 @@ func heights(room: float) -> Array[float]:
 		for n: int in out.size():
 			if n != index:
 				rest -= out[n]
-		out[index] = maxf(rest, least[index])
+		# A filler kept whole in a column too short for all of it has what
+		# there is, its scroller showing the rest.
+		out[index] = maxf(rest, least[index] if not _whole.has(filler)
+			else filler.get_combined_minimum_size().y)
 	return out
 
 

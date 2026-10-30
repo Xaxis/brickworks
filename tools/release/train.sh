@@ -74,10 +74,10 @@ stage() {
   if pid=$(runner "$tag"); then
     echo "train: $tag's train runs (pid $pid): edit $RO/$tag.train/, or stop it (kill -- -$pid) first"; exit 1
   fi
-  [ -e "$WT/$tag" ] && { echo "train: $WT/$tag exists: retire it (retire_wt.sh $tag) or stage another tag"; exit 1; }
+  clear_attempt "$tag" "$branch" || exit 1
   SPEC=$RO/$tag.train
   mkdir -p "$SPEC" || exit 1
-  rm -f "$SPEC"/{pid,step,result,sha,shipped}
+  rm -f "$SPEC"/{pid,step,result,sha,tip,shipped}
   echo "$branch" > "$SPEC/branch"; echo "$after" > "$SPEC/after"
   echo "$checks" > "$SPEC/checks"; echo "$probes" > "$SPEC/probes"; echo "$units" > "$SPEC/units"
   echo "${title:-$branch}" > "$SPEC/title"
@@ -95,6 +95,29 @@ stage() {
   setsid -f nohup bash "$SPEC/train.sh" run "$tag" > "$RO/${tag}_train.out" 2>&1 < /dev/null
   echo "train: $tag staged: ${after:+waits for $after to serve, then }merges $branch and ships"
   echo "  spec $SPEC/ (editable until it ships), log $RO/${tag}_train.out"
+}
+
+# An attempt before that stopped leaves its worktree, kept for the lead to
+# read, and its merge on a branch of TAG's name. Restaging takes both when
+# they hold nothing but that merge; rel-m221 was cleared by hand before each
+# of its restages (2026-10-30).
+clear_attempt() {
+  local tag=$1 branch=$2 own
+  local ref="refs/heads/$tag"
+  git -C "$R" rev-parse -q --verify "$ref" >/dev/null || ref=""
+  [ -e "$WT/$tag" ] || [ -n "$ref" ] || return 0
+  if [ -e "$WT/$tag" ] && [ -n "$(git -C "$WT/$tag" status --porcelain --untracked-files=no)" ]; then
+    echo "train: $WT/$tag has changes of its own: retire it (retire_wt.sh $tag) or stage another tag"; return 1
+  fi
+  if [ -n "$ref" ]; then
+    own=$(git -C "$R" log --oneline --no-merges "$ref" --not "${TRAIN_BASE:-origin/main}" "$branch" | head -3)
+    [ -z "$own" ] || { echo "train: a branch $tag has commits $branch lacks:"; echo "$own"; return 1; }
+  fi
+  if [ -e "$WT/$tag" ]; then
+    bash "$HERE/retire_wt.sh" "$tag" >/dev/null || { echo "train: retire_wt.sh kept $WT/$tag"; return 1; }
+  fi
+  [ -z "$ref" ] || git -C "$R" branch -q -D "$tag" || return 1
+  echo "train: cleared $tag's attempt before (its merge alone)"
 }
 
 hold() {
@@ -172,7 +195,7 @@ tree_ok() {
   [ -e "$(git -C "$W" rev-parse --git-dir)/merging" ] && stop "a merge in $W is still running its gates"
   dirty=$(git -C "$W" status --porcelain --untracked-files=no)
   [ -z "$dirty" ] || { echo "$dirty" | head -5; stop "$W has uncommitted changes"; }
-  git -C "$W" merge-base --is-ancestor "$BRANCH" HEAD || stop "$BRANCH is not merged in $W"
+  git -C "$W" merge-base --is-ancestor "$TIP" HEAD || stop "$BRANCH at ${TIP:0:8} is not merged in $W"
   git -C "$W" rev-parse --short HEAD > "$SPEC/sha"
 }
 
@@ -196,11 +219,23 @@ retire() {
   done
 }
 
+# One probe in the release's tree, its log and "exit FAILs" in release-out.
+probe_one() {
+  local log="$RO/${TAG}_probe_$1.log" code
+  (cd "$W" && bash tools/probe.sh "$1") > "$log" 2>&1
+  code=$?
+  echo "$code $(grep -cE '^\s*FAIL' "$log")" > "$RO/${TAG}_probe_$1.exit"
+}
+
+# Either holds: probe.sh exits 1 for a script that did not load, 2 for a
+# probe not run and 3 for one that skipped itself, none with a FAIL line.
+probe_ok() { [ "$1" = 0 ] && [ "$2" = 0 ]; }
+
 run() {
   TAG=$1; SPEC=$RO/$TAG.train; W=$WT/$TAG
   cd "$R" || exit 1
   echo $$ > "$SPEC/pid"
-  local prev st base probe code fails out bad=""
+  local prev st base probe code fails out at_once bad=""
   # Killed (kill -- -PID stops what it runs too): no result would leave the
   # release staged after it waiting until its deadline. nohup has HUP ignored.
   trap 'stop "killed"' TERM INT
@@ -229,8 +264,13 @@ run() {
   bash "$HERE/release_wt.sh" "$TAG" "$base" || stop "release_wt.sh could not make $W"
 
   BRANCH=$(cat "$SPEC/branch")
-  step "merges $BRANCH"
-  if ! MERGE_GATES=ship bash "$HERE/merge_unit.sh" "$W" "$BRANCH" "Merge: $(cat "$SPEC/title")" \
+  # Its tip as it is now: a commit to BRANCH after this goes in the next
+  # release instead of stopping this one, as one the lead made while rel-m221
+  # merged stopped it (2026-10-30).
+  TIP=$(git -C "$R" rev-parse -q --verify "$BRANCH^{commit}") || stop "no branch $BRANCH"
+  echo "$TIP" > "$SPEC/tip"
+  step "merges $BRANCH at ${TIP:0:8}"
+  if ! MERGE_GATES=ship bash "$HERE/merge_unit.sh" "$W" "$TIP" "Merge: $(cat "$SPEC/title")" \
       > "$RO/${TAG}_merge.log" 2>&1; then
     tail -5 "$RO/${TAG}_merge.log"
     git -C "$W" merge --abort 2>/dev/null; git -C "$W" reset -q --hard HEAD
@@ -242,15 +282,27 @@ run() {
   step "check.sh --lists"
   out=$(cd "$W" && bash tools/check.sh --lists 2>&1) || { echo "$out" | tail -3; stop "check.sh --lists fails in $W"; }
   words probes probes
+  # TRAIN_PROBES_AT_ONCE at a time (3): each has its own data folder and X
+  # server, and heavy and gpu queue them. One after another, rel-m221's 14
+  # took most of its hour (2026-10-30). One that fails beside others runs
+  # again alone before it counts, as ship.sh's checks do.
+  at_once=${TRAIN_PROBES_AT_ONCE:-3}
+  step "probes, $at_once at a time: ${probes[*]}"
   for probe in "${probes[@]}"; do
-    step "probe $probe"
-    (cd "$W" && bash tools/probe.sh "$probe") > "$RO/${TAG}_probe_$probe.log" 2>&1
-    code=$?
-    fails=$(grep -cE '^\s*FAIL' "$RO/${TAG}_probe_$probe.log")
+    while [ "$(jobs -rp | wc -l)" -ge "$at_once" ]; do wait -n; done
+    probe_one "$probe" &
+  done
+  wait
+  for probe in "${probes[@]}"; do
+    read -r code fails < "$RO/${TAG}_probe_$probe.exit"
+    if [ "$at_once" -gt 1 ] && ! probe_ok "$code" "$fails"; then
+      say "probe $probe exit=$code FAIL=$fails beside others: again alone"
+      mv -f "$RO/${TAG}_probe_$probe.log" "$RO/${TAG}_probe_$probe.beside.log"
+      probe_one "$probe"
+      read -r code fails < "$RO/${TAG}_probe_$probe.exit"
+    fi
     say "probe $probe exit=$code FAIL=$fails"
-    # Either holds: probe.sh exits 1 for a script that did not load, 2 for a
-    # probe not run and 3 for one that skipped itself, none with a FAIL line.
-    [ "$code" = 0 ] && [ "$fails" = 0 ] || bad="$bad $probe"
+    probe_ok "$code" "$fails" || bad="$bad $probe"
   done
   [ -z "$bad" ] || stop "probes failed:$bad (${TAG}_probe_NAME.log)"
 

@@ -14,6 +14,11 @@
 //                                 asked without a sign-in.
 //   GET  ?op=challenge&id=N       challenge N as the same page draws it, once
 //                                 it is open, told or ran; 404 else
+//   GET  /challenge?id=N          (tools/deploy.sh routes it to /api/people
+//                                 ?op=challenge_page) the page itself, its
+//                                 title, words, address and picture
+//                                 challenge N's own, so a link to it shows
+//                                 that challenge where it is shared
 //   GET  ?op=challenge_entry&id=X (session) for a model's page: the
 //                                 challenge open now, whether X is in it, and
 //                                 what its rules say of X. Only X's owner is
@@ -34,11 +39,12 @@
 // models enter only a test challenge, and it votes only in one: the flows'
 // own, which only a page asked with tests=1 shows.
 
+import { existsSync, readFileSync } from "node:fs";
 import { bearer, isTestAccount, verify } from "./_auth.js";
 import { COLOUR_NAMES } from "./_colours.js";
 import { db } from "./_db.js";
 import { withFaces } from "./_faces.js";
-import { TESTS_CACHE, Unacceptable, cardOf, testsAsked } from "./_directory.js";
+import { TESTS_CACHE, Unacceptable, cardOf, escapeHtml, testsAsked } from "./_directory.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 export const WAYS = { hand: "Built by hand", assistant: "Built with the assistant" };
@@ -171,6 +177,68 @@ async function pageOf(tests, id = null) {
     page = await ask();
   }
   return { ready: true, page };
+}
+
+// ---------------------------------------------------------------------------
+// A challenge's own link preview.
+
+let pageHtml = null;
+
+/// /challenge's page as the site serves it: web/challenge.html, beside the
+/// function as _challenge.html in a deployment.
+function challengeFile() {
+  if (pageHtml !== null) return pageHtml;
+  pageHtml = "";
+  for (const where of ["./_challenge.html", "../web/challenge.html"]) {
+    const url = new URL(where, import.meta.url);
+    if (existsSync(url)) {
+      pageHtml = readFileSync(url, "utf8");
+      break;
+    }
+  }
+  return pageHtml;
+}
+
+/// [html], /challenge's page, with the head of challenge [page]
+/// (challenge_page_at's): its title, its brief and days, its own address,
+/// and the first winner's picture once it has one, for search engines and
+/// the cards chat apps draw of a link. Pure. [page] null: the page's own.
+export function challengeHead(html, origin, page, tests = false) {
+  if (!page || !page.id || !page.title) return html;
+  const title = `${String(page.title).replace(/\s+/g, " ").trim()} · Brickworks challenge`;
+  const brief = String(page.brief || "").replace(/\s+/g, " ").trim();
+  const days = daysSaid(page.starts_on, page.ends_on);
+  const when = page.state === "ended" ? `Ran ${days}: see who won.` : page.state === "upcoming" ? `From ${days}.` : `Open ${days}.`;
+  const about = `${brief.length > 220 ? `${brief.slice(0, 219)}…` : brief} ${when}`.trim();
+  const url = `${origin}/challenge?id=${n(page.id)}${tests && page.test ? "&tests=1" : ""}`;
+  const entries = new Map((page.entries || []).filter((one) => one && one.card).map((one) => [one.model, one.card]));
+  const won = (page.winners || []).map((one) => entries.get(one.model)).find((card) => card && card.has_image);
+  const image = won ? cardOf(origin, won).image : `${origin}/share.png`;
+  const swaps = [
+    [/<title>[^<]*<\/title>/, `<title>${escapeHtml(title)}</title>`],
+    [/<meta name="description" content="[^"]*">/, `<meta name="description" content="${escapeHtml(about)}">`],
+    [/<link rel="canonical" href="[^"]*">/, `<link rel="canonical" href="${escapeHtml(url)}">`],
+    [/<meta property="og:title" content="[^"]*">/, `<meta property="og:title" content="${escapeHtml(title)}">`],
+    [/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${escapeHtml(about)}">`],
+    [/<meta property="og:url" content="[^"]*">/, `<meta property="og:url" content="${escapeHtml(url)}">`],
+    [/<meta property="og:image" content="[^"]*">/, `<meta property="og:image" content="${escapeHtml(image)}">`],
+    [/<meta name="twitter:title" content="[^"]*">/, `<meta name="twitter:title" content="${escapeHtml(title)}">`],
+    [/<meta name="twitter:description" content="[^"]*">/, `<meta name="twitter:description" content="${escapeHtml(about)}">`],
+    [/<meta name="twitter:image" content="[^"]*">/, `<meta name="twitter:image" content="${escapeHtml(image)}">`],
+  ];
+  // A test challenge's page is never one to find.
+  const head = swaps.reduce((made, [find, put]) => made.replace(find, () => put), html);
+  return page.test ? head.replace(/<meta name="description"/, () => '<meta name="robots" content="noindex">\n<meta name="description"') : head;
+}
+
+/// /challenge?id=N: the page, with challenge N's head when it is there to
+/// show (a test one only asked with tests=1), else the page as it is,
+/// which says so itself.
+export async function challengePageHtml(origin, id, tests) {
+  const html = challengeFile();
+  if (!id) return html;
+  const page = await db("rpc/challenge_page_at", { method: "POST", body: { challenge_id: id, tests } }).catch(() => null);
+  return challengeHead(html, origin, page && page.id ? page : null, tests);
 }
 
 /// "1 to 31 October 2026", "28 September to 4 October 2026": a challenge's

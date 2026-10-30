@@ -1,5 +1,5 @@
 ---
-ai: Send feedback is in the app's Help menu, in every site page's footer and in the account menu, and at brickworks.diy/feedback. It sends something wrong, an idea or a question to the people who make Brickworks, with a picture and, if ticked, details, the open model and the app's last log lines. Signed in, the reports and our answers are on the settings page; signed out, an email address is asked so we can answer. Beta testers' reports are marked, and testers have a beta hub. No tool sends feedback; send the person to Help, Send feedback… or /feedback.
+ai: Send feedback is in the app's Brickworks menu (the mark at the left of the menu bar), in every site page's footer and in the account menu, and at brickworks.diy/feedback. It sends something wrong, an idea or a question to the people who make Brickworks, with a picture and, if ticked, details, the open model and the app's last log lines. Signed in, the reports and our answers are on the settings page; signed out, an email address is asked so we can answer. Beta testers' reports are marked, and testers have a beta hub. No tool sends feedback; send the person to Brickworks › Send feedback… or /feedback.
 rules:
   - Nothing goes with a report unless the person chooses it, and they can see all of it first.
   - Only the people who make Brickworks read reports; answers come by email and are kept with the report.
@@ -12,7 +12,7 @@ Something wrong, an idea, or a question: send it from wherever you are. We read 
 
 ## Send feedback {#send}
 
-- **In the app**: Help, **Send feedback…**.
+- **In the app**: **Brickworks › Send feedback…**, in the menu under the mark at the top left.
 - **On the site**: **Send feedback** in the footer of every page, or in your account menu (your picture, top right), or open [/feedback](/feedback).
 
 Choose what it is (something is wrong, an idea, or a question), say what happened or what you would like, and **Send**. Signed out, give your email address so we can answer you. Signed in, there is nothing more to give.
@@ -65,7 +65,7 @@ lib:feedback kept and answered
 
 ## The beta hub {#beta-hub}
 
-[Beta testers](/docs/beta) have a page of their own, the [beta hub](/beta-hub), and a **Beta hub** link in the account menu and in the app's Help menu. The hub shows:
+[Beta testers](/docs/beta) have a page of their own, the [beta hub](/beta-hub), and a **Beta hub** link in the account menu and in the app's Brickworks menu. The hub shows:
 
 - what is new to try;
 - what we already know is wrong;

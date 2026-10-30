@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:palette in a browser, ui:connect by a point, cli:connect probe -->
 
 ## Sub-features
 
@@ -129,16 +129,43 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `copy paste and duplicate` (`src/assembly/carry.gd`): `Ctrl-C` copies the
   selection, `Ctrl-V` holds a copy as one ghost, `Ctrl-D` holds a copy of the
   selection without touching the clipboard, `Ctrl-X` cuts. A click puts it down
-  as one step and selects it; `R` turns it; `Esc` puts it away. The group's frame
+  as one step and selects it; `R` turns it; `Esc` puts it away. After `Ctrl-D`
+  or a click with the Clone tool another copy stays in hand (`Carry.repeats`,
+  APP_UX A6), as Studio's Clone does, until `Esc`, a right click or another
+  tool; a paste and a `Ctrl`-drag copy go once (`typed_moves_probe -- only=clones`:
+  five copies in six actions, one undo each). The group's frame
   is a stud centre or corner at its bottom, so whole-stud moves and quarter turns
   keep every part on the studs; it drops onto whatever is highest under any of
   its parts, and a side face pushes it out until its edge meets the face. Copy
   also writes LDraw lines to the system clipboard (where they were in the model),
   and LDraw another program put there pastes in.
+- `patterns` (`src/assembly/pattern.gd`, `src/ui/pattern_dialog.gd`; APP_UX B6):
+  copies laid out at once. Straight after a `Ctrl-D` or Clone copy is put down,
+  `11x` (or `11*`, `*11`) makes it one of 11 in the row, each the same move
+  again, and `/4` cuts the gap from where it came from in four; read through
+  `TypedEntry.reads` (`EditVerbs._copies_read`) while that copy is still the last
+  change, and folded with it into one undo. `x 11` stays a move. Edit,
+  Pattern… (`Ctrl+Shift+D`): In a row (along x, z or up, every so many studs or
+  plates), Round (what it stands on, the joint it hangs on, or the floor's
+  middle; each turn the whole way round shared out until one is typed), Along a
+  hose (a laid hose, tube or chain's centreline, the copies turned as it
+  turns). "In all" counts the selection. Every copy is checked by
+  `Builder.room_for` against the model and the copies before it (stood in the
+  lattice under negative ids), drawn as ghosts, red where it has no room, and a
+  refusal says which copy and what is in the way; nothing is put down unless all
+  fit. `handbuild_probe -- only=patterns`: a fence of 12 posts in 5 actions, `/4`,
+  a row through a brick refused, a ring of 16 bricks on turntables in 6 actions,
+  four along a pneumatic tube, each one Ctrl+Z.
 - `move and turn a selection`: `X` with a selection picks it up to follow the
   pointer; a click puts it down (lifting and putting down are one undo); `Esc`
   puts it back. `R` / `Shift-R` turn a selection where it stands, about the
-  same point each time, so four turns come back exactly. Half round (the
+  same point each time, so four turns come back exactly. Where a turn (`R`, `T`,
+  the Rotate tool) has no room, the parts in the way are tinted red (amber on a red part) for a second
+  (`Builder.refused_by`, `EditVerbs._flash`) and the selection comes into hand
+  already turned (`Carry.reshape`): a click puts it down where it fits, lifting
+  and putting down one undo, and `Esc` puts it back as it was (APP_UX A3;
+  `typed_moves_probe -- only=wall`: the walk's brick down at 15 degrees in R, an
+  aim and a click). Half round (the
   properties panel's Turn of 180) goes round the middle on a half stud each
   way and lands on its own footprint, as Mirror does (`mirror_probe`).
 - `select by colour part or connection` (`src/assembly/select_by.gd`): the
@@ -173,9 +200,16 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Account; every command is defined once in `Shell._define` with its words, its
   key (shown beside it in the menu, never answered by the menu: the keys stay
   the app's own) and whether it can be used now — greyed when not, ticked when
-  it is a setting that is on. File: New, Open, Open recent, Import (LDraw,
-  Studio `.io`; LDD `.lxf` greyed, not yet), Save, Save as, Export, Render…
-  (see [view](view.md)), Instructions, Clear, Account, Quit. The toolbar under it: New/Open/Save, Undo/Redo/History,
+  it is a setting that is on. Each command is in one menu (appux371 A7; the
+  `palette probe` counts every menu's ids): File: New, Open, Open recent,
+  Import (LDraw, Studio `.io`; LDD `.lxf` greyed, not yet), Save, Save as,
+  Export, Render… (see [view](view.md)), Clear, Quit. Edit (25 rows) keeps
+  the clipboard, the selection, hide, lock, paint and replace; Build the
+  steps (Next step, Build steps), Instructions, the sub-assemblies and the
+  sections (Exploded view); Help is Keys and the tour, and About, Send feedback,
+  the docs, the website, Beta hub (a tester's) and Account are in the app
+  menu. A phone's More lists the
+  app menu's rows under Help (`Shell.touch_menus`). The toolbar under it: New/Open/Save, Undo/Redo/History,
   the tools, Copy/Paste/Mirror/Select by/Show all, snap and turn step, grid,
   orthographic, fit and three views, Measure, Properties, Timeline,
   Instructions, Render, Parts list — each tooltip its name, key and what it does.
@@ -207,6 +241,27 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `app menu in a browser` (preview check `app_menu`) does it in a browser at
   1280 and 390 wide, reads the mark's colours off the canvas, and follows
   Back to brickworks.diy to the site's header.
+- `find a command` (`src/ui/command_palette.gd`, `Shell.palette`): Ctrl+/
+  (and Ctrl+Shift+P on the desktop; a browser keeps that one), or the app
+  menu's Find a command…, opens a box over the model with the keys in it.
+  Typing filters every command by the words of its name and of its menu
+  (each word typed begins a word there, or is inside the name; at three
+  letters a word of its tooltip): "same colour", "turn left", "xray".
+  Each row says its key and its menu ("Edit › Select by"); one that cannot
+  be used now stays, greyed, saying why (`Shell.why_not`, `Command.needs`),
+  and Return runs nothing. Return runs the lit row through `Shell.run`, as
+  its menu row does; Up, Down, Page Up and Down move; Escape puts it away.
+  The last eight run from it come first (`ShellPrefs` `palette_recent`).
+  `palette probe` (windowed, 1280 x 720; 1400 x 900 by `PROBE_SIZE`) walks
+  every command in `Shell._commands`: typed by its words, reached by Down,
+  Return hands exactly it to the run (a stand-in, so no file dialog,
+  browser or network) or, greyed, nothing; Render opens for real in five
+  presses (Ctrl+/, R, E, N, Return). It also checks no command in two menus,
+  Edit at most 25 rows and 60% of the window, and the menu on a part's
+  Duplicate, Replace, Select the same part and colour, the step moves and
+  Swing on its hinge (`swing`, J), each run from the menu. `palette in a
+  browser` (preview check `palette`) drives it by keys in a browser
+  (`brickworksState.palette`).
 - `tool modes` (`EditVerbs.mode`): Select (the default) and Place (a part in
   hand), and Move, Rotate, Hinge, Clone, Paint, Hide, Delete — a click on a part
   does that tool's one thing to it, or to the whole selection when the part is
@@ -214,12 +269,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   in Tools. Only Place shows the ghost; a part carried by a drag, Move or Clone
   shows its own. `V` is Select, `Q` Place; `Esc` closes whatever is up and goes
   back to Select with nothing in hand, in one press.
-- `properties panel` (`src/ui/inspector.gd`): in the left-hand column, under
-  the parts bin and the model tree and over the colours (`docked panels`);
-  View, Properties with the column folded opens it with them. Nothing
-  selected, it is its header alone ("nothing selected", `Inspector.is_idle`)
-  and the parts grid has its room: an empty Properties took 200 px of the
-  column at 1440 x 900, and the grid had room for two rows (2026-10-12). One part: its name, LDraw and BrickLink numbers, its colour by
+- `properties panel` (`src/ui/inspector.gd`): in the right-hand column, under
+  the model tree (`docked panels`); View, Properties with the column folded,
+  or showing the assistant, opens it on them (`SideDock.of`). Nothing
+  selected, it is its header and the floor alone ("nothing selected",
+  `Inspector.is_idle`) and the tree has the column. With a part selected it
+  is as tall as all it holds (`PanelStack.keep_whole`), the tree giving back
+  room: at 1280 x 720 every field is in sight, where in the left column it
+  showed X and Y and the rest behind a scroller (appux371, 2026-10-30).
+  Probe: `columns_probe`. One part: its name, LDraw and BrickLink numbers, its colour by
   LDraw's name and code, LEGO's name and number, BrickLink's and Rebrickable's;
   X, Y, Z in LDU and its turn in degrees, typed over or stepped to move or turn
   it (refused and put back where there is no room); what it is joined to,
@@ -228,35 +286,50 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   how many of what, the colours, the size in studs and bricks, the group's
   corner to type over. Folds to its header; scrolls when the column gives it
   less room than it needs.
-- `docked panels` (`src/ui/panel_stack.gd`, `Main._fit_panels`): the left
-  column holds everything for building by hand, the parts bin with the model
-  tree, the properties and the colours under it (`PanelStack`), as Studio
-  keeps its palettes down the left with the colours at the foot, and Blender
-  stacks its outliner over its properties. The colours are as tall as the
-  column says (`PartsBin._fit_palette`: 14% of it, two category rows from a
-  700-unit column), so a part taken into hand, a brick selected or the tree
-  opened moves the parts grid's foot and never the palette; the grid takes
-  the rest — four rows and more at 1440 x 900 with nothing selected, where it
-  had two; the right column is the assistant's alone. (Stacked over the
-  assistant they would not fit: waiting for a key it asks for 783 units of a
-  laptop column's 666 to 883.) The tree and the properties fold to their
-  headers (the tree starts folded) and the bar between two drags the height
-  of the one that is not the bin; the bin has the rest. The model's part of
-  the window is what is left, with nothing over it but the view cube: the
-  tree and the properties floated over its top corners, where clicks meant
-  for a part landed on them, and at 1100 x 700 they left no room to build.
-  The sub-assembly banner and the offer to seat old parts are in a strip above
-  the model (`Main._notices`), not over it. Below 1600 units across (every
-  laptop: 1100 x 700, 1280 x 720, 1440 x 900 at any density) the columns take
-  turns: opening one folds the other (`Main._column_opening`) and the model
-  keeps over 60% of the width. A first visit shows the assistant, the parts
-  bin folded to its rail (`narrow_side` "assistant": designing with Claude is
-  what the landing page sends people in for); a person who switches keeps
-  their choice, and a part put in hand (Q, the bin, the eyedropper) brings
-  the bin out (`Main._bring_out_bin`). On a phone they are drawers, as
-  before, and nothing brings one out over the model. Each rail carries its
-  icon and its name ("Parts", "Assistant"), tinted with the accent down its
-  edge while folded, and switching is one click on it. A folded column's
+- `docked panels` (`src/ui/panel_stack.gd`, `src/ui/side_dock.gd`,
+  `Main._fit_panels`, 2026-10-30, appux371's A10): the left column is the
+  parts bin with its colours under it, as Studio keeps its parts palette down
+  the left, as many tiles across as the model's share leaves room for
+  (`Main._fit_panels`, `PartsBin._tiles_across`: six at 1280 x 720 and
+  1400 x 900, five at 1100 x 700, four at the least and on a phone);
+  the right column is the model tree over the properties, as
+  Figma, Blender and Onshape keep the inspector on the right, with the
+  assistant as a tab beside them (`SideDock.share_edge`: the two rails one
+  over another in one strip, one of the two showing; opening one while the
+  other shows swaps them where they stand). In one column with the bin the
+  tree and the properties left it 8 parts in sight at 1280 x 720 and the
+  properties X and Y. The colours are as tall as the column says
+  (`PartsBin._fit_palette`: 14% of it, two category rows from a 700-unit
+  column; under that, on a desktop, a row and a half of colours and one
+  row of categories, so a laptop's 1280 x 720 has four rows of six parts
+  in sight), so a part taken into hand moves the parts grid's foot and never
+  the palette. In the right column the tree has its dragged height and the
+  properties the rest, all they hold in sight (`PanelStack.keep_whole`);
+  with nothing selected the tree has the column (`PanelStack._filler`). The
+  bar between two drags the height of the one that does not fill. The tree
+  comes out of its fold once, the first time a device has the right column
+  (`right_column`): folded, the column was an empty Properties. The model's
+  part of the window is what is left, with nothing over it but the view cube:
+  the tree and the properties floated over its top corners, where clicks
+  meant for a part landed on them. The sub-assembly banner and the offer to
+  seat old parts are in a strip above the model (`Main._notices`), not over
+  it. The model keeps 60% of the window's width (`Main.MODEL_SHARE`, what
+  `tools/web/fit_check.mjs` asks of a laptop's window): with both columns
+  open at 1400 x 900 it had 41%. Both show only where both fit round that, a
+  window about twice as wide as it is tall (1835 units); else the columns
+  take turns, opening one folding the other side's (`Main._column_opening`),
+  and a part put in hand (Q, the bin, the eyedropper) brings the bin out
+  (`Main._bring_out_bin`). A first visit opens on the bin; the Properties
+  rail brings out the tree and every property, folding it. The assistant
+  turned on opens as the right column's tab, folding the bin where they
+  take turns. On a phone or a tablet they are drawers, as before: the drawer down the
+  left holds the tree, the properties and the colours, and there is no right
+  column. Each rail carries its icon and its name ("Parts", "Properties",
+  "Assistant"), tinted with the accent down its edge while folded, and
+  switching is one click on it. Probe: `columns_probe` (1280 x 720, and
+  PROBE_SIZE=1400x900 or 1920x1080: 24 parts in sight with the bin open,
+  every property with theirs, the model's 60% at every step) and
+  `columns_saved_probe` (a layout kept before the right column). A folded column's
   content is hidden, not clipped: its fields cannot take the keys and the
   page is not told its buttons are there. The 3D view is centred on the
   model's part of the window, and glides over as a column folds or opens
@@ -827,11 +900,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`set_assistant(true)`). The desktop's `--mcp` port is asked for on the
   command line and is not held.
 - `remembered layout` (`src/ui/shell_prefs.gd`): the columns open or folded
-  (`parts_open`, `assistant_open` for a wide window; `narrow_side`, "parts" or
-  "assistant", for which one a narrow window shows; a first visit opens on the
-  parts, the assistant folded until asked for), the model tree and the
-  properties folded and their heights in the column (`tree_height`,
-  `properties_height`), the key
+  (`parts_open`, and the right column's tab, `assistant_open` or else
+  `properties_open`, for a wide window; `narrow_side`, "parts", "properties"
+  or "assistant", for which one a narrow window shows; a first visit opens on
+  the parts and the properties, the assistant folded until asked for; a
+  layout kept before the right column loads as it was, the assistant open
+  being its tab), the model tree and the properties folded and their heights
+  in their column (`tree_height`, `properties_height`), the key
   strip, the grid, the snap and the turn step are kept in `user://shell.cfg`
   and come back next time; a narrow window shows one column without
   forgetting how a wide one had them. Not read or written under
@@ -888,8 +963,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   hand (`Assemblies.unmirror`). Probe: `assembly_probe` (windowed), which saves
   as Save does (with the steps) and finds each copy the one it was, and also
   opens `vendor/omr`'s 31037 and finds its two propellers as two copies.
-- `model tree`: under the parts bin in the left-hand column (View, Model
-  tree, or its header) lists the
+- `model tree`: at the top of the right-hand column, over the properties
+  (View, Model tree, or its header) lists the
   model and its sub-assemblies inside one another with their part counts. A
   row selects its parts, a double-click edits inside it, `F2` renames it in
   place, its eye and lock hide and lock it whole, and dragging a row onto
@@ -1707,6 +1782,69 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   Technic hole's (`JointSnap.ends_of`, `COUNTERBORE`). Probe: `placing_probe
   -- only=balance`; in a browser, `placing_flow.mjs --only=balance` opens the
   set's file up to its plates and puts both through the interface.
+- `type a number while moving` (`src/ui/typed_entry.gd`, `EditVerbs._begin_typing`,
+  `Builder.pin_hand` / `typed_hand`, `Carry.pin` / `show_moved`, APP_UX B1):
+  with a part or a copy in hand (its ghost aimed), or straight after `R` or `T`,
+  a digit, `.` or `-` opens a field at the pointer. What is in hand stays where
+  its ghost stood; the text is read whole after every key (`TypedEntry.parse`:
+  `3x`, `-2z`, `2py`, `-14ly`, `5mm x`, `23.58r`, `30t`, `40/2+1lx`, `2x-1py`; a
+  stud the unit, a number alone along `Builder.last_way`, or after `R`/`T` a turn
+  or tilt taking their step's place) and shown in hand, red where `room_for` (a
+  part) or the lattice (a group) refuses. `Enter` puts it down through `place()`,
+  one undo; `Esc` leaves it as before typing. On the model, straight after `R`/`T`
+  turned a selection, the turn is undone and the selection lifted where it stood
+  to type its turn instead. The field reads only the keys' characters
+  (`InputEventKey.unicode`, the keypad's codes), as a browser sends them. While it
+  is open it takes every key, so a digit is not a view key then; with nothing in
+  hand the digits are views as before. `R` or `T` stays "just pressed" until the
+  pointer moves 6 px from where it was pressed (`EditVerbs._input`): a number
+  after aiming again moves the part as `R` left it. The field opens under the
+  ghost's screen box (`TypedEntry.clear_of`), not on it. Probe: `typed_moves_probe`
+  (headers its command; sections reading, clones, wall, typed, sets; `only=` takes
+  several, comma-separated). In a browser: `tools/web/typed_flow.mjs` against a
+  local export (`tools/export.sh web`, then `tools/web/serve.py build/web PORT
+  --parts assets/generated/parts --delay 0`): Q, "3x", Enter, Ctrl-Z, "-1py", Esc,
+  read through `window.brickworksState` and `brickworksWords`.
+- `typed moves probe` (`src/dev/typed_moves_probe.gd`): windowed 1400x900, about
+  four minutes. `sets` opens each set's file for the truth, puts the parts before
+  the one typed (found by its line among the file's parts: the runs typed their
+  places in a model lifted on the floor), takes it into hand, aims, turns it with
+  `R`/`T` to the nearest quarter only if the ghost is not turned as it goes,
+  aims again and types the difference; its rows go to `shots/typed/sets.json`
+  with the actions counted (point, click, key, a typed number one; characters
+  beside). Each section starts on an empty floor.
+- `connect by a point` (`src/ui/connect_tool.gd`, `EditVerbs.start_connect`,
+  `Builder.connect_end` / `hold_still` / `follow_by`, APP_UX B2): with a part in hand,
+  `N` (or the toolbar's Connect, Build's tool row) holds it still where its ghost
+  stood (where the view looks if it stood nowhere) and draws its ends
+  (`JointSnap.ends_for`: pins, axles, pin and axle holes, bars, clips, tyres,
+  rims, hinge halves) as blue rings (holes, clips) and dots (pins, axles, bars)
+  on a 2D layer over the view (`ConnectPoints`); the one under the pointer
+  lights amber. A click on one makes it the only end the hand goes
+  on by (`_onto_a_joint` takes `[connect_end]`), so a 1 x 16 on a pin has two
+  ways, not thirty, and of ways joining as many parts `_best_on_joint` takes the
+  one above the floor and then the one turned least from how it stood
+  (`_turned_from_picked`); the click on a point and its release are eaten
+  (`ConnectTool._unhandled_input`), and `place()` refuses while points are
+  offered. `R` turns about the joint, `T` the other way on, `N` again picks
+  another point, `Esc` back to placing. With nothing in hand the tool waits for
+  a part: a click takes it off the model into hand where it stands
+  (`lift_brick`), and its putting down folds with that into one undo
+  (`fold_since`, "connected …"); `Esc` or Undo puts it back. Studs go by the
+  stud grid as before (a part with no ends is said so). In a browser the stage
+  and the points on the page are `window.brickworksState.connect`.
+- `connect probe` (`src/dev/connect_probe.gd`): windowed, about five minutes;
+  `PROBE_SIZE=1280x720` for the small window. `column`: 8841-1's parts 1 to 20
+  from the file, the column taken, aimed at its pin, `N`, its end hole, the pin,
+  a click (bar 6 actions), against the build flow's 25 presses of `T`/`R`
+  without Connect; one undo; another hole puts it on the pin by that hole. `turned`: a
+  1 x 16 by its fourth hole onto a pin in a 1 x 4 turned 30° and tilted 25°, `R`
+  about the joint. `model`: the toolbar's Connect on a column lying on the floor,
+  `Esc` puts it back, then moved onto its pins in one undo. `walk`: 8841-1's nine
+  joint parts of section 9's 25 by Connect, counted, and the run's 744 actions
+  with them in (each part its run's take and colour overhead plus Connect's
+  count, where that is fewer and lands where the file has it) (rows in `shots/connect/walk.json`, pictures in
+  `shots/connect/WxH/`).
 - `typed place and hinge` (`src/ui/inspector.gd`, `Builder.move_selection_by`,
   `Builder.hinge_angle`, 2026-10-17): Properties' X, Y and Z move the
   selection by exactly the difference typed, to the hundredth of an LDU

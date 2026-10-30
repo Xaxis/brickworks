@@ -5,13 +5,49 @@
 // list to download. Its parts list is a model page's (web/model-page.js);
 // nobody signed in sees the page as it is sent.
 //
+// For everybody, the models in the gallery built from the set or based on
+// it (api/_bases.js setBased, docs/SOCIAL.md section 7, item 5): a row of
+// their cards after the page's parts, before the set's theme. They change
+// as designers say so, and the page is kept a day, so they are asked here.
+//
 // The page says what it found on <html data-owned>: "have/pieces", "none"
 // for no collection, "broken" when it could not ask (tools/web/sets_flow.mjs
-// reads it).
+// reads it); and on <html data-based> how many models are built from it,
+// "broken" when it could not ask (tools/web/based_on_flow.mjs).
 import { call, signedIn } from "/account.js";
+import { modelCard } from "/card.js";
 
+const SET = /^[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/;
 const owned = document.getElementById("owned");
-if (owned && /^[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/.test(owned.dataset.set || "") && signedIn()) start(owned);
+if (owned && SET.test(owned.dataset.set || "") && signedIn()) start(owned);
+const page = document.querySelector("article.set-page");
+if (page && SET.test(page.dataset.set || "")) builtFrom(page);
+
+/// The row of models based on the set, put before More <theme> (#similar),
+/// or at the page's end; none, no row.
+async function builtFrom(article) {
+  const tests = new URLSearchParams(location.search).get("tests") === "1" ? "&tests=1" : "";
+  const reply = await fetch(`/api/share?op=set_based&set=${encodeURIComponent(article.dataset.set)}${tests}`).catch(() => null);
+  const body = reply && reply.ok ? await reply.json().catch(() => null) : null;
+  if (!body || !Array.isArray(body.models)) {
+    document.documentElement.dataset.based = "broken";
+    return;
+  }
+  const models = body.models.filter((model) => model && typeof model.id === "string");
+  if (models.length) {
+    const section = document.createElement("section");
+    section.className = "next";
+    section.id = "built-from";
+    section.setAttribute("aria-labelledby", "built-from-h");
+    section.innerHTML = '<div class="scroller-head"><h2 id="built-from-h">Based on this set</h2></div>'
+      + '<div class="models scroller" role="group" aria-labelledby="built-from-h"></div>';
+    section.querySelector(".models").append(...models.map((model) => modelCard(model)));
+    const similar = document.getElementById("similar");
+    if (similar) similar.before(section);
+    else article.append(section);
+  }
+  document.documentElement.dataset.based = String(models.length);
+}
 
 async function start(section) {
   const set = section.dataset.set;

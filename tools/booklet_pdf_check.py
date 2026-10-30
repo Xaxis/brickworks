@@ -13,8 +13,11 @@ named by BOOKLET_PYPDF). Checked against the booklet's own file:
     (pypdf; with poppler alone, the first and the last page)
   the title is words on the first page, and the last page's element numbers
     are words on the last
+  every font the PDF uses is in it (pdffonts: emb yes), so every reader
+    draws the same letters
   the zip has a PNG a page, and its first and last are the PDF's pages
-    drawn by poppler, to within what two drawings of one page differ by
+    drawn by poppler, to within what two drawings of one page differ by;
+    each is 300 dots an inch, in its pixels and in what it says (pHYs)
   with --shots, the browser's own pictures of those pages (page-N.png, from
     tools/web/booklet_print.mjs) are the PDF's too
 
@@ -81,6 +84,23 @@ def rendered(pdf, number, dpi, into):
     return stem + ".png"
 
 
+def embedded(pdf):
+    """[(name, embedded)] for each font pdffonts lists, read by its columns."""
+    lines = run("pdffonts", pdf).stdout.splitlines()
+    if len(lines) < 2:
+        return []
+    columns, at = [], 0
+    for dashes in lines[1].split(" "):
+        columns.append((at, at + len(dashes)))
+        at += len(dashes) + 1
+    out = []
+    for line in lines[2:]:
+        cells = [line[a:b].strip() for a, b in columns]
+        if len(cells) > 3 and cells[0]:
+            out.append((cells[0], cells[3] == "yes"))
+    return out
+
+
 def differ(a, b):
     """How far apart two pictures of one page are: the mean difference of a
     channel out of 255, both at 400 px wide. Small enough that two ways of
@@ -121,6 +141,10 @@ def main():
     check("...each 269 x 199 mm (%s)" % size, size.startswith("762.52 x 564.09"))
     check("...and its title (%s)" % said.get("Title", "").strip(),
           said.get("Title", "").strip() == title.replace("&amp;", "&"))
+    fonts = embedded(args.pdf)
+    check("every font is in the PDF (%s)" % (", ".join("%s %s" % (name, "embedded" if emb else "NOT embedded")
+                                                      for name, emb in fonts) or "pdffonts lists none"),
+          fonts and all(emb for _, emb in fonts))
 
     # The step pictures, byte for byte.
     pypdf = None
@@ -183,8 +207,13 @@ def main():
                 with open(ours, "wb") as file:
                     file.write(archive.read(names[index]))
                 from PIL import Image
-                wide = Image.open(ours).size[0]
+                picture = Image.open(ours)
+                wide = picture.size[0]
                 dpi = round(wide / (269 / 25.4))
+                says = picture.info.get("dpi", (0, 0))
+                check("page %d's PNG is 300 dots an inch: %d x %d px, and says %.0f x %.0f" % (
+                    number, wide, picture.size[1], says[0], says[1]),
+                      dpi == 300 and abs(says[0] - 300) < 0.5 and abs(says[1] - 300) < 0.5)
                 drawn = rendered(args.pdf, number, dpi, out)
                 apart = differ(ours, drawn)
                 check("page %d's PNG (%d px wide) is the PDF's page drawn by poppler "

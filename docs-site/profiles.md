@@ -9,7 +9,7 @@ description: Your profile, following designers, your feed and notifications, you
 
 ## Your profile {#profile}
 
-[brickworks.diy/profile](/profile) is your own page, signed in. The first time, give it a name and a handle; your public page is then `/u/<handle>`. **Edit profile** sets your name, your links, a banner and the models pinned at the top. Its tabs are **Models**, **Builds**, **Saved**, **Sets** and **Insights**.
+[brickworks.diy/profile](/profile) is your own page, signed in. The first time, give it a name and a handle; your public page is then `/u/<handle>`. **Edit profile** sets your name, your links, a banner and the models pinned at the top. Its tabs are **Models**, **Builds**, **Saved**, **Sets**, **Insights** and **Achievements**.
 
 <!-- covers
 ui:your profile page
@@ -27,10 +27,25 @@ ui:your own picture as your avatar
 
 ### Achievements and insights {#achievements}
 
-Under your numbers are the achievements your models have earned. **Insights** (and *How your models are doing* on your own `/u/` page) says, for you alone, how each of your models is doing.
+Under your numbers are your achievements, on your page for everybody to see: each challenge your models won, then your level on each track, the highest first.
+
+| Track | What counts | Its levels |
+| --- | --- | --- |
+| **Designer** | models you listed in the gallery | 1, 3, 10, 25, 50, 100 |
+| **Built** | builds of your models finished to the last step | 1, 10, 50, 100, 500, 1,000 |
+| **Builder** | photos you posted of your real builds | 1, 5, 10, 25, 50 |
+| **Remixed** | remixes of your models | 1, 5, 25, 100 |
+| **Tested** | your models marked [Tested](/docs/sharing#tested) | 1, 5, 10, 25 |
+| **Challenger** | [challenges](/docs/challenges) you entered | 1, 3, 6, 12 |
+
+Your profile's **Achievements** tab shows every track, for you alone: your level, how far the next one is and what gets you there. Reaching a level is a [notification](#notifications). A level stays yours if a number goes down later.
+
+**Insights** (and *How your models are doing* on your own `/u/` page) says, for you alone, how each of your models is doing.
 
 <!-- covers
 ui:achievements on a profile
+lib:achievements with levels
+ui:your achievements tab
 ui:your models as a designer
 -->
 
@@ -45,6 +60,8 @@ ui:first steps after a first sign-in
 ## Follow {#follow}
 
 **Follow** on a designer's page or a model's page puts what they make in your feed. Your profile counts who you follow and who follows you.
+
+**Share** on anybody's page, and on your own, opens the sheet a model's page has: the page's link to copy, and **Post it to** Reddit, Bluesky, Pinterest (with the banner's picture), X, Facebook or email.
 
 <!-- covers
 ui:follow a person and the count on Account
@@ -63,7 +80,7 @@ ui:the app's Account count
 
 ## Notifications {#notifications}
 
-[brickworks.diy/notifications](/notifications) says what happened to your models: comments, replies, photos of builds and likes, grouped by model with its picture, newest first. Opening it clears the count on your avatar; **Mark all read** clears them all.
+[brickworks.diy/notifications](/notifications) says what happened to your models: comments, replies, photos of builds and likes, grouped by model with its picture, newest first. A comment that [mentions you](/docs/model-pages#mentions) is there too, under its model. Each level of an [achievement](#achievements) you reach is there too, in a group of its own. So is each [challenge](/docs/challenges#told): when it opens, its last two days, and who won one you voted in. Opening it clears the count on your avatar; **Mark all read** clears them all.
 
 <!-- covers
 ui:notifications page

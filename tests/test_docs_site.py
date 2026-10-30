@@ -64,7 +64,7 @@ def test_the_menus_page_is_the_apps_menus() -> None:
     have = {menu["title"]: _menu_names(menu["items"]) for menu in dump["menus"]}
     assert have == wanted, f"the menus changed: write docs-site/generated/menus.json again with\n  {DUMP}"
     # And the app's own menu, from the mark (Shell.APP_MENU).
-    app_menu = re.findall(r'"([a-z_-]+)"', re.search(r"const APP_MENU: Array = \[(.*?)\]\n", shell).group(1))
+    app_menu = re.findall(r'"([a-z_-]+)"', re.search(r"const APP_MENU: Array = \[(.*?)\]\n", shell, re.S).group(1))
     assert _menu_names(dump.get("app_menu", [])) == app_menu, \
         f"the Brickworks menu changed: write docs-site/generated/menus.json again with\n  {DUMP}"
     # The words of every command added by name (most are), as the dump has them.
@@ -89,15 +89,15 @@ def test_the_shortcuts_are_every_binding_the_app_lists() -> None:
     text = (ROOT / "src/ui/controls_hint.gd").read_text(encoding="utf-8")
     start = text.index("static func for_touch(")
     end = text.index("\nconst ON_THE_STRIP")
-    listed = text[start:end].count("Binding.new(")
+    listed = len(re.findall(r"\b(?:Binding\.new|keyed)\(", text[start:end]))
     start = text.index("static func for_keyboard(")
     end = text.index("\nstatic func _section(")
-    listed += text[start:end].count("Binding.new(")
+    listed += len(re.findall(r"\b(?:Binding\.new|keyed)\(", text[start:end]))
     sections = docs_site.keyboard()
     rows = [row for _, section in sections for row in section]
     assert len(rows) == listed, (len(rows), listed)
     names = [name for name, _ in sections]
-    assert names[:5] == ["Building", "Selecting", "The view", "The timeline", "Panels"], names
+    assert names[:6] == ["Building", "Tools", "Selecting", "The view", "The timeline", "Panels"], names
     undo = [does for keys, does, _ in rows if keys == ["Ctrl-Z"]]
     assert undo == ["undo"], undo
     # The keys the browser keeps for itself are said to be the desktop's alone.

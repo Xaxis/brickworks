@@ -447,6 +447,7 @@ ${entry.parts > 0 ? "" : '<meta name="robots" content="noindex">\n'}<meta proper
 ${chrome.head}
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
+<link rel="stylesheet" href="/view3d.css">
 <script src="/model-page.js" type="module"></script>
 <script src="/set-page.js" type="module"></script>
 ${structured(origin, entry, small, description)}
@@ -459,7 +460,8 @@ ${chrome.header}
   <nav class="crumbs" aria-label="Where it is">${crumbs}</nav>
   <div class="top">
     <div class="media">
-    ${viewer ? `<a class="picture" href="${escapeHtml(viewer)}" aria-label="View ${escapeHtml(entry.name)} in 3D">${pictureHtml}</a>`
+    ${viewer ? `<a class="picture" href="${escapeHtml(viewer)}" aria-label="View ${escapeHtml(entry.name)} in 3D" `
+      + `data-scene="/library/${escapeHtml(model.id)}/scene.json" data-parts="${Number(model.parts) || 0}">${pictureHtml}</a>`
     : `<div class="picture">${pictureHtml}</div>`}
     </div>
     <div class="side">

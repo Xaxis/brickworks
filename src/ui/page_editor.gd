@@ -12,6 +12,10 @@
 ## (Booklet._by_hand). What was never dragged stays where the booklet lays
 ## it, so a file without those lines prints as it did.
 ##
+## Apply to later pages lays out every later page with as many steps as
+## this one does, as Studio's page design applies a layout to "followings"
+## ([method later_layout]): a 40-page booklet laid out from its first page.
+##
 ## The page shows its boxes at once and the steps' pictures and parts a few
 ## seconds later, drawn as Instructions draws them (BookletMaker.draw_steps,
 ## the page's steps alone); a picture is stretched with its box while it is
@@ -124,6 +128,9 @@ func _ready() -> void:
 			["page_larger", "Words larger", "The selected words larger"],
 			["page_put_back", "Put back", "The selected item where the booklet lays it out; "
 				+ "words or a picture of your own taken off"],
+			["page_apply_later", "Apply to later pages", "This page's layout on every later page "
+				+ "with as many steps: each step's picture, parts list, number and callout where "
+				+ "this page has them"],
 			["page_done", "Done", "Back to the model"]]:
 		var button := Button.new()
 		button.text = spec[1]
@@ -1034,6 +1041,8 @@ func _pressed(name: String) -> void:
 			add_text("Your words", Rect2(Vector2(Booklet.PAGE.x * 0.5 - 40.0, 150.0), Vector2(80, 12)))
 		"page_add_image":
 			_picker.ask()
+		"page_apply_later":
+			await apply_to_later()
 		"page_add_arrow":
 			_arrow_mode = not _arrow_mode
 			_select(-1)
@@ -1084,6 +1093,168 @@ func _pressed(name: String) -> void:
 				_say(_change("place", item, {"item": item["kind"], "at": null}))
 			_selected = -1
 			await _lay_out((item["entry"] as Booklet.Entry).number)
+
+
+## This page's layout on the later pages with as many steps (Shell
+## .place_pages): one undo. Says what it did, and what the pages then had
+## to move off something else.
+func apply_to_later() -> String:
+	if _at < 0 or _at >= _pages.size():
+		return "no page to lay out from"
+	var later: Dictionary = later_layout(_pages, _at, _plan)
+	var laid: Array = later["laid"]
+	var said: String = ""
+	if not bool(later["placed_any"]):
+		said = "Nothing on this page is placed by hand yet: drag its things where they go first."
+	elif laid.is_empty():
+		said = "No later page has %d step%s." % [_pages[_at].entries.size(),
+			"" if _pages[_at].entries.size() == 1 else "s"]
+	else:
+		said = _shell.place_pages(later["placed"], "page %d's layout on %d later page%s" % [
+			_pages[_at].number, laid.size(), "" if laid.size() == 1 else "s"])
+		# Their pictures drawn for their old boxes are drawn again when shown.
+		_shots.clear()
+		var left: Array = later["left"]
+		if not left.is_empty():
+			said += "; %d with another number of steps left as %s (page%s %s)" % [left.size(),
+				"it was" if left.size() == 1 else "they were", "" if left.size() == 1 else "s",
+				", ".join(PackedStringArray(left.map(func(page: int) -> String: return str(page))))]
+		var number: int = _page_steps()[0] if not _page_steps().is_empty() else -1
+		await _lay_out(number)
+		var moved: Array = []
+		for page: Booklet.Page in _pages:
+			if page.number in laid and not page.overlaps.is_empty():
+				moved.append(page.number)
+		if not moved.is_empty():
+			said += "; on page%s %s a thing was moved off another" % [
+				"" if moved.size() == 1 else "s",
+				", ".join(PackedStringArray(moved.map(func(page: int) -> String: return str(page))))]
+	_say(said)
+	return said
+
+
+## The layout of [param pages]' page [param at] for each later page of the
+## same kind with as many steps (a callout's own page: the same callout's),
+## its step in each place laid out as this page's step in that place is:
+## what that step has placed (picture, parts list, number, callout), moved
+## into the later step's room as a step's own things move with it
+## (BookletLooks.rebased), and nothing else placed, so what this page
+## leaves to the booklet the later page does too. A parts list or callout
+## goes only where the later step has one, the list as wide as its own
+## parts need and kept to its side of the page, the picture's box cut to
+## what the list leaves of it ([method clear_of]). A placed picture is the
+## box its model is drawn in; on a later page the model is drawn no larger than
+## the booklet draws a step (ten millimetres a stud, its size and zoom
+## aside), its page's steps alike, centred where this page has it: an
+## early step's two bricks are not blown up to fill a box made for the
+## finished model. Returns {placed: [[Instructions.Step, place, room]] for
+## Shell.place_pages, laid: the pages laid out, left: the later pages of
+## another number of steps, placed_any: whether this page has anything
+## placed}.
+static func later_layout(pages: Array[Booklet.Page], at: int,
+		plan: Array[Instructions.Step]) -> Dictionary:
+	var source: Booklet.Page = pages[at]
+	var placed_any: bool = source.entries.any(func(entry: Booklet.Entry) -> bool:
+		return not entry.place.is_empty())
+	var out: Dictionary = {"placed": [], "laid": [], "left": [], "placed_any": placed_any}
+	if not placed_any:
+		return out
+	for index: int in range(at + 1, pages.size()):
+		var page: Booklet.Page = pages[index]
+		if page.kind != source.kind or page.kind == "callout" and page.name != source.name:
+			continue
+		if page.entries.size() != source.entries.size():
+			(out["left"] as Array).append(page.number)
+			continue
+		var places: Array = []
+		# The page's steps drawn at one scale where their pictures are
+		# placed, as the booklet draws a page's steps.
+		var scale: float = INF
+		for slot: int in page.entries.size():
+			var from: Booklet.Entry = source.entries[slot]
+			var to: Booklet.Entry = page.entries[slot]
+			var place: Dictionary = BookletLooks.rebased({"place": from.place,
+				"panel": BookletLooks.said_rect(from.panel)}, to.panel).get("place", {})
+			if to.lots.is_empty():
+				place.erase("parts")
+			elif place.has("parts"):
+				# As wide as its own parts need, wrapped no narrower than this
+				# page's list or the booklet's own: a step of twenty parts in a
+				# list made for two would run down the page. Kept to the side
+				# it was put on, so a list at the right grows to the left.
+				# Never narrower than the booklet draws one (Booklet._by_hand).
+				var list: Array = place["parts"]
+				var wide: float = maxf(Booklet._parts_size(to.lots, maxf(float(list[2]),
+					Booklet._parts_width(to, to.panel))).x, 12.0)
+				var x: float = float(list[0])
+				if x + float(list[2]) * 0.5 > Booklet.PAGE.x * 0.5:
+					x += float(list[2]) - wide
+				place["parts"] = [snappedf(x, 0.1), list[1], snappedf(wide, 0.1)]
+			if to.callout == null or not to.callout.inline:
+				place.erase("callout")
+			if place.has("picture"):
+				var size: Vector2 = to.subject.size.max(Vector2.ONE)
+				# A list grown for a step of many parts runs into the box: the
+				# model goes in what the list leaves of it.
+				var box: Rect2 = clear_of(BookletLooks.rect_of(place["picture"]),
+					list_rect(to, place), size)
+				place["picture"] = BookletLooks.said_rect(box)
+				var fits: float = minf(box.size.x * 0.94 / size.x, box.size.y * 0.94 / size.y)
+				scale = minf(scale, minf(fits, Booklet._most(to) * Booklet._grown(to))
+					/ Booklet._grown(to))
+			places.append(place)
+		for slot: int in page.entries.size():
+			var to: Booklet.Entry = page.entries[slot]
+			var place: Dictionary = places[slot]
+			if place.has("picture"):
+				var centre: Vector2 = BookletLooks.rect_of(place["picture"]).get_center()
+				var need: Vector2 = to.subject.size.max(Vector2.ONE) * scale * Booklet._grown(to) / 0.94
+				place["picture"] = BookletLooks.said_rect(Rect2(centre - need * 0.5, need))
+			var step_index: int = int(to.get_meta("step", -1))
+			if step_index < 0 or step_index >= plan.size():
+				continue
+			(out["placed"] as Array).append([plan[step_index], place,
+				BookletLooks.said_rect(to.panel)])
+		(out["laid"] as Array).append(page.number)
+	return out
+
+
+## The parts list [param place] puts [param entry]'s parts in, with its
+## number under it when the number is not placed on its own; an empty
+## rect where it places none.
+static func list_rect(entry: Booklet.Entry, place: Dictionary) -> Rect2:
+	if not place.has("parts") or entry.lots.is_empty():
+		return Rect2()
+	var at: Rect2 = BookletLooks.rect_of(place["parts"])
+	var size: Vector2 = Booklet._parts_size(entry.lots, maxf(at.size.x, 12.0))
+	size.x = maxf(size.x, at.size.x)
+	if not place.has("number"):
+		size.y += entry.number_size + 1.6
+	return Rect2(at.position, size)
+
+
+## Room between a step's parts list and its picture, in mm.
+const LIST_GAP := 2.0
+
+## What [param list] leaves of [param box], LIST_GAP clear of it: the side of
+## it above, below, left or right of the list a model of [param size] is
+## drawn largest in. The box itself where the list is not on it, or covers
+## all of it.
+static func clear_of(box: Rect2, list: Rect2, size: Vector2) -> Rect2:
+	var cover: Rect2 = list.grow(LIST_GAP)
+	if list.size.x <= 0.0 or not box.intersects(cover):
+		return box
+	var best := Rect2()
+	var most: float = 0.0
+	for side: Rect2 in [Rect2(box.position.x, cover.end.y, box.size.x, box.end.y - cover.end.y),
+			Rect2(box.position, Vector2(box.size.x, cover.position.y - box.position.y)),
+			Rect2(box.position, Vector2(cover.position.x - box.position.x, box.size.y)),
+			Rect2(cover.end.x, box.position.y, box.end.x - cover.end.x, box.size.y)]:
+		var fits: float = minf(side.size.x / size.x, side.size.y / size.y)
+		if side.size.x > 0.0 and side.size.y > 0.0 and fits > most:
+			best = side
+			most = fits
+	return best if most > 0.0 else box
 
 
 ## The page's first step: where words and a picture added to the page go.

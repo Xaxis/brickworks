@@ -24,9 +24,12 @@
 //   3. Share opens its sheet (docs/SOCIAL.md U14), the site's dialog: the
 //      page's link, selected, and Copy link puts it on the clipboard and
 //      says "Link copied" in the sheet; the embed code, and Copy code puts
-//      the iframe on the clipboard; Escape closes it, back on Share. Where
-//      the browser has a share sheet of its own (navigator.share), the
-//      sheet offers it too, given the link, and nothing copied.
+//      the iframe on the clipboard; Post it to (section 7): Reddit,
+//      Bluesky, Pinterest, X, Facebook and Email, each its own share page
+//      with the link, Reddit's opened in a new tab and said in the sheet;
+//      Escape closes it, back on Share. Where the browser has a share
+//      sheet of its own (navigator.share), the sheet offers it too, given
+//      the link, and nothing copied.
 //   4. Save, signed out, asks to sign in; signed in, it opens the lists,
 //      Favourites first and ticked when it is a favourite.
 //   5. More holds Report it and Takedown requests (the embed code is in
@@ -65,9 +68,10 @@
 //      chosen on a dark computer is light, dark chosen on a light one dark,
 //      and with no choice the computer's. Its button is Build it, the
 //      guided build at step 1 as the page's Build it is (/app?view=<id>
-//      &build), View in 3D a quiet link beside it to the viewer, and its
-//      picture and name the model's page, each in a tab of its own; in a
-//      frame a phone's column wide the bar still fits, Build it whole.
+//      &build), its picture saying View in 3D, a button that turns it there
+//      (tools/web/embed_flow.mjs drives it), and its name the model's page,
+//      each link a tab of its own; in a frame a phone's column wide the bar
+//      still fits, Build it whole.
 //  16. Its parts (site278): a Parts tab and section saying one count, the
 //      app's (api/_parts.js); the list asked for only as the section nears
 //      the screen and drawn into the space kept for it, nothing under it
@@ -84,6 +88,19 @@
 //      Part,Color,Quantity likewise; and Download the stored file byte for
 //      byte, signed out, named for the model. And Like and I built it say
 //      their names beside their icons.
+//  17. In 3D, here (viewer369, tools/viewer/inline.js), on the watchtower
+//      (a deployment's first model), signed out: none of the 3D view's code
+//      (viewer3d.js, three.js and all) asked for until View in 3D is used;
+//      then it in the picture's frame, nothing on the page moving; a
+//      frame drawn with the model whole in it, timed to a pixel read back
+//      (SwiftShader draws late); its tools named, and Open in the app the picture's own link;
+//      on a laptop the arrows turn it, + zooms in, 0 and Reset the view go
+//      back to where it started; Full screen fills the window, the model
+//      fitted to it, and goes back to the frame as it was; on a phone a
+//      swipe up the 3D view scrolls the page and leaves the model as it was
+//      (touch-action pan-y until the person takes hold), a swipe across
+//      turns it; Back to the picture puts the picture back. Its costs said: the code's bytes,
+//      the scene's, the geometry's, and the first frame from the click.
 //
 // Pictures in --out: each page whole and its first screen (-fold), and
 // Save's lists and More open.
@@ -396,6 +413,163 @@ async function partsChecks(page, label, seen, one) {
   await page.evaluate(() => window.scrollTo(0, 0));
 }
 
+/// 17. The model in 3D, here, on [page] (the picture on screen).
+async function threeD(page, label, stem, phone) {
+  const frameOf = () => {
+    const box = (el) => {
+      if (!el || el.hidden) return null;
+      const r = el.getBoundingClientRect();
+      return [r.left, r.top, r.width, r.height].map((n) => Math.round(n));
+    };
+    const b = window.brickworks3d;
+    return { picture: box(document.querySelector(".model-page .picture")), shell: box(document.querySelector(".model-page .view3d")),
+      height: document.documentElement.scrollHeight, y: scrollY, state: b?.state || "", full: Boolean(b?.full),
+      engaged: b?.engaged ? b.engaged() : null, touch: b?.touchAction ? b.touchAction() : "", angle: b?.angle ? b.angle() : null,
+      viewport: [innerWidth, innerHeight] };
+  };
+  const before = await page.evaluate(() => {
+    const frame = document.querySelector(".model-page .picture");
+    return { asked: performance.getEntriesByType("resource").map((r) => r.name).filter((n) => /viewer3d|three/.test(n)),
+      loaded: Boolean(window.brickworks3d), scene: frame?.dataset.scene || "", control: frame?.querySelector(".go")?.textContent || "",
+      role: frame?.getAttribute("role") || "", name: frame?.getAttribute("aria-label") || "" };
+  });
+  check(`${label}: none of the 3D view's code asked for before View in 3D is used (${before.asked.join(", ") || "none"})`,
+    before.asked.length === 0 && !before.loaded);
+  check(`${label}: the picture says View in 3D (${before.control}), a button named "${before.name}", its scene ${before.scene}`,
+    before.control === "View in 3D" && before.role === "button" && /^View .+ in 3D, here$/.test(before.name)
+      && /^\/(m\/[A-Za-z0-9]{10}(\/v\/\d+)?|library\/[^/]+)\/scene\.json$/.test(before.scene));
+  if (!before.scene) return;
+  const was = await page.evaluate(frameOf);
+  if (phone) await page.tap(".model-page .picture .go");
+  else await page.click(".model-page .picture .go");
+  const drawn = () => until(page, () => {
+    const b = window.brickworks3d;
+    return b && (b.timings.complete3d || b.state === "failed" || b.state === "big");
+  }, null, 180000);
+  let came = await drawn();
+  // Past what this device turns smoothly: it asks first, and is told to.
+  const asked = await page.evaluate(() => (window.brickworks3d.state === "big"
+    ? document.querySelector(".view3d-said")?.textContent || "" : ""));
+  if (asked) {
+    check(`${label}: a model this big asks first ("${asked}")`, /Turn it anyway/.test(asked) && /Open in the app/.test(asked));
+    await page.click(".view3d-said button");
+    came = await drawn();
+  }
+  const got = await page.evaluate(() => {
+    const b = window.brickworks3d;
+    const code = performance.getEntriesByType("resource").find((r) => /\/viewer3d\.js/.test(r.name));
+    return { state: b.state, timings: b.timings, parts: b.parts, shapes: b.shapes, triangles: b.triangles, scene: b.sceneBytes,
+      geometry: b.geometryBytes, errors: b.errors, sample: b.sample ? b.sample() : null, shown: b.shown ? b.shown() : 0,
+      code: code ? { sent: code.transferSize, body: code.encodedBodySize, size: code.decodedBodySize } : null,
+      tools: [...document.querySelectorAll(".view3d-tools [data-act]")].map((t) => t.getAttribute("aria-label")),
+      app: (() => { const a = document.querySelector(".view3d-app"); return a && !a.hidden ? `${a.textContent} ${a.getAttribute("href")}` : ""; })(),
+      href: document.querySelector(".model-page .picture").getAttribute("href"),
+      said: document.querySelector(".view3d-said")?.textContent || "" };
+  });
+  const after = await page.evaluate(frameOf);
+  const t = got.timings || {};
+  const from = (k) => (t[k] && t.asked ? `${((t[k] - t.asked) / 1000).toFixed(2)} s` : "-");
+  const kb = (n) => `${Math.round((n || 0) / 1024)} KB`;
+  check(`${label}: View in 3D draws the model here (${got.state}${got.said ? `, "${got.said}"` : ""}): ${got.parts} parts, ${got.shapes} shapes, `
+    + `${((got.triangles || 0) / 1e6).toFixed(2)}M triangles; code ${got.code ? `${kb(got.code.sent)} sent, ${kb(got.code.size)}` : "?"} `
+    + `in ${from("code")}, scene ${kb(got.scene)}, geometry ${kb(got.geometry)}; first frame ${from("first3d")}, all drawn ${from("complete3d")}`,
+  came && got.state === "ready" && got.code && got.code.size > 100000 && got.parts > 0 && got.shown === got.parts && !got.errors.length);
+  check(`${label}: a frame with the model in it, whole (${got.sample ? `${(got.sample.drawn * 100).toFixed(1)}% of it, ${got.sample.colours} colours${got.sample.cut ? ", cut off at an edge" : ""}` : "none"})`,
+    Boolean(got.sample && got.sample.drawn > 0.01 && !got.sample.cut));
+  check(`${label}: in the picture's frame (${after.shell} over ${was.picture}), nothing on the page moved (${was.height} px tall, then ${after.height})`,
+    JSON.stringify(after.shell) === JSON.stringify(was.picture) && JSON.stringify(after.picture) === JSON.stringify(was.picture)
+      && after.height === was.height && after.y === was.y);
+  check(`${label}: its tools named: ${got.tools.join(", ")}; and ${got.app || "no way into the app"}`,
+    JSON.stringify(got.tools) === JSON.stringify(["Zoom out", "Zoom in", "Reset the view", "Full screen", "Back to the picture"])
+      && got.app === `Open in the app ${got.href}`);
+  if (out) await page.screenshot({ path: path.join(out, `${stem}_3d.png`) });
+  if (got.state !== "ready") return;
+  const near = (a, b) => a && b && Math.abs(a.round - b.round) < 1e-3 && Math.abs(a.up - b.up) < 1e-3
+    && Math.abs(a.distance - b.distance) < b.distance * 1e-3;
+  const home = after.angle;
+  if (phone) {
+    // Before taking hold: a swipe up it scrolls the page, the model as it
+    // was. A finger's own touches (as phone_flow.mjs drags), not a scroll
+    // gesture: headless Chromium scrolls nothing with one of those.
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type, points) => cdp.send("Input.dispatchTouchEvent", { type,
+      touchPoints: points.map(([x, y], i) => ({ x, y, id: i + 1, radiusX: 4, radiusY: 4, force: 1 })) });
+    const drag = async (a, b, steps = 12) => {
+      await touch("touchStart", [a]);
+      for (let n = 1; n <= steps; n++) {
+        await touch("touchMove", [[a[0] + ((b[0] - a[0]) * n) / steps, a[1] + ((b[1] - a[1]) * n) / steps]]);
+        await page.waitForTimeout(30);
+      }
+      await touch("touchEnd", []);
+    };
+    const middle = [after.shell[0] + after.shell[2] / 2, after.shell[1] + after.shell[3] / 2];
+    await drag(middle, [middle[0], middle[1] - 260]);
+    await page.waitForTimeout(300);
+    const swiped = await page.evaluate(frameOf);
+    check(`${label}: before it is taken hold of (touch-action ${after.touch}), a swipe up it scrolls the page (${swiped.y} px) and leaves the model as it was`,
+      after.touch === "pan-y" && after.engaged === false && swiped.y > 100 && near(swiped.angle, home));
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(200);
+    await drag([middle[0] + 80, middle[1]], [middle[0] - 80, middle[1]]);
+    await page.waitForTimeout(300);
+    const turned = await page.evaluate(frameOf);
+    check(`${label}: a swipe across turns it (${home.round.toFixed(2)} to ${turned.angle?.round.toFixed(2)}), and it is the person's now (touch-action ${turned.touch}), the page where it was (${turned.y} px)`,
+      turned.angle && Math.abs(turned.angle.round - home.round) > 0.05 && turned.engaged === true && turned.touch === "none" && turned.y === 0);
+    await cdp.detach();
+    await page.tap('.view3d-tools [data-act="reset"]');
+    await page.waitForTimeout(150);
+    const reset = await page.evaluate(frameOf);
+    check(`${label}: Reset the view goes back to where it started`, near(reset.angle, home));
+  } else {
+    await page.focus(".model-page .view3d .stage");
+    await page.keyboard.press("ArrowRight");
+    const turned = await page.evaluate(frameOf);
+    await page.keyboard.press("+");
+    const nearer = await page.evaluate(frameOf);
+    await page.keyboard.press("0");
+    const back = await page.evaluate(frameOf);
+    check(`${label}: the keys: an arrow turns it (${home.round.toFixed(2)} to ${turned.angle.round.toFixed(2)}), + brings it nearer (${Math.round(turned.angle.distance)} to ${Math.round(nearer.angle.distance)}), 0 goes back to the start`,
+      Math.abs(turned.angle.round - home.round) > 0.2 && nearer.angle.distance < turned.angle.distance * 0.9 && near(back.angle, home));
+    await page.keyboard.press("ArrowUp");
+    await page.mouse.move(after.shell[0] + after.shell[2] * 0.4, after.shell[1] + after.shell[3] * 0.5);
+    await page.mouse.down();
+    await page.mouse.move(after.shell[0] + after.shell[2] * 0.6, after.shell[1] + after.shell[3] * 0.45, { steps: 6 });
+    await page.mouse.up();
+    const dragged = await page.evaluate(frameOf);
+    await page.click('.view3d-tools [data-act="reset"]');
+    await page.waitForTimeout(150);
+    const reset = await page.evaluate(frameOf);
+    check(`${label}: a drag turns it (${home.round.toFixed(2)} to ${dragged.angle.round.toFixed(2)}), Reset the view goes back to the start`,
+      Math.abs(dragged.angle.round - home.round) > 0.05 && near(reset.angle, home));
+  }
+  // Full screen, and back into the frame.
+  await page.click('.view3d-tools [data-act="full"]');
+  await until(page, () => window.brickworks3d.full && window.brickworks3d.fullscreen !== "window", null, 8000);
+  await page.waitForTimeout(300);
+  const full = await page.evaluate(() => {
+    const r = document.querySelector(".model-page .view3d").getBoundingClientRect();
+    const b = document.querySelector('.view3d-tools [data-act="full"]');
+    return { box: [r.left, r.top, r.width, r.height].map(Math.round), viewport: [innerWidth, innerHeight], full: window.brickworks3d.full,
+      how: window.brickworks3d.fullscreen, pressed: b.getAttribute("aria-pressed"), name: b.getAttribute("aria-label"),
+      sample: window.brickworks3d.sample(), angle: window.brickworks3d.angle() };
+  });
+  if (out) await page.screenshot({ path: path.join(out, `${stem}_3d_full.png`) });
+  check(`${label}: Full screen fills the screen (${full.box} in ${full.viewport}, the ${full.how}'s), pressed, "${full.name}", the model drawn whole, fitted to it (${full.sample ? (full.sample.drawn * 100).toFixed(1) : 0}%${full.sample?.cut ? ", cut off at an edge" : ""}, ${Math.round(home.distance)} to ${Math.round(full.angle?.distance)} away)`,
+    full.full && full.box[0] === 0 && full.box[1] === 0 && full.box[2] >= full.viewport[0] - 1 && full.box[3] >= full.viewport[1] - 1
+      && full.pressed === "true" && full.name === "Leave full screen" && full.sample && full.sample.drawn > 0.01 && !full.sample.cut);
+  await page.click('.view3d-tools [data-act="full"]');
+  await until(page, () => !window.brickworks3d.full && !document.fullscreenElement, null, 8000);
+  await page.waitForTimeout(300);
+  const left = await page.evaluate(frameOf);
+  check(`${label}: and leaving it puts it back in the frame (${left.shell}), as it started`, !left.full && JSON.stringify(left.shell) === JSON.stringify(was.picture)
+    && near(left.angle, home));
+  await page.click('.view3d-tools [data-act="close"]');
+  await page.waitForTimeout(200);
+  const closed = await page.evaluate(frameOf);
+  check(`${label}: Back to the picture puts the picture back (${closed.state})`, closed.state === "closed" && closed.shell === null
+    && JSON.stringify(closed.picture) === JSON.stringify(was.picture));
+}
+
 const browser = await launch({ signedOut: true });
 const errors = [];
 try {
@@ -531,6 +705,8 @@ try {
 
             // 16. Its parts, signed out.
             if (!signedIn) await partsChecks(page, label, seen, one);
+            // 17. In 3D, here: once a pass, signed out.
+            if (!signedIn && (remote || one.name === "watchtower")) await threeD(page, label, stem, phone);
 
             // 9. The strip of its pictures.
             if (one.thumbs !== undefined && !(signedIn && one.owner)) {
@@ -683,6 +859,33 @@ try {
             check(`${label}: Copy code puts the iframe on the clipboard, as the sheet shows it, and says "${embedded.said}"`,
               /^<iframe src="https?:\/\/[^"]+\/m\/[A-Za-z0-9]{10}\/embed"/.test(embedded.copied) && embedded.copied === embedded.shown
                 && /^Embed code copied/.test(embedded.said));
+            // 3c. Post it to (docs/SOCIAL.md section 7): each network's own
+            // share page with the link in it, in a tab of its own with no
+            // way back to this one; Pinterest with the model's picture.
+            const posts = await page.evaluate(() => ({ url: document.getElementById("share-link")?.value || "",
+              to: [...document.querySelectorAll("dialog.share-sheet .share-to a[data-to]")].map((a) => ({ to: a.dataset.to,
+                href: a.href, tab: a.target === "_blank", rel: a.rel, shown: a.getClientRects().length > 0 })) }));
+            const wanted = { reddit: "https://www.reddit.com/submit?", bluesky: "https://bsky.app/intent/compose?",
+              x: "https://x.com/intent/tweet?", facebook: "https://www.facebook.com/sharer/sharer.php?", email: "mailto:?" };
+            const each = Object.entries(wanted).map(([to, start]) => posts.to.find((one) => one.to === to && one.href.startsWith(start)
+              && one.href.includes(encodeURIComponent(posts.url)) && one.shown && (to === "email" || (one.tab && /noopener/.test(one.rel)))));
+            const pin = posts.to.find((one) => one.to === "pinterest");
+            check(`${label}: Post it to ${posts.to.map((one) => one.to).join(", ")}, each its own share page with the link, `
+              + "in a tab of its own (but email)", each.every(Boolean)
+              && (!pin || /[?&]media=https?%3A%2F%2F[^&]+%2Fm%2F[A-Za-z0-9]{10}\.png/.test(pin.href)));
+            if (width === widths[0] && theme === themes[0] && !signedIn) {
+              await context.route(/^https:\/\/www\.reddit\.com\//, (route) => route.fulfill({ status: 200, contentType: "text/html", body: "reddit" }));
+              const [tab] = await Promise.all([context.waitForEvent("page", { timeout: 6000 }).catch(() => null),
+                page.click('dialog.share-sheet a[data-to="reddit"]')]);
+              const went = tab ? tab.url() : "";
+              if (tab) await tab.close();
+              const [saidNow, h1] = await page.evaluate(() => [document.querySelector("dialog.share-sheet .said")?.textContent || "",
+                document.querySelector("main h1")?.textContent || ""]);
+              check(`${label}: Reddit opens its submit page in a new tab with the link and the name (${went.slice(0, 90)}…), `
+                + `and the sheet says "${saidNow}"`, went.startsWith("https://www.reddit.com/submit?url=")
+                && new URL(went).searchParams.get("url") === posts.url && new URL(went).searchParams.get("title") === `${h1} on Brickworks`
+                && /^Reddit opens in a new tab/.test(saidNow));
+            }
             await page.keyboard.press("Escape");
             const closed = await until(page, () => !document.querySelector("dialog.share-sheet[open]")
               && document.activeElement?.matches("#marks [data-share]"), null, 4000);
@@ -790,17 +993,18 @@ try {
           const shown = (el) => Boolean(el) && getComputedStyle(el).display !== "none" && el.getClientRects().length > 0;
           const said = (a) => a ? { href: a.getAttribute("href"), tab: a.target === "_blank", text: a.textContent.trim(),
             shown: shown(a), right: a.getBoundingClientRect().right, left: a.getBoundingClientRect().left } : null;
-          return { build: said(document.querySelector(".embed-bar a.cta")), view: said(document.querySelector(".embed-bar a.link")),
+          return { build: said(document.querySelector(".embed-bar a.cta")), view: said(document.querySelector("a.picture .go")),
             name: said(document.querySelector(".embed-bar a.words")), picture: said(document.querySelector("a.picture")),
+            base: document.querySelector("base")?.target || "", role: document.querySelector("a.picture")?.getAttribute("role") || "",
             wide: document.documentElement.scrollWidth, room: innerWidth };
         });
         if (width === 560) {
+          // Every link a tab of its own (<base target>): the app cannot run in a frame.
           check(`${label}: its button is Build it, the guided build at step 1 (${card.build?.href}), in a tab of its own`,
-            card.build?.text.startsWith("Build it") && card.build?.href === `${base}/app?view=${id}&build` && card.build?.tab);
-          check(`${label}: View in 3D a quiet link to the viewer (${card.view?.href})`,
-            card.view?.shown && card.view?.text.startsWith("View in 3D") && card.view?.href === `${base}/app?view=${id}` && card.view?.tab);
-          check(`${label}: its picture and its name the model's page (${card.picture?.href}, ${card.name?.href})`,
-            card.picture?.href === `${base}/m/${id}` && card.name?.href === `${base}/m/${id}` && card.picture?.tab && card.name?.tab);
+            card.build?.text.startsWith("Build it") && card.build?.href === `${base}/app?view=${id}&build` && card.base === "_blank");
+          check(`${label}: its picture says View in 3D, a button that turns it here (${card.role}; the viewer ${card.picture?.href} without its script)`,
+            card.view?.shown && card.view?.text === "View in 3D" && card.role === "button" && card.picture?.href === `${base}/app?view=${id}`);
+          check(`${label}: its name the model's page (${card.name?.href})`, card.name?.href === `${base}/m/${id}`);
         } else {
           check(`${label}: the bar fits (${card.wide} of ${card.room} px), Build it whole (${Math.round(card.build?.left)} to `
             + `${Math.round(card.build?.right)}), the name beside it (${card.name ? Math.round(card.name.right - card.name.left) : 0} px)`,
@@ -820,6 +1024,48 @@ try {
       } finally {
         await context.close();
       }
+    }
+  }
+
+  // 16. oEmbed (docs/SOCIAL.md section 7): the model's page names it in its
+  // head, and it answers a rich card, the embed's iframe at 560 x 420, its
+  // name and its picture; smaller to fit what a consumer asks; 501 for XML,
+  // 404 for a link that is no model here.
+  {
+    const id = PAGES[0]?.path.split("/")[2];
+    const context = await browser.newContext({ extraHTTPHeaders: headers });
+    await stand.serveSite(context, { web: path.join(root, "web"), api: path.join(root, "api"), remote, headers, remoteDb });
+    const page = await context.newPage();
+    try {
+      await page.goto(`${base}/m/${id}`, { waitUntil: "domcontentloaded", timeout: 60000 });
+      const found = await page.evaluate(async () => {
+        const link = document.querySelector('link[rel="alternate"][type="application/json+oembed"]');
+        const ask = async (href) => {
+          const reply = await fetch(href);
+          return { status: reply.status, type: reply.headers.get("content-type") || "", body: await reply.json().catch(() => null) };
+        };
+        const href = link ? link.href : "";
+        return { href, title: link?.title || "", name: document.querySelector("main h1")?.textContent || "",
+          json: href ? await ask(href) : null, small: href ? await ask(`${href}&maxwidth=300`) : null,
+          xml: href ? await ask(href.replace("format=json", "format=xml")) : null,
+          other: await ask(`/oembed?url=${encodeURIComponent("https://example.com/m/AAAAAAAAAA")}&format=json`) };
+      });
+      const card = found.json?.body || {};
+      check(`the oEmbed its page names (${found.href.replace(/^https?:\/\/[^/]+/, "")}): ${found.json?.status}, a ${card.type} `
+        + `card "${card.title}" by ${card.author_name || "nobody"}, ${card.width} x ${card.height}`,
+        new URL(found.href || "http://x/").pathname === "/oembed" && new URL(found.href).searchParams.get("url") === `${base}/m/${id}`
+        && found.json?.status === 200 && /json/.test(found.json.type) && card.version === "1.0" && card.type === "rich"
+        && card.provider_name === "Brickworks" && card.title === found.name && card.width === 560 && card.height === 420
+        && new RegExp(`^<iframe src="${base.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/m/${id}/embed" width="560" height="420"`).test(card.html || "")
+        && /^https?:\/\/.+\.png$/.test(card.thumbnail_url || ""));
+      check(`oEmbed with maxwidth=300: ${found.small?.body?.width} x ${found.small?.body?.height}, four to three`,
+        found.small?.body?.width === 300 && found.small?.body?.height === 225 && /width="300" height="225"/.test(found.small.body.html));
+      check(`oEmbed asked for XML: ${found.xml?.status}; for a link that is no model here: ${found.other?.status}`,
+        found.xml?.status === 501 && found.other?.status === 404);
+    } catch (trouble) {
+      check(`oEmbed: asked (${String(trouble).split("\n")[0]})`, false);
+    } finally {
+      await context.close();
     }
   }
 

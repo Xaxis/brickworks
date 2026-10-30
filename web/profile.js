@@ -2,8 +2,9 @@
 // /u/<handle>, with Edit profile, and the tabs only you see beside its
 // own (docs/SOCIAL.md U6, D9). Models and Builds as everybody sees them,
 // and Likes when you chose to show them (Settings); Saved (favourites,
-// collections, whom you follow), Sets (what you own and what it builds) and
-// Insights (how your models are doing, designs.js). Edit profile also puts
+// collections, whom you follow), Sets (what you own and what it builds),
+// Insights (how your models are doing, designs.js) and Achievements (your
+// level on each track and the way to the next, supabase/achievements.sql). Edit profile also puts
 // a picture of your own in your avatar's place, cropped to a circle here
 // (picture.js), or takes it off again.
 // Signed in with no profile yet, a name and a handle to make one. The
@@ -15,18 +16,21 @@
 // and draws what came, so one that cannot be read leaves the others.
 import { age, askAgeIfAsked, askToSignIn, call, signOut, signedIn } from "/account.js";
 import { followsSent, showFeedCount } from "/follow.js";
-import { avatarHtml, awardsHtml, toast } from "/kit.js";
+import { avatarHtml, awardsHtml, iconHtml, toast } from "/kit.js";
+import { openShare, sheetFor } from "/share-sheet.js";
 
 // What only a signed-in page draws (card.js, designs.js), fetched as the
 // page starts when this browser has a sign-in, and not at all when not:
 // the page a visitor who is not signed in gets is two lines and a button.
 let counted;
 let modelCard;
+let levelName;
+let TRACKS;
 let showDesigns;
 let drawing = null;
 function drawn() {
   drawing ||= Promise.all([import("/card.js"), import("/designs.js")]).then(([cards, designs]) => {
-    ({ counted, modelCard } = cards);
+    ({ counted, modelCard, levelName, TRACKS } = cards);
     ({ showDesigns } = designs);
   });
   return drawing;
@@ -37,7 +41,7 @@ const $ = (id) => document.getElementById(id);
 const ID = /^[A-Za-z0-9]{10}$/;
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 const SINCE = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
-const TABS = ["models", "builds", "likes", "saved", "sets", "insights"];
+const TABS = ["models", "builds", "likes", "saved", "sets", "insights", "achievements"];
 // Models are shown a row at a time on a laptop (two on a phone), so the
 // page is your profile and its work, not a wall of cards (docs/SOCIAL.md
 // U6: under 2,000 px at 1280): Show more for the rest, two rows a press.
@@ -73,6 +77,9 @@ const handleOf = () => (mine && mine.profile && HANDLE.test(String(mine.profile.
 const pictureOf = () => String(mine?.avatar?.picture || "");
 /// Whether your profile shows the models you liked (Settings, Privacy).
 const likesShown = () => Boolean(shown && shown.liked_count !== null && shown.liked_count !== undefined);
+/// Your level on each track (supabase/achievements.sql): none before the
+/// file, nor under 13, whose page is shown to nobody.
+const levels = () => (shown && Array.isArray(shown.levels) ? shown.levels.filter((one) => TRACKS && TRACKS[one?.track]) : []);
 
 /// A model's card with a button under it, for something to do with it here.
 function kept(model, action) {
@@ -452,13 +459,45 @@ async function drawSets() {
   $("owned-more").hidden = false;
 }
 
+/// Your achievements: a tile a track, in the tracks' order, each its level,
+/// how far the next is, as a bar and in words, and the way to it.
+function drawAchievements() {
+  $("achievements").replaceChildren(...levels().map((one) => {
+    const track = TRACKS[one.track];
+    const n = Number(one.n) || 0;
+    const level = Number(one.level) || 0;
+    const next = Number(one.next) || 0;
+    const award = document.createElement("template");
+    award.innerHTML = iconHtml("award");
+    const tile = make("li", "", make("h3", "", document.importNode(award.content, true), level ? levelName(one.track, one.reached) : track.name),
+      make("p", "level", level ? `Level ${level} of ${Number(one.of)}` : "Not reached yet"));
+    tile.dataset.track = one.track;
+    tile.dataset.level = String(level);
+    const bar = make("div", "reach", make("span"));
+    bar.setAttribute("aria-hidden", "true");
+    bar.firstChild.style.width = `${next ? Math.min(100, Math.round((n / next) * 100)) : 100}%`;
+    tile.append(bar, make("p", "", `${counted(n, ...track.what)}.`), make("p", "to-next", next
+      ? `${(next - n).toLocaleString("en-US")} more to reach ${levelName(one.track, next)}.` : "Every level of it reached."));
+    if (next) {
+      const how = make("p", "how");
+      if (track.href) {
+        const link = make("a", "", track.how);
+        link.href = track.href;
+        how.append(link);
+      } else how.append(track.how);
+      tile.append(how);
+    }
+    return tile;
+  }));
+}
+
 const DRAW = { models: drawModels, builds: drawBuilds, likes: drawLikes, saved: drawSaved, sets: drawSets,
-  insights: () => showDesigns($("designs")) };
+  insights: () => showDesigns($("designs")), achievements: drawAchievements };
 
 /// The tabs there are: Models and Builds only with a profile, Likes only
-/// when it shows them.
+/// when it shows them, Achievements once your levels are there.
 const tabsNow = () => TABS.filter((tab) => (handleOf() || !["models", "builds", "likes"].includes(tab))
-  && (tab !== "likes" || likesShown()));
+  && (tab !== "likes" || likesShown()) && (tab !== "achievements" || levels().length > 0));
 
 /// The tab a bare /profile opens: as /u/<handle> does, the first of Models
 /// and Builds with something in it; else Saved.
@@ -689,7 +728,7 @@ async function refresh() {
   if (answer.status === 200) mine = answer.body;
   await readShown();
   draw();
-  for (const tab of ["models", "builds", "likes"]) drawnTabs.delete(tab);
+  for (const tab of ["models", "builds", "likes", "achievements"]) drawnTabs.delete(tab);
   await choose(new URLSearchParams(location.search).get("tab") || "");
 }
 
@@ -776,22 +815,14 @@ async function load() {
   document.documentElement.dataset.profile = "ready";
 }
 
-for (const button of document.querySelectorAll("[data-share-page]")) button.addEventListener("click", async () => {
-  const url = `${location.origin}/u/${handleOf()}`;
-  if (navigator.share && matchMedia("(pointer: coarse)").matches) {
-    try {
-      await navigator.share({ title: `${mine.profile.name} on Brickworks`, url });
-      return;
-    } catch (trouble) {
-      if (trouble?.name === "AbortError") return;
-    }
-  }
-  try {
-    await navigator.clipboard.writeText(url);
-    toast("Link copied");
-  } catch {
-    toast(`Could not copy it: your page is ${url}`);
-  }
+// Share your page: the sheet every page's Share opens (web/share-sheet.js),
+// made for your /u/ page as it is now, its banner the picture a post pins.
+for (const button of document.querySelectorAll("[data-share-page]")) button.addEventListener("click", () => {
+  const banner = $("banner-shown").querySelector("img")?.getAttribute("src")?.match(/^\/m\/([A-Za-z0-9]{10})\./)?.[1];
+  const name = mine?.profile?.name || handleOf();
+  openShare(sheetFor({ url: `${location.origin}/u/${handleOf()}`, name, text: `${name} on Brickworks`,
+    about: "Its link opens your page, as everybody sees it: your models, your builds and your collections.",
+    image: banner ? `${location.origin}/m/${banner}.png` : "" }));
 });
 $("sign-in").addEventListener("click", async () => {
   if (await askToSignIn()) {

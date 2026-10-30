@@ -41,6 +41,11 @@ var printed: bool = false
 ## Words on the placeholder, for a tile with no label of its own, so that
 ## a tile can be told from its neighbours while it waits.
 var caption: String = ""
+## What the catalogue says of the part, drawn while its picture comes in
+## place of the plain placeholder, in [member sketch_colour] (PartSketch):
+## the parts bin's tiles were grey squares on the web eight seconds in.
+var sketch: PartLibrary.PartInfo = null
+var sketch_colour: Color = Color(0.6, 0.6, 0.6)
 
 var state: State = State.LOADING
 var texture: Texture2D
@@ -181,6 +186,9 @@ func _draw() -> void:
 ## where a label would: written across it, a long id ran off both sides.
 func _draw_placeholder(strength: float) -> void:
 	var square: Rect2 = _square()
+	if sketch != null and caption.is_empty():
+		PartSketch.draw(self, square, sketch, sketch_colour, strength)
+		return
 	var block: Rect2 = square.grow(-square.size.x * 0.12)
 	if not caption.is_empty():
 		var side: float = square.size.x * 0.6

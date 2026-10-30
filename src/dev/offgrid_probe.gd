@@ -514,6 +514,7 @@ func _type_to(brick_id: int, want: Transform3D) -> Array:
 	var inspector: Inspector = _shell.inspector if _shell != null else null
 	if inspector == null:
 		return ["no Properties"]
+	await _open_column(inspector)
 	inspector.set_open(true)
 	await _select(brick_id)
 	if not _builder.selection.has(brick_id):
@@ -596,6 +597,19 @@ func _select(brick_id: int) -> void:
 				return
 			_builder.clear_selection()
 			await _frames(2)
+
+
+## Where the parts bin and the right-hand column take turns
+## (Main._fit_panels), the column [param panel] is in is opened by its rail,
+## as a person opens it.
+func _open_column(panel: Control) -> void:
+	var dock: SideDock = SideDock.of(panel)
+	if dock == null or dock.is_open():
+		return
+	await _click(dock.rail().get_global_rect().get_center())
+	await _frames(30)
+	if not dock.is_open():
+		print("    its rail did not open %s's column" % panel.name)
 
 
 ## Click into a box in Properties, select what is in it, type, Enter.

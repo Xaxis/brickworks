@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow -->
 
 ## Sub-features
 
@@ -47,7 +47,7 @@ picture the assistant is shown.
   from before it.
 - `view cube`: the cube at the model's top right (`ViewCube`, replacing the
   axis dots), the one thing over the model: the model tree and the properties
-  are docked in the left-hand column ([building](building.md)'s `docked
+  are docked in the right-hand column ([building](building.md)'s `docked
   panels`), and `Main.model_cover()` leaves out the points under the cube and
   nothing else. It turns with the view; a click on a face looks from that side, on
   an edge or corner from between two or three (`CadCamera.look_from`); a drag
@@ -524,6 +524,34 @@ picture the assistant is shown.
   controls with corresponding icons"). `cursor_probe` checks the panel draws
   pictures and caps and that its middle row follows the setting, and saves
   `shots/cursors/help_dialog.png` and `strip.png` to look at.
+- `keys of one's own` (`src/ui/keymap.gd`, `src/account/keymap_sync.gd`,
+  APP_UX A11, 2026-10-30): every tool has a key (Shift-X Move, Shift-O Rotate,
+  Shift-I Hinge, Shift-V Clone, Shift-P Paint, Shift-G Hide, Shift-Delete
+  Delete), C paints the selection alone (with nothing selected it says how to
+  paint), and the sheet's "Keys like" (and Settings') puts on BrickLink
+  Studio's, Mecabricks' or LDCad's keys. Clicking a key's chip on the sheet and
+  pressing another sets it; Esc keeps it, Backspace leaves none; a key that is
+  another's is refused saying whose, the keys kept for themselves (Esc, Enter,
+  Tab, F1, F6, Space, Home, End, Backspace) and, on the web, the browser's own
+  (Ctrl-N, T, W, Tab, R) are refused too. "Back to these keys" drops one's own.
+  `Keymap.read()` turns each key into the key the handlers already answer
+  (`EditVerbs`, `Shell`, `Main._key_pressed`) or into a command run by name;
+  layers are own, preset, Brickworks' tool keys, then the handlers' own, and a
+  key a higher layer takes unbinds the lower. Kept in `ShellPrefs` (`key_preset`,
+  `keys`, `keys_at`) and, signed in, on the account: `GET/POST
+  /api/account?op=keys` (`profiles.keys`, `supabase/keymap.sql`, additive), the
+  newer of device and account winning. `keys_probe` (windowed, 1280 x 720;
+  `PROBE_SIZE=1400x900` too; `--shots=DIR`) presses each tool's key, Studio's
+  twenty keys under its preset (V H C L, Ctrl-L, Ctrl-Shift-L, Ctrl-Shift-V,
+  WASD, the arrows and Shift-arrows, Ctrl-G, Ctrl-U, Ctrl-T, Ctrl-0, Ctrl-= and
+  -, Ctrl-F), Mecabricks' and LDCad's, sets Shift-B in the sheet with a clash
+  and Tab refused, and starts the app again on its data folder to find Shift-B
+  still the Paint tool's. `controls_probe` presses every advertised key, then
+  runs itself again under each preset (one alone: `-- --preset=studio`). On the web,
+  `tools/web/keys_flow.mjs` sets Shift-B and reloads the page (local build or
+  a preview, `preview_checks.sh … keys`). Not proven by a check: the account's
+  half before keymap.sql is applied (the API answers `ready: false` and the keys
+  stay on the device).
 - `pointer cursors`: `src/ui/cursors.gd`. The pointer says what the mouse will
   do now, by the tool, the keys held and what is under it, as Studio, Mecabricks
   and Blender do. The owner, on the live site (2026-10-11): "we're not seeing the
@@ -545,7 +573,6 @@ picture the assistant is shown.
   | the Orbit, Pan, Zoom tools (Shift: the other verb, Zoom out) | `orbit` `hand` `zoom_in` | pictures |
   | Space held / Alt held (Alt-Shift slides, Ctrl-Alt zooms) | `hand` / `orbit` | pictures |
   | a wheel notch, swipe, pinch or key, for 350 ms | `zoom_in` `zoom_out` `hand` `orbit` | pictures |
-  | C held | `paint` | bucket |
   | buttons, sliders, the view cube / text fields / a splitter | (the control's) | pointing hand / I-beam / Godot's split arrows |
 
   The tools' pointers show over parts and over nothing alike, as the three
@@ -1104,13 +1131,18 @@ picture the assistant is shown.
   (`BookletRead`: the file on the desktop, the tab's sections on the web)
   into a PDF written by hand (`BookletPdf`: the step pictures the booklet's
   own JPEGs as DCTDecode, a part's picture once, boxes and arrows as paths,
-  words as Helvetica text, 269 x 199 mm pages) or a zip of a PNG a page at
-  the pictures' own density (`BookletPng`, drawn with `force_draw`, as the
+  words as text in Liberation Sans, Helvetica's widths, the TrueType file
+  embedded whole as FontFile2 with its WinAnsi widths read from its own
+  hmtx and cmap: `BookletPdf.TYPE`, `font_metrics`; `assets/fonts/`, SIL
+  OFL, credited in `Credits.LIST` "liberation"; 269 x 199 mm pages) or a
+  zip of a PNG a page at 300 dpi (`BookletPng.DPI`, a pHYs chunk saying so,
+  `dpi_chunk`; the words in the same type; drawn with `force_draw`, as the
   web's app tab is out of view and gets no frames). `booklet_pdf_probe`
   presses Instructions and then both Saves as the browser does, and
   `tools/booklet_pdf_check.py` reads the result with poppler and pypdf:
-  page count, page size, every step picture byte for byte, the title and
-  the element numbers as words, the zip's first and last pages against the
+  page count, page size, every font embedded (`pdffonts`), every step
+  picture byte for byte, the title and the element numbers as words, the
+  zip's first and last pages 300 dpi in pixels and pHYs and against the
   PDF drawn by poppler (`--shots` against the browser's own pictures, from
   `booklet_print.mjs --shots-only`). `booklet_flow.mjs` presses both in a
   browser and runs the same check on the downloads.
@@ -1370,6 +1402,22 @@ picture the assistant is shown.
   words, the picture and `path.drawn-arrow`, none on any other page) and the
   exported file (ARROW, PANEL). It ends "...a page laid out by hand and its
   step moved with its arrow..." (47 checks, 2026-10-18, on a local export).
+  **Apply to later pages** (`page_apply_later`; `PageEditor.later_layout`,
+  recorded as one undo by `Shell.place_pages`; over MCP `edit_booklet
+  follow=true`): every later page of the same kind with as many steps
+  takes the page's layout, each step's placed picture, parts list, number
+  and callout moved into its own room (`BookletLooks.rebased`), a parts
+  list or callout only where the later step has one, the list as wide as
+  its own parts need and kept to its side, nothing else placed, and a
+  placed picture's box cut to what the step's list leaves of it
+  (`PageEditor.clear_of`) and shrunk round its centre so the later model is
+  no larger than the booklet draws a step (`Booklet._most` x `_grown`), a
+  page's steps alike; pages of another number of steps are said as left.
+  `booklet_later_probe` lays 42004-1's booklet out at one step a page by
+  the mouse in 9 acts (bar 10) and checks every later page against the
+  first, the cap, nothing on anything or off the page, the callouts where
+  the booklet lays them, Ctrl-Z byte for byte, `follow=true` the same file,
+  and a reopen laid out the same.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,

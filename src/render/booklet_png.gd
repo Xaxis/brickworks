@@ -3,17 +3,28 @@
 ## web page or into a document of its own.
 ##
 ## Each page is what BookletRead reads off the booklet's own page, drawn
-## here as the browser draws it, at the booklet's own pictures' size (so a
-## step's picture is its pixels, not stretched), and written into the zip
-## before the next is drawn: one page held at a time. One zip, on the
+## here as the browser draws it, at 300 dots an inch, what a page is
+## printed at, and said so in the PNG (its pHYs): the words, lines and
+## boxes are as sharp as print, and a step's picture is the booklet's own,
+## drawn smooth to that size. The words are set in the type the PDF
+## carries (BookletPdf.TYPE), so a page reads alike on every computer and
+## on the web, which has no Helvetica of its own. Each is written into the
+## zip before the next is drawn: one page held at a time. One zip, on the
 ## desktop and on the web alike, because a browser asked for 590 downloads
 ## at once gives one.
 class_name BookletPng
 extends Node
 
-## Pixels a millimetre: the booklet's own pictures', found on its first
-## page (see [method _density]), or this when it has none.
-var px_per_mm: float = 4.0
+## Dots an inch a page is drawn at.
+const DPI := 300.0
+## The most pixels a booklet's pages are drawn in on the web, all told,
+## where the zip is handed to the browser whole, from memory: 134 pages at
+## 300 dots an inch. A longer booklet is drawn as fine as that allows (the
+## castle's 324 pages at 193 dots an inch), and a zip of Orthanc's at 300
+## is not left to run the tab out of memory.
+const WEB_MOST_PIXELS := 1.0e9
+## Pixels a millimetre a page is drawn at.
+var px_per_mm: float = DPI / 25.4
 var pages: int = 0
 var _viewport: SubViewport
 var _canvas: RID
@@ -22,14 +33,22 @@ var _zip: ZIPPacker
 var _name: String = ""
 var _fonts: Array[Font] = []
 var _part_textures: Dictionary = {}
-var _decided: bool = false
-var _fixed: float = 0.0
+var _dpi_chunk := PackedByteArray()
+var _fixed: bool = false
 
 
-## Draw at [param density] pixels a millimetre rather than the booklet's
-## own (a check, drawing at the browser's own size).
+## Draw at [param density] pixels a millimetre rather than at 300 dots an
+## inch (a check, drawing at the browser's own size).
 func at_density(density: float) -> void:
-	_fixed = density
+	px_per_mm = density
+	_fixed = true
+
+
+## Pixels a millimetre for [param pages] pages on the web: 300 dots an
+## inch, or as fine as WEB_MOST_PIXELS allows.
+static func web_density(pages: int) -> float:
+	var area: float = Booklet.PAGE.x * Booklet.PAGE.y * maxf(1.0, pages)
+	return minf(DPI / 25.4, sqrt(WEB_MOST_PIXELS / area))
 
 
 ## Every page of the booklet [param from] (a file's path, or a browser
@@ -45,12 +64,13 @@ func write(from: Variant, to: String, name: String, pace: int = 0) -> int:
 	# nothing.
 	_zip.compression_level = ZIPPacker.COMPRESSION_NONE
 	_name = name
-	var regular := SystemFont.new()
-	regular.font_names = PackedStringArray(["Helvetica Neue", "Helvetica", "Arial",
-		"Liberation Sans", "Nimbus Sans", "sans-serif"])
-	var bold: SystemFont = regular.duplicate()
-	bold.font_weight = 700
-	_fonts = [regular, bold]
+	if from is JavaScriptObject and not _fixed:
+		var sections: JavaScriptObject = (from as JavaScriptObject).querySelectorAll("section.page")
+		px_per_mm = web_density(int(sections.length))
+	_fonts = []
+	for type: Array in BookletPdf.TYPE:
+		_fonts.append(load(str(type[0])) as Font)
+	_dpi_chunk = dpi_chunk(px_per_mm)
 	var count: int = await _read.read_all(from, _page, pace)
 	_zip.close()
 	_free()
@@ -63,31 +83,49 @@ func _free() -> void:
 		_canvas = RID()
 	if is_instance_valid(_viewport):
 		_viewport.queue_free()
+	_viewport = null
 	_part_textures.clear()
 
 
-## The booklet's pictures' pixels a millimetre: its first picture's width
-## over its width on the page.
-func _density(page: BookletRead.Page) -> float:
-	if _fixed > 0.0:
-		return _fixed
-	for op: Dictionary in page.ops:
-		if op["k"] != "image" or str(op["src"]).is_empty():
-			continue
-		var uri: String = op["src"]
-		if uri.begins_with("data:image/jpeg"):
-			var shape: Vector3i = BookletPdf.jpeg_shape(
-				Marshalls.base64_to_raw(uri.substr(uri.find(",") + 1)))
-			var wide: float = (op["at"] as Rect2).size.x
-			if shape.x > 0 and wide > 20.0:
-				return clampf(shape.x / wide, 2.0, 12.0)
-	return px_per_mm
+## A PNG's pHYs chunk saying it is [param density] pixels a millimetre,
+## for a program that prints or places it to size it by.
+static func dpi_chunk(density: float) -> PackedByteArray:
+	var body := PackedByteArray("pHYs".to_ascii_buffer())
+	var per_metre: int = roundi(density * 1000.0)
+	for at: int in 2:
+		for shift: int in [24, 16, 8, 0]:
+			body.append((per_metre >> shift) & 0xFF)
+	body.append(1)
+	var out := PackedByteArray([0, 0, 0, 9])
+	out.append_array(body)
+	var crc: int = _crc32(body)
+	for shift: int in [24, 16, 8, 0]:
+		out.append((crc >> shift) & 0xFF)
+	return out
+
+
+## PNG's CRC (ISO 3309) of [param bytes], bit by bit: a chunk of a few
+## bytes, once a save.
+static func _crc32(bytes: PackedByteArray) -> int:
+	var crc: int = 0xFFFFFFFF
+	for byte: int in bytes:
+		crc ^= byte
+		for bit: int in 8:
+			crc = (crc >> 1) ^ (0xEDB88320 if crc & 1 else 0)
+	return crc ^ 0xFFFFFFFF
+
+
+## [param png] with [param chunk] after its header (IHDR, the first 33
+## bytes with the signature), where pHYs goes.
+static func _with_chunk(png: PackedByteArray, chunk: PackedByteArray) -> PackedByteArray:
+	var out: PackedByteArray = png.slice(0, 33)
+	out.append_array(chunk)
+	out.append_array(png.slice(33))
+	return out
 
 
 func _page(page: BookletRead.Page) -> void:
-	if not _decided:
-		_decided = true
-		px_per_mm = _density(page)
+	if _viewport == null:
 		_viewport = SubViewport.new()
 		_viewport.size = Vector2i((Booklet.PAGE * px_per_mm).round())
 		_viewport.transparent_bg = false
@@ -124,7 +162,7 @@ func _page(page: BookletRead.Page) -> void:
 		return
 	image.convert(Image.FORMAT_RGB8)
 	_zip.start_file("%s-%03d.png" % [_name, page.number])
-	_zip.write_file(image.save_png_to_buffer())
+	_zip.write_file(_with_chunk(image.save_png_to_buffer(), _dpi_chunk))
 	_zip.close_file()
 	pages += 1
 

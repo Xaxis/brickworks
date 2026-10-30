@@ -39,7 +39,7 @@ Download it from [the download page](/download), for Linux, macOS and Windows. T
 - **File › New window** ([[Ctrl+Shift+N]]) opens a second window with its own model.
 - File choosers open where you last used one of their kind, or else Pictures, Documents or Downloads, and every export asks where to save.
 - While it loads, the Brickworks mark shows on the app's dark face.
-- **Help › About Brickworks** names every piece of other people's work in Brickworks with its terms, and opens each licence in full.
+- **Brickworks › About Brickworks** names every piece of other people's work in Brickworks with its terms, and opens each licence in full.
 
 <!-- covers
 ui:download page

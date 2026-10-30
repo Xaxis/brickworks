@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e2e5ec" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Connect: a point on the part, then the point it goes on. -->
+  <rect x="3" y="3.5" width="8" height="8" rx="0.8"/>
+  <circle cx="7" cy="7.5" r="1.7" stroke="#5b9dff"/>
+  <rect x="13" y="12.5" width="8" height="8" rx="0.8"/>
+  <circle cx="17" cy="16.5" r="1.7" stroke="#5b9dff"/>
+  <path d="M8.6 9.2 Q 9 15.5 14.6 15.4" stroke-dasharray="1.6 2"/>
+  <path d="M12.6 13.9 L14.8 15.4 L12.9 17.2"/>
+</svg>

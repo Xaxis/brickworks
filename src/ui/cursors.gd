@@ -100,8 +100,6 @@ class Situation extends RefCounted:
 	var moment: String = ""
 	## The build is animating, and a click stops it rather than placing.
 	var playing: bool = false
-	## C is held, which paints what is under the pointer.
-	var painting: bool = false
 	## The tool in use (EditVerbs.mode).
 	var mode: String = "select"
 	## Something in hand — a part, a carried selection, a figure — that a
@@ -146,8 +144,6 @@ static func choose(now: Situation) -> String:
 		return now.moment
 	if now.playing:
 		return "arrow"
-	if now.painting:
-		return "paint"
 	if now.in_hand:
 		# Shift with something in hand: a click picks out the part under
 		# the pointer rather than putting this down, and a drag slides.

@@ -2,6 +2,16 @@
 ## something.
 ##
 ##   godot --headless --path . --script src/dev/controls_probe.gd
+##   ... -- --preset=studio     the same, under a keys preset (Keymap):
+##                              each key pressed as the preset binds it
+##
+## Under a preset each check presses the key its action has there: Studio's
+## Ctrl-= for +, LDCad's Insert for Q. A check whose action the preset
+## leaves with no key (Studio's paint, Mecabricks' F) says so and is not
+## pressed; one whose key the preset gave to something else is the same.
+## Run with no preset, it then runs itself again under each of the others,
+## each in a run of its own, and fails if one does: the suite lists a probe
+## once (tools/check.sh --lists).
 ##
 ## The hint along the bottom is a promise. A key listed there that does
 ## nothing is worse than no hint at all, because the person concludes the
@@ -17,6 +27,11 @@ extends SceneTree
 var _failures: int = 0
 var _finished: bool = false
 var _main: Node
+## The keys preset this run presses as (Keymap), "" for the app's own.
+var _preset: String = ""
+## The last key pressed had no key under the preset: the check after it
+## says so rather than pass or fail.
+var _unbound: String = ""
 
 
 func _initialize() -> void:
@@ -24,6 +39,16 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--preset="):
+			_preset = arg.trim_prefix("--preset=")
+	if not _preset.is_empty():
+		if not _preset in Keymap.PRESETS:
+			print("no keys preset %s" % _preset)
+			quit(1)
+			return
+		Keymap.use(_preset)
+		print("  keys like %s" % Keymap.PRESET_NAMES[_preset])
 	await process_frame
 
 	_main = load("res://src/main.tscn").instantiate()
@@ -146,15 +171,14 @@ func _run() -> void:
 	_assert("...and the up arrow tilts it",
 		not is_equal_approx(float(camera.get("_target_pitch")), pitch))
 	var focus: Vector3 = camera.get("_target_focus")
-	var slide := InputEventKey.new()
-	slide.keycode = KEY_LEFT
-	slide.pressed = true
-	slide.shift_pressed = true
-	root.push_input(slide)
+	_press(KEY_LEFT, false, true)
 	await process_frame
 	_assert("shift and an arrow slide it",
 		not (camera.get("_target_focus") as Vector3).is_equal_approx(focus))
-	# Held: past one step, it keeps going.
+	# Held: past one step, it keeps going. Under a preset that took + off
+	# the = key (Studio's Ctrl-=), a press is one step and holding is not.
+	if not Keymap.held_as_ever(KEY_EQUAL):
+		_unbound = "= held is not the zoom"
 	was_far = distance.call()
 	var held := InputEventKey.new()
 	held.keycode = KEY_EQUAL
@@ -221,10 +245,19 @@ func _run() -> void:
 		var was: int = hit.color_code
 		var to: int = 1 if was != 1 else 4
 		builder.held_color = to
+		# C paints the selection and only the selection (APP_UX A11): the
+		# brick under the cursor, not selected, keeps its colour.
+		builder.clear_selection()
 		_press(KEY_C)
 		await process_frame
-		_assert("C paints the brick under the cursor, %d -> %d"
+		_assert("C with nothing selected paints nothing, %d" % hit.color_code,
+			hit.color_code == was)
+		builder.select_brick(hit.id, false)
+		_press(KEY_C)
+		await process_frame
+		_assert("C paints the selection, %d -> %d"
 			% [was, hit.color_code], hit.color_code == to)
+		builder.clear_selection()
 		# The id has to survive. Everything outside BrickWorld refers to
 		# a brick by it, so renumbering on recolour orphans the undo
 		# entry and leaves the lattice reserving space for a brick that
@@ -406,10 +439,29 @@ func _run() -> void:
 	_assert("Cmd-Z takes a brick back off, %d -> %d" % [before + 1, world.brick_count()],
 		world.brick_count() == before)
 
+	if _preset.is_empty():
+		for other: String in Keymap.PRESETS:
+			if other != "brickworks":
+				_under(other)
 	print("")
 	print("%d failed" % _failures if _failures else "every advertised key does something")
 	_finished = true
 	quit(1 if _failures else 0)
+
+
+## This probe again under [param preset], in a run of its own: its lines
+## that passed over a key or failed, and whether it passed.
+func _under(preset: String) -> void:
+	print("\n  keys like %s, in a run of its own" % Keymap.PRESET_NAMES[preset])
+	var output: Array = []
+	var code: int = OS.execute(OS.get_executable_path(), ["--headless", "--path",
+		ProjectSettings.globalize_path("res://"), "--script", "res://src/dev/controls_probe.gd",
+		"--", "--preset=" + preset], output, true)
+	for line: String in "\n".join(output).split("\n"):
+		if line.begins_with("  --") or line.contains("FAIL"):
+			print("  " + line)
+	_assert("every advertised key does something with keys like %s (exit %d)"
+		% [Keymap.PRESET_NAMES[preset], code], code == 0)
 
 
 ## The app quitting part way through ends the probe with exit code 0 and
@@ -464,6 +516,10 @@ func _check(what: String, reading: Callable, key: int, shift: bool = false) -> v
 
 
 func _assert(what: String, ok: bool) -> void:
+	if not _unbound.is_empty():
+		print("  --   %s: not under %s (%s)" % [what, _preset, _unbound])
+		_unbound = ""
+		return
 	print("  %s %s" % ["ok  " if ok else "FAIL", what])
 	if not ok:
 		_failures += 1
@@ -478,4 +534,25 @@ func _press(keycode: int, command: bool = false, shift: bool = false) -> void:
 	event.pressed = true
 	event.meta_pressed = command
 	event.shift_pressed = shift
+	if not _preset.is_empty():
+		# The key that does it under the preset: the action this key does
+		# out of the box, and that action's key there.
+		var native: int = Keymap.accel_of(event)
+		var action: String = Keymap.native_action(native)
+		var now: String = Keymap.action_of(native)
+		if not action.is_empty() and not keycode in Keymap.FIXED \
+				and not (keycode in Keymap.TIMELINE_KEYS and _timeline()):
+			var key: int = Keymap.key_of(action)
+			if key == 0:
+				_unbound = "%s has no key" % Keymap.words(action)
+				return
+			event = Keymap.press_of(key)
+		elif action.is_empty() and not now.is_empty():
+			_unbound = "%s is %s" % [Keymap.listed_key(native), Keymap.words(now)]
+			return
 	root.push_input(event)
+
+
+func _timeline() -> bool:
+	var steps: StepsBar = _main.get("_steps") if _main != null else null
+	return steps != null and steps.is_playing_back()

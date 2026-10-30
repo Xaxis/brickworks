@@ -81,7 +81,7 @@ export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size
 /// The icons there are (web/icons.svg).
 export const ICONS = ["like", "save", "share", "comment", "more", "build", "search", "filter", "award", "zoom-in", "zoom-out",
   "stand", "gear", "move", "file", "book", "people", "devices", "camera", "spark", "eye", "monitor", "globe", "library",
-  "download", "check", "back", "next"];
+  "download", "check", "back", "next", "reset", "expand", "shrink", "close"];
 
 /// An icon from the sprite, in the words' colour.
 export function iconHtml(name) {
@@ -108,16 +108,103 @@ export function iconButtonHtml({ icon, name, count = 0, one = "", many = "", pre
 /// page and on yours (docs/SOCIAL.md U13): each the award icon and its
 /// name, what it means on hover; a challenge won is a link to the model that
 /// won it. [awards] as api/people.js achievementsOf makes them: [{id, name,
-/// said, model?}]. "" when there is none.
+/// said, model?, level?}]. "" when there is none.
 export function awardsHtml(awards, { id = "" } = {}) {
   const shown = (awards || []).filter((one) => one && one.name);
   if (!shown.length) return "";
   return `<ul class="pills awards"${id ? ` id="${escapeHtml(id)}"` : ""} aria-label="Achievements">${shown.map((one) => {
     const inside = `${iconHtml("award")}${escapeHtml(one.name)}`;
     const said = one.said ? ` title="${escapeHtml(one.said)}"` : "";
-    return `<li data-award="${escapeHtml(one.id)}"${one.model ? ` data-won="${escapeHtml(one.model)}"` : ""}>${one.model
+    const level = Number(one.level) > 0 ? ` data-level="${Number(one.level)}"` : "";
+    return `<li data-award="${escapeHtml(one.id)}"${level}${one.model ? ` data-won="${escapeHtml(one.model)}"` : ""}>${one.model
       ? `<a class="pill new" href="/m/${escapeHtml(one.model)}"${said}>${inside}</a>` : `<span class="pill"${said}>${inside}</span>`}</li>`;
   }).join("")}</ul>`;
+}
+
+/// The tracks of achievements (supabase/achievements.sql, docs/SOCIAL.md
+/// section 7), in its order: each its name, what a level's number counts
+/// ([one, many]: "Designer · 10 models"), what the number is, and the way
+/// to the next level, with a page that helps.
+export const TRACKS = {
+  designer: { name: "Designer", unit: ["model", "models"], what: ["model listed in the gallery", "models listed in the gallery"],
+    how: "Share a model from the app and list it in the gallery.", href: "/docs/sharing#share" },
+  built: { name: "Built", unit: ["time", "times"], what: ["build finished to the last step", "builds finished to the last step"],
+    how: "Each build of one of your models that somebody finishes counts.", href: "" },
+  builder: { name: "Builder", unit: ["build", "builds"], what: ["photo of a real build", "photos of real builds"],
+    how: "Build a model from the gallery and post a photo of it on its page.", href: "/gallery" },
+  remixed: { name: "Remixed", unit: ["time", "times"], what: ["remix", "remixes"],
+    how: "Each remix of one of your models counts.", href: "" },
+  tested: { name: "Tested", unit: ["model", "models"], what: ["model marked Tested", "models marked Tested"],
+    how: "A model is marked Tested when it stands at every step as it is shared.", href: "/docs/sharing#tested" },
+  challenger: { name: "Challenger", unit: ["challenge", "challenges"], what: ["challenge entered", "challenges entered"],
+    how: "Enter this month's building challenge.", href: "/challenge" },
+};
+
+/// A level as its pill says it: "Designer · 10 models", "Designer · first
+/// model", "Built · once".
+export function levelName(track, n) {
+  const one = TRACKS[track];
+  if (!one) return "";
+  const value = Number(n) || 0;
+  const first = one.unit[0] === "time" ? "once" : `first ${one.unit[0]}`;
+  return `${one.name} · ${value === 1 ? first : counted(value, ...one.unit)}`;
+}
+
+/// The levels a person reached, as awardsHtml's pills, the highest first
+/// (the tracks' order between equals). [levels] as achievement_levels gives
+/// them: [{track, n, level, of, reached, next}].
+export function levelAwards(levels) {
+  return (Array.isArray(levels) ? levels : [])
+    .filter((one) => one && TRACKS[one.track] && Number(one.level) > 0)
+    .sort((a, b) => Number(b.level) - Number(a.level))
+    .map((one) => ({ id: one.track, level: Number(one.level), name: levelName(one.track, one.reached),
+      said: `Level ${Number(one.level)} of ${Number(one.of)}: ${counted(one.n, ...TRACKS[one.track].what)}` }));
+}
+
+/// Where Share's sheet posts a page (docs/SOCIAL.md section 7), as
+/// Sketchfab's and Mecabricks' do: each network's own page for sharing a
+/// link, opened in a tab of its own, so nothing of theirs loads here and
+/// nothing goes to them until somebody chooses one (D13). [text] is what
+/// the post says; Pinterest pins a picture, so it is offered only with one.
+export function shareTargets({ url, text, image = "" }) {
+  const u = encodeURIComponent(url);
+  const t = encodeURIComponent(text);
+  return [
+    ["reddit", "Reddit", `https://www.reddit.com/submit?url=${u}&title=${t}`],
+    ["bluesky", "Bluesky", `https://bsky.app/intent/compose?text=${encodeURIComponent(`${text} ${url}`)}`],
+    image ? ["pinterest", "Pinterest", `https://www.pinterest.com/pin/create/button/?url=${u}`
+      + `&media=${encodeURIComponent(image)}&description=${t}`] : null,
+    ["x", "X", `https://x.com/intent/tweet?url=${u}&text=${t}`],
+    ["facebook", "Facebook", `https://www.facebook.com/sharer/sharer.php?u=${u}`],
+    ["email", "Email", `mailto:?subject=${t}&body=${u}`],
+  ].filter(Boolean);
+}
+
+/// Share's sheet, every page's (docs/SOCIAL.md U14 and section 7): the
+/// site's dialog with the page's link and Copy, the networks to post it to
+/// (shareTargets), the code that embeds it where it has one ([embed]), and
+/// a way to the phone's own share sheet, which web/share-sheet.js shows
+/// where the browser has one. [name] heads it, [about] says what the link
+/// opens, [text] is what a post says. Closed, and inert with no script.
+export function shareSheetHtml({ url, name, about = "", text = name, image = "", embed = "" }) {
+  const to = shareTargets({ url, text, image }).map(([key, label, href]) => `<a class="cta ghost small" data-to="${key}" `
+    + `href="${escapeHtml(href)}"${key === "email" ? "" : ' target="_blank" rel="noopener noreferrer"'}>${label}`
+    + `${key === "email" ? "" : '<span class="visually-hidden"> (opens in a new tab)</span>'}</a>`).join("");
+  return `<dialog class="share-sheet" id="share-sheet" aria-labelledby="share-h" data-title="${escapeHtml(text)}">`
+    + `<h2 id="share-h">Share ${escapeHtml(name)}</h2>`
+    + (about ? `<p>${escapeHtml(about)}</p>` : "")
+    + `<form method="dialog">`
+    + `<div class="copy-row"><label>Its link<input id="share-link" value="${escapeHtml(url)}" readonly spellcheck="false"></label>`
+    + `<button type="button" class="cta" data-copy="share-link">Copy link</button></div>`
+    + `<div class="share-to" role="group" aria-labelledby="share-to-h"><p id="share-to-h">Post it to</p>${to}</div>`
+    + (embed ? `<div class="copy-row"><label>Embed it in a page <small>Its picture and name, opening it here, `
+      + `light or dark to suit whoever looks at it</small>`
+      + `<textarea id="share-embed" rows="4" readonly spellcheck="false">${escapeHtml(embed)}</textarea></label>`
+      + `<button type="button" class="cta ghost" data-copy="share-embed">Copy code</button></div>` : "")
+    + `<p class="said" role="status"></p>`
+    + `<div class="actions"><button type="button" class="cta ghost" data-share-app hidden>Share with another app</button>`
+    + `<button class="cta ghost" value="close">Close</button></div>`
+    + `</form></dialog>`;
 }
 
 /// A card's like, as a screen reader says it: "Like Watchtower".
@@ -391,3 +478,61 @@ export function modelCard(model, options) {
   return document.importNode(made.content.firstElementChild, true);
 }
 let watching = false;
+
+// ---------------------------------------------------------------------------
+// What a model is based on (api/_bases.js, docs/SOCIAL.md section 7, item 5).
+
+/// How a model is based on something, as its line begins.
+export const HOWS = { alternate: "An alternate build of", changed: "Changed from", inspired: "Inspired by" };
+
+/// A model's lines under its remix line, one a thing it is based on: "An
+/// alternate build of set 6080-1 King's Castle", "Changed from “A castle”
+/// by Someone (CC BY 4.0)". "" for none. Every word escaped.
+export function basedHtml(said) {
+  if (!said.length) return "";
+  const line = (one) => (one.set
+    ? `${HOWS[one.how]} <a href="${escapeHtml(one.href)}">set ${escapeHtml(one.name ? `${one.set} ${one.name}` : one.set)}</a>`
+    : `${HOWS[one.how]} <a href="${escapeHtml(one.href)}" rel="nofollow ugc noopener">“${escapeHtml(one.name)}”</a>`
+      + `${one.author ? ` by ${escapeHtml(one.author)}` : ""}${one.licence ? ` (${escapeHtml(one.licence)})` : ""}`);
+  return `<ul class="from based-on" id="based-on" aria-label="What it is based on">`
+    + `${said.map((one) => `<li data-how="${one.how}">${line(one)}</li>`).join("")}</ul>`;
+}
+
+// ---------------------------------------------------------------------------
+// @mentions in a comment (api/_comments.js, docs/SOCIAL.md section 7, item 6).
+
+/// @handle in a comment's words: a handle as people.sql allows one, not
+/// inside a word or an address (ada@example.org names nobody), and not run
+/// on into more of one.
+const MENTION = /(^|[^A-Za-z0-9_.@/-])@([A-Za-z0-9][A-Za-z0-9-]{1,22}[A-Za-z0-9])(?![A-Za-z0-9_-])/g;
+
+/// The handles [text] names, lower case, each once, in the order named.
+export function mentionsIn(text) {
+  const found = [];
+  for (const match of String(text || "").matchAll(MENTION)) {
+    const handle = match[2].toLowerCase();
+    if (!handle.includes("--") && !found.includes(handle)) found.push(handle);
+  }
+  return found;
+}
+
+/// [text] in pieces for a page to draw: a string for words, and
+/// {handle, name, at} for each @handle that is one of [mentions] (whom the
+/// server told), [at] as it was typed. A handle nobody was told of stays
+/// words.
+export function mentionPieces(text, mentions) {
+  const told = new Map((mentions || []).filter((one) => one && one.handle).map((one) => [String(one.handle), one]));
+  const pieces = [];
+  let from = 0;
+  const words = String(text || "");
+  for (const match of told.size ? words.matchAll(MENTION) : []) {
+    const one = told.get(match[2].toLowerCase());
+    if (!one) continue;
+    const start = match.index + match[1].length;
+    if (start > from) pieces.push(words.slice(from, start));
+    pieces.push({ handle: one.handle, name: one.name || one.handle, at: words.slice(start, start + 1 + match[2].length) });
+    from = start + 1 + match[2].length;
+  }
+  if (from < words.length) pieces.push(words.slice(from));
+  return pieces;
+}

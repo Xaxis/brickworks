@@ -97,6 +97,16 @@ they have. A Claude connector belongs to the account that switched it on.
   `{theme, kept}`, 422 for anything else. Before theme.sql (PostgREST 400
   for the column) GET says `system`, `ready: false`, and POST `kept: false`:
   never an error. See [web](web.md) "theme choice".
+- `GET` and `POST /api/account?op=keys` (2026-10-30, Bearer): the app's keys
+  on the account (`profiles.keys`, `supabase/keymap.sql`), so a new browser has
+  a person's preset and the keys they set once they sign in
+  (`src/account/keymap_sync.gd`; the newer `at` of device and account wins).
+  GET `{keys: {preset, own, at} | null, ready}`; POST `{preset, own, at}`
+  answers `{keys, kept}`, 422 with words for another preset, a name that is no
+  command's, a key that is not a whole number, no time or over 400 keys. Before
+  keymap.sql GET says `null, ready: false` and POST `kept: false`.
+  `tests/test_account_keys.py` runs the handler under node against the
+  stand-in Supabase. See [view](view.md) "keys of one's own".
 - `the age question in the sign-in screen` (`src/ui/sign_in_gate.gd`,
   `Account.age_ask`, `over_13`, `asking_who`, `answer_age`): after a code is
   typed the screen stays up ("Signing you in…") for `/api/account`; a start

@@ -170,7 +170,7 @@ is on the page, `hidden`, for the script to show.
   `--shine-btn`), secondary `.cta.ghost` (on the panel's ground with an
   edge of light; any `button` with no class is the same without the
   ground), quiet `button.link` (underlined words;
-  `a.link` for one that goes somewhere, as the embed's View in 3D).
+  `a.link` for one that goes somewhere).
   `.small` (36 px) for a row of actions on a card or a list, `.big` for a
   page's opening offer; a button beside a field is the regular size. A
   toggle that is on (`aria-pressed="true"`) has the accent edge. A
@@ -444,8 +444,8 @@ is on the page, `hidden`, for the script to show.
   on a square canvas with the circle it is cut to, dragged and zoomed, the
   zoom two `.icon-btn`s (zoom-out, zoom-in) under it.
 - **Icon**: `.icon`, one of the sprite's (`web/icons.svg`: like, save,
-  share, comment, more, build, search, filter, award, zoom-in, zoom-out;
-  and for the landing pages' features, stand, gear, move, file, book,
+  share, comment, more, build, search, filter, award, zoom-in, zoom-out,
+  reset, expand, shrink, close; and for the landing pages' features, stand, gear, move, file, book,
   people, devices, camera, spark, eye, monitor, globe, library, download
   and check; and back and next, a Scroller's Previous and Next;
   `web/kit.js` `iconHtml`),
@@ -466,26 +466,68 @@ is on the page, `hidden`, for the script to show.
   the icons and the icon button (`web/kit.js` passes them on to the
   browser's pages), and the server imports them through `api/_card.js`,
   which `tools/deploy.sh` replaces with `web/card.js` itself.
+- **3D view**: `.view3d` (viewer369; `web/start3d.js` the way in,
+  `tools/viewer/inline.js`, built into `web/viewer3d.js`; its looks in
+  `web/view3d.css`, under `.model-page` or `.embed`), the model in 3D
+  in its picture's place on a model's page, a set's and the embed: the picture's own
+  box laid over it, so nothing on the page moves, on the picture's ground
+  (`--picture-ground`, or `--render-top` to `--render-foot` for a picture
+  drawn on a ground of its own), in either theme, and from where the
+  picture was taken (a gallery model's from where the app opens a model, a
+  library set's from ModelShot's corner). The picture says View in
+  3D (`.go`) and is a button for it; its link stays the app's, for a
+  middle click and a page without scripts. Nothing of it is fetched until
+  it is asked for: then `/viewer3d.js` (three.js and all, about 150 KB
+  over the wire) and the model's `scene.json`, its parts' geometry from
+  the part store as the MCP card's (`tools/viewer/view.js`, one scene for
+  both). While its parts come, the picture shows through with how far it
+  has got along its foot (`.view3d-bar`) and in words (`.view3d-said`,
+  `role="status"`); a failure says why there, with Try again, and leaves
+  the picture. Its tools are `.icon-btn.small`s on `--panel` at its foot
+  on the right (`.view3d-tools`, a `role="toolbar"`: Zoom out, Zoom in,
+  Reset the view, Full screen as a toggle, Back to the picture) and
+  Open in the app a link pill on the left (`.view3d-app`). Turned by a
+  drag, zoomed by the wheel once pressed (before that the wheel scrolls
+  the page), the keys with it focused (arrows, + and −, 0, F). On a touch
+  screen a finger up or down scrolls the page until the person takes hold
+  (a drag across, two fingers, a tap: edged in `--accent-edge`). Still for
+  `prefers-reduced-motion`. A model past what the device turns smoothly
+  (3 million triangles under a coarse pointer, 9 otherwise) asks first:
+  Turn it anyway, or Open in the app.
 - **Action bar**: `.action-bar`, a model's page's row of icon buttons
   (Like, Save, Share, Comment, I built it) with the more menu at its end;
   one row across the column on a phone. `api/share.js` `actionBar`,
   `web/model-page.js`.
-- **Share's sheet** (docs/SOCIAL.md U14): `dialog.share-sheet`, the site's
-  dialog made wider for the embed code, opened by Share: the page's link
-  (selected as it opens) and the embed code, each a field in a `.copy-row`
-  with its Copy beside it (under it on a phone), Copy link the primary;
-  what was copied said in the sheet's own `.said` status line, since the
-  toast is behind a modal dialog for a screen reader too; Share with
-  another app (the phone's own sheet, given the link) only where the
-  browser has one; Close, and Escape, back on Share. `api/share.js`
-  `shareSheet`, `web/model-page.js`. The embed (`/m/<id>/embed`) loads
+- **Share's sheet** (docs/SOCIAL.md U14 and section 7): `dialog.share-sheet`,
+  the site's dialog made wider for the embed code, the same on every page
+  with Share (a model's, a set's, a person's, your own, a collection's, the
+  challenge's): the page's link (selected as it opens) in a `.copy-row`
+  with Copy beside it (under it on a phone), Copy link the primary; then
+  `.share-to`, "Post it to" and a `.cta.ghost.small` link to each
+  network's own share page (Reddit, Bluesky, Pinterest where there is a
+  picture, X, Facebook, Email), each opening in a new tab, nothing of
+  theirs loaded until one is pressed; then the embed code where the page
+  has one, its own `.copy-row`; what was copied or opened said in the
+  sheet's own `.said` status line, since the toast is behind a modal
+  dialog for a screen reader too; Share with another app (the phone's own
+  sheet, given the link) only where the browser has one; Close, and
+  Escape, back on Share. One renderer, `web/card.js` `shareSheetHtml`, drawn
+  by the server's pages and by `web/share-sheet.js` `sheetFor` for a page
+  that draws itself; `web/share-sheet.js` makes it work. A model's page
+  names its oEmbed (`/oembed?url=`) in its head, so its bare link becomes
+  the embed in a page that reads oEmbed. The embed (`/m/<id>/embed`) loads
   `web/theme.js` as every page does, so it is in the theme its viewer chose
   where their browser lets a frame read the site's own storage, else their
   device's; `<html data-embed>`, so it never asks their account. Its
-  picture, then a bar: the name and credit (a link to the model's page),
-  View in 3D as an `a.link` (hidden under 400 px, where the bar has no room
-  for it), and Build it, `.cta.small`, the guided build at step 1 as the
-  model's page's is; each opens a tab of its own.
+  picture, saying View in 3D (`.go`) and the way into the 3D view there in
+  the frame as on the model's page (docs/SOCIAL.md section 7, item 4:
+  `main.embed`, `web/embed.js`; the view edge to edge over the picture,
+  no edge or corners of its own; nothing of it fetched until asked, the
+  same budget and touch rules), then a bar: the name and credit (a link to
+  the model's page) and Build it, `.cta.small`, the guided build at step 1
+  as the model's page's is. Every link opens a tab of its own
+  (`<base target="_blank">`), the 3D view's Open in the app too: the app
+  cannot run in a frame.
 - **A model's page** (`/m/<id>`, `web/directory.css`, docs/SOCIAL.md U4):
   `.media`, the picture and under it `.media-strip.scroller`, a row of
   thumbnails, the one shown large `aria-current` and edged
@@ -511,7 +553,28 @@ is on the page, `hidden`, for the script to show.
   owner's and its step as `a.pill`, then `.replies` under a 2 px `--line`
   rule, each reply with the `.small` avatar and no card of its own, and a
   reply's box (`form.reply-new`, a field and `.cta.small` with
-  `.cta.ghost.small` Cancel) under the thread.
+  `.cta.ghost.small` Cancel) under the thread. What it is based on
+  (docs/SOCIAL.md section 7, item 5) is `ul.from.based-on` under the remix
+  line, a line each in the remix line's words and size, its link the set's
+  page or the work's address; its designer's Say (or Change) what it is
+  based on is a `button.link` in a `p.from` under them, and opens the
+  site's dialog (`dialog.report.bases-dialog`): a boxed `fieldset` a row
+  (How, a set's number or a link, and for a link its title, author and
+  licence), Remove at the row's start, Add another under them up to three,
+  then Save and Cancel; what is wrong said in the dialog's `.said`. A
+  set's page lists the gallery's models based on it as Based on this set,
+  a `section.next` with `.models.scroller`, before More <theme>.
+  A comment's `@handle` (docs/SOCIAL.md section 7, item 6) is `a.mention`
+  in its words, a link in the words' own size at weight 600, to the person's page
+  with their name as its title. `@` in the comment box or a reply box opens
+  `ul.mention-pick` under it, a menu's panel (`--panel`, `--line-strong`,
+  the menu's radius and shadow) of up to six people, the name in bold and the
+  `@handle` small; the one chosen by the arrows, or under the pointer, is
+  `--panel-hi`. The box stays a textbox of several lines (a combobox is
+  one line): `aria-autocomplete="list"`, `aria-controls` the list, its
+  `aria-activedescendant` the one marked, and a `.visually-hidden`
+  `role=status` says how many are offered. Escape closes the list and
+  nothing else.
 - **An LDraw set's page** (`/library/<id>`, library333) is a model's page,
   drawn by the same `sharePage`: its `.crumbs` the LDraw library and its
   theme; Open in Brickworks the column's `.cta` (the app opens it as its
@@ -570,13 +633,25 @@ is on the page, `hidden`, for the script to show.
   with `data-follow-list`, its words in `.said`; Share; More with Report
   it); on a phone the cover across the top at 2:1. Then its models as
   `.models`, or a `.state`.
-- **Achievements** (`web/card.js` `awardsHtml`, docs/SOCIAL.md U13):
-  `ul.pills.awards` after a person's `.numbers`, the two in one
-  `.standing` row that wraps (beside them on a laptop, under them on a
-  phone), on their page and on your own, each `li[data-award]` a `.pill` with the award icon (16 px, at its
-  words' height) and its name,
-  what it means as its title; a challenge won is `a.pill.new` to the model
-  that won it. The rarest first; none at all, no row.
+- **Achievements** (`web/card.js` `awardsHtml`, `levelName`, docs/SOCIAL.md
+  U13 and section 7): `ul.pills.awards` after a person's `.numbers`, the
+  two in one `.standing` row that wraps (beside them on a laptop, under
+  them on a phone), on their page and on your own, each `li[data-award]`
+  a `.pill` with the award icon (16 px, at its words' height) and its
+  name, what it means as its title; a challenge won is `a.pill.new` to the
+  model that won it, then a level a track (`data-level`), named by the
+  number it took ("Designer · 10 models", "Built · once", "Builder · first
+  build") with "Level 3 of 6: 12 models listed in the gallery" as its
+  title. The highest first; none at all, no row.
+- **Your achievements** (`/profile?tab=achievements`, `web/profile.js`,
+  `.achievements-list` in `web/directory.css`): a tile a track, as
+  `.earned`'s are (`--panel`, `--line`, `--r-3`), in a grid of 260 px
+  columns: the award and the level's name as an `h3` at `--t-h3`, "Level
+  3 of 6" at `--t-tiny` in `--ink-faint`, a 6 px `.reach` bar (`--line`, filled
+  in `--accent-edge`, hidden from a screen reader: the words say it), the
+  number in words, `.to-next` in `--ink` ("13 more to reach Designer · 25
+  models.") and `.how`, the way there, a link where a page helps. A track
+  not begun is dashed on no panel.
 - **A challenge** (`/challenge`, site357): its name, days and brief in
   `.challenge-hero.halo`, a panel lit as a landing page's last offer is;
   then the rules and how to enter, each a panel, side by side from 900 px.
@@ -606,8 +681,12 @@ is on the page, `hidden`, for the script to show.
 - **Notifications** (`/notifications`, `web/directory.css`): `.notices`,
   a list of `.notice` cards, one a model: its 4:3 `.pic`, its name as an
   `h2` at `--t-body`, and `.lines`, each a link with an avatar (who did
-  it) or an icon (likes, a challenge's end), `.what` its words, a New
-  `.pill`, a quote and the time. Not opened yet: `.unread`, edged in
+  it) or an icon (likes, a challenge's end, a level reached, a challenge
+  opening), `.what` its words, a New `.pill`, a quote and the time. The
+  levels you reached are a card of their own, "Your achievements", the
+  award icon at 40% in its `.pic.award` where a model's picture is; each
+  challenge you heard of is one too, "Challenge: <title>", the brick icon
+  the same way in its `.pic.challenge`. Not opened yet: `.unread`, edged in
   `--accent-edge` with a `.dot`. The page's head is `.notices-head` (the
   title and Mark all read); `/notifications` and `/feed` share one `.tabs`
   row, each tab's count in `.n`, hidden at none.

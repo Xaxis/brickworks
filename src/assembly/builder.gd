@@ -173,7 +173,8 @@ func place() -> int:
 	below = 0.0
 	if is_carrying():
 		return _put_carried()
-	if not _ghost_valid:
+	# Kept where it stands while Connect asks for the point it goes on by.
+	if not _ghost_valid or connect_picking:
 		return 0
 	if not held_figure.is_empty():
 		return _place_figure()
@@ -191,6 +192,8 @@ func place() -> int:
 	_history.append({"undo": "remove", "brick": brick_id})
 	_redo.clear()
 	below = maxf(0.0, -part.lowest_at(_ghost_transform)) if part != null else 0.0
+	# A number typed is spent once it is put down: the next follows the pointer.
+	_typed_from = null
 	placed.emit(brick_id, held_part)
 	return brick_id
 
@@ -773,8 +776,13 @@ func move_selection(by: Vector3i) -> int:
 	if by == Vector3i.ZERO:
 		return 0
 	var shift: Vector3 = BrickLattice.to_ldu(by)
-	return _reposition(func(at: Transform3D) -> Transform3D:
+	var moved: int = _reposition(func(at: Transform3D) -> Transform3D:
 		return Transform3D(at.basis, at.origin + shift), "", by)
+	if moved > 0:
+		var axis: int = shift.abs().max_axis_index()
+		last_way = Vector3.ZERO
+		last_way[axis] = signf(shift[axis])
+	return moved
 
 
 ## Shift the selection by any amount in LDU, to the thousandth an LDraw
@@ -1040,6 +1048,13 @@ static func _tidy(at: Transform3D, square: bool) -> Transform3D:
 	return Transform3D(basis, origin)
 
 
+## The parts of the model the last move or turn of the selection refused
+## for would have run into ([method _reposition]); empty when it was the
+## floor, or nothing was refused. What a turn with no room shows red
+## (EditVerbs.turn_by).
+var refused_by := PackedInt64Array()
+
+
 ## Put every selected brick where ``to`` says, as one step, or none of
 ## them if any would go through another brick or the floor.
 func _reposition(to: Callable, words: String = "", by_cells: Variant = null) -> int:
@@ -1060,6 +1075,7 @@ func _reposition(to: Callable, words: String = "", by_cells: Variant = null) -> 
 
 	var landing: Dictionary = {}
 	var blocked: bool = false
+	refused_by = PackedInt64Array()
 	for brick_id: int in alive:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		var to_here: Transform3D = to.call(brick.transform)
@@ -1079,6 +1095,7 @@ func _reposition(to: Callable, words: String = "", by_cells: Variant = null) -> 
 			n += 6
 		if blocked or lattice.collides_boxes(packed):
 			blocked = true
+			refused_by = _not_scenery(lattice.blockers_boxes(packed))
 			break
 		landing[brick_id] = {"at": to_here, "boxes": packed, "shifted": shifted}
 
@@ -1739,7 +1756,15 @@ func _put_carried() -> int:
 		words = "moved %s" % _many(ids.size())
 	_history.append({"undo": "group", "steps": steps, "words": words})
 	_redo.clear()
+	# A clone or a duplicate: another copy in hand for the next, as it
+	# was before anything was typed for this one, R's turn kept.
+	var again: Array = carrying.base_items() if carrying.repeats else []
+	var turned: int = carrying.turns
 	carrying.drop()
+	if not again.is_empty():
+		carrying.hold(again, false)
+		carrying.turns = turned
+		carrying.repeats = true
 	selection.clear()
 	for brick_id: int in ids:
 		selection[brick_id] = true
@@ -1750,6 +1775,10 @@ func _put_carried() -> int:
 
 ## Work out where the held part would go, given a ray from the camera.
 func update_preview(origin: Vector3, direction: Vector3) -> void:
+	# Kept where it is while a number is typed (TypedEntry).
+	if is_pinned():
+		return
+	var was: Vector3 = carrying.pivot() if is_carrying() else _ghost_transform.origin
 	_joint_site = null
 	if is_carrying():
 		_ghost.visible = false
@@ -1757,7 +1786,13 @@ func update_preview(origin: Vector3, direction: Vector3) -> void:
 		_hide_figure_ghosts()
 		carrying.library = library
 		_hovered = carrying.aim(lattice, self, origin, direction)
+		_went(was, carrying.pivot())
 		return
+	_aim_single(origin, direction)
+	_went(was, _ghost_transform.origin)
+
+
+func _aim_single(origin: Vector3, direction: Vector3) -> void:
 	if not held_figure.is_empty():
 		_preview_figure(origin, direction)
 		return
@@ -1984,7 +2019,10 @@ func _on_exact_fetched(part_id: String) -> void:
 func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 		hit: BrickLattice.Hit) -> bool:
 	_joint_site = null
-	var held: Array = JointSnap.ends_for(library, held_part)
+	# Connect's chosen point alone, when there is one: a 1 x 16 on two pins
+	# by the hole the person picked, not by whichever of its 30 ways T is on.
+	var held: Array = JointSnap.ends_for(library, held_part) if connect_end == null \
+		else [connect_end]
 	if held.is_empty() or world == null:
 		return false
 	# A little past what the line met: a hole's middle is inside the part
@@ -2007,8 +2045,10 @@ func _onto_a_joint(part: Lbm.PartMesh, origin: Vector3, direction: Vector3,
 	if options.is_empty():
 		return false
 	var key: String = "%d|%s|%s|%s" % [site.brick, site.kind, site.at, site.axis]
-	if held_part != _joint_part:
-		_joint_part = held_part
+	var held_key: String = held_part if connect_end == null \
+		else "%s@%s%s" % [held_part, connect_end.at, connect_end.axis]
+	if held_key != _joint_part:
+		_joint_part = held_key
 		_joint_way = 0
 		_joint_roll = 0
 		_joint_extra = 0.0
@@ -2242,9 +2282,9 @@ func _part_named(brick_id: int) -> String:
 ## T have chosen, the turn step, and the first way on (which says which
 ## face is near and where along a bar the pointer is).
 func _joint_asked(key: String, basis: Basis, options: Array) -> String:
-	return "%s|%d|%s|%s|%d|%d|%s|%s|%s|%s|%s" % [key, world.revision, held_part, basis,
+	return "%s|%d|%s|%s|%d|%d|%s|%s|%s|%s|%s|%s" % [key, world.revision, held_part, basis,
 		_joint_way, _joint_roll, _joint_extra, _joint_chosen, turn_step, options[0][1],
-		options[0][2]]
+		options[0][2], _joint_part]
 
 
 ## The pose for one of the ways onto a joint, turned so many steps and
@@ -2337,8 +2377,12 @@ const _JOINT_TRIES := 64
 
 func _best_on_joint(options: Array, site: JointSnap.End, basis: Basis) -> void:
 	var best_joins: int = -1
+	var best_under: float = INF
+	var best_turned: float = INF
 	if _joint_last_fits:
 		best_joins = _joins_made(_joint_last_at)
+		best_under = _under_ground(_joint_last_at)
+		best_turned = _turned_from_picked(_joint_last_at)
 	var tries: int = 0
 	for n: int in options.size():
 		var way: int = posmod(_joint_way + n, options.size())
@@ -2360,13 +2404,39 @@ func _best_on_joint(options: Array, site: JointSnap.End, basis: Basis) -> void:
 			if not room_for(held_part, at, true, true):
 				continue
 			var joins: int = _joins_made(at)
-			if joins > best_joins:
+			# Of two that join as many, the one above the ground: a 1 x 16
+			# by its end hole on two pins stood up them, not down through
+			# the floor, which holds a part that hangs below the model.
+			var under: float = _under_ground(at)
+			# And of those, the one turned least from how it stood when
+			# Connect's point was picked on it.
+			var turned: float = _turned_from_picked(at)
+			if joins > best_joins or (joins == best_joins and (under < best_under - 0.5
+					or (under < best_under + 0.5 and turned < best_turned - 0.01))):
 				best_joins = joins
+				best_under = under
+				best_turned = turned
 				_joint_way = way
 				_joint_roll = int(turn[0])
 				_joint_extra = float(turn[1])
 				_joint_last_at = at
 				_joint_last_fits = true
+
+
+## How far [param at] is turned from the pose the part stood in when
+## Connect's point was picked on it; 0 with no point picked.
+func _turned_from_picked(at: Transform3D) -> float:
+	if connect_end == null or _connect_from == null:
+		return 0.0
+	var from: Basis = (_connect_from as Transform3D).basis
+	return (at.basis.x - from.x).length() + (at.basis.y - from.y).length() \
+		+ (at.basis.z - from.z).length()
+
+
+## How far the part in hand at [param at] reaches below the ground, in LDU.
+func _under_ground(at: Transform3D) -> float:
+	var part: Lbm.PartMesh = library.mesh_for(held_part)
+	return maxf(0.0, -part.lowest_at(at)) if part != null else 0.0
 
 
 ## R on a joint: the next stop about it, a step on, or sooner where the
@@ -3414,11 +3484,18 @@ func tip_held(steps: int = 1) -> void:
 		# Swung onto another end, if this way can be: the first such turn.
 		_joint_extra = 0.0
 		if not _joint_options.is_empty():
-			var closings: Array = _closings(_joint_options,
-				posmod(_joint_way, _joint_options.size()), _joint_site, _joint_basis)
+			var way: int = posmod(_joint_way, _joint_options.size())
+			var closings: Array = _closings(_joint_options, way, _joint_site, _joint_basis)
 			if not closings.is_empty():
 				_joint_roll = 0
 				_joint_extra = closings[0]
+				# The first with room above the ground, as the way on is chosen.
+				for closing: float in closings:
+					var at: Transform3D = _joint_pose(_joint_options, way, 0, _joint_site,
+						_joint_basis, closing)
+					if room_for(held_part, at, true, true) and _under_ground(at) < 0.5:
+						_joint_extra = closing
+						break
 		return
 	var faces: Array[String] = BrickLattice.FACES
 	var at: int = maxi(faces.find(held_face), 0)
@@ -3463,12 +3540,223 @@ func can_place() -> bool:
 
 
 func hide_preview() -> void:
+	if connect_picking:
+		return
+	unpin_hand()
 	_ghost.visible = false
 	_ghost_valid = false
 	_joint_site = null
 	_hide_figure_ghosts()
 	if carrying != null:
 		carrying.hide_ghost()
+
+
+# -- connect: a point on the part in hand, onto a point of a part down -----
+
+
+## The end of the part in hand (JointSnap.End, in its own frame) that alone
+## goes onto the joint the pointer is aimed at, as Connect chose it; null
+## for any of its ends, as the hand has always gone (ConnectTool).
+var connect_end: JointSnap.End = null
+## Whether Connect is asking which point of the part in hand it goes on by:
+## the ghost is kept where it stands, and a click puts nothing down.
+var connect_picking: bool = false
+## The pose the part in hand stood in while its point was picked.
+var _connect_from: Variant = null
+
+
+## Hold the part in hand still where its ghost stands, or at [param at],
+## for Connect's points to be picked off it. False when it stands nowhere.
+func hold_still(at: Variant = null) -> bool:
+	if is_carrying() or not held_figure.is_empty():
+		return false
+	if at != null:
+		var part: Lbm.PartMesh = library.mesh_for(held_part)
+		if part == null:
+			return false
+		_ghost_transform = at
+		_ghost_valid = true
+		_joint_site = null
+		_show_ghost(part)
+	if not has_preview():
+		return false
+	connect_picking = true
+	_typed_from = _ghost_transform
+	_connect_from = _ghost_transform
+	return true
+
+
+## Let the part in hand follow the pointer again, by [param end] alone (or
+## by any of its ends, for null).
+func follow_by(end: JointSnap.End) -> void:
+	connect_picking = false
+	connect_end = end
+	if end == null:
+		_connect_from = null
+	_typed_from = null
+	_joint_last = ""
+
+
+# -- typed: what is in hand moved by a number -----------------------------
+
+
+## Which way the ghost last went, along one axis of the model (a unit
+## vector), or zero before it has gone anywhere: a number typed alone
+## moves what is in hand that way (TypedEntry), as SketchUp's typed
+## distance goes the way the move was going.
+var last_way: Vector3 = Vector3.ZERO
+
+
+## The ghost went from [param from] to [param to]: [member last_way] is the
+## axis it went furthest along, by at least a cell.
+func _went(from: Vector3, to: Vector3) -> void:
+	if not has_preview():
+		return
+	var by: Vector3 = to - from
+	var axis: int = by.abs().max_axis_index()
+	if absf(by[axis]) < BrickLattice.CELL - 0.01:
+		return
+	last_way = Vector3.ZERO
+	last_way[axis] = signf(by[axis])
+
+
+## The single part in hand, kept where its ghost stood when a number began
+## to be typed, the pointer no longer moving it, and what it turns about
+## there: the joint it is on, or the upright through its middle. Null when
+## nothing is typed. A group in hand keeps its own (Carry.pin).
+var _typed_from: Variant = null
+var _typed_point: Vector3 = Vector3.ZERO
+var _typed_axis: Vector3 = Vector3.UP
+
+
+## Keep what is in hand where its ghost stands now, for a number to move
+## it from there (TypedEntry). False when it stands nowhere, or is a
+## minifigure, which nothing typed moves.
+func pin_hand() -> bool:
+	if is_carrying():
+		return carrying.pin()
+	if not held_figure.is_empty() or not has_preview():
+		return false
+	_typed_from = _ghost_transform
+	if _joint_site != null:
+		_typed_point = _joint_site.at
+		_typed_axis = _joint_site.axis.normalized()
+	else:
+		var part: Lbm.PartMesh = library.mesh_for(held_part)
+		_typed_point = (_ghost_transform * part.bounds).abs().get_center() if part != null \
+			else _ghost_transform.origin
+		_typed_axis = Vector3.UP
+	return true
+
+
+func is_pinned() -> bool:
+	return _typed_from != null or (carrying != null and carrying.is_pinned())
+
+
+## Let go of the pin: the ghost follows the pointer again.
+func unpin_hand() -> void:
+	_typed_from = null
+	if carrying != null and carrying.is_pinned():
+		carrying.unpin()
+
+
+## What is in hand, kept where it was pinned, turned [param turn] degrees
+## about its joint or the upright, tilted [param tilt] degrees about the
+## level [param tilt_axis] through its middle (its bottom kept where it
+## was, as T keeps it), then moved [param move] LDU along the model's
+## axes: shown there, and whether it may go down there. One placement when
+## put down, as any is.
+func typed_hand(move: Vector3, turn: float, tilt: float, tilt_axis: Vector3) -> bool:
+	if not is_pinned():
+		return false
+	# A group turns about where R turns it, the upright through its pivot.
+	var point: Vector3 = _typed_point if _typed_from != null else carrying.pivot()
+	var axis: Vector3 = _typed_axis if _typed_from != null else Vector3.UP
+	var by := Transform3D.IDENTITY
+	if not is_zero_approx(turn):
+		by = _about(point, Basis(axis, deg_to_rad(turn))) * by
+	if not is_zero_approx(tilt):
+		var box: AABB = _box_after(by)
+		var tipped: Transform3D = _about(box.get_center(), Basis(tilt_axis.normalized(),
+			deg_to_rad(tilt))) * by
+		var lands: AABB = _box_after(tipped)
+		by = Transform3D(Basis.IDENTITY, Vector3(0.0, box.position.y - lands.position.y, 0.0)) \
+			* tipped
+	by = Transform3D(Basis.IDENTITY, move) * by
+	if is_carrying():
+		return carrying.show_moved(by, lattice, self)
+	var at: Transform3D = by * (_typed_from as Transform3D)
+	at = _tidy(Transform3D(at.basis.orthonormalized(), at.origin),
+		BrickLattice.is_square_to_grid(at.basis))
+	_ghost_transform = at
+	# Not typed down through the floor, unless it was held below it (on a
+	# joint under the model) when the number began.
+	_ghost_valid = room_for(held_part, at, false, true) \
+		and (not _below_ground(held_part, at) or _below_ground(held_part, _typed_from))
+	_seated_on = 0
+	var part: Lbm.PartMesh = library.mesh_for(held_part)
+	if part != null:
+		_show_ghost(part)
+	return _ghost_valid
+
+
+func _below_ground(part_id: String, at: Transform3D) -> bool:
+	var part: Lbm.PartMesh = library.mesh_for(part_id)
+	if part == null:
+		return false
+	var packed: PackedInt32Array = boxes_for(part, at)
+	var n: int = 1
+	while n < packed.size():
+		if packed[n] < GROUND_CELL:
+			return true
+		n += 6
+	return false
+
+
+static func _about(point: Vector3, turn: Basis) -> Transform3D:
+	return Transform3D(Basis.IDENTITY, point) * Transform3D(turn, Vector3.ZERO) \
+		* Transform3D(Basis.IDENTITY, -point)
+
+
+## The box round what is in hand where it was pinned, or an empty one.
+func pinned_box() -> AABB:
+	return _box_after(Transform3D.IDENTITY) if is_pinned() else AABB()
+
+
+## The box round what is in hand where it was pinned, moved by [param by].
+func _box_after(by: Transform3D) -> AABB:
+	if _typed_from == null:
+		return carrying.bounds_moved(by)
+	var mesh: Lbm.PartMesh = library.mesh_for(held_part)
+	if mesh == null:
+		return AABB(by * (_typed_from as Transform3D).origin, Vector3.ZERO)
+	return ((by * (_typed_from as Transform3D)) * mesh.bounds).abs()
+
+
+## What R and T have left in hand: the part's turn and face, its way and
+## turn on a joint, and a group's parts and quarter turns. EditVerbs keeps
+## it before R or T, so a number typed straight after takes their place
+## (a turn of 23.58 instead of R's step), as SketchUp's typed angle does.
+func hand_state() -> Dictionary:
+	return {"rotation": held_rotation, "face": held_face, "way": _joint_way,
+		"roll": _joint_roll, "extra": _joint_extra, "chosen": _joint_chosen,
+		"items": carrying.items.duplicate(true) if is_carrying() else [],
+		"turns": carrying.turns if is_carrying() else 0}
+
+
+func set_hand_state(state: Dictionary) -> void:
+	held_rotation = int(state.get("rotation", held_rotation))
+	held_face = str(state.get("face", held_face))
+	_joint_way = int(state.get("way", _joint_way))
+	_joint_roll = int(state.get("roll", _joint_roll))
+	_joint_extra = float(state.get("extra", _joint_extra))
+	_joint_chosen = bool(state.get("chosen", _joint_chosen))
+	var items: Array = state.get("items", [])
+	if is_carrying() and not items.is_empty():
+		var keep: bool = carrying.repeats
+		carrying.hold(items, carrying.lifted)
+		carrying.repeats = keep
+		carrying.turns = int(state.get("turns", 0))
 
 
 # -- a minifigure, as one thing ------------------------------------------

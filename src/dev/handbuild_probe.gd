@@ -108,6 +108,7 @@ func _run() -> void:
 	await _a_small_laptop()
 	await _floor_menu()
 	await _first_timer()
+	await _patterns()
 
 	print("")
 	if _failures == 0:
@@ -184,6 +185,10 @@ func _duplicate_and_turn() -> void:
 	_check("its 2 x 4 now runs the other way (%s)" % long_way,
 		absf(long_way.z) > 0.9)
 	_check("and every part is still on the studs", _all_on_studs())
+	_check("...and another copy stays in hand for the next, turned as this one",
+		_builder.is_carrying() and _builder.carrying.repeats and _builder.carrying.turns == 1)
+	await _key(KEY_ESCAPE)
+	_check("Esc lets go of it", not _builder.is_carrying() and _count() == 9)
 
 
 func _turn_in_place() -> void:
@@ -494,6 +499,7 @@ func _the_shell() -> void:
 	await _move(spot)
 	await _click(spot + Vector2(1, 0))
 	_check("...and a click puts the copy down (%d parts)" % _count(), _count() == 3)
+	_check("...and another copy stays in hand for the next", _builder.is_carrying())
 
 	await _click((buttons["mode_move"] as Button).get_global_rect().get_center())
 	var was: Vector3 = _world.get_brick(blue).transform.origin
@@ -664,11 +670,14 @@ func _the_shell() -> void:
 	await _shot("grid")
 	shell.run("grid")
 	_check("...and takes them away", not shell.grid.visible)
-	# The properties are under the parts bin, in the left-hand column.
-	var column: SideDock = _main.get("_bin_dock")
-	_check("the properties are in the column beside the model, under the parts bin (%s in %s)"
+	# The properties are down the right, under the model tree, the parts bin
+	# having the left to itself (docs/APP_UX.md A10).
+	var column: SideDock = _main.get("_props_dock")
+	_check("the properties are in the right-hand column, the parts bin's on the left (%s in %s)"
 		% [str(inspector.get_global_rect()), str(column.get_global_rect())],
-		not column.is_open() or column.get_global_rect().encloses(inspector.get_global_rect()))
+		SideDock.of(inspector) == column and column.get_global_rect().position.x
+		> (_main.get("_bin_dock") as SideDock).get_global_rect().end.x
+		and (not column.is_open() or column.get_global_rect().encloses(inspector.get_global_rect())))
 	if not column.is_open():
 		shell.run("panel_properties")
 		await _frames(30)
@@ -850,7 +859,8 @@ func _text_fields_give_keys_back() -> void:
 	if not any.is_empty():
 		_select_only([(any[0] as BrickWorld.Brick).id])
 		await _frames(20)
-		await _show_column("_bin_dock")
+		# The properties' column, as a person opens it by its rail.
+		await _show_column(_column_of(shell.inspector))
 		var x_field: LineEdit = shell.inspector._x.get_line_edit()
 		var was_x: float = (any[0] as BrickWorld.Brick).transform.origin.x
 		await _click(x_field.get_global_rect().get_center())
@@ -1455,14 +1465,14 @@ func _author_steps() -> void:
 	_check("...one undo for each press that changed it (yellow %d)" % _step(yellow),
 		_step(yellow) == 1)
 
-	# Edit, Build steps, New step from selection: the white brick out of the
+	# Build, Build steps, New step from selection: the white brick out of the
 	# step that puts the windows on, into one of its own.
-	var edit_menu: PopupMenu = shell.menu("Edit").get_popup().get_node("steps")
+	var edit_menu: PopupMenu = shell.menu("Build").get_popup().get_node("steps")
 	var texts := PackedStringArray()
 	for index: int in edit_menu.item_count:
 		texts.append(edit_menu.get_item_text(index))
 	# The menu cannot write "[" as a key (Shell.UNDRAWN), so the line says it.
-	_check("Edit, Build steps lists the step edits, with their keys (%s)" % ", ".join(texts),
+	_check("Build, Build steps lists the step edits, with their keys (%s)" % ", ".join(texts),
 		"Move to previous step    Shift+[" in texts and "Move to next step    Shift+]" in texts
 		and "New step from selection" in texts and "Merge with the next step" in texts
 		and edit_menu.get_item_accelerator(edit_menu.get_item_index(shell.menu_id("step_new")))
@@ -1879,8 +1889,10 @@ func _a_small_laptop() -> void:
 	_check("this window is drawn at %.2f" % scale, scale >= 0.9 - 0.001)
 	var shell: Shell = _main.get("_shell")
 	# One column beside the model, docked: nothing over the model, and the
-	# model keeps most of the width. The model tree and the properties lay
-	# over its top corners, beside both columns, and it had 53%.
+	# model keeps most of the width (Main.MODEL_SHARE). The model tree and
+	# the properties lay over its top corners, beside both columns, and it
+	# had 53%; both columns open, with the tree and the properties down the
+	# right, it had 41% of 1400 x 900.
 	var cover: Dictionary = _main.call("model_cover")
 	var across: float = root.get_visible_rect().size.x
 	var model: Rect2 = cover["view"]
@@ -2052,11 +2064,11 @@ func _floor_menu() -> void:
 	# The model's own properties: nothing selected, the floor and its
 	# colour under the header, and "Part of the model".
 	_builder.clear_selection()
+	await _show_column(_column_of(shell.inspector))
 	await _frames(10)
 	var picker: FloorPicker = shell.inspector.floor_picker
 	_check("with nothing selected, the properties say what the model stands on",
-		picker.is_visible_in_tree() or not shell.inspector.is_open()
-		or not (_main.get("_bin_dock") as SideDock).is_open())
+		picker.is_visible_in_tree() or not shell.inspector.is_open())
 	picker.show_floor(_store.model_floor, false)
 	var choose: OptionButton = picker._kind
 	choose.select(1)
@@ -2096,6 +2108,270 @@ func _first_timer() -> void:
 	await _drag_from_the_bin()
 	await _the_grid_has_room()
 	await _an_untouched_example()
+
+
+## Patterns (docs/APP_UX.md, B6): a fence of 12 posts in 5 actions, from
+## one post: a click on it, Ctrl-D, a click two studs over, "11x" and Enter.
+## A ring of 16 on turntables in 6, from one wall piece on a turntable: a
+## click, a Shift-click, Ctrl+Shift+D, Round, "16" and Enter. Each counted
+## as typed_moves_probe counts (a click, a key, a number typed); each copy
+## where it should be, none in another's room, the whole one Ctrl+Z.
+func _patterns() -> void:
+	print("  patterns: a fence of posts, a ring on turntables")
+	var shell: Shell = _main.get("_shell")
+	var verbs: EditVerbs = _main.get("_verbs")
+	verbs.set_mode("select")
+	_main.call("clear_model")
+	await _frames(4)
+	# One post, five bricks tall, on the ground.
+	_put("2453b", 4, Vector3(-210, 120, 10))
+	await _frames(3)
+	_camera.frame(AABB(Vector3(-240, 0, -80), Vector3(500, 140, 160)))
+	await _frames(30)
+	await _shot("pattern_fence_before")
+	var acts: int = 0
+	await _click(_screen(Vector3(-210, 100, 10)))
+	acts += 1
+	_check("a click selects the post", _builder.selection.size() == 1)
+	await _key(KEY_D, true)
+	acts += 1
+	_check("Ctrl-D holds a copy", _builder.is_carrying())
+	await _click(_screen(Vector3(-170, 0, 10)))
+	acts += 1
+	_check("a click two studs over puts it down (%d posts), another in hand" % _count(),
+		_count() == 2 and _builder.is_carrying())
+	var depth: int = _builder.history_depth()
+	await _type("11x")
+	acts += 1
+	var meaning: Label = verbs.typed.find_child("Meaning", true, false)
+	_check("“11x” reads as the row: %s" % meaning.text,
+		verbs.typed.is_open() and meaning.text.contains("11 in the row"))
+	await _shot("pattern_fence_typed")
+	await _key(KEY_ENTER)
+	acts += 1
+	await _frames(4)
+	var posts: Array = _model().filter(func(b: BrickWorld.Brick) -> bool:
+		return b.part_id == "2453b")
+	var xs: Array = posts.map(func(b: BrickWorld.Brick) -> float: return b.transform.origin.x)
+	xs.sort()
+	var spaced: bool = xs.size() == 12
+	for n: int in xs.size():
+		spaced = spaced and absf(float(xs[n]) - (-210.0 + 40.0 * n)) < 0.01
+	_check("a fence of 12 posts two studs apart (%s)" % str(xs), spaced)
+	_check("...in %d actions (bar: 5)" % acts, acts <= 5)
+	_check("...none in another's room", _none_overlap(posts))
+	_check("...the whole one step to undo (%d steps since the copy)" % (_builder.history_depth()
+		- depth + 1), _builder.history_depth() == depth)
+	await _shot("pattern_fence_after")
+	await _key(KEY_Z, true)
+	_check("one Ctrl+Z takes every copy back (%d posts)" % _count(), _count() == 1)
+	await _key(KEY_Z, true, true)
+	_check("...and redo puts all 11 back (%d posts)" % _count(), _count() == 12)
+	if _builder.is_carrying():
+		verbs.put_away()
+
+	# "/4": the gap cut in four.
+	_main.call("clear_model")
+	_put("2453b", 4, Vector3(-210, 120, 10))
+	await _frames(3)
+	await _click(_screen(Vector3(-210, 100, 10)))
+	await _key(KEY_D, true)
+	await _click(_screen(Vector3(-90, 0, 10)))
+	await _type("/4")
+	await _key(KEY_ENTER)
+	var between: Array = _model().filter(func(b: BrickWorld.Brick) -> bool:
+		return b.part_id == "2453b").map(func(b: BrickWorld.Brick) -> float:
+			return b.transform.origin.x)
+	between.sort()
+	_check("“/4” puts three between, the gap cut in four (%s)" % str(between),
+		between.size() == 5 and absf(float(between[1]) + 180.0) < 0.01
+		and absf(float(between[3]) + 120.0) < 0.01)
+	if _builder.is_carrying():
+		verbs.put_away()
+
+	# A row through a brick: the copy with no room said red, and none put.
+	_main.call("clear_model")
+	_put("2453b", 4, Vector3(-210, 120, 10))
+	_put("3005", 1, Vector3(110, 24, 10))
+	await _frames(3)
+	await _click(_screen(Vector3(-210, 100, 10)))
+	await _key(KEY_D, true)
+	await _click(_screen(Vector3(-170, 0, 10)))
+	var before: int = _count()
+	await _type("11x")
+	_check("a row through a brick is said red: %s" % meaning.text,
+		meaning.text.contains("no room"))
+	await _key(KEY_ENTER)
+	_check("...and Enter puts none of it down (%d parts, %d before)" % [_count(), before],
+		_count() == before and verbs.typed.is_open())
+	await _key(KEY_ESCAPE)
+	if _builder.is_carrying():
+		verbs.put_away()
+
+	# A ring of 16: a 1 x 2 brick on a 2 x 2 turntable, on a 16 x 16 plate.
+	_main.call("clear_model")
+	await _frames(3)
+	var plate: int = await _drop("91405", 71, Vector3(0, 0, 0), 0)
+	var turntable: int = await _drop("3680c02", 0, Vector3(140, 0, 0), 0)
+	var wall: int = await _drop("3004", 4, Vector3(150, 0, 0), 1)
+	_check("a plate, a turntable on it and a brick on that (%d, %d, %d)" % [plate, turntable,
+		wall], plate != 0 and turntable != 0 and wall != 0)
+	_camera.frame(AABB(Vector3(-200, 0, -200), Vector3(400, 80, 400)))
+	await _frames(30)
+	await _shot("pattern_ring_before")
+	acts = 0
+	var on_wall: Vector2 = _screen(_world.get_brick(wall).transform.origin + Vector3(0, -6, 0))
+	await _click(on_wall)
+	acts += 1
+	var on_turntable: Vector2 = _screen(_world.get_brick(turntable).transform.origin
+		+ Vector3(-10, -4, 10))
+	await _shift_click(on_turntable)
+	acts += 1
+	_check("a click and a Shift-click select the brick and its turntable (%s)"
+		% str(_builder.selection.keys()), _builder.selection.has(wall)
+		and _builder.selection.has(turntable) and _builder.selection.size() == 2)
+	await _key(KEY_D, true, true)
+	acts += 1
+	var dialog: PatternDialog = shell.pattern_dialog
+	_check("Ctrl+Shift+D opens Pattern", dialog.is_open())
+	var round_button: Button = dialog.controls_by_name()["pattern_round"]
+	await _click(Vector2(dialog.position) + round_button.get_global_rect().get_center())
+	acts += 1
+	_check("Round is chosen (%s), round %s" % [dialog.kind, dialog.page_state()["said"]],
+		dialog.kind == "round" and str(dialog.page_state()["said"]).contains("stands on"))
+	await _type("16")
+	acts += 1
+	await _frames(4)
+	_check("16 in all, shown first: %s" % dialog.page_state()["said"],
+		int(dialog.page_state()["in_all"]) == 16 and bool(dialog.page_state()["can_put"]))
+	await _shot("pattern_ring_dialog")
+	var parts_before: int = _count()
+	depth = _builder.history_depth()
+	await _key(KEY_ENTER)
+	acts += 1
+	await _frames(4)
+	var rings: Array = _model().filter(func(b: BrickWorld.Brick) -> bool:
+		return b.part_id == "3680c02")
+	var round_ok: bool = rings.size() == 16
+	var angles: Array = []
+	for brick: BrickWorld.Brick in rings:
+		var at: Vector3 = brick.transform.origin
+		round_ok = round_ok and absf(Vector2(at.x, at.z).length() - 140.0) < 0.05
+		angles.append(snappedf(fposmod(rad_to_deg(atan2(-at.z, at.x)), 360.0), 0.01))
+	angles.sort()
+	for n: int in angles.size():
+		round_ok = round_ok and absf(float(angles[n]) - 22.5 * n) < 0.05
+	_check("a ring of 16 turntables, each with its brick, 22.5° apart (%d parts, %s)"
+		% [_count(), str(angles)], round_ok and _count() == parts_before + 30)
+	_check("...in %d actions (bar: 6)" % acts, acts <= 6)
+	_check("...none in another's room", _none_overlap(_model()))
+	_check("...one step to undo", _builder.history_depth() == depth + 1)
+	await _shot("pattern_ring_after")
+	await _key(KEY_Z, true)
+	_check("one Ctrl+Z takes the ring back (%d parts)" % _count(), _count() == parts_before)
+	_check("Edit has Pattern… with its key (%s)" % shell.key_words("pattern"),
+		shell.menu("Edit").get_popup().get_item_index(shell.menu_id("pattern")) >= 0)
+
+	# Along a hose: a tube laid between two Technic bricks, and a 1 x 1
+	# brick over its start copied along it, two studs apart.
+	_main.call("clear_model")
+	_put("3700", 15, Vector3(-150, 24, 10))
+	_put("3700", 15, Vector3(150, 24, 10))
+	await _frames(3)
+	var holes: Array = []
+	for anchor: Flex.Anchor in Flex.anchors_in(_world, _library, "pneumatic_tube"):
+		if not holes.any(func(a: Flex.Anchor) -> bool: return a.brick == anchor.brick):
+			holes.append(anchor)
+	var flex_tool: FlexTool = _main.get("_flex")
+	var laid: Flex.Laid = await flex_tool.lay("pneumatic_tube", holes, [], 0) \
+		if holes.size() == 2 else null
+	var items: Dictionary = Flex.items_in(_world)
+	var line := PackedVector3Array()
+	for path: String in items:
+		var pieces: Array = (items[path]["bricks"] as Array).map(
+			func(b: BrickWorld.Brick) -> Dictionary: return {"part": b.part_id, "at": b.transform})
+		line = Flex.centreline(str(items[path]["kind"]), pieces, Vector3(-150, 24, 10))
+	_check("a tube is laid between them (%d points along it)" % line.size(),
+		laid != null and line.size() >= 2)
+	if line.size() < 2:
+		return
+	_put("3005", 14, line[0] + Vector3(0, 40, 0))
+	await _frames(3)
+	_select_only([_part_id("3005")])
+	_camera.frame(AABB(Vector3(-200, 0, -120), Vector3(400, 120, 240)))
+	await _frames(20)
+	await _key(KEY_D, true, true)
+	var hose_button: Button = dialog.controls_by_name()["pattern_path"]
+	await _click(Vector2(dialog.position) + hose_button.get_global_rect().get_center())
+	await _type("4")
+	await _frames(4)
+	_check("Along a hose: %s" % dialog.page_state()["said"], dialog.kind == "path"
+		and bool(dialog.page_state()["can_put"]))
+	await _shot("pattern_hose_dialog")
+	await _key(KEY_ENTER)
+	await _frames(4)
+	var along: Array = []
+	var off: Array = []
+	for brick: BrickWorld.Brick in _model():
+		if brick.part_id != "3005":
+			continue
+		var nearest: float = INF
+		var at: float = 0.0
+		var run: float = 0.0
+		for n: int in line.size() - 1:
+			var span: Vector3 = line[n + 1] - line[n]
+			var t: float = clampf((brick.transform.origin - line[n]).dot(span)
+				/ maxf(span.length_squared(), 1e-9), 0.0, 1.0)
+			var gap: float = (line[n] + span * t).distance_to(brick.transform.origin)
+			if gap < nearest:
+				nearest = gap
+				at = run + span.length() * t
+			run += span.length()
+		along.append(snappedf(at, 0.1))
+		off.append(snappedf(nearest, 0.1))
+	along.sort()
+	var even: bool = along.size() == 4
+	for n: int in range(1, along.size()):
+		even = even and absf(float(along[n]) - float(along[n - 1]) - 40.0) < 2.0
+	for gap: float in off:
+		even = even and absf(gap - 40.0) < 2.0
+	_check("...four bricks, two studs apart along the tube and as far off it (%s, %s)"
+		% [str(along), str(off)], even)
+	await _shot("pattern_hose_after")
+
+
+## A part dropped from above at [param at] (x and z), turned
+## [param turns] quarters, onto whatever is under it, as a click there puts
+## it: its id, or 0.
+func _drop(part: String, colour: int, at: Vector3, turns: int) -> int:
+	_main.call("_on_part_chosen", part)
+	for _n: int in 600:
+		if _library.mesh_for(part) != null:
+			break
+		await process_frame
+	_builder.held_color = colour
+	_builder.held_rotation = turns
+	_builder.update_preview(at + Vector3(0, 2000, 0), Vector3.DOWN)
+	var made: int = _builder.place()
+	var verbs: EditVerbs = _main.get("_verbs")
+	verbs.set_mode("select")
+	_builder.hide_preview()
+	await _frames(3)
+	return made
+
+
+## Whether every part has room where it stands, by the rule a part put
+## down meets: each taken out of the lattice and asked again.
+func _none_overlap(bricks: Array) -> bool:
+	for brick: BrickWorld.Brick in bricks:
+		_builder.lattice.release(brick.id)
+		var fits: bool = _builder.room_for(brick.part_id, brick.transform, false)
+		_builder.register(brick.id, brick.part_id, brick.transform)
+		if not fits:
+			print("    %s at %s has no room: %d in the way" % [brick.part_id,
+				str(brick.transform.origin), _builder.room_blocker])
+			return false
+	return true
 
 
 ## Edit, Cut takes the selection off the model. Two commands shared the
@@ -2168,7 +2444,9 @@ func _menus_show_the_real_keys() -> void:
 					engine_names.append("%s: %s" % [list.get_item_text(index), shown])
 			var id: int = list.get_item_id(index)
 			var name: String = shell._ids[id] if id >= 0 and id < shell._ids.size() else ""
-			var bound: int = shell.command(name).accel if not name.is_empty() else accel
+			# The key that does it is the keymap's (Keymap.key_of): the tools'
+			# keys are there, not in the command table (APP_UX A11).
+			var bound: int = Keymap.key_of(name) if not name.is_empty() else accel
 			if (accel & ~KEY_CODE_MASK) != (bound & ~KEY_CODE_MASK):
 				wrong.append("%s: %s" % [list.get_item_text(index), shown])
 	_check("no menu writes a key by the engine's name for it (%s)" % ", ".join(engine_names),
@@ -2280,8 +2558,9 @@ func _right_click_a_part() -> void:
 		menu != null and menu.visible)
 	_check("...on that part, selected", _builder.selection.keys() == [blue])
 	_check("...with the verbs a person reaches for", ", ".join(words).begins_with(
-		"Ask Claude about this…, Select everything joined to it, Hide, Show only the "
-		+ "selection, Paint with")
+		"Ask Claude about this…, Select everything joined to it, Select the same part, "
+		+ "Select the same colour, Hide, Show only the selection, Copy, Duplicate, Delete, "
+		+ "Paint with")
 		and words.has("Copy") and words.has("Delete") and words.has("Make a sub-assembly…")
 		and words.has("Properties"))
 	await _shot("first_timer_part_menu")
@@ -2346,7 +2625,7 @@ func _ask_claude_about_a_part() -> void:
 	chat.get_viewport().gui_release_focus()
 	_select_only([blue, red])
 	await _frames(2)
-	_check("Edit has it, with its key, %s" % shell.key_words("ask_claude"),
+	_check("Tools has it, with its key, %s" % shell.key_words("ask_claude"),
 		shell.key_words("ask_claude") == "Ctrl+K")
 	await _key(KEY_K, true)
 	await _frames(4)
@@ -2486,6 +2765,12 @@ func _the_grid_has_room() -> void:
 	if _bricks_near(Vector3(-60, 0, 20)).is_empty():
 		_put("3001", 4, Vector3(-60, 24, 20))
 	dock.set_open(true)
+	# The properties are down the right, a tab beside the assistant's,
+	# which the step before left showing: brought back by their rail where
+	# both columns show. Where they take turns, the bin keeps its column.
+	var both: bool = _main.get("_columns") == "wide"
+	if both and _main.get("_props_dock") != null:
+		await _show_column("_props_dock")
 	shell.outliner.set_open(false)
 	shell.inspector.set_open(true)
 	_builder.clear_selection()
@@ -2513,9 +2798,10 @@ func _the_grid_has_room() -> void:
 	var red: int = _bricks_near(Vector3(-60, 0, 20))[0]
 	_select_only([red])
 	await _frames(12)
-	_check("...and so does a brick selected, its properties open (%s)"
-		% white.get_global_rect().position, white.get_global_rect().position == was
-		and shell.inspector._title.is_visible_in_tree())
+	_check("...and so does a brick selected, %s (%s)" % ["its properties open" if both
+		else "the bin still open", white.get_global_rect().position],
+		white.get_global_rect().position == was and dock.is_open()
+		and (not both or shell.inspector._title.is_visible_in_tree()))
 	await _shot("first_timer_grid_selected_" + named)
 	shell.outliner.set_open(true)
 	await _frames(12)
@@ -2721,14 +3007,24 @@ func _one_column_at_a_time() -> void:
 
 ## Open a side column by its rail, as a person does, if it is folded: a
 ## window with room for one column beside the model shows one at a time.
+## The name of the column a panel is in, for _show_column: the properties'
+## and the model tree's are down the right, or a phone's drawer.
+func _column_of(panel: Control) -> String:
+	var dock: SideDock = SideDock.of(panel)
+	for named: String in ["_bin_dock", "_props_dock", "_chat_dock"]:
+		if _main.get(named) == dock:
+			return named
+	return "_bin_dock"
+
+
 func _show_column(dock_name: String) -> void:
 	var dock: SideDock = _main.get(dock_name)
 	if dock.is_open():
 		return
 	await _click(dock.rail().get_global_rect().get_center())
 	await _frames(30)
-	_check("its rail opens the %s" % ("parts bin, the model tree and the properties"
-		if dock_name == "_bin_dock" else "assistant"), dock.is_open())
+	_check("its rail opens the %s" % {"_bin_dock": "parts bin",
+		"_props_dock": "model tree and the properties"}.get(dock_name, "assistant"), dock.is_open())
 
 
 func _frames(count: int) -> void:

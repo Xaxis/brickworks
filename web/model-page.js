@@ -17,10 +17,15 @@
 // comment, Report on each, Remove on one's own, Hide and Show on each and
 // comments off or on for the model's owner, replies as comments. What a
 // stranger wrote is set as text, never as markup, and a link in it stays
-// words.
+// words; an @handle the server told (docs/SOCIAL.md section 7, item 6) is
+// a link to that profile, and typing @ in a box offers the people on the
+// page (pickMentions).
 import { askToSignIn, call, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { avatarHtml } from "/kit.js";
+import { HOWS, basedHtml, mentionPieces } from "/card.js";
+import { wireShare } from "/share-sheet.js";
+import { start3d } from "/start3d.js";
 
 // The comments' own loader, once they are listed (startComments), for
 // Comment in the action bar to list them again after signing in.
@@ -33,11 +38,17 @@ if (marks && /^[A-Za-z0-9]{10}$/.test(id || "")) start();
 else if (marks && /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/.test(id || "")) {
   const sheet = document.getElementById("share-sheet");
   const share = marks.querySelector("[data-share]");
-  if (sheet && share) shareSheet(share, sheet);
+  if (sheet && share) wireShare(share, sheet);
 }
 // This month's challenge (supabase/challenges.sql), for the model's own
 // designer: Enter this month's challenge, or that it is in.
 if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) challengeEntry();
+// What it is based on (api/_bases.js), for the model's own designer: Say
+// what it is based on, or Change it, in a dialog of at most three; the
+// page's lines drawn again from what was kept. <html data-bases> says how
+// many its designer's page shows, "not-open" before model_bases.sql
+// (tools/web/based_on_flow.mjs reads it).
+if (marks && /^[A-Za-z0-9]{10}$/.test(id || "") && signedIn()) basesOwn();
 const comments = document.getElementById("comments");
 if (comments && /^[A-Za-z0-9]{10}$/.test(comments.dataset.id || "")) startComments(comments);
 
@@ -47,6 +58,11 @@ const PHONE = matchMedia("(width < 600px)");
 // fails is asked for again, twice, before the frame says there is none.
 const frame = document.querySelector(".model-page .picture");
 if (frame) startPicture(frame);
+// Its model in 3D, in the picture's frame (viewer369): View in 3D, a click
+// on the picture or the first drag across it (web/start3d.js, as the embed
+// has it). Drawn by /viewer3d.js (tools/viewer/inline.js), asked for only
+// then.
+const close3d = frame && frame.dataset.scene ? start3d(frame).close : null;
 
 // The strip of its pictures (api/share.js mediaStrip): the one chosen is
 // shown in the picture's place, whole, and edged in the strip. The picture
@@ -161,6 +177,7 @@ function startPictures(row) {
     const thumb = event.target.closest("a.thumb[data-picture]");
     if (!thumb) return;
     event.preventDefault();
+    if (close3d) close3d();
     img.src = thumb.dataset.picture;
     img.alt = thumb.querySelector("img")?.alt || img.alt;
     // The published picture fills its frame; a photo is shown whole.
@@ -455,6 +472,21 @@ function startComments(section) {
   /// The viewer at [at], a step of version [of]: Build it, opened there.
   const viewerAt = (of, at) => `/app?view=${model}${of === newest ? "" : `&v=${of}`}&step=${at}`;
 
+  /// Who a comment may name here: the designer, then everybody who said
+  /// something on the page, newest first, each once; {handle, name}.
+  function people() {
+    const found = new Map();
+    const designer = document.querySelector(".shared-by a.who");
+    const handle = /^\/u\/([a-z0-9-]{3,24})$/.exec(designer?.getAttribute("href") || "");
+    if (handle) found.set(handle[1], { handle: handle[1], name: designer.querySelector(".names b")?.textContent || handle[1] });
+    for (const one of [...(state?.comments || [])].reverse()) {
+      if (one.handle && !found.has(one.handle)) found.set(one.handle, { handle: one.handle, name: one.by || one.handle });
+      for (const named of one.mentions || []) if (!found.has(named.handle)) found.set(named.handle, named);
+    }
+    return [...found.values()];
+  }
+  pickMentions(box, people);
+
   /// Somebody signed out may say something: the box is everybody's, and
   /// sending signs them in first. Whether they may then is the server's.
   const mayTry = () => state.you?.may_write || (!state.you?.signed_in && state.open);
@@ -510,7 +542,19 @@ function startComments(section) {
     }
     const words = document.createElement("p");
     words.className = "comment-body";
-    words.textContent = one.body;
+    // Words as text; each @handle its writer named, a link to them.
+    for (const piece of mentionPieces(one.body, one.mentions)) {
+      if (typeof piece === "string") {
+        words.append(piece);
+        continue;
+      }
+      const link = document.createElement("a");
+      link.className = "mention";
+      link.href = `/u/${encodeURIComponent(piece.handle)}`;
+      link.title = piece.name;
+      link.textContent = piece.at;
+      words.append(link);
+    }
     main.append(head, words);
     if (one.hidden) {
       const note = document.createElement("p");
@@ -674,6 +718,7 @@ function startComments(section) {
       field.addEventListener("input", () => {
         replying = { id: to, text: field.value };
       });
+      pickMentions(field, people);
       made.addEventListener("submit", (event) => {
         event.preventDefault();
         sendReply(to, field, post);
@@ -1019,81 +1064,9 @@ function tabCount(tab, n) {
   shown.textContent = value.toLocaleString("en-US");
 }
 
-/// [text] on the clipboard: the browser's clipboard where the page may use
-/// it (a secure page), else the older way, through a selection. Whether it
-/// went.
-async function copy(text) {
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    // The older way, below.
-  }
-  const box = document.createElement("textarea");
-  box.value = text;
-  box.setAttribute("readonly", "");
-  box.className = "visually-hidden";
-  document.body.append(box);
-  box.select();
-  let done = false;
-  try {
-    done = document.execCommand("copy");
-  } catch {
-    done = false;
-  }
-  box.remove();
-  return done;
-}
-
-/// Share's sheet (api/share.js shareSheet, docs/SOCIAL.md U14): the site's
-/// dialog with the page's link and the embed code, each copied by its own
-/// button and said so in the sheet (the toast, outside a dialog that is
-/// open, is behind it for a screen reader too); and where the browser has a
-/// share sheet of its own, a phone's, a way to it, given the link. The
-/// link is selected as it opens, so a keyboard's copy takes it too.
-/// Escape and Close close it, back on Share.
-function shareSheet(share, sheet) {
-  const said = sheet.querySelector(".said");
-  const link = sheet.querySelector("#share-link");
-  const app = sheet.querySelector("[data-share-app]");
-  const url = link.value;
-  const title = document.querySelector("main h1")?.textContent || document.title;
-  share.addEventListener("click", () => {
-    app.hidden = !(typeof navigator.share === "function" && (!navigator.canShare || navigator.canShare({ url })));
-    said.textContent = "";
-    sheet.showModal();
-    document.documentElement.dataset.shared = "open";
-    link.focus();
-    link.select();
-  });
-  const COPIED = { "share-link": ["Link copied", "copied"], "share-embed": ["Embed code copied: paste it into your page", "embed"] };
-  for (const button of sheet.querySelectorAll("[data-copy]")) {
-    button.addEventListener("click", async () => {
-      const field = sheet.querySelector(`#${button.dataset.copy}`);
-      const [words, mark] = COPIED[button.dataset.copy];
-      const done = await copy(field.value);
-      said.textContent = done ? words : "It did not copy just now: select it and copy it yourself";
-      document.documentElement.dataset.shared = done ? mark : "failed";
-      if (!done) field.select();
-    });
-  }
-  app.addEventListener("click", async () => {
-    try {
-      await navigator.share({ title, url });
-      document.documentElement.dataset.shared = "sheet";
-      sheet.close();
-    } catch (trouble) {
-      // Closed without sharing: the sheet stays.
-      if (trouble && trouble.name !== "AbortError") said.textContent = "That did not open just now: copy the link instead";
-    }
-  });
-}
-
 /// The action bar (api/share.js actionBar): Like; Save, which opens your
 /// lists, Favourites first (docs/SOCIAL.md D2); Share, which opens its sheet
-/// (shareSheet); Comment and I built it, which go to their sections; and
+/// (web/share-sheet.js); Comment and I built it, which go to their sections; and
 /// More: Report it, Takedown requests, and the owner's own. Like and Save
 /// ask to sign in first when this browser is not.
 function start() {
@@ -1244,7 +1217,7 @@ function start() {
   });
 
   const sheet = document.getElementById("share-sheet");
-  if (sheet) shareSheet(share, sheet);
+  if (sheet) wireShare(share, sheet);
 
   // The box is everybody's: sending it signs a visitor in.
   comment.addEventListener("click", () => {
@@ -1454,4 +1427,281 @@ function enterDialog(said) {
     await challengeEntry();
   });
   dialog.showModal();
+}
+
+// ---------------------------------------------------------------------------
+// What it is based on (api/_bases.js, docs/SOCIAL.md section 7, item 5).
+
+/// For the model's own designer alone (the answer's mine): a line under
+/// what the page says it is based on, Say what it is based on or Change
+/// what it is based on, which opens the dialog.
+async function basesOwn() {
+  const answer = await call(`/api/share?op=bases&id=${id}`);
+  if (answer.status !== 200 || !answer.body.mine) return;
+  // Before supabase/model_bases.sql there is nowhere to keep a list.
+  if (!answer.body.ready) {
+    document.documentElement.dataset.bases = "not-open";
+    return;
+  }
+  let line = document.getElementById("bases-own");
+  if (!line) {
+    line = document.createElement("p");
+    line.id = "bases-own";
+    line.className = "from bases-own";
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.className = "link";
+    edit.addEventListener("click", () => basesDialog(line.bases || []));
+    line.append(edit);
+    const side = document.querySelector(".model-page .side");
+    const after = document.getElementById("based-on") || side?.querySelector(":scope > p.from:not(.modelled-by)")
+      || side?.querySelector(":scope > .facts");
+    if (!after) return;
+    after.after(line);
+  }
+  showBases(line, answer.body.bases || []);
+}
+
+/// The page's lines for [said], and its designer's line to change them.
+function showBases(line, said) {
+  line.bases = said;
+  document.getElementById("based-on")?.remove();
+  if (said.length) {
+    const made = document.createElement("template");
+    made.innerHTML = basedHtml(said);
+    line.before(made.content.firstElementChild);
+  }
+  line.querySelector("button").textContent = said.length ? "Change what it is based on" : "Say what it is based on";
+  document.documentElement.dataset.bases = String(said.length);
+}
+
+/// The dialog: at most three, each how it is based on it, then a set's
+/// number or a link, and for a link its title, author and licence. The
+/// server checks the set against the catalogue and says what is wrong in
+/// words.
+function basesDialog(current) {
+  const dialog = document.createElement("dialog");
+  dialog.className = "sign-in report bases-dialog";
+  const title = document.createElement("h2");
+  title.textContent = "What it is based on";
+  title.id = "bases-title";
+  dialog.setAttribute("aria-labelledby", title.id);
+  const lede = document.createElement("p");
+  lede.textContent = "A LEGO® set you built it from or changed, or work elsewhere you changed or took ideas from. "
+    + "Its page credits each, at most three.";
+  const form = document.createElement("form");
+  form.noValidate = true;
+  const list = document.createElement("ol");
+  list.className = "bases-rows";
+  const add = document.createElement("button");
+  add.type = "button";
+  add.className = "link";
+  add.textContent = "Add another";
+  const field = (labelText, input) => {
+    const label = document.createElement("label");
+    label.className = "field";
+    label.append(document.createTextNode(labelText), input);
+    return label;
+  };
+  const text = (name, most, hint = "") => {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.name = name;
+    input.maxLength = most;
+    input.autocomplete = "off";
+    if (hint) input.placeholder = hint;
+    return input;
+  };
+  const counted = () => {
+    [...list.children].forEach((row, at) => { row.querySelector("legend").textContent = `Based on, ${at + 1} of ${list.children.length}`; });
+    add.hidden = list.children.length >= 3;
+  };
+  const addRow = (one = {}) => {
+    const row = document.createElement("li");
+    const box = document.createElement("fieldset");
+    const legend = document.createElement("legend");
+    legend.className = "visually-hidden";
+    const how = document.createElement("select");
+    how.name = "how";
+    for (const [value, words] of [["alternate", "An alternate build of a set"], ["changed", HOWS.changed],
+      ["inspired", HOWS.inspired]]) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = words;
+      how.append(option);
+    }
+    how.value = one.how && HOWS[one.how] ? one.how : "alternate";
+    const what = text("what", 300, "6080-1, or https://…");
+    what.value = one.set || one.url || "";
+    const linked = document.createElement("div");
+    linked.className = "link-fields";
+    const named = text("title", 120);
+    named.value = one.url ? one.name || "" : "";
+    const author = text("author", 80);
+    author.value = one.author || "";
+    const licence = text("licence", 60, "CC BY 4.0");
+    licence.value = one.licence || "";
+    linked.append(field("Its title", named), field("Its author", author), field("Its licence", licence));
+    const shown = () => { linked.hidden = !/^\s*https?:/i.test(what.value); };
+    what.addEventListener("input", shown);
+    shown();
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "link";
+    remove.textContent = "Remove";
+    remove.addEventListener("click", () => {
+      row.remove();
+      counted();
+      add.focus();
+    });
+    box.append(legend, field("How", how), field("A set's number, or a link", what), linked, remove);
+    row.append(box);
+    list.append(row);
+    counted();
+    return row;
+  };
+  for (const one of current.slice(0, 3)) addRow(one);
+  if (!current.length) addRow();
+  add.addEventListener("click", () => addRow().querySelector("select").focus());
+  const status = document.createElement("div");
+  status.className = "said";
+  status.setAttribute("role", "status");
+  const send = document.createElement("button");
+  send.className = "cta";
+  send.type = "submit";
+  send.textContent = "Save";
+  const close = document.createElement("button");
+  close.className = "cta ghost";
+  close.type = "button";
+  close.textContent = "Cancel";
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  actions.append(send, close);
+  form.append(list, add, actions, status);
+  dialog.append(title, lede, form);
+  document.body.append(dialog);
+  const end = () => {
+    dialog.close();
+    dialog.remove();
+    document.querySelector("#bases-own button")?.focus();
+  };
+  close.addEventListener("click", end);
+  dialog.addEventListener("cancel", end);
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const bases = [...list.querySelectorAll("fieldset")].map((box) => {
+      const value = (name) => box.querySelector(`[name="${name}"]`).value.trim();
+      const what = value("what");
+      if (!what) return null;
+      return /^https?:/i.test(what)
+        ? { how: value("how"), url: what, title: value("title"), author: value("author"), licence: value("licence") }
+        : { how: value("how"), set: what };
+    }).filter(Boolean);
+    send.disabled = true;
+    status.textContent = "Saving…";
+    const answer = await call("/api/share?op=bases", { method: "POST", body: { model: id, bases } });
+    send.disabled = false;
+    if (answer.status !== 200) {
+      status.textContent = answer.body.error || "That did not go just now. Try again in a minute.";
+      document.documentElement.dataset.basesRefused = String(answer.status);
+      return;
+    }
+    const line = document.getElementById("bases-own");
+    if (line) showBases(line, answer.body.bases || []);
+    end();
+  });
+  dialog.showModal();
+  list.querySelector("select")?.focus();
+}
+
+/// @ in [field] offers [people]() whose handle or name starts with what
+/// follows it, at most six, under the field: Up and Down move, Enter or
+/// Tab puts the one marked in as @handle, Escape closes it (and only it).
+/// The field stays a box of several lines to a screen reader (a combobox
+/// is one line), its list a listbox it controls, the one marked its active
+/// descendant, and a status says when the list is there. Anybody may be
+/// named by typing their handle; this offers the ones on the page.
+function pickMentions(field, people) {
+  const list = document.createElement("ul");
+  list.className = "mention-pick";
+  list.id = `${field.id || "box"}-people`;
+  list.setAttribute("role", "listbox");
+  list.setAttribute("aria-label", "People to name");
+  list.hidden = true;
+  const said = document.createElement("span");
+  said.className = "visually-hidden";
+  said.setAttribute("role", "status");
+  field.after(list, said);
+  field.setAttribute("aria-autocomplete", "list");
+  field.setAttribute("aria-controls", list.id);
+  let shown = [];
+  let at = 0;
+  let typed = null;
+
+  const close = () => {
+    list.hidden = true;
+    shown = [];
+    typed = null;
+    said.textContent = "";
+    field.removeAttribute("aria-activedescendant");
+  };
+  const mark = (to) => {
+    at = (to + shown.length) % shown.length;
+    [...list.children].forEach((item, n) => item.setAttribute("aria-selected", String(n === at)));
+    field.setAttribute("aria-activedescendant", list.children[at].id);
+  };
+  const choose = (n) => {
+    const one = shown[n];
+    if (!one || !typed) return;
+    const before = field.value.slice(0, typed.start);
+    const after = field.value.slice(field.selectionStart);
+    const put = `@${one.handle}${/^\s/.test(after) ? "" : " "}`;
+    field.value = `${before}${put}${after}`;
+    // After the space that ends it, so the list does not open again on it.
+    const caret = before.length + put.length + (/^\s/.test(after) ? 1 : 0);
+    field.setSelectionRange(caret, caret);
+    close();
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  };
+  const look = () => {
+    const upto = field.value.slice(0, field.selectionStart);
+    const found = /(^|[^A-Za-z0-9_.@/-])@([A-Za-z0-9-]{0,23})$/.exec(upto);
+    if (!found || field.selectionStart !== field.selectionEnd) return close();
+    const asked = found[2].toLowerCase();
+    shown = people().filter((one) => one.handle.startsWith(asked) || one.name.toLowerCase().startsWith(asked)).slice(0, 6);
+    if (!shown.length) return close();
+    typed = { start: upto.length - found[2].length - 1 };
+    list.replaceChildren(...shown.map((one, n) => {
+      const item = document.createElement("li");
+      item.id = `${list.id}-${n}`;
+      item.setAttribute("role", "option");
+      const name = document.createElement("b");
+      name.textContent = one.name;
+      const handle = document.createElement("small");
+      handle.textContent = `@${one.handle}`;
+      item.append(name, " ", handle);
+      // Chosen without the field losing its focus.
+      item.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        choose(n);
+      });
+      return item;
+    }));
+    list.hidden = false;
+    const words = `${shown.length} ${shown.length === 1 ? "person" : "people"} to name: up and down to choose, Enter to put one in`;
+    if (said.textContent !== words) said.textContent = words;
+    mark(0);
+  };
+  field.addEventListener("input", look);
+  field.addEventListener("click", look);
+  field.addEventListener("blur", close);
+  field.addEventListener("keydown", (event) => {
+    if (list.hidden) return;
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") mark(at + (event.key === "ArrowDown" ? 1 : -1));
+    else if (event.key === "Enter" || event.key === "Tab") choose(at);
+    else if (event.key === "Escape") close();
+    else return;
+    event.preventDefault();
+    event.stopPropagation();
+  });
 }

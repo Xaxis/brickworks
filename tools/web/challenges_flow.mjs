@@ -59,6 +59,15 @@
 // page, which shows the winners and votes. Before that file is applied, the
 // year's form says it is not open yet, and 6 reads the hub as before.
 //
+// Who won is told (supabase/challenge_notices.sql, docs/SOCIAL.md section
+// 7, item 3): in 6 Ed, who voted and entered nothing, has it in his
+// Notifications, a group of the challenge's own, at 390 px (dark); its row
+// opens the challenge's page, and the group is read after. Bob and Ada,
+// who entered, hear it under their models instead. Before that file,
+// nobody has such a group.
+// Then its link: /challenge?id=N has this challenge's own title, words and
+// winner's picture in its head, under the page's security policy.
+//
 // Pictures in --out.
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintSession, answerAge, STORAGE_KEY } from "./session.mjs";
@@ -470,6 +479,21 @@ try {
     }
     await pictures(page);
     await shot(page, `5_challenge_visitor-${width}.png`);
+    // Share (docs/SOCIAL.md section 7): the site's sheet on the challenge's
+    // own page, so a link posted now opens this one after the next begins.
+    await page.click("#share");
+    await until(page, () => document.querySelector("dialog.share-sheet[open]"), "its share sheet");
+    const sheet = await page.evaluate(() => ({ link: document.getElementById("share-link")?.value || "",
+      heading: document.getElementById("share-h")?.textContent || "", focused: document.activeElement?.id || "",
+      to: [...document.querySelectorAll("dialog.share-sheet a[data-to]")].map((a) => [a.dataset.to, a.href]) }));
+    const reddit = new URL(sheet.to.find(([to]) => to === "reddit")?.[1] || "http://none/");
+    check(`...Share opens "${sheet.heading}" on ${sheet.link.replace(site, "")}; Reddit's title "${reddit.searchParams.get("title")}"; `
+      + `Post it to ${sheet.to.map(([to]) => to).join(", ")}`, sheet.heading === `Share ${TITLE}` && sheet.focused === "share-link"
+      && sheet.link === `${site}/challenge?id=${ids.challenge}&tests=1` && reddit.searchParams.get("url") === sheet.link
+      && new RegExp(`^${TITLE}: a Brickworks building challenge, \\d+ \\w+ \\d{4} to \\d+ \\w+ \\d{4}$`).test(reddit.searchParams.get("title") || "")
+      && sheet.to.map(([to]) => to).join() === "reddit,bluesky,x,facebook,email");
+    await shot(page, `5_challenge_share-${width}.png`, false);
+    await page.keyboard.press("Escape");
     if (width === 390) {
       await page.click(`.kept[data-entry="${ids.house}"] button`);
       const asked = await page.waitForSelector("dialog.sign-in[open]", { timeout: 10000 }).then(() => true).catch(() => false);
@@ -643,20 +667,80 @@ try {
     await visitor.close();
   }
   {
+    // Who won, told to whoever voted and entered nothing (supabase/
+    // challenge_notices.sql, docs/SOCIAL.md section 7, item 3): Ed hears
+    // it in his Notifications, a group of the challenge's own, "a model
+    // you voted for won"; Bob voted and entered, so hears it under his
+    // shed instead, and Ada, who only entered, the same. A challenge that
+    // is not there is refused once the file is applied; before it, reading
+    // one keeps nothing.
+    const nobody = await api("/api/people?op=notifications_read", { method: "POST", token: who.ed.access_token,
+      body: { challenge: Number.MAX_SAFE_INTEGER } });
+    const told = nobody.status === 404;
+    const badly = await api("/api/people?op=notifications_read", { method: "POST", token: who.ed.access_token, body: { challenge: "x" } });
+    check(`a challenge that is not there, read: ${nobody.status} ${JSON.stringify(nobody.body)}; no number: ${badly.status}`,
+      (told ? nobody.body.error === "There is no such challenge." : nobody.status === 200 && nobody.body.kept === false)
+      && badly.status === 400 && badly.body.error === "say which challenge, by its number");
+    const groupOf = async (person) => ((await api("/api/people?op=notifications", { token: person.access_token })).body.groups || [])
+      .find((one) => one.challenge === ids.challenge) || null;
+    const [eds, bobs, adas] = [await groupOf(who.ed), await groupOf(who.bob), await groupOf(who.ada)];
+    check(`Ed's notifications: ${eds ? `"${eds.name}", ${eds.rows.map((row) => `${row.kind}: ${row.did}`).join(" | ")}` : "no group"}; `
+      + `Bob's ${bobs ? "has" : "has none"}, Ada's ${adas ? "has" : "has none"}`, !bobs && !adas && (told
+      ? eds?.name === `Challenge: ${TITLE}` && eds.unread && eds.picture === null && eds.rows.length === 1
+        && eds.rows[0].kind === "challenge_won" && eds.rows[0].did === `“${TITLE}” has ended, and a model you voted for won`
+        && eds.link.endsWith(`/challenge?id=${ids.challenge}&tests=1`) && eds.rows[0].link === eds.link
+      : !eds));
+    if (told) {
+      const edsPage = await context({ as: who.ed, width: 390, height: 844, phone: true, dark: true });
+      const page = await edsPage.newPage();
+      listen(page, "Ed's notifications");
+      await page.goto(`${site}/notifications`, { waitUntil: "load" });
+      await until(page, () => document.documentElement.dataset.notifications === "ready", "his notifications");
+      const card = (id) => page.evaluate((one) => {
+        const item = document.querySelector(`#groups .notice[data-challenge="${one}"]`);
+        return item && { name: item.querySelector("h2 a")?.textContent || "", unread: item.classList.contains("unread"),
+          brick: Boolean(item.querySelector(".pic.challenge .icon")), line: item.querySelector(".lines .what")?.textContent || "",
+          icon: Boolean(item.querySelector(".lines a .icon")), href: item.querySelector(".lines a")?.getAttribute("href") || "" };
+      }, id);
+      const before = await card(ids.challenge);
+      check(`...on his page at 390 px: ${JSON.stringify(before)}, nothing sideways`,
+        before?.name === `Challenge: ${TITLE}` && before.unread && before.brick && before.icon
+        && before.line.startsWith(`“${TITLE}” has ended, and a model you voted for won`)
+        && before.href === `/challenge?id=${ids.challenge}&tests=1` && !(await sideways(page)));
+      await shot(page, "9b_challenge_heard-390.png", false);
+      await page.click(`#groups .notice[data-challenge="${ids.challenge}"] .lines a`);
+      await page.waitForURL(/\/challenge\?id=/, { timeout: 15000 });
+      await until(page, () => document.documentElement.dataset.challenge === "ended", "the challenge it opened");
+      const opened = page.url().endsWith(`/challenge?id=${ids.challenge}&tests=1`);
+      await page.goBack({ waitUntil: "load" });
+      await page.reload({ waitUntil: "load" });
+      await until(page, () => document.documentElement.dataset.notifications === "ready", "his notifications again");
+      const after = await card(ids.challenge);
+      const kept = await groupOf(who.ed);
+      check(`...its row opens the challenge's own page (${opened}); back, the group read (${!after?.unread}), and kept so (${kept && !kept.unread})`,
+        opened && after && !after.unread && kept && !kept.unread);
+      await edsPage.close();
+    }
+  }
+  {
     const visitor = await context({ width: 390, height: 844, phone: true });
     const page = await visitor.newPage();
     listen(page, "Ada's page");
     await page.goto(`${site}/u/${ADA}?tests=1`, { waitUntil: "load" });
     // Her win is the first of her achievements under her numbers
     // (api/people.js achievementsOf, docs/SOCIAL.md U13): what it won, the
-    // model and its votes on hover, a link to it; then the rest she earned.
+    // model and its votes on hover, a link to it; then the rest she earned:
+    // her levels once supabase/achievements.sql is there (the answer's
+    // levels), Challenger among them; else the marks of before.
+    const levelled = Array.isArray((await api(`/api/people?op=profile&handle=${ADA}&tests=1`)).body?.levels);
     const won = await page.evaluate((id) => ({ wins: [...document.querySelectorAll('.awards li[data-award="won"] a')].map((a) => ({
       said: a.textContent.replace(/\s+/g, " ").trim(), title: a.title, href: a.getAttribute("href") })),
       awards: [...document.querySelectorAll(".awards li")].map((li) => li.dataset.award).join(","),
       card: [...document.querySelectorAll(`.model[data-id="${id}"] small.won`)].map((s) => s.textContent) }), ids.house);
     check(`Ada's designer page: ${JSON.stringify(won)}`, won.wins.length === 1 && won.wins[0].said === `Won “${TITLE}”, by hand`
       && won.wins[0].title === `Challenge House ${rand}: 2 votes` && won.wins[0].href === `/m/${ids.house}`
-      && won.awards === "won,tested,listed" && won.card.length === 1 && won.card[0] === `Won “${TITLE}”, by hand`);
+      && (levelled ? /^won,designer,(.+,)?challenger$/.test(won.awards) && won.awards.includes(",tested,") : won.awards === "won,tested,listed")
+      && won.card.length === 1 && won.card[0] === `Won “${TITLE}”, by hand`);
     check("...nothing sideways at 390 px", !(await sideways(page)));
     await pictures(page);
     await page.evaluate(() => document.querySelector(".awards")?.scrollIntoView());
@@ -669,6 +753,31 @@ try {
     Boolean(card) && card.won?.length === 1 && card.won[0].title === TITLE && card.won[0].way === "hand");
   const visitorList = await api("/api/share?op=list&sort=newest");
   check("a visitor's gallery has no test model, and no win of a test challenge", !(visitorList.body.models || []).some((one) => one.id === ids.house));
+  {
+    // Its own link preview (docs/SOCIAL.md section 7, item 3): /challenge?id=N
+    // is the page with this challenge's title, words, address and its first
+    // winner's picture in its head, under the site's own security policy;
+    // asked without tests=1 a test challenge is not there, and the head is
+    // the page's own.
+    const raw = async (pathname) => {
+      const reply = await fetch(`${site}${pathname}`, { headers });
+      return { status: reply.status, csp: reply.headers.get("content-security-policy") || "", html: await reply.text() };
+    };
+    const tag = (html, name) => (html.match(new RegExp(`<meta (?:name|property)="${name}" content="([^"]*)">`)) || [])[1] || "";
+    const [own, plain, visitor] = [await raw(`/challenge?id=${ids.challenge}&tests=1`), await raw("/challenge?tests=1"),
+      await raw(`/challenge?id=${ids.challenge}`)];
+    const pictured = [ids.house, ids.shed].find((id) => (list.body.models || []).find((one) => one.id === id)?.image);
+    check(`its link's head: "${tag(own.html, "og:title")}", ${tag(own.html, "og:url").replace(site, "")}, `
+      + `${tag(own.html, "og:image").replace(site, "")}, ${tag(own.html, "robots")}; the page's policy ${own.csp === plain.csp && Boolean(own.csp)}`,
+      own.status === 200 && tag(own.html, "og:title") === `${TITLE} · Brickworks challenge`
+      && tag(own.html, "twitter:title") === tag(own.html, "og:title")
+      && tag(own.html, "og:url") === `${site}/challenge?id=${ids.challenge}&amp;tests=1`
+      && tag(own.html, "og:description").endsWith(": see who won.") && tag(own.html, "robots") === "noindex"
+      && tag(own.html, "og:image") === (pictured ? `${site}/m/${pictured}.png` : `${site}/share.png`)
+      && Boolean(own.csp) && own.csp === plain.csp && own.html.split("</head>")[1] === plain.html.split("</head>")[1]);
+    check(`...a visitor's, without tests=1: "${tag(visitor.html, "og:title")}"`,
+      visitor.status === 200 && tag(visitor.html, "og:title") === tag(plain.html, "og:title") && !visitor.html.includes(TITLE));
+  }
   const ended = await api("/api/admin?tests=1", { token: master.access_token });
   const row = (ended.body.challenges || []).find((one) => one.id === ids.challenge);
   check(`the admin's list: ${row?.state}, entries ${JSON.stringify(row?.entries)}, votes ${JSON.stringify(row?.votes)}, winners ${row?.winners?.length}`,

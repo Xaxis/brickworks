@@ -201,6 +201,10 @@ export function sitePages({ remote = "" } = {}) {
       ready: (page) => until(page, () => document.documentElement.dataset.profile === "ready") },
     { name: "account-insights", path: "/profile?tab=insights", signedInOnly: true,
       ready: (page) => until(page, () => document.documentElement.dataset.profile === "ready") },
+    // Your level on each track (supabase/achievements.sql), a tile each.
+    { name: "account-achievements", path: "/profile?tab=achievements", signedInOnly: true,
+      ready: (page) => until(page, () => document.documentElement.dataset.profile === "ready"
+        && document.querySelectorAll("#achievements li").length > 0) },
     // Your settings, apart from your profile (docs/SOCIAL.md U6): the same
     // rows the account page ended with.
     { name: "settings", path: "/settings",
