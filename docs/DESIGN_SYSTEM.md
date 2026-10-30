@@ -104,7 +104,7 @@ site356, 2026-10-29. And:
 | `--line-strong` | white or ink, 16-20% | a control's edge at rest, a card under the pointer, a menu |
 | `--shadow-1`, `--shadow-2`, `--shadow` | three steps | resting (a card, a ghost button), raised (a card under the pointer, a featured plan), floating (a dialog, a menu, the app's picture) |
 | `--highlight`, `--shine-btn` | an inset line of light | the top edge of a raised surface; a primary button's |
-| `--glow`, `--studs` | the yellow's light from above; a faint grid of studs | a landing page's opening (`.halo`) and its last offer (`.offer`) |
+| `--glow`, `--studs` | the yellow's light from above; a faint grid of studs | a landing page's opening (`.halo`) and its last offer (`.closing`) |
 | `--brick-red`, `-yellow`, `-blue`, `-green` | the bricks' colours, both themes | the 404's wall |
 | `--field` | `--bg-soft` | the fill of every field |
 | `--control-h` | 44 px | a field's and a button's height, so side by side they line up |
@@ -191,7 +191,7 @@ is on the page, `hidden`, for the script to show.
   `small` line, the way in, `.ticks`; `.featured` edged and lit in the
   accent), `.ticks` (a list, each with a green tick), `.table.matrix`
   (what each plan has: `tr.group` rows, `.has` and `.hasnt` marks, each
-  with its word for a screen reader) and `.offer` (the last offer).
+  with its word for a screen reader) and `.closing` (the last offer).
 - **Table**: `.table`, a `<table>` of facts in a box that scrolls inside
   itself where the table is wider than the page, never the page: a named
   region the keyboard reaches and scrolls (`role="region"`, its
@@ -251,8 +251,9 @@ is on the page, `hidden`, for the script to show.
   LDraw, and a `small.set` line, its number · theme · year.
 - **Width**: `--page` (1,140 px) for a page of words; `--page-wide`
   (1,600 px) for a page of cards and pictures, `.wrap.wide`: the gallery, a
-  person, a collection, a model's page, the feed and the landing page's
-  row of models; and for the header and the footer on every page, so the
+  person, a collection, a model's page and the feed (the landing page's
+  two strips keep `--page` since site356, in line with its other
+  sections, and scroll inside it); and for the header and the footer on every page, so the
   mark and the account sit where they do on the gallery. Nothing was wider
   than 1,140 px, 59% of a 1920 window, four cards to a row (site273). A
   model's page: from 1200 px its column is 420 px and its picture the

@@ -2,28 +2,29 @@
 <!--
   The page brickworks.diy serves at its root.
 
-  Short on purpose (the owner, 2026-10-13: "overly wordy and verbose and
-  none elegant"; 2026-10-20: "complete garbage"). It shows rather than
-  says: one line, one way in, the app itself with a real model open; then
-  six pictures from the app of what a Studio or LDD user cannot do there
-  (a builder on Reddit: "Studio exists, LDD exists… why?"), each in a
-  line; a strip from the live gallery; and the assistant last, as what it
-  is, an option that is off until you turn it on ("that Assistant looks
-  worryingly AI"). /compare sets each point beside Studio, Mecabricks,
-  LeoCAD and LDCad, sourced, with where they still lead. Every claim is
-  something the app does today (.claude/skills/verify/features/web.md); the
-  lines were brought up to the app on 2026-10-24 (copy252): a phone, gears
-  meshed by hand, the weakest joints, a part found by any of its names or a
-  photo, booklets saved as PDF, building together.
+  Rebuilt on the design system (site356, 2026-10-29, the owner: "next
+  level UI/UX", the way Linear, Vercel or Stripe sell theirs). It sells
+  what Brickworks is, in the order a visitor asks: what it is and the app
+  itself (the opening, a real screenshot with a castle open); how it
+  works, in three steps; the AI designer and its fresh eyes, shown by a
+  real before and after from the bench (bench/results/
+  ideas-2026-10-27-critic315-vs-main315a, the chameleon: the same brief
+  built without and with, judged blind both ways round); what people made
+  and the real sets of the LDraw library, live; what is in the app, with
+  three pictures from it and the rest as features; the web and the
+  desktop; the plans; and one last offer. Every claim is something the
+  app does today (.claude/skills/verify/features/web.md, docs-site/), as
+  the earlier page's lines were brought up to the app on 2026-10-24
+  (copy252); the AI is said as what it is, off until you turn it on and on
+  your own plan or key ("that Assistant looks worryingly AI").
 
-  Static apart from the gallery strip, which web/landing.js fills from
-  /api/share as it nears the screen, showing a card only once its picture
-  has arrived, and the strip only once three have: it can never show a
-  dead card. The pictures are in web/img/ (img/manifest.json says where
-  each came from), WebP at the widths a laptop and a phone each need (the
-  six at 400, 720 and full: a phone at twice its density took 310 KB of
-  them at 1200), every one with its size given so nothing moves as they
-  arrive. The header and footer are web/_shell.html
+  Static apart from the two strips, which web/landing.js fills from
+  /api/share (the gallery's Top, and the LDraw library) as they near the
+  screen, showing a card only once its picture has arrived and a strip
+  only once three have: it can never show a dead card. The pictures are in
+  web/img/ (img/manifest.json says where each came from), WebP at the
+  widths a laptop and a phone each need, every one with its size given so
+  nothing moves as they arrive. The header and footer are web/_shell.html
   (tools/site_shell.py). The JSON-LD at the foot is data, not script: the
   site's content security policy runs no inline script.
 -->
@@ -32,7 +33,7 @@
 <meta charset="utf-8">
 <script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Brickworks — a complete CAD for LEGO® models</title>
+<title>Brickworks — design LEGO® models with AI, in your browser</title>
 <meta name="oc-domain-verify" content="38ed3e13e5fecb1a4a11263170a7f3b6db925be6373c8142" />
 <meta name="description" content="Brickworks is a free CAD for LEGO® models that runs in any browser, a tablet’s or a phone’s too, with nothing to install: it checks that a model stands and which joints will give, turns gear trains at their real ratios, builds one model with others live, opens and saves Studio .io, and exports 3D, renders and booklets to print or save as PDF. Also on the desktop.">
 <link rel="canonical" href="https://brickworks.diy/">
@@ -63,47 +64,44 @@
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <style>
-/* -- the opening: one line, one way in, and the app itself --------- */
-.hero { padding: clamp(48px, 7vw, 88px) 0 0; text-align: center; }
-.hero h1 { max-width: 15ch; margin-inline: auto; }
-.hero .lede { margin: 0 auto var(--s-5); }
-.hero .note { margin-top: var(--s-3); }
-.hero .note a { color: var(--ink-soft); }
-.hero-shot { margin-top: clamp(36px, 5vw, 56px); }
-/* Wider than the words on a big screen: it is the thing to look at. */
-@media (width >= 1600px) { .hero-shot { margin-inline: -110px; } }
+/* Only layout here; every control and panel is site.css's (the landing kit). */
+.hero { padding: clamp(56px, 8vw, 104px) 0 0; text-align: center; }
+.hero .wrap > .badge { margin-bottom: var(--s-5); }
+.hero h1 { max-width: 16ch; margin-inline: auto; margin-bottom: var(--s-4); }
+.hero .lede { margin: 0 auto var(--s-6); max-width: 58ch; }
+.hero .note { margin-top: var(--s-4); }
+.hero-shot { margin-top: clamp(40px, 6vw, 72px); border-radius: var(--r-4); }
 .hero-shot img { aspect-ratio: 16 / 9; }
-/* A window's bar over the picture, with the app's address in it: the
-   point that it runs in a browser, made without a word. */
-.window { display: flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px;
-	background: var(--panel-hi); border-bottom: 1px solid var(--line); }
-.window i { width: 10px; height: 10px; border-radius: 50%; background: var(--line); flex: none; }
-.window span { flex: 0 1 340px; margin-inline: auto; padding: 3px 12px; border-radius: var(--r-1);
-	background: var(--bg-soft); font-size: var(--t-micro); color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The app's picture runs under the next section's line, wider than the
+   words on a big screen: it is the thing to look at. */
+@media (width >= 1600px) { .hero-shot { margin-inline: -110px; } }
 
-/* A section's title, and a way to more of it beside it. */
-.section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between;
-	gap: var(--s-2) var(--s-5); margin: 0 0 var(--s-5); }
-.section-head h2 { margin: 0; }
-.section-head a { color: var(--ink-soft); font-size: var(--t-small); }
-
-/* -- what it does that the others do not, from the app -------------- */
-.proofs { display: grid; gap: 16px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
+/* Three pictures from the app, over the rest as features. */
+.proofs { display: grid; gap: var(--s-4); grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 var(--s-4); padding: 0; list-style: none; }
 .proofs .shot { height: 100%; }
 .proofs .shot img { aspect-ratio: 16 / 10; object-fit: cover; }
 .proofs figcaption { padding: 14px 18px 18px; }
 .proofs figcaption b { margin-bottom: 2px; }
-@media (width < 900px) { .proofs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (width < 600px) { .proofs { grid-template-columns: minmax(0, 1fr); } }
+@media (width < 900px) { .proofs { grid-template-columns: minmax(0, 1fr); } }
+@media (width >= 600px) and (width < 900px) { .proofs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .proofs li:last-child { grid-column: 1 / -1; } }
 .also { margin: var(--s-5) 0 0; color: var(--ink-soft); font-size: var(--t-small); max-width: 92ch; }
 
-/* -- the assistant, last, as the option it is ------------------------ */
-.assistant { display: grid; gap: var(--s-5) clamp(24px, 5vw, 72px); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
-.assistant p { margin: 0 0 var(--s-4); color: var(--ink-soft); max-width: 56ch; }
-.assistant p:last-child { margin-bottom: 0; }
-/* Its way to more, on a line of its own: a finger's target (site.css Targets). */
-.assistant p > a:only-child { padding-block: 6px; }
-@media (width < 900px) { .assistant { grid-template-columns: minmax(0, 1fr); } }
+/* The AI designer: its words beside the before and after. */
+.designer .lines { display: grid; gap: var(--s-3); margin: var(--s-5) 0; }
+.designer .quote { margin: var(--s-4) 0 0; padding-left: var(--s-4); border-left: 2px solid var(--accent-edge); color: var(--ink-soft); font-size: var(--t-small); }
+.strip + .strip { margin-top: var(--s-7); }
+
+/* The web and the desktop, two panels with their ways in. */
+.platforms { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); }
+@media (width >= 900px) { .platforms { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.platforms .tier .actions { margin-top: auto; padding-top: var(--s-2); }
+.platforms .tier .cta { width: auto; }
+.plans-teaser { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); max-width: 880px; margin-inline: auto; }
+@media (width >= 900px) { .plans-teaser { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.plans-teaser .ticks { margin-bottom: var(--s-2); }
+.plans-teaser .tier > .cta { margin-top: auto; }
+.more-plans { margin: var(--s-5) 0 0; text-align: center; color: var(--ink-soft); font-size: var(--t-small); }
+.more-plans a { padding-block: 6px; }
 </style>
 <script src="/follow.js" type="module"></script>
 <script src="/landing.js" type="module"></script>
@@ -145,112 +143,240 @@
 </header>
 
 <main id="main">
-	<section class="wrap hero" aria-labelledby="hero-h">
-		<h1 class="display" id="hero-h">A complete CAD for LEGO® models</h1>
-		<p class="lede">In your browser, on a computer, tablet or phone. Nothing to install, and free.</p>
-		<div class="actions center">
-			<a class="cta big" href="/app">Open Brickworks</a>
-		</div>
-		<p class="note"><a href="/download">Also for Windows, macOS and Linux</a></p>
-		<figure class="shot hero-shot">
-			<div class="window" aria-hidden="true"><i></i><i></i><i></i><span>brickworks.diy/app</span></div>
-			<img src="/img/hero-1200.webp"
-				srcset="/img/hero-1200.webp 1200w, /img/hero-2400.webp 2400w, /img/hero-3200.webp 3200w"
-				sizes="(min-width: 1400px) 1360px, (min-width: 1180px) 1140px, calc(100vw - 32px)"
-				width="2400" height="1350" fetchpriority="high" decoding="async"
-				alt="The Brickworks builder with a castle of 2,438 parts open and its gatehouse selected: menus and a toolbar across the top; down the left the parts bin, the model tree of its sub-assemblies, and the gatehouse's properties, a sub-assembly of 406 parts; the view cube at top right; and in the middle a stone castle with towers, a moat and a courtyard, the gatehouse outlined in yellow.">
-		</figure>
-	</section>
-
-	<section id="features" class="wrap" aria-labelledby="features-h">
-		<div class="section-head">
-			<h2 id="features-h">Built for builds that have to work</h2>
-			<a href="/compare">How it compares</a>
-		</div>
-		<ul class="proofs">
-			<li><figure class="shot">
-				<img src="/img/stability-400.webp"
-					srcset="/img/stability-400.webp 400w, /img/stability-720.webp 720w, /img/stability-1200.webp 1200w"
-					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
-					width="1200" height="900" decoding="async"
-					alt="Tools, Check stability on an arm reaching far past a small base: the base's footprint drawn on the floor in red, the centre of mass marked beyond its edge with a line to it, and the joints carrying more than they can hold tinted a lighter red.">
-				<figcaption><b>Will it stand?</b>Where it tips, which joints carry more than they can hold, and what would fix each.</figcaption>
-			</figure></li>
-			<li><figure class="shot">
-				<img src="/img/simulate-400.webp"
-					srcset="/img/simulate-400.webp 400w, /img/simulate-720.webp 720w, /img/compare-simulate.webp 1200w"
-					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
-					width="1200" height="750" loading="lazy" decoding="async"
-					alt="Tools, Simulate mechanism on an orrery of the Sun and eight planets: the panel lists each planet's period in Earth years beside the real one, every one within 0.3%, and the gear trains tinted by speed.">
-				<figcaption><b>Gears at their real ratios</b>They mesh as you put them down. Turn the crank and every train turns: an orrery’s planets within 0.3% of their real years.</figcaption>
-			</figure></li>
-			<li><figure class="shot">
-				<img src="/img/grab-400.webp"
-					srcset="/img/grab-400.webp 400w, /img/grab-720.webp 720w, /img/grab-960.webp 960w"
-					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
-					width="960" height="600" loading="lazy" decoding="async"
-					alt="The Technic Container Truck in the builder, side on: its red lifting arm swung on its hinges by hand, the linear actuator that drives it stretched to follow and outlined in light blue, above two big wheels on a green baseplate.">
-				<figcaption><b>Grab it like the real thing</b>A boom swings on its hinges, steering turns on its rack, an actuator stretches.</figcaption>
-			</figure></li>
-			<li><figure class="shot">
-				<img src="/img/compare-io-400.webp"
-					srcset="/img/compare-io-400.webp 400w, /img/compare-io-720.webp 720w, /img/compare-io-1200.webp 1200w"
-					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
-					width="1200" height="750" loading="lazy" decoding="async"
-					alt="The File menu over a tree of LEGO® bricks, with Export open and BrickLink Studio model (.io) lit, among LDraw, 3D model, a picture, a BrickLink wanted list and a Rebrickable parts list.">
-				<figcaption><b>Your Studio files, both ways</b>Open and save BrickLink Studio <code>.io</code> and LDraw. LEGO® Digital Designer files open too.</figcaption>
-			</figure></li>
-			<li><figure class="shot">
-				<img src="/img/booklet-400.webp"
-					srcset="/img/booklet-400.webp 400w, /img/booklet-720.webp 720w, /img/booklet-1200.webp 1200w"
-					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
-					width="1200" height="900" loading="lazy" decoding="async"
-					alt="A page of the building instructions for a small red car: steps 5 to 8, each with a box of the parts it adds above a drawing of the car so far, and a progress bar and the page number along the foot.">
-				<figcaption><b>Booklets</b>Set the order and the pages, then print it like the one in the box, or save it as a PDF.</figcaption>
-			</figure></li>
-			<li><figure class="shot">
-				<img src="/img/technic-400.webp"
-					srcset="/img/technic-400.webp 400w, /img/technic-720.webp 720w, /img/technic-1200.webp 1200w"
-					sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
-					width="1200" height="900" loading="lazy" decoding="async"
-					alt="A Technic go-kart in the builder, close up: a red frame of Technic beams on four black wheels, a steering wheel on a grey column, and one beam selected and outlined in yellow, on a green baseplate.">
-				<figcaption><b>Every part, at true size</b>All of LDraw’s library, found by its BrickLink or Rebrickable name too, an element number or a photo. Pins, axles and studs join where the real ones do.</figcaption>
-			</figure></li>
-		</ul>
-		<p class="also" id="also">And one model built together, live, by a link; your models on every device you sign
-			in on; worked constructions in the parts bin; 3D export at true size, renders up to 4K, and what your own sets can build.</p>
-	</section>
-
-	<!-- Filled by web/landing.js from the live gallery once three cards have
-	     their pictures; until then a row of skeletons holds its place, so the
-	     page under it does not move when it comes. Taken away only when the
-	     gallery cannot be read. Eight, as many as the cards (landing.js
-	     MOST): five spread wider than eight cards, and stood taller. -->
-	<section id="made" class="wrap wide" aria-labelledby="made-h">
-		<div class="section-head">
-			<h2 id="made-h">Made in Brickworks</h2>
-			<a href="/gallery">The gallery</a>
-		</div>
-		<div class="models row" id="made-models">
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+	<section class="hero halo" aria-labelledby="hero-h">
+		<div class="wrap">
+			<a class="badge accent" href="/docs/fresh-eyes">New: fresh eyes for every AI design <span aria-hidden="true">→</span></a>
+			<h1 class="display" id="hero-h">Design LEGO® models with AI, <em>in your browser</em></h1>
+			<p class="lede">Describe a model and watch an AI build it from real parts, or build it by hand. A complete CAD that checks it stands, opens your Studio files and prints the booklet. Nothing to install, and free.</p>
+			<div class="actions center">
+				<a class="cta big" href="/app">Open the app <span class="arrow" aria-hidden="true">→</span></a>
+				<a class="cta ghost big" href="/download">Download for desktop</a>
+			</div>
+			<p class="note">On a computer, tablet or phone. The AI runs on your own Claude plan or key, and is off until you turn it on.</p>
+			<figure class="shot hero-shot">
+				<div class="window" aria-hidden="true"><i></i><i></i><i></i><span>brickworks.diy/app</span></div>
+				<img src="/img/hero-1200.webp"
+					srcset="/img/hero-1200.webp 1200w, /img/hero-2400.webp 2400w, /img/hero-3200.webp 3200w"
+					sizes="(min-width: 1600px) 1360px, (min-width: 1180px) 1140px, calc(100vw - 32px)"
+					width="2400" height="1350" fetchpriority="high" decoding="async"
+					alt="The Brickworks builder with a castle of 2,438 parts open and its gatehouse selected: menus and a toolbar across the top; down the left the parts bin, the model tree of its sub-assemblies, and the gatehouse's properties, a sub-assembly of 406 parts; the view cube at top right; and in the middle a stone castle with towers, a moat and a courtyard, the gatehouse outlined in yellow.">
+			</figure>
 		</div>
 	</section>
 
-	<section id="assistant" class="wrap" aria-labelledby="assistant-h">
-		<div class="assistant">
-			<h2 id="assistant-h">An engineer’s assistant, off until you want one</h2>
+	<section class="section" id="how" aria-labelledby="how-h">
+		<div class="wrap">
+			<div class="section-head">
+				<div>
+					<p class="eyebrow">How it works</p>
+					<h2 class="title" id="how-h">From a sentence to a model you can build</h2>
+				</div>
+				<a href="/docs/ai">Designing with AI</a>
+			</div>
+			<ol class="steps">
+				<li><h3>Say what you want</h3><p>“A red fire engine with a ladder that lifts.” Type it in the app’s assistant, or ask Claude in claude.ai and it builds in your open tab.</p></li>
+				<li><h3>Watch it build, part by part</h3><p>Each part goes down as the AI places it, every one from the LDraw library at true size. The app decides whether each part fits and holds, so what it builds is buildable.</p></li>
+				<li><h3>Make it yours, then build it</h3><p>Change anything by hand, check that it stands, then print the booklet, take the parts list to BrickLink or Rebrickable, or share it to the gallery.</p></li>
+			</ol>
+		</div>
+	</section>
+
+	<section class="section designer" id="assistant" aria-labelledby="assistant-h">
+		<div class="wrap split">
 			<div>
-				<p>Turn it on and Claude checks the physics of what you built, finds the joints that
-					will fail and suggests a stronger build. It can design from a sentence too. It runs
-					on your own Claude plan or key; off, there is no AI anywhere in the window.</p>
-				<p><a href="/faq#claude">How to bring your Claude</a></p>
+				<p class="eyebrow">The AI designer</p>
+				<h2 class="title" id="assistant-h">It looks again, with fresh eyes</h2>
+				<p>Every new design gets a stranger’s look at its first save: three pictures of the model and your own words. What does it read as? What reads as a generic box? Then the three changes a set designer would make first, made.</p>
+				<p>Judged against the same designs without it, designs with fresh eyes were preferred in two of every three verdicts.</p>
+				<div class="lines">
+					<p class="quote">Claude, or another AI on your own key, builds with the same real parts and checks you do. Off, there is no AI anywhere in the window.</p>
+				</div>
+				<div class="actions">
+					<a class="cta ghost" href="/docs/fresh-eyes">How fresh eyes works</a>
+					<a class="link" href="/faq#claude">How to bring your Claude</a>
+				</div>
+			</div>
+			<figure class="ba">
+				<div class="pair">
+					<figure class="side">
+						<span class="badge">Without fresh eyes</span>
+						<img src="/img/fresh-before-400.webp" srcset="/img/fresh-before-400.webp 400w, /img/fresh-before-720.webp 720w"
+							sizes="(min-width: 1180px) 300px, (min-width: 900px) 26vw, calc(50vw - 22px)"
+							width="720" height="540" loading="lazy" decoding="async"
+							alt="A chameleon built in bricks without fresh eyes: a boxy green body striped in orange and blue on a brown branch over a dark stand, its tail a flat squared-off spiral behind it and its pink tongue held straight out.">
+					</figure>
+					<figure class="side">
+						<span class="badge accent">With fresh eyes</span>
+						<img src="/img/fresh-after-400.webp" srcset="/img/fresh-after-400.webp 400w, /img/fresh-after-720.webp 720w"
+							sizes="(min-width: 1180px) 300px, (min-width: 900px) 26vw, calc(50vw - 22px)"
+							width="720" height="540" loading="lazy" decoding="async"
+							alt="The same brief built with fresh eyes: a slimmer chameleon with turret eyes and a crest along its back, its tail curled in a round spiral and its tongue out to a fly, on a twisting branch over a grey-edged stand with plants, rocks and a nameplate.">
+					</figure>
+				</div>
+				<figcaption id="also">From our bench: one brief, “a chameleon on a twisty branch, catching a fly with its tongue shot out, curled tail, turret eyes”, built twice. Judged blind, both ways round, the one with fresh eyes won on likeness, realism, creativity, technique and overall.</figcaption>
+			</figure>
+		</div>
+	</section>
+
+	<!-- Filled by web/landing.js once three cards of each have their
+	     pictures; until then a row of skeletons holds each strip's place, so
+	     the page under it does not move when it comes. Taken away only when
+	     it cannot be read. Eight, as many as the cards (landing.js MOST). -->
+	<section class="section" id="community" aria-labelledby="made-h">
+		<div class="wrap strip" id="made">
+			<div class="section-head">
+				<div>
+					<p class="eyebrow">The gallery</p>
+					<h2 class="title" id="made-h">Made in Brickworks</h2>
+				</div>
+				<a href="/gallery">See the gallery</a>
+			</div>
+			<div class="models row" id="made-models">
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			</div>
+		</div>
+		<div class="wrap strip" id="sets">
+			<div class="section-head">
+				<div>
+					<p class="eyebrow">The LDraw library</p>
+					<h2 id="sets-h">Real sets, ready to open</h2>
+					<p>Every official model of a real set the LDraw community has made, each a page of its own and one press from the builder.</p>
+				</div>
+				<a href="/library">Browse the library</a>
+			</div>
+			<div class="models row" id="sets-models">
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			</div>
+		</div>
+	</section>
+
+	<section class="section" id="features" aria-labelledby="features-h">
+		<div class="wrap">
+			<div class="section-head">
+				<div>
+					<p class="eyebrow">In the app</p>
+					<h2 class="title" id="features-h">Built for builds that have to work</h2>
+				</div>
+				<a href="/compare">How it compares</a>
+			</div>
+			<ul class="proofs">
+				<li><figure class="shot">
+					<img src="/img/stability-400.webp"
+						srcset="/img/stability-400.webp 400w, /img/stability-720.webp 720w, /img/stability-1200.webp 1200w"
+						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
+						width="1200" height="900" loading="lazy" decoding="async"
+						alt="Tools, Check stability on an arm reaching far past a small base: the base's footprint drawn on the floor in red, the centre of mass marked beyond its edge with a line to it, and the joints carrying more than they can hold tinted a lighter red.">
+					<figcaption><b>Will it stand?</b>Where it tips, which joints carry more than they can hold, and what would fix each.</figcaption>
+				</figure></li>
+				<li><figure class="shot">
+					<img src="/img/simulate-400.webp"
+						srcset="/img/simulate-400.webp 400w, /img/simulate-720.webp 720w, /img/compare-simulate.webp 1200w"
+						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
+						width="1200" height="750" loading="lazy" decoding="async"
+						alt="Tools, Simulate mechanism on an orrery of the Sun and eight planets: the panel lists each planet's period in Earth years beside the real one, every one within 0.3%, and the gear trains tinted by speed.">
+					<figcaption><b>Gears at their real ratios</b>They mesh as you put them down. Turn the crank and every train turns: an orrery’s planets within 0.3% of their real years.</figcaption>
+				</figure></li>
+				<li><figure class="shot">
+					<img src="/img/booklet-400.webp"
+						srcset="/img/booklet-400.webp 400w, /img/booklet-720.webp 720w, /img/booklet-1200.webp 1200w"
+						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
+						width="1200" height="900" loading="lazy" decoding="async"
+						alt="A page of the building instructions for a small red car: steps 5 to 8, each with a box of the parts it adds above a drawing of the car so far, and a progress bar and the page number along the foot.">
+					<figcaption><b>Booklets</b>Set the order and the pages, then print it like the one in the box, or save it as a PDF.</figcaption>
+				</figure></li>
+			</ul>
+			<ul class="features">
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#build"></use></svg></span><h3>Every part, at true size</h3><p>All of LDraw’s library, found by its BrickLink or Rebrickable name, an element number or a photo. Pins, axles and studs join where the real ones do.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#file"></use></svg></span><h3>Your Studio files, both ways</h3><p>Open and save BrickLink Studio <code>.io</code> and LDraw. LEGO® Digital Designer files open too.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#move"></use></svg></span><h3>Grab it like the real thing</h3><p>A boom swings on its hinges, steering turns on its rack, an actuator stretches.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#people"></use></svg></span><h3>Build together, live</h3><p>One model built by several people at once, by a link, each seeing the others’ parts go down.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#camera"></use></svg></span><h3>Renders and 3D export</h3><p>Renders up to 4K, 3D export at true size, and parts lists for BrickLink and Rebrickable.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#devices"></use></svg></span><h3>On every device</h3><p>Your models on every device you sign in on, and what your own sets can build.</p></li>
+			</ul>
+		</div>
+	</section>
+
+	<section class="section" id="platforms" aria-labelledby="platforms-h">
+		<div class="wrap">
+			<div class="section-head">
+				<div>
+					<p class="eyebrow">Web and desktop</p>
+					<h2 class="title" id="platforms-h">In your browser. On your desktop.</h2>
+				</div>
+			</div>
+			<div class="platforms">
+				<article class="tier">
+					<div class="name"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#globe"></use></svg></span><h3>In any browser</h3></div>
+					<p>The whole builder at brickworks.diy/app: on a computer, a tablet or a phone, with nothing to install. Your models follow you to every device you sign in on.</p>
+					<div class="actions"><a class="cta" href="/app">Open the app</a></div>
+				</article>
+				<article class="tier">
+					<div class="name"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#monitor"></use></svg></span><h3>Windows, macOS and Linux</h3></div>
+					<p>The desktop app works offline with every part on disk, handles the biggest models, and starts Claude Code for you. It comes with Pro once Pro opens; until then it is free to download.</p>
+					<div class="actions"><a class="cta ghost" href="/download">Download</a></div>
+				</article>
+			</div>
+		</div>
+	</section>
+
+	<section class="section" id="plans" aria-labelledby="plans-h">
+		<div class="wrap">
+			<div class="section-head center">
+				<div>
+					<p class="eyebrow">Pricing</p>
+					<h2 class="title" id="plans-h">Free in your browser. Pro is coming.</h2>
+					<p>Start free and stay free. Pro adds the desktop app and AI builds without a limit.</p>
+				</div>
+			</div>
+			<div class="plans-teaser">
+				<article class="tier">
+					<div class="name"><h3>Free</h3></div>
+					<p class="price"><b>$0</b></p>
+					<ul class="ticks">
+						<li>The web app, in any browser</li>
+						<li><b>10 AI builds a month</b></li>
+						<li>Building by hand without a limit</li>
+					</ul>
+					<a class="cta ghost" href="/app">Open the app</a>
+				</article>
+				<article class="tier featured">
+					<div class="name"><h3>Pro</h3><span class="badge accent">Coming soon</span></div>
+					<p class="price"><b>$8</b> a month, or $80 a year</p>
+					<ul class="ticks">
+						<li>Everything in Free</li>
+						<li><b>The desktop app</b> for Windows, macOS and Linux</li>
+						<li><b>AI builds without a limit</b></li>
+					</ul>
+					<a class="cta" href="/plans">See the plans</a>
+				</article>
+			</div>
+			<p class="more-plans">Had an account before 29 October 2026? You keep everything. <a href="/plans#had">What that means</a></p>
+		</div>
+	</section>
+
+	<section class="section" id="start" aria-labelledby="start-h">
+		<div class="wrap">
+			<div class="closing">
+				<h2 class="title" id="start-h">Build something today</h2>
+				<p class="lede">Open Brickworks in your browser and start from a sentence, a real set, or one brick.</p>
+				<div class="actions center">
+					<a class="cta big" href="/app">Open the app <span class="arrow" aria-hidden="true">→</span></a>
+					<a class="cta ghost big" href="/gallery">Browse the gallery</a>
+				</div>
 			</div>
 		</div>
 	</section>
