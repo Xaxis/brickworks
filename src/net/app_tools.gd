@@ -44,6 +44,8 @@ var _gallery: GalleryTool
 const COMMANDS: Dictionary = {
 	"new": "clear_model", "clear": "clear_model", "open": "open_model", "library": "open_model",
 	"save": "save_model", "save_as": "save_model", "versions": "open_model",
+	# open_model versions=true version=N reads what changed since that save.
+	"compare": "open_model",
 	"export_all": "export_model",
 	"export_ldraw": "export_model", "export_io": "export_model", "export_3d": "export_model",
 	"export_picture": "export_model", "export_bricklink": "export_model",
@@ -81,6 +83,7 @@ const WINDOW_ONLY: Dictionary = {
 	"share": "publishes the model on the web as the person, for anyone with the link and, ticked, in the public gallery: theirs to decide",
 	"account": "signing in is the person's",
 	"together": "lets another account build in the person's model, by a link they send: theirs to decide",
+	"comments": "a comment pinned to a part is a person's own words to the people who build the model with them; a session says what it has to say in its own replies",
 	"quit": "closes the app the session is driving",
 	"new_window": "opens another tab or window for the person, on a model of its own; a session works in the tab it is connected to, and clear_model begins a new model there",
 	"connector": "connects Claude to this tab; a session is already connected",
@@ -91,6 +94,8 @@ const WINDOW_ONLY: Dictionary = {
 	"lock": "keeps the person's own mouse off parts; a session changes only the parts it names",
 	"unlock": "keeps the person's own mouse off parts; a session changes only the parts it names",
 	"mirror": "a session lays the mirror image itself, with edit_model's add or the mirror shape",
+	"split_parts": "a session lays the parts it wants itself, with edit_model's remove and add; Split is the person's shortcut for that",
+	"merge_parts": "a session lays the parts it wants itself, with edit_model's remove and add; Merge is the person's shortcut for that",
 	"leave_submodel": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
 	"enter_assembly": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
 	"leave_assembly": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
@@ -112,6 +117,7 @@ const WINDOW_ONLY: Dictionary = {
 	"panel_*": "the window's panels",
 	"show_properties": "the window's panels",
 	"full_screen": "the window's panels",
+	"split_view": "the window's panels: a second view of the person's; view_model from= looks from any side",
 	"rotate_held": "the part in the person's hand; a session gives rot= and face=",
 	"tip_held": "the part in the person's hand; a session gives rot= and face=",
 	"measure": "a ruler for the person; a session's coordinates are already studs and plates",
@@ -127,6 +133,7 @@ const WINDOW_ONLY: Dictionary = {
 	"back_to_site": "leaves the web app for the website in the person's tab, ending the session's connection",
 	"feedback": "a report from the person to the people who make Brickworks, in their own words",
 	"beta_hub": "help for the person",
+	"reference": "a picture from the person's disk, picked in a dialog, for their own eyes to build over; a session is given pictures in the conversation",
 }
 
 ## What a session reads about these, served by read_guide("app") — every
@@ -150,8 +157,8 @@ of them, "earlier"/"later"/"merge"/"delete" act on a step by its number.
  - booklet_layout reads the booklet's pages and how each step is printed, \
 changing nothing; edit_booklet sets one step's view (turn=, tilt=, \
 "usual"), zoom=, size=, page= ("new", "alone"), parts=, callout= and the \
-booklet's per_page=, as the timeline's Booklet row does; place=, text= and \
-arrow= lay a page out by hand.
+booklet's per_page=, as the timeline's Booklet row does; place=, text=, \
+arrow= and guide= lay a page out by hand; callout_step= poses a callout's step.
  - lay_flex: a hose, a pneumatic tube, a flexible axle, a string or a \
 chain, laid between two connectors (pin holes, axles, studs) of two parts \
 by number, or round two sprockets; item= lays an existing one again.
@@ -183,7 +190,9 @@ is held still when named Frame.
  - open_model: lists the person's saved models and the examples, and \
 opens one. Over changes not saved it is refused unless discard_changes=true, \
 and undo brings back what it replaced. Each save is kept, the \
-last 20: name= with versions=true lists a model's, version=N opens one. \
+last 20: name= with versions=true lists a model's, version=N opens one; \
+versions=true with version=N opens nothing and says what changed since that \
+save, part by part, as File, Compare with… draws it. \
 link= opens a copy of a gallery model, as Open in Brickworks does; \
 library= opens LDraw's model of a real set (gallery library=true finds them).
  - parts_list: the model's parts by part and colour with element ids; \
@@ -318,15 +327,20 @@ func definitions() -> Array:
 				+ "a step turned more than 60 degrees round or 45 up or down gets; callout= false builds the "
 				+ "sub-assembly the step puts on on pages of its own; per_page= 1, 2, 4 or "
 				+ "0 (as they fit) for the whole booklet; highlight= false leaves the new parts "
-				+ "unoutlined in the whole booklet. The page by hand, one undo step each and "
+				+ "unoutlined in the whole booklet. callout_step= with step= is a step inside the "
+				+ "callout that step puts on, from 1: turn= and tilt= pose it apart, from the "
+				+ "way the callout faces. The page by hand, one undo step each and "
 				+ "alone in a call: place= moves an item of the step's page to x, y (and w, h) "
 				+ "in mm on the 269 x 199 page, as dragging it on Lay out the page does "
 				+ "(item picture, parts, callout or number; note with index= for words or a "
-				+ "picture added; remove=true takes a note off, back=true puts an item back "
+				+ "picture added, turn= degrees clockwise and opacity= percent turning and fading it; "
+				+ "remove=true takes a note off, back=true puts an item back "
 				+ "where the booklet lays it); text= puts words on the step's page; arrow= draws "
-				+ "an arrow on it, from x1, y1 to x2, y2, bent through bx, by if given, red (where "
-				+ "a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= changes or "
-				+ "removes one. What is placed goes with its step when the pages change. "
+				+ "an arrow on it, from x1, y1 to x2, y2, bent through bends= [[x, y], ...] if given, "
+				+ "red (where a part goes in) or black, 0.45, 0.9 or 1.4 mm wide, or with index= "
+				+ "changes, bends or removes one; guide= {axis x (upright) or y (across), at mm} "
+				+ "lays a guide on every page, which what is dragged snaps to, never printed "
+				+ "(was= moves one, remove=true takes it off). What is placed goes with its step when the pages change. "
 				+ "booklet_layout says where each is, and what was moved off what it overlapped. "
 				+ "follow=true lays out every later page with as many steps as the page step= "
 				+ "is on, as that page is laid out (Apply to later pages), one undo step. "
@@ -335,13 +349,16 @@ func definitions() -> Array:
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["step"], "properties": {
 				"step": {"type": "integer"},
+				"callout_step": {"type": "integer", "description": "a step inside the callout step= puts on, from 1"},
 				"highlight": {"type": "boolean"},
-				"place": {"type": "object", "description": "{item, x, y, w, h, index, remove}: w and h kept when omitted",
+				"place": {"type": "object", "description": "{item, x, y, w, h, index, turn, opacity, remove}: w and h kept when omitted",
 					"properties": {
 						"item": {"type": "string", "enum": ["picture", "parts", "callout", "number", "note"]},
 						"x": {"type": "number"}, "y": {"type": "number"},
 						"w": {"type": "number"}, "h": {"type": "number"},
 						"index": {"type": "integer", "description": "which note, from 0, for item note"},
+						"turn": {"type": "number", "description": "item note: degrees clockwise about its middle, -180 to 180"},
+						"opacity": {"type": "number", "description": "item note: percent, 5 to 100"},
 						"remove": {"type": "boolean"},
 						"back": {"type": "boolean", "description": "true: where the booklet lays it out again"}}},
 				"text": {"type": "object", "description": "{words, x, y, w, h, size}: mm, size the letters' height (4 when omitted)",
@@ -350,10 +367,12 @@ func definitions() -> Array:
 						"x": {"type": "number"}, "y": {"type": "number"},
 						"w": {"type": "number"}, "h": {"type": "number"},
 						"size": {"type": "number"}}},
-				"arrow": {"type": "object", "description": "{x1, y1, x2, y2, bx, by, colour, width, index, remove}: mm; colour red or black, width 0.45, 0.9 or 1.4; index= an arrow of the step's page to change, remove=true to take it off",
+				"arrow": {"type": "object", "description": "{x1, y1, x2, y2, bends, colour, width, index, remove}: mm; colour red or black, width 0.45, 0.9 or 1.4; index= an arrow of the step's page to change (bends= alone keeps its ends), remove=true to take it off",
 					"properties": {
 						"x1": {"type": "number"}, "y1": {"type": "number"},
 						"x2": {"type": "number"}, "y2": {"type": "number"},
+						"bends": {"type": "array", "items": {"type": "array", "items": {"type": "number"}},
+							"description": "[[x, y], ...]: the points it bends through, in order, up to 12; [] straightens it"},
 						"bx": {"type": "number"}, "by": {"type": "number"},
 						"colour": {"type": "string", "enum": ["red", "black"]},
 						"width": {"type": "number"},
@@ -369,17 +388,26 @@ func definitions() -> Array:
 				"callout": {"type": "boolean"},
 				"per_page": {"type": "integer", "enum": [0, 1, 2, 4]},
 				"follow": {"type": "boolean", "description": "true: the later pages laid out as step's page is"},
+				"guide": {"type": "object", "description": "{axis, at, was, remove}: mm from the page's left (x) or top (y)",
+					"properties": {
+						"axis": {"type": "string", "enum": ["x", "y"]},
+						"at": {"type": "number"},
+						"was": {"type": "number", "description": "where the guide to move or take off is"},
+						"remove": {"type": "boolean"}}},
 			}},
 		},
 		{
 			"name": "lay_flex",
-			"description": ("Lay a hose, tube, string or chain, as Build, Hose, tube or chain "
+			"description": ("Lay a hose, tube, string or chain, as Make, Hose, tube or chain "
 				+ "does: kind ribbed_hose, pneumatic_tube, flex_hose or flex_axle between two "
 				+ "parts' pin holes, axles or pins; string between two studs; chain or tread "
 				+ "round sprockets= (two or more gears in one plane). The real length that "
 				+ "fits is chosen, and it bends no tighter than the real one can. It goes in "
 				+ "as one sub-assembly, named in the answer; item= that name lays it again "
-				+ "between new ends."),
+				+ "between new ends. band: a rubber belt round sprockets= (pulleys, wheels, "
+				+ "bushes or axles, in order round the loop); spring: between from= and to=, "
+				+ "its turns kept when a part it is on moves. part= picks the band, the "
+				+ "spring or the shock absorber by number."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["kind"], "properties": {
 				"kind": {"type": "string", "enum": FlexTool.KIND_ORDER},
@@ -388,6 +416,7 @@ func definitions() -> Array:
 					"description": "part numbers of the gears a chain or tread goes round"},
 				"color": {"type": "integer", "description": "LDraw colour; black when omitted"},
 				"item": {"type": "string", "description": "a hose already laid, by its name in an earlier answer"},
+				"part": {"type": "string", "description": "a band, spring or shock absorber's number (85546, 73129)"},
 			}},
 		},
 		{
@@ -598,7 +627,10 @@ func definitions() -> Array:
 				+ "app, with their part counts; name= opens one in place of what is on the "
 				+ "baseplate, as File, Open does. Each save is kept as a version, the last 20, "
 				+ "as File, Versions… shows: versions=true lists name='s, newest first, and "
-				+ "version=N opens the Nth. link= a gallery model's link id (gallery) opens a "
+				+ "version=N opens the Nth; versions=true with version=N opens nothing and says "
+				+ "what changed in the model open now since that save, as Compare draws it: "
+				+ "each part added, removed, moved or turned, and recoloured, by number. "
+				+ "link= a gallery model's link id (gallery) opens a "
 				+ "copy of it saved in the person's models, as Open in Brickworks on its page "
 				+ "does. library= an id from gallery library=true (\"omr-10179-1\") opens LDraw's "
 				+ "model of that real set, credited to whoever made it, as File, Library… does. "
@@ -610,7 +642,7 @@ func definitions() -> Array:
 				"link": {"type": "string", "description": "a gallery model's link id, or its /m/ address"},
 				"library": {"type": "string", "description": "a library id from gallery library=true, like omr-10179-1, or a set's number or name"},
 				"versions": {"type": "boolean", "description": "list name='s saves kept as versions"},
-				"version": {"type": "integer", "description": "open this save of name=, 1 the newest"},
+				"version": {"type": "integer", "description": "open this save of name=, 1 the newest; with versions=true, compare the model open now with it"},
 				"discard_changes": {"type": "boolean"},
 			}},
 		},
@@ -673,7 +705,7 @@ func definitions() -> Array:
 		},
 		{
 			"name": "brickify",
-			"description": ("Lay a 3D model in LEGO® bricks, as Build, Brickify a 3D model… does: an "
+			"description": ("Lay a 3D model in LEGO® bricks, as Make, Brickify a 3D model… does: an "
 				+ "OBJ, STL, glTF/GLB, PLY, 3MF, VOX or FBX laid at the size asked (studs along "
 				+ "its longest side) "
 				+ "in slopes, curves and tiles, or plain bricks and plates, as one "
@@ -710,7 +742,7 @@ func definitions() -> Array:
 		{
 			"name": "print_part",
 			"description": ("Print a picture on a part of the model, or stick it on as a "
-				+ "sticker, as Build, Print on a part… and Put a sticker on… do. brick= the "
+				+ "sticker, as Make, Print on a part… and Put a sticker on… do. brick= the "
 				+ "part's number in look_at_model. A print goes on one of the part's "
 				+ "printable areas (area=, the first when omitted; a wrong one is answered "
 				+ "with its areas), and the printed part takes the part's place in its "
@@ -721,7 +753,7 @@ func definitions() -> Array:
 				+ "proportions; flat colours print best), picture_data= a picture's own bytes "
 				+ "as base64 or a data: URI (a PNG or JPEG the person gave you in the "
 				+ "conversation; at most 2 MB, smaller is quicker), or picture_url= an http(s) "
-				+ "link to a PNG, JPEG, WebP or SVG. Or the LEGO Group's own, as Edit, Printed "
+				+ "link to a PNG, JPEG, WebP or SVG. Or the LEGO Group's own, as Make, Printed "
 				+ "versions… does: version= one of the part's printed or stickered versions from "
 				+ "the library (versions=\"words\" lists them) swaps the part for it where it "
 				+ "stands; sticker_part= a sticker the library has (search_parts \"sticker\") "
@@ -1140,6 +1172,25 @@ func _edit_booklet(input: Dictionary) -> String:
 	if at == null:
 		return "There is no step %d: the steps run 1 to %d." % [int(input.get("step", 0)),
 			steps[steps.size() - 1].number]
+	if input.has("callout_step"):
+		var inside: Instructions.Step = _step_numbered(steps, at.number,
+			maxi(1, int(input["callout_step"])))
+		if inside == null or int(input["callout_step"]) < 1:
+			return ("Step %d puts on no sub-assembly built in a callout." % at.number) \
+				if not at.attaches() or at.callout_steps <= 0 \
+				else "Step %d's callout has steps 1 to %d." % [at.number, at.callout_steps]
+		at = inside
+		var whole: Array = input.keys().filter(func(field: String) -> bool:
+			return not field in ["step", "callout_step", "turn", "tilt", "place", "text", "arrow", "guide"])
+		if not whole.is_empty():
+			return ("A callout's step takes turn= and tilt=, and on a callout with pages of its "
+				+ "own place=, text= and arrow=; %s= is the callout's own, set on step %d.") \
+				% [str(whole[0]), at.number]
+	if int(input.has("place")) + int(input.has("text")) + int(input.has("arrow")) \
+			+ int(input.has("guide")) > 1:
+		return "One at a time: place=, text=, arrow= or guide=, each its own undo step."
+	if input.has("guide"):
+		return _lay_guide(input["guide"], at)
 	if input.has("place") or input.has("text") or input.has("arrow"):
 		return await _edit_page(input, at)
 	if bool(input.get("follow", false)):
@@ -1186,10 +1237,52 @@ func _edit_booklet(input: Dictionary) -> String:
 	var now: String = ""
 	if at.authored_step >= 0 or AuthorSteps.any(world, store.scenery):
 		var again: Instructions.Step = _step_numbered(Instructions.plan(world, library,
-			store.scenery, {}, true), at.number)
+			store.scenery, {}, true), at.number, at.callout_step)
 		if again != null and again.authored_step >= 0:
 			now = BookletLooks.said(world, again.authored_in, again.authored_step)
-	return said + (("; step %d is now: %s" % [at.number, now]) if not now.is_empty() else "")
+			if again.in_callout() and now.is_empty():
+				now = "seen as the callout faces"
+	var named: String = ("step %d's callout step %d" % [at.number, at.callout_step]) \
+		if at.in_callout() else "step %d" % at.number
+	return said + (("; %s is now: %s" % [named, now]) if not now.is_empty() else "")
+
+
+## A guide on every page of the booklet (Shell.change_look "guide"), as
+## dragging one out of the page editor's ruler lays it: one undo.
+func _lay_guide(given: Variant, at: Instructions.Step) -> String:
+	var guide: Dictionary = given if given is Dictionary else {}
+	var axis: String = str(guide.get("axis", ""))
+	if not axis in ["x", "y"]:
+		return "guide= {axis: \"x\" (upright, at= mm from the left) or \"y\" (across, from the top), at}."
+	var most: float = Booklet.PAGE.x if axis == "x" else Booklet.PAGE.y
+	var fields: Dictionary = {"axis": axis, "at": null, "was": guide.get("was")}
+	if bool(guide.get("remove", false)):
+		fields["was"] = guide.get("was", guide.get("at"))
+		if fields["was"] == null:
+			return "guide= {axis, at, remove: true}: at= is the guide to take off."
+	elif not guide.has("at") or float(guide["at"]) < 0.0 or float(guide["at"]) > most:
+		return "guide= at= is 0 to %s mm from the page's %s." % [BookletLooks._number(most),
+			"left" if axis == "x" else "top"]
+	else:
+		fields["at"] = float(guide["at"])
+	var had: Dictionary = BookletLooks.guides(app.get("_world"))
+	var said: String = (app.get("_shell") as Shell).change_look("guide", at, fields)
+	var now: Dictionary = BookletLooks.guides(app.get("_world"))
+	if now == had:
+		return "No guide %s at %s mm to %s: the guides are %s." % [
+			"upright" if axis == "x" else "across", BookletLooks._number(float(fields["was"])),
+			"take off" if fields["at"] == null else "move", _guides_said(now)] \
+			if fields["was"] != null else said
+	return "%s; the guides now: %s. Nothing printed shows them." % [said, _guides_said(now)]
+
+
+static func _guides_said(guides: Dictionary) -> String:
+	var each := PackedStringArray()
+	for axis: String in ["x", "y"]:
+		for at: Variant in guides.get(axis, []):
+			each.append("%s at %s mm" % ["upright" if axis == "x" else "across",
+				BookletLooks._number(float(at))])
+	return "none" if each.is_empty() else ", ".join(each)
 
 
 ## The page by hand (Shell.change_look "place", "note", "text"), as the
@@ -1197,9 +1290,10 @@ func _edit_booklet(input: Dictionary) -> String:
 ## the step has on its page now, as the page editor keeps it.
 func _edit_page(input: Dictionary, at: Instructions.Step) -> String:
 	var shell: Shell = app.get("_shell")
-	if int(input.has("place")) + int(input.has("text")) + int(input.has("arrow")) > 1:
-		return "One at a time: place=, text= or arrow=, each its own undo step."
 	var entry: Booklet.Entry = await _laid_entry(at)
+	if at.in_callout() and (entry == null or entry.panel.size.x <= 0.0):
+		return ("Step %d's callout is built in a box on step %d's page: lay out that page, "
+			+ "or callout=false gives the callout pages of its own.") % [at.number, at.number]
 	var room: Variant = BookletLooks.said_rect(entry.panel) if entry != null else null
 	if input.has("arrow"):
 		var arrow: Dictionary = input["arrow"] if input["arrow"] is Dictionary else {}
@@ -1207,27 +1301,36 @@ func _edit_page(input: Dictionary, at: Instructions.Step) -> String:
 		for name: String in ["x1", "y1", "x2", "y2"]:
 			if arrow.has(name):
 				points.append(float(arrow[name]))
-		if arrow.has("bx") and arrow.has("by") and points.size() == 4:
-			points.append_array([float(arrow["bx"]), float(arrow["by"])])
+		var bends: Variant = _bends_of(arrow)
+		if bends is String:
+			return bends
 		if arrow.has("index"):
-			var fields: Dictionary = {"index": int(arrow["index"]), "room": room}
+			var index: int = int(arrow["index"])
+			var fields: Dictionary = {"index": index, "room": room}
 			if bool(arrow.get("remove", false)):
 				fields["remove"] = true
+			elif points.is_empty() and bends != null and entry != null \
+					and index >= 0 and index < entry.drawn_arrows.size():
+				# Bent alone: its ends kept where they are on the page.
+				var had: Array = BookletLooks.arrow_points(entry.drawn_arrows[index])
+				if not had.is_empty():
+					points = [(had[0] as Vector2).x, (had[0] as Vector2).y,
+						(had[1] as Vector2).x, (had[1] as Vector2).y]
 			if points.size() >= 4:
-				fields["at"] = points
+				fields["at"] = points + (bends if bends != null else [])
 			for name: String in ["colour", "width"]:
 				if arrow.has(name):
 					fields[name] = arrow[name]
 			var changed: String = shell.change_look("arrow_edit", at, fields)
-			if points.size() >= 4 and not fields.has("remove"):
-				changed += _aimed(entry, at.number, points, int(arrow["index"]))
+			if arrow.has("x2") and arrow.has("y2") and not fields.has("remove"):
+				changed += _aimed(entry, at.number, points, index)
 			return changed
 		if points.size() < 4:
 			return "arrow= {x1, y1, x2, y2} in mm: where it starts and where it points."
 		var index: int = entry.drawn_arrows.size() if entry != null else 0
-		return shell.change_look("arrow", at, {"at": points, "colour": str(arrow.get("colour", "red")),
-			"width": float(arrow.get("width", 0.9)), "room": room}) \
-			+ _aimed(entry, at.number, points, index)
+		return shell.change_look("arrow", at, {"at": points + (bends if bends != null else []),
+			"colour": str(arrow.get("colour", "red")), "width": float(arrow.get("width", 0.9)),
+			"room": room}) + _aimed(entry, at.number, points, index)
 	if input.has("text"):
 		var given: Variant = input["text"]
 		var text: Dictionary = given if given is Dictionary else {"words": str(given)}
@@ -1244,12 +1347,27 @@ func _edit_page(input: Dictionary, at: Instructions.Step) -> String:
 		if bool(place.get("remove", false)):
 			fields["remove"] = true
 		else:
-			var now: Rect2 = _now_at(entry, "note", int(place.get("index", -1)))
-			fields["at"] = [float(place.get("x", now.position.x)), float(place.get("y", now.position.y)),
-				float(place.get("w", now.size.x)), float(place.get("h", now.size.y))]
+			# Turned about its middle and faded, as the page editor's knob and
+			# Opacity do; moved too only where x, y, w or h is given.
+			if place.has("opacity"):
+				var percent: float = float(place["opacity"])
+				if percent < BookletLooks.FAINTEST * 100.0 or percent > 100.0:
+					return "opacity= is percent, %d to 100: 50 is half seen." \
+						% roundi(BookletLooks.FAINTEST * 100.0)
+				fields["opacity"] = percent / 100.0
+			if place.has("turn"):
+				fields["turn"] = float(place["turn"])
+			if not (fields.has("turn") or fields.has("opacity")) \
+					or ["x", "y", "w", "h"].any(func(name: String) -> bool: return place.has(name)):
+				var now: Rect2 = _now_at(entry, "note", int(place.get("index", -1)))
+				fields["at"] = [float(place.get("x", now.position.x)), float(place.get("y", now.position.y)),
+					float(place.get("w", now.size.x)), float(place.get("h", now.size.y))]
 		return shell.change_look("note", at, fields)
 	if not BookletLooks.ITEMS.has(item):
 		return "place= {item: picture, parts, callout, number or note, x, y, w, h} in mm."
+	if place.has("turn") or place.has("opacity"):
+		return ("turn= and opacity= turn and fade words or a picture added: place= {item: "
+			+ "\"note\", index, turn, opacity}. The step's %s is drawn as the booklet draws it.") % item
 	if bool(place.get("back", false)):
 		return shell.change_look("place", at, {"item": item, "at": null, "room": room})
 	if not place.has("x") or not place.has("y"):
@@ -1325,9 +1443,36 @@ func _laid_entry(at: Instructions.Step) -> Booklet.Entry:
 		if page.kind != "steps":
 			continue
 		for entry: Booklet.Entry in page.entries:
-			if entry.number == at.number:
-				return entry
+			if entry.number != at.number:
+				continue
+			# A callout's step: on its own pages, or in the box on this one.
+			if at.in_callout():
+				return entry.callout.steps[at.callout_step - 1] if entry.callout != null \
+					and at.callout_step <= entry.callout.steps.size() else null
+			return entry
 	return null
+
+
+## The points [param arrow] (edit_booklet's arrow=) bends through, flat
+## [bx, by, ...]: its bends=, or bx and by; null when it gives none, or
+## what is wrong with them.
+static func _bends_of(arrow: Dictionary) -> Variant:
+	if arrow.has("bx") and arrow.has("by") and not arrow.has("bends"):
+		return [float(arrow["bx"]), float(arrow["by"])]
+	if not arrow.has("bends"):
+		return null
+	var given: Variant = arrow["bends"]
+	var flat: Array = []
+	for point: Variant in given if given is Array else [null]:
+		if point is Array and (point as Array).size() == 2:
+			flat.append_array([float(point[0]), float(point[1])])
+		elif point is Dictionary and (point as Dictionary).has("x") and (point as Dictionary).has("y"):
+			flat.append_array([float(point["x"]), float(point["y"])])
+		else:
+			return "bends= is [[x, y], ...] in mm: the points the arrow bends through, in order."
+	if flat.size() / 2 > BookletLooks.MOST_BENDS:
+		return "An arrow bends through at most %d points." % BookletLooks.MOST_BENDS
+	return flat
 
 
 ## Where [param item] of [param entry]'s page is laid out, in page mm.
@@ -1348,10 +1493,19 @@ static func _now_at(entry: Booklet.Entry, item: String, index: int = -1) -> Rect
 
 ## The step of the model with this number: the one that puts a callout on,
 ## not a step inside it, which carries the same number.
-static func _step_numbered(steps: Array[Instructions.Step], number: int) -> Instructions.Step:
+## The step numbered [param number], the model's own; with [param inside],
+## that step of the callout it puts on (a callout's steps carry the number of
+## the step that puts it on).
+static func _step_numbered(steps: Array[Instructions.Step], number: int,
+		inside: int = 0) -> Instructions.Step:
 	var found: Instructions.Step = null
 	for step: Instructions.Step in steps:
-		if step.number == number and (found == null or step.callout_step == 0):
+		if step.number != number:
+			continue
+		if inside > 0:
+			if step.callout_step == inside:
+				return step
+		elif found == null or step.callout_step == 0:
 			found = step
 	return found
 
@@ -1429,7 +1583,15 @@ func _lay_flex(input: Dictionary) -> String:
 	var chain: bool = str(Flex.KINDS[kind]["family"]) == "links"
 	var anchors: Array = []
 	var sprockets: Array = []
-	if chain:
+	if kind == "band":
+		for raw: Variant in input.get("sprockets", []):
+			var brick: BrickWorld.Brick = _brick(int(raw))
+			if brick == null or Bands.round_of(brick, library) == null:
+				return "#%d is not round: a band goes round a pulley, a wheel, a bush or an axle." % int(raw)
+			sprockets.append(brick.id)
+		if sprockets.size() < 2:
+			return "Give sprockets= two or more round parts' numbers, in order round the loop."
+	elif chain:
 		for raw: Variant in input.get("sprockets", []):
 			var brick: BrickWorld.Brick = _brick(int(raw))
 			if brick == null or Flex.sprocket_of(brick, library) == null:
@@ -1472,7 +1634,8 @@ func _lay_flex(input: Dictionary) -> String:
 		if best.is_empty():
 			return "Both ends are the same connector; give two."
 		anchors = best
-	var laid: Flex.Laid = await flex.lay(kind, anchors, sprockets, colour, item)
+	var laid: Flex.Laid = await flex.lay(kind, anchors, sprockets, colour, item,
+		str(input.get("part", "")))
 	if laid == null or laid.pieces.is_empty():
 		var why: String = "" if laid == null else "; ".join(laid.warnings)
 		return "Nothing laid%s." % (": " + why if not why.is_empty() else
@@ -2348,6 +2511,10 @@ func _open(input: Dictionary) -> String:
 	if not str(input.get("library", "")).strip_edges().is_empty():
 		return await _open_library(str(input["library"]).strip_edges(),
 			bool(input.get("discard_changes", false)))
+	# A model's saves with no name: the model open now's.
+	if name.is_empty() and bool(input.get("versions", false)) and not store.example \
+			and store.title != ModelStore.UNTITLED:
+		name = store.title
 	if name.is_empty():
 		var said := PackedStringArray()
 		said.append("Open now: %s." % store.title)
@@ -2376,6 +2543,8 @@ func _open(input: Dictionary) -> String:
 	if bool(input.get("versions", false)):
 		if kept.is_empty():
 			return "No saves of %s are kept as versions yet: each save from now on is." % chosen.name
+		if input.has("version"):
+			return _compare(chosen, kept, int(input["version"]))
 		var rows := PackedStringArray(["%s's saves, newest first (version=N opens one):"
 			% chosen.name])
 		for n: int in kept.size():
@@ -2405,8 +2574,34 @@ func _open(input: Dictionary) -> String:
 		return "Could not open %s: %s. The model on the baseplate, %s, is as it was." % [
 			chosen.name, store.not_opened, store.title]
 	bar.opened.emit(placed)
-	return "Opened %s: %d parts. look_at_model to see it." % [chosen.name, placed] \
-		+ _replaced_words(store, unsaved, was) + _opened_motions()
+	return "Opened %s: %d parts%s. look_at_model to see it." % [chosen.name, placed,
+		ModelBar.unshown_words(store)] + _replaced_words(store, unsaved, was) + _opened_motions()
+
+
+## open_model versions=true version=N: what changed in the model open now
+## since its save [param version] of [param kept], as File, Compare with…
+## matches it (ModelDiff), and inside the sub-assembly the person is editing
+## when they are; opening nothing and drawing nothing.
+func _compare(chosen: ModelStore.Entry, kept: Array[ModelVersions.Version], version: int) -> String:
+	var store: ModelStore = app.get("_store")
+	if version < 1 or version > kept.size():
+		return "%s has %d versions: version is 1 (the newest) to %d. versions=true lists them." % [
+			chosen.name, kept.size(), kept.size()]
+	if chosen.example or chosen.name.to_lower() != store.title.to_lower():
+		return ("A save is compared with the model open now, %s; %s is not open. open_model "
+			+ "name=%s opens it first.") % [store.title, chosen.name, chosen.name]
+	var text: String = ModelVersions.read(kept[version - 1].path)
+	if text.is_empty():
+		return "That save of %s could not be read." % chosen.name
+	var shell: Shell = app.get("_shell")
+	var inside: String = shell.assemblies.entered if shell != null and shell.assemblies != null \
+		else ""
+	var library: PartLibrary = app.get("_library")
+	var diff: ModelDiff = ModelDiff.between(ModelDiff.parts_of_text(text, library, inside),
+		ModelDiff.parts_of_world(app.get("_world"), store.scenery, store.lift(), store.awaited,
+			inside))
+	return CompareView.said_of(diff, kept[version - 1], inside, library) \
+		+ "\nNothing was opened or changed. File, Compare with… shows the person the same."
 
 
 ## Why an open is refused: the person's changes would go, and a session
@@ -2797,7 +2992,7 @@ func _brickify(input: Dictionary, work: Working.Job = null) -> String:
 	elif bool(input.get("pick", false)):
 		if OS.has_feature("web"):
 			return ("In a browser the file chooser opens only from the person's own click: ask "
-				+ "them to choose Build, Brickify a 3D model…, then call brickify with neither "
+				+ "them to choose Make, Brickify a 3D model…, then call brickify with neither "
 				+ "url nor pick to lay what they chose.")
 		if DisplayServer.get_name() == "headless":
 			return "This app is running without a window, so there is no file dialog to open."
@@ -2881,7 +3076,7 @@ func _brickify(input: Dictionary, work: Working.Job = null) -> String:
 func _brickify_file(dialog: BrickifyDialog, path: String) -> String:
 	if OS.has_feature("web"):
 		return ("In a browser the app cannot read a file on the person's computer: ask them to "
-			+ "choose Build, Brickify a 3D model…, then call brickify with neither file nor url "
+			+ "choose Make, Brickify a 3D model…, then call brickify with neither file nor url "
 			+ "to lay what they chose.")
 	var at: String = path.uri_decode().trim_prefix("file://") if path.to_lower().begins_with(
 		"file://") else path
@@ -2984,7 +3179,7 @@ func _print_part(input: Dictionary) -> String:
 	var depth: int = builder.history_depth()
 	studio.last_placed = 0
 	# The LEGO Group's own: a printed version of the part, or a sticker of
-	# the library's, as Edit, Printed versions… and a sticker in hand do.
+	# the library's, as Make, Printed versions… and a sticker in hand do.
 	if input.has("versions"):
 		return _versions_of(studio, brick, str(input["versions"]))
 	if input.has("version") or input.has("sticker_part"):

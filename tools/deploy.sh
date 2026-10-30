@@ -158,7 +158,7 @@ mkdir -p ".vercel/output/static/b/$sha"
 # browser taking brotli is sent (the route below): Vercel compressed them
 # on the fly, which sent the wasm as 9.6 MB and the pack as 21 MB, where
 # export.sh's brotli 11 makes 6.9 and 15 (load250, 2026-10-24).
-SENT_BR="index.wasm index.pck index.parts.bin index.js"
+SENT_BR="index.wasm index.pck index.data.pck index.parts.bin index.primitives.bin index.hdri.bin index.js"
 for f in "$dir"/*; do
   case "$f" in *.gz|*/build.json) continue ;; esac
   case "$f" in *.br) case " $SENT_BR " in *" $(basename "$f" .br) "*) ;; *) continue ;; esac ;; esac
@@ -256,8 +256,10 @@ fi
 # pictures (.webp the card's, .cutout.webp the page's, .cover.webp the app's
 # cover), its file (.mpd) and its parts (api/_library.js; /library is
 # web/library.html); and every set in Rebrickable's catalogue, each a page
-# at /library/set/<number> with its parts and its picture drawn from them
-# (.jpg), and the sets' sitemaps under /sitemaps/ (api/_sets.js). /api/people is who shares them and what is done with them
+# at /library/set/<number> with its parts, its own picture (.webp the
+# card's, .page.webp the page's: Rebrickable's, in the parts bucket under
+# sets/, tools/set_pictures.py) or one drawn from its parts where it has
+# none (.jpg), and the sets' sitemaps under /sitemaps/ (api/_sets.js). /api/people is who shares them and what is done with them
 # (supabase/people.sql): profiles at /u/<handle>, collections at /c/<id>,
 # likes and favourites; the site's header and footer beside it too, as
 # _site.html. The viewer is /app?view=<id>: /app is the app's page itself,
@@ -411,7 +413,10 @@ pages=""
 # wasm only as application/wasm.
 overrides="\"b/$sha/index.wasm.br\": { \"contentType\": \"application/wasm\" },
     \"b/$sha/index.pck.br\": { \"contentType\": \"application/octet-stream\" },
+    \"b/$sha/index.data.pck.br\": { \"contentType\": \"application/octet-stream\" },
     \"b/$sha/index.parts.bin.br\": { \"contentType\": \"application/octet-stream\" },
+    \"b/$sha/index.primitives.bin.br\": { \"contentType\": \"application/octet-stream\" },
+    \"b/$sha/index.hdri.bin.br\": { \"contentType\": \"application/octet-stream\" },
     \"b/$sha/index.js.br\": { \"contentType\": \"application/javascript; charset=utf-8\" }"
 for page in .vercel/output/static/*.html; do
   name=$(basename "$page" .html)
@@ -553,6 +558,8 @@ $docs_moved
     { "src": "/collections/?", "dest": "/api/people?op=collections_page" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})/parts[.](json|xml|csv)", "dest": "/api/share?op=catalog_parts&set=\$1&as=\$2" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]jpg", "dest": "/api/share?op=catalog_picture&set=\$1" },
+    { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]page[.]webp", "dest": "/api/share?op=catalog_photo&set=\$1&as=page" },
+    { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]webp", "dest": "/api/share?op=catalog_photo&set=\$1&as=card" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})/?", "dest": "/api/share?op=catalog_set&set=\$1" },
     { "src": "/sitemaps/index[.]xml", "dest": "/api/share?op=sitemap_index" },
     { "src": "/sitemaps/sets-([1-9][0-9]{0,2})[.]xml", "dest": "/api/share?op=sitemap_sets&n=\$1" },
@@ -583,11 +590,11 @@ $docs_moved
       "headers": { "Cache-Control": "public, max-age=31536000, immutable",
         "X-Robots-Tag": "noindex" },
       "continue": true },
-    { "src": "/b/$sha/(index[.](wasm|pck|js|parts[.]bin))",
+    { "src": "/b/$sha/(index[.](wasm|pck|js|data[.]pck|(parts|primitives|hdri)[.]bin))",
       "has": [ { "type": "header", "key": "accept-encoding", "value": ".*br.*" } ],
       "dest": "/b/$sha/\$1.br",
       "headers": { "Content-Encoding": "br", "Vary": "Accept-Encoding" } },
-    { "src": "/b/$sha/(index[.](wasm|pck|js|parts[.]bin))",
+    { "src": "/b/$sha/(index[.](wasm|pck|js|data[.]pck|(parts|primitives|hdri)[.]bin))",
       "headers": { "Vary": "Accept-Encoding" },
       "continue": true },
     { "src": "/img/(.*)",

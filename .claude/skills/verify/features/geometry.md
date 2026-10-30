@@ -483,6 +483,18 @@ can occupy the same millimetre.
   their own order, and on seams where two parts' faces lie in one plane the order
   decides which shows. Compared that way the Colosseum's base differed by 122
   pixels with no part's visibility changed; in one world, 0.
+  On the desktop the pictures are not read back: the card marks the numbers
+  each holds in a tally of its own (`SeenParts._tallied`, `seen_tally.gdshader`,
+  a point a pixel, the first of each run along a row), eight pictures a frame,
+  each lane sized and aimed as the read-back picture is, and the tally is read
+  once at the end (each side's rows laid over each other for what any side
+  sees). The web's renderer reads back as before (`_tallies`). `bigmodels_probe
+  -- only=hidden`: the tally and the read-back (`read_back = true`) agree part
+  for part, side for side and from a table, on the castle (128 sides x 2) and
+  Orthanc (26 x 1); Orthanc's 128 x 2 in seconds where reading back took 17 to
+  23 s. Lanes in the corner of one the biggest size were a part out on a side
+  in a hundred; a picture twice as fine for both samples was slower and a part
+  out on the castle.
 - `colour the hidden parts` (`src/ui/hidden_colours_panel.gd` over
   `src/assembly/hidden_colours.gd`): Tools, Colour the hidden parts…, and
   `colour_hidden_parts` over MCP (`HiddenColoursPanel.for_session`). Groups the
@@ -782,8 +794,8 @@ Build because each slider is an undo step). It reads the mechanism (Working: "Re
 the mechanism…", on a worker from 600 parts), drives the part a sub-assembly named
 Crank, Motor, Handle or Driver marks, else the one selected, else the one that turns
 most of the train; a click on an axle or a crank (the Select tool is put in hand)
-drives that. The panel is docked in its own column beside the model's (main's
-`_simulate_column`), the parts column folded while it is open and put back after,
+drives that. The panel is docked in a column beside the model's (main's
+`_tool_column`, the hose tool's too), the parts column folded while it is open and put back after,
 so the lens centres the model on what is left and no gear is under the panel (over
 the model's left edge, at 1600 x 900 at 2x it covered half the train and a click
 meant for the 8's axle selected the 24). The base is the baseplate and what stands
@@ -859,6 +871,22 @@ the orrery on a loaded box) is followed with `job` as a session would
 (`followed`). Run the windowed app with its own `XDG_CONFIG_HOME` whose
 `user-dirs.dirs` points Downloads at a scratch folder: a recording saves where
 Render does.
+
+Where the motion stops (`Simulation.begin_stops`, docs/MECHANISMS.md section 39):
+over the cycle, forward and back, Simulate finds the first turn where two moving parts
+meet by their exact shapes (said "MEETS", the pair tinted red), a loop's ends
+(`Linkage.reach`), and a motor's stall by the weight it lifts (PF M, L, XL, E-motor,
+9 V; "STALLS ... Gear it down", else its speed at the heaviest). The panel's line under
+the readout says it, **Go to the stop** turns the driver there, the slider and Play go
+no further, and `simulate_mechanism` returns the same lines with its picture taken at
+the stop. `tools/probe.sh motion_probe` (`PROBE_SIZE=1280x720` for the small window,
+`-- only=arm|fourbar|motor`) builds three models part by part and ends on "motion: an
+arm meeting a beam at 140° said there, a four-bar's range against its closed form, a
+motor that stalls lifting its load said and stopped at, and the model never moved": the
+arm meets the beam at 140.54° (to 2°) and -148.23° back; the four-bar's crank goes
++80.47° / -80.48° against ±80.41° (to 1°); the PF M motor through 9:1 stalls at
+25.400°, worked 25.400°, asked 14.67 N·cm against 11, and unloaded goes round at 397
+rpm. On stage225 before it, 19 checks fail. Pictures: `shots/motion/<W>x<H>_*.png`.
 
 Balance: `balance_probe` ends on "balance: the margins, the joints and the
 counterweight come out as worked by hand, the shipped models stand, and the

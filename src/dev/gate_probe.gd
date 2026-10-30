@@ -133,8 +133,9 @@ func _run() -> void:
 		var send: Button = named["signin_send"]
 		var density: float = Icons.density(oc)
 		var icon: Texture2D = oc.icon
-		var tall: int = icon.get_height() if icon != null else 0
-		var wide: int = icon.get_width() if icon != null else 0
+		# Its pixels: it is shown MARK_TALL units tall (Icons.icon_for).
+		var tall: int = icon.get_image().get_height() if icon != null else 0
+		var wide: int = icon.get_image().get_width() if icon != null else 0
 		_ok(icon != null and wide == 2 * tall and absi(tall - roundi(14.0 * density)) <= 1,
 			"orangecheck's mark is on it, 2:1, drawn %dx%d for a density of %.2f" % [wide, tall, density])
 		_ok(oc.get_theme_constant("icon_max_width") == 28 and oc.get_theme_constant("h_separation") >= 7,

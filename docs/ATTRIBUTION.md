@@ -375,6 +375,18 @@ Required credit: "Catalog data: Rebrickable" — in `web/index.html`'s
 footer, on every instruction booklet (`src/assembly/booklet.gd`) and in
 Help, About (`src/ui/credits.gd`).
 
+**Rebrickable's set pictures** (setpics, 2026-10-30): the site's library
+shows each set LDraw has no 3D model of by its picture as Rebrickable has it
+(`img_url` in their sets table), which they allow on other sites with
+credit. `tools/set_pictures.py` fetches each once (at most four a second,
+never again once here) into `vendor/rebrickable/set_pictures/`, makes the
+sizes the site shows and puts them in our storage, which the site serves
+them from; no visitor's browser asks Rebrickable. Credit: "Picture:
+Rebrickable" under a set's picture on its page, linked to the set's page
+there, "Set pictures: Rebrickable" under the library's cards, and "The
+set's picture is Rebrickable's" in the page's About. Many are the LEGO
+Group's own photographs: see `docs/TRADEMARKS.md`, Decision 7.
+
 **BrickLink** — do not redistribute. The API is OAuth-gated and catalog
 downloads are login-gated; the LEGO Group has owned BrickLink since
 2019, so its terms are effectively LEGO's. Using BrickLink *identifiers*

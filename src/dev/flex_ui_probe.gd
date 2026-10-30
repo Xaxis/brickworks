@@ -1,5 +1,5 @@
 ## Laying a hose and a chain by hand, the way a person does it, in the real
-## scene: Build, Hose, tube or chain…, a click on one pin hole and on
+## scene: Make, Hose, tube or chain…, a click on one pin hole and on
 ## another, a bend added and dragged, undone and done again; a chain put
 ## round two gears with two clicks; saved, reopened and reshaped from the
 ## pieces alone.

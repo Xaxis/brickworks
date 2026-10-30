@@ -46,7 +46,8 @@ var lifted: bool = false
 ## once. Five window bays took ten clicks (docs/APP_UX.md, A6).
 var repeats: bool = false
 
-var _ghost: MeshInstance3D
+var _ghost: Node3D
+## The ghost's one material: its "valid" says whether the group fits.
 var _materials: Array[ShaderMaterial] = []
 ## Collision cover of every item at turn n, framed at _reference: an array
 ## per turn of [part boxes per item], filled on first use.
@@ -62,8 +63,7 @@ var _reference := Vector3(10.0, 0.0, 10.0)
 
 
 func _ready() -> void:
-	_ghost = MeshInstance3D.new()
-	_ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_ghost = Node3D.new()
 	_ghost.visible = false
 	add_child(_ghost)
 
@@ -179,7 +179,9 @@ func drop() -> void:
 	_valid = false
 	if _ghost != null:
 		_ghost.visible = false
-		_ghost.mesh = null
+		for child: Node in _ghost.get_children():
+			_ghost.remove_child(child)
+			child.free()
 
 
 func is_holding() -> bool:
@@ -293,14 +295,14 @@ func stand_where_lifted(lattice: BrickLattice, builder: Builder) -> void:
 
 ## Whether the group fits where its frame is now, and its ghost shown there.
 func _stand(lattice: BrickLattice, builder: Builder) -> void:
-	var whole: PackedInt32Array = _covers_for(builder)[1]
+	var covers: Array = _covers_for(builder)
+	var whole: PackedInt32Array = covers[1]
 	var shift := Vector3i(
 		roundi((_frame.origin.x - _reference.x) / BrickLattice.CELL),
 		roundi(_frame.origin.y / BrickLattice.CELL),
 		roundi((_frame.origin.z - _reference.z) / BrickLattice.CELL))
-	var moved: PackedInt32Array = BrickLattice.moved_by(whole, shift)
-	_valid = not whole.is_empty() and _lowest(moved) >= Builder.GROUND_CELL \
-		and not lattice.collides_boxes(moved)
+	_valid = not whole.is_empty() and _lowest(whole) + shift.y >= Builder.GROUND_CELL \
+		and not lattice.collides_moved(whole, covers[3], covers[4], shift)
 	_aimed = true
 	_ghost.transform = _frame
 	_ghost.visible = true
@@ -337,6 +339,25 @@ func aim(lattice: BrickLattice, builder: Builder, origin: Vector3,
 		direction: Vector3) -> int:
 	if items.is_empty():
 		return 0
+	# Asked again with nothing changed (the pointer still, a frame after a
+	# paste aimed it): as it was. Each look at a group as big as Orthanc
+	# is a quarter of a second.
+	var asked: Array = [origin, direction, turns, lattice.revision, builder.snap_across,
+		_pinned]
+	if asked == _last_asked and _aimed:
+		return _last_hit
+	_last_asked = asked
+	_last_hit = _aim(lattice, builder, origin, direction)
+	return _last_hit
+
+
+## What [method aim] was last asked, and what it said.
+var _last_asked: Array = []
+var _last_hit: int = 0
+
+
+func _aim(lattice: BrickLattice, builder: Builder, origin: Vector3,
+		direction: Vector3) -> int:
 	var hit: BrickLattice.Hit = lattice.raycast(origin, direction)
 	# Kept where it is while a number is typed.
 	if _pinned:
@@ -354,7 +375,7 @@ func aim(lattice: BrickLattice, builder: Builder, origin: Vector3,
 			return 0
 		target = landing
 	var covers: Array = _covers_for(builder)
-	var whole: PackedInt32Array = covers[covers.size() - 1]
+	var whole: PackedInt32Array = covers[1]
 	if whole.is_empty():
 		# Nothing with a shape yet: parts still on their way over the
 		# network have no cover to stand on anything with.
@@ -380,8 +401,9 @@ func aim(lattice: BrickLattice, builder: Builder, origin: Vector3,
 	var shift := Vector3i(
 		roundi((at.x - _reference.x) / BrickLattice.CELL), 0,
 		roundi((at.z - _reference.z) / BrickLattice.CELL))
-	# Down onto whatever is highest under any of its parts.
-	var rise: int = lattice.rise_onto(whole, Builder.GROUND_CELL, shift.x, shift.z)
+	# Down onto whatever is highest under any of its parts: asked of its
+	# footing, which rests as the whole does.
+	var rise: int = lattice.rise_onto(covers[2], Builder.GROUND_CELL, shift.x, shift.z)
 	# A side face keeps the height it implies, as a single part does, to
 	# the plate: a whole group two LDU off every course reads as a fault.
 	if hit.is_valid() and hit.normal.y == 0:
@@ -391,7 +413,7 @@ func aim(lattice: BrickLattice, builder: Builder, origin: Vector3,
 	shift.y = rise
 
 	_frame = _frame_at(Vector3(at.x, rise * BrickLattice.CELL, at.z))
-	_valid = not lattice.collides_boxes(BrickLattice.moved_by(whole, shift))
+	_valid = not lattice.collides_moved(whole, covers[3], covers[4], shift)
 	_aimed = true
 	_ghost.transform = _frame
 	_ghost.visible = true
@@ -438,8 +460,13 @@ func _frame_at(origin: Vector3) -> Transform3D:
 	return Transform3D(Basis(Vector3.UP, turns * PI * 0.5), origin)
 
 
-## Each item's cover at _reference for the current turn, and all of them
-## together as the last entry, worked out once per turn.
+## For the current turn, at _reference, worked out once per turn: [each
+## item's cover, all of them together, their footing (the lowest box over
+## each run of columns, which rests where all of them do: what
+## BrickLattice.rise_onto reads of them), their bound, whether none of them
+## is empty along an axis]. The last three are what every aim asked of all
+## the boxes again, a quarter of a second a move for all of Orthanc in hand
+## (bigmodels, 2026-10-30).
 func _covers_for(builder: Builder) -> Array:
 	if _covers.has(turns):
 		return _covers[turns]
@@ -451,9 +478,29 @@ func _covers_for(builder: Builder) -> Array:
 			library.mesh_for(str(item["part"])), frame * (item["at"] as Transform3D))
 		each.append(packed)
 		whole.append_array(packed)
-	var both: Array = [each, whole]
-	_covers[turns] = both
-	return both
+	var lowest: Dictionary = {}
+	var n: int = 0
+	while n < whole.size():
+		var key := Vector4i(whole[n], whole[n + 2], whole[n + 3], whole[n + 5])
+		if whole[n + 1] < int(lowest.get(key, 1 << 30)):
+			lowest[key] = whole[n + 1]
+		n += 6
+	var footing := PackedInt32Array()
+	footing.resize(lowest.size() * 6)
+	n = 0
+	for key: Vector4i in lowest:
+		var bottom: int = lowest[key]
+		footing[n] = key.x
+		footing[n + 1] = bottom
+		footing[n + 2] = key.y
+		footing[n + 3] = key.z
+		footing[n + 4] = bottom + 1
+		footing[n + 5] = key.w
+		n += 6
+	var all: Array = [each, whole, footing, BrickLattice._bound_of(whole),
+		BrickLattice._plain(whole)]
+	_covers[turns] = all
+	return all
 
 
 func is_aimed() -> bool:
@@ -495,40 +542,94 @@ func placements(builder: Builder) -> Array:
 # -- the ghost --------------------------------------------------------------
 
 
-## One mesh for the whole group, a surface per colour, in the carry's own
-## frame: turning it is a change of transform, not a rebuild.
+## The group drawn as instances, a MultiMesh for each surface of each part
+## and every part's colour its instance's, in the carry's own frame:
+## turning it is a change of transform, not a rebuild.
 ##
 ## A node per part was the obvious way, and a whole floor of a building
-## duplicated is several hundred draw calls following the pointer.
+## duplicated is several hundred draw calls following the pointer. One
+## mesh made of every part's triangles was the next, and copying them
+## (SurfaceTool.append_from, which reads each part's arrays back off the
+## graphics card) held the window 4.3 s for a paste of all of Orthanc
+## (bigmodels, 2026-10-30). The model itself is drawn as instances
+## (BrickWorld), with a draw call for each part's surface, not each part.
 func _build_ghost() -> void:
-	var by_colour: Dictionary = {}
+	for child: Node in _ghost.get_children():
+		_ghost.remove_child(child)
+		child.free()
+	if _materials.is_empty():
+		var material := ShaderMaterial.new()
+		material.shader = GHOST_SHADER
+		material.set_shader_parameter("instanced", true)
+		material.set_shader_parameter("linearise", BrickWorld._linearise_colors())
+		_materials.append(material)
+	_materials[0].set_shader_parameter("valid", true)
+	# Surface mesh -> [mesh, where each instance is, its colour].
+	var batches: Dictionary = {}
+	var box := AABB()
+	var first: bool = true
 	for item: Dictionary in items:
 		var part: Lbm.PartMesh = library.mesh_for(str(item["part"]))
 		if part == null:
 			continue
+		var at: Transform3D = item["at"]
+		var here: AABB = (at * part.bounds).abs()
+		box = here if first else box.merge(here)
+		first = false
 		for s: int in part.surface_count():
 			var code: int = part.surface_colors[s] if s < part.surface_colors.size() \
 				else Lbm.COLOR_INHERIT
 			if code == Lbm.COLOR_INHERIT:
 				code = int(item["color"])
-			var tool: SurfaceTool = by_colour.get(code)
-			if tool == null:
-				tool = SurfaceTool.new()
-				tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-				by_colour[code] = tool
-			tool.append_from(part.surfaces[s], 0, item["at"])
-	var mesh := ArrayMesh.new()
-	_materials.clear()
-	for code: int in by_colour:
-		var tool: SurfaceTool = by_colour[code]
-		tool.commit(mesh)
-		var material := ShaderMaterial.new()
-		material.shader = GHOST_SHADER
-		material.set_shader_parameter("tint", library.color(code).shown)
-		material.set_shader_parameter("valid", true)
-		mesh.surface_set_material(mesh.get_surface_count() - 1, material)
-		_materials.append(material)
-	_ghost.mesh = mesh
+			var colour: PartLibrary.BrickColor = library.color(code)
+			var mesh: ArrayMesh = part.surfaces[s]
+			var batch: Array = batches.get(mesh, [])
+			if batch.is_empty():
+				batch = [mesh, [], []]
+				batches[mesh] = batch
+			(batch[1] as Array).append(at)
+			(batch[2] as Array).append(colour.shown if colour != null else Color.WHITE)
+	for batch: Array in batches.values():
+		var places: Array = batch[1]
+		var colours: Array = batch[2]
+		# Laid out as MultiMesh.buffer is: a transform's three rows, a colour.
+		var floats := PackedFloat32Array()
+		floats.resize(places.size() * 16)
+		for n: int in places.size():
+			var at: Transform3D = places[n]
+			var b: Basis = at.basis
+			var shown: Color = colours[n]
+			var o: int = n * 16
+			floats[o] = b.x.x
+			floats[o + 1] = b.y.x
+			floats[o + 2] = b.z.x
+			floats[o + 3] = at.origin.x
+			floats[o + 4] = b.x.y
+			floats[o + 5] = b.y.y
+			floats[o + 6] = b.z.y
+			floats[o + 7] = at.origin.y
+			floats[o + 8] = b.x.z
+			floats[o + 9] = b.y.z
+			floats[o + 10] = b.z.z
+			floats[o + 11] = at.origin.z
+			floats[o + 12] = shown.r
+			floats[o + 13] = shown.g
+			floats[o + 14] = shown.b
+			floats[o + 15] = 1.0
+		var multimesh := MultiMesh.new()
+		multimesh.transform_format = MultiMesh.TRANSFORM_3D
+		multimesh.use_colors = true
+		multimesh.mesh = batch[0]
+		multimesh.instance_count = places.size()
+		multimesh.buffer = floats
+		var drawn := MultiMeshInstance3D.new()
+		drawn.multimesh = multimesh
+		drawn.material_override = _materials[0]
+		drawn.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# A part's surface carries its own box (Lbm), which the MultiMesh
+		# would measure from: the group's, so it is not culled away.
+		drawn.custom_aabb = box
+		_ghost.add_child(drawn)
 	_ghost.visible = false
 
 

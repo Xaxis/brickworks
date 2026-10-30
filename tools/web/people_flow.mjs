@@ -314,7 +314,7 @@ try {
     nav: document.querySelector(".site-head .nav a[data-account]")?.firstChild?.textContent.trim() || "" }));
   check(`their page, theirs to change: "${state.title}", "${state.handle}", ${state.page}, ${state.tabs.join(" · ")}`,
     state.title === "Flow Visitor" && state.handle.startsWith(`@${visitorHandle}`) && state.page === `/u/${visitorHandle}`
-    && state.tabs.join(" ") === "models builds saved sets insights");
+    && state.tabs.join(" ") === "models builds saved sets insights achievements");
   check(`the header says Account while signed in: "${state.nav}"`, state.nav === "Account");
   await shot(page, "7_account-laptop.png");
   await page.click('#tabs a[data-tab="saved"]');

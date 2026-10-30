@@ -31,7 +31,9 @@ ui:an LDraw set's page
 
 ## Every set there is {#every-set}
 
-The library on the website lists every LEGO® set in [Rebrickable](https://rebrickable.com/)'s catalogue, about 28,000 of them, beside the few hundred LDraw has modelled in 3D, which are marked **3D**. Search by a set's number (`10497` finds 10497-1 first) or its name; the themes are pills, and **Filters** adds the theme inside the one chosen, the year in the decade, only the sets with a 3D model, and minifigures. Browsing leaves out what Rebrickable lists with no parts, such as books and key rings; a search finds those too.
+The library on the website lists every LEGO® set in [Rebrickable](https://rebrickable.com/)'s catalogue, about 28,000 of them, beside the few hundred LDraw has modelled in 3D, which are marked **3D**. Search by a set's number (`10497` finds 10497-1 first, `7519` the sets whose number starts so) or its name; the themes are pills, and **Filters** adds the theme inside the one chosen, the year in the decade, only the sets with a 3D model, and minifigures. Browsing leaves out what Rebrickable lists with no parts, such as books and key rings; a search finds those too.
+
+The search takes words as you type them. A misspelling finds what you meant (`milenium falcon`, and the list says **Showing sets for millennium falcon**), as do words run together or apart (`deathstar`, `fire truck`, `xwing`), plurals, a word without its accents (`pokemon`), a year (`castle 1978`) and builders' short names (`UCS`, `LOTR`). While words are typed the list is in **Best match** order: a set's number, then a set whose name you typed, then every word in its name, then every word anywhere. A theme's name typed alone (`city`, `trains`, `marvel`) lists that theme's sets first, so LEGO® City sets come before NINJAGO City. Real sets come before books, gear, key chains and promotions unless you ask for those (`harry potter book`); then the bigger and newer set. Choose another **Order** in **Filters** and the search keeps it. When no set has every word, the list shows the nearest and says so.
 
 Each set has a page at `brickworks.diy/library/set/<number>`, such as [10497-1](/library/set/10497-1):
 
@@ -43,12 +45,13 @@ Each set has a page at `brickworks.diy/library/set/<number>`, such as [10497-1](
 - when LDraw has a model of it, **Build it in 3D** and the model's own page, which links back.
 - **Based on this set**: the models in the gallery that their designers said were built from it, changed from it or inspired by it ([what a model is based on](/docs/model-pages#based-on)).
 
-Its picture is LDraw's model when there is one; otherwise Brickworks draws a few of its most distinctive parts from their own geometry. No picture on these pages is the LEGO Group's or Rebrickable's. Set and inventory data is Rebrickable's, read from a copy Brickworks takes at most once a day.
+Its picture is LDraw's model when there is one; otherwise the set's own picture, as [Rebrickable](https://rebrickable.com/) has it and credited to them, kept on Brickworks' own storage so your browser never asks them; and for the few sets with no picture anywhere, a few of its most distinctive parts drawn by Brickworks from their own geometry. Set and inventory data is Rebrickable's, read from a copy Brickworks takes at most once a day.
 
 In the app, `/app?parts=<number>` puts a set's parts in the bin. Claude finds every set too: the gallery tool's `library=true` search names the sets LDraw has no model of with their parts list, and `open_model library=` takes a set's number or name.
 
 <!-- covers
 ui:every set's page
+api:a set's own picture
 lib:a set's picture drawn from its parts
 -->
 

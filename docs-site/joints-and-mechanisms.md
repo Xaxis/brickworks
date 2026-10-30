@@ -46,11 +46,19 @@ lib:axles and gears on a line
 
 ## Hoses, tubes and chains {#flex}
 
-**Build › Hose, tube or chain…**, then click two pin holes (or two connectors) to lay a hose, a pneumatic tube, a string or a flexible axle between them along a natural curve; click round two sprockets for a chain. **Build › Reshape the hose or chain** drags a hose's bend, or puts a chain round other sprockets.
+**Make › Hose, tube or chain…**, then click two pin holes (or two connectors) to lay a hose, a pneumatic tube, a string or a flexible axle between them along a natural curve; click round two sprockets for a chain. **Make › Reshape the hose or chain** drags a hose's bend, or puts a chain round other sprockets.
 
 <!-- covers
 ui:hoses and chains by hand
 lib:flexible parts along a path
+-->
+
+## Rubber bands and springs {#bands}
+
+Pick a rubber belt in the parts bin, then click the pulleys, wheels, bushes or axles it goes round, in order round the loop. It wraps each one in its groove, on the side the loop turns, and says how far it is stretched. Pick a shock absorber in the bin, or **Build › Hose, tube or chain…, Spring or shock**, and click the two pin holes or pins it goes between. Its coil keeps its turns as it is stretched or squeezed. Move a part a band or a spring is on and it follows, in the same undo step. Both save in the file as LDraw parts.
+
+<!-- covers
+ui:bands and springs by hand
 -->
 
 ## Check stability {#stability}
@@ -68,6 +76,8 @@ ui:balance readout
 ## Simulate a mechanism {#simulate}
 
 **Tools › Simulate mechanism…**, then click an axle or a crank: the gear train turns from it, and the panel says how fast each part goes, each arm's period, what locks it, and whether the model stays standing as it turns. It reads the model as it is and changes nothing.
+
+It also says where the motion stops. Over the whole cycle it finds the first angle where two moving parts meet, names them and tints them red. It gives the range of a crank or a linkage in degrees. When a motor turns the train (Power Functions M, L or XL, an E-motor or a 9 V motor), it weighs the motor's torque against the load it lifts, and says where the motor stalls. Play and the slider stop there, and **Go to the stop** shows it.
 
 <!-- covers
 ui:simulate mechanism

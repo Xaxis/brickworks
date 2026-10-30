@@ -229,12 +229,15 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 			</form>
 			<div class="gallery-bar">
 				<!-- Which models, in which order: Top (builds, remixes, Tested), New,
-				     and Following once signed in, when the list says it can. -->
+				     and Following once signed in, when the list says it can; then the
+				     gallery's other tabs, each a page of its own: photos of real
+				     builds (/builds), collections and the LDraw library. -->
 				<nav class="tabs" id="tabs" aria-label="Which models">
 					<a href="/gallery" data-tab="top" aria-current="page"
 						title="Built most, remixed most and Tested first. Views count for nothing.">Top</a>
 					<a href="/gallery?sort=newest" data-tab="new">New</a>
 					<a href="/gallery?following=1" data-tab="following" hidden>Following</a>
+					<a href="/builds" id="to-builds">Builds</a>
 					<a href="/collections" id="to-collections">Collections</a>
 					<a href="/library" id="to-library">LDraw library</a>
 				</nav>

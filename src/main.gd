@@ -38,12 +38,19 @@ var _props_dock: SideDock
 var _stack: PanelStack
 ## The right-hand column's: the model tree over the properties.
 var _side: PanelStack
+## Where the columns take turns, the selection's place, turn and colour under
+## the parts bin as well (Inspector.compact). Null on a phone or a tablet.
+var _bin_props: Inspector
 ## The strip along the top of the model for what is said about it for a
 ## while: the sub-assembly being edited, the offer to seat old parts.
 var _notices: PanelContainer
 ## The part of the middle column the model shows through: what floats over
 ## the model (the cut-away's strip) is laid in it.
 var _over_model: Control
+## View, Split: the model straight on beside the main view (SplitView).
+var _split: SplitView
+## The picture to build over (Make, Reference picture…).
+var _reference: ReferenceImage
 var _store: ModelStore
 ## The baseplate, the grid floor or nothing under the model.
 var _floor: FloorLayer
@@ -69,6 +76,10 @@ var _connector: ClaudeConnector
 ## (src/net/together.gd, src/ui/together_dialog.gd).
 var _together: Together
 var _together_dialog: TogetherDialog
+## Comments pinned to parts (src/assembly/pinned_comments.gd): drawn on the
+## model, and File, Comments….
+var _pins_view: PinsView
+var _pins_dialog: PinsDialog
 ## A Build together link's secret from the page's address (?together=).
 var _together_wanted: String = ""
 ## Whether the session this tab was in before a reload has been gone back to.
@@ -289,19 +300,27 @@ var _motions: MotionPlayer
 var _simulate: SimulatePanel
 ## Tools, Colour the hidden parts… (src/ui/hidden_colours_panel.gd).
 var _hidden_colours: HiddenColoursPanel
-## Its column, docked beside the model's: shown while it is open, so the
+## Its column, docked beside the model's, and the hose tool's panel's
+## too (Make, Hose, tube or chain…): shown while either is open, so the
 ## model's column (and the lens centred on it) is what is left of the
-## window. Over the model's left edge it covered half a gear train in a
-## window 1600 across, and a click meant for an axle landed on the panel.
-var _simulate_column: ScrollContainer
-## Whether opening Simulate folded the parts column, to put it back.
-var _simulate_folded_parts: bool = false
+## window. Over the model's left edge Simulate's covered half a gear train
+## in a window 1600 across, and a click meant for an axle landed on the
+## panel; the hose tool's covered the left one of two gears a chain was to
+## go round, at 1400 x 900 (keys3).
+var _tool_column: ScrollContainer
+## What the column holds, one above the other.
+var _tool_panels: VBoxContainer
+## Whether opening the column folded the parts column, to put it back.
+var _tool_folded_parts: bool = false
 ## Whether --ask finished with a design rather than an apology. Read by
 ## the exit status, so a script can tell.
 var _ask_went_well: bool = true
 ## Whether a left press this handler saw started the box being drawn.
 ## The watchdog below will not finish one it never saw begin.
 var _box_began: bool = false
+## The view the box is drawn in (CadCamera.MAIN, or SECOND for the second
+## view beside the model): what it takes is what that view shows inside it.
+var _box_view: int = CadCamera.MAIN
 ## A box Escape threw away while the button was still down. Its release
 ## is not a click, and the rest of the drag does not start another box.
 var _box_dropped: bool = false
@@ -725,6 +744,8 @@ func _tell_page() -> void:
 		"tile_names": _bin.tile_names() if _bin != null else [],
 		# ...and which set's parts they are (/app?parts=, sets364).
 		"bin_set": _bin.set_showing() if _bin != null else "",
+		# ...and what its first tiles count, [[part/colour, left], ...] (SetBin).
+		"bin_left": _bin.counts_shown() if _bin != null else [],
 		# ...and the colour Enter in the colour's name would take.
 		"colour_first": _bin.colour_first() if _bin != null else -1,
 		"custom": _library.custom.keys(),
@@ -738,6 +759,11 @@ func _tell_page() -> void:
 		# tell a click that selected from one that put a part down.
 		"mode": _verbs.mode if _verbs != null else "",
 		"selected": _builder.selection.size(),
+		# View, Split: whether the second view shows.
+		"split": _split != null and _split.is_showing(),
+		# Make, Reference picture…: the picture to build over, as the model
+		# keeps it (ReferenceImage.page_state).
+		"reference": _reference.page_state() if _reference != null else {},
 		# ...and which, the first few: tools/web/centre_check.mjs clicks a
 		# part and asks whether that one was taken.
 		"selection": _builder.selection.keys().slice(0, 12),
@@ -983,6 +1009,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_account_panel.controls_by_name())
 	if _shell != null:
 		named.merge(_shell.controls_by_name())
+	if _bin_props != null:
+		named.merge(_bin_props.controls_by_name())
 	if _seat_offer != null:
 		named.merge(_seat_offer.controls_by_name())
 	if _reload_offer != null:
@@ -1001,8 +1029,11 @@ func _page_controls() -> Dictionary:
 		named.merge(_brickify.controls_by_name())
 	if _shell != null:
 		named.merge(_shell.status.working.controls_by_name())
+	if _split != null:
+		named.merge(_split.controls_by_name())
 	if _phone != null:
-		named.merge(_phone.controls_by_name())
+		# Over the bar's: its mark is hidden, and the phone's is the app's menu.
+		named.merge(_phone.controls_by_name(), true)
 	if _mosaic != null and _mosaic.visible:
 		named.merge(_mosaic.controls_by_name())
 	if _controls != null:
@@ -1016,6 +1047,12 @@ func _page_controls() -> Dictionary:
 		named.merge(_share_panel.controls_by_name())
 	if _together_dialog != null:
 		named.merge(_together_dialog.controls_by_name())
+	if _pins_dialog != null:
+		named.merge(_pins_dialog.controls_by_name())
+	if _pins_view != null:
+		named.merge(_pins_view.controls_by_name())
+	if _together != null and _together.stop_button() != null:
+		named["together_stop_following"] = _together.stop_button()
 	if _share_view != null:
 		named.merge(_share_view.controls_by_name())
 	if _build_mode != null:
@@ -1143,8 +1180,8 @@ func words_shown() -> PackedStringArray:
 	var out := PackedStringArray()
 	_words_in(get_tree().root, out)
 	if _shell != null:
-		for title: String in ["File", "Edit", "View", "Build", "Tools", "Help"]:
-			var button: MenuButton = _shell.menu(title)
+		for menu: Array in Shell.MENUS:
+			var button: MenuButton = _shell.menu(str(menu[0]))
 			if button != null:
 				_rows_in(button.get_popup(), out)
 		_rows_in(_shell.context, out)
@@ -1222,6 +1259,8 @@ func _layout_for_page(to_window: Transform2D, per_css: float) -> Dictionary:
 			"part": _world.get_brick(int(one["brick"])).part_id}))
 	return {"view": css.call(cover["view"]), "samples": cover["samples"],
 		"covered": covered, "panels": panels, "columns": _columns,
+		# The second view's picture, while View, Split shows it.
+		"split": css.call(_split.picture_rect()) if _split != null and _split.is_showing() else [],
 		"centre": point.call(_camera.unproject_position(_built_bounds().get_center())),
 		"targets": targets}
 
@@ -1292,12 +1331,18 @@ func _panels_by_name() -> Dictionary:
 ## The model's part of the window, sampled: the points of a grid over it
 ## that a click would not reach the model at, and what it would reach
 ## instead. The view cube is the one thing kept over the model, so the
-## points under it are not asked about. Read by tools/web/fit_check.mjs
+## points under it are not asked about; on a phone, which has no cube, the
+## round Fit in its corner (PhoneShell). Read by tools/web/fit_check.mjs
 ## through the page, and by probes directly.
 func model_cover(across: int = 12, down: int = 8) -> Dictionary:
 	var view: Control = _marquee.get_parent()
 	var rect: Rect2 = view.get_global_rect()
+	# The second view beside it is the model's room too (View, Split), all
+	# but its header, as the cube is.
+	if _split != null and _split.is_showing():
+		rect.end = Vector2(_split.picture_rect().end.x, rect.end.y)
 	var covered: Array = []
+	var fit: Control = _phone.controls_by_name().get("phone_fit") if _phone != null else null
 	# Where the interface is drawn, found once: every canvas layer, the
 	# topmost first, and any control drawn straight onto the window.
 	var canvases: Array[Node] = []
@@ -1308,6 +1353,10 @@ func model_cover(across: int = 12, down: int = 8) -> Dictionary:
 			var at: Vector2 = rect.position + Vector2((i + 0.5) / across * rect.size.x,
 				(j + 0.5) / down * rect.size.y)
 			if _gizmo != null and _gizmo.is_visible_in_tree() and _gizmo.get_global_rect().has_point(at):
+				continue
+			if _split != null and _split.header_has(at):
+				continue
+			if fit != null and fit.is_visible_in_tree() and fit.get_global_rect().has_point(at):
 				continue
 			var by: String = _covering(at, canvases)
 			if not by.is_empty():
@@ -1474,9 +1523,23 @@ func _ready() -> void:
 	_enable_antialiasing()
 	_match_screen_density()
 	_watch_frame_cost()
+	# On the web the catalogue, the models and LDraw's tables come in a pack
+	# of their own, fetched while the scripts were made (WebPacks): written
+	# in once this first frame ends, and waited for until then, nothing
+	# moving and the page's own screen still up. Nothing drawn either
+	# (GpuFence.hold): a frame drawn in software under that screen was most
+	# of the wait.
+	if not WebPacks.here(WebPacks.DATA):
+		get_tree().paused = true
+		GpuFence.hold()
+		await WebPacks.need(WebPacks.DATA)
+		GpuFence.let_go()
+		get_tree().paused = false
+		_boot_mark("data")
 	_library = PartLibrary.new()
 	var started: int = Time.get_ticks_msec()
 	if not _library.load_catalogue():
+		_boot_mark("stopped")
 		_title.text = "No catalogue"
 		_status.text = "Run tools/build_meshes.py to generate assets/generated/."
 		# Nothing below was built, so there is nothing for _process to
@@ -3324,20 +3387,13 @@ func _maybe_fill_bin() -> void:
 	_bin_set = ""
 	# Taken off the address, so a reload is the app's own.
 	_set_address("")
-	var books := SetInventories.new()
-	add_child(books)
-	var found: Dictionary = await books.lookup(PackedStringArray([number]))
-	books.queue_free()
-	if not found.has(number):
-		_bar.say("could not find set %s's parts%s" % [number,
-			": " + books.trouble if not books.trouble.is_empty() else ""])
+	var shown: int = await _bin.build_from(PackedStringArray([number]))
+	if shown == 0:
+		_bar.say("could not find set %s's parts: %s" % [number, _bin.trouble])
 		return
-	var record: Dictionary = found[number]
-	var title: String = "%s %s" % [number, str(record.get("n", ""))]
-	var shown: int = _bin.show_set(title.strip_edges(), record.get("p", []))
 	if _bin_dock != null and not _bin_dock.is_open():
 		_bin_dock.set_open(true)
-	_bar.say("the parts of %s are in the bin: %d kinds of part" % [title.strip_edges(), shown])
+	_bar.say("building from the parts of %s: %d kinds of part" % [_bin.set_showing(), shown])
 
 
 ## A model of the library opened in this tab (?library=<id>, from
@@ -4431,6 +4487,7 @@ func _build_ui() -> void:
 	_bin.library = _library
 	_bin.thumbnails = _thumbnails
 	_bin.builder = _builder
+	_bin.store = _store
 	# On a phone the bin is the parts sheet's, drawn in points (PhoneShell).
 	if _phone_wanted():
 		var per_point: float = Phone.per_point(get_viewport())
@@ -4497,15 +4554,25 @@ func _build_ui() -> void:
 	_bin_dock.setup(_stack, SideDock.Edge.LEFT, _parts_wide(LEAST_ACROSS))
 	layout.add_child(_bin_dock)
 
-	# Tools, Simulate mechanism…'s column, beside the model's rather than
-	# over it, shown only while the panel is open (the panel goes in it
-	# below). It scrolls when the window is shorter than the panel.
-	_simulate_column = ScrollContainer.new()
-	_simulate_column.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_simulate_column.custom_minimum_size = Vector2(SIMULATE_WIDTH, 0)
-	_simulate_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_simulate_column.visible = false
-	layout.add_child(_simulate_column)
+	# Tools, Simulate mechanism…'s column and the hose tool's, beside the
+	# model's rather than over it, shown only while a panel in it is open
+	# (the panels go in it below). It scrolls when the window is shorter
+	# than the panel.
+	_tool_column = ScrollContainer.new()
+	_tool_column.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_tool_column.custom_minimum_size = Vector2(SIMULATE_WIDTH, 0)
+	_tool_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tool_column.visible = false
+	# Backed all the way down: below a short panel the model was drawn
+	# where a click does not reach it.
+	var backing := StyleBoxFlat.new()
+	backing.bg_color = Color(0.10, 0.11, 0.13)
+	_tool_column.add_theme_stylebox_override("panel", backing)
+	layout.add_child(_tool_column)
+	_tool_panels = VBoxContainer.new()
+	_tool_panels.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_tool_panels.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_tool_column.add_child(_tool_panels)
 
 	# The middle column is the viewport. Nothing is drawn into it, but the
 	# counters and the key list live at its top and bottom so they cannot
@@ -4546,6 +4613,19 @@ func _build_ui() -> void:
 	# the model sat 168 units to the side of the room it had.
 	_camera.seen = _model_rect
 	_camera.lens_moved.connect(_hover_again)
+
+	# View, Split: the model straight on beside this column, in the model's
+	# own room and none of the columns' (SplitView). A ray from the screen
+	# over it is its camera's, so a click there places and picks through it.
+	_split = SplitView.new()
+	_split.camera = _camera
+	_split.beside_of = middle
+	_split.world = _world
+	_split.bounds = _built_bounds
+	layout.add_child(_split)
+	_camera.second = _split
+	middle.resized.connect(_split.fit)
+	_split.shown_changed.connect(_hover_again)
 
 	# In the viewport column, at the top, which is where every other 3D
 	# tool puts a view cube.
@@ -4615,6 +4695,8 @@ func _build_ui() -> void:
 
 	_turning = PivotMark.new()
 	_turning.camera = _camera
+	# The main view's turn, drawn in it alone.
+	_turning.layers = SplitView.MAIN_ONLY
 	add_child(_turning)
 
 
@@ -4712,6 +4794,21 @@ func _build_ui() -> void:
 	_together.camera = _camera
 	_together.base_url = Deployment.api_base()
 	_together.said.connect(func(words: String) -> void: _bar.say(words))
+	# Following someone's view: the model's column framed in their colour.
+	_together.banner_parent = _over_model
+	# Comments pinned to parts: drawn over the model, undone as one step.
+	_builder.pins_hook = func(words: String) -> String:
+		var had: String = _store.pins.words(_world, _store.lift())
+		_store.pins.set_words(words)
+		_store.touch()
+		return had
+	_pins_view = PinsView.new()
+	_pins_view.store = _store
+	_pins_view.world = _world
+	_pins_view.camera = _camera
+	_pins_view.together = _together
+	_pins_view.list_wanted.connect(open_pins)
+	_over_model.add_child(_pins_view)
 	# Where this person is working, for the others' view: the part under the
 	# mouse, a few times a second while in a session.
 	# Looked for again only when the mouse, the view or the model moved: a
@@ -5071,6 +5168,10 @@ func _build_ui() -> void:
 	_verbs.camera = _camera
 	_verbs.together = _together
 	add_child(_verbs)
+	# A double-click in the bin replaces the selection, or puts a fit on it.
+	_bin.verbs = _verbs
+	# A set's booklet, where this build has no copy of LDraw's model of it.
+	_bin.models = _model_library
 	# A part in hand (Q, the bin, the eyedropper) brings the parts bin out
 	# if it was folded: a laptop's window starts with the assistant
 	# showing, and the part in hand and its colours are in the bin.
@@ -5099,6 +5200,16 @@ func _build_ui() -> void:
 		if not bool(ShellPrefs.value("right_column")):
 			ShellPrefs.put("right_column", true)
 			_shell.outliner.set_open(true)
+		# Where the columns take turns, opening the properties folds the
+		# bin: a part put down and typed to its place, and the next one,
+		# cost a rail click each way. So what a part just put down needs is
+		# under the bin too, and the model keeps its share.
+		_bin_props = Inspector.new()
+		_bin_props.shell = _shell
+		_bin_props.compact = true
+		_bin_props.wanted = _columns == "turns"
+		_stack.add_section(_bin_props)
+		_stack.keep_whole(_bin_props)
 	if _phone != null:
 		_phone.shell = _shell
 		_dress_for_phone()
@@ -5127,6 +5238,8 @@ func _build_ui() -> void:
 	_measure = Measure.new()
 	_measure.lattice = _builder.lattice
 	_measure.camera = _camera
+	_measure.world = _world
+	_measure.library = _library
 	_measure.label = _viewport_label(13)
 	_measure.label.visible = false
 	_measure.label.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -5136,8 +5249,8 @@ func _build_ui() -> void:
 	add_child(_measure)
 	_verbs.measure = _measure
 
-	# Build, Hose, tube or chain…: src/ui/flex_tool.gd, its panel over the
-	# model's left edge.
+	# Make, Hose, tube or chain…: src/ui/flex_tool.gd, its panel in the
+	# column beside the model's, as Simulate's is.
 	_flex = FlexTool.new()
 	_flex.world = _world
 	_flex.builder = _builder
@@ -5146,9 +5259,8 @@ func _build_ui() -> void:
 	_flex.camera = _camera
 	_flex.say = _bar.say
 	add_child(_flex)
-	spacer.add_child(_flex.panel)
-	_flex.panel.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_flex.panel.position = Vector2(12, 48)
+	_tool_panels.add_child(_flex.panel)
+	_flex.panel.visibility_changed.connect(_tool_column_shown)
 	_flex.changed.connect(_on_model_edited)
 	_make_grab_drag()
 
@@ -5195,6 +5307,21 @@ func _build_ui() -> void:
 	_update_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_update_offer)
 
+	# Make, Reference picture…: a picture to build over, kept in the model's
+	# file and never in a picture of it (src/ui/reference_image.gd).
+	_reference = ReferenceImage.new()
+	_reference.name = "ReferenceImage"
+	_reference.store = _store
+	_reference.camera = _camera
+	_reference.builder = _builder
+	_reference.verbs = _verbs
+	_reference.bounds = _built_bounds
+	_reference.over_panel = _over_panel_at
+	_reference.say = _bar.say
+	add_child(_reference)
+	# Each change to it one step of Undo.
+	_builder.reference_hook = _reference.put
+
 	# Export's picture and shop lists: src/ui/exports.gd.
 	_exports = Exports.new()
 	_exports.world = _world
@@ -5210,6 +5337,7 @@ func _build_ui() -> void:
 	_exports.picture.aside = [_builder, _turning, _shell.see_inside.frame, _floor.grid_node(),
 		_floor.shadow_node(), _shell.grid]
 	_exports.picture.shown_again = _verbs.apply_hidden
+	_exports.picture.aside.append(_reference)
 
 	# This browser may clear the models, which are only in it: said once,
 	# above the model, with the ways to keep a copy (_watch_other_tabs asks).
@@ -5329,8 +5457,8 @@ func _build_ui() -> void:
 	_simulate.named = _bar.model_name
 	_simulate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_simulate.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_simulate_column.add_child(_simulate)
-	_simulate.visibility_changed.connect(_simulate_shown)
+	_tool_panels.add_child(_simulate)
+	_simulate.visibility_changed.connect(_tool_column_shown)
 	_builder.selection_changed.connect(_simulate._on_selection)
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
@@ -5809,7 +5937,7 @@ func _built_bounds() -> AABB:
 	return everything
 
 
-## View > Default view (0): the view the app opens on, turned to its usual
+## View > Viewpoint > Default view (0): the view the app opens on, turned to its usual
 ## angle and framed on what is built, the baseplate when nothing is. It
 ## turned the camera alone and kept the focus and the zoom, so a view lost
 ## in empty space stayed lost and only Fit found the model (walk180 A2);
@@ -6064,7 +6192,11 @@ func _offer_assistant(notes: Control) -> void:
 		face.content_margin_top = 2
 		face.content_margin_bottom = 3
 		_offer_show.add_theme_stylebox_override(state, face)
-	_offer_show.pressed.connect(func() -> void: set_assistant(true))
+	# Shown, as it says: where the columns are drawers (a phone), turning it
+	# on leaves its drawer folded, and the button did nothing to be seen.
+	_offer_show.pressed.connect(func() -> void:
+		set_assistant(true)
+		_chat_dock.set_open(true))
 	_offer.add_child(_offer_show)
 	_offer_close = Button.new()
 	_offer_close.text = "×"
@@ -6154,6 +6286,10 @@ func _fit_panels() -> void:
 	for dock: SideDock in [_props_dock, _chat_dock]:
 		if dock != null:
 			dock.set_open_width(minf(SIDE_WIDE, drawer) if phone else SIDE_WIDE)
+	# And the assistant's, likewise: at 340 units it was half a phone, its
+	# words six points tall.
+	if _phone != null and not Phone.wide():
+		_chat_dock.set_open_width(units - Phone.px(get_viewport(), Phone.TARGET + 4.0))
 
 	var share: String = "drawers" if phone else ("wide" if both else "turns")
 	# Only when it changes. Arranging them on every resize would fight
@@ -6161,6 +6297,8 @@ func _fit_panels() -> void:
 	if share == _columns:
 		return
 	_columns = share
+	if _bin_props != null:
+		_bin_props.wanted = share == "turns"
 	_arrange_columns()
 
 
@@ -6188,9 +6326,9 @@ func _model_rect() -> Rect2:
 	if _columns == "drawers" and _phone == null:
 		var across: float = get_viewport().get_visible_rect().size.x
 		rect.position.x = SideDock.RAIL_WIDTH
-		# Simulate's column is not a drawer: it stays open beside the model.
-		if _simulate_column != null and _simulate_column.visible:
-			rect.position.x = maxf(rect.position.x, _simulate_column.get_global_rect().end.x)
+		# The tool column is not a drawer: it stays open beside the model.
+		if _tool_column != null and _tool_column.visible:
+			rect.position.x = maxf(rect.position.x, _tool_column.get_global_rect().end.x)
 		rect.size.x = across - SideDock.RAIL_WIDTH - rect.position.x
 	# A tablet's panels stand beside the model, as the desktop's columns do.
 	if _phone != null:
@@ -6203,23 +6341,57 @@ func _model_rect() -> Rect2:
 const SIMULATE_WIDTH := 360.0
 
 
-## Simulate opened or closed: its column shown with it. Opening folds the
-## parts column, which building by hand needs and simulating does not, so
-## the model keeps its room; closing puts it back as it was.
-func _simulate_shown() -> void:
-	var open: bool = _simulate.visible
-	_simulate_column.visible = open
+## Simulate or the hose tool opened or closed: the column shown while
+## either is. Opening folds the parts column, which building by hand needs
+## and simulating or laying a hose does not, so the model keeps its room;
+## closing puts it back as it was. Where nothing folds, the column's room
+## comes out of the model's, and the view steps back so what was in sight
+## stays in sight.
+func _tool_column_shown() -> void:
+	var open: bool = _simulate.visible or _flex.panel.visible
+	if open == _tool_column.visible:
+		return
+	var room: Rect2 = _model_rect()
+	_tool_column.visible = open
 	if open and _bin_dock.is_open() and _columns != "drawers":
-		_simulate_folded_parts = true
+		_tool_folded_parts = true
 		_arranging = true
 		_bin_dock.set_open(false, false)
 		_arranging = false
-	elif not open and _simulate_folded_parts:
-		_simulate_folded_parts = false
+	elif not open and _tool_folded_parts:
+		_tool_folded_parts = false
 		if not _bin_dock.is_open():
 			_arranging = true
 			_bin_dock.set_open(true, false)
 			_arranging = false
+	if open:
+		_keep_in_sight.call_deferred(room)
+
+
+## After the column opened, once the columns are laid out: if a part of
+## the model that was in [param before], the model's room, would be out of
+## the room left (the lens slides the picture to its middle), the view
+## steps back by as much as the room narrowed, about the same middle, so
+## what was in sight is in sight still. A model framed whole has room to
+## spare and nothing moves; nothing moves either when the room grew, as it
+## does when the parts column folds.
+func _keep_in_sight(before: Rect2) -> void:
+	await get_tree().process_frame
+	var after: Rect2 = _model_rect()
+	if after.size.x >= before.size.x - 1.0:
+		return
+	var slide: Vector2 = after.get_center() - before.get_center()
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id) or _camera.is_position_behind(brick.transform.origin):
+			continue
+		var at: Vector2 = _camera.unproject_position(brick.transform.origin)
+		if before.has_point(at) and not after.has_point(at + slide):
+			var view: Dictionary = _camera.aim()
+			var back: float = before.size.x / after.size.x
+			view["distance"] = float(view["distance"]) * back
+			view["size"] = float(view["size"]) * back
+			_camera.aim_at(view)
+			return
 
 
 ## Open and fold the columns as the window's share says, from what the
@@ -6498,6 +6670,9 @@ func _on_model_edited() -> void:
 		_lay_baseplate()
 	elif _floor != null:
 		_floor.follow(_model_bounds())
+	# A band or a spring on a part just moved follows it, in the same step.
+	if _flex != null:
+		_flex.follow_moved()
 	# Every other copy of a sub-assembly just edited follows it.
 	if _verbs != null and _verbs.assemblies != null:
 		_verbs.assemblies.after_edit()
@@ -6535,7 +6710,7 @@ func open_render() -> void:
 	_render.open()
 
 
-## Build, Hose, tube or chain…; Edit, Reshape the hose or chain.
+## Make, Hose, tube or chain…; Make, Reshape the hose or chain.
 func open_flex() -> void:
 	if _measure != null:
 		_measure.leave()
@@ -6559,6 +6734,20 @@ func open_together() -> void:
 		_together_dialog.together = _together
 		add_child(_together_dialog)
 	_together_dialog.open()
+
+
+## File, Comments…: the comments pinned to the model's parts, and a new one
+## on the part selected.
+func open_pins() -> void:
+	if _pins_dialog == null:
+		_pins_dialog = PinsDialog.new()
+		_pins_dialog.together = _together
+		_pins_dialog.store = _store
+		_pins_dialog.builder = _builder
+		_pins_dialog.world = _world
+		_pins_dialog.camera = _camera
+		add_child(_pins_dialog)
+	_pins_dialog.open()
 
 
 ## A Build together link opened: joined once whatever was here is back and
@@ -6644,6 +6833,14 @@ func _hold_figure(figure: Minifig) -> void:
 
 
 func _on_part_chosen(part_id: String) -> void:
+	# A rubber band, a spring or a shock is laid on what it goes round or
+	# between, not put down: Build's flexible part tool takes it.
+	if _flex != null and FlexTool.lays_part(part_id):
+		if _measure != null:
+			_measure.leave()
+		_builder.drop_figure()
+		_flex.open_with(part_id)
+		return
 	_builder.drop_figure()
 	_builder.held_part = part_id
 	# A part picked is a part in hand, to put down.
@@ -6741,7 +6938,10 @@ func _tell_bin_selection() -> void:
 func _open(path: String) -> int:
 	var placed: int = _store.open(path)
 	if not _store.awaited.is_empty():
-		_bar.say("%d bricks — fetching %d more…" % [placed, _store.awaited.size()])
+		_bar.say("%d bricks — fetching %d more…%s" % [placed, _store.awaited.size(),
+			ModelBar.unshown_words(_store)])
+	elif not ModelBar.unshown_words(_store).is_empty():
+		_bar.say("opened %s%s" % [_store.title, ModelBar.unshown_words(_store)])
 	return placed
 
 
@@ -7744,7 +7944,8 @@ func _open_theirs() -> void:
 	var placed: int = await _bar.open_with_progress(path)
 	if placed >= 0:
 		_bar.opened.emit(placed)
-		_bar.say("Opened %s, the model you saved last" % _cloud.newest)
+		_bar.say("Opened %s, the model you saved last%s" % [_cloud.newest,
+			ModelBar.unshown_words(_store)])
 
 
 ## Whether [method _open_theirs] has opened one this start.
@@ -7904,6 +8105,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				"box":
 					_marquee.begin(_press_at)
 					_box_began = true
+					_box_view = _camera.view_at(_press_at)
 				_:
 					_start_left_nav(_pending_verb, _press_at)
 		if not _left_nav.is_empty():
@@ -8155,7 +8357,7 @@ func _unhandled_input(event: InputEvent) -> void:
 ## deciding whether a box covers it and far cheaper than anything
 ## exact. A corner behind the camera projects to nonsense, so a brick
 ## with any corner behind it is left out rather than guessed at.
-func _brick_on_screen(brick: BrickWorld.Brick) -> Variant:
+func _brick_on_screen(brick: BrickWorld.Brick, view: int = CadCamera.MAIN) -> Variant:
 	if _store != null and _store.scenery.has(brick.id):
 		return null
 	# Nor what is hidden: a box drawn over a hidden roof takes what is
@@ -8173,9 +8375,9 @@ func _brick_on_screen(brick: BrickWorld.Brick) -> Variant:
 			box.size.x if n & 1 else 0.0,
 			box.size.y if n & 2 else 0.0,
 			box.size.z if n & 4 else 0.0))
-		if _camera.is_position_behind(corner):
+		if _camera.behind(corner, view):
 			return null
-		var at: Vector2 = _camera.unproject_position(corner)
+		var at: Vector2 = _camera.screen_of(corner, view)
 		lo = Vector2(minf(lo.x, at.x), minf(lo.y, at.y))
 		hi = Vector2(maxf(hi.x, at.x), maxf(hi.y, at.y))
 	return Rect2(lo, hi - lo)
@@ -8263,14 +8465,19 @@ func _dress_for_phone() -> void:
 	_hint_area.custom_minimum_size.y = _phone.foot_height()
 	_gizmo.visible = false
 	var rail: float = Phone.px(get_viewport(), Phone.TARGET)
-	_bin_dock.set_phone_rail(rail)
-	_chat_dock.set_phone_rail(rail)
+	_bin_dock.set_phone_rail(rail, _phone.foot_height())
+	_chat_dock.set_phone_rail(rail, _phone.foot_height())
 	_camera.phone = true
 	_camera.touch_over = _over_panel_at
 	# The model tree and the properties, in the drawer down the left, sized
 	# for a finger as a dialog is; on a tablet the drawer takes the parts
 	# panel's place while it is open (PhoneShell.dock_toggled).
 	_touch.size_panel(_stack)
+	# And the assistant in its drawer down the right.
+	_touch.size_panel(_chat)
+	_chat_dock.toggled.connect(func(open: bool) -> void:
+		if open:
+			_touch.fit_panel.call_deferred(_chat))
 	_bin_dock.toggled.connect(_phone.dock_toggled)
 	_bin_dock.toggled.connect(func(open: bool) -> void:
 		_show_notices()
@@ -8400,18 +8607,21 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 			if control.clip_contents or control is ScrollContainer:
 				clip = clip.intersection(rect)
 			var shown: Rect2 = rect.intersection(clip)
-			var seen: bool = shown.intersects(screen) and rect.size.x > 0.5 and rect.size.y > 0.5
+			var laid: bool = rect.size.x > 0.5 and rect.size.y > 0.5
+			var seen: bool = shown.intersects(screen) and laid
 			var box: Array = box_of.call(rect)
 			var named: String = "%s %s" % [_name_of(control), str(control.name)]
 			# Off the screen: not inside it, and in nothing that scrolls, as the
-			# phone's layout is judged; in a dialog, what of it its scrolls show
-			# is not all inside the screen, and while the keyboard is up the
-			# dialog typed in is judged above it.
-			var off: bool = seen and clip == anywhere and not screen.grow(1.0).encloses(rect)
+			# phone's layout is judged, wholly off it too (a phone on its side
+			# had the parts sheet's foot all under the screen, and nothing said
+			# so); in a dialog, what of it its scrolls show is not all inside
+			# the screen, and while the keyboard is up the dialog typed in is
+			# judged above it.
+			var off: bool = laid and clip == anywhere and not screen.grow(1.0).encloses(rect)
 			if not dialog.is_empty():
 				var bounds: Rect2 = above if typed_in == null or typed_in == holder else screen
 				off = seen and not bounds.grow(1.0).encloses(shown)
-			if seen and TouchSizing.takes(control):
+			if (seen or off) and TouchSizing.takes(control):
 				var target: Dictionary = {"name": named, "box": box, "off": off, "in": dialog}
 				if control is BaseButton and (control as BaseButton).toggle_mode:
 					target["on"] = (control as BaseButton).button_pressed
@@ -8428,7 +8638,7 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 			elif control is LineEdit:
 				var field: LineEdit = control
 				words = field.text if not field.text.is_empty() else field.placeholder_text
-			if seen and not words.strip_edges().is_empty():
+			if (seen or off) and not words.strip_edges().is_empty():
 				texts.append({"name": named, "text": words.substr(0, 40),
 					"px": points_of.call(control.get_theme_font_size("font_size")),
 					"box": box, "off": off, "in": dialog})
@@ -8588,7 +8798,7 @@ func _finish_box(add: bool) -> void:
 		_marquee.finish()
 		return
 	var took: int = _builder.select_in(_marquee.box(),
-		_brick_on_screen, _marquee.takes_touching(), add)
+		_brick_on_screen.bind(_box_view), _marquee.takes_touching(), add)
 	_marquee.finish()
 	_bar.say("took %d" % took if took > 0 else "nothing in there")
 
@@ -8610,7 +8820,7 @@ func _over_interface(point: Vector2) -> bool:
 
 func _over_panel_at(point: Vector2) -> bool:
 	for panel: Control in [_bin_dock, _props_dock, _chat_dock, _bar, _gizmo, _notices,
-			_simulate_column]:
+			_tool_column]:
 		if panel != null and panel.visible \
 				and panel.get_global_rect().has_point(point):
 			return true
@@ -8854,8 +9064,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 ## What a key bound by the keymap does where no key did it before: a
-## command, run as its menu runs it, or Studio's Shift and an arrow, a turn
-## of the selection by 45° (a part in hand turns a quarter, as R turns it).
+## command, run as its menu runs it, a colour key or Studio's Shift-V
+## (Shell.run_key), or Studio's Shift and an arrow, a turn of the selection
+## by 45° (a part in hand turns a quarter, as R turns it).
 func _key_action(action: String) -> void:
 	match action:
 		"part_left_45", "part_right_45":
@@ -8866,7 +9077,7 @@ func _key_action(action: String) -> void:
 			else:
 				_verbs.turn_by(45.0 * way)
 		_:
-			_shell.run(action)
+			await _shell.run_key(action)
 
 
 func _key_pressed(key: InputEventKey) -> void:

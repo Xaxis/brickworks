@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<!--
+  The gallery's Builds tab, at /builds (docs/SOCIAL.md section 7, item 8):
+  everybody's photos of real builds, newest first, each linked to the
+  model it was built from and to whoever built it. A tab of the gallery as
+  Collections and the LDraw library are, under the gallery's own head and
+  tabs, each a page of its own: what a model filters on means nothing to
+  a photo, so this page has no bar of filters.
+
+  A photo is added on a model's page, with I built it, by anybody signed
+  in (api/_builds.js); it is here while its model is in the gallery, its
+  model's owner has not hidden it, nobody's report of it is waiting, and
+  neither its builder nor the model's owner was taken out. Who built it is
+  a link to their profile only where that profile is shown in public (13
+  or over), else "a builder".
+
+  What is listed comes from /api/people?op=builds (api/people.js), a page
+  at a time, paged as every list of the site is (web/pager.js): Show
+  more, the count and the numbered links; the address keeps the last page
+  shown (/builds?page=3). builds.js draws it, each card web/card.js's
+  buildCardHtml, every name and word as text, never as markup. No inline
+  script: the site's content security policy allows none it has not
+  hashed. The search is the gallery's: it asks /gallery.
+--><html lang="en">
+<head>
+<meta charset="utf-8">
+<script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Builds · Real models built from the Brickworks gallery</title>
+<meta name="description" content="Photos of real builds: models from the Brickworks gallery that people built in bricks, each linked to the model it was built from and to its builder.">
+<link rel="canonical" href="https://brickworks.diy/builds">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Builds in the Brickworks gallery">
+<meta property="og:description" content="Photos of real builds of models from the Brickworks gallery, each linked to its model and its builder.">
+<meta property="og:url" content="https://brickworks.diy/builds">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="The Brickworks mark, a cube with a corner cut away, and the words: a complete CAD for LEGO® models, beside a render of a grey stone castle in bricks.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Builds in the Brickworks gallery">
+<meta name="twitter:description" content="Photos of real builds of models from the Brickworks gallery, each linked to its model and its builder.">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/site.css">
+<style>
+.listing { padding: var(--s-5) 0 72px; }
+/* The gallery's head and tabs, as gallery.html lays them out. */
+.browse-band { padding: var(--s-6) 0 0; }
+.finder { margin: 0 0 var(--s-4); }
+.gallery-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--s-3) var(--s-6); }
+.gallery-title { min-width: 0; }
+.gallery-head h1 { margin: 0; }
+.gallery-head .lede { margin: var(--s-2) 0 0; max-width: 60ch; color: var(--ink-soft); font-size: var(--t-lede); }
+.search { position: relative; flex: 1 1 320px; max-width: 440px; }
+.search input { width: 100%; padding-left: 40px; padding-right: 40px; }
+.search .icon { position: absolute; left: 12px; top: 12px; color: var(--ink-faint); pointer-events: none; }
+.search .hint {
+	position: absolute; right: 10px; top: 11px; display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px;
+	border: 1px solid var(--line); border-radius: var(--r-1); background: var(--panel); color: var(--ink-faint);
+	font: inherit; font-size: var(--t-micro); line-height: 1; pointer-events: none;
+}
+.search:focus-within .hint, .search:has(input:not(:placeholder-shown)) .hint { display: none; }
+@media (width < 600px) {
+	.browse-band { padding-top: var(--s-4); }
+	.gallery-head { flex-wrap: nowrap; align-items: center; }
+	.gallery-head .lede, .search .hint { display: none; }
+	.search { flex: 1 1 auto; max-width: none; }
+	.search input { padding-right: 12px; }
+}
+.gallery-bar { display: flex; align-items: center; min-width: 0; border-bottom: 1px solid var(--line); }
+.gallery-bar .tabs { flex: 1; margin: 0; border-bottom: 0; }
+.builds-said { margin: 0 0 var(--s-4); color: var(--ink-soft); font-size: var(--t-small); }
+.state .actions { margin-top: var(--s-3); }
+</style>
+<script src="/follow.js" type="module"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Main">
+			<a href="/gallery" aria-current="page">Gallery</a>
+			<a href="/library">Library</a>
+			<a href="/docs">Docs</a>
+			<a href="/plans">Pricing</a>
+			<a class="cta" href="/app">Open the app</a>
+			<a class="cta ghost" href="/profile" data-account>Sign in</a>
+		</nav>
+		<details class="menu">
+			<summary>Menu</summary>
+			<div class="menu-list">
+				<nav aria-label="Menu">
+					<a href="/gallery" aria-current="page">Gallery</a>
+					<a href="/library">Library</a>
+					<a href="/docs">Docs</a>
+					<a href="/plans">Pricing</a>
+					<a href="/download">Download</a>
+					<a href="/profile" data-account>Sign in</a>
+				</nav>
+				<div class="theme-choice"><span aria-hidden="true">Theme</span>
+					<div class="segmented" role="group" aria-label="Theme">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+					</div>
+				</div>
+			</div>
+		</details>
+	</div>
+</header>
+
+<main id="main">
+	<div class="browse-band halo">
+		<div class="wrap wide">
+			<!-- The gallery's search: it asks the gallery's models. -->
+			<form class="finder" id="finder" role="search" action="/gallery" method="get">
+				<div class="gallery-head">
+					<div class="gallery-title">
+						<h1 id="gallery-h">Gallery</h1>
+						<p class="lede">Models people built in Brickworks and shared. Turn one in 3D, build it step by step, or make it yours.</p>
+					</div>
+					<label class="search">
+						<svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#search"></use></svg>
+						<span class="visually-hidden">Search the gallery</span>
+						<input type="search" id="q" name="q" maxlength="100" autocomplete="off" enterkeyhint="search"
+							placeholder="Search models, builders, tags" aria-keyshortcuts="/">
+						<kbd class="hint" aria-hidden="true">/</kbd>
+					</label>
+				</div>
+			</form>
+			<div class="gallery-bar">
+				<!-- The gallery's tabs, this one marked (gallery.html's, and the LDraw library's). -->
+				<nav class="tabs" id="tabs" aria-label="Which models">
+					<a href="/gallery" data-tab="top">Top</a>
+					<a href="/gallery?sort=newest" data-tab="new">New</a>
+					<a href="/builds" data-tab="builds" aria-current="page">Builds</a>
+					<a href="/collections">Collections</a>
+					<a href="/library">LDraw library</a>
+				</nav>
+			</div>
+		</div>
+	</div>
+	<section class="wrap wide listing" aria-labelledby="builds-h">
+		<h2 class="visually-hidden" id="builds-h">Builds</h2>
+		<p class="builds-said" id="builds-said">Photos of models from the gallery that people built in real bricks, newest first.</p>
+		<!-- The list's pager (web/pager.js, site.css .pager): Show earlier over a
+		     page opened by its address, and under the list the count, Show more
+		     and the numbered links. -->
+		<p class="pager-earlier" data-pager-earlier="builds" hidden><a class="cta ghost" href="/builds" data-pager-go="earlier">Show earlier</a></p>
+		<!-- Two rows of skeletons (site.css .skeleton) where the first page's
+		     cards go, taken out when it comes. web/card.js skeletonHtml draws the same. -->
+		<div class="models" id="builds">
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+		</div>
+		<p class="visually-hidden" id="found" aria-live="polite"></p>
+		<p class="visually-hidden" id="loading" role="status">Fetching the builds…</p>
+		<div class="state" id="builds-empty" hidden>
+			No builds yet. A build is a photo of a model from the gallery that somebody
+			built in real bricks. Built one? Open its page, choose <b>I built it</b> and
+			add your photo, and it shows here.
+			<div class="actions"><a class="cta small" href="/gallery">Find a model to build</a></div>
+		</div>
+		<p class="state" id="broken" hidden>
+			The builds did not load just now.
+			<button type="button" class="link" id="retry">Retry</button>
+		</p>
+		<noscript>
+			<p class="state">The builds are drawn with a little JavaScript, which is off in this browser.</p>
+		</noscript>
+		<nav class="pager" data-pager="builds" aria-label="Pages of builds" data-size="24" data-noun="build|builds" hidden>
+			<p class="pager-count" hidden></p>
+			<a class="cta ghost pager-more" href="/builds?page=2" data-pager-go="more" hidden>Show more</a>
+			<p class="visually-hidden" role="status" data-pager-said></p>
+		</nav>
+	</section>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-top">
+			<div class="foot-brand">
+				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>A CAD for LEGO® models, with an AI designer.</p>
+				<div class="theme-choice"><span aria-hidden="true">Theme</span>
+					<div class="segmented" role="group" aria-label="Theme">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+					</div>
+				</div>
+			</div>
+			<nav class="foot-links" aria-label="More">
+				<div>
+					<p class="foot-h" id="foot-product">Product</p>
+					<ul aria-labelledby="foot-product">
+						<li><a href="/app">Open the app</a></li>
+						<li><a href="/download">Download</a></li>
+						<li><a href="/plans">Pricing</a></li>
+						<li><a href="/changelog">Changelog</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-community">Community</p>
+					<ul aria-labelledby="foot-community">
+						<li><a href="/gallery">Gallery</a></li>
+						<li><a href="/library">LDraw library</a></li>
+						<li><a href="/challenge">Challenge</a></li>
+						<li><a href="/collections">Collections</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-help">Help</p>
+					<ul aria-labelledby="foot-help">
+						<li><a href="/docs">Docs</a></li>
+						<li><a href="/faq">FAQ</a></li>
+						<li><a href="/compare">Compare</a></li>
+						<li><a href="/guidelines">Guidelines</a></li>
+						<li><a href="/feedback" data-feedback>Send feedback</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-legal">Legal</p>
+					<ul aria-labelledby="foot-legal">
+						<li><a href="/privacy">Privacy</a></li>
+						<li><a href="/terms">Terms</a></li>
+						<li><a href="/takedown">Takedown</a></li>
+					</ul>
+				</div>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group. Parts from the LDraw™ library (CC BY). <a href="/terms#notices">Notices</a></p>
+		</div>
+	</div>
+</footer>
+
+<script src="/builds.js" type="module"></script>
+</body>
+</html>

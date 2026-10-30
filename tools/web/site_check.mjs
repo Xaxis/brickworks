@@ -258,7 +258,10 @@ if (app.status !== 200) {
   if (built.status !== 200 || built.headers.get("content-security-policy") !== appCsp) {
     fail(`/b/${sha}/ answered ${built.status}, or with another policy`);
   }
-  for (const file of ["index.js", "index.wasm", "index.pck", "version.json"]) {
+  // The code pack and what the start reads beside it, the parts after it,
+  // and what is fetched when wanted (tools/web/pck_split.py).
+  for (const file of ["index.js", "index.wasm", "index.pck", "index.data.pck", "index.parts.bin",
+      "index.primitives.bin", "index.hdri.bin", "version.json"]) {
     const r = await get(`/b/${sha}/${file}`, "HEAD");
     const cache = r.headers.get("cache-control") || "";
     if (r.status !== 200) fail(`/b/${sha}/${file} answered ${r.status}`);

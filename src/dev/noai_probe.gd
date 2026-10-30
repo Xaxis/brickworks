@@ -463,7 +463,7 @@ func _ai_in(node: Node) -> PackedStringArray:
 func _ai_in_menus() -> PackedStringArray:
 	var found := PackedStringArray()
 	var shell: Shell = _main.get("_shell")
-	for title: String in ["File", "Edit", "View", "Build", "Tools", "Help"]:
+	for title: String in ["File", "Edit", "View", "Build", "Make", "Tools", "Help"]:
 		var button: MenuButton = shell.menu(title)
 		if button != null:
 			found.append_array(_ai_in_popup(button.get_popup()))

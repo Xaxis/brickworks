@@ -10,6 +10,14 @@
 //                                 its ghost over the model (each load's held)
 //     --out=DIR                   each run's files and timeline as JSON
 //
+// A local export (tools/export.sh web), sent and cached as the deployment
+// sends it: without --cached every file is no-store, and a warm load timed
+// a second first visit.
+//
+//   tools/web/serve.py build/web 9240 --parts assets/generated/parts --delay 0 \
+//       --accounts --compressed --cached
+//   node tools/web/load_check.mjs --url=http://127.0.0.1:9240/index.html --runs=3 --warm
+//
 // A visit is a fresh browser profile, so nothing is cached, signed in as
 // the tests are (browser.mjs): the app shows a person nothing but its
 // sign-in until they are. A profile on disk, not the incognito context a
@@ -273,7 +281,8 @@ async function load(context, profile, label) {
     const now = await page.evaluate(() => {
       const c = window.brickworksControls || {};
       const s = window.brickworksState || {};
-      return { at: { ...window.__load, boot: window.brickworksBoot || {}, later: window.brickworksLater || null }, bin: Boolean(c["part search"] && c["first part"]),
+      return { at: { ...window.__load, boot: window.brickworksBoot || {}, later: window.brickworksLater || null,
+        packs: window.brickworksPacks || null }, bin: Boolean(c["part search"] && c["first part"]),
         found: Array.isArray(s.found) ? s.found.length : 0, now: performance.now() };
     }).catch(() => null);
     if (now && now.bin && now.found > 0) { marks = { ...now.at, interactive: now.now }; cpu1 = await cpuNow(cdp); break; }
@@ -339,9 +348,17 @@ function sayRun(run) {
     console.log(`    laps: ${laps.map(([k, v], n) => `${k} ${sec(v)}${n ? ` (+${((v - laps[n - 1][1]) / 1000).toFixed(2)})` : ""}`).join(", ")}`);
   }
   if (b.ready) {
+    // The data pack's wait (WebPacks): from Main._ready to its mount, after
+    // which the catalogue is read. A build that was not split has none.
+    const data = b.data ?? b.ready;
     console.log(`    the start: engine banner ${sec(banner ? banner[0] : NaN)} s, app ready ${sec(b.ready)} s, `
-      + `catalogue +${sec(b.catalogue - b.ready)} s, interface +${sec(b.ui - b.catalogue)} s, model +${sec(b.model - b.ui)} s, `
-      + `then interactive +${sec(m.interactive - b.model)} s`);
+      + `data +${sec(data - b.ready)} s, catalogue +${sec(b.catalogue - data)} s, interface +${sec(b.ui - b.catalogue)} s, `
+      + `model +${sec(b.model - b.ui)} s, then interactive +${sec(m.interactive - b.model)} s`);
+  }
+  const data = m.packs && m.packs.data;
+  if (data) {
+    console.log(`    data pack: asked ${sec(data.asked)} s, came ${sec(data.came)} s, written ${sec(data.written)} s`
+      + (data.failed ? ` (${data.failed})` : ""));
   }
 }
 
@@ -413,10 +430,31 @@ for (const profile of profiles) {
       pick: pickId ? Math.max(...these.map((r) => r.picked?.ms ?? NaN)) : NaN,
       runs: these.length,
     };
+    // The start's parts, after the bytes (Main._boot_mark): the engine to
+    // its banner, the scripts to Main._ready, the wait for the data pack
+    // (none where the pack is whole), the catalogue, the interface and the
+    // model, and then the first frames until the bin is usable.
+    const part = (f) => median(these.map((r) => {
+      const m = r.marks || {};
+      const b = m.boot || {};
+      const banner = ((m.said || []).find(([, line]) => /^Godot Engine/.test(line)) || [NaN])[0];
+      return f(m, b, banner);
+    }));
+    row.split = {
+      banner: part((m, b, banner) => banner), scripts: part((m, b, banner) => b.ready - banner),
+      data: part((m, b) => (b.data ?? b.ready) - b.ready),
+      catalogue: part((m, b) => b.catalogue - (b.data ?? b.ready)), interface: part((m, b) => b.ui - b.catalogue),
+      model: part((m, b) => b.model - b.ui), frames: part((m, b) => m.interactive - b.model),
+    };
     summary[`${profile} ${kind}`] = row;
     console.log(`  ${`${profile} ${kind}`.padEnd(15)} interactive ${sec(row.interactive).padStart(5)}  bin drawn ${sec(row.binDrawn).padStart(5)}  first frame ${sec(row.firstFrame).padStart(5)}  `
       + `${pickId ? `pick ${Number.isFinite(row.pick) ? `${Math.round(row.pick)} ms` : "-"} (longest)  ` : ""}`
       + `started ${sec(row.started).padStart(5)}  net ${sec(row.net).padStart(5)}  main ${sec(row.cpu).padStart(5)} (long ${sec(row.busy)}, all ${sec(row.cpuAll)})  ${mb(row.bytes).padStart(6)} MB  (${row.runs} runs)`);
+    const sp = row.split;
+    if (Number.isFinite(sp.scripts)) {
+      console.log(`  ${"".padEnd(15)} the start: banner at ${sec(sp.banner)}, scripts +${sec(sp.scripts)}, data +${sec(sp.data)}, catalogue +${sec(sp.catalogue)}, `
+        + `interface +${sec(sp.interface)}, model +${sec(sp.model)}, first frames +${sec(sp.frames)}`);
+    }
   }
 }
 if (out) writeFileSync(`${out}/load.json`, JSON.stringify({ url: args.url, summary, results }, null, 1));

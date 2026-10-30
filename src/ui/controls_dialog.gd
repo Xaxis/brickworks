@@ -284,8 +284,11 @@ func _fill() -> void:
 			continue
 		# A row with no key at all is for whoever looks for it by name, to
 		# give it one: a hundred of them would bury the keys there are.
+		# A favourite colour's row stays: its colour is chosen there,
+		# whatever its key (none under Studio's).
 		if words.is_empty() and Array(binding.keys).all(
-				func(key: String) -> bool: return key == ControlsHint.NO_KEY):
+				func(key: String) -> bool: return key == ControlsHint.NO_KEY) \
+				and not str(binding.actions[0]).begins_with(ColourKeys.FAVOURITE):
 			continue
 		if not in_section.has(binding.section):
 			sections.append(binding.section)
@@ -457,7 +460,10 @@ static func _says(binding: ControlsHint.Binding, words: PackedStringArray) -> bo
 ## The list's own sections, for the keys the menus show that it does not
 ## name, by the menu they are in.
 const MENU_SECTIONS: Dictionary = {"File": "Panels", "Edit": "Building", "View": "The view",
-	"Build": "Building", "Tools": "Building", "Help": "Panels"}
+	"Build": "Building", "Make": "Building", "Tools": "Building", "Help": "Panels"}
+
+## The colour keys' section (ColourKeys), last.
+const COLOURS := "Colours: click a favourite's colour to change it"
 
 
 ## Every row the sheet has: the controls list (ControlsHint.for_keyboard),
@@ -498,7 +504,32 @@ func bindings() -> Array[ControlsHint.Binding]:
 		out.append(binding)
 	for rest: String in extra:
 		out.append_array(extra[rest])
+	for action: String in ColourKeys.ACTIONS:
+		var binding := ControlsHint.keyed([action], colour_words(action))
+		binding.section = COLOURS
+		out.append(binding)
 	return out
+
+
+## What a colour key's row says: the colour it paints, and whose it is.
+## "paint Black, favourite 1"; "paint Red, the model's most used (52)".
+func colour_words(action: String) -> String:
+	var n: int = ColourKeys.place(action) + 1
+	if action.begins_with(ColourKeys.FAVOURITE):
+		return "paint %s, favourite %d" % [_colour_name(ColourKeys.favourites()[n - 1]), n]
+	if shell == null or shell.world == null:
+		return ColourKeys.words(action)
+	var used: Array = ColourKeys.most_used(shell.world, shell.store.scenery)
+	if n > used.size():
+		return "the model's %s colour: it has %d" % [ColourKeys.nth(n), used.size()]
+	var whose: String = "the model's most used" if n == 1 else "its %s" % ColourKeys.nth(n)
+	return "paint %s, %s (%d)" % [_colour_name(int(used[n - 1][0])), whose, int(used[n - 1][1])]
+
+
+func _colour_name(code: int) -> String:
+	if shell == null or shell.library == null or not shell.library.colors.has(code):
+		return "colour %d" % code
+	return shell.library.color(code).name
 
 
 ## The commands of a menu, its submenus' too.
@@ -555,7 +586,12 @@ func _row(binding: ControlsHint.Binding, density: float) -> Control:
 
 	var pointer := CenterContainer.new()
 	pointer.custom_minimum_size = Vector2(POINTER_WIDE, KEY_TALL)
-	if not binding.cursor.is_empty() and Cursors.HOTSPOTS.has(binding.cursor):
+	var colour_key: String = binding.actions[0] if binding.actions.size() > 0 else ""
+	if ColourKeys.owns(colour_key):
+		var swatch: Control = _colour_swatch(colour_key)
+		if swatch != null:
+			pointer.add_child(swatch)
+	elif not binding.cursor.is_empty() and Cursors.HOTSPOTS.has(binding.cursor):
 		var picture: TextureRect = Icons.picture(
 			Icons.CURSORS + binding.cursor + ".svg", POINTER_TALL, density)
 		picture.tooltip_text = "the pointer that says so"
@@ -572,6 +608,100 @@ func _row(binding: ControlsHint.Binding, density: float) -> Control:
 	verb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(verb)
 	return row
+
+
+## A colour key's colour, in the pointer's column: a favourite's a button
+## that opens the colours to choose another from ([method _choose_colour]),
+## the model's most used only shown. None for a place the model has no
+## colour in.
+func _colour_swatch(action: String) -> Control:
+	if shell == null or shell.library == null:
+		return null
+	var code: int = ColourKeys.colour_of(action, shell.world, shell.store.scenery)
+	if code < 0 or not shell.library.colors.has(code):
+		return null
+	var swatch := PartsBin.Swatch.new(shell.library.color(code))
+	swatch.toggle_mode = false
+	# Edged, or Black is lost on the sheet's own near-black.
+	var edged := PanelContainer.new()
+	var edge := StyleBoxFlat.new()
+	edge.bg_color = Color(0, 0, 0, 0)
+	edge.border_color = Color(1, 1, 1, 0.35)
+	edge.set_border_width_all(1)
+	edge.set_corner_radius_all(2)
+	edged.add_theme_stylebox_override("panel", edge)
+	edged.mouse_filter = Control.MOUSE_FILTER_PASS
+	edged.add_child(swatch)
+	var n: int = ColourKeys.place(action) + 1
+	if not action.begins_with(ColourKeys.FAVOURITE):
+		swatch.focus_mode = Control.FOCUS_NONE
+		swatch.disabled = true
+		swatch.tooltip_text = "%s, the model's %s most used" % [_colour_name(code), ColourKeys.nth(n)]
+		return edged
+	swatch.name = "favourite_%d" % n
+	swatch.tooltip_text = "%s: click to choose favourite %d's colour" % [_colour_name(code), n]
+	swatch.accessibility_name = "Favourite %d, %s. Choose its colour" % [n, _colour_name(code)]
+	swatch.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	swatch.pressed.connect(func() -> void: _choose_colour(n - 1, swatch))
+	return edged
+
+
+## The colours made now (PartLibrary.is_current), as the palette orders
+## them, for favourite [param n] (0 to 9): a click on one makes it that.
+var _chooser: PopupPanel
+
+
+func _choose_colour(n: int, beside: Control) -> void:
+	if _chooser != null:
+		_chooser.queue_free()
+	_chooser = PopupPanel.new()
+	_chooser.name = "favourite_chooser"
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 6)
+	_chooser.add_child(column)
+	var title := Label.new()
+	title.text = "Favourite %d" % (n + 1)
+	title.add_theme_font_size_override("font_size", 12)
+	column.add_child(title)
+	var flow := FlowContainer.new()
+	flow.custom_minimum_size = Vector2(PartsBin.Swatch.SIZE * 16 + 2 * 15, 0)
+	flow.add_theme_constant_override("h_separation", 2)
+	flow.add_theme_constant_override("v_separation", 2)
+	column.add_child(flow)
+	var chosen: int = ColourKeys.favourites()[n]
+	var offered: Array[PartLibrary.BrickColor] = []
+	for code: int in shell.library.colors:
+		if code in ColourKeys.NOT_A_COLOUR or not (shell.library.is_current(code) or code == chosen):
+			continue
+		offered.append(shell.library.color(code))
+	offered.sort_custom(PartsBin._in_palette_order)
+	for color: PartLibrary.BrickColor in offered:
+		var swatch := PartsBin.Swatch.new(color)
+		swatch.set_pressed_no_signal(color.code == chosen)
+		swatch.tooltip_text = color.name
+		var code: int = color.code
+		swatch.pressed.connect(func() -> void:
+			_chooser.hide()
+			ColourKeys.set_favourite(n, code)
+			_say("favourite %d is now %s" % [n + 1, color.name])
+			_keys_changed())
+		flow.add_child(swatch)
+	add_child(_chooser)
+	var under: Vector2 = beside.get_screen_position() + Vector2(0.0, beside.size.y + 4.0)
+	_chooser.popup(Rect2i(Vector2i(under), Vector2i.ZERO))
+	# Its colours wrap once it has its width: then kept inside the window,
+	# over the swatch where the window ends under it.
+	await get_tree().process_frame
+	if _chooser == null or not _chooser.visible:
+		return
+	_chooser.reset_size()
+	var room: Vector2 = get_viewport().get_visible_rect().size
+	var tall: Vector2 = Vector2(_chooser.size)
+	var at: Vector2 = under
+	at.x = clampf(at.x, 4.0, maxf(room.x - tall.x - 4.0, 4.0))
+	if at.y + tall.y > room.y - 4.0:
+		at.y = maxf(beside.get_screen_position().y - tall.y - 4.0, 4.0)
+	_chooser.position = Vector2i(at)
 
 
 func _toggle(column: VBoxContainer, text: String, why: String,
@@ -940,6 +1070,14 @@ func controls_by_name() -> Dictionary:
 		for chip: Node in _rows.find_children("*", "PanelContainer", true, false):
 			if chip.has_meta("action") and (chip as Control).is_visible_in_tree():
 				named["key_" + str(chip.get_meta("action"))] = chip
+		# Each favourite's colour, and the colours to choose from while open,
+		# by code: "colour_378".
+		for swatch: Node in _rows.find_children("favourite_*", "Button", true, false):
+			if (swatch as Control).is_visible_in_tree():
+				named[str(swatch.name)] = swatch
+		if _chooser != null and _chooser.visible:
+			for swatch: Node in _chooser.find_children("*", "Button", true, false):
+				named["colour_%d" % int(swatch.get_meta("code"))] = swatch
 		return named
 	var named: Dictionary = {"assistant_on": assistant_on, "assistant_off": assistant_off,
 		"interface_size": interface_choice, "reduce_motion": reduce_motion,

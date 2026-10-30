@@ -1,4 +1,4 @@
-## View > Default view puts the view back: on an empty model too (walk180 A2).
+## View > Viewpoint > Default view puts the view back: on an empty model too (walk180 A2).
 ##
 ##   godot --headless --path . --script src/dev/default_view_probe.gd
 ##

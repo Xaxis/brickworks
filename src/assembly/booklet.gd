@@ -199,6 +199,8 @@ class Callout extends RefCounted:
 	## callout box off (BookletLooks.callout_on).
 	var own_pages: bool = false
 
+	## A cell's view: a step posed apart (BookletMaker._callout) from its
+	## own side, framed on the assembly as seen from there.
 	func cell_view(index: int, px_per_mm: float) -> BookletStudio.View:
 		var cell: Rect2 = cells[index]
 		var k: float = cell_scale * px_per_mm
@@ -206,10 +208,21 @@ class Callout extends RefCounted:
 		var room := Rect2(Vector2(0.0, top), Vector2(cell.size.x, cell.size.y - top))
 		var target: Vector2 = room.get_center() * px_per_mm
 		var size: Vector2 = cell.size * px_per_mm
-		var middle: Vector2 = subject.get_center()
-		return BookletStudio.View.new(from, Vector2(
+		var seen: Entry = steps[index] if inline and index < steps.size() else null
+		var middle: Vector2 = (seen.subject if seen != null else subject).get_center()
+		return BookletStudio.View.new(seen.from if seen != null else from, Vector2(
 			middle.x - (target.x - size.x * 0.5) / k,
 			middle.y + (target.y - size.y * 0.5) / k), k)
+
+	## What every cell must hold, on the view plane in LDU: the finished
+	## assembly as the callout faces it, or as a step posed apart sees it,
+	## the larger each way.
+	func extent() -> Vector2:
+		var most: Vector2 = subject.size
+		if inline:
+			for step: Entry in steps:
+				most = most.max(step.subject.size)
+		return most.max(Vector2(1.0, 1.0))
 
 
 class Page extends RefCounted:
@@ -533,7 +546,10 @@ static func _by_hand(entry: Entry) -> void:
 ## the nearest free room of its size on the page, or, for a picture, a
 ## callout or a picture of the designer's, smaller (down to half), and is
 ## said in [member Page.overlaps], for the page editor and a session to say.
-## One with no room anywhere stays, and is said as not moved.
+## One with no room anywhere stays, and is said as not moved. Words or a
+## picture its designer turned are judged by their turned outline, which is
+## what the page draws: by its box, one turned 30° beside another was left
+## lying on it.
 static func _settle(page: Page) -> void:
 	page.overlaps.clear()
 	var by_hand: bool = page.entries.any(func(entry: Entry) -> bool:
@@ -543,12 +559,13 @@ static func _settle(page: Page) -> void:
 		entry.clear = by_hand
 	var kept: Array = []
 	for thing: Dictionary in things_on(page):
-		var under: Dictionary = _under(thing["rect"], kept)
+		var turn: float = float(thing.get("turn", 0.0))
+		var under: Dictionary = _under(thing["rect"], kept, turn)
 		if under.is_empty():
 			kept.append(thing)
 			continue
 		var spot: Array = _free_spot(thing["rect"], kept, _room_of(page),
-			str(thing["kind"]) in ["picture", "callout", "image"])
+			str(thing["kind"]) in ["picture", "callout", "image"], turn)
 		var said: Dictionary = {"step": (thing["entry"] as Entry).number, "item": thing["kind"],
 			"on_step": (under["entry"] as Entry).number, "on_item": under["kind"],
 			"moved": not spot.is_empty()}
@@ -626,7 +643,8 @@ static func things_on(page: Page) -> Array:
 			var note: Variant = entry.notes[at]
 			if note is Dictionary and ((note as Dictionary).has("text") or (note as Dictionary).has("image")):
 				notes.append({"entry": entry, "kind": "text" if (note as Dictionary).has("text") else "image",
-					"rect": BookletLooks.rect_of(note.get("at", [])), "index": at})
+					"rect": BookletLooks.rect_of(note.get("at", [])), "index": at,
+					"turn": BookletLooks.turn_of(note)})
 	return placed + laid + notes
 
 
@@ -654,20 +672,66 @@ const SIGN := 1.25
 const SIGN_GAP := 2.0
 
 
-## The first of [param kept] that [param rect] overlaps, or {}.
-static func _under(rect: Rect2, kept: Array) -> Dictionary:
+## The first of [param kept] that [param rect], turned [param turn]
+## degrees about its middle, overlaps, or {}.
+static func _under(rect: Rect2, kept: Array, turn: float = 0.0) -> Dictionary:
 	for thing: Dictionary in kept:
-		var shared: Rect2 = rect.intersection(thing["rect"])
-		if shared.size.x > OVERLAP and shared.size.y > OVERLAP:
+		if overlaps(rect, turn, thing["rect"], float(thing.get("turn", 0.0))):
 			return thing
 	return {}
 
 
+## Whether [param a] and [param b], each turned clockwise about its middle
+## by [param a_turn] and [param b_turn] degrees as the page draws it, share
+## more than OVERLAP mm both ways.
+static func overlaps(a: Rect2, a_turn: float, b: Rect2, b_turn: float) -> bool:
+	var shared: Rect2 = outline_box(a, a_turn).intersection(outline_box(b, b_turn))
+	if shared.size.x <= OVERLAP or shared.size.y <= OVERLAP:
+		return false
+	if is_zero_approx(a_turn) and is_zero_approx(b_turn):
+		return true
+	for part: PackedVector2Array in Geometry2D.intersect_polygons(outline(a, a_turn),
+			outline(b, b_turn)):
+		var box := Rect2(part[0], Vector2.ZERO)
+		for point: Vector2 in part:
+			box = box.expand(point)
+		if box.size.x > OVERLAP and box.size.y > OVERLAP:
+			return true
+	return false
+
+
+## [param rect]'s corners turned clockwise about its middle by [param turn]
+## degrees, as CSS's rotate() turns a word or picture on the page.
+static func outline(rect: Rect2, turn: float) -> PackedVector2Array:
+	var middle: Vector2 = rect.get_center()
+	var out := PackedVector2Array()
+	for corner: Vector2 in [rect.position, Vector2(rect.end.x, rect.position.y), rect.end,
+			Vector2(rect.position.x, rect.end.y)]:
+		out.append(middle + (corner - middle).rotated(deg_to_rad(turn)))
+	return out
+
+
+## The box round [method outline].
+static func outline_box(rect: Rect2, turn: float) -> Rect2:
+	if is_zero_approx(turn):
+		return rect
+	var corners: PackedVector2Array = outline(rect, turn)
+	var box := Rect2(corners[0], Vector2.ZERO)
+	for corner: Vector2 in corners:
+		box = box.expand(corner)
+	return box
+
+
 ## The nearest room on the page, on a 2 mm grid from where [param rect] was,
-## that overlaps none of [param kept]: [rect, scale], or [].
-static func _free_spot(rect: Rect2, kept: Array, area: Rect2, can_shrink: bool) -> Array:
+## that overlaps none of [param kept]: [rect, scale], or []. One turned
+## [param turn] degrees is kept inside [param area] by its turned outline.
+static func _free_spot(rect: Rect2, kept: Array, area: Rect2, can_shrink: bool,
+		turn: float = 0.0) -> Array:
+	var whole: Rect2 = area
 	for scale: float in ([1.0, 0.85, 0.7, 0.55] if can_shrink else [1.0]):
 		var size: Vector2 = rect.size * scale
+		var out: Vector2 = (outline_box(Rect2(Vector2.ZERO, size), turn).size - size) * 0.5
+		area = whole.grow_individual(-out.x, -out.y, -out.x, -out.y)
 		if size.x > area.size.x or size.y > area.size.y:
 			continue
 		var best: Rect2 = Rect2()
@@ -678,7 +742,7 @@ static func _free_spot(rect: Rect2, kept: Array, area: Rect2, can_shrink: bool) 
 			while y + size.y <= area.end.y + 0.01:
 				var at := Rect2(Vector2(x, y), size)
 				var away: float = at.get_center().distance_squared_to(rect.get_center())
-				if away < nearest and _under(at, kept).is_empty():
+				if away < nearest and _under(at, kept, turn).is_empty():
 					best = at
 					nearest = away
 				y += 2.0
@@ -716,9 +780,12 @@ static func _move_thing(thing: Dictionary, to: Rect2, scale: float) -> void:
 ## Where an item dragged on the page comes to rest: [param at] moved, or
 ## with [param resize] its far corner moved, onto the nearest of the page's
 ## margins and middle and the edges and middles of [param others] (Rect2s
-## in page mm) within SNAP mm, each way on its own. {"rect": Rect2, "lines":
-## [["x" or "y", mm]] for the guides it snapped to}.
-static func snapped_to(at: Rect2, others: Array, resize: bool = false) -> Dictionary:
+## in page mm) within SNAP mm, each way on its own. A guide of [param
+## guides] ({"x": [mm], "y": [mm]}, BookletLooks.guides) within SNAP comes
+## first: its designer put it there to line things up on. {"rect": Rect2,
+## "lines": [["x" or "y", mm]] for the guides it snapped to}.
+static func snapped_to(at: Rect2, others: Array, resize: bool = false,
+		guides: Dictionary = {}) -> Dictionary:
 	var area: Rect2 = content()
 	var xs: Array = [area.position.x, area.end.x, PAGE.x * 0.5]
 	var ys: Array = [area.position.y, area.end.y, PAGE.y * 0.5]
@@ -728,16 +795,20 @@ static func snapped_to(at: Rect2, others: Array, resize: bool = false) -> Dictio
 		ys.append_array([rect.position.y, rect.end.y, rect.get_center().y])
 	var out: Rect2 = at
 	var lines: Array = []
-	var by_x: Array = _nearest([at.end.x] if resize
-		else [at.position.x, at.get_center().x, at.end.x], xs)
+	var edges_x: Array = [at.end.x] if resize else [at.position.x, at.get_center().x, at.end.x]
+	var edges_y: Array = [at.end.y] if resize else [at.position.y, at.get_center().y, at.end.y]
+	var by_x: Array = _nearest(edges_x, guides.get("x", []))
+	if by_x.is_empty():
+		by_x = _nearest(edges_x, xs)
 	if not by_x.is_empty():
 		if resize:
 			out.size.x += float(by_x[0])
 		else:
 			out.position.x += float(by_x[0])
 		lines.append(["x", by_x[1]])
-	var by_y: Array = _nearest([at.end.y] if resize
-		else [at.position.y, at.get_center().y, at.end.y], ys)
+	var by_y: Array = _nearest(edges_y, guides.get("y", []))
+	if by_y.is_empty():
+		by_y = _nearest(edges_y, ys)
 	if not by_y.is_empty():
 		if resize:
 			out.size.y += float(by_y[0])
@@ -844,13 +915,13 @@ static func _cell_scale(callout: Callout, panel: Rect2, count: int) -> float:
 	var top: float = CALLOUT_NUMBER + 1.0 if callout.inline else 1.0
 	var widest: float = (panel.size.x * 0.56 - PAD * (count + 1)) / count
 	var tallest: float = panel.size.y * 0.4 - top - PAD * 2.0
-	var size: Vector2 = callout.subject.size.max(Vector2(1.0, 1.0))
+	var size: Vector2 = callout.extent()
 	return minf(MOST_SCALE * 0.8, minf((widest - 2.0) / size.x, (tallest - 2.0) / size.y))
 
 
 static func _cell_size(callout: Callout, scale: float) -> Vector2:
 	var top: float = CALLOUT_NUMBER + 1.0 if callout.inline else 1.0
-	return callout.subject.size * scale + Vector2(2.0, 2.0 + top)
+	return callout.extent() * scale + Vector2(2.0, 2.0 + top)
 
 
 ## Whether the callout's steps fit in a box on a whole page's panel at a
@@ -872,7 +943,7 @@ static func _cells(callout: Callout) -> void:
 		callout.cells.append(Rect2(callout.box.position
 			+ Vector2(PAD + index * (cell.x + PAD), PAD), cell))
 	var top: float = CALLOUT_NUMBER + 1.0 if callout.inline else 1.0
-	var size: Vector2 = callout.subject.size.max(Vector2(1.0, 1.0))
+	var size: Vector2 = callout.extent()
 	callout.cell_scale = minf((cell.x - 2.0) / size.x, (cell.y - 2.0 - top) / size.y)
 
 
@@ -1239,16 +1310,31 @@ static func _notes(entry: Entry, document: Document, out: PackedStringArray) -> 
 			if not (note is Dictionary) or not (note as Dictionary).has(kind):
 				continue
 			var at: Rect2 = BookletLooks.rect_of(note.get("at", []))
+			var how: String = note_style(note, at)
 			if kind == "image":
 				var source: String = str(document.images.get(str(note["image"]), ""))
 				if not source.is_empty():
-					_image(out, source, at, "A picture of the designer's")
+					_image(out, source, at, "A picture of the designer's", how)
 				continue
 			var size: float = clampf(float(note.get("size", 4.0)), 1.5, 40.0)
 			var words: String = _escape(str(note["text"])).replace("\n", "<br>")
-			out.append("<div class=\"t tx\" style=\"--x:%s;--y:%s;--s:%s;width:calc(%s * var(--mm));min-height:calc(%s * var(--mm))\">%s</div>"
+			out.append("<div class=\"t tx\" style=\"--x:%s;--y:%s;--s:%s;width:calc(%s * var(--mm));min-height:calc(%s * var(--mm))%s\">%s</div>"
 				% [_n(at.position.x), _n(at.position.y), _n(size), _n(at.size.x), _n(at.size.y),
-					words])
+					how, words])
+
+
+## A word or picture of the designer's turned about the middle of its box
+## [param at] and faded, as the page's style says it (BookletRead reads
+## it back): "" for one neither turned nor faded.
+static func note_style(note: Dictionary, at: Rect2) -> String:
+	var how: String = ""
+	var turn: float = BookletLooks.turn_of(note)
+	if not is_zero_approx(turn):
+		how += ";transform:rotate(%sdeg);transform-origin:calc(%s * var(--mm)) calc(%s * var(--mm))" % [
+			BookletLooks._number(snappedf(turn, 0.1)), _n(at.size.x * 0.5), _n(at.size.y * 0.5)]
+	if BookletLooks.opacity_of(note) < 1.0:
+		how += ";opacity:%s" % BookletLooks._number(snappedf(BookletLooks.opacity_of(note), 0.01))
+	return how
 
 
 ## A hidden colour's chip and words: "■ Tower: Bright Green"; in its own
@@ -1300,9 +1386,10 @@ static func _part(at: Rect2, lot: Lot, document: Document) -> String:
 			(" (%s)" % lot.element) if not lot.element.is_empty() else ""])]
 
 
-static func _image(out: PackedStringArray, source: String, at: Rect2, alt: String) -> void:
-	out.append("<img class=\"a\" style=\"--x:%s;--y:%s;--w:%s;--h:%s\" src=\"%s\" alt=\"%s\">"
-		% [_n(at.position.x), _n(at.position.y), _n(at.size.x), _n(at.size.y), source,
+static func _image(out: PackedStringArray, source: String, at: Rect2, alt: String,
+		how: String = "") -> void:
+	out.append("<img class=\"a\" style=\"--x:%s;--y:%s;--w:%s;--h:%s%s\" src=\"%s\" alt=\"%s\">"
+		% [_n(at.position.x), _n(at.position.y), _n(at.size.x), _n(at.size.y), how, source,
 			_escape(alt)])
 
 
@@ -1379,9 +1466,9 @@ static func _arrow(from: Vector2, to: Vector2, colour: String = "#15191e",
 
 ## An arrow its designer drew (BookletLooks "arrows"), drawn as the
 ## booklet's own are: a line with a white edge under it, so it reads across
-## a model of its colour, and a head; through its bend, when it has one, as
-## a curve, for a part turned or swung in. The head is as big for its width
-## as the booklet's red pointer's.
+## a model of its colour, and a head; through its bends, when it has any,
+## as a curve, for a part turned or swung in (BookletLooks.arrow_line). The
+## head is as big for its width as the booklet's red pointer's.
 static func drawn_arrow(arrow: Dictionary) -> String:
 	var points: Array = BookletLooks.arrow_points(arrow)
 	if points.is_empty():
@@ -1392,17 +1479,24 @@ static func drawn_arrow(arrow: Dictionary) -> String:
 	var colour: String = str(BookletLooks.ARROW_COLOURS.get(str(arrow.get("colour", "red")),
 		BookletLooks.ARROW_COLOURS["red"]))
 	var head: float = width * 2.9
-	# The curve through the bend at its middle: a quadratic whose control
-	# point is the bend pushed out by as much again.
-	var control: Vector2 = (points[2] as Vector2) * 2.0 - (from + to) * 0.5 \
-		if points[2] != null else (from + to) * 0.5
-	var way: Vector2 = (to - control).normalized()
-	if way == Vector2.ZERO:
+	var drawn: Dictionary = BookletLooks.arrow_line(points, head * 2.3)
+	if drawn.is_empty():
 		return ""
+	var way: Vector2 = drawn["way"]
 	var side := Vector2(-way.y, way.x)
 	var base: Vector2 = to - way * head * 2.3
-	var line: String = "M%s %s Q%s %s %s %s" % [_n(from.x), _n(from.y), _n(control.x),
-		_n(control.y), _n(base.x), _n(base.y)]
+	var line: String = ""
+	if drawn.has("control"):
+		# Straight, or through one bend at its middle: a quadratic whose
+		# control point is the bend pushed out by as much again.
+		var control: Vector2 = drawn["control"]
+		line = "M%s %s Q%s %s %s %s" % [_n(from.x), _n(from.y), _n(control.x),
+			_n(control.y), _n(base.x), _n(base.y)]
+	else:
+		var said := PackedStringArray()
+		for point: Vector2 in drawn["line"]:
+			said.append("%s %s" % [_n(point.x), _n(point.y)])
+		line = "M" + " L".join(said)
 	return ("<path class=\"drawn-arrow\" d=\"%s\" fill=\"none\" stroke=\"#fff\" stroke-width=\"%s\" stroke-linecap=\"round\"/>"
 		% [line, _n(width + 0.7)]
 		+ "<path d=\"%s\" fill=\"none\" stroke=\"%s\" stroke-width=\"%s\"/>" % [line, colour, _n(width)]

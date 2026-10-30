@@ -27,9 +27,13 @@
 ## An item not placed is laid out as the booklet lays it. "notes" are what
 ## a designer adds to the step's page: {"text": words, "at": [x, y, w, h],
 ## "size": mm} and {"image": name, "at": [x, y, w, h]}, the picture's bytes
-## in "|data" under its name; "arrows" the arrows they draw on it: {"at":
-## [x1, y1, x2, y2] or with a bend [..., bx, by], "colour": "red" or
-## "black", "width": mm}. "panel" [x, y, w, h] is the room the booklet gave
+## in "|data" under its name, either turned about its middle ("turn":
+## degrees, clockwise) and faded ("opacity": 0.05 to 1), as Studio's page
+## objects are; "arrows" the arrows they draw on it: {"at": [x1, y1, x2,
+## y2] or with the points it bends through [..., bx, by, ...], "colour":
+## "red" or "black", "width": mm}. The booklet's "guides" {"x": [mm],
+## "y": [mm]} are the lines dragged from the page editor's rulers, which
+## what is dragged on any page snaps to. "panel" [x, y, w, h] is the room the booklet gave
 ## the step on its page when they were placed: they all belong to the step,
 ## and when its page changes round it they move and scale with it into its
 ## new room ([method rebased]). "sign": false leaves the turn sign off it.
@@ -50,7 +54,9 @@
 ## (a line break written \n), "... IMAGE x y w h name" with the picture
 ## itself as LDraw's own embedded file, "0 !DATA name" with its base64 in
 ## "0 !:" lines, at the end of the file, and "... ARROW RED 0.9 x1 y1 x2 y2
-## [bx by]"; "... TURN_SIGN OFF" on a step whose turn sign was taken off.
+## [bx by ...]"; "... NOTE TURN 30 OPACITY 50" after the words or picture it
+## turns and fades; "... TURN_SIGN OFF" on a step whose turn sign was taken
+## off; "... GUIDE X 120" in the model, a guide each.
 ##
 ## Every change is one undo (Builder._apply "steplooks", the whole table
 ## as it was), and a step edit carries each step's look with the parts it
@@ -61,7 +67,7 @@ extends RefCounted
 const META := "0 !BRICKWORKS "
 ## The words of the app's own step lines, after META.
 const WORDS: Array[String] = ["PAGE", "ZOOM", "SIZE", "PARTS", "CALLOUT", "PER_PAGE",
-	"HIGHLIGHT", "PLACE", "TEXT", "IMAGE", "PANEL", "ARROW", "TURN_SIGN"]
+	"HIGHLIGHT", "PLACE", "TEXT", "IMAGE", "PANEL", "ARROW", "TURN_SIGN", "NOTE", "GUIDE"]
 const BOOKLET := "|booklet"
 ## The pictures a page shows, by name: {name: base64}.
 const DATA := "|data"
@@ -76,6 +82,10 @@ const ARROW_COLOURS: Dictionary = {"red": "#d01012", "black": "#15191e"}
 ## The widths it comes in, in mm: the callout arrow's, the red pointer's,
 ## and a broad one; a width given is snapped to the nearest.
 const ARROW_WIDTHS: Array[float] = [0.45, 0.9, 1.4]
+## The most points an arrow bends through.
+const MOST_BENDS := 12
+## The faintest a page's words or picture of the designer's is drawn.
+const FAINTEST := 0.05
 ## Two rooms nearer than this, in mm, are the same room.
 const SAME_ROOM := 0.5
 const ZOOMS: Array[float] = [0.5, 0.67, 0.8, 1.0, 1.25, 1.5, 2.0, 3.0]
@@ -114,6 +124,12 @@ static func highlight_on(world: BrickWorld) -> bool:
 ## The pictures a booklet's pages show, name -> base64.
 static func images(world: BrickWorld) -> Dictionary:
 	return world.step_looks.get(DATA, {})
+
+
+## The guides dragged onto the booklet's pages: {"x": [mm], "y": [mm]}.
+static func guides(world: BrickWorld) -> Dictionary:
+	var kept: Dictionary = booklet(world).get("guides", {})
+	return {"x": (kept.get("x", []) as Array).duplicate(), "y": (kept.get("y", []) as Array).duplicate()}
 
 
 static func callout_on(world: BrickWorld, section: String) -> bool:
@@ -166,9 +182,10 @@ static func turn_at(world: BrickWorld, section: String, step: int) -> Dictionary
 
 ## The direction a step is drawn from for a turn ([method turn_at]): the
 ## booklet's usual angle (BookletStudio.FRONT) turned round by y degrees
-## and tilted by x; ABS from straight in front, LDraw's 0 0 0.
-static func direction(turn: Dictionary) -> Vector3:
-	var front: Vector3 = BookletStudio.FRONT.normalized()
+## and tilted by x; ABS from straight in front, LDraw's 0 0 0. A callout's
+## step turns from the way the callout faces, [param usual].
+static func direction(turn: Dictionary, usual: Vector3 = BookletStudio.FRONT) -> Vector3:
+	var front: Vector3 = usual.normalized()
 	var yaw: float = atan2(front.x, front.z)
 	var pitch: float = asin(front.y)
 	var by: Vector3 = _vector(turn.get("turn", [0, 0, 0]))
@@ -262,6 +279,9 @@ static func _usual(field: String, value: Variant) -> bool:
 			return bool(value)
 		"place", "notes", "arrows", "panel":
 			return (value is Dictionary or value is Array) and value.is_empty()
+		"guides":
+			return value is Dictionary and (value as Dictionary).values().all(
+				func(lines: Variant) -> bool: return not (lines is Array) or (lines as Array).is_empty())
 		"sign":
 			return bool(value)
 		"page":
@@ -669,15 +689,44 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 			"ARROW":
 				var colour: String = value.to_lower()
 				if ARROW_COLOURS.has(colour) and words.size() > 4 and words[4].is_valid_float():
-					var points: Array = _numbers(words, 5, 6)
-					if points.is_empty():
-						points = _numbers(words, 5, 4)
+					# Its ends, and every point it bends through.
+					var points: Array = []
+					var pairs: int = mini((words.size() - 5) / 2, MOST_BENDS + 2)
+					while pairs >= 2 and points.is_empty():
+						points = _numbers(words, 5, pairs * 2)
+						pairs -= 1
 					if not points.is_empty():
 						_note_in(out, key(definition, step), {"at": points, "colour": colour,
 							"width": arrow_width(words[4].to_float())}, "arrows")
 			"TURN_SIGN":
 				if value == "OFF":
 					_put_in(out, key(definition, step), "sign", false)
+			"NOTE":
+				# The words or picture just before it, turned and faded.
+				var notes: Array = (out.get(key(definition, step), {}) as Dictionary).get("notes", [])
+				if notes.is_empty():
+					continue
+				var note: Dictionary = notes[-1]
+				for at: int in range(3, words.size() - 1):
+					var number: String = words[at + 1]
+					if not number.is_valid_float():
+						continue
+					match words[at].to_upper():
+						"TURN":
+							var turn: float = turn_of({"turn": number.to_float()})
+							if not is_zero_approx(turn):
+								note["turn"] = turn
+						"OPACITY":
+							var opacity: float = opacity_of({"opacity": number.to_float() / 100.0})
+							if opacity < 1.0:
+								note["opacity"] = opacity
+			"GUIDE":
+				if value in ["X", "Y"] and words.size() > 4 and words[4].is_valid_float():
+					var kept: Dictionary = (out.get(BOOKLET, {}) as Dictionary).get("guides",
+						{"x": [], "y": []})
+					(kept[value.to_lower()] as Array).append(snappedf(clampf(words[4].to_float(),
+						0.0, Booklet.PAGE.x if value == "X" else Booklet.PAGE.y), 0.1))
+					_put_in(out, BOOKLET, "guides", kept)
 	if not data_name.is_empty():
 		pictures[data_name] = "".join(data)
 	# Only the pictures a page shows.
@@ -865,6 +914,10 @@ static func _booklet_lines(out: PackedStringArray, whole: Dictionary, eol: Strin
 		out.append(META + "PER_PAGE %d" % int(whole["per_page"]) + eol)
 	if whole.has("highlight") and not bool(whole["highlight"]):
 		out.append(META + "HIGHLIGHT OFF" + eol)
+	var kept: Dictionary = whole.get("guides", {})
+	for axis: String in ["x", "y"]:
+		for at: Variant in kept.get(axis, []):
+			out.append(META + "GUIDE %s %s" % [axis.to_upper(), _number(snappedf(float(at), 0.1))] + eol)
 
 
 ## The end of a section: the looks of its last step, which has no line
@@ -936,6 +989,15 @@ static func _step_lines(out: PackedStringArray, looks: Dictionary, definition: S
 				+ str(note["text"]).replace("\r", "").replace("\n", "\\n").strip_edges() + eol)
 		elif note.has("image"):
 			out.append(META + "IMAGE " + at + " " + str(note["image"]) + eol)
+		else:
+			continue
+		var how := PackedStringArray()
+		if not is_zero_approx(turn_of(note)):
+			how.append("TURN " + _number(snappedf(turn_of(note), 0.1)))
+		if opacity_of(note) < 1.0:
+			how.append("OPACITY " + _number(roundf(opacity_of(note) * 100.0)))
+		if not how.is_empty():
+			out.append(META + "NOTE " + " ".join(how) + eol)
 	for arrow: Variant in look.get("arrows", []):
 		if arrow is Dictionary and (arrow as Dictionary).has("at"):
 			out.append(META + "ARROW %s %s %s" % [str(arrow.get("colour", "red")).to_upper(),
@@ -1058,15 +1120,95 @@ static func _moved_point(point: Vector2, from: Rect2, to: Rect2) -> Vector2:
 	return to.position + (point - from.position) * (to.size / from.size)
 
 
-## An arrow's points as [from, to, bend or null], in page mm.
+## An arrow's points as [from, to, the points it bends through in order
+## (Vector2s, none for a straight one)], in page mm.
 static func arrow_points(arrow: Dictionary) -> Array:
 	var at: Array = arrow.get("at", [])
 	if at.size() < 4:
 		return []
 	var from := Vector2(float(at[0]), float(at[1]))
 	var to := Vector2(float(at[2]), float(at[3]))
-	var bend: Variant = Vector2(float(at[4]), float(at[5])) if at.size() >= 6 else null
-	return [from, to, bend]
+	var bends: Array = []
+	for n: int in range(4, at.size() - 1, 2):
+		bends.append(Vector2(float(at[n]), float(at[n + 1])))
+	return [from, to, bends]
+
+
+## [param points] ([method arrow_points]'s) as an arrow's "at": [x1, y1,
+## x2, y2, bx, by, ...].
+static func arrow_at(points: Array) -> Array:
+	var out: Array = []
+	for point: Vector2 in [points[0], points[1]] + (points[2] as Array):
+		out.append_array([snappedf(point.x, 0.1), snappedf(point.y, 0.1)])
+	return out
+
+
+## The line an arrow is drawn along, from its start to where its head
+## begins, and the way the head points: {"line": PackedVector2Array, "way":
+## Vector2}; empty for an arrow of no length. Its head is [param head] mm
+## long, as Booklet.drawn_arrow draws it. Straight, or through one bend as
+## a curve whose middle is the bend; through two or more as one smooth
+## curve through each in turn (Catmull-Rom), its head on the way from the
+## last bend to the tip.
+static func arrow_line(points: Array, head: float) -> Dictionary:
+	var from: Vector2 = points[0]
+	var to: Vector2 = points[1]
+	var bends: Array = points[2]
+	var line := PackedVector2Array()
+	if bends.size() <= 1:
+		var control: Vector2 = (bends[0] as Vector2) * 2.0 - (from + to) * 0.5 \
+			if bends.size() == 1 else (from + to) * 0.5
+		var way: Vector2 = (to - control).normalized()
+		if way == Vector2.ZERO:
+			return {}
+		var base: Vector2 = to - way * head
+		for n: int in 17:
+			var t: float = n / 16.0
+			line.append((1.0 - t) * (1.0 - t) * from + 2.0 * (1.0 - t) * t * control + t * t * base)
+		return {"line": line, "way": way, "control": control, "base": base}
+	var way: Vector2 = (to - (bends[-1] as Vector2)).normalized()
+	if way == Vector2.ZERO:
+		return {}
+	var through: Array = [from] + bends + [to - way * head]
+	for span: int in through.size() - 1:
+		var p1: Vector2 = through[span]
+		var p2: Vector2 = through[span + 1]
+		var p0: Vector2 = through[span - 1] if span > 0 else p1 * 2.0 - p2
+		var p3: Vector2 = through[span + 2] if span + 2 < through.size() else p2 * 2.0 - p1
+		for n: int in range(0 if span == 0 else 1, 13):
+			var t: float = n / 12.0
+			line.append(0.5 * (2.0 * p1 + (p2 - p0) * t + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * t * t
+				+ (3.0 * p1 - p0 - 3.0 * p2 + p3) * t * t * t))
+	return {"line": line, "way": way}
+
+
+## Where along an arrow's line its span from point [param span] of [from,
+## bends..., to] to the next is half drawn: where the page editor puts
+## the handle that bends it there.
+static func span_middle(points: Array, head: float, span: int) -> Vector2:
+	var drawn: Dictionary = arrow_line(points, head)
+	var through: Array = [points[0]] + (points[2] as Array) + [points[1]]
+	if drawn.is_empty() or span < 0 or span >= through.size() - 1:
+		return ((points[0] as Vector2) + (points[1] as Vector2)) * 0.5
+	var line: PackedVector2Array = drawn["line"]
+	if (points[2] as Array).size() >= 2:
+		# Twelve points a span.
+		return line[mini(span * 12 + 6, line.size() - 1)]
+	if (points[2] as Array).is_empty():
+		return ((points[0] as Vector2) + (points[1] as Vector2)) * 0.5
+	# One bend: the curve's quarter and three quarters.
+	return line[4 if span == 0 else 12]
+
+
+## A word or picture of the designer's turned this far, in degrees
+## clockwise, -180 to 180.
+static func turn_of(note: Dictionary) -> float:
+	return fposmod(float(note.get("turn", 0.0)) + 180.0, 360.0) - 180.0
+
+
+## How solid a word or picture of the designer's is drawn: FAINTEST to 1.
+static func opacity_of(note: Dictionary) -> float:
+	return clampf(float(note.get("opacity", 1.0)), FAINTEST, 1.0)
 
 
 ## The nearest of the widths an arrow comes in to [param width].
@@ -1101,6 +1243,14 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 		+ "each step's new parts are where its picture shows them: point an arrow there. A step "
 		+ "left to the booklet is seen from the front here, and may be drawn turned round: "
 		+ "give it turn= to be sure.")
+	var lines: Dictionary = guides(world)
+	if not (lines["x"] as Array).is_empty() or not (lines["y"] as Array).is_empty():
+		var each := PackedStringArray()
+		for axis: String in ["x", "y"]:
+			for at: Variant in lines[axis]:
+				each.append("%s at %s mm" % ["upright" if axis == "x" else "across",
+					_number(snappedf(float(at), 0.1))])
+		told.append("Guides on every page, never printed: %s." % ", ".join(each))
 	var characters: int = 0
 	var off: Dictionary = {}
 	for page: Booklet.Page in pages:
@@ -1114,18 +1264,26 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 			var how := PackedStringArray()
 			if not entry.look.is_empty():
 				var named: String = entry.look.get_slice("|", 0)
-				# A callout's step on its own pages: what was placed on its page
-				# only; its view is the callout's.
-				var own_line: String = said(world, named, entry.look.get_slice("|", 1).to_int(),
-					entry.in_callout)
+				var step: int = entry.look.get_slice("|", 1).to_int()
+				# A callout's step on its own pages: its turn and what was placed
+				# on its page; its zoom and size are the callout's.
+				if entry.in_callout and not turn_said(world, named, step).is_empty():
+					how.append(turn_said(world, named, step))
+				var own_line: String = said(world, named, step, entry.in_callout)
 				if not own_line.is_empty():
 					how.append(own_line)
 			if entry.adds.size.x > 0.0:
 				how.append("its new parts at %s" % adds_said(entry.adds))
 			if entry.callout != null:
-				how.append("puts on the %s%s, %s" % [entry.callout.name,
+				var posed := PackedStringArray()
+				for sub: Booklet.Entry in entry.callout.steps if entry.callout.inline else []:
+					if sub.fixed and not sub.look.is_empty():
+						posed.append("its step %d %s" % [sub.number, turn_said(world,
+							sub.look.get_slice("|", 0), sub.look.get_slice("|", 1).to_int())])
+				how.append("puts on the %s%s, %s%s" % [entry.callout.name,
 					" x%d" % entry.callout.times if entry.callout.times > 1 else "",
-					"built in a callout box" if entry.callout.inline else "built on its own pages"])
+					"built in a callout box" if entry.callout.inline else "built on its own pages",
+					(" (%s)" % ", ".join(posed)) if not posed.is_empty() else ""])
 			each.append("%d%s" % [entry.number, (" (" + "; ".join(how) + ")") if not how.is_empty()
 				else ""])
 		var line: String = "  page %d%s: step%s %s" % [page.number,
@@ -1155,23 +1313,12 @@ static func adds_said(adds: Rect2) -> String:
 ## zoom 1.5x, new page", or "".
 static func said(world: BrickWorld, section: String, step: int, placed_only: bool = false) -> String:
 	var parts := PackedStringArray()
-	var turn: Dictionary = turn_at(world, section, step) if not placed_only else {}
 	var own: Dictionary = of(world, section, step)
 	if placed_only:
 		own = {"place": own.get("place", {}), "notes": own.get("notes", []),
 			"arrows": own.get("arrows", [])}
-	if not turn.is_empty():
-		var by: Vector3 = _vector(turn["turn"])
-		var bits := PackedStringArray()
-		if str(turn.get("how", "REL")) == "ABS":
-			# Measured from straight in front, as LDraw's ABS is.
-			bits.append("seen from %d° round and %d° up" % [roundi(by.y), roundi(by.x)])
-		else:
-			if not is_zero_approx(by.y):
-				bits.append("turned %d°" % roundi(by.y))
-			if not is_zero_approx(by.x):
-				bits.append("tilted %d°" % roundi(by.x))
-		parts.append(", ".join(bits) + ("" if own.has("turn") else " (from before)"))
+	elif not turn_said(world, section, step).is_empty():
+		parts.append(turn_said(world, section, step))
 	if own.has("zoom"):
 		parts.append("zoom %sx" % _number(float(own["zoom"])))
 	if own.has("size"):
@@ -1196,13 +1343,18 @@ static func said(world: BrickWorld, section: String, step: int, placed_only: boo
 		if not (note is Dictionary):
 			continue
 		var at: Rect2 = rect_of(note.get("at", []))
+		var how: String = ""
+		if not is_zero_approx(turn_of(note)):
+			how += ", turned %s°" % _number(snappedf(turn_of(note), 0.1))
+		if opacity_of(note) < 1.0:
+			how += ", %d%% opaque" % roundi(opacity_of(note) * 100.0)
 		if note.has("text"):
-			parts.append("text \"%s\" at %s, %s mm" % [str(note["text"]).replace("\n", " / ").left(60),
-				_number(snappedf(at.position.x, 0.1)), _number(snappedf(at.position.y, 0.1))])
+			parts.append("text \"%s\" at %s, %s mm%s" % [str(note["text"]).replace("\n", " / ").left(60),
+				_number(snappedf(at.position.x, 0.1)), _number(snappedf(at.position.y, 0.1)), how])
 		elif note.has("image"):
-			parts.append("a picture at %s, %s mm, %s x %s" % [_number(snappedf(at.position.x, 0.1)),
+			parts.append("a picture at %s, %s mm, %s x %s%s" % [_number(snappedf(at.position.x, 0.1)),
 				_number(snappedf(at.position.y, 0.1)), _number(snappedf(at.size.x, 0.1)),
-				_number(snappedf(at.size.y, 0.1))])
+				_number(snappedf(at.size.y, 0.1)), how])
 	for arrow: Variant in own.get("arrows", []):
 		if arrow is Dictionary:
 			parts.append(arrow_said(arrow))
@@ -1211,17 +1363,40 @@ static func said(world: BrickWorld, section: String, step: int, placed_only: boo
 	return ", ".join(parts)
 
 
+## How a step is turned, as the timeline and a session read it: "turned
+## 45°, tilted 15°", or "seen from 55° round and 35° up" for LDraw's ABS,
+## with " (from before)" when it is held from a step before it; "" seen
+## from the usual angle.
+static func turn_said(world: BrickWorld, section: String, step: int) -> String:
+	var turn: Dictionary = turn_at(world, section, step)
+	if turn.is_empty():
+		return ""
+	var by: Vector3 = _vector(turn["turn"])
+	var bits := PackedStringArray()
+	if str(turn.get("how", "REL")) == "ABS":
+		# Measured from straight in front, as LDraw's ABS is.
+		bits.append("seen from %d° round and %d° up" % [roundi(by.y), roundi(by.x)])
+	else:
+		if not is_zero_approx(by.y):
+			bits.append("turned %d°" % roundi(by.y))
+		if not is_zero_approx(by.x):
+			bits.append("tilted %d°" % roundi(by.x))
+	return ", ".join(bits) + ("" if of(world, section, step).has("turn") else " (from before)")
+
+
 ## An arrow as a session reads it: "a red arrow from 20, 30 to 60, 80 mm,
-## bent through 40, 40, 0.9 mm wide".
+## bent through 40, 40, 0.9 mm wide" ("through 40, 40 and 50, 70" for two).
 static func arrow_said(arrow: Dictionary) -> String:
 	var points: Array = arrow_points(arrow)
 	if points.is_empty():
 		return "an arrow"
 	var from: Vector2 = points[0]
 	var to: Vector2 = points[1]
+	var bends := PackedStringArray()
+	for bend: Vector2 in points[2]:
+		bends.append("%s, %s" % [_number(snappedf(bend.x, 0.1)), _number(snappedf(bend.y, 0.1))])
 	return "a %s arrow from %s, %s to %s, %s mm%s, %s mm wide" % [str(arrow.get("colour", "red")),
 		_number(snappedf(from.x, 0.1)), _number(snappedf(from.y, 0.1)),
 		_number(snappedf(to.x, 0.1)), _number(snappedf(to.y, 0.1)),
-		(", bent through %s, %s" % [_number(snappedf((points[2] as Vector2).x, 0.1)),
-			_number(snappedf((points[2] as Vector2).y, 0.1))]) if points[2] != null else "",
+		(", bent through " + " and ".join(bends)) if not bends.is_empty() else "",
 		_number(arrow_width(float(arrow.get("width", 0.9))))]

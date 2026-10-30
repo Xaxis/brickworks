@@ -106,7 +106,8 @@ compress_web() {
   for p in "${pids[@]}"; do
     wait "$p" || { echo "export FAILED: compressing $dir"; return 1; }
   done
-  for f in "$dir/index.wasm" "$dir/index.pck" "$dir/index.parts.bin" "$dir/index.js"; do
+  for f in "$dir/index.wasm" "$dir/index.pck" "$dir/index.data.pck" "$dir/index.parts.bin" \
+      "$dir/index.primitives.bin" "$dir/index.hdri.bin" "$dir/index.js"; do
     [ -f "$f.br" ] && [ -f "$f.gz" ] || { echo "export FAILED: no .br/.gz beside $f"; return 1; }
   done
 }
@@ -116,14 +117,20 @@ report_web() {
   local wasm="$dir/index.wasm" pck="$dir/index.pck"
   printf "  wasm %-9s br %-9s gz %s\n" "$(human "$(bytes "$wasm")")" "$(human "$(bytes "$wasm.br")")" "$(human "$(bytes "$wasm.gz")")"
   printf "  pck  %-9s br %-9s gz %s\n" "$(human "$(bytes "$pck")")" "$(human "$(bytes "$pck.br")")" "$(human "$(bytes "$pck.gz")")"
-  local later="$dir/index.parts.bin"
-  printf "  later  %-9s br %-9s (parts fetched after the start)\n" "$(human "$(bytes "$later")")" "$(human "$(bytes "$later.br")")"
-  local total=0 f
+  local f
+  for f in "data.pck:what the start reads, fetched while the scripts compile" \
+      "parts.bin:parts fetched after the start" \
+      "primitives.bin:LDraw's primitives, when a part needs them" \
+      "hdri.bin:Studio's photographed light, when a picture is lit by it"; do
+    printf "  %-15s %-9s br %-9s (%s)\n" "${f%%:*}" "$(human "$(bytes "$dir/index.${f%%:*}")")" \
+      "$(human "$(bytes "$dir/index.${f%%:*}.br")")" "${f#*:}"
+  done
+  local total=0
   for f in "$dir"/*; do
-    case "$f" in *.br|*.gz|*/index.parts.bin) continue ;; esac
+    case "$f" in *.br|*.gz|*/index.*.bin|*/index.data.pck) continue ;; esac
     if [ -f "$f.br" ]; then total=$(( total + $(bytes "$f.br") )); else total=$(( total + $(bytes "$f") )); fi
   done
-  printf "  over the wire to start (brotli where it helps): %s\n" "$(human $total)"
+  printf "  over the wire before the engine starts (brotli where it helps): %s\n" "$(human $total)"
 }
 
 build_web() {
@@ -134,6 +141,10 @@ build_web() {
   # its own files and writes it into them (src/boot/shell.html), so nobody
   # waits for it to start.
   cp assets/web/later.bin "$dir/index.parts.bin" || { echo "export FAILED: no assets/web/later.bin (tools/web_pack.py)"; return 1; }
+  # The pack cut so the engine waits for the code alone: the catalogue and
+  # the rest the start reads beside it, LDraw's primitives and Studio's
+  # light fetched when wanted (tools/web/pck_split.py, webload).
+  python3 tools/web/pck_split.py "$dir" || { echo "export FAILED: splitting $dir/index.pck"; return 1; }
   compress_web "$dir" || return 1
   # The real-set index beside the build, not in the pack every visitor
   # waits for: the app fetches it the first time a design asks for a
@@ -185,14 +196,23 @@ case "$target" in
     python3 tools/web_pack.py || { echo "export FAILED: web pack"; exit 1; } ;;
 esac
 # Every LDraw primitive goes in every build (PartForge.SHIPPED: 10 MB of text,
-# about 1.4 MB more over the wire in the compressed pck): what LDCad draws a
-# flexible part's skin with, and what most parts a model file carries are
-# drawn from. A build has no vendor/, so without them neither was drawn on
-# the web or in a desktop download.
+# about 1 MB over the wire): what LDCad draws a flexible part's skin with,
+# and what most parts a model file carries are drawn from. A build has no
+# vendor/, so without them neither was drawn on the web or in a desktop
+# download. On the web they are not in the pack the start waits for but
+# fetched the first time a part needs them (tools/web/pck_split.py).
 [ -d vendor/ldraw/p ] || { echo "export FAILED: no vendor/ldraw/p (tools/fetch_data.sh)"; exit 1; }
 rm -rf assets/ldraw/p && cp -R vendor/ldraw/p assets/ldraw/p \
   || { echo "export FAILED: could not copy the LDraw primitives"; exit 1; }
 godot --headless --import >/dev/null 2>&1 || true
+# The parts bin's All in order for the web pack's catalogue, worked out here
+# once rather than on every first visit (src/dev/write_all_order.gd, webload).
+case "$target" in
+  web|web-nothreads|all)
+    rm -f assets/web/all_order.txt
+    godot --headless --path . --script src/dev/write_all_order.gd 2>&1 | grep -E '^all_order'
+    [ -s assets/web/all_order.txt ] || { echo "export FAILED: no assets/web/all_order.txt (src/dev/write_all_order.gd)"; exit 1; } ;;
+esac
 case "$target" in
   web) build_web "Web" build/web ;;
   web-nothreads) build_web "Web (no threads)" build/web-nothreads ;;

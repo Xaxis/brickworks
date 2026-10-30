@@ -44,6 +44,16 @@ The cube in the corner turns the view to the face you click and shows which way 
 ui:view cube
 -->
 
+## A second view beside the model {#split}
+
+**View › Split** ([[F8]]) puts a second view of the model beside the first, square on from the front. **Front**, **Top**, **Side** and **Back** at its top turn it, **Fit** frames the whole model in it, and **×** goes back to one view. It starts looking where the main view looks, at the same size, and follows it until you move it: the wheel over it zooms it, and a drag over it slides it, without moving the main view. A right drag over it does nothing, since a view square on cannot turn. Once moved it keeps its own zoom and place, and the app remembers them with the split.
+
+The second view works like the first. A part in hand shows in both. A click there puts the part down or picks a part. A box drawn there selects what it surrounds. Connect's points and the rotate and move handles are drawn in both views and can be taken in either. A part for a side stud or under an overhang is easier to aim square on. The split takes its room from the model's, never from the parts bin or the panels, and the app keeps it on for next time. On a phone, a tablet held upright, or a window too small for two views, it is greyed.
+
+<!-- covers
+ui:split view
+-->
+
 ## Cut away and X-ray {#see-inside}
 
 - **View › Cut away** ([[K]]) puts a plane through the model. Drag the strip's slider to move it, choose **X**, **Y** or **Z**, **Flip** to cut the other side away, and **Ghost** to leave a faint copy of what is cut.
@@ -69,6 +79,23 @@ ui:stress view
 <!-- covers
 ui:floor
 ui:stud grid
+-->
+
+## A picture to build over {#reference}
+
+**Make › Reference picture…** lays a photo, a plan or a drawing (PNG, JPEG, WebP, BMP or SVG) in the scene to build over: on the floor under the model, or standing behind it as the front or the side view sees it. It opens as wide as the model, half see-through, with its corners showing.
+
+- **Width** is typed in studs, to a twentieth of a stud. Drag a corner to size it from the corner across; drag the picture to slide it.
+- **Opacity** fades it from 0 to 100%.
+- **Locked** leaves the mouse to the model: a click through the picture picks the part behind it. Unlocked, a click on the picture picks it out.
+- **Choose another…** swaps the picture and keeps where it lies; **Remove** takes it away.
+
+Each change is one step of **Edit › Undo**, whether you lay the picture, move it, size it, fade it, lock it, swap it or take it away. Dragging the opacity slider counts as one step, and so does typing a width.
+
+The picture is kept in the model's file, on lines other LDraw programs ignore, so it opens again with the model. A change to the picture alone counts as unsaved work, so New and Open ask before replacing the model, and the autosave keeps the picture. It is never in a render, the instructions, the parts list, an export or a shared link.
+
+<!-- covers
+ui:reference picture
 -->
 
 ## Pointers and speed {#pointers}

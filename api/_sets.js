@@ -9,9 +9,11 @@
 // it from tools/collection_data.py's shards (api/_owned.js readShard), which
 // the app's My collection already reads. Nothing here asks Rebrickable
 // anything: the catalogue is the copy tools/fetch_data.sh keeps, at most a
-// day old, and no picture of theirs or the LEGO Group's is shown or linked.
-// A set's picture is LDraw's model's render when there is one, else one
-// drawn here from its parts' own geometry (api/_flatlay.js).
+// day old. A set's picture is LDraw's model's render when there is one,
+// else the set's own picture as Rebrickable has it, credited to them and
+// served from here (tools/set_pictures.py fetched it once into our
+// storage; a visitor's browser never asks them), else one drawn here from
+// its parts' own geometry (api/_flatlay.js) for the few with none.
 //
 // The library (/library) lists every set, searched by number or name and
 // filtered by theme (and the theme inside it), decade and year, size,
@@ -32,14 +34,19 @@
 import { existsSync, readFileSync } from "node:fs";
 import { SIZES, count, escapeHtml } from "./_directory.js";
 import { SET_SORTS } from "./_library.js";
+import { byKey, search } from "./_search.js";
 
 /// How the library's sets are put in order, the first by default: those LDraw
-/// has a model of first, since their picture is the set built, where every
-/// other set's is drawn from a few of its parts (api/_flatlay.js). Newest
-/// first opened the library on 24 of this year's sets, none modelled yet, and
-/// showed no set at all, only parts (the owner, 2026-10-30).
-export const SETS_SORTS = { built: "Built in 3D first", ...SET_SORTS };
+/// has a model of first, since their picture is the set built in 3D, to
+/// open and build. Newest first opened the library on 24 of this year's
+/// sets, none modelled yet, and showed no set at all, only parts (the owner,
+/// 2026-10-30), before every set had its own picture.
+/// A query typed is in best match order (api/_search.js) unless another is
+/// asked: newest first put Hogwarts' newest wing above Hogwarts Castle
+/// (search, 2026-10-30).
+export const SETS_SORTS = { built: "Built in 3D first", match: "Best match", ...SET_SORTS };
 export const FIRST_SORT = "built";
+export const MATCH_SORT = "match";
 
 /// A set's number as Rebrickable writes it, "10497-1", "COMCON001-1", "214.1-1": what a
 /// page's address may hold.
@@ -57,6 +64,8 @@ const NEXT_MOST = 12;
 const BRIEF_LOTS = 12;
 /// Where the catalogue's facts come from, credited on every page.
 export const CREDIT = { name: "Rebrickable", url: "https://rebrickable.com/" };
+/// A set's own page there, which its picture is credited to.
+export const creditOf = (entry) => `${CREDIT.url}sets/${encodeURIComponent(entry.set)}/`;
 /// One URL for a crawler a sitemap file: a twentieth of Google's 50,000.
 export const SITEMAP_SETS = 10000;
 
@@ -67,7 +76,7 @@ let catalog = null;
 /// The catalogue as the pages read it: {sets (by number), by (lower-cased
 /// number -> set), themes (id -> {name, parent})}, each set {set, name,
 /// year, theme (its path of names, outermost first), parts, figs, lots,
-/// inside, picks, said (what a search reads)}. From _set_catalog.json
+/// photo (its own picture is in our storage), inside, picks}. From _set_catalog.json
 /// beside this file in a deployment, or assets/generated in a checkout;
 /// null where there is neither.
 export function setCatalog() {
@@ -101,17 +110,16 @@ export function useCatalog(raw) {
   const sets = [];
   const by = new Map();
   for (const row of Array.isArray(raw?.sets) ? raw.sets : []) {
-    const [number, name, year, theme, parts, figs, lots] = row;
+    const [number, name, year, theme, parts, figs, lots, photo] = row;
     if (!SET_NUMBER.test(String(number)) || by.has(String(number).toLowerCase())) continue;
     const path = pathOf(Number(theme));
     const entry = {
       set: String(number), name: word(String(name), 200) || String(number), year: Number(year) || 0, theme: path,
-      parts: Number(parts) || 0, figs: Number(figs) || 0, lots: Number(lots) || 0,
+      parts: Number(parts) || 0, figs: Number(figs) || 0, lots: Number(lots) || 0, photo: photo === 1,
       inside: (raw.inside?.[number] || []).filter((one) => Array.isArray(one) && SET_NUMBER.test(String(one[0])))
         .map(([other, n]) => [String(other), Number(n) || 1]),
       picks: (raw.picks?.[number] || []).filter((one) => typeof one === "string"),
     };
-    entry.said = `${entry.name} ${entry.set} ${path.join(" ")}`.toLowerCase();
     sets.push(entry);
     by.set(entry.set.toLowerCase(), entry);
   }
@@ -159,43 +167,44 @@ export function modelsBySet(models) {
 export function askSets(query = {}) {
   const page = Number.parseInt(String(query.page ?? "1"), 10);
   const year = Number.parseInt(String(query.year ?? ""), 10);
+  const q = word(String(query.q ?? ""), MAX_QUERY);
+  const sort = Object.hasOwn(SETS_SORTS, String(query.sort ?? "")) ? String(query.sort) : "";
   return {
-    q: word(String(query.q ?? ""), MAX_QUERY),
+    q,
     theme: word(String(query.theme ?? ""), 300),
     decade: /^(19|20)[0-9]0s$/.test(String(query.decade ?? "")) ? String(query.decade) : "",
     year: Number.isInteger(year) && year >= 1940 && year <= 2100 ? year : 0,
     size: Object.hasOwn(SIZES, String(query.size ?? "")) ? String(query.size) : "",
     model: String(query.model ?? "") === "3d" ? "3d" : "",
     figs: ["with", "none"].includes(String(query.figs ?? "")) ? String(query.figs) : "",
-    sort: Object.hasOwn(SETS_SORTS, String(query.sort ?? "")) ? String(query.sort) : FIRST_SORT,
+    // Best match with something typed, unless another order is asked;
+    // with nothing typed there is nothing to match.
+    sort: sort && !(sort === MATCH_SORT && !q) ? sort : q ? MATCH_SORT : FIRST_SORT,
     page: Number.isFinite(page) ? Math.min(Math.max(page, 1), MOST_PAGES) : 1,
   };
 }
 
+/// One collator for every comparison: localeCompare with options makes one
+/// a call, which took 250 ms to put 6,500 sets of gear in order.
+const collate = new Intl.Collator("en", { numeric: true, sensitivity: "base" }).compare;
 /// Two names in the app's order: numbers by their value, case not minded.
-const byName = (a, b) => a.name.localeCompare(b.name, "en", { numeric: true, sensitivity: "base" });
+const byName = (a, b) => collate(a.name, b.name);
 /// Two set numbers in order: 6020-1 before 10497-1.
-const byNumber = (a, b) => a.set.localeCompare(b.set, "en", { numeric: true, sensitivity: "base" });
-
-/// Whether a search is a set's number, "10497" or "10497-1", and so its set
-/// (or sets) first, before whatever else names it.
-function numberAsked(q) {
-  const plain = q.trim().toLowerCase();
-  return /^[a-z0-9]+(-[0-9]+)?$/.test(plain) && /[0-9]/.test(plain) ? plain : "";
-}
+const byNumber = (a, b) => collate(a.set, b.set);
 
 /// The sets [ask] (askSets) asks for, a page of them: {sets, total, page,
-/// pages}. Every word must be in the set's name, number or theme. With
-/// nothing typed and no 3D asked for, a set Rebrickable lists with no parts
-/// is left out: the library is browsed for sets, not books and key rings.
+/// pages, near, meant}. What is typed is read as api/_search.js reads it
+/// (misspelt, run together, a plural, a number or a year), every word
+/// wanted; when no set has every word, those with the most (near). meant
+/// is what the words were taken to mean, "" when as typed. With nothing
+/// typed and no 3D asked for, a set Rebrickable lists with no parts is left
+/// out: the library is browsed for sets, not books and key rings.
 export function searchCatalog(sets, ask, models = new Map()) {
-  const words = ask.q.toLowerCase().split(" ").filter(Boolean);
   const theme = ask.theme ? ask.theme.split(">").map((one) => one.trim()).filter(Boolean) : [];
   const decade = ask.decade ? Number(ask.decade.slice(0, 4)) : -1;
   const size = SIZES[ask.size] || null;
-  const number = numberAsked(ask.q);
-  const browsing = !words.length && !ask.model;
-  const found = sets.filter((entry) => {
+  const browsing = !ask.q && !ask.model;
+  const keep = (entry) => {
     if (browsing && entry.parts <= 0) return false;
     if (theme.length && theme.some((name, at) => entry.theme[at] !== name)) return false;
     if (decade >= 0 && Math.floor(entry.year / 10) * 10 !== decade) return false;
@@ -204,8 +213,10 @@ export function searchCatalog(sets, ask, models = new Map()) {
     if (ask.figs === "with" && !entry.figs) return false;
     if (ask.figs === "none" && entry.figs) return false;
     if (ask.model && !models.get(entry.set.toLowerCase())?.main) return false;
-    return words.every((one) => entry.said.includes(one));
-  });
+    return true;
+  };
+  const asked = ask.q ? search(sets, ask.q, keep) : null;
+  const finds = asked ? asked.found : sets.filter(keep).map((item) => ({ item, matched: 0, numbered: false }));
   // A year's biggest sets first: a year holds key rings and promotions too.
   const built = (entry) => (models.get(entry.set.toLowerCase())?.main ? 1 : 0);
   const order = {
@@ -216,15 +227,16 @@ export function searchCatalog(sets, ask, models = new Map()) {
     name: (a, b) => byName(a, b),
     newest: (a, b) => b.year - a.year || b.parts - a.parts,
   }[ask.sort] || ((a, b) => b.year - a.year || b.parts - a.parts);
-  const exact = (entry) => {
-    if (!number) return 1;
-    const key = entry.set.toLowerCase();
-    return key === number || key === `${number}-1` ? 0 : key.startsWith(number) ? 1 : 2;
-  };
-  found.sort((a, b) => exact(a) - exact(b) || order(a, b) || byName(a, b) || byNumber(a, b));
+  // In another order, the sets with the most words first all the same, and
+  // a number's own set before the rest.
+  const first = (a, b) => b.matched - a.matched || Number(b.numbered) - Number(a.numbered);
+  finds.sort(ask.sort === MATCH_SORT && asked ? (a, b) => byKey(a, b) || byName(a.item, b.item) || byNumber(a.item, b.item)
+    : (a, b) => first(a, b) || order(a.item, b.item) || byName(a.item, b.item) || byNumber(a.item, b.item));
+  const found = finds.map((one) => one.item);
   const pages = Math.max(1, Math.ceil(found.length / PER_PAGE));
   const page = Math.min(ask.page, pages);
-  return { sets: found.slice((page - 1) * PER_PAGE, page * PER_PAGE), total: found.length, page, pages };
+  return { sets: found.slice((page - 1) * PER_PAGE, page * PER_PAGE), total: found.length, page, pages,
+    near: Boolean(asked?.near), meant: asked?.meant || "" };
 }
 
 /// The theme tree the library filters by: every top theme with how many
@@ -256,12 +268,18 @@ export function yearsOf(sets) {
 export const pageOf = (entry) => `/library/set/${entry.set}`;
 
 /// The picture a set is shown by: LDraw's model's render where it has one
-/// (api/share.js set_cover), else the one drawn here from its parts
-/// (api/_flatlay.js); "" for a set with no parts to draw.
+/// (api/share.js set_cover); else its own, Rebrickable's, from our storage
+/// (api/share.js catalog_photo): a card's 4:3 and the page's its own
+/// shape; else the one drawn here from its parts (api/_flatlay.js); "" for
+/// a set with none of these.
 export function pictureOf(entry, model, as = "card") {
   if (model) return `/library/${model.id}${as === "card" ? "" : ".cutout"}.webp`;
+  if (entry.photo) return `${pageOf(entry)}${as === "card" ? "" : ".page"}.webp`;
   return entry.picks.length ? `${pageOf(entry)}.jpg` : "";
 }
+
+/// Whether a set is shown by its own picture: Rebrickable's, credited.
+export const photoOf = (entry, model) => !model && entry.photo;
 
 /// A set as a card (web/card.js cardHtml): its page and picture named,
 /// marked 3D when LDraw has a model of it, and who modelled that.
@@ -386,6 +404,7 @@ export function setPage({ origin, entry, chrome, held = null, inside = [], next 
   const model = held?.main || null;
   const others = [...(model ? [model] : []), ...(held?.more || [])];
   const picture = pictureOf(entry, model, "page");
+  const photo = photoOf(entry, model);
   const small = pictureOf(entry, model, "card");
   const said = [entry.year ? String(entry.year) : "", themeWords(entry)].filter(Boolean).join(", ");
   const description = `LEGO® set ${titleOf(entry)}${said ? ` (${said})` : ""}: `
@@ -399,11 +418,16 @@ export function setPage({ origin, entry, chrome, held = null, inside = [], next 
     `<a href="/library?theme=${encodeURIComponent(entry.theme.slice(0, at + 1).join(" > "))}">${escapeHtml(name)}</a>`)]
     .join(' <span aria-hidden="true">›</span> ');
   const viewer = model ? `/app?new=1&library=${encodeURIComponent(model.id)}` : "";
+  const alt = model ? `LDraw's 3D model of ${entry.name}` : photo ? `${entry.name}, LEGO® set ${entry.set}`
+    : `Some of the parts of ${entry.name}, drawn by Brickworks`;
   const pictureHtml = picture
     ? `<span class="waiting" aria-hidden="true">Loading its picture…</span><img src="${escapeHtml(picture)}" `
-      + `alt="${escapeHtml(model ? `LDraw's 3D model of ${entry.name}` : `Some of the parts of ${entry.name}, drawn by Brickworks`)}" `
-      + `width="1200" height="630" fetchpriority="high">${model ? '<span class="go" aria-hidden="true">View in 3D</span>' : ""}`
+      + `alt="${escapeHtml(alt)}" width="1200" height="630" fetchpriority="high">`
+      + `${model ? '<span class="go" aria-hidden="true">View in 3D</span>' : ""}`
     : `<span class="none">No picture: Rebrickable lists no parts for it</span>`;
+  // Its own picture is Rebrickable's, and said so under it, short.
+  const pictureCredit = photo
+    ? `<p class="picture-credit">Picture: <a href="${escapeHtml(creditOf(entry))}">Rebrickable</a></p>` : "";
   const insideHtml = inside.length
     ? `<section class="words" id="inside" aria-labelledby="inside-h"><h2 id="inside-h">Sets packed in it</h2><ul class="pills">`
       + inside.map(([one, n]) => `<li><a class="pill" href="${pageOf(one)}">${n > 1 ? `${n} × ` : ""}`
@@ -472,7 +496,8 @@ ${chrome.header}
     <div class="media">
     ${viewer ? `<a class="picture" href="${escapeHtml(viewer)}" aria-label="View ${escapeHtml(entry.name)} in 3D" `
       + `data-scene="/library/${escapeHtml(model.id)}/scene.json" data-parts="${Number(model.parts) || 0}">${pictureHtml}</a>`
-    : `<div class="picture">${pictureHtml}</div>`}
+    : `<div class="picture${photo ? " photo" : ""}">${pictureHtml}</div>`}
+    ${pictureCredit}
     </div>
     <div class="side">
       <h1>${escapeHtml(entry.name)}</h1>
@@ -491,8 +516,9 @@ ${chrome.header}
   ${insideHtml}
   ${modelsHtml}
   <section class="words" id="about" aria-labelledby="about-h"><h2 id="about-h">About this page</h2>
-    <p class="credit">Set and inventory data: <a href="${CREDIT.url}">Rebrickable</a>. The parts are drawn by Brickworks from
-    LDraw's geometry; no picture here is the LEGO Group's or Rebrickable's. LEGO® is a trademark of the LEGO Group,
+    <p class="credit">Set and inventory data: <a href="${CREDIT.url}">Rebrickable</a>.${photo
+    ? ` The set's picture is <a href="${escapeHtml(creditOf(entry))}">Rebrickable's</a>.`
+    : ""} The parts are drawn by Brickworks from LDraw's geometry. LEGO® is a trademark of the LEGO Group,
     which does not sponsor, authorise or endorse this site.</p></section>
     </div>
   </div>

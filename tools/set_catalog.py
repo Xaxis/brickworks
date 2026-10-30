@@ -14,14 +14,17 @@ network.
 Written as one file, assets/generated/set_catalog.json:
 
     themes   {id: [name, parent id or null]}
-    sets     [[number, name, year, theme id, parts, minifigures, lots], ...]
+    sets     [[number, name, year, theme id, parts, minifigures, lots, photo], ...]
              by number; parts and lots are the shard's list's (its
              minifigures' parts and the sets inside it counted in, spares
-             not), else Rebrickable's own count for a set with no inventory
+             not), else Rebrickable's own count for a set with no inventory;
+             photo 1 where its own picture is in our storage (setpics,
+             tools/set_pictures.py lists them in PHOTOS), else 0
     inside   {number: [[set inside it, how many], ...]}
     picks    {number: ["part/colour", ...]}: its most distinctive parts, the
-             few its picture is drawn from (api/_flatlay.js), rarest across
-             every set first, each one LDraw has geometry for
+             few its picture is drawn from where it has none of its own
+             (api/_flatlay.js), rarest across every set first, each one
+             LDraw has geometry for
 
 A page reads its set from here and its parts from the shard (api/_sets.js).
 The file goes beside the share function at deploy (tools/deploy.sh), which
@@ -50,6 +53,9 @@ import rebrickable as rb  # noqa: E402
 GENERATED = ROOT / "assets" / "generated"
 SHARDS = GENERATED / "sets"
 OUT = GENERATED / "set_catalog.json"
+# The sets whose own picture is up in storage (tools/set_pictures.py): none
+# where it has not run.
+PHOTOS = GENERATED / "set_pictures.json"
 
 # How many parts a set's picture lays out, and which a picture leaves out:
 # a sticker is flat, and a sticker shortcut is a part with one on.
@@ -125,6 +131,15 @@ def picks(records: dict[str, dict], parts: dict[str, dict]) -> dict[str, list[st
     return out
 
 
+def photos(path: Path = PHOTOS) -> set[str]:
+    """The sets tools/set_pictures.py put both pictures of in storage."""
+    try:
+        listed = json.loads(path.read_text()).get("sets", [])
+    except (OSError, ValueError, AttributeError):
+        return set()
+    return {number for number in listed if isinstance(number, str)}
+
+
 def build() -> dict:
     themes = {row["id"]: [row["name"], int(row["parent_id"]) if row["parent_id"] else None]
               for row in rb._rows("themes")}
@@ -139,6 +154,7 @@ def build() -> dict:
     catalogue = json.loads((GENERATED / "catalogue.json").read_text())
     parts = {entry["id"]: entry for entry in catalogue["parts"]}
 
+    pictured = photos()
     rows = []
     packed: dict[str, list[list]] = {}
     for row in sorted(rb._rows("sets"), key=lambda one: one["set_num"].lower()):
@@ -152,7 +168,7 @@ def build() -> dict:
             lots = 0
             count = int(row["num_parts"] or 0)
         rows.append([number, row["name"].strip(), int(row["year"] or 0), int(row["theme_id"] or 0),
-                     count, figures.get(inventory, 0), lots])
+                     count, figures.get(inventory, 0), lots, 1 if number in pictured else 0])
         if inside.get(inventory):
             packed[number] = sorted(inside[inventory])
     chosen = picks(records, parts)
@@ -176,7 +192,8 @@ def main() -> int:
     text = json.dumps(made, separators=(",", ":"), ensure_ascii=False)
     with_parts = sum(1 for row in made["sets"] if row[4] > 0)
     print(f"set catalogue: {len(made['sets']):,} sets ({with_parts:,} with parts), "
-          f"{len(made['themes']):,} themes, {len(made['picks']):,} with a picture's parts, "
+          f"{len(made['themes']):,} themes, {sum(row[7] for row in made['sets']):,} with their own picture, "
+          f"{len(made['picks']):,} with a picture's parts, "
           f"{len(text.encode()) / 1e6:.1f} MB, {time.monotonic() - started:.1f} s")
     if args.check:
         return 0

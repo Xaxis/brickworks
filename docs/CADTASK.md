@@ -20,7 +20,7 @@ so the two are like for like, and then measured.
 | A real set's file opened, saved and opened again: exact? | 0 of 48 exact; 2 exact but for the model moved onto the ground; 38 the same shapes once retired numbers are allowed. The repository's five .io and one LDD file: 5 of 6 exact. *Since (the same day): 48 of 48, and the six 6 of 6, the saved file the author's own but for one line of the app's* | not measured |
 | ...what is lost | the author's name and licence (every file), LDCad's flexible parts (5 of 48), the steps (4 of 44). *Since: nothing; what the app cannot draw is kept and said; and LDCad's flexible parts are drawn, on the desktop and in a browser (flexdraw, section 1)* | not measured |
 | Frames at 100 / 1,000 / 5,000 parts | over budget at every size on this box; in a browser the app's own work alone was over 33 ms in every act from 925 parts. Since "Big models, after": a turn, a step and select all no longer grow with the model, and the move of everything, its undo and redo are a fifth to a sixteenth of what they were (headless, 4,139 parts). Since "A part in hand over a big model": a part, a pin, a copy, a figure or a sticker in hand moves over 4,139 parts as over 92 | not measured |
-| A set built from its steps, actions a part | 15.5 and 14.9 (the first 8 parts of two sets; modelled 12.6 and 9.5) | modelled 14.1 and 11.8 |
+| A set built from its steps, actions a part | 15.5 and 14.9 (the first 8 parts of two sets; modelled 12.6 and 9.5). *Since (section 11): 6.76 and 6.36 from the set's own bin, 14.16 and 13.28 from the whole library (8841-1's first 25 and the plane's), every part exact* | modelled 14.1 and 11.8 |
 | ...put down exactly | 5 of 8 and 0 of 8: all 8 put down were in place and turn, 3 of them in the wrong colour; 8 of the 16 could not be put down | not measured |
 | ...seconds a part | modelled 8.3 to 9.2, or 9.8 to 11.4 with the steps marked | modelled 10.1 to 10.6, or 10.3 to 11.3 |
 | ...what cannot be built through the interface | both clip plates of the plane's step 4; 6157, whose number does not bring it first in the search; the old greys, by their swatch; parts off the 24 turns. *Since: the clip plates, a browser click where its ghost stood, and 8841-1's plates off the 24 turns swung onto their joints (sections 4 and 5)* | not measured |
@@ -1998,6 +1998,206 @@ tested first in a private copy of the catalogue that nothing else reads.
   the file's place only because its sockets, under the block, have
   nothing under them (`Builder._seated_by_sockets`). No cover changed.
 
+## 11. A set built from its own bin (2026-10-30)
+
+Section 9's run built 8841-1's first 25 parts at 29.76 actions a part.
+Connect (`connect_probe`'s `walk`, rel-m224) brought the same 25 to 17.80,
+against Studio's modelled 14.1 (the plane) and 11.8 (8643-1). Most of what
+was left was finding each part: a click in the search, the number typed,
+the tile, the colour's swatch. The set's bin (B10, `setbin`) holds a set's
+own parts in their colours, most held first. Here the walk is run from it,
+by `src/dev/setwalk_probe.gd`, at 1280 x 720 and 1400 x 900, on the
+graphics card.
+
+**What was run.** The app's own scene in a window, driven only by input
+events, as a person drives it:
+
+- the bin's search clicked, the set's number typed, Build from it;
+- each part's tile, the wheel to it, or the scroll bar dragged when it is
+  more than a row away;
+- `R` and `T` to the file's turn;
+- the view by its keys (`0` to `7`, `F`) or a click on the view cube,
+  where the place is out of sight;
+- the pointer aimed, up to four corrections by what the ghost is off, and
+  a click;
+- a part that goes on a pin, an axle or into a hole: its ghost onto the
+  joint, else Connect (`N`, its end, the point it goes on);
+- where the pointer cannot slide a part along its joint, the rest typed
+  (`-1lz`, `Enter`).
+
+8841-1 goes in section 9's order, each part on what holds it; the plane in
+its file's order.
+
+Every input is counted as section 3's flow counts it:
+
+- a click somewhere new is a point and a click (2); a click where the
+  pointer already is, 1;
+- a key or a character typed, 1;
+- a notch of the wheel, 1;
+- the scroll bar dragged, 3 (a point, a press and a release).
+
+Which view and which `R` and `T` presses are judged first without counting,
+as an expert sees them at a glance. Then they are made, and counted. Every
+aim and every correction counts.
+
+A part is exact when it has the set's number and the colour the bin holds
+it in, its place to 0.05 LDU, and its turn to 0.002 or a turn it looks the
+same in (an axle, a round plate, tested on its own mesh). Places are from
+where the first part went down. The model at the end is read back and
+compared with the file, part by part.
+
+**Measured** (`setwalk: every check passed` in each):
+
+| set, 25 parts | taken from | window | exact | actions | a part | most for one part |
+|---|---|---|---|---|---|---|
+| 8841-1 Balance | the set's bin | 1280 x 720 | 25 | 169 | **6.76** | 12, the axle |
+| 8841-1 Balance | the set's bin | 1400 x 900 | 25 | 177 | **7.08** | 23, a 1 x 16 Technic brick |
+| 8841-1 Balance | the whole library | 1280 x 720 | 25 | 354 | 14.16 | 25, the axle |
+| 5762-1 Plane | the set's bin | 1280 x 720 | 25 | 159 | **6.36** | 13, a round plate |
+| 5762-1 Plane | the set's bin | 1400 x 900 | 25 | 153 | **6.12** | 13, a round plate |
+| 5762-1 Plane | the whole library | 1280 x 720 | 25 | 332 | 13.28 | 23, a round plate |
+
+Before, on the same counts: section 9's flow took 8841-1's 25 at 29.76 a
+part, and with Connect at 17.80. Section 3's plane, its first 8 parts, was
+15.5. Studio's modelled figures are 14.1 for the plane and 11.8 for 8643-1;
+its seconds for 8841-1 are modelled, its actions are not.
+
+The runs' own lines, at 1280 x 720: `8841-1_Balance: 25/25 exact; 169
+actions (6.76 a part, the bin's 10 among them)` and `5762-1_Plane: 25/25
+exact; 159 actions (6.36 a part, the bin's 10 among them)`. At 1400 x 900:
+177 (7.08) and 153 (6.12). Finding the set's bin is 10 actions a set: the
+search clicked, the six characters of its number, Build from it. Of 8841-1's
+25, 15 went on by their studs, 9 by their ghost onto a pin or a hole, and
+the axle by its ghost and a typed rest. Of the plane's, 21 by their studs
+and its four round plates by their studs and a typed rest. Connect was
+not needed: the walker tries the ghost onto the joint first, with `R` and
+`T`, and it put every joint part on. The
+pictures after each part are in `shots/setwalk/WxH/`; the rows of each
+run, part by part, beside them.
+
+**Without the set's bin.** `from=library` runs the same walk, every
+other choice the same, but takes each part from the whole library: the
+search clicked, `Ctrl+A`, the number, the tile, and the colour's swatch,
+found by its number in the palette's search where the short palette does
+not show it. That is how section 9's flow took parts.
+
+| set | from the set's bin | from the whole library |
+|---|---|---|
+| 8841-1 Balance, 1280 x 720 | 6.76, every check passed | 14.16, `FAIL 8841-1: 14.16 actions a part from the whole library, the bar 12` |
+| 5762-1 Plane, 1280 x 720 | 6.36, every check passed | 13.28, `FAIL 5762-1: 13.28 actions a part from the whole library, the bar 12` |
+
+The bin is what brings the walk under 12. From the library each part
+cost 7.4 and 6.9 actions more: the search clicked and cleared (3), the
+number typed (4 to 6), and the swatch. The same 25 from the library took
+29.76 in section 9's flow and 14.16 here: the rest is this walker's views,
+the ghost onto its joint and the typed rest, against a flow that aimed
+from one view and had neither.
+
+**Where the actions go.**
+
+At 1280 x 720, of 8841-1's 169: 70 points of the pointer, 45 clicks, 16
+keys, 4 characters typed, 8 notches of the wheel and 8 drags of the bin's
+scroll bar (24 actions with their points). Of the plane's 159: 66 points,
+41 clicks, 22 keys, 12 characters, 4 notches and 2 drags.
+
+- **Scrolling the set's bin.** 8841-1 has 52 kinds and the bin shows 24
+  at 1280 x 720, most held first, so a part held once is low in the list:
+  at least 32 actions of 169, a fifth (the drags and the notches). At
+  1400 x 900, 25. The plane, 31 kinds, 10.
+- **Aim corrections.** The first aim from a new view puts the ghost a stud
+  or two off as often as not; 3702 and 3710 took up to four corrections
+  each, 9 to 11 actions with the scroll to their tiles.
+- **Typed rests.** An axle's ghost cannot be slid along the hole it goes
+  into by the pointer (`JointSnap.ways` gives a male end no slide), so
+  8841-1's axle, 1 LDU off, took `-1lz` and `Enter`. The plane's round
+  plates seat 1 LDU short of the file on their ring's studs (gap 1 said
+  two), and each took `1lz` and `Enter`.
+- **One dear part at 1400 x 900.** The 1 x 16 Technic brick #21 found "no
+  room" for its ghost on its joint from the view the walker chose there,
+  and went on by its studs after three views, in 23 actions. At 1280 x 720
+  it took 8. Not taken further.
+
+**What was not proven.**
+
+- The walker is an expert script. It finds the view and the turn by trying
+  them, uncounted; a person does that by eye, and takes thinking time (the
+  model's M), which none of these counts holds.
+- Only the first 25 parts of each set. 8841-1's other 38 and the plane's
+  other 27 were not walked.
+- 5762-1's bin has five of the first 25 in the set's own colours, Light
+  Bluish Grey (71) and 80 for the two round plates, where the file has old
+  Light Grey (7). The bin offers only the set's, so they are built in those
+  and counted exact by the bin's colour. From the library they are taken
+  in 7, by their swatch.
+- On the desktop only, not in a browser.
+- Studio was not run; its figures are modelled (section 3).
+
+**Left for others.** Nothing in the app changed here: the bar is met by
+stage225 as it stands. What still costs actions, and who could take it:
+
+- **The step's parts first in the set's bin** (bin2, `parts_bin.gd`):
+  done, below: 8841-1 from 6.56 to 5.12 a part with snap2's axle.
+- **An axle slid along its hole by the pointer** (whoever holds
+  `joint_snap.gd`): a slide for a male end, as a female end has one, would
+  take the typed rest off an axle that is not yet where it goes.
+- **The plane's round plates** (the covers or placing): seated 1 LDU short
+  of the file in their ring, they took a typed rest each.
+- **Connect's typed slide along its joint** (`edit_verbs.gd`): not needed
+  on this walk, where the ghost onto the joint was always fewer actions.
+
+**Since (snap2).** An axle's tip aimed past the far face of its hole now
+goes on through to the pointer, a whole LDU a step (`JointSnap._pushed`);
+aimed at the hole it still stops flush. 8841-1's axle went on by its ghost
+with nothing typed: 7 actions at 1280 x 720 (was 12) and 6 at 1400 x 900
+(was 11), the set 164 (6.56 a part) and 172 (6.88). The plane's round
+plates are not the seat's: the file has each 1 LDU proud of the ring and of
+the plate under it, where 314 of the 325 round plates on that ring in the
+OMR's files sit flush, as do 224 of 228 on another's stud on its side. The
+seat stays flush, and those four keep their typed rest. The 1 x 16 at
+1400 x 900 is the walker's view, not the snap: after its click on the view
+cube for (-1, 0, -1) the eye was still at the default view's height on the
+default side, from where the 1 x 16's place is behind the column (the
+pointer's line meets the column 28 LDU in front of it), so the pointer was
+on the near half of the pin, inside the column, and no way on that had
+room. At 1280 x 720 the walker looked from the back and it took 8.
+
+**The step's parts first (bin2, 2026-10-30).** The set's bin follows the
+booklet of the model being built. Typing a set's number offers, beside
+Build from it, each of its models in LDraw's repository by name ("Follow
+a booklet: Desert Racer, Balance, Buggy, ..."), and one click builds from
+the set and follows that one; a set with one model, or its own, follows it
+by Build from it. The bin lists the whole step first, in the booklet's
+order, each tile marked by a line of the accent along its top, then the
+rest most held first. A line under the set's says "Balance, step 1 of 5:
+24 parts to put in", with ‹, › and Stop. The step is worked out from what
+the model uses, as the counts are: the first not yet built, or one turned
+to by hand until it is built. A part put in keeps its place, so the tiles
+move only when the step turns (`SetBooklet`, `PartsBin._follow_step`).
+Studio's step list and a booklet's parts callout are the model: the parts
+of the step and no hunting.
+
+| set, 25 parts, 1280 x 720 | stage225 with snap2, the set's bin | following its booklet |
+|---|---|---|
+| 8841-1 Balance | 164, 6.56 a part, 8 drags and 8 notches | **128, 5.12**, no drag, no notch |
+| 5762-1 Plane | 159, 6.36 a part, 2 drags and 4 notches | **147, 5.88**, no drag, no notch |
+
+The runs' lines: `8841-1_Balance: 25/25 exact; 128 actions (5.12 a part,
+the bin's 10 among them)` and `5762-1_Plane: 25/25 exact; 147 actions
+(5.88 a part, the bin's 10 among them)`. The bar is 5.5 for 8841-1 and
+6.36 for the plane; the same probe on stage225 (7d13c5f3) fails with
+`FAIL 8841-1: 6.56 actions a part from the set's bin, following its
+booklet, the bar 5.50`, its bin offering no booklet. Before snap2's axle
+the booklet alone took 8841-1 from 6.76 to 5.32. Choosing the booklet
+costs nothing: it is the click Build from it was. Of 8841-1's 36 fewer
+actions, 32 were the scrolling (8 drags of the bar with their points, 24,
+and 8 notches) and 4 points of the pointer; of the plane's 12, 10 and 2.
+
+Not proven here: an alternate's booklet is chosen again after the model
+is reopened (the model keeps the set, not the booklet; its own model's is
+followed again by itself); the booklet fetched from the deployment rather
+than this checkout's `vendor/omr` (the web build); the repository's steps
+against the printed booklet's, which can differ; 1400 x 900.
+
 ## The gaps, by how much a builder would feel them
 
 Rewritten on 2026-10-18 from the runs of section 9, most felt first. The
@@ -2161,6 +2361,12 @@ goes, is `src/dev/bigmodel_probe.gd` (bare, the suite's check; with
 to `bench/results/cadtask-<date>/` in the main checkout (git-ignored):
 `REPORT.md`, the probe's rows, the judged rows and the pictures. The
 comparison and the sampler are pinned by `tests/test_cadtask.py`.
+
+A set built from its own bin (section 11) is `bash tools/probe.sh
+setwalk_probe`, on the graphics card in a 1280 x 720 window (`PROBE_SIZE=1400x900`
+for the larger), about ten minutes for both sets; `-- only=8841-1`,
+`shots=1` for a picture after each part, `from=library` for the same walk
+from the whole library. Its rows and pictures are in `shots/setwalk/WxH/`.
 
 The sets' parts off the grid are put through the interface by
 `src/dev/offgrid_probe.gd`, windowed on the graphics card as the frames are

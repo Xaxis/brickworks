@@ -812,6 +812,7 @@ func load_catalogue(path: String = "") -> bool:
 	_search_index = null
 	_current_lock.lock()
 	_current_of.clear()
+	_superseded = {}
 	_current_lock.unlock()
 
 	_load_colors()
@@ -2056,8 +2057,9 @@ func _finder() -> PartSearch:
 		# Not a part LDraw keeps only for old files where one made now is
 		# the same shape (current): search offered 3660a beside 3660c.
 		var offered := PackedStringArray()
+		var old: Dictionary = superseded_ids()
 		for id: String in _ordered_ids:
-			if not superseded(id):
+			if not old.has(id):
 				offered.append(id)
 		_search_index = PartSearch.new(parts, offered)
 	var index: PartSearch = _search_index
@@ -2164,6 +2166,21 @@ func superseded(part_id: String) -> bool:
 	return twin != part_id
 
 
+## Every part [method superseded] says is, as one set (id -> true), for a
+## loop over the whole catalogue: taken under the lock once, where a call a
+## part took it 30,000 times. On the web the page's thread cannot sleep on a
+## lock, so it spun while the search's index (prepare_search) held it, 0.4 s
+## of a first visit's start (webload, 2026-10-30). Not changed once made; a
+## catalogue read again makes a new one.
+func superseded_ids() -> Dictionary:
+	_current_lock.lock()
+	if _current_of.is_empty():
+		_index_current()
+	var old: Dictionary = _superseded
+	_current_lock.unlock()
+	return old
+
+
 ## Whether LDraw keeps [param info] only for old files: an alias, an
 ## obsolete mould, a "~" part (which LDraw files as not to be used alone).
 static func is_stale(info: PartInfo) -> bool:
@@ -2187,6 +2204,8 @@ static func family_of(info: PartInfo) -> String:
 
 
 var _current_of: Dictionary = {}
+## The parts [member _current_of] gives another for (superseded_ids).
+var _superseded: Dictionary = {}
 var _current_lock := Mutex.new()
 
 
@@ -2255,6 +2274,11 @@ func _index_current() -> void:
 				best_score = score
 				best = other
 		_current_of[id] = best.id if best != null else id
+	var old: Dictionary = {}
+	for id: Variant in _current_of:
+		if str(_current_of[id]) != str(id):
+			old[id] = true
+	_superseded = old
 	_index_colours()
 	# Marked as built even where nothing is stale.
 	_current_of[""] = ""

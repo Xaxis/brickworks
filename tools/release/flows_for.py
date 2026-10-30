@@ -19,8 +19,14 @@ every flow in tools/web that names one of those addresses, and the
 preview_checks.sh names that run it. A changed flow is its own checks, and a
 changed module in tools/web the checks of every flow that imports it: a flow
 fixed on its own branch was first run on the release preview, and four
-release previews held on checks on 2026-10-22. Godot files are left to the
-feature map.
+release previews held on checks on 2026-10-22.
+
+A flow reaches the app's window by its controls' names, as it reaches a page
+by its address: a Godot script in src/ is every flow that quotes a control
+name the script gives ("page_canvas", or "page_picture_4" from
+"page_picture_%d"). booklet_edit_flow drives the page editor and was not
+named for a change to it, and rel-m226 held on it (2026-10-30). What a
+script reaches through other scripts is left to the feature map.
 """
 
 from __future__ import annotations
@@ -111,6 +117,34 @@ def addresses(path: str, seen: set[str] | None = None) -> set[str]:
     return set()
 
 
+# A control name: words joined by underscores ("page_add_arrow"), quoted.
+CONTROL = re.compile(r'"([a-z][a-z0-9]*(?:_[a-z0-9]+)+)"')
+# A name made with a number ("page_picture_%d"): its words before the number.
+NUMBERED = re.compile(r'"([a-z][a-z0-9]*(?:_[a-z0-9]+)*_)%[ds]')
+QUOTED = re.compile(r"""["'`]([a-z][a-z0-9]*(?:_[a-z0-9]+)+)["'`]""")
+
+
+def controls(path: str) -> tuple[set[str], set[str]]:
+    """The control names a Godot script in src/ gives, and the words before
+    the number of those it numbers; none for a probe in src/dev."""
+    p = Path(path)
+    if p.parts[:1] != ("src",) or p.parts[:2] == ("src", "dev") or p.suffix != ".gd":
+        return set(), set()
+    file = ROOT / p
+    if not file.exists():
+        return set(), set()
+    text = file.read_text(errors="ignore")
+    return set(CONTROL.findall(text)), set(NUMBERED.findall(text))
+
+
+def reaches(flow: Path, names: set[str], numbered: set[str]) -> set[str]:
+    """The names of [names] the flow quotes, and those of [numbered] with
+    a number after them."""
+    quoted = set(QUOTED.findall(flow.read_text(errors="ignore")))
+    return (quoted & names) | {q for q in quoted for start in numbered
+                               if q.startswith(start) and q[len(start):][:1].isdigit()}
+
+
 def importers(name: str, seen: set[str]) -> set[str]:
     """tools/web/[name] and every module there that imports it, directly or
     through another that does."""
@@ -156,8 +190,10 @@ def main() -> int:
         for address in addresses(path):
             wanted.setdefault(address, set()).add(path)
     modules = [p for p in files if Path(p).parent == Path("tools/web") and p.endswith(".mjs")]
-    if not wanted and not modules:
-        print("no page, API route or browser flow changed: nothing for the browser flows here")
+    scripts = {p: controls(p) for p in files}
+    scripts = {p: given for p, given in scripts.items() if given[0] or given[1]}
+    if not wanted and not modules and not scripts:
+        print("no page, API route, control or browser flow changed: nothing for the browser flows here")
         return 0
     named = checks()
     found: dict[str, set[str]] = {}
@@ -172,6 +208,16 @@ def main() -> int:
             continue
         for name in names:
             found.setdefault(name, set()).update(f"{a} ({', '.join(sorted(wanted[a]))})" for a in hits)
+    for flow in sorted(FLOWS.glob("*.mjs")):
+        for path, (names, numbered) in scripts.items():
+            hits = reaches(flow, names, numbered)
+            if not hits:
+                continue
+            if not named.get(flow.name):
+                unchecked.add(flow.name)
+                continue
+            for name in named[flow.name]:
+                found.setdefault(name, set()).add(f"{path} ({', '.join(sorted(hits)[:4])})")
     orphans: set[str] = set()
     for path in modules:
         runs = [(flow, name) for flow in sorted(importers(Path(path).name, set())) for name in named.get(flow, [])]

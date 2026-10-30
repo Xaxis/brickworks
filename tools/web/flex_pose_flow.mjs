@@ -8,7 +8,7 @@
 // with everything else, which no desktop probe vouches for. This opens a
 // small model through Open… > From a file (two Technic bricks with holes,
 // two gears, and a crane: a turret on a turntable and an arm on a hinge,
-// each a sub-model), then: Build, Hose, tube or chain… by the menu and the
+// each a sub-model), then: Make, Hose, tube or chain… by the menu and the
 // keys a person uses there; a click on one pin hole and another, which lays
 // a pneumatic tube; Technic chain and a click on each gear, which lays a
 // chain round them; Done. Build, Motions…, New motion: a click on the
@@ -18,7 +18,8 @@
 // slider does not move its joint, the download is not an animation of the
 // right number of frames, the page stops answering for longer than --stall
 // seconds (default 3) during the render, or a script error reaches the
-// console. Pictures of each step in OUT, and the WebP.
+// console. Pictures of each step in OUT, and the WebP. --size=WxH for
+// another window than 1400x900 (a laptop's 1280x720).
 import { launch } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -30,6 +31,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
 const url = args.url || "https://brickworks.diy/app";
 const out = args.out || "shots/flex_pose_web";
 const stallLimit = Number(args.stall || 3) * 1000;
+const [width, height] = String(args.size || "1400x900").split("x").map(Number);
 const first = args.bypass
   ? `${url}${url.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${args.bypass}&x-vercel-set-bypass-cookie=true`
   : url;
@@ -71,7 +73,7 @@ writeFileSync(model, [
 ].join("\n"));
 
 const browser = await launch();
-const context = await browser.newContext({ viewport: { width: 1400, height: 900 }, acceptDownloads: true });
+const context = await browser.newContext({ viewport: { width, height }, acceptDownloads: true });
 const page = await context.newPage();
 page.choosers = [];
 page.on("filechooser", (chooser) => page.choosers.push(chooser));
@@ -204,9 +206,9 @@ try {
   await shot("1_model.png");
 
   // A pneumatic tube from one pin hole to the other.
-  await menu("build", "Hose");
+  await menu("make", "Hose");
   const asking = await until(flex, (f) => f.active && f.stage === "start", 30);
-  check(Boolean(asking), `Build, Hose, tube or chain… opens the tool (${asking && asking.told})`);
+  check(Boolean(asking), `Make, Hose, tube or chain… opens the tool (${asking && asking.told})`);
   const holes = ((await flex()).targets || []).filter((t) => t.kind === "pin_hole" && t.part === "3700");
   check(holes.length >= 2, `the two bricks' holes are there to click (${holes.length})`);
   holes.sort((a, b) => a.x - b.x);

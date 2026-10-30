@@ -21,6 +21,12 @@
 ## The balance is weighed over the cycle (Balance, through Shell's
 ## weigh_balance, which draws the support polygon and the centre of mass on
 ## the floor), and the arm that reaches furthest past the base's edge named.
+##
+## Where the motion stops is found over the cycle (Simulation.begin_stops):
+## the first turn where moving parts meet, the driver's range either way, and
+## where a motor that turns it stalls. Each is said; the two parts that meet
+## are tinted red; Play stops there, the slider goes no further, and Go to
+## the stop shows it.
 ## Over MCP, simulate_mechanism (AppTools) runs the same code: [method
 ## for_session].
 class_name SimulatePanel
@@ -80,6 +86,8 @@ var _speed: OptionButton
 var _frames: OptionButton
 var _record: Button
 var _worst: Button
+var _where: Button
+var _stops: Label
 var _close: Button
 var _status: Label
 var _frame: TextureRect
@@ -132,13 +140,15 @@ func read() -> void:
 	_stop()
 	world.set_drawn({})
 	_status.text = ""
+	_stops.text = ""
+	_where.disabled = true
 	_frame.visible = false
 	var job: Working.Job = Working.begin("Reading the mechanism…")
 	await job.shown()
 	sim = await read_mechanism()
 	_seen_revision = world.revision
 	var body: int = sim.marked()
-	var how: String = "the model marks it"
+	var how: String = "its motor turns it" if sim.motored.has(body) else "the model marks it"
 	if body < 0:
 		body = _selected_body()
 		how = "selected"
@@ -243,6 +253,7 @@ func drive(body: int, how: String = "picked") -> void:
 	_show_readout()
 	world.set_drawn({})
 	await weigh()
+	await check_stops()
 	_driving = false
 	if sim == null:
 		return
@@ -294,6 +305,44 @@ static func balance_words(simulation: Simulation, report: Balance.Report, out: D
 	return line
 
 
+## Find where the motion stops: what meets over the cycle, the driver's
+## range and a motor's stall, said in the panel.
+func check_stops() -> void:
+	_stops.text = ""
+	_where.disabled = true
+	if sim == null or sim.moving.is_empty():
+		return
+	var simulation: Simulation = sim
+	var job: Working.Job = Working.begin("Checking where it stops…")
+	await job.shown()
+	await find_stops(simulation, true)
+	job.end()
+	if sim != simulation:
+		return
+	_stops.text = "\n".join(sim.stop_lines())
+	_where.disabled = sim.stop_on() == INF
+
+
+## [method Simulation.stops_step] a slice a frame, so the window keeps
+## drawing; [param panel]'s stops given up once the panel reads another.
+func find_stops(simulation: Simulation, panel: bool = false) -> void:
+	simulation.begin_stops(simulation.cycle())
+	while not simulation.stops_step(STOP_SLICE_MS):
+		await get_tree().process_frame
+		if panel and sim != simulation:
+			return
+
+
+## Milliseconds of finding where it stops a frame.
+const STOP_SLICE_MS := 12.0
+
+
+## Whether the motion's stops are found and Play and the slider keep short of
+## them.
+func _stopping() -> bool:
+	return sim != null and sim.stops_done and sim.stop_on() != INF
+
+
 # -- the readout -------------------------------------------------------------------
 
 
@@ -337,9 +386,11 @@ func play() -> void:
 	if playing:
 		_stop()
 		return
-	if sim == null or not sim.moves_anything():
+	if sim == null or sim.moving.is_empty():
 		_status.text = "Nothing turns from this driver."
 		return
+	if _stopping() and turns >= sim.stop_on() - 1e-6:
+		turns = 0.0
 	playing = true
 	_play.text = "Pause"
 
@@ -357,6 +408,15 @@ func scrub_to(at: float) -> void:
 	_show_pose()
 
 
+## Where the driver stops going on: what meets, where its motor stalls or
+## its loop goes no further, said.
+func go_to_stop() -> void:
+	if not _stopping():
+		return
+	scrub_to(sim.stop_on())
+	_status.text = "Stops at %s: %s." % [Simulation.angle(sim.stop_on()), sim.stopped_said()]
+
+
 ## The worst frame of the balance.
 func go_to_worst() -> void:
 	if balance == null or balance.worst_index < 0 or balance.worst_index >= weighed_poses.size():
@@ -367,6 +427,13 @@ func go_to_worst() -> void:
 func _show_pose() -> void:
 	if sim == null or world == null:
 		return
+	# No further than where it stops: two parts do not go through each other,
+	# nor a stalled motor turn on.
+	if _stopping() and turns > sim.stop_on():
+		turns = sim.stop_on()
+		if playing:
+			_stop()
+			_status.text = "Stopped at %s: %s." % [Simulation.angle(turns), sim.stopped_said()]
 	world.set_drawn(sim.placed(turns))
 	var span: float = sim.cycle()
 	_quiet = true
@@ -616,6 +683,13 @@ func for_session(input: Dictionary, work: Working.Job = null) -> Variant:
 		for line: String in simulation.rate_lines(ref, targets, 16):
 			lines.append("  " + line)
 	lines.append_array(simulation.trouble_lines())
+	# Where it stops: what meets, its range, a motor's stall.
+	if not simulation.moving.is_empty():
+		job = Working.begin("Checking where it stops…")
+		await job.shown()
+		await find_stops(simulation)
+		job.end()
+		lines.append_array(simulation.stop_lines())
 	# The balance over the cycle, through the same weighing the panel uses,
 	# drawn nowhere: the person's window is left as it was.
 	var worst: float = 0.0
@@ -635,14 +709,21 @@ func for_session(input: Dictionary, work: Working.Job = null) -> Variant:
 	var text: String = "\n".join(lines)
 	if not StudioRender.possible():
 		return text + "\n(No picture: this app is running without a window.)"
+	# The picture where it stops, when something stops it; else at the worst
+	# of the balance.
+	var shown: float = worst
+	var why: String = ""
+	if simulation.stops_done and simulation.stop_on() != INF:
+		shown = simulation.stop_on()
+		why = ", where it stops: %s" % simulation.stopped_said()
 	job = Working.begin("Drawing the mechanism…")
 	await job.shown()
-	var image: Image = await picture(simulation, worst)
+	var image: Image = await picture(simulation, shown)
 	job.end()
 	if image == null:
 		return text
-	text += "\nThe picture: %s %s." % [simulation.names.get(body, "the driver"),
-		Simulation.turned(worst)]
+	text += "\nThe picture: %s %s%s." % [simulation.names.get(body, "the driver"),
+		Simulation.turned(shown) if why.is_empty() else "at " + Simulation.angle(shown), why]
 	return [{"type": "text", "text": text}, {"type": "image", "source": {"type": "base64",
 		"media_type": "image/png", "data": Marshalls.raw_to_base64(image.save_png_to_buffer())}}]
 
@@ -663,7 +744,8 @@ static func _session_driver(simulation: Simulation, asked: String) -> Dictionary
 		return {"body": body, "how": "as asked"}
 	var marked: int = simulation.marked()
 	if marked >= 0:
-		return {"body": marked, "how": "the model marks it"}
+		return {"body": marked, "how": "its motor turns it" if simulation.motored.has(marked)
+			else "the model marks it"}
 	var best: int = simulation.best()
 	if best >= 0:
 		return {"body": best, "how": "chosen as the one that turns most of the train; driver= "
@@ -740,9 +822,12 @@ func _build() -> void:
 	_readout = _words(column, 12, 0.92)
 	_trouble = _words(column, 12, 1.0)
 	_trouble.add_theme_color_override("font_color", Color(1.0, 0.72, 0.55))
+	_stops = _words(column, 12, 1.0)
+	_stops.add_theme_color_override("font_color", Color(1.0, 0.72, 0.55))
 	var legend := _words(column, 11, 0.6)
 	legend.text = ("Tinted by speed, blue slow to orange fast; the driver white; red, the meshes "
-		+ "that lock it; amber, free; violet, floating. The model itself does not move.")
+		+ "that lock it or the parts that meet; amber, free; violet, floating. The model itself "
+		+ "does not move.")
 	column.add_child(HSeparator.new())
 	var playing := HBoxContainer.new()
 	playing.add_theme_constant_override("separation", 6)
@@ -758,6 +843,9 @@ func _build() -> void:
 	playing.add_child(_speed)
 	_worst = _button(playing, "Worst balance", go_to_worst,
 		"Go to the frame of the cycle where it comes nearest tipping")
+	_where = _button(playing, "Go to the stop", go_to_stop,
+		"Go to where it stops: two parts meet, its motor stalls or its loop goes no further")
+	_where.disabled = true
 	_scrub = HSlider.new()
 	_scrub.accessibility_name = "Where in the cycle"
 	_scrub.focus_mode = Control.FOCUS_NONE
@@ -825,14 +913,15 @@ func _button(into: Control, words: String, action: Callable, tip: String) -> But
 ## wrong, the balance.
 func said() -> Dictionary:
 	return {"driver": _driver.text, "readout": _readout.text, "trouble": _trouble.text,
-		"balance": _weighed.text, "status": _status.text, "at": _at.text}
+		"stops": _stops.text, "balance": _weighed.text, "status": _status.text, "at": _at.text}
 
 
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
 	return {"simulate_play": _play, "simulate_speed": _speed, "simulate_scrub": _scrub,
-		"simulate_worst": _worst, "simulate_reference": _reference, "simulate_record": _record,
+		"simulate_worst": _worst, "simulate_stop": _where, "simulate_reference": _reference,
+		"simulate_record": _record,
 		"simulate_frames": _frames, "simulate_close": _close}
 
 
@@ -847,7 +936,8 @@ func _tell_page() -> void:
 	_told_page_at = now
 	var state: Dictionary = {"open": visible, "playing": playing, "recording": _recording,
 		"turns": snappedf(turns, 0.001), "driver": _driver.text, "readout": _readout.text,
-		"trouble": _trouble.text, "balance": _weighed.text, "status": _status.text}
+		"trouble": _trouble.text, "stops": _stops.text, "balance": _weighed.text,
+		"status": _status.text}
 	for key: String in _last:
 		state[key] = _last[key]
 	var text: String = JSON.stringify(state)

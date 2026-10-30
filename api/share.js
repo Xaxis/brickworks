@@ -89,10 +89,14 @@
 //                            deployment has no catalogue
 //   GET  ?op=catalog_set&set=N  /library/set/N: the set's page; with
 //                            op=catalog_parts (/library/set/N/parts.json,
-//                            .xml, .csv) its parts, op=catalog_picture
-//                            (/library/set/N.jpg) its picture drawn from
-//                            its parts (api/_flatlay.js), op=catalog_owned
-//                            how much of it the person signed in owns
+//                            .xml, .csv) its parts, op=catalog_photo
+//                            (/library/set/N.webp, its card's, and
+//                            N.page.webp, its page's, as=card|page) its own
+//                            picture, Rebrickable's, from our storage,
+//                            op=catalog_picture (/library/set/N.jpg) its
+//                            picture drawn from its parts (api/_flatlay.js)
+//                            where it has none, op=catalog_owned how much
+//                            of it the person signed in owns
 //   GET  ?op=sitemap_index   /sitemaps/index.xml: /sitemap.xml and the
 //                            sets' own (op=sitemap_sets&n=K,
 //                            /sitemaps/sets-K.xml)
@@ -223,7 +227,7 @@ import {
   siteChrome, testsAsked, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
-import { libraryCredit, storeFile, storeRoot } from "./_omr_credit.js";
+import { libraryCredit, storeBytes, storeFile, storeRoot } from "./_omr_credit.js";
 // What the front leads with, chosen once a day; and the weekly look at the OMR.
 import { featuredSaid, runFeatures } from "./_featured.js";
 import { runOmrWatch } from "./_omr_watch.js";
@@ -247,6 +251,7 @@ import {
   yearsOf,
 } from "./_sets.js";
 import { flatLayJpeg } from "./_flatlay.js";
+import { indexOf as searchIndex } from "./_search.js";
 import { challengeLine, withWins } from "./_challenges.js";
 // What a model is based on (docs/SOCIAL.md section 7, item 5).
 import { bases, basesOf, basesPut, setBased } from "./_bases.js";
@@ -1924,6 +1929,7 @@ async function read(request, response) {
     return catalogParts(response, origin, String(request.query?.set || ""), String(request.query?.as || "json"));
   }
   if (op === "catalog_picture") return catalogPicture(response, origin, String(request.query?.set || ""));
+  if (op === "catalog_photo") return catalogPhoto(response, String(request.query?.set || ""), String(request.query?.as || "card"));
   if (op === "catalog_owned") return catalogOwned(request, response, origin, String(request.query?.set || ""));
   if (op === "sitemap_index") return sitemapIndex(response, origin);
   if (op === "sitemap_sets") return sitemapOfSets(response, origin, String(request.query?.n || ""));
@@ -2150,8 +2156,7 @@ async function setCover(response, id, as = "card", tests = false) {
   const entry = await librarySet(id, libraryOf(tests));
   const root = storeRoot();
   const read = async (path) => {
-    const answer = await fetch(`${root}${path}`).catch(() => null);
-    const bytes = answer && answer.ok ? Buffer.from(await answer.arrayBuffer()) : null;
+    const bytes = await storeBytes(path);
     return bytes && bytes.subarray(0, 4).equals(RIFF) && bytes.subarray(8, 12).equals(WEBP) ? bytes : null;
   };
   const folder = SET_PICTURES[as];
@@ -2227,6 +2232,7 @@ function catalogList(request, response, catalogue, models, tests) {
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : SET_CACHE);
   return response.status(200).json({
     models: found.sets.map((entry) => catalogCard(entry, by)), total: found.total, page: found.page, pages: found.pages,
+    near: found.near, meant: found.meant,
     per_page: CATALOG_PER_PAGE, of: catalogue.sets.length, with_3d: [...by.values()].filter((one) => one.main).length,
     asked, themes: themeTree(catalogue.sets), decades: decadesThere, years,
     sizes: Object.fromEntries(Object.entries(SIZES).map(([key, size]) => [key, size.label])), sorts: SETS_SORTS,
@@ -2276,9 +2282,32 @@ async function catalogParts(response, origin, number, as) {
     { set: entry.set, name: entry.name, credit: SETS_CREDIT });
 }
 
+/// /library/set/N.webp and N.page.webp: the set's own picture, Rebrickable's,
+/// as tools/set_pictures.py fetched it once and put it in the parts bucket
+/// (sets/card/, sets/page/), so a visitor's browser never asks them; kept
+/// by the CDN a year, as the picture of its parts is. 404 for a set the
+/// store has no picture of: its pages name this only for those it has
+/// (api/_sets.js pictureOf).
+const SET_PHOTOS = { card: "card", page: "page" };
+
+async function catalogPhoto(response, number, as) {
+  const entry = catalogSet(number);
+  const root = storeRoot();
+  const folder = SET_PHOTOS[as];
+  const none = () => response.status(404).setHeader("Cache-Control", "no-store").end("");
+  if (!entry || !root || !folder) return none();
+  const bytes = await storeBytes(`sets/${folder}/${encodeURIComponent(entry.set)}.webp`);
+  if (!bytes || !bytes.subarray(0, 4).equals(RIFF) || !bytes.subarray(8, 12).equals(WEBP)) return none();
+  response.setHeader("Content-Type", "image/webp");
+  response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+  response.setHeader("Cache-Control", PICTURE_CACHE);
+  return response.status(200).end(bytes);
+}
+
 /// /library/set/N.jpg: its most distinctive parts laid out and drawn from
-/// their own geometry (api/_flatlay.js), never anybody's photograph. 404 for
-/// a set with none to draw, or a store that will not give their geometry.
+/// their own geometry (api/_flatlay.js), for a set with no picture of its
+/// own. 404 for a set with none to draw, or a store that will not give
+/// their geometry.
 async function catalogPicture(response, origin, number) {
   const entry = catalogSet(number);
   const table = partsTable();
@@ -2289,9 +2318,9 @@ async function catalogPicture(response, origin, number) {
     const [part, colour] = pick.split("/");
     const mesh = table.parts[part]?.[6];
     if (!mesh || !/^[0-9a-f]{8,64}$/.test(mesh)) return null;
-    const answer = await fetch(`${root}${mesh}.lbm`, { signal: AbortSignal.timeout(20000) }).catch(() => null);
-    if (!answer || !answer.ok) return null;
-    return { mesh: await answer.arrayBuffer(), hex: table.colours[colour]?.[1] || "a0a5a9" };
+    const bytes = await storeBytes(`${mesh}.lbm`);
+    if (!bytes) return null;
+    return { mesh: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.length), hex: table.colours[colour]?.[1] || "a0a5a9" };
   }))).filter(Boolean);
   if (!parts.length) return none();
   response.setHeader("Content-Type", "image/jpeg");
@@ -2381,8 +2410,10 @@ async function gallery(request, response, origin) {
   let asked;
   let said;
   try {
+    // The catalogue's words make the search forgiving, as the library's is.
+    const catalogue = request.query?.q ? setCatalog() : null;
     ({ asked, said } = listQuery(request.query || {}, PER_PAGE, MOST_PAGES, { mine: Boolean(mine?.pool),
-      signedIn: Boolean(mine) }));
+      signedIn: Boolean(mine), vocabulary: catalogue ? searchIndex(catalogue.sets) : null }));
   } catch (trouble) {
     // Signed in, with nothing in their collection to sort or filter by.
     if (mine && trouble instanceof Unacceptable && trouble.status === 401) {

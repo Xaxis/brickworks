@@ -39,6 +39,16 @@
 // wants it does (turnAssistantOn), its column and its key field among the
 // controls asked for. A build from before the setting has the assistant on
 // from the start, and is checked once.
+//
+// A phone is opened as one, touch and all (Chromium's phone emulation), and
+// gets the phone's layout (PhoneShell). It was opened with a mouse, which
+// gave it the desktop drawn 0.54 of a pixel to the unit: a 9 x 15 mark and
+// six-pixel words, Settings and the assistant's rail off the foot at
+// 844 x 390 (phone, 2026-10-30). The phone's layout is now what any window a
+// phone's size gets. There every target a finger has must be 44 points or
+// more each way and on the screen, as the app itself counts them
+// (window.brickworksAskPhone, Main._phone_audit), at first and with the
+// assistant on.
 import { launch, START_MS, turnAssistantOn } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { loadavg } from "node:os";
@@ -68,13 +78,28 @@ const throttle = Number(args.throttle || 1);
 // rails where one column shows. On a phone the panels are drawers and start
 // closed. Phones were asked only for New and Save while the toolbar, a
 // thousand units in one row, pushed Clear and the assistant's rail off the
-// side of every phone: there the assistant could not be opened at all.
+// side of every phone: there the assistant could not be opened at all. In
+// the phone's own layout its drawer's rail shows only while it is open, and
+// turned on in Settings the assistant had no way in but More, View,
+// Assistant until its button joined the top bar.
 const BOTH = ["model_name", "new", "save", "clear", "key_field", "use_key"];
 const ONE = ["model_name", "new", "save", "clear", "key_field", "use_key", "parts_rail",
   "assistant_rail"];
-const PHONE = ["new", "save", "clear", "parts_rail", "assistant_rail"];
+// A phone's own bars (PhoneShell): the mark, the name, Undo and Redo along
+// the top, the parts and More, where every command is, along the foot; and
+// the assistant's button once it is on.
+const PHONE = ["app_menu", "phone_name", "phone_undo", "phone_redo", "phone_parts", "phone_more",
+  "phone_assistant"];
 // The assistant's, asked for only once it is on.
-const ITS_OWN = ["key_field", "use_key", "assistant_rail"];
+const ITS_OWN = ["key_field", "use_key", "assistant_rail", "phone_assistant"];
+// What a finger needs, in points, and where a size is a phone's.
+const FINGER = 44;
+const isPhone = (width, height) => Math.min(width, height) < 600 && Math.max(width, height) < 1000;
+// The least share of a phone's height the model keeps, between its bars
+// and the notices strip: 54% on its side at first. The desktop drawn at
+// 844 x 390 left it 128 px, the key strip over most of that (appux2,
+// 2026-10-30).
+const PHONE_TALL = 0.5;
 const ALL = [
   [1600, 900, 1, BOTH, 0],
   [1920, 1080, 2, BOTH, 0],
@@ -88,6 +113,9 @@ const ALL = [
   [1100, 760, 2, ONE, 0.6],
   [390, 844, 3, PHONE, 0],
   [844, 390, 3, PHONE, 0],
+  // A browser window as small as a phone on its side, with a mouse: the
+  // window appux2 saw the desktop in. It gets the phone's layout too.
+  [844, 390, 2, PHONE, 0, "mouse"],
 ];
 // Names a build from before they were published says nothing of.
 const RAILS = ["parts_rail", "assistant_rail"];
@@ -145,7 +173,7 @@ async function started(page, until) {
       new Promise((done) => setTimeout(() => done(undefined), Math.max(until - Date.now(), 0)))]);
     if (now === undefined) break;
     where = now || where;
-    if (where && where.save) break;
+    if (where && (where.save || where.phone_more)) break;
     await page.waitForTimeout(500);
   }
   return where;
@@ -154,9 +182,11 @@ async function started(page, until) {
 const browser = await launch();
 let failed = 0;
 let unstarted = 0;
-for (const [width, height, ratio, wanted, share] of CASES) {
-  const label = `${width}x${height}@${ratio}x`;
-  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: ratio });
+for (const [width, height, ratio, wanted, share, pointer] of CASES) {
+  const label = `${width}x${height}@${ratio}x${pointer === "mouse" ? " with a mouse" : ""}`;
+  const phone = isPhone(width, height);
+  const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: ratio,
+    ...(phone && pointer !== "mouse" ? { isMobile: true, hasTouch: true } : {}) });
   const page = await context.newPage();
   if (throttle > 1) {
     const cdp = await context.newCDPSession(page);
@@ -180,12 +210,14 @@ for (const [width, height, ratio, wanted, share] of CASES) {
   const byHand = await page.evaluate(() => (window.brickworksState || {}).assistant === false);
   if (byHand) {
     if (!(await fits(page, label + " by hand", wanted.filter((n) => !ITS_OWN.includes(n)), share, width, height))) failed++;
+    if (phone && !(await forAFinger(page, label + " by hand"))) failed++;
     if (!(await turnAssistantOn(page))) {
       console.log(`  FAIL  ${label}: the assistant could not be turned on in Settings`);
       failed++;
     }
   }
   if (!(await fits(page, byHand ? label + " with the assistant" : label, wanted, share, width, height))) failed++;
+  if (phone && !(await forAFinger(page, byHand ? label + " with the assistant" : label))) failed++;
   console.log(`        ${label}: up in ${waited} s`);
   await context.close();
 }
@@ -195,6 +227,30 @@ const misfits = failed - unstarted;
 const said = [misfits ? `${misfits} failed` : "", unstarted ? `the app did not start at ${unstarted} size(s)` : ""];
 console.log(failed ? said.filter(Boolean).join("; ") : "the app fits the page at every size and density, the model clear");
 process.exit(misfits ? 1 : unstarted ? 2 : 0);
+
+
+// On a phone, every target a finger has at least FINGER points each way and
+// on the screen, as the app counts them. True when both hold.
+async function forAFinger(page, label) {
+  await page.evaluate(() => { window.brickworksPhone = null; window.brickworksAskPhone = true; });
+  let told = null;
+  for (let n = 0; n < 40 && !told; n++) {
+    await page.waitForTimeout(250);
+    told = await page.evaluate(() => window.brickworksPhone || null);
+  }
+  if (!told) {
+    console.log(`  FAIL  ${label}: the phone's layout said nothing of its targets (window.brickworksAskPhone)`);
+    return false;
+  }
+  const small = told.targets.filter((t) => t.box[2] < FINGER || t.box[3] < FINGER);
+  const off = told.targets.filter((t) => t.off);
+  const ok = told.targets.length > 0 && small.length === 0 && off.length === 0;
+  const said = (list) => list.slice(0, 5).map((t) => `${t.name} ${t.box[2]}x${t.box[3]} at ${t.box[0]},${t.box[1]}`).join("; ");
+  console.log(`  ${ok ? "ok  " : "FAIL"}  ${label}: ${told.targets.length} targets for a finger, `
+    + `${small.length ? `${small.length} under ${FINGER} points (${said(small)})` : `none under ${FINGER} points`}, `
+    + `${off.length ? `${off.length} off the screen (${said(off)})` : "none off the screen"}`);
+  return ok;
+}
 
 
 // Every control asked for inside the page, and nothing but the view cube
@@ -250,6 +306,9 @@ async function fits(page, label, wanted, share, width, height) {
     if (share > 0 && view[2] < width * share) {
       over.push(`the model keeps ${Math.round((100 * view[2]) / width)}% of the width, under ${share * 100}%`);
     }
+    if (isPhone(width, height) && view[3] < height * PHONE_TALL) {
+      over.push(`the model keeps ${Math.round((100 * view[3]) / height)}% of the height, under ${PHONE_TALL * 100}%`);
+    }
   }
   // A large canvas drawn in software can take longer than a screenshot's
   // default wait; the picture is evidence, not the check.
@@ -258,7 +317,8 @@ async function fits(page, label, wanted, share, width, height) {
   const clear = over.length === 0;
   console.log(`  ${inPage ? "ok  " : "FAIL"}  ${label}: ${inPage ? `every control on the page (${wanted.join(", ")})` : outside.join("; ")}`);
   const said = view ? `model [${view}]${layout ? `, ${layout.samples} points, columns ${layout.columns}` : " (from centres)"}` : "";
-  const kept = view ? `, ${Math.round((100 * view[2]) / width)}% of the width` : "";
+  const kept = view ? `, ${Math.round((100 * view[2]) / width)}% of the width`
+    + `${isPhone(width, height) ? `, ${Math.round((100 * view[3]) / height)}% of the height` : ""}` : "";
   console.log(`  ${clear ? "ok  " : "FAIL"}  ${label}: ${clear ? `nothing over the model (${said}${kept})` : `${over.slice(0, 6).join("; ")}${over.length > 6 ? `; and ${over.length - 6} more` : ""} (${said})`}`);
   return inPage && clear;
 }

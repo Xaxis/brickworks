@@ -44,6 +44,9 @@ var see_inside: SeeInside
 var stress: StressView
 ## File, Versions…: src/ui/versions_dialog.gd.
 var versions: VersionsDialog
+## Compare with a save, from Versions… or File, Compare with…:
+## src/ui/compare_view.gd.
+var compare: CompareView
 ## Edit, Pattern…: copies in a row, round, or along a hose (Pattern).
 var pattern_dialog: PatternDialog
 ## Help, Send feedback… (FeedbackDialog).
@@ -101,33 +104,42 @@ const ALT := KEY_MASK_ALT
 ## sub-assembly and step commands were in Edit and in Build, Exploded view
 ## in View and in Build, and Edit was 39 rows, 689 px of a 720 px window.
 ## Edit keeps the clipboard, the selection, hiding, locking, paint and
-## replace; Build the steps, the sub-assemblies, the sections and the
-## prints; Tools what asks Claude. Find a command (CommandPalette) reaches
-## any of them by name.
+## replace; Build the steps, the sub-assemblies and the sections; Make what
+## makes something new (a minifigure, a mosaic, a brickified model, a hose,
+## a part, a print) and the picture one is built over; Tools the tools, the
+## checks and what asks Claude. Find
+## a command (CommandPalette) reaches any of them by name.
+##
+## No menu is more than 25 rows, nor opens taller than 60% of a 720 px
+## window, about 20 rows and their lines (keys3): Build grew back to 37 rows
+## and scrolled, View was 33, and Edit, with Comments, 25 rows and 486 of a
+## 470 unit limit. So the makers and the prints went to Make, the eight
+## views and the model's turns to View's Viewpoint, the part in hand's turn
+## and tip to Tools beside Place, Comments to File beside Share and Build
+## together, My collection and What can I build? beside Library, and What
+## do I need? beside the parts list.
 const MENUS: Array = [
-	["File", ["new", "new_window", "open", "library", ">recent", ">import", "-", "save", "save_as",
-		"versions", "-", "share", "together", ">export", "render", "-", "clear", "quit"]],
+	["File", ["new", "new_window", "open", "library", "collection", "collection_build", ">recent",
+		">import", "-", "save", "save_as", "versions", "compare", "-", "share", "together",
+		"comments", ">export", "render", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
-	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
-		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
+	["View", [">viewpoint", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
-		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "-",
-		"turn_left",
-		"turn_right", "-", "panel_parts",
+		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
-		"full_screen"]],
-	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list", "-",
-		"collection", "collection_need", "collection_build", "-", "make_submodel",
-		"leave_submodel", "enter_assembly", "leave_assembly", "rename_assembly", "make_unique", "-",
-		"suggest_sections", "evaluate_section", "break_out", "put_back", "explode", "-", "flex",
-		"reshape_flex", "minifig", "mosaic", "brickify", "part_maker", "print_part", "sticker",
-		"printed_versions", "-", "rotate_held", "tip_held"]],
+		"split_view", "full_screen"]],
+	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list",
+		"collection_need", "-", "make_submodel", "leave_submodel", "enter_assembly",
+		"leave_assembly", "rename_assembly", "make_unique", "-", "suggest_sections",
+		"evaluate_section", "break_out", "put_back", "explode"]],
+	["Make", ["minifig", "mosaic", "brickify", "reference", "-", "flex", "reshape_flex", "-",
+		"part_maker", "print_part", "sticker", "printed_versions"]],
 	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
-		"mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "measure",
-		"stability", "simulate", "hidden_colours", "reseat", "-", "ask_claude", "connector",
-		"settings"]],
+		"mode_connect", "mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "rotate_held",
+		"tip_held", "-", "measure", "stability", "simulate", "hidden_colours", "reseat", "-",
+		"ask_claude", "connector", "settings"]],
 	["Help", ["keys", "tour"]],
 ]
 
@@ -167,6 +179,8 @@ const SUBMENUS: Dictionary = {
 		"export_rebrickable", "-", "export_all"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_find",
 		"select_connected", "select_submodel", "select_inverse"],
+	"viewpoint": ["view_default", "view_front", "view_back", "view_left", "view_right",
+		"view_top", "view_bottom", "view_iso", "-", "turn_left", "turn_right"],
 	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_flip", "cut_ghosts"],
 	# Next step (E) is in Build itself, over these.
 	"steps": ["step_prev", "step_next", "step_new", "-", "step_earlier", "step_later",
@@ -186,7 +200,8 @@ const SUBMENUS: Dictionary = {
 
 ## A submenu's own words, as its row in the menu above says them.
 const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
-	"export": "Export", "history": "History", "select_by": "Select by", "cut_away": "Cut along",
+	"export": "Export", "history": "History", "select_by": "Select by",
+	"viewpoint": "Viewpoint", "cut_away": "Cut along",
 	"steps": "Build steps", "booklet": "Booklet page", "floor": "Floor",
 	"floor_colour": "Baseplate colour"}
 
@@ -367,6 +382,27 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	versions.store = store
 	versions.bar = bar
 	add_child(versions)
+	# Compare with a save: its panel where View, Stress's is, the two never
+	# open at once (_define's stress).
+	compare = CompareView.new()
+	compare.world = world
+	compare.library = library
+	compare.store = store
+	compare.camera = camera
+	compare.assemblies = assemblies
+	compare.stress = stress
+	compare.say = bar.say
+	compare.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	compare.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	compare.offset_right = -14.0
+	compare.offset_left = -14.0 - CompareView.WIDE
+	compare.offset_top = ViewCube.size_for().y + 26.0
+	over_model.add_child(compare)
+	versions.compare = func(version: ModelVersions.Version) -> void: compare.open_with(version)
+	# A save is of the model it was made of.
+	for replaced: Signal in [bar.started_new, bar.cleared]:
+		replaced.connect(func() -> void: compare.close(false))
+	bar.opened.connect(func(_n: int) -> void: compare.close(false))
 
 	pattern_dialog = PatternDialog.new()
 	pattern_dialog.builder = builder
@@ -497,6 +533,58 @@ func run(name: String) -> bool:
 	return true
 
 
+## What a key the keymap gives runs where no handler answers it
+## (Main._key_action): a colour key (ColourKeys), Studio's Shift-V
+## ([method cycle_select]), or a command as its menu runs it, and why not
+## said when it cannot be: Alt-C with nothing selected says to select a
+## part first, where it said nothing.
+func run_key(action: String) -> void:
+	if ColourKeys.owns(action):
+		ColourKeys.press(action, self)
+	elif action == "select_cycle":
+		await cycle_select()
+	elif not run(action) and _commands.has(action):
+		var why: String = why_not(action)
+		if not why.is_empty():
+			bar.say(why[0].to_lower() + why.substr(1))
+
+
+## Studio's Cycle Select Mode (Shift-V under its keys): from the parts
+## selected, each press selects the same colour, the same part, the same
+## part and colour, and everything joined to them, then the parts it began
+## from again. A selection made any other way starts it again from there.
+const CYCLE: Array = [["colour", "the same colour"], ["part", "the same part"],
+	["alike", "the same part and colour"], ["connected", "everything joined"]]
+var _cycle_from: Array = []
+var _cycle_left: Dictionary = {}
+var _cycle_at: int = -1
+
+
+func cycle_select() -> void:
+	if read_only:
+		return
+	if builder.selection != _cycle_left or _cycle_from.is_empty():
+		_cycle_from = builder.selection.keys()
+		_cycle_at = -1
+	_cycle_from = _cycle_from.filter(func(id: int) -> bool: return world.get_brick(id) != null)
+	if _cycle_from.is_empty():
+		bar.say("select a part first: then each press selects its colour, its part, both, "
+			+ "or all joined to it")
+		return
+	_cycle_at = (_cycle_at + 1) % (CYCLE.size() + 1)
+	verbs.select_found(_cycle_from)
+	var words: String = "the parts it began from"
+	if _cycle_at < CYCLE.size():
+		var way: String = CYCLE[_cycle_at][0]
+		if way == "connected":
+			await verbs.select_connected()
+		else:
+			verbs.select_by(way)
+		words = CYCLE[_cycle_at][1]
+	_cycle_left = builder.selection.duplicate()
+	bar.say("%s: %s selected" % [words, Counted.of(builder.selection.size(), "part")])
+
+
 ## Do [param work] as command [param name]: said first when it is slow,
 ## timed, and its words on the bar for as long as it goes on (Working.attend).
 ## The menus, the toolbar, the keys and the dialogs' buttons all come here.
@@ -537,6 +625,7 @@ func work_size(name: String) -> int:
 
 ## The commands whose work grows with the selection rather than the model.
 const ON_THE_SELECTION: Array[String] = ["mirror", "replace", "duplicate", "pattern", "paint",
+	"split_parts", "merge_parts",
 	"cut_parts", "copy", "delete", "hide", "isolate", "lock", "make_submodel",
 	"leave_submodel", "make_unique", "rotate_held", "tip_held"]
 
@@ -584,6 +673,7 @@ const STEPPED_SLOW_FROM := 2000
 ## baseplate.
 const SLOW_FROM: Dictionary = {
 	"mirror": 200, "replace": 200, "duplicate": 300, "pattern": 300, "paste": 300,
+	"split_parts": 300, "merge_parts": 300,
 	"cut_parts": 600,
 	"paint": 600, "hide": 3000, "isolate": 3000, "leave_submodel": 2000,
 	"make_unique": 2000,
@@ -638,6 +728,7 @@ const DOING: Dictionary = {
 	"hide": "Hiding…", "isolate": "Showing only the selection…", "show_all": "Showing everything…",
 	"lock": "Locking…", "unlock": "Unlocking…", "paint": "Painting…",
 	"replace": "Replacing…", "mirror": "Mirroring…",
+	"split_parts": "Splitting…", "merge_parts": "Merging…",
 	"make_submodel": "Making a sub-assembly…", "leave_submodel": "Ungrouping…",
 	"make_unique": "Making the copy unique…",
 	"timeline": "Opening the timeline…", "parts_list": "Listing the parts…",
@@ -735,6 +826,8 @@ const NEEDS: Dictionary = {
 	"put_back": "No section is broken out",
 	"xray": "Select a part first", "cut_flip": "Turn on Cut away first",
 	"stress": "Put a part on the baseplate first",
+	"split_view": "The window is too small for two views",
+	"compare": "Save the model first: each save is kept to compare with",
 	"reshape_flex": "Select a hose or chain",
 	"floor_part": "Stand the model on a baseplate first",
 	"back_to_site": "In a browser only",
@@ -856,7 +949,11 @@ func _define() -> void:
 		"Keep a copy of this model under another name")
 	# src/ui/versions_dialog.gd, src/parts/model_versions.gd.
 	_add("versions", "Versions…", 0, func() -> void: versions.open(), Callable(),
-		"The last %d saves of this model, to open one again" % ModelVersions.KEPT)
+		"The last %d saves of this model, to open one again or compare it with" % ModelVersions.KEPT)
+	# src/ui/compare_view.gd, src/parts/model_diff.gd.
+	_add("compare", "Compare with…", 0, func() -> void: versions.open(true),
+		func() -> bool: return not store.versions().is_empty(),
+		"What changed since one of this model's saves: added green, removed red, moved amber")
 	_add("export_ldraw", "LDraw model (.ldr, or .mpd with its sub-models)", 0,
 		func() -> void: await bar._on_export(), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
@@ -889,6 +986,9 @@ func _define() -> void:
 	# src/net/together.gd, src/ui/together_dialog.gd.
 	_add("together", "Build together…", 0, func() -> void: app.call("open_together"), Callable(),
 		"Build this model with someone else, live, each in their own browser or the app")
+	# src/assembly/pinned_comments.gd, src/ui/pins_dialog.gd.
+	_add("comments", "Comments…", 0, func() -> void: app.call("open_pins"), Callable(),
+		"Comments pinned to the model's parts, kept with it, and a new one on the part selected")
 	_add("clear", "Clear the baseplate…", 0, bar._ask_to_clear, something,
 		"Empty the baseplate. Asks first: it cannot be undone")
 	_add("account", "Account…", 0, func() -> void: bar.account_wanted.emit(),
@@ -971,6 +1071,13 @@ func _define() -> void:
 		"Swap the part for one of the prints or stickered versions the LEGO Group made of it")
 	_add("mirror", "Mirror", SHIFT | KEY_M, func() -> void: verbs.mirror(), selected,
 		"Make the selection its mirror image, left to right as you see it")
+	# src/assembly/split_merge.gd: Studio's Split and Merge, on its keys.
+	_add("split_parts", "Split into smaller parts", ALT | KEY_S,
+		func() -> void: SplitMerge.split(verbs), selected,
+		"Plates, bricks and tiles into 1 x 1s, a 1 x 1 brick into three plates, slopes into 1-wide slopes, on the same studs")
+	_add("merge_parts", "Merge into bigger parts", ALT | KEY_M,
+		func() -> void: SplitMerge.merge(verbs), selected,
+		"The selected plates, bricks and tiles of a colour into the fewest real parts made in it: three plates high a brick")
 	# J, which had no command: on the menu on a part, and found by name.
 	_add("swing", "Swing on its hinge", KEY_J, func() -> void: verbs.swing(EditVerbs.SWING),
 		func() -> bool: return builder.hinge_angle() != null,
@@ -1074,6 +1181,10 @@ func _define() -> void:
 		"Lines between the studs of the baseplate, for counting them")
 	_ticked("grid", func() -> bool: return grid.visible)
 	_define_floor()
+	# A picture to build over (src/ui/reference_image.gd).
+	_add("reference", "Reference picture…", 0, func() -> void:
+		(app.get("_reference") as ReferenceImage).open(), Callable(),
+		"A photo, plan or drawing laid on the floor or stood behind the model, to build over")
 	_add("cut", "Cut away", KEY_K, func() -> void: see_inside.set_cut(not see_inside.cutting),
 		something, "A plane through the model, dragged along X, Y or Z, to see and work inside it")
 	_ticked("cut", func() -> bool: return see_inside.cutting)
@@ -1093,7 +1204,14 @@ func _define() -> void:
 			or not assemblies.entered.is_empty()),
 		"Everything but the selection, or the sub-assembly being edited, see-through")
 	_ticked("xray", func() -> bool: return see_inside.seeing_through)
-	_add("stress", "Stress", 0, func() -> void: stress.set_on(not stress.on),
+	_add("stress", "Stress", 0, func() -> void:
+		# The two draw with one layer (BrickWorld.set_stress): Stress, asked
+		# for while comparing, takes over where the comparison is.
+		if compare.is_open():
+			compare.close(false)
+			stress.set_on(true)
+			return
+		stress.set_on(not stress.on),
 		func() -> bool: return stress.on or world.brick_count() > store.scenery.size(),
 		"Every part tinted by how near its weakest joint is to letting go: red past its "
 		+ "studs' working load, amber within twice it")
@@ -1120,6 +1238,19 @@ func _define() -> void:
 		"What it is, its colour by every name, where it stands and what it is joined to")
 	_add("panel_keys", "Key strip", 0, func() -> void: set_key_strip(not key_strip_shown()))
 	_ticked("panel_keys", key_strip_shown)
+	# A straight-on view beside the model (SplitView). F8: LDCad's Space,
+	# which swaps its split for one large view, is the app's to slide the
+	# view and play the timeline, and F8 is no preset's.
+	_add("split_view", "Split", KEY_F8, func() -> void:
+		var split: SplitView = app.get("_split")
+		split.set_on(not split.is_showing()),
+		func() -> bool:
+			var split: SplitView = app.get("_split")
+			return split != null and (split.is_showing() or split.fits()),
+		"A second view beside the model, square on from the front, top, side or back")
+	_ticked("split_view", func() -> bool:
+		var split: SplitView = app.get("_split")
+		return split != null and split.is_showing())
 	_add("full_screen", "Full screen", KEY_F11, _toggle_full_screen)
 	_ticked("full_screen", func() -> bool:
 		return DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN \
@@ -1296,14 +1427,16 @@ func _define() -> void:
 ## Duplicate, Replace, the same part or colour, the step moves and the
 ## swing on a hinge each needed a key or a menu (appux371 A8): here, with
 ## their keys, among what selects, hides, copies and changes the part.
-const ON_A_PART: Array = ["ask_claude", "brace", "-", "select_connected", "select_part",
+const ON_A_PART: Array = ["ask_claude", "brace", "comments", "-", "select_connected", "select_part",
 	"select_colour", "-", "hide", "isolate", "-", "copy", "duplicate", "delete", "-", "paint",
+	"split_parts", "merge_parts",
 	"replace", "printed_versions", "swing", "-", "step_prev", "step_next", "make_submodel", "-",
 	"show_properties"]
 
 ## A row's words on a part where the menus' would not say it: Select by's
 ## "Same part" there is the same as the part clicked.
-const ON_A_PART_WORDS: Dictionary = {"select_connected": "Select everything joined to it",
+const ON_A_PART_WORDS: Dictionary = {"comments": "Comment on it…",
+	"select_connected": "Select everything joined to it",
 	"select_part": "Select the same part", "select_colour": "Select the same colour"}
 var context: PopupMenu
 var _brace_id: int = -1
@@ -1447,9 +1580,9 @@ func _shown(items: Array) -> Array:
 	return out
 
 
-## The menus as a phone's More lists them (PhoneShell). A phone has no mark
-## to open the app's menu from, so its rows go under Help, where About and
-## the docs were before; finding a command by typing is for a keyboard.
+## The menus as a phone's More lists them (PhoneShell). The app's menu's
+## rows go under Help too, where About and the docs were before the phone's
+## bar had the mark; finding a command by typing is for a keyboard.
 static func touch_menus() -> Array:
 	var out: Array = []
 	for menu: Array in MENUS:
@@ -2067,6 +2200,9 @@ func handle_key(key: InputEventKey) -> bool:
 		KEY_F11:
 			run("full_screen")
 			return true
+		KEY_F8:
+			if not held and not key.shift_pressed and not key.alt_pressed:
+				return run("split_view")
 		KEY_F1:
 			run("keys")
 			return true
@@ -2128,6 +2264,10 @@ func handle_key(key: InputEventKey) -> bool:
 			# laid out at once.
 			if held and key.shift_pressed and not key.alt_pressed:
 				return run("pattern")
+		# Studio's Alt+S and Alt+M (SplitMerge).
+		KEY_S, KEY_M:
+			if key.alt_pressed and not held and not key.shift_pressed:
+				return run("split_parts" if key.keycode == KEY_S else "merge_parts")
 	return false
 
 
@@ -2248,7 +2388,10 @@ func edit_look(op: String) -> void:
 			editor.open()
 		return
 	var steps: StepsBar = app.get("_steps")
-	bar.say(change_look(op, steps.booklet_step()))
+	# A view turned on a callout's step poses that step apart from the
+	# callout (BookletMaker._callout); the rest is for the page it is on.
+	var view: bool = op.begins_with("turn") or op.begins_with("tilt") or op.ends_with("_view")
+	bar.say(change_look(op, steps.current_step() if view else steps.booklet_step()))
 
 
 ## The edits of what is on a step's page (the page laid out by hand), which
@@ -2367,6 +2510,35 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 			change = {"callout": not on}
 			words = "the %s built %s" % [BookletLooks.definition_of(unit),
 				"on pages of its own" if on else "in a callout box"]
+		"guide":
+			# A guide on every page of the booklet (BookletLooks "guides"),
+			# dragged from the page editor's ruler: axis= "x" (upright, at x
+			# mm) or "y"; at= where it goes, null to take it off; was= where
+			# it was, to move one.
+			var axis: String = str(fields.get("axis", ""))
+			if not axis in ["x", "y"]:
+				_take_back(undo)
+				return "a guide is upright (axis x) or across (axis y)"
+			var kept: Dictionary = BookletLooks.guides(world)
+			var lines: Array = kept[axis]
+			if fields.get("was") != null:
+				var nearest: int = -1
+				for index: int in lines.size():
+					if absf(float(lines[index]) - float(fields["was"])) < 0.6 and (nearest < 0
+							or absf(float(lines[index]) - float(fields["was"]))
+							< absf(float(lines[nearest]) - float(fields["was"]))):
+						nearest = index
+				if nearest >= 0:
+					lines.remove_at(nearest)
+			var most: float = Booklet.PAGE.x if axis == "x" else Booklet.PAGE.y
+			if fields.get("at") != null and float(fields["at"]) >= 0.0 and float(fields["at"]) <= most:
+				lines.append(snappedf(float(fields["at"]), 0.1))
+				words = "a guide %s at %s mm" % ["upright" if axis == "x" else "across",
+					BookletLooks._number(snappedf(float(fields["at"]), 0.1))]
+			else:
+				words = "a guide taken off"
+			target = BookletLooks.BOOKLET
+			change = {"guides": kept}
 		"per_page":
 			var most: int = int(BookletLooks.booklet(world).get("per_page", 0))
 			var next: int = int({0: 1, 1: 2, 2: 4, 4: 0}.get(most, 0))
@@ -2499,7 +2671,21 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 					note["text"] = str(fields["text"]).strip_edges()
 				if fields.has("size") and note.has("text"):
 					note["size"] = clampf(float(fields["size"]), 1.5, 40.0)
+				# Turned about its middle and faded, as Studio's page objects are.
+				for field: String in ["turn", "opacity"]:
+					if fields.has(field):
+						note[field] = snappedf(BookletLooks.turn_of({"turn": fields[field]}), 0.1) \
+							if field == "turn" else snappedf(BookletLooks.opacity_of(
+								{"opacity": fields[field]}), 0.01)
+						if note[field] == (0.0 if field == "turn" else 1.0):
+							note.erase(field)
 				words = "step %d's %s changed" % [number, "words" if note.has("text") else "picture"]
+				if fields.has("turn"):
+					words = "step %d's %s turned to %s°" % [number, "words" if note.has("text")
+						else "picture", BookletLooks._number(BookletLooks.turn_of(note))]
+				elif fields.has("opacity"):
+					words = "step %d's %s at %d%% opacity" % [number, "words" if note.has("text")
+						else "picture", roundi(BookletLooks.opacity_of(note) * 100.0)]
 			change = {"notes": notes}
 		_:
 			_take_back(undo)
@@ -2521,7 +2707,7 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 	builder.record(undo, words)
 	store.adopt()
 	store.touch()
-	steps.refresh(number)
+	steps.refresh(number, at.callout_step)
 	# Seen as the booklet will draw it.
 	if camera != null and (op.begins_with("turn") or op.begins_with("tilt")
 			or op == "usual_view" or op == "set" and fields.has("turn")):
@@ -2573,18 +2759,23 @@ func place_pages(placed: Array, words: String) -> String:
 ## only where it bends the line by a millimetre or more), its colour one a
 ## booklet uses and its width the nearest it comes in.
 static func _arrow_of(at: Array, colour: String, width: float) -> Dictionary:
-	var points: Array = []
-	for n: int in mini(at.size(), 6):
-		points.append(snappedf(float(at[n]), 0.1))
-	if points.size() >= 6:
-		var from := Vector2(points[0], points[1])
-		var to := Vector2(points[2], points[3])
-		var bend := Vector2(points[4], points[5])
-		if bend.distance_to(Geometry2D.get_closest_point_to_segment(bend, from, to)) < 1.0:
-			points = points.slice(0, 4)
-	elif points.size() > 4:
-		points = points.slice(0, 4)
-	return {"at": points, "colour": colour.to_lower() if BookletLooks.ARROW_COLOURS.has(colour.to_lower())
+	var numbers: Array = []
+	for n: int in mini(at.size() - at.size() % 2, (BookletLooks.MOST_BENDS + 2) * 2):
+		numbers.append(snappedf(float(at[n]), 0.1))
+	var points: Array = BookletLooks.arrow_points({"at": numbers})
+	if not points.is_empty():
+		# A bend within a millimetre of the line between its neighbours bends
+		# nothing: dragged back straight, it is gone.
+		var bends: Array = []
+		var through: Array = [points[0]] + (points[2] as Array) + [points[1]]
+		for index: int in range(1, through.size() - 1):
+			var before: Vector2 = bends[-1] if not bends.is_empty() else through[0]
+			var bend: Vector2 = through[index]
+			if bend.distance_to(Geometry2D.get_closest_point_to_segment(bend, before,
+					through[index + 1])) >= 1.0:
+				bends.append(bend)
+		numbers = BookletLooks.arrow_at([points[0], points[1], bends])
+	return {"at": numbers, "colour": colour.to_lower() if BookletLooks.ARROW_COLOURS.has(colour.to_lower())
 		else "red", "width": BookletLooks.arrow_width(width)}
 
 
@@ -2704,6 +2895,8 @@ func controls_by_name() -> Dictionary:
 		out.merge(stress.panel.controls_by_name())
 	if versions != null:
 		out.merge(versions.controls_by_name())
+	if compare != null:
+		out.merge(compare.controls_by_name())
 	if palette != null:
 		out.merge(palette.controls_by_name())
 	if first_build != null:

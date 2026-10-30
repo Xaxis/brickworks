@@ -880,7 +880,7 @@
       "kind": "ui",
       "label": "properties panel",
       "entry": "src/ui/inspector.gd",
-      "reach": "godot --path .  (select a part; the foot of the left-hand column, under the model tree)",
+      "reach": "godot --path .  (select a part; down the right, under the model tree)",
       "area": "building"
     },
     {
@@ -1083,7 +1083,7 @@
       "kind": "ui",
       "label": "my collection",
       "entry": "src/ui/collection_dialog.gd",
-      "reach": "godot --path .  (Build, My collection… / What do I need?… / What can I build?…; or P, then What do I need?)",
+      "reach": "godot --path .  (File, My collection… / Build, What do I need?… / File, What can I build?…; or P, then What do I need?)",
       "area": "collection"
     },
     {
@@ -1286,7 +1286,7 @@
       "kind": "ui",
       "label": "hoses and chains by hand",
       "entry": "src/ui/flex_tool.gd",
-      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Build, Hose, tube or chain…, click two pin holes or two gears; Edit, Reshape the hose or chain)",
+      "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Make, Hose, tube or chain…, click two pin holes or two gears; Make, Reshape the hose or chain)",
       "area": "building"
     },
     {
@@ -1860,7 +1860,7 @@
       "kind": "ui",
       "label": "printed versions",
       "entry": "src/prints/printed_versions.gd",
-      "reach": "godot --headless --path . --script src/dev/decor_probe.gd   (by hand: pick a part, then Edit, Printed versions…, its right-click menu, or Properties' Printed versions…)",
+      "reach": "godot --headless --path . --script src/dev/decor_probe.gd   (by hand: pick a part, then Make, Printed versions…, its right-click menu, or Properties' Printed versions…)",
       "area": "prints"
     },
     {
@@ -1888,7 +1888,7 @@
       "kind": "ui",
       "label": "versions of a model",
       "entry": "src/ui/versions_dialog.gd",
-      "reach": "godot --path .  (File, Versions…: the last 20 saves of the model on the baseplate, Open on one)",
+      "reach": "godot --path .  (File, Versions…: the last 20 saves of the model on the baseplate, Open or Compare on one)",
       "area": "model-io"
     },
     {
@@ -3869,7 +3869,7 @@
       "kind": "ui",
       "label": "every set's page",
       "entry": "api/_sets.js",
-      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; Based on this set, the gallery's models based on it (web/set-page.js, ?op=set_based); /library/set/N.jpg its picture drawn from its parts (api/_flatlay.js), /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
+      "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; Based on this set, the gallery's models based on it (web/set-page.js, ?op=set_based); its picture: LDraw's render, else its own (Rebrickable's, /library/set/N.webp and N.page.webp, ?op=catalog_photo, credited 'Picture: Rebrickable'), else /library/set/N.jpg drawn from its parts (api/_flatlay.js); /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
       "area": "web"
     },
     {
@@ -3883,7 +3883,7 @@
       "kind": "cli",
       "label": "set catalogue",
       "entry": "tools/set_catalog.py",
-      "reach": "python3 tools/set_catalog.py [--check]   (assets/generated/set_catalog.json from vendor/rebrickable and assets/generated/sets/; deploy.sh runs it and puts it beside the share function)",
+      "reach": "python3 tools/set_catalog.py [--check]   (assets/generated/set_catalog.json from vendor/rebrickable, assets/generated/sets/ and set_pictures.json (which sets have their own picture up); deploy.sh runs it and puts it beside the share function)",
       "area": "web"
     },
     {
@@ -4210,10 +4210,150 @@
     },
     {
       "kind": "ui",
+      "label": "colour keys",
+      "entry": "src/ui/colour_keys.gd",
+      "reach": "tools/probe.sh keys3_probe   (select parts, Shift-1 to Shift-0 paint them a favourite colour, Ctrl-Shift-1 to 0 the model's most used, one Ctrl+Z each; F1, Colours: click a favourite's swatch to choose its colour; Alt-C, P, J, I select the same colour, part, all joined, the opposite; Studio's keys: none on the colours, Shift-V cycles the selection; web: node tools/web/colour_keys_flow.mjs)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "patterns",
       "entry": "src/assembly/pattern.gd",
       "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, Round or Along a hose, a count In all, the copies shown as they will go; one Ctrl+Z takes them all back)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "compare with a save",
+      "entry": "src/ui/compare_view.gd",
+      "reach": "tools/probe.sh compare_probe   (File, Compare with…, or Compare on a row of Versions…: added green, removed a red ghost, moved or turned amber with a faint ghost, recoloured violet, the rest faded; the panel's counts, Previous and Next; Esc or Close puts the view back)",
+      "area": "model-io"
+    },
+    {
+      "kind": "lib",
+      "label": "model diff",
+      "entry": "src/parts/model_diff.gd",
+      "reach": "tools/probe.sh compare_probe   (by part, colour and place, the fewest changes: ten alike with one moved to the end is 1 moved; a session reads it with open_model versions=true version=N)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "photographed light in a browser",
+      "entry": "tools/web/light_render_flow.mjs",
+      "reach": "node tools/web/light_render_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=OUT [--against=OTHER.png]   (a local export served by tools/web/serve.py, with .env sourced: Quick at 720p lit by Softbox studio, the light fetched only then, and the same picture as a build that carried it in its pack)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "set walk probe",
+      "entry": "src/dev/setwalk_probe.gd",
+      "reach": "tools/probe.sh setwalk_probe  (8841-1's 25 walk parts and 5762-1's first 25 built from the set's bin, its number typed and Build from it: each part's tile, R and T, the view's keys or cube, the pointer aimed with its corrections, Connect or a typed rest, every input counted; 12 actions a part or fewer and every part exact; -- only=8841-1|5762-1 shots=1 from=library (the same walk from the whole library); PROBE_SIZE=1400x900)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "split view",
+      "entry": "src/ui/split_view.gd",
+      "reach": "tools/probe.sh split_probe   (PROBE_SIZE=1400x900 too; by hand: View, Split or F8, then Front, Top, Side or Back over the second view, and a part put down from it)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "bands and springs by hand",
+      "entry": "src/assembly/bands.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd   (by hand: pick a rubber belt or a shock absorber in the bin, click the pulleys or the two pin holes; Build, Hose, tube or chain…, Spring or shock; nudge a part it is on and it follows; PROBE_SIZE=1280x720)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "springs probe",
+      "entry": "src/dev/springs_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/springs_probe.gd  (a band round two wedge belt wheels and three, each in 4 actions or fewer, within 1 LDU of the tangents and arcs by hand and in every groove; turned and tilted; a wheel nudged and its band following, one undo; a spring stretched from 4 to 6 studs keeping its turns; a shock from the bin; saved and opened the same, there and by a fresh app (a second process with an empty data folder, --reopen=FILE): no band lost or loose, Reshape on each; its made pieces' sections stripped, made again from their names; a band nothing can make said and kept in its sub-model; PROBE_SIZE=1280x720)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "split and merge parts",
+      "entry": "src/assembly/split_merge.gd",
+      "reach": "godot --path .  (select; Alt-S splits, Alt-M merges, or the menu on a part)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "splitmerge probe",
+      "entry": "src/dev/splitmerge_probe.gd",
+      "reach": "godot --path . --resolution 1400x900 --script src/dev/splitmerge_probe.gd  (a 2 x 4 plate split on its studs; three 1 x 4 plates merged into a brick; six 1 x 1s into a 2 x 3; five 1 x 2s into two; a merge with no real part said and nothing changed; a 1 x 1 brick and a slope split)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "reference picture",
+      "entry": "src/ui/reference_image.gd",
+      "reach": "tools/probe.sh refimage_probe   (PROBE_SIZE=1400x900 too; by hand: Make, Reference picture…, a PNG or JPEG, then its width, opacity and Locked)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "properties under the bin",
+      "entry": "src/ui/inspector.gd",
+      "reach": "godot --path . --resolution 1280x720  (the bin open, select a part: its name, colour, X, Y, Z, Turn, Tilt and Roll under the bin; More opens the rest down the right)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "the gallery's builds tab",
+      "entry": "web/builds.html",
+      "reach": "https://brickworks.diy/builds   (?page=N, ?tests=1; a tab of /gallery and /library; web/builds.js reads /api/people?op=builds a page at a time, each card web/card.js buildCardHtml; locally relay_server.mjs serves /builds)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "builds in the gallery",
+      "entry": "api/_builds.js",
+      "reach": "/api/people?op=builds&page=N   (galleryBuilds: newest first, 24 a page; not hidden, no report waiting, builder and owner shown in public, the model in the gallery; tests/test_gallery_builds.py)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "gallery builds browser flow",
+      "entry": "tools/web/gallery_builds_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/gallery_builds_flow.mjs --url=<preview or local relay> --out=DIR   (preview_checks.sh gallery_builds: throwaway Ann, Bo, Cy and Di; five photos, a hidden, a reported and an under-13 builder's left out; 1280 light signed in, 390 dark signed out, the empty tab)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "more like a designer",
+      "entry": "api/_alike.js",
+      "reach": "/api/people?op=alike&handle=X   (designersAlike: shared themes and tags, parts and followers in common from supabase/designers_alike.sql once applied; never the person, the asker or whom they follow; tests/test_alike.py; dry run: PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/designers_alike.sql --dry --try=tools/designers_alike_try.sql --table=model_needs)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "more like on a profile",
+      "entry": "web/follow.js",
+      "reach": "https://brickworks.diy/u/<handle>   (More like <name>, under their work: up to six designers with Follow in place, hidden when nobody is close; api/people.js profilePage section#alike, follow.js showAlike)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "more like browser flow",
+      "entry": "tools/web/alike_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/alike_flow.mjs --url=<preview or local relay> --out=DIR   (preview_checks.sh alike: throwaway Ann, Bo, Cy, Di and Fay; hidden alone, the closest first signed out at 1280 light, signed in at 390 dark never yourself or whom you follow, Follow in place)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "a set's own picture",
+      "entry": "api/share.js",
+      "reach": "https://brickworks.diy/library/set/7985-1.webp (a card's, 640x480) and /library/set/7985-1.page.webp (its page's)   (setpics: Rebrickable's picture of the set, read from the parts bucket's sets/card/ and sets/page/ by ?op=catalog_photo and kept a year; 404 for a set the store has none of; tests/test_sets.py, tools/web/sets_flow.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "set pictures",
+      "entry": "tools/set_pictures.py",
+      "reach": "python3 tools/set_pictures.py [--fetch|--make|--upload] [--check]   (every set's picture from Rebrickable's CDN once, at most 4 a second, resumable, into vendor/rebrickable/set_pictures/; WebPs made there (--make through heavy); uploaded to the parts bucket's sets/ (additive) and listed in assets/generated/set_pictures.json, which set_catalog.py marks; tools/fetch_data.sh runs it after the day's tables)",
+      "area": "web"
     }
   ]
 }

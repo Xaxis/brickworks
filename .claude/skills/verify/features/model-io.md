@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe -->
 
 ## Sub-features
 
@@ -806,6 +806,27 @@ Whether what you built is still there tomorrow, and still means the same thing.
   `open_model` over MCP lists them (`versions=true`) and opens one
   (`version=N`). File, Export, All my models (`Exports.all_models`,
   `export_model all_models`) downloads every saved model in one .zip.
+- `compare with a save` and `model diff` (2026-10-30, compare, B10;
+  `src/ui/compare_view.gd`, `src/parts/model_diff.gd`): File, Compare with…
+  (the versions list with Compare alone) or Compare on a row of Versions…
+  draws the model on the baseplate against that save: added green, removed
+  a Trans-Red ghost where it stood, moved or turned amber with an x-ray
+  ghost where it was, recoloured violet, the rest faded. The tint is
+  BrickWorld's stress layer (View, Stress is turned off meanwhile and back
+  on at Close, and pressing Stress while comparing closes the comparison);
+  the ghosts are a BrickWorld of their own under the model's
+  (`CompareView.ghosts()`), which no save, pick or count sees. Matching
+  (`ModelDiff.between`) is by part, colour and place, fewest changes first:
+  same part and colour under 0.5 LDU and turned alike is unchanged; same
+  part in place in another colour is recoloured; same part and colour
+  anywhere else is moved, nearest pairs first; the rest added or removed.
+  Both sides in the file's coordinates (`store.lift()` taken off the world),
+  the save read as the app opens a file. Inside a sub-assembly being edited
+  only that is compared, and the panel says so. An edit while it is open is
+  compared again 300 ms later; another model opened, New or Clear closes it.
+  Close or Esc (the panel's `_input`, before main's Esc ladder) restores the
+  camera's aim. `open_model versions=true version=N` says the same to a
+  session, opening and drawing nothing.
 - `the empty-save guard` (`ModelStore._write`, `ModelStore.emptied`): no
   write of a model with no parts goes over a file with parts unless the
   person emptied the baseplate (Clear, New, their own edit taking the last
@@ -816,8 +837,15 @@ Whether what you built is still there tomorrow, and still means the same thing.
   come (`ModelStore.awaited`), or that the catalogue has not got
   (`ModelStore._absent` for the app's own file; `SourceFile` keeps someone
   else's) is autosaved like any other, those parts written where the file had
-  them, and reopens with every part, the missing ones awaited and put down when
-  they come. Until 2026-10-20 the store wrote nothing of such a model (the flag
+  them, in their sub-model even when nothing else of it is on the baseplate
+  (`ModelStore._hold_unit`: until 2026-10-30 such a sub-model's parts went out
+  loose in the model), and reopens with every part, the missing ones awaited
+  and put down when they come. An open of a saved model says what it could not
+  show as Open from a file does (`ModelBar.unshown_words`: "— 1 not shown, kept
+  in the file (Rubber Belt Round 33 2 (flexible))"), a band or coil named once;
+  the app's own band and coil pieces (`bw-belt-*`, `bw-coil-*`) whose FILE
+  section a file lost are made again from their names (`Bands.piece_part`, in
+  `ModelStore._open_into`); `springs_probe` proves all three. Until 2026-10-20 the store wrote nothing of such a model (the flag
   `whole`, now gone), so one part that never came lost everything done to it
   for the session; and the app's own file dropped a part the catalogue lacks
   once edited. What still guards a file: nothing written loses a part it had,
@@ -1010,6 +1038,10 @@ node tools/web/tabs_flow.mjs --url=http://127.0.0.1:8790/app --out=shots/tabs
 tools/windows_check.py      # two windows of the desktop app, a model each
 # versions, the browser asked to keep the models, the one warning, over MCP too
 godot --headless --path . --script src/dev/versions_probe.gd
+# compare with a save: counts, colours (tints, ghosts and pixels), Next through all 8,
+# Esc and Close restore the look, view and history; ten alike; inside a sub-assembly;
+# 5,000 parts timed; open_model versions=true version=1 (both sizes)
+tools/probe.sh compare_probe && PROBE_SIZE=1280x720 tools/probe.sh compare_probe
 godot --headless --path . --script src/dev/empty_save_probe.gd   # no empty save over parts
 godot --headless --path . --script src/dev/empty_open_probe.gd   # an open never leaves another model under its name: every open path, empty, unreadable and unknown-parts files
 godot --headless --path . --script src/dev/empty_open_probe.gd   # every way to open: what the file holds, or the model kept under its name
@@ -1032,6 +1064,9 @@ BRICKWORKS_API=http://127.0.0.1:8891 tools/probe.sh desktop_cloud_probe
 tools/probe.sh plan_full_probe
 ```
 
+`compare_probe` proves compare when it ends "compare: 3 added, 2 removed, 2
+moved and 1 recoloured, each in its colour, …5,000 parts in under a second"
+(2026-10-30: 5,000 parts compared in 171-279 ms, drawn by 240-456 ms).
 `versions_probe` proves it when it ends "a model's last 20 saves are kept and
 open again, and the browser is asked to keep them" (Account follows the
 browser's answer while it is open: it was read once as the panel opened, up to

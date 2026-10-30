@@ -486,8 +486,23 @@ func _fill_own() -> void:
 			"" if mine.loose_pieces() == 1 else "s", _comma(store.pieces_on_hand()),
 			" (the copy on this device)" if store.offline else ", kept with your account"]
 	_clear_rows(_own_rows)
+	_controls.erase("collection_build_all")
+	_controls.erase("collection_build_first")
 	if not mine.sets.is_empty():
-		_own_rows.add_child(_label("Sets", 12, 0.6))
+		var heading := HBoxContainer.new()
+		var named: Label = _label("Sets", 12, 0.6)
+		named.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		heading.add_child(named)
+		# Every set owned, counted together, as one bin to build from.
+		var every := PackedStringArray()
+		for entry: Dictionary in mine.sets:
+			for _copy: int in int(entry["qty"]):
+				every.append(str(entry["set"]))
+		if every.size() > 1:
+			_small(_button(heading, "Build from them all", _build_from.bind(every),
+				"collection_build_all", "The bin becomes the parts of every set here, counted "
+				+ "together, each counting how many are left as you build"))
+		_own_rows.add_child(heading)
 	for entry: Dictionary in mine.sets:
 		var number: String = str(entry["set"])
 		var record: Dictionary = store.records.get(number, {})
@@ -504,6 +519,14 @@ func _fill_own() -> void:
 		for lot: Variant in record.get("p", []):
 			pieces += int((lot as Array)[2])
 		row.add_child(_label("%s pieces" % _comma(pieces) if pieces > 0 else "", 12, 0.6, 90.0))
+		if pieces > 0:
+			var copies := PackedStringArray()
+			for _copy: int in int(entry["qty"]):
+				copies.append(number)
+			var build: Button = _small(_button(row, "Build from it", _build_from.bind(copies), "",
+				"The bin becomes this set's parts, each counting how many are left as you build"))
+			if not _controls.has("collection_build_first"):
+				_controls["collection_build_first"] = build
 		var drop := Button.new()
 		drop.text = "Remove"
 		drop.add_theme_font_size_override("font_size", 11)
@@ -813,6 +836,28 @@ func _report(result: Dictionary, source: String) -> void:
 	if not unknown.is_empty():
 		line += " — no inventory is known for %s" % ", ".join(unknown)
 	_say(line)
+
+
+func _small(button: Button) -> Button:
+	button.add_theme_font_size_override("font_size", 11)
+	return button
+
+
+## Build from [param numbers]' parts: the bin becomes theirs (PartsBin
+## .build_from), and the panel makes way for it.
+func _build_from(numbers: PackedStringArray) -> void:
+	var bin: PartsBin = app.get("_bin") if app != null else null
+	if bin == null:
+		return
+	if await bin.build_from(numbers) == 0:
+		_say("could not build from %s: %s" % [" ".join(numbers), bin.trouble])
+		return
+	var dock: Variant = app.get("_bin_dock")
+	if dock != null and not dock.is_open():
+		dock.set_open(true)
+	close()
+	if bar != null:
+		bar.say("building from the parts of %s" % bin.set_showing())
 
 
 func _remove_set(number: String) -> void:

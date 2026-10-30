@@ -13,7 +13,7 @@ description: Turn a picture into a wall of plates, as LEGO® Art sets are, and t
 
 ## Mosaic from a picture {#mosaic}
 
-**Build › Mosaic from a picture…** turns a picture into a wall of plates and round tiles. Choose its size and its colours, and the panel lays it out as LEGO® Art sets are: in square sections with a plan for each, numbered colour by colour.
+**Make › Mosaic from a picture…** turns a picture into a wall of plates and round tiles. Choose its size and its colours, and the panel lays it out as LEGO® Art sets are: in square sections with a plan for each, numbered colour by colour.
 
 <!-- covers
 ui:mosaic
@@ -31,7 +31,7 @@ ui:LEGO Art designed by Claude
 
 ## Brickify a 3D model {#brickify}
 
-**Build › Brickify a 3D model…** ([[Ctrl+I]]), or **File › Import › 3D model to brickify**, takes a sculpt, a scan or any 3D model (OBJ, STL, PLY, 3MF, VOX, FBX, glTF or GLB) and lays it in bricks at the size you choose: solid or hollow, in its own colours or one, with real parts that hold together. It is built in steps, from the ground up, so it comes with instructions. With [your collection](/docs/collection) set, it can build from the parts you own.
+**Make › Brickify a 3D model…** ([[Ctrl+I]]), or **File › Import › 3D model to brickify**, takes a sculpt, a scan or any 3D model (OBJ, STL, PLY, 3MF, VOX, FBX, glTF or GLB) and lays it in bricks at the size you choose: solid or hollow, in its own colours or one, with real parts that hold together. It is built in steps, from the ground up, so it comes with instructions. With [your collection](/docs/collection) set, it can build from the parts you own.
 
 <!-- covers
 ui:brickify a 3d model
