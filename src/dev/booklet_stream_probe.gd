@@ -126,8 +126,10 @@ func _run() -> void:
 	print("  from Save: the cover at %.1f s, the first page of steps at %.1f s, " % [cover, steps]
 		+ "the whole booklet at %.1f s; the longest frame %.0f ms, at %.1f s"
 		% [whole_at, stall * 1000.0, float(longest[2])])
+	# It names the PDF it saved beside the page when there is one (main._open_booklet).
 	_check("the status bar says the booklet is open in the browser (%s)" % said,
-		said.begins_with("the booklet is open in your browser") and said.ends_with(path))
+		said.begins_with("the booklet is open in your browser")
+		and (said.ends_with(path) or said.ends_with(path.get_basename() + ".pdf")))
 	_check("the browser was asked to open it once, as it is drawn (%s)" % str(_opened),
 		_opened.size() == 1 and str(_opened[0]).begins_with("http://127.0.0.1:"))
 	_check("the cover was in front of the reader within 5 s (%.1f s)" % cover,
