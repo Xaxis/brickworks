@@ -14,7 +14,8 @@ then ships; edits to its spec after staging are what it ships; a hold stops
 it before the merge and before the ship; a tree left dirty or mid-merge, or
 a probe that failed or skipped itself, is never shipped; it stops when the
 release before did not ship, was stopped or died, or at its deadline; and
-status says each step, the checks, and what is live. It ships the tip it
+status says each step, the checks, and what is live. Its probes run three
+at a time, one failing beside others again alone. It ships the tip it
 merged when the branch moves on meanwhile, and a restage clears a stopped
 attempt's own merge but never a fix made in it.
 """
@@ -105,7 +106,16 @@ exit 0
 # lead would while a release is between its merge and its ship. fails says
 # FAIL and exits 0; skips exits 3 and says no FAIL, as probe.sh does for a
 # probe that skipped itself.
+# slow_* runs a second and notes when it began and ended; flaky fails the
+# first time it runs and passes after.
 echo "$1" >> "$RELEASE_OUT/probes_run"
+case "$1" in slow_*)
+  echo "$1 began $(date +%s.%N)" >> "$RELEASE_OUT/probe_times"; sleep 1
+  echo "$1 ended $(date +%s.%N)" >> "$RELEASE_OUT/probe_times" ;;
+esac
+if [ "$1" = flaky ] && [ ! -e "$RELEASE_OUT/flaky_ran" ]; then
+  : > "$RELEASE_OUT/flaky_ran"; echo "  FAIL the stand-in failed beside others"; exit 0
+fi
 if [ "$1" = sets_a_hold ]; then echo "set while it probed" > "$RELEASE_OUT/HOLD"; fi
 if [ "$1" = fails ]; then echo "  FAIL the stand-in failed"; exit 0; fi
 if [ "$1" = skips ]; then echo "skips probe: SKIPPED"; exit 3; fi
@@ -293,7 +303,7 @@ def test_a_train_waits_for_the_release_before_it_then_ships_its_spec_as_edited(t
         y.until(lambda: y.spec("t-m2", "result"))
         assert y.spec("t-m2", "result") == "live", y.logs()
         assert (y.ro / "t-m2_ship_args").read_text().split() == ["io", "gallery", "site", "frames"]
-        assert (y.ro / "probes_run").read_text().split() == ["second_probe", "third_probe"]
+        assert sorted((y.ro / "probes_run").read_text().split()) == ["second_probe", "third_probe"]
         assert y.git(y.r, "log", "-1", "--format=%s", "main") == "Merge: the title as edited"
         assert y.git(y.r, "rev-parse", "--short", "main") == sha
         assert "/b/%s/" % sha in y.live.read_text()
@@ -369,6 +379,37 @@ def test_a_tree_left_dirty_or_mid_merge_or_a_failed_probe_is_never_shipped(tmp_p
             assert (y.wt / tag).exists(), "kept for the lead to read"
         assert y.git(y.r, "rev-parse", "main") == y.git(y.r, "rev-parse", "origin/main")
         assert "result: stopped: %s has uncommitted changes" % (y.wt / "t-m2") in y.train("status").stdout
+    finally:
+        y.stop()
+
+
+def test_probes_run_three_at_a_time_and_one_failing_beside_others_runs_again_alone(tmp_path):
+    y = Yard(tmp_path)
+    try:
+        probes = "slow_a slow_b slow_c slow_d flaky"
+        assert y.train("stage", "t-m2", "stage2", "--probes", probes).returncode == 0
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        spans = {}
+        for line in (y.ro / "probe_times").read_text().splitlines():
+            name, what, when = line.split()
+            spans.setdefault(name, {})[what] = float(when)
+        def together(at: float) -> int:
+            return sum(1 for s in spans.values() if s["began"] <= at < s["ended"])
+        most = max(together(s["began"]) for s in spans.values())
+        assert most == 3, "at most %d probes at once: %s" % (most, spans)
+        log = y.logs()
+        assert "probe flaky exit=0 FAIL=1 beside others: again alone" in log, log
+        assert "probe flaky exit=0 FAIL=0" in log, log
+        assert (y.ro / "t-m2_probe_flaky.beside.log").read_text().count("FAIL") == 1
+        assert (y.ro / "probes_run").read_text().split().count("flaky") == 2
+
+        # One at a time, a failure is not run again.
+        (y.ro / "flaky_ran").unlink()
+        assert y.train("stage", "t-m3", "stage2", "--probes", "flaky",
+                       TRAIN_PROBES_AT_ONCE="1").returncode == 0
+        y.until(lambda: y.spec("t-m3", "result"))
+        assert y.spec("t-m3", "result") == "stopped: probes failed: flaky (t-m3_probe_NAME.log)", y.logs()
     finally:
         y.stop()
 

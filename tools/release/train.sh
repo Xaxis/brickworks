@@ -219,11 +219,23 @@ retire() {
   done
 }
 
+# One probe in the release's tree, its log and "exit FAILs" in release-out.
+probe_one() {
+  local log="$RO/${TAG}_probe_$1.log" code
+  (cd "$W" && bash tools/probe.sh "$1") > "$log" 2>&1
+  code=$?
+  echo "$code $(grep -cE '^\s*FAIL' "$log")" > "$RO/${TAG}_probe_$1.exit"
+}
+
+# Either holds: probe.sh exits 1 for a script that did not load, 2 for a
+# probe not run and 3 for one that skipped itself, none with a FAIL line.
+probe_ok() { [ "$1" = 0 ] && [ "$2" = 0 ]; }
+
 run() {
   TAG=$1; SPEC=$RO/$TAG.train; W=$WT/$TAG
   cd "$R" || exit 1
   echo $$ > "$SPEC/pid"
-  local prev st base probe code fails out bad=""
+  local prev st base probe code fails out at_once bad=""
   # Killed (kill -- -PID stops what it runs too): no result would leave the
   # release staged after it waiting until its deadline. nohup has HUP ignored.
   trap 'stop "killed"' TERM INT
@@ -270,15 +282,27 @@ run() {
   step "check.sh --lists"
   out=$(cd "$W" && bash tools/check.sh --lists 2>&1) || { echo "$out" | tail -3; stop "check.sh --lists fails in $W"; }
   words probes probes
+  # TRAIN_PROBES_AT_ONCE at a time (3): each has its own data folder and X
+  # server, and heavy and gpu queue them. One after another, rel-m221's 14
+  # took most of its hour (2026-10-30). One that fails beside others runs
+  # again alone before it counts, as ship.sh's checks do.
+  at_once=${TRAIN_PROBES_AT_ONCE:-3}
+  step "probes, $at_once at a time: ${probes[*]}"
   for probe in "${probes[@]}"; do
-    step "probe $probe"
-    (cd "$W" && bash tools/probe.sh "$probe") > "$RO/${TAG}_probe_$probe.log" 2>&1
-    code=$?
-    fails=$(grep -cE '^\s*FAIL' "$RO/${TAG}_probe_$probe.log")
+    while [ "$(jobs -rp | wc -l)" -ge "$at_once" ]; do wait -n; done
+    probe_one "$probe" &
+  done
+  wait
+  for probe in "${probes[@]}"; do
+    read -r code fails < "$RO/${TAG}_probe_$probe.exit"
+    if [ "$at_once" -gt 1 ] && ! probe_ok "$code" "$fails"; then
+      say "probe $probe exit=$code FAIL=$fails beside others: again alone"
+      mv -f "$RO/${TAG}_probe_$probe.log" "$RO/${TAG}_probe_$probe.beside.log"
+      probe_one "$probe"
+      read -r code fails < "$RO/${TAG}_probe_$probe.exit"
+    fi
     say "probe $probe exit=$code FAIL=$fails"
-    # Either holds: probe.sh exits 1 for a script that did not load, 2 for a
-    # probe not run and 3 for one that skipped itself, none with a FAIL line.
-    [ "$code" = 0 ] && [ "$fails" = 0 ] || bad="$bad $probe"
+    probe_ok "$code" "$fails" || bad="$bad $probe"
   done
   [ -z "$bad" ] || stop "probes failed:$bad (${TAG}_probe_NAME.log)"
 
