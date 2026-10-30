@@ -146,6 +146,23 @@ async function betaSaid(page) {
   });
 }
 
+/// How far the page moved under the eyes, as the browser counts it (layout
+/// shifts with no input before them): from its load through the script's
+/// drawing, then scrolled to its end. The site's bar is under 0.02
+/// (docs/DESIGN_SYSTEM.md, Steady loads).
+function shifted(page) {
+  return page.evaluate(async () => {
+    let total = 0;
+    new PerformanceObserver((list) => {
+      for (const one of list.getEntries()) if (!one.hadRecentInput) total += one.value;
+    }).observe({ type: "layout-shift", buffered: true });
+    await new Promise((done) => setTimeout(done, 500));
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    await new Promise((done) => setTimeout(done, 800));
+    return Math.round(total * 10000) / 10000;
+  });
+}
+
 const form = { build: "A Technic tower crane with a working slewing ring and a two-speed winch.", ai: "claude",
   background: "lego", background_line: "Ten years of Technic", link: "https://rebrickable.com/", terms: true, emails: true };
 const made = [];
@@ -169,6 +186,8 @@ try {
       check(`${width}: Coming soon, no form, no count: ${said.shown}, "${said.spots}"`, said.shown === "apply-soon"
         && /Coming soon/i.test(said.eyebrow) && /Coming soon/.test(said.spots) && !said.sideways);
       check(`${width}: no Apply button`, await page.evaluate(() => document.getElementById("to-apply").hidden));
+      const moved = await shifted(page);
+      check(`${width}: nothing moved as it loaded and scrolled: ${moved}`, moved < 0.02);
       await shot(page, `beta-off-${width}-${theme}.png`, true);
       await context.close();
     }
@@ -181,6 +200,9 @@ try {
     let said = await betaSaid(page);
     check(`the spots left: "${said.spots}"`, /^\d+ of \d+ spots left$|^All \d+ spots are taken/.test(said.spots));
     check(`Sign in to apply: ${said.shown}`, said.shown === "apply-out");
+    let moved = await shifted(page);
+    check(`1280 signed out: nothing moved as it loaded and scrolled: ${moved}`, moved < 0.02);
+    await page.evaluate(() => window.scrollTo(0, 0));
     await page.click("#sign-in");
     check("Sign in to apply opens the sign-in dialog", await until(page, () => document.querySelector("dialog.sign-in[open]")));
     await shot(page, "beta-signed-out-1280.png");
@@ -195,6 +217,8 @@ try {
     ({ page, context } = await open("/beta", { width: 390, theme: "dark", who: a, label: "apply 390" }));
     said = await betaSaid(page);
     check(`signed in: the form, and the checks' spots: "${said.spots}"`, said.shown === "apply-form" && said.spots === "3 of 100 spots left");
+    moved = await shifted(page);
+    check(`390 signed in: nothing moved as it loaded and scrolled: ${moved}`, moved < 0.02);
     await page.click("#apply-send");
     check("sent empty: the page says what to fix", await until(page, () => /at least 20/.test(document.getElementById("apply-said").textContent)));
     await page.fill("#f-build", form.build);
@@ -246,6 +270,8 @@ try {
     check(`the page: "${said.words.slice(0, 110)}"`, /You are in: spot 98 of 100/.test(said.words)
       && (granted ? /Your month of Pro runs from/.test(said.words) : /starts the day Pro launches/.test(said.words)));
     check(`and counts it: "${said.spots}"`, said.spots === "2 of 100 spots left");
+    moved = await shifted(page);
+    check(`1280 approved: nothing moved as it loaded and scrolled: ${moved}`, moved < 0.02);
     await shot(page, "beta-approved-1280.png");
     await context.close();
 
