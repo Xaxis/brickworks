@@ -78,18 +78,25 @@ static func make(numbers: PackedStringArray, records: Dictionary, library: PartL
 ## The parts [param world] is built of, by part and colour, its baseplate
 ## ([param scenery]) left out.
 static func used_in(world: BrickWorld, scenery: Dictionary, library: PartLibrary) -> Dictionary:
-	var used: Dictionary = {}
-	var keys: Dictionary = {}     ## "part|colour" -> its key, worked out once
+	# Counted by part and colour as the bricks have them, and only then put
+	# in Collection's spelling, a kind at a time: spelled out for every
+	# brick, the counts over 3,000 parts took 5 ms.
+	var raw: Dictionary = {}     ## part -> colour -> how many
 	for item: Variant in world.bricks():
 		var brick: BrickWorld.Brick = item
 		if scenery.has(brick.id):
 			continue
-		var raw: String = "%s|%d" % [brick.part_id, brick.color_code]
-		var key: Variant = keys.get(raw)
-		if key == null:
-			key = Collection.key_of(brick.part_id, brick.color_code, library)
-			keys[raw] = key
-		used[key] = int(used.get(key, 0)) + 1
+		var by_colour: Variant = raw.get(brick.part_id)
+		if by_colour == null:
+			by_colour = {}
+			raw[brick.part_id] = by_colour
+		(by_colour as Dictionary)[brick.color_code] = (by_colour as Dictionary).get(brick.color_code, 0) + 1
+	var used: Dictionary = {}
+	for part: String in raw:
+		var by_colour: Dictionary = raw[part]
+		for colour: int in by_colour:
+			var key: String = Collection.key_of(part, colour, library)
+			used[key] = int(used.get(key, 0)) + int(by_colour[colour])
 	return used
 
 

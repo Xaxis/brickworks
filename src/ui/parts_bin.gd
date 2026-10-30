@@ -2808,6 +2808,10 @@ func _recount() -> void:
 func _show_count(button: Button) -> void:
 	var key: String = button.get_meta("key")
 	var left: int = _set_bin.left(key, _used) if _set_bin != null else 0
+	# Told again only when it changed: a recount goes over every tile made.
+	if button.has_meta("left") and int(button.get_meta("left")) == left:
+		return
+	button.set_meta("left", left)
 	var label: Label = button.get_meta("name_label")
 	var words: String = count_words(left)
 	if str(label.get_meta("after", "")) != "  " + words:
