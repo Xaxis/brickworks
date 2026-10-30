@@ -3899,6 +3899,27 @@
       "entry": "src/dev/set_parts_probe.gd",
       "reach": "tools/probe.sh set_parts_probe   (/app?parts=10497-1&brief=: the set's parts in the bin, most used first, and the brief drafted, not sent)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the app menu",
+      "entry": "src/ui/model_bar.gd",
+      "reach": "godot --path .  (the mark at the menu bar's far left, or F6 then Return: About Brickworks, Brickworks website, Documentation, Account; in a browser Back to brickworks.diy too)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "app menu probe",
+      "entry": "src/dev/app_menu_probe.gd",
+      "reach": "tools/probe.sh app_menu_probe; PROBE_SIZE=390x844 tools/probe.sh app_menu_probe --browser   (pictures in shots/app_menu/)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "app menu in a browser",
+      "entry": "tools/web/app_menu_flow.mjs",
+      "reach": "node tools/web/app_menu_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks app_menu: the mark at 1280 and 390, its rows, About, Back to brickworks.diy landing on the site)",
+      "area": "building"
     }
   ]
 }

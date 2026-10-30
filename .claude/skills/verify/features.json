@@ -345,6 +345,22 @@
       "tests": []
     },
     {
+      "id": "cli:app menu in a browser",
+      "kind": "cli",
+      "entry": "tools/web/app_menu_flow.mjs",
+      "reach": "node tools/web/app_menu_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks app_menu: the mark at 1280 and 390, its rows, About, Back to brickworks.diy landing on the site)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:app menu probe",
+      "kind": "cli",
+      "entry": "src/dev/app_menu_probe.gd",
+      "reach": "tools/probe.sh app_menu_probe; PROBE_SIZE=390x844 tools/probe.sh app_menu_probe --browser   (pictures in shots/app_menu/)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:apply sql to the live project",
       "kind": "cli",
       "entry": "tools/apply_sql.mjs",
@@ -4403,6 +4419,14 @@
       "entry": "web/follow.js",
       "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, the theme and Sign out (at 390 px, Menu is the avatar and holds the same)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the app menu",
+      "kind": "ui",
+      "entry": "src/ui/model_bar.gd",
+      "reach": "godot --path .  (the mark at the menu bar's far left, or F6 then Return: About Brickworks, Brickworks website, Documentation, Account; in a browser Back to brickworks.diy too)",
+      "area": "building",
       "tests": []
     },
     {

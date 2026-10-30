@@ -317,6 +317,10 @@ declare -A CMD=(
   # ran with no host at all (2026-10-19).
   [app_host]="tools/web/app_host_check.mjs --url=$P/app --host=${BW_APP_HOST:-$R/bench/data/ext-apps-host/basic-host} --out=$S/${TAG}_app_host"
   [focus]="tools/web/focus_check.mjs --url=$P/app $B --out=$S/${TAG}_focus"
+  # The app's own menu (brand373): the mark at the menu bar's far left, at
+  # 1280 and a phone's width, in its colours; its rows; About from it; and
+  # Back to brickworks.diy leaving the app for the site's home page.
+  [app_menu]="tools/web/app_menu_flow.mjs --url=$P/app $B --out=$S/${TAG}_app_menu"
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"

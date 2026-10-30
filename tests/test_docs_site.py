@@ -63,6 +63,10 @@ def test_the_menus_page_is_the_apps_menus() -> None:
     dump = json.loads((ROOT / "docs-site/generated/menus.json").read_text(encoding="utf-8"))
     have = {menu["title"]: _menu_names(menu["items"]) for menu in dump["menus"]}
     assert have == wanted, f"the menus changed: write docs-site/generated/menus.json again with\n  {DUMP}"
+    # And the app's own menu, from the mark (Shell.APP_MENU).
+    app_menu = re.findall(r'"([a-z_-]+)"', re.search(r"const APP_MENU: Array = \[(.*?)\]\n", shell).group(1))
+    assert _menu_names(dump.get("app_menu", [])) == app_menu, \
+        f"the Brickworks menu changed: write docs-site/generated/menus.json again with\n  {DUMP}"
     # The words of every command added by name (most are), as the dump has them.
     words = dict(re.findall(r'_add\("([a-z_0-9]+)", "([^"]+)",', shell))  # a plain literal, not one per platform
     said = {item["name"]: item["words"] for menu in dump["menus"] for item in _flat(menu["items"])}

@@ -68,6 +68,22 @@ sized its own titles, from 26 to 74 px. Now:
   holds to that step instead.
 - **One rhythm** (`--s-1` 4 px to `--s-8` 64 px, `--page-top` above a
   page's title, `--section` between sections).
+- **One mark, one file** (brand373, 2026-10-29): `web/icon.svg`, the cube
+  with a corner cut away (docs/TRADEMARKS.md). The header's and footer's
+  `.chip` (26 and 22 px) show it as it is, in both themes: its three faces
+  read on the light page and the dark alike. `tools/web/make_icons.mjs`
+  draws every other picture of it from that file: the favicons
+  (`favicon-32` the mark alone, the rest on the dark tile `#14181e`), the
+  app's icon (`assets/icon.png`, which About shows), the desktop's boot
+  splash (`assets/splash.png`, on the app's face), and a byte-for-byte copy
+  for the app, `assets/ui/mark.svg` (the app reads nothing under web/).
+  Change the mark in `web/icon.svg`, run the script, commit what it wrote;
+  `tests/test_mark.py` and `tests/test_boot_splash.py` fail on a copy that
+  drifted. In the app the mark opens the app's own menu, first in the menu
+  bar where its name in words was (`ModelBar.mark`: About, the website, the
+  docs, your account, and in a browser Back to brickworks.diy), where a CAD
+  program keeps its logo's menu. It is never drawn on the model, a render
+  or an export.
 - **Four breakpoints** (2026-10-26): **600, 900, 1200 and 1600 px**, and
   no others, in `site.css`, `directory.css` and a page's own `<style>`.
   Under 600 is a phone, 600 to 900 a tablet, 900 to 1200 a laptop, 1200

@@ -48,6 +48,11 @@ var versions: VersionsDialog
 var _commands: Dictionary = {}
 ## Menu ids are indexes into this.
 var _ids: Array[String] = []
+## How Documentation and Website open their pages: in the browser, in a tab
+## of its own. A probe stands in for it: an agent's shell carries the
+## owner's desktop, and a probe that chose Documentation opened a browser
+## window on the owner's screen (brand373, 2026-10-29).
+var open_link: Callable = Callable(OS, "shell_open")
 var _menus: Array[MenuButton] = []
 var _save_as: ConfirmationDialog
 var _save_as_name: LineEdit
@@ -112,6 +117,15 @@ const MENUS: Array = [
 		"stability", "simulate", "hidden_colours", "reseat", "-", "connector", "settings"]],
 	["Help", ["keys", "tour", "-", "docs", "website", "about"]],
 ]
+
+## The app's own menu, opened from the mark at the far left of the menu
+## bar (ModelBar.mark), as Blender's logo and Figma's main menu open
+## theirs: the app, its website and docs, your account, and in a browser
+## the way back to the site.
+const APP_MENU: Array = ["about", "-", "website", "docs", "-", "account", "-", "back_to_site"]
+
+## Commands for a browser alone, in no menu elsewhere.
+const WEB_ONLY: Array[String] = ["back_to_site"]
 
 ## Submenu rows are numbered from here, clear of the commands.
 const SUBMENU_ID := 10000
@@ -212,6 +226,14 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 		_menus.append(_menu(str(menu[0]), menu[1]))
 	for button: MenuButton in _menus:
 		bar.menus.add_child(button)
+	var app_menu: PopupMenu = bar.mark.get_popup()
+	_fill(app_menu, APP_MENU)
+	app_menu.id_pressed.connect(_on_id)
+	app_menu.about_to_popup.connect(func() -> void: _refresh(app_menu))
+	var holds: String = "About, the website, the docs and your account" + (
+		", and back to brickworks.diy" if OS.has_feature("web") else "")
+	bar.mark.tooltip_text = "Brickworks\n" + holds
+	bar.mark.accessibility_description = holds
 
 	toolbar = Toolbar.new()
 	toolbar.shell = self
@@ -630,14 +652,14 @@ var read_only: bool = false
 const LOOKING: Array[String] = ["view_default", "view_front", "view_back",
 	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
 	"fit_model", "ortho", "full_screen", "timeline", "parts_list", "instructions",
-	"docs", "website", "about"]
+	"docs", "website", "about", "back_to_site"]
 
 
 ## What may be done while a model is being laid (ModelStore.laying): look
 ## at what is down from another side, and nothing that reads the model.
 const WHILE_LAYING: Array[String] = ["view_default", "view_front", "view_back",
 	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
-	"ortho", "full_screen", "docs", "website", "about"]
+	"ortho", "full_screen", "docs", "website", "about", "back_to_site"]
 
 
 ## -1 for a command that is not a setting; 0 off, 1 on.
@@ -1118,11 +1140,19 @@ func _define() -> void:
 	# out (docs-site/, tools/docs_site.py). The owner asked for it, 2026-10-29.
 	# It opens at the page of the panel in front, where one is (docs_page).
 	_add("docs", "Documentation", 0,
-		func() -> void: OS.shell_open(DocsPages.SITE + docs_page()), Callable(),
+		func() -> void: open_link.call(DocsPages.SITE + docs_page()), Callable(),
 		"How everything in Brickworks works, on brickworks.diy")
 	_add("website", "Brickworks website", 0,
-		func() -> void: OS.shell_open("https://brickworks.diy"))
+		func() -> void: open_link.call("https://brickworks.diy"))
 	_add("about", "About Brickworks", 0, _show_about)
+	# The web app had no way back to the site but the browser's own Back
+	# (brand373). This tab, the site's own address: a preview's on a preview.
+	# A model not yet written to the browser's storage holds the page
+	# (src/boot/shell.html, beforeunload).
+	_add("back_to_site", "Back to brickworks.diy", 0,
+		func() -> void: JavaScriptBridge.eval("location.assign('/')", true),
+		func() -> bool: return OS.has_feature("web"),
+		"Leave the app for the website's home page, in this tab")
 
 
 ## What a right click on a part offers: the verbs a person reaches for,
@@ -1241,8 +1271,12 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 			if found == null:
 				push_error("no command %s" % item)
 				continue
-			var id: int = _ids.size()
-			_ids.append(item)
+			# One id a command, in every menu it is in, for good: menus made
+			# again (set_assistant) keep the ids those made once hold.
+			var id: int = _ids.find(item)
+			if id < 0:
+				id = _ids.size()
+				_ids.append(item)
 			var shown: int = menu_accel(found.accel)
 			# A key the menu can neither name nor draw goes in the words.
 			var words: String = found.words
@@ -1265,6 +1299,8 @@ func _shown(items: Array) -> Array:
 	for item: String in items:
 		if not assistant_shown and item in ASSISTANT_COMMANDS:
 			continue
+		if item in WEB_ONLY and not OS.has_feature("web"):
+			continue
 		if item == "-" and (out.is_empty() or out.back() == "-"):
 			continue
 		out.append(item)
@@ -1281,7 +1317,10 @@ func set_assistant(on: bool) -> void:
 	assistant_shown = on
 	if _menus.is_empty():
 		return
-	_ids.clear()
+	# The ids stay: the toolbar's Select by and the app's menu, made once,
+	# hold them. Cleared, a command's id went to another command: started
+	# with the assistant off and then turned on, Select by colour on the
+	# toolbar ran Help's Documentation and the rest of it nothing (brand373).
 	for n: int in _menus.size():
 		var popup: PopupMenu = _menus[n].get_popup()
 		popup.clear(true)

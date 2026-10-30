@@ -771,6 +771,11 @@ def menus() -> str:
            "words its tooltip says. Made from the app itself, so it matches the version on the web.</p>",
            "> [!NOTE]\n> On a Mac, press Cmd wherever this page says Ctrl. In a browser, File has **New tab** "
            "where the desktop app has **New window**, and nothing that would close the page.\n"]
+    if data.get("app_menu"):
+        out.append("## The Brickworks menu {#brickworks-menu}\n\n<p>The mark at the far left of the menu bar, "
+                   "where a CAD program keeps its own menu. F6 goes to it first. "
+                   "<strong>Back to brickworks.diy</strong> is in a browser only.</p>\n")
+        out.append(_menu_rows(data["app_menu"]))
     for menu in data["menus"]:
         out.append(f"## {menu['title']} {{#{slug(menu['title'])}-menu}}\n")
         out.append(_menu_rows(menu["items"]))
