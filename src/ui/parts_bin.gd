@@ -454,6 +454,7 @@ func _build_categories() -> void:
 			category, total]
 		button.tooltip_text = category
 		button.set_meta("category", category)
+		button.set_meta("count", total)
 		if category == RECENT or category == FAVOURITES:
 			button.text = _shelf_label(category)
 			button.set_meta("shelf", category)
@@ -475,6 +476,7 @@ func _build_categories() -> void:
 		button.custom_minimum_size = Vector2(least, least)
 		button.pressed.connect(_on_category.bind(category))
 		_category_row.add_child(button)
+	_count_chips()
 	# Whole rows and the scroll bar to say there are more (_fit_palette).
 	# A fixed 58 showed the top few units of a third row's buttons.
 	if _category_row.get_child_count() > 0:
@@ -2724,6 +2726,7 @@ func build_from(numbers: PackedStringArray) -> int:
 	_set_bin = bin
 	if store != null:
 		store.bin_sets = bin.sets
+	_count_chips()
 	# The whole set in sight: what was typed or chosen is let go.
 	_search.text = ""
 	_pending = false
@@ -2747,7 +2750,29 @@ func _drop_set() -> void:
 	_used = {}
 	if store != null:
 		store.bin_sets = PackedStringArray()
+	_count_chips()
 	_say_set()
+
+
+## Each category's count on its button: the library's, or building from a
+## set the set's kinds in it, a category it has none of put out of sight.
+func _count_chips() -> void:
+	var kinds: Dictionary = {}
+	if _set_bin != null:
+		for key: String in _set_bin.order:
+			var info: PartLibrary.PartInfo = library.parts.get(Collection.part_of(key))
+			if info != null:
+				kinds[info.category] = int(kinds.get(info.category, 0)) + 1
+	for child: Node in _category_row.get_children():
+		if not child.has_meta("count"):
+			continue
+		var button: Button = child
+		var category: String = str(button.get_meta("category"))
+		if category in ["All", RECENT, FAVOURITES, TECHNIQUES, FITS]:
+			continue
+		var count: int = int(kinds.get(category, 0)) if _set_bin != null else int(button.get_meta("count"))
+		button.text = "%s %d" % [category, count]
+		button.visible = _set_bin == null or count > 0
 
 
 ## Which sets the bin is built from, in words, or "" for the whole library.
