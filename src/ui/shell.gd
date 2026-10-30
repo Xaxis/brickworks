@@ -313,14 +313,8 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	over_model.add_child(see_inside.bar)
 	see_inside.below.append(app.get("_hint"))
 	see_inside.below.append(app.get("_steps"))
-	# View, Stress's legend, count and weakest joints, down the model's right
-	# edge under the view cube, clear of the panels that open at its left.
-	stress.panel.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	stress.panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	stress.panel.offset_right = -14.0
-	stress.panel.offset_left = -14.0 - StressPanel.WIDE
-	stress.panel.offset_top = ViewCube.size_for().y + 26.0
-	over_model.add_child(stress.panel)
+	# View, Stress's legend, count and weakest joints: Main puts it in the
+	# column beside the model, with the tools' panels.
 
 	grid = StudGrid.new()
 	grid.world = world

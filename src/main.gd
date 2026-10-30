@@ -300,9 +300,10 @@ var _motions: MotionPlayer
 var _simulate: SimulatePanel
 ## Tools, Colour the hidden parts… (src/ui/hidden_colours_panel.gd).
 var _hidden_colours: HiddenColoursPanel
-## Its column, docked beside the model's, and the hose tool's panel's
-## too (Make, Hose, tube or chain…): shown while either is open, so the
-## model's column (and the lens centred on it) is what is left of the
+## Simulate's column, docked beside the model's, and the other panels'
+## that work on the model as it is seen (Motions, Hose, tube or chain…,
+## Colour the hidden parts, Stress's legend): shown while any is open, so
+## the model's column (and the lens centred on it) is what is left of the
 ## window. Over the model's left edge Simulate's covered half a gear train
 ## in a window 1600 across, and a click meant for an axle landed on the
 ## panel; the hose tool's covered the left one of two gears a chain was to
@@ -4554,10 +4555,11 @@ func _build_ui() -> void:
 	_bin_dock.setup(_stack, SideDock.Edge.LEFT, _parts_wide(LEAST_ACROSS))
 	layout.add_child(_bin_dock)
 
-	# Tools, Simulate mechanism…'s column and the hose tool's, beside the
-	# model's rather than over it, shown only while a panel in it is open
-	# (the panels go in it below). It scrolls when the window is shorter
-	# than the panel.
+	# The column of the panels that work on the model as it is seen:
+	# Motions, Simulate, the hose tool, Colour the hidden parts and Stress's
+	# legend, beside the model's rather than over it, shown only while one
+	# is open (the panels go in it below). It scrolls when the window is
+	# shorter than they are.
 	_tool_column = ScrollContainer.new()
 	_tool_column.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_tool_column.custom_minimum_size = Vector2(SIMULATE_WIDTH, 0)
@@ -5397,8 +5399,9 @@ func _build_ui() -> void:
 	get_viewport().size_changed.connect(func() -> void:
 		_inset(_render, RenderDialog.WIDE, RenderDialog.TALL))
 	# Build, Motions…: the model's own motions, played, recorded by a drag,
-	# set joint by joint and rendered (src/ui/pose_panel.gd), over the
-	# model's left edge so what moves is seen as it moves.
+	# set joint by joint and rendered (src/ui/pose_panel.gd), in the column
+	# beside the model, so what moves is seen as it moves and no part to be
+	# dragged is under the panel.
 	_pose = PosePanel.new()
 	_pose.world = _world
 	_pose.builder = _builder
@@ -5424,11 +5427,10 @@ func _build_ui() -> void:
 		_verbs.set_mode("select")
 	# Each motion's joint written where it stands (Motions.Joint.at).
 	_store.motion_rebase = _motions.rebase
-	_over_model.add_child(_pose)
-	_pose.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_pose.position = Vector2(12, 48)
+	_tool_panels.add_child(_pose)
+	_pose.visibility_changed.connect(_tool_column_shown)
 	# Tools, Colour the hidden parts…: the inside, cut open and coloured,
-	# over the model's left edge too (src/ui/hidden_colours_panel.gd).
+	# in the column too (src/ui/hidden_colours_panel.gd).
 	_hidden_colours = HiddenColoursPanel.new()
 	_hidden_colours.world = _world
 	_hidden_colours.builder = _builder
@@ -5438,13 +5440,12 @@ func _build_ui() -> void:
 	_hidden_colours.scenery = _store.scenery
 	_hidden_colours.edited = _on_model_edited
 	_hidden_colours.say = func(line: String) -> void: _bar.say(line)
-	_over_model.add_child(_hidden_colours)
-	_hidden_colours.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_hidden_colours.position = Vector2(12, 48)
+	_tool_panels.add_child(_hidden_colours)
+	_hidden_colours.visibility_changed.connect(_tool_column_shown)
 	_pose.changed.connect(_on_model_edited)
 	# Tools, Simulate mechanism…: a gear train turned from its driver, in the
-	# same place over the model's left edge (src/ui/simulate_panel.gd). It
-	# changes nothing, so it has no changed signal: what turns is drawn.
+	# column too (src/ui/simulate_panel.gd). It changes nothing, so it has
+	# no changed signal: what turns is drawn.
 	_simulate = SimulatePanel.new()
 	_simulate.world = _world
 	_simulate.builder = _builder
@@ -5459,6 +5460,10 @@ func _build_ui() -> void:
 	_simulate.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_tool_panels.add_child(_simulate)
 	_simulate.visibility_changed.connect(_tool_column_shown)
+	# View, Stress's legend under them: at the model's right edge under the
+	# view cube it covered the parts there, and a click on one landed on it.
+	_tool_panels.add_child(_shell.stress.panel)
+	_shell.stress.panel.visibility_changed.connect(_tool_column_shown)
 	_builder.selection_changed.connect(_simulate._on_selection)
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
@@ -6341,14 +6346,16 @@ func _model_rect() -> Rect2:
 const SIMULATE_WIDTH := 360.0
 
 
-## Simulate or the hose tool opened or closed: the column shown while
-## either is. Opening folds the parts column, which building by hand needs
-## and simulating or laying a hose does not, so the model keeps its room;
-## closing puts it back as it was. Where nothing folds, the column's room
-## comes out of the model's, and the view steps back so what was in sight
-## stays in sight.
+## A panel in the column opened or closed: the column shown while any is.
+## Opening it folds the parts column, which building by hand needs and the
+## panels do not (Stress's legend too: the bin is a click on its rail
+## away), so the model keeps its share of the window; closing the last
+## puts it back as it was. Where nothing folds, the column's room comes
+## out of the model's, and the view steps back so what was in sight stays
+## in sight.
 func _tool_column_shown() -> void:
-	var open: bool = _simulate.visible or _flex.panel.visible
+	var open: bool = _simulate.visible or _flex.panel.visible or _pose.visible \
+		or _hidden_colours.visible or _shell.stress.panel.visible
 	if open == _tool_column.visible:
 		return
 	var room: Rect2 = _model_rect()
@@ -8500,9 +8507,9 @@ func _dress_for_phone() -> void:
 	add_child(_phone_hold)
 
 
-## The panels over the model's own room (Motions, Colour the hidden parts,
-## Stress), Simulate's and the line saying what the app is busy with, sized
-## for a finger: made after the phone's layout is.
+## The panels in the column beside the model (Motions, Colour the hidden
+## parts, Stress, Simulate) and the line saying what the app is busy with,
+## sized for a finger: made after the phone's layout is.
 func _size_for_a_finger() -> void:
 	# And the sign-in screen, which comes back over everything on Sign out:
 	# its address field was 199 by 20 points on a phone (fig257).

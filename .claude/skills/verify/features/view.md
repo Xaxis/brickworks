@@ -535,7 +535,8 @@ picture the assistant is shown.
   about this… (only then, and never with the assistant off): it selects the
   part and what holds it and writes the request with the joint's numbers into
   the assistant. Its panel (`src/ui/stress_panel.gd`, `StressPanel`), down
-  the model's right edge under the view cube while Stress is on, has the
+  the column beside the model while Stress is on (`Main._tool_column`; under
+  the view cube it covered the parts at the model's right edge), has the
   legend (red past its working load, amber within twice it, faded the rest),
   the count ("6 past working load · 0 near it", "0 past working load · 0
   near it" on a model that holds; `StressView.ranked`/`count_words`, which
@@ -1825,7 +1826,8 @@ picture the assistant is shown.
   and the sweep and the contact shadow drawn once, each alone (`_warm`); a
   render asked for meanwhile waits the few frames left (`_prepare`).
 - `motions panel` (Build, Motions…, once Pose and animate…; `src/ui/pose_panel.gd`,
-  class `PosePanel`, over the model's left edge so what moves is seen; the
+  class `PosePanel`, in the column beside the model (`Main._tool_column`) so
+  what moves is seen and no part to be dragged is under it; the
   owner's ask, 2026-10-20, docs/MOTIONS.md "What unit 2 built"). The list:
   the model's motions, a row each (chosen for Render animation by its radio,
   Play, Play backwards, Edit); Play all (`Motions.in_order`, each after the
