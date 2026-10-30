@@ -2266,6 +2266,44 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 	return words
 
 
+## Many steps' pages laid out at once, as one undo: the page editor's
+## Apply to later pages and edit_booklet's follow= (PageEditor
+## .later_layout). [param placed] is [[step, place, room]]: what the step
+## has placed, {item: [x, y, ...]} as "place" keeps it, in place of what it
+## had, in its room on its page now ([x, y, w, h]), where its own words,
+## pictures and arrows are moved to first, as change_look moves them.
+func place_pages(placed: Array, words: String) -> String:
+	if read_only:
+		return "this model is open to look at, not to change"
+	var undo: Array = []
+	var first: int = -1
+	for one: Array in placed:
+		var at: Instructions.Step = one[0]
+		var where: Array = _step_at(at)
+		if int(where[1]) < 0:
+			continue
+		var section: String = str(where[0])
+		var step: int = int(where[1])
+		var room: Rect2 = BookletLooks.rect_of(one[2])
+		var own: Dictionary = BookletLooks.rebased(BookletLooks.of(world, section, step), room)
+		var change: Dictionary = {"place": one[1], "notes": own.get("notes"),
+			"arrows": own.get("arrows")}
+		var any: bool = not (one[1] as Dictionary).is_empty() or own.has("notes") or own.has("arrows")
+		change["panel"] = BookletLooks.said_rect(room) if any else null
+		undo.append_array(BookletLooks.change(world,
+			BookletLooks.key(BookletLooks.definition_of(section), step), change))
+		if first < 0:
+			first = at.number
+	undo = AuthorSteps.squash(undo)
+	if undo.is_empty():
+		return "the pages were laid out so already"
+	builder.record(undo, words)
+	store.adopt()
+	store.touch()
+	(app.get("_steps") as StepsBar).refresh(first)
+	return words
+
+
 ## An arrow as a look keeps it: its points to a tenth of a mm (a bend kept
 ## only where it bends the line by a millimetre or more), its colour one a
 ## booklet uses and its width the nearest it comes in.

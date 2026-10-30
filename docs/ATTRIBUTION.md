@@ -319,6 +319,23 @@ required, and it is given anyway.
   (Pure Sky)", by Greg Zaal (original) and Jarod Guest (sky edits) —
   https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky ("Daylight").
 
+## The booklet's type (Liberation Sans)
+
+A booklet saved as a PDF carries its type, and its pages saved as PNGs are
+drawn in it (`assets/fonts/`, `BookletPdf.TYPE`, `BookletPng`). The type is
+Liberation Sans 2.1.5, regular and bold, as released at
+https://github.com/liberationfonts and unmodified: its widths are
+Helvetica's, which the booklet lays its words out by.
+
+- Licence: **SIL Open Font License 1.1**. It may be bundled and embedded;
+  each copy carries the copyright notices and the licence
+  (`assets/fonts/OFL.txt`; `Credits.LIBERATION_OFL`, shown in About and
+  written into THIRD-PARTY-NOTICES.txt). "Liberation" (Red Hat) and
+  "Arimo" (Google) are Reserved Font Names, so the files are shipped as
+  they came: a changed copy, a subset included, would need another name.
+- The PDFs made with it are not bound by the licence (it says so of
+  documents made with the fonts); the whole font goes into each PDF.
+
 ## LEGO trademarks
 
 LEGO® is a trademark of the LEGO Group of companies which does not
