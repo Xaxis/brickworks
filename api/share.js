@@ -1763,11 +1763,13 @@ async function read(request, response) {
   if (op === "sitemap") return sitemap(response, origin);
   // The LDraw library's sets (api/_library.js): /library's list, and each
   // set's page, cover, file and parts.
+  // With tests=1, the OMR's arrivals staged for the lead to let out too
+  // (tools/library_import.py), which nobody else is shown.
   if (op === "library") return library(request, response);
-  if (op === "set") return setPage(response, origin, id);
-  if (op === "set_cover") return setCover(response, id, String(request.query?.as || "card"));
-  if (op === "set_file") return setFile(response, id);
-  if (op === "set_parts") return setParts(response, id, String(request.query?.as || "json"));
+  if (op === "set") return setPage(response, origin, id, testsAsked(request.query || {}));
+  if (op === "set_cover") return setCover(response, id, String(request.query?.as || "card"), testsAsked(request.query || {}));
+  if (op === "set_file") return setFile(response, id, testsAsked(request.query || {}));
+  if (op === "set_parts") return setParts(response, id, String(request.query?.as || "json"), testsAsked(request.query || {}));
 
   // A version asked for, where there can be one: the page, its picture and
   // the model. The gallery's small picture says which upload it is with a
@@ -1904,7 +1906,16 @@ async function read(request, response) {
 // ---------------------------------------------------------------------------
 // The LDraw library (library333): /library's sets a page at a time, and each
 // set's page, cover, file and parts, from the app's own index and files in
-// the parts store (api/_library.js). Nothing here reads the database.
+// the parts store (api/_library.js). Nothing here reads the database but a
+// list asked with tests, for the OMR's arrivals staged (gallery362).
+
+/// The library's sets as a list asked with [tests] shows them: the store's
+/// index, which an arrival joins when the lead lets it out
+/// (tools/library_import.py publish), and for tests the OMR's arrivals
+/// staged too. Only a list asked with tests reads the database; before
+/// supabase/gallery_crons.sql is applied, it gets the index alone.
+const libraryOf = (tests = false) => (tests ? { arrivals: () => db("rpc/library_arrival_entries", {
+  method: "POST", body: { tests: true } }).catch(() => []) } : {});
 
 /// What the CDN keeps of the shelf and a set's page: the store's index
 /// changes a few times a year, so an hour, given while it asks again for a
@@ -1916,14 +1927,15 @@ const COVER_CACHE = "public, max-age=86400, s-maxage=604800, stale-while-revalid
 /// cards, web/card.js), total, page, pages, per_page, of (every set), asked,
 /// themes [{name, n}], decades, sizes, sorts}.
 async function library(request, response) {
-  const every = await librarySets();
+  const tests = testsAsked(request.query || {});
+  const every = await librarySets(libraryOf(tests));
   if (!every.length) {
     return response.status(503).setHeader("Cache-Control", "no-store")
       .json({ error: "The LDraw library cannot be read just now. Try again in a minute." });
   }
   const asked = askOf(request.query || {});
   const found = searchSets(every, asked);
-  response.setHeader("Cache-Control", SET_CACHE);
+  response.setHeader("Cache-Control", tests ? TESTS_CACHE : SET_CACHE);
   return response.status(200).json({ ...found, models: found.models.map(setCard), per_page: SET_PER_PAGE,
     of: every.length, asked, themes: themes(every), decades: decades(every),
     sizes: Object.fromEntries(Object.entries(SIZES).map(([key, size]) => [key, size.label])), sorts: SET_SORTS });
@@ -1941,15 +1953,15 @@ function setsBeside(every, entry) {
 
 /// /library/X: a set's page, made as a model's is (sharePage), its parts and
 /// steps and every modeller read from its own file.
-async function setPage(response, origin, id) {
-  const entry = await librarySet(id);
+async function setPage(response, origin, id, tests = false) {
+  const entry = await librarySet(id, libraryOf(tests));
   if (!entry) return html(response, 404, gonePage(origin, id, false));
   const text = await storeFile(entry).catch(() => null);
   const parts = text ? partsOf(entry.file, Buffer.from(text)) : null;
   const model = setModel(entry, { authors: authorsIn(text), steps: fileSteps(text) });
-  const next = { by: [], like: setsBeside(await librarySets(), entry), gallery: [] };
+  const next = { by: [], like: setsBeside(await librarySets(libraryOf(tests)), entry), gallery: [] };
   return html(response, 200, sharePage(origin, id, model, [], null, null, [], next, null, undefined, parts),
-    { cache: SET_CACHE });
+    { cache: tests ? TESTS_CACHE : SET_CACHE });
 }
 
 /// A set's pictures, each drawn by the app's own renderer
@@ -1963,8 +1975,8 @@ async function setPage(response, origin, id) {
 /// picture shows within the hour once it is up.
 const SET_PICTURES = { card: "cards", cutout: "pages", cover: "" };
 
-async function setCover(response, id, as = "card") {
-  const entry = await librarySet(id);
+async function setCover(response, id, as = "card", tests = false) {
+  const entry = await librarySet(id, libraryOf(tests));
   const root = storeRoot();
   const read = async (path) => {
     const answer = await fetch(`${root}${path}`).catch(() => null);
@@ -1983,8 +1995,8 @@ async function setCover(response, id, as = "card") {
 
 /// /library/X.mpd: its file, as LDraw has it, from the store itself: the
 /// largest is 36 MB, past what a function may answer with.
-async function setFile(response, id) {
-  const entry = await librarySet(id);
+async function setFile(response, id, tests = false) {
+  const entry = await librarySet(id, libraryOf(tests));
   const root = storeRoot();
   if (!entry || !root) {
     return response.status(404).setHeader("Cache-Control", "no-store").json({ error: "The LDraw library has no such set." });
@@ -1995,8 +2007,8 @@ async function setFile(response, id) {
 }
 
 /// /library/X/parts.json, .xml and .csv: its parts, as a model's are.
-async function setParts(response, id, as) {
-  const entry = await librarySet(id);
+async function setParts(response, id, as, tests = false) {
+  const entry = await librarySet(id, libraryOf(tests));
   if (!entry) {
     return response.status(404).setHeader("Cache-Control", "no-store").json({ error: "The LDraw library has no such set." });
   }
