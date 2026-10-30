@@ -8,16 +8,17 @@
   The gallery's look and its order: a title and a search on one line, the
   gallery's tabs with this one marked, then Filters (the order, the size
   and the years) and the themes as a row of pills; then the cards, two to a
-  row on a phone, six on a wide screen. Each card is web/card.js's, its
+  row on a phone, four from a laptop up. Each card is web/card.js's, its
   picture the cover the app's own renderer drew, its set's number, theme
   and year under its name, and who modelled it.
 
   What is shown comes from /api/share?op=library (api/_library.js), a page
   of 24 at a time, searched and filtered as the app's Library is, so the
-  two find the same sets for the same words. The next page comes as you
-  near the bottom, three times, then Show more; the address keeps the
-  question and how many pages are shown (/library?q=castle&page=3), and
-  Back from a set comes back to its card. library.js draws it, every name
+  two find the same sets for the same words. It is paged as every list of
+  the site is (web/pager.js, site.css .pager): Show more, the count and
+  the numbered links; the address keeps the question and the last page
+  shown (/library?q=castle&page=3), and Back from a set comes back to its
+  card. library.js draws it, every name
   as text. No inline script: the site's content security policy allows
   none it has not hashed. The look is /site.css; below is only how this
   page lays it out, as the gallery's does.
@@ -118,7 +119,6 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 
 .found-said { margin: 0 0 var(--s-3); }
 .listing .state { margin-top: var(--s-2); }
-.more { margin-top: 26px; }
 /* The way to add yours, at the foot of the list: the kit's last offer (.closing). */
 .yours { padding: 0 0 var(--section); border-top: 0; }
 .yours h2 { margin: 0 0 var(--s-3); }
@@ -222,12 +222,14 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 			</div>
 		</div>
 		<p class="note found-said" id="found-said" aria-live="polite"></p>
-		<!-- Three rows of skeletons at six a row (site.css .skeleton) where the
+		<!-- The list's pager (web/pager.js, site.css .pager): Show earlier over a
+		     page opened by its address, and under the list the count, Show more
+		     and the numbered links. -->
+		<p class="pager-earlier" data-pager-earlier="models" hidden><a class="cta ghost" href="/library" data-pager-go="earlier">Show earlier</a></p>
+		<!-- Four rows of skeletons at four a row (site.css .skeleton) where the
 		     first page's cards go, taken out when it comes, so nothing under
 		     them moves. web/card.js skeletonHtml draws the same. -->
 		<div class="models" id="models">
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
 			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
 			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
 			<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
@@ -251,14 +253,17 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 			<button type="button" class="link" id="clear">Clear the search and the filters</button>
 		</p>
 		<p class="state" id="broken" hidden>
-			The LDraw library did not load just now. Try again in a minute.
+			The LDraw library did not load just now.
+			<button type="button" class="link" id="retry">Retry</button>
 		</p>
 		<noscript>
 			<p class="state">The library is drawn with a little JavaScript, which is off in this browser.</p>
 		</noscript>
-		<div class="actions center more">
-			<button class="cta ghost" id="more" type="button" hidden>Show more</button>
-		</div>
+		<nav class="pager" data-pager="models" aria-label="Pages of sets" data-size="24" data-noun="set|sets" hidden>
+			<p class="pager-count" hidden></p>
+			<a class="cta ghost pager-more" href="/library?page=2" data-pager-go="more" hidden>Show more</a>
+			<p class="visually-hidden" role="status" data-pager-said></p>
+		</nav>
 	</section>
 
 	<section class="wrap wide yours" aria-labelledby="yours-h">

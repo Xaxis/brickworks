@@ -25,7 +25,8 @@
 //   the tabs, Models · Builds · Collections, one shown, each with its count
 //     once there is one, and what goes there said when it has nothing;
 //   every model reached: a person with 60 has three pages, Show more
-//     brings each, and with no script each is a page of its own;
+//     brings each (web/pager.js), and with no script each is a page of its
+//     own, Show earlier and the numbered links real links;
 //   whom they follow only when they chose to show it, and never a list of
 //     who follows them;
 //   what they earned (docs/SOCIAL.md U13), a row of pills under the
@@ -141,7 +142,7 @@ const drawn = (page) => page.evaluate(() => {
     lists: [...document.querySelectorAll(".list-card")].map((card) => ({ id: card.dataset.id,
       pictures: card.querySelectorAll(".mosaic img").length, name: card.querySelector("b")?.textContent || "" })),
     empty: document.querySelector(".tab-panel .state")?.textContent.replace(/\s+/g, " ").trim() || "",
-    more: document.querySelector("a[data-more]")?.getAttribute("href") || "",
+    more: document.querySelector("nav.pager:not([hidden]) .pager-more:not([hidden])")?.getAttribute("href") || "",
     follows: [...document.querySelectorAll(".follows a")].map((a) => a.getAttribute("href")),
     awards: [...document.querySelectorAll(".profile .awards li")].map((li) => ({ id: li.dataset.award,
       text: li.textContent.replace(/\s+/g, " ").trim(), href: li.querySelector("a")?.getAttribute("href") || "",
@@ -330,7 +331,7 @@ async function local() {
     check(`Ines ${width}: pinned ${said.pins.join(", ")}; Models ${said.tabs[0].n}; the first page ${said.cards.length} cards`,
       said.pins.join(",") === "InesMod003,InesMod059" && said.tabs[0].n === "60" && said.cards.length === 24);
     for (const wanted of [48, 60]) {
-      await page.click("a[data-more]");
+      await page.click(".pager-more");
       await until(page, (n) => document.querySelectorAll("[data-models] .model").length >= n, wanted);
     }
     said = await drawn(page);
@@ -344,11 +345,14 @@ async function local() {
   }
   // With no script: each page a page of its own.
   const third = await stand.serverPage(path.join(root, "api"), "/u/ines-many?tab=models&page=3&tests=1");
-  const grid = /<div class="models" data-models[^>]*>([\s\S]*?)<\/div>\s*<p class="paging">/.exec(third.html)?.[1] || "";
+  const grid = /<div class="models" id="models" data-models[^>]*>([\s\S]*?)<\/div>\s*<nav class="pager"/.exec(third.html)?.[1] || "";
   // A card is an article, its id its own (web/card.js).
   const cards = [...grid.matchAll(/<article class="model" data-id="(InesMod\d{3})"/g)].map((one) => one[1]);
-  check(`page 3 as served: ${cards.length} cards (${cards[0]}…${cards[cards.length - 1]}), no Show more, back to the first`,
-    third.status === 200 && cards.length === 12 && !third.html.includes("data-more") && third.html.includes("Back to the first"));
+  const earlier = /<p class="pager-earlier" data-pager-earlier="models"><a class="cta ghost" href="([^"]+)"/.exec(third.html)?.[1] || "";
+  const first = third.html.includes('<a href="/u/ines-many?tab=models&amp;tests=1" aria-label="Page 1">');
+  check(`page 3 as served: ${cards.length} cards (${cards[0]}…${cards[cards.length - 1]}), no Show more, Show earlier to ${earlier}, `
+    + `page 1 a link`, third.status === 200 && cards.length === 12 && /data-pager-go="more" hidden/.test(third.html)
+    && earlier === "/u/ines-many?tab=models&amp;page=2&amp;tests=1" && first);
   const nobody = await stand.serverPage(path.join(root, "api"), "/u/nobody-here");
   check(`a handle nobody has: ${nobody.status}`, nobody.status === 404);
 

@@ -8,8 +8,8 @@
   then Top · New · Following (signed in), Top over all time, this month or
   this week; the kinds as a row of pills; the rest (the order, the size,
   instructions, Technic, Tested, hand-built or with the assistant) in one
-  Filters button; then the cards, two to a row on a phone, four on a
-  laptop. Top is the default: builds finished, remixes and the Tested mark
+  Filters button; then the cards, two to a row on a phone, three on a
+  tablet and four from a laptop up. Top is the default: builds finished, remixes and the Tested mark
   (supabase/discovery.sql), never views.
 
   What is listed comes from /api/share?op=list (api/share.js), a page at
@@ -17,10 +17,11 @@
   (Top over all time, nothing asked) has this week's pick as its first
   card and, after the first rows, the shelves: what a signed-in person can
   build now, and small builds once there are three (/api/share?op=shelves,
-  supabase/discovery.sql). The next page comes as you near the bottom,
-  three times, then Show more; the address keeps the question and how many
-  pages are shown (/gallery?q=castle&page=3), so a search can be sent to
-  somebody, and Back from a model comes back to its card. gallery.js draws
+  supabase/discovery.sql). It is paged as every list of the site is
+  (web/pager.js, site.css .pager): Show more, the count and the numbered
+  links; the address keeps the question and the last page shown
+  (/gallery?q=castle&page=3), so a search can be sent to somebody, and
+  Back from a model comes back to its card. gallery.js draws
   it, every name and credit as text and never as markup: they were typed
   by strangers. No inline script, because the site's content security
   policy allows none it has not hashed. The look is /site.css, shared with
@@ -131,10 +132,10 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 [data-gallery="asking"] #feed { opacity: 0.55; transition: opacity var(--motion) var(--ease); }
 
 /* The cards: this week's pick first on the front, then the list; the
-   shelves (what you can build now, small builds) across the grid after
-   its first whole rows: twelve places at two, three or four to a row,
-   fifteen at five, eighteen at six. The list's cards are #models' own,
-   laid out in this grid. */
+   shelves (today's spotlight, what you can build now, small builds)
+   across the grid after its first whole rows: twelve places, at two,
+   three or four to a row. The list's cards are #models' own, laid out in
+   this grid. */
 .feed #models { display: contents; }
 .feed > .pick { min-width: 0; display: grid; }
 .feed > .shelves {
@@ -142,31 +143,42 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 	margin: var(--s-3) 0; min-width: 0;
 }
 .shelves > * { min-width: 0; }
-@media (width < 1200px) {
-	.feed[data-front="pick"] #models > .model:nth-child(n+12),
-	.feed[data-front="plain"] #models > .model:nth-child(n+13) { order: 2; }
-}
-@media (1200px <= width < 1600px) {
-	.feed[data-front="pick"] #models > .model:nth-child(n+15),
-	.feed[data-front="plain"] #models > .model:nth-child(n+16) { order: 2; }
-}
-@media (width >= 1600px) {
-	.feed[data-front="pick"] #models > .model:nth-child(n+18),
-	.feed[data-front="plain"] #models > .model:nth-child(n+19) { order: 2; }
-}
-.pick-card .why { margin: 2px 0 0; color: var(--ink); font-size: var(--t-tiny); font-weight: 600; }
+.feed[data-front="pick"] #models > .model:nth-child(n+12),
+.feed[data-front="plain"] #models > .model:nth-child(n+13) { order: 2; }
+.pick-card .why, #spotlight .why { margin: 2px 0 0; color: var(--ink); font-size: var(--t-tiny); font-weight: 600; }
 /* The week's pick, edged as what is chosen is. */
 .feed .pick-card { border-color: var(--accent-edge); }
 .shelves h2 { margin: 0; }
 .shelf-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
 .shelf-head a { font-size: var(--t-small); color: var(--ink-soft); }
 .shelf-said { margin: 4px 0 12px; color: var(--ink-soft); font-size: var(--t-small); }
+/* Today in the gallery (gallery362): today's featured model and today's
+   set, in a panel lit as a landing page's last offer is (site.css
+   .closing), each card edged as what is chosen is; from 600 px its two
+   cards side by side, and from 900 px its words beside them. */
+#spotlight {
+	display: grid; gap: var(--s-4); padding: var(--s-5); border: 1px solid var(--line); border-radius: var(--r-4);
+	background-color: var(--panel); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px;
+	box-shadow: var(--highlight), var(--shadow-1);
+}
+#spotlight[hidden] { display: none; }
+#spotlight .shelf-head { flex-direction: column; align-items: flex-start; justify-content: center; gap: var(--s-2); }
+#spotlight .shelf-said { margin: 0; max-width: 42ch; }
+#spotlight-models .model { border-color: var(--accent-edge); }
+/* On a phone its row scrolls inside the panel, as every shelf's does: two
+   cards side by side there left a card's marks no room. */
+@media (width < 600px) { #spotlight { padding: var(--s-4); } }
+@media (width >= 600px) {
+	#spotlight-models.row { grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; padding: 0; }
+}
+@media (width >= 900px) {
+	#spotlight { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s-6); align-items: center; padding: var(--s-6); }
+}
 
 .feed > #challenge-line { grid-column: 1 / -1; margin: 0; }
 .listing .state { margin-top: var(--s-2); }
 .state .actions { margin-top: var(--s-3); }
 .score-said { margin: var(--s-5) 0 0; color: var(--ink-faint); font-size: var(--t-small); }
-.more { margin-top: 26px; }
 /* The way to add yours, at the foot of the list: the kit's last offer (.closing). */
 .yours { padding: 0 0 var(--section); border-top: 0; }
 .yours h2 { margin: 0 0 var(--s-3); }
@@ -282,6 +294,10 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 		     links here with, an order, a size, a box ticked), each a pill to
 		     let go of, and Clear all. -->
 		<div class="pills chips" id="chips" hidden></div>
+		<!-- The list's pager (web/pager.js, site.css .pager): Show earlier over a
+		     page opened by its address, and under the list the count, Show more
+		     and the numbered links. -->
+		<p class="pager-earlier" data-pager-earlier="models" hidden><a class="cta ghost" href="/gallery" data-pager-go="earlier">Show earlier</a></p>
 		<div class="models feed" id="feed">
 			<!-- This month's challenge, in one line (gallery.js sayChallenge,
 			     supabase/challenges.sql): across the grid's first row, drawn
@@ -293,12 +309,10 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 				<h2 class="visually-hidden" id="pick-h">This week’s pick</h2>
 				<div id="pick-card"></div>
 			</section>
-			<!-- Three rows of skeletons at six a row (site.css .skeleton) where the first page's
+			<!-- Four rows of skeletons at four a row (site.css .skeleton) where the first page's
 			     cards go, taken out when it comes (gallery.js), so nothing under
 			     them moves. web/card.js skeletonHtml draws the same. -->
 			<div id="models">
-				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
-				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
 				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
 				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
 				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
@@ -324,6 +338,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 				<section class="shelf" id="spotlight" aria-labelledby="spotlight-h" hidden>
 					<div class="shelf-head">
 						<h2 id="spotlight-h">Today in the gallery</h2>
+						<p class="shelf-said">A model from the gallery and a set from the LDraw library, chosen each day.</p>
 						<a id="spotlight-library" href="/library">Browse the LDraw library</a>
 					</div>
 					<div class="models row" id="spotlight-models"></div>
@@ -364,15 +379,18 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 			<div class="actions"><a class="cta ghost small" id="quiet-go" href="/gallery"></a></div>
 		</div>
 		<p class="state" id="broken" hidden>
-			The gallery did not load just now. Try again in a minute.
+			The gallery did not load just now.
+			<button type="button" class="link" id="retry">Retry</button>
 		</p>
 		<noscript>
 			<p class="state">The gallery is drawn with a little JavaScript, which is off in this browser.</p>
 		</noscript>
 		<p class="score-said" id="score-said" hidden></p>
-		<div class="actions center more">
-			<button class="cta ghost" id="more" type="button" hidden>Show more</button>
-		</div>
+		<nav class="pager" data-pager="models" aria-label="Pages of models" data-size="24" data-noun="model|models" hidden>
+			<p class="pager-count" hidden></p>
+			<a class="cta ghost pager-more" href="/gallery?page=2" data-pager-go="more" hidden>Show more</a>
+			<p class="visually-hidden" role="status" data-pager-said></p>
+		</nav>
 	</section>
 
 	<section class="wrap wide yours" aria-labelledby="yours-h">

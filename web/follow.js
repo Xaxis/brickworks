@@ -390,9 +390,16 @@ async function followLists(buttons) {
 }
 
 for (const button of document.querySelectorAll("button[data-follow]")) followButton(button).catch(() => null);
-const listButtons = [...document.querySelectorAll("button[data-follow-list]")];
-if (listButtons.length > 1) followLists(listButtons).catch(() => null);
-else for (const button of listButtons) followButton(button).catch(() => null);
+/// Collections' Follow buttons: all asked at once when there are several.
+function followAll(buttons) {
+  if (buttons.length > 1) followLists(buttons).catch(() => null);
+  else for (const button of buttons) followButton(button).catch(() => null);
+}
+followAll([...document.querySelectorAll("button[data-follow-list]")]);
+// A page of cards put on the page later (web/pager.js): theirs too.
+document.addEventListener("pager:drawn", (event) => {
+  followAll((event.detail?.items || []).flatMap((one) => [...one.querySelectorAll("button[data-follow-list]")]));
+});
 // /feed and /notifications ask once they have opened (web/feed.js,
 // web/notifications.js), so their own count is cleared first.
 showFeedCount({ ask: !["/feed", "/notifications"].includes(location.pathname) }).catch(() => null);

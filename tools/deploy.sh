@@ -231,6 +231,8 @@ for handler in api/*.js; do
   # The one model card (web/card.js), which api/_card.js passes through in
   # a checkout: here the file itself, so a function needs no web/.
   cp web/card.js "$fn/_card.js"
+  # And the one pager (web/pager.js), which api/_pager.js passes through.
+  cp web/pager.js "$fn/_pager.js"
   # The stand-in Admission, beside the function only on a preview that asks
   # for it: no other deployment holds it at all.
   if [ "$stand_in" = 1 ]; then cp tests/fixtures/billing/fake_admission.mjs "$fn/_admission_stand_in.mjs"; fi

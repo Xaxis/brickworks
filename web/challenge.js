@@ -5,12 +5,15 @@
 // button: one vote in each group, never for your own, for people 13 and over.
 // When it ends, the winners first, and each entry's votes. Under it, the next
 // one told and the challenges that ran with their winners (?id=N draws one of
-// those as this one is, its entries and its winners).
+// those as this one is, its entries and its winners). Each group's entries
+// are paged as every list of the site is (web/pager.js), the address saying
+// each group's own page (?hand-page=2, ?assistant-page=3).
 //
 // Names and credits were typed by strangers, so every one goes on the page
 // as text, never as markup; a link is built from a model's id alone.
 import { askToSignIn, call, signedIn } from "/account.js";
 import { counted, modelCard } from "/card.js";
+import { PAGE_SIZE, pageAsked, pager } from "/pager.js";
 
 const $ = (id) => document.getElementById(id);
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -22,6 +25,9 @@ const pageOf = (id) => `/challenge?id=${id}${tests ? "&tests=1" : ""}`;
 const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const dayOf = (iso) => DAY.format(new Date(`${String(iso).slice(0, 10)}T00:00:00Z`));
 let state = null;
+// Each group's pager, by its way: stopped and made again as the groups are
+// drawn again (after a vote), showing the pages it showed.
+const pagers = new Map();
 
 const say = (text) => { $("said").textContent = text; };
 
@@ -130,6 +136,9 @@ function drawPast(past) {
 
 function draw() {
   const c = state.challenge;
+  const shown = new Map([...pagers].map(([way, one]) => [way, { first: one.state.first, last: one.state.last }]));
+  for (const one of pagers.values()) one.stop();
+  pagers.clear();
   $("loading").hidden = true;
   $("none").hidden = Boolean(c);
   for (const id of ["rules-part", "how", "winners"]) $(id).hidden = true;
@@ -191,17 +200,29 @@ function draw() {
     section.append(head, note);
     const grid = document.createElement("div");
     grid.className = "models wide";
-    for (const entry of (group.entries || []).filter((one) => ID.test(String(one.id)))) {
+    grid.id = `entries-${group.way}`;
+    const entries = (group.entries || []).filter((one) => ID.test(String(one.id)));
+    const drawEntry = (entry) => {
       const lines = [];
       if (entry.winner) lines.push("Winner");
       // A count is said once there is one: never "0 votes".
       if (c.state === "ended" && Number(entry.votes)) lines.push(counted(entry.votes, "vote"));
       if (c.state !== "ended" && !entry.keeps) lines.push("No longer keeps the rules: a newer version broke one");
       for (const win of entry.won || []) if (win.challenge !== c.id) lines.push(`Won “${win.title}”`);
-      grid.append(card(entry, lines, voteOf(c, entry)));
-    }
-    if (n) section.append(grid);
+      return card(entry, lines, voteOf(c, entry));
+    };
     $("groups").append(section);
+    if (n) {
+      section.append(grid);
+      const param = `${group.way}-page`;
+      const paged = pager({ list: grid, param, noun: ["entry", "entries"], key: (item) => item.dataset.entry || "",
+        load: async (page) => ({ items: entries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map(drawEntry),
+          total: entries.length, pages: Math.max(1, Math.ceil(entries.length / PAGE_SIZE)) }) });
+      pagers.set(group.way, paged);
+      const was = shown.get(group.way);
+      paged.start(was && was.last ? was.last : pageAsked(location.search, param),
+        was && was.last ? { from: was.first, restore: false } : {});
+    }
   }
   // Why this account has no vote buttons, said once above the entries.
   if (c.state === "open" && state.you && !state.you.may_vote && state.you.why_not) {

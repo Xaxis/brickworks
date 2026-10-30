@@ -1391,6 +1391,14 @@
       "tests": []
     },
     {
+      "id": "cli:paging browser flow",
+      "kind": "cli",
+      "entry": "tools/web/paging_flow.mjs",
+      "reach": "node tools/web/paging_flow.mjs --url=http://127.0.0.1:8890 --out=DIR   (a local relay_server.mjs: the LDraw library and /u/brickworks); BW_BYPASS=$VERCEL_BYPASS node tools/web/paging_flow.mjs --url=<preview> --out=DIR",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:part counts probe",
       "kind": "cli",
       "entry": "src/dev/part_counts_probe.gd",
@@ -3274,6 +3282,14 @@
       "entry": "src/render/frame_budget.gd",
       "reach": "tools/probe.sh look_probe   (on the GPU: nothing cut; -- --shots=DIR for pictures to cmp against a checkout before)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:a list's pages",
+      "kind": "ui",
+      "entry": "web/pager.js",
+      "reach": "every list's foot: /gallery, /library, /u/<handle> (Models, Likes), /c/<id>, /collections, /challenge (each group); Show more, the count, the numbered links, ?page=N with Show earlier; all at once on /_kit",
+      "area": "web",
       "tests": []
     },
     {
