@@ -78,7 +78,19 @@ plan with Claude as the client.
   (`Main._boot_mark`: ready, catalogue, ui, model, on the page's clock).
   The bin's All listing ranks each part once before sorting
   (`PartsBin._sort_for`): the same order in 0.44 s natively, where it
-  took 1.2.
+  took 1.2. On the web it is not sorted at all (webload, 2026-10-30):
+  `tools/export.sh` runs `src/dev/all_order.gd` after web_pack.py, which
+  writes All's order for the web pack's catalogue to
+  `assets/web/all_order.txt` with the bin's own code
+  (`PartsBin.write_all_order` / `all_unasked`), and the bin reads it on the
+  web (`PartsBin.all_as_packed`: 19 ms natively against 789 to work out),
+  set aside for a catalogue of another size, a part it does not know, or
+  a library holding parts made in the app. The superseded parts it leaves
+  out are one locked read (`PartLibrary.superseded_ids`), where a part
+  took the lock 30,000 times: the page's thread cannot sleep on a lock, and
+  spun 0.4 s on the search index's while the bin filled. `tools/probe.sh all_order_probe` (headless, 10 checks, "all
+  order probe: all passed") reads the order back part for part against
+  the bin's own and each case it is not read.
 - `first visit load check` (`tools/web/load_check.mjs`, `[load]` in
   preview_checks.sh, alone): three cold loads of `/app` on broadband (20
   Mbps, 40 ms), each in a browser on a profile of its own on disk, signed
@@ -88,7 +100,13 @@ plan with Claude as the client.
   build's last byte came (net), the main thread's CPU before then (Chrome's
   ThreadTime, which load does not stretch), and the bytes before it.
   `--profiles=broadband,slow --warm` for the full table; `--laps` prints
-  every `brickworksBoot` mark. Exit 1 over `--max-bytes` or
+  every `brickworksBoot` mark, and each median row is followed by the
+  start's parts (banner, scripts to `Main._ready`, catalogue, interface,
+  model, first frames). Locally, serve the export with `serve.py
+  --accounts --compressed --cached` (the header's form): `--cached` sends
+  the deployment's cache headers (the page no-cache, the build immutable),
+  without which every file is no-store and `--warm` timed a second first
+  visit. Exit 1 over `--max-bytes` or
   `--max-interactive`. Not a flow's incognito context: its cache keeps no
   file over a few MB, so a warm load there fetched the pack again; and the
   visit counter is blocked, not routed, since a route turns the cache off.
