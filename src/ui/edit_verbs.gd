@@ -1135,11 +1135,11 @@ func hint() -> String:
 				named, look]
 		"move":
 			if handles.shown():
-				return "Move: drag an arrow to slide it, a number typed makes it exact · click it again to pick it up · Alt-click picks the point the arrows start from · %s" % look
+				return "Move: drag an arrow to slide it, a pane for two axes at once, a number typed makes it exact · click it again to pick it up · Alt-click picks the point the arrows start from · %s" % look
 			return "Move: click a part for its arrows, again to pick it up (the selection with it) · %s" % look
 		"rotate":
 			if handles.shown():
-				return "Rotate: drag a ring to turn it, finer further out, a number typed makes it exact · click it again to turn it %d° · Alt-click picks the point it turns about · %s" % [
+				return "Rotate: drag a ring to turn it, finer further out, the outer ring about the view, inside the rings freely · a number typed makes it exact · click it again to turn it %d° · Alt-click picks the point it turns about · %s" % [
 					roundi(turn_step), look]
 			return "Rotate: click a part for its rings, again to turn it %d° (Shift-click back) · %s" % [
 				roundi(turn_step), look]
