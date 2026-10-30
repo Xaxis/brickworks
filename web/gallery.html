@@ -91,7 +91,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
    all of them and Top's time, and the page scrolled sideways. */
 .gallery-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-width: 0; border-bottom: 1px solid var(--line); }
 .gallery-bar .tabs { flex: 1; margin: 0; border-bottom: 0; }
-.gallery-bar .window { flex: none; }
+.gallery-bar .top-window { flex: none; }
 
 /* The bar of filters: Filters, then the kinds, kept under the header as
    the list scrolls, on the page's ground carried out to the window's
@@ -240,7 +240,7 @@ html { scroll-padding-top: calc(var(--head-h) + 72px); }
 				<a href="/collections" id="to-collections">Collections</a>
 				<a href="/library" id="to-library">LDraw library</a>
 			</nav>
-			<label class="window" id="window-label" hidden><span class="visually-hidden">Top over</span>
+			<label class="top-window" id="window-label" hidden><span class="visually-hidden">Top over</span>
 				<select id="window" name="window" form="finder"><option value="">All time</option></select></label>
 		</div>
 		<!-- The bar of filters, on screen over the whole list (sticky under the
