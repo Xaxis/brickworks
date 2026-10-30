@@ -616,6 +616,7 @@ const HINTS := {
 	# cancel=true stops only the session's own job.
 	"job": ["Follow a long job", "look"],
 	"fresh_eyes": ["Say what it reads as", "look"],
+	"fresh_eyes_final": ["Say what it reads as now", "look"],
 }
 const KINDS: Array[String] = ["look", "file", "add", "remove"]
 
@@ -779,11 +780,16 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 		who: String = CLAUDE) -> Array:
 	if name == ToolJobs.TOOL:
 		return [await jobs.answer(input), true]
-	# The fresh look a new design's first save asked for: answered first.
+	# The fresh look a new design's first save asked for, and the final look
+	# after the creative pass: answered first.
 	if assistant != null:
 		if name == FreshEyes.TOOL:
 			return [assistant.fresh_eyes().answered(input), true]
+		if name == FreshEyes.FINAL_TOOL:
+			return [assistant.fresh_eyes().final_answered(input), true]
 		var not_yet: String = assistant.fresh_eyes().not_yet(name)
+		if not_yet.is_empty():
+			not_yet = assistant.fresh_eyes().final_not_yet(name)
 		if not not_yet.is_empty():
 			return [not_yet, true]
 	if entry == null:
@@ -1055,7 +1061,7 @@ func _the_app_tools() -> AppTools:
 ## posing, undo, opening, the parts list, rendering, exporting.
 func _own_tools() -> Array:
 	return _socket_tools() + _the_app_tools().definitions() + [ToolJobs.definition(),
-		FreshEyes.definition()]
+		FreshEyes.definition(), FreshEyes.final_definition()]
 
 
 func _socket_tools() -> Array:
@@ -1226,12 +1232,13 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 			# A run's last act is to save: so saving hands back the next
 			# assembly it has not looked at closely, if there is one. A new
 			# design's first save hands back its pictures for a fresh look
-			# instead (FreshEyes), and the close looks at the next.
+			# instead (FreshEyes), and the close looks at the next; the first
+			# save after the creative pass, a final look after what it says.
 			var more: Variant = ""
 			if assistant != null:
 				more = await assistant.fresh_eyes().after_save()
 			if assistant != null and str(more).is_empty():
-				more = await assistant.next_review()
+				more = await assistant.fresh_eyes().reviewed()
 			return Assistant._joined(written, more)
 	return "No tool called %s." % tool
 

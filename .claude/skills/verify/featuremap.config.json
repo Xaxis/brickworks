@@ -2014,7 +2014,7 @@
       "kind": "lib",
       "label": "fresh eyes at the first save",
       "entry": "src/ai/fresh_eyes.gd",
-      "reach": "tools/probe.sh fresh_eyes_probe   (in a window: a new design's first save hands the session the three pictures and the judge's question, answered with fresh_eyes before any other call, once a subject; with a stand-in Claude Code on PATH, never started for it, and with none)",
+      "reach": "tools/probe.sh fresh_eyes_probe   (in a window: a new design's first save hands the session the three pictures and the judge's question, answered with fresh_eyes before any other call, once a subject; with a stand-in Claude Code on PATH, never started for it, and with none; once more at the first save after the creative pass, answered with fresh_eyes_final)",
       "area": "assistant"
     },
     {

@@ -26,6 +26,16 @@
 ## the app's copy. A chat that passes none is judged by its own subject, never
 ## by the chat's before. Told the session's "taco food truck", the eyes once
 ## said to take off the surfboard the brief asked for (critic315).
+##
+## And once more, last: at the first whole save after the creative pass,
+## never at one before it nor at the save that hands the pass over, the
+## save's answer is what it would have been, the pass's line and any close
+## look first, then the pictures and the final question, answered with
+## fresh_eyes_final before anything else goes ahead: what landed of the
+## first look's changes, then done or one change. Once a subject; "done"
+## adds nothing; a pass that added nothing waits for the next save; no
+## creative pass, no final look; the session's own, Claude Code here or not,
+## and never started for it.
 extends SceneTree
 
 var _failures: int = 0
@@ -68,8 +78,11 @@ func _run() -> void:
 	await _about_a_selection("c7")
 	await _whole_brief_from_a_chat()
 	await _whole_brief_on_the_port()
+	await _after_the_handover("c14")
 	_no_claude_code()
 	await _without_claude_code()
+	await _own_final("c16")
+	await _own_final_done("c17")
 	await _about_a_selection("c10")
 	OS.set_environment("PATH", _path)
 	OS.set_environment("HOME", _home)
@@ -77,7 +90,8 @@ func _run() -> void:
 	print("")
 	print("fresh eyes: the session's own look asked once at a new design's first save, of "
 		+ "the person's whole brief, with Claude Code or without, and Claude Code never "
-		+ "started for it" if _failures == 0 else "fresh eyes: %d FAILED" % _failures)
+		+ "started for it; and once more after the creative pass" if _failures == 0
+		else "fresh eyes: %d FAILED" % _failures)
 	_main.queue_free()
 	await process_frame
 	quit(1 if _failures > 0 else 0)
@@ -331,6 +345,175 @@ func _without_claude_code() -> void:
 	said = await _call_as("c8", "fresh_eyes", _full_answer())
 	_check("...then answered: %s" % _text(said).left(40),
 		_text(said).begins_with("Now make them") and not bool(_eyes().call("waiting")))
+
+
+## A touch the creative pass adds: a red 1 x 1 round plate on the tower's foot.
+const TOUCH := {"part": "4073", "color": 14, "x": 12, "y": 0, "z": 10}
+
+
+## A chat's new tower from outside, up to its creative pass: the first look at
+## its first save, answered as the judge would, the close look the next save
+## hands back, and the surface pass, settled. No save of these has the final
+## look.
+func _to_the_creative_pass(chat: String) -> void:
+	await _call_as(chat, "clear_model", {})
+	await _call_as(chat, "submit_design", _tower())
+	var said: Array = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
+	_check("the first save, the first look: %s" % _line_with(_text(said), "fresh pair"),
+		_text(said).contains("a fresh pair of eyes") and not _final_in(said))
+	said = await _call_as(chat, "fresh_eyes", {"reads_as": "a red column of six bricks",
+		"generic": "one straight stack, no roof", "changes": ["OWN-ONE: step the top in",
+			"OWN-TWO: a pointed roof", "OWN-THREE: windows"]})
+	_check("...answered as the judge would: %s" % _text(said).left(40),
+		_text(said).begins_with("Now make them"))
+	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
+	_check("the next save, the close look and no final look: %s"
+		% _line_with(_text(said), "Before it is finished"),
+		_text(said).contains("Before it is finished") and not _final_in(said))
+	said = await _call_as(chat, "review_model", {"surface": true})
+	print("  (the surface pass: %s)" % _text(said).left(160).replace("\n", " "))
+	said = await _call_as(chat, "settle_surface", {"finding": "all", "verdict": "accept"})
+	print("  (settled: %s)" % _text(said).left(160).replace("\n", " "))
+
+
+## With Claude Code here: the save after the surface pass hands over the
+## creative pass, and is never the final look; the first save after the
+## pass says what it added, then the final look, the session's own as the
+## first was; done adds nothing more, and Claude Code never starts for it.
+func _after_the_handover(chat: String) -> void:
+	print("\n── with Claude Code here, a design through the creative pass a save hands over ──")
+	var starts: int = _starts()
+	await _to_the_creative_pass(chat)
+	var said: Array = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
+	var text: String = _text(said)
+	_check("the next save hands over the creative pass, never the final look: %s"
+		% _line_with(text, "creative pass"), text.contains(
+			"the creative pass, which this app's own designer makes last") and not _final_in(said)
+		and _images(said) == 0)
+	await _call_as(chat, "edit_model", {"add": [TOUCH]})
+	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
+	text = _text(said)
+	var line: int = text.find("The creative pass: 1 part added")
+	_check("the first save after the pass: its line, then the final look: %d pictures"
+		% _images(said), line > 0 and text.find("one last look") > line and _images(said) == 3
+		and bool(_eyes().call("final_waiting")))
+	said = await _call_as(chat, "fresh_eyes_final", {"landed": "all three show",
+		"reads_as": "a red tower", "generic": "nothing", "done": true, "change": ""})
+	_check("done: %s" % _text(said), _text(said).begins_with("Then it is finished")
+		and not bool(_eyes().call("final_waiting")))
+	await _call_as(chat, "edit_model", {"recolor": [{"bricks": [_first_brick()], "color": 1}]})
+	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
+	_check("an edit and a save: never again", not _final_in(said) and _images(said) == 0)
+	_check("...and Claude Code never started (%d starts)" % (_starts() - starts),
+		_starts() == starts)
+
+
+## With no Claude Code: the session asks for the creative pass itself, and
+## saves before it adds a touch, then after. The save that says the pass
+## added nothing asks for a touch first; the next hands the session the
+## pictures and the final question; nothing else goes ahead until it
+## answers with fresh_eyes_final, and its one change is to be made. Once.
+func _own_final(chat: String) -> void:
+	print("\n── no Claude Code, a design through its creative pass: the session's own final look ──")
+	var listed: Dictionary = _listed("fresh_eyes_final")
+	_check("fresh_eyes_final is served, read-only, in the final look's shape: %s"
+		% JSON.stringify(listed.get("inputSchema", {}).get("required", [])),
+		not listed.is_empty() and bool(listed["annotations"].get("readOnlyHint", false))
+		and listed["inputSchema"]["required"] == ["landed", "reads_as", "generic", "done", "change"])
+	await _to_the_creative_pass(chat)
+	var said: Array = await _call_as(chat, "review_model", {"creative": true})
+	_check("the creative pass, asked for: %s" % _text(said).left(40),
+		_text(said).begins_with("The creative pass") and not _final_in(said))
+	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
+	_check("a save before a touch: the pass added nothing, and no final look yet: %s"
+		% _text(said).get_slice("\n\n", 1).left(60),
+		_text(said).contains("The creative pass added nothing") and not _final_in(said)
+		and _images(said) == 0 and not bool(_eyes().call("final_waiting")))
+	await _call_as(chat, "edit_model", {"add": [TOUCH]})
+	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
+	var words := PackedStringArray()
+	for block: Dictionary in said:
+		if block["type"] == "text":
+			words.append(str(block["text"]))
+	_check("the next save, with the touch: the final look, the session's own: %s"
+		% _line_with(_text(said), "one last look"), _text(said).begins_with("Written to %s.ldr" % chat)
+		and words[0].contains("one last look with the fresh pair of eyes, now the creative pass is in"))
+	_check("...the three pictures, captioned as the first look's: %s" % " | ".join(words.slice(2, 5)),
+		_images(said) == 3 and words.size() >= 6 and words[2] == "The corner view:")
+	_check("...the final question, of the subject and the first look's own changes: %d characters"
+		% words[1].length(), words[1] == _eyes().call("final_prompt",
+			"A red tower. a slender red tower", ["OWN-ONE: step the top in",
+				"OWN-TWO: a pointed roof", "OWN-THREE: windows"]))
+	_check("...and to answer with fresh_eyes_final first, then make the one change",
+		words[words.size() - 1].begins_with("Answer before any other call: fresh_eyes_final")
+		and words[words.size() - 1].contains("keeping what the creative pass added")
+		and bool(_eyes().call("final_waiting")))
+	said = await _call_as(chat, "edit_model", {"recolor": [{"bricks": [_first_brick()],
+		"color": 1}]})
+	_check("an edit before the answer is refused: %s" % _text(said).left(60),
+		_text(said).begins_with("Not yet: first answer the final fresh look")
+		and _first_colour() == 4)
+	said = await _call_as(chat, "fresh_eyes_final", {"landed": "the top stepped in",
+		"reads_as": "a red tower", "generic": "the flat top", "done": false, "change": ""})
+	_check("not done and no change is asked again: %s" % _text(said).left(40),
+		_text(said).begins_with("Answer in full") and bool(_eyes().call("final_waiting")))
+	said = await _call_as(chat, "fresh_eyes_final", {"landed": "OWN-ONE shows; no roof",
+		"reads_as": "a red tower with a stepped top", "generic": "the flat top", "done": false,
+		"change": "OWN-FINAL: a pointed roof of four slopes"})
+	var final: Dictionary = _eyes().get("final")
+	_check("the answer is kept, and its one change to be made: %s" % _text(said).left(50),
+		_text(said).begins_with("Now make it: edit_model") and final.get("change", "")
+		== "OWN-FINAL: a pointed roof of four slopes" and int(final["refused"]) == 1
+		and not bool(_eyes().call("final_waiting")))
+	said = await _call_as(chat, "edit_model", {"recolor": [{"bricks": [_first_brick()],
+		"color": 1}]})
+	_check("then the edit goes ahead", not _text(said).begins_with("Not yet")
+		and _first_colour() == 1)
+	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
+	_check("the next save: never again", not _final_in(said) and _images(said) == 0)
+	said = await _call_as(chat, "fresh_eyes_final", {"landed": "x", "reads_as": "x",
+		"generic": "x", "done": true, "change": ""})
+	_check("...nor answered again: %s" % _text(said).left(40),
+		_text(said).begins_with("Nothing to answer"))
+
+
+## With no Claude Code, as most relay sessions work: the creative pass and its
+## touch before the first save, so its line comes at the save after the first
+## look, with a close look. The final look comes there, after both, which
+## stay word for word (sessions end at that save whatever it hands, 30 of 44
+## on design317t); done ends it, and the saves after hand what they would.
+func _own_final_done(chat: String) -> void:
+	print("\n── no Claude Code, the pass before the first look, then done ──")
+	await _call_as(chat, "clear_model", {})
+	await _call_as(chat, "submit_design", _tower())
+	await _call_as(chat, "review_model", {"creative": true})
+	await _call_as(chat, "edit_model", {"add": [TOUCH]})
+	var said: Array = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
+	_check("the first save, the first look and nothing of the pass",
+		_text(said).contains("a fresh pair of eyes") and not _text(said).contains(
+			"The creative pass:") and not _final_in(said))
+	await _call_as(chat, "fresh_eyes", {"reads_as": "a red column", "generic": "one stack",
+		"changes": ["OWN-ONE: step the top in", "OWN-TWO: a pointed roof", "OWN-THREE: windows"]})
+	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
+	var text: String = _text(said)
+	var line: int = text.find("The creative pass: 1 part added")
+	var close: int = text.find("Before it is finished: 1 of its 1 assemblies has not had a close look")
+	_check("the next save: the pass's line, the close look, then the final look: %d pictures"
+		% _images(said), line > 0 and close > line and text.find("one last look") > close
+		and _images(said) == 3 and bool(_eyes().call("final_waiting")))
+	said = await _call_as(chat, "fresh_eyes_final", {"landed": "all three show",
+		"reads_as": "a red tower", "generic": "nothing", "done": true, "change": ""})
+	_check("done: %s" % _text(said), _text(said).begins_with("Then it is finished")
+		and not bool(_eyes().call("final_waiting")))
+	said = await _call_as(chat, "save_model", {"name": "%s.ldr" % chat})
+	_check("the next save hands what it would, the surface pass never run, and no look: %s"
+		% _line_with(_text(said), "surface pass"), _text(said).contains(
+			"The surface pass has not been run") and not _final_in(said) and _images(said) == 0)
+
+
+## Whether an answer carries the final look.
+static func _final_in(blocks: Array) -> bool:
+	return _text(blocks).contains("one last look")
 
 
 ## A stand-in for Claude Code, in a home of its own's .local/bin, where the
