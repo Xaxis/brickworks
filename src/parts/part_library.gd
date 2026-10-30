@@ -1786,6 +1786,8 @@ const ALSO_KNOWN_AS: Dictionary = {
 	"wedge plate": "wing",
 	"minifigure": "minifig",
 	"cheese slope": "slope brick 31 1 x 1",
+	# The 18 degree grille slope, before "cheese" is taken for a cheese slope.
+	"cheese grater": "slope brick 18 grille",
 	"jumper plate": "with 1 centre stud",
 	"snot brick": "with stud on 1 side",
 	"stud on side": "with stud on 1 side",

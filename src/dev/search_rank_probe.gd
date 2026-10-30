@@ -26,6 +26,10 @@
 ## instruction booklet prints them, each of which must find its part and take
 ## its colour in hand. The same bar, for each set apart.
 ##
+## And the words builders type (appux371 A5): their own names for parts,
+## a size alone, and the names they reach for most, every one with a right
+## part in the first three, and a size alone the brick of that size first.
+##
 ## And how long the bin takes to answer a first keystroke: one letter or digit,
 ## over the whole catalogue, the results and the tiles that show them; the
 ## 50 ms meant is said, and the probe fails past 150 (KEYSTROKE_GUARD_MS).
@@ -156,6 +160,46 @@ const NAMED: Array = [
 	["4211398", ["3023b/71"], "element"],
 ]
 
+## The words builders type for parts (appux371 A5, 2026-10-30), chosen as a
+## builder types them before the change that answers them: their names for
+## parts no catalogue uses (SNOT, Erling, Travis, macaroni, droid arm, click
+## hinge, cheese grater), a size alone, and the everyday names and sizes a
+## builder reaches for most. "snot" listed Technic pins, "erling" and
+## "travis" nothing, "macaroni" a 4 x 4 tile first and "2x4" Plate 2 x 4
+## before Brick 2 x 4. Every one must have a right part in the bin's first
+## three and search_parts', not nine in ten; and a size alone the brick first.
+const BUILDER: Array = [
+	["snot", ["87087", "4070", "11211", "99780", "99781", "44728", "99207", "32952", "26604",
+		"4733", "30414"], "nickname"],
+	["erling", ["4070"], "nickname"],
+	["travis", ["4733"], "nickname"],
+	["macaroni", ["85080", "3063b", "27925"], "nickname"],
+	["droid arm", ["30377"], "nickname"],
+	["click hinge", ["44301b", "44301a", "44302a", "30383"], "nickname"],
+	["cheese grater", ["61409b"], "nickname"],
+	["cheese", ["54200"], "nickname"],
+	["grill", ["2412b"], "nickname"],
+	["2x4", ["3001"], "size"],
+	["1x2", ["3004"], "size"],
+	["2x2", ["3003"], "size"],
+	["1x2 plate", ["3023b"], "name"],
+	["jumper", ["15573", "3794b"], "name"],
+	["tile 2x2", ["3068b"], "name"],
+	["technic beam 7", ["32524"], "name"],
+	["round 1x1", ["6141", "3062b", "98138"], "name"],
+	["slope 45 2x2", ["3039"], "name"],
+	["quarter tile", ["25269"], "name"],
+	["half pin", ["4274"], "name"],
+	["3l pin", ["6558"], "name"],
+	["studs on side", ["87087", "11211", "30414", "32952"], "name"],
+	["headlight", ["4070"], "name"],
+	["log", ["30136"], "name"],
+	["masonry", ["98283"], "name"],
+	["1x1 cone", ["59900", "4589"], "name"],
+]
+## A size alone and the brick it means, first.
+const SIZE_FIRST: Dictionary = {"2x4": "3001", "1x2": "3004", "2x2": "3003", "1x1": "3005"}
+
 ## The share of queries with a right part in the first three, at least.
 const TOP3_BAR := 0.9
 ## The bin's answer to a first keystroke, in milliseconds: what it is meant to
@@ -194,6 +238,8 @@ func _run() -> void:
 	if only != "time":
 		_quality(library, bin, QUERIES, "everyday names, sizes and numbers (search242)")
 		_quality(library, bin, NAMED, "the names builders use (names248)")
+		_quality(library, bin, BUILDER, "the words builders type (appux371 A5), every one", 1.0)
+		_size_first(library, bin)
 	if only != "quality":
 		await _time(library, bin)
 	bin.queue_free()
@@ -204,7 +250,8 @@ func _run() -> void:
 	quit(1 if _failures else 0)
 
 
-func _quality(library: PartLibrary, bin: PartsBin, queries: Array, title: String) -> void:
+func _quality(library: PartLibrary, bin: PartsBin, queries: Array, title: String,
+		bar: float = TOP3_BAR) -> void:
 	print("")
 	print("  %s" % title)
 	var tally: Dictionary = {}     ## kind -> [queries, bin top 1, bin top 3, search top 1, search top 3]
@@ -262,11 +309,29 @@ func _quality(library: PartLibrary, bin: PartsBin, queries: Array, title: String
 		_share(all[4], all[0])])
 	for at: int in [2, 4]:
 		var share: float = float(all[at]) / float(all[0])
-		if share < TOP3_BAR:
+		if share < bar - 0.0001:
 			_failures += 1
 			print("  FAIL  the %s has a right part in its first three for %d%% of %s, under %d%%"
 				% ["bin" if at == 2 else "search", _share(all[at], all[0]), title,
-					roundi(TOP3_BAR * 100)])
+					roundi(bar * 100)])
+
+
+## A size typed alone lists the brick of that size first, in the bin and in
+## search_parts: "2x4" is Brick 2 x 4.
+func _size_first(library: PartLibrary, bin: PartsBin) -> void:
+	print("")
+	print("  a size alone, the brick first")
+	for asked: String in SIZE_FIRST:
+		var wanted: String = SIZE_FIRST[asked]
+		bin._run_search(asked)
+		var tiles: PackedStringArray = bin.first_found(1)
+		var found: Array[PartLibrary.PartInfo] = library.search(asked, 1)
+		var first: String = found[0].id if not found.is_empty() else ""
+		var ok: bool = tiles == PackedStringArray([wanted]) and first == wanted
+		if not ok:
+			_failures += 1
+		print("  %s  %-6s bin %-8s search %-8s wanted %s" % ["ok  " if ok else "FAIL", asked,
+			", ".join(tiles), first, wanted])
 
 
 ## The bin's answer to one keystroke, from the text changing to its tiles in
