@@ -4774,7 +4774,7 @@ func _build_ui() -> void:
 	_inset(_inventory, 860.0, 600.0)
 	get_viewport().size_changed.connect(func() -> void:
 		_inset(_inventory, 860.0, 600.0)
-		_inset(_controls, ControlsDialog.WIDE, ControlsDialog.TALL)
+		_inset(_controls, _controls.wide(), _controls.tall())
 		_inset(_mosaic, MOSAIC_WIDE, MOSAIC_TALL)
 		_inset(_brickify, 400.0, 690.0)
 		_inset(_figures, 1040.0, 660.0)
@@ -4795,7 +4795,10 @@ func _build_ui() -> void:
 
 	_controls = ControlsDialog.new()
 	$HUD.add_child(_controls)
-	_inset(_controls, ControlsDialog.WIDE, ControlsDialog.TALL)
+	_inset(_controls, _controls.wide(), _controls.tall())
+	# The keys sheet is wider and taller than Settings.
+	_controls.face_changed.connect(func() -> void:
+		_inset(_controls, _controls.wide(), _controls.tall()))
 	_bar.controls_wanted.connect(_controls.open)
 	_controls.assistant_chosen.connect(set_assistant)
 	_controls.ai_changed.connect(_chat.refresh_designer)
@@ -5015,6 +5018,8 @@ func _build_ui() -> void:
 	if _phone != null:
 		_phone.shell = _shell
 		_dress_for_phone()
+	# The keys sheet lists the keys the menus show.
+	_controls.shell = _shell
 	# View, Stress: weighed with the status bar's check, at once when it is
 	# turned on, and the part under the pointer said.
 	_shell.stress.hovered = func() -> int: return _hovered

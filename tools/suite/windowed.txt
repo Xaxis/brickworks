@@ -63,3 +63,4 @@ set_parts  # /app?parts=10497-1&brief=…: the set's parts in the bin, the most 
 provider_apis   # Anthropic's Messages, Gemini's own API and OpenAI's Responses: each designs, is tested and lists its models against a stub as strict as the API (aiset345, provider370)
 app_menu   # the mark's menu at the menu bar's start, its rows, keys, and the bar and toolbar unmoved (brand373)
 hinge_align_ui    # Meet in Properties: the ring closed in three actions (click, Shift-click, Meet), one Ctrl+Z takes it back (hingealign)
+keysheet   # F1 opens the keys sheet alone: 20+ rows in sight at 1280 x 720, typed into it keeps the rows that say it, the menus' keys on it; "," opens Settings without a key; every menu row in each state 4.5:1 or better off the pixels (APP_UX A1, A2)

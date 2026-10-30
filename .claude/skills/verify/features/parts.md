@@ -331,11 +331,18 @@ geometry in front of them.
   ConfirmationDialog, FileDialog and the questions a FileDialog asks
   itself: Create Folder, the overwrite question) has the panels' dark face
   (`Look.FACE`), faint edge and round corners for its frame, title bar and
-  body, on the desktop and the web; and on the desktop every menu and
-  popup (the menu bar's, a part's, every list's, the colour picker's) too.
-  Put in the default theme before the first window is made, so it reaches
-  every one; sizes stay the engine's. The web's menus stay as they were:
-  `tools/web/desktop_same.mjs` holds the web's File menu to the pixel.
+  body, on the desktop and the web; every menu (the menu bar's, a part's,
+  every list's) on both, and on the desktop every popup (the colour
+  picker's) too. Put in the default theme before the first window is made,
+  so it reaches every one; sizes stay the engine's. A menu's rows
+  (`Look.menus`): the row under the pointer or the keyboard's focus is
+  `Look.ROW_LIT` edged in `Look.ACCENT`, a greyed row's words and every
+  key `Look.GREYED`, so every state reads 4.5:1 or better off the window's
+  pixels (APP_UX A2: a greyed row with the focus was a blank bar, its words
+  the highlight's grey). `keysheet_probe` reads every row of the six menus
+  in each state (normal, under the pointer, focused, greyed, greyed and
+  focused); it read 1.94:1 at worst before. `tools/web/desktop_same.mjs`
+  needs a base build with keysheet's menus from then on.
   walk256 DS1 (2026-10-25) found the photo search's question, Build
   together and the choosers in the engine's grey. `dialog_look_probe`
   opens each as a person does (Render's panel gives the face), then pops
