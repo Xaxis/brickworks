@@ -87,6 +87,15 @@ const KINDS: Dictionary = {
 		"label": "Technic tread", "family": "links", "link": "3873",
 		"real": "Technic Chain Tread 2.5 Wide",
 	},
+	# A rubber band round pulleys, wheels, bushes and axles, and a spring or
+	# a shock absorber between two ends: Bands lays them, of pieces it makes
+	# (Bands.is_piece_id); a shock's cylinder and rod are its caps.
+	"band": {"label": "Rubber band", "family": "loop"},
+	"spring": {
+		"label": "Spring or shock", "family": "coil",
+		"takes": ["pin_hole", "pin", "axle_hole", "axle"],
+		"caps": ["4255", "4254"],
+	},
 }
 
 ## What a chain or a tread runs on: part -> how many links go round it. A
@@ -1320,13 +1329,18 @@ static func lay_chain(kind: String, sprockets: Array) -> Laid:
 
 
 ## Which kind a set of parts is, when every one of them is a segment of
-## one: "" otherwise.
+## one (or one of its caps, a shock's cylinder and rod): "" otherwise.
 static func kind_of(part_ids: Array) -> String:
-	if part_ids.is_empty():
-		return ""
-	var kind: String = kind_of_piece(str(part_ids[0]))
+	var kind: String = ""
 	for part: Variant in part_ids:
-		if kind_of_piece(str(part)) != kind:
+		var its: String = kind_of_piece(str(part))
+		if not its.is_empty() and kind.is_empty():
+			kind = its
+	if kind.is_empty():
+		return ""
+	var caps: Array = KINDS[kind].get("caps", [])
+	for part: Variant in part_ids:
+		if kind_of_piece(str(part)) != kind and not caps.has(str(part)):
 			return ""
 	return kind
 
@@ -1341,6 +1355,10 @@ static var _piece_kinds: Dictionary = _pieces_of_kinds()
 
 ## Which kind a part is a segment, end or link of: "" for any other part.
 static func kind_of_piece(part_id: String) -> String:
+	if part_id.begins_with(Bands.SEGMENT_PREFIX):
+		return "band"
+	if part_id.begins_with(Bands.COIL_PREFIX):
+		return "spring"
 	return str(_piece_kinds.get(part_id, ""))
 
 
@@ -1397,11 +1415,16 @@ static func items_among(bricks: Array, skip: Dictionary = {}) -> Dictionary:
 	for brick: BrickWorld.Brick in bricks:
 		if skip.has(brick.id) or not kind_of_piece(brick.part_id).is_empty():
 			continue
-		if not brick.unit.is_empty():
-			if found.has(brick.unit):
-				not_items[brick.unit] = true
-		elif by_group.has(brick.group):
-			not_items[by_group[brick.group]] = true
+		var path: String = brick.unit if not brick.unit.is_empty() \
+			else str(by_group.get(brick.group, ""))
+		if not found.has(path):
+			continue
+		# A shock's cylinder and rod are its own: in its item.
+		var item: Dictionary = found[path]
+		if (KINDS[str(item["kind"])].get("caps", []) as Array).has(brick.part_id):
+			(item["bricks"] as Array).append(brick)
+		else:
+			not_items[path] = true
 	for path: String in not_items:
 		found.erase(path)
 	return found
@@ -1572,6 +1595,16 @@ static func touching(rows: Array) -> Array:
 static func real_part(library: PartLibrary, kind: String, pieces: Array) -> String:
 	if str(KINDS[kind]["family"]) == "links":
 		return ""
+	# A band is the band its pieces are of; a spring the spring or the shock.
+	if kind == "band":
+		for piece: Dictionary in pieces:
+			var band: String = Bands.band_of_piece(str(piece["part"]))
+			if not band.is_empty():
+				return band if library.parts.has(band) else ""
+		return ""
+	if kind == "spring":
+		var read: Dictionary = Bands.spring_read(pieces)
+		return str(read.get("part", "")) if library.parts.has(str(read.get("part", ""))) else ""
 	var real: float = item_length(kind, pieces)
 	var found: String = ""
 	var nearest: float = INF
@@ -1743,7 +1776,9 @@ static func item_name(kind: String, library: PartLibrary, real_id: String) -> St
 	var info: PartLibrary.PartInfo = library.parts.get(real_id) if not real_id.is_empty() \
 		else null
 	var said: String = str(KINDS[kind]["label"]) if info == null else info.name
-	said = said.trim_prefix("Technic ").replace("(", "").replace(")", "")
+	# A band's size after its slash ("Rubber Belt Round 33 / 1.6") would be
+	# a level of the tree, and a spring's name is a subpart's ("~Spring").
+	said = said.get_slice("/", 0).trim_prefix("~").trim_prefix("Technic ").replace("(", "").replace(")", "")
 	while said.contains("  "):
 		said = said.replace("  ", " ")
 	return said.strip_edges()
