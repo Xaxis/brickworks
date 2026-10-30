@@ -282,6 +282,12 @@
 					"tip": "Hold a copy of the selection, to put down beside it"
 				},
 				{
+					"name": "pattern",
+					"words": "Pattern…",
+					"key": "Ctrl+Shift+D",
+					"tip": "Copies of the selection in a row, round, or along a hose, put down at once"
+				},
+				{
 					"name": "delete",
 					"words": "Delete",
 					"key": "Delete",

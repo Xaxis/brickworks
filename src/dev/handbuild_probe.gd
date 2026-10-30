@@ -108,6 +108,7 @@ func _run() -> void:
 	await _a_small_laptop()
 	await _floor_menu()
 	await _first_timer()
+	await _patterns()
 
 	print("")
 	if _failures == 0:
@@ -2107,6 +2108,270 @@ func _first_timer() -> void:
 	await _drag_from_the_bin()
 	await _the_grid_has_room()
 	await _an_untouched_example()
+
+
+## Patterns (docs/APP_UX.md, B6): a fence of 12 posts in 5 actions, from
+## one post: a click on it, Ctrl-D, a click two studs over, "11x" and Enter.
+## A ring of 16 on turntables in 6, from one wall piece on a turntable: a
+## click, a Shift-click, Ctrl+Shift+D, Round, "16" and Enter. Each counted
+## as typed_moves_probe counts (a click, a key, a number typed); each copy
+## where it should be, none in another's room, the whole one Ctrl+Z.
+func _patterns() -> void:
+	print("  patterns: a fence of posts, a ring on turntables")
+	var shell: Shell = _main.get("_shell")
+	var verbs: EditVerbs = _main.get("_verbs")
+	verbs.set_mode("select")
+	_main.call("clear_model")
+	await _frames(4)
+	# One post, five bricks tall, on the ground.
+	_put("2453b", 4, Vector3(-210, 120, 10))
+	await _frames(3)
+	_camera.frame(AABB(Vector3(-240, 0, -80), Vector3(500, 140, 160)))
+	await _frames(30)
+	await _shot("pattern_fence_before")
+	var acts: int = 0
+	await _click(_screen(Vector3(-210, 100, 10)))
+	acts += 1
+	_check("a click selects the post", _builder.selection.size() == 1)
+	await _key(KEY_D, true)
+	acts += 1
+	_check("Ctrl-D holds a copy", _builder.is_carrying())
+	await _click(_screen(Vector3(-170, 0, 10)))
+	acts += 1
+	_check("a click two studs over puts it down (%d posts), another in hand" % _count(),
+		_count() == 2 and _builder.is_carrying())
+	var depth: int = _builder.history_depth()
+	await _type("11x")
+	acts += 1
+	var meaning: Label = verbs.typed.find_child("Meaning", true, false)
+	_check("“11x” reads as the row: %s" % meaning.text,
+		verbs.typed.is_open() and meaning.text.contains("11 in the row"))
+	await _shot("pattern_fence_typed")
+	await _key(KEY_ENTER)
+	acts += 1
+	await _frames(4)
+	var posts: Array = _model().filter(func(b: BrickWorld.Brick) -> bool:
+		return b.part_id == "2453b")
+	var xs: Array = posts.map(func(b: BrickWorld.Brick) -> float: return b.transform.origin.x)
+	xs.sort()
+	var spaced: bool = xs.size() == 12
+	for n: int in xs.size():
+		spaced = spaced and absf(float(xs[n]) - (-210.0 + 40.0 * n)) < 0.01
+	_check("a fence of 12 posts two studs apart (%s)" % str(xs), spaced)
+	_check("...in %d actions (bar: 5)" % acts, acts <= 5)
+	_check("...none in another's room", _none_overlap(posts))
+	_check("...the whole one step to undo (%d steps since the copy)" % (_builder.history_depth()
+		- depth + 1), _builder.history_depth() == depth)
+	await _shot("pattern_fence_after")
+	await _key(KEY_Z, true)
+	_check("one Ctrl+Z takes every copy back (%d posts)" % _count(), _count() == 1)
+	await _key(KEY_Z, true, true)
+	_check("...and redo puts all 11 back (%d posts)" % _count(), _count() == 12)
+	if _builder.is_carrying():
+		verbs.put_away()
+
+	# "/4": the gap cut in four.
+	_main.call("clear_model")
+	_put("2453b", 4, Vector3(-210, 120, 10))
+	await _frames(3)
+	await _click(_screen(Vector3(-210, 100, 10)))
+	await _key(KEY_D, true)
+	await _click(_screen(Vector3(-90, 0, 10)))
+	await _type("/4")
+	await _key(KEY_ENTER)
+	var between: Array = _model().filter(func(b: BrickWorld.Brick) -> bool:
+		return b.part_id == "2453b").map(func(b: BrickWorld.Brick) -> float:
+			return b.transform.origin.x)
+	between.sort()
+	_check("“/4” puts three between, the gap cut in four (%s)" % str(between),
+		between.size() == 5 and absf(float(between[1]) + 180.0) < 0.01
+		and absf(float(between[3]) + 120.0) < 0.01)
+	if _builder.is_carrying():
+		verbs.put_away()
+
+	# A row through a brick: the copy with no room said red, and none put.
+	_main.call("clear_model")
+	_put("2453b", 4, Vector3(-210, 120, 10))
+	_put("3005", 1, Vector3(110, 24, 10))
+	await _frames(3)
+	await _click(_screen(Vector3(-210, 100, 10)))
+	await _key(KEY_D, true)
+	await _click(_screen(Vector3(-170, 0, 10)))
+	var before: int = _count()
+	await _type("11x")
+	_check("a row through a brick is said red: %s" % meaning.text,
+		meaning.text.contains("no room"))
+	await _key(KEY_ENTER)
+	_check("...and Enter puts none of it down (%d parts, %d before)" % [_count(), before],
+		_count() == before and verbs.typed.is_open())
+	await _key(KEY_ESCAPE)
+	if _builder.is_carrying():
+		verbs.put_away()
+
+	# A ring of 16: a 1 x 2 brick on a 2 x 2 turntable, on a 16 x 16 plate.
+	_main.call("clear_model")
+	await _frames(3)
+	var plate: int = await _drop("91405", 71, Vector3(0, 0, 0), 0)
+	var turntable: int = await _drop("3680c02", 0, Vector3(140, 0, 0), 0)
+	var wall: int = await _drop("3004", 4, Vector3(150, 0, 0), 1)
+	_check("a plate, a turntable on it and a brick on that (%d, %d, %d)" % [plate, turntable,
+		wall], plate != 0 and turntable != 0 and wall != 0)
+	_camera.frame(AABB(Vector3(-200, 0, -200), Vector3(400, 80, 400)))
+	await _frames(30)
+	await _shot("pattern_ring_before")
+	acts = 0
+	var on_wall: Vector2 = _screen(_world.get_brick(wall).transform.origin + Vector3(0, -6, 0))
+	await _click(on_wall)
+	acts += 1
+	var on_turntable: Vector2 = _screen(_world.get_brick(turntable).transform.origin
+		+ Vector3(-10, -4, 10))
+	await _shift_click(on_turntable)
+	acts += 1
+	_check("a click and a Shift-click select the brick and its turntable (%s)"
+		% str(_builder.selection.keys()), _builder.selection.has(wall)
+		and _builder.selection.has(turntable) and _builder.selection.size() == 2)
+	await _key(KEY_D, true, true)
+	acts += 1
+	var dialog: PatternDialog = shell.pattern_dialog
+	_check("Ctrl+Shift+D opens Pattern", dialog.is_open())
+	var round_button: Button = dialog.controls_by_name()["pattern_round"]
+	await _click(Vector2(dialog.position) + round_button.get_global_rect().get_center())
+	acts += 1
+	_check("Round is chosen (%s), round %s" % [dialog.kind, dialog.page_state()["said"]],
+		dialog.kind == "round" and str(dialog.page_state()["said"]).contains("stands on"))
+	await _type("16")
+	acts += 1
+	await _frames(4)
+	_check("16 in all, shown first: %s" % dialog.page_state()["said"],
+		int(dialog.page_state()["in_all"]) == 16 and bool(dialog.page_state()["can_put"]))
+	await _shot("pattern_ring_dialog")
+	var parts_before: int = _count()
+	depth = _builder.history_depth()
+	await _key(KEY_ENTER)
+	acts += 1
+	await _frames(4)
+	var rings: Array = _model().filter(func(b: BrickWorld.Brick) -> bool:
+		return b.part_id == "3680c02")
+	var round_ok: bool = rings.size() == 16
+	var angles: Array = []
+	for brick: BrickWorld.Brick in rings:
+		var at: Vector3 = brick.transform.origin
+		round_ok = round_ok and absf(Vector2(at.x, at.z).length() - 140.0) < 0.05
+		angles.append(snappedf(fposmod(rad_to_deg(atan2(-at.z, at.x)), 360.0), 0.01))
+	angles.sort()
+	for n: int in angles.size():
+		round_ok = round_ok and absf(float(angles[n]) - 22.5 * n) < 0.05
+	_check("a ring of 16 turntables, each with its brick, 22.5° apart (%d parts, %s)"
+		% [_count(), str(angles)], round_ok and _count() == parts_before + 30)
+	_check("...in %d actions (bar: 6)" % acts, acts <= 6)
+	_check("...none in another's room", _none_overlap(_model()))
+	_check("...one step to undo", _builder.history_depth() == depth + 1)
+	await _shot("pattern_ring_after")
+	await _key(KEY_Z, true)
+	_check("one Ctrl+Z takes the ring back (%d parts)" % _count(), _count() == parts_before)
+	_check("Edit has Pattern… with its key (%s)" % shell.key_words("pattern"),
+		shell.menu("Edit").get_popup().get_item_index(shell.menu_id("pattern")) >= 0)
+
+	# Along a hose: a tube laid between two Technic bricks, and a 1 x 1
+	# brick over its start copied along it, two studs apart.
+	_main.call("clear_model")
+	_put("3700", 15, Vector3(-150, 24, 10))
+	_put("3700", 15, Vector3(150, 24, 10))
+	await _frames(3)
+	var holes: Array = []
+	for anchor: Flex.Anchor in Flex.anchors_in(_world, _library, "pneumatic_tube"):
+		if not holes.any(func(a: Flex.Anchor) -> bool: return a.brick == anchor.brick):
+			holes.append(anchor)
+	var flex_tool: FlexTool = _main.get("_flex")
+	var laid: Flex.Laid = await flex_tool.lay("pneumatic_tube", holes, [], 0) \
+		if holes.size() == 2 else null
+	var items: Dictionary = Flex.items_in(_world)
+	var line := PackedVector3Array()
+	for path: String in items:
+		var pieces: Array = (items[path]["bricks"] as Array).map(
+			func(b: BrickWorld.Brick) -> Dictionary: return {"part": b.part_id, "at": b.transform})
+		line = Flex.centreline(str(items[path]["kind"]), pieces, Vector3(-150, 24, 10))
+	_check("a tube is laid between them (%d points along it)" % line.size(),
+		laid != null and line.size() >= 2)
+	if line.size() < 2:
+		return
+	_put("3005", 14, line[0] + Vector3(0, 40, 0))
+	await _frames(3)
+	_select_only([_part_id("3005")])
+	_camera.frame(AABB(Vector3(-200, 0, -120), Vector3(400, 120, 240)))
+	await _frames(20)
+	await _key(KEY_D, true, true)
+	var hose_button: Button = dialog.controls_by_name()["pattern_path"]
+	await _click(Vector2(dialog.position) + hose_button.get_global_rect().get_center())
+	await _type("4")
+	await _frames(4)
+	_check("Along a hose: %s" % dialog.page_state()["said"], dialog.kind == "path"
+		and bool(dialog.page_state()["can_put"]))
+	await _shot("pattern_hose_dialog")
+	await _key(KEY_ENTER)
+	await _frames(4)
+	var along: Array = []
+	var off: Array = []
+	for brick: BrickWorld.Brick in _model():
+		if brick.part_id != "3005":
+			continue
+		var nearest: float = INF
+		var at: float = 0.0
+		var run: float = 0.0
+		for n: int in line.size() - 1:
+			var span: Vector3 = line[n + 1] - line[n]
+			var t: float = clampf((brick.transform.origin - line[n]).dot(span)
+				/ maxf(span.length_squared(), 1e-9), 0.0, 1.0)
+			var gap: float = (line[n] + span * t).distance_to(brick.transform.origin)
+			if gap < nearest:
+				nearest = gap
+				at = run + span.length() * t
+			run += span.length()
+		along.append(snappedf(at, 0.1))
+		off.append(snappedf(nearest, 0.1))
+	along.sort()
+	var even: bool = along.size() == 4
+	for n: int in range(1, along.size()):
+		even = even and absf(float(along[n]) - float(along[n - 1]) - 40.0) < 2.0
+	for gap: float in off:
+		even = even and absf(gap - 40.0) < 2.0
+	_check("...four bricks, two studs apart along the tube and as far off it (%s, %s)"
+		% [str(along), str(off)], even)
+	await _shot("pattern_hose_after")
+
+
+## A part dropped from above at [param at] (x and z), turned
+## [param turns] quarters, onto whatever is under it, as a click there puts
+## it: its id, or 0.
+func _drop(part: String, colour: int, at: Vector3, turns: int) -> int:
+	_main.call("_on_part_chosen", part)
+	for _n: int in 600:
+		if _library.mesh_for(part) != null:
+			break
+		await process_frame
+	_builder.held_color = colour
+	_builder.held_rotation = turns
+	_builder.update_preview(at + Vector3(0, 2000, 0), Vector3.DOWN)
+	var made: int = _builder.place()
+	var verbs: EditVerbs = _main.get("_verbs")
+	verbs.set_mode("select")
+	_builder.hide_preview()
+	await _frames(3)
+	return made
+
+
+## Whether every part has room where it stands, by the rule a part put
+## down meets: each taken out of the lattice and asked again.
+func _none_overlap(bricks: Array) -> bool:
+	for brick: BrickWorld.Brick in bricks:
+		_builder.lattice.release(brick.id)
+		var fits: bool = _builder.room_for(brick.part_id, brick.transform, false)
+		_builder.register(brick.id, brick.part_id, brick.transform)
+		if not fits:
+			print("    %s at %s has no room: %d in the way" % [brick.part_id,
+				str(brick.transform.origin), _builder.room_blocker])
+			return false
+	return true
 
 
 ## Edit, Cut takes the selection off the model. Two commands shared the

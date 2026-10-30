@@ -4308,6 +4308,14 @@
       "tests": []
     },
     {
+      "id": "ui:patterns",
+      "kind": "ui",
+      "entry": "src/assembly/pattern.gd",
+      "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, Round or Along a hose, a count In all, the copies shown as they will go; one Ctrl+Z takes them all back)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:photo-real render",
       "kind": "ui",
       "entry": "src/ui/render_dialog.gd",

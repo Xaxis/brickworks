@@ -43,6 +43,8 @@ var see_inside: SeeInside
 var stress: StressView
 ## File, Versions…: src/ui/versions_dialog.gd.
 var versions: VersionsDialog
+## Edit, Pattern…: copies in a row, round, or along a hose (Pattern).
+var pattern_dialog: PatternDialog
 ## Help, Send feedback… (FeedbackDialog).
 var feedback: FeedbackDialog
 ## Find a command (Ctrl+/): src/ui/command_palette.gd.
@@ -103,7 +105,7 @@ const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", ">recent", ">import", "-", "save", "save_as",
 		"versions", "-", "share", "together", ">export", "render", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
-		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
+		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
@@ -361,6 +363,19 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	versions.bar = bar
 	add_child(versions)
 
+	pattern_dialog = PatternDialog.new()
+	pattern_dialog.builder = builder
+	pattern_dialog.world = world
+	pattern_dialog.library = library
+	pattern_dialog.say = bar.say
+	pattern_dialog.edited = func() -> void: verbs.edited.call()
+	pattern_dialog.pattern.builder = builder
+	pattern_dialog.pattern.world = world
+	pattern_dialog.pattern.library = library
+	# Its copies are drawn in the model's world, not the dialog's window.
+	add_child(pattern_dialog.pattern)
+	add_child(pattern_dialog)
+
 	feedback = FeedbackDialog.new()
 	feedback.store = store
 	feedback.world = world
@@ -515,7 +530,7 @@ func work_size(name: String) -> int:
 
 
 ## The commands whose work grows with the selection rather than the model.
-const ON_THE_SELECTION: Array[String] = ["mirror", "replace", "duplicate", "paint",
+const ON_THE_SELECTION: Array[String] = ["mirror", "replace", "duplicate", "pattern", "paint",
 	"cut_parts", "copy", "delete", "hide", "isolate", "lock", "make_submodel",
 	"leave_submodel", "make_unique", "rotate_held", "tip_held"]
 
@@ -562,7 +577,8 @@ const STEPPED_SLOW_FROM := 2000
 ## build? reads the collection against every set, whatever is on the
 ## baseplate.
 const SLOW_FROM: Dictionary = {
-	"mirror": 200, "replace": 200, "duplicate": 300, "paste": 300, "cut_parts": 600,
+	"mirror": 200, "replace": 200, "duplicate": 300, "pattern": 300, "paste": 300,
+	"cut_parts": 600,
 	"paint": 600, "hide": 3000, "isolate": 3000, "leave_submodel": 2000,
 	"make_unique": 2000,
 	"step_close": 300, "step_new": 300, "step_prev": 300, "step_next": 300, "step_earlier": 300,
@@ -891,6 +907,12 @@ func _define() -> void:
 		"Hold a copy of what was copied: click to put it down, R turns it")
 	_add("duplicate", "Duplicate", CTRL | KEY_D, func() -> void: verbs.duplicate_selection(),
 		selected, "Hold a copy of the selection, to put down beside it")
+	# src/assembly/pattern.gd, src/ui/pattern_dialog.gd.
+	_add("pattern", "Pattern…", CTRL | SHIFT | KEY_D, func() -> void:
+		if builder.is_carrying():
+			verbs.put_away()
+		pattern_dialog.open(builder.selection.keys()), selected,
+		"Copies of the selection in a row, round, or along a hose, put down at once")
 	_add("delete", "Delete", KEY_DELETE, func() -> void: await verbs.press("delete"),
 		selected, "Take the selection off the model")
 	_add("select_all", "Select all", CTRL | KEY_A, func() -> void: verbs.select_by("all"),
@@ -2081,6 +2103,11 @@ func handle_key(key: InputEventKey) -> bool:
 			if not key.shift_pressed and not held and not key.alt_pressed \
 					and can("step_close"):
 				return run("step_close")
+		KEY_D:
+			# Ctrl+D alone is Duplicate (EditVerbs); with Shift, its copies
+			# laid out at once.
+			if held and key.shift_pressed and not key.alt_pressed:
+				return run("pattern")
 	return false
 
 

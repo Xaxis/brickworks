@@ -4098,6 +4098,13 @@
     },
     {
       "kind": "ui",
+      "label": "patterns",
+      "entry": "src/assembly/pattern.gd",
+      "reach": "godot --path .  (after a Ctrl-D or Clone copy is put down: type 11x for 11 in the row, or /4 to cut the gap in four, Enter; or select and Edit, Pattern... (Ctrl+Shift+D): In a row, Round or Along a hose, a count In all, the copies shown as they will go; one Ctrl+Z takes them all back)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "type a number while moving",
       "entry": "src/ui/typed_entry.gd",
       "reach": "godot --path .  (a part or a copy in hand, or straight after R or T: type 3x, -2z, 2py, -14ly, 23.58r or 30t; the ghost shows it, red where there is no room; Enter puts it down as one undo, Esc as it was)",

@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:palette in a browser, ui:connect by a point, cli:connect probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:palette in a browser, ui:connect by a point, cli:connect probe -->
 
 ## Sub-features
 
@@ -139,6 +139,23 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   its parts, and a side face pushes it out until its edge meets the face. Copy
   also writes LDraw lines to the system clipboard (where they were in the model),
   and LDraw another program put there pastes in.
+- `patterns` (`src/assembly/pattern.gd`, `src/ui/pattern_dialog.gd`; APP_UX B6):
+  copies laid out at once. Straight after a `Ctrl-D` or Clone copy is put down,
+  `11x` (or `11*`, `*11`) makes it one of 11 in the row, each the same move
+  again, and `/4` cuts the gap from where it came from in four; read through
+  `TypedEntry.reads` (`EditVerbs._copies_read`) while that copy is still the last
+  change, and folded with it into one undo. `x 11` stays a move. Edit,
+  Pattern… (`Ctrl+Shift+D`): In a row (along x, z or up, every so many studs or
+  plates), Round (what it stands on, the joint it hangs on, or the floor's
+  middle; each turn the whole way round shared out until one is typed), Along a
+  hose (a laid hose, tube or chain's centreline, the copies turned as it
+  turns). "In all" counts the selection. Every copy is checked by
+  `Builder.room_for` against the model and the copies before it (stood in the
+  lattice under negative ids), drawn as ghosts, red where it has no room, and a
+  refusal says which copy and what is in the way; nothing is put down unless all
+  fit. `handbuild_probe -- only=patterns`: a fence of 12 posts in 5 actions, `/4`,
+  a row through a brick refused, a ring of 16 bricks on turntables in 6 actions,
+  four along a pneumatic tube, each one Ctrl+Z.
 - `move and turn a selection`: `X` with a selection picks it up to follow the
   pointer; a click puts it down (lifting and putting down are one undo); `Esc`
   puts it back. `R` / `Shift-R` turn a selection where it stands, about the

@@ -52,6 +52,9 @@ const COMMANDS: Dictionary = {
 	"undo": "undo", "redo": "undo",
 	"cut_parts": "edit_model", "copy": "edit_model", "paste": "edit_model",
 	"duplicate": "edit_model", "delete": "edit_model", "paint": "edit_model",
+	# A session repeats a named section stepped or round a centre
+	# (edit_model's repeat_section; submit_design's repeat pattern).
+	"pattern": "edit_model",
 	"replace": "edit_model", "make_submodel": "edit_model",
 	"step_*": "edit_steps", "timeline": "edit_steps", "booklet_*": "edit_booklet",
 	"floor_*": "set_floor",
