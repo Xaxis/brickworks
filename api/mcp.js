@@ -161,7 +161,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
-import { challenge, grantOf, originOf, resourceOf } from "./_oauth.js";
+import { challenge, clientLabel, grantOf, isClaude, originOf, resourceOf } from "./_oauth.js";
 import {
   ASK_VIEWS, EXTENSION, VIEWER_ONLY, asRead, asksViews, isViewerOnly, partRead, sessionFor, sessionShows,
   showsApps, viewerAsked, viewerListed, viewerPart, viewerRead, withPartsRoot, withViewer,
@@ -594,9 +594,44 @@ const RELAY_TOOLS = [
   },
 ];
 
+// [schema] with every array saying what its items are: an array that does
+// not is refused by OpenAI's function calling ("array schema missing
+// items"), and the app's attach.align is one (a direction word or a
+// vector, either). {} is anything, which is what it already meant.
+function itemsSaid(schema) {
+  if (Array.isArray(schema)) return schema.map(itemsSaid);
+  if (!schema || typeof schema !== "object") return schema;
+  const out = {};
+  for (const [key, value] of Object.entries(schema)) {
+    out[key] = key === "properties" && value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.entries(value).map(([name, one]) => [name, itemsSaid(one)]))
+      : ["items", "additionalProperties", "anyOf", "oneOf", "allOf", "not"].includes(key) ? itemsSaid(value) : value;
+  }
+  if (out.type === "array" && out.items === undefined) out.items = {};
+  return out;
+}
+
+// What a client other than Claude's is given (ChatGPT, 2026-10-29): the
+// same tools, in the JSON Schema OpenAI's function calling takes, and with
+// all three of the hints OpenAI asks every tool to state ("set readOnlyHint,
+// destructiveHint, and openWorldHint to explicit boolean values"): a tool
+// that only looks destroys nothing. Claude is given the list as it always
+// was, word for word.
+export function portable(tool) {
+  const hints = tool.annotations && typeof tool.annotations === "object" ? tool.annotations : {};
+  return {
+    ...tool,
+    inputSchema: itemsSaid(tool.inputSchema),
+    annotations: hints.readOnlyHint === true && hints.destructiveHint === undefined
+      ? { ...hints, destructiveHint: false } : hints,
+  };
+}
+
 // [shows]: the session's client shows pages, and is given the viewer's
-// own tools too, for its page alone.
-function toolsWithTabs(tools, shows = false) {
+// own tools too, for its page alone. [claude]: the client is one of
+// Claude's, which is given the list exactly as it always was; any other is
+// given it portable.
+export function toolsWithTabs(tools, shows = false, claude = true) {
   const own = (Array.isArray(tools) ? tools : []).map((tool) => {
     const schema = tool && tool.inputSchema && typeof tool.inputSchema === "object" ? tool.inputSchema : {};
     return withViewer({
@@ -604,7 +639,8 @@ function toolsWithTabs(tools, shows = false) {
       inputSchema: { type: "object", ...schema, properties: { ...(schema.properties || {}), target: TARGET } },
     });
   });
-  return [...own, ...RELAY_TOOLS, ...(shows ? VIEWER_ONLY : [])];
+  const all = [...own, ...RELAY_TOOLS, ...(shows ? VIEWER_ONLY : [])];
+  return claude ? all : all.map(portable);
 }
 
 // Which tab a session is working in (relay_picks): set by its first call
@@ -691,6 +727,8 @@ function oneTab(channel, session) {
   const listKey = session ? `session:${session}` : `address:${channel}`;
   return {
     shows: sessionShows(session),
+    // A tab's own address is pasted into Claude: its list as it always was.
+    claude: true,
     tabs: async () => {
       const tab = await tabOf(channel);
       return tab ? [tab] : [];
@@ -718,6 +756,9 @@ function accountTabs(grant, origin, session, early = null) {
   };
   return {
     shows: sessionShows(session),
+    // Which app signed in (api/oauth.js): Claude's are given the tool list
+    // as they always were, any other (ChatGPT) the portable one.
+    claude: isClaude(clientLabel(grant)),
     tabs: () => ahead("tabs") || tabsOf(grant.owner),
     pick: () => ahead("pick") || pickOf(key),
     lists: () => ahead("lists") || listsOf(key),
@@ -1095,7 +1136,7 @@ async function fromClaude(where, message, response, sessionToGive = null, stream
       return send({ jsonrpc: "2.0", id, result: {} });
     }
     if (message.method === "tools/list") {
-      return send({ jsonrpc: "2.0", id, result: { tools: toolsWithTabs(hello.tools, where.shows) } });
+      return send({ jsonrpc: "2.0", id, result: { tools: toolsWithTabs(hello.tools, where.shows, where.claude) } });
     }
     if (sessionToGive) response.setHeader("mcp-session-id", sessionToGive);
     return send({

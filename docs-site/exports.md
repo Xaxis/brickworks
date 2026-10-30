@@ -61,7 +61,7 @@ The choices are a photographer's:
 
 ### The Product look {#product-look}
 
-**Product** draws the model as a set's own pictures are: glossy plastic with rounded edges, clear parts that bend the light and keep their colour, and a studio's key, fill and rim light, with film-like tones. Black parts stay black and every colour stays true to its LDraw colour. It goes with any backdrop; at Best, with an aperture set, depth of field softens what is out of focus.
+**Product** draws the model as a set's own pictures are: glossy plastic with rounded edges and studs, clear parts you see into and through (their own walls and tubes, and what is behind them, in their colour), and a studio's key, fill and rim light, with film-like tones. Black parts stay black and every colour stays true to its LDraw colour. It goes with any backdrop; at Best, with an aperture set, depth of field softens what is out of focus.
 
 <!-- covers
 lib:product look

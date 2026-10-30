@@ -4,6 +4,11 @@
 #   tools/deploy.sh --prod          the one the domain points at
 #   tools/deploy.sh --unit          a unit's preview (unit_preview.sh), without
 #                                   the secrets unreviewed code is not to hold
+#   tools/deploy.sh --unit --billing-stand-in
+#                                   and with plans on in test mode against the
+#                                   stand-in Admission, in its functions'
+#                                   own process (api/_billing.js), for
+#                                   tools/web/billing_flow.mjs
 #   tools/deploy.sh --no-export     deploy what is already in build/web
 #   tools/deploy.sh --no-check      skip the browser proof (not advised)
 #   tools/deploy.sh --dir=DIR       deploy a build from elsewhere (a kept build: build/kept/<id>/web);
@@ -23,11 +28,12 @@ set -uo pipefail
 # shipping something else entirely.
 cd "$(dirname "$0")/.." || exit 1
 
-prod=0; unit=0; do_export=1; do_check=1; dir=build/web
+prod=0; unit=0; stand_in=0; do_export=1; do_check=1; dir=build/web
 for a in "$@"; do
   case "$a" in
     --prod) prod=1 ;;
     --unit) unit=1 ;;
+    --billing-stand-in) stand_in=1 ;;
     --no-export) do_export=0 ;;
     --no-check) do_check=0 ;;
     --dir=*) dir="${a#--dir=}"; do_export=0 ;;
@@ -35,6 +41,7 @@ for a in "$@"; do
   esac
 done
 if [ "$prod" = 1 ] && [ "$unit" = 1 ]; then echo "deploy: --unit is a preview, never --prod"; exit 2; fi
+if [ "$stand_in" = 1 ] && [ "$unit" = 0 ]; then echo "deploy: --billing-stand-in is a unit's preview's alone (--unit)"; exit 2; fi
 
 [ -f .env ] && set -a && . ./.env && set +a
 if [ -z "${VERCEL_TOKEN:-}" ]; then echo "deploy FAILED: no VERCEL_TOKEN (.env or environment)"; exit 1; fi
@@ -194,6 +201,9 @@ for handler in api/*.js; do
   # The one model card (web/card.js), which api/_card.js passes through in
   # a checkout: here the file itself, so a function needs no web/.
   cp web/card.js "$fn/_card.js"
+  # The stand-in Admission, beside the function only on a preview that asks
+  # for it: no other deployment holds it at all.
+  if [ "$stand_in" = 1 ]; then cp tests/fixtures/billing/fake_admission.mjs "$fn/_admission_stand_in.mjs"; fi
   if [ "$route" = collection ]; then
     if [ ! -f assets/generated/sets/index.json ]; then
       echo "deploy FAILED: no assets/generated/sets/index.json for /api/collection (tools/collection_data.py)"; exit 1
@@ -521,6 +531,15 @@ blank=()
 if [ "$unit" = 1 ]; then
   for k in "${withheld[@]}"; do blank+=(--env "$k="); done
   echo "deploy: a unit's preview, without ${withheld[*]}"
+fi
+# Plans on for this deployment alone, never on the project (api/_billing.js):
+# test mode, the stand-in's own key and webhook secret (a test's, nobody's
+# real one: tests/fixtures/billing/fake_admission.mjs), and the stand-in
+# asked for by name, so no request leaves the function for Admission.
+if [ "$stand_in" = 1 ]; then
+  blank+=(--env BRICKWORKS_BILLING=test --env ADMISSION_KEY=adm_test_00000000000000000000000000000000
+    --env ADMISSION_URL=stand-in --env ADMISSION_WEBHOOK_SECRET=adm_whsec_standin0000000000000000000000)
+  echo "deploy: plans on in test mode, against the stand-in Admission"
 fi
 npx --yes vercel@48 deploy --prebuilt --prod --skip-domain --yes --archive=tgz \
   ${blank[@]+"${blank[@]}"} --token "$VERCEL_TOKEN" >"$log" 2>&1

@@ -1212,13 +1212,6 @@
       "area": "view"
     },
     {
-      "kind": "lib",
-      "label": "product look",
-      "entry": "src/render/plastic_product.gdshader",
-      "reach": "tools/probe.sh product_render_probe  (windowed, on the GPU: Render's Product look draws in the product shaders, each backdrop as named, depth of field softens, the window's frame cost and environment unchanged; sixteen colour swatches on the white sweep against LDraw: black black, the colours and clear colours near their own, no shadow hatching)  /  tools/probe.sh render_probe -- --model=models/sports_car.ldr --look=product --gradient=1 --backdrop=#f5f6f8 --quality=best --size=1280x720 --picture=OUT.png",
-      "area": "view"
-    },
-    {
       "kind": "api",
       "label": "GET/POST /api/share",
       "entry": "api/share.js",
@@ -3599,6 +3592,48 @@
       "area": "model-io"
     },
     {
+      "kind": "api",
+      "label": "paying for Pro",
+      "entry": "api/plans.js",
+      "reach": "python3 tools/minitest.py tests/test_billing_pay.py   (POST /api/plans?op=checkout {interval, consent: true, amount}, ?op=portal {flow}, ?op=webhook signed by Admission; only with BRICKWORKS_BILLING test or live, off each is the interest form's 422; the agreement kept first in supabase/plan_consents.sql)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "your plan on settings",
+      "entry": "web/plan.js",
+      "reach": "<deployment>/settings#plan signed in, plans on   (the Plan row: Free with Upgrade to Pro and the step before Checkout, Pro with Manage billing, Pro until, Update your card; ?upgrade=month|year opens the step; nothing drawn or asked with plans off)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "billing browser flow",
+      "entry": "tools/web/billing_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/billing_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in, or plans off: nothing answers; --stand-in=<tools/web/admission_stand_in.mjs> on this machine also pays and cancels; preview check [billing])",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the stand-in Admission",
+      "entry": "tools/web/admission_stand_in.mjs",
+      "reach": "node tools/web/admission_stand_in.mjs 8891 --hook=http://127.0.0.1:8890/api/plans?op=webhook   (Admission's API from tests/fixtures/billing/fake_admission.mjs over HTTP for relay_server.mjs with ADMISSION_URL at it; POST /__stand_in/pay or /cancel sends the signed webhook, /__stand_in/erased says what was erased)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "a deleted account's plan ended at Admission",
+      "entry": "api/account.js",
+      "reach": "python3 tools/minitest.py tests/test_account_erase.py   (POST /api/account?op=delete {confirm}: with BRICKWORKS_BILLING test or live the customer is erased at Admission and a subscription ended first, and nothing is deleted when Admission cannot; off, Admission is never asked; billing_flow.mjs --stand-in deletes a paying account from /settings)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "product look",
+      "entry": "src/render/plastic_product.gdshader",
+      "reach": "tools/probe.sh product_render_probe  (windowed, on the GPU: Render's Product look draws in the product shaders, each backdrop as named, depth of field softens, the window's frame cost and environment unchanged; sixteen colour swatches on the white sweep against LDraw: black black, the colours and clear colours near their own, no shadow hatching; a clear wall shows a clear red one behind it, and on nothing is glass, not black)  /  tools/probe.sh render_probe -- --model=models/sports_car.ldr --look=product --gradient=1 --backdrop=#f5f6f8 --quality=best --size=1280x720 --picture=OUT.png",
+      "area": "view"
+    },
+    {
       "kind": "lib",
       "label": "designing with any provider on the person's key",
       "entry": "src/ai/designer_loop.gd",
@@ -3751,6 +3786,20 @@
       "entry": "tools/web/relay_timing.mjs",
       "reach": "node tools/web/relay_server.mjs 8790, then node tools/web/relay_timing.mjs --url=http://127.0.0.1:8790 [--rounds=4]   (with .env sourced; or --url=<preview> with BW_BYPASS)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "ChatGPT connector flow",
+      "entry": "tools/web/chatgpt_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/chatgpt_flow.mjs --url=<deployment or relay_server> [--out=shots/chatgpt]   (with .env sourced)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "product look in a browser",
+      "entry": "tools/web/product_render_flow.mjs",
+      "reach": "node tools/web/product_render_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=OUT   (a local export served by tools/web/serve.py, with .env sourced; or --url=<a preview>/app --bypass=$VERCEL_BYPASS: Product under Compatibility on each backdrop, the red glass red and the clear see-through)",
+      "area": "view"
     }
   ]
 }
