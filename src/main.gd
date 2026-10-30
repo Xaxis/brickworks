@@ -753,6 +753,9 @@ func _tell_page() -> void:
 		"selected": _builder.selection.size(),
 		# View, Split: whether the second view shows.
 		"split": _split != null and _split.is_showing(),
+		# View, Reference picture…: the picture to build over, as the model
+		# keeps it (ReferenceImage.page_state).
+		"reference": _reference.page_state() if _reference != null else {},
 		# ...and which, the first few: tools/web/centre_check.mjs clicks a
 		# part and asks whether that one was taken.
 		"selection": _builder.selection.keys().slice(0, 12),
@@ -5262,6 +5265,8 @@ func _build_ui() -> void:
 	_reference.over_panel = _over_panel_at
 	_reference.say = _bar.say
 	add_child(_reference)
+	# Each change to it one step of Undo.
+	_builder.reference_hook = _reference.put
 
 	# Export's picture and shop lists: src/ui/exports.gd.
 	_exports = Exports.new()

@@ -90,7 +90,9 @@ ui:stud grid
 - **Locked** leaves the mouse to the model: a click through the picture picks the part behind it. Unlocked, a click on the picture picks it out.
 - **Choose another…** swaps the picture and keeps where it lies; **Remove** takes it away.
 
-The picture is kept in the model's file, on lines other LDraw programs ignore, so it opens again with the model. It is never in a render, the instructions, the parts list, an export or a shared link.
+Each change is one step of **Edit › Undo**, whether you lay the picture, move it, size it, fade it, lock it, swap it or take it away. Dragging the opacity slider counts as one step, and so does typing a width.
+
+The picture is kept in the model's file, on lines other LDraw programs ignore, so it opens again with the model. A change to the picture alone counts as unsaved work, so New and Open ask before replacing the model, and the autosave keeps the picture. It is never in a render, the instructions, the parts list, an export or a shared link.
 
 <!-- covers
 ui:reference picture

@@ -126,7 +126,21 @@ picture the assistant is shown.
   picture) and locked (picks the brick behind, seen from the back), saves,
   begins a new model (gone), opens the save (the same, drawn the same),
   and finds none of its magenta in a Render, the booklet's pictures or
-  Export's picture while the window shows it.
+  Export's picture while the window shows it. Every change is one step of
+  the person's history (`{"undo": "reference"}`, `Builder.reference_hook` =
+  `ReferenceImage.put`); a change to the same setting within
+  `ONE_STEP_MS`, or while the opacity slider is held, joins the step before.
+  The probe checks Undo, Redo and Undo for laid, slider dragged (a pause in
+  it), width typed, slid, sized, stood up, locked, Choose another… and
+  Remove. `has_unsaved_work` compares the picture with the saved file's
+  (`ReferenceImage.same`) and counts an empty baseplate with a picture; the
+  autosave of one brings the picture back (`_autosaved`). The probe checks
+  New asks after an opacity change alone, Undo back to saved asks nothing,
+  and `write_now` + `restore()` of a picture on an empty baseplate. Its
+  undo and unsaved checks fail with `builder.record` out of `_kept`, or the
+  picture out of `has_unsaved_work` and `_autosaved`. Browser:
+  `window.brickworksState.reference` (`page_state`: the said() settings, the
+  picture's length, shown, settings open).
 - `camera controls`: orbit, pan, zoom, and framing what is built. `_built_bounds()`
   is what everything frames against, baseplate excluded. View > Default view
   (0, `Main.default_view`) turns to the usual angle and frames what is built,

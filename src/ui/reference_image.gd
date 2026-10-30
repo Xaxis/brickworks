@@ -11,6 +11,10 @@
 ##   Esc, or a click anywhere else, puts it down.
 ## - Locked, it is not there for the mouse: a click through it is the
 ##   model's, and picks the part behind.
+## - Each change is one step of the person's history: laid, chosen again,
+##   moved, sized, faded, locked or taken away, Undo puts it back as it was
+##   (Builder.reference_hook). A slider dragged or a width typed a figure at
+##   a time is one step, not one a figure.
 ## - Kept in the model's file after its first line, on two lines LDraw
 ##   readers ignore (META, PICTURE_META): where it lies and how it looks, then
 ##   the picture itself, as a WebP in base64 made once when it is chosen, so
@@ -54,6 +58,8 @@ const CORNER := 10.0
 const PICK := 9.0
 ## A corner and the one across from it, as (along, up) from the middle.
 const SIGNS: Array[Vector2] = [Vector2(-1, 1), Vector2(1, 1), Vector2(1, -1), Vector2(-1, -1)]
+## A change to the same setting within this of the last is the same step, ms.
+const ONE_STEP_MS := 1500
 
 var store: ModelStore
 var camera: CadCamera
@@ -100,6 +106,12 @@ var _fade: HSlider
 var _opacity: SpinBox
 var _lock: CheckBox
 var _filling: bool = false
+## The newest step this kept in the history, which setting it changed, and
+## when it last did; and whether the opacity slider is being dragged.
+var _step: Dictionary = {}
+var _step_field: String = ""
+var _step_at: int = 0
+var _sliding: bool = false
 
 
 func _ready() -> void:
@@ -190,7 +202,8 @@ func take(image: Image, called: String) -> void:
 		locked = false
 		centre = _laid_centre()
 	_show()
-	_kept()
+	_kept(("laid the reference picture %s" if first else "chose another reference picture, %s")
+		% picture_name)
 	if builder != null:
 		builder.clear_selection()
 	open()
@@ -201,7 +214,7 @@ func take(image: Image, called: String) -> void:
 func remove_picture() -> void:
 	var was: String = picture_name
 	_clear()
-	_kept()
+	_kept("took away the reference picture %s" % was)
 	_dialog.hide()
 	say.call("took away the reference picture %s" % was)
 
@@ -231,20 +244,39 @@ func said() -> Dictionary:
 ## model is opened, and when one is begun.
 func from_store() -> void:
 	set_selected(false)
-	var kept: Dictionary = store.reference if store != null else {}
-	if kept.is_empty() or not _use(str(kept["picture"])):
+	_set_to(store.reference if store != null else {})
+	if store != null and not has_picture():
+		store.reference = {}
+
+
+## Put as [param kept] says ([method said], {} for none), and kept so: Undo
+## and Redo (Builder.reference_hook). How it was is returned, the step that
+## puts it back.
+func put(kept: Dictionary) -> Dictionary:
+	var was: Dictionary = store.reference if store != null else said()
+	_press = {}
+	_set_to(kept)
+	if store != null:
+		store.reference = said()
+		store.touch()
+	return was
+
+
+func _set_to(kept: Dictionary) -> void:
+	var data: String = str(kept.get("picture", ""))
+	if kept.is_empty() or not (data == _data or _use(data)):
 		_clear()
-		if store != null:
-			store.reference = {}
 		_dialog.hide()
 		return
 	var at: Array = kept["at"]
 	on = kept["on"]
-	centre = Vector3(at[0], at[1], at[2]) + store.lift()
+	centre = Vector3(at[0], at[1], at[2]) + (store.lift() if store != null else Vector3.ZERO)
 	width = kept["width"]
 	opacity = kept["opacity"]
 	locked = kept["locked"]
 	picture_name = kept["name"]
+	# Picked out still only where it may be.
+	set_selected(selected)
 	_show()
 	if _dialog.visible:
 		_fill()
@@ -280,6 +312,18 @@ func meets(origin: Vector3, direction: Vector3) -> float:
 	if absf(off.dot(axes.x)) > width * 0.5 or absf(off.dot(axes.y)) > height() * 0.5:
 		return -1.0
 	return along
+
+
+## What a browser check reads (window.brickworksState.reference): the
+## picture as the model keeps it, its pixels by how many characters they take.
+func page_state() -> Dictionary:
+	var kept: Dictionary = said()
+	if kept.is_empty():
+		return {}
+	kept["picture"] = str(kept["picture"]).length()
+	kept["shown"] = _mesh.visible and is_visible_in_tree()
+	kept["settings"] = _dialog.visible
+	return kept
 
 
 ## The settings' fields by name, for a probe to fill as a person does.
@@ -360,7 +404,7 @@ func _while_pressed(event: InputEvent) -> void:
 	var press: Dictionary = _press
 	_press = {}
 	if bool(press["moved"]):
-		_kept()
+		_kept("%s the reference picture" % ("moved" if int(press["corner"]) < 0 else "sized"))
 		_fill()
 		say.call("reference picture %s wide" % _studs_words(width))
 		return
@@ -490,11 +534,26 @@ func _clear() -> void:
 	_mesh.visible = false
 
 
-## Told to the model, whose next save and autosave keep it.
-func _kept() -> void:
+## Told to the model, whose next save and autosave keep it, and kept as one
+## step of the person's history called [param words]. A change to the same
+## [param field] straight after the last (the slider dragged, a width typed
+## a figure at a time) is part of that step.
+func _kept(words: String, field: String = "") -> void:
 	if store == null:
 		return
-	store.reference = said()
+	var was: Dictionary = store.reference
+	var now: Dictionary = said()
+	if same(was, now):
+		return
+	var at: int = Time.get_ticks_msec()
+	var going_on: bool = not field.is_empty() and field == _step_field and builder != null \
+		and is_same(builder.last_step(), _step) and (_sliding or at - _step_at < ONE_STEP_MS)
+	if builder != null and not going_on:
+		builder.record([{"undo": "reference", "reference": was}], words)
+		_step = builder.last_step()
+		_step_field = field
+	_step_at = at
+	store.reference = now
 	store.touch()
 
 
@@ -562,7 +621,7 @@ func _make_dialog() -> void:
 			return
 		on = PLANES[index]
 		centre = _laid_centre()
-		_changed())
+		_changed("the reference picture %s" % str(PLANE_WORDS[on]).to_lower()))
 	column.add_child(_line("Lies", _plane, ""))
 
 	# A stud is 20 LDU, so a step of 0.05 is one LDU.
@@ -575,7 +634,7 @@ func _make_dialog() -> void:
 		# A standing one stays standing where it stood.
 		if on != "floor":
 			centre.y = bottom + height() * 0.5
-		_changed())
+		_changed("sized the reference picture", "width"))
 	column.add_child(_line("Width", _width, "studs"))
 
 	_fade = HSlider.new()
@@ -596,7 +655,9 @@ func _make_dialog() -> void:
 			other.value = percent
 			_filling = false
 			opacity = clampf(percent / 100.0, 0.0, 1.0)
-			_changed())
+			_changed("changed the reference picture's opacity", "opacity"))
+	_fade.drag_started.connect(func() -> void: _sliding = true)
+	_fade.drag_ended.connect(func(_moved: bool) -> void: _sliding = false)
 	var fading := HBoxContainer.new()
 	fading.add_theme_constant_override("separation", 8)
 	fading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -611,7 +672,7 @@ func _make_dialog() -> void:
 			return
 		locked = on_now
 		set_selected(not locked)
-		_changed())
+		_changed("%s the reference picture" % ("locked" if locked else "unlocked")))
 	column.add_child(_lock)
 	_dialog.visibility_changed.connect(func() -> void:
 		if not _dialog.visible:
@@ -619,10 +680,10 @@ func _make_dialog() -> void:
 	add_child(_dialog)
 
 
-## Shown now, and kept.
-func _changed() -> void:
+## Shown now, and kept as [method _kept] keeps it.
+func _changed(words: String, field: String = "") -> void:
 	_show()
-	_kept()
+	_kept(words, field)
 
 
 ## The fields filled from the picture as it is.
@@ -709,13 +770,24 @@ static func written_into(text: String, kept: Dictionary) -> String:
 	var picture: String = str(kept.get("picture", ""))
 	if picture.is_empty():
 		return text
-	var settings: Dictionary = kept.duplicate()
-	settings.erase("picture")
-	var lines: String = META + JSON.stringify(settings) + "\n" + PICTURE_META + picture + "\n"
+	var lines: String = META + JSON.stringify(_settings(kept)) + "\n" + PICTURE_META + picture + "\n"
 	var cut: int = text.find("\n")
 	if cut < 0:
 		return text + "\n" + lines
 	return text.substr(0, cut + 1) + lines + text.substr(cut + 1)
+
+
+## Whether [param one] and [param other] ([method said], or [method read]
+## of a file) are the same picture, laid the same, as a file would keep them.
+static func same(one: Dictionary, other: Dictionary) -> bool:
+	return str(one.get("picture", "")) == str(other.get("picture", "")) \
+		and JSON.stringify(_settings(one)) == JSON.stringify(_settings(other))
+
+
+static func _settings(kept: Dictionary) -> Dictionary:
+	var settings: Dictionary = kept.duplicate()
+	settings.erase("picture")
+	return settings
 
 
 ## What follows [param meta] on its own line of [param text], or "".

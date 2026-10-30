@@ -403,7 +403,9 @@ func _autosaved() -> String:
 	if text.is_empty() or _has_parts(text):
 		return text
 	var name: String = title_in(text, "")
-	_begin_as(name if not name.is_empty() else UNTITLED)
+	# A picture laid to build over comes back with it: the first thing a
+	# person tracing a plan does, before any part.
+	_begin_as(name if not name.is_empty() else UNTITLED, ReferenceImage.read(text))
 	left_empty = true
 	return ""
 
@@ -589,8 +591,9 @@ func begin(name: String) -> void:
 	_begin_as(UNTITLED if wanted.is_empty() or wanted == UNTITLED else _free_name(wanted))
 
 
-## [method begin] under [param named] as it is.
-func _begin_as(named: String) -> void:
+## [method begin] under [param named] as it is, with the picture to build
+## over [param picture] keeps (ReferenceImage.read), or none.
+func _begin_as(named: String, picture: Dictionary = {}) -> void:
 	title = named
 	# Begun empty by the person: the autosave may keep it so.
 	emptied = true
@@ -605,7 +608,7 @@ func _begin_as(named: String) -> void:
 	hidden_scheme = {}
 	pins = PinnedComments.new()
 	bin_sets = PackedStringArray()
-	reference = {}
+	reference = picture
 	# Begun empty here, who lays each part from now on is known. Named as a
 	# design stands, its parts are still whoever laid them.
 	if world == null or _is_empty():
@@ -692,7 +695,8 @@ func has_unsaved_work() -> bool:
 			and builder.history_depth() == 0 and builder._redo.is_empty() \
 			and _parts_with_awaited() == _opened_parts:
 		return false
-	if world.brick_count() - scenery.size() <= 0:
+	# Nor an empty baseplate, unless a picture to build over is laid on it.
+	if world.brick_count() - scenery.size() <= 0 and reference.is_empty():
 		return false
 	# The model written out and compared only when there is a saved one to
 	# compare it with: on Orthanc that is a third of a second, and New asks
@@ -706,7 +710,10 @@ func has_unsaved_work() -> bool:
 			continue
 		if now.is_empty():
 			now = _brick_lines(to_text(UNTITLED))
-		if _brick_lines(FileAccess.get_file_as_string(kept)) == now:
+		# The picture to build over too (ReferenceImage): changed alone, it is
+		# not what was saved.
+		var text: String = FileAccess.get_file_as_string(kept)
+		if _brick_lines(text) == now and ReferenceImage.same(ReferenceImage.read(text), reference):
 			return false
 	return true
 
@@ -995,7 +1002,8 @@ var _asides: int = 0
 func _set_aside(paced: bool) -> void:
 	if world.generation() != _opens_in:
 		_forget_opens()
-	if not keeps or read_only or laying or _is_empty():
+	# An empty baseplate with a picture laid to build over is kept too.
+	if not keeps or read_only or laying or (_is_empty() and reference.is_empty()):
 		return
 	DirAccess.make_dir_recursive_absolute(TabSession.path(SET_ASIDE))
 	_asides += 1

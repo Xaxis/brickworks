@@ -28,6 +28,16 @@
 ## Also: a corner dragged sizes it from the corner across, keeping its shape;
 ## the picture dragged slides it in its plane; never in the model's exported
 ## or published text; and gone with a new model.
+##
+## And the app's baseline, each failing without its fix:
+##   - every change one step of Edit › Undo, which puts it back as it was,
+##     and Redo does it again: laid, the opacity slider dragged (a pause in
+##     the drag and all), its width typed a figure at a time, slid, sized by
+##     a corner, stood up, locked, another chosen, taken away;
+##   - a change to the picture alone is unsaved work, so New asks first, and
+##     Undo back to as saved is none; a picture laid on an empty baseplate is
+##     unsaved work too, and the autosave keeps it: the app started again
+##     brings it back.
 extends SceneTree
 
 const PART := "3001"
@@ -100,9 +110,11 @@ func _run() -> void:
 	await _width()
 	await _opacity()
 	await _corners()
+	await _undo()
 	await _lock()
 	await _saved()
 	await _absent()
+	await _unsaved(file)
 	_finish()
 
 
@@ -133,13 +145,13 @@ func _model() -> void:
 
 
 ## A picture to choose, written where the probe keeps its files.
-func _picture_file() -> String:
+func _picture_file(called: String = "plan.png", colour: Color = MAGENTA) -> String:
 	var image := Image.create(SIZE.x, SIZE.y, false, Image.FORMAT_RGBA8)
-	image.fill(MAGENTA)
+	image.fill(colour)
 	image.fill_rect(Rect2i(0, 0, SIZE.x, SIZE.y / 6), Color.WHITE)
 	var folder: String = OS.get_user_data_dir().path_join("refimage_probe")
 	DirAccess.make_dir_recursive_absolute(folder)
-	var path: String = folder.path_join("plan.png")
+	var path: String = folder.path_join(called)
 	image.save_png(path)
 	return path
 
@@ -157,6 +169,7 @@ func _add(file: String) -> void:
 	_check("Find a command finds it by \"reference\" (%s)" % str(_shell.palette.matches("reference")),
 		_shell.palette != null and "reference" in _shell.palette.matches("reference"))
 	_check("no picture before", not _reference.has_picture())
+	var depth: int = _builder.history_depth()
 	_acts = 0
 	# 1: View.
 	var view_menu: MenuButton = _shell.menu("View")
@@ -197,6 +210,21 @@ func _add(file: String) -> void:
 	_check("...its shape the picture's (%.3f)" % (_reference.height() / _reference.width),
 		absf(_reference.height() / _reference.width - 0.75) < 0.002)
 	_check("...kept in the model for its next save", not _store.reference.is_empty())
+	# Laid is one step of Undo, as every other change is (_undo).
+	var laid: Dictionary = _reference.said()
+	var steps: int = _builder.history_depth() - depth
+	var named: String = _builder.history_words(1)[0] if steps > 0 else ""
+	await _verbs.press("undo")
+	await _frames(3)
+	var taken: bool = not _reference.has_picture() and not _mesh().visible \
+		and _store.reference.is_empty()
+	await _verbs.press("redo")
+	await _frames(3)
+	_check("laid is one step of the history (%d, \"%s\"): Undo takes it away (%s), Redo lays it again, the same"
+		% [steps, named, taken], steps == 1 and taken and _reference.has_picture()
+		and ReferenceImage.same(_reference.said(), laid) and _mesh().visible)
+	_reference.open()
+	await _frames(3)
 	_camera.set_view("top")
 	_camera.frame(_picture_box())
 	await _settle()
@@ -310,14 +338,7 @@ func _corners() -> void:
 	var before: Array[Vector3] = _reference.corners()
 	var was: float = _reference.width
 	# A corner the settings are not over, dragged away from the one across.
-	var settings: Window = _fields["reference_dialog"]
-	var covered := Rect2(Vector2(settings.position), Vector2(settings.size)).grow(12.0)
-	var corner: int = -1
-	for n: int in [3, 0, 2, 1]:
-		var at: Vector2 = _camera.screen_of(before[n])
-		if not covered.has_point(at) and _camera.seen_rect().has_point(at):
-			corner = n
-			break
+	var corner: int = _free_corner(before)
 	_check("a corner of it in sight, clear of its settings (%d)" % corner, corner >= 0)
 	if corner < 0:
 		return
@@ -342,6 +363,144 @@ func _corners() -> void:
 	await _type_into(_fields["reference_width"], "32.35")
 	_check("...and its width typed again (%.0f)" % _reference.width,
 		is_equal_approx(_reference.width, 647.0))
+
+
+## A corner of [param points] in sight that the settings are not over, or -1.
+func _free_corner(points: Array[Vector3]) -> int:
+	var settings: Window = _fields["reference_dialog"]
+	var covered := Rect2(Vector2(settings.position), Vector2(settings.size)).grow(12.0)
+	for n: int in [3, 0, 2, 1]:
+		var at: Vector2 = _camera.screen_of(points[n])
+		if not (settings.visible and covered.has_point(at)) and _camera.seen_rect().has_point(at):
+			return n
+	return -1
+
+
+# -- every change one step of Undo ---------------------------------------------------------
+
+
+func _undo() -> void:
+	print("  -- every change one step of Undo, and Redo")
+	var settings: Window = _fields["reference_dialog"]
+	var fade: HSlider = _fields["reference_fade"]
+	_check("picked out, its settings open", _reference.selected and settings.visible)
+	# The slider dragged as a hand drags it, with a pause longer than the
+	# time that joins changes typed one after another.
+	var drag_fade: Callable = func() -> void:
+		var rect := Rect2(Vector2(settings.position) + fade.get_global_rect().position,
+			fade.get_global_rect().size)
+		var from := Vector2(rect.position.x + rect.size.x * fade.value / 100.0, rect.get_center().y)
+		var to := Vector2(rect.position.x + rect.size.x * 0.85, from.y)
+		await _move(from)
+		_press(from, true)
+		await _frames(2)
+		for s: int in range(1, 9):
+			await _move(from.lerp(to, s / 8.0), MOUSE_BUTTON_LEFT)
+			if s == 4:
+				await create_timer(ReferenceImage.ONE_STEP_MS / 1000.0 + 0.4).timeout
+		_press(to, false)
+		await _frames(4)
+	await _one_step("the opacity slider dragged, a pause in it", drag_fade,
+		func() -> String: return "%.0f%%" % (_reference.opacity * 100.0))
+	var type_width: Callable = func() -> void:
+		await _type_into(_fields["reference_width"], "20")
+	await _one_step("its width typed, a figure at a time", type_width,
+		func() -> String: return "%.0f LDU" % _reference.width)
+	var slide: Callable = func() -> void:
+		var grip: Vector2 = _camera.screen_of(_reference.centre
+			+ Vector3(0, _reference.height() * 0.3, 0))
+		await _drag(grip, grip + Vector2(-40, 0))
+	await _one_step("slid", slide, func() -> String: return "x %.0f" % _reference.centre.x)
+	var size_it: Callable = func() -> void:
+		var points: Array[Vector3] = _reference.corners()
+		var corner: int = _free_corner(points)
+		if corner < 0:
+			return
+		var from: Vector2 = _camera.screen_of(points[corner])
+		var away: Vector2 = (from - _camera.screen_of(points[(corner + 2) % 4])).normalized()
+		await _drag(from, from + away * 40.0)
+	await _one_step("sized by a corner", size_it,
+		func() -> String: return "%.0f LDU" % _reference.width)
+	var stand: Callable = func() -> void:
+		var plane: OptionButton = _fields["reference_plane"]
+		plane.select(2)
+		plane.item_selected.emit(2)
+		await _frames(3)
+	await _one_step("stood seen from the side", stand, func() -> String: return _reference.on)
+	var lock_it: Callable = func() -> void:
+		(_fields["reference_lock"] as CheckBox).button_pressed = true
+		await _frames(3)
+	await _one_step("locked", lock_it, func() -> String: return str(_reference.locked))
+	var other: String = _picture_file("other.png", Color(0.1, 0.6, 1.0))
+	var another: Callable = func() -> void:
+		var button: Button = _button_in(settings, "Choose another…")
+		if button == null:
+			return
+		await _click(Vector2(settings.position) + button.get_global_rect().get_center())
+		var chooser: FileDialog = (_fields["reference_files"] as PictureFile).get("_dialog")
+		if chooser == null or not chooser.visible:
+			return
+		chooser.current_path = other
+		await _frames(2)
+		chooser.get_ok_button().pressed.emit()
+		await _settle()
+	await _one_step("another chosen", another, func() -> String: return _reference.picture_name)
+	var take_away: Callable = func() -> void:
+		var button: Button = _button_in(settings, "Remove")
+		if button == null:
+			return
+		await _click(Vector2(settings.position) + button.get_global_rect().get_center())
+		await _frames(3)
+	await _one_step("taken away", take_away,
+		func() -> String: return _reference.picture_name if _reference.has_picture() else "none")
+	_reference.open()
+	await _frames(3)
+	await _shot("undone")
+
+
+## [param change] made as a person makes it, then Edit › Undo, Redo and Undo
+## again: one step more in the history, put back as it was, done again the
+## same, and left as it was for what follows. [param shown] says it in words.
+func _one_step(what: String, change: Callable, shown: Callable) -> void:
+	var depth: int = _builder.history_depth()
+	var before: String = _state()
+	var was: String = str(shown.call())
+	await change.call()
+	var after: String = _state()
+	var now: String = str(shown.call())
+	var steps: int = _builder.history_depth() - depth
+	var named: String = _builder.history_words(1)[0] if steps > 0 else ""
+	await _verbs.press("undo")
+	await _frames(3)
+	var undone: bool = _state() == before
+	var back: String = str(shown.call())
+	await _verbs.press("redo")
+	await _frames(3)
+	var redone: bool = _state() == after
+	await _verbs.press("undo")
+	await _frames(3)
+	_check("%s (%s to %s): one step (%d, \"%s\"), Undo puts it back (%s), Redo again (%s)" % [
+		what, was, now, steps, named, back, redone], after != before and steps == 1 and undone
+		and redone and _state() == before)
+
+
+## The picture as the model keeps it, its pixels by their hash.
+func _state() -> String:
+	var kept: Dictionary = _reference.said()
+	var picture: String = str(kept.get("picture", ""))
+	kept.erase("picture")
+	return "%s %d" % [JSON.stringify(kept), picture.hash()]
+
+
+## The button saying [param words] in [param window], its own buttons too.
+func _button_in(window: Window, words: String) -> Button:
+	var buttons: Array = window.find_children("*", "Button", true, false)
+	if window is AcceptDialog:
+		buttons.append_array((window as AcceptDialog).get_ok_button().get_parent().get_children(true))
+	for each: Variant in buttons:
+		if each is Button and (each as Button).text == words and (each as Button).is_visible_in_tree():
+			return each
+	return null
 
 
 # -- locked, a click through it ------------------------------------------------------------
@@ -509,6 +668,66 @@ func _absent() -> void:
 		% [_drawn(picture), in_picture], _drawn(picture) > 500 and in_picture == 0)
 	await _frames(4)
 	_check("...and in the window again after", _mesh().visible and _reference.is_visible_in_tree())
+
+
+# -- unsaved, and kept by the autosave ----------------------------------------------------------
+
+
+func _unsaved(file: String) -> void:
+	print("  -- a change to the picture alone is unsaved, and the autosave keeps it")
+	_check("saved again", _store.save_as(NAME))
+	_check("...as saved, nothing unsaved", not _store.has_unsaved_work())
+	_reference.open()
+	await _frames(3)
+	await _type_into(_fields["reference_opacity"], "70")
+	(_fields["reference_dialog"] as Window).hide()
+	_check("its opacity alone changed (%.0f%%, the parts as saved): unsaved work (%s)" % [
+		_reference.opacity * 100.0, _store.has_unsaved_work()], _store.has_unsaved_work()
+		and is_equal_approx(_reference.opacity, 0.7))
+	var bar: ModelBar = _main.get("_bar")
+	var confirm: ConfirmationDialog = bar.get("_confirm_new")
+	await bar.ask_for_new()
+	await _frames(3)
+	_check("...so File › New asks first (%s)" % confirm.visible, confirm.visible)
+	await _shot("new_asks")
+	confirm.hide()
+	await _frames(2)
+	_check("...and nothing was begun (%d part, the picture there)" % _model_bricks().size(),
+		_model_bricks().size() == 1 and _reference.has_picture())
+	await _verbs.press("undo")
+	await _frames(3)
+	_check("Undo back to as saved: nothing unsaved (%s)" % _store.has_unsaved_work(),
+		not _store.has_unsaved_work())
+	# New, and only a picture laid on the empty baseplate.
+	await bar.ask_for_new()
+	await _frames(6)
+	_check("New: an empty baseplate and no picture, nothing unsaved",
+		_model_bricks().is_empty() and not _reference.has_picture() and not _store.has_unsaved_work())
+	# The autosave, which Main leaves off for a probe unless it is about it:
+	# this one is, in a data folder of its own (tools/probe.sh).
+	_store.keeps = true
+	_reference.open()
+	await _frames(4)
+	var chooser: FileDialog = (_fields["reference_files"] as PictureFile).get("_dialog")
+	if chooser != null and chooser.visible:
+		chooser.current_path = file
+		await _frames(2)
+		chooser.get_ok_button().pressed.emit()
+		await _settle()
+	_check("a picture laid on the empty baseplate (%s): unsaved work (%s)" % [
+		_reference.picture_name, _store.has_unsaved_work()], _reference.has_picture()
+		and _store.has_unsaved_work())
+	var said: Dictionary = _reference.said()
+	var kept: String = _store.write_now()
+	var text: String = FileAccess.get_file_as_string(kept) if not kept.is_empty() else ""
+	_check("the autosave keeps it (%d characters)" % text.length(),
+		ReferenceImage.same(ReferenceImage.read(text), said))
+	# What the app does as it starts.
+	var placed: int = _store.restore()
+	await _frames(4)
+	_check("...and the app started again brings it back on the empty baseplate (%d parts, %s)" % [
+		placed, _reference.picture_name], _reference.has_picture() and _mesh().visible
+		and ReferenceImage.same(_reference.said(), said) and ReferenceImage.same(_store.reference, said))
 
 
 ## Pixels of [param image] that are the picture's magenta, at any opacity
