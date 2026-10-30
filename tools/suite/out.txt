@@ -27,5 +27,6 @@ new_parts         # needs the numbers of the parts a library update added: tools
 grab              # 23-25 min in a window; headless its presses land 25x off (35 of 227 fail); coast's 3 fail at load 40 with m146
 photo_search      # asks Brickognize, a third party, live over the internet: photo_search_stub runs in its place (bin238)
 oc_native         # needs orangecheck's test stack, its signing secret and a browser: tools/web/oc_native_flow.mjs runs it by hand
+setbin_time       # judges a time the box's load decides: the biggest sets' bins drawn against the whole library's, run by hand when the bin changes (appux B10)
 # Failing on the code as it is (2026-10-22), each a unit to fix:
 open_time         # a measure: a big set's first picture and full open in the window, on the GPU, from the open's start (open222, walk180 A8)

@@ -417,6 +417,11 @@ declare -A CMD=(
   # of a 3001 to Brickognize, live, with Brick 2 x 4 first. Brickognize is
   # a third party, so it is not in ORDER: run when the bin changes.
   [bin]="tools/web/bin_flow.mjs --url=$P/app $B --out=$S/${TAG}_bin_web"
+  # Building from a set's parts (docs/APP_UX.md B10): a set's number typed
+  # into the bin's search and built from, its inventory from the
+  # deployment's /sets/; a part taken and put down, its count dropping by
+  # one, and Ctrl-Z giving it back. Run when the bin changes.
+  [setbin]="tools/web/setbin_flow.mjs --url=$P/app $B --out=$S/${TAG}_setbin_web"
   # The app's accessibility in a browser (docs/COMPETITIVE.md item 14):
   # Settings, Interface size at 150% and 85% at 1280 and on a phone at 390,
   # every control the page is told of inside the window; and whether a
