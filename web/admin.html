@@ -61,6 +61,21 @@
   td.acts { white-space: nowrap; }
   td.acts button + button { margin-left: 6px; }
   td.acts button { min-height: 36px; padding: 6px 12px; font-size: var(--t-small); }
+/* Feedback (admin-feedback.js): the filters in a row, then a card a report:
+   its marks, its words, what came with it, where it stands and the answers. */
+.fb-filters { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 10px; }
+.fb-list { display: grid; gap: 14px; margin: 12px 0 0; padding: 0; list-style: none; }
+.fb-list > li { padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--r-2); background: var(--panel); }
+.fb-list .marks { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 8px; }
+.fb-list .words { white-space: pre-line; overflow-wrap: anywhere; margin: 0 0 8px; }
+.fb-list dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 0 0 8px; font-size: var(--t-small); }
+.fb-list dt { color: var(--ink-faint); }
+.fb-list dd { margin: 0; overflow-wrap: anywhere; }
+.fb-list pre { max-height: 260px; overflow: auto; font-size: var(--t-tiny); background: var(--panel-hi); padding: 8px 10px; border-radius: var(--r-1); white-space: pre-wrap; }
+.fb-list .picture { max-width: min(100%, 640px); height: auto; border: 1px solid var(--line); border-radius: var(--r-1); display: block; margin: 0 0 8px; }
+.fb-list .answer { margin: 8px 0 0; padding: 8px 12px; border-left: 3px solid var(--accent-edge); background: var(--panel-hi); white-space: pre-line; }
+.fb-list form { display: grid; gap: 8px; margin-top: 12px; }
+.fb-list form .row { margin-top: 0; flex-wrap: wrap; }
 /* The report an email of reports named (#report-N). */
 #reports tr.asked td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 #reports tr.asked td:first-child { box-shadow: inset 3px 0 0 var(--accent-edge); }
@@ -96,7 +111,8 @@
       <h1>Accounts</h1>
       <p class="lede">Everyone who uses Brickworks signs in with their email
          address. This is who has, and whose Claude connectors there are.</p>
-      <p class="hero-meta"><span><a href="/beta-admin">Beta testers</a>: the beta’s applications, to approve or decline.</span></p>
+      <p class="hero-meta"><span><a href="/beta-admin">Beta testers</a>: the beta’s applications, to approve or decline.</span>
+        <span><a href="#feedback">Feedback</a>: what people sent, to read, mark and answer.</span></p>
     </div>
   </div>
   <div class="wrap page-body admin">
@@ -131,6 +147,34 @@
       <button id="again">Refresh</button>
       <span class="note" id="note"></span>
     </div>
+
+    <h2 id="feedback">Feedback</h2>
+    <p class="note">What people sent from the app’s Help, Send feedback and the site’s, newest first
+       (api/_feedback.js). Mark where each stands; the note is yours alone. An answer is emailed to the
+       person<span id="fb-from"></span> and kept with the report, which they see on their settings page.</p>
+    <div class="fb-filters" id="fb-filters">
+      <div class="segmented" role="group" aria-label="What" data-filter="kind">
+        <button type="button" data-value="" aria-pressed="true">All</button>
+        <button type="button" data-value="bug" aria-pressed="false">Bugs</button>
+        <button type="button" data-value="idea" aria-pressed="false">Ideas</button>
+        <button type="button" data-value="question" aria-pressed="false">Questions</button>
+      </div>
+      <div class="segmented" role="group" aria-label="Where it stands" data-filter="status">
+        <button type="button" data-value="open" aria-pressed="true">Open</button>
+        <button type="button" data-value="new" aria-pressed="false">New</button>
+        <button type="button" data-value="planned" aria-pressed="false">Planned</button>
+        <button type="button" data-value="fixed" aria-pressed="false">Fixed</button>
+        <button type="button" data-value="wont_fix" aria-pressed="false">Won’t fix</button>
+        <button type="button" data-value="" aria-pressed="false">All</button>
+      </div>
+      <div class="segmented" role="group" aria-label="From" data-filter="beta">
+        <button type="button" data-value="" aria-pressed="true">Everyone</button>
+        <button type="button" data-value="1" aria-pressed="false">Testers</button>
+        <button type="button" data-value="0" aria-pressed="false">Others</button>
+      </div>
+    </div>
+    <p class="note" id="fb-note" role="status"></p>
+    <ol class="fb-list" id="fb-list"></ol>
 
     <h2>Reported</h2>
     <p class="note">What visitors said should not be in the gallery, newest
@@ -303,4 +347,5 @@
 </main>
 
 <script type="module" src="/admin.js"></script>
+<script type="module" src="/admin-feedback.js"></script>
 </html>

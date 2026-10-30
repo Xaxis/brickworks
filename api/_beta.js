@@ -26,7 +26,9 @@
 //   GET  /api/plans?op=beta_daily  Vercel's cron (/api/plans/beta-daily):
 //                                  months given that wait for Admission,
 //                                  reminders three days before a month
-//                                  ends, declined ones past 90 days erased
+//                                  ends, declined ones past 90 days erased,
+//                                  and feedback's reports past their time
+//                                  (api/_feedback.js sweepFeedback)
 //   GET  /api/admin?op=beta        the owner's queue (api/admin.js gates it)
 //   POST /api/admin?op=beta_decide&account=U   {decision, note}
 //   POST /api/admin?op=beta_grant  every month still to give, given
@@ -49,6 +51,7 @@ import { AuthError, bearer, verify } from "./_auth.js";
 import { admission, billingMode } from "./_billing.js";
 import { isCron } from "./_cron.js";
 import { db, dbConfigured } from "./_db.js";
+import { EARLY, KNOWN, NEW } from "./_early.js";
 
 /// "open" or "off".
 export function betaMode(env = process.env) {
@@ -304,7 +307,13 @@ function wordsOf(kind, data, origin) {
 
 /// The email of [kind], plain and in the site's look: {subject, text, html}.
 export function renderMail(kind, data = {}, origin = siteOrigin(), replyTo = "") {
-  const words = wordsOf(kind, data, origin);
+  return framedMail(wordsOf(kind, data, origin), origin, replyTo);
+}
+
+/// [words] ({subject, paragraphs, action: {label, href}}) as an email, plain
+/// and in the site's look: {subject, text, html}. The feedback's answers
+/// are written in it too (api/_feedback.js).
+export function framedMail(words, origin = siteOrigin(), replyTo = "") {
   const paragraphs = [...words.paragraphs, ...(replyTo ? ["Reply to this email any time: it reaches us."] : [])];
   const text = [...paragraphs, "", `${words.action.label}: ${words.action.href}`, "", "Brickworks", origin].join("\n\n")
     .replace(/\n{3,}/g, "\n\n");
@@ -312,7 +321,7 @@ export function renderMail(kind, data = {}, origin = siteOrigin(), replyTo = "")
 <div style="background:#fbfbfa;padding:24px 12px">
 <div style="font:16px/1.6 ui-sans-serif,-apple-system,'Segoe UI',Roboto,sans-serif;color:#14181d;max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e3e5e8;border-radius:14px;padding:28px 24px">
   <p style="margin:0 0 20px;font-weight:700;font-size:15px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#ffcf00;margin-right:8px;vertical-align:-1px"></span>Brickworks</p>
-  ${paragraphs.map((one) => `<p style="margin:0 0 16px">${escape(one)}</p>`).join("\n  ")}
+  ${paragraphs.map((one) => `<p style="margin:0 0 16px;white-space:pre-line">${escape(one)}</p>`).join("\n  ")}
   <p style="margin:24px 0 8px"><a href="${escape(words.action.href)}" style="display:inline-block;background:#ffcf00;color:#14181d;font-weight:650;text-decoration:none;border-radius:10px;padding:11px 18px">${escape(words.action.label)}</a></p>
 </div>
 <p style="font:13px/1.5 ui-sans-serif,-apple-system,'Segoe UI',Roboto,sans-serif;color:#5b6472;max-width:520px;margin:12px auto 0;text-align:center">Brickworks · <a href="${escape(origin)}" style="color:#5b6472">${escape(origin.replace(/^https?:\/\//, ""))}</a></p>
@@ -320,41 +329,39 @@ export function renderMail(kind, data = {}, origin = siteOrigin(), replyTo = "")
   return { subject: words.subject, text, html };
 }
 
-/// The email of [kind] sent to [to] ({account, email}), and kept
-/// (beta_mail): "sent" with Resend's id; "dry" to a test inbox where this
-/// server has no mail key (a unit's preview: tools/deploy.sh --unit), as
-/// it would have gone; "failed" otherwise. Never throws.
-export async function sendMail(kind, to, data) {
-  const origin = siteOrigin();
+/// [mail] ({subject, text, html}) sent to [email] through Resend, answers to
+/// BETA_REPLY_TO when it is set: {state, id}: "sent" with Resend's id; "dry"
+/// to a test inbox where this server has no mail key (a unit's preview:
+/// tools/deploy.sh --unit), as it would have gone; "failed" otherwise, and
+/// always for an orangecheck account's made-up address. Never throws.
+export async function resend(email, mail, what = "email") {
   const replyTo = String(process.env.BETA_REPLY_TO || "").trim();
-  const mail = renderMail(kind, data, origin, replyTo);
   const key = process.env.RESEND_API_KEY;
-  let state = "failed";
-  let id = null;
-  if (!to?.email || ORANGECHECK_ADDRESS.test(to.email)) {
-    state = "failed";
-  } else if (!key) {
-    state = TEST_INBOX.test(to.email) ? "dry" : "failed";
-  } else {
-    try {
-      const reply = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-        body: JSON.stringify({ from: process.env.EMAIL_FROM || SENDER, to: [to.email], subject: mail.subject,
-          text: mail.text, html: mail.html, ...(replyTo ? { reply_to: replyTo } : {}) }),
-        signal: AbortSignal.timeout(10000),
-      });
-      const said = await reply.json().catch(() => ({}));
-      if (reply.ok && typeof said?.id === "string") {
-        state = "sent";
-        id = said.id;
-      } else {
-        console.error(`beta: Resend refused the ${kind} email: ${reply.status}`);
-      }
-    } catch (trouble) {
-      console.error(`beta: the ${kind} email did not go: ${String(trouble?.message || trouble).slice(0, 160)}`);
-    }
+  if (!email || ORANGECHECK_ADDRESS.test(email)) return { state: "failed", id: null };
+  if (!key) return { state: TEST_INBOX.test(email) ? "dry" : "failed", id: null };
+  try {
+    const reply = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ from: process.env.EMAIL_FROM || SENDER, to: [email], subject: mail.subject,
+        text: mail.text, html: mail.html, ...(replyTo ? { reply_to: replyTo } : {}) }),
+      signal: AbortSignal.timeout(10000),
+    });
+    const said = await reply.json().catch(() => ({}));
+    if (reply.ok && typeof said?.id === "string") return { state: "sent", id: said.id };
+    console.error(`beta: Resend refused the ${what}: ${reply.status}`);
+  } catch (trouble) {
+    console.error(`beta: the ${what} did not go: ${String(trouble?.message || trouble).slice(0, 160)}`);
   }
+  return { state: "failed", id: null };
+}
+
+/// The email of [kind] sent to [to] ({account, email}), and kept
+/// (beta_mail), as resend says it went. Never throws.
+export async function sendMail(kind, to, data) {
+  const replyTo = String(process.env.BETA_REPLY_TO || "").trim();
+  const mail = renderMail(kind, data, siteOrigin(), replyTo);
+  const { state, id } = await resend(to?.email, mail, `${kind} email`);
   try {
     await db("rpc/beta_mail_note", { method: "POST", body: { p_account: to.account, p_kind: kind, p_state: state,
       p_sent_id: id, p_subject: mail.subject } });
@@ -514,6 +521,32 @@ export async function betaRoute(request, response) {
   }
 }
 
+/// GET /api/plans?op=beta_hub: a tester's (an account whose application was
+/// approved, supabase/feedback.sql beta_tester): what is new to try, what
+/// is known to be wrong, and the early features (api/_early.js). 401 signed
+/// out, 403 for anyone else, whatever the switch: testers keep their hub.
+export async function betaHub(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  if (!dbConfigured()) return say(response, 503, "The beta hub is not open here yet.");
+  let claims = null;
+  try {
+    claims = await claimsOf(request);
+  } catch (trouble) {
+    if (!(trouble instanceof AuthError)) throw trouble;
+    return say(response, trouble.status, trouble.message);
+  }
+  if (!claims) return say(response, 401, "Sign in to see the beta hub.");
+  try {
+    const tester = await db("rpc/beta_tester", { method: "POST", body: { p_account: claims.sub } });
+    if (tester !== true) return say(response, 403, "The beta hub is for beta testers.", { tester: false });
+    return response.status(200).json({ tester: true, early: EARLY, new: NEW, known: KNOWN });
+  } catch (trouble) {
+    console.error(`beta: hub: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    if (notYet(trouble)) return say(response, 503, "The beta hub is not open here yet.");
+    return say(response, 503, "That did not go just now. Try again in a minute.");
+  }
+}
+
 /// GET /api/plans?op=beta_spots: whether the beta is open and how many of
 /// the 100 spots are left, for any page (pricing, home) to show or not.
 /// Nobody's sign-in is read and nothing about an applicant is said, so it
@@ -579,6 +612,14 @@ export async function betaDaily(request, response) {
     console.error(`beta: daily: ${String(trouble?.message || trouble).slice(0, 160)}`);
     if (notYet(trouble)) return response.status(200).json({ ...out, said: "beta.sql is not applied here" });
     return response.status(500).json({ ...out, error: "the daily run stopped" });
+  }
+  // And feedback's reports past their time (api/_feedback.js), on its own:
+  // imported here, as it imports this file.
+  try {
+    out.feedback = await (await import("./_feedback.js")).sweepFeedback();
+  } catch (trouble) {
+    console.error(`beta: daily: feedback: ${String(trouble?.message || trouble).slice(0, 160)}`);
+    out.feedback = notYet(trouble) ? "feedback.sql is not applied here" : "the sweep stopped";
   }
   return response.status(200).json(out);
 }

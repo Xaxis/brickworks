@@ -152,6 +152,8 @@ var _comment_account: Account
 var _comments_waking: bool = false
 var comment_token_for_probe: String = ""
 var _share_panel: SharePanel
+## The app's last log lines (RecentLog), for Help, Send feedback….
+var _log: RecentLog
 var _share_view: ShareView
 ## Build it, in the viewer: the step player, the pages it shows, the line
 ## round each page's new parts, and the page it is on (_enter_build).
@@ -804,6 +806,9 @@ func _tell_page() -> void:
 		# offer of it (tools/web/cloud_library_flow.mjs).
 		"saved_models": _saved_models.page_state() if _saved_models != null else {},
 		"room_offer": _full_offer.words() if _full_offer != null else "",
+		# Help, Send feedback…: what is chosen, ticked and said
+		# (FeedbackDialog, tools/web/feedback_flow.mjs).
+		"feedback": _shell.feedback.page_state() if _shell != null and _shell.feedback != null else {},
 		# What came into the feed since it was last opened: the count on
 		# Account and what its panel says (tools/web/follows_flow.mjs).
 		"feed": {"count": _account_panel.feed_count if _account_panel != null else 0,
@@ -885,6 +890,8 @@ func _tell_page() -> void:
 			# and the answer as the deployment keeps it.
 			"age_ask": _account.age_ask,
 			"over_13": _account.over_13,
+			# The beta's early features this account has (Account.early_on).
+			"early": _account.early,
 		}), true)
 	# And where Claude stands: listening here, which of its apps are
 	# connected to the account, and the panel's line about it — what a
@@ -1425,6 +1432,9 @@ func _ready() -> void:
 		return
 	if not OS.has_feature("web"):
 		get_window().title = "Brickworks %s" % BuildInfo.version()
+	# The last log lines, for Help, Send feedback… to offer (RecentLog).
+	_log = RecentLog.new()
+	OS.add_logger(_log)
 	_boot_mark("ready")
 	# Before any window or button is made, so every dialog, menu and button
 	# is made in the app's look, the engine's own among them (Look.dialogs,
@@ -2351,6 +2361,9 @@ func _gated() -> bool:
 func _on_account_changed() -> void:
 	if _bar != null:
 		_bar.show_account(_account.email if _account.signed_in() else "")
+	# A beta tester's early features in the menus (Account.early_on).
+	if _shell != null:
+		_shell.set_early(_account.early if _account.signed_in() else ([] as Array[String]))
 	# A viewer is nobody's session: no connector, ever.
 	if _connector == null or not _viewing.is_empty():
 		return
@@ -7188,6 +7201,8 @@ func _watch_other_tabs() -> void:
 ## written first: the autosave waits for a change to settle, and an edit
 ## made just before closing the app was lost.
 func _exit_tree() -> void:
+	if _log != null:
+		OS.remove_logger(_log)
 	if _store != null:
 		_store.write_now()
 	TabSession.release()

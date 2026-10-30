@@ -3001,7 +3001,7 @@
       "kind": "ui",
       "label": "your settings page",
       "entry": "web/settings.html",
-      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Sign out, Delete account)",
+      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Feedback, Sign out, Delete account)",
       "area": "web"
     },
     {
@@ -3036,7 +3036,7 @@
       "kind": "ui",
       "label": "the account menu",
       "entry": "web/follow.js",
-      "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, the theme and Sign out (at 390 px, Menu is the avatar and holds the same)",
+      "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback (and Beta hub for a beta tester, web/early.js), the theme and Sign out (at 390 px, Menu is the avatar and holds the same)",
       "area": "web"
     },
     {
@@ -3983,6 +3983,83 @@
       "entry": "src/assembly/hinge_align.gd",
       "reach": "godot --path .  (select two parts with hinges between them; Properties, Hinges, Meet)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "send feedback",
+      "entry": "web/feedback.js",
+      "reach": "<deployment>/feedback, or Send feedback in any page's footer or the account menu   (web/feedback.html; the dialog: something wrong, an idea or a question, the words, an address signed out, a picture taken or chosen (shown, removable), the page and browser ticked; POST /api/plans?op=feedback; tools/web/feedback_flow.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "send feedback in the app",
+      "entry": "src/ui/feedback_dialog.gd",
+      "reach": "godot --path .  (Help, Send feedback…: the window's picture taken before the dialog covers it, removable; ticks for the version and system, the open model as a file and the last log lines (RecentLog), each shown before it goes; sent to the deployment's /api/plans?op=feedback; tools/probe.sh feedback_probe)",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "sending feedback",
+      "entry": "api/plans.js",
+      "reach": "curl -s -X POST '<deployment>/api/plans?op=feedback' -H 'content-type: application/json' -d '{\"kind\":\"idea\",\"words\":\"...\",\"email\":\"delivered@resend.dev\"}'; GET it signed in for your own   (422 with why; 429 past the hour's rate; 503 \"not open here yet\" before supabase/feedback.sql; python3 tools/minitest.py tests/test_feedback.py)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "feedback kept and answered",
+      "entry": "api/_feedback.js",
+      "reach": "python3 tools/minitest.py tests/test_feedback.py   (checked at the edge, rated by account, place, inbox and in all in supabase/feedback.sql, the picture and model in the private 'feedback' bucket, the owner's inbox, triage and emailed answers, deleted with the account, the daily sweep)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the owner's feedback inbox",
+      "entry": "web/admin-feedback.js",
+      "reach": "<deployment>/admin#feedback as MASTER_EMAIL (?tests=1 the checks' own): GET /api/admin?op=feedback&kind&status&beta, ?op=feedback_file&id&file=picture|model, POST ?op=feedback_triage&id {status, note}, ?op=feedback_reply&id {words}",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "your feedback on settings",
+      "entry": "web/settings.js",
+      "reach": "https://brickworks.diy/settings#feedback signed in   (each report, where it stands, a tester's marked, our answers; never the owner's note)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the beta hub",
+      "entry": "web/beta-hub.html",
+      "reach": "<deployment>/beta-hub   (signed out: sign in; not a tester: for testers; a tester: what's new, known issues, early features, how to tell us; GET /api/plans?op=beta_hub; Help, Beta hub in the app for a tester)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "early features for beta testers",
+      "entry": "api/_early.js",
+      "reach": "curl -s '<deployment>/api/account' -H 'authorization: Bearer T'   (beta: {tester, early}; the site's earlyOn(key), web/early.js; the app's Account.early_on(key) and Shell.EARLY_COMMANDS)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "feedback browser flow",
+      "entry": "tools/web/feedback_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/feedback_flow.mjs --url=<deployment> --out=DIR   (before feedback.sql: the dialogs and \"not open yet\"; all of it on a local server with --hold=feedback and --owner, see its head; preview check [feedback])",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "feedback probe",
+      "entry": "src/dev/feedback_probe.gd",
+      "reach": "tools/probe.sh feedback_probe [--shots=DIR]   (windowed: Help, Send feedback… opens, attaches, refuses, sends to a stand-in; Beta hub only for a tester)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the feedback stand-in",
+      "entry": "tools/web/feedback_stand_in.mjs",
+      "reach": "node tools/web/relay_server.mjs 9060 --static=build/web --hold=feedback   (supabase/beta.sql and feedback.sql in a Postgres of this machine's own, PG_BIN and PG_MODULE set; GET /__held/feedback)",
+      "area": "web"
     }
   ]
 }

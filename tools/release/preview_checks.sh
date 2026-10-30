@@ -233,6 +233,15 @@ declare -A CMD=(
   # spot 100; deleting the account erases its application. The checks' own
   # pool of spots, never the 100. Throwaway accounts, deleted after.
   [beta]="tools/web/beta_flow.mjs --url=$P --out=$S/${TAG}_beta"
+  # Feedback (beta374): the /feedback page, the footer's and the account
+  # menu's Send feedback, the dialog on the site at 390 and 1280 (a picture
+  # chosen, removed and chosen again) and in the app (Help, Send
+  # feedback…), the edge's refusals, the settings page and the beta hub;
+  # before supabase/feedback.sql each send is answered "not open here yet",
+  # after it each is kept and listed. The inbox is checked only as refused:
+  # its own run is local, with a throwaway owner (the flow's head).
+  # Throwaway accounts, deleted after.
+  [feedback]="tools/web/feedback_flow.mjs --url=$P --out=$S/${TAG}_feedback"
   [tabs]="tools/web/tabs_flow.mjs --url=$P/app --out=$S/${TAG}_tabs"
   # Two chats, two tabs: the relay's rules alone, then the app in two tabs.
   [tabpair_probe]="tools/web/tabpair_probe.mjs --url=$P"

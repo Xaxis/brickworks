@@ -30,7 +30,7 @@ PRO_NOT_ENDED = ("We couldn't cancel your Pro plan, so nothing was deleted. Try 
 NOT_ERASED = ("We couldn't close your plan with billing just now, so nothing was deleted. Try again in a minute, "
               "or write to support@atypic.ai.")
 # What a deletion has always answered for an account with no photos and no avatar.
-DELETED = {"status": 200, "json": {"deleted": True, "photos": 0, "avatars": 0}}
+DELETED = {"status": 200, "json": {"deleted": True, "photos": 0, "avatars": 0, "feedback": 0}}
 
 
 def run(body: str, **world) -> dict | None:
