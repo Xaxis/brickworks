@@ -2127,9 +2127,18 @@ static func fit_lines(name: String, after: String, font: Font, size: int, width:
 		if float(wide.call(rest + after)) <= width:
 			kept.append(rest + after)
 			return "\n".join(kept)
+	# The most of it that fits, found by halves: a character at a time
+	# measured a long name forty times over.
 	var room: float = width - float(wide.call("…" + after))
-	while not rest.is_empty() and float(wide.call(rest)) > room:
-		rest = rest.left(-1)
+	var fits: int = 0
+	var over: int = rest.length() + 1
+	while over - fits > 1:
+		var middle: int = (fits + over) / 2
+		if float(wide.call(rest.left(middle))) <= room:
+			fits = middle
+		else:
+			over = middle
+	rest = rest.left(fits)
 	kept.append(rest.strip_edges() + "…" + after)
 	return "\n".join(kept)
 

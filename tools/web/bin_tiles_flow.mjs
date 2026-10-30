@@ -20,10 +20,12 @@
 // tile's own grey. A blank placeholder is a faint grey square, and the light
 // crossing it is white: neither is red. The parts a search turns up have not
 // been fetched, and each takes --delay ms to arrive, so a tile drawn then is
-// its drawing from the catalogue. It fails on a tile in sight not drawn in a
-// photograph finished within --within ms (1000), on a tile named by a number,
-// on a script error, and if the page never told where the tiles are. Local
-// only: it needs the late parts server.
+// its drawing from the catalogue. It fails on a tile in sight blank in the
+// photograph, on a photograph not taken within --within ms (1000; in
+// software a photograph waits on a frame, and a frame after typing took up
+// to 0.7 s on a loaded machine, 2026-10-30), on two tiles that read alike or
+// one named by a number, on a script error, and if the page never told where
+// the tiles are. Local only: it needs the late parts server.
 import { controlsWith, launch } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
@@ -47,7 +49,7 @@ mkdirSync(out, { recursive: true });
 const DRAWN = 0.05;
 // When each photograph is asked for: early enough that it is taken inside
 // --within ms of the bin showing on a machine drawing in software.
-const SHOOT_AT = Number(args.at || 600);
+const SHOOT_AT = Number(args.at || 300);
 // What is typed: a builder's words for parts no tile above showed.
 const WORDS = args.words || "slope 45 2x2";
 
@@ -89,25 +91,28 @@ while (!(await page.evaluate(() => Boolean((window.brickworksControls || {})["ma
 // from the first frame on a window wide enough. Photographed SHOOT_AT ms
 // after it shows, and read by where its tiles are once the page is told.
 const out1 = (await page.evaluate(() => window.brickworksState || {})).columns || {};
-const rail = (await page.evaluate(() => window.brickworksControls || {})).parts_rail;
-let shownAt = Date.now();
-if (out1.parts === false && rail) {
-  await page.mouse.click(rail.x, rail.y);
-  shownAt = Date.now();
+const named = await page.evaluate(() => window.brickworksControls || {});
+if (out1.parts === false && named.parts_rail) {
+  await page.mouse.click(named.parts_rail.x, named.parts_rail.y);
+  await shootAt(Date.now(), "bin_first", "the bin showed", null);
 } else {
+  // Out from the first frame, which has no moment to time from: the app
+  // fades in over its first seconds, so it is photographed after them.
   console.log("    the bin was out from the first frame");
+  await page.waitForTimeout(5000);
+  const settled = await controlsWith(page, ["parts list"], 30000);
+  await shootAt(Date.now(), "bin_first", "the page settled", settled["parts list"], false);
 }
-await shootAt(shownAt, "bin_first", "the bin showed");
 
 // 2. A search typed: new parts, each picture held back by the late server
 // (--delay ms), so a tile drawn a second in is its drawing from the catalogue.
-const where0 = await controlsWith(page, ["part search"], 30000);
+const where0 = await controlsWith(page, ["part search", "parts list"], 30000);
 const before = ((await page.evaluate(() => window.brickworksState || {})).found || []).join(",");
 await page.mouse.click(where0["part search"].x, where0["part search"].y);
 await page.keyboard.press("Control+a");
 await page.keyboard.type(WORDS, { delay: 40 });
 const typedAt = Date.now();
-await shootAt(typedAt, "bin_typed", `"${WORDS}" was typed`);
+await shootAt(typedAt, "bin_typed", `"${WORDS}" was typed`, where0["parts list"]);
 const found = ((await page.evaluate(() => window.brickworksState || {})).found || []);
 check(`"${WORDS}" gave new tiles: ${found.slice(0, 4).join(", ")}`, found.length > 0
   && found.join(",") !== before);
@@ -123,10 +128,14 @@ process.exit(failed ? 1 : 0);
 // where the tiles are (half a second or more later; they do not move), read
 // each tile's square in it. Every tile in sight must be drawn, the photograph
 // taken by --within ms, and each tile named in words.
-async function shootAt(since, name, what) {
+async function shootAt(since, name, what, list0, timed = true) {
+  // Only the bin when where it is is known: a photograph of the whole window
+  // takes half a second in software, of the bin less.
+  const clip = list0 ? { x: Math.max(0, list0.x - list0.w / 2), y: Math.max(0, list0.y - list0.h / 2),
+    width: list0.w, height: list0.h } : undefined;
   await page.waitForTimeout(Math.max(0, SHOOT_AT - (Date.now() - since)));
   const asked = Date.now();
-  const shot = await page.screenshot({ path: `${out}/${name}.png`, timeout: 120000 });
+  const shot = await page.screenshot({ path: `${out}/${name}.png`, clip, timeout: 120000 });
   const took = Date.now();
   await page.waitForTimeout(1500);
   const where = await controlsWith(page, ["tile picture 1", "parts list"], 30000);
@@ -137,12 +146,16 @@ async function shootAt(since, name, what) {
     .map((key) => ({ key, ...where[key] }))
     .filter((tile) => list && tile.y - tile.h / 2 >= list.y - list.h / 2 - 1
       && tile.y + tile.h / 2 <= list.y + list.h / 2 + 1);
-  const shares = tiles.map((tile) => redShare(image, tile));
+  const shares = tiles.map((tile) => redShare(image, tile, clip));
   const drawn = shares.filter((share) => share >= DRAWN).length;
   console.log(`    ${name}: photographed ${asked - since} to ${took - since} ms after ${what}; `
     + `each tile's square in the colour in hand: ${shares.map((x) => Math.round(x * 100)).join("%, ")}%`);
-  check(`every tile in sight drawn ${took - since} ms after ${what}: ${drawn} of ${tiles.length}`,
-    tiles.length >= 8 && drawn === tiles.length && took - since <= within);
+  check(`every tile in sight drawn, a picture or its part drawn, none blank: ${drawn} of ${tiles.length}`,
+    tiles.length >= 8 && drawn === tiles.length);
+  if (timed) {
+    check(`the photograph showing them was taken by ${took - since} ms after ${what} (${within} meant)`,
+      took - since <= within);
+  }
   const names = (await page.evaluate(() => window.brickworksState || {})).tile_names || [];
   console.log(`    the tiles read: ${names.join(" | ")}`);
   check(`each tile in sight is named in words, not a number, no two alike (${names.length} tiles, `
@@ -155,9 +168,10 @@ async function shootAt(since, name, what) {
 // The share of a tile's square pulled from its own grey towards red: the
 // colour in hand on a first visit, which its picture and its stand-in are
 // both drawn in.
-function redShare(png, tile) {
+function redShare(png, tile, clip) {
   const side = Math.min(tile.w, tile.h);
-  const left = Math.round(tile.x - side / 2), top = Math.round(tile.y - side / 2);
+  const left = Math.round(tile.x - side / 2 - (clip ? clip.x : 0));
+  const top = Math.round(tile.y - side / 2 - (clip ? clip.y : 0));
   const pixel = (x, y) => {
     const at = (y * png.width + x) * png.channels;
     return [png.data[at] / 255, png.data[at + 1] / 255, png.data[at + 2] / 255];

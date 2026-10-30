@@ -84,12 +84,20 @@ func _run() -> void:
 			continue
 		for child: Node in cell.find_children("*", "Label", true, false):
 			label = (child as Label).text
-	# The count on the name's last line when it fits there, else under it.
+	# The count on the name's last line when it fits there, else under it;
+	# the name in pieces where it is cut, its number after it where another
+	# tile's reads the same (PartsBin._tell_apart).
 	var named: String = PartsBin.tile_name(bin.library.parts[most])
 	var words: String = " ".join(label.replace("\n", " ").split(" ", false))
+	var at: int = 0
+	var pieces: PackedStringArray = words.get_slice(" ×", 0).trim_suffix(" " + most).split("…", false)
+	for n: int in pieces.size():
+		var piece_at: int = named.find(pieces[n].strip_edges(), at)
+		at = piece_at + pieces[n].strip_edges().length() if piece_at >= 0 and (n > 0 or piece_at == 0) else -1
+		if at < 0:
+			break
 	_check("its tile names it and counts how many the set has: \"%s\"" % words,
-		words.ends_with(" ×%d" % int(counts[most]))
-		and named.begins_with(words.get_slice(" ×", 0).trim_suffix("…")))
+		words.ends_with(" ×%d" % int(counts[most])) and at >= 0)
 
 	# The bin asking again by itself, as it does when the web build's
 	# catalogue arrives after the set was shown: the set stays.
