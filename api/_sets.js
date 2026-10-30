@@ -32,14 +32,19 @@
 import { existsSync, readFileSync } from "node:fs";
 import { SIZES, count, escapeHtml } from "./_directory.js";
 import { SET_SORTS } from "./_library.js";
+import { byKey, search } from "./_search.js";
 
 /// How the library's sets are put in order, the first by default: those LDraw
 /// has a model of first, since their picture is the set built, where every
 /// other set's is drawn from a few of its parts (api/_flatlay.js). Newest
 /// first opened the library on 24 of this year's sets, none modelled yet, and
 /// showed no set at all, only parts (the owner, 2026-10-30).
-export const SETS_SORTS = { built: "Built in 3D first", ...SET_SORTS };
+/// A query typed is in best match order (api/_search.js) unless another is
+/// asked: newest first put Hogwarts' newest wing above Hogwarts Castle
+/// (search, 2026-10-30).
+export const SETS_SORTS = { built: "Built in 3D first", match: "Best match", ...SET_SORTS };
 export const FIRST_SORT = "built";
+export const MATCH_SORT = "match";
 
 /// A set's number as Rebrickable writes it, "10497-1", "COMCON001-1", "214.1-1": what a
 /// page's address may hold.
@@ -159,43 +164,44 @@ export function modelsBySet(models) {
 export function askSets(query = {}) {
   const page = Number.parseInt(String(query.page ?? "1"), 10);
   const year = Number.parseInt(String(query.year ?? ""), 10);
+  const q = word(String(query.q ?? ""), MAX_QUERY);
+  const sort = Object.hasOwn(SETS_SORTS, String(query.sort ?? "")) ? String(query.sort) : "";
   return {
-    q: word(String(query.q ?? ""), MAX_QUERY),
+    q,
     theme: word(String(query.theme ?? ""), 300),
     decade: /^(19|20)[0-9]0s$/.test(String(query.decade ?? "")) ? String(query.decade) : "",
     year: Number.isInteger(year) && year >= 1940 && year <= 2100 ? year : 0,
     size: Object.hasOwn(SIZES, String(query.size ?? "")) ? String(query.size) : "",
     model: String(query.model ?? "") === "3d" ? "3d" : "",
     figs: ["with", "none"].includes(String(query.figs ?? "")) ? String(query.figs) : "",
-    sort: Object.hasOwn(SETS_SORTS, String(query.sort ?? "")) ? String(query.sort) : FIRST_SORT,
+    // Best match with something typed, unless another order is asked;
+    // with nothing typed there is nothing to match.
+    sort: sort && !(sort === MATCH_SORT && !q) ? sort : q ? MATCH_SORT : FIRST_SORT,
     page: Number.isFinite(page) ? Math.min(Math.max(page, 1), MOST_PAGES) : 1,
   };
 }
 
+/// One collator for every comparison: localeCompare with options makes one
+/// a call, which took 250 ms to put 6,500 sets of gear in order.
+const collate = new Intl.Collator("en", { numeric: true, sensitivity: "base" }).compare;
 /// Two names in the app's order: numbers by their value, case not minded.
-const byName = (a, b) => a.name.localeCompare(b.name, "en", { numeric: true, sensitivity: "base" });
+const byName = (a, b) => collate(a.name, b.name);
 /// Two set numbers in order: 6020-1 before 10497-1.
-const byNumber = (a, b) => a.set.localeCompare(b.set, "en", { numeric: true, sensitivity: "base" });
-
-/// Whether a search is a set's number, "10497" or "10497-1", and so its set
-/// (or sets) first, before whatever else names it.
-function numberAsked(q) {
-  const plain = q.trim().toLowerCase();
-  return /^[a-z0-9]+(-[0-9]+)?$/.test(plain) && /[0-9]/.test(plain) ? plain : "";
-}
+const byNumber = (a, b) => collate(a.set, b.set);
 
 /// The sets [ask] (askSets) asks for, a page of them: {sets, total, page,
-/// pages}. Every word must be in the set's name, number or theme. With
-/// nothing typed and no 3D asked for, a set Rebrickable lists with no parts
-/// is left out: the library is browsed for sets, not books and key rings.
+/// pages, near, meant}. What is typed is read as api/_search.js reads it
+/// (misspelt, run together, a plural, a number or a year), every word
+/// wanted; when no set has every word, those with the most (near). meant
+/// is what the words were taken to mean, "" when as typed. With nothing
+/// typed and no 3D asked for, a set Rebrickable lists with no parts is left
+/// out: the library is browsed for sets, not books and key rings.
 export function searchCatalog(sets, ask, models = new Map()) {
-  const words = ask.q.toLowerCase().split(" ").filter(Boolean);
   const theme = ask.theme ? ask.theme.split(">").map((one) => one.trim()).filter(Boolean) : [];
   const decade = ask.decade ? Number(ask.decade.slice(0, 4)) : -1;
   const size = SIZES[ask.size] || null;
-  const number = numberAsked(ask.q);
-  const browsing = !words.length && !ask.model;
-  const found = sets.filter((entry) => {
+  const browsing = !ask.q && !ask.model;
+  const keep = (entry) => {
     if (browsing && entry.parts <= 0) return false;
     if (theme.length && theme.some((name, at) => entry.theme[at] !== name)) return false;
     if (decade >= 0 && Math.floor(entry.year / 10) * 10 !== decade) return false;
@@ -204,8 +210,10 @@ export function searchCatalog(sets, ask, models = new Map()) {
     if (ask.figs === "with" && !entry.figs) return false;
     if (ask.figs === "none" && entry.figs) return false;
     if (ask.model && !models.get(entry.set.toLowerCase())?.main) return false;
-    return words.every((one) => entry.said.includes(one));
-  });
+    return true;
+  };
+  const asked = ask.q ? search(sets, ask.q, keep) : null;
+  const finds = asked ? asked.found : sets.filter(keep).map((item) => ({ item, matched: 0, numbered: false }));
   // A year's biggest sets first: a year holds key rings and promotions too.
   const built = (entry) => (models.get(entry.set.toLowerCase())?.main ? 1 : 0);
   const order = {
@@ -216,15 +224,16 @@ export function searchCatalog(sets, ask, models = new Map()) {
     name: (a, b) => byName(a, b),
     newest: (a, b) => b.year - a.year || b.parts - a.parts,
   }[ask.sort] || ((a, b) => b.year - a.year || b.parts - a.parts);
-  const exact = (entry) => {
-    if (!number) return 1;
-    const key = entry.set.toLowerCase();
-    return key === number || key === `${number}-1` ? 0 : key.startsWith(number) ? 1 : 2;
-  };
-  found.sort((a, b) => exact(a) - exact(b) || order(a, b) || byName(a, b) || byNumber(a, b));
+  // In another order, the sets with the most words first all the same, and
+  // a number's own set before the rest.
+  const first = (a, b) => b.matched - a.matched || Number(b.numbered) - Number(a.numbered);
+  finds.sort(ask.sort === MATCH_SORT && asked ? (a, b) => byKey(a, b) || byName(a.item, b.item) || byNumber(a.item, b.item)
+    : (a, b) => first(a, b) || order(a.item, b.item) || byName(a.item, b.item) || byNumber(a.item, b.item));
+  const found = finds.map((one) => one.item);
   const pages = Math.max(1, Math.ceil(found.length / PER_PAGE));
   const page = Math.min(ask.page, pages);
-  return { sets: found.slice((page - 1) * PER_PAGE, page * PER_PAGE), total: found.length, page, pages };
+  return { sets: found.slice((page - 1) * PER_PAGE, page * PER_PAGE), total: found.length, page, pages,
+    near: Boolean(asked?.near), meant: asked?.meant || "" };
 }
 
 /// The theme tree the library filters by: every top theme with how many
