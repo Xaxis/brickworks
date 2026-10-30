@@ -597,7 +597,7 @@ is on the page, `hidden`, for the script to show.
 - **Your achievements** (`/profile?tab=achievements`, `web/profile.js`,
   `.achievements-list` in `web/directory.css`): a tile a track, as
   `.earned`'s are (`--panel`, `--line`, `--r-3`), in a grid of 260 px
-  columns: the award and the level's name as an `h3` at `--t-body`, "Level
+  columns: the award and the level's name as an `h3` at `--t-h3`, "Level
   3 of 6" at `--t-tiny` in `--ink-faint`, a 6 px `.reach` bar (`--line`, filled
   in `--accent-edge`, hidden from a screen reader: the words say it), the
   number in words, `.to-next` in `--ink` ("13 more to reach Designer · 25

@@ -545,7 +545,7 @@ button.follow[aria-pressed="true"] { color: var(--ink-soft); }
 	border: 1px solid var(--line); border-radius: var(--r-3); background: var(--panel);
 }
 .achievements-list li[data-level="0"] { border-style: dashed; background: transparent; }
-.achievements-list h3 { display: flex; align-items: center; gap: var(--s-2); margin: 0; font-size: var(--t-body); }
+.achievements-list h3 { display: flex; align-items: center; gap: var(--s-2); margin: 0; font-size: var(--t-h3); }
 .achievements-list h3 .icon { width: 18px; height: 18px; color: var(--ink-soft); }
 .achievements-list p { margin: 0; font-size: var(--t-small); line-height: 1.45; color: var(--ink-soft); }
 .achievements-list .level { color: var(--ink-faint); font-size: var(--t-tiny); font-variant-numeric: tabular-nums; }
