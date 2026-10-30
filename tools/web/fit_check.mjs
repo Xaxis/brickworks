@@ -95,6 +95,11 @@ const ITS_OWN = ["key_field", "use_key", "assistant_rail", "phone_assistant"];
 // What a finger needs, in points, and where a size is a phone's.
 const FINGER = 44;
 const isPhone = (width, height) => Math.min(width, height) < 600 && Math.max(width, height) < 1000;
+// The least share of a phone's height the model keeps, between its bars
+// and the notices strip: 54% on its side at first. The desktop drawn at
+// 844 x 390 left it 128 px, the key strip over most of that (appux2,
+// 2026-10-30).
+const PHONE_TALL = 0.5;
 const ALL = [
   [1600, 900, 1, BOTH, 0],
   [1920, 1080, 2, BOTH, 0],
@@ -108,6 +113,9 @@ const ALL = [
   [1100, 760, 2, ONE, 0.6],
   [390, 844, 3, PHONE, 0],
   [844, 390, 3, PHONE, 0],
+  // A browser window as small as a phone on its side, with a mouse: the
+  // window appux2 saw the desktop in. It gets the phone's layout too.
+  [844, 390, 2, PHONE, 0, "mouse"],
 ];
 // Names a build from before they were published says nothing of.
 const RAILS = ["parts_rail", "assistant_rail"];
@@ -174,11 +182,11 @@ async function started(page, until) {
 const browser = await launch();
 let failed = 0;
 let unstarted = 0;
-for (const [width, height, ratio, wanted, share] of CASES) {
-  const label = `${width}x${height}@${ratio}x`;
+for (const [width, height, ratio, wanted, share, pointer] of CASES) {
+  const label = `${width}x${height}@${ratio}x${pointer === "mouse" ? " with a mouse" : ""}`;
   const phone = isPhone(width, height);
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: ratio,
-    ...(phone ? { isMobile: true, hasTouch: true } : {}) });
+    ...(phone && pointer !== "mouse" ? { isMobile: true, hasTouch: true } : {}) });
   const page = await context.newPage();
   if (throttle > 1) {
     const cdp = await context.newCDPSession(page);
@@ -298,6 +306,9 @@ async function fits(page, label, wanted, share, width, height) {
     if (share > 0 && view[2] < width * share) {
       over.push(`the model keeps ${Math.round((100 * view[2]) / width)}% of the width, under ${share * 100}%`);
     }
+    if (isPhone(width, height) && view[3] < height * PHONE_TALL) {
+      over.push(`the model keeps ${Math.round((100 * view[3]) / height)}% of the height, under ${PHONE_TALL * 100}%`);
+    }
   }
   // A large canvas drawn in software can take longer than a screenshot's
   // default wait; the picture is evidence, not the check.
@@ -306,7 +317,8 @@ async function fits(page, label, wanted, share, width, height) {
   const clear = over.length === 0;
   console.log(`  ${inPage ? "ok  " : "FAIL"}  ${label}: ${inPage ? `every control on the page (${wanted.join(", ")})` : outside.join("; ")}`);
   const said = view ? `model [${view}]${layout ? `, ${layout.samples} points, columns ${layout.columns}` : " (from centres)"}` : "";
-  const kept = view ? `, ${Math.round((100 * view[2]) / width)}% of the width` : "";
+  const kept = view ? `, ${Math.round((100 * view[2]) / width)}% of the width`
+    + `${isPhone(width, height) ? `, ${Math.round((100 * view[3]) / height)}% of the height` : ""}` : "";
   console.log(`  ${clear ? "ok  " : "FAIL"}  ${label}: ${clear ? `nothing over the model (${said}${kept})` : `${over.slice(0, 6).join("; ")}${over.length > 6 ? `; and ${over.length - 6} more` : ""} (${said})`}`);
   return inPage && clear;
 }

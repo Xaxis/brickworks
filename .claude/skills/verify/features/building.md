@@ -372,7 +372,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Parts, Colour (the colour in hand), Turn, Tip, Select (lets go, as a right
   click), Delete (the selection, else the Delete tool) and More; a line over
   the model in touch words (what was just said, `Phone.touch_words`, or what a
-  finger does now); Fit in the corner. Sheets from the foot: the parts bin
+  finger does now; one line on a phone held sideways); Fit in the corner. Sheets from the foot: the parts bin
   (Main's own, `PartsBin.zoom`, a finger's drag scrolling it), half the
   screen, its handle swiped to the whole screen or away, gone with a pick
   (on a phone on its side the whole screen: half was its head and no part,
@@ -393,7 +393,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   the app's own audit (`window.brickworksAskPhone`, `Main._phone_audit`):
   every target 44 points or more, no text under 12, nothing off the screen.
   `tools/web/fit_check.mjs` opens its phone sizes (390 x 844, 844 x 390) as
-  phones and asks the same audit at first and with the assistant turned on in
+  phones, and 844 x 390 again with a mouse (appux2 saw the desktop's key
+  strip over most of a 128-px model there), the model keeping half the
+  height or more (`PHONE_TALL`), and asks the same audit at first and with the assistant turned on in
   Settings (scrolled into sight, above Done, on a phone on its side): every
   target 44 or more and on the screen, the mark, the name, Undo, Redo, Parts,
   More and the assistant's button shown, and nothing over the model but the
@@ -1812,6 +1814,16 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   shaft (`JointSnap.End.back`, `ways`): an axle and nothing else has the
   shaft behind each tip, and a wheel, a bush or a beam on it slides
   (8841-1's belt wheel halfway along its axle; probe: the same section).
+  An axle in hand goes through a hole and stops flush with its far face
+  wherever the hole is aimed at; aimed past that face, its tip goes on
+  through to the pointer, a whole LDU at a time, as far as its shaft runs
+  (`JointSnap._pushed`, the second way's slide, so `Builder._joint_asked`
+  keys the pose on every way's): 8841-1's axle stands 1 LDU past its
+  1 x 16 and took a typed rest. Probe: `placing_probe -- only=axle` (fails
+  without `_pushed`: the tip stayed flush). A 1 x 1 round plate on its side
+  on a light clip's ring seats flush, as 314 of the 325 such seats in the
+  OMR's files are (the plane's four are 1 LDU proud, its author's own);
+  probe: `placing_probe -- only=ring`.
   The build flow's side of it:
   `tests/test_cadtask.py` (a part on its side aimed at by its underside; a
   beam hung from its middle out).
