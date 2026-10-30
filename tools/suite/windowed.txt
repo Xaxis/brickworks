@@ -73,3 +73,4 @@ feedback   # Brickworks, Send feedback… attaches what the person chooses and s
 palette   # Find a command: every command found by its words and run by Return, Render in five presses, greyed rows say why; no command in two menus, Edit 25 rows; the menu on a part's six new rows run from it (appux371 A9, A7, A8)
 connect   # Connect: a point on the part, then the point it goes on; 8841-1's column, a turned parent, a part down, the walk (connect)
 keys   # a key for every tool; C paints only a selection; Studio's 20 keys do Studio's things under its preset; Mecabricks' and LDCad's; a key set in the sheet, a clash refused with what it clashes with, and the key still set after a restart (appux A11)
+together_pins   # Build together in the app: a comment pinned, resolved in one click, saved and opened; the others in their colours; Follow (B8)

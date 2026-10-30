@@ -2,9 +2,12 @@
 ## else, live, each in their own browser or desktop app (Together).
 ##
 ## Before a session: Start, which gives a link to send, or a link someone
-## sent pasted in to join theirs. In one: the link, who is in it and whether
-## each is here, and End the session (the owner's, with Remove beside each
-## person) or Leave. The look of Versions, the panel beside it in the menu.
+## sent pasted in to join theirs. In one: the link, who is in it, each in the
+## colour their pointer and selection are drawn in, and whether each is
+## here, with Follow beside each other person (this view goes where theirs
+## goes until it is moved), and End the session (the owner's, with Remove
+## beside each person) or Leave. The look of Versions, the panel beside it
+## in the menu.
 class_name TogetherDialog
 extends AcceptDialog
 
@@ -21,6 +24,7 @@ var _copy: Button
 var _rows: VBoxContainer
 var _end: Button
 var _removes: Array[Button] = []
+var _follows: Array[Button] = []
 var _chat_box: VBoxContainer
 var _chat_lines: Label
 var _chat_row: HBoxContainer
@@ -174,6 +178,7 @@ func fill() -> void:
 	for child: Node in _rows.get_children():
 		child.queue_free()
 	_removes.clear()
+	_follows.clear()
 	var live: bool = together.live
 	_start.visible = not live
 	_join_row.visible = not live
@@ -208,6 +213,13 @@ func fill() -> void:
 		var person: Dictionary = item
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
+		# Their colour: their pointer and selection are drawn in it.
+		var swatch := ColorRect.new()
+		swatch.color = together.colour_of(str(person.get("who", "")))
+		swatch.custom_minimum_size = Vector2(12, 12)
+		swatch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		swatch.tooltip_text = "Their pointer and the parts they select are drawn in this colour"
+		row.add_child(swatch)
 		var words := Label.new()
 		var who: String = str(person.get("name", ""))
 		if bool(person.get("me", false)):
@@ -217,6 +229,24 @@ func fill() -> void:
 		words.text = "%s  ·  %s" % [who, "here" if bool(person.get("here", false)) else "away"]
 		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(words)
+		if not bool(person.get("me", false)):
+			var them: String = str(person.get("who", ""))
+			var follow := Button.new()
+			follow.toggle_mode = true
+			follow.button_pressed = together.following == them
+			follow.text = "Following" if follow.button_pressed else "Follow"
+			follow.focus_mode = Control.FOCUS_NONE
+			follow.disabled = not bool(person.get("here", false))
+			follow.tooltip_text = "Your view goes where theirs goes, until you move it yourself"
+			follow.pressed.connect(func() -> void:
+				if together.following == them:
+					together.unfollow()
+				else:
+					var trouble: String = together.follow(them)
+					if not trouble.is_empty():
+						together.said.emit(trouble))
+			row.add_child(follow)
+			_follows.append(follow)
 		if together.owns and not bool(person.get("me", false)):
 			var take_out := Button.new()
 			take_out.text = "Remove"
@@ -308,6 +338,8 @@ func controls_by_name() -> Dictionary:
 		out["together_chat_send"] = _chat_send
 	for n: int in _removes.size():
 		out["together_remove_%d" % (n + 1)] = _removes[n]
+	for n: int in _follows.size():
+		out["together_follow_%d" % (n + 1)] = _follows[n]
 	return out
 
 

@@ -69,6 +69,10 @@ var _connector: ClaudeConnector
 ## (src/net/together.gd, src/ui/together_dialog.gd).
 var _together: Together
 var _together_dialog: TogetherDialog
+## Comments pinned to parts (src/assembly/pinned_comments.gd): drawn on the
+## model, and Edit, Comments….
+var _pins_view: PinsView
+var _pins_dialog: PinsDialog
 ## A Build together link's secret from the page's address (?together=).
 var _together_wanted: String = ""
 ## Whether the session this tab was in before a reload has been gone back to.
@@ -1016,6 +1020,12 @@ func _page_controls() -> Dictionary:
 		named.merge(_share_panel.controls_by_name())
 	if _together_dialog != null:
 		named.merge(_together_dialog.controls_by_name())
+	if _pins_dialog != null:
+		named.merge(_pins_dialog.controls_by_name())
+	if _pins_view != null:
+		named.merge(_pins_view.controls_by_name())
+	if _together != null and _together.stop_button() != null:
+		named["together_stop_following"] = _together.stop_button()
 	if _share_view != null:
 		named.merge(_share_view.controls_by_name())
 	if _build_mode != null:
@@ -4709,6 +4719,21 @@ func _build_ui() -> void:
 	_together.camera = _camera
 	_together.base_url = Deployment.api_base()
 	_together.said.connect(func(words: String) -> void: _bar.say(words))
+	# Following someone's view: the model's column framed in their colour.
+	_together.banner_parent = _over_model
+	# Comments pinned to parts: drawn over the model, undone as one step.
+	_builder.pins_hook = func(words: String) -> String:
+		var had: String = _store.pins.words(_world, _store.lift())
+		_store.pins.set_words(words)
+		_store.touch()
+		return had
+	_pins_view = PinsView.new()
+	_pins_view.store = _store
+	_pins_view.world = _world
+	_pins_view.camera = _camera
+	_pins_view.together = _together
+	_pins_view.list_wanted.connect(open_pins)
+	_over_model.add_child(_pins_view)
 	# Where this person is working, for the others' view: the part under the
 	# mouse, a few times a second while in a session.
 	# Looked for again only when the mouse, the view or the model moved: a
@@ -6554,6 +6579,20 @@ func open_together() -> void:
 		_together_dialog.together = _together
 		add_child(_together_dialog)
 	_together_dialog.open()
+
+
+## Edit, Comments…: the comments pinned to the model's parts, and a new one
+## on the part selected.
+func open_pins() -> void:
+	if _pins_dialog == null:
+		_pins_dialog = PinsDialog.new()
+		_pins_dialog.together = _together
+		_pins_dialog.store = _store
+		_pins_dialog.builder = _builder
+		_pins_dialog.world = _world
+		_pins_dialog.camera = _camera
+		add_child(_pins_dialog)
+	_pins_dialog.open()
 
 
 ## A Build together link opened: joined once whatever was here is back and

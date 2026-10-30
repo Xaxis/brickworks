@@ -409,6 +409,12 @@
 					"words": "Mirror",
 					"key": "Shift+M",
 					"tip": "Make the selection its mirror image, left to right as you see it"
+				},
+				{
+					"name": "comments",
+					"words": "Comments…",
+					"key": "",
+					"tip": "Comments pinned to the model's parts, kept with it, and a new one on the part selected"
 				}
 			]
 		},
@@ -1284,6 +1290,12 @@
 			"tip": "Ask Claude to make this joint hold: what it carries, on what, and its margin, asked for you"
 		},
 		{
+			"name": "comments",
+			"words": "Comments…",
+			"key": "",
+			"tip": "Comments pinned to the model's parts, kept with it, and a new one on the part selected"
+		},
+		{
 			"line": true
 		},
 		{
@@ -1448,6 +1460,7 @@
 		"instructions": "",
 		"share": "",
 		"together": "",
+		"comments": "",
 		"clear": "",
 		"account": "",
 		"quit": "Ctrl-Q",
@@ -1457,6 +1470,7 @@
 		"copy": "Ctrl-C",
 		"paste": "Ctrl-V",
 		"duplicate": "Ctrl-D",
+		"pattern": "Ctrl-shift-D",
 		"delete": "Delete",
 		"select_all": "Ctrl-A",
 		"select_none": "",
@@ -1586,6 +1600,7 @@
 		"mode_move": "shift-X",
 		"mode_rotate": "shift-O",
 		"mode_hinge": "shift-I",
+		"mode_connect": "N",
 		"mode_clone": "shift-V",
 		"mode_paint": "shift-P",
 		"mode_hide": "shift-G",

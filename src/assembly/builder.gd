@@ -72,6 +72,10 @@ var scenery: Dictionary = {}
 ## the step that changes what the model stands on. Unset, the step does
 ## nothing.
 var floor_hook: Callable = Callable()
+## Sets the comments pinned to parts (PinnedComments.set_words) and returns
+## what they were, for the step that pins, resolves or opens one again.
+## Unset, the step does nothing.
+var pins_hook: Callable = Callable()
 
 signal placed(brick_id: int, part_id: String)
 signal removed(brick_id: int)
@@ -450,6 +454,11 @@ func _apply(step: Dictionary) -> Dictionary:
 		lattice.occupy_boxes(moving,
 			boxes_for(library.mesh_for(was.part_id), to))
 		return {"undo": "move", "brick": moving, "transform": previous}
+
+	# Comments pinned to parts: the whole set as it was, its own reverse.
+	if step.get("undo", "") == "pins":
+		return {"undo": "pins", "pins": pins_hook.call(step["pins"]) if pins_hook.is_valid()
+			else step["pins"]}
 
 	# What the model stands on: put the floor the step names down, and the
 	# step that puts back the one it replaced is the reverse.
