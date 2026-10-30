@@ -546,6 +546,7 @@
       "reach": "tools/release.py build   (all three, into dist/<version>/; linux, mac or windows for one)",
       "area": "release",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
@@ -668,6 +669,7 @@
       "reach": "gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.1.0  (its .github/workflows/release.yml there)",
       "area": "release",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
@@ -1736,6 +1738,7 @@
       "reach": "tools/release.py publish --draft, then tools/release.py publish",
       "area": "release",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
@@ -2053,6 +2056,7 @@
       "reach": "tools/release.py smoke dist/0.1.0/Brickworks-0.1.0-linux-x86_64.tar.xz --window",
       "area": "release",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_release.py",
         "tests/test_release_links.py",
         "tests/test_release_train.py",
