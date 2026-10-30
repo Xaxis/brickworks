@@ -64,4 +64,5 @@ provider_apis   # Anthropic's Messages, Gemini's own API and OpenAI's Responses:
 app_menu   # the mark's menu at the menu bar's start, its rows, keys, and the bar and toolbar unmoved (brand373)
 hinge_align_ui    # Meet in Properties: the ring closed in three actions (click, Shift-click, Meet), one Ctrl+Z takes it back (hingealign)
 keysheet   # F1 opens the keys sheet alone: 20+ rows in sight at 1280 x 720, typed into it keeps the rows that say it, the menus' keys on it; "," opens Settings without a key; every menu row in each state 4.5:1 or better off the pixels (APP_UX A1, A2)
-feedback   # Help, Send feedback… attaches what the person chooses and sends it; Beta hub is a tester's alone (beta374)
+feedback   # Brickworks, Send feedback… attaches what the person chooses and sends it; Beta hub is a tester's alone (beta374)
+palette   # Find a command: every command found by its words and run by Return, Render in five presses, greyed rows say why; no command in two menus, Edit 25 rows; the menu on a part's six new rows run from it (appux371 A9, A7, A8)

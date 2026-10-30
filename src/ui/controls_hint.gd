@@ -194,7 +194,7 @@ static func for_keyboard() -> Array[Binding]:
 	var rest: Array[Binding] = [
 		Binding.new(["P"], "parts"),
 		Binding.new(["M"], "minifigure"),
-		Binding.new(["I"], "brickify a 3D model"),
+		Binding.new(["%s-I" % _hold()], "brickify a 3D model"),
 		Binding.new(["Tab"], "panels"),
 		Binding.new(["F6"], "the keys to the toolbar, the parts and the colours, and back"),
 		Binding.new(["/"], "search"),

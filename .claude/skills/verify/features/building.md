@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:find a command, cli:palette probe, cli:palette in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges -->
 
 ## Sub-features
 
@@ -173,9 +173,16 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Account; every command is defined once in `Shell._define` with its words, its
   key (shown beside it in the menu, never answered by the menu: the keys stay
   the app's own) and whether it can be used now — greyed when not, ticked when
-  it is a setting that is on. File: New, Open, Open recent, Import (LDraw,
-  Studio `.io`; LDD `.lxf` greyed, not yet), Save, Save as, Export, Render…
-  (see [view](view.md)), Instructions, Clear, Account, Quit. The toolbar under it: New/Open/Save, Undo/Redo/History,
+  it is a setting that is on. Each command is in one menu (appux371 A7; the
+  `palette probe` counts every menu's ids): File: New, Open, Open recent,
+  Import (LDraw, Studio `.io`; LDD `.lxf` greyed, not yet), Save, Save as,
+  Export, Render… (see [view](view.md)), Clear, Quit. Edit (25 rows) keeps
+  the clipboard, the selection, hide, lock, paint and replace; Build the
+  steps (Next step, Build steps), Instructions, the sub-assemblies and the
+  sections (Exploded view); Help is Keys and the tour, and About, Send feedback,
+  the docs, the website, Beta hub (a tester's) and Account are in the app
+  menu. A phone's More lists the
+  app menu's rows under Help (`Shell.touch_menus`). The toolbar under it: New/Open/Save, Undo/Redo/History,
   the tools, Copy/Paste/Mirror/Select by/Show all, snap and turn step, grid,
   orthographic, fit and three views, Measure, Properties, Timeline,
   Instructions, Render, Parts list — each tooltip its name, key and what it does.
@@ -207,6 +214,27 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `app menu in a browser` (preview check `app_menu`) does it in a browser at
   1280 and 390 wide, reads the mark's colours off the canvas, and follows
   Back to brickworks.diy to the site's header.
+- `find a command` (`src/ui/command_palette.gd`, `Shell.palette`): Ctrl+/
+  (and Ctrl+Shift+P on the desktop; a browser keeps that one), or the app
+  menu's Find a command…, opens a box over the model with the keys in it.
+  Typing filters every command by the words of its name and of its menu
+  (each word typed begins a word there, or is inside the name; at three
+  letters a word of its tooltip): "same colour", "turn left", "xray".
+  Each row says its key and its menu ("Edit › Select by"); one that cannot
+  be used now stays, greyed, saying why (`Shell.why_not`, `Command.needs`),
+  and Return runs nothing. Return runs the lit row through `Shell.run`, as
+  its menu row does; Up, Down, Page Up and Down move; Escape puts it away.
+  The last eight run from it come first (`ShellPrefs` `palette_recent`).
+  `palette probe` (windowed, 1280 x 720; 1400 x 900 by `PROBE_SIZE`) walks
+  every command in `Shell._commands`: typed by its words, reached by Down,
+  Return hands exactly it to the run (a stand-in, so no file dialog,
+  browser or network) or, greyed, nothing; Render opens for real in five
+  presses (Ctrl+/, R, E, N, Return). It also checks no command in two menus,
+  Edit at most 25 rows and 60% of the window, and the menu on a part's
+  Duplicate, Replace, Select the same part and colour, the step moves and
+  Swing on its hinge (`swing`, J), each run from the menu. `palette in a
+  browser` (preview check `palette`) drives it by keys in a browser
+  (`brickworksState.palette`).
 - `tool modes` (`EditVerbs.mode`): Select (the default) and Place (a part in
   hand), and Move, Rotate, Hinge, Clone, Paint, Hide, Delete — a click on a part
   does that tool's one thing to it, or to the whole selection when the part is

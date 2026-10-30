@@ -45,6 +45,10 @@ var stress: StressView
 var versions: VersionsDialog
 ## Help, Send feedback… (FeedbackDialog).
 var feedback: FeedbackDialog
+## Find a command (Ctrl+/): src/ui/command_palette.gd.
+var palette: CommandPalette
+## The model's part of the window, which the palette opens over.
+var model_area: Control
 
 ## name -> Command
 var _commands: Dictionary = {}
@@ -78,6 +82,8 @@ class Command extends RefCounted:
 	## One of several of which exactly one is on: the tools.
 	var radio: bool = false
 	var tip: String = ""
+	## What it waits for while it cannot be used ([method Shell.why_not]).
+	var needs: String = ""
 
 
 const CTRL := KEY_MASK_CMD_OR_CTRL
@@ -85,41 +91,48 @@ const SHIFT := KEY_MASK_SHIFT
 const ALT := KEY_MASK_ALT
 
 ## The menus, in order. "-" is a line between groups; ">name" a submenu.
+##
+## Each command has one home, as in Studio's menus (appux371 A7): the
+## sub-assembly and step commands were in Edit and in Build, Exploded view
+## in View and in Build, and Edit was 39 rows, 689 px of a 720 px window.
+## Edit keeps the clipboard, the selection, hiding, locking, paint and
+## replace; Build the steps, the sub-assemblies, the sections and the
+## prints; Tools what asks Claude. Find a command (CommandPalette) reaches
+## any of them by name.
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", ">recent", ">import", "-", "save", "save_as",
-		"versions", "-", "share", "together", ">export", "render", "instructions", "-", "clear", "account",
-		"quit"]],
+		"versions", "-", "share", "together", ">export", "render", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
-		"isolate", "show_all", "-", "lock", "unlock", "-", "paint", "replace", "printed_versions", "mirror",
-		"-", "ask_claude", "-", "make_submodel", "leave_submodel", "enter_assembly", "leave_assembly",
-		"rename_assembly", "make_unique", "-", "break_out", "put_back", "-", ">steps", "-",
-		"reshape_flex"]],
+		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
 	["View", ["view_default", "view_front", "view_back", "view_left", "view_right",
 		"view_top", "view_bottom", "view_iso", "-", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
-		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "explode", "-",
+		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "-",
 		"turn_left",
 		"turn_right", "-", "panel_parts",
 		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
 		"full_screen"]],
-	["Build", ["timeline", "step_close", "pose", "instructions", ">booklet", "parts_list", "-", "collection", "collection_need",
-		"collection_build", "-", "make_submodel",
-		"leave_submodel", "enter_assembly", "select_submodel", "-", "suggest_sections",
-		"evaluate_section", "break_out", "explode", "-", "flex", "minifig", "mosaic",
-		"brickify", "part_maker", "print_part", "sticker",
-		"-", "rotate_held", "tip_held"]],
+	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list", "-",
+		"collection", "collection_need", "collection_build", "-", "make_submodel",
+		"leave_submodel", "enter_assembly", "leave_assembly", "rename_assembly", "make_unique", "-",
+		"suggest_sections", "evaluate_section", "break_out", "put_back", "explode", "-", "flex",
+		"reshape_flex", "minifig", "mosaic", "brickify", "part_maker", "print_part", "sticker",
+		"printed_versions", "-", "rotate_held", "tip_held"]],
 	["Tools", ["mode_select", "mode_place", "mode_move", "mode_rotate", "mode_hinge",
 		"mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "measure",
-		"stability", "simulate", "hidden_colours", "reseat", "-", "connector", "settings"]],
-	["Help", ["keys", "tour", "-", "docs", "website", "beta_hub", "-", "feedback", "about"]],
+		"stability", "simulate", "hidden_colours", "reseat", "-", "ask_claude", "connector",
+		"settings"]],
+	["Help", ["keys", "tour"]],
 ]
 
 ## The app's own menu, opened from the mark at the far left of the menu
 ## bar (ModelBar.mark), as Blender's logo and Figma's main menu open
-## theirs: the app, its website and docs, your account, and in a browser
-## the way back to the site.
-const APP_MENU: Array = ["about", "-", "website", "docs", "-", "account", "-", "back_to_site"]
+## theirs: the app and a word to the people who make it, finding any
+## command, its website and docs (and a tester's Beta hub), your account,
+## and in a browser the way back to the site.
+const APP_MENU: Array = ["about", "feedback", "-", "palette", "-", "website", "docs", "beta_hub",
+	"-", "account", "-", "back_to_site"]
 
 ## Commands for a browser alone, in no menu elsewhere.
 const WEB_ONLY: Array[String] = ["back_to_site"]
@@ -150,8 +163,8 @@ const SUBMENUS: Dictionary = {
 	"select_by": ["select_colour", "select_part", "select_alike", "select_find",
 		"select_connected", "select_submodel", "select_inverse"],
 	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_flip", "cut_ghosts"],
-	"steps": ["step_close", "-", "step_prev", "step_next", "step_new", "-", "step_earlier",
-		"step_later",
+	# Next step (E) is in Build itself, over these.
+	"steps": ["step_prev", "step_next", "step_new", "-", "step_earlier", "step_later",
 		"step_merge", "step_delete"],
 	"booklet": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
 		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
@@ -165,6 +178,12 @@ const SUBMENUS: Dictionary = {
 		"floor_colour_378", "floor_colour_1", "floor_colour_15", "floor_colour_0",
 		"floor_colour_7"],
 }
+
+## A submenu's own words, as its row in the menu above says them.
+const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
+	"export": "Export", "history": "History", "select_by": "Select by", "cut_away": "Cut along",
+	"steps": "Build steps", "booklet": "Booklet page", "floor": "Floor",
+	"floor_colour": "Baseplate colour"}
 
 
 ## Everything put on screen: the menus into the bar, the toolbar under it,
@@ -236,8 +255,8 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	_fill(app_menu, APP_MENU)
 	app_menu.id_pressed.connect(_on_id)
 	app_menu.about_to_popup.connect(func() -> void: _refresh(app_menu))
-	var holds: String = "About, the website, the docs and your account" + (
-		", and back to brickworks.diy" if OS.has_feature("web") else "")
+	var holds: String = ("About, feedback, finding a command, the website, the docs and your "
+		+ "account") + (", and back to brickworks.diy" if OS.has_feature("web") else "")
 	bar.mark.tooltip_text = "Brickworks\n" + holds
 	bar.mark.accessibility_description = holds
 
@@ -347,6 +366,10 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	feedback.world = world
 	feedback.library = library
 	add_child(feedback)
+	model_area = over_model
+	palette = CommandPalette.new()
+	palette.shell = self
+	add_child(palette)
 
 	_about = AcceptDialog.new()
 	_about.title = "About Brickworks"
@@ -655,6 +678,47 @@ func can(name: String) -> bool:
 	return not found.can.is_valid() or bool(found.can.call())
 
 
+## Why a command cannot be used now, in a few words: "Select a part
+## first". "" when it can. Find a command shows it beside a greyed row
+## rather than leave the row out.
+func why_not(name: String) -> String:
+	var found: Command = _commands.get(name)
+	if found == null:
+		return "No such command"
+	if read_only and not name in LOOKING:
+		return "This model is shared to look at"
+	if store != null and store.laying and not name in WHILE_LAYING:
+		return "The model is still opening"
+	if not assistant_shown and name in ASSISTANT_COMMANDS:
+		return "The assistant is off in Settings"
+	if not found.can.is_valid() or bool(found.can.call()):
+		return ""
+	return found.needs if not found.needs.is_empty() else "Not now"
+
+
+## What a command waits for, where its own test does not say
+## (_define gives those that wait on a selection or a model theirs).
+const NEEDS: Dictionary = {
+	"undo": "Nothing to undo yet", "redo": "Nothing to redo",
+	"quit": "Close the browser's tab instead",
+	"export_all": "No model saved here yet",
+	"show_all": "Nothing is hidden", "unlock": "Nothing is locked",
+	"printed_versions": "Select a part that was printed",
+	"brace": "Select a part View › Stress shows weak",
+	"swing": "Select a part on a hinge, clip or turntable",
+	"enter_assembly": "Select a sub-assembly first", "rename_assembly": "Select a sub-assembly first",
+	"leave_assembly": "Not editing inside a sub-assembly",
+	"make_unique": "Select a copy of a sub-assembly",
+	"evaluate_section": "Select a section first", "break_out": "Select a section first",
+	"put_back": "No section is broken out",
+	"xray": "Select a part first", "cut_flip": "Turn on Cut away first",
+	"stress": "Put a part on the baseplate first",
+	"reshape_flex": "Select a hose or chain",
+	"floor_part": "Stand the model on a baseplate first",
+	"back_to_site": "In a browser only",
+}
+
+
 ## Set for a model shared by link and opened to look at (/app?view=<id>):
 ## then only the commands in [constant LOOKING] can run, from the menus,
 ## the toolbar or a key — a command that is not here cannot change the
@@ -666,14 +730,15 @@ var read_only: bool = false
 const LOOKING: Array[String] = ["view_default", "view_front", "view_back",
 	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
 	"fit_model", "ortho", "full_screen", "timeline", "parts_list", "instructions",
-	"docs", "website", "beta_hub", "feedback", "about", "back_to_site"]
+	"docs", "website", "beta_hub", "feedback", "about", "back_to_site", "palette"]
 
 
 ## What may be done while a model is being laid (ModelStore.laying): look
 ## at what is down from another side, and nothing that reads the model.
 const WHILE_LAYING: Array[String] = ["view_default", "view_front", "view_back",
 	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
-	"ortho", "full_screen", "docs", "website", "beta_hub", "feedback", "about", "back_to_site"]
+	"ortho", "full_screen", "docs", "website", "beta_hub", "feedback", "about", "back_to_site",
+	"palette"]
 
 
 ## -1 for a command that is not a setting; 0 off, 1 on.
@@ -722,7 +787,7 @@ static func key_text(accel: int) -> String:
 ## engine's own name for it and has no way to be told other words; for a
 ## key it misnames, the character it would draw for itself. The menus never
 ## answer a key (Shell._menu), so this is only ever read, never pressed.
-const SHOWN_AS: Dictionary = {KEY_QUOTELEFT: 0x201B, KEY_COMMA: 0x201A}
+const SHOWN_AS: Dictionary = {KEY_QUOTELEFT: 0x201B, KEY_COMMA: 0x201A, KEY_SLASH: 0x2215}
 
 
 ## Keys with no look-alike the menus' font has (the step keys, Shift-[ and
@@ -877,6 +942,11 @@ func _define() -> void:
 		"Swap the part for one of the prints or stickered versions the LEGO Group made of it")
 	_add("mirror", "Mirror", SHIFT | KEY_M, func() -> void: verbs.mirror(), selected,
 		"Make the selection its mirror image, left to right as you see it")
+	# J, which had no command: on the menu on a part, and found by name.
+	_add("swing", "Swing on its hinge", KEY_J, func() -> void: verbs.swing(EditVerbs.SWING),
+		func() -> bool: return builder.hinge_angle() != null,
+		"Swing the selection %d° about the hinge, clip or turntable it hangs from; Shift+J swings it back"
+		% roundi(EditVerbs.SWING))
 	# src/ai/selection_scope.gd: Claude changes these parts and the room round
 	# them, and nothing else.
 	_add("ask_claude", "Ask Claude about this…", CTRL | KEY_K,
@@ -1150,6 +1220,10 @@ func _define() -> void:
 		Callable(),
 		"What every button and key does")
 	_add("tour", "Take the tour", 0, func() -> void: tour.start())
+	# src/ui/command_palette.gd: Figma's key for its Actions. Ctrl+Shift+P
+	# too on the desktop (handle_key); a browser keeps that one.
+	_add("palette", "Find a command…", CTRL | KEY_SLASH, func() -> void: palette.open(), Callable(),
+		"Any command by its name or its menu: type a few letters, then Enter")
 	# brickworks.diy/docs: every menu, tool and page of the site, written
 	# out (docs-site/, tools/docs_site.py). The owner asked for it, 2026-10-29.
 	# It opens at the page of the panel in front, where one is (docs_page).
@@ -1172,13 +1246,35 @@ func _define() -> void:
 		func() -> void: JavaScriptBridge.eval("location.assign('/')", true),
 		func() -> bool: return OS.has_feature("web"),
 		"Leave the app for the website's home page, in this tab")
+	# What a greyed command waits for, said beside it (why_not).
+	for found: Command in _commands.values():
+		if found.can == selected:
+			found.needs = "Select a part first"
+		elif found.can == something:
+			found.needs = "Put a part on the baseplate first"
+		elif found.can == on_a_step:
+			found.needs = "Choose a step on the timeline first"
+		elif found.name.begins_with("floor_colour_"):
+			found.needs = "Stand the model on a baseplate first"
+		else:
+			found.needs = str(NEEDS.get(found.name, ""))
 
 
 ## What a right click on a part offers: the verbs a person reaches for,
 ## each the command Edit or Build has, greyed where it would do nothing.
 ## A right click on a part did nothing (brickworks.diy, 2026-10-12).
-const ON_A_PART: Array = ["ask_claude", "brace", "-", "select_connected", "-", "hide", "isolate", "-", "paint",
-	"printed_versions", "copy", "delete", "-", "make_submodel", "-", "show_properties"]
+## Duplicate, Replace, the same part or colour, the step moves and the
+## swing on a hinge each needed a key or a menu (appux371 A8): here, with
+## their keys, among what selects, hides, copies and changes the part.
+const ON_A_PART: Array = ["ask_claude", "brace", "-", "select_connected", "select_part",
+	"select_colour", "-", "hide", "isolate", "-", "copy", "duplicate", "delete", "-", "paint",
+	"replace", "printed_versions", "swing", "-", "step_prev", "step_next", "make_submodel", "-",
+	"show_properties"]
+
+## A row's words on a part where the menus' would not say it: Select by's
+## "Same part" there is the same as the part clicked.
+const ON_A_PART_WORDS: Dictionary = {"select_connected": "Select everything joined to it",
+	"select_part": "Select the same part", "select_colour": "Select the same colour"}
 var context: PopupMenu
 var _brace_id: int = -1
 
@@ -1189,8 +1285,8 @@ func open_context(at: Vector2) -> void:
 	if context == null:
 		context = PopupMenu.new()
 		_fill(context, ON_A_PART)
-		context.set_item_text(item_index(context, "select_connected"),
-			"Select everything joined to it")
+		for name: String in ON_A_PART_WORDS:
+			context.set_item_text(item_index(context, name), ON_A_PART_WORDS[name])
 		context.id_pressed.connect(_on_id)
 		var brace_at: int = item_index(context, "brace")
 		_brace_id = context.get_item_id(brace_at) if brace_at != -1 else -1
@@ -1267,13 +1363,8 @@ func _fill(popup: PopupMenu, items: Array) -> void:
 			var kind: String = item.substr(1)
 			sub.name = kind
 			sub.add_theme_font_size_override("font_size", 13)
-			var words: String = {"recent": "Open recent", "import": "Import",
-				"export": "Export", "history": "History",
-				"select_by": "Select by", "cut_away": "Cut along", "steps": "Build steps",
-				"booklet": "Booklet page",
-				"floor": "Floor", "floor_colour": "Baseplate colour"}[kind]
 			# An id no command has, so the row is never taken for one.
-			popup.add_submenu_node_item(words, sub, SUBMENU_ID + popup.item_count)
+			popup.add_submenu_node_item(SUBMENU_WORDS[kind], sub, SUBMENU_ID + popup.item_count)
 			if SUBMENUS.has(kind):
 				_fill(sub, SUBMENUS[kind])
 				sub.id_pressed.connect(_on_id)
@@ -1330,6 +1421,20 @@ func _shown(items: Array) -> Array:
 	return out
 
 
+## The menus as a phone's More lists them (PhoneShell). A phone has no mark
+## to open the app's menu from, so its rows go under Help, where About and
+## the docs were before; finding a command by typing is for a keyboard.
+static func touch_menus() -> Array:
+	var out: Array = []
+	for menu: Array in MENUS:
+		var items: Array = menu[1]
+		if str(menu[0]) == "Help":
+			items = items + ["-"] + APP_MENU.filter(func(item: String) -> bool:
+				return item != "palette")
+		out.append([menu[0], items])
+	return out
+
+
 ## Settings, Assistant (AI): the menus and the menu on a part made again,
 ## with the assistant's commands or without them.
 func set_assistant(on: bool) -> void:
@@ -1376,6 +1481,10 @@ func _fill_again() -> void:
 		var popup: PopupMenu = _menus[n].get_popup()
 		popup.clear(true)
 		_fill(popup, MENUS[n][1])
+	# The app's menu too: Beta hub is in it for a tester alone.
+	var app_menu: PopupMenu = bar.mark.get_popup()
+	app_menu.clear(true)
+	_fill(app_menu, APP_MENU)
 	if context != null:
 		context.queue_free()
 		context = null
@@ -1932,6 +2041,14 @@ func handle_key(key: InputEventKey) -> bool:
 			if not held and not key.shift_pressed:
 				see_inside.set_xray(not see_inside.seeing_through)
 				return true
+		KEY_SLASH:
+			if held and not key.shift_pressed and not key.alt_pressed:
+				return run("palette")
+		KEY_P:
+			# VS Code's key for its palette, on the desktop: Firefox keeps
+			# Ctrl+Shift+P for a private window.
+			if held and key.shift_pressed and not key.alt_pressed and not OS.has_feature("web"):
+				return run("palette")
 		KEY_F2:
 			if can("rename_assembly"):
 				run("rename_assembly")
@@ -2502,6 +2619,8 @@ func controls_by_name() -> Dictionary:
 		out.merge(stress.panel.controls_by_name())
 	if versions != null:
 		out.merge(versions.controls_by_name())
+	if palette != null:
+		out.merge(palette.controls_by_name())
 	# Save as's question, for tools/web/dialogs_flow.mjs.
 	if _save_as != null and _save_as.visible:
 		out["save_as_name"] = _save_as_name
@@ -2530,6 +2649,8 @@ func menu(title: String) -> MenuButton:
 	return null
 
 
-## The id a command has in the menus, for a probe to press it there.
+## The id a command has in the menus, for a probe to press it there; -1 while
+## it is in none. Its id stays when the assistant is turned off (set_assistant),
+## so the id alone does not say it is there.
 func menu_id(name: String) -> int:
-	return _ids.find(name)
+	return _ids.find(name) if not _shown([name]).is_empty() else -1

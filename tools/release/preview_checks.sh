@@ -337,6 +337,10 @@ declare -A CMD=(
   # 1280 and a phone's width, in its colours; its rows; About from it; and
   # Back to brickworks.diy leaving the app for the site's home page.
   [app_menu]="tools/web/app_menu_flow.mjs --url=$P/app $B --out=$S/${TAG}_app_menu"
+  # Find a command by keys alone (appux371 A9): Ctrl+/, "ren", Return opens
+  # Render; Render first when opened again; Mirror with nothing selected
+  # says why and runs nothing; Escape puts it away.
+  [palette]="tools/web/palette_flow.mjs --url=$P/app $B --out=$S/${TAG}_palette"
   [list_changed]="tools/web/list_changed_check.mjs --url=$P $B"
   [noai]="tools/web/noai_flow.mjs --url=$P/app --relay $B --out=$S/${TAG}_noai"
   [oauth]="tools/web/oauth_flow.mjs --url=$P/app $B"

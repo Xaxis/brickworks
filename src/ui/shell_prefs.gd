@@ -65,6 +65,9 @@ const DEFAULTS: Dictionary = {
 	# Settings, Reduce motion: no model going up brick by brick, no light
 	# crossing a waiting picture, and the view goes where it is sent at once.
 	"reduce_motion": false,
+	# The commands last run from Find a command (CommandPalette), the latest
+	# first: they come first there.
+	"palette_recent": [],
 }
 
 ## Settings, Interface size: the choices, as shares of the size the window

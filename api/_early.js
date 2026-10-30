@@ -24,16 +24,16 @@
 /// What testers may use first: {key, title, words, where: site | app | both}.
 export const EARLY = Object.freeze([
   { key: "beta_hub", title: "The beta hub", where: "both",
-    words: "This page: what to try, what we know is wrong, and how to tell us. Help, Beta hub in the app, and "
-      + "your account menu on the site." },
+    words: "This page: what to try, what we know is wrong, and how to tell us. Beta hub in the app's Brickworks "
+      + "menu, and your account menu on the site." },
 ]);
 
 /// What is new to try, newest first: {title, words, where, href}.
 export const NEW = Object.freeze([
   { title: "Send feedback from anywhere", where: "both", href: "/docs/feedback",
-    words: "Help, Send feedback in the app, or Send feedback in the site's footer: a bug, an idea or a question, "
-      + "with a picture of what you see and, if you agree, the model and the app's last log lines. Your reports and "
-      + "our answers are on your settings page." },
+    words: "Send feedback in the app's Brickworks menu, or Send feedback in the site's footer: a bug, an idea or "
+      + "a question, with a picture of what you see and, if you agree, the model and the app's last log lines. Your "
+      + "reports and our answers are on your settings page." },
   { title: "Choose who designs", where: "app", href: "/docs/ai",
     words: "Settings, AI: Claude, or another AI on your own key (OpenAI, Gemini, OpenRouter, Mistral, a model on your "
       + "own computer). Test it first; it says plainly what works." },

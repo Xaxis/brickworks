@@ -686,6 +686,9 @@ func _tell_page() -> void:
 		# The rows of the app's menu while it is open (ModelBar.mark), for
 		# tools/web/app_menu_flow.mjs: [] while it is shut.
 		"app_menu": _open_rows(_bar.mark.get_popup()) if _bar != null and _bar.mark != null else [],
+		# Find a command, open or not, what is typed and its rows
+		# (tools/web/palette_flow.mjs).
+		"palette": _shell.palette.page_state() if _shell != null and _shell.palette != null else {},
 		# Who made the model and on what terms, when it is someone else's
 		# (ModelStore.credit): tools/web/library_flow.mjs reads it.
 		"credit": _store.credit,

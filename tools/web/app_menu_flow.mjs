@@ -1,7 +1,7 @@
 // The app's own menu in a browser: the mark at the far left of the menu
-// bar opens About Brickworks, the website, the docs, Account and Back to
-// brickworks.diy, and Back leaves the app for the site's home page in the
-// same tab. The web app had no way back to the site but the browser's own
+// bar opens About Brickworks, Send feedback, Find a command, the website,
+// the docs, Account and Back to brickworks.diy, and Back leaves the app for
+// the site's home page in the same tab. The web app had no way back to the site but the browser's own
 // Back (brand373, 2026-10-29).
 //
 //   node tools/web/app_menu_flow.mjs --url=<preview>/app --bypass=… [--out=shots/app_menu_web]
@@ -29,8 +29,8 @@ const first = args.bypass
   : url;
 mkdirSync(out, { recursive: true });
 
-const ROWS = ["About Brickworks", "-", "Brickworks website", "Documentation", "-", "Account…", "-",
-  "Back to brickworks.diy"];
+const ROWS = ["About Brickworks", "Send feedback…", "-", "Find a command…", "-", "Brickworks website",
+  "Documentation", "-", "Account…", "-", "Back to brickworks.diy"];
 
 let failed = 0;
 function check(what, ok) {

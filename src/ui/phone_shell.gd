@@ -708,10 +708,8 @@ func _fill_context(words: String) -> void:
 		var command: Shell.Command = shell.command(item)
 		if command == null:
 			continue
-		var label: String = command.words
-		if item == "select_connected":
-			label = "Select everything joined to it"
-		elif item == "paint":
+		var label: String = str(Shell.ON_A_PART_WORDS.get(item, command.words))
+		if item == "paint":
 			label = "Paint with %s" % library.color(builder.held_color).name
 		_context.add_row(label, item)
 
@@ -722,7 +720,7 @@ func _fill_context(words: String) -> void:
 ## hundred rows long to scroll through.
 func _fill_more() -> void:
 	_more.clear()
-	for menu: Array in Shell.MENUS:
+	for menu: Array in Shell.touch_menus():
 		var name: String = str(menu[0])
 		var open: bool = _more_open.has(name)
 		_more.add_section(name, open, func() -> void:

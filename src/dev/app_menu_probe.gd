@@ -14,8 +14,9 @@
 ## app's name in words where the mark is now. Its name beside it while
 ## there is room, the mark alone where there is not.
 ##
-## Clicked, it opens About Brickworks, the website, the docs and Account (in
-## a browser, Back to brickworks.diy too: tools/web/app_menu_flow.mjs);
+## Clicked, it opens About Brickworks, Send feedback, Find a command, the
+## website, the docs and Account (a beta tester's Beta hub with them; in a
+## browser, Back to brickworks.diy too: tools/web/app_menu_flow.mjs);
 ## Down and Return there open About. By keys alone: F6 from the model goes
 ## to it first, with its name and tooltip, and Return opens it. Its rows
 ## keep their commands after the assistant is turned on, as the toolbar's
@@ -28,8 +29,8 @@
 ## Pictures in shots/app_menu/.
 extends SceneTree
 
-const DESKTOP_ROWS: Array = ["About Brickworks", "-", "Brickworks website", "Documentation", "-",
-	"Account…"]
+const DESKTOP_ROWS: Array = ["About Brickworks", "Send feedback…", "-", "Find a command…", "-",
+	"Brickworks website", "Documentation", "-", "Account…"]
 
 var _failures: int = 0
 var _main: Node
@@ -203,7 +204,8 @@ func _menu_by_click(mark: MenuButton) -> void:
 	about.hide()
 	await _frames(6)
 	_check("...and the menu has gone", not menu.visible)
-	for row: int in [2, 3]:
+	for named: String in ["website", "docs"]:
+		var row: int = _shell.item_index(menu, named)
 		# Opened nothing: a probe's run is held (Outside), and keeps the address.
 		Outside.opened.clear()
 		menu.id_pressed.emit(menu.get_item_id(row))
@@ -211,7 +213,7 @@ func _menu_by_click(mark: MenuButton) -> void:
 		var opened: Array[String] = Outside.opened
 		_check("%s opens %s" % [menu.get_item_text(row), ", ".join(opened)], opened.size() == 1
 			and opened[0].begins_with("https://brickworks.diy")
-			and (row == 2 or opened[0].begins_with(DocsPages.SITE)))
+			and (named == "website" or opened[0].begins_with(DocsPages.SITE)))
 
 
 func _menu_by_keys(mark: MenuButton) -> void:

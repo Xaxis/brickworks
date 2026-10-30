@@ -1455,14 +1455,14 @@ func _author_steps() -> void:
 	_check("...one undo for each press that changed it (yellow %d)" % _step(yellow),
 		_step(yellow) == 1)
 
-	# Edit, Build steps, New step from selection: the white brick out of the
+	# Build, Build steps, New step from selection: the white brick out of the
 	# step that puts the windows on, into one of its own.
-	var edit_menu: PopupMenu = shell.menu("Edit").get_popup().get_node("steps")
+	var edit_menu: PopupMenu = shell.menu("Build").get_popup().get_node("steps")
 	var texts := PackedStringArray()
 	for index: int in edit_menu.item_count:
 		texts.append(edit_menu.get_item_text(index))
 	# The menu cannot write "[" as a key (Shell.UNDRAWN), so the line says it.
-	_check("Edit, Build steps lists the step edits, with their keys (%s)" % ", ".join(texts),
+	_check("Build, Build steps lists the step edits, with their keys (%s)" % ", ".join(texts),
 		"Move to previous step    Shift+[" in texts and "Move to next step    Shift+]" in texts
 		and "New step from selection" in texts and "Merge with the next step" in texts
 		and edit_menu.get_item_accelerator(edit_menu.get_item_index(shell.menu_id("step_new")))
@@ -2280,8 +2280,9 @@ func _right_click_a_part() -> void:
 		menu != null and menu.visible)
 	_check("...on that part, selected", _builder.selection.keys() == [blue])
 	_check("...with the verbs a person reaches for", ", ".join(words).begins_with(
-		"Ask Claude about this…, Select everything joined to it, Hide, Show only the "
-		+ "selection, Paint with")
+		"Ask Claude about this…, Select everything joined to it, Select the same part, "
+		+ "Select the same colour, Hide, Show only the selection, Copy, Duplicate, Delete, "
+		+ "Paint with")
 		and words.has("Copy") and words.has("Delete") and words.has("Make a sub-assembly…")
 		and words.has("Properties"))
 	await _shot("first_timer_part_menu")
@@ -2346,7 +2347,7 @@ func _ask_claude_about_a_part() -> void:
 	chat.get_viewport().gui_release_focus()
 	_select_only([blue, red])
 	await _frames(2)
-	_check("Edit has it, with its key, %s" % shell.key_words("ask_claude"),
+	_check("Tools has it, with its key, %s" % shell.key_words("ask_claude"),
 		shell.key_words("ask_claude") == "Ctrl+K")
 	await _key(KEY_K, true)
 	await _frames(4)

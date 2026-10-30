@@ -1469,6 +1469,22 @@
       "tests": []
     },
     {
+      "id": "cli:palette in a browser",
+      "kind": "cli",
+      "entry": "tools/web/palette_flow.mjs",
+      "reach": "node tools/web/palette_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks palette: Ctrl+/, ren, Return opens Render; Mirror greyed says why; Escape)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:palette probe",
+      "kind": "cli",
+      "entry": "src/dev/palette_probe.gd",
+      "reach": "tools/probe.sh palette_probe; PROBE_SIZE=1400x900 tools/probe.sh palette_probe   (pictures in shots/palette/)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:part counts probe",
       "kind": "cli",
       "entry": "src/dev/part_counts_probe.gd",
@@ -3815,6 +3831,14 @@
       "entry": "api/_sets.js",
       "reach": "https://brickworks.diy/library/set/10497-1   (sets364: every set in Rebrickable's catalogue, api/share.js ?op=catalog_set: facts, theme path, minifigures, sets packed in it, its parts list drawn with our pictures (web/model-page.js), Parts you own and the missing as a wanted list (web/set-page.js, ?op=catalog_owned), Open its parts in Brickworks (/app?parts=N), Design with these parts (/app?assistant=on&parts=N&brief=...), Build it in 3D and its LDraw model's page both ways; /library/set/N.jpg its picture drawn from its parts (api/_flatlay.js), /library/set/N/parts.json|xml|csv; /sitemaps/index.xml and /sitemaps/sets-K.xml; /library lists every set, filters theme path, decade, year, size, model=3d, figs)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:find a command",
+      "kind": "ui",
+      "entry": "src/ui/command_palette.gd",
+      "reach": "godot --path .  (Ctrl+/, Ctrl+Shift+P on the desktop, or the Brickworks menu's Find a command\u2026: type, Up and Down, Return)",
+      "area": "building",
       "tests": []
     },
     {

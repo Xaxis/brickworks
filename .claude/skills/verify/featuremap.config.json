@@ -4060,6 +4060,27 @@
       "entry": "tools/web/feedback_stand_in.mjs",
       "reach": "node tools/web/relay_server.mjs 9060 --static=build/web --hold=feedback   (supabase/beta.sql and feedback.sql in a Postgres of this machine's own, PG_BIN and PG_MODULE set; GET /__held/feedback)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "find a command",
+      "entry": "src/ui/command_palette.gd",
+      "reach": "godot --path .  (Ctrl+/, Ctrl+Shift+P on the desktop, or the Brickworks menu's Find a command…: type, Up and Down, Return)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "palette probe",
+      "entry": "src/dev/palette_probe.gd",
+      "reach": "tools/probe.sh palette_probe; PROBE_SIZE=1400x900 tools/probe.sh palette_probe   (pictures in shots/palette/)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "palette in a browser",
+      "entry": "tools/web/palette_flow.mjs",
+      "reach": "node tools/web/palette_flow.mjs --url=<preview>/app --bypass=$VERCEL_BYPASS --out=DIR   (with .env sourced; preview_checks palette: Ctrl+/, ren, Return opens Render; Mirror greyed says why; Escape)",
+      "area": "building"
     }
   ]
 }
