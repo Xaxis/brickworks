@@ -393,14 +393,43 @@ func _cut_on_a_worker(bricks: Array, wanted: int, job: Working.Job) -> Dictionar
 		sharing.unlock()
 		return stop
 	var out: Array = [{}]
+	# The joint graph on a worker of its own, beside the order: it needs
+	# nothing of it, and one after the other it was two of Orthanc's six
+	# seconds (bigmodels2). Handed over under a lock, as the phase is.
+	var graphed: Array = [null]
+	library.begin_reading()
+	var joining: int = WorkerTasks.add(func() -> void:
+		var mine: Array = []
+		for brick_id: int in ids:
+			mine.append(still.get_brick(brick_id))
+		var made: Dictionary = graph_of(mine, library, lattice)
+		sharing.lock()
+		graphed[0] = made
+		sharing.unlock(), false, "join the sections' parts")
+	library.reading_in(joining)
+	var graph_of_mine := func(mine: Array) -> Dictionary:
+		var made: Variant = null
+		while made == null:
+			var ended: bool = WorkerThreadPool.is_task_completed(joining)
+			sharing.lock()
+			made = graphed[0]
+			sharing.unlock()
+			if made == null and ended:
+				# Ended with no graph (a script error on it): read here instead.
+				made = graph_of(mine, library, lattice)
+			elif made == null:
+				OS.delay_msec(2)
+		return made
 	library.begin_reading()
 	var task: int = WorkerTasks.add(func() -> void:
 		var mine: Array = []
 		for brick_id: int in ids:
 			mine.append(still.get_brick(brick_id))
-		out[0] = _cut(mine, wanted, still, lattice, at_phase), false, "suggest sections")
+		out[0] = _cut(mine, wanted, still, lattice, at_phase, graph_of_mine), false,
+		"suggest sections")
 	library.reading_in(task)
-	while not WorkerThreadPool.is_task_completed(task):
+	while not WorkerThreadPool.is_task_completed(task) \
+			or not WorkerThreadPool.is_task_completed(joining):
 		await Engine.get_main_loop().process_frame
 		if job != null:
 			sharing.lock()
@@ -411,6 +440,8 @@ func _cut_on_a_worker(bricks: Array, wanted: int, job: Working.Job) -> Dictionar
 	at = Time.get_ticks_usec()
 	WorkerTasks.collect(task)
 	library.end_reading(task)
+	WorkerTasks.collect(joining)
+	library.end_reading(joining)
 	at = _lap("collected", at)
 	still.free()
 	at = _lap("the copy freed", at)
@@ -597,7 +628,7 @@ func _suggest_from(bricks: Array, cut: Dictionary) -> void:
 ## parts before to the parts after, near every bag's worth; each run is
 ## then its pieces, by the joint graph, so each section is one piece.
 func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLattice = null,
-		stop_at: Callable = Callable()) -> Dictionary:
+		stop_at: Callable = Callable(), graph_given: Callable = Callable()) -> Dictionary:
 	if model == null:
 		model = world
 	if lattice == null:
@@ -656,8 +687,10 @@ func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLa
 					position[index_of[brick_id]] = at
 				at += 1
 
-	# The joint graph, part to part.
-	var graph: Dictionary = graph_of(bricks, library, lattice)
+	# The joint graph, part to part: [param graph_given] has it of these
+	# parts when it was read beside the order (_cut_on_a_worker).
+	var graph: Dictionary = graph_given.call(bricks) if graph_given.is_valid() \
+		else graph_of(bricks, library, lattice)
 	if at_phase.call(7):
 		for made: Instructions.Assembly in subs:
 			made.node = null
