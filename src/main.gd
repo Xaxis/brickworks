@@ -25,6 +25,10 @@ var _stability_at: int = 0
 var _stability_revision: int = -1
 ## Whether a worker is weighing the model now.
 var _weighing: bool = false
+## The status bar's last weighing with every margin, and the revision it is
+## of ([method weighed_now]).
+var _weighed: Stability.Report = null
+var _weighed_revision: int = -1
 var _counts: Label
 var _bin_dock: SideDock
 var _chat_dock: SideDock
@@ -7330,8 +7334,12 @@ func _weigh() -> void:
 		return
 	var margins: bool = stress != null and stress.on
 	_weighing = true
+	var revision: int = _world.revision
 	var report: Stability.Report = await weigh_joints(margins or not OS.has_feature("nothreads"))
 	_weighing = false
+	if report != null and report.balance != null:
+		_weighed = report
+		_weighed_revision = revision
 	if report == null:
 		# For a part the library had to add: weighed again.
 		_stability_revision = -1
@@ -7339,6 +7347,25 @@ func _weigh() -> void:
 	_stability_text = report.summary()
 	if margins:
 		stress.show_report(report)
+
+
+## The status bar's weighing of the model as it stands now, every margin
+## with it: Check stability shows it rather than weigh the same again
+## (Shell._check_stability). Waited for when under way, and begun at once
+## when not, on a worker; [param meanwhile] is called while it weighs. Null
+## when there is none of this revision: on the web the status bar weighs
+## without margins unless Stress is on, and is not asked to weigh twice.
+func weighed_now(meanwhile: Callable = Callable()) -> Stability.Report:
+	for attempt: int in 2:
+		if not _weighing and _weighed_revision != _world.revision \
+				and not OS.has_feature("nothreads"):
+			_stability_at = 0
+			_weigh()
+		if attempt == 0 and meanwhile.is_valid():
+			meanwhile.call()
+		while _weighing:
+			await get_tree().process_frame
+	return _weighed if _weighed_revision == _world.revision else null
 
 
 ## The model weighed as the status bar weighs it (Stability.check), every
