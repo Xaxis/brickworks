@@ -37,9 +37,20 @@ app, joined by a link (docs/TOGETHER.md).
   `~chat` ops (`messages`, `chat_words`). Pointers: `op=point` four times a
   second while the part under the mouse or the ghost moves
   (`Main`'s `pointer_at`), the others' drawn as a dot and a name at a
-  fixed size on the screen (`pointers_shown`); the server reads who is in
-  it every 100 ms while another's pointer moved in the last 2 s, else
-  every 250 ms. Going back in: the session kept in
+  fixed size on the screen (`pointers_shown`); one that leaves the model
+  is sent as gone once it has stayed off 250 ms (`OFF_MS`), so crossing a
+  gap between parts it does not blink. The server tells each
+  `op=point` at once to every poll waiting in the session on the
+  session's Realtime channel (`channelOf`, `tell`, `listen` in
+  api/together.js), and a poll answers with it; it also reads who is in
+  it every 250 ms, and every 100 ms while another's pointer moved in the
+  last 2 s if it is not listening yet. A browser's poll asks
+  `stream: true` and reads its answer a line at a time (`_ask_page`,
+  `_on_page_heard`): who is in it comes as a line
+  `{more: true, people, seen, at}` the moment it changes and the poll
+  waits on; the desktop's is answered whole (`tests/test_together_poll.py`,
+  the channel stood in for; Vercel needs `supportsResponseStreaming`,
+  tools/deploy.sh). Going back in: the session kept in
   `TabSession.path("together.txt")`; `Main._maybe_join_together` rejoins
   without asking after a reload or a restart. In a session
   `EditVerbs.press("undo"/"redo")` and `go_back` route here. Leaves the

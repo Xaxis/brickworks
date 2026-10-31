@@ -2253,7 +2253,12 @@ do not draw the pointer), `web_pictures_<n>x.png` (the pictures as the browser
 decoded them from the CSS) and `cursors_<n>x.json`. (The wheel half
 measures the view where the model is as each wheel turns: on a laptop,
 opening the bin moves the model over, a region taken from before took in the
-bin, and its list scrolling failed the check at 1x and 2x, 2026-10-12.) So do `finish`
+bin, and its list scrolling failed the check at 1x and 2x, 2026-10-12. And
+with a part in hand a digit is a typed move, never a view: the check lets the
+part go, presses 1 and takes it back with Q before walking into the sky, and
+walks only inside the model's part of the window. Pressing 1 in hand typed
+"1", the view stayed above the model, and the walk ended on the first build's
+offer, whose button's pointer rightly won: m228.) So do `finish`
 (`shots/finishes_<renderer>.png`, a row of one real colour per finish, and
 `finishes_shot_<renderer>.png`, the same in the critique render) and
 `true colour` (`shots/true_colour_<renderer>.png`, with the sampled boxes drawn). `shot` also times a

@@ -457,6 +457,28 @@ async function measure(label, rounds, relative = false) {
     all.length >= rounds * 0.9 && (relative ? p95 < 1000 || relativeOk : p95 < 1000),
     Object.entries(times).map(([k, v]) => `${k} p50 ${pct([...v].sort((x, y) => x - y), 0.5)}`).join(", "));
 }
+// The requests [page] made to /api/together of the ops named, as its network
+// saw them, not its thread (unix ms): when each went, when its answer was
+// in, and a poll's server times. A pointer's time, trip by trip.
+function tripsOf(page, ops) {
+  const list = [];
+  const finished = async (request) => {
+    const op = /\/api\/together\?op=(\w+)/.exec(request.url())?.[1];
+    if (!ops.includes(op)) return;
+    const timing = request.timing();
+    let asked = null;
+    try { asked = request.postDataJSON(); } catch {}
+    const row = { op, start: Math.round(timing.startTime),
+      end: timing.responseEnd >= 0 ? Math.round(timing.startTime + timing.responseEnd) : null,
+      ...(asked && "at" in asked ? { carried: JSON.stringify(asked.at ?? null) } : {}) };
+    list.push(row);
+    const body = await (await request.response().catch(() => null))?.json().catch(() => null);
+    if (body) Object.assign(row, { at: body.at ?? null, began: body.began ?? null, ops: (body.ops || []).length });
+  };
+  page.on("requestfinished", finished);
+  return { list, stop: () => page.off("requestfinished", finished) };
+}
+
 function readDesktop(file) {
   try { return existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null; } catch { return null; }
 }
@@ -480,13 +502,85 @@ try {
   const timePointer = async (label, strict) => {
     const ownerOf = async (page) => ((await together(page)).people || []).find((one) => one.owner) || {};
     await owner.page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-    const spots = (await until(() => owner.page.evaluate(() => window.brickworksLayout || null), "the owner's layout", 30)
+    const laid = (await until(() => owner.page.evaluate(() => window.brickworksLayout || null), "the owner's layout", 30)
       .catch(() => ({}))).targets || [];
+    // Only the places the owner's page points at: what it sends with the
+    // mouse there, once it has settled, is somewhere on the model. A part's
+    // middle over a gap in it, or under something on the page, is nowhere
+    // to it, and a move there from nowhere sends nothing: on the rich car,
+    // 8 of 40 moves (rel-m227) and 10 of 40 not seen, the owner having sent
+    // nothing at all.
+    let said;
+    const saying = (request) => {
+      if (!/\/api\/together\?op=point/.test(request.url())) return;
+      try { said = request.postDataJSON()?.at ?? null; } catch {}
+    };
+    owner.page.on("request", saying);
+    const nowhere = [];
+    for (const spot of laid) {
+      said = undefined;
+      await owner.page.mouse.move(spot.x, spot.y, { steps: 2 });
+      await until(async () => said !== undefined || null, "the owner's page saying where it points", 2).catch(() => null);
+      await wait(800);
+      if (!Array.isArray(said)) nowhere.push(spot);
+    }
+    owner.page.off("request", saying);
+    const spots = laid.length - nowhere.length >= 2 ? laid.filter((spot) => !nowhere.includes(spot)) : laid;
+    if (nowhere.length) {
+      console.log(`        ${nowhere.length} of ${laid.length} places nowhere to the owner's page, not aimed at:`
+        + ` ${nowhere.map((spot) => `${spot.part} at ${spot.x}, ${spot.y}`).join("; ")}`);
+    }
     const [placed, drawn, seen] = [[], [], []];
     const stages = { send: [], reach: [], frame: [] };
     let lastBrick = null;
     let within = 0;
     const moves = 40;
+    const sends = tripsOf(owner.page, ["point"]);
+    const polls = tripsOf(guest.page, ["poll"]);
+    // The second page's polls as its own script sees them (a poll answered
+    // a line at a time is never "finished" to the browser's network log):
+    // asked, its head in, each piece of it, its end.
+    await guest.page.evaluate(() => {
+      window.__polls = [];
+      if (window.__pollsWatched) return;
+      window.__pollsWatched = true;
+      const real = window.fetch;
+      window.fetch = function (input, init) {
+        const asked = real.apply(this, arguments);
+        if (!String(input?.url || input).includes("op=poll")) return asked;
+        const row = { start: Date.now(), head: null, pieces: [], end: null };
+        if (window.__polls.length < 2000) window.__polls.push(row);
+        return asked.then((answer) => {
+          row.head = Date.now();
+          const reader = answer.clone().body?.getReader();
+          (async () => {
+            for (;;) {
+              const { done } = await reader.read();
+              if (done) break;
+              row.pieces.push(Date.now());
+            }
+            row.end = Date.now();
+          })().catch(() => {});
+          return answer;
+        });
+      };
+    });
+    // Each page's frames meanwhile (unix ms): a page takes an answer, and
+    // notices the mouse, only between them.
+    for (const who of [owner, guest]) {
+      await who.page.evaluate(() => {
+        window.__frameUnix = [];
+        if (window.__frameTicking) return;
+        window.__frameTicking = true;
+        const tick = (t) => {
+          if (window.__frameUnix.length < 20000) window.__frameUnix.push(Math.round(performance.timeOrigin + t));
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+    }
+    const rows = [];
+    const missed = [];
     for (let n = 0; n < moves && spots.length >= 2; n++) {
       const others = spots.filter((one) => one.brick !== lastBrick);
       const aim = others[n % others.length];
@@ -495,8 +589,10 @@ try {
       const t0 = Date.now();
       await owner.page.mouse.move(aim.x, aim.y, { steps: 2 });
       let got = null;
+      let shown = was;
       for (const end = Date.now() + 5000; Date.now() < end && !got;) {
-        if (JSON.stringify((await ownerOf(guest.page)).at || null) !== was) got = Date.now();
+        shown = JSON.stringify((await ownerOf(guest.page)).at || null);
+        if (shown !== was) got = Date.now();
         else await wait(20);
       }
       if (got) {
@@ -508,15 +604,89 @@ try {
         seen.push(got - t0);
         placed.push(timing.people_heard - t0);
         drawn.push(timing.presence_drawn - t0);
-        stages.send.push(sentAt - t0);
-        stages.reach.push(timing.people_heard - sentAt);
         stages.frame.push(timing.presence_drawn - timing.people_heard);
         if (timing.presence_drawn - t0 <= NETWORK_MS + 4 * (timing.presence_drawn - timing.people_heard)) within += 1;
+        rows.push({ t0, sent: sentAt, heard: timing.people_heard, drawn: timing.presence_drawn, got,
+          said: timing.people_said || null, shown });
+      } else {
+        // Not seen in 5 s: whether the owner's page sent anything, and where
+        // the server and each page have the owner's pointer.
+        const mine = await together(owner.page);
+        missed.push({ t0, aim, was, sent: (mine.timing?.pointed || 0) - t0,
+          sends: sends.list.filter((one) => one.start >= t0).length,
+          owner_has: ((mine.people || []).find((one) => one.me) || {}).at ?? null,
+          guest_has: (await ownerOf(guest.page)).at ?? null });
       }
       await wait(200);
     }
+    sends.stop();
+    polls.stop();
+    // A move's send is the owner's that carried where the second page now
+    // has the pointer: of the sends begun before the page had it, the last
+    // run of those saying that place, its first. Its page's own last send,
+    // read once the second page had the move, paired a move with a send
+    // that did not carry it: a later one when the mouse's two steps sent
+    // twice, or an earlier one, the page not yet told back of the last.
+    const begun = [...sends.list].sort((a, b) => a.start - b.start);
+    for (const row of rows) {
+      let n = begun.findLastIndex((one) => one.start <= row.heard && one.carried === row.shown);
+      while (n > 0 && begun[n - 1].carried === row.shown) n -= 1;
+      if (n >= 0) row.sent = begun[n].start;
+      stages.send.push(row.sent - row.t0);
+      stages.reach.push(row.heard - row.sent);
+    }
+    const frames = {};
+    for (const [name, who] of [["owner", owner], ["guest", guest]]) {
+      frames[name] = await who.page.evaluate(() => window.__frameUnix || []).catch(() => []);
+    }
+    const asked = await guest.page.evaluate(() => window.__polls || []).catch(() => []);
+    // The longest a page went between two frames within [from, to].
+    const held = (list, from, to) => {
+      let most = 0;
+      for (let n = 1; n < list.length; n++) {
+        if (list[n] >= from && list[n - 1] <= to) most = Math.max(most, list[n] - list[n - 1]);
+      }
+      return most;
+    };
+    for (const row of rows) {
+      row.owner_held = held(frames.owner, row.t0, row.t0 + 1500);
+      row.guest_held = held(frames.guest, row.t0, row.heard);
+    }
     const p = percentile;
-    console.log(`        stages (median ms): ${Object.entries(stages).map(([k, v]) => `${k} ${p(v, 0.5)}`).join(", ")};`
+    // Each move beside the trips: the owner's send that carried it, and the
+    // second page's poll that brought it (a poll answered whole: the last
+    // whose answer was in before the page had it), open on the server when
+    // the send was answered or asked after it, and how long no poll was
+    // open before it. Then the move's time in two: from the send to the
+    // server saying it (its clock), and from there to the page having it,
+    // the network back and the page's thread finishing its frame.
+    const trips = rows.map((row) => {
+      const send = sends.list.filter((one) => one.start >= row.sent - 5).sort((a, b) => a.start - b.start)[0] || {};
+      const brought = polls.list.filter((one) => one.end !== null && one.end <= row.heard && one.at)
+        .sort((a, b) => b.end - a.end)[0] || {};
+      const before = polls.list.filter((one) => one.end !== null && one.end <= brought.start)
+        .sort((a, b) => b.end - a.end)[0] || {};
+      const said = row.said || brought.at;
+      return { drawn: row.drawn - row.t0, send: row.sent - row.t0, trip: send.end - send.start,
+        told: said - row.sent, back: row.heard - said, frame: row.drawn - row.heard,
+        ...(row.said ? {} : { open: brought.start <= send.end, gap: brought.start - before.end,
+          thread: row.heard - brought.end }) };
+    });
+    const both = (key) => `${p(trips.map((one) => one[key]), 0.5)}, ${p(trips.map((one) => one[key]), 0.95)}`;
+    const whole = trips.filter((one) => one.open !== undefined);
+    console.log(`        trips (p50, p95 ms): the send's ${both("trip")}; from it to the server saying it ${both("told")};`
+      + ` from there to the page having it ${both("back")}`
+      + (whole.length ? `; answered whole: ${whole.filter((one) => !one.open).length} of ${whole.length} brought by a`
+        + ` poll asked after the send was answered, no poll open before it ${both("gap")}, the page's thread`
+        + ` after the answer was in ${both("thread")}` : ""));
+    writeFileSync(path.join(out, `pointer_${label.replace(/[^a-z0-9]+/gi, "_").slice(0, 40)}.json`),
+      JSON.stringify({ rows, trips, missed, sends: sends.list, polls: polls.list, frames, asked }, null, 1));
+    console.log(`        frames meanwhile (p50, p95 ms): the owner's longest in the 1.5 s after each move`
+      + ` ${p(rows.map((one) => one.owner_held), 0.5)}, ${p(rows.map((one) => one.owner_held), 0.95)}; the second page's`
+      + ` longest before it had the move ${p(rows.map((one) => one.guest_held), 0.5)}, ${p(rows.map((one) => one.guest_held), 0.95)}`);
+    if (missed.length) console.log(`        not seen in 5 s: ${JSON.stringify(missed).slice(0, 1500)}`);
+    console.log(`        stages (median ms): ${Object.entries(stages).map(([k, v]) => `${k} ${p(v, 0.5)}`).join(", ")}`
+      + ` (reach p95 ${p(stages.reach, 0.95)});`
       + ` placed p50 ${p(placed, 0.5)}, p95 ${p(placed, 0.95)}; drawn p50 ${p(drawn, 0.5)}, p95 ${p(drawn, 0.95)};`
       + ` seen by this check reading the page p50 ${p(seen, 0.5)}, p95 ${p(seen, 0.95)}`);
     const measured = drawn.filter((x) => Number.isFinite(x));
