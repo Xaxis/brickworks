@@ -5440,6 +5440,9 @@ func _make_assistant() -> void:
 	# The picture a mosaic was asked of, for make_art.
 	if _mosaic_source != null:
 		_assistant_made.art_source = _mosaic_source
+	# What is owned, which a brief can ask it to prefer (CollectionDialog).
+	if _shell.collection != null and _shell.collection.store != null:
+		_assistant_made.owned = _shell.collection.store.on_hand
 	add_child(_assistant_made)
 	# Claude asking for more room than the selection waits on the person: the
 	# panel the question is in comes into view.

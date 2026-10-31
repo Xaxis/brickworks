@@ -11,7 +11,8 @@
 ##
 ##   main.tscn loaded, none of Later's scripts is (ResourceLoader.has_cached),
 ##   and how long the load took, which is main.gd's compile;
-##   the window up and settled, still none, and nothing asked Later for one;
+##   the window up and settled, still none, and nothing asked Later for one,
+##   nor once a signed-in person's collection has come;
 ##   each member asked for as a probe or a check asks (main.get), made once,
 ##   over the window under the sign-in screens, or in the tools' column
 ##   above Stress's legend; the assistant with its panel and Claude's
@@ -59,6 +60,13 @@ func _run() -> void:
 	_check("the window up and settled, still none loaded: %s" % ", ".join(_loaded()),
 		_loaded().is_empty())
 	_check("and nothing asked Later for one: %s" % str(Later.took), Later.took.is_empty())
+	# A signed-in person's collection arrives a few seconds in: it told the
+	# assistant, and asking for it made one then, on the web 5 to 9 s of
+	# compiling under the person's first click (load_check, 2026-10-31).
+	_shell.collection.store.changed.emit()
+	await _frames(3)
+	_check("their collection arriving makes no assistant: %s" % str(Later.took),
+		Later.took.is_empty() and _main.get("_assistant_made") == null)
 
 	await _a_model()
 	_made_where_they_were()

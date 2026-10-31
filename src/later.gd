@@ -72,10 +72,19 @@ const PATHS: Dictionary[StringName, String] = {
 }
 
 ## How long each one took to load, in ms, by name, from the first ask:
-## what a probe reads to see that the start loaded none of them.
+## what a probe reads to see that the start loaded none of them. On the web
+## the page is told too, when and how long (window.brickworksLoaded:
+## name -> [ms on the page's clock, ms]), which tools/web/load_check.mjs
+## says beside the start and the first pick.
 static var took: Dictionary[StringName, int] = {}
 ## A worker may be the first to ask for one.
 static var _lock: Mutex = Mutex.new()
+
+
+## The page told there is a Later, with nothing loaded yet.
+static func _static_init() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.brickworksLoaded = window.brickworksLoaded || {}", true)
 
 
 ## The script of [param name], loaded and compiled the first time.
@@ -86,9 +95,13 @@ static func script(name: StringName) -> GDScript:
 	var started: int = Time.get_ticks_msec()
 	var loaded: GDScript = load(path)
 	_lock.lock()
-	if not took.has(name):
+	var first: bool = not took.has(name)
+	if first:
 		took[name] = Time.get_ticks_msec() - started
 	_lock.unlock()
+	if first and OS.has_feature("web") and OS.get_thread_caller_id() == OS.get_main_thread_id():
+		JavaScriptBridge.eval("(window.brickworksLoaded = window.brickworksLoaded || {})[%s] = [performance.now() - %d, %d]"
+			% [JSON.stringify(String(name)), took[name], took[name]], true)
 	return loaded
 
 

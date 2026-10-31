@@ -94,8 +94,14 @@ plan with Claude as the client.
   tests/test_later.py` fails when a script the first screen compiles names
   one of Later's classes, with the chain from main.tscn that reaches it,
   or when a copy differs from the assistant's; `lazystart_probe`
-  (headless) fails when one is loaded once the window has settled, or is
-  made twice or out of its place, and prints what each first load took. The pack Godot exports is cut in four after it (webload,
+  (headless) fails when one is loaded once the window has settled or a
+  signed-in person's collection has come, or is made twice or out of its
+  place, and prints what each first load took. On the web the page is
+  told each first load (`window.brickworksLoaded`: name -> [when, ms]),
+  and load_check prints "loaded on first use", each before interactive,
+  under the first pick, or after: anything before the pick is a compile
+  the person waited on (the collection's arrival making the assistant
+  held a first pick 3.5 to 9 s, 2026-10-31). The pack Godot exports is cut in four after it (webload,
   2026-10-30, `tools/web/pck_split.py`, its docstring), so the engine
   waits for the code alone: `index.pck` keeps the scripts, shaders and
   scenes (3.3 MB brotli), and the two tables read as their classes load,
