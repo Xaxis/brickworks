@@ -1,6 +1,6 @@
 ---
 panels: PatternDialog#patterns
-tools: edit_model, look_at_model, check_design, attachment_points, where_to_attach, make_unique, clear_model, undo, suggest_sections, make_sections, break_out_section, evaluate_section
+tools: edit_model, look_at_model, check_design, attachment_points, where_to_attach, make_unique, clear_model, undo, suggest_sections, make_sections, break_out_section, evaluate_section, mirror_parts, split_parts, merge_parts, measure
 ai: How parts go down, snap, turn and move once placed, and how a model is grouped into sub-assemblies and sections. An assistant does the same with edit_model and edit_selection, reads the model with look_at_model, and checks a change with check_design before making it.
 rules:
   - Positions are studs across (x), plates up (y) and studs deep (z); 3 plates make a brick.
@@ -134,6 +134,7 @@ ui:handles on the selection
 - **Edit › Mirror** ([[Shift+M]]) mirrors the selection, swapping each part for its left- or right-handed twin where there is one.
 - **Edit › Replace with the part in hand** swaps every selected part for the one you hold, keeping where each was.
 - [[C]] paints the selection in the current colour; the **Paint** tool paints each part you click.
+- An assistant mirrors parts by number with `mirror_parts`, in place as [[Shift+M]] does, or as a copy beside them: across the model's middle, a left half makes the right half.
 
 <!-- covers
 ui:mirror a selection
@@ -145,6 +146,7 @@ ui:replace part
 - [[Alt+S]] splits the selection: a plate, brick or tile into 1 x 1s on the same studs, a 1 x 1 brick into three 1 x 1 plates, and a slope or curved slope into 1-wide slopes of the same angle and length.
 - [[Alt+M]] merges the selected plates, bricks and tiles of each colour into the fewest real parts made in that colour, in one press: five 1 x 2 plates in a 2 x 5 become a 2 x 4 and a 1 x 2, and three stacked plates become a brick.
 - Both are on the menu you get by right-clicking a part. Whatever was attached stays attached, and one undo takes the change back. When no real part is made of the selection, the status bar says so and nothing changes.
+- An assistant does the same to parts it names, with `split_parts` and `merge_parts`.
 
 <!-- covers
 ui:split and merge parts
@@ -191,6 +193,8 @@ ui:undo history
 Press [[U]] and click two points: the distance in studs, plates and millimetres. One LDraw unit is exactly 0.4 mm: a stud is 8 mm across, a brick 9.6 mm tall and a plate 3.2 mm.
 
 Click near a pin, a hole, an axle, a bar or a hinge and the point goes on its middle. With both points on one, Measure also says the angle between them, to a tenth of a degree: where a spring or a link goes between two pin holes.
+
+An assistant measures with `measure`, between two connectors it names, and is told the same words. A hinge you left at an angle reads back as that angle.
 
 <!-- covers
 ui:measure

@@ -37,6 +37,8 @@ var fetch_near: bool = false
 var chat: String = ""
 ## The gallery, read for a session (GalleryTool, 2026-10-13).
 var _gallery: GalleryTool
+## The window's hand tools, for a session (HandTools, APP_UX3).
+var _hands: HandTools
 
 
 ## The window's commands (Shell) a session does with a tool: command id, or
@@ -74,6 +76,9 @@ const COMMANDS: Dictionary = {
 	"break_out": "break_out_section", "put_back": "break_out_section",
 	"simulate": "simulate_mechanism",
 	"hidden_colours": "colour_hidden_parts",
+	# The window's hand tools on the parts a session names (HandTools).
+	"mirror": "mirror_parts", "split_parts": "split_parts", "merge_parts": "merge_parts",
+	"measure": "measure",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -93,9 +98,6 @@ const WINDOW_ONLY: Dictionary = {
 	"show_all": "what the person sees; view_model where= looks at one box of the model",
 	"lock": "keeps the person's own mouse off parts; a session changes only the parts it names",
 	"unlock": "keeps the person's own mouse off parts; a session changes only the parts it names",
-	"mirror": "a session lays the mirror image itself, with edit_model's add or the mirror shape",
-	"split_parts": "a session lays the parts it wants itself, with edit_model's remove and add; Split is the person's shortcut for that",
-	"merge_parts": "a session lays the parts it wants itself, with edit_model's remove and add; Merge is the person's shortcut for that",
 	"leave_submodel": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
 	"enter_assembly": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
 	"leave_assembly": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
@@ -120,7 +122,6 @@ const WINDOW_ONLY: Dictionary = {
 	"split_view": "the window's panels: a second view of the person's; view_model from= looks from any side",
 	"rotate_held": "the part in the person's hand; a session gives rot= and face=",
 	"tip_held": "the part in the person's hand; a session gives rot= and face=",
-	"measure": "a ruler for the person; a session's coordinates are already studs and plates",
 	"find_colour": "a field the person types a colour's name into, for their next part; a session gives the LDraw colour code (edit_model's color and recolor)",
 	"reseat": "squares up parts a file left between studs; a session's parts are on the lattice already",
 	"settings": "the person's preferences, whether the assistant is in the window among them: theirs to choose, and with it off the connector is off, so no session is there to ask",
@@ -133,7 +134,7 @@ const WINDOW_ONLY: Dictionary = {
 	"back_to_site": "leaves the web app for the website in the person's tab, ending the session's connection",
 	"feedback": "a report from the person to the people who make Brickworks, in their own words",
 	"beta_hub": "help for the person",
-	"reference": "a picture from the person's disk, picked in a dialog, for their own eyes to build over; a session is given pictures in the conversation",
+	"reference": "a picture from the person's disk, picked in a dialog, for their own eyes to build over; in_view shows a session the one laid, and a session is given its own pictures in the conversation",
 }
 
 ## What a session reads about these, served by read_guide("app") — every
@@ -230,6 +231,17 @@ written with them back in place.
 whether it holds together (the build check on it alone) and stands \
 (Balance), what joins it to the rest and what that carries, and its own \
 steps.
+ - The window's hand tools on parts by number, each one undo step: \
+mirror_parts as Mirror, in place or copy=true beside them, \
+across= a plane (copy=true across=0 makes a left half the right half), \
+handed parts swapped for their other hand; split_parts as Split and \
+merge_parts as Merge, by Studio's rules, on the same studs. \
+measure, read-only: the distance and the angle between two connectors \
+("#12.hole[1]") or points, as Measure says them, and two halves of one \
+joint with the turn between them as attach's yaw. in_view, read-only: what \
+the person sees and a session is not told — the step the timeline is at, \
+the part in their hand, and the reference picture they build over, with a \
+picture of it.
  - weakest_joints: what gives first in the whole model as it stands, \
 read-only, as View, Stress weighs it: each joint that alone holds what is \
 past it, weakest first, with its margin against its studs' working load. \
@@ -895,7 +907,7 @@ func definitions() -> Array:
 			}},
 		},
 		GalleryTool.definition(),
-	]
+	] + HandTools.definitions()
 
 
 func has(tool: String) -> bool:
@@ -980,6 +992,11 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 				_gallery = GalleryTool.new()
 				_gallery.app = app
 			return await _gallery.run(input)
+		"mirror_parts", "split_parts", "merge_parts", "measure", "in_view":
+			if _hands == null:
+				_hands = HandTools.new()
+				_hands.app = app
+			return await _hands.run(tool, input)
 	return "No tool called %s." % tool
 
 
@@ -1008,7 +1025,8 @@ func refusal(tool: String, input: Dictionary) -> String:
 const CHANGES: Array[String] = ["set_floor", "edit_steps", "edit_booklet", "lay_flex", "pose_model", "move_part",
 	"define_motion", "play_motion",
 	"undo", "open_model", "brickify", "print_part", "make_unique", "colour_hidden_parts",
-	"make_sections", "break_out_section"]
+	"make_sections", "break_out_section",
+	"mirror_parts", "split_parts", "merge_parts"]
 
 
 ## What a model shared to look at allows, as Shell.LOOKING does for the
@@ -1031,6 +1049,8 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 		"export_model":
 			return str(input.get("format", "")) == "instructions"
 		"suggest_sections", "evaluate_section", "booklet_layout", "list_motions", "weakest_joints":
+			return true
+		"measure", "in_view":
 			return true
 	return false
 

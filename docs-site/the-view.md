@@ -1,5 +1,5 @@
 ---
-tools: view_model, set_floor
+tools: view_model, set_floor, in_view
 ai: Turning, sliding and zooming the camera, navigation presets, cutting away and X-ray, stress colours, and the floor the model stands on. An assistant looks from a side with view_model and sets the floor with set_floor.
 rules:
   - view_model looks from corner, top, front, back, left or right; corner shows the shape best.
@@ -93,6 +93,8 @@ ui:stud grid
 Each change is one step of **Edit › Undo**, whether you lay the picture, move it, size it, fade it, lock it, swap it or take it away. Dragging the opacity slider counts as one step, and so does typing a width.
 
 The picture is kept in the model's file, on lines other LDraw programs ignore, so it opens again with the model. A change to the picture alone counts as unsaved work, so New and Open ask before replacing the model, and the autosave keeps the picture. It is never in a render, the instructions, the parts list, an export or a shared link.
+
+An assistant sees it with `in_view`: the picture, where it lies, and the model drawn on it. `in_view` also tells it the step the timeline is at and the part in your hand. It changes nothing.
 
 <!-- covers
 ui:reference picture

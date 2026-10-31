@@ -94,11 +94,19 @@ static func _said(verbs: EditVerbs, done: Dictionary) -> int:
 ## rest left selected as they were. {"changed": parts split, "made": pieces
 ## put down, "refused": parts that had no room, "words": what to say}.
 static func split_selection(builder: Builder) -> Dictionary:
+	return split_bricks(builder, _selected(builder), true)
+
+
+## [method split_selection] on the parts [param ids] (still in the model),
+## the new pieces selected with what was selected when [param select]; a
+## session's split_parts leaves the person's selection as it was (HandTools).
+## "made" is the pieces' ids.
+static func split_bricks(builder: Builder, ids: Array, select: bool) -> Dictionary:
 	_tables(builder.library)
 	var world: BrickWorld = builder.world
-	var ids: Array = _selected(builder)
 	if ids.is_empty():
-		return {"changed": 0, "made": 0, "refused": 0, "words": "select parts to split first"}
+		return {"changed": 0, "made": PackedInt64Array(), "refused": 0,
+			"words": "select parts to split first"}
 	var removes := PackedInt64Array()
 	var adds: Array = []
 	var refused: int = 0
@@ -119,14 +127,15 @@ static func split_selection(builder: Builder) -> Dictionary:
 		removes.append(brick_id)
 		adds.append_array(put)
 	if removes.is_empty():
-		return {"changed": 0, "made": 0, "refused": refused, "words": "no room to split it there"
-			if refused > 0 else "nothing selected splits: plates, bricks and tiles split into "
-			+ "1 x 1s, a 1 x 1 brick into plates, slopes into 1-wide slopes"}
+		return {"changed": 0, "made": PackedInt64Array(), "refused": refused,
+			"words": "no room to split it there" if refused > 0
+				else "nothing selected splits: plates, bricks and tiles split into "
+				+ "1 x 1s, a 1 x 1 brick into plates, slopes into 1-wide slopes"}
 	var words: String = "split %s into %d" % [Builder._many(removes.size()), adds.size()]
-	var made: PackedInt64Array = _swap(builder, ids, removes, adds, words)
+	var made: PackedInt64Array = _swap(builder, ids, removes, adds, words, select)
 	if refused > 0:
 		words += " — %d had no room" % refused
-	return {"changed": removes.size(), "made": made.size(), "refused": refused, "words": words}
+	return {"changed": removes.size(), "made": made, "refused": refused, "words": words}
 
 
 ## What [param part_id] splits into: [[piece id, its place in the part's
@@ -304,10 +313,16 @@ static func _cells_of(boxes: Array[AABB], at: Transform3D) -> Dictionary:
 ## step; the rest of it left selected as it was. {"changed": parts merged
 ## away, "made": parts they became, "words": what to say}.
 static func merge_selection(builder: Builder) -> Dictionary:
+	return merge_bricks(builder, _selected(builder), true)
+
+
+## [method merge_selection] on the parts [param ids] (still in the model),
+## the new parts selected with what was selected when [param select]. "made"
+## is the new parts' ids.
+static func merge_bricks(builder: Builder, ids: Array, select: bool) -> Dictionary:
 	var library: PartLibrary = builder.library
 	_tables(library)
 	var world: BrickWorld = builder.world
-	var ids: Array = _selected(builder)
 	# Kind, colour and sub-assembly: a merge never paints a part, nor moves
 	# one into another assembly.
 	var groups: Dictionary = {}
@@ -325,7 +340,7 @@ static func merge_selection(builder: Builder) -> Dictionary:
 			groups[key] = []
 		(groups[key] as Array).append(brick)
 	if plain < 2:
-		return {"changed": 0, "made": 0, "words":
+		return {"changed": 0, "made": PackedInt64Array(), "words":
 			"select two or more plates, bricks or tiles of one colour to merge"}
 	var removes := PackedInt64Array()
 	var adds: Array = []
@@ -356,15 +371,16 @@ static func merge_selection(builder: Builder) -> Dictionary:
 		var named: String = ""
 		if colours.size() == 1:
 			named = " in %s" % library.color(int(colours.keys()[0])).name
-		return {"changed": 0, "made": 0, "words": "no room to merge them there" if refused > 0
-			else "no real part%s is made of these: nothing merged" % named}
+		return {"changed": 0, "made": PackedInt64Array(),
+			"words": "no room to merge them there" if refused > 0
+				else "no real part%s is made of these: nothing merged" % named}
 	var words: String = "merged %s into %s" % [Builder._many(removes.size()),
 		"a " + Inventory._tidy(library.parts[str(adds[0]["part"])].name) if adds.size() == 1
 		else str(adds.size())]
-	var made: PackedInt64Array = _swap(builder, ids, removes, adds, words)
+	var made: PackedInt64Array = _swap(builder, ids, removes, adds, words, select)
 	if refused > 0:
 		words += " — %d had no room" % refused
-	return {"changed": removes.size(), "made": made.size(), "words": words}
+	return {"changed": removes.size(), "made": made, "words": words}
 
 
 ## The bricks of one group laid out in frames: the first part's studs-up
@@ -596,7 +612,8 @@ static func _selected(builder: Builder) -> Array:
 
 
 ## Whether [param adds] can go down with [param gone] taken off: none runs
-## into another part. The parts are put back as they were either way.
+## into a part [param gone] did not run into already (a tyre on a plate's
+## pin, as a file lays it). The parts are put back as they were either way.
 static func _room_for(builder: Builder, gone: PackedInt64Array, adds: Array) -> bool:
 	var lattice: BrickLattice = builder.lattice
 	var covers: Dictionary = {}
@@ -604,10 +621,21 @@ static func _room_for(builder: Builder, gone: PackedInt64Array, adds: Array) -> 
 		covers[brick_id] = lattice.cover_of(brick_id)[0]
 		lattice.release(brick_id)
 	var room: bool = true
+	var before: Dictionary = {}       ## what gone ran into, once asked
 	for item: Dictionary in adds:
 		var packed: PackedInt32Array = builder.boxes_for(
 			builder.library.mesh_for(str(item["part"])), item["at"])
-		if packed.is_empty() or lattice.collides_boxes(packed):
+		if packed.is_empty():
+			room = false
+			break
+		if not lattice.collides_boxes(packed):
+			continue
+		if before.is_empty():
+			for brick_id: int in gone:
+				for other: int in lattice.blockers_boxes(covers[brick_id]):
+					before[other] = true
+		if before.is_empty() or not Array(lattice.blockers_boxes(packed)).all(
+				func(other: int) -> bool: return before.has(other)):
 			room = false
 			break
 	for brick_id: int in gone:
@@ -616,16 +644,22 @@ static func _room_for(builder: Builder, gone: PackedInt64Array, adds: Array) -> 
 
 
 ## Take [param removes] off and put [param adds] down as one undo, called
-## [param words]; select what was put down, with what was selected and not
-## changed. Returns the new parts.
+## [param words]; with [param select], select what was put down, with what
+## was selected and not changed. Returns the new parts.
 static func _swap(builder: Builder, selected: Array, removes: PackedInt64Array, adds: Array,
-		words: String) -> PackedInt64Array:
+		words: String, select: bool) -> PackedInt64Array:
+	var had: int = builder.selection.size()
 	var steps: Array = builder.swap_bricks(removes, adds)
 	builder.record(steps, words)
 	var made := PackedInt64Array()
 	for step: Dictionary in steps:
 		if step.get("undo", "") == "remove":
 			made.append(int(step["brick"]))
+	if not select:
+		# Only what was taken off leaves the person's selection.
+		if builder.selection.size() != had:
+			builder.selection_changed.emit(builder.selection.size())
+		return made
 	var keep: Dictionary = {}
 	for brick_id: int in removes:
 		keep[brick_id] = true

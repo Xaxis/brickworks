@@ -86,7 +86,19 @@ asking for an API key.
   `touch_probe` calls it in the app on walk180's tug),
   `make_unique` (Edit, Make this copy unique) and `colour_hidden_parts`
   (Tools, Colour the hidden parts…; `HiddenColoursPanel.for_session`, which
-  previews unless `apply` and `agreed`, see [geometry](geometry.md)). Each
+  previews unless `apply` and `agreed`, see [geometry](geometry.md)).
+  **The window's hand tools** (`src/net/hand_tools.gd`, `HandTools`, APP_UX3
+  mcphand, 2026-10-31): `mirror_parts` (Shift+M: `Builder.mirror_bricks` on
+  bricks=, in place or `copy=true` beside them or `across=` a plane in studs,
+  handed parts swapped), `split_parts` and `merge_parts` (Alt+S and Alt+M:
+  `SplitMerge.split_bricks`/`merge_bricks`), each one undo step with the
+  person's selection left as it was; `measure` (Measure: the distance and the
+  angle between two connectors addressed as attach addresses them, in
+  `Measure.said_between`/`angle_words`, and two halves of one joint read back
+  as attach's yaw) and `in_view` (the timeline's step, the part in hand, the
+  selection's size and the reference picture, with the picture and the
+  model drawn on it), both read-only. `src/dev/mcphand_probe.gd` checks each
+  against the window's own command on the same parts. Each
   is a thin wrapper over the code the command runs — `Shell.change_steps`,
   `FlexTool.lay`, `PosePanel.joints_now`/`set_angle`/`render_animation`,
   `RenderDialog.render_for`,
@@ -587,6 +599,7 @@ tools/probe.sh first_design_undo_probe                              # a first de
 tools/probe.sh first_session_probe                                  # the first design on the example is a model of its own
 tools/probe.sh undo_ids_probe                                       # a part back from Undo or Redo keeps its number
 godot --headless --path . --script src/dev/app_tools_probe.gd      # the window's commands as tools
+godot --headless --path . --script src/dev/mcphand_probe.gd        # Mirror, Split, Merge, Measure and what the person sees, as the window does them
 BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running
 godot --headless --path . --script src/dev/gallery_tool_probe.gd -- --played   # its played answers alone: licences, sorts, moves, the front, builds, comments, designers; no server
 godot --headless --path . --script src/dev/mcp_walk_probe.gd       # what the 2026-10-19 walk-through's sessions met: what moves, the steering's angle, animating it, a gallery copy, What can I build?

@@ -1414,9 +1414,24 @@ func replace_selection(part_id: String, in_place: bool = false) -> Vector2i:
 ## All or nothing, one step. Returns how many, or zero when it would run
 ## into something.
 func mirror_selection(axis: int) -> int:
-	var alive: PackedInt64Array = _living_selection()
-	if alive.is_empty():
+	var made: PackedInt64Array = mirror_bricks(_living_selection(), axis)
+	if made.is_empty():
 		return 0
+	selection.clear()
+	for brick_id: int in made:
+		selection[brick_id] = true
+	selection_changed.emit(selection.size())
+	return made.size()
+
+
+## [method mirror_selection] on the bricks [param alive], across the plane at
+## [param across] LDU when it is given (on a half stud), and with [param copy]
+## a mirrored copy put down and the bricks left where they are: a session's
+## mirror_parts (HandTools). The new bricks, or none.
+func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
+		copy: bool = false) -> PackedInt64Array:
+	if alive.is_empty():
+		return PackedInt64Array()
 	var bricks: Array = []
 	for brick_id: int in alive:
 		bricks.append(world.get_brick(brick_id))
@@ -1426,59 +1441,87 @@ func mirror_selection(axis: int) -> int:
 	# other axis can decide: Orthanc's first step, x 380 to 440, was
 	# reflected across x = 420 for its z, a stud over from where it stood
 	# and onto the bricks beside it (2026-10-19).
-	var middle: float = _bounds_of(alive, Transform3D.IDENTITY).get_center()[axis]
-	var across: float = snappedf(middle, BrickLattice.STUD * 0.5)
+	if is_nan(across):
+		across = snappedf(_bounds_of(alive, Transform3D.IDENTITY).get_center()[axis],
+			BrickLattice.STUD * 0.5)
 	var plan: Array = []
 	for brick: BrickWorld.Brick in bricks:
 		var part: String = brick.part_id
 		var other: String = Mirror.counterpart(library, part)
 		if not other.is_empty() and library.mesh_for(other) != null:
 			part = other
-		var at: Transform3D = _tidy(Mirror.reflected(brick.transform, axis, across),
+		# A part not swapped for its other hand is turned to look reflected
+		# by its own shape.
+		var at: Transform3D = _tidy(Mirror.reflected(brick.transform, axis, across,
+			library.mesh_for(part) if part == brick.part_id else null),
 			BrickLattice.is_square_to_grid(brick.transform.basis))
 		plan.append({"brick": brick, "part": part, "at": at})
+	var picked: Dictionary = {}
 	for brick_id: int in alive:
-		lattice.release(brick_id)
+		picked[brick_id] = true
+	if not copy:
+		for brick_id: int in alive:
+			lattice.release(brick_id)
 	var blocked: bool = false
 	for item: Dictionary in plan:
 		var packed: PackedInt32Array = boxes_for(library.mesh_for(str(item["part"])), item["at"])
 		item["boxes"] = packed
-		if lattice.collides_boxes(packed):
+		if lattice.collides_boxes(packed) and not _meets_as_before(item["brick"], packed, picked):
 			blocked = true
 			break
 	if blocked:
-		for brick: BrickWorld.Brick in bricks:
-			lattice.occupy_boxes(brick.id, boxes_for(library.mesh_for(brick.part_id),
-				brick.transform))
-		return 0
+		if not copy:
+			for brick: BrickWorld.Brick in bricks:
+				lattice.occupy_boxes(brick.id, boxes_for(library.mesh_for(brick.part_id),
+					brick.transform))
+		return PackedInt64Array()
 	var steps: Array = []
 	var made := PackedInt64Array()
-	for item: Dictionary in plan:
-		var brick: BrickWorld.Brick = item["brick"]
-		steps.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
-			"transform": brick.transform, "group": brick.group, "unit": brick.unit,
-			"step": brick.step, "was": brick.id})
-		world.remove_brick(brick.id)
-		removed.emit(brick.id)
+	if not copy:
+		for item: Dictionary in plan:
+			var brick: BrickWorld.Brick = item["brick"]
+			steps.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
+				"transform": brick.transform, "group": brick.group, "unit": brick.unit,
+				"step": brick.step, "was": brick.id})
+			world.remove_brick(brick.id)
+			selection.erase(brick.id)
+			removed.emit(brick.id)
 	for item: Dictionary in plan:
 		var brick: BrickWorld.Brick = item["brick"]
 		var new_id: int = world.add_brick(str(item["part"]), brick.color_code, item["at"])
 		if new_id == 0:
 			continue
-		world.get_brick(new_id).group = brick.group
-		world.get_brick(new_id).unit = brick.unit
+		# A mirrored copy is no copy of a sub-assembly, whose copies follow
+		# each other (Assemblies): it goes in none.
+		world.get_brick(new_id).group = "" if copy else brick.group
+		world.get_brick(new_id).unit = "" if copy else brick.unit
 		world.get_brick(new_id).step = brick.step
 		lattice.occupy_boxes(new_id, item["boxes"])
 		steps.push_front({"undo": "remove", "brick": new_id})
 		made.append(new_id)
 	_history.append({"undo": "group", "steps": steps,
-		"words": "mirrored %s" % _many(made.size())})
+		"words": ("mirrored a copy of %s" if copy else "mirrored %s") % _many(made.size())})
 	_redo.clear()
-	selection.clear()
-	for brick_id: int in made:
-		selection[brick_id] = true
-	selection_changed.emit(selection.size())
-	return made.size()
+	return made
+
+
+## Whether [param packed], where [param brick]'s mirror image goes, runs
+## into nothing but what [param brick] runs into where it stands, of the
+## parts not [param picked]: a wheel on its axle holder, as a file lays it,
+## mirrored onto the holder too. Nothing new runs into anything. Shift+M
+## refused the car's left half for its wheels (mcphand, 2026-10-31).
+func _meets_as_before(brick: BrickWorld.Brick, packed: PackedInt32Array,
+		picked: Dictionary) -> bool:
+	var before: Dictionary = {}
+	for other: int in lattice.blockers_boxes(boxes_for(library.mesh_for(brick.part_id),
+			brick.transform), brick.id, picked):
+		before[other] = true
+	if before.is_empty():
+		return false
+	for other: int in lattice.blockers_boxes(packed):
+		if not before.has(other):
+			return false
+	return true
 
 
 ## The sub-assembly a part put down goes into: the one being edited
