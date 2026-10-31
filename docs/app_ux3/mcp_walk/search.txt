@@ -1,0 +1,32 @@
+search "2x4"            want=3001   rank=1      26 ms first=3001 | 3020 | 87079 | 3037 | 41770a
+search "brick 2x4"      want=3001   rank=1      26 ms first=3001 | 6081 | 39789 | 6249 | 30592
+search "2 x 4 brick"    want=3001   rank=1      46 ms first=3001 | 6081 | 39789 | 6249 | 30592
+search "1x2 plate"      want=3023   rank=-      22 ms first=3023b | 15573 | 35480 | 2540 | 32028
+search "plate 2x2"      want=3022   rank=1      35 ms first=3022 | 4032a | 2420 | 87580 | 18674
+search "3001"           want=3001   rank=1      24 ms first=3001 | 3001b | 3001pe1 | 3001p08 | 3001pk1
+search "300121"         want=3001   rank=1       9 ms first=3001
+search "slope 45 2x2"   want=3039   rank=1      38 ms first=3039 | 3660c | 3660f | 3660d | 3660e
+search "cheese slope"   want=54200  rank=1      43 ms first=54200 | 7826 | 7827 | 4504369 | 4504371
+search "tile 1x2"       want=3069b  rank=1      44 ms first=3069b | 2412b | 2432 | 1748 | 5092
+search "grille"         want=2412b  rank=1       9 ms first=2412b | 2877 | 61409b | 92947 | 3962b
+search "jumper"         want=3794b  rank=6      42 ms first=15573 | 87580 | 18674 | 3794a | 3065
+search "headlight"      want=4070   rank=1      22 ms first=4070 | 44674 | 93590 | 30325 | u609
+search "round 1x1"      want=4073   rank=-      28 ms first=6141 | 3062b | 98138 | 85861 | 25269
+search "hinge"          want=       rank=-      28 ms first=3937 | 3937c01 | 73587p01 | 6134 | 3938
+search "clip"           want=       rank=-       8 ms first=15712 | 60897 | 63868 | 61252 | 4081b
+search "technic pin"    want=2780   rank=1      33 ms first=2780 | 3700 | 43093 | 4274 | 3749
+search "axle 4"         want=3705   rank=1      17 ms first=3705 | 87083 | 32192 | 32124 | 32123ac01
+search "liftarm 7"      want=32524  rank=1       9 ms first=32524 | 32009 | 32348 | 32271 | 64179
+search "beam 7"         want=32524  rank=1       8 ms first=32524 | 32009 | 32348 | 32271 | 64179
+search "window"         want=       rank=-       7 ms first=60592 | 60592c01 | 60594 | 60593 | 60593c01
+search "door"           want=       rank=-       6 ms first=60596 | 3822 | 3821 | 60616b | 60623
+search "wheel"          want=       rank=-       6 ms first=6014b | 6014bc01 | 6014bc02 | 6014bc03 | 4624
+search "minifig head"   want=3626   rank=-      50 ms first=3626c | 28621 | 3626b | 53454 | 55298
+search "torso"          want=       rank=-      95 ms first=973 | 973c01 | 30375 | 60115 | 6260
+search "macaroni"       want=25269  rank=14      9 ms first=27925 | 85080 | 3063b | 27507 | 48092
+search "snot"           want=       rank=-      11 ms first=4070 | 87087 | 44728 | 99780 | 11211
+search "bracket"        want=99781  rank=4      25 ms first=44728 | 99780 | 99207 | 99781 | 36840
+search "log"            want=30136  rank=1      23 ms first=30136 | 30137 | 30140 | 6216b | 196926
+search "arch"           want=       rank=-       6 ms first=3659 | 92950 | 6005 | 18653 | 13965
+search "1x4 brick"      want=3010   rank=1      33 ms first=3010 | 30414 | 2653 | 30137 | 15533
+wanted parts first: 17 of 23; in the top three: 17
