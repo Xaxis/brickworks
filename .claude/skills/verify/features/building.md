@@ -121,11 +121,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   big set's move to 1,233 ms. `hover_cost_probe` (on the GPU, Orthanc)
   times each step's frame and each piece alone, then pretends a slow
   device and checks the steps, a still frame between them, draw nothing
-  and the part the pointer rests on is outlined; `tools/web/hover_cost.mjs` is the
-  browser's measure. On the rich car in Chromium on SwiftShader, the two
-  builds in turn at load 14 to 21: the mouse's second step reached the
+  and the part the pointer rests on is outlined; `tools/web/hover_cost.mjs`
+  is the browser's measure. On the rich car in Chromium on SwiftShader, the
+  two builds in turn at load 14 to 21: the mouse's second step reached the
   page 22 ms after the move at the median against 48 before, 35 against 71
-  at p95, the first step's frame spending 0 ms in WebGL against 24
+  at p95, the first step's frame spending 0 ms in WebGL against 24. In the
+  together check (`together_flow.mjs` 5f, its "send" stage) a unit preview
+  said where the pointer was 34 and 31 ms after the move, two runs begun at
+  load 17 and 9, against 713 on brickworks.diy that hour at load 8
   (2026-10-31).
 - `selection edits`: with bricks selected, `C` paints them the current colour
   (so does a colour clicked in the palette, see [parts](parts.md)'s `palette`),
