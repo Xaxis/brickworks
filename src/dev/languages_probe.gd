@@ -22,7 +22,8 @@
 ## - Find a command finds Save by its name in the language, and by "save";
 ## - Render's backdrop "White" reads the language's word, by its own entry
 ##   (msgctxt "backdrop"), while LDraw's colour White stays White; and a
-##   sub-model named Car reads Car in the model tree;
+##   sub-model named Car reads Car in the model tree and in a line that
+##   names it ("opened Car — 61 bricks");
 ## - in German, the longest words, at 1280 x 720: every menu at most 25
 ##   rows and 60% of the window's height (palette's bar), each inside the
 ##   window, and every control the page asks for (Main._page_controls, as
@@ -918,6 +919,11 @@ func _two_senses(code: String) -> void:
 		code, Language.says("Car"), rows], not made.is_empty() and row != null
 		and Language.says("Car") != "Car"
 		and row.get_auto_translate_mode(0) == Node.AUTO_TRANSLATE_MODE_DISABLED)
+	# And where a line of the interface names it, as the status bar does a
+	# model just opened.
+	var opened: String = Language.says("opened Car — 61 bricks")
+	_check("%s: \"opened Car — 61 bricks\" reads \"%s\", the name kept" % [code, opened],
+		"Car" in opened and not Language.says("Car") in opened)
 	_shell.run("undo")
 	await _frames(4)
 
