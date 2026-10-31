@@ -38,9 +38,11 @@ const OPTIONAL: Array[String] = [
 ## What the figure holds rather than wears, one slot a hand.
 const HELD: Array[String] = ["accessory", "accessory_left"]
 
+## Each slot's words. "On the back", not "Back": a translation has one
+## word for an English one, and "Back" is the button that goes back.
 const TITLES: Dictionary = {
 	"headwear": "Headgear", "hat_extra": "Headgear extra", "head": "Head",
-	"neck": "Neck", "back": "Back", "cape": "Cape", "torso": "Torso",
+	"neck": "Neck", "back": "On the back", "cape": "Cape", "torso": "Torso",
 	"arms": "Arms", "hands": "Hands", "hips": "Hips", "hipwear": "Skirt, tail",
 	"legs": "Legs", "footwear": "Feet", "accessory": "In right hand",
 	"accessory_left": "In left hand",

@@ -69,7 +69,7 @@ func _run() -> void:
 	# design is running, so the walk above never saw them, and the first
 	# browser test of the card showed a box beside every finished step.
 	for path: String in _interface_scripts():
-		var source: String = FileAccess.get_file_as_string(path)
+		var source: String = _without_comments(FileAccess.get_file_as_string(path))
 		for found: RegExMatch in _literals().search_all(source):
 			_ask(found.get_string(1), font, "a string in %s" % path.get_file())
 
@@ -96,6 +96,18 @@ func _interface_scripts() -> PackedStringArray:
 		if file.ends_with(".gd"):
 			paths.append("res://src/ui/" + file)
 	return paths
+
+
+## The source without its whole-line comments. A comment is never on screen,
+## and one may quote the very character the font lacks to say why it is
+## drawn instead: typed_entry.gd's caret, which failed this check in a
+## comment while the app drew a bar (2026-10-31).
+func _without_comments(source: String) -> String:
+	var kept := PackedStringArray()
+	for line: String in source.split("\n"):
+		if not line.strip_edges().begins_with("#"):
+			kept.append(line)
+	return "\n".join(kept)
 
 
 ## A double-quoted string literal, without its quotes.

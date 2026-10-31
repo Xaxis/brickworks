@@ -54,8 +54,8 @@ var _resolve_shader: RID
 var _resolve_pipeline: RID
 var _sampler: RID
 
-## Mesh -> [BLAS, vertex buffer, index buffer, positions, normals,
-## indices, vertex count]: kept between pictures, and shared by every
+## Mesh -> [BLAS, its corners' buffer, positions, normals, indices,
+## vertex count]: kept between pictures, and shared by every
 ## tracer (Render's and the queue's: the queue's first picture built them
 ## all again, a quarter of a second of the window's frame), freed when the
 ## last of them is.
@@ -204,17 +204,26 @@ func shape_of(mesh: Mesh) -> Array:
 	var bits: int = RenderingDevice.BUFFER_CREATION_DEVICE_ADDRESS_BIT \
 		| RenderingDevice.BUFFER_CREATION_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT
 	var point_bytes: PackedByteArray = points.to_byte_array()
-	var vertices: RID = _rd.vertex_buffer_create(point_bytes.size(), point_bytes, bits)
 	var index_bytes: PackedByteArray = indices.to_byte_array()
-	var triangles: RID = _rd.index_buffer_create(indices.size(),
-		RenderingDevice.INDEX_BUFFER_FORMAT_UINT32, index_bytes, false, bits)
+	# The structure is built from each triangle's corners in turn, with no
+	# index buffer. Godot 4.7.2 works out an index buffer's largest index
+	# only in a debug build, so a release build's blas_create refused every
+	# indexed shape as reaching past its vertices: Best in the 0.12.0
+	# download traced nothing and was cancelled (2026-10-31), while the
+	# editor, and every probe, traced. The hit shader finds a triangle's
+	# corners by gl_PrimitiveID in its own index buffer, so triangle n is
+	# the same triangle either way.
+	var laid_out := PackedVector3Array()
+	laid_out.resize(indices.size())
+	for n: int in indices.size():
+		laid_out[n] = points[indices[n]]
+	var laid_out_bytes: PackedByteArray = laid_out.to_byte_array()
+	var vertices: RID = _rd.vertex_buffer_create(laid_out_bytes.size(), laid_out_bytes, bits)
 	var geometry := RDAccelerationStructureGeometry.new()
 	geometry.vertex_buffer = vertices
 	geometry.vertex_stride = 12
-	geometry.vertex_count = points.size()
+	geometry.vertex_count = laid_out.size()
 	geometry.vertex_format = RenderingDevice.DATA_FORMAT_R32G32B32_SFLOAT
-	geometry.index_buffer = triangles
-	geometry.index_count = indices.size()
 	geometry.flags = RenderingDevice.ACCELERATION_STRUCTURE_GEOMETRY_OPAQUE_BIT
 	var blas: RID = _rd.blas_create([geometry],
 		RenderingDevice.ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT)
@@ -222,8 +231,7 @@ func shape_of(mesh: Mesh) -> Array:
 		push_error("path tracer: a shape of %d triangles was refused" % (indices.size() / 3))
 		_shapes[mesh] = shape
 		return shape
-	shape = [blas, vertices, triangles, point_bytes, normals.to_byte_array(), index_bytes,
-		points.size()]
+	shape = [blas, vertices, point_bytes, normals.to_byte_array(), index_bytes, points.size()]
 	_shapes[mesh] = shape
 	return shape
 
@@ -341,10 +349,10 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 		var shape: Array = shape_list[n]
 		meshes.encode_u32(n * 16, vertex_base)
 		meshes.encode_u32(n * 16 + 4, corners.size() / 4)
-		points.append_array(shape[3])
-		normals.append_array(shape[4])
-		corners.append_array(shape[5])
-		vertex_base += int(shape[6])
+		points.append_array(shape[2])
+		normals.append_array(shape[3])
+		corners.append_array(shape[4])
+		vertex_base += int(shape[5])
 	_meshes = _storage(meshes)
 	_positions = _storage(points)
 	_normals = _storage(normals)
@@ -608,7 +616,7 @@ func release() -> void:
 		_holders = 0
 		for shape: Array in _shapes.values():
 			if not shape.is_empty():
-				for rid: RID in [shape[0], shape[1], shape[2]]:
+				for rid: RID in [shape[0], shape[1]]:
 					_free(rid)
 		_shapes.clear()
 	for rid: RID in [_sbt, _pipeline, _resolve_pipeline, _shader, _resolve_shader, _sampler]:

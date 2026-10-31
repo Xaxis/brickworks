@@ -97,8 +97,11 @@ func designed(bare: bool) -> void:
 ## the judge is asked it, for the session to answer with TOOL; or "" (and
 ## the save says what it did).
 func after_save() -> Variant:
+	# Of a design only: parts placed for a person (Assistant.is_design) are not
+	# looked at as a subject is.
 	if asked or not fresh or assistant == null or assistant._busy \
-			or not assistant._outside_standing or assistant.asked_about_selection():
+			or not assistant._outside_standing or not assistant._outside_designed \
+			or assistant.asked_about_selection():
 		return ""
 	asked = true
 	var views: Array = await _pictures()
