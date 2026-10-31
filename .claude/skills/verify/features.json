@@ -2105,6 +2105,14 @@
       "tests": []
     },
     {
+      "id": "cli:steps3 probe",
+      "kind": "cli",
+      "entry": "src/dev/steps3_probe.gd",
+      "reach": "tools/probe.sh steps3_probe; PROBE_SIZE=1400x900 tools/probe.sh steps3_probe   (pictures in shots/steps3/)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:table race",
       "kind": "cli",
       "entry": "src/dev/table_race_probe.gd",
@@ -3798,6 +3806,14 @@
       "entry": "api/_library.js",
       "reach": "https://brickworks.diy/library/omr-10179-1   (api/share.js sharePage with model.library: its cover, modelled by and CC BY credit with LDraw's page, facts, Open in Brickworks = /app?new=1&library=<id>, Share, Parts; /library/<id>.webp, .cutout.webp, .cover.webp, .mpd and /parts.json|xml|csv; from the parts store's library/index.json, no database)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:any step in one go",
+      "kind": "ui",
+      "entry": "src/ui/steps_bar.gd",
+      "reach": "godot --path .  (B opens the timeline; drag the selection's yellow mark on the row of steps onto another step; or Alt-T, a number and Return; Alt-[ / Alt-] / Alt-E / Alt-Delete on the step showing)",
+      "area": "view",
       "tests": []
     },
     {

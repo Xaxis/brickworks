@@ -4368,6 +4368,20 @@
       "entry": "tools/set_pictures.py",
       "reach": "python3 tools/set_pictures.py [--fetch|--make|--upload] [--check]   (every set's picture from Rebrickable's CDN once, at most 4 a second, resumable, into vendor/rebrickable/set_pictures/; WebPs made there (--make through heavy); uploaded to the parts bucket's sets/ (additive) and listed in assets/generated/set_pictures.json, which set_catalog.py marks; tools/fetch_data.sh runs it after the day's tables)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "any step in one go",
+      "entry": "src/ui/steps_bar.gd",
+      "reach": "godot --path .  (B opens the timeline; drag the selection's yellow mark on the row of steps onto another step; or Alt-T, a number and Return; Alt-[ / Alt-] / Alt-E / Alt-Delete on the step showing)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "steps3 probe",
+      "entry": "src/dev/steps3_probe.gd",
+      "reach": "tools/probe.sh steps3_probe; PROBE_SIZE=1400x900 tools/probe.sh steps3_probe   (pictures in shots/steps3/)",
+      "area": "view"
     }
   ]
 }

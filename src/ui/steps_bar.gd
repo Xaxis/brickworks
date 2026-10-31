@@ -27,6 +27,12 @@
 ##                 Edit's Move to previous/next step and New step from
 ##                 selection put the selected parts in another
 ##
+## Under the slider, a row of the steps themselves, one cell a step: the
+## step showing lit, the steps the selection is in marked in the selection's
+## yellow. The selection dragged from its mark onto any other step goes
+## there in one drag, as in Studio's step list, and a click on a step shows
+## it (steps3). Edit's Move to step… does the same with the number typed.
+##
 ## Shown only while it is on, because it is a mode: while it is up the
 ## model on screen is not the whole model, and something has to say so
 ## plainly or the missing bricks read as a bug.
@@ -123,6 +129,28 @@ signal stepped
 
 ## Its buttons and the slider by name, for the page to find (controls_by_name).
 var _named: Dictionary = {}
+## The shell, for the selection and the step edits a drop and Move to step…
+## make (Shell._define sets it).
+var shell: Shell:
+	set(value):
+		shell = value
+		if shell != null and shell.builder != null \
+				and not shell.builder.selection_changed.is_connected(_on_selection_changed):
+			shell.builder.selection_changed.connect(_on_selection_changed)
+## The row of steps, and which of [member _steps] each part is in, by id.
+var _row: StepRow
+var _step_of: Dictionary = {}
+## The steps the selection is in, by their place in [member _steps].
+var _marked: Dictionary = {}
+## The step the row was last pressed on.
+var _row_from: int = -1
+## Move to step…, made the first time it is asked for.
+var _ask: ConfirmationDialog
+var _ask_number: SpinBox
+var _ask_words: Label
+var _ask_of: Label
+var _ask_ids: Array = []
+var _ask_steps: Array[Instructions.Step] = []
 ## The steps being worked out (start), until they are.
 var _job: Working.Job = null
 
@@ -172,6 +200,14 @@ func _build() -> void:
 	_caption.custom_minimum_size = Vector2(190, 0)
 	_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	line.add_child(_caption)
+
+	_row = StepRow.new()
+	_row.bar = self
+	_row.custom_minimum_size = Vector2(0, StepRow.TALL)
+	_row.mouse_filter = Control.MOUSE_FILTER_STOP
+	_row.accessibility_name = "Steps: drag the selection onto one to move it there"
+	_row.tooltip_text = " "
+	column.add_child(_row)
 
 	# What the step adds, on a line of its own the width of the bar. It
 	# sat between the buttons, where at 1600 wide it was cut off after
@@ -249,19 +285,25 @@ func _build() -> void:
 	_edits.visible = false
 	column.add_child(_edits)
 	for edit: Array in [
-			["earlier", "Earlier", "This step before the one ahead of it"],
-			["later", "Later", "This step after the one that follows it"],
-			["merge", "Merge with next", "This step and the next made one"],
+			["earlier", "Earlier", "This step before the one ahead of it ({step_earlier})"],
+			["later", "Later", "This step after the one that follows it ({step_later})"],
+			["merge", "Merge with next", "This step and the next made one ({step_merge})"],
 			["delete", "Delete step", "Take this step out; its parts join the step before. "
-				+ "No part is taken off"],
+				+ "No part is taken off ({step_delete})"],
 			["new", "New step from selection", "The selected parts in a step of their own, "
-				+ "after this one ({step_new})"]]:
+				+ "after this one ({step_new})"],
+			["to", "Move to step…", "The selected parts into any step, its number typed "
+				+ "({step_to}), or dragged from their yellow mark above onto the step"]]:
 		var op: String = edit[0]
 		var made: Button = _button(edit[1], "")
 		Keymap.tell(made, edit[2])
-		made.pressed.connect(func() -> void: edit_wanted.emit(op))
+		if op == "to":
+			made.pressed.connect(ask_step_to)
+		else:
+			made.pressed.connect(func() -> void: edit_wanted.emit(op))
 		_edits.add_child(made)
 		_named["steps_" + op] = made
+	_named["steps_row"] = _row
 
 	# How the booklet prints the step showing, as Studio's Instruction Maker
 	# sets a step's view and page beside its step list: the step showing is
@@ -502,6 +544,9 @@ func _set_mode_quietly(mode: int) -> void:
 	_mode = mode
 	_order_button.text = MODES[mode]
 	_edits.visible = mode == AUTHORS and editable
+	# The row of steps for the steps a drop changes: the author's, or the
+	# worked-out ones of a model that has none of its own yet.
+	_row.visible = editable and (mode == AUTHORS or (mode == 0 and not _authored))
 	# The booklet follows the build order or the author's steps, and an
 	# edit of how a step is printed gives a model the worked-out steps
 	# first, as a step edit does.
@@ -529,8 +574,14 @@ func _plan() -> Array[Instructions.Step]:
 ## the one whose end it shows, or is past the start of. Null in the other
 ## orders, and at an empty baseplate.
 func current_step() -> Instructions.Step:
+	var step: int = _current_index()
+	return _steps[step] if step >= 0 else null
+
+
+## Where [method current_step] is in [member _steps], or -1.
+func _current_index() -> int:
 	if not visible or _shown == 0 or _step_ends.is_empty() or not (_mode == 0 or _mode == AUTHORS):
-		return null
+		return -1
 	var step: int = 0
 	while step < _step_ends.size() - 1 and _step_ends[step] < _shown:
 		step += 1
@@ -539,7 +590,7 @@ func current_step() -> Instructions.Step:
 	# edit of "this step" means.
 	while step < _step_ends.size() - 1 and _step_ends[step + 1] == _step_ends[step]:
 		step += 1
-	return _steps[step]
+	return step
 
 
 ## The step of the booklet's pages the timeline is on: the current step,
@@ -611,6 +662,7 @@ func _length() -> int:
 func _reorder() -> void:
 	_order.clear()
 	_step_ends.clear()
+	_step_of.clear()
 	_events.clear()
 	_forget_ghosts()
 	if _mode == 2:
@@ -624,13 +676,15 @@ func _reorder() -> void:
 		_order.sort()
 	else:
 		# The build order, or the author's steps.
-		for step: Instructions.Step in _steps:
-			for brick_id: int in step.brick_ids:
+		for index: int in _steps.size():
+			for brick_id: int in _steps[index].brick_ids:
 				_order.append(brick_id)
+				_step_of[brick_id] = index
 			_step_ends.append(_order.size())
 	_order_packed = PackedInt64Array(_order)
 	_order_key += 1
 	_slider.max_value = _length()
+	_mark()
 
 
 ## The changes since the baseplate was last cleared, and a brick for every
@@ -833,6 +887,7 @@ func _show(count: int) -> void:
 				# to anyone following it with real bricks in their hands.
 				_pieces.text += "  (hold this one in place)"
 	_pieces.tooltip_text = _pieces.text
+	_row.queue_redraw()
 	_show_look()
 	# Everything up to here, as a count of the order: going backwards is the
 	# same path as forwards. It was every brick up to here gathered again,
@@ -912,3 +967,284 @@ func _show_history(count: int) -> void:
 		" — %d of these were taken out later" % gone if gone > 0 else ""))
 	_pieces.tooltip_text = _pieces.text
 	reveal.emit(showing)
+
+
+# -- any step in one go (steps3) ----------------------------------------------
+
+
+## The row of steps under the slider, one cell a step: drawn here, and its
+## clicks, drags and drops answered here.
+class StepRow extends Control:
+	const TALL := 16.0
+	var bar: StepsBar
+	## The step the selection is being dragged over, or -1.
+	var over: int = -1
+
+	func _draw() -> void:
+		bar._draw_row(self)
+
+	func _gui_input(event: InputEvent) -> void:
+		bar._row_input(self, event)
+
+	func _get_drag_data(at: Vector2) -> Variant:
+		return bar._row_drag(self, at)
+
+	func _can_drop_data(at: Vector2, data: Variant) -> bool:
+		return bar._row_can_drop(self, at, data)
+
+	func _drop_data(at: Vector2, data: Variant) -> void:
+		bar._row_drop(self, at, data)
+
+	func _get_tooltip(at: Vector2) -> String:
+		return bar._row_tip(self, at)
+
+	func _notification(what: int) -> void:
+		if what in [NOTIFICATION_DRAG_END, NOTIFICATION_MOUSE_EXIT] and over >= 0:
+			over = -1
+			queue_redraw()
+
+
+func _on_selection_changed(_count: int) -> void:
+	if visible:
+		_mark()
+
+
+## The steps the selection is in, marked on the row.
+func _mark() -> void:
+	_marked.clear()
+	if shell != null and visible:
+		for brick_id: Variant in shell.builder.selection:
+			if _step_of.has(brick_id):
+				_marked[_step_of[brick_id]] = true
+	_row.queue_redraw()
+
+
+## The step under [param at] on the row, by its place in [member _steps].
+func _cell_at(row: StepRow, at: Vector2) -> int:
+	return clampi(int(at.x / maxf(row.size.x, 1.0) * _steps.size()), 0, _steps.size() - 1)
+
+
+func _draw_row(row: StepRow) -> void:
+	if _steps.is_empty() or _step_ends.is_empty():
+		return
+	var wide: float = row.size.x / _steps.size()
+	var tall: float = row.size.y
+	var lit: int = _current_index()
+	var font: Font = row.get_theme_default_font()
+	var gap: float = 1.0 if wide >= 4.0 else 0.0
+	var words_room: float = 0.0
+	for index: int in _steps.size():
+		var step: Instructions.Step = _steps[index]
+		var box := Rect2(index * wide, 0.0, maxf(wide - gap, 1.0), tall)
+		# A callout's steps are built on the side: shorter than the model's.
+		if step.in_callout():
+			box = box.grow_individual(0.0, -3.0, 0.0, 0.0)
+		var fill: Color = Color(1, 1, 1, 0.16) if lit >= 0 and index < lit else Color(1, 1, 1, 0.07)
+		if index == lit:
+			fill = Look.CHOSEN
+		if index == row.over:
+			fill = Look.STRONG
+		row.draw_rect(box, fill)
+		if _marked.has(index):
+			row.draw_rect(Rect2(box.position.x, tall - 4.0, box.size.x, 4.0), SelectionOutline.SELECTED)
+		if index == row.over:
+			row.draw_rect(box, Look.ACCENT, false, 1.0)
+		# Its number on the first cell of the number, where there is room
+		# for it before the next number's.
+		words_room -= wide
+		if index > 0 and _steps[index - 1].number == step.number:
+			continue
+		# Measured only where a number could fit: a big model's hundreds of
+		# steps a pixel or two wide are drawn a frame at a time in playback.
+		if words_room > 0.0 or _cell_span(index) * wide < 10.0:
+			continue
+		var text: String = str(step.number)
+		var size: Vector2 = font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 10)
+		if size.x + 4.0 > _cell_span(index) * wide:
+			continue
+		var baseline: float = (tall - 4.0 + font.get_ascent(10) - font.get_descent(10)) / 2.0
+		row.draw_string(font, Vector2(box.position.x + 2.0, baseline), text,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1, 1, 1, 0.82))
+		words_room = size.x + 4.0
+
+
+## How many cells from [param index] carry its number: a callout's steps
+## and the step that puts it on.
+func _cell_span(index: int) -> int:
+	var span: int = 1
+	while index + span < _steps.size() and _steps[index + span].number == _steps[index].number:
+		span += 1
+	return span
+
+
+## A click on a step shows it; dragged along with nothing taken, the row
+## scrubs as the slider does.
+func _row_input(row: StepRow, event: InputEvent) -> void:
+	var button := event as InputEventMouseButton
+	var motion := event as InputEventMouseMotion
+	if button != null and button.button_index == MOUSE_BUTTON_LEFT and button.pressed:
+		_row_from = _cell_at(row, button.position)
+		_show_cell(_row_from)
+		row.accept_event()
+	# Not from the selection's mark, which is the start of a drag of it.
+	elif motion != null and motion.button_mask & MOUSE_BUTTON_MASK_LEFT != 0 \
+			and not _marked.has(_row_from) and not row.get_viewport().gui_is_dragging():
+		_show_cell(_cell_at(row, motion.position))
+		row.accept_event()
+
+
+func _show_cell(index: int) -> void:
+	if index < 0 or index >= _step_ends.size():
+		return
+	if _step_ends[index] != _shown:
+		_stop_play()
+		_show(_step_ends[index])
+
+
+## The selection taken from its mark: what a drop moves.
+func _row_drag(row: StepRow, at: Vector2) -> Variant:
+	if not editable or shell == null or shell.read_only or shell.builder.selection.is_empty():
+		return null
+	if not _marked.has(_cell_at(row, at)):
+		return null
+	_stop_play()
+	var ids: Array = shell.builder.selection.keys()
+	var tag := Label.new()
+	tag.add_theme_font_size_override("font_size", 12)
+	var face := StyleBoxFlat.new()
+	face.bg_color = Look.FACE
+	face.border_color = SelectionOutline.SELECTED
+	face.set_border_width_all(1)
+	face.set_corner_radius_all(4)
+	face.content_margin_left = 8
+	face.content_margin_right = 8
+	face.content_margin_top = 3
+	face.content_margin_bottom = 3
+	tag.add_theme_stylebox_override("normal", face)
+	tag.text = "Move %s to a step" % _parts_words(ids.size())
+	tag.position = Vector2(14, -30)
+	var holder := Control.new()
+	holder.add_child(tag)
+	row.set_drag_preview(holder)
+	return {"steps_to": ids, "tag": tag}
+
+
+func _row_can_drop(row: StepRow, at: Vector2, data: Variant) -> bool:
+	if not (data is Dictionary and (data as Dictionary).has("steps_to")):
+		return false
+	var index: int = _cell_at(row, at)
+	if row.over != index:
+		row.over = index
+		row.queue_redraw()
+		var tag: Label = data.get("tag")
+		if is_instance_valid(tag):
+			tag.text = "Move %s to %s" % [_parts_words((data["steps_to"] as Array).size()),
+				_step_words(_steps[index])]
+	return true
+
+
+## The selection put in the step it was dropped on: one undo, the booklet's
+## plan and each step's look following (Shell.change_steps).
+func _row_drop(row: StepRow, at: Vector2, data: Variant) -> void:
+	row.over = -1
+	var said: String = shell.change_steps("to", data["steps_to"], _steps[_cell_at(row, at)])
+	shell.bar.say(said)
+
+
+func _row_tip(row: StepRow, at: Vector2) -> String:
+	if _steps.is_empty():
+		return ""
+	var index: int = _cell_at(row, at)
+	var step: Instructions.Step = _steps[index]
+	var said: String = step.caption(_steps[-1].number)
+	if _marked.has(index):
+		return said + ": the selection is in it. Drag it from here onto another step to move it there"
+	var adds: String = step.summary(_library) if _library != null else ""
+	return said + (": " + adds if not adds.is_empty() else "") + ". Click to show it"
+
+
+static func _parts_words(count: int) -> String:
+	return "1 part" if count == 1 else "%d parts" % count
+
+
+static func _step_words(step: Instructions.Step) -> String:
+	if step.in_callout():
+		return "the %s's step %d, in step %d" % [step.assembly, step.callout_step, step.number]
+	return "step %d" % step.number
+
+
+## Move to step…: the selection into the step whose number is typed,
+## however far it is, as Studio's Move To. The number starts as the step
+## they are in, chosen, so a number typed replaces it; Return moves them.
+func ask_step_to() -> void:
+	if shell == null or shell.read_only:
+		return
+	var ids: Array = shell.builder.selection.keys()
+	if ids.is_empty():
+		shell.bar.say("select the parts first")
+		return
+	var steps: Array[Instructions.Step] = _steps if visible and _row.visible \
+		else Instructions.plan(shell.world, shell.library, shell.store.scenery, {}, true)
+	if steps.is_empty():
+		shell.bar.say("there is nothing built to have steps")
+		return
+	if _ask == null:
+		_make_ask()
+	_ask_ids = ids
+	_ask_steps = steps
+	var from: int = steps[0].number
+	for step: Instructions.Step in steps:
+		if step.brick_ids.has(int(ids[0])):
+			from = step.number
+			break
+	_ask_words.text = "Move %s to step" % _parts_words(ids.size())
+	_ask_of.text = "of %d" % steps[-1].number
+	_ask_number.max_value = steps[-1].number
+	_ask_number.value = from
+	_ask.popup_centered()
+	# After the dialog has given its own button the focus, as it does when shown.
+	var typed: LineEdit = _ask_number.get_line_edit()
+	typed.grab_focus.call_deferred()
+	typed.select_all.call_deferred()
+
+
+func _make_ask() -> void:
+	_ask = ConfirmationDialog.new()
+	_ask.title = "Move to step"
+	_ask.ok_button_text = "Move"
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	_ask_words = Label.new()
+	row.add_child(_ask_words)
+	_ask_number = SpinBox.new()
+	_ask_number.min_value = 1
+	_ask_number.step = 1
+	_ask_number.rounded = true
+	_ask_number.update_on_text_changed = true
+	_ask_number.custom_minimum_size = Vector2(90, 0)
+	_ask_number.accessibility_name = "Step"
+	row.add_child(_ask_number)
+	_ask_of = Label.new()
+	row.add_child(_ask_of)
+	_ask.add_child(row)
+	_ask.register_text_enter(_ask_number.get_line_edit())
+	_ask.confirmed.connect(_move_asked)
+	shell.add_child(_ask)
+
+
+func _move_asked() -> void:
+	var number: int = int(_ask_number.value)
+	var at: Instructions.Step = null
+	for step: Instructions.Step in _ask_steps:
+		if step.number == number and (at == null or step.callout_step == 0):
+			at = step
+	if at == null:
+		shell.bar.say("there is no step %d: the steps run 1 to %d" % [number, _ask_steps[-1].number])
+		return
+	shell.bar.say(shell.change_steps("to", _ask_ids, at))
+
+
+## Its row of steps, for a check: each cell's place, and which are marked.
+func row_state() -> Dictionary:
+	return {"shown": _row.visible and visible, "cells": _steps.size(), "rect": _row.get_global_rect(),
+		"marked": _marked.keys(), "lit": _current_index()}

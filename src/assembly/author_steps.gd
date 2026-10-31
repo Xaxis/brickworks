@@ -492,6 +492,36 @@ static func move(world: BrickWorld, ids: Array, by: int, level: String,
 	return squash(undo)
 
 
+## The selection put in step [param to] of [param section], however far
+## that is: Studio's step list, where the selection is dragged onto any
+## step, and Move to step…. A step it empties is taken out, so the steps
+## after it are one fewer. Parts outside [param section] are not moved
+## ([method outside] says so first).
+static func move_to(world: BrickWorld, ids: Array, level: String, section: String, to: int,
+		skip: Dictionary = {}) -> Array:
+	var undo: Array = []
+	var picked: Dictionary = _selected(world, ids, level, skip)
+	if not picked.has(section):
+		return undo
+	for item: Dictionary in picked[section]:
+		_put(world, item, to, undo)
+	_tidy(world, section, skip, undo)
+	return squash(undo)
+
+
+## How many of the selection's items are in a section other than
+## [param section], as [method _selected] reads them: a step of one
+## sub-model takes none of another's parts.
+static func outside(world: BrickWorld, ids: Array, level: String, section: String,
+		skip: Dictionary = {}) -> int:
+	var count: int = 0
+	var picked: Dictionary = _selected(world, ids, level, skip)
+	for other: String in picked:
+		if other != section:
+			count += (picked[other] as Array).size()
+	return count
+
+
 ## A new step of the selection, straight after [param after] (the step the
 ## timeline is on, in [param after_in]) or else after the latest of the
 ## steps they were in, and everything later one on: Edit, New step from
