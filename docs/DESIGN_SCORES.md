@@ -3084,6 +3084,106 @@ unused in every round. Results: `bench/results/realset-2026-10-30-d5base/`,
 `-d5lever/`, `-d5flow/` (the three tune subjects that checked the flow) and
 `realset-2026-10-30-d5base-vs-d5lever/`.
 
+### Technique: the app sets the look's angled part on a hinge, on the 44 of proof (2026-10-31, `4b8f53bd`, not ready)
+
+Design5's look named the stacked part and its joint, and the session then
+changed about 11 parts of hundreds. Its next step was to make the named change
+happen. Of the subjects whose technique we lost, the judge credits the set with
+sections set at an angle in 71%, and our angle parts were 0 at the median. So
+this round the app lays an angle itself (`4bca0f28`, docs `4b8f53bd`):
+
+- `edit_model`'s `turn` takes a `hinge`. The bricks it names, by number or by a
+  `where` box, with those standing on them, become a section on a real joint
+  (a tilting, click or clip hinge) at the edge where they meet the rest. Both
+  halves are laid, the joint's base stands on what held the part, and the far
+  end lifts by the angle said. The edges, joints and angles are tried in turn,
+  each checked as any edit is, and the first that holds is laid as one undo
+  step (`src/ai/hinged_turn.gd`, `Assistant._hinge_tries`).
+- The fresh look's answer gains a required `angle`: the one part a set would
+  build at its own angle on a hinge (a boom raised, a roof panel or a
+  windscreen raked, a tail, a wing, a lid, a door or a ramp tipped), with the
+  box it fills, or none. With a box, the app sets it so at once and says so in
+  the same answer: keep it, change its angle, or undo (`FreshEyes.turn_for`,
+  `CommandSocket`).
+- Replayed on the parts design5's base sessions built, 8 of 54 assemblies
+  lay: the roofs of 21013-1, 21016-1 and 41072-1, 42081-1's engine hood,
+  42072-1's hammer arm, 42063-1's seat and tail, 7746-1's cab canopy.
+
+**How it ran.** One locked snapshot, `snapd6lever` at `4b8f53bd`, imported
+first. The baseline is design5's stage225 arm (`a3090df7`, 2026-10-30), on the
+same 44 and the same path: `--via relay --no-claude-code`, the connector's own
+instructions, one design a subject, 3 at a time. Sessions ran 2026-10-31 08:16Z
+to 14:21Z, at a load of up to 37. No session hit the account's
+limit or a login. Five sessions searched the library for their own set, and
+every search answered 0 sets: the hold-out held, and no tool result carried a
+held-out set's number. Sessions took a median 19 minutes, as before. Two hit
+the 45-minute timeout, with a model (21016-1, 42063-1); one did in the
+baseline.
+
+| dimension | stage225 (95%) | the app sets the angle (95%) | lever minus stage225, paired (95%) | subjects better / worse |
+|---|---|---|---|---|
+| likeness | 26% (15-41) | 30% (18-44) | +3 (-8, +15) | 6 / 6 |
+| surface | 33% (21-48) | 34% (22-49) | +1 (-9, +13) | 5 / 6 |
+| colour | 33% (21-48) | 30% (18-44) | -3 (-16, +9) | 7 / 9 |
+| technique | 10% (4-23) | 12% (6-25) | +2 (-6, +10) | 4 / 2 |
+| creativity | 44% (31-59) | 48% (34-62) | +3 (-7, +14) | 8 / 5 |
+| overall | 24% (14-38) | 23% (13-37) | -1 (-10, +9) | 4 / 6 |
+
+Head to head, both orders, the lever's design preferred to stage225's:
+likeness 51%, surface 50%, colour 55%, technique 50% (36-64%), creativity 56%,
+overall 49% (35-63%).
+
+**What the sessions heard and did** (their logs and transcripts):
+
+| | stage225 | the app sets the angle |
+|---|---|---|
+| the look asked and answered | 35 of 44 | 38 of 44 |
+| ...named a part at its angle | - | 6 (32 answered none) |
+| ...the app laid it on a hinge | - | 2: 42033-1's rear wing, kept; 5763-1's roll hoop, undone at once |
+| ...refused, every way | - | 4: 41072-1's chest lid, 5934-1's tail, 40141-1's entrance canopy, 42075-1's windscreen |
+| hinged turns the session asked for itself | - | 3, in 2 sessions; 1 laid (7992-1, 9 parts) |
+| changes that name a bracket, clip, hinge, bar or a side | 13 of 105, in 10 sessions | 21 of 114, in 15 sessions |
+| built a turned or hinged section (reach) | 6 of 44 | 6 of 44 |
+| hinge halves in the final model | 6 of 44 | 6 of 44 |
+| final: angle parts, median | 0% | 0% (above 0 in 21 and 18) |
+| final: on their side, median | 3.9% | 4.9% |
+| final: plain bricks and plates, median | 40% | 42% |
+| technique verdicts lost that call ours stacked | 80% | 71% |
+| ...subjects where the judge credits the set with angled sections | 61% | 70% |
+
+The look said none for a container yard, a sphinx, the Imperial Hotel and a
+bee. Where a session had already built on a hinge it said none too: 42081-1
+had asked `show_technique` for "leaning on a hinge" and laid it before the
+look. Of the four refused, the chest lid was a chest part with no course to
+stand a joint on, and the tail was a plate and two curved slopes held together
+only by the body. The canopy and the windscreen held up parts outside their
+box, which lost their hold when they turned. The roll hoop was undone with
+"That hinge leaned the roll hoop sideways rather than back".
+
+**Not ready.** The app laid what was named, but little was named. Six looks
+in 38 named a part at its angle, two were laid, and one was kept. Technique
+moved +2, inside its noise. Its 4 better subjects named no angle, and 42033-1,
+whose rear wing stayed on its hinge, lost technique in both orders as before.
+No dimension fell beyond noise. The lever is kept on its branch.
+
+After the arm, `355c9058` tries each way again on one plate over the part's
+bottom course, as a set builds a hinged part, so parts held together only by
+what they stood on ride as one. Replaying the six named looks on it, three lay
+(the tail too), and 10 of design5's 54 assemblies lay against 8. It is not yet
+measured.
+
+**Next.** The question comes too late and is asked of the wrong thing. The look
+sees our model and the subject's name, not the set; asked what leans, it says
+none 32 times in 38, while the judge credits the set with angled sections in
+70% of the subjects whose technique we lost. A set designer decides which
+sections stand at an angle when the model is planned, and builds them on their
+joint from the first brick. The next lever asks it then: the assemblies a
+session plans name which stand at an angle and on what joint, and the app lays
+that assembly on its hinge as it is built, before the rest is built around it.
+Curved parts (68% of subjects) and Technic construction (55%) are the next most
+credited. Results: `bench/results/realset-2026-10-31-d6lever/` and
+`realset-2026-10-31-d5base-vs-d6lever/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
