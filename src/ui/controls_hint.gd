@@ -75,6 +75,21 @@ static func keyed(pressed: Array, does: String, shows: String = "") -> Binding:
 	return binding
 
 
+## The keys the preset chosen gives the timeline (Keymap.TIMELINE_PRESET_KEYS):
+## Studio's Ctrl-A and Ctrl-D, LDCad's Page Up and Page Down.
+static func _timeline_preset() -> Array[Binding]:
+	var out: Array[Binding] = []
+	var does: Dictionary = {KEY_RIGHT: "the step after", KEY_LEFT: "the step before",
+		KEY_END: "its end", KEY_HOME: "its start"}
+	var keys: Dictionary = Keymap.TIMELINE_PRESET_KEYS.get(Keymap.preset(), {})
+	for accel: int in keys:
+		var action: Variant = keys[accel]
+		out.append(Binding.new([Keymap.listed_key(accel)], "on the timeline, %s (%s's)" % [
+			Keymap.words(action).to_lower() if action is String else does[action],
+			Keymap.PRESET_NAMES[Keymap.preset()]]))
+	return out
+
+
 ## What a key's place says when its action has none.
 const NO_KEY := "no key"
 ## The gestures a row names in one word (keyed): not actions.
@@ -242,7 +257,7 @@ static func for_keyboard() -> Array[Binding]:
 		Binding.new(["Left", "Right"], "the step before, the step after"),
 		Binding.new(["space"], "play the timeline"),
 		Binding.new(["Home", "End"], "its start and end"),
-	])
+	] + _timeline_preset())
 	var rest: Array[Binding] = [
 		keyed(["parts_list"], "parts"),
 		keyed(["minifig"], "minifigure"),

@@ -1431,6 +1431,20 @@
     },
     {
       "kind": "ui",
+      "label": "any step in one go",
+      "entry": "src/ui/steps_bar.gd",
+      "reach": "godot --path .  (B opens the timeline; drag the selection's yellow mark on the row of steps onto another step; or Alt-T, a number and Return; Alt-[ / Alt-] / Alt-E / Alt-Delete on the step showing)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "steps3 probe",
+      "entry": "src/dev/steps3_probe.gd",
+      "reach": "tools/probe.sh steps3_probe; PROBE_SIZE=1400x900 tools/probe.sh steps3_probe   (pictures in shots/steps3/)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "floor",
       "entry": "src/render/floor_layer.gd",
       "reach": "godot --path .  (View, Floor; the properties with nothing selected; Settings, New models start on)",

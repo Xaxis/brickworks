@@ -152,8 +152,9 @@ eights, in a colour baseplates come in, a grid floor, or nothing (a car \
 or a ship stands on a table). part_of_model=true counts the baseplate as \
 a part and makes it step 1 of the booklet.
  - edit_steps: the build steps the booklet and the timeline follow. With \
-no op it lists them; "next"/"prev" move parts a step, "new" makes a step \
-of them, "earlier"/"later"/"merge"/"delete" act on a step by its number.
+no op it lists them; "to" puts parts in any step by its number, "next"/"prev" \
+move them a step, "new" makes a step of them, "earlier"/"later"/"merge"/\
+"delete" act on a step by its number.
  - booklet_layout reads the booklet's pages and how each step is printed, \
 changing nothing; edit_booklet sets one step's view (turn=, tilt=, \
 "usual"), zoom=, size=, page= ("new", "alone"), parts=, callout= and the \
@@ -287,17 +288,18 @@ func definitions() -> Array:
 			"name": "edit_steps",
 			"description": ("The model's build steps, the order the booklet and the timeline "
 				+ "follow, as Edit, Build steps changes them. op \"list\" (the default) gives "
-				+ "them with the part numbers in each; \"next\" or \"prev\" moves bricks= a "
+				+ "them with the part numbers in each; \"to\" puts bricks= in step=, however "
+				+ "far, as the person drags them onto a step; \"next\" or \"prev\" moves bricks= a "
 				+ "step later or earlier; \"new\" makes a new step of bricks=; \"earlier\", "
 				+ "\"later\", \"merge\" (with the next) and \"delete\" act on step=, a number "
 				+ "from the list. A model with no steps of its own is given the worked-out "
 				+ "ones first, in the same undo step."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
-				"op": {"type": "string", "enum": ["list", "next", "prev", "new", "earlier",
+				"op": {"type": "string", "enum": ["list", "to", "next", "prev", "new", "earlier",
 					"later", "merge", "delete"]},
 				"bricks": {"type": "array", "items": {"type": "integer"},
-					"description": "part numbers from look_at_model, for next, prev and new"},
-				"step": {"type": "integer", "description": "a step's number, for earlier, later, merge and delete"},
+					"description": "part numbers from look_at_model, for to, next, prev and new"},
+				"step": {"type": "integer", "description": "a step's number, for to, earlier, later, merge and delete"},
 				"from": {"type": "integer", "description": "list from this step; 1 when omitted"},
 			}},
 		},
@@ -1115,7 +1117,7 @@ func _edit_steps(input: Dictionary) -> String:
 	match op:
 		"list":
 			return _list_steps(steps, int(input.get("from", 1)))
-		"next", "prev", "new":
+		"next", "prev", "new", "to":
 			var ids: Array = []
 			var unknown := PackedStringArray()
 			for raw: Variant in input.get("bricks", []):
@@ -1128,7 +1130,15 @@ func _edit_steps(input: Dictionary) -> String:
 				return "No part numbered %s (look_at_model numbers them)." % ", ".join(unknown)
 			if ids.is_empty():
 				return "Give bricks= the part numbers to move, from look_at_model or this list."
-			return shell.change_steps(op, ids, null)
+			if op != "to":
+				return shell.change_steps(op, ids, null)
+			if not input.has("step"):
+				return "Give step= the number of the step to put them in, from edit_steps's list."
+			var into: Instructions.Step = _step_numbered(steps, int(input["step"]))
+			if into == null:
+				return "There is no step %d: the steps run 1 to %d." % [int(input["step"]),
+					steps[steps.size() - 1].number]
+			return shell.change_steps(op, ids, into)
 		"earlier", "later", "merge", "delete":
 			if not input.has("step"):
 				return "Give step= a step's number from edit_steps's list."
@@ -1137,7 +1147,7 @@ func _edit_steps(input: Dictionary) -> String:
 				return "There is no step %d: the steps run 1 to %d." % [int(input["step"]),
 					steps[steps.size() - 1].number]
 			return shell.change_steps(op, [], at)
-	return "op is one of list, next, prev, new, earlier, later, merge, delete."
+	return "op is one of list, to, next, prev, new, earlier, later, merge, delete."
 
 
 # -- the booklet, by hand --------------------------------------------------------

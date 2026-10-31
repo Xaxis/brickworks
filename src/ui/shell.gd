@@ -183,7 +183,7 @@ const SUBMENUS: Dictionary = {
 		"view_top", "view_bottom", "view_iso", "-", "turn_left", "turn_right"],
 	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_flip", "cut_ghosts"],
 	# Next step (E) is in Build itself, over these.
-	"steps": ["step_prev", "step_next", "step_new", "-", "step_earlier", "step_later",
+	"steps": ["step_prev", "step_next", "step_to", "step_new", "-", "step_earlier", "step_later",
 		"step_merge", "step_delete"],
 	"booklet": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
 		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
@@ -678,7 +678,7 @@ const SLOW_FROM: Dictionary = {
 	"paint": 600, "hide": 3000, "isolate": 3000, "leave_submodel": 2000,
 	"make_unique": 2000,
 	"step_close": 300, "step_new": 300, "step_prev": 300, "step_next": 300, "step_earlier": 300,
-	"step_later": 300, "step_merge": 300, "step_delete": 300,
+	"step_later": 300, "step_merge": 300, "step_delete": 300, "step_to": 300,
 	"turn_left": 300, "turn_right": 300, "collection_build": 0,
 	# What do I need? reads the collection and lays its list out whatever the
 	# model's size, and the minifigure builder fills its picker every time it
@@ -747,7 +747,7 @@ const DOING: Dictionary = {
 	"step_close": "Making a step…", "step_new": "Making a step…",
 	"step_earlier": "Moving the step…",
 	"step_later": "Moving the step…", "step_merge": "Merging the steps…",
-	"step_delete": "Taking out the step…",
+	"step_delete": "Taking out the step…", "step_to": "Reading the steps…",
 }
 
 
@@ -1118,6 +1118,15 @@ func _define() -> void:
 		on_a_step, "The step the timeline is on and the next made one")
 	_add("step_delete", "Delete the step", 0, func() -> void: edit_steps("delete"), on_a_step,
 		"Take out the step the timeline is on; its parts join the step before")
+	# Any step in one go (steps3), as Studio's Move To: the number typed, or
+	# the selection dragged onto the timeline's row of steps (StepsBar).
+	var timeline: StepsBar = app.get("_steps")
+	if timeline != null:
+		timeline.shell = self
+	_add("step_to", "Move to step…", 0, func() -> void:
+		if timeline != null:
+			timeline.ask_step_to(), selected,
+		"The selected parts into any step, its number typed")
 	# How the booklet prints the step the timeline is on (BookletLooks), as
 	# Studio's Instruction Maker sets each step's view and page.
 	for look: Array in [
@@ -1430,7 +1439,7 @@ func _define() -> void:
 const ON_A_PART: Array = ["ask_claude", "brace", "comments", "-", "select_connected", "select_part",
 	"select_colour", "-", "hide", "isolate", "-", "copy", "duplicate", "delete", "-", "paint",
 	"split_parts", "merge_parts",
-	"replace", "printed_versions", "swing", "-", "step_prev", "step_next", "make_submodel", "-",
+	"replace", "printed_versions", "swing", "-", "step_prev", "step_next", "step_to", "make_submodel", "-",
 	"show_properties"]
 
 ## A row's words on a part where the menus' would not say it: Select by's
@@ -2290,7 +2299,7 @@ func edit_steps(op: String) -> void:
 func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	if read_only:
 		return "this model is open to look at, not to change"
-	if op in ["prev", "next", "new"] and ids.is_empty():
+	if op in ["prev", "next", "new", "to"] and ids.is_empty():
 		return "select the parts first"
 	if not op in ["prev", "next", "new", "close"] and at == null:
 		return "go to a step on the timeline first"
@@ -2327,10 +2336,16 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 		if not blocked.is_empty():
 			_take_back(undo)
 			return blocked
+	# Any step, for the selection (steps3): one of the section they are in.
+	if op == "to" and (int(where[1]) < 0
+			or AuthorSteps.outside(world, ids, level, str(where[0]), skip) > 0):
+		_take_back(undo)
+		return "step %d builds %s, and the selection is not in it" % [number,
+			"the " + at.assembly if not at.assembly.is_empty() else "another sub-model"]
 	# What the edit takes out of its step: a step keeps its look with the
 	# parts it keeps.
 	var taken: Dictionary = {}
-	if op in ["prev", "next", "new"]:
+	if op in ["prev", "next", "new", "to"]:
 		for items: Variant in AuthorSteps._selected(world, ids, level, skip).values():
 			for item: Dictionary in items:
 				taken[BookletLooks.item_name(item)] = true
@@ -2344,6 +2359,17 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 		"prev", "next":
 			undo.append_array(AuthorSteps.move(world, ids, -1 if op == "prev" else 1, level, skip))
 			words = "moved %s to the %s step" % [_parts(count), "previous" if op == "prev" else "next"]
+		"to":
+			undo.append_array(AuthorSteps.move_to(world, ids, level, str(where[0]),
+				int(where[1]), skip))
+			# A step the selection left empty is taken out, and the step it
+			# went to is numbered one less for each before it.
+			var now: Array = AuthorSteps._selected(world, ids, level, skip).get(str(where[0]), [])
+			if str(where[0]).is_empty() and not now.is_empty():
+				number -= int(where[1]) - int((now[0] as Dictionary)["step"])
+			words = "moved %s to step %d" % [_parts(count), number] if at.callout_step <= 0 \
+				else "moved %s to the %s's step %d, in step %d" % [_parts(count), at.assembly,
+					at.callout_step, number]
 		"new":
 			undo.append_array(AuthorSteps.new_step(world, ids, level, str(where[0]),
 				int(where[1]), skip))

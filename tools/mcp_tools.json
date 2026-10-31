@@ -4146,12 +4146,12 @@
       "readOnlyHint": false,
       "title": "Edit the build steps"
     },
-    "description": "The model's build steps, the order the booklet and the timeline follow, as Edit, Build steps changes them. op \"list\" (the default) gives them with the part numbers in each; \"next\" or \"prev\" moves bricks= a step later or earlier; \"new\" makes a new step of bricks=; \"earlier\", \"later\", \"merge\" (with the next) and \"delete\" act on step=, a number from the list. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
+    "description": "The model's build steps, the order the booklet and the timeline follow, as Edit, Build steps changes them. op \"list\" (the default) gives them with the part numbers in each; \"to\" puts bricks= in step=, however far, as the person drags them onto a step; \"next\" or \"prev\" moves bricks= a step later or earlier; \"new\" makes a new step of bricks=; \"earlier\", \"later\", \"merge\" (with the next) and \"delete\" act on step=, a number from the list. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "bricks": {
-          "description": "part numbers from look_at_model, for next, prev and new",
+          "description": "part numbers from look_at_model, for to, next, prev and new",
           "items": {
             "type": "integer"
           },
@@ -4164,6 +4164,7 @@
         "op": {
           "enum": [
             "list",
+            "to",
             "next",
             "prev",
             "new",
@@ -4175,7 +4176,7 @@
           "type": "string"
         },
         "step": {
-          "description": "a step's number, for earlier, later, merge and delete",
+          "description": "a step's number, for to, earlier, later, merge and delete",
           "type": "integer"
         }
       },
