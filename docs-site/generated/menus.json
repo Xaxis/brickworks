@@ -1002,6 +1002,33 @@
 							"words": "Outline new parts",
 							"key": "",
 							"tip": "The parts each step adds outlined in orange in the booklet, or not"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "booklet_pull",
+							"words": "Pull out the selected parts",
+							"key": "",
+							"tip": "The selected parts of this step (all of them, none selected) drawn pulled out along the way they go in, with an arrow in; again puts them back"
+						},
+						{
+							"name": "booklet_colours",
+							"words": "Colour guide",
+							"key": "",
+							"tip": "This step's colours listed under its number, or not"
+						},
+						{
+							"name": "booklet_actual_size",
+							"words": "1:1 guide",
+							"key": "",
+							"tip": "The selected parts of this step drawn at their real size, or no 1:1 guide where the booklet gives one; again as the booklet does it"
+						},
+						{
+							"name": "booklet_preview",
+							"words": "Sub-model preview",
+							"key": "",
+							"tip": "The sub-assembly this step puts on shown finished on the first of its own pages, or not"
 						}
 					]
 				},
@@ -1600,6 +1627,10 @@
 		"booklet_per_page": "",
 		"booklet_lay_out": "",
 		"booklet_highlight": "",
+		"booklet_pull": "",
+		"booklet_colours": "",
+		"booklet_actual_size": "",
+		"booklet_preview": "",
 		"flex": "",
 		"reshape_flex": "",
 		"view_default": "0",

@@ -702,12 +702,28 @@ func _actual_for(entry: Booklet.Entry, seen: Dictionary) -> void:
 			wanted = part in (asked as Array)
 		elif asked != null:
 			wanted = bool(asked) and studs > 0.0
+		if wanted and not asked is Array and not _straight(lot.part_id, studs):
+			continue
 		if not wanted or entry.actual.any(func(one: Dictionary) -> bool:
 				return str(one["part"]) == part):
 			continue
 		var guide: Dictionary = _actual_pose(lot, studs)
 		if not guide.is_empty():
 			entry.actual.append(guide)
+
+
+## Whether [param part_id] is a straight bar [param studs] long, as an
+## axle or a beam is, which a ruler laid on its guide reads true: its
+## longest side the length within a hair, the other two no thicker than a
+## beam. A liftarm with a pin standing out of it is drawn as an L, and is
+## given no guide unless it is asked for.
+func _straight(part_id: String, studs: float) -> bool:
+	var mesh: Lbm.PartMesh = library.mesh_for(part_id)
+	if mesh == null:
+		return false
+	var size: Array = [mesh.bounds.size.x, mesh.bounds.size.y, mesh.bounds.size.z]
+	size.sort()
+	return absf(float(size[2]) - studs * 20.0) <= 4.5 and float(size[1]) <= 22.0
 
 
 func _name_of(part_id: String) -> String:

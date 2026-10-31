@@ -4382,6 +4382,20 @@
       "entry": "src/dev/steps3_probe.gd",
       "reach": "tools/probe.sh steps3_probe; PROBE_SIZE=1400x900 tools/probe.sh steps3_probe   (pictures in shots/steps3/)",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "the booklet's Studio extras",
+      "entry": "src/render/booklet_maker.gd",
+      "reach": "godot --path .  (B opens the timeline; on a step, Build, Booklet page: Pull out the selected parts, Colour guide, 1:1 guide, Sub-model preview; then Instructions; a straight Technic axle's or beam's first step gets its 1:1 guide unasked; edit_booklet pull=, colours=, colours_all=, actual_size=, preview= over MCP)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "booklet3 probe",
+      "entry": "src/dev/booklet3_probe.gd",
+      "reach": "tools/probe.sh booklet3 -- --into=DIR   (windowed, on the GPU: edit_booklet's extras and the Booklet page rows, the axle 4's 1:1 guide measured at 32.0 mm on the 300 dpi PNG page and the PDF, the pulled-out axle and its arrow, the colour guide, the pod's preview; DIR keeps the booklet, its PDF and every page as PNG; --before writes the booklet with nothing set)",
+      "area": "view"
     }
   ]
 }
