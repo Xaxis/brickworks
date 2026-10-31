@@ -96,8 +96,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
 - `the hover drawn at the device's pace` (`src/render/pointer_pace.gd`): on a
   device whose drawn frames cost over 50 ms (`FrameBudget.SLOW_MS`), the
   hover's outline and the status line's words for what is under the pointer
-  are drawn in the first frame the pointer did not move in, or once they
-  have waited a drawn frame's cost, not at every step onto another part.
+  are drawn once the pointer has been still for 100 ms (`REST_MS`), or once
+  they have waited a drawn frame's cost, not at every step onto another
+  part. Still for a frame was not at rest: a browser hands over a mouse's
+  steps a frame or two apart, and the frame between the together check's
+  two steps drew the outline and held the second step 200 ms.
   What is under the pointer is known at once either way (a click acts on
   it, Together says it). A browser hands the page a mouse step only once
   the frame before it is drawn: on the together check's rich car (a floor
@@ -117,8 +120,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   every question of an edit, the index took `bigmodel_probe`'s redo of a
   big set's move to 1,233 ms. `hover_cost_probe` (on the GPU, Orthanc)
   times each step's frame and each piece alone, then pretends a slow
-  device and checks the steps draw nothing and the part the pointer rests
-  on is outlined the frame after; `tools/web/hover_cost.mjs` is the
+  device and checks the steps, a still frame between them, draw nothing
+  and the part the pointer rests on is outlined; `tools/web/hover_cost.mjs` is the
   browser's measure. On the rich car in Chromium on SwiftShader, the two
   builds in turn at load 14 to 21: the mouse's second step reached the
   page 22 ms after the move at the median against 48 before, 35 against 71

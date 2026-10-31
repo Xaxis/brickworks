@@ -8,10 +8,10 @@
 ## from one part's middle to another's in two steps, as a mouse does and as
 ## the together check moves it, and the frame each step changed the hover
 ## in is timed: its own work, from the frame's start to the end of its
-## drawing. Then the same steps a frame apart, as a browser hands them
-## over, on a device pretended to draw quickly (each step draws a frame)
-## and slowly (PointerPace: the steps draw nothing, the part the pointer
-## rests on is outlined after). Then the hover's pieces, each timed alone on
+## drawing. Then the same steps with a still frame between, as a browser
+## hands a mouse's steps over, on a device pretended to draw quickly (each
+## step draws a frame) and slowly (PointerPace: the steps and the frame
+## between draw nothing, the part the pointer rests on is outlined after). Then the hover's pieces, each timed alone on
 ## the same parts: the part under the pointer, what a click there would
 ## take (its whole sub-assembly), and that outlined. --shots=DIR: the
 ## pointer at rest on a part, outlined, at 1280 x 720 and 1400 x 900.
@@ -153,10 +153,13 @@ func _run() -> void:
 		% [_middle_int(lags), lags.size()])
 
 	# A device drawing slowly, as a browser does in software, and the same
-	# steps on one drawing quickly: two steps in two frames, as a browser
-	# hands them over. Drawing quickly the steps onto another part each draw
-	# a frame; drawing slowly they draw nothing, and the frame after the
-	# pointer rests draws the part it rests on outlined.
+	# steps on one drawing quickly: two steps with a still frame between,
+	# as a browser hands a mouse's steps over, 25 to 30 ms apart. Drawing
+	# quickly the steps onto another part each draw a frame; drawing slowly
+	# they and the frame between draw nothing (that frame drew the outline
+	# while the pointer was still for a frame, and in the together check the
+	# second step waited for it), and once the pointer rests the part it
+	# rests on is drawn outlined.
 	var drawn_by: Dictionary = {}
 	var paced_shown: int = 0
 	for slow: bool in [false, true]:
@@ -166,16 +169,18 @@ func _run() -> void:
 			var aim: Dictionary = spots[(n + 2) % spots.size()]
 			var from: int = _log.size() - 1
 			_move_to((last + aim["at"]) / 2.0)
-			await _frames(1)
+			await _frames(2)
 			_move_to(aim["at"])
 			await _frames(1)
-			# The two frames that had the steps, each drawn or not by the
-			# time the next began.
+			# The frames of the steps and the one between, each drawn or not
+			# by the time the next began.
 			var count: int = 0
-			for at: int in range(from, from + 2):
+			for at: int in range(from, from + 3):
 				count += 1 if int(_log[at + 1][1]) > int(_log[at][1]) else 0
 			during.append(count)
-			await _frames(4)
+			# At rest: still for PointerPace.REST_MS, and the frame after.
+			await create_timer(0.25).timeout
+			await _frames(2)
 			if slow:
 				# The part the app has there: an edge a pixel off may be its
 				# neighbour's.
@@ -196,7 +201,7 @@ func _run() -> void:
 		(drawn_by[false] as Array).max() > 0)
 	_check("drawing slowly, the pointer's steps onto another part draw no frame (%s)" % _list(drawn_by[true]),
 		(drawn_by[true] as Array).max() == 0)
-	_check("...and the part it rests on is outlined the frame after (%d of 6)" % paced_shown, paced_shown == 6)
+	_check("...and the part it rests on is outlined once it is still (%d of 6)" % paced_shown, paced_shown == 6)
 
 	# The pieces alone, on each spot: the part under the pointer, what a
 	# click there takes, and that outlined.

@@ -14,12 +14,18 @@
 ## stopped on came a second frame after that.
 ##
 ## So on a device whose drawn frames cost more than SLOW_MS, what the
-## pointer is over is drawn in the first frame the pointer did not move in,
-## or once it has waited as long as a drawn frame takes, so a long sweep is
+## pointer is over is drawn once the pointer has been still for REST_MS, or
+## once it has waited as long as a drawn frame takes, so a long sweep is
 ## still followed: where the pointer comes to rest, not every place on its
 ## way. On a device that draws quickly it is drawn in the frame it changed,
 ## as before. What the pointer is over is known at once either way (a click
 ## acts on it, Together says it); only its drawing waits.
+##
+## Still for a frame was not at rest: a browser hands the page a mouse's
+## steps a frame or two apart, 25 to 30 ms on the box, and the frame between
+## the together check's two steps drew the outline round the floor the
+## first one crossed, the second step waiting the 200 ms that frame took
+## (its GL calls, timed in the owner's page, 2026-10-31).
 ##
 ## A drawn frame's cost is from its drawing to the next frame, the frame's
 ## own scripts not counted, so a probe's busy frames are not slow drawing.
@@ -38,15 +44,14 @@ const SLOW_MS := FrameBudget.SLOW_MS
 ## The drawn frames judged by: the middle of the last few, so one slow
 ## frame (a shader built, a model read in) is not the device's pace.
 const KEPT := 3
+## Still this long, in ms, and the pointer is at rest.
+const REST_MS := 100.0
 
 static var _costs: Array[float] = []
 static var _pretended: float = -1.0
 static var _listening: bool = false
-## When this process frame and the last one began, when the last drawing
-## began and how many frames had been drawn then, and when the pointer last
-## moved, in microseconds.
-static var _frame_us: int = 0
-static var _last_frame_us: int = 0
+## When the last drawing began and how many frames had been drawn then,
+## and when the pointer last moved, in microseconds.
 static var _draw_us: int = 0
 static var _drawn: int = 0
 static var _moved_us: int = -1
@@ -64,7 +69,7 @@ static func now(waited_ms: float) -> bool:
 	var cost: float = drawn_ms()
 	if cost <= SLOW_MS:
 		return true
-	if _moved_us <= _last_frame_us:
+	if (Time.get_ticks_usec() - _moved_us) / 1000.0 >= REST_MS:
 		return true
 	return waited_ms >= cost
 
@@ -137,8 +142,6 @@ static func _frame() -> void:
 	elif Engine.get_frames_drawn() != _drawn and _draw_us > 0:
 		_keep((at - _draw_us) / 1000.0)
 	_drawn = Engine.get_frames_drawn()
-	_last_frame_us = _frame_us
-	_frame_us = at
 
 
 static func _keep(ms: float) -> void:
