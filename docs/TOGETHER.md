@@ -124,7 +124,10 @@ desktop app. Started 2026-10-24 (unit together233).
   answers as soon as someone's moves, and each side draws the others' as a
   dot and their name in a colour each, over the parts: the same size on
   the screen however near the view is, as a cursor is, so it never hides
-  the part it points at.
+  the part it points at. A pointer that leaves the model is said gone once
+  it has stayed off it 250 ms (`OFF_MS`): crossing a gap between two parts
+  it went out and came back on the others' screens, a frame of their
+  drawing each, the second waiting for the first.
 - **Selections and views.** The same `op=point` carries the uids of the
   parts this side has selected (at most 500) and its view (`CadCamera.aim`,
   rounded), sent when any of the three changes. The server keeps them on

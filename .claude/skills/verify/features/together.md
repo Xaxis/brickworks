@@ -37,7 +37,9 @@ app, joined by a link (docs/TOGETHER.md).
   `~chat` ops (`messages`, `chat_words`). Pointers: `op=point` four times a
   second while the part under the mouse or the ghost moves
   (`Main`'s `pointer_at`), the others' drawn as a dot and a name at a
-  fixed size on the screen (`pointers_shown`). The server tells each
+  fixed size on the screen (`pointers_shown`); one that leaves the model
+  is sent as gone once it has stayed off 250 ms (`OFF_MS`), so crossing a
+  gap between parts it does not blink. The server tells each
   `op=point` at once to every poll waiting in the session on the
   session's Realtime channel (`channelOf`, `tell`, `listen` in
   api/together.js), and a poll answers with it; it also reads who is in

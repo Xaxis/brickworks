@@ -143,6 +143,13 @@ var _point_at: int = 0
 var _pointed: Variant = null
 var _pointing: bool = false
 const POINT_MS := 250
+## A pointer that leaves the model is said gone only once it has stayed off
+## it this long. Crossing a gap between two parts, it went out and came back
+## on the others' screens, each a frame of their own: on a page drawing the
+## rich car in software, half a second each, the second waiting for the
+## first (presence, 2026-10-30: 33 of 40 moves on the rich car).
+const OFF_MS := 250
+var _off_at: int = -1
 ## The others' dots, this many texture pixels across, drawn at a fixed size
 ## on the screen as their names are.
 const DOT_PIXELS := 32
@@ -720,6 +727,7 @@ func _reset() -> void:
 	messages.clear()
 	chat_words = ""
 	_pointed = null
+	_off_at = -1
 	following = ""
 	_catch_up_to = 0
 	_offline = false
@@ -1669,7 +1677,15 @@ func _point() -> void:
 		return
 	var now: Dictionary = _pointer_now()
 	if now == _pointed:
+		_off_at = -1
 		return
+	var was: Dictionary = _pointed if _pointed is Dictionary else {}
+	if now["at"] == null and was.get("at") != null and now["sel"] == was.get("sel") and now["view"] == was.get("view"):
+		if _off_at < 0:
+			_off_at = Time.get_ticks_msec()
+		if Time.get_ticks_msec() - _off_at < OFF_MS:
+			return
+	_off_at = -1
 	_point_at = Time.get_ticks_msec()
 	_pointing = true
 	_pointed = now
