@@ -878,3 +878,41 @@ echo "$name: all passed"
     assert [line.split()[:2] for line in out[1:-1]] == [["gallery", "exit=125"], ["keys", "exit=125"],
                                                        ["frames", "exit=125"]], out
     assert all("not run: the release's probes failed" in line for line in out[1:-1]) and out[-1] == "done", out
+
+
+def test_a_release_takes_the_live_database_before_a_unit_that_waited_longer(tmp_path):
+    """The real preview_checks.sh: a unit's arrival and a release's wait for the live database's
+    lock, the unit's first; once it is let go the release's runs first, and leaves no mark."""
+    import fcntl
+    y = Yard(tmp_path)
+    y.put("tools/release/preview_checks.sh", (ROOT / "tools/release/preview_checks.sh").read_text())
+    y.put("tools/web/arrival_check.mjs", "await deleteAccount(session)\n")
+    (y.r / ".env").write_text("VERCEL_BYPASS=bypass\n")
+    node = tmp_path / "bin" / "node"
+    node.write_text('#!/bin/bash\necho "$TAG_SEEN began $(date +%s.%N)" >> "$RELEASE_OUT/check_spans"\n'
+                    'sleep 0.5\necho "arrival: all passed"\n')
+    node.chmod(0o755)
+    heavy = tmp_path / "home/.claude/claude-core/bin/heavy"
+    heavy.write_text('#!/bin/bash\n[ "$1" = --solo ] && shift\nexec "$@"\n')
+    y.ro.mkdir(parents=True)
+    env = {**y.env, "RELEASE_OUT": str(y.ro), "TMPDIR": str(tmp_path)}
+
+    def battery(tag: str, **extra: str) -> subprocess.Popen:
+        return subprocess.Popen(["bash", str(y.r / "tools/release/preview_checks.sh"), "https://preview.invalid",
+                                 str(y.r), tag, "arrival"], env={**env, "TAG_SEEN": tag, **extra},
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    held = open(y.r / ".git" / "live-db.lock", "a")
+    fcntl.flock(held, fcntl.LOCK_EX)
+    unit = battery("t-unit")
+    time.sleep(1)
+    release = battery("t-release", BOX_HEAVY_PRIORITY="1")
+    time.sleep(1)
+    assert not (y.ro / "check_spans").exists()
+    fcntl.flock(held, fcntl.LOCK_UN)
+    held.close()
+    assert release.wait(timeout=30) == 0 and unit.wait(timeout=30) == 0
+    took = [line.split()[3] for line in (y.r / ".git" / "live-db.log").read_text().splitlines() if " took " in line]
+    assert took == ["t-release", "t-unit"], took
+    assert [line.split()[0] for line in y.text("check_spans").splitlines()] == ["t-release", "t-unit"]
+    assert not any((y.r / ".git" / "live-db.release").iterdir())
