@@ -355,12 +355,18 @@ for handler in api/*.js; do
   # load-bearing today; it is here so the answer does not depend on a
   # heuristic that a runtime bump could change underneath us.
   echo '{ "type": "module" }' > "$fn/package.json"
-  cat > "$fn/.vc-config.json" <<'JSON'
+  # Build together's poll answers a line at a time, who is in it and where
+  # each is working as it changes (api/together.js poll): without this
+  # Vercel holds every line until the last, and a pointer is seen up to
+  # 20 s late.
+  streams=false; [ "$route" = together ] && streams=true
+  cat > "$fn/.vc-config.json" <<JSON
 {
   "runtime": "nodejs22.x",
   "handler": "index.mjs",
   "launcherType": "Nodejs",
   "shouldAddHelpers": true,
+  "supportsResponseStreaming": $streams,
   "maxDuration": 300
 }
 JSON

@@ -64,6 +64,7 @@
       "reach": "curl -s https://brickworks.diy/api/account",
       "area": "web",
       "tests": [
+        "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
@@ -133,7 +134,8 @@
       "tests": [
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
-        "tests/test_release_train.py"
+        "tests/test_release_train.py",
+        "tests/test_together_poll.py"
       ]
     },
     {
@@ -155,6 +157,7 @@
       "reach": "curl -s -X POST -H 'authorization: Bearer <session>' -d '{\"month\":3,\"year\":2000}' https://brickworks.diy/api/account?op=age",
       "area": "account",
       "tests": [
+        "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
@@ -218,6 +221,7 @@
       "reach": "python3 tools/minitest.py tests/test_account_erase.py   (POST /api/account?op=delete {confirm}: with BRICKWORKS_BILLING test or live the customer is erased at Admission and a subscription ended first, and nothing is deleted when Admission cannot; off, Admission is never asked; billing_flow.mjs --stand-in deletes a paying account from /settings)",
       "area": "web",
       "tests": [
+        "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
@@ -2554,6 +2558,7 @@
       "reach": "BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/account_probe.gd   (with tools/web/relay_server.mjs 8790 and .env)",
       "area": "account",
       "tests": [
+        "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
@@ -3334,6 +3339,7 @@
       "reach": "imported by model-page.js and profile.js: the app's session in this browser, or a code by email in a dialog",
       "area": "web",
       "tests": [
+        "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py"
@@ -3703,7 +3709,8 @@
       "tests": [
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
-        "tests/test_release_train.py"
+        "tests/test_release_train.py",
+        "tests/test_together_poll.py"
       ]
     },
     {
@@ -3781,7 +3788,8 @@
       "tests": [
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
-        "tests/test_release_train.py"
+        "tests/test_release_train.py",
+        "tests/test_together_poll.py"
       ]
     },
     {
@@ -3964,7 +3972,8 @@
       "tests": [
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
-        "tests/test_release_train.py"
+        "tests/test_release_train.py",
+        "tests/test_together_poll.py"
       ]
     },
     {
@@ -4654,7 +4663,8 @@
       "tests": [
         "tests/test_challenge_notices.py",
         "tests/test_gallery_builds.py",
-        "tests/test_release_train.py"
+        "tests/test_release_train.py",
+        "tests/test_together_poll.py"
       ]
     },
     {
@@ -4852,6 +4862,7 @@
       "reach": "https://brickworks.diy/profile signed out, Sign in, then Sign in with orangecheck",
       "area": "account",
       "tests": [
+        "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
         "tests/test_model_page.py"

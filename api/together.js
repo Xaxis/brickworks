@@ -21,6 +21,10 @@
 //   ?op=poll    {s, after, seen}   the changes after [after], waiting up to
 //                                  ~20 s for one, or for who is in it to
 //                                  change from [seen]; and whether it ended
+//                                  {..., stream: true} the same, but who is
+//                                  in it and where each is working comes a
+//                                  line at a time as it changes, and the
+//                                  poll waits on (poll, below)
 //   ?op=end     {s}                the owner ends it
 //   ?op=leave   {s}                someone leaves
 //   ?op=remove  {s, who}           the owner takes someone out of it: refused
@@ -54,7 +58,9 @@
 //                                  they have selected, by uid; and their view
 //                                  (CadCamera.aim). Shown to the others with
 //                                  their name, in a colour each, and followed
-//                                  by whoever presses Follow on their name
+//                                  by whoever presses Follow on their name;
+//                                  told at once to every poll waiting in the
+//                                  session (channelOf, below)
 //
 // A model over 4 MB (Vercel takes at most 4.5 MB a request, and as much an
 // answer) starts in parts (supabase/together_big.sql):
@@ -82,7 +88,7 @@
 // as "Builder 2": never an email. An account under 13 builds together like
 // anyone, as it shares a model by link like anyone (supabase/trust.sql);
 // only its name is never shown.
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
 import { db, dbConfigured } from "./_db.js";
 import { ageOf, shownPublicly } from "./_trust.js";
@@ -119,11 +125,11 @@ const CHANGES_MOST = 20_000;
 const WAIT_MS = 20_000;
 const POLL_MS = 100;
 // Who is in it and where each is working, read again this often while a
-// poll waits: a pointer moved is seen by the others within about this, a
-// round trip and a frame (together_flow: p95 under 1 s). And the session
-// itself, whether it ended, this often. While somebody else's pointer is
-// moving (it moved within LIVELY_MS), who is in it is read at every step of
-// the wait instead: a session nobody points in costs no more.
+// poll waits; a pointer moved is told at once besides (channelOf). And the
+// session itself, whether it ended, this often. While somebody else's
+// pointer is moving (it moved within LIVELY_MS), a poll not listening on
+// the channel yet reads who is in it at every step of the wait instead: a
+// session nobody points in costs no more.
 const PEOPLE_MS = 250;
 const LIVELY_MS = 2_000;
 const SESSION_MS = 1_000;
@@ -146,6 +152,61 @@ const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 const idOf = (token) => createHash("sha256").update(token).digest("hex");
 // A person as the others see them in this session: never their account.
 const whoOf = (id, account) => createHash("sha256").update(`${id}:${account}`).digest("hex").slice(0, 8);
+
+// Where each person is working goes from their point to every poll waiting
+// in the session at once, on the session's own channel of the database's
+// Realtime: a pointer moved reaches the others in about one network trip.
+// Written to the database and read back, it waited for the next read of
+// who is in it, 100 to 250 ms apart and each a trip of its own (presence,
+// 2026-10-30: half of a pointer's time between two pages was there). The
+// channel is named by the session's id signed with the secret key, so only
+// this server can say anything on it; a poll takes what is said there only
+// for somebody its last read has in the session and not taken out, and
+// nothing goes there but what each person in it is shown anyway. A poll
+// not listening yet, or a word lost, and the reads find the pointer as
+// before.
+const channelOf = (id) => `together:${createHmac("sha256", String(process.env.SUPABASE_SECRET_KEY || ""))
+  .update(id).digest("hex").slice(0, 32)}`;
+const realtime = () => `${String(process.env.SUPABASE_URL || "").replace(/\/+$/, "")}/realtime/v1`;
+
+// [said] ({account, pointer, pointer_at}) to every poll listening in session [id].
+async function tell(id, said) {
+  const key = process.env.SUPABASE_SECRET_KEY;
+  await fetch(`${realtime()}/api/broadcast`, {
+    method: "POST",
+    headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
+    body: JSON.stringify({ messages: [{ topic: channelOf(id), event: "point", payload: said, private: false }] }),
+    signal: AbortSignal.timeout(2000),
+  }).catch(() => null);
+}
+
+// Session [id]'s channel, [heard] called with each pointer told on it, until
+// closed. joined() is whether it is listening yet.
+function listen(id, heard) {
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY;
+  const none = { joined: () => false, close() {} };
+  if (typeof WebSocket !== "function" || !key) return none;
+  let socket;
+  try {
+    socket = new WebSocket(`${realtime().replace(/^http/, "ws")}/websocket?apikey=${encodeURIComponent(key)}&vsn=1.0.0`);
+  } catch {
+    return none;
+  }
+  const topic = `realtime:${channelOf(id)}`;
+  let joined = false;
+  socket.addEventListener("open", () => socket.send(JSON.stringify({ topic, event: "phx_join", ref: "1", join_ref: "1",
+    payload: { config: { broadcast: { self: false, ack: false }, presence: { key: "" }, postgres_changes: [],
+      private: false } } })));
+  socket.addEventListener("message", (event) => {
+    let said;
+    try { said = JSON.parse(String(event.data)); } catch { return; }
+    if (said?.topic !== topic) return;
+    if (said.event === "phx_reply" && said.ref === "1") joined = said.payload?.status === "ok";
+    else if (said.event === "broadcast" && said.payload?.event === "point") heard(said.payload.payload);
+  });
+  socket.addEventListener("error", () => {});
+  return { joined: () => joined, close: () => { try { socket.close(); } catch {} } };
+}
 
 function secretOf(body) {
   const token = String(body?.s || "");
@@ -487,11 +548,22 @@ async function send(request, me) {
   }
 }
 
-async function poll(request, me) {
+async function poll(request, me, response = null) {
   const body = request.body || {};
   const id = idOf(secretOf(body));
   const after = Math.max(0, Math.floor(Number(body.after) || 0));
   const seen = String(body.seen || "");
+  // A page that reads its answer a line at a time (src/net/together.gd
+  // _ask_page) is sent who is in it and where each is working the moment
+  // it changes, a line of its own ({more: true, people, seen, at}), and the
+  // poll waits on; it ends as before, with changes, the session's end or
+  // the wait's, in its last line. Answered for each pointer moved, the next
+  // poll was asked only once the page had the answer, at the end of a frame
+  // of its own, and a pointer moved meanwhile waited out that whole
+  // turnaround (presence, 2026-10-30). Not where the answer cannot be
+  // written a line at a time (tools/web/relay_server.mjs): answered whole.
+  const streams = body.stream === true && typeof response?.write === "function";
+  let told = seen;
   // Two trips before it waits, not four: this person heard from (their row,
   // if they are in it and not taken out), then the session and who is in it
   // at once. A poll begins again after every change it gives, so what it
@@ -521,47 +593,105 @@ async function poll(request, me) {
   let checked = Date.now();
   let looked = Date.now();
   let named = false;
-  for (;;) {
-    if (!named && Date.now() - began > NAME_MS) {
-      named = true;
-      const now = await shownName(me).catch(() => null);
-      if (now !== null && now !== String(mine?.name ?? "")) {
-        await db(`together_people?session=eq.${id}&account=eq.${me}`, { method: "PATCH", body: { name: now } });
-        checked = 0;
+  // Pointers told on the session's channel, by account: each stands over
+  // what the last read had until a read has one as new.
+  const moved = new Map();
+  const withMoved = (rows) => moved.size === 0 ? rows : rows.map((row) => {
+    const said = moved.get(row.account);
+    if (!said || (row.pointer_at && Date.parse(row.pointer_at) >= Date.parse(said.pointer_at))) return row;
+    return { ...row, pointer: said.pointer, pointer_at: said.pointer_at,
+      seen_at: Date.parse(row.seen_at) >= Date.parse(said.pointer_at) ? row.seen_at : said.pointer_at };
+  });
+  let wake = null;
+  const channel = listen(id, (said) => {
+    if (typeof said?.account !== "string" || typeof said.pointer_at !== "string" || !Date.parse(said.pointer_at)) return;
+    const was = moved.get(said.account);
+    if (was && Date.parse(was.pointer_at) >= Date.parse(said.pointer_at)) return;
+    moved.set(said.account, said);
+    wake?.();
+  });
+  const say = (signature) => {
+    told = signature;
+    if (!response.headersSent) response.setHeader("Content-Type", LINES);
+    response.write(`${JSON.stringify({ more: true, people, seen: signature, at: Date.now() })}\n`);
+  };
+  const answer = async (rows, signature) => {
+    // No more than about ANSWER_MOST at once: the rest at the next poll.
+    let size = 0;
+    const fits = rows.findIndex((row) => (size += JSON.stringify(row.changes).length) > ANSWER_MOST);
+    if (fits >= 0) rows.length = Math.max(1, fits);
+    const talk = (key) => key === "~chat" || PIN.test(key);
+    const hide = rows.some((row) => Object.keys(row.changes || {}).some(talk)) && await chatHidden();
+    return {
+      ended: false,
+      ops: rows.map((row) => ({ seq: Number(row.seq), who: whoOf(id, row.author), client: row.client,
+        cid: row.cid, changes: hide ? Object.fromEntries(Object.entries(row.changes || {})
+          .filter(([key]) => !talk(key))) : row.changes })),
+      people, seen: signature, ...(hide ? { chat: CHAT_WORDS.under_13 } : {}), at: Date.now(),
+    };
+  };
+  // Until the next read; a pointer told meanwhile goes out at once: a line,
+  // or the answer (true).
+  const rest = () => new Promise((done) => {
+    const timer = setTimeout(() => {
+      wake = null;
+      done(false);
+    }, POLL_MS);
+    wake = () => {
+      const now = peopleOut(id, session, withMoved(all), me);
+      const signature = signatureOf(now);
+      if (signature === told) return;
+      people = now;
+      if (streams) return say(signature);
+      clearTimeout(timer);
+      wake = null;
+      done(true);
+    };
+  });
+  try {
+    for (;;) {
+      if (!named && Date.now() - began > NAME_MS) {
+        named = true;
+        const now = await shownName(me).catch(() => null);
+        if (now !== null && now !== String(mine?.name ?? "")) {
+          await db(`together_people?session=eq.${id}&account=eq.${me}`, { method: "PATCH", body: { name: now } });
+          checked = 0;
+        }
       }
-    }
-    const rows = await db(`together_ops?session=eq.${id}&seq=gt.${after}&order=seq.asc&limit=${SEND_MOST}`
-      + "&select=seq,author,client,cid,changes") || [];
-    if (Date.now() - checked > (lively(all, me) ? POLL_MS : PEOPLE_MS)) {
-      checked = Date.now();
-      if (Date.now() - looked > SESSION_MS) {
-        looked = Date.now();
-        session = await sessionRow(id);
-        if (!session || session.ended_at) return { ended: true, ops: [], people, seen: signatureOf(people) };
+      // The changes, and who is in it and the session when they are due, read
+      // at once: a pointer is seen a trip to the database sooner, and the
+      // database asked no more. Read at every step while somebody else
+      // points, unless the channel tells this poll where they are.
+      const quick = lively(withMoved(all), me) && !channel.joined();
+      const due = Date.now() - checked > (quick ? POLL_MS : PEOPLE_MS);
+      const sessionDue = due && Date.now() - looked > SESSION_MS;
+      if (due) checked = Date.now();
+      if (sessionDue) looked = Date.now();
+      const [rows, fresh, standing] = await Promise.all([
+        db(`together_ops?session=eq.${id}&seq=gt.${after}&order=seq.asc&limit=${SEND_MOST}`
+          + "&select=seq,author,client,cid,changes").then((got) => got || []),
+        due ? peopleRows(id) : null,
+        sessionDue ? sessionRow(id) : null,
+      ]);
+      if (due) {
+        if (sessionDue) {
+          session = standing;
+          if (!session || session.ended_at) return { ended: true, ops: [], people, seen: signatureOf(people) };
+        }
+        all = fresh;
+        if (all.some((row) => row.account === me && row.removed_at)) {
+          throw new Refusal(403, "the owner has taken you out of this session");
+        }
       }
-      all = await peopleRows(id);
-      if (all.some((row) => row.account === me && row.removed_at)) {
-        throw new Refusal(403, "the owner has taken you out of this session");
-      }
-      people = peopleOut(id, session, all, me);
+      people = peopleOut(id, session, withMoved(all), me);
+      const signature = signatureOf(people);
+      if (streams && signature !== told && rows.length === 0) say(signature);
+      if (rows.length > 0 || signature !== told || Date.now() > until) return await answer(rows, signature);
+      if (await rest()) return await answer([], signatureOf(people));
     }
-    const signature = signatureOf(people);
-    if (rows.length > 0 || signature !== seen || Date.now() > until) {
-      // No more than about ANSWER_MOST at once: the rest at the next poll.
-      let size = 0;
-      const fits = rows.findIndex((row) => (size += JSON.stringify(row.changes).length) > ANSWER_MOST);
-      if (fits >= 0) rows.length = Math.max(1, fits);
-      const talk = (key) => key === "~chat" || PIN.test(key);
-      const hide = rows.some((row) => Object.keys(row.changes || {}).some(talk)) && await chatHidden();
-      return {
-        ended: false,
-        ops: rows.map((row) => ({ seq: Number(row.seq), who: whoOf(id, row.author), client: row.client,
-          cid: row.cid, changes: hide ? Object.fromEntries(Object.entries(row.changes || {})
-            .filter(([key]) => !talk(key))) : row.changes })),
-        people, seen: signature, ...(hide ? { chat: CHAT_WORDS.under_13 } : {}), at: Date.now(),
-      };
-    }
-    await sleep(POLL_MS);
+  } finally {
+    wake = null;
+    channel.close();
   }
 }
 
@@ -626,16 +756,22 @@ async function point(request, me) {
     throw new Refusal(400, `a selection is at most ${SELECTED_MOST} parts, by uid`);
   }
   const view = viewOf(body.view);
-  // One trip a few times a second: the row of someone in it, not taken out.
+  // One trip a few times a second: the row of someone in it, not taken out;
+  // and told to the polls waiting in it at the same time (channelOf).
   const now = new Date().toISOString();
-  const [mine] = await db(`together_people?session=eq.${id}&account=eq.${me}&removed_at=is.null`, {
-    method: "PATCH", body: { pointer: { at, sel, view }, pointer_at: now, seen_at: now }, prefer: "return=representation",
-  }) || [];
+  const pointer = { at, sel, view };
+  const [[mine]] = await Promise.all([
+    db(`together_people?session=eq.${id}&account=eq.${me}&removed_at=is.null`, {
+      method: "PATCH", body: { pointer, pointer_at: now, seen_at: now }, prefer: "return=representation",
+    }).then((got) => got || []),
+    tell(id, { account: me, pointer, pointer_at: now }),
+  ]);
   if (!mine) await inSession(id, me);
   return { ok: Boolean(mine) };
 }
 
 const OPS = { start, join, send, poll, end, leave, remove, point, upload, snapshot: snapshotPart };
+const LINES = "application/x-ndjson";
 
 export default async function handler(request, response) {
   response.setHeader("Cache-Control", "private, no-store");
@@ -658,9 +794,15 @@ export default async function handler(request, response) {
     }
     const me = String(claims.sub || "");
     if (!/^[0-9a-f-]{36}$/i.test(me)) throw new Refusal(401, "that sign-in names nobody");
-    return response.status(200).json(await op(request, me));
+    const answer = await op(request, me, response);
+    // A poll answering a line at a time ends with its last line.
+    if (response.headersSent) return response.end(`${JSON.stringify(answer)}\n`);
+    return response.status(200).json(answer);
   } catch (trouble) {
-    if (trouble instanceof Refusal) return response.status(trouble.status).json({ error: trouble.message });
-    return response.status(502).json({ error: String(trouble?.message || trouble).slice(0, 200) });
+    const status = trouble instanceof Refusal ? trouble.status : 502;
+    const error = trouble instanceof Refusal ? trouble.message : String(trouble?.message || trouble).slice(0, 200);
+    // Its status is gone with its first line: said in its last.
+    if (response.headersSent) return response.end(`${JSON.stringify({ refused: status, error })}\n`);
+    return response.status(status).json({ error });
   }
 }
