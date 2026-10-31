@@ -782,6 +782,9 @@ func _presets(column: VBoxContainer) -> void:
 ## want the words bigger, and for anyone whom motion on a screen makes ill.
 var interface_choice: OptionButton
 var reduce_motion: CheckBox
+## Settings, Language (Language): English, German, French or Spanish, each
+## named in its own words, on Interface size's line.
+var language_choice: OptionButton
 
 
 func _interface(column: VBoxContainer) -> void:
@@ -803,6 +806,29 @@ func _interface(column: VBoxContainer) -> void:
 	interface_choice.item_selected.connect(func(index: int) -> void:
 		ShellPrefs.put("interface_size", ShellPrefs.INTERFACE_SIZES[index])
 		interface_sized.emit()
+		changed.emit())
+	# On the same line: a line of its own cost the settings their fit at
+	# 100% (a11y_size), as the AI page's link did.
+	var gap := Control.new()
+	gap.custom_minimum_size.x = 16.0
+	row.add_child(gap)
+	var language := Label.new()
+	language.text = "Language"
+	language.add_theme_font_size_override("font_size", 12)
+	row.add_child(language)
+	language_choice = OptionButton.new()
+	language_choice.focus_mode = Control.FOCUS_NONE
+	language_choice.add_theme_font_size_override("font_size", 12)
+	language_choice.accessibility_name = "Language"
+	# Each in its own words whatever the language in use, as a person
+	# looking for theirs reads it.
+	language_choice.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	for choice: Array in Language.CHOICES:
+		language_choice.add_item(str(choice[1]))
+	language_choice.select(Language.codes().find(Language.current()))
+	row.add_child(language_choice)
+	language_choice.item_selected.connect(func(index: int) -> void:
+		Language.choose(Language.codes()[index])
 		changed.emit())
 
 	reduce_motion = _toggle(column, "Reduce motion",
@@ -1037,6 +1063,7 @@ func open() -> void:
 	if interface_choice != null:
 		interface_choice.select(_interface_index())
 		reduce_motion.set_pressed_no_signal(ShellPrefs.reduce_motion())
+		language_choice.select(Language.codes().find(Language.current()))
 	_show_face("settings")
 	_show_designer()
 	_fill()
@@ -1081,7 +1108,7 @@ func controls_by_name() -> Dictionary:
 		return named
 	var named: Dictionary = {"assistant_on": assistant_on, "assistant_off": assistant_off,
 		"interface_size": interface_choice, "reduce_motion": reduce_motion,
-		"settings_done": _done, "ai_settings": ai_open}
+		"language": language_choice, "settings_done": _done, "ai_settings": ai_open}
 	if _ai_page.visible:
 		named.merge(ai.controls_by_name())
 		named["ai_back"] = _back
