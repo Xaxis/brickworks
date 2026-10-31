@@ -615,6 +615,7 @@ tools/probe.sh undo_ids_probe                                       # a part bac
 godot --headless --path . --script src/dev/app_tools_probe.gd      # the window's commands as tools
 godot --headless --path . --script src/dev/mcphand_probe.gd        # Mirror, Split, Merge, Measure and what the person sees, as the window does them
 godot --headless --path . --script src/dev/mcpcad_probe.gd         # CAD answers without the method, designs with it, the refusal's place, attachment_points parts=, in_view at step 4 of 9 with a part in hand
+node tools/web/in_view_flow.mjs --dir=build/web --out=shots/in_view [--size=1400x900]   # in_view in the browser: step 4 of 9, 3004 in hand turned once over the floor, a picture laid by the mouse and keys; nothing changed (a local export, .env loaded)
 BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running
 godot --headless --path . --script src/dev/gallery_tool_probe.gd -- --played   # its played answers alone: licences, sorts, moves, the front, builds, comments, designers; no server
 godot --headless --path . --script src/dev/mcp_walk_probe.gd       # what the 2026-10-19 walk-through's sessions met: what moves, the steering's angle, animating it, a gallery copy, What can I build?
