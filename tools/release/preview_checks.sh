@@ -383,6 +383,7 @@ declare -A CMD=(
   [account]="tools/web/account_flow.mjs --url=$P/app --out=$S/${TAG}_account"
   [decor]="tools/web/decor_flow.mjs --url=$P/app --out=$S/${TAG}_decor"
   [model_view]="tools/web/model_view_check.mjs --url=$P/app --out=$S/${TAG}_model_view"
+  [in_view]="tools/web/in_view_flow.mjs --url=$P/app --out=$S/${TAG}_in_view"
   # ext-apps' basic-host, built: BW_APP_HOST names its examples/basic-host.
   # The host is kept in the main checkout (bench/data, git-ignored); a
   # session's shell that set BW_APP_HOST did not outlive it, and the check
