@@ -625,8 +625,14 @@ func _lay_pill() -> void:
 	if _pill_words.text != words:
 		_pill_words.text = words
 	var room: Vector2 = get_viewport().get_visible_rect().size
-	# Over the model's own room: on a tablet, between its panels.
+	# Over the model's own room: on a tablet, between its panels, and beside
+	# the tools' column where it stands beside the model.
 	var free: Rect2 = model_room(Rect2(Vector2.ZERO, room))
+	var tools: Control = app.get("_tool_column")
+	var tools_open: bool = tools != null and tools.is_visible_in_tree()
+	if tools_open and not bool(app.get("_tool_sheet")):
+		var left: float = maxf(free.position.x, tools.get_global_rect().end.x)
+		free = Rect2(left, free.position.y, maxf(free.end.x - left, 0.0), free.size.y)
 	# One line where the screen is wider than tall: held sideways the
 	# model is 210 points high, and the line's two took a quarter of it.
 	var widest: float = minf(free.size.x - p(24), p(380) if room.y >= room.x else p(640))
@@ -646,6 +652,10 @@ func _lay_pill() -> void:
 	var steps: Control = app.get("_steps")
 	if steps != null and steps.is_visible_in_tree():
 		at.y = minf(at.y, steps.get_global_rect().position.y - size_now.y - p(6))
+	# Above the tools' sheet under the model too: over it, it hid the
+	# sheet's last lines (Main._place_tool_column).
+	if tools_open and bool(app.get("_tool_sheet")):
+		at.y = minf(at.y, tools.get_global_rect().position.y - size_now.y - p(6))
 	if _pill.position != at:
 		_pill.position = at
 	# A phone's sheets and drawers cover it; a tablet's panels stand beside

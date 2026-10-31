@@ -500,8 +500,9 @@ can occupy the same millimetre.
   in a hundred; a picture twice as fine for both samples was slower and a part
   out on the castle.
 - `colour the hidden parts` (`src/ui/hidden_colours_panel.gd` over
-  `src/assembly/hidden_colours.gd`): Tools, Colour the hidden parts…, and
-  `colour_hidden_parts` over MCP (`HiddenColoursPanel.for_session`). Groups the
+  `src/assembly/hidden_colours.gd`): Tools, Colour the hidden parts…, its
+  panel in the column beside the model (`Main._tool_column`, `panel_room_probe`),
+  and `colour_hidden_parts` over MCP (`HiddenColoursPanel.for_session`). Groups the
   hidden parts by the booklet's sections, by build stage (two unless asked,
   `COLOURS`) or by half (left and right, front and back); a group under a tenth of
   the coloured parts joins its neighbour (`SMALLEST`, `_join_small`), and no more
