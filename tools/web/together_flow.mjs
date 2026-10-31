@@ -1003,7 +1003,7 @@ try {
 
   console.log("\n5g. a comment pinned to a part");
   const WORDS = "Roof starts here?";
-  const pinField = await menu(owner.page, "edit", "Comm", "pins_field");
+  const pinField = await menu(owner.page, "file", "Comm", "pins_field");
   check("File, Comments… opens the Comments panel", Boolean(pinField));
   if (pinField) {
     await owner.page.mouse.click(pinField.x, pinField.y);
