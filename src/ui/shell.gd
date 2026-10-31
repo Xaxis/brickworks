@@ -1769,7 +1769,19 @@ func _instructions() -> void:
 func _check_stability() -> void:
 	var stability: Stability = app.get("_stability")
 	stability.floor_ids = store.scenery
-	var report: Stability.Report = stability.check(world)
+	# The status bar's weighing of the model as it is, when it has one: the
+	# same check, done already (Main.weighed_now). Else on a worker for a big
+	# model, the poses found meanwhile (Stability.check_paced).
+	var poses: Array = []
+	var report: Stability.Report = app.call("weighed_now") if app.has_method("weighed_now") \
+		else null
+	if report != null:
+		poses = _poses_to_weigh()
+	else:
+		report = await stability.check_paced(world, func() -> void:
+			poses.assign(_poses_to_weigh()))
+	if report == null:
+		report = stability.check(world)
 	var said: String = "it stands up — no joint is carrying more than it can hold"
 	# The joints Stability finds weak, apart from tipping, which the
 	# balance says better.
@@ -1784,7 +1796,10 @@ func _check_stability() -> void:
 		said = "%d weak joint%s, selected: %s" % [weak.size(), "" if weak.size() == 1 else "s",
 			(weak[0] as Stability.Risk).message]
 	bar.say(said)
-	var balance: Balance.Report = await weigh_balance()
+	# With no pose to weigh, the balance as it stands is what the check read
+	# its margins from.
+	var balance: Balance.Report = await weigh_balance(poses, true, true,
+		report.balance if poses.is_empty() else null)
 	if balance != null and not balance.empty:
 		bar.say(balance.words() if weak.is_empty() else "%s. %s" % [said, balance.words()])
 
@@ -1809,7 +1824,12 @@ func balance_line() -> String:
 ## alone can take more than a frame. A mechanism's cycle (SimulatePanel)
 ## gives its own, [param given]; [param show] false weighs without drawing,
 ## and [param tint] false leaves the parts' tints to the caller.
-func weigh_balance(given: Variant = null, show: bool = true, tint: bool = true) -> Balance.Report:
+## [param weighed_already], with no pose given, is the model weighed as it
+## stands already (Stability.Report.balance): shown, not weighed again.
+func weigh_balance(given: Variant = null, show: bool = true, tint: bool = true,
+		weighed_already: Balance.Report = null) -> Balance.Report:
+	if weighed_already != null and given is Array and (given as Array).is_empty():
+		return _show_balance(weighed_already, show, tint)
 	var job: Working.Job = Working.begin("Weighing the model…")
 	await job.shown()
 	var poses: Array = given if given is Array else _poses_to_weigh()
@@ -1833,7 +1853,11 @@ func weigh_balance(given: Variant = null, show: bool = true, tint: bool = true) 
 		library.end_reading(task)
 		still.free()
 	job.end()
-	var report: Balance.Report = weighed[0]
+	return _show_balance(weighed[0], show, tint)
+
+
+## [param report] drawn on the floor and as tints (see [method weigh_balance]).
+func _show_balance(report: Balance.Report, show: bool, tint: bool) -> Balance.Report:
 	if report == null or not show:
 		return report
 	if _balance_mark == null:

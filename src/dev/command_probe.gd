@@ -3,7 +3,7 @@
 ##
 ##   godot --path . --resolution 1400x900 --script src/dev/command_probe.gd -- \
 ##       [--subjects=car,orthanc] [--only=save,new] [--table=shots/commands.json] [--judge] \
-##       [--within=paste:1.0,hidden_colours:2.0]
+##       [--within=paste:1.0,hidden_colours:2.0,instructions.first:15]
 ##
 ## The owner (2026-10-13): "a standard 'progress indicator or working
 ## indicator' for actions taken in the app … when I clicked 'Save and then
@@ -287,11 +287,15 @@ func _time(model: String, name: String) -> void:
 	row["cancelled"] = cancelled
 	if _first_page_us > 0:
 		row["first_page_ms"] = roundi((_first_page_us - from) / 1000.0)
+	# What the status bar says it came to: the same before a change and after.
+	row["came_to"] = _bar.status_text()
 	_rows.append(row)
 	print("  %-8s %-22s own %6d ms  frame %6d ms  total %7d ms  %s%s%s" % [model, name,
 		roundi(own), roundi(gap), roundi(total), "said first" if said_first else "          ",
 		"  [" + ", ".join(said.keys()) + "]" if not said.is_empty() else "",
 		"  (stopped)" if cancelled else ""])
+	if not str(row["came_to"]).is_empty():
+		print("  %-8s %-22s came to: %s" % [model, name, str(row["came_to"]).left(160)])
 	if row.has("first_page_ms"):
 		print("  %-8s %-22s the booklet's first page of steps at %d ms" % [model, name,
 			int(row["first_page_ms"])])
@@ -384,10 +388,13 @@ func _no_flash() -> void:
 
 
 ## Each command named in [param within] ("name:seconds,...") against its
-## seconds, on the big models it ran on.
+## seconds, on the big models it ran on. "instructions.first" is the booklet's
+## first page of steps, from the press (docs/APP_UX3.md, bigmodels2).
 func _held_to(within: String) -> void:
 	for pair: String in within.split(",", false):
 		var name: String = pair.get_slice(":", 0)
+		var first: bool = name.ends_with(".first")
+		name = name.trim_suffix(".first")
 		var most_ms: float = float(pair.get_slice(":", 1)) * 1000.0
 		var timed: bool = false
 		for row: Dictionary in _rows:
@@ -396,9 +403,11 @@ func _held_to(within: String) -> void:
 			timed = timed or not row.has("skipped")
 			if row.has("skipped"):
 				continue
-			var ok: bool = float(row["total_ms"]) <= most_ms and not bool(row["cancelled"])
-			print("  %s %s on %s (%d parts): %d ms, the bar %d ms" % ["ok  " if ok else "FAIL",
-				name, row["model"], int(_parts_of[row["model"]]), int(row["total_ms"]),
+			var took: float = float(row.get("first_page_ms", INF)) if first else float(row["total_ms"])
+			var ok: bool = took <= most_ms and not bool(row["cancelled"])
+			print("  %s %s%s on %s (%d parts): %s ms, the bar %d ms" % ["ok  " if ok else "FAIL",
+				name, " to its first page" if first else "", row["model"],
+				int(_parts_of[row["model"]]), "no page" if is_inf(took) else str(roundi(took)),
 				int(most_ms)])
 			if not ok:
 				_failures += 1
