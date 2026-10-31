@@ -108,8 +108,8 @@ asking for an API key.
   person, answered as CAD (`Assistant._placed_said`: each part's span and what
   holds it, by number) with no method, no passes and no fresh look. Probes of
   the passes whose fixtures are a few parts set `Assistant.design_parts = 1`.
-  A refusal for floating parts says where each would stand
-  (`_where_it_would_stand`: the nearest held top at its height, its span, the
+  A refusal for floating parts, and a `check_design` from outside, says where
+  each would stand (`_where_it_would_stand`: the nearest held top at its height, its span, the
   span a quarter turn gives it, the place it would rest). `attachment_points`
   takes `parts=[...]`, up to 8 answered in one call, with how rot turns what a
   part points to. `src/dev/mcpcad_probe.gd` checks all of it. Each
