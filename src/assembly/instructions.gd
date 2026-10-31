@@ -3359,6 +3359,42 @@ static func _authored_plan(world: BrickWorld, library: PartLibrary,
 	return _authored_from(nodes, found, world, library, skip, steps, paths)
 
 
+## What [method plan] reads of a model before it orders anything: each part
+## surveyed, with what it rests on, is joined to and hangs from
+## ([method _find_supports] to [method _find_hangers]). The reading the
+## author's plan keeps (_shaped) when the model's shape is the one last
+## read; else read, and kept for the next. With [param to_change], copies
+## (Node2.take), which the caller may change; else the nodes kept, which it
+## must not. Suggest sections reads it so: worked out on its own, it was a
+## second of Orthanc's twelve, which the booklet or the timeline had read
+## already (bigmodels2).
+static func read_shape(world: BrickWorld, library: PartLibrary, skip: Dictionary,
+		to_change: bool) -> Array[Node2]:
+	var shape: Array = _shape_of(world, library, skip)
+	var kept: Dictionary = _shaped_as_before(shape)
+	var nodes: Array[Node2] = []
+	if not kept.is_empty():
+		nodes = kept["nodes"]
+	else:
+		nodes = _survey(world, library, skip)
+		if nodes.is_empty():
+			return nodes
+		_find_supports(nodes, world, library)
+		_find_joints(nodes, world, library)
+		_tidy_needs(nodes)
+		_find_hangers(nodes)
+		_keep_shaped(shape, nodes, _paths_of(nodes))
+	if not to_change:
+		return nodes
+	var copies: Array[Node2] = []
+	copies.resize(nodes.size())
+	for index: int in nodes.size():
+		var own := Node2.new()
+		own.take(nodes[index])
+		copies[index] = own
+	return copies
+
+
 ## What the author's plan last read of a model's shape: what each part
 ## rests on, is joined to and hangs from (_find_supports to _find_hangers),
 ## which only where its parts are says. {"shape" (_shape_of), "nodes", each

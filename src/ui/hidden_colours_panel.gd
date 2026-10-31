@@ -196,12 +196,21 @@ static func cut_through(bricks: Array, changed: Dictionary, library: PartLibrary
 	var stride: int = maxi(1, boxes.size() / 150)
 	for way: Array in ways:
 		var axis: int = way[0]
+		# How many boxes a plane goes through is how many begin before it less
+		# how many end at it or before, of those with any depth along it: read
+		# off the two sorted, not by asking every box at every plane, which on
+		# Orthanc was a third of a second (bigmodels2).
+		var begins := PackedFloat64Array()
+		var ends := PackedFloat64Array()
+		for box: AABB in boxes:
+			if box.position[axis] < box.end[axis]:
+				begins.append(box.position[axis])
+				ends.append(box.end[axis])
+		begins.sort()
+		ends.sort()
 		for at: int in range(0, boxes.size(), stride):
 			var d: float = boxes[at].get_center()[axis]
-			var through: int = 0
-			for box: AABB in boxes:
-				if box.position[axis] < d and box.end[axis] > d:
-					through += 1
+			var through: int = begins.bsearch(d, true) - ends.bsearch(d, false)
 			if through > most:
 				most = through
 				best = [Plane(way[1], d), way[2]]

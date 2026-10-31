@@ -505,6 +505,14 @@
       "tests": []
     },
     {
+      "id": "cli:booklet3 probe",
+      "kind": "cli",
+      "entry": "src/dev/booklet3_probe.gd",
+      "reach": "tools/probe.sh booklet3 -- --into=DIR   (windowed, on the GPU: edit_booklet's extras and the Booklet page rows, the axle 4's 1:1 guide measured at 32.0 mm on the 300 dpi PNG page and the PDF, the pulled-out axle and its arrow, the colour guide, the pod's preview; DIR keeps the booklet, its PDF and every page as PNG; --before writes the booklet with nothing set)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:browser check",
       "kind": "cli",
       "entry": "tools/web/check.mjs",
@@ -1623,6 +1631,14 @@
       "tests": []
     },
     {
+      "id": "cli:pathtrace probe",
+      "kind": "cli",
+      "entry": "src/dev/pathtrace_probe.gd",
+      "reach": "tools/probe.sh pathtrace   (windowed, on the GPU: the car traced at 720p in 60 s or less, noise, soft shadows and bounce at three points, three queued renders drawn in turn with the window turning every frame, two from the panel and one by render_queue; pictures in shots/pathtrace/)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:people browser flow",
       "kind": "cli",
       "entry": "tools/web/people_flow.mjs",
@@ -1816,7 +1832,7 @@
       "id": "cli:release train",
       "kind": "cli",
       "entry": "tools/release/train.sh",
-      "reach": "tools/release/train.sh stage TAG BRANCH --after PREV --checks \"...\"; tools/release/train.sh status",
+      "reach": "tools/release/train.sh stage TAG BRANCH --after PREV --checks \"...\"; tools/release/train.sh status; tools/release/train.sh reship TAG CHECK...",
       "area": "release",
       "tests": [
         "tests/test_realset.py",
@@ -3155,6 +3171,14 @@
       "entry": "src/render/seen_parts.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/hidden_colours_probe.gd   (the closed box, the gap and the clear window)",
       "area": "geometry",
+      "tests": []
+    },
+    {
+      "id": "lib:path tracer",
+      "kind": "lib",
+      "entry": "src/render/path_tracer.gd",
+      "reach": "tools/probe.sh pathtrace   (windowed, on the GPU: Best path traced where the card has Vulkan ray tracing; the car at 1280x720 and 256 samples timed, its noise against 4,096 samples, a column's shadow widening along its length and an orange floor tinting a white wall, at three points each, against Best frames averaged)",
+      "area": "view",
       "tests": []
     },
     {
@@ -4724,6 +4748,14 @@
       "tests": []
     },
     {
+      "id": "ui:render queue",
+      "kind": "ui",
+      "entry": "src/ui/render_queue.gd",
+      "reach": "godot --path .  (File, Render queue\u2026, Add this view; render_queue over MCP)  /  tools/probe.sh pathtrace",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:replace part",
       "kind": "ui",
       "entry": "src/assembly/builder.gd",
@@ -5096,6 +5128,14 @@
       "kind": "ui",
       "entry": "src/ui/page_editor.gd",
       "reach": "gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x800 --script src/dev/booklet_edit_probe.gd -- --into=DIR   (by hand: B, the Booklet row's Lay out page\u2026 or Build, Booklet page, Lay out the page\u2026: drag a picture, parts list, callout or number, its corner to size it, Add words, Add a picture\u2026, Draw an arrow and drag, its middle to bend it, Arrow colour, Arrow width, the turn sign selected and Delete, a callout's own pages by Previous or Next page; Outline new on the row)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:the booklet's Studio extras",
+      "kind": "ui",
+      "entry": "src/render/booklet_maker.gd",
+      "reach": "godot --path .  (B opens the timeline; on a step, Build, Booklet page: Pull out the selected parts, Colour guide, 1:1 guide, Sub-model preview; then Instructions; a straight Technic axle's or beam's first step gets its 1:1 guide unasked; edit_booklet pull=, colours=, colours_all=, actual_size=, preview= over MCP)",
       "area": "view",
       "tests": []
     },

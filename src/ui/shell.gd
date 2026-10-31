@@ -121,7 +121,7 @@ const ALT := KEY_MASK_ALT
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", "collection", "collection_build", ">recent",
 		">import", "-", "save", "save_as", "versions", "compare", "-", "share", "together",
-		"comments", ">export", "render", "-", "clear", "quit"]],
+		"comments", ">export", "render", "render_queue", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
@@ -189,7 +189,8 @@ const SUBMENUS: Dictionary = {
 		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
 		"booklet_zoom_out", "booklet_bigger", "booklet_smaller", "-", "booklet_new_page",
 		"booklet_alone", "booklet_parts", "booklet_callout", "booklet_per_page", "-",
-		"booklet_lay_out", "booklet_highlight"],
+		"booklet_lay_out", "booklet_highlight",
+		"-", "booklet_pull", "booklet_colours", "booklet_actual_size", "booklet_preview"],
 	"floor": ["floor_16", "floor_32", "floor_48", "floor_custom", ">floor_colour", "-",
 		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
 	"floor_colour": ["floor_colour_2", "floor_colour_10", "floor_colour_288",
@@ -970,6 +971,11 @@ func _define() -> void:
 		something)
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
 		"A photo-real picture or turntable of the model, on a backdrop, in studio light")
+	# src/ui/render_queue.gd, loaded the first time it is asked for.
+	_add("render_queue", "Render queue…", 0, func() -> void:
+		(load("res://src/ui/render_queue.gd") as GDScript).call("of", app).call("open"),
+		something, "Pictures lined up with Render's settings and drawn one after another "
+			+ "while you go on building")
 	# src/ui/pose_panel.gd.
 	_add("pose", "Motions…", 0, func() -> void: app.call("open_pose"), something,
 		"The model's own movements, Open the doors or Lift the boom: played, recorded by dragging the parts, and rendered")
@@ -1143,6 +1149,19 @@ func _define() -> void:
 			["booklet_highlight", "Outline new parts", "The parts each step adds outlined in orange in the booklet, or not"]]:
 		var op: String = str(look[0]).trim_prefix("booklet_")
 		_add(look[0], look[1], 0, func() -> void: edit_look(op), on_a_step, look[2])
+	# Studio's booklet extras on the step the timeline is on (booklet3).
+	for extra: Array in [
+			["booklet_pull", "Pull out the selected parts", "The selected parts of this step (all of them, none selected) drawn pulled out along the way they go in, with an arrow in; again puts them back"],
+			["booklet_colours", "Colour guide", "This step's colours listed under its number, or not"],
+			["booklet_actual_size", "1:1 guide", "The selected parts of this step drawn at their real size, or no 1:1 guide where the booklet gives one; again as the booklet does it"],
+			["booklet_preview", "Sub-model preview", "The sub-assembly this step puts on shown finished on the first of its own pages, or not"]]:
+		var extra_op: String = str(extra[0]).trim_prefix("booklet_")
+		_add(extra[0], extra[1], 0, func() -> void:
+			var at: Instructions.Step = (app.get("_steps") as StepsBar).booklet_step()
+			bar.say(change_look("set", at, BookletLooks.extra_fields(world, at, extra_op,
+				builder.selection.keys().map(func(id: int) -> String:
+					return world.get_brick(id).part_id if world.get_brick(id) != null else "")))),
+			on_a_step, extra[2])
 	# src/ui/flex_tool.gd.
 	_add("flex", "Hose, tube or chain…", 0, func() -> void: app.call("open_flex"), Callable(),
 		"Lay a hose, a tube, a string or a chain from one connector to another, along a curve")
@@ -1769,7 +1788,24 @@ func _instructions() -> void:
 func _check_stability() -> void:
 	var stability: Stability = app.get("_stability")
 	stability.floor_ids = store.scenery
-	var report: Stability.Report = stability.check(world)
+	# The status bar's weighing of the model as it is: the same check, done
+	# or under way already (Main.weighed_now). Else on a worker for a big
+	# model (Stability.check_paced). The poses are found meanwhile.
+	var poses: Array = []
+	var posed: Array = [false]
+	var find_poses: Callable = func() -> void:
+		poses.assign(_poses_to_weigh())
+		posed[0] = true
+	var report: Stability.Report = null
+	if app.has_method("weighed_now"):
+		var job: Working.Job = Working.begin("Weighing the model…")
+		await job.shown()
+		report = await app.call("weighed_now", find_poses)
+		job.end()
+	if report == null:
+		report = await stability.check_paced(world, Callable() if posed[0] else find_poses)
+	if report == null:
+		report = stability.check(world)
 	var said: String = "it stands up — no joint is carrying more than it can hold"
 	# The joints Stability finds weak, apart from tipping, which the
 	# balance says better.
@@ -1784,7 +1820,10 @@ func _check_stability() -> void:
 		said = "%d weak joint%s, selected: %s" % [weak.size(), "" if weak.size() == 1 else "s",
 			(weak[0] as Stability.Risk).message]
 	bar.say(said)
-	var balance: Balance.Report = await weigh_balance()
+	# With no pose to weigh, the balance as it stands is what the check read
+	# its margins from.
+	var balance: Balance.Report = await weigh_balance(poses, true, true,
+		report.balance if poses.is_empty() else null)
 	if balance != null and not balance.empty:
 		bar.say(balance.words() if weak.is_empty() else "%s. %s" % [said, balance.words()])
 
@@ -1809,7 +1848,12 @@ func balance_line() -> String:
 ## alone can take more than a frame. A mechanism's cycle (SimulatePanel)
 ## gives its own, [param given]; [param show] false weighs without drawing,
 ## and [param tint] false leaves the parts' tints to the caller.
-func weigh_balance(given: Variant = null, show: bool = true, tint: bool = true) -> Balance.Report:
+## [param weighed_already], with no pose given, is the model weighed as it
+## stands already (Stability.Report.balance): shown, not weighed again.
+func weigh_balance(given: Variant = null, show: bool = true, tint: bool = true,
+		weighed_already: Balance.Report = null) -> Balance.Report:
+	if weighed_already != null and given is Array and (given as Array).is_empty():
+		return _show_balance(weighed_already, show, tint)
 	var job: Working.Job = Working.begin("Weighing the model…")
 	await job.shown()
 	var poses: Array = given if given is Array else _poses_to_weigh()
@@ -1833,7 +1877,11 @@ func weigh_balance(given: Variant = null, show: bool = true, tint: bool = true) 
 		library.end_reading(task)
 		still.free()
 	job.end()
-	var report: Balance.Report = weighed[0]
+	return _show_balance(weighed[0], show, tint)
+
+
+## [param report] drawn on the floor and as tints (see [method weigh_balance]).
+func _show_balance(report: Balance.Report, show: bool, tint: bool) -> Balance.Report:
 	if report == null or not show:
 		return report
 	if _balance_mark == null:
@@ -2481,6 +2529,11 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 					{"per_page": fields["per_page"]}))
 				fields = fields.duplicate()
 				fields.erase("per_page")
+			if fields.has("colours_all"):
+				undo.append_array(BookletLooks.change(world, BookletLooks.BOOKLET,
+					{"colours_all": fields["colours_all"]}))
+				fields = fields.duplicate()
+				fields.erase("colours_all")
 			change = fields
 			words = "set how step %d is printed" % number
 		"turn_left", "turn_right":

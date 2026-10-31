@@ -64,6 +64,23 @@ On a step inside a callout, **Turn left**, **Turn right**, **Higher**, **Lower**
 ui:the booklet by hand
 -->
 
+### Real size, colours, pulled out and finished {#booklet-extras}
+
+The first step to use each straight Technic axle or beam shows it at its real size in a box under the step number, with its length in studs in a ring. Lay the part on the printed page to check it. It prints true at 100% scale in the PDF and the PNG pages.
+
+On **Build › Booklet page**, for the step the timeline is on:
+
+- **Pull out the selected parts** draws them 2 studs out, the way they go in, with a red arrow pointing back in. With nothing selected it pulls out all of the step's new parts.
+- **Colour guide** lists the step's colours under its number.
+- **1:1 guide** puts the selected parts at real size. On a step that has a guide, it takes the guide away.
+- **Sub-model preview** shows a sub-assembly that is built on its own pages finished, on the first of those pages. It is on until you turn it off.
+
+Press a command again to put the step back as it was. Each change is one Undo and is saved with the model. Claude can set each one with `edit_booklet`.
+
+<!-- covers
+ui:the booklet's Studio extras
+-->
+
 ### Lay a page out {#lay-out}
 
 **Lay out the page…** on the Booklet row puts the page in your hands: drag its picture, parts list, callout and step number where they go, and a corner to size each. **Add words**, **Add a picture…**, and **Draw an arrow**: drag it, drag its middle to bend it, and set its colour and width. A callout's own pages turn with **Previous** and **Next page**.

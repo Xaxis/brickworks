@@ -53,6 +53,7 @@ const COMMANDS: Dictionary = {
 	"export_picture": "export_model", "export_bricklink": "export_model",
 	"export_rebrickable": "export_model", "instructions": "export_model",
 	"render": "render_model",
+	"render_queue": "render_queue",
 	"undo": "undo", "redo": "undo",
 	"cut_parts": "edit_model", "copy": "edit_model", "paste": "edit_model",
 	"duplicate": "edit_model", "delete": "edit_model", "paint": "edit_model",
@@ -203,6 +204,9 @@ can I build?: saved models, examples and real sets' models by how much is owned.
  - render_model: a picture or a turntable worth keeping, Quick, Good or \
 Best, up to 4K, as the window draws it or as a product shot, or kind="build" \
 the model built up step by step as a video, saved where Render saves.
+ - render_queue: pictures lined up with Render's settings and drawn one \
+after another while the person goes on working, as File, Render queue… \
+does; list says how far each has got and where it was saved.
  - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
 (GLB, glTF, OBJ, STL), a picture, a BrickLink wanted list, a Rebrickable \
 parts list, or the building instructions as a booklet, written where \
@@ -358,6 +362,14 @@ func definitions() -> Array:
 				+ "booklet_layout says where each is, and what was moved off what it overlapped. "
 				+ "follow=true lays out every later page with as many steps as the page step= "
 				+ "is on, as that page is laid out (Apply to later pages), one undo step. "
+				+ "Studio's extras: pull= studs (2 when true, 0 or false to put back) draws "
+				+ "the step's parts, or {studs, parts: [part ids]} those, pulled out along the "
+				+ "way each goes in with a red arrow in; colours= true lists the step's colours "
+				+ "under its number (colours_all= true every step's); actual_size= false leaves "
+				+ "off the 1:1 guide the booklet gives the first Technic axle or straight beam "
+				+ "of each length, true gives every axle and beam of the step one, [part ids] "
+				+ "those parts, \"auto\" as the booklet does it; preview= false leaves the "
+				+ "finished sub-assembly off the first of its own pages. "
 				+ "A model with no steps of its own is given the "
 				+ "worked-out ones first, in the same undo step."),
 			"input_schema": {"type": "object", "additionalProperties": false,
@@ -402,6 +414,11 @@ func definitions() -> Array:
 				"callout": {"type": "boolean"},
 				"per_page": {"type": "integer", "enum": [0, 1, 2, 4]},
 				"follow": {"type": "boolean", "description": "true: the later pages laid out as step's page is"},
+				"pull": {"description": "studs to pull the step's parts out (true: 2; 0 or false: put back), or {studs, parts: [part ids]}"},
+				"colours": {"type": "boolean", "description": "true: the step's colours listed under its number"},
+				"colours_all": {"type": "boolean", "description": "true: every step's colours listed"},
+				"actual_size": {"description": "the step's 1:1 guides: false none, true every axle and beam, [part ids] those parts, \"auto\" as the booklet does it"},
+				"preview": {"type": "boolean", "description": "false: no finished sub-assembly before its own pages"},
 				"guide": {"type": "object", "description": "{axis, at, was, remove}: mm from the page's left (x) or top (y)",
 					"properties": {
 						"axis": {"type": "string", "enum": ["x", "y"]},
@@ -704,6 +721,37 @@ func definitions() -> Array:
 			}},
 		},
 		{
+			"name": "render_queue",
+			"description": ("Pictures lined up and drawn one after another while the person "
+				+ "goes on working, as File, Render queue… does. action add queues the "
+				+ "model and the view as they are now (view current, the window's, unless "
+				+ "another is given), with Render's settings changed by quality, size, "
+				+ "samples (Best's, 1 to 4096), view, look, backdrop and depth_of_field as "
+				+ "render_model takes them; drawing begins at once unless paused, and each is "
+				+ "saved where Render saves under a name of its own. list (the default) says "
+				+ "what is waiting, being drawn and done, with where each was saved, and "
+				+ "changes nothing; number=N with it shows that finished picture. pause holds "
+				+ "the rest after the one being drawn, go_on carries on, finish_now keeps the "
+				+ "one being drawn as clean as it is (a path-traced picture), cancel number=N "
+				+ "takes one out or stops it, clear forgets the finished. Best is path traced "
+				+ "where the graphics card traces rays, and frames averaged where it does "
+				+ "not, and the answer says which. Needs the app in a window."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"action": {"type": "string", "enum": ["add", "list", "pause", "go_on",
+					"finish_now", "cancel", "clear"]},
+				"number": {"type": "integer", "description": "which render, as list numbers them"},
+				"quality": {"type": "string", "enum": ["quick", "good", "best"]},
+				"size": {"type": "string", "enum": ["720p", "1080p", "4k", "square"]},
+				"samples": {"type": "integer", "description": "Best's samples, 1 to 4096"},
+				"view": {"type": "string", "enum": ["current", "hero", "front", "side", "back",
+					"low", "top"]},
+				"look": {"type": "string", "enum": ["window", "product"]},
+				"backdrop": {"type": "string", "enum": ["white", "gradient", "grey", "dark",
+					"none"]},
+				"depth_of_field": {"type": "boolean"},
+			}},
+		},
+		{
 			"name": "export_model",
 			"description": ("Write the model out as File, Export does, where Export writes "
 				+ "(the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd "
@@ -971,6 +1019,8 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return await _parts_list(input)
 		"render_model":
 			return await _render(input, work)
+		"render_queue":
+			return _render_queue(input)
 		"export_model":
 			return await _export(input, work)
 		"brickify":
@@ -1265,9 +1315,14 @@ func _edit_booklet(input: Dictionary) -> String:
 		if not int(input["per_page"]) in [0, 1, 2, 4]:
 			return "per_page= is 1, 2, 4, or 0 for as many as fit."
 		fields["per_page"] = int(input["per_page"])
+	var extras: Variant = _booklet_extras(input, world)
+	if extras is String:
+		return extras
+	fields.merge(extras)
 	if fields.is_empty():
-		return ("Say what to set: turn=, tilt=, zoom=, size=, page=, parts=, sign=, callout= "
-			+ "or per_page=. booklet_layout says how each step is printed now.")
+		return ("Say what to set: turn=, tilt=, zoom=, size=, page=, parts=, sign=, callout=, "
+			+ "per_page=, pull=, colours=, colours_all=, actual_size= or preview=. "
+			+ "booklet_layout says how each step is printed now.")
 	var said: String = shell.change_look("set", at, fields)
 	var now: String = ""
 	if at.authored_step >= 0 or AuthorSteps.any(world, store.scenery):
@@ -1280,6 +1335,50 @@ func _edit_booklet(input: Dictionary) -> String:
 	var named: String = ("step %d's callout step %d" % [at.number, at.callout_step]) \
 		if at.in_callout() else "step %d" % at.number
 	return said + (("; %s is now: %s" % [named, now]) if not now.is_empty() else "")
+
+
+## edit_booklet's Studio extras (booklet3) as BookletLooks keeps them:
+## pull=, colours=, colours_all=, actual_size= and preview=; or what is wrong
+## with one, said.
+func _booklet_extras(input: Dictionary, world: BrickWorld) -> Variant:
+	var fields: Dictionary = {}
+	if input.has("pull"):
+		var pull: Variant = input["pull"]
+		var studs: float = BookletLooks.PULL_STUDS
+		var parts: Array = []
+		if pull is Dictionary:
+			studs = float(pull.get("studs", BookletLooks.PULL_STUDS))
+			for part: Variant in pull.get("parts", []) if pull.get("parts") is Array else []:
+				parts.append(str(part).to_lower().trim_suffix(".dat"))
+		elif pull is bool:
+			studs = BookletLooks.PULL_STUDS if pull else 0.0
+		elif pull is float or pull is int:
+			studs = float(pull)
+		else:
+			return "pull= is studs (0 puts the parts back), true, or {studs, parts: [part ids]}."
+		if studs > BookletLooks.PULL_MOST:
+			return "pull= is at most %s studs." % BookletLooks._number(BookletLooks.PULL_MOST)
+		fields["pull"] = {"studs": maxf(0.5, studs), "parts": parts} if studs > 0.0 else null
+	if input.has("colours"):
+		var all: bool = bool(input.get("colours_all",
+			BookletLooks.booklet(world).get("colours_all", false)))
+		fields["colours"] = null if bool(input["colours"]) == all else bool(input["colours"])
+	if input.has("colours_all"):
+		fields["colours_all"] = bool(input["colours_all"])
+	if input.has("actual_size"):
+		var actual: Variant = input["actual_size"]
+		if actual is Array:
+			fields["actual_size"] = (actual as Array).map(func(part: Variant) -> String:
+				return str(part).to_lower().trim_suffix(".dat"))
+		elif actual is bool:
+			fields["actual_size"] = actual
+		elif str(actual) == "auto":
+			fields["actual_size"] = null
+		else:
+			return "actual_size= is true, false, \"auto\" or [part ids]."
+	if input.has("preview"):
+		fields["preview"] = bool(input["preview"])
+	return fields
 
 
 ## A guide on every page of the booklet (Shell.change_look "guide"), as
@@ -2966,6 +3065,65 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 		Image.INTERPOLATE_BILINEAR)
 	return [{"type": "text", "text": said}, {"type": "image", "source": {"type": "base64",
 		"media_type": "image/png", "data": Marshalls.raw_to_base64(small.save_png_to_buffer())}}]
+
+
+## File, Render queue…, for a session: the window's own queue (RenderQueue).
+func _render_queue(input: Dictionary) -> Variant:
+	var action: String = str(input.get("action", "list"))
+	if not action in ["add", "list", "pause", "go_on", "finish_now", "cancel", "clear"]:
+		return "action is add, list, pause, go_on, finish_now, cancel or clear."
+	var queue: RenderQueue = RenderQueue.of(app)
+	var number: int = int(input.get("number", 0))
+	match action:
+		"add":
+			if not StudioRender.possible():
+				return ("Rendering needs something to draw with, and this app is running "
+					+ "without a window. Start it in one (godot --path . -- --mcp).")
+			var dialog: Node = app.get("_render")
+			var chosen: RenderSettings = (dialog.get("settings") as RenderSettings).copy() \
+				if dialog != null else RenderSettings.new()
+			if dialog == null:
+				chosen.view = "current"
+			var options: Dictionary = input.duplicate()
+			options.erase("action")
+			options.erase("number")
+			var wrong: String = chosen.take(options)
+			if not wrong.is_empty():
+				return wrong
+			var item: RenderQueue.Item = queue.add(chosen)
+			if item == null:
+				return queue.last_refusal
+			return ("Queued %d: %s, %s. %s\n%s" % [item.number, item.what(),
+				"drawing now" if queue.is_drawing() and item.state == "drawing" else "waiting",
+				item.settings.best_words() if item.settings.quality
+					== RenderSettings.Quality.BEST else "", "\n".join(queue.lines())]).strip_edges()
+		"pause", "go_on":
+			queue.pause(action == "pause")
+		"finish_now":
+			if not queue.finish_now():
+				return "Nothing path traced is being drawn, so there is nothing to finish early."
+		"cancel":
+			if not queue.cancel(number):
+				return "There is no render %d still to finish; list numbers them." % number
+		"clear":
+			queue.clear_finished()
+		"list":
+			if number > 0:
+				var shown: RenderQueue.Item = queue.find(number)
+				if shown == null:
+					return "There is no render %d; list numbers them." % number
+				var line: String = "%d. %s: %s" % [number, shown.what(),
+					queue.state_words(shown)]
+				if shown.picture == null:
+					return line
+				return [{"type": "text", "text": line}, {"type": "image", "source": {"type": "base64",
+					"media_type": "image/png",
+					"data": Marshalls.raw_to_base64(shown.picture.save_png_to_buffer())}}]
+	var said: PackedStringArray = queue.lines()
+	if said.is_empty():
+		return "The queue is empty. " + RenderQueue.best_here()
+	return "%s\n%s%s" % ["\n".join(said), "Paused. " if queue.paused else "",
+		RenderQueue.best_here()]
 
 
 func _export(input: Dictionary, work: Working.Job = null) -> String:
