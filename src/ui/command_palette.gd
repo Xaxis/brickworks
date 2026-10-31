@@ -1,7 +1,8 @@
 ## Find a command by typing: Ctrl+/ (Ctrl+Shift+P on the desktop too), or
 ## the app's menu, Find a command…, opens a box over the model. What is
 ## typed filters every command by the words of its name and of the menu it
-## is in; each row says its key and where it lives, and Enter runs it as
+## is in, in English and in the interface's language (Language: "speichern"
+## finds Save); each row says its key and where it lives, and Enter runs it as
 ## its menu row would (Shell.run). A command that cannot be used now is
 ## shown greyed with what it waits for, never left out. The ones run from
 ## here last come first. A part's number or name lists the part too, under
@@ -227,15 +228,29 @@ func controls_by_name() -> Dictionary:
 
 static func words_of(text: String) -> PackedStringArray:
 	if _apart == null:
-		_apart = RegEx.create_from_string("[^a-z0-9]+")
+		# Letters of any language: "öffnen", "écran".
+		_apart = RegEx.create_from_string("[^\\p{L}\\p{N}]+")
 	return _apart.sub(text.to_lower(), " ", true).split(" ", false)
 
 
 func _score(typed: PackedStringArray, named: String) -> int:
 	var command: Shell.Command = shell.command(named)
-	var own: PackedStringArray = words_of(command.words)
-	var menu: PackedStringArray = words_of(where(named))
-	var tip: PackedStringArray = words_of(command.tip)
+	var score: int = _score_in(typed, command.words, where(named), command.tip)
+	# And by the words the interface draws them with, in its language.
+	if Language.current() != "en":
+		var path := PackedStringArray()
+		for menu: String in where(named).split(INTO):
+			path.append(atr(menu))
+		score = maxi(score, _score_in(typed, atr(command.words), INTO.join(path),
+			atr(command.tip)))
+	return score
+
+
+func _score_in(typed: PackedStringArray, words: String, where_words: String,
+		tip_words: String) -> int:
+	var own: PackedStringArray = words_of(words)
+	var menu: PackedStringArray = words_of(where_words)
+	var tip: PackedStringArray = words_of(tip_words)
 	var squeezed: String = "".join(own)
 	var total: int = 0
 	for word: String in typed:

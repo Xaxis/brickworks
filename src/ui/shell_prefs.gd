@@ -101,6 +101,9 @@ const DEFAULTS: Dictionary = {
 	"bin_only_made": false,
 	"bin_prints": true,
 	"bin_list": false,
+	# Settings, Language (Language): "en", "de", "fr" or "es". English, as
+	# the app is written, until somebody chooses.
+	"language": "en",
 }
 
 ## Settings, Interface size: the choices, as shares of the size the window
@@ -183,6 +186,12 @@ static func _load() -> void:
 		return
 	_loaded = true
 	_values = DEFAULTS.duplicate()
+	_read()
+	# The language chosen, applied before anything is drawn in it.
+	Language.start()
+
+
+static func _read() -> void:
 	if not keeps():
 		return
 	var file := ConfigFile.new()
