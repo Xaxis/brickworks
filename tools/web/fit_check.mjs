@@ -137,9 +137,13 @@ const overlap = (a, b) => {
 };
 
 // The layout as the build publishes it, or null from a build that does not.
+// The app answers on its half-second publish, from the main thread: one
+// still busy from a slow start answers late. 6 s was too few at load 39,
+// where a phone's start took 34 s (rel-m230's preview, 2026-10-31); the
+// controls already get 10 s, and a build that never answers still fails.
 async function layoutOf(page) {
   await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-  for (let n = 0; n < 24; n++) {
+  for (let n = 0; n < 60; n++) {
     const layout = await page.evaluate(() => window.brickworksLayout || null);
     if (layout) return layout;
     await page.waitForTimeout(250);
