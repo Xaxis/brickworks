@@ -1857,34 +1857,30 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	var wanted: int = maxi(plan.samples, 1)
 	var per_pass: int = 1
 	# A sample of a big picture is more than a frame can spare beside the
-	# window's: it is given a band of rows at a time until there is room.
+	# window's: it is given a band of rows at a time until there is room,
+	# a quarter of them until the card has timed a pass.
 	var rows: int = maxi(picture.y / 4, 1)
 	var row: int = 0
-	var frame_ms: float = await _frame_ms()
+	var card_ms: float = 0.0
 	var shown_at: int = Time.get_ticks_msec()
-	var pass_began: int = Time.get_ticks_usec()
 	_stopping = false
 	while _tracer.samples < wanted:
 		var count: int = mini(per_pass, wanted - _tracer.samples)
 		_tracer.trace(count, 7919 * _tracer.samples + 104729 * settings.seed, row, rows)
 		row = 0 if row + rows >= picture.y else row + rows
-		_doing("tracing %d samples, %d rows" % [count, rows])
+		_doing("tracing %d samples, %d rows, %.1f ms on the card" % [count, rows, card_ms])
 		await get_tree().process_frame
 		if _cancelled:
 			return null
-		# A pass is kept to what the card can spare beside the window's frame.
-		var took: float = float(Time.get_ticks_usec() - pass_began) / 1000.0 - frame_ms
-		pass_began = Time.get_ticks_usec()
-		if took < pass_ms * 0.6:
-			if rows < picture.y:
-				rows = mini(rows * 2, picture.y)
-			else:
-				per_pass = mini(per_pass * 2, PathTracer.MOST_PER_PASS)
-		elif took > pass_ms * 1.6:
-			if per_pass > 1:
-				per_pass = maxi(per_pass / 2, 1)
-			else:
-				rows = maxi(rows / 2, 8)
+		# A pass is kept to what the card can spare beside the window's frame,
+		# timed on the card itself: the window's frame time says nothing of
+		# it while the card has room, and much of the window's own noise.
+		var sample_ms: float = _tracer.sample_ms()
+		if sample_ms > 0.0:
+			var fit: int = floori(pass_ms / sample_ms / float(picture.x))
+			rows = clampi(fit, 8, picture.y)
+			per_pass = clampi(fit / picture.y, 1, PathTracer.MOST_PER_PASS)
+			card_ms = sample_ms * float(picture.x * rows * per_pass)
 		if row != 0:
 			continue
 		var said: String = words if not words.is_empty() else \
@@ -1903,7 +1899,6 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 				piece_done.emit(so_far.get_region(Rect2i(0, 0, picture.x, half)), Vector2i.ZERO)
 				piece_done.emit(so_far.get_region(Rect2i(0, half, picture.x, picture.y - half)),
 					Vector2i(0, half))
-			pass_began = Time.get_ticks_usec()
 	_stopping = false
 	last_samples = _tracer.samples
 	_doing("reading the picture back")
@@ -1914,21 +1909,6 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		_doing("converting")
 		result.convert(Image.FORMAT_RGB8)
 	return result
-
-
-## What a frame of the window takes with nothing traced beside it: the
-## middle of three whole frames.
-func _frame_ms() -> float:
-	await get_tree().process_frame
-	var times: Array[float] = []
-	var last: int = Time.get_ticks_usec()
-	for _n: int in 3:
-		await get_tree().process_frame
-		var now: int = Time.get_ticks_usec()
-		times.append(float(now - last) / 1000.0)
-		last = now
-	times.sort()
-	return times[1]
 
 
 ## What the tracer lights and sees, as path_tracer.glsl's Scene reads it.

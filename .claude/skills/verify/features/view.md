@@ -1914,20 +1914,26 @@ picture the assistant is shown.
   `StudioRender` stages the model as for every grade, then hands the
   stage's MultiMesh batches (20 floats an instance: three rows, the colour,
   the finish) and the sweep to `PathTracer.stage`: a bottom-level structure
-  per mesh (kept by Mesh), a top-level one of every instance, and storage
+  per mesh (kept by Mesh, shared by every tracer, built a few a frame), a
+  top-level one of every instance, and storage
   buffers of positions, normals and indices the closest-hit reads. The
   light is the photographed place (`StudioPanorama`, importance-sampled from
   a 256 x 128 table, with MIS) or the window's own sky gradient, plus the
-  rig's lights as cones of their spread (the key 7°), each with a shadow
-  ray; plastic is a diffuse base under a GGX coat, the seam darkened as the
+  rig's lights as cones of their spread (the key 7°), a shadow ray from
+  those that cast one in the window (the key); plastic is a diffuse base under a GGX coat, the seam darkened as the
   window's shader does; clear parts are thin glass (the sky's reflection
   added by a ray of its own, the path carried on through, tinted). The
-  sweep's lift to white (`level` over 1) is seen by the eye only, never
-  lights the model. Six bounces, roulette after two, a sample clamped at
-  40. Exposure and the sweep are metered on a 120-pixel picture at 48
-  samples as the raster's are, then the picture is traced in passes kept
-  near 28 ms (`PathTracer.PASS_MS`, from 1 to 32 samples a pass), shown
-  every second in two halves (`piece_done`), and tone-mapped exactly as the
+  sweep lights the model as its own colour; the eye alone sees it scaled
+  to the backdrop's lightness (`level`), so its shadows keep their depth.
+  Six bounces, roulette after two, a sample clamped at 40. Exposure and
+  the sweep are metered on a 120-pixel picture at 48 samples, 12 a frame,
+  as the raster's are; then the picture is traced in passes of about
+  28 ms on the card (`PathTracer.PASS_MS`; the queue's 8): a band of rows
+  at a time while one sample of the whole is more than that, up to 32
+  samples a pass, sized by the card's own timestamps of the last pass
+  (`PathTracer.sample_ms`, a few frames late; a quarter of the rows until
+  then). Shown every second in two halves (`piece_done`), and tone-mapped
+  exactly as the
   window's environment (ACES or Filmic, its white, the product look's
   contrast and saturation). `StudioRender.finish_now()` keeps it as it is;
   `cancel()` drops it. A transparent picture stays frames averaged: its
@@ -1956,16 +1962,19 @@ picture the assistant is shown.
 - `pathtrace probe` (`src/dev/pathtrace_probe.gd`, `tools/probe.sh
   pathtrace`, windowed on the GPU at 1400 x 900): the car at 1280 x 720 and
   256 samples within 60 s; its RMSE against 4,096 other samples at most
-  0.02 (and 16 samples' at least 2.5 times that); a white column's shadow
-  on the floor seen from above, its edge's width (90% to 10% of its depth)
-  at 25, 50 and 80% of the way to its tip, widening; a white wall on an
-  orange floor seen from the front, orange low down more than high up and
-  more than Best frames averaged at the same point; then the queue: File,
-  Render queue…, Add this view, a green brick put on the roof and the view
-  turned, Add again, render_queue add, all three drawn at 960 x 540 and 128
-  samples, one after another, while the window turns every frame (its
-  median and 95th-percentile frame), each its own view, the green brick
-  only in the second and third. Pictures in `shots/pathtrace/`.
+  0.02 (and 16 samples' at least 2.5 times that); a column of white 2x2
+  bricks' shadow on the floor seen from above, its edge's width (80% to
+  20% of its depth) at 25, 50 and 80% of the way to its tip, widening; a
+  white 6x6 plate on a column over an orange floor, seen from below, more
+  orange underneath at three points than Best frames averaged by 0.03
+  (red less blue over the sum); then the queue: File, Render queue…, the
+  window turned 3 s with nothing drawn (its frames for comparison), Add
+  this view, a green brick put on the roof and the view turned, Add again,
+  render_queue add, all three drawn at 960 x 540 and 128 samples, one
+  after another, while the window turns every frame (median at most 34 ms,
+  95th percentile at most 60), each its own view, the green brick only in
+  the second and third. `-- --only=car,queue,light` runs parts. Pictures in
+  `shots/pathtrace/`, the window's as `queue_window_<W>x<H>.png`.
 - `motions panel` (Build, Motions…, once Pose and animate…; `src/ui/pose_panel.gd`,
   class `PosePanel`, in the column beside the model (`Main._tool_column`) so
   what moves is seen and no part to be dragged is under it; the

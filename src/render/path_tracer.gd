@@ -78,6 +78,8 @@ var _trace_set: RID
 var _resolve_set: RID
 var _size := Vector2i.ZERO
 var _has_glass: bool = false
+## The card's timestamps of the last pass it has said, by frame.
+var _timed_frame: int = -1
 
 ## What a picture is lit by and seen through, set before [method stage].
 var scene := PackedFloat32Array()
@@ -505,6 +507,7 @@ func trace(count: int, seed: int = 0, row: int = 0, rows: int = 0) -> void:
 	if not _trace_set.is_valid() or count <= 0 or row >= _size.y:
 		return
 	var band: int = _size.y - row if rows <= 0 else mini(rows, _size.y - row)
+	_rd.capture_timestamp("PathTracer %d %d" % [get_instance_id(), _size.x * band * count])
 	var push := PackedByteArray()
 	push.resize(32)
 	push.encode_u32(0, samples)
@@ -518,8 +521,29 @@ func trace(count: int, seed: int = 0, row: int = 0, rows: int = 0) -> void:
 	_rd.raytracing_list_set_push_constant(list, push, push.size())
 	_rd.raytracing_list_trace_rays(list, 0, _sbt, _size.x, band, 1)
 	_rd.raytracing_list_end()
+	_rd.capture_timestamp("PathTracer %d" % get_instance_id())
 	if row + band >= _size.y:
 		samples += count
+
+
+## What a pixel's sample took on the card in the last pass it has timed,
+## in ms, a few frames after the pass; -1 when there is nothing new.
+func sample_ms() -> float:
+	if _rd.get_captured_timestamps_frame() == _timed_frame:
+		return -1.0
+	var mine: String = "PathTracer %d" % get_instance_id()
+	var began: int = -1
+	var work: int = 0
+	for n: int in _rd.get_captured_timestamps_count():
+		var name: String = _rd.get_captured_timestamp_name(n)
+		if name.begins_with(mine + " "):
+			began = _rd.get_captured_timestamp_gpu_time(n)
+			work = name.trim_prefix(mine + " ").to_int()
+		elif name == mine and began >= 0 and work > 0:
+			_timed_frame = _rd.get_captured_timestamps_frame()
+			# The card's times are in nanoseconds.
+			return float(_rd.get_captured_timestamp_gpu_time(n) - began) / 1.0e6 / float(work)
+	return -1.0
 
 
 ## The picture so far, exposed by [param exposure] and tone-mapped

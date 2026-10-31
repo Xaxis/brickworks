@@ -346,9 +346,9 @@ static func _tint(colour: Color) -> float:
 
 
 ## How wide the shadow's edge is, in LDU, across it at [param at]: from
-## where it is 90% as dark as its middle to where it is 10%, the mean of
-## its two sides. Each step across is the mean of five along, against the
-## grain of the samples.
+## where it is 80% as dark as its middle to where it is 20%, the mean of
+## its two sides. Each step across is the mean of thirteen along, against
+## the grain of the samples.
 func _penumbra(lit: Image, unlit: Image, shot: StudioRender.Shot, at: Vector3,
 		along: Vector3) -> float:
 	var forward: Vector3 = along.normalized()
@@ -360,14 +360,14 @@ func _penumbra(lit: Image, unlit: Image, shot: StudioRender.Shot, at: Vector3,
 	var offset: float = -reach
 	while offset <= reach:
 		var drop: float = 0.0
-		for n: int in range(-2, 3):
+		for n: int in range(-6, 7):
 			var point: Vector3 = at + across * offset + forward * float(n)
 			var pixel: Vector2 = _project(shot, point, lit.get_size())
 			var x: int = clampi(roundi(pixel.x), 0, lit.get_width() - 1)
 			var y: int = clampi(roundi(pixel.y), 0, lit.get_height() - 1)
 			drop += unlit.get_pixel(x, y).get_luminance() - lit.get_pixel(x, y).get_luminance()
 		steps.append(offset)
-		drops.append(drop / 5.0)
+		drops.append(drop / 13.0)
 		offset += step
 	var deepest: float = 0.0
 	var middle: int = 0
@@ -382,10 +382,10 @@ func _penumbra(lit: Image, unlit: Image, shot: StudioRender.Shot, at: Vector3,
 		var inner: float = steps[middle]
 		var outer: float = steps[middle]
 		var n: int = middle
-		while n >= 0 and n < drops.size() and drops[n] >= deepest * 0.9:
+		while n >= 0 and n < drops.size() and drops[n] >= deepest * 0.8:
 			inner = steps[n]
 			n += way
-		while n >= 0 and n < drops.size() and drops[n] >= deepest * 0.1:
+		while n >= 0 and n < drops.size() and drops[n] >= deepest * 0.2:
 			outer = steps[n]
 			n += way
 		width += absf(outer - inner)
