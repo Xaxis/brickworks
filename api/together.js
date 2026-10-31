@@ -21,6 +21,10 @@
 //   ?op=poll    {s, after, seen}   the changes after [after], waiting up to
 //                                  ~20 s for one, or for who is in it to
 //                                  change from [seen]; and whether it ended
+//                                  {..., stream: true} the same, but who is
+//                                  in it and where each is working comes a
+//                                  line at a time as it changes, and the
+//                                  poll waits on (poll, below)
 //   ?op=end     {s}                the owner ends it
 //   ?op=leave   {s}                someone leaves
 //   ?op=remove  {s, who}           the owner takes someone out of it: refused
@@ -487,11 +491,22 @@ async function send(request, me) {
   }
 }
 
-async function poll(request, me) {
+async function poll(request, me, response = null) {
   const body = request.body || {};
   const id = idOf(secretOf(body));
   const after = Math.max(0, Math.floor(Number(body.after) || 0));
   const seen = String(body.seen || "");
+  // A page that reads its answer a line at a time (src/net/together.gd
+  // _ask_page) is sent who is in it and where each is working the moment
+  // it changes, a line of its own ({more: true, people, seen, at}), and the
+  // poll waits on; it ends as before, with changes, the session's end or
+  // the wait's, in its last line. Answered for each pointer moved, the next
+  // poll was asked only once the page had the answer, at the end of a frame
+  // of its own, and a pointer moved meanwhile waited out that whole
+  // turnaround (presence, 2026-10-30). Not where the answer cannot be
+  // written a line at a time (tools/web/relay_server.mjs): answered whole.
+  const streams = body.stream === true && typeof response?.write === "function";
+  let told = seen;
   // Two trips before it waits, not four: this person heard from (their row,
   // if they are in it and not taken out), then the session and who is in it
   // at once. A poll begins again after every change it gives, so what it
@@ -530,23 +545,37 @@ async function poll(request, me) {
         checked = 0;
       }
     }
-    const rows = await db(`together_ops?session=eq.${id}&seq=gt.${after}&order=seq.asc&limit=${SEND_MOST}`
-      + "&select=seq,author,client,cid,changes") || [];
-    if (Date.now() - checked > (lively(all, me) ? POLL_MS : PEOPLE_MS)) {
-      checked = Date.now();
-      if (Date.now() - looked > SESSION_MS) {
-        looked = Date.now();
-        session = await sessionRow(id);
+    // The changes, and who is in it and the session when they are due, read
+    // at once: a pointer is seen a trip to the database sooner, and the
+    // database asked no more.
+    const due = Date.now() - checked > (lively(all, me) ? POLL_MS : PEOPLE_MS);
+    const sessionDue = due && Date.now() - looked > SESSION_MS;
+    if (due) checked = Date.now();
+    if (sessionDue) looked = Date.now();
+    const [rows, fresh, standing] = await Promise.all([
+      db(`together_ops?session=eq.${id}&seq=gt.${after}&order=seq.asc&limit=${SEND_MOST}`
+        + "&select=seq,author,client,cid,changes").then((got) => got || []),
+      due ? peopleRows(id) : null,
+      sessionDue ? sessionRow(id) : null,
+    ]);
+    if (due) {
+      if (sessionDue) {
+        session = standing;
         if (!session || session.ended_at) return { ended: true, ops: [], people, seen: signatureOf(people) };
       }
-      all = await peopleRows(id);
+      all = fresh;
       if (all.some((row) => row.account === me && row.removed_at)) {
         throw new Refusal(403, "the owner has taken you out of this session");
       }
       people = peopleOut(id, session, all, me);
     }
     const signature = signatureOf(people);
-    if (rows.length > 0 || signature !== seen || Date.now() > until) {
+    if (streams && signature !== told && rows.length === 0) {
+      told = signature;
+      if (!response.headersSent) response.setHeader("Content-Type", LINES);
+      response.write(`${JSON.stringify({ more: true, people, seen: signature, at: Date.now() })}\n`);
+    }
+    if (rows.length > 0 || signature !== told || Date.now() > until) {
       // No more than about ANSWER_MOST at once: the rest at the next poll.
       let size = 0;
       const fits = rows.findIndex((row) => (size += JSON.stringify(row.changes).length) > ANSWER_MOST);
@@ -636,6 +665,7 @@ async function point(request, me) {
 }
 
 const OPS = { start, join, send, poll, end, leave, remove, point, upload, snapshot: snapshotPart };
+const LINES = "application/x-ndjson";
 
 export default async function handler(request, response) {
   response.setHeader("Cache-Control", "private, no-store");
@@ -658,9 +688,15 @@ export default async function handler(request, response) {
     }
     const me = String(claims.sub || "");
     if (!/^[0-9a-f-]{36}$/i.test(me)) throw new Refusal(401, "that sign-in names nobody");
-    return response.status(200).json(await op(request, me));
+    const answer = await op(request, me, response);
+    // A poll answering a line at a time ends with its last line.
+    if (response.headersSent) return response.end(`${JSON.stringify(answer)}\n`);
+    return response.status(200).json(answer);
   } catch (trouble) {
-    if (trouble instanceof Refusal) return response.status(trouble.status).json({ error: trouble.message });
-    return response.status(502).json({ error: String(trouble?.message || trouble).slice(0, 200) });
+    const status = trouble instanceof Refusal ? trouble.status : 502;
+    const error = trouble instanceof Refusal ? trouble.message : String(trouble?.message || trouble).slice(0, 200);
+    // Its status is gone with its first line: said in its last.
+    if (response.headersSent) return response.end(`${JSON.stringify({ refused: status, error })}\n`);
+    return response.status(status).json({ error });
   }
 }

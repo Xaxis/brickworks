@@ -457,6 +457,25 @@ async function measure(label, rounds, relative = false) {
     all.length >= rounds * 0.9 && (relative ? p95 < 1000 || relativeOk : p95 < 1000),
     Object.entries(times).map(([k, v]) => `${k} p50 ${pct([...v].sort((x, y) => x - y), 0.5)}`).join(", "));
 }
+// The requests [page] made to /api/together of the ops named, as its network
+// saw them, not its thread (unix ms): when each went, when its answer was
+// in, and a poll's server times. A pointer's time, trip by trip.
+function tripsOf(page, ops) {
+  const list = [];
+  const finished = async (request) => {
+    const op = /\/api\/together\?op=(\w+)/.exec(request.url())?.[1];
+    if (!ops.includes(op)) return;
+    const timing = request.timing();
+    const row = { op, start: Math.round(timing.startTime),
+      end: timing.responseEnd >= 0 ? Math.round(timing.startTime + timing.responseEnd) : null };
+    list.push(row);
+    const body = await (await request.response().catch(() => null))?.json().catch(() => null);
+    if (body) Object.assign(row, { at: body.at ?? null, began: body.began ?? null, ops: (body.ops || []).length });
+  };
+  page.on("requestfinished", finished);
+  return { list, stop: () => page.off("requestfinished", finished) };
+}
+
 function readDesktop(file) {
   try { return existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : null; } catch { return null; }
 }
@@ -487,6 +506,10 @@ try {
     let lastBrick = null;
     let within = 0;
     const moves = 40;
+    const sends = tripsOf(owner.page, ["point"]);
+    const polls = tripsOf(guest.page, ["poll"]);
+    const rows = [];
+    const missed = [];
     for (let n = 0; n < moves && spots.length >= 2; n++) {
       const others = spots.filter((one) => one.brick !== lastBrick);
       const aim = others[n % others.length];
@@ -512,10 +535,51 @@ try {
         stages.reach.push(timing.people_heard - sentAt);
         stages.frame.push(timing.presence_drawn - timing.people_heard);
         if (timing.presence_drawn - t0 <= NETWORK_MS + 4 * (timing.presence_drawn - timing.people_heard)) within += 1;
+        rows.push({ t0, sent: sentAt, heard: timing.people_heard, drawn: timing.presence_drawn, got,
+          said: timing.people_said || null });
+      } else {
+        // Not seen in 5 s: whether the owner's page sent anything, and where
+        // the server and each page have the owner's pointer.
+        const mine = await together(owner.page);
+        missed.push({ t0, aim, was, sent: (mine.timing?.pointed || 0) - t0,
+          sends: sends.list.filter((one) => one.start >= t0).length,
+          owner_has: ((mine.people || []).find((one) => one.me) || {}).at ?? null,
+          guest_has: (await ownerOf(guest.page)).at ?? null });
       }
       await wait(200);
     }
+    sends.stop();
+    polls.stop();
     const p = percentile;
+    // Each move beside the trips: the owner's send that carried it, and the
+    // second page's poll that brought it (a poll answered whole: the last
+    // whose answer was in before the page had it), open on the server when
+    // the send was answered or asked after it, and how long no poll was
+    // open before it. Then the move's time in two: from the send to the
+    // server saying it (its clock), and from there to the page having it,
+    // the network back and the page's thread finishing its frame.
+    const trips = rows.map((row) => {
+      const send = sends.list.filter((one) => one.start >= row.sent - 5).sort((a, b) => a.start - b.start)[0] || {};
+      const brought = polls.list.filter((one) => one.end !== null && one.end <= row.heard && one.at)
+        .sort((a, b) => b.end - a.end)[0] || {};
+      const before = polls.list.filter((one) => one.end !== null && one.end <= brought.start)
+        .sort((a, b) => b.end - a.end)[0] || {};
+      const said = row.said || brought.at;
+      return { drawn: row.drawn - row.t0, send: row.sent - row.t0, trip: send.end - send.start,
+        told: said - row.sent, back: row.heard - said, frame: row.drawn - row.heard,
+        ...(row.said ? {} : { open: brought.start <= send.end, gap: brought.start - before.end,
+          thread: row.heard - brought.end }) };
+    });
+    const both = (key) => `${p(trips.map((one) => one[key]), 0.5)}, ${p(trips.map((one) => one[key]), 0.95)}`;
+    const whole = trips.filter((one) => one.open !== undefined);
+    console.log(`        trips (p50, p95 ms): the send's ${both("trip")}; from it to the server saying it ${both("told")};`
+      + ` from there to the page having it ${both("back")}`
+      + (whole.length ? `; answered whole: ${whole.filter((one) => !one.open).length} of ${whole.length} brought by a`
+        + ` poll asked after the send was answered, no poll open before it ${both("gap")}, the page's thread`
+        + ` after the answer was in ${both("thread")}` : ""));
+    writeFileSync(path.join(out, `pointer_${label.replace(/[^a-z0-9]+/gi, "_").slice(0, 40)}.json`),
+      JSON.stringify({ rows, trips, missed, sends: sends.list, polls: polls.list }, null, 1));
+    if (missed.length) console.log(`        not seen in 5 s: ${JSON.stringify(missed).slice(0, 1500)}`);
     console.log(`        stages (median ms): ${Object.entries(stages).map(([k, v]) => `${k} ${p(v, 0.5)}`).join(", ")};`
       + ` placed p50 ${p(placed, 0.5)}, p95 ${p(placed, 0.95)}; drawn p50 ${p(drawn, 0.5)}, p95 ${p(drawn, 0.95)};`
       + ` seen by this check reading the page p50 ${p(seen, 0.5)}, p95 ${p(seen, 0.95)}`);

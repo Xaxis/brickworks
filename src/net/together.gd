@@ -713,6 +713,7 @@ func _reset() -> void:
 	_open_forward.clear()
 	_seen = ""
 	_polling += 1
+	_page_poll = -1
 	_mine_at.clear()
 	_parts_sent.clear()
 	_last_cid.clear()
@@ -1207,23 +1208,10 @@ func _poll_loop() -> void:
 				_stop("The owner ended the session. What was built is still here: a copy, yours to keep or not."
 					if not owns else "The session has ended.")
 				return
-			_seen = str(body.get("seen", _seen))
 			if body.has("chat") and str(body["chat"]) != chat_words:
 				chat_words = str(body["chat"])
 				changed.emit()
-			var now: Array = body.get("people", people) as Array
-			if now != people:
-				# A pointer moving is the view's; the panel redraws only for who
-				# is in it, and whether each is here.
-				var before: String = _people_words(people)
-				people = now
-				timing["people_heard"] = polled
-				_show_presence()
-				# A check reads the page as the dots move, not a frame later.
-				if OS.has_feature("web"):
-					_tell_page()
-				if _people_words(people) != before:
-					changed.emit()
+			_heard_people(body, polled)
 			var ops: Array = body.get("ops", []) as Array
 			var taking: int = Time.get_ticks_usec()
 			_take(ops)
@@ -1236,6 +1224,28 @@ func _poll_loop() -> void:
 			_stop(_refused_words(code, got))
 			return
 		await get_tree().create_timer(1.0).timeout
+
+
+## Who is in it and where each is working, as the server said it at
+## [param polled] (unix ms): a poll's answer, or a line of one still waiting
+## (_on_page_heard).
+func _heard_people(body: Dictionary, polled: int) -> void:
+	_seen = str(body.get("seen", _seen))
+	var now: Array = body.get("people", people) as Array
+	if now == people:
+		return
+	# A pointer moving is the view's; the panel redraws only for who is in
+	# it, and whether each is here.
+	var before: String = _people_words(people)
+	people = now
+	timing["people_heard"] = polled
+	timing["people_said"] = body.get("at", 0)
+	_show_presence()
+	# A check reads the page as the dots move, not a frame later.
+	if OS.has_feature("web"):
+		_tell_page()
+	if _people_words(people) != before:
+		changed.emit()
 
 
 ## Numbered changes, put down in their order. Another side's change to a part
@@ -2367,9 +2377,19 @@ static func _parsed(raw: String) -> Dictionary:
 ## two or three frames after it had arrived: in a browser drawing in software,
 ## at 150 ms a frame, half a second of every change (tools/web/
 ## together_timing.mjs, 2026-10-24).
+##
+## And a poll's answer read a line at a time (api/together.js poll, stream):
+## who is in it and where each is working comes as it changes, taken the
+## moment the page has it, while the poll waits on. Answered whole, a
+## pointer moved while the next poll was asked waited out the turnaround:
+## the page's frame (300 ms drawing in software) and a trip to the server
+## and its database (presence, 2026-10-30).
 var _page_answers: Dictionary = {}
 var _page_answer: JavaScriptObject = null
+var _page_heard: JavaScriptObject = null
 var _page_asked: int = 0
+## The poll whose lines are taken; a line of any other is not.
+var _page_poll: int = -1
 signal _page_answered(id: int)
 
 
@@ -2377,17 +2397,34 @@ func _ask_page(op: String, body: Dictionary, session: String, timeout: float) ->
 	if _page_answer == null:
 		_page_answer = JavaScriptBridge.create_callback(_on_page_answer)
 		JavaScriptBridge.get_interface("window").brickworksTogetherAnswer = _page_answer
+		_page_heard = JavaScriptBridge.create_callback(_on_page_heard)
+		JavaScriptBridge.get_interface("window").brickworksTogetherHeard = _page_heard
 	_page_asked += 1
 	var id: int = _page_asked
+	if op == "poll":
+		body = body.duplicate()
+		body["stream"] = true
+		_page_poll = id
 	var words: String = JSON.stringify(body, "", false, true)
 	# Changes on their way go on to the server if the page is closed meanwhile.
 	var kept_alive: bool = op == "send" and words.to_utf8_buffer().size() < KEPT_ALIVE_SEND
+	# Lines: each but the last ({"more": ...}) handed over as it comes, the
+	# last the answer; a refusal after the first line is said in the last.
 	JavaScriptBridge.eval(("(() => { const stop = new AbortController(); setTimeout(() => stop.abort(), %d);"
 		+ " fetch(%s, {method: 'POST', headers: %s, body: %s, signal: stop.signal, keepalive: %s})"
-		+ ".then(async (r) => window.brickworksTogetherAnswer(%d, r.status, await r.text()))"
+		+ ".then(async (r) => { if (!r.body || !(r.headers.get('content-type') || '').includes('ndjson'))"
+		+ " return window.brickworksTogetherAnswer(%d, r.status, await r.text());"
+		+ " const reader = r.body.getReader(), text = new TextDecoder(); let kept = '', last = '', code = r.status;"
+		+ " const take = (line) => { if (line.startsWith('{\"more\":')) window.brickworksTogetherHeard(%d, line);"
+		+ " else if (line) { last = line; if (line.startsWith('{\"refused\":')) code = JSON.parse(line).refused; } };"
+		+ " for (;;) { const got = await reader.read();"
+		+ " const now = got.done ? text.decode() : text.decode(got.value, {stream: true}); const cut = now.lastIndexOf('\\n');"
+		+ " if (cut < 0) kept += now; else { (kept + now.slice(0, cut)).split('\\n').forEach(take); kept = now.slice(cut + 1); }"
+		+ " if (got.done) { take(kept); break; } }"
+		+ " window.brickworksTogetherAnswer(%d, code, last); })"
 		+ ".catch(() => window.brickworksTogetherAnswer(%d, 0, '')); })()") % [int(timeout * 1000.0),
 		JSON.stringify("%s/api/together?op=%s" % [base_url, op]), JSON.stringify(_page_headers(session)),
-		JSON.stringify(words), "true" if kept_alive else "false", id, id], true)
+		JSON.stringify(words), "true" if kept_alive else "false", id, id, id, id], true)
 	while not _page_answers.has(id):
 		await _page_answered
 	var got: Array = _page_answers[id]
@@ -2405,6 +2442,12 @@ func _page_headers(session: String) -> Dictionary:
 func _on_page_answer(args: Array) -> void:
 	_page_answers[int(args[0])] = [int(args[1]), str(args[2])]
 	_page_answered.emit(int(args[0]))
+
+
+## A line of the page's poll, which waits on: who is in it, now.
+func _on_page_heard(args: Array) -> void:
+	if live and int(args[0]) == _page_poll:
+		_heard_people(_parsed(str(args[1])), _unix_ms())
 
 
 static func _trouble(got: Array, doing: String) -> String:
