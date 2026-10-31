@@ -278,7 +278,20 @@ try {
       // folded first. A name that has just moved is not told until it
       // stands still (Main._page_places), so each is waited for, never
       // passed over. What was tried is said if the row is never found.
-      const MENUS = ["file", "edit", "view", "build", "tools", "help"];
+      // The menus as the sheet shows them, top to bottom, read from the app:
+      // a list kept here went stale when Make was added (rel-m227), and Part
+      // maker and Minifig were looked for everywhere but there.
+      const MENUS = [];
+      const sectionsNow = async () => Object.entries(await controls())
+        .filter(([k]) => k.startsWith("phone_section_"))
+        .sort((a, b) => a[1].y - b[1].y).map(([k]) => k.slice("phone_section_".length));
+      // Told once they stand still: the same names twice running.
+      for (let n = 0, last = ""; n < 60; n++) {
+        const names = await sectionsNow();
+        if (names.length && names.join() === last) { MENUS.push(...names); break; }
+        last = names.join();
+        await page.waitForTimeout(250);
+      }
       const rowsNow = async () => Object.entries(await controls()).filter(([k]) => k.startsWith("phone_row_"));
       const told = async (test) => {
         for (let n = 0; n < 60; n++) {
