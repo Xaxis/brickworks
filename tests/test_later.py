@@ -180,3 +180,19 @@ def test_the_cores_footprint_is_the_assistants():
         assert _body(footprint, signature) == _body(assistant, signature), signature
     stud = re.compile(r"^const STUD := .*$", re.M)
     assert stud.search(footprint).group(0) == stud.search(assistant).group(0)
+
+
+def test_the_bins_count_of_techniques_is_theirs():
+    """The parts bin's Techniques tab says how many there are without loading
+    them (PartsBin.TECHNIQUES_COUNT): Techniques.all(), what is written less
+    what is withdrawn."""
+    techniques = (SRC / "ai" / "techniques.gd").read_text()
+    written = _body(techniques, "static func written(")
+    names = [re.match(r'\t\t\t"name": "([^"]+)"', line)[1] for line in written
+             if re.match(r'\t\t\t"name": "', line)]
+    withdrawn = re.findall(r'^\t"([^"]+)":', _table(techniques, "WITHDRAWN"), re.M)
+    count = len([name for name in names if name not in withdrawn])
+    bin_ = (SRC / "ui" / "parts_bin.gd").read_text()
+    said = int(re.search(r"^const TECHNIQUES_COUNT := (\d+)$", bin_, re.M)[1])
+    assert said == count, (f"there are {count} techniques, and the parts bin says {said}: "
+                           f"set PartsBin.TECHNIQUES_COUNT to {count}")

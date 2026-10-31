@@ -596,11 +596,7 @@ func _build_categories() -> void:
 				if category == RECENT
 				else "The parts you keep: right-click any part to add it or take it out")
 		if category == TECHNIQUES:
-			# Counted once the constructions are read, which is the first
-			# time the tab is opened (_fill_techniques): they are the
-			# assistant's, and the start does not load it (Later).
-			button.text = TECHNIQUES if not Later.loaded(&"Techniques") \
-				else "%s %d" % [TECHNIQUES, Later.script(&"Techniques").all().size()]
+			button.text = "%s %d" % [TECHNIQUES, TECHNIQUES_COUNT]
 			button.tooltip_text = Keymap.filled("Worked constructions, each with why it works: choose one "
 				+ "to hold it whole, {rotate_held|turns it}, a click puts it down", true)
 		if category == FITS:
@@ -1681,6 +1677,10 @@ const RECENT := "Recent"
 const FAVOURITES := "Favourites"
 ## The worked constructions (Techniques), shown as a category beside them.
 const TECHNIQUES := "Techniques"
+## How many there are (Techniques.all()), for the tab: counted there it
+## would load the assistant at start (Later). tests/test_later.py counts
+## them and fails when this differs.
+const TECHNIQUES_COUNT := 91
 ## The parts that fit the selected part, or the one in hand (PartFits).
 const FITS := "Fits"
 ## What a construction's picture is asked for by: this and its name.
@@ -3094,7 +3094,6 @@ func _fill_techniques(query: String) -> void:
 	_techniques_seen = []
 	_techniques_shown = 0
 	var techniques: GDScript = Later.script(&"Techniques")
-	_count_techniques(techniques.all().size())
 	var listed: Array = techniques.all()
 	var groups: Array = techniques.GROUPS
 	if not query.strip_edges().is_empty():
@@ -3119,13 +3118,6 @@ func _fill_techniques(query: String) -> void:
 			_grid.add_child(_technique_cell(technique))
 			_techniques_shown += 1
 	_update_status()
-
-
-## The Techniques tab's count, said once the constructions are read.
-func _count_techniques(count: int) -> void:
-	for child: Node in _category_row.get_children():
-		if child is Button and str(child.get_meta("category", "")) == TECHNIQUES:
-			(child as Button).text = "%s %d" % [TECHNIQUES, count]
 
 
 func _technique_cell(technique: Dictionary) -> Control:

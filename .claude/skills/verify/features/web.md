@@ -93,10 +93,11 @@ plan with Claude as the client.
   load 18-25: compiled at +3.0 s cold and +3.6 warm where live's scripts
   took +6.8 and +5.6; interactive 12.2 s cold and 7.4 warm against 17.5
   and 10.2; the first pick 1.2 s against 1.5). Two copies of the assistant's rules keep the core
-  off it (`Nests`, `Footprint`). `python3 tools/minitest.py
+  off it (`Nests`, `Footprint`), and the bin's Techniques tab says its
+  count from `PartsBin.TECHNIQUES_COUNT`. `python3 tools/minitest.py
   tests/test_later.py` fails when a script the first screen compiles names
   one of Later's classes, with the chain from main.tscn that reaches it,
-  or when a copy differs from the assistant's; `lazystart_probe`
+  or when a copy or the count differs from the assistant's; `lazystart_probe`
   (headless) fails when one is loaded once the window has settled or a
   signed-in person's collection has come, or is made twice or out of its
   place, and prints what each first load took. On the web the page is

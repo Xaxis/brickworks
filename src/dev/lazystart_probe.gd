@@ -16,7 +16,7 @@
 ##   each member asked for as a probe or a check asks (main.get), made once,
 ##   over the window under the sign-in screens, or in the tools' column
 ##   above Stress's legend; the assistant with its panel and Claude's
-##   connector;
+##   connector; and the bin's Techniques tab counted them all along;
 ##   the menus' commands open the parts list, a figure, Settings and its keys,
 ##   Motions and Simulate, and Escape puts each away;
 ##   and what each first load took, printed.
@@ -138,6 +138,14 @@ func _made_where_they_were() -> void:
 	var connector: Node = _main.get("_connector_made")
 	_check("and Claude's connector made with it, in the tree",
 		connector != null and connector.is_inside_tree())
+	# The bin's Techniques tab said its count at start without loading them.
+	var said: String = ""
+	for child: Node in (_main.get("_bin") as Node).get("_category_row").get_children():
+		if str(child.get_meta("category", "")) == "Techniques":
+			said = (child as Button).text
+	var count: int = Later.script(&"Techniques").all().size()
+	_check("the bin's tab says \"%s\", and there are %d techniques" % [said, count],
+		said == "Techniques %d" % count)
 
 
 ## The menus' commands open what was made on first use, and Escape puts it away.
