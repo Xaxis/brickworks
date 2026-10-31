@@ -234,26 +234,49 @@ class Words extends Translation:
 		if keyed != null:
 			var words: String = _find(keyed.get_string(1), depth + 1, kept)
 			return words + keyed.get_string(2) if not words.is_empty() else ""
-		var matched: String = _matched(text, depth, true, kept)
-		if not matched.is_empty():
-			return matched
-		# The words a menu row ends with "…" for, said without it (Toolbar).
-		var dotted: String = String(_source.get_message(text + "…"))
-		if not dotted.is_empty():
-			return dotted.trim_suffix("…")
-		# A row's words with their first letter lowered (the keys sheet's
-		# "zoom in"): the row's translation, lowered too where the language
-		# lowers it.
-		var first: String = text.left(1)
-		if first != first.to_upper():
-			var raised: String = _find(first.to_upper() + text.substr(1), depth + 1, kept)
-			if not raised.is_empty():
-				return raised if capitals else raised.left(1).to_lower() + raised.substr(1)
-		# Then a pattern with no words of its own ("%s %d", "%s, %s"), which
-		# would take any text, where nothing more particular has.
-		matched = _matched(text, depth, false, kept)
-		if not matched.is_empty():
-			return matched
+		# Then each way below in turn, the first that leaves nothing in
+		# English, else the first that found it at all: "%s parts" takes
+		# "outline new parts", which the keys sheet's lowered row says whole.
+		var fallback: String = ""
+		var fallback_kept: Array = []
+		for way: int in 5:
+			var left: Array = []
+			var said: String = _way(way, text, depth, left)
+			if said.is_empty():
+				continue
+			if left.is_empty():
+				return said
+			if fallback.is_empty():
+				fallback = said
+				fallback_kept = left
+		kept.append_array(fallback_kept)
+		return fallback
+
+	## [param text] found the [param way]th way, or "".
+	func _way(way: int, text: String, depth: int, kept: Array) -> String:
+		match way:
+			0:
+				return _matched(text, depth, true, kept)
+			1:
+				# The words a menu row ends with "…" for, said without it
+				# (Toolbar).
+				var dotted: String = String(_source.get_message(text + "…"))
+				return dotted.trim_suffix("…")
+			2:
+				# A row's words with their first letter lowered (the keys
+				# sheet's "zoom in"): the row's translation, lowered too where
+				# the language lowers it.
+				var first: String = text.left(1)
+				if first == first.to_upper():
+					return ""
+				var raised: String = _find(first.to_upper() + text.substr(1), depth + 1, kept)
+				if raised.is_empty() or capitals:
+					return raised
+				return raised.left(1).to_lower() + raised.substr(1)
+			3:
+				# A pattern with no words of its own ("%s %d", "%s, %s"), which
+				# would take any text, where nothing more particular has.
+				return _matched(text, depth, false, kept)
 		return _joined(text, depth, kept)
 
 	## [param text]'s parts, where " · ", " — ", ". " or "; " joins them, each
@@ -282,6 +305,8 @@ class Words extends Translation:
 	## ([param worded]) or those without.
 	func _matched(text: String, depth: int, worded: bool, kept: Array) -> String:
 		var first: String = text.get_slice(" ", 0)
+		var partial: String = ""
+		var partial_kept: Array = []
 		for key: String in [first, ""]:
 			for pattern: Array in _patterns.get(key, []):
 				if bool(pattern[3]) != worded:
@@ -308,9 +333,14 @@ class Words extends Translation:
 				# "Technic Beam 15".
 				if across or (not worded and not any):
 					continue
-				kept.append_array(left)
-				return _filled(str(pattern[1]), taken)
-		return ""
+				# The first that leaves nothing in English, else the first.
+				if left.is_empty():
+					return _filled(str(pattern[1]), taken)
+				if partial.is_empty():
+					partial = _filled(str(pattern[1]), taken)
+					partial_kept = left
+		kept.append_array(partial_kept)
+		return partial
 
 	## [param translated] with what was taken in its places: in order, or
 	## where "%2$s" names one.

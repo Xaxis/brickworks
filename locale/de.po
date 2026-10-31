@@ -357,7 +357,7 @@ msgid "Key strip"
 msgstr "Tastenleiste"
 
 msgid "Split"
-msgstr "Geteilte Ansicht"
+msgstr "Aufteilen"
 
 msgid "Full screen"
 msgstr "Vollbild"
@@ -2626,3 +2626,131 @@ msgstr "OBEN"
 
 msgid "BOTTOM"
 msgstr "UNTEN"
+
+# The model tree's sections
+msgid "Double-click to edit inside; drag onto another to nest"
+msgstr "Doppelklick bearbeitet das Innere; auf eine andere ziehen verschachtelt sie"
+
+msgid "How a builder would split the model into sections, as a set into bags"
+msgstr "Wie ein Baumeister das Modell in Abschnitte teilen würde, wie ein Set in Tüten"
+
+msgid "Accept all"
+msgstr "Alle annehmen"
+
+msgid "Make every suggested section a sub-assembly: one undo"
+msgstr "Jeden vorgeschlagenen Abschnitt zur Baugruppe machen: ein Rückgängig"
+
+msgid "Accept"
+msgstr "Annehmen"
+
+msgid "Make the chosen suggestion a sub-assembly"
+msgstr "Den gewählten Vorschlag zur Baugruppe machen"
+
+msgid "Merge"
+msgstr "Zusammenführen"
+
+msgid "Put the chosen suggestion in with the one it is joined to most (or drag it onto another)"
+msgstr "Den gewählten Vorschlag mit dem zusammenlegen, mit dem er am meisten verbunden ist (oder auf einen anderen ziehen)"
+
+msgid "Part the chosen suggestion in two where it is held least"
+msgstr "Den gewählten Vorschlag dort in zwei teilen, wo er am wenigsten hält"
+
+msgid "Dismiss"
+msgstr "Verwerfen"
+
+msgid "Put the suggestions away"
+msgstr "Die Vorschläge verwerfen"
+
+msgid "Evaluate…"
+msgstr "Bewerten…"
+
+msgid "The chosen section on its own:"
+msgstr "Der gewählte Abschnitt für sich:"
+
+msgid "weight, whether it holds together and stands, what joins it, its steps"
+msgstr "Gewicht, ob er zusammenhält und steht, was ihn verbindet, seine Schritte"
+
+msgid "Break out"
+msgstr "Herauslösen"
+
+msgid "Put back"
+msgstr "Zurücksetzen"
+
+msgid "Pull the chosen section away from the model to work on it (Y); again puts it back"
+msgstr "Den gewählten Abschnitt vom Modell wegziehen, um daran zu arbeiten (Y); nochmals setzt ihn zurück"
+
+msgid "Every section apart, and back together (Shift+Y)"
+msgstr "Alle Abschnitte auseinander, und wieder zusammen (Shift+Y)"
+
+msgid "Drag to share the column between these panels"
+msgstr "Ziehen, um die Spalte zwischen diesen Bereichen aufzuteilen"
+
+# The properties of one part
+msgid "LDraw %s"
+msgstr "LDraw %s"
+
+msgid "BrickLink %s"
+msgstr "BrickLink %s"
+
+msgid "Rebrickable %s"
+msgstr "Rebrickable %s"
+
+msgid "Made here"
+msgstr "Hier erstellt"
+
+msgid "Printed versions… (%d)"
+msgstr "Bedruckte Varianten… (%d)"
+
+msgid "Swap it for one of the prints or stickered versions the LEGO Group made of it"
+msgstr "Es gegen eine der bedruckten oder beklebten Varianten tauschen, die die LEGO Gruppe davon hergestellt hat"
+
+msgid "%d colours: %s"
+msgstr "%d Farben: %s"
+
+msgid "Joined to nothing"
+msgstr "Mit nichts verbunden"
+
+msgid "Joined to 1 other part"
+msgstr "Mit 1 anderen Teil verbunden"
+
+msgid "Joined to %d other parts, directly or through others"
+msgstr "Mit %d anderen Teilen verbunden, direkt oder über andere"
+
+msgid "Joined to %d or more other parts, directly or through others"
+msgstr "Mit %d oder mehr anderen Teilen verbunden, direkt oder über andere"
+
+msgid "Faces: studs up"
+msgstr "Ausrichtung: Noppen oben"
+
+msgid "Faces: studs down"
+msgstr "Ausrichtung: Noppen unten"
+
+msgid "Faces: studs to the side"
+msgstr "Ausrichtung: Noppen zur Seite"
+
+msgid "Step %d of %d in the instructions"
+msgstr "Schritt %d von %d in der Bauanleitung"
+
+msgid "Locked"
+msgstr "Gesperrt"
+
+msgid "%s unlocks everything"
+msgstr "%s entsperrt alles"
+
+msgid "%d parts selected"
+msgstr "%d Teile ausgewählt"
+
+msgid "Joined"
+msgstr "Verbundene"
+
+msgid "Select it and everything joined to it"
+msgstr "Es und alles, was damit verbunden ist, auswählen"
+
+msgid "Lock"
+msgstr "Sperren"
+
+msgid "Keep it from being picked out, moved, painted or taken off"
+msgstr "Verhindern, dass es ausgewählt, bewegt, eingefärbt oder entfernt wird"
+
+msgid "Hide it, to reach what is behind it"
+msgstr "Ausblenden, um an das dahinter zu kommen"

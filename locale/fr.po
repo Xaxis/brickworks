@@ -357,7 +357,7 @@ msgid "Key strip"
 msgstr "Bandeau des touches"
 
 msgid "Split"
-msgstr "Vue partagée"
+msgstr "Diviser"
 
 msgid "Full screen"
 msgstr "Plein écran"
@@ -2626,3 +2626,131 @@ msgstr "DESSUS"
 
 msgid "BOTTOM"
 msgstr "DESSOUS"
+
+# The model tree's sections
+msgid "Double-click to edit inside; drag onto another to nest"
+msgstr "Double-clic pour modifier l'intérieur ; glisser sur un autre pour l'y imbriquer"
+
+msgid "How a builder would split the model into sections, as a set into bags"
+msgstr "Comment un constructeur diviserait le modèle en sections, comme un set en sachets"
+
+msgid "Accept all"
+msgstr "Tout accepter"
+
+msgid "Make every suggested section a sub-assembly: one undo"
+msgstr "Faire de chaque section suggérée un sous-ensemble : une seule annulation"
+
+msgid "Accept"
+msgstr "Accepter"
+
+msgid "Make the chosen suggestion a sub-assembly"
+msgstr "Faire de la suggestion choisie un sous-ensemble"
+
+msgid "Merge"
+msgstr "Fusionner"
+
+msgid "Put the chosen suggestion in with the one it is joined to most (or drag it onto another)"
+msgstr "Réunir la suggestion choisie avec celle à laquelle elle est le plus reliée (ou la glisser sur une autre)"
+
+msgid "Part the chosen suggestion in two where it is held least"
+msgstr "Couper la suggestion choisie en deux là où elle tient le moins"
+
+msgid "Dismiss"
+msgstr "Écarter"
+
+msgid "Put the suggestions away"
+msgstr "Écarter les suggestions"
+
+msgid "Evaluate…"
+msgstr "Évaluer…"
+
+msgid "The chosen section on its own:"
+msgstr "La section choisie seule :"
+
+msgid "weight, whether it holds together and stands, what joins it, its steps"
+msgstr "son poids, si elle tient ensemble et debout, ce qui la relie, ses étapes"
+
+msgid "Break out"
+msgstr "Extraire"
+
+msgid "Put back"
+msgstr "Remettre"
+
+msgid "Pull the chosen section away from the model to work on it (Y); again puts it back"
+msgstr "Écarter la section choisie du modèle pour y travailler (Y) ; une seconde fois la remet en place"
+
+msgid "Every section apart, and back together (Shift+Y)"
+msgstr "Toutes les sections écartées, puis réunies (Shift+Y)"
+
+msgid "Drag to share the column between these panels"
+msgstr "Glisser pour partager la colonne entre ces panneaux"
+
+# The properties of one part
+msgid "LDraw %s"
+msgstr "LDraw %s"
+
+msgid "BrickLink %s"
+msgstr "BrickLink %s"
+
+msgid "Rebrickable %s"
+msgstr "Rebrickable %s"
+
+msgid "Made here"
+msgstr "Créée ici"
+
+msgid "Printed versions… (%d)"
+msgstr "Versions imprimées… (%d)"
+
+msgid "Swap it for one of the prints or stickered versions the LEGO Group made of it"
+msgstr "La remplacer par l'une des versions imprimées ou à autocollant que le Groupe LEGO en a faites"
+
+msgid "%d colours: %s"
+msgstr "%d couleurs : %s"
+
+msgid "Joined to nothing"
+msgstr "Reliée à rien"
+
+msgid "Joined to 1 other part"
+msgstr "Reliée à 1 autre pièce"
+
+msgid "Joined to %d other parts, directly or through others"
+msgstr "Reliée à %d autres pièces, directement ou par d'autres"
+
+msgid "Joined to %d or more other parts, directly or through others"
+msgstr "Reliée à %d autres pièces ou plus, directement ou par d'autres"
+
+msgid "Faces: studs up"
+msgstr "Orientation : tenons en haut"
+
+msgid "Faces: studs down"
+msgstr "Orientation : tenons en bas"
+
+msgid "Faces: studs to the side"
+msgstr "Orientation : tenons sur le côté"
+
+msgid "Step %d of %d in the instructions"
+msgstr "Étape %d sur %d des instructions"
+
+msgid "Locked"
+msgstr "Verrouillée"
+
+msgid "%s unlocks everything"
+msgstr "%s déverrouille tout"
+
+msgid "%d parts selected"
+msgstr "%d pièces sélectionnées"
+
+msgid "Joined"
+msgstr "Reliées"
+
+msgid "Select it and everything joined to it"
+msgstr "La sélectionner avec tout ce qui y est relié"
+
+msgid "Lock"
+msgstr "Verrouiller"
+
+msgid "Keep it from being picked out, moved, painted or taken off"
+msgstr "L'empêcher d'être choisie, déplacée, peinte ou enlevée"
+
+msgid "Hide it, to reach what is behind it"
+msgstr "La masquer, pour atteindre ce qui est derrière"

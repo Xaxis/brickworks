@@ -47,7 +47,7 @@ var _words: Dictionary = {}
 var _missing: Dictionary = {}
 ## A key's name, kept in every language: Ctrl-C, Shift+H, F1, Esc.
 var _KEY: RegEx = RegEx.create_from_string(
-	r"^((Ctrl|Shift|Alt|Cmd|Option)[+-])*([A-Z0-9]|F\d+|Esc|Enter|Space|Tab|Delete|Backspace|Home|End|Page Up|Page Down|Up|Down|Left|Right|\W)$")
+	r"^((Ctrl|Shift|Alt|Cmd|Option)[+-])*(Ctrl|Shift|Alt|Cmd|Option|[A-Z0-9]|F\d+|Esc|Enter|Space|Tab|Delete|Backspace|Home|End|Page Up|Page Down|Up|Down|Left|Right|\W)$")
 ## The part put down to have a selection, and its menu.
 var _brick: int = 0
 ## Names, drawn as they are in any language: the colours', the part's,
@@ -202,6 +202,9 @@ func _gather() -> void:
 		var colour: PartLibrary.BrickColor = library.colors[code]
 		_names[colour.name] = true
 		_names["%s (%d)" % [colour.name, code]] = true
+		if not colour.lego_name.is_empty():
+			_names["LEGO® %s%s" % [colour.lego_name.replace("_", " "),
+				(" %d" % colour.lego_ids[0]) if not colour.lego_ids.is_empty() else ""]] = true
 	_names[Inventory._tidy((library.parts["3001"] as PartLibrary.PartInfo).name)] = true
 	for model: Dictionary in Brain.CHOICES:
 		_names[str(model["name"])] = true
