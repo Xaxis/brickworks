@@ -1168,10 +1168,18 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   drawing meanwhile
   (`BrickWorld.set_drawn`: nothing of the model moves). On Orthanc 18.1 s
   became 9.2 s at a load of 40 to 48, and 6 s headless once the booklet
-  has read the model (`command_probe --subjects=orthanc
-  --only=suggest_sections`), the same sections part for part on the car,
-  house, tower, kart, corner shop, castle, Orthanc, orrery, barn owl and
-  station (`bigmodels2_probe` on Orthanc). Evaluate the
+  has read the model; then 8.4 to 10.0 s became 4.8 to 7.3 s at a load of
+  17 to 25, side by side, with the joint graph read on a worker of its own
+  beside the order (`Sections._cut_on_a_worker`) and the planner asking
+  only where an answer can be: a part under one by the height of tops
+  (`Instructions._hangers_of`), loops again only among parts on one, the
+  next part among its region's own ready (`_sequence_into`)
+  (`command_probe --subjects=orthanc --only=suggest_sections`). The
+  reading, the booklet's steps and the sections are the same, hash for
+  hash, on the car, house, tower, kart, corner shop, castle, Orthanc,
+  orrery, barn owl and station, with their authored steps and without, and
+  part for part cut on one worker or two (`bigmodels2_probe` on Orthanc).
+  Evaluate the
   section… shows the chosen one alone: parts as the parts list counts
   them, lots, weight, one piece by the joint graph and by the build check
   on it alone (`Assistant._checked`), whether it stands on its own base

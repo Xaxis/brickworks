@@ -15,7 +15,9 @@
 ##              check is, and the window keeps drawing meanwhile.
 ##   sections   suggested from the reading the booklet keeps
 ##              (Instructions.read_shape) and from a fresh one, the same
-##              sections, part for part, and the kept reading unchanged.
+##              sections, part for part, and the kept reading unchanged; and
+##              on workers, the joint graph read beside the order
+##              (Sections._cut_on_a_worker), the same again.
 ##   cut        where Colour the hidden parts cuts the model open is where
 ##              asking every box at every plane cuts it, for parts changed
 ##              all over the model.
@@ -209,6 +211,15 @@ func _sections() -> void:
 		and (warm["sections"] as Array).size() >= 2)
 	_check("...and the kept reading is as it was (%d parts)" % kept.size(), kept_before
 		== _nodes_said(Instructions.read_shape(_world, _library, _store.scenery, false)))
+	# On workers, the joint graph read beside the order, as Suggest sections
+	# reads a big model: the same sections as in one go.
+	from = Time.get_ticks_msec()
+	var paced: Dictionary = await sections._cut_on_a_worker(bricks, wanted, null)
+	var paced_ms: int = Time.get_ticks_msec() - from
+	_check("...and on workers, the joint graph beside the order (%d ms): the same %d" % [paced_ms,
+		(paced.get("sections", []) as Array).size()],
+		str([paced.get("sections"), paced.get("figures"), paced.get("loose")])
+			== str([warm["sections"], warm["figures"], warm["loose"]]))
 	var fresh: Array[Instructions.Node2] = Instructions._survey(_world, _library, _store.scenery)
 	Instructions._find_supports(fresh, _world, _library)
 	Instructions._find_joints(fresh, _world, _library)
