@@ -1806,7 +1806,9 @@ picture the assistant is shown.
   product shader and none of the window's, Filmic, a picture that differs
   from the window's look, white corners above 0.85, the gradient at least
   0.1 darker in its corners than under the model, dark corners below 0.12,
-  depth of field at f/2 losing detail, the window's own GPU time per frame
+  depth of field at f/2 losing detail (at Best's own samples, measured on
+  4 x 4 blocks so a traced picture's grain is not read as detail), the
+  window's own GPU time per frame
   (median of 120) within 10% + 0.3 ms of before, its environment as it was;
   then sixteen colour swatches at Good, each lit face's CIEDE2000 from
   LDConfig printed: black's bricks' mean lightness under 0.19 (0.218 before
@@ -2215,7 +2217,9 @@ godot --path . --resolution 1200x800 --script src/dev/highlight_probe.gd   # a g
 ~/.claude/claude-core/bin/gpu godot --path . --resolution 1400x900 --script src/dev/finish_probe.gd
 # File, Render…: every grade the size asked, the model in it, the sweep white,
 # a soft key shadow (measured by drawing it again without), the model as light
-# and coloured as Quick, each HDRI as light as the three lights, transparent
+# and coloured as Quick (path traced, its gloss showing the white sweep, as
+# coloured as a photographed place's light asks: x0.75), each HDRI as light as
+# the three lights, transparent
 # keeps the contact shadow, a 6-frame turntable as an animated WebP, Cancel,
 # and the dialog through the menu writing a PNG, 24 frames, a WebP and an MP4.
 # Both renderers: Good and Best are made differently on each.

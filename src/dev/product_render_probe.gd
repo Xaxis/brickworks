@@ -144,7 +144,9 @@ func _run() -> void:
 	# Depth of field, at Best.
 	var sharp_settings: RenderSettings = _settings("product", "white")
 	sharp_settings.quality = RenderSettings.Quality.BEST
-	sharp_settings.samples = 16
+	# Best's own count: path traced, 16 samples are grain that the open lens
+	# only adds to, and no measure of sharpness.
+	sharp_settings.samples = RenderSettings.best_samples()
 	var sharp: Image = await _render.render(_world, sharp_settings)
 	var soft_settings: RenderSettings = sharp_settings.copy()
 	soft_settings.f_stop = 2.0
@@ -500,17 +502,30 @@ func _floor_under(image: Image) -> float:
 
 
 ## How much fine detail a picture has: the mean difference between
-## neighbouring pixels.
+## neighbouring blocks of pixels.
 func _detail(image: Image) -> float:
+	# On the mean of each 4 x 4 pixels: a path traced Best's grain is
+	# per pixel, and it grows with the lens open, while an edge spans blocks.
+	var block: int = 4
+	var wide: int = image.get_width() / block
+	var high: int = image.get_height() / block
+	var means := PackedFloat32Array()
+	means.resize(wide * high)
+	for by: int in high:
+		for bx: int in wide:
+			var total: float = 0.0
+			for y: int in block:
+				for x: int in block:
+					total += image.get_pixel(bx * block + x, by * block + y).get_luminance()
+			means[by * wide + bx] = total / float(block * block)
 	var sum: float = 0.0
 	var count: int = 0
-	for y: int in range(1, image.get_height()):
-		for x: int in range(1, image.get_width()):
-			var here: float = image.get_pixel(x, y).get_luminance()
-			sum += absf(here - image.get_pixel(x - 1, y).get_luminance()) \
-				+ absf(here - image.get_pixel(x, y - 1).get_luminance())
+	for y: int in range(1, high):
+		for x: int in range(1, wide):
+			var here: float = means[y * wide + x]
+			sum += absf(here - means[y * wide + x - 1]) + absf(here - means[(y - 1) * wide + x])
 			count += 1
-	return sum / float(count)
+	return sum / float(maxi(count, 1))
 
 
 func _say(what: String, ok: bool) -> void:
