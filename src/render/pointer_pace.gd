@@ -21,11 +21,14 @@
 ## as before. What the pointer is over is known at once either way (a click
 ## acts on it, Together says it); only its drawing waits.
 ##
-## A drawn frame's cost is the page's, from its drawing to the next frame:
-## a browser holds the next frame until the one before is drawn, and in
-## software it waits there, or in the next frame's drawing when frames are
-## drawn back to back. The frame's own scripts are not counted: a probe's
-## busy frames are not slow drawing.
+## A drawn frame's cost is from its drawing to the next frame, the frame's
+## own scripts not counted, so a probe's busy frames are not slow drawing.
+## In a browser it is to when the card passed a fence put in after it, as
+## FrameBudget times a look's frames (GpuFence): the page hands a frame over
+## at its own pace and the card draws it later, so the time to the next
+## frame said 17 to 60 ms of frames the card drew in 0.4 to 2.6 s on the
+## rich car, and the outline was drawn at the steps after all (the owner's
+## send 385 ms, a unit preview of the first try).
 class_name PointerPace
 extends RefCounted
 
@@ -47,6 +50,11 @@ static var _last_frame_us: int = 0
 static var _draw_us: int = 0
 static var _drawn: int = 0
 static var _moved_us: int = -1
+## In a browser, the drawn frames whose fences the card has not passed, as
+## [fence, when the frame's drawing began], and when it last passed one.
+static var _fences: Array = []
+static var _card_us: int = 0
+static var _by_fence: bool = false
 
 
 ## Whether what the pointer is over may be drawn in this frame, asked for
@@ -92,6 +100,8 @@ static func _listen() -> void:
 	# scripts, and a lambda still connected to it at exit aborted the quit
 	# (core dumped, hover_cost_probe).
 	RenderingServer.frame_pre_draw.connect(PointerPace._drawing)
+	if OS.has_feature("web"):
+		RenderingServer.frame_post_draw.connect(PointerPace._drew)
 
 
 static func _input(event: InputEvent) -> void:
@@ -103,14 +113,39 @@ static func _drawing() -> void:
 	_draw_us = Time.get_ticks_usec()
 
 
+static func _drew() -> void:
+	var fence: int = GpuFence.put()
+	if fence > 0:
+		_by_fence = true
+		_fences.append([fence, _draw_us])
+
+
 static func _frame() -> void:
 	var at: int = Time.get_ticks_usec()
-	# A frame out of view is paced by the connector's clock, not drawn for
-	# anyone (FrameBudget does not count it either).
-	if Engine.get_frames_drawn() != _drawn and _draw_us > 0 and not FramePace.unwatched:
-		_costs.append((at - _draw_us) / 1000.0)
-		while _costs.size() > KEPT:
-			_costs.remove_at(0)
+	if _by_fence:
+		# Passed together, they share the time from when the first began,
+		# or the card passed the one before, if later (FrameBudget._fenced).
+		var done: int = 0
+		while done < _fences.size() and GpuFence.passed(int(_fences[done][0])):
+			done += 1
+		if done > 0:
+			var ms: float = (at - maxi(int(_fences[0][1]), _card_us)) / 1000.0 / done
+			_card_us = at
+			_fences = _fences.slice(done)
+			for n in done:
+				_keep(ms)
+	elif Engine.get_frames_drawn() != _drawn and _draw_us > 0:
+		_keep((at - _draw_us) / 1000.0)
 	_drawn = Engine.get_frames_drawn()
 	_last_frame_us = _frame_us
 	_frame_us = at
+
+
+static func _keep(ms: float) -> void:
+	# A frame out of view is paced by the connector's clock, not drawn for
+	# anyone (FrameBudget does not count it either).
+	if FramePace.unwatched:
+		return
+	_costs.append(ms)
+	while _costs.size() > KEPT:
+		_costs.remove_at(0)

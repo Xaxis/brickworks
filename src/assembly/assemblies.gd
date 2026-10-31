@@ -45,18 +45,24 @@ var _syncing: bool = false
 ## Moving all of a 5,025-part set with 160 copies of sub-models walked the
 ## model twice for each, and then again for each of its copies
 ## (2026-10-16). While a pass over many assemblies at once holds it
-## ([method _begin_pass]) it is kept through the pass's own changes;
-## otherwise it is made again once the model or its tree has changed
-## ([member _indexed_as]). The pointer on a part of Orthanc asked which
-## sub-assembly a click there takes, every step onto another part, and
-## each asking walked all 10,101 parts: 15 to 24 ms of the frame on a
-## desktop, whatever the part (hover_cost_probe, 2026-10-31).
+## ([method _begin_pass]) it is kept through the pass's own changes.
+## Outside one it is kept while the model and its tree are as they were
+## ([member _indexed_as]), and made for a model asked about a second time:
+## the pointer on a part of Orthanc asked which sub-assembly a click there
+## takes, every step onto another part, and each asking walked all 10,101
+## parts, 15 to 24 ms of the frame on a desktop (hover_cost_probe,
+## 2026-10-31). A model asked about once is walked once, as before: made
+## for every question of an edit that changes the model between them, the
+## index, dearer than a walk, took bigmodel_probe's redo of a big set's move
+## to 1,233 ms, against 348 and 615 walked and 554 so.
 var _under: Dictionary = {}
 var _passing: int = 0
 var _indexed: bool = false
-## What the model was when the index was made, outside a pass: cleared,
-## changed, any part's group or unit, the baseplates.
+## What the model was when the index was made, outside a pass, and when a
+## question was last answered by a walk: cleared, changed, any part's
+## group or unit, the baseplates.
 var _indexed_as: Array = []
+var _walked_as: Array = []
 
 
 # -- paths --------------------------------------------------------------------
@@ -239,6 +245,14 @@ func bricks_under(path: String) -> Array:
 	var out: Array = []
 	if path.is_empty():
 		return out
+	if _passing == 0:
+		var model: Array = _model()
+		if not (_indexed and model == _indexed_as) and model != _walked_as:
+			_walked_as = model
+			for brick: BrickWorld.Brick in world.bricks():
+				if not scenery.has(brick.id) and within(path_of(brick), path):
+					out.append(brick)
+			return out
 	_index()
 	return (_under.get(path, []) as Array).duplicate()
 
@@ -705,7 +719,7 @@ func _end_pass() -> void:
 ## The bricks under every path, as [method bricks_under] finds them one
 ## path at a time: each brick under its own path and every path above it.
 func _index() -> void:
-	var model: Array = [world.generation(), world.revision, BrickWorld.paths_written, scenery.size()]
+	var model: Array = _model()
 	if _indexed and (_passing > 0 or model == _indexed_as):
 		return
 	_indexed = true
@@ -722,6 +736,11 @@ func _index() -> void:
 				listed = []
 				_under[path] = listed
 			(listed as Array).append(brick)
+
+
+## The model as the index is kept for.
+func _model() -> Array:
+	return [world.generation(), world.revision, BrickWorld.paths_written, scenery.size()]
 
 
 ## [method content] of every assembly at once, path -> its content: one

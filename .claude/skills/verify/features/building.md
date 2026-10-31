@@ -105,18 +105,25 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   software) the outline drawn at the mouse's first step held the second,
   and Together said where the pointer was 412 ms after the mouse moved
   (median, rel-m229). A device that draws quickly draws it in the frame it
-  changed, as before. What a click would take (`Builder.takes`, the part's
-  whole sub-assembly) is found from `Assemblies`' index, kept between
-  hovers and made again once the model or its sub-assemblies changed
-  (`BrickWorld.paths_written`): it walked all 10,101 bricks of Orthanc for
-  each step onto another sub-assembly, 15 to 24 ms. `hover_cost_probe` (on
-  the GPU, Orthanc) times each step's frame and each piece alone, then
-  pretends a slow device and checks the steps draw nothing and the part
-  the pointer rests on is outlined the frame after; `tools/web/hover_cost.mjs`
-  is the browser's measure. On the rich car in Chromium on SwiftShader, the
-  two builds in turn at load 49: the mouse's second step reached the page
-  26 ms after the move at the median against 71 before, 60 against 1,300 at
-  p95, the first step's frame spending 0 ms in WebGL against 34 (2026-10-31).
+  changed, as before. A drawn frame's cost is to the next frame, and in a
+  browser to when the card passed a fence put in after it (`GpuFence`): the
+  page hands frames over at its own pace, so timed to the next frame the
+  rich car's said 17 to 60 ms and the outline was still drawn at the steps.
+  What a click would take (`Builder.takes`, the part's whole sub-assembly)
+  is found from `Assemblies`' index, made on the second question about a
+  model and kept between hovers until the model or its sub-assemblies
+  change (`BrickWorld.paths_written`): it walked all 10,101 bricks of
+  Orthanc for each step onto another sub-assembly, 9 to 15 ms; made for
+  every question of an edit, the index took `bigmodel_probe`'s redo of a
+  big set's move to 1,233 ms. `hover_cost_probe` (on the GPU, Orthanc)
+  times each step's frame and each piece alone, then pretends a slow
+  device and checks the steps draw nothing and the part the pointer rests
+  on is outlined the frame after; `tools/web/hover_cost.mjs` is the
+  browser's measure. On the rich car in Chromium on SwiftShader, the two
+  builds in turn at load 14 to 21: the mouse's second step reached the
+  page 22 ms after the move at the median against 48 before, 35 against 71
+  at p95, the first step's frame spending 0 ms in WebGL against 24
+  (2026-10-31).
 - `selection edits`: with bricks selected, `C` paints them the current colour
   (so does a colour clicked in the palette, see [parts](parts.md)'s `palette`),
   the arrow keys and W A S D move them across the ground by the snap, Page Up
