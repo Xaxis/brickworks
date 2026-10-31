@@ -8607,18 +8607,21 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 			if control.clip_contents or control is ScrollContainer:
 				clip = clip.intersection(rect)
 			var shown: Rect2 = rect.intersection(clip)
-			var seen: bool = shown.intersects(screen) and rect.size.x > 0.5 and rect.size.y > 0.5
+			var laid: bool = rect.size.x > 0.5 and rect.size.y > 0.5
+			var seen: bool = shown.intersects(screen) and laid
 			var box: Array = box_of.call(rect)
 			var named: String = "%s %s" % [_name_of(control), str(control.name)]
 			# Off the screen: not inside it, and in nothing that scrolls, as the
-			# phone's layout is judged; in a dialog, what of it its scrolls show
-			# is not all inside the screen, and while the keyboard is up the
-			# dialog typed in is judged above it.
-			var off: bool = seen and clip == anywhere and not screen.grow(1.0).encloses(rect)
+			# phone's layout is judged, wholly off it too (a phone on its side
+			# had the parts sheet's foot all under the screen, and nothing said
+			# so); in a dialog, what of it its scrolls show is not all inside
+			# the screen, and while the keyboard is up the dialog typed in is
+			# judged above it.
+			var off: bool = laid and clip == anywhere and not screen.grow(1.0).encloses(rect)
 			if not dialog.is_empty():
 				var bounds: Rect2 = above if typed_in == null or typed_in == holder else screen
 				off = seen and not bounds.grow(1.0).encloses(shown)
-			if seen and TouchSizing.takes(control):
+			if (seen or off) and TouchSizing.takes(control):
 				var target: Dictionary = {"name": named, "box": box, "off": off, "in": dialog}
 				if control is BaseButton and (control as BaseButton).toggle_mode:
 					target["on"] = (control as BaseButton).button_pressed
@@ -8635,7 +8638,7 @@ func _phone_audit(to_window: Transform2D, per_css: float) -> Dictionary:
 			elif control is LineEdit:
 				var field: LineEdit = control
 				words = field.text if not field.text.is_empty() else field.placeholder_text
-			if seen and not words.strip_edges().is_empty():
+			if (seen or off) and not words.strip_edges().is_empty():
 				texts.append({"name": named, "text": words.substr(0, 40),
 					"px": points_of.call(control.get_theme_font_size("font_size")),
 					"box": box, "off": off, "in": dialog})

@@ -1055,9 +1055,11 @@ class Sheet extends PanelContainer:
 		get_viewport().size_changed.connect(_place, CONNECT_DEFERRED)
 		# A panel is as tall as the room between the bars, which what it
 		# holds is laid out to only once it is shown: hidden, the bin's
-		# rows of parts wanted 1,800 units, and the panel kept that.
-		if edge != "foot":
-			minimum_size_changed.connect(_place, CONNECT_DEFERRED)
+		# rows of parts wanted 1,800 units, and the panel kept that. A
+		# sheet likewise: its first frame open, the bin's status line, not
+		# yet as wide as its row, wanted 1,800 points and the Parts sheet
+		# kept them, its foot under the screen (rel-m226).
+		minimum_size_changed.connect(_place, CONNECT_DEFERRED)
 
 	func set_title(words: String) -> void:
 		title = words
@@ -1123,9 +1125,14 @@ class Sheet extends PanelContainer:
 			position = Vector2(0.0 if edge == "left" else room.x - size.x, top)
 			return
 		var wide: float = minf(room.x, phone.p(560))
-		position = Vector2((room.x - wide) * 0.5, room.y - _height)
-		size = Vector2(wide, _height)
-		custom_minimum_size = Vector2(wide, _height)
+		# Its foot on the screen's: taller than asked where what it holds
+		# needs more, up to the whole screen.
+		custom_minimum_size = Vector2(wide, 0.0)
+		var tall: float = clampf(maxf(_height, get_combined_minimum_size().y), 0.0,
+			_height_for("full"))
+		position = Vector2((room.x - wide) * 0.5, room.y - tall)
+		size = Vector2(wide, tall)
+		custom_minimum_size = Vector2(wide, tall)
 
 	func _head_input(event: InputEvent) -> void:
 		if edge != "foot":

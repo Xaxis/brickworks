@@ -132,7 +132,8 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_notices.py",
-        "tests/test_gallery_builds.py"
+        "tests/test_gallery_builds.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -3685,7 +3686,8 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_notices.py",
-        "tests/test_gallery_builds.py"
+        "tests/test_gallery_builds.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -3762,7 +3764,8 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_notices.py",
-        "tests/test_gallery_builds.py"
+        "tests/test_gallery_builds.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -3928,7 +3931,8 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_notices.py",
-        "tests/test_gallery_builds.py"
+        "tests/test_gallery_builds.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -4063,7 +4067,8 @@
       "area": "web",
       "tests": [
         "tests/test_docs_site.py",
-        "tests/test_release.py"
+        "tests/test_release.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -4616,7 +4621,8 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_notices.py",
-        "tests/test_gallery_builds.py"
+        "tests/test_gallery_builds.py",
+        "tests/test_release_train.py"
       ]
     },
     {
