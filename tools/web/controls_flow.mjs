@@ -188,6 +188,9 @@ await task("place three more", async () => {
   for (const at of spots.slice(5, 8)) await click(at.x, at.y - 160);
 }, async (was, now) => now.state.bricks === was.state.bricks + 3);
 await task("rename the model, then turn the view by a key", async () => {
+  // The part Q took let go of first: with one in hand a digit types a move
+  // and never turns the view (typed moves, rel-m222; cursor_check.mjs).
+  if (recipe === "new") await key("Escape");
   const field = await controlAt("model_name");
   await click(field.x, field.y);
   await key("Control+A");
