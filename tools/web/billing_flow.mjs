@@ -213,8 +213,11 @@ try {
     const { page, context, asked } = await open("/settings", { width: 1280, theme: "light", who, label: "off" });
     check("/settings drawn, with no Plan row", (await planSaid(page)) === null);
     await page.waitForTimeout(1500);
-    check(`/settings asked nothing of plans: ${asked.filter((p) => /plan/.test(p)).join(" ") || "nothing"}`,
-      !asked.some((p) => p.startsWith("/api/plans") || p === "/plan.js"));
+    // Your feedback on /settings is read from /api/plans?op=feedback
+    // (api/_feedback.js, 2026-10-29), which is not paying.
+    const ofPlans = (p) => (p.startsWith("/api/plans") && !/[?&]op=feedback(&|$)/.test(p)) || p === "/plan.js";
+    check(`/settings asked nothing of plans: ${asked.filter(ofPlans).join(" ") || "nothing"}`,
+      !asked.some(ofPlans));
     await shot(page, "settings-off-1280-light.png", true);
     await context.close();
   } else {

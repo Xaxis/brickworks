@@ -1111,7 +1111,11 @@ try {
     await wait(1500);
     await followed();
     await ask(owner.page, [{ op: "select", uids: [] }]);
-    await wait(2000);
+    // Until the second browser has it, not for a time: on a box drawing
+    // three browsers in software the outline was still there 3.5 s on, and
+    // the picture "before" had it too (2026-10-31).
+    await until(async () => !((await together(guest.page)).selections || {})[ownerWho],
+      "the owner's selection gone from the second browser", 15).catch(() => null);
     spot = (await partsInSight())[0];
   }
   // Each picture with the owner's pointer off the model, so its dot is in

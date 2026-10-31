@@ -129,6 +129,35 @@ export async function controlsWith(page, names, ms = 10000, { any = false } = {}
   return where;
 }
 
+/// The page's next [frames] frames, each a turn of the app's loop, however
+/// long software drawing makes them: a press is read on the first, so a menu
+/// it opens is up once they have run. A fixed wait typed into a menu not up
+/// yet on a box drawing three browsers, and a word's letters a frame of over
+/// 2 s apart began the menu's search again (cloud_library, 2026-10-31): pick
+/// from a menu by its first letter.
+export async function framesDrawn(page, frames = 3) {
+  await page.evaluate((left) => new Promise((done) => {
+    const next = () => (--left > 0 ? requestAnimationFrame(next) : done());
+    requestAnimationFrame(next);
+  }), frames);
+}
+
+/// From a model's page into the app, as a person goes there: since the
+/// picture turns the model in 3D in its own place (viewer369, 2026-10-30,
+/// web/start3d.js), pressed, then the 3D view's Open in the app, the
+/// picture's own link, there once a quarter of the model has drawn, or at
+/// once for one too big to turn. A press on the picture alone waited 180 s
+/// for an app it never opens (play, share_steps, 2026-10-31). False on a page
+/// with no such picture (the local relay's).
+export async function appFromModelPage(page, { finger = false, ms = 180000 } = {}) {
+  const picture = await page.$('.model-page a.picture[href^="/app?view="]').catch(() => null);
+  if (!picture) return false;
+  await (finger ? picture.tap() : picture.click());
+  const app = await page.waitForSelector(".view3d-app:not([hidden]), .view3d-said a.cta", { state: "visible", timeout: ms });
+  await Promise.all([page.waitForURL(/\/app\?view=/, { timeout: ms }), finger ? app.tap() : app.click()]);
+  return true;
+}
+
 // The assistant's controls, which live in the right-hand column.
 const ASSISTANT = /^(key_field|use_key|change_key|brief|build|stop|connect_claude|claude_|connector_)/;
 // The model tree's and the properties' controls: down the right-hand
