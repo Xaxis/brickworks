@@ -567,15 +567,17 @@ try {
     }
     sends.stop();
     polls.stop();
-    // A move's send is the owner's first after the mouse moved that carried
-    // where the second page now has the pointer. Its page's own last send,
+    // A move's send is the owner's that carried where the second page now
+    // has the pointer: of the sends begun before the page had it, the last
+    // run of those saying that place, its first. Its page's own last send,
     // read once the second page had the move, paired a move with a send
     // that did not carry it: a later one when the mouse's two steps sent
     // twice, or an earlier one, the page not yet told back of the last.
+    const begun = [...sends.list].sort((a, b) => a.start - b.start);
     for (const row of rows) {
-      const carried = sends.list.filter((one) => one.carried === row.shown && one.start >= row.t0 - 5)
-        .sort((a, b) => a.start - b.start)[0];
-      if (carried) row.sent = carried.start;
+      let n = begun.findLastIndex((one) => one.start <= row.heard && one.carried === row.shown);
+      while (n > 0 && begun[n - 1].carried === row.shown) n -= 1;
+      if (n >= 0) row.sent = begun[n].start;
       stages.send.push(row.sent - row.t0);
       stages.reach.push(row.heard - row.sent);
     }
