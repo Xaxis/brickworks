@@ -511,6 +511,34 @@ try {
     const moves = 40;
     const sends = tripsOf(owner.page, ["point"]);
     const polls = tripsOf(guest.page, ["poll"]);
+    // The second page's polls as its own script sees them (a poll answered
+    // a line at a time is never "finished" to the browser's network log):
+    // asked, its head in, each piece of it, its end.
+    await guest.page.evaluate(() => {
+      window.__polls = [];
+      if (window.__pollsWatched) return;
+      window.__pollsWatched = true;
+      const real = window.fetch;
+      window.fetch = function (input, init) {
+        const asked = real.apply(this, arguments);
+        if (!String(input?.url || input).includes("op=poll")) return asked;
+        const row = { start: Date.now(), head: null, pieces: [], end: null };
+        if (window.__polls.length < 2000) window.__polls.push(row);
+        return asked.then((answer) => {
+          row.head = Date.now();
+          const reader = answer.clone().body?.getReader();
+          (async () => {
+            for (;;) {
+              const { done } = await reader.read();
+              if (done) break;
+              row.pieces.push(Date.now());
+            }
+            row.end = Date.now();
+          })().catch(() => {});
+          return answer;
+        });
+      };
+    });
     // Each page's frames meanwhile (unix ms): a page takes an answer, and
     // notices the mouse, only between them.
     for (const who of [owner, guest]) {
@@ -585,6 +613,7 @@ try {
     for (const [name, who] of [["owner", owner], ["guest", guest]]) {
       frames[name] = await who.page.evaluate(() => window.__frameUnix || []).catch(() => []);
     }
+    const asked = await guest.page.evaluate(() => window.__polls || []).catch(() => []);
     // The longest a page went between two frames within [from, to].
     const held = (list, from, to) => {
       let most = 0;
@@ -625,7 +654,7 @@ try {
         + ` poll asked after the send was answered, no poll open before it ${both("gap")}, the page's thread`
         + ` after the answer was in ${both("thread")}` : ""));
     writeFileSync(path.join(out, `pointer_${label.replace(/[^a-z0-9]+/gi, "_").slice(0, 40)}.json`),
-      JSON.stringify({ rows, trips, missed, sends: sends.list, polls: polls.list, frames }, null, 1));
+      JSON.stringify({ rows, trips, missed, sends: sends.list, polls: polls.list, frames, asked }, null, 1));
     console.log(`        frames meanwhile (p50, p95 ms): the owner's longest in the 1.5 s after each move`
       + ` ${p(rows.map((one) => one.owner_held), 0.5)}, ${p(rows.map((one) => one.owner_held), 0.95)}; the second page's`
       + ` longest before it had the move ${p(rows.map((one) => one.guest_held), 0.5)}, ${p(rows.map((one) => one.guest_held), 0.95)}`);
