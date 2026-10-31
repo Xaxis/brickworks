@@ -113,10 +113,13 @@ that offers each system its own build. The cycle and its cadence are
   ships it in turn, detached: it waits until PREV's `_lead.out` says
   brickworks.diy serves it, makes the release worktree, merges BRANCH at
   its tip then (a later commit waits for the next release), refuses a dirty
-  or half-merged tree, runs the lists and the probes three at a time, then
-  `ship.sh`, and retires the worktrees once live. `status` says each one's
-  step, its checks passed of all, and when it should serve, under what
-  brickworks.diy serves and since when; `hold TAG`
+  or half-merged tree, runs the lists, then the probes (four at a time, at
+  the release's priority) and `ship.sh` side by side, main moving only once
+  every probe passed (`TAG.probes`), and retires the worktrees once live.
+  Staged with checks, it runs them on brickworks.diy as it is at once
+  (`train.sh stale`). `status` says each one's step, its checks and probes
+  passed of all, which of its checks already fail on brickworks.diy, and
+  when it should serve, under what brickworks.diy serves and since when; `hold TAG`
   and `release TAG` set and lift a hold. Restaging a stopped TAG clears
   its worktree and branch when they hold its merge alone, and refuses when
   they hold a fix of their own. tools/release/README.md has the
@@ -269,20 +272,31 @@ whose size is one byte off is `FAIL ... answered '200 <size>'`.
 python3 tools/minitest.py tests/test_release_train.py
 ```
 
-Proves it when: `7 passed`, in about 17 s. Each test makes a repository
-with an origin and unit worktrees, and stand-ins for release_wt.sh,
-merge_unit.sh, ship.sh, check.sh and probe.sh (retire_wt.sh is the real
-one), and runs the train detached as staged: it waits for the release
-before it, then ships the checks, probes and title as edited after staging;
-a hold stops it before the merge and before the ship; a tree left dirty or
+Proves it when: `14 passed`, in about 45 s, and 8 copies at once all pass
+(about 52 s each). Each test makes a repository with an origin and unit
+worktrees; train.sh, ship.sh, preview_lib.sh and retire_wt.sh are the real
+ones, with stand-ins for release_wt.sh, merge_unit.sh, the gates,
+deploy.sh, preview_checks.sh, check.sh and probe.sh, and for heavy, godot
+and curl by HOME and PATH. It runs the train detached as staged: it waits
+for the release before it, then ships the checks, probes and title as
+edited after staging; a hold stops it before the merge and before the
+probes and the ship, and one set while the ship waits for its probes still
+holds; the battery runs while a probe still runs, and the preview is
+promoted only after the last probe ended (`probe_times`, `check_times`,
+`promoted`); a probe failing then stops the ship before main moves, the
+result `stopped: probes failed: NAME (TAG_probe_NAME.log)`; its checks run
+on brickworks.diy as it is staged, status saying `already failing there:
+people; failing there, changed since: light_render`; a ship that ends first
+stops the probes beside it; preview_checks.sh runs 3 checks at once
+(`PC_AT_ONCE`) and begins none once the probes failed (`exit=125`); a tree left dirty or
 mid-merge is refused, and so is a probe with a FAIL line or a nonzero exit;
 it stops when the release before held, was killed, or died without a word,
-and at its deadline; and `status` reads `checks: 2 of 4 passed; failed: io (passed
-alone); 1 to run` mid-ship and `live: brickworks.diy serves it (SHA)` after,
+and at its deadline; and `status` reads `checks: 2 of 4 passed; failed: io; 1 to run`
+mid-ship, `failed: io (passed alone)` once ship.sh has run it alone, and `live: brickworks.diy serves it (SHA)` after,
 its first line `live: brickworks.diy serves SHA, TAG's, since HH:MMZ`, and
 a ship begun by hand is listed with its ETA (a median ship after it began)
-and the train behind it a ship after that. Five probes run no more than
-three at once, and one that fails beside others says `beside others: again
+and the train behind it a ship after that. Six probes run no more than
+four at once, and one that fails beside others says `beside others: again
 alone` and passes alone (`TRAIN_PROBES_AT_ONCE=1` stops on it). A commit to the branch while it
 merges ships in the next release, not this one (`tip` in the spec is the one
 merged); a restage after a failed probe says `cleared TAG's attempt before

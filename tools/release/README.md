@@ -28,10 +28,21 @@ began, and gives up at its deadline (`TRAIN_WAIT`, 6 hours). Then
 `release_wt.sh` from origin/main, `merge_unit.sh` of the branch's tip
 then (in the spec's `tip`; a commit to the branch after it waits for the
 next release) as `Merge: <title>` with `MERGE_GATES=ship`, a tree dirty or
-mid-merge refused, `check.sh --lists`, the probes three at a time
-(`TRAIN_PROBES_AT_ONCE`; one failing beside others runs again alone before
-it counts, and its exit and its FAIL lines both count), and `ship.sh` with the checks, which promotes the very preview its
-checks passed as soon as the battery ends. Once brickworks.diy serves the
+mid-merge refused, `check.sh --lists`, then the probes and `ship.sh` side
+by side. The probes run four at a time (`TRAIN_PROBES_AT_ONCE`; one failing
+beside others runs again alone before it counts, and its exit and its FAIL
+lines both count) at the release's priority, in a process group of their
+own. `ship.sh` makes its gates, preview and checks meanwhile, and moves main
+only once `<tag>.probes` is gone, every probe passed: it says `running
+PID: NAMES` until then, or `failed: NAMES`, and a failure stops the ship
+before main moves (the checks under way end as they would; none more
+begins). One after the other, rel-m226's 35 probes took 50 minutes and its
+ship an hour more, while the GPU the probes wait for sat idle through the
+ship (2026-10-30). The ship promotes the very preview its checks passed.
+A train staged with checks also runs them at once on brickworks.diy as it
+is (`train.sh stale`, from the worktree the branch is checked out in, as
+ordinary jobs), and `status` says which already fail there: people, stale
+since achievements, held rel-m226 two hours on. Once brickworks.diy serves the
 release's sha, it retires the release's worktree and each unit's whose HEAD
 is on main and which holds no file git does not track (`retire_wt.sh`). Its
 spec is a file each in `bench/results/release-out/<tag>.train/` (branch,
@@ -101,7 +112,8 @@ What each one guards against, all learned the hard way on 2026-10-13:
   the list is behind (`tools/fresh_import.sh`, one import a checkout under
   `.godot/import.lock`) and refuses (exit 2) when an import cannot fix it;
   the parse gate imports whenever it is behind, not only when it is missing.
-- `preview_checks.sh` runs the named browser checks, two at a time. Timing
+- `preview_checks.sh` runs the named browser checks, `PC_AT_ONCE` at a
+  time (3). Timing
   checks (idle, arrival, progress, cursor) run alone: beside a heavy flow,
   idle drew 4 frames for 7 moves, against 16 alone. An unknown name fails,
   where it used to run bare node and "pass". The script runs from a copy
@@ -201,9 +213,12 @@ What each one guards against, all learned the hard way on 2026-10-13:
   `version.json`, and ship.sh never a unit's preview (`--unit`, without
   production's secrets). Should the promotion not go, it deploys production
   afresh with `deploy.sh --prod`, as releases did before.
-- `ship.sh` takes `BOX_HEAVY_PRIORITY` for the release only. Probe batches
-  must not take it: it holds every other agent's work. After promoting, it
-  waits 90 s for the CDN before checking the live site.
+- `ship.sh` takes `BOX_HEAVY_PRIORITY` for the release only, and so do the
+  train's own probes, which run beside it: heavy holds a project's ordinary
+  jobs back while its priority job runs, so ordinary probes would wait out
+  the ship. A unit's probe batches must not take it: it holds every other
+  agent's work. After promoting, it waits 90 s for the CDN before checking
+  the live site.
 
 - `unit_preview.sh <worktree> [check…]` is how a unit proves its site
   change before it says ready. It deploys the worktree unpromoted
