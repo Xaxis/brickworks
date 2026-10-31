@@ -839,7 +839,9 @@ echo "$name: all passed"
 """)
     node.chmod(0o755)
     heavy = tmp_path / "home/.claude/claude-core/bin/heavy"
-    heavy.write_text('#!/bin/bash\n# stand-in: a slot at once, solo or not\n[ "$1" = --solo ] && shift\nexec "$@"\n')
+    heavy.write_text('#!/bin/bash\n# stand-in: a slot at once, solo or not, noting how each was asked for\n'
+                     '[ "$1" = --solo ] && echo "solo gap=${BOX_HEAVY_SOLO_GAP:-unset} priority=${BOX_HEAVY_PRIORITY:-0}"'
+                     ' >> "$RELEASE_OUT/heavy_asked"\n[ "$1" = --solo ] && shift\nexec "$@"\n')
     y.ro.mkdir(parents=True)
     env = {**y.env, "RELEASE_OUT": str(y.ro), "TMPDIR": str(tmp_path)}
 
@@ -860,6 +862,12 @@ echo "$name: all passed"
     battery("t-two", *five, PC_AT_ONCE="2")
     spans = y.times("check_spans")
     assert max(sum(1 for s in spans.values() if s["began"] <= t["began"] < s["ended"]) for t in spans.values()) == 2
+
+    # A solo check outside a release is a run of its own; a release's keep the gap.
+    battery("t-solo", "frames")
+    battery("t-solo-release", "frames", BOX_HEAVY_PRIORITY="1")
+    assert y.text("heavy_asked").splitlines() == ["solo gap=0 priority=0", "solo gap=unset priority=1"], \
+        y.text("heavy_asked")
 
     # The probes fail while io runs: io ends as it would, and nothing more begins, frames (alone) neither.
     probes = y.ro / "t-m9.probes"

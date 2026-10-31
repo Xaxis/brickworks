@@ -418,6 +418,10 @@ run() {
   # after it waiting until its deadline. nohup has HUP ignored.
   PROBES=""
   trap '[ -z "$PROBES" ] || kill -TERM -- "-$PROBES" 2>/dev/null; stop "killed"' TERM INT
+  # The merge's import and gates at the release's priority, as its probes
+  # and ship.sh are: rel-m231's merge waited behind an agent's solo checks
+  # (2026-10-31).
+  export BOX_HEAVY_PRIORITY=1
 
   if [ -e "$SPEC/reship" ]; then
     # Its merge is made and the release before it served (reship).
