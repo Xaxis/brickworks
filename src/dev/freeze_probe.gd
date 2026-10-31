@@ -19,16 +19,17 @@
 ## gl_compatibility), which is the web build's.
 extends SceneTree
 
-## The longest frame allowed while a design is made, in ms. A browser on a
-## laptop runs the same scripts two or three times slower than this.
+## The longest frame allowed while a design is made, in ms of the app's own
+## time, three times as long at a load past the box's cores (ProbeTime). A
+## browser on a laptop runs the same scripts two or three times slower than
+## this.
 const BUDGET_MS := 200.0
 ## Frames a second the doubled Falcon must turn at.
 const ORBIT_FPS := 30.0
 
 var _failures: int = 0
-var _last_us: int = 0
-var _gaps: Array = []   ## [end in usec, ms]
-var _recording: bool = false
+## Each frame while the calls are made.
+var _frames: ProbeTime.Frames
 var _software: bool = false
 
 
@@ -36,26 +37,23 @@ func _initialize() -> void:
 	_run()
 
 
-func _process(_delta: float) -> bool:
-	var now: int = Time.get_ticks_usec()
-	if _recording and _last_us > 0:
-		_gaps.append([now, (now - _last_us) / 1000.0])
-	_last_us = now
-	return false
-
-
-## The longest frame that began at or after [param from], and how many
-## went over the budget.
-func _worst_since(from: int) -> Array:
+## The longest frame that began at or after [param from], of the app's own
+## time (less the main thread's wait for a CPU: ProbeTime), how many went
+## over [param budget], and the wait in the longest.
+func _worst_since(from: int, budget: float) -> Array:
 	var worst: float = 0.0
 	var over: int = 0
-	for gap: Array in _gaps:
+	var waited: float = 0.0
+	for gap: Array in _frames.gaps:
 		if int(gap[0]) - int(float(gap[1]) * 1000.0) < from:
 			continue
-		worst = maxf(worst, float(gap[1]))
-		if float(gap[1]) > BUDGET_MS:
+		var own: float = maxf(float(gap[1]) - float(gap[2]), 0.0)
+		if own > worst:
+			worst = own
+			waited = float(gap[2])
+		if own > budget:
 			over += 1
-	return [worst, over]
+	return [worst, over, waited]
 
 
 func _run() -> void:
@@ -83,13 +81,15 @@ func _run() -> void:
 	var adapter: String = RenderingServer.get_video_adapter_name().to_lower()
 	_software = adapter.contains("llvmpipe") or adapter.contains("lavapipe") \
 		or adapter.contains("swiftshader")
-	_recording = true
+	_frames = ProbeTime.Frames.new()
+	root.add_child(_frames)
 	for call: Dictionary in calls:
 		var name: String = call["name"]
 		if name == "save_model":
 			continue
 		var input: Variant = JSON.parse_string(JSON.stringify(call["input"]).replace(
 			"\"first listed\"", str(first_listed)))
+		var busy: float = ProbeTime.box_load()
 		var began: int = Time.get_ticks_usec()
 		var answer: Variant = await rpc.answer_rpc({"jsonrpc": "2.0", "id": 1,
 			"method": "tools/call", "params": {"name": name, "arguments": input}})
@@ -100,7 +100,9 @@ func _run() -> void:
 		var played: float = (Time.get_ticks_usec() - waited) / 1000.0
 		for _n: int in 3:
 			await process_frame
-		var worst: Array = _worst_since(began)
+		busy = maxf(busy, ProbeTime.box_load())
+		var budget: float = BUDGET_MS * ProbeTime.slack(busy)
+		var worst: Array = _worst_since(began, budget)
 		worst_all = maxf(worst_all, float(worst[0]))
 		var text: String = JSON.stringify(answer)
 		if name == "look_at_model":
@@ -108,11 +110,12 @@ func _run() -> void:
 			if found != null:
 				first_listed = found.get_string(1).to_int()
 		var said: String = text.substr(text.find("\"text\":") + 8, 60).replace("\\n", " ")
-		_check("%-14s %6.0f ms, then %5.0f ms of animation; the longest frame %4.0f ms, %d over %d: %s"
-			% [name, took, played, worst[0], worst[1], BUDGET_MS, said],
-			(_software or float(worst[0]) <= BUDGET_MS)
+		_check("%-14s %6.0f ms, then %5.0f ms of animation; the longest frame %4.0f ms of its own (%.0f waiting for a CPU), %d over %.0f; %s: %s"
+			% [name, took, played, worst[0], worst[2], worst[1], budget,
+				ProbeTime.load_said(busy), said],
+			(_software or float(worst[0]) <= budget)
 				and not text.contains("Not applied") and not text.contains("No brick has"))
-	_recording = false
+	_frames.queue_free()
 	print("  the model: %d bricks" % world.brick_count())
 
 	await _orbit(main, world)
@@ -146,7 +149,7 @@ func _orbit(main: Node, world: BrickWorld) -> void:
 	RenderingServer.viewport_set_measure_render_time(viewport, true)
 	var draw_cpu_ms: float = 0.0
 	var draw_gpu_ms: float = 0.0
-	var queued: float = _waited_for_cpu_ms()
+	var queued: float = ProbeTime.waited_ms()
 	var began: int = Time.get_ticks_usec()
 	var worst: float = 0.0
 	var last: int = began
@@ -160,7 +163,7 @@ func _orbit(main: Node, world: BrickWorld) -> void:
 		draw_cpu_ms += RenderingServer.viewport_get_measured_render_time_cpu(viewport)
 		draw_gpu_ms += RenderingServer.viewport_get_measured_render_time_gpu(viewport)
 	var fps: float = frames / ((Time.get_ticks_usec() - began) / 1e6)
-	queued = _waited_for_cpu_ms() - queued
+	queued = ProbeTime.waited_ms() - queued
 	RenderingServer.viewport_set_measure_render_time(viewport, false)
 	print("  a frame while turning: %.1f ms, of which drawing is %.1f ms of the CPU's and %.1f of the GPU's"
 		% [2000.0 / maxf(frames, 1), draw_cpu_ms / maxf(frames, 1), draw_gpu_ms / maxf(frames, 1)])
@@ -208,24 +211,12 @@ static func _falcon_calls() -> Array:
 	]
 
 
-## How long this process's main thread has waited for a CPU it was ready
-## to run on, in ms (/proc/self/schedstat, Linux; -1 elsewhere). On a
-## machine other projects share, it says how much of a slow stretch was
-## the machine rather than the app: the frames are judged as they are.
-static func _waited_for_cpu_ms() -> float:
-	var stat: FileAccess = FileAccess.open("/proc/self/schedstat", FileAccess.READ)
-	if stat == null:
-		return -1.0
-	var fields: PackedStringArray = stat.get_line().split(" ", false)
-	return fields[1].to_float() / 1e6 if fields.size() > 1 else -1.0
-
-
+## How much of a slow stretch was the machine rather than the app, on a
+## machine other projects share (ProbeTime): the frames are judged as they
+## are.
 static func _queued_said(queued: float, of_ms: float) -> String:
-	if queued < 0.0:
-		return ""
-	var load: FileAccess = FileAccess.open("/proc/loadavg", FileAccess.READ)
-	return "; the main thread waited %.0f of those %.0f ms for a CPU, at a load of %s" % [
-		queued, of_ms, load.get_line().get_slice(" ", 0) if load != null else "?"]
+	return "; the main thread waited %.0f of those %.0f ms for a CPU, at a %s" % [
+		queued, of_ms, ProbeTime.load_said(ProbeTime.box_load())]
 
 
 func _check(what: String, held: bool) -> void:

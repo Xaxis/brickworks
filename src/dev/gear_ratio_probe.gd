@@ -16,6 +16,9 @@
 ##     from inside by a 12 eight studs out or a 28 seven studs out, every
 ##     period within 0.25% of NASA's;
 ##   - search_gear_ratio as a session calls it, and its refusals.
+## Each search's time is its own, less the main thread's wait for a CPU,
+## and its bar three times as long at a load past the box's cores
+## (ProbeTime).
 ## Every train a search answers with is built here, axle by axle on the grid
 ## with its gears at their heights, read by Mechanism and turned: the output
 ## must turn as the search says to 1e-5 of itself (32-bit transforms), through
@@ -105,18 +108,20 @@ func _exact() -> void:
 func _mars() -> void:
 	print("  a Mars year in Earth's: 686.98 / 365.256 = 1.88081, which no two gears give")
 	var wanted: float = 686.98 / 365.256
-	var started: int = Time.get_ticks_msec()
+	var span := ProbeTime.Span.new()
 	var trains: Array[GearRatios.Train] = GearRatios.search(wanted, 4)
-	var took: int = Time.get_ticks_msec() - started
-	_check("four meshes come no nearer than 15/8, -0.31%% (%s), in %d ms" % [_said(trains), took],
-		not trains.is_empty() and trains[0].num == 15 and trains[0].den == 8 and took < 5000)
+	span.end()
+	_check("four meshes come no nearer than 15/8, -0.31%% (%s), in %s, under %.0f" % [_said(trains),
+		span.said(), 5000 * span.slack()], not trains.is_empty() and trains[0].num == 15
+		and trains[0].den == 8 and span.own < 5000 * span.slack())
 	for train: GearRatios.Train in trains:
 		_prove(train, "Mars")
-	started = Time.get_ticks_msec()
+	span = ProbeTime.Span.new()
 	trains = GearRatios.search(wanted, 6)
-	took = Time.get_ticks_msec() - started
-	_check("six come within 0.05%% (%s), in %d ms" % [_said(trains), took],
-		not trains.is_empty() and absf(trains[0].error) < 0.0005 and took < 20000)
+	span.end()
+	_check("six come within 0.05%% (%s), in %s, under %.0f" % [_said(trains), span.said(),
+		20000 * span.slack()], not trains.is_empty() and absf(trains[0].error) < 0.0005
+		and span.own < 20000 * span.slack())
 	for train: GearRatios.Train in trains:
 		_prove(train, "Mars in six")
 
@@ -124,15 +129,16 @@ func _mars() -> void:
 func _between() -> void:
 	print("  trains between two axles")
 	for to: Vector2i in [Vector2i(8, 0), Vector2i(8, 2), Vector2i(0, -5)]:
-		var started: int = Time.get_ticks_msec()
+		var span := ProbeTime.Span.new()
 		var trains: Array[GearRatios.Train] = GearRatios.search(0.25, 4, to, 1)
-		var took: int = Time.get_ticks_msec() - started
+		span.end()
 		var lands: bool = not trains.is_empty()
 		for train: GearRatios.Train in trains:
 			var axles: Array[Vector2i] = train.axles()
 			lands = lands and axles[-1] == to and _near_line(axles, to, 1)
 		_check("a quarter, the output %s from the input: %s, every axle on the grid within a stud "
-			% [str(to), _said(trains)] + "of the line, in %d ms" % took, lands and took < 8000)
+			% [str(to), _said(trains)] + "of the line, in %s, under %.0f" % [span.said(),
+				8000 * span.slack()], lands and span.own < 8000 * span.slack())
 		for train: GearRatios.Train in trains:
 			_prove(train, "to %s" % str(to))
 

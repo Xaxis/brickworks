@@ -361,21 +361,25 @@ func _orthanc() -> void:
 	if see != null:
 		see.call("set_cut", false)
 		_world.call("_flush")
-		began = Time.get_ticks_usec()
+	# Less the main thread's wait for a CPU, the bar three times as long at a
+	# load past the box's cores (ProbeTime).
+	var cut := ProbeTime.Span.new()
+	if see != null:
 		see.call("set_cut", true)
 		_world.call("_flush")
-	var work: float = float(Time.get_ticks_usec() - began) / 1000.0
+	var work: float = cut.end().own
 	print("    the cut on: %.0f ms the first time, %.0f ms after, %.1f ms of it the app's own work"
 		% [first, again, work])
-	_check("the cut turns on in %.1f ms of the app's own work, every part sorted" % work,
-		_is_cut() and work < 1500.0)
+	_check("the cut turns on in %s, under %.0f, every part sorted" % [cut.said(),
+		1500.0 * cut.slack()], _is_cut() and work < 1500.0 * cut.slack())
 	if see != null:
 		var low: float = float((see.get("_slider") as HSlider).min_value)
 		var high: float = float((see.get("_slider") as HSlider).max_value)
 		# A drag: the plane a plate further each move, up the whole tower.
 		var moves: int = 0
 		var slowest: float = 0.0
-		began = Time.get_ticks_usec()
+		# Its own time against the cut's own (ProbeTime): a ratio of the two.
+		var drag := ProbeTime.Span.new()
 		var at: float = _odd(low)
 		while at < high:
 			var one: int = Time.get_ticks_usec()
@@ -384,9 +388,9 @@ func _orthanc() -> void:
 			slowest = maxf(slowest, float(Time.get_ticks_usec() - one) / 1000.0)
 			moves += 1
 			at += 8.0
-		var each: float = float(Time.get_ticks_usec() - began) / 1000.0 / maxf(moves, 1)
-		print("    dragging the cut up the tower a plate a move: %d moves, %.1f ms each, %.1f the slowest"
-			% [moves, each, slowest])
+		var each: float = drag.end().own / maxf(moves, 1)
+		print("    dragging the cut up the tower a plate a move: %d moves, %.1f ms of its own each, %.1f the slowest; in all %s"
+			% [moves, each, slowest, drag.said()])
 		# Against the app's own work of sorting every part for the cut, on
 		# the same model on the same machine, not a wall clock: at a load
 		# of 50 a move took 26 ms, and a 25 ms budget failed a drag that
@@ -436,17 +440,17 @@ func _orthanc() -> void:
 	# The app's own work, all of it at once: the world on screen spreads it
 	# over frames (FramePace).
 	_world.rebuilds_in_slices = false
-	began = Time.get_ticks_usec()
+	var xray := ProbeTime.Span.new()
 	if see != null:
 		see.call("set_xray", true)
 	_world.call("_flush")
-	var xray_work: float = float(Time.get_ticks_usec() - began) / 1000.0
+	var xray_work: float = xray.end().own
 	_world.rebuilds_in_slices = true
 	print("    x-ray on: %.0f ms with the frames, %.0f ms of it the app's own work"
 		% [xray_ms, xray_work])
 	var ghosts: Dictionary = _world.call("xray_ids") if _world.has_method("xray_ids") else {}
-	_check("x-ray of one part of %d costs %.0f ms of the app's own work" % [
-		_world.brick_count(), xray_work], ghosts.size() > 8000 and xray_work < 1500.0)
+	_check("x-ray of one part of %d costs %s, under %.0f" % [_world.brick_count(), xray.said(),
+		1500.0 * xray.slack()], ghosts.size() > 8000 and xray_work < 1500.0 * xray.slack())
 	var drawn: Array = _drawn()
 	_check("...%d see-through, %d solid" % [drawn[1], drawn[0]],
 		drawn[1] == _surfaces(ghosts))

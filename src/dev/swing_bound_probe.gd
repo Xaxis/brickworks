@@ -117,12 +117,17 @@ func _out_of_time() -> void:
 		OS.delay_msec(20)
 		return 0
 	swing.fling(20.0)
-	var began: int = Time.get_ticks_msec()
+	# The clock's time less the main thread's wait for a CPU (ProbeTime):
+	# a wait after a test's sleep pushes the stop on by however long the box
+	# keeps it. No more than that: a test here is a sleep, which a busy box
+	# does not slow, so the bar is not lengthened by the load.
+	var span := ProbeTime.Span.new()
 	swing.run(500.0)
-	var took: int = Time.get_ticks_msec() - began
-	print("    stopped after %d ms, %.3f s of swing, %d tests: %s" % [took, swing.time, swing.tests,
-		swing.words()])
-	_check("asked for 500 ms, it stops within a test of it (%d ms)" % took, took < 600 and swing.cut_short)
+	var took: float = span.end().own
+	print("    stopped after %.0f ms, %.3f s of swing, %d tests: %s" % [span.ms, swing.time,
+		swing.tests, swing.words()])
+	_check("asked for 500 ms, it stops within a test of it (%s)" % span.said(),
+		took < 600 and swing.cut_short)
 	_check("kept where it was last tested", swing.q == swing.get("_tested"))
 	_check("and says so", swing.words().contains("kept where it was: the app works a swing out for at most"))
 	# The time move_part gives it.
@@ -137,9 +142,9 @@ func _out_of_time() -> void:
 		OS.delay_msec(100)
 		return 0
 	swing.fling(20.0)
-	began = Time.get_ticks_msec()
+	span = ProbeTime.Span.new()
 	swing.run()
-	took = Time.get_ticks_msec() - began
-	print("    as move_part runs it: stopped after %d ms, %.3f s of swing" % [took, swing.time])
-	_check("move_part's swing stops by %d ms and a test (%d ms)" % [roundi(Swing.RUN_MOST_MS), took],
-		took < Swing.RUN_MOST_MS + 200.0 and swing.cut_short)
+	took = span.end().own
+	print("    as move_part runs it: stopped after %.0f ms, %.3f s of swing" % [span.ms, swing.time])
+	_check("move_part's swing stops by %d ms and a test (%s)" % [roundi(Swing.RUN_MOST_MS),
+		span.said()], took < Swing.RUN_MOST_MS + 200.0 and swing.cut_short)

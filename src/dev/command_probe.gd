@@ -29,7 +29,10 @@
 ## the press until nothing was being worked on (total), on a model of 1,000
 ## parts or more: the bar a 10,000-part model is held to (docs/APP_UX2.md,
 ## bigmodels: select joined, duplicate, paste and replace of all of
-## Orthanc in a second each, hidden colours in two).
+## Orthanc in a second each, hidden colours in two). The total is the
+## clock's, workers' time in it, so the main thread's wait is not taken off;
+## but the load slows the workers too, so the bar is three times as long at
+## a load past the box's cores (ProbeTime).
 ##
 ## With --judge it fails a command whose own work in one frame is over
 ## BUDGET_MS and was not said first, and checks that the bar does not come
@@ -56,8 +59,11 @@ var _world: BrickWorld
 var _builder: Builder
 var _store: ModelStore
 var _bar: ModelBar
-var _frames_seen: Array = []  ## [began usec, own ms, gap ms, bar up at start, ended usec]
+## [began usec, own ms (less the main thread's wait for a CPU: ProbeTime),
+## gap ms, bar up at start, ended usec, the wait ms]
+var _frames_seen: Array = []
 var _began_us: int = 0
+var _began_waited: float = 0.0
 var _last_us: int = 0
 var _bar_up_at_start: bool = false
 var _rows: Array = []
@@ -84,6 +90,7 @@ func _initialize() -> void:
 func _process(_delta: float) -> bool:
 	var now: int = Time.get_ticks_usec()
 	_began_us = now
+	_began_waited = ProbeTime.waited_ms()
 	_bar_up_at_start = Working.is_busy() and Working.shown_in != null \
 		and Working.shown_in.visible
 	return false
@@ -108,7 +115,9 @@ func _frame_ended_later() -> void:
 func _frame_ended() -> void:
 	var now: int = Time.get_ticks_usec()
 	var gap: float = (_began_us - _last_us) / 1000.0 if _last_us > 0 else 0.0
-	_frames_seen.append([_began_us, (now - _began_us) / 1000.0, gap, _bar_up_at_start, now])
+	var waited: float = ProbeTime.waited_ms() - _began_waited
+	var own: float = maxf((now - _began_us) / 1000.0 - waited, 0.0)
+	_frames_seen.append([_began_us, own, gap, _bar_up_at_start, now, waited])
 	_last_us = _began_us
 	if _frames_seen.size() > 20000:
 		_frames_seen = _frames_seen.slice(-10000)
@@ -237,9 +246,10 @@ func _time(model: String, name: String) -> void:
 	_maker_laps = []
 	var from: int = Time.get_ticks_usec()
 	var said: Dictionary = {}
-	var call_from: int = Time.get_ticks_usec()
+	var busy: float = ProbeTime.box_load()
+	var call := ProbeTime.Span.new()
 	_shell.run(name)
-	var call_ms: float = (Time.get_ticks_usec() - call_from) / 1000.0
+	var call_ms: float = call.end().own
 	var until: int = Time.get_ticks_msec() + int(LONGEST_S * 1000.0)
 	var cancelled: bool = false
 	var calm: int = 0
@@ -262,6 +272,7 @@ func _time(model: String, name: String) -> void:
 			break
 	var total: float = (Time.get_ticks_usec() - from) / 1000.0
 	var own: float = call_ms
+	var own_waited: float = call.waited
 	var gap: float = 0.0
 	var said_first: bool = true
 	var own_at: int = -1
@@ -273,6 +284,7 @@ func _time(model: String, name: String) -> void:
 		gap = maxf(gap, float(frame[2]))
 		if float(frame[1]) > own:
 			own = float(frame[1])
+			own_waited = float(frame[5])
 			own_at = n
 	# The command ran inside the probe's frame, before it was recorded.
 	if own_at >= 0:
@@ -280,6 +292,9 @@ func _time(model: String, name: String) -> void:
 	else:
 		said_first = false
 	row["own_ms"] = roundi(own)
+	row["own_waited_ms"] = roundi(own_waited)
+	row["busy"] = maxf(busy, ProbeTime.box_load())
+	row["slack"] = ProbeTime.slack(float(row["busy"]))
 	row["frame_ms"] = roundi(gap)
 	row["total_ms"] = roundi(total)
 	row["said_first"] = said_first
@@ -404,11 +419,12 @@ func _held_to(within: String) -> void:
 			if row.has("skipped"):
 				continue
 			var took: float = float(row.get("first_page_ms", INF)) if first else float(row["total_ms"])
-			var ok: bool = took <= most_ms and not bool(row["cancelled"])
-			print("  %s %s%s on %s (%d parts): %s ms, the bar %d ms" % ["ok  " if ok else "FAIL",
+			var bar: float = most_ms * float(row["slack"])
+			var ok: bool = took <= bar and not bool(row["cancelled"])
+			print("  %s %s%s on %s (%d parts): %s ms, the bar %d ms (%s)" % ["ok  " if ok else "FAIL",
 				name, " to its first page" if first else "", row["model"],
 				int(_parts_of[row["model"]]), "no page" if is_inf(took) else str(roundi(took)),
-				int(most_ms)])
+				int(bar), ProbeTime.load_said(float(row["busy"]))])
 			if not ok:
 				_failures += 1
 		if not timed:
@@ -427,19 +443,20 @@ func _report(judge: bool) -> void:
 			row["own_ms"], row["frame_ms"], row["total_ms"], "yes" if row["said_first"] else "",
 			"; ".join(row["said"])])
 	var over: Array = _rows.filter(func(row: Dictionary) -> bool:
-		return not row.has("skipped") and int(row["own_ms"]) > BUDGET_MS)
+		return not row.has("skipped") and int(row["own_ms"]) > BUDGET_MS * float(row["slack"]))
 	var unsaid: Array = over.filter(func(row: Dictionary) -> bool:
 		return not bool(row["said_first"]))
 	var skipped: Array = _rows.filter(func(row: Dictionary) -> bool: return row.has("skipped"))
 	print("")
 	print("skipped: %s" % ", ".join(skipped.map(func(row: Dictionary) -> String:
 		return "%s (%s)" % [row["name"], row["skipped"]]).slice(0, 40)))
-	print("%d commands timed; %d held a frame of their own over %d ms, %d of them without saying so first: %s"
-		% [_rows.size() - skipped.size(), over.size(), BUDGET_MS, unsaid.size(),
+	print("%d commands timed; %d held a frame of their own over %d ms (three times that at a load past the %d cores), %d of them without saying so first: %s"
+		% [_rows.size() - skipped.size(), over.size(), BUDGET_MS, OS.get_processor_count(), unsaid.size(),
 			", ".join(unsaid.map(func(row: Dictionary) -> String:
 				return "%s on %s (%d ms)" % [row["name"], row["model"], row["own_ms"]]))])
 	if judge:
 		for row: Dictionary in unsaid:
-			print("  FAIL %s on %s holds %d ms without saying so first" % [row["name"],
-				row["model"], row["own_ms"]])
+			print("  FAIL %s on %s holds %d ms of its own without saying so first (%d waiting for a CPU, over %d; %s)"
+				% [row["name"], row["model"], row["own_ms"], row["own_waited_ms"],
+					roundi(BUDGET_MS * float(row["slack"])), ProbeTime.load_said(float(row["busy"]))])
 			_failures += 1

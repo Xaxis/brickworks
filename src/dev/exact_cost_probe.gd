@@ -10,7 +10,9 @@
 ## of anything over 300 parts runs on a worker (Assistant._checked), so this
 ## is time waited for, not a frame held; freeze_probe times the frames.
 ## Fails when an edit to the biggest model spends more than EDIT_BUDGET_MS
-## in the exact check.
+## of its own in the exact check: the exact check's time less its share of
+## what the main thread waited for a CPU over the whole check, and three
+## times the budget at a load past the box's cores (ProbeTime).
 extends SceneTree
 
 const EDIT_BUDGET_MS := 3000.0
@@ -65,10 +67,13 @@ func _run() -> void:
 		var edited: Assistant.Model = assistant._model_from_world()
 		edited.placements.append(Assistant.Placement.from_dict({"part": "3001", "color": 4,
 			"x": 0, "y": ceilf(top) + 3, "z": 0}))
-		var edit_ms: float = _time(assistant, edited, "  an edit, one brick added")
-		if path.get_file() == "orthanc.ldr" and edit_ms > EDIT_BUDGET_MS:
+		var edit: Array = _time(assistant, edited, "  an edit, one brick added")
+		var span: ProbeTime.Span = edit[1]
+		var budget: float = EDIT_BUDGET_MS * span.slack()
+		if path.get_file() == "orthanc.ldr" and float(edit[0]) > budget:
 			_failed += 1
-			print("  FAIL an edit's exact check took %.0f ms, over %.0f" % [edit_ms, EDIT_BUDGET_MS])
+			print("  FAIL an edit's exact check took %.0f ms of its own, over %.0f (%s)"
+				% [float(edit[0]), budget, span.said()])
 		var fresh: Assistant.Model = assistant._model_from_world()
 		for placement: Assistant.Placement in fresh.placements:
 			placement.id = 0
@@ -78,18 +83,21 @@ func _run() -> void:
 
 
 ## Checks [param model] once, says how long and how much of it the exact check
-## took; returns the exact check's ms.
-func _time(assistant: Assistant, model: Assistant.Model, label: String) -> float:
-	var began: int = Time.get_ticks_msec()
+## took; returns the exact check's ms of its own, less its share of the main
+## thread's wait for a CPU, and the whole check's span.
+func _time(assistant: Assistant, model: Assistant.Model, label: String) -> Array:
+	var span := ProbeTime.Span.new()
 	var report: Dictionary = assistant._check(model, true)
-	var took: int = Time.get_ticks_msec() - began
+	span.end()
 	var exact_ms: float = float(report.get("exact_ms", 0.0))
 	var found: Dictionary = report.get("exact", {})
 	var on := PackedStringArray()
 	var spent: Dictionary = report.get("exact_on", {})
 	for what: Variant in spent:
 		on.append("%s %d" % [what, int(spent[what]) / 1000])
-	print("%s: %d ms, of it the exact check %.0f ms (%s); %d collisions, %d not held; %s" % [label,
-		took, exact_ms, ", ".join(on), (found.get("collision", []) as Array).size(),
-		(found.get("not held", []) as Array).size(), str(report.get("summary", "")).left(90)])
-	return exact_ms
+	var own: float = exact_ms * span.own / maxf(span.ms, 0.001)
+	print("%s: %.0f ms, of it the exact check %.0f ms, %.0f of its own (%s); %d collisions, %d not held; %s; %s"
+		% [label, span.ms, exact_ms, own, ", ".join(on), (found.get("collision", []) as Array).size(),
+			(found.get("not held", []) as Array).size(), str(report.get("summary", "")).left(90),
+			span.said()])
+	return [own, span]

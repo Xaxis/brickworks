@@ -328,13 +328,16 @@ func _open() -> void:
 ## job says how it goes, gives the answer and stops it (src/net/tool_jobs.gd).
 func _jobs(out: String) -> void:
 	print("── long work, as jobs ──")
-	var asked_at: int = Time.get_ticks_msec()
+	# The app's own time, less the main thread's wait for a CPU, the bar
+	# three times as long at a load past the box's cores (ProbeTime).
+	var span := ProbeTime.Span.new()
 	var first: Dictionary = await _rpc("tools/call", {"name": "export_model",
 		"arguments": {"format": "studio"}})
-	var waited: int = Time.get_ticks_msec() - asked_at
+	span.end()
 	var id: int = _job_of(first)
-	_check("a Studio file is a job, answered at once (%d ms): %s" % [waited, _text(first).left(80)],
-		id > 0 and waited < 2000 and _text(first).contains("job {\"id\": %d}" % id))
+	_check("a Studio file is a job, answered at once (%s, under %.0f): %s" % [span.said(),
+		2000 * span.slack(), _text(first).left(80)], id > 0 and span.own < 2000 * span.slack()
+		and _text(first).contains("job {\"id\": %d}" % id))
 	var shown: Working.Job = Working.current()
 	_check("...and the window's bar is that job: %s" % (shown.line() if shown != null else "none"),
 		shown != null and shown.words.begins_with("Writing") and not shown.can_cancel)

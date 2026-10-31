@@ -442,13 +442,16 @@ func _picture() -> void:
 		and (crowded["extras"] as Dictionary).is_empty())
 
 
-## A file that should not be read, refused saying why in words, quickly.
+## A file that should not be read, refused saying why in words, quickly: in
+## under a second of the app's own time, three at a load past the box's
+## cores (ProbeTime).
 func _refuse(what: String, bytes: PackedByteArray, name: String, says: String) -> void:
-	var t0: int = Time.get_ticks_usec()
+	var span := ProbeTime.Span.new()
 	var mesh: MeshFile = MeshFile.read(bytes, name)
-	var ms: float = (Time.get_ticks_usec() - t0) / 1000.0
-	_check("%s: \"%s\" in %.1f ms" % [what, mesh.error, ms],
-		mesh.error.contains(says) and mesh.triangle_count() == 0 and ms < 1000.0)
+	span.end()
+	_check("%s: \"%s\" in %s" % [what, mesh.error, span.said()],
+		mesh.error.contains(says) and mesh.triangle_count() == 0
+		and span.own < 1000.0 * span.slack())
 
 
 func _refused() -> void:

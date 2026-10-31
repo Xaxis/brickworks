@@ -211,15 +211,17 @@ func _orthanc() -> void:
 	_builder.clear_selection()
 	await _frames(4)
 	var bare_ms: float = await _frame_ms(6)
-	var began: int = Time.get_ticks_usec()
+	# Of the app's own time, less the main thread's wait for a CPU, the bar
+	# three times as long at a load past the box's cores (ProbeTime).
+	var span := ProbeTime.Span.new()
 	_verbs.select_by("all")
-	var took_ms: float = float(Time.get_ticks_usec() - began) / 1000.0
+	var took_ms: float = span.end().own
 	await _frames(4)
 	var all_ms: float = await _frame_ms(6)
 	print("    all %d selected in %.0f ms; a frame %.0f ms selected, %.0f ms not" % [
 		_builder.selection.size(), took_ms, all_ms, bare_ms])
-	_check("all %d parts selected in %.0f ms" % [_builder.selection.size(), took_ms],
-		_builder.selection.size() > 8000 and took_ms < 3000.0)
+	_check("all %d parts selected in %s, under %.0f" % [_builder.selection.size(), span.said(),
+		3000.0 * span.slack()], _builder.selection.size() > 8000 and took_ms < 3000.0 * span.slack())
 	_check("a frame with all of them outlined costs %.0f ms against %.0f ms bare"
 		% [all_ms, bare_ms], all_ms < bare_ms * 2.0 + 40.0)
 	var everything: Image = await _picture()
