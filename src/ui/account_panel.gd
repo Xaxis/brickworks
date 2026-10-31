@@ -42,7 +42,9 @@ var _claude_box: VBoxContainer
 var _claude_state: Label
 var _claude_connect: LinkButton
 var _claude_disconnect: Button
-var connector: ClaudeConnector
+## Claude connected to this tab (ClaudeConnector, a Later class): set
+## once the assistant's panel is made (Main._make_chat).
+var connector: Node
 
 ## The person asked to sign out; the app switches the connector off and
 ## the sign-in screen comes back.
@@ -304,7 +306,7 @@ func storage_words() -> String:
 
 ## Claude's half: the connector whose connections this shows, and this tab
 ## as Claude knows it, with the chats working in it (ClaudeTabView).
-func use_connector(with: ClaudeConnector) -> void:
+func use_connector(with: Node) -> void:
 	connector = with
 	_claude_box.visible = claude_shown
 	_tab_view = ClaudeTabView.new()

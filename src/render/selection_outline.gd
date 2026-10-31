@@ -443,6 +443,10 @@ var _made: Vector2i = Vector2i(-1, -1)
 ## (Main._watch_own_frames): each new target asks the card whether it is
 ## complete, which in a browser waits for everything queued. Brickify's
 ## last frame, its 557 parts selected, waited 2.4 s here in software.
+## Here and not on ModelShot's count, which is the assistant's (Later).
+static var gpu_wait_us: int = 0
+
+
 func _resize(wanted: Vector2i) -> void:
 	if _made == wanted:
 		return
@@ -454,4 +458,4 @@ func _resize(wanted: Vector2i) -> void:
 		if wanted != Vector2i.ZERO:
 			view.size = wanted
 		RenderingServer.viewport_set_size(view.get_viewport_rid(), wanted.x, wanted.y)
-	ModelShot.gpu_wait_us += Time.get_ticks_usec() - asked
+	gpu_wait_us += Time.get_ticks_usec() - asked

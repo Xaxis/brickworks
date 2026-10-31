@@ -193,7 +193,7 @@ func plain_code(code: int) -> int:
 
 
 ## The colour [param part] was made in nearest [param code] as an eye judges
-## (CIEDE2000, Brickify.de2000), a transparent one for a transparent colour
+## (CIEDE2000, HiddenColours.de2000), a transparent one for a transparent colour
 ## where it was made in any: what a design is given in place of a colour the
 ## catalogue knows the part was never made in (PartInfo.never_made_in, as the
 ## Tested mark asks it). [param code] itself where it was, where nothing is
@@ -212,7 +212,7 @@ func made_nearest(part: String, code: int) -> int:
 			if colour == null or not colour.is_plastic() \
 					or alike and colour.is_transparent() != want.is_transparent():
 				continue
-			var apart: float = Brickify.de2000(here, HiddenColours.lab(colour.rgb))
+			var apart: float = HiddenColours.de2000(here, HiddenColours.lab(colour.rgb))
 			if apart < gap:
 				gap = apart
 				best = made

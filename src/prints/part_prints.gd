@@ -789,6 +789,42 @@ static func base_of(part_id: String) -> String:
 	return str(bases.get(part_id, part_id))
 
 
+## The plain part a part is a version of: 3068b for 3068bpb0001 and for a
+## print made here on it, the part itself for a plain one (Make, Printed
+## versions…, and the Properties panel's count of them).
+static func plain_of(library: PartLibrary, part_id: String) -> String:
+	var info: PartLibrary.PartInfo = library.parts.get(part_id)
+	if info != null and not info.print_of.is_empty():
+		return info.print_of
+	return base_of(part_id)
+
+
+## The parts of [param selection] when they are all versions of one plain
+## part (a row of plain 1 x 2 tiles, or one printed and one plain), else
+## none.
+static func alike(library: PartLibrary, world: BrickWorld, selection: Dictionary) -> PackedInt64Array:
+	var out := PackedInt64Array()
+	var plain: String = ""
+	for key: Variant in selection.keys():
+		var brick: BrickWorld.Brick = world.get_brick(int(key))
+		if brick == null or Stickers.sticks(library, brick.part_id):
+			continue
+		if plain.is_empty():
+			plain = plain_of(library, brick.part_id)
+		elif plain_of(library, brick.part_id) != plain:
+			return PackedInt64Array()
+		out.append(brick.id)
+	return out
+
+
+## Whether Printed versions… has something to offer for [param selection]:
+## asked by the menus without making the print studio (Later).
+static func offers_versions(library: PartLibrary, world: BrickWorld, selection: Dictionary) -> bool:
+	var ids: PackedInt64Array = alike(library, world, selection)
+	return not ids.is_empty() \
+		and not library.prints_of(plain_of(library, world.get_brick(ids[0]).part_id)).is_empty()
+
+
 ## The pictures a print's file names, in order.
 static func pictures_named(text: String) -> PackedStringArray:
 	var out := PackedStringArray()

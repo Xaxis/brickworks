@@ -15,7 +15,6 @@ extends PanelContainer
 
 var builder: Builder
 var world: BrickWorld
-var assistant: Assistant
 var scenery: Dictionary = {}
 var say: Callable = func(_line: String) -> void: pass
 var edited: Callable = func() -> void: pass
@@ -89,7 +88,7 @@ func _button(words: String, main: bool) -> Button:
 ## Look at the model just opened, and offer to seat it if it needs it.
 ## Returns how many parts are off their studs.
 func check() -> int:
-	_moves = Seating.misplaced(world, builder, assistant, scenery)
+	_moves = Seating.misplaced(world, builder, scenery)
 	if _moves.is_empty():
 		visible = false
 		return 0

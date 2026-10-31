@@ -24,7 +24,8 @@
 class_name ConnectorForm
 extends VBoxContainer
 
-var connector: ClaudeConnector
+## Claude connected to this tab (ClaudeConnector, a Later class).
+var connector: Node
 
 var _title: Label
 var _here: CheckButton
@@ -79,7 +80,7 @@ const OFF := Color(0.55, 0.57, 0.6)
 const ASK := "“Build a small red house in Brickworks.”"
 
 
-func setup(with: ClaudeConnector) -> void:
+func setup(with: Node) -> void:
 	connector = with
 	add_theme_constant_override("separation", 8)
 

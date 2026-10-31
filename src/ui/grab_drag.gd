@@ -1103,7 +1103,7 @@ func _move_for_session(ids: Array, input: Dictionary) -> String:
 			if stopped else held_loop_words(held) + "." if input.has("degrees") and held.mode == "slide"
 			else "it is already there."))
 		return "\n".join(lines)
-	var slid: String = MotionPlayer.slid_words(held)
+	var slid: String = slid_words(held)
 	if slid.is_empty():
 		slid = _swept_words(held)
 	lines.append("Moved %d part%s: %s%s (asked %s)%s%s%s%s." % [moved, "" if moved == 1 else "s",
@@ -1201,7 +1201,7 @@ func _swept_words(held: Grab) -> String:
 		if level.length() > BrickLattice.STUD * 0.5 and out.length() > BrickLattice.STUD:
 			side = ", into the model" if level.dot(out) < 0.0 else ", out from the model"
 	return "its middle went %s studs %s%s" % [Balance.studs(moved.length() / BrickLattice.STUD),
-		MotionPlayer._toward(moved), side]
+		toward(moved), side]
 
 
 ## Why [param held], asked to turn, only slides: the loop it is in is held
@@ -2126,3 +2126,44 @@ static func _far_end(at: Transform3D, box: AABB, link: Bodies.Link) -> Vector3:
 			sum += corners[n]
 			count += 1
 	return sum / float(count)
+
+
+## A joint this far short of where it was asked has stopped, in studs
+## (MotionPlayer.SHORT_STUDS).
+const SHORT_STUDS := 0.05
+
+
+## What a turn drove along a rack, said: "the Technic Gear Rack 1 x 4
+## (#170) slid 4.4 studs toward +x, and 23 parts with it", by a drag and by a
+## motion (MotionPlayer). A session asked to turn the observatory's wheel was
+## told only that the wheel turned 612°, and had to work out that the
+## telescope slid. Empty when [param held] drives no rack, or its rack stood
+## still.
+static func slid_words(held: Grab) -> String:
+	if held == null or held.linkage == null or held.bodies == null:
+		return ""
+	var out := PackedStringArray()
+	for mesh: Racks.Pinion in held.linkage.racks:
+		if not held.placed.has(mesh.rack) or not held.rest.has(mesh.rack):
+			continue
+		var moved: Vector3 = (held.placed[mesh.rack] as Transform3D).origin \
+			- (held.rest[mesh.rack] as Transform3D).origin
+		if moved.length() < SHORT_STUDS * BrickLattice.STUD:
+			continue
+		var with: int = 0
+		for key: Variant in held.placed:
+			if int(key) != mesh.rack and held.rest.has(key) and ((held.placed[key] as Transform3D).origin
+					- (held.rest[key] as Transform3D).origin).distance_to(moved) < 0.5:
+				with += 1
+		out.append("%s slid %s studs %s%s" % [held.bodies._part_named(mesh.rack),
+			Balance.studs(moved.length() / BrickLattice.STUD), toward(moved),
+			(", and %d part%s with it" % [with, "" if with == 1 else "s"]) if with > 0 else ""])
+	return ", ".join(out)
+
+
+## "toward +x", "up": the way [param moved] goes most.
+static func toward(moved: Vector3) -> String:
+	var most: int = moved.abs().max_axis_index()
+	if most == Vector3.AXIS_Y:
+		return "up" if moved.y > 0.0 else "down"
+	return "toward %s%s" % ["+" if moved[most] > 0.0 else "-", "x" if most == Vector3.AXIS_X else "z"]

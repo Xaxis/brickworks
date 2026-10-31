@@ -380,14 +380,16 @@ func evaluate(path: String = "", number: int = 0) -> Dictionary:
 	made["path"] = path
 	made["number"] = number
 	# The build check, on it alone: the one check_design and Brick Art use.
-	var assistant: Assistant = shell.app.get("_assistant")
+	var assistant: Node = shell.app.get("_assistant")
 	if assistant != null and int(made.get("parts", 0)) > 0:
-		var model: Assistant.Model = assistant._model_from_world()
+		var model: RefCounted = assistant._model_from_world()
 		var own: Dictionary = {}
 		for brick_id: int in ids:
 			own[brick_id] = true
-		var kept: Array[Assistant.Placement] = []
-		for placement: Assistant.Placement in model.placements:
+		# Of the model's own type (Assistant.Placement), emptied.
+		var kept: Array = model.placements.duplicate()
+		kept.clear()
+		for placement: RefCounted in model.placements:
 			if own.has(placement.id):
 				kept.append(placement)
 		model.placements = kept
@@ -491,10 +493,10 @@ func write_list(kind: String, asking: bool = false) -> String:
 func booklet(to: String = "") -> String:
 	if _evaluated.is_empty():
 		return "evaluate a section first"
-	if BookletMaker.busy:
+	if shell.app.call("_booklet_busy"):
 		return "already drawing a booklet"
 	if OS.has_feature("web") and to.is_empty():
-		BookletMaker.open_tab()
+		Later.script(&"BookletMaker").open_tab()
 	return await shell.app.call("_export_booklet", to, null, _rest(),
 		"%s - %s" % [shell.bar.model_name(), _evaluated_name])
 

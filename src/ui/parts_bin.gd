@@ -596,7 +596,11 @@ func _build_categories() -> void:
 				if category == RECENT
 				else "The parts you keep: right-click any part to add it or take it out")
 		if category == TECHNIQUES:
-			button.text = "%s %d" % [TECHNIQUES, Techniques.all().size()]
+			# Counted once the constructions are read, which is the first
+			# time the tab is opened (_fill_techniques): they are the
+			# assistant's, and the start does not load it (Later).
+			button.text = TECHNIQUES if not Later.loaded(&"Techniques") \
+				else "%s %d" % [TECHNIQUES, Later.script(&"Techniques").all().size()]
 			button.tooltip_text = Keymap.filled("Worked constructions, each with why it works: choose one "
 				+ "to hold it whole, {rotate_held|turns it}, a click puts it down", true)
 		if category == FITS:
@@ -3062,12 +3066,12 @@ var _techniques_seen: Array = []
 ## An assistant of the bin's own that reads a construction as a design's
 ## words are read (Techniques.as_ldraw): never the one designing, whose
 ## reading of its own model that would reset.
-var _reading: Assistant
+var _reading: Node
 
 
-func _reader() -> Assistant:
+func _reader() -> Node:
 	if _reading == null:
-		_reading = Assistant.new()
+		_reading = Later.make(&"Assistant")
 		_reading.library = library
 		_reading.builder = builder
 		add_child(_reading)
@@ -3089,10 +3093,12 @@ func _fill_techniques(query: String) -> void:
 	_grid.add_theme_constant_override("v_separation", int(_z(4)))
 	_techniques_seen = []
 	_techniques_shown = 0
-	var listed: Array = Techniques.all()
-	var groups: Array = Techniques.GROUPS
+	var techniques: GDScript = Later.script(&"Techniques")
+	_count_techniques(techniques.all().size())
+	var listed: Array = techniques.all()
+	var groups: Array = techniques.GROUPS
 	if not query.strip_edges().is_empty():
-		listed = Techniques.found(query).map(func(one: Array) -> Dictionary: return one[1])
+		listed = techniques.found(query).map(func(one: Array) -> Dictionary: return one[1])
 		groups = []
 		for technique: Dictionary in listed:
 			if not groups.has(str(technique.get("group", ""))):
@@ -3106,7 +3112,7 @@ func _fill_techniques(query: String) -> void:
 			if not titled:
 				titled = true
 				var title := Label.new()
-				title.text = Techniques.title(group)
+				title.text = techniques.title(group)
 				title.add_theme_font_size_override("font_size", ceili(_z(11)))
 				title.modulate = Color(1, 1, 1, 0.7)
 				_grid.add_child(title)
@@ -3115,7 +3121,15 @@ func _fill_techniques(query: String) -> void:
 	_update_status()
 
 
+## The Techniques tab's count, said once the constructions are read.
+func _count_techniques(count: int) -> void:
+	for child: Node in _category_row.get_children():
+		if child is Button and str(child.get_meta("category", "")) == TECHNIQUES:
+			(child as Button).text = "%s %d" % [TECHNIQUES, count]
+
+
 func _technique_cell(technique: Dictionary) -> Control:
+	var techniques: GDScript = Later.script(&"Techniques")
 	var name: String = str(technique["name"])
 	var id: String = TECHNIQUE + name
 	var button := Button.new()
@@ -3125,11 +3139,11 @@ func _technique_cell(technique: Dictionary) -> Control:
 	FocusGuard.by_keyboard(button)
 	button.add_theme_stylebox_override("focus", FocusGuard.ring())
 	button.set_meta("technique", name)
-	button.accessibility_name = Techniques.title(name)
-	button.accessibility_description = "%s. %d parts" % [Techniques.reason(technique),
+	button.accessibility_name = techniques.title(name)
+	button.accessibility_description = "%s. %d parts" % [techniques.reason(technique),
 		(technique["bricks"] as Array).size()]
 	button.tooltip_text = "%s: %s.\n\n%s\n\n%d parts: choose it to hold it whole" % [
-		Techniques.title(name), technique["when"], technique["why"],
+		techniques.title(name), technique["when"], technique["why"],
 		(technique["bricks"] as Array).size()]
 	button.pressed.connect(_on_technique.bind(name))
 
@@ -3154,14 +3168,14 @@ func _technique_cell(technique: Dictionary) -> Control:
 	words.add_theme_constant_override("separation", 0)
 	row.add_child(words)
 	var title := Label.new()
-	title.text = Techniques.title(name)
+	title.text = techniques.title(name)
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.clip_text = true
 	title.add_theme_font_size_override("font_size", ceili(_z(12)))
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	words.add_child(title)
 	var reason := Label.new()
-	reason.text = Techniques.reason(technique)
+	reason.text = techniques.reason(technique)
 	reason.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	reason.max_lines_visible = 2
 	reason.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -3171,8 +3185,8 @@ func _technique_cell(technique: Dictionary) -> Control:
 	words.add_child(reason)
 
 	if thumbnails:
-		thumbnails.offer_group(id, Techniques.parts_of(technique), func(colour: int) -> Array:
-			return Carry.from_ldraw(Techniques.as_ldraw(technique, _reader(), colour), library))
+		thumbnails.offer_group(id, techniques.parts_of(technique), func(colour: int) -> Array:
+			return Carry.from_ldraw(techniques.as_ldraw(technique, _reader(), colour), library))
 		var ready_now: ImageTexture = thumbnails.peek(id, _selected_color)
 		if ready_now:
 			image.show_picture(ready_now, false)
@@ -3225,14 +3239,15 @@ func _on_technique(name: String) -> void:
 ## main colour was: written as LDraw lines and read back, the path a paste
 ## takes. Waits for any part not here yet, which the web fetches.
 func technique_parts(name: String, colour: int) -> Array:
-	var technique: Dictionary = Techniques.named(name)
+	var techniques: GDScript = Later.script(&"Techniques")
+	var technique: Dictionary = techniques.named(name)
 	if technique.is_empty():
 		return []
-	var reader: Assistant = _reader()
+	var reader: Node = _reader()
 	await reader._ensure_parts(reader._read_model({"bricks": technique["bricks"],
 		"sections": technique.get("sections", []),
 		"repeat_section": technique.get("repeat_section", [])}))
-	return Carry.from_ldraw(Techniques.as_ldraw(technique, reader, colour), library)
+	return Carry.from_ldraw(techniques.as_ldraw(technique, reader, colour), library)
 
 
 # -- a part from a photo ------------------------------------------------------

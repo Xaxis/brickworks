@@ -56,7 +56,18 @@ var _store: ModelStore
 var _floor: FloorLayer
 var _bar: ModelBar
 var _bin: PartsBin
-var _chat: ChatPanel
+## The assistant's panel (a Later class), made with the connector the first
+## time either is asked for (_make_chat): at the start only when the
+## assistant is shown. Its dock is always there, holding [member _chat_seat].
+var _chat: PanelContainer:
+	get:
+		if _chat_made == null and _built:
+			_make_chat()
+		return _chat_made
+## The panel if it has been made, else null.
+var _chat_made: PanelContainer = null
+## What the assistant's dock holds: the panel, once it is made.
+var _chat_seat: Control
 ## The baseplate holds the example car of a first visit and nothing has
 ## been done to it. A design started then is built on a clear baseplate:
 ## it used to be built into the car, so a first-time visitor asking for a
@@ -71,15 +82,22 @@ var _named_for_work: String = ""
 var _driven: bool = false
 ## Renderer numbers on the status line, for --stats only.
 var _stats_shown: bool = _has_argument("--stats")
-var _connector: ClaudeConnector
+## Claude connected to this tab (a Later class), made with the assistant's
+## panel (_make_chat).
+var _connector: Node:
+	get:
+		if _connector_made == null and _built:
+			_make_chat()
+		return _connector_made
+var _connector_made: Node = null
 ## File, Build together…: this model built with somebody else, live
 ## (src/net/together.gd, src/ui/together_dialog.gd).
 var _together: Together
-var _together_dialog: TogetherDialog
+var _together_dialog: AcceptDialog
 ## Comments pinned to parts (src/assembly/pinned_comments.gd): drawn on the
 ## model, and File, Comments….
 var _pins_view: PinsView
-var _pins_dialog: PinsDialog
+var _pins_dialog: AcceptDialog
 ## A Build together link's secret from the page's address (?together=).
 var _together_wanted: String = ""
 ## Whether the session this tab was in before a reload has been gone back to.
@@ -171,15 +189,27 @@ var _comments_answer: Dictionary = {}
 var _comment_account: Account
 var _comments_waking: bool = false
 var comment_token_for_probe: String = ""
-var _share_panel: SharePanel
+var _share_panel: PanelContainer:
+	get:
+		if _share_panel_made == null and _built:
+			_make_share_panel()
+		return _share_panel_made
+## The SharePanel if it has been made, else null (_make_share_panel).
+var _share_panel_made: PanelContainer = null
 ## The app's last log lines (RecentLog), for Help, Send feedback….
 var _log: RecentLog
-var _share_view: ShareView
+var _share_view: Control
 ## Build it, in the viewer: the step player, the pages it shows, the line
 ## round each page's new parts, and the page it is on (_enter_build).
 var _build_mode: BuildMode
 ## The booklet's page laid out by hand (Build, Booklet page, Lay out the page).
-var _page_editor: PageEditor
+var _page_editor: Control:
+	get:
+		if _page_editor_made == null and _built:
+			_make_page_editor()
+		return _page_editor_made
+## The PageEditor if it has been made, else null (_make_page_editor).
+var _page_editor_made: Control = null
 var _build_pages: BuildSteps
 var _build_outline: SelectionOutline
 var _build_page: int = 0
@@ -280,26 +310,98 @@ var _pointer_at: Vector2 = Vector2(-INF, -INF)
 var _system_at: Vector2 = Vector2(-INF, -INF)
 var _pointer_seen_ms: int = 0
 var _steps: StepsBar
-var _inventory: InventoryPanel
-var _mosaic: MosaicDialog
-var _brickify: BrickifyDialog
+var _inventory: PanelContainer:
+	get:
+		if _inventory_made == null and _built:
+			_make_inventory()
+		return _inventory_made
+## The InventoryPanel if it has been made, else null (_make_inventory).
+var _inventory_made: PanelContainer = null
+var _mosaic: PanelContainer:
+	get:
+		if _mosaic_made == null and _built:
+			_make_mosaic()
+		return _mosaic_made
+## The MosaicDialog if it has been made, else null (_make_mosaic).
+var _mosaic_made: PanelContainer = null
+var _brickify: PanelContainer:
+	get:
+		if _brickify_made == null and _built:
+			_make_brickify()
+		return _brickify_made
+## The BrickifyDialog if it has been made, else null (_make_brickify).
+var _brickify_made: PanelContainer = null
 ## The element maker: a part that is not in the library, made.
-var _elements: ElementDialog
+var _elements: PanelContainer:
+	get:
+		if _elements_made == null and _built:
+			_make_elements()
+		return _elements_made
+## The ElementDialog if it has been made, else null (_make_elements).
+var _elements_made: PanelContainer = null
 ## Prints and stickers for any part (src/prints/print_studio.gd).
-var _studio: PrintStudio
-var _controls: ControlsDialog
-var _figures: MinifigDialog
+var _studio: Node:
+	get:
+		if _studio_made == null and _built:
+			_make_studio()
+		return _studio_made
+## The PrintStudio if it has been made, else null (_make_studio).
+var _studio_made: Node = null
+var _controls: PanelContainer:
+	get:
+		if _controls_made == null and _built:
+			_make_controls()
+		return _controls_made
+## The ControlsDialog if it has been made, else null (_make_controls).
+var _controls_made: PanelContainer = null
+var _figures: PanelContainer:
+	get:
+		if _figures_made == null and _built:
+			_make_figures()
+		return _figures_made
+## The MinifigDialog if it has been made, else null (_make_figures).
+var _figures_made: PanelContainer = null
 ## File, Render… (src/ui/render_dialog.gd).
-var _render: RenderDialog
+var _render: PanelContainer:
+	get:
+		if _render_made == null and _built:
+			_make_render()
+		return _render_made
+## The RenderDialog if it has been made, else null (_make_render).
+var _render_made: PanelContainer = null
 ## Build, Motions…: the model's own motions, played, recorded and
 ## rendered (src/ui/pose_panel.gd).
-var _pose: PosePanel
+var _pose: PanelContainer:
+	get:
+		if _pose_made == null and _built:
+			_make_pose()
+		return _pose_made
+## The PosePanel if it has been made, else null (_make_pose).
+var _pose_made: PanelContainer = null
 ## The model's own motions, played through Grab (MotionPlayer, Motions).
-var _motions: MotionPlayer
+var _motions: RefCounted:
+	get:
+		if _motions_made == null and _built:
+			_make_motions()
+		return _motions_made
+## The MotionPlayer if it has been made, else null (_make_motions).
+var _motions_made: RefCounted = null
 ## Tools, Simulate mechanism… (src/ui/simulate_panel.gd).
-var _simulate: SimulatePanel
+var _simulate: PanelContainer:
+	get:
+		if _simulate_made == null and _built:
+			_make_simulate()
+		return _simulate_made
+## The SimulatePanel if it has been made, else null (_make_simulate).
+var _simulate_made: PanelContainer = null
 ## Tools, Colour the hidden parts… (src/ui/hidden_colours_panel.gd).
-var _hidden_colours: HiddenColoursPanel
+var _hidden_colours: PanelContainer:
+	get:
+		if _hidden_colours_made == null and _built:
+			_make_hidden_colours()
+		return _hidden_colours_made
+## The HiddenColoursPanel if it has been made, else null (_make_hidden_colours).
+var _hidden_colours_made: PanelContainer = null
 ## Simulate's column, docked beside the model's, and the other panels'
 ## that work on the model as it is seen (Motions, Hose, tube or chain…,
 ## Colour the hidden parts, Stress's legend): shown while any is open, so
@@ -341,7 +443,7 @@ var _gizmo: ViewCube
 var _turning: PivotMark
 var _tools: TouchTools
 ## The phone's own bars and sheets, on a phone only (Phone.on).
-var _phone: PhoneShell
+var _phone: Control
 ## Every dialog and panel over the model sized and placed for a finger,
 ## where the phone's layout is (TouchSizing).
 var _touch: TouchSizing
@@ -365,7 +467,13 @@ var _update_offer: UpdateOffer
 var _storage_offer: StorageOffer
 ## The person's models kept with their account too, signed in on the web.
 var _cloud: CloudModels
-var _saved_models: SavedModelsDialog
+var _saved_models: AcceptDialog:
+	get:
+		if _saved_models_made == null and _built:
+			_make_saved_models()
+		return _saved_models_made
+## The SavedModelsDialog if it has been made, else null (_make_saved_models).
+var _saved_models_made: AcceptDialog = null
 var _full_offer: AccountFullOffer
 ## The working model could not be opened at start-up: where it is kept.
 var _restore_notice: RestoreNotice
@@ -379,17 +487,30 @@ var _exports: Exports
 var _measure: Measure
 ## Laying a hose, a tube or a chain: src/ui/flex_tool.gd.
 var _flex: FlexTool
-var _assistant: Assistant
+## The assistant (src/ai/assistant.gd, a Later class): made the first time
+## anything asks for it once the window is built, wired as it is made
+## (_make_assistant). A first screen never asks.
+var _assistant: Node:
+	get:
+		if _assistant_made == null and _built:
+			_make_assistant()
+		return _assistant_made
+## The assistant if anything has made it, else null: for what has nothing
+## to tell one that was never made (forgetting what it built, say).
+var _assistant_made: Node = null
+## Set as _build_ui ends: what is made on first use is wired to what the
+## window has, so it is made only once all of that is there.
+var _built: bool = false
 ## Open only when --mcp asked for it. See src/net/command_socket.gd.
-var _commands: CommandSocket = null
+var _commands: Node = null
 ## Designing on the person's own Claude subscription, by starting the
 ## Claude Code they already have and pointing it back at this app.
 var _claude_code: ClaudeCode = null
 ## Designing with another provider's model on the person's own key
 ## (DesignerLoop), and the in-process MCP server it is a client of when no
 ## port or connector has one.
-var _designer: DesignerLoop = null
-var _designer_rpc: CommandSocket = null
+var _designer: Node = null
+var _designer_rpc: Node = null
 
 var _library: PartLibrary
 
@@ -653,7 +774,7 @@ func _joint_places(to_window: Transform2D, per_css: float) -> Array:
 ## the page 600 ms after the key found the wing still being edited, as
 ## often as not (assembly_flow.mjs on the m37 preview, 2026-10-16).
 func _tell_page() -> void:
-	if not OS.has_feature("web") or _chat == null:
+	if not OS.has_feature("web") or not _built:
 		return
 	var now: int = Time.get_ticks_msec()
 	var moment: Array = _page_moment()
@@ -734,7 +855,7 @@ func _tell_page() -> void:
 		# while it is open, part by slot (tools/web/dialogs_flow.mjs builds
 		# one by finger and stands it in the model).
 		"figure_held": not _builder.held_figure.is_empty(),
-		"bench": _figures.figure.parts if _figures != null and _figures.visible else {},
+		"bench": _figures_made.figure.parts if _figures_made != null and _figures_made.visible else {},
 		# ...the kinds of end it joins by (JointSnap.ends_of: pin, pin_hole,
 		# tyre...), so tools/web/cad_task_flow.mjs aims a pin at a hole and a
 		# tyre at a rim, as a person aims a part by what it goes on...
@@ -780,7 +901,7 @@ func _tell_page() -> void:
 		"timeline": _steps.page_state() if _steps != null else {},
 		# The booklet's page being laid out by hand, its items in page mm
 		# (tools/web/booklet_edit_flow.mjs).
-		"page_editor": _page_editor.page_state() if _page_editor != null else {},
+		"page_editor": _page_editor_made.page_state() if _page_editor_made != null else {},
 		# What the renderer is drawing it with, and the frames this app's own
 		# work made slow, for tools/web/freeze_check.mjs: a browser's long
 		# tasks include drawing, which in software is most of a second a
@@ -851,7 +972,7 @@ func _tell_page() -> void:
 		"cloud": _cloud.page_state() if _cloud != null else {},
 		# File, Open, Rename or delete saved models…, and the full account's
 		# offer of it (tools/web/cloud_library_flow.mjs).
-		"saved_models": _saved_models.page_state() if _saved_models != null else {},
+		"saved_models": _saved_models_made.page_state() if _saved_models_made != null else {},
 		"room_offer": _full_offer.words() if _full_offer != null else "",
 		# Help, Send feedback…: what is chosen, ticked and said
 		# (FeedbackDialog, tools/web/feedback_flow.mjs).
@@ -873,15 +994,15 @@ func _tell_page() -> void:
 		"assistant": _shell.assistant_shown if _shell != null else false,
 		"offer": _offer != null and _offer.visible,
 		# What the last 3D model brickified came to, for brickify_flow.mjs.
-		"brickified": _brickify.last_summary if _brickify != null else "",
+		"brickified": _brickify_made.last_summary if _brickify_made != null else "",
 		# The size the panel will lay it at, so a flow knows what it typed was taken.
-		"brickify_studs": _brickify.studs() if _brickify != null else 0,
+		"brickify_studs": _brickify_made.studs() if _brickify_made != null else 0,
 		# The model the panel holds, as it was read (mesh_formats_flow.mjs).
-		"brickify_read": {"name": _brickify.model().name,
-			"triangles": _brickify.model().triangle_count(),
-			"coloured": _brickify.model().coloured, "up": _brickify.model().up,
-			"textures": _brickify.model().textures.size()}
-			if _brickify != null and _brickify.model() != null else {},
+		"brickify_read": {"name": _brickify_made.model().name,
+			"triangles": _brickify_made.model().triangle_count(),
+			"coloured": _brickify_made.model().coloured, "up": _brickify_made.model().up,
+			"textures": _brickify_made.model().textures.size()}
+			if _brickify_made != null and _brickify_made.model() != null else {},
 		# And the last picture laid in LEGO Art, for art_flow.mjs.
 		"art": _art_said,
 		# Sections suggested, broken out and evaluated, for sections_flow.mjs.
@@ -906,7 +1027,7 @@ func _tell_page() -> void:
 		"copying": _copying,
 		"read_only": _store.read_only,
 		"keeps": _store.keeps,
-		"panel": _share_panel.page_state() if _share_panel != null else {},
+		"panel": _share_panel_made.page_state() if _share_panel_made != null else {},
 		"view": _share_view.page_state() if _share_view != null else {},
 		# What the last finger on the model was taken as (_play_touch).
 		"finger": _finger_said,
@@ -918,7 +1039,7 @@ func _tell_page() -> void:
 		# What opening the link's model cost, phase by phase, in ms
 		# (ModelStore.open_phases), and the viewer's own steps around it.
 		"opened": _view_phases,
-		"parts_open": _inventory.is_showing(),
+		"parts_open": _inventory_made != null and _inventory_made.is_showing(),
 		"title": _store.title,
 	}), true)
 	_lap(laps, "share", lap)
@@ -944,22 +1065,22 @@ func _tell_page() -> void:
 	# And where Claude stands: listening here, which of its apps are
 	# connected to the account, and the panel's line about it — what a
 	# person reads, which a test cannot read off the canvas.
-	if _connector != null:
+	if _connector_made != null:
 		var clients: Array = []
-		for one: Variant in _connector.connections:
+		for one: Variant in _connector_made.connections:
 			clients.append(str((one as Dictionary).get("client", "")))
 		JavaScriptBridge.eval("window.brickworksClaude = %s" % JSON.stringify({
-			"on": _connector.is_on(),
+			"on": _connector_made.is_on(),
 			"connected": clients,
-			"status": _chat.connector_status(),
+			"status": _chat_made.connector_status(),
 			# This tab as Claude knows it, the chats working in it, and what
 			# the toolbar and Account say of them (ClaudeTabView).
-			"tab": _connector.tab(),
-			"chats": _connector.working(),
+			"tab": _connector_made.tab(),
+			"chats": _connector_made.working(),
 			"badge": _bar.claude_tab_words() if _bar != null else "",
 			"account_says": _account_panel.tab_words() if _account_panel != null else "",
-			"first_message": _connector.first_message(),
-			"opened": _connector.last_opened,
+			"first_message": _connector_made.first_message(),
+			"opened": _connector_made.last_opened,
 		}), true)
 	_told_page_us = Time.get_ticks_usec() - telling
 	_told_page_most_us = maxi(_told_page_most_us, _told_page_us)
@@ -991,23 +1112,24 @@ func _selected_colours() -> Array:
 
 ## Every control the page may press, by the name a browser check knows it by.
 func _page_controls() -> Dictionary:
-	var named: Dictionary = _chat.controls_by_name()
+	var named: Dictionary = _chat_made.controls_by_name() if _chat_made != null else {}
 	if _bar != null:
 		named.merge(_bar.controls_by_name())
-	if _figures != null and _figures.visible:
+	if _figures_made != null and _figures_made.visible:
 		named.merge(_figures.controls_by_name())
-	if _render != null and _render.visible:
+	if _render_made != null and _render_made.visible:
 		named.merge(_render.controls_by_name())
-	if _pose != null:
+	if _pose_made != null:
 		named.merge(_pose.controls_by_name())
-	if _simulate != null:
+	if _simulate_made != null:
 		named.merge(_simulate.controls_by_name())
-	if _hidden_colours != null:
+	if _hidden_colours_made != null:
 		named.merge(_hidden_colours.controls_by_name())
-	if _elements != null:
+	if _bin != null:
 		named.merge(_bin.controls_by_name())
+	if _elements_made != null:
 		named.merge(_elements.controls_by_name())
-	if _studio != null:
+	if _studio_made != null:
 		named.merge(_studio.controls_by_name())
 	if _account_panel != null:
 		named.merge(_account_panel.controls_by_name())
@@ -1023,13 +1145,13 @@ func _page_controls() -> Dictionary:
 		named.merge(_update_offer.controls_by_name())
 	if _storage_offer != null:
 		named.merge(_storage_offer.controls_by_name())
-	if _saved_models != null:
+	if _saved_models_made != null:
 		named.merge(_saved_models.controls_by_name())
 	if _full_offer != null:
 		named.merge(_full_offer.controls_by_name())
 	if _restore_notice != null:
 		named.merge(_restore_notice.controls_by_name())
-	if _brickify != null:
+	if _brickify_made != null:
 		named.merge(_brickify.controls_by_name())
 	if _shell != null:
 		named.merge(_shell.status.working.controls_by_name())
@@ -1038,16 +1160,16 @@ func _page_controls() -> Dictionary:
 	if _phone != null:
 		# Over the bar's: its mark is hidden, and the phone's is the app's menu.
 		named.merge(_phone.controls_by_name(), true)
-	if _mosaic != null and _mosaic.visible:
+	if _mosaic_made != null and _mosaic_made.visible:
 		named.merge(_mosaic.controls_by_name())
-	if _controls != null:
+	if _controls_made != null:
 		named.merge(_controls.controls_by_name())
 	if _offer != null and _offer.visible:
 		named["offer_show"] = _offer_show
 		named["offer_close"] = _offer_close
 	# Sharing: the owner's panel, the viewer's bar, and the two things the
 	# viewer opens — the timeline and the parts list.
-	if _share_panel != null:
+	if _share_panel_made != null:
 		named.merge(_share_panel.controls_by_name())
 	if _together_dialog != null:
 		named.merge(_together_dialog.controls_by_name())
@@ -1061,11 +1183,11 @@ func _page_controls() -> Dictionary:
 		named.merge(_share_view.controls_by_name())
 	if _build_mode != null:
 		named.merge(_build_mode.controls_by_name())
-	if _inventory != null:
+	if _inventory_made != null:
 		named.merge(_inventory.controls_by_name())
 	if _steps != null:
 		named.merge(_steps.controls_by_name())
-	if _page_editor != null:
+	if _page_editor_made != null:
 		named.merge(_page_editor.controls_by_name())
 	if _flex != null:
 		named.merge(_flex.controls_by_name())
@@ -1323,7 +1445,7 @@ func _parts_to_click(most: int = 5) -> Array:
 ## Everything laid out round the model, by name.
 func _panels_by_name() -> Dictionary:
 	var out: Dictionary = {"parts": _bin_dock, "right_column": _props_dock if _props_dock != null
-		else _chat_dock, "assistant_column": _chat_dock, "assistant": _chat,
+		else _chat_dock, "assistant_column": _chat_dock, "assistant": _chat_made,
 		"menus": _bar, "notices": _notices, "steps": _steps, "keys": _hint, "cube": _gizmo,
 		"touch_tools": _tools}
 	if _shell != null:
@@ -1494,10 +1616,12 @@ static func _boot_mark(stage: String) -> void:
 			% JSON.stringify(stage), true)
 
 
-## Loading this script compiles every script it names, and theirs: all 308
-## of the app's, in one go, before this runs ("compiled"). Then the scene
-## is made ("made") and its nodes readied ("ready"). The compile was 3.6 s
-## of a warm start's 8.2 on the box (webstart, 2026-10-30).
+## Loading this script compiles every script it names, and theirs, in one
+## go, before this runs ("compiled"). Then the scene is made ("made") and
+## its nodes readied ("ready"). That was all 308 of the app's, 3.6 s of a
+## warm start's 8.2 on the box (webstart, 2026-10-30); what the first
+## screen does not need is reached through Later since, and loaded when
+## asked for.
 static func _static_init() -> void:
 	_boot_mark("compiled")
 
@@ -1696,7 +1820,7 @@ func _ready() -> void:
 	var mcp: String = _argument("--mcp")
 	# Present with no value is the common case: --mcp, not --mcp=8787.
 	if not mcp.is_empty() or _has_argument("--mcp"):
-		_open_commands(CommandSocket.PORT if mcp.is_empty() else mcp.to_int())
+		_open_commands(Later.script(&"CommandSocket").PORT if mcp.is_empty() else mcp.to_int())
 
 	var autobuild: String = _argument("--autobuild")
 	if not autobuild.is_empty():
@@ -1788,7 +1912,7 @@ func _ready() -> void:
 ## file. A run that is killed, times out, or gives up still leaves the
 ## best thing it had.
 func _keep_as_it_builds(keeping_to: String) -> void:
-	if keeping_to.is_empty() or _assistant == null:
+	if keeping_to.is_empty() or not _built:
 		return
 	_assistant.built.connect(func(_count: int) -> void:
 		if not _store.export_to(keeping_to, "Model"):
@@ -1884,11 +2008,11 @@ func _ask_claude_code(brief: String) -> void:
 			_ask_went_well = false
 			return
 		print("asking about %d parts inside %s, room %s" % [picked, about,
-			Assistant._box_words(_assistant.focus.region)])
-		brief = Assistant.selection_brief(brief, picked)
+			Later.script(&"Assistant")._box_words(_assistant.focus.region)])
+		brief = Later.script(&"Assistant").selection_brief(brief, picked)
 	# Three massings first, the session choosing among them (Sketch first).
 	if about.is_empty() and _has_argument("--sketch-first"):
-		brief = Assistant.sketch_brief(brief)
+		brief = Later.script(&"Assistant").sketch_brief(brief)
 	if not design_with_claude_code(brief):
 		print("claude code: could not start")
 		_ask_went_well = false
@@ -1907,16 +2031,17 @@ func _ask_claude_code(brief: String) -> void:
 		print("  [%5.1fs]   app: %s" % [(Time.get_ticks_msec() - started) / 1000.0,
 			note.replace("\n", "\n             ")]))
 	_watch_sketches(session, started)
-	if not BestOfTwo.second_of().is_empty():
-		BestOfTwo.watch_from_second(self, session)
+	var best_of_two: GDScript = Later.script(&"BestOfTwo")
+	if not best_of_two.second_of().is_empty():
+		best_of_two.watch_from_second(self, session)
 	if not about.is_empty():
 		_assistant.focus_edited.connect(func(words: String, _b: Image, _a: Image) -> void:
 			print("  [%5.1fs]   changed the selection: %s (history %d)" % [
 				(Time.get_ticks_msec() - started) / 1000.0, words, _builder.history_depth()]))
 	var outcome: Array = await session.finished
 	_ask_went_well = bool(outcome[0])
-	if not BestOfTwo.second_of().is_empty():
-		BestOfTwo.say_how_it_went(bool(outcome[0]), str(outcome[1]),
+	if not best_of_two.second_of().is_empty():
+		best_of_two.say_how_it_went(bool(outcome[0]), str(outcome[1]),
 			_world.brick_count() - _store.scenery.size(), _store.title)
 	print("claude code ok=%s bricks=%d  (%.0fs)\n  %s" % [
 		outcome[0], _world.brick_count() - _store.scenery.size(),
@@ -1940,7 +2065,7 @@ func _watch_sketches(session: ClaudeCode, started: int) -> void:
 	var out: String = _argument("--out")
 	_assistant.sketches_ready.connect(func(sketches: Array, _model: String,
 			_tokens: Brain.Spend, _ours: bool) -> void:
-		for one: Sketches.Sketch in sketches:
+		for one: RefCounted in sketches:
 			var kept: String = ""
 			if one.picture != null and not out.is_empty():
 				var path: String = "%s_sketch%d.png" % [out.get_basename(), one.number]
@@ -2153,7 +2278,7 @@ func design_with_claude_code(brief: String) -> bool:
 		push_warning("claude code: not installed on this machine")
 		return false
 	if _commands == null:
-		_open_commands(CommandSocket.PORT)
+		_open_commands(Later.script(&"CommandSocket").PORT)
 	if _commands == null:
 		push_warning("claude code: no port to talk to the app on")
 		return false
@@ -2185,22 +2310,22 @@ func design_with_provider(brief: String, provider: Provider) -> bool:
 			or (_designer != null and _designer.busy()):
 		return false
 	if _designer == null:
-		_designer = DesignerLoop.new()
+		_designer = Later.make(&"DesignerLoop")
 		add_child(_designer)
 		_designer.finished.connect(func(_ok: bool, _summary: String) -> void: _show_badge())
 	# The one MCP server this app already answers with, so a call from the
 	# loop and one from Claude wait their turns in one queue.
-	var rpc: CommandSocket = _commands
-	if rpc == null and _connector != null:
-		rpc = _connector.rpc
+	var rpc: Node = _commands
+	if rpc == null and _connector_made != null:
+		rpc = _connector_made.get("rpc")
 	if rpc == null:
 		if _designer_rpc == null:
-			_designer_rpc = CommandSocket.new()
+			_designer_rpc = Later.make(&"CommandSocket")
 			_designer_rpc.assistant = _assistant
 			_designer_rpc.app = self
 			add_child(_designer_rpc)
 		rpc = _designer_rpc
-	_designer.rpc = rpc
+	_designer.set("rpc", rpc)
 	_designer.provider = provider
 	# The subject, whole, for the checks and the fresh look, as Claude Code's.
 	if _assistant != null:
@@ -2216,11 +2341,11 @@ func _show_badge() -> void:
 	if _bar == null:
 		return
 	_bar.show_claude_tab(_designer.badge() if _designer != null and _designer.busy()
-		else ClaudeTabView.badge(_connector))
+		else ClaudeTabView.badge(_connector_made))
 
 
 ## The loop designing with another provider, if one has started.
-func designer() -> DesignerLoop:
+func designer() -> Node:
 	return _designer
 
 
@@ -2284,16 +2409,16 @@ func _ask_provider(brief: String) -> void:
 ## The brief the panel last began a new design with, until it is sent.
 var _fresh_brief: String = ""
 ## The second design of the brief being designed twice, while it runs.
-var _best_of_two: BestOfTwo = null
+var _best_of_two: Node = null
 
 
 ## A second design of [param brief] beside the session just started, the
 ## better of the two kept as the person's model (BestOfTwo); null when
 ## Assistant.BEST_OF is 1 or a second cannot start, and the first is alone.
-func _second_design(brief: String) -> BestOfTwo:
-	if Assistant.BEST_OF < 2 or _commands == null:
+func _second_design(brief: String) -> Node:
+	if Later.script(&"Assistant").BEST_OF < 2 or _commands == null:
 		return null
-	var second := BestOfTwo.new()
+	var second: Node = Later.make(&"BestOfTwo")
 	second.world = _world
 	second.builder = _builder
 	second.library = _library
@@ -2330,13 +2455,13 @@ func _select_inside(box: String) -> int:
 	var sides: PackedFloat64Array = box.split_floats(",")
 	if sides.size() != 6:
 		return 0
-	var inside: AABB = Assistant._box_from({"x_from": sides[0], "x_to": sides[1],
+	var inside: AABB = Later.script(&"Assistant")._box_from({"x_from": sides[0], "x_to": sides[1],
 		"y_from": sides[2], "y_to": sides[3], "z_from": sides[4], "z_to": sides[5]})
 	_builder.selection.clear()
 	for brick: BrickWorld.Brick in _world.bricks():
 		if _store.scenery.has(brick.id):
 			continue
-		var at: AABB = SelectionScope.box_of(brick.part_id, brick.transform, _library)
+		var at: AABB = Later.script(&"SelectionScope").box_of(brick.part_id, brick.transform, _library)
 		if at.has_volume() and inside.has_point(at.get_center()):
 			_builder.selection[brick.id] = true
 	_builder.selection_changed.emit(_builder.selection.size())
@@ -2369,7 +2494,8 @@ func clear_model() -> void:
 	_builder.lattice.clear()
 	_builder.clear_selection()
 	_builder.forget_history()
-	_assistant.forget_built()
+	if _assistant_made != null:
+		_assistant_made.forget_built()
 	_store.model_floor = ModelFloor.preferred()
 	_lay_baseplate()
 	_sample_untouched = false
@@ -2389,8 +2515,8 @@ func clear_model() -> void:
 func _make_room(name: String) -> void:
 	if _sample_untouched and _builder.history_depth() == 0:
 		clear_model()
-		if _chat != null:
-			_chat.note("Took the example car off the baseplate to make room.")
+		if _chat_made != null:
+			_chat_made.note("Took the example car off the baseplate to make room.")
 	elif _world.brick_count() > _store.scenery.size() or _store.title != ModelStore.UNTITLED:
 		return
 	_store.begin(name)
@@ -2406,8 +2532,9 @@ func _make_room(name: String) -> void:
 func save_model(path: String) -> bool:
 	# A second design's saves stay with it, out of the person's models: the
 	# one kept is theirs once it is put down (BestOfTwo).
-	if not BestOfTwo.second_of().is_empty():
-		return _store.export_to(BestOfTwo.second_of().path_join(path.get_file()), "Model")
+	var second_of: String = Later.script(&"BestOfTwo").second_of()
+	if not second_of.is_empty():
+		return _store.export_to(second_of.path_join(path.get_file()), "Model")
 	if path.begins_with(ModelStore.SAVE_DIR):
 		return _store.save_file(path, "Model")
 	return _store.export_to(path, "Model")
@@ -2418,7 +2545,7 @@ func save_model(path: String) -> bool:
 ## Off unless asked for, and 127.0.0.1 only. See
 ## src/net/command_socket.gd for why this exists at all.
 func _open_commands(port: int) -> void:
-	_commands = CommandSocket.new()
+	_commands = Later.make(&"CommandSocket")
 	_commands.assistant = _assistant
 	_commands.app = self
 	add_child(_commands)
@@ -2469,25 +2596,33 @@ func _on_account_changed() -> void:
 	if _shell != null:
 		_shell.set_early(_account.early if _account.signed_in() else ([] as Array[String]))
 	# A viewer is nobody's session: no connector, ever.
-	if _connector == null or not _viewing.is_empty():
+	if not _viewing.is_empty():
 		return
 	_maybe_copy()
 	_maybe_join_together()
+	_tell_connector_who()
+
+
+## The connector, if made, put back as it was once somebody is in, and off
+## when they leave: at every change of account, and once as it is made.
+func _tell_connector_who() -> void:
+	if _connector_made == null or not _viewing.is_empty():
+		return
 	if _account.signed_in() and not _connector_resumed:
 		_connector_resumed = true
-		_connector.resume()
+		_connector_made.resume()
 	elif not _account.signed_in() and _account.state != Account.State.CHECKING:
 		_connector_resumed = false
-		if _connector.is_on():
-			_connector.stop()
+		if _connector_made.is_on():
+			_connector_made.stop()
 		# Whose connections they were is nobody's business here now.
-		_connector.refresh_connections()
+		_connector_made.refresh_connections()
 
 
 ## File › Share…: the panel that publishes this model as the signed-in
 ## account and hands back its link.
 func _share_wanted() -> void:
-	if _viewing.is_empty() and _share_panel != null:
+	if _viewing.is_empty() and _built:
 		_share_panel.open()
 
 
@@ -2537,7 +2672,7 @@ func _enter_view() -> void:
 	# The strip of editing keys, and the room kept for it.
 	if _hint != null:
 		(_hint.get_parent() as Control).visible = false
-	_share_view = ShareView.new()
+	_share_view = Later.make(&"ShareView")
 	$HUD.add_child(_share_view)
 	_share_view.put_bar_in(column)
 	_share_view.steps_wanted.connect(_toggle_steps)
@@ -3002,8 +3137,8 @@ func _enter_build(page: int = -1) -> void:
 		# person on a phone tapped Build it again or gave up.
 		_build_wanted = page
 		return
-	if _inventory.is_showing():
-		_inventory.hide_list()
+	if _inventory_made != null and _inventory_made.is_showing():
+		_inventory_made.hide_list()
 	# Built from the model as it was built, not as it was played with.
 	if _share_view.played:
 		_play_reset()
@@ -3394,8 +3529,8 @@ const BRIEF_MOST := 2000
 ## (SetInventories, the shards My collection reads), and &brief= is put in
 ## the assistant's box, not sent. Once, at the first open.
 func _maybe_fill_bin() -> void:
-	if not _brief_draft.is_empty() and _chat != null:
-		_chat.draft(_brief_draft)
+	if not _brief_draft.is_empty() and _chat_made != null:
+		_chat_made.draft(_brief_draft)
 		_brief_draft = ""
 	if _bin_set.is_empty() or _bin == null:
 		return
@@ -3441,8 +3576,8 @@ func _maybe_open_library() -> void:
 		return
 	if not await _bar.ask_to_replace("“%s”" % title):
 		return
-	if _assistant != null:
-		_assistant.forget_built()
+	if _assistant_made != null:
+		_assistant_made.forget_built()
 	var result: Dictionary = await _bar.open_text_with_progress(str(got["text"]), title)
 	var placed: int = int(result["placed"])
 	# Not by the parts placed or on their way: a model of none opens, and
@@ -3544,7 +3679,7 @@ var _motion_again: int = 0
 ## A press being worked out a slice a frame (MotionPlayer.pace_on): on a
 ## phone with the CPU slowed four times two gates' 25 frames took 713 ms of
 ## one frame. What was pressed, which way, and how long it waited first.
-var _motion_paced: MotionPlayer.Paced = null
+var _motion_paced: RefCounted = null
 var _motion_pressed: Dictionary = {}
 var _shapes_to_ask: Array = []
 ## How much of a frame a press works for, ms: the rest of it is the page's.
@@ -3894,7 +4029,7 @@ func _play_reset() -> void:
 ## stands where it ends, it plays backwards, which takes it back. Its frames
 ## are drawn as it goes (_motion_frame).
 func _play_motion(name: String) -> void:
-	if _motions == null or _grab_drag == null or _play_depth < 0 or _world.motions == null:
+	if not _built or _grab_drag == null or _play_depth < 0 or _world.motions == null:
 		return
 	var motion: Motions.Motion = _world.motions.named(name)
 	if motion == null:
@@ -3954,9 +4089,9 @@ func _pace_motion() -> void:
 	Exact.noting = false
 	if not done:
 		return
-	var paced: MotionPlayer.Paced = _motion_paced
+	var paced: RefCounted = _motion_paced
 	_motion_paced = null
-	var run: MotionPlayer.Run = paced.run
+	var run: RefCounted = paced.run
 	var motion: Motions.Motion = _motion_pressed["motion"]
 	var back: bool = _motion_pressed["back"]
 	# Worked out with a part judged by its cover, its shape still on its
@@ -3979,17 +4114,17 @@ func _pace_motion() -> void:
 		return
 	var items: Array = []
 	var refused := PackedStringArray()
-	for played: MotionPlayer.Played in run.played:
+	for played: RefCounted in run.played:
 		items.append_array(played.items)
 		refused.append_array(played.refused)
 	_motion_last = {"name": motion.name, "backwards": back, "frames": run.frames.size(),
-		"ms": snappedf(paced.total_ms, 0.1), "longest_ms": snappedf(paced.longest_ms, 0.1),
-		"slices": paced.slices, "hold_ms": snappedf(paced.hold_ms, 0.1), "frame_ms": snappedf(paced.frame_ms, 0.1),
-		"keep_ms": snappedf(paced.keep_ms, 0.1), "stopped": run.stopped(), "waited_ms": int(_motion_pressed["waited"]),
+		"ms": snappedf(float(paced.total_ms), 0.1), "longest_ms": snappedf(float(paced.longest_ms), 0.1),
+		"slices": paced.slices, "hold_ms": snappedf(float(paced.hold_ms), 0.1),
+		"frame_ms": snappedf(float(paced.frame_ms), 0.1), "keep_ms": snappedf(float(paced.keep_ms), 0.1), "stopped": run.stopped(), "waited_ms": int(_motion_pressed["waited"]),
 		"shapes_waited": _motion_needs.size(), "worked_again": _motion_again,
 		"motions": run.played.size(),
-		"joints": items.map(func(item: MotionPlayer.Item) -> Array:
-			return [item.name, snappedf(item.from, 0.1), snappedf(item.to, 0.1)])}
+		"joints": items.map(func(item: RefCounted) -> Array:
+			return [item.name, snappedf(float(item.from), 0.1), snappedf(float(item.to), 0.1)])}
 	# The next press finds its shapes from where the model stands then.
 	_motion_needs_for = ""
 	if items.is_empty():
@@ -3998,7 +4133,7 @@ func _pace_motion() -> void:
 		return
 	_share_view.show_motion_out(motion.name, not back)
 	var stops := PackedStringArray()
-	for item: MotionPlayer.Item in items:
+	for item: RefCounted in items:
 		if not item.stop_words.is_empty():
 			stops.append(item.stop_words)
 	_motion_said = _visitor_words(("“%s” stopped short: %s." % [motion.name, "; ".join(stops)])
@@ -4126,7 +4261,8 @@ func _motion_frame() -> void:
 	if _grab_drag != null and _grab_drag.is_grabbing():
 		_motion_stop()
 		return
-	var n: int = (Time.get_ticks_msec() - _motion_began) * MotionPlayer.PLAY_FPS / 1000
+	var fps: int = Later.script(&"MotionPlayer").PLAY_FPS
+	var n: int = (Time.get_ticks_msec() - _motion_began) * fps / 1000
 	if n >= _motion_frames.size():
 		_motion_stop()
 		_share_view.play_said(_motion_said)
@@ -4197,8 +4333,8 @@ func _looking_key(key: InputEventKey) -> bool:
 		KEY_ESCAPE:
 			# The list, then the parts a row of it picked out: a viewer
 			# selects nothing else, and has nothing else to let go of them.
-			if _inventory.is_showing():
-				_inventory.hide_list()
+			if _inventory_made != null and _inventory_made.is_showing():
+				_inventory_made.hide_list()
 			elif not _builder.selection.is_empty():
 				_builder.clear_selection()
 			return false
@@ -4419,18 +4555,7 @@ func _build_ui() -> void:
 	_model_library.deployment = _deployment
 	add_child(_model_library)
 
-	_assistant = Assistant.new()
-	_assistant.library = _library
-	_assistant.world = _world
-	_assistant.builder = _builder
-	# Every request goes straight to Anthropic on a key of the person's
-	# own. One from the environment is a developer running with theirs;
-	# one pasted into the panel is handled by the assistant itself, and
-	# wins when there are both.
-	var key: String = "" if OS.has_feature("web") else _anthropic_key()
-	if not key.is_empty():
-		_assistant.direct_key = key
-	add_child(_assistant)
+	# The assistant is made the first time it is asked for (_make_assistant).
 
 	# Before the first panel, so every tick box and switch is made with
 	# pictures that show on a dark panel; redrawn when the density changes.
@@ -4463,15 +4588,17 @@ func _build_ui() -> void:
 		if _store.example:
 			_store.begin(ModelStore.UNTITLED)
 		_sample_untouched = false
-		_assistant.forget_built()
+		if _assistant_made != null:
+			_assistant_made.forget_built()
 		_lay_baseplate()
 		_on_model_changed())
 	_bar.model_named.connect(_show_name)
 	_bar.started_new.connect(func() -> void:
 		_sample_untouched = false
-		_assistant.forget_built()
-		if _chat != null:
-			_chat.new_chat()
+		if _assistant_made != null:
+			_assistant_made.forget_built()
+		if _chat_made != null:
+			_chat_made.new_chat()
 		# A new model stands on what the person chose for new ones.
 		_store.model_floor = ModelFloor.preferred()
 		_lay_baseplate()
@@ -4479,7 +4606,8 @@ func _build_ui() -> void:
 		_camera.frame(_built_bounds()))
 	_bar.opened.connect(func(_bricks: int) -> void:
 		_sample_untouched = false
-		_assistant.forget_built()
+		if _assistant_made != null:
+			_assistant_made.forget_built()
 		_lay_baseplate()
 		_on_model_changed()
 		# Not again for a big model framed as it was first drawn: the
@@ -4554,7 +4682,7 @@ func _build_ui() -> void:
 	if Phone.on():
 		add_child(FlingScroll.new())
 	if _phone_wanted():
-		_phone = PhoneShell.new()
+		_phone = Later.make(&"PhoneShell")
 		_phone.app = self
 		_phone.bin = _bin
 		$HUD.add_child(_phone)
@@ -4685,10 +4813,8 @@ func _build_ui() -> void:
 	# the step it is on.
 	_builder.place_step = _steps.place_step
 	middle.add_child(_steps)
-	# The booklet's page laid out by hand, over the whole window.
-	_page_editor = PageEditor.new()
-	_page_editor.app = self
-	$HUD.add_child(_page_editor)
+	# The booklet's page laid out by hand, over the whole window, is made the
+	# first time it is asked for (_make_page_editor).
 
 	# Room for two lines. The strip wraps rather than truncating when the
 	# window is narrow, and a clipped area would put the wrapped line
@@ -4763,15 +4889,14 @@ func _build_ui() -> void:
 		_props_dock.setup(_side, SideDock.Edge.RIGHT, SIDE_WIDE)
 		layout.add_child(_props_dock)
 
-	_chat = ChatPanel.new()
-	# Decided before the panel is built, because it decides whether the
-	# choice appears in the composer at all.
-	_chat.claude_code_here = not ClaudeCode.found().is_empty()
+	# The assistant's column: its panel is put in the seat when it is made
+	# (_make_chat), at the end of this when the assistant is shown.
+	_chat_seat = Control.new()
 	_chat_dock = SideDock.new()
 	_chat_dock.title = "Assistant"
 	_chat_dock.icon = "assistant"
 	_chat_dock.holds = "the assistant"
-	_chat_dock.setup(_chat, SideDock.Edge.RIGHT, SIDE_WIDE)
+	_chat_dock.setup(_chat_seat, SideDock.Edge.RIGHT, SIDE_WIDE)
 	layout.add_child(_chat_dock)
 	# A tab beside the properties: its rail under theirs, one of the two
 	# showing, so the assistant opens beside the parts bin rather than
@@ -4780,28 +4905,10 @@ func _build_ui() -> void:
 		_chat_dock.share_edge(_props_dock)
 	# Rail and column, or neither: Settings, Assistant (AI) (set_assistant).
 	_chat_dock.visible = ShellPrefs.assistant_shown()
-	_chat.bind(_assistant)
-	# Claude asking for more room than the selection waits on the person: the
-	# panel the question is in comes into view.
-	_assistant.room_asked.connect(func(_why: String, _where: String) -> void:
-		if _chat_dock.visible:
-			_chat_dock.set_open(true))
-	# Claude as the client, on the person's own plan: this tab offered as
-	# a connector. Its requests are answered by a CommandSocket that never
-	# listens on a port — only its answer_rpc is used, the same code the
-	# desktop's MCP port answers with.
-	var answering := CommandSocket.new()
-	answering.assistant = _assistant
-	answering.app = self
-	add_child(answering)
-	_connector = ClaudeConnector.new()
-	_connector.rpc = answering
-	_connector.account = _account
-	_connector.model_name = func() -> String: return _store.title
-	# Off with the assistant, before a sign-in can switch it on.
-	_connector.held = not ShellPrefs.assistant_shown()
-	add_child(_connector)
-	_chat.use_connector(_connector)
+	# Opened, it has its panel.
+	_chat_dock.opening.connect(func() -> void:
+		if _chat_made == null:
+			_make_chat())
 	_together = Together.new()
 	_together.world = _world
 	_together.builder = _builder
@@ -4845,7 +4952,9 @@ func _build_ui() -> void:
 		_pointer_found = brick.transform.origin if brick != null else null
 		return _pointer_found
 	# A check's change made as Claude makes one: the same tools, answered here.
+	# Claude's connector's: made with the assistant's panel, if not yet.
 	_together.run_tool = func(name: String, arguments: Dictionary) -> String:
+		var answering: Node = _connector.get("rpc")
 		var got: Variant = await answering.answer_rpc({"jsonrpc": "2.0", "id": 1,
 			"method": "tools/call", "params": {"name": name, "arguments": arguments}})
 		var said := PackedStringArray()
@@ -4855,9 +4964,8 @@ func _build_ui() -> void:
 		return "\n".join(said)
 	add_child(_together)
 	# The toolbar's quiet line about this tab and Claude (ClaudeTabView.badge),
-	# as the chats in it change, and twice a minute for their "2 min ago".
-	_connector.listening.connect(func(_on: bool, _address: String) -> void: _show_badge())
-	_connector.chats_changed.connect(func(_now: Array) -> void: _show_badge())
+	# twice a minute for its "2 min ago"; and as the chats in it change, once
+	# the connector is made (_make_chat).
 	var badge_clock := Timer.new()
 	badge_clock.wait_time = 30.0
 	badge_clock.autostart = true
@@ -4869,25 +4977,6 @@ func _build_ui() -> void:
 	# account. Signing out switches it off.
 	_account.changed.connect(_on_account_changed)
 	_on_account_changed()
-	_chat.steps_wanted.connect(_toggle_steps)
-	_chat.parts_list_wanted.connect(_toggle_parts)
-	_chat.offers_hidden_colours = _offers_hidden_colours
-	_chat.hidden_colours_wanted.connect(func() -> void: open_hidden_colours("sections"))
-	_chat.designing.connect(func(brief: String) -> void:
-		_fresh_brief = brief
-		_make_room(ModelStore.name_for(brief)))
-	_assistant.titled.connect(_on_titled)
-	# A design over MCP, or the assistant's, going down on the example a
-	# first visit opens on: a model of its own (walk256's M15).
-	_assistant.designing.connect(func(name: String) -> void:
-		_make_room(ModelStore.name_for(name) if not name.strip_edges().is_empty() \
-			else ModelStore.UNTITLED))
-	# What the design said it stands on, laid when it stands.
-	_assistant.floor_chosen.connect(_on_floor_chosen)
-	_assistant.finished.connect(func(ok: bool, _summary: String) -> void:
-		if _plate_after_design and ok:
-			floor_part_of_model(true)
-		_plate_after_design = false)
 	# Saved, opened or begun again, it is not named for that work any more.
 	_store.saved.connect(func(_name: String) -> void: _named_for_work = "")
 	_store.loaded.connect(func(_name: String, _bricks: int) -> void: _named_for_work = "")
@@ -4903,33 +4992,6 @@ func _build_ui() -> void:
 				% roundi(_builder.below)))
 	_builder.removed.connect(func(_id: int) -> void:
 		_sample_untouched = false)
-	# Designing on the person's own Claude subscription, when this
-	# machine has the Claude Code to do it with. The panel offers the
-	# choice only then.
-	_chat.design_locally.connect(func(brief: String) -> void:
-		# A new design of a whole model on a bare baseplate is made twice,
-		# side by side, and the better kept (BestOfTwo); a change to a model,
-		# a selection or a sketch is one session.
-		var twice: bool = brief == _fresh_brief and _world.brick_count() == _store.scenery.size()
-		_fresh_brief = ""
-		if not design_with_claude_code(brief):
-			_chat.gave_up("Could not start Claude Code.")
-			return
-		var second: BestOfTwo = _second_design(brief) if twice else null
-		_chat.follow(claude_code(), second.finished if second != null else Signal()))
-	# Or another AI on the person's own key, chosen in Settings, AI: the same
-	# brief to the app's own loop (DesignerLoop), followed the same way.
-	_chat.design_elsewhere.connect(func(brief: String) -> void:
-		_fresh_brief = ""
-		if not design_with_provider(brief, ProviderSettings.current()):
-			_chat.gave_up("Could not start: %s" % ("another design is running"
-				if ProviderSettings.current() != null else "this provider has no adapter"))
-			return
-		_chat.follow(_designer))
-	_chat.stop_elsewhere.connect(func() -> void:
-		if _designer != null:
-			_designer.stop())
-	_chat.ai_settings_wanted.connect(func() -> void: _controls.open_ai())
 
 	# Across the window rather than inside a column: a parts list is
 	# consulted and dismissed, and at four hundred pieces it wants the
@@ -4942,79 +5004,29 @@ func _build_ui() -> void:
 	# the header holds the only Done button, so the way out was a key
 	# nobody has. It is now as big as there is room for, up to the size
 	# it used to be.
-	_inventory = InventoryPanel.new()
-	_inventory.set_anchors_preset(Control.PRESET_FULL_RECT)
-	$HUD.add_child(_inventory)
-	_inset(_inventory, 860.0, 600.0)
-	get_viewport().size_changed.connect(func() -> void:
-		_inset(_inventory, 860.0, 600.0)
-		_inset(_controls, _controls.wide(), _controls.tall())
-		_inset(_mosaic, MOSAIC_WIDE, MOSAIC_TALL)
-		_inset(_brickify, 400.0, 690.0)
-		_inset(_figures, 1040.0, 660.0)
-		_inset(_elements, 440.0, 760.0))
+	# Made the first time it is asked for (_make_inventory).
 	_bar.parts_wanted.connect(_toggle_parts)
 	# The booklet is Build, Instructions and the toolbar's Instructions
 	# button (Shell._instructions, which calls _booklet_wanted).
 
 	# Over the model rather than beside it, like the parts list: making
 	# a figure wants the room, and is done before going back to build.
-	_figures = MinifigDialog.new()
-	_figures.library = _library
-	_figures.thumbnails = _thumbnails
-	$HUD.add_child(_figures)
-	_inset(_figures, 1040.0, 660.0)
+	# Over the model rather than beside it, like the parts list: making
+	# a figure wants the room, and is done before going back to build.
 	_bar.minifig_wanted.connect(_open_figures)
-	_figures.place_wanted.connect(_hold_figure)
 
-	_controls = ControlsDialog.new()
-	$HUD.add_child(_controls)
-	_inset(_controls, _controls.wide(), _controls.tall())
-	# The keys sheet is wider and taller than Settings.
-	_controls.face_changed.connect(func() -> void:
-		_inset(_controls, _controls.wide(), _controls.tall()))
-	_bar.controls_wanted.connect(_controls.open)
-	_controls.assistant_chosen.connect(set_assistant)
-	_controls.ai_changed.connect(_chat.refresh_designer)
-	_controls.ai_changed.connect(func() -> void:
-		if _shell != null:
-			_shell.name_designer(ProviderSettings.designer_name()))
-	# Design with it: the assistant's column, open, its brief to type in.
-	_controls.ai_design_wanted.connect(func() -> void:
-		if not ShellPrefs.assistant_shown():
-			set_assistant(true)
-		_chat_dock.set_open(true)
-		_chat.refresh_designer()
-		_chat.focus_brief())
-	# The strip along the bottom names what the middle button does, so
-	# it is wrong the moment somebody changes it.
-	_controls.changed.connect(func() -> void:
-		if _hint != null:
-			_hint.rebuild()
-		# And the keys a preset or the keys sheet set, in the toolbar's
-		# tooltips and every other a key is named in (Keymap.tell); the
-		# menus read theirs as they open.
-		if _shell != null:
-			_shell.toolbar.tell_keys()
-		Keymap.retell(get_tree().root))
-	_controls.interface_sized.connect(_match_screen_density)
+	_bar.controls_wanted.connect(func() -> void: _controls.open())
 	# The keys with the account (KeymapSync): set here, sent there; signed
 	# in somewhere new, the account's are taken if they are the newer.
 	_keymap_sync = KeymapSync.new()
 	_keymap_sync.account = _account
 	add_child(_keymap_sync)
-	_controls.keys_set.connect(_keymap_sync.send)
-	_keymap_sync.taken.connect(func() -> void: _controls.changed.emit())
+	_keymap_sync.taken.connect(_keys_changed)
 	_account.changed.connect(_keymap_sync.account_changed)
 	_keymap_sync.account_changed()
 
 	_picker = PickImage.new()
 	add_child(_picker)
-	_mosaic = MosaicDialog.new()
-	_mosaic.library = _library
-	_mosaic.claude_shown = ShellPrefs.assistant_shown()
-	$HUD.add_child(_mosaic)
-	_inset(_mosaic, MOSAIC_WIDE, MOSAIC_TALL)
 
 	# Straight from the button press into the file dialog, with nothing
 	# awaited between. A browser only opens a file picker while it is
@@ -5026,9 +5038,6 @@ func _build_ui() -> void:
 	_bar.mosaic_wanted.connect(func() -> void:
 		_picking_reference = false
 		_picker.ask())
-	_chat.reference_wanted.connect(func() -> void:
-		_picking_reference = true
-		_picker.ask())
 	_picker.failed.connect(func(why: String) -> void: _bar.say(why))
 	_picker.picked.connect(func(image: Image) -> void:
 		if _picking_reference:
@@ -5039,81 +5048,22 @@ func _build_ui() -> void:
 				_bar.say("could not read that picture")
 			return
 		_mosaic_source = image
-		_assistant.art_source = image
+		# make_art's picture: the assistant is given it as it is made.
+		if _assistant_made != null:
+			_assistant_made.art_source = image
 		_mosaic.show_for(image))
-	_mosaic.build_wanted.connect(_build_mosaic)
-	_mosaic.art_wanted.connect(_build_art)
-	_mosaic.claude_wanted.connect(_design_art_with_claude)
-	_assistant.art_laid.connect(_art_laid)
 
 	# A 3D model laid in bricks, as a sub-assembly beside what is built.
-	_brickify = BrickifyDialog.new()
-	_brickify.library = _library
-	_brickify.world = _world
-	_brickify.builder = _builder
-	_brickify.scenery = _store.scenery
-	$HUD.add_child(_brickify)
-	_inset(_brickify, 400.0, 690.0)
 	# Straight from the press into the file chooser, as the mosaic's.
-	_bar.brickify_wanted.connect(_brickify.ask)
-	_brickify.said.connect(func(text: String) -> void: _bar.say(text))
-	_brickify.placing.connect(func(name: String) -> void:
-		if _shell != null:
-			_brickify.assemblies = _shell.assemblies
-		_make_room(name))
-	_brickify.brickified.connect(func(_ids: PackedInt64Array, summary: String) -> void:
-		_store.laid_by("brickify")
-		_ground_for_the_model()
-		_camera.frame(_selection_bounds(), 1.4)
-		_on_model_edited()
-		_bar.say(summary))
-	# Once it is down, its booklet and its lists from the panel, a press each,
-	# through the app's own exporters, of the build alone; and laid from the
-	# person's collection when they ask.
-	_brickify.owned = func() -> Dictionary:
-		return _shell.collection.store.on_hand if _shell != null and _shell.collection != null \
-			and _shell.collection.store != null else {}
-	_brickify.booklet_wanted.connect(_brickify_booklet)
-	_brickify.shop_wanted.connect(func(shop: String, path: String) -> void:
-		_brickify.tell(await _exports.shop_list(shop, _outside_of(path), true)))
-	_brickify.need_wanted.connect(func() -> void:
-		if _shell != null and _shell.collection != null:
-			_shell.collection.open("need"))
+	_bar.brickify_wanted.connect(func() -> void: _brickify.ask())
 
-	_elements = ElementDialog.new()
-	_elements.library = _library
-	$HUD.add_child(_elements)
-	_inset(_elements, 440.0, 760.0)
 	_bin.make_wanted.connect(func() -> void:
 		_elements.color_code = _builder.held_color
 		_elements.open(_builder.held_part))
-	_elements.made.connect(func(part_id: String) -> void:
-		_bin.populate()
-		_bin.show_category("Custom")
-		_bin.show_held(part_id, _builder.held_color)
-		_on_part_chosen(part_id)
-		var info: PartLibrary.PartInfo = _library.parts.get(part_id)
-		_bar.say("made %s — it is in the parts bin under Custom" % (
-			Inventory._tidy(info.name) if info != null else part_id)))
 
 	# Prints and stickers for any part of the model (src/prints).
-	_studio = PrintStudio.new()
-	_studio.library = _library
-	_studio.world = _world
-	_studio.builder = _builder
-	_studio.camera = _camera
-	_studio.thumbnails = _thumbnails
-	add_child(_studio)
-	_studio.setup($HUD)
 	_bin.print_wanted.connect(func() -> void: _studio.print_part(_builder.held_part))
-	_bin.stickers_wanted.connect(_studio.open_sheet)
-	_studio.said.connect(func(words: String) -> void: _bar.say(words))
-	_studio.made.connect(func(part_id: String) -> void:
-		_bin.populate()
-		if not Stickers.is_sticker(_library, part_id):
-			_bin.show_category(PartPrints.MY_PRINTS)
-			_bin.show_held(part_id, _builder.held_color)
-			_on_part_chosen(part_id))
+	_bin.stickers_wanted.connect(func() -> void: _studio.open_sheet())
 
 	# Panels sized to the window, and folded away when there is no room
 	# for them beside the model. On a phone a panel that takes its
@@ -5232,7 +5182,6 @@ func _build_ui() -> void:
 		_dress_for_phone()
 	# The keys sheet lists the keys the menus show, and the strip reads the
 	# keymap, which knows the menus' keys now.
-	_controls.shell = _shell
 	if _hint != null:
 		_hint.rebuild()
 	# View, Stress: weighed with the status bar's check, at once when it is
@@ -5242,9 +5191,6 @@ func _build_ui() -> void:
 	_shell.stress.wanted.connect(func() -> void:
 		_stability_revision = -1
 		_stability_at = 0)
-	# Claude's change to a selection made in one copy of a sub-assembly is
-	# followed by the others, as a change by hand is.
-	_assistant.assemblies = _shell.assemblies
 	# The colours at the foot of the column, under the model tree and the
 	# properties: what those do moves the parts grid's foot, never them.
 	_stack.add_section(_bin.colours)
@@ -5286,7 +5232,6 @@ func _build_ui() -> void:
 	_seat_offer = SeatOffer.new()
 	_seat_offer.builder = _builder
 	_seat_offer.world = _world
-	_seat_offer.assistant = _assistant
 	_seat_offer.scenery = _store.scenery
 	_seat_offer.say = _bar.say
 	_seat_offer.edited = _on_model_edited
@@ -5385,11 +5330,6 @@ func _build_ui() -> void:
 	add_child(_cloud)
 	# File, Open, Rename or delete saved models… (src/ui/saved_models_dialog.gd),
 	# and the offer of it when the account is full (src/ui/account_full_offer.gd).
-	_saved_models = SavedModelsDialog.new()
-	_saved_models.store = _store
-	_saved_models.cloud = _cloud
-	_saved_models.say = _bar.say
-	add_child(_saved_models)
 	_bar.saved_models_wanted.connect(func() -> void: _saved_models.open())
 	_full_offer = AccountFullOffer.new()
 	_full_offer.make_room = func() -> void: _saved_models.open(true)
@@ -5400,86 +5340,19 @@ func _build_ui() -> void:
 
 	# File, Render…: a photo-real picture or turntable, drawn off screen
 	# in the window's own light (src/ui/render_dialog.gd, src/render/studio_render.gd).
-	_render = RenderDialog.new()
-	_render.world = _world
-	_render.library = _library
-	_render.scenery = _store.scenery
-	_render.eye = _camera
-	_render.look = ($WorldEnvironment as WorldEnvironment).environment
-	for light_name: String in ["Sun", "Fill", "Rim"]:
-		_render.rig_lights.append(get_node(light_name) as DirectionalLight3D)
-	_render.named = _bar.model_name
-	$HUD.add_child(_render)
-	_inset(_render, RenderDialog.WIDE, RenderDialog.TALL)
-	get_viewport().size_changed.connect(func() -> void:
-		_inset(_render, RenderDialog.WIDE, RenderDialog.TALL))
-	# Build, Motions…: the model's own motions, played, recorded by a drag,
-	# set joint by joint and rendered (src/ui/pose_panel.gd), in the column
-	# beside the model, so what moves is seen as it moves and no part to be
-	# dragged is under the panel.
-	_pose = PosePanel.new()
-	_pose.world = _world
-	_pose.builder = _builder
-	_pose.library = _library
-	_pose.assemblies = _shell.assemblies
-	_pose.scenery = _store.scenery
-	_pose.eye = _camera
-	_pose.look = _render.look
-	_pose.rig_lights = _render.rig_lights
-	_pose.named = _bar.model_name
-	_motions = MotionPlayer.new()
-	_motions.world = _world
-	_motions.builder = _builder
-	_motions.library = _library
-	_motions.store = _store
-	_motions.grabbing = _grab_drag
-	_pose.player = _motions
-	_render.player = _motions
-	_pose.grabbing = _grab_drag
-	_pose.select_tool = func() -> void:
-		if _builder.is_carrying():
-			_verbs.put_away()
-		_verbs.set_mode("select")
+	# File, Render… (_make_render); Build, Motions… (_make_pose); Tools,
+	# Colour the hidden parts… (_make_hidden_colours); Tools, Simulate
+	# mechanism… (_make_simulate): each made the first time it is asked for.
 	# Each motion's joint written where it stands (Motions.Joint.at).
-	_store.motion_rebase = _motions.rebase
-	_tool_panels.add_child(_pose)
-	_pose.visibility_changed.connect(_tool_column_shown)
-	# Tools, Colour the hidden parts…: the inside, cut open and coloured,
-	# in the column too (src/ui/hidden_colours_panel.gd).
-	_hidden_colours = HiddenColoursPanel.new()
-	_hidden_colours.world = _world
-	_hidden_colours.builder = _builder
-	_hidden_colours.library = _library
-	_hidden_colours.store = _store
-	_hidden_colours.assemblies = _shell.assemblies
-	_hidden_colours.scenery = _store.scenery
-	_hidden_colours.edited = _on_model_edited
-	_hidden_colours.say = func(line: String) -> void: _bar.say(line)
-	_tool_panels.add_child(_hidden_colours)
-	_hidden_colours.visibility_changed.connect(_tool_column_shown)
-	_pose.changed.connect(_on_model_edited)
-	# Tools, Simulate mechanism…: a gear train turned from its driver, in the
-	# column too (src/ui/simulate_panel.gd). It changes nothing, so it has
-	# no changed signal: what turns is drawn.
-	_simulate = SimulatePanel.new()
-	_simulate.world = _world
-	_simulate.builder = _builder
-	_simulate.library = _library
-	_simulate.shell = _shell
-	_simulate.scenery = _store.scenery
-	_simulate.eye = _camera
-	_simulate.look = _render.look
-	_simulate.rig_lights = _render.rig_lights
-	_simulate.named = _bar.model_name
-	_simulate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_simulate.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_tool_panels.add_child(_simulate)
-	_simulate.visibility_changed.connect(_tool_column_shown)
+	_store.motion_rebase = func(joint: Motions.Joint) -> void: _motions.rebase(joint)
+	# Render's renderer was made ready the first time the window was left
+	# alone (RenderDialog._warm_when_idle): its dialog is made then.
+	get_tree().root.window_input.connect(func(_event: InputEvent) -> void:
+		_touched_ms = Time.get_ticks_msec())
 	# View, Stress's legend under them: at the model's right edge under the
 	# view cube it covered the parts there, and a click on one landed on it.
 	_tool_panels.add_child(_shell.stress.panel)
 	_shell.stress.panel.visibility_changed.connect(_tool_column_shown)
-	_builder.selection_changed.connect(_simulate._on_selection)
 	_builder.selection_changed.connect(func(count: int) -> void:
 		_outline.show_selection(_builder.selection)
 		_tell_bin_selection()
@@ -5499,21 +5372,111 @@ func _build_ui() -> void:
 		if not _builder.selection.is_empty():
 			_outline.show_selection(_builder.selection)
 		_look_under_again())
+	# Who is signed in, and the way out: from Account on the bar.
+	_account_panel = AccountPanel.new()
+	_account_panel.setup(_account)
+	_account_panel.show_claude(ShellPrefs.assistant_shown())
+	if _connector_made != null:
+		_account_panel.use_connector(_connector_made)
+	$HUD.add_child(_account_panel)
+	_inset(_account_panel, AccountPanel.WIDE, AccountPanel.TALL)
+	get_viewport().size_changed.connect(func() -> void:
+		_inset(_account_panel, AccountPanel.WIDE, AccountPanel.TALL))
+	_bar.account_wanted.connect(_account_panel.open)
+	_account_panel.feed_counted.connect(_bar.show_feed_count)
+	_account_panel.sign_out_wanted.connect(func() -> void:
+		if _connector_made != null:
+			_connector_made.stop()
+		_account.sign_out())
+
+	# Share this model: File › Share… and the toolbar's Share
+	# (_make_share_panel).
+
+	# Over everything else, so it is added last: nothing in the builder can
+	# be used until someone is signed in. Not over a shared model's viewer,
+	# which is for anybody with the link.
+	if _pass.checks:
+		_pass_gate = PassGate.new()
+		_pass_gate.setup(_pass)
+		$HUD.add_child(_pass_gate)
+	if _gate_wanted() and _viewing.is_empty():
+		_gate = SignInGate.new()
+		_gate.setup(_account)
+		$HUD.add_child(_gate)
+
+	# Last, so the buttons above are all there for it to give a
+	# pointing hand to; any made later are caught as they arrive.
+	_cursors = Cursors.new()
+	add_child(_cursors)
+	_cursors.looked_again.connect(_hover_again)
+	# A wheel, a swipe or a button over a panel is the panel's. See
+	# CadCamera._begins_over_interface.
+	_camera.over_interface = _over_interface
+	_built = true
+	# Shown, the assistant's panel comes as the window's first frame is drawn:
+	# its code is the biggest the app has, and before that frame it held
+	# the window back for everybody (Later).
+	if ShellPrefs.assistant_shown() and _viewing.is_empty():
+		RenderingServer.frame_post_draw.connect(func() -> void:
+			if _chat_made == null:
+				_make_chat(), CONNECT_ONE_SHOT)
+
+
+## The assistant (src/ai/assistant.gd), made and wired the first time
+## anything asks for [member _assistant] once the window is built: a
+## design, the panel, a session's call, a probe.
+func _make_assistant() -> void:
+	_assistant_made = Later.make(&"Assistant")
+	_assistant_made.library = _library
+	_assistant_made.world = _world
+	_assistant_made.builder = _builder
+	# Every request goes straight to Anthropic on a key of the person's
+	# own. One from the environment is a developer running with theirs;
+	# one pasted into the panel is handled by the assistant itself, and
+	# wins when there are both.
+	var key: String = "" if OS.has_feature("web") else _anthropic_key()
+	if not key.is_empty():
+		_assistant_made.direct_key = key
+	# The picture a mosaic was asked of, for make_art.
+	if _mosaic_source != null:
+		_assistant_made.art_source = _mosaic_source
+	add_child(_assistant_made)
+	# Claude asking for more room than the selection waits on the person: the
+	# panel the question is in comes into view.
+	_assistant_made.room_asked.connect(func(_why: String, _where: String) -> void:
+		if _chat_dock.visible:
+			_chat_dock.set_open(true))
+	_assistant_made.titled.connect(_on_titled)
+	# A design over MCP, or the assistant's, going down on the example a
+	# first visit opens on: a model of its own (walk256's M15).
+	_assistant_made.designing.connect(func(name: String) -> void:
+		_make_room(ModelStore.name_for(name) if not name.strip_edges().is_empty() \
+			else ModelStore.UNTITLED))
+	# What the design said it stands on, laid when it stands.
+	_assistant_made.floor_chosen.connect(_on_floor_chosen)
+	_assistant_made.finished.connect(func(ok: bool, _summary: String) -> void:
+		if _plate_after_design and ok:
+			floor_part_of_model(true)
+		_plate_after_design = false)
+	_assistant_made.art_laid.connect(_art_laid)
+	# Claude's change to a selection made in one copy of a sub-assembly is
+	# followed by the others, as a change by hand is.
+	_assistant_made.assemblies = _shell.assemblies
 	# So a snapshot does not carry the baseplate off with it.
-	_assistant.scenery = _store.scenery
+	_assistant_made.scenery = _store.scenery
 	# And what the model stands on, read when asked: on a bare floor what only
 	# the floor holds must balance, as BrickBench stands every build.
-	_assistant.floor_kind = func() -> String:
+	_assistant_made.floor_kind = func() -> String:
 		return _store.model_floor.kind if _store.model_floor != null else ""
 
 	# What Claude lays makes the model one made with the assistant, said as
 	# it is published (ModelStore.made_with, SharePanel): a design laid
 	# whole, and the one step a request or a change to the selection keeps.
-	_assistant.built.connect(func(n: int) -> void:
+	_assistant_made.built.connect(func(n: int) -> void:
 		if n > 0:
 			_store.laid_by("assistant"))
-	_assistant.laid_parts.connect(_store.laid_by.bind("assistant"))
-	_assistant.built.connect(func(_n: int) -> void:
+	_assistant_made.laid_parts.connect(_store.laid_by.bind("assistant"))
+	_assistant_made.built.connect(func(_n: int) -> void:
 		# A design can be bigger than the ground it was given.
 		#
 		# The baseplate is laid when a model is opened and when the
@@ -5550,12 +5513,12 @@ func _build_ui() -> void:
 		# going up for 2.5 s after that. Since a check from outside stopped
 		# putting the design down first (a8e1aa5), every design submitted
 		# over the connector did. Only the app's own designs go up.
-		if not _driven and not _out_of_view and not CommandSocket.at_work() \
+		if not _driven and not _out_of_view and not _session_at_work() \
 				and _playback.play_new(_assistant.fresh_ids):
 			_bar.say("building…"))
 	# A draft appears as it is; it is about to be replaced, so animating
 	# it would be an assembly that never finishes.
-	_assistant.sketched.connect(func(count: int) -> void:
+	_assistant_made.sketched.connect(func(count: int) -> void:
 		if _playback.is_playing():
 			_playback.stop()
 		_on_model_changed()
@@ -5564,65 +5527,497 @@ func _build_ui() -> void:
 		if _out_of_view:
 			_camera.frame(_built_bounds())
 		_bar.say("working — %d bricks so far" % count))
+	# What the slow frames were busy with, on the web (_watch_own_frames).
+	if OS.has_feature("web"):
+		_assistant_made.progress.connect(func(note: String) -> void:
+			_doing = note)
 
-	# Who is signed in, and the way out: from Account on the bar.
-	_account_panel = AccountPanel.new()
-	_account_panel.setup(_account)
-	_account_panel.show_claude(ShellPrefs.assistant_shown())
-	if _connector != null:
-		_account_panel.use_connector(_connector)
-	$HUD.add_child(_account_panel)
-	_inset(_account_panel, AccountPanel.WIDE, AccountPanel.TALL)
-	get_viewport().size_changed.connect(func() -> void:
-		_inset(_account_panel, AccountPanel.WIDE, AccountPanel.TALL))
-	_bar.account_wanted.connect(_account_panel.open)
-	_account_panel.feed_counted.connect(_bar.show_feed_count)
-	_account_panel.sign_out_wanted.connect(func() -> void:
-		_connector.stop()
-		_account.sign_out())
 
-	# Share this model: File › Share… and the toolbar's Share.
-	_share_panel = SharePanel.new()
-	_share_panel.account = _account
-	_share_panel.store = _store
-	_share_panel.shared = _shared
-	_share_panel.moves_of = _moves_now
-	_share_panel.picture = _exports.picture
-	_share_panel.named = _bar.model_name
-	_share_panel.setup()
-	$HUD.add_child(_share_panel)
-	_inset(_share_panel, SharePanel.WIDE, SharePanel.TALL)
-	get_viewport().size_changed.connect(func() -> void:
-		_inset(_share_panel, SharePanel.WIDE, SharePanel.TALL))
+## Whether a session's call is being answered now (CommandSocket.at_work):
+## never, while nothing has loaded the socket.
+static func _session_at_work() -> bool:
+	return Later.loaded(&"CommandSocket") and Later.script(&"CommandSocket").at_work()
 
-	# The parts list's own BrickLink and Rebrickable buttons.
-	_inventory.shop_wanted.connect(func(shop: String) -> void:
-		_inventory.tell(await _exports.shop_list(shop, {}, true)))
-	_inventory.said.connect(_bar.say)
+
+## The assistant's panel and Claude connected to this tab, made and wired
+## the first time either is asked for once the window is built: at the end
+## of _build_ui when the assistant is shown, else when it is turned on, its
+## column opened, or a probe or a check asks for either.
+func _make_chat() -> void:
+	var chat: PanelContainer = Later.make(&"ChatPanel")
+	_chat_made = chat
+	# Decided before the panel is built, because it decides whether the
+	# choice appears in the composer at all.
+	chat.claude_code_here = not ClaudeCode.found().is_empty()
+	chat.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_chat_seat.add_child(chat)
+	chat.bind(_assistant)
+	# Claude as the client, on the person's own plan: this tab offered as
+	# a connector. Its requests are answered by a CommandSocket that never
+	# listens on a port — only its answer_rpc is used, the same code the
+	# desktop's MCP port answers with.
+	var answering: Node = Later.make(&"CommandSocket")
+	answering.assistant = _assistant
+	answering.app = self
+	add_child(answering)
+	var connector: Node = Later.make(&"ClaudeConnector")
+	_connector_made = connector
+	connector.set("rpc", answering)
+	connector.account = _account
+	connector.model_name = func() -> String: return _store.title
+	# Off with the assistant, before a sign-in can switch it on.
+	connector.held = not ShellPrefs.assistant_shown()
+	add_child(connector)
+	chat.use_connector(connector)
+	# The toolbar's quiet line about this tab and Claude, as the chats in it
+	# change.
+	connector.listening.connect(func(_on: bool, _address: String) -> void: _show_badge())
+	connector.chats_changed.connect(func(_now: Array) -> void: _show_badge())
+	_show_badge()
+	chat.steps_wanted.connect(_toggle_steps)
+	chat.parts_list_wanted.connect(_toggle_parts)
+	chat.offers_hidden_colours = _offers_hidden_colours
+	chat.hidden_colours_wanted.connect(func() -> void: open_hidden_colours("sections"))
+	chat.designing.connect(func(brief: String) -> void:
+		_fresh_brief = brief
+		_make_room(ModelStore.name_for(brief)))
+	# Designing on the person's own Claude subscription, when this
+	# machine has the Claude Code to do it with. The panel offers the
+	# choice only then.
+	chat.design_locally.connect(func(brief: String) -> void:
+		# A new design of a whole model on a bare baseplate is made twice,
+		# side by side, and the better kept (BestOfTwo); a change to a model,
+		# a selection or a sketch is one session.
+		var twice: bool = brief == _fresh_brief and _world.brick_count() == _store.scenery.size()
+		_fresh_brief = ""
+		if not design_with_claude_code(brief):
+			chat.gave_up("Could not start Claude Code.")
+			return
+		var second: Node = _second_design(brief) if twice else null
+		chat.follow(claude_code(), second.finished if second != null else Signal()))
+	# Or another AI on the person's own key, chosen in Settings, AI: the same
+	# brief to the app's own loop (DesignerLoop), followed the same way.
+	chat.design_elsewhere.connect(func(brief: String) -> void:
+		_fresh_brief = ""
+		if not design_with_provider(brief, ProviderSettings.current()):
+			chat.gave_up("Could not start: %s" % ("another design is running"
+				if ProviderSettings.current() != null else "this provider has no adapter"))
+			return
+		chat.follow(_designer))
+	chat.stop_elsewhere.connect(func() -> void:
+		if _designer != null:
+			_designer.stop())
+	chat.ai_settings_wanted.connect(func() -> void: _controls.open_ai())
+	chat.reference_wanted.connect(func() -> void:
+		_picking_reference = true
+		_picker.ask())
+	if _account_panel != null:
+		_account_panel.use_connector(connector)
+	# Put back as it was for whoever is signed in, as at every change of
+	# account since.
+	_tell_connector_who()
+	# What the slow frames were busy with, on the web (_watch_own_frames).
+	if OS.has_feature("web"):
+		answering.asked.connect(func(tool: String) -> void:
+			_doing = tool)
+	# And on a phone, sized for a finger in its drawer (_phone_layout).
+	if _touch != null:
+		_touch.size_panel(chat)
+	if not _brief_draft.is_empty():
+		chat.draft(_brief_draft)
+		_brief_draft = ""
+
+
+## The panels and dialogs below are made the first time something asks for
+## one once the window is built (their members' getters), not by _build_ui:
+## loading their scripts at the start compiled the whole app before the
+## first frame (Later).
+
+
+## Whether [param panel] has been made and is showing.
+static func _shown(panel: CanvasItem) -> bool:
+	return panel != null and panel.visible
+
+
+## [param panel] over the window, under the sign-in screens, which _build_ui
+## adds last so that they are over everything.
+func _add_to_hud(panel: Control) -> void:
+	var first: int = $HUD.get_child_count()
+	$HUD.add_child(panel)
+	_under_gates(first)
+
+
+## What was added to the HUD from child [param first] on, put back under
+## the sign-in screens.
+func _under_gates(first: int) -> void:
+	var under: int = $HUD.get_child_count()
+	for gate: Control in [_pass_gate, _gate]:
+		if is_instance_valid(gate) and gate.get_parent() == $HUD and gate.get_index() < first:
+			under = mini(under, gate.get_index())
+	if under >= first:
+		return
+	for node: Node in $HUD.get_children().slice(first):
+		$HUD.move_child(node, under)
+		under += 1
+
+
+## Whether the phone's layout has sized the tools' column's panels
+## (_size_for_a_finger): one made after it is sized as it is seated.
+var _fingered: bool = false
+
+
+## [param panel] in the tools' column, above Stress's legend, as the panels
+## made with the window were.
+func _seat_tool_panel(panel: Control) -> void:
+	_tool_panels.add_child(panel)
+	_tool_panels.move_child(panel, _shell.stress.panel.get_index())
+	panel.visibility_changed.connect(_tool_column_shown)
+	if _fingered:
+		_touch.size_panel(panel)
+		panel.minimum_size_changed.connect(_fit_tool_panel.bind(panel))
+		panel.visibility_changed.connect(_fit_tool_panel.bind(panel))
+
+
+## The window's sky and its three lights, which Render, Motions and
+## Simulate draw in.
+func _look() -> Environment:
+	return ($WorldEnvironment as WorldEnvironment).environment
+
+
+func _rig_lights() -> Array[DirectionalLight3D]:
+	var lights: Array[DirectionalLight3D] = []
+	for light_name: String in ["Sun", "Fill", "Rim"]:
+		lights.append(get_node(light_name) as DirectionalLight3D)
+	return lights
+
+
+## Across the window rather than inside a column: a parts list is
+## consulted and dismissed, and at four hundred pieces it wants the
+## room. Added to the HUD directly so no dock resizes around it.
+## Inset from the edges rather than a fixed 860 by 600.
+##
+## A fixed size centred on the screen is off the screen as soon as
+## the screen is smaller than the size: on a phone held sideways the
+## list overflowed top and bottom, taking its header with it — and
+## the header holds the only Done button, so the way out was a key
+## nobody has. It is now as big as there is room for, up to the size
+## it used to be.
+func _make_inventory() -> void:
+	var list: PanelContainer = Later.make(&"InventoryPanel")
+	_inventory_made = list
+	list.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_add_to_hud(list)
+	_inset(list, 860.0, 600.0)
+	get_viewport().size_changed.connect(func() -> void: _inset(list, 860.0, 600.0))
+	# Its own BrickLink and Rebrickable buttons.
+	list.shop_wanted.connect(func(shop: String) -> void:
+		list.tell(await _exports.shop_list(shop, {}, true)))
+	list.said.connect(_bar.say)
 	# Its rows' pictures, and a row clicked: those parts, in the model.
-	_inventory.thumbnails = _thumbnails
-	_inventory.chosen.connect(_show_found)
+	list.thumbnails = _thumbnails
+	list.chosen.connect(_show_found)
+	# And what the collection lacks of it (Shell's collection).
+	list.need_wanted.connect(func() -> void:
+		if _shell != null and _shell.collection != null:
+			_shell.collection.open("need"))
 
-	# Over everything else, so it is added last: nothing in the builder can
-	# be used until someone is signed in. Not over a shared model's viewer,
-	# which is for anybody with the link.
-	if _pass.checks:
-		_pass_gate = PassGate.new()
-		_pass_gate.setup(_pass)
-		$HUD.add_child(_pass_gate)
-	if _gate_wanted() and _viewing.is_empty():
-		_gate = SignInGate.new()
-		_gate.setup(_account)
-		$HUD.add_child(_gate)
 
-	# Last, so the buttons above are all there for it to give a
-	# pointing hand to; any made later are caught as they arrive.
-	_cursors = Cursors.new()
-	add_child(_cursors)
-	_cursors.looked_again.connect(_hover_again)
-	# A wheel, a swipe or a button over a panel is the panel's. See
-	# CadCamera._begins_over_interface.
-	_camera.over_interface = _over_interface
+func _make_figures() -> void:
+	var figures: PanelContainer = Later.make(&"MinifigDialog")
+	_figures_made = figures
+	figures.library = _library
+	figures.thumbnails = _thumbnails
+	_add_to_hud(figures)
+	_inset(figures, 1040.0, 660.0)
+	get_viewport().size_changed.connect(func() -> void: _inset(figures, 1040.0, 660.0))
+	figures.place_wanted.connect(_hold_figure)
+
+
+## Settings, and the keys sheet, which is wider and taller.
+func _make_controls() -> void:
+	var controls: PanelContainer = Later.make(&"ControlsDialog")
+	_controls_made = controls
+	_add_to_hud(controls)
+	controls.shell = _shell
+	var fit: Callable = func() -> void:
+		_inset(controls, float(controls.wide()), float(controls.tall()))
+	fit.call()
+	get_viewport().size_changed.connect(fit)
+	controls.face_changed.connect(fit)
+	controls.assistant_chosen.connect(set_assistant)
+	controls.ai_changed.connect(func() -> void:
+		if _chat_made != null:
+			_chat_made.refresh_designer())
+	controls.ai_changed.connect(func() -> void:
+		if _shell != null:
+			_shell.name_designer(ProviderSettings.designer_name()))
+	# Design with it: the assistant's column, open, its brief to type in.
+	controls.ai_design_wanted.connect(func() -> void:
+		if not ShellPrefs.assistant_shown():
+			set_assistant(true)
+		_chat_dock.set_open(true)
+		_chat.refresh_designer()
+		_chat.focus_brief())
+	controls.changed.connect(_keys_changed)
+	controls.interface_sized.connect(_match_screen_density)
+	controls.keys_set.connect(_keymap_sync.send)
+
+
+## The strip along the bottom names what the middle button does, so it is
+## wrong the moment somebody changes it: Settings changed, or the keys
+## taken from the account (KeymapSync).
+func _keys_changed() -> void:
+	if _hint != null:
+		_hint.rebuild()
+	# And the keys a preset or the keys sheet set, in the toolbar's
+	# tooltips and every other a key is named in (Keymap.tell); the
+	# menus read theirs as they open.
+	if _shell != null:
+		_shell.toolbar.tell_keys()
+	Keymap.retell(get_tree().root)
+
+
+func _make_mosaic() -> void:
+	var mosaic: PanelContainer = Later.make(&"MosaicDialog")
+	_mosaic_made = mosaic
+	mosaic.library = _library
+	mosaic.claude_shown = ShellPrefs.assistant_shown()
+	_add_to_hud(mosaic)
+	_inset(mosaic, MOSAIC_WIDE, MOSAIC_TALL)
+	get_viewport().size_changed.connect(func() -> void:
+		_inset(mosaic, MOSAIC_WIDE, MOSAIC_TALL))
+	mosaic.build_wanted.connect(_build_mosaic)
+	mosaic.art_wanted.connect(_build_art)
+	mosaic.claude_wanted.connect(_design_art_with_claude)
+
+
+## A 3D model laid in bricks, as a sub-assembly beside what is built.
+func _make_brickify() -> void:
+	var brickify: PanelContainer = Later.make(&"BrickifyDialog")
+	_brickify_made = brickify
+	brickify.library = _library
+	brickify.world = _world
+	brickify.builder = _builder
+	brickify.scenery = _store.scenery
+	_add_to_hud(brickify)
+	_inset(brickify, 400.0, 690.0)
+	get_viewport().size_changed.connect(func() -> void: _inset(brickify, 400.0, 690.0))
+	brickify.said.connect(func(text: String) -> void: _bar.say(text))
+	brickify.placing.connect(func(name: String) -> void:
+		if _shell != null:
+			brickify.assemblies = _shell.assemblies
+		_make_room(name))
+	brickify.brickified.connect(func(_ids: PackedInt64Array, summary: String) -> void:
+		_store.laid_by("brickify")
+		_ground_for_the_model()
+		_camera.frame(_selection_bounds(), 1.4)
+		_on_model_edited()
+		_bar.say(summary))
+	# Once it is down, its booklet and its lists from the panel, a press each,
+	# through the app's own exporters, of the build alone; and laid from the
+	# person's collection when they ask.
+	brickify.owned = func() -> Dictionary:
+		return _shell.collection.store.on_hand if _shell != null and _shell.collection != null \
+			and _shell.collection.store != null else {}
+	brickify.booklet_wanted.connect(_brickify_booklet)
+	brickify.shop_wanted.connect(func(shop: String, path: String) -> void:
+		brickify.tell(await _exports.shop_list(shop, _outside_of(path), true)))
+	brickify.need_wanted.connect(func() -> void:
+		if _shell != null and _shell.collection != null:
+			_shell.collection.open("need"))
+
+
+func _make_elements() -> void:
+	var elements: PanelContainer = Later.make(&"ElementDialog")
+	_elements_made = elements
+	elements.library = _library
+	_add_to_hud(elements)
+	_inset(elements, 440.0, 760.0)
+	get_viewport().size_changed.connect(func() -> void: _inset(elements, 440.0, 760.0))
+	elements.made.connect(func(part_id: String) -> void:
+		_bin.populate()
+		_bin.show_category("Custom")
+		_bin.show_held(part_id, _builder.held_color)
+		_on_part_chosen(part_id)
+		var info: PartLibrary.PartInfo = _library.parts.get(part_id)
+		_bar.say("made %s — it is in the parts bin under Custom" % (
+			Inventory._tidy(info.name) if info != null else part_id)))
+
+
+## Prints and stickers for any part of the model (src/prints).
+func _make_studio() -> void:
+	var studio: Node = Later.make(&"PrintStudio")
+	_studio_made = studio
+	studio.library = _library
+	studio.world = _world
+	studio.builder = _builder
+	studio.camera = _camera
+	studio.thumbnails = _thumbnails
+	add_child(studio)
+	var first: int = $HUD.get_child_count()
+	studio.setup($HUD)
+	_under_gates(first)
+	studio.said.connect(func(words: String) -> void: _bar.say(words))
+	studio.made.connect(func(part_id: String) -> void:
+		_bin.populate()
+		if not Stickers.is_sticker(_library, part_id):
+			_bin.show_category(PartPrints.MY_PRINTS)
+			_bin.show_held(part_id, _builder.held_color)
+			_on_part_chosen(part_id))
+
+
+## File, Open, Rename or delete saved models… (src/ui/saved_models_dialog.gd).
+func _make_saved_models() -> void:
+	var saved: AcceptDialog = Later.make(&"SavedModelsDialog")
+	_saved_models_made = saved
+	saved.store = _store
+	saved.cloud = _cloud
+	saved.say = _bar.say
+	add_child(saved)
+
+
+## File, Render…: a photo-real picture or turntable, drawn off screen in the
+## window's own light (src/ui/render_dialog.gd, src/render/studio_render.gd).
+func _make_render() -> void:
+	var render: PanelContainer = Later.make(&"RenderDialog")
+	_render_made = render
+	render.world = _world
+	render.library = _library
+	render.scenery = _store.scenery
+	render.eye = _camera
+	render.look = _look()
+	for light: DirectionalLight3D in _rig_lights():
+		render.rig_lights.append(light)
+	render.named = _bar.model_name
+	render.player = _motions
+	_add_to_hud(render)
+	var kind: GDScript = Later.script(&"RenderDialog")
+	var fit: Callable = func() -> void: _inset(render, float(kind.WIDE), float(kind.TALL))
+	fit.call()
+	get_viewport().size_changed.connect(fit)
+
+
+## When anything last reached the window, and when it last drew a frame:
+## Render's dialog is made once both are RENDER_IDLE_MS ago, as the app
+## runs, and it then makes its renderer ready (RenderDialog._warm_when_idle)
+## as it did when the dialog was made with the window.
+var _touched_ms: int = 0
+var _drawn_ms: int = 0
+var _drawn_frames: int = -1
+const RENDER_IDLE_MS := 3000
+static var _renders_when_idle: bool = not OS.get_cmdline_args().has("--script")
+
+
+func _render_when_idle() -> void:
+	if _render_made != null or not _built or not _renders_when_idle:
+		return
+	var now: int = Time.get_ticks_msec()
+	if Engine.get_frames_drawn() != _drawn_frames:
+		_drawn_frames = Engine.get_frames_drawn()
+		_drawn_ms = now
+	if now - _drawn_ms < RENDER_IDLE_MS or now - _touched_ms < RENDER_IDLE_MS:
+		return
+	_make_render()
+
+
+## Build, Motions…: the model's own motions, played, recorded by a drag, set
+## joint by joint and rendered (src/ui/pose_panel.gd), in the column beside
+## the model, so what moves is seen as it moves and no part to be dragged is
+## under the panel.
+func _make_pose() -> void:
+	var pose: PanelContainer = Later.make(&"PosePanel")
+	_pose_made = pose
+	pose.world = _world
+	pose.builder = _builder
+	pose.library = _library
+	pose.assemblies = _shell.assemblies
+	pose.scenery = _store.scenery
+	pose.eye = _camera
+	pose.look = _look()
+	pose.rig_lights = _rig_lights()
+	pose.named = _bar.model_name
+	pose.player = _motions
+	pose.grabbing = _grab_drag
+	pose.select_tool = func() -> void:
+		if _builder.is_carrying():
+			_verbs.put_away()
+		_verbs.set_mode("select")
+	_seat_tool_panel(pose)
+	pose.changed.connect(_on_model_edited)
+
+
+## What plays the model's motions, for Motions…, Render… and the viewer.
+func _make_motions() -> void:
+	var motions: RefCounted = Later.make(&"MotionPlayer")
+	_motions_made = motions
+	motions.world = _world
+	motions.builder = _builder
+	motions.library = _library
+	motions.store = _store
+	motions.grabbing = _grab_drag
+
+
+## Tools, Colour the hidden parts…: the inside, cut open and coloured, in
+## the column too (src/ui/hidden_colours_panel.gd).
+func _make_hidden_colours() -> void:
+	var hidden: PanelContainer = Later.make(&"HiddenColoursPanel")
+	_hidden_colours_made = hidden
+	hidden.world = _world
+	hidden.builder = _builder
+	hidden.library = _library
+	hidden.store = _store
+	hidden.assemblies = _shell.assemblies
+	hidden.scenery = _store.scenery
+	hidden.edited = _on_model_edited
+	hidden.say = func(line: String) -> void: _bar.say(line)
+	_seat_tool_panel(hidden)
+
+
+## Tools, Simulate mechanism…: a gear train turned from its driver, in the
+## column too (src/ui/simulate_panel.gd). It changes nothing, so it has no
+## changed signal: what turns is drawn.
+func _make_simulate() -> void:
+	var simulate: PanelContainer = Later.make(&"SimulatePanel")
+	_simulate_made = simulate
+	simulate.world = _world
+	simulate.builder = _builder
+	simulate.library = _library
+	simulate.shell = _shell
+	simulate.scenery = _store.scenery
+	simulate.eye = _camera
+	simulate.look = _look()
+	simulate.rig_lights = _rig_lights()
+	simulate.named = _bar.model_name
+	simulate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	simulate.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_seat_tool_panel(simulate)
+	_builder.selection_changed.connect(Callable(simulate, &"_on_selection"))
+
+
+## Share this model: File › Share… and the toolbar's Share.
+func _make_share_panel() -> void:
+	var share: PanelContainer = Later.make(&"SharePanel")
+	_share_panel_made = share
+	share.account = _account
+	share.store = _store
+	share.shared = _shared
+	share.moves_of = _moves_now
+	share.picture = _exports.picture
+	share.named = _bar.model_name
+	share.setup()
+	_add_to_hud(share)
+	var kind: GDScript = Later.script(&"SharePanel")
+	var fit: Callable = func() -> void: _inset(share, float(kind.WIDE), float(kind.TALL))
+	fit.call()
+	get_viewport().size_changed.connect(fit)
+
+
+## The booklet's page laid out by hand, over the whole window.
+func _make_page_editor() -> void:
+	var editor: Control = Later.make(&"PageEditor")
+	_page_editor_made = editor
+	editor.app = self
+	_add_to_hud(editor)
 
 
 ## A label that reads over the 3D behind it, whatever colour that is.
@@ -5703,7 +6098,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		job.say("Planning the booklet…")
 		job.can_cancel = true
 	await job.shown()
-	var maker := BookletMaker.new()
+	var maker: Node = Later.make(&"BookletMaker")
 	maker.library = _library
 	maker.job = job
 	# The hidden parts' colours, shown where each group starts.
@@ -5711,18 +6106,18 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		_store.scenery)
 	add_child(maker)
 	maker.progress.connect(func(_said: String) -> void:
-		BookletMaker.tell_tab(job.line()))
+		Later.script(&"BookletMaker").tell_tab(job.line()))
 	var file_name: String = title.to_snake_case() + "_instructions.html"
 	# Into its file and in front of the reader as it is drawn (BookletOut):
 	# the last booklet's pages, kept for its tab, go.
 	if is_instance_valid(_booklet_out):
 		_booklet_out.queue_free()
-	_booklet_out = BookletOut.new()
+	_booklet_out = Later.make(&"BookletOut")
 	add_child(_booklet_out)
-	var show: bool = not given and BookletMaker.open_when_written
+	var show: bool = not given and Later.script(&"BookletMaker").open_when_written
 	_booklet_out.begin(to, show, to.get_file() if not to.is_empty() else file_name)
 	maker.keep_html = false
-	maker.wrote.connect(_booklet_out.take)
+	maker.wrote.connect(Callable(_booklet_out, &"take"))
 	_booklet_out.save_wanted.connect(_save_booklet)
 	# A section's own booklet (SectionsUi) leaves the rest of the model out.
 	var made: String = await maker.make(_world,
@@ -5777,7 +6172,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 
 
 ## The last booklet drawn, still there to be read (BookletOut).
-var _booklet_out: BookletOut = null
+var _booklet_out: Node = null
 
 
 ## Save as PDF or Save pages as PNG, pressed in the booklet ([param kind]
@@ -5818,8 +6213,8 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 		pages = await _pdf_file(_booklet_out.source(), written)
 		ok = pages > 0
 	elif pdf:
-		var read := BookletRead.new()
-		var out := BookletPdf.new()
+		var read: RefCounted = Later.make(&"BookletRead")
+		var out: RefCounted = Later.make(&"BookletPdf")
 		if out.begin("", read):
 			pages = await read.read_all(_booklet_out.source(), out.page, pace)
 			var bytes: PackedByteArray = out.finish(read.title)
@@ -5827,7 +6222,7 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 			if ok:
 				JavaScriptBridge.download_buffer(bytes, name, "application/pdf")
 	else:
-		var drawer := BookletPng.new()
+		var drawer: Node = Later.make(&"BookletPng")
 		add_child(drawer)
 		pages = await drawer.write(_booklet_out.source(), part, _booklet_out.base_name(), pace)
 		ok = pages > 0 and drawer.pages == pages
@@ -5864,8 +6259,8 @@ var _booklet_writing: bool = false
 ## for the window every eight pages. Its pages; -1 when it could not be
 ## written, and then nothing of it is left.
 func _pdf_file(from: String, to: String) -> int:
-	var read := BookletRead.new()
-	var out := BookletPdf.new()
+	var read: RefCounted = Later.make(&"BookletRead")
+	var out: RefCounted = Later.make(&"BookletPdf")
 	var part: String = to + ".part"
 	if not out.begin(part, read):
 		return -1
@@ -5893,7 +6288,7 @@ static func _into_place(part: String, to: String, whole: bool) -> bool:
 ## when it was written), with Show in folder beside it (StatusBar). walk180
 ## pressed Instructions three times on a desktop with no browser, and
 ## nothing happened (2026-10-23).
-func _open_booklet(path: String, steps: int, out: BookletOut, pdf: String = "") -> String:
+func _open_booklet(path: String, steps: int, out: Node, pdf: String = "") -> String:
 	if out.shown or out.url().is_empty() and SaveTo.open(path):
 		if not pdf.is_empty():
 			return "the booklet is open in your browser, %d steps, and saved beside it as a PDF: %s" \
@@ -5916,11 +6311,11 @@ func _outside_of(path: String) -> Dictionary:
 ## The Brickify panel's Booklet: the build's own booklet, its steps a course
 ## at a time (BrickifySteps), whatever else is on the baseplate.
 func _brickify_booklet(path: String, title: String) -> void:
-	if BookletMaker.busy:
+	if _booklet_busy():
 		_brickify.tell("already drawing the booklet…")
 		return
 	if OS.has_feature("web"):
-		BookletMaker.open_tab()
+		Later.script(&"BookletMaker").open_tab()
 	var skip: Dictionary = _outside_of(path)
 	skip.merge(_store.scenery)
 	_brickify.tell(await _export_booklet("", null, skip, title))
@@ -5928,15 +6323,21 @@ func _brickify_booklet(path: String, title: String) -> void:
 
 ## The Instructions button, on the toolbar and on the timeline.
 func _booklet_wanted() -> void:
-	if BookletMaker.busy:
+	if _booklet_busy():
 		_bar.say("already drawing the booklet…")
 		return
 	# A shared model's booklet is of the model as it was built.
 	if _share_view != null and _share_view.played:
 		_play_reset()
 	if OS.has_feature("web"):
-		BookletMaker.open_tab()
+		Later.script(&"BookletMaker").open_tab()
 	await _export_booklet()
+
+
+## Whether a booklet is being drawn (BookletMaker.busy), without loading
+## what draws one.
+static func _booklet_busy() -> bool:
+	return Later.loaded(&"BookletMaker") and Later.script(&"BookletMaker").busy
 
 
 ## What was built, without the baseplate it was built on. Falls back to
@@ -5989,7 +6390,8 @@ func _build_mosaic(across: int, dither: bool) -> void:
 	_world.clear()
 	_builder.lattice.clear()
 	_builder.forget_history()
-	_assistant.forget_built()
+	if _assistant_made != null:
+		_assistant_made.forget_built()
 	_store.scenery.clear()
 
 	var part: Lbm.PartMesh = _library.mesh_for(Mosaic.PIXEL_PART)
@@ -6034,14 +6436,14 @@ const MOSAIC_TALL := 720.0
 ## classic mosaic it replaces what was there, through the ordinary placement
 ## path, each panel its own sub-assembly so the booklet builds a panel at a
 ## time.
-func _build_art(options: MosaicArt.Options) -> void:
+func _build_art(options: RefCounted) -> void:
 	if _mosaic_source == null:
 		return
 	var job: Working.Job = Working.begin("Laying the picture out as Brick Art…")
 	await job.shown()
-	var art: MosaicArt.Art = _mosaic.current_art() if _mosaic != null else null
+	var art: RefCounted = _mosaic_made.current_art() if _mosaic_made != null else null
 	if art == null:
-		art = MosaicArt.make(_mosaic_source, options, _library)
+		art = Later.script(&"MosaicArt").make(_mosaic_source, options, _library)
 	if art.placements.is_empty():
 		job.end()
 		_bar.say("nothing to lay out")
@@ -6052,7 +6454,7 @@ func _build_art(options: MosaicArt.Options) -> void:
 	# 377 ms in a browser (progress_check, 2026-10-15).
 	job.say("Fetching the parts…")
 	var kinds: Dictionary = {}
-	for placement: Assistant.Placement in art.placements:
+	for placement: RefCounted in art.placements:
 		kinds[placement.part] = true
 	for part_id: String in kinds:
 		if job.due():
@@ -6067,7 +6469,7 @@ func _build_art(options: MosaicArt.Options) -> void:
 	_assistant.forget_built()
 	_store.scenery.clear()
 	job.say("Putting down %s parts…" % Working.comma(art.placements.size()))
-	await MosaicArt.put_down_paced(art, _world, _builder, _assistant, job)
+	await Later.script(&"MosaicArt").put_down_paced(art, _world, _builder, _assistant, job)
 	job.say("Checking it holds together…")
 	job.count(0, 0)
 	# Looked at and checked in a frame of its own, not the last slice's.
@@ -6084,7 +6486,8 @@ func _design_art_with_claude(said: String) -> void:
 		return
 	_assistant.art_source = _mosaic_source
 	_chat_dock.set_open(true)
-	var why: String = _chat.ask(MosaicDialog.art_brief(said, _mosaic.chosen_panels()))
+	var why: String = _chat.ask(Later.script(&"MosaicDialog").art_brief(said,
+		_mosaic.chosen_panels()))
 	if not why.is_empty():
 		_bar.say(why)
 
@@ -6097,7 +6500,7 @@ var _art_said: Dictionary = {}
 
 ## A picture laid in LEGO Art, by the dialog's Build or by make_art: looked
 ## at, then checked as a design is, so the line says whether it is one piece.
-func _art_laid(art: MosaicArt.Art) -> void:
+func _art_laid(art: RefCounted) -> void:
 	_on_a_floor_of_its_own()
 	if _shell != null:
 		_shell.assemblies.changed.emit()
@@ -6110,7 +6513,7 @@ func _art_laid(art: MosaicArt.Art) -> void:
 	_art_said = {"parts": art.placements.size(), "panels": [art.panels.x, art.panels.y],
 		"pieces": 0, "ok": false}
 	_bar.say("%s parts on %d × %d panels — checking it holds together…" % [
-		MosaicDialog._comma(art.placements.size()), art.panels.x, art.panels.y])
+		Working.comma(art.placements.size()), art.panels.x, art.panels.y])
 	# Looked at, then checked, a frame each: together they were one of
 	# 171 ms on the desktop.
 	await get_tree().process_frame
@@ -6118,7 +6521,7 @@ func _art_laid(art: MosaicArt.Art) -> void:
 	_art_said["pieces"] = int(report.get("pieces", 0))
 	_art_said["ok"] = bool(report.get("ok", false))
 	_bar.say(Keymap.filled("%s parts on %d × %d panels, %s — press {parts_list} for what to buy") % [
-		MosaicDialog._comma(art.placements.size()), art.panels.x, art.panels.y,
+		Working.comma(art.placements.size()), art.panels.x, art.panels.y,
 		"one piece" if _art_said["pieces"] == 1 and _art_said["ok"]
 		else str(report.get("summary", ""))])
 
@@ -6169,9 +6572,11 @@ func set_assistant(on: bool) -> void:
 	if _offer != null:
 		_offer.visible = false
 	_shell.set_assistant(on)
-	_mosaic.show_claude(on)
+	if _mosaic_made != null:
+		_mosaic_made.show_claude(on)
 	_account_panel.show_claude(on)
-	_connector.hold(not on)
+	if on or _connector_made != null:
+		_connector.hold(not on)
 	if on and _account.signed_in():
 		_connector.resume()
 	_chat_dock.visible = on
@@ -6372,8 +6777,8 @@ const PHONE_SHEET := 0.8
 ## out of the model's, and the view steps back so what was in sight stays
 ## in sight.
 func _tool_column_shown() -> void:
-	var open: bool = _simulate.visible or _flex.panel.visible or _pose.visible \
-		or _hidden_colours.visible or _shell.stress.panel.visible
+	var open: bool = _shown(_simulate_made) or _flex.panel.visible or _shown(_pose_made) \
+		or _shown(_hidden_colours_made) or _shell.stress.panel.visible
 	if open == _tool_column.visible:
 		return
 	var room: Rect2 = _model_rect()
@@ -6597,8 +7002,8 @@ func _words_over_buttons(row: HBoxContainer) -> void:
 ## up to date: it is a snapshot of a finished model, and recomputing it
 ## on every brick placed would be work for a panel nobody is looking at.
 func _toggle_parts() -> void:
-	if _inventory.is_showing():
-		_inventory.hide_list()
+	if _inventory_made != null and _inventory_made.is_showing():
+		_inventory_made.hide_list()
 		return
 	if not _inventory.show_for(_world, _library, _store.scenery, _bar.model_name()):
 		_bar.say("nothing to list yet")
@@ -6756,7 +7161,7 @@ func can_reshape_flex() -> bool:
 ## File, Build together….
 func open_together() -> void:
 	if _together_dialog == null:
-		_together_dialog = TogetherDialog.new()
+		_together_dialog = Later.make(&"TogetherDialog")
 		_together_dialog.together = _together
 		add_child(_together_dialog)
 	_together_dialog.open()
@@ -6766,7 +7171,7 @@ func open_together() -> void:
 ## on the part selected.
 func open_pins() -> void:
 	if _pins_dialog == null:
-		_pins_dialog = PinsDialog.new()
+		_pins_dialog = Later.make(&"PinsDialog")
 		_pins_dialog.together = _together
 		_pins_dialog.store = _store
 		_pins_dialog.builder = _builder
@@ -6804,10 +7209,10 @@ func _maybe_join_together() -> void:
 ## Build, Motions….
 func open_pose() -> void:
 	_builder.hide_preview()
-	if _simulate.visible:
-		_simulate.close()
-	if _hidden_colours.visible:
-		_hidden_colours.close()
+	if _shown(_simulate_made):
+		_simulate_made.close()
+	if _shown(_hidden_colours_made):
+		_hidden_colours_made.close()
 	_pose.open()
 
 
@@ -6821,10 +7226,10 @@ func _offers_hidden_colours() -> bool:
 ## .MODES), or as last chosen.
 func open_hidden_colours(how: String = "") -> void:
 	_builder.hide_preview()
-	if _pose.visible:
-		_pose.close()
-	if _simulate.visible:
-		_simulate.close()
+	if _shown(_pose_made):
+		_pose_made.close()
+	if _shown(_simulate_made):
+		_simulate_made.close()
 	await _hidden_colours.open(how)
 
 
@@ -6832,10 +7237,10 @@ func open_hidden_colours(how: String = "") -> void:
 ## axle or a crank drives it rather than putting a part down.
 func open_simulate() -> void:
 	_builder.hide_preview()
-	if _pose.visible:
-		_pose.close()
-	if _hidden_colours.visible:
-		_hidden_colours.close()
+	if _shown(_pose_made):
+		_pose_made.close()
+	if _shown(_hidden_colours_made):
+		_hidden_colours_made.close()
 	_verbs.set_mode("select")
 	await _simulate.open()
 
@@ -6848,7 +7253,7 @@ func _open_figures() -> void:
 ## Hold a figure from the builder the way a part is held: the next click
 ## on a stud stands it there.
 func _hold_figure(figure: Minifig) -> void:
-	_builder.hold_figure(FigureTool.parts_of(figure, _library), figure.name)
+	_builder.hold_figure(Later.script(&"FigureTool").parts_of(figure, _library), figure.name)
 	var fetching: int = 0
 	for part_id: String in figure.part_ids():
 		if not _library.is_resident(part_id) and _library.request_mesh(part_id, true):
@@ -7194,13 +7599,13 @@ func _on_floor_chosen(choice: Dictionary) -> void:
 		_on_model_edited()
 	if chosen.is_plate() and bool(choice.get("part", false)) and not was_own:
 		changed = changed or not _plate_after_design
-		if _assistant.is_busy():
+		if _assistant_made != null and _assistant_made.is_busy():
 			_plate_after_design = true
 		else:
 			floor_part_of_model(true)
 	# Once, not at every revision of the design.
-	if changed and _chat != null:
-		_chat.note(("It stands on %s, part of the build." % chosen.words().to_lower())
+	if changed and _chat_made != null:
+		_chat_made.note(("It stands on %s, part of the build." % chosen.words().to_lower())
 			if chosen.is_plate() and bool(choice.get("part", false))
 			else "It stands on %s. View, Floor changes it." % chosen.words().to_lower())
 
@@ -7471,17 +7876,20 @@ const BUSY_FRAMES := 400
 func _watch_own_frames() -> void:
 	if not OS.has_feature("web"):
 		return
-	_assistant.progress.connect(func(note: String) -> void:
-		_doing = note)
-	if _connector != null and _connector.rpc != null:
-		_connector.rpc.asked.connect(func(tool: String) -> void:
-			_doing = tool)
+	# What the assistant and Claude's calls are doing is told as each is
+	# made (_make_assistant, _make_chat).
 	var frames := OwnFrames.new()
 	add_child(frames)
 	frames.timed.connect(func(spent_us: int) -> void:
 		var spent: float = spent_us / 1000.0
-		var waited: float = ModelShot.gpu_wait_us / 1000.0
-		ModelShot.gpu_wait_us = 0
+		# Waited on the GPU by the outline's targets, and the assistant's
+		# pictures if it has taken any.
+		var waited: float = SelectionOutline.gpu_wait_us / 1000.0
+		SelectionOutline.gpu_wait_us = 0
+		if Later.loaded(&"ModelShot"):
+			var shots: GDScript = Later.script(&"ModelShot")
+			waited += shots.gpu_wait_us / 1000.0
+			shots.gpu_wait_us = 0
 		if spent - waited > BUSY_FRAME_MS:
 			_busy_frames.append([Time.get_ticks_msec(), snappedf(spent - waited, 0.1)])
 			if _busy_frames.size() > BUSY_FRAMES:
@@ -7587,6 +7995,7 @@ var _weighed_us: int = 0
 
 
 func _process_main(_delta: float) -> void:
+	_render_when_idle()
 	_watch_view()
 	_steer_from_keys(_delta)
 	# Aimed from the keyboard: the ghost keeps to the middle of the view as
@@ -8018,7 +8427,7 @@ func _make_grab_drag() -> void:
 	_grab_drag.edited = _on_model_edited
 	_grab_drag.assemblies = _shell.assemblies
 	add_child(_grab_drag)
-	if _simulate != null:
+	if _simulate_made != null:
 		_simulate.grabbing = _grab_drag
 
 
@@ -8484,7 +8893,7 @@ func _dress_for_phone() -> void:
 	_bar.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	_bar.custom_minimum_size.y = _phone.top_height()
 	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_bar.said.connect(_phone.say)
+	_bar.said.connect(Callable(_phone, &"say"))
 	_shell.toolbar.visible = false
 	_shell.status.only_the_work()
 	_hint.visible = false
@@ -8493,20 +8902,22 @@ func _dress_for_phone() -> void:
 	_place_tool_column()
 	get_viewport().size_changed.connect(_place_tool_column)
 	var rail: float = Phone.px(get_viewport(), Phone.TARGET)
-	_bin_dock.set_phone_rail(rail, _phone.foot_height())
-	_chat_dock.set_phone_rail(rail, _phone.foot_height())
+	_bin_dock.set_phone_rail(rail, float(_phone.foot_height()))
+	_chat_dock.set_phone_rail(rail, float(_phone.foot_height()))
 	_camera.phone = true
 	_camera.touch_over = _over_panel_at
 	# The model tree and the properties, in the drawer down the left, sized
 	# for a finger as a dialog is; on a tablet the drawer takes the parts
 	# panel's place while it is open (PhoneShell.dock_toggled).
 	_touch.size_panel(_stack)
-	# And the assistant in its drawer down the right.
-	_touch.size_panel(_chat)
+	# And the assistant in its drawer down the right, once it is made
+	# (_make_chat sizes it then).
+	if _chat_made != null:
+		_touch.size_panel(_chat_made)
 	_chat_dock.toggled.connect(func(open: bool) -> void:
 		if open:
 			_touch.fit_panel.call_deferred(_chat))
-	_bin_dock.toggled.connect(_phone.dock_toggled)
+	_bin_dock.toggled.connect(Callable(_phone, &"dock_toggled"))
 	_bin_dock.toggled.connect(func(open: bool) -> void:
 		_show_notices()
 		if open:
@@ -8535,8 +8946,8 @@ func _dress_for_phone() -> void:
 func _size_for_a_finger() -> void:
 	# And the sign-in screen, which comes back over everything on Sign out:
 	# its address field was 199 by 20 points on a phone (fig257).
-	for panel: Control in [_pose, _hidden_colours, _simulate, _shell.stress.panel, _shell.status,
-			_gate]:
+	for panel: Control in [_pose_made, _hidden_colours_made, _simulate_made, _shell.stress.panel,
+			_shell.status, _gate]:
 		if panel != null:
 			_touch.size_panel(panel)
 	# The tools' panels kept to the column's room as they fill: Simulate's
@@ -8545,6 +8956,8 @@ func _size_for_a_finger() -> void:
 	for panel: Node in _tool_panels.get_children():
 		(panel as Control).minimum_size_changed.connect(_fit_tool_panel.bind(panel))
 		(panel as Control).visibility_changed.connect(_fit_tool_panel.bind(panel))
+	# A panel made later is sized as it is seated (_seat_tool_panel).
+	_fingered = true
 	# And again as the room round them changes: the notices over the model
 	# or a rail wider, the model's least width with them.
 	(_bin_dock.get_parent() as Control).minimum_size_changed.connect(func() -> void:
@@ -8571,7 +8984,7 @@ func _place_tool_column() -> void:
 	# Beside the model it ends above the foot's row of tools, as the drawers
 	# do (SideDock.set_phone_rail): behind it, the panel's last lines were.
 	(_tool_column.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_bottom = \
-		0.0 if under else _phone.foot_height()
+		0.0 if under else float(_phone.foot_height())
 	if under == _tool_sheet:
 		return
 	_tool_sheet = under
@@ -8931,17 +9344,17 @@ func _over_panel_at(point: Vector2) -> bool:
 		return true
 	# These cover the model rather than sitting beside it, so anywhere
 	# is over them.
-	if _inventory != null and _inventory.is_showing():
+	if _inventory_made != null and _inventory_made.is_showing():
 		return true
-	if _mosaic != null and _mosaic.visible:
+	if _mosaic_made != null and _mosaic_made.visible:
 		return true
-	if _brickify != null and _brickify.covers(point):
+	if _brickify_made != null and _brickify_made.covers(point):
 		return true
-	if _figures != null and _figures.visible:
+	if _figures_made != null and _figures_made.visible:
 		return true
-	if _elements != null and _elements.visible:
+	if _elements_made != null and _elements_made.visible:
 		return true
-	if _render != null and _render.visible:
+	if _render_made != null and _render_made.visible:
 		return true
 	return false
 
@@ -9107,15 +9520,15 @@ func _input(event: InputEvent) -> void:
 
 func _escape_closes_something() -> bool:
 	return _grabbing or (_marquee != null and _marquee.is_drawing()) \
-		or (_controls != null and _controls.visible) \
-		or (_mosaic != null and _mosaic.visible) \
-		or (_brickify != null and _brickify.visible) \
-		or (_figures != null and _figures.visible) \
+		or (_controls_made != null and _controls_made.visible) \
+		or (_mosaic_made != null and _mosaic_made.visible) \
+		or (_brickify_made != null and _brickify_made.visible) \
+		or (_figures_made != null and _figures_made.visible) \
 		or _builder.is_holding_figure() or _builder.is_carrying() \
 		or (_measure != null and _measure.active) \
-		or (_elements != null and _elements.visible) \
+		or (_elements_made != null and _elements_made.visible) \
 		or not _builder.selection.is_empty() \
-		or (_inventory != null and _inventory.is_showing()) \
+		or (_inventory_made != null and _inventory_made.is_showing()) \
 		or (_steps != null and _steps.is_playing_back()) \
 		or (_build_mode != null and _build_mode.is_open()) \
 		or (_verbs != null and _verbs.mode != "select") \
@@ -9311,7 +9724,7 @@ func _key_pressed(key: InputEventKey) -> void:
 			# Ctrl-I, as an import is in most apps: plain I is x-ray
 			# (src/ui/shell.gd). A key is a press a browser lets open its
 			# file chooser.
-			if (key.ctrl_pressed or key.meta_pressed) and _brickify != null:
+			if (key.ctrl_pressed or key.meta_pressed) and _built:
 				_brickify.ask()
 		KEY_C:
 			# Paints the selection, and only the selection, as Ctrl-C copies
@@ -9438,16 +9851,16 @@ func _key_pressed(key: InputEventKey) -> void:
 				return
 			# The controls panel was missing from this ladder, so
 			# Escape walked straight past it to whatever was behind.
-			if _controls != null and _controls.visible:
+			if _controls_made != null and _controls_made.visible:
 				_controls.visible = false
 				return
-			if _mosaic != null and _mosaic.visible:
+			if _mosaic_made != null and _mosaic_made.visible:
 				_mosaic.visible = false
 				return
-			if _brickify != null and _brickify.visible:
+			if _brickify_made != null and _brickify_made.visible:
 				_brickify.close()
 				return
-			if _figures != null and _figures.visible:
+			if _figures_made != null and _figures_made.visible:
 				_figures.close()
 				return
 			if _builder.is_holding_figure():
@@ -9455,14 +9868,14 @@ func _key_pressed(key: InputEventKey) -> void:
 				_bar.say("")
 				_refresh_preview()
 				return
-			if _elements != null and _elements.visible:
+			if _elements_made != null and _elements_made.visible:
 				_elements.visible = false
 				return
 			# The parts list is over the model as these are, and goes with
 			# them: below the selection, Escape took the selection the list
 			# hides away and left the list up.
-			if _inventory.is_showing():
-				_inventory.hide_list()
+			if _inventory_made != null and _inventory_made.is_showing():
+				_inventory_made.hide_list()
 				return
 			# Back to Select with nothing in hand, from placing or any
 			# other tool — and on down the ladder in the same press, so

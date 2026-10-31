@@ -78,10 +78,24 @@ plan with Claude as the client.
   many files; `window.brickworksBoot` when each stage of the start was
   reached (`Main._boot_mark`: compiled, made, ready, data, catalogue, ui,
   model, on the page's clock). "compiled" is Main's `_static_init`, once
-  every script is compiled: loading main.gd compiles all 308 at once,
-  since about 200 of them name each other in one cycle (webstart, 2026-10-30:
-  3.6 s of a warm start's 8.2 at load 12, the engine's setup 0.4 s before
-  it, the catalogue 1.0, the interface 1.1, the first frames 1.3 after). The pack Godot exports is cut in four after it (webload,
+  main.gd and every script it names are compiled. That was all 308 at
+  once, since about 200 of them named each other in one cycle (webstart,
+  2026-10-30: 3.6 s of a warm start's 8.2 at load 12, the engine's setup
+  0.4 s before it, the catalogue 1.0, the interface 1.1, the first frames
+  1.3 after). Since lazystart (2026-10-30) the features the first screen
+  does not need are reached by name through `Later` (`src/later.gd`,
+  `Later.PATHS`: the assistant and the rest of `src/ai` it names, the
+  assistant's panel and Claude's connector, the dialogs and tool panels,
+  render, motions, the booklet's makers) and loaded the first time
+  something asks; main.gd's members for them are made by their getters
+  (`_make_*`, `_X_made` for a look that makes nothing), and the start
+  compiles 214 scripts. Two copies of the assistant's rules keep the core
+  off it (`Nests`, `Footprint`). `python3 tools/minitest.py
+  tests/test_later.py` fails when a script the first screen compiles names
+  one of Later's classes, with the chain from main.tscn that reaches it,
+  or when a copy differs from the assistant's; `lazystart_probe`
+  (headless) fails when one is loaded once the window has settled, or is
+  made twice or out of its place, and prints what each first load took. The pack Godot exports is cut in four after it (webload,
   2026-10-30, `tools/web/pck_split.py`, its docstring), so the engine
   waits for the code alone: `index.pck` keeps the scripts, shaders and
   scenes (3.3 MB brotli), and the two tables read as their classes load,

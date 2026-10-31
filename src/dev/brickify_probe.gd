@@ -514,7 +514,7 @@ func _prism(outline: Array[Vector2]) -> MeshFile:
 ## black patches came out brown, and 1.7% of parts were in a colour no
 ## element of theirs comes in.
 func _colours_right(animal: Dictionary) -> void:
-	var sharma: float = Brickify.de2000(Vector3(50.0, 2.6772, -79.7751), Vector3(50.0, 0.0, -82.7485))
+	var sharma: float = HiddenColours.de2000(Vector3(50.0, 2.6772, -79.7751), Vector3(50.0, 0.0, -82.7485))
 	_check("CIEDE2000 as Sharma, Wu and Dalal's test data has it: %.4f (2.0425)" % sharma,
 		absf(sharma - 2.0425) < 0.0002)
 	var lab: Array[Vector3] = []

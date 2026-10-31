@@ -511,10 +511,11 @@ func _open_sections(row: Dictionary) -> void:
 		"main._built_bounds": func() -> void: _main.call("_built_bounds"),
 		"main._on_model_changed": func() -> void: _main.call("_on_model_changed"),
 		"assistant.forget_built": func() -> void:
-			(_main.get("_assistant") as Object).call("forget_built"),
+			if _main.get("_assistant_made") != null:
+				(_main.get("_assistant_made") as Object).call("forget_built"),
 		"seat_offer.check": func() -> void: (_main.get("_seat_offer") as Object).call("check"),
 		"Seating.misplaced": func() -> void: Seating.misplaced(_world, _builder,
-			_main.get("_assistant"), _store.scenery),
+			_store.scenery),
 		"assemblies.enter": func() -> void:
 			if assemblies != null:
 				assemblies.enter(""),
