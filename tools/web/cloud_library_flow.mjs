@@ -260,7 +260,7 @@ async function lookedAgain(page, test, seconds) {
   return false;
 }
 // File › Open, Rename or delete saved models…, picked as a person picks it:
-// its first word typed, Enter. Then the saved models dialog is open.
+// its first letter typed, Enter. Then the saved models dialog is open.
 async function openSavedModels(page) {
   if (!(await openFromMenu(page, "Rename"))) return false;
   return until(async () => (await state(page)).saved_models?.open === true, 20);
@@ -280,14 +280,26 @@ async function typeInto(page, control, words) {
   return true;
 }
 // File › Open, as a person picks a model from it: the toolbar's Open, the
-// first word of its name typed (a menu jumps to what is typed), Enter.
+// first letter of its name typed once the menu is up (a menu jumps to the
+// first item it begins), Enter. Not a word against the clock: on a box
+// drawing three browsers in software, letters a frame of over 2 s apart
+// began the menu's search again, and "Rename"'s "a" opened the example
+// barn owl (2026-10-31).
 async function openFromMenu(page, word) {
   if (!(await press(page, "open"))) return false;
-  await page.waitForTimeout(1500);
-  await page.keyboard.type(word, { delay: 120 });
+  await framesDrawn(page, 3);
+  await page.keyboard.type(word[0]);
   await page.waitForTimeout(600);
   await page.keyboard.press("Enter");
   return true;
+}
+// The page's next [frames] frames, each a turn of the app's loop, however
+// long software drawing makes them: a press is read on the first.
+async function framesDrawn(page, frames) {
+  await page.evaluate((left) => new Promise((done) => {
+    const next = () => (--left > 0 ? requestAnimationFrame(next) : done());
+    requestAnimationFrame(next);
+  }), frames);
 }
 
 let parts = 0;
