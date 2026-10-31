@@ -128,9 +128,24 @@ desktop app. Started 2026-10-24 (unit together233).
 - **Selections and views.** The same `op=point` carries the uids of the
   parts this side has selected (at most 500) and its view (`CadCamera.aim`,
   rounded), sent when any of the three changes. The server keeps them on
-  the person's row and re-reads the rows every 250 ms while a request
-  waits (every 100 ms while somebody else's pointer moved in the last
-  2 s), answering as soon as one changed. Each side outlines each other
+  the person's row and tells them at once to every request waiting in the
+  session, on the session's own channel of the database's Realtime (a
+  broadcast; `channelOf` in api/together.js), which answers with them:
+  a pointer moved reaches the others in about one network trip. Read back
+  from the rows instead, it waited for the next read, every 100 to 250 ms
+  and each a trip of its own, half of its time between two pages
+  (presence, 2026-10-30: from a send to the other's request, with no
+  browser, 285 ms p50 and 499 ms p95 so; 176 and 289 on the channel, the
+  send's own round trip 175). The channel's name is the session's id
+  signed with the server's secret key, so nobody else can listen or say
+  anything there, and a request takes what is said there only for
+  somebody in the session and not taken out. The rows are still re-read
+  every 250 ms while a request waits, and every 100 ms while somebody
+  else's pointer moved in the last 2 s by a request not yet listening, so
+  a word lost on the channel is found there. A browser's request is
+  answered a line at a time (`stream: true`): a line the moment who is in
+  it changes, and the request waits on, ending only with a change, the
+  session's end or its 20 s; the desktop's is answered whole. Each side outlines each other
   person's selection with its own silhouette outline (`SelectionOutline`)
   in that person's colour, drawn again when the parts move. A person's
   colour is their place in the session's list of people, the same on every
