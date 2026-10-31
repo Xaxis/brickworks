@@ -48,6 +48,9 @@ static func _port() -> int:
 
 func _run() -> void:
 	await process_frame
+	# The stub's tower of six stands for a design: a fresh look is asked of a
+	# design only (Assistant.is_design).
+	Assistant.design_parts = 1
 	_anthropic_offline()
 	_gemini_offline()
 	_responses_offline()

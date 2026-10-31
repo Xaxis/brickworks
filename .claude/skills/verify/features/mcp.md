@@ -98,7 +98,21 @@ asking for an API key.
   as attach's yaw) and `in_view` (the timeline's step, the part in hand, the
   selection's size and the reference picture, with the picture and the
   model drawn on it), both read-only. `src/dev/mcphand_probe.gd` checks each
-  against the window's own command on the same parts. Each
+  against the window's own command on the same parts. `in_view`'s hand says
+  its colour, its face and rot, and the span its ghost takes under the
+  pointer, or that no ghost shows (`HandTools._held_where`, APP_UX3 mcpcad).
+  **CAD answers** (mcpcad, 2026-10-31): a `submit_design` from outside is a
+  design (`Assistant.is_design`: features named, or `design_parts`, 20, parts
+  or more) told the designer's method (`FROM_OUTSIDE_NEXT`), its save handed
+  the passes and the fresh look; anything smaller is parts placed for a
+  person, answered as CAD (`Assistant._placed_said`: each part's span and what
+  holds it, by number) with no method, no passes and no fresh look. Probes of
+  the passes whose fixtures are a few parts set `Assistant.design_parts = 1`.
+  A refusal for floating parts, and a `check_design` from outside, says where
+  each would stand (`_where_it_would_stand`: the nearest held top at its height, its span, the
+  span a quarter turn gives it, the place it would rest). `attachment_points`
+  takes `parts=[...]`, up to 8 answered in one call, with how rot turns what a
+  part points to. `src/dev/mcpcad_probe.gd` checks all of it. Each
   is a thin wrapper over the code the command runs — `Shell.change_steps`,
   `FlexTool.lay`, `PosePanel.joints_now`/`set_angle`/`render_animation`,
   `RenderDialog.render_for`,
@@ -600,6 +614,8 @@ tools/probe.sh first_session_probe                                  # the first 
 tools/probe.sh undo_ids_probe                                       # a part back from Undo or Redo keeps its number
 godot --headless --path . --script src/dev/app_tools_probe.gd      # the window's commands as tools
 godot --headless --path . --script src/dev/mcphand_probe.gd        # Mirror, Split, Merge, Measure and what the person sees, as the window does them
+godot --headless --path . --script src/dev/mcpcad_probe.gd         # CAD answers without the method, designs with it, the refusal's place, attachment_points parts=, in_view at step 4 of 9 with a part in hand
+node tools/web/in_view_flow.mjs --dir=build/web --out=shots/in_view [--size=1400x900]   # in_view in the browser: step 4 of 9, 3004 in hand turned once over the floor, a picture laid by the mouse and keys; nothing changed (a local export, .env loaded)
 BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running
 godot --headless --path . --script src/dev/gallery_tool_probe.gd -- --played   # its played answers alone: licences, sorts, moves, the front, builds, comments, designers; no server
 godot --headless --path . --script src/dev/mcp_walk_probe.gd       # what the 2026-10-19 walk-through's sessions met: what moves, the steering's angle, animating it, a gallery copy, What can I build?

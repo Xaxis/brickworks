@@ -247,6 +247,11 @@ try {
   const last = week < monthEnd ? week : monthEnd;
   const THEMES = [`Year ${rand} one`, `Year ${rand} two`, `Year ${rand} three`];
   let year = false;
+  // Which of the year's themes is told already: each from 31 days before it
+  // opens (api/admin.js's lead_days, "a month before"). On the last day of a
+  // month before a month of 30 days, as 2026-10-31, the second is told at
+  // once with the first; the third never is.
+  let toldYet = [true, false, false];
   for (const [width, height, phone] of [[390, 844, true], [1280, 900, false]]) {
     const adminContext = await context({ as: master, width, height, phone, dark: true });
     const admin = await adminContext.newPage();
@@ -293,6 +298,7 @@ try {
       } else {
         const next = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1));
         const months = [0, 1, 2].map((n) => new Date(Date.UTC(next.getUTCFullYear(), next.getUTCMonth() + n, 1)).toISOString().slice(0, 7));
+        toldYet = months.map((month) => Date.parse(`${month}-01T00:00:00Z`) - 31 * 864e5 <= Date.now());
         const first = await admin.evaluate(() => document.querySelector("#year-months fieldset")?.dataset.month);
         check(`the year's form starts at the month after this challenge: ${first}`, first === months[0]);
         for (const [at, title] of THEMES.entries()) {
@@ -307,13 +313,13 @@ try {
             .map((tr) => tr ? { id: Number(tr.dataset.challenge), state: tr.dataset.state, text: tr.textContent.replace(/\s+/g, " ") } : null) }), THEMES);
         ids.year = back.rows.map((one) => one?.id);
         check(`the year set: "${back.note}"; read back: ${back.rows.map((one) => one && one.text.slice(0, 80)).join(" | ")}`,
-          /^Set: 3 themes, from 1 /.test(back.note) && back.rows.every((one) => one && one.state === "upcoming")
-          && !/told from/.test(back.rows[0].text) && back.rows.slice(1).every((one) => /to come, told from /.test(one.text)));
+          /^Set: 3 themes, from 1 /.test(back.note) && back.rows.every((one, at) => one && one.state === "upcoming"
+            && /to come, told from /.test(one.text) === !toldYet[at]));
         const listed = await api("/api/admin?tests=1", { token: master.access_token });
         const rows = THEMES.map((one) => (listed.body.challenges || []).find((c) => c.title === one));
         check(`...and the admin's answer: each its month and when it is told (${rows.map((one) => one && `${one.starts_on}…${one.ends_on}`).join(", ")})`,
           rows.every((one, at) => one && one.starts_on === `${months[at]}-01` && one.announced_at && one.state === "upcoming")
-          && Date.parse(rows[0].announced_at) <= Date.now() && Date.parse(rows[1].announced_at) > Date.now());
+          && rows.every((one, at) => one && (Date.parse(one.announced_at) <= Date.now()) === toldYet[at]));
         await admin.evaluate(() => document.getElementById("year-form").scrollIntoView());
         await shot(admin, "1b_admin_year-1280.png", false);
       }
@@ -515,9 +521,10 @@ try {
     && cached.body.challenge?.title !== TITLE);
   if (year) {
     const told = await api(`/api/people?op=challenge&id=${ids.year[0]}&tests=1`);
-    const untold = await api(`/api/people?op=challenge&id=${ids.year[1]}&tests=1`);
+    const later = toldYet.indexOf(false);
+    const untold = await api(`/api/people?op=challenge&id=${ids.year[later]}&tests=1`);
     const visitorAsks = await api(`/api/people?op=challenge&id=${ids.year[0]}`);
-    check(`the first theme's own page ${told.status} (${told.body.challenge?.state}), the second's ${untold.status} (not told yet), `
+    check(`the first theme's own page ${told.status} (${told.body.challenge?.state}), the ${["first", "second", "third"][later]}'s ${untold.status} (not told yet), `
       + `the first asked without tests=1 ${visitorAsks.status}`, told.status === 200 && told.body.challenge?.state === "upcoming"
       && told.body.challenge?.title === THEMES[0] && untold.status === 404 && visitorAsks.status === 404);
   }

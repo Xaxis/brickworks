@@ -108,7 +108,9 @@ static func definitions() -> Array:
 			"name": "in_view",
 			"description": ("What the person sees in the window that a session is not told: "
 				+ "the step the timeline is at and its parts, the part in their hand (the Place "
-				+ "tool's, or the parts they are carrying), how many parts they have selected, "
+				+ "tool's, its colour, which way it points as face and rot, and the span its ghost "
+				+ "takes under the pointer; or the parts they are carrying), how many parts they "
+				+ "have selected, "
 				+ "and the reference picture they laid to build over: its file, size and place "
 				+ "in studs, and with picture=true (the default) the picture itself, the "
 				+ "model's parts drawn on it where they stand over it. Changes nothing."),
@@ -466,9 +468,33 @@ func _hand_words() -> String:
 	if not builder.held_figure.is_empty():
 		return "In their hand: a minifigure, with %s." % HELD_MODES[mode]
 	var colour: PartLibrary.BrickColor = library.color(builder.held_color)
-	return "In their hand: %s (%s) in %s (%d), with %s." % [
+	return "In their hand: %s (%s) in %s (%d), with %s; %s." % [
 		_part_name(library, builder.held_part), builder.held_part, colour.name,
-		builder.held_color, HELD_MODES[mode]]
+		builder.held_color, HELD_MODES[mode], _held_where(builder, library)]
+
+
+## Which way the part in hand points, as a placement takes it (face, rot), and
+## the span its ghost takes under the pointer, when one shows: the person's next
+## click, said in the coordinates a session places by.
+static func _held_where(builder: Builder, library: PartLibrary) -> String:
+	var said: String = "its studs %s, rot %d" % [builder.held_face, builder.held_rotation]
+	var mesh: Lbm.PartMesh = library.mesh_for(builder.held_part)
+	if builder.ghost_place() == null or mesh == null:
+		return said + "; not over the model, so no ghost shows"
+	var packed: PackedInt32Array = builder.boxes_for(mesh, builder.ghost_transform())
+	if packed.is_empty():
+		return said
+	var lo := Vector3i(packed[0], packed[1], packed[2])
+	var hi := Vector3i(packed[3], packed[4], packed[5])
+	for n: int in range(6, packed.size(), 6):
+		lo = lo.min(Vector3i(packed[n], packed[n + 1], packed[n + 2]))
+		hi = hi.max(Vector3i(packed[n + 3], packed[n + 4], packed[n + 5]))
+	var low: Vector3 = BrickLattice.to_ldu(lo)
+	var high: Vector3 = BrickLattice.to_ldu(hi)
+	return said + "; its ghost under the pointer takes x %s to %s, z %s to %s, y %s to %s plates, %s" % [
+		_n(low.x / STUD), _n(high.x / STUD), _n(low.z / STUD), _n(high.z / STUD),
+		_n(low.y / PLATE), _n(high.y / PLATE),
+		"where a click puts it down" if builder.can_place() else "where it cannot go down"]
 
 
 func _reference_words(reference: ReferenceImage) -> String:

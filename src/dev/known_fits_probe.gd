@@ -3,8 +3,8 @@
 ##
 ##   godot --headless --path . --script src/dev/known_fits_probe.gd
 ##
-## Real sets whose only collisions were their figures' (a helmet against a
-## roof, a backpack against a head, legs in a carriage's seat, a hand on a
+## Real sets whose only collisions were their figures' (a headdress over a
+## head, a backpack against a head, legs in a carriage's seat, a hand on a
 ## door) pass the collision part of Tested's whole test now, and fail it in
 ## a run kept to BrickBench's parts, whose verify.py forgives none of it. A
 ## brick pushed 2 LDU into a brick, from above or beside it, and a minifig
@@ -14,8 +14,10 @@
 extends SceneTree
 
 ## Small sets that failed only on their figures, by the scan the table was
-## learned from.
-const SETS: Array[String] = ["1477-1.mpd", "6022-1.mpd", "6537-1.mpd", "6644-1.mpd",
+## learned from. Not 1477-1 since 2026-10-26: its helmet (2446) borrows a
+## shape BrickNet draws off the part, which is no shape now (Exact.own), so
+## it is judged by its cover and neither run finds its fit.
+const SETS: Array[String] = ["6022-1.mpd", "6537-1.mpd", "6644-1.mpd",
 	"6799-1_Carriage.mpd", "7306-1.mpd"]
 const OMR := "res://vendor/omr/files/"
 

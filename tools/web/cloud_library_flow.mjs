@@ -45,7 +45,7 @@
 // On a build from before 2026-10-23 nothing is sent: 1 fails, and 2 finds
 // nothing in Open; 7's Save saves "Untitled" without asking. On one from
 // before 2026-10-24 Open has no Rename or delete: 4, 5 and 6 fail.
-import { launch } from "./browser.mjs";
+import { framesDrawn, launch } from "./browser.mjs";
 import { canSignIn, deleteAccount, mintSession, signInContext } from "./session.mjs";
 import { createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";
@@ -260,7 +260,7 @@ async function lookedAgain(page, test, seconds) {
   return false;
 }
 // File › Open, Rename or delete saved models…, picked as a person picks it:
-// its first word typed, Enter. Then the saved models dialog is open.
+// its first letter typed, Enter. Then the saved models dialog is open.
 async function openSavedModels(page) {
   if (!(await openFromMenu(page, "Rename"))) return false;
   return until(async () => (await state(page)).saved_models?.open === true, 20);
@@ -280,11 +280,13 @@ async function typeInto(page, control, words) {
   return true;
 }
 // File › Open, as a person picks a model from it: the toolbar's Open, the
-// first word of its name typed (a menu jumps to what is typed), Enter.
+// first letter of its name typed once the menu is up (a menu jumps to the
+// first item it begins; framesDrawn says why not a word), Enter. "Rename"
+// typed against the clock opened the example barn owl (2026-10-31).
 async function openFromMenu(page, word) {
   if (!(await press(page, "open"))) return false;
-  await page.waitForTimeout(1500);
-  await page.keyboard.type(word, { delay: 120 });
+  await framesDrawn(page);
+  await page.keyboard.type(word[0]);
   await page.waitForTimeout(600);
   await page.keyboard.press("Enter");
   return true;

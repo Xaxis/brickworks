@@ -12,7 +12,7 @@
 // joint and allowed (brickworksState.on_joint, can_place), what the status
 // bar said (hint), and how many parts there are. Pictures at each step, to
 // be looked at.
-import { launch, withAssistant } from "./browser.mjs";
+import { launch, openColumnFor, withAssistant } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -40,6 +40,10 @@ async function controlAt(name, seconds = 400) {
   for (let n = 0; n < seconds * 2; n++) {
     const where = await controls();
     if (where[name]) return where[name];
+    // A window under the design width shows one column beside the model,
+    // and a first visit's is not the parts: the search is behind its rail,
+    // opened as a person opens it.
+    if (n % 10 === 9) await openColumnFor(page, name);
     await page.waitForTimeout(500);
   }
   throw new Error(`the app never showed "${name}"`);
@@ -138,6 +142,9 @@ await wait(1500);
 for (let n = 0; n < 10 && (await state()).bricks > 0; n++) {
   await key("Enter", 1500);
 }
+// The parts column open before the model's share of the window is read:
+// opening it narrows the view, and a spot read before is off the plate.
+await controlAt("part search");
 const view = await controlAt("view");
 const spot = (dx, dy) => ({ x: view.x + dx, y: view.y + dy });
 

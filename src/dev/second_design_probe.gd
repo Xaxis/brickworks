@@ -41,6 +41,9 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await process_frame
+	# Its owl head and roof, a few parts each, stand for designs: what the check
+	# measured is said of a design only (Assistant.is_design).
+	Assistant.design_parts = 1
 	_main = load("res://src/main.tscn").instantiate()
 	root.add_child(_main)
 	for _n: int in 150:
