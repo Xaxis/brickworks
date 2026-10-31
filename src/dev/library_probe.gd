@@ -247,6 +247,13 @@ func _run() -> void:
 		bar.status_text() == "opened 6516-1 Moon Walker — LDraw model by Chris Böhnke, CC BY 4.0")
 	var builder: Builder = _main.get("_builder")
 	builder.selection.clear()
+	# A window under 1600 across shows one column beside the model, the
+	# bin first: Properties is its rail until it is pressed, as a person
+	# presses it to read the credit there.
+	var props: SideDock = _main.get("_props_dock")
+	if props != null and not props.is_open():
+		(props.rail() as Button).pressed.emit()
+		await create_timer(SideDock.SLIDE_SECONDS + 0.2).timeout
 	await _frames(20)
 	var words: Label = shell.inspector.get("_credit_words")
 	var link: LinkButton = shell.inspector.get("_credit_link")

@@ -13,40 +13,160 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-31
+
+A release about pictures, booklets and your own language. On a graphics card
+that traces rays, Best now follows the light bounce by bounce over your
+model's own parts, so shadows soften as they should and light comes off the
+floor and between the parts, and the car at 720p is clean in a few seconds.
+A render queue draws picture after picture while you go on building. A
+printed booklet can show an axle or a beam at its real size to lay on the
+page, a part pulled out with an arrow back in, the step's colours, and a
+sub-model finished before you build it. The whole app reads in German,
+French or Spanish, chosen in Settings, and on a 10,000-part model Check
+stability answers in about a second and Suggest sections in about five.
+
 ### Added
 
-- Designing with another provider's model on your own key, the first part of
-  it. A model on OpenAI, or on any server that speaks OpenAI's Chat
-  Completions (OpenRouter, Groq, Together, Mistral, DeepSeek, Gemini, or Ollama,
-  LM Studio and vLLM on your own computer), is given the same instructions
-  and tools Claude is, builds in the window, and answers the same fresh look
-  at its first save. Your key goes from your computer to the provider and
-  nowhere else. From the command line for now (`--ask-provider`); the
-  settings to choose a provider in the app come next (docs/PROVIDERS.md).
-- The LDraw library on the website, at brickworks.diy/library: every model
-  of a real set the app's Library opens, browsed as the gallery is, by a
-  set's name, number, theme or modeller, its themes as pills and its order,
-  size and years in Filters. Each set has a page of its own, as a shared
-  model has: its picture, who modelled it for LDraw's Official Model
-  Repository and under which licence, its parts list, Share, and Open in
-  Brickworks, which opens it in the app as File, Library… does.
+- Best is path traced on a graphics card with ray tracing: soft shadows,
+  light bounced off the floor and between the parts, and glass that tints
+  what is behind it, cleaner with every sample (Best's frames, 256 when you
+  leave it). Where the card cannot trace rays, Best is frames averaged as
+  before, and Render's Quality note says so.
+- File, Render queue…: queue the model and the view as they are now, change
+  either and queue another, and each is drawn in turn and saved where
+  Render saves while you work. Finish now keeps a path-traced picture as
+  clean as it is so far. Claude can use the same queue.
+- Booklets: the first step to use a straight Technic axle or beam shows it
+  at its real size, with its length in studs, true at 100% in the PDF and
+  the PNG pages. Build, Booklet page adds per step a part pulled out with a
+  red arrow back in, a colour guide, a 1:1 guide for the parts you choose,
+  and a sub-model's preview, each one Undo and saved with the model. Claude
+  can set each with edit_booklet.
+- Settings, Language: English, Deutsch, Français or Español, for the
+  menus, tooltips, panels, the keys sheet and the first build. Parts and
+  colours keep their names. Find a command takes a command's words in the
+  language you chose as well as in English.
+
+### Changed
+
+- Check stability on a 10,000-part model answers in about a second, where
+  it took eight: it shows the weighing the status bar has already done.
+- Suggest sections on a 10,000-part model takes about five seconds, half
+  what it did, with the same sections, and a big model's build steps are
+  worked out sooner.
+- Colour the hidden parts on a big model no longer stops to follow the
+  build steps first.
+- Claude doing CAD work for you over the connector gets a CAD answer when
+  it places a few parts: each part's span and what holds it, with no
+  design method and no fresh look. A part refused for floating says where
+  it would stand. attachment_points answers several parts in one call, and
+  in_view says the colour, face and turn of the part in your hand and the
+  span its ghost takes.
+
+## [0.11.0] - 2026-10-31
+
+A release about building by hand. A part turns about any of its own axes by
+rings and arrows on it, Connect puts a point on one part onto a point on
+another at any angle, a number typed while you move a part moves it exactly
+that far, and copies go down in a row or a ring at once. Split swaps a part
+for smaller real parts and Merge does the reverse, a set's own bin follows
+its booklet, and the Library opens on real sets drawn in 3D. Every tool has a
+key, and Studio's, Mecabricks' or LDCad's keys come as presets, so your hands
+already know it. Two people building together see each other's pointer and
+pin comments to parts, a model's build plays as a video, and Claude, or
+another AI on your own key, can design for you.
+
+### Added
+
+- Rotate puts rings on the selected part and Move puts arrows on it: turn
+  or slide it about its own axes, the model's or the view's, to any angle,
+  in three actions.
+- Connect: a point on the part in hand onto a point on the model, at any
+  angle, in one undo. A pin goes in from the face you point at.
+- Type a number while moving or turning a part to move it that far.
+- Copies in a row, in a ring, or along a hose, all at once.
+- Split a part into smaller real parts, or Merge parts into one real part,
+  with one key.
+- Rubber bands round pulleys and springs between holes, each laid in a few
+  clicks and saved as plain LDraw.
+- View, Split: a straight-on view beside the model, with its own zoom, Fit,
+  box select, Connect and handles.
+- Every tool has a key. The keys sheet (F1) shows every key at once, finds
+  one as you type, and offers Studio's, Mecabricks' or LDCad's keys as
+  presets, or your own. Shift with a digit paints a favourite colour.
+- Find a command by typing (Ctrl+/ or Ctrl+Shift+P): every command, its key
+  and its menu, and a part's number takes that part into the hand.
+- A Make menu for the minifig builder, mosaics, Brickify, the part maker,
+  prints and stickers.
+- The parts bin names every part on its tile, lists what fits the selected
+  part, finds parts made in a colour, folds prints away and lists as rows.
+  A double-click on a tile replaces the selected part or fits it.
+- A set opened from the Library brings its own bin, following its booklet
+  with the step's parts first.
+- The Library opens on real sets drawn in 3D, and its search finds the set
+  you mean, typos and run-together words included; a theme's name alone
+  lists that theme's sets, newest first.
+- Build together: the other person's pointer, comments pinned to parts, and
+  a change made just before you quit is never lost.
+- File, Render, Building: the model built up part by part as a video (an
+  animated WebP and its frames, and an MP4 where ffmpeg is installed).
+- A Product look for renders: a clear coat, soft studio light and a sweep
+  backdrop, with clear parts showing what is behind them.
+- Drag a part to any step on the timeline; steps have keys.
+- Booklets: a page's layout copied to every later page at once, pictures
+  that turn, arrows that bend, boxes that snap to guides, print-quality PNG
+  pages and a PDF that carries its font. Claude can lay out a page.
+- Simulate says where an arm meets a wall, a linkage's range, and where a
+  motor stalls under its load. Measure gives the angle between two holes.
+- Meet swings the hinges between two parts until they join.
+- An axle slides through its hole to where the pointer is.
+- The reference picture is in the undo history like a part.
+- A first launch builds a first model with you, one step at a time, in place
+  of a tour of cards.
 - Settings, AI: choose who designs. Claude, as before, or another AI on your
   own API key: OpenAI, the Anthropic API, Google Gemini, OpenRouter, Mistral,
   Groq, Together, DeepSeek, xAI, or any server that speaks OpenAI's Chat
-  Completions (Ollama, LM Studio, vLLM). Pick a model from the provider's own
-  list, set the temperature, the max output and the reasoning effort where
-  the model takes them, and Test it: one tool call and one picture, and it
-  says plainly what works. Design with it from the assistant's column. Your
-  key is kept on your computer in a file encrypted to it, or for the visit
-  only, and is never sent to us, logged or saved with a model.
-- Help, Send feedback…: tell us something is wrong, an idea or a question,
-  from the app or from any page of the site. A picture of the window goes
-  with it, which you can remove, and, if you tick them, the version and your
-  system, the model you have open and the app's last log lines, each of which
-  you can read first. Signed in, your reports, where each stands and our
-  answers are on your settings page.
+  Completions (Ollama, LM Studio, vLLM on your own computer). Pick a model
+  from the provider's own list, set its temperature, max output and
+  reasoning effort, and Test it: one tool call and one picture, and it says
+  plainly what works. Your key is kept on your computer in a file encrypted
+  to it, or for the visit only, and is never sent to us, logged or saved
+  with a model.
+- Every AI streams its design, drawn brick by brick as it writes. Claude can
+  mirror, split, merge and measure in one call each.
+- Help, Send feedback…: tell us something is wrong, an idea or a question.
+  A picture of the window goes with it, which you can remove, and, if you
+  tick them, the version and your system, the model you have open and the
+  app's last log lines, each of which you can read first. Signed in, your
+  reports and our answers are on your settings page.
 - For beta testers, Help, Beta hub: what is new to try, what we know is
   wrong, and the early features your account has.
+- The LDraw library on the website, at brickworks.diy/library: every set the
+  app's Library opens, each with a page of its own and Open in Brickworks.
+
+### Changed
+
+- The parts bin and Properties each have a column of their own, and on a
+  laptop the model keeps at least 60% of the window, the two taking turns
+  where both do not fit. Hose, Simulate, Motions, Stress and hidden colours
+  stand beside the model, never over it.
+- Each command lives in one menu, and the part menu holds what is done to a
+  part. No menu is taller than a laptop's window.
+- On a 10,000-part model, select joined, paste, duplicate and replace answer
+  within a second, and hidden colours in under two.
+- The design checks take half the time they did, so a session builds
+  sooner, and a call through the connector answers in half the time.
+- The app carries the Brickworks mark, and it opens the app's menu.
+- Help, About credits everyone whose work is in Brickworks.
+
+### Fixed
+
+- A side cut to three studs by a mirror plane keeps its panels.
+- A rubber band whose pieces were stripped from its file opens whole.
+- Choosing a row of another sub-model in the model tree no longer crashes
+  the app.
+- Every key the app names in a hint is the key your keys give it.
 
 ## [0.10.0] - 2026-10-28
 

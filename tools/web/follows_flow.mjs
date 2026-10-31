@@ -230,7 +230,11 @@ try {
     body: { name: "Follows Flow Barn", author: "Bob Follows", model: model("Follows Flow Barn"), image: picture, listed: true } });
   made.push([barn.body.id, bob]);
   check(`Bob's barn in the gallery: ${barn.status} /m/${barn.body.id}`, barn.status === 201 && Boolean(barn.body.id));
-  const mail = await api("/api/people?op=mail", { method: "POST", token: bob.access_token,
+  // His first model listed is his first level since supabase/achievements.sql
+  // (Designer · first model), told in his notifications: opened once, as
+  // notifications_flow opens Ada's, so the count below is the barn's news.
+  await api("/api/people?op=notifications", { token: bob.access_token });
+  const mail =await api("/api/people?op=mail", { method: "POST", token: bob.access_token,
     body: { comments: true, models: true, versions: true, photos: true } });
   check(`Bob chooses the day's email of comments, models, versions and photos, remixes left off: ${JSON.stringify(mail.body)}`,
     mail.status === 200 && mail.body.comments && mail.body.models && mail.body.versions && mail.body.photos
@@ -274,7 +278,20 @@ try {
 
   // --- 3. Ada's castle, and its version 2, in Bob's feed -------------------
   console.log("Ada shares a castle, then its version 2");
-  const castle = await api("/api/share", { method: "POST", token: ada.access_token,
+  // The database knocks a minute past every hour (supabase/trust.sql), and
+  // the knock sends each owner who chose it the day's email of what waits:
+  // from the castle on, Bob's feed. Knocked between the castle and Ada's
+  // comment, Bob has had his email today and the comment waits for
+  // tomorrow's, so it is not told at once (10:01Z, 2026-10-31). Begun close
+  // to a knock, the flow lets it pass first.
+  const knock = new Date();
+  knock.setUTCMinutes(1, 0, 0);
+  if (Date.now() > knock.getTime() + 60000) knock.setUTCHours(knock.getUTCHours() + 1);
+  if (knock - Date.now() < 4 * 60000) {
+    console.log(`  --    the hourly knock is due at ${knock.toISOString().slice(11, 16)}Z: let past first`);
+    await new Promise((done) => setTimeout(done, knock - Date.now() + 60000));
+  }
+  const castle =await api("/api/share", { method: "POST", token: ada.access_token,
     body: { name: "Follows Flow Castle", author: "Ada Follows", model: model("Follows Flow Castle"), image: picture, listed: true } });
   const castleId = castle.body.id;
   made.push([castleId, ada]);

@@ -59,22 +59,9 @@ const LOOKS: Dictionary = {
 	"co": [Color8(255, 243, 200), Color8(52, 57, 63), 0.4, 2.6],
 	"frame": [Color8(255, 248, 222), Color8(52, 57, 63), 0.5, 3.5],
 	"ban": [Color8(35, 82, 124), Color(0, 0, 0, 0), 0.0, 2.0],
+	"one": [Color8(255, 255, 255), Color8(61, 111, 151), 0.35, 1.6],
 }
 
-## Helvetica's widths, and Helvetica Bold's, for " " to "~", in thousandths
-## of the size (the fonts' own AFM).
-const WIDTHS := [278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278,
-	278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556, 1015,
-	667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778, 667, 778, 722,
-	667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556, 333, 556, 556, 500, 556,
-	556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556, 556, 556, 333, 500, 278, 556, 500,
-	722, 500, 500, 500, 334, 260, 334, 584]
-const BOLD_WIDTHS := [278, 333, 474, 556, 556, 889, 722, 238, 333, 333, 389, 584, 278, 333,
-	278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 333, 333, 584, 584, 584, 611,
-	975, 722, 722, 722, 722, 667, 611, 778, 722, 278, 556, 722, 611, 833, 722, 778, 667, 778,
-	722, 667, 611, 722, 667, 944, 667, 667, 611, 333, 278, 333, 584, 556, 333, 556, 611, 556,
-	611, 556, 333, 611, 611, 278, 278, 556, 278, 889, 611, 611, 611, 611, 389, 556, 333, 611,
-	556, 778, 556, 556, 500, 389, 280, 389, 584]
 
 static var _attribute := RegEx.create_from_string("([\\w:-]+)=\"([^\"]*)\"")
 static var _rule := RegEx.create_from_string("\\.(p\\d+)\\{background-image:url\\(([^)]*)\\)\\}")
@@ -380,7 +367,7 @@ func _words(page: Page, words: Dictionary) -> void:
 				"text": text, "bold": bold, "colour": colour, "spacing": spacing}
 			op.merge(turned)
 			page.ops.append(op)
-			x += text_width(text, size, bold, spacing)
+			x += Helvetica.text_width(text, size, bold, spacing)
 
 
 ## The runs of a line of words cut into lines: at each "\n", and, when
@@ -412,7 +399,7 @@ static func _lines(runs: Array, size: float, bold: bool, spacing: float, wrap: f
 				var line: Array = lines[-1]
 				var said: String = (" " if not line.is_empty() and line[-1] is String else "") + word
 				if not line.is_empty() and _line_width(line, size, bold, spacing) \
-						+ text_width(said, size, bold, spacing) > wrap + 0.01:
+						+ Helvetica.text_width(said, size, bold, spacing) > wrap + 0.01:
 					lines.append([word])
 					continue
 				if not line.is_empty() and line[-1] is String:
@@ -432,18 +419,8 @@ static func _lines(runs: Array, size: float, bold: bool, spacing: float, wrap: f
 static func _line_width(line: Array, size: float, bold: bool, spacing: float) -> float:
 	var width: float = 0.0
 	for run: Variant in line:
-		width += 3.4 if run is Dictionary else text_width(str(run), size, bold, spacing)
+		width += 3.4 if run is Dictionary else Helvetica.text_width(str(run), size, bold, spacing)
 	return width
-
-
-## How wide [param text] is in Helvetica (or its bold) at [param size].
-static func text_width(text: String, size: float, bold: bool, spacing: float = 0.0) -> float:
-	var table: Array = BOLD_WIDTHS if bold else WIDTHS
-	var sum: int = 0
-	for index: int in text.length():
-		var code: int = text.unicode_at(index)
-		sum += int(table[code - 32]) if code >= 32 and code <= 126 else 556
-	return sum * size / 1000.0 + spacing * text.length()
 
 
 ## What the SVG over the page draws: the progress bar's rects, the arrows'

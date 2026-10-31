@@ -384,11 +384,24 @@ async function run(scale) {
   // Up from the model into the sky, where there is nothing to put it on —
   // looking from the front, level: from above every ray down reaches the
   // ground, which a part can go on.
+  //
+  // Turned with the part let go of and then taken back (Q). With something
+  // in hand a digit is a typed move, never a view (TypedEntry, since
+  // 3da98f60): "1" opened the field at the pointer, the view stayed above
+  // the model, the ghost found ground all the way up, and the walk ended
+  // over the first build's offer, whose button's own pointer rightly wins
+  // over the model's (m228).
+  await page.keyboard.press("Escape");
   await page.keyboard.press("Digit1");
   await page.waitForTimeout(1500 * slow);
+  await page.keyboard.press("KeyQ");
+  // Only over the model's part of the window: above it is the interface,
+  // where a control's own shape wins over the model's.
+  const model = (await where("view")) || view;
+  const top = Math.max(60, model.h ? model.y - model.h / 2 + 10 : 60);
   let sky = null;
-  for (let y = view.y - 40; y > 60; y -= 40) {
-    const at = { x: view.x, y };
+  for (let y = model.y - 40; y > top; y -= 40) {
+    const at = { x: model.x, y };
     await moveTo(at);
     await page.waitForTimeout(300 * slow);
     const now = await read();
@@ -399,9 +412,11 @@ async function run(scale) {
     console.log("  FAIL  nowhere above the model without a ghost");
     failures.push(`${scale}x no sky`);
   }
+  await page.keyboard.press("Escape");
   await page.keyboard.press("Digit0");
   await page.keyboard.press("KeyF");
   await page.waitForTimeout(1500 * slow);
+  await page.keyboard.press("KeyQ");
   // A spot the part is refused, if the greeting model has one: the
   // builder settles a part on whatever is under it, so it is rare by
   // design. The rule and its shape are cursor_probe's on the desktop.

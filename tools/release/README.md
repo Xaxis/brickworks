@@ -19,7 +19,18 @@ tools/release/train.sh stage rel-m219 stage219 --after rel-m218 \
   --checks "io gallery" --probes "grab_probe" --units "unit1 unit2" --title "…"
 tools/release/train.sh status                  # what is live since when, what is in flight, ETAs
 tools/release/train.sh hold rel-m219 "why"     # train.sh release rel-m219 lifts it
+tools/release/train.sh reship rel-m219 io      # a stopped one again, from its worktree
 ```
+
+`reship TAG [--probes "..."] CHECK...` is for a train that stopped after its
+ship began, on a check gone stale or a timing probe under load: commit the
+fix in `.claude/worktrees/TAG`, then reship. It ships that worktree with the
+checks named, on the preview already made when only checks or release tools
+changed since (`SHIP_REUSE`), beside the probes that did not pass (or those
+`--probes` names), and keeps the train's own record: a release staged
+`--after TAG` waits for it to serve. rel-m227 and rel-m228 were shipped by
+hand instead, and the hand ship left rel-m227's train saying stopped, which
+the release after it then stopped on (2026-10-31).
 
 The train waits detached until `rel-m218_lead.out` says `SHIP: deploy:
 brickworks.diy serves`, never on rel-m218's process: its live checks after
@@ -259,7 +270,11 @@ What each one guards against, all learned the hard way on 2026-10-13:
   2.6 (4.2), and m144's, more of them live, 44 (38): the live checks one
   after another are the floor. Between batteries a live check waits for
   the one another battery is running; `LIVE_WAIT` (an hour) bounds that,
-  then the check fails.
+  then the check fails. A release's checks go first: waiting, its battery
+  leaves a file named for its pid in `.git/live-db.release/`, and any other
+  battery that gets the lock while one is there hands it back and waits.
+  flock serves no one in order, and a unit's A/B, taking the lock run after
+  run, held rel-m232's arrival 24 minutes (2026-10-31).
 
 `tools/release/clean_worktrees.sh [--dry-run]` removes finished worktrees
 and nothing else: never a locked one (the harness locks an agent's while it

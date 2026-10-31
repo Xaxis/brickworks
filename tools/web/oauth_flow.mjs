@@ -6,7 +6,8 @@
 //
 // In a real browser, signed in as a throwaway account: press Connect
 // Claude, and see claude.ai's "Add custom connector" open with Brickworks
-// filled in and the address on the clipboard. Then do what claude.ai does
+// filled in and the address on the clipboard; Claude Code's link puts its
+// command there in one click. Then do what claude.ai does
 // once the person presses Add and Connect (claude.com/docs/connectors/
 // building/authentication): ask the MCP address with no token and follow
 // its 401 to the metadata, identify as Claude by its published client
@@ -22,8 +23,10 @@
 // this side, typed into the page, and again nothing more asked — and that
 // browser's token builds in the first one's tab, as another device would.
 // Then Account shows the connections and Disconnect Claude ends them: every
-// token is refused at once. Last, claude.ai connecting after that is asked
-// again, and Allow connects it.
+// token is refused at once. Connect Claude then, for an account that has
+// had Claude, opens the form filled in still, and the panel offers Claude's
+// list beside it for the Brickworks already there. Last, claude.ai
+// connecting after that is asked again, and Allow connects it.
 //
 // Costs nothing: no model is called. Emails one Resend test address.
 // The throwaway account and everything of it are deleted at the end.
@@ -230,6 +233,16 @@ try {
   await page.bringToFront();
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   check(copied === `${site}/api/mcp`, `...with the address on the clipboard: ${copied}`);
+  check(!(await page.evaluate(() => (window.brickworksControls || {}).connector_already)),
+    "...and, this account never having had Claude, nothing offered beside it");
+  // Claude Code has no link that fills a connector in: one click copies the
+  // command, and the panel says what next under the link.
+  await click("connector_code");
+  await page.waitForTimeout(1500);
+  const command = await page.evaluate(() => navigator.clipboard.readText());
+  check(command === `claude mcp add --transport http brickworks ${site}/api/mcp`,
+    `Claude Code: one click copies the command: ${command}`);
+  await shot("2a_claude_code_copied");
   const waiting = await waitFor((s) => s.on && /Waiting for you/.test(s.status || ""));
   check(waiting.on && /Waiting for you to connect in Claude/.test(waiting.status || ""),
     `the tab is listening, and the panel waits: "${waiting.status}"`);
@@ -412,19 +425,39 @@ try {
     "all three connections' tokens are refused at once, and told where to sign in again");
   check(Boolean(await where("account_connect_claude", 20)), "...and Account offers Connect Claude again");
   await shot("10_disconnected");
-  // This account has had Claude connected: Brickworks is in its Claude
-  // already, so Connect Claude goes to Claude's connectors, to connect that
-  // one, not to Add custom connector, which sets up another.
+  // This account has had Claude connected, as the owner's has: Connect
+  // Claude opens the form filled in all the same (the bare list, until
+  // 2026-10-31, left the owner's empty), and the assistant's panel offers
+  // Claude's list beside it, where a Brickworks already there connects
+  // again keeping its tool permissions.
   const openedAgain = context.waitForEvent("page", { timeout: 30000 });
   await click("account_connect_claude");
-  const listTab = await openedAgain.catch(() => null);
-  await listTab?.waitForLoadState("domcontentloaded").catch(() => {});
-  check(listTab?.url() === "https://claude.ai/customize/connectors",
-    `Connect Claude again, for an account that had Claude: Claude's connectors, not Add custom connector: ${listTab?.url()}`);
-  await listTab?.close();
+  const formTab = await openedAgain.catch(() => null);
+  await formTab?.waitForLoadState("domcontentloaded").catch(() => {});
+  check(formTab?.url() === LINK,
+    `Connect Claude again, for an account that had Claude: Add custom connector, filled in:\n          ${formTab?.url()}`);
+  await formTab?.close();
   await page.bringToFront();
   await page.waitForTimeout(1000);
   await shot("10b_connect_again");
+  if (await where("account_done", 4)) await click("account_done");
+  const offered = context.waitForEvent("page", { timeout: 30000 });
+  await click("connect_claude");
+  const panelTab = await offered.catch(() => null);
+  await panelTab?.waitForLoadState("domcontentloaded").catch(() => {});
+  check(panelTab?.url() === LINK, `...and the assistant's panel's Connect Claude the same: ${panelTab?.url()}`);
+  await panelTab?.close();
+  await page.bringToFront();
+  const toList = context.waitForEvent("page", { timeout: 30000 });
+  await click("connector_already");
+  const listTab = await toList.catch(() => null);
+  await listTab?.waitForLoadState("domcontentloaded").catch(() => {});
+  check(listTab?.url() === "https://claude.ai/customize/connectors",
+    `...beside it, Already in your Claude? Open your connectors: ${listTab?.url()}`);
+  await listTab?.close();
+  await page.bringToFront();
+  await page.waitForTimeout(1000);
+  await shot("10c_already_in_claude");
 
   console.log("\nclaude.ai connects again after Disconnect");
   const askedAfter = authorizationRequest(found.server, found.resource);

@@ -168,9 +168,13 @@ echo "SHIP: main is $SHA, authors: $(git -C $R log --since='1 day ago' --format=
 # as it was before.
 : > "$S/${TAG}_prod.log"
 deployed=0
+# What the domain will serve: the preview's own commit, before SHA when only
+# checks changed since (reused_preview), or SHA built afresh.
+LIVE=${PREVIEW_MADE:-$SHA}
 if grep -q "a unit's preview" "$S/${TAG}_preview.log" \
     || ! timeout 900 tools/deploy.sh --promote="$URL" >> "$S/${TAG}_prod.log" 2>&1; then
   echo "SHIP: $URL not promoted; deploying production afresh"
+  LIVE=$SHA
   timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh --prod >> "$S/${TAG}_prod.log" 2>&1
   deployed=$?
 fi
@@ -186,9 +190,9 @@ fi
 # The CDN keeps serving the last pages for a minute or so after the promotion.
 sleep "${SHIP_CDN_WAIT:-90}"
 # And the live checks go on only against this build.
-serves() { curl -s --max-time 30 https://brickworks.diy/app | grep -q "/b/$SHA/"; }
+serves() { curl -s --max-time 30 https://brickworks.diy/app | grep -q "/b/$LIVE/"; }
 serves || { sleep 120; serves; } || {
-  echo "SHIP: deployed, but https://brickworks.diy/app does not serve /b/$SHA/"; exit 1; }
+  echo "SHIP: deployed, but https://brickworks.diy/app does not serve /b/$LIVE/"; exit 1; }
 # canary: sign-up still shut and a new person still signs in by a code, on
 # production's own route and settings (api/_canary.js, 2026-10-24).
 # Cleared first, as run_checks clears: an attempt before may have left its own.

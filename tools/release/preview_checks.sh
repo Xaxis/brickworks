@@ -383,6 +383,7 @@ declare -A CMD=(
   [account]="tools/web/account_flow.mjs --url=$P/app --out=$S/${TAG}_account"
   [decor]="tools/web/decor_flow.mjs --url=$P/app --out=$S/${TAG}_decor"
   [model_view]="tools/web/model_view_check.mjs --url=$P/app --out=$S/${TAG}_model_view"
+  [in_view]="tools/web/in_view_flow.mjs --url=$P/app --out=$S/${TAG}_in_view"
   # ext-apps' basic-host, built: BW_APP_HOST names its examples/basic-host.
   # The host is kept in the main checkout (bench/data, git-ignored); a
   # session's shell that set BW_APP_HOST did not outlive it, and the check
@@ -539,6 +540,33 @@ NAMES="${*:-$ORDER}"
 # took it and left it, and when.
 LIVE_DB="$(git rev-parse --path-format=absolute --git-common-dir)/live-db"
 live() { grep -qE 'deleteAccount\(|auth/v1/admin/users' "${CMD[$1]%% *}" 2>/dev/null; }
+# A release's check goes first. flock serves no one in order, and a unit's
+# A/B of together runs, taking the lock run after run, held rel-m232's
+# arrival for 24 minutes (2026-10-31). So a release's battery, waiting,
+# leaves a file named for its pid in live-db.release, and any other run that
+# gets the lock while one is there hands it back and waits.
+release_waits() {
+  local f
+  for f in "$LIVE_DB.release"/*; do
+    [ -e "$f" ] && kill -0 "${f##*/}" 2>/dev/null && return 0
+  done
+  return 1
+}
+take_live_db() {
+  local lock="$1" until=$(( $(date +%s) + ${LIVE_WAIT:-3600} )) mine="" left
+  if [ "${BOX_HEAVY_PRIORITY:-}" = 1 ]; then
+    mkdir -p "$LIVE_DB.release"; mine="$BASHPID"; : > "$LIVE_DB.release/$mine"
+  fi
+  while left=$(( until - $(date +%s) )); [ "$left" -gt 0 ] && flock -w "$left" "$lock"; do
+    if [ -n "$mine" ] || ! release_waits; then
+      [ -n "$mine" ] && rm -f "${LIVE_DB:?}.release/${mine:?}"
+      return 0
+    fi
+    flock -u "$lock"; sleep 2
+  done
+  [ -n "$mine" ] && rm -f "${LIVE_DB:?}.release/${mine:?}"
+  return 1
+}
 run() {
   local name="$1" solo="${2:-}" t0 lock
   t0=$(date +%s)
@@ -549,7 +577,7 @@ run() {
   # left behind would hold the database from every other run.
   exec {lock}>>"$LIVE_DB.lock"
   if live "$name"; then
-    if ! flock -w "${LIVE_WAIT:-3600}" "$lock"; then
+    if ! take_live_db "$lock"; then
       echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (LIVE_WAIT, an hour): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
       exec {lock}>&-; return
     fi
@@ -561,7 +589,15 @@ run() {
   # 2,600 s at load 40: dialogs_1024 ran out at 2,700 (fig257, 2026-10-25).
   local limit=2700
   case "$name" in dialogs*) limit=3600 ;; esac
-  "$H" $solo timeout "$limit" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1 {lock}>&-
+  # Outside a release, each solo check is a run of its own: heavy keeps solo
+  # jobs within BOX_HEAVY_SOLO_GAP of each other as one run, and an agent's
+  # pass of every check chained theirs into an hour that held every other
+  # job of the project, a release's merge and two design benches among them
+  # (checkhealth, 2026-10-31). A release's own keep the gap: its timing
+  # checks run back to back while the box is calm.
+  local gap=""
+  [ -n "$solo" ] && [ "${BOX_HEAVY_PRIORITY:-}" != 1 ] && gap="BOX_HEAVY_SOLO_GAP=0"
+  env $gap "$H" $solo timeout "$limit" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1 {lock}>&-
   local code=$?
   # heavy --solo says the load it began at, after how long, and beside what.
   local began; began=$(sed -n 's/^heavy: solo //p' "$S/${TAG}_$name.log" | head -1)

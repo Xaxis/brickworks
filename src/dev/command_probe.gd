@@ -3,7 +3,7 @@
 ##
 ##   godot --path . --resolution 1400x900 --script src/dev/command_probe.gd -- \
 ##       [--subjects=car,orthanc] [--only=save,new] [--table=shots/commands.json] [--judge] \
-##       [--within=paste:1.0,hidden_colours:2.0]
+##       [--within=paste:1.0,hidden_colours:2.0,instructions.first:15]
 ##
 ## The owner (2026-10-13): "a standard 'progress indicator or working
 ## indicator' for actions taken in the app … when I clicked 'Save and then
@@ -61,6 +61,10 @@ var _began_us: int = 0
 var _last_us: int = 0
 var _bar_up_at_start: bool = false
 var _rows: Array = []
+## The booklet being drawn (BookletMaker), and when its first page of steps
+## went out, in usec; 0 before.
+var _maker_laps: Array = []
+var _first_page_us: int = 0
 
 
 class _End extends Node:
@@ -83,6 +87,18 @@ func _process(_delta: float) -> bool:
 	_bar_up_at_start = Working.is_busy() and Working.shown_in != null \
 		and Working.shown_in.visible
 	return false
+
+
+## The booklet's maker as it is made, and the first page of steps it sends
+## out (BookletMaker.wrote): what a person reads first, while the rest is
+## drawn.
+func _on_node_added(node: Node) -> void:
+	if node is BookletMaker:
+		var maker: BookletMaker = node
+		maker.tree_exiting.connect(func() -> void: _maker_laps = maker.laps.duplicate())
+		maker.wrote.connect(func(piece: String) -> void:
+			if _first_page_us == 0 and piece.contains("id=\"page-2\""):
+				_first_page_us = Time.get_ticks_usec())
 
 
 func _frame_ended_later() -> void:
@@ -122,6 +138,7 @@ func _run() -> void:
 	var end := _End.new()
 	end.probe = self
 	root.add_child(end)
+	node_added.connect(_on_node_added)
 	_main = load("res://src/main.tscn").instantiate()
 	root.add_child(_main)
 	await _frames(120)
@@ -216,6 +233,8 @@ func _time(model: String, name: String) -> void:
 		await _tidy()
 		return
 	var depth: int = _builder.history_depth()
+	_first_page_us = 0
+	_maker_laps = []
 	var from: int = Time.get_ticks_usec()
 	var said: Dictionary = {}
 	var call_from: int = Time.get_ticks_usec()
@@ -266,12 +285,29 @@ func _time(model: String, name: String) -> void:
 	row["said_first"] = said_first
 	row["said"] = said.keys()
 	row["cancelled"] = cancelled
+	if _first_page_us > 0:
+		row["first_page_ms"] = roundi((_first_page_us - from) / 1000.0)
+	# What the status bar says it came to: the same before a change and after.
+	row["came_to"] = _bar.status_text()
 	_rows.append(row)
 	print("  %-8s %-22s own %6d ms  frame %6d ms  total %7d ms  %s%s%s" % [model, name,
 		roundi(own), roundi(gap), roundi(total), "said first" if said_first else "          ",
 		"  [" + ", ".join(said.keys()) + "]" if not said.is_empty() else "",
 		"  (stopped)" if cancelled else ""])
+	if not str(row["came_to"]).is_empty():
+		print("  %-8s %-22s came to: %s" % [model, name, str(row["came_to"]).left(160)])
+	if row.has("first_page_ms"):
+		print("  %-8s %-22s the booklet's first page of steps at %d ms" % [model, name,
+			int(row["first_page_ms"])])
+	if name in ["instructions", "timeline"] and not Instructions.laps.is_empty():
+		print("  %-8s %-22s plan (ms): %s" % [model, name, _laps(Instructions.laps)])
+	if name == "instructions" and not _maker_laps.is_empty():
+		print("  %-8s %-22s booklet (ms): %s" % [model, name, _laps(_maker_laps)])
 	await _tidy(depth)
+
+
+static func _laps(laps: Array) -> String:
+	return ", ".join(laps.map(func(lap: Array) -> String: return "%s %d" % [lap[0], int(lap[1])]))
 
 
 ## Back to the model as it was opened, nothing open over it.
@@ -352,10 +388,13 @@ func _no_flash() -> void:
 
 
 ## Each command named in [param within] ("name:seconds,...") against its
-## seconds, on the big models it ran on.
+## seconds, on the big models it ran on. "instructions.first" is the booklet's
+## first page of steps, from the press (docs/APP_UX3.md, bigmodels2).
 func _held_to(within: String) -> void:
 	for pair: String in within.split(",", false):
 		var name: String = pair.get_slice(":", 0)
+		var first: bool = name.ends_with(".first")
+		name = name.trim_suffix(".first")
 		var most_ms: float = float(pair.get_slice(":", 1)) * 1000.0
 		var timed: bool = false
 		for row: Dictionary in _rows:
@@ -364,9 +403,11 @@ func _held_to(within: String) -> void:
 			timed = timed or not row.has("skipped")
 			if row.has("skipped"):
 				continue
-			var ok: bool = float(row["total_ms"]) <= most_ms and not bool(row["cancelled"])
-			print("  %s %s on %s (%d parts): %d ms, the bar %d ms" % ["ok  " if ok else "FAIL",
-				name, row["model"], int(_parts_of[row["model"]]), int(row["total_ms"]),
+			var took: float = float(row.get("first_page_ms", INF)) if first else float(row["total_ms"])
+			var ok: bool = took <= most_ms and not bool(row["cancelled"])
+			print("  %s %s%s on %s (%d parts): %s ms, the bar %d ms" % ["ok  " if ok else "FAIL",
+				name, " to its first page" if first else "", row["model"],
+				int(_parts_of[row["model"]]), "no page" if is_inf(took) else str(roundi(took)),
 				int(most_ms)])
 			if not ok:
 				_failures += 1

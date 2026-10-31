@@ -2274,12 +2274,15 @@ func _index_current() -> void:
 				best_score = score
 				best = other
 		_current_of[id] = best.id if best != null else id
+	_index_colours()
+	# Read once every part is in it, those drawn in one colour too: read
+	# before them, search offered 303923 beside the 3039 it places (corefix,
+	# 2026-10-31).
 	var old: Dictionary = {}
 	for id: Variant in _current_of:
 		if str(_current_of[id]) != str(id):
 			old[id] = true
 	_superseded = old
-	_index_colours()
 	# Marked as built even where nothing is stale.
 	_current_of[""] = ""
 

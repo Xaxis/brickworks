@@ -1284,13 +1284,22 @@ static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 	# downstream of one: clearing those too left a pinnacle that merely
 	# hung below a loop free to go in first.
 	var cleared: Array[int] = []
+	# Where to look again: taking needs away makes no loop, so a part on one
+	# after is on one before. The whole model asked again was a sixth of
+	# Orthanc's reading (bigmodels2).
+	var among: Array[Node2] = nodes
 	for _attempt: int in 4:
 		if job != null:
 			await job.next()
 			if job.cancelled:
 				return
 		var looped: Dictionary = {}
-		await _cycles_into(looped, nodes, job)
+		await _cycles_into(looped, among, job)
+		var on_one: Array[Node2] = []
+		for node: Node2 in among:
+			if looped.has(node.id):
+				on_one.append(node)
+		among = on_one
 		var undone: bool = false
 		for index: int in hanging:
 			var node: Node2 = nodes[index]
@@ -1306,12 +1315,22 @@ static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 	# any route, wait for it. One at a time, so two of them cannot make a
 	# loop between them.
 	var dependents: Dictionary = {}
+	# The parts by the height of their tops, to find those at a part's height
+	# without asking every part: asked of all of them for each part cleared,
+	# it was Orthanc's 41 by 10,101, two thirds of a second (bigmodels2).
+	var by_top: Array = []
+	var tops := PackedFloat64Array()
 	if not cleared.is_empty():
 		for other: Node2 in nodes:
 			for need: int in other.after:
 				if not dependents.has(need):
 					dependents[need] = []
 				(dependents[need] as Array).append(other.id)
+		for other_index: int in nodes.size():
+			by_top.append([nodes[other_index].box.end.y, other_index])
+		by_top.sort()
+		for pair: Array in by_top:
+			tops.append(pair[0])
 	for index: int in cleared:
 		if job != null and job.due():
 			await job.next()
@@ -1321,14 +1340,17 @@ static func _hangers_of(nodes: Array[Node2], job: Working.Job) -> void:
 		var after_it: Dictionary = _waiting_on(dependents, node.id)
 		var nearest: float = INF
 		var under: int = -1
-		for other_index: int in nodes.size():
+		# Those whose top is no more than 5 LDU over its underside nor 48 under
+		# it; the nearest by their middles, the first of them in the list on
+		# a tie, as walking the list in order found it.
+		for at: int in range(tops.bsearch(node.box.position.y - 48.0, true),
+				tops.bsearch(node.box.position.y + 5.0, false)):
+			var other_index: int = by_top[at][1]
 			var other: Node2 = nodes[other_index]
-			if other_index == index or after_it.has(other.id) \
-					or other.box.end.y > node.box.position.y + 5.0 \
-					or other.box.end.y < node.box.position.y - 48.0:
+			if other_index == index or after_it.has(other.id):
 				continue
 			var gap: float = other.box.get_center().distance_to(node.box.get_center())
-			if gap < nearest:
+			if gap < nearest or gap == nearest and other_index < under:
 				nearest = gap
 				under = other_index
 		if under >= 0:
@@ -2687,10 +2709,15 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 		await job.next()
 	var remaining: Dictionary = {}
 	var ready: Dictionary = {}
+	## The same by region: region -> {id: node}, in the order ready has them.
+	## The next part of a region is looked for among its own: asked of every
+	## part ready, for every part chosen, Orthanc's took a second (bigmodels2).
+	var ready_in: Dictionary = {}
 	for node: Node2 in nodes:
 		remaining[node.id] = node
 		if int(waiting[node.id]) == 0:
 			ready[node.id] = node
+			_ready_into(ready_in, node)
 	# What is held only by guesses, off the table: the lowest that is not a
 	# wheel, which goes on last.
 	var floor_y: float = INF
@@ -2763,7 +2790,7 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 					return
 			var first: Node2 = picked[0] if not picked.is_empty() else null
 			var chosen: Array = _next(ready, remaining, last_at, have_last,
-				first, current, refused, joins, picked)
+				first, current, refused, joins, picked, ready_in)
 			var node: Node2 = chosen[0]
 			if node == null:
 				break
@@ -2797,7 +2824,8 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 			while not placing.is_empty():
 				var here: Node2 = placing.pop_back()
 				remaining.erase(here.id)
-				ready.erase(here.id)
+				if ready.erase(here.id):
+					(ready_in[here.region] as Dictionary).erase(here.id)
 				picked.append(here)
 				pictures.accept(here)
 				piece[here.id] = here.id
@@ -2831,6 +2859,7 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 					waiting[dependent] = int(waiting[dependent]) - 1
 					if int(waiting[dependent]) == 0 and remaining.has(dependent):
 						ready[dependent] = by_id[dependent]
+						_ready_into(ready_in, by_id[dependent])
 						var under_it: Node2 = by_id[dependent]
 						if under_it.under.has(here.id) or not in_hand and under_it.hung.has(here.id) \
 								and not (under_it.wheel > 0 and steps.is_empty()):
@@ -2855,6 +2884,14 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 			placed += node.assembly.members.size() if node.assembly != null else 1
 
 
+## [param node], ready, into [param ready_in] by its region
+## ([method _sequence_into]).
+static func _ready_into(ready_in: Dictionary, node: Node2) -> void:
+	if not ready_in.has(node.region):
+		ready_in[node.region] = {}
+	(ready_in[node.region] as Dictionary)[node.id] = node
+
+
 ## The next node to place, or null when the step should end.
 ##
 ## [param first] is the first node of the step being filled, or null at
@@ -2877,7 +2914,7 @@ static func _sequence_into(steps: Array, nodes: Array[Node2], named: bool, per_s
 static func _next(ready: Dictionary, remaining: Dictionary,
 		last_at: Vector3, have_last: bool, first: Node2,
 		current: String = "", refused: Dictionary = {},
-		joins: Callable = Callable(), step: Array = []) -> Array:
+		joins: Callable = Callable(), step: Array = [], ready_in: Dictionary = {}) -> Array:
 	var same_step: bool = first != null
 	var kind: String = (first.assembly.kind
 		if same_step and first.assembly != null and not first.assembly.whole else "")
@@ -2899,7 +2936,9 @@ static func _next(ready: Dictionary, remaining: Dictionary,
 			return ATTACH_TAKES_PARTS and _near_step(node, step)
 		return node.assembly.kind == kind
 
-	var here: Node2 = _best(ready, last_at, have_last, same_step and kind.is_empty(),
+	# Of the region's own, when [param ready_in] has them by region.
+	var here: Node2 = _best(ready if ready_in.is_empty() else ready_in.get(current, {}),
+		last_at, have_last, same_step and kind.is_empty(),
 		func(node: Node2) -> bool:
 			return node.region == current and fits.call(node) and not refused.has(node.id),
 		false, joins, step)
@@ -3359,6 +3398,42 @@ static func _authored_plan(world: BrickWorld, library: PartLibrary,
 		found = _find_assemblies(_given_a_step(nodes, given), world, library)
 		_keep_assemblies(shape, given, found)
 	return _authored_from(nodes, found, world, library, skip, steps, paths)
+
+
+## What [method plan] reads of a model before it orders anything: each part
+## surveyed, with what it rests on, is joined to and hangs from
+## ([method _find_supports] to [method _find_hangers]). The reading the
+## author's plan keeps (_shaped) when the model's shape is the one last
+## read; else read, and kept for the next. With [param to_change], copies
+## (Node2.take), which the caller may change; else the nodes kept, which it
+## must not. Suggest sections reads it so: worked out on its own, it was a
+## second of Orthanc's twelve, which the booklet or the timeline had read
+## already (bigmodels2).
+static func read_shape(world: BrickWorld, library: PartLibrary, skip: Dictionary,
+		to_change: bool) -> Array[Node2]:
+	var shape: Array = _shape_of(world, library, skip)
+	var kept: Dictionary = _shaped_as_before(shape)
+	var nodes: Array[Node2] = []
+	if not kept.is_empty():
+		nodes = kept["nodes"]
+	else:
+		nodes = _survey(world, library, skip)
+		if nodes.is_empty():
+			return nodes
+		_find_supports(nodes, world, library)
+		_find_joints(nodes, world, library)
+		_tidy_needs(nodes)
+		_find_hangers(nodes)
+		_keep_shaped(shape, nodes, _paths_of(nodes))
+	if not to_change:
+		return nodes
+	var copies: Array[Node2] = []
+	copies.resize(nodes.size())
+	for index: int in nodes.size():
+		var own := Node2.new()
+		own.take(nodes[index])
+		copies[index] = own
+	return copies
 
 
 ## What the author's plan last read of a model's shape: what each part

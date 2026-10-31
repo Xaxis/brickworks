@@ -38,6 +38,20 @@
 ## and when its page changes round it they move and scale with it into its
 ## new room ([method rebased]). "sign": false leaves the turn sign off it.
 ##
+## Studio's booklet extras, a step's own: "pull" {"studs": 2, "parts":
+## [part ids]} draws the step's parts (those, or all of them) pulled out
+## along the way each goes in, with an arrow in (Studio's buffer
+## exchange); "colours" true lists the step's colours under its number,
+## false leaves them off where the booklet's "colours_all" lists every
+## step's; "actual_size" false leaves off the 1:1 guide the booklet gives
+## the first Technic axle or beam of each length, true gives one to every
+## axle and beam of the step, [part ids] to those parts; "preview" false,
+## on a step that puts a sub-assembly on, leaves its sub-model preview off
+## the first of the pages it is built on. In the file: "... PULL 2 3705
+## 6558" (no parts: all of them), "... COLOURS ON" or "OFF", "... COLOURS
+## ALL" in the model, "... ACTUAL_SIZE OFF", "ON" or "3705 32524", and
+## "... PREVIEW OFF".
+##
 ## In the file a turn is LDraw's own rotation step, which MLCad, LPub,
 ## LDCad and Studio read: the line that ends the step is
 ## "0 ROTSTEP x y z REL" instead of "0 STEP", and the turn holds for the
@@ -67,7 +81,12 @@ extends RefCounted
 const META := "0 !BRICKWORKS "
 ## The words of the app's own step lines, after META.
 const WORDS: Array[String] = ["PAGE", "ZOOM", "SIZE", "PARTS", "CALLOUT", "PER_PAGE",
-	"HIGHLIGHT", "PLACE", "TEXT", "IMAGE", "PANEL", "ARROW", "TURN_SIGN", "NOTE", "GUIDE"]
+	"HIGHLIGHT", "PLACE", "TEXT", "IMAGE", "PANEL", "ARROW", "TURN_SIGN", "NOTE", "GUIDE",
+	"PULL", "COLOURS", "ACTUAL_SIZE", "PREVIEW"]
+## How far a step's parts are pulled out by default, in studs (Studio's
+## buffer exchange), and the most.
+const PULL_STUDS := 2.0
+const PULL_MOST := 8.0
 const BOOKLET := "|booklet"
 ## The pictures a page shows, by name: {name: base64}.
 const DATA := "|data"
@@ -258,6 +277,38 @@ static func change(world: BrickWorld, name: String, change: Dictionary) -> Array
 	return [{"undo": "steplooks", "looks": was}]
 
 
+## What a Booklet page extra does to step [param at] (Shell's booklet_pull,
+## booklet_colours, booklet_actual_size and booklet_preview; change_look
+## "set"): each a switch. Pull out and 1:1 take the parts selected,
+## [param parts] their part ids, and with none all of the step's (pull) or
+## none (1:1, where the booklet would give one); either set already is put
+## back as the booklet does it.
+static func extra_fields(world: BrickWorld, at: Instructions.Step, op: String,
+		parts: Array) -> Dictionary:
+	var own: Dictionary = of(world, at.authored_in, at.authored_step) if at != null else {}
+	var asked: Array = []
+	for part: Variant in parts:
+		if not str(part).to_lower() in asked:
+			asked.append(str(part).to_lower())
+	match op:
+		"pull":
+			if own.get("pull") is Dictionary and (asked.is_empty()
+					or (own["pull"] as Dictionary).get("parts", []) == asked):
+				return {"pull": null}
+			return {"pull": {"studs": PULL_STUDS, "parts": asked}}
+		"colours":
+			var all: bool = bool(booklet(world).get("colours_all", false))
+			var on: bool = bool(own.get("colours", all))
+			return {"colours": null if (not on) == all else not on}
+		"actual_size":
+			if own.has("actual_size"):
+				return {"actual_size": null}
+			return {"actual_size": asked if not asked.is_empty() else false}
+		"preview":
+			return {"preview": null if not bool(own.get("preview", true)) else false}
+	return {}
+
+
 ## The pictures the pages show set to [param pictures] (name -> base64).
 ## Returns the undo, empty when nothing changed.
 static func set_images(world: BrickWorld, pictures: Dictionary) -> Array:
@@ -282,8 +333,12 @@ static func _usual(field: String, value: Variant) -> bool:
 		"guides":
 			return value is Dictionary and (value as Dictionary).values().all(
 				func(lines: Variant) -> bool: return not (lines is Array) or (lines as Array).is_empty())
-		"sign":
+		"sign", "preview":
 			return bool(value)
+		"colours_all":
+			return not bool(value)
+		"pull":
+			return not (value is Dictionary) or float((value as Dictionary).get("studs", 0.0)) <= 0.0
 		"page":
 			return str(value).is_empty() or str(value) == "auto"
 		"per_page":
@@ -701,6 +756,25 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 			"TURN_SIGN":
 				if value == "OFF":
 					_put_in(out, key(definition, step), "sign", false)
+			"PULL":
+				if value.is_valid_float() and value.to_float() > 0.0:
+					_put_in(out, key(definition, step), "pull", {"studs": clampf(value.to_float(),
+						0.5, PULL_MOST), "parts": Array(words.slice(4)).map(
+							func(id: String) -> String: return id.to_lower())})
+			"COLOURS":
+				if value == "ALL":
+					_put_in(out, BOOKLET, "colours_all", true)
+				elif value in ["ON", "OFF"]:
+					_put_in(out, key(definition, step), "colours", value == "ON")
+			"ACTUAL_SIZE":
+				if value in ["ON", "OFF"]:
+					_put_in(out, key(definition, step), "actual_size", value == "ON")
+				elif words.size() > 3:
+					_put_in(out, key(definition, step), "actual_size", Array(words.slice(3)).map(
+						func(id: String) -> String: return id.to_lower()))
+			"PREVIEW":
+				if value == "OFF":
+					_put_in(out, key(definition, step), "preview", false)
 			"NOTE":
 				# The words or picture just before it, turned and faded.
 				var notes: Array = (out.get(key(definition, step), {}) as Dictionary).get("notes", [])
@@ -914,6 +988,8 @@ static func _booklet_lines(out: PackedStringArray, whole: Dictionary, eol: Strin
 		out.append(META + "PER_PAGE %d" % int(whole["per_page"]) + eol)
 	if whole.has("highlight") and not bool(whole["highlight"]):
 		out.append(META + "HIGHLIGHT OFF" + eol)
+	if bool(whole.get("colours_all", false)):
+		out.append(META + "COLOURS ALL" + eol)
 	var kept: Dictionary = whole.get("guides", {})
 	for axis: String in ["x", "y"]:
 		for at: Variant in kept.get(axis, []):
@@ -974,6 +1050,17 @@ static func _step_lines(out: PackedStringArray, looks: Dictionary, definition: S
 		out.append(META + "PARTS OFF" + eol)
 	if look.has("sign") and not bool(look["sign"]):
 		out.append(META + "TURN_SIGN OFF" + eol)
+	if look.get("pull") is Dictionary:
+		out.append(META + " ".join(["PULL", _number(float(look["pull"].get("studs", PULL_STUDS)))]
+			+ Array(look["pull"].get("parts", []))) + eol)
+	if look.has("colours"):
+		out.append(META + "COLOURS " + ("ON" if bool(look["colours"]) else "OFF") + eol)
+	if look.has("actual_size"):
+		var actual: Variant = look["actual_size"]
+		out.append(META + "ACTUAL_SIZE " + (" ".join(actual) if actual is Array
+			else ("ON" if bool(actual) else "OFF")) + eol)
+	if look.has("preview") and not bool(look["preview"]):
+		out.append(META + "PREVIEW OFF" + eol)
 	if look.has("panel"):
 		out.append(META + "PANEL " + _numbers_said(look["panel"]) + eol)
 	var place: Dictionary = look.get("place", {})
@@ -1243,6 +1330,8 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 		+ "each step's new parts are where its picture shows them: point an arrow there. A step "
 		+ "left to the booklet is seen from the front here, and may be drawn turned round: "
 		+ "give it turn= to be sure.")
+	if bool(booklet(world).get("colours_all", false)):
+		told.append("Every step lists its colours under its number.")
 	var lines: Dictionary = guides(world)
 	if not (lines["x"] as Array).is_empty() or not (lines["y"] as Array).is_empty():
 		var each := PackedStringArray()
@@ -1272,6 +1361,12 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 				var own_line: String = said(world, named, step, entry.in_callout)
 				if not own_line.is_empty():
 					how.append(own_line)
+			if not entry.actual.is_empty():
+				how.append("a 1:1 guide of the %s" % ", the ".join(entry.actual.map(
+					func(guide: Dictionary) -> String: return str(guide["name"]))))
+			if not entry.colours.is_empty():
+				how.append("its colours listed: %s" % ", ".join(entry.colours.map(
+					func(colour: Dictionary) -> String: return str(colour["name"]))))
 			if entry.adds.size.x > 0.0:
 				how.append("its new parts at %s" % adds_said(entry.adds))
 			if entry.callout != null:
@@ -1282,7 +1377,8 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 							sub.look.get_slice("|", 0), sub.look.get_slice("|", 1).to_int())])
 				how.append("puts on the %s%s, %s%s" % [entry.callout.name,
 					" x%d" % entry.callout.times if entry.callout.times > 1 else "",
-					"built in a callout box" if entry.callout.inline else "built on its own pages",
+					"built in a callout box" if entry.callout.inline else ("built on its own pages"
+						+ (", shown finished first" if entry.callout.preview else "")),
 					(" (%s)" % ", ".join(posed)) if not posed.is_empty() else ""])
 			each.append("%d%s" % [entry.number, (" (" + "; ".join(how) + ")") if not how.is_empty()
 				else ""])
@@ -1360,6 +1456,20 @@ static func said(world: BrickWorld, section: String, step: int, placed_only: boo
 			parts.append(arrow_said(arrow))
 	if own.has("sign") and not bool(own["sign"]):
 		parts.append("no turn sign")
+	if own.get("pull") is Dictionary:
+		var pull: Dictionary = own["pull"]
+		var which: Array = pull.get("parts", [])
+		parts.append("%s pulled out %s studs with an arrow in" % [
+			"its parts" if which.is_empty() else "its " + ", ".join(which),
+			_number(float(pull.get("studs", PULL_STUDS)))])
+	if own.has("colours"):
+		parts.append("its colours listed" if bool(own["colours"]) else "no colour guide")
+	if own.has("actual_size"):
+		var actual: Variant = own["actual_size"]
+		parts.append(("a 1:1 guide of its " + ", ".join(actual)) if actual is Array
+			else ("a 1:1 guide of each axle and beam" if bool(actual) else "no 1:1 guide"))
+	if own.has("preview") and not bool(own["preview"]):
+		parts.append("no sub-model preview")
 	return ", ".join(parts)
 
 

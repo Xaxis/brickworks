@@ -112,6 +112,11 @@ class Report extends RefCounted:
 	## (Balance.Report.tipping), heaviest first.
 	var held: Dictionary = {}
 	var tipping: Array = []
+	## ...and the balance they were read from: the model weighed as it
+	## stands, with no pose (Balance.measure). Check stability shows it when
+	## there is no pose to weigh, rather than weigh the same again: on
+	## Orthanc that was 2 s of its 4.8 (bigmodels2).
+	var balance: Balance.Report = null
 
 	func is_stable() -> bool:
 		return risks.is_empty()
@@ -130,14 +135,61 @@ var lattice: BrickLattice
 ## Left out of whether it tips over.
 var floor_ids: Dictionary = {}
 ## Set on the main thread to end a [method check] on a worker early, which
-## then returns null (Main._weigh, PartLibrary.reading_in).
-var stopped: bool = false
+## then returns null (Main._weigh, PartLibrary.reading_in). Read through
+## [member stop], under its lock, which the Balance weighing the margins asks
+## too: it did not, and was two of 42082-1's ten seconds that a model opened
+## meanwhile could wait for (corefix, 2026-10-31).
+var stopped: bool:
+	get:
+		return stop.asked()
+	set(value):
+		if value:
+			stop.ask()
+var stop := WorkerTasks.Stop.new()
 ## Set to have [method check] weigh every stud joint's margin as well
 ## ([member Report.margins]), from the contacts it reads anyway, and say a
 ## joint past its working load and a piece tipping off a touch as weak:
 ## the status bar's verdict, View, Stress (StressView) and a session's
 ## weakest_joints all ask so, and agree.
 var with_margins: bool = false
+
+
+## From this many parts [method check_paced] checks on a worker.
+const ON_A_WORKER_FROM := 600
+
+
+## [method check] with the window drawing and answering meanwhile: for a big
+## model on a worker, on copies of the model and the lattice that nothing
+## changes, the library holding new arrivals aside, as the status bar weighs
+## one (Main.weigh_joints). [param meanwhile] is called on the window's own
+## thread while the worker reads: Check stability finds the poses to weigh
+## then (Poser), which on Orthanc was a second of its own. Null when the
+## library had to add a part meanwhile. In one go on a small model, or with
+## no threads, [param meanwhile] first.
+func check_paced(world: BrickWorld, meanwhile: Callable = Callable()) -> Report:
+	if world.brick_count() < ON_A_WORKER_FROM or OS.has_feature("nothreads"):
+		if meanwhile.is_valid():
+			meanwhile.call()
+		return check(world)
+	var judge := Stability.new()
+	judge.library = library
+	judge.with_margins = with_margins
+	judge.floor_ids = floor_ids.duplicate()
+	judge.lattice = lattice.copy_for_reading()
+	var still: BrickWorld = world.copy_for_reading()
+	var weighed: Array = [null]
+	library.begin_reading()
+	var task: int = WorkerTasks.add(func() -> void:
+		weighed[0] = judge.check(still), false, "check stability")
+	library.reading_in(task, func() -> void: judge.stopped = true)
+	if meanwhile.is_valid():
+		meanwhile.call()
+	while not WorkerThreadPool.is_task_completed(task):
+		await Engine.get_main_loop().process_frame
+	WorkerTasks.collect(task)
+	library.end_reading(task)
+	still.free()
+	return weighed[0]
 
 
 ## Check a model. Returns the joints that would fail, weakest first.
@@ -192,6 +244,7 @@ func _weigh_margins(bricks: Array, graph: Dictionary, report: Report) -> void:
 	weigher.library = library
 	weigher.lattice = lattice
 	weigher.floor_ids = floor_ids
+	weigher.stop = stop
 	var weighed: Balance.Report = weigher.measure(bricks, [], null, graph)
 	for one: Balance.JointLoad in weighed.joints:
 		report.margins[one.beyond] = one
@@ -225,6 +278,7 @@ func _weigh_margins(bricks: Array, graph: Dictionary, report: Report) -> void:
 		report.risks.append(risk)
 	report.held = weighed.held
 	report.tipping = weighed.tipping
+	report.balance = weighed
 
 
 ## Whether the whole tips over on what it stands on: its centre of mass

@@ -80,9 +80,13 @@ try {
     });
     const cdp = await context.newCDPSession(page);
     let shot = 0;
+    // A picture waits for a frame, and 1024 x 1366 at 2x is 2048 x 2732 drawn
+    // in software here, 3 to 6 s a frame early on: past Playwright's 30 s
+    // under load, on live and the release alike (rel-m228, same-hour A/B).
     const picture = async (what) => {
       shot += 1;
-      await page.screenshot({ path: `${out}/${size}_${String(shot).padStart(2, "0")}_${what}.png` });
+      await page.screenshot({ path: `${out}/${size}_${String(shot).padStart(2, "0")}_${what}.png`,
+        timeout: 120000 });
     };
     const state = async () => (await page.evaluate(() => window.brickworksState || {})) || {};
     const controls = async () => (await page.evaluate(() => window.brickworksControls || {})) || {};

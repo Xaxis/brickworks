@@ -183,9 +183,10 @@ func _run() -> void:
 ## another: 8202-1, whose hose is a part new to the library, after 42082-1.
 ## The library adds no part while a worker reads it, and until 2026-10-17
 ## the open waited out the weighing, 10.7 s of its 15.4 s. The weighing
-## gives way (PartLibrary.reading_in's stop): the open takes a fraction of
-## a whole weighing of the model before it, both timed here, and the model
-## it opened is weighed.
+## gives way (PartLibrary.reading_in's stop), and so does the reading of the
+## model's joints ahead (GrabDrag), which until 2026-10-31 held it 7 to 9 s
+## more: the open takes a fraction of a whole weighing of the model before
+## it, both timed here, and the model it opened is weighed.
 func _open_mid_weigh() -> void:
 	const NEXT := "res://vendor/omr/files/8202-1.mpd"
 	if not FileAccess.file_exists(NEXT) or _world.brick_count() < 600:

@@ -236,6 +236,7 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 
 	var entries: Array[Booklet.Entry] = _entries(steps, lots)
 	_find_apart(entries)
+	_pull_out(entries)
 	var layout := Booklet.Layout.new(entries, 2,
 		int(BookletLooks.booklet(world).get("per_page", 0)))
 	var pages: Array[Booklet.Page] = []
@@ -578,9 +579,13 @@ func _entries(steps: Array[Instructions.Step], lots: Dictionary) -> Array[Bookle
 			entry.lots = _lots_of(step.brick_ids, lots)
 			if not marks.is_empty():
 				entry.marks.append_array(_marks_in(step.brick_ids, _marked))
+		_colour_guide(entry, own)
+		if own.get("pull") is Dictionary:
+			entry.pull = own["pull"]
 		if own.has("parts") and not bool(own["parts"]):
 			entry.lots.clear()
 		entries.append(entry)
+	_actual_guides(entries)
 	return entries
 
 
@@ -644,6 +649,198 @@ func _marks_in(ids: PackedInt64Array, shown: Dictionary) -> Array:
 	return out
 
 
+## [param entry]'s colour guide, when its look ([param own]) or the
+## booklet's asks for one: each colour of its parts box, once, in its order.
+func _colour_guide(entry: Booklet.Entry, own: Dictionary) -> void:
+	entry.colours.clear()
+	var wanted: bool = bool(own["colours"]) if own.has("colours") \
+		else bool(BookletLooks.booklet(_world).get("colours_all", false))
+	if not wanted:
+		return
+	var seen: Dictionary = {}
+	for lot: Booklet.Lot in entry.lots:
+		var code: int = lot.key.get_slice(":", 1).to_int()
+		if seen.has(code):
+			continue
+		seen[code] = true
+		var colour: PartLibrary.BrickColor = library.color(code)
+		entry.colours.append({"name": lot.colour if not lot.colour.is_empty() else str(code),
+			"rgb": "#" + (colour.rgb.to_html(false) if colour != null else "888888")})
+
+
+## The 1:1 guides, in the order the parts go in: a Technic axle or a
+## straight beam the first time its length is used, as a Technic booklet
+## draws one; or, where a step's look says (BookletLooks "actual_size"),
+## none, every axle and beam of the step, or the parts it names. A
+## sub-assembly built on pages of its own has them on its own steps; one
+## built in a callout box, on the step that puts it on, whose parts box
+## lists its parts.
+func _actual_guides(entries: Array[Booklet.Entry]) -> void:
+	var seen: Dictionary = {}
+	for entry: Booklet.Entry in entries:
+		if entry.callout != null and (entry.callout.own_pages
+				or not Booklet._fits_inline(entry.callout)):
+			for sub: Booklet.Entry in entry.callout.steps:
+				_actual_for(sub, seen)
+		_actual_for(entry, seen)
+
+
+func _actual_for(entry: Booklet.Entry, seen: Dictionary) -> void:
+	entry.actual.clear()
+	var asked: Variant = null
+	if not entry.look.is_empty():
+		asked = BookletLooks.of(_world, entry.look.get_slice("|", 0),
+			entry.look.get_slice("|", 1).to_int()).get("actual_size")
+	for lot: Booklet.Lot in entry.lots:
+		var part: String = lot.part_id.to_lower()
+		var studs: float = actual_studs(_name_of(lot.part_id))
+		var first: bool = studs > 0.0 and not seen.has(part)
+		if studs > 0.0:
+			seen[part] = true
+		var wanted: bool = first
+		if asked is Array:
+			wanted = part in (asked as Array)
+		elif asked != null:
+			wanted = bool(asked) and studs > 0.0
+		if wanted and not asked is Array and not _straight(lot.part_id, studs):
+			continue
+		if not wanted or entry.actual.any(func(one: Dictionary) -> bool:
+				return str(one["part"]) == part):
+			continue
+		var guide: Dictionary = _actual_pose(lot, studs)
+		if not guide.is_empty():
+			entry.actual.append(guide)
+
+
+## Whether [param part_id] is a straight bar [param studs] long, as an
+## axle or a beam is, which a ruler laid on its guide reads true: its
+## longest side the length within a hair, the other two no thicker than a
+## beam. A liftarm with a pin standing out of it is drawn as an L, and is
+## given no guide unless it is asked for.
+func _straight(part_id: String, studs: float) -> bool:
+	var mesh: Lbm.PartMesh = library.mesh_for(part_id)
+	if mesh == null:
+		return false
+	var size: Array = [mesh.bounds.size.x, mesh.bounds.size.y, mesh.bounds.size.z]
+	size.sort()
+	return absf(float(size[2]) - studs * 20.0) <= 4.5 and float(size[1]) <= 22.0
+
+
+func _name_of(part_id: String) -> String:
+	var info: PartLibrary.PartInfo = library.parts.get(part_id)
+	return info.name.strip_edges() if info != null else ""
+
+
+static var _axle := RegEx.create_from_string(
+	"^Technic Axle\\s+(\\d+(?:\\.\\d+)?)(?:\\s+(?:with Stop|Notched|Threaded|with Stud|with Middle Cylindrical Stop)|$)")
+static var _beam := RegEx.create_from_string(
+	"^Technic Beam\\s+(\\d+)(?:\\s+x\\s+0\\.5)?(?:\\s+Liftarm)?(?:\\s+with\\s.*)?$")
+
+
+## How long a Technic axle or a straight beam is, in studs, from its name
+## ("Technic Axle  4", "Technic Beam  7"): what a 1:1 guide says in its
+## ring. 0 for any other part, and for one shorter than two.
+static func actual_studs(name: String) -> float:
+	var found: RegExMatch = _axle.search(name)
+	if found == null and not name.contains("Bent") and not name.contains("Offset"):
+		found = _beam.search(name)
+	if found == null:
+		return 0.0
+	var studs: float = found.get_string(1).to_float()
+	return studs if studs >= 2.0 else 0.0
+
+
+## Pixels a millimetre a 1:1 guide's picture is drawn at: fine enough that
+## its ink line adds a twentieth of a millimetre at each end.
+const ACTUAL_PX := 16.0
+## How far up a 1:1 guide is seen from, about its length, which keeps the
+## length across the picture and shows the part's top as well.
+const ACTUAL_TILT := 20.0
+
+
+## How [param lot]'s part is drawn for its 1:1 guide: laid along the
+## picture (its longest side across, a beam's holes towards the reader),
+## seen from a little above, at its real length: [param studs] studs of 8
+## mm, which the catalogue's shape is a hair shorter than (an axle 4 is 79
+## LDU, its ends drawn back half an LDU so two read apart end to end). 0
+## studs: its length rounded to the nearest stud. {part, name, studs,
+## id, colour, basis, from, centre, mm (mm an LDU), size (mm)}, or {}.
+func _actual_pose(lot: Booklet.Lot, studs: float) -> Dictionary:
+	var mesh: Lbm.PartMesh = library.mesh_for(lot.part_id)
+	if mesh == null:
+		return {}
+	var size: Vector3 = mesh.bounds.size
+	var long: int = 0 if size.x >= size.y and size.x >= size.z else (1 if size.y >= size.z else 2)
+	var others: Array[int] = [(long + 1) % 3, (long + 2) % 3]
+	# A beam's holes go through its thinner side, or, where the two are
+	# within a hair (a thick beam's 20 against its 18 drawn back), the
+	# side that is not drawn back.
+	var a: float = size[others[0]]
+	var b: float = size[others[1]]
+	var through: int = (others[0] if a > b else others[1]) if absf(a - b) <= 2.5 \
+		else (others[0] if a < b else others[1])
+	var other: int = others[0] if through == others[1] else others[1]
+	var images: Array[Vector3] = [Vector3.ZERO, Vector3.ZERO, Vector3.ZERO]
+	images[long] = Vector3.RIGHT
+	images[through] = Vector3.BACK
+	images[other] = Vector3.UP
+	var basis := Basis(images[0], images[1], images[2])
+	if basis.determinant() < 0.0:
+		images[other] = Vector3.DOWN
+		basis = Basis(images[0], images[1], images[2])
+	var length: float = maxf(size[long], 1.0)
+	if studs <= 0.0:
+		studs = maxf(1.0, roundf(length / 20.0))
+	var from := Vector3(0.0, sin(deg_to_rad(ACTUAL_TILT)), cos(deg_to_rad(ACTUAL_TILT)))
+	var extent: Rect2 = BookletStudio.extent([Transform3D(basis) * mesh.bounds], from)
+	var mm: float = 0.4 * studs * 20.0 / length
+	var said: String = str(int(studs)) if is_equal_approx(studs, roundf(studs)) else str(studs)
+	return {"part": lot.part_id.to_lower(), "id": lot.part_id, "name": lot.name if not lot.name.is_empty()
+		else lot.part_id, "studs": said, "colour": lot.key.get_slice(":", 1).to_int(),
+		"basis": basis, "from": from, "centre": extent.get_center(), "mm": mm,
+		"size": extent.size * mm + Vector2(1.2, 1.2), "image": ""}
+
+
+## Each of [param entry]'s 1:1 guides drawn, into [param into] as [method
+## _draw]'s pictures are.
+func _draw_actual(into: Array, entry: Booklet.Entry) -> void:
+	for guide: Dictionary in entry.actual:
+		var stage: BookletStudio.Stage = _studio.stage([[0, str(guide["id"]),
+			int(guide["colour"]), Transform3D(guide["basis"] as Basis)]])
+		var size: Vector2 = guide["size"]
+		var view := BookletStudio.View.new(guide["from"], guide["centre"],
+			float(guide["mm"]) * ACTUAL_PX)
+		var shot: BookletStudio.Shot = await _studio.shoot(stage, 1, 2, view,
+			Vector2i((size * ACTUAL_PX).round()), _encoded.bind(Color.WHITE))
+		_studio.forget(stage)
+		_later([shot], func() -> void:
+			guide["image"] = _uri(shot)
+			# Its outline is drawn half outside the part: the picture made a
+			# hair smaller, so a ruler reads the outline's ends at the length.
+			var across: float = _ink_across(shot.image) if shot.image != null else 0.0
+			if across > 0.0:
+				guide["fit"] = clampf(str(guide["studs"]).to_float() * 8.0 * ACTUAL_PX / across, 0.9, 1.1), into)
+
+
+## How far across [param image], laid on white, a ruler reads the part
+## drawn in it, in pixels: from its first column with ink in it to its
+## last, a column with two pixels darker than three-quarters white.
+static func _ink_across(image: Image) -> float:
+	var ends: Array[int] = []
+	var width: int = image.get_width()
+	for way: Array in [range(width), range(width - 1, -1, -1)]:
+		for x: int in way:
+			var dark: int = 0
+			for y: int in image.get_height():
+				var colour: Color = image.get_pixel(x, y)
+				if colour.a * colour.get_luminance() + 1.0 - colour.a < 0.75:
+					dark += 1
+			if dark >= 2:
+				ends.append(x)
+				break
+	return float(ends[1] - ends[0] + 1) if ends.size() == 2 and ends[1] >= ends[0] else 0.0
+
+
 ## A callout's own stage — the first copy, in the order its steps build
 ## it — and its steps as entries.
 func _callout(attach: Instructions.Step, built: Array[Instructions.Step],
@@ -653,6 +850,8 @@ func _callout(attach: Instructions.Step, built: Array[Instructions.Step],
 	callout.times = attach.times
 	var unit: String = BookletLooks.attached(_world, attach, attach.authored_in)
 	callout.own_pages = not unit.is_empty() and not BookletLooks.callout_on(_world, unit)
+	callout.preview = bool(BookletLooks.of(_world, attach.authored_in, attach.authored_step)
+		.get("preview", true))
 	var order: Array = []
 	var spans: Array = []
 	for step: Instructions.Step in built:
@@ -680,6 +879,8 @@ func _callout(attach: Instructions.Step, built: Array[Instructions.Step],
 		# placed on its page, as a step of the model's (its zoom and size are
 		# the callout's own).
 		_hand_look(entry, built[at])
+		_colour_guide(entry, BookletLooks.of(_world, built[at].authored_in,
+			built[at].authored_step))
 		# Posed apart: turned as its designer turned this step of the
 		# sub-model (its 0 ROTSTEP), held for the steps after it as a turn
 		# of the model's is, from the way the callout faces, and framed on
@@ -920,10 +1121,15 @@ static func _round_from(from: Vector3, to: Vector3) -> bool:
 ## from, upto]. The model's, or a section's own ([method _find_apart]).
 func _where(entry: Booklet.Entry) -> Array:
 	var span: Array = _ranks[int(entry.get_meta("step"))]
+	var out: Array = [_main, int(span[0]), int(span[1])]
 	if _apart.has(entry):
 		var before: int = int(_apart[entry][1])
-		return [_apart[entry][0], int(span[0]) - before, int(span[1]) - before]
-	return [_main, int(span[0]), int(span[1])]
+		out = [_apart[entry][0], int(span[0]) - before, int(span[1]) - before]
+	# A step with parts pulled out is drawn on a stage of its own, the same
+	# bricks in the same ranks, those moved ([method _pull_out]).
+	if _pulled.has(entry):
+		out[0] = _pulled[entry][0]
+	return out
 
 
 ## The model's bricks in the order they go in, as the main stage has them.
@@ -956,6 +1162,159 @@ func _find_apart(entries: Array[Booklet.Entry]) -> void:
 			for n: int in range(at, end + 1):
 				_apart[entries[n]] = [stage, from - 1]
 		at = end + 1
+
+
+## Steps with parts pulled out: entry -> [its stage, [{id, rank, part, by,
+## way}]], each part moved [code]by[/code] LDU, [code]way[/code] the unit
+## way it goes in, reversed.
+var _pulled: Dictionary = {}
+
+
+## Studio's buffer exchange, worked out: each part a step's designer pulled
+## out (BookletLooks "pull") moved that many studs along the way it goes in
+## (a stud is 20 LDU, whichever way that is), on a stage of the step's own
+## that has the step's bricks in the same ranks, the moved ones moved.
+## Studio has its designer push each part out by its arrows; here the way
+## is read off the part's connectors, as the part goes in.
+func _pull_out(entries: Array[Booklet.Entry]) -> void:
+	_pulled.clear()
+	for entry: Booklet.Entry in entries:
+		if entry.pull.is_empty() or entry.in_callout or not entry.has_meta("step"):
+			continue
+		var step: Instructions.Step = plan[int(entry.get_meta("step"))]
+		var studs: float = clampf(float(entry.pull.get("studs", BookletLooks.PULL_STUDS)),
+			0.5, BookletLooks.PULL_MOST)
+		var which: Array = entry.pull.get("parts", [])
+		var moves: Array = []
+		var by_id: Dictionary = {}
+		for brick_id: int in step.brick_ids:
+			var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+			if brick == null or not _main.number.has(brick_id) \
+					or not which.is_empty() and not brick.part_id.to_lower() in which:
+				continue
+			var rank: int = int(_main.number[brick_id])
+			var way: Vector3 = _way_in(brick_id, rank)
+			var by: Vector3 = way * studs * 20.0
+			moves.append({"id": brick_id, "rank": rank, "part": brick.part_id, "by": by,
+				"way": way})
+			by_id[brick_id] = by
+		if moves.is_empty():
+			continue
+		var where: Array = _where(entry)
+		var before: int = int(_apart[entry][1]) if _apart.has(entry) else 0
+		var order: Array = _order.slice(before, before + int(where[2]))
+		for index: int in order.size():
+			var one: Array = order[index]
+			if by_id.has(int(one[0])):
+				var at: Transform3D = one[3]
+				order[index] = [one[0], one[1], one[2],
+					Transform3D(at.basis, at.origin + (by_id[int(one[0])] as Vector3))]
+		var stage: BookletStudio.Stage = _stage(order)
+		_stages.append(stage)
+		_pulled[entry] = [stage, moves]
+
+
+## The boxes of [param entry]'s parts where they are pulled out to.
+func _pulled_boxes(entry: Booklet.Entry) -> Array:
+	var out: Array = []
+	for move: Dictionary in _pulled[entry][1]:
+		var box: AABB = _main.boxes[int(move["rank"]) - 1]
+		out.append(AABB(box.position + (move["by"] as Vector3), box.size))
+	return out
+
+
+## The way brick [param brick_id] (ranked [param rank]) comes out of what
+## it goes into: along the line of the connectors it meets the parts before
+## it by (Exact.connections, BrickNet's rules), the line most of them share,
+## away from those parts; towards the reader where the line passes through
+## (an axle through a hole); straight up where no shape says.
+func _way_in(brick_id: int, rank: int) -> Vector3:
+	var brick: BrickWorld.Brick = _world.get_brick(brick_id)
+	var shape: Exact.Shape = Exact.shape_for(library, brick.part_id)
+	if shape == null or rank < 1:
+		return Vector3.UP
+	var box: AABB = _main.boxes[rank - 1]
+	var near: AABB = box.grow(4.0)
+	var items: Array = [Exact.Item.new(shape, brick.transform)]
+	var centres: Array = [box.get_center()]
+	for other: int in range(1, rank):
+		var other_box: AABB = _main.boxes[other - 1]
+		if not other_box.intersects(near):
+			continue
+		var other_shape: Exact.Shape = Exact.shape_for(library, str(_order[other - 1][1]))
+		if other_shape == null:
+			continue
+		items.append(Exact.Item.new(other_shape, _order[other - 1][3]))
+		centres.append(other_box.get_center())
+	if items.size() < 2:
+		return Vector3.UP
+	var mine: Array = (items[0] as Exact.Item).world()
+	# [line, connections along it, how far the part sits out along it from
+	# the connectors it meets, and from the parts' middles]
+	var lines: Array = []
+	for edge: Array in Exact.connections(items):
+		if int(edge[0]) != 0 and int(edge[2]) != 0:
+			continue
+		var own: int = int(edge[1]) if int(edge[0]) == 0 else int(edge[3])
+		var other: int = int(edge[2]) if int(edge[0]) == 0 else int(edge[0])
+		var theirs: int = int(edge[3]) if int(edge[0]) == 0 else int(edge[1])
+		var axis: Vector3 = mine[own][2]
+		if axis.length_squared() < 0.5:
+			continue
+		var there: Vector3 = (items[other] as Exact.Item).world()[theirs][1]
+		var found: Array = []
+		for line: Array in lines:
+			if absf((line[0] as Vector3).dot(axis)) > 0.98:
+				found = line
+				break
+		if found.is_empty():
+			found = [axis, 0, 0.0, 0.0]
+			lines.append(found)
+		var along: Vector3 = found[0]
+		found[1] = int(found[1]) + 1
+		found[2] = float(found[2]) + (box.get_center() - there).dot(along)
+		found[3] = float(found[3]) + (box.get_center() - (centres[other] as Vector3)).dot(along)
+	if lines.is_empty():
+		return Vector3.UP
+	var best: Array = lines[0]
+	for line: Array in lines:
+		if int(line[1]) > int(best[1]):
+			best = line
+	var way: Vector3 = (best[0] as Vector3).normalized()
+	var out: float = float(best[2]) if absf(float(best[2])) > 0.5 else float(best[3])
+	if absf(out) <= 0.5:
+		out = way.dot(BookletStudio.FRONT)
+	return way if out >= 0.0 else -way
+
+
+## The red arrows of [param entry]'s parts pulled out, in page mm: from the
+## end of each that goes in first, where it is drawn, to where that end
+## goes, through the picture's own camera ([param view], [param size]).
+func _pulled_arrows(entry: Booklet.Entry, view: BookletStudio.View, size: Vector2i) -> void:
+	if not _pulled.has(entry):
+		return
+	for move: Dictionary in _pulled[entry][1]:
+		var home: AABB = _main.boxes[int(move["rank"]) - 1]
+		var way: Vector3 = move["way"]
+		var by: Vector3 = move["by"]
+		var reach: float = absf(home.size.x * way.x) + absf(home.size.y * way.y) \
+			+ absf(home.size.z * way.z)
+		var lead: Vector3 = home.get_center() - way * reach * 0.5
+		var tip: Vector2 = entry.rect.position + view.project(lead, Vector2(size)) / px_per_mm
+		var tail: Vector2 = entry.rect.position + view.project(lead + by, Vector2(size)) / px_per_mm
+		var out: Vector2 = entry.rect.position \
+			+ view.project(home.get_center() + by, Vector2(size)) / px_per_mm
+		var at: Vector2 = entry.rect.position + view.project(home.get_center(), Vector2(size)) / px_per_mm
+		# Long enough for its head to read, where the way in is nearly
+		# towards the reader.
+		if tail.distance_to(tip) < 5.0:
+			var back: Vector2 = (tail - tip).normalized() if tail.distance_to(tip) > 0.05 \
+				else Vector2.UP
+			tail = tip + back * 5.0
+		entry.pointers.append([tail, tip])
+		measured.append({"what": "pulled", "step": entry.number, "part": move["part"],
+			"brick": move["id"], "by": by, "way": way, "arrow": [tail, tip], "out": out,
+			"home": at})
 
 
 ## Whether the bricks ranked [param from] to [param upto] touch any ranked
@@ -1027,6 +1386,9 @@ func _subjects(entries: Array[Booklet.Entry], from: int, upto: int) -> void:
 		for rank: int in range(int(span[0]), int(span[1]) + 1):
 			(placed[key] as Array).append(_main.boxes[rank - 1])
 		entry.subject = BookletStudio.extent(placed[key], entry.from)
+		if _pulled.has(entry):
+			entry.subject = entry.subject.merge(BookletStudio.extent(_pulled_boxes(entry),
+				entry.from))
 		entry.cropped = not fits
 		if _apart.has(entry):
 			var where: Array = _where(entry)
@@ -1119,12 +1481,24 @@ func _draw(into: Array, entry: Booklet.Entry) -> void:
 				"drawn": Rect2(entry.rect.position + shot.new_rect.position / px_per_mm,
 					shot.new_rect.size / px_per_mm)})
 		_point_at_small(entry, shot), into)
+	_pulled_arrows(entry, view, size)
+	await _draw_actual(into, entry)
 	if entry.callout != null:
 		var callout: Booklet.Callout = entry.callout
 		var stage: BookletStudio.Stage = _callouts[callout][0]
 		var spans: Array = _callouts[callout][1]
+		if not callout.inline and callout.preview_box.size.x > 0.0:
+			var whole: int = int(spans[-1][1])
+			var preview_size := Vector2i(callout.preview_cell.size * px_per_mm)
+			var preview: BookletStudio.Shot = await _studio.shoot(stage, whole, whole + 1,
+				callout.preview_view(px_per_mm), preview_size, _encoded.bind(Color.WHITE))
+			_later([preview], func() -> void:
+				callout.preview_image = _uri(preview)
+				_note("step %d, %s preview" % [entry.number, callout.name], preview_size,
+					preview, Rect2(), callout.preview_cell), into)
 		if not callout.inline:
 			for sub: Booklet.Entry in callout.steps:
+				await _draw_actual(into, sub)
 				var part: Array = spans[sub.number - 1]
 				var sub_size: Vector2i = sub.pixels(px_per_mm)
 				var sub_shot: BookletStudio.Shot = await _studio.shoot(stage,
@@ -1229,7 +1603,7 @@ static func _encoded(image: Image, on: Color) -> String:
 ## of the page, and a real booklet points at them. Only when what is new
 ## is in one place — an arrow between two parts points at neither.
 func _point_at_small(entry: Booklet.Entry, shot: BookletStudio.Shot) -> void:
-	if entry.callout != null or shot.new_rect.size.x <= 0.0:
+	if entry.callout != null or shot.new_rect.size.x <= 0.0 or _pulled.has(entry):
 		return
 	var fresh := Rect2(entry.rect.position + shot.new_rect.position / px_per_mm,
 		shot.new_rect.size / px_per_mm)

@@ -214,9 +214,13 @@ func _grade(quality: int, method: String) -> void:
 	else:
 		var lighter: float = looked.x / maxf(_quick_look.x, 0.001)
 		var richer: float = looked.y / maxf(_quick_look.y, 0.001)
-		_say("%s: the model is as light as at Quick (x%.2f) and as coloured (x%.2f)"
-			% [name, lighter, richer],
-			lighter > 0.85 and lighter < 1.18 and richer > 0.85 and richer < 1.25)
+		# Path traced, the plastic also shows the white sweep in its gloss, as
+		# a photograph does and the window's sky reflection does not: held to
+		# the bound a photographed place's light is (below).
+		var least: float = 0.75 if _render.traced_last() else 0.85
+		_say("%s: the model is as light as at Quick (x%.2f) and as coloured (x%.2f%s)"
+			% [name, lighter, richer, ", path traced" if _render.traced_last() else ""],
+			lighter > 0.85 and lighter < 1.18 and richer > least and richer < 1.25)
 	print("    %s: the model's lightness %.3f, colour %.3f; exposure x%.2f, sweep x%.2f"
 		% [name, looked.x, looked.y, _render.last_exposure, _render.last_level])
 	var corner: Color = image.get_pixel(image.get_width() / 2, 4)

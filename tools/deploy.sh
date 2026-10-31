@@ -122,8 +122,15 @@ if [ -n "$promote" ]; then
   sha="$(git rev-parse --short HEAD)"
   built="$(curl -s --max-time 30 ${VERCEL_BYPASS:+-H "x-vercel-protection-bypass: $VERCEL_BYPASS"} \
     "$promote/version.json" | sed -n 's/.*"commit": *"\([^"]*\)".*/\1/p')"
-  [ "$built" = "$sha" ] || { echo "deploy FAILED: $promote is a build of ${built:-nothing it names}, not $sha"; exit 1; }
-  go_live "$promote" "$sha"; exit
+  # Or of a commit before this one when only the checks or the release
+  # tools changed since (a release's reused preview, release/deploy_reads.sh).
+  if [ "$built" != "$sha" ]; then
+    . "$(dirname "$0")/release/deploy_reads.sh"
+    [ -n "$built" ] && unread_since "$built" HEAD \
+      || { echo "deploy FAILED: $promote is a build of ${built:-nothing it names}, not $sha"; exit 1; }
+    echo "deploy: $promote is a build of $built; since then only checks and release tools"
+  fi
+  go_live "$promote" "$built"; exit
 fi
 
 # Every part the catalogue names must be in object storage before a build
@@ -348,12 +355,18 @@ for handler in api/*.js; do
   # load-bearing today; it is here so the answer does not depend on a
   # heuristic that a runtime bump could change underneath us.
   echo '{ "type": "module" }' > "$fn/package.json"
-  cat > "$fn/.vc-config.json" <<'JSON'
+  # Build together's poll answers a line at a time, who is in it and where
+  # each is working as it changes (api/together.js poll): without this
+  # Vercel holds every line until the last, and a pointer is seen up to
+  # 20 s late.
+  streams=false; [ "$route" = together ] && streams=true
+  cat > "$fn/.vc-config.json" <<JSON
 {
   "runtime": "nodejs22.x",
   "handler": "index.mjs",
   "launcherType": "Nodejs",
   "shouldAddHelpers": true,
+  "supportsResponseStreaming": $streams,
   "maxDuration": 300
 }
 JSON

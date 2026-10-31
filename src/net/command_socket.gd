@@ -600,6 +600,8 @@ const HINTS := {
 	"open_model": ["Open a model", "remove"],
 	"parts_list": ["List the parts", "look"],
 	"render_model": ["Render a picture", "file"],
+	# Queued pictures, drawn in turn and written where Render writes.
+	"render_queue": ["Queue renders", "file"],
 	"export_model": ["Export the model", "file"],
 	"brickify": ["Brickify a 3D model", "add", "world"],
 	"print_part": ["Print on a part", "add", "world"],

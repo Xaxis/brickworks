@@ -611,7 +611,7 @@ func _build() -> void:
 
 
 static func _platform_samples() -> int:
-	return 32 if OS.has_feature("web") else 64
+	return RenderSettings.best_samples()
 
 
 func _heading(into: Control, words: String) -> void:
@@ -840,9 +840,7 @@ func _describe() -> void:
 				"Soft shadows and smooth edges, from 8 frames averaged. Light bouncing "
 				+ "between the parts needs the desktop app.")
 		_:
-			_quality_note.text = ("%d frames averaged: soft shadows from an area light, "
-				+ "smooth edges, shading under every ledge, and depth of field if you "
-				+ "want it.") % settings.samples_here()
+			_quality_note.text = settings.best_words()
 	_look_note.text = ("Glossy plastic with rounded edges, clear parts that bend the light, "
 		+ "and a studio's key, fill and rim, as a set's own pictures are."
 		if settings.look == "product" else "The plastic and the light as the window draws them.")

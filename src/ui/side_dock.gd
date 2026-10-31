@@ -301,6 +301,10 @@ class Chevron extends Control:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		set_anchors_preset(Control.PRESET_FULL_RECT)
 
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_TRANSLATION_CHANGED:
+			queue_redraw()
+
 	func _draw() -> void:
 		var middle: Vector2 = size * 0.5
 		var tint := Color(1, 1, 1, 0.92 if doubled else 0.72)
@@ -325,7 +329,8 @@ class Chevron extends Control:
 			# letters stand to the right of it, so it is moved left by
 			# half their height to sit in the middle.
 			draw_set_transform(Vector2(middle.x - SIZE * 0.36, top.y + 20.0), PI * 0.5)
-			draw_string(font, Vector2.ZERO, words, HORIZONTAL_ALIGNMENT_LEFT, -1.0, SIZE,
+			# In the language in use (Language), as a label's words are.
+			draw_string(font, Vector2.ZERO, atr(words), HORIZONTAL_ALIGNMENT_LEFT, -1.0, SIZE,
 				Color(1, 1, 1, 0.92 if lit else 0.6))
 			draw_set_transform(Vector2.ZERO, 0.0)
 

@@ -352,8 +352,8 @@ func _show_claude() -> void:
 			line += ", last used %s" % when(str(it.get("last_used", "")))
 		lines.append(line)
 	if lines.is_empty() and connector.had_claude:
-		_claude_state.text = ("Not connected now. Connect Claude takes you to the "
-			+ "Brickworks you already have in Claude, to connect it again.")
+		_claude_state.text = ("Not connected now. Connect Claude opens claude.ai "
+			+ "with Brickworks filled in. " + ConnectorForm.ALREADY)
 	elif lines.is_empty():
 		_claude_state.text = ("Not connected. Connect Claude once and it can "
 			+ "build in any Brickworks tab you have open, on your Claude plan."
@@ -365,8 +365,7 @@ func _show_claude() -> void:
 	# while it is, Open in Claude for the connector's tools and permissions.
 	_claude_connect.text = "Connect Claude" if lines.is_empty() else "Open in Claude"
 	_claude_connect.tooltip_text = ("Opens your connectors in Claude, where Brickworks is"
-		if connector.had_claude or not lines.is_empty()
-		else "Opens claude.ai with Brickworks filled in")
+		if not lines.is_empty() else "Opens claude.ai with Brickworks filled in")
 	_claude_disconnect.visible = not lines.is_empty()
 
 

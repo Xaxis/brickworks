@@ -130,6 +130,11 @@ var core: Dictionary = {}
 ## parts' boxes do (support_of's {"hull", "floor_y", "grounded"}): a build
 ## weighed lying where it fell (Tested), whose boxes are of it standing.
 var support: Dictionary = {}
+## On a worker, what ends [method prepare] early when the main thread asks
+## (WorkerTasks.Stop): it then returns false, and its reading is not kept.
+## 42082-1's took three seconds, and the next model opened waited for them
+## (corefix, 2026-10-31).
+var stop: WorkerTasks.Stop = null
 
 
 ## One stud joint and what it carries.
@@ -510,6 +515,8 @@ func prepare(bricks: Array, links: Variant = null, contacts: Dictionary = {}) ->
 		var judge := Stability.new()
 		judge.library = library
 		judge.lattice = lattice
+		if stop != null:
+			judge.stop = stop
 		var model: Array = []
 		for item: Variant in bricks:
 			var brick: BrickWorld.Brick = item
@@ -528,18 +535,30 @@ func prepare(bricks: Array, links: Variant = null, contacts: Dictionary = {}) ->
 		top = top_of(bricks.filter(func(item: Variant) -> bool:
 			return floor_ids.has((item as BrickWorld.Brick).id)), contacts.get("boxes", {}))
 	_ground(boxes, top)
-	if _hull.size() < 3 and floor_cell == 0x7FFFFFFF:
+	if (_hull.size() < 3 and floor_cell == 0x7FFFFFFF) or _stopping():
 		return false
 	var joints: Dictionary = Stability.stud_joints(graph, library, lattice)
 	Stability.beside(graph, library, lattice)
+	if _stopping():
+		return false
 	_sideways = joints["sideways"]
-	_join(joints, links if links != null else _links())
+	var linked: Array = links if links != null else _links()
+	if _stopping():
+		return false
+	_join(joints, linked)
 	_grow()
 	if finds_core:
 		_find_core()
+	if _stopping():
+		return false
 	_stand_on_touches(boxes)
 	_find_bridges(boxes)
-	return true
+	return not _stopping()
+
+
+## Whether [member stop] has been asked.
+func _stopping() -> bool:
+	return stop != null and stop.asked()
 
 
 ## One pose weighed against what [method prepare] read: the parts [param

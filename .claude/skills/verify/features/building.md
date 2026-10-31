@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
 
 ## Sub-features
 
@@ -915,6 +915,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Orthanc outlined as selected (an 8 s frame in software, which also holds
   the bar back: the selection outline's cost, not the command's); Shift-E
   4.6 s unsaid, now said in 69 ms.
+  Each row also prints what the status bar said the command came to, so a
+  quicker command is seen to answer as before, and for the booklet the
+  planner's and the booklet's laps and when its first page of steps was
+  written; `--within=instructions.first:15` holds that first page, not the
+  whole booklet, to its seconds (APP_UX3 bigmodels2).
 - `snap and turn step`: the toolbar's Snap (stud, ½ stud, ½ plate, free) sets
   where a part in hand or a carried group can land across the ground
   (`Builder.snap_across`) and how far the arrows nudge a selection across and,
@@ -1032,6 +1037,43 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   with `offer_for_probe`; a probe about the assistant's own panel turns it on
   (`set_assistant(true)`). The desktop's `--mcp` port is asked for on the
   command line and is not held.
+- `interface languages` (`src/ui/language.gd`, `Language`, `locale/de.po`,
+  `fr.po`, `es.po`): German, French and Spanish. Tools, Settings…,
+  **Language**, beside Interface size: English (the default), Deutsch,
+  Français or Español, kept on this device (`language` in
+  `user://shell.cfg`) and applied at the settings' first read, before
+  anything is drawn; `/app?lang=de` (`--lang=de` on the desktop) chooses one
+  and comes off the address. Godot draws every control's words through the
+  chosen file, so a control's `text` stays English and every probe and
+  browser check reads English in any language. Words made at the moment are
+  patterns (`%s`, `%d`); a row's key, a tooltip's lines, a status line's
+  parts (" · ", " — ", ". ", "; ", and " › " a menu's path) and the keys
+  sheet's lowered words are found piece by piece, a part found nowhere kept
+  as it is, as a name is ("House — 71 bricks"); of several partial ways the
+  one leaving the fewest English letters wins. Names stay as they are:
+  parts, colours (LDraw's, as Studio keeps them), models, sets, keys (Ctrl,
+  Shift), files, licences, and whatever an entry's English quotes (“%s”: a
+  model named Car stays Car). Find a command matches a command's words as
+  drawn too ("speichern" finds Save, `CommandPalette._score`). The status
+  line after an action, and every dialog (the way in: signing in by email or
+  orangecheck, the age question and what the server answers; Open's list and
+  Godot's file dialog, the Library, Save as, Versions, Export, Share, Build
+  together, Comments, Your account, Render and its queue, the booklet's, the
+  collection's, the minifigure builder, the part maker, the print editor,
+  Send feedback, About, the confirmations, the assistant panel) are
+  translated too, and the model tree's own row ("Model"); not yet the web
+  pages, nor "White" on Render's backgrounds, which is a colour's name too.
+  `languages_probe` reads them all in English, then in each language: 63
+  common actions with the status line heard after each, Settings with the
+  assistant on and off, and 40-odd dialogs opened one by one (`DIALOGS`; the
+  sign-in screen, which a probe's window never shows, made in each of its
+  faces), each word drawn on them read; a word added to a menu, a tooltip, a
+  panel, a dialog or a status message with no entry fails it, and
+  `--missing=FILE` writes the entries to translate, each partial one with
+  the whole it was in ("#. in:"). `--shots=DIR` pictures ten dialogs (the
+  sign-in screen's two steps first) and a status line in each language.
+  `tests/test_locale.py` checks the files (places kept, LEGO® an adjective,
+  no language short of another).
 - `remembered layout` (`src/ui/shell_prefs.gd`): the columns open or folded
   (`parts_open`, and the right column's tab, `assistant_open` or else
   `properties_open`, for a wide window; `narrow_side`, "parts", "properties"
@@ -1137,7 +1179,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   parts it where it is held least, the tick or Accept makes it a
   sub-assembly, Accept all makes every one in one undo step. How it
   decides: the booklet planner's reading (`Instructions._survey`,
-  supports, `_find_assemblies`, `_find_bundles`) and the build check's
+  supports, `_find_assemblies`, `_find_bundles`; the reading the booklet
+  and the timeline keep when the model's shape is the one they read,
+  `Instructions.read_shape`, so read once for all three) and the build check's
   joint graph as Balance builds it (`Stability.contacts` studs, `Joints`
   pins, axles, clips); a sub-model the file has that fits a section and is
   one piece, and the planner's sub-builds, stay whole; the booklet's own
@@ -1159,7 +1203,20 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `EditVerbs.brick_at`), so a section is chosen where it is seen. A model of
   600 parts or more is suggested on a worker, with Cancel, the window
   drawing meanwhile
-  (`BrickWorld.set_drawn`: nothing of the model moves). Evaluate the
+  (`BrickWorld.set_drawn`: nothing of the model moves). On Orthanc 18.1 s
+  became 9.2 s at a load of 40 to 48, and 6 s headless once the booklet
+  has read the model; then 8.4 to 10.0 s became 4.8 to 7.3 s at a load of
+  17 to 25, side by side, with the joint graph read on a worker of its own
+  beside the order (`Sections._cut_on_a_worker`) and the planner asking
+  only where an answer can be: a part under one by the height of tops
+  (`Instructions._hangers_of`), loops again only among parts on one, the
+  next part among its region's own ready (`_sequence_into`)
+  (`command_probe --subjects=orthanc --only=suggest_sections`). The
+  reading, the booklet's steps and the sections are the same, hash for
+  hash, on the car, house, tower, kart, corner shop, castle, Orthanc,
+  orrery, barn owl and station, with their authored steps and without, and
+  part for part cut on one worker or two (`bigmodels2_probe` on Orthanc).
+  Evaluate the
   section… shows the chosen one alone: parts as the parts list counts
   them, lots, weight, one piece by the joint graph and by the build check
   on it alone (`Assistant._checked`), whether it stands on its own base
@@ -1462,7 +1519,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   from 300 parts until 2026-10-21), the parts' exact shapes read first on the
   main thread; a press before it is done waits for the rest below 300 parts
   (`GrabDrag._ready_now`) and says so from 300. The status bar's weighing
-  (`Main._weigh`) is on a worker too. `the builder's frames after a change`
+  (`Main._weigh`) is on a worker too. Both give way when the library must be
+  written (`PartLibrary.reading_in`'s stop, a `WorkerTasks.Stop` that
+  `Bodies`, `Balance.prepare` and `Stability.check` ask as they go): a model
+  opened with parts of its own adds them at once, the reading of the model
+  before it dropped and read again later (8202-1 after 42082-1: 7 to 13 s
+  to 1.2 s; `bigmodel_probe`'s "opened while 42082-1 was weighed"). `the builder's frames after a change`
   (`tools/probe.sh ahead_probe -- --most-ms=50`, headless, about 3 min):
   move_part, Ctrl+Z and a click placing a part on the Ducati, 8808-1 and
   42004-1, each act's longest main-thread frame under 50 ms (9 to 18; on
@@ -2422,6 +2484,17 @@ godot --path . --resolution 1280x800 --script src/dev/noai_probe.gd -- --assista
 tools/export.sh web
 node tools/web/relay_server.mjs 8790 --static=build/web &
 node tools/web/noai_flow.mjs --url=http://127.0.0.1:8790/index.html --relay --out=shots/noai_web
+# the interface in German, French and Spanish: every menu row, tooltip, panel
+# title, panel word, the keys sheet, Settings and the first build translated
+# in each and drawn so; in German at 1280 x 720 every menu at most 25 rows and
+# 60% high (or no taller than in English), the menu bar and every control the
+# page asks for on the page, the widest toolbar tooltips wrapped inside the
+# window; Find a command finding Save by its translated name; Deutsch chosen
+# in Settings and kept in a run of its own; English again. --missing=FILE
+# writes the words with no entry, as .po entries. Any probe in German:
+# tools/probe.sh palette_probe --lang=de
+tools/probe.sh languages_probe --shots=shots/languages --missing=shots/languages/missing.po
+python3 tools/minitest.py tests/test_locale.py
 # sub-assemblies and the model tree, at any window size: nothing over the
 # model, and the tree opened by its header
 godot --path . --resolution 1100x700 --script src/dev/assembly_probe.gd

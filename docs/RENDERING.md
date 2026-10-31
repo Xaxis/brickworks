@@ -38,6 +38,11 @@ This is the research, the recommendation, and what the first slice
 10. Next, in order: R2 Cycles on the desktop, R3 the server worker, R4 logo
     studs and the bevel at export, R5 lifestyle scenes, R6 the web's look.
 
+Since APP_UX3 pathtrace (2026-10-31), Best is path traced in the app itself
+where the card has Vulkan's ray tracing pipeline: soft shadows and light
+bounced off the floor and between parts, in seconds (section 5c). Cycles is
+still the way to a real bevel and caustics, and the web still has no tracer.
+
 ## 1. What makes a LEGO® product render read as real
 
 Each line says what the eye uses, then what we do about it.
@@ -519,6 +524,52 @@ Pictures, `bench/results/render353-2026-10-29/`:
   (`tools/web/product_render_flow.mjs`): the glass walls on each backdrop,
   and the three models;
 - `before/`: the probe's pictures and output on main.
+
+## 5c. Best path traced in the app (APP_UX3 pathtrace)
+
+- **Where.** `PathTracer.available()`: a RenderingDevice with Vulkan's ray
+  tracing pipeline and buffer device addresses. The RX 6700 XT on RADV has
+  the pipeline but not ray queries, so the tracer is raygen, miss and
+  closest-hit shaders (`src/render/path_tracer.glsl`), not a compute pass.
+  Never on the web or under Compatibility: there Best is frames averaged,
+  as before, and Render's quality note says why.
+- **What it traces.** The staged copy of the model, every MultiMesh batch
+  as instances of one bottom-level structure per mesh, and the sweep. The
+  light is the photographed place (importance-sampled, with MIS) or the
+  window's sky, and the rig's lights; only the key casts a shadow, as in
+  the window. Plastic is a diffuse base under a GGX coat; clear parts are
+  thin tinted glass. Six bounces. The sweep lights the model as its own
+  colour and is scaled to the backdrop's lightness for the eye alone.
+- **Exposure** is metered as the raster's is, so a traced picture is as
+  light as the window; tone mapping is the window's own curve, exactly.
+- **Passes.** Each frame the card is given about 28 ms of tracing (8 for
+  the render queue), timed by the card's own timestamps: a band of rows
+  while a whole sample is more than that, up to 32 samples when it is
+  less. The window's frame time is no measure of it: under Xvfb a frame is
+  25-30 ms of copying whatever the card does, and the card has room.
+- **Measured** (`tools/probe.sh pathtrace`, RX 6700 XT, 1400x900 window):
+  - the car at 1280x720 and 256 samples in 3.3-4.2 s (the bar is 60 s;
+    before the card timed its passes, one sample a frame, 11.5 s);
+  - its RMSE against 4,096 samples 0.0083 (bar 0.02); 16 samples 0.031;
+  - a column's shadow widening from foot to tip, 4.0, 7.5 and 12.2 LDU,
+    where frames averaged draws 4.2, 7.8 and 12.0: both soft;
+  - under a white shelf over an orange floor, orange 0.318, 0.272 and
+    0.375 traced against 0.262, 0.207 and 0.331 frames averaged: the
+    floor's light, where frames averaged has only its sky and the
+    backdrop's colour reflected;
+  - three queued renders of the car at 960x540 and 128 samples in 22 s,
+    one after another, while the window turned every frame: its median
+    frame 28 ms and 95% within 51, against 35 and 55 turning with nothing
+    drawn on a box shared with other jobs.
+- **The render queue** (File, Render queue…; `render_queue` over MCP)
+  draws pictures one after another with Render's settings while the
+  window is used. Each keeps the view and the model as they were when
+  added. Its tracer shares the bottom-level structures with Render's,
+  builds new ones a few a frame, and meters in four frames, so starting a
+  picture does not hold the window.
+- **Not done.** A transparent picture stays frames averaged (its contact
+  shadow on nothing is the raster's). No denoiser: 256 samples are clean
+  enough on the car, and Cycles keeps OIDN for R2.
 
 ## 6. Web and desktop
 

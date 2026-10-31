@@ -21,7 +21,7 @@
 // Studio's form, a model does not come back with its decorated parts
 // (window.brickworksState.custom and .parts), or a script error reaches the
 // console.
-import { launch, openColumnFor } from "./browser.mjs";
+import { controlsWith, launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -229,15 +229,22 @@ await $.shot("2_sticker.png");
 // of the two tiles the sticker covers (a click on those picks the sticker),
 // then Properties' Printed versions…. Where it is drawn is where the scene's
 // view puts it; a few points round there, the first that picks a part with
-// versions.
+// versions. A window under 1600 across shows one column beside the model,
+// and with the parts open the selection gets a short card under the bin
+// (Inspector.compact, 2026-10-30), its versions down the right in
+// Properties: so Properties is opened by its rail, as a person does, and
+// the view, narrower or wider for it, is read again before each click.
 await page.keyboard.press("Escape");
 await page.waitForTimeout(1500);
 let picked = false;
 for (const [dx, dy] of [[-206, 50], [-196, 44], [-216, 56], [-190, 60], [-226, 40], [-206, 30],
   [-60, 40], [60, 20], [-120, 60]]) {
-  await page.mouse.click(view.x + dx, view.y + dy);
+  const at = await $.where("view");
+  await page.mouse.click(at.x + dx, at.y + dy);
   await page.waitForTimeout(2500);
-  if ((await $.state()).selected === 1 && (await $.controls()).prop_versions) {
+  if ((await $.state()).selected !== 1) continue;
+  await openColumnFor(page, "prop_versions");
+  if ((await controlsWith(page, ["prop_versions"], 8000)).prop_versions) {
     picked = true;
     break;
   }

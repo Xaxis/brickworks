@@ -200,9 +200,15 @@ func _draw() -> void:
 		outline.append(corners[0])
 		draw_polyline(outline, Color(0.08, 0.09, 0.11, 0.9), 1.2, true)
 		if facing > 0.35:
-			var words: String = face["name"]
+			# In the interface's language (Language), smaller where its word
+			# is wider than the face: IZQUIERDA.
+			var words: String = atr(face["name"])
 			var points: int = 9 if cube_size() < 100.0 else 12
 			var wide: float = _font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, points).x
+			var across: float = (corners[1] - corners[0]).length() * 0.9
+			while wide > across and points > 6:
+				points -= 1
+				wide = _font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, points).x
 			draw_string(_font, _to_screen(n) + Vector2(-wide * 0.5, points * 0.35), words,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, points,
 				Color(1, 1, 1, facing) if lit else Color(0.08, 0.09, 0.11, facing))
@@ -283,6 +289,8 @@ func _gui_input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_MOUSE_EXIT and _hover != Vector3.ZERO:
 		_hover = Vector3.ZERO
+		queue_redraw()
+	elif what == NOTIFICATION_TRANSLATION_CHANGED:
 		queue_redraw()
 
 
