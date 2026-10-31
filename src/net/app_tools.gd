@@ -358,6 +358,14 @@ func definitions() -> Array:
 				+ "booklet_layout says where each is, and what was moved off what it overlapped. "
 				+ "follow=true lays out every later page with as many steps as the page step= "
 				+ "is on, as that page is laid out (Apply to later pages), one undo step. "
+				+ "Studio's extras: pull= studs (2 when true, 0 or false to put back) draws "
+				+ "the step's parts, or {studs, parts: [part ids]} those, pulled out along the "
+				+ "way each goes in with a red arrow in; colours= true lists the step's colours "
+				+ "under its number (colours_all= true every step's); actual_size= false leaves "
+				+ "off the 1:1 guide the booklet gives the first Technic axle or straight beam "
+				+ "of each length, true gives every axle and beam of the step one, [part ids] "
+				+ "those parts, \"auto\" as the booklet does it; preview= false leaves the "
+				+ "finished sub-assembly off the first of its own pages. "
 				+ "A model with no steps of its own is given the "
 				+ "worked-out ones first, in the same undo step."),
 			"input_schema": {"type": "object", "additionalProperties": false,
@@ -402,6 +410,11 @@ func definitions() -> Array:
 				"callout": {"type": "boolean"},
 				"per_page": {"type": "integer", "enum": [0, 1, 2, 4]},
 				"follow": {"type": "boolean", "description": "true: the later pages laid out as step's page is"},
+				"pull": {"description": "studs to pull the step's parts out (true: 2; 0 or false: put back), or {studs, parts: [part ids]}"},
+				"colours": {"type": "boolean", "description": "true: the step's colours listed under its number"},
+				"colours_all": {"type": "boolean", "description": "true: every step's colours listed"},
+				"actual_size": {"description": "the step's 1:1 guides: false none, true every axle and beam, [part ids] those parts, \"auto\" as the booklet does it"},
+				"preview": {"type": "boolean", "description": "false: no finished sub-assembly before its own pages"},
 				"guide": {"type": "object", "description": "{axis, at, was, remove}: mm from the page's left (x) or top (y)",
 					"properties": {
 						"axis": {"type": "string", "enum": ["x", "y"]},
@@ -1265,9 +1278,14 @@ func _edit_booklet(input: Dictionary) -> String:
 		if not int(input["per_page"]) in [0, 1, 2, 4]:
 			return "per_page= is 1, 2, 4, or 0 for as many as fit."
 		fields["per_page"] = int(input["per_page"])
+	var extras: Variant = _booklet_extras(input, world)
+	if extras is String:
+		return extras
+	fields.merge(extras)
 	if fields.is_empty():
-		return ("Say what to set: turn=, tilt=, zoom=, size=, page=, parts=, sign=, callout= "
-			+ "or per_page=. booklet_layout says how each step is printed now.")
+		return ("Say what to set: turn=, tilt=, zoom=, size=, page=, parts=, sign=, callout=, "
+			+ "per_page=, pull=, colours=, colours_all=, actual_size= or preview=. "
+			+ "booklet_layout says how each step is printed now.")
 	var said: String = shell.change_look("set", at, fields)
 	var now: String = ""
 	if at.authored_step >= 0 or AuthorSteps.any(world, store.scenery):
@@ -1280,6 +1298,50 @@ func _edit_booklet(input: Dictionary) -> String:
 	var named: String = ("step %d's callout step %d" % [at.number, at.callout_step]) \
 		if at.in_callout() else "step %d" % at.number
 	return said + (("; %s is now: %s" % [named, now]) if not now.is_empty() else "")
+
+
+## edit_booklet's Studio extras (booklet3) as BookletLooks keeps them:
+## pull=, colours=, colours_all=, actual_size= and preview=; or what is wrong
+## with one, said.
+func _booklet_extras(input: Dictionary, world: BrickWorld) -> Variant:
+	var fields: Dictionary = {}
+	if input.has("pull"):
+		var pull: Variant = input["pull"]
+		var studs: float = BookletLooks.PULL_STUDS
+		var parts: Array = []
+		if pull is Dictionary:
+			studs = float(pull.get("studs", BookletLooks.PULL_STUDS))
+			for part: Variant in pull.get("parts", []) if pull.get("parts") is Array else []:
+				parts.append(str(part).to_lower().trim_suffix(".dat"))
+		elif pull is bool:
+			studs = BookletLooks.PULL_STUDS if pull else 0.0
+		elif pull is float or pull is int:
+			studs = float(pull)
+		else:
+			return "pull= is studs (0 puts the parts back), true, or {studs, parts: [part ids]}."
+		if studs > BookletLooks.PULL_MOST:
+			return "pull= is at most %s studs." % BookletLooks._number(BookletLooks.PULL_MOST)
+		fields["pull"] = {"studs": maxf(0.5, studs), "parts": parts} if studs > 0.0 else null
+	if input.has("colours"):
+		var all: bool = bool(input.get("colours_all",
+			BookletLooks.booklet(world).get("colours_all", false)))
+		fields["colours"] = null if bool(input["colours"]) == all else bool(input["colours"])
+	if input.has("colours_all"):
+		fields["colours_all"] = bool(input["colours_all"])
+	if input.has("actual_size"):
+		var actual: Variant = input["actual_size"]
+		if actual is Array:
+			fields["actual_size"] = (actual as Array).map(func(part: Variant) -> String:
+				return str(part).to_lower().trim_suffix(".dat"))
+		elif actual is bool:
+			fields["actual_size"] = actual
+		elif str(actual) == "auto":
+			fields["actual_size"] = null
+		else:
+			return "actual_size= is true, false, \"auto\" or [part ids]."
+	if input.has("preview"):
+		fields["preview"] = bool(input["preview"])
+	return fields
 
 
 ## A guide on every page of the booklet (Shell.change_look "guide"), as

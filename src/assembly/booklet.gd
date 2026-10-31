@@ -137,6 +137,20 @@ class Entry extends RefCounted:
 	## out by hand, where things may sit in the picture's box. A picture is
 	## otherwise drawn on the page's colour, which is a smaller file.
 	var clear: bool = false
+	## Studio's guides, under its number. Its colour guide (BookletLooks
+	## "colours"): each colour its parts come in, [{name, rgb}], in the
+	## order its parts box has them; empty when it has none.
+	var colours: Array = []
+	## Its 1:1 guides (BookletLooks "actual_size"): a part drawn at its
+	## real size, as a Technic booklet draws an axle or a beam the first
+	## time its length is used, to lay the part on. [{part, name, studs
+	## (its length in studs, said in the ring), size (the picture's, in mm),
+	## image}]: see [method actual_rects].
+	var actual: Array = []
+	## Its parts drawn pulled out along the way each goes in, with a red
+	## arrow in (BookletLooks "pull", Studio's buffer exchange): {"studs",
+	## "parts"}, or {} for none. BookletMaker moves them and draws the arrows.
+	var pull: Dictionary = {}
 
 	## Laid out: the room the page gives it (its panel), the picture's
 	## rect, the part of it the model is drawn in, and how big.
@@ -198,6 +212,16 @@ class Callout extends RefCounted:
 	## Built on pages of its own whatever its size: its designer turned the
 	## callout box off (BookletLooks.callout_on).
 	var own_pages: bool = false
+	## On pages of its own, its first page shows it finished in a box at the
+	## frame's corner before a part of it is built (Studio's sub-model
+	## preview), unless its designer said not (BookletLooks "preview").
+	var preview: bool = true
+	## Laid out: that box, the picture's rect in it and how big; drawn: the
+	## picture.
+	var preview_box: Rect2 = Rect2()
+	var preview_cell: Rect2 = Rect2()
+	var preview_scale: float = 0.0
+	var preview_image: String = ""
 
 	## A cell's view: a step posed apart (BookletMaker._callout) from its
 	## own side, framed on the assembly as seen from there.
@@ -213,6 +237,11 @@ class Callout extends RefCounted:
 		return BookletStudio.View.new(seen.from if seen != null else from, Vector2(
 			middle.x - (target.x - size.x * 0.5) / k,
 			middle.y + (target.y - size.y * 0.5) / k), k)
+
+	## The preview's view: the finished assembly as the callout faces it,
+	## centred in [member preview_cell].
+	func preview_view(px_per_mm: float) -> BookletStudio.View:
+		return BookletStudio.View.new(from, subject.get_center(), preview_scale * px_per_mm)
 
 	## What every cell must hold, on the view plane in LDU: the finished
 	## assembly as the callout faces it, or as a step posed apart sees it,
@@ -245,6 +274,8 @@ class Page extends RefCounted:
 	## Steps pages: what was found on top of something else and where it
 	## went ([method _settle]): [{step, item, on_step, on_item, moved}].
 	var overlaps: Array = []
+	## A callout's first page: the callout whose preview it shows.
+	var preview: Callout = null
 
 
 ## Everything a booklet says, ready to write out.
@@ -419,6 +450,10 @@ static func _page_scale(group: Array, panels: Array) -> float:
 	var scale: float = INF
 	for index: int in group.size():
 		var entry: Entry = group[index]
+		# A 1:1 guide wider than the panel cannot be made smaller: the page
+		# takes fewer steps.
+		if _header(entry, panels[index]).x > (panels[index] as Rect2).size.x:
+			return 0.0
 		scale = minf(scale, minf(_most(entry), _fit(entry, panels[index])[0] / _grown(entry)))
 	return scale
 
@@ -558,6 +593,9 @@ static func _settle(page: Page) -> void:
 	for entry: Entry in page.entries:
 		entry.clear = by_hand
 	var kept: Array = []
+	# A callout's preview keeps its corner of its first page.
+	if page.preview != null and not page.entries.is_empty():
+		kept.append({"entry": page.entries[0], "kind": "preview", "rect": page.preview.preview_box})
 	for thing: Dictionary in things_on(page):
 		var turn: float = float(thing.get("turn", 0.0))
 		var under: Dictionary = _under(thing["rect"], kept, turn)
@@ -607,7 +645,8 @@ static func overlaps_said(page: Page) -> String:
 
 
 static func _thing_word(kind: String) -> String:
-	return {"parts": "parts list", "text": "words", "image": "added picture"}.get(kind, kind)
+	return {"parts": "parts list", "text": "words", "image": "added picture",
+		"preview": "sub-model preview"}.get(kind, kind)
 
 
 ## What is on a page of steps, each a box in page mm, in the order they
@@ -625,6 +664,9 @@ static func things_on(page: Page) -> Array:
 		var header: Rect2 = number_rect(entry)
 		if entry.turned:
 			header = header.merge(sign_rect(entry))
+		# Its guides go with its number.
+		if extras_rect(entry).size.x > 0.0:
+			header = header.merge(extras_rect(entry))
 		if entry.lots.is_empty():
 			own.append({"kind": "number", "rect": header, "hand": entry.place.has("number")})
 		elif entry.place.has("number"):
@@ -853,7 +895,88 @@ static func _header(entry: Entry, panel: Rect2) -> Vector2:
 		# The turn sign under the number, as a LEGO booklet puts it.
 		width = maxf(width, number * SIGN)
 		height += number * SIGN + SIGN_GAP
+	# Its colour guide and 1:1 guides under them, below its hidden colours'
+	# lines.
+	var extras: Vector2 = _extras_size(entry)
+	if extras.y > 0.0:
+		width = maxf(width, extras.x)
+		height += 1.2 + MARK_LINE * entry.marks.size() + extras.y
 	return Vector2(width, height)
+
+
+## A hidden colour's line under the number, and a colour guide's line.
+const MARK_LINE := 3.4
+## The colour guide's and the 1:1 guide's boxes: their padding, the gap
+## between them, the 1:1 ring's size and the room its "1:1" takes.
+const GUIDE_PAD := 1.4
+const GUIDE_GAP := 1.6
+const RING := 5.2
+const GUIDE_LABEL := 3.0
+
+
+## Where a step's guides start on the page: under its number, its turn
+## sign and the lines of its hidden colours.
+static func _extras_top(entry: Entry) -> Vector2:
+	var y: float = (sign_rect(entry).end.y if entry.turned
+		else entry.number_at.y + entry.number_size) + 1.2
+	return Vector2(entry.number_at.x, y + MARK_LINE * entry.marks.size())
+
+
+## The colour guide's box and each 1:1 guide's, one under another:
+## [colour guide's rect (zero when none), [each 1:1 guide's rect]].
+static func _extras(entry: Entry) -> Array:
+	var at: Vector2 = _extras_top(entry)
+	var colours := Rect2(at, Vector2.ZERO)
+	if not entry.colours.is_empty():
+		var widest: float = 0.0
+		for colour: Dictionary in entry.colours:
+			widest = maxf(widest, BookletRead.text_width(str(colour["name"]), 2.6, true))
+		colours.size = Vector2(GUIDE_PAD * 2.0 + 3.4 + widest,
+			GUIDE_PAD * 2.0 + MARK_LINE * entry.colours.size() - 0.8)
+		at.y += colours.size.y + GUIDE_GAP
+	var guides: Array = []
+	for guide: Dictionary in entry.actual:
+		var picture: Vector2 = guide["size"]
+		var box := Rect2(at, Vector2(GUIDE_PAD * 2.0 + picture.x + GUIDE_GAP + RING,
+			GUIDE_PAD * 2.0 + GUIDE_LABEL + maxf(picture.y, RING)))
+		guides.append(box)
+		at.y += box.size.y + GUIDE_GAP
+	return [colours, guides]
+
+
+## The room a step's guides take, all told: [width, height].
+static func _extras_size(entry: Entry) -> Vector2:
+	if entry.colours.is_empty() and entry.actual.is_empty():
+		return Vector2.ZERO
+	var laid: Array = _extras(entry)
+	var whole: Rect2 = laid[0]
+	for box: Rect2 in laid[1]:
+		whole = box if whole.size.x <= 0.0 else whole.merge(box)
+	return Vector2(whole.size.x, whole.end.y - _extras_top(entry).y)
+
+
+## Where a step's guides are on the page, all told; zero when it has none.
+static func extras_rect(entry: Entry) -> Rect2:
+	var size: Vector2 = _extras_size(entry)
+	return Rect2(_extras_top(entry), size) if size.y > 0.0 else Rect2()
+
+
+## Each 1:1 guide's part picture on the page, drawn at its real size: the
+## part's ends are its length apart, in mm, across the picture's middle
+## ([member Entry.actual]).
+static func actual_rects(entry: Entry) -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	var boxes: Array = _extras(entry)[1]
+	for index: int in boxes.size():
+		var box: Rect2 = boxes[index]
+		var picture: Vector2 = entry.actual[index]["size"]
+		var room: float = maxf(picture.y, RING)
+		var at := Rect2(box.position + Vector2(GUIDE_PAD,
+			GUIDE_PAD + GUIDE_LABEL + (room - picture.y) * 0.5), picture)
+		# Drawn to the length its outline reads at (BookletMaker._draw_actual).
+		var fit: float = float(entry.actual[index].get("fit", 1.0))
+		out.append(Rect2(at.get_center() - at.size * fit * 0.5, at.size * fit))
+	return out
 
 
 ## How wide the parts box may be: most of the panel, less the callout
@@ -955,10 +1078,22 @@ static func _callout_pages(callout: Callout, progress: float) -> Array[Page]:
 	var area := Rect2(frame.position + Vector2(5.0, 5.0),
 		frame.size - Vector2(10.0, 10.0 + (QUANTITY + 3.0 if callout.times > 1 else 0.0)))
 	var at: int = 0
+	callout.preview_box = Rect2()
 	while at < callout.steps.size():
 		var run: Array[Entry] = callout.steps.slice(at, mini(at + 4, callout.steps.size()))
-		var page := _best_page(run, area, true)
+		# The first page shows what is built on it, finished, in its corner,
+		# and lays its steps out beside it.
+		var room: Rect2 = area
+		if at == 0 and callout.preview:
+			var box: Vector2 = _preview_size(callout, area)
+			callout.preview_box = Rect2(Vector2(area.end.x - box.x, area.position.y), box)
+			callout.preview_cell = Rect2(callout.preview_box.position + Vector2(PAD, PAD),
+				box - Vector2(PAD * 2.0, PAD * 2.0 + (QUANTITY + 1.0 if callout.times > 1 else 0.0)))
+			room = Rect2(area.position, Vector2(area.size.x - box.x - GUTTER, area.size.y))
+		var page := _best_page(run, room, true)
 		page.frame = frame
+		if at == 0 and callout.preview:
+			page.preview = callout
 		_settle(page)
 		page.times = callout.times
 		page.name = callout.name
@@ -966,6 +1101,18 @@ static func _callout_pages(callout: Callout, progress: float) -> Array[Page]:
 		pages.append(page)
 		at += page.entries.size()
 	return pages
+
+
+## The sub-model preview's box on a callout's first page: the finished
+## assembly no larger than a callout box draws it, in at most a quarter of
+## the page's width and two fifths of its height, its count under it.
+static func _preview_size(callout: Callout, area: Rect2) -> Vector2:
+	var most := Vector2(minf(64.0, area.size.x * 0.26), minf(52.0, area.size.y * 0.4))
+	var under: float = QUANTITY + 1.0 if callout.times > 1 else 0.0
+	var size: Vector2 = callout.subject.size.max(Vector2(1.0, 1.0))
+	callout.preview_scale = minf(MOST_SCALE * 0.8, minf((most.x - PAD * 2.0 - 2.0) / size.x,
+		(most.y - PAD * 2.0 - 2.0 - under) / size.y))
+	return size * callout.preview_scale + Vector2(PAD * 2.0 + 2.0, PAD * 2.0 + 2.0 + under)
 
 
 ## The parts list at the end: every part, by colour, a column at a time.
@@ -1115,6 +1262,8 @@ img.a { display: block; }
   border-radius: calc(2.6 * var(--mm)); }
 .frame { background: #fff8de; border: calc(.5 * var(--mm)) solid var(--callout-line);
   border-radius: calc(3.5 * var(--mm)); }
+.one { background: #fff; border: calc(.35 * var(--mm)) solid var(--box-line);
+  border-radius: calc(1.6 * var(--mm)); }
 .pt { position: absolute; left: calc(var(--x) * var(--mm)); top: calc(var(--y) * var(--mm));
   width: calc(var(--w) * var(--mm)); height: calc(var(--h) * var(--mm));
   background-size: contain; background-repeat: no-repeat; background-position: center bottom; }
@@ -1196,6 +1345,15 @@ static func _page(page: Page, document: Document) -> String:
 				if page.times > 1:
 					var badge: Vector2 = page.frame.end - Vector2(18.0, 10.0)
 					out.append(_text(badge, 7.0, "%dx" % page.times, "n"))
+				if page.preview != null and page.preview.preview_box.size.x > 0.0:
+					var callout: Callout = page.preview
+					out.append(_div(callout.preview_box, "one"))
+					if not callout.preview_image.is_empty():
+						_image(out, callout.preview_image, callout.preview_cell,
+							"The %s, finished" % callout.name)
+					if callout.times > 1:
+						out.append(_text(callout.preview_box.end - Vector2(PAD + 7.0,
+							PAD + QUANTITY + 0.6), QUANTITY * 1.15, "%dx" % callout.times, "n"))
 			var in_banner: Array = []
 			if not page.banner.is_empty():
 				var strip := Rect2(Vector2(MARGIN, MARGIN), Vector2(content().size.x, BANNER - 3.0))
@@ -1253,7 +1411,8 @@ static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 		if mark in in_banner:
 			continue
 		out.append(_text(Vector2(entry.number_at.x, line), 2.6, _mark_words(mark), "q mk"))
-		line += 3.4
+		line += MARK_LINE
+	_guides(entry, out, svg)
 	if not entry.lots.is_empty():
 		out.append(_div(entry.parts_rect, "box"))
 		var y: float = entry.parts_rect.position.y + PAD
@@ -1300,6 +1459,38 @@ static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 		for arrow: Array in entry.arrows:
 			svg.append(_arrow(arrow[-2], arrow[-1], "#15191e", 0.45, 1.4,
 				arrow.slice(0, arrow.size() - 1)))
+
+
+## A step's colour guide, a line a colour, and its 1:1 guides: the part at
+## its real size with "1:1" over it and its length in a ring at its end.
+static func _guides(entry: Entry, out: PackedStringArray, svg: PackedStringArray) -> void:
+	var laid: Array = _extras(entry)
+	var colours: Rect2 = laid[0]
+	if colours.size.x > 0.0:
+		out.append(_div(colours, "one cg"))
+		for index: int in entry.colours.size():
+			var colour: Dictionary = entry.colours[index]
+			out.append(_text(colours.position + Vector2(GUIDE_PAD, GUIDE_PAD + MARK_LINE * index),
+				2.6, "<i class=\"chip\" style=\"background:%s\"></i>%s" % [str(colour["rgb"]),
+					_escape(str(colour["name"]))], "q cg"))
+	var pictures: Array[Rect2] = actual_rects(entry)
+	for index: int in pictures.size():
+		var guide: Dictionary = entry.actual[index]
+		var box: Rect2 = laid[1][index]
+		var at: Rect2 = pictures[index]
+		out.append(_div(box, "one actual"))
+		out.append(_text(box.position + Vector2(GUIDE_PAD, GUIDE_PAD - 0.2), 2.4, "1:1", "n"))
+		if not str(guide.get("image", "")).is_empty():
+			_image(out, str(guide["image"]), at, "1:1: %s" % str(guide["name"]))
+		var ring := Rect2(Vector2(at.end.x + GUIDE_GAP, at.get_center().y - RING * 0.5),
+			Vector2(RING, RING))
+		svg.append("<rect x=\"%s\" y=\"%s\" width=\"%s\" height=\"%s\" rx=\"%s\" fill=\"none\" stroke=\"#15191e\" stroke-width=\".35\"/>"
+			% [_n(ring.position.x + 0.175), _n(ring.position.y + 0.175), _n(RING - 0.35),
+				_n(RING - 0.35), _n((RING - 0.35) * 0.5)])
+		var said: String = str(guide["studs"])
+		var size: float = 3.2 if said.length() < 2 else 2.8
+		var wide: float = BookletRead.text_width(said, size, true, -0.02 * size)
+		out.append(_text(ring.get_center() - Vector2(wide * 0.5, size * 0.488), size, said, "n"))
 
 
 ## The words and pictures a designer put on [param entry]'s page
