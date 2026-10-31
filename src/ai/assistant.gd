@@ -3317,6 +3317,8 @@ func _tool_answer(block: Dictionary) -> Variant:
 				+ "view_model gives any other side.")
 		"attachment_points":
 			progress.emit("working out where things attach")
+			if args.get("parts") is Array:
+				return await _attachment_points_each(args["parts"])
 			return await _attachment_points(args)
 		"search_gear_ratio":
 			progress.emit("searching gear trains for a ratio")
@@ -4794,6 +4796,31 @@ func _with_a_look(said: String, ask: String,
 	if not ask.is_empty():
 		blocks.append({"type": "text", "text": ask})
 	return blocks
+
+
+## Of attachment_points' parts=, at most this many are answered in a call.
+const POINTS_MOST := 8
+
+
+## attachment_points for several parts in one call, an answer each in order,
+## and how a turn moves what a part points to. The side pod's session asked
+## about its five parts in five calls over two turns before its first
+## submit_design, the last two to see a slope at rot 2 that it had seen at
+## rot 0 (APP_UX3, "Over MCP").
+func _attachment_points_each(asked: Array) -> String:
+	var said := PackedStringArray()
+	for n: int in mini(asked.size(), POINTS_MOST):
+		var one: Variant = asked[n]
+		said.append("%d. %s" % [n + 1, await _attachment_points(one) if one is Dictionary
+			else "Not a part: each of parts= is an object, as one call's arguments."])
+	if asked.size() > POINTS_MOST:
+		said.append("%d more not answered: at most %d a call." % [asked.size() - POINTS_MOST,
+			POINTS_MOST])
+	said.append("Turned: rot turns a part a quarter at a time about its face, from the same "
+		+ "low corner. What points +z at rot 0 points +x at rot 1, -z at rot 2 and -x at rot 3: "
+		+ "a slope that falls toward +z at rot 0 falls toward -z at rot 2, and a part 6 studs "
+		+ "along x and 4 along z at rot 0 is 4 along x and 6 along z at rot 1.")
+	return "\n\n".join(said)
 
 
 ## Where a part's studs are, and what coordinates something on one of
@@ -20756,10 +20783,11 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 	await _ready_to_check(design)
 	var report: Dictionary = await _checked(design)
 	if not bool(report["ok"]):
-		return "Not applied — it does not hold together yet.\n%s" \
-			% report["feedback"]
+		return "Not applied — it does not hold together yet.\n%s%s" \
+			% [report["feedback"], _where_it_would_stand(design, report)]
 	await _ensure_parts(design)
 	await _apply(design, true, true)
+	var designing: bool = is_design(design)
 	if not _busy:
 		_outside_standing = true
 		_outside_assemblies = design.assemblies.duplicate()
@@ -20775,15 +20803,16 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_feature_now = ""
 		# The model is new, so whatever the pass laid is gone with the old one.
 		feature_pass().reset(design.feature_spots)
-		# A new design, so its surface and creative passes are still to come.
-		_outside_designed = true
+		# A new design, so its surface and creative passes are still to come;
+		# parts placed for a person have none (FreshEyes asks only of a design).
+		_outside_designed = designing
 		_outside_looked = false
 		_outside_unsaved = true
 		_outside_creative_handed = false
 		_outside_creative = {}
 		surface_pass().reset()
 		fresh_eyes().designed(bare)
-	return _built_from_outside(design, report)
+	return _built_from_outside(design, report) if designing else _placed_said(design, report)
 
 
 ## A design built from outside — Claude over the connector, or a session
@@ -20869,6 +20898,226 @@ sections: offer the person colour_hidden_parts — the parts nobody sees once \
 it is finished, a colour for each section, as big sets are coloured inside, \
 so they can find their place while building it. Only an offer: show them \
 the preview, and apply it only once they say yes."""
+
+
+## A submit_design of fewer parts than this, naming no features, is parts
+## placed for a person, not a subject designed from words. In the 614 realset
+## sessions of 2026-10-26 to 10-31 every design's first real submit named its
+## features or had 20 parts or more; the five with neither were tests ("leg
+## test", 13 parts) before the design itself, which was then told the method.
+## A probe of the design's passes lowers it, so a fixture of a few parts
+## stands for a design, as it sets [member brickbench].
+static var design_parts: int = 20
+
+
+## Whether [param design], submitted from outside, is a subject designed from
+## words, answered with this app's designer's method (FROM_OUTSIDE_NEXT), or
+## parts placed for a person, answered as CAD ([method _placed_said]). A
+## five-part side pod asked for by part heard the designer's five steps, and
+## a wall of eight bricks too (APP_UX3, "Over MCP").
+static func is_design(design: Model) -> bool:
+	return not design.features.is_empty() or design.placements.size() >= design_parts
+
+
+## The CAD answer to parts placed for a person: what stands, the span each
+## part takes and what holds it, what stands apart, and what was given in
+## place of what was asked.
+func _placed_said(design: Model, report: Dictionary) -> String:
+	var bricks: Array = []
+	for brick_id: int in _placed_ids:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick != null:
+			bricks.append(brick)
+	var pieces: int = int(report.get("pieces", 1))
+	var said := PackedStringArray()
+	said.append("Built. %d bricks on the baseplate. %s, %s." % [design.placements.size(),
+		report["summary"], "one piece" if pieces <= 1 else "in %d pieces" % pieces])
+	if not bricks.is_empty():
+		said.append("Each part by its number, the span it takes in studs (x, z) and "
+			+ "plates (y), and what holds it:\n" + "\n".join(_holds_rows(bricks)))
+	var apart: String = str(report.get("pieces_said", ""))
+	if not apart.is_empty():
+		said.append(apart)
+	if not _made_said.is_empty():
+		said.append(_made_said.strip_edges())
+	return "\n\n".join(said)
+
+
+## A row for each of [param bricks]: its number, part and colour, the span it
+## takes, and what holds it: the ground, the parts it stands on by how many
+## studs, and the parts a pin, an axle, a clip, a hinge or a socket joins it to.
+func _holds_rows(bricks: Array) -> PackedStringArray:
+	var graph: Dictionary = Sections.graph_of(bricks, library, builder.lattice)
+	var studs: Dictionary = graph["studs"]
+	var under: Dictionary = graph["under"]
+	var links: Dictionary = graph["links"]
+	var rows := PackedStringArray()
+	for brick: BrickWorld.Brick in bricks:
+		var span: Array = _corners_in_studs(brick)
+		if span.is_empty():
+			continue
+		var low: Vector3 = span[0]
+		var high: Vector3 = span[1]
+		var held := PackedStringArray()
+		if low.y <= 0.01:
+			held.append("on the baseplate" if not scenery.is_empty() else "on the ground")
+		for other: BrickWorld.Brick in bricks:
+			var key: int = Stability.pair_of(brick.id, other.id)
+			if other.id == brick.id:
+				continue
+			if studs.has(key) and int(under.get(key, 0)) == other.id:
+				held.append("on #%d by %d stud%s" % [other.id, int(studs[key]),
+					"" if int(studs[key]) == 1 else "s"])
+			elif links.has(key) and other.id < brick.id:
+				held.append("joined to #%d by %s" % [other.id, _link_said(graph, key)])
+		rows.append("  #%-4d %-9s c%-3d x %s..%s  z %s..%s  y %s..%s  %s" % [brick.id,
+			brick.part_id, brick.color_code, Placement._num(low.x), Placement._num(high.x),
+			Placement._num(low.z), Placement._num(high.z), Placement._num(low.y),
+			Placement._num(high.y), ", ".join(held) if not held.is_empty() else "held by nothing"])
+	return rows
+
+
+## What joins a pair of [method Sections.graph_of]'s links, in a word or two.
+static func _link_said(graph: Dictionary, key: int) -> String:
+	if (graph["pins"] as Dictionary).has(key):
+		return "a pin or an axle"
+	if (graph["turns"] as Dictionary).has(key):
+		return "a hinge, a clip or a turntable"
+	if (graph["fixed"] as Dictionary).has(key):
+		return "a fixed joint"
+	return "seating"
+
+
+## Of a design refused with floating parts, at most this many are said ...
+const WHERE_MOST := 3
+## ... and of a design bigger than this, none: a set's refusal is long already,
+## and its fix is in its structure, not in one part's place.
+const WHERE_MOST_PARTS := 300
+
+
+## Where each part that floats with nothing under it would stand, said by what
+## is there: the tops at the height it stands at, the span the nearest takes
+## and the span a quarter turn would give it at the same corner, and where the
+## part itself would stand on it. The side pod's first submit had its 4 x 6
+## plate six studs along x, not along z, was told only that the headlight at
+## its front floated, and searched for the plate to find out why (APP_UX3).
+## A part standing on one that floats is put right with that one, and unsaid.
+func _where_it_would_stand(design: Model, report: Dictionary) -> String:
+	var floating: Array = report.get("floating", [])
+	if floating.is_empty() or design.placements.size() > WHERE_MOST_PARTS:
+		return ""
+	var boxes: Dictionary = {}  ## placement index -> AABB in studs and plates
+	for index: int in design.placements.size():
+		var box: AABB = _studs_box(design, index)
+		if box.has_volume():
+			boxes[index] = box
+	var adrift: Dictionary = {}
+	for index: Variant in floating:
+		adrift[int(index)] = true
+	var lines := PackedStringArray()
+	var order: Array = adrift.keys()
+	order.sort()
+	for index: int in order:
+		if lines.size() >= WHERE_MOST:
+			break
+		if not boxes.has(index):
+			continue
+		var box: AABB = boxes[index]
+		var on_adrift: bool = false
+		for other: int in adrift:
+			if other != index and boxes.has(other) and _rests_on(box, boxes[other]):
+				on_adrift = true
+		if on_adrift:
+			continue
+		var placement: Placement = design.placements[index]
+		var head: String = "brick %d (%s at %s) takes x %s, z %s" % [index, placement.part,
+			placement.where(), _span(box.position.x, box.end.x), _span(box.position.z, box.end.z)]
+		var nearest: int = -1
+		var gap: float = INF
+		for other: int in boxes:
+			if adrift.has(other) or not _top_at(boxes[other], box.position.y):
+				continue
+			var apart: float = _apart(box, boxes[other])
+			if apart < gap:
+				gap = apart
+				nearest = other
+		if nearest < 0:
+			lines.append("  - %s: no part that is held has its top at y %s, where it stands."
+				% [head, Placement._num(box.position.y)])
+			continue
+		var top: AABB = boxes[nearest]
+		var under: Placement = design.placements[nearest]
+		var line: String = "  - %s. At y %s the nearest top of a part that is held is brick %d's (%s at %s): x %s, z %s" % [
+			head, Placement._num(box.position.y), nearest, under.part, under.where(),
+			_span(top.position.x, top.end.x), _span(top.position.z, top.end.z)]
+		var turned := AABB(top.position, Vector3(top.size.z, top.size.y, top.size.x))
+		if not is_equal_approx(top.size.x, top.size.z) and _within(box, turned):
+			line += "; with rot %d, a quarter turn at the same corner, it would take x %s, z %s, under it" % [
+				(under.rot + 1) % 4, _span(turned.position.x, turned.end.x),
+				_span(turned.position.z, turned.end.z)]
+		if box.size.x <= top.size.x + 0.01 and box.size.z <= top.size.z + 0.01:
+			var x: float = clampf(box.position.x, top.position.x, top.end.x - box.size.x)
+			var z: float = clampf(box.position.z, top.position.z, top.end.z - box.size.z)
+			line += ". At %s,%s,%s it would stand on it" % [
+				Placement._num(placement.x + x - box.position.x), Placement._num(placement.y),
+				Placement._num(placement.z + z - box.position.z)]
+		lines.append(line + ".")
+	if lines.is_empty():
+		return ""
+	return "\n\nWhere they would stand:\n" + "\n".join(lines)
+
+
+## The span placement [param index] of [param design] takes, in studs across
+## and deep and plates up, as the check's lattice covers it; empty when its
+## part has no geometry.
+func _studs_box(design: Model, index: int) -> AABB:
+	var placement: Placement = design.placements[index]
+	var mesh: Lbm.PartMesh = library.mesh_for(placement.part)
+	if mesh == null:
+		return AABB()
+	var packed: PackedInt32Array = builder.boxes_for(mesh,
+		_transform(placement, mesh, design.section_for(placement)))
+	if packed.is_empty():
+		return AABB()
+	var lo := Vector3i(packed[0], packed[1], packed[2])
+	var hi := Vector3i(packed[3], packed[4], packed[5])
+	for n: int in range(6, packed.size(), 6):
+		lo = lo.min(Vector3i(packed[n], packed[n + 1], packed[n + 2]))
+		hi = hi.max(Vector3i(packed[n + 3], packed[n + 4], packed[n + 5]))
+	var near: Vector3 = BrickLattice.to_ldu(lo)
+	var far: Vector3 = BrickLattice.to_ldu(hi)
+	var scale := Vector3(1.0 / STUD, 1.0 / PLATE, 1.0 / STUD)
+	return AABB(near * scale, (far - near) * scale)
+
+
+## Whether [param top]'s top is at height [param y], plates: the lattice's
+## cover takes in a stud on top, half a plate.
+static func _top_at(top: AABB, y: float) -> bool:
+	return top.end.y >= y - 0.01 and top.end.y <= y + 0.51
+
+
+## Whether [param box] stands on [param below]: at its top, and over it.
+static func _rests_on(box: AABB, below: AABB) -> bool:
+	return _top_at(below, box.position.y) \
+		and minf(box.end.x, below.end.x) - maxf(box.position.x, below.position.x) > 0.01 \
+		and minf(box.end.z, below.end.z) - maxf(box.position.z, below.position.z) > 0.01
+
+
+## How far apart two spans are across and deep, studs: 0 where they overlap.
+static func _apart(one: AABB, other: AABB) -> float:
+	var dx: float = maxf(0.0, maxf(one.position.x - other.end.x, other.position.x - one.end.x))
+	var dz: float = maxf(0.0, maxf(one.position.z - other.end.z, other.position.z - one.end.z))
+	return Vector2(dx, dz).length()
+
+
+## Whether [param box]'s footprint is inside [param outer]'s.
+static func _within(box: AABB, outer: AABB) -> bool:
+	return box.position.x >= outer.position.x - 0.01 and box.end.x <= outer.end.x + 0.01 \
+		and box.position.z >= outer.position.z - 0.01 and box.end.z <= outer.end.z + 0.01
+
+
+static func _span(from: float, to: float) -> String:
+	return "%s..%s" % [Placement._num(from), Placement._num(to)]
 
 
 ## The review this app's own designer gives a model, for a session doing
@@ -21069,7 +21318,12 @@ func next_review() -> Variant:
 			% [undone.size(), _outside_features.size(), "is" if undone.size() == 1 else "are"]
 			+ "settled yet (%s). The next is the %s." % [", ".join(undone), undone[0]]),
 			await _review_feature(undone[0]))
-	var left: Array[String] = _not_yet_reviewed()
+	# Parts placed for a person (is_design) have no assemblies to detail one
+	# by one: a save that handed the side pod's back would be the designer's
+	# method by another door.
+	var left: Array[String] = []
+	if _outside_designed:
+		left = _not_yet_reviewed()
 	if left.is_empty():
 		# The surface pass before the creative pass; reminded, never refused.
 		var first_time: String = _surface_first_reminder()
@@ -23258,7 +23512,8 @@ func _tools() -> Array:
 				+ "backwards looks exactly like a wedge until you look "
 				+ "at it. And every connector by the address attach takes "
 				+ "(\"#41.hinge[0]\", \"hinge[0]\"): its type and number, "
-				+ "where it is and the way it points."),
+				+ "where it is and the way it points. Several parts in one call: "
+				+ "parts=[{...}, {...}]."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
@@ -23278,6 +23533,10 @@ func _tools() -> Array:
 						"description": "as a brick's: x, y, z are then where its joint's "
 							+ "middle goes"},
 					"joint": {"type": "integer"},
+					"parts": {"type": "array", "items": {"type": "object"}, "description":
+						"several at once, up to 8: each an object of the arguments above "
+						+ "(brick, or part with x, y, z, face and rot), answered in order "
+						+ "in one call"},
 				},
 				"additionalProperties": false,
 			},

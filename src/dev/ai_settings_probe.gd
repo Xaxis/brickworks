@@ -52,6 +52,9 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await process_frame
+	# The stub's tower of six stands for a design: a fresh look is asked of a
+	# design only (Assistant.is_design).
+	Assistant.design_parts = 1
 	_size = "%dx%d" % [DisplayServer.window_get_size().x, DisplayServer.window_get_size().y]
 	# Not anybody's key: made here, so the stub can tell it came.
 	_key = "sk-stub-" + Crypto.new().generate_random_bytes(16).hex_encode()

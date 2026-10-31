@@ -54,6 +54,9 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await process_frame
+	# Its fixtures, a few parts each, stand for designs: from outside the
+	# passes are a design's only (Assistant.is_design).
+	Assistant.design_parts = 1
 	library = PartLibrary.new()
 	if not library.load_catalogue():
 		print("no catalogue")
