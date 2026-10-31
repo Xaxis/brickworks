@@ -2615,9 +2615,6 @@ msgstr "Déjà dans votre Claude ? Ouvrir vos connecteurs"
 msgid "A Brickworks already in your connectors connects again with its own Connect, keeping its tool permissions."
 msgstr "Un Brickworks déjà dans vos connecteurs se reconnecte avec son propre bouton Connecter, en gardant ses autorisations d'outils."
 
-msgid "Opens your connectors in Claude, where Brickworks is"
-msgstr "Ouvre vos connecteurs dans Claude, où se trouve Brickworks"
-
 msgid "Copies the command that adds Brickworks to Claude Code"
 msgstr "Copie la commande qui ajoute Brickworks à Claude Code"
 
