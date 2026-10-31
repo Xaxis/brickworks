@@ -1502,7 +1502,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   from 300 parts until 2026-10-21), the parts' exact shapes read first on the
   main thread; a press before it is done waits for the rest below 300 parts
   (`GrabDrag._ready_now`) and says so from 300. The status bar's weighing
-  (`Main._weigh`) is on a worker too. `the builder's frames after a change`
+  (`Main._weigh`) is on a worker too. Both give way when the library must be
+  written (`PartLibrary.reading_in`'s stop, a `WorkerTasks.Stop` that
+  `Bodies`, `Balance.prepare` and `Stability.check` ask as they go): a model
+  opened with parts of its own adds them at once, the reading of the model
+  before it dropped and read again later (8202-1 after 42082-1: 7 to 13 s
+  to 1.2 s; `bigmodel_probe`'s "opened while 42082-1 was weighed"). `the builder's frames after a change`
   (`tools/probe.sh ahead_probe -- --most-ms=50`, headless, about 3 min):
   move_part, Ctrl+Z and a click placing a part on the Ducati, 8808-1 and
   42004-1, each act's longest main-thread frame under 50 ms (9 to 18; on
