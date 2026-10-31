@@ -13,9 +13,12 @@ enum Quality {
 	## Global illumination, ambient occlusion and soft shadows where the
 	## renderer has them (the desktop's), a contact shadow everywhere.
 	GOOD,
-	## Many frames averaged: every one jittered under the pixel, lit from
-	## another point of an area light and seen through another point of the
-	## lens, so edges are smooth, shadows soft and the depth of field real.
+	## Path traced where the graphics card traces rays (PathTracer): light
+	## followed bounce by bounce, so shadows soften as they should, the floor
+	## lights the model, and glass tints what is behind it. Elsewhere many
+	## frames averaged: every one jittered under the pixel, lit from another
+	## point of an area light and seen through another point of the lens, so
+	## edges are smooth, shadows soft and the depth of field real.
 	BEST,
 }
 
@@ -64,8 +67,12 @@ var f_stop: float = 0.0
 ## Where the focus is, across the model's depth: 0 its nearest point,
 ## 1 its farthest.
 var focus: float = 0.5
-## Frames averaged for Best; 0 for this platform's own number.
+## Frames averaged for Best, or where it is path traced its samples, each
+## a pass over every pixel; 0 for this platform's own number.
 var samples: int = 0
+## Best path traced where the card can. False keeps it frames averaged,
+## for a probe to compare the two.
+var traced: bool = true
 ## For a turntable: how many pictures round, and how many a second.
 var frames: int = 36
 var fps: int = 24
@@ -98,14 +105,28 @@ func copy() -> RenderSettings:
 	return twin
 
 
-## How many frames Best averages here: fewer in a browser, which shares a
-## graphics card it does not own with the rest of the page.
+## Samples a path-traced Best takes when none are asked for: as many as
+## Studio's Eyesight's default, and on the box's RX 6700 XT a 720p picture
+## of the example car in a few seconds.
+const TRACED_SAMPLES := 256
+
+
+## How many frames Best averages here, or samples it traces: fewer frames
+## in a browser, which shares a graphics card it does not own with the rest
+## of the page.
 func samples_here() -> int:
 	if quality != Quality.BEST:
 		return 1
 	if samples > 0:
 		return samples
+	if traced_here():
+		return TRACED_SAMPLES
 	return 32 if OS.has_feature("web") else 64
+
+
+## Whether Best is path traced here: asked for, and a card that traces rays.
+func traced_here() -> bool:
+	return quality == Quality.BEST and traced and PathTracer.available()
 
 
 ## The vertical field of view, in degrees, for a picture this shape: the
