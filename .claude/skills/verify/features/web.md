@@ -89,7 +89,10 @@ plan with Claude as the client.
   render, motions, the booklet's makers) and loaded the first time
   something asks; main.gd's members for them are made by their getters
   (`_make_*`, `_X_made` for a look that makes nothing), and the start
-  compiles 214 scripts. Two copies of the assistant's rules keep the core
+  compiles 215 of 313 scripts (2026-10-31, three rounds against live at
+  load 18-25: compiled at +3.0 s cold and +3.6 warm where live's scripts
+  took +6.8 and +5.6; interactive 12.2 s cold and 7.4 warm against 17.5
+  and 10.2; the first pick 1.2 s against 1.5). Two copies of the assistant's rules keep the core
   off it (`Nests`, `Footprint`). `python3 tools/minitest.py
   tests/test_later.py` fails when a script the first screen compiles names
   one of Later's classes, with the chain from main.tscn that reaches it,
