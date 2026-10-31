@@ -502,8 +502,34 @@ try {
   const timePointer = async (label, strict) => {
     const ownerOf = async (page) => ((await together(page)).people || []).find((one) => one.owner) || {};
     await owner.page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-    const spots = (await until(() => owner.page.evaluate(() => window.brickworksLayout || null), "the owner's layout", 30)
+    const laid = (await until(() => owner.page.evaluate(() => window.brickworksLayout || null), "the owner's layout", 30)
       .catch(() => ({}))).targets || [];
+    // Only the places the owner's page points at: what it sends with the
+    // mouse there, once it has settled, is somewhere on the model. A part's
+    // middle over a gap in it, or under something on the page, is nowhere
+    // to it, and a move there from nowhere sends nothing: on the rich car,
+    // 8 of 40 moves (rel-m227) and 10 of 40 not seen, the owner having sent
+    // nothing at all.
+    let said;
+    const saying = (request) => {
+      if (!/\/api\/together\?op=point/.test(request.url())) return;
+      try { said = request.postDataJSON()?.at ?? null; } catch {}
+    };
+    owner.page.on("request", saying);
+    const nowhere = [];
+    for (const spot of laid) {
+      said = undefined;
+      await owner.page.mouse.move(spot.x, spot.y, { steps: 2 });
+      await until(async () => said !== undefined || null, "the owner's page saying where it points", 2).catch(() => null);
+      await wait(800);
+      if (!Array.isArray(said)) nowhere.push(spot);
+    }
+    owner.page.off("request", saying);
+    const spots = laid.length - nowhere.length >= 2 ? laid.filter((spot) => !nowhere.includes(spot)) : laid;
+    if (nowhere.length) {
+      console.log(`        ${nowhere.length} of ${laid.length} places nowhere to the owner's page, not aimed at:`
+        + ` ${nowhere.map((spot) => `${spot.part} at ${spot.x}, ${spot.y}`).join("; ")}`);
+    }
     const [placed, drawn, seen] = [[], [], []];
     const stages = { send: [], reach: [], frame: [] };
     let lastBrick = null;
