@@ -1484,10 +1484,22 @@ func _enable_antialiasing() -> void:
 ## When each stage of the start was reached, on the page's clock (ms):
 ## window.brickworksBoot, read by tools/web/load_check.mjs to say where a
 ## first visit's wait goes. Web builds only.
-func _boot_mark(stage: String) -> void:
+static func _boot_mark(stage: String) -> void:
 	if OS.has_feature("web"):
 		JavaScriptBridge.eval("(window.brickworksBoot = window.brickworksBoot || {})[%s] = performance.now()"
 			% JSON.stringify(stage), true)
+
+
+## Loading this script compiles every script it names, and theirs: all 308
+## of the app's, in one go, before this runs ("compiled"). Then the scene
+## is made ("made") and its nodes readied ("ready"). The compile was 3.6 s
+## of a warm start's 8.2 on the box (webstart, 2026-10-30).
+static func _static_init() -> void:
+	_boot_mark("compiled")
+
+
+func _init() -> void:
+	_boot_mark("made")
 
 
 func _ready() -> void:
