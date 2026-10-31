@@ -17,7 +17,9 @@
 ## - every one of them has its translation (Language.says), none left in
 ##   English, words made at the moment matched as patterns;
 ## - and the control that shows it draws it so (its atr), so nothing is
-##   kept out of the translation;
+##   kept out of the translation, and none keeps words of the interface in
+##   English (Language.left_in_english) but names and keys;
+## - Find a command finds Save by its name in the language, and by "save";
 ## - in German, the longest words, at 1280 x 720: every menu at most 25
 ##   rows and 60% of the window's height (palette's bar), each inside the
 ##   window, and every control the page asks for (Main._page_controls, as
@@ -208,6 +210,8 @@ func _gather() -> void:
 	_names[Inventory._tidy((library.parts["3001"] as PartLibrary.PartInfo).name)] = true
 	for model: Dictionary in Brain.CHOICES:
 		_names[str(model["name"])] = true
+	for name: String in ["Claude", "Claude Code"]:
+		_names[name] = true
 	var bin: PartsBin = _main.get("_bin")
 	for selected: bool in [true, false]:
 		if not selected:
@@ -315,6 +319,8 @@ func _walk(kind: String, node: Node, skipped: Array) -> void:
 			_add(kind, (node as OptionButton).get_item_text(n), node)
 	elif node is Button:
 		_add(kind, (node as Button).text, node)
+	elif node is LinkButton:
+		_add(kind, (node as LinkButton).text, node)
 	elif node is LineEdit:
 		_add(kind, (node as LineEdit).placeholder_text, node)
 	if node is Control:
@@ -368,6 +374,13 @@ func _in(code: String) -> void:
 	var file: MenuButton = _shell.get("_menus")[0]
 	print("    File reads \"%s\", its first row \"%s\"" % [file.atr(file.text),
 		file.get_popup().atr(file.get_popup().get_item_text(0))])
+	# Find a command finds it by the words it is drawn with, and by English's.
+	var typed: String = {"de": "speichern", "fr": "enregistrer", "es": "guardar"}[code]
+	var found: Array[String] = _shell.palette.matches(typed)
+	var english: Array[String] = _shell.palette.matches("save")
+	_check("%s: Find a command, \"%s\" finds Save first (%s), and \"save\" still does (%s)" % [
+		code, typed, ", ".join(found.slice(0, 3)), ", ".join(english.slice(0, 3))],
+		not found.is_empty() and found[0] == "save" and not english.is_empty() and english[0] == "save")
 	await _pictures(code)
 
 

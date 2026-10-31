@@ -1044,7 +1044,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   patterns (`%s`, `%d`); a row's key, a tooltip's lines, a status line's
   parts (" · ", " — ", ". ", "; ") and the keys sheet's lowered words are
   found piece by piece. Names stay as they are: parts, colours (LDraw's, as
-  Studio keeps them), models, keys (Ctrl, Shift). Not translated yet: the
+  Studio keeps them), models, keys (Ctrl, Shift). Find a command matches a
+  command's words as drawn too ("speichern" finds Save,
+  `CommandPalette._score`). Not translated yet: the
   status line's messages after an action, dialogs other than Settings and
   the keys sheet, the web pages. A word added to a menu, a tooltip or a
   panel with no entry fails `languages_probe`, whose `--missing=FILE` writes
@@ -2445,8 +2447,10 @@ node tools/web/noai_flow.mjs --url=http://127.0.0.1:8790/index.html --relay --ou
 # in each and drawn so; in German at 1280 x 720 every menu at most 25 rows and
 # 60% high (or no taller than in English), the menu bar and every control the
 # page asks for on the page, the widest toolbar tooltips wrapped inside the
-# window; Deutsch chosen in Settings and kept in a run of its own; English
-# again. --missing=FILE writes the words with no entry, as .po entries
+# window; Find a command finding Save by its translated name; Deutsch chosen
+# in Settings and kept in a run of its own; English again. --missing=FILE
+# writes the words with no entry, as .po entries. Any probe in German:
+# tools/probe.sh palette_probe --lang=de
 tools/probe.sh languages_probe --shots=shots/languages --missing=shots/languages/missing.po
 python3 tools/minitest.py tests/test_locale.py
 # sub-assemblies and the model tree, at any window size: nothing over the

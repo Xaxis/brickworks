@@ -2754,3 +2754,28 @@ msgstr "L'empêcher d'être choisie, déplacée, peinte ou enlevée"
 
 msgid "Hide it, to reach what is behind it"
 msgstr "La masquer, pour atteindre ce qui est derrière"
+
+# Settings' link to the AI's settings
+msgid "AI: %s…"
+msgstr "IA : %s…"
+
+msgid "More"
+msgstr "Plus"
+
+msgid "Add a picture of it"
+msgstr "Ajouter une image"
+
+msgid "1 picture of it"
+msgstr "1 image"
+
+msgid "%d pictures of it"
+msgstr "%d images"
+
+msgid "No key yet? Get one at console.anthropic.com"
+msgstr "Pas encore de clé ? Sur console.anthropic.com"
+
+msgid "Claude app"
+msgstr "Appli Claude"
+
+msgid "Private address"
+msgstr "Adresse privée"
