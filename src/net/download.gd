@@ -16,9 +16,18 @@ extends RefCounted
 static var folder: String = ""
 
 
+## A run that is not the person's own app (Outside.held) writes into a
+## folder of its own data instead, as it opens no link: an MCP session's
+## render from the app an agent started for appux3's walk landed in the
+## owner's own ~/Downloads (2026-10-30). Every file the app writes without
+## asking comes through here.
 static func downloads() -> String:
 	if not folder.is_empty():
 		return folder
+	if Outside.held():
+		var own: String = OS.get_user_data_dir().path_join("downloads")
+		DirAccess.make_dir_recursive_absolute(own)
+		return own
 	var found: String = OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
 	return found if not found.is_empty() else OS.get_user_data_dir()
 

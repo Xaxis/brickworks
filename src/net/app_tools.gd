@@ -199,8 +199,8 @@ library= opens LDraw's model of a real set (gallery library=true finds them).
 which="need" what the person's collection is short of; "buildable" What \
 can I build?: saved models, examples and real sets' models by how much is owned.
  - render_model: a picture or a turntable worth keeping, Quick, Good or \
-Best, up to 4K, as the window draws it or as a product shot, saved where \
-Render saves.
+Best, up to 4K, as the window draws it or as a product shot, or kind="build" \
+the model built up step by step as a video, saved where Render saves.
  - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
 (GLB, glTF, OBJ, STL), a picture, a BrickLink wanted list, a Rebrickable \
 parts list, or the building instructions as a booklet, written where \
@@ -661,10 +661,14 @@ func definitions() -> Array:
 		},
 		{
 			"name": "render_model",
-			"description": ("Render the model as File, Render does: a picture, or a turntable "
-				+ "(a WebP and, where ffmpeg is installed, an MP4), on a studio sweep with soft "
+			"description": ("Render the model as File, Render does: a picture, a turntable "
+				+ "(a WebP and, where ffmpeg is installed, an MP4), or build: the model built up "
+				+ "as a video, the timeline's steps one after another, each step's parts coming "
+				+ "down into place and the camera turning slowly round, over seconds (10 to 60, "
+				+ "20 when omitted), as Render's Building does; on a studio sweep with soft "
 				+ "shadows. quality quick, good or best (good for a picture, quick for a "
-				+ "turntable when omitted); size 720p, 1080p, 4k or square; view hero, "
+				+ "turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for "
+				+ "a turntable or a build); view hero, "
 				+ "front, side, back, low or top. look product is a product shot's: glossy "
 				+ "plastic with rounded edges, clear parts that bend the light, a key, fill "
 				+ "and rim over a softbox studio (window, the default, is the window's own). "
@@ -674,7 +678,8 @@ func definitions() -> Array:
 				+ "Render saves. It is a job: the answer is a job number at once, and job "
 				+ "gives the result, a picture with it. Needs the app in a window."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
-				"kind": {"type": "string", "enum": ["picture", "turntable"]},
+				"kind": {"type": "string", "enum": ["picture", "turntable", "build"]},
+				"seconds": {"type": "integer", "description": "a build's length, 10 to 60; 20 when omitted"},
 				"quality": {"type": "string", "enum": ["quick", "good", "best"]},
 				"size": {"type": "string", "enum": ["720p", "1080p", "4k", "square"]},
 				"view": {"type": "string", "enum": ["hero", "front", "side", "back", "low", "top"]},
@@ -2886,10 +2891,12 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 	var dialog: RenderDialog = app.get("_render")
 	var chosen: RenderSettings = dialog.settings.copy()
 	var kind: String = str(input.get("kind", "picture"))
-	# A turntable is thirty-six pictures: quick and small unless asked. A job
-	# all the same (ToolJobs): on a big model even that outlasts the three
-	# minutes a session waits for an answer.
-	var turning: bool = kind == "turntable"
+	if not kind in ["picture", "turntable", "build"]:
+		return "kind is picture, turntable or build."
+	# A turntable is thirty-six pictures, a build hundreds: quick and small
+	# unless asked. A job all the same (ToolJobs): on a big model even that
+	# outlasts the three minutes a session waits for an answer.
+	var turning: bool = kind != "picture"
 	var quality: Dictionary = {"quick": RenderSettings.Quality.QUICK,
 		"good": RenderSettings.Quality.GOOD, "best": RenderSettings.Quality.BEST}
 	chosen.quality = quality.get(str(input.get("quality", "quick" if turning else "good")),
@@ -2915,6 +2922,12 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 		chosen.f_stop = 4.0
 		chosen.focus = 0.4
 		chosen.quality = RenderSettings.Quality.BEST
+	if kind == "build":
+		var seconds: int = int(input.get("seconds", 20))
+		if seconds < BuildRender.SHORTEST or seconds > BuildRender.LONGEST:
+			return "seconds is %d to %d." % [BuildRender.SHORTEST, BuildRender.LONGEST]
+		chosen.frames = seconds * chosen.fps
+		kind = "building"
 	var said: String = await dialog.render_for(kind, chosen, work)
 	if kind != "picture" or dialog.last_picture() == null:
 		return said
@@ -2959,7 +2972,7 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 			if BookletMaker.busy:
 				return "The booklet is being drawn already."
 			var to: String = exports.folder if not exports.folder.is_empty() \
-				else OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
+				else Download.downloads()
 			said = await app.call("_export_booklet", "" if OS.has_feature("web") else
 				to.path_join(bar.model_name().to_snake_case() + "_instructions.html"), work)
 		_:
