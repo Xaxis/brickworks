@@ -388,8 +388,14 @@ func _collect_folded(item: TreeItem, into: Dictionary) -> void:
 func _fill(row: TreeItem, node: Assemblies.Item, folded: Dictionary) -> void:
 	var is_root: bool = node.path.is_empty()
 	var words: String = "Model" if is_root else Assemblies.label(node.path)
-	if not is_root and node.path == assemblies.entered:
-		words += "  (editing)"
+	if not is_root:
+		# A sub-model's name is its builder's, drawn as it is in any
+		# language: a sub-model named Car stays Car (Language), here and
+		# where a status line names it.
+		row.set_auto_translate_mode(0, Node.AUTO_TRANSLATE_MODE_DISABLED)
+		Language.keep_name(words)
+		if node.path == assemblies.entered:
+			words += "  " + atr("(editing)")
 	row.set_text(0, words)
 	row.set_metadata(0, node.path)
 	row.set_tooltip_text(0, ("The whole model: %d parts, %d loose" % [node.total, node.parts])

@@ -490,6 +490,7 @@ func _build() -> void:
 	for choice: Array in BACKGROUNDS:
 		background_names.append(choice[0])
 	_backgrounds = _segments(right, background_names, 0, _pick_background)
+	_say_white()
 	_picker = ColorPickerButton.new()
 	_picker.color = COLOUR
 	_picker.edit_alpha = false
@@ -678,6 +679,19 @@ func _make_default(kind: String) -> void:
 		"animation": _animation_button, "building": _building_button}
 	for each: String in buttons:
 		_strong(buttons[each], each == kind)
+
+
+## "White" as a backdrop, in its own words: not LDraw's colour of that
+## name, which every language keeps as it is (Language).
+func _say_white() -> void:
+	var white: Button = _backgrounds[0]
+	white.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	white.text = tr("White", "backdrop")
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and not _backgrounds.is_empty():
+		_say_white()
 
 
 ## A row of buttons of which one is down.
@@ -1200,7 +1214,7 @@ func controls_by_name() -> Dictionary:
 	for n: int in _sizes.size():
 		named_controls["render_size_" + _sizes[n].text.to_lower()] = _sizes[n]
 	for n: int in _backgrounds.size():
-		named_controls["render_bg_" + _backgrounds[n].text.to_lower()] = _backgrounds[n]
+		named_controls["render_bg_" + str(BACKGROUNDS[n][0]).to_lower()] = _backgrounds[n]
 	for n: int in _looks.size():
 		named_controls["render_look_" + str(RenderSettings.LOOKS.keys()[n])] = _looks[n]
 	for n: int in _frames.size():

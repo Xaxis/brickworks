@@ -4733,9 +4733,6 @@ msgstr "%s, connecté %s"
 msgid "%s, connected %s, last used %s"
 msgstr "%s, connecté %s, dernière utilisation %s"
 
-msgid "Not connected now. Connect Claude takes you to the Brickworks you already have in Claude, to connect it again."
-msgstr "Non connecté pour l'instant. « Connecter Claude » vous mène au Brickworks que vous avez déjà dans Claude, pour le reconnecter."
-
 msgid "Not connected. Connect Claude once and it can build in any Brickworks tab you have open, on your Claude plan."
 msgstr "Non connecté. Connectez Claude une fois et il pourra construire dans n'importe quel onglet Brickworks ouvert, avec votre abonnement Claude."
 
@@ -7965,8 +7962,8 @@ msgstr "Modèle"
 msgid "The whole model: %d parts, %d loose"
 msgstr "Le modèle entier : %d pièces, %d libres"
 
-msgid "%s  (editing)"
-msgstr "%s  (en cours de modification)"
+msgid "(editing)"
+msgstr "(en cours de modification)"
 
 msgid "%s: %d parts. Click to select it, double-click to edit inside it, click the name again to rename it"
 msgstr "%s : %d pièces. Cliquez pour le sélectionner, double-cliquez pour le modifier de l'intérieur, cliquez à nouveau sur le nom pour le renommer"
@@ -8206,3 +8203,10 @@ msgstr "Claude peut joindre cet onglet"
 
 msgid "No assistant, no Claude and no AI anywhere in the window. Claude connections are off while the assistant is off."
 msgstr "Pas d'assistant, pas de Claude et aucune IA dans la fenêtre. Les connexions à Claude sont coupées tant que l'assistant est désactivé."
+
+# A word with a second sense, kept apart by its context (msgctxt, and
+# tr(word, context) where it is drawn): White as a render's backdrop, beside
+# LDraw's colour of that name, which stays as it is
+msgctxt "backdrop"
+msgid "White"
+msgstr "Blanc"

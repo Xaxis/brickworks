@@ -20,6 +20,10 @@
 ##   kept out of the translation, and none keeps words of the interface in
 ##   English (Language.left_in_english) but names and keys;
 ## - Find a command finds Save by its name in the language, and by "save";
+## - Render's backdrop "White" reads the language's word, by its own entry
+##   (msgctxt "backdrop"), while LDraw's colour White stays White; and a
+##   sub-model named Car reads Car in the model tree and in a line that
+##   names it ("opened Car — 61 bricks");
 ## - in German, the longest words, at 1280 x 720: every menu at most 25
 ##   rows and 60% of the window's height (palette's bar), each inside the
 ##   window, and every control the page asks for (Main._page_controls, as
@@ -176,7 +180,7 @@ var _ADDRESS: RegEx = RegEx.create_from_string(
 ## Linux 24.04, forward_plus, 1280 × 720", what feedback sends): names.
 var _GLOBS: RegEx = RegEx.create_from_string(r"^\*\.[a-z0-9]+(, \*\.[a-z0-9]+)*$")
 var _LEGAL: RegEx = RegEx.create_from_string(
-	r"^(Copyright \(c\) .*|MIT License|SIL Open Font License [\d.]+|CC BY(-SA)? [\d.]+|CC0 [\d.]+)$")
+	r"^(Copyright \(c\) .*|MIT License|SIL Open Font License [\d.]+|CC BY(-SA)? [\d.]+|CC0 [\d.]+|CCAL [\d.]+)$")
 var _VERSIONED: RegEx = RegEx.create_from_string(r"^Brickworks \d+\.\d+")
 ## A number and its unit's sign ("30 s", "24 mm"), and a count of a part
 ## ("1 × Brick 2 x 4"), as every language writes them.
@@ -532,6 +536,11 @@ func _gather_dialogs() -> void:
 				# A set's model is "Micro Wheels — Forklift", its two names.
 				for piece: String in str(candidate["name"]).split(" — "):
 					_names[piece.strip_edges()] = true
+		# The Library's makers, as its cards credit them ("by %s · CCAL 2.0").
+		for card: Dictionary in ([] if _shell.library_dialog == null else _shell.library_dialog.get("_shown")):
+			var by: String = str(card["credit"]).get_slice(" · ", 0)
+			if by.begins_with("by "):
+				_names[by.trim_prefix("by ")] = true
 		var read: int = 0
 		for pair: Array in shown[1]:
 			if not _is_data(pair[0]):
@@ -590,6 +599,15 @@ func _open_dialog(name: String) -> void:
 			(_shell.get("_save_as") as Window).popup_centered()
 		"open_file":
 			bar.call("_import")
+		"library":
+			# Its sets once they come from the store, as a person waits for
+			# them: their names, themes and makers are read as names, every
+			# run alike, not only when the store answered in time.
+			_shell.run("library")
+			for _n: int in 900:
+				if not (_shell.library_dialog.get("_shown") as Array).is_empty():
+					break
+				await process_frame
 		"timeline":
 			_main.call("_toggle_steps")
 		"new":
@@ -729,7 +747,8 @@ func _texts_of(node: Node) -> Array[String]:
 		out.append((node as RichTextLabel).text)
 	elif node is OptionButton:
 		for n: int in (node as OptionButton).item_count:
-			out.append((node as OptionButton).get_item_text(n))
+			if (node as OptionButton).get_item_auto_translate_mode(n) != Node.AUTO_TRANSLATE_MODE_DISABLED:
+				out.append((node as OptionButton).get_item_text(n))
 	elif node is MenuButton:
 		out.append((node as MenuButton).text)
 		var popup: PopupMenu = (node as MenuButton).get_popup()
@@ -761,6 +780,10 @@ func _texts_of(node: Node) -> Array[String]:
 func _is_data(node: Node) -> bool:
 	if node is LineEdit and not (node as LineEdit).editable:
 		return false
+	# Set to be drawn as it is, its words a name (a sub-model's, a set's): a
+	# control's own choice, as a dialog kept out of translation whole is not.
+	if node.auto_translate_mode == Node.AUTO_TRANSLATE_MODE_DISABLED:
+		return true
 	var at: Node = node
 	while at != null:
 		if at is ItemList or at is Tree:
@@ -861,7 +884,48 @@ func _in(code: String) -> void:
 	_check("%s: Find a command, \"%s\" finds Save first (%s), and \"save\" still does (%s)" % [
 		code, typed, ", ".join(found.slice(0, 3)), ", ".join(english.slice(0, 3))],
 		not found.is_empty() and found[0] == "save" and not english.is_empty() and english[0] == "save")
+	await _two_senses(code)
 	await _pictures(code)
+
+
+## A word with a second sense, and a name that is a word too: Render's
+## backdrop "White" is the language's (its entry by context) while LDraw's
+## colour White stays a name; a sub-model named Car stays Car in the model
+## tree, though the parts' columns say Car in the language.
+func _two_senses(code: String) -> void:
+	var shown: Array = await _show("render")
+	var render: RenderDialog = _main.get("_render")
+	var white: Button = render.controls_by_name()["render_bg_white"]
+	var backdrop: String = TranslationServer.translate("White", "backdrop")
+	var colour: String = TranslationServer.translate("White")
+	_check("%s: Render's backdrop reads \"%s\", its own entry, and the colour White \"%s\"" % [
+		code, white.text, colour], white.text == backdrop and backdrop != "White" and colour == "White")
+	await _close("render", shown[0])
+	# The model tree open in the column on the right, where a person reads it
+	# (folded, it is not worked out).
+	(_main.get("_props_dock") as SideDock).set_open(true, false)
+	_shell.outliner.set_open(true)
+	(_main.get("_builder") as Builder).select_brick(_brick, false)
+	var made: String = _shell.assemblies.make("Car")
+	await _frames(10)
+	var row: TreeItem = null
+	var rows: Array[String] = []
+	var top: TreeItem = (_shell.outliner.get("_tree") as Tree).get_root()
+	for under: TreeItem in ([] if top == null else top.get_children()):
+		rows.append(under.get_text(0))
+		if under.get_text(0) == "Car":
+			row = under
+	_check("%s: the model tree's sub-model Car reads Car (the parts' word is \"%s\"; rows %s)" % [
+		code, Language.says("Car"), rows], not made.is_empty() and row != null
+		and Language.says("Car") != "Car"
+		and row.get_auto_translate_mode(0) == Node.AUTO_TRANSLATE_MODE_DISABLED)
+	# And where a line of the interface names it, as the status bar does a
+	# model just opened.
+	var opened: String = Language.says("opened Car — 61 bricks")
+	_check("%s: \"opened Car — 61 bricks\" reads \"%s\", the name kept" % [code, opened],
+		"Car" in opened and not Language.says("Car") in opened)
+	_shell.run("undo")
+	await _frames(4)
 
 
 func _some(words: Array[String]) -> String:

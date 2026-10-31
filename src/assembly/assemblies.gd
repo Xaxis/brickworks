@@ -343,6 +343,7 @@ func make(name: String) -> String:
 		return ""
 	var segment: String = unused_name(name) + "#1"
 	var path: String = join(entered, segment)
+	Language.keep_name(definition(segment))
 	var changes: Dictionary = {}
 	for brick_id: int in ids:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
@@ -383,6 +384,7 @@ func rename(path: String, wanted: String) -> String:
 	if name.is_empty() or name == old:
 		return old
 	name = unused_name(name)
+	Language.keep_name(name)
 	var changes: Dictionary = {}
 	for brick: BrickWorld.Brick in world.bricks():
 		if path_of(brick).is_empty():

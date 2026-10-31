@@ -1062,14 +1062,24 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   collection's, the minifigure builder, the part maker, the print editor,
   Send feedback, About, the confirmations, the assistant panel) are
   translated too, and the model tree's own row ("Model"); not yet the web
-  pages, nor "White" on Render's backgrounds, which is a colour's name too.
+  pages. Names a person or a set gave are drawn as they are, kept out of the
+  translation (`auto_translate_mode` off): the model tree's sub-models, the
+  Library's set names and themes; and a model's or a sub-model's name in a
+  line of the interface (`Language.keep_name`: "opened Car — 61 bricks" is
+  "Car geöffnet — 61 Steine", not "Auto"). A word with a second sense has
+  an entry of its own by context: Render's backdrop "White" (`msgctxt
+  "backdrop"`, `tr("White", "backdrop")`) beside LDraw's colour White.
   `languages_probe` reads them all in English, then in each language: 63
   common actions with the status line heard after each, Settings with the
   assistant on and off, and 40-odd dialogs opened one by one (`DIALOGS`; the
   sign-in screen, which a probe's window never shows, made in each of its
   faces), each word drawn on them read; a word added to a menu, a tooltip, a
-  panel, a dialog or a status message with no entry fails it, and
-  `--missing=FILE` writes the entries to translate, each partial one with
+  panel, a dialog or a status message with no entry fails it, as does
+  Render's backdrop not reading its own entry or a sub-model named Car
+  reading Car's translation, in the tree or in a status line; a control set
+  to draw its words as they are
+  shows a name and is not read. `--missing=FILE` writes the entries to
+  translate, each partial one with
   the whole it was in ("#. in:"). `--shots=DIR` pictures ten dialogs (the
   sign-in screen's two steps first) and a status line in each language.
   `tests/test_locale.py` checks the files (places kept, LEGO® an adjective,
