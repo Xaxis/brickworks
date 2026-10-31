@@ -383,6 +383,10 @@ static func _families(assemblies: Assemblies, bricks: Dictionary) -> Dictionary:
 			at = parent[at]
 		return at
 	var done: Dictionary = {}
+	# One walk of the model for every path asked about, as Assemblies' own
+	# passes over many copies have it: a path at a time, each of Orthanc's
+	# copies walked its 10,101 parts again, a third of a second (bigmodels).
+	assemblies._begin_pass()
 	for path: String in assemblies.paths():
 		var definition: String = Assemblies.definition(Assemblies.leaf(path))
 		if done.has(definition):
@@ -415,6 +419,7 @@ static func _families(assemblies: Assemblies, bricks: Dictionary) -> Dictionary:
 				var root_b: int = find.call(b)
 				if root_a != root_b:
 					parent[root_b] = root_a
+	assemblies._end_pass()
 	var out: Dictionary = {}
 	for brick_id: int in parent:
 		if not bricks.has(brick_id):

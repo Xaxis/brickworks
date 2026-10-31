@@ -991,7 +991,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 	// part the build does not carry. What came and when is
 	// window.brickworksLater (tools/web/load_check.mjs).
 	const LATER_AT = GODOT_CONFIG.executable + ".parts.bin";
-	const later = window.brickworksLater = { asked: 0, came: 0, written: 0, files: 0, failed: "", gave_up: false };
+	const later = window.brickworksLater = { asked: 0, came: 0, began: 0, written: 0, files: 0, failed: "", gave_up: false };
 	let laterBytes = null;
 
 	// -- What the start reads, and what waits until it is wanted -------
@@ -1015,7 +1015,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 	const packs = window.brickworksPacks = {};
 	const packBytes = {};
 	function packState(name) {
-		return packs[name] = packs[name] || { asked: 0, came: 0, written: 0, files: 0, failed: "", gave_up: false };
+		return packs[name] = packs[name] || { asked: 0, came: 0, began: 0, written: 0, files: 0, failed: "", gave_up: false };
 	}
 
 	// Fetched by a worker of its own, made now while the page's thread is
@@ -1142,6 +1142,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 			const bytes = packBytes[name];
 			delete packBytes[name];
 			const state = packs[name];
+			state.began = performance.now();
 			try {
 				if (name === "data") {
 					engine.copyToFS("/packs/index.data.pck", bytes);
@@ -1184,6 +1185,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 		if (!started || !laterBytes) return;
 		const bytes = laterBytes;
 		laterBytes = null;
+		later.began = performance.now();
 		try {
 			later.files = writeBundle(bytes, "/later/");
 			later.written = performance.now();

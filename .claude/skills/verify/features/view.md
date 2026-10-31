@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture -->
 
 ## Sub-features
 
@@ -1725,6 +1725,32 @@ picture the assistant is shown.
   one, for the set's nodes laid out; 7 before). Not in a probe that does not
   ask (`RenderDialog.warms_when_idle`), as IdleDraw leaves a probe be:
   idle_probe counted them as 9 frames drawn in 5 s standing still.
+- `building video` (Render's Building and Render building, render_model
+  `kind=build seconds=`; `src/render/build_render.gd`, APP_UX3 gap 5): the
+  model built up as Studio's building animation, over 10, 20, 30 or 60 s. The
+  order is the timeline's (`Instructions.plan_paced`, the author's steps
+  where the model has them), each step an equal share of four fifths of the
+  length, its parts coming down into place one after another from a quarter
+  of the model's height above (at least 48 LDU), all down before the next
+  step; the last fifth the finished model. The camera turns 4.5° a second
+  and ends on the view chosen, framed on the finished model. Drawn through
+  `StudioRender.animate` (a part not yet arrived drawn at no size,
+  `BuildRender.AWAY`; only the parts that change a frame are moved), with
+  the contact shadow off (it is the finished model's), kept as a turntable
+  is (`RenderOutput.begin_turntable(..., "_building")`: WebP, PNG frames, MP4).
+  Return in Render renders the kind whose choices were touched last, its
+  button drawn strong (`RenderDialog._make_default`): Render, a length,
+  Return is three actions. The panel plays back at most 48 of its frames at
+  12 a second. Proof: `tools/probe.sh buildvideo [OUT]` (`cli:buildvideo
+  probe`) watches the render's own stage each frame (`staged_transform`):
+  every frame the first so many of the order Timeline itself shows, the
+  first frame one part, the last all 61 of the car at home and the same as a
+  picture with the same choices (0.00 levels apart); 480 frames, WebP, PNGs
+  and a 20 s MP4; render_model build in one call and its job, 90 s refused
+  at once; and every file in the run's own data, not the system's Downloads.
+  A held run (`Outside.held`: a script, `BRICKWORKS_OPEN_NOTHING`, or
+  `CLAUDECODE`, an app started from a Claude Code session as appux3's MCP
+  walk did) writes every file into `user://downloads` (`Download.downloads`).
 - `product look` (`RenderSettings.look` "product"; Render's Look, render_model's
   `look=product`, with `backdrop` and `depth_of_field`; docs/RENDERING.md):
   the render's copy of the model drawn in the `plastic_product*` shaders

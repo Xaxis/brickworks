@@ -175,7 +175,9 @@ geometry in front of them.
   with PROBE_SIZE), in the bin as it opens and after "slope 45 2x2": its
   part's name, fitted, no two alike.
   Colour in the bin, and the obvious part in one action (appux2 bin2,
-  2026-10-30). **Only parts made in it** beside the colour's name lists
+  2026-10-30). **Only parts made in it** beside the colour's name (the
+  line wraps where it is narrow, the box whole: at 390 it read "Only
+  par…") lists
   only the parts set inventories have in that colour (`PartsBin.made_in`:
   the part's `colors` and its mould's, through `PartLibrary.made_as`, the
   years data the swatches use; a part with none known is left out), and a

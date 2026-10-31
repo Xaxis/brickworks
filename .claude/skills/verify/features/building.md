@@ -200,7 +200,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   only of a part that may be joined there (`SelectBy.sideways`: the parts
   whose studs point that way and what stands beside them), after its first
   256: on Orthanc, joined from all 10,101 took 6.1 to 7.5 s, now a third of a
-  second. `bigmodels_probe -- only=joined`: from one part it finds what asking
+  second. From one part, what is found already is not asked about again, a
+  part's slabs are written in place (`SelectBy._shell`), and a neighbour of a
+  few boxes is asked slab by slab, the first pair that meets answering
+  (`BrickLattice._scan`, the same answer as before on all 119,237 pairs of
+  Orthanc and the castle): joined from one part of Orthanc took 1.5 to 2.1 s,
+  now 0.75 to 0.95 s headless and 1.1 s in a window at a load of 40 on 24
+  cores. `bigmodels_probe -- only=joined`: from one part it finds what asking
   every side of every part finds.
 - `hide and show only`: `Ctrl-H` hides the selection (`H` alone is the Pan
   tool), `Shift-H` hides everything else, `Alt-H` (or `Ctrl-H` with nothing
@@ -433,7 +439,17 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (Main's own, `PartsBin.zoom`, a finger's drag scrolling it), half the
   screen, its handle swiped to the whole screen or away, gone with a pick
   (on a phone on its side the whole screen: half was its head and no part,
-  `PhoneShell.HALF_LEAST`);
+  `PhoneShell.HALF_LEAST`). A sheet from the foot stands on the screen's
+  foot, taller than asked where what it holds needs more, up to the whole
+  screen, and back down when it needs less (`Sheet._place`, on every change
+  of its least size): it was placed from a fixed top and grew down past the
+  screen, keeping the 1,800 points its wrapped status asked on its first
+  frame, so the bin's Prints and List sat at 801 on an 844-tall phone and
+  its whole foot under a phone on its side (rel-m226). In the bin the rows
+  above the parts (the set's lines, the search, the chips)
+  scroll with the parts and its foot (the status, Prints, List) stays; a
+  new list is put at its search (`PartsBin._to_list_top`), so a search
+  with few parts still shows them whole;
   the colours, 46-point swatches by group (`PartsBin.choose_colour`, what a
   swatch press does: it paints a selection); More, every menu's commands a
   row each, greyed and lit as the menus are; and a finger held still on a
@@ -448,7 +464,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   slope tapped down; Select, a brick tapped, Colour, blue painting it, Undo;
   a held finger's actions; two fingers turning and spreading; at each step
   the app's own audit (`window.brickworksAskPhone`, `Main._phone_audit`):
-  every target 44 points or more, no text under 12, nothing off the screen.
+  every target 44 points or more, no text under 12, nothing off the screen
+  (a control wholly under the screen counts: the audit passed over those,
+  and so missed the bin's foot on a phone on its side).
   `tools/web/fit_check.mjs` opens its phone sizes (390 x 844, 844 x 390) as
   phones, and 844 x 390 again with a mouse (appux2 saw the desktop's key
   strip over most of a 128-px model there), the model keeping half the

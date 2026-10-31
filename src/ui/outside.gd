@@ -19,11 +19,15 @@ static var opened: Array[String] = []
 
 ## Whether this run opens nothing. Any script's run (a probe or a tool:
 ## `--script` or `-s`, whose main loop is that script) is held, whoever
-## started it and however, so no probe can forget to be; and any run under
-## tools/probe.sh or tools/check.sh, which set BRICKWORKS_OPEN_NOTHING. The
-## person's app runs src/main.tscn on Godot's own SceneTree, and never is.
+## started it and however, so no probe can forget to be; any run under
+## tools/probe.sh or tools/check.sh, which set BRICKWORKS_OPEN_NOTHING; and
+## the app started from a Claude Code session (CLAUDECODE), as appux3's MCP
+## walk started it, whose render went into the owner's Downloads. The
+## person's app runs src/main.tscn on Godot's own SceneTree, from their
+## desktop, and never is. A held run writes its files into its own data
+## (Download.downloads).
 static func held() -> bool:
-	if OS.has_environment("BRICKWORKS_OPEN_NOTHING"):
+	if OS.has_environment("BRICKWORKS_OPEN_NOTHING") or OS.has_environment("CLAUDECODE"):
 		return true
 	var loop: MainLoop = Engine.get_main_loop()
 	return loop != null and loop.get_script() != null

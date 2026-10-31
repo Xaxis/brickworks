@@ -219,7 +219,9 @@ class _Search extends RefCounted:
 			across = SelectBy.sideways(world, lattice)
 		asked += 1
 		var here: int = queue.pop_back()
-		for other: int in SelectBy._joined_to(world, lattice, here, across):
+		# What is found already is not asked about again: from one part of
+		# Orthanc, seven of every ten parts a question came near were.
+		for other: int in SelectBy._joined_to(world, lattice, here, across, found):
 			if found.has(other) or scenery.has(other):
 				continue
 			found[other] = true
@@ -254,24 +256,30 @@ static func sideways(world: BrickWorld, lattice: BrickLattice) -> Array:
 ## carrying its bottom, and, for a part whose studs do not point up or
 ## down, anything against the faces along its stud axis. With [param
 ## across] (see [method sideways]), a brick that cannot be joined across
-## an axis is not asked about it.
+## an axis is not asked about it. Bricks in [param known] are left out
+## unasked.
 static func _joined_to(world: BrickWorld, lattice: BrickLattice,
-		brick_id: int, across: Array = []) -> Array:
+		brick_id: int, across: Array = [], known: Dictionary = {}) -> Array:
 	var mine: PackedInt32Array = lattice.boxes_of(brick_id)
 	if mine.is_empty():
 		return []
-	var out: Dictionary = {}
 	# Above and below: always a joint.
-	for other: int in lattice.blockers_boxes(_shell(mine, 1), brick_id):
+	var above: PackedInt64Array = lattice.blockers_boxes(_shell(mine, 1), brick_id, known)
+	var sides: Array[int] = []
+	for axis: int in [0, 2]:
+		if across.is_empty() or (across[axis / 2] as Dictionary).has(brick_id):
+			sides.append(axis)
+	if sides.is_empty():
+		return Array(above)
+	var out: Dictionary = {}
+	for other: int in above:
 		out[other] = true
 	# Across the sides: a joint when either part's studs point that way.
 	# Asked from both ends, so the panel finds the SNOT brick and the SNOT
 	# brick finds the panel.
 	var own: int = _stud_axis(world, brick_id)
-	for axis: int in [0, 2]:
-		if not across.is_empty() and not (across[axis / 2] as Dictionary).has(brick_id):
-			continue
-		for other: int in lattice.blockers_boxes(_shell(mine, axis), brick_id):
+	for axis: int in sides:
+		for other: int in lattice.blockers_boxes(_shell(mine, axis), brick_id, known):
 			if own == axis or _stud_axis(world, other) == axis:
 				out[other] = true
 	return out.keys()
@@ -295,37 +303,35 @@ static func _axis_of(brick: BrickWorld.Brick) -> int:
 	return -1
 
 
-## The slabs against every box's two faces across an axis.
+## The slabs against every box's two faces across an axis: for each box,
+## the one-cell slab before its low face and the one after its high face,
+## inset by a cell along the other axes where there is room, so that bricks
+## meeting only at an edge or a corner are not taken for joined. Written in
+## place: a slab a new array was a sixth of the look from one part of
+## Orthanc.
 static func _shell(boxes: PackedInt32Array, axis: int) -> PackedInt32Array:
 	var out := PackedInt32Array()
+	out.resize(boxes.size() * 2)
+	var at: int = 0
 	var n: int = 0
 	while n < boxes.size():
-		_slab(out, Vector3i(boxes[n], boxes[n + 1], boxes[n + 2]),
-			Vector3i(boxes[n + 3], boxes[n + 4], boxes[n + 5]), axis)
+		for k: int in 3:
+			var low: int = boxes[n + k]
+			var high: int = boxes[n + k + 3]
+			if k != axis and high - low > 2:
+				low += 1
+				high -= 1
+			out[at + k] = low
+			out[at + k + 3] = high
+			out[at + k + 6] = low
+			out[at + k + 9] = high
+		out[at + axis] = boxes[n + axis] - 1
+		out[at + axis + 3] = boxes[n + axis]
+		out[at + axis + 6] = boxes[n + axis + 3]
+		out[at + axis + 9] = boxes[n + axis + 3] + 1
+		at += 12
 		n += 6
 	return out
-
-
-## The two one-cell slabs against a box's faces across an axis, inset by a
-## cell along the others so that bricks meeting only at an edge or a
-## corner are not taken for joined.
-static func _slab(into: PackedInt32Array, lo: Vector3i, hi: Vector3i, axis: int) -> void:
-	for side: int in [0, 1]:
-		var a: Vector3i = lo
-		var b: Vector3i = hi
-		for other: int in 3:
-			if other == axis:
-				continue
-			if b[other] - a[other] > 2:
-				a[other] += 1
-				b[other] -= 1
-		if side == 0:
-			b[axis] = lo[axis]
-			a[axis] = lo[axis] - 1
-		else:
-			a[axis] = hi[axis]
-			b[axis] = hi[axis] + 1
-		into.append_array(PackedInt32Array([a.x, a.y, a.z, b.x, b.y, b.z]))
 
 
 static func _where(world: BrickWorld, scenery: Dictionary, keep: Callable) -> Array:

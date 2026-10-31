@@ -1536,18 +1536,31 @@ func _out_of_buckets(brick_id: int, bound: PackedInt32Array) -> void:
 ## section-mates is sixty-four thousand tests to discard the lot.
 func blockers_boxes(packed: PackedInt32Array, ignore: int = 0,
 		skip: Dictionary = {}) -> PackedInt64Array:
-	var found: Dictionary = {}
+	var found := PackedInt64Array()
+	if packed.is_empty():
+		return found
 	var mine: PackedInt32Array = _bound_of(packed)
 	var plain: bool = _plain(packed)
-	for other: int in _near(mine):
-		if other == ignore or skip.has(other):
-			continue
-		var bound: PackedInt32Array = _bounds.get(other, PackedInt32Array())
-		if not _overlaps_pairwise(mine, bound):
-			continue
-		if _meets(packed, mine, plain, other, bound):
-			found[other] = true
-	return PackedInt64Array(found.keys())
+	# The buckets of the bound read in the order _near reads them, and what
+	# is skipped never noted: everything a look for what is joined to a
+	# part has found already was gathered whole first, a quarter of the look
+	# from one part of Orthanc (bigmodels).
+	var asked: Dictionary = {ignore: true}
+	for bx: int in range(_floor_div(mine[0], BUCKET), _floor_div(mine[3] - 1, BUCKET) + 1):
+		for by: int in range(_floor_div(mine[1], BUCKET), _floor_div(mine[4] - 1, BUCKET) + 1):
+			for bz: int in range(_floor_div(mine[2], BUCKET), _floor_div(mine[5] - 1, BUCKET) + 1):
+				var here: Variant = _bucket.get(Vector3i(bx, by, bz))
+				if here == null:
+					continue
+				for other: int in here:
+					if asked.has(other) or skip.has(other):
+						continue
+					asked[other] = true
+					var bound: PackedInt32Array = _bounds.get(other, PackedInt32Array())
+					if _overlaps_pairwise(mine, bound) \
+							and _meets(packed, mine, plain, other, bound):
+						found.append(other)
+	return found
 
 
 ## Those of [param among] that [method blockers_boxes] would find for
@@ -1809,6 +1822,15 @@ static func _overlaps_within(a: PackedInt32Array, bound_a: PackedInt32Array,
 	var hi_y: int = mini(bound_a[4], bound_b[4])
 	var hi_z: int = mini(bound_a[5], bound_b[5])
 	var region := PackedInt32Array([lo_x, lo_y, lo_z, hi_x, hi_y, hi_z])
+	# Few of the smaller set's boxes inside it: each box of the other asked
+	# of those few as it is reached, the first pair that meets answering.
+	# Every box of both gathered first, a part's slabs against a brick on it
+	# were half of SelectBy's look from one part of Orthanc (bigmodels).
+	if lo_x < hi_x and lo_y < hi_y and lo_z < hi_z:
+		var a_many: bool = a.size() >= b.size()
+		var few: PackedInt32Array = _inside(b if a_many else a, region)
+		if few.size() != 1 and few.size() <= SCAN_UP_TO * 6:
+			return _scan(a if a_many else b, few, region, a, b)
 	var mine: PackedInt32Array = _inside(a, region)
 	var theirs: PackedInt32Array = _inside(b, region)
 	# A box empty along an axis: pair by pair, as it always was.
@@ -1854,6 +1876,40 @@ static func _overlaps_within(a: PackedInt32Array, bound_a: PackedInt32Array,
 					if from_x < theirs[o + 3] and theirs[o] < to_x:
 						return true
 					at = next[at]
+		i += 6
+	return false
+
+
+## Boxes of the smaller set inside the region past which [method
+## _overlaps_within] lays them out by rows rather than asks each.
+const SCAN_UP_TO := 12
+
+
+## [method _overlaps_within] where [param few] are the smaller set's boxes
+## inside [param region], none empty: each box of [param many] inside it
+## asked of each, the first pair that meets answering. A box of [param many]
+## empty along an axis answers as [method _overlaps_within] does, [param a]
+## against [param b] pair by pair.
+static func _scan(many: PackedInt32Array, few: PackedInt32Array, region: PackedInt32Array,
+		a: PackedInt32Array, b: PackedInt32Array) -> bool:
+	var i: int = 0
+	while i < many.size():
+		var x0: int = many[i]
+		var y0: int = many[i + 1]
+		var z0: int = many[i + 2]
+		var x1: int = many[i + 3]
+		var y1: int = many[i + 4]
+		var z1: int = many[i + 5]
+		if x0 >= x1 or y0 >= y1 or z0 >= z1:
+			return _overlaps_pairwise(a, b)
+		if x0 < region[3] and region[0] < x1 and y0 < region[4] and region[1] < y1 \
+				and z0 < region[5] and region[2] < z1:
+			var j: int = 0
+			while j < few.size():
+				if x0 < few[j + 3] and few[j] < x1 and y0 < few[j + 4] and few[j + 1] < y1 \
+						and z0 < few[j + 5] and few[j + 2] < z1:
+					return true
+				j += 6
 		i += 6
 	return false
 

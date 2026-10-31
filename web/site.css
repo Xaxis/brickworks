@@ -84,6 +84,9 @@
 	--avatar-1: #b42318; --avatar-2: #1f5fbf; --avatar-3: #1f7a3d; --avatar-4: #7a3fb0;
 	--avatar-5: #9a4a00; --avatar-6: #0e6f8a; --avatar-7: #a3175a; --avatar-8: #4b5563;
 	--on-avatar: #ffffff;
+	/* A set's own picture (Rebrickable's) stands on the white it was
+	   photographed on, in both themes (web/directory.css .set-page). */
+	--photo-ground: #ffffff;
 	/* Controls: a field and a button side by side are the same height,
 	   with the same corners; every field has the same fill. */
 	--field: var(--bg-soft);
