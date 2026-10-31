@@ -80,6 +80,9 @@ func _run() -> void:
 		["search_parts", {"query": "technic gear 24 tooth"}],
 		["attachment_points", {"part": "32523", "x": 0, "y": 0, "z": 0}],
 		["attachment_points", {"brick": first}],
+		# Several at once (mcpcad): each answered as alone, nothing laid.
+		["attachment_points", {"parts": [{"part": "3040", "x": 0, "y": 0, "z": 0, "rot": 2},
+			{"brick": first}]}],
 		["how_real_sets_build_this", {"subject": "an orrery"}],
 		["find_techniques", {"query": "gear train"}],
 		["show_technique", {"name": "round tower"}],
@@ -158,6 +161,23 @@ func _run() -> void:
 			.get("content", []))
 		_ok(_standing(app_world) == was and not said.is_empty(), "%s %s changes nothing: %s" % [
 			call[0], JSON.stringify(call[1]), said.left(60).replace("\n", " ")])
+	# What the person sees with a part in their hand and its ghost over the
+	# model (mcpcad): the hand and the ghost are theirs, and stay as they were.
+	main.call("_on_part_chosen", "3004")
+	var app_builder: Builder = main.get("_builder")
+	app_builder.update_preview(Vector3(250.0, 400.0, 150.0), Vector3.DOWN)
+	var hand: Array = [app_builder.held_part, app_builder.held_color, app_builder.held_rotation,
+		app_builder.ghost_place()]
+	var standing: String = _standing(app_world)
+	sent += 1
+	var seen: Variant = await socket.answer_rpc({"jsonrpc": "2.0", "id": sent,
+		"method": "tools/call", "params": {"name": "in_view", "arguments": {}}})
+	var seen_said: String = _text_of(((seen as Dictionary).get("result", {}) as Dictionary)
+		.get("content", []))
+	_ok(_standing(app_world) == standing and seen_said.contains("its ghost under the pointer")
+		and [app_builder.held_part, app_builder.held_color, app_builder.held_rotation,
+			app_builder.ghost_place()] == hand,
+		"in_view with a part in hand changes nothing, the hand and its ghost as they were")
 
 	# Every tool the table calls read-only (CommandSocket.HINTS, which
 	# every client is told) is one called above.
