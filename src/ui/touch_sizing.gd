@@ -180,11 +180,26 @@ func size_panel(panel: Control) -> void:
 	size_tree(panel)
 
 
-## One of those made to fit across the room it has, as a dialog is.
-func fit_panel(panel: Control) -> void:
+## One of those made to fit across the room it has, as a dialog is, or
+## across [param across] where its rows would have it wider: the tools'
+## column has the room the screen leaves it, whatever they want
+## (Main._fit_tool_panel).
+func fit_panel(panel: Control, across: float = -1.0) -> void:
 	if is_instance_valid(panel) and panel.is_visible_in_tree():
-		_wrap_words(panel, panel.size.x)
-		_flow_rows(panel, panel.size.x)
+		var width: float = panel.size.x if across < 0.0 else across
+		_wrap_words(panel, width)
+		_flow_rows(panel, width)
+		_fit_pictures(panel, width)
+
+
+## Every picture in [param root] wider than [param across] made as wide as
+## it, its shape kept: Colour the hidden parts' two, 300 units each, held
+## its panel wider than a tablet's room beside the model.
+static func _fit_pictures(root: Node, across: float) -> void:
+	for found: Node in root.find_children("*", "TextureRect", true, false):
+		var picture: TextureRect = found
+		if picture.custom_minimum_size.x > across:
+			picture.custom_minimum_size *= across / picture.custom_minimum_size.x
 
 
 ## An open dialog whose lines changed while it was open, now wider than it
@@ -575,13 +590,19 @@ static func _flow_rows(root: Node, across: float) -> bool:
 
 ## Every line in [param root] too wide for [param across] wrapped: one
 ## wider than it, or one whose row of buttons is, which then takes the room
-## its row leaves it.
+## its row leaves it. One that wraps already is held to [param across]
+## too: Colour the hidden parts' words, wrapped at two pictures' width,
+## held its panel 650 points wide on a 1024-point tablet.
 static func _wrap_words(root: Node, across: float) -> bool:
 	var wrapped: bool = false
 	for found: Node in root.find_children("*", "Label", true, false):
 		var label: Label = found
-		if label.autowrap_mode != TextServer.AUTOWRAP_OFF or label.clip_text \
-				or not label.is_visible_in_tree():
+		if label.clip_text or not label.is_visible_in_tree():
+			continue
+		if label.autowrap_mode != TextServer.AUTOWRAP_OFF:
+			if label.custom_minimum_size.x > across:
+				label.custom_minimum_size.x = across
+				wrapped = true
 			continue
 		var row := label.get_parent() as HBoxContainer
 		var in_row: bool = row != null and row.get_combined_minimum_size().x > across \

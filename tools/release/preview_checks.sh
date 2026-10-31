@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # preview_checks.sh ORIGIN WORKTREE TAG [NAME...] : chosen browser checks
-# against a preview, two at a time; all of them when no names are given.
-# Results: $S/TAG.out, one line a check; logs $S/TAG_NAME.log.
+# against a preview, PC_AT_ONCE at a time (3); all of them when no names
+# are given. Results: $S/TAG.out, one line a check; logs $S/TAG_NAME.log.
 # Run from a copy: bash reads a script as it goes, so an edit made while a
 # battery ran broke it at line 55 and the timing checks never ran.
 if [ -z "${PC_COPY:-}" ]; then
@@ -591,17 +591,29 @@ run() {
 SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together load "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
-# Two at a time, a slot taking the next check as soon as it is free. Two
-# live checks side by side would take turns at the lock while the other
-# slot sat idle, so a slot takes a live one only when the other is not
+# PC_AT_ONCE at a time, a slot taking the next check as soon as it is
+# free. Two live checks side by side would take turns at the lock while
+# another slot sat idle, so a slot takes a live one only when no other is
 # running one, or nothing else is left. The live checks, one after
 # another, then set the phase's length. On the times m146's checks took:
 # 31 minutes, against the 37 its pairs took, each waiting for its longer
-# half; on m144's, which had more live ones, 44 against 38.
+# half; on m144's, which had more live ones, 44 against 38. Three: eight
+# checks on brickworks.diy did 1.8 checks' work at a time 2 at once, 2.2
+# to 2.3 at 3 and 2.7 at 4, where the load reached 41 on 24 cores and each
+# check took 1.2 times as long; placing, a timing check run paired, passed
+# 3 at once at load 33 (2026-10-30).
+at_once=${PC_AT_ONCE:-3}
+# A train runs the release's probes beside its ship and names their file
+# in SHIP_PROBES (ship.sh). Once it says they failed the release will not
+# ship: no check more is begun, and those under way end as they would,
+# each deleting the accounts it made.
+probes_failed() { [ -n "${SHIP_PROBES:-}" ] && grep -q '^failed' "$SHIP_PROBES" 2>/dev/null; }
+not_run() { for n in "$@"; do echo "$n exit=125 fails=1 0s :: FAIL not run: the release's probes failed ($SHIP_PROBES)" >> "$S/$TAG.out"; done; }
 wet=(); dry=(); declare -A slot=()
 for n in $PAIRED; do if live "$n"; then wet+=("$n"); else dry+=("$n"); fi; done
 while :; do
-  while [ ${#slot[@]} -lt 2 ]; do
+  if probes_failed; then not_run "${wet[@]}" "${dry[@]}"; wet=(); dry=(); fi
+  while [ ${#slot[@]} -lt "$at_once" ]; do
     busy=""; for p in "${!slot[@]}"; do live "${slot[$p]}" && busy=1; done
     if [ ${#wet[@]} -gt 0 ] && { [ -z "$busy" ] || [ ${#dry[@]} -eq 0 ]; }; then n=${wet[0]}; wet=("${wet[@]:1}")
     elif [ ${#dry[@]} -gt 0 ]; then n=${dry[0]}; dry=("${dry[@]:1}")
@@ -621,5 +633,5 @@ done
 # and flows kept it at 13-42 (2026-10-30). After BOX_HEAVY_SOLO_WAIT
 # (600 s) it runs anyway. The load each began at, and beside what, goes in
 # TAG_calm.log, to read beside a timing failure.
-for n in $ALONE; do run "$n" --solo; done
+for n in $ALONE; do if probes_failed; then not_run "$n"; else run "$n" --solo; fi; done
 echo "done" >> "$S/$TAG.out"

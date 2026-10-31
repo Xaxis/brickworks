@@ -132,7 +132,8 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_notices.py",
-        "tests/test_gallery_builds.py"
+        "tests/test_gallery_builds.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -588,6 +589,14 @@
       "entry": "tools/web/builds_flow.mjs",
       "reach": "node --env-file=.env tools/web/relay_server.mjs 9104 --static=build/web --hold=model_builds,build_photos,report_photos,share_tests,model_comments --trust-stand-in & node --env-file=.env tools/web/builds_flow.mjs --url=http://127.0.0.1:9104 --out=DIR   (or --url=<preview> with BW_BYPASS once supabase/builds.sql is applied)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:buildvideo probe",
+      "kind": "cli",
+      "entry": "src/dev/buildvideo_probe.gd",
+      "reach": "tools/probe.sh buildvideo [OUT_DIR]; PROBE_SIZE=1400x900 tools/probe.sh buildvideo OUT_DIR   (windowed, on the GPU: the car's building video by Render, 20 s and Return, every frame a prefix of the timeline's order on the render's stage, the last the whole model, the WebP, PNGs and MP4; render_model kind=build in one call and its job; every file in the run's own data, none in the system's Downloads; pictures of the dialog)",
+      "area": "view",
       "tests": []
     },
     {
@@ -2093,6 +2102,14 @@
       "entry": "src/dev/step_link_probe.gd",
       "reach": "tools/probe.sh step_link_probe   (windowed: godot --path . --resolution 1280x800 --script src/dev/step_link_probe.gd)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:steps3 probe",
+      "kind": "cli",
+      "entry": "src/dev/steps3_probe.gd",
+      "reach": "tools/probe.sh steps3_probe; PROBE_SIZE=1400x900 tools/probe.sh steps3_probe   (pictures in shots/steps3/)",
+      "area": "view",
       "tests": []
     },
     {
@@ -3685,7 +3702,8 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_notices.py",
-        "tests/test_gallery_builds.py"
+        "tests/test_gallery_builds.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -3762,7 +3780,8 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_notices.py",
-        "tests/test_gallery_builds.py"
+        "tests/test_gallery_builds.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -3787,6 +3806,14 @@
       "entry": "api/_library.js",
       "reach": "https://brickworks.diy/library/omr-10179-1   (api/share.js sharePage with model.library: its cover, modelled by and CC BY credit with LDraw's page, facts, Open in Brickworks = /app?new=1&library=<id>, Share, Parts; /library/<id>.webp, .cutout.webp, .cover.webp, .mpd and /parts.json|xml|csv; from the parts store's library/index.json, no database)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:any step in one go",
+      "kind": "ui",
+      "entry": "src/ui/steps_bar.gd",
+      "reach": "godot --path .  (B opens the timeline; drag the selection's yellow mark on the row of steps onto another step; or Alt-T, a number and Return; Alt-[ / Alt-] / Alt-E / Alt-Delete on the step showing)",
+      "area": "view",
       "tests": []
     },
     {
@@ -3881,6 +3908,14 @@
       "tests": []
     },
     {
+      "id": "ui:building video",
+      "kind": "ui",
+      "entry": "src/render/build_render.gd",
+      "reach": "godot --path .  (File, Render\u2026, Building's length, Return or Render building; render_model kind=build over MCP)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:buttons seen and read",
       "kind": "ui",
       "entry": "src/ui/look.gd",
@@ -3928,7 +3963,8 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_notices.py",
-        "tests/test_gallery_builds.py"
+        "tests/test_gallery_builds.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -4063,7 +4099,8 @@
       "area": "web",
       "tests": [
         "tests/test_docs_site.py",
-        "tests/test_release.py"
+        "tests/test_release.py",
+        "tests/test_release_train.py"
       ]
     },
     {
@@ -4616,7 +4653,8 @@
       "area": "web",
       "tests": [
         "tests/test_challenge_notices.py",
-        "tests/test_gallery_builds.py"
+        "tests/test_gallery_builds.py",
+        "tests/test_release_train.py"
       ]
     },
     {

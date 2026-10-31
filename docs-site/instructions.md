@@ -12,15 +12,25 @@ description: Build steps, the timeline, the booklet Brickworks lays out from the
 
 ## Build steps {#steps}
 
-A model's build steps are the order it goes together in. Press [[E]] as you build: what was put down since the last step becomes one. **Build › Build steps** moves the selected parts a step earlier ([[Shift+[]]) or later ([[Shift+]]]), makes a step of them ([[Shift+N]]), and moves, merges or deletes the step the timeline is on.
+A model's build steps are the order it goes together in. Press [[E]] as you build: what was put down since the last step becomes one. **Build › Build steps** moves the selected parts a step earlier ([[Shift+[]]) or later ([[Shift+]]]), makes a step of them ([[Shift+N]]), and moves the step the timeline is on earlier ([[Alt+[]]) or later ([[Alt+]]]), merges it with the next ([[Alt+E]]) or deletes it ([[Alt+Delete]]).
 
 <!-- covers
 ui:build steps
 -->
 
+### Any step in one go {#move-to-step}
+
+Under the timeline's slider is a row of the steps, one box a step. The steps the selected parts are in are marked in yellow: drag that mark onto any other step and the parts go there, however far. **Move to step…** ([[Alt+T]], also on the menu on a part) does the same with the step's number typed: [[Alt+T]], 17, [[Enter]]. Each is one Undo, and the booklet follows.
+
+With LDCad's keys, [[Page Up]] and [[Page Down]] go to the next and previous step while the timeline is up; with Studio's, [[Ctrl+D]] and [[Ctrl+A]] move the selected parts a step later and earlier there, as in Studio's step editor.
+
+<!-- covers
+ui:any step in one go
+-->
+
 ## The timeline {#timeline}
 
-[[B]] opens the timeline under the model: the build from an empty baseplate to the finished model. [[Left]] and [[Right]] step through it, [[Space]] plays it, and [[Home]] and [[End]] go to its start and end. Its buttons are **Earlier**, **Later**, **Merge with next** and **Delete step**.
+[[B]] opens the timeline under the model: the build from an empty baseplate to the finished model. [[Left]] and [[Right]] step through it, [[Space]] plays it, and [[Home]] and [[End]] go to its start and end. Its buttons are **Earlier**, **Later**, **Merge with next**, **Delete step**, **New step from selection** and **Move to step…**; click a step in its row of steps to go to it.
 
 <!-- covers
 ui:build animation

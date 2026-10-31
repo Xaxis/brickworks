@@ -108,6 +108,11 @@ const PRESET_KEYS: Dictionary = {
 		"mode_delete": SHIFT | KEY_DELETE,
 		"select_colour": ALT | KEY_C, "select_part": ALT | KEY_P,
 		"select_connected": ALT | KEY_J, "select_inverse": ALT | KEY_I,
+		# The step showing moved, merged and taken out, Alt beside the keys
+		# that move the selection (Shift-[ and ]) and end a step (E); Alt-T
+		# the selection to any step, its number typed (steps3).
+		"step_earlier": ALT | KEY_BRACKETLEFT, "step_later": ALT | KEY_BRACKETRIGHT,
+		"step_merge": ALT | KEY_E, "step_delete": ALT | KEY_DELETE, "step_to": ALT | KEY_T,
 	},
 	"studio": {
 		"mode_select": KEY_V, "mode_hinge": KEY_H, "mode_clone": KEY_C, "mode_hide": KEY_L,
@@ -132,6 +137,18 @@ const PRESET_KEYS: Dictionary = {
 		"leave_assembly": SHIFT | KEY_N, "mode_place": KEY_INSERT,
 		"step_close": CTRL | KEY_INSERT,
 	},
+}
+
+## What a preset's keys do on the timeline, as its own step mode has them
+## (steps3): Studio's step editor moves the selection a step with Ctrl-A
+## and Ctrl-D (studiohelp 7123810151063), LDCad goes up and down the steps
+## with Page Up and Page Down, to its end and start with Ctrl. A command
+## by name, or the timeline's own key. Off the timeline they are what they
+## always were: Studio's Ctrl-A selects all, LDCad's Page Up raises.
+const TIMELINE_PRESET_KEYS: Dictionary = {
+	"studio": {CTRL | KEY_A: "step_prev", CTRL | KEY_D: "step_next"},
+	"ldcad": {KEY_PAGEUP: KEY_RIGHT, KEY_PAGEDOWN: KEY_LEFT, CTRL | KEY_PAGEUP: KEY_END,
+		CTRL | KEY_PAGEDOWN: KEY_HOME},
 }
 
 ## Keys that are never anybody's to set: out of whatever is open, put down,
@@ -297,6 +314,12 @@ static func read(key: InputEventKey, timeline: bool = false) -> Variant:
 	if key.keycode in FIXED or (timeline and key.keycode in TIMELINE_KEYS):
 		return key
 	var pressed: int = accel_of(key)
+	_on_timeline = timeline
+	var stepping: Variant = on_timeline(pressed) if timeline else null
+	if stepping is String:
+		return stepping
+	if stepping != null:
+		return press_of(int(stepping), key)
 	var action: String = str(_by_key.get(pressed, ""))
 	if action.is_empty():
 		var was: String = str(_native_of.get(pressed, _native_of.get(pressed & KEY_CODE_MASK, "")))
@@ -309,6 +332,18 @@ static func read(key: InputEventKey, timeline: bool = false) -> Variant:
 	if does == pressed:
 		return key
 	return press_of(does, key)
+
+
+## What [param accel] does on the timeline under the preset chosen
+## ([constant TIMELINE_PRESET_KEYS]): a command, a key of the timeline's, or
+## null where it does what it does anywhere.
+static func on_timeline(accel: int) -> Variant:
+	return (TIMELINE_PRESET_KEYS.get(preset(), {}) as Dictionary).get(accel)
+
+
+## Whether the last key read was read on the timeline: a key the preset
+## steps with there does not also zoom while it is held (held_as_ever).
+static var _on_timeline: bool = false
 
 
 ## A press of [param accel], held as [param like] is (down or up, a repeat).
@@ -333,6 +368,8 @@ static func press_of(accel: int, like: InputEventKey = null) -> InputEventKey:
 ## does not slide the view while it is held.
 static func held_as_ever(keycode: int) -> bool:
 	_build()
+	if _on_timeline and on_timeline(keycode) != null:
+		return false
 	var was: String = str(_native_of.get(keycode, ""))
 	if _by_key.has(keycode) and str(_by_key[keycode]) != was:
 		return false

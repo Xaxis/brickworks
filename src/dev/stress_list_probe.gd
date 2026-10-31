@@ -111,9 +111,14 @@ func _weak_model() -> void:
 	if panel == null:
 		_check("with Stress on, a panel lists the weak joints (there is none)", false)
 		return
-	_check("with Stress on, its panel shows, under the view cube and clear of it",
-		(panel as Control).visible and (panel as Control).get_global_rect().position.y
-		>= (_main.get("_gizmo") as Control).get_global_rect().end.y)
+	# In the column beside the model, not over it: under the view cube it
+	# covered the parts at the model's right edge (keys3).
+	var room: Rect2 = _main.call("_model_rect")
+	_check("with Stress on, its panel shows, beside the model's room and clear of the view cube",
+		(panel as Control).is_visible_in_tree()
+		and not (panel as Control).get_global_rect().intersects(room)
+		and not (panel as Control).get_global_rect().intersects(
+			(_main.get("_gizmo") as Control).get_global_rect()))
 	var shown: Dictionary = panel.call("fields")
 	var counted: Array = _counted(stress.report)
 	var said: String = await _say("weakest_joints", {})

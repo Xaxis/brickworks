@@ -32,6 +32,9 @@ unwired_flows() {
   done
 }
 
+# The rule for what the deploy reads, shared with tools/deploy.sh.
+. "$HERE/deploy_reads.sh"
+
 # reused_preview NAME SHA: the preview NAME made, in URL, if it was made
 # from this very commit, or from one before it when all that changed since is
 # the browser checks or the release tools, which the deploy never reads. A
@@ -43,12 +46,14 @@ reused_preview() {
   [ -n "$made" ] || return 1
   local since=""
   if [ "$made" != "$2" ]; then
-    git merge-base --is-ancestor "$made" "$2" 2>/dev/null || return 1
+    unread_since "$made" "$2" || return 1
     since=$(git diff --name-only "$made" "$2")
-    [ -n "$since" ] || return 1
-    ! printf '%s\n' "$since" | grep -qvE '^tools/web/[a-z0-9_]+_(flow|check|probe)\.mjs$|^tools/release/' || return 1
   fi
   URL=$(grep -oE "deploy done https://[^ ]+" "$S/${1}_preview.log" | cut -d' ' -f3)
+  # The commit the reused preview serves, which brickworks.diy will serve
+  # once it is promoted: ship.sh reads it.
+  # shellcheck disable=SC2034
+  [ -n "$URL" ] && PREVIEW_MADE=$made
   [ -n "$URL" ] && echo "$WHO: reusing preview $URL, made from $made${since:+ (since then only checks and release tools: $(printf '%s\n' "$since" | tr '\n' ' '))}"
 }
 

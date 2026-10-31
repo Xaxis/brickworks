@@ -200,7 +200,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   only of a part that may be joined there (`SelectBy.sideways`: the parts
   whose studs point that way and what stands beside them), after its first
   256: on Orthanc, joined from all 10,101 took 6.1 to 7.5 s, now a third of a
-  second. `bigmodels_probe -- only=joined`: from one part it finds what asking
+  second. From one part, what is found already is not asked about again, a
+  part's slabs are written in place (`SelectBy._shell`), and a neighbour of a
+  few boxes is asked slab by slab, the first pair that meets answering
+  (`BrickLattice._scan`, the same answer as before on all 119,237 pairs of
+  Orthanc and the castle): joined from one part of Orthanc took 1.5 to 2.1 s,
+  now 0.75 to 0.95 s headless and 1.1 s in a window at a load of 40 on 24
+  cores. `bigmodels_probe -- only=joined`: from one part it finds what asking
   every side of every part finds.
 - `hide and show only`: `Ctrl-H` hides the selection (`H` alone is the Pan
   tool), `Shift-H` hides everything else, `Alt-H` (or `Ctrl-H` with nothing
@@ -350,7 +356,29 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   the tree and the properties floated over its top corners, where clicks
   meant for a part landed on them. The sub-assembly banner and the offer to
   seat old parts are in a strip above the model (`Main._notices`), not over
-  it. The model keeps 60% of the window's width (`Main.MODEL_SHARE`, what
+  it. The panels that work on the model as it is seen (Build, Motions…; Tools,
+  Simulate mechanism…; Make, Hose, tube or chain…; Tools, Colour the hidden
+  parts…; View, Stress's legend) are in one more column, beside the model's on
+  its left (`Main._tool_column`), shown while any is open: opening one folds
+  the parts bin and closing the last puts it back, and where nothing folds
+  the view steps back so what was in sight stays in sight
+  (`Main._keep_in_sight`). At (12, 48) over the model, and Stress's under the
+  view cube, they covered the parts a person clicks (keys3): `panel_room_probe`
+  turns round a model at 24 views with each open, and `flex_room_probe` and
+  `simulate_probe` do the same for theirs. On a touch screen held upright
+  (a phone, a tablet upright) the column is a sheet under the model
+  instead, and beside it again as the screen turns (`Main._place_tool_column`,
+  `Main.PHONE_SHEET`): beside it, a panel sized for a finger ran the layout
+  past the screen's right edge (Simulate's took the model off a 390-point
+  phone, Colour the hidden parts' its buttons off a 768-point tablet). Its
+  panels are kept to the screen's width there, and beside the model on a
+  touch screen to what the rest of the row leaves (`Main._fit_tool_panel`:
+  words wrapped, rows let flow and pictures narrowed, `TouchSizing.fit_panel`),
+  and the hint pill sits above the
+  sheet; beside the model
+  on a touch screen it ends above the foot's row of tools, and the pill is
+  over the model's room, not the column; `dialogs_flow`
+  says "0 off the screen" for Colour the hidden parts at all four sizes. The model keeps 60% of the window's width (`Main.MODEL_SHARE`, what
   `tools/web/fit_check.mjs` asks of a laptop's window): with both columns
   open at 1400 x 900 it had 41%. Both show only where both fit round that, a
   window about twice as wide as it is tall (1835 units); else the columns
@@ -2433,6 +2461,10 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script s
 # 24 views, a chain laid by two clicks, a zoomed-in model kept in sight.
 # Pictures in shots/flex_room/
 bash tools/probe.sh flex_room_probe; PROBE_SIZE=1400x900 bash tools/probe.sh flex_room_probe
+# Motions, Colour the hidden parts and Stress's legend beside the model, over
+# no part at any of 24 views, the part furthest left reached by a click, a
+# zoomed-in model kept in sight. Pictures in shots/panel_room/
+bash tools/probe.sh panel_room_probe; PROBE_SIZE=1400x900 bash tools/probe.sh panel_room_probe
 # a band from the bin round two wedge belt wheels and three, within 1 LDU of
 # the tangents and arcs by hand; turned and tilted; following a wheel nudged;
 # a spring stretched 4 to 6 studs keeping its turns; a shock; saved and opened,
@@ -2445,7 +2477,8 @@ Proves it when: each exits 0 with no `FAIL` line, and ends on its sentence —
 `snap` says "hand placement lands where the assistant would put it",
 `springs` says "springs: bands round two wheels and three, ...",
 `flex_room` says "flex room: the hose tool's panel is beside the model and over
-none of it" (look at `shots/flex_room/*.png`: the panel in a dark column at the
+none of it", `panel_room` says "panel room: Motions, Colour the hidden parts,
+Stress's legend beside the model and over none of it" (look at `shots/flex_room/*.png`: the panel in a dark column at the
 left, the gears and bricks to its right),
 `technic_hand` says "by hand: a pin into a hole, ... and check_design agrees",
 `handbuild` says "by hand: ... all work as a person uses them", `outline` says

@@ -73,10 +73,13 @@ func _run() -> void:
 		print("motions render probe: needs a window (tools/probe.sh runs it in one)")
 		quit(3)
 		return
-	var files: String = _out.path_join("files")
-	# Each run's files of its own: the names are numbered against what is there.
-	if DirAccess.dir_exists_absolute(files):
-		OS.move_to_trash(files)
+	# Each run's files in a folder of its own, new: the names are numbered
+	# against what is there. Never the last run's folder trashed:
+	# OS.move_to_trash runs gio, which no probe may call (tools/probe.sh), so
+	# the last run's files stayed and the names came out numbered 11
+	# (rel-m228, 2026-10-31).
+	var files: String = OS.get_user_data_dir().path_join("motions_render_files_%d_%d"
+		% [int(Time.get_unix_time_from_system()), OS.get_process_id()])
 	DirAccess.make_dir_recursive_absolute(files)
 	Download.folder = files
 	_dialog.folder = files

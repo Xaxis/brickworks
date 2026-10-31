@@ -74,10 +74,14 @@ plan with Claude as the client.
   `PartLibrary._on_disk` reads it as it reads the pack, offline too; a part
   of it wanted before then is fetched from the store on its own. The page
   preloads the wasm and pack from its head. `window.brickworksLater` says
-  when it was asked, came and was written, and how many files;
-  `window.brickworksBoot` when each stage of the start was reached
-  (`Main._boot_mark`: ready, data, catalogue, ui, model, on the page's
-  clock). The pack Godot exports is cut in four after it (webload,
+  when it was asked, came, began to be written and was written, and how
+  many files; `window.brickworksBoot` when each stage of the start was
+  reached (`Main._boot_mark`: compiled, made, ready, data, catalogue, ui,
+  model, on the page's clock). "compiled" is Main's `_static_init`, once
+  every script is compiled: loading main.gd compiles all 308 at once,
+  since about 200 of them name each other in one cycle (webstart, 2026-10-30:
+  3.6 s of a warm start's 8.2 at load 12, the engine's setup 0.4 s before
+  it, the catalogue 1.0, the interface 1.1, the first frames 1.3 after). The pack Godot exports is cut in four after it (webload,
   2026-10-30, `tools/web/pck_split.py`, its docstring), so the engine
   waits for the code alone: `index.pck` keeps the scripts, shaders and
   scenes (3.3 MB brotli), and the two tables read as their classes load,
@@ -137,10 +141,11 @@ plan with Claude as the client.
   ThreadTime, which load does not stretch), and the bytes before it.
   `--profiles=broadband,slow --warm` for the full table; `--laps` prints
   every `brickworksBoot` mark, and each median row is followed by the
-  start's parts (banner, scripts to `Main._ready`, data, catalogue,
-  interface, model, first frames; data is the wait for index.data.pck
-  once the scripts are made, and each run says when that pack was asked,
-  came and was written). Locally, serve the export with `serve.py
+  start's parts (banner, scripts to `Main._ready` with the compile's end
+  where the build marks it, data, catalogue, interface, model, first
+  frames; data is the wait for index.data.pck once the scripts are made,
+  and each run says when that pack and the rest of the parts were asked,
+  came and were written). Locally, serve the export with `serve.py
   --accounts --compressed --cached` (the header's form): `--cached` sends
   the deployment's cache headers (the page no-cache, the build immutable),
   without which every file is no-store and `--warm` timed a second first

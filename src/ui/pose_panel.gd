@@ -208,6 +208,11 @@ func _ready() -> void:
 	settings.contact_shadow = false
 	settings.view = "current"
 	_build()
+	# Its column's height is its room: the column is laid out after the
+	# panel opens, and again as the window or the panels over it change.
+	var parent: Control = get_parent() as Control
+	if parent != null:
+		parent.resized.connect(_fit_later)
 
 
 func open() -> void:

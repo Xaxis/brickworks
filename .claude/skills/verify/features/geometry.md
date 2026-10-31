@@ -485,7 +485,11 @@ can occupy the same millimetre.
   pixels with no part's visibility changed; in one world, 0.
   On the desktop the pictures are not read back: the card marks the numbers
   each holds in a tally of its own (`SeenParts._tallied`, `seen_tally.gdshader`,
-  a point a pixel, the first of each run along a row), eight pictures a frame,
+  a point a pixel, the first of each run along a row), sixteen pictures a frame
+  on a graphics card of its own and eight on any other (`LANES_DISCRETE`,
+  `LANES`: a frame costs the app's own work besides, and each lane is about
+  110 MB of video memory at 2,048 pixels; Orthanc's measure took 1.3 to 1.9 s
+  with eight, 1.0 to 1.6 s with sixteen, the same parts seen),
   each lane sized and aimed as the read-back picture is, and the tally is read
   once at the end (each side's rows laid over each other for what any side
   sees). The web's renderer reads back as before (`_tallies`). `bigmodels_probe
@@ -496,8 +500,9 @@ can occupy the same millimetre.
   in a hundred; a picture twice as fine for both samples was slower and a part
   out on the castle.
 - `colour the hidden parts` (`src/ui/hidden_colours_panel.gd` over
-  `src/assembly/hidden_colours.gd`): Tools, Colour the hidden parts…, and
-  `colour_hidden_parts` over MCP (`HiddenColoursPanel.for_session`). Groups the
+  `src/assembly/hidden_colours.gd`): Tools, Colour the hidden parts…, its
+  panel in the column beside the model (`Main._tool_column`, `panel_room_probe`),
+  and `colour_hidden_parts` over MCP (`HiddenColoursPanel.for_session`). Groups the
   hidden parts by the booklet's sections, by build stage (two unless asked,
   `COLOURS`) or by half (left and right, front and back); a group under a tenth of
   the coloured parts joins its neighbour (`SMALLEST`, `_join_small`), and no more
@@ -513,6 +518,13 @@ can occupy the same millimetre.
   Keeps see-through and other finishes, prints, figures, locked parts, unknown
   colours, parts already in a vivid colour nothing outside has, and copied
   sub-assemblies unless every copy's part is hidden (`Assemblies.counterparts`).
+  The booklet's steps it groups by are worked out on a worker, from a copy of
+  the model, while the card draws (`HiddenColoursPanel._steps_begun`), and the
+  copies of every sub-assembly are matched in one walk of the model
+  (`HiddenColours._families`, `Assemblies._begin_pass`): on Orthanc from cold,
+  3.9 s became 1.75 to 1.85 s at a load of 13 to 25 on 24 cores, and 2.6 to
+  2.8 s at a load of 30 to 40 (`command_probe --subjects=orthanc
+  --only=hidden_colours`).
   Shows the inside cut open before and after; Apply is one `Builder.record` step,
   after `Assemblies.unlike_copies` says no copy would be rebuilt for it (a
   symmetrical sub-assembly fits its fellows several ways, and Saturn V's three

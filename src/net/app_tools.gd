@@ -37,6 +37,8 @@ var fetch_near: bool = false
 var chat: String = ""
 ## The gallery, read for a session (GalleryTool, 2026-10-13).
 var _gallery: GalleryTool
+## The window's hand tools, for a session (HandTools, APP_UX3).
+var _hands: HandTools
 
 
 ## The window's commands (Shell) a session does with a tool: command id, or
@@ -74,6 +76,9 @@ const COMMANDS: Dictionary = {
 	"break_out": "break_out_section", "put_back": "break_out_section",
 	"simulate": "simulate_mechanism",
 	"hidden_colours": "colour_hidden_parts",
+	# The window's hand tools on the parts a session names (HandTools).
+	"mirror": "mirror_parts", "split_parts": "split_parts", "merge_parts": "merge_parts",
+	"measure": "measure",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -93,9 +98,6 @@ const WINDOW_ONLY: Dictionary = {
 	"show_all": "what the person sees; view_model where= looks at one box of the model",
 	"lock": "keeps the person's own mouse off parts; a session changes only the parts it names",
 	"unlock": "keeps the person's own mouse off parts; a session changes only the parts it names",
-	"mirror": "a session lays the mirror image itself, with edit_model's add or the mirror shape",
-	"split_parts": "a session lays the parts it wants itself, with edit_model's remove and add; Split is the person's shortcut for that",
-	"merge_parts": "a session lays the parts it wants itself, with edit_model's remove and add; Merge is the person's shortcut for that",
 	"leave_submodel": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
 	"enter_assembly": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
 	"leave_assembly": "which sub-assembly the person's mouse edits inside; a session names an assembly by its box (edit_model)",
@@ -120,7 +122,6 @@ const WINDOW_ONLY: Dictionary = {
 	"split_view": "the window's panels: a second view of the person's; view_model from= looks from any side",
 	"rotate_held": "the part in the person's hand; a session gives rot= and face=",
 	"tip_held": "the part in the person's hand; a session gives rot= and face=",
-	"measure": "a ruler for the person; a session's coordinates are already studs and plates",
 	"find_colour": "a field the person types a colour's name into, for their next part; a session gives the LDraw colour code (edit_model's color and recolor)",
 	"reseat": "squares up parts a file left between studs; a session's parts are on the lattice already",
 	"settings": "the person's preferences, whether the assistant is in the window among them: theirs to choose, and with it off the connector is off, so no session is there to ask",
@@ -133,7 +134,7 @@ const WINDOW_ONLY: Dictionary = {
 	"back_to_site": "leaves the web app for the website in the person's tab, ending the session's connection",
 	"feedback": "a report from the person to the people who make Brickworks, in their own words",
 	"beta_hub": "help for the person",
-	"reference": "a picture from the person's disk, picked in a dialog, for their own eyes to build over; a session is given pictures in the conversation",
+	"reference": "a picture from the person's disk, picked in a dialog, for their own eyes to build over; in_view shows a session the one laid, and a session is given its own pictures in the conversation",
 }
 
 ## What a session reads about these, served by read_guide("app") — every
@@ -152,8 +153,9 @@ eights, in a colour baseplates come in, a grid floor, or nothing (a car \
 or a ship stands on a table). part_of_model=true counts the baseplate as \
 a part and makes it step 1 of the booklet.
  - edit_steps: the build steps the booklet and the timeline follow. With \
-no op it lists them; "next"/"prev" move parts a step, "new" makes a step \
-of them, "earlier"/"later"/"merge"/"delete" act on a step by its number.
+no op it lists them; "to" puts parts in any step by its number, "next"/"prev" \
+move them a step, "new" makes a step of them, "earlier"/"later"/"merge"/\
+"delete" act on a step by its number.
  - booklet_layout reads the booklet's pages and how each step is printed, \
 changing nothing; edit_booklet sets one step's view (turn=, tilt=, \
 "usual"), zoom=, size=, page= ("new", "alone"), parts=, callout= and the \
@@ -199,8 +201,8 @@ library= opens LDraw's model of a real set (gallery library=true finds them).
 which="need" what the person's collection is short of; "buildable" What \
 can I build?: saved models, examples and real sets' models by how much is owned.
  - render_model: a picture or a turntable worth keeping, Quick, Good or \
-Best, up to 4K, as the window draws it or as a product shot, saved where \
-Render saves.
+Best, up to 4K, as the window draws it or as a product shot, or kind="build" \
+the model built up step by step as a video, saved where Render saves.
  - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
 (GLB, glTF, OBJ, STL), a picture, a BrickLink wanted list, a Rebrickable \
 parts list, or the building instructions as a booklet, written where \
@@ -230,6 +232,17 @@ written with them back in place.
 whether it holds together (the build check on it alone) and stands \
 (Balance), what joins it to the rest and what that carries, and its own \
 steps.
+ - The window's hand tools on parts by number, each one undo step: \
+mirror_parts as Mirror, in place or copy=true beside them, \
+across= a plane (copy=true across=0 makes a left half the right half), \
+handed parts swapped for their other hand; split_parts as Split and \
+merge_parts as Merge, by Studio's rules, on the same studs. \
+measure, read-only: the distance and the angle between two connectors \
+("#12.hole[1]") or points, as Measure says them, and two halves of one \
+joint with the turn between them as attach's yaw. in_view, read-only: what \
+the person sees and a session is not told — the step the timeline is at, \
+the part in their hand, and the reference picture they build over, with a \
+picture of it.
  - weakest_joints: what gives first in the whole model as it stands, \
 read-only, as View, Stress weighs it: each joint that alone holds what is \
 past it, weakest first, with its margin against its studs' working load. \
@@ -287,17 +300,18 @@ func definitions() -> Array:
 			"name": "edit_steps",
 			"description": ("The model's build steps, the order the booklet and the timeline "
 				+ "follow, as Edit, Build steps changes them. op \"list\" (the default) gives "
-				+ "them with the part numbers in each; \"next\" or \"prev\" moves bricks= a "
+				+ "them with the part numbers in each; \"to\" puts bricks= in step=, however "
+				+ "far, as the person drags them onto a step; \"next\" or \"prev\" moves bricks= a "
 				+ "step later or earlier; \"new\" makes a new step of bricks=; \"earlier\", "
 				+ "\"later\", \"merge\" (with the next) and \"delete\" act on step=, a number "
 				+ "from the list. A model with no steps of its own is given the worked-out "
 				+ "ones first, in the same undo step."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
-				"op": {"type": "string", "enum": ["list", "next", "prev", "new", "earlier",
+				"op": {"type": "string", "enum": ["list", "to", "next", "prev", "new", "earlier",
 					"later", "merge", "delete"]},
 				"bricks": {"type": "array", "items": {"type": "integer"},
-					"description": "part numbers from look_at_model, for next, prev and new"},
-				"step": {"type": "integer", "description": "a step's number, for earlier, later, merge and delete"},
+					"description": "part numbers from look_at_model, for to, next, prev and new"},
+				"step": {"type": "integer", "description": "a step's number, for to, earlier, later, merge and delete"},
 				"from": {"type": "integer", "description": "list from this step; 1 when omitted"},
 			}},
 		},
@@ -661,10 +675,14 @@ func definitions() -> Array:
 		},
 		{
 			"name": "render_model",
-			"description": ("Render the model as File, Render does: a picture, or a turntable "
-				+ "(a WebP and, where ffmpeg is installed, an MP4), on a studio sweep with soft "
+			"description": ("Render the model as File, Render does: a picture, a turntable "
+				+ "(a WebP and, where ffmpeg is installed, an MP4), or build: the model built up "
+				+ "as a video, the timeline's steps one after another, each step's parts coming "
+				+ "down into place and the camera turning slowly round, over seconds (10 to 60, "
+				+ "20 when omitted), as Render's Building does; on a studio sweep with soft "
 				+ "shadows. quality quick, good or best (good for a picture, quick for a "
-				+ "turntable when omitted); size 720p, 1080p, 4k or square; view hero, "
+				+ "turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for "
+				+ "a turntable or a build); view hero, "
 				+ "front, side, back, low or top. look product is a product shot's: glossy "
 				+ "plastic with rounded edges, clear parts that bend the light, a key, fill "
 				+ "and rim over a softbox studio (window, the default, is the window's own). "
@@ -674,7 +692,8 @@ func definitions() -> Array:
 				+ "Render saves. It is a job: the answer is a job number at once, and job "
 				+ "gives the result, a picture with it. Needs the app in a window."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
-				"kind": {"type": "string", "enum": ["picture", "turntable"]},
+				"kind": {"type": "string", "enum": ["picture", "turntable", "build"]},
+				"seconds": {"type": "integer", "description": "a build's length, 10 to 60; 20 when omitted"},
 				"quality": {"type": "string", "enum": ["quick", "good", "best"]},
 				"size": {"type": "string", "enum": ["720p", "1080p", "4k", "square"]},
 				"view": {"type": "string", "enum": ["hero", "front", "side", "back", "low", "top"]},
@@ -895,7 +914,7 @@ func definitions() -> Array:
 			}},
 		},
 		GalleryTool.definition(),
-	]
+	] + HandTools.definitions()
 
 
 func has(tool: String) -> bool:
@@ -980,6 +999,11 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 				_gallery = GalleryTool.new()
 				_gallery.app = app
 			return await _gallery.run(input)
+		"mirror_parts", "split_parts", "merge_parts", "measure", "in_view":
+			if _hands == null:
+				_hands = HandTools.new()
+				_hands.app = app
+			return await _hands.run(tool, input)
 	return "No tool called %s." % tool
 
 
@@ -1008,7 +1032,8 @@ func refusal(tool: String, input: Dictionary) -> String:
 const CHANGES: Array[String] = ["set_floor", "edit_steps", "edit_booklet", "lay_flex", "pose_model", "move_part",
 	"define_motion", "play_motion",
 	"undo", "open_model", "brickify", "print_part", "make_unique", "colour_hidden_parts",
-	"make_sections", "break_out_section"]
+	"make_sections", "break_out_section",
+	"mirror_parts", "split_parts", "merge_parts"]
 
 
 ## What a model shared to look at allows, as Shell.LOOKING does for the
@@ -1031,6 +1056,8 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 		"export_model":
 			return str(input.get("format", "")) == "instructions"
 		"suggest_sections", "evaluate_section", "booklet_layout", "list_motions", "weakest_joints":
+			return true
+		"measure", "in_view":
 			return true
 	return false
 
@@ -1115,7 +1142,7 @@ func _edit_steps(input: Dictionary) -> String:
 	match op:
 		"list":
 			return _list_steps(steps, int(input.get("from", 1)))
-		"next", "prev", "new":
+		"next", "prev", "new", "to":
 			var ids: Array = []
 			var unknown := PackedStringArray()
 			for raw: Variant in input.get("bricks", []):
@@ -1128,7 +1155,15 @@ func _edit_steps(input: Dictionary) -> String:
 				return "No part numbered %s (look_at_model numbers them)." % ", ".join(unknown)
 			if ids.is_empty():
 				return "Give bricks= the part numbers to move, from look_at_model or this list."
-			return shell.change_steps(op, ids, null)
+			if op != "to":
+				return shell.change_steps(op, ids, null)
+			if not input.has("step"):
+				return "Give step= the number of the step to put them in, from edit_steps's list."
+			var into: Instructions.Step = _step_numbered(steps, int(input["step"]))
+			if into == null:
+				return "There is no step %d: the steps run 1 to %d." % [int(input["step"]),
+					steps[steps.size() - 1].number]
+			return shell.change_steps(op, ids, into)
 		"earlier", "later", "merge", "delete":
 			if not input.has("step"):
 				return "Give step= a step's number from edit_steps's list."
@@ -1137,7 +1172,7 @@ func _edit_steps(input: Dictionary) -> String:
 				return "There is no step %d: the steps run 1 to %d." % [int(input["step"]),
 					steps[steps.size() - 1].number]
 			return shell.change_steps(op, [], at)
-	return "op is one of list, next, prev, new, earlier, later, merge, delete."
+	return "op is one of list, to, next, prev, new, earlier, later, merge, delete."
 
 
 # -- the booklet, by hand --------------------------------------------------------
@@ -2886,10 +2921,12 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 	var dialog: RenderDialog = app.get("_render")
 	var chosen: RenderSettings = dialog.settings.copy()
 	var kind: String = str(input.get("kind", "picture"))
-	# A turntable is thirty-six pictures: quick and small unless asked. A job
-	# all the same (ToolJobs): on a big model even that outlasts the three
-	# minutes a session waits for an answer.
-	var turning: bool = kind == "turntable"
+	if not kind in ["picture", "turntable", "build"]:
+		return "kind is picture, turntable or build."
+	# A turntable is thirty-six pictures, a build hundreds: quick and small
+	# unless asked. A job all the same (ToolJobs): on a big model even that
+	# outlasts the three minutes a session waits for an answer.
+	var turning: bool = kind != "picture"
 	var quality: Dictionary = {"quick": RenderSettings.Quality.QUICK,
 		"good": RenderSettings.Quality.GOOD, "best": RenderSettings.Quality.BEST}
 	chosen.quality = quality.get(str(input.get("quality", "quick" if turning else "good")),
@@ -2915,6 +2952,12 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 		chosen.f_stop = 4.0
 		chosen.focus = 0.4
 		chosen.quality = RenderSettings.Quality.BEST
+	if kind == "build":
+		var seconds: int = int(input.get("seconds", 20))
+		if seconds < BuildRender.SHORTEST or seconds > BuildRender.LONGEST:
+			return "seconds is %d to %d." % [BuildRender.SHORTEST, BuildRender.LONGEST]
+		chosen.frames = seconds * chosen.fps
+		kind = "building"
 	var said: String = await dialog.render_for(kind, chosen, work)
 	if kind != "picture" or dialog.last_picture() == null:
 		return said
@@ -2959,7 +3002,7 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 			if BookletMaker.busy:
 				return "The booklet is being drawn already."
 			var to: String = exports.folder if not exports.folder.is_empty() \
-				else OS.get_system_dir(OS.SYSTEM_DIR_DOWNLOADS)
+				else Download.downloads()
 			said = await app.call("_export_booklet", "" if OS.has_feature("web") else
 				to.path_join(bar.model_name().to_snake_case() + "_instructions.html"), work)
 		_:

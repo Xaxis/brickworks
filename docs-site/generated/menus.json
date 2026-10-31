@@ -836,6 +836,12 @@
 							"tip": "The selected parts a step later in the build steps, in a new step from the last"
 						},
 						{
+							"name": "step_to",
+							"words": "Move to step…",
+							"key": "",
+							"tip": "The selected parts into any step, its number typed"
+						},
+						{
 							"name": "step_new",
 							"words": "New step from selection",
 							"key": "Shift+N",
@@ -1439,6 +1445,12 @@
 			"tip": "The selected parts a step later in the build steps, in a new step from the last"
 		},
 		{
+			"name": "step_to",
+			"words": "Move to step…",
+			"key": "",
+			"tip": "The selected parts into any step, its number typed"
+		},
+		{
 			"name": "make_submodel",
 			"words": "Make a sub-assembly…",
 			"key": "Ctrl+G",
@@ -1566,10 +1578,11 @@
 		"step_next": "shift-]",
 		"step_new": "shift-N",
 		"step_close": "E",
-		"step_earlier": "",
-		"step_later": "",
-		"step_merge": "",
-		"step_delete": "",
+		"step_earlier": "alt-[",
+		"step_later": "alt-]",
+		"step_merge": "alt-E",
+		"step_delete": "alt-Delete",
+		"step_to": "alt-T",
 		"booklet_turn_left": "",
 		"booklet_turn_right": "",
 		"booklet_tilt_up": "",

@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe -->
 
 ## Sub-features
 
@@ -535,7 +535,8 @@ picture the assistant is shown.
   about this… (only then, and never with the assistant off): it selects the
   part and what holds it and writes the request with the joint's numbers into
   the assistant. Its panel (`src/ui/stress_panel.gd`, `StressPanel`), down
-  the model's right edge under the view cube while Stress is on, has the
+  the column beside the model while Stress is on (`Main._tool_column`; under
+  the view cube it covered the parts at the model's right edge), has the
   legend (red past its working load, amber within twice it, faded the rest),
   the count ("6 past working load · 0 near it", "0 past working load · 0
   near it" on a model that holds; `StressView.ranked`/`count_words`, which
@@ -1238,6 +1239,37 @@ picture the assistant is shown.
   (`BrickLattice.ahead`, set on every reveal): a click on the step showing
   took the invisible part above it, and Shift-] moved that one;
   `handbuild_probe` clicks the yellow brick under the white one to come.
+- `any step in one go` (steps3, APP_UX3 gap 2): the selection into any step
+  at once, as Studio's step list and Move To do, where Shift-[ and ] took 14
+  presses from step 3 to 17. Under the timeline's slider a row of the steps
+  themselves (`StepsBar.StepRow`, one cell a step, its number where there is
+  room, a callout's steps shorter): the step showing lit, the steps the
+  selection is in marked in the selection's yellow. Dragged from that mark
+  onto any other cell, the selection goes there in one drag
+  (`Shell.change_steps("to", …)`, `AuthorSteps.move_to`: one undo, a step it
+  empties taken out, the looks following as for any step edit); a click on a
+  cell shows that step, and a drag that starts off the mark scrubs. Shown in
+  the author's steps, or the build order of a model with none yet, and never
+  in a shared model's viewer (`editable`). **Move to step…** (`Alt-T`; Build,
+  Build steps, the menu on a part, and the timeline's edit row) asks for the
+  number, starting at the step the first selected part is in, chosen, so
+  `17` and Return move them. A step of one sub-model takes none of another's
+  parts (`AuthorSteps.outside`: refused, nothing changed). Over MCP
+  `edit_steps {"op": "to", "bricks": [...], "step": 17}` does it in one call.
+  The step showing has keys of its own (the app's preset, so every preset
+  has them): Step earlier `Alt-[`, later `Alt-]`, Merge with the next
+  `Alt-E`, Delete the step `Alt-Delete`. A preset's own step mode
+  (`Keymap.TIMELINE_PRESET_KEYS`, read only while the timeline is up):
+  LDCad's Page Up and Page Down the step after and before, with Ctrl its
+  end and start; Studio's Ctrl-D and Ctrl-A the selection a step later and
+  earlier, as its step editor has them. Off the timeline those keys are what
+  they were (Page Up raises, Ctrl-A selects all), and the keys sheet's
+  timeline section names them under the preset. `steps3_probe` (1280 x 720,
+  and 1400 x 900 for the pictures in `shots/steps3/`) opens a 20-step model
+  from its file and moves step 3's second part to step 17 by the drag, by
+  Alt-T and `17`, from the menu on the part, and by `edit_steps`, each read
+  back off `Instructions.plan(..., true)`; each key against its menu row on
+  step 10; and both presets' keys on and off the timeline.
 - `the booklet as a PDF and as PNG pages`: **Save as PDF** and **Save pages as PNG** sit beside Print in the
   booklet's bar (pdf249, 2026-10-24), shown where they work: on the desktop
   while the app serves the booklet (`Booklet.SAVE_SCRIPT` asks the app with
@@ -1724,6 +1756,32 @@ picture the assistant is shown.
   one, for the set's nodes laid out; 7 before). Not in a probe that does not
   ask (`RenderDialog.warms_when_idle`), as IdleDraw leaves a probe be:
   idle_probe counted them as 9 frames drawn in 5 s standing still.
+- `building video` (Render's Building and Render building, render_model
+  `kind=build seconds=`; `src/render/build_render.gd`, APP_UX3 gap 5): the
+  model built up as Studio's building animation, over 10, 20, 30 or 60 s. The
+  order is the timeline's (`Instructions.plan_paced`, the author's steps
+  where the model has them), each step an equal share of four fifths of the
+  length, its parts coming down into place one after another from a quarter
+  of the model's height above (at least 48 LDU), all down before the next
+  step; the last fifth the finished model. The camera turns 4.5° a second
+  and ends on the view chosen, framed on the finished model. Drawn through
+  `StudioRender.animate` (a part not yet arrived drawn at no size,
+  `BuildRender.AWAY`; only the parts that change a frame are moved), with
+  the contact shadow off (it is the finished model's), kept as a turntable
+  is (`RenderOutput.begin_turntable(..., "_building")`: WebP, PNG frames, MP4).
+  Return in Render renders the kind whose choices were touched last, its
+  button drawn strong (`RenderDialog._make_default`): Render, a length,
+  Return is three actions. The panel plays back at most 48 of its frames at
+  12 a second. Proof: `tools/probe.sh buildvideo [OUT]` (`cli:buildvideo
+  probe`) watches the render's own stage each frame (`staged_transform`):
+  every frame the first so many of the order Timeline itself shows, the
+  first frame one part, the last all 61 of the car at home and the same as a
+  picture with the same choices (0.00 levels apart); 480 frames, WebP, PNGs
+  and a 20 s MP4; render_model build in one call and its job, 90 s refused
+  at once; and every file in the run's own data, not the system's Downloads.
+  A held run (`Outside.held`: a script, `BRICKWORKS_OPEN_NOTHING`, or
+  `CLAUDECODE`, an app started from a Claude Code session as appux3's MCP
+  walk did) writes every file into `user://downloads` (`Download.downloads`).
 - `product look` (`RenderSettings.look` "product"; Render's Look, render_model's
   `look=product`, with `backdrop` and `depth_of_field`; docs/RENDERING.md):
   the render's copy of the model drawn in the `plastic_product*` shaders
@@ -1847,7 +1905,8 @@ picture the assistant is shown.
   and the sweep and the contact shadow drawn once, each alone (`_warm`); a
   render asked for meanwhile waits the few frames left (`_prepare`).
 - `motions panel` (Build, Motions…, once Pose and animate…; `src/ui/pose_panel.gd`,
-  class `PosePanel`, over the model's left edge so what moves is seen; the
+  class `PosePanel`, in the column beside the model (`Main._tool_column`) so
+  what moves is seen and no part to be dragged is under it; the
   owner's ask, 2026-10-20, docs/MOTIONS.md "What unit 2 built"). The list:
   the model's motions, a row each (chosen for Render animation by its radio,
   Play, Play backwards, Edit); Play all (`Motions.in_order`, each after the

@@ -1,7 +1,7 @@
 ---
 tools: render_model, animate_model, render_motion, export_model, parts_list
 panels: RenderDialog#render
-ai: Every file Brickworks writes: LDraw, Studio, 3D models, pictures, BrickLink and Rebrickable parts lists, all models as a .zip, and photo-real renders, turntables and motion animations. An assistant renders with render_model or render_motion and exports with export_model; the long ones are jobs.
+ai: Every file Brickworks writes: LDraw, Studio, 3D models, pictures, BrickLink and Rebrickable parts lists, all models as a .zip, and photo-real renders, turntables, motion animations and building videos. An assistant renders with render_model or render_motion and exports with export_model; the long ones are jobs.
 rules:
   - A render, a Studio file, a picture and the instructions answer with a job number; follow it with job.
   - On the desktop an export asks where to save; in a browser it downloads.
@@ -46,7 +46,7 @@ ui:parts lists for shops
 
 ## Render {#render}
 
-**File › Render…** (or the toolbar's camera) makes a picture of the model worth keeping, a turntable, or an animation of one of its motions. The picture on the left is a quick draft of the render, drawn again every time a choice changes, so what comes out is what you looked at; **Render** only makes it better. A render runs a piece at a time, with its progress on the bar and **Cancel** (or [[Esc]]) to stop it; when it is done it downloads, or on the desktop goes to Downloads.
+**File › Render…** (or the toolbar's camera) makes a picture of the model worth keeping, a turntable, an animation of one of its motions, or a video of it being built. The picture on the left is a quick draft of the render, drawn again every time a choice changes, so what comes out is what you looked at; **Render** only makes it better. A render runs a piece at a time, with its progress on the bar and **Cancel** (or [[Esc]]) to stop it; when it is done it downloads, or on the desktop goes to Downloads.
 
 <!-- covers
 ui:photo-real render
@@ -76,6 +76,14 @@ lib:product look
 ### Animation {#animation}
 
 **Animation** plays one of the model's [motions](/docs/joints-and-mechanisms#motions), or all of them in order, and keeps every frame as an animated WebP, at the quality, size, light and lens chosen for a picture. The camera stays as you see it, or is framed on what moves.
+
+### Building {#building}
+
+**Building** renders the model going up: the steps the [timeline](/docs/instructions#timeline) shows, one after another, each step's parts coming down into place, while the camera turns slowly round and ends on the view you chose. Pick a length (10, 20, 30 or 60 seconds) and press [[Enter]], or **Render building**. It is kept like a turntable: an animated WebP, and on the desktop the frames and an MP4.
+
+<!-- covers
+ui:building video
+-->
 
 ## Booklets {#booklets}
 

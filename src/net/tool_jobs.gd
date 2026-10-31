@@ -129,9 +129,13 @@ static func long_call(tool: String, input: Dictionary, app: Node) -> Dictionary:
 		"render_model":
 			if not built or not drawn:
 				return {}
-			var turning: bool = str(input.get("kind", "picture")) == "turntable"
-			return {"words": "Rendering %s of %s…" % ["a turntable" if turning else "a picture",
-				model], "cancel": true}
+			var kind: String = str(input.get("kind", "picture"))
+			var seconds: int = int(input.get("seconds", 20))
+			if not kind in ["picture", "turntable", "build"] \
+					or seconds < BuildRender.SHORTEST or seconds > BuildRender.LONGEST:
+				return {}
+			var kinds: Dictionary = {"turntable": "a turntable", "build": "a building video"}
+			return {"words": "Rendering %s of %s…" % [kinds.get(kind, "a picture"), model], "cancel": true}
 		"animate_model":
 			if not drawn or not bool(input.get("render", true)):
 				return {}

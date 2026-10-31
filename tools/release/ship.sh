@@ -1,8 +1,9 @@
 #!/bin/bash
 # ship.sh WORKTREE TAG CHECK... : a release from a staging worktree.
-# Preview deploy, the browser checks named, and only if every one passes:
-# main fast-forwarded and pushed, that very preview promoted, the live site
-# checked. Release jobs take BOX_HEAVY_PRIORITY, as other projects' do.
+# Preview deploy, the browser checks named, and only if every one passes,
+# and every probe a train runs beside it (SHIP_PROBES): main fast-forwarded
+# and pushed, that very preview promoted, the live site checked. Release
+# jobs take BOX_HEAVY_PRIORITY, as other projects' do.
 set -u
 TAG=$2
 # Absolute: preview_checks runs from a copy and cds to it itself, and a
@@ -40,6 +41,15 @@ trap 'echo $? > "$S/$TAG.done"' EXIT
 # shipped (2026-10-27).
 trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM
 export BOX_HEAVY_PRIORITY=1
+# A train runs the release's probes beside its ship (train.sh) and names in
+# SHIP_PROBES the file it keeps while they run: "running PID: NAMES", then
+# "failed: NAMES", gone once every one has passed. Main never moves while
+# it is there. A ship begun by hand names none and waits for none.
+probes_failed() {
+  local st; st=$(cat "${SHIP_PROBES:-/nonexistent}" 2>/dev/null) || return 1
+  case "$st" in failed:*) echo "SHIP: held, the probes failed:${st#failed:}"; return 0 ;; esac
+  return 1
+}
 # The preview and its checks, as unit_preview.sh makes and runs them.
 . "$HERE/preview_lib.sh" SHIP || exit 1
 cd "$W" || exit 1
@@ -77,10 +87,13 @@ if [ -z "$URL" ]; then
   sync=$(~/.claude/claude-core/bin/heavy env XDG_DATA_HOME="$PWD/.scratch-data" timeout 1200 godot --headless --path . --script src/dev/mcp_sync_probe.gd 2>&1)
   echo "$sync" | grep -q "the MCP is in step with the app" \
     || { echo "SHIP: held, the tool list is not the app's"; echo "$sync" | grep -E "FAIL" | head -3; exit 1; }
+  probes_failed && exit 1
   deploy_preview "$TAG" "$SHA" || exit 1
 fi
+probes_failed && exit 1
 run_checks "$URL" ${TAG}_pv "$@" || exit 1
 cut -c1-160 $S/${TAG}_pv.out
+probes_failed && exit 1
 # A check that failed in the battery, two at a time beside other previews'
 # batteries, runs once more alone before the release holds. m162's oc, and
 # m164's oc and cloud_library, each stalled under load and passed alone on
@@ -105,6 +118,26 @@ if ! passed $S/${TAG}_pv.out $#; then
   else
     echo "SHIP: held, a check failed or did not run on the preview"; exit 1
   fi
+fi
+# The train's probes, until every one has passed. The train's pid is in
+# the file: one gone with no answer holds the release, where a train
+# killed outright would otherwise leave this waiting for SHIP_PROBES_WAIT.
+if [ -n "${SHIP_PROBES:-}" ]; then
+  until=$(( $(date +%s) + ${SHIP_PROBES_WAIT:-10800} )); said=""
+  while [ -e "$SHIP_PROBES" ]; do
+    probes_failed && exit 1
+    pid=$(sed -n 's/^running \([0-9]*\):.*/\1/p' "$SHIP_PROBES" 2>/dev/null)
+    if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
+      sleep 1  # its answer, written as it ended
+      [ -e "$SHIP_PROBES" ] || break
+      probes_failed && exit 1
+      echo "SHIP: held, the train running the probes (pid $pid) is gone, with no answer"; exit 1
+    fi
+    [ "$(date +%s)" -lt "$until" ] || { echo "SHIP: held, the probes ran past SHIP_PROBES_WAIT"; exit 1; }
+    [ -n "$said" ] || { said=1; echo "SHIP: the checks passed; main waits for the probes ($(cut -d: -f2- "$SHIP_PROBES" | wc -w) named)"; }
+    sleep "${SHIP_POLL:-10}"
+  done
+  echo "SHIP: every probe passed"
 fi
 # A hold set by hand stops a release here, before main moves, even one
 # already under way: $S/HOLD for every release, $S/<tag>.hold for this one.
@@ -135,9 +168,13 @@ echo "SHIP: main is $SHA, authors: $(git -C $R log --since='1 day ago' --format=
 # as it was before.
 : > "$S/${TAG}_prod.log"
 deployed=0
+# What the domain will serve: the preview's own commit, before SHA when only
+# checks changed since (reused_preview), or SHA built afresh.
+LIVE=${PREVIEW_MADE:-$SHA}
 if grep -q "a unit's preview" "$S/${TAG}_preview.log" \
     || ! timeout 900 tools/deploy.sh --promote="$URL" >> "$S/${TAG}_prod.log" 2>&1; then
   echo "SHIP: $URL not promoted; deploying production afresh"
+  LIVE=$SHA
   timeout 3000 ~/.claude/claude-core/bin/heavy tools/deploy.sh --prod >> "$S/${TAG}_prod.log" 2>&1
   deployed=$?
 fi
@@ -151,11 +188,11 @@ if [ $deployed -ne 0 ]; then
   exit 1
 fi
 # The CDN keeps serving the last pages for a minute or so after the promotion.
-sleep 90
+sleep "${SHIP_CDN_WAIT:-90}"
 # And the live checks go on only against this build.
-serves() { curl -s --max-time 30 https://brickworks.diy/app | grep -q "/b/$SHA/"; }
+serves() { curl -s --max-time 30 https://brickworks.diy/app | grep -q "/b/$LIVE/"; }
 serves || { sleep 120; serves; } || {
-  echo "SHIP: deployed, but https://brickworks.diy/app does not serve /b/$SHA/"; exit 1; }
+  echo "SHIP: deployed, but https://brickworks.diy/app does not serve /b/$LIVE/"; exit 1; }
 # canary: sign-up still shut and a new person still signs in by a code, on
 # production's own route and settings (api/_canary.js, 2026-10-24).
 # Cleared first, as run_checks clears: an attempt before may have left its own.

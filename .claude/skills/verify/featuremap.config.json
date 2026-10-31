@@ -2858,6 +2858,20 @@
       "area": "view"
     },
     {
+      "kind": "ui",
+      "label": "building video",
+      "entry": "src/render/build_render.gd",
+      "reach": "godot --path .  (File, Render…, Building's length, Return or Render building; render_model kind=build over MCP)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "buildvideo probe",
+      "entry": "src/dev/buildvideo_probe.gd",
+      "reach": "tools/probe.sh buildvideo [OUT_DIR]; PROBE_SIZE=1400x900 tools/probe.sh buildvideo OUT_DIR   (windowed, on the GPU: the car's building video by Render, 20 s and Return, every frame a prefix of the timeline's order on the render's stage, the last the whole model, the WebP, PNGs and MP4; render_model kind=build in one call and its job; every file in the run's own data, none in the system's Downloads; pictures of the dialog)",
+      "area": "view"
+    },
+    {
       "kind": "cli",
       "label": "first design undo probe",
       "entry": "src/dev/first_design_undo_probe.gd",
@@ -4354,6 +4368,20 @@
       "entry": "tools/set_pictures.py",
       "reach": "python3 tools/set_pictures.py [--fetch|--make|--upload] [--check]   (every set's picture from Rebrickable's CDN once, at most 4 a second, resumable, into vendor/rebrickable/set_pictures/; WebPs made there (--make through heavy); uploaded to the parts bucket's sets/ (additive) and listed in assets/generated/set_pictures.json, which set_catalog.py marks; tools/fetch_data.sh runs it after the day's tables)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "any step in one go",
+      "entry": "src/ui/steps_bar.gd",
+      "reach": "godot --path .  (B opens the timeline; drag the selection's yellow mark on the row of steps onto another step; or Alt-T, a number and Return; Alt-[ / Alt-] / Alt-E / Alt-Delete on the step showing)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "steps3 probe",
+      "entry": "src/dev/steps3_probe.gd",
+      "reach": "tools/probe.sh steps3_probe; PROBE_SIZE=1400x900 tools/probe.sh steps3_probe   (pictures in shots/steps3/)",
+      "area": "view"
     }
   ]
 }
