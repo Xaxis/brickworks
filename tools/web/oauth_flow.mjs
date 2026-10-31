@@ -182,7 +182,7 @@ async function where(name, tries = 600) {
     const at = await page.evaluate((key) => (window.brickworksControls || {})[key], name);
     if (at) return at;
     // In a laptop's window the assistant's column starts folded.
-    if (n === 6) await openColumnFor(page, name);
+    if (n % 10 === 6) await openColumnFor(page, name);
     await page.waitForTimeout(500);
   }
   return null;

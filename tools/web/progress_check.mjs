@@ -278,7 +278,7 @@ function helpers(page) {
     for (let n = 0; n < seconds * 2; n++) {
       const at = (await controls())[name];
       if (at) return at;
-      if (n === 2) await openColumnFor(page, name);
+      if (n % 10 === 2) await openColumnFor(page, name);
       await page.waitForTimeout(500);
     }
     await page.screenshot({ path: `${out}/never_${name}.png` }).catch(() => {});

@@ -111,7 +111,7 @@ async function where(name, seconds = 400) {
     const at = (await controls())[name];
     if (at) return at;
     // A control in a closed column: its rail opens it, as a person would.
-    if (n === 2) await openColumnFor(page, name);
+    if (n % 10 === 2) await openColumnFor(page, name);
     await page.waitForTimeout(500);
   }
   throw new Error(`the app never showed "${name}"`);
