@@ -108,6 +108,11 @@ layout(push_constant, std430) uniform Pass {
 	uint count;
 	uint seed;
 	uint reset;
+	// The first of the rows this pass gives its samples.
+	uint row;
+	uint unused_a;
+	uint unused_b;
+	uint unused_c;
 } pass;
 
 const float PI = 3.14159265358979;
@@ -308,9 +313,7 @@ Surface surface_of(Instance thing, vec3 at, vec3 local) {
 		vec3 flat_at = at - scene.sweep_origin.xyz;
 		float along = length(flat_at.xz) + max(flat_at.y, 0.0);
 		float lit = 1.0 - scene.sweep.y * smoothstep(scene.sweep.z, scene.sweep.w, along);
-		vec3 lin = scene.sweep_colour.rgb * lit * lit;
-		s.albedo = lin * min(scene.sweep.x, 1.0);
-		s.emission = lin * max(scene.sweep.x - 1.0, 0.0) * 0.5;
+		s.albedo = scene.sweep_colour.rgb * lit * lit;
 		s.roughness = 0.9;
 		s.specular = 0.08;
 		s.coat = 0.0;
@@ -529,8 +532,11 @@ vec3 direct(Surface s, vec3 at, vec3 n, vec3 v) {
 }
 
 void main() {
-	ivec2 pixel = ivec2(gl_LaunchIDEXT.xy);
+	ivec2 pixel = ivec2(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y + pass.row);
 	vec2 size = scene.size.xy;
+	if (float(pixel.y) >= size.y) {
+		return;
+	}
 	vec4 total = pass.reset != 0u ? vec4(0.0) : imageLoad(accum, pixel);
 	int most = int(scene.size.z);
 	for (uint k = 0u; k < pass.count; k++) {
@@ -611,14 +617,17 @@ void main() {
 				covered = 1.0;
 			}
 			Surface s = surface_of(thing, at, hit.local);
-			// The sweep is lifted to white for the eye alone, as the window
-			// lifts it (StudioRender meters its level): lighting the model
-			// too, the model was metered darker, the sweep lifted again, and
-			// its white bounce washed the plastic's colours out.
-			if (straight || thing.info.y != KIND_SWEEP) {
-				radiance += carried * s.emission;
+			// The sweep is brought to its colour for the eye alone, as the
+			// window brings it (StudioRender meters its level), and by
+			// scaling what it shows, so its shadows keep their depth. As
+			// light added to it, it lit the model too: the model was metered
+			// darker, the sweep lifted again, its white bounce washed the
+			// plastic's colours out, and the shadows on it were lifted away.
+			if (straight && thing.info.y == KIND_SWEEP) {
+				carried *= scene.sweep.x;
 			}
 			straight = false;
+			radiance += carried * s.emission;
 			from = at + ng * 0.02;
 			radiance += carried * direct(s, from, n, v);
 			if (bounces >= most) {

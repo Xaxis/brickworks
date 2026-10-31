@@ -1213,6 +1213,27 @@
       "area": "view"
     },
     {
+      "kind": "lib",
+      "label": "path tracer",
+      "entry": "src/render/path_tracer.gd",
+      "reach": "tools/probe.sh pathtrace   (windowed, on the GPU: Best path traced where the card has Vulkan ray tracing; the car at 1280x720 and 256 samples timed, its noise against 4,096 samples, a column's shadow widening along its length and an orange floor tinting a white wall, at three points each, against Best frames averaged)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "render queue",
+      "entry": "src/ui/render_queue.gd",
+      "reach": "godot --path .  (File, Render queue…, Add this view; render_queue over MCP)  /  tools/probe.sh pathtrace",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "pathtrace probe",
+      "entry": "src/dev/pathtrace_probe.gd",
+      "reach": "tools/probe.sh pathtrace   (windowed, on the GPU: the car traced at 720p in 60 s or less, noise, soft shadows and bounce at three points, three queued renders drawn in turn with the window turning every frame, two from the panel and one by render_queue; pictures in shots/pathtrace/)",
+      "area": "view"
+    },
+    {
       "kind": "api",
       "label": "GET/POST /api/share",
       "entry": "api/share.js",

@@ -4,6 +4,9 @@
 ##   ~/.claude/claude-core/bin/gpu godot --path . --resolution 1400x900 \
 ##       --script src/dev/pathtrace_probe.gd
 ##
+## With -- --only=queue, the queue alone (or car, or light): PROBE_SIZE=1280x720
+## tools/probe.sh pathtrace -- --only=queue draws it at a laptop's size.
+##
 ## On a graphics card that traces rays (the box's RX 6700 XT); elsewhere it
 ## says Best is not path traced there, and why, and passes on that alone.
 ##
@@ -13,9 +16,9 @@
 ##     the measure sees noise);
 ##   soft shadows: a column's shadow on the floor is wider at its tip than
 ##     at its foot, measured at three points along it;
-##   light bounced off the floor: a white wall on an orange floor is tinted
-##     orange low down and less so higher up, at three heights, where Best
-##     frames averaged has no tint;
+##   light bounced off the floor: a white shelf over an orange floor, seen
+##     from below, is orange underneath at three points, more than Best
+##     frames averaged makes it;
 ##   the queue: File, Render queue… opens its panel; three renders, two
 ##     from the panel's Add and one from render_queue over MCP, each of the
 ##     view and the model as they were when added, are drawn in turn and
@@ -32,6 +35,9 @@ const OUT := "res://shots/pathtrace/"
 const NOISE_MOST := 0.02
 const CAR_SECONDS := 60.0
 const ORANGE := Color(0.95, 0.45, 0.1)
+## How much more orange the floor's bounce makes a white face than Best
+## frames averaged draws it: red less blue over the sum of all three.
+const BOUNCE_LEAST := 0.03
 
 var _failures: int = 0
 var _main: Node
@@ -88,9 +94,18 @@ func _run() -> void:
 	await bar.open_with_progress("res://models/car.ldr")
 	await _frames(10)
 	print("  the car: %d parts" % _world.brick_count())
-	await _car()
-	await _queue()
-	await _light()
+	# -- --only=queue (or car, or light, or two of them, by commas): the
+	# queue alone, for its pictures at another size.
+	var only: String = ""
+	for given: String in OS.get_cmdline_user_args():
+		if given.begins_with("--only="):
+			only = given.trim_prefix("--only=")
+	if only.is_empty() or "car" in only:
+		await _car()
+	if only.is_empty() or "queue" in only:
+		await _queue()
+	if only.is_empty() or "light" in only:
+		await _light()
 	print("")
 	print("%d failed" % _failures if _failures else "Best is path traced, and the queue draws in turn")
 	quit(1 if _failures else 0)
@@ -188,52 +203,14 @@ func _light() -> void:
 	print("\n  soft shadows and light off the floor")
 	_world.clear()
 	await _frames(2)
-	# A white wall, three bricks high, its face to the front.
-	for n: int in 3:
-		_world.add_brick("3001", 15, Transform3D(Basis.IDENTITY, Vector3(0, 24.0 * (n + 1), 0)))
-	var wall: AABB = _world.model_bounds()
-	# A thin white column off to the side, seven bricks high.
-	var column_at := Vector3(140, 0, -20)
+	# A white column of 2x2 bricks, seven high: its shadow wide enough that
+	# its edges stay apart to the tip.
+	var column_at := Vector3(0, 0, 0)
 	for n: int in 7:
-		_world.add_brick("3005", 15, Transform3D(Basis.IDENTITY,
+		_world.add_brick("3003", 15, Transform3D(Basis.IDENTITY,
 			column_at + Vector3(0, 24.0 * (n + 1), 0)))
 	await _frames(3)
 	var column_top: float = 24.0 * 7.0
-
-	# Bounce, from the front: the wall's face at three heights.
-	var front: RenderSettings = _best(Vector2i(960, 540), 512)
-	front.view = "front"
-	front.backdrop = ORANGE
-	var traced: Image = await _render.render(_world, front)
-	var traced_shot: StudioRender.Shot = _render.last_shot
-	var frames_front: RenderSettings = front.copy()
-	frames_front.traced = false
-	frames_front.samples = 0
-	var raster: Image = await _render.render(_world, frames_front)
-	var raster_shot: StudioRender.Shot = _render.last_shot
-	if traced == null or raster == null:
-		_check("the wall is drawn", false)
-		return
-	traced.save_png(OUT + "bounce_traced.png")
-	raster.save_png(OUT + "bounce_frames.png")
-	var face_z: float = wall.end.z if traced_shot.origin.z > wall.get_center().z \
-		else wall.position.z
-	var tints: Array = []
-	for share: float in [0.12, 0.5, 0.88]:
-		var at := Vector3(wall.get_center().x, wall.position.y + wall.size.y * share,
-			face_z + signf(traced_shot.origin.z - face_z) * 0.5)
-		var with: float = _tint(_patch(traced, _project(traced_shot, at, traced.get_size())))
-		var without: float = _tint(_patch(raster, _project(raster_shot, at, raster.get_size())))
-		tints.append([share, with, without])
-		print("    the wall's face %d%% up: orange %.3f path traced, %.3f frames averaged"
-			% [roundi(share * 100.0), with, without])
-	var low: Array = tints[0]
-	var high: Array = tints[2]
-	_check("light off the orange floor tints the wall low down (%.3f) more than high up (%.3f)"
-		% [low[1], high[1]], float(low[1]) > float(high[1]) + 0.02 and float(tints[1][1])
-			>= float(high[1]) - 0.005)
-	_check("where frames averaged has no such tint (%.3f low, %.3f high)" % [low[2], high[2]],
-		float(low[1]) - float(low[2]) > 0.03 and absf(float(low[2]) - float(high[2])) < 0.02)
 
 	# Shadow, from above: the column's on the floor, across it at three
 	# points from its foot to its tip.
@@ -279,6 +256,53 @@ func _light() -> void:
 	_check("the shadow softens from its foot to its tip (%.1f, %.1f, %.1f LDU)" % widths,
 		float(widths[0]) > 0.0 and float(widths[1]) > float(widths[0])
 			and float(widths[2]) > float(widths[1]) and float(widths[2]) > float(widths[0]) * 1.5)
+	await _bounce()
+
+
+## A white shelf on an orange floor, seen from below: what lights its
+## underside is the floor, path traced; frames averaged it is the sky's
+## even light, and the orange reflected off a backdrop of that colour.
+func _bounce() -> void:
+	_world.clear()
+	await _frames(2)
+	for n: int in 7:
+		_world.add_brick("3005", 15, Transform3D(Basis.IDENTITY, Vector3(0, 24.0 * (n + 1), 0)))
+	_world.add_brick("3958", 15, Transform3D(Basis.IDENTITY, Vector3(0, 24.0 * 7.0 + 8.0, 0)))
+	await _frames(3)
+	var under: float = 24.0 * 7.0
+	var below: RenderSettings = _best(Vector2i(960, 540), 512)
+	below.backdrop = ORANGE
+	below.view = "current"
+	var eye := Vector3(0, 30, 380)
+	var looked := Vector3(0, under, 0)
+	below.eye_transform = Transform3D(Basis.looking_at(looked - eye, Vector3.UP), eye)
+	below.eye_fov = below.fov_degrees()
+	below.eye_focus = looked
+	var traced: Image = await _render.render(_world, below)
+	var traced_shot: StudioRender.Shot = _render.last_shot
+	var frames_below: RenderSettings = below.copy()
+	frames_below.traced = false
+	frames_below.samples = 0
+	var raster: Image = await _render.render(_world, frames_below)
+	var raster_shot: StudioRender.Shot = _render.last_shot
+	if traced == null or raster == null:
+		_check("the shelf is drawn", false)
+		return
+	traced.save_png(OUT + "bounce_traced.png")
+	raster.save_png(OUT + "bounce_frames.png")
+	var tinted: int = 0
+	# Away from the column, which lights what is near it white.
+	for at: Vector3 in [Vector3(-45, under - 0.5, 45), Vector3(45, under - 0.5, 45),
+			Vector3(-50, under - 0.5, 0)]:
+		var with: float = _tint(_patch(traced, _project(traced_shot, at, traced.get_size())))
+		var without: float = _tint(_patch(raster, _project(raster_shot, at, raster.get_size())))
+		if with - without >= BOUNCE_LEAST:
+			tinted += 1
+		print("    the shelf's underside at (%d, %d): orange %.3f path traced, %.3f frames averaged"
+			% [roundi(at.x), roundi(at.z), with, without])
+	_check("light off the orange floor colours the underside at three points, where frames "
+		+ "averaged has none of it (%d of 3 at least %.2f more orange)" % [tinted, BOUNCE_LEAST],
+		tinted == 3)
 
 
 ## Which way the key light shines, as the last render dressed it.
@@ -331,7 +355,7 @@ func _penumbra(lit: Image, unlit: Image, shot: StudioRender.Shot, at: Vector3,
 	var across: Vector3 = Vector3.UP.cross(forward).normalized()
 	var steps: PackedFloat32Array = PackedFloat32Array()
 	var drops: PackedFloat32Array = PackedFloat32Array()
-	var reach: float = 40.0
+	var reach: float = 50.0
 	var step: float = 0.5
 	var offset: float = -reach
 	while offset <= reach:
@@ -394,6 +418,10 @@ func _queue() -> void:
 	dialog.settings.view = "current"
 	var camera: Node = _main.get("_camera")
 	var controls: Dictionary = queue.controls_by_name()
+	# The window turned with nothing being drawn, for what a frame takes here.
+	var idle: PackedFloat32Array = await _turning(3000)
+	print("    the window turning with nothing drawn: median %.0f ms, 95%% within %.0f ms"
+		% [_middle(idle, 0.5), _middle(idle, 0.95)])
 
 	# One as the window looks now.
 	(controls["queue_add"] as Button).pressed.emit()
@@ -437,7 +465,8 @@ func _queue() -> void:
 		watch.call()
 		if not shot_taken and queue.is_drawing() and Time.get_ticks_msec() - started > 1500:
 			shot_taken = true
-			await _shoot("queue_window_1400x900")
+			await _shoot("queue_window")
+			last = Time.get_ticks_usec()
 		var left: int = 0
 		for item: RenderQueue.Item in queue.items:
 			if not item.finished():
@@ -457,14 +486,11 @@ func _queue() -> void:
 		in_turn = in_turn and int(ended.get(n, 0)) <= int(began.get(n + 1, 0))
 	_check("one after the other (began %s, ended %s)" % [_times(began, started),
 		_times(ended, started)], in_turn)
-	var sorted: PackedFloat32Array = frames.duplicate()
-	sorted.sort()
-	var median: float = sorted[sorted.size() / 2] if not sorted.is_empty() else 999.0
-	var p95: float = sorted[int(float(sorted.size() - 1) * 0.95)] if not sorted.is_empty() \
-		else 999.0
+	var median: float = _middle(frames, 0.5)
+	var p95: float = _middle(frames, 0.95)
 	_check("the window drew %d frames meanwhile, turning: median %.0f ms, 95%% within %.0f ms"
-		% [frames.size(), median, p95] + ", the longest %.0f ms" % (sorted[-1] if not
-			sorted.is_empty() else 0.0), median <= 34.0 and p95 <= 60.0)
+		% [frames.size(), median, p95] + ", the longest %.0f ms" % _middle(frames, 1.0),
+		median <= 34.0 and p95 <= 60.0)
 
 	var pictures: Array[Image] = []
 	for item: RenderQueue.Item in queue.items:
@@ -492,14 +518,33 @@ func _queue() -> void:
 	var shown: Variant = await tools.run("render_queue", {"action": "list", "number": 3})
 	_check("render_queue number=3 shows the picture", shown is Array
 		and str((shown as Array)[1].get("type", "")) == "image")
-	# The window at the other size, with the panel.
-	DisplayServer.window_set_size(Vector2i(1280, 720))
-	await _frames(20)
-	await _shoot("queue_window_1280x720")
-	DisplayServer.window_set_size(Vector2i(1400, 900))
-	await _frames(10)
+	await _shoot("queue_window_done")
 	queue.close()
 	_world.remove_brick(green)
+
+
+## The window's frame times while its view is turned a little each frame.
+func _turning(ms: int) -> PackedFloat32Array:
+	var camera: Node = _main.get("_camera")
+	var frames := PackedFloat32Array()
+	var started: int = Time.get_ticks_msec()
+	var last: int = Time.get_ticks_usec()
+	while Time.get_ticks_msec() - started < ms:
+		camera.call("turn_by_drag", Vector2(2, 0))
+		await process_frame
+		var now: int = Time.get_ticks_usec()
+		frames.append(float(now - last) / 1000.0)
+		last = now
+	return frames
+
+
+## The frame time that share of the frames are within.
+static func _middle(frames: PackedFloat32Array, share: float) -> float:
+	if frames.is_empty():
+		return 999.0
+	var sorted: PackedFloat32Array = frames.duplicate()
+	sorted.sort()
+	return sorted[int(float(sorted.size() - 1) * share)]
 
 
 func _times(at: Dictionary, since: int) -> String:
@@ -525,5 +570,6 @@ static func _green_share(image: Image) -> float:
 func _shoot(name: String) -> void:
 	await RenderingServer.frame_post_draw
 	var image: Image = root.get_texture().get_image()
-	image.save_png(OUT + name + ".png")
-	print("    the window: %s.png (%dx%d)" % [name, image.get_width(), image.get_height()])
+	var file: String = "%s_%dx%d.png" % [name, image.get_width(), image.get_height()]
+	image.save_png(OUT + file)
+	print("    the window: %s" % file)

@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:path tracer, ui:render queue, cli:pathtrace probe, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe -->
 
 ## Sub-features
 
@@ -1873,7 +1873,8 @@ picture the assistant is shown.
   and a PCSS key, six frames averaged with the key moved a little, at the
   engine's finest occlusion and soft-shadow filters for the render (one frame
   of a soft shadow is noise, and at 4K it was a grid of dots on every face);
-  in a browser it is 8 frames averaged under a key moved across its area. Best averages 64 frames on the desktop and 32 in a
+  in a browser it is 8 frames averaged under a key moved across its area. Best is path traced where the card traces rays (`path
+  tracer`, below); elsewhere it averages 64 frames on the desktop and 32 in a
   browser: each jittered under the pixel (R2 sequence, a Gaussian 0.42 px
   wide), the key moved across a 7 degree area, the lens across its aperture
   (a real f-number on a real-sized model: an LDU is 0.4 mm) with the focus
@@ -1904,6 +1905,67 @@ picture the assistant is shown.
   makes the set ahead of the first render, on both renderers: the viewports,
   and the sweep and the contact shadow drawn once, each alone (`_warm`); a
   render asked for meanwhile waits the few frames left (`_prepare`).
+- `path tracer` (`src/render/path_tracer.gd`, `path_tracer.glsl` and
+  `path_tracer_resolve.glsl`; APP_UX3 pathtrace): Best where the renderer
+  has a RenderingDevice with Vulkan's ray tracing pipeline and buffer device
+  addresses (`PathTracer.available()`: never on the web, headless or
+  Compatibility; the RX 6700 XT on RADV has the pipeline but not ray
+  queries, so it is raygen, miss and closest-hit, not a compute shader).
+  `StudioRender` stages the model as for every grade, then hands the
+  stage's MultiMesh batches (20 floats an instance: three rows, the colour,
+  the finish) and the sweep to `PathTracer.stage`: a bottom-level structure
+  per mesh (kept by Mesh), a top-level one of every instance, and storage
+  buffers of positions, normals and indices the closest-hit reads. The
+  light is the photographed place (`StudioPanorama`, importance-sampled from
+  a 256 x 128 table, with MIS) or the window's own sky gradient, plus the
+  rig's lights as cones of their spread (the key 7°), each with a shadow
+  ray; plastic is a diffuse base under a GGX coat, the seam darkened as the
+  window's shader does; clear parts are thin glass (the sky's reflection
+  added by a ray of its own, the path carried on through, tinted). The
+  sweep's lift to white (`level` over 1) is seen by the eye only, never
+  lights the model. Six bounces, roulette after two, a sample clamped at
+  40. Exposure and the sweep are metered on a 120-pixel picture at 48
+  samples as the raster's are, then the picture is traced in passes kept
+  near 28 ms (`PathTracer.PASS_MS`, from 1 to 32 samples a pass), shown
+  every second in two halves (`piece_done`), and tone-mapped exactly as the
+  window's environment (ACES or Filmic, its white, the product look's
+  contrast and saturation). `StudioRender.finish_now()` keeps it as it is;
+  `cancel()` drops it. A transparent picture stays frames averaged: its
+  contact shadow on nothing is the raster's. `RenderSettings.samples`, from
+  Render's "Best's frames", sets the samples, 256 by default
+  (`TRACED_SAMPLES`); `RenderSettings.traced = false` and `seed` are for
+  probes. A card that refuses the pipeline is said once in the log and
+  Best is frames averaged from then on (`PathTracer._refused`).
+- `render queue` (File, Render queue…; `src/ui/render_queue.gd`,
+  `RenderQueue.of(app)`, loaded by name so main and the shell do not
+  compile it at start): a panel in the bottom right of the model's room.
+  Add this view queues `RenderSettings` copied from Render's, the window's
+  view kept in it (`keep_eye`: `StudioRender.aim` uses it in place of the
+  camera's), and the model as it stood (`copy_for_reading`, hidden parts
+  and scenery left hidden). Drawn in turn by a `StudioRender` of the
+  queue's own, each written where Render writes as `<model>_render_<n>.png`
+  (the next free n), its progress in the status bar (`Working`, whose
+  Cancel stops it and pauses the rest). Pause, Go on, Finish now (traced
+  only), Stop or Remove on a row, Clear finished. Over MCP,
+  `render_queue` (action add with render_model's options and samples, list,
+  list number=N with the picture, pause, go_on, finish_now, cancel, clear).
+  Renders going at once share the window's vsync and frame-rate state
+  (`StudioRender._quick_count`), put back when the last one ends. A traced
+  render no longer raises the window's shadow atlas and SSAO, which would
+  slow the window it shares.
+- `pathtrace probe` (`src/dev/pathtrace_probe.gd`, `tools/probe.sh
+  pathtrace`, windowed on the GPU at 1400 x 900): the car at 1280 x 720 and
+  256 samples within 60 s; its RMSE against 4,096 other samples at most
+  0.02 (and 16 samples' at least 2.5 times that); a white column's shadow
+  on the floor seen from above, its edge's width (90% to 10% of its depth)
+  at 25, 50 and 80% of the way to its tip, widening; a white wall on an
+  orange floor seen from the front, orange low down more than high up and
+  more than Best frames averaged at the same point; then the queue: File,
+  Render queue…, Add this view, a green brick put on the roof and the view
+  turned, Add again, render_queue add, all three drawn at 960 x 540 and 128
+  samples, one after another, while the window turns every frame (its
+  median and 95th-percentile frame), each its own view, the green brick
+  only in the second and third. Pictures in `shots/pathtrace/`.
 - `motions panel` (Build, Motions…, once Pose and animate…; `src/ui/pose_panel.gd`,
   class `PosePanel`, in the column beside the model (`Main._tool_column`) so
   what moves is seen and no part to be dragged is under it; the

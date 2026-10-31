@@ -25,6 +25,9 @@ const ROW_TALL := 46.0
 ## The picture kept with a finished render, for render_queue to show, at
 ## most this wide.
 const KEPT_WIDE := 800
+## A pass of the path tracer's share of a frame, in ms: under half of
+## Render's (PathTracer.PASS_MS), so the window goes on turning smoothly.
+const PASS_MS := 8.0
 
 ## One picture asked for.
 class Item extends RefCounted:
@@ -99,6 +102,7 @@ static func of(app: Node) -> RenderQueue:
 func _ready() -> void:
 	visible = false
 	_renderer = StudioRender.new()
+	_renderer.pass_ms = PASS_MS
 	add_child(_renderer)
 	_renderer.progress.connect(_on_progress)
 	_build()

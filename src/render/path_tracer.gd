@@ -27,9 +27,8 @@ extends RefCounted
 const BOUNCES := 6
 ## Cells across and down of the table a photographed place is picked from.
 const PLACE_CELLS := Vector2i(256, 128)
-## The most samples one pass gives every pixel, and the frame a pass is
-## kept to on the card: the window's own frame and this together stay
-## under a few dozen milliseconds.
+## The most samples one pass gives every pixel, and what a pass may add
+## to the window's own frame on the card.
 const MOST_PER_PASS := 32
 const PASS_MS := 28.0
 ## Glass, opal and the rest, as PartLibrary.BrickColor.Finish numbers them:
@@ -56,8 +55,12 @@ var _resolve_pipeline: RID
 var _sampler: RID
 
 ## Mesh -> [BLAS, vertex buffer, index buffer, positions, normals,
-## indices, vertex count]: kept between pictures.
-var _shapes: Dictionary = {}
+## indices, vertex count]: kept between pictures, and shared by every
+## tracer (Render's and the queue's: the queue's first picture built them
+## all again, a quarter of a second of the window's frame), freed when the
+## last of them is.
+static var _shapes: Dictionary = {}
+static var _holders: int = 0
 ## What one picture is built of, freed when the next is staged.
 var _tlas: RID
 var _scene_buffer: RID
@@ -163,16 +166,22 @@ func _make() -> bool:
 	sampler.repeat_u = RenderingDevice.SAMPLER_REPEAT_MODE_REPEAT
 	sampler.repeat_v = RenderingDevice.SAMPLER_REPEAT_MODE_CLAMP_TO_EDGE
 	_sampler = _rd.sampler_create(sampler)
+	_holders += 1
 	return true
 
 
 # -- the set -------------------------------------------------------------------
 
 
-## The shape of one mesh on the card, made the first time it is staged.
-func _shape(mesh: Mesh) -> Array:
+## The shape of one mesh on the card, made the first time it is staged,
+## or asked for ahead (StudioRender asks a few a frame: each is the mesh
+## read back from the card and a structure built, and the car's forty in
+## one frame held the window half a second).
+func shape_of(mesh: Mesh) -> Array:
 	if _shapes.has(mesh):
 		return _shapes[mesh]
+	if not _make():
+		return []
 	var arrays: Array = mesh.surface_get_arrays(0)
 	var points: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
 	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL] \
@@ -240,7 +249,7 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 			else multimesh.instance_count
 		if count <= 0:
 			continue
-		var shape: Array = _shape(multimesh.mesh)
+		var shape: Array = shape_of(multimesh.mesh)
 		if shape.is_empty():
 			continue
 		if not shape_index.has(multimesh.mesh):
@@ -293,7 +302,7 @@ func stage(batches: Array, sweep: MeshInstance3D) -> bool:
 	if placed.is_empty():
 		return false
 	if sweep != null and sweep.is_visible_in_tree() and sweep.mesh != null:
-		var shape: Array = _shape(sweep.mesh)
+		var shape: Array = shape_of(sweep.mesh)
 		if not shape.is_empty():
 			if not shape_index.has(sweep.mesh):
 				shape_index[sweep.mesh] = shape_list.size()
@@ -488,24 +497,29 @@ func has_glass() -> bool:
 # -- tracing -------------------------------------------------------------------
 
 
-## Add [param count] samples to every pixel. The card does the work after
-## this frame's own drawing; nothing waits for it here.
-func trace(count: int, seed: int = 0) -> void:
-	if not _trace_set.is_valid() or count <= 0:
+## Add [param count] samples to every pixel, or to [param rows] of them
+## from [param row] down: they count once the last row has them, so a
+## sample of a big picture can be spread over frames. The card does the
+## work after this frame's own drawing; nothing waits for it here.
+func trace(count: int, seed: int = 0, row: int = 0, rows: int = 0) -> void:
+	if not _trace_set.is_valid() or count <= 0 or row >= _size.y:
 		return
+	var band: int = _size.y - row if rows <= 0 else mini(rows, _size.y - row)
 	var push := PackedByteArray()
-	push.resize(16)
+	push.resize(32)
 	push.encode_u32(0, samples)
 	push.encode_u32(4, count)
 	push.encode_u32(8, seed)
 	push.encode_u32(12, 1 if samples == 0 else 0)
+	push.encode_u32(16, row)
 	var list: int = _rd.raytracing_list_begin()
 	_rd.raytracing_list_bind_raytracing_pipeline(list, _pipeline)
 	_rd.raytracing_list_bind_uniform_set(list, _trace_set, 0)
 	_rd.raytracing_list_set_push_constant(list, push, push.size())
-	_rd.raytracing_list_trace_rays(list, 0, _sbt, _size.x, _size.y, 1)
+	_rd.raytracing_list_trace_rays(list, 0, _sbt, _size.x, band, 1)
 	_rd.raytracing_list_end()
-	samples += count
+	if row + band >= _size.y:
+		samples += count
 
 
 ## The picture so far, exposed by [param exposure] and tone-mapped
@@ -564,11 +578,15 @@ func release() -> void:
 	_free_picture_set()
 	for rid: RID in [_accum, _picture, _place_texture, _place_table]:
 		_free(rid)
-	for shape: Array in _shapes.values():
-		if not shape.is_empty():
-			for rid: RID in [shape[0], shape[1], shape[2]]:
-				_free(rid)
-	_shapes.clear()
+	if _pipeline.is_valid():
+		_holders -= 1
+	if _holders <= 0:
+		_holders = 0
+		for shape: Array in _shapes.values():
+			if not shape.is_empty():
+				for rid: RID in [shape[0], shape[1], shape[2]]:
+					_free(rid)
+		_shapes.clear()
 	for rid: RID in [_sbt, _pipeline, _resolve_pipeline, _shader, _resolve_shader, _sampler]:
 		_free(rid)
 	_pipeline = RID()

@@ -1792,9 +1792,17 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	var picture: Vector2i = Vector2i(maxi(settings.size.x, 1), maxi(settings.size.y, 1))
 	_doing("putting the set on the card")
 	var batches: Array = []
+	var pace := FramePace.new()
 	for child: Node in _stage.get_children():
 		if child is MultiMeshInstance3D:
 			batches.append(child)
+			var multimesh: MultiMesh = (child as MultiMeshInstance3D).multimesh
+			if multimesh != null and multimesh.mesh != null:
+				_tracer.shape_of(multimesh.mesh)
+			if pace.due():
+				await pace.next()
+				if _cancelled:
+					return null
 	if not _tracer.stage(batches, _backdrop if _backdrop.visible else null):
 		return null
 	_tracer.light_with(_lit_by)
@@ -1816,11 +1824,14 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		_tracer.scene = _traced_scene(settings, plan, shot, small, level)
 		if not _tracer.begin(small):
 			return null
-		_tracer.trace(48, round)
+		# A frame's share at a time: 48 samples at once held the window's
+		# frame while the queue drew beside it.
 		_doing("metering")
-		await get_tree().process_frame
-		if _cancelled:
-			return null
+		for _part: int in 4:
+			_tracer.trace(12, round)
+			await get_tree().process_frame
+			if _cancelled:
+				return null
 		if _wanted_lightness > 0.0:
 			for _step_round: int in 4:
 				var seen: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
@@ -1845,23 +1856,37 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		return null
 	var wanted: int = maxi(plan.samples, 1)
 	var per_pass: int = 1
+	# A sample of a big picture is more than a frame can spare beside the
+	# window's: it is given a band of rows at a time until there is room.
+	var rows: int = maxi(picture.y / 4, 1)
+	var row: int = 0
+	var frame_ms: float = await _frame_ms()
 	var shown_at: int = Time.get_ticks_msec()
 	var pass_began: int = Time.get_ticks_usec()
 	_stopping = false
 	while _tracer.samples < wanted:
 		var count: int = mini(per_pass, wanted - _tracer.samples)
-		_tracer.trace(count, 7919 * _tracer.samples + 104729 * settings.seed)
-		_doing("tracing %d samples" % count)
+		_tracer.trace(count, 7919 * _tracer.samples + 104729 * settings.seed, row, rows)
+		row = 0 if row + rows >= picture.y else row + rows
+		_doing("tracing %d samples, %d rows" % [count, rows])
 		await get_tree().process_frame
 		if _cancelled:
 			return null
-		# A pass is kept to the frame the card can spare beside the window's.
-		var took: float = float(Time.get_ticks_usec() - pass_began) / 1000.0
+		# A pass is kept to what the card can spare beside the window's frame.
+		var took: float = float(Time.get_ticks_usec() - pass_began) / 1000.0 - frame_ms
 		pass_began = Time.get_ticks_usec()
-		if took < PathTracer.PASS_MS * 0.6:
-			per_pass = mini(per_pass * 2, PathTracer.MOST_PER_PASS)
-		elif took > PathTracer.PASS_MS * 1.6 and per_pass > 1:
-			per_pass = maxi(per_pass / 2, 1)
+		if took < pass_ms * 0.6:
+			if rows < picture.y:
+				rows = mini(rows * 2, picture.y)
+			else:
+				per_pass = mini(per_pass * 2, PathTracer.MOST_PER_PASS)
+		elif took > pass_ms * 1.6:
+			if per_pass > 1:
+				per_pass = maxi(per_pass / 2, 1)
+			else:
+				rows = maxi(rows / 2, 8)
+		if row != 0:
+			continue
 		var said: String = words if not words.is_empty() else \
 			"%d of %d samples" % [_tracer.samples, wanted]
 		progress.emit(lerpf(from, to, float(_tracer.samples) / float(wanted)), said)
@@ -1889,6 +1914,21 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 		_doing("converting")
 		result.convert(Image.FORMAT_RGB8)
 	return result
+
+
+## What a frame of the window takes with nothing traced beside it: the
+## middle of three whole frames.
+func _frame_ms() -> float:
+	await get_tree().process_frame
+	var times: Array[float] = []
+	var last: int = Time.get_ticks_usec()
+	for _n: int in 3:
+		await get_tree().process_frame
+		var now: int = Time.get_ticks_usec()
+		times.append(float(now - last) / 1000.0)
+		last = now
+	times.sort()
+	return times[1]
 
 
 ## What the tracer lights and sees, as path_tracer.glsl's Scene reads it.
@@ -1928,8 +1968,8 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 	data.append_array([behind.r, behind.g, behind.b, 1.0 if _backdrop.visible else 0.0])
 	var origin: Vector3 = _backdrop.global_position
 	data.append_array([origin.x, origin.y, origin.z, float(PathTracer.PLACE_CELLS.y)])
-	# The lights: the rig as dressed, every one casting its shadow, the key
-	# from anywhere on its area. A photographed place is its own key.
+	# The lights: the rig as dressed, the key from anywhere on its area. A
+	# photographed place is its own key.
 	var lights: Array = []
 	if place == null or (product and settings.lighting == "studio"):
 		for n: int in _lights.size():
@@ -1939,8 +1979,9 @@ func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Ve
 			var toward: Vector3 = light.get_meta("toward", Vector3.UP)
 			var energy_here: float = light.light_energy
 			var colour: Color = light.light_color * energy_here
+			# Shadows where the window's light casts them: the key's alone.
 			lights.append([toward, plan.key_spread * 0.5 if n == 0 else 0.0, colour,
-				0.0 if settings.no_shadows else 1.0])
+				1.0 if light.shadow_enabled else 0.0])
 	data.append_array([1.0 if product else 0.0, float(lights.size()), 0.0, 0.0])
 	# The window's sky (main.tscn's), as its ambient light lights the model.
 	var top := Color(0.53, 0.545, 0.565)
@@ -2017,6 +2058,9 @@ func traced_last() -> bool:
 	return _traced_last
 
 
+## How long a pass of the path tracer may take of a frame: less for the
+## queue (RenderQueue), which draws beside a window still in use.
+var pass_ms: float = PathTracer.PASS_MS
 var _tracer: PathTracer = null
 var _stopping: bool = false
 var _traced_last: bool = false

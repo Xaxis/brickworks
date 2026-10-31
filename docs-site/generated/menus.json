@@ -242,6 +242,12 @@
 					"tip": "A photo-real picture or turntable of the model, on a backdrop, in studio light"
 				},
 				{
+					"name": "render_queue",
+					"words": "Render queue…",
+					"key": "",
+					"tip": "Pictures lined up with Render's settings and drawn one after another while you go on building"
+				},
+				{
 					"line": true
 				},
 				{
@@ -1534,6 +1540,7 @@
 		"export_all": "",
 		"export_rebrickable": "",
 		"render": "",
+		"render_queue": "",
 		"pose": "",
 		"instructions": "",
 		"share": "",
