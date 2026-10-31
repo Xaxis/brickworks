@@ -20,6 +20,9 @@
 ##   kept out of the translation, and none keeps words of the interface in
 ##   English (Language.left_in_english) but names and keys;
 ## - Find a command finds Save by its name in the language, and by "save";
+## - Render's backdrop "White" reads the language's word, by its own entry
+##   (msgctxt "backdrop"), while LDraw's colour White stays White; and a
+##   sub-model named Car reads Car in the model tree;
 ## - in German, the longest words, at 1280 x 720: every menu at most 25
 ##   rows and 60% of the window's height (palette's bar), each inside the
 ##   window, and every control the page asks for (Main._page_controls, as
@@ -861,7 +864,36 @@ func _in(code: String) -> void:
 	_check("%s: Find a command, \"%s\" finds Save first (%s), and \"save\" still does (%s)" % [
 		code, typed, ", ".join(found.slice(0, 3)), ", ".join(english.slice(0, 3))],
 		not found.is_empty() and found[0] == "save" and not english.is_empty() and english[0] == "save")
+	await _two_senses(code)
 	await _pictures(code)
+
+
+## A word with a second sense, and a name that is a word too: Render's
+## backdrop "White" is the language's (its entry by context) while LDraw's
+## colour White stays a name; a sub-model named Car stays Car in the model
+## tree, though the parts' columns say Car in the language.
+func _two_senses(code: String) -> void:
+	var shown: Array = await _show("render")
+	var render: RenderDialog = _main.get("_render")
+	var white: Button = render.controls_by_name()["render_bg_white"]
+	var backdrop: String = TranslationServer.translate("White", "backdrop")
+	var colour: String = TranslationServer.translate("White")
+	_check("%s: Render's backdrop reads \"%s\", its own entry, and the colour White \"%s\"" % [
+		code, white.text, colour], white.text == backdrop and backdrop != "White" and colour == "White")
+	await _close("render", shown[0])
+	(_main.get("_builder") as Builder).select_brick(_brick, false)
+	var made: String = _shell.assemblies.make("Car")
+	await _frames(6)
+	var row: TreeItem = null
+	var top: TreeItem = (_shell.outliner.get("_tree") as Tree).get_root()
+	for under: TreeItem in ([] if top == null else top.get_children()):
+		if under.get_text(0) == "Car":
+			row = under
+	_check("%s: the model tree's sub-model Car reads Car (the parts' word is \"%s\")" % [code,
+		Language.says("Car")], not made.is_empty() and row != null and Language.says("Car") != "Car"
+		and row.get_auto_translate_mode(0) == Node.AUTO_TRANSLATE_MODE_DISABLED)
+	_shell.run("undo")
+	await _frames(4)
 
 
 func _some(words: Array[String]) -> String:

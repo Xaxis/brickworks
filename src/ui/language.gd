@@ -194,7 +194,15 @@ class Words extends Translation:
 			(_patterns[first] as Array).sort_custom(func(a: Array, b: Array) -> bool:
 				return int(a[2]) > int(b[2]))
 
-	func _get_message(src_message: StringName, _context: StringName) -> StringName:
+	func _get_message(src_message: StringName, context: StringName) -> StringName:
+		# A word with two senses has an entry of its own for the second:
+		# "White", a render's backdrop, beside LDraw's colour of that name,
+		# which every language keeps (msgctxt "backdrop" in the file,
+		# tr("White", "backdrop") where it is drawn).
+		if not String(context).is_empty():
+			var own: String = String(_source.get_message(src_message, context))
+			if not own.is_empty():
+				return StringName(own)
 		return StringName(find(String(src_message)))
 
 	## [param text] in this language, or "" when there is no translation.

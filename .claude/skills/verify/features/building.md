@@ -1061,8 +1061,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   together, Comments, Your account, Render and its queue, the booklet's, the
   collection's, the minifigure builder, the part maker, the print editor,
   Send feedback, About, the confirmations, the assistant panel) are
-  translated too, and the model tree's own row ("Model"); not yet the web
-  pages, nor "White" on Render's backgrounds, which is a colour's name too.
+  translated too, and the model tree's own row ("Model"), its sub-models'
+  rows drawn as named; not yet the web pages. A word with a second sense has
+  an entry of its own by context: Render's backdrop "White" (`msgctxt
+  "backdrop"`, `tr("White", "backdrop")`) beside LDraw's colour White.
   `languages_probe` reads them all in English, then in each language: 63
   common actions with the status line heard after each, Settings with the
   assistant on and off, and 40-odd dialogs opened one by one (`DIALOGS`; the
