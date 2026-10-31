@@ -3295,7 +3295,12 @@ func _tool_answer(block: Dictionary) -> Variant:
 			if trial.placements.is_empty():
 				return report["feedback"]
 			var weighed: String = _balance_said(report, trial, applied)
+			# From outside, where each floating part would stand, as a refused
+			# submit_design says it: the side pod's check said the headlight
+			# floated, and its session asked attachment_points for the plate's
+			# span before it checked again (mcpcad's walk).
 			var checked: String = str(report["feedback"]) \
+				+ ("" if what_if or running else _where_it_would_stand(trial, report)) \
 				+ ("" if weighed.is_empty() else "\n\n" + weighed)
 			if what_if:
 				var asked: String = _what_changed(args["edit"])

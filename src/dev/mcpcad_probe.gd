@@ -3,16 +3,18 @@
 ##
 ##   godot --headless --path . --script src/dev/mcpcad_probe.gd
 ##
-## Windowed (tools/probe.sh mcpcad, PROBE_SIZE=1280x720 for the smaller),
-## it also keeps a picture of what the person sees as in_view reads it, in
-## MCPCAD_SHOTS or user://mcpcad_probe.
+## In a window it also keeps a picture of what the person sees as in_view
+## reads it, in MCPCAD_SHOTS or user://mcpcad_probe (by hand, with its own
+## XDG_DATA_HOME: gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a -s '-screen 0
+## 1400x900x24' godot --path . --resolution 1400x900 then this script).
 ##
 ## Each call is made as the connector and the desktop's MCP port make it
 ## (CommandSocket.answer_rpc, tools/call), on the app's scene:
 ## - The walk's side pod, five parts asked for by part, submitted with its
 ##   4 x 6 plate six studs along x, as the walk's session first did: refused,
 ##   nothing laid, and the refusal says the plate's span, the span a quarter
-##   turn gives it at the same corner, and where the headlight would stand.
+##   turn gives it at the same corner, and where the headlight would stand;
+##   check_design of it says the same.
 ## - Turned, it is built, and answered as CAD: each part's span and what holds
 ##   it, none of the designer's method; its save asks for no fresh look. A wall
 ##   of eight bricks is answered so too.
@@ -120,6 +122,10 @@ func _cad_and_design() -> void:
 		refused.contains("brick 3 (4070 at 1,1,5)") and refused.contains("At 1,1,3 it would stand on it"))
 	_check("...and not the cheese slope that stands on the headlight",
 		not refused.contains("brick 4 (54200 at 1,4,5) takes"))
+	var checked: String = await _say("check_design", {"bricks": POD})
+	_check("check_design says the same, before anything is submitted (the walk's after-session "
+		+ "checked first)", checked.contains("Where they would stand:")
+		and checked.contains("At 1,1,3 it would stand on it") and _model_ids().is_empty())
 
 	var turned: Array = POD.duplicate(true)
 	turned[0]["rot"] = 1
