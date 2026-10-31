@@ -1047,16 +1047,29 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   chosen file, so a control's `text` stays English and every probe and
   browser check reads English in any language. Words made at the moment are
   patterns (`%s`, `%d`); a row's key, a tooltip's lines, a status line's
-  parts (" · ", " — ", ". ", "; ") and the keys sheet's lowered words are
-  found piece by piece. Names stay as they are: parts, colours (LDraw's, as
-  Studio keeps them), models, keys (Ctrl, Shift). Find a command matches a
-  command's words as drawn too ("speichern" finds Save,
-  `CommandPalette._score`). Not translated yet: the
-  status line's messages after an action, dialogs other than Settings and
-  the keys sheet, the web pages. A word added to a menu, a tooltip or a
-  panel with no entry fails `languages_probe`, whose `--missing=FILE` writes
-  the entries to translate; `tests/test_locale.py` checks the files
-  (places kept, LEGO® an adjective, no language short of another).
+  parts (" · ", " — ", ". ", "; ", and " › " a menu's path) and the keys
+  sheet's lowered words are found piece by piece, a part found nowhere kept
+  as it is, as a name is ("House — 71 bricks"); of several partial ways the
+  one leaving the fewest English letters wins. Names stay as they are:
+  parts, colours (LDraw's, as Studio keeps them), models, sets, keys (Ctrl,
+  Shift), files, licences, and whatever an entry's English quotes (“%s”:
+  a model named Car stays Car). Find a command matches a command's words as
+  drawn too ("speichern" finds Save, `CommandPalette._score`). The status
+  line after an action, and every dialog (Open's list and Godot's file
+  dialog, the Library, Save as, Versions, Export, Share, Build together,
+  Comments, Your account, Render and its queue, the booklet's, the
+  collection's, the minifigure builder, the part maker, the print editor,
+  Send feedback, About, the confirmations, the assistant panel) are
+  translated too, and the model tree's own row ("Model"); not yet the web
+  pages, nor "White" on Render's backgrounds, which is a colour's name too. `languages_probe` reads them all
+  in English, then in each language: 63 common actions with the status line
+  heard after each, and 40-odd dialogs opened one by one (`DIALOGS`), each
+  word drawn on them read; a word added to a menu, a tooltip, a panel, a
+  dialog or a status message with no entry fails it, and `--missing=FILE`
+  writes the entries to translate, each partial one with the whole it was
+  in ("#. in:"). `--shots=DIR` pictures eight dialogs and a status line in
+  each language. `tests/test_locale.py` checks the files (places kept,
+  LEGO® an adjective, no language short of another).
 - `remembered layout` (`src/ui/shell_prefs.gd`): the columns open or folded
   (`parts_open`, and the right column's tab, `assistant_open` or else
   `properties_open`, for a wide window; `narrow_side`, "parts", "properties"

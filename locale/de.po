@@ -2809,3 +2809,5167 @@ msgstr "Vorschau des Untermodells"
 
 msgid "The sub-assembly this step puts on shown finished on the first of its own pages, or not"
 msgstr "Die Baugruppe, die dieser Schritt anbringt, fertig auf der ersten ihrer eigenen Seiten gezeigt, oder nicht"
+
+# The status line after an edit: what was done, and the keys for what comes next, its parts where " — " joins them
+msgid "put back where it was"
+msgstr "zurückgelegt, wo es war"
+
+msgid "Undoing a change to %s parts…"
+msgstr "Änderung an %s Teilen wird rückgängig gemacht…"
+
+msgid "Redoing a change to %s parts…"
+msgstr "Änderung an %s Teilen wird wiederholt…"
+
+msgid "undid: %s"
+msgstr "rückgängig gemacht: %s"
+
+msgid "redid: %s"
+msgstr "wiederholt: %s"
+
+msgid "the change"
+msgstr "die Änderung"
+
+msgid "nothing to undo"
+msgstr "nichts rückgängig zu machen"
+
+msgid "nothing to redo"
+msgstr "nichts zu wiederholen"
+
+msgid "painted 1 part"
+msgstr "1 Teil eingefärbt"
+
+msgid "painted %d parts"
+msgstr "%d Teile eingefärbt"
+
+msgid "removed 1 part"
+msgstr "1 Teil entfernt"
+
+msgid "removed %d parts"
+msgstr "%d Teile entfernt"
+
+msgid "Taking off %s parts…"
+msgstr "%s Teile werden entfernt…"
+
+msgid "select what to replace, and hold the part to put in its place"
+msgstr "wähle aus, was ersetzt werden soll, und nimm das Teil in die Hand, das an seine Stelle kommt"
+
+msgid "swapped 1 part for %s"
+msgstr "1 Teil durch %s ersetzt"
+
+msgid "swapped %d parts for %s"
+msgstr "%d Teile durch %s ersetzt"
+
+msgid "%d had no room for it"
+msgstr "für %d war kein Platz"
+
+msgid "select what to mirror first"
+msgstr "wähle zuerst aus, was gespiegelt werden soll"
+
+msgid "no room to mirror it there"
+msgstr "kein Platz, um es dort zu spiegeln"
+
+msgid "mirrored 1 part"
+msgstr "1 Teil gespiegelt"
+
+msgid "mirrored %d parts"
+msgstr "%d Teile gespiegelt"
+
+msgid "measuring"
+msgstr "Messen"
+
+msgid "click two points"
+msgstr "zwei Punkte anklicken"
+
+msgid "%s or Esc puts the ruler away"
+msgstr "%s oder Esc legt das Lineal weg"
+
+msgid "select what hangs from a hinge, clip or turntable first"
+msgstr "wähle zuerst aus, was an einem Scharnier, Clip oder Drehteller hängt"
+
+msgid "that is not on a hinge, clip or turntable, or it would hit something"
+msgstr "das hängt an keinem Scharnier, Clip oder Drehteller, oder es würde an etwas stoßen"
+
+msgid "swung 1 part %s°"
+msgstr "1 Teil um %s° geschwenkt"
+
+msgid "swung %d parts %s°"
+msgstr "%d Teile um %s° geschwenkt"
+
+msgid "%s again"
+msgstr "%s noch einmal"
+
+msgid "%s again, %s back"
+msgstr "%s noch einmal, %s zurück"
+
+msgid "select the parts that make up the sub-assembly first"
+msgstr "wähle zuerst die Teile aus, die die Baugruppe bilden"
+
+msgid "select a sub-assembly first"
+msgstr "wähle zuerst eine Baugruppe aus"
+
+msgid "called it %s, in every copy"
+msgstr "in jeder Kopie %s genannt"
+
+msgid "“%s” is a sub-assembly of %s"
+msgstr "„%s“ ist eine Baugruppe aus %s"
+
+msgid "a click takes it whole, a double-click edits inside it"
+msgstr "ein Klick nimmt sie ganz, ein Doppelklick bearbeitet sie von innen"
+
+msgid "took %s apart"
+msgstr "%s aufgelöst"
+
+msgid "took 1 part out of its sub-assembly"
+msgstr "1 Teil aus seiner Baugruppe genommen"
+
+msgid "took %d parts out of its sub-assembly"
+msgstr "%d Teile aus ihrer Baugruppe genommen"
+
+msgid "select a sub-assembly first, or double-click one with the Select tool"
+msgstr "wähle zuerst eine Baugruppe aus, oder doppelklicke eine mit dem Auswahlwerkzeug"
+
+msgid "editing %s"
+msgstr "%s wird bearbeitet"
+
+msgid "Esc when done"
+msgstr "Esc, wenn fertig"
+
+msgid "done editing %s"
+msgstr "Bearbeitung von %s beendet"
+
+msgid "%s is a sub-assembly of its own now: editing it changes no other"
+msgstr "%s ist jetzt eine eigene Baugruppe: Änderungen daran ändern keine andere"
+
+msgid "went back %d of your steps"
+msgstr "%d deiner Schritte zurückgegangen"
+
+msgid "went back to before: %s"
+msgstr "zurück zu vorher: %s"
+
+msgid "%s goes forward again"
+msgstr "%s geht wieder vor"
+
+msgid "went back 1 step"
+msgstr "1 Schritt zurückgegangen"
+
+msgid "went back %d steps"
+msgstr "%d Schritte zurückgegangen"
+
+msgid "select a brick first, then choose what to match"
+msgstr "wähle zuerst einen Stein aus, dann, was übereinstimmen soll"
+
+msgid "select a brick of the sub-model first"
+msgstr "wähle zuerst einen Stein des Untermodells aus"
+
+msgid "that is not in a sub-model"
+msgstr "das ist in keinem Untermodell"
+
+msgid "%s makes one"
+msgstr "%s erstellt eins"
+
+msgid "select a brick first, then take everything joined to it"
+msgstr "wähle zuerst einen Stein aus, dann nimm alles, was damit verbunden ist"
+
+msgid "stopped looking for what is joined to it"
+msgstr "Suche nach dem damit Verbundenen abgebrochen"
+
+msgid "select what to hide first"
+msgstr "wähle zuerst aus, was ausgeblendet werden soll"
+
+msgid "hid 1 part"
+msgstr "1 Teil ausgeblendet"
+
+msgid "hid %d parts"
+msgstr "%d Teile ausgeblendet"
+
+msgid "%s, or %s with nothing selected, shows everything"
+msgstr "%s, oder %s ohne Auswahl, zeigt alles"
+
+msgid "select what to work on first"
+msgstr "wähle zuerst aus, woran du arbeiten willst"
+
+msgid "showing only 1 part"
+msgstr "nur 1 Teil wird gezeigt"
+
+msgid "showing only %d parts"
+msgstr "nur %d Teile werden gezeigt"
+
+msgid "showing everything"
+msgstr "alles wird gezeigt"
+
+msgid "select something to copy first"
+msgstr "wähle zuerst etwas zum Kopieren aus"
+
+msgid "copied 1 part"
+msgstr "1 Teil kopiert"
+
+msgid "copied %d parts"
+msgstr "%d Teile kopiert"
+
+msgid "%s to paste"
+msgstr "%s zum Einfügen"
+
+msgid "cut 1 part"
+msgstr "1 Teil ausgeschnitten"
+
+msgid "cut %d parts"
+msgstr "%d Teile ausgeschnitten"
+
+msgid "nothing copied yet"
+msgstr "noch nichts kopiert"
+
+msgid "select something and press %s"
+msgstr "wähle etwas aus und drücke %s"
+
+msgid "holding 1 part"
+msgstr "1 Teil in der Hand"
+
+msgid "holding %d parts"
+msgstr "%d Teile in der Hand"
+
+msgid "click to put down, %s turns, Esc puts away"
+msgstr "Klicken setzt ab, %s dreht, Esc legt weg"
+
+msgid "holding %s, %s"
+msgstr "%s in der Hand, %s"
+
+msgid "click to put it down, %s turns, Esc puts away"
+msgstr "Klicken setzt es ab, %s dreht, Esc legt weg"
+
+msgid "select something to duplicate first"
+msgstr "wähle zuerst etwas zum Duplizieren aus"
+
+msgid "holding a copy of 1 part"
+msgstr "eine Kopie von 1 Teil in der Hand"
+
+msgid "holding a copy of %d parts"
+msgstr "eine Kopie von %d Teilen in der Hand"
+
+msgid "each click puts one down, %s turns, Esc or a right click stops"
+msgstr "jeder Klick setzt eine ab, %s dreht, Esc oder ein Rechtsklick hört auf"
+
+msgid "moving 1 part"
+msgstr "1 Teil wird verschoben"
+
+msgid "moving %d parts"
+msgstr "%d Teile werden verschoben"
+
+msgid "click to put down, %s turns, Esc puts back"
+msgstr "Klicken setzt ab, %s dreht, Esc legt zurück"
+
+msgid "tipped 1 part over"
+msgstr "1 Teil gekippt"
+
+msgid "tipped %d parts over"
+msgstr "%d Teile gekippt"
+
+msgid "%s again, %s back, or type its angle"
+msgstr "%s noch einmal, %s zurück, oder gib den Winkel ein"
+
+msgid "turned 1 part %s°"
+msgstr "1 Teil um %s° gedreht"
+
+msgid "turned %d parts %s°"
+msgstr "%d Teile um %s° gedreht"
+
+msgid "or type its angle"
+msgstr "oder gib den Winkel ein"
+
+msgid "select what to lock first"
+msgstr "wähle zuerst aus, was gesperrt werden soll"
+
+msgid "locked 1 part"
+msgstr "1 Teil gesperrt"
+
+msgid "locked %d parts"
+msgstr "%d Teile gesperrt"
+
+msgid "unlocked 1 part"
+msgstr "1 Teil entsperrt"
+
+msgid "unlocked %d parts"
+msgstr "%d Teile entsperrt"
+
+msgid "nothing is locked"
+msgstr "nichts ist gesperrt"
+
+msgid "Orbit: drag to turn the view"
+msgstr "Ansicht drehen: ziehen dreht die Ansicht"
+
+msgid "Pan: drag to slide the view"
+msgstr "Ansicht verschieben: ziehen verschiebt die Ansicht"
+
+msgid "Zoom: drag to zoom the view"
+msgstr "Zoomen: ziehen zoomt die Ansicht"
+
+msgid "Esc or %s for Select"
+msgstr "Esc oder %s für Auswählen"
+
+msgid "placing %s"
+msgstr "%s wird abgesetzt"
+
+msgid "click to put one down, Esc or a right click to stop"
+msgstr "Klicken setzt eins ab, Esc oder ein Rechtsklick hört auf"
+
+msgid "that part is locked"
+msgstr "dieses Teil ist gesperrt"
+
+msgid "Esc puts the copy in hand away"
+msgstr "Esc legt die Kopie in der Hand weg"
+
+msgid "opened %s"
+msgstr "%s geöffnet"
+
+msgid "nothing to save"
+msgstr "nichts zu speichern"
+
+msgid "not saved"
+msgstr "nicht gespeichert"
+
+msgid "stopped saving “%s”"
+msgstr "Speichern von „%s“ abgebrochen"
+
+msgid "nothing was written"
+msgstr "nichts wurde geschrieben"
+
+msgid "could not save that name"
+msgstr "unter diesem Namen konnte nicht gespeichert werden"
+
+msgid "saved “%s”"
+msgstr "„%s“ gespeichert"
+
+msgid "wrote %s"
+msgstr "%s geschrieben"
+
+msgid "saved “%s” here, but could not write %s"
+msgstr "„%s“ hier gespeichert, aber %s konnte nicht geschrieben werden"
+
+msgid "saving “%s” in this browser…"
+msgstr "„%s“ wird in diesem Browser gespeichert…"
+
+msgid "“%s” is not in this browser's storage yet"
+msgstr "„%s“ ist noch nicht im Speicher dieses Browsers"
+
+msgid "keep this tab open"
+msgstr "lass diesen Tab offen"
+
+msgid "could not open %s: %s"
+msgstr "%s konnte nicht geöffnet werden: %s"
+
+msgid "Building the flexible parts of %s…"
+msgstr "Die flexiblen Teile von %s werden gebaut…"
+
+msgid "opened “%s” as saved %s, %d parts"
+msgstr "„%s“ geöffnet, wie %s gespeichert, %d Teile"
+
+msgid "Save makes it the newest save"
+msgstr "Speichern macht es zum neuesten Stand"
+
+msgid "kept “%s”"
+msgstr "„%s“ behalten"
+
+msgid "nothing opened"
+msgstr "nichts geöffnet"
+
+msgid "cleared"
+msgstr "geleert"
+
+msgid "Clearing %s parts…"
+msgstr "%s Teile werden entfernt…"
+
+msgid "turned a quarter"
+msgstr "eine Vierteldrehung gedreht"
+
+msgid "square on"
+msgstr "orthografisch"
+
+msgid "in perspective"
+msgstr "perspektivisch"
+
+msgid "lifted"
+msgstr "aufgenommen"
+
+msgid "click to put it down"
+msgstr "klicken setzt es ab"
+
+msgid "no room there"
+msgstr "dort ist kein Platz"
+
+msgid "no room that way"
+msgstr "in diese Richtung ist kein Platz"
+
+msgid "nothing to list yet"
+msgstr "noch nichts aufzulisten"
+
+msgid "nothing to find yet"
+msgstr "noch nichts zu finden"
+
+msgid "%s: 1 part selected"
+msgstr "%s: 1 Teil ausgewählt"
+
+msgid "%s: %d parts selected"
+msgstr "%s: %d Teile ausgewählt"
+
+# The status line's answers: Check stability and the balance, split and merge, Connect, the ruler
+msgid "Weighing the model…"
+msgstr "Das Modell wird gewogen…"
+
+msgid "it stands up — no joint is carrying more than it can hold"
+msgstr "es steht — keine Verbindung trägt mehr, als sie halten kann"
+
+msgid "1 weak joint, selected: %s"
+msgstr "1 schwache Verbindung, ausgewählt: %s"
+
+msgid "%d weak joints, selected: %s"
+msgstr "%d schwache Verbindungen, ausgewählt: %s"
+
+msgid "%s hangs from %s on 1 stud with %s g past it, %sx its studs' working load"
+msgstr "%s hängt an %s auf 1 Noppe, mit %s g darüber hinaus, das %s-Fache der Arbeitslast ihrer Noppen"
+
+msgid "%s hangs from %s on %d studs with %s g past it, %sx its studs' working load"
+msgstr "%s hängt an %s auf %d Noppen, mit %s g darüber hinaus, das %s-Fache der Arbeitslast ihrer Noppen"
+
+msgid "%s is levered off %s on 1 stud with %s g past it, %sx its studs' working load"
+msgstr "%s wird von %s auf 1 Noppe abgehebelt, mit %s g darüber hinaus, das %s-Fache der Arbeitslast ihrer Noppen"
+
+msgid "%s is levered off %s on %d studs with %s g past it, %sx its studs' working load"
+msgstr "%s wird von %s auf %d Noppen abgehebelt, mit %s g darüber hinaus, das %s-Fache der Arbeitslast ihrer Noppen"
+
+msgid "%s turns on %s on an axle keyed in its hole with %s g past it, %sx its working load"
+msgstr "%s dreht sich an %s auf einer Achse, die in ihrem Loch sitzt, mit %s g darüber hinaus, das %s-Fache ihrer Arbeitslast"
+
+msgid "%s turns on %s on pins or axles on two lines with %s g past it, %sx its working load"
+msgstr "%s dreht sich an %s auf Pins oder Achsen in zwei Reihen, mit %s g darüber hinaus, das %s-Fache ihrer Arbeitslast"
+
+msgid "%s turns on %s on a friction pin with %s g past it, %sx its working load"
+msgstr "%s dreht sich an %s auf einem Reibungspin, mit %s g darüber hinaus, das %s-Fache seiner Arbeitslast"
+
+msgid "%s turns on %s on %d friction pins in a line with %s g past it, %sx its working load"
+msgstr "%s dreht sich an %s auf %d Reibungspins in einer Reihe, mit %s g darüber hinaus, das %s-Fache ihrer Arbeitslast"
+
+msgid "%s turns on %s on a frictionless pin or axle with %s g past it, %sx its working load"
+msgstr "%s dreht sich an %s auf einem reibungslosen Pin oder einer Achse, mit %s g darüber hinaus, das %s-Fache seiner Arbeitslast"
+
+msgid "%s turns on %s on %d frictionless pins or axles in a line with %s g past it, %sx its working load"
+msgstr "%s dreht sich an %s auf %d reibungslosen Pins oder Achsen in einer Reihe, mit %s g darüber hinaus, das %s-Fache ihrer Arbeitslast"
+
+msgid "%s g held by nothing stands on %s by touch alone, its weight %s studs past where it touches"
+msgstr "%s g, von nichts gehalten, stehen nur durch Berührung auf %s, ihr Gewicht %s Noppen über die Auflage hinaus"
+
+msgid "%s g held by nothing stands on %s by touch alone, on an edge too thin to stand on"
+msgstr "%s g, von nichts gehalten, stehen nur durch Berührung auf %s, auf einer Kante, zu schmal zum Stehen"
+
+msgid "its weight is %s studs past the %s edge of what it stands on"
+msgstr "sein Gewicht liegt %s Noppen jenseits der Kante %s dessen, worauf es steht"
+
+msgid "Nothing to weigh."
+msgstr "Nichts zu wiegen."
+
+msgid "Stands, %s studs inside the %s edge (a %d° tilt tips it)"
+msgstr "Steht, %s Noppen innerhalb der Kante %s (ab %d° Neigung kippt es)"
+
+msgid "Stands, %s studs inside the %s edge (a %d° tilt tips it)."
+msgstr "Steht, %s Noppen innerhalb der Kante %s (ab %d° Neigung kippt es)."
+
+msgid "Stands, %s studs inside the %s edge (a %d° tilt tips it) with %s, its worst of %d poses"
+msgstr "Steht, %s Noppen innerhalb der Kante %s (ab %d° Neigung kippt es) mit %s, der schlechtesten von %d Posen"
+
+msgid "Stands, %s studs inside the %s edge (a %d° tilt tips it) with %s, its worst of %d poses."
+msgstr "Steht, %s Noppen innerhalb der Kante %s (ab %d° Neigung kippt es) mit %s, der schlechtesten von %d Posen."
+
+msgid "Stands, %s studs inside the %s edge (a %d° tilt tips it) as it stands, its worst of %d poses"
+msgstr "Steht, %s Noppen innerhalb der Kante %s (ab %d° Neigung kippt es) so, wie es steht, der schlechtesten von %d Posen"
+
+msgid "Stands, %s studs inside the %s edge (a %d° tilt tips it) as it stands, its worst of %d poses."
+msgstr "Steht, %s Noppen innerhalb der Kante %s (ab %d° Neigung kippt es) so, wie es steht, der schlechtesten von %d Posen."
+
+msgid "Tips over, %s studs past the %s edge"
+msgstr "Kippt, %s Noppen jenseits der Kante %s"
+
+msgid "Tips over, %s studs past the %s edge."
+msgstr "Kippt, %s Noppen jenseits der Kante %s."
+
+msgid "Tips over, %s studs past the %s edge with %s, its worst of %d poses"
+msgstr "Kippt, %s Noppen jenseits der Kante %s mit %s, der schlechtesten von %d Posen"
+
+msgid "Tips over, %s studs past the %s edge with %s, its worst of %d poses."
+msgstr "Kippt, %s Noppen jenseits der Kante %s mit %s, der schlechtesten von %d Posen."
+
+msgid "Tips over, %s studs past the %s edge as it stands, its worst of %d poses"
+msgstr "Kippt, %s Noppen jenseits der Kante %s so, wie es steht, der schlechtesten von %d Posen"
+
+msgid "Tips over, %s studs past the %s edge as it stands, its worst of %d poses."
+msgstr "Kippt, %s Noppen jenseits der Kante %s so, wie es steht, der schlechtesten von %d Posen."
+
+msgid "Add %d g (%d 2x4 bricks) %s, or widen it 1 stud to the %s"
+msgstr "Füge %d g (%d 2x4-Steine) %s hinzu oder verbreitere es um 1 Noppe nach %s"
+
+msgid "Add %d g (%d 2x4 bricks) %s, or widen it 1 stud to the %s."
+msgstr "Füge %d g (%d 2x4-Steine) %s hinzu oder verbreitere es um 1 Noppe nach %s."
+
+msgid "Add %d g (%d 2x4 bricks) %s, or widen it %d studs to the %s"
+msgstr "Füge %d g (%d 2x4-Steine) %s hinzu oder verbreitere es um %d Noppen nach %s"
+
+msgid "Add %d g (%d 2x4 bricks) %s, or widen it %d studs to the %s."
+msgstr "Füge %d g (%d 2x4-Steine) %s hinzu oder verbreitere es um %d Noppen nach %s."
+
+msgid "in the middle of the base"
+msgstr "in der Mitte der Standfläche"
+
+msgid "near the %s edge"
+msgstr "nahe der Kante %s"
+
+msgid "Widen it 1 stud to the %s"
+msgstr "Verbreitere es um 1 Noppe nach %s"
+
+msgid "Widen it 1 stud to the %s."
+msgstr "Verbreitere es um 1 Noppe nach %s."
+
+msgid "Widen it %d studs to the %s"
+msgstr "Verbreitere es um %d Noppen nach %s"
+
+msgid "Widen it %d studs to the %s."
+msgstr "Verbreitere es um %d Noppen nach %s."
+
+msgid "1 stud joint overloaded, in red."
+msgstr "1 Noppenverbindung überlastet, rot markiert."
+
+msgid "%d stud joints overloaded, in red."
+msgstr "%d Noppenverbindungen überlastet, rot markiert."
+
+msgid "left"
+msgstr "links"
+
+msgid "right"
+msgstr "rechts"
+
+msgid "front"
+msgstr "vorn"
+
+msgid "back"
+msgstr "hinten"
+
+msgid "front-left"
+msgstr "vorn links"
+
+msgid "front-right"
+msgstr "vorn rechts"
+
+msgid "back-left"
+msgstr "hinten links"
+
+msgid "back-right"
+msgstr "hinten rechts"
+
+msgid "every part is on its studs"
+msgstr "jedes Teil sitzt auf seinen Noppen"
+
+msgid "select parts to split first"
+msgstr "wähle zuerst Teile zum Teilen aus"
+
+msgid "no room to split it there"
+msgstr "kein Platz, um es dort zu teilen"
+
+msgid "nothing selected splits: plates, bricks and tiles split into 1 x 1s, a 1 x 1 brick into plates, slopes into 1-wide slopes"
+msgstr "nichts Ausgewähltes lässt sich teilen: Platten, Steine und Fliesen werden zu 1 x 1, ein 1 x 1-Stein zu Platten, Dachsteine zu 1 breiten Dachsteinen"
+
+msgid "split 1 part into %d"
+msgstr "1 Teil in %d geteilt"
+
+msgid "split %d parts into %d"
+msgstr "%d Teile in %d geteilt"
+
+msgid "select two or more plates, bricks or tiles of one colour to merge"
+msgstr "wähle zwei oder mehr Platten, Steine oder Fliesen einer Farbe zum Zusammenfügen aus"
+
+msgid "no room to merge them there"
+msgstr "kein Platz, um sie dort zusammenzufügen"
+
+msgid "no real part is made of these: nothing merged"
+msgstr "kein echtes Teil besteht aus diesen: nichts zusammengefügt"
+
+msgid "no real part in %s is made of these: nothing merged"
+msgstr "kein echtes Teil in %s besteht aus diesen: nichts zusammengefügt"
+
+msgid "merged %d parts into a %s"
+msgstr "%d Teile zu %s zusammengefügt"
+
+msgid "merged %d parts into %d"
+msgstr "%d Teile zu %d zusammengefügt"
+
+msgid "Connect moves one part: put down what is in hand first"
+msgstr "Verbinden bewegt ein Teil: lege zuerst ab, was du in der Hand hast"
+
+msgid "Connect: aim the part at the model first, then %s"
+msgstr "Verbinden: richte das Teil zuerst auf das Modell, dann %s"
+
+msgid "Connect: click the part to move by one of its points"
+msgstr "Verbinden: klicke das zu bewegende Teil an einem seiner Punkte an"
+
+msgid "Esc stops"
+msgstr "Esc beendet"
+
+msgid "Connect: click the point on the %s it goes on by"
+msgstr "Verbinden: klicke den Punkt an %s an, mit dem es angesetzt wird"
+
+msgid "%d points, Esc stops"
+msgstr "%d Punkte, Esc beendet"
+
+msgid "Connect: click the point on the part it goes on by"
+msgstr "Verbinden: klicke den Punkt am Teil an, mit dem es angesetzt wird"
+
+msgid "this one is a %s"
+msgstr "dieser ist: %s"
+
+msgid "Connect: click where it goes"
+msgstr "Verbinden: klicke dorthin, wo es hinkommt"
+
+msgid "Connect: the %s picked"
+msgstr "Verbinden: %s gewählt"
+
+msgid "click the %s it goes on, %s turns it about the joint"
+msgstr "klicke auf %s, wo es hinkommt, %s dreht es um die Verbindung"
+
+msgid "Connect: by its %s on %s"
+msgstr "Verbinden: mit %s an %s"
+
+msgid "click puts it there"
+msgstr "ein Klick setzt es dort ab"
+
+msgid "%s another point"
+msgstr "%s ein anderer Punkt"
+
+msgid "Connect: aim its %s at a %s"
+msgstr "Verbinden: richte %s auf %s"
+
+msgid "%s picks another point"
+msgstr "%s wählt einen anderen Punkt"
+
+msgid "connected %s"
+msgstr "%s verbunden"
+
+msgid "connected the %s"
+msgstr "%s verbunden"
+
+msgid "click the next part to move, Esc stops"
+msgstr "klicke das nächste zu bewegende Teil an, Esc beendet"
+
+msgid "the %s has no pins, holes, axles, bars or clips: it goes on by its studs"
+msgstr "%s hat keine Pins, Löcher, Achsen, Stangen oder Clips: es wird mit seinen Noppen angesetzt"
+
+msgid "pin or axle"
+msgstr "Pin oder Achse"
+
+msgid "pin"
+msgstr "Pin"
+
+msgid "axle"
+msgstr "Achse"
+
+msgid "pin hole"
+msgstr "Pinloch"
+
+msgid "axle hole"
+msgstr "Achsloch"
+
+msgid "bar"
+msgstr "Stange"
+
+msgid "clip"
+msgstr "Clip"
+
+msgid "tyre"
+msgstr "Reifen"
+
+msgid "rim"
+msgstr "Felge"
+
+msgid "hinge"
+msgstr "Scharnier"
+
+msgid "point"
+msgstr "Punkt"
+
+msgid "Measuring: click a point, then another — Esc stops"
+msgstr "Messen: klicke einen Punkt an, dann einen weiteren — Esc beendet"
+
+msgid "0 mm — click another point"
+msgstr "0 mm — klicke einen weiteren Punkt an"
+
+msgid "%s mm"
+msgstr "%s mm"
+
+msgid "%s studs across"
+msgstr "%s Noppen breit"
+
+msgid "%s deep"
+msgstr "%s tief"
+
+msgid "%s plates up"
+msgstr "%s Platten hoch"
+
+msgid "%s° between the two %ss"
+msgstr "%s° zwischen zwei Verbindern (%s)"
+
+msgid "%s° between the %s and the %s"
+msgstr "%s° zwischen %s und %s"
+
+# Opening and saving: File, Open's list, Godot's file dialog, the Library, Save as, Versions, Saved models, the confirmations, Export a 3D model
+msgid "From a file on this computer (LDraw, Studio .io, LDD .lxf)…"
+msgstr "Aus einer Datei auf diesem Computer (LDraw, Studio .io, LDD .lxf)…"
+
+msgid "From the library: real sets and the community's models…"
+msgstr "Aus der Bibliothek: echte Sets und Modelle der Community…"
+
+msgid "Rename or delete saved models…"
+msgstr "Gespeicherte Modelle umbenennen oder löschen…"
+
+msgid "nothing saved yet"
+msgstr "noch nichts gespeichert"
+
+msgid "Examples"
+msgstr "Beispiele"
+
+msgid "Try one of these"
+msgstr "Probier eines davon"
+
+msgid "%d bricks"
+msgstr "%d Steine"
+
+msgid "1 brick"
+msgstr "1 Stein"
+
+msgid "%d bricks, %s"
+msgstr "%d Steine, %s"
+
+msgid "today at %s"
+msgstr "heute um %s"
+
+msgid "Today at %s"
+msgstr "Heute um %s"
+
+msgid "just now"
+msgstr "gerade eben"
+
+msgid "Open a model"
+msgstr "Ein Modell öffnen"
+
+msgid "Go to previous folder."
+msgstr "Zum vorherigen Ordner."
+
+msgid "Go to next folder."
+msgstr "Zum nächsten Ordner."
+
+msgid "Go to parent folder."
+msgstr "Zum übergeordneten Ordner."
+
+msgid "Path:"
+msgstr "Pfad:"
+
+msgid "Refresh files."
+msgstr "Dateien neu laden."
+
+msgid "(Un)favorite current folder."
+msgstr "Aktuellen Ordner zu Favoriten hinzufügen oder daraus entfernen."
+
+msgid "Favorites:"
+msgstr "Favoriten:"
+
+msgid "Recent:"
+msgstr "Zuletzt:"
+
+msgid "Directories & Files:"
+msgstr "Ordner und Dateien:"
+
+msgid "Toggle the visibility of hidden files."
+msgstr "Versteckte Dateien ein- oder ausblenden."
+
+msgid "View items as a grid of thumbnails."
+msgstr "Als Raster aus Vorschaubildern zeigen."
+
+msgid "View items as a list."
+msgstr "Als Liste zeigen."
+
+msgid "Toggle the visibility of the filter for file names."
+msgstr "Filter für Dateinamen ein- oder ausblenden."
+
+msgid "Sort by Name (Ascending)"
+msgstr "Nach Name sortieren (aufsteigend)"
+
+msgid "Sort by Name (Descending)"
+msgstr "Nach Name sortieren (absteigend)"
+
+msgid "Sort by Type (Ascending)"
+msgstr "Nach Typ sortieren (aufsteigend)"
+
+msgid "Sort by Type (Descending)"
+msgstr "Nach Typ sortieren (absteigend)"
+
+msgid "Sort by Modified Time (Newest First)"
+msgstr "Nach Änderungszeit sortieren (neueste zuerst)"
+
+msgid "Sort by Modified Time (Oldest First)"
+msgstr "Nach Änderungszeit sortieren (älteste zuerst)"
+
+msgid "Sort files"
+msgstr "Dateien sortieren"
+
+msgid "File:"
+msgstr "Datei:"
+
+msgid "Models (LDraw, Studio, LDD) (%s)"
+msgstr "Modelle (LDraw, Studio, LDD) (%s)"
+
+msgid "3D models (OBJ, STL, glTF, PLY, 3MF, VOX, FBX) (%s)"
+msgstr "3D-Modelle (OBJ, STL, glTF, PLY, 3MF, VOX, FBX) (%s)"
+
+msgid "Collection files (%s)"
+msgstr "Sammlungsdateien (%s)"
+
+msgid "All Files (*.*)"
+msgstr "Alle Dateien (*.*)"
+
+msgid "All Recognized"
+msgstr "Alle erkannten"
+
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Close"
+msgstr "Schließen"
+
+msgid "Open a File"
+msgstr "Eine Datei öffnen"
+
+msgid "Create Folder"
+msgstr "Ordner erstellen"
+
+msgid "Brickify a 3D model"
+msgstr "Ein 3D-Modell in Steine umwandeln"
+
+msgid "Choose a file"
+msgstr "Eine Datei wählen"
+
+msgid "Library"
+msgstr "Bibliothek"
+
+msgid "LDraw sets"
+msgstr "LDraw-Sets"
+
+msgid "Community"
+msgstr "Community"
+
+msgid "Search sets by name, set number, theme or designer"
+msgstr "Sets nach Name, Setnummer, Thema oder Designer suchen"
+
+msgid "Search models by name, designer or tag"
+msgstr "Modelle nach Name, Designer oder Tag suchen"
+
+msgid "Any theme"
+msgstr "Jedes Thema"
+
+msgid "Any year"
+msgstr "Jedes Jahr"
+
+msgid "Any kind"
+msgstr "Jede Art"
+
+msgid "Any size"
+msgstr "Jede Größe"
+
+msgid "Which theme of sets"
+msgstr "Welches Thema der Sets"
+
+msgid "Which years the sets came out"
+msgstr "In welchen Jahren die Sets erschienen"
+
+msgid "What kind of model"
+msgstr "Welche Art von Modell"
+
+msgid "How many parts"
+msgstr "Wie viele Teile"
+
+msgid "Under 200 parts"
+msgstr "Unter 200 Teile"
+
+msgid "200 to 999 parts"
+msgstr "200 bis 999 Teile"
+
+msgid "1,000 parts or more"
+msgstr "1.000 Teile oder mehr"
+
+msgid "Newest sets"
+msgstr "Neueste Sets"
+
+msgid "Oldest sets"
+msgstr "Älteste Sets"
+
+msgid "Most parts"
+msgstr "Meiste Teile"
+
+msgid "Fewest parts"
+msgstr "Wenigste Teile"
+
+msgid "By name"
+msgstr "Nach Name"
+
+msgid "Which first"
+msgstr "Was zuerst"
+
+msgid "Newest"
+msgstr "Neueste"
+
+msgid "Top builds"
+msgstr "Beste Modelle"
+
+msgid "Most built"
+msgstr "Am häufigsten gebaut"
+
+msgid "Most liked"
+msgstr "Am beliebtesten"
+
+msgid "Most viewed"
+msgstr "Am häufigsten angesehen"
+
+msgid "Most remixed"
+msgstr "Am häufigsten geremixt"
+
+msgid "Models of real LEGO® sets from LDraw's Official Model Repository, each made by the LDraw member credited and free to use under its licence. Open puts one in a new %s; the model here stays as it is."
+msgstr "Modelle echter LEGO® Sets aus dem Official Model Repository von LDraw, jedes vom genannten LDraw-Mitglied erstellt und unter seiner Lizenz frei nutzbar. Öffnen legt eines in ein neues %s; das Modell hier bleibt, wie es ist."
+
+msgid "Models people built in Brickworks and shared. Open copies one into your models in a new %s, as Open in Brickworks on its page does: credit its designer and keep to its licence."
+msgstr "Modelle, die Leute in Brickworks gebaut und geteilt haben. Öffnen kopiert eines in deine Modelle, in einem neuen %s, wie „In Brickworks öffnen“ auf seiner Seite: nenne seinen Designer und halte dich an seine Lizenz."
+
+msgid "tab"
+msgstr "Tab"
+
+msgid "window"
+msgstr "Fenster"
+
+msgid "Looking…"
+msgstr "Suche…"
+
+msgid "‹ Previous"
+msgstr "‹ Zurück"
+
+msgid "Next ›"
+msgstr "Weiter ›"
+
+msgid "Page %d of %d"
+msgstr "Seite %d von %d"
+
+msgid "Page %d"
+msgstr "Seite %d"
+
+msgid "%s of %s sets"
+msgstr "%s von %s Sets"
+
+msgid "No set matches %s"
+msgstr "Kein Set passt zu %s"
+
+msgid "Nothing in the gallery matches %s"
+msgstr "Nichts in der Galerie passt zu %s"
+
+msgid "Try fewer words or another spelling, or a set number such as 6056 or 10179-1."
+msgstr "Versuch es mit weniger Wörtern oder einer anderen Schreibweise, oder mit einer Setnummer wie 6056 oder 10179-1."
+
+msgid "Try fewer words or another spelling: a model's name, its designer or a tag."
+msgstr "Versuch es mit weniger Wörtern oder einer anderen Schreibweise: dem Namen eines Modells, seinem Designer oder einem Tag."
+
+msgid "Any theme, year and size"
+msgstr "Jedes Thema, Jahr und jede Größe"
+
+msgid "Any kind and size"
+msgstr "Jede Art und Größe"
+
+msgid "Search Community for %s"
+msgstr "In der Community nach %s suchen"
+
+msgid "Search LDraw sets for %s"
+msgstr "In den LDraw-Sets nach %s suchen"
+
+msgid "No set matches. Try fewer words, or Any theme."
+msgstr "Kein Set passt. Versuch es mit weniger Wörtern oder „Jedes Thema“."
+
+msgid "Nothing in the gallery matches. Try fewer words, or Any kind."
+msgstr "Nichts in der Galerie passt. Versuch es mit weniger Wörtern oder „Jede Art“."
+
+msgid "Models shared in the gallery"
+msgstr "In der Galerie geteilte Modelle"
+
+msgid "The gallery answered %d."
+msgstr "Die Galerie antwortete %d."
+
+msgid "This app has no library."
+msgstr "Diese App hat keine Bibliothek."
+
+msgid "Open it in a new %s; the model here stays as it is"
+msgstr "In einem neuen %s öffnen; das Modell hier bleibt, wie es ist"
+
+msgid "Opening %s in a new %s."
+msgstr "%s wird in einem neuen %s geöffnet."
+
+msgid "Opening %s in a new %s: it takes a moment to start."
+msgstr "%s wird in einem neuen %s geöffnet: Der Start dauert einen Moment."
+
+msgid "Copying “%s” into your models in a new %s."
+msgstr "„%s“ wird in einem neuen %s in deine Modelle kopiert."
+
+msgid "Copying “%s” into your models in a new %s: it takes a moment to start."
+msgstr "„%s“ wird in einem neuen %s in deine Modelle kopiert: Der Start dauert einen Moment."
+
+msgid "by %s"
+msgstr "von %s"
+
+msgid "its box %s"
+msgstr "seine Schachtel %s"
+
+msgid "built once"
+msgstr "einmal gebaut"
+
+msgid "built twice"
+msgstr "zweimal gebaut"
+
+msgid "built %s times"
+msgstr "%s-mal gebaut"
+
+msgid "no licence chosen"
+msgstr "keine Lizenz gewählt"
+
+msgid "LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this app."
+msgstr "LEGO® ist eine Marke der LEGO Gruppe, die diese App weder sponsert noch autorisiert oder unterstützt."
+
+msgid "Castles and fantasy"
+msgstr "Burgen und Fantasy"
+
+msgid "Vehicles"
+msgstr "Fahrzeuge"
+
+msgid "Town and buildings"
+msgstr "Stadt und Gebäude"
+
+msgid "Architecture"
+msgstr "Architektur"
+
+msgid "Mechanisms"
+msgstr "Mechanismen"
+
+msgid "Robots and machines"
+msgstr "Roboter und Maschinen"
+
+msgid "Animals and nature"
+msgstr "Tiere und Natur"
+
+msgid "Figures and characters"
+msgstr "Figuren und Charaktere"
+
+msgid "Art and mosaics"
+msgstr "Kunst und Mosaike"
+
+msgid "Something else"
+msgstr "Etwas anderes"
+
+msgid "What should this copy of the model be called?"
+msgstr "Wie soll diese Kopie des Modells heißen?"
+
+msgid "What should this model be called?"
+msgstr "Wie soll dieses Modell heißen?"
+
+msgid "Give it a name, in letters or numbers, to save it under."
+msgstr "Gib ihm einen Namen aus Buchstaben oder Ziffern, unter dem es gespeichert wird."
+
+msgid "“%s” is a saved model already. Choose another name."
+msgstr "„%s“ ist bereits ein gespeichertes Modell. Wähle einen anderen Namen."
+
+msgid "Untitled"
+msgstr "Unbenannt"
+
+msgid "What this model is called"
+msgstr "Wie dieses Modell heißt"
+
+msgid "Model name"
+msgstr "Modellname"
+
+msgid "Every brick on it goes, and it cannot be undone. Save first if you might want it back."
+msgstr "Jeder Stein darauf verschwindet, und das lässt sich nicht rückgängig machen. Speichere zuerst, falls du es zurückhaben möchtest."
+
+msgid "Clear it"
+msgstr "Leeren"
+
+msgid "Start new without saving"
+msgstr "Neu beginnen ohne Speichern"
+
+msgid "Save, then start new"
+msgstr "Speichern, dann neu beginnen"
+
+msgid "Don't save"
+msgstr "Nicht speichern"
+
+msgid "“%s” is not saved as it is now. A new model replaces it on the baseplate."
+msgstr "„%s“ ist in diesem Zustand nicht gespeichert. Ein neues Modell ersetzt es auf der Grundplatte."
+
+msgid "“%s” is not saved as it is now. Opening %s replaces it on the baseplate; Undo brings it back."
+msgstr "„%s“ ist in diesem Zustand nicht gespeichert. %s zu öffnen ersetzt es auf der Grundplatte; Rückgängig holt es zurück."
+
+msgid "“%s” as saved %s"
+msgstr "„%s“, gespeichert %s"
+
+msgid "kept “%s” — nothing opened"
+msgstr "„%s“ behalten — nichts geöffnet"
+
+msgid "opened %s — %d bricks"
+msgstr "%s geöffnet — %d Steine"
+
+msgid "Opening %s…"
+msgstr "%s wird geöffnet…"
+
+msgid "Reading %s (%s)…"
+msgstr "%s wird gelesen (%s)…"
+
+msgid "%d not shown, kept in the file (%s)"
+msgstr "%d nicht gezeigt, in der Datei behalten (%s)"
+
+msgid "%d not in the library, left out (%s)"
+msgstr "%d nicht in der Bibliothek, weggelassen (%s)"
+
+msgid "%d are still arriving, open it again in a moment"
+msgstr "%d kommen noch, öffne es gleich noch einmal"
+
+msgid "Opening “%s” as saved %s…"
+msgstr "„%s“ wird geöffnet, wie gespeichert %s…"
+
+msgid "could not open “%s” as saved %s: %s"
+msgstr "„%s“, gespeichert %s, konnte nicht geöffnet werden: %s"
+
+msgid "opened %d parts"
+msgstr "%d Teile geöffnet"
+
+msgid "Saving “%s”…"
+msgstr "„%s“ wird gespeichert…"
+
+msgid "stopped saving “%s”; nothing was written"
+msgstr "Speichern von „%s“ abgebrochen; nichts wurde geschrieben"
+
+msgid "“%s” is not in this browser's storage yet — keep this tab open"
+msgstr "„%s“ ist noch nicht im Speicher dieses Browsers — lass diesen Tab offen"
+
+msgid "Taking back: %s…"
+msgstr "Wird zurückgenommen: %s…"
+
+msgid "Again: %s…"
+msgstr "Noch einmal: %s…"
+
+msgid "could not take back %s: %s"
+msgstr "%s konnte nicht zurückgenommen werden: %s"
+
+msgid "could not redo %s: %s"
+msgstr "%s konnte nicht wiederholt werden: %s"
+
+msgid "Account"
+msgstr "Konto"
+
+msgid "Account · %s"
+msgstr "Konto · %s"
+
+msgid "Signed in as %s. Sign out from here."
+msgstr "Angemeldet als %s. Hier abmelden."
+
+msgid "%s new in your feed"
+msgstr "%s neu in deinem Feed"
+
+msgid "Sign out from here."
+msgstr "Hier abmelden."
+
+msgid "%s new in your feed. %s"
+msgstr "%s neu in deinem Feed. %s"
+
+msgid "LDraw model"
+msgstr "LDraw-Modell"
+
+msgid "LDraw model by %s"
+msgstr "LDraw-Modell von %s"
+
+msgid "Model by %s"
+msgstr "Modell von %s"
+
+msgid "Save it now"
+msgstr "Jetzt speichern"
+
+msgid "This model has not been saved. Each time it is saved, the save is kept here too: the last %d."
+msgstr "Dieses Modell wurde nicht gespeichert. Jede Speicherung wird auch hier aufbewahrt: die letzten %d."
+
+msgid "No saves of “%s” are kept yet. Each time it is saved, the save is kept here too: the last %d."
+msgstr "Noch keine Speicherungen von „%s“ aufbewahrt. Jede Speicherung wird auch hier aufbewahrt: die letzten %d."
+
+msgid "The last %d saves of “%s”, newest first. Compare one with the model on the baseplate: what was added since is green, what was taken away red, what was moved or turned amber and what was recoloured violet. Nothing is changed."
+msgstr "Die letzten %d Speicherungen von „%s“, die neueste zuerst. Vergleiche eine mit dem Modell auf der Grundplatte: Was seitdem hinzukam, ist grün, was entfernt wurde, rot, was verschoben oder gedreht wurde, bernsteinfarben, und was umgefärbt wurde, violett. Nichts wird verändert."
+
+msgid "The last %d saves of “%s”, newest first. Open one to put it on the baseplate in place of what is there; Save then makes it the newest. Compare shows what changed since, changing nothing."
+msgstr "Die letzten %d Speicherungen von „%s“, die neueste zuerst. Öffne eine, um sie anstelle des Vorhandenen auf die Grundplatte zu legen; Speichern macht sie dann zur neuesten. Vergleichen zeigt, was sich seitdem geändert hat, ohne etwas zu ändern."
+
+msgid "The last 1 saves of “%s”, newest first. Compare one with the model on the baseplate: what was added since is green, what was taken away red, what was moved or turned amber and what was recoloured violet. Nothing is changed."
+msgstr "Die letzte Speicherung von „%s“. Vergleiche sie mit dem Modell auf der Grundplatte: Was seitdem hinzukam, ist grün, was entfernt wurde, rot, was verschoben oder gedreht wurde, bernsteinfarben, und was umgefärbt wurde, violett. Nichts wird verändert."
+
+msgid "The last 1 saves of “%s”, newest first. Open one to put it on the baseplate in place of what is there; Save then makes it the newest. Compare shows what changed since, changing nothing."
+msgstr "Die letzte Speicherung von „%s“. Öffne sie, um sie anstelle des Vorhandenen auf die Grundplatte zu legen; Speichern macht sie dann zur neuesten. Vergleichen zeigt, was sich seitdem geändert hat, ohne etwas zu ändern."
+
+msgid "The model on the baseplate has changes that are not saved, and opening a version replaces them. Save it first to keep them as a version."
+msgstr "Das Modell auf der Grundplatte hat ungespeicherte Änderungen, und das Öffnen einer Version ersetzt sie. Speichere es zuerst, um sie als Version zu behalten."
+
+msgid "%s  (the last save)"
+msgstr "%s  (die letzte Speicherung)"
+
+msgid "Compare"
+msgstr "Vergleichen"
+
+msgid "Compare with this save: added green, removed red, moved or turned amber, recoloured violet"
+msgstr "Mit dieser Speicherung vergleichen: hinzugefügt grün, entfernt rot, verschoben oder gedreht bernsteinfarben, umgefärbt violett"
+
+msgid "Put this save of “%s” on the baseplate"
+msgstr "Diese Speicherung von „%s“ auf die Grundplatte legen"
+
+msgid "Compare with a save"
+msgstr "Mit einer Speicherung vergleichen"
+
+msgid "No models are saved %s."
+msgstr "Keine Modelle sind %s gespeichert."
+
+msgid "in this browser"
+msgstr "in diesem Browser"
+
+msgid "on this computer"
+msgstr "auf diesem Computer"
+
+msgid "Your saved models, newest first. Rename one, or delete those you no longer need."
+msgstr "Deine gespeicherten Modelle, die neuesten zuerst. Benenne eines um oder lösche die, die du nicht mehr brauchst."
+
+msgid "Your saved models, oldest first. Rename one, or delete those you no longer need."
+msgstr "Deine gespeicherten Modelle, die ältesten zuerst. Benenne eines um oder lösche die, die du nicht mehr brauchst."
+
+msgid "A delete or a rename is made with your account too, in every browser and on every computer you are signed in to."
+msgstr "Löschen oder Umbenennen gilt auch für dein Konto, in jedem Browser und auf jedem Computer, auf dem du angemeldet bist."
+
+msgid "Rename…"
+msgstr "Umbenennen…"
+
+msgid "Call “%s” something else"
+msgstr "„%s“ anders nennen"
+
+msgid "Delete…"
+msgstr "Löschen…"
+
+msgid "Delete “%s”, asking first"
+msgstr "„%s“ löschen, nach Rückfrage"
+
+msgid "Deleted “%s”"
+msgstr "„%s“ gelöscht"
+
+msgid "Put “%s” back"
+msgstr "„%s“ zurücklegen"
+
+msgid "“%s” is deleted %s. Undo, here, puts it back."
+msgstr "„%s“ wird %s gelöscht. Rückgängig, hier, holt es zurück."
+
+msgid "“%s” is deleted %s and from your account, so from every browser and computer you are signed in to. Undo, here, puts it back."
+msgstr "„%s“ wird %s und aus deinem Konto gelöscht, also aus jedem Browser und Computer, auf dem du angemeldet bist. Rückgängig, hier, holt es zurück."
+
+msgid "could not delete “%s”"
+msgstr "„%s“ konnte nicht gelöscht werden"
+
+msgid "deleted “%s”"
+msgstr "„%s“ gelöscht"
+
+msgid "could not put “%s” back"
+msgstr "„%s“ konnte nicht zurückgelegt werden"
+
+msgid "put back “%s”"
+msgstr "„%s“ zurückgelegt"
+
+msgid "put back “%s” as “%s”: a model has its name now"
+msgstr "„%s“ als „%s“ zurückgelegt: Ein Modell trägt jetzt seinen Namen"
+
+msgid "What should “%s” be called?"
+msgstr "Wie soll „%s“ heißen?"
+
+msgid "renamed “%s” “%s”"
+msgstr "„%s“ in „%s“ umbenannt"
+
+msgid "Export a 3D model"
+msgstr "Ein 3D-Modell exportieren"
+
+msgid "The model as a 3D file, at its real size, for Blender or another 3D program, AR, or a 3D printer."
+msgstr "Das Modell als 3D-Datei, in seiner echten Größe, für Blender oder ein anderes 3D-Programm, AR oder einen 3D-Drucker."
+
+msgid "OBJ with its colours (.obj, .mtl)"
+msgstr "OBJ mit seinen Farben (.obj, .mtl)"
+
+msgid "STL to 3D print (.stl)"
+msgstr "STL für den 3D-Druck (.stl)"
+
+msgid "Every part a node, in its sub-model, and each shape kept once, so any model fits. In metres. Opens in Blender, three.js and AR viewers."
+msgstr "Jedes Teil ein Knoten, in seinem Untermodell, und jede Form nur einmal gespeichert, sodass jedes Modell passt. In Metern. Öffnet sich in Blender, three.js und AR-Viewern."
+
+msgid "The same as GLB, written as text with its data inside."
+msgstr "Wie GLB, als Text geschrieben, mit den Daten darin."
+
+msgid "Every part with its own triangles, and an .mtl of its colours. In metres."
+msgstr "Jedes Teil mit eigenen Dreiecken und eine .mtl mit seinen Farben. In Metern."
+
+msgid "One mesh of every part, in millimetres, standing on Z, for a slicer."
+msgstr "Ein Netz aus allen Teilen, in Millimetern, auf Z stehend, für einen Slicer."
+
+msgid "Up to %s triangles; this model is %s."
+msgstr "Bis zu %s Dreiecke; dieses Modell hat %s."
+
+msgid "already writing a 3D model"
+msgstr "es wird schon ein 3D-Modell geschrieben"
+
+msgid "Writing the model as %s…"
+msgstr "Das Modell wird als %s geschrieben…"
+
+msgid "stopped writing the 3D model"
+msgstr "Schreiben des 3D-Modells abgebrochen"
+
+msgid "Packing the OBJ and its colours…"
+msgstr "Das OBJ und seine Farben werden gepackt…"
+
+msgid "Saving %s…"
+msgstr "%s wird gespeichert…"
+
+msgid "%s parts, %d shapes kept once (%s triangles)"
+msgstr "%s Teile, %d Formen einmal gespeichert (%s Dreiecke)"
+
+msgid "%s parts, %s triangles"
+msgstr "%s Teile, %s Dreiecke"
+
+msgid "%d left out, with no shape here yet (%s)"
+msgstr "%d weggelassen, noch ohne Form hier (%s)"
+
+msgid "wrote %s and wrote %s"
+msgstr "%s und %s geschrieben"
+
+msgid "downloaded %s and downloaded %s"
+msgstr "%s und %s heruntergeladen"
+
+msgid "no part of this model has its shape here yet"
+msgstr "kein Teil dieses Modells hat hier schon seine Form"
+
+msgid "nothing to export"
+msgstr "nichts zu exportieren"
+
+msgid "no saved models to download yet"
+msgstr "noch keine gespeicherten Modelle zum Herunterladen"
+
+msgid "1 model"
+msgstr "1 Modell"
+
+msgid "%d models"
+msgstr "%d Modelle"
+
+msgid "%d Jan at %s"
+msgstr "%d. Jan. um %s"
+
+msgid "%d Jan %d at %s"
+msgstr "%d. Jan. %d um %s"
+
+msgid "%d Jan"
+msgstr "%d. Jan."
+
+msgid "%d Feb at %s"
+msgstr "%d. Feb. um %s"
+
+msgid "%d Feb %d at %s"
+msgstr "%d. Feb. %d um %s"
+
+msgid "%d Feb"
+msgstr "%d. Feb."
+
+msgid "%d Mar at %s"
+msgstr "%d. März um %s"
+
+msgid "%d Mar %d at %s"
+msgstr "%d. März %d um %s"
+
+msgid "%d Mar"
+msgstr "%d. März"
+
+msgid "%d Apr at %s"
+msgstr "%d. Apr. um %s"
+
+msgid "%d Apr %d at %s"
+msgstr "%d. Apr. %d um %s"
+
+msgid "%d Apr"
+msgstr "%d. Apr."
+
+msgid "%d May at %s"
+msgstr "%d. Mai um %s"
+
+msgid "%d May %d at %s"
+msgstr "%d. Mai %d um %s"
+
+msgid "%d May"
+msgstr "%d. Mai"
+
+msgid "%d Jun at %s"
+msgstr "%d. Juni um %s"
+
+msgid "%d Jun %d at %s"
+msgstr "%d. Juni %d um %s"
+
+msgid "%d Jun"
+msgstr "%d. Juni"
+
+msgid "%d Jul at %s"
+msgstr "%d. Juli um %s"
+
+msgid "%d Jul %d at %s"
+msgstr "%d. Juli %d um %s"
+
+msgid "%d Jul"
+msgstr "%d. Juli"
+
+msgid "%d Aug at %s"
+msgstr "%d. Aug. um %s"
+
+msgid "%d Aug %d at %s"
+msgstr "%d. Aug. %d um %s"
+
+msgid "%d Aug"
+msgstr "%d. Aug."
+
+msgid "%d Sep at %s"
+msgstr "%d. Sep. um %s"
+
+msgid "%d Sep %d at %s"
+msgstr "%d. Sep. %d um %s"
+
+msgid "%d Sep"
+msgstr "%d. Sep."
+
+msgid "%d Oct at %s"
+msgstr "%d. Okt. um %s"
+
+msgid "%d Oct %d at %s"
+msgstr "%d. Okt. %d um %s"
+
+msgid "%d Oct"
+msgstr "%d. Okt."
+
+msgid "%d Nov at %s"
+msgstr "%d. Nov. um %s"
+
+msgid "%d Nov %d at %s"
+msgstr "%d. Nov. %d um %s"
+
+msgid "%d Nov"
+msgstr "%d. Nov."
+
+msgid "%d Dec at %s"
+msgstr "%d. Dez. um %s"
+
+msgid "%d Dec %d at %s"
+msgstr "%d. Dez. %d um %s"
+
+msgid "%d Dec"
+msgstr "%d. Dez."
+
+# The parts bin's tiles: a tile's tooltip, and the count of the prints, stickers and assemblies folded under it
+msgid "%d x %d studs, %s"
+msgstr "%d x %d Noppen, %s"
+
+msgid "1 plate"
+msgstr "1 Platte"
+
+msgid "%d plates"
+msgstr "%d Platten"
+
+msgid "Right-click to keep it in Favourites, or drag it onto the model"
+msgstr "Rechtsklick legt es in die Favoriten, oder zieh es aufs Modell"
+
+msgid "Show 1 print, sticker and assembly of %s; typed, \"%s print\" lists them"
+msgstr "1 Aufdruck, Aufkleber oder Baugruppe von %s zeigen; getippt listet „%s print“ sie auf"
+
+msgid "Show %s prints, stickers and assemblies of %s; typed, \"%s print\" lists them"
+msgstr "%s Aufdrucke, Aufkleber und Baugruppen von %s zeigen; getippt listet „%s print“ sie auf"
+
+msgid "Fold away 1 print, sticker and assembly of %s; typed, \"%s print\" lists them"
+msgstr "1 Aufdruck, Aufkleber oder Baugruppe von %s einklappen; getippt listet „%s print“ sie auf"
+
+msgid "Fold away %s prints, stickers and assemblies of %s; typed, \"%s print\" lists them"
+msgstr "%s Aufdrucke, Aufkleber und Baugruppen von %s einklappen; getippt listet „%s print“ sie auf"
+
+msgid "GLB (.glb)"
+msgstr "GLB (.glb)"
+
+msgid "glTF (.gltf)"
+msgstr "glTF (.gltf)"
+
+# Share this model, Build together, Comments and Your account
+msgid "Share this model"
+msgstr "Dieses Modell teilen"
+
+msgid "A link anyone can open, with no account: the model in 3D, its building steps, the booklet and the parts list. It is a copy as it is now; publish again to update it."
+msgstr "Ein Link, den jeder ohne Konto öffnen kann: das Modell in 3D, seine Bauschritte, die Anleitung und die Teileliste. Es ist eine Kopie des jetzigen Stands; veröffentliche erneut, um sie zu aktualisieren."
+
+msgid "What is it called?"
+msgstr "Wie heißt es?"
+
+msgid "Show who made it"
+msgstr "Zeigen, wer es gebaut hat"
+
+msgid "The name to credit"
+msgstr "Der Name, der genannt wird"
+
+msgid "About it (shown on its page)"
+msgstr "Darüber (auf seiner Seite gezeigt)"
+
+msgid "What it is, how it goes together, what you would change."
+msgstr "Was es ist, wie es zusammengesetzt wird, was du ändern würdest."
+
+msgid "Tags"
+msgstr "Tags"
+
+msgid "castle, tower, wizard"
+msgstr "Burg, Turm, Zauberer"
+
+msgid "Up to eight, between commas. Anyone can find it by them in the gallery."
+msgstr "Bis zu acht, durch Kommas getrennt. Darüber kann es jeder in der Galerie finden."
+
+msgid "Kind"
+msgstr "Art"
+
+msgid "Not said"
+msgstr "Nicht angegeben"
+
+msgid "What the gallery files it under. A guess from its name and tags: change it if it is wrong."
+msgstr "Worunter die Galerie es einordnet. Geschätzt aus Name und Tags: ändere es, wenn es nicht stimmt."
+
+msgid "Licence"
+msgstr "Lizenz"
+
+msgid "CC BY 4.0"
+msgstr "CC BY 4.0"
+
+msgid "CC BY-SA 4.0"
+msgstr "CC BY-SA 4.0"
+
+msgid "All rights reserved"
+msgstr "Alle Rechte vorbehalten"
+
+msgid "Anyone may share it, change it and build on it, crediting you."
+msgstr "Jeder darf es teilen, ändern und darauf aufbauen, wenn er dich nennt."
+
+msgid "As CC BY, and what others make from it is shared the same way."
+msgstr "Wie CC BY, und was andere daraus machen, wird genauso geteilt."
+
+msgid "Others may look at it and build it for themselves, and ask you before sharing it."
+msgstr "Andere dürfen es ansehen und für sich nachbauen, und fragen dich, bevor sie es teilen."
+
+msgid "List it in the gallery"
+msgstr "In der Galerie zeigen"
+
+msgid "Anyone can find it at brickworks.diy/gallery, not only people sent the link. Untick it and publish again to take it out and keep the link."
+msgstr "Jeder kann es unter brickworks.diy/gallery finden, nicht nur, wer den Link bekommt. Entferne das Häkchen und veröffentliche erneut, um es herauszunehmen und den Link zu behalten."
+
+msgid "The gallery and a name shown on a link are for people 13 and over. Anyone you send the link to can open it all the same."
+msgstr "Die Galerie und ein Name an einem Link sind für Menschen ab 13. Jeder, dem du den Link schickst, kann ihn trotzdem öffnen."
+
+msgid "What changed? (shown with the new version)"
+msgstr "Was hat sich geändert? (mit der neuen Version gezeigt)"
+
+msgid "Fixed the roof; the door opens now"
+msgstr "Dach repariert; die Tür geht jetzt auf"
+
+msgid "Publishing again keeps the version before. Anyone can see what you say here beside what changed, part by part and step by step."
+msgstr "Erneutes Veröffentlichen behält die vorige Version. Jeder sieht, was du hier schreibst, neben dem, was sich geändert hat, Teil für Teil und Schritt für Schritt."
+
+msgid "Publish"
+msgstr "Veröffentlichen"
+
+msgid "Update the link"
+msgstr "Link aktualisieren"
+
+msgid "Publish again"
+msgstr "Erneut veröffentlichen"
+
+msgid "Publishing means you agree to the"
+msgstr "Mit dem Veröffentlichen stimmst du zu:"
+
+msgid "guidelines"
+msgstr "Richtlinien"
+
+msgid "What may be shared here, credit and licences, and what gets a model taken out"
+msgstr "Was hier geteilt werden darf, Nennung und Lizenzen, und was ein Modell entfernen lässt"
+
+msgid "Copy link"
+msgstr "Link kopieren"
+
+msgid "Put the link on the clipboard"
+msgstr "Den Link in die Zwischenablage legen"
+
+msgid "The link is on the clipboard."
+msgstr "Der Link ist in der Zwischenablage."
+
+msgid "Copy embed code"
+msgstr "Einbettungscode kopieren"
+
+msgid "An iframe of the model's card, for a blog or a forum"
+msgstr "Ein iframe mit der Karte des Modells, für einen Blog oder ein Forum"
+
+msgid "The embed code is on the clipboard: paste it into the page's HTML."
+msgstr "Der Einbettungscode ist in der Zwischenablage: Füge ihn in das HTML der Seite ein."
+
+msgid "Open the link in the browser"
+msgstr "Den Link im Browser öffnen"
+
+msgid "Unpublish"
+msgstr "Zurückziehen"
+
+msgid "Take the model down. The link then says it is no longer shared."
+msgstr "Das Modell zurückziehen. Der Link sagt dann, dass es nicht mehr geteilt wird."
+
+msgid "This model has a link. Publish again to update what it shows."
+msgstr "Dieses Modell hat einen Link. Veröffentliche erneut, um zu aktualisieren, was er zeigt."
+
+msgid "Shared at this link. Publish again to update what it shows."
+msgstr "Unter diesem Link geteilt. Veröffentliche erneut, um zu aktualisieren, was er zeigt."
+
+msgid "Taken down. Publish again to bring it back at the same link."
+msgstr "Zurückgezogen. Veröffentliche erneut, um es unter demselben Link zurückzubringen."
+
+msgid "Shared at this link and listed in the gallery. Publish again to update it."
+msgstr "Unter diesem Link geteilt und in der Galerie gezeigt. Veröffentliche erneut, um es zu aktualisieren."
+
+msgid "Brickworks took it out of the gallery, so it cannot be listed there."
+msgstr "Brickworks hat es aus der Galerie genommen, daher kann es dort nicht gezeigt werden."
+
+msgid "Signing you in… %s once that is done."
+msgstr "Du wirst angemeldet… %s, sobald das erledigt ist."
+
+msgid "Publish goes on"
+msgstr "Veröffentlichen geht weiter"
+
+msgid "It is published"
+msgstr "Es wird veröffentlicht"
+
+msgid "Saving to your account, sharing and Claude go on"
+msgstr "Speichern im Konto, Teilen und Claude gehen weiter"
+
+msgid "Sign in to Brickworks to share a model."
+msgstr "Melde dich bei Brickworks an, um ein Modell zu teilen."
+
+msgid "Give the model a name first."
+msgstr "Gib dem Modell zuerst einen Namen."
+
+msgid "Taking its picture…"
+msgstr "Das Bild wird aufgenommen…"
+
+msgid "Publishing…"
+msgstr "Wird veröffentlicht…"
+
+msgid "Writing “%s” for its link…"
+msgstr "„%s“ wird für seinen Link geschrieben…"
+
+msgid "Stopped before it was published."
+msgstr "Vor dem Veröffentlichen abgebrochen."
+
+msgid "Working out its steps for the link, and testing it…"
+msgstr "Seine Schritte für den Link werden ermittelt und getestet…"
+
+msgid "Working out the steps of “%s” for its link…"
+msgstr "Die Schritte von „%s“ werden für seinen Link ermittelt…"
+
+msgid "Brickworks could not publish it just now."
+msgstr "Brickworks konnte es gerade nicht veröffentlichen."
+
+msgid "Shared at this link and listed in the gallery, %d parts"
+msgstr "Unter diesem Link geteilt und in der Galerie gezeigt, %d Teile"
+
+msgid "Updated at this link and listed in the gallery, %d parts"
+msgstr "Unter diesem Link aktualisiert und in der Galerie gezeigt, %d Teile"
+
+msgid "Anyone can find it at brickworks.diy/gallery"
+msgstr "Jeder kann es unter brickworks.diy/gallery finden"
+
+msgid "no account needed."
+msgstr "kein Konto nötig."
+
+msgid "Shared at this link, %d parts"
+msgstr "Unter diesem Link geteilt, %d Teile"
+
+msgid "Updated at this link, %d parts"
+msgstr "Unter diesem Link aktualisiert, %d Teile"
+
+msgid "Anyone with it can look"
+msgstr "Jeder mit dem Link kann es ansehen"
+
+msgid "Version %d is up at this link, and version %d is kept at its own"
+msgstr "Version %d ist unter diesem Link online, und Version %d bleibt unter ihrem eigenen"
+
+msgid "Version %d is up at this link and listed in the gallery, and version %d is kept at its own"
+msgstr "Version %d ist unter diesem Link online und in der Galerie gezeigt, und Version %d bleibt unter ihrem eigenen"
+
+msgid "Not tested: %s."
+msgstr "Nicht getestet: %s."
+
+msgid "it could not be kept"
+msgstr "es konnte nicht gespeichert werden"
+
+msgid "Not tested: its steps could not be worked out to test."
+msgstr "Nicht getestet: Seine Schritte ließen sich zum Testen nicht ermitteln."
+
+msgid "Marked Tested: it stands at every step, every step can be reached, every part is made in its colour, and every part is held, none in another."
+msgstr "Als „Getestet“ markiert: Es steht bei jedem Schritt, jeder Schritt ist erreichbar, jedes Teil gibt es in seiner Farbe, und jedes Teil hält, keines steckt in einem anderen."
+
+msgid "Not marked Tested (only you see why): %s."
+msgstr "Nicht als „Getestet“ markiert (nur du siehst, warum): %s."
+
+msgid "Sign in to Brickworks to take it down."
+msgstr "Melde dich bei Brickworks an, um es zurückzuziehen."
+
+msgid "Taking it down…"
+msgstr "Wird zurückgezogen…"
+
+msgid "Brickworks could not take it down just now."
+msgstr "Brickworks konnte es gerade nicht zurückziehen."
+
+msgid "Taken down: the link now says the model is no longer shared. Publish again to bring it back at the same link."
+msgstr "Zurückgezogen: Der Link sagt jetzt, dass das Modell nicht mehr geteilt wird. Veröffentliche erneut, um es unter demselben Link zurückzubringen."
+
+msgid "Could not reach Brickworks. Check the connection and try again."
+msgstr "Brickworks war nicht erreichbar. Prüfe die Verbindung und versuche es erneut."
+
+msgid "Build together"
+msgstr "Gemeinsam bauen"
+
+msgid "Start a session"
+msgstr "Sitzung starten"
+
+msgid "Make a link for this model that someone signed in can open to build it with you"
+msgstr "Einen Link zu diesem Modell erstellen, den jemand Angemeldetes öffnen kann, um mit dir zu bauen"
+
+msgid "Or paste a link someone sent you"
+msgstr "Oder füge einen Link ein, den dir jemand geschickt hat"
+
+msgid "Join"
+msgstr "Beitreten"
+
+msgid "Copied"
+msgstr "Kopiert"
+
+msgid "Say something to the others"
+msgstr "Sag den anderen etwas"
+
+msgid "Send"
+msgstr "Senden"
+
+msgid "Build this model with someone else, live, each in your own browser or the app. Start a session and send them its link; they sign in and join. Each of you sees the other's parts as they go down, and your Undo takes back only your own."
+msgstr "Baue dieses Modell live mit jemand anderem, jeder in seinem eigenen Browser oder in der App. Starte eine Sitzung und schick den Link; die anderen melden sich an und treten bei. Jeder sieht die Teile der anderen, sobald sie gesetzt werden, und dein Rückgängig nimmt nur deine eigenen zurück."
+
+msgid "Send this link to whoever you are building with. Anyone signed in who has it can join until you end the session; the model stays yours and saves as usual."
+msgstr "Schick diesen Link an die Person, mit der du baust. Jeder Angemeldete mit dem Link kann beitreten, bis du die Sitzung beendest; das Modell bleibt deins und wird wie gewohnt gespeichert."
+
+msgid "End the session"
+msgstr "Sitzung beenden"
+
+msgid "You are building “%s” with %s. Your Undo takes back only your own changes."
+msgstr "Du baust „%s“ mit %s. Dein Rückgängig nimmt nur deine eigenen Änderungen zurück."
+
+msgid "the others"
+msgstr "den anderen"
+
+msgid "one other"
+msgstr "einer weiteren Person"
+
+msgid "Leave"
+msgstr "Verlassen"
+
+msgid "Their pointer and the parts they select are drawn in this colour"
+msgstr "Ihr Zeiger und die Teile, die sie auswählen, werden in dieser Farbe gezeigt"
+
+msgid "%s (you)"
+msgstr "%s (du)"
+
+msgid "The owner"
+msgstr "Der Besitzer"
+
+msgid "%s (its owner)"
+msgstr "%s (Besitzer)"
+
+msgid "Following"
+msgstr "Folgt"
+
+msgid "Follow"
+msgstr "Folgen"
+
+msgid "Your view goes where theirs goes, until you move it yourself"
+msgstr "Deine Ansicht folgt ihrer, bis du sie selbst bewegst"
+
+msgid "Take them out of the session; the link no longer lets them in"
+msgstr "Aus der Sitzung nehmen; der Link lässt sie nicht mehr herein"
+
+msgid "That is not a Build together link. Paste the whole link you were sent."
+msgstr "Das ist kein Link zum gemeinsamen Bauen. Füge den ganzen Link ein, den du bekommen hast."
+
+msgid "Comments"
+msgstr "Kommentare"
+
+msgid "Say something about this part"
+msgstr "Sag etwas zu diesem Teil"
+
+msgid "Pin"
+msgstr "Anheften"
+
+msgid "Pin it to the part selected, for everyone who builds this model"
+msgstr "An das ausgewählte Teil heften, für alle, die dieses Modell bauen"
+
+msgid "Show resolved"
+msgstr "Erledigte zeigen"
+
+msgid "Show resolved (%d)"
+msgstr "Erledigte zeigen (%d)"
+
+msgid "Comments in a session are for people 13 and over, as chat is."
+msgstr "Kommentare in einer Sitzung sind wie der Chat für Menschen ab 13."
+
+msgid "A comment on %s, kept with the model: in its file, the autosave and a shared link, and seen by whoever builds it with you."
+msgstr "Ein Kommentar zu %s, beim Modell gespeichert: in seiner Datei, der automatischen Sicherung und einem geteilten Link, und sichtbar für alle, die mit dir bauen."
+
+msgid "Select a part, then write a comment on it. Comments are kept with the model and seen by whoever builds it with you."
+msgstr "Wähle ein Teil aus und schreib dann einen Kommentar dazu. Kommentare werden beim Modell gespeichert und sind für alle sichtbar, die mit dir bauen."
+
+msgid "No comments yet."
+msgstr "Noch keine Kommentare."
+
+msgid "Every comment is resolved."
+msgstr "Alle Kommentare sind erledigt."
+
+msgid "Turn the view to its part, and select it"
+msgstr "Die Ansicht zu seinem Teil drehen und es auswählen"
+
+msgid "Open again"
+msgstr "Wieder öffnen"
+
+msgid "Resolve"
+msgstr "Erledigt"
+
+msgid "Back on the model"
+msgstr "Zurück am Modell"
+
+msgid "Your account"
+msgstr "Dein Konto"
+
+msgid "Your account is your email address."
+msgstr "Dein Konto ist deine E-Mail-Adresse."
+
+msgid "Claude"
+msgstr "Claude"
+
+msgid "Disconnect Claude"
+msgstr "Claude trennen"
+
+msgid "Claude can no longer reach your Brickworks, from any of its apps, until you connect it again."
+msgstr "Claude kann dein Brickworks dann aus keiner seiner Apps mehr erreichen, bis du es wieder verbindest."
+
+msgid "Could not reach Brickworks to disconnect. Try again."
+msgstr "Brickworks war zum Trennen nicht erreichbar. Versuch es noch einmal."
+
+msgid "Open your feed"
+msgstr "Deinen Feed öffnen"
+
+msgid "New models from people you follow, and photos, comments and remixes of yours, on brickworks.diy"
+msgstr "Neue Modelle von Leuten, denen du folgst, und Fotos, Kommentare und Remixe deiner Modelle, auf brickworks.diy"
+
+msgid "Accounts and connectors (admin)"
+msgstr "Konten und Konnektoren (Admin)"
+
+msgid "Sign out"
+msgstr "Abmelden"
+
+msgid "Sign out of Brickworks on this device. Your models stay here. Claude stops building in this tab, and stays connected to your account until you disconnect it."
+msgstr "Auf diesem Gerät von Brickworks abmelden. Deine Modelle bleiben hier. Claude baut in diesem Tab nicht mehr und bleibt mit deinem Konto verbunden, bis du es trennst."
+
+msgid "Sign out of Brickworks on this device. Your models stay here."
+msgstr "Auf diesem Gerät von Brickworks abmelden. Deine Modelle bleiben hier."
+
+msgid "Claude stops building in this tab, and stays connected to your account until you disconnect it."
+msgstr "Claude baut in diesem Tab nicht mehr und bleibt mit deinem Konto verbunden, bis du es trennst."
+
+msgid "Nothing new in your feed."
+msgstr "Nichts Neues in deinem Feed."
+
+msgid "%s new in your feed since you last opened it."
+msgstr "%s neu in deinem Feed, seit du ihn zuletzt geöffnet hast."
+
+msgid "%s, connected %s"
+msgstr "%s, verbunden %s"
+
+msgid "%s, connected %s, last used %s"
+msgstr "%s, verbunden %s, zuletzt genutzt %s"
+
+msgid "Not connected now. Connect Claude takes you to the Brickworks you already have in Claude, to connect it again."
+msgstr "Gerade nicht verbunden. „Claude verbinden“ bringt dich zu dem Brickworks, das du schon in Claude hast, um es wieder zu verbinden."
+
+msgid "Not connected. Connect Claude once and it can build in any Brickworks tab you have open, on your Claude plan."
+msgstr "Nicht verbunden. Verbinde Claude einmal, und es kann in jedem offenen Brickworks-Tab bauen, mit deinem Claude-Abo."
+
+msgid "Checking…"
+msgstr "Wird geprüft…"
+
+msgid "Connected — Claude can build in your open Brickworks tabs."
+msgstr "Verbunden — Claude kann in deinen offenen Brickworks-Tabs bauen."
+
+msgid "Open in Claude"
+msgstr "In Claude öffnen"
+
+msgid "Opens your connectors in Claude, where Brickworks is"
+msgstr "Öffnet deine Konnektoren in Claude, wo Brickworks ist"
+
+msgid "Signed in as %s"
+msgstr "Angemeldet als %s"
+
+msgid "Signed in"
+msgstr "Angemeldet"
+
+msgid "Brickworks could not be reached just now, so this is the account kept on this device. It is checked again when Brickworks can be reached."
+msgstr "Brickworks war gerade nicht erreichbar, daher ist dies das auf diesem Gerät gespeicherte Konto. Es wird erneut geprüft, sobald Brickworks erreichbar ist."
+
+msgid "Signed in on this device until you sign out."
+msgstr "Auf diesem Gerät angemeldet, bis du dich abmeldest."
+
+msgid "Your models are kept on this computer"
+msgstr "Deine Modelle werden auf diesem Computer gespeichert"
+
+msgid "Your models are kept on this device, in this browser"
+msgstr "Deine Modelle werden auf diesem Gerät gespeichert, in diesem Browser"
+
+msgid "Your models are kept on this device: this browser has agreed not to clear them"
+msgstr "Deine Modelle werden auf diesem Gerät gespeichert: Dieser Browser hat zugesagt, sie nicht zu löschen"
+
+msgid "Your models are kept on this device, and may be cleared by the browser when it runs short of space: it would not agree to keep them"
+msgstr "Deine Modelle werden auf diesem Gerät gespeichert und können vom Browser gelöscht werden, wenn ihm der Platz ausgeht: Er wollte nicht zusagen, sie zu behalten"
+
+msgid "Your models are kept on this device, in this browser, and may be cleared by the browser: Safari deletes a site's data after seven days without a visit"
+msgstr "Deine Modelle werden auf diesem Gerät gespeichert, in diesem Browser, und können vom Browser gelöscht werden: Safari löscht die Daten einer Website nach sieben Tagen ohne Besuch"
+
+msgid "Your account keeps no copy of a model saved while you are signed out: sign in and it is kept there too, or %s."
+msgstr "Dein Konto behält keine Kopie eines Modells, das du abgemeldet speicherst: Melde dich an, dann wird es auch dort gespeichert, oder %s."
+
+msgid "Your account keeps no copy, so %s."
+msgstr "Dein Konto behält keine Kopie, also %s."
+
+msgid "export one as LDraw to take it elsewhere"
+msgstr "exportiere es als LDraw, um es mitzunehmen"
+
+msgid "download yours (File, Export, All my models)"
+msgstr "lade deine herunter (Datei, Exportieren, Alle meine Modelle)"
+
+msgid "You are offline: a model saved now goes to your account when you are back online."
+msgstr "Du bist offline: Ein jetzt gespeichertes Modell kommt in dein Konto, sobald du wieder online bist."
+
+msgid "Your account has not been reached yet: a model it does not have goes to it when it is."
+msgstr "Dein Konto wurde noch nicht erreicht: Ein Modell, das es nicht hat, kommt hinein, sobald es erreicht ist."
+
+msgid "Your models are kept with your account, and %s: they are in File › Open in any browser or desktop app you sign in to."
+msgstr "Deine Modelle werden in deinem Konto gespeichert und %s: Sie sind unter Datei › Öffnen in jedem Browser und jeder Desktop-App, in denen du angemeldet bist."
+
+msgid "Your models are kept only in this browser, and %s. Your account keeps no copy. %s."
+msgstr "Deine Modelle werden nur in diesem Browser gespeichert, und %s. Dein Konto behält keine Kopie. %s."
+
+msgid "Your models are kept in this browser, and %s. Your account keeps no copy of a model saved while you are signed out. %s, or sign in and they are kept with your account too."
+msgstr "Deine Modelle werden in diesem Browser gespeichert, und %s. Dein Konto behält keine Kopie eines Modells, das du abgemeldet speicherst. %s, oder melde dich an, dann werden sie auch in deinem Konto gespeichert."
+
+msgid "Safari deletes a site's data after seven days without a visit"
+msgstr "Safari löscht die Daten einer Website nach sieben Tagen ohne Besuch"
+
+msgid "it would not agree to keep them, so it may clear them when it runs short of space"
+msgstr "er wollte nicht zusagen, sie zu behalten, und kann sie daher löschen, wenn ihm der Platz ausgeht"
+
+msgid "Download your models to keep a copy of your own"
+msgstr "Lade deine Modelle herunter, um eine eigene Kopie zu behalten"
+
+# Send feedback, About and its credits, the baseplate's size, and the assistant panel
+msgid "Tell us what is wrong, what you would like, or ask us anything. We read every one ourselves."
+msgstr "Sag uns, was nicht stimmt, was du dir wünschst, oder frag uns etwas. Wir lesen jede Nachricht selbst."
+
+msgid "Something is wrong"
+msgstr "Etwas stimmt nicht"
+
+msgid "An idea"
+msgstr "Eine Idee"
+
+msgid "A question"
+msgstr "Eine Frage"
+
+msgid "What happened, or what would you like?"
+msgstr "Was ist passiert, oder was wünschst du dir?"
+
+msgid "Your email, so we can answer"
+msgstr "Deine E-Mail, damit wir antworten können"
+
+msgid "you@example.com"
+msgstr "du@beispiel.de"
+
+msgid "Send with it"
+msgstr "Mitsenden"
+
+msgid "A picture of the window as it was, %d × %d"
+msgstr "Ein Bild des Fensters, wie es war, %d × %d"
+
+msgid "No picture."
+msgstr "Kein Bild."
+
+msgid "Remove the picture"
+msgstr "Bild entfernen"
+
+msgid "Add a picture of the window"
+msgstr "Ein Bild des Fensters hinzufügen"
+
+msgid "Show the log lines"
+msgstr "Protokollzeilen zeigen"
+
+msgid "Hide the log lines"
+msgstr "Protokollzeilen verbergen"
+
+msgid "The log lines that would be sent"
+msgstr "Die Protokollzeilen, die gesendet würden"
+
+msgid "The app's version and your system: %s"
+msgstr "Die Version der App und dein System: %s"
+
+msgid "The model you have open, as a file: “%s”, 1 part"
+msgstr "Das geöffnete Modell als Datei: „%s“, 1 Teil"
+
+msgid "The model you have open, as a file: “%s”, %d parts"
+msgstr "Das geöffnete Modell als Datei: „%s“, %d Teile"
+
+msgid "The model you have open, as a file (nothing is open)"
+msgstr "Das geöffnete Modell als Datei (nichts ist geöffnet)"
+
+msgid "The app's last log lines (%d), which say what it was doing"
+msgstr "Die letzten Protokollzeilen der App (%d), die zeigen, was sie gerade tat"
+
+msgid "The app's last log lines (there are none yet)"
+msgstr "Die letzten Protokollzeilen der App (noch keine)"
+
+msgid "Choose what it is: something wrong, an idea or a question."
+msgstr "Wähle, worum es geht: etwas stimmt nicht, eine Idee oder eine Frage."
+
+msgid "Say what happened, or what you would like."
+msgstr "Sag, was passiert ist oder was du dir wünschst."
+
+msgid "At most %d characters; that is %d."
+msgstr "Höchstens %d Zeichen; das sind %d."
+
+msgid "Give an email address, so we can answer you."
+msgstr "Gib eine E-Mail-Adresse an, damit wir dir antworten können."
+
+msgid "Sending…"
+msgstr "Wird gesendet…"
+
+msgid "That did not go just now. Try again in a minute."
+msgstr "Das hat gerade nicht geklappt. Versuch es in einer Minute noch einmal."
+
+msgid "Thank you."
+msgstr "Danke."
+
+msgid "A complete CAD for LEGO® models, built by hand or with the assistant, on the web or on your own computer."
+msgstr "Ein vollständiges CAD für LEGO® Modelle, von Hand oder mit dem Assistenten gebaut, im Web oder auf deinem eigenen Computer."
+
+msgid "A complete CAD for LEGO® models, built by hand, on the web or on your own computer."
+msgstr "Ein vollständiges CAD für LEGO® Modelle, von Hand gebaut, im Web oder auf deinem eigenen Computer."
+
+msgid "Brickworks %s, development build"
+msgstr "Brickworks %s, Entwicklungsversion"
+
+msgid "Brickworks %s, released %s (%s)"
+msgstr "Brickworks %s, veröffentlicht am %s (%s)"
+
+msgid "LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this app. LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group."
+msgstr "LEGO® ist eine Marke der LEGO Gruppe, die diese App weder sponsert noch autorisiert oder unterstützt. LEGO® Art, Technic, die Minifigur sowie die Konfigurationen von Stein und Noppe sind ebenfalls Marken der LEGO Gruppe."
+
+msgid "Made with"
+msgstr "Erstellt mit"
+
+msgid "Godot's licence and notices"
+msgstr "Godots Lizenz und Hinweise"
+
+msgid "The engine Brickworks runs on, the libraries it is made from, and the type its words are set in (Open Sans, SIL Open Font License 1.1)"
+msgstr "Die Engine, auf der Brickworks läuft, die Bibliotheken, aus denen es besteht, und die Schrift seiner Texte (Open Sans, SIL Open Font License 1.1)"
+
+msgid "Every part's shape"
+msgstr "Die Form jedes Teils"
+
+msgid "© the LDraw community, licensed under CC BY 2.0 and CC BY 4.0"
+msgstr "© die LDraw-Community, lizenziert unter CC BY 2.0 und CC BY 4.0"
+
+msgid "LDraw™ is a trademark owned and licensed by the Estate of James Jessiman"
+msgstr "LDraw™ ist eine Marke im Besitz des Nachlasses von James Jessiman, der sie auch lizenziert"
+
+msgid "This application is not affiliated with or endorsed by LDraw.org."
+msgstr "Diese Anwendung ist weder mit LDraw.org verbunden noch von LDraw.org unterstützt."
+
+msgid "BrickNet's licence"
+msgstr "Lizenz von BrickNet"
+
+msgid "Part colliders and connector labels (Kulits and Schmid, 2026)"
+msgstr "Kollisionsformen der Teile und Verbinderbeschriftungen (Kulits und Schmid, 2026)"
+
+msgid "Catalog data: Rebrickable"
+msgstr "Katalogdaten: Rebrickable"
+
+msgid "The colours each part was made in and the years it was in sets"
+msgstr "Die Farben, in denen es jedes Teil gab, und die Jahre, in denen es in Sets war"
+
+msgid "Used with the acknowledgement Rebrickable's terms ask for."
+msgstr "Verwendet mit der Nennung, die die Bedingungen von Rebrickable verlangen."
+
+msgid "Worked constructions from real sets, each credited to its set and its modeller where it is shown"
+msgstr "Ausgearbeitete Konstruktionen aus echten Sets, jede dort, wo sie gezeigt wird, ihrem Set und ihrem Modellierer zugeschrieben"
+
+msgid "CC BY 2.0 and CC BY 4.0."
+msgstr "CC BY 2.0 und CC BY 4.0."
+
+msgid "The light a render can be lit by: Studio Small 09 and Photo Studio Loft Hall by Sergej Majboroda, Kloofendal 48d Partly Cloudy (Pure Sky) by Greg Zaal and Jarod Guest"
+msgstr "Das Licht, mit dem ein Render beleuchtet werden kann: Studio Small 09 und Photo Studio Loft Hall von Sergej Majboroda, Kloofendal 48d Partly Cloudy (Pure Sky) von Greg Zaal und Jarod Guest"
+
+msgid "CC0 1.0, given to the public domain."
+msgstr "CC0 1.0, gemeinfrei gestellt."
+
+msgid "The type a booklet's PDF and its pages' pictures are set in, carried in the PDF"
+msgstr "Die Schrift, in der das PDF einer Anleitung und die Bilder ihrer Seiten gesetzt sind, im PDF mitgeführt"
+
+msgid "The type's licence"
+msgstr "Lizenz der Schrift"
+
+msgid "LEGO® Digital Designer's part and colour numbers in LDraw's terms, for opening .lxf models"
+msgstr "Die Teile- und Farbnummern von LEGO® Digital Designer in LDraw-Begriffen, zum Öffnen von .lxf-Modellen"
+
+msgid "Kept by Sylvain Sauvage from Mike Gallagher's version, with additions from the LDraw community"
+msgstr "Gepflegt von Sylvain Sauvage auf Grundlage der Version von Mike Gallagher, mit Ergänzungen der LDraw-Community"
+
+msgid "Its keepers state no licence"
+msgstr "Seine Pfleger nennen keine Lizenz"
+
+msgid "it has long been treated as free to use and modify."
+msgstr "es gilt seit Langem als frei nutzbar und veränderbar."
+
+msgid "Baseplate size"
+msgstr "Größe der Grundplatte"
+
+msgid "How big, in studs? Baseplates are cut in eights."
+msgstr "Wie groß, in Noppen? Grundplatten gibt es in Achterschritten."
+
+msgid "Use it"
+msgstr "Übernehmen"
+
+msgid "Name of the copy"
+msgstr "Name der Kopie"
+
+msgid "Describe something to build…"
+msgstr "Beschreib etwas, das gebaut werden soll…"
+
+msgid "the connector is at the foot of the assistant panel"
+msgstr "der Konnektor ist unten im Assistenten-Bereich"
+
+msgid "a small lighthouse on a rocky base"
+msgstr "ein kleiner Leuchtturm auf felsigem Sockel"
+
+msgid "a red sports car, about 60 pieces"
+msgstr "ein roter Sportwagen, etwa 60 Teile"
+
+msgid "a medieval gatehouse with a portcullis"
+msgstr "ein mittelalterliches Torhaus mit Fallgitter"
+
+msgid "a park bench and a tree"
+msgstr "eine Parkbank und ein Baum"
+
+msgid "Your own Claude will design it."
+msgstr "Dein eigenes Claude wird es entwerfen."
+
+msgid "What should Claude do with them? \"Make this curved\", \"add detail\", \"recolour it in tan\", \"why is this not stable?\""
+msgstr "Was soll Claude damit tun? „Mach das rund“, „mehr Details“, „färbe es in Beige um“, „warum ist das nicht stabil?“"
+
+msgid "Still working on the last one."
+msgstr "Arbeitet noch an der letzten Anfrage."
+
+msgid "Select the parts to ask about first."
+msgstr "Wähle zuerst die Teile aus, nach denen du fragen willst."
+
+msgid "Ask Claude in your chat about the 1 selected part. It sees what is selected here and changes only that."
+msgstr "Frag Claude in deinem Chat nach dem 1 ausgewählten Teil. Es sieht, was hier ausgewählt ist, und ändert nur das."
+
+msgid "Ask Claude in your chat about the %d selected parts. It sees what is selected here and changes only that."
+msgstr "Frag Claude in deinem Chat nach den %d ausgewählten Teilen. Es sieht, was hier ausgewählt ist, und ändert nur das."
+
+msgid "Paste a key of your own, or connect Claude, to ask about the selection."
+msgstr "Füge einen eigenen Schlüssel ein oder verbinde Claude, um nach der Auswahl zu fragen."
+
+msgid "About 1 selected part"
+msgstr "Zu 1 ausgewählten Teil"
+
+msgid "About %d selected parts"
+msgstr "Zu %d ausgewählten Teilen"
+
+msgid "About 1 selected part: %s"
+msgstr "Zu 1 ausgewählten Teil: %s"
+
+msgid "About %d selected parts: %s"
+msgstr "Zu %d ausgewählten Teilen: %s"
+
+msgid "Ask about the whole model instead"
+msgstr "Stattdessen nach dem ganzen Modell fragen"
+
+msgid "Ask %s"
+msgstr "%s fragen"
+
+msgid "Three quick massing sketches on %s, to choose from before the full design. Nothing is built until you choose one."
+msgstr "Drei schnelle Volumenskizzen mit %s, zur Auswahl vor dem ganzen Entwurf. Nichts wird gebaut, bis du eine wählst."
+
+msgid "Three quick massing sketches on %s at %s effort, to choose from before the full design. Nothing is built until you choose one."
+msgstr "Drei schnelle Volumenskizzen mit %s bei Aufwand %s, zur Auswahl vor dem ganzen Entwurf. Nichts wird gebaut, bis du eine wählst."
+
+msgid "%d sketches"
+msgstr "%d Skizzen"
+
+msgid "Choose one below to design in full."
+msgstr "Wähle unten eine aus, um sie ganz zu entwerfen."
+
+msgid "The sketches cost %s: %s · %s in, %s out."
+msgstr "Die Skizzen kosteten %s: %s · %s rein, %s raus."
+
+msgid "Choose the one that is closest to what you want:"
+msgstr "Wähle die, die dem am nächsten kommt, was du willst:"
+
+msgid "Claude sketched %d ideas and is choosing one:"
+msgstr "Claude hat %d Ideen skizziert und wählt eine aus:"
+
+msgid "does not hold yet"
+msgstr "hält noch nicht"
+
+msgid "Design this one"
+msgstr "Diese entwerfen"
+
+msgid "Working…"
+msgstr "Arbeitet…"
+
+msgid "Designing from sketch %d"
+msgstr "Entwurf nach Skizze %d"
+
+msgid "Did not start"
+msgstr "Nicht gestartet"
+
+msgid "Chosen"
+msgstr "Gewählt"
+
+msgid "Changed the selection: %s. Edit, Undo takes the request back."
+msgstr "Auswahl geändert: %s. Bearbeiten, Rückgängig nimmt die Anfrage zurück."
+
+msgid "Before"
+msgstr "Vorher"
+
+msgid "After"
+msgstr "Nachher"
+
+msgid "Allow"
+msgstr "Erlauben"
+
+msgid "Keep to the selection"
+msgstr "Bei der Auswahl bleiben"
+
+msgid "Allowed."
+msgstr "Erlaubt."
+
+msgid "Kept to the selection."
+msgstr "Bei der Auswahl geblieben."
+
+msgid "Paste a key of your own to use the assistant."
+msgstr "Füge einen eigenen Schlüssel ein, um den Assistenten zu nutzen."
+
+msgid "%s · %s in, %s out · about %s"
+msgstr "%s · %s rein, %s raus · etwa %s"
+
+msgid "%s · %s in, %s out · %s of it cached · about %s"
+msgstr "%s · %s rein, %s raus · davon %s im Cache · etwa %s"
+
+msgid "the sketches before it, %s"
+msgstr "die Skizzen davor, %s"
+
+msgid "Change"
+msgstr "Ändern"
+
+msgid "Change key"
+msgstr "Schlüssel ändern"
+
+msgid "Forget this key and paste another"
+msgstr "Diesen Schlüssel vergessen und einen anderen einfügen"
+
+msgid "Settings, AI: who designs, the provider, model and key"
+msgstr "Einstellungen, KI: wer entwirft, Anbieter, Modell und Schlüssel"
+
+msgid "Try one of these, or write your own:"
+msgstr "Probier eines davon, oder schreib dein eigenes:"
+
+msgid "The parts asked about are gone. Select them and ask again."
+msgstr "Die erfragten Teile sind weg. Wähle sie aus und frag noch einmal."
+
+msgid "Changing the selection"
+msgstr "Die Auswahl wird geändert"
+
+msgid "Sketching three ideas"
+msgstr "Drei Ideen werden skizziert"
+
+msgid "Reading the brief"
+msgstr "Die Beschreibung wird gelesen"
+
+msgid "Designing"
+msgstr "Entwirft"
+
+msgid "Changing it"
+msgstr "Wird geändert"
+
+msgid "Stop, and put back what was there before"
+msgstr "Anhalten und wiederherstellen, was vorher da war"
+
+msgid "A design is 70 to 200 tool calls; how long that takes is the model's and the provider's. You can keep building, or look around, while it works."
+msgstr "Ein Entwurf sind 70 bis 200 Werkzeugaufrufe; wie lange das dauert, hängt von Modell und Anbieter ab. Du kannst weiterbauen oder dich umsehen, während es arbeitet."
+
+msgid "Nothing is built until it has planned the model. %s. You can keep building, or look around, while it works."
+msgstr "Nichts wird gebaut, bevor es das Modell geplant hat. %s. Du kannst weiterbauen oder dich umsehen, während es arbeitet."
+
+msgid "At this setting a small house took about 4 minutes to its first bricks and 11 to finish; a castle, 45"
+msgstr "Bei dieser Einstellung brauchte ein kleines Haus etwa 4 Minuten bis zu den ersten Steinen und 11 bis zum Ende; eine Burg 45"
+
+msgid "At this setting a small house took about 2 minutes to its first bricks and 4 to finish"
+msgstr "Bei dieser Einstellung brauchte ein kleines Haus etwa 2 Minuten bis zu den ersten Steinen und 4 bis zum Ende"
+
+msgid "This setting is the quickest, and the plainest"
+msgstr "Diese Einstellung ist die schnellste und die schlichteste"
+
+msgid "Choose one below to design in full"
+msgstr "Wähle unten eine aus, um sie ganz zu entwerfen"
+
+msgid "Nothing is built until it has planned the model"
+msgstr "Nichts wird gebaut, bevor es das Modell geplant hat"
+
+msgid "At this setting a small house took about 4 minutes to its first bricks and 11 to finish"
+msgstr "Bei dieser Einstellung brauchte ein kleines Haus etwa 4 Minuten bis zu den ersten Steinen und 11 bis zum Ende"
+
+msgid "a castle, 45"
+msgstr "eine Burg 45"
+
+msgid "You can keep building, or look around, while it works."
+msgstr "Du kannst weiterbauen oder dich umsehen, während es arbeitet."
+
+msgid "Ask for a change below, or carry on building it by hand."
+msgstr "Bitte unten um eine Änderung oder bau von Hand weiter."
+
+msgid "Colour the hidden parts by section…"
+msgstr "Verdeckte Teile nach Abschnitt färben…"
+
+msgid "As big sets do: the parts nobody sees once it is finished, a colour for each section, so you can find your place while building. A preview first; nothing changes until you say so."
+msgstr "Wie bei großen Sets: die Teile, die niemand sieht, wenn es fertig ist, in einer Farbe je Abschnitt, damit du dich beim Bauen zurechtfindest. Zuerst eine Vorschau; nichts ändert sich, bis du es sagst."
+
+msgid "Use your own API key instead"
+msgstr "Stattdessen deinen eigenen API-Schlüssel verwenden"
+
+msgid "Connector off"
+msgstr "Konnektor aus"
+
+msgid "Switched off. Claude cannot reach this tab until it is switched on again."
+msgstr "Ausgeschaltet. Claude erreicht diesen Tab nicht, bis er wieder eingeschaltet ist."
+
+msgid "Claude: %s"
+msgstr "Claude: %s"
+
+msgid "Claude is building"
+msgstr "Claude baut"
+
+msgid "Claude, on your plan, is calling Brickworks from your chat. Each step shows here and the model appears on the baseplate, in view or not."
+msgstr "Claude ruft mit deinem Abo Brickworks aus deinem Chat auf. Jeder Schritt erscheint hier, und das Modell entsteht auf der Grundplatte, ob sichtbar oder nicht."
+
+msgid "Stop Claude in this tab"
+msgstr "Claude in diesem Tab stoppen"
+
+msgid "Claude's next call is refused. What it has built stays."
+msgstr "Claudes nächster Aufruf wird abgelehnt. Was es gebaut hat, bleibt."
+
+msgid "refused: %s"
+msgstr "abgelehnt: %s"
+
+msgid "Ask Claude for a change in your chat, or carry on building it by hand."
+msgstr "Bitte Claude in deinem Chat um eine Änderung oder bau von Hand weiter."
+
+msgid "Built 1 brick."
+msgstr "1 Stein gebaut."
+
+msgid "Built %d bricks."
+msgstr "%d Steine gebaut."
+
+msgid "Stopped"
+msgstr "Angehalten"
+
+msgid "Stopped. What was there before is back."
+msgstr "Angehalten. Was vorher da war, ist zurück."
+
+msgid "Stopped. What it built so far stays; undo takes it back."
+msgstr "Angehalten. Was bisher gebaut wurde, bleibt; Rückgängig nimmt es zurück."
+
+msgid "Did not finish"
+msgstr "Nicht fertig geworden"
+
+msgid "Paste a working key to carry on."
+msgstr "Füge einen funktionierenden Schlüssel ein, um weiterzumachen."
+
+msgid "Claude stopped"
+msgstr "Claude hat aufgehört"
+
+msgid "Claude has stopped calling for now."
+msgstr "Claude ruft vorerst nicht mehr auf."
+
+msgid "Claude has stopped calling. Ask it to build in your chat."
+msgstr "Claude ruft nicht mehr auf. Bitte es in deinem Chat, zu bauen."
+
+# Render, its choices and notes, the picture's progress, and the render queue
+msgid "Back to the model (Escape)"
+msgstr "Zurück zum Modell (Escape)"
+
+msgid "Render picture"
+msgstr "Bild rendern"
+
+msgid "Draw it at the size and quality chosen, and keep it"
+msgstr "In der gewählten Größe und Qualität zeichnen und speichern"
+
+msgid "Render turntable"
+msgstr "Drehteller rendern"
+
+msgid "Turn the model round once and keep every frame as an animation"
+msgstr "Das Modell einmal ganz drehen und jedes Bild als Animation speichern"
+
+msgid "Render animation"
+msgstr "Animation rendern"
+
+msgid "Play the motion chosen under Animation and keep every frame"
+msgstr "Die unter „Animation“ gewählte Bewegung abspielen und jedes Bild speichern"
+
+msgid "Render building"
+msgstr "Aufbau rendern"
+
+msgid "The model built up step by step, as the timeline builds it, kept as a video"
+msgstr "Das Modell Schritt für Schritt aufgebaut, wie die Zeitleiste es baut, als Video gespeichert"
+
+msgid "Stop rendering (Escape)"
+msgstr "Rendern abbrechen (Escape)"
+
+msgid "Download again"
+msgstr "Erneut herunterladen"
+
+msgid "Quality"
+msgstr "Qualität"
+
+msgid "Quick"
+msgstr "Schnell"
+
+msgid "Good"
+msgstr "Gut"
+
+msgid "Best"
+msgstr "Beste"
+
+msgid "Look"
+msgstr "Aussehen"
+
+msgid "As in the window"
+msgstr "Wie im Fenster"
+
+msgid "Product"
+msgstr "Produktfoto"
+
+msgid "Size"
+msgstr "Größe"
+
+msgid "720p"
+msgstr "720p"
+
+msgid "1080p"
+msgstr "1080p"
+
+msgid "4K"
+msgstr "4K"
+
+msgid "Square"
+msgstr "Quadrat"
+
+msgid "Background"
+msgstr "Hintergrund"
+
+msgid "Gradient"
+msgstr "Verlauf"
+
+msgid "Grey"
+msgstr "Grau"
+
+msgid "Dark"
+msgstr "Dunkel"
+
+msgid "None"
+msgstr "Ohne"
+
+msgid "The backdrop's colour"
+msgstr "Farbe des Hintergrunds"
+
+msgid "Contact shadow under the model"
+msgstr "Kontaktschatten unter dem Modell"
+
+msgid "Light"
+msgstr "Licht"
+
+msgid "Three lights, as in the window"
+msgstr "Drei Lichter, wie im Fenster"
+
+msgid "%s (photographed)"
+msgstr "%s (echtes Foto)"
+
+msgid "Softbox studio"
+msgstr "Softbox-Studio"
+
+msgid "Window light"
+msgstr "Fensterlicht"
+
+msgid "Daylight"
+msgstr "Tageslicht"
+
+msgid "Light from"
+msgstr "Licht von"
+
+msgid "Camera"
+msgstr "Kamera"
+
+msgid "Three-quarter, like the box"
+msgstr "Dreiviertelansicht, wie auf der Verpackung"
+
+msgid "The view you are looking at"
+msgstr "Die Ansicht, die du gerade siehst"
+
+msgid "Front"
+msgstr "Vorne"
+
+msgid "Side"
+msgstr "Seite"
+
+msgid "Back three-quarter"
+msgstr "Dreiviertel von hinten"
+
+msgid "Low, looking up at it"
+msgstr "Tief, von unten hinauf"
+
+msgid "Lens"
+msgstr "Objektiv"
+
+msgid "%d mm on a full-frame camera: %s, %d° tall."
+msgstr "%d mm an einer Vollformatkamera: %s, %d° hoch."
+
+msgid "wide"
+msgstr "Weitwinkel"
+
+msgid "normal"
+msgstr "Normalbrennweite"
+
+msgid "long, flattening"
+msgstr "Tele, flacht die Tiefe ab"
+
+msgid "Depth of field"
+msgstr "Schärfentiefe"
+
+msgid "Off"
+msgstr "Aus"
+
+msgid "Focus, near to far"
+msgstr "Fokus, nah bis fern"
+
+msgid "Everything sharp."
+msgstr "Alles scharf."
+
+msgid "Blur comes with Best, which looks through every part of the lens."
+msgstr "Unschärfe gibt es mit „Beste“, das durch das ganze Objektiv blickt."
+
+msgid "At f/%d, sharp %d% of the way back, and softer either side."
+msgstr "Bei f/%d scharf bei %d% der Tiefe, davor und dahinter weicher."
+
+msgid "Best's frames"
+msgstr "Bilder bei „Beste“"
+
+msgid "As this device does best (%d)"
+msgstr "Wie dieses Gerät es am besten kann (%d)"
+
+msgid "%d frames"
+msgstr "%d Bilder"
+
+msgid "Animation"
+msgstr "Animation"
+
+msgid "No motions yet: Build, Motions… makes them"
+msgstr "Noch keine Bewegungen: Bauen, Bewegungen… erstellt sie"
+
+msgid "All, in order"
+msgstr "Alle, der Reihe nach"
+
+msgid "As I see it"
+msgstr "Wie in meiner Ansicht"
+
+msgid "Framed on what moves"
+msgstr "Auf das Bewegte ausgerichtet"
+
+msgid "A motion is a named movement of the model's joints: Build, Motions… keeps them."
+msgstr "Eine Bewegung ist ein benannter Ablauf der Gelenke des Modells: Bauen, Bewegungen… speichert sie."
+
+msgid "Choose how it should look; the picture is a quick draft of it."
+msgstr "Wähle, wie es aussehen soll; das Bild ist ein schneller Entwurf davon."
+
+msgid "The window's own look, at the size you ask for. A moment."
+msgstr "Das Aussehen des Fensters, in der gewünschten Größe. Einen Augenblick."
+
+msgid "Light bounced off the backdrop and between the parts, shading in every corner, and a soft shadow that widens with distance."
+msgstr "Licht, das vom Hintergrund und zwischen den Teilen zurückgeworfen wird, Schattierung in jeder Ecke und ein weicher Schatten, der mit dem Abstand breiter wird."
+
+msgid "Soft shadows and smooth edges, from 8 frames averaged. Light bouncing between the parts needs the desktop app."
+msgstr "Weiche Schatten und glatte Kanten aus 8 gemittelten Bildern. Licht, das zwischen den Teilen zurückgeworfen wird, braucht die Desktop-App."
+
+msgid "Path traced, %d samples: soft shadows, light bounced off the floor and between the parts, glass that tints what is behind it, and depth of field if you want it."
+msgstr "Pathtracing, %d Samples: weiche Schatten, Licht, das vom Boden und zwischen den Teilen zurückgeworfen wird, Glas, das färbt, was dahinter liegt, und Schärfentiefe, wenn du sie willst."
+
+msgid "%d frames averaged: soft shadows from an area light, smooth edges, shading under every ledge, and depth of field if you want it."
+msgstr "%d gemittelte Bilder: weiche Schatten einer Flächenleuchte, glatte Kanten, Schattierung unter jedem Vorsprung und Schärfentiefe, wenn du sie willst."
+
+msgid "%d frames averaged: soft shadows from an area light, smooth edges, shading under every ledge, and depth of field if you want it"
+msgstr "%d gemittelte Bilder: weiche Schatten einer Flächenleuchte, glatte Kanten, Schattierung unter jedem Vorsprung und Schärfentiefe, wenn du sie willst"
+
+msgid "With nothing behind the model it is not path traced."
+msgstr "Ohne etwas hinter dem Modell wird es nicht mit Pathtracing gerendert."
+
+msgid "Path tracing needs the desktop app: a browser cannot trace rays."
+msgstr "Pathtracing braucht die Desktop-App: Ein Browser kann keine Strahlen verfolgen."
+
+msgid "Path tracing needs the desktop app's full renderer."
+msgstr "Pathtracing braucht den vollen Renderer der Desktop-App."
+
+msgid "Path tracing needs a graphics card that traces rays, and this one does not."
+msgstr "Pathtracing braucht eine Grafikkarte, die Strahlen verfolgt, und diese kann es nicht."
+
+msgid "Glossy plastic with rounded edges, clear parts that bend the light, and a studio's key, fill and rim, as a set's own pictures are."
+msgstr "Glänzender Kunststoff mit abgerundeten Kanten, transparente Teile, die das Licht brechen, und Haupt-, Füll- und Kantenlicht eines Studios, wie bei den Bildern eines Sets."
+
+msgid "The plastic and the light as the window draws them."
+msgstr "Kunststoff und Licht, wie das Fenster sie zeichnet."
+
+msgid "%d frames, %s s at %d a second, as an animated WebP."
+msgstr "%d Bilder, %s s bei %d pro Sekunde, als animiertes WebP."
+
+msgid "%d frames, %s s at %d a second, as an animated WebP, the frames, and an MP4 where ffmpeg is installed."
+msgstr "%d Bilder, %s s bei %d pro Sekunde, als animiertes WebP, die Einzelbilder und ein MP4, wo ffmpeg installiert ist."
+
+msgid "%s parts as the timeline builds them, step by step, over %d s at %d a second, the camera turning %d° round, as an animated WebP."
+msgstr "%s Teile, wie die Zeitleiste sie baut, Schritt für Schritt, über %d s bei %d pro Sekunde, die Kamera dreht sich um %d°, als animiertes WebP."
+
+msgid "%s parts as the timeline builds them, step by step, over %d s at %d a second, the camera turning %d° round, as an animated WebP, the frames, and an MP4 where ffmpeg is installed."
+msgstr "%s Teile, wie die Zeitleiste sie baut, Schritt für Schritt, über %d s bei %d pro Sekunde, die Kamera dreht sich um %d°, als animiertes WebP, die Einzelbilder und ein MP4, wo ffmpeg installiert ist."
+
+msgid "%s: %s s at %d a second, %s, as an animated WebP."
+msgstr "%s: %s s bei %d pro Sekunde, %s, als animiertes WebP."
+
+msgid "%s: %s s at %d a second, %s, as an animated WebP, the frames, and an MP4 where ffmpeg is installed."
+msgstr "%s: %s s bei %d pro Sekunde, %s, als animiertes WebP, die Einzelbilder und ein MP4, wo ffmpeg installiert ist."
+
+msgid "framed on what its parts sweep through"
+msgstr "auf den Raum ausgerichtet, den seine Teile überstreichen"
+
+msgid "the camera as the picture is"
+msgstr "die Kamera wie beim Bild"
+
+msgid "There is nothing on the baseplate to render yet."
+msgstr "Auf der Grundplatte ist noch nichts zum Rendern."
+
+msgid "Keep a motion first: Build, Motions… makes them."
+msgstr "Speichere zuerst eine Bewegung: Bauen, Bewegungen… erstellt sie."
+
+msgid "A quick draft. Render draws it properly."
+msgstr "Ein schneller Entwurf. Rendern zeichnet es richtig."
+
+msgid "a render is already being drawn"
+msgstr "es wird bereits ein Bild gerendert"
+
+msgid "Saving…"
+msgstr "Wird gespeichert…"
+
+msgid "Putting the frames together…"
+msgstr "Bilder werden zusammengesetzt…"
+
+msgid "Laying out the steps…"
+msgstr "Schritte werden angelegt…"
+
+msgid "Rendering the building"
+msgstr "Aufbau wird gerendert"
+
+msgid "Cancelling…"
+msgstr "Wird abgebrochen…"
+
+msgid "Cancelled."
+msgstr "Abgebrochen."
+
+msgid "Nothing to draw: %s"
+msgstr "Nichts zu zeichnen: %s"
+
+msgid "%d s."
+msgstr "%d s."
+
+msgid "%s… %d%"
+msgstr "%s… %d%"
+
+msgid "setting up"
+msgstr "Vorbereitung"
+
+msgid "setting up the model"
+msgstr "Modell wird vorbereitet"
+
+msgid "fetching the photographed light"
+msgstr "fotografiertes Licht wird geladen"
+
+msgid "the contact shadow"
+msgstr "der Kontaktschatten"
+
+msgid "gathering the light"
+msgstr "Licht wird gesammelt"
+
+msgid "drawing"
+msgstr "wird gezeichnet"
+
+msgid "cancelled"
+msgstr "abgebrochen"
+
+msgid "%d of %d frames"
+msgstr "%d von %d Bildern"
+
+msgid "%d of %d samples"
+msgstr "%d von %d Samples"
+
+msgid "piece %d of %d, %s"
+msgstr "Stück %d von %d, %s"
+
+msgid "the picture was not finished, so nothing was written"
+msgstr "das Bild wurde nicht fertig, daher wurde nichts geschrieben"
+
+msgid "the turntable was not finished, so nothing was written"
+msgstr "der Drehteller wurde nicht fertig, daher wurde nichts geschrieben"
+
+msgid "the animation was not finished, so nothing was written"
+msgstr "die Animation wurde nicht fertig, daher wurde nichts geschrieben"
+
+msgid "the building was not finished, so nothing was written"
+msgstr "der Aufbau wurde nicht fertig, daher wurde nichts geschrieben"
+
+msgid "downloaded %s"
+msgstr "%s heruntergeladen"
+
+msgid "could not write %s"
+msgstr "%s konnte nicht geschrieben werden"
+
+msgid "frames in %s"
+msgstr "Einzelbilder in %s"
+
+msgid "no MP4: ffmpeg is not installed"
+msgstr "kein MP4: ffmpeg ist nicht installiert"
+
+msgid "no MP4: ffmpeg would not start"
+msgstr "kein MP4: ffmpeg ließ sich nicht starten"
+
+msgid "no MP4: ffmpeg did not write one"
+msgstr "kein MP4: ffmpeg hat keins geschrieben"
+
+msgid "ffmpeg is still making %s and finishes it on its own"
+msgstr "ffmpeg erstellt %s noch und stellt es selbst fertig"
+
+msgid "Render queue"
+msgstr "Render-Warteschlange"
+
+msgid "Put the panel away; what is queued goes on being drawn"
+msgstr "Das Fenster schließen; was wartet, wird weiter gezeichnet"
+
+msgid "Pictures drawn one after another with Render's settings, while you go on building. Each is of the view and the model as they were when added."
+msgstr "Bilder, eins nach dem anderen mit den Einstellungen von Rendern gezeichnet, während du weiterbaust. Jedes zeigt Ansicht und Modell so, wie sie beim Hinzufügen waren."
+
+msgid "Best is path traced on this graphics card."
+msgstr "„Beste“ wird auf dieser Grafikkarte mit Pathtracing gerendert."
+
+msgid "Best is frames averaged here"
+msgstr "„Beste“ mittelt hier Bilder"
+
+msgid "Add this view"
+msgstr "Diese Ansicht hinzufügen"
+
+msgid "Queue a picture of the model as you see it now, with Render's settings"
+msgstr "Ein Bild des Modells, wie du es jetzt siehst, mit den Einstellungen von Rendern in die Warteschlange stellen"
+
+msgid "Pause"
+msgstr "Pause"
+
+msgid "Go on"
+msgstr "Weiter"
+
+msgid "Hold the rest after the one being drawn"
+msgstr "Die übrigen nach dem aktuellen Bild anhalten"
+
+msgid "Finish now"
+msgstr "Jetzt fertigstellen"
+
+msgid "Keep the picture being drawn as clean as it is now"
+msgstr "Das aktuelle Bild so sauber behalten, wie es jetzt ist"
+
+msgid "Clear finished"
+msgstr "Fertige entfernen"
+
+msgid "Take the finished ones off the list; their files stay"
+msgstr "Die fertigen aus der Liste nehmen; ihre Dateien bleiben"
+
+msgid "Back to building (Escape)"
+msgstr "Zurück zum Bauen (Escape)"
+
+msgid "Show"
+msgstr "Zeigen"
+
+msgid "Show the picture in its folder"
+msgstr "Das Bild in seinem Ordner zeigen"
+
+msgid "Stop"
+msgstr "Stopp"
+
+msgid "Remove"
+msgstr "Entfernen"
+
+msgid "Stop drawing this one"
+msgstr "Dieses Bild nicht weiterzeichnen"
+
+msgid "Take it out of the queue"
+msgstr "Aus der Warteschlange nehmen"
+
+msgid "%d waiting"
+msgstr "%d warten"
+
+msgid "%d waiting, paused"
+msgstr "%d warten, angehalten"
+
+msgid "waiting"
+msgstr "wartet"
+
+msgid "waiting, paused"
+msgstr "wartet, angehalten"
+
+msgid "starting"
+msgstr "startet"
+
+msgid "saving"
+msgstr "wird gespeichert"
+
+msgid "could not be drawn"
+msgstr "konnte nicht gezeichnet werden"
+
+msgid "%d%, %s"
+msgstr "%d%, %s"
+
+msgid "%s in %s s"
+msgstr "%s in %s s"
+
+msgid "%s in %s s (%s)"
+msgstr "%s in %s s (%s)"
+
+msgid "path traced, %d samples"
+msgstr "Pathtracing, %d Samples"
+
+msgid "%d frames averaged"
+msgstr "%d gemittelte Bilder"
+
+msgid "%s, %d×%d, %s"
+msgstr "%s, %d×%d, %s"
+
+msgid "Rendering %s…"
+msgstr "%s wird gerendert…"
+
+msgid "Rendering %s (%d more queued)…"
+msgstr "%s wird gerendert (%d weitere warten)…"
+
+msgid "Rendering needs a window to draw in."
+msgstr "Rendern braucht ein Fenster zum Zeichnen."
+
+# Motions: the model's motions, a motion's joints and keys, and drawing one
+msgid "Motions"
+msgstr "Bewegungen"
+
+msgid "The model's motions"
+msgstr "Die Bewegungen des Modells"
+
+msgid "None yet. A motion is a named movement of the model: Open the doors, Lift the boom."
+msgstr "Noch keine. Eine Bewegung ist ein benannter Ablauf des Modells: Türen öffnen, Ausleger heben."
+
+msgid "New motion"
+msgstr "Neue Bewegung"
+
+msgid "Make a motion: name it, then Record and drag the parts, or set its joints one by one"
+msgstr "Eine Bewegung erstellen: benennen, dann Aufnehmen und die Teile ziehen, oder die Gelenke einzeln einstellen"
+
+msgid "New sequence"
+msgstr "Neue Abfolge"
+
+msgid "A motion made of the model's motions, in an order you choose: Show it all"
+msgstr "Eine Bewegung aus den Bewegungen des Modells, in einer Reihenfolge deiner Wahl: Alles zeigen"
+
+msgid "Play all"
+msgstr "Alle abspielen"
+
+msgid "Play every motion in order, each after the one it follows"
+msgstr "Jede Bewegung der Reihe nach abspielen, jede nach der, auf die sie folgt"
+
+msgid "Loop"
+msgstr "Schleife"
+
+msgid "Play it again and again until Stop"
+msgstr "Immer wieder abspielen, bis Stopp"
+
+msgid "Suggested from what moves"
+msgstr "Vorschläge aus dem, was sich bewegt"
+
+msgid "Keep a suggestion, or press New motion to make one."
+msgstr "Übernimm einen Vorschlag oder drücke „Neue Bewegung“, um eine zu erstellen."
+
+msgid "Press New motion, then Record and drag the parts that move, or set them joint by joint."
+msgstr "Drücke „Neue Bewegung“, dann „Aufnehmen“, und ziehe die Teile, die sich bewegen, oder stelle sie Gelenk für Gelenk ein."
+
+msgid "Press Play to watch a motion. Edit changes it, or renames or removes it."
+msgstr "Drücke „Abspielen“, um eine Bewegung anzusehen. „Bearbeiten“ ändert sie, benennt sie um oder entfernt sie."
+
+msgid "Play"
+msgstr "Abspielen"
+
+msgid "Play it in the view"
+msgstr "In der Ansicht abspielen"
+
+msgid "Play backwards"
+msgstr "Rückwärts abspielen"
+
+msgid "Play it from its end to its start: what Play opened, this closes"
+msgstr "Vom Ende zum Anfang abspielen: Was „Abspielen“ geöffnet hat, schließt dies"
+
+msgid "Play it from its end to its start"
+msgstr "Vom Ende zum Anfang abspielen"
+
+msgid "Change its order, rename it or remove it"
+msgstr "Reihenfolge ändern, umbenennen oder entfernen"
+
+msgid "Change its joints and keys, record it again, rename it or remove it"
+msgstr "Gelenke und Keys ändern, neu aufnehmen, umbenennen oder entfernen"
+
+msgid "%s, %s s. Chosen, Render animation draws it"
+msgstr "%s, %s s. Gewählt zeichnet „Animation rendern“ sie"
+
+msgid "%s, %s s, after %s"
+msgstr "%s, %s s, nach %s"
+
+msgid "Chosen, Render animation draws it"
+msgstr "Gewählt zeichnet „Animation rendern“ sie"
+
+msgid "Keep it as one of the model's motions: saved with the model"
+msgstr "Als eine der Bewegungen des Modells übernehmen: wird mit dem Modell gespeichert"
+
+msgid "All motions"
+msgstr "Alle Bewegungen"
+
+msgid "Back to the list of the model's motions (Escape)"
+msgstr "Zurück zur Liste der Bewegungen des Modells (Escape)"
+
+msgid "Take this motion out of the model (undo puts it back)"
+msgstr "Diese Bewegung aus dem Modell nehmen (Rückgängig holt sie zurück)"
+
+msgid "Take this sequence out of the model; its motions stay (undo puts it back)"
+msgstr "Diese Abfolge aus dem Modell nehmen; ihre Bewegungen bleiben (Rückgängig holt sie zurück)"
+
+msgid "Name"
+msgstr "Name"
+
+msgid "Open the dome"
+msgstr "Kuppel öffnen"
+
+msgid "What a builder calls it: Open the dome, Extend the telescope"
+msgstr "Wie ein Baumeister es nennt: Kuppel öffnen, Teleskop ausfahren"
+
+msgid "Show it all"
+msgstr "Alles zeigen"
+
+msgid "What a builder calls it: Show it all"
+msgstr "Wie ein Baumeister es nennt: Alles zeigen"
+
+msgid "Record"
+msgstr "Aufnehmen"
+
+msgid "Record drags: every drag of a part in the view, kept as keys at the times it happened"
+msgstr "Ziehen aufnehmen: Jedes Ziehen eines Teils in der Ansicht wird als Key zu seiner Zeit gespeichert"
+
+msgid "At"
+msgstr "Bei"
+
+msgid "The time in the motion: the model is drawn as it is then"
+msgstr "Die Zeit in der Bewegung: Das Modell wird gezeichnet, wie es dann ist"
+
+msgid "Its joints"
+msgstr "Seine Gelenke"
+
+msgid "Show all joints"
+msgstr "Alle Gelenke zeigen"
+
+msgid "Every joint in the model that moves, each with its slider"
+msgstr "Jedes bewegliche Gelenk im Modell, jedes mit seinem Schieberegler"
+
+msgid "Show all %d joints that move"
+msgstr "Alle %d beweglichen Gelenke zeigen"
+
+msgid "Nothing in the model moves on a joint a drag moves: a hinge, a turntable, a pin or an axle in a round hole."
+msgstr "Nichts im Modell bewegt sich an einem Gelenk, das Ziehen bewegt: einem Scharnier, einem Drehteller, einem Pin oder einer Achse in einem runden Loch."
+
+msgid "How it gets to this key: eased in and out, at one speed, or held until then"
+msgstr "Wie es zu diesem Key kommt: weich hinein und heraus, gleichmäßig oder bis dahin gehalten"
+
+msgid "Eased"
+msgstr "Weich"
+
+msgid "Linear"
+msgstr "Linear"
+
+msgid "Held"
+msgstr "Gehalten"
+
+msgid "Remove key"
+msgstr "Key entfernen"
+
+msgid "Take this key out"
+msgstr "Diesen Key entfernen"
+
+msgid "Where it is at the time above: moved, a key there"
+msgstr "Wo es zur Zeit oben steht: verschoben, ein Key dort"
+
+msgid "Its keys: a key pressed is chosen, dragged it moves in time; pressed between, the time goes there"
+msgstr "Seine Keys: Ein angeklickter Key ist gewählt, gezogen verschiebt er sich in der Zeit; dazwischen geklickt springt die Zeit dorthin"
+
+msgid "Up and Down change the order; Add puts another of the model's motions at its end."
+msgstr "„Nach oben“ und „Nach unten“ ändern die Reihenfolge; „Hinzufügen“ hängt eine weitere Bewegung des Modells an."
+
+msgid "Move the time, then a joint's slider: a key there. Record makes it again from drags."
+msgstr "Verschiebe die Zeit, dann den Schieberegler eines Gelenks: ein Key dort. „Aufnehmen“ erstellt es neu aus Ziehen."
+
+msgid "Name it, then press Record and drag the parts that move in the view. Or set it here: a joint's slider puts a key at the time above."
+msgstr "Benenne sie, drücke dann „Aufnehmen“ und ziehe die Teile, die sich bewegen, in der Ansicht. Oder stelle sie hier ein: Der Schieberegler eines Gelenks setzt einen Key zur Zeit oben."
+
+msgid "Up"
+msgstr "Nach oben"
+
+msgid "Play it one sooner"
+msgstr "Eins früher abspielen"
+
+msgid "Down"
+msgstr "Nach unten"
+
+msgid "Play it one later"
+msgstr "Eins später abspielen"
+
+msgid "Take out"
+msgstr "Herausnehmen"
+
+msgid "Take it out of this sequence; the motion stays in the model"
+msgstr "Aus dieser Abfolge nehmen; die Bewegung bleibt im Modell"
+
+msgid "Play its motions in order, each from where the one before left the model"
+msgstr "Seine Bewegungen der Reihe nach abspielen, jede ab dort, wo die vorige das Modell ließ"
+
+msgid "Play its motions backwards in reverse order: what Play opened, this closes"
+msgstr "Seine Bewegungen rückwärts in umgekehrter Reihenfolge abspielen: Was „Abspielen“ geöffnet hat, schließt dies"
+
+msgid "It plays, in order"
+msgstr "Es spielt der Reihe nach"
+
+msgid "Another of the model's motions to play at its end"
+msgstr "Eine weitere Bewegung des Modells, die am Ende spielt"
+
+msgid "Add"
+msgstr "Hinzufügen"
+
+msgid "Play the motion chosen at the end of this sequence"
+msgstr "Die gewählte Bewegung am Ende dieser Abfolge abspielen"
+
+msgid "recording: drag the parts in the view"
+msgstr "Aufnahme: Ziehe die Teile in der Ansicht"
+
+msgid "The model is back where it was."
+msgstr "Das Modell steht wieder, wo es war."
+
+msgid "The model stands where the drags left it."
+msgstr "Das Modell steht dort, wo das Ziehen es gelassen hat."
+
+msgid "Keep or make a motion first: Render animation draws the one chosen."
+msgstr "Übernimm oder erstelle zuerst eine Bewegung: „Animation rendern“ zeichnet die gewählte."
+
+msgid "Nothing was kept."
+msgstr "Nichts wurde gespeichert."
+
+msgid "Draw the chosen motion and keep it: an animated WebP, and on the desktop the frames and an MP4"
+msgstr "Die gewählte Bewegung zeichnen und speichern: ein animiertes WebP und auf dem Desktop die Einzelbilder und ein MP4"
+
+msgid "%d a second"
+msgstr "%d pro Sekunde"
+
+msgid "Frames a second"
+msgstr "Bilder pro Sekunde"
+
+msgid "%d frames — %s — %s s."
+msgstr "%d Bilder — %s — %s s."
+
+# Pattern, the parts list and its find, the reference picture, and laying a hose, tube or chain
+msgid "Put them down"
+msgstr "Absetzen"
+
+msgid "In a row"
+msgstr "In einer Reihe"
+
+msgid "Round"
+msgstr "Im Kreis"
+
+msgid "Along a hose"
+msgstr "Entlang eines Schlauchs"
+
+msgid "Lay a hose first: %s"
+msgstr "Verlege zuerst einen Schlauch: %s"
+
+msgid "Lay a hose first: Make"
+msgstr "Verlege zuerst einen Schlauch: Erstellen"
+
+msgid "In all"
+msgstr "Insgesamt"
+
+msgid "counting the selection"
+msgstr "die Auswahl mitgezählt"
+
+msgid "Along"
+msgstr "Entlang"
+
+msgid "every"
+msgstr "alle"
+
+msgid "Every"
+msgstr "Alle"
+
+msgid "Each turn"
+msgstr "Je Drehung"
+
+msgid "degrees"
+msgstr "Grad"
+
+msgid "plates"
+msgstr "Platten"
+
+msgid "x"
+msgstr "x"
+
+msgid "z"
+msgstr "z"
+
+msgid "up"
+msgstr "senkrecht"
+
+msgid "x back"
+msgstr "x rückwärts"
+
+msgid "z back"
+msgstr "z rückwärts"
+
+msgid "up back"
+msgstr "senkrecht abwärts"
+
+msgid "the hose"
+msgstr "der Schlauch"
+
+msgid "%d copies, each %s %s along %s"
+msgstr "%d Kopien, je %s %s, Achse %s"
+
+msgid "%d copies, each %s %s along %s: each has room"
+msgstr "%d Kopien, je %s %s, Achse %s: Jede hat Platz"
+
+msgid "%d copies, each %s° further round %s"
+msgstr "%d Kopien, jede %s° weiter gedreht um %s"
+
+msgid "%d copies, each %s° further round %s: each has room"
+msgstr "%d Kopien, jede %s° weiter gedreht um %s: Jede hat Platz"
+
+msgid "%d copies, %s studs apart along %s"
+msgstr "%d Kopien, %s Noppen voneinander entlang %s"
+
+msgid "%d copies, %s studs apart along %s: each has room"
+msgstr "%d Kopien, %s Noppen voneinander entlang %s: Jede hat Platz"
+
+msgid "only %d fit along it"
+msgstr "nur %d passen daran entlang"
+
+msgid "no copies"
+msgstr "keine Kopien"
+
+msgid "too many: at most %d copies and %d parts"
+msgstr "zu viele: höchstens %d Kopien und %d Teile"
+
+msgid "copy %d has no room: %s is in the way"
+msgstr "Kopie %d hat keinen Platz: %s ist im Weg"
+
+msgid "the ground or another copy"
+msgstr "der Boden oder eine andere Kopie"
+
+msgid "a pattern of %d copies"
+msgstr "ein Muster aus %d Kopien"
+
+msgid "no room for them all: %s"
+msgstr "nicht für alle Platz: %s"
+
+msgid "1 piece"
+msgstr "1 Teil"
+
+msgid "%d pieces"
+msgstr "%d Teile"
+
+msgid "1 lot"
+msgstr "1 Posten"
+
+msgid "%d lots"
+msgstr "%d Posten"
+
+msgid "What do I need?"
+msgstr "Was brauche ich?"
+
+msgid "These parts against your collection: what is short, and what could stand in"
+msgstr "Diese Teile im Abgleich mit deiner Sammlung: was fehlt und was einspringen könnte"
+
+msgid "Save as CSV"
+msgstr "Als CSV speichern"
+
+msgid "A spreadsheet, or a shop's bulk-add box"
+msgstr "Eine Tabelle oder das Massen-Eingabefeld eines Shops"
+
+msgid "A BrickLink wanted list (.xml), to upload under Wanted › Upload"
+msgstr "Eine BrickLink-Wunschliste (.xml) zum Hochladen unter Wanted › Upload"
+
+msgid "A Rebrickable parts list (.csv), to import into a list of your own"
+msgstr "Eine Rebrickable-Teileliste (.csv) zum Importieren in eine eigene Liste"
+
+msgid "Find in the model: a part's number, its name, a colour…"
+msgstr "Im Modell suchen: Teilenummer, Name, Farbe…"
+
+msgid "Only the parts that answer it: 3004, brick 1x2, blue 1x2 brick.\nEnter selects all of them in the model; a row selects its own"
+msgstr "Nur die Teile, die passen: 3004, Stein 1x2, blauer Stein 1x2.\nEnter wählt sie alle im Modell aus; eine Zeile wählt ihre eigenen"
+
+msgid "Select these %d in the model"
+msgstr "Diese %d im Modell auswählen"
+
+msgid "Select it in the model"
+msgstr "Es im Modell auswählen"
+
+msgid "Nothing in this model answers “%s”"
+msgstr "Nichts in diesem Modell passt zu „%s“"
+
+msgid "%s in %s answer “%s”: Enter selects them"
+msgstr "%s in %s passen zu „%s“: Enter wählt sie aus"
+
+msgid "the parts that answer “%s”"
+msgstr "die Teile, die zu „%s“ passen"
+
+msgid "Choose a picture to build over"
+msgstr "Ein Bild wählen, über dem du baust"
+
+msgid "Pictures"
+msgstr "Bilder"
+
+msgid "Pictures (*.png, *.jpg, *.jpeg, *.webp, *.bmp, *.svg)"
+msgstr "Bilder (*.png, *.jpg, *.jpeg, *.webp, *.bmp, *.svg)"
+
+msgid "Opacity"
+msgstr "Deckkraft"
+
+msgid "On the floor"
+msgstr "Auf dem Boden"
+
+msgid "Standing, seen from the front"
+msgstr "Stehend, von vorn gesehen"
+
+msgid "Standing, seen from the side"
+msgstr "Stehend, von der Seite gesehen"
+
+msgid "Lies"
+msgstr "Liegt"
+
+msgid "Width"
+msgstr "Breite"
+
+msgid "Locked: clicks go through it to the model"
+msgstr "Gesperrt: Klicks gehen durch es hindurch zum Modell"
+
+msgid "Choose another…"
+msgstr "Ein anderes wählen…"
+
+msgid "%s studs"
+msgstr "%s Noppen"
+
+msgid "laid the reference picture %s"
+msgstr "Referenzbild %s gelegt"
+
+msgid "chose another reference picture, %s"
+msgstr "anderes Referenzbild gewählt, %s"
+
+msgid "took away the reference picture %s"
+msgstr "Referenzbild %s entfernt"
+
+msgid "%s laid to build over: drag a corner to size it, or type its width"
+msgstr "%s liegt zum Darüberbauen bereit: Ziehe an einer Ecke, um die Größe zu ändern, oder gib die Breite ein"
+
+msgid "the reference picture: drag it to slide it, a corner to size it"
+msgstr "das Referenzbild: Ziehen verschiebt es, eine Ecke ändert die Größe"
+
+msgid "Reference picture… types its width, or locks it"
+msgstr "Referenzbild… gibt die Breite ein oder sperrt es"
+
+msgid "the reference picture on the floor"
+msgstr "das Referenzbild auf dem Boden"
+
+msgid "the reference picture standing, seen from the front"
+msgstr "das Referenzbild stehend, von vorn gesehen"
+
+msgid "the reference picture standing, seen from the side"
+msgstr "das Referenzbild stehend, von der Seite gesehen"
+
+msgid "sized the reference picture"
+msgstr "Größe des Referenzbilds geändert"
+
+msgid "changed the reference picture's opacity"
+msgstr "Deckkraft des Referenzbilds geändert"
+
+msgid "locked the reference picture"
+msgstr "Referenzbild gesperrt"
+
+msgid "unlocked the reference picture"
+msgstr "Referenzbild entsperrt"
+
+msgid "Ribbed hose"
+msgstr "Rippenschlauch"
+
+msgid "Pneumatic tube"
+msgstr "Pneumatikschlauch"
+
+msgid "Flex-system hose"
+msgstr "Flex-System-Schlauch"
+
+msgid "Flexible axle"
+msgstr "Flexible Achse"
+
+msgid "String with end studs"
+msgstr "Schnur mit Endnoppen"
+
+msgid "Technic chain"
+msgstr "Technic-Kette"
+
+msgid "Technic tread"
+msgstr "Technic-Raupenkette"
+
+msgid "Rubber band"
+msgstr "Gummiband"
+
+msgid "Spring or shock"
+msgstr "Feder oder Stoßdämpfer"
+
+msgid "The shortest that fits"
+msgstr "Der kürzeste, der passt"
+
+msgid "The band that fits"
+msgstr "Das passende Gummiband"
+
+msgid "%d LDU"
+msgstr "%d LDU"
+
+msgid "%d LDU round"
+msgstr "%d LDU Umfang"
+
+msgid "Click the %s it starts on."
+msgstr "Klicke auf den Anfang: %s."
+
+msgid "Now click the %s it ends on."
+msgstr "Klicke jetzt auf das Ende: %s."
+
+msgid "pin, axle, pin hole or axle hole"
+msgstr "Pin, Achse, Pinloch oder Achsloch"
+
+msgid "pin hole or pneumatic outlet"
+msgstr "Pinloch oder Pneumatikanschluss"
+
+msgid "pin hole or clip or hollow stud"
+msgstr "Pinloch, Clip oder Hohlnoppe"
+
+msgid "axle hole or pin hole"
+msgstr "Achsloch oder Pinloch"
+
+msgid "stud"
+msgstr "Noppe"
+
+msgid "pin hole, pin, axle hole or axle"
+msgstr "Pinloch, Pin, Achsloch oder Achse"
+
+msgid "pin hole or pin"
+msgstr "Pinloch oder Pin"
+
+msgid "Click the sprockets or gears it goes round, two or more, all in one plane."
+msgstr "Klicke auf die Kettenräder oder Zahnräder, um die sie läuft, zwei oder mehr, alle in einer Ebene."
+
+msgid "Click the pulleys, wheels, bushes or axles it goes round, in order round the loop."
+msgstr "Klicke auf die Riemenscheiben, Räder, Buchsen oder Achsen, um die es läuft, der Reihe nach rund um die Schlaufe."
+
+msgid "Click another sprocket."
+msgstr "Klicke auf ein weiteres Kettenrad."
+
+msgid "Click the next one it goes round."
+msgstr "Klicke auf das nächste, um das es läuft."
+
+msgid "Click a round thing to put the band round it too, or take it off."
+msgstr "Klicke auf etwas Rundes, um das Gummiband auch darum zu legen oder es abzunehmen."
+
+msgid "Move a part it is on and it follows; pick another spring or shock in the list."
+msgstr "Bewege ein Teil, an dem es sitzt, und es folgt; wähle in der Liste eine andere Feder oder einen anderen Stoßdämpfer."
+
+msgid "Drag a bend point to reshape it; Add a bend for another. Done when it is right."
+msgstr "Ziehe einen Biegepunkt, um die Form zu ändern; „Biegung hinzufügen“ für einen weiteren. „Fertig“, wenn es passt."
+
+msgid "Click a sprocket to put it in the loop or take it out."
+msgstr "Klicke auf ein Kettenrad, um es in die Schlaufe zu nehmen oder herauszunehmen."
+
+msgid "Click another to put the band round it too, or one it is round to take it off. Done when it is right."
+msgstr "Klicke auf ein weiteres, um das Gummiband auch darum zu legen, oder auf eines, um das es liegt, um es abzunehmen. „Fertig“, wenn es passt."
+
+msgid "Move a part it is on and it follows. Done when it is right."
+msgstr "Bewege ein Teil, an dem es sitzt, und es folgt. „Fertig“, wenn es passt."
+
+msgid "Drag a bend point to reshape it, or Add a bend. Done when it is right."
+msgstr "Ziehe einen Biegepunkt, um die Form zu ändern, oder „Biegung hinzufügen“. „Fertig“, wenn es passt."
+
+msgid "Click a sprocket to put it in the loop or take it out; Done when it is right."
+msgstr "Klicke auf ein Kettenrad, um es in die Schlaufe zu nehmen oder herauszunehmen; „Fertig“, wenn es passt."
+
+msgid "That would bend it round %d LDU, and a %s goes no tighter than %d: it is left as it was."
+msgstr "Das würde es auf %d LDU biegen, und %s geht nicht enger als %d: Es bleibt, wie es war."
+
+msgid "ribbed hose"
+msgstr "ein Rippenschlauch"
+
+msgid "pneumatic tube"
+msgstr "ein Pneumatikschlauch"
+
+msgid "flex-system hose"
+msgstr "ein Flex-System-Schlauch"
+
+msgid "flexible axle"
+msgstr "eine flexible Achse"
+
+msgid "string with end studs"
+msgstr "eine Schnur mit Endnoppen"
+
+msgid "could not make %s"
+msgstr "%s konnte nicht erstellt werden"
+
+msgid "could not fetch the parts for it; try again"
+msgstr "die Teile dafür konnten nicht geladen werden; versuch es noch einmal"
+
+msgid "laid %s"
+msgstr "%s verlegt"
+
+msgid "reshaped %s"
+msgstr "%s umgeformt"
+
+msgid "fetching %d parts…"
+msgstr "%d Teile werden geladen…"
+
+msgid "%d links round %d sprockets."
+msgstr "%d Glieder um %d Kettenräder."
+
+msgid "%s, %d LDU along it; it bends round %d LDU at the tightest."
+msgstr "%s, %d LDU lang; am engsten biegt es sich auf %d LDU."
+
+msgid "Add a bend"
+msgstr "Biegung hinzufügen"
+
+msgid "A point on the path to drag it by"
+msgstr "Ein Punkt auf dem Verlauf, an dem du ziehen kannst"
+
+msgid "Straighten"
+msgstr "Begradigen"
+
+msgid "Take the bend points out"
+msgstr "Die Biegepunkte entfernen"
+
+msgid "Start again"
+msgstr "Neu beginnen"
+
+msgid "Pick the ends again for a new one; what is laid stays"
+msgstr "Die Enden für einen neuen neu wählen; was verlegt ist, bleibt"
+
+msgid "Finish (Escape)"
+msgstr "Fertigstellen (Escape)"
+
+# My collection: what I own, what a model needs, and what I could build
+msgid "My collection"
+msgstr "Meine Sammlung"
+
+msgid "What I own"
+msgstr "Was ich habe"
+
+msgid "What can I build?"
+msgstr "Was kann ich bauen?"
+
+msgid "Forget every set and part in your collection? This cannot be undone."
+msgstr "Alle Sets und Teile in deiner Sammlung vergessen? Das lässt sich nicht rückgängig machen."
+
+msgid "Forget it all"
+msgstr "Alles vergessen"
+
+msgid "Nothing here yet. Bring in what you own: your Rebrickable account, a Rebrickable or BrickLink export, or set numbers typed in."
+msgstr "Hier ist noch nichts. Hol dir, was du besitzt: dein Rebrickable-Konto, einen Export aus Rebrickable oder BrickLink, oder eingetippte Setnummern."
+
+msgid "Set numbers: 10237-1, 6020"
+msgstr "Setnummern: 10237-1, 6020"
+
+msgid "Add sets"
+msgstr "Sets hinzufügen"
+
+msgid "Rebrickable CSV…"
+msgstr "Rebrickable-CSV…"
+
+msgid "A sets list or a parts list exported from Rebrickable (My LEGO®, Export)"
+msgstr "Eine Set- oder Teileliste, aus Rebrickable exportiert (My LEGO®, Export)"
+
+msgid "BrickLink XML…"
+msgstr "BrickLink-XML…"
+
+msgid "A BrickLink wanted list or inventory, as XML"
+msgstr "Eine BrickLink-Wunschliste oder ein Inventar als XML"
+
+msgid "Start over…"
+msgstr "Neu anfangen…"
+
+msgid "Forget every set and part in your collection"
+msgstr "Alle Sets und Teile in deiner Sammlung vergessen"
+
+msgid "Rebrickable account"
+msgstr "Rebrickable-Konto"
+
+msgid "Rebrickable API key"
+msgstr "Rebrickable-API-Schlüssel"
+
+msgid "User token"
+msgstr "Benutzer-Token"
+
+msgid "or username"
+msgstr "oder Benutzername"
+
+msgid "and password"
+msgstr "und Passwort"
+
+msgid "Fetch"
+msgstr "Abrufen"
+
+msgid "Read your sets and parts lists from your Rebrickable account"
+msgstr "Deine Sets und Teilelisten aus deinem Rebrickable-Konto lesen"
+
+msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept; what comes back replaces the sets and loose parts in this collection."
+msgstr "Dein Rebrickable-Schlüssel geht von hier nur an rebrickable.com und wird nicht gespeichert; was zurückkommt, ersetzt die Sets und losen Teile in dieser Sammlung."
+
+msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept; what comes back replaces the sets and loose parts in this collection. Ask the assistant for \"a small house from my collection\" and it builds from what you own."
+msgstr "Dein Rebrickable-Schlüssel geht von hier nur an rebrickable.com und wird nicht gespeichert; was zurückkommt, ersetzt die Sets und losen Teile in dieser Sammlung. Bitte den Assistenten um „ein kleines Haus aus meiner Sammlung“, und er baut aus dem, was du hast."
+
+msgid "BrickLink wanted list"
+msgstr "BrickLink-Wunschliste"
+
+msgid "What is short, as an XML BrickLink's wanted lists take"
+msgstr "Was fehlt, als XML, wie es BrickLink-Wunschlisten nehmen"
+
+msgid "Rebrickable CSV"
+msgstr "Rebrickable-CSV"
+
+msgid "What is short, as a parts list Rebrickable imports"
+msgstr "Was fehlt, als Teileliste, die Rebrickable importiert"
+
+msgid "BrickLink's prices are not free to read, so each part links to its BrickLink page instead. What could stand in comes from what this model does not itself use."
+msgstr "Die Preise von BrickLink sind nicht frei lesbar, daher verlinkt jedes Teil stattdessen auf seine BrickLink-Seite. Was einspringen könnte, stammt aus dem, was dieses Modell selbst nicht verwendet."
+
+msgid "short of"
+msgstr "fehlen von"
+
+msgid "part"
+msgstr "Teil"
+
+msgid "name"
+msgstr "Name"
+
+msgid "shop"
+msgstr "Shop"
+
+msgid "This part, in this colour, on BrickLink"
+msgstr "Dieses Teil in dieser Farbe auf BrickLink"
+
+msgid "1 set"
+msgstr "1 Set"
+
+msgid "%d sets"
+msgstr "%d Sets"
+
+msgid "1 loose piece"
+msgstr "1 loses Teil"
+
+msgid "%s loose pieces"
+msgstr "%s lose Teile"
+
+msgid "%s and %s — %s pieces in all, kept with your account"
+msgstr "%s und %s — insgesamt %s Teile, in deinem Konto gespeichert"
+
+msgid "%s and %s — %s pieces in all (the copy on this device)"
+msgstr "%s und %s — insgesamt %s Teile (die Kopie auf diesem Gerät)"
+
+msgid "Sets"
+msgstr "Sets"
+
+msgid "Build from them all"
+msgstr "Aus allen bauen"
+
+msgid "The bin becomes the parts of every set here, counted together, each counting how many are left as you build"
+msgstr "Die Teilekiste wird zu den Teilen aller Sets hier, zusammengezählt, und jedes zählt beim Bauen mit, wie viele übrig sind"
+
+msgid "no inventory known for this set"
+msgstr "für dieses Set ist kein Inventar bekannt"
+
+msgid "%s pieces"
+msgstr "%s Teile"
+
+msgid "Build from it"
+msgstr "Daraus bauen"
+
+msgid "The bin becomes this set's parts, each counting how many are left as you build"
+msgstr "Die Teilekiste wird zu den Teilen dieses Sets, und jedes zählt beim Bauen mit, wie viele übrig sind"
+
+msgid "Loose parts"
+msgstr "Lose Teile"
+
+msgid "…and %d more lots"
+msgstr "…und %d weitere Posten"
+
+msgid "…and %d more"
+msgstr "…und %d weitere"
+
+msgid "not in the library"
+msgstr "nicht in der Bibliothek"
+
+msgid "There is nothing on the baseplate yet to check against your collection."
+msgstr "Auf der Grundplatte ist noch nichts, das mit deiner Sammlung abgeglichen werden kann."
+
+msgid "%s needs %s pieces. Your collection is empty, so all of it is short — add what you own on the first page."
+msgstr "%s braucht %s Teile. Deine Sammlung ist leer, also fehlt alles — füge auf der ersten Seite hinzu, was du besitzt."
+
+msgid "This model"
+msgstr "Dieses Modell"
+
+msgid "%s: you own all %s pieces it needs."
+msgstr "%s: Du besitzt alle %s Teile, die es braucht."
+
+msgid "%s: %s pieces"
+msgstr "%s: %s Teile"
+
+msgid "you own %s (%d%)"
+msgstr "du besitzt %s (%d%)"
+
+msgid "Short: %s pieces in %d lots."
+msgstr "Es fehlen: %s Teile in %d Posten."
+
+msgid "Short: %s pieces in %d lots, %s once what could stand in is used."
+msgstr "Es fehlen: %s Teile in %d Posten, %s, wenn Ersatzteile genutzt werden."
+
+msgid "could stand in: %s"
+msgstr "könnte einspringen: %s"
+
+msgid "%d in %s"
+msgstr "%d in %s"
+
+msgid "%d made of %s"
+msgstr "%d aus %s"
+
+msgid "counted as had: %s"
+msgstr "als vorhanden gezählt: %s"
+
+msgid "%d as %s"
+msgstr "%d als %s"
+
+msgid "still %d to find"
+msgstr "noch %d zu finden"
+
+msgid "nothing is short, so there is nothing to order"
+msgstr "es fehlt nichts, also gibt es nichts zu bestellen"
+
+msgid "%s: %d pieces in %d lots"
+msgstr "%s: %d Teile in %d Posten"
+
+msgid "%d lots left off: %s"
+msgstr "%d Posten ausgelassen: %s"
+
+msgid "Counting what you could build…"
+msgstr "Zähle, was du bauen könntest…"
+
+msgid "Add what you own on the first page, and every model here is ranked by how much of it you already have."
+msgstr "Füge auf der ersten Seite hinzu, was du besitzt, und jedes Modell hier wird danach sortiert, wie viel davon du schon hast."
+
+msgid "%d models, most of it owned first: the examples, your own saved models, and the official LDraw models of real sets."
+msgstr "%d Modelle, die mit dem größten Anteil im Besitz zuerst: die Beispiele, deine eigenen gespeicherten Modelle und die offiziellen LDraw-Modelle echter Sets."
+
+msgid "Official set %s"
+msgstr "Offizielles Set %s"
+
+msgid "Yours"
+msgstr "Deins"
+
+msgid "Example"
+msgstr "Beispiel"
+
+msgid "%s of %s pieces owned, %s missing"
+msgstr "%s von %s Teilen vorhanden, %s fehlen"
+
+msgid "%d% in any colour"
+msgstr "%d% in beliebiger Farbe"
+
+msgid "Open it, and see what is missing"
+msgstr "Öffnen und sehen, was fehlt"
+
+msgid "See it"
+msgstr "Ansehen"
+
+msgid "The official LDraw model of this set, at library.ldraw.org"
+msgstr "Das offizielle LDraw-Modell dieses Sets auf library.ldraw.org"
+
+msgid "type a set number first, like 10237-1"
+msgstr "gib zuerst eine Setnummer ein, etwa 10237-1"
+
+msgid "adding %s…"
+msgstr "%s wird hinzugefügt…"
+
+msgid "added %s"
+msgstr "%s hinzugefügt"
+
+msgid "no inventory is known for %s, so it adds no parts"
+msgstr "für %s ist kein Inventar bekannt, es kommen also keine Teile hinzu"
+
+msgid "reading %s…"
+msgstr "%s wird gelesen…"
+
+msgid "asking Rebrickable…"
+msgstr "Rebrickable wird gefragt…"
+
+msgid "Rebrickable has no sets or parts lists for that account"
+msgstr "Rebrickable hat für dieses Konto keine Sets oder Teilelisten"
+
+msgid "your Rebrickable account"
+msgstr "dein Rebrickable-Konto"
+
+msgid "from %s: %s and %s of parts"
+msgstr "aus %s: %s und %s Teile"
+
+msgid "left out: %s"
+msgstr "ausgelassen: %s"
+
+msgid "no inventory is known for %s"
+msgstr "für %s ist kein Inventar bekannt"
+
+msgid "building from the parts of %s"
+msgstr "baue aus den Teilen von %s"
+
+msgid "could not build from %s: %s"
+msgstr "konnte nicht aus %s bauen: %s"
+
+msgid "took %s out"
+msgstr "%s herausgenommen"
+
+msgid "your collection is empty"
+msgstr "deine Sammlung ist leer"
+
+# The timeline and its steps, a sub-assembly's name, Simulate mechanism, and Colour the hidden parts
+msgid "An empty baseplate (Home)"
+msgstr "Eine leere Grundplatte (Home)"
+
+msgid "An empty baseplate"
+msgstr "Eine leere Grundplatte"
+
+msgid "An empty baseplate: the steps are the author's"
+msgstr "Eine leere Grundplatte: die Schritte sind die des Autors"
+
+msgid "Back"
+msgstr "Zurück"
+
+msgid "The step before (left arrow)"
+msgstr "Der Schritt davor (Pfeil nach links)"
+
+msgid "Reverse"
+msgstr "Rückwärts"
+
+msgid "Play it coming apart, back to the start"
+msgstr "Abspielen, wie es auseinandergeht, zurück zum Anfang"
+
+msgid "Play the build (space)"
+msgstr "Den Aufbau abspielen (Leertaste)"
+
+msgid "Next"
+msgstr "Weiter"
+
+msgid "The step after (right arrow)"
+msgstr "Der Schritt danach (Pfeil nach rechts)"
+
+msgid "End"
+msgstr "Ende"
+
+msgid "The finished model (End)"
+msgstr "Das fertige Modell (End)"
+
+msgid "%dx"
+msgstr "%dx"
+
+msgid "How fast it plays"
+msgstr "Wie schnell es abspielt"
+
+msgid "Build order"
+msgstr "Bauabfolge"
+
+msgid "Build order: how you would put it together. As made: the order what stands was placed in. History: every change, removals included — how it was really made. Author's steps: the steps the model came with, or that you gave it"
+msgstr "Bauabfolge: wie du es zusammenbauen würdest. Wie gebaut: die Reihenfolge, in der das Stehende gesetzt wurde. Verlauf: jede Änderung, auch das Entfernte — wie es wirklich entstand. Schritte des Autors: die Schritte, die das Modell mitbrachte oder die du ihm gegeben hast"
+
+msgid "These steps as a printable booklet, pictures and parts included"
+msgstr "Diese Schritte als druckbare Bauanleitung, mit Bildern und Teilen"
+
+msgid "Back to the whole model"
+msgstr "Zurück zum ganzen Modell"
+
+msgid "Step %d of %d"
+msgstr "Schritt %d von %d"
+
+msgid "%d of %d bricks"
+msgstr "%d von %d Steinen"
+
+msgid "%s, %d of %d"
+msgstr "%s, %d von %d"
+
+msgid "%s, put on"
+msgstr "%s, aufgesetzt"
+
+msgid "As made: the order the bricks standing were placed in"
+msgstr "Wie gebaut: die Reihenfolge, in der die stehenden Steine gesetzt wurden"
+
+msgid "then put it on"
+msgstr "dann setz es auf"
+
+msgid "then put them on"
+msgstr "dann setz sie auf"
+
+msgid "(hold this one in place)"
+msgstr "(dieses festhalten)"
+
+msgid "Change %d of %d"
+msgstr "Änderung %d von %d"
+
+msgid "%d standing"
+msgstr "%d stehen"
+
+msgid "History: every change, removals included"
+msgstr "Verlauf: jede Änderung, auch das Entfernte"
+
+msgid "%d of these were taken out later"
+msgstr "%d davon wurden später entfernt"
+
+msgid "Laying out %s parts in steps…"
+msgstr "%s Teile werden in Schritte aufgeteilt…"
+
+msgid "Showing the first step…"
+msgstr "Der erste Schritt wird gezeigt…"
+
+msgid "Step %d"
+msgstr "Schritt %d"
+
+msgid "the selection is in it"
+msgstr "die Auswahl ist darin"
+
+msgid "%s: the selection is in it"
+msgstr "%s: Die Auswahl ist darin"
+
+msgid "Drag it from here onto another step to move it there"
+msgstr "Zieh sie von hier auf einen anderen Schritt, um sie dorthin zu verschieben"
+
+msgid "Click to show it"
+msgstr "Klicken, um ihn zu zeigen"
+
+msgid "Earlier"
+msgstr "Früher"
+
+msgid "Later"
+msgstr "Später"
+
+msgid "Merge with next"
+msgstr "Mit dem nächsten zusammenführen"
+
+msgid "Delete step"
+msgstr "Schritt löschen"
+
+msgid "This step before the one ahead of it (%s)"
+msgstr "Diesen Schritt vor den vorigen setzen (%s)"
+
+msgid "This step after the one that follows it (%s)"
+msgstr "Diesen Schritt hinter den nächsten setzen (%s)"
+
+msgid "This step and the next made one (%s)"
+msgstr "Diesen und den nächsten Schritt zu einem machen (%s)"
+
+msgid "Take this step out; its parts join the step before. No part is taken off (%s)"
+msgstr "Diesen Schritt herausnehmen; seine Teile kommen zum Schritt davor. Kein Teil wird entfernt (%s)"
+
+msgid "The selected parts in a step of their own, after this one (%s)"
+msgstr "Die gewählten Teile in einem eigenen Schritt, nach diesem (%s)"
+
+msgid "The selected parts into any step, its number typed (%s), or dragged from their yellow mark above onto the step"
+msgstr "Die gewählten Teile in einen beliebigen Schritt, dessen Nummer eingetippt (%s) oder von ihrer gelben Markierung oben auf den Schritt gezogen"
+
+msgid "Booklet:"
+msgstr "Anleitung:"
+
+msgid "Turn left"
+msgstr "Nach links drehen"
+
+msgid "Turn right"
+msgstr "Nach rechts drehen"
+
+msgid "Higher"
+msgstr "Höher"
+
+msgid "Lower"
+msgstr "Tiefer"
+
+msgid "This view"
+msgstr "Diese Ansicht"
+
+msgid "Bigger"
+msgstr "Größer"
+
+msgid "Smaller"
+msgstr "Kleiner"
+
+msgid "New page"
+msgstr "Neue Seite"
+
+msgid "Alone"
+msgstr "Allein"
+
+msgid "Outline new"
+msgstr "Neues umranden"
+
+msgid "Lay out page…"
+msgstr "Seite gestalten…"
+
+msgid "This step's picture with the model turned 45 degrees, and the steps after it until turned again"
+msgstr "Das Bild dieses Schritts mit dem Modell um 45 Grad gedreht, und die folgenden Schritte, bis wieder gedreht wird"
+
+msgid "Turned 45 degrees the other way"
+msgstr "Um 45 Grad in die andere Richtung gedreht"
+
+msgid "Seen from 15 degrees higher"
+msgstr "Von 15 Grad höher gesehen"
+
+msgid "Seen from 15 degrees lower"
+msgstr "Von 15 Grad tiefer gesehen"
+
+msgid "This step drawn from the angle the window looks from now"
+msgstr "Dieser Schritt aus dem Winkel gezeichnet, aus dem das Fenster jetzt blickt"
+
+msgid "Back to the booklet's usual angle from this step"
+msgstr "Ab diesem Schritt zurück zum üblichen Winkel der Anleitung"
+
+msgid "Closer in on what this step adds"
+msgstr "Näher an das, was dieser Schritt hinzufügt"
+
+msgid "Further out"
+msgstr "Weiter weg"
+
+msgid "Drawn larger on the page, so fewer steps share it"
+msgstr "Größer auf der Seite gezeichnet, sodass sich weniger Schritte sie teilen"
+
+msgid "Drawn smaller on the page"
+msgstr "Kleiner auf der Seite gezeichnet"
+
+msgid "The box of the parts this step adds"
+msgstr "Der Kasten mit den Teilen, die dieser Schritt hinzufügt"
+
+msgid "The sub-assembly this step puts on built in a box beside it; off, on pages of its own"
+msgstr "Die Baugruppe, die dieser Schritt aufsetzt, in einem Kasten daneben gebaut; aus: auf eigenen Seiten"
+
+msgid "The parts each step adds outlined in orange, in the whole booklet"
+msgstr "Die Teile, die jeder Schritt hinzufügt, orange umrandet, in der ganzen Anleitung"
+
+msgid "This step's page by hand: drag its picture, parts list, callout and number, and add words and pictures"
+msgstr "Die Seite dieses Schritts von Hand: Bild, Teileliste, Nebenbau und Nummer ziehen und Text und Bilder hinzufügen"
+
+msgid "Per page: %s"
+msgstr "Pro Seite: %s"
+
+msgid "as fit"
+msgstr "so viele passen"
+
+msgid "as the booklet chooses"
+msgstr "wie die Anleitung es wählt"
+
+msgid "1 part"
+msgstr "1 Teil"
+
+msgid "%d parts"
+msgstr "%d Teile"
+
+msgid "Move to step"
+msgstr "In Schritt verschieben"
+
+msgid "Move %s to step"
+msgstr "%s in Schritt verschieben"
+
+msgid "Move %s to a step"
+msgstr "%s in einen Schritt verschieben"
+
+msgid "of %d"
+msgstr "von %d"
+
+msgid "select the parts first"
+msgstr "wähle zuerst die Teile aus"
+
+msgid "there is nothing built to have steps"
+msgstr "es ist nichts gebaut, das Schritte haben könnte"
+
+msgid "there is no step %d: the steps run 1 to %d"
+msgstr "es gibt keinen Schritt %d: Die Schritte gehen von 1 bis %d"
+
+msgid "go to a step on the timeline first"
+msgstr "geh zuerst zu einem Schritt auf der Zeitleiste"
+
+msgid "moved %s to step %d"
+msgstr "%s in Schritt %d verschoben"
+
+msgid "moved %s to the previous step"
+msgstr "%s in den vorigen Schritt verschoben"
+
+msgid "moved %s to the next step"
+msgstr "%s in den nächsten Schritt verschoben"
+
+msgid "made a new step of %s"
+msgstr "neuer Schritt aus %s"
+
+msgid "put step %d earlier"
+msgstr "Schritt %d nach vorn gesetzt"
+
+msgid "put step %d later"
+msgstr "Schritt %d nach hinten gesetzt"
+
+msgid "merged step %d with the next"
+msgstr "Schritt %d mit dem nächsten zusammengeführt"
+
+msgid "took out step %d; its parts are in the step before"
+msgstr "Schritt %d herausgenommen; seine Teile sind im Schritt davor"
+
+msgid "took out step %d; its parts are in the step after"
+msgstr "Schritt %d herausgenommen; seine Teile sind im Schritt danach"
+
+msgid "the steps are as they were"
+msgstr "die Schritte sind, wie sie waren"
+
+msgid "Make a sub-assembly"
+msgstr "Baugruppe bilden"
+
+msgid "Make it"
+msgstr "Bilden"
+
+msgid "What is it called? It moves as one, saves as a sub-model of its own,\nand the instructions build it on its own. Copies of it follow it."
+msgstr "Wie heißt sie? Sie bewegt sich als Ganzes, wird als eigenes Teilmodell gespeichert,\nund die Bauanleitung baut sie für sich. Kopien folgen ihr."
+
+msgid "Simulate mechanism"
+msgstr "Mechanik simulieren"
+
+msgid "Reading the mechanism…"
+msgstr "Mechanik wird gelesen…"
+
+msgid "Turning the mechanism…"
+msgstr "Mechanik wird gedreht…"
+
+msgid "Checking where it stops…"
+msgstr "Prüfe, wo es anhält…"
+
+msgid "Recording the mechanism…"
+msgstr "Mechanik wird aufgenommen…"
+
+msgid "Nothing here turns on an axle, a pin or a turntable."
+msgstr "Hier dreht sich nichts auf einer Achse, einem Pin oder einem Drehteller."
+
+msgid "Build a gear train: gears on axles through Technic holes, meshing at their pitch, and click the axle a crank or a motor turns."
+msgstr "Baue ein Getriebe: Zahnräder auf Achsen durch Technic-Löcher, im richtigen Abstand ineinandergreifend, und klicke auf die Achse, die eine Kurbel oder ein Motor dreht."
+
+msgid "Driver: %s, %s"
+msgstr "Antrieb: %s, %s"
+
+msgid "Click an axle or a crank to drive that instead."
+msgstr "Klicke auf eine Achse oder Kurbel, um stattdessen sie anzutreiben."
+
+msgid "its motor turns it"
+msgstr "sein Motor dreht es"
+
+msgid "the model marks it"
+msgstr "das Modell markiert es"
+
+msgid "selected"
+msgstr "ausgewählt"
+
+msgid "it turns the most"
+msgstr "es dreht sich am meisten"
+
+msgid "the app's pick"
+msgstr "die Wahl der App"
+
+msgid "the driver"
+msgstr "der Antrieb"
+
+msgid "Periods in turns of the driver"
+msgstr "Perioden in Umdrehungen des Antriebs"
+
+msgid "Periods in turns of %s"
+msgstr "Perioden in Umdrehungen von %s"
+
+msgid "Nothing turns from this driver."
+msgstr "Von diesem Antrieb aus dreht sich nichts."
+
+msgid "Stops at %s: %s."
+msgstr "Hält bei %s an: %s."
+
+msgid "Stopped at %s: %s."
+msgstr "Angehalten bei %s: %s."
+
+msgid "That part does not turn on anything here: click an axle or a crank."
+msgstr "Dieses Teil dreht sich hier auf nichts: Klicke auf eine Achse oder Kurbel."
+
+msgid "Recording needs something to draw with, and this app has no window."
+msgstr "Aufnehmen braucht etwas zum Zeichnen, und diese App hat kein Fenster."
+
+msgid "Nothing turns from this driver: nothing to record."
+msgstr "Von diesem Antrieb aus dreht sich nichts: nichts aufzunehmen."
+
+msgid "Tinted by speed, blue slow to orange fast; the driver white; red, the meshes that lock it or the parts that meet; amber, free; violet, floating. The model itself does not move."
+msgstr "Nach Geschwindigkeit eingefärbt, blau langsam bis orange schnell; der Antrieb weiß; rot die Eingriffe, die es blockieren, oder die Teile, die sich berühren; bernsteinfarben frei; violett schwebend. Das Modell selbst bewegt sich nicht."
+
+msgid "Turn the driver at the speed chosen (Escape closes)"
+msgstr "Den Antrieb mit der gewählten Geschwindigkeit drehen (Escape schließt)"
+
+msgid "1 turn a second"
+msgstr "1 Umdrehung pro Sekunde"
+
+msgid "%s turns a second"
+msgstr "%s Umdrehungen pro Sekunde"
+
+msgid "Worst balance"
+msgstr "Schlechtestes Gleichgewicht"
+
+msgid "Go to the frame of the cycle where it comes nearest tipping"
+msgstr "Zum Bild des Zyklus gehen, in dem es dem Umkippen am nächsten kommt"
+
+msgid "Go to the stop"
+msgstr "Zum Anschlag gehen"
+
+msgid "Go to where it stops: two parts meet, its motor stalls or its loop goes no further"
+msgstr "Dorthin gehen, wo es anhält: Zwei Teile berühren sich, sein Motor bleibt stehen oder seine Schleife geht nicht weiter"
+
+msgid "Draw a turn of the reference (or of the driver) and keep it: an animated WebP, and on the desktop the frames and an MP4"
+msgstr "Eine Umdrehung der Referenz (oder des Antriebs) zeichnen und speichern: ein animiertes WebP und auf dem Desktop die Einzelbilder und ein MP4"
+
+msgid "Recorded %d frames of %s turns of %s in %s s: %s."
+msgstr "%d Bilder von %s Umdrehungen von %s in %s s aufgenommen: %s."
+
+msgid "Colour the hidden parts"
+msgstr "Verdeckte Teile einfärben"
+
+msgid "Big sets colour the parts nobody sees once the model is finished, so you can tell where you are while you build: a colour for each section, stage or side. Only parts seen from no side change."
+msgstr "Große Sets färben die Teile ein, die am fertigen Modell niemand sieht, damit du beim Bauen weißt, wo du bist: eine Farbe pro Abschnitt, Bauphase oder Seite. Nur Teile, die von keiner Seite zu sehen sind, ändern sich."
+
+msgid "By section"
+msgstr "Nach Abschnitt"
+
+msgid "By build stage"
+msgstr "Nach Bauphase"
+
+msgid "Left and right"
+msgstr "Links und rechts"
+
+msgid "Front and back"
+msgstr "Vorne und hinten"
+
+msgid "How many stages to colour: 0 for two, as most sets that colour their insides use one or two"
+msgstr "Wie viele Bauphasen eingefärbt werden: 0 für zwei, da die meisten Sets, die ihr Inneres einfärben, eine oder zwei nutzen"
+
+msgid "Seen from underneath too"
+msgstr "Auch von unten gesehen"
+
+msgid "On: a part seen from below keeps its colour, as for a model that is picked up. Off for one that stands on a shelf and is never turned over."
+msgstr "An: Ein Teil, das von unten zu sehen ist, behält seine Farbe, wie bei einem Modell, das man hochhebt. Aus für eines, das im Regal steht und nie umgedreht wird."
+
+msgid "Inside now"
+msgstr "Innen jetzt"
+
+msgid "Inside, coloured"
+msgstr "Innen, eingefärbt"
+
+msgid "Recolour the set's hidden parts all the same"
+msgstr "Die verdeckten Teile des Sets trotzdem umfärben"
+
+msgid "Colour them"
+msgstr "Einfärben"
+
+msgid "Give them these colours, as one step: %s"
+msgstr "Ihnen diese Farben geben, in einem Schritt: %s"
+
+msgid "%s puts them back"
+msgstr "%s stellt sie wieder her"
+
+msgid "Leave it"
+msgstr "Lassen"
+
+msgid "Keep the model as it is"
+msgstr "Das Modell lassen, wie es ist"
+
+msgid "Leave the model as it is"
+msgstr "Das Modell lassen, wie es ist"
+
+msgid "Nothing to colour"
+msgstr "Nichts einzufärben"
+
+msgid "Colour 1 part"
+msgstr "1 Teil einfärben"
+
+msgid "Colour %d parts"
+msgstr "%d Teile einfärben"
+
+msgid "Every one of the %d parts can be seen from somewhere outside (%d sides looked from), so there is nothing hidden to colour."
+msgstr "Jedes der %d Teile ist von irgendwo außen zu sehen (aus %d Richtungen betrachtet), also gibt es nichts Verdecktes einzufärben."
+
+msgid "The outside stays as it is: every part changed is seen from none of the %d sides it was looked at from."
+msgstr "Das Äußere bleibt, wie es ist: Jedes geänderte Teil ist aus keiner der %d Richtungen zu sehen, aus denen es betrachtet wurde."
+
+msgid "There is nothing on the baseplate yet."
+msgstr "Auf der Grundplatte ist noch nichts."
+
+msgid "This needs the app in a window: what is hidden is measured from pictures."
+msgstr "Das braucht die App in einem Fenster: Was verdeckt ist, wird anhand von Bildern gemessen."
+
+msgid "Looking at it from every side…"
+msgstr "Es wird von allen Seiten betrachtet…"
+
+msgid "Looking at %s from every side…"
+msgstr "%s wird von allen Seiten betrachtet…"
+
+msgid "Following the build steps…"
+msgstr "Den Bauschritten folgen…"
+
+msgid "Stopped before it had looked from every side: nothing is known yet."
+msgstr "Angehalten, bevor es von allen Seiten betrachtet war: Noch ist nichts bekannt."
+
+msgid "Drawing the inside…"
+msgstr "Das Innere wird gezeichnet…"
+
+msgid "Back half"
+msgstr "Hintere Hälfte"
+
+msgid "Front half"
+msgstr "Vordere Hälfte"
+
+msgid "Inside"
+msgstr "Innen"
+
+msgid "Stage %d (steps %d–%d)"
+msgstr "Bauphase %d (Schritte %d–%d)"
+
+msgid "Stages %d–%d (steps %d–%d)"
+msgstr "Bauphasen %d–%d (Schritte %d–%d)"
+
+msgid "%d of the %d parts are hidden: seen from none of %d sides, a pixel %s LDU at most"
+msgstr "%d der %d Teile sind verdeckt: aus keiner von %d Richtungen zu sehen, ein Pixel höchstens %s LDU"
+
+msgid "%d would be coloured %s: %s"
+msgstr "%d würden %s eingefärbt: %s"
+
+msgid "%d would be coloured %s: %s."
+msgstr "%d würden %s eingefärbt: %s."
+
+msgid "None of them can take a colour %s"
+msgstr "Keines davon kann %s eine Farbe bekommen"
+
+msgid "None of them can take a colour %s."
+msgstr "Keines davon kann %s eine Farbe bekommen."
+
+msgid "by section"
+msgstr "nach Abschnitt"
+
+msgid "by build stage"
+msgstr "nach Bauphase"
+
+msgid "left and right"
+msgstr "links und rechts"
+
+msgid "front and back"
+msgstr "vorne und hinten"
+
+msgid "%s in %s (%d)"
+msgstr "%s in %s (%d)"
+
+msgid "Kept as they are: %s."
+msgstr "So belassen: %s."
+
+# The minifigure builder: its slots, what each holds, the grid of parts, the colour note and the figures kept
+msgid "Minifigure"
+msgstr "Minifigur"
+
+msgid "Saruman"
+msgstr "Saruman"
+
+msgid "What the figure is called. It is the name of its sub-model in the saved file, and of the figure kept for next time"
+msgstr "Wie die Figur heißt. So heißt auch ihr Untermodell in der gespeicherten Datei und die Figur, die für das nächste Mal aufbewahrt wird"
+
+msgid "Surprise me"
+msgstr "Überrasch mich"
+
+msgid "A figure from real parts in colours they come in"
+msgstr "Eine Figur aus echten Teilen, in Farben, in denen es sie gibt"
+
+msgid "Headgear"
+msgstr "Kopfbedeckung"
+
+msgid "Headgear extra"
+msgstr "Zusatz zur Kopfbedeckung"
+
+msgid "Head"
+msgstr "Kopf"
+
+msgid "Neck"
+msgstr "Hals"
+
+msgid "On the back"
+msgstr "Auf dem Rücken"
+
+msgid "Cape"
+msgstr "Umhang"
+
+msgid "Torso"
+msgstr "Torso"
+
+msgid "Arms"
+msgstr "Arme"
+
+msgid "Hands"
+msgstr "Hände"
+
+msgid "Hips"
+msgstr "Hüfte"
+
+msgid "Skirt, tail"
+msgstr "Rock, Schwanz"
+
+msgid "Legs"
+msgstr "Beine"
+
+msgid "Feet"
+msgstr "Füße"
+
+msgid "In right hand"
+msgstr "In der rechten Hand"
+
+msgid "In left hand"
+msgstr "In der linken Hand"
+
+msgid "things to hold"
+msgstr "Dinge zum Halten"
+
+msgid "Search %s…"
+msgstr "%s suchen…"
+
+msgid "%s: %s"
+msgstr "%s: %s"
+
+msgid "%s: %s."
+msgstr "%s: %s."
+
+msgid "none"
+msgstr "nichts"
+
+msgid "plain"
+msgstr "unbedruckt"
+
+msgid "one piece with the legs"
+msgstr "aus einem Stück mit den Beinen"
+
+msgid "none on this body"
+msgstr "keins an diesem Körper"
+
+msgid "Nothing in this slot"
+msgstr "Nichts an dieser Stelle"
+
+msgid "Show one mould, or one kind of thing, at a time"
+msgstr "Jeweils nur eine Form oder eine Art von Teil zeigen"
+
+msgid "All %d"
+msgstr "Alle %d"
+
+msgid "%d of %d"
+msgstr "%d von %d"
+
+msgid "Show %d more of the %d not shown"
+msgstr "%d weitere der %d nicht gezeigten anzeigen"
+
+msgid "Draw a print…"
+msgstr "Aufdruck zeichnen…"
+
+msgid "Make a mould…"
+msgstr "Form modellieren…"
+
+msgid "Draw your own print for this part: a face, a torso's front and back, a pair of legs"
+msgstr "Zeichne deinen eigenen Aufdruck für dieses Teil: ein Gesicht, Vorder- und Rückseite eines Torsos, ein Paar Beine"
+
+msgid "Sculpt your own from this part, a dome or a club: its connection to the figure stays exactly as it is"
+msgstr "Forme deine eigene aus diesem Teil, einer Kuppel oder einer Keule: Ihre Verbindung zur Figur bleibt genau, wie sie ist"
+
+msgid "Drag to turn it"
+msgstr "Zum Drehen ziehen"
+
+msgid "Keep"
+msgstr "Behalten"
+
+msgid "Keep this figure to use again"
+msgstr "Diese Figur aufheben, um sie wieder zu verwenden"
+
+msgid "Place in model"
+msgstr "Ins Modell stellen"
+
+msgid "Stand it on a stud: point, %s to turn it, click to put it down"
+msgstr "Auf eine Noppe stellen: zeigen, %s zum Drehen, klicken zum Absetzen"
+
+msgid "Stand it on a stud: point, click to put it down"
+msgstr "Auf eine Noppe stellen: zeigen, klicken zum Absetzen"
+
+msgid "Back to the figure's slots"
+msgstr "Zurück zu den Stellen der Figur"
+
+msgid "Kept"
+msgstr "Aufbewahrt"
+
+msgid "Nothing kept yet. Keep or place a figure and it is here next time."
+msgstr "Noch nichts aufbewahrt. Behalte oder platziere eine Figur, dann ist sie beim nächsten Mal hier."
+
+msgid "Put %s on the bench"
+msgstr "%s auf die Werkbank holen"
+
+msgid "Stop keeping %s"
+msgstr "%s nicht mehr aufbewahren"
+
+msgid "Made %s: it is in the parts bin under Custom."
+msgstr "%s gemacht: Es liegt im Teilekasten unter Eigene."
+
+msgid "%d of them printed"
+msgstr "%d davon bedruckt"
+
+msgid "fetching %d…"
+msgstr "%d werden geladen…"
+
+msgid "A dot marks the %d colours %s comes in."
+msgstr "Ein Punkt markiert die %d Farben, in denen es %s gibt."
+
+msgid "A dot marks the 1 colour %s comes in."
+msgstr "Ein Punkt markiert die einzige Farbe, in der es %s gibt."
+
+msgid "A dot marks the %d colours %s (what %s is printed on) comes in."
+msgstr "Ein Punkt markiert die %d Farben, in denen es %s gibt (das Teil, auf das %s gedruckt ist)."
+
+msgid "A dot marks the 1 colour %s (what %s is printed on) comes in."
+msgstr "Ein Punkt markiert die einzige Farbe, in der es %s gibt (das Teil, auf das %s gedruckt ist)."
+
+msgid "A dot marks the %d colours %s comes in: %s is that cloth as worn."
+msgstr "Ein Punkt markiert die %d Farben, in denen es %s gibt: %s ist dieser Stoff, wie er getragen wird."
+
+msgid "A dot marks the 1 colour %s comes in: %s is that cloth as worn."
+msgstr "Ein Punkt markiert die einzige Farbe, in der es %s gibt: %s ist dieser Stoff, wie er getragen wird."
+
+# The print and sticker editor: its title, tools, picture, layers and starts, and what printing or sticking a part says
+msgid "Draw a print on %s"
+msgstr "Aufdruck auf %s zeichnen"
+
+msgid "Draw a print on the hips and legs"
+msgstr "Aufdruck auf Hüfte und Beine zeichnen"
+
+msgid "Draw a sticker, %s x %s mm, for 1 part"
+msgstr "Aufkleber zeichnen, %s x %s mm, für 1 Teil"
+
+msgid "Draw a sticker, %s x %s mm, for %d parts"
+msgstr "Aufkleber zeichnen, %s x %s mm, für %d Teile"
+
+msgid "Sticker %s x %s mm"
+msgstr "Aufkleber %s x %s mm"
+
+msgid "or print on: 3068b…"
+msgstr "oder drucken auf: 3068b…"
+
+msgid "Print on another part instead: a tile (3068b), a slope (3039), any part by its number. It goes in the parts bin under My prints"
+msgstr "Stattdessen auf ein anderes Teil drucken: eine Fliese (3068b), einen Dachstein (3039), jedes Teil über seine Nummer. Es kommt in den Teilekasten unter Meine Drucke"
+
+msgid "Print on it"
+msgstr "Darauf drucken"
+
+msgid "Draw on this part instead"
+msgstr "Stattdessen auf dieses Teil zeichnen"
+
+msgid "Pirate captain"
+msgstr "Piratenkapitän"
+
+msgid "What the print is called: it is in the part's name"
+msgstr "Wie der Aufdruck heißt: Das steht im Namen des Teils"
+
+msgid "Save print"
+msgstr "Aufdruck speichern"
+
+msgid "Save sticker"
+msgstr "Aufkleber speichern"
+
+msgid "Make the printed part, keep it, and put it on the figure"
+msgstr "Das bedruckte Teil erstellen, aufbewahren und an die Figur setzen"
+
+msgid "Back to the figure without saving (Escape)"
+msgstr "Zurück zur Figur, ohne zu speichern (Escape)"
+
+msgid "Left button draws · right button or Space-drag pans · wheel zooms · Move drags a picture, Ctrl+wheel sizes it · the shaded part is not on the part"
+msgstr "Linke Taste zeichnet · rechte Taste oder Space-Ziehen verschiebt die Ansicht · Mausrad zoomt · Bild verschieben zieht ein Bild, Ctrl+Mausrad ändert seine Größe · der schattierte Bereich ist nicht auf dem Teil"
+
+msgid "Brush"
+msgstr "Pinsel"
+
+msgid "Eraser"
+msgstr "Radierer"
+
+msgid "Line"
+msgstr "Linie"
+
+msgid "Box"
+msgstr "Rechteck"
+
+msgid "Oval"
+msgstr "Ellipse"
+
+msgid "Fill"
+msgstr "Füllen"
+
+msgid "Text"
+msgstr "Text"
+
+msgid "Pick a colour"
+msgstr "Farbe aufnehmen"
+
+msgid "Move picture"
+msgstr "Bild verschieben"
+
+msgid "Paint, round and hard-edged, as a pad print is"
+msgstr "Malen, rund und hartkantig, wie ein Tampondruck"
+
+msgid "Rub out on this layer"
+msgstr "Auf dieser Ebene radieren"
+
+msgid "A straight line: press, drag, let go"
+msgstr "Eine gerade Linie: drücken, ziehen, loslassen"
+
+msgid "A box between two corners"
+msgstr "Ein Rechteck zwischen zwei Ecken"
+
+msgid "An oval in a box between two corners"
+msgstr "Eine Ellipse in einem Rechteck zwischen zwei Ecken"
+
+msgid "Fill what is the colour you click, up to its edge"
+msgstr "Füllen, was die angeklickte Farbe hat, bis zu ihrem Rand"
+
+msgid "Words: type them below, click where they start"
+msgstr "Text: unten eintippen, dann klicken, wo er beginnt"
+
+msgid "Words"
+msgstr "Text"
+
+msgid "Take the colour under the pointer"
+msgstr "Die Farbe unter dem Zeiger aufnehmen"
+
+msgid "Drag the picture on this layer; it snaps to the face's edges and middle"
+msgstr "Das Bild auf dieser Ebene ziehen; es rastet an den Kanten und der Mitte der Fläche ein"
+
+msgid "How wide the brush, the eraser and lines are, in pixels"
+msgstr "Wie breit Pinsel, Radierer und Linien sind, in Pixeln"
+
+msgid "Filled"
+msgstr "Gefüllt"
+
+msgid "Boxes and ovals filled, or only their outline"
+msgstr "Rechtecke und Ellipsen gefüllt oder nur ihr Umriss"
+
+msgid "Draw everything twice, reflected about the middle: both eyes at once"
+msgstr "Alles doppelt zeichnen, an der Mitte gespiegelt: beide Augen auf einmal"
+
+msgid "Take the last change back (%s)"
+msgstr "Die letzte Änderung zurücknehmen (%s)"
+
+msgid "Put it back again (%s)"
+msgstr "Wiederherstellen (%s)"
+
+msgid "Picture"
+msgstr "Bild"
+
+msgid "Fit it"
+msgstr "Einpassen"
+
+msgid "The whole picture on the face"
+msgstr "Das ganze Bild auf der Fläche"
+
+msgid "Cover"
+msgstr "Bedecken"
+
+msgid "The face covered by the picture"
+msgstr "Die Fläche ganz vom Bild bedeckt"
+
+msgid "Middle"
+msgstr "Mitte"
+
+msgid "Put it in the middle of the face"
+msgstr "In die Mitte der Fläche setzen"
+
+msgid "As large as it fits, in per cent"
+msgstr "So groß, wie es passt, in Prozent"
+
+msgid "Turned, in degrees"
+msgstr "Gedreht, in Grad"
+
+msgid "Crop left"
+msgstr "Links beschneiden"
+
+msgid "Crop right"
+msgstr "Rechts beschneiden"
+
+msgid "Crop top"
+msgstr "Oben beschneiden"
+
+msgid "Crop bottom"
+msgstr "Unten beschneiden"
+
+msgid "How much of that side is cut off, in per cent"
+msgstr "Wie viel von dieser Seite abgeschnitten wird, in Prozent"
+
+msgid "How much the plastic shows through, in per cent"
+msgstr "Wie stark der Kunststoff durchscheint, in Prozent"
+
+msgid "LEGO® inks"
+msgstr "LEGO® Tinten"
+
+msgid "Every colour the nearest LEGO® ink, flat, as a pad print is; off, the picture's own colours"
+msgstr "Jede Farbe wird zur nächsten LEGO® Tinte, flach wie beim Tampondruck; aus: die eigenen Farben des Bildes"
+
+msgid "at most"
+msgstr "höchstens"
+
+msgid "inks"
+msgstr "Tinten"
+
+msgid "0: as many as it needs"
+msgstr "0: so viele wie nötig"
+
+msgid "Clear its background"
+msgstr "Hintergrund entfernen"
+
+msgid "Whatever is the colour of its corners made clear: a logo's white"
+msgstr "Alles in der Farbe seiner Ecken wird durchsichtig: das Weiß eines Logos"
+
+msgid "Mirror it"
+msgstr "Spiegeln"
+
+msgid "Make it ink"
+msgstr "Zu Tinte machen"
+
+msgid "Make the picture pixels, to draw on"
+msgstr "Das Bild in Pixel umwandeln, um darauf zu zeichnen"
+
+msgid "The part wearing the print as it is drawn. Drag to turn it"
+msgstr "Das Teil mit dem Aufdruck, so wie er gezeichnet ist. Zum Drehen ziehen"
+
+msgid "Start from"
+msgstr "Ausgangspunkt"
+
+msgid "A clean sheet"
+msgstr "Ein leeres Blatt"
+
+msgid "Starter: dial"
+msgstr "Vorlage: Zifferblatt"
+
+msgid "Starter: screen"
+msgstr "Vorlage: Bildschirm"
+
+msgid "Starter: sign"
+msgstr "Vorlage: Schild"
+
+msgid "Starter: number plate"
+msgstr "Vorlage: Nummernschild"
+
+msgid "Starter: control panel"
+msgstr "Vorlage: Bedienfeld"
+
+msgid "Starter: face"
+msgstr "Vorlage: Gesicht"
+
+msgid "Made here: %s"
+msgstr "Hier gemacht: %s"
+
+msgid "A clean sheet, a print the LEGO Group made for this part, or one made before"
+msgstr "Ein leeres Blatt, ein Aufdruck, den die LEGO Gruppe für dieses Teil gemacht hat, oder ein früher gemachter"
+
+msgid "Started from a dial."
+msgstr "Mit einem Zifferblatt begonnen."
+
+msgid "Started from a screen."
+msgstr "Mit einem Bildschirm begonnen."
+
+msgid "Started from a sign."
+msgstr "Mit einem Schild begonnen."
+
+msgid "Started from a number plate."
+msgstr "Mit einem Nummernschild begonnen."
+
+msgid "Started from a control panel."
+msgstr "Mit einem Bedienfeld begonnen."
+
+msgid "Started from a face."
+msgstr "Mit einem Gesicht begonnen."
+
+msgid "Started from %s."
+msgstr "Mit %s begonnen."
+
+msgid "Not saved: nothing is drawn on it yet."
+msgstr "Nicht gespeichert: Es ist noch nichts darauf gezeichnet."
+
+msgid "Not saved: %s."
+msgstr "Nicht gespeichert: %s."
+
+msgid "Saved as %s."
+msgstr "Gespeichert als %s."
+
+msgid "There is no part %s."
+msgstr "Es gibt kein Teil %s."
+
+msgid "Fetching %s…"
+msgstr "%s wird geladen…"
+
+msgid "Add a picture…"
+msgstr "Bild hinzufügen…"
+
+msgid "A photograph, a logo or a drawing (PNG, JPEG, WebP, BMP or SVG) on a layer of its own, to place on the face"
+msgstr "Ein Foto, ein Logo oder eine Zeichnung (PNG, JPEG, WebP, BMP oder SVG) auf einer eigenen Ebene, um sie auf der Fläche zu platzieren"
+
+msgid "Layers"
+msgstr "Ebenen"
+
+msgid "Ink"
+msgstr "Tinte"
+
+msgid "A new layer above this one"
+msgstr "Eine neue Ebene über dieser"
+
+msgid "Move this layer up"
+msgstr "Diese Ebene nach oben verschieben"
+
+msgid "Move this layer down"
+msgstr "Diese Ebene nach unten verschieben"
+
+msgid "Delete this layer"
+msgstr "Diese Ebene löschen"
+
+msgid "Show this layer"
+msgstr "Diese Ebene zeigen"
+
+msgid "Top"
+msgstr "Oben"
+
+msgid "Left side"
+msgstr "Linke Seite"
+
+msgid "Right side"
+msgstr "Rechte Seite"
+
+msgid "Back slope"
+msgstr "Hintere Schräge"
+
+msgid "Side slope"
+msgstr "Seitliche Schräge"
+
+msgid "Face"
+msgstr "Gesicht"
+
+msgid "Back of the head"
+msgstr "Hinterkopf"
+
+msgid "Top, curved"
+msgstr "Oben, gewölbt"
+
+msgid "Choose a picture"
+msgstr "Bild auswählen"
+
+msgid "Choose a picture to print"
+msgstr "Bild zum Drucken auswählen"
+
+msgid "Pictures (*.png, *.jpg, *.jpeg, *.webp, *.bmp)"
+msgstr "Bilder (*.png, *.jpg, *.jpeg, *.webp, *.bmp)"
+
+msgid "Click the face to put the sticker on — it runs over the faces beside it in the same plane; Shift for one part only; Escape not to"
+msgstr "Klicke auf die Fläche für den Aufkleber — er läuft über die angrenzenden Flächen in derselben Ebene; Shift nur für ein Teil; Escape, um es zu lassen"
+
+msgid "No sticker"
+msgstr "Kein Aufkleber"
+
+msgid "There is no flat face there to put a sticker on"
+msgstr "Dort ist keine ebene Fläche für einen Aufkleber"
+
+msgid "Stuck %s on 1 part"
+msgstr "%s auf 1 Teil geklebt"
+
+msgid "Stuck %s on %d parts"
+msgstr "%s auf %d Teile geklebt"
+
+msgid "Stuck %s on"
+msgstr "%s aufgeklebt"
+
+msgid "Could not stick %s on"
+msgstr "%s ließ sich nicht aufkleben"
+
+msgid "Could not stick it there"
+msgstr "Ließ sich dort nicht aufkleben"
+
+msgid "Printed it where it stands: %s, in the parts bin under My prints too"
+msgstr "An Ort und Stelle bedruckt: %s, auch im Teilekasten unter Meine Drucke"
+
+msgid "Made %s: it is in the parts bin under %s"
+msgstr "%s gemacht: Es liegt im Teilekasten unter %s"
+
+msgid "Select a part to see its printed versions; parts of one kind for several"
+msgstr "Wähle ein Teil aus, um seine bedruckten Varianten zu sehen; Teile einer Sorte für mehrere"
+
+msgid "%s has no printed or stickered versions in the library"
+msgstr "Von %s gibt es in der Bibliothek keine bedruckten oder beklebten Varianten"
+
+# The part maker: its families, sizes and studs, and the line saying what the part is, its pieces where ", " lists them
+msgid "Make a part"
+msgstr "Teil erstellen"
+
+msgid "A new element at any size, drawn as an LDraw part: it goes in the parts bin under Custom, clutches like the real thing, and travels inside any model you save with it."
+msgstr "Ein neues Element in beliebiger Größe, als LDraw-Teil gezeichnet: Es kommt in den Teilekasten unter Eigene, hält wie ein echtes und reist in jedem Modell mit, das du damit speicherst."
+
+msgid "Start from a part"
+msgstr "Von einem Teil ausgehen"
+
+msgid "a part number: 3001, 3700, 3062b…"
+msgstr "eine Teilenummer: 3001, 3700, 3062b…"
+
+msgid "Start from it"
+msgstr "Davon ausgehen"
+
+msgid "One of the families is resized as its family; any other part is changed as itself"
+msgstr "Ein Teil einer der Familien wird als seine Familie in der Größe geändert; jedes andere Teil wird als es selbst geändert"
+
+msgid "Change it"
+msgstr "Ändern"
+
+msgid "Change the part itself, from its own geometry: longer, wider, taller, studs off or on, a piece cut out"
+msgstr "Das Teil selbst ändern, aus seiner eigenen Geometrie: länger, breiter, höher, Noppen ab oder an, ein Stück ausgeschnitten"
+
+msgid "Family"
+msgstr "Familie"
+
+msgid "Curved"
+msgstr "Gebogen"
+
+msgid "Inverted"
+msgstr "Umgekehrt"
+
+msgid "A brick, plate or tile; studs on its sides if you want them"
+msgstr "Ein Stein, eine Platte oder eine Fliese; auf Wunsch mit Noppen an den Seiten"
+
+msgid "A slope at the angles LEGO® slopes have, or any other"
+msgstr "Ein Dachstein in den Winkeln der LEGO® Dachsteine oder in jedem anderen"
+
+msgid "A curved slope, with flat rows behind the curve if you want them"
+msgstr "Ein gebogener Dachstein, auf Wunsch mit flachen Reihen hinter der Rundung"
+
+msgid "An inverted slope"
+msgstr "Ein umgekehrter Dachstein"
+
+msgid "A round brick, plate or tile"
+msgstr "Ein runder Stein, eine runde Platte oder Fliese"
+
+msgid "A plate with an upright whose studs face forward"
+msgstr "Eine Platte mit einer senkrechten Fläche, deren Noppen nach vorn zeigen"
+
+msgid "A Technic brick, one stud wide, with a hole between every two studs"
+msgstr "Ein Technic-Stein, eine Noppe breit, mit einem Loch zwischen je zwei Noppen"
+
+msgid "Length, studs"
+msgstr "Länge, Noppen"
+
+msgid "Width, studs"
+msgstr "Breite, Noppen"
+
+msgid "Diameter, studs"
+msgstr "Durchmesser, Noppen"
+
+msgid "Slope falls over, rows"
+msgstr "Schräge über, Reihen"
+
+msgid "Curve falls over, rows"
+msgstr "Rundung über, Reihen"
+
+msgid "Width, studs (along the face)"
+msgstr "Breite, Noppen (entlang der Fläche)"
+
+msgid "Width, studs (along the upright)"
+msgstr "Breite, Noppen (entlang der Senkrechten)"
+
+msgid "Depth, studs (back to foot)"
+msgstr "Tiefe, Noppen (von hinten bis zum Fuß)"
+
+msgid "Plate depth, studs"
+msgstr "Plattentiefe, Noppen"
+
+msgid "Height, plates (3 = a brick)"
+msgstr "Höhe, Platten (3 = ein Stein)"
+
+msgid "Height, plates"
+msgstr "Höhe, Platten"
+
+msgid "Upright, studs"
+msgstr "Senkrechte, Noppen"
+
+msgid "The upright"
+msgstr "Die Senkrechte"
+
+msgid "hangs down from the plate"
+msgstr "hängt von der Platte herab"
+
+msgid "stands up from the plate"
+msgstr "steht auf der Platte"
+
+msgid "Standard angles"
+msgstr "Standardwinkel"
+
+msgid "The proportions the LEGO® %d degree slope is drawn with in the library"
+msgstr "Die Proportionen, mit denen der LEGO® Dachstein mit %d Grad in der Bibliothek gezeichnet ist"
+
+msgid "Studs on top (off for a tile)"
+msgstr "Noppen oben (aus für eine Fliese)"
+
+msgid "Studs on its top"
+msgstr "Noppen oben"
+
+msgid "As they are"
+msgstr "Wie sie sind"
+
+msgid "Take them off"
+msgstr "Entfernen"
+
+msgid "Put them on"
+msgstr "Hinzufügen"
+
+msgid "Cut out: studs from its left and back, plates from its bottom (to 0 for none)"
+msgstr "Ausschneiden: Noppen von links und hinten, Platten von unten (bis 0 für nichts)"
+
+msgid "Across"
+msgstr "Quer"
+
+msgid "Deep"
+msgstr "Tief"
+
+msgid "from"
+msgstr "von"
+
+msgid "to"
+msgstr "bis"
+
+msgid "Studs on its sides"
+msgstr "Noppen an den Seiten"
+
+msgid "Left"
+msgstr "Links"
+
+msgid "Right"
+msgstr "Rechts"
+
+msgid "Studs on the front face, 10 LDU under the top and every stud down"
+msgstr "Noppen auf der Vorderseite, 10 LDU unter der Oberkante und dann alle Noppenabstände nach unten"
+
+msgid "Studs on the back face, 10 LDU under the top and every stud down"
+msgstr "Noppen auf der Rückseite, 10 LDU unter der Oberkante und dann alle Noppenabstände nach unten"
+
+msgid "Studs on the left face, 10 LDU under the top and every stud down"
+msgstr "Noppen auf der linken Seite, 10 LDU unter der Oberkante und dann alle Noppenabstände nach unten"
+
+msgid "Studs on the right face, 10 LDU under the top and every stud down"
+msgstr "Noppen auf der rechten Seite, 10 LDU unter der Oberkante und dann alle Noppenabstände nach unten"
+
+msgid "Add to parts"
+msgstr "Zu den Teilen hinzufügen"
+
+msgid "%s's geometry did not arrive: %s"
+msgstr "Die Geometrie von %s ist nicht angekommen: %s"
+
+msgid "There is no part %s in the library."
+msgstr "Es gibt kein Teil %s in der Bibliothek."
+
+msgid "Fetching %s's geometry…"
+msgstr "Geometrie von %s wird geladen…"
+
+msgid "There is no geometry for %s here to change."
+msgstr "Hier gibt es keine Geometrie für %s zum Ändern."
+
+msgid "Changing %s, %s, from its own geometry: whatever you do not change stays as the LEGO Group made it. Longer, wider and taller repeat a slice of it; or press a family to make a new part instead."
+msgstr "%s, %s, wird aus seiner eigenen Geometrie geändert: Was du nicht änderst, bleibt, wie die LEGO Gruppe es gemacht hat. Länger, breiter und höher wiederholen eine Scheibe davon; oder drücke eine Familie, um stattdessen ein neues Teil zu machen."
+
+msgid "Building the part…"
+msgstr "Teil wird gebaut…"
+
+msgid "Not yet: %s."
+msgstr "Noch nicht: %s."
+
+msgid "It did not build: %s"
+msgstr "Es ließ sich nicht bauen: %s"
+
+msgid "Not yet: there is no geometry for %s here."
+msgstr "Noch nicht: Hier gibt es keine Geometrie für %s."
+
+msgid "%s x %s mm, %s mm tall without studs"
+msgstr "%s x %s mm, %s mm hoch ohne Noppen"
+
+msgid "%s x %s mm, %s mm tall with its studs"
+msgstr "%s x %s mm, %s mm hoch mit Noppen"
+
+msgid "1 stud on top"
+msgstr "1 Noppe oben"
+
+msgid "%d studs on top"
+msgstr "%d Noppen oben"
+
+msgid "%d on its sides"
+msgstr "%d an den Seiten"
+
+msgid "%d on the upright"
+msgstr "%d an der Senkrechten"
+
+msgid "1 place a stud goes in underneath"
+msgstr "1 Stelle unten, in die eine Noppe greift"
+
+msgid "%d places a stud goes in underneath"
+msgstr "%d Stellen unten, in die eine Noppe greift"
+
+msgid "1 place a stud goes in underneath."
+msgstr "1 Stelle unten, in die eine Noppe greift."
+
+msgid "%d places a stud goes in underneath."
+msgstr "%d Stellen unten, in die eine Noppe greift."
+
+msgid "1 tube or pin"
+msgstr "1 Röhre oder Stift"
+
+msgid "%d tubes or pins"
+msgstr "%d Röhren oder Stifte"
+
+msgid "1 tube or pin."
+msgstr "1 Röhre oder Stift."
+
+msgid "%d tubes or pins."
+msgstr "%d Röhren oder Stifte."
+
+msgid "1 Technic hole a pin goes through."
+msgstr "1 Technic-Loch, durch das ein Pin passt."
+
+msgid "%d Technic holes a pin goes through."
+msgstr "%d Technic-Löcher, durch die ein Pin passt."
+
+msgid "1 Technic hole"
+msgstr "1 Technic-Loch"
+
+msgid "%d Technic holes"
+msgstr "%d Technic-Löcher"
+
+msgid "1 tube or pin underneath"
+msgstr "1 Röhre oder Stift unten"
+
+msgid "%d tubes or pins underneath"
+msgstr "%d Röhren oder Stifte unten"
+
+msgid "Everything else about it is %s's own."
+msgstr "Alles andere daran stammt von %s."
+
+msgid "The face is at %s°"
+msgstr "Die Schräge hat %s°"
+
+msgid "The face is at %s°."
+msgstr "Die Schräge hat %s°."
+
+msgid "what the LEGO Group calls a %d."
+msgstr "bei der LEGO Gruppe ein %d-Grad-Dachstein."
+
+msgid "The curve leaves the top level and meets its foot at %s°."
+msgstr "Die Rundung verlässt die Oberseite waagerecht und trifft ihren Fuß bei %s°."
+
+# The model tree: the model's own row, its tooltips, and the sections it suggests
+msgid "Model"
+msgstr "Modell"
+
+msgid "The whole model: %d parts, %d loose"
+msgstr "Das ganze Modell: %d Teile, %d lose"
+
+msgid "%s  (editing)"
+msgstr "%s  (in Bearbeitung)"
+
+msgid "%s: %d parts. Click to select it, double-click to edit inside it, click the name again to rename it"
+msgstr "%s: %d Teile. Klicke, um sie auszuwählen, doppelklicke, um darin zu bearbeiten, klicke noch einmal auf den Namen, um sie umzubenennen"
+
+msgid "Show it"
+msgstr "Einblenden"
+
+msgid "Hide it"
+msgstr "Ausblenden"
+
+msgid "Lock it"
+msgstr "Sperren"
+
+msgid "Unlock it"
+msgstr "Entsperren"
+
+msgid "Suggested sections (%d)"
+msgstr "Vorgeschlagene Abschnitte (%d)"
+
+msgid "How a builder would split it, in the order they are built. Accept makes each a sub-assembly; drag one onto another to merge them"
+msgstr "Wie ein Baumeister es aufteilen würde, in der Reihenfolge, in der gebaut wird. Annehmen macht aus jedem eine Baugruppe; zieh einen auf einen anderen, um sie zusammenzufügen"
+
+# Simulate's report on the part groups nothing holds
+msgid "%d other part groups touch nothing the app reads as holding them (no gear in them)."
+msgstr "%d weitere Teilgruppen berühren nichts, was die App als Halt erkennt (kein Zahnrad darin)."
+
+msgid "%d other part group touch nothing the app reads as holding them (no gear in them)."
+msgstr "%d weitere Teilgruppe berührt nichts, was die App als Halt erkennt (kein Zahnrad darin)."

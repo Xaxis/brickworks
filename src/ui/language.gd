@@ -22,8 +22,11 @@
 ## themselves when they are words of the interface. A key after a row's words
 ## (three spaces or more, then the key) and a tooltip's lines are found one
 ## by one, and so are a line's parts where " · ", " — ", ". " or "; " joins
-## them (the status bar's), when the whole is in no entry. A part's, a
-## colour's or a model's name is in no file, and is drawn as it is.
+## them (the status bar's), or " › " a menu's path (View › Show everything,
+## where the status bar names a command with no key), when the whole is in
+## no entry. A part's, a colour's or a model's name is in no file, and is
+## drawn as it is, as is what an entry's English puts in quotes (“%s”),
+## even a model named Car.
 class_name Language
 extends Node
 
@@ -146,8 +149,9 @@ class Words extends Translation:
 	## Whether a row's words lowered keep the translation's capital.
 	var capitals: bool = false
 	## A pattern's first word -> its patterns, as [RegEx, translation, how
-	## many of its letters are its own, whether it has words of its own];
-	## those that start with what they take, under "".
+	## many of its letters are its own, whether it has words of its own,
+	## which of its places are in quotes]; those that start with what they
+	## take, under "".
 	var _patterns: Dictionary = {}
 	## What each text was found as, "" for nothing: a part's name is asked
 	## for every time a list row is drawn.
@@ -155,7 +159,7 @@ class Words extends Translation:
 	var _lock := Mutex.new()
 	var _places: RegEx = RegEx.create_from_string(r"%(?:(\d+)\$)?[sd]")
 	var _key_after: RegEx = RegEx.create_from_string(r"^(.*?\S)( {3,}\S.*)$")
-	var _joins: RegEx = RegEx.create_from_string(r" · | — |\. |; ")
+	var _joins: RegEx = RegEx.create_from_string(r" · | — |\. |; | › ")
 	var _letter: RegEx = RegEx.create_from_string(r"\p{L}")
 
 	func _init(source: Translation) -> void:
@@ -168,10 +172,13 @@ class Words extends Translation:
 				continue
 			var expression: String = "^"
 			var at: int = 0
+			var quoted: Array[bool] = []
 			for place: RegExMatch in _places.search_all(english):
 				expression += _escaped(english.substr(at, place.get_start() - at))
 				expression += "(-?\\d+)" if place.get_string().ends_with("d") else "(.+?)"
 				at = place.get_end()
+				quoted.append(english.substr(place.get_start() - 1, 1) == "“"
+					and english.substr(at, 1) == "”")
 			expression += _escaped(english.substr(at)) + "$"
 			# Its first word, where the words before its first place have one.
 			var before: String = english.substr(0, _places.search(english).get_start())
@@ -180,7 +187,7 @@ class Words extends Translation:
 				_patterns[first] = []
 			var own: String = _places.sub(english, "", true)
 			(_patterns[first] as Array).append([RegEx.create_from_string(expression), translated,
-				own.length(), _letter.search(own) != null])
+				own.length(), _letter.search(own) != null, quoted])
 		# The most particular first: "press %s, %s, %s or %s to move it" before
 		# "press %s to move it", which would take the four keys as one.
 		for first: String in _patterns:
@@ -235,10 +242,13 @@ class Words extends Translation:
 			var words: String = _find(keyed.get_string(1), depth + 1, kept)
 			return words + keyed.get_string(2) if not words.is_empty() else ""
 		# Then each way below in turn, the first that leaves nothing in
-		# English, else the first that found it at all: "%s parts" takes
-		# "outline new parts", which the keys sheet's lowered row says whole.
+		# English, else the one that leaves the fewest letters in it: "%s
+		# parts" takes "outline new parts", which the keys sheet's lowered row
+		# says whole, and "copied 1 part — Ctrl-V to paste" is two parts and a
+		# key, not "Copied 1 part" raised and found nowhere.
 		var fallback: String = ""
 		var fallback_kept: Array = []
+		var fallback_letters: int = 0
 		for way: int in 5:
 			var left: Array = []
 			var said: String = _way(way, text, depth, left)
@@ -246,9 +256,13 @@ class Words extends Translation:
 				continue
 			if left.is_empty():
 				return said
-			if fallback.is_empty():
+			var letters: int = 0
+			for words: String in left:
+				letters += _letter.search_all(words).size()
+			if fallback.is_empty() or letters < fallback_letters:
 				fallback = said
 				fallback_kept = left
+				fallback_letters = letters
 		kept.append_array(fallback_kept)
 		return fallback
 
@@ -279,26 +293,34 @@ class Words extends Translation:
 				return _matched(text, depth, false, kept)
 		return _joined(text, depth, kept)
 
-	## [param text]'s parts, where " · ", " — ", ". " or "; " joins them, each
-	## found: all of those with words in them, or "".
+	## [param text]'s parts, where " · ", " — ", ". ", "; " or " › " joins
+	## them, each found, or "" when none is. A part found nowhere is kept as
+	## it is, as a name is ("House — 71 bricks", an example's name and its
+	## count), and said in [param kept].
 	func _joined(text: String, depth: int, kept: Array) -> String:
 		var joins: Array[RegExMatch] = _joins.search_all(text)
 		if joins.is_empty():
 			return ""
 		var out: String = ""
 		var at: int = 0
+		var any: bool = false
+		var left: Array = []
 		for n: int in joins.size() + 1:
 			var end: int = joins[n].get_start() if n < joins.size() else text.length()
 			var part: String = text.substr(at, end - at)
-			var said: String = _find(part, depth + 1, kept)
+			var said: String = _find(part, depth + 1, left)
 			if said.is_empty() and _letter.search(part) != null:
-				return ""
+				left.append(part)
+			any = any or not said.is_empty()
 			out += said if not said.is_empty() else part
 			if n < joins.size():
 				var join: String = joins[n].get_string()
 				# French puts a space before its semicolon too.
 				out += "\u00a0; " if join == "; " and locale == "fr" else join
 				at = joins[n].get_end()
+		if not any:
+			return ""
+		kept.append_array(left)
 		return out
 
 	## [param text] as one of the patterns, those with words of their own
@@ -320,6 +342,11 @@ class Words extends Translation:
 				var across: bool = false
 				for n: int in range(1, found.get_group_count() + 1):
 					var said: String = found.get_string(n)
+					# What the English quotes is a name, kept as it is: a model's
+					# ("saved “Car”"), a file's, the words searched for.
+					if bool((pattern[4] as Array)[n - 1]):
+						taken.append(said)
+						continue
 					# A place never takes a line's parts: "1 selected — Ctrl-C" is
 					# two of them, each found on its own.
 					across = across or _joins.search(said) != null
