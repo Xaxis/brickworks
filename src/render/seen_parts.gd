@@ -61,7 +61,13 @@ const GIVE_UP := 30.0
 ## Numbers a picture can tell apart (seen_codes).
 const SPAN := 13823
 ## Pictures drawn at once where the card marks what each holds (_tallied).
+## A frame costs the app's own work and drawing besides the pictures, so the
+## more a frame the sooner the measure is done; each lane is a picture's
+## worth of video memory, about 110 MB at 2,048 pixels. Orthanc took 1.3 to
+## 1.9 s with eight a frame and 1.0 to 1.6 s with sixteen (bigmodels).
 const LANES := 8
+## On a graphics card of its own, whose memory is its own.
+const LANES_DISCRETE := 16
 ## Cells a row of the card's tally.
 const TALLY_WIDTH := 2048
 
@@ -362,7 +368,8 @@ static func _framing(way: Vector3, whole: AABB, finest: float, most: int) -> Arr
 # pixels: 256 of them held the measure 17 to 23 s, most of colouring its
 # hidden parts (bigmodels, 2026-10-30). Here the card marks the numbers
 # each picture holds in a tally of its own (seen_tally.gdshader), LANES
-# pictures a frame, and the tally alone is read back, once, at the end.
+# pictures a frame (LANES_DISCRETE on a card of its own), and the tally
+# alone is read back, once, at the end.
 # Each lane is made the size of its picture and aimed as the read-back
 # camera is, each frame: drawn in the corner of a lane the size of the
 # biggest, its edges fell a hair from where they fall read back, and a side
@@ -403,7 +410,9 @@ func _tallied(sides: Array[Vector3], samples: int, passes: int, whole: AABB, fin
 	tally.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(tally)
 	var lanes: Array = []
-	for _n: int in mini(LANES, shots.size()):
+	var most_lanes: int = LANES_DISCRETE if RenderingServer.get_video_adapter_type() \
+		== RenderingDevice.DEVICE_TYPE_DISCRETE_GPU else LANES
+	for _n: int in mini(most_lanes, shots.size()):
 		lanes.append(_lane(tally, biggest))
 	var jobs: Array = []
 	for pass_number: int in passes:

@@ -200,7 +200,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   only of a part that may be joined there (`SelectBy.sideways`: the parts
   whose studs point that way and what stands beside them), after its first
   256: on Orthanc, joined from all 10,101 took 6.1 to 7.5 s, now a third of a
-  second. `bigmodels_probe -- only=joined`: from one part it finds what asking
+  second. From one part, what is found already is not asked about again, a
+  part's slabs are written in place (`SelectBy._shell`), and a neighbour of a
+  few boxes is asked slab by slab, the first pair that meets answering
+  (`BrickLattice._scan`, the same answer as before on all 119,237 pairs of
+  Orthanc and the castle): joined from one part of Orthanc took 1.5 to 2.1 s,
+  now 0.75 to 0.95 s headless and 1.1 s in a window at a load of 40 on 24
+  cores. `bigmodels_probe -- only=joined`: from one part it finds what asking
   every side of every part finds.
 - `hide and show only`: `Ctrl-H` hides the selection (`H` alone is the Pan
   tool), `Shift-H` hides everything else, `Alt-H` (or `Ctrl-H` with nothing
