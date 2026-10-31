@@ -104,11 +104,18 @@ func measured() -> SeenParts.Result:
 ## "front_back"), worked out from the measure: null when the measure did
 ## not finish.
 func work_out(how: String, stage_count: int = 0, below: bool = true) -> HiddenColours.Plan:
+	# The steps need nothing of the measure, nor it of them: worked out on a
+	# worker while the card draws. One after the other, Orthanc's 10,101
+	# parts were 1.5 s of steps after the measure's 1.2 s (bigmodels).
+	var by_steps: bool = how == "sections" or how == "stages"
+	var stepping: Array = _steps_begun() if by_steps and not OS.has_feature("nothreads") else []
 	var result: SeenParts.Result = await measured()
+	var steps: Array[Instructions.Step] = []
+	if not stepping.is_empty():
+		steps = await _steps_ended(stepping)
 	if not result.complete:
 		return null
-	var steps: Array[Instructions.Step] = []
-	if how == "sections" or how == "stages":
+	if by_steps and stepping.is_empty():
 		var job: Working.Job = Working.begin("Following the build steps…")
 		await job.shown()
 		steps = await Instructions.plan_paced(world, library, scenery, {}, job, true)
@@ -119,6 +126,38 @@ func work_out(how: String, stage_count: int = 0, below: bool = true) -> HiddenCo
 	made.pixel = result.coarsest
 	made.ask_first = HiddenColours.ask_first(store)
 	return made
+
+
+## The booklet's steps begun on a worker, from a copy of the model that
+## nothing changes meanwhile: [task, [steps], the copy], for [method
+## _steps_ended].
+func _steps_begun() -> Array:
+	var still: BrickWorld = world.copy_at_home(false)
+	var skip: Dictionary = scenery.duplicate()
+	var out: Array = [[]]
+	library.begin_reading()
+	var task: int = WorkerTasks.add(func() -> void:
+		out[0] = Instructions.plan(still, library, skip, {}, true), false, "work out the steps")
+	library.reading_in(task)
+	return [task, out, still]
+
+
+## The steps [method _steps_begun] began, waited for a frame at a time,
+## saying so while they are.
+func _steps_ended(stepping: Array) -> Array[Instructions.Step]:
+	var task: int = stepping[0]
+	if not WorkerThreadPool.is_task_completed(task):
+		var job: Working.Job = Working.begin("Following the build steps…")
+		await job.shown()
+		while not WorkerThreadPool.is_task_completed(task):
+			await get_tree().process_frame
+		job.end()
+	WorkerTasks.collect(task)
+	library.end_reading(task)
+	(stepping[2] as BrickWorld).free()
+	var steps: Array[Instructions.Step] = []
+	steps.assign((stepping[1] as Array)[0])
+	return steps
 
 
 ## The inside, cut open where most of what would change is: as it is, and
