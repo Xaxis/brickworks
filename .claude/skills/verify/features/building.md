@@ -359,7 +359,20 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`Main._keep_in_sight`). At (12, 48) over the model, and Stress's under the
   view cube, they covered the parts a person clicks (keys3): `panel_room_probe`
   turns round a model at 24 views with each open, and `flex_room_probe` and
-  `simulate_probe` do the same for theirs. The model keeps 60% of the window's width (`Main.MODEL_SHARE`, what
+  `simulate_probe` do the same for theirs. On a touch screen held upright
+  (a phone, a tablet upright) the column is a sheet under the model
+  instead, and beside it again as the screen turns (`Main._place_tool_column`,
+  `Main.PHONE_SHEET`): beside it, a panel sized for a finger ran the layout
+  past the screen's right edge (Simulate's took the model off a 390-point
+  phone, Colour the hidden parts' its buttons off a 768-point tablet). Its
+  panels are kept to the screen's width there, and beside the model on a
+  touch screen to what the rest of the row leaves (`Main._fit_tool_panel`:
+  words wrapped, rows let flow and pictures narrowed, `TouchSizing.fit_panel`),
+  and the hint pill sits above the
+  sheet; beside the model
+  on a touch screen it ends above the foot's row of tools, and the pill is
+  over the model's room, not the column; `dialogs_flow`
+  says "0 off the screen" for Colour the hidden parts at all four sizes. The model keeps 60% of the window's width (`Main.MODEL_SHARE`, what
   `tools/web/fit_check.mjs` asks of a laptop's window): with both columns
   open at 1400 x 900 it had 41%. Both show only where both fit round that, a
   window about twice as wide as it is tall (1835 units); else the columns

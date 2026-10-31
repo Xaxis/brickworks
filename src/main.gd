@@ -307,8 +307,11 @@ var _hidden_colours: HiddenColoursPanel
 ## window. Over the model's left edge Simulate's covered half a gear train
 ## in a window 1600 across, and a click meant for an axle landed on the
 ## panel; the hose tool's covered the left one of two gears a chain was to
-## go round, at 1400 x 900 (keys3).
+## go round, at 1400 x 900 (keys3). On a touch screen held upright it is a
+## sheet under the model instead (_place_tool_column).
 var _tool_column: ScrollContainer
+## Whether it is that sheet, for the phone's hint pill to stand above.
+var _tool_sheet: bool = false
 ## What the column holds, one above the other.
 var _tool_panels: VBoxContainer
 ## Whether opening the column folded the parts column, to put it back.
@@ -6344,6 +6347,9 @@ func _model_rect() -> Rect2:
 ## How wide Simulate's column is: the panel's own width, its words wrapped
 ## at 320, with its margins.
 const SIMULATE_WIDTH := 360.0
+## On a touch screen held upright, the tools' sheet's share of the height
+## under the model to the model's 1: the model keeps a little over half.
+const PHONE_SHEET := 0.8
 
 
 ## A panel in the column opened or closed: the column shown while any is.
@@ -6378,14 +6384,14 @@ func _tool_column_shown() -> void:
 ## After the column opened, once the columns are laid out: if a part of
 ## the model that was in [param before], the model's room, would be out of
 ## the room left (the lens slides the picture to its middle), the view
-## steps back by as much as the room narrowed, about the same middle, so
-## what was in sight is in sight still. A model framed whole has room to
-## spare and nothing moves; nothing moves either when the room grew, as it
-## does when the parts column folds.
+## steps back by as much as the room narrowed, or on a phone shortened,
+## about the same middle, so what was in sight is in sight still. A model
+## framed whole has room to spare and nothing moves; nothing moves either
+## when the room grew, as it does when the parts column folds.
 func _keep_in_sight(before: Rect2) -> void:
 	await get_tree().process_frame
 	var after: Rect2 = _model_rect()
-	if after.size.x >= before.size.x - 1.0:
+	if after.size.x >= before.size.x - 1.0 and after.size.y >= before.size.y - 1.0:
 		return
 	var slide: Vector2 = after.get_center() - before.get_center()
 	for brick: BrickWorld.Brick in _world.bricks():
@@ -6394,7 +6400,8 @@ func _keep_in_sight(before: Rect2) -> void:
 		var at: Vector2 = _camera.unproject_position(brick.transform.origin)
 		if before.has_point(at) and not after.has_point(at + slide):
 			var view: Dictionary = _camera.aim()
-			var back: float = before.size.x / after.size.x
+			var back: float = maxf(before.size.x / maxf(after.size.x, 1.0),
+				before.size.y / maxf(after.size.y, 1.0))
 			view["distance"] = float(view["distance"]) * back
 			view["size"] = float(view["size"]) * back
 			_camera.aim_at(view)
@@ -8471,6 +8478,8 @@ func _dress_for_phone() -> void:
 	_hint.visible = false
 	_hint_area.custom_minimum_size.y = _phone.foot_height()
 	_gizmo.visible = false
+	_place_tool_column()
+	get_viewport().size_changed.connect(_place_tool_column)
 	var rail: float = Phone.px(get_viewport(), Phone.TARGET)
 	_bin_dock.set_phone_rail(rail, _phone.foot_height())
 	_chat_dock.set_phone_rail(rail, _phone.foot_height())
@@ -8507,9 +8516,10 @@ func _dress_for_phone() -> void:
 	add_child(_phone_hold)
 
 
-## The panels in the column beside the model (Motions, Colour the hidden
-## parts, Stress, Simulate) and the line saying what the app is busy with,
-## sized for a finger: made after the phone's layout is.
+## The panels in the tools' column, a sheet under the model on a screen
+## held upright (Motions, Colour the hidden parts, Stress, Simulate, the
+## hose tool's), and the line saying what the app is busy with, sized for
+## a finger: made after the phone's layout is.
 func _size_for_a_finger() -> void:
 	# And the sign-in screen, which comes back over everything on Sign out:
 	# its address field was 199 by 20 points on a phone (fig257).
@@ -8517,11 +8527,81 @@ func _size_for_a_finger() -> void:
 			_gate]:
 		if panel != null:
 			_touch.size_panel(panel)
+	# The tools' panels kept to the column's room as they fill: Simulate's
+	# row of Play, its speed, Worst balance and Go to the stop ran the
+	# layout 24 points past a 390-point phone's edge, and its Close with it.
+	for panel: Node in _tool_panels.get_children():
+		(panel as Control).minimum_size_changed.connect(_fit_tool_panel.bind(panel))
+		(panel as Control).visibility_changed.connect(_fit_tool_panel.bind(panel))
+	# And again as the room round them changes: the notices over the model
+	# or a rail wider, the model's least width with them.
+	(_bin_dock.get_parent() as Control).minimum_size_changed.connect(func() -> void:
+		for panel: Node in _tool_panels.get_children():
+			_fit_tool_panel(panel as Control))
 	# What the app is busy with is one line, its end cut short where the
 	# screen is: "Drawing the steps…" ran 500 points past a tablet's edge.
 	for found: Node in _shell.status.find_children("*", "Label", true, false):
 		(found as Label).clip_text = true
 		(found as Label).text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+
+
+## The tools' column on a touch screen: beside the model where the screen
+## is wider than it is tall, as on the desktop; where it is taller, a sheet
+## under the model, as a phone's maps and editors keep their panels. Beside
+## it on a phone or a tablet held upright, a panel sized for a finger and
+## the model's least width ran the layout past the screen's right edge:
+## Simulate's took the model off a 390-point phone, and Colour the hidden
+## parts' its own buttons off a 768-point tablet. Placed again as the
+## screen turns.
+func _place_tool_column() -> void:
+	var screen: Vector2 = get_viewport().get_visible_rect().size
+	var under: bool = screen.y > screen.x
+	# Beside the model it ends above the foot's row of tools, as the drawers
+	# do (SideDock.set_phone_rail): behind it, the panel's last lines were.
+	(_tool_column.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_bottom = \
+		0.0 if under else _phone.foot_height()
+	if under == _tool_sheet:
+		return
+	_tool_sheet = under
+	var middle: Control = _over_model.get_parent() as Control
+	var beside: Control = _bin_dock.get_parent() as Control
+	_tool_column.reparent(middle if under else beside, false)
+	if under:
+		middle.move_child(_tool_column, _over_model.get_index() + 1)
+	else:
+		beside.move_child(_tool_column, _bin_dock.get_index() + 1)
+	_tool_column.custom_minimum_size = Vector2(0.0 if under else SIMULATE_WIDTH, 0.0)
+	_tool_column.size_flags_stretch_ratio = PHONE_SHEET if under else 1.0
+
+
+## One of the tools' panels on a touch screen, wider than the column's
+## room: its words wrapped and its rows let flow, as a dialog's are. Under
+## the model the room is the screen's width; beside it, what the rest of
+## the row leaves, the model's share (MODEL_SHARE) and the rails: Colour
+## the hidden parts, sized for a finger, ran a 1024-point tablet's layout
+## 532 points past its right edge.
+func _fit_tool_panel(panel: Control) -> void:
+	if not panel.is_visible_in_tree() or panel.has_meta(&"tool_fitting"):
+		return
+	var room: float = get_viewport().get_visible_rect().size.x
+	if not _tool_sheet:
+		var row: Control = _tool_column.get_parent() as Control
+		room -= row.get_combined_minimum_size().x - _tool_column.get_combined_minimum_size().x
+	room -= _tool_column.get_v_scroll_bar().get_combined_minimum_size().x
+	var over: float = panel.get_combined_minimum_size().x - room
+	if over <= 0.5:
+		return
+	# Its words and rows held inside its own edges, and narrower again by
+	# as much as a fit before still left it too wide.
+	var across: float = room - 2.0 * Phone.per_point(get_viewport()) * TouchSizing.GUTTER
+	if panel.has_meta(&"tool_fitted"):
+		across = minf(across, float(panel.get_meta(&"tool_fitted")) - over)
+	across = maxf(across, room * 0.5)
+	panel.set_meta(&"tool_fitted", across)
+	panel.set_meta(&"tool_fitting", true)
+	(func() -> void:
+		panel.remove_meta(&"tool_fitting")
+		_touch.fit_panel(panel, across)).call_deferred()
 
 
 ## A finger held still on the model, on a phone: what a right click does
