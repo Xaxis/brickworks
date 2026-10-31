@@ -129,6 +129,19 @@ export async function controlsWith(page, names, ms = 10000, { any = false } = {}
   return where;
 }
 
+/// The page's next [frames] frames, each a turn of the app's loop, however
+/// long software drawing makes them: a press is read on the first, so a menu
+/// it opens is up once they have run. A fixed wait typed into a menu not up
+/// yet on a box drawing three browsers, and a word's letters a frame of over
+/// 2 s apart began the menu's search again (cloud_library, 2026-10-31): pick
+/// from a menu by its first letter.
+export async function framesDrawn(page, frames = 3) {
+  await page.evaluate((left) => new Promise((done) => {
+    const next = () => (--left > 0 ? requestAnimationFrame(next) : done());
+    requestAnimationFrame(next);
+  }), frames);
+}
+
 // The assistant's controls, which live in the right-hand column.
 const ASSISTANT = /^(key_field|use_key|change_key|brief|build|stop|connect_claude|claude_|connector_)/;
 // The model tree's and the properties' controls: down the right-hand

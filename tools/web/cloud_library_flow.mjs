@@ -45,7 +45,7 @@
 // On a build from before 2026-10-23 nothing is sent: 1 fails, and 2 finds
 // nothing in Open; 7's Save saves "Untitled" without asking. On one from
 // before 2026-10-24 Open has no Rename or delete: 4, 5 and 6 fail.
-import { launch } from "./browser.mjs";
+import { framesDrawn, launch } from "./browser.mjs";
 import { canSignIn, deleteAccount, mintSession, signInContext } from "./session.mjs";
 import { createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";
@@ -281,25 +281,15 @@ async function typeInto(page, control, words) {
 }
 // File › Open, as a person picks a model from it: the toolbar's Open, the
 // first letter of its name typed once the menu is up (a menu jumps to the
-// first item it begins), Enter. Not a word against the clock: on a box
-// drawing three browsers in software, letters a frame of over 2 s apart
-// began the menu's search again, and "Rename"'s "a" opened the example
-// barn owl (2026-10-31).
+// first item it begins; framesDrawn says why not a word), Enter. "Rename"
+// typed against the clock opened the example barn owl (2026-10-31).
 async function openFromMenu(page, word) {
   if (!(await press(page, "open"))) return false;
-  await framesDrawn(page, 3);
+  await framesDrawn(page);
   await page.keyboard.type(word[0]);
   await page.waitForTimeout(600);
   await page.keyboard.press("Enter");
   return true;
-}
-// The page's next [frames] frames, each a turn of the app's loop, however
-// long software drawing makes them: a press is read on the first.
-async function framesDrawn(page, frames) {
-  await page.evaluate((left) => new Promise((done) => {
-    const next = () => (--left > 0 ? requestAnimationFrame(next) : done());
-    requestAnimationFrame(next);
-  }), frames);
 }
 
 let parts = 0;
