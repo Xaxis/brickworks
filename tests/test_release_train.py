@@ -77,8 +77,10 @@ exit 1
     "tools/fresh_import.sh": "#!/bin/bash\n# stand-in: the class list is up to date\nexit 0\n",
     "tools/deploy.sh": """#!/bin/bash
 # stand-in: a preview of this commit, or that preview promoted (--promote,
-# --prod), which then stands for brickworks.diy/app; when, in promoted.
+# --prod), which then stands for brickworks.diy/app; when, in promoted. A
+# preview promoted serves the commit it was made from, as the real one does.
 SHA=$(git rev-parse --short HEAD)
+case "${1:-}" in --promote=*) SHA=${1##*/} ;; esac
 case "${1:-}" in
   --promote=*|--prod)
     echo "$(date +%s.%N) $SHA" >> "$RELEASE_OUT/promoted"
@@ -635,6 +637,68 @@ def test_restaging_a_stopped_train_clears_its_merge_but_never_work_of_its_own(tm
         assert "a fix made in the release" in own.stdout, own.stdout
         assert (y.wt / "t-m3" / "fix.txt").exists()
         assert y.spec("t-m3", "result").startswith("stopped: probes failed"), "restaged over"
+    finally:
+        y.stop()
+
+
+def test_a_stopped_release_reships_with_its_fix_and_the_one_staged_after_waits_for_it(tmp_path):
+    y = Yard(tmp_path)
+    try:
+        assert y.train("stage", "t-m2", "stage2", "--checks", "io gallery",
+                       "--probes", "fine gated_fails").returncode == 0
+        # Its preview made and checked, a probe fails: rel-m230's booklet_stream.
+        y.until(lambda: "main waits for the probes" in y.text("t-m2_lead.out"))
+        (y.ro / "probe_gate").write_text("go")
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result").startswith("stopped: probes failed: gated_fails"), y.logs()
+        made = y.text("t-m2_preview.sha").strip()
+        assert made
+        # The check's fix, committed in the release's worktree, as the lead
+        # made rel-m227's.
+        (y.wt / "t-m2" / "tools/web").mkdir(parents=True)
+        (y.wt / "t-m2" / "tools/web/io_flow.mjs").write_text("// the check, fixed\n")
+        y.git(y.wt / "t-m2", "add", "tools/web/io_flow.mjs")
+        y.git(y.wt / "t-m2", "commit", "-q", "-m", "the io check, fixed")
+        fixed = y.git(y.wt / "t-m2", "rev-parse", "--short", "HEAD")
+        ran_before = y.text("probes_run").split()
+
+        out = y.train("reship", "t-m2", "--probes", "fine", "io")
+        assert out.returncode == 0, out.stdout + out.stderr
+        assert "t-m2 reships from" in out.stdout and "io (and site, frames), probes: fine" in out.stdout, out.stdout
+        # Staged after it while it reships: it waits, never stops on the stop before.
+        assert y.train("stage", "t-m3", "stage2", "--after", "t-m2").returncode == 0
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        lead = y.text("t-m2_lead.out")
+        assert "reusing preview https://preview.invalid/" in lead and made in lead, lead
+        assert y.text("t-m2_pv_args").split()[2:] == ["io", "site", "frames"]
+        assert y.text("probes_run").split()[len(ran_before):] == ["fine"]
+        # Main has the fix; the domain serves the build the checks passed.
+        assert y.git(y.r, "rev-parse", "--short", "main") == fixed
+        assert y.text("promoted").split()[1] == y.git(y.r, "rev-parse", "--short", made), y.text("promoted")
+        assert "SHIP: held, the probes failed: gated_fails" in y.text("t-m2_lead.prev.out"), "the attempt before is kept"
+        y.until(lambda: y.spec("t-m3", "result"))
+        assert y.spec("t-m3", "result") == "live", y.logs()
+        assert "t-m2: brickworks.diy serves it" in y.text("t-m3_train.out")
+
+        # Live, it is not reshipped; nor is one that stopped before its ship.
+        again = y.train("reship", "t-m2", "io")
+        assert again.returncode == 1 and "t-m2 is live" in again.stdout, again.stdout
+        assert y.train("stage", "t-m4", "stage2", STUB_DIRTY="1").returncode == 0
+        y.until(lambda: y.spec("t-m4", "result"))
+        early = y.train("reship", "t-m4")
+        assert early.returncode == 1 and "stopped before its ship" in early.stdout, early.stdout
+
+        # By default the probes that did not pass run again, and those alone.
+        assert y.train("stage", "t-m5", "stage2", "--probes", "fine fails").returncode == 0
+        y.until(lambda: y.spec("t-m5", "result"))
+        ran_before = y.text("probes_run").split()
+        out = y.train("reship", "t-m5", "io")
+        assert "probes: fails" in out.stdout, out.stdout
+        y.until(lambda: y.spec("t-m5", "result"))
+        assert y.spec("t-m5", "result").startswith("stopped: probes failed: fails"), y.logs()
+        assert set(y.text("probes_run").split()[len(ran_before):]) == {"fails"}
+        assert y.spec("t-m5", "probes.staged") == "fine fails"
     finally:
         y.stop()
 

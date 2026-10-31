@@ -5,6 +5,7 @@
 #                             [--units "..."] [--title "..."]
 #   train.sh status [TAG...]
 #   train.sh hold TAG [REASON]          train.sh release TAG
+#   train.sh reship TAG [--probes "..."] [CHECK...]
 #
 # stage writes TAG's spec in $RELEASE_OUT/TAG.train/, a file each (branch,
 # after, checks, probes, units, title), and starts the train detached
@@ -27,6 +28,14 @@
 # one) stops it before the merge and again before the probes and the ship,
 # until lifted; ship.sh itself stops at it before main moves.
 #
+# reship ships a release whose train stopped after its ship began, from the
+# worktree it kept (with any fix committed there): the checks named, on the
+# same preview when only checks or release tools changed since (SHIP_REUSE),
+# beside the probes that did not pass (or those --probes names). Its record
+# stays the train's, so a release staged after it waits for it to serve:
+# shipped by hand, rel-m227 left its train's "stopped" for rel-m228 to stop
+# on (2026-10-31).
+#
 # Staged, the checks named also run at once on brickworks.diy as it is
 # (TAG_stale.out), and status says which already fail there: a check gone
 # stale since an earlier release holds the one that next names it.
@@ -44,7 +53,7 @@ LIVE=${TRAIN_LIVE:-https://brickworks.diy/app}
 SITE=${TRAIN_SITE:-https://brickworks.diy}
 POLL=${TRAIN_POLL:-15}
 
-usage() { sed -n '4,7p' "$HERE/train.sh"; exit 2; }
+usage() { sed -n '4,8p' "$HERE/train.sh"; exit 2; }
 
 # TAG's train if it is running, by the pid it wrote, and only while that pid
 # still runs this train: a pid is reused once its process ends. KIND stale:
@@ -108,7 +117,7 @@ stage() {
   clear_attempt "$tag" "$branch" || exit 1
   SPEC=$RO/$tag.train
   mkdir -p "$SPEC" || exit 1
-  rm -f "$SPEC"/{pid,step,result,sha,tip,shipped} "$RO/$tag.probes"
+  rm -f "$SPEC"/{pid,step,result,sha,tip,shipped,reship} "$RO/$tag.probes"
   echo "$branch" > "$SPEC/branch"; echo "$after" > "$SPEC/after"
   echo "$checks" > "$SPEC/checks"; echo "$probes" > "$SPEC/probes"; echo "$units" > "$SPEC/units"
   echo "${title:-$branch}" > "$SPEC/title"
@@ -175,6 +184,53 @@ release() {
   echo "train: $1 released"
   [ -e "$RO/HOLD" ] && echo "train: but $RO/HOLD still holds every release ($(cat "$RO/HOLD"))"
   return 0
+}
+
+reship() {
+  [ $# -ge 1 ] || usage
+  local tag=$1 probes="" asked="" checks=() named=() pid res f n code fails
+  shift
+  local SPEC=$RO/$tag.train
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --probes) [ $# -ge 2 ] || { echo "train: --probes wants a value"; exit 2; }
+        probes=$2; asked=1; shift 2 ;;
+      -*) echo "train: no option $1"; exit 2 ;;
+      *) checks+=("$1"); shift ;;
+    esac
+  done
+  [ -d "$SPEC" ] || { echo "train: $tag was never staged"; exit 2; }
+  if pid=$(runner "$tag"); then echo "train: $tag's train runs (pid $pid)"; exit 1; fi
+  res=$(cat "$SPEC/result" 2>/dev/null)
+  [ "$res" = live ] && { echo "train: $tag is live"; exit 1; }
+  # Stopped before its ship, it has no build to reuse and maybe no merge.
+  [ -e "$SPEC/shipped" ] && [ -d "$WT/$tag" ] \
+    || { echo "train: $tag stopped before its ship (${res:-no result}): stage it again"; exit 1; }
+  # By default the probes that did not pass in the attempt before: each
+  # named whose answer is missing or failed.
+  if [ -z "$asked" ]; then
+    words named probes
+    for n in "${named[@]}"; do
+      f=$RO/${tag}_probe_$n.exit
+      if [ -e "$f" ] && [ "$f" -nt "$SPEC/shipped" ] && read -r code fails < "$f" && probe_ok "$code" "$fails"; then
+        continue
+      fi
+      probes+=" $n"
+    done
+    probes=${probes# }
+  fi
+  echo "${checks[*]}" > "$SPEC/reship"
+  [ -e "$SPEC/probes.staged" ] || cp "$SPEC/probes" "$SPEC/probes.staged"
+  echo "$probes" > "$SPEC/probes"
+  # No pid and no result, as staged: a release staged after it waits.
+  rm -f "$SPEC"/{pid,step,result} "$RO/$tag.done" "$RO/$tag.gave_up" "$RO/$tag.probes"
+  for f in lead train; do
+    [ -e "$RO/${tag}_$f.out" ] && mv -f "$RO/${tag}_$f.out" "$RO/${tag}_$f.prev.out"
+  done
+  cp "$HERE/train.sh" "$SPEC/train.sh" || exit 1
+  setsid -f nohup bash "$SPEC/train.sh" run "$tag" > "$RO/${tag}_train.out" 2>&1 < /dev/null
+  echo "train: $tag reships from $WT/$tag: ${checks[*]:-no checks} (and site, frames), probes: ${probes:- none}"
+  echo "  log $RO/${tag}_train.out"
 }
 
 # --- the train itself (stage starts it as `run TAG`) ---
@@ -356,13 +412,77 @@ run() {
   TAG=$1; SPEC=$RO/$TAG.train; W=$WT/$TAG
   cd "$R" || exit 1
   echo $$ > "$SPEC/pid"
-  local prev st base code out ship ended="" bad=""
+  local code out ship ended="" bad="" reshipping="" served made
   # Killed (kill -- -PID stops what it runs too, and the probes, which run
   # in a group of their own): no result would leave the release staged
   # after it waiting until its deadline. nohup has HUP ignored.
   PROBES=""
   trap '[ -z "$PROBES" ] || kill -TERM -- "-$PROBES" 2>/dev/null; stop "killed"' TERM INT
 
+  if [ -e "$SPEC/reship" ]; then
+    # Its merge is made and the release before it served (reship).
+    reshipping=1
+    BRANCH=$(cat "$SPEC/branch"); TIP=$(cat "$SPEC/tip")
+    step "reships $W at $(git -C "$W" rev-parse --short HEAD)"
+    tree_ok
+  else
+    merged
+  fi
+
+  step "check.sh --lists"
+  out=$(cd "$W" && bash tools/check.sh --lists 2>&1) || { echo "$out" | tail -3; stop "check.sh --lists fails in $W"; }
+
+  unheld "the probes and the ship"
+  tree_ok
+  if [ -n "$reshipping" ]; then words checks reship; else words checks checks; fi
+  # Ship begun: from here ship.sh writes TAG.done, and shipped is what it was given.
+  echo "${checks[*]}" > "$SPEC/shipped"
+  # The probes and the ship side by side. One after the other, rel-m226's
+  # 35 probes took 50 minutes and its ship an hour more (2026-10-30), while
+  # the GPU the probes wait for sat idle through the ship. ship.sh moves
+  # main only once the probes' file is gone, every probe passed; it says
+  # "running TRAIN_PID: NAMES" until then, or "failed: NAMES".
+  answer "running $$: $(cat "$SPEC/probes")"
+  setsid bash "$SPEC/train.sh" probes "$TAG" &
+  PROBES=$!
+  step "ships $(cat "$SPEC/sha") with ${#checks[@]} checks named (and site, frames), its probes beside it"
+  env LIVE_WAIT="${LIVE_WAIT:-10800}" SHIP_PROBES="$RO/$TAG.probes" \
+    ${reshipping:+SHIP_REUSE=1} bash "$W/tools/release/ship.sh" "$W" "$TAG" "${checks[@]}" > "$RO/${TAG}_lead.out" 2>&1 &
+  ship=$!
+  wait -n -p ended "$PROBES" "$ship"; code=$?
+  if [ "$ended" = "$PROBES" ]; then
+    # Ended with no answer (killed, or lost its X server): the ship waits
+    # while the file says running.
+    grep -q '^running' "$RO/$TAG.probes" 2>/dev/null && answer "failed: (their run ended, exit $code, with no answer)"
+    wait "$ship"; code=$?
+  else
+    # The ship ended first, so nothing waits for the probes: stopped.
+    kill -TERM -- "-$PROBES" 2>/dev/null; wait "$PROBES"
+    grep -q '^running' "$RO/$TAG.probes" 2>/dev/null && answer "stopped: the ship ended first"
+  fi
+  PROBES=""
+  tail -n 4 "$RO/${TAG}_lead.out"
+  # The build it serves: this commit's, or, reshipped on the preview made
+  # before a check's fix, that preview's commit (ship.sh reused it).
+  served=$(cat "$SPEC/sha")
+  made=$(cat "$RO/${TAG}_preview.sha" 2>/dev/null) && made=$(git -C "$W" rev-parse --short "$made" 2>/dev/null) \
+    && [ -n "$reshipping" ] && served="($served|$made)"
+  if ! grep -qE "^SHIP: deploy: brickworks.diy serves $served\b" "$RO/${TAG}_lead.out"; then
+    bad=$(sed -n 's/^failed://p' "$RO/$TAG.probes" 2>/dev/null)
+    [ -z "$bad" ] || finish "stopped: probes failed:$bad (${TAG}_probe_NAME.log)"
+    finish "not live: ship.sh ended exit $code: $(grep '^SHIP:' "$RO/${TAG}_lead.out" | tail -1 | cut -c1-160)"
+  fi
+  step "live; retiring"
+  retire
+  # Live, whatever the live checks after said: main has it and brickworks.diy serves it.
+  [ "$code" = 0 ] || say "live, but ship.sh ended exit $code: its live checks ($RO/${TAG}_live.out)"
+  finish live
+}
+
+# The wait for the release before, then TAG's worktree from main with BRANCH
+# merged: what a train does before its probes and its ship.
+merged() {
+  local prev st base
   while prev=$(cat "$SPEC/after" 2>/dev/null) && [ -n "$prev" ]; do
     st=$(prev_state "$prev")
     case "$st" in
@@ -401,50 +521,6 @@ run() {
   fi
   tree_ok
   say "merged: $(git -C "$W" log --oneline -1 | cut -c1-100)"
-
-  step "check.sh --lists"
-  out=$(cd "$W" && bash tools/check.sh --lists 2>&1) || { echo "$out" | tail -3; stop "check.sh --lists fails in $W"; }
-
-  unheld "the probes and the ship"
-  tree_ok
-  words checks checks
-  # Ship begun: from here ship.sh writes TAG.done, and shipped is what it was given.
-  echo "${checks[*]}" > "$SPEC/shipped"
-  # The probes and the ship side by side. One after the other, rel-m226's
-  # 35 probes took 50 minutes and its ship an hour more (2026-10-30), while
-  # the GPU the probes wait for sat idle through the ship. ship.sh moves
-  # main only once the probes' file is gone, every probe passed; it says
-  # "running TRAIN_PID: NAMES" until then, or "failed: NAMES".
-  answer "running $$: $(cat "$SPEC/probes")"
-  setsid bash "$SPEC/train.sh" probes "$TAG" &
-  PROBES=$!
-  step "ships $(cat "$SPEC/sha") with ${#checks[@]} checks named (and site, frames), its probes beside it"
-  env LIVE_WAIT="${LIVE_WAIT:-10800}" SHIP_PROBES="$RO/$TAG.probes" \
-    bash "$W/tools/release/ship.sh" "$W" "$TAG" "${checks[@]}" > "$RO/${TAG}_lead.out" 2>&1 &
-  ship=$!
-  wait -n -p ended "$PROBES" "$ship"; code=$?
-  if [ "$ended" = "$PROBES" ]; then
-    # Ended with no answer (killed, or lost its X server): the ship waits
-    # while the file says running.
-    grep -q '^running' "$RO/$TAG.probes" 2>/dev/null && answer "failed: (their run ended, exit $code, with no answer)"
-    wait "$ship"; code=$?
-  else
-    # The ship ended first, so nothing waits for the probes: stopped.
-    kill -TERM -- "-$PROBES" 2>/dev/null; wait "$PROBES"
-    grep -q '^running' "$RO/$TAG.probes" 2>/dev/null && answer "stopped: the ship ended first"
-  fi
-  PROBES=""
-  tail -n 4 "$RO/${TAG}_lead.out"
-  if ! grep -q "^SHIP: deploy: brickworks.diy serves $(cat "$SPEC/sha")" "$RO/${TAG}_lead.out"; then
-    bad=$(sed -n 's/^failed://p' "$RO/$TAG.probes" 2>/dev/null)
-    [ -z "$bad" ] || finish "stopped: probes failed:$bad (${TAG}_probe_NAME.log)"
-    finish "not live: ship.sh ended exit $code: $(grep '^SHIP:' "$RO/${TAG}_lead.out" | tail -1 | cut -c1-160)"
-  fi
-  step "live; retiring"
-  retire
-  # Live, whatever the live checks after said: main has it and brickworks.diy serves it.
-  [ "$code" = 0 ] || say "live, but ship.sh ended exit $code: its live checks ($RO/${TAG}_live.out)"
-  finish live
 }
 
 # --- status: what is live since when, what is in flight at which step, and when it should serve ---
@@ -635,6 +711,7 @@ case "$cmd" in
   status) status "$@" ;;
   hold) hold "$@" ;;
   release) release "$@" ;;
+  reship) reship "$@" ;;
   run|probes|stale) [ $# -eq 1 ] || usage; "$cmd" "$1" ;;
   *) usage ;;
 esac

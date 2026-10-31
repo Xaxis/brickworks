@@ -1824,7 +1824,7 @@
       "id": "cli:release train",
       "kind": "cli",
       "entry": "tools/release/train.sh",
-      "reach": "tools/release/train.sh stage TAG BRANCH --after PREV --checks \"...\"; tools/release/train.sh status",
+      "reach": "tools/release/train.sh stage TAG BRANCH --after PREV --checks \"...\"; tools/release/train.sh status; tools/release/train.sh reship TAG CHECK...",
       "area": "release",
       "tests": [
         "tests/test_realset.py",
