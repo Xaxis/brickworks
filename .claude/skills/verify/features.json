@@ -1189,6 +1189,14 @@
       "tests": []
     },
     {
+      "id": "cli:languages probe",
+      "kind": "cli",
+      "entry": "src/dev/languages_probe.gd",
+      "reach": "tools/probe.sh languages_probe --shots=shots/languages --missing=missing.po   (every menu row, tooltip, panel title and panel word translated in each, German fits at 1280 x 720, the choice kept across a restart)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:library browser flow",
       "kind": "cli",
       "entry": "tools/web/library_flow.mjs",
@@ -4238,6 +4246,14 @@
       "kind": "ui",
       "entry": "src/ui/flex_tool.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/flex_ui_probe.gd   (by hand: Make, Hose, tube or chain\u2026, click two pin holes or two gears; Make, Reshape the hose or chain)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:interface languages",
+      "kind": "ui",
+      "entry": "src/ui/language.gd",
+      "reach": "godot --path .  (Tools, Settings\u2026, Language: Deutsch, Fran\u00e7ais or Espa\u00f1ol, kept; /app?lang=de, --lang=de on the desktop; words in locale/<code>.po)",
       "area": "building",
       "tests": []
     },

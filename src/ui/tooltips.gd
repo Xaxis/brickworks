@@ -93,7 +93,8 @@ static func _fit(popup: Window) -> void:
 	var font: Font = label.get_theme_font("font")
 	var font_size: int = label.get_theme_font_size("font_size")
 	var longest: float = 0.0
-	for line: String in label.text.split("\n"):
+	# Its words as drawn, in the language in use (Language): German's are longer.
+	for line: String in label.atr(label.text).split("\n"):
 		longest = maxf(longest, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x)
 	if longest > widest and widest > 0.0:
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

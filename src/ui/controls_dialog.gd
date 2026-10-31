@@ -1,8 +1,8 @@
 ## Two dialogs in one panel, never both at once: the keys sheet (F1, Help,
 ## Keys and controls), which says what everything does, and Settings (",",
 ## Tools, Settings…), the things about it you can change: the wheel, the
-## navigation preset, the floor new models start on, and whether the
-## assistant is in the window at all.
+## navigation preset, the floor new models start on, the interface's size
+## and language, and whether the assistant is in the window at all.
 ##
 ## They were one sheet, the keys a scroller one row tall over the settings,
 ## and every key but the first was behind a 6 px scroll bar (APP_UX A1). The

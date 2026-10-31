@@ -1829,6 +1829,20 @@
       "area": "building"
     },
     {
+      "kind": "ui",
+      "label": "interface languages",
+      "entry": "src/ui/language.gd",
+      "reach": "godot --path .  (Tools, Settings…, Language: Deutsch, Français or Español, kept; /app?lang=de, --lang=de on the desktop; words in locale/<code>.po)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "languages probe",
+      "entry": "src/dev/languages_probe.gd",
+      "reach": "tools/probe.sh languages_probe --shots=shots/languages --missing=missing.po   (every menu row, tooltip, panel title and panel word translated in each, German fits at 1280 x 720, the choice kept across a restart)",
+      "area": "building"
+    },
+    {
       "kind": "cli",
       "label": "no AI in a browser",
       "entry": "tools/web/noai_flow.mjs",

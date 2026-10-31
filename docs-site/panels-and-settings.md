@@ -87,7 +87,12 @@ ui:what the app is busy with
 - **Navigate like** Studio, Blender or Mecabricks, and which way the wheel zooms ([The view](/docs/the-view#presets)).
 - **New models start on**: the floor a new model gets.
 - **Interface size** (85 to 150%) and **Reduce motion** ([Accessibility](/docs/accessibility)).
+- **Language**: English, *Deutsch*, *Français* or *Español*, for the menus, tooltips, panels, the keys sheet and the tour. Parts and colours keep their names, as Studio keeps them. A link can choose one: brickworks.diy/app?lang=de.
 - **Assistant (AI)**: *Build by hand only*, or *Show the assistant* ([Connect Claude](/docs/connect-claude#assistant-on)), and **AI…**: who designs, Claude or another AI on your own key ([Another AI on your own key](/docs/ai#other-ais)).
 - The app's version, at the foot.
 
 **Help › Keys and controls** ([[F1]]) opens the keys sheet on its own: every key and gesture, drawn as keys and pictures of the mouse, in two columns as tall as the window, with the keys the menus show beside them ([Keyboard shortcuts](/docs/shortcuts)). Type into its box and only the rows whose keys or words say it stay: *hinge*, *undo*, *Ctrl*. The letters go to the box, not to the tools they are keys of; Escape closes it.
+
+<!-- covers
+ui:interface languages
+-->

@@ -8,9 +8,12 @@
 ## of every menu (the bar's, its submenus, the app's menu, the toolbar's
 ## Select by and the menu on a part) and each row's tooltip; every toolbar
 ## tooltip; the panels' titles (the columns' rails, the model tree, the
-## properties, the dialogs' own); the keys sheet; Settings; and the first
-## build's every line, which Help, Take the tour shows. Then, in each of
-## German, French and Spanish:
+## properties, the dialogs' own); what the parts bin, the properties and the
+## assistant's panel say, and the lines along the foot, with a part
+## selected and with none, but the names of parts, colours and Claude's
+## models; the keys sheet; Settings; and the first build's every line,
+## which Help, Take the tour shows. Then, in each of German, French and
+## Spanish:
 ## - every one of them has its translation (Language.says), none left in
 ##   English, words made at the moment matched as patterns;
 ## - and the control that shows it draws it so (its atr), so nothing is
@@ -19,7 +22,8 @@
 ##   rows and 60% of the window's height (palette's bar), each inside the
 ##   window, and every control the page asks for (Main._page_controls, as
 ##   fit_check reads them) on the page, the menu bar's and the toolbar's
-##   last included.
+##   last included; and the toolbar's widest tooltips laid out as wide as
+##   Tooltips lets one be, measured in German.
 ## - German chosen in Settings, as a person chooses it, and the app started
 ##   again in a run of its own on the same data folder: German still, and
 ##   drawn so. English chosen again draws English.
@@ -41,6 +45,14 @@ var _size: String = ""
 var _words: Dictionary = {}
 ## The words each language lacks, for --missing.
 var _missing: Dictionary = {}
+## A key's name, kept in every language: Ctrl-C, Shift+H, F1, Esc.
+var _KEY: RegEx = RegEx.create_from_string(
+	r"^((Ctrl|Shift|Alt|Cmd|Option)[+-])*([A-Z0-9]|F\d+|Esc|Enter|Space|Tab|Delete|Backspace|Home|End|Page Up|Page Down|Up|Down|Left|Right|\W)$")
+## The part put down to have a selection, and its menu.
+var _brick: int = 0
+## Names, drawn as they are in any language: the colours', the part's,
+## Claude's models'.
+var _names: Dictionary = {}
 
 
 func _initialize() -> void:
@@ -132,8 +144,10 @@ func _own_data_folder() -> bool:
 # -- what a person reads --------------------------------------------------------
 
 func _add(kind: String, text: String, drawn: Node) -> void:
-	# A number, a percentage or a sign alone is the same in any language.
-	if not RegEx.create_from_string(r"\p{L}").search(text):
+	# A number, a percentage or a sign alone is the same in any language, as
+	# a key's letter is, and a part's or a colour's name.
+	if not RegEx.create_from_string(r"\p{L}").search(text) or text.length() == 1 \
+			or RegEx.create_from_string(r"^F\d+$").search(text) or _names.has(text):
 		return
 	if not _words.has(kind):
 		_words[kind] = []
@@ -157,9 +171,9 @@ func _gather() -> void:
 	var builder: Builder = _main.get("_builder")
 	var world: BrickWorld = _main.get("_world")
 	var where := Transform3D(Basis.IDENTITY, Vector3(200, 24, 200))
-	var brick: int = world.add_brick("3001", 4, where)
-	builder.register(brick, "3001", where)
-	builder.select_brick(brick, false)
+	_brick = world.add_brick("3001", 4, where)
+	builder.register(_brick, "3001", where)
+	builder.select_brick(_brick, false)
 	await _frames(4)
 	_shell.open_context(Vector2(400, 300))
 	await _frames(4)
@@ -180,6 +194,47 @@ func _gather() -> void:
 			continue
 		_add("panel titles", dock.title, dock)
 		_add("panel titles", dock.rail().tooltip_text, dock.rail())
+	# What the panels say, and the lines along the foot, with a part
+	# selected and with none, the assistant's panel open: but the names of
+	# the parts, on the bin's tiles and the properties, and of the colours.
+	var library: PartLibrary = _main.get("_library")
+	for code: int in library.colors:
+		var colour: PartLibrary.BrickColor = library.colors[code]
+		_names[colour.name] = true
+		_names["%s (%d)" % [colour.name, code]] = true
+	_names[Inventory._tidy((library.parts["3001"] as PartLibrary.PartInfo).name)] = true
+	for model: Dictionary in Brain.CHOICES:
+		_names[str(model["name"])] = true
+	var bin: PartsBin = _main.get("_bin")
+	for selected: bool in [true, false]:
+		if not selected:
+			builder.clear_selection()
+			await _frames(6)
+		for dock_name: String in ["_bin_dock", "_props_dock"]:
+			var dock: SideDock = _main.get(dock_name)
+			if dock != null:
+				_walk("panels", dock, [bin.get("_grid")])
+		# ...and the column on the right open, the model tree and all the
+		# properties, which take the properties from under the bin.
+		var right: SideDock = _main.get("_props_dock")
+		if right != null and not right.is_open():
+			right.set_open(true, false)
+			await _frames(10)
+			_walk("panels", right, [])
+		_walk("the foot's lines", _shell.status, [])
+		_walk("the foot's lines", _main.get("_hint"), [])
+	# The view cube's faces, which it draws itself.
+	var cube: ViewCube = _main.get("_gizmo")
+	if cube != null:
+		for face: Dictionary in ViewCube.FACES:
+			_add("panels", str(face["name"]), cube)
+	var chat: SideDock = _main.get("_chat_dock")
+	if chat != null:
+		chat.set_open(true, false)
+		await _frames(10)
+		_walk("panels", chat, [])
+		chat.set_open(false, false)
+		await _frames(4)
 	var named: Dictionary = _main.call("_page_controls")
 	for name: String in ["outliner", "properties"]:
 		if named.get(name) is Button:
@@ -284,6 +339,16 @@ func _in(code: String) -> void:
 				lacking.append(english)
 				(_missing[code] as Array).append(english)
 				continue
+			# Translated but for words it keeps in English that are not a
+			# name or a key: a pattern's place, or a line, with no entry.
+			var left: Array[String] = []
+			for kept: String in Language.left_in_english(english):
+				if not _names.has(kept) and not _KEY.search(kept):
+					left.append(kept)
+			if not left.is_empty():
+				lacking.append("%s (%s)" % [english, ", ".join(left)])
+				(_missing[code] as Array).append_array(left)
+				continue
 			if said == english:
 				same += 1
 			var drawn: Node = word[1]
@@ -320,6 +385,14 @@ func _pictures(code: String) -> void:
 		await _shot("%s_menu_%d" % [code, title])
 		button.get_popup().hide()
 		await _frames(3)
+	# The panels open, the part selected.
+	for dock_name: String in ["_bin_dock", "_props_dock"]:
+		var dock: SideDock = _main.get(dock_name)
+		if dock != null:
+			dock.set_open(true, false)
+	(_main.get("_builder") as Builder).select_brick(_brick, false)
+	await _frames(10)
+	await _shot("%s_panels" % code)
 	var controls: ControlsDialog = _main.get("_controls")
 	controls.open_keys()
 	await _frames(10)
@@ -404,7 +477,84 @@ func _german_fits() -> void:
 			rect.position.y, rect.size.x, rect.size.y], room.grow(1.0).encloses(rect))
 	controls.visible = false
 	await _frames(4)
+	await _german_tooltips()
 	await _shot("de_whole")
+
+
+## The toolbar's widest tooltips in German rested on until they show: each
+## laid out at most Tooltips.WIDEST wide, measured as drawn, not as the
+## English it was given, and inside the window.
+func _german_tooltips() -> void:
+	var widest: Array = []
+	for name: String in _shell.toolbar.controls_by_name():
+		var tool: Control = _shell.toolbar.controls_by_name()[name]
+		if tool.tooltip_text.is_empty() or not tool.is_visible_in_tree():
+			continue
+		var font: Font = tool.get_theme_default_font()
+		var longest: float = 0.0
+		for line: String in tool.atr(tool.tooltip_text).split("\n"):
+			longest = maxf(longest, font.get_string_size(line).x)
+		widest.append([longest, tool])
+	widest.sort_custom(func(a: Array, b: Array) -> bool: return float(a[0]) > float(b[0]))
+	var room: Rect2 = root.get_visible_rect()
+	var shown: int = 0
+	var worst: float = 0.0
+	var wrong: Array[String] = []
+	for entry: Array in widest.slice(0, 5):
+		var tool: Control = entry[1]
+		var tip: Window = await _tooltip_of(tool)
+		if tip == null:
+			wrong.append("%s showed none" % tool.name)
+			continue
+		await _frames(4)
+		shown += 1
+		var rect := Rect2(Vector2(tip.position), Vector2(tip.size))
+		worst = maxf(worst, rect.size.x)
+		if rect.size.x > Tooltips.WIDEST + 40.0 or not room.grow(1.0).encloses(rect):
+			wrong.append("%s [%d, %d, %d, %d]" % [tool.name, rect.position.x, rect.position.y,
+				rect.size.x, rect.size.y])
+		if worst == rect.size.x:
+			await _shot("de_tooltip")
+	_move(_away())
+	await _frames(6)
+	_check("the toolbar's 5 widest tooltips in German shown (%d), each at most %d wide with its edges (widest %d), inside the window%s" % [
+		shown, Tooltips.WIDEST + 40.0, worst, "" if wrong.is_empty() else ": " + ", ".join(wrong)],
+		shown == 5 and wrong.is_empty())
+
+
+## [param control] rested on until its tooltip is up, as tooltip_probe does.
+func _tooltip_of(control: Control) -> Window:
+	_move(_away())
+	await _frames(3)
+	var rect: Rect2 = control.get_screen_transform() * Rect2(Vector2.ZERO, control.size)
+	var at := Vector2(rect.get_center().x, rect.end.y - minf(3.0, rect.size.y / 2.0))
+	_move(at)
+	await _frames(3)
+	_move(at + Vector2(1, 0))
+	var until: int = Time.get_ticks_msec() + 2500
+	while Time.get_ticks_msec() < until:
+		await process_frame
+		for sub: Window in root.get_embedded_subwindows():
+			if Tooltips.is_tooltip(sub) and sub.visible:
+				return sub
+	return null
+
+
+## Over the model, where nothing has a tooltip.
+func _away() -> Vector2:
+	return root.get_visible_rect().size * Vector2(0.55, 0.62)
+
+
+## The pointer moved, as an event and, on Xvfb, for real (tooltip_probe's
+## _move says why).
+func _move(at: Vector2) -> void:
+	var event_at: Vector2 = root.get_final_transform() * at
+	if OS.get_environment("XAUTHORITY").contains("xvfb-run"):
+		Input.warp_mouse(event_at)
+	var event := InputEventMouseMotion.new()
+	event.position = event_at
+	event.global_position = event_at
+	Input.parse_input_event(event)
 
 
 # -- chosen in Settings, and kept ------------------------------------------------

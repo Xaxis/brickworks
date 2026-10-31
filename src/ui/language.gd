@@ -21,8 +21,9 @@
 ## into the translation's own place for them ("%2$s" names which), translated
 ## themselves when they are words of the interface. A key after a row's words
 ## (three spaces or more, then the key) and a tooltip's lines are found one
-## by one. A part's, a colour's or a model's name is in no file, and is drawn
-## as it is.
+## by one, and so are a line's parts where " · ", " — ", ". " or "; " joins
+## them (the status bar's), when the whole is in no entry. A part's, a
+## colour's or a model's name is in no file, and is drawn as it is.
 class_name Language
 extends Node
 
@@ -110,6 +111,16 @@ static func says(text: String) -> String:
 	return _words.find(text) if _words != null else ""
 
 
+## The words [param text]'s translation keeps in English, as a pattern's
+## place or a line it has no entry for: a part's or a model's name, a key,
+## or words of the interface the file lacks. For a check of the words.
+static func left_in_english(text: String) -> Array:
+	var kept: Array = []
+	if _words != null:
+		_words._find(text, 0, kept)
+	return kept
+
+
 ## Taken out of the TranslationServer as the window closes, while the
 ## scripts are still there to free it: a translation made by a script and
 ## left in the server crashes the engine at exit (4.7.2), as a probe's
@@ -135,8 +146,8 @@ class Words extends Translation:
 	## Whether a row's words lowered keep the translation's capital.
 	var capitals: bool = false
 	## A pattern's first word -> its patterns, as [RegEx, translation, how
-	## many of its letters are its own]; those that start with what they
-	## take, under "".
+	## many of its letters are its own, whether it has words of its own];
+	## those that start with what they take, under "".
 	var _patterns: Dictionary = {}
 	## What each text was found as, "" for nothing: a part's name is asked
 	## for every time a list row is drawn.
@@ -144,6 +155,8 @@ class Words extends Translation:
 	var _lock := Mutex.new()
 	var _places: RegEx = RegEx.create_from_string(r"%(?:(\d+)\$)?[sd]")
 	var _key_after: RegEx = RegEx.create_from_string(r"^(.*?\S)( {3,}\S.*)$")
+	var _joins: RegEx = RegEx.create_from_string(r" · | — |\. |; ")
+	var _letter: RegEx = RegEx.create_from_string(r"\p{L}")
 
 	func _init(source: Translation) -> void:
 		_source = source
@@ -165,8 +178,9 @@ class Words extends Translation:
 			var first: String = before.get_slice(" ", 0) if " " in before else ""
 			if not _patterns.has(first):
 				_patterns[first] = []
+			var own: String = _places.sub(english, "", true)
 			(_patterns[first] as Array).append([RegEx.create_from_string(expression), translated,
-				_places.sub(english, "", true).length()])
+				own.length(), _letter.search(own) != null])
 		# The most particular first: "press %s, %s, %s or %s to move it" before
 		# "press %s to move it", which would take the four keys as one.
 		for first: String in _patterns:
@@ -183,7 +197,7 @@ class Words extends Translation:
 		_lock.unlock()
 		if known != null:
 			return known
-		var out: String = _find(text, 0)
+		var out: String = _find(text, 0, [])
 		_lock.lock()
 		if _found.size() > 40000:
 			_found.clear()
@@ -191,8 +205,10 @@ class Words extends Translation:
 		_lock.unlock()
 		return out
 
-	func _find(text: String, depth: int) -> String:
-		if text.is_empty() or depth > 3:
+	## [param text] in this language, or "": what it keeps in English, a
+	## place's words or a line, added to [param kept].
+	func _find(text: String, depth: int, kept: Array) -> String:
+		if text.is_empty() or depth > 5:
 			return ""
 		var whole: String = String(_source.get_message(text))
 		if not whole.is_empty():
@@ -202,21 +218,23 @@ class Words extends Translation:
 			var lines: PackedStringArray = text.split("\n")
 			var any: bool = false
 			for n: int in lines.size():
-				var line: String = _find(lines[n], depth + 1)
+				var line: String = _find(lines[n], depth + 1, kept)
 				if not line.is_empty():
 					lines[n] = line
 					any = true
+				elif _letter.search(lines[n]) != null:
+					kept.append(lines[n])
 			return "\n".join(lines) if any else ""
 		var edges: String = text.strip_edges()
 		if edges != text:
-			var inner: String = _find(edges, depth + 1)
+			var inner: String = _find(edges, depth + 1, kept)
 			return text.replace(edges, inner) if not inner.is_empty() else ""
 		# A row's words and its key after them: the words, the key as it is.
 		var keyed: RegExMatch = _key_after.search(text)
 		if keyed != null:
-			var words: String = _find(keyed.get_string(1), depth + 1)
+			var words: String = _find(keyed.get_string(1), depth + 1, kept)
 			return words + keyed.get_string(2) if not words.is_empty() else ""
-		var matched: String = _matched(text, depth)
+		var matched: String = _matched(text, depth, true, kept)
 		if not matched.is_empty():
 			return matched
 		# The words a menu row ends with "…" for, said without it (Toolbar).
@@ -228,23 +246,69 @@ class Words extends Translation:
 		# lowers it.
 		var first: String = text.left(1)
 		if first != first.to_upper():
-			var raised: String = _find(first.to_upper() + text.substr(1), depth + 1)
+			var raised: String = _find(first.to_upper() + text.substr(1), depth + 1, kept)
 			if not raised.is_empty():
 				return raised if capitals else raised.left(1).to_lower() + raised.substr(1)
-		return ""
+		# Then a pattern with no words of its own ("%s %d", "%s, %s"), which
+		# would take any text, where nothing more particular has.
+		matched = _matched(text, depth, false, kept)
+		if not matched.is_empty():
+			return matched
+		return _joined(text, depth, kept)
 
-	func _matched(text: String, depth: int) -> String:
+	## [param text]'s parts, where " · ", " — ", ". " or "; " joins them, each
+	## found: all of those with words in them, or "".
+	func _joined(text: String, depth: int, kept: Array) -> String:
+		var joins: Array[RegExMatch] = _joins.search_all(text)
+		if joins.is_empty():
+			return ""
+		var out: String = ""
+		var at: int = 0
+		for n: int in joins.size() + 1:
+			var end: int = joins[n].get_start() if n < joins.size() else text.length()
+			var part: String = text.substr(at, end - at)
+			var said: String = _find(part, depth + 1, kept)
+			if said.is_empty() and _letter.search(part) != null:
+				return ""
+			out += said if not said.is_empty() else part
+			if n < joins.size():
+				var join: String = joins[n].get_string()
+				# French puts a space before its semicolon too.
+				out += "\u00a0; " if join == "; " and locale == "fr" else join
+				at = joins[n].get_end()
+		return out
+
+	## [param text] as one of the patterns, those with words of their own
+	## ([param worded]) or those without.
+	func _matched(text: String, depth: int, worded: bool, kept: Array) -> String:
 		var first: String = text.get_slice(" ", 0)
 		for key: String in [first, ""]:
 			for pattern: Array in _patterns.get(key, []):
+				if bool(pattern[3]) != worded:
+					continue
 				var found: RegExMatch = (pattern[0] as RegEx).search(text)
 				if found == null:
 					continue
 				var taken: Array[String] = []
+				var left: Array = []
+				var any: bool = false
+				var across: bool = false
 				for n: int in range(1, found.get_group_count() + 1):
 					var said: String = found.get_string(n)
-					var own: String = _find(said, depth + 1)
+					# A place never takes a line's parts: "1 selected — Ctrl-C" is
+					# two of them, each found on its own.
+					across = across or _joins.search(said) != null
+					var own: String = _find(said, depth + 1, left)
+					any = any or not own.is_empty()
+					if own.is_empty() and _letter.search(said) != null:
+						left.append(said)
 					taken.append(own if not own.is_empty() else said)
+				# One with no words of its own only where it has words of the
+				# interface in it: "Brick 1448", but not a part's name,
+				# "Technic Beam 15".
+				if across or (not worded and not any):
+					continue
+				kept.append_array(left)
 				return _filled(str(pattern[1]), taken)
 		return ""
 
