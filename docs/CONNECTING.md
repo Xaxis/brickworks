@@ -17,10 +17,14 @@ dialog with the name and the address already filled in. They press Add, then
 Connect; Claude sends them to Brickworks to sign in with their email code (or
 straight to the question, if Brickworks is already signed in in that browser),
 they press Allow, and they are back in Claude, connected. Connecting again
-after a Disconnect is **Connect** on the Brickworks already in their Claude
-(Customize › Connectors, Your connectors), which Connect Claude opens for an
-account that has had Claude connected: adding it again sets up a second one,
-with its tool permissions to choose again. A connector added on
+after a Disconnect is best **Connect** on the Brickworks already in their
+Claude (Customize › Connectors, Your connectors): adding it again sets up a
+second one, with its tool permissions to choose again. Connect Claude opens the
+form filled in all the same, since the app cannot see Claude's list and the one
+there may be gone; for an account that has had Claude connected the panel
+offers the list beside it ("Already in your Claude? Open your connectors") and
+says why. Until 2026-10-31 such an account got only the bare list, and the
+owner never saw the form filled in. A connector added on
 claude.ai is in the desktop and mobile apps too, and in Claude Code when it is
 signed in with the same Claude account.
 
@@ -185,13 +189,19 @@ What there is not:
 
 - No link that also signs in or skips the person's confirmation: "Install
   links only prefill the form."
-- No documented link that installs a connector into the **desktop app**
-  (`claude://` links are documented only for Claude Code sessions,
-  <https://code.claude.com/docs/en/desktop>). The desktop app shows connectors
-  added on claude.ai, so the claude.ai link serves it too.
+- No documented link that installs a connector into the **desktop app**: its
+  `claude://` links open a new chat, a chat, a project, a Code or a Cowork
+  session, and nothing of settings or connectors
+  (<https://support.claude.com/en/articles/14729294-open-claude-desktop-with-a-link>,
+  read 2026-10-31). The desktop app shows connectors added on claude.ai, so
+  the claude.ai link serves it too.
 - No install link for **Claude Code** like Cursor's: `claude-cli://open` takes
   only a prompt, a directory and a repository
-  (<https://code.claude.com/docs/en/deep-links>). The command line is the way.
+  (<https://code.claude.com/docs/en/deep-links>, read 2026-10-31), and its MCP
+  page documents `claude mcp add` and `.mcp.json` only. The command line is the
+  way: the panel's **Claude Code** copies it in one click. Claude Code signed in
+  with a claude.ai subscription also has the connectors added on claude.ai
+  (<https://code.claude.com/docs/en/mcp#use-mcp-servers-from-claude-ai>).
 - A listing in Anthropic's Connectors Directory would give a permanent
   `https://claude.ai/directory/connectors/<slug>` page with a Connect button
   and in-chat suggestions; submitting is open to anyone on a paid plan, after

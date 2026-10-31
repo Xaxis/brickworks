@@ -2608,6 +2608,28 @@ msgstr "Claude verbinden"
 msgid "Opens claude.ai with Brickworks filled in"
 msgstr "Öffnet claude.ai mit Brickworks bereits eingetragen"
 
+# Connecting Claude: the form filled in, Claude's list beside it, Claude Code's command (connect3)
+msgid "Already in your Claude? Open your connectors"
+msgstr "Schon in deinem Claude? Deine Konnektoren öffnen"
+
+msgid "A Brickworks already in your connectors connects again with its own Connect, keeping its tool permissions."
+msgstr "Ein Brickworks, das schon unter deinen Konnektoren ist, verbindest du mit seinem eigenen „Verbinden“ wieder; seine Tool-Berechtigungen bleiben dabei erhalten."
+
+msgid "Copies the command that adds Brickworks to Claude Code"
+msgstr "Kopiert den Befehl, der Brickworks zu Claude Code hinzufügt"
+
+msgid "Copied. Run it in a terminal, then type /mcp in Claude Code, choose brickworks and Authenticate. Your browser opens here to sign in."
+msgstr "Kopiert. Führe ihn in einem Terminal aus, tippe dann in Claude Code /mcp, wähle brickworks und Authenticate. Dein Browser öffnet sich hier zur Anmeldung."
+
+msgid "1. Under Your connectors, select Brickworks and press Connect, or Reconnect if it says so."
+msgstr "1. Wähle unter „Deine Konnektoren“ Brickworks und drücke „Verbinden“, oder „Erneut verbinden“, wenn es dort steht."
+
+msgid "Not in your list? Press Connect Claude above, which fills the form in, or paste this there (it is copied):"
+msgstr "Nicht in deiner Liste? Drücke oben „Claude verbinden“, das füllt das Formular aus, oder füge dort dies ein (es ist kopiert):"
+
+msgid "Not connected now. Connect Claude opens claude.ai with Brickworks filled in. A Brickworks already in your connectors connects again with its own Connect, keeping its tool permissions."
+msgstr "Gerade nicht verbunden. „Claude verbinden“ öffnet claude.ai mit Brickworks bereits eingetragen. Ein Brickworks, das schon unter deinen Konnektoren ist, verbindest du mit seinem eigenen „Verbinden“ wieder; seine Tool-Berechtigungen bleiben dabei erhalten."
+
 # The view cube's faces
 msgid "FRONT"
 msgstr "VORNE"

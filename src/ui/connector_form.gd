@@ -5,12 +5,14 @@
 ## already filled in (claude.ai's own install link), they press Add and
 ## Connect, sign in to Brickworks and allow it, and Claude is connected —
 ## to their account, once, for every Brickworks tab they open, on any
-## device. An account that has had Claude connected is sent instead to
-## Claude's list of connectors, to connect the Brickworks it has there
+## device. An account that has had Claude connected is offered Claude's
+## list of connectors beside it, to connect the Brickworks it may have there
 ## again, since adding it again sets one up anew, its tool permissions to
 ## choose again. Then they ask Claude to build, and it builds in the tab, where
-## they watch it. The same for Claude Code (a command to paste) and the
-## Claude desktop app (which shows what was added on claude.ai). Brickworks
+## they watch it. The same for Claude Code (a command, copied in one click,
+## to paste: neither it nor the Claude desktop app documents a link that
+## fills a connector in, read 2026-10-31) and the Claude desktop app (which
+## shows what was added on claude.ai). Brickworks
 ## never sees a Claude login, token or key, and never calls a model: Claude
 ## is the client, which is ordinary use of Anthropic's own apps.
 ##
@@ -30,6 +32,8 @@ var _title: Label
 var _here: CheckButton
 var _intro: Label
 var _connect: Button
+var _already: VBoxContainer
+var _already_link: LinkButton
 var _ways: HBoxContainer
 var _state_row: HBoxContainer
 var _dot: ColorRect
@@ -42,6 +46,7 @@ var _signed_as: Label
 var _shared: LineEdit
 var _copy: Button
 var _code_box: VBoxContainer
+var _code_said: Label
 var _command: LineEdit
 var _code_copy: Button
 var _desktop_box: VBoxContainer
@@ -117,18 +122,33 @@ func setup(with: ClaudeConnector) -> void:
 		if connector.connected():
 			connector.open_in_claude()
 			return
-		connector.connect_claude()
-		_guide.visible = true
-		_code_box.visible = false
-		_desktop_box.visible = false
-		_settle())
+		_connect_in_claude(false))
 	add_child(_connect)
+
+	# An account that has had Claude may have Brickworks in its connectors
+	# still: that one connects again keeping its tool permissions, so its
+	# list is one click too (ClaudeConnector.had_claude).
+	_already = VBoxContainer.new()
+	_already.add_theme_constant_override("separation", 2)
+	_already.visible = false
+	add_child(_already)
+	_already_link = Look.link("Already in your Claude? Open your connectors", 11)
+	_already_link.tooltip_text = "Opens your connectors in Claude, where Brickworks is"
+	_already_link.pressed.connect(func() -> void: _connect_in_claude(true))
+	_already.add_child(_already_link)
+	_already.add_child(_line(ClaudeConnector.ALREADY, 11, 0.7))
 
 	_ways = HBoxContainer.new()
 	_ways.add_theme_constant_override("separation", 12)
 	add_child(_ways)
+	# One click copies the command and opens what to do with it, under the
+	# link: Claude Code has no link that fills a connector in.
 	_code_link = Look.link("Claude Code", 11)
-	_code_link.pressed.connect(func() -> void: _open_only(_code_box))
+	_code_link.tooltip_text = "Copies the command that adds Brickworks to Claude Code"
+	_code_link.pressed.connect(func() -> void:
+		if not _code_box.visible:
+			DisplayServer.clipboard_set(connector.claude_code_command())
+		_open_only(_code_box))
 	_ways.add_child(_code_link)
 	_desktop_link = Look.link("Claude app", 11)
 	_desktop_link.pressed.connect(func() -> void: _open_only(_desktop_box))
@@ -154,9 +174,9 @@ func setup(with: ClaudeConnector) -> void:
 	add_child(_tab_view)
 	_tab_view.setup(connector)
 
-	# After Connect Claude: what to do in the tab that just opened — adding
-	# Brickworks the first time, connecting the one there after that
-	# ([member ClaudeConnector.had_claude]; the words are set in _show).
+	# After Connect Claude: what to do in the tab that just opened — the
+	# form filled in, or the list, to connect the one there (the words are
+	# set in _show).
 	_guide = _box()
 	_guide_head = _line("", 12, 0.85)
 	_guide.add_child(_guide_head)
@@ -174,9 +194,10 @@ func setup(with: ClaudeConnector) -> void:
 	_copy = _copy_button(shared_row, func() -> String: return connector.shared_address())
 
 	_code_box = _box()
-	_code_box.add_child(_line("Claude Code: run this, then type /mcp in Claude "
+	_code_said = _line("Copied. Run it in a terminal, then type /mcp in Claude "
 		+ "Code, choose brickworks and Authenticate. Your browser opens here to "
-		+ "sign in.", 12, 0.85))
+		+ "sign in.", 12, 0.85)
+	_code_box.add_child(_code_said)
 	var code_row := _row()
 	_code_box.add_child(code_row)
 	_command = _field(code_row, "")
@@ -222,6 +243,11 @@ func setup(with: ClaudeConnector) -> void:
 	use.focus_mode = Control.FOCUS_NONE
 	use.pressed.connect(_adopt)
 	_reuse_box.add_child(use)
+	# Each way opens under the row of their links, where the person just
+	# clicked: below Claude's part of the panel, Claude Code's "Copied" was
+	# off the foot of a laptop's panel (connect3, 2026-10-31).
+	for box: VBoxContainer in [_private_box, _desktop_box, _code_box]:
+		move_child(box, _ways.get_index() + 1)
 
 	_copied = _line("Copied.", 11, 0.7)
 	_copied.visible = false
@@ -295,6 +321,7 @@ func controls_by_name() -> Dictionary:
 	var named: Dictionary = _tab_view.controls_by_name() if _tab_view != null else {}
 	return named.merged({"connect_claude": _connect, "claude_here": _here,
 		"connector_shared": _shared, "connector_copy": _copy,
+		"connector_already": _already_link,
 		"connector_code": _code_link, "connector_code_copy": _code_copy,
 		"connector_desktop": _desktop_link, "connector_desktop_copy": _desktop_copy,
 		"connector_private": _private_link, "connector_address": _address,
@@ -311,12 +338,34 @@ func _on_listening(on: bool, address: String) -> void:
 	_settle()
 
 
+## Connect Claude, or its list ([param listed]): this tab listens, and
+## says what to do in the tab that opened.
+func _connect_in_claude(listed: bool) -> void:
+	connector.connect_claude(listed)
+	_guide.visible = true
+	_code_box.visible = false
+	_desktop_box.visible = false
+	_settle()
+
+
 ## Which of the three ways is open, one at a time.
 func _open_only(box: VBoxContainer) -> void:
 	var opening: bool = not box.visible
 	for one: VBoxContainer in [_guide, _code_box, _desktop_box, _private_box]:
 		one.visible = opening and one == box
 	_settle()
+	if opening:
+		_into_view(box)
+
+
+## [param box] scrolled into the panel's view once it is laid out.
+func _into_view(box: Control) -> void:
+	await get_tree().process_frame
+	var up: Node = get_parent()
+	while up != null and not up is ScrollContainer:
+		up = up.get_parent()
+	if up != null and box.is_visible_in_tree():
+		(up as ScrollContainer).ensure_control_visible(box)
 
 
 ## The state line for where things stand, when nothing newer has said it.
@@ -420,23 +469,21 @@ func _show() -> void:
 	var who: String = connector.account.email if connector.account != null else ""
 	_signed_as.text = ("2. Sign in to Brickworks as %s if asked, and press Allow." % who
 		if not who.is_empty() else "2. Sign in to Brickworks if asked, and press Allow.")
-	if connector.had_claude:
+	if connector.last_opened == ClaudeConnector.CONNECTORS:
 		_guide_head.text = ("Claude's connectors have opened in a new tab "
 			+ "(Customize › Connectors). There:")
 		_step_one.text = ("1. Under Your connectors, select Brickworks and press "
-			+ "Connect, or Reconnect if it says so. Connect the one you have rather "
-			+ "than adding it again, which sets up a new one with its tool "
-			+ "permissions to choose again.")
-		_fallback.text = ("In the Claude desktop app: Customize in the sidebar, then "
-			+ "Connectors. Not in your list? Add custom connector there, and paste "
-			+ "this (it is copied):")
+			+ "Connect, or Reconnect if it says so.")
+		_fallback.text = ("Not in your list? Press Connect Claude above, which "
+			+ "fills the form in, or paste this there (it is copied):")
 	else:
 		_guide_head.text = "claude.ai has opened in a new tab with Brickworks filled in. There:"
 		_step_one.text = "1. Press Add, then Connect."
 		_fallback.text = ("No new tab? In Claude, open Customize, Connectors, "
 			+ "Add custom connector, and paste this (it is copied):")
 	_connect.tooltip_text = ("Opens your connectors in Claude, where Brickworks is"
-		if connector.had_claude or linked else "Opens claude.ai with Brickworks filled in")
+		if linked else "Opens claude.ai with Brickworks filled in")
+	_already.visible = connector.had_claude and not linked
 	_shared.text = connector.shared_address()
 	_command.text = connector.claude_code_command()
 	for one: Node in _desktop_box.find_children("*", "LineEdit", true, false):

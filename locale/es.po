@@ -2608,6 +2608,28 @@ msgstr "Conectar Claude"
 msgid "Opens claude.ai with Brickworks filled in"
 msgstr "Abre claude.ai con Brickworks ya rellenado"
 
+# Connecting Claude: the form filled in, Claude's list beside it, Claude Code's command (connect3)
+msgid "Already in your Claude? Open your connectors"
+msgstr "¿Ya está en tu Claude? Abre tus conectores"
+
+msgid "A Brickworks already in your connectors connects again with its own Connect, keeping its tool permissions."
+msgstr "Un Brickworks que ya está en tus conectores se vuelve a conectar con su propio botón Conectar y conserva sus permisos de herramientas."
+
+msgid "Copies the command that adds Brickworks to Claude Code"
+msgstr "Copia el comando que añade Brickworks a Claude Code"
+
+msgid "Copied. Run it in a terminal, then type /mcp in Claude Code, choose brickworks and Authenticate. Your browser opens here to sign in."
+msgstr "Copiado. Ejecútalo en una terminal, luego escribe /mcp en Claude Code, elige brickworks y Authenticate. Tu navegador se abre aquí para iniciar sesión."
+
+msgid "1. Under Your connectors, select Brickworks and press Connect, or Reconnect if it says so."
+msgstr "1. En Tus conectores, selecciona Brickworks y pulsa Conectar, o Volver a conectar si lo indica."
+
+msgid "Not in your list? Press Connect Claude above, which fills the form in, or paste this there (it is copied):"
+msgstr "¿No está en tu lista? Pulsa Conectar Claude arriba, que rellena el formulario, o pega esto allí (está copiado):"
+
+msgid "Not connected now. Connect Claude opens claude.ai with Brickworks filled in. A Brickworks already in your connectors connects again with its own Connect, keeping its tool permissions."
+msgstr "No conectado ahora. Conectar Claude abre claude.ai con Brickworks ya rellenado. Un Brickworks que ya está en tus conectores se vuelve a conectar con su propio botón Conectar y conserva sus permisos de herramientas."
+
 # The view cube's faces
 msgid "FRONT"
 msgstr "FRENTE"
