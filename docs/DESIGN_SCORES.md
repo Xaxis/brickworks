@@ -2981,6 +2981,109 @@ every view, while B's proportions and four-leg stance make it look like a
 chair". Results: `bench/results/best2app-2026-10-22/` (each walk's record,
 the six pictures the pick was shown, the second's model and its log).
 
+### Technique: the fresh look asks how a model is built, on the 44 of proof (2026-10-30, `25bba4a9`, not ready)
+
+Technique is the dimension we win least. On stage225 (`a3090df7`) the 44 of
+proof won 10% of technique verdicts against the sets, against 24% overall. On
+tune's six latest arms (524 verdicts a dimension), 73% of the technique
+verdicts we lost call our design stacked bricks and plates. They say what the
+set does there instead: clips, bars and hinges (56%), curved parts (51%),
+sections set at an angle (46%), faces on their side (32%). Measured on
+final329t, our models have 5.5% of their parts on their side against the sets'
+22.7%, 0.2% angle parts against 5.4%, and 42% plain bricks and plates against
+26%. The session's own fresh look is the lever that has moved verdicts before.
+It asked what the model reads as and what is generic. In 126 changes it named
+a bracket, a clip or a hinge 3 times.
+
+So the look was made to ask how the model is built, as the judge does
+(`25bba4a9`, `src/ai/fresh_eyes.gd`):
+
+- A required `stacked` answer: where the model is plain bricks and plates
+  stacked studs up that a set would build another way, and the way.
+- The question says how a set designer judges technique. A face turned on its
+  side on brackets, a part on a clip or a bar, a section at its angle on a
+  hinge, edges in curves, a detail built apart. A model all studs up reads as
+  a pile of bricks however right its shape.
+- One change at least rebuilds the stacked part that most needs it. Changes are
+  said in bricks, plates, slopes, curves, brackets, clips, bars, hinges and
+  studs.
+- The look is shown the model's measured shares beside its group's real sets
+  (on their side, at an angle, curved, plain), from 100 parts up. It is a fact,
+  never advice (`Style.shares`, `Assistant.how_built`).
+- When a change names a joint, the reply names the techniques `show_technique`
+  and `place_technique` give for it (`FreshEyes.named`).
+
+**How it ran.** Two locked snapshots, each imported first: `snapd5base` at
+`a3090df7` and `snapd5lever` at `25bba4a9`. Both ran on the owner's path
+(`--via relay --no-claude-code`, the connector's own instructions), one design
+a subject, 3 at a time, side by side, 2026-10-30 21:50Z to 2026-10-31 03:56Z.
+Baseline 40141-1 lost its relay tab partway and left no model. It was designed
+again on the same snapshot; the first is kept as `40141-1.dropped-20261030`.
+Three of the lever's subjects ran on a second runner on the same snapshot, to
+finish sooner. Every subject was designed once an arm. Neither arm hit the
+account's limit or a login. The leak audit found no tool result carrying a
+held-out set's number. Sessions took a median 19 and 17 minutes. One in each
+arm hit the 45-minute timeout, with a model.
+
+| dimension | stage225 (95%) | the look on how it is built (95%) | lever minus stage225, paired (95%) | subjects better / worse |
+|---|---|---|---|---|
+| likeness | 26% (15-41) | 27% (16-42) | +1 (-7, +9) | 6 / 4 |
+| surface | 33% (21-48) | 38% (25-52) | +5 (-8, +16) | 9 / 4 |
+| colour | 33% (21-48) | 32% (20-47) | -1 (-14, +11) | 9 / 8 |
+| technique | 10% (4-23) | 12% (6-25) | +2 (-3, +8) | 4 / 2 |
+| creativity | 44% (31-59) | 42% (29-57) | -2 (-15, +9) | 7 / 8 |
+| overall | 24% (14-38) | 27% (16-42) | +3 (-3, +10) | 6 / 3 |
+
+Head to head, both orders, the lever's design preferred to stage225's:
+likeness 50%, surface 53%, colour 56%, technique 55% (40-68%), creativity 48%,
+overall 50% (36-64%).
+
+**What the sessions heard and did** (their logs and transcripts):
+
+| | stage225 | the look on how it is built |
+|---|---|---|
+| the look asked and answered | 35 of 44 | 42 of 44, every one with `stacked` |
+| ...shown its measured shares | - | 35 (the other 7 small, 75 to 114 parts at the end) |
+| changes that name a bracket, clip, hinge, bar or a side | 13 of 105, in 10 sessions | 35 of 126, in 23 sessions |
+| told which techniques give it | - | 26 sessions |
+| `show_technique` or `place_technique` after the look | 0 | 0 |
+| parts added after the look, median (quartiles) | | 11 (5-21) |
+| built a turned or hinged section (reach) | 6 of 44 | 8 of 44 |
+| final: on their side, median | 3.9% | 5.9% (paired +1.7 points, -0.9 to +3.8) |
+| final: angle parts, median | 0% | 0% |
+| final: plain bricks and plates, median | 40% | 42% |
+
+The answers read as a designer's. On 7242-1, a street sweeper: "The hopper
+sides are long bricks stacked studs up; a set would break them with a hinged
+rear door, a side hatch or tiles on brackets."
+
+**Not ready.** The look's words moved and the build did not. Every look
+answered `stacked`, and changes naming a joint went from 12% to 28%. But the
+session then changed about 11 parts of a model of hundreds. Of the 35 shown
+their shares, the share on its side went up in 8 and down in 7 between the
+look and the end (median 5% at the look, 6% at the end). No session asked
+`show_technique` or `place_technique` after it, though 26 were told which to
+ask. Technique moved +2, inside its noise. No dimension fell beyond noise.
+What the judge says of our technique did not change either: "stacked
+bricks/plates" is in 74% of the technique verdicts lost (80% before). The
+lever is kept on its branch.
+
+At 16 subjects creativity read -28, with no subject better and 7 worse. At 44
+it is -2, with 7 better and 8 worse. An interim read on a third of the
+subjects is not a result.
+
+**Next.** A look comes after the model is built, and a session will not
+rebuild a section on its own. Of the 42 subjects whose technique we lost, the
+judge credits the set with sections set at an angle in 71%, curved parts in 62%
+and Technic construction in 57%. Our angle parts are 0 at the median in both arms. The
+next lever makes the named change happen. When the look names a stacked part
+and its joint, the app lays that technique where it says, as one undoable step
+the session keeps or takes back. Or the save after the look is measured, and
+asked again once if the named part did not change. Offers alone have gone
+unused in every round. Results: `bench/results/realset-2026-10-30-d5base/`,
+`-d5lever/`, `-d5flow/` (the three tune subjects that checked the flow) and
+`realset-2026-10-30-d5base-vs-d5lever/`.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
