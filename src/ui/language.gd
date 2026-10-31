@@ -115,9 +115,14 @@ static func apply(code: String) -> void:
 
 
 ## What [param text] is drawn as in the language in use, or "" when it has no
-## translation there (always "" in English): for a check of the words.
-static func says(text: String) -> String:
-	return _words.find(text) if _words != null else ""
+## translation there (always "" in English): for a check of the words. With
+## a [param context], only its entry in that context ("theme", "backdrop").
+static func says(text: String, context: String = "") -> String:
+	if _words == null:
+		return ""
+	if not context.is_empty():
+		return String(_words._source.get_message(text, context))
+	return _words.find(text)
 
 
 ## The words [param text]'s translation keeps in English, as a pattern's
@@ -226,11 +231,12 @@ class Words extends Translation:
 		# A word with two senses has an entry of its own for the second:
 		# "White", a render's backdrop, beside LDraw's colour of that name,
 		# which every language keeps (msgctxt "backdrop" in the file,
-		# tr("White", "backdrop") where it is drawn).
+		# tr("White", "backdrop") where it is drawn); "Train", a theme of
+		# sets, beside the interface's word. Found by that entry alone, or
+		# drawn as it is: Architecture, a theme that is a name, never takes
+		# the interface's Architektur.
 		if not String(context).is_empty():
-			var own: String = String(_source.get_message(src_message, context))
-			if not own.is_empty():
-				return StringName(own)
+			return _source.get_message(src_message, context)
 		return StringName(find(String(src_message)))
 
 	## [param text] in this language, or "" when there is no translation.

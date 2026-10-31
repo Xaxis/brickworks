@@ -8210,3 +8210,126 @@ msgstr "Sin asistente, sin Claude y sin IA en ninguna parte de la ventana. Las c
 msgctxt "backdrop"
 msgid "White"
 msgstr "Blanco"
+
+# A theme of sets that is a word, not a name (ModelLibrary.THEME_WORDS), as
+# LEGO's own sites in each language have it; every other theme, a product
+# line's or a licence's, stays as it is
+msgctxt "theme"
+msgid "Other"
+msgstr "Otros"
+
+msgctxt "theme"
+msgid "Seasonal"
+msgstr "De temporada"
+
+msgctxt "theme"
+msgid "Promotional"
+msgstr "Sets promocionales"
+
+msgctxt "theme"
+msgid "Hobby Sets"
+msgstr "Sets Hobby"
+
+msgctxt "theme"
+msgid "Modular Buildings"
+msgstr "Edificios modulares"
+
+msgctxt "theme"
+msgid "LEGO® Exclusive"
+msgstr "Sets LEGO® exclusivos"
+
+msgctxt "theme"
+msgid "Boat"
+msgstr "Barcos"
+
+msgctxt "theme"
+msgid "Train"
+msgstr "Trenes"
+
+msgctxt "theme"
+msgid "The Hobbit and Lord of the Rings"
+msgstr "El Hobbit y El Señor de los Anillos"
+
+msgctxt "theme"
+msgid "The LEGO® Movie"
+msgstr "La LEGO® película"
+
+msgctxt "theme"
+msgid "The Lord of the Rings"
+msgstr "El Señor de los Anillos"
+
+msgctxt "theme"
+msgid "Advent"
+msgstr "Adviento"
+
+msgctxt "theme"
+msgid "Christmas"
+msgstr "Navidad"
+
+msgctxt "theme"
+msgid "Thanksgiving"
+msgstr "Acción de Gracias"
+
+msgctxt "theme"
+msgid "Chinese (Lunar) New Year"
+msgstr "Año Nuevo Lunar"
+
+msgctxt "theme"
+msgid "Airlines"
+msgstr "Aerolíneas"
+
+msgctxt "theme"
+msgid "Airport"
+msgstr "Aeropuerto"
+
+msgctxt "theme"
+msgid "Building"
+msgstr "Edificios"
+
+msgctxt "theme"
+msgid "Cargo"
+msgstr "Carga"
+
+msgctxt "theme"
+msgid "Coast Guard"
+msgstr "Guardacostas"
+
+msgctxt "theme"
+msgid "Construction"
+msgstr "Construcción"
+
+msgctxt "theme"
+msgid "Farm"
+msgstr "Granja"
+
+msgctxt "theme"
+msgid "Fire"
+msgstr "Bomberos"
+
+msgctxt "theme"
+msgid "Harbor"
+msgstr "Puerto"
+
+msgctxt "theme"
+msgid "Hospital"
+msgstr "Hospital"
+
+msgctxt "theme"
+msgid "Off-Road"
+msgstr "Todoterreno"
+
+msgctxt "theme"
+msgid "Police"
+msgstr "Policía"
+
+msgctxt "theme"
+msgid "Traffic"
+msgstr "Tráfico"
+
+msgctxt "theme"
+msgid "Trains"
+msgstr "Trenes"
+
+msgctxt "theme"
+msgid "Vehicle"
+msgstr "Vehículos"

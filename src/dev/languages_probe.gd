@@ -20,6 +20,8 @@
 ##   kept out of the translation, and none keeps words of the interface in
 ##   English (Language.left_in_english) but names and keys;
 ## - Find a command finds Save by its name in the language, and by "save";
+## - the Library's themes: those that are words by their own entries
+##   (context "theme"), the product lines' and licences' names as they are;
 ## - Render's backdrop "White" reads the language's word, by its own entry
 ##   (msgctxt "backdrop"), while LDraw's colour White stays White; and a
 ##   sub-model named Car reads Car in the model tree and in a line that
@@ -513,7 +515,7 @@ const DIALOGS: Array[String] = ["sign_in", "sign_in_code", "sign_in_waiting",
 
 ## The dialogs pictured in each language (--shots).
 const PICTURED: Array[String] = ["sign_in", "sign_in_code", "clear", "save_as", "versions", "render",
-	"share", "parts_list", "about", "export_3d"]
+	"share", "parts_list", "about", "export_3d", "library"]
 
 
 func _gather_dialogs() -> void:
@@ -541,6 +543,14 @@ func _gather_dialogs() -> void:
 			var by: String = str(card["credit"]).get_slice(" · ", 0)
 			if by.begins_with("by "):
 				_names[by.trim_prefix("by ")] = true
+		if name == "library":
+			# Reached, its sets and their themes, or the run proves nothing
+			# of them (they come from the store).
+			var library: LibraryDialog = _shell.library_dialog
+			var themes: int = (library.get("_theme") as OptionButton).item_count - 1
+			_check("the Library's sets and themes reached (%d themes, %d sets shown)" % [themes,
+				(library.get("_shown") as Array).size()],
+				themes > 0 and not (library.get("_shown") as Array).is_empty())
 		var read: int = 0
 		for pair: Array in shown[1]:
 			if not _is_data(pair[0]):
@@ -885,7 +895,54 @@ func _in(code: String) -> void:
 		code, typed, ", ".join(found.slice(0, 3)), ", ".join(english.slice(0, 3))],
 		not found.is_empty() and found[0] == "save" and not english.is_empty() and english[0] == "save")
 	await _two_senses(code)
+	await _themes(code)
 	await _pictures(code)
+
+
+## The Library's themes as LEGO's own sites in each language have them:
+## those that are words (ModelLibrary.THEME_WORDS) by their entries in the
+## context "theme", in the list and in every theme the library's sets have
+## ("City > Police"); the rest, product lines' and licences' names, as they
+## are. The list pictured open.
+func _themes(code: String) -> void:
+	var shown: Array = await _show("library")
+	var library: LibraryDialog = _shell.library_dialog
+	var choice: OptionButton = library.get("_theme")
+	var lacking: Array[String] = []
+	var wrong: Array[String] = []
+	var kept: Array[String] = []
+	for n: int in range(1, choice.item_count):
+		var english: String = str(choice.get_item_metadata(n))
+		var said: String = english
+		if english in ModelLibrary.THEME_WORDS:
+			said = Language.says(english, "theme")
+			if said.is_empty():
+				lacking.append(english)
+				continue
+		else:
+			kept.append(english)
+		if choice.get_item_text(n) != said:
+			wrong.append("%s drawn \"%s\"" % [english, choice.get_item_text(n)])
+	var words: Dictionary = {}
+	for model: Dictionary in library.books.get("_models"):
+		for part: String in ModelLibrary.tidy(str(model.get("theme", ""))).split(" > "):
+			if part in ModelLibrary.THEME_WORDS:
+				words[part] = true
+	for part: String in words:
+		if Language.says(part, "theme").is_empty() and not part in lacking:
+			lacking.append(part)
+	_check("%s: the Library's %d themes, %d names kept (%s, ...) and the rest translated, " % [code,
+		choice.item_count - 1, kept.size(), ", ".join(kept.slice(0, 5))]
+		+ "with the %d words in its sets' themes%s" % [words.size(),
+		"" if lacking.is_empty() and wrong.is_empty() else "; lacking %s; %s" % [lacking, wrong]],
+		choice.item_count > 1 and lacking.is_empty() and wrong.is_empty())
+	if not _shots.is_empty():
+		choice.show_popup()
+		await _frames(8)
+		await _shot("%s_library_themes" % code)
+		choice.get_popup().hide()
+		await _frames(3)
+	await _close("library", shown[0])
 
 
 ## A word with a second sense, and a name that is a word too: Render's
@@ -908,6 +965,8 @@ func _two_senses(code: String) -> void:
 	(_main.get("_builder") as Builder).select_brick(_brick, false)
 	var made: String = _shell.assemblies.make("Car")
 	await _frames(10)
+	if not _shots.is_empty():
+		await _shot("%s_model_tree_submodel" % code)
 	var row: TreeItem = null
 	var rows: Array[String] = []
 	var top: TreeItem = (_shell.outliner.get("_tree") as Tree).get_root()

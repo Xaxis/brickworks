@@ -8210,3 +8210,126 @@ msgstr "Kein Assistent, kein Claude und keine KI irgendwo im Fenster. Verbindung
 msgctxt "backdrop"
 msgid "White"
 msgstr "Weiß"
+
+# A theme of sets that is a word, not a name (ModelLibrary.THEME_WORDS), as
+# LEGO's own sites in each language have it; every other theme, a product
+# line's or a licence's, stays as it is
+msgctxt "theme"
+msgid "Other"
+msgstr "Sonstige"
+
+msgctxt "theme"
+msgid "Seasonal"
+msgstr "Saisonales"
+
+msgctxt "theme"
+msgid "Promotional"
+msgstr "Werbesets"
+
+msgctxt "theme"
+msgid "Hobby Sets"
+msgstr "Hobby-Sets"
+
+msgctxt "theme"
+msgid "Modular Buildings"
+msgstr "Modulare Gebäude"
+
+msgctxt "theme"
+msgid "LEGO® Exclusive"
+msgstr "Exklusive LEGO® Sets"
+
+msgctxt "theme"
+msgid "Boat"
+msgstr "Boote"
+
+msgctxt "theme"
+msgid "Train"
+msgstr "Eisenbahn"
+
+msgctxt "theme"
+msgid "The Hobbit and Lord of the Rings"
+msgstr "Der Hobbit und Der Herr der Ringe"
+
+msgctxt "theme"
+msgid "The LEGO® Movie"
+msgstr "The LEGO® Movie"
+
+msgctxt "theme"
+msgid "The Lord of the Rings"
+msgstr "Der Herr der Ringe"
+
+msgctxt "theme"
+msgid "Advent"
+msgstr "Advent"
+
+msgctxt "theme"
+msgid "Christmas"
+msgstr "Weihnachten"
+
+msgctxt "theme"
+msgid "Thanksgiving"
+msgstr "Thanksgiving"
+
+msgctxt "theme"
+msgid "Chinese (Lunar) New Year"
+msgstr "Mondneujahr"
+
+msgctxt "theme"
+msgid "Airlines"
+msgstr "Fluggesellschaften"
+
+msgctxt "theme"
+msgid "Airport"
+msgstr "Flughafen"
+
+msgctxt "theme"
+msgid "Building"
+msgstr "Gebäude"
+
+msgctxt "theme"
+msgid "Cargo"
+msgstr "Fracht"
+
+msgctxt "theme"
+msgid "Coast Guard"
+msgstr "Küstenwache"
+
+msgctxt "theme"
+msgid "Construction"
+msgstr "Baustelle"
+
+msgctxt "theme"
+msgid "Farm"
+msgstr "Bauernhof"
+
+msgctxt "theme"
+msgid "Fire"
+msgstr "Feuerwehr"
+
+msgctxt "theme"
+msgid "Harbor"
+msgstr "Hafen"
+
+msgctxt "theme"
+msgid "Hospital"
+msgstr "Krankenhaus"
+
+msgctxt "theme"
+msgid "Off-Road"
+msgstr "Gelände"
+
+msgctxt "theme"
+msgid "Police"
+msgstr "Polizei"
+
+msgctxt "theme"
+msgid "Traffic"
+msgstr "Verkehr"
+
+msgctxt "theme"
+msgid "Trains"
+msgstr "Eisenbahn"
+
+msgctxt "theme"
+msgid "Vehicle"
+msgstr "Fahrzeuge"

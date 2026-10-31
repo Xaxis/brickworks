@@ -118,6 +118,13 @@ func _ready() -> void:
 	_build()
 
 
+## The themes in the language chosen now (ModelLibrary.theme_said).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and _theme != null:
+		for n: int in range(1, _theme.item_count):
+			_theme.set_item_text(n, ModelLibrary.theme_said(str(_theme.get_item_metadata(n))))
+
+
 ## Open on a shelf: "sets" or "community".
 func open(source: String = "") -> void:
 	visible = true
@@ -573,7 +580,7 @@ func _sets(ask: Dictionary) -> Dictionary:
 		return {"said": books.trouble}
 	if _theme.item_count == 1:
 		for theme: String in ModelLibrary.themes(every):
-			_theme.add_item(theme)
+			_theme.add_item(ModelLibrary.theme_said(theme))
 			_theme.set_item_metadata(_theme.item_count - 1, theme)
 			_theme.set_item_auto_translate_mode(_theme.item_count - 1, Node.AUTO_TRANSLATE_MODE_DISABLED)
 		for decade: String in ModelLibrary.decades(every):
@@ -699,8 +706,9 @@ func _card(card: Dictionary, first: bool) -> Control:
 	cover.texture = _covers.get(str(card["picture"]))
 	cover.set_meta("picture", str(card["picture"]))
 	column.add_child(cover)
-	# A set's name and its theme are names, drawn as they are in any
-	# language (Language): a set named Car stays Car.
+	# A set's name is a name, drawn as it is in any language (Language): a
+	# set named Car stays Car. Its theme's names too, and its words in the
+	# language ("City > Polizei").
 	var named: Label = _label(str(card["name"]), 13, 1.0)
 	named.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	named.tooltip_text = str(card["name"])
@@ -708,7 +716,7 @@ func _card(card: Dictionary, first: bool) -> Control:
 	column.add_child(named)
 	column.add_child(_label(str(card["facts"]), 11, 0.6))
 	if not str(card["theme"]).is_empty():
-		var theme: Label = _label(str(card["theme"]), 11, 0.5)
+		var theme: Label = _label(ModelLibrary.theme_said(str(card["theme"])), 11, 0.5)
 		theme.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 		column.add_child(theme)
 	column.add_child(_label(str(card["credit"]), 11, 0.6))
