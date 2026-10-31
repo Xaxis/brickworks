@@ -1,7 +1,65 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.10.0",
+ "latest": "0.11.0",
  "releases": [
+  {
+   "version": "0.11.0",
+   "tag": "v0.11.0",
+   "date": "2026-10-31",
+   "page": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.11.0",
+   "notes": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.11.0",
+   "summary": "A release about building by hand. A part turns about any of its own axes by rings and arrows on it, Connect puts a point on one part onto a point on another at any angle, a number typed while you move a part moves it exactly that far, and copies go down in a row or a ring at once. Split swaps a part for smaller real parts and Merge does the reverse, a set's own bin follows its booklet, and the Library opens on real sets drawn in 3D. Every tool has a key, and Studio's, Mecabricks' or LDCad's keys come as presets, so your hands already know it. Two people building together see each other's pointer and pin comments to parts, a model's build plays as a video, and Claude, or another AI on your own key, can design for you.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.11.0-linux-x86_64.AppImage",
+     "size": 575551992,
+     "sha256": "cec5579c0f68977b0af42b14f789bc8b65d1c23d5f493e2cb868c5316609dd63",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.11.0/Brickworks-0.11.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.11.0-linux-x86_64.tar.xz",
+     "size": 426061508,
+     "sha256": "8ec11e0e6cab38f5c52fe3f4dcac829eb9f613c47f82e3fe2b22f3517b189fc3",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.11.0/Brickworks-0.11.0-linux-x86_64.tar.xz",
+     "unpacked": 1489238352,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.11.0-macos-universal.zip",
+     "size": 755052219,
+     "sha256": "34be56cba2a63f84981bad411d2f457a85b81c914b82978295fe74dccc186bcf",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.11.0/Brickworks-0.11.0-macos-universal.zip",
+     "unpacked": 1585992820,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.11.0-windows-x86_64.zip",
+     "size": 733415387,
+     "sha256": "7a97c1c0bf907fc5014782d3e7dc4f46d1f9e254fca0939dba0e1d5c9acd8602",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.11.0/Brickworks-0.11.0-windows-x86_64.zip",
+     "unpacked": 1524941232,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.10.0",
    "tag": "v0.10.0",
