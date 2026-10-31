@@ -202,8 +202,12 @@ async function runCase(size, mode) {
     for (let tries = 0; tries < within / 500; tries++) {
       const shown = await controls();
       for (const name of names) if (shown[name]) return [name, shown[name]];
-      // In a laptop's window the assistant's column starts folded.
-      if (tries === 6) await openColumnFor(page, names[0]);
+      // In a laptop's window the assistant's column starts folded, and a
+      // first visit has no assistant until it is turned on. Asked again
+      // every five seconds: asked once, three seconds in, it went before the
+      // app had come up on a loaded machine, did nothing, and the assistant
+      // never showed (rel-m232 on live, 300 shown and 4242 hidden).
+      if (tries % 10 === 6) await openColumnFor(page, names[0]);
       await page.waitForTimeout(500);
     }
     await page.screenshot({ path: `${out}/${tag}_never_showed.png` }).catch(() => {});

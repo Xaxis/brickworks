@@ -171,10 +171,12 @@ const PROPERTIES = /^(prop_|properties$|outliner|sections_)/;
 /// first visit builds by hand, with no assistant at all (Settings,
 /// Assistant (AI)): a control of the assistant's turns it on first
 /// ([turnAssistantOn]), which opens its column. A flow's wait for a control
-/// calls this while the control has not shown. Does nothing on a build that
-/// does not say which columns are open (brickworksState.columns, from
-/// 2026-10-12), or when the control's column is open already, so it is safe
-/// to call again. True when it clicked.
+/// calls this again and again while the control has not shown, not once: it
+/// does nothing before the app has come up, which on a loaded machine is
+/// many seconds after the page (arrival_check asked once, 3 s in, 2026-10-31).
+/// Does nothing on a build that does not say which columns are open
+/// (brickworksState.columns, from 2026-10-12), or when the control's column
+/// is open already, so it is safe to call again. True when it clicked.
 export async function openColumnFor(page, name) {
   const everything = await page.evaluate(() => window.brickworksState || {});
   const state = everything.columns || null;
