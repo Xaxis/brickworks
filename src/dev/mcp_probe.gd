@@ -14,6 +14,7 @@ extends SceneTree
 
 var _failures: int = 0
 var _world: BrickWorld
+var _store: ModelStore
 var _socket: CommandSocket
 var _client := StreamPeerTCP.new()
 var _next_id: int = 0
@@ -41,6 +42,7 @@ func _run() -> void:
 	var builder: Builder = main.get("_builder")
 	builder.lattice.clear()
 	var store: ModelStore = main.get("_store")
+	_store = store
 	store.scenery.clear()
 	assistant.forget_built()
 	await process_frame
@@ -139,7 +141,9 @@ func _run() -> void:
 
 	# And a design, which has to land on the baseplate — the step the
 	# design loop does after submit_design and nothing else would.
-	var before: int = _world.brick_count()
+	# The model's own bricks: the design is laid on a baseplate, which the
+	# world holds as scenery (ModelStore.scenery) and is not the design's.
+	var before: int = _world.brick_count() - _store.scenery.size()
 	var built: Dictionary = await _ask("submit_design", {
 		"bricks": [
 			{"part": "3001", "color": 4, "x": 0, "y": 0, "z": 0, "rot": 0},
@@ -151,9 +155,8 @@ func _run() -> void:
 	var said: String = _text_of(built)
 	_check("...and says it was built: %s" % said.substr(0, 60),
 		said.begins_with("Built."))
-	_check("...and the bricks are in the world, %d more"
-		% (_world.brick_count() - before),
-		_world.brick_count() - before == 3)
+	var after: int = _world.brick_count() - _store.scenery.size()
+	_check("...and the bricks are in the world, %d more" % (after - before), after - before == 3)
 
 	# Built from outside, a design has no loop to look it over, so the
 	# answer carries what the check measured and the way on: review_model,
