@@ -243,6 +243,11 @@ func setup(with: ClaudeConnector) -> void:
 	use.focus_mode = Control.FOCUS_NONE
 	use.pressed.connect(_adopt)
 	_reuse_box.add_child(use)
+	# Each way opens under the row of their links, where the person just
+	# clicked: below Claude's part of the panel, Claude Code's "Copied" was
+	# off the foot of a laptop's panel (connect3, 2026-10-31).
+	for box: VBoxContainer in [_private_box, _desktop_box, _code_box]:
+		move_child(box, _ways.get_index() + 1)
 
 	_copied = _line("Copied.", 11, 0.7)
 	_copied.visible = false
@@ -349,6 +354,18 @@ func _open_only(box: VBoxContainer) -> void:
 	for one: VBoxContainer in [_guide, _code_box, _desktop_box, _private_box]:
 		one.visible = opening and one == box
 	_settle()
+	if opening:
+		_into_view(box)
+
+
+## [param box] scrolled into the panel's view once it is laid out.
+func _into_view(box: Control) -> void:
+	await get_tree().process_frame
+	var up: Node = get_parent()
+	while up != null and not up is ScrollContainer:
+		up = up.get_parent()
+	if up != null and box.is_visible_in_tree():
+		(up as ScrollContainer).ensure_control_visible(box)
 
 
 ## The state line for where things stand, when nothing newer has said it.

@@ -138,7 +138,8 @@ func _run() -> void:
 		"one click puts the command on the clipboard: %s" % DisplayServer.clipboard_get())
 	_check(said.is_visible_in_tree() and said.text.begins_with("Copied. Run it in a terminal, then type /mcp")
 			and _on_screen(said),
-		"...and says so under the link, with what next: %s" % said.text)
+		"...and says so under the link, with what next, in view (%s in %s): %s"
+			% [said.get_global_rect(), _seen(said), said.text])
 	await _shot("5_claude_code", said)
 
 	connector.stop()
@@ -156,16 +157,22 @@ func _last() -> String:
 func _click(control: Control) -> void:
 	_into_view(control)
 	await _frames(4)
-	var at: Vector2 = control.get_global_rect().get_center()
+	# In the window's pixels, through Input as the system's events come.
+	var at: Vector2 = control.get_global_rect().get_center() \
+		* (Vector2(DisplayServer.window_get_size()) / root.get_visible_rect().size)
 	var motion := InputEventMouseMotion.new()
 	motion.position = at
-	root.push_input(motion)
+	motion.global_position = at
+	Input.parse_input_event(motion)
+	await _frames(3)
 	for pressed: bool in [true, false]:
 		var click := InputEventMouseButton.new()
 		click.button_index = MOUSE_BUTTON_LEFT
+		click.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
 		click.pressed = pressed
 		click.position = at
-		root.push_input(click)
+		click.global_position = at
+		Input.parse_input_event(click)
 		await _frames(2)
 	await _frames(4)
 
@@ -178,8 +185,19 @@ func _into_view(control: Control) -> void:
 		(up as ScrollContainer).ensure_control_visible(control)
 
 
+## Whole in the window, and in the panel's view where the panel scrolls.
 func _on_screen(control: Control) -> bool:
-	return Rect2(Vector2.ZERO, Vector2(root.size)).encloses(control.get_global_rect())
+	return _seen(control).grow(1.0).encloses(control.get_global_rect())
+
+
+func _seen(control: Control) -> Rect2:
+	var seen: Rect2 = root.get_visible_rect()
+	var up: Node = control.get_parent()
+	while up != null:
+		if up is ScrollContainer:
+			seen = seen.intersection((up as ScrollContainer).get_global_rect())
+		up = up.get_parent()
+	return seen
 
 
 func _shot(named: String, near: Control) -> void:
