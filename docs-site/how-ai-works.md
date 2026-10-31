@@ -35,7 +35,7 @@ Brickworks hands the AI what a set designer knows:
 - **Worked constructions**: hinged panels, SNOT walls, shells of hinged plates turned any way.
 - **Figures on joints**: people, animals and heads laid on joints that turn and hold.
 - **Its own best work**: the best-scored earlier design of the nearest subject, and what was faulted in it.
-- **A surface pass** that settles studs, tiles and greebles once the shape stands.
+- **A surface pass** that settles studs, tiles, greebles and flat expanses of one colour once the shape stands.
 
 <!-- covers
 lib:shapes said as patterns

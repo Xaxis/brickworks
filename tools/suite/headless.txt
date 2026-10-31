@@ -147,6 +147,7 @@ snippets
 standing
 subject_words
 surface
+colour_faces
 unrestored
 update
 viewer_tools
