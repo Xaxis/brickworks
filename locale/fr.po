@@ -4733,9 +4733,6 @@ msgstr "%s, connecté %s"
 msgid "%s, connected %s, last used %s"
 msgstr "%s, connecté %s, dernière utilisation %s"
 
-msgid "Not connected now. Connect Claude takes you to the Brickworks you already have in Claude, to connect it again."
-msgstr "Non connecté pour l'instant. « Connecter Claude » vous mène au Brickworks que vous avez déjà dans Claude, pour le reconnecter."
-
 msgid "Not connected. Connect Claude once and it can build in any Brickworks tab you have open, on your Claude plan."
 msgstr "Non connecté. Connectez Claude une fois et il pourra construire dans n'importe quel onglet Brickworks ouvert, avec votre abonnement Claude."
 
