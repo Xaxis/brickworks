@@ -189,7 +189,7 @@ class Yard:
         self.env = env
         self.git(where, "init", "-q", "--bare", "--initial-branch=main", str(where / "origin.git"))
         self.git(where, "init", "-q", "--initial-branch=main", str(self.r))
-        for name in ("train.sh", "retire_wt.sh", "ship.sh", "preview_lib.sh"):
+        for name in ("train.sh", "retire_wt.sh", "ship.sh", "preview_lib.sh", "deploy_reads.sh"):
             self.put("tools/release/" + name, (ROOT / "tools" / "release" / name).read_text())
         for name, text in STUBS.items():
             self.put(name, text)
