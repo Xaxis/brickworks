@@ -59,6 +59,7 @@ const LOOKS: Dictionary = {
 	"co": [Color8(255, 243, 200), Color8(52, 57, 63), 0.4, 2.6],
 	"frame": [Color8(255, 248, 222), Color8(52, 57, 63), 0.5, 3.5],
 	"ban": [Color8(35, 82, 124), Color(0, 0, 0, 0), 0.0, 2.0],
+	"one": [Color8(255, 255, 255), Color8(61, 111, 151), 0.35, 1.6],
 }
 
 ## Helvetica's widths, and Helvetica Bold's, for " " to "~", in thousandths

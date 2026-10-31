@@ -505,6 +505,14 @@
       "tests": []
     },
     {
+      "id": "cli:booklet3 probe",
+      "kind": "cli",
+      "entry": "src/dev/booklet3_probe.gd",
+      "reach": "tools/probe.sh booklet3 -- --into=DIR   (windowed, on the GPU: edit_booklet's extras and the Booklet page rows, the axle 4's 1:1 guide measured at 32.0 mm on the 300 dpi PNG page and the PDF, the pulled-out axle and its arrow, the colour guide, the pod's preview; DIR keeps the booklet, its PDF and every page as PNG; --before writes the booklet with nothing set)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:browser check",
       "kind": "cli",
       "entry": "tools/web/check.mjs",
@@ -5096,6 +5104,14 @@
       "kind": "ui",
       "entry": "src/ui/page_editor.gd",
       "reach": "gpu env MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x800 --script src/dev/booklet_edit_probe.gd -- --into=DIR   (by hand: B, the Booklet row's Lay out page\u2026 or Build, Booklet page, Lay out the page\u2026: drag a picture, parts list, callout or number, its corner to size it, Add words, Add a picture\u2026, Draw an arrow and drag, its middle to bend it, Arrow colour, Arrow width, the turn sign selected and Delete, a callout's own pages by Previous or Next page; Outline new on the row)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:the booklet's Studio extras",
+      "kind": "ui",
+      "entry": "src/render/booklet_maker.gd",
+      "reach": "godot --path .  (B opens the timeline; on a step, Build, Booklet page: Pull out the selected parts, Colour guide, 1:1 guide, Sub-model preview; then Instructions; a straight Technic axle's or beam's first step gets its 1:1 guide unasked; edit_booklet pull=, colours=, colours_all=, actual_size=, preview= over MCP)",
       "area": "view",
       "tests": []
     },

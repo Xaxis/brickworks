@@ -189,7 +189,8 @@ const SUBMENUS: Dictionary = {
 		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
 		"booklet_zoom_out", "booklet_bigger", "booklet_smaller", "-", "booklet_new_page",
 		"booklet_alone", "booklet_parts", "booklet_callout", "booklet_per_page", "-",
-		"booklet_lay_out", "booklet_highlight"],
+		"booklet_lay_out", "booklet_highlight",
+		"-", "booklet_pull", "booklet_colours", "booklet_actual_size", "booklet_preview"],
 	"floor": ["floor_16", "floor_32", "floor_48", "floor_custom", ">floor_colour", "-",
 		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
 	"floor_colour": ["floor_colour_2", "floor_colour_10", "floor_colour_288",
@@ -1143,6 +1144,19 @@ func _define() -> void:
 			["booklet_highlight", "Outline new parts", "The parts each step adds outlined in orange in the booklet, or not"]]:
 		var op: String = str(look[0]).trim_prefix("booklet_")
 		_add(look[0], look[1], 0, func() -> void: edit_look(op), on_a_step, look[2])
+	# Studio's booklet extras on the step the timeline is on (booklet3).
+	for extra: Array in [
+			["booklet_pull", "Pull out the selected parts", "The selected parts of this step (all of them, none selected) drawn pulled out along the way they go in, with an arrow in; again puts them back"],
+			["booklet_colours", "Colour guide", "This step's colours listed under its number, or not"],
+			["booklet_actual_size", "1:1 guide", "The selected parts of this step drawn at their real size, or no 1:1 guide where the booklet gives one; again as the booklet does it"],
+			["booklet_preview", "Sub-model preview", "The sub-assembly this step puts on shown finished on the first of its own pages, or not"]]:
+		var extra_op: String = str(extra[0]).trim_prefix("booklet_")
+		_add(extra[0], extra[1], 0, func() -> void:
+			var at: Instructions.Step = (app.get("_steps") as StepsBar).booklet_step()
+			bar.say(change_look("set", at, BookletLooks.extra_fields(world, at, extra_op,
+				builder.selection.keys().map(func(id: int) -> String:
+					return world.get_brick(id).part_id if world.get_brick(id) != null else "")))),
+			on_a_step, extra[2])
 	# src/ui/flex_tool.gd.
 	_add("flex", "Hose, tube or chain…", 0, func() -> void: app.call("open_flex"), Callable(),
 		"Lay a hose, a tube, a string or a chain from one connector to another, along a curve")
@@ -2481,6 +2495,11 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 					{"per_page": fields["per_page"]}))
 				fields = fields.duplicate()
 				fields.erase("per_page")
+			if fields.has("colours_all"):
+				undo.append_array(BookletLooks.change(world, BookletLooks.BOOKLET,
+					{"colours_all": fields["colours_all"]}))
+				fields = fields.duplicate()
+				fields.erase("colours_all")
 			change = fields
 			words = "set how step %d is printed" % number
 		"turn_left", "turn_right":
