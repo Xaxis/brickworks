@@ -102,6 +102,25 @@ static func available() -> bool:
 	return _can
 
 
+## Why Best is not path traced here, in plain words for the person asking.
+static func why_not() -> String:
+	if available():
+		return ""
+	if OS.has_feature("web"):
+		return "Path tracing needs the desktop app: a browser cannot trace rays."
+	if RenderingServer.get_current_rendering_method() == "gl_compatibility":
+		return "Path tracing needs the desktop app's full renderer."
+	return "Path tracing needs a graphics card that traces rays, and this one does not."
+
+
+## A card that said it traces rays and then would not: said once, and
+## Best is frames averaged from then on.
+static func _refused(what: String) -> bool:
+	push_error("path tracer: " + what)
+	_can = false
+	return false
+
+
 ## The pipeline, the first time it is wanted. False when the card refused.
 func _make() -> bool:
 	if _pipeline.is_valid():
@@ -112,14 +131,12 @@ func _make() -> bool:
 	var file: RDShaderFile = load("res://src/render/path_tracer.glsl") as RDShaderFile
 	var resolve_file: RDShaderFile = load("res://src/render/path_tracer_resolve.glsl") as RDShaderFile
 	if file == null or resolve_file == null:
-		push_error("path tracer: its shaders did not load")
-		return false
+		return _refused("its shaders did not load")
 	var spirv: RDShaderSPIRV = file.get_spirv()
 	for stage: String in ["raygen", "miss", "closest_hit"]:
 		var error: String = spirv.get("compile_error_" + stage)
 		if not error.is_empty():
-			push_error("path tracer: %s: %s" % [stage, error])
-			return false
+			return _refused("%s: %s" % [stage, error])
 	_shader = _rd.shader_create_from_spirv(spirv, "Path tracer")
 	var raygen := RDPipelineShader.new()
 	raygen.shader = _shader
@@ -131,15 +148,13 @@ func _make() -> bool:
 	group.closest_hit_shader = closest
 	_pipeline = _rd.raytracing_pipeline_create([raygen], [miss], [group], 1)
 	if not _pipeline.is_valid():
-		push_error("path tracer: the card refused the pipeline")
-		return false
+		return _refused("the card refused the pipeline")
 	_sbt = _rd.hit_sbt_create(_pipeline, 1)
 	_range = _rd.hit_sbt_range_alloc(_sbt, 1)
 	_rd.hit_sbt_range_update(_sbt, _range, 0, PackedInt32Array([0]))
 	var resolve_spirv: RDShaderSPIRV = resolve_file.get_spirv()
 	if not resolve_spirv.compile_error_compute.is_empty():
-		push_error("path tracer: resolve: %s" % resolve_spirv.compile_error_compute)
-		return false
+		return _refused("resolve: %s" % resolve_spirv.compile_error_compute)
 	_resolve_shader = _rd.shader_create_from_spirv(resolve_spirv, "Path tracer resolve")
 	_resolve_pipeline = _rd.compute_pipeline_create(_resolve_shader)
 	var sampler := RDSamplerState.new()

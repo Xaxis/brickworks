@@ -121,7 +121,7 @@ const ALT := KEY_MASK_ALT
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", "collection", "collection_build", ">recent",
 		">import", "-", "save", "save_as", "versions", "compare", "-", "share", "together",
-		"comments", ">export", "render", "-", "clear", "quit"]],
+		"comments", ">export", "render", "render_queue", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
@@ -970,6 +970,11 @@ func _define() -> void:
 		something)
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
 		"A photo-real picture or turntable of the model, on a backdrop, in studio light")
+	# src/ui/render_queue.gd, loaded the first time it is asked for.
+	_add("render_queue", "Render queue…", 0, func() -> void:
+		(load("res://src/ui/render_queue.gd") as GDScript).call("of", app).call("open"),
+		something, "Pictures lined up with Render's settings and drawn one after another "
+			+ "while you go on building")
 	# src/ui/pose_panel.gd.
 	_add("pose", "Motions…", 0, func() -> void: app.call("open_pose"), something,
 		"The model's own movements, Open the doors or Lift the boom: played, recorded by dragging the parts, and rendered")

@@ -1212,21 +1212,27 @@ func aim(settings: RenderSettings, bounds: AABB, turning: bool = false,
 	# Perspective is a frustum shifted to the model's column (CadCamera);
 	# the picture is centred on what the view looks at either way. Framed on
 	# what moves, the window's view gives its direction and the frame is fitted.
-	if view == "current" and eye != null and eye.projection != Camera3D.PROJECTION_ORTHOGONAL \
-			and not settings.on_what_moves:
-		var from: Transform3D = eye.global_transform
+	# The window's view as it was when the render was asked for (RenderQueue),
+	# or as it is.
+	var kept: bool = settings.eye_fov > 0.0
+	var seen: bool = kept or eye != null
+	var from: Transform3D = settings.eye_transform if kept \
+		else (eye.global_transform if eye != null else Transform3D())
+	if view == "current" and seen and not settings.on_what_moves and not (
+			settings.eye_orthogonal if kept else eye.projection == Camera3D.PROJECTION_ORTHOGONAL):
 		var forward: Vector3 = -from.basis.z.normalized()
-		var focus: Vector3 = eye.call("focus_now") if eye.has_method("focus_now") \
-			else frame.get_center()
+		var focus: Vector3 = settings.eye_focus if kept else (eye.call("focus_now")
+			if eye.has_method("focus_now") else frame.get_center())
 		var depth: float = maxf((focus - from.origin).dot(forward), 1.0)
 		# The point looked at stays the size it is, through the new lens.
-		var scale: float = tan(deg_to_rad(eye.fov) * 0.5) / tan(deg_to_rad(shot.fov) * 0.5)
+		var scale: float = tan(deg_to_rad(settings.eye_fov if kept else eye.fov) * 0.5) \
+			/ tan(deg_to_rad(shot.fov) * 0.5)
 		shot.basis = from.basis.orthonormalized()
 		shot.origin = from.origin + forward * depth * (1.0 - scale)
 	else:
 		var direction: Vector3 = Vector3(VIEWS["hero"][1])
-		if view == "current" and eye != null:
-			direction = eye.global_transform.basis.z
+		if view == "current" and seen:
+			direction = from.basis.z
 		elif view != "current":
 			direction = Vector3(VIEWS[view][1])
 		shot.basis = _looking_from(direction.normalized())
@@ -1527,7 +1533,9 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	_aim_light(_sky_light, Vector3.UP)
 	_sky_light.light_color = Color(0.9, 0.9, 0.92)
 	_sky_light.light_energy = BrickWorld.light_energy(ambient_forward * SKY_SHARE, true)
-	if full and settings.quality != RenderSettings.Quality.QUICK:
+	# Not for a path-traced picture, which draws none of it, and goes on
+	# beside a window still in use (RenderQueue).
+	if full and settings.quality != RenderSettings.Quality.QUICK and not plan.traced:
 		_shadow_atlas(8192)
 		# The finest occlusion and soft shadows there are, at full size: the
 		# engine's defaults are made for a game's frame, half-size occlusion
@@ -1842,7 +1850,7 @@ func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
 	_stopping = false
 	while _tracer.samples < wanted:
 		var count: int = mini(per_pass, wanted - _tracer.samples)
-		_tracer.trace(count, 7919 * _tracer.samples)
+		_tracer.trace(count, 7919 * _tracer.samples + 104729 * settings.seed)
 		_doing("tracing %d samples" % count)
 		await get_tree().process_frame
 		if _cancelled:
@@ -2167,6 +2175,9 @@ static func _r2(n: int, stream: int) -> Vector2:
 ## (IdleDraw, low-processor mode), and a render's steps that change
 ## nothing the engine can see would wait for a frame that never comes.
 func _quicken() -> void:
+	_quick_count += 1
+	if _quick_count > 1:
+		return
 	_was_low_processor = OS.low_processor_usage_mode
 	OS.low_processor_usage_mode = false
 	if OS.has_feature("web") or DisplayServer.get_name() == "headless":
@@ -2180,6 +2191,9 @@ func _quicken() -> void:
 
 
 func _settle() -> void:
+	_quick_count = maxi(_quick_count - 1, 0)
+	if _quick_count > 0:
+		return
 	_shadow_atlas(_project_atlas())
 	OS.low_processor_usage_mode = _was_low_processor
 	if full_renderer():
@@ -2203,7 +2217,11 @@ func _settle() -> void:
 	Engine.max_fps = _was_max_fps
 
 
-var _was_low_processor: bool = false
-var _quickened: bool = false
-var _was_vsync: int = DisplayServer.VSYNC_ENABLED
-var _was_max_fps: int = 0
+## Renders going at once, File, Render…'s and the queue's (RenderQueue):
+## the window is put back as it was when the last of them ends, not as the
+## other found it.
+static var _quick_count: int = 0
+static var _was_low_processor: bool = false
+static var _quickened: bool = false
+static var _was_vsync: int = DisplayServer.VSYNC_ENABLED
+static var _was_max_fps: int = 0

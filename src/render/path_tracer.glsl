@@ -610,9 +610,15 @@ void main() {
 			if (straight && thing.info.y != KIND_SWEEP) {
 				covered = 1.0;
 			}
-			straight = false;
 			Surface s = surface_of(thing, at, hit.local);
-			radiance += carried * s.emission;
+			// The sweep is lifted to white for the eye alone, as the window
+			// lifts it (StudioRender meters its level): lighting the model
+			// too, the model was metered darker, the sweep lifted again, and
+			// its white bounce washed the plastic's colours out.
+			if (straight || thing.info.y != KIND_SWEEP) {
+				radiance += carried * s.emission;
+			}
+			straight = false;
 			from = at + ng * 0.02;
 			radiance += carried * direct(s, from, n, v);
 			if (bounces >= most) {
