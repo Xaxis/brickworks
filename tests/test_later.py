@@ -196,3 +196,22 @@ def test_the_bins_count_of_techniques_is_theirs():
     said = int(re.search(r"^const TECHNIQUES_COUNT := (\d+)$", bin_, re.M)[1])
     assert said == count, (f"there are {count} techniques, and the parts bin says {said}: "
                            f"set PartsBin.TECHNIQUES_COUNT to {count}")
+
+
+def test_a_features_first_run_names_its_class_and_member():
+    """Shell.FIRST_USE says a command's first run first, as a slow one is,
+    while its feature is not loaded or made: each class is one Later loads,
+    and each member one main.gd makes on first use (its _made)."""
+    shell = (SRC / "ui" / "shell.gd").read_text()
+    table = shell[shell.index("const FIRST_USE: Dictionary = {"):]
+    table = table[:table.index("\n}")]
+    rows = re.findall(r'"(\w+)": \[&"(\w+)", "(\w*)"\]', table)
+    assert len(rows) >= 15
+    later = _later()
+    main = (SRC / "main.gd").read_text()
+    commands = set(re.findall(r'_add\("(\w+)"', shell))
+    for command, name, member in rows:
+        assert command in commands, f"FIRST_USE names {command}, which is no command"
+        assert name in later, f"FIRST_USE[{command}] is {name}, which Later does not load"
+        assert not member or re.search(rf"^var {member}_made\b", main, re.M), \
+            f"FIRST_USE[{command}] is {member}, which main.gd does not make on first use"

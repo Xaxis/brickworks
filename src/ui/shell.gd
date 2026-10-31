@@ -597,7 +597,39 @@ func attend(name: String, work: Callable) -> void:
 	# asked: said first, Instructions waited for its busy line to be drawn,
 	# and on a slow phone the tap's leave to open the booklet's tab had gone.
 	var tab: bool = name in OPENS_A_TAB and OS.has_feature("web")
-	Working.attend(name, doing(name), work, name in IN_THE_PRESS or asks or tab, slow, size)
+	var first: bool = _makes_its_feature(name)
+	Working.attend(name, doing(name), work, name in IN_THE_PRESS or asks or tab, slow or first,
+		size, first)
+
+
+## The commands that load their feature the first time they run (Later):
+## its class, and the app's member that holds it when one does. That first
+## run compiles it and builds it, which held Render's frame 400 ms on
+## Orthanc unsaid and Simulate's 254 (command_probe, 2026-10-31), and a
+## browser compiles several times slower: so it is said first.
+const FIRST_USE: Dictionary = {
+	"render": [&"RenderDialog", "_render"], "pose": [&"PosePanel", "_pose"],
+	"share": [&"SharePanel", "_share_panel"], "simulate": [&"SimulatePanel", "_simulate"],
+	"hidden_colours": [&"HiddenColoursPanel", "_hidden_colours"],
+	"printed_versions": [&"PrintStudio", "_studio"], "print_part": [&"PrintStudio", "_studio"],
+	"sticker": [&"PrintStudio", "_studio"], "part_maker": [&"ElementDialog", "_elements"],
+	"parts_list": [&"InventoryPanel", "_inventory"], "minifig": [&"MinifigDialog", "_figures"],
+	"settings": [&"ControlsDialog", "_controls"], "keys": [&"ControlsDialog", "_controls"],
+	"ask_claude": [&"Assistant", "_assistant"], "brace": [&"Assistant", "_assistant"],
+	"panel_assistant": [&"ChatPanel", "_chat"], "connector": [&"ChatPanel", "_chat"],
+	"instructions": [&"BookletMaker", ""], "together": [&"TogetherDialog", ""],
+	"comments": [&"PinsDialog", ""],
+}
+
+
+## Whether running [param name] now loads or makes its feature (FIRST_USE).
+func _makes_its_feature(name: String) -> bool:
+	var first: Array = FIRST_USE.get(name, [])
+	if first.is_empty():
+		return false
+	var member: String = first[1]
+	return not Later.loaded(first[0]) or (not member.is_empty() and app != null
+		and (member + "_made") in app and app.get(member + "_made") == null)
 
 
 ## How much a command has to do: the selection, for one that changes the
