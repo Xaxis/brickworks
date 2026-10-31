@@ -13,6 +13,57 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-10-31
+
+A release about pictures, booklets and your own language. On a graphics card
+that traces rays, Best now follows the light bounce by bounce over your
+model's own parts, so shadows soften as they should and light comes off the
+floor and between the parts, and the car at 720p is clean in a few seconds.
+A render queue draws picture after picture while you go on building. A
+printed booklet can show an axle or a beam at its real size to lay on the
+page, a part pulled out with an arrow back in, the step's colours, and a
+sub-model finished before you build it. The whole app reads in German,
+French or Spanish, chosen in Settings, and on a 10,000-part model Check
+stability answers in about a second and Suggest sections in about five.
+
+### Added
+
+- Best is path traced on a graphics card with ray tracing: soft shadows,
+  light bounced off the floor and between the parts, and glass that tints
+  what is behind it, cleaner with every sample (Best's frames, 256 when you
+  leave it). Where the card cannot trace rays, Best is frames averaged as
+  before, and Render's Quality note says so.
+- File, Render queue…: queue the model and the view as they are now, change
+  either and queue another, and each is drawn in turn and saved where
+  Render saves while you work. Finish now keeps a path-traced picture as
+  clean as it is so far. Claude can use the same queue.
+- Booklets: the first step to use a straight Technic axle or beam shows it
+  at its real size, with its length in studs, true at 100% in the PDF and
+  the PNG pages. Build, Booklet page adds per step a part pulled out with a
+  red arrow back in, a colour guide, a 1:1 guide for the parts you choose,
+  and a sub-model's preview, each one Undo and saved with the model. Claude
+  can set each with edit_booklet.
+- Settings, Language: English, Deutsch, Français or Español, for the
+  menus, tooltips, panels, the keys sheet and the first build. Parts and
+  colours keep their names. Find a command takes a command's words in the
+  language you chose as well as in English.
+
+### Changed
+
+- Check stability on a 10,000-part model answers in about a second, where
+  it took eight: it shows the weighing the status bar has already done.
+- Suggest sections on a 10,000-part model takes about five seconds, half
+  what it did, with the same sections, and a big model's build steps are
+  worked out sooner.
+- Colour the hidden parts on a big model no longer stops to follow the
+  build steps first.
+- Claude doing CAD work for you over the connector gets a CAD answer when
+  it places a few parts: each part's span and what holds it, with no
+  design method and no fresh look. A part refused for floating says where
+  it would stand. attachment_points answers several parts in one call, and
+  in_view says the colour, face and turn of the part in your hand and the
+  span its ghost takes.
+
 ## [0.11.0] - 2026-10-31
 
 A release about building by hand. A part turns about any of its own axes by
