@@ -1,5 +1,6 @@
-## File, Render…: a picture of the model worth keeping, a turntable, or an
-## animation of one of its motions (docs/MOTIONS.md, "Render").
+## File, Render…: a picture of the model worth keeping, a turntable, an
+## animation of one of its motions (docs/MOTIONS.md, "Render"), or the model
+## built up step by step (BuildRender).
 ##
 ## Studio's Eyesight asks for a quality, a size and a background and then
 ## shows nothing until it has finished; Mecabricks sends the model to a
@@ -20,6 +21,13 @@
 ## quality, size, light and lens chosen for a picture: the camera as the
 ## picture is ("As I see it") or fitted to what the parts sweep through
 ## the whole motion ("Framed on what moves").
+##
+## Building is the timeline's steps, each step's parts coming down into
+## place, the camera turning slowly round, over 10 to 60 seconds: Studio's
+## building animation. Return renders what the choices last touched were
+## for, the button drawn strong: a picture until a turntable's frames, a
+## motion or a building's length is chosen, so Render, a length and Return
+## is a building video.
 class_name RenderDialog
 extends PanelContainer
 
@@ -89,9 +97,12 @@ var _frames_note: Label
 var _motion: OptionButton
 var _cameras: Array[Button] = []
 var _animation_note: Label
+var _lengths: Array[Button] = []
+var _building_note: Label
 var _picture_button: Button
 var _turntable_button: Button
 var _animation_button: Button
+var _building_button: Button
 var _cancel_button: Button
 var _again_button: Button
 var _close_button: Button
@@ -99,6 +110,17 @@ var _close_button: Button
 var _background: int = 0
 ## Animation's camera: fitted to what the parts sweep (RenderSettings.on_what_moves).
 var _on_what_moves: bool = false
+## Building's length, in seconds.
+var _build_seconds: int = 20
+## What Return renders: the kind whose choices were touched last.
+var _default: String = "picture"
+## The steps being worked out for a building, until they are: Cancel stops it.
+var _planning: Working.Job = null
+## How many of a building's frames the panel plays back when it is done, at
+## most, and how fast: its 480 frames at the panel's size would be gigabytes.
+const LOOP_MOST := 48
+const LOOP_FPS := 12
+var _loop_fps: int = 24
 var _preview_due: int = -1
 var _working: String = ""
 var _last: Dictionary = {}
@@ -260,7 +282,7 @@ func close() -> void:
 
 
 func is_rendering() -> bool:
-	return _working == "picture" or _working == "turntable" or _working == "animation"
+	return _working in ["picture", "turntable", "animation", "building"]
 
 
 ## Where the render being drawn goes, while it is.
@@ -296,9 +318,16 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
-func _unhandled_key_input(_event: InputEvent) -> void:
-	if visible:
-		get_viewport().set_input_as_handled()
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not visible:
+		return
+	get_viewport().set_input_as_handled()
+	# Return after the controls have had it: a size typed into Custom's
+	# fields is theirs.
+	var key := event as InputEventKey
+	if key != null and key.pressed and not key.echo and key.keycode in [KEY_ENTER, KEY_KP_ENTER] \
+			and not is_rendering():
+		_start(_default)
 
 
 func _process(delta: float) -> void:
@@ -314,7 +343,7 @@ func _process(delta: float) -> void:
 		_draft()
 	if not _loop.is_empty() and _working.is_empty():
 		_loop_at += delta
-		var frame: int = int(_loop_at * float(settings.fps)) % _loop.size()
+		var frame: int = int(_loop_at * float(_loop_fps)) % _loop.size()
 		_preview.texture = _loop[frame]
 	_tell_page()
 
@@ -403,6 +432,8 @@ func _build() -> void:
 		"Turn the model round once and keep every frame as an animation")
 	_animation_button = _button(actions, "Render animation", func() -> void: _start("animation"),
 		"Play the motion chosen under Animation and keep every frame")
+	_building_button = _button(actions, "Render building", func() -> void: _start("building"),
+		"The model built up step by step, as the timeline builds it, kept as a video")
 	_cancel_button = _button(actions, "Cancel", _cancel, "Stop rendering (Escape)")
 	_cancel_button.visible = false
 	_again_button = _button(actions, "Download again", _again, "")
@@ -547,21 +578,36 @@ func _build() -> void:
 		frame_names.append("%d" % count)
 	_frames = _segments(right, frame_names, 1, func(n: int) -> void:
 		settings.frames = int(FRAMES[n])
+		_make_default("turntable")
 		_describe())
 	_frames_note = _note(right)
 
 	_heading(right, "Animation")
 	_motion = OptionButton.new()
 	_motion.add_theme_font_size_override("font_size", 12)
-	_motion.item_selected.connect(func(_index: int) -> void: _describe())
+	_motion.item_selected.connect(func(_index: int) -> void:
+		_make_default("animation")
+		_describe())
 	right.add_child(_motion)
 	var camera_names: Array = []
 	for choice: Array in CAMERAS:
 		camera_names.append(choice[0])
 	_cameras = _segments(right, camera_names, 0, func(n: int) -> void:
 		_on_what_moves = bool(CAMERAS[n][1])
+		_make_default("animation")
 		_describe())
 	_animation_note = _note(right)
+
+	_heading(right, "Building")
+	var length_names: Array = []
+	for seconds: int in BuildRender.LENGTHS:
+		length_names.append("%d s" % seconds)
+	_lengths = _segments(right, length_names, BuildRender.LENGTHS.find(_build_seconds),
+		func(n: int) -> void:
+			_build_seconds = BuildRender.LENGTHS[n]
+			_make_default("building")
+			_describe())
+	_building_note = _note(right)
 
 
 static func _platform_samples() -> int:
@@ -592,25 +638,46 @@ func _button(into: Control, words: String, action: Callable, tip: String,
 	button.text = words
 	button.tooltip_text = tip
 	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_size_override("font_size", 13 if strong else 12)
 	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	if strong:
-		var face := StyleBoxFlat.new()
-		face.bg_color = Look.STRONG
-		face.set_corner_radius_all(4)
-		face.content_margin_left = 12
-		face.content_margin_right = 12
-		face.content_margin_top = 5
-		face.content_margin_bottom = 5
-		button.add_theme_stylebox_override("normal", face)
-		var hover: StyleBoxFlat = face.duplicate()
-		hover.bg_color = Look.STRONG_HOVER
-		button.add_theme_stylebox_override("hover", hover)
-		for item: String in ["font_color", "font_hover_color", "font_pressed_color"]:
-			button.add_theme_color_override(item, Color(1, 1, 1))
+	_strong(button, strong)
 	button.pressed.connect(action)
 	into.add_child(button)
 	return button
+
+
+## [param button] drawn as the one Return presses, or as the others.
+static func _strong(button: Button, strong: bool) -> void:
+	button.add_theme_font_size_override("font_size", 13 if strong else 12)
+	if not strong:
+		for item: String in ["normal", "hover"]:
+			button.remove_theme_stylebox_override(item)
+		for item: String in ["font_color", "font_hover_color", "font_pressed_color"]:
+			button.remove_theme_color_override(item)
+		return
+	var face := StyleBoxFlat.new()
+	face.bg_color = Look.STRONG
+	face.set_corner_radius_all(4)
+	face.content_margin_left = 12
+	face.content_margin_right = 12
+	face.content_margin_top = 5
+	face.content_margin_bottom = 5
+	button.add_theme_stylebox_override("normal", face)
+	var hover: StyleBoxFlat = face.duplicate()
+	hover.bg_color = Look.STRONG_HOVER
+	button.add_theme_stylebox_override("hover", hover)
+	for item: String in ["font_color", "font_hover_color", "font_pressed_color"]:
+		button.add_theme_color_override(item, Color(1, 1, 1))
+
+
+## Return renders [param kind] from now on, its button drawn strong.
+func _make_default(kind: String) -> void:
+	if kind == _default:
+		return
+	_default = kind
+	var buttons: Dictionary = {"picture": _picture_button, "turntable": _turntable_button,
+		"animation": _animation_button, "building": _building_button}
+	for each: String in buttons:
+		_strong(buttons[each], each == kind)
 
 
 ## A row of buttons of which one is down.
@@ -795,6 +862,11 @@ func _describe() -> void:
 	_frames_note.text = "%d frames, %.1f s at %d a second, as an animated WebP%s." % [
 		settings.frames, seconds, settings.fps,
 		"" if OS.has_feature("web") else ", the frames, and an MP4 where ffmpeg is installed"]
+	var parts: int = world.brick_count() - scenery.size() if world != null else 0
+	_building_note.text = ("%s parts as the timeline builds them, step by step, over %d s at %d a "
+		+ "second, the camera turning %d° round, as an animated WebP%s.") % [Working.comma(parts),
+		_build_seconds, settings.fps, roundi(_build_seconds * BuildRender.TURNING),
+		"" if OS.has_feature("web") else ", the frames, and an MP4 where ffmpeg is installed"]
 	var order: Array = _order_of(chosen_motion())
 	if order.is_empty():
 		_animation_note.text = "A motion is a named movement of the model's joints: Build, Motions… keeps them."
@@ -880,6 +952,7 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 	_working = kind
 	_preview_due = -1
 	_loop.clear()
+	_loop_fps = settings.fps
 	_set_working(true)
 	var started: int = Time.get_ticks_msec()
 	var chosen: RenderSettings = given if given != null else settings.copy()
@@ -890,6 +963,10 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 	var lines := PackedStringArray()
 	if kind == "animation":
 		lines = await _animate(chosen, output, model)
+	elif kind == "building":
+		if given == null:
+			chosen.frames = _build_seconds * chosen.fps
+		lines = await _building(chosen, output, model)
 	elif kind == "picture":
 		_shown = null
 		var image: Image = await renderer.render(world, chosen)
@@ -980,6 +1057,59 @@ func _animate(chosen: RenderSettings, output: RenderOutput, model: String) -> Pa
 	return lines
 
 
+## Building: the timeline's steps worked out (BuildRender), then drawn a
+## frame at a time as [param chosen] says, its frames' count the length,
+## kept by [param output]. The lines to show; none when cancelled.
+func _building(chosen: RenderSettings, output: RenderOutput, model: String) -> PackedStringArray:
+	_status.text = "Laying out the steps…"
+	var planning: Working.Job = _job if _job != null else Working.Job.new()
+	_planning = planning
+	planning.can_cancel = true
+	planning.say(_status.text)
+	var built: BuildRender = await BuildRender.planned(world, library, scenery, planning)
+	_planning = null
+	if built == null:
+		return PackedStringArray()
+	built.lay_out(float(chosen.frames) / float(maxi(chosen.fps, 1)), chosen.fps,
+		BuildRender.height_of(world, library, built.order))
+	chosen.frames = built.frames
+	# The contact shadow is the finished model's: under a model half built
+	# it is the shadow of what is not there yet.
+	chosen.contact_shadow = false
+	output.begin_turntable(model, chosen, "_building")
+	var looped: Array[ImageTexture] = []
+	var every: int = ceili(float(built.frames) / float(LOOP_MOST))
+	if _job != null:
+		_job.say("Rendering the building")
+		_job.count(0, built.frames)
+	var done: int = await built.draw(renderer, world, chosen, output,
+		func(n: int, image: Image) -> void:
+			_show_scaled(image)
+			if n % every == 0 or n == built.frames - 1:
+				var small: Image = image.duplicate() as Image
+				small.resize(PREVIEW.x, maxi(roundi(float(PREVIEW.x) * image.get_height() / image.get_width()), 1),
+					Image.INTERPOLATE_BILINEAR)
+				looped.append(ImageTexture.create_from_image(small))
+			if _job != null:
+				_job.count(n + 1))
+	if done < built.frames:
+		return PackedStringArray()
+	_status.text = "Putting the frames together…"
+	if _job != null:
+		_job.say(_status.text)
+		_job.count(0, 0)
+	var lines: PackedStringArray = [built.said(chosen.fps)]
+	lines.append_array(await output.finish_turntable())
+	_loop = looped
+	_loop_at = 0.0
+	_loop_fps = LOOP_FPS
+	_last = {"kind": "building", "frames": done, "bytes": output.last_bytes,
+		"width": chosen.size.x, "height": chosen.size.y, "parts": built.order.size(),
+		"steps": built.steps, "name": output.base_name() + ".webp", "output": output,
+		"build": built}
+	return lines
+
+
 ## A picture far bigger than the panel, shrunk to it: an 8-megapixel
 ## texture for a 600-pixel panel is memory and an upload for nothing.
 func _show_scaled(image: Image) -> void:
@@ -995,14 +1125,18 @@ func _show_scaled(image: Image) -> void:
 func _set_working(on: bool) -> void:
 	_picture_button.disabled = on
 	_turntable_button.disabled = on
+	_building_button.disabled = on
 	_cancel_button.visible = on
 	_again_button.visible = false if on else _again_button.visible
-	for button: Button in _quality + _sizes + _backgrounds + _frames + _cameras:
+	for button: Button in _quality + _sizes + _backgrounds + _frames + _cameras + _lengths:
 		button.disabled = on
 	_list_motions()
 
 
 func _cancel() -> void:
+	if _planning != null:
+		_planning.cancelled = true
+		_status.text = "Cancelling…"
 	if renderer != null and renderer.is_busy():
 		renderer.cancel()
 		_status.text = "Cancelling…"
@@ -1073,6 +1207,9 @@ func controls_by_name() -> Dictionary:
 		named_controls["render_look_" + str(RenderSettings.LOOKS.keys()[n])] = _looks[n]
 	for n: int in _frames.size():
 		named_controls["render_frames_" + _frames[n].text] = _frames[n]
+	for n: int in _lengths.size():
+		named_controls["render_length_%d" % BuildRender.LENGTHS[n]] = _lengths[n]
+	named_controls["render_building"] = _building_button
 	named_controls["render_camera_seen"] = _cameras[0]
 	named_controls["render_camera_moves"] = _cameras[1]
 	named_controls["render_picture"] = _picture_button
@@ -1099,7 +1236,7 @@ func _tell_page() -> void:
 	if renderer != null:
 		state["worst_frame_ms"] = roundi(renderer.worst_frame_ms)
 		state["worst_step"] = renderer.worst_step
-	for key: String in ["kind", "width", "height", "bytes", "name", "frames", "motion"]:
+	for key: String in ["kind", "width", "height", "bytes", "name", "frames", "motion", "parts", "steps"]:
 		if _last.has(key):
 			state[key] = _last[key]
 	var said: String = JSON.stringify(state)
