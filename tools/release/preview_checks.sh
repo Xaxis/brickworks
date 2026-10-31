@@ -561,7 +561,15 @@ run() {
   # 2,600 s at load 40: dialogs_1024 ran out at 2,700 (fig257, 2026-10-25).
   local limit=2700
   case "$name" in dialogs*) limit=3600 ;; esac
-  "$H" $solo timeout "$limit" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1 {lock}>&-
+  # Outside a release, each solo check is a run of its own: heavy keeps solo
+  # jobs within BOX_HEAVY_SOLO_GAP of each other as one run, and an agent's
+  # pass of every check chained theirs into an hour that held every other
+  # job of the project, a release's merge and two design benches among them
+  # (checkhealth, 2026-10-31). A release's own keep the gap: its timing
+  # checks run back to back while the box is calm.
+  local gap=""
+  [ -n "$solo" ] && [ "${BOX_HEAVY_PRIORITY:-}" != 1 ] && gap="BOX_HEAVY_SOLO_GAP=0"
+  env $gap "$H" $solo timeout "$limit" node ${CMD[$name]} > "$S/${TAG}_$name.log" 2>&1 {lock}>&-
   local code=$?
   # heavy --solo says the load it began at, after how long, and beside what.
   local began; began=$(sed -n 's/^heavy: solo //p' "$S/${TAG}_$name.log" | head -1)

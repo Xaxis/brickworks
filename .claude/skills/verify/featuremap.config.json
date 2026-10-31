@@ -4417,6 +4417,20 @@
       "entry": "src/dev/pathtrace_probe.gd",
       "reach": "tools/probe.sh pathtrace   (windowed, on the GPU: the car traced at 720p in 60 s or less, noise, soft shadows and bounce at three points, three queued renders drawn in turn with the window turning every frame, two from the panel and one by render_queue; pictures in shots/pathtrace/)",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "interface languages",
+      "entry": "src/ui/language.gd",
+      "reach": "godot --path .  (Tools, Settings…, Language: Deutsch, Français or Español, kept; /app?lang=de, --lang=de on the desktop; words in locale/<code>.po)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "languages probe",
+      "entry": "src/dev/languages_probe.gd",
+      "reach": "tools/probe.sh languages_probe --shots=shots/languages --missing=missing.po   (every menu row, tooltip, panel title and panel word translated in each, German fits at 1280 x 720, the choice kept across a restart)",
+      "area": "building"
     }
   ]
 }

@@ -205,8 +205,11 @@ func _render_by_keys() -> void:
 	var rows: Array = _palette.get("_names")
 	_check("\"ren\": Render… first (%s)" % ", ".join(rows.slice(0, 3)), not rows.is_empty() and rows[0] == "render")
 	var list: Tree = _palette.get("_list")
-	var last: Rect2 = list.get_item_area_rect(list.get_root().get_child(rows.size() - 1))
-	_check("...the list as tall as its %d rows (the last's foot %d, the list %d)" % [rows.size(),
+	# Up to ROWS_SHOWN; past those it scrolls (German finds "ren" in every -ieren).
+	var shown: int = mini(rows.size(), CommandPalette.ROWS_SHOWN)
+	var last: Rect2 = list.get_item_area_rect(list.get_root().get_child(shown - 1))
+	_check("...the list as tall as its %d rows%s (the last's foot %d, the list %d)" % [shown,
+		"" if shown == rows.size() else " of %d, the rest scrolled to" % rows.size(),
 		roundi(last.end.y), roundi(list.size.y)], last.end.y <= list.size.y + 1.0
 		and list.size.y - last.end.y < last.size.y / 2.0)
 	await _shot("render_typed")

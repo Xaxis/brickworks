@@ -536,10 +536,14 @@ can occupy the same millimetre.
   (`HiddenColours._families`, `Assemblies._begin_pass`): on Orthanc from cold,
   3.9 s became 1.75 to 1.85 s at a load of 13 to 25 on 24 cores, and 2.6 to
   2.8 s at a load of 30 to 40 (`command_probe --subjects=orthanc
-  --only=hidden_colours`). Where it cuts the model open is read off the
-  changed parts' boxes sorted by where they begin and end along each axis
-  (`HiddenColoursPanel.cut_through`), not by asking every box at every
-  plane: the same cut, 337 ms to 31 ms on all of Orthanc (`bigmodels2_probe`).
+  --only=hidden_colours`). With the planner's order cheaper (Suggest
+  sections, APP_UX3 bigmodels2) the steps are done before the measure, and
+  "Following the build steps…" is no longer said: 2.4 to 3.5 s became 1.8
+  to 2.6 s at a load of 25 to 30, side by side. Where it cuts the model
+  open is read off the changed parts' boxes sorted by where they begin and
+  end along each axis (`HiddenColoursPanel.cut_through`), not by asking
+  every box at every plane: the same cut, 337 ms to 31 ms on all of
+  Orthanc (`bigmodels2_probe`).
   Shows the inside cut open before and after; Apply is one `Builder.record` step,
   after `Assemblies.unlike_copies` says no copy would be rebuilt for it (a
   symmetrical sub-assembly fits its fellows several ways, and Saturn V's three

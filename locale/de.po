@@ -1,0 +1,2811 @@
+# Brickworks in German (Deutsch): the words of the interface, chosen in
+# Settings, Language (src/ui/language.gd). Every word the app draws is written in
+# English; each entry here is one of them, as msgid, and how it reads in this
+# language, as msgstr.
+#
+# An entry with %s or %d in its msgid is a pattern: any words, or a number, in that
+# place, put into the msgstr's own %s or %d in order ("%2$s" names the second).
+# An msgid with no words of its own ("%s %d", "%s, %s") is used only where the
+# words it takes have entries. A row's key after its words, a tooltip's lines,
+# a line's parts joined by " · ", " — ", ". " or "; ", and "…" at a row's end
+# are matched without entries of their own; so is a row's words with its first
+# letter lowered, as the keys sheet writes them.
+#
+# The LEGO® names for parts, as the LEGO Group's own German pages write them:
+# Stein, Platte, Fliese, Dachstein, Noppe, Grundplatte, Minifigur, Bauanleitung, Bauschritt, Baugruppe. LEGO® stays an adjective. Colours keep LDraw's and
+# BrickLink's names, as BrickLink Studio does in every language; keys keep the
+# names the menus write them with (Ctrl, Shift, Alt, Esc, Enter).
+#
+# src/dev/languages_probe.gd says which words have no entry (--missing=FILE).
+msgid ""
+msgstr ""
+"Project-Id-Version: Brickworks\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# The menu bar's menus and their rows
+msgid "File"
+msgstr "Datei"
+
+msgid "Edit"
+msgstr "Bearbeiten"
+
+msgid "View"
+msgstr "Ansicht"
+
+msgid "Build"
+msgstr "Bauen"
+
+msgid "Make"
+msgstr "Erstellen"
+
+msgid "Tools"
+msgstr "Werkzeuge"
+
+msgid "Help"
+msgstr "Hilfe"
+
+# File
+msgid "New"
+msgstr "Neu"
+
+msgid "New window"
+msgstr "Neues Fenster"
+
+msgid "New tab"
+msgstr "Neuer Tab"
+
+msgid "Open…"
+msgstr "Öffnen…"
+
+msgid "Library…"
+msgstr "Bibliothek…"
+
+msgid "My collection…"
+msgstr "Meine Sammlung…"
+
+msgid "What can I build?…"
+msgstr "Was kann ich bauen?…"
+
+msgid "Open recent"
+msgstr "Zuletzt geöffnet"
+
+msgid "Import"
+msgstr "Importieren"
+
+msgid "LDraw model (.ldr, .mpd)…"
+msgstr "LDraw-Modell (.ldr, .mpd)…"
+
+msgid "BrickLink Studio model (.io)…"
+msgstr "BrickLink-Studio-Modell (.io)…"
+
+msgid "LEGO® Digital Designer model (.lxf)…"
+msgstr "LEGO® Digital Designer-Modell (.lxf)…"
+
+msgid "3D model to brickify (.obj, .stl, .ply, .3mf, .vox, .fbx, .gltf, .glb)…"
+msgstr "3D-Modell zum Umwandeln in Steine (.obj, .stl, .ply, .3mf, .vox, .fbx, .gltf, .glb)…"
+
+msgid "Save"
+msgstr "Speichern"
+
+msgid "Save as…"
+msgstr "Speichern unter…"
+
+msgid "Versions…"
+msgstr "Versionen…"
+
+msgid "Compare with…"
+msgstr "Vergleichen mit…"
+
+msgid "Share…"
+msgstr "Teilen…"
+
+msgid "Build together…"
+msgstr "Gemeinsam bauen…"
+
+msgid "Comments…"
+msgstr "Kommentare…"
+
+msgid "Export"
+msgstr "Exportieren"
+
+msgid "LDraw model (.ldr, or .mpd with its sub-models)"
+msgstr "LDraw-Modell (.ldr, oder .mpd mit seinen Untermodellen)"
+
+msgid "BrickLink Studio model (.io)"
+msgstr "BrickLink-Studio-Modell (.io)"
+
+msgid "3D model (.glb, .gltf, .obj, .stl)…"
+msgstr "3D-Modell (.glb, .gltf, .obj, .stl)…"
+
+msgid "Picture of the model (.png)"
+msgstr "Bild des Modells (.png)"
+
+msgid "BrickLink wanted list (.xml)"
+msgstr "BrickLink-Wunschliste (.xml)"
+
+msgid "Rebrickable parts list (.csv)"
+msgstr "Rebrickable-Teileliste (.csv)"
+
+msgid "All my models (.zip)"
+msgstr "Alle meine Modelle (.zip)"
+
+msgid "Render…"
+msgstr "Rendern…"
+
+msgid "Clear the baseplate…"
+msgstr "Grundplatte leeren…"
+
+msgid "Quit"
+msgstr "Beenden"
+
+msgid "Back to brickworks.diy"
+msgstr "Zurück zu brickworks.diy"
+
+# Edit
+msgid "Undo"
+msgstr "Rückgängig"
+
+msgid "Redo"
+msgstr "Wiederholen"
+
+msgid "History"
+msgstr "Verlauf"
+
+msgid "Cut"
+msgstr "Ausschneiden"
+
+msgid "Copy"
+msgstr "Kopieren"
+
+msgid "Paste"
+msgstr "Einfügen"
+
+msgid "Duplicate"
+msgstr "Duplizieren"
+
+msgid "Pattern…"
+msgstr "Muster…"
+
+msgid "Delete"
+msgstr "Löschen"
+
+msgid "Select all"
+msgstr "Alles auswählen"
+
+msgid "Select nothing"
+msgstr "Nichts auswählen"
+
+msgid "Select by"
+msgstr "Auswählen nach"
+
+msgid "Same colour"
+msgstr "Gleiche Farbe"
+
+msgid "Same part"
+msgstr "Gleiches Teil"
+
+msgid "Same part and colour"
+msgstr "Gleiches Teil in gleicher Farbe"
+
+msgid "Part number or name…"
+msgstr "Teilenummer oder Name…"
+
+msgid "Everything connected"
+msgstr "Alles Verbundene"
+
+msgid "Same sub-model"
+msgstr "Gleiches Untermodell"
+
+msgid "The opposite"
+msgstr "Das Gegenteil"
+
+msgid "Hide"
+msgstr "Ausblenden"
+
+msgid "Show only the selection"
+msgstr "Nur die Auswahl zeigen"
+
+msgid "Show everything"
+msgstr "Alles zeigen"
+
+msgid "Lock the selection"
+msgstr "Auswahl sperren"
+
+msgid "Unlock everything"
+msgstr "Alles entsperren"
+
+msgid "Paint the selection"
+msgstr "Auswahl einfärben"
+
+msgid "Replace with the part in hand"
+msgstr "Durch das Teil in der Hand ersetzen"
+
+msgid "Mirror"
+msgstr "Spiegeln"
+
+# View
+msgid "Viewpoint"
+msgstr "Blickwinkel"
+
+msgid "Default view"
+msgstr "Standardansicht"
+
+msgid "From the front"
+msgstr "Von vorne"
+
+msgid "From the back"
+msgstr "Von hinten"
+
+msgid "From the left"
+msgstr "Von links"
+
+msgid "From the right"
+msgstr "Von rechts"
+
+msgid "From above"
+msgstr "Von oben"
+
+msgid "From below"
+msgstr "Von unten"
+
+msgid "Isometric"
+msgstr "Isometrisch"
+
+msgid "Turn the model left"
+msgstr "Modell nach links drehen"
+
+msgid "Turn the model right"
+msgstr "Modell nach rechts drehen"
+
+msgid "Orbit tool"
+msgstr "Werkzeug Ansicht drehen"
+
+msgid "Pan tool"
+msgstr "Werkzeug Ansicht verschieben"
+
+msgid "Zoom tool"
+msgstr "Werkzeug Zoomen"
+
+msgid "Fit"
+msgstr "Einpassen"
+
+msgid "Fit the model"
+msgstr "Modell einpassen"
+
+msgid "Fit the selection"
+msgstr "Auswahl einpassen"
+
+msgid "Orthographic"
+msgstr "Orthografisch"
+
+msgid "Stud grid"
+msgstr "Noppenraster"
+
+msgid "Floor"
+msgstr "Boden"
+
+msgid "Baseplate 16 × 16"
+msgstr "Grundplatte 16 × 16"
+
+msgid "Baseplate 32 × 32"
+msgstr "Grundplatte 32 × 32"
+
+msgid "Baseplate 48 × 48"
+msgstr "Grundplatte 48 × 48"
+
+msgid "Baseplate, other size…"
+msgstr "Grundplatte, andere Größe…"
+
+msgid "Baseplate colour"
+msgstr "Farbe der Grundplatte"
+
+msgid "Grid floor"
+msgstr "Rasterboden"
+
+msgid "No floor"
+msgstr "Kein Boden"
+
+msgid "The baseplate is part of the model"
+msgstr "Die Grundplatte gehört zum Modell"
+
+msgid "Start new models on this floor"
+msgstr "Neue Modelle auf diesem Boden beginnen"
+
+msgid "Cut away"
+msgstr "Schnittansicht"
+
+msgid "Cut along"
+msgstr "Schneiden entlang"
+
+msgid "Along X"
+msgstr "Entlang X"
+
+msgid "Along Y"
+msgstr "Entlang Y"
+
+msgid "Along Z"
+msgstr "Entlang Z"
+
+msgid "Cut away the other side"
+msgstr "Die andere Seite wegschneiden"
+
+msgid "Leave a ghost of what is cut away"
+msgstr "Weggeschnittenes blass zeigen"
+
+msgid "X-ray"
+msgstr "Röntgenblick"
+
+msgid "Stress"
+msgstr "Belastung"
+
+msgid "Parts bin"
+msgstr "Teilekasten"
+
+msgid "Assistant"
+msgstr "Assistent"
+
+msgid "Properties"
+msgstr "Eigenschaften"
+
+msgid "Model tree"
+msgstr "Modellbaum"
+
+msgid "Key strip"
+msgstr "Tastenleiste"
+
+msgid "Split"
+msgstr "Aufteilen"
+
+msgid "Full screen"
+msgstr "Vollbild"
+
+# Build
+msgid "Timeline"
+msgstr "Zeitleiste"
+
+msgid "Next step"
+msgstr "Nächster Schritt"
+
+msgid "Build steps"
+msgstr "Bauschritte"
+
+msgid "Move to previous step"
+msgstr "In den vorigen Schritt"
+
+msgid "Move to next step"
+msgstr "In den nächsten Schritt"
+
+msgid "Move to step…"
+msgstr "In Schritt…"
+
+msgid "New step from selection"
+msgstr "Neuer Schritt aus der Auswahl"
+
+msgid "Step earlier"
+msgstr "Einen Schritt früher"
+
+msgid "Step later"
+msgstr "Einen Schritt später"
+
+msgid "Merge with the next step"
+msgstr "Mit dem nächsten Schritt zusammenführen"
+
+msgid "Delete the step"
+msgstr "Schritt löschen"
+
+msgid "Motions…"
+msgstr "Bewegungen…"
+
+msgid "Instructions…"
+msgstr "Bauanleitung…"
+
+msgid "Booklet page"
+msgstr "Seite der Anleitung"
+
+msgid "Turn the view left"
+msgstr "Ansicht nach links drehen"
+
+msgid "Turn the view right"
+msgstr "Ansicht nach rechts drehen"
+
+msgid "Look from higher"
+msgstr "Von weiter oben"
+
+msgid "Look from lower"
+msgstr "Von weiter unten"
+
+msgid "Use this view for the step"
+msgstr "Diese Ansicht für den Schritt"
+
+msgid "Usual view"
+msgstr "Übliche Ansicht"
+
+msgid "Zoom in"
+msgstr "Vergrößern"
+
+msgid "Zoom out"
+msgstr "Verkleinern"
+
+msgid "Bigger on the page"
+msgstr "Größer auf der Seite"
+
+msgid "Smaller on the page"
+msgstr "Kleiner auf der Seite"
+
+msgid "Start a new page"
+msgstr "Neue Seite beginnen"
+
+msgid "A page alone"
+msgstr "Eigene Seite"
+
+msgid "Parts list"
+msgstr "Teileliste"
+
+msgid "Callout"
+msgstr "Nebenbau"
+
+msgid "Steps a page"
+msgstr "Schritte pro Seite"
+
+msgid "Lay out the page…"
+msgstr "Seite gestalten…"
+
+msgid "Outline new parts"
+msgstr "Neue Teile umranden"
+
+msgid "What do I need?…"
+msgstr "Was brauche ich?…"
+
+msgid "Make a sub-assembly…"
+msgstr "Baugruppe bilden…"
+
+msgid "Ungroup"
+msgstr "Gruppierung aufheben"
+
+msgid "Edit inside the sub-assembly"
+msgstr "In der Baugruppe bearbeiten"
+
+msgid "Done editing the sub-assembly"
+msgstr "Baugruppe fertig bearbeitet"
+
+msgid "Rename the sub-assembly…"
+msgstr "Baugruppe umbenennen…"
+
+msgid "Make this copy unique"
+msgstr "Diese Kopie eigenständig machen"
+
+msgid "Suggest sections"
+msgstr "Abschnitte vorschlagen"
+
+msgid "Evaluate the section…"
+msgstr "Abschnitt bewerten…"
+
+msgid "Break out the section"
+msgstr "Abschnitt herauslösen"
+
+msgid "Put every section back"
+msgstr "Alle Abschnitte zurücksetzen"
+
+msgid "Exploded view"
+msgstr "Explosionsansicht"
+
+# Make
+msgid "Minifigure builder…"
+msgstr "Minifiguren-Baukasten…"
+
+msgid "Mosaic from a picture…"
+msgstr "Mosaik aus einem Bild…"
+
+msgid "Brickify a 3D model…"
+msgstr "3D-Modell in Steine umwandeln…"
+
+msgid "Reference picture…"
+msgstr "Referenzbild…"
+
+msgid "Hose, tube or chain…"
+msgstr "Schlauch, Rohr oder Kette…"
+
+msgid "Reshape the hose or chain"
+msgstr "Schlauch oder Kette umformen"
+
+msgid "Part maker…"
+msgstr "Teile-Werkstatt…"
+
+msgid "Print on a part…"
+msgstr "Teil bedrucken…"
+
+msgid "Put a sticker on…"
+msgstr "Aufkleber anbringen…"
+
+msgid "Printed versions…"
+msgstr "Bedruckte Varianten…"
+
+# Tools
+msgid "Select tool"
+msgstr "Auswahlwerkzeug"
+
+msgid "Place the part in hand"
+msgstr "Teil in der Hand absetzen"
+
+msgid "Move tool"
+msgstr "Werkzeug Verschieben"
+
+msgid "Rotate tool"
+msgstr "Werkzeug Drehen"
+
+msgid "Hinge tool"
+msgstr "Werkzeug Scharnier"
+
+msgid "Connect tool"
+msgstr "Werkzeug Verbinden"
+
+msgid "Clone tool"
+msgstr "Werkzeug Klonen"
+
+msgid "Paint tool"
+msgstr "Werkzeug Einfärben"
+
+msgid "Hide tool"
+msgstr "Werkzeug Ausblenden"
+
+msgid "Delete tool"
+msgstr "Werkzeug Löschen"
+
+msgid "Turn the part in hand"
+msgstr "Teil in der Hand drehen"
+
+msgid "Tip the part in hand on its side"
+msgstr "Teil in der Hand auf die Seite kippen"
+
+msgid "Measure"
+msgstr "Messen"
+
+msgid "Check stability"
+msgstr "Stabilität prüfen"
+
+msgid "Simulate mechanism…"
+msgstr "Mechanik simulieren…"
+
+msgid "Colour the hidden parts…"
+msgstr "Verdeckte Teile einfärben…"
+
+msgid "Seat parts on their studs"
+msgstr "Teile auf ihre Noppen setzen"
+
+msgid "Ask Claude about this…"
+msgstr "Claude dazu fragen…"
+
+msgid "Ask %s about this…"
+msgstr "%s dazu fragen…"
+
+msgid "Ask Claude to brace this…"
+msgstr "Claude bitten, dies abzustützen…"
+
+msgid "Ask %s to brace this…"
+msgstr "%s bitten, dies abzustützen…"
+
+msgid "Claude connector…"
+msgstr "Claude-Connector…"
+
+msgid "Settings…"
+msgstr "Einstellungen…"
+
+# Help
+msgid "Keys and controls"
+msgstr "Tasten und Steuerung"
+
+msgid "Take the tour"
+msgstr "Rundgang starten"
+
+# The app's menu
+msgid "About Brickworks"
+msgstr "Über Brickworks"
+
+msgid "Send feedback…"
+msgstr "Feedback senden…"
+
+msgid "Find a command…"
+msgstr "Befehl suchen…"
+
+msgid "Brickworks website"
+msgstr "Brickworks-Website"
+
+msgid "Documentation"
+msgstr "Dokumentation"
+
+msgid "Beta hub"
+msgstr "Beta-Bereich"
+
+msgid "Account…"
+msgstr "Konto…"
+
+# The menu on a part
+msgid "Comment on it…"
+msgstr "Kommentieren…"
+
+msgid "Select everything joined to it"
+msgstr "Alles damit Verbundene auswählen"
+
+msgid "Select the same part"
+msgstr "Gleiche Teile auswählen"
+
+msgid "Select the same colour"
+msgstr "Gleiche Farbe auswählen"
+
+msgid "Paint with %s"
+msgstr "Mit %s einfärben"
+
+msgid "Split into smaller parts"
+msgstr "In kleinere Teile teilen"
+
+msgid "Merge into bigger parts"
+msgstr "Zu größeren Teilen zusammenfügen"
+
+msgid "Swing on its hinge"
+msgstr "Am Scharnier schwenken"
+
+# Colours named as LDraw and BrickLink name them, in every language, as
+# BrickLink Studio does: they are names, like a part's.
+msgid "Green"
+msgstr "Green"
+
+msgid "Bright Green"
+msgstr "Bright Green"
+
+msgid "Dark Green"
+msgstr "Dark Green"
+
+msgid "Tan"
+msgstr "Tan"
+
+msgid "Dark Tan"
+msgstr "Dark Tan"
+
+msgid "Light Bluish Grey"
+msgstr "Light Bluish Grey"
+
+msgid "Dark Bluish Grey"
+msgstr "Dark Bluish Grey"
+
+msgid "Sand Green"
+msgstr "Sand Green"
+
+msgid "Blue"
+msgstr "Blue"
+
+msgid "White"
+msgstr "White"
+
+msgid "Black"
+msgstr "Black"
+
+msgid "Light Grey"
+msgstr "Light Grey"
+
+# What each menu row does, on its tooltip
+msgid "Start a new model on an empty baseplate"
+msgstr "Ein neues Modell auf einer leeren Grundplatte beginnen"
+
+msgid "Start a new model in a window of its own"
+msgstr "Ein neues Modell in einem eigenen Fenster beginnen"
+
+msgid "Start a new model in a tab of its own"
+msgstr "Ein neues Modell in einem eigenen Tab beginnen"
+
+msgid "Reopen a saved model, an example, or a file from this computer"
+msgstr "Ein gespeichertes Modell, ein Beispiel oder eine Datei von diesem Computer öffnen"
+
+msgid "Any of LDraw's models of real sets, or a model the community shared, opened in a new window"
+msgstr "Eines der LDraw-Modelle echter Sets oder ein von der Community geteiltes Modell, in einem neuen Fenster geöffnet"
+
+msgid "The sets and parts you own: from Rebrickable, BrickLink, or typed in"
+msgstr "Die Sets und Teile, die du besitzt: von Rebrickable, BrickLink oder selbst eingegeben"
+
+msgid "Models ranked by how much of each you already own"
+msgstr "Modelle, geordnet danach, wie viel davon du schon besitzt"
+
+msgid "A sculpt, a scan or any 3D model, laid in bricks"
+msgstr "Eine Skulptur, ein Scan oder ein beliebiges 3D-Modell, aus Steinen gelegt"
+
+msgid "Keep this model under its name"
+msgstr "Dieses Modell unter seinem Namen sichern"
+
+msgid "Keep a copy of this model under another name"
+msgstr "Eine Kopie dieses Modells unter einem anderen Namen sichern"
+
+msgid "The last 20 saves of this model, to open one again or compare it with"
+msgstr "Die letzten 20 Speicherstände dieses Modells, um einen wieder zu öffnen oder damit zu vergleichen"
+
+msgid "What changed since one of this model's saves: added green, removed red, moved amber"
+msgstr "Was sich seit einem Speicherstand dieses Modells geändert hat: hinzugefügt grün, entfernt rot, verschoben gelb"
+
+msgid "A link anyone can open to see this model, its steps and its parts list"
+msgstr "Ein Link, mit dem jeder dieses Modell, seine Schritte und seine Teileliste sehen kann"
+
+msgid "Build this model with someone else, live, each in their own browser or the app"
+msgstr "Dieses Modell live mit jemandem zusammen bauen, jeder in seinem eigenen Browser oder in der App"
+
+msgid "Comments pinned to the model's parts, kept with it, and a new one on the part selected"
+msgstr "Kommentare an den Teilen des Modells, mit ihm gespeichert, und ein neuer am ausgewählten Teil"
+
+msgid "The model as a 3D file for Blender, AR or a 3D printer"
+msgstr "Das Modell als 3D-Datei für Blender, AR oder einen 3D-Drucker"
+
+msgid "Every model saved here, as LDraw files in one .zip: a copy of your own"
+msgstr "Jedes hier gespeicherte Modell als LDraw-Dateien in einer .zip: eine eigene Kopie"
+
+msgid "A photo-real picture or turntable of the model, on a backdrop, in studio light"
+msgstr "Ein fotorealistisches Bild oder eine Drehscheiben-Animation des Modells, vor einem Hintergrund, im Studiolicht"
+
+msgid "Empty the baseplate. Asks first: it cannot be undone"
+msgstr "Die Grundplatte leeren. Fragt vorher: Das lässt sich nicht rückgängig machen"
+
+msgid "Take back the last change"
+msgstr "Die letzte Änderung zurücknehmen"
+
+msgid "Put it back"
+msgstr "Wiederherstellen"
+
+msgid "Take the selection off the model, to paste somewhere else"
+msgstr "Die Auswahl vom Modell nehmen, um sie woanders einzufügen"
+
+msgid "Copy the selection"
+msgstr "Die Auswahl kopieren"
+
+msgid "Hold a copy of what was copied: click to put it down, %s turns it"
+msgstr "Eine Kopie des Kopierten in der Hand: Klicken setzt sie ab, %s dreht sie"
+
+msgid "Hold a copy of what was copied: click to put it down"
+msgstr "Eine Kopie des Kopierten in der Hand: Klicken setzt sie ab"
+
+msgid "Hold a copy of the selection, to put down beside it"
+msgstr "Eine Kopie der Auswahl in der Hand, um sie daneben abzusetzen"
+
+msgid "Copies of the selection in a row, round, or along a hose, put down at once"
+msgstr "Kopien der Auswahl in einer Reihe, im Kreis oder entlang eines Schlauchs, auf einmal abgesetzt"
+
+msgid "Take the selection off the model"
+msgstr "Die Auswahl vom Modell nehmen"
+
+msgid "Find a part in the model by its number, its name or its colour"
+msgstr "Ein Teil im Modell nach Nummer, Name oder Farbe finden"
+
+msgid "Hide the selection, to reach what is behind it"
+msgstr "Die Auswahl ausblenden, um an das Dahinterliegende zu kommen"
+
+msgid "Hide everything else, to work on just this"
+msgstr "Alles andere ausblenden, um nur daran zu arbeiten"
+
+msgid "Bring back whatever is hidden"
+msgstr "Alles Ausgeblendete wieder zeigen"
+
+msgid "Keep the selection from being picked out, moved, painted or taken off"
+msgstr "Die Auswahl vor Auswählen, Verschieben, Einfärben und Abnehmen schützen"
+
+msgid "Paint the selection the colour in hand"
+msgstr "Die Auswahl in der Farbe in der Hand einfärben"
+
+msgid "Swap the selection for the part you hold, each in its own colour"
+msgstr "Die Auswahl gegen das Teil in der Hand tauschen, jedes in seiner eigenen Farbe"
+
+msgid "Make the selection its mirror image, left to right as you see it"
+msgstr "Die Auswahl spiegeln, links und rechts so, wie du es siehst"
+
+msgid "Look at the model default view"
+msgstr "Das Modell in der Standardansicht ansehen"
+
+msgid "Look at the model from the front"
+msgstr "Das Modell von vorne ansehen"
+
+msgid "Look at the model from the back"
+msgstr "Das Modell von hinten ansehen"
+
+msgid "Look at the model from the left"
+msgstr "Das Modell von links ansehen"
+
+msgid "Look at the model from the right"
+msgstr "Das Modell von rechts ansehen"
+
+msgid "Look at the model from above"
+msgstr "Das Modell von oben ansehen"
+
+msgid "Look at the model from below"
+msgstr "Das Modell von unten ansehen"
+
+msgid "Look at the model isometric"
+msgstr "Das Modell isometrisch ansehen"
+
+msgid "Zoom to show the selection, or the whole model"
+msgstr "Auf die Auswahl zoomen, oder auf das ganze Modell"
+
+msgid "Zoom to show the whole model"
+msgstr "Auf das ganze Modell zoomen"
+
+msgid "Square on, with no perspective: how a CAD drawing is read"
+msgstr "Gerade von vorn, ohne Perspektive: so liest man eine CAD-Zeichnung"
+
+msgid "Lines between the studs of the baseplate, for counting them"
+msgstr "Linien zwischen den Noppen der Grundplatte, zum Abzählen"
+
+msgid "Stand the model on a 16 by 16 baseplate"
+msgstr "Das Modell auf eine Grundplatte 16 × 16 stellen"
+
+msgid "Stand the model on a 32 by 32 baseplate"
+msgstr "Das Modell auf eine Grundplatte 32 × 32 stellen"
+
+msgid "Stand the model on a 48 by 48 baseplate"
+msgstr "Das Modell auf eine Grundplatte 48 × 48 stellen"
+
+msgid "A baseplate of any size in eights of studs, cut from the ones the LEGO Group sells"
+msgstr "Eine Grundplatte beliebiger Größe in Schritten von acht Noppen, zugeschnitten aus denen, die die LEGO Gruppe verkauft"
+
+msgid "No baseplate: a faint ground with a line between the studs, as Studio has"
+msgstr "Keine Grundplatte: ein blasser Boden mit einer Linie zwischen den Noppen, wie in Studio"
+
+msgid "Nothing under the model, as a car or a ship stands on a table"
+msgstr "Nichts unter dem Modell, so wie ein Auto oder ein Schiff auf einem Tisch steht"
+
+msgid "Counted in the parts list and the shop lists, saved with the model and the first step of the booklet"
+msgstr "In der Teileliste und den Einkaufslisten mitgezählt, mit dem Modell gespeichert und erster Schritt der Anleitung"
+
+msgid "What New, and a model opened from a file that does not say, stand on"
+msgstr "Worauf Neu und ein Modell aus einer Datei, die es nicht angibt, stehen"
+
+msgid "A plane through the model, dragged along X, Y or Z, to see and work inside it"
+msgstr "Eine Ebene durch das Modell, entlang X, Y oder Z gezogen, um hineinzusehen und darin zu arbeiten"
+
+msgid "Everything but the selection, or the sub-assembly being edited, see-through"
+msgstr "Alles außer der Auswahl, oder der Baugruppe in Bearbeitung, durchsichtig"
+
+msgid "Every part tinted by how near its weakest joint is to letting go: red past its studs' working load, amber within twice it"
+msgstr "Jedes Teil danach eingefärbt, wie nah seine schwächste Verbindung am Lösen ist: rot über der Belastbarkeit seiner Noppen, gelb unter dem Doppelten davon"
+
+msgid "What is selected: its part, colour, where it stands and what it is joined to"
+msgstr "Was ausgewählt ist: sein Teil, seine Farbe, wo es steht und womit es verbunden ist"
+
+msgid "The model's sub-assemblies by name, inside one another"
+msgstr "Die Baugruppen des Modells nach Namen, ineinander verschachtelt"
+
+msgid "A second view beside the model, square on from the front, top, side or back"
+msgstr "Eine zweite Ansicht neben dem Modell, gerade von vorne, oben, der Seite oder hinten"
+
+msgid "Play the build from an empty baseplate to the finished model and back"
+msgstr "Den Aufbau von der leeren Grundplatte bis zum fertigen Modell abspielen, und zurück"
+
+msgid "The parts put down since the last step make a step, and the next part starts another"
+msgstr "Die seit dem letzten Schritt abgesetzten Teile bilden einen Schritt, und das nächste Teil beginnt einen neuen"
+
+msgid "The selected parts a step earlier in the build steps"
+msgstr "Die ausgewählten Teile einen Bauschritt früher"
+
+msgid "The selected parts a step later in the build steps, in a new step from the last"
+msgstr "Die ausgewählten Teile einen Bauschritt später, nach dem letzten in einem neuen Schritt"
+
+msgid "The selected parts into any step, its number typed"
+msgstr "Die ausgewählten Teile in einen beliebigen Schritt, seine Nummer eingetippt"
+
+msgid "The selected parts in a step of their own, after the step the timeline is on"
+msgstr "Die ausgewählten Teile in einem eigenen Schritt, nach dem Schritt der Zeitleiste"
+
+msgid "The step the timeline is on, before the one ahead of it"
+msgstr "Der Schritt der Zeitleiste, vor den vorhergehenden"
+
+msgid "The step the timeline is on, after the one that follows it"
+msgstr "Der Schritt der Zeitleiste, hinter den folgenden"
+
+msgid "The step the timeline is on and the next made one"
+msgstr "Der Schritt der Zeitleiste und der nächste, zu einem vereint"
+
+msgid "Take out the step the timeline is on; its parts join the step before"
+msgstr "Den Schritt der Zeitleiste entfernen; seine Teile kommen zum Schritt davor"
+
+msgid "The model's own movements, Open the doors or Lift the boom: played, recorded by dragging the parts, and rendered"
+msgstr "Die eigenen Bewegungen des Modells, etwa Türen öffnen oder Ausleger heben: abgespielt, durch Ziehen der Teile aufgenommen und gerendert"
+
+msgid "Building instructions for this model, step by step"
+msgstr "Bauanleitung für dieses Modell, Schritt für Schritt"
+
+msgid "The model turned 45 degrees for this step's picture, and the steps after it"
+msgstr "Das Modell für das Bild dieses Schritts um 45 Grad gedreht, und für die Schritte danach"
+
+msgid "The model turned 45 degrees the other way for this step's picture"
+msgstr "Das Modell für das Bild dieses Schritts um 45 Grad in die andere Richtung gedreht"
+
+msgid "This step's picture from 15 degrees higher"
+msgstr "Das Bild dieses Schritts aus 15 Grad höherer Sicht"
+
+msgid "This step's picture from 15 degrees lower"
+msgstr "Das Bild dieses Schritts aus 15 Grad tieferer Sicht"
+
+msgid "This step's picture drawn from the angle the window looks from now"
+msgstr "Das Bild dieses Schritts aus dem Blickwinkel, den das Fenster gerade zeigt"
+
+msgid "This step drawn from the booklet's usual angle again"
+msgstr "Dieser Schritt wieder aus dem üblichen Blickwinkel der Anleitung"
+
+msgid "This step's picture closer in on what it adds"
+msgstr "Das Bild dieses Schritts näher an dem, was er hinzufügt"
+
+msgid "This step's picture further out"
+msgstr "Das Bild dieses Schritts weiter entfernt"
+
+msgid "This step drawn larger, so fewer go on its page"
+msgstr "Dieser Schritt größer gezeichnet, sodass weniger auf seine Seite passen"
+
+msgid "This step drawn smaller"
+msgstr "Dieser Schritt kleiner gezeichnet"
+
+msgid "This step at the top of a new page"
+msgstr "Dieser Schritt oben auf einer neuen Seite"
+
+msgid "This step on a page of its own"
+msgstr "Dieser Schritt auf einer eigenen Seite"
+
+msgid "The box of parts this step adds, shown or left off"
+msgstr "Der Kasten mit den Teilen dieses Schritts, gezeigt oder weggelassen"
+
+msgid "The sub-assembly this step puts on built in a box beside it, or on pages of its own"
+msgstr "Die Baugruppe, die dieser Schritt anbringt, in einem Kasten daneben gebaut oder auf eigenen Seiten"
+
+msgid "At most this many steps on a page: as they fit, 1, 2 or 4"
+msgstr "Höchstens so viele Schritte auf einer Seite: so viele passen, 1, 2 oder 4"
+
+msgid "This step's page by hand: drag its picture, parts list, callout and number where they go, and add words and pictures"
+msgstr "Die Seite dieses Schritts von Hand: Bild, Teileliste, Nebenbau und Nummer an ihren Platz ziehen, Text und Bilder hinzufügen"
+
+msgid "The parts each step adds outlined in orange in the booklet, or not"
+msgstr "Die Teile, die jeder Schritt hinzufügt, in der Anleitung orange umrandet, oder nicht"
+
+msgid "Every part this model needs, by colour and count"
+msgstr "Jedes Teil, das dieses Modell braucht, nach Farbe und Anzahl"
+
+msgid "What this model uses that you do not own, and what could stand in"
+msgstr "Was dieses Modell braucht und du nicht besitzt, und was stattdessen ginge"
+
+msgid "Name the selection as a sub-assembly: it moves as one, saves as a sub-model, and its copies follow it"
+msgstr "Die Auswahl als Baugruppe benennen: Sie bewegt sich als Ganzes, wird als Untermodell gespeichert, und ihre Kopien folgen ihr"
+
+msgid "Take the selected sub-assembly apart one level"
+msgstr "Die ausgewählte Baugruppe um eine Ebene auflösen"
+
+msgid "Work on its parts one by one; what you put down goes into it (double-click does this too)"
+msgstr "An seinen Teilen einzeln arbeiten; was du absetzt, kommt hinein (auch per Doppelklick)"
+
+msgid "Cut this copy loose, so editing it changes no other"
+msgstr "Diese Kopie lösen, sodass ihre Bearbeitung keine andere ändert"
+
+msgid "How a builder would split this into sections, as a set into bags: shown in the model tree to accept, rename, merge or split"
+msgstr "Wie ein Baumeister dies in Abschnitte teilen würde, wie ein Set in Tüten: im Modellbaum gezeigt, zum Annehmen, Umbenennen, Zusammenführen oder Teilen"
+
+msgid "The selected section on its own: parts, weight, whether it holds together and stands, what joins it to the rest, its own steps"
+msgstr "Der ausgewählte Abschnitt für sich: Teile, Gewicht, ob er zusammenhält und steht, was ihn mit dem Rest verbindet, seine eigenen Schritte"
+
+msgid "Pull the selected section away from the model to work on it, or put it back exactly where it was (%s again)"
+msgstr "Den ausgewählten Abschnitt vom Modell wegziehen, um daran zu arbeiten, oder ihn genau zurücksetzen (nochmals %s)"
+
+msgid "Every section broken out back exactly where it was"
+msgstr "Jeder herausgelöste Abschnitt genau zurück an seinen Platz"
+
+msgid "Every section drawn apart, and back together (%s again)"
+msgstr "Alle Abschnitte auseinandergezogen, und wieder zusammen (nochmals %s)"
+
+msgid "Make a minifigure from real parts and stand it in the model"
+msgstr "Eine Minifigur aus echten Teilen bauen und ins Modell stellen"
+
+msgid "Turn a picture into a wall of plates"
+msgstr "Ein Bild in eine Wand aus Platten verwandeln"
+
+msgid "Bring in an OBJ, STL, PLY, 3MF, VOX, FBX or glTF model — a sculpt, a scan, anything — and lay it in bricks at the size you choose"
+msgstr "Ein OBJ-, STL-, PLY-, 3MF-, VOX-, FBX- oder glTF-Modell laden – eine Skulptur, einen Scan, irgendwas – und in der gewünschten Größe aus Steinen legen"
+
+msgid "A photo, plan or drawing laid on the floor or stood behind the model, to build over"
+msgstr "Ein Foto, Plan oder eine Zeichnung, auf den Boden gelegt oder hinter das Modell gestellt, um darüber zu bauen"
+
+msgid "Lay a hose, a tube, a string or a chain from one connector to another, along a curve"
+msgstr "Einen Schlauch, ein Rohr, eine Schnur oder eine Kette entlang einer Kurve von einem Anschluss zum anderen legen"
+
+msgid "Drag the selected hose's bend, or put its chain round other sprockets"
+msgstr "Die Biegung des ausgewählten Schlauchs ziehen oder seine Kette um andere Kettenräder legen"
+
+msgid "Make a part of your own from the part in hand"
+msgstr "Aus dem Teil in der Hand ein eigenes Teil machen"
+
+msgid "Draw a print on the part selected, printed where it stands, or on the part in hand"
+msgstr "Einen Aufdruck auf das ausgewählte Teil zeichnen, an Ort und Stelle gedruckt, oder auf das Teil in der Hand"
+
+msgid "Click a face of the model, then draw the sticker that goes on it"
+msgstr "Auf eine Fläche des Modells klicken und dann den Aufkleber zeichnen, der darauf kommt"
+
+msgid "Swap the part for one of the prints or stickered versions the LEGO Group made of it"
+msgstr "Das Teil gegen eine der bedruckten oder beklebten Varianten tauschen, die die LEGO Gruppe davon hergestellt hat"
+
+msgid "A ruler: click two points for the distance in studs, plates and millimetres"
+msgstr "Ein Lineal: zwei Punkte anklicken für den Abstand in Noppen, Plattenhöhen und Millimetern"
+
+msgid "Find the joints that would give way, and select the parts on them"
+msgstr "Die Verbindungen finden, die nachgeben würden, und die Teile daran auswählen"
+
+msgid "Turn a gear train from a crank or an axle: how fast each part goes, each arm's period, what locks it, and whether it stays standing as it turns"
+msgstr "Ein Getriebe an einer Kurbel oder Achse drehen: wie schnell jedes Teil läuft, die Periode jedes Arms, was es blockiert und ob es beim Drehen stehen bleibt"
+
+msgid "Give the parts nobody sees in the finished model a colour for each section, stage or side, as big sets do, so you can find your place while building"
+msgstr "Den Teilen, die im fertigen Modell niemand sieht, eine Farbe je Abschnitt, Bauphase oder Seite geben, wie große Sets es tun, damit man sich beim Bauen zurechtfindet"
+
+msgid "Find parts a fraction of a stud off their studs, and offer to seat them"
+msgstr "Teile finden, die um einen Bruchteil einer Noppe neben ihren Noppen sitzen, und anbieten, sie aufzusetzen"
+
+msgid "Ask Claude to change the selected parts, and only them, or ask about them"
+msgstr "Claude bitten, die ausgewählten Teile zu ändern, und nur sie, oder nach ihnen fragen"
+
+msgid "Ask %s to change the selected parts, and only them, or ask about them"
+msgstr "%s bitten, die ausgewählten Teile zu ändern, und nur sie, oder nach ihnen fragen"
+
+msgid "Ask Claude to make this joint hold: what it carries, on what, and its margin, asked for you"
+msgstr "Claude bitten, diese Verbindung halten zu lassen: was sie trägt, worauf, und ihre Reserve, für dich gefragt"
+
+msgid "Ask %s to make this joint hold: what it carries, on what, and its margin, asked for you"
+msgstr "%s bitten, diese Verbindung halten zu lassen: was sie trägt, worauf, und ihre Reserve, für dich gefragt"
+
+msgid "Let Claude build here, from your own Claude account"
+msgstr "Claude hier bauen lassen, über dein eigenes Claude-Konto"
+
+msgid "Which way the wheel zooms, and what the middle button does"
+msgstr "In welche Richtung das Mausrad zoomt und was die mittlere Taste tut"
+
+msgid "What every button and key does"
+msgstr "Was jede Taste und jeder Knopf tut"
+
+msgid "Build your first model, seven short steps done in the app"
+msgstr "Dein erstes Modell bauen, sieben kurze Schritte direkt in der App"
+
+msgid "Something wrong, an idea or a question, to the people who make Brickworks"
+msgstr "Ein Fehler, eine Idee oder eine Frage, an die Leute, die Brickworks machen"
+
+msgid "Any command by its name or its menu: type a few letters, then Enter"
+msgstr "Jeder Befehl nach seinem Namen oder Menü: ein paar Buchstaben tippen, dann Enter"
+
+msgid "How everything in Brickworks works, on brickworks.diy"
+msgstr "Wie alles in Brickworks funktioniert, auf brickworks.diy"
+
+msgid "For beta testers: what to try, what we know is wrong, and how to tell us"
+msgstr "Für Beta-Tester: was ausprobieren, was wir als fehlerhaft kennen und wie man es uns sagt"
+
+msgid "Who is signed in, and Sign out"
+msgstr "Wer angemeldet ist, und Abmelden"
+
+msgid "Plates, bricks and tiles into 1 x 1s, a 1 x 1 brick into three plates, slopes into 1-wide slopes, on the same studs"
+msgstr "Platten, Steine und Fliesen in 1 × 1, einen 1 × 1-Stein in drei Platten, Dachsteine in 1 breite Dachsteine, auf denselben Noppen"
+
+msgid "The selected plates, bricks and tiles of a colour into the fewest real parts made in it: three plates high a brick"
+msgstr "Die ausgewählten Platten, Steine und Fliesen einer Farbe in möglichst wenige echte Teile in dieser Farbe: drei Platten hoch ein Stein"
+
+msgid "Swing the selection %d° about the hinge, clip or turntable it hangs from; %s swings it back"
+msgstr "Die Auswahl um %d° am Scharnier, Clip oder Drehteller schwenken, an dem sie hängt; %s schwenkt zurück"
+
+msgid "Swing the selection %d° about the hinge, clip or turntable it hangs from"
+msgstr "Die Auswahl um %d° am Scharnier, Clip oder Drehteller schwenken, an dem sie hängt"
+
+msgid "What it is, its colour by every name, where it stands and what it is joined to"
+msgstr "Was es ist, seine Farbe unter jedem Namen, wo es steht und womit es verbunden ist"
+
+# The toolbar's tooltips, a line each, and the panels' titles
+msgid "Open"
+msgstr "Öffnen"
+
+msgid "Share"
+msgstr "Teilen"
+
+msgid "Select"
+msgstr "Auswählen"
+
+msgid "Place %s"
+msgstr "%s absetzen"
+
+msgid "Move"
+msgstr "Verschieben"
+
+msgid "Rotate"
+msgstr "Drehen"
+
+msgid "Hinge"
+msgstr "Scharnier"
+
+msgid "Connect"
+msgstr "Verbinden"
+
+msgid "Clone"
+msgstr "Klonen"
+
+msgid "Paint"
+msgstr "Einfärben"
+
+msgid "Snap"
+msgstr "Einrasten"
+
+msgid "Turn step"
+msgstr "Drehschritt"
+
+msgid "Orbit"
+msgstr "Ansicht drehen"
+
+msgid "Pan"
+msgstr "Ansicht verschieben"
+
+msgid "Zoom"
+msgstr "Zoomen"
+
+msgid "Instructions"
+msgstr "Bauanleitung"
+
+msgid "Render"
+msgstr "Rendern"
+
+msgid "Every change so far, newest first: choose one to go back to before it"
+msgstr "Jede Änderung bisher, die neueste zuerst: eine wählen, um vor sie zurückzugehen"
+
+msgid "Where the app rests. Click a part to select it, drag it to move it (Ctrl-drag copies it), drag anywhere else to turn the view, Ctrl-drag a box round several, Alt-click takes a part into hand"
+msgstr "Der Grundzustand der App. Ein Teil anklicken wählt es aus, Ziehen verschiebt es (Ctrl-Ziehen kopiert es), Ziehen anderswo dreht die Ansicht, Ctrl-Ziehen zieht einen Rahmen um mehrere, Alt-Klick nimmt ein Teil in die Hand"
+
+msgid "The last part back in hand: a click puts one down, and the next; a drag turns the view and puts nothing down. Esc or a right click lets go"
+msgstr "Das letzte Teil wieder in der Hand: ein Klick setzt eines ab, und noch eins; Ziehen dreht die Ansicht und setzt nichts ab. Esc oder ein Rechtsklick lässt los"
+
+msgid "Click a part for its arrows and drag one to slide it along that axis; click it again to pick it up — the whole selection, if it is in it — and put it down elsewhere"
+msgstr "Ein Teil anklicken für seine Pfeile und an einem ziehen, um es entlang dieser Achse zu schieben; nochmals anklicken, um es aufzunehmen – mit der ganzen Auswahl, wenn es dazugehört – und woanders abzusetzen"
+
+msgid "Click a part for its rings and drag one to turn it about that axis, finer further out; click it again to turn it by the turn step, Shift-click back"
+msgstr "Ein Teil anklicken für seine Ringe und an einem ziehen, um es um diese Achse zu drehen, weiter außen feiner; nochmals anklicken dreht es um den Drehschritt, Shift-Klick zurück"
+
+msgid "Click a part on a hinge, clip or turntable to swing it about the joint"
+msgstr "Ein Teil an einem Scharnier, Clip oder Drehteller anklicken, um es um das Gelenk zu schwenken"
+
+msgid "A point on the part, then the point it goes on: with a part in hand, click the pin, hole or bar it goes on by, then the one it goes on. With nothing in hand, click a part of the model first"
+msgstr "Ein Punkt am Teil, dann der Punkt, auf den es kommt: mit einem Teil in der Hand den Pin, das Loch oder die Stange anklicken, an dem es sitzt, dann den Gegenpunkt. Ohne Teil in der Hand zuerst ein Teil des Modells anklicken"
+
+msgid "Click a part to hold a copy of it, then click where the copy goes"
+msgstr "Ein Teil anklicken, um eine Kopie davon zu halten, dann dorthin klicken, wo die Kopie hinkommt"
+
+msgid "Click a part to paint it the colour in hand"
+msgstr "Ein Teil anklicken, um es in der Farbe in der Hand einzufärben"
+
+msgid "Click a part to hide it, to reach what is behind it"
+msgstr "Ein Teil anklicken, um es auszublenden und an das Dahinterliegende zu kommen"
+
+msgid "Click a part to take it off"
+msgstr "Ein Teil anklicken, um es abzunehmen"
+
+msgid "Select by colour, by part, everything connected, or the opposite"
+msgstr "Nach Farbe, nach Teil, alles Verbundene oder das Gegenteil auswählen"
+
+msgid "What a part snaps to as it is put down, and how far the arrow keys move a selection"
+msgstr "Woran ein Teil beim Absetzen einrastet und wie weit die Pfeiltasten eine Auswahl bewegen"
+
+msgid "How far %s and the Rotate tool turn a selection"
+msgstr "Wie weit %s und das Werkzeug Drehen eine Auswahl drehen"
+
+msgid "How far the Rotate tool turns a selection"
+msgstr "Wie weit das Werkzeug Drehen eine Auswahl dreht"
+
+msgid "A left drag turns the view, wherever it starts. Esc or %s is back to Select"
+msgstr "Ziehen mit links dreht die Ansicht, wo es auch beginnt. Esc oder %s führt zurück zu Auswählen"
+
+msgid "A left drag slides the view, wherever it starts. Esc or %s is back to Select"
+msgstr "Ziehen mit links verschiebt die Ansicht, wo es auch beginnt. Esc oder %s führt zurück zu Auswählen"
+
+msgid "A left drag up or down zooms; a click zooms in, Shift-click out. Esc or %s is back to Select"
+msgstr "Ziehen mit links nach oben oder unten zoomt; ein Klick vergrößert, Shift-Klick verkleinert. Esc oder %s führt zurück zu Auswählen"
+
+msgid "A left drag turns the view, wherever it starts. Esc is back to Select"
+msgstr "Ziehen mit links dreht die Ansicht, wo es auch beginnt. Esc führt zurück zu Auswählen"
+
+msgid "A left drag slides the view, wherever it starts. Esc is back to Select"
+msgstr "Ziehen mit links verschiebt die Ansicht, wo es auch beginnt. Esc führt zurück zu Auswählen"
+
+msgid "A left drag up or down zooms; a click zooms in, Shift-click out. Esc is back to Select"
+msgstr "Ziehen mit links nach oben oder unten zoomt; ein Klick vergrößert, Shift-Klick verkleinert. Esc führt zurück zu Auswählen"
+
+# The snap and the turn step's choices
+msgid "Stud"
+msgstr "Noppe"
+
+msgid "½ stud"
+msgstr "½ Noppe"
+
+msgid "½ plate"
+msgstr "½ Platte"
+
+msgid "Free"
+msgstr "Frei"
+
+# The panels and their rails
+msgid "Parts"
+msgstr "Teile"
+
+msgid "Show the parts bin and the colours"
+msgstr "Teilekasten und Farben zeigen"
+
+msgid "Hide the parts bin and the colours"
+msgstr "Teilekasten und Farben ausblenden"
+
+msgid "Show the model tree and the properties"
+msgstr "Modellbaum und Eigenschaften zeigen"
+
+msgid "Hide the model tree and the properties"
+msgstr "Modellbaum und Eigenschaften ausblenden"
+
+msgid "Show the assistant"
+msgstr "Assistent zeigen"
+
+msgid "Hide the assistant"
+msgstr "Assistent ausblenden"
+
+msgid "The model's sub-assemblies. Fold this away, or open it"
+msgstr "Die Baugruppen des Modells. Hier zuklappen oder aufklappen"
+
+# The dialogs' own titles
+msgid "Clear the baseplate?"
+msgstr "Grundplatte leeren?"
+
+msgid "Start a new model?"
+msgstr "Ein neues Modell beginnen?"
+
+msgid "Please Confirm..."
+msgstr "Bitte bestätigen …"
+
+msgid "Start over"
+msgstr "Neu anfangen"
+
+msgid "Save as"
+msgstr "Speichern unter"
+
+msgid "Versions"
+msgstr "Versionen"
+
+msgid "Pattern"
+msgstr "Muster"
+
+msgid "Send feedback"
+msgstr "Feedback senden"
+
+msgid "Reference picture"
+msgstr "Referenzbild"
+
+msgid "Saved models"
+msgstr "Gespeicherte Modelle"
+
+msgid "Rename"
+msgstr "Umbenennen"
+
+msgid "Settings"
+msgstr "Einstellungen"
+
+msgid "Save changes to “%s”?"
+msgstr "Änderungen an „%s“ speichern?"
+
+msgid "Delete “%s”?"
+msgstr "„%s“ löschen?"
+
+# The keys sheet (Help, Keys and controls) and the key strip under the model.
+# Its headings
+msgid "Building"
+msgstr "Bauen"
+
+msgid "Selecting"
+msgstr "Auswählen"
+
+msgid "The view"
+msgstr "Die Ansicht"
+
+msgid "The timeline"
+msgstr "Die Zeitleiste"
+
+msgid "Panels"
+msgstr "Bereiche"
+
+msgid "Colours: click a favourite's colour to change it"
+msgstr "Farben: auf die Farbe eines Favoriten klicken, um sie zu ändern"
+
+# Its own words
+msgid "Find a key, or what it does"
+msgstr "Eine Taste suchen, oder was sie tut"
+
+msgid "Back to these keys"
+msgstr "Zurück zu diesen Tasten"
+
+msgid "Forget the keys set here, and have the preset's alone"
+msgstr "Die hier gesetzten Tasten vergessen und nur die der Vorlage behalten"
+
+msgid "Click a key to set your own; Esc keeps it, Backspace leaves it with none."
+msgstr "Eine Taste anklicken, um eine eigene zu setzen; Esc behält sie, Backspace lässt sie leer."
+
+msgid "Keys like"
+msgstr "Tasten wie"
+
+msgid "the pointer that says so"
+msgstr "der Mauszeiger, der es anzeigt"
+
+# What each does
+msgid "select; with a part in hand, put it down"
+msgstr "Auswählen; mit einem Teil in der Hand: absetzen"
+
+msgid "on a part on a joint, move it as the real one moves (Esc puts it back); on another part, carry it; anywhere else, turn the view"
+msgstr "An einem Teil an einem Gelenk: bewegen wie das echte (Esc setzt zurück); an einem anderen Teil: tragen; anderswo: Ansicht drehen"
+
+msgid "on a part at the end of joints (a hand, a hook), held still a moment first: move it by the whole chain back to what stays"
+msgstr "An einem Teil am Ende von Gelenken (eine Hand, ein Haken), erst kurz still gehalten: mit der ganzen Kette bis zum Festen bewegen"
+
+msgid "copy a part; on nothing, draw a box round several"
+msgstr "Ein Teil kopieren; auf leerer Fläche einen Rahmen um mehrere ziehen"
+
+msgid "take that part into hand"
+msgstr "Dieses Teil in die Hand nehmen"
+
+msgid "the last part back in hand"
+msgstr "Das letzte Teil wieder in die Hand"
+
+msgid "let go of the part in hand"
+msgstr "Das Teil in der Hand loslassen"
+
+msgid "turn the part in hand, or the selection"
+msgstr "Das Teil in der Hand oder die Auswahl drehen"
+
+msgid "tip it over"
+msgstr "Kippen"
+
+msgid "with a part in hand: type a number to move or turn it exactly, Enter puts it down"
+msgstr "Mit einem Teil in der Hand: eine Zahl tippen, um es genau zu verschieben oder zu drehen, Enter setzt es ab"
+
+msgid "turn or tip the part, as Studio's arrows"
+msgstr "Das Teil drehen oder kippen, wie die Pfeile in Studio"
+
+msgid "turn the selection by 45°"
+msgstr "Die Auswahl um 45° drehen"
+
+msgid "colour"
+msgstr "Farbe"
+
+msgid "a colour by its name or number"
+msgstr "Eine Farbe nach Name oder Nummer"
+
+msgid "next step: what was put down since the last step makes one"
+msgstr "Nächster Schritt: Was seit dem letzten Schritt abgesetzt wurde, bildet einen"
+
+msgid "lift, or move the selection"
+msgstr "Anheben, oder die Auswahl verschieben"
+
+msgid "copy, paste"
+msgstr "Kopieren, Einfügen"
+
+msgid "split the selection into smaller parts, or merge it into bigger ones"
+msgstr "Die Auswahl in kleinere Teile teilen oder zu größeren zusammenfügen"
+
+msgid "make a sub-model, or leave one"
+msgstr "Ein Untermodell bilden, oder eines verlassen"
+
+msgid "mirror the selection"
+msgstr "Die Auswahl spiegeln"
+
+msgid "swing the selection on its hinge"
+msgstr "Die Auswahl am Scharnier schwenken"
+
+msgid "the Select tool"
+msgstr "Das Auswahlwerkzeug"
+
+msgid "the Move tool: click a part to pick it up, click to put it down"
+msgstr "Das Werkzeug Verschieben: ein Teil anklicken, um es aufzunehmen, klicken zum Absetzen"
+
+msgid "the Rotate tool: click a part to turn it"
+msgstr "Das Werkzeug Drehen: ein Teil anklicken, um es zu drehen"
+
+msgid "the Hinge tool: click a part on a hinge to swing it"
+msgstr "Das Werkzeug Scharnier: ein Teil an einem Scharnier anklicken, um es zu schwenken"
+
+msgid "the Clone tool: click a part, then click where each copy goes"
+msgstr "Das Werkzeug Klonen: ein Teil anklicken, dann dorthin klicken, wo jede Kopie hinkommt"
+
+msgid "the Paint tool: click a part to paint it"
+msgstr "Das Werkzeug Einfärben: ein Teil anklicken, um es einzufärben"
+
+msgid "the Hide tool: click a part to hide it"
+msgstr "Das Werkzeug Ausblenden: ein Teil anklicken, um es auszublenden"
+
+msgid "the Delete tool: click a part to take it off"
+msgstr "Das Werkzeug Löschen: ein Teil anklicken, um es abzunehmen"
+
+msgid "measure between two points"
+msgstr "Zwischen zwei Punkten messen"
+
+msgid "add to the selection, or take away"
+msgstr "Zur Auswahl hinzufügen, oder davon abziehen"
+
+msgid "every brick like it"
+msgstr "Jeden gleichen Stein"
+
+msgid "select the opposite"
+msgstr "Das Gegenteil auswählen"
+
+msgid "move the selection; with none, turn the view"
+msgstr "Die Auswahl verschieben; ohne Auswahl die Ansicht drehen"
+
+msgid "move the selection; with none, slide the view"
+msgstr "Die Auswahl verschieben; ohne Auswahl die Ansicht verschieben"
+
+msgid "raise or lower the selection"
+msgstr "Die Auswahl anheben oder absenken"
+
+msgid "remove the selection"
+msgstr "Die Auswahl entfernen"
+
+msgid "hide the selection; with none, show all"
+msgstr "Die Auswahl ausblenden; ohne Auswahl alles zeigen"
+
+msgid "lock the selection, unlock everything"
+msgstr "Die Auswahl sperren, alles entsperren"
+
+msgid "out of whatever is open, then back to Select with nothing in hand"
+msgstr "Raus aus allem Offenen, dann zurück zu Auswählen mit leerer Hand"
+
+msgid "slide"
+msgstr "Verschieben"
+
+msgid "slide, whatever is under the pointer"
+msgstr "Verschieben, egal was unter dem Zeiger ist"
+
+msgid "turn, whatever is under the pointer"
+msgstr "Drehen, egal was unter dem Zeiger ist"
+
+msgid "zoom"
+msgstr "Zoomen"
+
+msgid "the Orbit, Pan and Zoom tools: a drag only moves the view"
+msgstr "Die Werkzeuge Ansicht drehen, verschieben und zoomen: Ziehen bewegt nur die Ansicht"
+
+msgid "turn"
+msgstr "Drehen"
+
+msgid "turn about that point"
+msgstr "Um diesen Punkt drehen"
+
+msgid "zoom to the pointer"
+msgstr "Zum Zeiger hin zoomen"
+
+msgid "slide the view"
+msgstr "Die Ansicht verschieben"
+
+msgid "turn the model"
+msgstr "Das Modell drehen"
+
+msgid "frame the selection, or everything"
+msgstr "Die Auswahl einpassen, oder alles"
+
+msgid "frame the whole model"
+msgstr "Das ganze Modell einpassen"
+
+msgid "frame the selection"
+msgstr "Die Auswahl einpassen"
+
+msgid "square on, and back to perspective"
+msgstr "Gerade von vorn, und zurück zur Perspektive"
+
+msgid "front, back, left, right, top, bottom, three-quarter (the keypad too)"
+msgstr "Vorne, hinten, links, rechts, oben, unten, Dreiviertelansicht (auch der Ziffernblock)"
+
+msgid "the usual view"
+msgstr "Die übliche Ansicht"
+
+msgid "the step before, the step after"
+msgstr "Der Schritt davor, der Schritt danach"
+
+msgid "play the timeline"
+msgstr "Die Zeitleiste abspielen"
+
+msgid "its start and end"
+msgstr "Ihr Anfang und Ende"
+
+msgid "minifigure"
+msgstr "Minifigur"
+
+msgid "panels"
+msgstr "Bereiche"
+
+msgid "the keys to the toolbar, the parts and the colours, and back"
+msgstr "Die Tasten in die Werkzeugleiste, die Teile und die Farben, und zurück"
+
+msgid "search"
+msgstr "Suchen"
+
+msgid "this list"
+msgstr "Diese Liste"
+
+msgid "new model"
+msgstr "Neues Modell"
+
+msgid "library"
+msgstr "Bibliothek"
+
+# A colour key's row
+msgid "paint %s, favourite %d"
+msgstr "In %s einfärben, Favorit %d"
+
+msgid "paint %s, the model's most used (%d)"
+msgstr "In %s einfärben, die häufigste des Modells (%d)"
+
+msgid "paint %s, its %dnd (%d)"
+msgstr "In %s einfärben, Platz %d im Modell (%d)"
+
+msgid "paint %s, its %drd (%d)"
+msgstr "In %s einfärben, Platz %d im Modell (%d)"
+
+msgid "paint %s, its %dth (%d)"
+msgstr "In %s einfärben, Platz %d im Modell (%d)"
+
+msgid "paint %s, its %dst (%d)"
+msgstr "In %s einfärben, Platz %d im Modell (%d)"
+
+msgid "the model's %dnd colour: it has %d"
+msgstr "Die %d. Farbe des Modells: Es hat %d"
+
+msgid "the model's %drd colour: it has %d"
+msgstr "Die %d. Farbe des Modells: Es hat %d"
+
+msgid "the model's %dth colour: it has %d"
+msgstr "Die %d. Farbe des Modells: Es hat %d"
+
+msgid "the model's %dst colour: it has %d"
+msgstr "Die %d. Farbe des Modells: Es hat %d"
+
+# Settings
+msgid "Invert zoom direction"
+msgstr "Zoomrichtung umkehren"
+
+msgid "Scroll away from you to zoom out instead of in."
+msgstr "Vom Körper weg scrollen verkleinert statt zu vergrößern."
+
+msgid "Navigate like"
+msgstr "Navigieren wie"
+
+msgid "BrickLink Studio: right-drag turns, middle-drag or shift and right-drag slides, the wheel zooms to the pointer."
+msgstr "BrickLink Studio: Rechts-Ziehen dreht, Mitte-Ziehen oder Shift und Rechts-Ziehen verschiebt, das Mausrad zoomt zum Zeiger."
+
+msgid "Blender: middle-drag turns, shift and middle-drag slides; the right button turns too."
+msgstr "Blender: Mitte-Ziehen dreht, Shift und Mitte-Ziehen verschiebt; die rechte Taste dreht auch."
+
+msgid "Mecabricks: a left drag on empty space turns, right-drag slides, middle-drag zooms."
+msgstr "Mecabricks: Links-Ziehen auf leerer Fläche dreht, Rechts-Ziehen verschiebt, Mitte-Ziehen zoomt."
+
+msgid "Interface size"
+msgstr "Größe der Oberfläche"
+
+msgid "Language"
+msgstr "Sprache"
+
+msgid "Reduce motion"
+msgstr "Bewegung reduzieren"
+
+msgid "No build animation, no shimmer, and the view moves without gliding."
+msgstr "Keine Aufbau-Animation, kein Schimmern, und die Ansicht springt, statt zu gleiten."
+
+msgid "New models start on"
+msgstr "Neue Modelle beginnen auf"
+
+msgid "What the model stands on"
+msgstr "Worauf das Modell steht"
+
+msgid "Baseplate, other size"
+msgstr "Grundplatte, andere Größe"
+
+msgid "What the model stands on: a baseplate, a grid on the ground, or nothing"
+msgstr "Worauf das Modell steht: eine Grundplatte, ein Raster am Boden, oder nichts"
+
+msgid "The baseplate's colour: the colours baseplates are made in"
+msgstr "Die Farbe der Grundplatte: die Farben, in denen es Grundplatten gibt"
+
+msgid "Part of the model"
+msgstr "Teil des Modells"
+
+msgid "studs"
+msgstr "Noppen"
+
+msgid "A baseplate, a grid on the ground like Studio's, or nothing, as a car stands on a table. Each model keeps its own: View, Floor."
+msgstr "Eine Grundplatte, ein Raster am Boden wie in Studio, oder nichts, wie ein Auto auf einem Tisch steht. Jedes Modell behält seinen eigenen: Ansicht, Boden."
+
+msgid "Assistant (AI)"
+msgstr "Assistent (KI)"
+
+msgid "Claude, or another AI on your own API key: its provider, model and key"
+msgstr "Claude oder eine andere KI mit deinem eigenen API-Schlüssel: Anbieter, Modell und Schlüssel"
+
+msgid "Build by hand only"
+msgstr "Nur von Hand bauen"
+
+msgid "Show the assistant: Claude designs and changes parts when you ask"
+msgstr "Assistent zeigen: Claude entwirft und ändert Teile, wenn du darum bittest"
+
+msgid "Its column is on the right, on your own Claude plan or API key; Brickworks bills nothing."
+msgstr "Seine Spalte ist rechts, mit deinem eigenen Claude-Abo oder API-Schlüssel; Brickworks berechnet nichts."
+
+msgid "Nothing of AI is anywhere in the window. Turn it on here at any time."
+msgstr "Nichts von KI ist irgendwo im Fenster. Hier jederzeit einschalten."
+
+msgid "Done"
+msgstr "Fertig"
+
+# Names, the same in every language
+msgid "Brickworks"
+msgstr "Brickworks"
+
+msgid "BrickLink Studio"
+msgstr "BrickLink Studio"
+
+msgid "Studio"
+msgstr "Studio"
+
+msgid "Blender"
+msgstr "Blender"
+
+msgid "Mecabricks"
+msgstr "Mecabricks"
+
+msgid "LDCad"
+msgstr "LDCad"
+
+# The first build, which Help, Take the tour shows
+msgid "Build your first model"
+msgstr "Bau dein erstes Modell"
+
+msgid "Seven short steps on a new baseplate, done in the app itself: about two minutes."
+msgstr "Sieben kurze Schritte auf einer neuen Grundplatte, direkt in der App: etwa zwei Minuten."
+
+msgid "Put a part down"
+msgstr "Ein Teil absetzen"
+
+msgid "Turn it"
+msgstr "Drehen"
+
+msgid "Colour it"
+msgstr "Einfärben"
+
+msgid "Move it"
+msgstr "Verschieben"
+
+msgid "Copy it"
+msgstr "Kopieren"
+
+msgid "Turn the view"
+msgstr "Die Ansicht drehen"
+
+msgid "Save it"
+msgstr "Speichern"
+
+msgid "Choose a part in the bin, then click the baseplate to put it down."
+msgstr "Wähle ein Teil im Teilekasten und klicke dann auf die Grundplatte, um es abzusetzen."
+
+msgid "Press %s to turn the part in hand, then click to put it down."
+msgstr "Drücke %s, um das Teil in der Hand zu drehen, und klicke dann, um es abzusetzen."
+
+msgid "Press %s to turn the selected part."
+msgstr "Drücke %s, um das ausgewählte Teil zu drehen."
+
+msgid "Click a part to select it, then press %s to turn it."
+msgstr "Klicke auf ein Teil, um es auszuwählen, und drücke dann %s, um es zu drehen."
+
+msgid "Click a colour under the parts, then click to put a part down in it."
+msgstr "Klicke auf eine Farbe unter den Teilen und dann, um ein Teil in ihr abzusetzen."
+
+msgid "Click a colour under the parts to paint the selected part."
+msgstr "Klicke auf eine Farbe unter den Teilen, um das ausgewählte Teil einzufärben."
+
+msgid "Click a part to select it, then click a colour under the parts."
+msgstr "Klicke auf ein Teil, um es auszuwählen, und dann auf eine Farbe unter den Teilen."
+
+msgid "Press Esc to let go of the part in hand, then click a part to select it."
+msgstr "Drücke Esc, um das Teil in der Hand loszulassen, und klicke dann auf ein Teil, um es auszuwählen."
+
+msgid "Press %s to move the selected part, or drag it."
+msgstr "Drücke %s, um das ausgewählte Teil zu verschieben, oder ziehe es."
+
+msgid "Click a part to select it, then press %s to move it."
+msgstr "Klicke auf ein Teil, um es auszuwählen, und drücke dann %s, um es zu verschieben."
+
+msgid "Click to put the copy down."
+msgstr "Klicke, um die Kopie abzusetzen."
+
+msgid "Press %s to copy the selected part, then click to put the copy down."
+msgstr "Drücke %s, um das ausgewählte Teil zu kopieren, und klicke dann, um die Kopie abzusetzen."
+
+msgid "Click a part to select it, then press %s to copy it."
+msgstr "Klicke auf ein Teil, um es auszuwählen, und drücke dann %s, um es zu kopieren."
+
+msgid "%s to turn the view%s."
+msgstr "%s, um die Ansicht zu drehen%s."
+
+msgid "Drag with the right mouse button"
+msgstr "Ziehe mit der rechten Maustaste"
+
+msgid "Drag with the middle mouse button"
+msgstr "Ziehe mit der mittleren Maustaste"
+
+msgid "Drag on empty space"
+msgstr "Ziehe auf einer leeren Fläche"
+
+msgid ", or press 1 to 7"
+msgstr ", oder drücke 1 bis 7"
+
+msgid ", or press %s"
+msgstr ", oder drücke %s"
+
+msgid "Press %s to save “%s”."
+msgstr "Drücke %s, um „%s“ zu speichern."
+
+msgid "Click Save on the toolbar to save “%s”."
+msgstr "Klicke in der Werkzeugleiste auf Speichern, um „%s“ zu speichern."
+
+msgid "Your first model is saved"
+msgstr "Dein erstes Modell ist gespeichert"
+
+msgid "Every command is in Find a command (%s), and every key in Help, Keys and controls (%s). Or describe a model to the assistant, and Claude builds it with you."
+msgstr "Jeder Befehl ist unter Befehl suchen (%s), jede Taste unter Hilfe, Tasten und Steuerung (%s). Oder beschreibe dem Assistenten ein Modell, und Claude baut es mit dir."
+
+msgid "Every command is in Find a command (%s), and every key in Help, Keys and controls (%s)."
+msgstr "Jeder Befehl ist unter Befehl suchen (%s), jede Taste unter Hilfe, Tasten und Steuerung (%s)."
+
+msgid "the Rotate tool"
+msgstr "das Werkzeug Drehen"
+
+msgid "Edit, Duplicate"
+msgstr "Bearbeiten, Duplizieren"
+
+msgid "a drag"
+msgstr "Ziehen"
+
+msgid "the app menu"
+msgstr "das App-Menü"
+
+msgid "Start"
+msgstr "Los geht's"
+
+msgid "Skip"
+msgstr "Überspringen"
+
+msgid "End it here. Help, Take the tour brings it back."
+msgstr "Hier beenden. Hilfe, Rundgang starten bringt es zurück."
+
+msgid "Click a part to select it, then press %s, %s, %s or %s to move it."
+msgstr "Klicke auf ein Teil, um es auszuwählen, und drücke dann %s, %s, %s oder %s, um es zu verschieben."
+
+msgid "Press %s, %s, %s or %s to move the selected part, or drag it."
+msgstr "Drücke %s, %s, %s oder %s, um das ausgewählte Teil zu verschieben, oder ziehe es."
+
+# The parts bin
+msgid "Make a part…"
+msgstr "Teil erstellen…"
+
+msgid "A brick, plate, tile, slope or round part of any size, or a part here resized — it joins the bin under Custom"
+msgstr "Ein Stein, eine Platte, eine Fliese, ein Dachstein oder ein rundes Teil in jeder Größe, oder ein Teil von hier in neuer Größe — es kommt in den Teilekasten unter Eigene"
+
+msgid "Custom"
+msgstr "Eigene"
+
+msgid "Print…"
+msgstr "Bedrucken…"
+
+msgid "Print a picture or a drawing on the part in hand — a tile, a slope, any face — as a part of its own, under My prints; with one part picked out in the model (Shift-click), on that part, where it stands"
+msgstr "Ein Bild oder eine Zeichnung auf das Teil in der Hand drucken — eine Fliese, einen Dachstein, jede Fläche — als eigenes Teil, unter Meine Drucke; mit einem im Modell herausgegriffenen Teil (Shift-Klick) auf dieses Teil, wo es steht"
+
+msgid "My prints"
+msgstr "Meine Drucke"
+
+msgid "Stickers…"
+msgstr "Aufkleber…"
+
+msgid "The model's stickers: a new one for any face, the sheet to print at true size"
+msgstr "Die Aufkleber des Modells: ein neuer für jede Fläche, der Bogen zum Drucken in Originalgröße"
+
+msgid "Search %s parts…"
+msgstr "%s Teile durchsuchen…"
+
+msgid "A part by its name or number; a set's number, 10497-1, to build from its parts"
+msgstr "Ein Teil nach Name oder Nummer; die Nummer eines Sets, 10497-1, um aus seinen Teilen zu bauen"
+
+msgid "Find a part from a photo of it"
+msgstr "Ein Teil anhand eines Fotos finden"
+
+msgid "All"
+msgstr "Alle"
+
+msgid "Recent"
+msgstr "Zuletzt"
+
+msgid "The parts you chose lately, newest first"
+msgstr "Die zuletzt gewählten Teile, die neuesten zuerst"
+
+msgid "Favourites"
+msgstr "Favoriten"
+
+msgid "The parts you keep: right-click any part to add it or take it out"
+msgstr "Die Teile, die du behältst: Ein Rechtsklick auf ein Teil fügt es hinzu oder nimmt es heraus"
+
+msgid "Techniques"
+msgstr "Techniken"
+
+msgid "Worked constructions, each with why it works: choose one to hold it whole, a click puts it down"
+msgstr "Ausgearbeitete Konstruktionen, jede mit dem Grund, warum sie hält: eine wählen, um sie ganz in die Hand zu nehmen, ein Klick setzt sie ab"
+
+msgid "Fits"
+msgstr "Passt"
+
+msgid "The parts that fit the selected part, or the one in hand: a pin in its hole, a bar in its clip, a part on its studs"
+msgstr "Die Teile, die zum ausgewählten Teil oder zu dem in der Hand passen: ein Pin in seinem Loch, eine Stange in ihrem Clip, ein Teil auf seinen Noppen"
+
+msgid "%s %d"
+msgstr "%s %d"
+
+# The parts' categories, LDraw's, as the LEGO® pages of each country name them
+msgid "Brick"
+msgstr "Stein"
+
+msgid "Plate"
+msgstr "Platte"
+
+msgid "Tile"
+msgstr "Fliese"
+
+msgid "Slope"
+msgstr "Dachstein"
+
+msgid "Technic"
+msgstr "Technic"
+
+msgid "Wedge"
+msgstr "Keil"
+
+msgid "Panel"
+msgstr "Paneel"
+
+msgid "Bracket"
+msgstr "Winkel"
+
+msgid "Arch"
+msgstr "Bogen"
+
+msgid "Plant"
+msgstr "Pflanze"
+
+msgid "Animal"
+msgstr "Tier"
+
+msgid "Minifig"
+msgstr "Minifigur"
+
+msgid "Sticker"
+msgstr "Aufkleber"
+
+msgid "Sticker Shortcut"
+msgstr "Teil mit Aufkleber"
+
+msgid "Electric"
+msgstr "Elektrik"
+
+msgid "Figure"
+msgstr "Figur"
+
+msgid "Minifig Accessory"
+msgstr "Minifigur-Zubehör"
+
+msgid "Obsolete"
+msgstr "Veraltet"
+
+msgid "Minifig Headwear"
+msgstr "Minifigur-Kopfbedeckung"
+
+msgid "Train"
+msgstr "Eisenbahn"
+
+msgid "Wheel"
+msgstr "Rad"
+
+msgid "Duplo"
+msgstr "Duplo"
+
+msgid "Door"
+msgstr "Tür"
+
+msgid "Vehicle"
+msgstr "Fahrzeug"
+
+msgid "Windscreen"
+msgstr "Windschutzscheibe"
+
+msgid "Baseplate"
+msgstr "Grundplatte"
+
+msgid "Dish"
+msgstr "Schüssel"
+
+msgid "Container"
+msgstr "Behälter"
+
+msgid "Window"
+msgstr "Fenster"
+
+msgid "Constraction"
+msgstr "Constraction"
+
+msgid "Boat"
+msgstr "Boot"
+
+msgid "Minifig Neckwear"
+msgstr "Minifigur-Halsteil"
+
+msgid "Figure Accessory"
+msgstr "Figurenzubehör"
+
+msgid "Roadsign"
+msgstr "Verkehrsschild"
+
+msgid "Tyre"
+msgstr "Reifen"
+
+msgid "Car"
+msgstr "Auto"
+
+msgid "Flag"
+msgstr "Fahne"
+
+msgid "Hose"
+msgstr "Schlauch"
+
+msgid "Sheet Fabric"
+msgstr "Stoff"
+
+msgid "Bar"
+msgstr "Stange"
+
+msgid "Cylinder"
+msgstr "Zylinder"
+
+msgid "Sheet Plastic"
+msgstr "Kunststofffolie"
+
+msgid "Wing"
+msgstr "Flügel"
+
+msgid "Modulex"
+msgstr "Modulex"
+
+msgid "Glass"
+msgstr "Glas"
+
+msgid "Cone"
+msgstr "Kegel"
+
+msgid "Support"
+msgstr "Stütze"
+
+msgid "Rock"
+msgstr "Fels"
+
+msgid "Plane"
+msgstr "Flugzeug"
+
+msgid "Monorail"
+msgstr "Einschienenbahn"
+
+msgid "Minifig Hipwear"
+msgstr "Minifigur-Hüftteil"
+
+msgid "Scala"
+msgstr "Scala"
+
+msgid "Constraction Accessory"
+msgstr "Constraction-Zubehör"
+
+msgid "Minifig Head"
+msgstr "Minifigur-Kopf"
+
+msgid "Turntable"
+msgstr "Drehteller"
+
+msgid "Crane"
+msgstr "Kran"
+
+msgid "Garage"
+msgstr "Garage"
+
+msgid "Propeller"
+msgstr "Propeller"
+
+msgid "Tail"
+msgstr "Leitwerk"
+
+msgid "Minifig Torso"
+msgstr "Minifigur-Torso"
+
+msgid "Fence"
+msgstr "Zaun"
+
+msgid "Minifig Upper"
+msgstr "Minifigur-Oberkörper"
+
+msgid "Magnet"
+msgstr "Magnet"
+
+msgid "Znap"
+msgstr "Znap"
+
+msgid "Screw"
+msgstr "Schraube"
+
+msgid "Ladder"
+msgstr "Leiter"
+
+msgid "Minifig Leg"
+msgstr "Minifigur-Bein"
+
+msgid "Sphere"
+msgstr "Kugel"
+
+msgid "Sheet Cardboard"
+msgstr "Karton"
+
+msgid "Minifig Footwear"
+msgstr "Minifigur-Schuhe"
+
+msgid "Tap"
+msgstr "Wasserhahn"
+
+msgid "Minifig Lower"
+msgstr "Minifigur-Unterkörper"
+
+msgid "Arm"
+msgstr "Arm"
+
+msgid "Winch"
+msgstr "Seilwinde"
+
+msgid "Staircase"
+msgstr "Treppe"
+
+msgid "Cockpit"
+msgstr "Cockpit"
+
+msgid "Conveyor"
+msgstr "Förderband"
+
+msgid "Tipper"
+msgstr "Kipper"
+
+msgid "Homemaker"
+msgstr "Homemaker"
+
+msgid "Rack"
+msgstr "Gestell"
+
+msgid "Belville"
+msgstr "Belville"
+
+msgid "Minifig Hips"
+msgstr "Minifigur-Hüfte"
+
+msgid "Exhaust"
+msgstr "Auspuff"
+
+msgid "Antenna"
+msgstr "Antenne"
+
+msgid "Tractor"
+msgstr "Traktor"
+
+msgid "Flexible"
+msgstr "Flexibel"
+
+msgid "Clikits"
+msgstr "Clikits"
+
+msgid "Trailer"
+msgstr "Anhänger"
+
+msgid "String"
+msgstr "Schnur"
+
+msgid "Platform"
+msgstr "Plattform"
+
+msgid "Minifig Hand"
+msgstr "Minifigur-Hand"
+
+msgid "Helper"
+msgstr "Hilfsteil"
+
+msgid "Minifig Arm"
+msgstr "Minifigur-Arm"
+
+# Under the parts
+msgid "Showing %s of %s"
+msgstr "%s von %s angezeigt"
+
+msgid "scroll for more"
+msgstr "für mehr scrollen"
+
+msgid "Stickers and retired parts: search finds them."
+msgstr "Aufkleber und nicht mehr hergestellte Teile: Die Suche findet sie."
+
+msgid "%s stickers and retired parts"
+msgstr "%s Aufkleber und nicht mehr hergestellte Teile"
+
+msgid "%s parts can be placed in this build"
+msgstr "%s Teile lassen sich in dieser Version setzen"
+
+msgid "%s parts"
+msgstr "%s Teile"
+
+msgid "%d part"
+msgstr "%d Teil"
+
+msgid "%s parts made in %s"
+msgstr "%s Teile in %s"
+
+msgid "%d part made in %s"
+msgstr "%d Teil in %s"
+
+msgid "nothing matches"
+msgstr "nichts gefunden"
+
+msgid "No part here is known to be made in %s"
+msgstr "Von keinem Teil hier ist bekannt, dass es %s gibt"
+
+msgid "The parts you choose will be here, newest first."
+msgstr "Die Teile, die du wählst, erscheinen hier, die neuesten zuerst."
+
+msgid "Right-click any part to keep it here."
+msgstr "Ein Rechtsklick auf ein Teil behält es hier."
+
+msgid "Select a part, or take one in hand, then choose Fits to see what fits it."
+msgstr "Ein Teil auswählen oder in die Hand nehmen, dann Passt wählen, um zu sehen, was dazu passt."
+
+msgid "What fits %s, the best fits first"
+msgstr "Was zu %s passt, das Beste zuerst"
+
+msgid "%d worked constructions: choose one to hold it whole"
+msgstr "%d ausgearbeitete Konstruktionen: eine wählen, um sie ganz in die Hand zu nehmen"
+
+msgid "1 more folded under its part: press +"
+msgstr "1 weiteres unter seinem Teil eingeklappt: + drücken"
+
+msgid "%s more folded under their parts: press +"
+msgstr "%s weitere unter ihren Teilen eingeklappt: + drücken"
+
+msgid "Prints"
+msgstr "Bedruckte"
+
+msgid "Printed and stickered parts: clear it and the bin shows plain parts only"
+msgstr "Bedruckte und beklebte Teile: ohne Haken zeigt der Teilekasten nur unbedruckte Teile"
+
+msgid "List"
+msgstr "Liste"
+
+msgid "The parts as rows: name, number, size and the colours each was made in, more of them in sight than tiles"
+msgstr "Die Teile als Zeilen: Name, Nummer, Größe und die Farben, in denen es jedes gab, mehr davon im Blick als mit Kacheln"
+
+# The properties
+msgid "Fold the properties away, or open them"
+msgstr "Die Eigenschaften einklappen oder öffnen"
+
+msgid "All of its properties, down the right: what it is joined to, its step in the instructions, Lock and Hide"
+msgstr "Alle seine Eigenschaften, rechts: woran es hängt, sein Schritt in der Bauanleitung, Sperren und Ausblenden"
+
+msgid "Across, in LDU (a stud is 20)"
+msgstr "Quer, in LDU (eine Noppe sind 20)"
+
+msgid "Up from the baseplate, in LDU (a plate is 8)"
+msgstr "Höhe über der Grundplatte, in LDU (eine Platte sind 8)"
+
+msgid "Front to back, in LDU (a stud is 20)"
+msgstr "Von vorn nach hinten, in LDU (eine Noppe sind 20)"
+
+msgid "Turn"
+msgstr "Drehung"
+
+msgid "Which way it faces, in degrees about the vertical"
+msgstr "Wohin es zeigt, in Grad um die Senkrechte"
+
+msgid "Tilt"
+msgstr "Neigung"
+
+msgid "How far its front is lifted, in degrees, about a level line across it through its middle"
+msgstr "Wie weit seine Vorderseite angehoben ist, in Grad, um eine waagrechte Linie quer durch seine Mitte"
+
+msgid "Roll"
+msgstr "Rollen"
+
+msgid "How far its right side is lifted, in degrees, about a level line front to back through its middle"
+msgstr "Wie weit seine rechte Seite angehoben ist, in Grad, um eine waagrechte Linie von vorn nach hinten durch seine Mitte"
+
+msgid "Colour"
+msgstr "Farbe"
+
+msgid "Only parts made in it"
+msgstr "Nur Teile, die es darin gibt"
+
+msgid "Only parts made in %s, as set inventories have them: the bin lists no other while this is ticked"
+msgstr "Nur Teile, die es in %s gibt, laut den Teilelisten der Sets: Solange das angehakt ist, zeigt der Teilekasten keine anderen"
+
+msgid "Name or number"
+msgstr "Name oder Nummer"
+
+msgid "A colour by its name or number, every colour there is: Enter takes the first (Shift+C)"
+msgstr "Eine Farbe nach Name oder Nummer, jede, die es gibt: Enter nimmt die erste (Shift+C)"
+
+msgid "Also the %d colours not in a set since %d, or in no set inventory"
+msgstr "Auch die %d Farben, die seit %d in keinem Set oder in keiner Set-Teileliste vorkommen"
+
+msgid "Current only"
+msgstr "Nur aktuelle"
+
+msgid "Solid"
+msgstr "Deckend"
+
+msgid "Transparent"
+msgstr "Transparent"
+
+msgid "Chrome, metallic, pearl"
+msgstr "Chrom, metallisch, Perlmutt"
+
+msgid "Glitter, opal, speckle, glow, rubber, fabric"
+msgstr "Glitzer, opalisierend, gesprenkelt, nachleuchtend, Gummi, Stoff"
+
+# A colour's finish, after its name: Red (4), solid
+msgid "solid"
+msgstr "deckend"
+
+msgid "transparent"
+msgstr "transparent"
+
+msgid "chrome"
+msgstr "Chrom"
+
+msgid "metallic"
+msgstr "metallisch"
+
+msgid "pearl"
+msgstr "Perlmutt"
+
+msgid "speckle"
+msgstr "gesprenkelt"
+
+msgid "glitter"
+msgstr "Glitzer"
+
+msgid "opal"
+msgstr "opalisierend"
+
+msgid "glow in the dark"
+msgstr "nachleuchtend"
+
+msgid "fluorescent"
+msgstr "fluoreszierend"
+
+msgid "rubber"
+msgstr "Gummi"
+
+msgid "fabric"
+msgstr "Stoff"
+
+msgid "milky"
+msgstr "milchig"
+
+msgid "%s (%d), %s"
+msgstr "%s (%d), %s"
+
+msgid "%s, %s"
+msgstr "%s, %s"
+
+msgid "%s comes in it"
+msgstr "%s gibt es in dieser Farbe"
+
+msgid "%s was never made in it"
+msgstr "%s wurde nie in dieser Farbe hergestellt"
+
+msgid "not in a set since %d"
+msgstr "seit %d in keinem Set"
+
+msgid "in no set inventory"
+msgstr "in keiner Set-Teileliste"
+
+msgid "%s in %s, selected: a colour clicked paints it"
+msgstr "Ausgewählt: %s in %s. Ein Klick auf eine Farbe färbt das Teil um"
+
+msgid "%s in %s, selected: a colour clicked paints them"
+msgstr "Ausgewählt: %s in %s. Ein Klick auf eine Farbe färbt die Teile um"
+
+msgid "%d colours"
+msgstr "%d Farben"
+
+msgid "A dot marks the %d colours it comes in"
+msgstr "Ein Punkt markiert die %d Farben, in denen es das Teil gibt"
+
+msgid "A dot marks the %d colour it comes in"
+msgstr "Ein Punkt markiert die %d Farbe, in der es das Teil gibt"
+
+msgid "A dot marks the %d colours %s comes in"
+msgstr "Ein Punkt markiert die %d Farben, in denen es %s gibt"
+
+msgid "A dot marks the %d colour %s comes in"
+msgstr "Ein Punkt markiert die %d Farbe, in der es %s gibt"
+
+msgid "it was made in no other"
+msgstr "in keiner anderen wurde es hergestellt"
+
+# The line along the foot
+msgid "%s bricks"
+msgstr "%s Teile"
+
+msgid "%d brick"
+msgstr "%d Teil"
+
+msgid "stands up"
+msgstr "steht"
+
+msgid "%d g"
+msgstr "%d g"
+
+msgid "How many parts the model has, and whether it would stand up as built"
+msgstr "Wie viele Teile das Modell hat und ob es so gebaut stehen würde"
+
+msgid "%d selected"
+msgstr "%d ausgewählt"
+
+msgid "nothing selected"
+msgstr "nichts ausgewählt"
+
+msgid "How many parts are selected"
+msgstr "Wie viele Teile ausgewählt sind"
+
+msgid "snap %s"
+msgstr "Raster: %s"
+
+msgid "turn %d°"
+msgstr "Drehung %d°"
+
+msgid "What a part snaps to, and how far a turn goes: both on the toolbar"
+msgstr "Worauf ein Teil einrastet und wie weit eine Drehung geht: beides in der Werkzeugleiste"
+
+msgid "1 stud ≈ %d px"
+msgstr "1 Noppe ≈ %d px"
+
+msgid "How big one stud is on the screen at the middle of the view"
+msgstr "Wie groß eine Noppe in der Mitte der Ansicht auf dem Bildschirm ist"
+
+msgid "%s copies, %s moves, %s turns, %s paints, %s removes"
+msgstr "%s kopiert, %s verschiebt, %s dreht, %s färbt, %s entfernt"
+
+msgid "Shift"
+msgstr "Shift"
+
+msgid "Space"
+msgstr "Space"
+
+msgid "all keys"
+msgstr "alle Tasten"
+
+msgid "Show in folder"
+msgstr "Im Ordner zeigen"
+
+msgid "Open the folder the file was saved in"
+msgstr "Den Ordner öffnen, in dem die Datei gespeichert wurde"
+
+# What the mouse does now, by tool: its parts, where " · ", " — " or "; " joins them
+msgid "Select: click lets go of the selection"
+msgstr "Auswählen: Ein Klick hebt die Auswahl auf"
+
+msgid "drag turns the view, Shift-drag slides it, scroll zooms"
+msgstr "Ziehen dreht die Ansicht, Shift-Ziehen verschiebt sie, Scrollen zoomt"
+
+msgid "%s-drag draws a box"
+msgstr "%s-Ziehen zieht einen Rahmen auf"
+
+msgid "Select: click selects it"
+msgstr "Auswählen: Ein Klick wählt es aus"
+
+msgid "drag moves it (on a joint, as the real part moves)"
+msgstr "Ziehen bewegt es (an einem Gelenk wie das echte Teil)"
+
+msgid "%s-drag copies it"
+msgstr "%s-Ziehen kopiert es"
+
+msgid "double-click edits inside a sub-assembly"
+msgstr "Doppelklick bearbeitet das Innere einer Baugruppe"
+
+msgid "Select: a click puts it down"
+msgstr "Auswählen: Ein Klick setzt es ab"
+
+msgid "type a number to move it exactly"
+msgstr "eine Zahl eintippen, um es genau zu bewegen"
+
+msgid "Esc puts it back"
+msgstr "Esc legt es zurück"
+
+msgid "Select: each click puts a copy down"
+msgstr "Auswählen: Jeder Klick setzt eine Kopie ab"
+
+msgid "Esc or a right click stops"
+msgstr "Esc oder ein Rechtsklick hört auf"
+
+msgid "Placing %s: click puts one down"
+msgstr "%s absetzen: Ein Klick setzt eins ab"
+
+msgid "%s, the part stays in hand"
+msgstr "%s, das Teil bleibt in der Hand"
+
+msgid "Esc lets go"
+msgstr "Esc lässt los"
+
+msgid "Placing %s on %s: click puts it there"
+msgstr "%s auf %s absetzen: Ein Klick setzt es dort ab"
+
+msgid "%s turns it about the joint"
+msgstr "%s dreht es um das Gelenk"
+
+msgid "%s the other way on"
+msgstr "%s andersherum"
+
+msgid "Orbit: drag turns the view"
+msgstr "Ansicht drehen: Ziehen dreht die Ansicht"
+
+msgid "Pan: drag slides the view"
+msgstr "Ansicht verschieben: Ziehen verschiebt die Ansicht"
+
+msgid "Zoom: drag up or down zooms, a click zooms in (Shift-click out)"
+msgstr "Zoomen: Ziehen nach oben oder unten zoomt, ein Klick zoomt hinein (Shift-Klick heraus)"
+
+msgid "Esc or %s back to Select"
+msgstr "Esc oder %s zurück zu Auswählen"
+
+msgid "Space held: drag slides the view"
+msgstr "Space gehalten: Ziehen verschiebt die Ansicht"
+
+msgid "let go of Space to carry on"
+msgstr "Space loslassen, um weiterzumachen"
+
+msgid "Alt held: drag turns the view, with Shift slides it, with %s zooms"
+msgstr "Alt gehalten: Ziehen dreht die Ansicht, mit Shift verschiebt es sie, mit %s zoomt es"
+
+msgid "a click takes that part into hand"
+msgstr "ein Klick nimmt dieses Teil in die Hand"
+
+msgid "Move: click a part for its arrows, again to pick it up (the selection with it)"
+msgstr "Verschieben: Ein Klick auf ein Teil zeigt seine Pfeile, ein zweiter nimmt es auf (mit der Auswahl)"
+
+msgid "Move: drag an arrow to slide it, a pane for two axes at once, a number typed makes it exact"
+msgstr "Verschieben: Einen Pfeil ziehen schiebt es, eine Fläche zwei Achsen zugleich, eine eingetippte Zahl macht es genau"
+
+msgid "click it again to pick it up"
+msgstr "ein weiterer Klick nimmt es auf"
+
+msgid "Alt-click picks the point the arrows start from"
+msgstr "Alt-Klick wählt den Punkt, von dem die Pfeile ausgehen"
+
+msgid "Rotate: click a part for its rings, again to turn it %d° (Shift-click back)"
+msgstr "Drehen: Ein Klick auf ein Teil zeigt seine Ringe, ein zweiter dreht es um %d° (Shift-Klick zurück)"
+
+msgid "Rotate: drag a ring to turn it, finer further out, the outer ring about the view, inside the rings freely"
+msgstr "Drehen: Einen Ring ziehen dreht es, weiter außen feiner, der äußere Ring um die Blickachse, innerhalb der Ringe frei"
+
+msgid "a number typed makes it exact"
+msgstr "eine eingetippte Zahl macht es genau"
+
+msgid "click it again to turn it %d°"
+msgstr "ein weiterer Klick dreht es um %d°"
+
+msgid "Alt-click picks the point it turns about"
+msgstr "Alt-Klick wählt den Punkt, um den es sich dreht"
+
+msgid "Hinge: click a part on a hinge, clip or turntable to swing it %d°"
+msgstr "Scharnier: Ein Teil an einem Scharnier, Clip oder Drehteller anklicken, um es um %d° zu schwenken"
+
+msgid "Clone: each click puts a copy down"
+msgstr "Klonen: Jeder Klick setzt eine Kopie ab"
+
+msgid "Clone: click a part to hold a copy of it, then click where each goes"
+msgstr "Klonen: Ein Teil anklicken, um eine Kopie davon zu halten, dann dort klicken, wo jede hinkommt"
+
+msgid "Paint: click a part to paint it the colour in hand"
+msgstr "Einfärben: Ein Teil anklicken, um es in der Farbe in der Hand einzufärben"
+
+msgid "Hide: click a part to hide it"
+msgstr "Ausblenden: Ein Teil anklicken, um es auszublenden"
+
+msgid "%s shows everything"
+msgstr "%s zeigt alles"
+
+msgid "Delete: click a part to take it off"
+msgstr "Löschen: Ein Teil anklicken, um es zu entfernen"
+
+# The assistant's panel
+msgid "New chat"
+msgstr "Neuer Chat"
+
+msgid "Start a fresh conversation. The model stays."
+msgstr "Ein neues Gespräch beginnen. Das Modell bleibt."
+
+msgid "A photo or drawing of the thing you want built. Its proportions get measured off this rather than remembered."
+msgstr "Ein Foto oder eine Zeichnung dessen, was gebaut werden soll. Seine Proportionen werden daran gemessen statt aus dem Gedächtnis genommen."
+
+msgid "Build it"
+msgstr "Bauen"
+
+msgid "Sketch first"
+msgstr "Erst skizzieren"
+
+msgid "Three quick massing sketches to choose from, on a cheaper Claude, before the full design is begun."
+msgstr "Drei schnelle Volumenskizzen zur Wahl, mit einem günstigeren Claude, bevor der ganze Entwurf beginnt."
+
+msgid "Which Claude designs for you"
+msgstr "Welcher Claude für dich entwirft"
+
+msgid "low"
+msgstr "niedrig"
+
+msgid "medium"
+msgstr "mittel"
+
+msgid "high"
+msgstr "hoch"
+
+msgid "xhigh"
+msgstr "sehr hoch"
+
+msgid "max"
+msgstr "maximal"
+
+msgid "How long it thinks before answering. More is better and slower and dearer."
+msgstr "Wie lange es nachdenkt, bevor es antwortet. Mehr ist besser, langsamer und teurer."
+
+msgid "My Claude"
+msgstr "Mein Claude"
+
+msgid "Design with the Claude Code on this machine, on your own Claude subscription. No key, no account, nothing billed here — and the session can reach this app's bricks and nothing else on your computer."
+msgstr "Mit dem Claude Code auf diesem Rechner entwerfen, mit deinem eigenen Claude-Abo. Kein Schlüssel, kein Konto, hier wird nichts berechnet — und die Sitzung erreicht die Steine dieser App und sonst nichts auf deinem Computer."
+
+msgid "Design with Claude"
+msgstr "Mit Claude entwerfen"
+
+msgid "Describe a model and Claude designs it brick by brick, checking every brick holds. Watch it build, then ask for changes or carry on by hand."
+msgstr "Beschreibe ein Modell, und Claude entwirft es Stein für Stein und prüft, dass jeder Stein hält. Sieh beim Bauen zu, dann bitte um Änderungen oder mach von Hand weiter."
+
+msgid "With your Anthropic API key"
+msgstr "Mit deinem Anthropic-API-Schlüssel"
+
+msgid "Paste your key: sk-ant-…"
+msgstr "Schlüssel einfügen: sk-ant-…"
+
+msgid "Remember it on this device"
+msgstr "Auf diesem Gerät merken"
+
+msgid "Kept so you need not paste it again, where other programs running as you could read it. Untick to keep it for this visit only — the right choice on a shared computer."
+msgstr "Gespeichert, damit du ihn nicht noch einmal einfügen musst, wo andere Programme unter deinem Konto ihn lesen könnten. Haken entfernen, um ihn nur für diesen Besuch zu behalten — die richtige Wahl auf einem geteilten Computer."
+
+msgid "Use this key"
+msgstr "Diesen Schlüssel verwenden"
+
+msgid "Sent only to Anthropic, never to us. Safest is a key just for this, in a Console workspace with a spend limit."
+msgstr "Nur an Anthropic gesendet, nie an uns. Am sichersten ist ein eigener Schlüssel nur dafür, in einem Console-Workspace mit Ausgabenlimit."
+
+msgid "Anthropic bills it per design. At the default setting a small house took 11 minutes and $2.40, a castle 45 minutes and $5–10; medium effort is about a third."
+msgstr "Anthropic berechnet es pro Entwurf. Mit der Standardeinstellung brauchte ein kleines Haus 11 Minuten und 2,40 $, eine Burg 45 Minuten und 5–10 $; mittlerer Aufwand kostet etwa ein Drittel."
+
+msgid "Or with your Claude plan"
+msgstr "Oder mit deinem Claude-Abo"
+
+msgid "On Claude Pro or Max, no key needed: connect Claude to your Brickworks account once, then ask Claude to build. It builds here, on your plan's usage."
+msgstr "Mit Claude Pro oder Max brauchst du keinen Schlüssel: Verbinde Claude einmal mit deinem Brickworks-Konto und bitte Claude dann ums Bauen. Es baut hier, im Rahmen deines Abos."
+
+msgid "Connect Claude"
+msgstr "Claude verbinden"
+
+msgid "Opens claude.ai with Brickworks filled in"
+msgstr "Öffnet claude.ai mit Brickworks bereits eingetragen"
+
+# The view cube's faces
+msgid "FRONT"
+msgstr "VORNE"
+
+msgid "BACK"
+msgstr "HINTEN"
+
+msgid "RIGHT"
+msgstr "RECHTS"
+
+msgid "LEFT"
+msgstr "LINKS"
+
+msgid "TOP"
+msgstr "OBEN"
+
+msgid "BOTTOM"
+msgstr "UNTEN"
+
+# The model tree's sections
+msgid "Double-click to edit inside; drag onto another to nest"
+msgstr "Doppelklick bearbeitet das Innere; auf eine andere ziehen verschachtelt sie"
+
+msgid "How a builder would split the model into sections, as a set into bags"
+msgstr "Wie ein Baumeister das Modell in Abschnitte teilen würde, wie ein Set in Tüten"
+
+msgid "Accept all"
+msgstr "Alle annehmen"
+
+msgid "Make every suggested section a sub-assembly: one undo"
+msgstr "Jeden vorgeschlagenen Abschnitt zur Baugruppe machen: ein Rückgängig"
+
+msgid "Accept"
+msgstr "Annehmen"
+
+msgid "Make the chosen suggestion a sub-assembly"
+msgstr "Den gewählten Vorschlag zur Baugruppe machen"
+
+msgid "Merge"
+msgstr "Zusammenführen"
+
+msgid "Put the chosen suggestion in with the one it is joined to most (or drag it onto another)"
+msgstr "Den gewählten Vorschlag mit dem zusammenlegen, mit dem er am meisten verbunden ist (oder auf einen anderen ziehen)"
+
+msgid "Part the chosen suggestion in two where it is held least"
+msgstr "Den gewählten Vorschlag dort in zwei teilen, wo er am wenigsten hält"
+
+msgid "Dismiss"
+msgstr "Verwerfen"
+
+msgid "Put the suggestions away"
+msgstr "Die Vorschläge verwerfen"
+
+msgid "Evaluate…"
+msgstr "Bewerten…"
+
+msgid "The chosen section on its own:"
+msgstr "Der gewählte Abschnitt für sich:"
+
+msgid "weight, whether it holds together and stands, what joins it, its steps"
+msgstr "Gewicht, ob er zusammenhält und steht, was ihn verbindet, seine Schritte"
+
+msgid "Break out"
+msgstr "Herauslösen"
+
+msgid "Put back"
+msgstr "Zurücksetzen"
+
+msgid "Pull the chosen section away from the model to work on it (Y); again puts it back"
+msgstr "Den gewählten Abschnitt vom Modell wegziehen, um daran zu arbeiten (Y); nochmals setzt ihn zurück"
+
+msgid "Every section apart, and back together (Shift+Y)"
+msgstr "Alle Abschnitte auseinander, und wieder zusammen (Shift+Y)"
+
+msgid "Drag to share the column between these panels"
+msgstr "Ziehen, um die Spalte zwischen diesen Bereichen aufzuteilen"
+
+# The properties of one part
+msgid "LDraw %s"
+msgstr "LDraw %s"
+
+msgid "BrickLink %s"
+msgstr "BrickLink %s"
+
+msgid "Rebrickable %s"
+msgstr "Rebrickable %s"
+
+msgid "Made here"
+msgstr "Hier erstellt"
+
+msgid "Printed versions… (%d)"
+msgstr "Bedruckte Varianten… (%d)"
+
+msgid "Swap it for one of the prints or stickered versions the LEGO Group made of it"
+msgstr "Es gegen eine der bedruckten oder beklebten Varianten tauschen, die die LEGO Gruppe davon hergestellt hat"
+
+msgid "%d colours: %s"
+msgstr "%d Farben: %s"
+
+msgid "Joined to nothing"
+msgstr "Mit nichts verbunden"
+
+msgid "Joined to 1 other part"
+msgstr "Mit 1 anderen Teil verbunden"
+
+msgid "Joined to %d other parts, directly or through others"
+msgstr "Mit %d anderen Teilen verbunden, direkt oder über andere"
+
+msgid "Joined to %d or more other parts, directly or through others"
+msgstr "Mit %d oder mehr anderen Teilen verbunden, direkt oder über andere"
+
+msgid "Faces: studs up"
+msgstr "Ausrichtung: Noppen oben"
+
+msgid "Faces: studs down"
+msgstr "Ausrichtung: Noppen unten"
+
+msgid "Faces: studs to the side"
+msgstr "Ausrichtung: Noppen zur Seite"
+
+msgid "Step %d of %d in the instructions"
+msgstr "Schritt %d von %d in der Bauanleitung"
+
+msgid "Locked"
+msgstr "Gesperrt"
+
+msgid "%s unlocks everything"
+msgstr "%s entsperrt alles"
+
+msgid "%d parts selected"
+msgstr "%d Teile ausgewählt"
+
+msgid "Joined"
+msgstr "Verbundene"
+
+msgid "Select it and everything joined to it"
+msgstr "Es und alles, was damit verbunden ist, auswählen"
+
+msgid "Lock"
+msgstr "Sperren"
+
+msgid "Keep it from being picked out, moved, painted or taken off"
+msgstr "Verhindern, dass es ausgewählt, bewegt, eingefärbt oder entfernt wird"
+
+msgid "Hide it, to reach what is behind it"
+msgstr "Ausblenden, um an das dahinter zu kommen"
+
+# Settings' link to the AI's settings
+msgid "AI: %s…"
+msgstr "KI: %s…"
+
+msgid "More"
+msgstr "Mehr"
+
+msgid "Add a picture of it"
+msgstr "Ein Bild davon hinzufügen"
+
+msgid "1 picture of it"
+msgstr "1 Bild davon"
+
+msgid "%d pictures of it"
+msgstr "%d Bilder davon"
+
+msgid "No key yet? Get one at console.anthropic.com"
+msgstr "Noch kein Schlüssel? Auf console.anthropic.com"
+
+msgid "Claude app"
+msgstr "Claude-App"
+
+msgid "Private address"
+msgstr "Private Adresse"
+
+msgid "Render queue…"
+msgstr "Render-Warteschlange…"
+
+msgid "Pictures lined up with Render's settings and drawn one after another while you go on building"
+msgstr "Bilder mit den Einstellungen von Rendern aufgereiht und eins nach dem anderen gezeichnet, während du weiterbaust"
+
+msgid "Pull out the selected parts"
+msgstr "Ausgewählte Teile herausziehen"
+
+msgid "The selected parts of this step (all of them, none selected) drawn pulled out along the way they go in, with an arrow in; again puts them back"
+msgstr "Die ausgewählten Teile dieses Schritts (alle, wenn keins ausgewählt ist) herausgezogen entlang ihres Wegs hinein gezeichnet, mit einem Pfeil hinein; noch einmal setzt sie zurück"
+
+msgid "Colour guide"
+msgstr "Farbübersicht"
+
+msgid "This step's colours listed under its number, or not"
+msgstr "Die Farben dieses Schritts unter seiner Nummer aufgelistet, oder nicht"
+
+msgid "1:1 guide"
+msgstr "1:1-Vorlage"
+
+msgid "The selected parts of this step drawn at their real size, or no 1:1 guide where the booklet gives one; again as the booklet does it"
+msgstr "Die ausgewählten Teile dieses Schritts in echter Größe gezeichnet, oder keine 1:1-Vorlage, wo die Anleitung eine zeigt; noch einmal wie die Anleitung es macht"
+
+msgid "Sub-model preview"
+msgstr "Vorschau des Untermodells"
+
+msgid "The sub-assembly this step puts on shown finished on the first of its own pages, or not"
+msgstr "Die Baugruppe, die dieser Schritt anbringt, fertig auf der ersten ihrer eigenen Seiten gezeigt, oder nicht"
