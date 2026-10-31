@@ -1037,9 +1037,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   with `offer_for_probe`; a probe about the assistant's own panel turns it on
   (`set_assistant(true)`). The desktop's `--mcp` port is asked for on the
   command line and is not held.
-- `interface languages` (`src/ui/language.gd`,
-  `Language`, `locale/de.po`, `fr.po`, `es.po`): German, French and
-  Spanish. Tools, Settings…, **Language**, beside Interface size: English (the default), Deutsch,
+- `interface languages` (`src/ui/language.gd`, `Language`, `locale/de.po`,
+  `fr.po`, `es.po`): German, French and Spanish. Tools, Settings…,
+  **Language**, beside Interface size: English (the default), Deutsch,
   Français or Español, kept on this device (`language` in
   `user://shell.cfg`) and applied at the settings' first read, before
   anything is drawn; `/app?lang=de` (`--lang=de` on the desktop) chooses one
@@ -1047,16 +1047,33 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   chosen file, so a control's `text` stays English and every probe and
   browser check reads English in any language. Words made at the moment are
   patterns (`%s`, `%d`); a row's key, a tooltip's lines, a status line's
-  parts (" · ", " — ", ". ", "; ") and the keys sheet's lowered words are
-  found piece by piece. Names stay as they are: parts, colours (LDraw's, as
-  Studio keeps them), models, keys (Ctrl, Shift). Find a command matches a
-  command's words as drawn too ("speichern" finds Save,
-  `CommandPalette._score`). Not translated yet: the
-  status line's messages after an action, dialogs other than Settings and
-  the keys sheet, the web pages. A word added to a menu, a tooltip or a
-  panel with no entry fails `languages_probe`, whose `--missing=FILE` writes
-  the entries to translate; `tests/test_locale.py` checks the files
-  (places kept, LEGO® an adjective, no language short of another).
+  parts (" · ", " — ", ". ", "; ", and " › " a menu's path) and the keys
+  sheet's lowered words are found piece by piece, a part found nowhere kept
+  as it is, as a name is ("House — 71 bricks"); of several partial ways the
+  one leaving the fewest English letters wins. Names stay as they are:
+  parts, colours (LDraw's, as Studio keeps them), models, sets, keys (Ctrl,
+  Shift), files, licences, and whatever an entry's English quotes (“%s”: a
+  model named Car stays Car). Find a command matches a command's words as
+  drawn too ("speichern" finds Save, `CommandPalette._score`). The status
+  line after an action, and every dialog (the way in: signing in by email or
+  orangecheck, the age question and what the server answers; Open's list and
+  Godot's file dialog, the Library, Save as, Versions, Export, Share, Build
+  together, Comments, Your account, Render and its queue, the booklet's, the
+  collection's, the minifigure builder, the part maker, the print editor,
+  Send feedback, About, the confirmations, the assistant panel) are
+  translated too, and the model tree's own row ("Model"); not yet the web
+  pages, nor "White" on Render's backgrounds, which is a colour's name too.
+  `languages_probe` reads them all in English, then in each language: 63
+  common actions with the status line heard after each, Settings with the
+  assistant on and off, and 40-odd dialogs opened one by one (`DIALOGS`; the
+  sign-in screen, which a probe's window never shows, made in each of its
+  faces), each word drawn on them read; a word added to a menu, a tooltip, a
+  panel, a dialog or a status message with no entry fails it, and
+  `--missing=FILE` writes the entries to translate, each partial one with
+  the whole it was in ("#. in:"). `--shots=DIR` pictures ten dialogs (the
+  sign-in screen's two steps first) and a status line in each language.
+  `tests/test_locale.py` checks the files (places kept, LEGO® an adjective,
+  no language short of another).
 - `remembered layout` (`src/ui/shell_prefs.gd`): the columns open or folded
   (`parts_open`, and the right column's tab, `assistant_open` or else
   `properties_open`, for a wide window; `narrow_side`, "parts", "properties"
@@ -1502,7 +1519,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   from 300 parts until 2026-10-21), the parts' exact shapes read first on the
   main thread; a press before it is done waits for the rest below 300 parts
   (`GrabDrag._ready_now`) and says so from 300. The status bar's weighing
-  (`Main._weigh`) is on a worker too. `the builder's frames after a change`
+  (`Main._weigh`) is on a worker too. Both give way when the library must be
+  written (`PartLibrary.reading_in`'s stop, a `WorkerTasks.Stop` that
+  `Bodies`, `Balance.prepare` and `Stability.check` ask as they go): a model
+  opened with parts of its own adds them at once, the reading of the model
+  before it dropped and read again later (8202-1 after 42082-1: 7 to 13 s
+  to 1.2 s; `bigmodel_probe`'s "opened while 42082-1 was weighed"). `the builder's frames after a change`
   (`tools/probe.sh ahead_probe -- --most-ms=50`, headless, about 3 min):
   move_part, Ctrl+Z and a click placing a part on the Ducati, 8808-1 and
   42004-1, each act's longest main-thread frame under 50 ms (9 to 18; on

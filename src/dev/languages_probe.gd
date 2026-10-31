@@ -48,8 +48,12 @@ var _words: Dictionary = {}
 ## The words each language lacks, for --missing.
 var _missing: Dictionary = {}
 ## A key's name, kept in every language: Ctrl-C, Shift+H, F1, Esc.
+## The status line lowers a modifier before its key (Keymap.listed_key):
+## ctrl-shift-Z.
 var _KEY: RegEx = RegEx.create_from_string(
-	r"^((Ctrl|Shift|Alt|Cmd|Option)[+-])*(Ctrl|Shift|Alt|Cmd|Option|[A-Z0-9]|F\d+|Esc|Enter|Space|Tab|Delete|Backspace|Home|End|Page Up|Page Down|Up|Down|Left|Right|\W)$")
+	r"^((?i:Ctrl|Shift|Alt|Cmd|Option)[+-])*(Ctrl|Shift|Alt|Cmd|Option|[A-Z0-9]|F\d+|Esc|Enter|Space|Tab|Delete|Backspace|Home|End|Page Up|Page Down|Up|Down|Left|Right|\W)$")
+## A file's name or its path, which a status line names as it is.
+var _FILE: RegEx = RegEx.create_from_string(r"^\S*[/\\]\S*$|^[^/\\]+\.[a-z0-9]{2,4}$")
 ## The part put down to have a selection, and its menu.
 var _brick: int = 0
 ## Names, drawn as they are in any language: the colours', the part's,
@@ -118,6 +122,8 @@ func _run() -> void:
 		_check("the app starts in English, as it is written (%s)" % Language.current(),
 			Language.current() == "en")
 		await _gather()
+		await _gather_status()
+		await _gather_dialogs()
 		for code: String in LANGUAGES:
 			await _in(code)
 		await _german_fits()
@@ -149,7 +155,7 @@ func _add(kind: String, text: String, drawn: Node) -> void:
 	# A number, a percentage or a sign alone is the same in any language, as
 	# a key's letter is, and a part's or a colour's name.
 	if not RegEx.create_from_string(r"\p{L}").search(text) or text.length() == 1 \
-			or RegEx.create_from_string(r"^F\d+$").search(text) or _names.has(text):
+			or RegEx.create_from_string(r"^F\d+$").search(text) or _is_name(text):
 		return
 	if not _words.has(kind):
 		_words[kind] = []
@@ -157,6 +163,88 @@ func _add(kind: String, text: String, drawn: Node) -> void:
 		if had[0] == text:
 			return
 	(_words[kind] as Array).append([text, drawn])
+
+
+## Names, as _plain has them: every part's, however a list writes it.
+var _plain_names: Dictionary = {}
+var _JOINS: RegEx = RegEx.create_from_string(r" · | — |\. |; | › |\n")
+var _ROWS: RegEx = RegEx.create_from_string(r" · | — |\n")
+var _ADDRESS: RegEx = RegEx.create_from_string(
+	r"^(https?://\S+|[\w.-]+\.(org|com|diy|io|net|ai)(/\S*)?|[^@\s]+@[^@\s]+)$")
+## A file dialog's patterns ("*.ldr, *.mpd"), a licence's own name, a
+## copyright line, and the app's name with its version ("Brickworks 0.10.0,
+## Linux 24.04, forward_plus, 1280 × 720", what feedback sends): names.
+var _GLOBS: RegEx = RegEx.create_from_string(r"^\*\.[a-z0-9]+(, \*\.[a-z0-9]+)*$")
+var _LEGAL: RegEx = RegEx.create_from_string(
+	r"^(Copyright \(c\) .*|MIT License|SIL Open Font License [\d.]+|CC BY(-SA)? [\d.]+|CC0 [\d.]+)$")
+var _VERSIONED: RegEx = RegEx.create_from_string(r"^Brickworks \d+\.\d+")
+## A number and its unit's sign ("30 s", "24 mm"), and a count of a part
+## ("1 × Brick 2 x 4"), as every language writes them.
+var _MEASURE: RegEx = RegEx.create_from_string(r"^-?\d+([.,]\d+)? ?(s|ms|mm|cm|m|°|%|px|g|kg|LDU)$")
+var _COUNTED: RegEx = RegEx.create_from_string(r"^\d+ × (.+)$")
+
+
+## Whether [param text] is names alone, which every language draws as they
+## are: each of its lines, and each part of a line where a join divides
+## it, a name (a part's, a colour's, a model's, a set's), a part's number,
+## a key, a file, an address, or no word at all. A part's name may have its
+## number after it in brackets, or before it ("3001p0a Snout, Fangs and
+## Whiskers Pattern"), as the lists write them.
+func _is_name(text: String) -> bool:
+	# A tile's name wrapped onto two lines ("Plate 2×2\nCorner").
+	if _plain_names.has(_plain(text.replace("\n", " "))):
+		return true
+	# Its lines and the parts " · " and " — " join first, as a name may have
+	# a full stop in it ("Head Alien E. T. (27956) · 2"), then every join.
+	return _names_between(text, _ROWS) or _names_between(text, _JOINS)
+
+
+func _names_between(text: String, joins: RegEx) -> bool:
+	for piece: String in joins.sub(text.strip_edges(), "\n", true).split("\n"):
+		piece = piece.strip_edges()
+		# A name may end in a full stop of its own ("Head Alien E. T."),
+		# else the stop ends a sentence.
+		if _names.has(piece) or _plain_names.has(_plain(piece)):
+			continue
+		piece = piece.trim_suffix(".")
+		if piece.is_empty() or not RegEx.create_from_string(r"\p{L}").search(piece) \
+				or _names.has(piece) or _KEY.search(piece) or _FILE.search(piece) \
+				or _ADDRESS.search(piece) or _plain_names.has(_plain(piece)) \
+				or _GLOBS.search(piece) or _LEGAL.search(piece) or _VERSIONED.search(piece):
+			continue
+		var bracketed: RegExMatch = RegEx.create_from_string(r"^(.*) \(([^()]+)\)$").search(piece)
+		var counted: RegExMatch = _COUNTED.search(piece)
+		if _MEASURE.search(piece) or _numbered(piece, "") \
+				or _numbered(piece.get_slice(" ", 0), piece.substr(piece.find(" ") + 1)) \
+				or bracketed != null and _numbered(bracketed.get_string(2), bracketed.get_string(1)) \
+				or counted != null and _plain_names.has(_plain(counted.get_string(1))):
+			continue
+		return false
+	return true
+
+
+## Whether [param shown] is part [param id]'s name, or the end of it as a
+## list shortens it ("Head - Hollow Stud" of "Keychain Minifig Head -
+## Hollow Stud"), with the number beside it, or a part's number alone
+## ([param shown] empty). Not any words by a number: "1" and "12" are
+## parts' numbers too, and counts.
+func _numbered(id: String, shown: String) -> bool:
+	var library: PartLibrary = _main.get("_library") if _main != null else null
+	if library == null or not library.parts.has(id):
+		return false
+	if shown.is_empty():
+		return true
+	var plain: String = _plain(shown)
+	return _plain_names.has(plain) \
+		or _plain((library.parts[id] as PartLibrary.PartInfo).name).ends_with(" " + plain)
+
+
+## [param name] as names are compared: lower case, one space between words,
+## sizes written one way (1 x 2), and without "Minifig", which a figure's
+## lists leave off.
+func _plain(name: String) -> String:
+	var out: String = name.to_lower().replace("×", " x ").replace("minifig ", "")
+	return " ".join(out.split(" ", false))
 
 
 func _gather() -> void:
@@ -210,7 +298,8 @@ func _gather() -> void:
 	_names[Inventory._tidy((library.parts["3001"] as PartLibrary.PartInfo).name)] = true
 	for model: Dictionary in Brain.CHOICES:
 		_names[str(model["name"])] = true
-	for name: String in ["Claude", "Claude Code"]:
+	# And a shop's, on the button that sends a list to it.
+	for name: String in ["Claude", "Claude Code", "BrickLink"]:
 		_names[name] = true
 	var bin: PartsBin = _main.get("_bin")
 	for selected: bool in [true, false]:
@@ -230,6 +319,14 @@ func _gather() -> void:
 			_walk("panels", right, [])
 		_walk("the foot's lines", _shell.status, [])
 		_walk("the foot's lines", _main.get("_hint"), [])
+	# The tiles' tooltips, a few of them, whose name and number are names
+	# and the rest words of the interface; and a fold's count's.
+	var tiles: int = 0
+	for tile: Node in (bin.get("_grid") as Node).find_children("*", "Button", true, false):
+		var tip: String = (tile as Button).tooltip_text
+		if tiles < 6 and (tile.has_meta("part") or (tile as Button).text.begins_with("+")):
+			_add("panels", tip, tile)
+			tiles += 1
 	# The view cube's faces, which it draws itself.
 	var cube: ViewCube = _main.get("_gizmo")
 	if cube != null:
@@ -248,6 +345,12 @@ func _gather() -> void:
 			var header: Button = named[name]
 			_add("panel titles", header.text, header)
 			_add("panel titles", header.tooltip_text, header)
+	# The model tree's first row, the model itself: the rows under it are
+	# its sub-models, named by whoever built it.
+	var top: TreeItem = (_shell.outliner.get("_tree") as Tree).get_root()
+	if top != null:
+		_add("panels", top.get_text(0), _shell.outliner)
+		_add("panels", top.get_tooltip_text(0), _shell.outliner)
 	for window: Node in _main.find_children("*", "Window", true, false):
 		if not Tooltips.is_tooltip(window as Window) and not window is PopupMenu:
 			_add("panel titles", (window as Window).title, window)
@@ -274,6 +377,15 @@ func _gather() -> void:
 	_walk("settings", controls.get("_settings"), [controls.language_choice,
 		controls.get("_version")])
 	_add("settings", (controls.get("_done") as Button).text, controls.get("_done"))
+	# And with the assistant off, whose note says what that leaves out; on
+	# again after, as the rest of the walk reads it.
+	_main.call("set_assistant", false)
+	controls.call("_show_assistant_choice")
+	await _frames(6)
+	_walk("settings", controls.get("_settings"), [controls.language_choice,
+		controls.get("_version")])
+	_main.call("set_assistant", true)
+	controls.call("_show_assistant_choice")
 	controls.visible = false
 	await _frames(4)
 
@@ -290,6 +402,373 @@ func _gather() -> void:
 	for kind: String in _words:
 		counts.append("%s %d" % [kind, (_words[kind] as Array).size()])
 	print("  read in English: %s" % ", ".join(counts))
+
+
+# -- the status line and the dialogs -------------------------------------------
+
+## The status line's answer to the commonest things a person does, each done
+## as the menus or the keys do it: what the bar says (ModelBar.said), what
+## Working shows while it lasts, and the line each tool and Check stability
+## leave there.
+func _gather_status() -> void:
+	var bar: ModelBar = _main.get("_bar")
+	var builder: Builder = _main.get("_builder")
+	var verbs: EditVerbs = _shell.verbs
+	var heard: Array[String] = []
+	var hear: Callable = func(text: String) -> void:
+		if not text.is_empty() and not heard.has(text):
+			heard.append(text)
+	bar.said.connect(hear)
+	var watch: Callable = func() -> void:
+		for job: Working.Job in Working._jobs:
+			hear.call(job.words)
+		hear.call(_shell.balance_line())
+	process_frame.connect(watch)
+	var store: ModelStore = _main.get("_store")
+	_names[store.title] = true
+	_names[bar.model_name()] = true
+	# Every part's name, as LDraw, a tile and a list write it.
+	var library: PartLibrary = _main.get("_library")
+	for part_id: String in library.parts:
+		var info: PartLibrary.PartInfo = library.parts[part_id]
+		_plain_names[_plain(info.name)] = true
+		_plain_names[_plain(PartsBin.tile_name(info))] = true
+		# And as a hose's list and a figure's slots shorten it.
+		_plain_names[_plain(Flex.item_name("", library, part_id))] = true
+		_plain_names[_plain(MinifigDialog._short(info.name))] = true
+	# Each on the part put down, selected.
+	var on_it: Callable = func() -> void:
+		builder.select_brick(_brick, false)
+	var nothing: Callable = func() -> void:
+		builder.clear_selection()
+	var steps: Array = [
+		[nothing, "undo"], [nothing, "redo"], [nothing, "copy"], [nothing, "hide"],
+		[nothing, "paste"], [nothing, "swing"], [nothing, "mirror"],
+		[on_it, "copy"], [on_it, "paste"], [on_it, "put_away"], [on_it, "duplicate"],
+		[on_it, "put_away"], [on_it, "hide"], [nothing, "show_all"], [on_it, "isolate"],
+		[nothing, "show_all"], [on_it, "lock"], [nothing, "unlock"], [on_it, "paint"],
+		[on_it, "mirror"], [nothing, "undo"], [nothing, "redo"], [on_it, "swing"],
+		[on_it, "select_colour"], [on_it, "select_part"], [on_it, "select_alike"],
+		[on_it, "select_connected"], [on_it, "select_submodel"], [on_it, "cut_parts"],
+		[nothing, "undo"], [on_it, "delete"], [nothing, "undo"], [on_it, "split_parts"],
+		[nothing, "undo"], [on_it, "merge_parts"], [nothing, "stability"], [nothing, "measure"],
+		[nothing, "measure"], [nothing, "ortho"], [nothing, "ortho"], [nothing, "hold"],
+		[nothing, "rotate_held"], [nothing, "tip_held"], [nothing, "put_away"],
+		[nothing, "save"], [nothing, "reseat"], [on_it, "step_new"], [nothing, "undo"],
+		[nothing, "select_all"], [nothing, "select_none"], [on_it, "make_unique"]]
+	for tool: String in ["select", "move", "rotate", "hinge", "connect", "clone", "paint", "hide",
+			"delete", "orbit", "pan", "zoom"]:
+		steps.append([nothing, "tool " + tool])
+	for step: Array in steps:
+		(step[0] as Callable).call()
+		await _frames(2)
+		var what: String = step[1]
+		match what:
+			"put_away":
+				verbs.put_away()
+			"hold":
+				_main.call("_on_part_chosen", "3001")
+			_:
+				if what.begins_with("tool "):
+					_shell.run("mode_" + what.trim_prefix("tool "))
+					await _frames(3)
+					hear.call(verbs.hint())
+					if _shell.stress != null:
+						hear.call(_shell.stress.line())
+				else:
+					_shell.run(what)
+		# Until any work it began is done, as a person waits for it.
+		for _n: int in 600:
+			await process_frame
+			if Working._jobs.is_empty() and not BookletMaker.busy:
+				break
+		await _frames(4)
+		hear.call(verbs.hint())
+	verbs.put_away()
+	verbs.set_mode("select")
+	builder.clear_selection()
+	await _frames(4)
+	process_frame.disconnect(watch)
+	bar.said.disconnect(hear)
+	var hint: Label = _shell.status.get("_hint")
+	for text: String in heard:
+		_add("status lines", text, hint)
+	print("  the status line said %d things over %d actions" % [heard.size(), steps.size()])
+
+
+## The dialogs a person meets in a first hour, as the commands that open
+## them: each opened with the part selected, the words it shows read, and
+## closed again.
+const DIALOGS: Array[String] = ["sign_in", "sign_in_code", "sign_in_waiting",
+	"sign_in_unreachable", "sign_in_age", "sign_in_thanks", "open", "open_file", "library", "save_as", "versions",
+	"compare", "export_3d", "render", "render_queue", "pose", "share", "together", "comments",
+	"account", "pattern", "select_find", "find_colour", "flex", "reference", "parts_list",
+	"collection", "collection_need", "collection_build", "make_submodel", "step_to", "timeline",
+	"minifig", "mosaic", "brickify", "part_maker", "print_part", "sticker", "simulate",
+	"hidden_colours", "connector", "feedback", "about", "floor_custom", "palette", "clear", "new"]
+
+## The dialogs pictured in each language (--shots).
+const PICTURED: Array[String] = ["sign_in", "sign_in_code", "clear", "save_as", "versions", "render",
+	"share", "parts_list", "about", "export_3d"]
+
+
+func _gather_dialogs() -> void:
+	var store: ModelStore = _main.get("_store")
+	for entry: ModelStore.Entry in store.list_examples() + store.list_saved():
+		_names[entry.name] = true
+	# About's credits: whose work, and the links to it.
+	for one: Dictionary in Credits.LIST:
+		_names[str(one["name"])] = true
+		for link: Array in one["links"]:
+			_names[str(link[0])] = true
+	var counts: Dictionary = {}
+	for name: String in DIALOGS:
+		var shown: Array = await _show(name)
+		# What can I build?'s models and sets are names.
+		var collection: CollectionDialog = _shell.collection
+		if collection != null:
+			for candidate: Dictionary in collection.get("_ranked"):
+				_names[str(candidate["name"])] = true
+				# A set's model is "Micro Wheels — Forklift", its two names.
+				for piece: String in str(candidate["name"]).split(" — "):
+					_names[piece.strip_edges()] = true
+		var read: int = 0
+		for pair: Array in shown[1]:
+			if not _is_data(pair[0]):
+				_add("dialogs", str(pair[1]), pair[0])
+				read += 1
+		counts[name] = read
+		await _close(name, shown[0])
+	print("  dialogs read: %s" % ", ".join(counts.keys().map(func(n: String) -> String:
+		return "%s %d" % [n, counts[n]])))
+
+
+## The dialog [param name] opened with the part selected: [what it put on
+## screen, as the nodes newly shown whose parents were shown already; each
+## word newly shown, as [node, word]].
+func _show(name: String) -> Array:
+	(_main.get("_builder") as Builder).select_brick(_brick, false)
+	if name == "find_colour":
+		# Its colours are in the parts' column, shut first so that they
+		# count as what it showed.
+		(_main.get("_bin_dock") as SideDock).set_open(false, false)
+	await _frames(3)
+	var before: Dictionary = _visible_now()
+	await _open_dialog(name)
+	await _frames(20)
+	for _n: int in 300:
+		if Working._jobs.is_empty():
+			break
+		await process_frame
+	await _frames(4)
+	var after: Dictionary = _visible_now()
+	var opened: Array[Node] = []
+	var words: Array = []
+	for key: String in after:
+		if before.has(key):
+			continue
+		var pair: Array = after[key]
+		var node: Node = pair[0]
+		if pair[1] != null:
+			words.append(pair)
+		elif node is Window or node.get_parent() == null \
+				or before.has(_seen_key(node.get_parent(), null)):
+			# A window anywhere in it, a file chooser under a node of its
+			# own, closed with it.
+			opened.append(node)
+	return [opened, words]
+
+
+func _open_dialog(name: String) -> void:
+	var bar: ModelBar = _main.get("_bar")
+	match name:
+		"sign_in", "sign_in_code", "sign_in_waiting", "sign_in_unreachable", "sign_in_age", \
+				"sign_in_thanks":
+			await _open_sign_in(name)
+		"save_as":
+			# The web's own; the desktop's is the platform's Save dialog.
+			(_shell.get("_save_as") as Window).popup_centered()
+		"open_file":
+			bar.call("_import")
+		"timeline":
+			_main.call("_toggle_steps")
+		"new":
+			# Asked only over a change not saved: one made first (the part
+			# selected taken off, put back after), else it would start a new
+			# model. A mirror of a 2 x 4 is the same 2 x 4, nothing changed.
+			_shell.run("delete")
+			await _frames(4)
+			if (_main.get("_store") as ModelStore).has_unsaved_work():
+				_shell.run("new")
+			else:
+				print("    new: not asked, as nothing is unsaved")
+		_:
+			if not _shell.run(name):
+				print("    %s: not run (%s)" % [name, _shell.why_not(name)])
+
+
+## The way in, which a probe's window never shows (Main._gate_wanted): made
+## on the app's own account for each of its faces, as the account's state
+## would show it, the state put back at once so that nothing else follows
+## it. Mistakes the form answers itself are made, the field left empty.
+var _gate: SignInGate
+
+
+func _open_sign_in(name: String) -> void:
+	var account: Account = _main.get("_account")
+	_gate = SignInGate.new()
+	_gate.setup(account)
+	_main.get_node("HUD").add_child(_gate)
+	var was: Array = [account.state, account.age_ask]
+	account.state = {"sign_in_waiting": Account.State.CHECKING,
+		"sign_in_unreachable": Account.State.UNREACHABLE, "sign_in_age": Account.State.SIGNED_IN,
+		"sign_in_thanks": Account.State.SIGNED_IN}.get(name, Account.State.SIGNED_OUT)
+	account.age_ask = name == "sign_in_age"
+	_gate.set("_thanking", name == "sign_in_thanks")
+	_gate.call("_follow")
+	account.state = was[0]
+	account.age_ask = was[1]
+	var form: SignInForm = _gate.get("_form")
+	# The form's own start, which shows orangecheck as the deployment says.
+	await _frames(2)
+	match name:
+		"sign_in":
+			# orangecheck as a deployment that offers it shows it.
+			(form.get("_orangecheck") as Control).visible = true
+			(form.get("_orangecheck_why") as Control).visible = true
+			form.call("_ask")
+		"sign_in_code":
+			(form.get("_email") as LineEdit).text = "builder@example.org"
+			form.call("_show", SignInForm.Step.CODE)
+			form.call("_redeem")
+		"sign_in_age":
+			_gate.call("_answer")
+
+
+## What [param opened] for [param name] put on screen, closed again.
+func _close(name: String, opened: Array[Node]) -> void:
+	if name == "timeline":
+		_main.call("_toggle_steps")
+	for node: Node in opened.duplicate():
+		if is_instance_valid(node) and not node is Window:
+			for window: Node in node.find_children("*", "Window", true, false):
+				if (window as Window).visible:
+					opened.append(window)
+	for node: Node in opened:
+		if not is_instance_valid(node):
+			continue
+		if node is Window:
+			(node as Window).hide()
+		elif node.has_method("close"):
+			node.call("close")
+		elif node is Control and node.get_parent() != null and not node.get_parent() is Container:
+			(node as Control).visible = false
+	# What a dialog opened that is not under it: a file chooser of its own
+	# (brickify's), the hose tool's panel, and the panels in the side dock.
+	for chooser: Node in root.find_children("*", "FileDialog", true, false):
+		(chooser as Window).hide()
+	var flex: Node = _main.get("_flex")
+	if flex != null and bool(flex.get("active")):
+		flex.call("leave")
+	for panel_name: String in ["_hidden_colours", "_pose", "_simulate"]:
+		var panel: Control = _main.get(panel_name)
+		if panel != null and panel.visible:
+			panel.call("close")
+	if _gate != null:
+		_gate.queue_free()
+		_gate = null
+	await _frames(6)
+	if name == "new":
+		_shell.run("undo")
+		await _frames(4)
+	(_main.get("_builder") as Builder).clear_selection()
+	_shell.verbs.put_away()
+	_shell.verbs.set_mode("select")
+	await _frames(3)
+
+
+## Every visible node, and every word shown on one, as keys: a node alone
+## (the second of its pair null) and a node's word.
+func _visible_now() -> Dictionary:
+	var out: Dictionary = {}
+	_visible_under(root, out)
+	return out
+
+
+func _visible_under(node: Node, out: Dictionary) -> void:
+	if node is CanvasItem and not (node as CanvasItem).visible:
+		return
+	if node is Window and node != root and (not (node as Window).visible
+			or Tooltips.is_tooltip(node as Window)):
+		return
+	out[_seen_key(node, null)] = [node, null]
+	for text: String in _texts_of(node):
+		out[_seen_key(node, text)] = [node, text]
+	for child: Node in node.get_children(true):
+		_visible_under(child, out)
+
+
+func _seen_key(node: Node, text: Variant) -> String:
+	return "%d|%s" % [node.get_instance_id(), "" if text == null else "|" + str(text)]
+
+
+## The words [param node] shows itself, as _walk reads them, and a window's
+## title, a menu button's rows, a spin box's ends and a tab's title.
+func _texts_of(node: Node) -> Array[String]:
+	var out: Array[String] = []
+	if node is PopupMenu:
+		for n: int in (node as PopupMenu).item_count:
+			out.append((node as PopupMenu).get_item_text(n))
+			out.append((node as PopupMenu).get_item_tooltip(n))
+	if node is Window:
+		out.append((node as Window).title)
+		return out.filter(func(text: String) -> bool: return not text.strip_edges().is_empty())
+	if node is Label:
+		out.append((node as Label).text)
+	elif node is RichTextLabel:
+		out.append((node as RichTextLabel).text)
+	elif node is OptionButton:
+		for n: int in (node as OptionButton).item_count:
+			out.append((node as OptionButton).get_item_text(n))
+	elif node is MenuButton:
+		out.append((node as MenuButton).text)
+		var popup: PopupMenu = (node as MenuButton).get_popup()
+		for n: int in popup.item_count:
+			out.append(popup.get_item_text(n))
+			out.append(popup.get_item_tooltip(n))
+	elif node is Button:
+		out.append((node as Button).text)
+	elif node is LinkButton:
+		out.append((node as LinkButton).text)
+	elif node is LineEdit:
+		out.append((node as LineEdit).placeholder_text)
+	elif node is TextEdit:
+		out.append((node as TextEdit).placeholder_text)
+	elif node is TabBar:
+		for n: int in (node as TabBar).tab_count:
+			out.append((node as TabBar).get_tab_title(n))
+	elif node is SpinBox:
+		out.append((node as SpinBox).prefix)
+		out.append((node as SpinBox).suffix)
+	if node is Control:
+		out.append((node as Control).tooltip_text)
+	return out.filter(func(text: String) -> bool: return not text.strip_edges().is_empty())
+
+
+## Whether [param node] shows data rather than the interface's words: a
+## typed field's own text, the rows of a list (models, sets, parts, people),
+## a file's name in the file chooser.
+func _is_data(node: Node) -> bool:
+	if node is LineEdit and not (node as LineEdit).editable:
+		return false
+	var at: Node = node
+	while at != null:
+		if at is ItemList or at is Tree:
+			return true
+		if at.has_meta(&"names") or str(at.name) in ["cards", "results", "rows"]:
+			return true
+		at = at.get_parent()
+	return false
 
 
 ## A menu's rows and their tooltips, and its submenus', but for the models
@@ -346,22 +825,23 @@ func _in(code: String) -> void:
 			var said: String = Language.says(english)
 			if said.is_empty():
 				lacking.append(english)
-				(_missing[code] as Array).append(english)
+				(_missing[code] as Array).append([english, english])
 				continue
 			# Translated but for words it keeps in English that are not a
 			# name or a key: a pattern's place, or a line, with no entry.
 			var left: Array[String] = []
 			for kept: String in Language.left_in_english(english):
-				if not _names.has(kept) and not _KEY.search(kept):
+				if not _is_name(kept):
 					left.append(kept)
 			if not left.is_empty():
 				lacking.append("%s (%s)" % [english, ", ".join(left)])
-				(_missing[code] as Array).append_array(left)
+				for kept: String in left:
+					(_missing[code] as Array).append([kept, english])
 				continue
 			if said == english:
 				same += 1
-			var drawn: Node = word[1]
-			if drawn != null and drawn.atr(english) != said:
+			var drawn: Variant = word[1]
+			if is_instance_valid(drawn) and (drawn as Node).atr(english) != said:
 				undrawn.append(english)
 		_check("%s: every one of %d %s translated%s" % [code, (_words[kind] as Array).size(), kind,
 			"" if lacking.is_empty() else "; %d not: %s" % [lacking.size(), _some(lacking)]],
@@ -422,6 +902,16 @@ func _pictures(code: String) -> void:
 	await _shot("%s_first_build" % code)
 	_shell.first_build.stop()
 	await _frames(4)
+	for name: String in PICTURED:
+		var shown: Array = await _show(name)
+		await _shot("%s_dialog_%s" % [code, name])
+		await _close(name, shown[0])
+	# And the status line after an action.
+	(_main.get("_builder") as Builder).select_brick(_brick, false)
+	_shell.run("copy")
+	await _frames(8)
+	await _shot("%s_status_copied" % code)
+	(_main.get("_builder") as Builder).clear_selection()
 
 
 # -- German, the longest words: the window still fits ---------------------------
@@ -639,7 +1129,11 @@ func _write_missing() -> void:
 	var out := FileAccess.open(_missing_to, FileAccess.WRITE)
 	for code: String in _missing:
 		out.store_line("# %s: %d" % [code, (_missing[code] as Array).size()])
-		for english: String in _missing[code]:
+		for pair: Array in _missing[code]:
+			var english: String = pair[0]
+			# The words it was found in, where it is a part of them.
+			if pair[1] != english:
+				out.store_line("#. in: %s" % str(pair[1]).c_escape().replace("\\'", "'"))
 			out.store_line("msgid \"%s\"\nmsgstr \"\"\n" % english.c_escape().replace("\\'", "'"))
 	out.close()
 	print("  the missing words written to %s" % _missing_to)

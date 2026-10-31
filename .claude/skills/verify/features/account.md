@@ -816,11 +816,15 @@ account allowed it already), and that code traded; then a second browser not
 signed in — address, Email me a code (really sent), a wrong code refused, the
 minted code, and nothing more asked — whose token builds in the first
 browser's tab; Account listing the connection and Disconnect Claude refusing
-all three tokens at once; Connect Claude then opening Claude's connectors
-(`https://claude.ai/customize/connectors`), not Add custom connector, the
-account having had Claude; then claude.ai connecting after that asked the
-question again, and Allow connecting it. Pictures `1_before_connect.png` to
-`11_asked_again.png`.
+all three tokens at once; Connect Claude then opening Add custom connector
+filled in still, from Account and from the assistant's panel, the account
+having had Claude, and **Already in your Claude? Open your connectors** beside
+it opening Claude's list (`https://claude.ai/customize/connectors`); then
+claude.ai connecting after that asked the question again, and Allow connecting
+it. Before Claude is connected, the panel's **Claude Code** link puts the
+`claude mcp add` command on the clipboard in one click. Pictures
+`1_before_connect.png` to `11_asked_again.png` (`2a_claude_code_copied`,
+`10c_already_in_claude`).
 
 On a deployment, in a real browser (needs `.env` sourced; `BW_BYPASS` for a
 preview):

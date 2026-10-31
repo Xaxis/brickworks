@@ -243,6 +243,14 @@ func _run() -> void:
 	get_root().add_child(answering)
 	var connector := ClaudeConnector.new()
 	get_root().add_child(connector)
+	# On the desktop the address is the deployment's the app signs in to
+	# (Deployment.api_base: brickworks.diy unless BRICKWORKS_API says
+	# otherwise), percent-encoded in claude.ai's install link.
+	var hosted: String = Deployment.api_base()
+	_check(connector.claude_ai_link() == ("https://claude.ai/customize/connectors"
+			+ "?modal=add-custom-connector&connectorName=Brickworks&connectorUrl="
+			+ hosted.replace(":", "%3A").replace("/", "%2F") + "%2Fapi%2Fmcp"),
+		"the desktop's install link, for %s: %s" % [hosted, connector.claude_ai_link()])
 	connector.base_url = "http://127.0.0.1:9"
 	connector.rpc = answering
 	# Signed in, as everyone who reaches this panel is (a connector belongs
@@ -256,7 +264,9 @@ func _run() -> void:
 	account._access = "probe.signed.in"
 	account._expires_at = Time.get_unix_time_from_system() + 3600.0
 	connector.account = account
-	connector.open_links = false
+	# Opened through Outside, which a script's run keeps instead of opening:
+	# what the desktop hands the system is read back from there.
+	connector.open_links = true
 	var offer := ConnectorForm.new()
 	get_root().add_child(offer)
 	offer.setup(connector)
@@ -268,11 +278,14 @@ func _run() -> void:
 	# connector with Brickworks filled in (its documented install link).
 	offer._connect.pressed.emit()
 	await process_frame
-	_check(connector.last_opened == ("https://claude.ai/customize/connectors"
-			+ "?modal=add-custom-connector&connectorName=Brickworks"
-			+ "&connectorUrl=http%3A%2F%2F127.0.0.1%3A9%2Fapi%2Fmcp"),
-		"Connect Claude opens claude.ai's Add custom connector, filled in: %s"
-			% connector.last_opened)
+	const FILLED_IN := ("https://claude.ai/customize/connectors"
+		+ "?modal=add-custom-connector&connectorName=Brickworks"
+		+ "&connectorUrl=http%3A%2F%2F127.0.0.1%3A9%2Fapi%2Fmcp")
+	_check(connector.last_opened == FILLED_IN and Outside.opened.back() == FILLED_IN,
+		"Connect Claude hands the system claude.ai's Add custom connector, filled in: %s"
+			% Outside.opened.back())
+	_check(not offer._already.visible,
+		"...and, Claude never connected to this account, offers nothing else")
 	_check(connector.is_on() and offer._guide.visible
 			and offer._shared.text == "http://127.0.0.1:9/api/mcp"
 			and offer._signed_as.text.contains("probe@example.com")
@@ -300,10 +313,14 @@ func _run() -> void:
 			% [offer._status.text, offer._connect.text])
 	_check(offer.is_on(), "...and counts as the way in use")
 
+	# Claude Code has no link that fills a connector in: one click copies
+	# the command, and the next step is said under the link. (A headless
+	# run has no clipboard: oauth_flow and connect_form_probe read it.)
 	offer._code_link.pressed.emit()
 	_check(offer._code_box.visible and offer._command.text
-			== "claude mcp add --transport http brickworks http://127.0.0.1:9/api/mcp",
-		"Claude Code: the command, ready to copy")
+			== "claude mcp add --transport http brickworks http://127.0.0.1:9/api/mcp"
+			and offer._code_said.text.begins_with("Copied. Run it in a terminal, then type /mcp"),
+		"Claude Code: the command copied in one click, and what next: %s" % offer._code_said.text)
 	offer._desktop_link.pressed.emit()
 	_check(offer._desktop_box.visible and not offer._code_box.visible,
 		"the Claude app: how it gets the same connector, one at a time")
@@ -357,38 +374,51 @@ func _run() -> void:
 		"times read as people say them: %s" % AccountPanel.when(stamp))
 
 	# An account that has had Claude connected (the deployment says so,
-	# op=connections "before", kept past a Disconnect) has Brickworks in its
-	# Claude already: Connect Claude goes to Claude's list of connectors, to
-	# press Connect on that one, and not to Add custom connector, which sets
-	# up another with its tool permissions to choose again. The owner did
-	# that four times in two days (2026-10-14).
+	# op=connections "before", kept past a Disconnect) may have Brickworks in
+	# its Claude still, which connects again with its own Connect and keeps
+	# its tool permissions; added again, they are chosen again (the owner,
+	# four times in two days, 2026-10-14). Connect Claude still opens the
+	# form filled in, since that one may be gone and the app cannot see
+	# Claude's list: it opened the bare list until 2026-10-31, and the
+	# owner never saw the form filled in. The list is offered beside it.
 	print("\nconnecting again, for an account that has had Claude connected")
-	if connector.has_method("_take_connections"):
-		connector.call("_take_connections", {"connections": [], "before": true})
-	_check(account_panel._claude_state.text.begins_with("Not connected now")
-			and account_panel._claude_state.text.contains("Brickworks you already have in Claude"),
-		"Account says Connect Claude goes to the Brickworks they have: %s"
+	connector._take_connections({"connections": [], "before": true})
+	_check(account_panel._claude_state.text == ("Not connected now. Connect Claude "
+			+ "opens claude.ai with Brickworks filled in. " + ClaudeConnector.ALREADY),
+		"Account says Connect Claude fills the form in, and how the one there connects: %s"
 			% account_panel._claude_state.text)
 	account_panel._claude_connect.pressed.emit()
 	await process_frame
-	_check(connector.last_opened == "https://claude.ai/customize/connectors",
-		"Connect Claude opens Claude's connectors, not Add custom connector: %s" % connector.last_opened)
-	_check(account_panel._claude_state.text.contains("Customize › Connectors")
-			and account_panel._claude_state.text.contains("select Brickworks")
-			and account_panel._claude_state.text.contains("Connect (or Reconnect")
-			and not account_panel._claude_state.text.contains("press Add"),
-		"...and says what to press there: %s" % account_panel._claude_state.text)
+	_check(connector.last_opened == FILLED_IN and Outside.opened.back() == FILLED_IN,
+		"Account's Connect Claude opens Add custom connector, filled in: %s" % Outside.opened.back())
+	_check(account_panel._claude_state.text.contains("press Add, then Connect")
+			and account_panel._claude_state.text.ends_with(ClaudeConnector.ALREADY),
+		"...and says what to press there, and of the one already there: %s"
+			% account_panel._claude_state.text)
 	_check(offer._status.text.begins_with("Waiting for you to connect in Claude"),
 		"...and the assistant panel waits for Claude, not \"Connected\": %s" % offer._status.text)
+	_check(offer._already.visible and offer._already_link.text == "Already in your Claude? Open your connectors"
+			and (offer._already.get_child(1) as Label).text == ClaudeConnector.ALREADY,
+		"the assistant panel offers the list, and says why in one line: %s"
+			% (offer._already.get_child(1) as Label).text)
 	offer._connect.pressed.emit()
 	await process_frame
-	_check(offer._guide.visible and _text_of_label(offer, "_guide_head").contains("Customize › Connectors")
+	_check(Outside.opened.back() == FILLED_IN and offer._guide.visible
+			and _text_of_label(offer, "_step_one") == "1. Press Add, then Connect.",
+		"its Connect Claude opens the form filled in too: %s" % _text_of_label(offer, "_step_one"))
+	offer._already_link.pressed.emit()
+	await process_frame
+	_check(Outside.opened.back() == ClaudeConnector.CONNECTORS
+			and connector.waiting_for_claude() and offer._guide.visible
+			and _text_of_label(offer, "_guide_head").contains("Customize › Connectors")
 			and _text_of_label(offer, "_step_one").contains("select Brickworks and press Connect")
-			and _text_of_label(offer, "_step_one").contains("rather than adding it again")
-			and _text_of_label(offer, "_fallback").contains("Not in your list? Add custom connector"),
-		"the assistant panel's steps the same: %s" % _text_of_label(offer, "_step_one"))
+			and _text_of_label(offer, "_fallback").begins_with("Not in your list? Press Connect Claude above"),
+		"Open your connectors: Claude's list, and the steps for the one there: %s"
+			% _text_of_label(offer, "_step_one"))
 	connector.set("had_claude", false)
 	connector._waiting_until = 0
+	connector._set_connections([])
+	_check(not offer._already.visible, "an account that never had Claude is not offered the list")
 	account_panel.queue_free()
 
 	# The way before: this browser's own address, added by hand, folded

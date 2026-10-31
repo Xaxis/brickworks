@@ -1639,6 +1639,10 @@ const READY_AFTER_MS := 250
 
 var _mechanism: Mechanism = null
 var _readying: int = -1
+## What ends that reading early: asked when the library must be written
+## (PartLibrary.reading_in's stop), as a model opened with parts of its own
+## adds them. A reading so ended is not kept, and is begun again.
+var _reading_stop: WorkerTasks.Stop = null
 var _ready_for: int = -1
 var _still: BrickWorld = null
 var _still_lattice: BrickLattice = null
@@ -1720,9 +1724,14 @@ func _reading_done(keep: bool, wait: bool = false) -> bool:
 	WorkerTasks.collect(_readying)
 	library.end_reading(_readying)
 	_readying = -1
-	if _ready_for == world.revision and keep:
+	var ended: bool = _reading_stop.asked()
+	if _ready_for == world.revision and keep and not ended:
 		_adopt(_ready_out, _ready_for)
 		unread_shapes = _reading_unread
+	elif ended:
+		# Begun again once the model has stood still a moment, as after a
+		# change: what asked it to end is writing the library meanwhile.
+		_changed_at = Time.get_ticks_msec()
 	_still.free()
 	_still = null
 	_still_lattice = null
@@ -1757,18 +1766,26 @@ func _read_off_thread() -> void:
 	var still: BrickWorld = _still
 	var cells: BrickLattice = _still_lattice
 	var parts: PartLibrary = library
+	# Ended early when the library must be written: the next model opened
+	# with parts of its own waited for 42082-1's twelve seconds of this to
+	# add them, read of a model no longer there (corefix, 2026-10-31).
+	var stop := WorkerTasks.Stop.new()
+	_reading_stop = stop
 	library.begin_reading()
 	_readying = WorkerTasks.add(func() -> void:
 		if not read_here:
-			Exact.shapes_for(parts, ids)
-		var read: Array = GrabDrag._read_all(still, parts, cells, floor_ids, held)
+			for id: Variant in ids:
+				if stop.asked():
+					return
+				Exact.shape_for(parts, str(id))
+		var read: Array = GrabDrag._read_all(still, parts, cells, floor_ids, held, stop)
 		out[0] = read[0]
 		out[1] = read[1]
 		out[2] = read[2]
 		out[4] = read[3]
 		out[5] = read[4]
 		out[3] = Time.get_ticks_msec() - started, false, "read the model's joints")
-	library.reading_in(_readying)
+	library.reading_in(_readying, stop.ask)
 	ready_off_thread = true
 
 
@@ -1858,9 +1875,11 @@ func read_again() -> void:
 
 
 static func _read_all(from: BrickWorld, parts: PartLibrary, cells: BrickLattice,
-		floor_ids: Dictionary, held: Dictionary) -> Array:
+		floor_ids: Dictionary, held: Dictionary, stop: WorkerTasks.Stop = null) -> Array:
 	var clock: int = Time.get_ticks_msec()
-	var bodies: Bodies = Bodies.read(from, parts, cells, floor_ids, held)
+	var bodies: Bodies = Bodies.read(from, parts, cells, floor_ids, held, stop)
+	if stop != null and stop.asked():
+		return [null, null, null, {}, {}]
 	# Pinions in racks, read here too, not on the press.
 	bodies.racks()
 	var took: Dictionary = {"bodies": Time.get_ticks_msec() - clock}
@@ -1869,8 +1888,11 @@ static func _read_all(from: BrickWorld, parts: PartLibrary, cells: BrickLattice,
 	judge.library = parts
 	judge.lattice = cells
 	judge.floor_ids = floor_ids
+	judge.stop = stop
 	if not judge.prepare(from.bricks()):
 		judge = null
+	if stop != null and stop.asked():
+		return [null, null, null, {}, {}]
 	took["balance"] = Time.get_ticks_msec() - clock
 	clock = Time.get_ticks_msec()
 	# The gear trains, read once for every grab of a gear (Grab._gears): the

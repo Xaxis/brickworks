@@ -540,6 +540,33 @@ NAMES="${*:-$ORDER}"
 # took it and left it, and when.
 LIVE_DB="$(git rev-parse --path-format=absolute --git-common-dir)/live-db"
 live() { grep -qE 'deleteAccount\(|auth/v1/admin/users' "${CMD[$1]%% *}" 2>/dev/null; }
+# A release's check goes first. flock serves no one in order, and a unit's
+# A/B of together runs, taking the lock run after run, held rel-m232's
+# arrival for 24 minutes (2026-10-31). So a release's battery, waiting,
+# leaves a file named for its pid in live-db.release, and any other run that
+# gets the lock while one is there hands it back and waits.
+release_waits() {
+  local f
+  for f in "$LIVE_DB.release"/*; do
+    [ -e "$f" ] && kill -0 "${f##*/}" 2>/dev/null && return 0
+  done
+  return 1
+}
+take_live_db() {
+  local lock="$1" until=$(( $(date +%s) + ${LIVE_WAIT:-3600} )) mine="" left
+  if [ "${BOX_HEAVY_PRIORITY:-}" = 1 ]; then
+    mkdir -p "$LIVE_DB.release"; mine="$BASHPID"; : > "$LIVE_DB.release/$mine"
+  fi
+  while left=$(( until - $(date +%s) )); [ "$left" -gt 0 ] && flock -w "$left" "$lock"; do
+    if [ -n "$mine" ] || ! release_waits; then
+      [ -n "$mine" ] && rm -f "${LIVE_DB:?}.release/${mine:?}"
+      return 0
+    fi
+    flock -u "$lock"; sleep 2
+  done
+  [ -n "$mine" ] && rm -f "${LIVE_DB:?}.release/${mine:?}"
+  return 1
+}
 run() {
   local name="$1" solo="${2:-}" t0 lock
   t0=$(date +%s)
@@ -550,7 +577,7 @@ run() {
   # left behind would hold the database from every other run.
   exec {lock}>>"$LIVE_DB.lock"
   if live "$name"; then
-    if ! flock -w "${LIVE_WAIT:-3600}" "$lock"; then
+    if ! take_live_db "$lock"; then
       echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (LIVE_WAIT, an hour): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
       exec {lock}>&-; return
     fi

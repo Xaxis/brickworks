@@ -270,7 +270,11 @@ What each one guards against, all learned the hard way on 2026-10-13:
   2.6 (4.2), and m144's, more of them live, 44 (38): the live checks one
   after another are the floor. Between batteries a live check waits for
   the one another battery is running; `LIVE_WAIT` (an hour) bounds that,
-  then the check fails.
+  then the check fails. A release's checks go first: waiting, its battery
+  leaves a file named for its pid in `.git/live-db.release/`, and any other
+  battery that gets the lock while one is there hands it back and waits.
+  flock serves no one in order, and a unit's A/B, taking the lock run after
+  run, held rel-m232's arrival 24 minutes (2026-10-31).
 
 `tools/release/clean_worktrees.sh [--dry-run]` removes finished worktrees
 and nothing else: never a locked one (the harness locks an agent's while it
