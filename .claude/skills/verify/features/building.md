@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
 
 ## Sub-features
 
@@ -93,6 +93,30 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   on SwiftShader the browser's processor time for a frame where only the
   interface changed, all of Orthanc selected: 150 to 290 s before, 9 to 18 s
   after, against 5 to 10 s with nothing selected.
+- `the hover drawn at the device's pace` (`src/render/pointer_pace.gd`): on a
+  device whose drawn frames cost over 50 ms (`FrameBudget.SLOW_MS`), the
+  hover's outline and the status line's words for what is under the pointer
+  are drawn in the first frame the pointer did not move in, or once they
+  have waited a drawn frame's cost, not at every step onto another part.
+  What is under the pointer is known at once either way (a click acts on
+  it, Together says it). A browser hands the page a mouse step only once
+  the frame before it is drawn: on the together check's rich car (a floor
+  of 49 baseplates, 2.4 million triangles, 180 to 550 ms a frame in
+  software) the outline drawn at the mouse's first step held the second,
+  and Together said where the pointer was 412 ms after the mouse moved
+  (median, rel-m229). A device that draws quickly draws it in the frame it
+  changed, as before. What a click would take (`Builder.takes`, the part's
+  whole sub-assembly) is found from `Assemblies`' index, kept between
+  hovers and made again once the model or its sub-assemblies changed
+  (`BrickWorld.paths_written`): it walked all 10,101 bricks of Orthanc for
+  each step onto another sub-assembly, 15 to 24 ms. `hover_cost_probe` (on
+  the GPU, Orthanc) times each step's frame and each piece alone, then
+  pretends a slow device and checks the steps draw nothing and the part
+  the pointer rests on is outlined the frame after; `tools/web/hover_cost.mjs`
+  is the browser's measure. On the rich car in Chromium on SwiftShader, the
+  two builds in turn at load 49: the mouse's second step reached the page
+  26 ms after the move at the median against 71 before, 60 against 1,300 at
+  p95, the first step's frame spending 0 ms in WebGL against 34 (2026-10-31).
 - `selection edits`: with bricks selected, `C` paints them the current colour
   (so does a colour clicked in the palette, see [parts](parts.md)'s `palette`),
   the arrow keys and W A S D move them across the ground by the snap, Page Up

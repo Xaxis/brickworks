@@ -41,14 +41,22 @@ signal changed()
 var _seen: Dictionary = {}
 var _syncing: bool = false
 ## The bricks under every path (path -> Array of bricks, in the world's
-## order), while a pass over many assemblies at once holds it
-## ([method _begin_pass]): one walk of the model in place of one an
-## assembly asked about. Moving all of a 5,025-part set with 160 copies of
-## sub-models walked the model twice for each, and then again for each of
-## its copies (2026-10-16). Dropped when the pass changes the model.
+## order): one walk of the model in place of one an assembly asked about.
+## Moving all of a 5,025-part set with 160 copies of sub-models walked the
+## model twice for each, and then again for each of its copies
+## (2026-10-16). While a pass over many assemblies at once holds it
+## ([method _begin_pass]) it is kept through the pass's own changes;
+## otherwise it is made again once the model or its tree has changed
+## ([member _indexed_as]). The pointer on a part of Orthanc asked which
+## sub-assembly a click there takes, every step onto another part, and
+## each asking walked all 10,101 parts: 15 to 24 ms of the frame on a
+## desktop, whatever the part (hover_cost_probe, 2026-10-31).
 var _under: Dictionary = {}
 var _passing: int = 0
 var _indexed: bool = false
+## What the model was when the index was made, outside a pass: cleared,
+## changed, any part's group or unit, the baseplates.
+var _indexed_as: Array = []
 
 
 # -- paths --------------------------------------------------------------------
@@ -231,13 +239,8 @@ func bricks_under(path: String) -> Array:
 	var out: Array = []
 	if path.is_empty():
 		return out
-	if _passing > 0:
-		_index()
-		return (_under.get(path, []) as Array).duplicate()
-	for brick: BrickWorld.Brick in world.bricks():
-		if not scenery.has(brick.id) and within(path_of(brick), path):
-			out.append(brick)
-	return out
+	_index()
+	return (_under.get(path, []) as Array).duplicate()
 
 
 func ids_under(path: String) -> PackedInt64Array:
@@ -702,9 +705,11 @@ func _end_pass() -> void:
 ## The bricks under every path, as [method bricks_under] finds them one
 ## path at a time: each brick under its own path and every path above it.
 func _index() -> void:
-	if _indexed:
+	var model: Array = [world.generation(), world.revision, BrickWorld.paths_written, scenery.size()]
+	if _indexed and (_passing > 0 or model == _indexed_as):
 		return
 	_indexed = true
+	_indexed_as = model
 	_under.clear()
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):

@@ -62,10 +62,18 @@ class Brick extends RefCounted:
 	var hidden: bool = false
 	## The part of the model it belongs to — an assembly a design named,
 	## or a sub-model of the file it came from. Empty for most bricks.
-	var group: String = ""
+	var group: String = "":
+		set(value):
+			if value != group:
+				group = value
+				BrickWorld.paths_written += 1
 	## Which copy of which sub-model it was read from, for the booklet to
 	## build as a sub-assembly: see LdrModel.Placement.unit.
-	var unit: String = ""
+	var unit: String = "":
+		set(value):
+			if value != unit:
+				unit = value
+				BrickWorld.paths_written += 1
 	## The build step it goes on in, as the model's author set it, counted
 	## from 0 within its own sub-model (its unit's, or the model's when it
 	## is in none); -1 for a part nobody gave one, whose step is worked out
@@ -155,6 +163,11 @@ signal reveal_ended
 ## not from the picture (whether it stands, a copy to photograph) is
 ## worked out again only when this has moved.
 var revision: int = 0
+## Goes up with every brick's group or unit changed, in any world: what an
+## assembly holds can change with no other change to the model (a part put
+## in a sub-assembly), so what is worked out from the tree (Assemblies'
+## index) is worked out again when this or [member revision] moved.
+static var paths_written: int = 0
 
 ## Whether to keep [member history]. A world that is a copy made to be
 ## photographed (ModelShot's) has no history worth keeping: it was cleared

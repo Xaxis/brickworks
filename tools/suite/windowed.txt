@@ -29,6 +29,7 @@ offgrid
 booklet_edit
 outline
 outline_cost
+hover_cost   # a step of the pointer over Orthanc costs a frame of its own; drawing slowly, the steps draw nothing and the part it rests on is outlined (hover)
 command:--judge --subjects=orthanc
 step_link
 stress_view

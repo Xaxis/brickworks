@@ -2469,6 +2469,14 @@
       "tests": []
     },
     {
+      "id": "cli:what the pointer moving costs in a browser",
+      "kind": "cli",
+      "entry": "tools/web/hover_cost.mjs",
+      "reach": "node tools/web/hover_cost.mjs --url=http://127.0.0.1:<port>/ --out=DIR [--moves=40] [--label=B] [--floor=none] MODEL   (serve.py build/web --parts assets/generated/parts, .env sourced)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:worker first run",
       "kind": "cli",
       "entry": "src/dev/worker_first_run_probe.gd",
@@ -5199,6 +5207,14 @@
         "tests/test_release_train.py",
         "tests/test_site_shell.py"
       ]
+    },
+    {
+      "id": "ui:the hover drawn at the device's pace",
+      "kind": "ui",
+      "entry": "src/render/pointer_pace.gd",
+      "reach": "tools/probe.sh hover_cost_probe   (on the GPU: Orthanc, Select in hand; -- --model=res://... for another)",
+      "area": "building",
+      "tests": []
     },
     {
       "id": "ui:the model in Claude in 3D",

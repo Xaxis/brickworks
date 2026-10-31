@@ -5174,6 +5174,7 @@ func _build_ui() -> void:
 	_hover_outline.library = _library
 	_hover_outline.colour = SelectionOutline.HOVER
 	_hover_outline.width = SelectionOutline.HOVER_WIDTH
+	_hover_outline.paced = true
 	add_child(_hover_outline)
 
 	_verbs = EditVerbs.new()
