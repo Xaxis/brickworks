@@ -2779,3 +2779,33 @@ msgstr "Claude-App"
 
 msgid "Private address"
 msgstr "Private Adresse"
+
+msgid "Render queue…"
+msgstr "Render-Warteschlange…"
+
+msgid "Pictures lined up with Render's settings and drawn one after another while you go on building"
+msgstr "Bilder mit den Einstellungen von Rendern aufgereiht und eins nach dem anderen gezeichnet, während du weiterbaust"
+
+msgid "Pull out the selected parts"
+msgstr "Ausgewählte Teile herausziehen"
+
+msgid "The selected parts of this step (all of them, none selected) drawn pulled out along the way they go in, with an arrow in; again puts them back"
+msgstr "Die ausgewählten Teile dieses Schritts (alle, wenn keins ausgewählt ist) herausgezogen entlang ihres Wegs hinein gezeichnet, mit einem Pfeil hinein; noch einmal setzt sie zurück"
+
+msgid "Colour guide"
+msgstr "Farbübersicht"
+
+msgid "This step's colours listed under its number, or not"
+msgstr "Die Farben dieses Schritts unter seiner Nummer aufgelistet, oder nicht"
+
+msgid "1:1 guide"
+msgstr "1:1-Vorlage"
+
+msgid "The selected parts of this step drawn at their real size, or no 1:1 guide where the booklet gives one; again as the booklet does it"
+msgstr "Die ausgewählten Teile dieses Schritts in echter Größe gezeichnet, oder keine 1:1-Vorlage, wo die Anleitung eine zeigt; noch einmal wie die Anleitung es macht"
+
+msgid "Sub-model preview"
+msgstr "Vorschau des Untermodells"
+
+msgid "The sub-assembly this step puts on shown finished on the first of its own pages, or not"
+msgstr "Die Baugruppe, die dieser Schritt anbringt, fertig auf der ersten ihrer eigenen Seiten gezeigt, oder nicht"
