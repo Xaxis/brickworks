@@ -1,7 +1,65 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.11.0",
+ "latest": "0.12.0",
  "releases": [
+  {
+   "version": "0.12.0",
+   "tag": "v0.12.0",
+   "date": "2026-10-31",
+   "page": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.12.0",
+   "notes": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.12.0",
+   "summary": "A release about pictures, booklets and your own language. On a graphics card that traces rays, Best now follows the light bounce by bounce over your model's own parts, so shadows soften as they should and light comes off the floor and between the parts, and the car at 720p is clean in a few seconds. A render queue draws picture after picture while you go on building. A printed booklet can show an axle or a beam at its real size to lay on the page, a part pulled out with an arrow back in, the step's colours, and a sub-model finished before you build it. The whole app reads in German, French or Spanish, chosen in Settings, and on a 10,000-part model Check stability answers in about a second and Suggest sections in about five.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.12.0-linux-x86_64.AppImage",
+     "size": 575515128,
+     "sha256": "5392062c6cd32e67fbca27da89927f76c3d338a8ef14aecb2961c7846eb7d0a6",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.12.0/Brickworks-0.12.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.12.0-linux-x86_64.tar.xz",
+     "size": 426292652,
+     "sha256": "ead45e8ba341929bd4d5c393c457d95971a1684cd388b8ddb62f8dfd932de0d0",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.12.0/Brickworks-0.12.0-linux-x86_64.tar.xz",
+     "unpacked": 1489738620,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.12.0-macos-universal.zip",
+     "size": 755296272,
+     "sha256": "127d9157784094e111ff1c3c0ef02ae0cfe44b85cc4a88aac3cd48822e5c1ae6",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.12.0/Brickworks-0.12.0-macos-universal.zip",
+     "unpacked": 1586493088,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.12.0-windows-x86_64.zip",
+     "size": 733659439,
+     "sha256": "c66a80fd908d964e0c9c00745778e9bd7a7aefa0a99100a38c23315119d98644",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.12.0/Brickworks-0.12.0-windows-x86_64.zip",
+     "unpacked": 1525441500,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.11.0",
    "tag": "v0.11.0",
