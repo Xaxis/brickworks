@@ -141,7 +141,21 @@ func click(at: Vector2) -> void:
 func words() -> String:
 	if _from == null or _to == null:
 		return "Measuring: click a point, then another — Esc stops"
-	var span: Vector3 = (_to as Vector3) - (_from as Vector3)
+	var said: String = said_between(_from, _to)
+	if said.is_empty():
+		return "0 mm — click another point"
+	var between: Variant = angle()
+	if between != null:
+		said += angle_words(between, KINDS.get(_from_end.kind, _from_end.kind),
+			KINDS.get(_to_end.kind, _to_end.kind))
+	return said
+
+
+## From [param from] to [param to] in words, as the ruler says it: "12.8 mm
+## — 1 stud across, 2 plates up"; "" for no distance. A session's measure
+## says it the same (HandTools).
+static func said_between(from: Vector3, to: Vector3) -> String:
+	var span: Vector3 = to - from
 	var parts := PackedStringArray()
 	if absf(span.x) > 0.01:
 		parts.append("%s studs across" % _num(absf(span.x) / BrickLattice.STUD))
@@ -150,26 +164,30 @@ func words() -> String:
 	if absf(span.y) > 0.01:
 		parts.append("%s plates up" % _num(absf(span.y) / BrickLattice.PLATE))
 	if parts.is_empty():
-		return "0 mm — click another point"
-	var said: String = "%s mm — %s" % [_num(span.length() * LDU_MM), ", ".join(parts)]
-	var between: Variant = angle()
-	if between != null:
-		var one: String = KINDS.get(_from_end.kind, _from_end.kind)
-		var other: String = KINDS.get(_to_end.kind, _to_end.kind)
-		said += " · %.1f° between the %s" % [between, "two %ss" % one if one == other
-			else "%s and the %s" % [one, other]]
-	return said
+		return ""
+	return "%s mm — %s" % [_num(span.length() * LDU_MM), ", ".join(parts)]
+
+
+## " · 37.0° between the pin hole and the stud".
+static func angle_words(degrees: float, one: String, other: String) -> String:
+	return " · %.1f° between the %s" % [degrees, "two %ss" % one if one == other
+		else "%s and the %s" % [one, other]]
 
 
 ## The angle between the axes of the connectors the two points are on, in
-## degrees; null unless both are on one. A hole, a bar or a hinge goes both
-## ways, so with one of those it is the angle between the lines, 0 to 90°;
-## between two pins or axles, each pointing out of its part, 0 to 180°.
+## degrees; null unless both are on one.
 func angle() -> Variant:
 	if _from_end == null or _to_end == null or _from == null or _to == null:
 		return null
-	var cosine: float = _from_end.axis.dot(_to_end.axis)
-	if not (_from_end.is_male() and _to_end.is_male()):
+	return angle_between(_from_end.axis, _from_end.is_male(), _to_end.axis, _to_end.is_male())
+
+
+## The angle between two connectors' axes, degrees. A hole, a bar or a hinge
+## goes both ways, so with one of those it is the angle between the lines, 0
+## to 90°; between two pins or axles, each pointing out of its part, 0 to 180°.
+static func angle_between(one: Vector3, one_male: bool, other: Vector3, other_male: bool) -> float:
+	var cosine: float = one.normalized().dot(other.normalized())
+	if not (one_male and other_male):
 		cosine = absf(cosine)
 	return rad_to_deg(acos(clampf(cosine, -1.0, 1.0)))
 

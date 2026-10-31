@@ -5564,6 +5564,144 @@
   },
   {
     "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Mirror parts"
+    },
+    "description": "Make parts their mirror image, as the window's Mirror does: each put where its reflection is and turned, a part made in a left and a right hand (a wing, a wedge plate, a door) swapped for its other hand. bricks= the parts; axis \"x\" mirrors left to right (the default), \"z\" front to back. In place, across the plane through their middle; copy=true leaves them and puts a mirrored copy beside them, across their far side (+x or +z). across= puts the plane where you say, in studs, a whole or half number: copy=true across=0 makes a model's left half its right half too. All or nothing, one undo step; refused where the mirror image runs into a part not named.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "across": {
+          "description": "the mirror's plane, x= (or z=) in studs",
+          "type": "number"
+        },
+        "axis": {
+          "enum": [
+            "x",
+            "z"
+          ],
+          "type": "string"
+        },
+        "bricks": {
+          "description": "the parts, by their numbers in look_at_model",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "copy": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "bricks"
+      ],
+      "type": "object"
+    },
+    "name": "mirror_parts"
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Split parts"
+    },
+    "description": "Split parts into smaller ones of their kind on the same studs, as the window's Split does, by Studio's rules: a plate, a brick or a tile into 1 x 1s of its kind, a 1 x 1 brick into three 1 x 1 plates, a slope into the 1-wide slope of its angle, length and height, a curved slope into the 1-wide curved slope of its length. What was joined to them is joined to the pieces. bricks= the parts. One undo step; a part that does not split, or has no room for its pieces, is said and left as it was.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "bricks": {
+          "description": "the parts, by their numbers in look_at_model",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "bricks"
+      ],
+      "type": "object"
+    },
+    "name": "split_parts"
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Merge parts"
+    },
+    "description": "Merge parts into the fewest bigger ones, as the window's Merge does: the plates, bricks and tiles of each colour and sub-assembly covered by the fewest real parts made in that colour, biggest first, three plates high a brick, each where the old ones stood. Six 1 x 1 plates in a 2 x 3 become a 2 x 3 plate; three stacked 1 x 4 plates a 1 x 4 brick. bricks= the parts. One undo step; where no real part would be fewer, they are left as they were.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "bricks": {
+          "description": "the parts, by their numbers in look_at_model",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "bricks"
+      ],
+      "type": "object"
+    },
+    "name": "merge_parts"
+  },
+  {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "Measure between connectors"
+    },
+    "description": "Measure between two connectors, or two points, as the window's Measure does: the distance in mm, studs across (x), deep (z) and plates up (y), and the angle between the two connectors' axes to a tenth of a degree (with a hole, a bar or a hinge, which go both ways, the angle between the lines, 0 to 90°; between two pins or axles, 0 to 180°). from= and to= each a connector as attach names it, \"#12.hole[1]\" or \"#7.hinge[0]\" (attachment_points lists a part's), or a point \"x y z\" in studs and plates. The two halves of one joint (a hinge, a pin in its hole, a clip on a bar) are said with the turn between them as attach's yaw gives it, so a hinge left at an angle reads back as that angle. Changes nothing.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "to"
+      ],
+      "type": "object"
+    },
+    "name": "measure"
+  },
+  {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "What the person sees"
+    },
+    "description": "What the person sees in the window that a session is not told: the step the timeline is at and its parts, the part in their hand (the Place tool's, or the parts they are carrying), how many parts they have selected, and the reference picture they laid to build over: its file, size and place in studs, and with picture=true (the default) the picture itself, the model's parts drawn on it where they stand over it. Changes nothing.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "picture": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "name": "in_view"
+  },
+  {
+    "annotations": {
       "openWorldHint": false,
       "readOnlyHint": true,
       "title": "Follow a long job"

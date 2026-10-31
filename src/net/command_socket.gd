@@ -613,6 +613,13 @@ const HINTS := {
 	# Recolours parts nobody sees, after the person says yes; one step.
 	"colour_hidden_parts": ["Colour the hidden parts", "add"],
 	"gallery": ["Search the gallery", "look", "world"],
+	# The window's hand tools (HandTools): Mirror, Split, Merge and Measure,
+	# and what the person sees. Each change one step.
+	"mirror_parts": ["Mirror parts", "remove"],
+	"split_parts": ["Split parts", "remove"],
+	"merge_parts": ["Merge parts", "remove"],
+	"measure": ["Measure between connectors", "look"],
+	"in_view": ["What the person sees", "look"],
 	# cancel=true stops only the session's own job.
 	"job": ["Follow a long job", "look"],
 	"fresh_eyes": ["Say what it reads as", "look"],

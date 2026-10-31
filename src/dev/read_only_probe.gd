@@ -146,7 +146,9 @@ func _run() -> void:
 			["evaluate_section", {"suggestion": 1}], ["booklet_layout", {}], ["list_motions", {}],
 			["weakest_joints", {}], ["fresh_eyes", {"reads_as": "a house", "generic": "its walls",
 				"changes": ["one", "two", "three"]}], ["fresh_eyes_final", {"landed": "both",
-				"reads_as": "a house", "generic": "nothing", "done": true, "change": ""}]]:
+				"reads_as": "a house", "generic": "nothing", "done": true, "change": ""}],
+			# The window's hand tools that only look (mcphand).
+			["measure", {"from": "0 0 0", "to": "2 3 1"}], ["in_view", {}]]:
 		_called[str(call[0])] = true
 		var was: String = _standing(app_world)
 		sent += 1
