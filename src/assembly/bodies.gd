@@ -169,6 +169,11 @@ var flexible: Dictionary = {}
 var revision: int = -1
 ## How long the reading took, ms.
 var took_ms: int = 0
+## On a worker, what ends the reading early when the main thread asks
+## (WorkerTasks.Stop): what was read is then not whole, and not kept. Its
+## joints are most of 42082-1's twelve seconds read ahead (GrabDrag), and a
+## model opened meanwhile waited for them (corefix, 2026-10-31).
+var stop: WorkerTasks.Stop = null
 
 ## Pairs of parts whose studs only press on the other's face, holding
 ## nothing: a bush resting on a plate's studs ([method _no_sockets]).
@@ -194,17 +199,23 @@ var _resting: Dictionary = {}
 
 
 ## Read [param from]'s model. Pure but for asking the lattice what a stud
-## reaches into.
+## reaches into. [param ended_by], asked on the main thread, ends it early.
 static func read(from: BrickWorld, parts: PartLibrary, cells: BrickLattice,
-		floor_ids: Dictionary = {}, held: Dictionary = {}) -> Bodies:
+		floor_ids: Dictionary = {}, held: Dictionary = {}, ended_by: WorkerTasks.Stop = null) -> Bodies:
 	var out := Bodies.new()
 	out.world = from
 	out.library = parts
 	out.lattice = cells
 	out.scenery = floor_ids
 	out.locked = held
+	out.stop = ended_by
 	out._read()
 	return out
+
+
+## Whether [member stop] has been asked.
+func _stopping() -> bool:
+	return stop != null and stop.asked()
 
 
 ## Whether [param key]'s part has shafts on more than one line: a block
@@ -298,6 +309,8 @@ func _read() -> void:
 		if Bodies.whole_cross(entry[2]):
 			whole_crosses[int(entry[0])] = true
 
+	if _stopping():
+		return
 	# Pins and axles.
 	var shaft_lines: Dictionary = {}
 	var pin_rows: Dictionary = {}   ## pin -> the parts it is in
@@ -339,10 +352,14 @@ func _read() -> void:
 			(pin_rows[a] as Array).append(b)
 		shaft_lines[Vector2i(mini(a, b), maxi(a, b))] = true
 
+	if _stopping():
+		return
 	# Rounds: clips, hinges, turntables.
 	var rounds: Dictionary = Joints.rounds(entries)
 	var done: Dictionary = {}
 	for one: Variant in rounds:
+		if _stopping():
+			return
 		for other: Variant in rounds[one]:
 			var a: int = int(one)
 			var b: int = int(other)
@@ -398,6 +415,8 @@ func _read() -> void:
 	_cross_in_forks(entries, info_of, rounds, candidates)
 	_whole_crosses(entries, candidates)
 
+	if _stopping():
+		return
 	# Balls.
 	var balls: Dictionary = Joints.balls(entries)
 	var seen_balls: Dictionary = {}
@@ -440,6 +459,8 @@ func _read() -> void:
 				candidates.append([int(entry[0]), int(other[0]), "ball", middle, Vector3.ZERO, false,
 					0.0, Vector2.ZERO, 0])
 
+	if _stopping():
+		return
 	# Studs: two or more between two parts hold them; one alone turns when
 	# either is a single stud across.
 	var per_pair: Dictionary = {}   ## Vector2i -> Array of [point, way]
@@ -563,6 +584,8 @@ func _read() -> void:
 	# and reading every such rest as studs (Stability.contacts) clicked it
 	# down and locked the turntable under it, at 4 s for 1,300 parts.
 	for low: Variant in partners:
+		if _stopping():
+			return
 		var a: int = int(low)
 		if not _up.has(a):
 			continue
@@ -616,6 +639,8 @@ func _read() -> void:
 		else:
 			_join(pair.x, pair.y, "studs:%d" % int(stud_of.get(pair, pair.x)))
 
+	if _stopping():
+		return
 	# Glue, magnets, one thing in pieces.
 	var stuck: Dictionary = Joints.held_otherwise(entries, library)
 	for one: Variant in stuck:
@@ -623,6 +648,8 @@ func _read() -> void:
 			if _up.has(int(one)) and _up.has(int(other)):
 				_join(int(one), int(other), "stuck")
 
+	if _stopping():
+		return
 	# A piece nothing holds where it is, lodged in another, is held by what
 	# it is lodged in: an axle in a pin's stop bush, a log in a gripper's
 	# claws ([method _lodge]).

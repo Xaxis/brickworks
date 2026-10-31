@@ -556,6 +556,40 @@ func _colours() -> void:
 				break
 	_check("search_parts offers none by their own names: %d of %d" % [offered.size(), asked],
 		offered.is_empty())
+	# The same names typed into the palette, its All with nothing typed, and
+	# search_parts asked as a session asks it (the MCP tool's own answer).
+	# Each read its parts kept for old files before these were among them,
+	# and offered 161 of 206 (corefix, 2026-10-31).
+	var bin := PartsBin.new()
+	bin.library = library
+	var shown := PackedStringArray()
+	var said := PackedStringArray()
+	var listed_id := RegEx.create_from_string("(?m)^([^\\s:]+): ")
+	for id: String in fixed:
+		if library.current(id) == id:
+			continue
+		var words: String = library.parts[id].name.lstrip("~_")
+		for info: PartLibrary.PartInfo in bin._find(words, "all").slice(0, 40):
+			if fixed.has(info.id) and library.current(info.id) != info.id:
+				shown.append(info.id)
+				break
+		var answer: String = str(await assistant.use_tool("search_parts", {"query": words, "limit": 10}))
+		for found: RegExMatch in listed_id.search_all(answer):
+			var one: String = found.get_string(1)
+			if fixed.has(one) and library.current(one) != one:
+				said.append(one)
+				break
+	var in_all := PackedStringArray()
+	for info: PartLibrary.PartInfo in PartsBin.all_unasked(library)[0]:
+		if fixed.has(info.id) and library.current(info.id) != info.id:
+			in_all.append(info.id)
+	bin.free()
+	_check("the palette shows none by their own names: %d of %d %s" % [shown.size(), asked,
+		", ".join(shown.slice(0, 6))], shown.is_empty())
+	_check("the palette's All lists none: %d %s" % [in_all.size(), ", ".join(in_all.slice(0, 6))],
+		in_all.is_empty())
+	_check("search_parts, as a session asks it, lists none by their own names: %d of %d %s"
+		% [said.size(), asked, ", ".join(said.slice(0, 6))], said.is_empty())
 
 
 # -- scale ------------------------------------------------------------------------

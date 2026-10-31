@@ -135,8 +135,17 @@ var lattice: BrickLattice
 ## Left out of whether it tips over.
 var floor_ids: Dictionary = {}
 ## Set on the main thread to end a [method check] on a worker early, which
-## then returns null (Main._weigh, PartLibrary.reading_in).
-var stopped: bool = false
+## then returns null (Main._weigh, PartLibrary.reading_in). Read through
+## [member stop], under its lock, which the Balance weighing the margins asks
+## too: it did not, and was two of 42082-1's ten seconds that a model opened
+## meanwhile could wait for (corefix, 2026-10-31).
+var stopped: bool:
+	get:
+		return stop.asked()
+	set(value):
+		if value:
+			stop.ask()
+var stop := WorkerTasks.Stop.new()
 ## Set to have [method check] weigh every stud joint's margin as well
 ## ([member Report.margins]), from the contacts it reads anyway, and say a
 ## joint past its working load and a piece tipping off a touch as weak:
@@ -235,6 +244,7 @@ func _weigh_margins(bricks: Array, graph: Dictionary, report: Report) -> void:
 	weigher.library = library
 	weigher.lattice = lattice
 	weigher.floor_ids = floor_ids
+	weigher.stop = stop
 	var weighed: Balance.Report = weigher.measure(bricks, [], null, graph)
 	for one: Balance.JointLoad in weighed.joints:
 		report.margins[one.beyond] = one

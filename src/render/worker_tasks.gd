@@ -124,6 +124,28 @@ static func out() -> int:
 	return count
 
 
+## Work on a worker told to end early from the main thread, as a reader of
+## the library is when something it reads must be written
+## (PartLibrary.reading_in's stop): the work asks [method asked] between its
+## pieces and as it goes, and its answer is not kept. Under a lock, as a flag
+## a worker polls must be (race244).
+class Stop:
+	extends RefCounted
+	var _asked: bool = false
+	var _lock := Mutex.new()
+
+	func ask() -> void:
+		_lock.lock()
+		_asked = true
+		_lock.unlock()
+
+	func asked() -> bool:
+		_lock.lock()
+		var said: bool = _asked
+		_lock.unlock()
+		return said
+
+
 ## As the tree goes, before anything in it is freed.
 static func _watch() -> void:
 	if _watching or OS.get_thread_caller_id() != OS.get_main_thread_id():
