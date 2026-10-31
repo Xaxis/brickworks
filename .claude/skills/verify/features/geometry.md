@@ -275,7 +275,19 @@ can occupy the same millimetre.
   pose and a line for the margin); the part past each stud joint at half its
   working load or more tinted amber to red (`BrickWorld.set_tinted`). Working
   shows while it weighs, on a worker from 600 parts. A change to the model
-  takes the marks and the tint away.
+  takes the marks and the tint away. Check stability shows the status
+  bar's own weighing of the model as it stands, every margin with it, and
+  its balance (`Main.weighed_now`, `Stability.Report.balance`), rather than
+  weigh the same again: waited for when under way, begun at once on a
+  worker when not, the poses found meanwhile. On the web, where the status
+  bar weighs without margins unless Stress is on, and when it has none, it
+  checks itself, on a worker from 600 parts (`Stability.check_paced`). On
+  Orthanc (`command_probe --subjects=orthanc --only=stability`), once the
+  status bar has weighed, 8.0 s became 1.0 s at a load of 30 to 40;
+  straight after opening, waiting out its weighing, 10.4 s became 3.4 s at
+  a load of 40. `bigmodels2_probe`: what it shows is the status bar's
+  report itself, both ways, and what weighing afresh gives, on the car and
+  Orthanc.
 - `clutch`: whether two parts that touch could really hold each other. The
   lattice is 2 LDU and the connection system is 20, so a position can be legal
   on the grid and impossible in plastic — a brick three tenths of a stud across
@@ -524,7 +536,10 @@ can occupy the same millimetre.
   (`HiddenColours._families`, `Assemblies._begin_pass`): on Orthanc from cold,
   3.9 s became 1.75 to 1.85 s at a load of 13 to 25 on 24 cores, and 2.6 to
   2.8 s at a load of 30 to 40 (`command_probe --subjects=orthanc
-  --only=hidden_colours`).
+  --only=hidden_colours`). Where it cuts the model open is read off the
+  changed parts' boxes sorted by where they begin and end along each axis
+  (`HiddenColoursPanel.cut_through`), not by asking every box at every
+  plane: the same cut, 337 ms to 31 ms on all of Orthanc (`bigmodels2_probe`).
   Shows the inside cut open before and after; Apply is one `Builder.record` step,
   after `Assemblies.unlike_copies` says no copy would be rebuilt for it (a
   symmetrical sub-assembly fits its fellows several ways, and Saturn V's three

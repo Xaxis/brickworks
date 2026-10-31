@@ -915,6 +915,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Orthanc outlined as selected (an 8 s frame in software, which also holds
   the bar back: the selection outline's cost, not the command's); Shift-E
   4.6 s unsaid, now said in 69 ms.
+  Each row also prints what the status bar said the command came to, so a
+  quicker command is seen to answer as before, and for the booklet the
+  planner's and the booklet's laps and when its first page of steps was
+  written; `--within=instructions.first:15` holds that first page, not the
+  whole booklet, to its seconds (APP_UX3 bigmodels2).
 - `snap and turn step`: the toolbar's Snap (stud, ½ stud, ½ plate, free) sets
   where a part in hand or a carried group can land across the ground
   (`Builder.snap_across`) and how far the arrows nudge a selection across and,
@@ -1137,7 +1142,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   parts it where it is held least, the tick or Accept makes it a
   sub-assembly, Accept all makes every one in one undo step. How it
   decides: the booklet planner's reading (`Instructions._survey`,
-  supports, `_find_assemblies`, `_find_bundles`) and the build check's
+  supports, `_find_assemblies`, `_find_bundles`; the reading the booklet
+  and the timeline keep when the model's shape is the one they read,
+  `Instructions.read_shape`, so read once for all three) and the build check's
   joint graph as Balance builds it (`Stability.contacts` studs, `Joints`
   pins, axles, clips); a sub-model the file has that fits a section and is
   one piece, and the planner's sub-builds, stay whole; the booklet's own
@@ -1159,7 +1166,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   `EditVerbs.brick_at`), so a section is chosen where it is seen. A model of
   600 parts or more is suggested on a worker, with Cancel, the window
   drawing meanwhile
-  (`BrickWorld.set_drawn`: nothing of the model moves). Evaluate the
+  (`BrickWorld.set_drawn`: nothing of the model moves). On Orthanc 18.1 s
+  became 9.2 s at a load of 40 to 48, and 6 s headless once the booklet
+  has read the model (`command_probe --subjects=orthanc
+  --only=suggest_sections`), the same sections part for part on the car,
+  house, tower, kart, corner shop, castle, Orthanc, orrery, barn owl and
+  station (`bigmodels2_probe` on Orthanc). Evaluate the
   section… shows the chosen one alone: parts as the parts list counts
   them, lots, weight, one piece by the joint graph and by the build check
   on it alone (`Assistant._checked`), whether it stands on its own base

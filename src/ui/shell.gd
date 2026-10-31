@@ -1769,17 +1769,22 @@ func _instructions() -> void:
 func _check_stability() -> void:
 	var stability: Stability = app.get("_stability")
 	stability.floor_ids = store.scenery
-	# The status bar's weighing of the model as it is, when it has one: the
-	# same check, done already (Main.weighed_now). Else on a worker for a big
-	# model, the poses found meanwhile (Stability.check_paced).
+	# The status bar's weighing of the model as it is: the same check, done
+	# or under way already (Main.weighed_now). Else on a worker for a big
+	# model (Stability.check_paced). The poses are found meanwhile.
 	var poses: Array = []
-	var report: Stability.Report = app.call("weighed_now") if app.has_method("weighed_now") \
-		else null
-	if report != null:
-		poses = _poses_to_weigh()
-	else:
-		report = await stability.check_paced(world, func() -> void:
-			poses.assign(_poses_to_weigh()))
+	var posed: Array = [false]
+	var find_poses: Callable = func() -> void:
+		poses.assign(_poses_to_weigh())
+		posed[0] = true
+	var report: Stability.Report = null
+	if app.has_method("weighed_now"):
+		var job: Working.Job = Working.begin("Weighing the model…")
+		await job.shown()
+		report = await app.call("weighed_now", find_poses)
+		job.end()
+	if report == null:
+		report = await stability.check_paced(world, Callable() if posed[0] else find_poses)
 	if report == null:
 		report = stability.check(world)
 	var said: String = "it stands up — no joint is carrying more than it can hold"

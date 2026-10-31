@@ -7350,10 +7350,22 @@ func _weigh() -> void:
 
 
 ## The status bar's weighing of the model as it stands now, every margin
-## with it, or null when it has none of this revision: Check stability shows
-## it rather than weigh the same again (Shell._check_stability).
-func weighed_now() -> Stability.Report:
-	return _weighed if _weighed_revision == _world.revision and not _weighing else null
+## with it: Check stability shows it rather than weigh the same again
+## (Shell._check_stability). Waited for when under way, and begun at once
+## when not, on a worker; [param meanwhile] is called while it weighs. Null
+## when there is none of this revision: on the web the status bar weighs
+## without margins unless Stress is on, and is not asked to weigh twice.
+func weighed_now(meanwhile: Callable = Callable()) -> Stability.Report:
+	for attempt: int in 2:
+		if not _weighing and _weighed_revision != _world.revision \
+				and not OS.has_feature("nothreads"):
+			_stability_at = 0
+			_weigh()
+		if attempt == 0 and meanwhile.is_valid():
+			meanwhile.call()
+		while _weighing:
+			await get_tree().process_frame
+	return _weighed if _weighed_revision == _world.revision else null
 
 
 ## The model weighed as the status bar weighs it (Stability.check), every
