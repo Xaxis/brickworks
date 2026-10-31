@@ -53,6 +53,7 @@ const COMMANDS: Dictionary = {
 	"export_picture": "export_model", "export_bricklink": "export_model",
 	"export_rebrickable": "export_model", "instructions": "export_model",
 	"render": "render_model",
+	"render_queue": "render_queue",
 	"undo": "undo", "redo": "undo",
 	"cut_parts": "edit_model", "copy": "edit_model", "paste": "edit_model",
 	"duplicate": "edit_model", "delete": "edit_model", "paint": "edit_model",
@@ -203,6 +204,9 @@ can I build?: saved models, examples and real sets' models by how much is owned.
  - render_model: a picture or a turntable worth keeping, Quick, Good or \
 Best, up to 4K, as the window draws it or as a product shot, or kind="build" \
 the model built up step by step as a video, saved where Render saves.
+ - render_queue: pictures lined up with Render's settings and drawn one \
+after another while the person goes on working, as File, Render queue… \
+does; list says how far each has got and where it was saved.
  - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
 (GLB, glTF, OBJ, STL), a picture, a BrickLink wanted list, a Rebrickable \
 parts list, or the building instructions as a booklet, written where \
@@ -717,6 +721,37 @@ func definitions() -> Array:
 			}},
 		},
 		{
+			"name": "render_queue",
+			"description": ("Pictures lined up and drawn one after another while the person "
+				+ "goes on working, as File, Render queue… does. action add queues the "
+				+ "model and the view as they are now (view current, the window's, unless "
+				+ "another is given), with Render's settings changed by quality, size, "
+				+ "samples (Best's, 1 to 4096), view, look, backdrop and depth_of_field as "
+				+ "render_model takes them; drawing begins at once unless paused, and each is "
+				+ "saved where Render saves under a name of its own. list (the default) says "
+				+ "what is waiting, being drawn and done, with where each was saved, and "
+				+ "changes nothing; number=N with it shows that finished picture. pause holds "
+				+ "the rest after the one being drawn, go_on carries on, finish_now keeps the "
+				+ "one being drawn as clean as it is (a path-traced picture), cancel number=N "
+				+ "takes one out or stops it, clear forgets the finished. Best is path traced "
+				+ "where the graphics card traces rays, and frames averaged where it does "
+				+ "not, and the answer says which. Needs the app in a window."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"action": {"type": "string", "enum": ["add", "list", "pause", "go_on",
+					"finish_now", "cancel", "clear"]},
+				"number": {"type": "integer", "description": "which render, as list numbers them"},
+				"quality": {"type": "string", "enum": ["quick", "good", "best"]},
+				"size": {"type": "string", "enum": ["720p", "1080p", "4k", "square"]},
+				"samples": {"type": "integer", "description": "Best's samples, 1 to 4096"},
+				"view": {"type": "string", "enum": ["current", "hero", "front", "side", "back",
+					"low", "top"]},
+				"look": {"type": "string", "enum": ["window", "product"]},
+				"backdrop": {"type": "string", "enum": ["white", "gradient", "grey", "dark",
+					"none"]},
+				"depth_of_field": {"type": "boolean"},
+			}},
+		},
+		{
 			"name": "export_model",
 			"description": ("Write the model out as File, Export does, where Export writes "
 				+ "(the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd "
@@ -984,6 +1019,8 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return await _parts_list(input)
 		"render_model":
 			return await _render(input, work)
+		"render_queue":
+			return _render_queue(input)
 		"export_model":
 			return await _export(input, work)
 		"brickify":
@@ -3028,6 +3065,65 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 		Image.INTERPOLATE_BILINEAR)
 	return [{"type": "text", "text": said}, {"type": "image", "source": {"type": "base64",
 		"media_type": "image/png", "data": Marshalls.raw_to_base64(small.save_png_to_buffer())}}]
+
+
+## File, Render queue…, for a session: the window's own queue (RenderQueue).
+func _render_queue(input: Dictionary) -> Variant:
+	var action: String = str(input.get("action", "list"))
+	if not action in ["add", "list", "pause", "go_on", "finish_now", "cancel", "clear"]:
+		return "action is add, list, pause, go_on, finish_now, cancel or clear."
+	var queue: RenderQueue = RenderQueue.of(app)
+	var number: int = int(input.get("number", 0))
+	match action:
+		"add":
+			if not StudioRender.possible():
+				return ("Rendering needs something to draw with, and this app is running "
+					+ "without a window. Start it in one (godot --path . -- --mcp).")
+			var dialog: Node = app.get("_render")
+			var chosen: RenderSettings = (dialog.get("settings") as RenderSettings).copy() \
+				if dialog != null else RenderSettings.new()
+			if dialog == null:
+				chosen.view = "current"
+			var options: Dictionary = input.duplicate()
+			options.erase("action")
+			options.erase("number")
+			var wrong: String = chosen.take(options)
+			if not wrong.is_empty():
+				return wrong
+			var item: RenderQueue.Item = queue.add(chosen)
+			if item == null:
+				return queue.last_refusal
+			return ("Queued %d: %s, %s. %s\n%s" % [item.number, item.what(),
+				"drawing now" if queue.is_drawing() and item.state == "drawing" else "waiting",
+				item.settings.best_words() if item.settings.quality
+					== RenderSettings.Quality.BEST else "", "\n".join(queue.lines())]).strip_edges()
+		"pause", "go_on":
+			queue.pause(action == "pause")
+		"finish_now":
+			if not queue.finish_now():
+				return "Nothing path traced is being drawn, so there is nothing to finish early."
+		"cancel":
+			if not queue.cancel(number):
+				return "There is no render %d still to finish; list numbers them." % number
+		"clear":
+			queue.clear_finished()
+		"list":
+			if number > 0:
+				var shown: RenderQueue.Item = queue.find(number)
+				if shown == null:
+					return "There is no render %d; list numbers them." % number
+				var line: String = "%d. %s: %s" % [number, shown.what(),
+					queue.state_words(shown)]
+				if shown.picture == null:
+					return line
+				return [{"type": "text", "text": line}, {"type": "image", "source": {"type": "base64",
+					"media_type": "image/png",
+					"data": Marshalls.raw_to_base64(shown.picture.save_png_to_buffer())}}]
+	var said: PackedStringArray = queue.lines()
+	if said.is_empty():
+		return "The queue is empty. " + RenderQueue.best_here()
+	return "%s\n%s%s" % ["\n".join(said), "Paused. " if queue.paused else "",
+		RenderQueue.best_here()]
 
 
 func _export(input: Dictionary, work: Working.Job = null) -> String:

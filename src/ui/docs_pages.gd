@@ -26,6 +26,7 @@ const PANELS := {
 	"PosePanel": "/docs/joints-and-mechanisms#motions",
 	"PrintEditor": "/docs/figures-and-prints#prints",
 	"RenderDialog": "/docs/exports#render",
+	"RenderQueue": "/docs/exports#render-queue",
 	"SavedModelsDialog": "/docs/saving-and-files#open",
 	"SharePanel": "/docs/sharing#share",
 	"ShareView": "/docs/model-pages#viewer",

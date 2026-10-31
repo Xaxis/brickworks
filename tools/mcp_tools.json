@@ -5106,6 +5106,92 @@
       "idempotentHint": false,
       "openWorldHint": false,
       "readOnlyHint": false,
+      "title": "Queue renders"
+    },
+    "description": "Pictures lined up and drawn one after another while the person goes on working, as File, Render queue… does. action add queues the model and the view as they are now (view current, the window's, unless another is given), with Render's settings changed by quality, size, samples (Best's, 1 to 4096), view, look, backdrop and depth_of_field as render_model takes them; drawing begins at once unless paused, and each is saved where Render saves under a name of its own. list (the default) says what is waiting, being drawn and done, with where each was saved, and changes nothing; number=N with it shows that finished picture. pause holds the rest after the one being drawn, go_on carries on, finish_now keeps the one being drawn as clean as it is (a path-traced picture), cancel number=N takes one out or stops it, clear forgets the finished. Best is path traced where the graphics card traces rays, and frames averaged where it does not, and the answer says which. Needs the app in a window.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "add",
+            "list",
+            "pause",
+            "go_on",
+            "finish_now",
+            "cancel",
+            "clear"
+          ],
+          "type": "string"
+        },
+        "backdrop": {
+          "enum": [
+            "white",
+            "gradient",
+            "grey",
+            "dark",
+            "none"
+          ],
+          "type": "string"
+        },
+        "depth_of_field": {
+          "type": "boolean"
+        },
+        "look": {
+          "enum": [
+            "window",
+            "product"
+          ],
+          "type": "string"
+        },
+        "number": {
+          "description": "which render, as list numbers them",
+          "type": "integer"
+        },
+        "quality": {
+          "enum": [
+            "quick",
+            "good",
+            "best"
+          ],
+          "type": "string"
+        },
+        "samples": {
+          "description": "Best's samples, 1 to 4096",
+          "type": "integer"
+        },
+        "size": {
+          "enum": [
+            "720p",
+            "1080p",
+            "4k",
+            "square"
+          ],
+          "type": "string"
+        },
+        "view": {
+          "enum": [
+            "current",
+            "hero",
+            "front",
+            "side",
+            "back",
+            "low",
+            "top"
+          ],
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "render_queue"
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
       "title": "Export the model"
     },
     "description": "Write the model out as File, Export does, where Export writes (the Downloads folder; a download on the web): format ldraw (.ldr, or .mpd with its sub-models, with its build steps), studio (a BrickLink Studio .io), a 3D file at real size — glb (one file: Blender, three.js, AR; any size of model), gltf (the same as text), obj (with an .mtl of its colours) or stl (one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are capped — picture (.png), bricklink (a wanted list), rebrickable (a parts list .csv), or instructions (the building instructions as a booklet to print); all_models is every model the person saved, as LDraw in one .zip (File, Export, All my models). studio, picture and instructions are jobs: the answer is a job number at once, and job gives the result.",

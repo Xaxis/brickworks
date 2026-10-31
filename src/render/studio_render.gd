@@ -255,6 +255,9 @@ class Plan extends RefCounted:
 	var lens: bool = false
 	var soft_key: float = 0.0
 	var warm_up: int = 0
+	## Path traced (PathTracer): samples are passes of the tracer, every
+	## pixel one sample a pass, and nothing of the raster's is drawn.
+	var traced: bool = false
 
 
 ## Whether this renderer has global illumination and ambient occlusion:
@@ -301,6 +304,11 @@ static func plan_for(settings: RenderSettings) -> Plan:
 		RenderSettings.Quality.BEST:
 			plan.samples = settings.samples_here()
 			plan.msaa = Viewport.MSAA_DISABLED
+			if settings.traced_here():
+				plan.traced = true
+				plan.key_spread = KEY_SPREAD
+				plan.lens = settings.f_stop > 0.0
+				return plan
 			plan.gi = full
 			plan.occlusion = full
 			plan.key_spread = KEY_SPREAD
@@ -1000,7 +1008,7 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 	_pivot.rotation = Vector3.ZERO
 	# What the window's own light makes of this model from here: the
 	# lightness every other choice is exposed to match.
-	var metered: bool = settings.lighting != "studio" or plan.gi
+	var metered: bool = settings.lighting != "studio" or plan.gi or plan.traced
 	var wanted: float = 0.0
 	if metered:
 		var reference: RenderSettings = settings.copy()
@@ -1011,6 +1019,14 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 		if wanted < 0.0:
 			return false
 	_dress(settings, plan, shot)
+	_wanted_lightness = wanted
+	if plan.traced:
+		# The tracer meters its own picture (_traced), and casts its own
+		# shadows: nothing of the raster's to draw first.
+		_contact.visible = false
+		_floor_mask = null
+		last_exposure = 1.0
+		return true
 	progress.emit(0.07, "the contact shadow")
 	if settings.contact_shadow:
 		if not await _contact_shadow():
@@ -1196,21 +1212,27 @@ func aim(settings: RenderSettings, bounds: AABB, turning: bool = false,
 	# Perspective is a frustum shifted to the model's column (CadCamera);
 	# the picture is centred on what the view looks at either way. Framed on
 	# what moves, the window's view gives its direction and the frame is fitted.
-	if view == "current" and eye != null and eye.projection != Camera3D.PROJECTION_ORTHOGONAL \
-			and not settings.on_what_moves:
-		var from: Transform3D = eye.global_transform
+	# The window's view as it was when the render was asked for (RenderQueue),
+	# or as it is.
+	var kept: bool = settings.eye_fov > 0.0
+	var seen: bool = kept or eye != null
+	var from: Transform3D = settings.eye_transform if kept \
+		else (eye.global_transform if eye != null else Transform3D())
+	if view == "current" and seen and not settings.on_what_moves and not (
+			settings.eye_orthogonal if kept else eye.projection == Camera3D.PROJECTION_ORTHOGONAL):
 		var forward: Vector3 = -from.basis.z.normalized()
-		var focus: Vector3 = eye.call("focus_now") if eye.has_method("focus_now") \
-			else frame.get_center()
+		var focus: Vector3 = settings.eye_focus if kept else (eye.call("focus_now")
+			if eye.has_method("focus_now") else frame.get_center())
 		var depth: float = maxf((focus - from.origin).dot(forward), 1.0)
 		# The point looked at stays the size it is, through the new lens.
-		var scale: float = tan(deg_to_rad(eye.fov) * 0.5) / tan(deg_to_rad(shot.fov) * 0.5)
+		var scale: float = tan(deg_to_rad(settings.eye_fov if kept else eye.fov) * 0.5) \
+			/ tan(deg_to_rad(shot.fov) * 0.5)
 		shot.basis = from.basis.orthonormalized()
 		shot.origin = from.origin + forward * depth * (1.0 - scale)
 	else:
 		var direction: Vector3 = Vector3(VIEWS["hero"][1])
-		if view == "current" and eye != null:
-			direction = eye.global_transform.basis.z
+		if view == "current" and seen:
+			direction = from.basis.z
 		elif view != "current":
 			direction = Vector3(VIEWS[view][1])
 		shot.basis = _looking_from(direction.normalized())
@@ -1308,6 +1330,9 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 
 	var product: bool = settings.look == "product"
 	var panorama: StudioPanorama = _panorama(settings.lighting)
+	_lit_by = panorama
+	_room = 1.0
+	_turn = turn
 	# What the product look's plastic reflects and is lit by besides its
 	# three lights, when no photographed place is: a softbox studio. Only on
 	# the desktop, whose sky lights as it should (see below).
@@ -1315,6 +1340,8 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	if product and panorama == null and full:
 		reflected = _panorama(PRODUCT_SKY)
 		_panorama_in_use = null
+		_lit_by = reflected
+		_room = PRODUCT_ROOM
 	# One environment for each way of lighting, kept and changed rather than
 	# made again: in a browser each new one drawn for the first time held the
 	# page for seconds, at the start of every draft.
@@ -1428,6 +1455,7 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	elif reflected != null:
 		environment.sky_rotation = Vector3(0.0, turn, 0.0)
 	environment.ambient_light_energy = BrickWorld.light_energy(ambient_forward)
+	_ambient = ambient_forward
 	if plan.gi:
 		environment.sdfgi_min_cell_size = clampf(radius / 48.0, 0.5, 64.0)
 	if plan.sky_samples:
@@ -1505,7 +1533,9 @@ func _dress(settings: RenderSettings, plan: Plan, shot: Shot) -> void:
 	_aim_light(_sky_light, Vector3.UP)
 	_sky_light.light_color = Color(0.9, 0.9, 0.92)
 	_sky_light.light_energy = BrickWorld.light_energy(ambient_forward * SKY_SHARE, true)
-	if full and settings.quality != RenderSettings.Quality.QUICK:
+	# Not for a path-traced picture, which draws none of it, and goes on
+	# beside a window still in use (RenderQueue).
+	if full and settings.quality != RenderSettings.Quality.QUICK and not plan.traced:
 		_shadow_atlas(8192)
 		# The finest occlusion and soft shadows there are, at full size: the
 		# engine's defaults are made for a game's frame, half-size occlusion
@@ -1674,6 +1704,9 @@ func _contact_shadow() -> bool:
 ## The picture, piece by piece and sample by sample.
 func _picture(settings: RenderSettings, from: float, to: float, words: String = "") -> Image:
 	var plan: Plan = plan_for(settings)
+	_traced_last = plan.traced
+	if plan.traced:
+		return await _traced(settings, plan, from, to, words)
 	var shot: Shot = last_shot
 	var picture: Vector2i = Vector2i(maxi(settings.size.x, 1), maxi(settings.size.y, 1))
 	var tiles: Array[Rect2i] = _tiles(picture)
@@ -1745,6 +1778,286 @@ func _picture(settings: RenderSettings, from: float, to: float, words: String = 
 		_doing("converting")
 		result.convert(Image.FORMAT_RGB8)
 	return result
+
+
+## The picture path traced (PathTracer): the set put on the card, the
+## exposure and the sweep metered on a small picture of it as the raster's
+## are, then pass after pass, a frame of the app's each, the picture shown
+## as it gets cleaner until it has its samples or [method finish_now].
+func _traced(settings: RenderSettings, plan: Plan, from: float, to: float,
+		words: String) -> Image:
+	if _tracer == null:
+		_tracer = PathTracer.new()
+	var shot: Shot = last_shot
+	var picture: Vector2i = Vector2i(maxi(settings.size.x, 1), maxi(settings.size.y, 1))
+	_doing("putting the set on the card")
+	var batches: Array = []
+	var pace := FramePace.new()
+	for child: Node in _stage.get_children():
+		if child is MultiMeshInstance3D:
+			batches.append(child)
+			var multimesh: MultiMesh = (child as MultiMeshInstance3D).multimesh
+			if multimesh != null and multimesh.mesh != null:
+				_tracer.shape_of(multimesh.mesh)
+			if pace.due():
+				await pace.next()
+				if _cancelled:
+					return null
+	if not _tracer.stage(batches, _backdrop if _backdrop.visible else null):
+		return null
+	_tracer.light_with(_lit_by)
+	var environment: Environment = _camera.environment
+	var tonemapper: int = 2 if environment.tonemap_mode == Environment.TONE_MAPPER_FILMIC else 3
+	var white: float = maxf(environment.tonemap_white, 1.0)
+	var contrast: float = environment.adjustment_contrast if environment.adjustment_enabled else 1.0
+	var saturation: float = environment.adjustment_saturation \
+		if environment.adjustment_enabled else 1.0
+	var exposure: float = environment.tonemap_exposure
+	var level: float = 1.0
+	# Metered on a small picture, as the raster's are: the model as light as
+	# the window draws it, then the sweep brought to its colour.
+	var aspect: float = float(picture.x) / float(maxi(picture.y, 1))
+	var small := Vector2i(maxi(roundi(120.0 * aspect), 16), 120)
+	var scale: float = 1.0
+	var goal: float = minf(settings.backdrop.get_luminance(), 0.95)
+	for round: int in 5:
+		_tracer.scene = _traced_scene(settings, plan, shot, small, level)
+		if not _tracer.begin(small):
+			return null
+		# A frame's share at a time: 48 samples at once held the window's
+		# frame while the queue drew beside it.
+		_doing("metering")
+		for _part: int in 4:
+			_tracer.trace(12, round)
+			await get_tree().process_frame
+			if _cancelled:
+				return null
+		if _wanted_lightness > 0.0:
+			for _step_round: int in 4:
+				var seen: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
+					saturation, true, false)
+				var got: float = _mean_covered(seen)
+				if got <= 0.001 or absf(got / _wanted_lightness - 1.0) < 0.02:
+					break
+				scale *= clampf(pow(_wanted_lightness / got, 1.4), 0.4, 2.5)
+		if not _backdrop.visible:
+			break
+		var floor_image: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
+			saturation, true, false)
+		var floor_seen: float = _floor_level(floor_image)
+		if absf(floor_seen - goal) < 0.015 or floor_seen <= 0.0005:
+			break
+		level = clampf(level * clampf(pow(goal / floor_seen, 1.6), 0.3, 3.0), 0.05, 6.0)
+	last_exposure = scale
+	last_level = level
+	# The picture itself.
+	_tracer.scene = _traced_scene(settings, plan, shot, picture, level)
+	if not _tracer.begin(picture):
+		return null
+	var wanted: int = maxi(plan.samples, 1)
+	var per_pass: int = 1
+	# A sample of a big picture is more than a frame can spare beside the
+	# window's: it is given a band of rows at a time until there is room,
+	# a quarter of them until the card has timed a pass.
+	var rows: int = maxi(picture.y / 4, 1)
+	var row: int = 0
+	var card_ms: float = 0.0
+	var shown_at: int = Time.get_ticks_msec()
+	_stopping = false
+	while _tracer.samples < wanted:
+		var count: int = mini(per_pass, wanted - _tracer.samples)
+		_tracer.trace(count, 7919 * _tracer.samples + 104729 * settings.seed, row, rows)
+		row = 0 if row + rows >= picture.y else row + rows
+		_doing("tracing %d samples, %d rows, %.1f ms on the card" % [count, rows, card_ms])
+		await get_tree().process_frame
+		if _cancelled:
+			return null
+		# A pass is kept to what the card can spare beside the window's frame,
+		# timed on the card itself: the window's frame time says nothing of
+		# it while the card has room, and much of the window's own noise.
+		var sample_ms: float = _tracer.sample_ms()
+		if sample_ms > 0.0:
+			var fit: int = floori(pass_ms / sample_ms / float(picture.x))
+			rows = clampi(fit, 8, picture.y)
+			per_pass = clampi(fit / picture.y, 1, PathTracer.MOST_PER_PASS)
+			card_ms = sample_ms * float(picture.x * rows * per_pass)
+		if row != 0:
+			continue
+		var said: String = words if not words.is_empty() else \
+			"%d of %d samples" % [_tracer.samples, wanted]
+		progress.emit(lerpf(from, to, float(_tracer.samples) / float(wanted)), said)
+		if _stopping:
+			break
+		# Shown as it gets cleaner, a picture a second, in two halves: the
+		# dialog draws pieces, and the whole of it is the finished picture.
+		if Time.get_ticks_msec() - shown_at > 1000 and _tracer.samples < wanted:
+			shown_at = Time.get_ticks_msec()
+			var so_far: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
+				saturation, settings.transparent)
+			if so_far != null:
+				var half: int = picture.y / 2
+				piece_done.emit(so_far.get_region(Rect2i(0, 0, picture.x, half)), Vector2i.ZERO)
+				piece_done.emit(so_far.get_region(Rect2i(0, half, picture.x, picture.y - half)),
+					Vector2i(0, half))
+	_stopping = false
+	last_samples = _tracer.samples
+	_doing("reading the picture back")
+	var result: Image = _tracer.picture(exposure * scale, tonemapper, white, contrast,
+		saturation, settings.transparent)
+	if result != null and not settings.transparent:
+		await get_tree().process_frame
+		_doing("converting")
+		result.convert(Image.FORMAT_RGB8)
+	return result
+
+
+## What the tracer lights and sees, as path_tracer.glsl's Scene reads it.
+func _traced_scene(settings: RenderSettings, plan: Plan, shot: Shot, picture: Vector2i,
+		level: float) -> PackedFloat32Array:
+	var tan_half: float = tan(deg_to_rad(shot.fov) * 0.5)
+	var aspect: float = float(picture.x) / float(maxi(picture.y, 1))
+	var across: Vector3 = shot.basis.x * tan_half * aspect
+	var up: Vector3 = shot.basis.y * tan_half
+	var back: Vector3 = shot.basis.z
+	var product: bool = settings.look == "product"
+	var data := PackedFloat32Array()
+	data.append_array([shot.origin.x, shot.origin.y, shot.origin.z,
+		shot.aperture if plan.lens else 0.0])
+	data.append_array([across.x, across.y, across.z, 0.0])
+	data.append_array([up.x, up.y, up.z, 0.0])
+	data.append_array([back.x, back.y, back.z, shot.focus_distance])
+	data.append_array([float(picture.x), float(picture.y), float(PathTracer.BOUNCES),
+		1.0 if _tracer.has_glass() else 0.0])
+	# The sky: a photographed place (the product look's softbox when no
+	# place is chosen), or the window's own.
+	var place: StudioPanorama = _lit_by
+	var energy: float = 0.0
+	if place != null:
+		energy = HDRI_LEVEL / maxf(place.average, 0.0001)
+		if product and settings.lighting == "studio":
+			energy *= _ambient
+	data.append_array([_ambient, _ambient, _ambient, 1.0 if place != null else 0.0])
+	data.append_array([energy, _turn, _room, float(PathTracer.PLACE_CELLS.x)])
+	var behind: Color = settings.backdrop.srgb_to_linear()
+	data.append_array([behind.r, behind.g, behind.b, 0.0 if settings.transparent else 1.0])
+	var dark: bool = settings.backdrop.get_luminance() < 0.2
+	var fall: float = 0.0 if not settings.backdrop_gradient \
+		else (FALL_DARK if dark else FALL_GRADIENT)
+	var radius: float = _bounds.size.length() * 0.5
+	data.append_array([level, fall, radius * 0.7, radius * 3.2])
+	data.append_array([behind.r, behind.g, behind.b, 1.0 if _backdrop.visible else 0.0])
+	var origin: Vector3 = _backdrop.global_position
+	data.append_array([origin.x, origin.y, origin.z, float(PathTracer.PLACE_CELLS.y)])
+	# The lights: the rig as dressed, the key from anywhere on its area. A
+	# photographed place is its own key.
+	var lights: Array = []
+	if place == null or (product and settings.lighting == "studio"):
+		for n: int in _lights.size():
+			var light: DirectionalLight3D = _lights[n]
+			if not light.visible or light.light_energy <= 0.0:
+				continue
+			var toward: Vector3 = light.get_meta("toward", Vector3.UP)
+			var energy_here: float = light.light_energy
+			var colour: Color = light.light_color * energy_here
+			# Shadows where the window's light casts them: the key's alone.
+			lights.append([toward, plan.key_spread * 0.5 if n == 0 else 0.0, colour,
+				1.0 if light.shadow_enabled else 0.0])
+	data.append_array([1.0 if product else 0.0, float(lights.size()), 0.0, 0.0])
+	# The window's sky (main.tscn's), as its ambient light lights the model.
+	var top := Color(0.53, 0.545, 0.565)
+	var horizon := Color(0.735, 0.74, 0.75)
+	var ground := Color(0.47, 0.47, 0.48)
+	var room := Color(0.86, 0.86, 0.87)
+	var share: float = 0.85
+	if look != null:
+		share = look.ambient_light_sky_contribution
+		room = look.ambient_light_color
+		var sky_material := look.sky.sky_material as ProceduralSkyMaterial \
+			if look.sky != null else null
+		if sky_material != null:
+			top = sky_material.sky_top_color
+			horizon = sky_material.sky_horizon_color
+			ground = sky_material.ground_bottom_color
+	for colour: Color in [top, horizon, ground]:
+		var lit: Color = colour.srgb_to_linear() * share + room.srgb_to_linear() * (1.0 - share)
+		data.append_array([lit.r, lit.g, lit.b, 0.0])
+	for n: int in 4:
+		if n < lights.size():
+			var row: Array = lights[n]
+			var toward: Vector3 = row[0]
+			var colour: Color = row[2]
+			data.append_array([toward.x, toward.y, toward.z, float(row[1])])
+			data.append_array([colour.r, colour.g, colour.b, float(row[3])])
+		else:
+			data.append_array([0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+	return data
+
+
+## The model's mean lightness in a metering picture: its pixels are those
+## the tracer saw it in (alpha).
+static func _mean_covered(image: Image) -> float:
+	if image == null:
+		return 0.0
+	var sum: float = 0.0
+	var count: int = 0
+	for y: int in image.get_height():
+		for x: int in image.get_width():
+			var c: Color = image.get_pixel(x, y)
+			if c.a > 0.95:
+				sum += c.get_luminance()
+				count += 1
+	return sum / float(count) if count > 0 else 0.0
+
+
+## How light the sweep is in a metering picture: the brighter part of what
+## is not the model, as _meter_floor reads the raster's.
+static func _floor_level(image: Image) -> float:
+	if image == null:
+		return 0.0
+	var levels := PackedFloat32Array()
+	for y: int in image.get_height():
+		for x: int in image.get_width():
+			var c: Color = image.get_pixel(x, y)
+			if c.a < 0.1:
+				levels.append(Color(c.r, c.g, c.b).get_luminance())
+	if levels.is_empty():
+		return 0.0
+	levels.sort()
+	return levels[int(float(levels.size() - 1) * 0.7)]
+
+
+## Stop tracing and keep the picture as it is: a path-traced picture is a
+## picture at any count of samples, only noisier.
+func finish_now() -> void:
+	if _busy:
+		_stopping = true
+
+
+## Whether the last picture was path traced.
+func traced_last() -> bool:
+	return _traced_last
+
+
+## How long a pass of the path tracer may take of a frame: less for the
+## queue (RenderQueue), which draws beside a window still in use.
+var pass_ms: float = PathTracer.PASS_MS
+var _tracer: PathTracer = null
+var _stopping: bool = false
+var _traced_last: bool = false
+## What the last _dress lit the set by: the place (or the product look's
+## softbox), how much of its room is kept, its turn and the ambient light.
+var _lit_by: StudioPanorama = null
+var _room: float = 1.0
+var _turn: float = 0.0
+var _ambient: float = 0.4
+## The model's lightness in the window's own light, metered in _prepare.
+var _wanted_lightness: float = 0.0
+
+
+func _exit_tree() -> void:
+	if _tracer != null:
+		_tracer.release()
+		_tracer = null
 
 
 ## The picture cut into pieces no bigger than this renderer draws at once,
@@ -1886,6 +2199,9 @@ static func _r2(n: int, stream: int) -> Vector2:
 ## (IdleDraw, low-processor mode), and a render's steps that change
 ## nothing the engine can see would wait for a frame that never comes.
 func _quicken() -> void:
+	_quick_count += 1
+	if _quick_count > 1:
+		return
 	_was_low_processor = OS.low_processor_usage_mode
 	OS.low_processor_usage_mode = false
 	if OS.has_feature("web") or DisplayServer.get_name() == "headless":
@@ -1899,6 +2215,9 @@ func _quicken() -> void:
 
 
 func _settle() -> void:
+	_quick_count = maxi(_quick_count - 1, 0)
+	if _quick_count > 0:
+		return
 	_shadow_atlas(_project_atlas())
 	OS.low_processor_usage_mode = _was_low_processor
 	if full_renderer():
@@ -1922,7 +2241,11 @@ func _settle() -> void:
 	Engine.max_fps = _was_max_fps
 
 
-var _was_low_processor: bool = false
-var _quickened: bool = false
-var _was_vsync: int = DisplayServer.VSYNC_ENABLED
-var _was_max_fps: int = 0
+## Renders going at once, File, Render…'s and the queue's (RenderQueue):
+## the window is put back as it was when the last of them ends, not as the
+## other found it.
+static var _quick_count: int = 0
+static var _was_low_processor: bool = false
+static var _quickened: bool = false
+static var _was_vsync: int = DisplayServer.VSYNC_ENABLED
+static var _was_max_fps: int = 0

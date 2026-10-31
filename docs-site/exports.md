@@ -1,6 +1,6 @@
 ---
-tools: render_model, animate_model, render_motion, export_model, parts_list
-panels: RenderDialog#render
+tools: render_model, render_queue, animate_model, render_motion, export_model, parts_list
+panels: RenderDialog#render, RenderQueue#render-queue
 ai: Every file Brickworks writes: LDraw, Studio, 3D models, pictures, BrickLink and Rebrickable parts lists, all models as a .zip, and photo-real renders, turntables, motion animations and building videos. An assistant renders with render_model or render_motion and exports with export_model; the long ones are jobs.
 rules:
   - A render, a Studio file, a picture and the instructions answer with a job number; follow it with job.
@@ -57,13 +57,29 @@ The choices are a photographer's:
 
 | Choice | What there is |
 |---|---|
-| Quality | A quick one in the window's own look, up to Best: frames averaged for soft shadows from an area light, smooth edges, shading under every ledge, and depth of field |
+| Quality | A quick one in the window's own look, up to Best: path traced on a graphics card that traces rays, so shadows soften as they should, light bounces off the floor and between the parts, and glass tints what is behind it; elsewhere frames averaged for soft shadows from an area light, smooth edges, shading under every ledge, and depth of field |
 | Look | **As in the window**, or **Product** (below) |
 | Size | 720p, 1080p, 4K, Square, or Custom |
 | Backdrop | White, Gradient, Grey, Dark, a Colour you pick, or None (a transparent picture), with a contact shadow under the model if you like |
 | Light | Three lights, as in the window; or photographed light: a softbox studio, window light, or daylight |
 | View | Three-quarter like the box, the view you are looking at, front, side, back three-quarter, low looking up, or from above |
 | Lens | The focal length, and an aperture from Off to f/2 for depth of field (blur comes with Best) |
+
+### Best, path traced {#path-traced}
+
+On the desktop app, on a graphics card with ray tracing (most from the last few years), **Best** follows the light bounce by bounce over the model's own parts, lit by the light you chose. The picture gets cleaner sample by sample: **Best's frames** sets how many, 256 when you leave it to the app. The car at 720p takes a few seconds on a mid-range card. Where the card cannot trace rays, and in a browser, Best is frames averaged as before, and the Quality note says so. A transparent picture is frames averaged too, so its shadow can fall on nothing.
+
+<!-- covers
+lib:path tracer
+-->
+
+### Render queue {#render-queue}
+
+**File › Render queue…** lines pictures up and draws them one after another while you go on building. **Add this view** queues the model and the view as they are now, with Render's settings; change the view, or the model, and add another. Each is drawn in turn, saved where Render saves under a name of its own, and shown in the status bar, whose **Cancel** stops the one being drawn and pauses the rest. **Finish now** keeps a path-traced picture as clean as it is so far. Claude can use the same queue over the connector (`render_queue`).
+
+<!-- covers
+ui:render queue
+-->
 
 ### The Product look {#product-look}
 
