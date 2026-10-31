@@ -90,7 +90,7 @@
 // Pictures in --out: <size>_1_ready.png, _2_turned.png, _3_let_go.png,
 // _4_reset.png, <size>_5_gallery.png; <size>_6_motions.png,
 // _7_played.png, _8_motions_reset.png, <size>_<light|dark>_9_page.png.
-import { launch } from "./browser.mjs";
+import { appFromModelPage, launch } from "./browser.mjs";
 import { deleteAccount, mintSession } from "./session.mjs";
 import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -340,10 +340,7 @@ async function houseLink(size, shape) {
   const served = sha(await fetch(`${site}/api/share?id=${houseId}`, { headers }).then((r) => r.json())
     .then((body) => body.model || "").catch(() => ""));
   await page.goto(`${site}/m/${houseId}`, { waitUntil: "domcontentloaded", timeout: 180000 });
-  const cta = await page.$('.model-page a.picture[href^="/app?view="]').catch(() => null);
-  if (cta) {
-    await Promise.all([page.waitForURL(/\?view=/, { timeout: 180000 }), finger ? cta.tap() : cta.click()]);
-  }
+  await appFromModelPage(page, { finger });
   await until(page, () => ((window.brickworksShare || {}).view || {}).state === "ready", "the house opened", 600);
   const ready = await until(page, () => {
     const p = ((window.brickworksShare || {}).view || {}).play || {};
@@ -516,15 +513,12 @@ try {
 
     // 1. The link, as somebody follows it.
     await page.goto(`${site}/m/${id}`, { waitUntil: "domcontentloaded", timeout: 180000 });
-    // On a deployment the link is the model's own page, whose View in 3D (its
-    // picture) opens the viewer, Build it the step player at step 1 (serve.py
-    // goes straight on); m87's preview waited 600 s on the page for an app
-    // that was never opened. The local relay
-    // (relay_server.mjs --static) sends /app?view= on to /?view=.
-    const cta = await page.$('.model-page a.picture[href^="/app?view="]').catch(() => null);
-    if (cta) {
-      await Promise.all([page.waitForURL(/\?view=/, { timeout: 180000 }), finger ? cta.tap() : cta.click()]);
-    }
+    // On a deployment the link is the model's own page, whose picture turns
+    // it in 3D, and Open in the app there opens the viewer (appFromModelPage);
+    // m87's preview waited 600 s on the page for an app that was never
+    // opened. The local relay (relay_server.mjs --static) sends /app?view= on
+    // to /?view=.
+    await appFromModelPage(page, { finger });
     await until(page, () => ((window.brickworksShare || {}).view || {}).state === "ready", "the shared model opened", 600);
     const ready = await until(page, () => {
       const p = ((window.brickworksShare || {}).view || {}).play || {};

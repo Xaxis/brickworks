@@ -39,7 +39,7 @@
 // nothing (for a build from before). Pictures of steps 1, 4, 30 and the
 // last in --out (<size>_step<n>.png), taken with the CPU at full speed,
 // and times.json.
-import { launch } from "./browser.mjs";
+import { appFromModelPage, launch } from "./browser.mjs";
 import { deleteAccount, mintSession } from "./session.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
@@ -398,13 +398,10 @@ try {
     // the cover is up.
     const opened = Date.now();
     await page.goto(`${site}/m/${id}`, { waitUntil: "domcontentloaded", timeout: 180000 });
-    // On a deployment the link is the model's own page, whose View in 3D (its
-    // picture) opens the viewer, Build it the step player at step 1 (serve.py
-    // goes straight on).
-    const cta = await page.$('.model-page a.picture[href^="/app?view="]').catch(() => null);
-    if (cta) {
-      await Promise.all([page.waitForURL(/\/app\?view=/, { timeout: 180000 }), cta.tap()]);
-    }
+    // On a deployment the link is the model's own page, whose picture turns
+    // it in 3D, and Open in the app there opens the viewer (appFromModelPage),
+    // Build it the step player at step 1 (serve.py goes straight on).
+    await appFromModelPage(page, { finger: true });
     const firstFrame = await until(page, () => (window.stepFrames.frames.find(([, , , d]) => d > 0) || [0])[0],
       "the engine's first frame", 600, null, 50);
     await cdp.send("Emulation.setCPUThrottlingRate", { rate });
