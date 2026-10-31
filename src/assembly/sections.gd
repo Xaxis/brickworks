@@ -620,15 +620,10 @@ func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLa
 			skip[brick.id] = true
 	if at_phase.call(1):
 		return {}
-	var nodes: Array[Instructions.Node2] = Instructions._survey(model, library, skip)
-	if at_phase.call(2):
-		return {}
-	Instructions._find_supports(nodes, model, library)
-	if at_phase.call(3):
-		return {}
-	Instructions._find_joints(nodes, model, library)
-	Instructions._tidy_needs(nodes)
-	Instructions._find_hangers(nodes)
+	# What each part rests on, is joined to and hangs from, as the booklet
+	# and the timeline read it and keep it (Instructions.read_shape): read
+	# once for both, and copies changed here.
+	var nodes: Array[Instructions.Node2] = Instructions.read_shape(model, library, skip, true)
 	if at_phase.call(4):
 		return {}
 	var subs: Array[Instructions.Assembly] = Instructions._find_assemblies(nodes, model, library)
@@ -776,6 +771,20 @@ func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLa
 	var rank: Dictionary = {}
 	for k: int in units.size():
 		rank[units[k]] = k
+	# Each part's unit's rank (-1 for a figure's), and the parts of each
+	# rank, read once: asked of every part at every cut and for every small
+	# piece, they were 5 of Orthanc's 10 s (bigmodels2).
+	var rank_of := PackedInt32Array()
+	rank_of.resize(count)
+	var parts_at: Array = []           ## rank -> its parts' indices
+	parts_at.resize(units.size())
+	for k: int in units.size():
+		parts_at[k] = []
+	for n: int in count:
+		var r: Variant = rank.get(unit.top(n))
+		rank_of[n] = -1 if r == null else int(r)
+		if r != null:
+			(parts_at[int(r)] as Array).append(n)
 	var total: int = 0
 	var before := PackedInt64Array()   ## parts in the units ranked before k
 	before.resize(units.size() + 1)
@@ -788,17 +797,17 @@ func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLa
 	across.resize(units.size() + 2)
 	across.fill(0.0)
 	for a: int in count:
-		var ra: Variant = rank.get(unit.top(a))
-		if ra == null:
+		var ra: int = rank_of[a]
+		if ra < 0:
 			continue
 		for b: int in held[a]:
 			if b <= a:
 				continue
-			var rb: Variant = rank.get(unit.top(b))
-			if rb == null or int(ra) == int(rb):
+			var rb: int = rank_of[b]
+			if rb < 0 or ra == rb:
 				continue
-			across[mini(int(ra), int(rb)) + 1] += float(held[a][b])
-			across[maxi(int(ra), int(rb)) + 1] -= float(held[a][b])
+			across[mini(ra, rb) + 1] += float(held[a][b])
+			across[maxi(ra, rb) + 1] -= float(held[a][b])
 	var running: float = 0.0
 	for k: int in across.size():
 		running += across[k]
@@ -830,16 +839,15 @@ func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLa
 	# Each run, its pieces.
 	var pieces: Array = []             ## each an Array of unit ranks
 	var run_of: Array = []             ## piece -> the run it is in
+	# One union for every run: a run joins only ranks of its own.
+	var run := _Sets.new(units.size())
 	for c: int in cuts.size() - 1:
-		var run := _Sets.new(units.size())
-		for a: int in count:
-			var ra: Variant = rank.get(unit.top(a))
-			if ra == null or int(ra) < cuts[c] or int(ra) >= cuts[c + 1]:
-				continue
-			for b: int in held[a]:
-				var rb: Variant = rank.get(unit.top(b))
-				if rb != null and int(rb) >= cuts[c] and int(rb) < cuts[c + 1]:
-					run.join(int(ra), int(rb))
+		for ra: int in range(cuts[c], cuts[c + 1]):
+			for a: int in parts_at[ra]:
+				for b: int in held[a]:
+					var rb: int = rank_of[b]
+					if rb >= cuts[c] and rb < cuts[c + 1]:
+						run.join(ra, rb)
 		var by_top: Dictionary = {}
 		for k: int in range(cuts[c], cuts[c + 1]):
 			var top: int = run.top(k)
@@ -860,6 +868,13 @@ func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLa
 			piece_of[k] = p
 			parts += int(unit_size[units[k]])
 		parts_in.append(parts)
+	## A piece's parts' indices, in order, as they were read before.
+	var parts_of_piece := func(p: int) -> Array:
+		var out: Array = []
+		for k: int in pieces[p]:
+			out.append_array(parts_at[k])
+		out.sort()
+		return out
 	var into: Array = []
 	for p: int in pieces.size():
 		into.append(p)
@@ -872,15 +887,13 @@ func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLa
 		if int(parts_in[p]) >= smallest:
 			continue
 		var pull: Dictionary = {}
-		for a: int in count:
-			var ra: Variant = rank.get(unit.top(a))
-			if ra == null or int(piece_of[int(ra)]) != p:
-				continue
+		var own_parts: Array = parts_of_piece.call(p)
+		for a: int in own_parts:
 			for b: int in held[a]:
-				var rb: Variant = rank.get(unit.top(b))
-				if rb == null:
+				var rb: int = rank_of[b]
+				if rb < 0:
 					continue
-				var q: int = follow.call(int(piece_of[int(rb)]))
+				var q: int = follow.call(int(piece_of[rb]))
 				if q != p:
 					pull[q] = float(pull.get(q, 0.0)) + float(held[a][b])
 		# A part or two held by nothing the graph reads (a tile in clips, a
@@ -889,15 +902,12 @@ func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLa
 		# section by what their boxes touched, the build check found five of
 		# 10179-1's in two pieces (2026-10-17).
 		if pull.is_empty() and int(parts_in[p]) <= 2:
-			for a: int in count:
-				var ra: Variant = rank.get(unit.top(a))
-				if ra == null or int(piece_of[int(ra)]) != p:
-					continue
+			for a: int in own_parts:
 				for b: int in leans[a]:
-					var rb: Variant = rank.get(unit.top(b))
-					if rb == null:
+					var rb: int = rank_of[b]
+					if rb < 0:
 						continue
-					var q: int = follow.call(int(piece_of[int(rb)]))
+					var q: int = follow.call(int(piece_of[rb]))
 					if q != p:
 						pull[q] = float(pull.get(q, 0.0)) + 0.5
 		var best: int = -1
@@ -927,10 +937,9 @@ func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLa
 		section_of[q] = sections.size()
 		sections.append([])
 	for n: int in count:
-		var r: int = unit.top(n)
-		if not rank.has(r):
+		if rank_of[n] < 0:
 			continue
-		var s: int = int(section_of[follow.call(int(piece_of[int(rank[r])]))])
+		var s: int = int(section_of[follow.call(int(piece_of[rank_of[n]]))])
 		if s < 0:
 			loose.append(n)
 		else:
