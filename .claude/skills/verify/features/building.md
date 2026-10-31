@@ -1037,9 +1037,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   with `offer_for_probe`; a probe about the assistant's own panel turns it on
   (`set_assistant(true)`). The desktop's `--mcp` port is asked for on the
   command line and is not held.
-- `interface languages` (`src/ui/language.gd`,
-  `Language`, `locale/de.po`, `fr.po`, `es.po`): German, French and
-  Spanish. Tools, Settings…, **Language**, beside Interface size: English (the default), Deutsch,
+- `interface languages` (`src/ui/language.gd`, `Language`, `locale/de.po`,
+  `fr.po`, `es.po`): German, French and Spanish. Tools, Settings…,
+  **Language**, beside Interface size: English (the default), Deutsch,
   Français or Español, kept on this device (`language` in
   `user://shell.cfg`) and applied at the settings' first read, before
   anything is drawn; `/app?lang=de` (`--lang=de` on the desktop) chooses one
@@ -1052,24 +1052,28 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   as it is, as a name is ("House — 71 bricks"); of several partial ways the
   one leaving the fewest English letters wins. Names stay as they are:
   parts, colours (LDraw's, as Studio keeps them), models, sets, keys (Ctrl,
-  Shift), files, licences, and whatever an entry's English quotes (“%s”:
-  a model named Car stays Car). Find a command matches a command's words as
+  Shift), files, licences, and whatever an entry's English quotes (“%s”: a
+  model named Car stays Car). Find a command matches a command's words as
   drawn too ("speichern" finds Save, `CommandPalette._score`). The status
-  line after an action, and every dialog (Open's list and Godot's file
-  dialog, the Library, Save as, Versions, Export, Share, Build together,
-  Comments, Your account, Render and its queue, the booklet's, the
+  line after an action, and every dialog (the way in: signing in by email or
+  orangecheck, the age question and what the server answers; Open's list and
+  Godot's file dialog, the Library, Save as, Versions, Export, Share, Build
+  together, Comments, Your account, Render and its queue, the booklet's, the
   collection's, the minifigure builder, the part maker, the print editor,
   Send feedback, About, the confirmations, the assistant panel) are
   translated too, and the model tree's own row ("Model"); not yet the web
-  pages, nor "White" on Render's backgrounds, which is a colour's name too. `languages_probe` reads them all
-  in English, then in each language: 63 common actions with the status line
-  heard after each, and 40-odd dialogs opened one by one (`DIALOGS`), each
-  word drawn on them read; a word added to a menu, a tooltip, a panel, a
-  dialog or a status message with no entry fails it, and `--missing=FILE`
-  writes the entries to translate, each partial one with the whole it was
-  in ("#. in:"). `--shots=DIR` pictures eight dialogs and a status line in
-  each language. `tests/test_locale.py` checks the files (places kept,
-  LEGO® an adjective, no language short of another).
+  pages, nor "White" on Render's backgrounds, which is a colour's name too.
+  `languages_probe` reads them all in English, then in each language: 63
+  common actions with the status line heard after each, Settings with the
+  assistant on and off, and 40-odd dialogs opened one by one (`DIALOGS`; the
+  sign-in screen, which a probe's window never shows, made in each of its
+  faces), each word drawn on them read; a word added to a menu, a tooltip, a
+  panel, a dialog or a status message with no entry fails it, and
+  `--missing=FILE` writes the entries to translate, each partial one with
+  the whole it was in ("#. in:"). `--shots=DIR` pictures ten dialogs (the
+  sign-in screen's two steps first) and a status line in each language.
+  `tests/test_locale.py` checks the files (places kept, LEGO® an adjective,
+  no language short of another).
 - `remembered layout` (`src/ui/shell_prefs.gd`): the columns open or folded
   (`parts_open`, and the right column's tab, `assistant_open` or else
   `properties_open`, for a wide window; `narrow_side`, "parts", "properties"

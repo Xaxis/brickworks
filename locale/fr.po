@@ -7973,3 +7973,214 @@ msgstr "%d autres groupes de pièces ne touchent rien que l'application considè
 
 msgid "%d other part group touch nothing the app reads as holding them (no gear in them)."
 msgstr "%d autre groupe de pièces ne touche rien que l'application considère comme le tenant (aucun engrenage dedans)."
+
+# The way in: signing in by email or orangecheck, the age question once, and what the server says back
+msgid "Sign in to start building"
+msgstr "Connectez-vous pour commencer à construire"
+
+msgid "One question first"
+msgstr "D'abord une question"
+
+msgid "Welcome to Brickworks"
+msgstr "Bienvenue sur Brickworks"
+
+msgid "Signing you in…"
+msgstr "Connexion en cours…"
+
+msgid "Cannot reach Brickworks to sign in. Check your connection, then try again."
+msgstr "Impossible de joindre Brickworks pour se connecter. Vérifiez votre connexion, puis réessayez."
+
+msgid "Try again"
+msgstr "Réessayer"
+
+msgid "When were you born?"
+msgstr "Quelle est votre date de naissance ?"
+
+msgid "Jan"
+msgstr "janv."
+
+msgid "Feb"
+msgstr "févr."
+
+msgid "Mar"
+msgstr "mars"
+
+msgid "Apr"
+msgstr "avr."
+
+msgid "May"
+msgstr "mai"
+
+msgid "Jun"
+msgstr "juin"
+
+msgid "Jul"
+msgstr "juil."
+
+msgid "Aug"
+msgstr "août"
+
+msgid "Sep"
+msgstr "sept."
+
+msgid "Oct"
+msgstr "oct."
+
+msgid "Nov"
+msgstr "nov."
+
+msgid "Dec"
+msgstr "déc."
+
+msgid "Year"
+msgstr "Année"
+
+msgid "Carry on"
+msgstr "Continuer"
+
+msgid "Choose the month, and type the year as four digits."
+msgstr "Choisissez le mois et saisissez l'année en quatre chiffres."
+
+msgid "Brickworks asks everyone this once. The date itself is not kept."
+msgstr "Brickworks pose cette question une fois à chacun. La date elle-même n'est pas conservée."
+
+msgid "Thank you. You can build here, keep your models and share them by link with anyone you choose."
+msgstr "Merci. Vous pouvez construire ici, garder vos modèles et les partager par lien avec qui vous voulez."
+
+msgid "The gallery, a public profile and a name shown on a link are for people 13 and over, so they are not open on this account."
+msgstr "La galerie, un profil public et un nom affiché sur un lien sont réservés aux personnes de 13 ans et plus ; ils ne sont donc pas ouverts sur ce compte."
+
+msgid "Start building"
+msgstr "Commencer à construire"
+
+msgid "An account is your email address and nothing else. Your models are saved on this device, not with your account; Claude runs on your own plan or API key."
+msgstr "Un compte, c'est votre adresse e-mail et rien d'autre. Vos modèles sont enregistrés sur cet appareil, pas avec votre compte ; Claude fonctionne avec votre propre forfait ou clé d'API."
+
+msgid "An account is your email address and nothing else. Your models are saved on this device, not with your account."
+msgstr "Un compte, c'est votre adresse e-mail et rien d'autre. Vos modèles sont enregistrés sur cet appareil, pas avec votre compte."
+
+msgid "An account is your email address and nothing else. Your models are saved on this device and kept with your account, so they open wherever you sign in; Claude runs on your own plan or API key."
+msgstr "Un compte, c'est votre adresse e-mail et rien d'autre. Vos modèles sont enregistrés sur cet appareil et conservés avec votre compte, ils s'ouvrent donc partout où vous vous connectez ; Claude fonctionne avec votre propre forfait ou clé d'API."
+
+msgid "An account is your email address and nothing else. Your models are saved on this device and kept with your account, so they open wherever you sign in."
+msgstr "Un compte, c'est votre adresse e-mail et rien d'autre. Vos modèles sont enregistrés sur cet appareil et conservés avec votre compte, ils s'ouvrent donc partout où vous vous connectez."
+
+msgid "Email"
+msgstr "E-mail"
+
+msgid "Email me a code"
+msgstr "M'envoyer un code par e-mail"
+
+msgid "The code from the email"
+msgstr "Le code reçu par e-mail"
+
+msgid "Sign in"
+msgstr "Se connecter"
+
+msgid "Send a new code"
+msgstr "Envoyer un nouveau code"
+
+msgid "Use a different address"
+msgstr "Utiliser une autre adresse"
+
+msgid "Sign in with orangecheck"
+msgstr "Se connecter avec orangecheck"
+
+msgid "A Bitcoin wallet, email, Google or GitHub. Brickworks gets an id for you, not your address."
+msgstr "Un portefeuille Bitcoin, un e-mail, Google ou GitHub. Brickworks reçoit un identifiant pour vous, pas votre adresse."
+
+msgid "Your email address is your account. We email you a code to type here — there is no password, and nothing else to make."
+msgstr "Votre adresse e-mail est votre compte. Nous vous envoyons par e-mail un code à saisir ici — pas de mot de passe, rien d'autre à créer."
+
+msgid "We sent a code to %s. It works once and expires in ten minutes; if it is not there, look in spam."
+msgstr "Nous avons envoyé un code à %s. Il ne sert qu'une fois et expire dans dix minutes ; s'il n'est pas arrivé, regardez dans les indésirables."
+
+msgid "Enter the email address to sign in with."
+msgstr "Saisissez l'adresse e-mail avec laquelle vous connecter."
+
+msgid "Sending a new code…"
+msgstr "Envoi d'un nouveau code…"
+
+msgid "Sent a new code. Use the newest one."
+msgstr "Nouveau code envoyé. Utilisez le plus récent."
+
+msgid "Enter the code from the email."
+msgstr "Saisissez le code reçu par e-mail."
+
+msgid "Finish signing in with orangecheck in your browser."
+msgstr "Terminez la connexion avec orangecheck dans votre navigateur."
+
+msgid "Could not reach Brickworks to send a code. Check your connection."
+msgstr "Impossible de joindre Brickworks pour envoyer un code. Vérifiez votre connexion."
+
+msgid "Could not send a code just now (%d). Try again in a minute."
+msgstr "Impossible d'envoyer un code pour le moment (%d). Réessayez dans une minute."
+
+msgid "Could not reach Brickworks to sign in. Try again in a moment."
+msgstr "Impossible de joindre Brickworks pour se connecter. Réessayez dans un instant."
+
+msgid "Could not reach Brickworks to sign in. Check your connection."
+msgstr "Impossible de joindre Brickworks pour se connecter. Vérifiez votre connexion."
+
+msgid "Signing in with orangecheck is not offered here. Sign in with your email instead."
+msgstr "La connexion avec orangecheck n'est pas proposée ici. Connectez-vous plutôt avec votre e-mail."
+
+msgid "Brickworks could not wait for orangecheck on this computer. Sign in with your email instead."
+msgstr "Brickworks n'a pas pu attendre orangecheck sur cet ordinateur. Connectez-vous plutôt avec votre e-mail."
+
+msgid "Signing in with orangecheck was cancelled."
+msgstr "La connexion avec orangecheck a été annulée."
+
+msgid "Could not sign in with orangecheck just now (%d). Try again in a minute."
+msgstr "Impossible de se connecter avec orangecheck pour le moment (%d). Réessayez dans une minute."
+
+msgid "Sign in again to carry on."
+msgstr "Reconnectez-vous pour continuer."
+
+msgid "Could not reach Brickworks. Check your connection and try again."
+msgstr "Impossible de joindre Brickworks. Vérifiez votre connexion et réessayez."
+
+msgid "Brickworks could not take that just now (%d). Try again in a minute."
+msgstr "Brickworks n'a pas pu l'enregistrer pour le moment (%d). Réessayez dans une minute."
+
+msgid "That code is wrong or has expired. Check it, or ask for a new one."
+msgstr "Ce code est incorrect ou a expiré. Vérifiez-le ou demandez-en un nouveau."
+
+msgid "Too many attempts just now. Wait a minute and try again."
+msgstr "Trop de tentatives pour le moment. Attendez une minute et réessayez."
+
+msgid "That does not look like an email address."
+msgstr "Cela ne ressemble pas à une adresse e-mail."
+
+msgid "Could not sign in. Try again."
+msgstr "Connexion impossible. Réessayez."
+
+msgid "Your sign-in has ended. Sign in again to carry on."
+msgstr "Votre session a pris fin. Reconnectez-vous pour continuer."
+
+msgid "Accounts are not configured here."
+msgstr "Les comptes ne sont pas configurés ici."
+
+msgid "That is not an email address."
+msgstr "Ce n'est pas une adresse e-mail."
+
+msgid "That address takes no email. Sign in with orangecheck instead."
+msgstr "Cette adresse ne reçoit pas d'e-mail. Connectez-vous plutôt avec orangecheck."
+
+msgid "Email is not configured here."
+msgstr "L'e-mail n'est pas configuré ici."
+
+msgid "We could not start a sign-in just now. Try again in a minute."
+msgstr "Nous n'avons pas pu lancer la connexion pour le moment. Réessayez dans une minute."
+
+msgid "Too many codes asked for. Wait a few minutes and try again."
+msgstr "Trop de codes demandés. Attendez quelques minutes et réessayez."
+
+msgid "We could not send the email just now. Try again in a minute."
+msgstr "Nous n'avons pas pu envoyer l'e-mail pour le moment. Réessayez dans une minute."
+
+msgid "Claude can reach this tab"
+msgstr "Claude peut joindre cet onglet"
+
+msgid "No assistant, no Claude and no AI anywhere in the window. Claude connections are off while the assistant is off."
+msgstr "Pas d'assistant, pas de Claude et aucune IA dans la fenêtre. Les connexions à Claude sont coupées tant que l'assistant est désactivé."

@@ -377,6 +377,15 @@ func _gather() -> void:
 	_walk("settings", controls.get("_settings"), [controls.language_choice,
 		controls.get("_version")])
 	_add("settings", (controls.get("_done") as Button).text, controls.get("_done"))
+	# And with the assistant off, whose note says what that leaves out; on
+	# again after, as the rest of the walk reads it.
+	_main.call("set_assistant", false)
+	controls.call("_show_assistant_choice")
+	await _frames(6)
+	_walk("settings", controls.get("_settings"), [controls.language_choice,
+		controls.get("_version")])
+	_main.call("set_assistant", true)
+	controls.call("_show_assistant_choice")
 	controls.visible = false
 	await _frames(4)
 
@@ -490,7 +499,8 @@ func _gather_status() -> void:
 ## The dialogs a person meets in a first hour, as the commands that open
 ## them: each opened with the part selected, the words it shows read, and
 ## closed again.
-const DIALOGS: Array[String] = ["open", "open_file", "library", "save_as", "versions",
+const DIALOGS: Array[String] = ["sign_in", "sign_in_code", "sign_in_waiting",
+	"sign_in_unreachable", "sign_in_age", "sign_in_thanks", "open", "open_file", "library", "save_as", "versions",
 	"compare", "export_3d", "render", "render_queue", "pose", "share", "together", "comments",
 	"account", "pattern", "select_find", "find_colour", "flex", "reference", "parts_list",
 	"collection", "collection_need", "collection_build", "make_submodel", "step_to", "timeline",
@@ -498,8 +508,8 @@ const DIALOGS: Array[String] = ["open", "open_file", "library", "save_as", "vers
 	"hidden_colours", "connector", "feedback", "about", "floor_custom", "palette", "clear", "new"]
 
 ## The dialogs pictured in each language (--shots).
-const PICTURED: Array[String] = ["clear", "save_as", "versions", "render", "share", "parts_list",
-	"about", "export_3d"]
+const PICTURED: Array[String] = ["sign_in", "sign_in_code", "clear", "save_as", "versions", "render",
+	"share", "parts_list", "about", "export_3d"]
 
 
 func _gather_dialogs() -> void:
@@ -572,6 +582,9 @@ func _show(name: String) -> Array:
 func _open_dialog(name: String) -> void:
 	var bar: ModelBar = _main.get("_bar")
 	match name:
+		"sign_in", "sign_in_code", "sign_in_waiting", "sign_in_unreachable", "sign_in_age", \
+				"sign_in_thanks":
+			await _open_sign_in(name)
 		"save_as":
 			# The web's own; the desktop's is the platform's Save dialog.
 			(_shell.get("_save_as") as Window).popup_centered()
@@ -592,6 +605,44 @@ func _open_dialog(name: String) -> void:
 		_:
 			if not _shell.run(name):
 				print("    %s: not run (%s)" % [name, _shell.why_not(name)])
+
+
+## The way in, which a probe's window never shows (Main._gate_wanted): made
+## on the app's own account for each of its faces, as the account's state
+## would show it, the state put back at once so that nothing else follows
+## it. Mistakes the form answers itself are made, the field left empty.
+var _gate: SignInGate
+
+
+func _open_sign_in(name: String) -> void:
+	var account: Account = _main.get("_account")
+	_gate = SignInGate.new()
+	_gate.setup(account)
+	_main.get_node("HUD").add_child(_gate)
+	var was: Array = [account.state, account.age_ask]
+	account.state = {"sign_in_waiting": Account.State.CHECKING,
+		"sign_in_unreachable": Account.State.UNREACHABLE, "sign_in_age": Account.State.SIGNED_IN,
+		"sign_in_thanks": Account.State.SIGNED_IN}.get(name, Account.State.SIGNED_OUT)
+	account.age_ask = name == "sign_in_age"
+	_gate.set("_thanking", name == "sign_in_thanks")
+	_gate.call("_follow")
+	account.state = was[0]
+	account.age_ask = was[1]
+	var form: SignInForm = _gate.get("_form")
+	# The form's own start, which shows orangecheck as the deployment says.
+	await _frames(2)
+	match name:
+		"sign_in":
+			# orangecheck as a deployment that offers it shows it.
+			(form.get("_orangecheck") as Control).visible = true
+			(form.get("_orangecheck_why") as Control).visible = true
+			form.call("_ask")
+		"sign_in_code":
+			(form.get("_email") as LineEdit).text = "builder@example.org"
+			form.call("_show", SignInForm.Step.CODE)
+			form.call("_redeem")
+		"sign_in_age":
+			_gate.call("_answer")
 
 
 ## What [param opened] for [param name] put on screen, closed again.
@@ -623,6 +674,9 @@ func _close(name: String, opened: Array[Node]) -> void:
 		var panel: Control = _main.get(panel_name)
 		if panel != null and panel.visible:
 			panel.call("close")
+	if _gate != null:
+		_gate.queue_free()
+		_gate = null
 	await _frames(6)
 	if name == "new":
 		_shell.run("undo")
