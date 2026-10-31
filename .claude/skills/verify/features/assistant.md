@@ -644,20 +644,24 @@ fixing what it got wrong.
   connectors?modal=add-custom-connector&connectorName=Brickworks&connectorUrl=…`
   — with a three-step guide (Add then Connect; sign in as <the account's
   address> and Allow; come back) and the address to paste if no tab opened.
-  **Connecting again** (2026-10-14): for an account that has had Claude
-  connected (`op=connections` says `before`, kept in the account's
-  server-only record past a Disconnect; `ClaudeConnector.had_claude`), Connect
-  Claude opens Claude's own list instead, `https://claude.ai/customize/
-  connectors`, and the steps say to select Brickworks under Your connectors and
-  press Connect (or Reconnect), not to add it again, which sets up a second one
-  with its tool permissions to choose again; Account says the same
-  (`connect_words`). Add custom connector stays for the first time, and as the
-  fallback when Brickworks is not in their list. Menu names as claude.com's
-  connector docs give them. `chat_probe` checks both: a new account gets Add,
-  one with a past connection gets the reconnect steps.
-  Links beside it open, one at a time, **Claude Code** (the `claude mcp add
-  --transport http brickworks …/api/mcp` command, then `/mcp` and
-  Authenticate), **Claude app** (it shows claude.ai's connectors; or Customize,
+  **Connecting again** (2026-10-31, connect3): Connect Claude opens the form
+  filled in for every account. For one that has had Claude connected
+  (`op=connections` says `before`, kept in the account's server-only record
+  past a Disconnect; `ClaudeConnector.had_claude`) the panel also offers, under
+  it, **Already in your Claude? Open your connectors** (`connector_already`,
+  `connect_claude(true)`: Claude's own list, `https://claude.ai/customize/
+  connectors`, with steps to select Brickworks under Your connectors and press
+  Connect or Reconnect) and the line `ClaudeConnector.ALREADY`: the one there
+  connects again keeping its tool permissions, where adding another means
+  choosing them again. Account says the same. From 2026-10-14 to 10-31 such an
+  account got only the bare list, and the owner never saw the form filled in.
+  `chat_probe` and `connect_form_probe` (windowed, the real app, what it hands
+  `Outside`) check both kinds of account; `oauth_flow` on a deployment.
+  Links beside it open, one at a time, **Claude Code** (one click copies the
+  `claude mcp add --transport http brickworks …/api/mcp` command and opens
+  "Copied. Run it in a terminal, then type /mcp …" under the link: neither
+  Claude Code nor the desktop app documents a link that fills a connector in),
+  **Claude app** (it shows claude.ai's connectors; or Customize,
   Connectors, Add custom connector, and the address) and **Private address**
   (this browser's own `?t=` address, the way before, with its switch, Copy,
   "Make a new address" and a field to paste one added before —

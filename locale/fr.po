@@ -2608,6 +2608,31 @@ msgstr "Connecter Claude"
 msgid "Opens claude.ai with Brickworks filled in"
 msgstr "Ouvre claude.ai avec Brickworks déjà rempli"
 
+# Connecting Claude: the form filled in, Claude's list beside it, Claude Code's command (connect3)
+msgid "Already in your Claude? Open your connectors"
+msgstr "Déjà dans votre Claude ? Ouvrir vos connecteurs"
+
+msgid "A Brickworks already in your connectors connects again with its own Connect, keeping its tool permissions."
+msgstr "Un Brickworks déjà dans vos connecteurs se reconnecte avec son propre bouton Connecter, en gardant ses autorisations d'outils."
+
+msgid "Opens your connectors in Claude, where Brickworks is"
+msgstr "Ouvre vos connecteurs dans Claude, où se trouve Brickworks"
+
+msgid "Copies the command that adds Brickworks to Claude Code"
+msgstr "Copie la commande qui ajoute Brickworks à Claude Code"
+
+msgid "Copied. Run it in a terminal, then type /mcp in Claude Code, choose brickworks and Authenticate. Your browser opens here to sign in."
+msgstr "Copiée. Exécutez-la dans un terminal, puis tapez /mcp dans Claude Code, choisissez brickworks et Authenticate. Votre navigateur s'ouvre ici pour vous connecter."
+
+msgid "1. Under Your connectors, select Brickworks and press Connect, or Reconnect if it says so."
+msgstr "1. Sous Vos connecteurs, sélectionnez Brickworks et appuyez sur Connecter, ou sur Reconnecter si c'est indiqué."
+
+msgid "Not in your list? Press Connect Claude above, which fills the form in, or paste this there (it is copied):"
+msgstr "Pas dans votre liste ? Appuyez sur Connecter Claude ci-dessus, qui remplit le formulaire, ou collez-y ceci (c'est copié) :"
+
+msgid "Not connected now. Connect Claude opens claude.ai with Brickworks filled in. A Brickworks already in your connectors connects again with its own Connect, keeping its tool permissions."
+msgstr "Non connecté pour l'instant. Connecter Claude ouvre claude.ai avec Brickworks déjà rempli. Un Brickworks déjà dans vos connecteurs se reconnecte avec son propre bouton Connecter, en gardant ses autorisations d'outils."
+
 # The view cube's faces
 msgid "FRONT"
 msgstr "AVANT"

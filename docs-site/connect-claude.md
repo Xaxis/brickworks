@@ -30,13 +30,15 @@ ui:assistant on or off
 
 This connects once for your account; the Claude desktop and mobile apps have it too. It counts against your plan's usage like any other chat. More in [The Claude connector](/docs/connector).
 
+Connected before, and Brickworks is still in your Claude? Press **Connect** on that one under *Your connectors* instead of adding another: it keeps the tool permissions you chose. **Already in your Claude? Open your connectors**, under Connect Claude, takes you there.
+
 ## Claude Code {#claude-code}
 
 ```sh
 claude mcp add --transport http brickworks https://brickworks.diy/api/mcp
 ```
 
-Then `/mcp` in Claude Code and **Authenticate**. More in [Claude Code](/docs/claude-code).
+In the assistant panel, **Claude Code** under Connect Claude copies this command in one click. Then `/mcp` in Claude Code and **Authenticate**. Claude Code signed in with your Claude account also has the connector you added on claude.ai. More in [Claude Code](/docs/claude-code).
 
 ## Your own API key {#api-key}
 

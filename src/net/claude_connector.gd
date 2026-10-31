@@ -123,16 +123,25 @@ var connections: Array = []
 var connections_known: bool = false
 ## Whether this account has had Claude (claude.ai and its apps) connected,
 ## connected now or not: the deployment keeps it past a Disconnect
-## (api/oauth.js). The person's Claude has a Brickworks connector then, and
-## connecting again is Connect on that one. Adding it again from claude.ai's
-## "Add custom connector" sets one up anew, its tool permissions to choose
-## again: the owner disconnected and connected again four times in two days
-## this way, and re-enabled the tools after every one (2026-10-14).
+## (api/oauth.js). The person's Claude may have a Brickworks connector
+## still, which connects again with its own Connect and keeps the tool
+## permissions chosen for it. Adding another from claude.ai's "Add custom
+## connector" sets one up anew, its permissions to choose again: the owner
+## did that four times in two days (2026-10-14). So the panels offer that
+## list beside Connect Claude ([method connect_claude] with listed) and say
+## why ([constant ALREADY]). Connect Claude itself opens the form filled in
+## all the same: the one in Claude may have been removed, and this cannot
+## see Claude's list. It opened the bare list for such an account until
+## 2026-10-31, and the owner, who has had Claude, never saw the form filled
+## in.
 var had_claude: bool = false
 
 ## Claude's own list of the person's connectors (Customize › Connectors),
 ## where a Brickworks already there is connected again.
 const CONNECTORS := "https://claude.ai/customize/connectors"
+## Why that list is offered, in one line, beside Connect Claude.
+const ALREADY := ("A Brickworks already in your connectors connects again "
+	+ "with its own Connect, keeping its tool permissions.")
 
 var _token: String = ""
 var _on: bool = false
@@ -275,12 +284,13 @@ func resume() -> void:
 
 
 ## The one click: listen here, put the shared address on the clipboard
-## (for wherever the link cannot fill it in), and open claude.ai with
-## Brickworks filled in — or, for an account that has had Claude connected
-## ([member had_claude]), Claude's list of connectors, where the Brickworks
-## it has is connected again. Then ask every few seconds for ten minutes
-## whether Claude has connected; the relay also says so the moment it has.
-func connect_claude() -> void:
+## (for wherever the link cannot fill it in), and open claude.ai's "Add
+## custom connector" with Brickworks filled in; or, [param listed], Claude's
+## list of connectors, where a Brickworks the person has already is
+## connected again ([member had_claude]). Then ask every few seconds for ten
+## minutes whether Claude has connected; the relay also says so the moment
+## it has.
+func connect_claude(listed: bool = false) -> void:
 	if held:
 		return
 	# Waiting before switching on, which tells the panels at once: set after
@@ -290,7 +300,7 @@ func connect_claude() -> void:
 	_next_ask = Time.get_ticks_msec() + 5000
 	start()
 	DisplayServer.clipboard_set(shared_address())
-	last_opened = CONNECTORS if had_claude else claude_ai_link()
+	last_opened = CONNECTORS if listed else claude_ai_link()
 	if open_links:
 		Outside.open_link(last_opened)
 
@@ -544,20 +554,18 @@ func _ask_aside(url: String) -> Array:
 	return got
 
 
-## Where Connect Claude has sent the person and what to do there, in a
-## sentence: adding Brickworks the first time, connecting the one they have
-## after that. Claude's own names for it (claude.com/docs/connectors/
+## Where [method connect_claude] has sent the person and what to do there,
+## in a sentence: the form filled in, or the list, to connect the one they
+## have. Claude's own names for it (claude.com/docs/connectors/
 ## getting-started, read 2026-10-14): Customize › Connectors, Your
 ## connectors, Connect, Reconnect, Tool permissions.
 func connect_words() -> String:
-	if had_claude:
+	if last_opened == CONNECTORS:
 		return ("Claude's connectors have opened (Customize › Connectors): select "
 			+ "Brickworks under Your connectors, press Connect (or Reconnect, if it "
-			+ "says so), and Allow when Brickworks asks. Connect the one you have "
-			+ "rather than adding it again, which sets up a new one with its tool "
-			+ "permissions to choose again.")
+			+ "says so), and Allow when Brickworks asks.")
 	return ("claude.ai has opened with Brickworks filled in: press Add, then "
-		+ "Connect, and Allow when Brickworks asks.")
+		+ "Connect, and Allow when Brickworks asks." + (" " + ALREADY if had_claude else ""))
 
 
 ## Whether the person has been sent to connect Claude and it has not yet.
