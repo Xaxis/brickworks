@@ -794,10 +794,42 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   253 with its key field typed in (rel-m234 live: the drawer 0 of 117);
   with it 110 of 117 and 252 of 252 (the drawer), 109 of 117 and 253 of 253
   (the AI page). By hand against a preview, `BW_BYPASS=$VERCEL_BYPASS`
-  (preview_checks.sh sets it): without it the app never comes up. A drag begun on a tile's "+N" in the parts bin scrolls
-  nothing (the tile scrolls the grid itself, `PartsBin._cell_input`; its
-  badge does not), and the probe's drag beside the fields keeps off it,
-  and off what scrolls itself (the AI page's ItemList of models).
+  (preview_checks.sh sets it): without it the app never comes up. The
+  probe's drag beside the fields keeps off what scrolls itself (the AI
+  page's ItemList of models), not off a tile's "+N" any more (next entry).
+- `a drag begun on anything in a list scrolls it` (uifix,
+  `PartsBin._hands_drags`, `TouchSizing._lets_drags_by`,
+  `ControlsDialog._settable`): Godot hands a press on to the list round a
+  control only through what lets it pass, so on a phone or a tablet a drag
+  begun on a tile's "+N" in the parts bin, the buttons over the parts, a
+  category, a library card (its panel, cover, words and Open), a colour
+  swatch in Properties, a line between rows, a Settings label, a choice
+  (Navigate like, the assistant's model, Provider, Share's Space) or a key's
+  chip on the keys sheet moved nothing. The bin (not sized by TouchSizing;
+  its tiles scroll the grid themselves, `_cell_input`) hears every node
+  added under it in a list that stops a press: a finger's drag past 8
+  units from one scrolls the lists round it, innermost first, through the
+  tile's own `_finger_scrolls`, and lets go of its press; a tap is still
+  its own (a tap on a "+N" opens its folds and takes no part). Everywhere
+  TouchSizing sizes, what only shows something (Panel, PanelContainer,
+  ColorRect, TextureRect, Label, Separator, a plain Control or box, with
+  no `_gui_input`, `_get_drag_data` or gui_input of its own) is let pass
+  like a target; an OptionButton or MenuButton in a list opens as the
+  finger lifts, not as it comes down; a key's chip is set as the press
+  lifts where it came down. `field_drag_probe` (above) now drags, in each
+  list showing in each container it opens (and the library's sets once
+  they come), the first in sight of each kind of thing a finger comes down
+  on (what it is, what it is in, what further up stops a press), and taps
+  a button on a button (the "+N": its press, not the tile's). On stage225's
+  d6348e59 15 fail at each size (phone: the "+9" 0 of 185, "Make a part…",
+  Properties' swatch, Navigate like, Settings' spacer, the assistant's
+  model and its line, five of a library card, Need's swatch, a key's chip;
+  tablet: the "+9" 0 of 94, a category 0 of 94, Provider, Share's Space and
+  the rest); with it 0 (phone 65 checks, tablet 80). In the web build
+  `field_drag_flow.mjs` ends at each size with the parts: a tile's "+N"
+  brought up the bin by a drag on its tile, then a drag begun on the "+N"
+  back down. A local export of d6348e59: 0 of 78 (844 x 390) and 0 of 169
+  (390 x 844 at 150%); with it 76 of 78 and 175 of 169.
 - `minifig builder by finger` (`MinifigDialog._arrange`, fig257): the
   builder's three columns want 860 units across at the least, and a phone
   has 720 (a tablet held upright too): its figure, Keep and Place in model
