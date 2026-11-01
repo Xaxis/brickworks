@@ -20,7 +20,10 @@
 //   a tap on the field has it typed in;
 //   a hold before a drag along it leaves the list where it was.
 // A list with nothing to scroll at a size is said, and passes; at least
-// one must scroll. Pictures in --out.
+// one must scroll. Then the parts: a drag begun on a tile's "+N" (what is
+// folded under it) moves the bin with the finger, as one begun on the tile
+// does (uifix: it moved nothing, the "+N" took the finger's press for
+// itself). Pictures in --out.
 import { launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
@@ -287,6 +290,53 @@ for (const [width, height, size] of [[844, 390, "100%"], [390, 844, "150%"]]) {
       const field = await bring("ai_key", box);
       if (field) await list("Settings, AI", "ai_key", box);
       else check("Settings, AI: its key field on the screen", false);
+    }
+  }
+  // The parts, in the app afresh: a tile's "+N" brought up the bin by a drag
+  // on its tile, which scrolls it before and after, then a drag begun on the
+  // "+N" back down, which moves it with the finger, its tile and the bin with
+  // it. The bin's foot is where its line of words begins ("Showing ..."):
+  // a "+N" under it is clipped, and a finger there is on the words.
+  await page.reload({ waitUntil: "domcontentloaded", timeout: 120000 });
+  check("the app came up a third time", Boolean(await where("phone_parts", 400)));
+  await page.waitForTimeout(Number(args.load || 8000));
+  await tap(await still("phone_parts"));
+  await page.waitForTimeout(2500);
+  const bin = async () => {
+    const told = await ask();
+    const words = (told ? told.texts : []).find((t) => /^Showing /.test(t.text || ""));
+    const foot = words ? words.box[1] : height;
+    const badges = (told ? told.targets : []).filter((t) => /^\+\d+$/.test(t.text || "") && !t.off
+      && t.box[1] >= 0 && t.box[1] < foot).sort((a, b) => a.box[1] - b.box[1] || a.box[0] - b.box[0]);
+    return { foot, badges };
+  };
+  const centre = (t) => ({ x: t.box[0] + t.box[2] / 2, y: t.box[1] + t.box[3] / 2 });
+  let { foot, badges: shown } = await bin();
+  await picture("parts");
+  if (check(`the parts: a tile's "+N" in the bin (${shown.length})`, shown.length > 0)) {
+    const text = shown[0].text;
+    const near = (list, was) => list.filter((t) => t.text === text)
+      .sort((a, b) => Math.abs(a.box[0] - was.box[0]) - Math.abs(b.box[0] - was.box[0]))[0];
+    // Up by its tile, above the "+N", to a third of the way down to the foot.
+    const first = shown[0];
+    const up = Math.round(first.box[1] - foot * 0.35);
+    if (up > 8) {
+      const on = { x: centre(first).x, y: first.box[1] - 12 };
+      await drag(on, { x: on.x, y: on.y - up });
+    }
+    ({ foot, badges: shown } = await bin());
+    const badge = near(shown, first);
+    const room = badge ? Math.floor(foot - (badge.box[1] + badge.box[3]) - 8) : 0;
+    if (check(`the parts: "${text}" wholly above the bin's foot (${badge ? badge.box[1] + badge.box[3] : "?"} of ${Math.round(foot)})`,
+      Boolean(badge) && room >= 24)) {
+      const by = Math.min(Math.round(height * 0.2), room, Math.max(up, 0));
+      const at = centre(badge);
+      await drag(at, { x: at.x, y: at.y + by });
+      await picture("parts_by_the_badge");
+      const after = near((await bin()).badges, badge);
+      const went = after ? after.box[1] - badge.box[1] : 0;
+      check(`the parts: a drag begun on "${text}" moves the bin with the finger (${went} points; the finger went ${by})`,
+        by >= 8 && Math.abs(went - by) <= Math.max(6, by * 0.2));
     }
   }
   check(`no script error${errors.length ? `: ${errors.slice(0, 3).join(" | ")}` : ""}`, errors.length === 0);

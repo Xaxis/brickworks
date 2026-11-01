@@ -422,11 +422,19 @@ func _size_one(control: Control, k: float, widest: float) -> void:
 	var wants: Vector2 = first
 	if takes(control):
 		wants = Vector2(maxf(first.x, least), maxf(first.y, least))
-		# A finger dragged over a list's rows scrolls the list: a row that
-		# stopped the drag left a list longer than the screen with no way
-		# down it. The row's press is let go as the list moves (BaseButton).
-		if control.mouse_filter == Control.MOUSE_FILTER_STOP and _scrolls_round(control):
-			control.mouse_filter = Control.MOUSE_FILTER_PASS
+	# A finger dragged over a list scrolls the list, wherever it came down: a
+	# row, a card, a swatch, a line between rows that stopped the drag left a
+	# list longer than the screen with no way down it from there. A row's
+	# press is let go as the list moves (BaseButton). What reads a press or a
+	# drag for itself keeps it (_lets_drags_by).
+	if control.mouse_filter == Control.MOUSE_FILTER_STOP and _lets_drags_by(control) \
+			and _scrolls_round(control):
+		control.mouse_filter = Control.MOUSE_FILTER_PASS
+	# A list's choice opens as the finger lifts, as a phone's does: opened as
+	# it came down, a drag begun on one (Settings' Navigate like, the
+	# assistant's model) opened it, and the list stayed where it was (uifix).
+	if (control is OptionButton or control is MenuButton) and _scrolls_round(control):
+		(control as BaseButton).action_mode = BaseButton.ACTION_MODE_BUTTON_RELEASE
 	# Nothing wider than the screen leaves it: a desktop field 480 across.
 	wants.x = minf(wants.x, maxf(widest, least))
 	was[&"min"] = [first, wants]
@@ -453,6 +461,23 @@ func _size_one(control: Control, k: float, widest: float) -> void:
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		label.custom_minimum_size.x = minf(widest, maxf(label.custom_minimum_size.x, widest * 0.6))
 	control.set_meta(WAS, was)
+
+
+## Whether a finger's press on [param control] may go on to the list round
+## it: a target (takes), whose press is let go as the list moves, or what
+## only shows something (a card's panel, a swatch, a picture, words, a line).
+## Not what reads a press or a drag for itself, by its script or another's.
+static func _lets_drags_by(control: Control) -> bool:
+	if takes(control):
+		return true
+	if control.has_method(&"_gui_input") or control.has_method(&"_get_drag_data") \
+			or not control.gui_input.get_connections().is_empty():
+		return false
+	return control is Panel or control is ColorRect or control is TextureRect \
+		or control is NinePatchRect or control is Label or control is Separator \
+		or control is ProgressBar or control.get_class() == "Control" \
+		or control is Container and not (control is ScrollContainer or control is SplitContainer
+			or control is TabContainer)
 
 
 ## Whether something round [param control] scrolls up and down.

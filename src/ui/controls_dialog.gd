@@ -387,7 +387,10 @@ func _settable(drawn: Control, action: String, key: String) -> Control:
 	chip.add_theme_stylebox_override("panel", plain)
 	chip.add_child(drawn)
 	chip.focus_mode = Control.FOCUS_ALL
-	chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	# Its press goes on to the sheet's list, and it is set as the press lifts
+	# where it came down, as a button is: set as it came down, it took a
+	# finger's drag begun on it, and the sheet did not scroll (uifix).
+	chip.mouse_filter = Control.MOUSE_FILTER_PASS
 	chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	chip.accessibility_name = "%s: %s. Set its key" % [Keymap.words(action),
 		key if key != ControlsHint.NO_KEY else "no key"]
@@ -399,11 +402,22 @@ func _settable(drawn: Control, action: String, key: String) -> Control:
 	chip.gui_input.connect(func(event: InputEvent) -> void:
 		var click := event as InputEventMouseButton
 		var key_press := event as InputEventKey
-		if (click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT) \
-				or (key_press != null and key_press.pressed and not key_press.echo
-					and key_press.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]):
-			chip.accept_event()
-			_start_setting(action, chip, lit))
+		if click != null and click.button_index == MOUSE_BUTTON_LEFT:
+			if click.pressed:
+				chip.set_meta(&"down_at", click.global_position)
+				return
+			if not chip.has_meta(&"down_at"):
+				return
+			var went: float = click.global_position.distance_to(chip.get_meta(&"down_at"))
+			chip.remove_meta(&"down_at")
+			if went > Phone.px(chip.get_viewport(), 8.0) \
+					or not chip.get_global_rect().has_point(click.global_position):
+				return
+		elif key_press == null or not key_press.pressed or key_press.echo \
+				or key_press.keycode not in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
+			return
+		chip.accept_event()
+		_start_setting(action, chip, lit))
 	return chip
 
 

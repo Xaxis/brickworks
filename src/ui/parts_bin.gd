@@ -192,6 +192,8 @@ func choose_colour(code: int) -> void:
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(_z(336), 0)
+	if by_finger:
+		get_tree().node_added.connect(_hands_drags)
 	_build()
 	set_process(true)
 
@@ -2955,19 +2957,7 @@ func _cell_input(button: Button, part_id: String, event: InputEvent) -> void:
 			or (motion.button_mask & MOUSE_BUTTON_MASK_LEFT) == 0:
 		return
 	if by_finger:
-		if _scrolled or motion.global_position.distance_to(_drag_from) >= DRAG_START:
-			# The tile's press let go as a ScrollContainer lets go of a row's:
-			# a touch's own lift, after the mouse's, tapped the tile still
-			# under the finger and took the part.
-			if not _scrolled:
-				button.notification(NOTIFICATION_SCROLL_BEGIN)
-			_scrolled = true
-			# A finger's move once. On the web it comes twice, as the touch's
-			# (DEVICE_ID_EMULATION) and as the page's pointermove, read as a
-			# mouse's: the grid went 2.09 points for each the finger went.
-			if motion.device == _drag_device:
-				_scroll.scroll_vertical -= roundi(motion.relative.y)
-			button.accept_event()
+		_finger_scrolls(button, motion)
 		return
 	if _drag_part.is_empty():
 		if motion.global_position.distance_to(_drag_from) < DRAG_START:
@@ -2980,6 +2970,77 @@ func _cell_input(button: Button, part_id: String, event: InputEvent) -> void:
 		_on_part(part_id, Collection.colour_of(key) if not key.is_empty() else -1)
 	part_drag_moved.emit(motion.global_position)
 	button.accept_event()
+
+
+## A finger's move from [param control], once it has gone [constant
+## DRAG_START]: the lists round it scroll with it, the innermost that moves.
+func _finger_scrolls(control: Control, motion: InputEventMouseMotion) -> void:
+	if not _scrolled and motion.global_position.distance_to(_drag_from) < DRAG_START:
+		return
+	# Its press let go as a ScrollContainer lets go of a row's: a touch's own
+	# lift, after the mouse's, tapped the tile still under the finger and
+	# took the part.
+	if not _scrolled:
+		control.propagate_notification(NOTIFICATION_SCROLL_BEGIN)
+	_scrolled = true
+	# A finger's move once. On the web it comes twice, as the touch's
+	# (DEVICE_ID_EMULATION) and as the page's pointermove, read as a
+	# mouse's: the grid went 2.09 points for each the finger went.
+	if motion.device == _drag_device:
+		var up: Node = control.get_parent()
+		while up != null and up != self:
+			var list := up as ScrollContainer
+			if list != null and list.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+				var was: int = list.scroll_vertical
+				list.scroll_vertical -= roundi(motion.relative.y)
+				if list.scroll_vertical != was:
+					break
+			up = up.get_parent()
+	control.accept_event()
+
+
+## On a phone or a tablet, anything in the bin that takes a finger's press
+## for itself hands the finger's drag to the lists round it, as a tile does
+## (_cell_input): the "+N" on a tile, a technique, a category, the buttons
+## over the parts. Godot hands a press on to the list round a control only
+## through what lets it pass, and a button stops it: a drag begun on a tile's
+## "+N" scrolled nothing (uifix). A tap is still the button's.
+func _hands_drags(node: Node) -> void:
+	var control := node as Control
+	if control == null or control.mouse_filter != Control.MOUSE_FILTER_STOP \
+			or control.has_meta("part") or not is_ancestor_of(control) \
+			or control is LineEdit or control is TextEdit or control is Range \
+			or control is ScrollContainer or control is ItemList or control is Tree \
+			or control.has_meta(&"hands_drags"):
+		return
+	# Only in a list: a button anywhere else keeps its drag.
+	var up: Node = control.get_parent()
+	while up != self and not up is ScrollContainer:
+		up = up.get_parent()
+	if up == self:
+		return
+	# Once: a bin moved to another sheet comes into the tree again.
+	control.set_meta(&"hands_drags", true)
+	control.gui_input.connect(_finger_input.bind(control))
+
+
+func _finger_input(event: InputEvent, control: Control) -> void:
+	var press := event as InputEventMouseButton
+	if press != null and press.button_index == MOUSE_BUTTON_LEFT:
+		if press.pressed:
+			_drag_from = press.global_position
+			_drag_device = press.device
+			_scrolled = false
+		else:
+			_drag_from = Vector2.INF
+			# A finger that scrolled let go: the button is not pressed.
+			if _scrolled:
+				_scrolled = false
+				control.accept_event()
+		return
+	var motion := event as InputEventMouseMotion
+	if motion != null and _drag_from != Vector2.INF and (motion.button_mask & MOUSE_BUTTON_MASK_LEFT) != 0:
+		_finger_scrolls(control, motion)
 
 
 static func _height_text(info: PartLibrary.PartInfo) -> String:
