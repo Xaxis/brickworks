@@ -1196,19 +1196,31 @@ try {
   await shot(guest.page, "5f_selection.png");
   // The second person turning the view themselves stops it.
   const theirs = (await controls(guest.page)).view;
+  const unwheeled = (await state(guest.page)).view;
   if (theirs) {
     await guest.page.mouse.move(theirs.x, theirs.y + 40);
     await guest.page.mouse.wheel(0, -300);
   }
   const stopped = await until(async () => !(await together(guest.page)).following, "following stopped", 10)
     .catch(() => false);
-  await wait(1000);
-  const kept = (await state(guest.page)).view;
+  // The view kept is the wheel's, once the page is told it: the app tells
+  // the page its view every half second of its own frames, and whether it
+  // follows every frame. A second after following stopped, the page still
+  // had the view from before the wheel on a box at load 31, where the
+  // second browser no longer drew every frame (unit selfast, 2026-11-01).
+  const kept = await until(async () => {
+    const now = (await state(guest.page)).view;
+    return now && !sameView(now, unwheeled) ? now : null;
+  }, "the wheel's view told", 30).catch(() => null);
   await turnOwner(-20);
   await wait(3000);
+  const [guestNow, ownerNow] = [(await state(guest.page)).view, (await state(owner.page)).view];
+  const stayed = Boolean(kept) && sameView(guestNow, kept);
+  const apart = !sameView(guestNow, ownerNow);
   check("the second person's own wheel stops it, and the owner's next turn moves their view no more",
-    stopped && sameView((await state(guest.page)).view, kept)
-    && !sameView((await state(guest.page)).view, (await state(owner.page)).view));
+    stopped && stayed && apart, stopped && stayed && apart ? ""
+      : `following stopped ${Boolean(stopped)}, the wheel's view told ${Boolean(kept)}, kept ${stayed},`
+        + ` not the owner's ${apart}: ${JSON.stringify({ before: unwheeled, kept, now: guestNow, owner: ownerNow })}`);
 
   // What both browsers and the desktop have, where an account under 13 is
   // sent no comments: the owner's and the desktop's files the same, byte
