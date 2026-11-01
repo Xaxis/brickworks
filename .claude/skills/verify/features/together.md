@@ -165,8 +165,8 @@ signed in as someone else.
   `edit_model` from the owner's Claude reaching the other browser. Then
   B8: the pointer over 40 moves to the frame the second page drew its dot
   in, twice: after the 50 edits p95 under 1 s; on the rich car p95 under
-  1 s or 95% within 500 ms and four of that page's own frames, as the
-  change measure; stages send, reach, frame, Follow and its frame, the owner's selected part outlined
+  1 s or 95% on the app's own time (the move less its trip, within four
+  of that page's own frames), as the change measure; stages send, reach, frame, Follow and its frame, the owner's selected part outlined
   in their colour off the second page's pixels, the wheel stopping it; a
   comment pinned from File, Comments… and resolved by one click on its
   card, in the owner's and the desktop's files and not the under-13's; the
