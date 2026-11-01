@@ -13,6 +13,65 @@ whole cycle.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-31
+
+A release about getting to your model sooner. Brickworks now opens a second
+or more sooner: the first screen loads only what it shows, and Render,
+Simulate, the assistant and the other panels and dialogs are made the first
+time you ask for one. On a big model, dragging See inside's cut takes a
+couple of milliseconds a move instead of forty, and the next model you open
+no longer waits for the last one's joints to be read. Search offers each
+part once, and undo puts a part back where it stood, so a save after it is
+the file you had. In German, French and Spanish, parts and colours now have
+the names LEGO gives them there, and search finds them by those names; the
+sign-in screen, the dialogs, the Library's themes and the version line read
+in the language too, with thousands grouped the way it groups them.
+
+### Added
+
+- Connect Claude opens Claude's Add custom connector form with Brickworks
+  already filled in, whichever kind of account you sign in to Claude with.
+- In German, French and Spanish a part is named whole in the language, as
+  LEGO names it there (Brique 1×2, Fliese 1×4 mit Rille, Teja curva 2×1), and
+  so is a colour ("Rouge, opaque"). Search takes those names, with or without
+  accents: "brique 1x2" finds 3004. Prints, stickers and minifigure pieces
+  keep their English names.
+
+### Changed
+
+- The app opens sooner. On a Linux machine its first screen was there in
+  6.4 s, where 0.12.0 took 7.7, and its loading before that screen takes a
+  third less. A panel or dialog the first screen does not show is loaded the
+  first time you open it, and the first time Render or Simulate is used the
+  window says so while it loads.
+- Dragging See inside's cut on an 8,785-part model takes 1.4 to 2.9 ms a
+  move, where it took 44, and the window no longer stalls twice a second on
+  a big model.
+- A model with parts of its own opens in about a second after a big one,
+  where it waited 7 to 13 seconds for the last model's joints to be read.
+- On a model too rich for the graphics card to draw quickly, the outline
+  under the pointer and its words in the status line wait for the pointer
+  to rest, so moving the mouse never waits on the drawing.
+- Asked to measure or change a model you have already built, Claude is told
+  to edit it part by part rather than design it again, so details you did
+  not ask to change stay as they are.
+- In German, French and Spanish: the sign-in screen, the dialogs and the
+  status line, the Library's set names and themes, Render's backdrop, a
+  sub-assembly's properties, and the version line in Settings and
+  `--about`. Counts in the thousands read 1.575 in German and Spanish and
+  1 575 in French.
+
+### Fixed
+
+- Search, the palette and Claude's search_parts no longer offer a part
+  LDraw draws in one colour beside the part it places (303923 beside 3039
+  in blue).
+- Undo puts a part back where it stood in the model, so the build steps
+  and a save after an undo are what they were before it.
+- A dialog's default button stands out from Cancel again.
+- Double-clicking a row's name in the model tree keeps it open to rename.
+- A clicked button's tooltip stays down until the pointer leaves it.
+
 ## [0.12.0] - 2026-10-31
 
 A release about pictures, booklets and your own language. On a graphics card
