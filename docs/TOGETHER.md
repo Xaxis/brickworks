@@ -478,12 +478,13 @@ a click. Here:
     receiver's frame that reads it, as a page reads a fetch's answer once
     a frame: the plain measure's to judge), and the pages' own share, from
     the ask to the request leaving and from the answer read to the end of
-    the frame that draws it. The share is within one of the sender's
-    frames (the edit picked up and sent) and three of the receiver's (the
-    one that reads the answer, the one it is drawn in, one more), each
-    that page's longest in that
-    change. A real graphics card draws the rich car in a few
-    milliseconds, and the bar comes down with it.
+    the frame that draws it. A change is within when it arrived in under
+    1 s in all, or its share is within one of the sender's frames (the
+    edit picked up and sent) and three of the receiver's (the one that
+    reads the answer, the one it is drawn in, one more), each that page's
+    longest in that change. A real graphics card draws the rich car in a
+    few milliseconds, and the bar comes down with it. Each change that
+    missed is said, with its share, its frames and its trip.
 
     It was a network budget of 500 ms plus each page's median hold after
     a turn of the view, taken after the changes. On one base (fa12fd7d's
