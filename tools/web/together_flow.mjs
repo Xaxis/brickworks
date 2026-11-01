@@ -1183,16 +1183,28 @@ try {
   if (spot) await offModel();
   const plain = spot ? await picture(guest.page) : null;
   if (spot) await owner.page.mouse.click(spot.x, spot.y);
+  const clickedAt = Date.now();
   const chosen = await until(async () => {
     const them = await ownerIn(guest.page);
     const shown = ((await together(guest.page)).selections || {})[ownerWho] || 0;
     return them.sel?.length === 1 && shown === 1 ? them.sel[0] : null;
   }, "the owner's selection in the second browser", 15).catch(() => null);
+  const chosenIn = Date.now() - clickedAt;
+  // What each side had when it did not come: run 3 of 2026-11-01 drew the
+  // outline in the picture after, and said nothing of why it was late.
+  if (spot && !chosen) {
+    const [them, mine, sent] = [await ownerIn(guest.page), await state(owner.page),
+      (await together(owner.page)).timing?.pointed];
+    console.log(`        after 15 s the second browser has the owner's selection as ${JSON.stringify(them.sel ?? null)},`
+      + ` ${((await together(guest.page)).selections || {})[ownerWho] || 0} outlined; the owner has ${mine.selected}`
+      + ` selected, and last sent where they are ${sent ? `${Date.now() - sent} ms ago` : "never"}`);
+  }
   if (spot) await offModel();
   const outlined = spot ? await picture(guest.page) : null;
   const [plainCount, outlinedCount] = spot ? [everywhere(plain), everywhere(outlined)] : [0, 0];
   check(`the owner's selected part is outlined in their colour (${colour}) in the second browser: ${outlinedCount} pixels`
-    + ` in it, ${plainCount} before`, Boolean(chosen) && outlinedCount - plainCount >= 150);
+    + ` in it, ${plainCount} before`, Boolean(chosen) && outlinedCount - plainCount >= 150,
+    chosen ? `there ${chosenIn} ms after the click` : "");
   await shot(guest.page, "5f_selection.png");
   // The second person turning the view themselves stops it.
   const theirs = (await controls(guest.page)).view;
@@ -1239,8 +1251,12 @@ try {
   }
   const pinned = await until(async () => ((await together(owner.page)).pins || []).find((one) => one.text === WORDS),
     "the comment pinned", 20).catch(() => null);
+  // The part the owner selected, as the second browser has it: from 5f, or
+  // now if it reached it late there, which 5f's own line says. Run 3 of
+  // 2026-11-01 failed this line for 5f's lateness alone.
+  const selectedNow = chosen ?? ((await ownerIn(guest.page)).sel || [])[0] ?? null;
   check(`Pin pressed: the comment is on the part the owner selected (${pinned?.uid})`, Boolean(pinned)
-    && pinned.uid === chosen);
+    && pinned.uid === selectedNow, chosen ? "" : `the second browser has it as ${selectedNow}`);
   await shot(owner.page, "5g_panel.png");
   await press(owner.page, "pins_close").catch(() => {});
   await sameAsOwner("the comment pinned");
