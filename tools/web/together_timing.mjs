@@ -23,7 +23,7 @@
 //
 // and the worst frame, capture and read of the model's own state on each
 // side meanwhile. Medians, a line a kind.
-import { launch } from "./browser.mjs";
+import { askApp, launch } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -238,8 +238,8 @@ try {
   }
   const extra = {
     undo: async () => {
-      await owner.page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-      const layout = await until(() => owner.page.evaluate(() => window.brickworksLayout || null), "layout", 30);
+      const layout = await askApp(owner.page, "Layout", { seconds: 30 });
+      if (!layout) throw new Error("layout: not told");
       const aim = (layout.targets || [])[0];
       if (aim) await owner.page.mouse.move(aim.x, aim.y, { steps: 3 });
       await owner.page.keyboard.press("Control+z");

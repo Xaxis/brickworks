@@ -47,7 +47,7 @@
 //
 // What this measures is this box: SwiftShader, a shared machine. Times are
 // said, not judged; the counts are the finding.
-import { launch } from "./browser.mjs";
+import { askApp, launch } from "./browser.mjs";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1382,9 +1382,7 @@ await page.waitForTimeout(8000);
   await page.waitForTimeout(1500);
   for (let n = 0; n < 10 && (await state()).bricks > 0; n++) await key("Enter", 1500);
   // Where the model is seen: the view's middle is the lens's (CadCamera).
-  await page.evaluate(() => { window.brickworksAskLayout = true; });
-  await page.waitForTimeout(1500);
-  const layout = await page.evaluate(() => window.brickworksLayout);
+  const layout = await askApp(page, "Layout");
   const rect = layout.view;
   viewRect = rect;
   shift = [rect[0] + rect[2] / 2 - W / 2, rect[1] + rect[3] / 2 - H / 2];

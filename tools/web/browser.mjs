@@ -142,6 +142,65 @@ export async function framesDrawn(page, frames = 3) {
   }), frames);
 }
 
+/// What the app says when it is asked: window.brickworksAsk<what> set, and
+/// its answer, window.brickworks<what> (Main._tell_page: "Phone", a finger's
+/// targets and the text shown; "Layout", the model's place and its parts;
+/// "Words", every word in the window), or null when it has not answered.
+///
+/// The app answers the first time it tells the page after the ask, which it
+/// does on a frame, at most twice a second. So the wait is counted in its
+/// tellings, not the clock's seconds: it has [seconds] and [tellings] both.
+/// A telling is seen as a new window.brickworksControls, which each one
+/// writes. A page just up at 2048 x 2732, drawn in software, drew one frame
+/// in 4.4 s at load 24 and over 30 s at load 40, so a fixed 10 s ran out
+/// before the app had told the page once: phone and tablet held rel-m236 on
+/// "the app said what is on the screen", then passed alone. Null once the
+/// app has told the page [tellings] times since the ask without answering
+/// (it heard and said nothing), or nothing at all for [quiet] ms (it has
+/// stopped drawing); either is said.
+export async function askApp(page, what, { seconds = 10, tellings = 20, quiet = START_MS } = {}) {
+  const keys = { answer: `brickworks${what}`, ask: `brickworksAsk${what}`, seen: `brickworksSeen${what}` };
+  // A look that never comes back is a page that has stopped too.
+  const look = async (body) => {
+    let timer;
+    const late = new Promise((done) => { timer = setTimeout(done, quiet); });
+    try {
+      return await Promise.race([page.evaluate(body, keys), late]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+  const asked = Date.now();
+  await look((k) => {
+    window[k.answer] = null;
+    window[k.ask] = true;
+    window[k.seen] = window.brickworksControls;
+  });
+  let told = 0;
+  let last = asked;
+  for (;;) {
+    const now = await look((k) => {
+      const fresh = window.brickworksControls !== window[k.seen];
+      window[k.seen] = window.brickworksControls;
+      return { answer: window[k.answer] || null, fresh };
+    });
+    if (now && now.answer) return now.answer;
+    if (now && now.fresh) { told += 1; last = Date.now(); }
+    const spent = Date.now() - asked;
+    if (told >= tellings && spent >= seconds * 1000) {
+      console.log(`  --    the app told the page ${told} times in ${Math.round(spent / 1000)} s `
+        + `and did not answer ${what}`);
+      return null;
+    }
+    if (Date.now() - last >= quiet) {
+      console.log(`  --    the app told the page nothing for ${Math.round((Date.now() - last) / 1000)} s `
+        + `after ${what} was asked (${told} tellings)`);
+      return null;
+    }
+    await page.waitForTimeout(250);
+  }
+}
+
 /// From a model's page into the app, as a person goes there: since the
 /// picture turns the model in 3D in its own place (viewer369, 2026-10-30,
 /// web/start3d.js), pressed, then the 3D view's Open in the app, the

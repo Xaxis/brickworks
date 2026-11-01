@@ -36,7 +36,7 @@
 // On a build from before 2026-10-13 the page never asks, so step 2 fails:
 // no banner; and step 3 fails too, because Save stores the model in the
 // saved models every tab shares.
-import { launch } from "./browser.mjs";
+import { askApp, launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -126,12 +126,7 @@ async function deleteAPart(page) {
   const was = (await state(page)).bricks;
   await page.keyboard.press("KeyF");
   await page.waitForTimeout(1500);
-  await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-  let layout = null;
-  for (let n = 0; n < 60 && !layout; n++) {
-    layout = await page.evaluate(() => window.brickworksLayout || null);
-    if (!layout) await page.waitForTimeout(250);
-  }
+  const layout = await askApp(page, "Layout", { seconds: 15 });
   for (const target of (layout && layout.targets) || []) {
     await page.mouse.move(target.x, target.y, { steps: 3 });
     await page.waitForTimeout(300);
