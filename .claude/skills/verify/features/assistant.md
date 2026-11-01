@@ -398,10 +398,14 @@ fixing what it got wrong.
   set, both orders; win rate per dimension with 95% intervals, the set-file
   measures side by side (parts turned off the grid among them), `reach` for what
   each design's session read, turned and placed, and two arms through the set and
-  head to head. A set's
-  own pieces are held out of the designer's real-set index by `--held-out=<set
-  number>` (src/ai/real_snippets.gd). `docs/DESIGN_SCORES.md`, "Against real
-  sets". Under How to check it, "Real sets".
+  head to head. The set,
+  and any set of its name under another number, is held out of every path that
+  hands a session a real set's facts by `--held-out=<set number>
+  --held-out-name=<its name>` (`DesignMemory.holds`): the index of pieces,
+  plan_scale's sizes, the techniques read off sets, the library shelf, the
+  catalogue's sets, the official models, the gallery's copies of LDraw's models
+  and Commons' pictures of the set; `holdout_probe` asks each.
+  `docs/DESIGN_SCORES.md`, "Against real sets". Under How to check it, "Real sets".
 - `test designs on the owner's own ideas`: `tools/bench/ideas.py`, twenty fixed
   briefs in a person's words (`tools/bench/ideas_briefs.py`: scenes, vehicles with
   a story, landmark-inspired originals, creatures and mechs, interiors, dioramas,
@@ -2736,13 +2740,14 @@ env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 
 # ...and each tab with no Claude Code to find, as a browser tab (PATH without claude, a home of its own)
 env -u ANTHROPIC_API_KEY XDG_DATA_HOME=$PWD/.scratch-data BENCH_PORTS=8960-8969 MESA_VK_WSI_DEBUG=sw python3 tools/bench/realset.py run --which tune --arm mine-tab --checkout ../mine --jobs 2 --audit-later --via relay --no-claude-code
 godot --headless --path . --script src/dev/design_memory_probe.gd -- --held-out=40148-1   # the set's pieces held out
+godot --headless --path . --script src/dev/holdout_probe.gd   # no held set's facts by any path: sizes, techniques, pieces, shelf, catalogue, official models, gallery, pictures
 ```
 
 `--via relay` (conn283, 2026-10-26) runs each design as the owner's are: the
 relay (tools/web/relay_server.mjs, `--instructions=none` with `--instructions
 none`), a throwaway account with Claude Code signed in to it
 (tools/web/relay_account.mjs open/close), the arm's app headless as its tab
-(`--mcp --assistant=on --signed-in --held-out --draw-by`, a data folder of its
+(`--mcp --assistant=on --signed-in --held-out --held-out-name --draw-by`, a data folder of its
 own), and `claude -p` with the relay its only server; the session's stream is
 kept as session.jsonl, which `reach` reads, and the model is saved from the
 tab's own port. A session that changed nothing leaves the tab's example, which
