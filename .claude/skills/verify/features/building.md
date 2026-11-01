@@ -732,6 +732,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Xvfb it moves the system's pointer with its events (as `cursor_probe` does):
   the app's look-again replay (`Cursors._process`) goes where the system says
   the pointer is, and with it left mid-screen no tooltip in the window came.
+  And the control a press lands on keeps its tooltip down until the pointer
+  leaves it (2026-10-31): Claude Code's tooltip came back up over the
+  "Copied." its click had just shown (oauth_flow's 2a). `connect_form_probe`
+  rests on Claude Code until its tooltip shows, clicks, rests and nudges on it
+  and finds none, then moves off and back and finds it again; without the fix
+  the tooltip was up over "Copied.".
 - `status bar` (`src/ui/status_bar.gd`): along the foot. What was just said, or
   the tool's hint when nothing was; then the parts count and stability, how
   many are selected, the snap and turn step, and how big a stud is on screen.
