@@ -155,7 +155,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   and five at a time and a sub-assembly, from the house, a model on its own
   baseplate and Orthanc, changes the floor and makes it part of the model,
   undoes, redoes and undoes each, and checks the count, the scenery, the
-  parts in order and a save byte for byte against the model before.
+  parts in order and a save byte for byte against the model before. It does
+  the same for a sub-assembly made (as Make a sub-assembly names it) and
+  taken apart, a 2 x 4 split and merged, a session's make_sections, and a
+  copy made unique by the menu and by make_unique, undone by the menu, the
+  keys and a session's undo. A sub-assembly undone is gone at the next
+  frame; the language probe's "Probe group" stayed only because its walk of
+  the commands pressed Redo next.
   `brick_count()` counts the floor's plates (scenery, never saved): Orthanc
   on its four is 10,105 for 10,101 parts from the moment it opens. A probe
   that opens a model by `Main._open` alone gets no floor until its first
