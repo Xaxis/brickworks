@@ -816,6 +816,10 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 	display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--s-2); min-width: 0;
 	color: var(--ink-soft); font-size: var(--t-small); line-height: 1.5;
 }
+/* Clear of the name by more than the designer's link reaches above its line
+   (4 px, "targets"): a one-line name's 24 px target was left 22 under it,
+   on a build card whose line wraps (axe target-size, /builds at 390). */
+.model .open + .by { margin-top: 3px; }
 .model .who { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; color: var(--ink-soft); }
 .model .who span:not(.avatar) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .model a.who { position: relative; z-index: 1; text-decoration: none; }

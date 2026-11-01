@@ -378,7 +378,18 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   sheet; beside the model
   on a touch screen it ends above the foot's row of tools, and the pill is
   over the model's room, not the column; `dialogs_flow`
-  says "0 off the screen" for Colour the hidden parts at all four sizes. The model keeps 60% of the window's width (`Main.MODEL_SHARE`, what
+  says "0 off the screen" for Colour the hidden parts at all four sizes.
+  On a tablet the parts panel, down the same side, is put away while the
+  column shows and given back as it goes (`PhoneShell.dock_toggled`, as the
+  model tree's drawer does): Colour the hidden parts' Close was under its
+  Done; and the notices strip is kept in from its own edges, not the
+  window's (`PhoneShell._lay_beside`), which counted the column twice and
+  ran the layout 28 units past a 1024 x 768 tablet's edge (dialogs_1024,
+  uifix). `tools/probe.sh tablet_fit_probe` (1024 x 768, the tablet's layout
+  made in a window): the parts out, the browser's warning up and the app
+  busy, the panel opened, the layout no wider than the window, no line of
+  it narrower than its longest word, the busy line's Cancel clear of the
+  foot's row, its Close tapped by a finger and put away. The model keeps 60% of the window's width (`Main.MODEL_SHARE`, what
   `tools/web/fit_check.mjs` asks of a laptop's window): with both columns
   open at 1400 x 900 it had 41%. Both show only where both fit round that, a
   window about twice as wide as it is tall (1835 units); else the columns
@@ -421,13 +432,16 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   mark, six-pixel words) and ran off the foot at 844 x 390 (phone,
   2026-10-30); a laptop's 1280 x 590 keeps the desktop. Then
   `Main._dress_for_phone` puts the menus, toolbar, key strip, status line
-  (shown only while busy) and view cube away, and `PhoneShell` lays out in
+  (shown only while busy, over the foot's row: under it, its Cancel was
+  where the row took the finger) and view cube away, and `PhoneShell` lays out in
   points (`Phone.px`, about 1.85 units a point at 390): along the top the mark
   (`phone_app_menu`, published as `app_menu`: the desktop's app menu dropped
   under it, About to Back to brickworks.diy), the model's name, the
   assistant's spark while it is on (`phone_assistant`, View, Assistant: its
   drawer's rail shows only while it is open, so a phone that turned it on had
-  no way to it), Undo and Redo; "Show the assistant" opens its drawer, as it
+  no way to it), Undo and Redo (the name field gives way to them down to 80
+  points, and past that Redo leaves the bar for More's Edit: at 150% a
+  390-point phone's Redo was half off it, `PhoneShell._share_top`); "Show the assistant" opens its drawer, as it
   says, the screen's width less its rail, sized for a finger and scrolled
   whole (`ChatPanel`) where it is taller than the room; both drawers stop
   above the row of tools (`SideDock.set_phone_rail`'s foot), and Fit and the
@@ -773,7 +787,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `a11y_motion_probe` (each of the three moving, then still),
   `a11y_size_probe` (85% and 150% at 1280 x 800, nothing off the window,
   pictures in shots/a11y_size/); `tools/web/app_a11y_flow.mjs` (preview
-  check `app_a11y`: both sizes at 1280 and on a phone at 390, and whether a
+  check `app_a11y`: both sizes at 1280, every size on a phone at 390 x 844
+  and 844 x 390 and at 150% with the assistant's drawer open (fitted again
+  as the size changes, `Main._fit_drawers`: least widths given for more
+  room brought down to the drawer's and a link too long for it ending in an
+  ellipsis, `TouchSizing._fit_least`; the panel's 340 and the Console
+  link's 332 held a 230-unit drawer 360 wide at 150% on a 390-point
+  phone; a control below the screen in the drawer is scrolled to by a
+  finger, dragging the list by its words: a field keeps a press for itself,
+  Godot's LineEdit, so a list dragged by its key field does not move), and whether a
   screen reader in the browser hears the app: it does not, Godot builds no
   AccessKit for the web). Orca on the desktop: in a private
   `dbus-run-session` (never the owner's bus) start an Xvfb,
@@ -1191,7 +1213,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (`src/assembly/sections.gd`, `src/ui/sections_ui.gd`). Build, Suggest
   sections (or the model tree's Suggest sections) lists suggestions under
   the tree's rows, numbered in build order, each with its part count: a
-  click selects its parts, a double-click or `F2` renames it, dragging one
+  click selects its parts, a double-click (on a row chosen or not, in a
+  browser too, where both presses come in one frame) or `F2` renames it, dragging one
   onto another or Merge joins it to the one it is held to most, Split
   parts it where it is held least, the tick or Accept makes it a
   sub-assembly, Accept all makes every one in one undo step. How it

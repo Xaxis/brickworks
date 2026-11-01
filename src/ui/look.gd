@@ -183,7 +183,8 @@ static func menus(theme: Theme) -> void:
 ## Every button of the engine's edged with [constant OUTLINE], inside its
 ## own box, so nothing moves; and every dialog's default button, its OK
 ## where it has others beside it, in [constant STRONG], told apart from
-## them (a ConfirmationDialog's, a FileDialog's). In the default theme
+## them (any AcceptDialog's: a question's, a FileDialog's, and a plain
+## dialog's with a button added beside its OK). In the default theme
 ## before the first button is made, as [method dialogs] is.
 static func buttons() -> void:
 	var theme: Theme = ThemeDB.get_default_theme()
@@ -217,11 +218,21 @@ static func buttons() -> void:
 	(Engine.get_main_loop() as SceneTree).node_added.connect(_default_marked)
 
 
-## A question's default button marked as such, as the question is made.
+## A dialog's default button marked as such wherever it has a choice
+## beside it, as the button beside it is added: a question's Cancel, and
+## the Remove or Cancel added to a plain dialog (Reference picture, Send
+## feedback, Pattern), whose Done, Send and Put them down were drawn as
+## their Cancel was (1.2-1.7:1, uifix).
 static func _default_marked(node: Node) -> void:
-	var asked := node as ConfirmationDialog
-	if asked != null:
-		asked.get_ok_button().theme_type_variation = &"DefaultButton"
+	var button := node as Button
+	if button == null:
+		return
+	var dialog := button.get_window() as AcceptDialog
+	if dialog == null:
+		return
+	var ok: Button = dialog.get_ok_button()
+	if button != ok and button.get_parent() == ok.get_parent():
+		ok.theme_type_variation = &"DefaultButton"
 
 
 ## [param theme]'s [param item] of [param type] in the panels' face, with

@@ -103,6 +103,12 @@ func _ready() -> void:
 	_tree.button_clicked.connect(_on_button)
 	_tree.set_drag_forwarding(_drag_data, _can_drop, _drop)
 	column.add_child(_tree)
+	# A name typed over ends in item_edited; Esc ends it with nothing said,
+	# and the tree then stood as it was (refreshes held for the typing)
+	# until the next rename. Its editor going is heard as well.
+	for child: Node in _tree.get_children(true):
+		if child is Popup and not child is PopupMenu:
+			(child as Popup).popup_hide.connect(_rename_ended, CONNECT_DEFERRED)
 
 	var hint := Label.new()
 	_hint = hint
@@ -464,6 +470,14 @@ func _mark_selected() -> void:
 			if Array(made.ids).all(func(id: int) -> bool: return picked.has(id)):
 				row = _find(_tree.get_root(), SUGGESTION + str(made.number))
 				break
+	# The row chosen already is left as it is: chosen again, the tree puts
+	# away the name being typed into it. A double-click on a row not yet
+	# chosen opened its name on the second press, and this, run after the
+	# first press's selection, closed it: in a browser both presses come in
+	# one frame (sections on the web, uifix).
+	if row != null and row == _tree.get_selected() and row.is_selected(0):
+		_update_strip()
+		return
 	# Lit to match the view, which is not a person choosing the row: the
 	# row's own handler would select again, and round it went.
 	_marking = true
@@ -575,6 +589,16 @@ func _on_edited() -> void:
 	shell.verbs.edited.call()
 	shell.bar.say("called %s" % name)
 	_refresh(true)
+
+
+## The name's editor put away: by Enter, after item_edited has drawn the
+## tree again; by Esc, with the row as it was.
+func _rename_ended() -> void:
+	if _renaming:
+		_renaming = false
+		# Every row made again: the one typed in shows its name as typed.
+		_shown_base = ""
+		_refresh(true)
 
 
 ## Rename the selected row in place, as a second click on it does.
