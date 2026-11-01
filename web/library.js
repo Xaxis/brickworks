@@ -30,7 +30,7 @@
 // (#sub), a year in the decade (#year), only those with a 3D model
 // (#model) and minifigures (#figs). Each is taken from the page where it
 // has one by that id, and made at the end of the menu where not.
-import { FIRST_SCREEN, counted, modelCard, number, say, skeletonHtml } from "/card.js";
+import { FIRST_SCREEN, counted, modelCard, number, say, skeletonHtml, themeSaid } from "/card.js";
 // Filters closing on a click elsewhere, as a "more" menu does.
 import "/kit.js";
 // "/" to search, and the bar of filters kept under the header, as the gallery's.
@@ -149,7 +149,7 @@ import { pageAsked, pager } from "/pager.js";
       const keep = extra.sub.dataset.wanted || extra.sub.value;
       extra.sub.dataset.wanted = "";
       extra.sub.replaceChildren(extra.sub.options[0]);
-      for (const one of inner.get(theme) || []) extra.sub.append(new Option(`${say(one.name)} (${number(one.n)})`, one.name));
+      for (const one of inner.get(theme) || []) extra.sub.append(new Option(`${themeSaid(one.name)} (${number(one.n)})`, one.name));
       extra.sub.value = [...extra.sub.options].some((o) => o.value === keep) ? keep : "";
       extra.sub.disabled = extra.sub.options.length < 2;
     }
@@ -176,7 +176,7 @@ import { pageAsked, pager } from "/pager.js";
       pill.type = "button";
       pill.className = "pill";
       pill.dataset.pick = name;
-      pill.textContent = say(name);
+      pill.textContent = themeSaid(name);
       pill.title = counted(Number(one.n) || 0, "set");
       pill.setAttribute("aria-pressed", "false");
       row.append(pill);

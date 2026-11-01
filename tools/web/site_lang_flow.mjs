@@ -6,7 +6,7 @@
 //   ... --app=<address>  the app's loading page too: a deployment's /app, or a web
 //                        export's index.html (node tools/web/relay_server.mjs PORT
 //                        --static=build/web; --app=http://127.0.0.1:PORT/index.html)
-//   [--widths=1280,390]  [--langs=en,de,fr,es]  [--pages=home,download,plans,faq,compare,gallery,library]
+//   [--widths=1280,390]  [--langs=en,de,fr,es]  [--pages=home,download,plans,faq,compare,gallery,library,signin]
 //
 // The landing page and the download page, and the app's loading page
 // between them and the app, in German, French and Spanish (2026-11-01);
@@ -25,7 +25,9 @@
 //     of the page, shown or folded away, nor in an alt, title, aria-label
 //     or placeholder, apart from names and what is typed (code), and
 //     the cards of the live strips, whose names are people's, and the
-//     library's themes the app too keeps under the catalogue's names;
+//     library's themes the app too keeps under the catalogue's names; and
+//     each theme the language words its own way (locale/<code>.po,
+//     "theme": Sammelminifiguren) said so;
 //   nothing cut short: no words wider than the box that hides what
 //     overflows it (a card's mark on a phone, "Tipp der Woc") where the
 //     English page at that width shows its own whole (English is opened
@@ -40,6 +42,16 @@
 // (the changelog) carries the browser's language into the app all the same.
 // With --app, the loading page says its words in the language the address
 // asks for, or the one kept, and in English with neither.
+//
+// And signing in (2026-11-01, web/account.js), in each language at each
+// width: from Sign in on /profile, a page with no copy, where the header's
+// Sign in and the app's orangecheck send people, and from Like on the
+// gallery's copy. The dialog in the language, none of it English or cut
+// short; the server's "too many codes" in it; the code's step; a wrong
+// code's error; and on the stand-in, signed in, the age question with the
+// months as the language names them. No mail is sent: /api/otp is answered
+// in the browser, and on a deployment only the wrong code is asked of its
+// Supabase, once a run per language and width.
 //
 // With no --url nothing leaves this machine: the pages are served by
 // design_stand_in.mjs from this checkout's web/. Pictures with --out:
@@ -79,6 +91,19 @@ const plain = (html) => html.replace(/<[^>]+>/g, "").replace(/&amp;/g, "&").repl
 const page = (code, english) => (code === "en" ? english : WORDS[code].pages[english] ?? `(no words for ${english})`);
 const script = (code, english, values = {}) => (code === "en" ? english : WORDS[code].scripts[english] ?? english)
   .replace(/\{(\w+)\}/g, (all, name) => (name in values ? String(values[name]) : all));
+// The themes each language words its own way (locale/<code>.po, "theme"),
+// by the app's names, which mark the catalogue's LEGO and Legoland
+// (web/card.js themeSaid), as tools/site_lang.py puts them in the copies.
+const marked = (name) => name.replace(/\bLEGO\b(?!®| Group)/g, "LEGO®").replace(/\bLegoland\b|\bLEGOLAND\b(?!®)/g, "LEGOLAND®");
+const THEMES = Object.fromEntries(["de", "fr", "es"].map((code) => {
+  const po = readFileSync(path.join(root, "locale", `${code}.po`), "utf8");
+  const said = {};
+  for (const [, english, own] of po.matchAll(/^msgctxt "theme"\nmsgid "((?:[^"\\]|\\.)*)"\nmsgstr "((?:[^"\\]|\\.)*)"/gm)) {
+    const [name, words] = [JSON.parse(`"${english}"`), JSON.parse(`"${own}"`)];
+    if (words && words !== name) said[name] = words;
+  }
+  return [code, said];
+}));
 const PAGES = [
   { name: "home", path: "", title: "Brickworks — design LEGO® models with AI, in your browser",
     heading: "#hero-h", says: "Design LEGO® models with AI, <em>in your browser</em>" },
@@ -109,19 +134,19 @@ const check = (ok, what) => {
   return ok;
 };
 
-async function newContext(browser, code, width) {
+async function newContext(browser, code, width, state = {}) {
   const phone = width < 600;
   const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 }, locale: ASKED[code].locale,
     extraHTTPHeaders: { ...headers, "accept-language": ASKED[code].header },
     ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
-  if (!remote) await stand.serveSite(context, { web: path.join(root, "web"), api: path.join(root, "api"), state: {} });
+  if (!remote) await stand.serveSite(context, { web: path.join(root, "web"), api: path.join(root, "api"), state });
   return context;
 }
 
 /// Every text of the page a person can read or hear, shown or folded away,
 /// but the names of the cards in its live strips and what is typed. And a
-/// library theme's pill under the catalogue's own name (Star Wars, The LEGO
-/// Movie), as the app keeps it: one the app names in the language
+/// library theme's pill under the catalogue's own name (Star Wars, The LEGO®
+/// Movie, marked), as the app keeps it: one the app names in the language
 /// (locale/<code>.po, "theme") is read like any other word.
 function readable() {
   const SKIP = "script, style, code, kbd, template, svg, [translate='no'], article.model .words, article.model .frame";
@@ -130,7 +155,9 @@ function readable() {
   for (let node = walk.nextNode(); node; node = walk.nextNode()) {
     const parent = node.parentElement;
     if (!parent || parent.closest(SKIP)) continue;
-    if (parent.closest("#themes [data-pick]")?.dataset.pick === node.textContent.trim()) continue;
+    const pick = parent.closest("#themes [data-pick]")?.dataset.pick;
+    if (pick && pick.replace(/\bLEGO\b(?!®| Group)/g, "LEGO®").replace(/\bLegoland\b|\bLEGOLAND\b(?!®)/g, "LEGOLAND®")
+      === node.textContent.trim()) continue;
     // A <noscript>'s inside is its markup as text where scripts run.
     const text = parent.closest("noscript") ? node.textContent.replace(/<[^>]+>/g, " ") : node.textContent;
     if (text.trim()) said.push(text.trim());
@@ -198,6 +225,20 @@ async function onePage(browser, code, one, width) {
       const nouns = one.noun.map((noun) => script(code, noun));
       check(await tab.evaluate((name) => document.documentElement.dataset[name], one.ready) === "ready"
         && nouns.some((noun) => counted.includes(noun)), `${where}: its list drawn and counted, "${counted}"`);
+    }
+    if (one.name === "library") {
+      // Each theme the language words its own way said so (Sammelminifiguren),
+      // the rest, product lines' and licences' names, as they are, LEGO®
+      // marked as the app draws it (LEGO® Exclusive).
+      const pills = await tab.evaluate(() => [...document.querySelectorAll("#themes [data-pick]")]
+        .filter((pill) => pill.dataset.pick).map((pill) => [pill.dataset.pick, pill.textContent.trim()]));
+      const want = (name) => THEMES[code]?.[marked(name)] ?? marked(name);
+      const worded = pills.filter(([name]) => THEMES[code]?.[marked(name)]);
+      const wrong = pills.filter(([name, said]) => said !== want(name));
+      check(pills.length > 20 && (code === "en" || worded.length > 10) && !wrong.length, `${where}: ${worded.length} of its `
+        + `${pills.length} themes in the language, the rest as they are${wrong.length
+          ? `, ${wrong.length} not: ${wrong.slice(0, 3).map(([name, said]) => `"${said}" for ${name}`).join(", ")}`
+          : worded.length ? `, "${worded[0][1]}"` : ""}`);
     }
     // The header's Sign in, once web/follow.js has said who is here.
     await tab.waitForFunction(() => document.querySelector(".site-head a[data-account]")?.textContent.trim(), null, { timeout: 15000 });
@@ -293,6 +334,114 @@ async function choosing(browser) {
   }
 }
 
+// The sign-in dialog (web/account.js), on a copy and on a page with none.
+const ADDRESS = "delivered+brickworks-lang@resend.dev";
+const TOO_MANY = "Too many codes asked for. Wait a few minutes and try again.";
+const WRONG = "That code is wrong or has expired. Check it, or ask for a new one.";
+
+/// The dialog's every word a person reads or hears, and what overflows it.
+function dialogSaid() {
+  const dialog = document.querySelector("dialog.sign-in[open]");
+  if (!dialog) return null;
+  const said = [];
+  const walk = document.createTreeWalker(dialog, NodeFilter.SHOW_TEXT);
+  for (let node = walk.nextNode(); node; node = walk.nextNode()) {
+    if (node.parentElement.closest("[hidden], .visually-hidden") && !node.parentElement.closest("select")) continue;
+    if (node.textContent.trim()) said.push(node.textContent.trim());
+  }
+  for (const el of dialog.querySelectorAll("[aria-label], [placeholder]")) {
+    for (const name of ["aria-label", "placeholder"]) if (el.getAttribute(name)) said.push(el.getAttribute(name));
+  }
+  const cut = [...dialog.querySelectorAll("button, label, h2, p")].filter((el) => el.offsetWidth && el.scrollWidth > el.clientWidth + 1)
+    .map((el) => el.textContent.trim());
+  return { lang: dialog.closest("[lang]")?.lang || "", title: dialog.querySelector("h2")?.textContent.trim() || "",
+    label: dialog.querySelector("label")?.firstChild?.textContent.trim() || "", go: dialog.querySelector('button[type="submit"]')?.textContent.trim() || "",
+    note: dialog.querySelector(".said")?.textContent.trim() || "", said, cut,
+    wide: dialog.scrollWidth > dialog.clientWidth + 1 || dialog.getBoundingClientRect().right > innerWidth + 1 };
+}
+
+/// Signing in, in [code] at [width], from [where]: Sign in on /profile, a
+/// page still in English that the header's Sign in and the app's
+/// orangecheck send people to, or a card's Like on the gallery's copy. The
+/// dialog's words, the code asked for (the server's "too many" first), the
+/// code's step, a wrong code's error, and on the stand-in the right code's
+/// age question, all in the language. /api/otp is answered here as the
+/// server answers, so no mail goes to anyone; on a deployment the wrong code
+/// goes to its Supabase, which refuses it (from /profile only: eight verifies a run).
+async function signingIn(browser, code, width, where) {
+  const context = await newContext(browser, code, width, where === "profile" && !remote ? { fresh: { aged: false, profile: null, follows: new Set() } } : {});
+  const tab = await context.newPage();
+  const label = `${code} sign-in from ${where} ${width}`;
+  let asked = 0;
+  await tab.route("**/api/otp", (route) => {
+    asked += 1;
+    return route.fulfill({ status: asked === 1 ? 429 : 200, contentType: "application/json",
+      body: JSON.stringify(asked === 1 ? { error: TOO_MANY } : { ok: true, expires_in_minutes: 10 }) });
+  });
+  const until = (test, what, arg) => tab.waitForFunction(test, arg, { timeout: 20000 }).catch(() => {
+    throw new Error(`no ${what}`);
+  });
+  try {
+    if (where === "profile") {
+      await tab.goto(`${base}/profile`, { waitUntil: "load" });
+      await tab.click("#sign-in");
+    } else {
+      await tab.goto(`${base}${code === "en" ? "" : `/${code}`}/gallery`, { waitUntil: "load" });
+      await tab.waitForFunction(() => document.documentElement.dataset.gallery === "ready", null, { timeout: 30000 });
+      await tab.locator("[data-like]").first().click();
+    }
+    await until(() => document.querySelector("dialog.sign-in[open]"), "dialog");
+    // Its first face, whole, before anything is asked for.
+    await tab.waitForTimeout(400);
+    let seen = await tab.evaluate(dialogSaid);
+    const left = code === "en" ? [] : seen.said.map((text) => text.replace(NAMES, " ")).filter((text) => ENGLISH.test(text) || /^(Email|Not now|Month|Year)$/.test(text));
+    check(seen.lang === code && seen.title === script(code, "Sign in to Brickworks") && seen.go === script(code, "Email me a code")
+      && seen.label === script(code, "Email") && !left.length,
+      `${label}: in ${seen.lang}, "${seen.title}", "${seen.label}", "${seen.go}"${left.length ? `; English left: "${left[0].slice(0, 100)}"` : ""}`);
+    check(!seen.cut.length && !seen.wide, `${label}: nothing cut short or wider than the window${seen.cut.length ? `: "${seen.cut[0]}"` : ""}`);
+    if (out) await tab.locator("dialog.sign-in").screenshot({ path: path.join(out, `${code}-signin-${where}-${width}.png`) });
+    // The code asked for: the server's "too many", then sent.
+    await tab.fill("dialog.sign-in input", ADDRESS);
+    await tab.click('dialog.sign-in button[type="submit"]');
+    await until(() => document.querySelector("dialog.sign-in .said")?.textContent.trim(), "answer to the first ask");
+    seen = await tab.evaluate(dialogSaid);
+    check(seen.note === script(code, TOO_MANY), `${label}: the server's "too many" says "${seen.note}"`);
+    await tab.click('dialog.sign-in button[type="submit"]');
+    const sent = script(code, "The code sent to {address}", { address: ADDRESS });
+    await until((want) => document.querySelector("dialog.sign-in label")?.firstChild?.textContent.trim() === want, "code's step", sent);
+    seen = await tab.evaluate(dialogSaid);
+    check(seen.go === script(code, "Sign in"), `${label}: the code's step, "${seen.label}", "${seen.go}"`);
+    if (remote && where !== "profile") return;
+    // A wrong code, refused in the language.
+    await tab.fill("dialog.sign-in input", "000000");
+    await tab.click('dialog.sign-in button[type="submit"]');
+    await until(() => document.querySelector("dialog.sign-in .said")?.textContent.trim(), "answer to the wrong code");
+    seen = await tab.evaluate(dialogSaid);
+    check(seen.note === script(code, WRONG), `${label}: a wrong code says "${seen.note}"`);
+    if (out) await tab.locator("dialog.sign-in").screenshot({ path: path.join(out, `${code}-signin-${where}-${width}-wrong.png`) });
+    if (remote || where !== "profile") return;
+    // The right one, and the age question a new account is asked.
+    await tab.fill("dialog.sign-in input", "123456");
+    await tab.click('dialog.sign-in button[type="submit"]');
+    await until(() => document.querySelector("dialog.age[open]"), "age question");
+    const age = await tab.evaluate(() => {
+      const dialog = document.querySelector("dialog.age[open]");
+      return { lang: dialog.closest("[lang]")?.lang || "", title: dialog.querySelector("h2").textContent.trim(),
+        months: [...document.querySelectorAll("#age-month option")].map((one) => one.textContent.trim()),
+        go: document.getElementById("age-go").textContent.trim() };
+    });
+    const january = new Intl.DateTimeFormat(code === "en" ? "en-US" : code, { month: "long", timeZone: "UTC" }).format(Date.UTC(2000, 0, 1));
+    check(age.lang === code && age.title === script(code, "One question first") && age.months[0] === script(code, "Month")
+      && age.months[1] === january && age.go === script(code, "Carry on"),
+      `${label}: the age question, "${age.title}", ${age.months.slice(0, 2).join(", ")}, "${age.go}"`);
+    if (out) await tab.locator("dialog.age").screenshot({ path: path.join(out, `${code}-age-${width}.png`) });
+  } catch (trouble) {
+    check(false, `${label}: ${String(trouble.message || trouble).split("\n")[0]}`);
+  } finally {
+    await context.close();
+  }
+}
+
 // The app's loading page, before the engine has started.
 const LOADER = {
   en: { tagline: "Every brick, at the size it really is.", of: "of", legal: "LEGO® is a trademark of the LEGO Group of companies" },
@@ -352,6 +501,13 @@ try {
     }
   }
   await choosing(browser);
+  if (!only || only.includes("signin")) {
+    for (const code of langs) {
+      for (const width of widths) {
+        for (const where of ["profile", "gallery"]) await signingIn(browser, code, width, where);
+      }
+    }
+  }
   if (app) await loader(browser);
   else console.log("  --    the app's loading page: --app=<a deployment's /app, or a web export's index.html>");
 } finally {

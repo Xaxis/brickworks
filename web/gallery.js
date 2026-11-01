@@ -45,7 +45,7 @@
 // talk to itself and a short list of others.
 //
 // Each card is web/card.js's, the one every page of the site draws.
-import { FIRST_SCREEN, counted, iconButtonHtml, likeName, modelCard, number, say, skeletonHtml } from "/card.js";
+import { FIRST_SCREEN, counted, iconButtonHtml, likeName, modelCard, number, say, skeletonHtml, themeSaid } from "/card.js";
 // The toast, and Filters closing on a click elsewhere as a "more" menu does.
 import { toast } from "/kit.js";
 // "/" to search, and the bar of filters kept under the header.
@@ -350,7 +350,7 @@ import { pageAsked, pager } from "/pager.js";
       mark.className = "pill new";
       mark.textContent = label;
       marks.prepend(mark);
-      const said = slot === "featured" ? featuredSaid(one) : [one.why?.theme && say(one.why.theme), one.why?.decade].filter(Boolean).join(", ");
+      const said = slot === "featured" ? featuredSaid(one) : [one.why?.theme && themeSaid(one.why.theme), one.why?.decade].filter(Boolean).join(", ");
       if (said) {
         const why = document.createElement("p");
         why.className = "why";

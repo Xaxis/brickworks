@@ -1329,7 +1329,18 @@ plan with Claude as the client.
   `/app` carries `?lang=<code>`. The scripts' words (`web/download.js`,
   `web/card.js` `say`/`number`, the header's account in `web/follow.js`) come
   from the copy's `#site-words`. The app's loading page (`src/boot/shell.html`)
-  says its words in `?lang` or the kept language.
+  says its words in `?lang` or the kept language. The sign-in's dialogs
+  (`web/account.js`: the way in, the code's step, the server's answers from
+  `api/otp.js` and orangecheck's, orangecheck's own words, the age question
+  with its months by `Intl`) say every word through `say()`: from the copy's
+  `#site-words`, or on a page with no copy (/profile, where the header's
+  Sign in and the app's orangecheck go) from `/<code>/words.json`, which
+  `tools/site_lang.py` writes beside the copies; a literal with an English
+  word left in account.js fails `--check` (`SAID_ALL`). The library's and the
+  gallery's themes are the app's (`locale/<code>.po`, context "theme", by
+  `web/card.js` `themeSaid`, LEGO® and LEGOLAND® marked as the app draws
+  them), and `tests/test_site_lang.py` fails on a theme of the catalogue
+  with no entry.
 - `site language flow` (`tools/web/site_lang_flow.mjs`, preview check
   `[site_lang]`): below.
 - `comments on a shared model` (`supabase/comments.sql`, `api/_comments.js`,
@@ -3757,7 +3768,14 @@ English on /de opens / and keeps it on a reload though the browser asks for
 German; choosing Deutsch on /download opens /de/download, / and /gallery
 then open /de and /de/gallery, and the changelog (no copy) shows Deutsch
 chosen and opens the app in it; a French browser on the changelog goes into
-`/app?lang=fr`. Locally the library's list is the real handler's from this
+`/app?lang=fr`. Then signing in, in each language at 1280 and 390, from
+/profile (no copy) and from a gallery card's Like: the dialog's title, label,
+button and every other word in the language and nothing cut short, the
+server's "too many codes" (the first /api/otp, answered by the flow, so no
+mail goes anywhere), the code's step, a wrong code's error (`000000`: the
+stand-in refuses it as Supabase does, and on a deployment Supabase itself,
+eight verifies a run, from /profile only), and locally the age question a new account
+is asked, its months in the language. Locally the library's list is the real handler's from this
 checkout's catalogue (`design_stand_in.mjs`), so its sorts, sizes and
 themes are drawn. With `--app`, `/app?lang=de` and the rest say the
 loader's tagline, "von" and the notice in the language, and `/app` with
@@ -3765,7 +3783,10 @@ Spanish kept says Spanish. 2026-11-01: 137 passed locally with `--app`; on
 brickworks.diy before the copies (`--app=https://brickworks.diy/app`), 108
 of 131 failed. With the five pages after home (same day): 505 passed
 locally (no `--app`); on brickworks.diy with rel-m239 live, 210 of 505 failed, every one
-on the five pages or /gallery's choice.
+on the five pages or /gallery's choice. With signing in and every theme
+(languages3, same day): 601 passed locally; on brickworks.diy
+(`--pages=library,signin`) 75 of 139 failed, every German, French and
+Spanish dialog in English and the library's themes with them.
 
 The theme, with no network (the checkout's pages served as design_flow
 serves them, every API call answered by the stand-in):
