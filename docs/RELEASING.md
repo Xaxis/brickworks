@@ -74,12 +74,17 @@ gh run watch -R Xaxis/brickworks-releases "$(gh run list -R Xaxis/brickworks-rel
 # 6. Publish the draft that was checked, then put it on the download page,
 #    with four short lines on what is new in it: web/download.html's
 #    <ul data-highlights="0.2.0">, in place of the last release's. Without
-#    them the page shows the first sentences of the summary. Publishing
+#    them the page shows the first sentences of the summary. The lines go
+#    into German, French and Spanish too, in web/_lang/<code>.json's
+#    "pages" (tools/site_lang.py --missing=de lists what is new), and
+#    tools/site_lang.py writes the page's copies at /de/download...: the
+#    suite fails while one has no words for them. Publishing
 #    also pushes the tag v0.2.0 to origin, on the commit that was built:
 #    the tag in the releases repository is on its README.
 tools/release.py publish                       # writes web/releases.json
+python3 tools/site_lang.py                     # web/de/, web/fr/, web/es/ from it
 git -c user.name=Xaxis -c user.email=william.neeley@gmail.com \
-  commit -m "Brickworks 0.2.0 on the download page" web/releases.json web/download.html && git push
+  commit -m "Brickworks 0.2.0 on the download page" web/releases.json web/download.html web/_lang web/de web/fr web/es && git push
 tools/deploy.sh --prod
 
 # 7. Check it live: the page, and every address in its manifest.

@@ -108,6 +108,23 @@ fails if they differ, and measures every text token on every surface
 (4.5:1) and the state edges (3:1) in both. Never a colour outside the
 tokens: a page that needs one adds a token.
 
+## Languages
+
+The landing page and the download page in German, French and Spanish
+(2026-11-01), the app's four with English. Each is the English page
+with its words in the language, at /de, /de/download and so on, written
+by `tools/site_lang.py` from `web/_lang/<code>.json`; the layout is the
+English page's, so a translation that runs longer than its English must
+still fit a 390 px phone (`tools/web/site_lang_flow.mjs`). A visitor gets
+the language they chose, else their browser's first the site has, else
+English: `web/theme.js`, which also sends every link into the app with
+`?lang=<code>`. They choose it under the theme in the footer, a dropdown
+(`select[data-lang-choice]`) of the four, each named in itself. Scripts
+say their words through `say()` (`web/card.js`, `window.brickworksLang`
+on a classic script), numbers through `number()`. "LEGO®" stays an
+adjective in every language; the company is die LEGO Gruppe, le Groupe
+LEGO, el Grupo LEGO (`tests/test_trademarks.py`).
+
 ## Tokens
 
 The colours (`--bg`, `--bg-soft`, `--panel`, `--panel-hi`, `--line`,

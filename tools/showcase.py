@@ -196,7 +196,7 @@ def render(model: Path, name: str, out: Path, port: int, timeout: int = 900) -> 
     started = time.time()
     env = bench._billing_free_env(XDG_DATA_HOME=str(home), MESA_VK_WSI_DEBUG="sw")
     with (out / "render.log").open("w") as said:
-        app = subprocess.Popen([*bench.DRAWER, "--path", str(ROOT), "--", f"--mcp={port}", "--signed-in"],
+        app = subprocess.Popen([*bench.ON_GPU, "--path", str(ROOT), "--", f"--mcp={port}", "--signed-in"],
                                cwd=ROOT, stdout=said, stderr=subprocess.STDOUT, env=env, start_new_session=True)
     result: dict = {}
     try:
@@ -293,7 +293,7 @@ def design_and_draft(args: argparse.Namespace, out: Path) -> int:
     from bench import run as bench
     port = bench._free_port()
     try:
-        # The app on the GPU's lease for this one render (bench.DRAWER takes it).
+        # The app on the GPU's lease for this one render (bench.ON_GPU takes it).
         record["render"] = render(run_dir / "design.ldr", f"showcase-{choice['id']}", run_dir, port)
     finally:
         bench._port_back(port)

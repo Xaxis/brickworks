@@ -105,10 +105,18 @@ plan with Claude as the client.
   (headless) fails when one is loaded once the window has settled or a
   signed-in person's collection has come, or is made twice or out of its
   place, and prints what each first load took. With the assistant shown,
-  its panel and connector come as the first frame is drawn, and headless
-  (no frame is ever drawn) deferred: `shown_assistant_probe` fails when
-  they are not made unasked, as the relay bench's tab never switched its
-  connector on (d8surf-smoke, 2026-11-01). On the web the page is
+  Claude's connector is made as the window is built (`_make_connector`,
+  its code 55 KB: it names no other Later class, which test_later checks),
+  so it asks whether to listen, and the page runs its frames out of view
+  meanwhile, from before the window is first drawn: made with the panel
+  at that draw, a new tab put out of view as its window was built was
+  heard 5 times in 8, and made with the window 8 in 8
+  (`hidden_start_flow`, 2026-11-01). Its panel and what answers it
+  (`CommandSocket`, the assistant) come as the first frame is drawn, and headless (no frame is
+  ever drawn) deferred, the connector waiting for them before it says
+  hello to the relay: `shown_assistant_probe` fails when they are not made
+  unasked, as the relay bench's tab never switched its connector on
+  (d8surf-smoke, 2026-11-01). On the web the page is
   told each first load (`window.brickworksLoaded`: name -> [when, ms]),
   and load_check prints "loaded on first use", each before interactive,
   under the first pick, or after: anything before the pick is a compile
@@ -280,7 +288,15 @@ plan with Claude as the client.
   view (`ClaudeConnector._watch_the_page`): the engine asks the page for each
   frame, and out of view the page gives it one from a worker's clock — one at
   a time, 33 ms after the last has run (a clock that ticked regardless ran
-  frames back to back and starved the replies carrying the answers). The same
+  frames back to back and starved the replies carrying the answers). It does
+  so too while the connector, as the tab starts, finds out whether Claude is
+  connected and it should listen (`ClaudeConnector.resume`): a tab opened and
+  left for claude.ai at once asked with no frames and was heard only once the
+  person came back. `tools/web/hidden_start_flow.mjs` puts a tab out of view
+  as it starts (`--hide=ui|model` at the app's boot mark, `--reload` for a tab
+  that was on) and passes when a call is answered out of view; `--hide=start`
+  fails by design, since out of view from the first byte no frame runs the
+  engine's own start (a known gap, 2026-11-01). The same
   worker sends `op=state` every ten seconds, which also counts as seen, so the
   relay judges a tab by its page: alive is ready, in view or not; a page that
   stopped altogether is "paused" if it was out of view and "not open" if not,
@@ -1288,6 +1304,26 @@ plan with Claude as the client.
   it sits in somebody else's page and runs no script.
 - `theme browser flow` (`tools/web/theme_flow.mjs`, preview checks
   `[theme]` and `[theme_account]`): below.
+- `the site in German, French and Spanish` (2026-11-01): the landing page
+  and the download page at /de, /de/download, /fr, /fr/download, /es and
+  /es/download, each the English page with its words from
+  `web/_lang/<code>.json`, written into `web/de/`, `web/fr/` and `web/es/` by
+  `tools/site_lang.py` (`--check` in `tests/test_site_lang.py`, which also
+  fails on an English run with no words; `--missing=de` lists them). Served
+  by `tools/deploy.sh`'s overrides for a folder with an `index.html`, with
+  308s from `.html` and a trailing slash. The language: the one chosen in the
+  footer's Language (`select[data-lang-choice]`, `web/_shell.html`, showing
+  the kept choice on every page) or the
+  app's Settings (`src/ui/language.gd` keeps it in `localStorage`
+  "brickworks.lang" too), else the browser's first the site has, else English
+  (`web/theme.js` `brickworksLang`): an English page with a copy gives way to
+  it before it is drawn (its `link rel=alternate hreflang`), and every link to
+  `/app` carries `?lang=<code>`. The scripts' words (`web/download.js`,
+  `web/card.js` `say`/`number`, the header's account in `web/follow.js`) come
+  from the copy's `#site-words`. The app's loading page (`src/boot/shell.html`)
+  says its words in `?lang` or the kept language.
+- `site language flow` (`tools/web/site_lang_flow.mjs`, preview check
+  `[site_lang]`): below.
 - `comments on a shared model` (`supabase/comments.sql`, `api/_comments.js`,
   `api/people.js`, 2026-10-18; **not applied to the live project**: the
   owner applies it at release, after `trust.sql` and before the deploy;
@@ -3684,6 +3720,34 @@ BW_STAND_IN=http://127.0.0.1:8742 node tools/web/digest_flow.mjs --url=http://12
 never reach the database's own triggers, which refuse the profile, the
 public list and the listing (three 502s, 2026-10-18); without it, 42 checks
 all ok the same evening.
+
+The site in German, French and Spanish, with no network (the checkout's
+pages served by the stand-in), against a deployment, and the app's loading
+page from a web export:
+
+```sh
+python3 tools/site_lang.py --check                                       # every copy written, every run with its words
+heavy node tools/web/site_lang_flow.mjs --out=shots/site_lang            # this checkout
+BW_BYPASS=$VERCEL_BYPASS node tools/web/site_lang_flow.mjs --url=<preview> --app=<preview>/app
+set -a; . ./.env; set +a; node tools/web/relay_server.mjs 8837 --static=build/web &
+node tools/web/site_lang_flow.mjs --app=http://127.0.0.1:8837/index.html --out=shots/site_lang   # and the loading page
+```
+
+A browser asking for en, de, fr and es first (Accept-Language and
+`navigator.languages`) opens / and /download at 1280 and 390 and must land
+on /, /de, /fr, /es (and /download, /de/download ...), `<html lang>` its
+language, the heading and the header's Sign in in its words, the download
+offer's "Download for Linux" and "New in" in them, no English word left in
+any text, alt, title or label but names, every link to /app with
+`lang=<code>` (none in English) and the footer's Language showing it. Then
+choosing English on /de opens / and keeps it on a reload though the browser
+asks for German; choosing Deutsch on /download opens /de/download, and the
+gallery (no copy) then shows Deutsch chosen and opens the app in it; the
+gallery sends a French browser into `/app?lang=fr`. With `--app`,
+`/app?lang=de` and the rest say the loader's tagline, "von" and the notice
+in the language, and `/app` with Spanish kept says Spanish. 2026-11-01:
+137 passed locally with `--app`; on brickworks.diy before the copies
+(`--app=https://brickworks.diy/app`), 108 of 131 failed.
 
 The theme, with no network (the checkout's pages served as design_flow
 serves them, every API call answered by the stand-in):

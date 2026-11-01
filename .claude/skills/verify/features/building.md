@@ -1311,6 +1311,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`collides_boxes(packed, brick_id)`), so a refused part is never taken out and
   put back. `bigmodels_probe -- only=replace`: a 2 x 4 for every part of
   Orthanc, the parts left standing where they were in the lattice, one undo.
+  From 600 parts selected, where each fits is asked on a worker of a copy of
+  the lattice changed as the swaps would change it
+  (`Builder.replace_selection_paced`), and the swaps made as planned; a model
+  changed meanwhile is asked again as it is. `replace_cost_probe`: all of
+  Orthanc replaced from the menu (`Shell.run`), its longest frame under 100 ms
+  of its own (it was 0.6 to 1.1 s), every try the same save byte for byte and
+  the same words, each undo the file before it; `--into=DIR` writes the save
+  to diff against another checkout's.
 - `undo history`: History (on the toolbar, and Edit, History) lists the steps in words, newest first ("swapped 2
   parts for Brick 2 x 3", "painted 2 parts"); choosing one goes back to before
   it (`Builder.undo_steps`).
@@ -2756,6 +2764,12 @@ node tools/web/sections_flow.mjs --url=<preview>/app --bypass=… --out=shots/se
 # --into=DIR writes each model's sections and plan, to diff against
 # another checkout's
 godot --headless --path . --script src/dev/sections_cost_probe.gd
+# Replace all of the Wizard's Tower with a 2 x 4 from the menu, its longest
+# frame under 100 ms of its own, each try saving what the first did, each
+# undo the file before it; --into=DIR writes the save and the status words,
+# to diff against another checkout's
+MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
+  --resolution 1400x900 --script src/dev/replace_cost_probe.gd
 # undo belongs to the model it was recorded against
 godot --headless --path . --script src/dev/history_probe.gd
 # an undo puts back what was taken and nothing more: count, scenery, the

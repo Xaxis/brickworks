@@ -81,6 +81,11 @@ const PAGES = [
   { path: "/faq", canonical: `${SITE}/faq` },
   { path: "/privacy", canonical: `${SITE}/privacy` },
   { path: "/takedown", canonical: `${SITE}/takedown` },
+  // The landing and download pages in each language (tools/site_lang.py).
+  ...["de", "fr", "es"].flatMap((code) => [
+    { path: `/${code}`, canonical: `${SITE}/${code}` },
+    { path: `/${code}/download`, canonical: `${SITE}/${code}/download` },
+  ]),
   { path: "/admin", private: true },
   { path: "/profile", private: true },
   { path: "/settings", private: true },
