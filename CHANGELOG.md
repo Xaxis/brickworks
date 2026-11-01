@@ -23,19 +23,19 @@ couple of milliseconds a move instead of forty, and the next model you open
 no longer waits for the last one's joints to be read. Search offers each
 part once, and undo puts a part back where it stood, so a save after it is
 the file you had. In German, French and Spanish, parts and colours now have
-the names LEGO gives them there, and search finds them by those names; the
-sign-in screen, the dialogs, the Library's themes and the version line read
-in the language too, with thousands grouped the way it groups them.
+the names the LEGO Group gives them there, and search finds them by those
+names; the sign-in screen, the dialogs, the Library's themes and the version
+line read in the language too, with thousands grouped the way it groups them.
 
 ### Added
 
 - Connect Claude opens Claude's Add custom connector form with Brickworks
   already filled in, whichever kind of account you sign in to Claude with.
 - In German, French and Spanish a part is named whole in the language, as
-  LEGO names it there (Brique 1×2, Fliese 1×4 mit Rille, Teja curva 2×1), and
-  so is a colour ("Rouge, opaque"). Search takes those names, with or without
-  accents: "brique 1x2" finds 3004. Prints, stickers and minifigure pieces
-  keep their English names.
+  the LEGO Group names it there (Brique 1×2, Fliese 1×4 mit Rille, Teja
+  curva 2×1), and so is a colour ("Rouge, opaque"). Search takes those
+  names, with or without accents: "brique 1x2" finds 3004. Prints, stickers
+  and minifigure pieces keep their English names.
 
 ### Changed
 
