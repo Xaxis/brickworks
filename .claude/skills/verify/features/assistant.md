@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, cli:design frame probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas -->
 
 ## Sub-features
 
@@ -601,6 +601,15 @@ fixing what it got wrong.
   selection, its edits gather into one already. `design_undo_probe` runs the
   real loop against a stand-in for the API on this machine and fails on 480b81a
   (12 failures: Undo took the person's brick and left the wall).
+- `a design framed whole` (`Main._frame_for_design`): a design asked for in
+  the panel is framed as Frame all frames it when it is laid and again as its
+  run ends (the surface pass lays parts after), if it began from nothing (a
+  first visit's car taken off counts) or took a model seen whole out of view.
+  A view turned while Claude works, or one looking closely at part of the
+  model, is kept. From 2026-10-11 (0fb68e54) only a tab out of view was
+  framed, and on a first visit a tower went up out of the top of the window,
+  on the desktop and in a browser. `design_frame_probe` (tall and wide, at
+  1280x720 and 1400x900) and `drawn_flow.mjs` check it.
 - `the floor a design stands on`: `submit_design` takes `floor` ("none",
   "baseplate", "grid") and `floor_colour` (a colour baseplates come in, by
   name); the guidance says a vehicle, a ship, a figure or a creature has no
@@ -2538,6 +2547,7 @@ godot --headless --path . --script src/dev/world_view_probe.gd  # it reads back 
 godot --headless --path . --script src/dev/edit_probe.gd        # change a model without re-describing it
 godot --headless --path . --script src/dev/selection_probe.gd   # a change asked about a selection keeps to it
 godot --headless --path . --script src/dev/design_undo_probe.gd # each request in the panel is one undo step, Claude's; the person's own stay theirs
+tools/probe.sh design_frame_probe   # a design ends whole in the view, framed as Frame all frames it; a view turned meanwhile is kept. PROBE_SIZE=1400x900 too. Fails on 02f9fc66 (the tower out of the top)
 godot --headless --path . --script src/dev/sketch_probe.gd      # Sketch first: three sketches, one sent back, the second chosen and designed from; over MCP too
 xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/sketch_probe.gd -- --pictures=DIR   # ...and each one's picture
 godot --headless --path . --script src/dev/selection_fit_probe.gd   # ...and lands the first time: Orthanc's horn, its open studs, refusals that say where, every offer on it, a kart and a car taken, copies that follow
