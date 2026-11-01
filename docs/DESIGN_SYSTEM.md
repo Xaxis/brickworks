@@ -126,7 +126,13 @@ say their words through `say()` (`web/card.js`, `window.brickworksLang`
 on a classic script), numbers through `number()`, and an address of their
 own page through `location.pathname`, never "/gallery", so a German
 gallery stays at /de/gallery. Every `say("...")` they make needs its
-entry in each language, or `tools/site_lang.py --check` fails. "LEGO®" stays an
+entry in each language, or `tools/site_lang.py --check` fails. The
+sign-in's dialogs (`web/account.js`) open on every page, a copy or not, in
+the language chosen: their words come from `/<code>/words.json` where the
+page has none, and a word in them not said through `say()` fails the same
+check. A theme of the sets is said by `themeSaid()` (`web/card.js`), by
+the app's own entry for it (`locale/<code>.po`, context "theme"), so the
+Library and the site name it alike. "LEGO®" stays an
 adjective in every language; the company is die LEGO Gruppe, le Groupe
 LEGO, el Grupo LEGO (`tests/test_trademarks.py`).
 

@@ -30,10 +30,48 @@
 // afterwards what is and is not open to them. 13 or over, First steps
 // follow (web/first-steps.js, docs/SOCIAL.md U10): a profile, what they
 // build, and designers and models to start with, every one skippable.
+//
+// Every word of these dialogs, and every error a person reads in them, the
+// server's too, is said in the visitor's language (2026-11-01): on a page
+// with a copy in it (/de/gallery) by the copy's own words, and on one with
+// none (/profile, where the header's Sign in and the app's orangecheck send
+// people, a model's page) by that language's table, /de/words.json, read
+// before a dialog is drawn (tools/site_lang.py writes both, and refuses a
+// word here said other than through say).
 
 const KEY = "brickworks.session";
 const ACCESS = "brickworks.access";
 let project = null;
+
+// The visitor's language's words, on a page that has none of its own in it.
+let told = null;
+
+/// The language the dialogs speak: the page's, or on a page still in
+/// English, the one the visitor chose or their browser asks for (web/theme.js).
+function language() {
+  const lang = globalThis.brickworksLang;
+  if (!lang) return "en";
+  return lang.code !== "en" ? lang.code : lang.chosen();
+}
+
+/// The language's words fetched, where the page does not carry them: once.
+async function learn() {
+  const code = language();
+  if (told || code === "en" || globalThis.brickworksLang?.code === code) return;
+  told = await fetch(`/${code}/words.json`, { signal: AbortSignal.timeout(5000) })
+    .then((reply) => (reply.ok ? reply.json() : {})).catch(() => ({}));
+}
+
+/// [english] in the visitor's language, each {name} filled from [values].
+function say(english, values = {}) {
+  const said = told?.[english] ?? globalThis.brickworksLang?.say(english) ?? english;
+  return said.replace(/\{(\w+)\}/g, (all, name) => (name in values ? String(values[name]) : all));
+}
+
+/// [dialog] marked as in the language it speaks where the page is not.
+function speaking(dialog) {
+  if (told) dialog.lang = language();
+}
 
 async function json(reply) {
   try {
@@ -48,7 +86,7 @@ async function json(reply) {
 async function where() {
   if (project) return project;
   const said = await json(await fetch("/api/account"));
-  if (!said.enabled || !said.url || !said.key) throw new Error("Brickworks cannot sign anyone in just now.");
+  if (!said.enabled || !said.url || !said.key) throw new Error(say("Brickworks cannot sign anyone in just now."));
   project = { url: said.url, key: said.key, orangecheck: said.orangecheck || { ready: false, everyone: false } };
   return project;
 }
@@ -138,18 +176,23 @@ async function renew(was) {
 
 /// Send a code to [address]. Says why not, in words, when it cannot.
 export async function sendCode(address) {
+  await learn();
   const wanted = String(address || "").trim().toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(wanted)) throw new Error("That is not an email address.");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(wanted)) throw new Error(say("That is not an email address."));
   await where();
   const reply = await fetch("/api/otp", {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: wanted }),
   });
-  if (!reply.ok) throw new Error((await json(reply)).error || `Could not send a code just now (${reply.status}).`);
+  if (!reply.ok) {
+    const error = (await json(reply)).error;
+    throw new Error(error ? say(error) : say("Could not send a code just now ({status}).", { status: reply.status }));
+  }
   return wanted;
 }
 
 /// Sign in with the code sent to [address]; the session kept for the app too.
 export async function redeem(address, code) {
+  await learn();
   await where();
   const reply = await fetch(`${project.url}/auth/v1/verify`, {
     method: "POST",
@@ -159,10 +202,12 @@ export async function redeem(address, code) {
   });
   const body = await json(reply);
   if (!reply.ok || !body.access_token) {
+    // Supabase's own words are its developers': each said here in ours.
     if (body.error_code === "otp_expired" || body.error_code === "invalid_credentials") {
-      throw new Error("That code is wrong or has expired. Check it, or ask for a new one.");
+      throw new Error(say("That code is wrong or has expired. Check it, or ask for a new one."));
     }
-    throw new Error(body.msg || body.error_description || "Could not sign in. Try again.");
+    if (reply.status === 429) throw new Error(say("Too many tries just now. Wait a few minutes and try again."));
+    throw new Error(say("Could not sign in just now ({status}). Try again.", { status: reply.status }));
   }
   keep(body, address);
   // Signed in: what follows a person from browser to browser (their theme,
@@ -217,14 +262,15 @@ export function madeUp(address) {
 /// straight to the server. [say], with orangecheck's words for a window
 /// blocked, closed or not answering (OUTCOME_COPY). Resolves once the
 /// button is ready to be shown; says why not, in words, when its code
-/// cannot be loaded, and then each click says so too.
-export async function orangecheckButton(button, { label, before = () => true, onToken, say }) {
+/// cannot be loaded, and then each click says so too. Its busy state and
+/// orangecheck's words in the visitor's language.
+export async function orangecheckButton(button, { label, before = () => true, onToken, say: tell }) {
   let code;
   try {
     code = await orangecheckCode();
   } catch {
-    const words = "The orangecheck sign-in could not be loaded. Check your connection and try again.";
-    button.addEventListener("click", () => say(words));
+    const words = say("The orangecheck sign-in could not be loaded. Check your connection and try again.");
+    button.addEventListener("click", () => tell(words));
     throw new Error(words);
   }
   // Ahead of orangecheck's own click, which opens the window.
@@ -236,15 +282,17 @@ export async function orangecheckButton(button, { label, before = () => true, on
   code.enhanceSignInButton(button, {
     mark: "mono",
     label,
+    busyLabel: say(code.SIGN_IN_BUSY_LABEL),
     onSignedIn: async ({ token }) => {
       try {
         await onToken(token);
       } catch (trouble) {
-        say(trouble.message);
+        tell(trouble.message);
       }
     },
     onOutcome: (outcome) => {
-      if (outcome.status !== "signed_in" && outcome.status !== "aborted") say(code.OUTCOME_COPY[outcome.status] || "");
+      const words = code.OUTCOME_COPY[outcome.status];
+      if (outcome.status !== "signed_in" && outcome.status !== "aborted") tell(words ? say(words) : "");
     },
   });
 }
@@ -257,7 +305,9 @@ export async function exchangeOrangecheck(token) {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token }),
   });
   const body = await json(reply);
-  if (!reply.ok || !body.access_token) throw new Error(body.error || `Could not sign in just now (${reply.status}).`);
+  if (!reply.ok || !body.access_token) {
+    throw new Error(body.error ? say(body.error) : say("Could not sign in just now ({status}). Try again.", { status: reply.status }));
+  }
   keep(body, body.user?.email);
   dispatchEvent(new Event("brickworks:signed-in"));
 }
@@ -302,20 +352,24 @@ export async function call(path, { method = "GET", body, keepalive = false } = {
 /// false when the person closes it. [why]: what signing in is for here (a
 /// like, a comment), which the page does once it resolves; with none, it
 /// is the page's own Sign in, and First steps may end at the feed.
-export function askToSignIn(why) {
+export async function askToSignIn(why) {
+  await learn();
   return new Promise((done) => {
     const dialog = document.createElement("dialog");
     dialog.className = "sign-in";
+    speaking(dialog);
     const title = document.createElement("h2");
-    title.textContent = "Sign in to Brickworks";
+    title.textContent = say("Sign in to Brickworks");
     // Named by its title, as a screen reader says it opens.
     title.id = "sign-in-title";
     dialog.setAttribute("aria-labelledby", title.id);
     const said = document.createElement("p");
-    said.textContent = why || "Sign in with your email address: we send you a code, no password.";
+    // A page's reason, said by it or here: on a page with no copy, its
+    // English is the key to the visitor's language.
+    said.textContent = why ? say(why) : say("Sign in with your email address: we send you a code, no password.");
     const form = document.createElement("form");
     const label = document.createElement("label");
-    label.textContent = "Email";
+    label.textContent = say("Email");
     const field = document.createElement("input");
     field.type = "email";
     field.autocomplete = "email";
@@ -329,11 +383,11 @@ export function askToSignIn(why) {
     const go = document.createElement("button");
     go.className = "cta";
     go.type = "submit";
-    go.textContent = "Email me a code";
+    go.textContent = say("Email me a code");
     const close = document.createElement("button");
     close.className = "cta ghost";
     close.type = "button";
-    close.textContent = "Not now";
+    close.textContent = say("Not now");
     const row = document.createElement("div");
     row.className = "actions";
     row.append(go, close);
@@ -349,10 +403,10 @@ export function askToSignIn(why) {
     oc.setAttribute("data-oc-sign-in", "");
     const mark = document.createElement("span");
     mark.setAttribute("data-oc-mark", "");
-    oc.append(mark, "Sign in with orangecheck");
+    oc.append(mark, say("Sign in with orangecheck"));
     const ocSaid = document.createElement("p");
     ocSaid.className = "note";
-    ocSaid.textContent = "A Bitcoin wallet, email, Google or GitHub. Brickworks gets an id for you, not your address.";
+    ocSaid.textContent = say("A Bitcoin wallet, email, Google or GitHub. Brickworks gets an id for you, not your address.");
     other.append(oc, ocSaid);
     // Under it, orangecheck Connect's box: never ticked but by the person,
     // in orangecheck's own words. Ticked, a sign-in by emailed code asks for
@@ -382,10 +436,10 @@ export function askToSignIn(why) {
       const drawn = [];
       if (known.offered) {
         drawn.push(orangecheckButton(oc, {
-          label: "Sign in with orangecheck",
+          label: say("Sign in with orangecheck"),
           before: () => {
-            note.textContent = offer.ready ? "Signing in with orangecheck, in its own window."
-              : "Signing in with orangecheck is unavailable here. Sign in with your email instead.";
+            note.textContent = offer.ready ? say("Signing in with orangecheck, in its own window.")
+              : say("Signing in with orangecheck is unavailable here. Sign in with your email instead.");
             go.disabled = offer.ready;
             return offer.ready;
           },
@@ -413,8 +467,8 @@ export function askToSignIn(why) {
       }
       if (known.connect) {
         drawn.push(import("/oc-connect-consent.mjs").then((words) => {
-          boxSaid.textContent = words.CONNECT_CONSENT_LABEL;
-          blurb.textContent = words.CONNECT_CONSENT_BLURB;
+          boxSaid.textContent = say(words.CONNECT_CONSENT_LABEL);
+          blurb.textContent = say(words.CONNECT_CONSENT_BLURB);
           consent.hidden = false;
         }).catch(() => null));
       }
@@ -440,12 +494,12 @@ export function askToSignIn(why) {
       try {
         if (!address) {
           address = await sendCode(field.value);
-          label.firstChild.textContent = `The code sent to ${address}`;
+          label.firstChild.textContent = say("The code sent to {address}", { address });
           field.type = "text";
           field.inputMode = "numeric";
           field.autocomplete = "one-time-code";
           field.value = "";
-          go.textContent = "Sign in";
+          go.textContent = say("Sign in");
           other.hidden = true;
           field.focus();
         } else {
@@ -470,9 +524,6 @@ export function askToSignIn(why) {
     field.focus();
   });
 }
-
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
-  "September", "October", "November", "December"];
 
 /// What the server keeps of this sign-in's age: {ask, over_13}, or null
 /// when nobody is signed in or it does not ask here.
@@ -501,19 +552,22 @@ export async function askAgeIfAsked({ pending = false } = {}) {
 /// The question itself, in a dialog over the page. Neutral: the same
 /// question for everybody, and nothing before the answer about what either
 /// answer opens.
-function askAge() {
+async function askAge() {
+  await learn();
   return new Promise((done) => {
     const dialog = document.createElement("dialog");
     dialog.className = "sign-in age";
+    speaking(dialog);
     const title = document.createElement("h2");
-    title.textContent = "One question first";
+    title.textContent = say("One question first");
     title.id = "age-title";
     dialog.setAttribute("aria-labelledby", title.id);
     const said = document.createElement("p");
-    said.textContent = "When were you born?";
+    said.textContent = say("When were you born?");
     const form = document.createElement("form");
     // Month and year as two dropdowns side by side, the way a date of birth
-    // is asked everywhere: the month by name, the years newest first.
+    // is asked everywhere: the month by name, the years newest first. The
+    // months as the language names them (Januar, janvier, enero).
     const choose = (id, said, autocomplete, choices) => {
       // Said once, inside the control; the label is there for a screen reader.
       const label = document.createElement("label");
@@ -541,9 +595,10 @@ function askAge() {
       return [label, select];
     };
     const thisYear = new Date().getFullYear();
-    const [monthLabel, month] = choose("age-month", "Month", "bday-month",
-      MONTHS.map((name, at) => [at + 1, name]));
-    const [yearLabel, year] = choose("age-year", "Year", "bday-year",
+    const months = new Intl.DateTimeFormat(language() === "en" ? "en-US" : language(), { month: "long", timeZone: "UTC" });
+    const [monthLabel, month] = choose("age-month", say("Month"), "bday-month",
+      Array.from({ length: 12 }, (_, at) => [at + 1, months.format(Date.UTC(2000, at, 1))]));
+    const [yearLabel, year] = choose("age-year", say("Year"), "bday-year",
       Array.from({ length: 111 }, (_, back) => [thisYear - back, String(thisYear - back)]));
     const when = document.createElement("div");
     when.className = "when";
@@ -555,13 +610,13 @@ function askAge() {
     go.className = "cta";
     go.type = "submit";
     go.id = "age-go";
-    go.textContent = "Carry on";
+    go.textContent = say("Carry on");
     const row = document.createElement("div");
     row.className = "actions";
     row.append(go);
     const quiet = document.createElement("p");
     quiet.className = "note";
-    quiet.textContent = "Brickworks asks everyone this once. The date itself is not kept.";
+    quiet.textContent = say("Brickworks asks everyone this once. The date itself is not kept.");
     form.append(when, row, note, quiet);
     dialog.append(title, said, form);
     document.body.append(dialog);
@@ -582,7 +637,9 @@ function askAge() {
         body: { month: Number(month.value), year: Number(year.value) } });
       go.disabled = false;
       if (answer.status !== 200 || !answer.body.age) {
-        note.textContent = answer.body.error || "That did not go just now. Try again in a minute.";
+        // The answer's own trouble (a month not come yet), else ours.
+        note.textContent = answer.status === 422 && answer.body.error ? say(answer.body.error)
+          : say("That did not go just now. Try again in a minute.");
         return;
       }
       const kept = answer.body.age;
@@ -591,15 +648,15 @@ function askAge() {
         return;
       }
       // Said after the answer, never before it.
-      title.textContent = "Thank you";
-      said.textContent = "You can build here, keep your models and share them by link with anyone you choose. "
+      title.textContent = say("Thank you");
+      said.textContent = say("You can build here, keep your models and share them by link with anyone you choose. "
         + "The gallery, a public profile and a name shown on a link are for people 13 and over, so they are "
-        + "not open on this account.";
+        + "not open on this account.");
       const carry = document.createElement("button");
       carry.className = "cta";
       carry.type = "button";
       carry.id = "age-done";
-      carry.textContent = "Carry on";
+      carry.textContent = say("Carry on");
       carry.addEventListener("click", () => end(kept));
       form.replaceWith(carry);
       carry.focus();
