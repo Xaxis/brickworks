@@ -848,10 +848,7 @@ try {
   const sides = [owner, guest];
   let made = 0;
   let together_moves = 0;
-  // The car's hinge kept out of the random edits: a motion is made on it below.
-  const carParts = (await textOf(owner.page)).parts || {};
-  const hinges = new Set(Object.keys(carParts).filter((uid) => /^393[78]/.test(carParts[uid])));
-  const uidsOf = async (page) => (await textOf(page)).uids.filter((uid) => !hinges.has(uid));
+  const uidsOf = async (page) => (await textOf(page)).uids;
   let known = await uidsOf(owner.page);
   for (let n = 0; n < EDITS; n++) {
     if (n % 10 === 0) known = await uidsOf(sides[n % 2].page);
@@ -965,12 +962,16 @@ try {
   const lookSaid = await tool(owner.page, "edit_booklet", { step: 1, zoom: 1.5 });
   console.log(`        edit_booklet: ${lookSaid.split("\n")[0].slice(0, 120)}`);
   await sameEverywhere("the booklet's look of a step, set by the owner");
-  // A motion: the car's door swung open, kept by the second person.
-  const partsNow = (await textOf(guest.page)).parts || {};
-  const hinge = Object.keys(partsNow).find((uid) => /^3938/.test(partsNow[uid]));
+  // A motion, kept by the second person, on a hinge it puts down away from
+  // the car. The car's own door was taken apart in 1 run of 19: the
+  // desktop's random edits in 3 take any part, and one deleted its Hinge 1
+  // x 2 Base, leaving the top and its tile with nothing to turn on, which
+  // define_motion rightly refused (2026-11-01).
+  const [, door] = await ask(guest.page, ["3937", "3938"].map((part) =>
+    ({ op: "place", part, colour: 7, x: -2000, y: 0, z: -2000 })));
   const motionSaid = await tool(guest.page, "define_motion", { name: "Open the door",
-    tracks: [{ joint: `#uid:${hinge}`, keys: [{ t: 0, place: 0 }, { t: 1, place: 45 }] }] });
-  console.log(`        define_motion: ${motionSaid.split("\n")[0].slice(0, 140)}`);
+    tracks: [{ joint: `#uid:${door?.uid}`, keys: [{ t: 0, place: 0 }, { t: 1, place: 45 }] }] });
+  console.log(`        define_motion: ${motionSaid.split("\n")[0].slice(0, motionSaid.startsWith("Kept") ? 140 : 600)}`);
   await sameEverywhere("a motion kept by the second person");
   check("...and the owner's file has it", (await textOf(owner.page)).text.includes("Open the door"));
   const hiddenSaid = await tool(owner.page, "colour_hidden_parts", { mode: "stages", stages: 2, apply: true, agreed: true });
