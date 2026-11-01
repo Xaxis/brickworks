@@ -1149,7 +1149,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `ModelLibrary.theme_said`, the list in the language's order
   (`LibraryDialog._say_themes`); and a model's or a sub-model's name in a
   line of the interface (`Language.keep_name`: "opened Car — 61 bricks" is
-  "Car geöffnet — 61 Steine", not "Auto"). A word with a second sense has
+  "Car geöffnet — 61 Steine", not "Auto"). A count in the thousands, which
+  the interface groups the English way wherever it is made ("1,575 of 1,575
+  sets"), is drawn as the language groups it (`Language.THOUSANDS`: 1.575 in
+  German and Spanish, 1 575 with a no-break space in French: the font has
+  no narrow one, which a browser draws 1.4 px wide). A word with a second sense has
   an entry of its own by context: Render's backdrop "White" (`msgctxt
   "backdrop"`, `tr("White", "backdrop")`) beside LDraw's colour White.
   `languages_probe` reads them all in English, then in each language: 63
@@ -1164,7 +1168,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Library's sets and themes not reached (the walk waits for them), a theme
   word drawn without its entry or the themes out of the language's order,
   a release's version line in Settings and About ("released 2026-10-31",
-  the probe giving the run a release's stamp) without its entry, or
+  the probe giving the run a release's stamp) without its entry, the
+  Library's count of sets not grouped as the language groups it, or
   `--about` not saying its line in the language chosen; a control set to draw its words as they are
   shows a name and is not read. `--missing=FILE` writes the entries to
   translate, each partial one with

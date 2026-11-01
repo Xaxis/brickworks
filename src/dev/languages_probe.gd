@@ -24,6 +24,8 @@
 ## - the Library's themes: those that are words by their own entries
 ##   (context "theme"), the product lines' and licences' names as they are;
 ## - a release's version line ("released 2026-10-31"), in Settings and About;
+## - a count of thousands, the Library's sets, grouped as the language groups
+##   it (1.575, 1 575);
 ## - Render's backdrop "White" reads the language's word, by its own entry
 ##   (msgctxt "backdrop"), while LDraw's colour White stays White; and a
 ##   sub-model named Car reads Car in the model tree and in a line that
@@ -44,6 +46,9 @@
 extends SceneTree
 
 const LANGUAGES: Array[String] = ["de", "fr", "es"]
+## What each groups a count's thousands with, where English has a comma:
+## 1.575 in German and Spanish, 1 575 in French (a no-break space).
+const THOUSANDS: Dictionary = {"de": ".", "fr": "\u00a0", "es": "."}
 
 var _failures: int = 0
 var _main: Node
@@ -991,6 +996,14 @@ func _themes(code: String) -> void:
 		await _shot("%s_library_themes" % code)
 		choice.get_popup().hide()
 		await _frames(3)
+	# Its count of sets, in the thousands: "1,575 of 1,575 sets".
+	var status: Label = library.get("_status")
+	var counted: RegExMatch = RegEx.create_from_string(r"\d{1,3}(,\d{3})+").search(status.text)
+	var drawn: String = status.atr(status.text)
+	_check("%s: a count of thousands grouped as the language groups it (\"%s\" drawn \"%s\")" % [
+		code, status.text, drawn], counted != null
+		and counted.get_string().replace(",", str(THOUSANDS[code])) in drawn
+		and not counted.get_string() in drawn)
 	await _close("library", shown[0])
 
 
