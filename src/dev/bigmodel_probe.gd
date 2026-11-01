@@ -257,6 +257,46 @@ func _open_mid_weigh() -> void:
 		await process_frame
 	var said: String = str(_main.get("_stability_text"))
 	_check("and 8202-1 was weighed after: \"%s\"" % said, not said.is_empty())
+	await _open_over_a_weighing(weighed_path)
+
+
+## And the model before opened again while 8202-1 is weighed: 8202-1 needs no
+## part of 42082-1 added, so its weighing is not stopped, and ends with
+## 42082-1 up. Every status line said beside 42082-1's count, read each frame
+## until its own weighing is said, gives no weight but its own. Until
+## 2026-10-31 8202-1's verdict stood there, and then its report, with
+## 42082-1's floor taken off: "stands up · -685 g".
+func _open_over_a_weighing(weighed_path: String) -> void:
+	var weighed: String = weighed_path.get_file().get_basename()
+	if not await _weigh_begun():
+		_check("8202-1 was weighed on a worker", false)
+		return
+	var result: Dictionary = _store.open_text(FileAccess.get_file_as_string(weighed_path), weighed)
+	(_main.get("_bar") as ModelBar).opened.emit(int(result["placed"]))
+	var counts: Label = _main.get("_counts")
+	var lines: Dictionary = {}
+	var began: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - began < 300000:
+		await process_frame
+		lines[counts.text] = true
+		if not bool(_main.get("_weighing")) and int(_main.get("_stability_revision")) \
+				== _world.revision and not str(_main.get("_stability_text")).is_empty():
+			break
+	await _frames(2)
+	var own: String = counts.text
+	lines[own] = true
+	var count: String = own.get_slice(" · ", 0)
+	var weight := RegEx.create_from_string("(-?\\d+) g$")
+	var own_weight: RegExMatch = weight.search(own)
+	var wrong := PackedStringArray()
+	for line: String in lines:
+		var found: RegExMatch = weight.search(line)
+		if line.get_slice(" · ", 0) == count and found != null and (own_weight == null
+				or found.get_string(1) != own_weight.get_string(1) or found.get_string(1).begins_with("-")):
+			wrong.append("\"%s\"" % line)
+	_check("%s opened while 8202-1 was weighed said no weight but its own (\"%s\")%s"
+		% [weighed, own, "" if wrong.is_empty() else ": also " + ", ".join(wrong)],
+		own_weight != null and not own_weight.get_string(1).begins_with("-") and wrong.is_empty())
 
 
 ## Whether the model up began to be weighed on a worker (Main._weigh), asked

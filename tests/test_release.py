@@ -423,3 +423,33 @@ def test_a_best_with_shapes_refused_fails_the_smoke(tmp_path, monkeypatch, capsy
     assert code == 1
     assert "FAIL  path-traced Best of the car over MCP: the path tracer refused shapes" in said
     assert "ok    ...and the editor's own picture of it" in said
+
+
+def test_the_smokes_session_keeps_its_tool_list_out_of_the_checkout(tmp_path, monkeypatch):
+    # The relay keeps the last tools/list it heard in tools/mcp_tools.json.
+    # A package from another commit serves another list, and smoking 0.13.0
+    # on 2026-11-01 rewrote the checkout's copy, which mcp_sync then failed.
+    checkout = tmp_path / "checkout"
+    (checkout / "tools").mkdir(parents=True)
+    ours = '[{"name": "place"}]\n'
+    (checkout / "tools" / "mcp_tools.json").write_text(ours)
+    # The check as the relay behaves: it writes the app's list where it is told.
+    (checkout / "tools" / "mcp_check.py").write_text(
+        "import os, pathlib\n"
+        "here = pathlib.Path(__file__).resolve().parent.parent\n"
+        "cache = os.environ.get('BRICKWORKS_MCP_CACHE') or here / 'tools' / 'mcp_tools.json'\n"
+        "pathlib.Path(cache).write_text('[{\"name\": \"from_another_commit\"}]\\n')\n"
+        "print('a design lands in 2 s')\n")
+    app = tmp_path / "app.py"
+    app.write_text(
+        "import socket, sys, time\n"
+        "port = int(next(a for a in sys.argv if a.startswith('--mcp=')).split('=')[1])\n"
+        "server = socket.create_server(('127.0.0.1', port))\n"
+        "time.sleep(120)\n")
+    smoke = tmp_path / "smoke"
+    smoke.mkdir()
+    monkeypatch.setattr(release, "ROOT", checkout)
+    said = release.takes_bricks([sys.executable, str(app)], {"PATH": "/usr/bin:/bin"}, smoke)
+    assert [ok for _, ok, _ in said] == [True, True], said
+    assert (checkout / "tools" / "mcp_tools.json").read_text() == ours
+    assert "from_another_commit" in (smoke / "mcp_tools.json").read_text()
