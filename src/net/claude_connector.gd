@@ -81,8 +81,12 @@ var has_work: Callable = func() -> bool: return false
 ## desktop the deployment the account signs in to — the live site, or
 ## BRICKWORKS_API — so the session said with a hello is one it knows.
 var base_url: String = "https://brickworks.diy"
-## Answers the requests. Needs its assistant and app set.
-var rpc: CommandSocket
+## Answers the requests (a CommandSocket). Needs its assistant and app set.
+## Made with the assistant's panel (Main._make_chat), which may be after this
+## switches on: listening waits for it. Not named here, nor the assistant
+## nor ViewerTools, which name the assistant's code, all of it: this is
+## made as the window is built, and they are not (Later).
+var rpc: Node
 ## Who is switching it on: the relay will not let a tab that is not signed
 ## in switch a connector on.
 var account: Account
@@ -156,6 +160,9 @@ var _off_here: bool = false
 var _waiting_until: int = 0
 var _next_ask: int = 0
 var _asking_connections: bool = false
+## While [method resume] asks whether to listen: the page runs the app's
+## frames out of view, as it does while it listens (_watch_the_page).
+var _asking_out_of_view: bool = false
 ## Whether Claude has ever reached this address, so the steps for adding
 ## it can be folded away once it has.
 var _used: bool = false
@@ -282,8 +289,15 @@ func resume() -> void:
 	var saved: Dictionary = _read()
 	if bool(saved.get("on", false)) and not _token.is_empty():
 		start()
-	# Which switches it on, if Claude is connected (_set_connections).
-	refresh_connections()
+	# Which switches it on, if Claude is connected (_set_connections). The
+	# page runs the frames it asks with while the tab is out of view: a tab
+	# opened and left at once for claude.ai asked with none, and listened
+	# only once the person came back (hidden_start_flow).
+	_asking_out_of_view = true
+	_watch_the_page()
+	await refresh_connections()
+	_asking_out_of_view = false
+	_watch_the_page()
 
 
 ## The one click: listen here, put the shared address on the clipboard
@@ -558,7 +572,7 @@ func _taught(sitting: Dictionary, tool: String, answer: Variant) -> Variant:
 			or not (answer as Dictionary).get("result") is Dictionary \
 			or not ((answer as Dictionary)["result"] as Dictionary).get("content") is Array:
 		return answer
-	var words: String = Assistant.METHOD
+	var words: String = Later.script(&"Assistant").METHOD
 	match "" if tool in SUBJECT_CALLS else str(sitting.get("changing", "")):
 		"owed":
 			sitting["changing"] = "said"
@@ -789,9 +803,10 @@ func _tell(op: String) -> void:
 ## The engine asks the page for every frame (requestAnimationFrame), and a
 ## browser stops answering that for a tab it is not showing. So the page
 ## answers it instead while the tab is out of view and the connector is
-## on: from a worker's clock, which a browser does not hold back the way it
-## holds back the page's own timers — one frame at a time, 33 ms after the
-## last has run, so the page keeps time for everything else it does. A
+## on, or finding out whether to be ([method resume]): from a worker's
+## clock, which a browser does not hold back the way it holds back the
+## page's own timers — one frame at a time, 33 ms after the last has run,
+## so the page keeps time for everything else it does. A
 ## frame asked for just before the tab went out of view is handed on too,
 ## once — the screen would otherwise sit on it until the tab came back.
 ## The same worker tells the relay the page is alive every ten seconds.
@@ -804,6 +819,7 @@ func _watch_the_page() -> void:
 		if _on else "")
 	JavaScriptBridge.eval("""
 		window.brickworksConnector = %s;
+		window.brickworksConnectorAsking = %s;
 		if (!window.brickworksConnectorWatched) {
 			window.brickworksConnectorWatched = true;
 			var paint = window.requestAnimationFrame.bind(window);
@@ -849,8 +865,11 @@ func _watch_the_page() -> void:
 					+ "&model=" + encodeURIComponent(String(window.brickworksModelName || "").slice(0, 120));
 			}
 			var focusedAt = 0;
+			function driven() {
+				return !!window.brickworksConnector || !!window.brickworksConnectorAsking;
+			}
 			function steer() {
-				var away = document.hidden && !!window.brickworksConnector;
+				var away = document.hidden && driven();
 				if (!clock) {
 					var code = "var b=null;onmessage=function(e){" +
 						"if(e.data.frame>0){setTimeout(function(){postMessage('frame')},e.data.frame);return}" +
@@ -872,7 +891,7 @@ func _watch_the_page() -> void:
 			window.brickworksSteer = steer;
 			window.requestAnimationFrame = function (callback) {
 				var wrapped = once(callback);
-				if (document.hidden && window.brickworksConnector) {
+				if (document.hidden && driven()) {
 					waiting.push(wrapped);
 					tick();
 					return 0;
@@ -909,7 +928,7 @@ func _watch_the_page() -> void:
 			});
 		}
 		window.brickworksSteer();
-	""" % JSON.stringify(url), true)
+	""" % [JSON.stringify(url), "true" if _asking_out_of_view else "false"], true)
 
 
 ## Which tab this is, as the relay and Claude know it.
@@ -1026,6 +1045,14 @@ static func _new_token() -> String:
 func _listen() -> void:
 	var token: String = _token
 	var mine: int = _generation
+	# Its answers to the handshake and the tool list are rpc's, which comes
+	# with the assistant's panel, the window's first frame drawn. The page's
+	# frames go on out of view once this is on (_watch_the_page), so it
+	# comes there too.
+	while rpc == null:
+		await get_tree().process_frame
+		if mine != _generation:
+			return
 	while true:
 		var greeted: int = await _hello()
 		if mine != _generation:
@@ -1127,7 +1154,7 @@ func _answer(token: String, work: Dictionary) -> void:
 	# The card in Claude asking for the model, the check or the steps
 	# (ViewerTools) is the person looking, not Claude building: the panel
 	# does not say Claude is at work for it.
-	var looking: bool = ViewerTools.handles(tool)
+	var looking: bool = Later.script(&"ViewerTools").handles(tool)
 	if not looking:
 		if not tool.is_empty():
 			_chat_called(request, tool, arguments)

@@ -1361,9 +1361,120 @@ func replace_selection(part_id: String, in_place: bool = false) -> Vector2i:
 	if alive.is_empty() or into == null:
 		return Vector2i.ZERO
 	var steps: Array = []
-	var refused: int = 0
 	var swapped := PackedInt64Array()
+	var refused: int = _replace_from(alive, 0, part_id, into, in_place, steps, swapped)
+	return _replaced(part_id, steps, swapped, refused)
+
+
+## A selection of this many parts or more is asked where the part in hand
+## fits on a worker ([method replace_selection_paced]).
+const REPLACE_ON_A_WORKER_FROM := 600
+
+
+## [method replace_selection], the same swaps, with where each part fits
+## asked on a worker while the window draws: on Orthanc that asking was a
+## second of one frame (replacefast). Asked of a copy of the lattice that
+## changes as the swaps would ([method _replace_plan]), and the swaps then
+## made here as planned. When the model changed meanwhile, all of it is
+## asked again as it now is. A coroutine.
+func replace_selection_paced(part_id: String, in_place: bool = false) -> Vector2i:
+	var alive: PackedInt64Array = _living_selection()
+	var into: Lbm.PartMesh = library.mesh_for(part_id)
+	if alive.is_empty() or into == null:
+		return Vector2i.ZERO
+	if alive.size() < REPLACE_ON_A_WORKER_FROM or OS.has_feature("nothreads"):
+		return replace_selection(part_id, in_place)
+	var parts := PackedStringArray()
+	var places: Array[Transform3D] = []
 	for brick_id: int in alive:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		parts.append(brick.part_id)
+		places.append(brick.transform)
+	var asked: BrickLattice = lattice.copy_for_reading()
+	var model_at: Array = [world.generation(), world.revision, lattice.revision]
+	var planned: Array = [null]
+	var sharing := Mutex.new()
+	library.begin_reading()
+	var task: int = WorkerTasks.add(func() -> void:
+		var made: Dictionary = _replace_plan(alive, parts, places, part_id, into, in_place, asked)
+		sharing.lock()
+		planned[0] = made
+		sharing.unlock(), false, "ask where the part in hand fits")
+	library.reading_in(task)
+	while not WorkerThreadPool.is_task_completed(task):
+		await Engine.get_main_loop().process_frame
+	WorkerTasks.collect(task)
+	library.end_reading(task)
+	sharing.lock()
+	var plan: Variant = planned[0]
+	sharing.unlock()
+	if plan == null or model_at != [world.generation(), world.revision, lattice.revision]:
+		return replace_selection(part_id, in_place)
+	var decided: PackedByteArray = (plan as Dictionary)["decided"]
+	var where: Dictionary = (plan as Dictionary)["where"]
+	var steps: Array = []
+	var swapped := PackedInt64Array()
+	var refused: int = 0
+	for n: int in alive.size():
+		if decided[n] == _REFUSED:
+			refused += 1
+		elif decided[n] == _SWAPPED:
+			var put: Array = where[n]
+			if not _swap(world.get_brick(alive[n]), part_id, put[0], put[1], steps, swapped):
+				# Not put down after all (_swap): the plan went on as if it
+				# had been, so the rest is asked as the original asks it.
+				refused += 1 + _replace_from(alive, n + 1, part_id, into, in_place, steps,
+					swapped)
+				break
+	return _replaced(part_id, steps, swapped, refused)
+
+
+## What [method _replace_plan] decided of a part: the part in hand already,
+## no room for it, or swapped for it.
+const _SAME := 0
+const _REFUSED := 1
+const _SWAPPED := 2
+
+
+## The swaps of [method _replace_from] for [param ids], from their parts
+## ([param parts]) and places ([param places]) as they were read, asked of
+## [param asked], a copy of the lattice (BrickLattice.copy_for_reading)
+## changed as each swap changes the lattice: {"decided": what of each, by
+## index (_SAME, _REFUSED, _SWAPPED), "where": index -> [where it goes, its
+## cover]}. A swap's new part stands in [param asked] under an id of its
+## own below 0, and is asked about as the new part is: as another part.
+## Safe on a worker: it reads the library and the covers kept, and changes
+## nothing but [param asked].
+func _replace_plan(ids: PackedInt64Array, parts: PackedStringArray, places: Array[Transform3D],
+		part_id: String, into: Lbm.PartMesh, in_place: bool, asked: BrickLattice) -> Dictionary:
+	var decided := PackedByteArray()
+	decided.resize(ids.size())
+	var where: Dictionary = {}
+	for n: int in ids.size():
+		if parts[n] == part_id:
+			decided[n] = _SAME
+			continue
+		var at: Transform3D = places[n] if in_place \
+			else _in_place_of(places[n], library.mesh_for(parts[n]), into)
+		var packed: PackedInt32Array = boxes_for(into, at)
+		if asked.collides_boxes(packed, ids[n]):
+			decided[n] = _REFUSED
+			continue
+		asked.release(ids[n])
+		asked.occupy_boxes(-(n + 1), packed)
+		decided[n] = _SWAPPED
+		where[n] = [at, packed]
+	return {"decided": decided, "where": where}
+
+
+## The swaps of [method replace_selection] for [param alive] from its
+## [param start]th on, one after another as the lattice is now, into
+## [param steps] and [param swapped]. Returns how many had no room.
+func _replace_from(alive: PackedInt64Array, start: int, part_id: String, into: Lbm.PartMesh,
+		in_place: bool, steps: Array, swapped: PackedInt64Array) -> int:
+	var refused: int = 0
+	for n: int in range(start, alive.size()):
+		var brick_id: int = alive[n]
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		if brick.part_id == part_id:
 			continue
@@ -1378,23 +1489,40 @@ func replace_selection(part_id: String, in_place: bool = false) -> Vector2i:
 		if lattice.collides_boxes(packed, brick_id):
 			refused += 1
 			continue
-		lattice.release(brick_id)
-		var made: int = world.add_brick(part_id, brick.color_code, at)
-		if made == 0:
-			lattice.occupy_boxes(brick_id, boxes_for(was, brick.transform))
+		if not _swap(brick, part_id, at, packed, steps, swapped):
 			refused += 1
-			continue
-		world.get_brick(made).group = brick.group
-		world.get_brick(made).unit = brick.unit
-		world.get_brick(made).step = brick.step
-		lattice.occupy_boxes(made, packed)
-		steps.append({"undo": "remove", "brick": made})
-		steps.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
-			"transform": brick.transform, "group": brick.group, "unit": brick.unit,
-			"step": brick.step, "was": brick.id})
-		world.remove_brick(brick_id)
-		removed.emit(brick_id)
-		swapped.append(made)
+	return refused
+
+
+## [param brick] swapped for [param part_id] at [param at], whose cover is
+## [param packed], into [param steps] and [param swapped]. False, and the
+## brick as it was, when the new part could not be put down.
+func _swap(brick: BrickWorld.Brick, part_id: String, at: Transform3D, packed: PackedInt32Array,
+		steps: Array, swapped: PackedInt64Array) -> bool:
+	var brick_id: int = brick.id
+	lattice.release(brick_id)
+	var made: int = world.add_brick(part_id, brick.color_code, at)
+	if made == 0:
+		lattice.occupy_boxes(brick_id, boxes_for(library.mesh_for(brick.part_id), brick.transform))
+		return false
+	world.get_brick(made).group = brick.group
+	world.get_brick(made).unit = brick.unit
+	world.get_brick(made).step = brick.step
+	lattice.occupy_boxes(made, packed)
+	steps.append({"undo": "remove", "brick": made})
+	steps.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
+		"transform": brick.transform, "group": brick.group, "unit": brick.unit,
+		"step": brick.step, "was": brick.id})
+	world.remove_brick(brick_id)
+	removed.emit(brick_id)
+	swapped.append(made)
+	return true
+
+
+## A replace's swaps kept as one step, and selected: [how many, how many
+## had no room].
+func _replaced(part_id: String, steps: Array, swapped: PackedInt64Array,
+		refused: int) -> Vector2i:
 	if steps.is_empty():
 		return Vector2i(0, refused)
 	var info: PartLibrary.PartInfo = library.parts.get(part_id)

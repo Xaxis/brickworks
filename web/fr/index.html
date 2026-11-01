@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<!-- web/index.html in Français, written by tools/site_lang.py from it and web/_lang/fr.json: change those and run it, never this. -->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brickworks — concevez des modèles LEGO® avec l’IA, dans votre navigateur</title>
+<meta name="oc-domain-verify" content="38ed3e13e5fecb1a4a11263170a7f3b6db925be6373c8142" />
+<meta name="description" content="Brickworks est une CAO gratuite pour les modèles LEGO® qui fonctionne dans n’importe quel navigateur, y compris sur tablette ou téléphone, sans rien installer : elle vérifie qu’un modèle tient debout et quelles liaisons vont céder, fait tourner les trains d’engrenages à leurs vrais rapports, construit un modèle à plusieurs en direct, ouvre et enregistre les fichiers Studio .io, et exporte des fichiers 3D, des rendus et des livrets à imprimer ou à enregistrer en PDF. Aussi en application de bureau.">
+<link rel="canonical" href="https://brickworks.diy/fr">
+<link rel="alternate" hreflang="en" href="https://brickworks.diy/">
+<link rel="alternate" hreflang="de" href="https://brickworks.diy/de">
+<link rel="alternate" hreflang="fr" href="https://brickworks.diy/fr">
+<link rel="alternate" hreflang="es" href="https://brickworks.diy/es">
+<link rel="alternate" hreflang="x-default" href="https://brickworks.diy/">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Brickworks — une CAO complète pour les modèles LEGO®">
+<meta property="og:description" content="Dans n’importe quel navigateur ou sur un téléphone, rien à installer. Vérifie que votre modèle tient debout, construit un modèle à plusieurs en direct, ouvre et enregistre les fichiers Studio .io, et exporte des fichiers 3D, des rendus et des livrets. Gratuit.">
+<meta property="og:url" content="https://brickworks.diy/fr">
+<!-- Absolute, and a real file. A card reader fetches this on its own
+     from wherever it saw the link, so a relative path resolves against
+     nothing it has. -->
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Le logo Brickworks, un cube au coin découpé, et les mots : une CAO complète pour les modèles LEGO®, à côté du rendu d’un château de pierre gris en briques.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Brickworks — une CAO complète pour les modèles LEGO®">
+<meta name="twitter:description" content="Dans n’importe quel navigateur ou sur un téléphone, rien à installer. Vérifie que votre modèle tient debout, construit un modèle à plusieurs en direct, ouvre et enregistre les fichiers Studio .io, et exporte des fichiers 3D, des rendus et des livrets. Gratuit.">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<meta name="twitter:image:alt" content="Le logo Brickworks, un cube au coin découpé, et les mots : une CAO complète pour les modèles LEGO®, à côté du rendu d’un château de pierre gris en briques.">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/site.css">
+<style>
+/* Only layout here; every control and panel is site.css's (the landing kit). */
+.hero { padding: clamp(56px, 8vw, 104px) 0 0; text-align: center; }
+.hero .wrap > .badge { margin-bottom: var(--s-5); }
+.hero h1 { max-width: 16ch; margin-inline: auto; margin-bottom: var(--s-4); }
+.hero .lede { margin: 0 auto var(--s-6); max-width: 58ch; }
+.hero .note { margin-top: var(--s-4); }
+.hero-shot { margin-top: clamp(40px, 6vw, 72px); border-radius: var(--r-4); }
+.hero-shot img { aspect-ratio: 16 / 9; }
+/* The app's picture runs under the next section's line, wider than the
+   words on a big screen: it is the thing to look at. */
+@media (width >= 1600px) { .hero-shot { margin-inline: -110px; } }
+
+/* Three pictures from the app, over the rest as features. */
+.proofs { display: grid; gap: var(--s-4); grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 0 var(--s-4); padding: 0; list-style: none; }
+.proofs .shot { height: 100%; }
+.proofs .shot img { aspect-ratio: 16 / 10; object-fit: cover; }
+.proofs figcaption { padding: 14px 18px 18px; }
+.proofs figcaption b { margin-bottom: 2px; }
+@media (width < 900px) { .proofs { grid-template-columns: minmax(0, 1fr); } }
+@media (width >= 600px) and (width < 900px) { .proofs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .proofs li:last-child { grid-column: 1 / -1; } }
+.also { margin: var(--s-5) 0 0; color: var(--ink-soft); font-size: var(--t-small); max-width: 92ch; }
+
+/* The AI designer: its words beside the before and after. */
+.designer .lines { display: grid; gap: var(--s-3); margin: var(--s-5) 0; }
+.designer .quote { margin: var(--s-4) 0 0; padding-left: var(--s-4); border-left: 2px solid var(--accent-edge); color: var(--ink-soft); font-size: var(--t-small); }
+.strip + .strip { margin-top: var(--s-7); }
+
+/* The web and the desktop, two panels with their ways in. */
+.platforms { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); }
+@media (width >= 900px) { .platforms { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.platforms .tier .actions { margin-top: auto; padding-top: var(--s-2); }
+.platforms .tier .cta { width: auto; }
+.plans-teaser { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1fr); max-width: 880px; margin-inline: auto; }
+@media (width >= 900px) { .plans-teaser { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.plans-teaser .ticks { margin-bottom: var(--s-2); }
+.plans-teaser .tier > .cta { margin-top: auto; }
+.more-plans { margin: var(--s-5) 0 0; text-align: center; color: var(--ink-soft); font-size: var(--t-small); }
+.more-plans a { padding-block: 6px; }
+</style>
+<script src="/follow.js" type="module"></script>
+<script src="/landing.js" type="module"></script>
+<script type="application/json" id="site-words">{", a graphics driver with Vulkan or OpenGL 3.3": ", un pilote graphique avec Vulkan ou OpenGL 3.3", ", and {size} of disk": " et {size} d’espace disque", "Account": "Compte", "Advent": "Avent", "Airlines": "Compagnies aériennes", "Airport": "Aéroport", "Apple silicon and Intel": "Apple silicon et Intel", "Assistant": "Assistant", "Beta hub": "Espace bêta", "Boat": "Bateaux", "Building": "Bâtiments", "Cargo": "Fret", "Chinese (Lunar) New Year": "Nouvel An lunaire", "Christmas": "Noël", "Coast Guard": "Garde-côtes", "Construction": "Chantier", "Copied": "Copié", "Copy": "Copier", "Designed with the assistant, {how}": "Conçu avec l’assistant, {how}", "Download for {system}": "Télécharger pour {system}", "Farm": "Ferme", "Fire": "Pompiers", "First launch: drag it into Applications.": "Premier lancement : glissez-la dans Applications.", "First launch: extract the zip first.": "Premier lancement : décompressez d’abord le zip.", "First launch: extract the zip, then allow it once.": "Premier lancement : décompressez le zip, puis autorisez-la une fois.", "First launch: let the AppImage run as a program.": "Premier lancement : autorisez l’AppImage à s’exécuter comme un programme.", "First launch: macOS asks you to allow it once.": "Premier lancement : macOS vous demande une fois de l’autoriser.", "Harbor": "Port", "Hobby Sets": "Sets Hobby", "Hospital": "Hôpital", "In PowerShell, this checks the file is the one published. It should print True.": "Dans PowerShell, ceci vérifie que le fichier est bien celui publié. Il doit afficher True.", "In Terminal, this checks the file is the one published. It should print OK.": "Dans Terminal, ceci vérifie que le fichier est bien celui publié. Il doit afficher OK.", "In a terminal, this checks each file is the one published. It should print OK.": "Dans un terminal, ceci vérifie que chaque fichier est bien celui publié. Il doit afficher OK.", "LDraw has a 3D model of it, to build in Brickworks": "LDraw en a un modèle 3D, à construire dans Brickworks", "LEGO® Exclusive": "Sets LEGO® exclusifs", "Made from a 3D model with Brickify, {how}": "Fait à partir d’un modèle 3D avec Brickify, {how}", "Menu": "Menu", "Menu and your account": "Menu et votre compte", "Menu and your account, {n} new": "Menu et votre compte, {n} nouveaux", "Modelled by {name}": "Modélisé par {name}", "Modular Buildings": "Bâtiments modulaires", "Moves:": "Bouge :", "Needs 64-bit Linux on an x86 PC": "Nécessite Linux 64 bits sur un PC x86", "Needs 64-bit Linux on an x86 PC with glibc {glibc} or newer": "Nécessite Linux 64 bits sur un PC x86 avec glibc {glibc} ou plus récent", "Needs 64-bit Windows 10 or 11, a graphics driver with Vulkan, Direct3D 12 or OpenGL 3.3": "Nécessite Windows 10 ou 11 64 bits, un pilote graphique avec Vulkan, Direct3D 12 ou OpenGL 3.3", "Needs macOS on Apple silicon or Intel": "Nécessite macOS sur Apple silicon ou Intel", "Needs macOS {arm} or later on Apple silicon, {intel} or later on Intel": "Nécessite macOS {arm} ou ultérieur sur Apple silicon, {intel} ou ultérieur sur Intel", "New in {version}": "Nouveautés de la {version}", "No picture": "Pas d’image", "Notifications": "Notifications", "Off-Road": "Tout-terrain", "Open it and drag what moves, as it was built": "Ouvrez-le et faites bouger ce qui bouge, tel qu’il a été construit", "Open it and play it:": "Ouvrez-le pour la jouer :", "Open it and play them:": "Ouvrez-le pour les jouer :", "Other": "Autres", "Other systems: ": "Autres systèmes : ", "Police": "Police", "Promotional": "Sets promotionnels", "Released {date}": "Publiée le {date}", "Saved": "Enregistrés", "Seasonal": "Sets saisonniers", "See Pro": "Voir Pro", "Selected": "Sélectionné", "Send feedback": "Envoyer un avis", "Settings": "Réglages", "Sign in": "Se connecter", "Sign in to download the desktop app.": "Connectez-vous pour télécharger l’app de bureau.", "Sign out": "Se déconnecter", "Signed in": "Connecté", "Stands at every step · every step reachable · every part made in its colour · nothing loose": "Tient à chaque étape · chaque étape accessible · chaque pièce produite dans sa couleur · rien de lâche", "Tested": "Testé", "Thanksgiving": "Thanksgiving", "The Hobbit and Lord of the Rings": "Le Hobbit et Le Seigneur des Anneaux", "The LEGO® Movie": "La Grande Aventure LEGO®", "The Lord of the Rings": "Le Seigneur des Anneaux", "The download did not start just now. Try again in a minute.": "Le téléchargement n’a pas démarré. Réessayez dans une minute.", "The {kind}:": "Le fichier {kind} :", "Traffic": "Circulation", "Train": "Trains", "Trains": "Trains", "Vehicle": "Véhicules", "Version {version}": "Version {version}", "Windows 10 and 11": "Windows 10 et 11", "Won “{title}”, by hand": "A gagné « {title} », à la main", "Won “{title}”, with the assistant": "A gagné « {title} », avec l’assistant", "You have every part": "Vous avez toutes les pièces", "You have none of its parts": "Vous n’avez aucune de ses pièces", "You have {have} of its {pieces} parts": "Vous avez {have} de ses {pieces} pièces", "Your account": "Votre compte", "Your account, {n} new": "Votre compte, {n} nouveaux", "Your feed": "Votre fil", "Your profile": "Votre profil", "actuator": "vérin", "and {n} more": "et {n} de plus", "as its designer tagged it": "comme son créateur l’a indiqué", "as the app said when it was published": "comme l’app l’a indiqué à la publication", "boom": "flèche", "built": "construit", "comment": "commentaire", "comments": "commentaires", "doors": "portes", "gears": "engrenages", "like": "j’aime", "likes": "j’aime", "part": "pièce", "parts": "pièces", "pneumatics": "pneumatique", "rack": "crémaillère", "remix": "remix", "remixes": "remix", "steering": "direction", "turntable": "plateau tournant", "{n} new": "{n} nouveaux"}</script>
+</head>
+<body>
+<a class="skip" href="#main">Aller au contenu</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/fr" aria-current="page"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Principal">
+			<a href="/gallery">Galerie</a>
+			<a href="/library">Bibliothèque</a>
+			<a href="/docs">Docs</a>
+			<a href="/plans">Tarifs</a>
+			<a class="cta" href="/app?lang=fr">Ouvrir l’application</a>
+			<a class="cta ghost" href="/profile" data-account>Se connecter</a>
+		</nav>
+		<details class="menu">
+			<summary>Menu</summary>
+			<div class="menu-list">
+				<nav aria-label="Menu">
+					<a href="/gallery">Galerie</a>
+					<a href="/library">Bibliothèque</a>
+					<a href="/docs">Docs</a>
+					<a href="/plans">Tarifs</a>
+					<a href="/fr/download">Télécharger</a>
+					<a href="/profile" data-account>Se connecter</a>
+				</nav>
+				<div class="theme-choice"><span aria-hidden="true">Thème</span>
+					<div class="segmented" role="group" aria-label="Thème">
+						<button type="button" data-theme-choice="system" aria-pressed="true">Système</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Clair</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Sombre</button>
+					</div>
+				</div>
+			</div>
+		</details>
+	</div>
+</header>
+
+<main id="main">
+	<section class="hero halo" aria-labelledby="hero-h">
+		<div class="wrap">
+			<a class="badge accent" href="/docs/fresh-eyes">Nouveau : un regard neuf sur chaque design IA <span aria-hidden="true">→</span></a>
+			<h1 class="display" id="hero-h">Concevez des modèles LEGO® avec l’IA, <em>dans votre navigateur</em></h1>
+			<p class="lede">Décrivez un modèle et regardez une IA l’assembler avec de vraies pièces, ou construisez-le à la main. Une CAO complète qui vérifie qu’il tient debout, ouvre vos fichiers Studio et imprime le livret. Rien à installer, et c’est gratuit.</p>
+			<div class="actions center">
+				<a class="cta big" href="/app?lang=fr">Ouvrir l’application <span class="arrow" aria-hidden="true">→</span></a>
+				<a class="cta ghost big" href="/fr/download">Télécharger la version de bureau</a>
+			</div>
+			<p class="note">Sur ordinateur, tablette ou téléphone. L’IA, c’est votre propre Claude, ChatGPT ou clé, sans limite, et elle reste désactivée tant que vous ne l’activez pas.</p>
+			<figure class="shot hero-shot">
+				<div class="window" aria-hidden="true"><i></i><i></i><i></i><span>brickworks.diy/app</span></div>
+				<img src="/img/hero-1200.webp"
+					srcset="/img/hero-1200.webp 1200w, /img/hero-2400.webp 2400w, /img/hero-3200.webp 3200w"
+					sizes="(min-width: 1600px) 1360px, (min-width: 1180px) 1140px, calc(100vw - 32px)"
+					width="2400" height="1350" fetchpriority="high" decoding="async"
+					alt="L’éditeur Brickworks avec un château de 2 438 pièces ouvert et son châtelet d’entrée sélectionné : les menus et une barre d’outils en haut ; à gauche, le bac à pièces, l’arborescence du modèle et de ses sous-ensembles, et les propriétés du châtelet, un sous-ensemble de 406 pièces ; le cube de vue en haut à droite ; et au milieu un château de pierre avec des tours, des douves et une cour, le châtelet entouré de jaune.">
+			</figure>
+		</div>
+	</section>
+
+	<section class="section defer" id="how" aria-labelledby="how-h">
+		<div class="wrap">
+			<div class="section-head">
+				<div>
+					<p class="eyebrow">Comment ça marche</p>
+					<h2 class="title" id="how-h">D’une phrase à un modèle que vous pouvez construire</h2>
+				</div>
+				<a href="/docs/ai">Concevoir avec l’IA</a>
+			</div>
+			<ol class="steps">
+				<li><h3>Dites ce que vous voulez</h3><p>« Un camion de pompiers rouge avec une échelle qui se lève. » Tapez-le dans l’assistant de l’application, ou demandez-le à Claude sur claude.ai et il construit dans votre onglet ouvert.</p></li>
+				<li><h3>Regardez-le construire, pièce par pièce</h3><p>Chaque pièce se pose à mesure que l’IA la place, toutes issues de la bibliothèque LDraw, en taille réelle. L’application décide si chaque pièce s’emboîte et tient : ce que l’IA construit est donc constructible.</p></li>
+				<li><h3>Faites-le vôtre, puis construisez-le</h3><p>Changez ce que vous voulez à la main, vérifiez qu’il tient debout, puis imprimez le livret, emportez la liste des pièces sur BrickLink ou Rebrickable, ou partagez-le dans la galerie.</p></li>
+			</ol>
+		</div>
+	</section>
+
+	<section class="section defer designer" id="assistant" aria-labelledby="assistant-h">
+		<div class="wrap split">
+			<div>
+				<p class="eyebrow">Le concepteur IA</p>
+				<h2 class="title" id="assistant-h">Il y revient, avec un regard neuf</h2>
+				<p>À son premier enregistrement, chaque nouvelle conception passe sous le regard d’un inconnu : trois images du modèle et vos propres mots. À quoi fait-il penser ? Qu’est-ce qui fait penser à une boîte quelconque ? Puis les trois changements qu’un concepteur de sets ferait en premier, déjà faits.</p>
+				<p>Face aux mêmes conceptions sans regard neuf, celles qui en avaient un ont été préférées dans deux verdicts sur trois.</p>
+				<div class="lines">
+					<p class="quote">Claude, ou une autre IA avec votre propre clé, construit avec les mêmes vraies pièces et les mêmes vérifications que vous. Désactivée, l’IA n’apparaît nulle part dans la fenêtre.</p>
+				</div>
+				<div class="actions">
+					<a class="cta ghost" href="/docs/fresh-eyes">Comment fonctionne le regard neuf</a>
+					<a class="link" href="/faq#claude">Comment utiliser votre propre Claude</a>
+				</div>
+			</div>
+			<figure class="ba">
+				<div class="pair">
+					<figure class="side">
+						<span class="badge">Sans regard neuf</span>
+						<img src="/img/fresh-before-400.webp" srcset="/img/fresh-before-400.webp 400w, /img/fresh-before-720.webp 720w"
+							sizes="(min-width: 1180px) 300px, (min-width: 900px) 26vw, calc(50vw - 22px)"
+							width="720" height="540" loading="lazy" decoding="async"
+							alt="Un caméléon en briques construit sans regard neuf : un corps vert carré rayé d’orange et de bleu sur une branche marron au-dessus d’un socle sombre, la queue en spirale plate et anguleuse derrière lui et la langue rose tendue tout droit.">
+					</figure>
+					<figure class="side">
+						<span class="badge accent">Avec regard neuf</span>
+						<img src="/img/fresh-after-400.webp" srcset="/img/fresh-after-400.webp 400w, /img/fresh-after-720.webp 720w"
+							sizes="(min-width: 1180px) 300px, (min-width: 900px) 26vw, calc(50vw - 22px)"
+							width="720" height="540" loading="lazy" decoding="async"
+							alt="La même consigne construite avec regard neuf : un caméléon plus fin aux yeux en tourelle avec une crête le long du dos, la queue enroulée en spirale ronde et la langue tendue vers une mouche, sur une branche tortueuse au-dessus d’un socle bordé de gris avec des plantes, des rochers et une plaque à son nom.">
+					</figure>
+				</div>
+				<figcaption id="also">Sur notre banc d’essai : une même consigne, « un caméléon sur une branche tortueuse, qui attrape une mouche en projetant sa langue, queue enroulée, yeux en tourelle », construite deux fois. Jugés à l’aveugle, dans un ordre puis dans l’autre, celui avec regard neuf l’a emporté en ressemblance, en réalisme, en créativité, en technique et au classement général.</figcaption>
+			</figure>
+		</div>
+	</section>
+
+	<!-- Filled by web/landing.js once three cards of each have their
+	     pictures; until then a row of skeletons holds each strip's place, so
+	     the page under it does not move when it comes. Taken away only when
+	     it cannot be read. Eight, as many as the cards (landing.js MOST). -->
+	<section class="section defer" id="community" aria-labelledby="made-h">
+		<div class="wrap strip" id="made">
+			<div class="section-head">
+				<div>
+					<p class="eyebrow">La galerie</p>
+					<h2 class="title" id="made-h">Créé avec Brickworks</h2>
+				</div>
+				<a href="/gallery">Voir la galerie</a>
+			</div>
+			<div class="models scroller" id="made-models" role="group" aria-labelledby="made-h">
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			</div>
+		</div>
+		<div class="wrap strip" id="sets">
+			<div class="section-head">
+				<div>
+					<p class="eyebrow">La bibliothèque LDraw</p>
+					<h2 id="sets-h">De vrais sets, prêts à ouvrir</h2>
+					<p>Chaque set LEGO®, avec sa propre page, son image et ses pièces pour le construire. Ceux que la communauté LDraw a modélisés s’ouvrent en entier dans l’éditeur.</p>
+				</div>
+				<a href="/library">Parcourir la bibliothèque</a>
+			</div>
+			<div class="models scroller" id="sets-models" role="group" aria-labelledby="sets-h">
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+				<div class="skeleton-card skeleton" aria-hidden="true"><div class="frame"></div><div class="words"><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone tiny"></span></div></div>
+			</div>
+		</div>
+	</section>
+
+	<section class="section defer" id="features" aria-labelledby="features-h">
+		<div class="wrap">
+			<div class="section-head">
+				<div>
+					<p class="eyebrow">Dans l’application</p>
+					<h2 class="title" id="features-h">Fait pour des constructions qui doivent fonctionner</h2>
+				</div>
+				<a href="/compare">Comment il se compare aux autres</a>
+			</div>
+			<ul class="proofs">
+				<li><figure class="shot">
+					<img src="/img/stability-400.webp"
+						srcset="/img/stability-400.webp 400w, /img/stability-720.webp 720w, /img/stability-1200.webp 1200w"
+						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
+						width="1200" height="900" loading="lazy" decoding="async"
+						alt="Outils, Vérifier la stabilité sur un bras qui s’avance loin au-delà d’une petite base : l’emprise de la base tracée en rouge au sol, le centre de gravité marqué au-delà de son bord et relié par une ligne, et les liaisons qui portent plus qu’elles ne peuvent tenir teintées d’un rouge plus clair.">
+					<figcaption><b>Tiendra-t-il debout ?</b>Où il bascule, quelles liaisons portent plus qu’elles ne peuvent tenir, et comment corriger chacune.</figcaption>
+				</figure></li>
+				<li><figure class="shot">
+					<img src="/img/simulate-400.webp"
+						srcset="/img/simulate-400.webp 400w, /img/simulate-720.webp 720w, /img/compare-simulate.webp 1200w"
+						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
+						width="1200" height="750" loading="lazy" decoding="async"
+						alt="Outils, Simuler le mécanisme sur un planétaire du Soleil et de huit planètes : le panneau donne la période de chaque planète en années terrestres à côté de la vraie, toutes à 0,3 % près, et les trains d’engrenages teintés selon leur vitesse.">
+					<figcaption><b>Des engrenages à leurs vrais rapports</b>Ils s’engrènent dès que vous les posez. Tournez la manivelle et chaque train d’engrenages tourne : les planètes d’un planétaire à 0,3 % près de leurs vraies années.</figcaption>
+				</figure></li>
+				<li><figure class="shot">
+					<img src="/img/booklet-400.webp"
+						srcset="/img/booklet-400.webp 400w, /img/booklet-720.webp 720w, /img/booklet-1200.webp 1200w"
+						sizes="(min-width: 1180px) 370px, (min-width: 900px) 31vw, (min-width: 600px) 47vw, calc(100vw - 32px)"
+						width="1200" height="900" loading="lazy" decoding="async"
+						alt="Une page des instructions de montage d’une petite voiture rouge : les étapes 5 à 8, chacune avec un encadré des pièces qu’elle ajoute au-dessus d’un dessin de la voiture à ce stade, et une barre de progression et le numéro de page en bas.">
+					<figcaption><b>Livrets</b>Réglez l’ordre et les pages, puis imprimez-le comme celui de la boîte, ou enregistrez-le en PDF.</figcaption>
+				</figure></li>
+			</ul>
+			<ul class="features">
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#build"></use></svg></span><h3>Chaque pièce, en taille réelle</h3><p>Toute la bibliothèque LDraw, où trouver une pièce par son nom BrickLink ou Rebrickable, un numéro d’élément ou une photo. Connecteurs, axes et tenons s’assemblent là où les vrais le font.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#file"></use></svg></span><h3>Vos fichiers Studio, dans les deux sens</h3><p>Ouvrez et enregistrez des fichiers BrickLink Studio <code>.io</code> et LDraw. Les fichiers LEGO® Digital Designer s’ouvrent aussi.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#move"></use></svg></span><h3>Prenez-le en main comme le vrai</h3><p>Une flèche pivote sur ses charnières, une direction tourne sur sa crémaillère, un vérin s’allonge.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#people"></use></svg></span><h3>Construire ensemble, en direct</h3><p>Un seul modèle construit par plusieurs personnes à la fois, via un lien, chacune voyant les pièces des autres se poser.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#camera"></use></svg></span><h3>Rendus et export 3D</h3><p>Des rendus jusqu’en 4K, l’export 3D en taille réelle, et des listes de pièces pour BrickLink et Rebrickable.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#devices"></use></svg></span><h3>Sur tous vos appareils</h3><p>Vos modèles sur chaque appareil où vous vous connectez, et ce que vous pouvez construire avec vos propres sets.</p></li>
+			</ul>
+		</div>
+	</section>
+
+	<section class="section defer" id="platforms" aria-labelledby="platforms-h">
+		<div class="wrap">
+			<div class="section-head">
+				<div>
+					<p class="eyebrow">Web et bureau</p>
+					<h2 class="title" id="platforms-h">Dans votre navigateur. Sur votre ordinateur.</h2>
+				</div>
+			</div>
+			<div class="platforms">
+				<article class="tier">
+					<div class="name"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#globe"></use></svg></span><h3>Dans n’importe quel navigateur</h3></div>
+					<p>L’éditeur complet sur brickworks.diy/app : sur un ordinateur, une tablette ou un téléphone, sans rien installer. Vos modèles vous suivent sur chaque appareil où vous vous connectez.</p>
+					<div class="actions"><a class="cta" href="/app?lang=fr">Ouvrir l’application</a></div>
+				</article>
+				<article class="tier">
+					<div class="name"><span class="glyph"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#monitor"></use></svg></span><h3>Windows, macOS et Linux</h3></div>
+					<p>L’application de bureau fonctionne hors ligne avec toutes les pièces sur le disque, gère les plus gros modèles et lance Claude Code pour vous. Elle sera fournie avec Pro dès l’ouverture de Pro ; d’ici là, elle est gratuite à télécharger.</p>
+					<div class="actions"><a class="cta ghost" href="/fr/download">Télécharger</a></div>
+				</article>
+			</div>
+		</div>
+	</section>
+
+	<section class="section defer" id="plans" aria-labelledby="plans-h">
+		<div class="wrap">
+			<div class="section-head center">
+				<div>
+					<p class="eyebrow">Tarifs</p>
+					<h2 class="title" id="plans-h">Gratuit dans votre navigateur. Pro arrive bientôt.</h2>
+					<p>Gratuit au départ, gratuit pour de bon, avec l’IA de votre propre fournisseur, sans limite. Pro ajoute l’application de bureau et conserve chaque modèle que vous créez.</p>
+				</div>
+			</div>
+			<div class="plans-teaser">
+				<article class="tier">
+					<div class="name"><h3>Gratuit</h3></div>
+					<p class="price"><b>$0</b></p>
+					<ul class="ticks">
+						<li>L’application web, dans n’importe quel navigateur</li>
+						<li><b>L’IA sans limite</b>, chez votre propre fournisseur</li>
+						<li>25 modèles conservés avec votre compte</li>
+					</ul>
+					<a class="cta ghost" href="/app?lang=fr">Ouvrir l’application</a>
+				</article>
+				<article class="tier featured">
+					<div class="name"><h3>Pro</h3><span class="badge accent">Bientôt</span></div>
+					<p class="price"><b>$8</b> par mois, ou $80 par an</p>
+					<ul class="ticks">
+						<li>Tout ce qu’inclut l’offre Gratuit</li>
+						<li><b>L’application de bureau</b> pour Windows, macOS et Linux</li>
+						<li><b>Tous vos modèles conservés avec votre compte</b></li>
+					</ul>
+					<a class="cta" href="/plans">Voir les offres</a>
+				</article>
+			</div>
+			<p class="more-plans">Vous aviez un compte avant le 29 octobre 2026 ? Vous gardez tout. <a href="/plans#had">Ce que cela signifie</a></p>
+		</div>
+	</section>
+
+	<section class="section defer" id="start" aria-labelledby="start-h">
+		<div class="wrap">
+			<div class="closing">
+				<h2 class="title" id="start-h">Construisez quelque chose aujourd’hui</h2>
+				<p class="lede">Ouvrez Brickworks dans votre navigateur et partez d’une phrase, d’un vrai set ou d’une seule brique.</p>
+				<div class="actions center">
+					<a class="cta big" href="/app?lang=fr">Ouvrir l’application <span class="arrow" aria-hidden="true">→</span></a>
+					<a class="cta ghost big" href="/gallery">Parcourir la galerie</a>
+				</div>
+				<!-- Shown only while the beta is open (web/landing.js asks
+				     /api/plans?op=beta_spots): the page's last panel, so its
+				     coming moves nothing above it. -->
+				<p class="note" id="beta" hidden>Bêta : 100 testeurs reçoivent un mois de Pro offert. <a href="/beta">Postuler</a></p>
+			</div>
+		</div>
+	</section>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-top">
+			<div class="foot-brand">
+				<a class="mark" href="/fr"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>Une CAO pour les modèles LEGO®, avec un concepteur IA.</p>
+				<div class="theme-choice"><span aria-hidden="true">Thème</span>
+					<div class="segmented" role="group" aria-label="Thème">
+						<button type="button" data-theme-choice="system" aria-pressed="true">Système</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Clair</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Sombre</button>
+					</div>
+				</div>
+				<label class="theme-choice"><span>Langue</span>
+					<select data-lang-choice translate="no">
+						<option value="en" lang="en">English</option>
+						<option value="de" lang="de">Deutsch</option>
+						<option value="fr" lang="fr">Français</option>
+						<option value="es" lang="es">Español</option>
+					</select>
+				</label>
+			</div>
+			<nav class="foot-links" aria-label="Plus">
+				<div>
+					<p class="foot-h" id="foot-product">Produit</p>
+					<ul aria-labelledby="foot-product">
+						<li><a href="/app?lang=fr">Ouvrir l’application</a></li>
+						<li><a href="/fr/download">Télécharger</a></li>
+						<li><a href="/plans">Tarifs</a></li>
+						<li><a href="/changelog">Nouveautés</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-community">Communauté</p>
+					<ul aria-labelledby="foot-community">
+						<li><a href="/gallery">Galerie</a></li>
+						<li><a href="/library">Bibliothèque LDraw</a></li>
+						<li><a href="/challenge">Défi</a></li>
+						<li><a href="/collections">Collections</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-help">Aide</p>
+					<ul aria-labelledby="foot-help">
+						<li><a href="/docs">Docs</a></li>
+						<li><a href="/faq">FAQ</a></li>
+						<li><a href="/compare">Comparer</a></li>
+						<li><a href="/guidelines">Règles</a></li>
+						<li><a href="/feedback" data-feedback>Envoyer un avis</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-legal">Mentions légales</p>
+					<ul aria-labelledby="foot-legal">
+						<li><a href="/privacy">Confidentialité</a></li>
+						<li><a href="/terms">Conditions</a></li>
+						<li><a href="/takedown">Retrait</a></li>
+					</ul>
+				</div>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>LEGO® est une marque du groupe de sociétés LEGO, qui ne parraine, n’autorise ni n’approuve ce site. LEGO® Art, Technic, la Minifigurine et les configurations de la brique et du tenon sont également des marques du Groupe LEGO. Pièces de la bibliothèque LDraw™ (CC BY). <a href="/terms#notices">Mentions</a></p>
+		</div>
+	</div>
+</footer>
+
+<script type="application/ld+json">
+{
+	"@context": "https://schema.org",
+	"@graph": [
+		{
+			"@type": "SoftwareApplication",
+			"@id": "https://brickworks.diy/#app",
+			"name": "Brickworks",
+			"description": "Une CAO complète pour les modèles LEGO® qui fonctionne dans n’importe quel navigateur, y compris sur tablette ou téléphone, sans rien installer, et sur ordinateur : chaque pièce LDraw en taille réelle, une vérification de stabilité (équilibre et solidité des liaisons), Technic, des trains d’engrenages simulés à leurs vrais rapports, des sous-ensembles, des étapes de montage et des livrets imprimables, un modèle construit ensemble en direct, les fichiers BrickLink Studio .io et LDraw, l’export 3D et les rendus, et un assistant facultatif avec votre propre Claude.",
+			"url": "https://brickworks.diy/",
+			"applicationCategory": "DesignApplication",
+			"operatingSystem": "Web browser, Windows, macOS, Linux",
+			"downloadUrl": "https://brickworks.diy/download",
+			"installUrl": "https://brickworks.diy/app",
+			"releaseNotes": "https://brickworks.diy/changelog",
+			"image": "https://brickworks.diy/share.png",
+			"screenshot": "https://brickworks.diy/img/hero-2400.webp",
+			"isAccessibleForFree": true,
+			"offers": {
+				"@type": "Offer",
+				"price": "0",
+				"priceCurrency": "USD"
+			}
+		},
+		{
+			"@type": "WebSite",
+			"@id": "https://brickworks.diy/#site",
+			"name": "Brickworks",
+			"url": "https://brickworks.diy/"
+		}
+	]
+}
+</script>
+</body>
+</html>

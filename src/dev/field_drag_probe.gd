@@ -33,6 +33,13 @@
 ## A field in no list is counted and left as it is: a drag on it selects.
 ## One a finger there does not reach (under a sheet, or a button laid over
 ## it) is counted, not judged.
+##
+## And in each list showing, a drag begun on the first in sight of each
+## kind of thing a finger comes down on moves the list as far: a tile and
+## the "+N" on it, a card's panel, cover, words and Open, a swatch, a line,
+## a choice (uifix, 2026-11-01: each of those stopped the drag, Godot handing
+## a press on to the list only through what lets it pass). A tap on a
+## button laid on a button (the "+N") is its own, not the tile's.
 extends SceneTree
 
 ## The commands that open a dialog with a field, as the menus run them.
@@ -47,6 +54,8 @@ const OPENERS: Array[String] = [
 
 ## How far each drag goes, points.
 const TRAVEL := 100.0
+## The most kinds of thing dragged by in one list.
+const KINDS := 8
 ## A drag's list within this share of the finger's way.
 const SLACK := 0.2
 
@@ -60,6 +69,10 @@ var _shot: int = 0
 var _seen: Dictionary = {}
 ## Each list a tap and a hold were tried in, by its id.
 var _tried: Dictionary = {}
+## Each list each kind of thing in it was dragged by, by its id.
+var _swept: Dictionary = {}
+## Each kind dragged by, in any list (_kind).
+var _kinds: Dictionary = {}
 var _counts: Dictionary = {"dragged": 0, "no list": 0, "nothing to scroll": 0,
 	"out of sight": 0, "lists": 0}
 ## Where the finger is, in the window's input.
@@ -169,6 +182,17 @@ func _run() -> void:
 		return dock.is_open() or _shell.run("panel_assistant"))
 	for name: String in OPENERS:
 		await _container(name, func() -> bool: return _shell.run(name))
+		# The library's cards, once its sets have come (Looking… before).
+		if name == "library":
+			await _container("the library's sets", func() -> bool:
+				if not _shell.run("library"):
+					return false
+				var grid: GridContainer = _shell.library_dialog.get("_grid")
+				for _n: int in 60:
+					await _wait(250)
+					if grid.get_child_count() > 0:
+						return true
+				return false)
 
 	print("")
 	print("  fields dragged in a list: %d, in %d lists; in no list: %d; in a list with nothing to scroll: %d; out of sight: %d"
@@ -176,6 +200,10 @@ func _run() -> void:
 			_counts["nothing to scroll"], _counts["out of sight"]])
 	_check("fields in lists that scroll were dragged (%d) in lists a tap and a hold were tried in (%d)"
 		% [_counts["dragged"], _tried.size()], int(_counts["dragged"]) >= 5 and _tried.size() >= 3)
+	print("  kinds of thing dragged by in a list: %s" % ", ".join(_kinds.keys()))
+	_check("each kind of thing in %d lists was dragged by (%d kinds), a button on a tile among them (the parts' \"+N\")"
+		% [_swept.size(), _kinds.size()],
+		_swept.size() >= 3 and _kinds.size() >= 5 and _kinds.has("Button in Button"))
 	if _failures == 0:
 		print("field drag probe: a drag begun on a field scrolls its list as a drag beside it does; a tap and a hold are the field's")
 	else:
@@ -196,7 +224,7 @@ func _container(named: String, open: Callable) -> void:
 	if _only != null and _only.search(named) == null:
 		return
 	var before: Dictionary = _shown()
-	if not bool(open.call()):
+	if not bool(await open.call()):
 		print("\n  --    %s cannot be opened now" % named)
 		return
 	await _frames(20)
@@ -209,6 +237,11 @@ func _container(named: String, open: Callable) -> void:
 		_seen[field.get_instance_id()] = true
 		if is_instance_valid(field) and field.is_visible_in_tree():
 			await _field(named, field)
+	var lists: Array[ScrollContainer] = []
+	_lists_in(root, lists)
+	for list: ScrollContainer in lists:
+		if is_instance_valid(list) and not _swept.has(list.get_instance_id()):
+			await _each_kind(named, list)
 	await _put_away(before)
 
 
@@ -222,8 +255,7 @@ func _field(named: String, field: LineEdit) -> void:
 		return
 	var room: float = _room(list)
 	if not _in_sight(list, field):
-		_centre(list, field)
-		await _frames(4)
+		await _bring(field)
 	if not _in_sight(list, field):
 		_counts["out of sight"] += 1
 		print("  --    %s: out of sight" % what)
@@ -415,17 +447,128 @@ func _gap(list: ScrollContainer) -> Dictionary:
 			var over: Control = _hit(list, point)
 			if over == null or over is LineEdit or over is ScrollBar or _field_round(over) != null:
 				continue
-			# Nor a button laid on a button: a drag begun on the parts' "+N"
-			# on a tile scrolls nothing, with FlingScroll's fields or without (the tile
-			# scrolls the grid itself, PartsBin._cell_input; its "+N" not).
-			if over is BaseButton and over.get_parent() is BaseButton:
-				continue
 			# Nor what scrolls itself (the AI page's list of models): a drag
 			# there scrolls it, not the list round it.
 			if _scrolls_itself(over, list):
 				continue
 			return {"control": over, "at": over.get_global_transform().affine_inverse() * point}
 	return {}
+
+
+## A drag begun on each kind of thing a finger comes down on in
+## [param list] (_kind): a tile and the "+N" on it, a card, its cover and
+## its Open, a row's button. Each moves the list with the finger, as a drag
+## beside them does. Not what takes a drag for itself: a field (its own
+## checks), a slider or a spin box's arrows, a list in the list.
+func _each_kind(named: String, list: ScrollContainer) -> void:
+	if not list.is_visible_in_tree() or _room(list) < 1.0 \
+			or not list.get_global_rect().intersects(root.get_visible_rect()):
+		return
+	_swept[list.get_instance_id()] = true
+	var kinds: Dictionary = {}
+	_kinds_in(list, list, kinds)
+	var what: String = "%s, %s" % [named, _holding(list)]
+	for kind: String in kinds:
+		var control: Control = kinds[kind]["control"]
+		var at: Vector2 = kinds[kind]["at"]
+		if not is_instance_valid(control) or not control.is_visible_in_tree():
+			continue
+		if not _in_sight(list, control):
+			await _bring(control)
+		if not _in_sight(list, control) or _hit(list, control.get_global_transform() * at) != control:
+			print("  --    %s: %s (%s) out of sight" % [what, _named(control), kind])
+			continue
+		var got: Dictionary = await _drag(list, control, at)
+		if not got["heard"]:
+			print("  --    %s: %s (%s) under something in front of its list" % [what, _named(control), kind])
+			continue
+		_kinds[kind] = true
+		_check("%s: a drag begun on %s (%s) moves the list %d of %d units"
+			% [what, _named(control), kind, roundi(got["moved"]), roundi(got["wanted"])],
+			_as_far(got))
+		if control is BaseButton and control.get_parent() is BaseButton and is_instance_valid(control):
+			await _tap_on_button(what, list, control as BaseButton)
+
+
+## A tap on a button laid on a button (a tile's "+N"): the press is its, and
+## the button under it is not pressed (the tile's part not taken).
+func _tap_on_button(what: String, list: ScrollContainer, button: BaseButton) -> void:
+	var under: BaseButton = button.get_parent()
+	if not _in_sight(list, button):
+		_centre(list, button)
+		await _frames(4)
+	var presses: Array[int] = [0, 0]
+	var on_it := func() -> void: presses[0] += 1
+	var on_under := func() -> void: presses[1] += 1
+	button.pressed.connect(on_it)
+	under.pressed.connect(on_under)
+	var named: String = _named(button)
+	_touch(_window_at(button, button.size / 2.0), true)
+	await _frames(3)
+	_touch(_at, false)
+	await _frames(12)
+	if is_instance_valid(button):
+		button.pressed.disconnect(on_it)
+	if is_instance_valid(under):
+		under.pressed.disconnect(on_under)
+	_check("%s: a tap on %s presses it (%d) and not the button it is on (%d)"
+		% [what, named, presses[0], presses[1]], presses[0] == 1 and presses[1] == 0)
+
+
+## The first of each kind of thing a finger comes down on in [param list]
+## that is in sight, under [param node]: {kind: {control, at}}, where a
+## finger at [code]at[/code] in it comes down on it.
+func _kinds_in(list: ScrollContainer, node: Node, out: Dictionary) -> void:
+	for child: Node in node.get_children(true):
+		var control := child as Control
+		if control == null or not control.visible or control.top_level:
+			continue
+		if control is ScrollContainer or control is ItemList or control is Tree \
+				or control is TextEdit or control is LineEdit or control is Range:
+			continue
+		var kind: String = _kind(control, list)
+		# A box that holds things and is on nothing that stops a press hands
+		# it to the list as Godot does: no kind of its own.
+		var parent := control.get_parent() as Control
+		var hands_on: bool = control is Container and control.mouse_filter == Control.MOUSE_FILTER_PASS \
+			and not kind.contains(" on ") \
+			and (parent == null or parent.mouse_filter != Control.MOUSE_FILTER_STOP)
+		if control.mouse_filter != Control.MOUSE_FILTER_IGNORE and not hands_on and out.size() < KINDS:
+			if not out.has(kind) and _in_sight(list, control):
+				var inset: float = minf(Phone.px(root, 3.0), minf(control.size.x, control.size.y) / 2.0)
+				for at: Vector2 in [control.size / 2.0, Vector2(inset, inset),
+						Vector2(control.size.x - inset, control.size.y - inset)]:
+					if _hit(list, control.get_global_transform() * at) == control:
+						out[kind] = {"control": control, "at": at}
+						break
+		_kinds_in(list, control, out)
+
+
+## What [param control] is, what it is in, and what further up stops a
+## finger's press on its way to the list (Godot's STOP): "Button in Button"
+## for a tile's "+N", "Button in GridContainer" for the tile, "TextureRect in
+## VBoxContainer on PanelContainer" for a card's cover.
+static func _kind(control: Control, list: ScrollContainer) -> String:
+	var parent: Node = control.get_parent()
+	var words: String = "%s in %s" % [control.get_class(), parent.get_class()]
+	var up: Node = parent.get_parent() if parent != list else null
+	while up != null and up != list:
+		var holder := up as Control
+		if holder != null and holder.mouse_filter == Control.MOUSE_FILTER_STOP:
+			words += " on " + holder.get_class()
+		up = up.get_parent()
+	return words
+
+
+## A list said by what it holds: its own name, else its first child's.
+static func _holding(list: ScrollContainer) -> String:
+	if not str(list.name).begins_with("@"):
+		return "the list %s" % list.name
+	for child: Node in list.get_children():
+		if child is Control:
+			return "its list of %s" % (child.name if not str(child.name).begins_with("@")
+				else child.get_class())
+	return "an empty list"
 
 
 static func _scrolls_itself(control: Control, list: ScrollContainer) -> bool:
@@ -511,22 +654,50 @@ static func _room(list: ScrollContainer) -> float:
 	return maxf(0.0, bar.max_value - bar.page)
 
 
-## Wholly inside its list's room and the window.
-func _in_sight(list: ScrollContainer, field: LineEdit) -> bool:
+## Wholly inside its list's room, each list's round that, and the window.
+func _in_sight(list: ScrollContainer, field: Control) -> bool:
 	var rect: Rect2 = field.get_global_rect()
 	if not list.get_global_rect().grow(1.0).encloses(rect):
 		return false
+	var up: Node = list.get_parent()
+	while up != null and not up is Window:
+		if up is ScrollContainer and not (up as Control).get_global_rect().grow(1.0).encloses(rect):
+			return false
+		up = up.get_parent()
 	var top_left: Vector2 = _window_at(field, Vector2.ZERO)
 	var foot: Vector2 = _window_at(field, field.size)
 	var screen: Rect2 = Rect2(Vector2.ZERO, Vector2(DisplayServer.window_get_size())).grow(1.0)
 	return screen.has_point(top_left) and screen.has_point(foot)
 
 
+## [param control] scrolled to the middle of each list round it, the
+## innermost first.
+func _bring(control: Control) -> void:
+	var up: Node = control.get_parent()
+	while up != null and not up is Window:
+		if up is ScrollContainer:
+			_centre(up, control)
+			await _frames(3)
+		up = up.get_parent()
+
+
 ## The list scrolled to [param field], in the middle of its room.
-func _centre(list: ScrollContainer, field: LineEdit) -> void:
+func _centre(list: ScrollContainer, field: Control) -> void:
 	var down: float = field.get_global_rect().get_center().y - list.get_global_rect().position.y \
 		+ list.scroll_vertical
 	list.scroll_vertical = roundi(clampf(down - list.size.y / 2.0, 0.0, _room(list)))
+
+
+func _lists_in(node: Node, out: Array[ScrollContainer]) -> void:
+	if node is Window and node != root and not (node as Window).visible:
+		return
+	if node is CanvasItem and not (node as CanvasItem).visible:
+		return
+	var list := node as ScrollContainer
+	if list != null and list.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+		out.append(list)
+	for child: Node in node.get_children(true):
+		_lists_in(child, out)
 
 
 func _fields_in(node: Node, out: Array[LineEdit]) -> void:

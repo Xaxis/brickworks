@@ -1186,6 +1186,13 @@
     },
     {
       "kind": "cli",
+      "label": "drawn in a browser",
+      "entry": "tools/web/drawn_flow.mjs",
+      "reach": "node tools/web/drawn_flow.mjs --dir=build/web --out=shots/drawn   (or --url=<a preview>/app with BW_BYPASS; the build animation, a cut moved up and the booklet's pictures, each counted off the picture)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
       "label": "idle check",
       "entry": "tools/web/idle_check.mjs",
       "reach": "node tools/web/idle_check.mjs --dir=build/web   (with .env sourced; or --url=<a preview>/app)",

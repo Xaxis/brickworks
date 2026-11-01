@@ -81,6 +81,7 @@ static func start() -> void:
 			asked = argument.trim_prefix("--lang=").to_lower().left(2)
 	if asked in codes():
 		ShellPrefs.put("language", asked)
+		_tell_site(asked)
 		# Out of the address once read, so a reload after another choice in
 		# Settings keeps that one.
 		if OS.has_feature("web"):
@@ -95,7 +96,16 @@ static func start() -> void:
 ## Settings, Language: [param code] used from now on, and kept.
 static func choose(code: String) -> void:
 	ShellPrefs.put("language", code if code in codes() else "en")
+	_tell_site(code if code in codes() else "en")
 	apply(code)
+
+
+## In a browser, the site's own choice made the same (web/theme.js keeps it
+## as "brickworks.lang"): its pages, and this app's loading page
+## (src/boot/shell.html), are then in the language the app is in.
+static func _tell_site(code: String) -> void:
+	if OS.has_feature("web") and code in codes():
+		JavaScriptBridge.eval("try { localStorage.setItem('brickworks.lang', '%s'); } catch (e) {}" % code, true)
 
 
 ## Every word drawn from now on in [param code]'s language; English for a

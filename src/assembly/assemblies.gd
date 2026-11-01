@@ -299,6 +299,12 @@ func selected_assembly() -> String:
 	var path: Variant = unit_path_of(int(ids[0]))
 	if path == null or str(path).is_empty():
 		return ""
+	# A part selected that a click takes elsewhere is no part under it:
+	# none, without walking the model. Each panel asked it of the 296 parts
+	# a replace of Orthanc left selected, a walk of 10,101 parts each.
+	for brick_id: Variant in ids:
+		if unit_path_of(int(brick_id)) != path:
+			return ""
 	var under: PackedInt64Array = ids_under(str(path))
 	if under.size() != ids.size():
 		return ""
@@ -586,6 +592,11 @@ func copies_follow(touched: Dictionary, moved: Dictionary = {}) -> Array:
 	var order: Array = paths_touched.keys()
 	order.sort_custom(func(a: String, b: String) -> bool:
 		return segments(a).size() > segments(b).size())
+	# No copy of any of them, nothing to build again: asked of the model's
+	# paths alone first. A replace of Orthanc touched ten sub-models, none
+	# with a copy, and each was read out whole for nothing.
+	if not _any_copied(order):
+		return [[], 0]
 	var steps: Array = []
 	var rebuilt: int = 0
 	_syncing = true
@@ -610,6 +621,30 @@ func copies_follow(touched: Dictionary, moved: Dictionary = {}) -> Array:
 	_end_pass()
 	_syncing = false
 	return [steps, rebuilt]
+
+
+## Whether any of [param asked] (paths) has a copy, as [method copies_of]
+## inside a pass finds them: every path of a part that is no baseplate, read
+## from each part's own path, not built into the index.
+func _any_copied(asked: Array) -> bool:
+	var own: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if not scenery.has(brick.id):
+			own[path_of(brick)] = true
+	var every: Dictionary = {}
+	for at: String in own:
+		var path: String = ""
+		for segment: String in segments(at):
+			path = join(path, segment)
+			every[path] = true
+	for path: String in asked:
+		var name: String = definition(leaf(path))
+		for other: String in every:
+			if other == path or within(other, path) or within(path, other):
+				continue
+			if definition(leaf(other)) == name:
+				return true
+	return false
 
 
 ## The copies [method copies_follow] would build again for [param
@@ -706,16 +741,22 @@ static func _alike(a: Transform3D, b: Transform3D) -> bool:
 ## [method paths] answer from one walk of the model, made at the first
 ## question, until [method _end_pass]. Nested passes share it.
 func _begin_pass() -> void:
-	if _passing == 0:
+	if _passing == 0 and not _current():
 		_indexed = false
 	_passing += 1
 
 
 func _end_pass() -> void:
 	_passing = maxi(0, _passing - 1)
-	if _passing == 0:
+	if _passing == 0 and not _current():
 		_under.clear()
 		_indexed = false
+
+
+## Whether the index is made and the model is as it was made for: kept
+## into a pass and out of one, as outside one.
+func _current() -> bool:
+	return _indexed and _indexed_as == _model()
 
 
 ## The bricks under every path, as [method bricks_under] finds them one

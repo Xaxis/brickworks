@@ -13,12 +13,17 @@ import re
 # what to write instead, and a sentence it must catch. tests/test_trademarks.py
 # holds every public word to these; check_version holds a release's notes to
 # them before it is built, since a published tag cannot be taken back: 0.13.0's
-# said "the names LEGO gives them" and is tagged so (2026-11-01).
+# said "the names LEGO gives them" and is tagged so (2026-11-01). The
+# company's name is the LEGO Group, and in the site's other languages (web/de/,
+# web/fr/, web/es/, the app's loading page) die LEGO Gruppe, le Groupe LEGO,
+# el Grupo LEGO, the notice's "LEGO Unternehmensgruppe", "groupe de sociétés
+# LEGO" and "grupo de empresas LEGO".
 MARK_FAULTS: list[tuple[re.Pattern[str], str, str]] = [
-    (re.compile(r"\bLEGO\b(?!®|\(R\)| Group)"),
+    (re.compile(r"(?<!Groupe )(?<!groupe )(?<!Grupo )(?<!grupo )(?<!sociétés )(?<!empresas )"
+                r"\bLEGO\b(?!®|\(R\)| Group| Gruppe| Unternehmensgruppe)"),
      "LEGO carries its ® each time it is used, but not in the LEGO Group", "real LEGO bricks"),
-    (re.compile(r"LEGO(?:®|\(R\)) Group"), "no ® in the company's name: the LEGO Group",
-     "as the LEGO® Group built it"),
+    (re.compile(r"LEGO(?:®|\(R\)) (?:Group|Gruppe|Unternehmensgruppe)|(?:Groupe|Grupo|sociétés|empresas) LEGO(?:®|\(R\))"),
+     "no ® in the company's name: the LEGO Group", "as the LEGO® Group built it"),
     (re.compile(r"\bLegos?\b"), "LEGO is written in capitals", "a Lego set"),
     (re.compile(r"\b(?:LEGO|Lego|lego)s\b"), "LEGO is never plural: LEGO bricks", "Build with LEGOs"),
     (re.compile(r"\b(?:LEGO|Lego)®?['’]s\b"), "LEGO is never possessive: the LEGO Group's",

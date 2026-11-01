@@ -906,6 +906,14 @@
       "tests": []
     },
     {
+      "id": "cli:drawn in a browser",
+      "kind": "cli",
+      "entry": "tools/web/drawn_flow.mjs",
+      "reach": "node tools/web/drawn_flow.mjs --dir=build/web --out=shots/drawn   (or --url=<a preview>/app with BW_BYPASS; the build animation, a cut moved up and the booklet's pictures, each counted off the picture)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:drive the app from a shell",
       "kind": "cli",
       "entry": "tools/brick.py",
@@ -4170,6 +4178,7 @@
       "area": "release",
       "tests": [
         "tests/test_desktop.py",
+        "tests/test_site_lang.py",
         "tests/test_site_shell.py"
       ]
     },
