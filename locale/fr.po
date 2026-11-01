@@ -647,44 +647,6 @@ msgstr "Fusionner en pièces plus grandes"
 msgid "Swing on its hinge"
 msgstr "Pivoter sur sa charnière"
 
-# Colours named as LDraw and BrickLink name them, in every language, as
-# BrickLink Studio does: they are names, like a part's.
-msgid "Green"
-msgstr "Green"
-
-msgid "Bright Green"
-msgstr "Bright Green"
-
-msgid "Dark Green"
-msgstr "Dark Green"
-
-msgid "Tan"
-msgstr "Tan"
-
-msgid "Dark Tan"
-msgstr "Dark Tan"
-
-msgid "Light Bluish Grey"
-msgstr "Light Bluish Grey"
-
-msgid "Dark Bluish Grey"
-msgstr "Dark Bluish Grey"
-
-msgid "Sand Green"
-msgstr "Sand Green"
-
-msgid "Blue"
-msgstr "Blue"
-
-msgid "White"
-msgstr "White"
-
-msgid "Black"
-msgstr "Black"
-
-msgid "Light Grey"
-msgstr "Light Grey"
-
 # What each menu row does, on its tooltip
 msgid "Start a new model on an empty baseplate"
 msgstr "Commencer un nouveau modèle sur une plaque de base vide"
@@ -8262,7 +8224,7 @@ msgstr "Rendre unique"
 
 # A word with a second sense, kept apart by its context (msgctxt, and
 # tr(word, context) where it is drawn): White as a render's backdrop, beside
-# LDraw's colour of that name, which stays as it is
+# LDraw's colour of that name, which the glossary of parts and colours says
 msgctxt "backdrop"
 msgid "White"
 msgstr "Blanc"

@@ -1134,10 +1134,23 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   parts (" · ", " — ", ". ", "; ", and " › " a menu's path) and the keys
   sheet's lowered words are found piece by piece, a part found nowhere kept
   as it is, as a name is ("House — 71 bricks"); of several partial ways the
-  one leaving the fewest English letters wins. Names stay as they are:
-  parts, colours (LDraw's, as Studio keeps them), models, sets, keys (Ctrl,
-  Shift), files, licences, and whatever an entry's English quotes (“%s”: a
-  model named Car stays Car). Find a command matches a command's words as
+  one leaving the fewest English letters wins. Parts and colours are named
+  as LEGO's own sites in each language name them, through a glossary of
+  LDraw's formulaic words (`src/parts/part_words.gd`, `PartWords`): the
+  kind, its size as written, the adjectives agreeing with it (Brique ronde,
+  Ladrillo redondo; Stein 2×2 rund) and the nouns after with, without, on
+  and for in their number and German's case ("Plaque lisse 1×4 avec
+  rainure", "Stein 1×2 ohne untere Röhre"; "Gris bleuté clair",
+  "Transparent-Rot"); a name it cannot word whole (a print's, a sticker's, a
+  minifigure's) stays as LDraw wrote it, never half in each, and so does a
+  colour with its finish ("Rouge, opaque" or "Bright Light Orange, solid",
+  `Words._finished`). The bin's tiles are said before they are fitted
+  (`PartsBin.said_name`, said again when the language changes), and the
+  bin's search reads the language's words back, accents or none, beside
+  LDraw's (`PartWords.spoken`, `PartSearch.terms_of`'s `spoken`): "brique
+  1x2" is 3004, as "brick 1x2" and "3004" still are. Names stay as they
+  are: models, sets, keys (Ctrl, Shift), files, licences, and whatever an
+  entry's English quotes (“%s”: a model named Car stays Car). Find a command matches a command's words as
   drawn too ("speichern" finds Save, `CommandPalette._score`). The status
   line after an action, and every dialog (the way in: signing in by email or
   orangecheck, the age question and what the server answers; Open's list and
@@ -1161,7 +1174,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   German and Spanish, 1 575 with a no-break space in French: the font has
   no narrow one, which a browser draws 1.4 px wide). A word with a second sense has
   an entry of its own by context: Render's backdrop "White" (`msgctxt
-  "backdrop"`, `tr("White", "backdrop")`) beside LDraw's colour White.
+  "backdrop"`, `tr("White", "backdrop")`) beside LDraw's colour White,
+  which the glossary says.
   `languages_probe` reads them all in English, then in each language: 63
   common actions with the status line heard after each, Settings with the
   assistant on and off, the properties with two parts selected and with a
@@ -1175,8 +1189,17 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   word drawn without its entry or the themes out of the language's order,
   a release's version line in Settings and About ("released 2026-10-31",
   the probe giving the run a release's stamp) without its entry, the
-  Library's count of sets not grouped as the language groups it, or
-  `--about` not saying its line in the language chosen; a control set to draw its words as they are
+  Library's count of sets not grouped as the language groups it,
+  `--about` not saying its line in the language chosen, a bin tile not
+  named as the language names it (3004 "Brique 1×2", 2431 "Plaque lisse
+  1×4 avec rainure") or half in each, a search typed in the language
+  ("plaque lisse 1x4 avec rainure") not finding its part or English's words
+  and the part's number no longer finding it, the properties' title of a
+  part not in the language or a print's not as LDraw writes it, the
+  colour under the palette not whole with its finish either way, or the
+  colour finder (Shift-C) not naming a colour first by its name in the
+  language ("gris bleute clair" is 71); it says
+  how many of the catalogue's parts the glossary names whole; a control set to draw its words as they are
   shows a name and is not read. `--missing=FILE` writes the entries to
   translate, each partial one with
   the whole it was in ("#. in:"). `--shots=DIR` pictures ten dialogs (the

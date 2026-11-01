@@ -233,6 +233,16 @@ asking for an API key.
   (`Assistant.heard(subject, true)`): an earlier chat's subject, part count and
   joints told are not this one's. The desktop's own port is unchanged.
   `src/dev/connector_method_probe.gd` (headless, in the suite);
+  `a connector chat changing a model hears how to change it` (cadmethod,
+  2026-10-31): a chat whose first call reads or changes the parts standing
+  (`ClaudeConnector.CHANGING_CALLS`: look_at_model, measure, edit_model,
+  mirror_parts...) on a model to change (`ClaudeConnector.has_work`, Main's:
+  parts beyond the scenery and not the untouched example car) hears the
+  guide's CHANGING SOMETHING THAT IS ALREADY BUILT in place of the method,
+  once, and the method at its first design call. Any other first call, and
+  any first call on the example car or an empty baseplate, hears the method on
+  that call as before (the bench's relay sessions all open so).
+  `src/dev/cad_sitting_probe.gd` (headless, in the suite);
   `tools/bench/realset.py --via relay` proves it through the relay and Claude
   Code (assistant.md, "Real sets").
 - `the model in Claude` (MCP Apps, 2026-10-14): claude.ai and the Claude
