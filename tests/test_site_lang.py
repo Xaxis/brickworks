@@ -1,4 +1,5 @@
-"""The landing page and the download page in German, French and Spanish.
+"""The site's pages in German, French and Spanish: home, download, plans,
+FAQ, compare, the gallery and the LDraw library (tools/site_lang.py PAGES).
 
 tools/site_lang.py writes each language's copy (web/de/, web/fr/, web/es/)
 from the English page and web/_lang/<code>.json; this fails when a copy is
@@ -71,7 +72,9 @@ def test_each_copy_points_to_its_own_pages_and_carries_its_language_into_the_app
             own = f"https://brickworks.diy/{code}" + (f"/{where}" if where else "")
             assert f'<link rel="canonical" href="{own}">' in text and f'<meta property="og:url" content="{own}">' in text
             links = re.findall(r'<a [^>]*href="([^"]*)"', text)
-            assert not [one for one in links if one.split("#")[0] in ("/", "/download", "/app")], (code, name)
+            english = {"/" + page for page in site_lang.PAGES.values()}
+            assert not [one for one in links if re.split(r"[?#]", one)[0] in english], (code, name)
+            assert not [one for one in links if re.split(r"[?#]", one)[0] == "/app" and f"lang={code}" not in one]
             assert f"/app?lang={code}" in links and f"/{code}/download" in links
 
 
@@ -99,3 +102,36 @@ def test_the_mark_and_the_notice_in_each_language() -> None:
             assert not re.search(r"LEGO(?!®)", rest), f"{code}: LEGO carries its ® but in the company's name: {value}"
             assert not re.search(r"LEGO® ?(?:Gruppe|Group)|(?:Groupe|Grupo) LEGO®", value), f"{code}: ® in the company: {value}"
             assert not re.search(r"\b(?:Legos?|LEGOs)\b", value), f"{code}: {value}"
+
+
+def test_what_the_scripts_say_has_its_words() -> None:
+    # Every say("...") of a script a copy loads, joined where it is written
+    # over lines, each counted() noun with its plural, and the labels the API
+    # hands the gallery and the library (an id is not one).
+    words = site_lang.script_words()
+    assert words["Tell Brickworks what you own (in the app, Build › My collection…) and this shows what in the "
+                 "gallery you can build with it."] == "web/gallery.js"
+    assert {"set", "sets", "build finished", "builds finished", "Show more", "Page {n}"} <= set(words)
+    assert {"Castles and fantasy", "Small, under 200 parts", "Built in 3D first", "Most liked"} <= set(words)
+    assert "castle" not in words and "small" not in words
+    for code in site_lang.LANGUAGES:
+        has = {**site_lang.themes(code), **site_lang.table(code)["scripts"]}
+        assert not [word for word in words if word not in has], code
+
+
+def test_the_faq_search_shows_is_in_the_language_too() -> None:
+    # The FAQ's questions and answers as search results show them (its
+    # JSON-LD, shorter than the page's): one with no words stops the copy,
+    # and each copy's are its own.
+    ld = r'<script type="application/ld\+json">(.*?)</script>'
+    english = json.loads(re.search(ld, (ROOT / "web/faq.html").read_text(encoding="utf-8"), re.S).group(1))
+    answer = english["mainEntity"][0]["acceptedAnswer"]["text"]
+    words = site_lang.table("de")
+    del words["pages"][site_lang.key_of(answer)]
+    _, missing, _ = site_lang.translated("faq.html", "de", words)
+    assert missing == [site_lang.key_of(answer)]
+    for code in site_lang.LANGUAGES:
+        copy = json.loads(re.search(ld, (ROOT / "web" / code / "faq.html").read_text(encoding="utf-8"), re.S).group(1))
+        pairs = list(zip(english["mainEntity"], copy["mainEntity"]))
+        assert len(pairs) == 17 and all(one["name"] != other["name"] and one["acceptedAnswer"]["text"]
+                                        != other["acceptedAnswer"]["text"] for one, other in pairs), code

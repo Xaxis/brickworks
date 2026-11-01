@@ -47,7 +47,7 @@
 // Pictures of the window in that state in --out, named by the size, and
 // in_view's text. No model is called; costs nothing. Fails, exiting 1, on any
 // check that does not hold or a script error in the console.
-import { controlsWith, launch, openColumnFor, withJobs } from "./browser.mjs";
+import { askApp, controlsWith, launch, openColumnFor, withJobs } from "./browser.mjs";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -182,9 +182,7 @@ async function stage(name) {
 // of step 3's counted (the window's picture decoded in a page of its own).
 async function bricksDrawn(name) {
   const png = await page.screenshot({ path: `${out}/${name}`, timeout: 180000 });
-  await page.evaluate(() => { window.brickworksAskLayout = true; });
-  await page.waitForTimeout(1500);
-  const view = ((await page.evaluate(() => window.brickworksLayout)) || {}).view || [0, 0, width, height];
+  const view = ((await askApp(page, "Layout")) || {}).view || [0, 0, width, height];
   const reader = await browser.newPage();
   const counted = await reader.evaluate(async ([src, v]) => {
     const image = await new Promise((done) => { const i = new Image(); i.onload = () => done(i); i.src = src; });
@@ -406,9 +404,7 @@ async function run() {
   // The pointer over the baseplate beside the stack, rested until a ghost
   // shows on the floor (the world's y is up; a 1 x 2 on the floor stands
   // lower than one on the stack's fourth brick).
-  await page.evaluate(() => { window.brickworksAskLayout = true; });
-  await page.waitForTimeout(1500);
-  const layout = (await page.evaluate(() => window.brickworksLayout)) || {};
+  const layout = (await askApp(page, "Layout")) || {};
   const view = layout.view || [0, 0, width, height];
   const middle = [view[0] + view[2] / 2, view[1] + view[3] / 2];
   const offsets = [[0.28, 0.2], [-0.28, 0.2], [0.3, 0.05], [-0.3, 0.05], [0.2, 0.32], [-0.2, 0.32], [0.38, 0.28], [-0.38, 0.28]];

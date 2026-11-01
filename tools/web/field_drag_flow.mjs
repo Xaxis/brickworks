@@ -24,7 +24,7 @@
 // folded under it) moves the bin with the finger, as one begun on the tile
 // does (uifix: it moved nothing, the "+N" took the finger's press for
 // itself). Pictures in --out.
-import { launch } from "./browser.mjs";
+import { askApp, launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -102,15 +102,7 @@ for (const [width, height, size] of [[844, 390, "100%"], [390, 844, "150%"]]) {
     await touch("touchEnd", []);
     await page.waitForTimeout(1200);
   };
-  const ask = async () => {
-    await page.evaluate(() => { window.brickworksPhone = null; window.brickworksAskPhone = true; });
-    for (let n = 0; n < 40; n++) {
-      await page.waitForTimeout(250);
-      const told = await page.evaluate(() => window.brickworksPhone);
-      if (told) return told;
-    }
-    return null;
-  };
+  const ask = () => askApp(page, "Phone");
   const picture = (what) => page.screenshot({ path: `${out}/${width}_${height}_${what}.png`, timeout: 120000 })
     .catch((e) => console.log(`  --    no picture ${what}: ${String(e).split("\n")[0]}`));
   const inside = (box, p) => p.x >= box[0] && p.x <= box[0] + box[2] && p.y >= box[1] && p.y <= box[1] + box[3];

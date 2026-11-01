@@ -19,7 +19,7 @@
 // brief takes what is typed into it, and that it goes to the assistant: its
 // column opens, and with no key of its own the page says so rather than
 // doing nothing.
-import { launch, turnAssistantOn } from "./browser.mjs";
+import { askApp, launch, turnAssistantOn } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { deflateSync } from "node:zlib";
@@ -218,9 +218,7 @@ ok(Boolean(after?.columns?.assistant) && !(await controls()).mosaic_build,
 // hint can replace it between two polls; the assistant's column keeps it,
 // so the window's words (Main.words_shown) are read too.
 if (!told) {
-  await page.evaluate(() => { window.brickworksWords = null; window.brickworksAskWords = true; });
-  for (let n = 0; n < 40 && !(await page.evaluate(() => window.brickworksWords)); n++) await page.waitForTimeout(500);
-  const shown = (await page.evaluate(() => window.brickworksWords)) || [];
+  const shown = (await askApp(page, "Words", { seconds: 20 })) || [];
   told = shown.find((w) => /key of your own/i.test(w)) || "";
 }
 ok(handed || told !== "", `and with no key of its own, says what is needed rather than nothing: "${told}"`);

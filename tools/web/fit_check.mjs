@@ -49,7 +49,7 @@
 // more each way and on the screen, as the app itself counts them
 // (window.brickworksAskPhone, Main._phone_audit), at first and with the
 // assistant on.
-import { launch, START_MS, turnAssistantOn } from "./browser.mjs";
+import { askApp, launch, START_MS, turnAssistantOn } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { loadavg } from "node:os";
 
@@ -138,17 +138,11 @@ const overlap = (a, b) => {
 
 // The layout as the build publishes it, or null from a build that does not.
 // The app answers on its half-second publish, from the main thread: one
-// still busy from a slow start answers late. 6 s was too few at load 39,
-// where a phone's start took 34 s (rel-m230's preview, 2026-10-31); the
-// controls already get 10 s, and a build that never answers still fails.
+// still busy from a slow start answers late (a phone's start took 34 s at
+// load 39, rel-m230's preview), so it is waited for by its tellings
+// (askApp), and a build that never answers still fails.
 async function layoutOf(page) {
-  await page.evaluate(() => { window.brickworksLayout = null; window.brickworksAskLayout = true; });
-  for (let n = 0; n < 60; n++) {
-    const layout = await page.evaluate(() => window.brickworksLayout || null);
-    if (layout) return layout;
-    await page.waitForTimeout(250);
-  }
-  return null;
+  return askApp(page, "Layout", { seconds: 15 });
 }
 
 // The model's rectangle from the centres an older build publishes: from
@@ -236,12 +230,7 @@ process.exit(misfits ? 1 : unstarted ? 2 : 0);
 // On a phone, every target a finger has at least FINGER points each way and
 // on the screen, as the app counts them. True when both hold.
 async function forAFinger(page, label) {
-  await page.evaluate(() => { window.brickworksPhone = null; window.brickworksAskPhone = true; });
-  let told = null;
-  for (let n = 0; n < 40 && !told; n++) {
-    await page.waitForTimeout(250);
-    told = await page.evaluate(() => window.brickworksPhone || null);
-  }
+  const told = await askApp(page, "Phone");
   if (!told) {
     console.log(`  FAIL  ${label}: the phone's layout said nothing of its targets (window.brickworksAskPhone)`);
     return false;

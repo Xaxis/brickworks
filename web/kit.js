@@ -8,10 +8,13 @@
 // here, so a page asks the kit for the whole kit. And every scroller on the
 // page (web/scroller.js), and the page's words in its language (say).
 export { ICONS, avatarHtml, avatarTone, awardsHtml, iconButtonHtml, iconHtml, number, say } from "./card.js";
+import { say } from "./card.js";
 import "./scroller.js";
 
-const AGO = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
-const DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+// In the page's language (web/theme.js), English as en-GB writes a date.
+const LANG = globalThis.document?.documentElement.lang || "en";
+const AGO = new Intl.RelativeTimeFormat(LANG, { numeric: "auto" });
+const DATE = new Intl.DateTimeFormat(LANG === "en" ? "en-GB" : LANG, { day: "numeric", month: "short" });
 
 /// When something happened, as a feed or a notification says it: "just
 /// now", "5 minutes ago", "yesterday", "3 Oct"; "" for no time.
@@ -19,7 +22,7 @@ export function ago(iso) {
   const at = Date.parse(String(iso || ""));
   if (!Number.isFinite(at)) return "";
   const minutes = Math.round((at - Date.now()) / 60000);
-  if (minutes > -1) return "just now";
+  if (minutes > -1) return say("just now");
   if (minutes > -60) return AGO.format(minutes, "minute");
   if (minutes > -24 * 60) return AGO.format(Math.round(minutes / 60), "hour");
   if (minutes > -7 * 24 * 60) return AGO.format(Math.round(minutes / 1440), "day");

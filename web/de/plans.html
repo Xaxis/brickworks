@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<!-- web/plans.html in Deutsch, written by tools/site_lang.py from it and web/_lang/de.json: change those and run it, never this. -->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Preise · Brickworks</title>
+<meta name="description" content="Brickworks ist in deinem Browser kostenlos, mit KI über deinen eigenen Anbieter und ohne Limit, und mit 25 Modellen in deinem Konto. Pro kommt bald für $8 im Monat oder $80 im Jahr und bringt die Desktop-App und jedes Modell in deinem Konto dazu. Noch nichts zu bezahlen.">
+<link rel="canonical" href="https://brickworks.diy/de/plans">
+<link rel="alternate" hreflang="en" href="https://brickworks.diy/plans">
+<link rel="alternate" hreflang="de" href="https://brickworks.diy/de/plans">
+<link rel="alternate" hreflang="fr" href="https://brickworks.diy/fr/plans">
+<link rel="alternate" hreflang="es" href="https://brickworks.diy/es/plans">
+<link rel="alternate" hreflang="x-default" href="https://brickworks.diy/plans">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Preise · Brickworks">
+<meta property="og:description" content="Kostenlos in deinem Browser, KI ohne Limit. Pro kommt: die Desktop-App und jedes Modell in deinem Konto, $8 im Monat. Noch wird nichts berechnet.">
+<meta property="og:url" content="https://brickworks.diy/de/plans">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/site.css">
+<style>
+/* Only layout here; the plan's card, its ticks, the table and the
+   callouts are site.css's (the landing kit). */
+.plans-head { padding: var(--page-top) 0 var(--s-7); text-align: center; }
+.plans-head h1 { max-width: 18ch; margin-inline: auto; }
+.plans-head .lede { margin: 0 auto var(--s-6); max-width: 64ch; }
+/* Free and Pro side by side from 900 px, their rows shared (a subgrid)
+   so names, prices, buttons and lists line up whatever each says; one
+   under another below. */
+.plans .narrow { width: min(100% - 32px, 980px); }
+.tiers { display: grid; gap: var(--s-4); }
+@media (width >= 900px) {
+	.tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(6, auto); row-gap: 0; }
+	.tiers .tier { display: grid; grid-row: span 6; grid-template-rows: subgrid; align-content: start; }
+}
+.tier .ticks { margin-top: var(--s-1); }
+.after-tiers { margin-top: var(--s-5); }
+.after-tiers .callout { margin: 0; }
+.plans .section-head { margin-bottom: var(--s-5); }
+.plans .what { max-width: 75ch; color: var(--ink-soft); }
+/* Accounts that exist, and education: side by side from 900 px. */
+.asides { display: grid; gap: var(--s-4); }
+@media (width >= 900px) { .asides { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.asides h2 { margin-bottom: var(--s-2); }
+.asides p { margin: 0; color: var(--ink-soft); }
+.keeps { margin-top: var(--s-7); }
+.keep { margin: 0; padding-left: 20px; color: var(--ink-soft); max-width: 75ch; }
+.keep li { margin: 0 0 10px; }
+.keep b { color: var(--ink); font-weight: 620; }
+dialog .done .actions { margin-top: var(--s-4); }
+</style>
+<script src="/follow.js" type="module"></script>
+<script src="/plans.js" type="module"></script>
+<script type="application/json" id="site-words">{", a graphics driver with Vulkan or OpenGL 3.3": ", einen Grafiktreiber mit Vulkan oder OpenGL 3.3", ", and {size} of disk": " und {size} freien Speicherplatz", ", open until {day}. Enter a model of yours, or vote.": ", offen bis zum {day}. Reich ein Modell von dir ein oder stimm ab.", ", opens on {day}.": ", startet am {day}.", "3D model": "3D-Modell", "Account": "Konto", "Advent": "Advent", "Airlines": "Fluggesellschaften", "Airport": "Flughafen", "Animals and nature": "Tiere und Natur", "Any": "Alle", "Any year in the decade": "Jedes Jahr des Jahrzehnts", "Apple silicon and Intel": "Apple Silicon und Intel", "Architecture": "Architektur", "Art and mosaics": "Kunst und Mosaike", "Assistant": "Assistent", "Best match": "Beste Treffer", "Beta hub": "Beta-Bereich", "Boat": "Boote", "Building": "Gebäude", "Built in 3D first": "In 3D gebaute zuerst", "By name": "Nach Name", "Cargo": "Fracht", "Castles and fantasy": "Burgen und Fantasy", "Chinese (Lunar) New Year": "Mondneujahr", "Choose Pro.": "Wähle Pro.", "Choose monthly or yearly.": "Wähle monatlich oder jährlich.", "Chosen by Brickworks": "Von Brickworks ausgewählt", "Christmas": "Weihnachten", "Clear all": "Alles zurücksetzen", "Coast Guard": "Küstenwache", "Construction": "Baustelle", "Copied": "Kopiert", "Copy": "Kopieren", "Designed with the assistant, {how}": "Mit dem Assistenten entworfen, {how}", "Done: that address is not on the list for any plan.": "Erledigt: Diese Adresse steht für keinen Tarif auf der Liste.", "Download for {system}": "Für {system} herunterladen", "Every part of these is in your collection of {parts}: the most built and remixed first.": "Jedes Teil davon ist in deiner Sammlung ({parts}): die am häufigsten gebauten und geremixten zuerst.", "Farm": "Bauernhof", "Featured today": "Tagestipp", "Fewest parts": "Wenigste Teile", "Figures and characters": "Figuren und Charaktere", "Filters": "Filter", "Filters, {n} on": "Filter, {n} aktiv", "Fire": "Feuerwehr", "First launch: drag it into Applications.": "Erster Start: Zieh es in „Programme“.", "First launch: extract the zip first.": "Erster Start: Entpacke zuerst die ZIP-Datei.", "First launch: extract the zip, then allow it once.": "Erster Start: Entpacke die ZIP-Datei und erlaube es dann einmal.", "First launch: let the AppImage run as a program.": "Erster Start: Erlaube dem AppImage, als Programm zu laufen.", "First launch: macOS asks you to allow it once.": "Erster Start: macOS fragt einmal, ob du es erlaubst.", "Hand-built": "Von Hand gebaut", "Harbor": "Hafen", "Has instructions": "Mit Bauanleitung", "Hobby Sets": "Hobby-Sets", "Hospital": "Krankenhaus", "In PowerShell, this checks the file is the one published. It should print True.": "In PowerShell prüft dies, ob die Datei die veröffentlichte ist. Es sollte True ausgeben.", "In Terminal, this checks the file is the one published. It should print OK.": "Im Terminal prüft dies, ob die Datei die veröffentlichte ist. Es sollte OK ausgeben.", "In a terminal, this checks each file is the one published. It should print OK.": "In einem Terminal prüft dies, ob jede Datei die veröffentlichte ist. Es sollte OK ausgeben.", "Inside the theme": "Unterthema", "LDraw has a 3D model of it, to build in Brickworks": "LDraw hat ein 3D-Modell davon, zum Bauen in Brickworks", "LDraw library": "LDraw-Set", "LEGO® Exclusive": "Exklusive LEGO® Sets", "Large, 1,000 parts or more": "Groß, 1.000 Teile oder mehr", "Made from a 3D model with Brickify, {how}": "Mit Brickify aus einem 3D-Modell gemacht, {how}", "Mechanisms": "Mechanismen", "Medium, 200 to 999 parts": "Mittel, 200 bis 999 Teile", "Menu": "Menü", "Menu and your account": "Menü und dein Konto", "Menu and your account, {n} new": "Menü und dein Konto, {n} neu", "Minifigures": "Minifiguren", "Modelled by {name}": "Modelliert von {name}", "Modular Buildings": "Modulare Gebäude", "Most built": "Am häufigsten gebaut", "Most liked": "Am beliebtesten", "Most parts": "Meiste Teile", "Most remixed": "Am häufigsten geremixt", "Most viewed": "Am häufigsten angesehen", "Moves:": "Bewegt:", "Needs 64-bit Linux on an x86 PC": "Braucht 64-Bit-Linux auf einem x86-PC", "Needs 64-bit Linux on an x86 PC with glibc {glibc} or newer": "Braucht 64-Bit-Linux auf einem x86-PC mit glibc {glibc} oder neuer", "Needs 64-bit Windows 10 or 11, a graphics driver with Vulkan, Direct3D 12 or OpenGL 3.3": "Braucht 64-Bit-Windows 10 oder 11, einen Grafiktreiber mit Vulkan, Direct3D 12 oder OpenGL 3.3", "Needs macOS on Apple silicon or Intel": "Braucht macOS auf Apple Silicon oder Intel", "Needs macOS {arm} or later on Apple silicon, {intel} or later on Intel": "Braucht macOS {arm} oder neuer auf Apple Silicon, {intel} oder neuer auf Intel", "New in {version}": "Neu in {version}", "Newest": "Neueste", "Newest sets": "Neueste Sets", "Next": "Weiter", "No picture": "Kein Bild", "No set has every word you typed. The nearest: {sets}": "Kein Set enthält jedes Wort, das du eingegeben hast. Die nächsten Treffer: {sets}", "Nobody you follow has listed a model yet. Follow a designer from their page or from beside one of their models, and what they list comes here.": "Noch hat niemand, dem du folgst, ein Modell gelistet. Folge einem Designer auf seiner Seite oder neben einem seiner Modelle, und was er listet, erscheint hier.", "Nothing in the gallery is all in your collection of {parts} yet. Parts I own, in Filters, shows what is closest.": "Nichts in der Galerie steckt schon ganz in deiner Sammlung ({parts}). „Teile, die ich habe“ unter Filter zeigt, was am nächsten kommt.", "Nothing more": "Nichts mehr", "Nothing was built or remixed here {span} yet. A model joins Top when somebody builds it to its last step, remixes it, or it is Tested.": "Hier wurde {span} noch nichts gebaut oder geremixt. Ein Modell kommt unter „Beste“, wenn jemand es bis zum letzten Schritt baut, es remixt oder es getestet ist.", "Notifications": "Benachrichtigungen", "Off-Road": "Gelände", "Oldest sets": "Älteste Sets", "Only with a 3D model": "Nur mit 3D-Modell", "Open it and drag what moves, as it was built": "Öffne es und bewege, was sich bewegt, so wie es gebaut ist", "Open it and play it:": "Öffne es und spiel sie ab:", "Open it and play them:": "Öffne es und spiel sie ab:", "Other": "Sonstige", "Other systems: ": "Andere Systeme: ", "Page {n}": "Seite {n}", "Pages of {noun}": "Seiten der {noun}", "Parts I own": "Teile, die ich habe", "Police": "Polizei", "Previous": "Zurück", "Promotional": "Werbesets", "Released {date}": "Erschienen am {date}", "Retry": "Erneut versuchen", "Robots and machines": "Roboter und Maschinen", "Saved": "Gespeichert", "Seasonal": "Saisonales", "See Pro": "Pro ansehen", "See Top": "Beste ansehen", "See all time": "Gesamten Zeitraum ansehen", "Selected": "Markiert", "Send feedback": "Feedback senden", "Sending…": "Wird gesendet…", "Settings": "Einstellungen", "Show earlier": "Frühere anzeigen", "Show more": "Mehr anzeigen", "Showing sets for ": "Sets für ", "Showing {noun} {range}": "{noun} {range}", "Showing {range} of {total} {noun}": "{noun} {range} von {total}", "Sign in": "Anmelden", "Sign in to download the desktop app.": "Melde dich an, um die Desktop-App herunterzuladen.", "Sign in to like it: we email you a code, no password.": "Melde dich an, um es zu liken: Wir schicken dir einen Code per E-Mail, kein Passwort.", "Sign out": "Abmelden", "Signed in": "Angemeldet", "Small, under 200 parts": "Klein, unter 200 Teilen", "Something else": "Etwas anderes", "Space": "Weltraum", "Stands at every step · every step reachable · every part made in its colour · nothing loose": "Steht bei jedem Schritt · jeder Schritt erreichbar · jedes Teil in seiner Farbe hergestellt · nichts lose", "Stop filtering by the tag {tag}": "Filter nach dem Tag {tag} aufheben", "Stop filtering by {what}: {words}": "Filter nach {what} aufheben: {words}", "Stop filtering by {words}": "Filter „{words}“ aufheben", "Stop ordering by {words}": "Sortierung „{words}“ aufheben", "Technic or mechanism": "Technic oder Mechanik", "Tell Brickworks what you own (in the app, Build › My collection…) and this shows what in the gallery you can build with it.": "Sag Brickworks, was du besitzt (in der App unter Bauen › Meine Sammlung…), dann zeigt dies, was du aus der Galerie damit bauen kannst.", "Tested": "Getestet", "Tested only": "Nur getestete", "Thanks. We will write to you once, when it opens, and not before.": "Danke. Wir schreiben dir einmal, wenn es startet, und nicht vorher.", "Thanksgiving": "Thanksgiving", "That did not go just now. Try again in a minute.": "Das ging gerade nicht durch. Versuch es in einer Minute noch einmal.", "That did not go: no connection. Try again in a minute.": "Das ging nicht durch: keine Verbindung. Versuch es in einer Minute noch einmal.", "That did not work just now. Try again.": "Das hat gerade nicht geklappt. Versuch es noch einmal.", "That is not an email address.": "Das ist keine E-Mail-Adresse.", "That page did not load just now.": "Diese Seite wurde gerade nicht geladen.", "That page did not load just now. Retry is where Show more was.": "Diese Seite wurde gerade nicht geladen. „Erneut versuchen“ steht jetzt dort, wo „Mehr anzeigen“ war.", "The Hobbit and Lord of the Rings": "Der Hobbit und Der Herr der Ringe", "The LEGO® Movie": "The LEGO® Movie", "The Lord of the Rings": "Der Herr der Ringe", "The download did not start just now. Try again in a minute.": "Der Download ist gerade nicht gestartet. Versuch es in einer Minute noch einmal.", "The next challenge: ": "Der nächste Wettbewerb: ", "The note is a line of words.": "Die Notiz muss eine Zeile Text sein.", "The {kind}:": "Die {kind}-Datei:", "This month": "Dieser Monat", "This month’s challenge: ": "Wettbewerb des Monats: ", "This week": "Diese Woche", "Top builds": "Beste Modelle", "Top builds: a build finished counts {builds}, a remix {remixes} and the Tested mark {tested}. Views count for nothing.": "Beste Modelle: Einmal fertig gebaut zählt {builds}, ein Remix {remixes} und die Markierung „Getestet“ {tested}. Aufrufe zählen nicht.", "Town and buildings": "Stadt und Gebäude", "Traffic": "Verkehr", "Train": "Eisenbahn", "Trains": "Eisenbahn", "Vehicle": "Fahrzeuge", "Vehicles": "Fahrzeuge", "Version {version}": "Version {version}", "Week’s pick": "Topwahl", "Windows 10 and 11": "Windows 10 und 11", "With minifigures": "Mit Minifiguren", "With or without": "Mit oder ohne", "With the assistant": "Mit dem Assistenten", "Without": "Ohne", "Won “{title}”, by hand": "„{title}“ gewonnen, von Hand", "Won “{title}”, with the assistant": "„{title}“ gewonnen, mit dem Assistenten", "Year": "Jahr", "You have every part": "Du hast jedes Teil", "You have none of its parts": "Du hast keines seiner Teile", "You have {have} of its {pieces} parts": "Du hast {have} seiner {pieces} Teile", "Your account": "Dein Konto", "Your account, {n} new": "Dein Konto, {n} neu", "Your feed": "Dein Feed", "Your profile": "Dein Profil", "actuator": "Linearaktuator", "and {n} more": "und {n} weitere", "as its designer tagged it": "wie sein Designer es markiert hat", "as the app said when it was published": "wie die App beim Veröffentlichen angab", "boom": "Ausleger", "build finished": "Mal fertig gebaut", "builds finished": "Mal fertig gebaut", "built": "gebaut", "built {times} this week": "diese Woche {times} gebaut", "comment": "Kommentar", "comments": "Kommentare", "doors": "Türen", "gears": "Zahnräder", "how it was made": "Art der Erstellung", "just now": "gerade eben", "lately": "in letzter Zeit", "like": "Like", "likes": "Likes", "model": "Modell", "models": "Modelle", "new this week, and Tested": "neu in dieser Woche und getestet", "once": "einmal", "part": "Teil", "parts": "Teile", "pneumatics": "Pneumatik", "rack": "Zahnstange", "remix": "Remix", "remixed {times} this week": "diese Woche {times} geremixt", "remixes": "Remixe", "set": "Set", "sets": "Sets", "size": "Größe", "steering": "Lenkung", "this month": "diesen Monat", "this week": "diese Woche", "turntable": "Drehteller", "twice": "zweimal", "{done} in the past 30 days": "{done} in den letzten 30 Tagen", "{models}, more below": "{models}, weitere darunter", "{n} earlier {noun}": "{n} {noun} weiter oben", "{n} more {noun}": "{n} {noun} mehr", "{n} new": "{n} neu", "{n} times": "{n}-mal", "{sets} of yours has no parts list here, so what is in it is not counted.": "Für {sets} von dir gibt es hier keine Teileliste, daher wird sein Inhalt nicht mitgezählt.", "{sets} of yours have no parts list here, so what is in them is not counted.": "Für {sets} von dir gibt es hier keine Teilelisten, daher wird ihr Inhalt nicht mitgezählt.", "{sets} of {every}": "{sets} von {every}"}</script>
+</head>
+<body>
+<a class="skip" href="#main">Zum Inhalt springen</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/de"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Hauptmenü">
+			<a href="/de/gallery">Galerie</a>
+			<a href="/de/library">Bibliothek</a>
+			<a href="/docs">Doku</a>
+			<a href="/de/plans" aria-current="page">Preise</a>
+			<a class="cta" href="/app?lang=de">App öffnen</a>
+			<a class="cta ghost" href="/profile" data-account>Anmelden</a>
+		</nav>
+		<details class="menu">
+			<summary>Menü</summary>
+			<div class="menu-list">
+				<nav aria-label="Menü">
+					<a href="/de/gallery">Galerie</a>
+					<a href="/de/library">Bibliothek</a>
+					<a href="/docs">Doku</a>
+					<a href="/de/plans" aria-current="page">Preise</a>
+					<a href="/de/download">Download</a>
+					<a href="/profile" data-account>Anmelden</a>
+				</nav>
+				<div class="theme-choice"><span aria-hidden="true">Design</span>
+					<div class="segmented" role="group" aria-label="Design">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Hell</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dunkel</button>
+					</div>
+				</div>
+			</div>
+		</details>
+	</div>
+</header>
+
+<main id="main" class="plans">
+	<section class="plans-head halo" aria-labelledby="plans-h">
+		<div class="wrap">
+			<p class="eyebrow"><span data-when="soon">Preise · Pro kommt bald</span><span data-when="sale" hidden>Preise</span></p>
+			<h1 id="plans-h"><span data-when="soon">Kostenlos in deinem Browser. Pro kommt bald.</span><span data-when="sale" hidden>Kostenlos in deinem Browser. Pro auf deinem Desktop.</span></h1>
+			<p class="lede" data-when="soon">Brickworks ist in jedem Browser kostenlos, mit KI über dein eigenes Claude, ChatGPT oder deinen eigenen Schlüssel, ohne Limit, und mit 25 Modellen, die in deinem Konto aufbewahrt werden. Pro bringt die Desktop-App dazu und bewahrt jedes Modell auf, das du baust. Hier wird noch nichts berechnet: Sag, dass du Pro nutzen würdest, und wir schreiben dir einmal, wenn es startet.</p>
+			<p class="lede" data-when="sale" hidden>Brickworks ist in jedem Browser kostenlos, mit KI über dein eigenes Claude, ChatGPT oder deinen eigenen Schlüssel, ohne Limit, und mit 25 Modellen, die in deinem Konto aufbewahrt werden. Pro bringt die Desktop-App dazu und bewahrt jedes Modell auf, das du baust.</p>
+			<div class="segmented" role="group" aria-label="Abrechnung">
+				<button type="button" data-billing="month" aria-pressed="false">Monatlich</button>
+				<button type="button" data-billing="year" aria-pressed="true">Jährlich <span class="badge accent">Zwei Monate kostenlos</span></button>
+			</div>
+		</div>
+	</section>
+
+	<div class="wrap narrow">
+		<div class="tiers">
+			<article class="tier" id="free" aria-labelledby="free-h">
+				<div class="name"><h2 id="free-h">Kostenlos</h2></div>
+				<p>Die Web-App, auf jedem Computer, Tablet oder Smartphone.</p>
+				<p class="price"><b>$0</b></p>
+				<a class="cta ghost" href="/app?lang=de">App öffnen</a>
+				<p>Das ist dabei:</p>
+				<ul class="ticks">
+					<li>Die Web-App, in jedem Browser, ohne etwas zu installieren</li>
+					<li><b>KI ohne Limit</b>, über dein eigenes Claude, ChatGPT oder deinen eigenen API-Schlüssel</li>
+					<li><b>25 Modelle in deinem Konto aufbewahrt</b>; Speichern auf deinem Gerät und Exportieren ohne Limit</li>
+					<li>Bauen von Hand ohne Limit</li>
+					<li>Die ganze LDraw-Teilebibliothek und ihre offiziellen Modelle echter Sets</li>
+					<li>Physik: ob es steht, und Gelenke, die sich bewegen</li>
+					<li>Bauanleitungen zum Drucken oder als PDF, Renderings und Exporte</li>
+					<li>Ein Teil anhand eines Fotos finden</li>
+					<li>Teilelisten für Rebrickable und BrickLink</li>
+					<li>In der Galerie veröffentlichen und bei Wettbewerben mitmachen</li>
+					<li>Gemeinsam bauen, live, über einen Link</li>
+					<li>Jede Version eines Modells, das du teilst</li>
+				</ul>
+			</article>
+
+			<article class="tier featured" id="pro" aria-labelledby="pro-h">
+				<div class="name"><h2 id="pro-h">Pro</h2><span class="pill new" data-when="soon">Demnächst</span></div>
+				<p>Die Desktop-App und jedes Modell in deinem Konto.</p>
+				<p class="price"><span data-billed="year"><b data-amount="year">$80</b> im Jahr</span><span data-billed="month" hidden><b data-amount="month">$8</b> im Monat</span><small data-billed="year">$6,67 im Monat, jährlich abgerechnet: zwei Monate kostenlos</small><small data-billed="month" hidden>Monatlich abgerechnet. Jährlich sind zwei Monate kostenlos.</small></p>
+				<button class="cta" type="button" data-interest="pro" data-when="soon">Sag mir Bescheid, wenn es so weit ist</button>
+				<a class="cta" id="pro-upgrade" href="/settings?upgrade=year#plan" data-when="sale" hidden>Auf Pro upgraden</a>
+				<p><span data-when="soon">Alles aus dem kostenlosen Tarif. Mit Pro kommt:</span><span data-when="sale" hidden>Alles aus dem kostenlosen Tarif, dazu:</span></p>
+				<ul class="ticks">
+					<li><b>Die Desktop-App</b> für Windows, macOS und Linux</li>
+					<li>Sie funktioniert offline, mit allen Teilen auf der Festplatte, und nutzt KI wie die Web-App, dazu Claude Code</li>
+					<li><b>Jede Version, die erscheint, solange du zahlst, darfst du behalten</b>, und sie wird nie gesperrt</li>
+					<li><b>Jedes Modell in deinem Konto aufbewahrt</b>, ohne Limit</li>
+					<li>Jährlich sind zwei Monate kostenlos</li>
+				</ul>
+			</article>
+		</div>
+		<div class="after-tiers">
+			<!-- Shown only while the beta is open (web/plans.js asks
+			     /api/plans?op=beta_spots); under the plans, out of the first
+			     screen, so its coming moves nothing in view. -->
+			<div class="callout accent" id="beta" hidden>
+				<p class="callout-title">Die Beta: 30 Tage Pro, kostenlos</p>
+				<p class="what">Wir suchen 100 Tester, die Brickworks wirklich nutzen und uns ehrlich sagen, wie es läuft. Jeder bekommt 30 Tage Pro: jedes Modell in seinem Konto aufbewahrt und die Desktop-App. Keine Karte, nichts zu kündigen.</p>
+				<p><a href="/beta">Für die Beta bewerben</a></p>
+			</div>
+		</div>
+	</div>
+
+	<section class="section" id="compare" aria-labelledby="compare-h">
+		<div class="wrap narrow">
+			<div class="section-head">
+				<div>
+					<h2 class="title" id="compare-h">Jede Zeile, nebeneinander</h2>
+					<p>Pro nimmt dem kostenlosen Tarif nichts weg. Es bringt die Desktop-App dazu und bewahrt jedes Modell in deinem Konto auf.</p>
+				</div>
+			</div>
+			<div class="table matrix" role="region" aria-labelledby="compare-h" tabindex="0">
+				<table>
+					<thead><tr><th scope="col"><span class="visually-hidden">Was dabei ist</span></th><th scope="col">Kostenlos</th><th scope="col">Pro</th></tr></thead>
+					<tbody>
+						<tr class="group"><th scope="rowgroup" colspan="3">Wo</th></tr>
+						<tr><th scope="row">Die Web-App, in jedem Browser</th><td><span class="has"><span class="visually-hidden">Ja</span></span></td><td><span class="has"><span class="visually-hidden">Ja</span></span></td></tr>
+						<tr><th scope="row">Die Desktop-App für Windows, macOS und Linux</th><td><span class="hasnt"><span class="visually-hidden">Nein</span></span></td><td><span class="has"><span class="visually-hidden">Ja</span></span></td></tr>
+						<tr><th scope="row">Funktioniert offline, mit allen Teilen auf der Festplatte</th><td><span class="hasnt"><span class="visually-hidden">Nein</span></span></td><td><span class="has"><span class="visually-hidden">Ja</span></span></td></tr>
+						<tr><th scope="row">Jede Desktop-Version, die erscheint, solange du zahlst, zum Behalten</th><td><span class="hasnt"><span class="visually-hidden">Nein</span></span></td><td><span class="has"><span class="visually-hidden">Ja</span></span></td></tr>
+						<tr class="group"><th scope="rowgroup" colspan="3">Entwerfen</th></tr>
+						<tr><th scope="row">KI, über dein eigenes Claude, ChatGPT oder deinen eigenen API-Schlüssel</th><td>Ohne Limit</td><td>Ohne Limit</td></tr>
+						<tr><th scope="row">Bauen von Hand</th><td>Ohne Limit</td><td>Ohne Limit</td></tr>
+						<tr><th scope="row">Ein frischer Blick auf jeden neuen KI-Entwurf</th><td><span class="has"><span class="visually-hidden">Ja</span></span></td><td><span class="has"><span class="visually-hidden">Ja</span></span></td></tr>
+						<tr><th scope="row">Die ganze LDraw-Teilebibliothek und ihre Modelle echter Sets</th><td><span class="has"><span class="visually-hidden">Ja</span></span></td><td><span class="has"><span class="visually-hidden">Ja</span></span></td></tr>
+						<tr><th scope="row">Physik: ob es steht, und Gelenke, die sich bewegen</th><td><span class="has"><span class="visually-hidden">Ja</span></span></td><td><span class="has"><span class="visually-hidden">Ja</span></span></td></tr>
+						<tr><th scope="row">Ein Teil anhand eines Fotos finden</th><td><span class="has"><span class="visually-hidden">Ja</span></span></td><td><span class="has"><span class="visually-hidden">Ja</span></span></td></tr>
+						<tr class="group"><th scope="rowgroup" colspan="3">Erstellen und Teilen</th></tr>
+						<tr><th scope="row">Bauanleitungen zum Drucken oder als PDF, Renderings und Exporte</th><td><span class="has"><span class="visually-hidden">Ja</span></span></td><td><span class="has"><span class="visually-hidden">Ja</span></span></td></tr>
+						<tr><th scope="row">Teilelisten für Rebrickable und BrickLink</th><td><span class="has"><span class="visually-hidden">Ja</span></span></td><td><span class="has"><span class="visually-hidden">Ja</span></span></td></tr>
+						<tr><th scope="row">Gemeinsam bauen, live, über einen Link</th><td><span class="has"><span class="visually-hidden">Ja</span></span></td><td><span class="has"><span class="visually-hidden">Ja</span></span></td></tr>
+						<tr><th scope="row">In der Galerie veröffentlichen und bei Wettbewerben mitmachen</th><td><span class="has"><span class="visually-hidden">Ja</span></span></td><td><span class="has"><span class="visually-hidden">Ja</span></span></td></tr>
+						<tr><th scope="row">Modelle in deinem Konto aufbewahrt</th><td>25</td><td>Unbegrenzt</td></tr>
+						<tr><th scope="row">Speichern auf deinem Gerät und Exportieren</th><td>Ohne Limit</td><td>Ohne Limit</td></tr>
+						<tr><th scope="row">Jede Version eines Modells, das du teilst</th><td><span class="has"><span class="visually-hidden">Ja</span></span></td><td><span class="has"><span class="visually-hidden">Ja</span></span></td></tr>
+						<tr><th scope="row">Preis</th><td>$0</td><td>$8 im Monat oder $80 im Jahr</td></tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</section>
+
+	<section class="section" id="promises" aria-labelledby="keep-h">
+		<div class="wrap narrow">
+			<div class="asides">
+				<section class="card" id="had" aria-labelledby="had-h">
+					<h2 id="had-h">Du hast ein Konto? Du behältst alles</h2>
+					<p>Jedes Konto, das vor dem 29. Oktober 2026 erstellt wurde, als sich diese Seite geändert hat, bekommt Pro, kostenlos und ohne Enddatum: die Desktop-App, jede Version davon und jedes Modell in deinem Konto. Du musst nichts tun: Es ist in deinem Konto, sobald Pro startet.</p>
+				</section>
+				<section class="card" id="edu" aria-labelledby="edu-h">
+					<h2 id="edu-h">Bildung ist kostenlos</h2>
+					<p>Schüler, Studierende und Lehrkräfte können Pro kostenlos bekommen, jeweils für ein Jahr und auf Anfrage erneut, mit einer E-Mail-Adresse der Schule oder Hochschule oder einem kurzen Formular, sobald Pro startet; für eine Schule gilt dasselbe für jede Lehrkraft. Du unterrichtest? Sag es in der Zeile des Formulars.</p>
+				</section>
+			</div>
+			<section class="keeps" aria-labelledby="keep-h">
+				<h2 id="keep-h">Was kostenlos bleibt</h2>
+				<p class="what">Pro bringt die Desktop-App dazu und bewahrt jedes Modell in deinem Konto auf. Es nimmt dem kostenlosen Tarif nichts weg, und der behält all das:</p>
+				<ul class="keep">
+					<li><b>Die Web-App.</b> In jedem Browser, auf einem Computer, Tablet oder Smartphone.</li>
+					<li><b>KI und Bauen von Hand, ohne Limit.</b> Bring deine eigene KI mit: Claude oder ChatGPT über den Connector, Claude Code oder einen eigenen API-Schlüssel.</li>
+					<li><b>Alles andere, was die App heute kann.</b> Speichern auf deinem Gerät, 25 Modelle in deinem Konto, Gemeinsam bauen, Bauanleitungen und PDFs, Renderings, Exporte, Fotosuche, Teilelisten, Veröffentlichen, die Galerie und Wettbewerbe.</li>
+					<li><b>Deine Modelle.</b> Nichts wird je gelöscht oder gesperrt: Mit jedem Tarif oder ohne öffnet, bearbeitet und exportiert die App alles, was du gebaut hast. Hast du mehr als 25 in deinem Konto, behältst du jedes davon; ein neues kommt dazu, sobald du wieder unter 25 bist.</li>
+					<li><b>Was du heruntergeladen hast.</b> Jede Desktop-Version, die du herunterlädst, funktioniert weiter. Bis Pro startet, ist der Download der Desktop-App kostenlos.</li>
+				</ul>
+			</section>
+		</div>
+	</section>
+
+	<section class="section" id="questions" aria-labelledby="ask-h">
+		<div class="wrap narrow">
+			<div class="section-head"><div><h2 class="title" id="ask-h">Fragen</h2></div></div>
+			<details class="qa" id="changed">
+				<summary>Auf dieser Seite stand, die Desktop-App sei kostenlos. Was hat sich geändert?</summary>
+				<div><p>Bis zum 29. Oktober 2026 stand hier, dass der kostenlose Tarif alles enthält, auch die Desktop-App. Der Tarif hat sich geändert: Der kostenlose Tarif ist die Web-App, mit KI ohne Limit und 25 Modellen in deinem Konto, und die Desktop-App und jedes Modell in deinem Konto gibt es mit Pro. Alle, die vorher schon ein Konto hatten, behalten beides, kostenlos und ohne Enddatum. Niemandem wird etwas genommen, das er heute hat.</p></div>
+			</details>
+			<details class="qa" id="ai">
+				<summary>Ist KI im kostenlosen Tarif begrenzt?</summary>
+				<div><p>Nein. KI hat in keinem Tarif ein Limit, weil du deine eigene mitbringst: Claude oder ChatGPT über den Connector, Claude Code oder deinen eigenen API-Schlüssel für einen beliebigen Anbieter. Brickworks misst sie nie ab und zahlt nie für ihre Tokens.</p></div>
+			</details>
+			<details class="qa">
+				<summary>Wozu überhaupt Pro?</summary>
+				<div><p>Um zu bezahlen, was Brickworks im Betrieb und in der Entwicklung kostet: die Server, auf denen die App und der Connector laufen, den Speicher, in dem deine Modelle aufbewahrt werden, und eine Desktop-App, die für drei Systeme gebaut und getestet wird. Die KI selbst läuft über dein eigenes Abo oder deinen eigenen Schlüssel, daher verkauft Brickworks nie Modellnutzung und verdient nie an ihr mit.</p></div>
+			</details>
+			<details class="qa">
+				<summary>Kann ich jetzt bezahlen?</summary>
+				<div><p data-when="soon">Nein. Pro ist noch nicht zu kaufen, und hier wird keine Karte verlangt. Sobald es startet, stehen sein Preis, wie es sich verlängert und wie du kündigst, hier und in den <a href="/terms#paid-plans">Nutzungsbedingungen</a>, bevor du bezahlst.</p>
+					<p data-when="sale" hidden>Ja: Wähle Monatlich oder Jährlich, dann „Auf Pro upgraden“. Bevor du bezahlst, nennt der nächste Schritt den Preis, dass es sich verlängert, bis du kündigst, und wie du kündigst, so wie die <a href="/terms#paid-plans">Nutzungsbedingungen</a>.</p></div>
+			</details>
+			<details class="qa">
+				<summary>Was passiert, wenn ich nicht mehr für Pro zahle?</summary>
+				<div><p>Nichts hört auf. Jede Desktop-Version, die erschienen ist, während du gezahlt hast, bleibt deine und funktioniert weiter, online oder offline, und dein Konto geht zurück auf den kostenlosen Tarif: die Web-App und 25 Modelle in deinem Konto. Jedes Modell, das schon dort ist, bleibt; ein neues kommt dazu, sobald du unter 25 bist. Nichts, was du gebaut hast, wird gelöscht oder gesperrt.</p></div>
+			</details>
+			<details class="qa">
+				<summary>Was speichert das Formular?</summary>
+				<div><p>Deine E-Mail-Adresse, monatlich oder jährlich und deine Zeile, nur um dir einmal zu schreiben, wenn Pro startet. Um dich auszutragen, öffne das Formular, gib die Adresse ein und wähle <b>austragen</b>. Mehr unter <a href="/privacy#plans">Datenschutz</a>.</p></div>
+			</details>
+		</div>
+	</section>
+
+	<section class="section" aria-labelledby="start-h">
+		<div class="wrap narrow">
+			<div class="closing">
+				<h2 class="title" id="start-h">Fang an zu bauen, kostenlos</h2>
+				<p class="lede">Öffne Brickworks in jedem Browser: nichts zu installieren und keine Karte.</p>
+				<div class="actions center">
+					<a class="cta big" href="/app?lang=de">App öffnen <span class="arrow" aria-hidden="true">→</span></a>
+					<a class="cta ghost big" href="/de/download">Für den Desktop herunterladen</a>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<dialog id="interest" aria-labelledby="interest-h">
+		<h2 id="interest-h">Sag mir Bescheid, wenn Pro so weit ist</h2>
+		<p>Eine E-Mail, wenn Pro startet. Nichts wird berechnet, und sonst wird nichts verschickt.</p>
+		<form id="interest-form" novalidate>
+			<label>E-Mail<input id="interest-email" name="email" type="email" maxlength="320" autocomplete="email" required></label>
+			<label>Monatlich oder jährlich<select id="interest-billing" name="billing">
+				<option value="yearly">Jährlich, $80</option>
+				<option value="monthly">Monatlich, $8</option>
+			</select></label>
+			<label><span>Noch etwas? <small>optional, eine Zeile</small></span><input id="interest-note" name="note" maxlength="200"></label>
+			<div class="actions">
+				<button class="cta" type="submit" id="interest-send">Bescheid sagen</button>
+				<button class="cta ghost" type="button" data-close>Abbrechen</button>
+			</div>
+			<p class="said" id="interest-said" role="status"></p>
+			<p class="note">Es dir anders überlegt? Gib die Adresse ein und wähle <button class="link" type="button" id="interest-forget">austragen</button>.</p>
+		</form>
+		<div class="done" id="interest-done" hidden>
+			<p id="interest-thanks"></p>
+			<div class="actions"><button class="cta" type="button" data-close>Schließen</button></div>
+		</div>
+	</dialog>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-top">
+			<div class="foot-brand">
+				<a class="mark" href="/de"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>Ein CAD für LEGO® Modelle, mit einem KI-Designer.</p>
+				<div class="theme-choice"><span aria-hidden="true">Design</span>
+					<div class="segmented" role="group" aria-label="Design">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Hell</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dunkel</button>
+					</div>
+				</div>
+				<label class="theme-choice"><span>Sprache</span>
+					<select data-lang-choice translate="no">
+						<option value="en" lang="en">English</option>
+						<option value="de" lang="de">Deutsch</option>
+						<option value="fr" lang="fr">Français</option>
+						<option value="es" lang="es">Español</option>
+					</select>
+				</label>
+			</div>
+			<nav class="foot-links" aria-label="Mehr">
+				<div>
+					<p class="foot-h" id="foot-product">Produkt</p>
+					<ul aria-labelledby="foot-product">
+						<li><a href="/app?lang=de">App öffnen</a></li>
+						<li><a href="/de/download">Download</a></li>
+						<li><a href="/de/plans">Preise</a></li>
+						<li><a href="/changelog">Änderungen</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-community">Community</p>
+					<ul aria-labelledby="foot-community">
+						<li><a href="/de/gallery">Galerie</a></li>
+						<li><a href="/de/library">LDraw-Bibliothek</a></li>
+						<li><a href="/challenge">Wettbewerb</a></li>
+						<li><a href="/collections">Sammlungen</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-help">Hilfe</p>
+					<ul aria-labelledby="foot-help">
+						<li><a href="/docs">Doku</a></li>
+						<li><a href="/de/faq">FAQ</a></li>
+						<li><a href="/de/compare">Vergleich</a></li>
+						<li><a href="/guidelines">Richtlinien</a></li>
+						<li><a href="/feedback" data-feedback>Feedback senden</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-legal">Rechtliches</p>
+					<ul aria-labelledby="foot-legal">
+						<li><a href="/privacy">Datenschutz</a></li>
+						<li><a href="/terms">Nutzungsbedingungen</a></li>
+						<li><a href="/takedown">Entfernung melden</a></li>
+					</ul>
+				</div>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>LEGO® ist eine Marke der LEGO Unternehmensgruppe, die diese Website weder sponsert noch autorisiert oder unterstützt. LEGO® Art, Technic, die Minifigur und die Konfigurationen von Stein und Noppe sind ebenfalls Marken der LEGO Gruppe. Teile aus der LDraw™ Bibliothek (CC BY). <a href="/terms#notices">Hinweise</a></p>
+		</div>
+	</div>
+</footer>
+</body>
+</html>
