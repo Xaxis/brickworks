@@ -392,8 +392,10 @@ a click. Here:
   timed over 40 moves from the mouse moving to the frame the second page
   drew its dot in, twice: on the car after the 50 edits, p95 under 1 s
   strictly; on the rich car, as the change measure is there, p95 under
-  1 s or 95 of 100 within 500 ms and four of that page's frames (each
-  move's own, this box's software drawing, half a second and more). Both
+  1 s or 95 of 100 on the app's own time: the move less its trip (the
+  network, the server, the frame that reads it), within four of that
+  page's frames (each move's own, this box's software drawing, half a
+  second and more). Both
   say the stages and what the check reading the page saw. Red on m165 (no Build together in the File menu).
 
 ## Not done yet
@@ -469,15 +471,29 @@ a click. Here:
 
   - **the plain measure** (after the 50 edits): p95 under 1 s, strictly;
   - **the rich measure** (after the seven kinds): p95 under 1 s, or 95 of
-    every 100 changes within a network budget of 500 ms plus one of the
-    sender's frames (the edit picked up) and three of the receiver's (the
-    frame it lands in, the one it is drawn in, the one the page is told
-    in), each page's frame its own median hold after a turn of the view
-    alone. On the 745989a6 preview's numbers: frames 850 ms (owner) and
-    1,117 ms (the other), so 4.2 to 4.7 s allowed against a p95 of 3.4 s;
-    on this box 17 and 533 ms, so 1.1 to 2.1 s against 0.8 s. A real
-    graphics card draws the rich car in a few milliseconds, and the bar
-    comes down to the plain one with it.
+    every 100 changes on the app's own time, as the probes' bars are
+    (`src/dev/probe_time.gd`). Each change is split on the app's own
+    clocks: its trip, from the request leaving the sender to the receiver
+    reading the answer (the network, the server, and the wait for the
+    receiver's frame that reads it, as a page reads a fetch's answer once
+    a frame: the plain measure's to judge), and the pages' own share, from
+    the ask to the request leaving and from the answer read to the end of
+    the frame that draws it. A change is within when it arrived in under
+    1 s in all, or its share is within one of the sender's frames (the
+    edit picked up and sent) and three of the receiver's (the one that
+    reads the answer, the one it is drawn in, one more), each that page's
+    longest in that change. A real graphics card draws the rich car in a
+    few milliseconds, and the bar comes down with it. Each change that
+    missed is said, with its share, its frames and its trip.
+
+    It was a network budget of 500 ms plus each page's median hold after
+    a turn of the view, taken after the changes. On one base (fa12fd7d's
+    code, 2026-10-31) that passed 6 to 20 of 20: the trip alone was 290
+    to 590 ms at the median and to 930 at p95, and the frames of the turns
+    were not the frames the changes met (33 ms measured, 383 held). The
+    pointer's rich bar had the same 500 ms and now subtracts each move's
+    trip too: on the 24 runs kept, every one with the pointer sent at once
+    (the hover fix) is 40 of 40, and those without it 26 to 28.
 - **The desktop lagged once more**, after the second browser was reloaded
   (e2c43adb preview): both browsers matched, the desktop's file did not at
   that check and did at the next, and it had put nothing back (its count
