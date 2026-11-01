@@ -451,7 +451,7 @@ func _report(judge: bool) -> void:
 	print("skipped: %s" % ", ".join(skipped.map(func(row: Dictionary) -> String:
 		return "%s (%s)" % [row["name"], row["skipped"]]).slice(0, 40)))
 	print("%d commands timed; %d held a frame of their own over %d ms (three times that at a load past the %d cores), %d of them without saying so first: %s"
-		% [_rows.size() - skipped.size(), over.size(), BUDGET_MS, OS.get_processor_count(), unsaid.size(),
+		% [_rows.size() - skipped.size(), over.size(), BUDGET_MS, ProbeTime.cores(), unsaid.size(),
 			", ".join(unsaid.map(func(row: Dictionary) -> String:
 				return "%s on %s (%d ms)" % [row["name"], row["model"], row["own_ms"]]))])
 	if judge:

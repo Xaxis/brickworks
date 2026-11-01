@@ -1,18 +1,22 @@
 ## How long the app's own work took, on a box that other work shares.
 ##
 ## Releases run their probes four at a time on a box that other projects
-## and agents share, at a load of 15 to 45 on 24 cores. A bar on the
-## clock's time counted the box against the app there: three releases held
-## on one day (2026-10-31) for a booklet's cover, a layout and a frame that
-## were slow only by the box. So a probe judges the app's own time:
+## and agents share, at a load of 15 to 45 on 12 cores (24 threads). A bar
+## on the clock's time counted the box against the app there: three
+## releases held on one day (2026-10-31) for a booklet's cover, a layout and
+## a frame that were slow only by the box. So a probe judges the app's own
+## time:
 ##
 ##   - the clock's time less what the main thread waited for a CPU it was
 ##     ready to run on (field 2 of /proc/self/schedstat, the run-queue wait;
 ##     0 where there is none), read at the start and at the end;
 ##   - against a bar three times as long when the last minute's load, at the
-##     start or at the end, the larger, is past the box's cores (slack): a
-##     busy box slows the work itself too, its caches and memory shared,
-##     not only its turn at a CPU;
+##     start or at the end, the larger, is past the box's physical cores
+##     (slack): a busy box slows the work itself too, its caches and memory
+##     shared, not only its turn at a CPU. Physical, not logical: two
+##     threads on one core share it with no wait for either, and here (12
+##     cores, 24 threads) the app's own time rose 1.5 to 2 times between a
+##     load of 10 and 22 with the run-queue wait near 0 (2026-10-31);
 ##   - and says both, the app's own time and the wait, with the load and
 ##     the cores (Span.said), so a reader sees how much of it was the box.
 ##
@@ -22,6 +26,10 @@
 ## whether the load slows it before it gives it the slack.
 class_name ProbeTime
 extends RefCounted
+
+## The box's physical cores, counted once as the class loads (a probe's
+## worker may ask).
+static var _cores: int = _physical_cores()
 
 
 ## How long the main thread has waited for a CPU it was ready to run on,
@@ -41,15 +49,35 @@ static func box_load() -> float:
 	return file.get_line().get_slice(" ", 0).to_float() if file != null else 0.0
 
 
+## The box's physical cores: on Linux the distinct (physical id, core id)
+## pairs of /proc/cpuinfo, else the logical processors.
+static func cores() -> int:
+	return _cores
+
+
+static func _physical_cores() -> int:
+	var file: FileAccess = FileAccess.open("/proc/cpuinfo", FileAccess.READ)
+	var pairs: Dictionary = {}
+	var socket: String = ""
+	while file != null and not file.eof_reached():
+		var line: String = file.get_line()
+		var value: String = line.get_slice(":", 1).strip_edges()
+		if line.begins_with("physical id"):
+			socket = value
+		elif line.begins_with("core id"):
+			pairs[socket + "/" + value] = true
+	return pairs.size() if not pairs.is_empty() else OS.get_processor_count()
+
+
 ## What a bar is multiplied by: 3 when the larger of [param load_then] and
-## the load now is past the box's cores, else 1.
+## the load now is past the box's physical cores, else 1.
 static func slack(load_then: float) -> float:
-	return 3.0 if maxf(load_then, box_load()) > OS.get_processor_count() else 1.0
+	return 3.0 if maxf(load_then, box_load()) > _cores else 1.0
 
 
-## "load 21 of 24 cores".
+## "load 21 of 12 cores".
 static func load_said(busy: float) -> String:
-	return "load %.0f of %d cores" % [busy, OS.get_processor_count()]
+	return "load %.0f of %d cores" % [busy, _cores]
 
 
 ## Of the entries of [param list] (Frames.gaps or Frames.work) that ended
@@ -114,9 +142,9 @@ class Span extends RefCounted:
 
 	## What its bar is multiplied by (ProbeTime.slack).
 	func slack() -> float:
-		return 3.0 if busy > OS.get_processor_count() else 1.0
+		return 3.0 if busy > ProbeTime.cores() else 1.0
 
-	## "412 ms of its own (38 waiting for a CPU; load 21 of 24 cores)".
+	## "412 ms of its own (38 waiting for a CPU; load 21 of 12 cores)".
 	func said() -> String:
 		return "%.0f ms of its own (%.0f waiting for a CPU; %s)" % [own, waited,
 			ProbeTime.load_said(busy)]
