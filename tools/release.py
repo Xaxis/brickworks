@@ -8,7 +8,10 @@
           --assets=DIR                       the mesh cache to ship (default assets/generated)
     tools/release.py inspect [DIR]           what is in each package: versions, architectures,
                                              signatures, contents. Reads the packages, not notes
-    tools/release.py smoke FILE [--window]   unpack it as a person would and run it in a clean home
+    tools/release.py smoke FILE [--window]   unpack it as a person would and run it in a clean home;
+                                             --window draws the car and traces it at Best
+    tools/release.py best-reference          the editor's Best of the car, which smoke holds a
+                                             package's to (tools/release/best_car.png)
     tools/release.py publish --draft         upload the packages to a draft release on
                                              Xaxis/brickworks-releases and check GitHub's
                                              SHA-256 of each against dist/
@@ -37,6 +40,7 @@ and the download page says what that means for the first launch:
 
 from __future__ import annotations
 
+import base64
 import datetime as dt
 import hashlib
 import json
@@ -1136,6 +1140,203 @@ def end_tree(pid: int) -> None:
     subprocess.run(["taskkill", "/T", "/F", "/PID", str(pid)], capture_output=True)
 
 
+def takes_bricks(base: list[str], env: dict[str, str], root: Path) -> list[tuple[str, bool, str]]:
+    """Placing bricks from outside, the way a Claude Code session does,
+    through the relay in this checkout. tools/mcp_check.py searches the
+    catalogue, clears the baseplate, builds two bricks, saves and reads the
+    file back."""
+    port = free_port()
+    said: list[tuple[str, bool, str]] = []
+    with (root / "mcp-app.log").open("w") as log:
+        # Its own process group, so stopping it cannot reach this one.
+        app = subprocess.Popen(base + ["--headless", "--", "--mcp=%d" % port], env=env,
+                               stdout=log, stderr=subprocess.STDOUT,
+                               start_new_session=os.name != "nt",
+                               creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+    try:
+        started = time.time()
+        listening = False
+        while time.time() - started < 300 and app.poll() is None:
+            try:
+                with socket.create_connection(("127.0.0.1", port), timeout=2):
+                    listening = True
+                    break
+            except OSError:
+                time.sleep(0.5)
+        said.append(("listens for MCP on %d after %.0f s" % (port, time.time() - started), listening,
+                     (root / "mcp-app.log").read_text(errors="replace")))
+        if listening:
+            drive = subprocess.run([sys.executable, str(ROOT / "tools" / "mcp_check.py"),
+                                    "--port=%d" % port], capture_output=True, text=True,
+                                   timeout=600)
+            built = next((line.strip() for line in drive.stdout.splitlines()
+                          if "a design lands" in line), "")
+            said.append(("a session places bricks in it over MCP: %s" % built,
+                         drive.returncode == 0, drive.stdout + drive.stderr))
+    finally:
+        stop(app)
+    return said
+
+
+def stop(app: subprocess.Popen) -> None:
+    if os.name == "nt":
+        # Always, and the whole tree: the wrapper may have gone and left the
+        # app it started running.
+        end_tree(app.pid)
+    elif app.poll() is None:
+        os.killpg(os.getpgid(app.pid), signal.SIGTERM)
+    try:
+        app.wait(timeout=30)
+    except subprocess.TimeoutExpired:
+        app.kill()
+        app.wait()
+
+
+def windowed(command: list[str], env: dict[str, str]) -> list[str]:
+    """The command run in a window: on an Xvfb of its own where there is
+    one, and in this machine's GPU lease where it has one."""
+    if shutil.which("xvfb-run"):
+        # Always off-screen, whatever this shell's display is. The clean
+        # home kept WAYLAND_DISPLAY at first, Godot chose Wayland over the
+        # Xvfb it was given, and the smoke test opened a window on the
+        # desktop of whoever was sitting there; one of those never exited.
+        env["MESA_VK_WSI_DEBUG"] = "sw"
+        command = ["xvfb-run", "-a", "--server-args=-screen 0 1280x800x24"] + command
+    elif sys.platform.startswith("linux"):
+        for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY"):
+            if name in os.environ:
+                env[name] = os.environ[name]
+        say("        no xvfb-run: drawing on this machine's own screen")
+    gpu = Path.home() / ".claude" / "claude-core" / "bin" / "gpu"
+    if os.access(gpu, os.X_OK):
+        # This machine's GPU lease. It finds the account's own home itself,
+        # so the fresh one given to the app does not split it.
+        command = [str(gpu)] + command
+    return command
+
+
+# Path-traced Best of the example car, asked as a session asks for it, and
+# the picture it is held to: the same render from the editor build every
+# probe runs (tools/release.py best-reference makes it).
+BEST_ASK = {"kind": "picture", "quality": "best", "size": "720p", "view": "hero",
+            "look": "product", "backdrop": "white"}
+BEST_REFERENCE = ROOT / "tools" / "release" / "best_car.png"
+# Measured 2026-11-01 at 160 x 90 grey against the editor's: the 0.13.0
+# download 0.9993 (two release builds 0.9997 apart); the window's look in
+# place of the product's 0.978; the car with its red parts gone 0.906, gone
+# altogether 0.723.
+BEST_ALIKE = 0.98
+# A picture of one colour spreads 0; the car's spreads about 60.
+BEST_BLANK = 4.0
+
+
+def ask_for_best(base: list[str], env: dict[str, str], log: Path) -> tuple[bytes | None, str, str]:
+    """The app in a window with its socket open, asked as a Claude Code
+    session asks: open the car, render it at Best, and say whether Best is
+    path traced here. The picture it answered with (None without one),
+    everything it said, and how long it took."""
+    port = free_port()
+    command = windowed(base + ["--resolution", "1280x720", "--", "--mcp=%d" % port], env)
+    said: list[str] = []
+    picture = None
+    took = ""
+    with log.open("w") as out:
+        # Its own process group, so stopping it cannot reach this one.
+        app = subprocess.Popen(command, env=env, stdout=out, stderr=subprocess.STDOUT,
+                               start_new_session=os.name != "nt",
+                               creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
+    try:
+        started = time.time()
+        sock = None
+        while sock is None:
+            try:
+                sock = socket.create_connection(("127.0.0.1", port), timeout=120)
+            except OSError:
+                # Timed from the GPU lease: gpu may queue the app behind
+                # other jobs first, and says when it has the card.
+                text = log.read_text(errors="replace")
+                if "gpu: waiting" in text and "holds the GPU" not in text:
+                    started = time.time()
+                if app.poll() is not None or time.time() - started > 300:
+                    said += ["the app did not listen for MCP on %d:" % port] \
+                        + text.strip().splitlines()[-8:]
+                    break
+                time.sleep(0.5)
+        if sock is not None:
+            up = time.time() - started
+            with sock:
+                reader = sock.makefile("r", encoding="utf-8")
+                asked = 0
+
+                def call(tool: str, given: dict[str, Any]) -> dict[str, Any]:
+                    nonlocal asked
+                    asked += 1
+                    sock.sendall((json.dumps({"id": asked, "tool": tool, "input": given})
+                                  + "\n").encode())
+                    while True:
+                        line = reader.readline()
+                        if not line:
+                            raise OSError("the app closed its socket")
+                        answer = json.loads(line)
+                        if answer.get("id") == asked:
+                            return answer
+
+                def words(answer: dict[str, Any]) -> str:
+                    return " ".join([str(answer.get("error") or "")] + [
+                        c.get("text", "") for c in answer.get("content", [])
+                        if c.get("type") == "text"]).strip()
+
+                try:
+                    said.append(words(call("open_model", {"name": "Car", "discard_changes": True})))
+                    began = time.time()
+                    answer = call("render_model", BEST_ASK)
+                    job = re.match(r"Started job (\d+)", words(answer))
+                    # Each job call waits up to 45 s for the render to end.
+                    while job and time.time() - began < 600:
+                        answer = call("job", {"id": int(job.group(1))})
+                        if "is still going" not in words(answer):
+                            break
+                    took = "%.0f s, the app up in %.0f s" % (time.time() - began, up)
+                    said.append(words(answer))
+                    for block in answer.get("content", []):
+                        if block.get("type") == "image":
+                            picture = base64.b64decode(block.get("data") or block["source"]["data"])
+                    said.append(words(call("render_queue", {"action": "list"})))
+                except (OSError, ValueError) as error:
+                    said.append("the socket: %s" % error)
+    finally:
+        stop(app)
+    # What the path tracer refused, which a release build once refused all of.
+    refused = [line.strip() for line in log.read_text(errors="replace").splitlines()
+               if "was refused" in line]
+    said += refused[:4] + (["...%d shapes refused in all" % len(refused)] if len(refused) > 4 else [])
+    return picture, "\n".join(said), took
+
+
+def judge_best(picture: bytes | None, said: str, took: str) -> list[tuple[str, bool, str]]:
+    """A Best render held to what it must be: made, path traced, not blank,
+    and the editor's picture of the same car."""
+    if picture is None:
+        return [("path-traced Best of the car over MCP: no picture", False, said)]
+    traced = "Best is path traced on this graphics card" in said
+    # A shape refused is a hole in the picture too small to tell by eye.
+    whole = "was refused" not in said
+    levels = grey(picture)
+    if not levels:
+        return [("path-traced Best of the car over MCP: not a PNG it can read", False, said)]
+    flat = spread(levels)
+    alike = ssim(levels, grey(BEST_REFERENCE.read_bytes()))
+    return [
+        ("path-traced Best of the car over MCP: %s" % (
+            took if traced and whole else "it was not path traced" if not traced
+            else "the path tracer refused shapes"), traced and whole, said),
+        ("...not blank: its grey levels spread %.0f" % flat, flat > BEST_BLANK, ""),
+        ("...and the editor's own picture of it: SSIM %.3f, %.2f wanted" % (alike, BEST_ALIKE),
+         alike >= BEST_ALIKE, "if the look changed on purpose, tools/release.py best-reference "
+         "makes the picture again from the editor"),
+    ]
+
+
 def smoke(package: Path, window: bool, expect: str) -> int:
     """Unpack a package and run it in a clean home. Exit 0 only if every check held."""
     failures = 0
@@ -1187,76 +1388,16 @@ def smoke(package: Path, window: bool, expect: str) -> int:
               % len(bricks), code == 0 and clean(output) and said is not None
               and int(said.group(1)) == len(bricks) > 50, output)
 
-        # Placing bricks from outside, the way a Claude Code session does,
-        # through the relay in this checkout. tools/mcp_check.py searches
-        # the catalogue, clears the baseplate, builds two bricks, saves and
-        # reads the file back.
-        port = free_port()
-        log = (root / "mcp-app.log").open("w")
-        # Its own process group, so stopping it cannot reach this one.
-        app = subprocess.Popen(base + ["--headless", "--", "--mcp=%d" % port], env=env,
-                               stdout=log, stderr=subprocess.STDOUT,
-                               start_new_session=os.name != "nt",
-                               creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
-        try:
-            started = time.time()
-            listening = False
-            while time.time() - started < 300 and app.poll() is None:
-                try:
-                    with socket.create_connection(("127.0.0.1", port), timeout=2):
-                        listening = True
-                        break
-                except OSError:
-                    time.sleep(0.5)
-            check("listens for MCP on %d after %.0f s" % (port, time.time() - started), listening,
-                  (root / "mcp-app.log").read_text(errors="replace"))
-            if listening:
-                drive = subprocess.run([sys.executable, str(ROOT / "tools" / "mcp_check.py"),
-                                        "--port=%d" % port], capture_output=True, text=True,
-                                       timeout=600)
-                built = next((line.strip() for line in drive.stdout.splitlines()
-                              if "a design lands" in line), "")
-                check("a session places bricks in it over MCP: %s" % built,
-                      drive.returncode == 0, drive.stdout + drive.stderr)
-        finally:
-            if os.name == "nt":
-                # Always, and the whole tree: the wrapper may have gone and
-                # left the app it started running.
-                end_tree(app.pid)
-            elif app.poll() is None:
-                os.killpg(os.getpgid(app.pid), signal.SIGTERM)
-            try:
-                app.wait(timeout=30)
-            except subprocess.TimeoutExpired:
-                app.kill()
-                app.wait()
-            log.close()
+        for what, ok, detail in takes_bricks(base, env, root):
+            check(what, ok, detail)
         check("the app kept its state in the clean home", any((root / "home").rglob("Brickworks")))
 
         if window:
             # Drawn, not just loaded: a picture of the car from the package's
             # own geometry, on Xvfb when there is no screen.
             shot = root / "car.png"
-            command = base + ["--resolution", "1280x800", "--", "--model=res://models/car.ldr",
-                              "--shot=%s" % shot]
-            if shutil.which("xvfb-run"):
-                # Always off-screen, whatever this shell's display is. The
-                # clean home kept WAYLAND_DISPLAY at first, Godot chose
-                # Wayland over the Xvfb it was given, and the smoke test
-                # opened a window on the desktop of whoever was sitting
-                # there; one of those never exited.
-                env["MESA_VK_WSI_DEBUG"] = "sw"
-                command = ["xvfb-run", "-a", "--server-args=-screen 0 1280x800x24"] + command
-            elif sys.platform.startswith("linux"):
-                for name in ("DISPLAY", "WAYLAND_DISPLAY", "XAUTHORITY"):
-                    if name in os.environ:
-                        env[name] = os.environ[name]
-                say("        no xvfb-run: drawing on this machine's own screen")
-            gpu = Path.home() / ".claude" / "claude-core" / "bin" / "gpu"
-            if os.access(gpu, os.X_OK):
-                # This machine's GPU lease. It finds the account's own home
-                # itself, so the fresh one given to the app does not split it.
-                command = [str(gpu)] + command
+            command = windowed(base + ["--resolution", "1280x800", "--",
+                                       "--model=res://models/car.ldr", "--shot=%s" % shot], env)
             code, output = run_app(command, env, 600)
             colours = png_colours(shot) if shot.exists() else 0
             check("draws the car: %d colours in a %s picture" % (colours, "1280x800"),
@@ -1270,17 +1411,52 @@ def smoke(package: Path, window: bool, expect: str) -> int:
                 shutil.copy2(shot, keep)
                 say("        kept the picture at %s" % keep.relative_to(ROOT))
 
+            # Path-traced Best, from the package's own build. Every probe
+            # runs the editor, a debug build, and a release template leaves
+            # out what is under DEBUG_ENABLED: 0.12.0's Best refused every
+            # shape at blas_create (only a debug build works out an index
+            # buffer's largest index), where the editor traced it in 3 s.
+            # The sign-in screen covers the window in a clean home, and the
+            # socket answers behind it, as it does headless: no account,
+            # and nothing in the package let past the screen.
+            picture, said, took = ask_for_best(base, env, root / "best-app.log")
+            for what, ok, detail in judge_best(picture, said, took):
+                check(what, ok, detail)
+            if picture is not None:
+                keep = ROOT / "shots" / ("release-%s-best.png" % describe_file(package.name)["os"])
+                keep.parent.mkdir(exist_ok=True)
+                keep.write_bytes(picture)
+                say("        kept the picture at %s" % keep.relative_to(ROOT))
+
     say("")
     if failures:
         say("%d check(s) failed: %s is not fit to ship" % (failures, package.name))
         return 1
-    say("%s starts, loads the part library, opens a model and takes bricks" % package.name)
+    say("%s starts, loads the part library, opens a model and takes bricks%s"
+        % (package.name, ", and traces it at Best" if window else ""))
     return 0
 
 
-def png_colours(path: Path) -> int:
-    """Distinct colours in an 8-bit RGB or RGBA PNG: a blank frame has a handful."""
-    data = path.read_bytes()
+def best_reference() -> int:
+    """BEST_REFERENCE made again: the car at Best from this checkout's
+    editor, the debug build every probe runs, in a clean home so Render's
+    settings are its own. Made from a package it would hold a broken build
+    to itself."""
+    with tempfile.TemporaryDirectory(prefix="brickworks-best-") as scratch:
+        root = Path(scratch)
+        picture, said, took = ask_for_best([godot(), "--path", str(ROOT)],
+                                           clean_env(root / "home"), root / "app.log")
+        if picture is None or "Best is path traced on this graphics card" not in said:
+            raise Failed("the editor did not trace the car at Best:\n  " + said.replace("\n", "\n  "))
+        BEST_REFERENCE.write_bytes(picture)
+    say("the editor's Best of the car in %s: %s; look at it before committing it"
+        % (took, BEST_REFERENCE.relative_to(ROOT)))
+    return 0
+
+
+def png_rows(data: bytes) -> tuple[int, list[bytearray]]:
+    """The channels and the rows of an 8-bit RGB or RGBA PNG, unfiltered.
+    0 and no rows for any other kind."""
     at, chunks, header = 8, [], b""
     while at < len(data):
         length = struct.unpack(">I", data[at:at + 4])[0]
@@ -1291,14 +1467,16 @@ def png_colours(path: Path) -> int:
         elif kind == b"IDAT":
             chunks.append(body)
         at += 12 + length
+    if len(header) < 10:
+        return 0, []
     width, height, depth, colour = struct.unpack(">IIBB", header[:10])
     if depth != 8 or colour not in (2, 6):
-        return 0
+        return 0, []
     channels = 3 if colour == 2 else 4
     raw = zlib.decompress(b"".join(chunks))
     stride = width * channels
     previous = bytearray(stride)
-    seen: set[bytes] = set()
+    rows = []
     for row in range(height):
         kind = raw[row * (stride + 1)]
         line = bytearray(raw[row * (stride + 1) + 1:(row + 1) * (stride + 1)])
@@ -1316,11 +1494,67 @@ def png_colours(path: Path) -> int:
                 guess = left + up - corner
                 pa, pb, pc = abs(guess - left), abs(guess - up), abs(guess - corner)
                 line[i] = (line[i] + (left if pa <= pb and pa <= pc else up if pb <= pc else corner)) & 0xFF
-        if row % 4 == 0:
-            for i in range(0, stride, channels * 4):
-                seen.add(bytes(line[i:i + 3]))
+        rows.append(line)
         previous = line
-    return len(seen)
+    return channels, rows
+
+
+def png_colours(path: Path) -> int:
+    """Distinct colours in an 8-bit RGB or RGBA PNG: a blank frame has a handful."""
+    channels, rows = png_rows(path.read_bytes())
+    return len({bytes(line[i:i + 3]) for line in rows[::4]
+                for i in range(0, len(line), channels * 4)})
+
+
+def grey(data: bytes, width: int = 160, height: int = 90) -> list[list[float]]:
+    """A PNG's grey levels, each the mean of the pixels it covers at width
+    x height. Small, so a path tracer's grain averages out and a part
+    missing does not."""
+    channels, rows = png_rows(data)
+    if not rows:
+        return []
+    across, down = len(rows[0]) // channels, len(rows)
+    out = []
+    for y in range(height):
+        band = rows[y * down // height:max((y + 1) * down // height, y * down // height + 1)]
+        line = []
+        for x in range(width):
+            first = x * across // width
+            last = max((x + 1) * across // width, first + 1)
+            total = 0.0
+            for row in band:
+                for at in range(first * channels, last * channels, channels):
+                    total += 0.299 * row[at] + 0.587 * row[at + 1] + 0.114 * row[at + 2]
+            line.append(total / (len(band) * (last - first)))
+        out.append(line)
+    return out
+
+
+def spread(levels: list[list[float]]) -> float:
+    """The standard deviation of grey levels: near 0 for a blank picture."""
+    values = [v for line in levels for v in line]
+    mean = sum(values) / len(values)
+    return (sum((v - mean) ** 2 for v in values) / len(values)) ** 0.5
+
+
+def ssim(a: list[list[float]], b: list[list[float]], size: int = 8) -> float:
+    """Mean structural similarity of two grey pictures of one size, over
+    size x size windows half a window apart, with Wang et al.'s constants:
+    1 for the same picture, falling as light, contrast and shape part."""
+    c1, c2 = (0.01 * 255) ** 2, (0.03 * 255) ** 2
+    scores = []
+    for top in range(0, len(a) - size + 1, size // 2):
+        for left in range(0, len(a[0]) - size + 1, size // 2):
+            xs = [v for line in a[top:top + size] for v in line[left:left + size]]
+            ys = [v for line in b[top:top + size] for v in line[left:left + size]]
+            n = len(xs)
+            mx, my = sum(xs) / n, sum(ys) / n
+            vx = sum((x - mx) ** 2 for x in xs) / (n - 1)
+            vy = sum((y - my) ** 2 for y in ys) / (n - 1)
+            cov = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / (n - 1)
+            scores.append((2 * mx * my + c1) * (2 * cov + c2)
+                          / ((mx * mx + my * my + c1) * (vx + vy + c2)))
+    return sum(scores) / len(scores)
 
 
 # -- publishing -------------------------------------------------------------
@@ -1558,6 +1792,7 @@ TAKES: dict[str, tuple[str, ...]] = {
     "build": ("--assets=",),
     "inspect": (),
     "smoke": ("--window", "--expect="),
+    "best-reference": (),
     "publish": ("--draft", "--no-manifest", "--tag=", "--target="),
     "manifest": ("--local", "--out="),
 }
@@ -1607,6 +1842,8 @@ def main(argv: list[str]) -> int:
             raise Failed("smoke needs a package: tools/release.py smoke dist/<version>/<file>")
         under_heavy(argv)
         return smoke(Path(args[0]), "--window" in args, option(args, "expect", version_file()))
+    if command == "best-reference":
+        return best_reference()
     if command == "publish":
         return publish("--draft" in args, option(args, "tag"), option(args, "target"),
                        "--no-manifest" not in args)
