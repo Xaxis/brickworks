@@ -19,19 +19,11 @@ prefix="$1"; shift
 bad=0
 for spec in "$@"; do
   name="${spec%%:*}"
-  # A bare name runs as the suite lists it: rel-m234's spec named
-  # open_menu_reach, which tools/suite runs with --phone, and the probe laid
-  # the desktop out in a phone's window and failed (2026-11-01).
-  if [ "$spec" = "$name" ]; then
-    listed=$(sed 's/#.*//' tools/suite/windowed.txt tools/suite/headless.txt \
-      | awk -v n="${name%_probe}" '{ split($1, p, ":"); s = p[1]; sub(/_probe$/, "", s) } s == n && $1 ~ /:/ { print $1; exit }')
-    [ -n "$listed" ] && spec="$name:${listed#*:}"
-  fi
   args=()
   [ "$spec" != "$name" ] && read -r -a args <<< "${spec#*:}"
   log="${prefix}_${name}.log"
-  args=("${args[@]/#@out/${prefix}_${name}_out}")
-  timeout 2400 tools/probe.sh "$name" "${args[@]}" > "$log" 2>&1
+  # A bare name runs as the suite lists it (probe.sh, PROBE_LISTED).
+  PROBE_LISTED=1 timeout 2400 tools/probe.sh "$name" "${args[@]}" > "$log" 2>&1
   code=$?
   # "ok   ..." in most probes, "PASS: ..." in some (own_copies_probe).
   ok=$(grep -cE '^\s*(ok |PASS:)' "$log")
