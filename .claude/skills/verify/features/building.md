@@ -751,6 +751,53 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   every throw (2,090, 1,970, 1,760 points), the bin and Saved models went
   2.00 a point, and the bin glided nothing. Standing still after each
   list, 0 frames drawn in 6 s on both. A tap on More's View folds it.
+- `a drag begun on a text field scrolls its list` (`src/ui/fling_scroll.gd`,
+  `FlingScroll._on_field_input`, uifix): a LineEdit takes a finger's press
+  for itself (it accepts it, and its window focuses it first, which puts
+  the keyboard up), so the list round it never heard a drag begin: on a
+  phone or a tablet Properties, Settings' AI page, the parts' search, the
+  assistant's drawer and a dialog's form scrolled only from the gaps
+  between their fields, and a drag on one focused it and selected its
+  words. FlingScroll watches every LineEdit added. A finger's press on one
+  in a ScrollContainer is held, and no field in a list can take focus from
+  that press: moved past 8 points it drags the lists round it as
+  ScrollContainer does, innermost first, and glides on the lift as any list
+  does; lifted where it came down, the field is given the press and the
+  lift (focus, the caret where the finger was, the keyboard); held still
+  480 ms (`Main.HOLD_MS`), it is given the press, and the drag after
+  selects. A mouse's press, and a field in no list, are untouched (a drag
+  on one still selects). `tools/probe.sh field_drag_probe --phone` and
+  `field_drag_tablet_probe` (windowed; 390 x 844 and 1024 x 768) open
+  Properties with a part selected, Settings' AI page on your own key, the
+  parts' search, the assistant and every dialog with a field the menus
+  open, and drag each field showing in a list 100 points; once a list, a
+  drag beside the fields (the measure), a tap at the field's end and a
+  hold then a drag along it. On stage225's 81f82757 the phone's 9 fields
+  in 4 lists that scroll each moved their list 0 units (Properties' six 0
+  of 176 and 0 of -185, focused, their words selected), the 10 in lists
+  with nothing to scroll at that size (Settings' AI page, Share, the part
+  maker) took focus, and the tablet's 19 in 7 lists each moved 0: 19
+  checks fail on each. With it every one moves its list as far as a drag
+  beside the fields does (176 of 176, -185 of -185, 94 of 94, 53 of 53),
+  unfocused with nothing selected; one in a list with nothing to scroll is
+  left alone; and in each list a tap at the field's end focuses it with
+  the caret there, and a hold then a drag along it selects its words, the
+  list still (phone 33 checks, tablet 42). A phone's 22 fields in no list
+  (Save as, Find, the library's search, the command palette) keep a drag
+  that selects. In the web build `tools/web/field_drag_flow.mjs` (preview
+  check `field_drag`; CDP touch, three to the point) drags the assistant's
+  drawer at 844 x 390 and at 390 x 844 at Interface size 150%, then
+  Settings' AI page on your own key at both: beside the fields, then back
+  by the key field, nothing typed in after; a tap types in the field; a
+  hold then a drag leaves the list. A local export of 2f78d2b9 fails all
+  four: the drawer 0 of 117 and 0 of 252, the AI page 0 of 117 and 0 of
+  253 with its key field typed in (rel-m234 live: the drawer 0 of 117);
+  with it 110 of 117 and 252 of 252 (the drawer), 109 of 117 and 253 of 253
+  (the AI page). By hand against a preview, `BW_BYPASS=$VERCEL_BYPASS`
+  (preview_checks.sh sets it): without it the app never comes up. A drag begun on a tile's "+N" in the parts bin scrolls
+  nothing (the tile scrolls the grid itself, `PartsBin._cell_input`; its
+  badge does not), and the probe's drag beside the fields keeps off it,
+  and off what scrolls itself (the AI page's ItemList of models).
 - `minifig builder by finger` (`MinifigDialog._arrange`, fig257): the
   builder's three columns want 860 units across at the least, and a phone
   has 720 (a tablet held upright too): its figure, Keep and Place in model
