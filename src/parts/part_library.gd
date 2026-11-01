@@ -1980,9 +1980,11 @@ func staples(most: int = 30) -> Array[PartInfo]:
 ## [param every_word], only the parts that have every word; a [param limit]
 ## under zero is every part that answers. Without [param loose], a word is
 ## matched whole and as written, never as the start of one or misspelt.
+## With [param spoken], in the reader's language too (PartSearch.terms_of).
 func search(query: String, limit: int = 100, every_word: bool = false,
-		loose: bool = true) -> Array[PartInfo]:
-	var found: Array[PartInfo] = _finder().find(in_ldraw_words(query), limit, every_word, loose)
+		loose: bool = true, spoken: Dictionary = {}) -> Array[PartInfo]:
+	var found: Array[PartInfo] = _finder().find(in_ldraw_words(query), limit, every_word, loose,
+		spoken)
 	_collect_preparing()
 	# A number LDraw keeps only for old files, typed: the part made now in its
 	# shape, first (current), as the index leaves the old one out.

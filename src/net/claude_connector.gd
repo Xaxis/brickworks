@@ -71,6 +71,11 @@ var kept_in: String = ""
 ## The name of the model in this tab, as Claude is told it with every
 ## answer and in the list of tabs. Main's is its ModelStore title.
 var model_name: Callable = func() -> String: return ""
+## Whether the tab holds a model to change: parts beyond the scenery, and not
+## the example a first visit opens on, untouched (Main._make_room's test). A
+## chat that opens on one with a call that works on its parts is changing it
+## ([method _begin]). Main's.
+var has_work: Callable = func() -> bool: return false
 
 ## Where the relay is. The site the page came from on the web; on the
 ## desktop the deployment the account signs in to — the live site, or
@@ -475,19 +480,29 @@ static func _chat_said(request: Dictionary) -> Dictionary:
 
 
 ## Each chat working in this tab, by the relay's short name ("" for calls that
-## name none: a tab's own address), as one sitting: when it last called, and
+## name none: a tab's own address), as one sitting: when it last called,
 ## whether it has been told how to work here (Assistant.METHOD) and has begun
-## its subject; the assistant keeps which sizes it was told (_sizes_once), and
-## a new sitting is told them again. A chat quiet for longer than
-## [constant QUIET_MS] begins a new sitting, as the relay stops counting it in
-## the tab then (api/mcp.js HELD_MS): claude.ai is reported to share one
-## session between two of its conversations (claudeissues.com/issue/41836),
-## and the second would otherwise never be told.
+## its subject, and whether it opened on changing the model standing
+## ([method _begin]); the assistant keeps which sizes it was told
+## (_sizes_once), and a new sitting is told them again. A chat quiet for
+## longer than [constant QUIET_MS] begins a new sitting, as the relay stops
+## counting it in the tab then (api/mcp.js HELD_MS): claude.ai is reported to
+## share one session between two of its conversations
+## (claudeissues.com/issue/41836), and the second would otherwise never be
+## told.
 var _sittings: Dictionary = {}
 const QUIET_MS := 30 * 60 * 1000
 ## The calls that say what is being designed, with the words that say it.
 const SUBJECT_CALLS := ["how_real_sets_build_this", "plan_scale", "find_reference",
 	"submit_design"]
+## The calls that read or change the parts already standing: a chat whose
+## first call is one, on a model to change ([member has_work]), is changing
+## it, not designing.
+const CHANGING_CALLS := ["look_at_model", "view_model", "in_view", "measure", "selection",
+	"edit_model", "edit_selection", "where_to_attach", "attachment_points", "move_part",
+	"mirror_parts", "split_parts", "merge_parts", "make_unique", "colour_hidden_parts",
+	"weakest_joints", "edit_steps", "make_sections", "suggest_sections", "break_out_section",
+	"evaluate_section", "parts_list", "undo", "restyle_model", "pose_model"]
 
 
 func _sitting(request: Dictionary) -> Dictionary:
@@ -508,7 +523,16 @@ func _sitting(request: Dictionary) -> Dictionary:
 ## earlier chat in this tab designed, its part count and what it was told,
 ## is not this one's. The tab never hears the person's words, so the subject
 ## is the call's own.
+##
+## And a chat's first call says what the sitting is: one that reads or
+## changes the parts of a model already standing, on a model to change
+## ([member has_work]), is changing it, and is told how to change it in place
+## of the method ([method _taught]). Said as the call arrives, before it
+## changes anything: a first edit_model on the example car leaves it touched.
 func _begin(sitting: Dictionary, tool: String, arguments: Dictionary) -> void:
+	if not sitting.has("changing"):
+		sitting["changing"] = "owed" if tool in CHANGING_CALLS and rpc != null \
+			and rpc.assistant != null and bool(has_work.call()) else ""
 	if not tool in SUBJECT_CALLS or bool(sitting["begun"]) or rpc == null or rpc.assistant == null:
 		return
 	sitting["begun"] = true
@@ -522,15 +546,30 @@ func _begin(sitting: Dictionary, tool: String, arguments: Dictionary) -> void:
 ## shows no instructions never had. Once a sitting, never in every answer: a
 ## word said in every answer is heard twenty times and misleads (pose174,
 ## 2026-10-23). The panel's copy of the answer is the tool's alone.
+##
+## A sitting that opened on changing the model standing is told the guide's
+## CHANGING SOMETHING THAT IS ALREADY BUILT instead, and the method at its
+## first design call ([constant SUBJECT_CALLS]), if it makes one: "plan_scale,
+## then submit_design the silhouette" said to a chat come to move a wall
+## sends it to rebuild the person's model, which loses what nobody asked to
+## change and any edit made before it.
 func _taught(sitting: Dictionary, tool: String, answer: Variant) -> Variant:
 	if tool.is_empty() or bool(sitting["told"]) or not answer is Dictionary \
 			or not (answer as Dictionary).get("result") is Dictionary \
 			or not ((answer as Dictionary)["result"] as Dictionary).get("content") is Array:
 		return answer
-	sitting["told"] = true
+	var words: String = Assistant.METHOD
+	match "" if tool in SUBJECT_CALLS else str(sitting.get("changing", "")):
+		"owed":
+			sitting["changing"] = "said"
+			words = rpc.assistant.read_guide("changing")
+		"said":
+			return answer
+		_:
+			sitting["told"] = true
 	var sent: Dictionary = (answer as Dictionary).duplicate()
 	var result: Dictionary = (sent["result"] as Dictionary).duplicate()
-	result["content"] = [{"type": "text", "text": Assistant.METHOD}] + (result["content"] as Array)
+	result["content"] = [{"type": "text", "text": words}] + (result["content"] as Array)
 	sent["result"] = result
 	return sent
 

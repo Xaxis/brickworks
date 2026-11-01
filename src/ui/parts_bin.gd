@@ -699,7 +699,7 @@ func _build_found(asked: String) -> void:
 ## so, every word in it, then numbers that begin so. Gray is grey, as
 ## BrickLink and Rebrickable spell it; within a rank the most used first.
 static func colours_named(library: PartLibrary, asked: String) -> Array[PartLibrary.BrickColor]:
-	var said: String = _colour_words(asked)
+	var said: String = PartWords.plain(_colour_words(asked))
 	var ranked: Array = []
 	if said.is_empty() or library == null:
 		return []
@@ -731,16 +731,19 @@ static func _colour_words(text: String) -> String:
 	return words.strip_edges()
 
 
-## How well [param color] answers [param said] (from _colour_words): 0 its
-## number, 1 its LDraw name, 2 LEGO's, 3 a name beginning so, 4 every word
-## in a name, 5 a number beginning so; -1 not at all.
+## How well [param color] answers [param said] (from _colour_words, its
+## accents off): 0 its number, 1 its LDraw name or its name in the language
+## in use (PartWords: "rouge", "gris bleute clair"), 2 LEGO's, 3 a name
+## beginning so, 4 every word in a name, 5 a number beginning so; -1 not at
+## all.
 static func _colour_rank(color: PartLibrary.BrickColor, said: String) -> int:
 	if said.is_valid_int():
 		if int(said) == color.code:
 			return 0
 		return 5 if str(color.code).begins_with(said) else -1
-	var names: Array[String] = [_colour_words(color.name), _colour_words(color.lego_name)]
-	if names[0] == said:
+	var names: Array[String] = [_colour_words(color.name), _colour_words(color.lego_name),
+		PartWords.plain(_colour_words(PartWords.colour(color.name, Language.current())))]
+	if names[0] == said or names[2] == said:
 		return 1
 	if names[1] == said:
 		return 2
@@ -1291,6 +1294,22 @@ func _on_search_typed(text: String) -> void:
 		_pending = true
 
 
+## Another language chosen: each tile's name said in it and fitted again
+## (said_name), and what is typed searched in it.
+func _notification(what: int) -> void:
+	if what != NOTIFICATION_TRANSLATION_CHANGED or _grid == null or _search == null or library == null:
+		return
+	for cell: Node in _grid.get_children():
+		if not cell.has_meta("name_label") or not library.parts.has(str(cell.get_meta("part", ""))):
+			continue
+		var label: Label = cell.get_meta("name_label")
+		label.set_meta("name", said_name(library.parts[str(cell.get_meta("part"))]))
+		_fit_name(label, _name_width(label))
+	_tell_apart()
+	if not _search.text.strip_edges().is_empty():
+		_run_search(_search.text)
+
+
 func _process(_delta: float) -> void:
 	if _pending and Time.get_ticks_msec() - _search_at >= SEARCH_DEBOUNCE:
 		_pending = false
@@ -1368,6 +1387,7 @@ func _run_search(query: String) -> void:
 ## that answer what is typed and the category chosen.
 func _list_set(query: String) -> void:
 	var needles: PackedStringArray = PartLibrary.in_ldraw_words(query).split(" ", false)
+	var asked: Array = _asked(needles)
 	var among: Dictionary = {}
 	var shelf: bool = _category in [RECENT, FAVOURITES, FITS]
 	if shelf:
@@ -1391,8 +1411,7 @@ func _list_set(query: String) -> void:
 			continue
 		if not shelf and _category != "All" and info.category != _category:
 			continue
-		if not shelf and not needles.is_empty() \
-				and PartLibrary.matched(info, needles) == PartLibrary.NOT_MATCHED:
+		if not shelf and not _answers(info, asked):
 			continue
 		# A set's tile is a part in its colour: in the colour in hand, or not.
 		if _only_made.button_pressed and Collection.colour_of(key) != _selected_color:
@@ -1405,6 +1424,42 @@ func _list_set(query: String) -> void:
 	_listing_set = true
 	_open.clear()
 	_fill_grid()
+
+
+## What [param needles] ask of a set's parts, each word or phrase as the
+## words any of which will do: its own, and in the reader's language
+## LDraw's for it too (PartWords.heard), so "brique" is a brick there as in
+## the catalogue's search. A word that says nothing (avec) asks nothing.
+func _asked(needles: PackedStringArray) -> Array:
+	var asked: Array = []
+	var spoken: Dictionary = PartWords.spoken(Language.current())
+	var taken: Dictionary = {}
+	for span: Array in PartWords.heard(needles, spoken):
+		for n: int in range(span[0], span[0] + span[1]):
+			taken[n] = true
+		var english: PackedStringArray = span[2]
+		if not english.is_empty():
+			var either := PackedStringArray([" ".join(needles.slice(span[0], span[0] + span[1]))])
+			either.append_array(english)
+			asked.append(either)
+	for n: int in needles.size():
+		if not taken.has(n):
+			asked.append(PackedStringArray([needles[n]]))
+	return asked
+
+
+## Whether [param info] has every one of [param asked] (_asked), any of
+## each one's words.
+static func _answers(info: PartLibrary.PartInfo, asked: Array) -> bool:
+	for either: PackedStringArray in asked:
+		var any: bool = false
+		for words: String in either:
+			if PartLibrary.matched(info, words.split(" ", false)) != PartLibrary.NOT_MATCHED:
+				any = true
+				break
+		if not any:
+			return false
+	return true
 
 
 ## Search, ranked so the plain part comes before its printed variants.
@@ -1437,7 +1492,8 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 	var found: Array[PartLibrary.PartInfo] = []
 	# Each marked as listed as it is kept, for _fold.
 	_listing += 1
-	for info: PartLibrary.PartInfo in library.search(query, -1, true):
+	for info: PartLibrary.PartInfo in library.search(query, -1, true, true,
+			PartWords.spoken(Language.current())):
 		if not info.reachable:
 			continue  # no geometry anywhere in this build
 		if wanted_category != "all" and info.category.to_lower() != wanted_category:
@@ -2425,9 +2481,11 @@ func _make_cell(info: PartLibrary.PartInfo, key: String = "") -> Control:
 	# and a person new to LDraw's numbers hovered each to learn that 3710 is
 	# a plate 1 x 4 (appux371 A4). The number is on its tooltip.
 	var label := Label.new()
-	label.set_meta("name", tile_name(info))
+	label.set_meta("name", said_name(info))
 	label.set_meta("after", after)
 	button.set_meta("name_label", label)
+	# Said already, before it is fitted: a line of it is no name of its own.
+	label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	label.clip_text = true
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
@@ -2539,10 +2597,11 @@ func _make_row(info: PartLibrary.PartInfo, key: String = "") -> Control:
 		line.add_child(gap)
 
 	var title := Label.new()
-	title.set_meta("name", tile_name(info))
+	title.set_meta("name", said_name(info))
 	title.set_meta("after", str(button.get_meta("after")))
 	title.set_meta("lines", 1)
 	button.set_meta("name_label", title)
+	title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.clip_text = true
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -2691,6 +2750,19 @@ static func tile_name(info: PartLibrary.PartInfo) -> String:
 	name = SIZE_WORDS.sub(name, "$1×", true)
 	name = name.replace("Slope Brick ", "Slope ")
 	return Inventory._tidy(name)
+
+
+## [param info]'s tile name in the language in use, as LEGO's own sites
+## word it (PartWords: "Brique 1×2"), or as tile_name has it where the
+## glossary cannot say it whole, in English as it is; one a person named,
+## as they named it. Said before it is fitted to its tile, as a name cut to
+## its tile's lines is no name to translate.
+static func said_name(info: PartLibrary.PartInfo) -> String:
+	var name: String = tile_name(info)
+	if info.id.begins_with("bw-"):
+		return name
+	var said: String = PartWords.part(name, Language.current())
+	return name if said.is_empty() else said
 
 
 ## What a name puts in brackets, "(Thick C-Clip)", which a tile leaves to

@@ -417,7 +417,12 @@ static func _decimals(text: String) -> String:
 ## brackets) and that the bin does not require}, or a size's
 ## {"said": "2 x 4", "sizes": ["2x4", ...], "tall": ["2x4x3"] when a height
 ## is asked, "options": its numbers, which a wheel's keywords say}.
-static func terms_of(asked: String) -> Array[Dictionary]:
+##
+## With [param spoken], the reader's language's words read back
+## (PartWords.spoken): each it has is a term with LDraw's words for it as
+## options beside its own, so "brique 1x2" is 3004 and "brick 1x2" still is,
+## and one that says nothing of which part (avec, mit) is left out.
+static func terms_of(asked: String, spoken: Dictionary = {}) -> Array[Dictionary]:
 	var text: String = " %s " % _decimals(asked.to_lower())
 	var terms: Array[Dictionary] = []
 	var sizes: PackedStringArray = PackedStringArray()
@@ -448,6 +453,8 @@ static func terms_of(asked: String) -> Array[Dictionary]:
 				bracketed[word] = true
 		for word: String in words_of(BRACKETED.sub(text, " ", true)):
 			bracketed.erase(word)
+	if not spoken.is_empty():
+		text = _spoken_terms(text, spoken, terms)
 	var phrases: Array = (SAME_SHAPE.keys() + SAME_WORD.keys() + NICKNAMES.keys()).filter(
 		func(key: String) -> bool: return key.contains(" "))
 	phrases.sort_custom(func(a: String, b: String) -> bool: return a.length() > b.length())
@@ -473,6 +480,48 @@ static func terms_of(asked: String) -> Array[Dictionary]:
 	# trans clear" is 3039, and a part with Trans Clear in its name is a
 	# print or an assembly. Unless it is all that was asked.
 	return terms if not terms.is_empty() else colours
+
+
+## [param text]'s words in the reader's language as terms of their own,
+## added to [param terms], each with LDraw's words for it as its own
+## (_said_as). A word on its way to one of them ("briq") takes theirs too.
+## What is left, a colour word put in LDraw's, is returned for the rest of
+## terms_of.
+static func _spoken_terms(text: String, spoken: Dictionary, terms: Array[Dictionary]) -> String:
+	var said: PackedStringArray = words_of(text)
+	var taken: Dictionary = {}
+	for span: Array in PartWords.heard(said, spoken):
+		var english: PackedStringArray = span[2]
+		for n: int in range(span[0], span[0] + span[1]):
+			taken[n] = true
+		if english.size() == 1 and COLOUR_WORDS.has(english[0]):
+			said[span[0]] = english[0]
+			taken.erase(span[0])
+			continue
+		if english.is_empty():
+			continue
+		terms.append(_said_as(_term(" ".join(said.slice(span[0], span[0] + span[1]))), english))
+	var rest := PackedStringArray()
+	for n: int in said.size():
+		if taken.has(n):
+			continue
+		var begun: PackedStringArray = PartWords.begun(said[n], spoken)
+		if begun.is_empty() or STOP_WORDS.has(said[n]):
+			rest.append(said[n])
+			continue
+		terms.append(_said_as(_term(said[n]), begun))
+	return " %s " % " ".join(rest)
+
+
+## [param term] with [param english], LDraw's words for what it says, among
+## its own and counted as fully: the language's word is LDraw's put in it,
+## not another's. Counted less (OTHER_WORDS_SHARE), "brique 1x2" listed
+## u8001a, Mursten Brick 1 x 2, whose keywords say brick too, before 3004.
+static func _said_as(term: Dictionary, english: PackedStringArray) -> Dictionary:
+	for other: String in english:
+		(term["options"] as Array).insert(int(term["full"]), words_of(other))
+		term["full"] = int(term["full"]) + 1
+	return term
 
 
 static func _term(said: String) -> Dictionary:
@@ -713,18 +762,19 @@ func unknown(asked: String) -> PackedStringArray:
 ## parts that have every one; with [param loose], a word's start, a word a
 ## letter off and two run together answer it too.
 func find(asked: String, limit: int, every_word: bool = false,
-		loose: bool = true) -> Array[PartLibrary.PartInfo]:
+		loose: bool = true, spoken: Dictionary = {}) -> Array[PartLibrary.PartInfo]:
 	var found: Array[PartLibrary.PartInfo] = []
-	for at: int in ranked(asked, limit, every_word, loose):
+	for at: int in ranked(asked, limit, every_word, loose, spoken):
 		found.append(_infos[at])
 	return found
 
 
 ## [method find]'s parts as indexes into the index's own list, best first.
-## With [param every_word], every word but a version's (a term's "optional").
+## With [param every_word], every word but a version's (a term's "optional");
+## with [param spoken], in the reader's language too (terms_of).
 func ranked(asked: String, limit: int, every_word: bool = false,
-		loose: bool = true) -> PackedInt32Array:
-	var terms: Array[Dictionary] = terms_of(asked)
+		loose: bool = true, spoken: Dictionary = {}) -> PackedInt32Array:
+	var terms: Array[Dictionary] = terms_of(asked, spoken)
 	# A word being typed that reads as one that says nothing yet ("a", on
 	# its way to arch) is looked for as itself.
 	if terms.is_empty() and loose and not asked.strip_edges().is_empty():
