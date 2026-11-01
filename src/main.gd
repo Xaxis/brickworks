@@ -23,6 +23,9 @@ var _counts_base: String = ""
 var _stability_at: int = 0
 ## The world's revision the stability line was worked out for.
 var _stability_revision: int = -1
+## The world's generation (BrickWorld.generation) the stability line is of:
+## another model's is not shown.
+var _stability_generation: int = -1
 ## Whether a worker is weighing the model now.
 var _weighing: bool = false
 ## The status bar's last weighing with every margin, and the revision it is
@@ -7780,6 +7783,9 @@ func _weigh() -> void:
 	# only the work), and weighing a big model copied it whole first.
 	if not _viewing.is_empty():
 		return
+	if _world != null and _world.generation() != _stability_generation:
+		_stability_generation = _world.generation()
+		_stability_text = ""
 	if _stability == null or _world == null or _counts == null or _weighing \
 			or _world.revision == _stability_revision or _world.is_being_laid():
 		return
@@ -7799,8 +7805,13 @@ func _weigh() -> void:
 	var margins: bool = stress != null and stress.on
 	_weighing = true
 	var revision: int = _world.revision
+	var generation: int = _world.generation()
 	var report: Stability.Report = await weigh_joints(margins or not OS.has_feature("nothreads"))
 	_weighing = false
+	# Of the model before one opened meanwhile, whose own is weighed next:
+	# said, it stood beside the other's count.
+	if _world.generation() != generation:
+		return
 	if report != null and report.balance != null:
 		_weighed = report
 		_weighed_revision = revision
@@ -7843,6 +7854,17 @@ func weighed_now(meanwhile: Callable = Callable()) -> Stability.Report:
 ## asked of what stands on it, and it is not in the weight.
 func weigh_joints(margins: bool = true) -> Stability.Report:
 	var scenery: Dictionary = _store.scenery if _store != null else {}
+	# The floor's weight read from the model weighed, as it is weighed. Read
+	# once it was, from the world and the scenery (kept in one Dictionary,
+	# cleared at an open) as they are then, 42082-1's floor, opened meanwhile,
+	# was taken from 8202-1's weight: -685 g (corefix, 2026-10-31).
+	var floor_grams: float = 0.0
+	for id: int in scenery:
+		var plate: BrickWorld.Brick = _world.get_brick(id)
+		var info: PartLibrary.PartInfo = \
+			_library.parts.get(plate.part_id) if plate != null else null
+		if info != null:
+			floor_grams += Stability.grams(info)
 	var report: Stability.Report
 	if OS.has_feature("nothreads"):
 		_stability.floor_ids = scenery
@@ -7869,12 +7891,7 @@ func weigh_joints(margins: bool = true) -> Stability.Report:
 		report = weighed[0]
 	if report == null:
 		return null
-	for id: int in scenery:
-		var plate: BrickWorld.Brick = _world.get_brick(id)
-		var info: PartLibrary.PartInfo = \
-			_library.parts.get(plate.part_id) if plate != null else null
-		if info != null:
-			report.total_grams -= Stability.grams(info)
+	report.total_grams -= floor_grams
 	return report
 
 
