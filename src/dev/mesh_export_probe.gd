@@ -14,14 +14,16 @@
 ## triangle: one closed volume per part, facing out, at real size in
 ## millimetres standing on Z.
 ##
-## With --orthanc, the 10,094-part tower too: the GLB whole, within the time
-## and the frame it may hold, each of its shapes written once; the STL, which
-## is under its cap; and the OBJ, which is over its and is refused saying so.
+## With --orthanc, the tower too, every part its file holds: the GLB whole,
+## within the time and the frame it may hold, each of its shapes written
+## once; the STL, which is under its cap; and the OBJ, which is over its and
+## is refused saying so.
 extends SceneTree
 
-## How many parts models/orthanc.ldr has, every one of which it opens.
-## Change it with the model: it said 9,429 long after the tower had 9,541.
-const ORTHANC_PARTS := 10094
+## The tower, every part of which it opens: counted from its file, as a
+## constant said 9,429 long after the tower had 9,541, and 10,094 after it
+## had 10,101.
+const ORTHANC := "res://models/orthanc.ldr"
 
 var _failures: int = 0
 var _main: Node
@@ -556,6 +558,7 @@ func _sub_models() -> void:
 
 func _orthanc() -> void:
 	print("── the castle and Orthanc, every format, past the caps ──")
+	var whole: int = _parts_in(ORTHANC)
 	var caps: Dictionary = MeshExport.most_triangles.duplicate()
 	MeshExport.most_triangles = {"obj": 1 << 40, "stl": 1 << 40}
 	for model: String in ["Castle", "Orthanc"]:
@@ -565,7 +568,8 @@ func _orthanc() -> void:
 		print("  %s in %d ms, %s triangles" % [said.left(40), Time.get_ticks_msec() - began,
 			Working.comma(_triangles())])
 		if model == "Orthanc":
-			_check("Orthanc opens whole: %d parts" % parts, parts == ORTHANC_PARTS)
+			_check("Orthanc opens whole: %d parts of the %d its file holds" % [parts, whole],
+				parts == whole)
 		# OBJ last: past its cap it is 273 MB, and the STL's one 123 MB buffer
 		# taken just after it was freed once held the frame 709 ms (170 ms
 		# otherwise), which is not what anyone exporting meets.
@@ -591,7 +595,7 @@ func _orthanc() -> void:
 			match format:
 				"glb":
 					_check("Orthanc's GLB whole: %.1f s, %.1f MB" % [took / 1000.0, size / 1048576.0],
-						said.contains(Working.comma(ORTHANC_PARTS) + " parts"))
+						said.contains(Working.comma(whole) + " parts"))
 					var document := GLTFDocument.new()
 					var state := GLTFState.new()
 					var read: Error = document.append_from_file(path, state)
@@ -599,12 +603,12 @@ func _orthanc() -> void:
 					var meshes: int = scene.find_children("*", "MeshInstance3D", true, false).size() \
 						if scene != null else -1
 					_check("...read back by GLTFDocument: %d mesh nodes, from %d meshes" % [meshes,
-						state.get_meshes().size()], meshes == ORTHANC_PARTS)
+						state.get_meshes().size()], meshes == whole)
 					if scene != null:
 						scene.free()
 				"stl":
 					_check("Orthanc's STL: %.1f s, %.1f MB, every triangle" % [took / 1000.0,
-						size / 1048576.0], said.contains(Working.comma(ORTHANC_PARTS) + " parts") and size == 84 + 50 * _triangles())
+						size / 1048576.0], said.contains(Working.comma(whole) + " parts") and size == 84 + 50 * _triangles())
 	MeshExport.most_triangles = caps
 	var said: String = await _say("export_model", {"format": "obj"})
 	_check("under its cap, Orthanc's OBJ is refused, pointing at GLB: %s" % said.left(140),
@@ -675,3 +679,29 @@ func _done() -> void:
 	else:
 		print("%d FAILURE(S)" % _failures)
 	quit(1 if _failures > 0 else 0)
+
+
+## The parts an LDraw file holds, each sub-model's counted where it is
+## placed (an MPD's FILE blocks), read from the file itself.
+static func _parts_in(path: String) -> int:
+	var files: Dictionary = {}   # a FILE's name: the names its lines place
+	var first: String = ""
+	var current: String = ""
+	for line: String in FileAccess.get_file_as_string(path).split("\n"):
+		var words: PackedStringArray = line.strip_edges().split(" ", false)
+		if words.size() >= 3 and words[0] == "0" and words[1] == "FILE":
+			current = line.strip_edges().substr(7).to_lower()
+			files[current] = []
+			if first.is_empty():
+				first = current
+		elif words.size() >= 15 and words[0] == "1" and files.has(current):
+			(files[current] as Array).append(" ".join(words.slice(14)).to_lower())
+	return _placed(files, first, [])
+
+
+static func _placed(files: Dictionary, name: String, inside: Array) -> int:
+	var count: int = 0
+	for placed: String in files.get(name, []):
+		count += _placed(files, placed, inside + [name]) \
+			if files.has(placed) and not inside.has(placed) else 1
+	return count
