@@ -1144,6 +1144,12 @@ try {
     .catch(() => null);
   check("...framed in the owner's colour, with their name and Stop", Boolean(stopAt));
   await shot(guest.page, "5f_following.png");
+  // How long to wait for what the owner does to show in the second browser,
+  // on the rich car: a wait, not a bar (the pointer's line above is that).
+  // It rides the pointer's trip, whose p95 was 9.6 s there in run 4 of
+  // 2026-11-01, the pages' frames held 1 s and more; in run 3 a selection
+  // was still not there at 15 s, and was by the picture after.
+  const PRESENCE_S = 60;
   // The owner selects a part, as a click does, and frames it (F); the second
   // view goes with it, so the part is where the owner clicked, large. Its
   // outline in the owner's colour read off the second page's pixels, with
@@ -1167,7 +1173,7 @@ try {
     // three browsers in software the outline was still there 3.5 s on, and
     // the picture "before" had it too (2026-10-31).
     await until(async () => !((await together(guest.page)).selections || {})[ownerWho],
-      "the owner's selection gone from the second browser", 15).catch(() => null);
+      "the owner's selection gone from the second browser", PRESENCE_S).catch(() => null);
     spot = (await partsInSight())[0];
   }
   // Each picture with the owner's pointer off the model, so its dot is in
@@ -1175,7 +1181,8 @@ try {
   // colour, is in both.
   const offModel = async () => {
     await owner.page.mouse.move(120, 400);
-    await until(async () => (await together(guest.page)).pointers === 0, "the owner's dot gone", 10).catch(() => null);
+    await until(async () => (await together(guest.page)).pointers === 0, "the owner's dot gone", PRESENCE_S)
+      .catch(() => null);
     await wait(1500);
   };
   const everywhere = (shot) => pixelsNear(shot, { x: shot.width / 2, y: shot.height / 2 }, Math.max(shot.width, shot.height),
@@ -1188,14 +1195,14 @@ try {
     const them = await ownerIn(guest.page);
     const shown = ((await together(guest.page)).selections || {})[ownerWho] || 0;
     return them.sel?.length === 1 && shown === 1 ? them.sel[0] : null;
-  }, "the owner's selection in the second browser", 15).catch(() => null);
+  }, "the owner's selection in the second browser", PRESENCE_S).catch(() => null);
   const chosenIn = Date.now() - clickedAt;
   // What each side had when it did not come: run 3 of 2026-11-01 drew the
   // outline in the picture after, and said nothing of why it was late.
   if (spot && !chosen) {
     const [them, mine, sent] = [await ownerIn(guest.page), await state(owner.page),
       (await together(owner.page)).timing?.pointed];
-    console.log(`        after 15 s the second browser has the owner's selection as ${JSON.stringify(them.sel ?? null)},`
+    console.log(`        after ${PRESENCE_S} s the second browser has the owner's selection as ${JSON.stringify(them.sel ?? null)},`
       + ` ${((await together(guest.page)).selections || {})[ownerWho] || 0} outlined; the owner has ${mine.selected}`
       + ` selected, and last sent where they are ${sent ? `${Date.now() - sent} ms ago` : "never"}`);
   }
