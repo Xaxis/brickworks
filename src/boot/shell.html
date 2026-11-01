@@ -217,12 +217,12 @@ $GODOT_HEAD_INCLUDE
 			<div class="baseplate"></div>
 		</div>
 		<div class="status">
-			<div class="count"><strong id="laid">0</strong> of <span id="total">0</span> bricks</div>
+			<div class="count"><strong id="laid">0</strong> <span id="count-of">of</span> <span id="total">0</span> <span id="count-bricks">bricks</span></div>
 			<div class="note" id="note">Fetching parts…</div>
 		</div>
 	</div>
 
-	<p class="legal">
+	<p class="legal" id="legal">
 		Part geometry from the LDraw™ Parts Library, licensed
 		<a href="https://creativecommons.org/licenses/by/2.0/">CC&nbsp;BY&nbsp;2.0</a> and
 		<a href="https://creativecommons.org/licenses/by/4.0/">CC&nbsp;BY&nbsp;4.0</a>.
@@ -235,6 +235,97 @@ $GODOT_HEAD_INCLUDE
 <script>
 const GODOT_CONFIG = $GODOT_CONFIG;
 const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
+
+// This page in the app's language (2026-11-01): the one the address asks
+// for (/app?lang=de, as every link of the site says it: web/theme.js), else
+// the one chosen on the site or in the app's Settings, which both keep it
+// here (localStorage "brickworks.lang"), else English: the language
+// src/ui/language.gd draws the app in. Its words, said by say() below, and
+// those written in the page, put in its place here.
+const loaderSays = (function () {
+	const WORDS = {
+		de: {
+			"Every brick, at the size it really is.": "Jeder Stein, in seiner wahren Größe.",
+			"of": "von",
+			"bricks": "Steinen",
+			"A wall being built as the app loads": "Eine Mauer, die gebaut wird, während die App lädt",
+			"Your browser does not support the canvas element.": "Dein Browser unterstützt das Canvas-Element nicht.",
+			"legal": "Teilegeometrie aus der LDraw™ Teilebibliothek, lizenziert unter {by2} und {by4}. LEGO® ist eine Marke der LEGO Unternehmensgruppe, die diese Website weder sponsert noch autorisiert oder unterstützt.",
+			"Fetching parts…": "Teile werden geladen…",
+			"Sorting the bin…": "Der Teilekasten wird sortiert…",
+			"Ready": "Bereit",
+			"This browser is missing: {what}.": "Diesem Browser fehlt: {what}.",
+			"Threads need the page served with {headers}.": "Threads brauchen die Seite mit {headers}.",
+			"Brickworks: your model is in another tab": "Brickworks: Dein Modell ist in einem anderen Tab",
+			"Your model is open in another Brickworks tab in this browser. Switch to that tab to go on with it; this one can close.": "Dein Modell ist in einem anderen Brickworks-Tab dieses Browsers geöffnet. Wechsle zu diesem Tab, um weiterzumachen; diesen hier kannst du schließen.",
+			"● Your model is here": "● Dein Modell ist hier",
+			"Brickworks could not fetch its parts catalogue ({why}). Reload the page to try again.": "Brickworks konnte seinen Teilekatalog nicht laden ({why}). Lade die Seite neu, um es noch einmal zu versuchen.",
+		},
+		fr: {
+			"Every brick, at the size it really is.": "Chaque brique, à sa vraie taille.",
+			"of": "sur",
+			"bricks": "briques",
+			"A wall being built as the app loads": "Un mur qui se construit pendant que l’app se charge",
+			"Your browser does not support the canvas element.": "Votre navigateur ne prend pas en charge l’élément canvas.",
+			"legal": "Géométrie des pièces issue de la bibliothèque de pièces LDraw™, sous licence {by2} et {by4}. LEGO® est une marque du groupe de sociétés LEGO, qui ne parraine, n’autorise ni n’approuve ce site.",
+			"Fetching parts…": "Chargement des pièces…",
+			"Sorting the bin…": "Tri du bac à pièces…",
+			"Ready": "Prêt",
+			"This browser is missing: {what}.": "Il manque à ce navigateur : {what}.",
+			"Threads need the page served with {headers}.": "Les threads demandent une page servie avec {headers}.",
+			"Brickworks: your model is in another tab": "Brickworks : votre modèle est dans un autre onglet",
+			"Your model is open in another Brickworks tab in this browser. Switch to that tab to go on with it; this one can close.": "Votre modèle est ouvert dans un autre onglet Brickworks de ce navigateur. Passez à cet onglet pour continuer ; celui-ci peut être fermé.",
+			"● Your model is here": "● Votre modèle est ici",
+			"Brickworks could not fetch its parts catalogue ({why}). Reload the page to try again.": "Brickworks n’a pas pu charger son catalogue de pièces ({why}). Rechargez la page pour réessayer.",
+		},
+		es: {
+			"Every brick, at the size it really is.": "Cada ladrillo, a su tamaño real.",
+			"of": "de",
+			"bricks": "ladrillos",
+			"A wall being built as the app loads": "Un muro que se construye mientras carga la aplicación",
+			"Your browser does not support the canvas element.": "Tu navegador no admite el elemento canvas.",
+			"legal": "Geometría de las piezas de la biblioteca de piezas LDraw™, con licencia {by2} y {by4}. LEGO® es una marca del grupo de empresas LEGO, que no patrocina, autoriza ni respalda este sitio.",
+			"Fetching parts…": "Cargando piezas…",
+			"Sorting the bin…": "Ordenando la caja de piezas…",
+			"Ready": "Listo",
+			"This browser is missing: {what}.": "A este navegador le falta: {what}.",
+			"Threads need the page served with {headers}.": "Los hilos necesitan que la página se sirva con {headers}.",
+			"Brickworks: your model is in another tab": "Brickworks: tu modelo está en otra pestaña",
+			"Your model is open in another Brickworks tab in this browser. Switch to that tab to go on with it; this one can close.": "Tu modelo está abierto en otra pestaña de Brickworks en este navegador. Cambia a esa pestaña para seguir; esta se puede cerrar.",
+			"● Your model is here": "● Tu modelo está aquí",
+			"Brickworks could not fetch its parts catalogue ({why}). Reload the page to try again.": "Brickworks no pudo cargar su catálogo de piezas ({why}). Vuelve a cargar la página para intentarlo de nuevo.",
+		},
+	};
+	let code = "";
+	try {
+		code = (new URLSearchParams(location.search).get("lang") || localStorage.getItem("brickworks.lang") || "").slice(0, 2).toLowerCase();
+	} catch (e) {}
+	const words = WORDS[code] || null;
+	function says(english, values) {
+		const said = (words && words[english]) || english;
+		return said.replace(/\{(\w+)\}/g, function (all, name) { return values && name in values ? String(values[name]) : all; });
+	}
+	if (words) {
+		document.documentElement.lang = code;
+		const put = function (id, english) {
+			const el = document.getElementById(id);
+			if (el) el.textContent = says(english);
+		};
+		put("count-of", "of");
+		put("count-bricks", "bricks");
+		document.querySelector("#boot .tagline").textContent = says("Every brick, at the size it really is.");
+		document.getElementById("wall").setAttribute("aria-label", says("A wall being built as the app loads"));
+		document.getElementById("canvas").textContent = says("Your browser does not support the canvas element.");
+		// The licences' links, as they are in the English.
+		const legal = document.getElementById("legal");
+		const links = legal.querySelectorAll("a");
+		const parts = says("legal").split(/(\{by2\}|\{by4\})/);
+		legal.replaceChildren.apply(legal, parts.map(function (part) {
+			return part === "{by2}" ? links[0] : part === "{by4}" ? links[1] : document.createTextNode(part);
+		}));
+	}
+	return says;
+})();
 
 // A shared model's link (?view=<id>) asked for at once, while the engine
 // downloads and starts, which takes seconds: its text, and the build steps
@@ -352,7 +443,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 	})();
 
 	function say(text, bad) {
-		note.textContent = text;
+		note.textContent = loaderSays(text);
 		note.classList.toggle("bad", Boolean(bad));
 	}
 
@@ -379,11 +470,10 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 
 	const missing = Engine.getMissingFeatures({ threads: GODOT_THREADS_ENABLED });
 	if (missing.length) {
-		let message = "This browser is missing: " + missing.join(", ") + ".";
+		let message = loaderSays("This browser is missing: {what}.", { what: missing.join(", ") });
 		if (GODOT_THREADS_ENABLED) {
-			message += " Threads need the page served with " +
-				"Cross-Origin-Opener-Policy: same-origin and " +
-				"Cross-Origin-Embedder-Policy: require-corp.";
+			message += " " + loaderSays("Threads need the page served with {headers}.", { headers:
+				"Cross-Origin-Opener-Policy: same-origin, Cross-Origin-Embedder-Policy: require-corp" });
 		}
 		fail(message);
 		return;
@@ -957,7 +1047,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 	function elsewhere(id) {
 		running = false;
 		try { new BroadcastChannel("brickworks-tabs").postMessage({ show: id }); } catch (e) {}
-		document.title = "Brickworks: your model is in another tab";
+		document.title = loaderSays("Brickworks: your model is in another tab");
 		say("Your model is open in another Brickworks tab in this browser. Switch to that tab to go on with it; this one can close.");
 		window.brickworksElsewhere = id;
 	}
@@ -972,7 +1062,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 				let flips = 0;
 				const flip = setInterval(function () {
 					flips += 1;
-					document.title = flips % 2 ? "● Your model is here" : was;
+					document.title = flips % 2 ? loaderSays("● Your model is here") : was;
 					if (flips >= 10) { clearInterval(flip); document.title = was; }
 				}, 600);
 			};
@@ -1130,7 +1220,7 @@ const GODOT_THREADS_ENABLED = $GODOT_THREADS_ENABLED;
 				return;
 			}
 			state.gave_up = true;
-			if (name === "data") fail("Brickworks could not fetch its parts catalogue (" + state.failed + "). Reload the page to try again.");
+			if (name === "data") fail(loaderSays("Brickworks could not fetch its parts catalogue ({why}). Reload the page to try again.", { why: state.failed }));
 		});
 	}
 	window.brickworksPack = function (name) {

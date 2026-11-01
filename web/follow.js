@@ -35,7 +35,7 @@
 // Everything is put on the page as text.
 import { askToSignIn, call, email, madeUp, signOut, signedIn } from "/account.js";
 import { earlyOn } from "/early.js";
-import { avatarHtml } from "/kit.js";
+import { avatarHtml, say } from "/kit.js";
 
 // A follow sent and not yet answered, kept for this tab until it is
 // (web295): Follow is drawn at once and the server answers 260-390 ms
@@ -325,22 +325,22 @@ function accountPart(state) {
     name.append(bone("wide"));
     handle.append(bone("short"));
   } else {
-    name.textContent = state.me?.name || "Signed in";
+    name.textContent = state.me?.name || say("Signed in");
     handle.textContent = state.me?.handle ? `@${state.me.handle}` : addressOf(state);
   }
   words.append(name, handle);
   whoIs.append(avatarOf(state, ""), words);
   const places = document.createElement("nav");
-  places.setAttribute("aria-label", "Your account");
+  places.setAttribute("aria-label", say("Your account"));
   const counted = { "/notifications": state.notifications, "/feed": state.feed };
   for (const [href, words, data] of [["/profile", "Your profile", "profile"], ["/notifications", "Notifications", "notifications"],
     ["/feed", "Your feed", "feed"], ["/profile?tab=saved", "Saved", "saved"], ["/settings", "Settings", "settings"]]) {
     const link = document.createElement("a");
     link.href = href;
     link.dataset.place = data;
-    link.append(words);
+    link.append(say(words));
     const n = Number(counted[href]) || 0;
-    if (n > 0) link.append(" ", badge(n, `${n} new`));
+    if (n > 0) link.append(" ", badge(n, say("{n} new", { n })));
     if (location.pathname === href) link.setAttribute("aria-current", "page");
     places.append(link);
   }
@@ -351,14 +351,14 @@ function accountPart(state) {
   feedback.href = "/feedback";
   feedback.dataset.feedback = "";
   feedback.dataset.place = "feedback";
-  feedback.append("Send feedback");
+  feedback.append(say("Send feedback"));
   places.append(feedback);
   earlyOn("beta_hub").then((on) => {
     if (!on || places.querySelector('[data-place="beta-hub"]')) return;
     const hub = document.createElement("a");
     hub.href = "/beta-hub";
     hub.dataset.place = "beta-hub";
-    hub.append("Beta hub");
+    hub.append(say("Beta hub"));
     if (location.pathname === "/beta-hub") hub.setAttribute("aria-current", "page");
     feedback.before(hub);
   }).catch(() => null);
@@ -371,7 +371,7 @@ function signOutButton() {
   button.type = "button";
   button.className = "sign-out";
   button.dataset.signOut = "";
-  button.textContent = "Sign out";
+  button.textContent = say("Sign out");
   button.addEventListener("click", () => {
     signOut();
     location.reload();
@@ -394,13 +394,13 @@ function themeChoice() {
 function drawSignedOut() {
   for (const link of document.querySelectorAll(".site-head a[data-account]")) {
     link.hidden = false;
-    link.textContent = "Sign in";
+    link.textContent = say("Sign in");
     link.href = "/profile";
   }
   for (const made of document.querySelectorAll(".site-head .account-menu, .site-head .account-part, .site-head .menu .sign-out")) made.remove();
   for (const menu of document.querySelectorAll(".site-head .menu summary")) {
     menu.classList.remove("account-btn");
-    menu.replaceChildren("Menu");
+    menu.replaceChildren(say("Menu"));
     menu.removeAttribute("aria-label");
   }
 }
@@ -408,10 +408,10 @@ function drawSignedOut() {
 /// The header for somebody signed in: [state] is who and what is new.
 function drawSignedIn(state) {
   const n = Number(state.count) || 0;
-  const label = n ? `Your account, ${n} new` : "Your account";
+  const label = n ? say("Your account, {n} new", { n }) : say("Your account");
   for (const link of document.querySelectorAll(".site-head a[data-account]")) {
     link.hidden = true;
-    link.textContent = "Account";
+    link.textContent = say("Account");
   }
   // On a laptop: the avatar, after where Sign in was, opening the menu.
   for (const nav of document.querySelectorAll(".site-head .nav")) {
@@ -441,7 +441,7 @@ function drawSignedIn(state) {
     summary.classList.add("account-btn");
     summary.replaceChildren(avatarOf(state, ""));
     if (n) summary.append(badge(n));
-    summary.setAttribute("aria-label", n ? `Menu and your account, ${n} new` : "Menu and your account");
+    summary.setAttribute("aria-label", n ? say("Menu and your account, {n} new", { n }) : say("Menu and your account"));
     const list = menu.querySelector(".menu-list");
     list.querySelector(".account-part")?.remove();
     list.querySelector(".sign-out")?.remove();
