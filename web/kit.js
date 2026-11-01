@@ -6,8 +6,8 @@
 // them on every card and which a deployment copies alone beside its
 // functions, so a server page draws them as a browser does: passed on from
 // here, so a page asks the kit for the whole kit. And every scroller on the
-// page (web/scroller.js).
-export { ICONS, avatarHtml, avatarTone, awardsHtml, iconButtonHtml, iconHtml } from "./card.js";
+// page (web/scroller.js), and the page's words in its language (say).
+export { ICONS, avatarHtml, avatarTone, awardsHtml, iconButtonHtml, iconHtml, number, say } from "./card.js";
 import "./scroller.js";
 
 const AGO = new Intl.RelativeTimeFormat("en", { numeric: "auto" });

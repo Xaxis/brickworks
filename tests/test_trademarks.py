@@ -93,7 +93,8 @@ def plain(text: str) -> str:
 def public_text() -> dict[str, str]:
     """Every file a person reads, as the words they read."""
     texts: dict[str, str] = {}
-    for path in sorted((ROOT / "web").glob("*.html")) + sorted((ROOT / "web").glob("*.js")) + sorted(
+    for path in sorted((ROOT / "web").glob("*.html")) + sorted((ROOT / "web").glob("*/*.html")) + sorted(
+            (ROOT / "web/_lang").glob("*.json")) + sorted((ROOT / "web").glob("*.js")) + sorted(
             (ROOT / "docs-site").glob("*.md")) + [
             ROOT / "web/site.webmanifest", ROOT / "api/share.js", ROOT / "api/_directory.js",
             ROOT / "api/people.js", ROOT / "api/_names.js",
@@ -133,6 +134,8 @@ def test_each_pattern_catches_its_wrong_use(pattern: re.Pattern[str], example: s
     "LEGO® bricks", "as the LEGO Group made it", "the LEGO Group's own designers",
     "a mosaic in the style of LEGO® Art sets", "laid in LEGO® bricks",
     "LEGO® Digital Designer model (.lxf)", "Brick Art", "LEGO(R) is a trademark",
+    "Marken der LEGO Gruppe", "der LEGO Unternehmensgruppe", "du Groupe LEGO", "du groupe de sociétés LEGO",
+    "del Grupo LEGO", "del grupo de empresas LEGO", "modèles LEGO®",
 ])
 def test_the_check_lets_right_use_through(good: str) -> None:
     assert not any(pattern.search(good) for pattern, _, _ in WRONG), good

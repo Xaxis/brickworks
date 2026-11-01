@@ -37,6 +37,12 @@
   The theme is chosen in the footer, on Menu (a phone's) and in Settings:
   System, Light or Dark, three buttons in a row (.segmented), the chosen
   one pressed. Not in the header.
+
+  And the language under it (2026-11-01), where sites put theirs: a
+  dropdown of the app's four, each in its own words, showing the page's
+  (web/theme.js). The landing page and the download page have a copy in
+  each (tools/site_lang.py), which choosing one opens; on any page the
+  choice goes into the app with every link to it.
 -->
 <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
@@ -87,6 +93,14 @@
 						<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
 					</div>
 				</div>
+				<label class="theme-choice"><span>Language</span>
+					<select data-lang-choice translate="no">
+						<option value="en" lang="en">English</option>
+						<option value="de" lang="de">Deutsch</option>
+						<option value="fr" lang="fr">Français</option>
+						<option value="es" lang="es">Español</option>
+					</select>
+				</label>
 			</div>
 			<nav class="foot-links" aria-label="More">
 				<div>

@@ -209,6 +209,14 @@ declare -A CMD=(
   # (a throwaway account, deleted after), once supabase/theme.sql is applied.
   [theme]="tools/web/theme_flow.mjs --url=$P --out=$S/${TAG}_theme"
   [theme_account]="tools/web/theme_flow.mjs --url=$P --account --only=home --widths=1280 --out=$S/${TAG}_theme_account"
+  # The landing and download pages in German, French and Spanish
+  # (tools/site_lang.py, web/theme.js): a browser asking for each language
+  # opens / and /download at 1280 and 390 and lands on its copy (/de,
+  # /de/download), its words the language's but for names, every link into
+  # the app ?lang=<code>, the footer's Language showing it; choosing English
+  # there keeps English though the browser asks for German, and the gallery
+  # sends a French browser into a French app, whose loading page speaks it.
+  [site_lang]="tools/web/site_lang_flow.mjs --url=$P --app=$P/app --out=$S/${TAG}_site_lang"
   # A model's page (docs/SOCIAL.md U4), the gallery's first model: the
   # picture, name, designer and action bar on a phone's first screen, the
   # column beside the picture on a laptop as the page scrolls; Like, Save,
