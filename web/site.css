@@ -409,6 +409,9 @@ a:focus-visible { border-radius: var(--r-1); }
 .cta.ghost[aria-pressed="true"] { border-color: var(--accent-edge); }
 .cta.small { min-height: 36px; padding: 5px 12px; font-size: var(--t-small); }
 .cta.big { min-height: 52px; padding: 13px 26px; font-size: var(--t-h3); border-radius: var(--control-radius); }
+/* orangecheck's button says its name in the visitor's language, and the
+   French one ran out of the sign-in dialog on a phone: it wraps instead. */
+[data-oc-sign-in] { white-space: normal; max-inline-size: 100%; }
 /* A way on, its arrow after the words, nudged under the pointer. */
 .cta .arrow { display: inline-block; transition: transform var(--motion) var(--ease); }
 .cta:hover .arrow { transform: translateX(3px); }
