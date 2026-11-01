@@ -359,6 +359,11 @@ func _gather() -> void:
 		_walk("panels", right_dock, [])
 		_shell.run("undo")
 		await _frames(4)
+		# Taken back for good: the walk of the commands below presses Undo
+		# with nothing to undo and then Redo, which made it again, and every
+		# picture after had a "Probe group" in the model tree, inside Car
+		# (undo_count_probe: the undo itself takes it back in one frame).
+		builder.forget_history()
 	builder.clear_selection()
 	await _frames(4)
 	# The tiles' tooltips, a few of them, whose name and number are names
