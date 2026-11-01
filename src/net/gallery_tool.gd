@@ -41,13 +41,9 @@ const SORT_WORDS: Dictionary = {"newest": "newest first", "views": "most viewed 
 ## How much of a model is read: the server's own limit (api/share.js).
 const MOST_MODEL := 3 * 1024 * 1024
 const MOST_PICTURE := 128 * 1024
-## What each licence lets a session do with what it learns, said to it.
-const LICENCES: Dictionary = {
-	"cc-by-4.0": ["CC BY 4.0", "anyone may share it, change it and build on it, crediting %s and linking %s"],
-	"cc-by-sa-4.0": ["CC BY-SA 4.0", "anyone may build on it, crediting %s and linking %s, and must share what they make under CC BY-SA 4.0 too"],
-	"all-rights-reserved": ["All rights reserved", "learn from how %s built it; do not copy it into a model you make or share without their leave (%s)"],
-	"cc-by-2.0": ["CC BY 2.0", "anyone may share it, change it and build on it, crediting %s and linking %s"],
-}
+## What each licence lets a session do with what it learns, said to it
+## (SharedModels.LICENCES).
+const LICENCES: Dictionary = SharedModels.LICENCES
 
 ## A designer's handle, as api/people.js takes one.
 const HANDLE := "^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$"

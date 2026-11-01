@@ -30,14 +30,23 @@ static func embed_for(id: String) -> String:
 ## Who made a shared model and on what terms, as a copy of it carries them
 ## (ModelStore.credit): its designer, its licence by name, and its link.
 const GALLERY := "the Brickworks gallery"
+## Each licence by id: its name, and what it lets a session do with what it
+## learns, said to it (GalleryTool). Here, so that a copy's credit does not
+## load the gallery's tool (Later).
+const LICENCES: Dictionary = {
+	"cc-by-4.0": ["CC BY 4.0", "anyone may share it, change it and build on it, crediting %s and linking %s"],
+	"cc-by-sa-4.0": ["CC BY-SA 4.0", "anyone may build on it, crediting %s and linking %s, and must share what they make under CC BY-SA 4.0 too"],
+	"all-rights-reserved": ["All rights reserved", "learn from how %s built it; do not copy it into a model you make or share without their leave (%s)"],
+	"cc-by-2.0": ["CC BY 2.0", "anyone may share it, change it and build on it, crediting %s and linking %s"],
+}
 
 
 static func credit_of(body: Dictionary, id: String) -> Dictionary:
 	var licence: Variant = body.get("licence")
 	var url: String = str(body.get("url", link_for(id)))
 	return {"by": str(body["author"]) if body.get("author") is String else "",
-		"licence": str(GalleryTool.LICENCES[licence][0]) if licence is String
-			and GalleryTool.LICENCES.has(licence) else "no licence chosen",
+		"licence": str(LICENCES[licence][0]) if licence is String
+			and LICENCES.has(licence) else "no licence chosen",
 		"page": url if url.begins_with("https://") else "", "from": GALLERY}
 
 

@@ -335,9 +335,6 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	collection = CollectionDialog.new()
 	collection.said.connect(func(text: String) -> void: bar.say(text))
 	collection.attach(app)
-	var parts_list: Variant = app.get("_inventory")
-	if parts_list is InventoryPanel:
-		(parts_list as InventoryPanel).need_wanted.connect(func() -> void: collection.open("need"))
 
 	# Any of LDraw's models of real sets, or the community's, opened in a
 	# tab of its own: src/ui/library_dialog.gd. File, Open leads there too.
@@ -601,7 +598,39 @@ func attend(name: String, work: Callable) -> void:
 	# asked: said first, Instructions waited for its busy line to be drawn,
 	# and on a slow phone the tap's leave to open the booklet's tab had gone.
 	var tab: bool = name in OPENS_A_TAB and OS.has_feature("web")
-	Working.attend(name, doing(name), work, name in IN_THE_PRESS or asks or tab, slow, size)
+	var first: bool = _makes_its_feature(name)
+	Working.attend(name, doing(name), work, name in IN_THE_PRESS or asks or tab, slow or first,
+		size, first)
+
+
+## The commands that load their feature the first time they run (Later):
+## its class, and the app's member that holds it when one does. That first
+## run compiles it and builds it, which held Render's frame 400 ms on
+## Orthanc unsaid and Simulate's 254 (command_probe, 2026-10-31), and a
+## browser compiles several times slower: so it is said first.
+const FIRST_USE: Dictionary = {
+	"render": [&"RenderDialog", "_render"], "pose": [&"PosePanel", "_pose"],
+	"share": [&"SharePanel", "_share_panel"], "simulate": [&"SimulatePanel", "_simulate"],
+	"hidden_colours": [&"HiddenColoursPanel", "_hidden_colours"],
+	"printed_versions": [&"PrintStudio", "_studio"], "print_part": [&"PrintStudio", "_studio"],
+	"sticker": [&"PrintStudio", "_studio"], "part_maker": [&"ElementDialog", "_elements"],
+	"parts_list": [&"InventoryPanel", "_inventory"], "minifig": [&"MinifigDialog", "_figures"],
+	"settings": [&"ControlsDialog", "_controls"], "keys": [&"ControlsDialog", "_controls"],
+	"ask_claude": [&"Assistant", "_assistant"], "brace": [&"Assistant", "_assistant"],
+	"panel_assistant": [&"ChatPanel", "_chat"], "connector": [&"ChatPanel", "_chat"],
+	"instructions": [&"BookletMaker", ""], "together": [&"TogetherDialog", ""],
+	"comments": [&"PinsDialog", ""],
+}
+
+
+## Whether running [param name] now loads or makes its feature (FIRST_USE).
+func _makes_its_feature(name: String) -> bool:
+	var first: Array = FIRST_USE.get(name, [])
+	if first.is_empty():
+		return false
+	var member: String = first[1]
+	return not Later.loaded(first[0]) or (not member.is_empty() and app != null
+		and (member + "_made") in app and app.get(member + "_made") == null)
 
 
 ## How much a command has to do: the selection, for one that changes the
@@ -1062,12 +1091,11 @@ func _define() -> void:
 		selected, "Swap the selection for the part you hold, each in its own colour")
 	# src/prints/printed_versions.gd: the prints the LEGO Group made of it.
 	_add("printed_versions", "Printed versions…", 0, func() -> void:
-		var studio: PrintStudio = app.get("_studio")
+		var studio: Node = app.get("_studio")
 		if studio != null:
 			studio.open_versions(),
 		func() -> bool:
-			var studio: PrintStudio = app.get("_studio")
-			return studio != null and studio.offers_versions(),
+			return app != null and PartPrints.offers_versions(library, world, builder.selection),
 		"Swap the part for one of the prints or stickered versions the LEGO Group made of it")
 	_add("mirror", "Mirror", SHIFT | KEY_M, func() -> void: verbs.mirror(), selected,
 		"Make the selection its mirror image, left to right as you see it")
@@ -1347,10 +1375,10 @@ func _define() -> void:
 	# The parts bin's Print… and its sticker sheet's Draw a sticker, in the
 	# menus too: every command a session can match is one the menus have.
 	_add("print_part", "Print on a part…", 0, func() -> void:
-		(app.get("_studio") as PrintStudio).print_part(builder.held_part), Callable(),
+		(app.get("_studio") as Node).print_part(builder.held_part), Callable(),
 		"Draw a print on the part selected, printed where it stands, or on the part in hand")
 	_add("sticker", "Put a sticker on…", 0, func() -> void:
-		(app.get("_studio") as PrintStudio).sticker(), Callable(),
+		(app.get("_studio") as Node).sticker(), Callable(),
 		"Click a face of the model, then draw the sticker that goes on it")
 	_add("rotate_held", "Turn the part in hand", KEY_R, func() -> void:
 		builder.rotate_held(1)
@@ -1398,7 +1426,7 @@ func _define() -> void:
 	_add("settings", "Settings…", KEY_COMMA, func() -> void: bar.controls_wanted.emit(),
 		Callable(), "Which way the wheel zooms, and what the middle button does")
 	# Help
-	_add("keys", "Keys and controls", KEY_F1, func() -> void: (app.get("_controls") as ControlsDialog).open_keys(),
+	_add("keys", "Keys and controls", KEY_F1, func() -> void: (app.get("_controls") as Control).open_keys(),
 		Callable(),
 		"What every button and key does")
 	_add("tour", "Take the tour", 0, func() -> void: first_build.start(), Callable(),
@@ -1903,7 +1931,7 @@ const WEIGH_OFF_THREAD_FROM := 600
 ## set them — its animation's frames when it has keys, otherwise every joint
 ## swung through its reach (Poser.sweep) — or the joints found afresh.
 func _poses_to_weigh() -> Array:
-	var panel: PosePanel = app.get("_pose")
+	var panel: Control = app.get("_pose_made")
 	var poser: Poser = panel.poser if panel != null else null
 	if poser != null and poser.world != null and not poser.joints.is_empty() and poser.holds():
 		return poser.sweep(panel.animation)
@@ -2451,7 +2479,7 @@ func edit_look(op: String) -> void:
 	if read_only:
 		return
 	if op == "lay_out":
-		var editor: PageEditor = app.get("_page_editor")
+		var editor: Control = app.get("_page_editor")
 		if editor != null:
 			editor.open()
 		return
@@ -2959,9 +2987,9 @@ func controls_by_name() -> Dictionary:
 		out.merge(collection.controls_by_name())
 	if library_dialog != null:
 		out.merge(library_dialog.controls_by_name())
-	var parts_list: Variant = app.get("_inventory") if app != null else null
-	if parts_list is InventoryPanel:
-		out.merge((parts_list as InventoryPanel).controls_by_name())
+	var parts_list: Control = app.get("_inventory_made") if app != null else null
+	if parts_list != null:
+		out.merge(parts_list.controls_by_name())
 	if see_inside != null:
 		out.merge(see_inside.controls_by_name())
 	if stress != null and stress.panel != null:

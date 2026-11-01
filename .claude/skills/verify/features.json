@@ -3695,7 +3695,9 @@
       "entry": "src/main.tscn",
       "reach": "godot --path .",
       "area": "game",
-      "tests": []
+      "tests": [
+        "tests/test_later.py"
+      ]
     },
     {
       "id": "ui:3d model export",

@@ -1079,7 +1079,7 @@ same batch. One more run is not whole than on `main`: 24 of 28, from 25.
 **What changed** ([brickify.gd](../src/assembly/brickify.gd),
 [shapes.gd](../src/ai/shapes.gd)):
 
-1. **Matched as an eye judges** (`Brickify.de2000`, `_nearest`). Each
+1. **Matched as an eye judges** (`HiddenColours.de2000`, `_nearest`). Each
    sampled colour goes to the palette colour nearest by CIEDE2000, the
    measure the bench scores by, weighed among the few nearest in a straight
    line in L\*a\*b\*. A 25% grey goes to Black (11.0 away), not Reddish

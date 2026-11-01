@@ -1069,6 +1069,10 @@ func _the_panel(text: String) -> void:
 	var store: ModelStore = _main.get("_store")
 	var shell: Shell = _main.get("_shell")
 	var bar: ModelBar = _main.get("_bar")
+	# Signed in once start-up has said who is here, as a person only can be.
+	# Its answer, none from the port this probe gives the deployment, came
+	# 20 s in and signed the probe out partway through (Account.boot).
+	await account.deployment.wait()
 	# An address nothing may be made from (walk180's was delivered+walk180-web).
 	account.email = "delivered+walk180-web@resend.dev"
 	account._access = "probe.signed.in"

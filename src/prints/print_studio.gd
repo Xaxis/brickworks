@@ -281,10 +281,7 @@ func _draw(picture: Image, area: String, title: String) -> String:
 ## The plain part a part is a version of: 3068b for 3068bpb0001 and for a
 ## print made here on it, the part itself for a plain one.
 func plain_of(part_id: String) -> String:
-	var info: PartLibrary.PartInfo = library.parts.get(part_id)
-	if info != null and not info.print_of.is_empty():
-		return info.print_of
-	return PartPrints.base_of(part_id)
+	return PartPrints.plain_of(library, part_id)
 
 
 ## The printed and stickered versions of a part the library has, the
@@ -316,25 +313,11 @@ func open_versions() -> void:
 
 ## Whether Printed versions… has something to offer for the selection.
 func offers_versions() -> bool:
-	var ids: PackedInt64Array = _selected_alike()
-	return not ids.is_empty() and not versions_of(world.get_brick(ids[0]).part_id).is_empty()
+	return PartPrints.offers_versions(library, world, builder.selection)
 
 
-## The selected parts when they are all versions of one plain part (a row
-## of plain 1 x 2 tiles, or one printed and one plain), else none.
 func _selected_alike() -> PackedInt64Array:
-	var out := PackedInt64Array()
-	var plain: String = ""
-	for key: Variant in builder.selection.keys():
-		var brick: BrickWorld.Brick = world.get_brick(int(key))
-		if brick == null or Stickers.sticks(library, brick.part_id):
-			continue
-		if plain.is_empty():
-			plain = plain_of(brick.part_id)
-		elif plain_of(brick.part_id) != plain:
-			return PackedInt64Array()
-		out.append(brick.id)
-	return out
+	return PartPrints.alike(library, world, builder.selection)
 
 
 ## Swap the parts numbered [param ids] for [param version] — a printed or

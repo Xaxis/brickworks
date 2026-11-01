@@ -335,7 +335,7 @@ static func _de(library: PartLibrary, labs: Dictionary, one: int, other: int) ->
 		if not labs.has(code):
 			var colour: PartLibrary.BrickColor = library.color(code)
 			labs[code] = HiddenColours.lab(colour.rgb) if colour != null else Vector3.ZERO
-	return Brickify.de2000(labs[one], labs[other])
+	return HiddenColours.de2000(labs[one], labs[other])
 
 
 ## [param placement] as two smaller parts of its kind on hand, in its colour

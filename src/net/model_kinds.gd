@@ -63,19 +63,24 @@ static func guess(text: String) -> String:
 	return ""
 
 
+## The assistant's words for kinds of model (Style), read through Later: the
+## Library's list of kinds, which is in the first screen's code, has no
+## need of them.
 static func _vocabulary() -> Array:
+	var style: GDScript = Later.script(&"Style")
+	var traits: Dictionary = style.TRAITS
 	var groups: Dictionary = {}
-	for pair: Array in Style.GROUP_WORDS:
+	for pair: Array in style.GROUP_WORDS:
 		groups[str(pair[1])] = pair[0]
 	return [
-		["mechanism", Style.TRAITS["mechanism"]],
+		["mechanism", traits["mechanism"]],
 		["space", groups.get("space", [])],
 		["castle", groups.get("fantasy", [])],
 		["figure", FIGURE_WORDS],
 		["art", ART_WORDS],
-		["vehicle", Style.TRAITS["vehicle"] + groups.get("vehicles", [])],
+		["vehicle", traits["vehicle"] + groups.get("vehicles", [])],
 		["architecture", groups.get("architecture", [])],
 		["town", groups.get("buildings_since_2010", [])],
-		["robot", Style.TRAITS["machine"]],
-		["nature", Style.TRAITS["living"]],
+		["robot", traits["machine"]],
+		["nature", traits["living"]],
 	]
