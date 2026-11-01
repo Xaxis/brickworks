@@ -824,10 +824,14 @@ try {
 
   if (withDesktop) {
     // Plain godot: the flow holds the box's slot already, and the desktop's
-    // half is a headless copy that mostly waits on the network.
+    // half is a headless copy that mostly waits on the network. It stays
+    // until the owner ends the session in 7, or this flow's finally stops
+    // it: its own limit is the check's (preview_checks.sh, 2700 s). At 900 s
+    // it gave up in 5i on a loaded box, 1,117 s from the join to the end,
+    // and passed with seconds to spare on a calmer one, 904 s (2026-11-01).
     const godotArgs = ["--headless", "--path", root, "--script", "src/dev/together_probe.gd", "--",
       `--api=${site}`, `--join=${started.link}`, `--out=${desktopFile}`, "--edits=6", `--email=${emails.desktop}`,
-      "--seconds=900"];
+      "--seconds=2700"];
     desktop = spawn("godot", godotArgs, {
       env: { ...process.env, XDG_DATA_HOME: process.env.TOGETHER_XDG || path.join(out, "desktop-data") },
       stdio: ["ignore", "pipe", "pipe"],
