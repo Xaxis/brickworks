@@ -87,7 +87,8 @@
 //                            model, figs) and sorted (sort); the LDraw
 //                            shelf alone (api/_library.js) where this
 //                            deployment has no catalogue
-//   GET  ?op=catalog_set&set=N  /library/set/N: the set's page; with
+//   GET  ?op=catalog_set&set=N  /library/set/N: the set's page (&lang=de,
+//                            /de/library/set/N, in German, fr and es too); with
 //                            op=catalog_parts (/library/set/N/parts.json,
 //                            .xml, .csv) its parts, op=catalog_photo
 //                            (/library/set/N.webp, its card's, and
@@ -224,7 +225,7 @@ import {
   KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
   cleanDescription, cleanKind, cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel,
   LDRAW_FROM, listQuery, looksLikePerson, modelHash, modelledByOf, motionsIn, movesWords, partFacts,
-  siteChrome, testsAsked, visitorKey,
+  inLanguage, SITE_LANGS, siteChrome, siteWords, testsAsked, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
 import { libraryCredit, storeBytes, storeFile, storeRoot } from "./_omr_credit.js";
@@ -237,7 +238,7 @@ import {
   librarySets, searchSets, setCard, setModel, setTitle, themeOf, themes,
 } from "./_library.js";
 // A model's parts list from its file, as the app's (site278).
-import { inventoryOf, inventoryOfLots, paletteOf, partsTable, rebrickableCsv, sceneOf, wantedList } from "./_parts.js";
+import { inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable, rebrickableCsv, sceneOf, wantedList } from "./_parts.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
@@ -1812,7 +1813,7 @@ export function fileName(name, fallback) {
 /// its parts, of the version asked for (the newest unless one is). Read as a
 /// visitor, signed out: what its page offers anybody. Kept by the CDN as the
 /// page is, so a model taken down goes with its page.
-async function download(response, op, id, asked, as) {
+async function download(response, op, id, asked, as, lang = "en") {
   const fail = (status, error) => response.status(status).setHeader("Cache-Control", "no-store").json({ error });
   const row = await publishedRow(id);
   if (!row) {
@@ -1836,13 +1837,17 @@ async function download(response, op, id, asked, as) {
     return response.status(200).end(file);
   }
   if (op === "scene") return sceneAnswer(response, stored, file, `m:${id}:${shown.n}`);
-  return partsAnswer(response, partsOf(stored, file), base, as, { id, version: shown.n, newest });
+  return partsAnswer(response, partsOf(stored, file), base, as, { id, version: shown.n, newest }, lang);
 }
 
 /// A parts list as /m/X/parts.json, .xml and .csv answer it, and a set's
 /// (/library/X/parts.json): [parts] the list (partsOf), [base] what its
-/// files are named, [said] what the JSON says first.
-function partsAnswer(response, parts, base, as, said) {
+/// files are named, [said] what the JSON says first. With [lang] one of
+/// the site's languages (?lang=de), each lot's JSON also says its part,
+/// colour and category as the app says them in it (said, colour_said,
+/// category_said: api/_parts.js partNames), where it has words for them;
+/// the shops' lists keep the names the shops know.
+function partsAnswer(response, parts, base, as, said, lang = "en") {
   const fail = (status, error) => response.status(status).setHeader("Cache-Control", "no-store").json({ error });
   if (!parts) return fail(503, "This site cannot list a model's parts just now.");
   if (as === "xml") {
@@ -1859,11 +1864,12 @@ function partsAnswer(response, parts, base, as, said) {
   // Each lot's picture is drawn by the page (web/part-pictures.js) from its
   // part's geometry (mesh), fetched from the store (root), in its colours.
   const root = storeRoot();
+  const words = SITE_LANGS.includes(lang) ? partNames(lang) : null;
   return response.status(200).json({
-    ...said, pieces: parts.pieces,
+    ...said, ...(words ? { lang } : {}), pieces: parts.pieces,
     lots: parts.lots.map((lot) => ({ part: lot.part, name: lot.name, category: lot.category, colour: lot.colour,
       colour_name: lot.colour_name, hex: lot.hex, count: lot.count, element: lot.element || null, custom: lot.custom,
-      mesh: (root && lot.mesh) || null })),
+      mesh: (root && lot.mesh) || null, ...namesOf(lot, words) })),
     root: root || null, colours: root ? paletteOf() : {},
     // What each shop's list leaves off: a made part, or a colour it has no
     // number for.
@@ -1924,19 +1930,24 @@ async function read(request, response) {
   // With tests=1, the OMR's arrivals staged for the lead to let out too
   // (tools/library_import.py), which nobody else is shown.
   if (op === "library") return library(request, response);
-  if (op === "catalog_set") return catalogSetPage(response, origin, String(request.query?.set || ""));
+  if (op === "catalog_set") {
+    return catalogSetPage(response, origin, String(request.query?.set || ""), String(request.query?.lang || "en"));
+  }
   if (op === "catalog_parts") {
-    return catalogParts(response, origin, String(request.query?.set || ""), String(request.query?.as || "json"));
+    return catalogParts(response, origin, String(request.query?.set || ""), String(request.query?.as || "json"),
+      String(request.query?.lang || "en"));
   }
   if (op === "catalog_picture") return catalogPicture(response, origin, String(request.query?.set || ""));
   if (op === "catalog_photo") return catalogPhoto(response, String(request.query?.set || ""), String(request.query?.as || "card"));
   if (op === "catalog_owned") return catalogOwned(request, response, origin, String(request.query?.set || ""));
   if (op === "sitemap_index") return sitemapIndex(response, origin);
-  if (op === "sitemap_sets") return sitemapOfSets(response, origin, String(request.query?.n || ""));
+  if (op === "sitemap_sets") return sitemapOfSets(response, origin, String(request.query?.n || ""), String(request.query?.lang || "en"));
   if (op === "set") return setPage(response, origin, id, testsAsked(request.query || {}));
   if (op === "set_cover") return setCover(response, id, String(request.query?.as || "card"), testsAsked(request.query || {}));
   if (op === "set_file") return setFile(response, id, testsAsked(request.query || {}));
-  if (op === "set_parts") return setParts(response, id, String(request.query?.as || "json"), testsAsked(request.query || {}));
+  if (op === "set_parts") {
+    return setParts(response, id, String(request.query?.as || "json"), testsAsked(request.query || {}), String(request.query?.lang || "en"));
+  }
   if (op === "set_scene") return setScene(response, id, testsAsked(request.query || {}));
 
   // A version asked for, where there can be one: the page, its picture and
@@ -1945,7 +1956,7 @@ async function read(request, response) {
   const asked = ["page", "image", "cutout", "file", "parts", "scene", ""].includes(op) ? askedVersion(request) : null;
 
   if (op === "file" || op === "parts" || op === "scene") {
-    return download(response, op, id, asked, String(request.query?.as || "json"));
+    return download(response, op, id, asked, String(request.query?.as || "json"), String(request.query?.lang || "en"));
   }
 
   if (op === "page") {
@@ -2183,7 +2194,7 @@ async function setFile(response, id, tests = false) {
 }
 
 /// /library/X/parts.json, .xml and .csv: its parts, as a model's are.
-async function setParts(response, id, as, tests = false) {
+async function setParts(response, id, as, tests = false, lang = "en") {
   const entry = await librarySet(id, libraryOf(tests));
   if (!entry) {
     return response.status(404).setHeader("Cache-Control", "no-store").json({ error: "The LDraw library has no such set." });
@@ -2192,7 +2203,7 @@ async function setParts(response, id, as, tests = false) {
   response.setHeader("Cache-Control", SET_CACHE);
   response.setHeader("X-Content-Type-Options", "nosniff");
   return partsAnswer(response, text ? partsOf(entry.file, Buffer.from(text)) : null,
-    fileName(setTitle(entry), entry.id), as, { id, version: 1, newest: 1 });
+    fileName(setTitle(entry), entry.id), as, { id, version: 1, newest: 1 }, lang);
 }
 
 /// /library/X/scene.json: its model packed for its page's 3D view, as a
@@ -2255,9 +2266,11 @@ function catalogLots(rows) {
 }
 
 /// /library/set/N: the set's page.
-async function catalogSetPage(response, origin, number) {
+async function catalogSetPage(response, origin, number, lang = "en") {
   const entry = catalogSet(number);
-  if (!entry) return html(response, 404, gonePage(origin, number.slice(0, 40), false));
+  // A language the site has no words in is not a page.
+  const words = lang === "en" ? null : siteWords(lang);
+  if (!entry || (lang !== "en" && !words)) return html(response, 404, gonePage(origin, number.slice(0, 40), false));
   const catalogue = setCatalog();
   // LDraw's shelf and the set's shard, each a fetch, asked at once.
   const [models, rows] = await Promise.all([librarySets().catch(() => []), entry.lots ? catalogRows(entry, origin) : null]);
@@ -2265,12 +2278,13 @@ async function catalogSetPage(response, origin, number) {
   const lots = entry.lots ? catalogLots(rows) : null;
   const inside = entry.inside.map(([one, n]) => [catalogSet(one), n]).filter(([one]) => one);
   const next = catalogBeside(catalogue.sets, entry).map((one) => catalogCard(one, by));
-  return html(response, 200, catalogPage({ origin, entry, chrome: siteChrome(), held: by.get(entry.set.toLowerCase()) || null,
-    inside, next, lots: lots ? lots.lots : [], cardHtml }), { cache: CATALOG_CACHE });
+  return html(response, 200, inLanguage(lang, words, () => catalogPage({ origin, entry, chrome: siteChrome(lang),
+    held: by.get(entry.set.toLowerCase()) || null, inside, next, lots: lots ? lots.lots : [], cardHtml, lang, words })),
+  { cache: CATALOG_CACHE });
 }
 
 /// /library/set/N/parts.json, .xml and .csv: its parts, as a model's are.
-async function catalogParts(response, origin, number, as) {
+async function catalogParts(response, origin, number, as, lang = "en") {
   const entry = catalogSet(number);
   if (!entry) {
     return response.status(404).setHeader("Cache-Control", "no-store").json({ error: "There is no such set in the catalogue." });
@@ -2279,7 +2293,7 @@ async function catalogParts(response, origin, number, as) {
   response.setHeader("Cache-Control", rows ? CATALOG_CACHE : "no-store");
   response.setHeader("X-Content-Type-Options", "nosniff");
   return partsAnswer(response, catalogLots(rows), fileName(titleOf(entry), entry.set), as,
-    { set: entry.set, name: entry.name, credit: SETS_CREDIT });
+    { set: entry.set, name: entry.name, credit: SETS_CREDIT }, lang);
 }
 
 /// /library/set/N.webp and N.page.webp: the set's own picture, Rebrickable's,
@@ -2369,8 +2383,11 @@ async function catalogOwned(request, response, origin, number) {
 function sitemapIndex(response, origin) {
   const catalogue = setCatalog();
   const files = catalogue ? sitemapSets(catalogue.sets, origin).length : 0;
-  const rows = [`${origin}/sitemap.xml`, ...Array.from({ length: files }, (_, k) => `${origin}/sitemaps/sets-${k + 1}.xml`)]
-    .map((loc) => `  <sitemap><loc>${escapeHtml(loc)}</loc></sitemap>`);
+  // The sets' pages in English, then in each language the site has
+  // (/sitemaps/sets-de-1.xml...).
+  const named = ["", ...SITE_LANGS.map((code) => `${code}-`)]
+    .flatMap((lang) => Array.from({ length: files }, (_, k) => `${origin}/sitemaps/sets-${lang}${k + 1}.xml`));
+  const rows = [`${origin}/sitemap.xml`, ...named].map((loc) => `  <sitemap><loc>${escapeHtml(loc)}</loc></sitemap>`);
   response.setHeader("Content-Type", "application/xml; charset=utf-8");
   response.setHeader("Cache-Control", "public, max-age=0, s-maxage=86400, stale-while-revalidate=3600");
   return response.status(200).end(`<?xml version="1.0" encoding="UTF-8"?>
@@ -2380,10 +2397,12 @@ ${rows.join("\n")}
 `);
 }
 
-/// /sitemaps/sets-K.xml: the K-th file of the sets' pages.
-function sitemapOfSets(response, origin, n) {
+/// /sitemaps/sets-K.xml: the K-th file of the sets' pages; with [lang]
+/// (/sitemaps/sets-de-K.xml), of their copies in it.
+function sitemapOfSets(response, origin, n, lang = "en") {
+  if (lang !== "en" && !SITE_LANGS.includes(lang)) return response.status(404).setHeader("Cache-Control", "no-store").end("");
   const catalogue = setCatalog();
-  const files = catalogue ? sitemapSets(catalogue.sets, origin) : [];
+  const files = catalogue ? sitemapSets(catalogue.sets, origin, lang) : [];
   const k = /^[1-9][0-9]{0,2}$/.test(n) ? Number(n) : 0;
   if (!k || k > files.length) return response.status(404).setHeader("Cache-Control", "no-store").end("");
   response.setHeader("Content-Type", "application/xml; charset=utf-8");

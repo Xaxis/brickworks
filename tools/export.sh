@@ -156,6 +156,13 @@ build_web() {
     assets/knowledge/designs.json.gz assets/knowledge/minifig_sets.json \
     assets/knowledge/set_sizes.json "$dir/knowledge/" \
     || { echo "export FAILED: no assets/knowledge to put beside $dir"; return 1; }
+  # Each part's, colour's and category's name in German, French and Spanish
+  # as this build's app says them, for the site's parts lists: deploy.sh
+  # puts them beside /api/share (src/dev/write_part_names.gd).
+  rm -rf "$dir/part_names" && mkdir -p "$dir/part_names"
+  godot --headless --path . --script src/dev/write_part_names.gd -- --out="$dir/part_names" > "$dir/part_names/log.txt" 2>&1 \
+    || { echo "export FAILED: no part names (src/dev/write_part_names.gd: $dir/part_names/log.txt)"; return 1; }
+  grep -E '^part_names' "$dir/part_names/log.txt"
   report_web "$dir"
 }
 

@@ -6,16 +6,21 @@
 // must be the app's own for the part, here in assets/generated/parts, read
 // by the page's reader (web/lbm.js) into triangles, with a surface in the
 // lot's colour (16) or, a sticker's, its own; a part the file carries has
-// none and keeps its swatch.
+// none and keeps its swatch. And with --names, each lot's names in each
+// language as the page says them (api/_parts.js namesOf, from the names in
+// DIR, part_names_<code>.json as src/dev/write_part_names.gd writes them)
+// against the app's.
 //
-//   node tools/web/parts_check.mjs --app=APP.json
+//   node tools/web/parts_check.mjs --app=APP.json [--names=DIR]
 //
 // APP.json: {path: {pieces, lots: [[part, colour, count, name, bricklink id,
 // bricklink colour, rebrickable id, rebrickable colour, element, custom,
-// mesh]], xml, csv}}. Prints the two totals and lots side by side, every lot
-// that differs, and exits 1 when any does.
+// mesh]], xml, csv, <code>: [[its tile's name in that language, the English
+// one the tile falls back to, its colour's and its kind's, "" for none]]}}.
+// Prints the two totals and lots side by side, every lot that differs, and
+// exits 1 when any does.
 import { existsSync, readFileSync } from "node:fs";
-import { inventoryOf, paletteOf, partsTable, rebrickableCsv, wantedList } from "../../api/_parts.js";
+import { inventoryOf, namesOf, paletteOf, partsTable, rebrickableCsv, useNames, wantedList } from "../../api/_parts.js";
 import { INHERIT, parseLbm } from "../../web/lbm.js";
 
 const appFile = (process.argv.find((a) => a.startsWith("--app=")) || "").slice(6);
@@ -24,6 +29,11 @@ if (!appFile) {
   process.exit(2);
 }
 const app = JSON.parse(readFileSync(appFile, "utf8"));
+const namesDir = (process.argv.find((a) => a.startsWith("--names=")) || "").slice(8);
+const languages = {};
+for (const code of namesDir ? ["de", "fr", "es"] : []) {
+  languages[code] = useNames(code, JSON.parse(readFileSync(`${namesDir}/part_names_${code}.json`, "utf8")));
+}
 const table = partsTable();
 if (!table) {
   console.error("parts_check: no parts table (assets/generated/catalogue.json)");
@@ -71,13 +81,31 @@ for (const [path, theirs] of Object.entries(app)) {
     }
     drawable += 1;
   });
+  // Each lot's names as the page says them in each language, the app's: a
+  // part the page names in it, as the app's tile does; one it leaves in
+  // English, one the tile leaves so too. Except a part the file carries,
+  // which the page names as its maker did (the site's names are the
+  // catalogue's): its colour and kind only.
+  const naming = [];
+  let said = 0;
+  for (const [code, names] of Object.entries(languages)) {
+    page.lots.forEach((lot, at) => {
+      const words = namesOf(lot, names);
+      const [tile, english, colour, kind] = (app[path][code] || [])[at] || [];
+      const mine = [lot.custom ? tile : words.said || english, words.colour_said || "", words.category_said || ""];
+      if (JSON.stringify(mine) !== JSON.stringify([tile, colour, kind])) {
+        naming.push(`    lot ${at + 1} ${lot.part} in ${code}: app ${JSON.stringify([tile, colour, kind])}\n            page ${JSON.stringify(mine)}`);
+      } else if (words.said) said += 1;
+    });
+  }
   const name = path.split("/").pop();
   console.log(`${name.padEnd(20)} ${String(theirs.pieces).padStart(11)} ${String(page.pieces).padStart(12)} `
     + `${String(theirs.lots.length).padStart(10)} ${String(page.lots.length).padStart(10)} ${String(differing.length).padStart(11)}`
     + `   wanted list ${xml ? "same" : "DIFFERS"}, Rebrickable CSV ${csv ? "same" : "DIFFERS"}, `
-    + `${drawable} pictures from the app's geometry, ${page.lots.filter((lot) => lot.custom).length} swatches${pictures.length ? `, ${pictures.length} WRONG` : ""}`);
-  for (const line of [...differing, ...pictures].slice(0, 8)) console.log(line);
-  if (differing.length || pictures.length || theirs.pieces !== page.pieces || !xml || !csv) failed += 1;
+    + `${drawable} pictures from the app's geometry, ${page.lots.filter((lot) => lot.custom).length} swatches${pictures.length ? `, ${pictures.length} WRONG` : ""}`
+    + (namesDir ? `, ${said} names said as the app says them in ${Object.keys(languages).join("/")}${naming.length ? `, ${naming.length} DIFFER` : ""}` : ""));
+  for (const line of [...differing, ...pictures, ...naming].slice(0, 8)) console.log(line);
+  if (differing.length || pictures.length || naming.length || theirs.pieces !== page.pieces || !xml || !csv) failed += 1;
 }
 console.log(failed ? `parts_check: ${failed} FAILED` : "parts_check: every list is the app's, lot by lot");
 process.exit(failed ? 1 : 0);

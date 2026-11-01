@@ -328,6 +328,21 @@ for handler in api/*.js; do
   if [ "$route" = share ] || [ "$route" = people ]; then
     cp web/gallery.html "$fn/_site.html"
   fi
+  # A set's page in German, French and Spanish (/de/library/set/<n>): the
+  # gallery's copy for its header and footer, and the words the site says
+  # in each language (tools/site_lang.py), as api/_directory.js reads them.
+  # And a parts list's part, colour and category names in each, as the
+  # build's app says them (tools/export.sh, src/dev/write_part_names.gd).
+  if [ "$route" = share ]; then
+    for words in web/*/words.json; do
+      lang=$(basename "$(dirname "$words")")
+      cp "$words" "$fn/_words_$lang.json"
+      cp "web/$lang/gallery.html" "$fn/_site_$lang.html"
+      if ! cp "$dir/part_names/part_names_$lang.json" "$fn/_part_names_$lang.json"; then
+        echo "deploy FAILED: no $dir/part_names/part_names_$lang.json (tools/export.sh web)"; exit 1
+      fi
+    done
+  fi
   # /challenge?id=N is the challenge page with that challenge's own head
   # (api/_challenges.js challengeHead), so a link to one shows it.
   if [ "$route" = people ]; then
@@ -595,8 +610,10 @@ $docs_moved
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]page[.]webp", "dest": "/api/share?op=catalog_photo&set=\$1&as=page" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]webp", "dest": "/api/share?op=catalog_photo&set=\$1&as=card" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})/?", "dest": "/api/share?op=catalog_set&set=\$1" },
+    { "src": "/($langs)/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})/?", "dest": "/api/share?op=catalog_set&set=\$2&lang=\$1" },
     { "src": "/sitemaps/index[.]xml", "dest": "/api/share?op=sitemap_index" },
     { "src": "/sitemaps/sets-([1-9][0-9]{0,2})[.]xml", "dest": "/api/share?op=sitemap_sets&n=\$1" },
+    { "src": "/sitemaps/sets-($langs)-([1-9][0-9]{0,2})[.]xml", "dest": "/api/share?op=sitemap_sets&lang=\$1&n=\$2" },
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})/?", "dest": "/api/share?op=set&id=\$1" },
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.]webp", "dest": "/api/share?op=set_cover&id=\$1" },
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.](cutout|cover)[.]webp", "dest": "/api/share?op=set_cover&id=\$1&as=\$2" },

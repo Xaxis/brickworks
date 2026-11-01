@@ -23,7 +23,7 @@
 import { askToSignIn, call, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { avatarHtml } from "/kit.js";
-import { HOWS, basedHtml, mentionPieces } from "/card.js";
+import { HOWS, basedHtml, counted, mentionPieces, number, say } from "/card.js";
 import { wireShare } from "/share-sheet.js";
 import { start3d } from "/start3d.js";
 
@@ -254,7 +254,11 @@ const SVG = "http://www.w3.org/2000/svg";
 /// number and colour, and how many. Its picture is its colour's swatch until
 /// the part itself is drawn over it, in its colour, from its geometry
 /// (web/part-pictures.js, site304), as the row nears the screen; one that
-/// cannot be drawn keeps the swatch.
+/// cannot be drawn keeps the swatch. Its words in the page's language (a
+/// set's page at /de/library/set/<n>); the parts', colours' and kinds'
+/// names in the visitor's, as the app says them (?lang=de: api/share.js
+/// partsAnswer), on a page with no copy in it (a model's) too, and LDraw's
+/// where the app has no words for one, each marked with its language.
 function startParts(section) {
   const list = section.querySelector(".lot-list");
   const all = section.querySelector("[data-all]");
@@ -267,6 +271,15 @@ function startParts(section) {
   let asked = null;
   let group = "colour";
   let open = false;
+  const site = globalThis.brickworksLang;
+  const page = site?.code || "en";
+  const lang = page !== "en" ? page : site?.chosen() || "en";
+  // [element] marked as in [code] where the page is not.
+  const inLang = (element, code) => {
+    if (code !== page) element.lang = code;
+    return element;
+  };
+  const nameOf = (lot) => lot.said || lot.name;
   list.setAttribute("aria-busy", "true");
   const swatch = (hex) => {
     const svg = document.createElementNS(SVG, "svg");
@@ -292,31 +305,34 @@ function startParts(section) {
     else if (pictures === false) pic.dataset.picture = "none";
     const what = document.createElement("span");
     what.className = "what";
-    const name = document.createElement("span");
+    const name = inLang(document.createElement("span"), lot.said ? lang : "en");
     name.className = "name";
-    name.textContent = lot.name;
-    name.title = lot.name;
+    name.textContent = nameOf(lot);
+    // LDraw's own name under the one said, as the app's tile tooltip has it.
+    name.title = lot.said ? `${lot.said}\n${lot.name}` : lot.name;
     const meta = document.createElement("span");
     meta.className = "meta";
-    meta.append(`${lot.part}${lot.element ? ` · ${lot.element}` : ""} ·`, swatch(lot.hex), lot.colour_name);
-    meta.title = `${lot.part}${lot.element ? `, element ${lot.element}` : ""}, ${lot.colour_name}`;
+    const colour = inLang(document.createElement("span"), lot.colour_said ? lang : "en");
+    colour.textContent = lot.colour_said || lot.colour_name;
+    meta.append(`${lot.part}${lot.element ? ` · ${lot.element}` : ""} ·`, swatch(lot.hex), colour);
+    meta.title = `${lot.part}${lot.element ? `, ${say("element {element}", { element: lot.element })}` : ""}, ${colour.textContent}`;
     what.append(name, meta);
     const qty = document.createElement("span");
     qty.className = "qty";
-    qty.textContent = `× ${lot.count.toLocaleString("en-US")}`;
-    qty.setAttribute("aria-label", `${lot.count.toLocaleString("en-US")} of them`);
+    qty.textContent = `× ${number(lot.count)}`;
+    qty.setAttribute("aria-label", say("{n} of them", { n: number(lot.count) }));
     item.append(pic, what, qty);
     return item;
   };
-  const heading = (words, n, hex) => {
+  const heading = (words, n, hex, code) => {
     const item = document.createElement("li");
     item.className = "group";
     if (hex) item.append(swatch(hex));
-    const said = document.createElement("span");
+    const said = inLang(document.createElement("span"), code);
     said.textContent = words;
     const count = document.createElement("span");
     count.className = "n";
-    count.textContent = `${n.toLocaleString("en-US")} ${n === 1 ? "part" : "parts"}`;
+    count.textContent = counted(n, "part");
     item.append(said, count);
     return item;
   };
@@ -326,19 +342,21 @@ function startParts(section) {
     // under it.
     const groups = new Map();
     for (const lot of lots) {
-      const key = group === "colour" ? `c${lot.colour}` : lot.category || "Other";
-      if (!groups.has(key)) groups.set(key, { lots: [], n: 0, words: group === "colour" ? lot.colour_name : lot.category || "Other",
-        hex: group === "colour" ? lot.hex : "" });
+      const key = group === "colour" ? `c${lot.colour}` : `k${lot.category || ""}`;
+      const said = group === "colour" ? lot.colour_said : lot.category_said;
+      const words = said || (group === "colour" ? lot.colour_name : lot.category);
+      if (!groups.has(key)) groups.set(key, { lots: [], n: 0, words: words || say("Other"),
+        code: said ? lang : words ? "en" : page, hex: group === "colour" ? lot.hex : "" });
       const one = groups.get(key);
       one.lots.push(lot);
       one.n += lot.count;
     }
     // In a colour, the most of a part first; in a kind, the app's order,
     // which keeps a part's colours together.
-    const most = (a, b) => b.count - a.count || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+    const most = (a, b) => b.count - a.count || (nameOf(a) < nameOf(b) ? -1 : nameOf(a) > nameOf(b) ? 1 : 0);
     const rows = [];
     for (const one of [...groups.values()].sort((a, b) => b.n - a.n || (a.words < b.words ? -1 : 1))) {
-      rows.push(heading(one.words, one.n, one.hex), ...(group === "colour" ? [...one.lots].sort(most) : one.lots).map(row));
+      rows.push(heading(one.words, one.n, one.hex, one.code), ...(group === "colour" ? [...one.lots].sort(most) : one.lots).map(row));
     }
     rows.forEach((item, at) => { item.hidden = !open && at >= LOTS_SHOWN; });
     list.replaceChildren(...rows);
@@ -350,14 +368,16 @@ function startParts(section) {
     // What draws the pictures, asked for beside the list and only with it,
     // so a visit that never comes near the list loads neither.
     const drawer = import("/part-pictures.js").catch(() => null);
-    asked = fetch(section.dataset.parts).then((answer) => (answer.ok ? answer.json() : null)).catch(() => null)
+    const from = new URL(section.dataset.parts, location.href);
+    if (lang !== "en") from.searchParams.set("lang", lang);
+    asked = fetch(from).then((answer) => (answer.ok ? answer.json() : null)).catch(() => null)
       .then((body) => {
         if (!body || !Array.isArray(body.lots)) {
           list.removeAttribute("aria-busy");
-          const said = document.createElement("li");
-          said.className = "group";
-          said.textContent = "The list did not come. Reload the page to ask for it again.";
-          list.replaceChildren(said);
+          const item = document.createElement("li");
+          item.className = "group";
+          item.textContent = say("The list did not come. Reload the page to ask for it again.");
+          list.replaceChildren(item);
           asked = null;
           return;
         }

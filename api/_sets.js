@@ -30,9 +30,18 @@
 // asked to design with them, and its 3D model and that model's page, each
 // linking the other. Pure but for the catalogue's read: tests/test_sets.py
 // drives it.
+//
+// The page is in German, French and Spanish too, at /de/library/set/<number>
+// and so on, as the site's copies are (tools/site_lang.py): every word said
+// through the site's say() and counted() (web/card.js) in the copy's words
+// (api/_directory.js siteWords, inLanguage), its themes by the app's own
+// entries (themeSaid), the site's header and footer the gallery's copy's.
+// A set's name is LEGO's, never translated. Each page names the others
+// (hreflang) and is its own canonical.
 
 import { existsSync, readFileSync } from "node:fs";
-import { SIZES, count, escapeHtml } from "./_directory.js";
+import { SIZES, SITE_LANGS, count, escapeHtml } from "./_directory.js";
+import { counted, say, themeSaid } from "./_card.js";
 import { SET_SORTS } from "./_library.js";
 import { byKey, search } from "./_search.js";
 
@@ -135,8 +144,8 @@ export function catalogSet(number, given = setCatalog()) {
   return given.by.get(asked) || (asked.includes("-") ? null : given.by.get(`${asked}-1`)) || null;
 }
 
-/// "Star Wars > Ultimate Collector Series".
-export const themeWords = (entry) => entry.theme.join(" > ");
+/// "Star Wars > Ultimate Collector Series", each in the page's language.
+export const themeWords = (entry) => entry.theme.map(themeSaid).join(" > ");
 
 /// LDraw's 3D models of each set (api/_library.js librarySets), by the set's
 /// lower-cased number: {main, more}, main its model of the set itself and
@@ -357,19 +366,19 @@ export function ownedOf(rows, pool, keyOf) {
 /// A set's facts, in a page's pills: its parts, its minifigures, its year
 /// and its theme (each a way to more of the library), and that LDraw has a
 /// 3D model of it.
-function facts(entry, model) {
+function facts(entry, model, at) {
   const decade = entry.year ? `${Math.floor(entry.year / 10) * 10}s` : "";
-  const theme = entry.theme.map((name, at) => {
-    const path = entry.theme.slice(0, at + 1).join(" > ");
-    return `<li><a class="pill" href="/library?theme=${encodeURIComponent(path)}">${escapeHtml(name)}</a></li>`;
+  const theme = entry.theme.map((name, n) => {
+    const path = entry.theme.slice(0, n + 1).join(" > ");
+    return `<li><a class="pill" href="${at}/library?theme=${encodeURIComponent(path)}">${escapeHtml(themeSaid(name))}</a></li>`;
   }).join("");
   return [
-    `<li class="pill" data-parts="${entry.parts}">${escapeHtml(count(entry.parts, "part"))}</li>`,
-    entry.lots ? `<li class="pill">${escapeHtml(count(entry.lots, "lot"))}</li>` : "",
-    entry.figs ? `<li class="pill" data-figs="${entry.figs}">${escapeHtml(count(entry.figs, "minifigure"))}</li>` : "",
-    decade ? `<li><a class="pill" href="/library?decade=${decade}&amp;year=${entry.year}">${entry.year}</a></li>` : "",
+    `<li class="pill" data-parts="${entry.parts}">${escapeHtml(counted(entry.parts, "part"))}</li>`,
+    entry.lots ? `<li class="pill">${escapeHtml(counted(entry.lots, "lot"))}</li>` : "",
+    entry.figs ? `<li class="pill" data-figs="${entry.figs}">${escapeHtml(counted(entry.figs, "minifigure"))}</li>` : "",
+    decade ? `<li><a class="pill" href="${at}/library?decade=${decade}&amp;year=${entry.year}">${entry.year}</a></li>` : "",
     theme,
-    model ? `<li><a class="pill good" href="/library/${escapeHtml(model.id)}">3D model</a></li>` : "",
+    model ? `<li><a class="pill good" href="/library/${escapeHtml(model.id)}">${asText(say("3D model"))}</a></li>` : "",
   ].join("");
 }
 
@@ -377,15 +386,15 @@ function facts(entry, model) {
 /// a Product: there is nothing sold here, no offer and no price) and its
 /// place in the library as a BreadcrumbList. A data block, never run; its
 /// "<" written as \u003c.
-function structured(origin, entry, picture, description) {
-  const url = `${origin}${pageOf(entry)}`;
-  const crumbs = [["Library", `${origin}/library`], ...entry.theme.map((name, at) =>
-    [name, `${origin}/library?theme=${encodeURIComponent(entry.theme.slice(0, at + 1).join(" > "))}`]),
+function structured(origin, entry, picture, description, at) {
+  const url = `${origin}${at}${pageOf(entry)}`;
+  const crumbs = [[say("Library"), `${origin}${at}/library`], ...entry.theme.map((name, n) =>
+    [themeSaid(name), `${origin}${at}/library?theme=${encodeURIComponent(entry.theme.slice(0, n + 1).join(" > "))}`]),
   [entry.name, url]];
   const data = [{
-    "@context": "https://schema.org", "@type": "CreativeWork", name: `LEGO® set ${titleOf(entry)}`, url,
+    "@context": "https://schema.org", "@type": "CreativeWork", name: say("LEGO® set {title}", { title: titleOf(entry) }), url,
     identifier: entry.set, description, image: picture ? `${origin}${picture}` : undefined,
-    dateCreated: entry.year ? String(entry.year) : undefined, genre: entry.theme.join(" > ") || undefined,
+    dateCreated: entry.year ? String(entry.year) : undefined, genre: themeWords(entry) || undefined,
     isAccessibleForFree: true,
     citation: { "@type": "Dataset", name: "Rebrickable set and inventory data", url: CREDIT.url },
   }, {
@@ -395,80 +404,104 @@ function structured(origin, entry, picture, description) {
   return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, "\\u003c")}</script>`;
 }
 
+/// Words said in a page, made safe in its text or a quoted attribute: an
+/// apostrophe is left as it is written, so the English page reads as before.
+const asText = (words) => words.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/// [english] said in the page's language, each {name} in it filled from
+/// [html], markup made here.
+const sayHtml = (english, html) => asText(say(english)).replace(/\{(\w+)\}/g, (all, name) => (name in html ? html[name] : all));
+
 /// A set's page (/library/set/X). [chrome] the site's head, header and
 /// footer (api/_directory.js siteChrome); [held] LDraw's models of it
 /// (modelsBySet); [inside] the sets packed in it that the catalogue has;
 /// [next] cards (catalogCard) of its theme, drawn with [cardHtml]; [lots]
 /// its parts list's lots, for the assistant's brief; [origin] the site.
-export function setPage({ origin, entry, chrome, held = null, inside = [], next = [], lots = [], cardHtml }) {
+/// In [lang] (/de/library/set/X: made inside api/_directory.js inLanguage,
+/// with [words] the copy's, carried for the page's own scripts).
+export function setPage({ origin, entry, chrome, held = null, inside = [], next = [], lots = [], cardHtml, lang = "en",
+  words = null }) {
+  const at = lang === "en" ? "" : `/${lang}`;
   const model = held?.main || null;
   const others = [...(model ? [model] : []), ...(held?.more || [])];
   const picture = pictureOf(entry, model, "page");
   const photo = photoOf(entry, model);
   const small = pictureOf(entry, model, "card");
   const said = [entry.year ? String(entry.year) : "", themeWords(entry)].filter(Boolean).join(", ");
-  const description = `LEGO® set ${titleOf(entry)}${said ? ` (${said})` : ""}: `
-    + `${count(entry.parts, "part")}${entry.lots ? ` in ${count(entry.lots, "lot")}` : ""}`
-    + `${entry.figs ? ` and ${count(entry.figs, "minifigure")}` : ""}. See every part, check what you own, `
-    + "and build with them in Brickworks.";
-  const title = `${entry.name}, LEGO® set ${entry.set}: every part — Brickworks`;
-  const url = `${origin}${pageOf(entry)}`;
+  const parts = entry.lots ? say("{parts} in {lots}", { parts: counted(entry.parts, "part"), lots: counted(entry.lots, "lot") })
+    : counted(entry.parts, "part");
+  const description = `${say("LEGO® set {title}", { title: titleOf(entry) })}${said ? ` (${said})` : ""}: `
+    + `${entry.figs ? say("{parts} and {figs}", { parts, figs: counted(entry.figs, "minifigure") }) : parts}. `
+    + say("See every part, check what you own, and build with them in Brickworks.");
+  const title = say("{name}, LEGO® set {set}: every part — Brickworks", { name: entry.name, set: entry.set });
+  const url = `${origin}${at}${pageOf(entry)}`;
   const image = small ? `${origin}${small}` : `${origin}/share.png`;
-  const crumbs = [`<a href="/library">Library</a>`, ...entry.theme.map((name, at) =>
-    `<a href="/library?theme=${encodeURIComponent(entry.theme.slice(0, at + 1).join(" > "))}">${escapeHtml(name)}</a>`)]
+  // The page in each language, each naming the others; English for any other.
+  const alternates = [["en", ""], ...SITE_LANGS.map((code) => [code, `/${code}`]), ["x-default", ""]]
+    .map(([code, where]) => `<link rel="alternate" hreflang="${code}" href="${escapeHtml(`${origin}${where}${pageOf(entry)}`)}">`)
+    .join("\n");
+  const crumbs = [`<a href="${at}/library">${asText(say("Library"))}</a>`, ...entry.theme.map((name, n) =>
+    `<a href="${at}/library?theme=${encodeURIComponent(entry.theme.slice(0, n + 1).join(" > "))}">${escapeHtml(themeSaid(name))}</a>`)]
     .join(' <span aria-hidden="true">›</span> ');
   const viewer = model ? `/app?new=1&library=${encodeURIComponent(model.id)}` : "";
-  const alt = model ? `LDraw's 3D model of ${entry.name}` : photo ? `${entry.name}, LEGO® set ${entry.set}`
-    : `Some of the parts of ${entry.name}, drawn by Brickworks`;
+  const alt = model ? say("LDraw's 3D model of {name}", { name: entry.name })
+    : photo ? say("{name}, LEGO® set {set}", { name: entry.name, set: entry.set })
+    : say("Some of the parts of {name}, drawn by Brickworks", { name: entry.name });
   const pictureHtml = picture
-    ? `<span class="waiting" aria-hidden="true">Loading its picture…</span><img src="${escapeHtml(picture)}" `
+    ? `<span class="waiting" aria-hidden="true">${asText(say("Loading its picture…"))}</span><img src="${escapeHtml(picture)}" `
       + `alt="${escapeHtml(alt)}" width="1200" height="630" fetchpriority="high">`
-      + `${model ? '<span class="go" aria-hidden="true">View in 3D</span>' : ""}`
-    : `<span class="none">No picture: Rebrickable lists no parts for it</span>`;
+      + `${model ? `<span class="go" aria-hidden="true">${asText(say("View in 3D"))}</span>` : ""}`
+    : `<span class="none">${asText(say("No picture: Rebrickable lists no parts for it"))}</span>`;
   // Its own picture is Rebrickable's, and said so under it, short.
   const pictureCredit = photo
-    ? `<p class="picture-credit">Picture: <a href="${escapeHtml(creditOf(entry))}">Rebrickable</a></p>` : "";
+    ? `<p class="picture-credit">${asText(say("Picture:"))} <a href="${escapeHtml(creditOf(entry))}">Rebrickable</a></p>` : "";
   const insideHtml = inside.length
-    ? `<section class="words" id="inside" aria-labelledby="inside-h"><h2 id="inside-h">Sets packed in it</h2><ul class="pills">`
-      + inside.map(([one, n]) => `<li><a class="pill" href="${pageOf(one)}">${n > 1 ? `${n} × ` : ""}`
+    ? `<section class="words" id="inside" aria-labelledby="inside-h"><h2 id="inside-h">${asText(say("Sets packed in it"))}</h2><ul class="pills">`
+      + inside.map(([one, n]) => `<li><a class="pill" href="${at}${pageOf(one)}">${n > 1 ? `${n} × ` : ""}`
         + `${escapeHtml(titleOf(one))}</a></li>`).join("") + "</ul></section>" : "";
   const modelsHtml = others.length
-    ? `<section class="words" id="models3d" aria-labelledby="models3d-h"><h2 id="models3d-h">In 3D</h2><ul class="list">`
+    ? `<section class="words" id="models3d" aria-labelledby="models3d-h"><h2 id="models3d-h">${asText(say("In 3D"))}</h2><ul class="list">`
       + others.map((one) => `<li><a href="/library/${escapeHtml(one.id)}">${escapeHtml(one.name)}</a>`
-        + `${one.author ? `, modelled by ${escapeHtml(one.author)} for LDraw's Official Model Repository` : ""}</li>`).join("")
+        + `${one.author ? asText(say(", modelled by {author} for LDraw's Official Model Repository", { author: one.author })) : ""}</li>`).join("")
       + "</ul></section>" : "";
   const partsHtml = entry.lots
     ? `<section class="parts" id="parts" aria-labelledby="parts-h" data-parts="${pageOf(entry)}/parts.json">`
-      + `<h2 id="parts-h">Parts</h2><p class="note">${escapeHtml(count(entry.parts, "part"))} in ${escapeHtml(count(entry.lots, "lot"))}, `
-      + `its minifigures' and the sets packed in it counted in, spares not</p>`
-      + `<div class="parts-bar"><div class="segmented" role="group" aria-label="Group them by">`
-      + `<button type="button" data-group="colour" aria-pressed="true">Colour</button>`
-      + `<button type="button" data-group="kind" aria-pressed="false">Kind</button></div>`
+      + `<h2 id="parts-h">${asText(say("Parts"))}</h2><p class="note">${asText(say("{parts} in {lots}, its minifigures' and the sets packed in it counted in, spares not",
+        { parts: counted(entry.parts, "part"), lots: counted(entry.lots, "lot") }))}</p>`
+      + `<div class="parts-bar"><div class="segmented" role="group" aria-label="${asText(say("Group them by"))}">`
+      + `<button type="button" data-group="colour" aria-pressed="true">${asText(say("Colour"))}</button>`
+      + `<button type="button" data-group="kind" aria-pressed="false">${asText(say("Kind"))}</button></div>`
       + `<a class="cta ghost small" href="${pageOf(entry)}/parts.xml" download>BrickLink XML</a>`
       + `<a class="cta ghost small" href="${pageOf(entry)}/parts.csv" download>Rebrickable CSV</a></div>`
       + `<ul class="lot-list" style="min-height:${Math.min(12, entry.lots) * 60}px"></ul>`
-      + (entry.lots > 12 ? `<button type="button" class="cta ghost small" data-all hidden>Show all ${escapeHtml(count(entry.lots, "lot"))}</button>` : "")
+      + (entry.lots > 12 ? `<button type="button" class="cta ghost small" data-all hidden>${asText(say("Show all {lots}",
+        { lots: counted(entry.lots, "lot") }))}</button>` : "")
       + "</section>"
-    : `<section class="parts" id="parts-none"><h2>Parts</h2><p class="note">Rebrickable lists no parts for it: `
-      + "a book, gear or something else that is not built.</p></section>";
+    : `<section class="parts" id="parts-none"><h2>${asText(say("Parts"))}</h2><p class="note">`
+      + `${asText(say("Rebrickable lists no parts for it: a book, gear or something else that is not built."))}</p></section>`;
   const owned = entry.lots
     ? `<section class="owned" id="owned" data-set="${escapeHtml(entry.set)}" aria-live="polite" hidden>`
-      + `<h2 id="owned-h">Parts you own</h2><p class="owned-said" id="owned-said"></p>`
-      + `<div class="actions" id="owned-wanted" hidden><span class="note">What you are missing, as a wanted list:</span>`
+      + `<h2 id="owned-h">${asText(say("Parts you own"))}</h2><p class="owned-said" id="owned-said"></p>`
+      + `<div class="actions" id="owned-wanted" hidden><span class="note">${asText(say("What you are missing, as a wanted list:"))}</span>`
       + `<button type="button" class="cta ghost small" data-wanted="bricklink">BrickLink XML</button>`
       + `<button type="button" class="cta ghost small" data-wanted="rebrickable">Rebrickable CSV</button></div></section>`
     : "";
+  const last = entry.theme[entry.theme.length - 1];
   const nextHtml = next.length
-    ? `<section class="next" id="similar" aria-labelledby="similar-h"><h2 id="similar-h">More ${escapeHtml(entry.theme[entry.theme.length - 1] || "sets")}</h2>`
+    ? `<section class="next" id="similar" aria-labelledby="similar-h"><h2 id="similar-h">${escapeHtml(last
+      ? say("More {theme}", { theme: themeSaid(last) }) : say("More sets"))}</h2>`
       + `<div class="models compact">${next.map((card) => cardHtml(card)).join("")}</div></section>` : "";
+  // The copy's words, for what the page's own scripts say (web/card.js say).
+  const scriptWords = words ? `<script type="application/json" id="site-words">${JSON.stringify(words).replace(/</g, "\\u003c")}</script>\n` : "";
   return `<!doctype html>
-<html lang="en">
+<html lang="${lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>${escapeHtml(title)}</title>
 <meta name="description" content="${escapeHtml(description)}">
 <link rel="canonical" href="${escapeHtml(url)}">
+${alternates}
 ${entry.parts > 0 ? "" : '<meta name="robots" content="noindex">\n'}<meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
 <meta property="og:title" content="${escapeHtml(title)}">
@@ -478,48 +511,49 @@ ${entry.parts > 0 ? "" : '<meta name="robots" content="noindex">\n'}<meta proper
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
-${chrome.head}
+${scriptWords}${chrome.head}
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
 <link rel="stylesheet" href="/view3d.css">
 <script src="/model-page.js" type="module"></script>
 <script src="/set-page.js" type="module"></script>
-${structured(origin, entry, small, description)}
+${structured(origin, entry, small, description, at)}
 </head>
 <body data-set="${escapeHtml(entry.set)}">
-<a class="skip" href="#main">Skip to content</a>
+<a class="skip" href="#main">${asText(say("Skip to content"))}</a>
 ${chrome.header}
 <main id="main">
 <article class="wrap wide model-page set-page" data-set="${escapeHtml(entry.set)}"${model ? ` data-model="${escapeHtml(model.id)}"` : ""}>
-  <nav class="crumbs" aria-label="Where it is">${crumbs}</nav>
+  <nav class="crumbs" aria-label="${asText(say("Where it is"))}">${crumbs}</nav>
   <div class="top">
     <div class="media">
-    ${viewer ? `<a class="picture" href="${escapeHtml(viewer)}" aria-label="View ${escapeHtml(entry.name)} in 3D" `
+    ${viewer ? `<a class="picture" href="${escapeHtml(viewer)}" aria-label="${asText(say("View {name} in 3D", { name: entry.name }))}" `
       + `data-scene="/library/${escapeHtml(model.id)}/scene.json" data-parts="${Number(model.parts) || 0}">${pictureHtml}</a>`
     : `<div class="picture${photo ? " photo" : ""}">${pictureHtml}</div>`}
     ${pictureCredit}
     </div>
     <div class="side">
       <h1>${escapeHtml(entry.name)}</h1>
-      <p class="modelled">LEGO® set ${escapeHtml(entry.set)}${entry.year ? `, from ${entry.year}` : ""}</p>
+      <p class="modelled">${escapeHtml(entry.year ? say("LEGO® set {set}, from {year}", { set: entry.set, year: entry.year })
+        : say("LEGO® set {set}", { set: entry.set }))}</p>
       <div class="actions">
-        ${model ? `<a class="cta" href="${escapeHtml(viewer)}" data-build3d title="Open LDraw's 3D model of it in Brickworks: turn it, step through its build, change it">Build it in 3D</a>` : ""}
-        ${entry.lots ? `<a class="cta${model ? " ghost" : ""}" href="${escapeHtml(binLink(entry))}" data-bin title="Open Brickworks with this set's parts in its parts bin">Open its parts in Brickworks</a>
-        <a class="cta ghost" href="${escapeHtml(designLink(entry, lots))}" data-design title="Open Brickworks with the assistant on and a brief naming these parts, for your own AI to design with">Design with these parts</a>` : ""}
+        ${model ? `<a class="cta" href="${escapeHtml(viewer)}" data-build3d title="${asText(say("Open LDraw's 3D model of it in Brickworks: turn it, step through its build, change it"))}">${asText(say("Build it in 3D"))}</a>` : ""}
+        ${entry.lots ? `<a class="cta${model ? " ghost" : ""}" href="${escapeHtml(binLink(entry))}" data-bin title="${asText(say("Open Brickworks with this set's parts in its parts bin"))}">${asText(say("Open its parts in Brickworks"))}</a>
+        <a class="cta ghost" href="${escapeHtml(designLink(entry, lots))}" data-design title="${asText(say("Open Brickworks with the assistant on and a brief naming these parts, for your own AI to design with"))}">${asText(say("Design with these parts"))}</a>` : ""}
       </div>
-      <ul class="facts pills">${facts(entry, model)}</ul>
-      ${model ? `<p class="from">LDraw's model of it has <a href="/library/${escapeHtml(model.id)}">a page of its own</a>: who modelled it, its steps and its file.</p>` : ""}
+      <ul class="facts pills">${facts(entry, model, at)}</ul>
+      ${model ? `<p class="from">${sayHtml("LDraw's model of it has {page}: who modelled it, its steps and its file.",
+        { page: `<a href="/library/${escapeHtml(model.id)}">${asText(say("a page of its own"))}</a>` })}</p>` : ""}
     </div>
     <div class="rest">
   ${owned}
   ${partsHtml}
   ${insideHtml}
   ${modelsHtml}
-  <section class="words" id="about" aria-labelledby="about-h"><h2 id="about-h">About this page</h2>
-    <p class="credit">Set and inventory data: <a href="${CREDIT.url}">Rebrickable</a>.${photo
-    ? ` The set's picture is <a href="${escapeHtml(creditOf(entry))}">Rebrickable's</a>.`
-    : ""} The parts are drawn by Brickworks from LDraw's geometry. LEGO® is a trademark of the LEGO Group,
-    which does not sponsor, authorise or endorse this site.</p></section>
+  <section class="words" id="about" aria-labelledby="about-h"><h2 id="about-h">${asText(say("About this page"))}</h2>
+    <p class="credit">${sayHtml("Set and inventory data: {rebrickable}.", { rebrickable: `<a href="${CREDIT.url}">Rebrickable</a>` })}${photo
+    ? ` ${sayHtml("The set's picture is {rebrickable}.", { rebrickable: `<a href="${escapeHtml(creditOf(entry))}">${asText(say("Rebrickable's"))}</a>` })}`
+    : ""} ${asText(say("The parts are drawn by Brickworks from LDraw's geometry."))} ${asText(say("LEGO® is a trademark of the LEGO Group, which does not sponsor, authorise or endorse this site."))}</p></section>
     </div>
   </div>
   ${nextHtml}
@@ -532,12 +566,15 @@ ${chrome.footer}
 
 /// The sitemap files of the sets' pages: their number, and each one's URLs
 /// (every set Rebrickable lists parts for: a page of nothing is not one a
-/// search should find).
-export function sitemapSets(sets, origin) {
+/// search should find); in [lang]'s copies (/de/library/set/<n>) for one
+/// of SITE_LANGS, each language's files its own, so a search finds every
+/// copy and each page names the others itself (hreflang).
+export function sitemapSets(sets, origin, lang = "en") {
+  const at = SITE_LANGS.includes(lang) ? `/${lang}` : "";
   const listed = sets.filter((entry) => entry.parts > 0);
   const files = [];
-  for (let at = 0; at < listed.length; at += SITEMAP_SETS) {
-    files.push(listed.slice(at, at + SITEMAP_SETS).map((entry) => `${origin}${pageOf(entry)}`));
+  for (let from = 0; from < listed.length; from += SITEMAP_SETS) {
+    files.push(listed.slice(from, from + SITEMAP_SETS).map((entry) => `${origin}${at}${pageOf(entry)}`));
   }
   return files;
 }
