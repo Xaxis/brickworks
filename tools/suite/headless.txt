@@ -176,6 +176,7 @@ made_with   # who laid a model's parts, said as it is published (social230)
 photo_search_stub   # the bin's camera: said before the first photo, nothing sent without one, every failure in words, Brickognize stubbed (bin238)
 search_rank   # 68 held-out queries and 31 in builders' names, BrickLink's, Rebrickable's, Technic's and element numbers in their colour (names248): the part an expert expects in the bin's first three tiles and search_parts'; 26 words builders type (snot, erling, macaroni, 2x4...) every one in the first three, a size alone the brick first (appux371 A5); a first keystroke under 50 ms (search242)
 oc_listener       # the desktop's orangecheck listener: split requests, 404s, a no, a cancel (oc237)
+sections_cost   # Suggest sections on the Wizard's Tower under 3 s of its own work, and on 10179-1, 42093-1 and 31025-1, every try suggesting what the first did (sectionsfast)
 step_edit_cost   # a one-part step edit on the Wizard's Tower under 300 ms of its own work, its plan the plan read afresh, the undo exact (race244)
 floor_gears
 svg_text
@@ -193,6 +194,7 @@ part_counts     # walk256 D11: a model's card, the model opened and its box say 
 technic_stress  # walk256 D12: Stress on the Cat D11 weighs its pins and axles, in under 10 s
 parts_page      # site278: a model's page lists its parts as the app's parts list does, and exports them the same
 connector_method   # a connector chat hears how to work once a sitting, and its first design call begins its subject (conn283)
+cad_sitting   # a connector chat that opens on changing the model in its tab hears how to change it, and the method only when it begins a design; design openings hear the method on the same call (cadmethod)
 fling             # a list thrown by a finger glides as iOS's does at 0.5 to 4 pt/ms, phone and tablet scales and at 8 frames a second; held still it stays; a tap taps (fling272)
 feature_kinds   # the feature pass offers a piece by what it is, its head noun: no gearbox for a crown, no cue rack for a pool, no cone for a beacon (design285)
 tested_seeds    # the gallery's 30 real LDraw sets fail the Tested mark no more than they did, and still for their files' own faults (tested301)
@@ -208,5 +210,5 @@ mcphand   # the window's hand tools for a session: the car's left half mirrored 
 lazystart   # the first screen compiles none of Later's scripts and loads none as it starts (ResourceLoader.has_cached); each panel and dialog asked for is made once where _build_ui made it, and the menus open it (lazystart)
 mcpcad   # a session doing a person's CAD work hears CAD answers: a five-part side pod refused with where its headlight would stand, then built with each part's span and what holds it and no designer's method, saved with no fresh look; the same parts with a feature, and a wall of 24, told the method; attachment_points parts= answers five in one call as five calls do; in_view at step 4 of 9 says the part in hand's colour, face, rot and ghost span and the picture laid, changing nothing (APP_UX3 mcpcad)
 undo_count   # every undo puts back what was taken and nothing more: the house on scenery, a model on its own baseplate and Orthanc on four, parts taken off one and five at a time, a sub-assembly, the floor changed and made part of the model, a sub-assembly made and taken apart, a 2 x 4 split and merged, a session's sections and a copy made unique (menu, keys and MCP), each undone, redone and undone again; as many bricks, the same scenery, the parts in the same order and a save byte for byte the file before (undocount)
-undo_count   # every undo puts back what was taken and nothing more: the house on scenery, a model on its own baseplate and Orthanc on four, parts taken off one and five at a time, a sub-assembly, the floor changed and made part of the model, each undone, redone and undone again; as many bricks, the same scenery, the parts in the same order and a save byte for byte the file before (undocount)
 holdout   # no held-out set reaches a design run: plan_scale's sizes, the techniques read off sets, the real-set pieces, the library shelf, the catalogue, the official models, the gallery's copies, Commons' pictures; by number and by name (21004-1 for 21035-1)
+shown_assistant   # with the assistant shown, its panel and Claude's connector are made as the window starts with no frame drawn, as the relay bench's headless tab runs (--assistant=on --signed-in); nothing asks for either

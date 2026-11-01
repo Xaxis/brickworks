@@ -104,7 +104,11 @@ plan with Claude as the client.
   names a class Later does not load or a member main.gd does not make; `lazystart_probe`
   (headless) fails when one is loaded once the window has settled or a
   signed-in person's collection has come, or is made twice or out of its
-  place, and prints what each first load took. On the web the page is
+  place, and prints what each first load took. With the assistant shown,
+  its panel and connector come as the first frame is drawn, and headless
+  (no frame is ever drawn) deferred: `shown_assistant_probe` fails when
+  they are not made unasked, as the relay bench's tab never switched its
+  connector on (d8surf-smoke, 2026-11-01). On the web the page is
   told each first load (`window.brickworksLoaded`: name -> [when, ms]),
   and load_check prints "loaded on first use", each before interactive,
   under the first pick, or after: anything before the pick is a compile

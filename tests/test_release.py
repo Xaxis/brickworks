@@ -80,6 +80,16 @@ def test_a_disagreement_names_the_file():
     assert any("no ## [0.2.0] section" in p for p in problems)
 
 
+def test_notes_that_write_the_mark_wrong_are_refused_before_a_build():
+    """0.13.0's notes said "the names LEGO gives them". The CI gate caught it
+    only after the release was built, and its tag still carries it."""
+    log = LOG.replace("The first one.", "Parts have the names LEGO gives them there.")
+    problems = _in(_copy_of_the_three(log=log), release.check_version)
+    assert any("[0.1.0]" in p and "LEGO Group" in p for p in problems), problems
+    fixed = LOG.replace("The first one.", "Parts have the names the LEGO Group gives them there.")
+    assert _in(_copy_of_the_three(log=fixed), release.check_version) == []
+
+
 def test_setting_a_version_moves_unreleased_into_a_dated_section():
     where = _copy_of_the_three()
 

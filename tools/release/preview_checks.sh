@@ -19,6 +19,9 @@ declare -A CMD=(
   [art]="tools/web/art_flow.mjs --url=$P/app $B --out=$S/${TAG}_art_web"
   [io]="tools/web/io_flow.mjs --url=$P/app $B --out=$S/${TAG}_io_web"
   [steps]="tools/web/steps_flow.mjs --url=$P/app $B --out=$S/${TAG}_steps_web"
+  # The booklet's pictures, a moved See inside cut and the build animation
+  # drawn in a browser, counted brick by brick (webdraw, 2026-11-01).
+  [drawn]="tools/web/drawn_flow.mjs --url=$P/app $B --runs=1 --out=$S/${TAG}_drawn_web"
   [floor]="tools/web/floor_flow.mjs --url=$P/app $B --out=$S/${TAG}_floor_web"
   [outline]="tools/web/outline_check.mjs --url=$P/app $B"
   [knowledge]="tools/web/knowledge_check.mjs --url=$P/app $B"
@@ -459,6 +462,11 @@ declare -A CMD=(
   # target 44 points or more and no text under 12, the parts panel kept
   # open beside the model.
   [tablet]="tools/web/tablet_flow.mjs --url=$P/app $B --out=$S/${TAG}_tablet_web"
+  # A finger's drag begun on a text field scrolls the list round it, as one
+  # beside the fields does: the assistant's drawer at 844 x 390 and Settings'
+  # AI page at 390 x 844 at 150% (three to the point); a tap types in the
+  # field, a hold then a drag leaves the list where it was.
+  [field_drag]="tools/web/field_drag_flow.mjs --url=$P/app $B --out=$S/${TAG}_field_drag_web"
   # Every dialog More opens, by a finger, at 390 x 844 and 430 x 932 (three
   # to the point) and 768 x 1024 and 1024 x 768 (two): Save as typed above
   # the keyboard, a saved model renamed and deleted, a version opened, Share
