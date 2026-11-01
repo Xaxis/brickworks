@@ -930,7 +930,7 @@ static func _extras(entry: Entry) -> Array:
 	if not entry.colours.is_empty():
 		var widest: float = 0.0
 		for colour: Dictionary in entry.colours:
-			widest = maxf(widest, BookletRead.text_width(str(colour["name"]), 2.6, true))
+			widest = maxf(widest, Helvetica.text_width(str(colour["name"]), 2.6, true))
 		colours.size = Vector2(GUIDE_PAD * 2.0 + 3.4 + widest,
 			GUIDE_PAD * 2.0 + MARK_LINE * entry.colours.size() - 0.8)
 		at.y += colours.size.y + GUIDE_GAP
@@ -1489,7 +1489,7 @@ static func _guides(entry: Entry, out: PackedStringArray, svg: PackedStringArray
 				_n(RING - 0.35), _n((RING - 0.35) * 0.5)])
 		var said: String = str(guide["studs"])
 		var size: float = 3.2 if said.length() < 2 else 2.8
-		var wide: float = BookletRead.text_width(said, size, true, -0.02 * size)
+		var wide: float = Helvetica.text_width(said, size, true, -0.02 * size)
 		out.append(_text(ring.get_center() - Vector2(wide * 0.5, size * 0.488), size, said, "n"))
 
 

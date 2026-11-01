@@ -26,7 +26,16 @@
 class_name ConnectorForm
 extends VBoxContainer
 
-var connector: ClaudeConnector
+## Claude connected to this tab (ClaudeConnector, a Later class).
+var connector: Node
+
+## Claude's own list of the person's connectors (Customize › Connectors),
+## where a Brickworks already there is connected again (ClaudeConnector
+## opens it).
+const CONNECTORS := "https://claude.ai/customize/connectors"
+## Why that list is offered, in one line, beside Connect Claude.
+const ALREADY := ("A Brickworks already in your connectors connects again "
+	+ "with its own Connect, keeping its tool permissions.")
 
 var _title: Label
 var _here: CheckButton
@@ -84,7 +93,7 @@ const OFF := Color(0.55, 0.57, 0.6)
 const ASK := "“Build a small red house in Brickworks.”"
 
 
-func setup(with: ClaudeConnector) -> void:
+func setup(with: Node) -> void:
 	connector = with
 	add_theme_constant_override("separation", 8)
 
@@ -136,7 +145,7 @@ func setup(with: ClaudeConnector) -> void:
 	_already_link.tooltip_text = "Opens your connectors in Claude, where Brickworks is"
 	_already_link.pressed.connect(func() -> void: _connect_in_claude(true))
 	_already.add_child(_already_link)
-	_already.add_child(_line(ClaudeConnector.ALREADY, 11, 0.7))
+	_already.add_child(_line(ALREADY, 11, 0.7))
 
 	_ways = HBoxContainer.new()
 	_ways.add_theme_constant_override("separation", 12)
@@ -469,7 +478,7 @@ func _show() -> void:
 	var who: String = connector.account.email if connector.account != null else ""
 	_signed_as.text = ("2. Sign in to Brickworks as %s if asked, and press Allow." % who
 		if not who.is_empty() else "2. Sign in to Brickworks if asked, and press Allow.")
-	if connector.last_opened == ClaudeConnector.CONNECTORS:
+	if connector.last_opened == CONNECTORS:
 		_guide_head.text = ("Claude's connectors have opened in a new tab "
 			+ "(Customize › Connectors). There:")
 		_step_one.text = ("1. Under Your connectors, select Brickworks and press "

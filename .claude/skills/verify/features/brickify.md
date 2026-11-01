@@ -64,7 +64,7 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
   part of it, the model's inside a quarter stud before and behind it
   (`BURIED_STUDS`, `Grid.within`: a figure's head under its hair), votes for
   nothing, and a face wound the wrong way is read the other way), and
-  matched to a current solid LEGO colour by CIEDE2000 (`Brickify.de2000`,
+  matched to a current solid LEGO colour by CIEDE2000 (`HiddenColours.de2000`,
   `_nearest`; Oklab sent a 25% grey to Reddish Brown) among `Brickify.PALETTE`
   (not the mosaic's, whose trans-red took a red cube), and each stud's top
   marked a flat facet or a curve. Then laid by the assistant's own brickifier
@@ -565,7 +565,7 @@ heavy $S/venv/bin/python -I tools/bench/brickify_bench.py faces $S/run   # where
   parts.
 - **Colour is matched as the bench scores it.** By Oklab's straight line a
   25% grey is nearer Reddish Brown than Black, so a cow's black patches came
-  out brown; CIEDE2000 (`Brickify.de2000`) keeps greys grey. A surface buried
+  out brown; CIEDE2000 (`HiddenColours.de2000`) keeps greys grey. A surface buried
   in another part of the model (a head under hair) colours nothing.
 - **The interior is one colour where nothing shows.** Two cells in from the
   surface take its colour; further in, the colour most of the model is. Laid by

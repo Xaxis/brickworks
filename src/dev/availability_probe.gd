@@ -416,7 +416,7 @@ func _check_placed_in_made(assistant: Assistant, world: BrickWorld, builder: Bui
 		var colour: PartLibrary.BrickColor = library.colors.get(made)
 		if colour == null or not colour.is_plastic() or colour.is_transparent():
 			continue
-		var apart: float = Brickify.de2000(HiddenColours.lab(library.colors[484].rgb), HiddenColours.lab(colour.rgb))
+		var apart: float = HiddenColours.de2000(HiddenColours.lab(library.colors[484].rgb), HiddenColours.lab(colour.rgb))
 		if apart < gap:
 			gap = apart
 			nearest = made

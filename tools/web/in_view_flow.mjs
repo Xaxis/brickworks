@@ -22,7 +22,15 @@
 //   3. Make › Reference picture…, by Find a command (Ctrl+/): the page's file
 //      chooser takes tests/fixtures/photos/3039.jpg, laid on the floor; Esc
 //      puts its settings away.
-//   4. The toolbar's Timeline, and Next until "Step 4 of 9".
+//   4. The toolbar's Timeline, and Next until "Step 4 of 9": the picture of
+//      the view holds the red of step 1's brick and the yellow of step 3's.
+//      Then --again times (default 4) the Timeline shut, opened again and
+//      Next pressed three times, each the moment the caption changes, and
+//      the picture read again. A count raised in place was, now and then,
+//      never drawn in a browser: the caption said "Step 4 of 9 · 4 of 9
+//      bricks" and the view showed the baseplate and the picture alone
+//      (BrickWorld.draw_first). The scene was right in every such run; only
+//      the picture showed it.
 //   5. 3004 typed in the bin's search and its tile clicked: Brick 1 x 2 in
 //      hand, the Place tool; the pointer rested over the baseplate beside the
 //      stack until a ghost shows there; R turns it a quarter (its ghost's
@@ -153,8 +161,13 @@ async function where(name, seconds = 240) {
   await shot(`never_${name.replace(/\W/g, "_")}_${tag}.png`);
   throw new Error(`the app never showed "${name}"`);
 }
-function press(name) {
-  return clickStill(page, name, { find: where, after: 1500 });
+// ms 0 presses at once, where the control is now: Next pressed at once is
+// what drew no bricks (651df7c5), and waiting for it to stand still would
+// miss that.
+async function press(name, ms = 1500) {
+  if (ms) return clickStill(page, name, { find: where, after: ms });
+  const at = await where(name);
+  await page.mouse.click(at.x, at.y);
 }
 const caption = async () => ((await state()).timeline || {}).caption || "";
 // A picture of the window at a stage on the way, with where the view is
@@ -166,6 +179,35 @@ async function stage(name) {
   console.log(`        view at ${name}: yaw ${r(v.yaw)}, pitch ${r(v.pitch)}, distance ${r(v.distance)}, `
     + `looking at ${(v.focus || []).map(r).join(" ")}`);
   await shot(`stage_${name}_${tag}.png`);
+}
+
+// The view as drawn, its pixels of the red of step 1's brick and the yellow
+// of step 3's counted (the window's picture decoded in a page of its own).
+async function bricksDrawn(name) {
+  const png = await page.screenshot({ path: `${out}/${name}`, timeout: 180000 });
+  await page.evaluate(() => { window.brickworksAskLayout = true; });
+  await page.waitForTimeout(1500);
+  const view = ((await page.evaluate(() => window.brickworksLayout)) || {}).view || [0, 0, width, height];
+  const reader = await browser.newPage();
+  const counted = await reader.evaluate(async ([src, v]) => {
+    const image = await new Promise((done) => { const i = new Image(); i.onload = () => done(i); i.src = src; });
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const g = canvas.getContext("2d");
+    g.drawImage(image, 0, 0);
+    const d = g.getImageData(v[0], v[1], v[2], v[3]).data;
+    let red = 0;
+    let yellow = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i] > 110 && d[i + 1] < 50 && d[i + 2] < 50) red++;
+      if (d[i] > 170 && d[i + 1] > 140 && d[i + 2] < 90) yellow++;
+    }
+    return { red, yellow };
+  }, [`data:image/png;base64,${png.toString("base64")}`, view]);
+  await reader.close();
+  console.log(`        picture: ${out}/${name}`);
+  return { ...counted, drawn: counted.red > 50 && counted.yellow > 50 };
 }
 
 // Open… > From a file, answered with a file, as steps_flow.mjs opens one.
@@ -324,6 +366,28 @@ async function run() {
   }
   ok(/^Step 4 of 9/.test(await caption()), `Next to step 4: "${await caption()}"`);
   await stage("3_step_4");
+  await page.waitForTimeout(1500);
+  let seen = await bricksDrawn(`stage_3_step_4_drawn_${tag}.png`);
+  ok(seen.drawn, `...and its bricks are drawn: ${seen.red} px of step 1's red, ${seen.yellow} of step 3's yellow`);
+  const again = Number(args.again ?? 4);
+  let drawnAgain = 0;
+  for (let n = 1; n <= again; n++) {
+    await press("tool_timeline");
+    await until((s) => !(s.timeline || {}).caption, 30);
+    await press("tool_timeline", 0);
+    await until((s) => /^Step 1 of 9/.test((s.timeline || {}).caption || ""), 60);
+    for (let k = 0; k < 6 && !/^Step 4 of 9/.test(await caption()); k++) {
+      const was = await caption();
+      await press("steps_next", 0);
+      await until((s) => ((s.timeline || {}).caption || "") !== was, 20);
+    }
+    const at = await caption();
+    await page.waitForTimeout(3000);
+    seen = await bricksDrawn(`stage_3_again_${n}_${tag}.png`);
+    console.log(`        opened again ${n}: "${at}", ${seen.red} px red, ${seen.yellow} yellow`);
+    if (/^Step 4 of 9/.test(at) && seen.drawn) drawnAgain++;
+  }
+  ok(drawnAgain === again, `opened again ${again} times, Next at once to step 4: its bricks drawn ${drawnAgain} times of ${again}`);
 
   // 5. A Brick 1 x 2 in hand, over the baseplate, turned once.
   await openColumnFor(page, "part search");
@@ -339,6 +403,8 @@ async function run() {
   ok(Boolean(held), `its tile puts 3004 in hand with the Place tool (held ${(await state()).held}, ${(await state()).mode})`);
   ok(/^Step 4 of 9/.test(await caption()), `and the timeline stays at step 4: "${await caption()}"`);
   await stage("4_held");
+  seen = await bricksDrawn(`stage_4_held_drawn_${tag}.png`);
+  ok(seen.drawn, `...its bricks drawn still: ${seen.red} px of red, ${seen.yellow} of yellow`);
 
   // The pointer over the baseplate beside the stack, rested until a ghost
   // shows on the floor (the world's y is up; a 1 x 2 on the floor stands

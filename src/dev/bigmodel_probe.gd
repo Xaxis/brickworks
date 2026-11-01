@@ -185,37 +185,71 @@ func _run() -> void:
 ## the open waited out the weighing, 10.7 s of its 15.4 s. The weighing
 ## gives way (PartLibrary.reading_in's stop), and so does the reading of the
 ## model's joints ahead (GrabDrag), which until 2026-10-31 held it 7 to 9 s
-## more: the open takes a fraction of a whole weighing of the model before
-## it, both timed here, and the model it opened is weighed.
+## more. Both are under way when it opens, or that fails. The open is judged
+## against its own over the same model with nothing weighed or read, in this
+## run at this load: under twice that, and under the whole weighing, which an
+## open that waits outlasts. Its bar until
+## 2026-10-31 was a third of the weighing alone, which asked an open that
+## waits for nothing to grow quicker as the weighing did. The model it opened
+## is weighed after.
 func _open_mid_weigh() -> void:
 	const NEXT := "res://vendor/omr/files/8202-1.mpd"
 	if not FileAccess.file_exists(NEXT) or _world.brick_count() < 600:
 		print("  ----  8202-1 is not in this checkout, or no big model is up: the open "
 			+ "while a model is weighed was not judged")
 		return
-	var weighed: String = str(REAL_SETS[-1]).get_file().get_basename()
-	var whole: int = -1
-	for weighing: int in 2:
-		_main.set("_stability_revision", -1)
-		_main.set("_stability_at", 0)
-		for _n: int in 300:
-			if bool(_main.get("_weighing")):
-				break
-			await process_frame
-		if not bool(_main.get("_weighing")):
-			_check("%s was weighed on a worker" % weighed, false)
-			return
-		var began: int = Time.get_ticks_msec()
-		if weighing == 0:
-			while bool(_main.get("_weighing")) and Time.get_ticks_msec() - began < 300000:
-				await process_frame
-			whole = Time.get_ticks_msec() - began
-			continue
-		var result: Dictionary = _store.open_text(FileAccess.get_file_as_string(NEXT), "8202-1")
-		(_main.get("_bar") as ModelBar).opened.emit(int(result["placed"]))
-		var took: int = Time.get_ticks_msec() - began
-		_check("8202-1 opened while %s was weighed, in %d ms: not waiting for the weighing, "
-			% [weighed, took] + "%d ms whole" % whole, took * 3 < whole)
+	var weighed_path: String = REAL_SETS[-1]
+	var weighed: String = weighed_path.get_file().get_basename()
+	var next: String = FileAccess.get_file_as_string(NEXT)
+	var bar: ModelBar = _main.get("_bar")
+	var library: PartLibrary = _store.library
+	var readers: Array = library.get("_reading_tasks")
+	# The model's whole weighing, which an open that waits outlasts.
+	if not await _weigh_begun():
+		_check("%s was weighed on a worker" % weighed, false)
+		return
+	var began: int = Time.get_ticks_msec()
+	while bool(_main.get("_weighing")) and Time.get_ticks_msec() - began < 300000:
+		await process_frame
+	var whole: int = Time.get_ticks_msec() - began
+	# Then 8202-1 opened over it with nothing reading the library, the joints
+	# read ahead among them, its parts under other names, so they are built
+	# and added as new, as in the open judged: the library keeps those it has
+	# built.
+	if not await _unread(weighed):
+		return
+	began = Time.get_ticks_msec()
+	var result: Dictionary = _store.open_text(next.replace("8202 - ", "8202 quiet - "), "8202-1")
+	bar.opened.emit(int(result["placed"]))
+	var quiet: int = Time.get_ticks_msec() - began
+	var load: String = _load()
+	# And over the same model opened again, once 8202-1's own weighing is
+	# done, while the model is weighed and its joints are read (12 s at 4,145
+	# parts, begun a moment after it is opened), both.
+	if not await _unread("8202-1"):
+		return
+	result = _store.open_text(FileAccess.get_file_as_string(weighed_path), weighed)
+	bar.opened.emit(int(result["placed"]))
+	if not await _weigh_begun():
+		_check("%s was weighed on a worker" % weighed, false)
+		return
+	began = Time.get_ticks_msec()
+	while bool(_main.get("_weighing")) and readers.size() < 2 \
+			and Time.get_ticks_msec() - began < 5000:
+		await process_frame
+	var reading: int = readers.size()
+	if not bool(_main.get("_weighing")) or reading < 2:
+		_check("%s was weighed (%s) and its joints read (%d readers) when 8202-1 opened"
+			% [weighed, _main.get("_weighing"), reading], false)
+		return
+	began = Time.get_ticks_msec()
+	result = _store.open_text(next, "8202-1")
+	bar.opened.emit(int(result["placed"]))
+	var took: int = Time.get_ticks_msec() - began
+	_check("8202-1 opened while %s was weighed and its joints read (%d readers), in %d ms: not "
+		% [weighed, reading, took] + "waiting, against %d ms with nothing weighed or read "
+		% quiet + "(load %s), %d ms the whole weighing" % [load, whole],
+		took < 2 * quiet and took < whole)
 	for _n: int in 300:
 		if not bool(_main.get("_weighing")) and int(_main.get("_stability_revision")) \
 				== _world.revision:
@@ -223,6 +257,40 @@ func _open_mid_weigh() -> void:
 		await process_frame
 	var said: String = str(_main.get("_stability_text"))
 	_check("and 8202-1 was weighed after: \"%s\"" % said, not said.is_empty())
+
+
+## Whether the model up began to be weighed on a worker (Main._weigh), asked
+## for at once.
+func _weigh_begun() -> bool:
+	_main.set("_stability_revision", -1)
+	_main.set("_stability_at", 0)
+	for _n: int in 300:
+		if bool(_main.get("_weighing")):
+			return true
+		await process_frame
+	return false
+
+
+## Whether nothing weighs [param model] or reads the library within two
+## minutes, said where something still does.
+func _unread(model: String) -> bool:
+	var readers: Array = _store.library.get("_reading_tasks")
+	var began: int = Time.get_ticks_msec()
+	while (bool(_main.get("_weighing")) or not readers.is_empty()) \
+			and Time.get_ticks_msec() - began < 120000:
+		await process_frame
+	if bool(_main.get("_weighing")) or not readers.is_empty():
+		_check("%s was left unweighed and unread in 120 s" % model, false)
+		return false
+	return true
+
+
+## The box's load over the last minute, which the opens timed here move with.
+static func _load() -> String:
+	# /proc says its files are empty, so read a line rather than the length.
+	var file: FileAccess = FileAccess.open("/proc/loadavg", FileAccess.READ)
+	var text: String = file.get_line() if file != null else ""
+	return text.get_slice(" ", 0) if not text.is_empty() else "unknown"
 
 
 ## Quit as a person closes the window after a big model: at once, the model
@@ -512,10 +580,11 @@ func _open_sections(row: Dictionary) -> void:
 		"main._built_bounds": func() -> void: _main.call("_built_bounds"),
 		"main._on_model_changed": func() -> void: _main.call("_on_model_changed"),
 		"assistant.forget_built": func() -> void:
-			(_main.get("_assistant") as Object).call("forget_built"),
+			if _main.get("_assistant_made") != null:
+				(_main.get("_assistant_made") as Object).call("forget_built"),
 		"seat_offer.check": func() -> void: (_main.get("_seat_offer") as Object).call("check"),
 		"Seating.misplaced": func() -> void: Seating.misplaced(_world, _builder,
-			_main.get("_assistant"), _store.scenery),
+			_store.scenery),
 		"assemblies.enter": func() -> void:
 			if assemblies != null:
 				assemblies.enter(""),

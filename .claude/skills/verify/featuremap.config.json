@@ -1587,7 +1587,7 @@
       "kind": "lib",
       "label": "the surface pass",
       "entry": "src/ai/surface_pass.gd",
-      "reach": "godot --headless --path . --script src/dev/surface_probe.gd   (over MCP: review_model {\"surface\": true}, then settle_surface; its colour findings, a line through a side or top one colour covers: src/dev/colour_faces_probe.gd)",
+      "reach": "godot --headless --path . --script src/dev/surface_probe.gd   (over MCP: review_model {\"surface\": true}, then settle_surface)",
       "area": "assistant"
     },
     {
@@ -1965,7 +1965,7 @@
       "kind": "cli",
       "label": "test designs against real sets",
       "entry": "tools/bench/realset.py",
-      "reach": "python3 tools/minitest.py tests/test_realset.py; python3 tools/bench/realset.py sample --which tune --show   (for real: env -u ANTHROPIC_API_KEY XDG_DATA_HOME=... python3 tools/bench/realset.py calibrate | gpu ... run --arm A --audit-later | heavy ... audit --arm A | report | compare; the recipe is Real sets in features/assistant.md)",
+      "reach": "python3 tools/minitest.py tests/test_realset.py; godot --headless --path . --script src/dev/holdout_probe.gd; python3 tools/bench/realset.py sample --which tune --show   (for real: env -u ANTHROPIC_API_KEY XDG_DATA_HOME=... python3 tools/bench/realset.py calibrate | gpu ... run --arm A --audit-later | heavy ... audit --arm A | report | compare; the recipe is Real sets in features/assistant.md)",
       "area": "assistant"
     },
     {

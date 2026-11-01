@@ -14,6 +14,9 @@ const FIGURES := "res://assets/knowledge/minifig_sets.json"
 const SIZES := "res://assets/knowledge/set_sizes.json"
 
 static var _read: Dictionary = {}
+## sizes() with the sets under test left out, and what was held when it was.
+static var _sized: Array = []
+static var _sized_for: String = ""
 
 
 ## minifig_sets.json: {"parts": {id: [sets, generic sets]}, "plain_arms":
@@ -23,9 +26,18 @@ static func figures() -> Dictionary:
 
 
 ## set_sizes.json's models: [set, set name, theme, model, parts, studs long,
-## studs wide, plates tall].
+## studs wide, plates tall]. None of a set under test (DesignMemory.holds):
+## plan_scale told 7242-1's session "7242 Street Sweeper 15" (2026-10-31).
 static func sizes() -> Array:
-	return _load(SIZES).get("models", [])
+	var models: Array = _load(SIZES).get("models", [])
+	if DesignMemory.held_out().is_empty() and DesignMemory.held_names().is_empty():
+		return models
+	var held: String = ",".join(DesignMemory.held_out()) + "|" + "|".join(DesignMemory.held_names())
+	if _sized_for != held or _sized.is_empty():
+		_sized_for = held
+		_sized = models.filter(func(row: Variant) -> bool:
+			return not DesignMemory.holds(str((row as Array)[0]), str((row as Array)[1])))
+	return _sized
 
 
 static func _load(path: String) -> Dictionary:

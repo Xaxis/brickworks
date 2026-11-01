@@ -78,10 +78,38 @@ plan with Claude as the client.
   many files; `window.brickworksBoot` when each stage of the start was
   reached (`Main._boot_mark`: compiled, made, ready, data, catalogue, ui,
   model, on the page's clock). "compiled" is Main's `_static_init`, once
-  every script is compiled: loading main.gd compiles all 308 at once,
-  since about 200 of them name each other in one cycle (webstart, 2026-10-30:
-  3.6 s of a warm start's 8.2 at load 12, the engine's setup 0.4 s before
-  it, the catalogue 1.0, the interface 1.1, the first frames 1.3 after). The pack Godot exports is cut in four after it (webload,
+  main.gd and every script it names are compiled. That was all 308 at
+  once, since about 200 of them named each other in one cycle (webstart,
+  2026-10-30: 3.6 s of a warm start's 8.2 at load 12, the engine's setup
+  0.4 s before it, the catalogue 1.0, the interface 1.1, the first frames
+  1.3 after). Since lazystart (2026-10-30) the features the first screen
+  does not need are reached by name through `Later` (`src/later.gd`,
+  `Later.PATHS`: the assistant and the rest of `src/ai` it names, the
+  assistant's panel and Claude's connector, the dialogs and tool panels,
+  render, motions, the booklet's makers) and loaded the first time
+  something asks; main.gd's members for them are made by their getters
+  (`_make_*`, `_X_made` for a look that makes nothing), and the start
+  compiles 215 of 313 scripts (2026-10-31, three rounds against live at
+  load 18-25: compiled at +3.0 s cold and +3.6 warm where live's scripts
+  took +6.8 and +5.6; interactive 12.2 s cold and 7.4 warm against 17.5
+  and 10.2; the first pick 1.2 s against 1.5). Two copies of the assistant's rules keep the core
+  off it (`Nests`, `Footprint`), and the bin's Techniques tab says its
+  count from `PartsBin.TECHNIQUES_COUNT`. A command whose first run loads
+  its feature says so first, as a slow one does (`Shell.FIRST_USE`; the
+  command probe's `--judge` fails a first Render or Simulate held unsaid,
+  400 and 254 ms on Orthanc before it). `python3 tools/minitest.py
+  tests/test_later.py` fails when a script the first screen compiles names
+  one of Later's classes, with the chain from main.tscn that reaches it,
+  or when a copy or the count differs from the assistant's, or `FIRST_USE`
+  names a class Later does not load or a member main.gd does not make; `lazystart_probe`
+  (headless) fails when one is loaded once the window has settled or a
+  signed-in person's collection has come, or is made twice or out of its
+  place, and prints what each first load took. On the web the page is
+  told each first load (`window.brickworksLoaded`: name -> [when, ms]),
+  and load_check prints "loaded on first use", each before interactive,
+  under the first pick, or after: anything before the pick is a compile
+  the person waited on (the collection's arrival making the assistant
+  held a first pick 3.5 to 9 s, 2026-10-31). The pack Godot exports is cut in four after it (webload,
   2026-10-30, `tools/web/pck_split.py`, its docstring), so the engine
   waits for the code alone: `index.pck` keeps the scripts, shaders and
   scenes (3.3 MB brotli), and the two tables read as their classes load,
@@ -2790,7 +2818,10 @@ plan with Claude as the client.
   place was never drawn, so a brick turned or nudged stayed where it had been
   while its outline moved on (live site and every build to 2026-10-11) — desktop
   OpenGL drew the same writes. `BrickWorld._fresh_slots` lets a batch's slots go
-  and takes them again on every rebuild, so each one writes a new buffer. Run
+  and takes them again on every rebuild, so each one writes a new buffer. A
+  count raised is a write in place too (the engine writes the slots it adds):
+  `BrickWorld.draw_first` hands them over fresh, and `in_view_flow` is its
+  browser check (the timeline at step 4, opened five times, Next at once). Run
   it against a local export the way `freeze check` does (`relay_server.mjs
   --static`) or a preview (`--bypass`); pictures in `--out`.
 - `the real-set index beside the build`: the index `find_techniques` searches

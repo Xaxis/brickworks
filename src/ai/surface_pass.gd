@@ -49,13 +49,7 @@
 ##              side in their own colour (_side_fields);
 ##   wall       a building's long plain wall of one-wide bricks, one colour:
 ##              laid again by restyle_model's own pass, some as masonry, no
-##              stud turned out;
-##   colour     a side or the top one connected colour covers more than half
-##              of, read after the rest is laid (ColourFaces): a line of the
-##              darker tone recoloured through it, the parts crossing one
-##              row of it, level across a side or down the top, chosen as
-##              the row that breaks the face best; nothing added
-##              (_colour_findings).
+##              stud turned out.
 ##
 ## Every finding is laid at once, up to MOST_FINDINGS; any over are counted
 ## and said, for the next review to lay.
@@ -188,16 +182,12 @@ class Finding extends RefCounted:
 	## The section its studs are in (a wing laid at an angle), or "".
 	var section: String = ""
 	## What it reads that a top or a brick course is not: "plates" for a
-	## flank of plates, "side" for studs on a part's side, and for a colour
-	## finding the view its face is seen from ("top", "+x"); "" otherwise. The
+	## flank of plates, "side" for studs on a part's side; "" otherwise. The
 	## record says them apart: the sides round's log could not.
 	var of: String = ""
 	## The view that sees it best: a slope falling toward -x or -z, or a wall
 	## facing that way, is seen from the far corner. "" for either.
 	var seen_from: String = ""
-	## A colour finding's: the colour its face was and the colour its line is.
-	var was: int = -1
-	var tone: int = -1
 	## "" until settled: "accepted", "adjusted", "rejected", "kept"; "left"
 	## when a loop's turns ran out with it standing.
 	var verdict: String = ""
@@ -229,15 +219,6 @@ var more: int = 0
 var held_back: int = 0
 var _numbered: int = 0
 var _offered: int = 0
-var _coloured: int = 0
-## The faces the design kept one colour, [AABB, why, view]: never lined
-## again from that view. Not [member zones], which would keep the studs in
-## them from being tiled too.
-var colour_zones: Array = []
-## The last reading's colours in a line, for the brief: "" with no face found.
-var _colour_said: String = ""
-## The faces it found and could not line, in words, for the brief.
-var _colour_unlined := PackedStringArray()
 ## The model read once per reading: placements by brick id.
 var _read: OpenPoints = null
 
@@ -257,10 +238,6 @@ func reset() -> void:
 	held_back = 0
 	_numbered = 0
 	_offered = 0
-	_coloured = 0
-	colour_zones = []
-	_colour_said = ""
-	_colour_unlined = PackedStringArray()
 
 
 ## The laid findings not settled yet.
@@ -286,7 +263,6 @@ func record() -> String:
 	var skinned: int = 0
 	var of_plates: int = 0
 	var on_sides: int = 0
-	var lined: int = 0
 	for one: Finding in findings:
 		var verdict: String = one.verdict if one.settled() else (
 			"offered" if one.offered else "not settled")
@@ -307,8 +283,6 @@ func record() -> String:
 				"flank":
 					skinned += 1
 					of_plates += 1 if one.of == "plates" else 0
-				"colour":
-					lined += 1
 	var said := PackedStringArray()
 	for verdict: String in ["accepted", "adjusted", "left", "rejected", "kept", "offered",
 			"not settled"]:
@@ -328,8 +302,6 @@ func record() -> String:
 	if skinned > 0:
 		kept.append("%d flank%s skinned%s" % [skinned, "" if skinned == 1 else "s",
 			" (%d of plates)" % of_plates if of_plates > 0 else ""])
-	if lined > 0:
-		kept.append("%d one-colour face%s lined" % [lined, "" if lined == 1 else "s"])
 	return "%d finding%s: %s%s" % [findings.size(), "" if findings.size() == 1 else "s",
 		", ".join(said), "" if kept.is_empty() else "; " + ", ".join(kept)]
 
@@ -389,14 +361,6 @@ func hand() -> Variant:
 		_numbered += 1
 		one.key = "S%d" % _numbered
 		findings.append(one)
-	# Colour last, read off the model with the rest laid: a roof tiled is a
-	# roof in its tiles' colour.
-	var lined: Array[Finding] = await _colour_findings()
-	for one: Finding in lined:
-		_coloured += 1
-		one.key = "C%d" % _coloured
-		findings.append(one)
-	laid.append_array(lined)
 	if laid.is_empty() and offers.is_empty() and held_back > 0:
 		assistant.progress.emit("the surface pass: nothing laid, for the brief's count")
 		return ("The surface pass found %d thing%s to finish and laid none, for the brief's "
@@ -405,14 +369,9 @@ func hand() -> Variant:
 			+ "{\"surface\": true} again.")
 	if laid.is_empty() and offers.is_empty():
 		assistant.progress.emit("the surface pass: nothing to finish")
-		var none: Array[Finding] = []
-		var nothing: String = ("The surface pass found nothing to finish: no open stud field, "
-			+ "no stud staircase, no hard top edge, no plain flank, no long plain wall%s%s." % [
-				" and no side or top one colour covers" if _colour_unlined.is_empty() else "",
-				" (left alone: %s)" % "; ".join(left_alone) if not left_alone.is_empty() else ""])
-		for line: String in _colour_brief(none):
-			nothing += "\n" + line
-		return nothing
+		return ("The surface pass found nothing to finish: no open stud field, no stud "
+			+ "staircase, no hard top edge, no plain flank and no long plain wall%s." % (
+				" (left alone: %s)" % "; ".join(left_alone) if not left_alone.is_empty() else ""))
 	assistant.progress.emit("the surface pass: laid %d proposal%s%s" % [laid.size(),
 		"" if laid.size() == 1 else "s", ", offered %d" % offers.size()
 			if not offers.is_empty() else ""])
@@ -426,17 +385,11 @@ func hand() -> Variant:
 func _brief(laid: Array[Finding], offers: Array[Finding]) -> String:
 	var lines := PackedStringArray()
 	lines.append("The surface pass: the app read the model's open studs, its tops, the "
-		+ "way they step and where they end, its plain walls and its colours, and laid "
-		+ "real pieces for each as a proposal, standing on the model now (marked in the "
-		+ "picture):")
-	var coloured: Array[Finding] = []
+		+ "way they step and where they end, and its plain walls, and laid real pieces "
+		+ "for each as a proposal, standing on the model now (marked in the picture):")
 	for one: Finding in laid:
-		if one.kind == "colour":
-			coloured.append(one)
-			continue
 		lines.append("  %s %s: %s Laid: %s%s." % [one.key, one.kind, one.said, one.laid,
 			_bricks_said(one.ids)])
-	lines.append_array(_colour_brief(coloured))
 	for one: Finding in offers:
 		lines.append("  %s, offered, not laid: %s \"tile\" lays %s." % [one.key, one.said,
 			one.laid])
@@ -453,28 +406,6 @@ func _brief(laid: Array[Finding], offers: Array[Finding]) -> String:
 	return "\n".join(lines)
 
 
-## The colour findings' part of the answer: the reading and why, the lines
-## laid, the faces that could not be lined; nothing where no face was found.
-func _colour_brief(coloured: Array[Finding]) -> PackedStringArray:
-	var lines := PackedStringArray()
-	if coloured.is_empty() and _colour_unlined.is_empty():
-		return lines
-	lines.append(COLOUR_WHY % _colour_said)
-	if not coloured.is_empty():
-		lines.append("The app laid a line of the darker tone through each, recoloured, "
-			+ "nothing added:")
-		for one: Finding in coloured:
-			lines.append("  %s %s: %s Laid: %s%s." % [one.key, one.kind, one.said, one.laid,
-				_bricks_said(one.ids)])
-	if not _colour_unlined.is_empty():
-		lines.append(("Not lined, no row of small plain parts runs through it: %s. Break "
-			% "; ".join(_colour_unlined)) + "each your own way, with edit_model: the details "
-			+ "the subject has there, in their own colours.")
-	if not coloured.is_empty():
-		lines.append(COLOUR_HOW)
-	return lines
-
-
 const SETTLE_HOW := """Settle each with settle_surface {"finding": "S1", \
 "verdict": ...} (or "finding": "all"): "accept" keeps it — with "plain": true \
 for plain tiles where the textured ones are, or "recolor": {"4": 320}, to \
@@ -483,23 +414,6 @@ what they replaced, to finish it your own way; "keep" with a reason does the \
 same and leaves the studs for good — a yard, a mosaic, a studded texture, \
 where a touch will stand. A real set leaves studs only where something is \
 built on them."""
-
-## Before the colour findings: the reading, then what a set does with a face
-## like these. %s is the reading's colours.
-const COLOUR_WHY := """Colour, as the four sides and the top show it: %s. \
-Where one colour covers more than half of what a side or the top shows, the \
-model reads as a flat expanse of it. A set breaks such a face: its structure \
-in a second colour, the parts that do something there in their own colour (a \
-grille, a vent, a lamp, a hatch, a seat, a sign or a printed panel), a line of \
-a darker tone where panels meet."""
-
-## And how to settle them.
-const COLOUR_HOW := """For each C: accept the line; or recolour it to the \
-subject's own trim or accent colour, "recolor": {"<its colour>": <yours>}; or \
-reject it with a reason and break the face your own way, with edit_model: the \
-details the subject has there, in their own colours. Keep it, with a reason, \
-only where the subject really is that one colour there, and give it its \
-accents another way."""
 
 
 static func _bricks_said(ids: Array[int]) -> String:
@@ -588,8 +502,6 @@ func _named(asked: String, verdict: String) -> Array[Finding]:
 
 
 func _settle_one(one: Finding, verdict: String, reason: String, args: Dictionary) -> String:
-	if one.kind == "colour":
-		return await _settle_colour(one, verdict, reason, args)
 	match verdict:
 		"accept", "tile":
 			if one.offered and one.ids.is_empty():
@@ -638,50 +550,6 @@ func _settle_one(one: Finding, verdict: String, reason: String, args: Dictionary
 			return "%s: %s — %s; %s." % [one.key, one.verdict, reason,
 				"the studs stay, and the pass leaves them alone" if verdict == "keep"
 					else "the app's pieces are off, finish it your own way"]
-	return ""
-
-
-## A colour finding settled: its line kept, recoloured as the design says
-## ("recolor" by colour, as the others take it), or its face put back as it
-## was and never lined again.
-func _settle_colour(one: Finding, verdict: String, reason: String, args: Dictionary) -> String:
-	if not _standing(one):
-		return ("%s: its line is not all standing any more; reject it with a reason, or "
-			% one.key + "keep it.")
-	match verdict:
-		"accept", "tile":
-			var asked: Variant = args.get("recolor")
-			# Settled with "all", a recolour meant for the tiles leaves a line
-			# of another colour as it is; named, one entry is this line's.
-			var alone: bool = str(args.get("finding", "")).strip_edges().to_lower() != "all"
-			var to: int = -1
-			if asked is Dictionary:
-				for key: Variant in asked:
-					if int(str(key)) == one.tone or (alone and (asked as Dictionary).size() == 1):
-						to = int((asked as Dictionary)[key])
-			if to >= 0 or alone and asked is Dictionary and not (asked as Dictionary).is_empty():
-				if to < 0 or to == one.tone:
-					return ("%s: its line is %s (%d); recolour it as {\"%d\": <colour>}."
-						% [one.key, assistant._colour_name(one.tone), one.tone, one.tone])
-				if not await _recolour(one.ids, to):
-					return "%s: not adjusted, it stays as laid: %s" % [one.key, _why_not]
-				one.tone = to
-				one.verdict = "adjusted"
-				return "%s: adjusted and kept, the line %s (%d)%s." % [one.key,
-					assistant._colour_name(to), to, _bricks_said(one.ids)]
-			one.verdict = "accepted"
-			return "%s: accepted." % one.key
-		"reject", "keep":
-			if not await _recolour(one.ids, one.was):
-				return "%s: could not put its colour back (%s); settle it another way." % [
-					one.key, _why_not]
-			one.verdict = "rejected" if verdict == "reject" else "kept"
-			one.reason = reason
-			colour_zones.append([one.box.grow(2.0), reason, one.of])
-			return "%s: %s — %s; %s." % [one.key, one.verdict, reason,
-				"the face is %s again and the pass leaves it so" % assistant._colour_name(
-					one.was).to_lower() if verdict == "keep"
-					else "its line is off, break the face your own way"]
 	return ""
 
 
@@ -2341,269 +2209,6 @@ func _wall_finding(region: Array) -> Finding:
 	one.laid = str(change["summary"]).trim_suffix(".")
 	one.seen_from = "corner" if str(first["facing"]).begins_with("+") else "far corner"
 	return one
-
-
-# -- colour --------------------------------------------------------------------
-
-
-## Faces lined at once: one each for the biggest few, the rest left to the
-## next review.
-const MOST_COLOURS := 3
-## The parts a line is laid in: what a course or a deck is made of.
-const LINE_KINDS: Array = ["Brick", "Plate", "Tile", "Slope", "Wedge"]
-## A part showing more of a face than this is the face, not a line through it:
-## recoloured, it moves the expanse rather than breaking it.
-const MOST_OF_FACE := 0.34
-## And the most rows of the face a part of a line covers: two bricks up a
-## side (a cell is a plate), two studs across the top (a cell is half a stud).
-const THICKEST_SIDE := 6
-const THICKEST_TOP := 4
-## A line that breaks no face into pieces under ColourFaces.EXPANSE is laid
-## only if it takes this much of its view off the face's largest piece.
-const LEAST_DENT := 0.1
-
-
-## The model's flat one-colour faces (ColourFaces), each with a line of its
-## colour's darker tone recoloured through it, as the model stands. Read again
-## after each line: a course that runs round a corner breaks the far side's face
-## too, and is laid once. Nothing is added or taken off: the brief's count and
-## the model's hold are as they were.
-func _colour_findings() -> Array[Finding]:
-	var out: Array[Finding] = []
-	_colour_said = ""
-	_colour_unlined = PackedStringArray()
-	if _is_mosaic():
-		return out
-	var done: Dictionary = {}          # views lined or passed over
-	# Never the parts of a finding not settled: settling it lays them again,
-	# or takes them off, and the line with them.
-	var taken: Dictionary = {}
-	for one: Finding in findings:
-		if one.kind != "colour" and not one.settled():
-			for id: int in one.ids:
-				taken[id] = true
-	var first: bool = true
-	while true:
-		var reading: Dictionary = ColourFaces.read(assistant._bricks_inside({}),
-			assistant.library)
-		if first:
-			first = false
-			if (reading["faces"] as Array).is_empty():
-				return out
-			var over: int = ColourFaces.colours_over(reading["shares"], 0.03)
-			_colour_said = "%s; %d colour%s over 3%% of it" % [ColourFaces.said(
-				reading["shares"], assistant._colour_name), over, "" if over == 1 else "s"]
-		var face: ColourFaces.Face = null
-		for raw: Variant in reading["faces"]:
-			if not done.has((raw as ColourFaces.Face).view):
-				face = raw
-				break
-		if face == null:
-			return out
-		done[face.view] = true
-		if out.size() >= MOST_COLOURS:
-			more += 1
-			continue
-		var tint: PartLibrary.BrickColor = assistant.library.colors.get(face.colour)
-		if tint == null or tint.is_transparent() \
-				or tint.drawn_as != PartLibrary.BrickColor.Finish.PLASTIC:
-			continue
-		# A face kept, or lined at an earlier review, from this view: one line a
-		# face, the rest the design's.
-		var kept: bool = false
-		for zone: Array in colour_zones:
-			if str(zone[2]) == face.view and (zone[0] as AABB).has_point(face.box.get_center()):
-				kept = true
-		for one: Finding in findings:
-			if one.kind == "colour" and one.of == face.view \
-					and one.box.grow(2.0).has_point(face.box.get_center()):
-				kept = true
-		var tone: int = int(ColourFaces.TONE.get(face.colour, -1))
-		if kept or tone < 0:
-			continue
-		var line: Array[int] = _line_through(face, tone, taken)
-		var named: String = assistant._colour_name(face.colour)
-		if line.is_empty():
-			_colour_unlined.append("%s from %s, %d%% of what it shows, %s" % [named,
-				_view_said(face.view), roundi(100.0 * face.share), _where_said(face.box)])
-			continue
-		var one := Finding.new()
-		one.kind = "colour"
-		one.of = face.view
-		one.box = face.box
-		one.was = face.colour
-		one.tone = tone
-		one.studs = face.cells.size()
-		one.seen_from = "far corner" if face.view.begins_with("-") else "corner"
-		one.said = "from %s, %d%% of what shows is one face of %s, %s." % [
-			_view_said(face.view), roundi(100.0 * face.share), named, _where_said(face.box)]
-		one.laid = "a line of %s (%d) %s it, %d part%s recoloured" % [
-			assistant._colour_name(tone), tone, "along" if face.view == "top" else "across",
-			line.size(), "" if line.size() == 1 else "s"]
-		if not await _recolour(line, tone):
-			_colour_unlined.append("%s from %s (%s)" % [named, _view_said(face.view), _why_not])
-			continue
-		one.ids = line
-		for id: int in line:
-			taken[id] = true
-		out.append(one)
-	return out
-
-
-static func _view_said(view: String) -> String:
-	return "above" if view == "top" else "the %s side" % view
-
-
-## The bricks a line through [param face] is laid in: the parts that cross
-## one row of its cells, level across a side (a string course, a band, a cheat
-## line) or either way down the top (a stripe, a ridge). Each row is tried, as
-## if recoloured: of those that leave every piece of the face under EXPANSE of
-## its view, the one with the fewest cells; failing that, the one that leaves
-## the smallest piece, if it takes LEAST_DENT off the face. Only plain parts of
-## LINE_KINDS, none printed, none showing more than MOST_OF_FACE of the face or
-## more than THICKEST rows of it, each made in [param tone].
-func _line_through(face: ColourFaces.Face, tone: int, taken: Dictionary) -> Array[int]:
-	var line: Array[int] = []
-	var top: bool = face.view == "top"
-	# The cells' axes: ColourFaces draws a view on the two axes it does not
-	# look along, in the order x, y, z. Up a +x or -x side is the first.
-	var ways: Array[int] = [0, 1]
-	if not top:
-		ways = [0 if face.view.ends_with("x") else 1]
-	var low := Vector2i(1 << 30, 1 << 30)
-	var high := Vector2i(-(1 << 30), -(1 << 30))
-	for cell: Vector2i in face.cells:
-		low = low.min(cell)
-		high = high.max(cell)
-	var wide: int = high.x - low.x + 1
-	var tall: int = high.y - low.y + 1
-	var mask := PackedByteArray()
-	mask.resize(wide * tall)
-	for cell: Vector2i in face.cells:
-		mask[(cell.x - low.x) * tall + cell.y - low.y] = 1
-	var best_cells: int = 0
-	var best_left: float = face.share - LEAST_DENT
-	var broken: bool = false
-	for way: int in ways:
-		# Each row's usable parts, a row a cell, in the middle of the face:
-		# a line near its edge leaves it whole.
-		var first: int = low[way]
-		var last: int = high[way]
-		var by_row: Dictionary = {}
-		for id: int in face.owners:
-			var cells: Array = face.owners[id]
-			if taken.has(id) or float(cells.size()) > MOST_OF_FACE * face.cells.size():
-				continue
-			var rows: Dictionary = {}
-			for cell: Vector2i in cells:
-				rows[cell[way]] = true
-			if rows.size() > (THICKEST_TOP if top else THICKEST_SIDE):
-				continue
-			var brick: BrickWorld.Brick = assistant.world.get_brick(id)
-			var info: PartLibrary.PartInfo = assistant.library.parts.get(brick.part_id) \
-				if brick != null else null
-			if info == null or not LINE_KINDS.has(info.family_category()) or info.decor() != 0 \
-					or info.custom or info.never_made_in(tone):
-				continue
-			for row: int in rows:
-				var placed: float = float(row - first) / float(maxi(1, last - first))
-				if placed < 0.15 or placed > 0.85:
-					continue
-				if not by_row.has(row):
-					by_row[row] = []
-				(by_row[row] as Array).append(id)
-		var tried: Dictionary = {}
-		for row: int in by_row:
-			var ids: Array = by_row[row]
-			var key: String = str(ids)
-			if tried.has(key):
-				continue
-			tried[key] = true
-			var cut: PackedByteArray = mask.duplicate()
-			var cells: int = 0
-			for id: int in ids:
-				for cell: Vector2i in face.owners[id]:
-					cut[(cell.x - low.x) * tall + cell.y - low.y] = 0
-				cells += (face.owners[id] as Array).size()
-			if cells * 2 > face.cells.size():
-				continue
-			var left: float = face.share * float(_largest_left(cut, wide, tall)) \
-				/ float(face.cells.size())
-			var breaks: bool = left < ColourFaces.EXPANSE
-			if breaks and (not broken or cells < best_cells) \
-					or not broken and not breaks and left < best_left:
-				broken = broken or breaks
-				best_cells = cells
-				best_left = left
-				line.clear()
-				for id: int in ids:
-					line.append(id)
-	return line
-
-
-## The largest piece of a face that a line leaves: 4-connected cells still
-## set in [param cut], a grid [param wide] by [param tall].
-static func _largest_left(cut: PackedByteArray, wide: int, tall: int) -> int:
-	var largest: int = 0
-	var queue := PackedInt32Array()
-	for start: int in cut.size():
-		if cut[start] != 1:
-			continue
-		cut[start] = 2
-		queue.resize(0)
-		queue.append(start)
-		var size: int = 0
-		while not queue.is_empty():
-			var at: int = queue[queue.size() - 1]
-			queue.resize(queue.size() - 1)
-			size += 1
-			var i: int = at / tall
-			var j: int = at % tall
-			if i > 0 and cut[at - tall] == 1:
-				cut[at - tall] = 2
-				queue.append(at - tall)
-			if i < wide - 1 and cut[at + tall] == 1:
-				cut[at + tall] = 2
-				queue.append(at + tall)
-			if j > 0 and cut[at - 1] == 1:
-				cut[at - 1] = 2
-				queue.append(at - 1)
-			if j < tall - 1 and cut[at + 1] == 1:
-				cut[at + 1] = 2
-				queue.append(at + 1)
-		largest = maxi(largest, size)
-	return largest
-
-
-## Recolour [param ids] in one edit, quietly: whether it was done (why not in
-## _why_not).
-func _recolour(ids: Array[int], colour: int) -> bool:
-	var standing: Array[int] = []
-	for id: int in ids:
-		if assistant.world.get_brick(id) != null:
-			standing.append(id)
-	if standing.is_empty():
-		_why_not = "none of its parts stands any more"
-		return false
-	assistant._laying_whole = true
-	assistant._quiet_edit = true
-	var answer: Variant = await assistant._run_tool({"name": "edit_model",
-		"input": {"recolor": [{"bricks": standing, "color": colour}]}})
-	assistant._quiet_edit = false
-	assistant._laying_whole = false
-	var head: String = str(answer if answer is String else (
-		((answer as Array)[0] as Dictionary).get("text", "") if answer is Array
-			and not (answer as Array).is_empty() and (answer as Array)[0] is Dictionary else ""))
-	if head.begins_with("Not applied") or head.begins_with("No brick") \
-			or head.begins_with("Nothing in that") or head.begins_with("That would"):
-		_why_not = head.substr(0, 200).replace("\n", " ")
-		return false
-	for id: int in standing:
-		var brick: BrickWorld.Brick = assistant.world.get_brick(id)
-		if brick == null or brick.color_code != colour:
-			_why_not = "the recolour did not take: %s" % head.substr(0, 160).replace("\n", " ")
-			return false
-	return true
 
 
 # -- flanks --------------------------------------------------------------------

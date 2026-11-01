@@ -147,7 +147,6 @@ snippets
 standing
 subject_words
 surface
-colour_faces
 unrestored
 update
 viewer_tools
@@ -206,5 +205,8 @@ hinge_align       # Meet: a ring of eight click hinge plates closes at 45° each
 fits  # the bin's Fits: twelve pairs a builder knows (a beam and its pin, a clip and a bar, a jumper and a 1 x 1 round...) each with a part that fits in the first five; the part in hand; typed words narrow it (appux371 B5)
 all_order   # the parts bin's All as the web export writes it (src/dev/write_all_order.gd) is the bin's own order part for part, and is not read for another catalogue, a missing part or a library with parts made in the app (webload A13)
 mcphand   # the window's hand tools for a session: the car's left half mirrored by mirror_parts in 1 call as Shift+M does it, a copy across the middle laying the right half again, a side pod's mirror beside it; a 2 x 2 slope split and six 1 x 1 plates merged in 1 call each as Alt+S and Alt+M; a hinge left at 37° measured as 37.0°; in_view names the step, the part in hand and the reference picture, changing nothing (APP_UX3 mcphand)
+lazystart   # the first screen compiles none of Later's scripts and loads none as it starts (ResourceLoader.has_cached); each panel and dialog asked for is made once where _build_ui made it, and the menus open it (lazystart)
 mcpcad   # a session doing a person's CAD work hears CAD answers: a five-part side pod refused with where its headlight would stand, then built with each part's span and what holds it and no designer's method, saved with no fresh look; the same parts with a feature, and a wall of 24, told the method; attachment_points parts= answers five in one call as five calls do; in_view at step 4 of 9 says the part in hand's colour, face, rot and ghost span and the picture laid, changing nothing (APP_UX3 mcpcad)
+undo_count   # every undo puts back what was taken and nothing more: the house on scenery, a model on its own baseplate and Orthanc on four, parts taken off one and five at a time, a sub-assembly, the floor changed and made part of the model, a sub-assembly made and taken apart, a 2 x 4 split and merged, a session's sections and a copy made unique (menu, keys and MCP), each undone, redone and undone again; as many bricks, the same scenery, the parts in the same order and a save byte for byte the file before (undocount)
 undo_count   # every undo puts back what was taken and nothing more: the house on scenery, a model on its own baseplate and Orthanc on four, parts taken off one and five at a time, a sub-assembly, the floor changed and made part of the model, each undone, redone and undone again; as many bricks, the same scenery, the parts in the same order and a save byte for byte the file before (undocount)
+holdout   # no held-out set reaches a design run: plan_scale's sizes, the techniques read off sets, the real-set pieces, the library shelf, the catalogue, the official models, the gallery's copies, Commons' pictures; by number and by name (21004-1 for 21035-1)

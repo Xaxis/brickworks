@@ -33,11 +33,7 @@ func _initialize() -> void:
 	builder.world = world
 	builder.library = library
 	get_root().add_child(builder)
-	var assistant := Assistant.new()
-	assistant.library = library
-	assistant.world = world
-	assistant.builder = builder
-	get_root().add_child(assistant)
+	var footprint := Footprint.new(builder)
 	await process_frame
 
 	for path: String in args:
@@ -64,7 +60,7 @@ func _initialize() -> void:
 			var at: Transform3D = LdrModel.to_transform(numbers)
 			# The rule is Seating's, which the app uses to offer the same
 			# when such a model is opened.
-			var shift: Vector3 = Seating.shift_for(mesh, part, at, builder, assistant)
+			var shift: Vector3 = Seating.shift_for(mesh, part, at, footprint)
 			if shift == Vector3.ZERO:
 				continue
 			# LDraw's z runs the other way to the app's; its x does not.

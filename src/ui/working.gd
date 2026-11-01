@@ -212,9 +212,11 @@ static var asked: int = 0
 ## [param slow] when the caller already knows it will be, the first time.
 ##
 ## Its costs are kept by [param size], how much it has to do: the model's
-## parts, or the selection's for a command that works on the selection.
+## parts, or the selection's for a command that works on the selection;
+## not when [param first_use], a run that made its feature (Shell.attend),
+## whose cost is the making and not the command's.
 static func attend(name: String, doing: String, run: Callable, in_press: bool = false,
-		slow: bool = false, size: int = 0) -> void:
+		slow: bool = false, size: int = 0, first_use: bool = false) -> void:
 	# Inside another command: that one is being timed and said.
 	if _depth > 0:
 		await run.call()
@@ -251,7 +253,7 @@ static func attend(name: String, doing: String, run: Callable, in_press: bool = 
 	if _frame_end != null and is_instance_valid(_frame_end):
 		await _frame_end.ended
 	# A command that asked where to save took the person's time, not its own.
-	if asked == asks_before and asking == 0:
+	if asked == asks_before and asking == 0 and not first_use:
 		_remember(name, parts, (Time.get_ticks_usec() - from) / 1000.0)
 	if said != null:
 		said.end()

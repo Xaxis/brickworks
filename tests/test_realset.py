@@ -237,10 +237,13 @@ def test_the_footprint_is_read_from_the_parts_boxes():
     assert realset.footprint(text, parts) == (4, 5)
 
 
-def test_the_subject_holds_out_the_set_by_its_number():
-    c = realset.Candidate("40148-1", "40148-1.mpd", "Year Of The Sheep", "Seasonal", 2015, 99)
+def test_the_subject_holds_out_the_set_by_its_number_and_name():
+    """--held-out= and --held-out-name= (src/dev/holdout_probe.gd): 21035-1's own name kept
+    21004-1, the same museum, out of its session."""
+    c = realset.Candidate("40148-1", "40148-1.mpd", "Year Of The Sheep (Polybag)", "Seasonal", 2015, 99)
     subject = realset.subject_of(c, (9, 13))
     assert subject.id == "40148-1"
+    assert subject.title == "Year Of The Sheep"
     assert subject.brief == realset.brief(c, (9, 13))
 
 
