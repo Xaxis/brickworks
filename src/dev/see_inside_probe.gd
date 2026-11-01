@@ -10,7 +10,8 @@
 ## sub-assembly being edited. Both hold while the timeline steps through the
 ## build, and the booklet, made with both on, is the booklet made with both
 ## off. Then Orthanc, 8,785 parts, timed: dragging the cut writes no brick,
-## and x-ray writes each batch once.
+## with the model tree folded or open beside it (which still says a part
+## hidden, locked, taken off and put back), and x-ray writes each batch once.
 ##
 ## Pictures to look at go to shots/see_inside/.
 extends SceneTree
@@ -372,21 +373,10 @@ func _orthanc() -> void:
 	if see != null:
 		var low: float = float((see.get("_slider") as HSlider).min_value)
 		var high: float = float((see.get("_slider") as HSlider).max_value)
-		# A drag: the plane a plate further each move, up the whole tower.
-		var moves: int = 0
-		var slowest: float = 0.0
-		began = Time.get_ticks_usec()
-		var at: float = _odd(low)
-		while at < high:
-			var one: int = Time.get_ticks_usec()
-			see.call("move_to", at)
-			_world.call("_flush")
-			slowest = maxf(slowest, float(Time.get_ticks_usec() - one) / 1000.0)
-			moves += 1
-			at += 8.0
-		var each: float = float(Time.get_ticks_usec() - began) / 1000.0 / maxf(moves, 1)
+		var drag: Array = _drag_the_cut(see, low, high)
+		var each: float = drag[1]
 		print("    dragging the cut up the tower a plate a move: %d moves, %.1f ms each, %.1f the slowest"
-			% [moves, each, slowest])
+			% drag)
 		# Against the app's own work of sorting every part for the cut, on
 		# the same model on the same machine, not a wall clock: at a load
 		# of 50 a move took 26 ms, and a 25 ms budget failed a drag that
@@ -397,6 +387,16 @@ func _orthanc() -> void:
 		# what a move costs the CPU, and a 2.2 ms move failed (2026-10-16).
 		_check("dragging it costs %.1f ms a move, under a tenth of sorting every part for the cut (%.0f ms; a frame is %.0f)"
 			% [each, work, whole_ms], each < work * 0.1)
+		# The model tree heard every redraw, and its header counted every
+		# part again at each, 30 to 60 ms: a move cost a third of the sort
+		# (84d72cf8 to 2026-10-31). Open, its rows were worked out again
+		# at each, 26 to 37 ms. Now neither until the model changes.
+		var was: Array = await _open_the_tree()
+		drag = _drag_the_cut(see, low, high)
+		_check("...and with the model tree open beside it, %.1f ms a move (%.1f the slowest)"
+			% [drag[1], drag[2]], _shell.outliner.is_visible_in_tree() and drag[1] < work * 0.1)
+		await _the_tree_follows_the_model()
+		await _put_the_tree_back(was)
 		see.call("move_to", _odd(lerpf(low, high, 0.6)))
 	_world.rebuilds_in_slices = true
 	await _settled()
@@ -455,6 +455,118 @@ func _orthanc() -> void:
 	await _key(KEY_I)
 	await _settled()
 	_check("and off again", not _xrayed() and _count_twins("xray") == 0)
+
+
+## A drag up the whole tower, the plane a plate further each move, every
+## move's work done before the next: [moves, ms a move, the slowest].
+func _drag_the_cut(see: Object, low: float, high: float) -> Array:
+	var moves: int = 0
+	var slowest: float = 0.0
+	var began: int = Time.get_ticks_usec()
+	var at: float = _odd(low)
+	while at < high:
+		var one: int = Time.get_ticks_usec()
+		see.call("move_to", at)
+		_world.call("_flush")
+		slowest = maxf(slowest, float(Time.get_ticks_usec() - one) / 1000.0)
+		moves += 1
+		at += 8.0
+	return [moves, float(Time.get_ticks_usec() - began) / 1000.0 / maxf(moves, 1), slowest]
+
+
+## The model tree opened in its column, as a person opens it; what was
+## open before, for [method _put_the_tree_back].
+func _open_the_tree() -> Array:
+	var tree: Outliner = _shell.get("outliner")
+	var column: SideDock = SideDock.of(tree)
+	var was: Array = [tree.is_open(), column.is_open()]
+	column.set_open(true, false)
+	tree.set_open(true)
+	await _frames(10)
+	return was
+
+
+func _put_the_tree_back(was: Array) -> void:
+	var tree: Outliner = _shell.get("outliner")
+	tree.set_open(bool(was[0]))
+	SideDock.of(tree).set_open(bool(was[1]), false)
+	await _frames(10)
+
+
+## Worked out only when what it is made from changes, the tree and its
+## header still say each change within the half second it looks again in.
+func _the_tree_follows_the_model() -> void:
+	var tree: Outliner = _shell.get("outliner")
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var first: TreeItem = tree._tree.get_root().get_first_child()
+	var path: String = str(first.get_metadata(0)) if first != null else ""
+	var ids: PackedInt64Array = assemblies.ids_under(path) if not path.is_empty() \
+		else PackedInt64Array()
+	_check("the open tree lists Orthanc's sub-models (%s first, %d parts)" % [path, ids.size()],
+		not ids.is_empty())
+	if ids.is_empty():
+		return
+	_select_only(ids)
+	_verbs.hide_selection()
+	await _looked_again()
+	_check("hiding %s's parts by the key, its row says hidden" % path,
+		_row_says(path, EYE_WORDS) == "Show it")
+	_verbs.show_all()
+	await _looked_again()
+	_check("...and shown again, shown", _row_says(path, EYE_WORDS) == "Hide it")
+	_select_only(ids)
+	_builder.lock_selection(true)
+	await _looked_again()
+	_check("locking them, its row says locked", _row_says(path, LOCK_WORDS) == "Unlock it")
+	_builder.unlock_all()
+	await _looked_again()
+	_check("...and unlocked, unlocked", _row_says(path, LOCK_WORDS) == "Lock it")
+	# A part taken off and put back, said by the open tree's whole-model
+	# row and by the folded tree's header.
+	for open: bool in [true, false]:
+		tree.set_open(open)
+		await _frames(2)
+		var before: String = _tree_count(open)
+		_select_only(PackedInt64Array([ids[0]]))
+		_builder.remove_selection()
+		await _looked_again()
+		var gone: String = _tree_count(open)
+		_builder.undo()
+		await _looked_again()
+		var back: String = _tree_count(open)
+		_check("%s says a part taken off (%s, then %s) and put back (%s)"
+			% ["the open tree" if open else "the folded tree's header", before, gone, back],
+			gone != before and back == before)
+	tree.set_open(true)
+
+
+func _tree_count(open: bool) -> String:
+	var tree: Outliner = _shell.get("outliner")
+	return tree._tree.get_root().get_text(1) if open else tree._count.text
+
+
+const EYE_WORDS := 0
+const LOCK_WORDS := 1
+
+
+func _select_only(ids: PackedInt64Array) -> void:
+	_verbs.select_found(Array(ids))
+
+
+## The world redrawn, and the tree's look again, half a second on.
+func _looked_again() -> void:
+	await _settled()
+	await create_timer(0.6).timeout
+	await _frames(3)
+
+
+## A row's eye or lock, by the words its tooltip says.
+func _row_says(path: String, button: int) -> String:
+	var tree: Outliner = _shell.get("outliner")
+	var row: TreeItem = tree._find(tree._tree.get_root(), path)
+	if row == null or row.get_button_count(1) <= button:
+		return ""
+	return row.get_button_tooltip_text(1, button)
 
 
 # -- reading the world --------------------------------------------------------

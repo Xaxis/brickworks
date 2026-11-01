@@ -1169,7 +1169,14 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   row selects its parts, a double-click edits inside it, `F2` renames it in
   place, its eye and lock hide and lock it whole, and dragging a row onto
   another nests it there (onto Model, back to the top). Folded or open as it
-  was left (`outliner_open`). Probe: `assembly_probe`.
+  was left (`outliner_open`). It looks again at every redraw of the world and
+  twice a second, and works itself out again only when what it is made from
+  has changed: the model's revision and undo history, how many parts are
+  hidden and locked, the sub-assembly being edited, what is broken out and
+  selected; folded, its header's count is the counts line's
+  (`Inventory.pieces_of_model`). Probe: `assembly_probe`; `see_inside_probe`
+  drags the cut up Orthanc with it folded and open, and has it say a
+  sub-model hidden and locked by the keys and a part taken off and put back.
 - `sections`: a model split as a builder builds it, one section at a time
   (`src/assembly/sections.gd`, `src/ui/sections_ui.gd`). Build, Suggest
   sections (or the model tree's Suggest sections) lists suggestions under
