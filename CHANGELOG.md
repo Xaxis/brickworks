@@ -17,7 +17,7 @@ whole cycle.
 
 A release for big models and touch screens. Replacing a part across a
 10,000-part model no longer stops the window: replacing all of one with a
-2 x 4 held a single frame for half a second or more in 0.13.0, and now its
+2 x 4 held a single frame for around half a second in 0.13.0, and now its
 longest frame is under a tenth of a second. Suggest sections on a model that
 size is a little quicker too. A design Claude finishes in the assistant's
 panel is framed whole, as Frame all frames it, where a tall one used to run
@@ -27,14 +27,14 @@ field, a tile's "+N" or any other control in a list scrolls the list.
 ### Changed
 
 - Replace on a big model keeps the window moving. On a 10,105-part model,
-  replacing every part with a 2 x 4 held one frame for 0.48 to 0.70 s in
-  0.13.0 on a Linux machine; in 0.14.0 its longest frame is 49 to 79 ms,
-  timed the same hour. Where each new part fits is worked out off the
-  window's thread, and work every edit did for nothing on a big model is
+  replacing every part with a 2 x 4 held one frame for 0.44 to 0.75 s in
+  0.13.0's Linux download; in 0.14.0's its longest frame is 51 to 84 ms, nine
+  tries each, timed the same hour. Where each new part fits is worked out off
+  the window's thread, and work every edit did for nothing on a big model is
   gone. The model it makes is the same, part for part.
-- Suggest sections on the same model is a little quicker: the best of three
-  tries took 2.0 to 2.6 s, where 0.13.0 took 2.5 to 2.9 s. It suggests the
-  same sections.
+- Suggest sections on the same model is usually a little quicker: in three
+  rounds of three tries, its best took 2.2, 2.9 and 2.0 s, where 0.13.0's
+  took 2.7, 2.8 and 2.7 s. It suggests the same sections.
 
 ### Fixed
 
