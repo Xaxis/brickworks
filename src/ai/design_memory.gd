@@ -48,6 +48,10 @@ static var _fetching: bool = false
 static var _kinds_of: Dictionary = {}
 static var _held_out: PackedStringArray = PackedStringArray()
 static var _held_read: bool = false
+static var _held_names: PackedStringArray = PackedStringArray()
+## The words of each held name (RealSnippets.words), as they are compared.
+static var _held_words: Array = []
+static var _names_read: bool = false
 
 
 static func document() -> Dictionary:
@@ -112,6 +116,52 @@ static func held_out_of(arguments: PackedStringArray) -> PackedStringArray:
 static func hold_out(subjects: PackedStringArray) -> void:
 	_held_read = true
 	_held_out = subjects
+
+
+## The names of the real sets under test, from --held-out-name=<a set's
+## name>, a flag each. A set of the same name under another number is the
+## same answer: 21004-1 is the Solomon R. Guggenheim Museum as much as
+## 21035-1 is.
+static func held_names() -> PackedStringArray:
+	if not _names_read:
+		_names_read = true
+		for argument: String in OS.get_cmdline_user_args():
+			if argument.begins_with("--held-out-name="):
+				hold_name(argument.trim_prefix("--held-out-name="))
+	return _held_names
+
+
+## Hold out a set's name too, as the flag would. For probes.
+static func hold_name(name: String) -> void:
+	_names_read = true
+	var said: PackedStringArray = RealSnippets.words(name)
+	if not said.is_empty():
+		_held_names.append(name.strip_edges())
+		_held_words.append(said)
+
+
+## Whether a real set is under test, by its number (7242-1, or 7242 as a
+## technique cites it) or its name: its facts stay out of every path that
+## hands a session a real set's (src/dev/holdout_probe.gd). A name is held
+## when its words are all a held name's, or a held name's all its: City
+## Street Sweeper and Street Sweeper, Guggenheim Museum and Solomon R.
+## Guggenheim Museum.
+static func holds(number: String, name: String = "") -> bool:
+	var base: String = number.strip_edges().get_slice("-", 0)
+	if not base.is_empty():
+		for id: String in held_out():
+			if id.get_slice("-", 0) == base:
+				return true
+	if held_names().is_empty():
+		return false
+	var said: PackedStringArray = RealSnippets.words(name)
+	if said.is_empty():
+		return false
+	for held: PackedStringArray in _held_words:
+		if Array(said).all(func(word: String) -> bool: return held.has(word)) \
+				or Array(held).all(func(word: String) -> bool: return said.has(word)):
+			return true
+	return false
 
 
 ## The query's words and their weights: each word, and the kinds of

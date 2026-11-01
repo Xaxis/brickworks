@@ -23,10 +23,18 @@ extends RefCounted
 
 
 ## Everything in the library; show_technique lists it by [constant GROUPS].
-## Not those in [constant WITHDRAWN].
+## Not those in [constant WITHDRAWN], nor one read off a set under test
+## (DesignMemory.holds): 3189-1's session was handed 3189's own fence.
 static func all() -> Array:
+	var cited: RegEx = null
+	if not (DesignMemory.held_out().is_empty() and DesignMemory.held_names().is_empty()):
+		cited = RegEx.create_from_string("built it in ([0-9]+) ([^:]+):")
 	return written().filter(func(one: Variant) -> bool:
-		return not WITHDRAWN.has(str((one as Dictionary)["name"])))
+		if WITHDRAWN.has(str((one as Dictionary)["name"])):
+			return false
+		var found: RegExMatch = cited.search(str((one as Dictionary).get("why", ""))) \
+			if cited != null else null
+		return found == null or not DesignMemory.holds(found.get_string(1), found.get_string(2)))
 
 
 ## Constructions written here that do not build as written by the parts'

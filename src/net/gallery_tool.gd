@@ -191,7 +191,7 @@ func _catalogue_sets(words: String) -> PackedStringArray:
 	var lines := PackedStringArray()
 	for card: Variant in (body as Dictionary)["models"]:
 		var set: Variant = (card as Dictionary).get("library") if card is Dictionary else null
-		if not set is Dictionary or bool((set as Dictionary).get("model3d", false)):
+		if not set is Dictionary or bool((set as Dictionary).get("model3d", false)) or _held(card):
 			continue
 		var number: String = str((set as Dictionary).get("set", ""))
 		lines.append("- %s %s — %s parts, %s, %d: no 3D model; its parts: %s/library/set/%s" % [number,
@@ -225,7 +225,8 @@ func _shelves() -> String:
 	var front: Dictionary = body
 	var lines := PackedStringArray(["The gallery's front at %s:" % Deployment.api_base()])
 	var pick: Variant = front.get("pick")
-	if pick is Dictionary and (pick as Dictionary).get("model") is Dictionary:
+	if pick is Dictionary and (pick as Dictionary).get("model") is Dictionary \
+			and not _held((pick as Dictionary)["model"]):
 		var picked: Dictionary = pick
 		var week: Dictionary = picked["week"] if picked.get("week") is Dictionary else {}
 		var why := PackedStringArray()
@@ -244,14 +245,14 @@ func _shelves() -> String:
 	lines.append("Small builds (%s), Top builds first:%s" % [str(small.get("label", "under 200 parts")),
 		"" if not shelf.is_empty() else " none yet."])
 	for one: Variant in shelf:
-		if one is Dictionary:
+		if one is Dictionary and not _held(one):
 			lines.append("- " + _line(one))
 	if front.get("ready") is Dictionary:
 		var ready: Array = (front["ready"] as Dictionary).get("models", [])
 		lines.append("You can build now, every piece in your collection:%s" % ("" if not ready.is_empty()
 			else " nothing yet."))
 		for one: Variant in ready:
-			if one is Dictionary:
+			if one is Dictionary and not _held(one):
 				lines.append("- " + _line(one))
 	elif token.is_empty():
 		lines.append("Signed in with a collection, the person is told what they can build now.")
@@ -294,7 +295,7 @@ func _designer(handle: String) -> String:
 	var models: Array = person["models"] if person.get("models") is Array else []
 	lines.append("Their models, Top builds first:%s" % ("" if not models.is_empty() else " none listed."))
 	for one: Variant in models.slice(0, 12):
-		if one is Dictionary:
+		if one is Dictionary and not _held(one):
 			lines.append("- " + _line(one) + (" · %s comments" % _count(int((one as Dictionary)["comments"]))
 				if (one as Dictionary).get("comments") != null else ""))
 	if models.size() > 12 or bool(person.get("more", false)):
@@ -346,7 +347,8 @@ func _search(input: Dictionary) -> String:
 	var body: Variant = _json(answer)
 	if int(answer["code"]) != 200 or not body is Dictionary:
 		return _trouble(answer, body)
-	var models: Array = (body as Dictionary).get("models", [])
+	var models: Array = ((body as Dictionary).get("models", []) as Array).filter(func(one: Variant) -> bool:
+		return not (one is Dictionary and _held(one)))
 	var heading: String = "The gallery at %s%s, %s, page %d" % [Deployment.api_base(),
 		"" if said.is_empty() else " (" + ", ".join(said) + ")", SORT_WORDS[sort], page]
 	if models.is_empty():
@@ -375,6 +377,8 @@ func _open(id: String, with_picture: bool) -> Variant:
 	if int(answer["code"]) != 200 or not body is Dictionary:
 		return _trouble(answer, body)
 	var shared: Dictionary = body
+	if _held(shared):
+		return "%s is a real set this run holds out: its set is the one a design is judged against." % id
 	var url: String = str(shared.get("url", "%s/m/%s" % [Deployment.api_base(), id]))
 	var author: String = str(shared["author"]) if shared.get("author") is String else ""
 	var credit: String = author if not author.is_empty() else "its builder"
@@ -542,6 +546,18 @@ static func motions_words(motions: Motions) -> String:
 
 ## One model of a list: "name (id) — 93 parts, by X · licence · counts ·
 ## built 3 times · moves: steering · Tested".
+## Whether [param model], a card of the site's, is a real set under test
+## (DesignMemory.holds): a set of the library or the catalogue by its number
+## and name, a copy of LDraw's model of one shared in the gallery
+## (modelled_by) by its name. A builder's own design of the subject is
+## theirs, not the set's, and stays.
+static func _held(model: Dictionary) -> bool:
+	var set: Dictionary = model["library"] if model.get("library") is Dictionary else {}
+	if set.is_empty() and not model.get("modelled_by") is Dictionary:
+		return false
+	return DesignMemory.holds(str(set.get("set", "")), str(model.get("name", "")))
+
+
 static func _line(model: Dictionary) -> String:
 	var facts := PackedStringArray(["%s parts" % _count(int(model.get("parts", 0)))])
 	# Somebody else's model its sharer put in the gallery (the shelf from
