@@ -376,18 +376,21 @@ func _run() -> void:
 		crowd.sections[named] = Assistant.Section.from_dict({
 			"name": named, "x": 4.0 + float(pylon) * 8.0, "y": 30.0,
 			"z": 0.0, "axis": "z", "degrees": 40.0})
-	var began: float = Time.get_unix_time_from_system()
+	# The app's own time, less the main thread's wait for a CPU, the bar
+	# three times as long at a load past the box's cores (ProbeTime).
+	var span := ProbeTime.Span.new()
 	var crowded: Dictionary = _assistant._check(crowd)
-	var took: float = Time.get_unix_time_from_system() - began
+	span.end()
+	var took: float = span.own / 1000.0
 	_check("four of them are all reported, %s" % str(crowded["summary"]),
 		not bool(crowded["ok"]))
-	if took < 30.0:
-		print("  ok    ...and it took %.1f s, against the 182 it used to "
-			% took + "and the 180 the relay waits")
+	if took < 30.0 * span.slack():
+		print("  ok    ...and it took %.1f s of its own, under %.0f, against the 182 it used to "
+			% [took, 30.0 * span.slack()] + "and the 180 the relay waits (%s)" % span.said())
 	else:
 		_failures += 1
-		print("  FAIL  it took %.0f s — the relay gives up at 180, so a "
-			% took + "design gets no answer at all")
+		print("  FAIL  it took %.0f s of its own — the relay gives up at 180, so a "
+			% took + "design gets no answer at all (%s)" % span.said())
 
 	print("")
 	print("  and the rule is stated, not left to be found by experiment")

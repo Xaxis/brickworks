@@ -182,13 +182,22 @@ async function where(name, tries = 600) {
     const at = await page.evaluate((key) => (window.brickworksControls || {})[key], name);
     if (at) return at;
     // In a laptop's window the assistant's column starts folded.
-    if (n === 6) await openColumnFor(page, name);
+    if (n % 10 === 6) await openColumnFor(page, name);
     await page.waitForTimeout(500);
   }
   return null;
 }
+// Clicked where it stands still. Account's Done re-lays the assistant's
+// panel out a frame or more later, and a click read before that went where
+// Connect Claude had been, 136 px below it: rel-m233's preview, no tab opened.
 async function click(name) {
-  const at = await where(name);
+  let at = await where(name);
+  for (let n = 0; at && n < 20; n++) {
+    await page.waitForTimeout(250);
+    const again = await page.evaluate((key) => (window.brickworksControls || {})[key], name);
+    if (again && again.x === at.x && again.y === at.y) break;
+    at = again || (await where(name));
+  }
   if (!at) {
     await page.screenshot({ path: `${out}/never_showed_${name}.png` }).catch(() => {});
     throw new Error(`the app never showed "${name}"; see ${out}/never_showed_${name}.png`);
@@ -444,6 +453,7 @@ try {
   const offered = context.waitForEvent("page", { timeout: 30000 });
   await click("connect_claude");
   const panelTab = await offered.catch(() => null);
+  if (!panelTab) await shot("never_opened_panel_connect");
   await panelTab?.waitForLoadState("domcontentloaded").catch(() => {});
   check(panelTab?.url() === LINK, `...and the assistant's panel's Connect Claude the same: ${panelTab?.url()}`);
   await panelTab?.close();

@@ -22,7 +22,7 @@
 ##
 ## Each time is the app's own: less what the main thread waited for a CPU
 ## it was ready to run on, and the bars three times as long at a load past
-## the box's cores, where the work itself slows (step_edit_cost's way). At
+## the box's cores, where the work itself slows (ProbeTime). At
 ## load 45 to 49 the castle's cover took 8.4 to 14.4 s and a frame 689 ms
 ## on main without booklet3, and held rel-m230 twice; at load 16, 4.4 s
 ## and 170 ms with it (2026-10-31).
@@ -102,24 +102,13 @@ func _run() -> void:
 	dialog.current_file = path.get_file()
 	await _frames(2)
 	_bar.say("")
-	# Each frame from the press on, the longest of them the app's own stall:
-	# [its own us, the last frame's end, when, the wait by then, its wait us].
-	var load_at_press: float = _load()
-	var longest: Array = [0, Time.get_ticks_usec(), 0.0, _waited_ms(), 0]
-	var watch := func() -> void:
-		var now: int = Time.get_ticks_usec()
-		var waited: float = _waited_ms()
-		var queued_us: int = int((waited - float(longest[3])) * 1000.0)
-		if now - int(longest[1]) - queued_us > int(longest[0]):
-			longest[0] = now - int(longest[1]) - queued_us
-			longest[2] = (Time.get_ticks_msec() - _pressed) / 1000.0
-			longest[4] = queued_us
-		longest[1] = now
-		longest[3] = waited
-		_poll()
-	process_frame.connect(watch)
+	# Each frame from the press on, the longest of them the app's own stall.
+	var frames := ProbeTime.Frames.new()
+	root.add_child(frames)
+	process_frame.connect(_poll)
 	_pressed = Time.get_ticks_msec()
-	_queued = _waited_ms()
+	var pressed_us: int = Time.get_ticks_usec()
+	_queued = ProbeTime.waited_ms()
 	dialog.get_ok_button().pressed.emit()
 	var said: String = ""
 	until = Time.get_ticks_msec() + 600000
@@ -131,24 +120,27 @@ func _run() -> void:
 				or said.begins_with("nothing"):
 			break
 	var whole_at: float = (Time.get_ticks_msec() - _pressed) / 1000.0
-	var stall: float = int(longest[0]) / 1000000.0
+	# [its own ms, its ms, the wait in it, its end in usec]
+	var longest: Array = ProbeTime.longest(frames.gaps)
+	var stall: float = float(longest[0]) / 1000.0
 	# The rest of what was sent, read.
 	until = Time.get_ticks_msec() + 30000
 	while _reader != null and Time.get_ticks_msec() < until:
 		await process_frame
-	process_frame.disconnect(watch)
+	process_frame.disconnect(_poll)
+	frames.queue_free()
 
 	var cover: float = float(_seen.get("page-1", -1.0))
 	var steps: float = float(_seen.get("page-2", -1.0))
 	var cover_queued: float = float(_seen_queued.get("page-1", 0.0)) / 1000.0
-	var cores: int = OS.get_processor_count()
-	var busy: float = maxf(load_at_press, _load())
-	var slack: float = 3.0 if busy > cores else 1.0
+	var busy: float = maxf(frames.busy, ProbeTime.box_load())
+	var slack: float = ProbeTime.slack(busy)
 	print("  from Save: the cover at %.1f s, the first page of steps at %.1f s, " % [cover, steps]
 		+ "the whole booklet at %.1f s; the longest frame %.0f ms, at %.1f s"
-		% [whole_at, stall * 1000.0 + int(longest[4]) / 1000.0, float(longest[2])])
-	print("  the app's own: the cover %.1f s (%.1f s waiting for a CPU), the longest frame %.0f ms; load %.0f of %d cores"
-		% [cover - cover_queued, cover_queued, stall * 1000.0, busy, cores])
+		% [whole_at, float(longest[1]), (int(longest[3]) - pressed_us) / 1e6])
+	print("  the app's own: the cover %.1f s (%.1f s waiting for a CPU), the longest frame %.0f ms (%.0f waiting); %s"
+		% [cover - cover_queued, cover_queued, stall * 1000.0, float(longest[2]),
+			ProbeTime.load_said(busy)])
 	# It names the PDF it saved beside the page when there is one (main._open_booklet).
 	_check("the status bar says the booklet is open in the browser (%s)" % said,
 		said.begins_with("the booklet is open in your browser")
@@ -211,27 +203,12 @@ func _poll() -> void:
 		for page: String in ["page-1", "page-2"]:
 			if not _seen.has(page) and text.contains("id=\"%s\"" % page):
 				_seen[page] = (Time.get_ticks_msec() - _pressed) / 1000.0
-				_seen_queued[page] = _waited_ms() - _queued
+				_seen_queued[page] = ProbeTime.waited_ms() - _queued
 	if status == StreamPeerTCP.STATUS_NONE or status == StreamPeerTCP.STATUS_ERROR:
 		# The headers off the front: the body is the file.
 		var at: int = _header_end(_read)
 		_read = _read.slice(at) if at > 0 else _read
 		_reader = null
-
-
-## How long the main thread has waited for a CPU, in ms (freeze_probe's).
-static func _waited_ms() -> float:
-	var stat: FileAccess = FileAccess.open("/proc/self/schedstat", FileAccess.READ)
-	if stat == null:
-		return 0.0
-	var fields: PackedStringArray = stat.get_line().split(" ", false)
-	return fields[1].to_float() / 1e6 if fields.size() > 1 else 0.0
-
-
-## The box's load over the last minute, which every time here moves with.
-static func _load() -> float:
-	var load: FileAccess = FileAccess.open("/proc/loadavg", FileAccess.READ)
-	return load.get_line().get_slice(" ", 0).to_float() if load != null else 0.0
 
 
 static func _header_end(bytes: PackedByteArray) -> int:

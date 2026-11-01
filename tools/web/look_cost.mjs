@@ -389,7 +389,7 @@ async function where(page, name, seconds = 120) {
   for (let n = 0; n < seconds * 2; n++) {
     const at = (await page.evaluate(() => window.brickworksControls || {}))[name];
     if (at) return at;
-    if (n === 2) await openColumnFor(page, name);
+    if (n % 10 === 2) await openColumnFor(page, name);
     await page.waitForTimeout(500);
   }
   throw new Error(`the app never showed "${name}"`);

@@ -190,6 +190,53 @@ func fit_panel(panel: Control, across: float = -1.0) -> void:
 		_wrap_words(panel, width)
 		_flow_rows(panel, width)
 		_fit_pictures(panel, width)
+		_fit_least(panel, width)
+
+
+## Nothing in [param root] held wider than [param across] by a least width
+## it was given for more room: the room shrinks under a panel already sized
+## when Settings, Interface size makes the window's units fewer. The
+## assistant's drawer, 230 units across on a phone at 150%, was held 360
+## wide by its panel's own 340 and its link to the Console's 332, its key
+## field and Connect run off the screen (app_a11y, uifix). What scrolls
+## sideways keeps its width, which is why it scrolls.
+static func _fit_least(root: Control, across: float) -> void:
+	var all: Array[Node] = root.find_children("*", "Control", true, false)
+	all.append(root)
+	for found: Node in all:
+		var control: Control = found
+		if _scrolls_across(control, root):
+			continue
+		if control.custom_minimum_size.x > across:
+			control.custom_minimum_size.x = across
+		_trim_words(control, across)
+
+
+## Whether [param control] is in something under [param root] that scrolls
+## sideways.
+static func _scrolls_across(control: Control, root: Control) -> bool:
+	var up: Node = control.get_parent()
+	while up != null and up != root:
+		var scroll := up as ScrollContainer
+		if scroll != null and scroll.horizontal_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+			return true
+		up = up.get_parent()
+	return false
+
+
+## A button's or a link's words too long for [param across] end in an
+## ellipsis there: a parts list's rows ran 175 points off a phone, and a
+## link has no second line to wrap onto.
+static func _trim_words(control: Control, across: float) -> void:
+	var button := control as Button
+	if button != null and not button.clip_text and button.get_minimum_size().x > across:
+		button.clip_text = true
+		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	var link := control as LinkButton
+	if link != null and link.text_overrun_behavior == TextServer.OVERRUN_NO_TRIMMING \
+			and link.get_minimum_size().x > across:
+		link.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		link.size_flags_horizontal = Control.SIZE_FILL
 
 
 ## Every picture in [param root] wider than [param across] made as wide as
@@ -395,12 +442,9 @@ func _size_one(control: Control, k: float, widest: float) -> void:
 		was[&"sep"] = [sep_was, sep]
 		if sep != spacing:
 			control.add_theme_constant_override("v_separation", sep)
-	# A button's words too long for the screen end in an ellipsis there: a
-	# parts list's rows ran 175 points off a phone.
-	var button := control as Button
-	if button != null and not button.clip_text and button.get_minimum_size().x > widest:
-		button.clip_text = true
-		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	# A button's words, or a link's, too long for the screen end in an
+	# ellipsis there.
+	_trim_words(control, widest)
 	# A line too long for the screen wraps there.
 	var label := control as Label
 	if label != null and label.autowrap_mode == TextServer.AUTOWRAP_OFF and not label.clip_text \

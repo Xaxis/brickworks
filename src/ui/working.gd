@@ -430,6 +430,15 @@ func _ready() -> void:
 	_refresh(true)
 
 
+## Back in the tree after a move (a phone's busy line, put over its foot's
+## row, Main._dress_for_phone): shown in again. Only _ready said so, and
+## the line moved never showed what the app was busy with again.
+func _enter_tree() -> void:
+	if is_node_ready():
+		shown_in = self
+		_refresh(true)
+
+
 func _exit_tree() -> void:
 	if shown_in == self:
 		shown_in = null

@@ -73,14 +73,15 @@ func _run() -> void:
 	print("")
 	print("  a part selected in the model, then Fits")
 	var within: int = 0
-	var slowest: float = 0.0
+	# The app's own time, less the main thread's wait for a CPU (ProbeTime).
+	var spans: Array = []
 	for pair: Array in PAIRS:
 		var part: String = pair[0]
 		var wanted: Array = pair[1]
-		var started: int = Time.get_ticks_usec()
+		var span := ProbeTime.Span.new()
 		bin.show_selection(PackedStringArray([part]), PackedInt32Array([4]))
-		var took: float = float(Time.get_ticks_usec() - started) / 1000.0
-		slowest = maxf(slowest, took)
+		var took: float = span.end().own
+		spans.append(span)
 		var tiles: PackedStringArray = bin.first_found(5)
 		var at: int = -1
 		for n: int in tiles.size():
@@ -94,10 +95,12 @@ func _run() -> void:
 			"  wanted one of %s" % ", ".join(PackedStringArray(wanted)), took])
 		bin.show_selection(PackedStringArray(), PackedInt32Array())
 	_failures += PAIRS.size() - within
+	var slowest: ProbeTime.Span = ProbeTime.slowest(spans)
 	print("  %d of %d pairs with a part that fits in the first five; the slowest answer %.0f ms"
-		% [within, PAIRS.size(), slowest])
-	_check("each answer under %d ms over %d parts (%.0f)" % [roundi(SLOW_MS), library.parts.size(),
-		slowest], slowest < SLOW_MS)
+		% [within, PAIRS.size(), slowest.ms])
+	var bar: float = SLOW_MS * ProbeTime.slack(ProbeTime.busiest(spans))
+	_check("each answer under %d ms of its own over %d parts (the slowest %s)" % [roundi(bar),
+		library.parts.size(), slowest.said()], slowest.own < bar)
 
 	print("")
 	print("  the status line, and what is typed")

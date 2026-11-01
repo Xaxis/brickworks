@@ -203,10 +203,15 @@ func _in_sight_first(bin: PartsBin) -> void:
 	_forget_pictures()
 	_thumbs.set_process(false)
 	bin._run_search("")
-	bin._show_more()
-	bin._show_more()
-	await _frames(8)
+	# Rows enough for a screenful in sight at row 40 and over 40 tiles far
+	# below it. Two pages more did that while a search showed 120 at once;
+	# since it shows 32 first (4575f20a) they ended at row 46, nothing was
+	# far below, and the check could not pass (desktop012, 2026-10-31).
 	var grid: GridContainer = bin.get("_grid")
+	while ceili(float(grid.get_child_count()) / grid.columns) < 80 \
+			and int(bin.get("_shown")) < (bin.get("_display") as Array).size():
+		bin._show_more()
+	await _frames(8)
 	var scroll: ScrollContainer = bin.get("_scroll")
 	var tiles: Array[ThumbTile] = _tiles_of(grid)
 	var row: float = (grid.get_child(0) as Control).size.y + grid.get_theme_constant("v_separation")

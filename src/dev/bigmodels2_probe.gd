@@ -149,28 +149,29 @@ func _stability(model: String) -> void:
 		_balance_said(again).left(120)], _balance_said(shown) == _balance_said(again))
 	_check("%s: ...the same verdict and risks (%s)" % [model, fresh.summary()],
 		_risks_said(weighed) == _risks_said(fresh))
-	# On a worker, the window drawing meanwhile.
-	var longest: Array = [0]
-	var last: Array = [Time.get_ticks_usec()]
-	var watch := func() -> void:
-		var now: int = Time.get_ticks_usec()
-		longest[0] = maxi(int(longest[0]), now - int(last[0]))
-		last[0] = now
-	process_frame.connect(watch)
+	# On a worker, the window drawing meanwhile: each frame's own time, less
+	# the main thread's wait for a CPU, its 250 ms three times as long at a
+	# load past the box's cores (ProbeTime).
+	var frames := ProbeTime.Frames.new()
+	root.add_child(frames)
 	var met: Array = [false]
 	var from: int = Time.get_ticks_msec()
-	last[0] = Time.get_ticks_usec()
 	var paced: Stability.Report = await stability.check_paced(_world, func() -> void:
 		met[0] = true)
 	var paced_ms: int = Time.get_ticks_msec() - from
-	process_frame.disconnect(watch)
-	_check("%s: on a worker it is what the window's own check is (%d ms, the longest frame %d ms)"
-		% [model, paced_ms, int(longest[0]) / 1000], paced != null and met[0]
+	# [its own ms, ms, the wait in it, ...]
+	var longest: Array = ProbeTime.longest(frames.gaps)
+	var busy: float = maxf(frames.busy, ProbeTime.box_load())
+	frames.queue_free()
+	_check("%s: on a worker it is what the window's own check is (%d ms, the longest frame %.0f ms of its own)"
+		% [model, paced_ms, float(longest[0])], paced != null and met[0]
 		and _risks_said(paced) == _risks_said(fresh)
 		and _balance_said(paced.balance) == _balance_said(fresh.balance))
 	if _world.brick_count() >= Stability.ON_A_WORKER_FROM:
-		_check("%s: ...and the window kept drawing: the longest frame %d ms of %d ms" % [model,
-			int(longest[0]) / 1000, paced_ms], int(longest[0]) / 1000 < maxi(paced_ms / 2, 250))
+		var most: float = maxf(paced_ms / 2.0, 250.0 * ProbeTime.slack(busy))
+		_check("%s: ...and the window kept drawing: the longest frame %.0f ms of its own (%.0f waiting for a CPU) of %d ms, under %.0f; %s"
+			% [model, float(longest[0]), float(longest[2]), paced_ms, most,
+				ProbeTime.load_said(busy)], float(longest[0]) < most)
 	for _n: int in 4:
 		_escape()
 		await _frames(2)

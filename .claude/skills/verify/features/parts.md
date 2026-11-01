@@ -428,9 +428,12 @@ geometry in front of them.
   `Look.OUTLINE` (the tick boxes' outline, #d4d9e2), inside its own box,
   so nothing moves; the engine's fill alone, black at 60% on the dark
   face, was 1.0:1, and "Start a session", Cancel and Join read as words.
-  A question's default (a ConfirmationDialog's or FileDialog's OK) is
+  A dialog's default (any AcceptDialog's OK with a choice beside it: a
+  question's, a FileDialog's, and a plain dialog's with a button added by
+  its OK, as Reference picture's Done, Send feedback's Send and Pattern's
+  Put them down, 1.2 to 1.7:1 as their Cancel was until uifix) is
   `DefaultButton`, a type variation of Button in `Look.STRONG` with white
-  words, told apart from the rest; Render's strong button is the same
+  words, told apart from the rest; a lone OK is not marked; Render's strong button is the same
   blue (its words were 3.4:1). A chosen tab or segment is `Look.CHOSEN`
   (the accent at 65%; at 38% it was 2.0:1). The panels' own faint edges
   (the model bar's, the toolbar's choosers, the library's and

@@ -35,7 +35,9 @@
 ##
 ## And how long the bin takes to answer a first keystroke: one letter or digit,
 ## over the whole catalogue, the results and the tiles that show them; the
-## 50 ms meant is said, and the probe fails past 150 (KEYSTROKE_GUARD_MS).
+## 50 ms meant is said, and the probe fails past 150 (KEYSTROKE_GUARD_MS):
+## the app's own time, less the main thread's wait for a CPU, three times
+## the bar at a load past the box's cores (ProbeTime).
 ##
 ## `-- quality` or `-- time` runs one half.
 extends SceneTree
@@ -386,13 +388,17 @@ func _time(library: PartLibrary, bin: PartsBin) -> void:
 			await process_frame
 			frames += 1
 	var ready: float = float(Time.get_ticks_usec() - shown) / 1000.0
-	var started: int = Time.get_ticks_usec()
+	# Each the app's own, less the main thread's wait for a CPU; the
+	# slowest's said with its wait and the load.
+	var span := ProbeTime.Span.new()
 	cold_bin._run_search("d")
-	var cold: float = float(Time.get_ticks_usec() - started) / 1000.0
+	var cold: float = span.end().own
+	var spans: Array = [span]
 	# The first element number typed: elements.json is read once, with the index.
-	started = Time.get_ticks_usec()
+	span = ProbeTime.Span.new()
 	cold_bin._run_search("4142135")
-	var element: float = float(Time.get_ticks_usec() - started) / 1000.0
+	var element: float = span.end().own
+	spans.append(span)
 	cold_bin.queue_free()
 
 	var times: Array[float] = []
@@ -400,9 +406,10 @@ func _time(library: PartLibrary, bin: PartsBin) -> void:
 	var worst: float = 0.0
 	for key: String in ["a", "b", "c", "d", "g", "h", "p", "r", "s", "t", "w", "1", "2", "3", "6"]:
 		bin._run_search("")
-		var at: int = Time.get_ticks_usec()
+		span = ProbeTime.Span.new()
 		bin._run_search(key)
-		var took: float = float(Time.get_ticks_usec() - at) / 1000.0
+		var took: float = span.end().own
+		spans.append(span)
 		times.append(took)
 		if took > worst:
 			worst = took
@@ -420,22 +427,18 @@ func _time(library: PartLibrary, bin: PartsBin) -> void:
 	print("  whole queries: %s ms" % ", ".join(whole.map(func(ms: float) -> String:
 		return "%.1f" % ms)))
 	print("  the session's first element number: %.1f ms (elements.json is read with the index)" % element)
-	var slowest_ms: float = maxf(maxf(worst, cold), element)
-	if slowest_ms > KEYSTROKE_GUARD_MS:
+	var slowest_span: ProbeTime.Span = ProbeTime.slowest(spans)
+	var slowest_ms: float = slowest_span.own
+	var guard: float = KEYSTROKE_GUARD_MS * ProbeTime.slack(ProbeTime.busiest(spans))
+	if slowest_ms > guard:
 		_failures += 1
-		print("  FAIL  a first keystroke takes %.1f ms, over %d" % [slowest_ms,
-			roundi(KEYSTROKE_GUARD_MS)])
+		print("  FAIL  a first keystroke takes %s, over %d" % [slowest_span.said(), roundi(guard)])
 	elif slowest_ms > KEYSTROKE_MS:
-		print("  --    the slowest first keystroke, %.1f ms, is over the %d ms meant on a quiet desktop (load %s)"
-			% [slowest_ms, roundi(KEYSTROKE_MS), _load()])
-
-
-## The box's load over the last minute, which every timing here moves with.
-static func _load() -> String:
-	# /proc says its files are empty, so read a line rather than the length.
-	var file: FileAccess = FileAccess.open("/proc/loadavg", FileAccess.READ)
-	var text: String = file.get_line() if file != null else ""
-	return text.get_slice(" ", 0) if not text.is_empty() else "unknown"
+		print("  --    the slowest first keystroke, %s, is over the %d ms meant on a quiet desktop"
+			% [slowest_span.said(), roundi(KEYSTROKE_MS)])
+	else:
+		print("  ok    the slowest first keystroke %s, under %d (%d meant)"
+			% [slowest_span.said(), roundi(guard), roundi(KEYSTROKE_MS)])
 
 
 static func _any(wanted: Array, found: PackedStringArray) -> bool:

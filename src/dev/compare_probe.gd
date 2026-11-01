@@ -394,16 +394,19 @@ func _five_thousand() -> void:
 	for n: int in 3:
 		_world.add_brick("3005", 14, Transform3D(Basis.IDENTITY, Vector3(n * 40.0, 48.0, 0.0)))
 	await _frames(4)
+	# Of the app's own time, less the main thread's wait for a CPU, the bar
+	# three times as long at a load past the box's cores (ProbeTime).
 	var began: int = Time.get_ticks_usec()
+	var span := ProbeTime.Span.new()
 	_compare.open_with(_store.versions()[0])
-	var opened_ms: float = (Time.get_ticks_usec() - began) / 1000.0
+	var opened_ms: float = span.end().own
 	await process_frame
 	await RenderingServer.frame_post_draw
 	var drawn_ms: float = (Time.get_ticks_usec() - began) / 1000.0
 	print("    matched in %.0f ms, compared in %.0f ms, drawn %.0f ms after the press: %s" % [
 		_compare.diff.matched_ms, opened_ms, drawn_ms, _compare.diff.summary()])
-	_check("a 5,000-part model compares in under a second (%.0f ms)" % opened_ms,
-		opened_ms < 1000.0 and _compare.diff.counts() == {ModelDiff.ADDED: 3,
+	_check("a 5,000-part model compares in under %.0f s (%s)" % [span.slack(), span.said()],
+		opened_ms < 1000.0 * span.slack() and _compare.diff.counts() == {ModelDiff.ADDED: 3,
 			ModelDiff.REMOVED: 3, ModelDiff.MOVED: 4, ModelDiff.RECOLOURED: 0})
 	_compare.close()
 	await _frames(4)

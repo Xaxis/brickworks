@@ -103,6 +103,12 @@ func _ready() -> void:
 	_tree.button_clicked.connect(_on_button)
 	_tree.set_drag_forwarding(_drag_data, _can_drop, _drop)
 	column.add_child(_tree)
+	# A name typed over ends in item_edited; Esc ends it with nothing said,
+	# and the tree then stood as it was (refreshes held for the typing)
+	# until the next rename. Its editor going is heard as well.
+	for child: Node in _tree.get_children(true):
+		if child is Popup and not child is PopupMenu:
+			(child as Popup).popup_hide.connect(_rename_ended, CONNECT_DEFERRED)
 
 	var hint := Label.new()
 	_hint = hint
@@ -162,6 +168,8 @@ const STRIP: Array = [
 
 ## The tree's state but for the suggestion, when it was last drawn.
 var _shown_base: String = ""
+## What the tree was last worked out from (_refresh).
+var _made_from: Array = []
 var _strip: HFlowContainer
 var _buttons: Dictionary = {}
 var _hint: Label
@@ -278,17 +286,37 @@ func _process(_delta: float) -> void:
 ## worked out twice a second and at every change to the world whether it
 ## was open or not: on Orthanc 30 to 40 ms each time on a desktop and a
 ## browser's frame of a few hundred, the Timeline's first step among them.
+##
+## And neither is worked out again until what it is made from has changed.
+## The header's count is the counts line's, counted once a change; the
+## open tree waits on the model, its history, what is hidden and locked.
+## Worked out afresh at every redraw and twice a second, the count was 15
+## to 60 ms of every move of the cut on Orthanc, and the open tree 26 to 37
+## (seeinside, 2026-10-31).
 func _refresh(now: bool) -> void:
 	if _tree == null or _renaming:
 		return
 	if sections != null:
 		sections.sections.forget_if_stale()
+	var builder: Builder = shell.builder
 	if not _open or not is_visible_in_tree():
-		var total: int = Inventory.pieces_in(shell.world, shell.library, assemblies.scenery)
+		var total: int = Inventory.pieces_of_model(shell.world, shell.library,
+			assemblies.scenery, builder.history_depth())
 		_count.text = "%d part%s" % [total, "" if total == 1 else "s"]
 		_shown = ""
 		_shown_base = ""
+		_made_from = []
 		return
+	# Each hide, show, lock or unlock adds or takes away, so the counts say
+	# one happened; a sub-assembly made, renamed or taken apart is a step
+	# of the history, and says so itself (Assemblies.changed).
+	var made_from: Array = [shell.world.revision, builder.history_depth(),
+		builder.lattice.unseen.size(), builder.locked.size(), assemblies.scenery.size(),
+		assemblies.entered, shell.world.broken_out.size(), builder.selection.size(),
+		_suggested_state()]
+	if made_from == _made_from and not now:
+		return
+	_made_from = made_from
 	var root: Assemblies.Item = assemblies.tree()
 	var base: String = _state_of(root) + "|" + assemblies.entered \
 		+ "|" + str(shell.world.broken_out.size()) + "|" + str(shell.builder.selection.size())
@@ -388,8 +416,14 @@ func _collect_folded(item: TreeItem, into: Dictionary) -> void:
 func _fill(row: TreeItem, node: Assemblies.Item, folded: Dictionary) -> void:
 	var is_root: bool = node.path.is_empty()
 	var words: String = "Model" if is_root else Assemblies.label(node.path)
-	if not is_root and node.path == assemblies.entered:
-		words += "  (editing)"
+	if not is_root:
+		# A sub-model's name is its builder's, drawn as it is in any
+		# language: a sub-model named Car stays Car (Language), here and
+		# where a status line names it.
+		row.set_auto_translate_mode(0, Node.AUTO_TRANSLATE_MODE_DISABLED)
+		Language.keep_name(words)
+		if node.path == assemblies.entered:
+			words += "  " + atr("(editing)")
 	row.set_text(0, words)
 	row.set_metadata(0, node.path)
 	row.set_tooltip_text(0, ("The whole model: %d parts, %d loose" % [node.total, node.parts])
@@ -436,6 +470,14 @@ func _mark_selected() -> void:
 			if Array(made.ids).all(func(id: int) -> bool: return picked.has(id)):
 				row = _find(_tree.get_root(), SUGGESTION + str(made.number))
 				break
+	# The row chosen already is left as it is: chosen again, the tree puts
+	# away the name being typed into it. A double-click on a row not yet
+	# chosen opened its name on the second press, and this, run after the
+	# first press's selection, closed it: in a browser both presses come in
+	# one frame (sections on the web, uifix).
+	if row != null and row == _tree.get_selected() and row.is_selected(0):
+		_update_strip()
+		return
 	# Lit to match the view, which is not a person choosing the row: the
 	# row's own handler would select again, and round it went.
 	_marking = true
@@ -547,6 +589,16 @@ func _on_edited() -> void:
 	shell.verbs.edited.call()
 	shell.bar.say("called %s" % name)
 	_refresh(true)
+
+
+## The name's editor put away: by Enter, after item_edited has drawn the
+## tree again; by Esc, with the row as it was.
+func _rename_ended() -> void:
+	if _renaming:
+		_renaming = false
+		# Every row made again: the one typed in shows its name as typed.
+		_shown_base = ""
+		_refresh(true)
 
 
 ## Rename the selected row in place, as a second click on it does.

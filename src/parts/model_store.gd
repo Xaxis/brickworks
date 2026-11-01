@@ -168,7 +168,12 @@ const UNTITLED := "Untitled"
 ## or the title inside the file it came from. The autosave carries it.
 ## It wrote "Working model" instead, so the app reopened a model the owner
 ## had saved and named, and called it Untitled.
-var title: String = UNTITLED
+var title: String = UNTITLED:
+	set(value):
+		title = value
+		# A name, drawn as it is in any language ("opened Car"), but Untitled.
+		if value != UNTITLED:
+			Language.keep_name(value)
 ## The model on the baseplate is one that ships with the app, opened from
 ## there and not saved since. Its name is not the person's: Clear takes it
 ## away with the bricks (Main).

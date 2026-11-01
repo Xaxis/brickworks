@@ -392,6 +392,9 @@ stale() {
   local branch tree build n script
   echo $$ > "$SPEC/stale_pid"
   unset BOX_HEAVY_PRIORITY
+  # Its release's own: it takes the live database while its train runs,
+  # which every unit's battery leaves to the release (run).
+  export LIVE_DB_RELEASE=1
   branch=$(cat "$SPEC/branch")
   words checks checks
   echo "${checks[*]}" > "$RO/${TAG}_stale.asked"
@@ -412,6 +415,13 @@ run() {
   TAG=$1; SPEC=$RO/$TAG.train; W=$WT/$TAG
   cd "$R" || exit 1
   echo $$ > "$SPEC/pid"
+  # While it runs no unit's battery begins a check on the live database
+  # (preview_checks.sh): a unit's together run, taken while the release
+  # merged and probed, held rel-m233's oauth 33 minutes, and a lock cannot
+  # be taken back from a run already in it (2026-10-31). A file named for
+  # its pid says so; once the pid is gone the file says nothing.
+  LIVE_REL="$(git -C "$R" rev-parse --path-format=absolute --git-common-dir)/live-db.release"
+  mkdir -p "$LIVE_REL" && : > "$LIVE_REL/$$"
   local code out ship ended="" bad="" reshipping="" served made
   # Killed (kill -- -PID stops what it runs too, and the probes, which run
   # in a group of their own): no result would leave the release staged

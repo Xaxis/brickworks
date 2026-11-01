@@ -575,6 +575,7 @@ func _sets(ask: Dictionary) -> Dictionary:
 		for theme: String in ModelLibrary.themes(every):
 			_theme.add_item(theme)
 			_theme.set_item_metadata(_theme.item_count - 1, theme)
+			_theme.set_item_auto_translate_mode(_theme.item_count - 1, Node.AUTO_TRANSLATE_MODE_DISABLED)
 		for decade: String in ModelLibrary.decades(every):
 			_decade.add_item(decade)
 			_decade.set_item_metadata(_decade.item_count - 1, decade)
@@ -698,13 +699,18 @@ func _card(card: Dictionary, first: bool) -> Control:
 	cover.texture = _covers.get(str(card["picture"]))
 	cover.set_meta("picture", str(card["picture"]))
 	column.add_child(cover)
+	# A set's name and its theme are names, drawn as they are in any
+	# language (Language): a set named Car stays Car.
 	var named: Label = _label(str(card["name"]), 13, 1.0)
+	named.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	named.tooltip_text = str(card["name"])
 	named.mouse_filter = Control.MOUSE_FILTER_PASS
 	column.add_child(named)
 	column.add_child(_label(str(card["facts"]), 11, 0.6))
 	if not str(card["theme"]).is_empty():
-		column.add_child(_label(str(card["theme"]), 11, 0.5))
+		var theme: Label = _label(str(card["theme"]), 11, 0.5)
+		theme.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		column.add_child(theme)
 	column.add_child(_label(str(card["credit"]), 11, 0.6))
 	var go := Button.new()
 	go.text = "Open"

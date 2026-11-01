@@ -80,6 +80,10 @@ const MODEL_LEAST := 300.0
 ## A tablet's row button, across, and its name field.
 const WIDE_TOOL := 96.0
 const WIDE_NAME := 320.0
+## A phone's name field, across, and the least it gives way to: past that,
+## Redo leaves the top bar for More's Edit, where it is too.
+const NAME := 120.0
+const NAME_LEAST := 80.0
 const BACK := Color(0.11, 0.12, 0.14, 0.97)
 const LIT := Color(0.36, 0.6, 1.0, 0.38)
 
@@ -113,8 +117,9 @@ func _rebuild() -> void:
 	var k: float = Phone.per_point(get_viewport())
 	if absf(k - _k) < 0.01 * _k:
 		# The same points to the unit, as after Settings, Interface size,
-		# which scales the window and its units alike: only the row's share
+		# which scales the window and its units alike: only the bars' share
 		# of the width has changed.
+		_share_top()
 		_share_row()
 		return
 	if bin.get_parent() != null:
@@ -164,7 +169,7 @@ func _build() -> void:
 	top_row.add_child(_mark)
 	if _name.get_parent() != null:
 		_name.get_parent().remove_child(_name)
-	_name.custom_minimum_size = Vector2(p(WIDE_NAME if wide else 120.0), p(Phone.TARGET))
+	_name.custom_minimum_size = Vector2(p(WIDE_NAME if wide else NAME), p(Phone.TARGET))
 	_name.size_flags_horizontal = Control.SIZE_FILL if wide else Control.SIZE_EXPAND_FILL
 	_name.add_theme_font_size_override("font_size", ceili(p(16)))
 	_name.tooltip_text = ""
@@ -199,6 +204,7 @@ func _build() -> void:
 		button.pressed.connect(func() -> void: shell.run(what))
 		top_row.add_child(button)
 		_tool_buttons[what] = button
+	_share_top()
 
 	# Along the foot: one row.
 	_row = _bar_panel()
@@ -392,6 +398,32 @@ func _row_share() -> float:
 	return minf(p(Phone.TARGET), floorf(inside / TOOLS.size()))
 
 
+## The top bar inside the window at every interface size: the name as
+## wide as it is wanted where there is room, narrower where there is not,
+## and Redo in More alone once the name would be under [constant
+## NAME_LEAST]. At 150% a phone 390 points across is 260 of the app's, and
+## the bar wanted 294: Redo stood half off the screen (app_a11y, uifix).
+func _share_top() -> void:
+	var redo: Button = _tool_buttons.get("redo")
+	if _top == null or redo == null:
+		return
+	var row: HBoxContainer = _name.get_parent() as HBoxContainer
+	var gap: float = row.get_theme_constant("separation")
+	var inside: float = get_viewport().get_visible_rect().size.x - p(8) * 2.0
+	# Everything but the name, Redo shown, each with its gap before it.
+	var rest: float = 0.0
+	for child: Node in row.get_children():
+		var control: Control = child as Control
+		if control == _name or (not control.visible and control != redo):
+			continue
+		rest += control.get_combined_minimum_size().x + gap
+	var room: float = inside - rest
+	redo.visible = room >= p(NAME_LEAST)
+	if not redo.visible:
+		room += redo.get_combined_minimum_size().x + gap
+	_name.custom_minimum_size.x = minf(p(WIDE_NAME if wide else NAME), maxf(room, 0.0))
+
+
 ## Each its share, and its word under its picture where the word fits the
 ## share; where one does not, the row is pictures alone, each still said by
 ## its word (accessibility_name) and named in its tooltip. "Colo" and
@@ -465,19 +497,26 @@ func _toggle(sheet: Sheet, how: String) -> void:
 	sheet.open(how)
 
 
-## Whether the model tree's drawer put the parts panel away, for it to
-## come back as the drawer folds.
+## Whether the model tree's drawer or the tools' column put the parts panel
+## away, for it to come back as the last of them goes.
 var _parts_for_dock: bool = false
 
 
 ## The desktop's drawer down the left, with the model tree and the
-## properties in it (Shell._toggle_section): on a tablet it opened over the
-## parts panel, both on one side of the model. So it takes the panel's
-## place while it is open, and gives it back as it folds.
-func dock_toggled(open: bool) -> void:
+## properties in it (Shell._toggle_section), and the tools' column (Main
+## ._tool_column_shown): on a tablet the parts panel opened over them, all
+## on one side of the model. Colour the hidden parts, opened from More with
+## the parts out, had its Close under the panel's Done, which a finger
+## meaning Close pressed (dialogs_1024, uifix). So either takes the panel's
+## place while it is open, and gives it back as the last of them goes, as
+## the desktop's column folds the parts for the tools' panels.
+func dock_toggled(_open: bool = false) -> void:
 	if not wide or _parts == null:
 		return
-	if not open:
+	var dock: SideDock = app.get("_bin_dock")
+	var tools: Control = app.get("_tool_column")
+	var docked: bool = dock != null and dock.is_open()
+	if not docked and not (tools != null and tools.visible):
 		if _parts_for_dock:
 			_parts_for_dock = false
 			_make_room(_parts)
@@ -486,9 +525,10 @@ func dock_toggled(open: bool) -> void:
 	if _parts.is_open():
 		_parts_for_dock = true
 		_parts.close(false)
+	if not docked:
+		return
 	# And a panel on the right, where the drawer and it would leave the
 	# model too little between them, as two panels do (_make_room).
-	var dock: SideDock = app.get("_bin_dock")
 	for sheet: Sheet in _sheets:
 		if sheet.is_open() and sheet.edge == "right" and dock != null \
 				and get_viewport().get_visible_rect().size.x - sheet.size.x - dock.open_width() < p(MODEL_LEAST):
@@ -553,6 +593,7 @@ func _show_tools() -> void:
 		return
 	if _assistant != null and _assistant.visible != shell.assistant_shown:
 		_assistant.visible = shell.assistant_shown
+		_share_top()
 	var holding: bool = verbs.shows_ghost() or builder.is_carrying()
 	var selected: bool = not builder.selection.is_empty()
 	_lit("select", verbs.mode == "select" and not holding)
@@ -652,6 +693,10 @@ func _lay_pill() -> void:
 	var steps: Control = app.get("_steps")
 	if steps != null and steps.is_visible_in_tree():
 		at.y = minf(at.y, steps.get_global_rect().position.y - size_now.y - p(6))
+	# Above the busy line too, which stands over the foot's row (Main
+	# ._dress_for_phone).
+	if shell != null and shell.status.is_visible_in_tree():
+		at.y = minf(at.y, shell.status.get_global_rect().position.y - size_now.y - p(6))
 	# Above the tools' sheet under the model too: over it, it hid the
 	# sheet's last lines (Main._place_tool_column).
 	if tools_open and bool(app.get("_tool_sheet")):
@@ -681,12 +726,21 @@ func _lay_pill() -> void:
 func _lay_beside(free: Rect2) -> void:
 	var notices: Control = app.get("_notices")
 	if notices != null:
+		# Kept from the room's edges where the strip runs past them: in from
+		# its own edges, not the window's. The tools' column beside the model
+		# was taken off the strip's left twice, once by where the strip
+		# starts and again by its margin, and the strip held the layout 28
+		# units past a 1024-point tablet's edge, the browser's warning's
+		# Download my models and Got it and the busy line's Cancel with it
+		# (dialogs_1024, uifix).
 		var face: StyleBoxFlat = notices.get_theme_stylebox("panel") as StyleBoxFlat
-		var room: float = get_viewport().get_visible_rect().size.x
-		if face != null and (face.content_margin_left != free.position.x
-				or face.content_margin_right != room - free.end.x):
-			face.content_margin_left = free.position.x
-			face.content_margin_right = room - free.end.x
+		var strip: Rect2 = notices.get_global_rect()
+		var left: float = maxf(free.position.x - strip.position.x, 0.0)
+		var right: float = maxf(minf(strip.end.x, get_viewport().get_visible_rect().size.x)
+			- free.end.x, 0.0)
+		if face != null and (face.content_margin_left != left or face.content_margin_right != right):
+			face.content_margin_left = left
+			face.content_margin_right = right
 	var fit_at := Vector2(free.end.x - p(12 + 48), _fit_top())
 	if _fit.position != fit_at:
 		_fit.position = fit_at

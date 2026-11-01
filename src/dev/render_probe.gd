@@ -536,20 +536,27 @@ func _first_open(method: String) -> void:
 		await process_frame
 
 
-## Render pressed, and every frame timed until its draft is shown.
+## Render pressed, and every frame timed until its draft is shown: each
+## frame's own time, less the main thread's wait for a CPU, the budget three
+## times as long at a load past the box's cores (ProbeTime).
 func _timed_open(label: String, budget: float, method: String) -> void:
 	var shell: Shell = _main.get("_shell")
 	var dialog: RenderDialog = _main.get("_render")
+	var busy: float = ProbeTime.box_load()
 	var pressed: int = Time.get_ticks_usec()
 	var last: int = pressed
+	var last_waited: float = ProbeTime.waited_ms()
 	var frames: Array = []
 	shell.run("render")
 	var drafted: bool = false
 	while Time.get_ticks_usec() - pressed < 120_000_000:
 		await process_frame
 		var now: int = Time.get_ticks_usec()
-		frames.append([float(last - pressed) / 1000.0, float(now - last) / 1000.0])
+		var waited: float = ProbeTime.waited_ms()
+		frames.append([float(last - pressed) / 1000.0, float(now - last) / 1000.0 - (waited - last_waited),
+			waited - last_waited])
 		last = now
+		last_waited = waited
 		if dialog.get("_working") == "" and (dialog.get("_preview") as TextureRect).texture != null \
 				and "Render draws" in (dialog.get("_status") as Label).text:
 			drafted = true
@@ -562,8 +569,11 @@ func _timed_open(label: String, budget: float, method: String) -> void:
 	for frame: Array in longest.slice(0, 6):
 		print("    %6.0f ms at %6.0f ms" % [frame[1], frame[0]])
 	var worst: float = longest[0][1] if not longest.is_empty() else 0.0
-	_say("%s: no frame over %.0f ms on %s (the longest %.0f ms)" % [label, budget, method, worst],
-		worst <= budget)
+	var waited_in: float = longest[0][2] if not longest.is_empty() else 0.0
+	busy = maxf(busy, ProbeTime.box_load())
+	var most: float = budget * ProbeTime.slack(busy)
+	_say("%s: no frame over %.0f ms of its own on %s (the longest %.0f ms, %.0f waiting for a CPU; %s)"
+		% [label, most, method, worst, waited_in, ProbeTime.load_said(busy)], worst <= most)
 
 
 func _until_done(dialog: RenderDialog) -> void:

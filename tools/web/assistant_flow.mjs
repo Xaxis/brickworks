@@ -142,7 +142,7 @@ async function click(name) {
       return;
     }
     // In a laptop's window the assistant's column starts folded.
-    if (tries === 6) await openColumnFor(page, name);
+    if (tries % 10 === 6) await openColumnFor(page, name);
     await page.waitForTimeout(500);
   }
   // What the page was showing instead, for whoever reads the failure.
