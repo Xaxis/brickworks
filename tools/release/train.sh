@@ -326,7 +326,8 @@ retire() {
 # One probe in the release's tree, its log and "exit FAILs" in release-out.
 probe_one() {
   local log="$RO/${TAG}_probe_$1.log" code
-  (cd "$W" && bash tools/probe.sh "$1") > "$log" 2>&1
+  # As tools/suite lists it: open_menu_reach run bare held rel-m234.
+  (cd "$W" && PROBE_LISTED=1 bash tools/probe.sh "$1") > "$log" 2>&1
   code=$?
   echo "$code $(grep -cE '^\s*FAIL' "$log")" > "$RO/${TAG}_probe_$1.exit"
 }

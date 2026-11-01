@@ -1,41 +1,52 @@
-"""tools/release/run_probes.sh: a release's probes run as the suite lists them."""
+"""A release's probes run as tools/suite lists them (tools/probe.sh PROBE_LISTED)."""
+import os
 import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_a_bare_name_runs_with_the_arguments_its_suite_line_gives(tmp_path):
-    """rel-m234 named open_menu_reach, which the suite runs with --phone: run bare, it laid
-    the desktop out in a phone's window and failed. A bare name takes its line's ARGS (and
-    @out a folder of the run's); a name given with ARGS and a name listed bare keep theirs."""
+def _yard(tmp_path: Path) -> Path:
     r = tmp_path / "repo"
-    (r / "tools/release").mkdir(parents=True)
-    (r / "tools/suite").mkdir(parents=True)
-    (r / "tools/release/run_probes.sh").write_text((ROOT / "tools/release/run_probes.sh").read_text())
-    probe = r / "tools/probe.sh"
-    probe.write_text('#!/bin/bash\necho "args: $*"\necho "  ok    ran"\n')
-    probe.chmod(0o755)
+    for d in ("tools/release", "tools/suite", "src/dev"):
+        (r / d).mkdir(parents=True)
+    for f in ("tools/probe.sh", "tools/release/run_probes.sh"):
+        (r / f).write_text((ROOT / f).read_text())
+        (r / f).chmod(0o755)
     (r / "tools/suite/windowed.txt").write_text(
         "# NAME or NAME:ARGS\nhover_cost   # bare\nopen_menu_reach:--phone   # forty saves\n"
         "motions_render:@out\n")
     (r / "tools/suite/headless.txt").write_text("command:--judge\n")
-    subprocess.run(["git", "init", "-q", str(r)], check=True)
-    subprocess.run(["git", "-C", str(r), "-c", "user.name=Xaxis", "-c", "user.email=william.neeley@gmail.com",
-                    "commit", "-q", "--allow-empty", "-m", "yard"], check=True)
-    prefix = tmp_path / "out" / "rel"
-    prefix.parent.mkdir()
-    run = subprocess.run(["bash", str(r / "tools/release/run_probes.sh"), str(prefix), "open_menu_reach",
-                          "open_menu_reach_probe", "hover_cost", "command:--other", "motions_render", "nowhere"],
-                         capture_output=True, text=True, timeout=60)
-    assert run.returncode == 0, run.stdout + run.stderr
+    for name, how in (("open_menu_reach", "--resolution 390x844"), ("hover_cost", "--resolution 1280x720"),
+                      ("motions_render", "--resolution 1280x720"), ("command", "--headless")):
+        (r / f"src/dev/{name}_probe.gd").write_text(
+            f"## godot --path . {how} --script src/dev/{name}_probe.gd\nextends SceneTree\n")
+    return r
 
-    def said(name: str) -> str:
-        return Path(f"{prefix}_{name}.log").read_text().splitlines()[0]
 
-    assert said("open_menu_reach") == "args: open_menu_reach --phone"
-    assert said("open_menu_reach_probe") == "args: open_menu_reach_probe --phone"
-    assert said("hover_cost") == "args: hover_cost"
-    assert said("command") == "args: command --other"
-    assert said("motions_render") == f"args: motions_render {prefix}_motions_render_out"
-    assert said("nowhere") == "args: nowhere"
+def _dry(r: Path, *args: str, listed: bool = True) -> str:
+    env = {**os.environ, "PROBE_DRY": "1", "PROBE_LISTED": "1" if listed else ""}
+    out = subprocess.run(["bash", str(r / "tools/probe.sh"), *args], env=env, capture_output=True,
+                         text=True, timeout=30)
+    assert out.returncode == 0, out.stdout + out.stderr
+    return out.stdout.splitlines()[-1].split(".gd", 1)[1].strip()
+
+
+def test_a_probe_named_bare_runs_with_the_arguments_its_suite_line_gives(tmp_path):
+    """rel-m234's train ran open_menu_reach bare, which the suite runs with --phone: it laid the
+    desktop out in a phone's window and held the release. PROBE_LISTED takes the line's ARGS,
+    @out a folder of the run's; ARGS given, or a probe listed bare, keep their own."""
+    r = _yard(tmp_path)
+    assert _dry(r, "open_menu_reach") == "-- --phone"
+    assert _dry(r, "open_menu_reach_probe") == "-- --phone"
+    assert _dry(r, "open_menu_reach", listed=False) == ""
+    assert _dry(r, "command") == "-- --judge"
+    assert _dry(r, "command", "--other") == "-- --other"
+    assert _dry(r, "hover_cost") == ""
+    assert _dry(r, "motions_render") == "-- /motions_render_probe"
+
+
+def test_run_probes_and_the_train_ask_for_the_suites_arguments():
+    """Both ways a release runs a probe set PROBE_LISTED."""
+    assert "PROBE_LISTED=1 timeout 2400 tools/probe.sh" in (ROOT / "tools/release/run_probes.sh").read_text()
+    assert "PROBE_LISTED=1 bash tools/probe.sh" in (ROOT / "tools/release/train.sh").read_text()

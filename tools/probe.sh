@@ -23,6 +23,11 @@
 # class list is brought up to date first when it is behind the scripts
 # (tools/fresh_import.sh, one import a checkout), and the probe is not run
 # when no import can: two scripts of one class_name, or a failed import.
+# PROBE_LISTED=1 with no ARGS runs the probe as tools/suite lists it
+# (NAME:ARGS): a release names its probes bare, and rel-m234's
+# open_menu_reach, which the suite runs with --phone, laid the desktop out
+# in a phone's window and held it (2026-11-01). @out in ARGS is a folder of
+# the run's own, in its data folder.
 # PROBE_DRY=1 prints the command and runs nothing. PROBE_SIZE=WxH runs
 # a windowed probe in a window of that size instead of its header's (Xvfb
 # has no window manager, so a probe cannot resize its own window).
@@ -35,6 +40,11 @@ file="src/dev/$name.gd"
 # probe.sh was handed those names twice in one night (2026-10-27).
 [ -f "$file" ] || [ ! -f "src/dev/${name}_probe.gd" ] || { name=${name}_probe; file="src/dev/$name.gd"; }
 [ -f "$file" ] || { echo "probe.sh: no $file" >&2; exit 2; }
+if [ -n "${PROBE_LISTED:-}" ] && [ $# -eq 0 ]; then
+  listed=$(sed 's/#.*//' tools/suite/windowed.txt tools/suite/headless.txt 2>/dev/null \
+    | awk -v n="${name%_probe}" '{ split($1, p, ":"); s = p[1]; sub(/_probe$/, "", s) } s == n && $1 ~ /:/ { print $1; exit }')
+  if [ -n "$listed" ]; then read -r -a listed <<< "${listed#*:}"; set -- "${listed[@]}"; fi
+fi
 
 # The header's command: the line naming this script, and the lines it
 # continues with a backslash.
@@ -63,7 +73,7 @@ echo "probe.sh: $name, data in $data"
 core="$HOME/.claude/claude-core/bin"
 heavy=(); [ -x "$core/heavy" ] && heavy=("$core/heavy")
 gpu=(); [ -x "$core/gpu" ] && gpu=("$core/gpu")
-tail=(); [ $# -gt 0 ] && tail=(-- "$@")
+tail=(); [ $# -gt 0 ] && tail=(-- "${@/#@out/$data/$name}")
 # This shell's desktop is the owner's, and nothing a probe does opens on it.
 # A probe's run opens no link and no folder (Outside, in the app), and
 # BRICKWORKS_OPEN_NOTHING says so to a run of the app's own scene. Should
