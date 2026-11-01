@@ -956,3 +956,26 @@ def test_a_units_own_run_on_the_live_site_waits_for_a_release(tmp_path):
     log = (y.r / ".git" / "live-db.log").read_text().splitlines()
     assert [line.split()[2:4] for line in log] == [["took", "ab-hover"], ["left", "ab-hover"]], log
     assert log[1].endswith("exit=3")
+
+
+def test_units_on_the_live_site_take_it_in_the_order_they_came(tmp_path):
+    """Five units' runs wait behind a train; once it ends they run one by one in the order they
+    came, not as flock happens to wake them (a unit's run after run held connect3's 91 minutes)."""
+    y = Yard(tmp_path)
+    for name in ("live_db.sh", "live_db_lib.sh"):
+        y.put("tools/release/" + name, (ROOT / "tools/release" / name).read_text())
+    order = tmp_path / "order"
+    marks = y.r / ".git" / "live-db.release"
+    marks.mkdir(parents=True, exist_ok=True)
+    train = subprocess.Popen(["sleep", "4"])
+    (marks / str(train.pid)).write_text("")
+    names = ["u1", "u2", "u3", "u4", "u5"]
+    units = []
+    for name in names:
+        units.append(subprocess.Popen(["bash", str(y.r / "tools/release/live_db.sh"), name,
+                                       "bash", "-c", f"echo {name} >> {order}; sleep 0.3"], cwd=y.r, env=y.env))
+        time.sleep(0.4)
+    train.wait()
+    assert all(unit.wait(timeout=60) == 0 for unit in units)
+    assert order.read_text().split() == names
+    assert not list((y.r / ".git" / "live-db.queue").iterdir()), "a ticket was left behind"

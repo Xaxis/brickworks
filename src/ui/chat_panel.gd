@@ -75,6 +75,9 @@ var offers_hidden_colours: Callable = func() -> bool: return false
 ## Emitted before the assistant is asked, so whatever owns the baseplate
 ## can make room first.
 signal designing(brief: String)
+## Something was asked of the panel, a design or a change to one, before
+## [signal designing]: Main notes where the view is, to frame what comes.
+signal asked
 
 ## The card a running design is shown on, while it runs.
 ##
@@ -985,6 +988,7 @@ func _on_send() -> void:
 	_status.text = ""
 	# Never a fresh design about a selection: the model round it stays.
 	var fresh: bool = not about and (assistant == null or not assistant.has_conversation())
+	asked.emit()
 	if fresh:
 		designing.emit(text)
 	_open_run(fresh, (func() -> void: stop_elsewhere.emit()) if designing_elsewhere()

@@ -24,18 +24,35 @@ release_waits() {
   done
   return 1
 }
+# The rest take it in the order they came. Each waits with a ticket in
+# live-db.queue named for when it came and its pid, and one that gets the
+# lock while an older living ticket is there hands it back too. Without it,
+# a unit's together runs, 35 minutes each, took the lock again and again
+# while connect3's runs waited 91 minutes and two gave up (2026-11-01).
+older_waits() {
+  local f
+  for f in "$LIVE_DB.queue"/*; do
+    [ -e "$f" ] || continue
+    [[ "${f##*/}" < "$1" ]] && kill -0 "${f##*.}" 2>/dev/null && return 0
+  done
+  return 1
+}
 take_live_db() {
-  local lock="$1" until=$(( $(date +%s) + ${LIVE_WAIT:-3600} )) mine="" left
+  local lock="$1" until=$(( $(date +%s) + ${LIVE_WAIT:-3600} )) mine="" ticket="" left
   if [ "${BOX_HEAVY_PRIORITY:-}" = 1 ]; then
     mkdir -p "$LIVE_DB.release"; mine="$BASHPID"; : > "$LIVE_DB.release/$mine"
+  elif [ "${LIVE_DB_RELEASE:-}" != 1 ]; then
+    mkdir -p "$LIVE_DB.queue"; ticket="$(date +%s%N).$BASHPID"; : > "$LIVE_DB.queue/$ticket"
   fi
   while left=$(( until - $(date +%s) )); [ "$left" -gt 0 ] && flock -w "$left" "$lock"; do
-    if [ -n "$mine" ] || [ "${LIVE_DB_RELEASE:-}" = 1 ] || ! release_waits; then
+    if [ -n "$mine" ] || [ "${LIVE_DB_RELEASE:-}" = 1 ] || { ! release_waits && ! older_waits "$ticket"; }; then
       [ -n "$mine" ] && rm -f "${LIVE_DB:?}.release/${mine:?}"
+      [ -n "$ticket" ] && rm -f "${LIVE_DB:?}.queue/${ticket:?}"
       return 0
     fi
     flock -u "$lock"; sleep 2
   done
   [ -n "$mine" ] && rm -f "${LIVE_DB:?}.release/${mine:?}"
+  [ -n "$ticket" ] && rm -f "${LIVE_DB:?}.queue/${ticket:?}"
   return 1
 }
