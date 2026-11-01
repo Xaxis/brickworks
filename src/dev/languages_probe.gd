@@ -23,6 +23,7 @@
 ## - Find a command finds Save by its name in the language, and by "save";
 ## - the Library's themes: those that are words by their own entries
 ##   (context "theme"), the product lines' and licences' names as they are;
+## - a release's version line ("released 2026-10-31"), in Settings and About;
 ## - Render's backdrop "White" reads the language's word, by its own entry
 ##   (msgctxt "backdrop"), while LDraw's colour White stays White; and a
 ##   sub-model named Car reads Car in the model tree and in a line that
@@ -35,7 +36,8 @@
 ##   Tooltips lets one be, measured in German.
 ## - German chosen in Settings, as a person chooses it, and the app started
 ##   again in a run of its own on the same data folder: German still, and
-##   drawn so. English chosen again draws English.
+##   drawn so, and --about says its line in German. English chosen again
+##   draws English.
 ##
 ## The data folder is the run's own (probe.sh gives one), where the choice is
 ## written as the app writes it.
@@ -100,6 +102,12 @@ func _run() -> void:
 		ShellPrefs.put("assistant_offered", true)
 		ShellPrefs.put("first_build", "skipped")
 	BookletMaker.open_when_written = false
+	# A release's version line in Settings and About ("Brickworks 0.12.0,
+	# released 2026-10-31 (91910f5)"), which a build run from source never
+	# shows; its commit is a name.
+	BuildInfo._stamp = {"date": "2026-10-31", "commit": "91910f5"}
+	BuildInfo._read = true
+	_names["91910f5"] = true
 	_main = load("res://src/main.tscn").instantiate()
 	root.add_child(_main)
 	for _n: int in 600:
@@ -930,6 +938,9 @@ func _in(code: String) -> void:
 		not found.is_empty() and found[0] == "save" and not english.is_empty() and english[0] == "save")
 	await _two_senses(code)
 	await _themes(code)
+	var version: String = BuildInfo.describe()
+	_check("%s: a release's version line, in Settings and About, reads \"%s\"" % [code,
+		Language.says(version)], " released " in version and not Language.says(version).is_empty())
 	await _pictures(code)
 
 
@@ -1261,6 +1272,18 @@ func _chosen_and_kept(own_folder: bool) -> void:
 			if line.begins_with("  ok") or line.begins_with("  FAIL"):
 				print("  " + line)
 		_check("a run of its own, on the same data folder, passed (exit %d)" % code, code == 0)
+		# --about, which a person reporting a bug runs from a terminal, in the
+		# language chosen too: a build from source's line, with no stamp.
+		var about: Array = []
+		OS.execute(OS.get_executable_path(), ["--headless", "--path",
+			ProjectSettings.globalize_path("res://"), "--", "--about"], about, true)
+		var said: String = ""
+		for line: String in "\n".join(about).split("\n"):
+			if line.begins_with("Brickworks "):
+				said = line
+		var english: String = "Brickworks %s, development build" % BuildInfo.version()
+		_check("--about says \"%s\", German as chosen" % said,
+			said == Language.says(english) and said != english)
 	# And back: English chosen draws English.
 	_shell.run("settings")
 	await _frames(6)
