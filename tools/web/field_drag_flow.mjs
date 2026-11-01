@@ -160,17 +160,26 @@ for (const [width, height, size] of [[844, 390, "100%"], [390, 844, "150%"]]) {
     // Beside the fields: in the field's column, under no target.
     const gap = await gapIn(holder, at.x);
     if (!check(`${what}: a place beside the fields to drag by`, Boolean(gap))) return;
-    // Up by a third of the screen: the list goes on down.
-    const by = -Math.round(height * 0.3);
-    await drag(gap, { x: gap.x, y: gap.y + by });
-    const moved = await still(field);
-    const beside = moved ? moved.y - at.y : 0;
+    // Up by a third of the screen, where the list goes on down; down, where
+    // it stands at its foot already.
+    let by = 0;
+    let moved = null;
+    let beside = 0;
+    for (const way of [-1, 1]) {
+      by = way * Math.round(height * 0.3);
+      const from = await still(field);
+      await drag(gap, { x: gap.x, y: gap.y + by });
+      moved = await still(field);
+      beside = moved && from ? moved.y - from.y : 0;
+      if (Math.abs(beside) >= 8) break;
+    }
     if (Math.abs(beside) < 8) {
       console.log(`  --    ${what}: nothing to scroll at this size (a drag beside the fields moved "${field}" ${beside})`);
       return;
     }
     scrolled += 1;
-    check(`${what}: a drag beside the fields moves the list (${beside} points; the finger went ${by})`, beside < 0);
+    check(`${what}: a drag beside the fields moves the list (${beside} points; the finger went ${by})`,
+      Math.sign(beside) === Math.sign(by));
     await picture(`${what.replace(/\W+/g, "_")}_beside`);
     // Back down, by the field this time: as far as it went up.
     const from = moved;
