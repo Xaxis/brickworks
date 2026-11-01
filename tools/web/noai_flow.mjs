@@ -36,7 +36,7 @@
 // "Settings, Assistant, or open brickworks.diy/app?assistant=on". Pictures
 // in --out; it fails if a step does not happen or a script error reaches
 // the console.
-import { askApp, launch } from "./browser.mjs";
+import { askApp, launch, typeInMenu } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { randomBytes } from "node:crypto";
@@ -178,7 +178,7 @@ async function brickArt() {
   for (let n = 0; n < 3; n++) {
     page.choosers.length = 0;
     await click("menu_make");
-    await page.keyboard.type("Mosaic", { delay: 120 });
+    await typeInMenu(page, "Mosaic");
     await wait(800);
     await key("Enter", 500);
     await until(async () => page.choosers.length > 0, 30);

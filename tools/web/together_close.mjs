@@ -21,7 +21,7 @@
 // the app again, in a tab of its own with no link ("on the next visit"),
 // within 60 s of that. Where it was lost is said too: the server's numbered
 // changes, read from the relay's held table. Exit 1 if any round lost it.
-import { launch } from "./browser.mjs";
+import { launch, typeInMenu } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { randomBytes } from "node:crypto";
 
@@ -70,7 +70,7 @@ async function menu(page, title, words, shown) {
     const at = await until(async () => (await controls(page))[`menu_${title}`], `the ${title} menu`, 240);
     await page.mouse.click(at.x, at.y);
     await page.waitForTimeout(2000 + 1500 * n);
-    await page.keyboard.type(words.replace(/ /g, ""), { delay: 110 });
+    await typeInMenu(page, words);
     await page.waitForTimeout(700);
     await page.keyboard.press("Enter");
     const got = await until(async () => (await controls(page))[shown], shown, 30).catch(() => null);

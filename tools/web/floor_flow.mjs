@@ -14,7 +14,7 @@
 // floor's words, how many plates are scenery, whether the model has its own
 // plate, and how many parts it has. Pictures in --out. It fails if a step
 // does not happen or a script error reaches the console.
-import { launch } from "./browser.mjs";
+import { launch, typeInMenu } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -95,7 +95,7 @@ async function menu(title, path, done) {
           await page.waitForTimeout(250);
         }
       } else {
-        await page.keyboard.type(words, { delay: 110 });
+        await typeInMenu(page, words);
       }
       await page.waitForTimeout(700);
       if (index < path.length - 1) {

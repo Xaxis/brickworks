@@ -142,6 +142,25 @@ export async function framesDrawn(page, frames = 3) {
   }), frames);
 }
 
+/// [words] typed into the menu just opened, to find its row: without spaces
+/// (a space presses the row the menu is on) and all in one task, as the keys
+/// a person types during a frame reach the page together. Typed a key at a
+/// time, each waits for a frame, and a menu begins its search again when
+/// more than 2 s pass between two keys (Godot's
+/// gui/timers/incremental_search_max_interval_msec): at 2.5 s a frame,
+/// together_flow's "Comm" was "m", and My collection opened in place of
+/// Comments (2026-10-31). Letters past the row's own words keep the row.
+export async function typeInMenu(page, words) {
+  await framesDrawn(page, 2);
+  await page.evaluate((letters) => {
+    const canvas = document.getElementById("canvas") || document.querySelector("canvas");
+    for (const key of letters) {
+      const code = /[a-z]/i.test(key) ? `Key${key.toUpperCase()}` : /[0-9]/.test(key) ? `Digit${key}` : "";
+      for (const type of ["keydown", "keyup"]) canvas.dispatchEvent(new KeyboardEvent(type, { key, code, bubbles: true }));
+    }
+  }, String(words).replace(/ /g, ""));
+}
+
 /// What the app says when it is asked: window.brickworksAsk<what> set, and
 /// its answer, window.brickworks<what> (Main._tell_page: "Phone", a finger's
 /// targets and the text shown; "Layout", the model's place and its parts;

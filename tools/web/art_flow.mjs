@@ -19,7 +19,7 @@
 // brief takes what is typed into it, and that it goes to the assistant: its
 // column opens, and with no key of its own the page says so rather than
 // doing nothing.
-import { askApp, launch, turnAssistantOn } from "./browser.mjs";
+import { askApp, launch, turnAssistantOn, typeInMenu } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { deflateSync } from "node:zlib";
@@ -149,7 +149,7 @@ async function choosePicture() {
   for (let n = 0; n < 3 && !chooser; n++) {
     page.choosers.length = 0;
     await click("menu_make");
-    await page.keyboard.type("Mosaic", { delay: 120 });
+    await typeInMenu(page, "Mosaic");
     await page.waitForTimeout(800);
     await page.keyboard.press("Enter");
     for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) await page.waitForTimeout(500);

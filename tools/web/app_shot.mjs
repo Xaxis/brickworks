@@ -27,7 +27,7 @@
 // toolbar, a panel and a "Sign out" that the app no longer had. A picture
 // that can only be retaken by hand is retaken when someone notices.
 import { readFileSync } from "node:fs";
-import { controlsWith, launch } from "./browser.mjs";
+import { controlsWith, launch, typeInMenu } from "./browser.mjs";
 
 const args = {};
 for (const a of process.argv.slice(2)) {
@@ -79,7 +79,7 @@ async function take(shot) {
     if (!at) throw new Error(`the app is not showing "${control}"`);
     await page.mouse.click(at.x, at.y);
     await page.waitForTimeout(1500);
-    await page.keyboard.type(word, { delay: 120 });
+    await typeInMenu(page, word);
     await page.waitForTimeout(600);
     await page.keyboard.press("Enter");
     await page.waitForTimeout(pause);
