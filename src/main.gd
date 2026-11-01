@@ -5493,7 +5493,11 @@ func _make_assistant() -> void:
 	_assistant_made.finished.connect(func(ok: bool, _summary: String) -> void:
 		if _plate_after_design and ok:
 			floor_part_of_model(true)
-		_plate_after_design = false)
+		_plate_after_design = false
+		# Framed again as it ends: the loop's own passes lay parts of their
+		# own after the design.
+		if ok and not _out_of_view and _frame_for_design():
+			_ground_for_the_model.call_deferred(true))
 	_assistant_made.art_laid.connect(_art_laid)
 	# Claude's change to a selection made in one copy of a sub-assembly is
 	# followed by the others, as a change by hand is.
@@ -5530,8 +5534,11 @@ func _make_assistant() -> void:
 		#
 		# And framed, when nobody can see it: whoever comes back to the tab
 		# finds the model in view rather than wherever the camera was left.
+		# In view too, unless the person turned the view since asking: the
+		# camera stayed on the example car of a first visit, and a tower
+		# built in its place went up out of the top of the window.
 		_watch_view()
-		_ground_for_the_model.call_deferred(_out_of_view)
+		_ground_for_the_model.call_deferred(_out_of_view or _frame_for_design())
 		_on_model_changed()
 		# Not when nobody is watching. Every edit emits this, and the
 		# assembly planned build steps for the whole model and then showed
@@ -5616,9 +5623,12 @@ func _make_chat() -> void:
 	chat.parts_list_wanted.connect(_toggle_parts)
 	chat.offers_hidden_colours = _offers_hidden_colours
 	chat.hidden_colours_wanted.connect(func() -> void: open_hidden_colours("sections"))
+	chat.asked.connect(_note_design_asked)
 	chat.designing.connect(func(brief: String) -> void:
 		_fresh_brief = brief
-		_make_room(ModelStore.name_for(brief)))
+		_make_room(ModelStore.name_for(brief))
+		# The example car taken off: a design from nothing after all.
+		_design_from_nothing = _model_bounds().size.length_squared() <= 0.0)
 	# Designing on the person's own Claude subscription, when this
 	# machine has the Claude Code to do it with. The panel offers the
 	# choice only then.
@@ -7556,6 +7566,7 @@ func _ground_for_the_model(and_frame: bool = false) -> void:
 		return
 	if and_frame:
 		_camera.frame(box)
+		_aim_for_design = _camera_aim()
 	var model: AABB = _model_bounds()
 	_floor.follow(model)
 	if _floor.covers(model):
@@ -8405,6 +8416,41 @@ func after_session_call(before: Dictionary) -> void:
 		_refresh_preview()
 	if _world.revision != int(before["revision"]) and _camera_aim() == before["aim"]:
 		_camera.frame(_built_bounds())
+
+
+## Where the view was going when something was asked in the panel, or when
+## the app last framed what it built, and what the model was then: nothing,
+## or whole in view. A design from nothing is framed as Open frames a model,
+## and a change that takes a model seen whole out of view is framed again,
+## each as Frame all frames it (_ground_for_the_model). A person who turned
+## the view meanwhile keeps theirs, as after a session's call, and one looking
+## closely at part of the model keeps that.
+var _aim_for_design: Array = []
+var _design_from_nothing: bool = false
+var _design_was_whole: bool = false
+
+
+func _note_design_asked() -> void:
+	_aim_for_design = _camera_aim()
+	_design_from_nothing = _model_bounds().size.length_squared() <= 0.0
+	_design_was_whole = _design_from_nothing or _whole_in_view(_model_bounds())
+
+
+func _frame_for_design() -> bool:
+	if _aim_for_design.is_empty() or _camera_aim() != _aim_for_design:
+		return false
+	return _design_from_nothing or (_design_was_whole and not _whole_in_view(_model_bounds()))
+
+
+## Whether every corner of [param box] is drawn inside the part of the window
+## the model is seen in, as the view is now.
+func _whole_in_view(box: AABB) -> bool:
+	var seen: Rect2 = _camera.seen_rect()
+	for n: int in 8:
+		var corner: Vector3 = box.get_endpoint(n)
+		if _camera.is_position_behind(corner) or not seen.has_point(_camera.unproject_position(corner)):
+			return false
+	return true
 
 
 ## Where the view is going: its turn, tilt, distance and focus.
