@@ -3109,7 +3109,7 @@ func _double_clicked(part_id: String, colour: int) -> void:
 		verbs.say.call(str(put["words"]))
 	else:
 		builder.held_part = part_id
-		verbs.replace()
+		await verbs.replace()
 	if not _pressed_mode.is_empty() and _pressed_mode != "place":
 		verbs.set_mode(_pressed_mode)
 

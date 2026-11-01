@@ -186,10 +186,16 @@ func lay(model: AABB, plates: Array = [], at: AABB = AABB()) -> void:
 ## plate nothing else is laid again when a model grows, and its shadow
 ## would fall off the edge of what catches it.
 func follow(model: AABB) -> void:
-	if store.model_floor.kind != ModelFloor.NONE or model == _model:
+	if not follows() or model == _model:
 		return
 	_model = model
 	_catch_shadow(true)
+
+
+## Whether [method follow] keeps anything round the model: only with no
+## floor. Asked first, the model's bounds are not read for nothing.
+func follows() -> bool:
+	return store.model_floor.kind == ModelFloor.NONE
 
 
 ## Whether the floor laid still fits [param model]: a model built past the

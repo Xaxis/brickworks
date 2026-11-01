@@ -7157,7 +7157,9 @@ func _on_model_edited() -> void:
 	# floor's plate goes back under it, or comes away.
 	if _floor != null and _floor.is_stale():
 		_lay_baseplate()
-	elif _floor != null:
+	elif _floor != null and _floor.follows():
+		# Every part's box, read only for a model on no floor: on Orthanc,
+		# on its plates, it was 25 to 60 ms of every edit, twice for most.
 		_floor.follow(_model_bounds())
 	# A band or a spring on a part just moved follows it, in the same step.
 	if _flex != null:
