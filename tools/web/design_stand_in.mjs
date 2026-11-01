@@ -1081,6 +1081,9 @@ const PAGES = [
   [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/parts[.](json|xml|csv)$/, "share", "catalog_parts"],
   [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/?$/, "share", "catalog_set"],
   [/^\/(de|fr|es)\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/?$/, "share", "catalog_set_lang"],
+  // The sets' sitemaps, in English and in each language.
+  [/^\/sitemaps\/index[.]xml$/, "share", "sitemap_index"],
+  [/^\/sitemaps\/sets-(?:(de|fr|es)-)?([1-9][0-9]{0,2})[.]xml$/, "share", "sitemap_sets"],
 ];
 
 /// Which handler makes [pathname], and what it is asked. A path under /m/,
@@ -1092,6 +1095,8 @@ function routeOf(pathname) {
     if (!found) continue;
     if (op === "catalog_set") return { name, query: { op, set: found[1] } };
     if (op === "catalog_parts") return { name, query: { op, set: found[1], as: found[2] } };
+    if (op === "sitemap_index") return { name, query: { op } };
+    if (op === "sitemap_sets") return { name, query: { op, n: found[2], ...(found[1] ? { lang: found[1] } : {}) } };
     if (op === "catalog_set_lang") return { name, query: { op: "catalog_set", set: found[2], lang: found[1] } };
     if (name === "share") {
       return { name, query: { op, ...(found[1] ? { id: found[1] } : {}), ...(found[2] ? { v: found[2] } : {}),
@@ -2193,7 +2198,7 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
       return route.fulfill({ status: said.status, contentType: "application/json", body: asProject(JSON.stringify(said.json)) });
     }
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
-    if (/^\/(m|u|c|library\/set|(?:de|fr|es)\/library\/set)\//.test(url.pathname) || /^\/(collections|oembed)\/?$/.test(url.pathname)) {
+    if (/^\/(m|u|c|library\/set|(?:de|fr|es)\/library\/set|sitemaps)\//.test(url.pathname) || /^\/(collections|oembed)\/?$/.test(url.pathname)) {
       const made = await serverPage(api, url.pathname + url.search);
       // With the security policy the server sends with it. A picture the
       // server makes (/m/X.cutout.png) as the bytes and type it answered:

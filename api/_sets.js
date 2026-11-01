@@ -566,12 +566,15 @@ ${chrome.footer}
 
 /// The sitemap files of the sets' pages: their number, and each one's URLs
 /// (every set Rebrickable lists parts for: a page of nothing is not one a
-/// search should find).
-export function sitemapSets(sets, origin) {
+/// search should find); in [lang]'s copies (/de/library/set/<n>) for one
+/// of SITE_LANGS, each language's files its own, so a search finds every
+/// copy and each page names the others itself (hreflang).
+export function sitemapSets(sets, origin, lang = "en") {
+  const at = SITE_LANGS.includes(lang) ? `/${lang}` : "";
   const listed = sets.filter((entry) => entry.parts > 0);
   const files = [];
-  for (let at = 0; at < listed.length; at += SITEMAP_SETS) {
-    files.push(listed.slice(at, at + SITEMAP_SETS).map((entry) => `${origin}${pageOf(entry)}`));
+  for (let from = 0; from < listed.length; from += SITEMAP_SETS) {
+    files.push(listed.slice(from, from + SITEMAP_SETS).map((entry) => `${origin}${at}${pageOf(entry)}`));
   }
   return files;
 }

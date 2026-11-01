@@ -38,7 +38,13 @@ sized its own titles, from 26 to 74 px. Now:
   page's words are, down to 320 px: where the bar has no room for the
   word, the mark is the cube alone, the word wrapped out of sight with
   no breakpoint of its own (design_flow.mjs fails a header that runs
-  into the gutter at 320, 360 or 390 px). Everything in it is 44 px
+  into the gutter at 320, 360 or 390 px). On a phone Open the app is laid
+  out for the longest of the four languages ("Ouvrir l'application",
+  "Abrir la aplicación"): past about 8.5 em it takes two balanced lines in
+  the same 44 px rather than push the word out, so the word stays at 390
+  in all four and at 375 too (site_lang_flow.mjs checks it on every page
+  it opens); French gives it up at 360. Never a shorter word for a
+  language than its own. Everything in it is 44 px
   tall, a finger's: the mark, its links, Open the app and Sign in (the
   regular `.cta`, 44 px at 16, not a size of their own), Menu and your
   avatar's button (2026-10-26; they were 36-42). The footer: the mark,

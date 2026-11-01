@@ -195,6 +195,7 @@ const MAPPED = [
   [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/scene[.]json$/, "share", "set_scene"],
   [/^\/sitemaps\/index[.]xml$/, "share", "sitemap_index"],
   [/^\/sitemaps\/sets-([1-9][0-9]{0,2})[.]xml$/, "share", "sitemap_sets"],
+  [/^\/sitemaps\/sets-(de|fr|es)-([1-9][0-9]{0,2})[.]xml$/, "share", "sitemap_sets_lang"],
   // The daily cron's clean-up of files no published row owns.
   [/^\/api\/share\/sweep$/, "share", "sweep"],
 ];
@@ -305,8 +306,9 @@ http.createServer(async (incoming, outgoing) => {
       Object.assign(query, { set: captured[1], as: captured[2] || (mapped[2] === "catalog_photo" ? "card" : "json") });
     }
     if (captured[1] && mapped[2] === "sitemap_sets") query.n = captured[1];
-    // A set's page in a language: /de/library/set/<n>.
+    // A set's page in a language: /de/library/set/<n>; its sitemaps.
     if (mapped[2] === "catalog_set_lang") Object.assign(query, { op: "catalog_set", lang: captured[1], set: captured[2], as: undefined });
+    if (mapped[2] === "sitemap_sets_lang") Object.assign(query, { op: "sitemap_sets", lang: captured[1], n: captured[2], id: undefined, v: undefined });
   }
   // The app is at /app, which the deployment sends on to the build with
   // its query (?view=<id>, ?copy=<id>) intact.

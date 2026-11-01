@@ -367,7 +367,11 @@ a:focus-visible { border-radius: var(--r-1); }
    links and Sign in are on Menu), and the last keeps the page's 16 px
    gutter (design_flow.mjs fails it closer). On a phone the bar's gaps
    close to 8 px, and Open the app and Menu give a little a side, so the
-   word still fits at 390. The whole bar fits from 900 px (site356: four
+   word still fits at 390. Open the app is laid out for the longest of the
+   site's four languages: a label longer than "Open the app" with room to
+   spare ("Ouvrir l'application", "Abrir la aplicación") takes two
+   balanced lines in the same 44 px, never a shorter word, so the word
+   fits at 390 in each. The whole bar fits from 900 px (site356: four
    links and two buttons, where it was two and two from 600). */
 @media (width < 900px) {
 	.nav > a:not(.cta), .nav > a[data-account], .nav .account-menu { display: none; }
@@ -375,7 +379,10 @@ a:focus-visible { border-radius: var(--r-1); }
 }
 @media (width < 600px) {
 	.site-head .bar { gap: var(--s-2); }
-	.site-head .nav .cta { margin-left: auto; padding-inline: 10px; }
+	.site-head .nav .cta {
+		margin-left: auto; padding: 3px 10px; max-width: calc(8.5em + 20px);
+		white-space: normal; text-wrap: balance; text-align: center; line-height: 1.1;
+	}
 	.site-head .menu summary:not(.account-btn) { padding-inline: 10px; }
 }
 

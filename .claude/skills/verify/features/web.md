@@ -159,6 +159,8 @@ plan with Claude as the client.
   The bin's All listing ranks each part once before sorting
   (`PartsBin._sort_for`): the same order in 0.44 s natively, where it
   took 1.2. On the web it is not sorted at all (webload, 2026-10-30):
+  (And `src/dev/write_part_names.gd` beside each web build, below: a
+  parts list's names in the visitor's language.)
   `tools/export.sh` runs `src/dev/write_all_order.gd` after web_pack.py, which
   writes All's order for the web pack's catalogue to
   `assets/web/all_order.txt` with the bin's own code
@@ -1026,7 +1028,14 @@ plan with Claude as the client.
   `node tools/web/parts_check.mjs --app=<their JSON>`, which lists the same
   files with `api/_parts.js` and prints the app's and the page's pieces and
   lots side by side, every lot that differs, and whether each export is
-  word for word the app's. Exits non-zero on any difference.
+  word for word the app's. And `--names=<dir>`: each lot's part, colour and
+  kind in German, French and Spanish as the app says them (the bin's
+  `PartsBin.said_name`, the palette's `PartWords.colour`, the chips'
+  `Language.says`) against the page's (`api/_parts.js` `namesOf`, from the
+  names `src/dev/write_part_names.gd` writes, as deploy.sh ships them); a
+  part the file carries the page names as its maker did. Exits non-zero on
+  any difference. languages3, 2026-11-01: every lot of the four, 1,606
+  names said in the language as the app says them.
 - `model page browser flow` (`tools/web/model_page_flow.mjs`, preview check
   `[model_page]`): below.
 - `site sign-in` (`web/account.js`): the app's own session in this browser
@@ -1353,9 +1362,25 @@ plan with Claude as the client.
   the parts list in `web/model-page.js`); `<html lang>`, a canonical and
   og:url of its own, hreflang en/de/fr/es and x-default (English) on every
   set page, English too, links to the library and other sets in the
-  language. The set's name is as LEGO® publishes it; the parts' own names,
-  colours and kinds are the catalogue's, in English. Another language is a
-  404. The library's and the gallery's themes are the app's (`locale/<code>.po`, context "theme", by
+  language. The set's name is as LEGO® publishes it. Another language is a
+  404.
+- **A parts list's names in the visitor's language** (languages3,
+  2026-11-01): a set's page, a model's and an LDraw set's ask their list
+  with `?lang=<code>` (the page's language, or on a page with no copy the
+  visitor's: `brickworksLang.chosen()`), and `api/share.js` `partsAnswer`
+  adds to each lot `said`, `colour_said` and `category_said` where the app
+  has words for them (`api/_parts.js` `partNames`/`namesOf`), the shops'
+  lists keeping the shops' names. The names are the app's own:
+  `tools/export.sh web` runs `src/dev/write_part_names.gd`, which writes
+  `<build>/part_names/part_names_<code>.json` from `PartsBin.tile_name`
+  through `PartWords.part`, `PartWords.colour` and the category's entry
+  in `locale/<code>.po`; deploy.sh puts each beside `/api/share` as
+  `_part_names_<code>.json` and fails without them; a checkout reads its
+  own `build/web/part_names`. `web/model-page.js` shows the said name (the
+  LDraw name on its tooltip) and the said colour and kind heads, each
+  marked `lang` where the page is not in it, and a name the app cannot
+  say whole as LDraw writes it, marked English. `cli:parts page probe`
+  proves the names are the app's; `cli:site language flow` the pages. The library's and the gallery's themes are the app's (`locale/<code>.po`, context "theme", by
   `web/card.js` `themeSaid`, LEGO® and LEGOLAND® marked as the app draws
   them), and `tests/test_site_lang.py` fails on a theme of the catalogue
   with no entry.
@@ -2313,7 +2338,11 @@ plan with Claude as the client.
   from its parts`, `/library/set/<number>.jpg`, kept a year, for the few
   Rebrickable has no picture of. The sets' sitemaps are
   `/sitemaps/index.xml` and `/sitemaps/sets-K.xml` (10,000 each), named in
-  robots.txt; `/sitemap.xml` is as it was. `cli:sets browser flow` checks it
+  robots.txt, and each language's copies in files of their own,
+  `/sitemaps/sets-de-K.xml`, `-fr-`, `-es-` (`api/_sets.js` `sitemapSets`
+  with a language; deploy.sh's route, the relay and the stand-in send
+  `&lang=`), each page naming the others itself (hreflang);
+  `/sitemap.xml` is as it was. `cli:sets browser flow` checks it
   all on a deployment (preview_checks.sh `sets_flow`). Locally:
   `node tools/web/relay_server.mjs 8364` serves the pages but not LDraw's
   `/library/<id>` ones.
@@ -3814,7 +3843,19 @@ language, the five alternates and its own canonical) and First steps
 the age question too, each step's title and words in the language, nothing
 cut short), languages3 the same day: 813 passed locally; on brickworks.diy
 (`--pages=set,firststeps`) 80 of 165 failed, every set page staying English
-at /library/set/10297-1 and First steps English on the copies.
+at /library/set/10297-1 and First steps English on the copies. Then a
+parts list's names in the language (the set's page, and `--pages=model`:
+the stand-in's watchtower or a deployment's first listed model, which stays
+English while a German, French or Spanish visitor reads its parts, colours
+and kinds in their language, each marked `lang`; every row as its JSON
+says, whole on its tooltip, a plate named Platte, Plaque, Placa), the
+header's wordmark on every page at every width, and `--pages=sitemaps`
+(the index names `sets-de-1.xml` and the rest, each listing the English
+file's sets at `/de/library/set/...`), languages3 the same day: 913 passed
+locally; on brickworks.diy (`--pages=gallery,set,model,sitemaps`) 79 of 237
+failed: no names in German, French or Spanish on any set or model page
+(12), no language sitemaps (3), the French and Spanish gallery at 390
+without the wordmark (2), and the set copies not live yet (the rest).
 
 The theme, with no network (the checkout's pages served as design_flow
 serves them, every API call answered by the stand-in):

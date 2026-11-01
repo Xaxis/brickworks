@@ -56,6 +56,46 @@ export function useTable(given) {
   return table;
 }
 
+const names = new Map();
+
+/// The names a language [code] (de, fr, es) gives parts, colours and
+/// categories, as the app says them (src/dev/write_part_names.gd: the
+/// parts bin's own words, PartWords, and the po's), so a parts list on the
+/// site and in the app name a part alike: {parts: {id: name}, colours:
+/// {code: name}, categories: {name: name}}, read once, from
+/// _part_names_<code>.json beside this file in a deployment, or in a
+/// checkout from its own web build's (build/web/part_names, export.sh).
+/// Null where there is neither: the list then says LDraw's names.
+export function partNames(code) {
+  if (!/^[a-z]{2}$/.test(String(code))) return null;
+  if (names.has(code)) return names.get(code);
+  let found = null;
+  for (const at of [new URL(`./_part_names_${code}.json`, import.meta.url),
+    new URL(`../build/web/part_names/part_names_${code}.json`, import.meta.url)]) {
+    if (!existsSync(at)) continue;
+    found = JSON.parse(readFileSync(at, "utf8"));
+    break;
+  }
+  names.set(code, found);
+  return found;
+}
+
+/// A language's names given by hand (a check run).
+export function useNames(code, given) {
+  names.set(code, given);
+  return given;
+}
+
+/// [lot]'s part, colour and category as [given] (partNames) says them:
+/// {said, colour_said, category_said}, each only where it has words for
+/// it, and no name for a made part, which is what its maker called it.
+export function namesOf(lot, given) {
+  if (!given) return {};
+  const named = { said: lot.custom ? undefined : given.parts?.[lot.part], colour_said: given.colours?.[String(lot.colour)],
+    category_said: given.categories?.[lot.category] };
+  return Object.fromEntries(Object.entries(named).filter(([, one]) => typeof one === "string" && one));
+}
+
 /// The flexible parts a Brickworks file lays as pieces (Flex.KINDS): each
 /// kind's pieces, how it is measured and the name of the part it is sold as.
 const KINDS = {

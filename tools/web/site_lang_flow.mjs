@@ -7,7 +7,7 @@
 //                        export's index.html (node tools/web/relay_server.mjs PORT
 //                        --static=build/web; --app=http://127.0.0.1:PORT/index.html)
 //   [--widths=1280,390]  [--langs=en,de,fr,es]
-//   [--pages=home,download,plans,faq,compare,gallery,library,set,signin,firststeps]
+//   [--pages=home,download,plans,faq,compare,gallery,library,set,model,sitemaps,signin,firststeps]
 //
 // The landing page and the download page, and the app's loading page
 // between them and the app, in German, French and Spanish (2026-11-01);
@@ -59,9 +59,21 @@
 // /de/library/set/<number>, with <html lang>, the title, the crumbs (the
 // theme as locale/<code>.po words it), the facts, the actions and the parts
 // list's heads in it, the set's name as LEGO® publishes it, the five
-// hreflang alternates and a canonical that is the page itself. The parts'
-// own names, their colours' and their kinds' are the catalogue's, in English
-// as in the app's parts list on the site.
+// hreflang alternates and a canonical that is the page itself. Its parts
+// list names each part, colour and kind as the app's parts bin does in the
+// language (api/_parts.js partNames: Platte, Plaque, Placa...), a part the
+// app has no words for as LDraw writes it, marked as English.
+//
+// And a model's page (/m/<id>, the stand-in's watchtower or a deployment's
+// first listed model), which has no copies: for a visitor whose browser
+// asks for a language, its parts list names them in it all the same, each
+// marked with its language on the English page.
+//
+// The header keeps the Brickworks wordmark on every page, in every language,
+// at every width checked (390 included): Open the app takes two lines first.
+//
+// And the sitemaps (/sitemaps/index.xml): the sets' pages in English and
+// each language's copies, a file each (sets-de-1.xml), every address in it.
 //
 // And First steps (web/first-steps.js), opened over the gallery's copy as a
 // first sign-in opens it, and on the stand-in after the age question: each
@@ -163,7 +175,8 @@ async function newContext(browser, code, width, state = {}) {
 
 /// Every text of the page a person can read or hear, shown or folded away,
 /// but the names of the cards in its live strips, what is typed, and a
-/// parts list's part, colour and kind names (the catalogue's). And a
+/// parts list's part, colour and kind names (as LDraw writes those the app
+/// has no words for: lotsSaid checks each). And a
 /// library theme's pill under the catalogue's own name (Star Wars, The LEGO®
 /// Movie, marked), as the app keeps it: one the app names in the language
 /// (locale/<code>.po, "theme") is read like any other word.
@@ -197,11 +210,14 @@ function readable() {
 /// The words a box cuts off sideways: a text wider than the element that
 /// hides what overflows it (a card's marks, a pill, a button), so a reader
 /// sees "Tipp der Woc". A box cut short downwards (the marks' second row)
-/// is how it is made, and a row that scrolls is not cut.
+/// is how it is made, and a row that scrolls is not cut; nor a parts
+/// list's names, one line each in every language, whole on their tooltip
+/// (lotsSaid checks they are).
 function cut() {
   const said = [];
   for (const el of document.querySelectorAll("body *")) {
     if (el.childElementCount || !el.textContent.trim() || !el.getClientRects().length) continue;
+    if (el.closest(".lot-list .name, .lot-list .meta")) continue;
     let box = el;
     while (box && !/hidden|clip|auto|scroll/.test(getComputedStyle(box).overflowX)) box = box.parentElement;
     if (!box || box === document.documentElement || box === document.body) continue;
@@ -214,6 +230,122 @@ function cut() {
     if (over) said.push(el.textContent.trim());
   }
   return said;
+}
+
+/// Whether the header shows the Brickworks wordmark's word beside the
+/// mark, on its line: it wraps out of sight where the bar has no room.
+function markShown() {
+  const mark = document.querySelector(".site-head .mark");
+  const word = mark && [...mark.childNodes].find((node) => node.nodeType === 3 && node.textContent.trim());
+  if (!word) return false;
+  const range = document.createRange();
+  range.selectNodeContents(word);
+  const shown = range.getBoundingClientRect();
+  const box = mark.getBoundingClientRect();
+  return shown.width > 0 && shown.top < box.bottom - 2 && shown.right <= box.right + 1;
+}
+
+// A word each language names a plate with, as the app's parts bin does
+// (src/parts/part_words.gd): every set and model here has plates.
+const PLATE = { de: "Platte", fr: "Plaque", es: "Placa" };
+
+/// The parts list on [tab], drawn, against its own JSON asked in [code]
+/// (?lang=): each row's part named as the JSON says it in the language, or
+/// as LDraw writes it where the app has no words, marked as English where
+/// the page is not, and each colour's head likewise.
+async function lotsSaid(tab, code, where, plate = true) {
+  await tab.locator("#parts").scrollIntoViewIfNeeded();
+  await tab.waitForFunction(() => document.documentElement.dataset.parts === "drawn", null, { timeout: 30000 });
+  const said = await tab.evaluate(async (code) => {
+    const section = document.getElementById("parts");
+    const asked = new URL(section.dataset.parts, location.href);
+    if (code !== "en") asked.searchParams.set("lang", code);
+    const body = await fetch(asked).then((reply) => reply.json());
+    const page = document.documentElement.lang || "en";
+    const marked = (element, words, inIt) => {
+      const want = inIt ? (code === page ? "" : code) : (page === "en" ? "" : "en");
+      return element.textContent === words && (element.getAttribute("lang") || "") === want;
+    };
+    const byKey = new Map(body.lots.map((lot) => [`${lot.part}/${lot.colour}`, lot]));
+    const rows = [...section.querySelectorAll(".lot-list li.lot")];
+    const wrong = [];
+    for (const row of rows) {
+      const lot = byKey.get(`${row.dataset.part}/${row.dataset.colour}`);
+      const name = row.querySelector(".name");
+      // And whole on its tooltip, where the row cuts it to one line.
+      if (!lot || !marked(name, lot.said || lot.name, Boolean(lot.said)) || !name.title.startsWith(name.textContent)) {
+        wrong.push(name.textContent);
+      }
+    }
+    const heads = [...section.querySelectorAll(".lot-list li.group > span:not(.n)")];
+    const colours = new Set(body.lots.map((lot) => lot.colour_said || lot.colour_name));
+    return { lots: body.lots.length, rows: rows.length, said: body.lots.filter((lot) => lot.said).length,
+      colours: body.lots.filter((lot) => lot.colour_said).length, wrong,
+      heads: heads.filter((head) => !colours.has(head.textContent)).map((head) => head.textContent),
+      names: rows.map((row) => row.querySelector(".name").textContent) };
+  }, code);
+  const plates = code === "en" ? [] : said.names.filter((name) => name.startsWith(`${PLATE[code]} `));
+  const first = plates[0] || said.names[0] || "";
+  check(said.rows === said.lots && !said.wrong.length && !said.heads.length
+    && (code === "en" ? said.said === 0 : said.said > said.lots / 3 && said.colours > said.lots / 2 && (!plate || plates.length > 0)),
+    `${where}: ${said.said} of ${said.lots} parts and ${said.colours} colours named in ${code}${code === "en" ? "" : `, "${first}"`}`
+    + `${said.wrong.length ? `, ${said.wrong.length} rows not as said: "${said.wrong[0]}"` : ""}`
+    + `${said.heads.length ? `, heads "${said.heads.slice(0, 2).join('", "')}"` : ""}`);
+}
+
+/// A model's page, which has no copies, for a visitor whose browser asks
+/// for [code]: still English, its parts list in the language.
+async function modelNames(browser, code, width, at) {
+  const context = await newContext(browser, code, width);
+  const tab = await context.newPage();
+  const where = `${code} model ${width}`;
+  try {
+    await tab.goto(`${base}${at}`, { waitUntil: "load" });
+    check(new URL(tab.url()).pathname === at && await tab.evaluate(() => document.documentElement.lang) === "en",
+      `${where}: ${at} stays itself, in English`);
+    // Whatever the model is made of: a plate among its parts is not asked.
+    await lotsSaid(tab, code, where, false);
+    check(await tab.evaluate(markShown), `${where}: the header shows the Brickworks wordmark`);
+    if (out) await tab.locator("#parts").screenshot({ path: path.join(out, `${code}-model-${width}.png`) });
+  } catch (trouble) {
+    check(false, `${where}: ${String(trouble.message || trouble).split("\n")[0]}`);
+  } finally {
+    await context.close();
+  }
+}
+
+/// The sitemaps: the index names the sets' pages in English and in each
+/// language, and each language's first file lists its copies, as many as
+/// the English one lists.
+async function sitemaps(browser) {
+  const context = await newContext(browser, "en", 1280);
+  const tab = await context.newPage();
+  try {
+    await tab.goto(`${base}/`, { waitUntil: "load" });
+    const said = await tab.evaluate(async () => {
+      const text = (at) => fetch(at).then((reply) => (reply.ok ? reply.text() : `${reply.status}`));
+      const locs = (xml) => [...xml.matchAll(/<loc>([^<]*)<\/loc>/g)].map((found) => new URL(found[1]).pathname);
+      const index = locs(await text("/sitemaps/index.xml"));
+      const files = {};
+      for (const code of ["en", "de", "fr", "es"]) {
+        files[code] = locs(await text(`/sitemaps/sets-${code === "en" ? "" : `${code}-`}1.xml`));
+      }
+      return { index, files, other: await text("/sitemaps/sets-xx-1.xml") };
+    });
+    const english = said.files.en;
+    check(english.length > 1000 && english.every((at) => at.startsWith("/library/set/")),
+      `the English sets' sitemap lists ${english.length} pages`);
+    for (const code of ["de", "fr", "es"]) {
+      const listed = said.files[code];
+      check(said.index.includes(`/sitemaps/sets-${code}-1.xml`) && listed.length === english.length
+        && listed.every((at, n) => at === `/${code}${english[n]}`),
+        `the index names /sitemaps/sets-${code}-1.xml, ${listed.length} pages, each /${code}${english[0] || ""}...`);
+    }
+  } catch (trouble) {
+    check(false, `sitemaps: ${String(trouble.message || trouble).split("\n")[0]}`);
+  } finally {
+    await context.close();
+  }
 }
 
 // What the English page cuts (people's long model names, as it is made),
@@ -266,6 +398,7 @@ async function onePage(browser, code, one, width) {
     await tab.waitForFunction(() => document.querySelector(".site-head a[data-account]")?.textContent.trim(), null, { timeout: 15000 });
     const signIn = await tab.locator(".site-head .nav a[data-account]").textContent();
     check(signIn.trim() === script(code, "Sign in"), `${where}: the header's Sign in says "${signIn.trim()}"`);
+    check(await tab.evaluate(markShown), `${where}: the header shows the Brickworks wordmark`);
     if (one.name === "download") {
       // Its script's words: the offer for this computer, and what is new.
       await tab.waitForFunction(() => !document.getElementById("notes").hidden, null, { timeout: 15000 });
@@ -341,6 +474,7 @@ async function setSaid(tab, code, one, where) {
   const head = await tab.locator(".lot-list li.group .n").first().innerText();
   check(head.trim().endsWith(` ${script(code, "parts")}`) || head.trim().endsWith(` ${script(code, "part")}`),
     `${where}: the parts list's heads count in it, "${head.trim()}"`);
+  await lotsSaid(tab, code, where);
 }
 
 /// First steps' every word a person reads or hears but people's and
@@ -631,6 +765,21 @@ try {
       for (const width of widths) await onePage(browser, code, one, width);
     }
   }
+  if (!only || only.includes("model")) {
+    // The stand-in's watchtower, or a deployment's first listed model.
+    let at = `/m/${stand.MODEL_ID}`;
+    if (remote) {
+      const listed = await (await fetch(`${remote}/api/share?op=list&page=1`, { headers })).json().catch(() => ({}));
+      at = listed.models?.[0] ? `/m/${listed.models[0].id}` : "";
+    }
+    for (const code of langs) {
+      for (const width of widths) {
+        if (at) await modelNames(browser, code, width, at);
+        else check(false, "a model to open: the deployment lists none");
+      }
+    }
+  }
+  if (!only || only.includes("sitemaps")) await sitemaps(browser);
   await choosing(browser);
   if (!only || only.includes("signin")) {
     for (const code of langs) {
