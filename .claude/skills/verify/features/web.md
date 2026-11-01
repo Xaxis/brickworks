@@ -1306,10 +1306,18 @@ plan with Claude as the client.
   `[theme]` and `[theme_account]`): below.
 - `the site in German, French and Spanish` (2026-11-01): the landing page
   and the download page at /de, /de/download, /fr, /fr/download, /es and
-  /es/download, each the English page with its words from
+  /es/download, and then the plans, the FAQ (its JSON-LD's questions and
+  answers too, as search results show them), the comparison, the gallery's
+  chrome and the LDraw library (/de/plans, /de/faq, /de/compare,
+  /de/gallery, /de/library...; `tools/site_lang.py` PAGES), each the English
+  page with its words from
   `web/_lang/<code>.json`, written into `web/de/`, `web/fr/` and `web/es/` by
   `tools/site_lang.py` (`--check` in `tests/test_site_lang.py`, which also
-  fails on an English run with no words; `--missing=de` lists them). Served
+  fails on an English run with no words, and on a `say("...")` or
+  `counted(n, "...")` in a script a copy loads, or a label the API hands the
+  gallery and the library, with none; `--missing=de` lists both). The
+  gallery and the library keep their own address when they rewrite it
+  (`location.pathname`). Served
   by `tools/deploy.sh`'s overrides for a folder with an `index.html`, with
   308s from `.html` and a trailing slash. The language: the one chosen in the
   footer's Language (`select[data-lang-choice]`, `web/_shell.html`, showing
@@ -3734,20 +3742,30 @@ node tools/web/site_lang_flow.mjs --app=http://127.0.0.1:8837/index.html --out=s
 ```
 
 A browser asking for en, de, fr and es first (Accept-Language and
-`navigator.languages`) opens / and /download at 1280 and 390 and must land
-on /, /de, /fr, /es (and /download, /de/download ...), `<html lang>` its
-language, the heading and the header's Sign in in its words, the download
-offer's "Download for Linux" and "New in" in them, no English word left in
-any text, alt, title or label but names, every link to /app with
-`lang=<code>` (none in English) and the footer's Language showing it. Then
-choosing English on /de opens / and keeps it on a reload though the browser
-asks for German; choosing Deutsch on /download opens /de/download, and the
-gallery (no copy) then shows Deutsch chosen and opens the app in it; the
-gallery sends a French browser into `/app?lang=fr`. With `--app`,
-`/app?lang=de` and the rest say the loader's tagline, "von" and the notice
-in the language, and `/app` with Spanish kept says Spanish. 2026-11-01:
-137 passed locally with `--app`; on brickworks.diy before the copies
-(`--app=https://brickworks.diy/app`), 108 of 131 failed.
+`navigator.languages`) opens /, /download, /plans, /faq, /compare, /gallery
+and /library at 1280 and 390 and must land on the language's copy (/de,
+/de/download, /de/plans ...; English stays), `<html lang>` its language, the
+title, the heading and the header's Sign in in its words, the download
+offer's "Download for Linux" and "New in", the gallery's and the library's
+count ("1.234 Sets") in them; no English word left in any text, alt,
+title or label but names, people's cards and the library's themes the app
+too keeps under the catalogue's names; nothing cut short sideways that the
+English shows whole at that width (a card's mark on a phone: "Tipp der
+Woche" was cut to "Tipp der Woc"); every link to /app with `lang=<code>`
+(none in English) and the footer's Language showing it. Then choosing
+English on /de opens / and keeps it on a reload though the browser asks for
+German; choosing Deutsch on /download opens /de/download, / and /gallery
+then open /de and /de/gallery, and the changelog (no copy) shows Deutsch
+chosen and opens the app in it; a French browser on the changelog goes into
+`/app?lang=fr`. Locally the library's list is the real handler's from this
+checkout's catalogue (`design_stand_in.mjs`), so its sorts, sizes and
+themes are drawn. With `--app`, `/app?lang=de` and the rest say the
+loader's tagline, "von" and the notice in the language, and `/app` with
+Spanish kept says Spanish. 2026-11-01: 137 passed locally with `--app`; on
+brickworks.diy before the copies (`--app=https://brickworks.diy/app`), 108
+of 131 failed. With the five pages after home (same day): 505 passed
+locally (no `--app`); on brickworks.diy with rel-m239 live, 210 of 505 failed, every one
+on the five pages or /gallery's choice.
 
 The theme, with no network (the checkout's pages served as design_flow
 serves them, every API call answered by the stand-in):

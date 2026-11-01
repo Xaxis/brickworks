@@ -1,4 +1,4 @@
-// Does a first visitor read the site in their own language? (tools/site_lang.py,
+// Does a visitor read the site in their own language? (tools/site_lang.py,
 // web/theme.js, src/boot/shell.html)
 //
 //   node tools/web/site_lang_flow.mjs [--out=DIR]               this checkout's web/, served here
@@ -6,22 +6,30 @@
 //   ... --app=<address>  the app's loading page too: a deployment's /app, or a web
 //                        export's index.html (node tools/web/relay_server.mjs PORT
 //                        --static=build/web; --app=http://127.0.0.1:PORT/index.html)
-//   [--widths=1280,390]  [--langs=en,de,fr,es]
+//   [--widths=1280,390]  [--langs=en,de,fr,es]  [--pages=home,download,plans,faq,compare,gallery,library]
 //
 // The landing page and the download page, and the app's loading page
-// between them and the app, in German, French and Spanish (2026-11-01).
-// A browser that asks for each language first (Accept-Language and
-// navigator.languages, as Playwright's locale sets both), at 1280 and
-// 390 px, opens / and /download and must land on that language's copy
-// (/de, /de/download; English stays at / and /download) with:
+// between them and the app, in German, French and Spanish (2026-11-01);
+// then the plans, the FAQ, the comparison, the gallery and the LDraw
+// library (2026-11-01). A browser that asks for each language first
+// (Accept-Language and navigator.languages, as Playwright's locale sets
+// both), at 1280 and 390 px, opens each (/, /download, /plans, /faq,
+// /compare, /gallery, /library) and must land on that language's copy
+// (/de, /de/download...; English stays where it is) with:
 //
-//   its words: <html lang>, the heading and the header's Sign in as
-//     web/_lang/<code>.json says them, and the download offer's button and
-//     "New in" as its script says them;
+//   its words: <html lang>, the title, the heading and the header's Sign in
+//     as web/_lang/<code>.json says them, and the download offer's button
+//     and "New in", the gallery's and the library's count of what they
+//     list, as their scripts say them;
 //   no English left: no English word (the, and, your, with...) in any text
 //     of the page, shown or folded away, nor in an alt, title, aria-label
 //     or placeholder, apart from names and what is typed (code), and
-//     the cards of the live strips, whose names are people's;
+//     the cards of the live strips, whose names are people's, and the
+//     library's themes the app too keeps under the catalogue's names;
+//   nothing cut short: no words wider than the box that hides what
+//     overflows it (a card's mark on a phone, "Tipp der Woc") where the
+//     English page at that width shows its own whole (English is opened
+//     first for that, asked for or not);
 //   its way into the app: every link to /app carries ?lang=<code> (none in
 //     English), so the app opens in it (src/ui/language.gd);
 //   the footer's Language showing it.
@@ -29,7 +37,7 @@
 // Then the choice: on /de, choosing English in the footer opens / and keeps
 // it there on a reload, though the browser asks for German, and its links
 // into the app say lang=en; choosing Deutsch goes back. A page with no copy
-// (the gallery) carries the browser's language into the app all the same.
+// (the changelog) carries the browser's language into the app all the same.
 // With --app, the loading page says its words in the language the address
 // asks for, or the one kept, and in English with neither.
 //
@@ -72,9 +80,21 @@ const page = (code, english) => (code === "en" ? english : WORDS[code].pages[eng
 const script = (code, english, values = {}) => (code === "en" ? english : WORDS[code].scripts[english] ?? english)
   .replace(/\{(\w+)\}/g, (all, name) => (name in values ? String(values[name]) : all));
 const PAGES = [
-  { name: "home", path: "", heading: "#hero-h", says: "Design LEGO® models with AI, <em>in your browser</em>" },
-  { name: "download", path: "/download", heading: "#get-h", says: "Download Brickworks" },
+  { name: "home", path: "", title: "Brickworks — design LEGO® models with AI, in your browser",
+    heading: "#hero-h", says: "Design LEGO® models with AI, <em>in your browser</em>" },
+  { name: "download", path: "/download", title: "Download Brickworks for Linux, macOS and Windows",
+    heading: "#get-h", says: "Download Brickworks" },
+  { name: "plans", path: "/plans", title: "Pricing · Brickworks" },
+  { name: "faq", path: "/faq", title: "Questions · Brickworks", heading: "main h1", says: "Questions" },
+  { name: "compare", path: "/compare", title: "Brickworks beside Studio, Mecabricks, LeoCAD and LDCad",
+    heading: "main h1", says: "Studio exists. Why Brickworks?" },
+  // Their lists drawn first: what their scripts say about them is checked too.
+  { name: "gallery", path: "/gallery", title: "Gallery · Models built in Brickworks", heading: "#gallery-h",
+    says: "Gallery", ready: "gallery", count: "#found", noun: ["model", "models"] },
+  { name: "library", path: "/library", title: "Library · Every LEGO® set and its parts, in Brickworks",
+    heading: "#library-h", says: "Library", ready: "library", count: "#found-said", noun: ["set", "sets"] },
 ];
+const only = args.pages ? String(args.pages).split(",") : null;
 // English that is never a word of German, French or Spanish.
 const ENGLISH = /\b(the|and|with|your|you|this|that|from|without|what|which|every|they|their|into|would|could|should|our|are|isn't|don't|can't|it's)\b/i;
 // What stays as it is in every language: names, and the words of a name.
@@ -99,7 +119,10 @@ async function newContext(browser, code, width) {
 }
 
 /// Every text of the page a person can read or hear, shown or folded away,
-/// but the names of the cards in its live strips and what is typed.
+/// but the names of the cards in its live strips and what is typed. And a
+/// library theme's pill under the catalogue's own name (Star Wars, The LEGO
+/// Movie), as the app keeps it: one the app names in the language
+/// (locale/<code>.po, "theme") is read like any other word.
 function readable() {
   const SKIP = "script, style, code, kbd, template, svg, [translate='no'], article.model .words, article.model .frame";
   const said = [];
@@ -107,6 +130,7 @@ function readable() {
   for (let node = walk.nextNode(); node; node = walk.nextNode()) {
     const parent = node.parentElement;
     if (!parent || parent.closest(SKIP)) continue;
+    if (parent.closest("#themes [data-pick]")?.dataset.pick === node.textContent.trim()) continue;
     // A <noscript>'s inside is its markup as text where scripts run.
     const text = parent.closest("noscript") ? node.textContent.replace(/<[^>]+>/g, " ") : node.textContent;
     if (text.trim()) said.push(text.trim());
@@ -123,6 +147,32 @@ function readable() {
   return said;
 }
 
+/// The words a box cuts off sideways: a text wider than the element that
+/// hides what overflows it (a card's marks, a pill, a button), so a reader
+/// sees "Tipp der Woc". A box cut short downwards (the marks' second row)
+/// is how it is made, and a row that scrolls is not cut.
+function cut() {
+  const said = [];
+  for (const el of document.querySelectorAll("body *")) {
+    if (el.childElementCount || !el.textContent.trim() || !el.getClientRects().length) continue;
+    let box = el;
+    while (box && !/hidden|clip|auto|scroll/.test(getComputedStyle(box).overflowX)) box = box.parentElement;
+    if (!box || box === document.documentElement || box === document.body) continue;
+    if (/auto|scroll/.test(getComputedStyle(box).overflowX)) continue;
+    const own = el.getBoundingClientRect();
+    const room = box.getBoundingClientRect();
+    // Not shown at all: said to a screen reader only (.visually-hidden).
+    if (!own.width || room.width < 2 || room.height < 2) continue;
+    const over = box === el ? el.scrollWidth > el.clientWidth + 1 : own.right > room.right + 1 || own.left < room.left - 1;
+    if (over) said.push(el.textContent.trim());
+  }
+  return said;
+}
+
+// What the English page cuts (people's long model names, as it is made),
+// by page and width: a copy may cut those and nothing else.
+const cutInEnglish = new Map();
+
 async function onePage(browser, code, one, width) {
   const context = await newContext(browser, code, width);
   const tab = await context.newPage();
@@ -134,8 +184,21 @@ async function onePage(browser, code, one, width) {
     const want = code === "en" ? one.path || "/" : `/${code}${one.path}`;
     check(new URL(tab.url()).pathname === want, `${where}: opens ${want} (at ${new URL(tab.url()).pathname})`);
     check(await tab.evaluate(() => document.documentElement.lang) === code, `${where}: <html lang="${code}">`);
-    const heading = (await tab.locator(one.heading).innerText()).replace(/\s+/g, " ").trim();
-    check(heading === plain(page(code, one.says)), `${where}: its heading says "${heading}"`);
+    const title = await tab.title();
+    check(title === plain(page(code, one.title)), `${where}: its title says "${title}"`);
+    if (one.heading) {
+      const heading = (await tab.locator(one.heading).first().innerText()).replace(/\s+/g, " ").trim();
+      check(heading === plain(page(code, one.says)), `${where}: its heading says "${heading}"`);
+    }
+    if (one.ready) {
+      // Its list drawn, and counted in the language: "24 Modelle", "1.234 Sets".
+      await tab.waitForFunction((name) => ["ready", "broken"].includes(document.documentElement.dataset[name]), one.ready,
+        { timeout: 30000 });
+      const counted = (await tab.locator(one.count).innerText()).trim();
+      const nouns = one.noun.map((noun) => script(code, noun));
+      check(await tab.evaluate((name) => document.documentElement.dataset[name], one.ready) === "ready"
+        && nouns.some((noun) => counted.includes(noun)), `${where}: its list drawn and counted, "${counted}"`);
+    }
     // The header's Sign in, once web/follow.js has said who is here.
     await tab.waitForFunction(() => document.querySelector(".site-head a[data-account]")?.textContent.trim(), null, { timeout: 15000 });
     const signIn = await tab.locator(".site-head .nav a[data-account]").textContent();
@@ -156,6 +219,14 @@ async function onePage(browser, code, one, width) {
     if (code !== "en") {
       const left = (await tab.evaluate(readable)).map((text) => text.replace(NAMES, " ")).filter((text) => ENGLISH.test(text));
       check(!left.length, `${where}: no English left${left.length ? `: ${left.length}, first "${left[0].slice(0, 120)}"` : ""}`);
+    }
+    // Nothing cut short that the English page shows whole.
+    const cuts = await tab.evaluate(cut);
+    if (code === "en") cutInEnglish.set(`${one.name} ${width}`, new Set(cuts));
+    else {
+      const english = cutInEnglish.get(`${one.name} ${width}`) || new Set();
+      const short = cuts.filter((text) => !english.has(text));
+      check(!short.length, `${where}: nothing cut short${short.length ? `: ${short.length}, "${short.slice(0, 3).join('", "')}"` : ""}`);
     }
     // Every way into the app in the language.
     const apps = await tab.evaluate(() => [...document.querySelectorAll("a[href]")].map((a) => new URL(a.href))
@@ -196,10 +267,12 @@ async function choosing(browser) {
     await tab.goto(`${base}/`, { waitUntil: "load" });
     check(new URL(tab.url()).pathname === "/de", "and / opens /de from then on");
     await tab.goto(`${base}/gallery`, { waitUntil: "load" });
+    check(new URL(tab.url()).pathname === "/de/gallery", "and /gallery opens /de/gallery");
+    await tab.goto(`${base}/changelog`, { waitUntil: "load" });
     const shown = await tab.locator(".site-foot select[data-lang-choice]").inputValue();
     const into = await tab.evaluate(() => [...document.querySelectorAll('a[href^="/app"]')].map((a) => new URL(a.href).searchParams.get("lang")));
     check(shown === "de" && into.length >= 1 && into.every((lang) => lang === "de"),
-      `and the gallery, still in English, shows Deutsch chosen (${shown}) and opens the app in it (${into.length} links)`);
+      `and the changelog, still in English, shows Deutsch chosen (${shown}) and opens the app in it (${into.length} links)`);
   } catch (trouble) {
     check(false, `choosing: ${String(trouble.message || trouble).split("\n")[0]}`);
   } finally {
@@ -207,13 +280,14 @@ async function choosing(browser) {
   }
   // A page with no copy still carries the browser's language into the app.
   const french = await newContext(browser, "fr", 1280);
-  const gallery = await french.newPage();
+  const changes = await french.newPage();
   try {
-    await gallery.goto(`${base}/gallery`, { waitUntil: "load" });
-    const langs = await gallery.evaluate(() => [...document.querySelectorAll('a[href^="/app"]')].map((a) => new URL(a.href).searchParams.get("lang")));
-    check(langs.length >= 1 && langs.every((lang) => lang === "fr"), `the gallery, in English, sends a French browser into a French app (${langs.length} links)`);
+    await changes.goto(`${base}/changelog`, { waitUntil: "load" });
+    const langs = await changes.evaluate(() => [...document.querySelectorAll('a[href^="/app"]')].map((a) => new URL(a.href).searchParams.get("lang")));
+    check(new URL(changes.url()).pathname === "/changelog" && langs.length >= 1 && langs.every((lang) => lang === "fr"),
+      `the changelog, in English, sends a French browser into a French app (${langs.length} links)`);
   } catch (trouble) {
-    check(false, `gallery: ${String(trouble.message || trouble).split("\n")[0]}`);
+    check(false, `changelog: ${String(trouble.message || trouble).split("\n")[0]}`);
   } finally {
     await french.close();
   }
@@ -272,8 +346,8 @@ async function loader(browser) {
 const browser = await launch({ signedOut: true });
 try {
   console.log(`site in four languages on ${base}`);
-  for (const code of langs) {
-    for (const one of PAGES) {
+  for (const code of langs.includes("en") ? langs : ["en", ...langs]) {
+    for (const one of PAGES.filter((page) => !only || only.includes(page.name))) {
       for (const width of widths) await onePage(browser, code, one, width);
     }
   }

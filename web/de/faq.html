@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<!-- web/faq.html in Deutsch, written by tools/site_lang.py from it and web/_lang/de.json: change those and run it, never this. -->
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fragen · Brickworks</title>
+<meta name="description" content="Wie du in Brickworks mit Claude entwirfst, über dein Claude-Abo oder deinen eigenen API-Schlüssel, und Antworten auf das, was Leute fragen: Preis, Dateien, Datenschutz, worauf es läuft.">
+<link rel="canonical" href="https://brickworks.diy/de/faq">
+<link rel="alternate" hreflang="en" href="https://brickworks.diy/faq">
+<link rel="alternate" hreflang="de" href="https://brickworks.diy/de/faq">
+<link rel="alternate" hreflang="fr" href="https://brickworks.diy/fr/faq">
+<link rel="alternate" hreflang="es" href="https://brickworks.diy/es/faq">
+<link rel="alternate" hreflang="x-default" href="https://brickworks.diy/faq">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Fragen · Brickworks">
+<meta property="og:description" content="Wie du in Brickworks mit Claude entwirfst, und Antworten auf das, was Leute fragen.">
+<meta property="og:url" content="https://brickworks.diy/de/faq">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/site.css">
+<style>
+/* Laid out here; the head, the list of what is on the page, the cards,
+   the answers and the command are site.css's. */
+.faq { min-width: 0; max-width: 820px; }
+.faq-part + .faq-part { margin-top: var(--s-7); }
+.faq-part > h2 { margin-bottom: var(--s-4); }
+.ways { display: grid; gap: var(--s-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); }
+.way { display: flex; flex-direction: column; padding: var(--s-5); }
+.way h3 { margin: var(--s-4) 0 0; }
+.way ol { margin: var(--s-3) 0 0; padding-left: 20px; color: var(--ink-soft); font-size: var(--t-small); }
+.way li { margin: 0 0 10px; }
+.way b { color: var(--ink); font-weight: 620; }
+.way .for { font-size: var(--t-small); color: var(--ink-faint); margin: 2px 0 0; }
+.way .cost { margin-top: auto; padding-top: var(--s-3); border-top: 1px solid var(--line); font-size: var(--t-small); }
+</style>
+<script src="/follow.js" type="module"></script>
+<script type="application/json" id="site-words">{", a graphics driver with Vulkan or OpenGL 3.3": ", einen Grafiktreiber mit Vulkan oder OpenGL 3.3", ", and {size} of disk": " und {size} freien Speicherplatz", ", open until {day}. Enter a model of yours, or vote.": ", offen bis zum {day}. Reich ein Modell von dir ein oder stimm ab.", ", opens on {day}.": ", startet am {day}.", "3D model": "3D-Modell", "Account": "Konto", "Advent": "Advent", "Airlines": "Fluggesellschaften", "Airport": "Flughafen", "Animals and nature": "Tiere und Natur", "Any": "Alle", "Any year in the decade": "Jedes Jahr des Jahrzehnts", "Apple silicon and Intel": "Apple Silicon und Intel", "Architecture": "Architektur", "Art and mosaics": "Kunst und Mosaike", "Assistant": "Assistent", "Best match": "Beste Treffer", "Beta hub": "Beta-Bereich", "Boat": "Boote", "Building": "Gebäude", "Built in 3D first": "In 3D gebaute zuerst", "By name": "Nach Name", "Cargo": "Fracht", "Castles and fantasy": "Burgen und Fantasy", "Chinese (Lunar) New Year": "Mondneujahr", "Choose Pro.": "Wähle Pro.", "Choose monthly or yearly.": "Wähle monatlich oder jährlich.", "Chosen by Brickworks": "Von Brickworks ausgewählt", "Christmas": "Weihnachten", "Clear all": "Alles zurücksetzen", "Coast Guard": "Küstenwache", "Construction": "Baustelle", "Copied": "Kopiert", "Copy": "Kopieren", "Designed with the assistant, {how}": "Mit dem Assistenten entworfen, {how}", "Done: that address is not on the list for any plan.": "Erledigt: Diese Adresse steht für keinen Tarif auf der Liste.", "Download for {system}": "Für {system} herunterladen", "Every part of these is in your collection of {parts}: the most built and remixed first.": "Jedes Teil davon ist in deiner Sammlung ({parts}): die am häufigsten gebauten und geremixten zuerst.", "Farm": "Bauernhof", "Featured today": "Tagestipp", "Fewest parts": "Wenigste Teile", "Figures and characters": "Figuren und Charaktere", "Filters": "Filter", "Filters, {n} on": "Filter, {n} aktiv", "Fire": "Feuerwehr", "First launch: drag it into Applications.": "Erster Start: Zieh es in „Programme“.", "First launch: extract the zip first.": "Erster Start: Entpacke zuerst die ZIP-Datei.", "First launch: extract the zip, then allow it once.": "Erster Start: Entpacke die ZIP-Datei und erlaube es dann einmal.", "First launch: let the AppImage run as a program.": "Erster Start: Erlaube dem AppImage, als Programm zu laufen.", "First launch: macOS asks you to allow it once.": "Erster Start: macOS fragt einmal, ob du es erlaubst.", "Hand-built": "Von Hand gebaut", "Harbor": "Hafen", "Has instructions": "Mit Bauanleitung", "Hobby Sets": "Hobby-Sets", "Hospital": "Krankenhaus", "In PowerShell, this checks the file is the one published. It should print True.": "In PowerShell prüft dies, ob die Datei die veröffentlichte ist. Es sollte True ausgeben.", "In Terminal, this checks the file is the one published. It should print OK.": "Im Terminal prüft dies, ob die Datei die veröffentlichte ist. Es sollte OK ausgeben.", "In a terminal, this checks each file is the one published. It should print OK.": "In einem Terminal prüft dies, ob jede Datei die veröffentlichte ist. Es sollte OK ausgeben.", "Inside the theme": "Unterthema", "LDraw has a 3D model of it, to build in Brickworks": "LDraw hat ein 3D-Modell davon, zum Bauen in Brickworks", "LDraw library": "LDraw-Set", "LEGO® Exclusive": "Exklusive LEGO® Sets", "Large, 1,000 parts or more": "Groß, 1.000 Teile oder mehr", "Made from a 3D model with Brickify, {how}": "Mit Brickify aus einem 3D-Modell gemacht, {how}", "Mechanisms": "Mechanismen", "Medium, 200 to 999 parts": "Mittel, 200 bis 999 Teile", "Menu": "Menü", "Menu and your account": "Menü und dein Konto", "Menu and your account, {n} new": "Menü und dein Konto, {n} neu", "Minifigures": "Minifiguren", "Modelled by {name}": "Modelliert von {name}", "Modular Buildings": "Modulare Gebäude", "Most built": "Am häufigsten gebaut", "Most liked": "Am beliebtesten", "Most parts": "Meiste Teile", "Most remixed": "Am häufigsten geremixt", "Most viewed": "Am häufigsten angesehen", "Moves:": "Bewegt:", "Needs 64-bit Linux on an x86 PC": "Braucht 64-Bit-Linux auf einem x86-PC", "Needs 64-bit Linux on an x86 PC with glibc {glibc} or newer": "Braucht 64-Bit-Linux auf einem x86-PC mit glibc {glibc} oder neuer", "Needs 64-bit Windows 10 or 11, a graphics driver with Vulkan, Direct3D 12 or OpenGL 3.3": "Braucht 64-Bit-Windows 10 oder 11, einen Grafiktreiber mit Vulkan, Direct3D 12 oder OpenGL 3.3", "Needs macOS on Apple silicon or Intel": "Braucht macOS auf Apple Silicon oder Intel", "Needs macOS {arm} or later on Apple silicon, {intel} or later on Intel": "Braucht macOS {arm} oder neuer auf Apple Silicon, {intel} oder neuer auf Intel", "New in {version}": "Neu in {version}", "Newest": "Neueste", "Newest sets": "Neueste Sets", "Next": "Weiter", "No picture": "Kein Bild", "No set has every word you typed. The nearest: {sets}": "Kein Set enthält jedes Wort, das du eingegeben hast. Die nächsten Treffer: {sets}", "Nobody you follow has listed a model yet. Follow a designer from their page or from beside one of their models, and what they list comes here.": "Noch hat niemand, dem du folgst, ein Modell gelistet. Folge einem Designer auf seiner Seite oder neben einem seiner Modelle, und was er listet, erscheint hier.", "Nothing in the gallery is all in your collection of {parts} yet. Parts I own, in Filters, shows what is closest.": "Nichts in der Galerie steckt schon ganz in deiner Sammlung ({parts}). „Teile, die ich habe“ unter Filter zeigt, was am nächsten kommt.", "Nothing more": "Nichts mehr", "Nothing was built or remixed here {span} yet. A model joins Top when somebody builds it to its last step, remixes it, or it is Tested.": "Hier wurde {span} noch nichts gebaut oder geremixt. Ein Modell kommt unter „Beste“, wenn jemand es bis zum letzten Schritt baut, es remixt oder es getestet ist.", "Notifications": "Benachrichtigungen", "Off-Road": "Gelände", "Oldest sets": "Älteste Sets", "Only with a 3D model": "Nur mit 3D-Modell", "Open it and drag what moves, as it was built": "Öffne es und bewege, was sich bewegt, so wie es gebaut ist", "Open it and play it:": "Öffne es und spiel sie ab:", "Open it and play them:": "Öffne es und spiel sie ab:", "Other": "Sonstige", "Other systems: ": "Andere Systeme: ", "Page {n}": "Seite {n}", "Pages of {noun}": "Seiten der {noun}", "Parts I own": "Teile, die ich habe", "Police": "Polizei", "Previous": "Zurück", "Promotional": "Werbesets", "Released {date}": "Erschienen am {date}", "Retry": "Erneut versuchen", "Robots and machines": "Roboter und Maschinen", "Saved": "Gespeichert", "Seasonal": "Saisonales", "See Pro": "Pro ansehen", "See Top": "Beste ansehen", "See all time": "Gesamten Zeitraum ansehen", "Selected": "Markiert", "Send feedback": "Feedback senden", "Sending…": "Wird gesendet…", "Settings": "Einstellungen", "Show earlier": "Frühere anzeigen", "Show more": "Mehr anzeigen", "Showing sets for ": "Sets für ", "Showing {noun} {range}": "{noun} {range}", "Showing {range} of {total} {noun}": "{noun} {range} von {total}", "Sign in": "Anmelden", "Sign in to download the desktop app.": "Melde dich an, um die Desktop-App herunterzuladen.", "Sign in to like it: we email you a code, no password.": "Melde dich an, um es zu liken: Wir schicken dir einen Code per E-Mail, kein Passwort.", "Sign out": "Abmelden", "Signed in": "Angemeldet", "Small, under 200 parts": "Klein, unter 200 Teilen", "Something else": "Etwas anderes", "Space": "Weltraum", "Stands at every step · every step reachable · every part made in its colour · nothing loose": "Steht bei jedem Schritt · jeder Schritt erreichbar · jedes Teil in seiner Farbe hergestellt · nichts lose", "Stop filtering by the tag {tag}": "Filter nach dem Tag {tag} aufheben", "Stop filtering by {what}: {words}": "Filter nach {what} aufheben: {words}", "Stop filtering by {words}": "Filter „{words}“ aufheben", "Stop ordering by {words}": "Sortierung „{words}“ aufheben", "Technic or mechanism": "Technic oder Mechanik", "Tell Brickworks what you own (in the app, Build › My collection…) and this shows what in the gallery you can build with it.": "Sag Brickworks, was du besitzt (in der App unter Bauen › Meine Sammlung…), dann zeigt dies, was du aus der Galerie damit bauen kannst.", "Tested": "Getestet", "Tested only": "Nur getestete", "Thanks. We will write to you once, when it opens, and not before.": "Danke. Wir schreiben dir einmal, wenn es startet, und nicht vorher.", "Thanksgiving": "Thanksgiving", "That did not go just now. Try again in a minute.": "Das ging gerade nicht durch. Versuch es in einer Minute noch einmal.", "That did not go: no connection. Try again in a minute.": "Das ging nicht durch: keine Verbindung. Versuch es in einer Minute noch einmal.", "That did not work just now. Try again.": "Das hat gerade nicht geklappt. Versuch es noch einmal.", "That is not an email address.": "Das ist keine E-Mail-Adresse.", "That page did not load just now.": "Diese Seite wurde gerade nicht geladen.", "That page did not load just now. Retry is where Show more was.": "Diese Seite wurde gerade nicht geladen. „Erneut versuchen“ steht jetzt dort, wo „Mehr anzeigen“ war.", "The Hobbit and Lord of the Rings": "Der Hobbit und Der Herr der Ringe", "The LEGO® Movie": "The LEGO® Movie", "The Lord of the Rings": "Der Herr der Ringe", "The download did not start just now. Try again in a minute.": "Der Download ist gerade nicht gestartet. Versuch es in einer Minute noch einmal.", "The next challenge: ": "Der nächste Wettbewerb: ", "The note is a line of words.": "Die Notiz muss eine Zeile Text sein.", "The {kind}:": "Die {kind}-Datei:", "This month": "Dieser Monat", "This month’s challenge: ": "Wettbewerb des Monats: ", "This week": "Diese Woche", "Top builds": "Beste Modelle", "Top builds: a build finished counts {builds}, a remix {remixes} and the Tested mark {tested}. Views count for nothing.": "Beste Modelle: Einmal fertig gebaut zählt {builds}, ein Remix {remixes} und die Markierung „Getestet“ {tested}. Aufrufe zählen nicht.", "Town and buildings": "Stadt und Gebäude", "Traffic": "Verkehr", "Train": "Eisenbahn", "Trains": "Eisenbahn", "Vehicle": "Fahrzeuge", "Vehicles": "Fahrzeuge", "Version {version}": "Version {version}", "Week’s pick": "Topwahl", "Windows 10 and 11": "Windows 10 und 11", "With minifigures": "Mit Minifiguren", "With or without": "Mit oder ohne", "With the assistant": "Mit dem Assistenten", "Without": "Ohne", "Won “{title}”, by hand": "„{title}“ gewonnen, von Hand", "Won “{title}”, with the assistant": "„{title}“ gewonnen, mit dem Assistenten", "Year": "Jahr", "You have every part": "Du hast jedes Teil", "You have none of its parts": "Du hast keines seiner Teile", "You have {have} of its {pieces} parts": "Du hast {have} seiner {pieces} Teile", "Your account": "Dein Konto", "Your account, {n} new": "Dein Konto, {n} neu", "Your feed": "Dein Feed", "Your profile": "Dein Profil", "actuator": "Linearaktuator", "and {n} more": "und {n} weitere", "as its designer tagged it": "wie sein Designer es markiert hat", "as the app said when it was published": "wie die App beim Veröffentlichen angab", "boom": "Ausleger", "build finished": "Mal fertig gebaut", "builds finished": "Mal fertig gebaut", "built": "gebaut", "built {times} this week": "diese Woche {times} gebaut", "comment": "Kommentar", "comments": "Kommentare", "doors": "Türen", "gears": "Zahnräder", "how it was made": "Art der Erstellung", "just now": "gerade eben", "lately": "in letzter Zeit", "like": "Like", "likes": "Likes", "model": "Modell", "models": "Modelle", "new this week, and Tested": "neu in dieser Woche und getestet", "once": "einmal", "part": "Teil", "parts": "Teile", "pneumatics": "Pneumatik", "rack": "Zahnstange", "remix": "Remix", "remixed {times} this week": "diese Woche {times} geremixt", "remixes": "Remixe", "set": "Set", "sets": "Sets", "size": "Größe", "steering": "Lenkung", "this month": "diesen Monat", "this week": "diese Woche", "turntable": "Drehteller", "twice": "zweimal", "{done} in the past 30 days": "{done} in den letzten 30 Tagen", "{models}, more below": "{models}, weitere darunter", "{n} earlier {noun}": "{n} {noun} weiter oben", "{n} more {noun}": "{n} {noun} mehr", "{n} new": "{n} neu", "{n} times": "{n}-mal", "{sets} of yours has no parts list here, so what is in it is not counted.": "Für {sets} von dir gibt es hier keine Teileliste, daher wird sein Inhalt nicht mitgezählt.", "{sets} of yours have no parts list here, so what is in them is not counted.": "Für {sets} von dir gibt es hier keine Teilelisten, daher wird ihr Inhalt nicht mitgezählt.", "{sets} of {every}": "{sets} von {every}"}</script>
+</head>
+<body>
+<a class="skip" href="#main">Zum Inhalt springen</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/de"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Hauptmenü">
+			<a href="/de/gallery">Galerie</a>
+			<a href="/de/library">Bibliothek</a>
+			<a href="/docs">Doku</a>
+			<a href="/de/plans">Preise</a>
+			<a class="cta" href="/app?lang=de">App öffnen</a>
+			<a class="cta ghost" href="/profile" data-account>Anmelden</a>
+		</nav>
+		<details class="menu">
+			<summary>Menü</summary>
+			<div class="menu-list">
+				<nav aria-label="Menü">
+					<a href="/de/gallery">Galerie</a>
+					<a href="/de/library">Bibliothek</a>
+					<a href="/docs">Doku</a>
+					<a href="/de/plans">Preise</a>
+					<a href="/de/download">Download</a>
+					<a href="/profile" data-account>Anmelden</a>
+				</nav>
+				<div class="theme-choice"><span aria-hidden="true">Design</span>
+					<div class="segmented" role="group" aria-label="Design">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Hell</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dunkel</button>
+					</div>
+				</div>
+			</div>
+		</details>
+	</div>
+</header>
+
+<main id="main">
+	<div class="page-hero">
+		<div class="wrap">
+			<p class="eyebrow">Hilfe</p>
+			<h1>Fragen</h1>
+			<p class="lede">Was Brickworks kostet, wie du deine eigene KI mitbringst und was Leute fragen. Ist deine Frage nicht dabei, <a href="https://github.com/Xaxis/brickworks-releases/issues">stell sie auf GitHub</a> oder lies <a href="/docs">die Doku</a>.</p>
+		</div>
+	</div>
+	<div class="wrap page-body page-grid">
+		<nav class="page-toc" aria-labelledby="faq-toc">
+			<p class="page-toc-title" id="faq-toc">Auf dieser Seite</p>
+			<ul class="scroller">
+				<li><a href="#claude">Bring deine eigene KI mit</a></li>
+				<li><a href="#plans">Tarife und Preis</a></li>
+				<li><a href="#ai-questions">Deine KI</a></li>
+				<li><a href="#account">Dein Konto und deine Modelle</a></li>
+				<li><a href="#sharing">Teilen und gemeinsam bauen</a></li>
+				<li><a href="#building">Dateien, Teile und worauf es läuft</a></li>
+				<li><a href="#about">Über Brickworks</a></li>
+			</ul>
+		</nav>
+		<div class="faq">
+			<section class="faq-part" id="claude" aria-labelledby="claude-h">
+				<h2 id="claude-h">Bring deine eigene KI mit</h2>
+				<p class="sub">Zum Bauen von Hand brauchst du nur ein Konto, und im Fenster gibt es keine KI, bis du danach fragst. Damit eine KI entwirft, <a href="/app?lang=de&amp;assistant=on">öffne Brickworks mit eingeschaltetem Assistenten</a> (oder schalte ihn unter <b>Einstellungen, Assistent</b> ein) und bring dann deine eigene mit, auf eine von drei Arten. KI ist nie begrenzt, in keinem Tarif: Ihr Anbieter rechnet über dein Abo oder deinen Schlüssel ab, nie über Brickworks.</p>
+				<div class="ways">
+					<div class="card way">
+						<span class="glyph" aria-hidden="true"><svg class="icon"><use href="/icons.svg#spark"/></svg></span>
+						<h3>Dein Claude-Abo</h3>
+						<p class="for">Claude Pro oder Max · kein Schlüssel, nichts zu installieren</p>
+						<ol>
+							<li><a href="/app?lang=de&amp;assistant=on">Öffne die App mit eingeschaltetem Assistenten</a> und drücke <b>Claude verbinden</b>. claude.ai öffnet sich mit Brickworks bereits eingetragen: Drücke <b>Hinzufügen</b>, dann <b>Verbinden</b>, und <b>Erlauben</b>, wenn Brickworks fragt. Das machst du einmal für dein Konto; die Desktop- und Mobil-Apps von Claude haben es dann auch.</li>
+							<li>Bitte Claude, während Brickworks mit eingeschaltetem Assistenten offen ist: „Bau ein kleines rotes Haus in Brickworks“. Es baut in deinem offenen Tab, auf jedem Gerät, und jeder Schritt ist zu sehen, während es baut.</li>
+						</ol>
+						<p class="cost">Zählt zur Nutzung deines Abos, wie jeder andere Chat mit Claude.</p>
+					</div>
+					<div class="card way">
+						<span class="glyph" aria-hidden="true"><svg class="icon"><use href="/icons.svg#monitor"/></svg></span>
+						<h3>Claude Code</h3>
+						<p class="for">Claude Code, mit deinem Abo angemeldet</p>
+						<ol>
+							<li>Füge Brickworks hinzu, dann <b>/mcp</b> und Authenticate: <code class="cmd">claude mcp add --transport http brickworks https://brickworks.diy/api/mcp</code></li>
+							<li>Oder in der Desktop-App: Der Assistentenbereich startet Claude Code für dich, sodass ein Entwurf ohne Schlüssel über dein Abo läuft.</li>
+						</ol>
+						<p class="cost">Zählt zur Nutzung deines Abos, wie jede andere Sitzung in Claude Code.</p>
+					</div>
+					<div class="card way">
+						<span class="glyph" aria-hidden="true"><svg class="icon"><use href="/icons.svg#gear"/></svg></span>
+						<h3>Dein eigener API-Schlüssel</h3>
+						<p class="for">Bezahlung nach Verbrauch · Claude oder eine andere KI</p>
+						<ol>
+							<li>Erstelle einen Schlüssel auf <a href="https://console.anthropic.com/settings/keys">console.anthropic.com</a>, am sichersten in einem eigenen Workspace, mit einem Ausgabelimit und einem Ablaufdatum.</li>
+							<li>Füge ihn in <a href="/app?lang=de&amp;assistant=on">den Assistenten der App</a> ein. Er wird bei Anthropic geprüft, bevor er gespeichert wird, in deinem Browser oder nur für diesen Besuch.</li>
+							<li>Beschreibe, was du willst, und drücke <b>Bauen</b>. Wähle das Modell und wie gründlich es nachdenkt.</li>
+						</ol>
+						<p class="cost">Gemessen mit der Standardeinstellung: Ein kleines Haus brauchte 11 Minuten und $2,40, eine Burg 45 Minuten und $5–10. Mittlerer Aufwand kostet etwa ein Drittel.</p>
+					</div>
+				</div>
+			</section>
+			<section class="faq-part" id="plans" aria-labelledby="plans-h">
+				<h2 id="plans-h">Tarife und Preis</h2>
+				<details class="qa" id="free">
+					<summary>Ist Brickworks kostenlos?</summary>
+					<div><p>Im Browser ja: die ganze Web-App, mit KI ohne jedes Limit, gemeinsamem Bauen, Bauanleitungen, Renderings, Exporten und Links zum Teilen, und bis zu 25 Modellen in deinem Konto. Speichern auf deinem Gerät und Exportieren sind nie begrenzt. <a href="/de/plans">Pro</a> kommt bald für $8 im Monat oder $80 im Jahr und bringt die Desktop-App und beliebig viele Modelle in deinem Konto dazu. Noch wird nichts berechnet, und bis Pro startet, ist der Download der Desktop-App kostenlos.</p></div>
+				</details>
+				<details class="qa" id="ai">
+					<summary>Ist KI in irgendeinem Tarif begrenzt?</summary>
+					<div><p>Nein, nie, in keinem Tarif. Du bringst deine eigene KI mit: dein Claude-Abo über den Connector oder Claude Code, oder deinen eigenen API-Schlüssel. Ihr Anbieter rechnet ab, was sie tut, über dein Abo oder deinen Schlüssel, nie über Brickworks, daher zählt Brickworks sie nie und zahlt nie dafür. Die Desktop-App nutzt KI genau wie die Web-App und kann außerdem Claude Code für dich starten.</p></div>
+				</details>
+				<details class="qa" id="had-account">
+					<summary>Ich habe mein Konto vor dem 29. Oktober 2026 erstellt. Was ändert sich?</summary>
+					<div><p>Dir wird nichts genommen. Jedes Konto, das vor dem 29. Oktober 2026 erstellt wurde, behält Pro, kostenlos und ohne Enddatum: die Desktop-App, jede Version davon und beliebig viele Modelle in deinem Konto. Du musst nichts tun.</p></div>
+				</details>
+			</section>
+			<section class="faq-part" id="ai-questions" aria-labelledby="ai-questions-h">
+				<h2 id="ai-questions-h">Deine KI</h2>
+				<details class="qa">
+					<summary>Brauche ich ein Claude-Abo?</summary>
+					<div><p>Nein. Alles außer dem Assistenten funktioniert ohne, und der Assistent bleibt aus, bis du ihn unter Einstellungen, Assistent einschaltest oder <a href="/app?lang=de&amp;assistant=on">die App mit eingeschaltetem Assistenten öffnest</a>: Baust du ganz von Hand, gibt es nirgends im Fenster eine KI. Um Claude dazuzuholen, schalte ihn ein und verbinde dann ein Claude-Pro- oder -Max-Abo oder füge einen API-Schlüssel aus der Anthropic Console ein.</p></div>
+				</details>
+				<details class="qa">
+					<summary>Sieht Brickworks meinen API-Schlüssel?</summary>
+					<div><p>Nein. Er bleibt in deinem Browser, oder auf Wunsch nur für den Besuch, und wird nur an Anthropic gesendet. Die Sicherheitsrichtlinie der Seite verweigert, irgendetwas irgendwohin zu senden außer an ihre eigene kurze Liste, also kann ein Schlüssel nirgendwo anders hin. Mehr dazu, <a href="/privacy">was Brickworks speichert</a>.</p></div>
+				</details>
+				<details class="qa" id="new-tools">
+					<summary>Claude sieht ein neues Brickworks-Tool nicht. Was nun?</summary>
+					<div><p>Brickworks sagt Claude Bescheid, wenn sich seine Tools ändern, und eine Claude-App, die darauf achtet, übernimmt sie von selbst. Hat deine das nicht getan, lade zuerst den Brickworks-Tab neu, falls er meldet, dass er aktualisiert wurde. Starte dann eine neue Unterhaltung. Fehlt das Tool immer noch, verbinde Brickworks in Claude neu: <b>Anpassen › Konnektoren</b>, wähle Brickworks, <b>Trennen</b>, dann <b>Verbinden</b>; in Claude Code führe <code>/mcp</code> aus, wähle brickworks und Reconnect. Nicht <b>Claude trennen</b> in Brickworks: Das beendet die Verbindung von Claude, und du musst sie neu herstellen und wieder erlauben.</p></div>
+				</details>
+				<details class="qa" id="tool-permissions">
+					<summary>Claude fragt vor jedem Brickworks-Tool. Kann es aufhören zu fragen?</summary>
+					<div><p>Ja, in Claude: <b>Anpassen › Konnektoren</b>, wähle Brickworks und unter <b>Tool-Berechtigungen</b> <b>Immer erlauben</b> für die Tools, denen du vertraust, oder drücke <b>Immer erlauben</b>, wenn Claude fragt. Diese Schalter gehören zu Claude, daher kann Brickworks sie nicht für dich setzen. Es sagt Claude aber, welche seiner Tools nur schauen und nichts ändern. Brickworks bittet dich einmal um „Erlauben“ und nicht wieder, solange Claude verbunden bleibt. Um nach einem Trennen wieder zu verbinden, drücke <b>Verbinden</b> bei dem Brickworks, das schon unter deinen Konnektoren ist, statt es noch einmal hinzuzufügen: Erneutes Hinzufügen legt ein neues an, dessen Tool-Berechtigungen du noch einmal wählen musst.</p></div>
+				</details>
+			</section>
+			<section class="faq-part" id="account" aria-labelledby="account-h">
+				<h2 id="account-h">Dein Konto und deine Modelle</h2>
+				<details class="qa" id="sign-in">
+					<summary>Wie melde ich mich an?</summary>
+					<div><p>Mit einem Code, den wir dir per E-Mail schicken, oder mit orangecheck: in einem eigenen Fenster, mit einer Bitcoin-Wallet, E-Mail, Google oder GitHub. So oder so gibt es kein Passwort, das du dir merken musst. Die Desktop-App meldet sich mit dem Code per E-Mail an, und ab 0.8.0 auch mit orangecheck. Mehr dazu, <a href="/privacy">was jeweils gespeichert wird</a>.</p></div>
+				</details>
+				<details class="qa">
+					<summary>Wo werden meine Modelle gespeichert?</summary>
+					<div><p>In deinem Browser, oder in der Desktop-App auf deinem Computer, und außerdem privat in deinem Konto, sodass sie sich unter Datei › Öffnen überall öffnen lassen, wo du dich anmeldest. Exportiere sie als LDraw <code>.ldr</code> oder Studio <code>.io</code>, um sie aufzubewahren oder mitzunehmen. Niemand sonst sieht ein Modell, bis du es teilst.</p></div>
+				</details>
+				<details class="qa" id="updated">
+					<summary>Da steht „Brickworks wurde aktualisiert“. Was mache ich?</summary>
+					<div><p>Drücke <b>Neu laden</b>, wann es dir passt. Das Modell in diesem Tab kommt so zurück, wie es ist, unter seinem Namen. Bis dahin funktioniert der Tab weiter, speichert aber nichts in deine gespeicherten Modelle, damit er nie überschreiben kann, was ein Tab mit der neuen Version speichert. Speichere nach dem Neuladen noch einmal.</p></div>
+				</details>
+			</section>
+			<section class="faq-part" id="sharing" aria-labelledby="sharing-h">
+				<h2 id="sharing-h">Teilen und gemeinsam bauen</h2>
+				<details class="qa" id="together">
+					<summary>Kann ich ein Modell mit jemand anderem bauen?</summary>
+					<div><p>Ja, live. <b>Datei › Gemeinsam bauen…</b> gibt dir einen Link zu deinem Modell, und wer ihn angemeldet öffnet, baut es gleichzeitig mit dir in seinem Browser (in der Desktop-App ab 0.8.0). Ihr seht jeweils, wie die Teile des anderen gesetzt, bewegt und umgefärbt werden, sobald es passiert, und seinen Zeiger mit seinem Namen; <b>Rückgängig</b> nimmt nur deine eigenen Änderungen zurück, und es gibt einen kurzen Chat für Leute ab 13. Nach einem Neuladen geht es von selbst zurück in die Sitzung. Du beendest sie, und das Modell bleibt deins.</p></div>
+				</details>
+				<details class="qa" id="model-page">
+					<summary>Was machen die Schaltflächen auf der Seite eines geteilten Modells?</summary>
+					<div><p><b>Bauen</b> öffnet es in 3D: Dreh es, geh seine Bauschritte durch und hol dir seine Bauanleitung und Teileliste, ohne Konto. <b>In Brickworks öffnen</b> kopiert es in deine eigenen Modelle, um es zu ändern und zu deinem zu machen; teilst du das, zeigt seine Seite es als Remix. Darunter kannst du es <b>liken</b>, in deinen Favoriten oder einer Sammlung <b>speichern</b>, seinen Link <b>teilen</b>, es oder einen seiner Schritte <b>kommentieren</b> und mit einem Foto deines Nachbaus <b>Ich habe es gebaut</b> sagen. <b>Mehr</b> kopiert den Code, um es in eine eigene Seite einzubetten, und dort kannst du es auch melden.</p></div>
+				</details>
+				<details class="qa" id="tested">
+					<summary>Was bedeutet „Getestet“ bei einem Modell?</summary>
+					<div><p>Dass ein Mensch es bauen kann. Brickworks testet ein Modell, wenn es geteilt wird: In seinen eigenen Schritten gebaut, kommt jedes Teil dorthin, wo etwas es hält, und das Modell steht bei jedem Schritt; jedes Teil hat eine Farbe, in der es hergestellt wurde; und fertig gebaut wird jedes Teil von einer Noppe, einer Verbindung oder etwas, worin es einrastet, gehalten, und keine zwei stecken ineinander, nach den echten Formen der Teile. Bei einem Modell ohne die Markierung erfährt sein Besitzer auf seiner Seite, warum.</p></div>
+				</details>
+			</section>
+			<section class="faq-part" id="building" aria-labelledby="building-h">
+				<h2 id="building-h">Dateien, Teile und worauf es läuft</h2>
+				<details class="qa">
+					<summary>Kann es meine Dateien aus BrickLink Studio, LDD oder LDraw öffnen?</summary>
+					<div><p>Ja: Studio <code>.io</code> (auch gesperrte), LEGO® Digital Designer <code>.lxf</code> sowie LDraw <code>.ldr</code> und <code>.mpd</code>. Es speichert LDraw und <code>.io</code>, exportiert glTF, OBJ und STL, speichert eine Bauanleitung als PDF oder als PNG-Seiten und verwandelt OBJ-, STL- und glTF-Modelle in Steine.</p></div>
+				</details>
+				<details class="qa">
+					<summary>Kann ich die Teile kaufen, um es zu bauen?</summary>
+					<div><p>Exportiere die Teileliste als BrickLink-Wunschliste oder Rebrickable-Teileliste, nach Posten, so wie Shops sie verkaufen. Meine Sammlung zieht vorher ab, was du schon besitzt.</p></div>
+				</details>
+				<details class="qa">
+					<summary>Was brauche ich, um es zu nutzen?</summary>
+					<div><p>Einen aktuellen Browser auf einem Computer, Tablet oder Smartphone (es läuft mit WebGL 2 und WebAssembly-Threads). Auf Tablet und Smartphone ist die App für den Finger angelegt: eine Reihe Werkzeuge, und die Teile, die Farben und der Rest in Bereichen neben dem Modell oder, auf dem Smartphone, in Einblendungen darüber. Oder die <a href="/de/download">Desktop-App</a> für Linux, macOS und Windows, die alle Teile auf der Festplatte mitbringt und ganz ohne Netzwerk baut; sie gehört zu <a href="/de/plans">Pro</a>, sobald Pro startet, und ist bis dahin kostenlos herunterzuladen.</p></div>
+				</details>
+				<details class="qa" id="access">
+					<summary>Funktioniert es mit einem Screenreader oder nur mit der Tastatur?</summary>
+					<div><p>In der Desktop-App, ab 0.8.0. Jede Schaltfläche, jedes Teil, jede Farbe und jedes Feld nennt seinen Namen („Auswählen, V“, „Stein 2 x 4, 3001“), und was die Statuszeile sagt, wird vorgelesen. <b>F6</b> (oder <b>Tab</b>, wenn ein Screenreader läuft) geht vom Modell in die Werkzeugleiste, die Teile und die Farben; <b>Eingabe</b> nimmt ein Teil, und noch einmal <b>Eingabe</b> setzt es in der Mitte der Ansicht ab. Die Einstellungen haben <b>Größe der Oberfläche</b>, 85 bis 150 %, und <b>Bewegung reduzieren</b>. Im Browser zeichnet die App ihre Bedienelemente selbst, wo ein Screenreader sie nicht erreicht; die eigenen Seiten dieser Website funktionieren mit beidem.</p></div>
+				</details>
+				<details class="qa">
+					<summary>Wie genau sind die Teile?</summary>
+					<div>
+						<p>1 LDU ist genau 0,4 mm, und jedes Maß wurde von der Teilegeometrie abgelesen, statt aus einer Referenz abgeschrieben. Die Tests prüfen sie, sodass ein Update der Bibliothek sie nicht unbemerkt verschieben kann.</p>
+						<div class="table" role="region" aria-label="Maße, Brickworks im Vergleich zur Spezifikation" tabindex="0">
+						<table>
+							<thead><tr><th scope="col">Merkmal</th><th scope="col" class="n">Brickworks</th><th scope="col" class="n">Spezifikation</th></tr></thead>
+							<tbody>
+								<tr><th scope="row">Noppenabstand</th><td class="n">8,00 mm</td><td class="n">8.0</td></tr>
+								<tr><th scope="row">Steinhöhe</th><td class="n">9,60 mm</td><td class="n">9.6</td></tr>
+								<tr><th scope="row">Plattenhöhe</th><td class="n">3,20 mm</td><td class="n">3.2</td></tr>
+								<tr><th scope="row">Noppendurchmesser</th><td class="n">4,80 mm</td><td class="n">4.8</td></tr>
+								<tr><th scope="row">Wandstärke</th><td class="n">1,60 mm</td><td class="n">1.6</td></tr>
+								<tr><th scope="row">Stein 2 × 4</th><td class="n">32,00 × 16,00 mm</td><td class="n">32 × 16</td></tr>
+								<tr><th scope="row">Noppenhöhe</th><td class="n">1,60 mm</td><td class="n">1.8</td></tr>
+							</tbody>
+						</table>
+						</div>
+						<p>Die Maße sind nominal statt wie gegossen; nur so fügen sich Teile genau aneinander, statt eine Lücke zu lassen, die entlang einer langen Wand wächst. Die Noppenhöhe folgt der eigenen Konvention der LDraw-Bibliothek, und jedes Teil hält sich daran.</p>
+					</div>
+				</details>
+			</section>
+			<section class="faq-part" id="about" aria-labelledby="about-h">
+				<h2 id="about-h">Über Brickworks</h2>
+				<details class="qa" id="studio">
+					<summary>Warum Brickworks, wenn es BrickLink Studio gibt?</summary>
+					<div><p>Studio ist der Standard der Community und macht vieles gut. Brickworks läuft in jedem Browser, auch auf Tablet oder Smartphone, ohne etwas zu installieren; wiegt Gleichgewicht und Verbindungsfestigkeit ab und listet die schwächsten Verbindungen; dreht Getriebe in ihren echten Übersetzungen; öffnet und speichert Studio <code>.io</code>; exportiert STL, OBJ und GLB; und baut ein Modell live mit anderen. <a href="/de/compare">Sieh es neben Studio, Mecabricks, LeoCAD und LDCad</a>, mit dem, worin jedes von ihnen noch vorn liegt.</p></div>
+				</details>
+				<details class="qa">
+					<summary>Wird Brickworks von der LEGO Gruppe gemacht?</summary>
+					<div><p>Nein. LEGO® ist eine Marke der LEGO Unternehmensgruppe, die diese Website weder sponsert noch autorisiert oder unterstützt. Die Teile stammen aus der LDraw-Bibliothek der Community, die Katalogdaten von Rebrickable.</p></div>
+				</details>
+			</section>
+		</div>
+	</div>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-top">
+			<div class="foot-brand">
+				<a class="mark" href="/de"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>Ein CAD für LEGO® Modelle, mit einem KI-Designer.</p>
+				<div class="theme-choice"><span aria-hidden="true">Design</span>
+					<div class="segmented" role="group" aria-label="Design">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Hell</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dunkel</button>
+					</div>
+				</div>
+				<label class="theme-choice"><span>Sprache</span>
+					<select data-lang-choice translate="no">
+						<option value="en" lang="en">English</option>
+						<option value="de" lang="de">Deutsch</option>
+						<option value="fr" lang="fr">Français</option>
+						<option value="es" lang="es">Español</option>
+					</select>
+				</label>
+			</div>
+			<nav class="foot-links" aria-label="Mehr">
+				<div>
+					<p class="foot-h" id="foot-product">Produkt</p>
+					<ul aria-labelledby="foot-product">
+						<li><a href="/app?lang=de">App öffnen</a></li>
+						<li><a href="/de/download">Download</a></li>
+						<li><a href="/de/plans">Preise</a></li>
+						<li><a href="/changelog">Änderungen</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-community">Community</p>
+					<ul aria-labelledby="foot-community">
+						<li><a href="/de/gallery">Galerie</a></li>
+						<li><a href="/de/library">LDraw-Bibliothek</a></li>
+						<li><a href="/challenge">Wettbewerb</a></li>
+						<li><a href="/collections">Sammlungen</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-help">Hilfe</p>
+					<ul aria-labelledby="foot-help">
+						<li><a href="/docs">Doku</a></li>
+						<li><a href="/de/faq">FAQ</a></li>
+						<li><a href="/de/compare">Vergleich</a></li>
+						<li><a href="/guidelines">Richtlinien</a></li>
+						<li><a href="/feedback" data-feedback>Feedback senden</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-legal">Rechtliches</p>
+					<ul aria-labelledby="foot-legal">
+						<li><a href="/privacy">Datenschutz</a></li>
+						<li><a href="/terms">Nutzungsbedingungen</a></li>
+						<li><a href="/takedown">Entfernung melden</a></li>
+					</ul>
+				</div>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>LEGO® ist eine Marke der LEGO Unternehmensgruppe, die diese Website weder sponsert noch autorisiert oder unterstützt. LEGO® Art, Technic, die Minifigur und die Konfigurationen von Stein und Noppe sind ebenfalls Marken der LEGO Gruppe. Teile aus der LDraw™ Bibliothek (CC BY). <a href="/terms#notices">Hinweise</a></p>
+		</div>
+	</div>
+</footer>
+
+<script type="application/ld+json">
+{
+	"@context": "https://schema.org",
+	"@type": "FAQPage",
+	"mainEntity": [
+		{
+			"@type": "Question",
+			"name": "Warum Brickworks, wenn es BrickLink Studio gibt?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "Studio ist der Standard der Community und macht vieles gut. Brickworks läuft in jedem Browser, auch auf Tablet oder Smartphone, ohne etwas zu installieren; wiegt Gleichgewicht und Verbindungsfestigkeit ab und listet die schwächsten Verbindungen; dreht Getriebe in ihren echten Übersetzungen; öffnet und speichert Studio .io; exportiert STL, OBJ und GLB; und baut ein Modell live mit anderen. brickworks.diy/compare stellt es neben Studio, Mecabricks, LeoCAD und LDCad, mit dem, worin jedes von ihnen noch vorn liegt."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Ist Brickworks kostenlos?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "Im Browser ja: die ganze Web-App, mit KI ohne jedes Limit, gemeinsamem Bauen, Bauanleitungen, Renderings, Exporten und Links zum Teilen, und bis zu 25 Modellen in deinem Konto. Speichern auf deinem Gerät und Exportieren sind nie begrenzt. Pro kommt bald für $8 im Monat oder $80 im Jahr und bringt die Desktop-App und beliebig viele Modelle in deinem Konto dazu. Noch wird nichts berechnet, und bis Pro startet, ist der Download der Desktop-App kostenlos."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Ist KI in irgendeinem Tarif begrenzt?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "Nein, nie, in keinem Tarif. Du bringst deine eigene KI mit: dein Claude-Abo über den Connector oder Claude Code, oder deinen eigenen API-Schlüssel. Ihr Anbieter rechnet ab, was sie tut, über dein Abo oder deinen Schlüssel, nie über Brickworks, daher zählt Brickworks sie nie und zahlt nie dafür."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Ich habe mein Konto vor dem 29. Oktober 2026 erstellt. Was ändert sich?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "Dir wird nichts genommen. Jedes Konto, das vor dem 29. Oktober 2026 erstellt wurde, behält Pro, kostenlos und ohne Enddatum: die Desktop-App, jede Version davon und beliebig viele Modelle in deinem Konto."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Wie melde ich mich an?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "Mit einem Code, den wir dir per E-Mail schicken, oder mit orangecheck: in einem eigenen Fenster, mit einer Bitcoin-Wallet, E-Mail, Google oder GitHub. So oder so gibt es kein Passwort, das du dir merken musst. Die Desktop-App meldet sich mit dem Code per E-Mail an, und ab 0.8.0 auch mit orangecheck."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Brauche ich ein Claude-Abo?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "Nein. Alles außer dem Assistenten funktioniert ohne, und der Assistent bleibt aus, bis du ihn unter Einstellungen, Assistent einschaltest oder brickworks.diy/app?assistant=on öffnest: Baust du ganz von Hand, gibt es nirgends im Fenster eine KI. Um Claude dazuzuholen, schalte ihn ein und verbinde dann ein Claude-Pro- oder -Max-Abo oder füge einen API-Schlüssel aus der Anthropic Console ein."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Sieht Brickworks meinen API-Schlüssel?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "Nein. Er bleibt in deinem Browser, oder auf Wunsch nur für den Besuch, und wird nur an Anthropic gesendet. Die Sicherheitsrichtlinie der Seite verweigert, irgendetwas irgendwohin zu senden außer an ihre eigene kurze Liste."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Wo werden meine Modelle gespeichert?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "In deinem Browser, oder in der Desktop-App auf deinem Computer, und außerdem privat in deinem Konto, sodass sie sich unter Datei › Öffnen überall öffnen lassen, wo du dich anmeldest. Exportiere sie als LDraw .ldr oder Studio .io. Niemand sonst sieht ein Modell, bis du es teilst."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Kann ich ein Modell mit jemand anderem bauen?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "Ja, live. Datei › Gemeinsam bauen… gibt dir einen Link zu deinem Modell, und wer ihn angemeldet öffnet, baut es gleichzeitig mit dir in seinem Browser (in der Desktop-App ab 0.8.0). Ihr seht jeweils, wie die Teile des anderen gesetzt, bewegt und umgefärbt werden, sobald es passiert, und seinen Zeiger mit seinem Namen; Rückgängig nimmt nur deine eigenen Änderungen zurück, und es gibt einen kurzen Chat für Leute ab 13. Du beendest die Sitzung, und das Modell bleibt deins."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Was machen die Schaltflächen auf der Seite eines geteilten Modells?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "Bauen öffnet es in 3D: Dreh es, geh seine Bauschritte durch und hol dir seine Bauanleitung und Teileliste, ohne Konto. In Brickworks öffnen kopiert es in deine eigenen Modelle, um es zu ändern und zu deinem zu machen. Außerdem kannst du es liken, in deinen Favoriten oder einer Sammlung speichern, seinen Link teilen, es oder einen seiner Schritte kommentieren und mit einem Foto deines Nachbaus „Ich habe es gebaut“ sagen. Mehr kopiert den Code, um es in eine eigene Seite einzubetten, und dort kannst du es auch melden."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Was bedeutet „Getestet“ bei einem Modell?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "Dass ein Mensch es bauen kann. Brickworks testet ein Modell, wenn es geteilt wird: In seinen eigenen Schritten gebaut, kommt jedes Teil dorthin, wo etwas es hält, und das Modell steht bei jedem Schritt; jedes Teil hat eine Farbe, in der es hergestellt wurde; und fertig gebaut wird jedes Teil von einer Noppe, einer Verbindung oder etwas, worin es einrastet, gehalten, und keine zwei stecken ineinander, nach den echten Formen der Teile. Bei einem Modell ohne die Markierung erfährt sein Besitzer auf seiner Seite, warum."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Kann es meine Dateien aus BrickLink Studio, LDD oder LDraw öffnen?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "Ja: Studio .io (auch gesperrte), LEGO® Digital Designer .lxf sowie LDraw .ldr und .mpd. Es speichert LDraw und .io, exportiert glTF, OBJ und STL, speichert eine Bauanleitung als PDF oder als PNG-Seiten und verwandelt OBJ-, STL- und glTF-Modelle in Steine."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Kann ich die Teile kaufen, um es zu bauen?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "Exportiere die Teileliste als BrickLink-Wunschliste oder Rebrickable-Teileliste, nach Posten. Meine Sammlung zieht vorher ab, was du schon besitzt."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Was brauche ich, um es zu nutzen?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "Einen aktuellen Browser auf einem Computer, Tablet oder Smartphone (WebGL 2 und WebAssembly-Threads); auf Tablet und Smartphone ist die App für den Finger angelegt. Oder die Desktop-App für Linux, macOS und Windows, die ganz ohne Netzwerk baut; sie gehört zu Pro, sobald Pro startet, und ist bis dahin kostenlos herunterzuladen."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Funktioniert es mit einem Screenreader oder nur mit der Tastatur?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "In der Desktop-App, ab 0.8.0. Jede Schaltfläche, jedes Teil, jede Farbe und jedes Feld nennt seinen Namen, und was die Statuszeile sagt, wird vorgelesen. F6 (oder Tab, wenn ein Screenreader läuft) geht vom Modell in die Werkzeugleiste, die Teile und die Farben; Eingabe nimmt ein Teil, und noch einmal Eingabe setzt es in der Mitte der Ansicht ab. Die Einstellungen haben „Größe der Oberfläche“, 85 bis 150 %, und „Bewegung reduzieren“. Im Browser erreicht ein Screenreader die Bedienelemente der App nicht; die eigenen Seiten dieser Website funktionieren mit beidem."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Wie genau sind die Teile?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "1 LDU ist genau 0,4 mm, und jedes Maß wurde von der Teilegeometrie abgelesen: Noppenabstand 8,00 mm, Steinhöhe 9,60 mm, Plattenhöhe 3,20 mm, Noppendurchmesser 4,80 mm. Die Noppenhöhe, 1,60 mm, ist die eigene Konvention der LDraw-Bibliothek."
+			}
+		},
+		{
+			"@type": "Question",
+			"name": "Wird Brickworks von der LEGO Gruppe gemacht?",
+			"acceptedAnswer": {
+				"@type": "Answer",
+				"text": "Nein. LEGO® ist eine Marke der LEGO Unternehmensgruppe, die diese Website weder sponsert noch autorisiert oder unterstützt. Die Teile stammen aus der LDraw-Bibliothek der Community, die Katalogdaten von Rebrickable."
+			}
+		}
+	]
+}
+</script>
+</body>
+</html>

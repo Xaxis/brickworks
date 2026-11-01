@@ -81,10 +81,11 @@ const PAGES = [
   { path: "/faq", canonical: `${SITE}/faq` },
   { path: "/privacy", canonical: `${SITE}/privacy` },
   { path: "/takedown", canonical: `${SITE}/takedown` },
-  // The landing and download pages in each language (tools/site_lang.py).
+  // The pages in each language (tools/site_lang.py PAGES).
   ...["de", "fr", "es"].flatMap((code) => [
     { path: `/${code}`, canonical: `${SITE}/${code}` },
-    { path: `/${code}/download`, canonical: `${SITE}/${code}/download` },
+    ...["download", "plans", "faq", "compare", "gallery", "library"]
+      .map((where) => ({ path: `/${code}/${where}`, canonical: `${SITE}/${code}/${where}` })),
   ]),
   { path: "/admin", private: true },
   { path: "/profile", private: true },

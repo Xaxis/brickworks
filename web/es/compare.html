@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<!-- web/compare.html in Español, written by tools/site_lang.py from it and web/_lang/es.json: change those and run it, never this. -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brickworks junto a Studio, Mecabricks, LeoCAD y LDCad</title>
+<meta name="description" content="Brickworks junto a BrickLink Studio, Mecabricks, LeoCAD y LDCad, fila a fila y con fuentes: lo que hace cada uno, mostrado con modelos reales, y dónde siguen destacando los demás.">
+<link rel="canonical" href="https://brickworks.diy/es/compare">
+<link rel="alternate" hreflang="en" href="https://brickworks.diy/compare">
+<link rel="alternate" hreflang="de" href="https://brickworks.diy/de/compare">
+<link rel="alternate" hreflang="fr" href="https://brickworks.diy/fr/compare">
+<link rel="alternate" hreflang="es" href="https://brickworks.diy/es/compare">
+<link rel="alternate" hreflang="x-default" href="https://brickworks.diy/compare">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Brickworks junto a Studio, Mecabricks, LeoCAD y LDCad">
+<meta property="og:description" content="Studio existe. Aquí tienes Brickworks junto a él y al resto del panorama, fila a fila, y dónde siguen destacando los demás.">
+<meta property="og:url" content="https://brickworks.diy/es/compare">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/site.css">
+<style>
+/* Laid out here; the head, the pictures' frames, the table, the section
+   heads and the last offer are site.css's. */
+.points { display: grid; gap: clamp(44px, 7vw, 88px); margin: 0; padding: 0; list-style: none; }
+.point { display: grid; gap: clamp(18px, 3.5vw, 48px); grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); align-items: center; }
+.point:nth-child(even) .shot { order: 2; }
+.point p { margin: 0; color: var(--ink-soft); max-width: 46ch; text-wrap: pretty; }
+.point .them { margin-top: 12px; font-size: var(--t-small); color: var(--ink-faint); }
+.shot img, .shot video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; background: var(--bg-soft); }
+.shot video:not([controls]) { cursor: pointer; }
+@media (width < 900px) {
+	.point { grid-template-columns: 1fr; }
+	.point:nth-child(even) .shot { order: 0; }
+}
+.part { margin-top: var(--section); }
+.closing .lede { max-width: 62ch; }
+.sources-part { margin-top: var(--s-6); }
+.sources { margin: 0; font-size: var(--t-tiny); color: var(--ink-faint); max-width: 90ch; }
+.sources a { color: var(--ink-soft); }
+</style>
+<script src="/follow.js" type="module"></script>
+<script type="application/json" id="site-words">{", a graphics driver with Vulkan or OpenGL 3.3": ", un controlador gráfico con Vulkan u OpenGL 3.3", ", and {size} of disk": " y {size} de disco", ", open until {day}. Enter a model of yours, or vote.": ", abierto hasta el {day}. Presenta un modelo tuyo o vota.", ", opens on {day}.": ", empieza el {day}.", "3D model": "Modelo 3D", "Account": "Cuenta", "Advent": "Adviento", "Airlines": "Aerolíneas", "Airport": "Aeropuerto", "Animals and nature": "Animales y naturaleza", "Any": "Cualquiera", "Any year in the decade": "Cualquier año de la década", "Apple silicon and Intel": "Apple silicon e Intel", "Architecture": "Arquitectura", "Art and mosaics": "Arte y mosaicos", "Assistant": "Asistente", "Best match": "Mejor coincidencia", "Beta hub": "Zona beta", "Boat": "Barcos", "Building": "Edificios", "Built in 3D first": "Primero los construidos en 3D", "By name": "Por nombre", "Cargo": "Carga", "Castles and fantasy": "Castillos y fantasía", "Chinese (Lunar) New Year": "Año Nuevo Lunar", "Choose Pro.": "Elige Pro.", "Choose monthly or yearly.": "Elige mensual o anual.", "Chosen by Brickworks": "Elegido por Brickworks", "Christmas": "Navidad", "Clear all": "Borrar todo", "Coast Guard": "Guardacostas", "Construction": "Construcción", "Copied": "Copiado", "Copy": "Copiar", "Designed with the assistant, {how}": "Diseñado con el asistente, {how}", "Done: that address is not on the list for any plan.": "Hecho: esa dirección no está en la lista de ningún plan.", "Download for {system}": "Descargar para {system}", "Every part of these is in your collection of {parts}: the most built and remixed first.": "Todas las piezas de estos están en tu colección de {parts}: primero los más construidos y remezclados.", "Farm": "Granja", "Featured today": "Destacado hoy", "Fewest parts": "Menos piezas", "Figures and characters": "Figuras y personajes", "Filters": "Filtros", "Filters, {n} on": "Filtros activos: {n}", "Fire": "Bomberos", "First launch: drag it into Applications.": "Primer inicio: arrástrala a Aplicaciones.", "First launch: extract the zip first.": "Primer inicio: primero extrae el zip.", "First launch: extract the zip, then allow it once.": "Primer inicio: extrae el zip y después permítela una vez.", "First launch: let the AppImage run as a program.": "Primer inicio: deja que el AppImage se ejecute como programa.", "First launch: macOS asks you to allow it once.": "Primer inicio: macOS te pide permitirla una vez.", "Hand-built": "Hecho a mano", "Harbor": "Puerto", "Has instructions": "Con instrucciones", "Hobby Sets": "Sets Hobby", "Hospital": "Hospital", "In PowerShell, this checks the file is the one published. It should print True.": "En PowerShell, esto comprueba que el archivo es el publicado. Debería mostrar True.", "In Terminal, this checks the file is the one published. It should print OK.": "En Terminal, esto comprueba que el archivo es el publicado. Debería mostrar OK.", "In a terminal, this checks each file is the one published. It should print OK.": "En un terminal, esto comprueba que cada archivo es el publicado. Debería mostrar OK.", "Inside the theme": "Dentro del tema", "LDraw has a 3D model of it, to build in Brickworks": "LDraw tiene un modelo 3D, para construir en Brickworks", "LDraw library": "Set LDraw", "LEGO® Exclusive": "Sets LEGO® exclusivos", "Large, 1,000 parts or more": "Grande, 1000 piezas o más", "Made from a 3D model with Brickify, {how}": "Hecho a partir de un modelo 3D con Brickify, {how}", "Mechanisms": "Mecanismos", "Medium, 200 to 999 parts": "Mediano, de 200 a 999 piezas", "Menu": "Menú", "Menu and your account": "Menú y tu cuenta", "Menu and your account, {n} new": "Menú y tu cuenta, {n} nuevos", "Minifigures": "Minifiguras", "Modelled by {name}": "Modelado por {name}", "Modular Buildings": "Edificios modulares", "Most built": "Más construidos", "Most liked": "Más gustados", "Most parts": "Más piezas", "Most remixed": "Más remezclados", "Most viewed": "Más vistos", "Moves:": "Se mueve:", "Needs 64-bit Linux on an x86 PC": "Necesita Linux de 64 bits en un PC x86", "Needs 64-bit Linux on an x86 PC with glibc {glibc} or newer": "Necesita Linux de 64 bits en un PC x86 con glibc {glibc} o posterior", "Needs 64-bit Windows 10 or 11, a graphics driver with Vulkan, Direct3D 12 or OpenGL 3.3": "Necesita Windows 10 u 11 de 64 bits, un controlador gráfico con Vulkan, Direct3D 12 u OpenGL 3.3", "Needs macOS on Apple silicon or Intel": "Necesita macOS en Apple silicon o Intel", "Needs macOS {arm} or later on Apple silicon, {intel} or later on Intel": "Necesita macOS {arm} o posterior en Apple silicon, {intel} o posterior en Intel", "New in {version}": "Novedades de la {version}", "Newest": "Más nuevos", "Newest sets": "Sets más nuevos", "Next": "Siguiente", "No picture": "Sin imagen", "No set has every word you typed. The nearest: {sets}": "Ningún set tiene todas las palabras que escribiste. Los más parecidos: {sets}", "Nobody you follow has listed a model yet. Follow a designer from their page or from beside one of their models, and what they list comes here.": "Nadie a quien sigues ha mostrado todavía un modelo en la galería. Sigue a un diseñador desde su página o junto a uno de sus modelos, y lo que muestre aparecerá aquí.", "Nothing in the gallery is all in your collection of {parts} yet. Parts I own, in Filters, shows what is closest.": "Aún no hay nada en la galería que esté entero en tu colección de {parts}. «Piezas que tengo», en Filtros, muestra lo más cercano.", "Nothing more": "No hay más", "Nothing was built or remixed here {span} yet. A model joins Top when somebody builds it to its last step, remixes it, or it is Tested.": "Aquí todavía no se ha construido ni remezclado nada {span}. Un modelo entra en Mejores cuando alguien lo construye hasta el último paso, lo remezcla o recibe la marca «Probado».", "Notifications": "Notificaciones", "Off-Road": "Todoterreno", "Oldest sets": "Sets más antiguos", "Only with a 3D model": "Solo con modelo 3D", "Open it and drag what moves, as it was built": "Ábrelo y arrastra lo que se mueve, tal como se construyó", "Open it and play it:": "Ábrelo y reprodúcelo:", "Open it and play them:": "Ábrelo y reprodúcelos:", "Other": "Otros", "Other systems: ": "Otros sistemas: ", "Page {n}": "Página {n}", "Pages of {noun}": "Páginas de {noun}", "Parts I own": "Piezas que tengo", "Police": "Policía", "Previous": "Anterior", "Promotional": "Sets promocionales", "Released {date}": "Publicada el {date}", "Retry": "Reintentar", "Robots and machines": "Robots y máquinas", "Saved": "Guardados", "Seasonal": "De temporada", "See Pro": "Ver Pro", "See Top": "Ver Mejores", "See all time": "Ver todos los tiempos", "Selected": "Seleccionado", "Send feedback": "Enviar comentarios", "Sending…": "Enviando…", "Settings": "Ajustes", "Show earlier": "Mostrar anteriores", "Show more": "Mostrar más", "Showing sets for ": "Mostrando sets para ", "Showing {noun} {range}": "Mostrando {noun} {range}", "Showing {range} of {total} {noun}": "Mostrando {range} de {total} {noun}", "Sign in": "Iniciar sesión", "Sign in to download the desktop app.": "Inicia sesión para descargar la aplicación de escritorio.", "Sign in to like it: we email you a code, no password.": "Inicia sesión para darle me gusta: te enviamos un código por correo, sin contraseña.", "Sign out": "Cerrar sesión", "Signed in": "Sesión iniciada", "Small, under 200 parts": "Pequeño, menos de 200 piezas", "Something else": "Otra cosa", "Space": "Espacio", "Stands at every step · every step reachable · every part made in its colour · nothing loose": "Se sostiene en cada paso · cada paso es alcanzable · cada pieza existe en su color · nada suelto", "Stop filtering by the tag {tag}": "Dejar de filtrar por la etiqueta {tag}", "Stop filtering by {what}: {words}": "Dejar de filtrar por {what}: {words}", "Stop filtering by {words}": "Dejar de filtrar por {words}", "Stop ordering by {words}": "Dejar de ordenar por {words}", "Technic or mechanism": "Technic o mecanismo", "Tell Brickworks what you own (in the app, Build › My collection…) and this shows what in the gallery you can build with it.": "Dile a Brickworks lo que tienes (en la aplicación, Construir › Mi colección…) y aquí verás lo que puedes construir de la galería con ello.", "Tested": "Probado", "Tested only": "Solo probados", "Thanks. We will write to you once, when it opens, and not before.": "Gracias. Te escribiremos una vez, cuando esté disponible, y no antes.", "Thanksgiving": "Acción de Gracias", "That did not go just now. Try again in a minute.": "No se ha podido enviar ahora. Vuelve a intentarlo en un minuto.", "That did not go: no connection. Try again in a minute.": "No se ha podido enviar: no hay conexión. Vuelve a intentarlo en un minuto.", "That did not work just now. Try again.": "No ha funcionado ahora mismo. Vuelve a intentarlo.", "That is not an email address.": "Eso no es una dirección de correo electrónico.", "That page did not load just now.": "No se pudo cargar esa página ahora mismo.", "That page did not load just now. Retry is where Show more was.": "No se pudo cargar esa página ahora mismo. «Reintentar» está donde estaba «Mostrar más».", "The Hobbit and Lord of the Rings": "El Hobbit y El Señor de los Anillos", "The LEGO® Movie": "La LEGO® película", "The Lord of the Rings": "El Señor de los Anillos", "The download did not start just now. Try again in a minute.": "La descarga no empezó. Vuelve a intentarlo en un minuto.", "The next challenge: ": "Próximo desafío: ", "The note is a line of words.": "La nota debe ser una línea de texto.", "The {kind}:": "El archivo {kind}:", "This month": "Este mes", "This month’s challenge: ": "Desafío de este mes: ", "This week": "Esta semana", "Top builds": "Mejores construcciones", "Top builds: a build finished counts {builds}, a remix {remixes} and the Tested mark {tested}. Views count for nothing.": "Mejores construcciones: una construcción terminada vale {builds}, un remix {remixes} y la marca «Probado» {tested}. Las visitas no cuentan.", "Town and buildings": "Ciudad y edificios", "Traffic": "Tráfico", "Train": "Trenes", "Trains": "Trenes", "Vehicle": "Vehículos", "Vehicles": "Vehículos", "Version {version}": "Versión {version}", "Week’s pick": "Selección", "Windows 10 and 11": "Windows 10 y 11", "With minifigures": "Con minifiguras", "With or without": "Con o sin", "With the assistant": "Con el asistente", "Without": "Sin minifiguras", "Won “{title}”, by hand": "Ganó «{title}», a mano", "Won “{title}”, with the assistant": "Ganó «{title}», con el asistente", "Year": "Año", "You have every part": "Tienes todas las piezas", "You have none of its parts": "No tienes ninguna de sus piezas", "You have {have} of its {pieces} parts": "Tienes {have} de sus {pieces} piezas", "Your account": "Tu cuenta", "Your account, {n} new": "Tu cuenta, {n} nuevos", "Your feed": "Tu feed", "Your profile": "Tu perfil", "actuator": "actuador", "and {n} more": "y {n} más", "as its designer tagged it": "según lo etiquetó su diseñador", "as the app said when it was published": "según indicó la aplicación al publicarlo", "boom": "pluma", "build finished": "construcción terminada", "builds finished": "construcciones terminadas", "built": "construido", "built {times} this week": "construido {times} esta semana", "comment": "comentario", "comments": "comentarios", "doors": "puertas", "gears": "engranajes", "how it was made": "cómo se hizo", "just now": "ahora mismo", "lately": "últimamente", "like": "me gusta", "likes": "me gusta", "model": "modelo", "models": "modelos", "new this week, and Tested": "nuevo esta semana y «Probado»", "once": "una vez", "part": "pieza", "parts": "piezas", "pneumatics": "neumática", "rack": "cremallera", "remix": "remix", "remixed {times} this week": "remezclado {times} esta semana", "remixes": "remixes", "set": "set", "sets": "sets", "size": "tamaño", "steering": "dirección", "this month": "este mes", "this week": "esta semana", "turntable": "plataforma giratoria", "twice": "dos veces", "{done} in the past 30 days": "{done} en los últimos 30 días", "{models}, more below": "{models}, y hay más abajo", "{n} earlier {noun}": "{n} {noun} anteriores", "{n} more {noun}": "{n} {noun} más", "{n} new": "{n} nuevos", "{n} times": "{n} veces", "{sets} of yours has no parts list here, so what is in it is not counted.": "{sets} tuyo no tiene aquí lista de piezas, así que no se cuenta lo que contiene.", "{sets} of yours have no parts list here, so what is in them is not counted.": "{sets} tuyos no tienen aquí lista de piezas, así que no se cuenta lo que contienen.", "{sets} of {every}": "{sets} de {every}"}</script>
+</head>
+<body>
+<a class="skip" href="#main">Ir al contenido</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/es"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Principal">
+			<a href="/es/gallery">Galería</a>
+			<a href="/es/library">Biblioteca</a>
+			<a href="/docs">Documentación</a>
+			<a href="/es/plans">Precios</a>
+			<a class="cta" href="/app?lang=es">Abrir la aplicación</a>
+			<a class="cta ghost" href="/profile" data-account>Iniciar sesión</a>
+		</nav>
+		<details class="menu">
+			<summary>Menú</summary>
+			<div class="menu-list">
+				<nav aria-label="Menú">
+					<a href="/es/gallery">Galería</a>
+					<a href="/es/library">Biblioteca</a>
+					<a href="/docs">Documentación</a>
+					<a href="/es/plans">Precios</a>
+					<a href="/es/download">Descargar</a>
+					<a href="/profile" data-account>Iniciar sesión</a>
+				</nav>
+				<div class="theme-choice"><span aria-hidden="true">Tema</span>
+					<div class="segmented" role="group" aria-label="Tema">
+						<button type="button" data-theme-choice="system" aria-pressed="true">Sistema</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Claro</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Oscuro</button>
+					</div>
+				</div>
+			</div>
+		</details>
+	</div>
+</header>
+
+<main id="main">
+	<div class="page-hero">
+		<div class="wrap">
+			<p class="eyebrow">Comparar</p>
+			<h1>Studio existe. ¿Por qué Brickworks?</h1>
+			<p class="lede">BrickLink Studio es el estándar de la comunidad, y hace muchas cosas bien: piezas del catálogo de BrickLink, renderizados fotorrealistas, un creador de instrucciones. Mecabricks, LeoCAD y LDCad tienen sus propios puntos fuertes. Aquí tienes Brickworks junto a ellos: seis puntos mostrados en la aplicación con modelos reales, luego todo el panorama, fila a fila, y dónde siguen destacando los demás.</p>
+			<div class="actions">
+				<a class="cta" href="/app?lang=es">Abrir la aplicación</a>
+				<a class="cta ghost" href="#field-h">Ver todo el panorama</a>
+			</div>
+		</div>
+	</div>
+	<div class="wrap page-body">
+		<ol class="points">
+			<li class="point">
+				<figure class="shot">
+					<video data-play muted loop playsinline preload="none" controls
+						poster="/img/compare-tabs.webp" width="1200" height="750"
+						aria-label="Una ventana de Chromium en brickworks.diy/app con tres pestañas abiertas, un castillo, un kart Technic y un planetario del Sol y ocho planetas, cada una traída al frente por turno y cada una con su propio modelo en el editor.">
+						<source src="/img/compare-tabs.webm" type="video/webm">
+						<source src="/img/compare-tabs.mp4" type="video/mp4">
+					</video>
+				</figure>
+				<div>
+					<h2>En un navegador, sin nada que instalar</h2>
+					<p>Abre brickworks.diy/app en cualquier ordenador, o en una tableta o un teléfono, con la interfaz pensada para el dedo. Cada pestaña es su propio proyecto, y tus modelos te siguen a cada dispositivo donde inicies sesión. También hay aplicaciones de escritorio.</p>
+					<p class="them">Studio es una aplicación de escritorio para Windows y Mac.</p>
+				</div>
+			</li>
+			<li class="point">
+				<figure class="shot">
+					<video data-play muted loop playsinline preload="none" controls
+						poster="/img/compare-stability.webp" width="1200" height="750"
+						aria-label="Un árbol de ladrillos LEGO® en el editor: está elegido Herramientas, Comprobar la estabilidad, y la base sobre la que se sostiene el árbol aparece en verde sobre la placa base, con una línea que baja desde su centro de masa, que cae 2 espigas por dentro del borde trasero.">
+						<source src="/img/compare-stability.webm" type="video/webm">
+						<source src="/img/compare-stability.mp4" type="video/mp4">
+					</video>
+				</figure>
+				<div>
+					<h2>¿Se sostendrá? ¿Aguantará?</h2>
+					<p>Comprobar la estabilidad compara cada unión con lo que pueden sostener sus espigas, y el centro de masa con la base, en cada postura que alcanzan las bisagras. Ver › Esfuerzos enumera las uniones más débiles, la peor primero, y dice qué arreglaría cada una.</p>
+					<p class="them">La comprobación de Studio marca las piezas débiles y los grupos que no se sostienen, y se describe a sí misma como «muy conservadora». LDD no tenía ninguna.</p>
+				</div>
+			</li>
+			<li class="point">
+				<figure class="shot">
+					<video data-play muted loop playsinline preload="none" controls
+						poster="/img/compare-simulate.webp" width="1200" height="750"
+						aria-label="Herramientas, Simular el mecanismo en un planetario del Sol y ocho planetas: el panel muestra el año de cada planeta frente al de la NASA, Mercurio 0,24 años terrestres frente a 0,2408 y Marte 1,875 frente a 1,8808, y los engranajes, teñidos de azul los lentos y de naranja los rápidos, hacen girar los brazos de los planetas alrededor del eje central.">
+						<source src="/img/compare-simulate.webm" type="video/webm">
+						<source src="/img/compare-simulate.mp4" type="video/mp4">
+					</video>
+				</figure>
+				<div>
+					<h2>Los trenes de engranajes giran con sus relaciones reales</h2>
+					<p>Un engranaje colocado a mano queda engranado con el de al lado. Simular gira la manivela y todos los engranajes la siguen: este planetario mantiene los años de los ocho planetas a menos del 0,35 % de los de la NASA.</p>
+					<p class="them">Las animaciones de Studio construyen el modelo o hacen girar la cámara a su alrededor. LDCad mueve un mecanismo con un script que escribes tú.</p>
+				</div>
+			</li>
+			<li class="point">
+				<figure class="shot">
+					<img src="/img/compare-io-640.webp"
+						srcset="/img/compare-io-640.webp 640w, /img/compare-io-1200.webp 1200w"
+						sizes="(min-width: 1180px) 670px, (min-width: 760px) 58vw, 100vw"
+						width="1200" height="750" loading="lazy" decoding="async"
+						alt="El menú Archivo sobre un árbol de ladrillos LEGO®, con Exportar abierto y Modelo de BrickLink Studio (.io) resaltado, entre LDraw, modelo 3D, una imagen, una lista de deseos de BrickLink y una lista de piezas de Rebrickable.">
+				</figure>
+				<div>
+					<h2>Tus archivos de Studio, de ida y vuelta</h2>
+					<p>Abre un <code>.io</code> de Studio, también los bloqueados, con las piezas que solo tiene Studio, y vuelve a guardarlo como <code>.io</code>. También se abren los <code>.lxf</code> de LDD.</p>
+					<p class="them">Un <code>.io</code> guardado aquí aún no se ha probado en el propio Studio.</p>
+				</div>
+			</li>
+			<li class="point">
+				<figure class="shot">
+					<img src="/img/compare-export3d-640.webp"
+						srcset="/img/compare-export3d-640.webp 640w, /img/compare-export3d-1200.webp 1200w"
+						sizes="(min-width: 1180px) 670px, (min-width: 760px) 58vw, 100vw"
+						width="1200" height="750" loading="lazy" decoding="async"
+						alt="Exportar un modelo 3D, sobre un kart Technic: el modelo como archivo 3D a su tamaño real, para Blender, RA o una impresora 3D, con la lista de formatos abierta: GLB, glTF, OBJ con sus colores y STL para imprimir en 3D.">
+				</figure>
+				<div>
+					<h2>STL, OBJ y GLB</h2>
+					<p>A tamaño real, para una impresora 3D, Blender o la web.</p>
+					<p class="them">Las exportaciones 3D de Studio son COLLADA y POV-Ray.</p>
+				</div>
+			</li>
+			<li class="point">
+				<figure class="shot">
+					<img src="/img/compare-booklet-640.webp"
+						srcset="/img/compare-booklet-640.webp 640w, /img/compare-booklet-1200.webp 1200w"
+						sizes="(min-width: 1180px) 670px, (min-width: 760px) 58vw, 100vw"
+						width="1200" height="750" loading="lazy" decoding="async"
+						alt="Las instrucciones de montaje del kart en su propia pestaña del navegador, junto a las pestañas de la aplicación: el paso 17, un recuadro con la única pieza que añade sobre un dibujo del kart casi terminado, una barra de progreso al pie e Imprimir arriba.">
+				</figure>
+				<div>
+					<h2>Instrucciones con un solo clic</h2>
+					<p>Un folleto con las piezas de cada paso, maquetado para ti, y luego a mano si quieres: la vista de cada paso, los saltos de página, los recuadros, las piezas nuevas resaltadas con contorno. Imprímelo, o guárdalo como PDF o como páginas PNG.</p>
+					<p class="them">El Instruction Maker de Studio también maqueta las páginas y las guarda como PDF y PNG.</p>
+				</div>
+			</li>
+		</ol>
+
+		<section class="part" aria-labelledby="field-h">
+			<div class="section-head"><div><h2 class="title" id="field-h">Junto a los demás</h2><p>Brickworks, Studio, Mecabricks, LeoCAD y LDCad, fila a fila.</p></div></div>
+			<div class="table wide" role="region" aria-label="Brickworks, Studio, Mecabricks, LeoCAD y LDCad, fila a fila" tabindex="0">
+				<table>
+					<thead><tr><th scope="col"><span class="visually-hidden">Qué</span></th><th scope="col">Brickworks</th><th scope="col">BrickLink Studio</th><th scope="col">Mecabricks</th><th scope="col">LeoCAD</th><th scope="col">LDCad</th></tr></thead>
+					<tbody>
+						<tr><th scope="row">Funciona en</th><td>Cualquier navegador, también en tabletas y teléfonos; Windows, macOS, Linux</td><td>Windows, macOS</td><td>Un navegador; funciona con pantallas táctiles</td><td>Windows, macOS, Linux</td><td>Windows, Linux</td></tr>
+						<tr><th scope="row">Precio</th><td>Gratis</td><td>Gratis</td><td>Gratis; créditos de renderizado</td><td>Gratis, código abierto</td><td>Gratis para uso personal</td></tr>
+						<tr><th scope="row">Conexiones</th><td>Espigas, pasadores, ejes y clips se unen donde lo hacen los reales; colisión exacta</td><td>Los conectores se ajustan; bisagras; colisión opcional</td><td>Ajuste a mano, punto a punto</td><td>Una cuadrícula; sin conectividad</td><td>Ajuste de conexiones</td></tr>
+						<tr><th scope="row">Encontrar una pieza</th><td>Por el nombre de LDraw, BrickLink o Rebrickable, un número de elemento o una foto; construcciones de ejemplo</td><td>Números de BrickLink, palabras, tamaño; una paleta de subconjuntos</td><td>Su propia biblioteca</td><td>La biblioteca de LDraw; búsqueda, paletas</td><td>La biblioteca de LDraw; cajas, inventarios de sets</td></tr>
+						<tr><th scope="row">¿Se sostiene?</th><td>Uniones comparadas con lo que sostienen sus espigas; las más débiles, enumeradas, con lo que las arreglaría</td><td>Piezas débiles teñidas; «muy conservadora»</td><td>—</td><td>—</td><td>—</td></tr>
+						<tr><th scope="row">Engranajes</th><td>Engranan al colocarlos a mano; los trenes giran con sus relaciones</td><td>Posicionados a mano</td><td>Posicionados a mano</td><td>Posicionados a mano</td><td>Movidos por un script</td></tr>
+						<tr><th scope="row">Instrucciones</th><td>Calculadas, y luego maquetadas a mano; impresión, PDF y PNG</td><td>Instruction Maker; PDF y PNG</td><td>—</td><td>Pasos; impresión, HTML</td><td>Pasos</td></tr>
+						<tr><th scope="row">Renderizado</th><td>Tiempo real; Renderizar hasta 4K, giros completos</td><td>Trazado de rutas (Eyesight); POV-Ray</td><td>Una granja de renderizado; un complemento de Blender</td><td>POV-Ray; Blender</td><td>POV-Ray</td></tr>
+						<tr><th scope="row">Piezas flexibles</th><td>Mangueras, cadenas y orugas por sus extremos; sin gomas ni muelles</td><td>La herramienta Flex</td><td>Trayectorias y muelles</td><td>Mangueras, ejes flexibles, cuerdas, amortiguadores</td><td>Trayectorias, gomas elásticas, muelles</td></tr>
+						<tr><th scope="row">Crear piezas</th><td>Cualquier tamaño o cambio, en la aplicación; estampados y pegatinas</td><td>PartDesigner, una aplicación aparte</td><td>Estampados; sin formas nuevas</td><td>Texturas; un asistente de minifiguras</td><td>Texturas; piezas flexibles por plantilla</td></tr>
+						<tr><th scope="row">Archivos</th><td>Entrada: LDraw, <code>.io</code>, <code>.lxf</code> y modelos 3D para convertir en ladrillos. Salida: LDraw, <code>.io</code>, glTF, OBJ, STL</td><td>Entrada: <code>.io</code>, LDraw, <code>.lxf</code>. Salida: LDraw, LXFML, COLLADA, POV-Ray</td><td>Entrada: LDD, Studio. Salida: OBJ, DAE, STL</td><td>Entrada: LDraw, LDD. Salida: OBJ, 3DS, COLLADA</td><td>LDraw; salida glTF</td></tr>
+						<tr><th scope="row">Tiendas y colecciones</th><td>Listas de BrickLink y Rebrickable; tu colección; sin precios</td><td>Precios de BrickLink; una lista de deseos con un clic; tu colección</td><td>CSV, XML de BrickLink</td><td>XML de BrickLink</td><td>Inventarios de Rebrickable como cajas</td></tr>
+						<tr><th scope="row">Construir juntos</th><td>En directo, mediante un enlace: punteros, chat, tu propio Deshacer; la aplicación de escritorio desde la 0.8.0</td><td>Build Together, en directo</td><td>—</td><td>—</td><td>—</td></tr>
+						<tr><th scope="row">Compartir</th><td>Una galería con remixes, comentarios, inserciones y la marca «Probado»</td><td>Una galería</td><td>Una biblioteca pública, inserciones</td><td>—</td><td>—</td></tr>
+						<tr><th scope="row">Accesibilidad</th><td>Lector de pantalla y solo teclado, en la versión de escritorio 0.8.0</td><td>Teclas reasignables</td><td>—</td><td>Espigas y bordes de alto contraste</td><td>—</td></tr>
+						<tr><th scope="row">Diseño con IA</th><td>Claude diseña y edita; desactivado hasta que lo activas</td><td>— (Sculpture se basa en reglas)</td><td>—</td><td>—</td><td>—</td></tr>
+					</tbody>
+				</table>
+			</div>
+			<p class="note">— donde no se encontró nada. Studio 2.26.9, LeoCAD 26.09 y LDCad 1.7 beta; las fuentes están al pie de la página. Se dejan fuera LDD, retirado en 2022, y Bricksmith, cuya última versión es de 2022.</p>
+		</section>
+
+		<section class="part" aria-labelledby="lead-h">
+			<div class="section-head"><div><h2 class="title" id="lead-h">Dónde siguen destacando los demás</h2></div></div>
+			<div class="prose">
+				<p><b>Renderizados.</b> Eyesight, de Studio, es un trazador de rutas, y Mecabricks tiene una granja de renderizado y un complemento de Blender. Aquí, Renderizar compone una imagen a partir de fotogramas dibujados en tiempo real; para una con trazado de rutas, exporta un GLB a Blender.</p>
+				<p><b>Precios.</b> Studio es la aplicación de la propia BrickLink: muestra los precios de BrickLink y pone un modelo en una lista de deseos con un clic. Brickworks escribe la lista de deseos y la lista de Rebrickable, sin precios.</p>
+				<p><b>Gomas elásticas y muelles.</b> LDCad da forma a una goma alrededor de los círculos por los que pasa, y construye muelles y amortiguadores. Brickworks coloca mangueras, cadenas y orugas, no gomas ni muelles.</p>
+				<p><b>Años.</b> Studio tiene años de usuarios, un tutorial en el primer inicio y vídeos oficiales. Brickworks tiene un recorrido de ocho tarjetas.</p>
+			</div>
+		</section>
+
+		<section class="part closing" aria-labelledby="assistant-h">
+			<h2 class="title" id="assistant-h">Y un asistente, solo si lo quieres</h2>
+			<p class="lede">Tu propia IA, Claude con tu plan, o Claude u otra IA con tu propia clave, comprueba la física y diseña cuando se lo pides, sin límite en ningún plan. Está desactivada hasta que la activas en Ajustes, Asistente. <a href="/es/faq#claude">Cómo funciona</a></p>
+			<div class="actions center">
+				<a class="cta big" href="/app?lang=es">Abrir Brickworks</a>
+				<a class="cta ghost big" href="/es/download">Descargar</a>
+			</div>
+		</section>
+		<section class="part sources-part" aria-label="Fuentes">
+			<p class="sources">
+				Fuentes, consultadas el 12 y el 13 de octubre de 2026; las versiones, revisadas de nuevo el 24 de octubre. Studio: <a href="https://studiohelp.bricklink.com/hc/en-us/articles/5404381697559">qué es</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/5412087360919">ajuste</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/5412820155927">colisión</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/6502499385111">búsqueda de piezas</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/6501498505111-Stability-check">comprobación de estabilidad</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/6507015818263">animación</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/5626403887511">Instruction Maker</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/5628123432215">su exportación</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/6505772624023">Eyesight</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/6506022103447">POV-Ray</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/6481921905303">herramienta Flex</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/5872512112663">PartDesigner</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/6502277722647">importación</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/6502197862679">formatos de exportación</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/5705572363159">precios</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/5705925898135-Upload-as-a-Wanted-List">lista de deseos</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/20062101879447">My Collection</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/6477757327767">Build Together</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/5705436653847">Gallery</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/5706320095255">atajos</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/6476848743447">tutorial</a>, <a href="https://www.youtube.com/watch?v=4ekcte_3Ow4">vídeo</a>, <a href="https://studiohelp.bricklink.com/hc/en-us/articles/6508264220183">Sculpture</a>, <a href="https://www.bricklink.com/v3/studio/download.page">notas de la versión</a>. Mecabricks: <a href="https://www.mecabricks.com/en/forum/topic/2638">solo en línea</a>, <a href="https://www.eurobricks.com/forum/forums/topic/103517-digital-tools-for-tablets">táctil</a>, <a href="https://brickset.com/article/52336/let-s-build-in-mecabricks">construir</a>, <a href="https://forums.ldraw.org/post-38924.html">su biblioteca</a>, <a href="https://www.mecabricks.com/en/forum/topic/76253">sin colisión</a>, <a href="https://brickset.com/article/52611/mecabricks-the-render-farm">granja de renderizado</a>, <a href="https://www.mecabricks.com/en/shop/product/4">complemento de Blender</a>, <a href="https://www.eurobricks.com/forum/forums/topic/170705-mecabricks-new-flexible-part-tools">piezas flexibles</a>, <a href="https://brickset.com/article/53013/mecabricks-the-part-manager">Part Manager</a>, <a href="https://www.mecabricks.com/en/forum/topic/4504">sin formas propias</a>, <a href="https://forums.ldraw.org/post-27390.html">importación de LDD</a>, <a href="https://mecabricks.com/en/models/7l2BlMpnv0N">la página de un modelo</a>. LeoCAD: <a href="https://www.leocad.org/">sitio</a>, <a href="https://www.leocad.org/download.html">descarga</a>, <a href="https://github.com/leozide/leocad/issues/841">sin conectividad</a>, <a href="https://www.leocad.org/docs/library.html">biblioteca</a>, <a href="https://www.eurobricks.com/forum/forums/topic/143937-detection-of-colision">sin física</a>, <a href="https://www.leocad.org/docs/history.html">historia</a>, <a href="https://www.leocad.org/docs/texmap.html">texturas</a>, <a href="https://github.com/leozide/leocad/releases">versiones</a>, <a href="https://github.com/leozide/leocad/releases/tag/v26.09">su 26.09</a>. LDCad: <a href="http://www.melkert.net/LDCad/download">descarga</a>, <a href="http://www.melkert.net/LDCad/faq">preguntas frecuentes</a>, <a href="https://forums.ldraw.org/post-54435.html">ajuste</a>, <a href="http://www.melkert.net/LDCad/docs/gui">interfaz</a>, <a href="https://forums.ldraw.org/post-44312.html">script de colisión</a>, <a href="http://www.melkert.net/LDCad/docs/scriptAPI">API de scripts</a>, <a href="https://forums.ldraw.org/post-24178.html">pasos</a>, <a href="http://www.melkert.net/LDCad/features">funciones</a>, <a href="http://www.melkert.net/LDCad/tech/meta">piezas flexibles</a>, <a href="https://forums.ldraw.org/post-51059.html">1.7 beta</a>, <a href="https://forums.ldraw.org/post-36851.html">cajas de Rebrickable</a>. LDD: <a href="https://www.lego.com/en-us/service/help-topics/article/about-lego-digital-designer">retirado</a>, <a href="https://www.brothers-brick.com/2022/01/12/lego-fully-discontinuing-lego-digital-designer-in-favor-of-bricklink-studio">en 2022</a>, <a href="https://wireless-earth.de/private/invisiblehand_eng.html">sin comprobación de estabilidad</a>.
+			</p>
+		</section>
+	</div>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-top">
+			<div class="foot-brand">
+				<a class="mark" href="/es"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>Un CAD para modelos LEGO®, con un diseñador de IA.</p>
+				<div class="theme-choice"><span aria-hidden="true">Tema</span>
+					<div class="segmented" role="group" aria-label="Tema">
+						<button type="button" data-theme-choice="system" aria-pressed="true">Sistema</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Claro</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Oscuro</button>
+					</div>
+				</div>
+				<label class="theme-choice"><span>Idioma</span>
+					<select data-lang-choice translate="no">
+						<option value="en" lang="en">English</option>
+						<option value="de" lang="de">Deutsch</option>
+						<option value="fr" lang="fr">Français</option>
+						<option value="es" lang="es">Español</option>
+					</select>
+				</label>
+			</div>
+			<nav class="foot-links" aria-label="Más">
+				<div>
+					<p class="foot-h" id="foot-product">Producto</p>
+					<ul aria-labelledby="foot-product">
+						<li><a href="/app?lang=es">Abrir la aplicación</a></li>
+						<li><a href="/es/download">Descargar</a></li>
+						<li><a href="/es/plans">Precios</a></li>
+						<li><a href="/changelog">Novedades</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-community">Comunidad</p>
+					<ul aria-labelledby="foot-community">
+						<li><a href="/es/gallery">Galería</a></li>
+						<li><a href="/es/library">Biblioteca LDraw</a></li>
+						<li><a href="/challenge">Desafío</a></li>
+						<li><a href="/collections">Colecciones</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-help">Ayuda</p>
+					<ul aria-labelledby="foot-help">
+						<li><a href="/docs">Documentación</a></li>
+						<li><a href="/es/faq">Preguntas frecuentes</a></li>
+						<li><a href="/es/compare">Comparar</a></li>
+						<li><a href="/guidelines">Normas</a></li>
+						<li><a href="/feedback" data-feedback>Enviar comentarios</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-legal">Legal</p>
+					<ul aria-labelledby="foot-legal">
+						<li><a href="/privacy">Privacidad</a></li>
+						<li><a href="/terms">Términos</a></li>
+						<li><a href="/takedown">Retirada</a></li>
+					</ul>
+				</div>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>LEGO® es una marca del grupo de empresas LEGO, que no patrocina, autoriza ni respalda este sitio. LEGO® Art, Technic, la Minifigura y las configuraciones del ladrillo y el espárrago son también marcas del Grupo LEGO. Piezas de la biblioteca LDraw™ (CC BY). <a href="/terms#notices">Avisos</a></p>
+		</div>
+	</div>
+</footer>
+<script src="/compare.js" defer></script>
+</body>
+</html>

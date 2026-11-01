@@ -20,7 +20,9 @@
 // - signedInStorage: what the browser keeps when it is signed in as EMAIL.
 //
 // And serveSite, all three put together in a browser context: the site as
-// deploy.sh serves it, for design_flow.mjs and theme_flow.mjs.
+// deploy.sh serves it, for design_flow.mjs and theme_flow.mjs. The LDraw
+// library's list (/api/share?op=library) there is the real handler's, from
+// this checkout's catalogue, as a set's page is.
 //
 //   import { ORIGIN, apiAnswer, serverPage, signedInStorage } from "./design_stand_in.mjs";
 //   const said = apiAnswer({ url: new URL(request.url()), method, body, state });
@@ -2159,6 +2161,12 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
     if (face !== undefined) {
       return face ? route.fulfill({ status: 200, contentType: "image/jpeg", body: face })
         : route.fulfill({ status: 404, contentType: "text/plain", body: "" });
+    }
+    // The LDraw library's list (api/share.js library), made by the real
+    // handler from this checkout's catalogue, as a set's page is.
+    if (url.origin === ORIGIN && url.pathname === "/api/share" && url.searchParams.get("op") === "library") {
+      const made = await serverAsk(api, { name: "share", query: Object.fromEntries(url.searchParams) });
+      return route.fulfill({ status: made.status, contentType: "application/json", body: made.html });
     }
     if (db || url.pathname.startsWith("/api/")) {
       let body;
