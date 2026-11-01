@@ -201,9 +201,12 @@ not tune for it.
 - **The brief** is the set's name, its theme, the footprint it fits in and a
   quarter either side of its piece count: "Andrea’s Stage, in the style of
   LEGO® Friends sets: fitting in about 18 x 18 studs, 70 to 110 pieces." The
-  designer never sees the set. Its own pieces are held out of the real-set
-  index for the run, and the log says so: "real sets: holding out 3932-1 (7
-  pieces)".
+  designer never sees the set. The set, and any set of its name under
+  another number, is held out of every path that hands a session a real
+  set's facts for the run (`--held-out`, `--held-out-name`; until
+  2026-11-01 plan_scale, the techniques, the catalogue, the official models,
+  the gallery's copies and Commons' pictures did not hold it), and the log
+  says so: "real sets: holding out 3932-1 (7 pieces)".
 - **The judge** sees the design and the set drawn by the same renderer, three
   views each, under hashed names, in both orders. It is not told either is a
   set. It picks one per dimension, with a reason. A subject counts the share

@@ -70,6 +70,7 @@ func lookup(numbers: PackedStringArray) -> Dictionary:
 
 ## The official LDraw set models (vendor/omr), each with its parts:
 ## [{"name", "set", "file", "year", "theme", "page", "needs": {key -> count}}].
+## None of a set under test (DesignMemory.holds): its parts list is the answer.
 func official_models() -> Array:
 	if _models_read:
 		return _models
@@ -79,6 +80,8 @@ func official_models() -> Array:
 		_models = []
 		for entry: Variant in (read as Dictionary).get("models", []):
 			var model: Dictionary = entry
+			if DesignMemory.holds(str(model.get("set", "")), str(model.get("n", ""))):
+				continue
 			var needs: Dictionary = {}
 			for row: Variant in model.get("p", []):
 				var lot: Array = row

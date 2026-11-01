@@ -93,10 +93,12 @@ func models() -> Array:
 ## held], the bench's --held-out=, a set's number): a real-set test's session
 ## could search the shelf for its own set and open it (design286, 2026-10-26).
 ## Nor any set of the same subject (same_subject): 21008 Burj Khalifa is the
-## answer to 21031 Burj Khalifa as much as 21031 is.
+## answer to 21031 Burj Khalifa as much as 21031 is. Nor of a held set's name
+## (DesignMemory.held_names) where the shelf has no model of the set itself:
+## 21035-1's Guggenheim is not on it, 21004-1's is.
 func shelved(raw_models: Array, held: PackedStringArray) -> Array:
 	var entries: Array = []
-	var held_names: PackedStringArray = PackedStringArray()
+	var held_names: PackedStringArray = DesignMemory.held_names().duplicate()
 	for raw: Variant in raw_models:
 		var entry: Dictionary = _entry(raw)
 		if entry.is_empty():
