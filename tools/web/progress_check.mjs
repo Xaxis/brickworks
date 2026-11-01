@@ -79,7 +79,7 @@
 // --model=FILE --parts=N opens FILE, of N parts, where Orthanc is opened:
 // --only=timeline with a model whose author's steps are taken out times the
 // planner (Instructions.plan_paced) in the browser.
-import { clickStill, controlsWith, launch, openColumnFor, typeInMenu } from "./browser.mjs";
+import { controlsWith, launch, openColumnFor, typeInMenu } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { deflateSync } from "node:zlib";
@@ -495,7 +495,14 @@ async function fromMenu(page, control, path) {
     }
   }
 }
-const press = (page, name) => () => clickStill(page, name, { find: helpers(page).where });
+// Pressed at once where it is told, not where it stands (clickStill): the
+// press is what is timed. Pressed just after a telling, the booklet's two
+// empty listeners before its own were each given its CPU, and it said
+// 509-771 ms against 165-169 ms at once (three runs each, 2026-11-01).
+const press = (page, name) => async () => {
+  const at = await helpers(page).where(name);
+  await page.mouse.click(at.x, at.y);
+};
 
 try {
   // -- a first visit: the example car ----------------------------------------
