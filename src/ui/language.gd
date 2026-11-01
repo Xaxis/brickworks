@@ -24,7 +24,9 @@
 ## by one, and so are a line's parts where " · ", " — ", ". " or "; " joins
 ## them (the status bar's), or " › " a menu's path (View › Show everything,
 ## where the status bar names a command with no key), when the whole is in
-## no entry. A part's, a colour's or a model's name is in no file, and is
+## no entry. A part's and a colour's name are said through a glossary of
+## LDraw's words (PartWords: "Plaque lisse 1×4 avec rainure", "Gris bleuté
+## clair"), whole or not at all; a model's name is in no file, and is
 ## drawn as it is, as is what an entry's English puts in quotes (“%s”),
 ## even a model named Car, and a name a person gave (keep_name) in the
 ## place of an entry with words of its own: "opened Car — 61 bricks" is
@@ -206,6 +208,10 @@ class Words extends Translation:
 	var _letter: RegEx = RegEx.create_from_string(r"\p{L}")
 	## A count the interface groups in English: "1,575", "-12,000".
 	var _grouped: RegEx = RegEx.create_from_string(r"^-?\d{1,3}(?:,\d{3})+$")
+	## A colour with its finish after it, as the palette names one: "Red,
+	## solid", "Trans Red (36), transparent".
+	var _finished: RegEx = RegEx.create_from_string("^(.+?)( \\(\\d+\\))?, (%s)$"
+		% "|".join(PartLibrary.FINISH_NAMES + ["transparent"]))
 
 	func _init(source: Translation) -> void:
 		_source = source
@@ -304,6 +310,22 @@ class Words extends Translation:
 		if keyed != null:
 			var words: String = _find(keyed.get_string(1), depth + 1, kept)
 			return words + keyed.get_string(2) if not words.is_empty() else ""
+		# A colour with its finish, "Red, solid", said whole or left whole as
+		# it is: "Red, opaque" was half of each (languages2, 2026-10-31).
+		var finished: RegExMatch = _finished.search(text)
+		if finished != null:
+			var colour: String = PartWords.colour(finished.get_string(1), locale)
+			var finish: String = String(_source.get_message(finished.get_string(3)))
+			if colour.is_empty() or finish.is_empty():
+				return text
+			return "%s%s, %s" % [colour, finished.get_string(2), finish]
+		# A part's or a colour's name, said through the glossary as LEGO's
+		# own sites say it (PartWords), or left as it is; never a name a
+		# person gave.
+		if not Language._is_kept_name(text):
+			var named: String = PartWords.said(text, locale)
+			if not named.is_empty():
+				return named
 		# Then each way below in turn, the first that leaves nothing in
 		# English, else the one that leaves the fewest letters in it: "%s
 		# parts" takes "outline new parts", which the keys sheet's lowered row
