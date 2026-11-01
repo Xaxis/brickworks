@@ -110,6 +110,19 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   A part an undo or redo puts back keeps its number (`BrickWorld.add_brick`
   `as_id`), so what named it still does: a session's next edit, the
   assistant's record, the surface pass's pieces (`undo_ids_probe`).
+  It goes back where it stood among the model's parts, too: the world keeps
+  its bricks in the order they were placed, which is the order of their
+  numbers (`BrickWorld._in_order`). Put back last, the build steps worked out
+  from that order were saved differently, the house's 18 steps as 20, after a
+  part was taken off and put back. `undo_count_probe` takes parts off, one
+  and five at a time and a sub-assembly, from the house, a model on its own
+  baseplate and Orthanc, changes the floor and makes it part of the model,
+  undoes, redoes and undoes each, and checks the count, the scenery, the
+  parts in order and a save byte for byte against the model before.
+  `brick_count()` counts the floor's plates (scenery, never saved): Orthanc
+  on its four is 10,105 for 10,101 parts from the moment it opens. A probe
+  that opens a model by `Main._open` alone gets no floor until its first
+  edit lays one, which is how see_inside saw four bricks appear on an undo.
   On a big model an undo or redo is the parts' own work and nothing more: a
   part moved by whole cells (a nudge, its undo and redo) has its lattice cover
   moved (`BrickLattice.shift`, `occupy_moved`), not worked out again from the
@@ -2534,6 +2547,9 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
 node tools/web/sections_flow.mjs --url=<preview>/app --bypass=… --out=shots/sections_web
 # undo belongs to the model it was recorded against
 godot --headless --path . --script src/dev/history_probe.gd
+# an undo puts back what was taken and nothing more: count, scenery, the
+# parts in order and a save byte for byte, on the house, its own plate, Orthanc
+godot --headless --path . --script src/dev/undo_count_probe.gd
 # where a brick lands when you point at a stud
 godot --headless --path . --script src/dev/snap_probe.gd
 # Technic by hand: a pin into a hole, an axle through a beam with a gear on
