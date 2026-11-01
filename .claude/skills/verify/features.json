@@ -807,6 +807,14 @@
       "tests": []
     },
     {
+      "id": "cli:design frame probe",
+      "kind": "cli",
+      "entry": "src/dev/design_frame_probe.gd",
+      "reach": "tools/probe.sh design_frame_probe; PROBE_SIZE=1400x900 tools/probe.sh design_frame_probe   (a tower designed in the panel over a first visit's car, made taller, a wall on a new model: each whole in the view as it ends, framed as Frame all frames it; a view turned meanwhile or looking closely is kept; Undo and Redo of the wall; pictures in shots/design_frame)",
+      "area": "assistant",
+      "tests": []
+    },
+    {
       "id": "cli:design from a brief",
       "kind": "cli",
       "entry": "tools/design.py",
@@ -909,7 +917,7 @@
       "id": "cli:drawn in a browser",
       "kind": "cli",
       "entry": "tools/web/drawn_flow.mjs",
-      "reach": "node tools/web/drawn_flow.mjs --dir=build/web --out=shots/drawn   (or --url=<a preview>/app with BW_BYPASS; the build animation, a cut moved up and the booklet's pictures, each counted off the picture)",
+      "reach": "node tools/web/drawn_flow.mjs --dir=build/web --out=shots/drawn   (or --url=<a preview>/app with BW_BYPASS; the build animation, a cut moved up and the booklet's pictures, each counted off the picture; a design, a stack of nine and a row of twelve, whole in the view as it ends)",
       "area": "view",
       "tests": []
     },
