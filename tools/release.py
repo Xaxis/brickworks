@@ -1166,9 +1166,13 @@ def takes_bricks(base: list[str], env: dict[str, str], root: Path) -> list[tuple
         said.append(("listens for MCP on %d after %.0f s" % (port, time.time() - started), listening,
                      (root / "mcp-app.log").read_text(errors="replace")))
         if listening:
+            # The relay keeps the list it hears in tools/mcp_tools.json, and
+            # a package from another commit serves another: kept here
+            # instead, as smoking 0.13.0 rewrote the checkout's (2026-11-01).
             drive = subprocess.run([sys.executable, str(ROOT / "tools" / "mcp_check.py"),
                                     "--port=%d" % port], capture_output=True, text=True,
-                                   timeout=600)
+                                   timeout=600, env=dict(os.environ, BRICKWORKS_MCP_CACHE=str(
+                                       root / "mcp_tools.json")))
             built = next((line.strip() for line in drive.stdout.splitlines()
                           if "a design lands" in line), "")
             said.append(("a session places bricks in it over MCP: %s" % built,
