@@ -162,6 +162,8 @@ const STRIP: Array = [
 
 ## The tree's state but for the suggestion, when it was last drawn.
 var _shown_base: String = ""
+## What the tree was last worked out from (_refresh).
+var _made_from: Array = []
 var _strip: HFlowContainer
 var _buttons: Dictionary = {}
 var _hint: Label
@@ -278,17 +280,37 @@ func _process(_delta: float) -> void:
 ## worked out twice a second and at every change to the world whether it
 ## was open or not: on Orthanc 30 to 40 ms each time on a desktop and a
 ## browser's frame of a few hundred, the Timeline's first step among them.
+##
+## And neither is worked out again until what it is made from has changed.
+## The header's count is the counts line's, counted once a change; the
+## open tree waits on the model, its history, what is hidden and locked.
+## Worked out afresh at every redraw and twice a second, the count was 15
+## to 60 ms of every move of the cut on Orthanc, and the open tree 26 to 37
+## (seeinside, 2026-10-31).
 func _refresh(now: bool) -> void:
 	if _tree == null or _renaming:
 		return
 	if sections != null:
 		sections.sections.forget_if_stale()
+	var builder: Builder = shell.builder
 	if not _open or not is_visible_in_tree():
-		var total: int = Inventory.pieces_in(shell.world, shell.library, assemblies.scenery)
+		var total: int = Inventory.pieces_of_model(shell.world, shell.library,
+			assemblies.scenery, builder.history_depth())
 		_count.text = "%d part%s" % [total, "" if total == 1 else "s"]
 		_shown = ""
 		_shown_base = ""
+		_made_from = []
 		return
+	# Each hide, show, lock or unlock adds or takes away, so the counts say
+	# one happened; a sub-assembly made, renamed or taken apart is a step
+	# of the history, and says so itself (Assemblies.changed).
+	var made_from: Array = [shell.world.revision, builder.history_depth(),
+		builder.lattice.unseen.size(), builder.locked.size(), assemblies.scenery.size(),
+		assemblies.entered, shell.world.broken_out.size(), builder.selection.size(),
+		_suggested_state()]
+	if made_from == _made_from and not now:
+		return
+	_made_from = made_from
 	var root: Assemblies.Item = assemblies.tree()
 	var base: String = _state_of(root) + "|" + assemblies.entered \
 		+ "|" + str(shell.world.broken_out.size()) + "|" + str(shell.builder.selection.size())

@@ -367,7 +367,8 @@ Whether what you built is still there tomorrow, and still means the same thing.
   than a fiftieth ("76 parts · its box 67", `ModelLibrary.parts_words`,
   `AppTools._parts_against_box`); the answer says too how many pieces are
   drawn where a cable or a motor's case is drawn in segments. The same count
-  is the model tree's folded header, the viewer's and `look_at_model`'s
+  is the model tree's folded header (counted once a change, with the counts
+  line: `Inventory.pieces_of_model`), the viewer's and `look_at_model`'s
   "parts", a copy opened by link, the steps bar's "Laying out" and the
   status bar once a browser's awaited parts arrive. The share page's count
   (`api/share.js` `checkModel`) still counts every placed reference.

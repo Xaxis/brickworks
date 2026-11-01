@@ -168,6 +168,26 @@ static func pieces_in(world: BrickWorld, library: PartLibrary,
 	return pieces_among(world.bricks(), library, skip)
 
 
+## [method pieces_in] of the model being edited, counted again only when it
+## has changed: the world's revision, the scenery, or the undo history (a
+## part moved out of a hose's sub-model changes neither of the others). The
+## counts line asks at every redraw and the model tree's header at every
+## redraw and twice a second; on Orthanc's 10,101 parts a count is 15 ms,
+## and counted afresh each time it made every move of the cut 30 to 60 ms.
+static func pieces_of_model(world: BrickWorld, library: PartLibrary, scenery: Dictionary,
+		history_depth: int) -> int:
+	var at: Array = [world.get_instance_id(), world.revision, scenery.size(), history_depth]
+	if at != _model_counted_at:
+		_model_counted_at = at
+		_model_count = pieces_in(world, library, scenery)
+	return _model_count
+
+
+## What [method pieces_of_model] last counted, and the change it was at.
+static var _model_count: int = 0
+static var _model_counted_at: Array = []
+
+
 ## [method pieces_in] of [param bricks]: one count of a model's parts, the
 ## one a builder means, whether it stands in the world or is a file read.
 static func pieces_among(bricks: Array, library: PartLibrary, skip: Dictionary = {}) -> int:
