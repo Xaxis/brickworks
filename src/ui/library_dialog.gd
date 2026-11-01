@@ -120,9 +120,30 @@ func _ready() -> void:
 
 ## The themes in the language chosen now (ModelLibrary.theme_said).
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_TRANSLATION_CHANGED and _theme != null:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and _theme != null and _theme.item_count > 1:
+		var themes := PackedStringArray()
 		for n: int in range(1, _theme.item_count):
-			_theme.set_item_text(n, ModelLibrary.theme_said(str(_theme.get_item_metadata(n))))
+			themes.append(str(_theme.get_item_metadata(n)))
+		_say_themes(themes)
+
+
+## The theme list after Any, each as the language says it and in its order
+## ("Sonstige" among the S's, not where "Other" was); the one chosen stays.
+func _say_themes(themes: PackedStringArray) -> void:
+	var chosen: String = _picked(_theme)
+	var said: Array = []
+	for theme: String in themes:
+		said.append([ModelLibrary.theme_said(theme), theme])
+	said.sort_custom(func(a: Array, b: Array) -> bool: return str(a[0]) < str(b[0]))
+	while _theme.item_count > 1:
+		_theme.remove_item(_theme.item_count - 1)
+	_theme.select(0)
+	for pair: Array in said:
+		_theme.add_item(str(pair[0]))
+		_theme.set_item_metadata(_theme.item_count - 1, pair[1])
+		_theme.set_item_auto_translate_mode(_theme.item_count - 1, Node.AUTO_TRANSLATE_MODE_DISABLED)
+		if pair[1] == chosen:
+			_theme.select(_theme.item_count - 1)
 
 
 ## Open on a shelf: "sets" or "community".
@@ -579,10 +600,7 @@ func _sets(ask: Dictionary) -> Dictionary:
 	if every.is_empty():
 		return {"said": books.trouble}
 	if _theme.item_count == 1:
-		for theme: String in ModelLibrary.themes(every):
-			_theme.add_item(ModelLibrary.theme_said(theme))
-			_theme.set_item_metadata(_theme.item_count - 1, theme)
-			_theme.set_item_auto_translate_mode(_theme.item_count - 1, Node.AUTO_TRANSLATE_MODE_DISABLED)
+		_say_themes(ModelLibrary.themes(every))
 		for decade: String in ModelLibrary.decades(every):
 			_decade.add_item(decade)
 			_decade.set_item_metadata(_decade.item_count - 1, decade)

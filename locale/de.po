@@ -8204,6 +8204,62 @@ msgstr "Claude kann diesen Tab erreichen"
 msgid "No assistant, no Claude and no AI anywhere in the window. Claude connections are off while the assistant is off."
 msgstr "Kein Assistent, kein Claude und keine KI irgendwo im Fenster. Verbindungen zu Claude sind aus, solange der Assistent aus ist."
 
+# A sub-assembly selected whole, and two parts selected (Meet on hinges), in
+# the properties
+msgid "%s × %s studs, %s tall"
+msgstr "%s × %s Noppen, %s hoch"
+
+msgid "Turn: by the turn step, %d° a time"
+msgstr "Drehung: im Drehschritt, je %d°"
+
+msgid "How far it is turned about the hinge, pin, axle or clip it hangs from, in degrees off square: type an angle to swing it there"
+msgstr "Wie weit es um das Scharnier, den Pin, die Achse oder den Clip gedreht ist, an dem es hängt, in Grad aus dem rechten Winkel: einen Winkel eingeben, um es dorthin zu schwenken"
+
+msgid "Hinges"
+msgstr "Scharniere"
+
+msgid "Meet"
+msgstr "Zusammenführen"
+
+msgid "Swing the hinges, clips and turntables between the two selected parts so they meet: a ring closes, a wing meets its strut. One step to undo"
+msgstr "Die Scharniere, Clips und Drehteller zwischen den beiden ausgewählten Teilen schwenken, bis sie sich treffen: Ein Ring schließt sich, ein Flügel trifft seine Strebe. Ein Schritt zum Rückgängigmachen"
+
+msgid "made the sub-assembly %s of %s"
+msgstr "Baugruppe %s aus %s"
+
+msgid "Sub-assembly of 1 part"
+msgstr "Baugruppe aus 1 Teil"
+
+msgid "Sub-assembly of %d parts"
+msgstr "Baugruppe aus %d Teilen"
+
+msgid "Sub-assembly of 1 part, %d inside it"
+msgstr "Baugruppe aus 1 Teil, %d darin"
+
+msgid "Sub-assembly of %d parts, %d inside it"
+msgstr "Baugruppe aus %d Teilen, %d darin"
+
+msgid "%d other copy of %s follows it"
+msgstr "%d weitere Kopie von %s folgt ihr"
+
+msgid "%d other copies of %s follow it"
+msgstr "%d weitere Kopien von %s folgen ihr"
+
+msgid "In %s"
+msgstr "In %s"
+
+msgid "Edit inside"
+msgstr "Innen bearbeiten"
+
+msgid "Work on its parts one by one"
+msgstr "An seinen Teilen einzeln arbeiten"
+
+msgid "Take it apart one level"
+msgstr "Um eine Ebene auflösen"
+
+msgid "Make unique"
+msgstr "Eigenständig machen"
+
 # A word with a second sense, kept apart by its context (msgctxt, and
 # tr(word, context) where it is drawn): White as a render's backdrop, beside
 # LDraw's colour of that name, which stays as it is
