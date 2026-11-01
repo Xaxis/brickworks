@@ -5227,7 +5227,8 @@ tile with the initial, every shown number not 0, links https and ugc
 nofollow, the tabs one current with no count of none, at 390 the avatar,
 name, numbers and Follow above 844 px; Robin's numbers builds first (77),
 his links said as their domain, the watchtower banner loaded, his pins in
-his order, whom he follows and no follower named, Share copying the link
+his order, whom he follows and no follower named (Jo, who follows him,
+only in More like Robin once it is drawn, for the castles), Share copying the link
 and saying so, More opening Report it; the Builds and Collections tabs;
 the house's 7 models and its empty tabs' words; Ines's 60 models reached
 by Show more twice, page 3 as served 12 cards; on the relay, op=showcase's
