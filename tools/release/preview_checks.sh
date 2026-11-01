@@ -22,6 +22,9 @@ declare -A CMD=(
   # The booklet's pictures, a moved See inside cut and the build animation
   # drawn in a browser, counted brick by brick (webdraw, 2026-11-01).
   [drawn]="tools/web/drawn_flow.mjs --url=$P/app $B --runs=1 --out=$S/${TAG}_drawn_web"
+  # A new tab left for claude.ai the moment its window is built is still
+  # heard: red on every live build up to rel-m238 (lazystart, 2026-11-01).
+  [hidden_start]="tools/web/hidden_start_flow.mjs --url=$P/app --hide=ui"
   [floor]="tools/web/floor_flow.mjs --url=$P/app $B --out=$S/${TAG}_floor_web"
   [outline]="tools/web/outline_check.mjs --url=$P/app $B"
   [knowledge]="tools/web/knowledge_check.mjs --url=$P/app $B"
