@@ -65,10 +65,12 @@ app, joined by a link (docs/TOGETHER.md).
   under-13 reader's copy of a chat op has the words taken out. Numbers come
   from `together_append` under the session row's lock. Names: the profile's
   when `shown_publicly`, else "Builder N"; never an email. A profile made or
-  renamed mid-session names its person from then on: a poll that waits
-  `NAME_MS` (5 s) looks at its person's name again, once; and one joining
-  again is named by the profile as it is then (walk256 BT1: names were fixed
-  at the first join). The owner's view
+  renamed mid-session names its person from then on: saving it renames them
+  in the sessions they are in (`api/people.js` saveProfile; a busy session,
+  every poll shorter than 5 s, never named them before, together_probe 3d);
+  a poll that waits `NAME_MS` (5 s) looks at its person's name again, once;
+  and one joining again is named by the profile as it is then (walk256 BT1:
+  names were fixed at the first join). The owner's view
   goes in the session's snapshot (`CadCamera.aim`), and whoever joins opens
   on it (`aim_at`), not framed on the parts alone. The panel keeps who is in
   it to 3 rows and the chat to 4 lines, each scrolled, so it does not grow
