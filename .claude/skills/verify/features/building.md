@@ -1162,7 +1162,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Render's backdrop not reading its own entry or a sub-model named Car
   reading Car's translation, in the tree or in a status line, or the
   Library's sets and themes not reached (the walk waits for them), a theme
-  word drawn without its entry or the themes out of the language's order; a control set to draw its words as they are
+  word drawn without its entry or the themes out of the language's order,
+  a release's version line in Settings and About ("released 2026-10-31",
+  the probe giving the run a release's stamp) without its entry, or
+  `--about` not saying its line in the language chosen; a control set to draw its words as they are
   shows a name and is not read. `--missing=FILE` writes the entries to
   translate, each partial one with
   the whole it was in ("#. in:"). `--shots=DIR` pictures ten dialogs (the
