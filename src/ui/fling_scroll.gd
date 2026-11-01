@@ -23,6 +23,20 @@
 ## hears the lift. Lifted still, as a person stops a list where they want
 ## it, the list stays where it is. A finger down again catches a gliding
 ## list where it is. Nothing is looked at once the glides end.
+##
+## A finger on a text field in a list drags the list too, as a finger on
+## anything else in it does. A field takes a finger's press for itself
+## (Godot's LineEdit accepts it, and the window focuses it first, which
+## puts the keyboard up), so the list never heard a drag begin: a panel
+## full of fields (Properties, Settings, a dialog's form) scrolled only
+## from the gaps between them, and a drag on one selected its words
+## (uifix). So a finger's press on a field in a list is held here until it
+## is known: moved past [constant SLOP], the list follows the finger as
+## ScrollContainer moves it, and glides as any list does when it lifts;
+## lifted where it came down, the field has the tap, as it would have had
+## it (focus, its caret where the finger was, the keyboard); held still
+## [constant HOLD_MS], it has the press, and the drag after selects its
+## words, as on a phone.
 class_name FlingScroll
 extends Node
 
@@ -37,6 +51,14 @@ const STILL_MS := 100.0
 const STOPPED := 0.002
 ## Frames a glide waits at a list's foot for it to grow.
 const FOOT_FRAMES := 3
+## A finger still on a field this long, ms, has the field: as long as a
+## finger's hold on a part (Main.HOLD_MS).
+const HOLD_MS := 480
+## How far a finger on a field goes before it drags its list, points: a
+## tap's own wobble is no drag.
+const SLOP := 8.0
+
+const PressHold := preload("res://src/ui/press_hold.gd")
 
 ## Each ScrollContainer watched, by its id.
 var _lists: Dictionary = {}
@@ -48,6 +70,31 @@ var _seen: Dictionary = {}
 ## Each list gliding: [where it is, its speed in units a ms, frames it has
 ## waited at its foot], by its id.
 var _gliding: Dictionary = {}
+
+## Each LineEdit watched, by its id.
+var _fields: Dictionary = {}
+## A finger's press and its lift as the window heard them, for the field
+## it came down on once it is a tap or a hold.
+var _press: InputEventMouseButton
+var _lift: InputEventMouseButton
+## The fields a finger's press may not focus, each [the field, its focus
+## mode], until the press is through.
+var _set_aside: Array = []
+## What a finger on a field is so far: not yet known, dragging its list,
+## or held, the field's.
+enum Way { UNKNOWN, DRAGGING, HELD }
+
+## The field a finger is on, held: what it is so far ([enum Way]), how far
+## the finger has gone, how long it has been still, and the lists round
+## it, innermost first, each [the list, its scroll as the finger came down,
+## the finger's way since].
+var _on_field: WeakRef
+var _way: Way = Way.UNKNOWN
+var _travel := Vector2.ZERO
+var _still := PressHold.new()
+var _field_lists: Array = []
+## The field is hearing what it was given.
+var _giving: bool = false
 
 
 func _ready() -> void:
@@ -65,6 +112,12 @@ func _watch(node: Node) -> void:
 
 
 func _on_added(node: Node) -> void:
+	var field := node as LineEdit
+	if field != null:
+		if not _fields.has(field.get_instance_id()):
+			_fields[field.get_instance_id()] = weakref(field)
+			field.gui_input.connect(_on_field_input.bind(field))
+		return
 	var list := node as ScrollContainer
 	if list == null or _lists.has(list.get_instance_id()):
 		return
@@ -94,6 +147,10 @@ func _heard(event: InputEvent) -> void:
 	if press.pressed and not _down:
 		_down = true
 		_by_touch = press.device == InputEvent.DEVICE_ID_EMULATION
+		_on_field = null
+		if _by_touch:
+			_press = press.duplicate()
+			_set_fields_aside()
 		_gliding.clear()
 		_seen.clear()
 		for id: int in _lists.keys():
@@ -106,12 +163,14 @@ func _heard(event: InputEvent) -> void:
 		set_process(true)
 	elif not press.pressed and _down:
 		_down = false
+		_lift = press.duplicate()
 		_lifted()
 
 
 func _process(delta: float) -> void:
 	if _down:
 		_look()
+		_held_on_field()
 	_glide(delta * 1000.0)
 	if not _down and _gliding.is_empty():
 		set_process(false)
@@ -255,3 +314,131 @@ static func _scroll_of(list: ScrollContainer) -> Vector2:
 ## Whether a list is gliding now, for a check.
 func gliding() -> bool:
 	return not _gliding.is_empty()
+
+
+## Before the window hears a finger's press: no field in a list is
+## focused by it (the window focuses before the field hears it, and a
+## field focused puts the keyboard up), until it is known to be a tap or a
+## hold. The one being typed in keeps its focus. Put back once the press
+## is through.
+func _set_fields_aside() -> void:
+	for id: int in _fields.keys():
+		var field := (_fields[id] as WeakRef).get_ref() as LineEdit
+		if field == null:
+			_fields.erase(id)
+		elif field.focus_mode != Control.FOCUS_NONE and field.is_visible_in_tree() \
+				and not field.has_focus() and not _lists_round(field).is_empty():
+			_set_aside.append([weakref(field), field.focus_mode])
+			field.focus_mode = Control.FOCUS_NONE
+	if not _set_aside.is_empty():
+		_put_fields_back.call_deferred()
+
+
+func _put_fields_back() -> void:
+	for one: Array in _set_aside:
+		var field := (one[0] as WeakRef).get_ref() as LineEdit
+		if field != null:
+			field.focus_mode = one[1]
+	_set_aside.clear()
+
+
+## What a finger does on a field in a list, before the field hears it: a
+## drag drags the list; a tap is given the field when it lifts, a hold
+## once it has held. A mouse's go through, as does what the field is given.
+func _on_field_input(event: InputEvent, field: LineEdit) -> void:
+	if _giving:
+		return
+	var button := event as InputEventMouseButton
+	if button != null and button.button_index == MOUSE_BUTTON_LEFT:
+		if button.pressed:
+			if not (_down and _by_touch) or _press == null:
+				return
+			_field_lists.clear()
+			for list: ScrollContainer in _lists_round(field):
+				_field_lists.append([weakref(list), _scroll_of(list), Vector2.ZERO])
+			if _field_lists.is_empty():
+				return
+			field.accept_event()
+			_on_field = weakref(field)
+			_way = Way.UNKNOWN
+			_travel = Vector2.ZERO
+			_still.start()
+		elif _on_field != null and _on_field.get_ref() == field:
+			_on_field = null
+			if _way == Way.HELD:
+				return
+			field.accept_event()
+			# Lifted where it came down: the field has the tap, its press and
+			# its lift, once this lift is through.
+			if _way == Way.UNKNOWN and _lift != null:
+				_give.call_deferred([_press, _lift])
+		return
+	var motion := event as InputEventMouseMotion
+	if motion == null or _on_field == null or _on_field.get_ref() != field or _way == Way.HELD:
+		return
+	field.accept_event()
+	# The web's second hearing of a finger's move (_once).
+	if motion.device != InputEvent.DEVICE_ID_EMULATION:
+		return
+	_travel += motion.relative
+	if _way == Way.UNKNOWN:
+		if _travel.length() <= Phone.px(get_viewport(), SLOP):
+			return
+		_way = Way.DRAGGING
+	_drag_lists(motion.relative)
+
+
+## The lists round the field moved by the finger's [param by], as
+## ScrollContainer moves a list a finger drags: the innermost that moves
+## takes it, the next only what that one could not.
+func _drag_lists(by: Vector2) -> void:
+	for one: Array in _field_lists:
+		var list := (one[0] as WeakRef).get_ref() as ScrollContainer
+		if list == null:
+			continue
+		var was: Vector2 = _scroll_of(list)
+		var way: Vector2 = one[2] - by
+		var to: Vector2 = one[1] + way
+		if list.horizontal_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+			list.scroll_horizontal = roundi(to.x)
+		else:
+			way.x = 0.0
+		if list.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+			list.scroll_vertical = roundi(to.y)
+		else:
+			way.y = 0.0
+		one[2] = way
+		if _scroll_of(list) != was:
+			return
+
+
+## A finger still on a field long enough: the field has its press, and
+## the drag after it selects.
+func _held_on_field() -> void:
+	if _on_field == null or _way != Way.UNKNOWN:
+		return
+	_still.saw()
+	if _still.held_ms() >= HOLD_MS and _on_field.get_ref() != null:
+		_way = Way.HELD
+		_give([_press])
+
+
+## [param events] to the window again, the field's own this time.
+func _give(events: Array) -> void:
+	_giving = true
+	for event: InputEvent in events:
+		get_tree().root.push_input(event)
+	_giving = false
+
+
+## The lists round [param control] that scroll, innermost first.
+static func _lists_round(control: Control) -> Array[ScrollContainer]:
+	var lists: Array[ScrollContainer] = []
+	var up: Node = control.get_parent()
+	while up != null and not up is Window:
+		var list := up as ScrollContainer
+		if list != null and (list.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED
+				or list.horizontal_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED):
+			lists.append(list)
+		up = up.get_parent()
+	return lists
