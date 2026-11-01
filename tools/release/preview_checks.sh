@@ -459,6 +459,11 @@ declare -A CMD=(
   # target 44 points or more and no text under 12, the parts panel kept
   # open beside the model.
   [tablet]="tools/web/tablet_flow.mjs --url=$P/app $B --out=$S/${TAG}_tablet_web"
+  # A finger's drag begun on a text field scrolls the list round it, as one
+  # beside the fields does: the assistant's drawer at 844 x 390 and Settings'
+  # AI page at 390 x 844 at 150% (three to the point); a tap types in the
+  # field, a hold then a drag leaves the list where it was.
+  [field_drag]="tools/web/field_drag_flow.mjs --url=$P/app $B --out=$S/${TAG}_field_drag_web"
   # Every dialog More opens, by a finger, at 390 x 844 and 430 x 932 (three
   # to the point) and 768 x 1024 and 1024 x 768 (two): Save as typed above
   # the keyboard, a saved model renamed and deleted, a version opened, Share
