@@ -43,7 +43,12 @@ export const PAGE_SIZE = 24;
 const escapeHtml = (text) => String(text).replace(/[&<>"']/g, (c) => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
 })[c]);
-const said = (n) => Number(n).toLocaleString("en-US");
+// A number, and [words] with each {name} filled from [values], in the
+// page's language (web/theme.js brickworksLang); in English on the server,
+// which has none. Here, not imported: the server copies this file alone.
+const said = (n) => Number(n).toLocaleString(globalThis.brickworksLang?.locale || "en-US");
+const say = (words, values = {}) => (globalThis.brickworksLang ? globalThis.brickworksLang.say(words) : words)
+  .replace(/\{(\w+)\}/g, (all, name) => (name in values ? String(values[name]) : all));
 
 /// The page an address asks for: ?page=N, a whole number from 1, else 1.
 export function pageAsked(search, param = "page") {
@@ -74,8 +79,9 @@ export function countSaid({ first, shown, total = -1, size = PAGE_SIZE, noun = [
   if (!shown) return "";
   const from = (first - 1) * size + 1;
   const to = from + shown - 1;
-  if (total >= 0) return `Showing ${from === to ? said(from) : `${said(from)}–${said(to)}`} of ${said(total)} ${total === 1 ? noun[0] : noun[1]}`;
-  return from === to ? `Showing ${noun[0]} ${said(from)}` : `Showing ${noun[1]} ${said(from)}–${said(to)}`;
+  const range = from === to ? said(from) : `${said(from)}–${said(to)}`;
+  if (total >= 0) return say("Showing {range} of {total} {noun}", { range, total: said(total), noun: say(total === 1 ? noun[0] : noun[1]) });
+  return say("Showing {noun} {range}", { range, noun: say(from === to ? noun[0] : noun[1]) });
 }
 
 /// The numbered links: the one before what is shown, the window round the
@@ -88,7 +94,7 @@ export function pagesHtml({ first, last, pages = 0, more = false, href }) {
   const step = (n, words, rel) => `<li class="step ${rel}"><a href="${escapeHtml(href(n))}" rel="${rel}">`
     + `${rel === "prev" ? '<span aria-hidden="true">‹</span> ' : ""}<span class="words">${words}</span>`
     + `${rel === "next" ? ' <span aria-hidden="true">›</span>' : ""}</a></li>`;
-  let out = first > 1 ? step(first - 1, "Previous", "prev") : "";
+  let out = first > 1 ? step(first - 1, escapeHtml(say("Previous")), "prev") : "";
   for (const n of pageWindow(last, end)) {
     if (n === null) {
       out += '<li class="gap" aria-hidden="true">…</li>';
@@ -96,10 +102,10 @@ export function pagesHtml({ first, last, pages = 0, more = false, href }) {
     }
     const far = Math.abs(n - last) > 1 && n !== 1 && n !== end;
     const shown = n >= first && n <= last;
-    out += `<li${far ? " data-far" : ""}><a href="${escapeHtml(href(n))}" aria-label="Page ${said(n)}"`
+    out += `<li${far ? " data-far" : ""}><a href="${escapeHtml(href(n))}" aria-label="${escapeHtml(say("Page {n}", { n: said(n) }))}"`
       + `${shown ? " data-shown" : ""}${n === last ? ' aria-current="page"' : ""}>${said(n)}</a></li>`;
   }
-  if (more || (pages && last < pages)) out += step(last + 1, "Next", "next");
+  if (more || (pages && last < pages)) out += step(last + 1, escapeHtml(say("Next")), "next");
   return `<ol class="pager-pages">${out}</ol>`;
 }
 
@@ -116,14 +122,14 @@ export function pagerHtml({ id, first = 1, last = first, shown = 0, pages = 0, t
   const after = pages ? last < pages : more;
   const count = countSaid({ first, shown, total, size, noun });
   const earlier = `<p class="pager-earlier" data-pager-earlier="${escapeHtml(id)}"${first > 1 ? "" : " hidden"}>`
-    + `<a class="cta ghost" href="${escapeHtml(href(Math.max(1, first - 1)))}" data-pager-go="earlier">Show earlier</a></p>`;
+    + `<a class="cta ghost" href="${escapeHtml(href(Math.max(1, first - 1)))}" data-pager-go="earlier">${escapeHtml(say("Show earlier"))}</a></p>`;
   // One page and nothing after it: nothing to page, and no count.
   const alone = first === 1 && last === 1 && !after;
-  const nav = `<nav class="pager" data-pager="${escapeHtml(id)}" aria-label="Pages of ${escapeHtml(noun[1])}"${alone ? " hidden" : ""}`
+  const nav = `<nav class="pager" data-pager="${escapeHtml(id)}" aria-label="${escapeHtml(say("Pages of {noun}", { noun: say(noun[1]) }))}"${alone ? " hidden" : ""}`
     + ` data-first="${first}" data-last="${last}" data-pages="${pages}" data-total="${total}" data-more="${after ? 1 : 0}"`
     + ` data-size="${size}" data-noun="${escapeHtml(noun.join("|"))}"${source ? ` data-source="${escapeHtml(source)}"` : ""}>`
     + `<p class="pager-count"${count ? "" : " hidden"}>${escapeHtml(count)}</p>`
-    + `<a class="cta ghost pager-more" href="${escapeHtml(href(last + 1))}" data-pager-go="more"${after ? "" : " hidden"}>Show more</a>`
+    + `<a class="cta ghost pager-more" href="${escapeHtml(href(last + 1))}" data-pager-go="more"${after ? "" : " hidden"}>${escapeHtml(say("Show more"))}</a>`
     + pagesHtml({ first, last, pages, more: after, href })
     + '<p class="visually-hidden" role="status" data-pager-said></p>'
     + `${skeleton ? `<template data-pager-skeleton>${skeleton}</template>` : ""}</nav>`;
@@ -267,11 +273,11 @@ export function pager({ list, load = null, href = null, param = "page", size = 0
       count.dataset.trouble = "1";
       count.textContent = words;
       count.hidden = false;
-      link.textContent = "Retry";
+      link.textContent = say("Retry");
     } else {
       delete count.dataset.trouble;
-      moreLink.textContent = "Show more";
-      upLink.textContent = "Show earlier";
+      moreLink.textContent = say("Show more");
+      upLink.textContent = say("Show earlier");
     }
   }
 
@@ -372,15 +378,15 @@ export function pager({ list, load = null, href = null, param = "page", size = 0
           // Show earlier's page goes above it: where it starts, in view.
           if (way !== "more" && items[0].getBoundingClientRect().top < 0) items[0].scrollIntoView({ block: "start" });
         }
-        tell(items.length ? `${said(items.length)} ${way === "more" ? "more" : "earlier"} ${items.length === 1 ? noun[0] : noun[1]}`
-          : "Nothing more");
+        const these = { n: said(items.length), noun: say(items.length === 1 ? noun[0] : noun[1]) };
+        tell(!items.length ? say("Nothing more") : way === "more" ? say("{n} more {noun}", these) : say("{n} earlier {noun}", these));
         if (way === "more") watch();
       } catch (problem) {
         if (mine !== generation) return;
         clearTimeout(waited);
         for (const one of stand) one.remove();
-        trouble("That page did not load just now.", link);
-        tell("That page did not load just now. Retry is where Show more was.");
+        trouble(say("That page did not load just now."), link);
+        tell(say("That page did not load just now. Retry is where Show more was."));
         failed({ fresh: false, trouble: problem });
       } finally {
         link.removeAttribute("aria-busy");

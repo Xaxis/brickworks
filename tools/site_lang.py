@@ -1,30 +1,36 @@
 #!/usr/bin/env python3
-"""The pages a first visitor reads, in German, French and Spanish.
+"""The pages a visitor reads first, in German, French and Spanish.
 
     tools/site_lang.py                write web/<code>/ for each language
     tools/site_lang.py --check        say which are out of date or short of a word, exit 1 if any
     tools/site_lang.py --missing=CODE the English CODE has no words for yet, as JSON to fill in
 
-The landing page and the download page are written in English, in web/, as
-every page is. Each language's copy is made from them here, at /de, /de/download
-and so on, and kept beside them in web/de/ (tests/test_site_lang.py fails
-when a copy is not what this would write): the same markup with its words
-in the language, from web/_lang/<code>.json, and its links into the app,
-to the landing page and to the download page kept in the language.
+The landing page, the download page and the pages a visitor goes on to
+from them (the plans, the FAQ, the comparison, the gallery and the LDraw
+library: PAGES) are written in English, in web/, as every page is. Each
+language's copy is made from them here, at /de, /de/download and so on, and
+kept beside them in web/de/ (tests/test_site_lang.py fails when a copy is
+not what this would write): the same markup with its words in the
+language, from web/_lang/<code>.json, and its links into the app and to
+each of these pages kept in the language.
 
 A page's words are found as a reader meets them: each run of text and the
 inline markup in it (a link, a bold word) between the blocks around it is
 one entry, its English the key, so a translation may put the words in its
 own order and keep the link where its language wants it. And each alt,
 title, aria-label and placeholder, the page's description for search
-engines and share cards, and the JSON-LD's. A run that is a name
+engines and share cards, and the JSON-LD's (a description, an FAQ's
+questions and answers). A run that is a name
 (Brickworks, a command to type) or has no letters stays as it is; any other
 with no entry stops the copy being written, so nothing is ever half in
 English, and so does an entry whose markup is not its English's (a link
 lost). An entry no page says any more fails the check.
 web/_lang/<code>.json's "scripts" are the words the page's scripts say
 (window.brickworksLang.say, web/theme.js), put in the copy for them, with
-the app's names for the Library's themes (locale/<code>.po, "theme").
+the app's names for the Library's themes (locale/<code>.po, "theme"). Each
+say("...") and counted(n, "one", "many") in a script a copy loads (and in
+what it imports), and the labels the API hands the gallery and the library
+to show (API_WORDS), must have its entry too, or the check fails.
 
 Which language a visitor is shown is web/theme.js's: the one they chose in
 the footer, else the first of their browser's that the site has.
@@ -48,7 +54,8 @@ SITE = "https://brickworks.diy"
 # Settings lists them: src/ui/language.gd CHOICES).
 LANGUAGES = {"de": "Deutsch", "fr": "Français", "es": "Español"}
 # The pages, by their file, and where each is: / and /download in English.
-PAGES = {"index.html": "", "download.html": "download"}
+PAGES = {"index.html": "", "download.html": "download", "plans.html": "plans", "faq.html": "faq",
+         "compare.html": "compare", "gallery.html": "gallery", "library.html": "library"}
 
 BLOCK = {"html", "head", "body", "header", "nav", "main", "section", "article", "aside", "footer",
          "div", "p", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "figure", "figcaption",
@@ -60,8 +67,18 @@ SKIP = {"script", "style", "svg", "template", "code", "kbd", "samp"}
 ATTRIBUTES = ("alt", "title", "aria-label", "placeholder")
 META = {"description", "og:title", "og:description", "og:image:alt", "twitter:title",
         "twitter:description", "twitter:image:alt"}
+# The words the API hands the copies' scripts to show: each label of these
+# constants (an "id" is not one), and the plans form's fixed replies.
+API_WORDS = {"api/_directory.js": ("KINDS", "SIZES", "SORTS", "WINDOWS", "MADES", "MINE_SORTS"),
+             "api/_library.js": ("SET_SORTS",), "api/_sets.js": ("SETS_SORTS",), "api/plans.js": ("KEPT", "GONE")}
+STRING = r'"(?:[^"\\\n]|\\.)*"'
+SAY = re.compile(rf"\bsay\(\s*((?:{STRING}\s*\+\s*)*{STRING})")
+COUNTED = re.compile(rf"\bcounted\((?:[^,()]|\([^()]*\))+,\s*({STRING})(?:\s*,\s*({STRING}))?\s*\)")
 # Runs that are names, the same in every language.
 NAMES = {"Brickworks", "brickworks.diy/app", "Claude", "Pro", "GitHub", "3D"}
+# The JSON-LD fields a reader is shown: a description anywhere, and an
+# FAQ's questions and answers, as search results show them.
+WORDED = {"Question": "name", "Answer": "text"}
 LETTER = re.compile(r"[A-Za-zÀ-ÿ]")
 
 
@@ -208,13 +225,53 @@ class Page:
         return [key for key in out if says_something(plain(key))]
 
 
+def worded(data: dict) -> list[str]:
+    return [f for f in ("description", WORDED.get(data.get("@type"))) if f and isinstance(data.get(f), str)]
+
+
 def descriptions(data) -> list[str]:
     if isinstance(data, dict):
-        found = [data["description"]] if isinstance(data.get("description"), str) else []
+        found = [data[f] for f in worded(data)]
         return found + [d for value in data.values() for d in descriptions(value)]
     if isinstance(data, list):
         return [d for value in data for d in descriptions(value)]
     return []
+
+
+def scripts_of(name: str) -> list[str]:
+    """The scripts web/[name] loads, and every one they import."""
+    found = re.findall(r'<script[^>]*\ssrc="/([\w.-]+\.js)"', (WEB / name).read_text(encoding="utf-8"))
+    seen: list[str] = []
+    while found:
+        one = found.pop()
+        if one in seen or not (WEB / one).exists():
+            continue
+        seen.append(one)
+        found += re.findall(r'(?:\bfrom|\bimport\(?)\s*"(?:\.|)/([\w.-]+\.js)"', (WEB / one).read_text(encoding="utf-8"))
+    return seen
+
+
+def script_words() -> dict[str, str]:
+    """Every word a copy's scripts may say, and where the first is said."""
+    words: dict[str, str] = {}
+    for one in sorted({script for name in PAGES for script in scripts_of(name)}):
+        text = (WEB / one).read_text(encoding="utf-8")
+        for found in SAY.finditer(text):
+            words.setdefault("".join(json.loads(s) for s in re.findall(STRING, found.group(1))), f"web/{one}")
+        for found in COUNTED.finditer(text):
+            single = json.loads(found.group(1))
+            for word in (single, json.loads(found.group(2)) if found.group(2) else f"{single}s"):
+                words.setdefault(word, f"web/{one}")
+    for path, names in API_WORDS.items():
+        text = (ROOT / path).read_text(encoding="utf-8")
+        for name in names:
+            block = re.search(rf"\bconst {name} = (.*?);\n", text, re.S).group(1)
+            for key, said in re.findall(rf"(?:(\w+):\s*)?({STRING})", block):
+                if key != "id" and not (key == "" and block.lstrip().startswith(("{", "["))):
+                    words.setdefault(json.loads(said), path)
+        for refusal in re.findall(rf"new Refusal\(({STRING})\)", text):
+            words.setdefault(json.loads(refusal), path)
+    return {word: where for word, where in words.items() if says_something(word)}
 
 
 def table(code: str) -> dict:
@@ -309,8 +366,8 @@ def spliced(text: str, edits: list[tuple[int, int, str]]) -> str:
 
 def describe(data, say) -> None:
     if isinstance(data, dict):
-        if isinstance(data.get("description"), str):
-            data["description"] = html.unescape(say(data["description"]))
+        for f in worded(data):
+            data[f] = html.unescape(say(data[f]))
         for value in data.values():
             describe(value, say)
     elif isinstance(data, list):
@@ -335,12 +392,13 @@ def link(href: str, code: str, tag: str, attrs: dict) -> str:
     if tag != "a":
         return href
     path, _, rest = href.partition("#")
+    path, _, query = path.partition("?")
     rest = f"#{rest}" if rest else ""
     if path == "/app":
-        return f"/app?lang={code}{rest}"
+        return f"/app?lang={code}" + (f"&{query}" if query else "") + rest
     for where in PAGES.values():
         if path == ("/" + where if where else "/"):
-            return address(code, where) + rest
+            return address(code, where) + (f"?{query}" if query else "") + rest
     return href
 
 
@@ -357,10 +415,13 @@ def main(argv: list[str]) -> int:
     asked = next((a.split("=", 1)[1] for a in argv if a.startswith("--missing=")), "")
     if asked:
         words = table(asked)
-        missing = {}
+        missing = {"pages": {}, "scripts": {}}
         for name in PAGES:
             for key in translated(name, asked, words)[1]:
-                missing[key] = ""
+                missing["pages"][key] = ""
+        for word in script_words():
+            if word not in words.get("scripts", {}) and word not in themes(asked):
+                missing["scripts"][word] = ""
         print(json.dumps(missing, ensure_ascii=False, indent=1))
         return 0
     check = "--check" in argv
@@ -384,6 +445,14 @@ def main(argv: list[str]) -> int:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
         wrote += 1
+    # A word a script says with no entry: it would be said in English.
+    said_by_scripts = script_words()
+    for code in LANGUAGES:
+        has = {**themes(code), **table(code).get("scripts", {})}
+        short = [word for word in said_by_scripts if word not in has]
+        if short:
+            problems.append(f"web/_lang/{code}.json's scripts have no words for {len(short)} a script says, first "
+                            f"{short[0]!r} ({said_by_scripts[short[0]]}; tools/site_lang.py --missing={code})")
     # An entry no page says any more: its English was changed or taken out.
     for code in LANGUAGES:
         said = {key_of(k) for name in PAGES for k in Page((WEB / name).read_text(encoding="utf-8")).keys()}
