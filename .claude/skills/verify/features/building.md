@@ -789,10 +789,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   drawer at 844 x 390 and at 390 x 844 at Interface size 150%, then
   Settings' AI page on your own key at both: beside the fields, then back
   by the key field, nothing typed in after; a tap types in the field; a
-  hold then a drag leaves the list. On rel-m234 live the drawer at 844 x
-  390 went 117 points by a drag beside its key field and 0 by one on it;
-  with it 110 of 117 and 253 of 262 (the drawer), 109 of 117 and 253 of 253
-  (the AI page). A drag begun on a tile's "+N" in the parts bin scrolls
+  hold then a drag leaves the list. A local export of 2f78d2b9 fails all
+  four: the drawer 0 of 117 and 0 of 252, the AI page 0 of 117 and 0 of
+  253 with its key field typed in (rel-m234 live: the drawer 0 of 117);
+  with it 110 of 117 and 252 of 252 (the drawer), 109 of 117 and 253 of 253
+  (the AI page). By hand against a preview, `BW_BYPASS=$VERCEL_BYPASS`
+  (preview_checks.sh sets it): without it the app never comes up. A drag begun on a tile's "+N" in the parts bin scrolls
   nothing (the tile scrolls the grid itself, `PartsBin._cell_input`; its
   badge does not), and the probe's drag beside the fields keeps off it,
   and off what scrolls itself (the AI page's ItemList of models).
