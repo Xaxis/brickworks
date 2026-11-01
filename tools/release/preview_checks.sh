@@ -19,6 +19,9 @@ declare -A CMD=(
   [art]="tools/web/art_flow.mjs --url=$P/app $B --out=$S/${TAG}_art_web"
   [io]="tools/web/io_flow.mjs --url=$P/app $B --out=$S/${TAG}_io_web"
   [steps]="tools/web/steps_flow.mjs --url=$P/app $B --out=$S/${TAG}_steps_web"
+  # The booklet's pictures, a moved See inside cut and the build animation
+  # drawn in a browser, counted brick by brick (webdraw, 2026-11-01).
+  [drawn]="tools/web/drawn_flow.mjs --url=$P/app $B --runs=1 --out=$S/${TAG}_drawn_web"
   [floor]="tools/web/floor_flow.mjs --url=$P/app $B --out=$S/${TAG}_floor_web"
   [outline]="tools/web/outline_check.mjs --url=$P/app $B"
   [knowledge]="tools/web/knowledge_check.mjs --url=$P/app $B"
