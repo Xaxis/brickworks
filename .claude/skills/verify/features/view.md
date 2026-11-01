@@ -850,8 +850,17 @@ picture the assistant is shown.
   nothing placed before what holds it. On the timeline (B) a step, forwards or
   back, is a count raised or lowered in each batch (`StepsBar.reveal_upto`,
   `BrickWorld.reveal_upto`): the batches are written once in the order, and a
-  step writes nothing again; under a cut or x-ray it falls back to
-  `show_only`. An edit to a batch of the order ends it (`reveal_ended`) and the
+  step packs nothing again; under a cut or x-ray it falls back to
+  `show_only`. In a browser a count raised hands the batch's kept slots over
+  into fresh ones (`BrickWorld.draw_first`): raised in place, the engine wrote
+  the new slots into the buffer already drawn from, and a browser sometimes
+  never drew it (Vulkan and desktop OpenGL did, 20 runs each, so off the web
+  it is raised in place, as before). The timeline at step 4 of a nine-step model, Next pressed as it came
+  up, said "4 of 9 bricks" over a view with none (5 of 10 runs; timeline4,
+  2026-10-31). The build animation, the cut moved, the booklet's stages and
+  its lanes (`Twin.show_first`) raise counts the same way. Only the picture
+  showed it, so `in_view_flow` counts the bricks' colours in the view, and
+  `timeline_drawn_probe` reads both the scene and the window. An edit to a batch of the order ends it (`reveal_ended`) and the
   bar shows its step again. A step of 42082-1 was 50 to 58 ms headless, now
   the frame's own ~7 ms (`bigmodel` probe). A model wider than 24 studs, of 400
   parts or more (`TILED_FROM`; a smaller one was "Part 1", one step on a page
@@ -2205,6 +2214,13 @@ godot --headless --path . --script src/dev/step_edit_cost_probe.gd
 # Earlier, Delete step, a copy pasted into the step showing, and ] alone still
 # a colour. Every check passed is the pass.
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd -- only=author_steps
+# The timeline draws exactly the parts of its step, however soon after it
+# opens Next is pressed: nine 2 x 4 bricks a step each, with and without a
+# reference picture, Next a frame apart or after a wait, TIMELINE_RUNS (5)
+# each way; at step 4 each batch's drawn slots are the four bricks and the
+# baseplate, and the window holds step 1's red and step 3's yellow. Pictures
+# in TIMELINE_SHOTS. Ends "timeline_drawn: every check passed".
+tools/probe.sh timeline_drawn_probe
 # In a browser, on a local web export (tools/export.sh web, then
 # python3 tools/web/serve.py build/web PORT, .env sourced): the gatehouse
 # through Open > From a file, Timeline in Author's steps "Step 1 of 6", Next

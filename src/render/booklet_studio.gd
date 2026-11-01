@@ -439,12 +439,14 @@ class Twin extends RefCounted:
 	## [member buffers]: drawn as the codes with the rest thrown away, they
 	## cost a castle's whole model a picture for the few parts a step adds.
 	var alone: Array[MultiMesh] = []
+	## Each of [member multimeshes]' slots as copied.
 	var buffers: Array[PackedFloat32Array] = []
 
-	## As BrickWorld.show_first.
+	## As BrickWorld.show_first: a count raised hands the slots over again
+	## (BrickWorld.draw_first).
 	func show_first(upto: int) -> void:
 		for index: int in multimeshes.size():
-			multimeshes[index].visible_instance_count = ids[index].bsearch(upto)
+			BrickWorld.draw_first(multimeshes[index], ids[index].bsearch(upto), buffers[index])
 
 	## The bricks numbered [param from] to [param upto] alone in [member alone].
 	func show_new(from: int, upto: int) -> void:
@@ -582,8 +584,9 @@ func _twin(lane: Lane, made: Stage) -> Twin:
 	twin.in_codes = Node3D.new()
 	twin.in_alone = Node3D.new()
 	for drawn: Array in made.codes.drawing():
-		var copy: MultiMesh = _copied(drawn[0])
-		var alone: MultiMesh = _copied(drawn[0])
+		var slots: PackedFloat32Array = (drawn[0] as MultiMesh).buffer
+		var copy: MultiMesh = _copied(drawn[0], slots)
+		var alone: MultiMesh = _copied(drawn[0], slots)
 		alone.instance_count = 0
 		for pair: Array in [[twin.in_codes, lane.codes_material, copy],
 				[twin.in_alone, lane.alone_material, alone]]:
@@ -595,7 +598,7 @@ func _twin(lane: Lane, made: Stage) -> Twin:
 		twin.multimeshes.append(copy)
 		twin.ids.append(drawn[1])
 		twin.alone.append(alone)
-		twin.buffers.append((drawn[0] as MultiMesh).buffer)
+		twin.buffers.append(slots)
 	lane.codes.add_child(twin.in_codes)
 	lane.alone.add_child(twin.in_alone)
 	return twin
@@ -634,7 +637,8 @@ func _picture_twin(lane: PictureLane, made: Stage) -> Twin:
 	for pair: Array in [[made.colour, twin.in_alone, null], [made.codes, twin.in_codes,
 			lane.code_material]]:
 		for drawn: Array in (pair[0] as BrickWorld).drawing():
-			var copy: MultiMesh = _copied(drawn[0])
+			var slots: PackedFloat32Array = (drawn[0] as MultiMesh).buffer
+			var copy: MultiMesh = _copied(drawn[0], slots)
 			var instance := MultiMeshInstance3D.new()
 			instance.multimesh = copy
 			instance.material_override = pair[2] if pair[2] != null else drawn[3]
@@ -642,19 +646,20 @@ func _picture_twin(lane: PictureLane, made: Stage) -> Twin:
 			(pair[1] as Node3D).add_child(instance)
 			twin.multimeshes.append(copy)
 			twin.ids.append(drawn[1])
+			twin.buffers.append(slots)
 	lane.codes.add_child(twin.in_codes)
 	lane.colour.add_child(twin.in_alone)
 	return twin
 
 
-static func _copied(source: MultiMesh) -> MultiMesh:
+static func _copied(source: MultiMesh, slots: PackedFloat32Array) -> MultiMesh:
 	var copy := MultiMesh.new()
 	copy.transform_format = source.transform_format
 	copy.use_colors = source.use_colors
 	copy.use_custom_data = source.use_custom_data
 	copy.mesh = source.mesh
 	copy.instance_count = source.instance_count
-	copy.buffer = source.buffer
+	copy.buffer = slots
 	return copy
 
 
