@@ -3232,9 +3232,11 @@ instructions, one design a subject, 3 at a time. Sessions ran 2026-10-31 18:02Z
 to 2026-11-01 00:08Z, beside design8's arm. The account's login expired from
 21:58Z to 22:13Z. Four sessions lost their design to it (42063-1, 42075-1,
 21032-1, 7936-1) and were designed again on the same snapshot, 00:26Z to
-01:26Z; the first tries are kept as `<subject>.dropped-20261031`. 21020-1's
-design was whole and only its judging failed; it was judged again. No tool
-result carried a held-out set's number. Sessions took a median 23 minutes
+01:26Z; the first tries are kept as `<subject>.dropped-20261031`. Design8's
+arm beside it lost four the same way (21020-1, 40141-1, 42093-1, 7242-1) and
+redoes them on its own snapshot: eight sessions in all, designed again because
+the login expired. Here 21020-1's design was whole and only its judging failed;
+it was judged again. No tool result carried a held-out set's number. Sessions took a median 23 minutes
 against 19. None hit the 45-minute timeout; one did in the baseline. On a
 loaded box, 96 pictures came to the sessions as letters for want of a drawer
 in time, against 46 in the baseline. That counts against the lever.
