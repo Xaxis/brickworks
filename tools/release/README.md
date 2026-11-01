@@ -279,6 +279,12 @@ What each one guards against, all learned the hard way on 2026-10-13:
   staging to its end: a run already in the lock cannot be taken back, and
   one begun while rel-m233 merged held its oauth 33 minutes. The train's
   checks on the live site (`LIVE_DB_RELEASE`) take the lock all the same.
+- A unit's own run on the live site, an A/B or a diagnostic outside a
+  battery, takes the lock only through `tools/release/live_db.sh WHO CMD...`,
+  which takes it by the same rule (`live_db_lib.sh`, which
+  `preview_checks.sh` sources) and writes `.git/live-db.log` as WHO. hover's
+  scratch script took it with a bare flock, gave way to no release, and
+  held rel-m233's checks twice more, 33 and 38 minutes.
 
 `tools/release/clean_worktrees.sh [--dry-run]` removes finished worktrees
 and nothing else: never a locked one (the harness locks an agent's while it

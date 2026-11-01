@@ -887,7 +887,8 @@ def test_a_release_takes_the_live_database_before_a_unit_that_waited_longer(tmp_
     lock, the unit's first; once it is let go the release's runs first, and leaves no mark."""
     import fcntl
     y = Yard(tmp_path)
-    y.put("tools/release/preview_checks.sh", (ROOT / "tools/release/preview_checks.sh").read_text())
+    for name in ("preview_checks.sh", "live_db_lib.sh"):
+        y.put("tools/release/" + name, (ROOT / "tools/release" / name).read_text())
     y.put("tools/web/arrival_check.mjs", "await deleteAccount(session)\n")
     (y.r / ".env").write_text("VERCEL_BYPASS=bypass\n")
     node = tmp_path / "bin" / "node"
@@ -933,3 +934,25 @@ def test_a_release_takes_the_live_database_before_a_unit_that_waited_longer(tmp_
     train.wait()
     assert unit.wait(timeout=30) == 0
     assert [line.split()[0] for line in y.text("check_spans").splitlines()] == ["t-stale", "t-unit2"]
+
+
+def test_a_units_own_run_on_the_live_site_waits_for_a_release(tmp_path):
+    """live_db.sh, which a unit's own A/B takes the live database through: while a train runs
+    it begins nothing; then it runs, says so in live-db.log, and exits as its command did."""
+    y = Yard(tmp_path)
+    for name in ("live_db.sh", "live_db_lib.sh"):
+        y.put("tools/release/" + name, (ROOT / "tools/release" / name).read_text())
+    began = tmp_path / "began"
+    marks = y.r / ".git" / "live-db.release"
+    marks.mkdir(parents=True, exist_ok=True)
+    train = subprocess.Popen(["sleep", "3"])
+    (marks / str(train.pid)).write_text("")
+    unit = subprocess.Popen(["bash", str(y.r / "tools/release/live_db.sh"), "ab-hover",
+                             "bash", "-c", f"touch {began}; exit 3"], cwd=y.r, env=y.env)
+    time.sleep(1)
+    assert unit.poll() is None and not began.exists(), "the unit's run began while the train ran"
+    train.wait()
+    assert unit.wait(timeout=30) == 3 and began.exists()
+    log = (y.r / ".git" / "live-db.log").read_text().splitlines()
+    assert [line.split()[2:4] for line in log] == [["took", "ab-hover"], ["left", "ab-hover"]], log
+    assert log[1].endswith("exit=3")
