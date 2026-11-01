@@ -59,6 +59,8 @@ import zlib
 from pathlib import Path
 from typing import Any, Callable
 
+from trademarks import MARK_FAULTS
+
 ROOT = Path(__file__).resolve().parent.parent
 # Where the packages are published: a public repository of builds only, so
 # the downloads answer whether or not the source repository is public
@@ -219,6 +221,10 @@ def check_version() -> list[str]:
             problems.append("CHANGELOG.md's [%s] has no date" % version)
         if not body:
             problems.append("CHANGELOG.md's [%s] says nothing" % version)
+        for pattern, why, _ in MARK_FAULTS:
+            for found in pattern.finditer(body):
+                around = body[max(0, found.start() - 30):found.end() + 30].replace("\n", " ")
+                problems.append("CHANGELOG.md's [%s]: %s: ...%s..." % (version, why, around))
     repeated = sorted({name for name in names if names.count(name) > 1})
     if repeated:
         problems.append("CHANGELOG.md repeats %s" % ", ".join(repeated))
