@@ -143,7 +143,7 @@ func _ring() -> void:
 		(held.get(ends[1], {}) as Dictionary).has(ends[0]))
 	var moved: int = 0
 	for brick: BrickWorld.Brick in _world.bricks():
-		if not Grab._same(brick.transform, rest[brick.id]):
+		if not Bodies._same(brick.transform, rest[brick.id]):
 			moved += 1
 	_check("the ring swung: %d of 24 parts moved" % moved, moved >= 18)
 	_camera.frame(_bounds().grow(40.0))
@@ -155,7 +155,7 @@ func _ring() -> void:
 	await _frames(6)
 	var back: bool = true
 	for brick: BrickWorld.Brick in _world.bricks():
-		if not Grab._same(brick.transform, rest[brick.id]):
+		if not Bodies._same(brick.transform, rest[brick.id]):
 			back = false
 	_check("one Ctrl+Z puts every plate back", back)
 
