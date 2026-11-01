@@ -74,7 +74,7 @@ async function control(names, minutes = 5) {
   for (let tries = 0; tries < minutes * 120; tries++) {
     const shown = await controls();
     for (const name of names) if (shown[name]) return [name, shown[name]];
-    if (tries === 6) await openColumnFor(page, names[0]);
+    if (tries % 10 === 6) await openColumnFor(page, names[0]);
     await page.waitForTimeout(500);
   }
   await page.screenshot({ path: `${out}/never_showed.png` }).catch(() => {});

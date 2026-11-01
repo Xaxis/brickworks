@@ -191,6 +191,11 @@ func _run() -> void:
 		_finish()
 		return
 	var frame_us: Array = []
+	# The grab times its own work in each frame, so the main thread's wait
+	# for a CPU cannot be taken off it here: it is said, over the drag, and
+	# the bar is three times as long at a load past the box's cores
+	# (ProbeTime).
+	var drag := ProbeTime.Span.new()
 	for degrees: float in [6.0, 12.0, 18.0, 24.0, 30.0]:
 		var to: Vector3 = _about(grab.pivot, grab.axis, degrees) * grab._hold
 		var began: int = Time.get_ticks_usec()
@@ -214,12 +219,14 @@ func _run() -> void:
 		if not grab_drag.is_settling():
 			break
 	await _settle()
+	drag.end()
 	var worst_frame: float = 0.0
 	for us: int in frame_us:
 		worst_frame = maxf(worst_frame, us / 1000.0)
 	print("    drag frames: the grab's own work %.2f ms worst, %.2f ms mean over %d moves; whole frames %.1f ms worst"
 		% [grab_drag.worst_ms, grab_drag.mean_ms, grab_drag.frames, worst_frame])
-	_ok(grab_drag.worst_ms < 33.0, "each drag frame's own work is under 33 ms (%.2f ms worst)" % grab_drag.worst_ms)
+	_ok(grab_drag.worst_ms < 33.0 * drag.slack(), "each drag frame's own work is under %.0f ms (%.2f ms worst; the drag %.0f ms, %.0f of it waiting for a CPU; %s)"
+		% [33.0 * drag.slack(), grab_drag.worst_ms, drag.ms, drag.waited, ProbeTime.load_said(drag.busy)])
 
 	print("\n2. let go: kept for this visit, nothing written")
 	var arm_turns: Array = []
@@ -540,17 +547,24 @@ func _motions_link() -> void:
 	# What a press costs the app: its frames worked out a slice a frame
 	# (MotionPlayer.pace_on, main.MOTION_SLICE_MS), on this machine.
 	var began: int = Time.get_ticks_usec()
+	var press := ProbeTime.Span.new()
 	_main.call("_play_motion", "Open the gates")
 	var cost_ms: float = (Time.get_ticks_usec() - began) / 1000.0
 	await _played_out()
+	press.end()
 	last = _main.get("_motion_last")
 	print(("    a press of Open the gates (2 s, two gates): %.1f ms of the frame it came in, %s ms in all over %s slices, "
 		+ "the longest %s ms; the most a hold of its joints took %s ms, a frame %s ms, keeping it %s ms")
 		% [cost_ms, str(last.get("ms")), str(last.get("slices")), str(last.get("longest_ms")), str(last.get("hold_ms")),
 		str(last.get("frame_ms")), str(last.get("keep_ms"))])
 	# main.MOTION_SLICE_MS is 40: a slice ends after the frame that passes it.
-	_ok(float(last.get("longest_ms", 999.0)) <= 80.0,
-		"no slice of a press much past its 40 ms (%s ms at most)" % str(last.get("longest_ms")))
+	# The player times its slices itself: the main thread's wait is said
+	# over the press, and the bar is three times as long at a load past the
+	# box's cores (ProbeTime).
+	_ok(float(last.get("longest_ms", 999.0)) <= 80.0 * press.slack(),
+		"no slice of a press much past its 40 ms (%s ms at most, under %.0f; the press %.0f ms, %.0f of it waiting for a CPU; %s)"
+		% [str(last.get("longest_ms")), 80.0 * press.slack(), press.ms, press.waited,
+			ProbeTime.load_said(press.busy)])
 	named = view.controls_by_name()
 	if named.has("view_reset"):
 		await _press(named["view_reset"])

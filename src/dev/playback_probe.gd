@@ -9,7 +9,9 @@
 ## rebuilt every batch it touched. So this checks both halves: that a
 ## reveal shows exactly the bricks it should, in order, a prefix of each
 ## batch; and that on the Falcon starting one and running it through cost
-## milliseconds, not seconds.
+## milliseconds, not seconds: of the app's own time, less the main thread's
+## wait for a CPU, the bars three times as long at a load past the box's
+## cores (ProbeTime).
 extends SceneTree
 
 var _failures: int = 0
@@ -156,11 +158,11 @@ func _falcon(world: BrickWorld, library: PartLibrary, builder: Builder,
 	_check("the Falcon is down: %d bricks, all of them new" % world.brick_count(),
 		world.brick_count() == 4242 and assistant.fresh_ids.size() == 4242)
 
-	var started: int = Time.get_ticks_usec()
+	var span := ProbeTime.Span.new()
 	var played: bool = playback.play({})
-	var start_ms: float = (Time.get_ticks_usec() - started) / 1000.0
-	_check("starting it takes %.0f ms (main planned it in 15,500)" % start_ms,
-		played and start_ms < 400.0)
+	span.end()
+	_check("starting it takes %s, under %.0f (main planned it in 15,500)" % [span.said(),
+		400.0 * span.slack()], played and span.own < 400.0 * span.slack())
 	_check("it lays the Falcon out in %d steps, at most %.1f s"
 		% [playback._step_ends.size(), BuildPlayback.LONGEST_MS / 1000.0],
 		playback._step_ends.size() > 100
@@ -182,17 +184,20 @@ func _falcon(world: BrickWorld, library: PartLibrary, builder: Builder,
 	_check("it goes up from the bottom, step by step", climbing)
 
 	# Every frame of it, as the engine would run them.
-	var worst: float = 0.0
+	var spans: Array = []
 	var frames: int = 0
 	while playback.is_playing() and frames < 2000:
-		var frame: int = Time.get_ticks_usec()
+		span = ProbeTime.Span.new()
 		playback._process(1000.0 / 60.0 / 1000.0)
 		world._flush()
-		worst = maxf(worst, (Time.get_ticks_usec() - frame) / 1000.0)
+		spans.append(span.end())
 		frames += 1
-	_check("it plays out in %d frames, the slowest %.1f ms" % [frames, worst],
+	var worst: ProbeTime.Span = ProbeTime.slowest(spans)
+	var bar: float = 30.0 * ProbeTime.slack(ProbeTime.busiest(spans))
+	_check("it plays out in %d frames, the slowest %s, under %.0f" % [frames,
+		worst.said() if worst != null else "none", bar],
 		not playback.is_playing() and frames <= int(BuildPlayback.LONGEST_MS / 16.0) + 2
-		and worst < 30.0)
+		and worst != null and worst.own < bar)
 	_check("...and ends with the whole Falcon shown",
 		_hidden(world).is_empty() and _drawn(world) == 4242)
 

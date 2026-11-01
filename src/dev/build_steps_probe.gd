@@ -96,8 +96,8 @@ func _follow(what: String, world: BrickWorld, library: PartLibrary, ldr: LdrMode
 	var bad_lots: int = 0
 	var unsorted: int = 0
 	var bad_caption: int = 0
-	var slowest_view: float = 0.0
-	var first_view: float = 0.0
+	## Each page's view worked out, timed (ProbeTime.Span).
+	var viewed: Array = []
 	var before: Dictionary = {}
 	var attached: int = 0
 	for page: int in range(1, pages.last() + 1):
@@ -151,13 +151,9 @@ func _follow(what: String, world: BrickWorld, library: PartLibrary, ldr: LdrMode
 		if pages.caption(page) != step.caption(steps[-1].number) \
 				or not pages.caption(page).begins_with("Step %d of " % step.number):
 			bad_caption += 1
-		var looked_at: int = Time.get_ticks_usec()
+		var span := ProbeTime.Span.new()
 		var view: Dictionary = pages.view(page)
-		var took: float = (Time.get_ticks_usec() - looked_at) / 1000.0
-		if page == 1:
-			first_view = took
-		else:
-			slowest_view = maxf(slowest_view, took)
+		viewed.append(span.end())
 		if not (view["box"] as AABB).has_volume():
 			bad_show += 1
 		before = shown
@@ -178,10 +174,13 @@ func _follow(what: String, world: BrickWorld, library: PartLibrary, ldr: LdrMode
 	_turns_change_only_the_step(pages, every.size())
 
 	# On the desktop, where the web on a phone is several times slower:
-	# the first page includes laying every part out on the view plane.
-	_ok(first_view < 20.0 and slowest_view < 20.0,
-		"a page's view is worked out in %.1f ms at most, the first in %.1f" % [
-			slowest_view, first_view])
+	# the first page includes laying every part out on the view plane. The
+	# app's own time, less the main thread's wait for a CPU, the bar three
+	# times as long at a load past the box's cores (ProbeTime).
+	var slowest: ProbeTime.Span = ProbeTime.slowest(viewed)
+	var bar: float = 20.0 * ProbeTime.slack(ProbeTime.busiest(viewed))
+	_ok(slowest.own < bar, "a page's view is worked out in %.1f ms of its own at most, under %.0f, the first in %.1f (the slowest %s)"
+		% [slowest.own, bar, (viewed[0] as ProbeTime.Span).own, slowest.said()])
 	if steps.any(func(step: Instructions.Step) -> bool: return step.in_callout()):
 		_ok(attached > 0, "a sub-assembly built on the side is put on in a page of its own, "
 			+ "outlining every copy (%d)" % attached)

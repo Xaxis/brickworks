@@ -10,27 +10,40 @@
 ## (Assistant._checked) while the main thread goes on. This holds that: the
 ## same answer as checking in place, frames all the while, and what a
 ## person or a fetch does meanwhile neither lost nor crashing it.
+##
+## A frame's time is the app's own, less the main thread's wait for a CPU,
+## and its bar three times as long at a load past the box's cores
+## (ProbeTime): the frames are the main thread's, which the worker's check
+## and the box's load both slow.
 extends SceneTree
 
 var _failures: int = 0
-var _frames: int = 0
-var _last_us: int = 0
-var _worst_ms: float = 0.0
-var _timing: bool = false
 
 
 func _initialize() -> void:
 	_run()
 
 
-func _process(_delta: float) -> bool:
-	var now: int = Time.get_ticks_usec()
-	if _timing:
-		_frames += 1
-		if _last_us > 0:
-			_worst_ms = maxf(_worst_ms, (now - _last_us) / 1000.0)
-	_last_us = now
-	return false
+## Each frame from the next on, kept until [method _timed].
+func _timing() -> ProbeTime.Frames:
+	var frames := ProbeTime.Frames.new()
+	frames.from_now = false
+	root.add_child(frames)
+	return frames
+
+
+## How the frames since [method _timing] went against [param bar] ms:
+## [how many from one to the next, whether the longest was under the bar,
+## in words]; the frames let go.
+func _timed(frames: ProbeTime.Frames, bar: float) -> Array:
+	var longest: Array = ProbeTime.longest(frames.gaps)
+	var busy: float = maxf(frames.busy, ProbeTime.box_load())
+	var most: float = bar * ProbeTime.slack(busy)
+	var count: int = frames.gaps.size()
+	frames.queue_free()
+	return [count, float(longest[0]) < most,
+		"the longest %.0f ms of its own (%.0f waiting for a CPU), under %.0f; %s"
+		% [float(longest[0]), float(longest[2]), most, ProbeTime.load_said(busy)]]
 
 
 func _run() -> void:
@@ -72,8 +85,7 @@ func _run() -> void:
 	# The same check, waited for a frame at a time — with a person placing a
 	# brick and a part's geometry arriving while it runs.
 	var unloaded: String = _a_part_not_loaded(library)
-	_last_us = 0
-	_timing = true
+	var frames: ProbeTime.Frames = _timing()
 	started = Time.get_ticks_usec()
 	var waiting: Array = [null]
 	var checking := func() -> void:
@@ -83,13 +95,13 @@ func _run() -> void:
 	var arrived: bool = false
 	while waiting[0] == null:
 		await process_frame
-		if placed == 0 and _frames > 2:
+		if placed == 0 and frames.gaps.size() >= 2:
 			var at := Transform3D(Basis.IDENTITY, Vector3(-300.0, 24.0, -300.0))
 			placed = world.add_brick("3003", 4, at)
 			builder.register(placed, "3003", at)
-		if not arrived and _frames > 3 and not unloaded.is_empty():
+		if not arrived and frames.gaps.size() >= 3 and not unloaded.is_empty():
 			arrived = library.mesh_for(unloaded) != null
-	_timing = false
+	var timed: Array = _timed(frames, 150.0)
 	var off_ms: float = (Time.get_ticks_usec() - started) / 1000.0
 	var off: Dictionary = waiting[0]
 
@@ -98,9 +110,8 @@ func _run() -> void:
 	_check("checked on a worker: the same answer",
 		off.get("summary") == in_place["summary"]
 		and off.get("feedback") == in_place["feedback"])
-	_check("...in %.0f ms, with %d frames drawn meanwhile, the longest %.0f ms"
-		% [off_ms, _frames, _worst_ms],
-		_frames >= 5 and _worst_ms < 150.0)
+	_check("...in %.0f ms, with %d frames meanwhile, %s" % [off_ms, int(timed[0]), timed[2]],
+		int(timed[0]) >= 4 and bool(timed[1]))
 	_check("a brick placed during it is in the world", placed != 0
 		and world.get_brick(placed) != null)
 	_check("a part loaded during it is in the library after%s"
@@ -113,18 +124,15 @@ func _run() -> void:
 	world.clear()
 	builder.lattice.clear()
 	for tool: String in ["check_design", "submit_design"]:
-		_frames = 0
-		_worst_ms = 0.0
-		_last_us = 0
-		_timing = true
+		frames = _timing()
 		started = Time.get_ticks_usec()
 		var answer: Variant = await assistant.use_tool(tool, {"bricks": bricks})
-		_timing = false
+		var tool_timed: Array = _timed(frames, 600.0)
 		var said: String = str(answer).substr(0, 60).replace("\n", " ")
-		_check("%s of the Falcon: %.0f ms, %d frames, the longest %.0f ms: %s"
-			% [tool, (Time.get_ticks_usec() - started) / 1000.0, _frames,
-				_worst_ms, said],
-			_frames >= 5 and _worst_ms < 600.0 and not said.contains("Not applied"))
+		_check("%s of the Falcon: %.0f ms, %d frames, %s: %s"
+			% [tool, (Time.get_ticks_usec() - started) / 1000.0, int(tool_timed[0]),
+				tool_timed[2], said],
+			int(tool_timed[0]) >= 4 and bool(tool_timed[1]) and not said.contains("Not applied"))
 
 	await _stopped_while_going_down(world, builder, assistant, bricks)
 

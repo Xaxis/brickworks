@@ -11,10 +11,11 @@ description: Choose one part, many, or every part like it, and what you can do t
 
 ## Click, add and take away {#click}
 
-Click a part to select it; it is outlined in yellow, and a part under the pointer is outlined faintly. [[Shift]]-click or [[Ctrl]]-click adds a part to the selection or takes it away. [[Ctrl+A]] selects everything, and [[Esc]] lets go of whatever is open, then of the selection.
+Click a part to select it; it is outlined in yellow, and a part under the pointer is outlined faintly (where the view is slow to draw, as in a browser with no graphics card to draw with, once the pointer stops). [[Shift]]-click or [[Ctrl]]-click adds a part to the selection or takes it away. [[Ctrl+A]] selects everything, and [[Esc]] lets go of whatever is open, then of the selection.
 
 <!-- covers
 ui:selection outline
+ui:the hover drawn at the device's pace
 ui:selection edits
 -->
 

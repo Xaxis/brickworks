@@ -83,6 +83,8 @@ func _run() -> void:
 	var still: Array = []
 	var turning: Array = []
 	var took: Array = []
+	var queued: Array = []
+	var busy: float = 0.0
 	var count: int = 0
 	## The fewest pixels of the line seen once the view came to rest.
 	var back: int = 1 << 30
@@ -92,9 +94,11 @@ func _run() -> void:
 		bare_still.append(await _frame_ms(4))
 		bare_turning.append(await _turning_ms(4))
 		await _still()
-		var began: PackedInt64Array = _main_clock()
+		var span := ProbeTime.Span.new()
 		_verbs.select_by("all")
-		took.append(_held_ms(began))
+		took.append(span.end().own)
+		queued.append(span.waited)
+		busy = maxf(busy, span.busy)
 		count = _builder.selection.size()
 		await _frames(3)
 		still.append(await _frame_ms(4))
@@ -125,9 +129,10 @@ func _run() -> void:
 			break
 	_builder.select_brick(one, false)
 	await _frames(2)
-	var began_colour: PackedInt64Array = _main_clock()
+	var colour_span := ProbeTime.Span.new()
 	_verbs.select_by("colour")
-	var took_colour: float = _held_ms(began_colour)
+	var took_colour: float = colour_span.end().own
+	busy = maxf(busy, colour_span.busy)
 	var by_colour: int = _builder.selection.size()
 	await _frames(2)
 	var colour_frame: float = await _frame_ms(4)
@@ -137,9 +142,9 @@ func _run() -> void:
 		% [bare, outlined, count, _ms(bare_still), _ms(still)])
 	print("    ...view turning: %.0f ms bare, %.0f ms outlined (of %s and %s)" % [
 		bare_turn, outlined_turning, _ms(bare_turning), _ms(turning)])
-	print("    the main thread's time selecting all: %.0f ms at the most (of %s); every part of "
-		% [took_all, _ms(took)] + "colour %d (%d parts): %.0f ms, then %.0f ms a frame"
-		% [most, by_colour, took_colour, colour_frame])
+	print("    the main thread's time selecting all: %.0f ms at the most (of %s, less %s ms waiting for a CPU); every part of "
+		% [took_all, _ms(took), _ms(queued)] + "colour %d (%d parts): %.0f ms (less %.0f waiting), then %.0f ms a frame; %s"
+		% [most, by_colour, took_colour, colour_span.waited, colour_frame, ProbeTime.load_said(busy)])
 	_check("a frame with all %d outlined and the view still costs %.0f ms against %.0f bare"
 		% [count, outlined, bare], outlined <= bare * 1.05 + 30.0)
 	_check("...and turning, %.0f ms against %.0f bare: a selection this big is put away "
@@ -215,25 +220,6 @@ static func _cpu_ticks() -> int:
 	var line: String = file.get_line()
 	var fields: PackedStringArray = line.substr(line.rfind(")") + 2).split(" ")
 	return fields[11].to_int() + fields[12].to_int() if fields.size() > 12 else -1
-
-
-## The clock, and the main thread's time on a core and waiting for one, in
-## nanoseconds.
-static func _main_clock() -> PackedInt64Array:
-	var pid: int = OS.get_process_id()
-	var file: FileAccess = FileAccess.open("/proc/%d/task/%d/schedstat" % [pid, pid],
-		FileAccess.READ)
-	var fields: PackedStringArray = file.get_line().split(" ") if file != null else ["-1", "-1"]
-	return PackedInt64Array([Time.get_ticks_usec() * 1000, fields[0].to_int(), fields[1].to_int()])
-
-
-## How long the main thread was held since [param began], in milliseconds:
-## the clock's time less what it waited for a core. Selecting is the main
-## thread's alone, so the other threads' time is not counted, nor the box's
-## load; and anything it waited on is.
-static func _held_ms(began: PackedInt64Array) -> float:
-	var now: PackedInt64Array = _main_clock()
-	return (now[0] - began[0] - (now[2] - began[2])) / 1.0e6
 
 
 ## Until the pool's workers have spent under a twentieth of a core for half

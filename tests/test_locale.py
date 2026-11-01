@@ -27,7 +27,12 @@ GROUP = {"de": "LEGO Gruppe", "fr": "Groupe LEGO", "es": "Grupo LEGO"}
 
 
 def entries(code: str) -> list[tuple[str, str]]:
-    """[msgid, msgstr] for each entry of locale/<code>.po, the header left out."""
+    """[msgid, msgstr] for each entry of locale/<code>.po, the header left out.
+
+    An entry with a context (msgctxt, a word's second sense: "White" as a
+    render's backdrop) has it before its msgid, as gettext keys it:
+    "backdrop\x04White".
+    """
     out: list[tuple[str, str]] = []
     field = ""
     got: dict[str, str] = {}
@@ -36,12 +41,22 @@ def entries(code: str) -> list[tuple[str, str]]:
         return (text[1:-1].replace('\\"', '"').replace("\\n", "\n").replace("\\t", "\t")
                 .replace("\\\\", "\\"))
 
+    def done() -> None:
+        if "msgstr" in got and got.get("msgid"):
+            context = got.get("msgctxt")
+            out.append((f"{context}\x04{got['msgid']}" if context else got["msgid"], got["msgstr"]))
+
     for line in (ROOT / "locale" / f"{code}.po").read_text(encoding="utf-8").splitlines() + [""]:
         line = line.strip()
-        if line.startswith("msgid "):
-            if "msgstr" in got and got.get("msgid"):
-                out.append((got["msgid"], got["msgstr"]))
-            got = {"msgid": unquote(line[6:])}
+        if line.startswith("msgctxt "):
+            done()
+            got = {"msgctxt": unquote(line[8:])}
+            field = "msgctxt"
+        elif line.startswith("msgid "):
+            if "msgstr" in got:
+                done()
+                got = {}
+            got["msgid"] = unquote(line[6:])
             field = "msgid"
         elif line.startswith("msgstr "):
             got["msgstr"] = unquote(line[7:])
@@ -50,8 +65,7 @@ def entries(code: str) -> list[tuple[str, str]]:
             got[field] += unquote(line)
         elif not line or line.startswith("#"):
             field = "" if not line else field
-    if "msgstr" in got and got.get("msgid"):
-        out.append((got["msgid"], got["msgstr"]))
+    done()
     return out
 
 

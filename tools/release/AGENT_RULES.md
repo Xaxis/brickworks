@@ -95,6 +95,11 @@ date says when.
   windowed.txt** (as its `##` header runs it), or of out.txt with why it is
   not run. `tools/check.sh --lists` must pass before you send ready: four units
   on 2026-10-23 forgot, and each merge stopped at the gate.
+- **A probe's bar on a time judges the app's own time** (src/dev/probe_time.gd):
+  `ProbeTime.Span` round an act, `ProbeTime.Frames` for frames, the bar times
+  `slack()`, and the line says the wait and the load. Releases run probes four
+  at a time at load 15 to 45, and three held on one day (2026-10-31) on bars
+  that counted the box against the app.
 - **SQL that replaces another file's function** adds one line to
   supabase/later.tsv (tab-separated: the earlier file, the function, the later
   file, words only the later body has), never to tools/apply_sql.mjs. SQL is

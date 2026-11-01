@@ -118,6 +118,34 @@ func _ready() -> void:
 	_build()
 
 
+## The themes in the language chosen now (ModelLibrary.theme_said).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and _theme != null and _theme.item_count > 1:
+		var themes := PackedStringArray()
+		for n: int in range(1, _theme.item_count):
+			themes.append(str(_theme.get_item_metadata(n)))
+		_say_themes(themes)
+
+
+## The theme list after Any, each as the language says it and in its order
+## ("Sonstige" among the S's, not where "Other" was); the one chosen stays.
+func _say_themes(themes: PackedStringArray) -> void:
+	var chosen: String = _picked(_theme)
+	var said: Array = []
+	for theme: String in themes:
+		said.append([ModelLibrary.theme_said(theme), theme])
+	said.sort_custom(func(a: Array, b: Array) -> bool: return str(a[0]) < str(b[0]))
+	while _theme.item_count > 1:
+		_theme.remove_item(_theme.item_count - 1)
+	_theme.select(0)
+	for pair: Array in said:
+		_theme.add_item(str(pair[0]))
+		_theme.set_item_metadata(_theme.item_count - 1, pair[1])
+		_theme.set_item_auto_translate_mode(_theme.item_count - 1, Node.AUTO_TRANSLATE_MODE_DISABLED)
+		if pair[1] == chosen:
+			_theme.select(_theme.item_count - 1)
+
+
 ## Open on a shelf: "sets" or "community".
 func open(source: String = "") -> void:
 	visible = true
@@ -572,9 +600,7 @@ func _sets(ask: Dictionary) -> Dictionary:
 	if every.is_empty():
 		return {"said": books.trouble}
 	if _theme.item_count == 1:
-		for theme: String in ModelLibrary.themes(every):
-			_theme.add_item(theme)
-			_theme.set_item_metadata(_theme.item_count - 1, theme)
+		_say_themes(ModelLibrary.themes(every))
 		for decade: String in ModelLibrary.decades(every):
 			_decade.add_item(decade)
 			_decade.set_item_metadata(_decade.item_count - 1, decade)
@@ -698,13 +724,19 @@ func _card(card: Dictionary, first: bool) -> Control:
 	cover.texture = _covers.get(str(card["picture"]))
 	cover.set_meta("picture", str(card["picture"]))
 	column.add_child(cover)
+	# A set's name is a name, drawn as it is in any language (Language): a
+	# set named Car stays Car. Its theme's names too, and its words in the
+	# language ("City > Polizei").
 	var named: Label = _label(str(card["name"]), 13, 1.0)
+	named.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	named.tooltip_text = str(card["name"])
 	named.mouse_filter = Control.MOUSE_FILTER_PASS
 	column.add_child(named)
 	column.add_child(_label(str(card["facts"]), 11, 0.6))
 	if not str(card["theme"]).is_empty():
-		column.add_child(_label(str(card["theme"]), 11, 0.5))
+		var theme: Label = _label(ModelLibrary.theme_said(str(card["theme"])), 11, 0.5)
+		theme.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		column.add_child(theme)
 	column.add_child(_label(str(card["credit"]), 11, 0.6))
 	var go := Button.new()
 	go.text = "Open"

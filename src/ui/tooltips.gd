@@ -16,11 +16,20 @@
 ## So it goes before the window routes the event: every press closes it,
 ## and so does a pointer moving onto it. Hidden, it is out of the window's
 ## list at once; freed after.
+##
+## And the control pressed keeps its tooltip down until the pointer leaves
+## it. Pressed, Claude Code says "Copied." under itself, and the pointer
+## resting there put its tooltip back up over those words (connect3,
+## 2026-10-31).
 class_name Tooltips
 extends RefCounted
 
 
 static var _windows: Dictionary = {}
+## The control the last press landed on, and its window, while the pointer
+## has not left it; 0 when it has. Ids, which go stale with the objects.
+static var _pressed: int = 0
+static var _pressed_in: int = 0
 
 
 ## For every event [param window] is given, ahead of the window itself.
@@ -37,6 +46,16 @@ static func _before(event: InputEvent, window: Window) -> void:
 		and event.is_pressed()
 	if pointer == null and not pressed:
 		return
+	# What the pointer is over, before this event moves it: on the press,
+	# what it lands on; on a move off it, what it left, so it is let go a
+	# move later.
+	var over: Control = window.gui_get_hovered_control()
+	var over_id: int = over.get_instance_id() if over != null else 0
+	if pressed:
+		_pressed = over_id
+		_pressed_in = window.get_instance_id()
+	elif window.get_instance_id() == _pressed_in and over_id != _pressed:
+		_pressed = 0
 	# The window's units, which its embedded windows are placed in: the
 	# event comes in the screen's.
 	var at: Vector2 = Vector2(-1, -1)
@@ -79,6 +98,11 @@ static func _added(node: Node) -> void:
 
 static func _fit(popup: Window) -> void:
 	if not is_instance_valid(popup) or not popup.is_inside_tree() or not popup.visible:
+		return
+	# Put away before it is drawn: this runs at the end of the frame it came.
+	if _on_pressed():
+		popup.hide()
+		popup.queue_free()
 		return
 	var label: Label = null
 	for child: Node in popup.get_children():
@@ -135,6 +159,15 @@ static func _clamped(at: Vector2, size: Vector2, room: Rect2) -> Vector2:
 	return Vector2(
 		clampf(at.x, room.position.x + EDGE, maxf(room.position.x + EDGE, room.end.x - size.x - EDGE)),
 		clampf(at.y, room.position.y + EDGE, maxf(room.position.y + EDGE, room.end.y - size.y - EDGE)))
+
+
+## Whether the pointer is still on the control the last press landed on.
+static func _on_pressed() -> bool:
+	var window: Window = instance_from_id(_pressed_in) as Window if _pressed != 0 else null
+	if window == null:
+		return false
+	var over: Control = window.gui_get_hovered_control()
+	return over != null and over.get_instance_id() == _pressed
 
 
 ## Whether [param window] is a tooltip the engine put up.

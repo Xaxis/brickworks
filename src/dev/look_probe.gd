@@ -223,21 +223,25 @@ func _fenced(budget: Node, budget_script: Script, software: bool) -> void:
 	var ladder: int = (told["ladder"] as Array).size()
 	var judged_at: int = (budget.get("judged") as Array).size()
 	var began: int = Time.get_ticks_msec()
+	# Its own time, less the main thread's wait for a CPU (ProbeTime). Not
+	# three times the bar at a load past the cores: most of it is the slow
+	# card's 400 ms a frame, a wait the box's load does not lengthen.
+	var span := ProbeTime.Span.new()
 	budget.call("look")
 	while Time.get_ticks_msec() - began < 30000:
 		await process_frame
 		if (budget.get("judged") as Array).size() > judged_at or int(budget.get("looks")) > 0 \
 				and int((budget.call("page_state") as Dictionary)["looking"]) == 0:
 			break
-	var took: int = Time.get_ticks_msec() - began
+	var took: int = roundi(span.end().own)
 	var frames: int = int(budget_script.get("SOON"))
 	told = budget.call("page_state")
 	print("    a slow card: judged %s, %d ms after the look began, %d frames ahead at most" % [str(told["judged"]), took, int(card["ahead"])])
 	_check("a slow card is never more than %d frames behind the look (%d)" % [in_flight, int(card["ahead"])],
 		int(card["ahead"]) <= in_flight)
 	if cut_at < ladder:
-		_check("and is judged after %d of its frames, %d ms (bar %d), cutting two (%s)"
-			% [frames, took, (frames + 1) * 400 + 500, str(told["cuts"])],
+		_check("and is judged after %d of its frames, %s (bar %d), cutting two (%s)"
+			% [frames, span.said(), (frames + 1) * 400 + 500, str(told["cuts"])],
 			took <= (frames + 1) * 400 + 500 and (told["cuts"] as Array).size() == mini(cut_at + 2, ladder))
 	else:
 		print("    (every rung was already cut: nothing for the slow card to judge)")

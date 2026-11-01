@@ -17,7 +17,9 @@
 ## - for the one that has, "Already in your Claude? Open your connectors"
 ##   beside it and the line saying why, which opens Claude's list;
 ## - Claude Code: one click puts `claude mcp add ...` on the clipboard and
-##   says so under the link, with /mcp next.
+##   says so under the link, with /mcp next; and the link's tooltip, which
+##   came up over that line while the pointer rested on the link, stays
+##   down until the pointer leaves it.
 ## Signed in with a session that needs no renewing, to a deployment on a
 ## port this probe holds and never answers: nothing leaves the machine, and
 ## the panel waits as it does while the person is over in claude.ai.
@@ -131,6 +133,12 @@ func _run() -> void:
 	print("\nClaude Code")
 	var code_link: LinkButton = form.get("_code_link")
 	DisplayServer.clipboard_set("")
+	# The pointer rests on the link a while first, as it does while a
+	# person reads its tooltip, and stays on it after the click.
+	await _point(code_link)
+	await create_timer(1.0).timeout
+	_check(_tooltip() == code_link.tooltip_text and not _tooltip().is_empty(),
+		"resting on Claude Code shows its tooltip: %s" % _tooltip())
 	await _click(code_link)
 	var said: Label = form.get("_code_said")
 	var command: String = "claude mcp add --transport http brickworks %s/api/mcp" % deployment
@@ -140,7 +148,20 @@ func _run() -> void:
 			and _on_screen(said),
 		"...and says so under the link, with what next, in view (%s in %s): %s"
 			% [said.get_global_rect(), _seen(said), said.text])
+	# Still on the link, moving a little as a hand does.
+	for nudge: Vector2 in [Vector2(2, 0), Vector2(-2, 1), Vector2(0, -1)]:
+		await _point(code_link, nudge)
+		await create_timer(0.3).timeout
+	await create_timer(1.0).timeout
+	_check(_tooltip().is_empty(),
+		"...and its tooltip stays down while the pointer rests on the link: \"%s\"" % _tooltip())
 	await _shot("5_claude_code", said)
+	await _point(connect_button)
+	await create_timer(0.3).timeout
+	await _point(code_link)
+	await create_timer(1.0).timeout
+	_check(_tooltip() == "Copies the command that adds Brickworks to Claude Code",
+		"...and comes up again once the pointer has left and come back: %s" % _tooltip())
 
 	connector.stop()
 	_held.stop()
@@ -155,16 +176,7 @@ func _last() -> String:
 ## A click on [param control] where it is drawn, as the mouse sends one,
 ## scrolled into view first.
 func _click(control: Control) -> void:
-	_into_view(control)
-	await _frames(4)
-	# In the window's pixels, through Input as the system's events come.
-	var at: Vector2 = control.get_global_rect().get_center() \
-		* (Vector2(DisplayServer.window_get_size()) / root.get_visible_rect().size)
-	var motion := InputEventMouseMotion.new()
-	motion.position = at
-	motion.global_position = at
-	Input.parse_input_event(motion)
-	await _frames(3)
+	var at: Vector2 = await _point(control)
 	for pressed: bool in [true, false]:
 		var click := InputEventMouseButton.new()
 		click.button_index = MOUSE_BUTTON_LEFT
@@ -175,6 +187,37 @@ func _click(control: Control) -> void:
 		Input.parse_input_event(click)
 		await _frames(2)
 	await _frames(4)
+
+
+## The pointer moved onto [param control] ([param nudge] off its middle),
+## scrolled into view first. Where it went, in the window's pixels.
+func _point(control: Control, nudge := Vector2.ZERO) -> Vector2:
+	_into_view(control)
+	await _frames(4)
+	# In the window's pixels, through Input as the system's events come.
+	var at: Vector2 = (control.get_global_rect().get_center() + nudge) \
+		* (Vector2(DisplayServer.window_get_size()) / root.get_visible_rect().size)
+	# On Xvfb the system's pointer too (tooltip_probe's _move says why: the
+	# app replays a move where the system says the pointer is).
+	if OS.get_environment("XAUTHORITY").contains("xvfb-run"):
+		Input.warp_mouse(at)
+	var motion := InputEventMouseMotion.new()
+	motion.position = at
+	motion.global_position = at
+	Input.parse_input_event(motion)
+	await _frames(3)
+	return at
+
+
+## The words of the tooltip up in the window, or "" when none is: the
+## engine's own, as tooltip_probe finds it.
+func _tooltip() -> String:
+	for sub: Window in root.get_embedded_subwindows():
+		if Tooltips.is_tooltip(sub) and sub.visible:
+			for label: Node in sub.get_children():
+				if label is Label:
+					return (label as Label).text
+	return ""
 
 
 func _into_view(control: Control) -> void:

@@ -776,7 +776,16 @@ try {
             await page.waitForTimeout(250);
             laid = await page.evaluate(() => window.brickworksLayout);
           }
-          const middle = laid && laid.centre ? laid.centre : { x: width / 2, y: height / 2 };
+          let middle = laid && laid.centre ? laid.centre : { x: width / 2, y: height / 2 };
+          // On the baseplate a person sees: not under the strip over the
+          // model's top (Main._model_rect frames the model under it), where
+          // the browser's warning about keeping models stood over the
+          // middle of a tablet's model beside the parts panel.
+          const strip = laid && laid.panels && laid.panels.notices;
+          if (strip && middle.y >= strip[1] && middle.y <= strip[1] + strip[3]
+            && middle.x >= strip[0] && middle.x <= strip[0] + strip[2]) {
+            middle = { x: middle.x, y: strip[1] + strip[3] + 24 };
+          }
           // Its parts come over the wire: tapped again until it stands.
           let stood = 0;
           for (const [dx, dy] of [[0, 0], [0, 0], [16, 0], [0, 16], [-16, 0], [0, -16]]) {

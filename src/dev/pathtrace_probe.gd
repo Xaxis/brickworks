@@ -127,17 +127,22 @@ func _car() -> void:
 	print("\n  the car at 1280x720")
 	var settings: RenderSettings = _best(Vector2i(1280, 720), 256)
 	settings.seed = 1
+	# Its own time: less the main thread's wait for a CPU, which holds back
+	# the next pass by as long as it lasts (ProbeTime). Not three times the
+	# bar at a load past the cores: the passes are the card's, which the
+	# box's load does not slow.
 	var started: int = Time.get_ticks_msec()
+	var span := ProbeTime.Span.new()
 	var picture: Image = await _render.render(_world, settings)
-	var seconds: float = float(Time.get_ticks_msec() - started) / 1000.0
+	var seconds: float = span.end().own / 1000.0
 	if picture == null:
 		_check("the car is drawn", false)
 		return
 	picture.save_png(OUT + "car_best_traced_1280x720.png")
 	_check("the car, 256 samples, path traced (%s, %d samples)" % [_render.traced_last(),
 		_render.last_samples], _render.traced_last() and _render.last_samples == 256)
-	_check("in %.1f s on %s (at most %.0f s; the longest frame %.0f ms, %s)" % [seconds,
-		RenderingServer.get_video_adapter_name(), CAR_SECONDS, _render.worst_frame_ms,
+	_check("in %.1f s of its own on %s (at most %.0f s; %s; the longest frame %.0f ms, %s)" % [seconds,
+		RenderingServer.get_video_adapter_name(), CAR_SECONDS, span.said(), _render.worst_frame_ms,
 		_render.worst_step], seconds <= CAR_SECONDS)
 
 	# The same picture with 4,096 other samples is as near the truth as
@@ -452,21 +457,30 @@ func _queue() -> void:
 			if item.finished() and not ended.has(item.number):
 				ended[item.number] = Time.get_ticks_msec()
 	queue.changed.connect(watch)
+	# Each frame's own time, less the main thread's wait for a CPU, the bars
+	# three times as long at a load past the box's cores (ProbeTime).
+	var busy: float = ProbeTime.box_load()
 	var frames: PackedFloat32Array = PackedFloat32Array()
 	var last: int = Time.get_ticks_usec()
+	var last_waited: float = ProbeTime.waited_ms()
+	var queued: float = 0.0
 	var shot_taken: bool = false
 	var started: int = Time.get_ticks_msec()
 	while Time.get_ticks_msec() - started < 240000:
 		camera.call("turn_by_drag", Vector2(2, 0))
 		await process_frame
 		var now: int = Time.get_ticks_usec()
-		frames.append(float(now - last) / 1000.0)
+		var waited: float = ProbeTime.waited_ms()
+		frames.append(float(now - last) / 1000.0 - (waited - last_waited))
+		queued += waited - last_waited
 		last = now
+		last_waited = waited
 		watch.call()
 		if not shot_taken and queue.is_drawing() and Time.get_ticks_msec() - started > 1500:
 			shot_taken = true
 			await _shoot("queue_window")
 			last = Time.get_ticks_usec()
+			last_waited = ProbeTime.waited_ms()
 		var left: int = 0
 		for item: RenderQueue.Item in queue.items:
 			if not item.finished():
@@ -488,9 +502,12 @@ func _queue() -> void:
 		_times(ended, started)], in_turn)
 	var median: float = _middle(frames, 0.5)
 	var p95: float = _middle(frames, 0.95)
-	_check("the window drew %d frames meanwhile, turning: median %.0f ms, 95%% within %.0f ms"
-		% [frames.size(), median, p95] + ", the longest %.0f ms" % _middle(frames, 1.0),
-		median <= 34.0 and p95 <= 60.0)
+	busy = maxf(busy, ProbeTime.box_load())
+	var slack: float = ProbeTime.slack(busy)
+	_check("the window drew %d frames meanwhile, turning: median %.0f ms of its own, 95%% within %.0f ms"
+		% [frames.size(), median, p95] + ", the longest %.0f ms (at most %.0f and %.0f; %.0f ms waiting for a CPU in all; %s)"
+		% [_middle(frames, 1.0), 34.0 * slack, 60.0 * slack, queued, ProbeTime.load_said(busy)],
+		median <= 34.0 * slack and p95 <= 60.0 * slack)
 
 	var pictures: Array[Image] = []
 	for item: RenderQueue.Item in queue.items:

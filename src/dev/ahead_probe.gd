@@ -11,7 +11,9 @@
 ## while the joints are read on a worker must take hold once they are, with
 ## the worker's reading, and one while a session's move is worked out must
 ## say why it does nothing. With --most-ms=N each act's longest frame is
-## checked against N ms; PATHs after the -- replace the default models (the
+## checked against N ms of its own (less the main thread's wait for a CPU,
+## three times N at a load past the box's cores: ProbeTime); PATHs after
+## the -- replace the default models (the
 ## Ducati a session designed, in a git-ignored bench folder and skipped
 ## where it is not; 8808-1; 42004-1).
 extends SceneTree
@@ -225,12 +227,15 @@ func _still() -> void:
 
 
 ## [param act] done, then each frame timed for [constant FOLLOW_MS]: the
-## frames, ms, each with when it began after the act, and what was read.
+## frames, ms, each with when it began after the act and the main thread's
+## wait for a CPU in it, and what was read.
 func _timed(act: Callable) -> Dictionary:
 	await process_frame
+	var busy: float = ProbeTime.box_load()
 	var began: int = Time.get_ticks_usec()
 	var frames: Array = []
 	var last: int = began
+	var last_waited: float = ProbeTime.waited_ms()
 	var done: Array = [false]
 	var doing: Callable = func() -> void:
 		await act.call()
@@ -240,15 +245,18 @@ func _timed(act: Callable) -> Dictionary:
 	while true:
 		await process_frame
 		var now: int = Time.get_ticks_usec()
-		frames.append([(last - began) / 1000.0, (now - last) / 1000.0])
+		var waited: float = ProbeTime.waited_ms()
+		frames.append([(last - began) / 1000.0, (now - last) / 1000.0, waited - last_waited])
 		last = now
+		last_waited = waited
 		if done[0] and acted_at < 0:
 			acted_at = now
 		if acted_at >= 0 and now - acted_at > FOLLOW_MS * 1000:
 			break
 		if now - began > 120 * 1000000:
 			break
-	return {"frames": frames, "act_ms": (acted_at - began) / 1000.0, "ready_ms": _grab.ready_ms,
+	return {"frames": frames, "busy": maxf(busy, ProbeTime.box_load()),
+		"act_ms": (acted_at - began) / 1000.0, "ready_ms": _grab.ready_ms,
 		"off_thread": _grab.ready_off_thread, "ready": _grab.is_ready(), "took": _grab.ready_took}
 
 
@@ -266,8 +274,13 @@ func _report(what: String, timed: Dictionary) -> void:
 			"on a worker" if timed["off_thread"] else "here", str(timed["took"])])
 	print("    longest: %s" % ", ".join(longest))
 	if _most_ms > 0.0:
-		_check("%s: the longest frame after it is under %.0f ms (%.0f)" % [what, _most_ms, worst],
-			worst < _most_ms)
+		var own: Array = frames.map(func(f: Array) -> float: return float(f[1]) - float(f[2]))
+		var most: float = _most_ms * ProbeTime.slack(float(timed["busy"]))
+		var longest_own: float = own.max() if not own.is_empty() else 0.0
+		var waited: float = float(frames[own.find(longest_own)][2]) if not own.is_empty() else 0.0
+		_check("%s: the longest frame after it is under %.0f ms of its own (%.0f, %.0f waiting for a CPU; %s)"
+			% [what, most, longest_own, waited, ProbeTime.load_said(float(timed["busy"]))],
+			longest_own < most)
 
 
 func _frames(count: int) -> void:

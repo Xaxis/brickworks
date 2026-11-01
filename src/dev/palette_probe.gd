@@ -258,15 +258,18 @@ func _words() -> void:
 func _a_part() -> void:
 	_palette.run_command = _shell.run
 	_builder.clear_selection()
-	var from: int = Time.get_ticks_usec()
+	# Of the app's own time, less the main thread's wait for a CPU, the bar
+	# three times as long at a load past the box's cores (ProbeTime).
+	var span := ProbeTime.Span.new()
 	_palette.matches("brick 2 x 4")
 	_palette.parts_for("brick 2 x 4")
-	var took: float = (Time.get_ticks_usec() - from) / 1000.0
+	var took: float = span.end().own
 	await _keys_from(KEY_SLASH, true)
 	await _type("3001")
 	var rows: Array = _palette.get("_names")
-	_check("\"3001\" lists the part first (%s); finding \"brick 2 x 4\" took %.1f ms" % [
-		", ".join(rows.slice(0, 3)), took], not rows.is_empty() and rows[0] == "part:3001" and took < 50.0)
+	_check("\"3001\" lists the part first (%s); finding \"brick 2 x 4\" took %s, under %.0f" % [
+		", ".join(rows.slice(0, 3)), span.said(), 50.0 * span.slack()], not rows.is_empty()
+		and rows[0] == "part:3001" and took < 50.0 * span.slack())
 	var list: Tree = _palette.get("_list")
 	var scrolled: Array = list.get_children(true).filter(func(child: Node) -> bool:
 		return child is VScrollBar and (child as VScrollBar).visible)

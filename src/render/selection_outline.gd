@@ -39,6 +39,11 @@
 ## window-sized, cost several times the model's own frame whatever is in
 ## them.
 ##
+## The part under the pointer is outlined at the pace the device draws
+## (PointerPace, [member paced]): drawn in software, where the rest of the
+## view is drawn again with it, where the pointer comes to rest rather than
+## at each step of the mouse, each a frame of the whole model.
+##
 ## Nothing is put in the model's world, so a picture, a render or the
 ## booklet, each drawn by a viewport of its own looking at that world,
 ## never sees it. And nothing is written while nothing changes, so standing
@@ -91,6 +96,11 @@ var world: BrickWorld
 var colour: Color = SELECTED
 ## Points.
 var width: float = SELECTED_WIDTH
+## What the pointer is over: drawn at the pace the device draws
+## (PointerPace), the newest asked for kept until it may be.
+var paced: bool = false
+var _pending: Variant = null
+var _pending_us: int = 0
 
 var _mask: SubViewport
 var _rows: SubViewport
@@ -224,6 +234,18 @@ var _shown_count: int = 0
 
 ## Outline these bricks (id -> anything), or nothing for an empty set.
 func show_selection(selection: Dictionary) -> void:
+	if paced:
+		if _pending == null:
+			_pending_us = Time.get_ticks_usec()
+		_pending = selection
+		if not PointerPace.now((Time.get_ticks_usec() - _pending_us) / 1000.0):
+			set_process(true)
+			return
+		_pending = null
+	_show(selection)
+
+
+func _show(selection: Dictionary) -> void:
 	_shown_count += 1
 	if _mask == null:
 		return
@@ -309,6 +331,13 @@ func _draw_again() -> void:
 
 
 func _process(_delta: float) -> void:
+	if _pending != null and PointerPace.now((Time.get_ticks_usec() - _pending_us) / 1000.0):
+		var wanted: Dictionary = _pending
+		_pending = null
+		_show(wanted)
+	if not visible:
+		set_process(_pending != null)
+		return
 	var changed: bool = _look_through()
 	changed = _follow_cut() or changed
 	var moved: bool = _place()

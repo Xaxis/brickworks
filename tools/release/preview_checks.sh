@@ -531,42 +531,10 @@ ORDER="art io steps floor outline knowledge arrival idle cursor share_flow bookl
 NAMES="${*:-$ORDER}"
 # The checks that write the live database, which every preview and the
 # relay share with production: each flow that makes a throwaway account and
-# deletes it after (session.mjs's deleteAccount, or the admin API's users),
-# and all it does as that account between. Two runs at once collided on
-# 2026-10-22: 429s in profile, and another run's model took discovery's
-# pick. So each takes one lock for the whole machine, whichever battery it
-# is in (a release's, a unit's unit_preview.sh): a file in the repository's
-# git folder, which every worktree shares. live-db.log beside it says who
-# took it and left it, and when.
-LIVE_DB="$(git rev-parse --path-format=absolute --git-common-dir)/live-db"
+# deletes it after (session.mjs's deleteAccount, or the admin API's users).
+# Each takes the live database's one lock (live_db_lib.sh), a release first.
 live() { grep -qE 'deleteAccount\(|auth/v1/admin/users' "${CMD[$1]%% *}" 2>/dev/null; }
-# A release's check goes first. flock serves no one in order, and a unit's
-# A/B of together runs, taking the lock run after run, held rel-m232's
-# arrival for 24 minutes (2026-10-31). So a release's battery, waiting,
-# leaves a file named for its pid in live-db.release, and any other run that
-# gets the lock while one is there hands it back and waits.
-release_waits() {
-  local f
-  for f in "$LIVE_DB.release"/*; do
-    [ -e "$f" ] && kill -0 "${f##*/}" 2>/dev/null && return 0
-  done
-  return 1
-}
-take_live_db() {
-  local lock="$1" until=$(( $(date +%s) + ${LIVE_WAIT:-3600} )) mine="" left
-  if [ "${BOX_HEAVY_PRIORITY:-}" = 1 ]; then
-    mkdir -p "$LIVE_DB.release"; mine="$BASHPID"; : > "$LIVE_DB.release/$mine"
-  fi
-  while left=$(( until - $(date +%s) )); [ "$left" -gt 0 ] && flock -w "$left" "$lock"; do
-    if [ -n "$mine" ] || ! release_waits; then
-      [ -n "$mine" ] && rm -f "${LIVE_DB:?}.release/${mine:?}"
-      return 0
-    fi
-    flock -u "$lock"; sleep 2
-  done
-  [ -n "$mine" ] && rm -f "${LIVE_DB:?}.release/${mine:?}"
-  return 1
-}
+. "$RELEASE_HERE/live_db_lib.sh"
 run() {
   local name="$1" solo="${2:-}" t0 lock
   t0=$(date +%s)

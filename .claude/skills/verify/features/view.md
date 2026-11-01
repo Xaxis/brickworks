@@ -492,7 +492,12 @@ picture the assistant is shown.
   app's own work and dragging it 11 ms a plate. On the GPU (2026-10-16) the
   cut on is 162 ms of that work and a plate 2.0 ms; `see_inside_probe` holds a
   move under a tenth of the work of turning the cut on (a whole frame was the
-  yardstick, and on the GPU a frame is 18 ms of the GPU's own). The variants discard what is past the plane and draw the back
+  yardstick, and on the GPU a frame is 18 ms of the GPU's own), with the model
+  tree folded and open beside it. From 84d72cf8 (2026-10-26) to 2026-10-31 a
+  move cost a third of that work (32 to 57 ms), none of it the cut's: the
+  model tree heard the world's every redraw and counted every part again at
+  each, and twice a second besides. It counts once a change now
+  (`Inventory.pieces_of_model`, `Outliner._refresh`). The variants discard what is past the plane and draw the back
   faces as the cut face (`PLASTIC_CAP` in `plastic_body.gdshaderinc`: flat,
   square to the plane, hatched in the part's colour) — LDraw's surfaces are
   closed, so a back face seen past the plane is exactly where the plane is

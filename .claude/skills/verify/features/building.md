@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
 
 ## Sub-features
 
@@ -93,6 +93,43 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   on SwiftShader the browser's processor time for a frame where only the
   interface changed, all of Orthanc selected: 150 to 290 s before, 9 to 18 s
   after, against 5 to 10 s with nothing selected.
+- `the hover drawn at the device's pace` (`src/render/pointer_pace.gd`): on a
+  device whose drawn frames cost over 50 ms (`FrameBudget.SLOW_MS`), the
+  hover's outline and the status line's words for what is under the pointer
+  are drawn once the pointer has been still for 100 ms (`REST_MS`), or once
+  they have waited a drawn frame's cost, not at every step onto another
+  part. Still for a frame was not at rest: a browser hands over a mouse's
+  steps a frame or two apart, and the frame between the together check's
+  two steps drew the outline and held the second step 200 ms.
+  What is under the pointer is known at once either way (a click acts on
+  it, Together says it). A browser hands the page a mouse step only once
+  the frame before it is drawn: on the together check's rich car (a floor
+  of 49 baseplates, 2.4 million triangles, 180 to 550 ms a frame in
+  software) the outline drawn at the mouse's first step held the second,
+  and Together said where the pointer was 412 ms after the mouse moved
+  (median, rel-m229). A device that draws quickly draws it in the frame it
+  changed, as before. A drawn frame's cost is to the next frame, and in a
+  browser to when the card passed a fence put in after it (`GpuFence`): the
+  page hands frames over at its own pace, so timed to the next frame the
+  rich car's said 17 to 60 ms and the outline was still drawn at the steps.
+  What a click would take (`Builder.takes`, the part's whole sub-assembly)
+  is found from `Assemblies`' index, made on the second question about a
+  model and kept between hovers until the model or its sub-assemblies
+  change (`BrickWorld.paths_written`): it walked all 10,101 bricks of
+  Orthanc for each step onto another sub-assembly, 9 to 15 ms; made for
+  every question of an edit, the index took `bigmodel_probe`'s redo of a
+  big set's move to 1,233 ms. `hover_cost_probe` (on the GPU, Orthanc)
+  times each step's frame and each piece alone, then pretends a slow
+  device and checks the steps, a still frame between them, draw nothing
+  and the part the pointer rests on is outlined; `tools/web/hover_cost.mjs`
+  is the browser's measure. On the rich car in Chromium on SwiftShader, the
+  two builds in turn at load 14 to 21: the mouse's second step reached the
+  page 22 ms after the move at the median against 48 before, 35 against 71
+  at p95, the first step's frame spending 0 ms in WebGL against 24. In the
+  together check (`together_flow.mjs` 5f, its "send" stage) a unit preview
+  said where the pointer was 34 and 31 ms after the move, two runs begun at
+  load 17 and 9, against 713 on brickworks.diy that hour at load 8
+  (2026-10-31).
 - `selection edits`: with bricks selected, `C` paints them the current colour
   (so does a colour clicked in the palette, see [parts](parts.md)'s `palette`),
   the arrow keys and W A S D move them across the ground by the snap, Page Up
@@ -378,7 +415,18 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   sheet; beside the model
   on a touch screen it ends above the foot's row of tools, and the pill is
   over the model's room, not the column; `dialogs_flow`
-  says "0 off the screen" for Colour the hidden parts at all four sizes. The model keeps 60% of the window's width (`Main.MODEL_SHARE`, what
+  says "0 off the screen" for Colour the hidden parts at all four sizes.
+  On a tablet the parts panel, down the same side, is put away while the
+  column shows and given back as it goes (`PhoneShell.dock_toggled`, as the
+  model tree's drawer does): Colour the hidden parts' Close was under its
+  Done; and the notices strip is kept in from its own edges, not the
+  window's (`PhoneShell._lay_beside`), which counted the column twice and
+  ran the layout 28 units past a 1024 x 768 tablet's edge (dialogs_1024,
+  uifix). `tools/probe.sh tablet_fit_probe` (1024 x 768, the tablet's layout
+  made in a window): the parts out, the browser's warning up and the app
+  busy, the panel opened, the layout no wider than the window, no line of
+  it narrower than its longest word, the busy line's Cancel clear of the
+  foot's row, its Close tapped by a finger and put away. The model keeps 60% of the window's width (`Main.MODEL_SHARE`, what
   `tools/web/fit_check.mjs` asks of a laptop's window): with both columns
   open at 1400 x 900 it had 41%. Both show only where both fit round that, a
   window about twice as wide as it is tall (1835 units); else the columns
@@ -421,13 +469,16 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   mark, six-pixel words) and ran off the foot at 844 x 390 (phone,
   2026-10-30); a laptop's 1280 x 590 keeps the desktop. Then
   `Main._dress_for_phone` puts the menus, toolbar, key strip, status line
-  (shown only while busy) and view cube away, and `PhoneShell` lays out in
+  (shown only while busy, over the foot's row: under it, its Cancel was
+  where the row took the finger) and view cube away, and `PhoneShell` lays out in
   points (`Phone.px`, about 1.85 units a point at 390): along the top the mark
   (`phone_app_menu`, published as `app_menu`: the desktop's app menu dropped
   under it, About to Back to brickworks.diy), the model's name, the
   assistant's spark while it is on (`phone_assistant`, View, Assistant: its
   drawer's rail shows only while it is open, so a phone that turned it on had
-  no way to it), Undo and Redo; "Show the assistant" opens its drawer, as it
+  no way to it), Undo and Redo (the name field gives way to them down to 80
+  points, and past that Redo leaves the bar for More's Edit: at 150% a
+  390-point phone's Redo was half off it, `PhoneShell._share_top`); "Show the assistant" opens its drawer, as it
   says, the screen's width less its rail, sized for a finger and scrolled
   whole (`ChatPanel`) where it is taller than the room; both drawers stop
   above the row of tools (`SideDock.set_phone_rail`'s foot), and Fit and the
@@ -732,6 +783,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Xvfb it moves the system's pointer with its events (as `cursor_probe` does):
   the app's look-again replay (`Cursors._process`) goes where the system says
   the pointer is, and with it left mid-screen no tooltip in the window came.
+  And the control a press lands on keeps its tooltip down until the pointer
+  leaves it (2026-10-31): Claude Code's tooltip came back up over the
+  "Copied." its click had just shown (oauth_flow's 2a). `connect_form_probe`
+  rests on Claude Code until its tooltip shows, clicks, rests and nudges on it
+  and finds none, then moves off and back and finds it again; without the fix
+  the tooltip was up over "Copied.".
 - `status bar` (`src/ui/status_bar.gd`): along the foot. What was just said, or
   the tool's hint when nothing was; then the parts count and stability, how
   many are selected, the snap and turn step, and how big a stud is on screen.
@@ -773,7 +830,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `a11y_motion_probe` (each of the three moving, then still),
   `a11y_size_probe` (85% and 150% at 1280 x 800, nothing off the window,
   pictures in shots/a11y_size/); `tools/web/app_a11y_flow.mjs` (preview
-  check `app_a11y`: both sizes at 1280 and on a phone at 390, and whether a
+  check `app_a11y`: both sizes at 1280, every size on a phone at 390 x 844
+  and 844 x 390 and at 150% with the assistant's drawer open (fitted again
+  as the size changes, `Main._fit_drawers`: least widths given for more
+  room brought down to the drawer's and a link too long for it ending in an
+  ellipsis, `TouchSizing._fit_least`; the panel's 340 and the Console
+  link's 332 held a 230-unit drawer 360 wide at 150% on a 390-point
+  phone; a control below the screen in the drawer is scrolled to by a
+  finger, dragging the list by its words: a field keeps a press for itself,
+  Godot's LineEdit, so a list dragged by its key field does not move), and whether a
   screen reader in the browser hears the app: it does not, Godot builds no
   AccessKit for the web). Orca on the desktop: in a private
   `dbus-run-session` (never the owner's bus) start an Xvfb,
@@ -1062,14 +1127,31 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   collection's, the minifigure builder, the part maker, the print editor,
   Send feedback, About, the confirmations, the assistant panel) are
   translated too, and the model tree's own row ("Model"); not yet the web
-  pages, nor "White" on Render's backgrounds, which is a colour's name too.
+  pages. Names a person or a set gave are drawn as they are, kept out of the
+  translation (`auto_translate_mode` off): the model tree's sub-models, the
+  Library's set names, and its themes that are product lines' or licences'
+  names (City, Friends, Technic); its themes that are words
+  (`ModelLibrary.THEME_WORDS`: Other, Seasonal, Modular Buildings, City's
+  Police, a film's title) by their entries in the context "theme",
+  `ModelLibrary.theme_said`, the list in the language's order
+  (`LibraryDialog._say_themes`); and a model's or a sub-model's name in a
+  line of the interface (`Language.keep_name`: "opened Car — 61 bricks" is
+  "Car geöffnet — 61 Steine", not "Auto"). A word with a second sense has
+  an entry of its own by context: Render's backdrop "White" (`msgctxt
+  "backdrop"`, `tr("White", "backdrop")`) beside LDraw's colour White.
   `languages_probe` reads them all in English, then in each language: 63
   common actions with the status line heard after each, Settings with the
-  assistant on and off, and 40-odd dialogs opened one by one (`DIALOGS`; the
+  assistant on and off, the properties with two parts selected and with a
+  sub-assembly selected whole (its name drawn as it is), and 40-odd dialogs opened one by one (`DIALOGS`; the
   sign-in screen, which a probe's window never shows, made in each of its
   faces), each word drawn on them read; a word added to a menu, a tooltip, a
-  panel, a dialog or a status message with no entry fails it, and
-  `--missing=FILE` writes the entries to translate, each partial one with
+  panel, a dialog or a status message with no entry fails it, as does
+  Render's backdrop not reading its own entry or a sub-model named Car
+  reading Car's translation, in the tree or in a status line, or the
+  Library's sets and themes not reached (the walk waits for them), a theme
+  word drawn without its entry or the themes out of the language's order; a control set to draw its words as they are
+  shows a name and is not read. `--missing=FILE` writes the entries to
+  translate, each partial one with
   the whole it was in ("#. in:"). `--shots=DIR` pictures ten dialogs (the
   sign-in screen's two steps first) and a status line in each language.
   `tests/test_locale.py` checks the files (places kept, LEGO® an adjective,
@@ -1169,12 +1251,20 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   row selects its parts, a double-click edits inside it, `F2` renames it in
   place, its eye and lock hide and lock it whole, and dragging a row onto
   another nests it there (onto Model, back to the top). Folded or open as it
-  was left (`outliner_open`). Probe: `assembly_probe`.
+  was left (`outliner_open`). It looks again at every redraw of the world and
+  twice a second, and works itself out again only when what it is made from
+  has changed: the model's revision and undo history, how many parts are
+  hidden and locked, the sub-assembly being edited, what is broken out and
+  selected; folded, its header's count is the counts line's
+  (`Inventory.pieces_of_model`). Probe: `assembly_probe`; `see_inside_probe`
+  drags the cut up Orthanc with it folded and open, and has it say a
+  sub-model hidden and locked by the keys and a part taken off and put back.
 - `sections`: a model split as a builder builds it, one section at a time
   (`src/assembly/sections.gd`, `src/ui/sections_ui.gd`). Build, Suggest
   sections (or the model tree's Suggest sections) lists suggestions under
   the tree's rows, numbered in build order, each with its part count: a
-  click selects its parts, a double-click or `F2` renames it, dragging one
+  click selects its parts, a double-click (on a row chosen or not, in a
+  browser too, where both presses come in one frame) or `F2` renames it, dragging one
   onto another or Merge joins it to the one it is held to most, Split
   parts it where it is held least, the tick or Accept makes it a
   sub-assembly, Accept all makes every one in one undo step. How it

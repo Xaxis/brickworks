@@ -105,6 +105,8 @@ func _model(name: String, path: String, judged: bool) -> void:
 		# mercy of whatever else the box ran that moment.
 		var tries := PackedStringArray()
 		var least: float = INF
+		var waited := PackedStringArray()
+		var busy: float = 0.0
 		var said: String = ""
 		var part: int = at.brick_ids[0]
 		var number: int = at.number
@@ -114,31 +116,29 @@ func _model(name: String, path: String, judged: bool) -> void:
 				await _frames(3)
 				_steps.refresh(number)
 				at = _steps.current_step()
-			var queued: float = _waited_ms()
-			var began: int = Time.get_ticks_usec()
+			var span := ProbeTime.Span.new()
 			said = _shell.change_steps(op, [part], at)
-			var ms: float = (Time.get_ticks_usec() - began) / 1000.0
-			var took: float = ms - maxf(_waited_ms() - queued, 0.0)
-			least = minf(least, took)
-			tries.append("%.0f" % took)
+			span.end()
+			least = minf(least, span.own)
+			tries.append("%.0f" % span.own)
+			waited.append("%.0f" % span.waited)
+			busy = maxf(busy, span.busy)
 			await process_frame
 		var after: String = _store.to_text("probe", true)
 		if not _into.is_empty():
 			var file := FileAccess.open(_into.path_join("%s_%s.ldr" % [name, op]), FileAccess.WRITE)
 			file.store_string(after)
 			file.close()
-		var line: String = "%s, a part of step %d: %.0f ms of its own at least (%s ms), at a load of %s (%s)" \
-			% [op, at.number, least, ", ".join(tries), _load(), said]
+		var line: String = "%s, a part of step %d: %.0f ms of its own at least (%s ms; %s waiting for a CPU; %s) (%s)" \
+			% [op, at.number, least, ", ".join(tries), ", ".join(waited),
+				ProbeTime.load_said(busy), said]
 		if judged:
 			# A busy box slows the work itself, not only its turn at a CPU:
 			# at a load past the cores (the suite runs near 30 on 24) the bar
 			# is three times as long, which an edit gone whole-model again
 			# (2.5 s and more) still fails.
-			var busy: bool = _load().to_float() >= OS.get_processor_count()
-			var bar: float = BAR_MS * (3.0 if busy else 1.0)
-			_check("%s, under %.0f ms%s" % [line, bar,
-				" (at a load past the %d cores)" % OS.get_processor_count() if busy else ""],
-				least < bar)
+			var bar: float = BAR_MS * ProbeTime.slack(busy)
+			_check("%s, under %.0f ms" % [line, bar], least < bar)
 		else:
 			print("  ...   %s" % line)
 		_check("  one undo, and the file changed", _builder.history_depth() == depth + 1
@@ -182,20 +182,6 @@ func _drawn() -> String:
 	hidden.sort()
 	lines.append(str(hidden))
 	return "\n".join(lines)
-
-
-## How long the main thread has waited for a CPU, in ms (freeze_probe's).
-static func _waited_ms() -> float:
-	var stat: FileAccess = FileAccess.open("/proc/self/schedstat", FileAccess.READ)
-	if stat == null:
-		return 0.0
-	var fields: PackedStringArray = stat.get_line().split(" ", false)
-	return fields[1].to_float() / 1e6 if fields.size() > 1 else 0.0
-
-
-static func _load() -> String:
-	var load: FileAccess = FileAccess.open("/proc/loadavg", FileAccess.READ)
-	return load.get_line().get_slice(" ", 0) if load != null else "?"
 
 
 ## [param steps] in words, all that says what each is.

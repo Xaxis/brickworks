@@ -26,7 +26,9 @@
 ## where the status bar names a command with no key), when the whole is in
 ## no entry. A part's, a colour's or a model's name is in no file, and is
 ## drawn as it is, as is what an entry's English puts in quotes (“%s”),
-## even a model named Car.
+## even a model named Car, and a name a person gave (keep_name) in the
+## place of an entry with words of its own: "opened Car — 61 bricks" is
+## "Car geöffnet — 61 Steine".
 class_name Language
 extends Node
 
@@ -43,6 +45,10 @@ const CAPITALISED: Array[String] = ["de"]
 static var _code: String = "en"
 ## Its words, while one other than English is in use.
 static var _words: Words = null
+## The names people gave, as keep_name has them: read by the words from any
+## thread, so made at the class's load and locked at every read.
+static var _names: Dictionary = {}
+static var _names_lock := Mutex.new()
 
 
 ## The language in use, as its code: "en", "de", "fr" or "es".
@@ -109,9 +115,14 @@ static func apply(code: String) -> void:
 
 
 ## What [param text] is drawn as in the language in use, or "" when it has no
-## translation there (always "" in English): for a check of the words.
-static func says(text: String) -> String:
-	return _words.find(text) if _words != null else ""
+## translation there (always "" in English): for a check of the words. With
+## a [param context], only its entry in that context ("theme", "backdrop").
+static func says(text: String, context: String = "") -> String:
+	if _words == null:
+		return ""
+	if not context.is_empty():
+		return String(_words._source.get_message(text, context))
+	return _words.find(text)
 
 
 ## The words [param text]'s translation keeps in English, as a pattern's
@@ -121,6 +132,28 @@ static func left_in_english(text: String) -> Array:
 	var kept: Array = []
 	if _words != null:
 		_words._find(text, 0, kept)
+	return kept
+
+
+## [param name], a model's or a sub-model's, drawn as it is where an
+## entry with words of its own takes it, in every language: a model named
+## Car stays Car in "opened %s", though Car is a word of the parts' too.
+static func keep_name(name: String) -> void:
+	if name.strip_edges().is_empty():
+		return
+	_names_lock.lock()
+	var known: bool = _names.has(name)
+	_names[name] = true
+	_names_lock.unlock()
+	# What was found with it as a word, found again.
+	if not known and _words != null:
+		_words.forget()
+
+
+static func _is_kept_name(text: String) -> bool:
+	_names_lock.lock()
+	var kept: bool = _names.has(text)
+	_names_lock.unlock()
 	return kept
 
 
@@ -194,7 +227,16 @@ class Words extends Translation:
 			(_patterns[first] as Array).sort_custom(func(a: Array, b: Array) -> bool:
 				return int(a[2]) > int(b[2]))
 
-	func _get_message(src_message: StringName, _context: StringName) -> StringName:
+	func _get_message(src_message: StringName, context: StringName) -> StringName:
+		# A word with two senses has an entry of its own for the second:
+		# "White", a render's backdrop, beside LDraw's colour of that name,
+		# which every language keeps (msgctxt "backdrop" in the file,
+		# tr("White", "backdrop") where it is drawn); "Train", a theme of
+		# sets, beside the interface's word. Found by that entry alone, or
+		# drawn as it is: Architecture, a theme that is a name, never takes
+		# the interface's Architektur.
+		if not String(context).is_empty():
+			return _source.get_message(src_message, context)
 		return StringName(find(String(src_message)))
 
 	## [param text] in this language, or "" when there is no translation.
@@ -211,6 +253,11 @@ class Words extends Translation:
 		_found[text] = out
 		_lock.unlock()
 		return out
+
+	func forget() -> void:
+		_lock.lock()
+		_found.clear()
+		_lock.unlock()
 
 	## [param text] in this language, or "": what it keeps in English, a
 	## place's words or a line, added to [param kept].
@@ -343,8 +390,12 @@ class Words extends Translation:
 				for n: int in range(1, found.get_group_count() + 1):
 					var said: String = found.get_string(n)
 					# What the English quotes is a name, kept as it is: a model's
-					# ("saved “Car”"), a file's, the words searched for.
-					if bool((pattern[4] as Array)[n - 1]):
+					# ("saved “Car”"), a file's, the words searched for; and a
+					# name a person gave (keep_name), where the entry has words
+					# of its own ("opened %s"). One with none ("%s %d") takes
+					# the interface's: the parts' Car in "Car 117" is "Auto 117"
+					# with a model named Car open.
+					if bool((pattern[4] as Array)[n - 1]) or worded and Language._is_kept_name(said):
 						taken.append(said)
 						continue
 					# A place never takes a line's parts: "1 selected — Ctrl-C" is
