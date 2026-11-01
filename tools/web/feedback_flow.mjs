@@ -45,7 +45,7 @@
 //      and their reports and files with them.
 //
 // Pictures in --out. It passes when it ends "feedback: all ok".
-import { launch } from "./browser.mjs";
+import { clickStill, launch, typeInMenu } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
@@ -335,26 +335,7 @@ try {
     skip(`no app at ${site}/app (${app?.status ?? "unreachable"}): run the local server with --static=build/web`);
   } else {
     const { page, context } = await open("/app", { width: 1400, height: 900, who: A, label: "app" });
-    const named = () => page.evaluate(() => window.brickworksControls || {});
-    const press = async (name) => {
-      const end = Date.now() + 60000;
-      for (;;) {
-        let at = (await named())[name];
-        for (let n = 0; at && n < 6; n += 1) {
-          await page.waitForTimeout(550);
-          const again = (await named())[name];
-          if (again && again.x === at.x && again.y === at.y) break;
-          at = again;
-        }
-        if (at) {
-          await page.mouse.click(at.x, at.y);
-          await page.waitForTimeout(400);
-          return true;
-        }
-        if (Date.now() > end) return false;
-        await page.waitForTimeout(500);
-      }
-    };
+    const press = (name) => clickStill(page, name, { seconds: 60, optional: true, after: 400 });
     const signedIn = await until(page, () => (window.brickworksAccount || {}).state === "signed_in", null, 240000);
     check("the app is up, signed in as A", signedIn);
     check("A's early features: none", await page.evaluate(() => (window.brickworksAccount?.early || []).length === 0));
@@ -369,7 +350,7 @@ try {
         await press("app_menu");
         await menuOpen();
       }
-      await page.keyboard.type("Send", { delay: 120 });
+      await typeInMenu(page, "Send");
       await page.waitForTimeout(600);
       await page.keyboard.press("Enter");
       const up = await until(page, () => Boolean((window.brickworksControls || {}).feedback_words), null, 30000);

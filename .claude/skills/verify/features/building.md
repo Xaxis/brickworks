@@ -1247,12 +1247,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   translated too, and the model tree's own row ("Model"); not yet the web
   pages. Names a person or a set gave are drawn as they are, kept out of the
   translation (`auto_translate_mode` off): the model tree's sub-models, the
-  Library's set names, and its themes that are product lines' or licences'
-  names (City, Friends, Technic); its themes that are words
-  (`ModelLibrary.THEME_WORDS`: Other, Seasonal, Modular Buildings, City's
-  Police, a film's title) by their entries in the context "theme",
-  `ModelLibrary.theme_said`, the list in the language's order
-  (`LibraryDialog._say_themes`); and a model's or a sub-model's name in a
+  Library's set names; and every theme by its entry in the context "theme"
+  (`ModelLibrary.theme_said`; the po has one for every theme of the
+  catalogue, which `tests/test_site_lang.py` holds it to): the words
+  translated (Collectible Minifigures, Seasonal, City's Police, a film's
+  title), the product lines' and licences' names as they are (City, Friends,
+  Technic), the list in the language's order (`LibraryDialog._say_themes`);
+  the site's library draws the same entries; and a model's or a sub-model's name in a
   line of the interface (`Language.keep_name`: "opened Car — 61 bricks" is
   "Car geöffnet — 61 Steine", not "Auto"). A count in the thousands, which
   the interface groups the English way wherever it is made ("1,575 of 1,575

@@ -47,6 +47,19 @@ export function say(words, values = {}) {
   return said.replace(/\{(\w+)\}/g, (all, name) => (name in values ? String(values[name]) : all));
 }
 
+/// A theme of the catalogue as the app's Library draws it, LEGO® and
+/// LEGOLAND® marked (tools/library_build.py with_marks), in the page's
+/// language: its words by its entry (locale/<code>.po, context "theme"), a
+/// product line's or a licence's name as it is. The entry is the theme's
+/// own, not a word's: Space the theme stays Space where Space the kind of
+/// model is Weltraum.
+export function themeSaid(name) {
+  const marked = String(name).replace(/\bLEGO\b(?!®| Group)/g, "LEGO®").replace(/\bLegoland\b|\bLEGOLAND\b(?!®)/g, "LEGOLAND®");
+  const key = `theme\u0004${marked}`;
+  const said = globalThis.brickworksLang ? globalThis.brickworksLang.say(key) : key;
+  return said === key ? marked : said;
+}
+
 /// [n] as the page's language writes a number: 1,234, 1.234 or 1 234.
 export const number = (n) => Number(n).toLocaleString(globalThis.brickworksLang?.locale || "en-US");
 
@@ -390,7 +403,7 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
     : model.author ? `<span class="who">${escapeHtml(model.author)}</span>` : "";
   const lines = [];
   if (set) {
-    const said = [set.set, set.theme && say(set.theme), Number(set.year) ? String(Number(set.year)) : ""].filter(Boolean).join(" · ");
+    const said = [set.set, set.theme && themeSaid(set.theme), Number(set.year) ? String(Number(set.year)) : ""].filter(Boolean).join(" · ");
     if (said) lines.push(`<small class="set">${escapeHtml(said)}</small>`);
   }
   if (earned) {

@@ -6,6 +6,12 @@ from the English page and web/_lang/<code>.json; this fails when a copy is
 not what it writes, or when an English run of the page has no words in a
 language, so nothing reaches the site half in English. And each copy says
 the LEGO Group's notice and the mark as the English does, in its language.
+
+The sign-in's dialogs (web/account.js) say every word through say(), from
+the copy's words or /<code>/words.json on a page with none, and every
+theme of the catalogue has an entry in locale/<code>.po, which the app's
+Library and the site's library both draw: this fails on an English word
+come back to the dialog, and on a theme with no entry.
 """
 
 from __future__ import annotations
@@ -19,7 +25,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
+import pytest  # noqa: E402
+
 import site_lang  # noqa: E402
+from library_build import tidy, with_marks  # noqa: E402
+
+CATALOGUE = ROOT / "assets" / "generated" / "set_catalog.json"
 
 # The LEGO Group, as each language names the company (never with ®).
 COMPANY = {"de": r"LEGO (?:Unternehmens)?[Gg]ruppe", "fr": r"(?:[Gg]roupe|sociétés) LEGO",
@@ -115,7 +126,7 @@ def test_what_the_scripts_say_has_its_words() -> None:
     assert {"Castles and fantasy", "Small, under 200 parts", "Built in 3D first", "Most liked"} <= set(words)
     assert "castle" not in words and "small" not in words
     for code in site_lang.LANGUAGES:
-        has = {**site_lang.themes(code), **site_lang.table(code)["scripts"]}
+        has = site_lang.table(code)["scripts"]
         assert not [word for word in words if word not in has], code
 
 
@@ -135,3 +146,45 @@ def test_the_faq_search_shows_is_in_the_language_too() -> None:
         pairs = list(zip(english["mainEntity"], copy["mainEntity"]))
         assert len(pairs) == 17 and all(one["name"] != other["name"] and one["acceptedAnswer"]["text"]
                                         != other["acceptedAnswer"]["text"] for one, other in pairs), code
+
+
+def test_the_sign_in_says_its_words_and_the_server_s() -> None:
+    # The dialogs' words, what the account API answers a visitor (a code
+    # asked for too often, a wrong one), orangecheck's own copy, and why a
+    # page asks to sign in all reach the tables.
+    words = site_lang.script_words()
+    assert {"Sign in to Brickworks", "Email me a code", "The code sent to {address}",
+            "That code is wrong or has expired. Check it, or ask for a new one.", "One question first", "Carry on",
+            "Signing in…"} <= set(words)
+    assert words["Too many codes asked for. Wait a few minutes and try again."] == "api/otp.js"
+    assert "Sign in to like it: we email you a code, no password." in words
+    for code in site_lang.LANGUAGES:
+        said = json.loads((ROOT / "web" / code / "words.json").read_text(encoding="utf-8"))
+        assert said == site_lang.script_table(code, site_lang.table(code)), code
+        assert said["Sign in to Brickworks"] != "Sign in to Brickworks", code
+        # A theme by its context: Space the kind of model is a word, Space
+        # the theme a name (web/card.js themeSaid).
+        assert said["theme\x04Collectible Minifigures"] == site_lang.theme_entries(code)["Collectible Minifigures"], code
+        assert said["Space"] != "Space" and "theme\x04Space" not in said, code
+
+
+def test_an_english_word_back_in_the_dialog_is_caught() -> None:
+    text = (ROOT / "web/account.js").read_text(encoding="utf-8")
+    assert site_lang.unsaid(text) == []
+    planted = text.replace('say("Not now")', '"Not now"', 1)
+    assert planted != text and site_lang.unsaid(planted) == ['"Not now"']
+    assert site_lang.unsaid('label.title = `Signed in as ${who}`; // A Comment\n') == ["`Signed in as ${who}`"]
+
+
+@pytest.mark.skipif(not CATALOGUE.exists(), reason="no assets/generated/set_catalog.json (tools/set_catalog.py)")
+def test_every_theme_of_the_catalogue_has_its_entry() -> None:
+    # As the app draws it (LEGO® and LEGOLAND® marked): a word in the
+    # language, a product line's or a licence's name as it is. A theme
+    # Rebrickable adds is a gap until it has one.
+    names = {with_marks(tidy(str(row[0]))) for row in json.loads(CATALOGUE.read_text(encoding="utf-8"))["themes"].values()}
+    for code in site_lang.LANGUAGES:
+        entries = site_lang.theme_entries(code)
+        missing = sorted(names - set(entries))
+        assert not missing, f"{code}: {len(missing)} themes with no entry in locale/{code}.po, first {missing[:3]}"
+        assert entries["Collectible Minifigures"] != "Collectible Minifigures" and entries["Technic"] == "Technic", code
+        assert "Technic" not in site_lang.themes(code) and site_lang.themes(code)["LEGO® Brand Store"] != "LEGO® Brand Store", code

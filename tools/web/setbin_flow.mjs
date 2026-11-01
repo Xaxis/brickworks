@@ -16,7 +16,7 @@
 // The first tile taken puts its part in hand in the tile's colour; a click on
 // the model puts it down, and the tile's count (brickworksState.bin_left)
 // drops by one. Then Ctrl-Z gives it back. Pictures of each step go to --out.
-import { askApp, launch } from "./browser.mjs";
+import { askApp, clickStill, launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -72,13 +72,8 @@ const where = async (name, seconds = 30) => {
   }
   return null;
 };
-const press = async (name, seconds = 30) => {
-  const at = await where(name, seconds);
-  if (!check(`"${name}" is on the screen`, Boolean(at))) return false;
-  await page.mouse.click(at.x, at.y);
-  await page.waitForTimeout(600);
-  return true;
-};
+const press = async (name, seconds = 30) => check(`"${name}" is on the screen`,
+  await clickStill(page, name, { find: (n) => where(n, seconds), optional: true, after: 600 }));
 const picture = (what) => page.screenshot({ path: `${out}/${width}_${what}.png`, timeout: 120000 })
   .then(() => console.log(`  shot  ${out}/${width}_${what}.png`))
   .catch((e) => console.log(`  --    no picture ${what}: ${String(e).split("\n")[0]}`));

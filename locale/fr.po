@@ -8229,9 +8229,11 @@ msgctxt "backdrop"
 msgid "White"
 msgstr "Blanc"
 
-# A theme of sets that is a word, not a name (ModelLibrary.THEME_WORDS), as
-# LEGO's own sites in each language have it; every other theme, a product
-# line's or a licence's, stays as it is
+# Every theme of sets the Library and the site's library show (Rebrickable's,
+# with LEGO® and LEGOLAND® marked as the app draws them), by context "theme"
+# (ModelLibrary.theme_said). One that is a word as LEGO's own sites in each
+# language have it; a product line's, a licence's or a film's name as it is.
+# tests/test_site_lang.py fails on a theme with no entry.
 msgctxt "theme"
 msgid "Other"
 msgstr "Autres"
@@ -8351,3 +8353,1579 @@ msgstr "Trains"
 msgctxt "theme"
 msgid "Vehicle"
 msgstr "Véhicules"
+
+msgctxt "theme"
+msgid "12V"
+msgstr "12V"
+
+msgctxt "theme"
+msgid "4 Juniors"
+msgstr "4 Juniors"
+
+msgctxt "theme"
+msgid "4.5V"
+msgstr "4.5V"
+
+msgctxt "theme"
+msgid "9V"
+msgstr "9V"
+
+msgctxt "theme"
+msgid "Action Wheelers"
+msgstr "Action Wheelers"
+
+msgctxt "theme"
+msgid "Activity Books"
+msgstr "Livres d'activités"
+
+msgctxt "theme"
+msgid "Activity Books with LEGO® Parts"
+msgstr "Livres d'activités avec pièces LEGO®"
+
+msgctxt "theme"
+msgid "Adventurers"
+msgstr "Adventurers"
+
+msgctxt "theme"
+msgid "Agents"
+msgstr "Agents"
+
+msgctxt "theme"
+msgid "Alien Conquest"
+msgstr "Alien Conquest"
+
+msgctxt "theme"
+msgid "Alpha Team"
+msgstr "Alpha Team"
+
+msgctxt "theme"
+msgid "Angry Birds"
+msgstr "Angry Birds"
+
+msgctxt "theme"
+msgid "Animal Crossing"
+msgstr "Animal Crossing"
+
+msgctxt "theme"
+msgid "Aquanauts"
+msgstr "Aquanauts"
+
+msgctxt "theme"
+msgid "Aquaraiders I"
+msgstr "Aquaraiders I"
+
+msgctxt "theme"
+msgid "Aquaraiders II"
+msgstr "Aquaraiders II"
+
+msgctxt "theme"
+msgid "Aquasharks"
+msgstr "Aquasharks"
+
+msgctxt "theme"
+msgid "Aquazone"
+msgstr "Aquazone"
+
+msgctxt "theme"
+msgid "Architecture"
+msgstr "Architecture"
+
+msgctxt "theme"
+msgid "Arctic"
+msgstr "Arctique"
+
+msgctxt "theme"
+msgid "Atlantis"
+msgstr "Atlantis"
+
+msgctxt "theme"
+msgid "Audio and Visual Media"
+msgstr "Médias audio et vidéo"
+
+msgctxt "theme"
+msgid "Avatar"
+msgstr "Avatar"
+
+msgctxt "theme"
+msgid "Avatar: The Last Airbender"
+msgstr "Avatar: The Last Airbender"
+
+msgctxt "theme"
+msgid "Avengers"
+msgstr "Avengers"
+
+msgctxt "theme"
+msgid "Bag and Luggage Tags"
+msgstr "Étiquettes de sac et de bagage"
+
+msgctxt "theme"
+msgid "Bags, Totes, & Luggage"
+msgstr "Sacs, cabas et bagages"
+
+msgctxt "theme"
+msgid "Basic"
+msgstr "Basic"
+
+msgctxt "theme"
+msgid "Basic Set"
+msgstr "Sets de base"
+
+msgctxt "theme"
+msgid "Basketball"
+msgstr "Basket-ball"
+
+msgctxt "theme"
+msgid "Batman"
+msgstr "Batman"
+
+msgctxt "theme"
+msgid "Belville"
+msgstr "Belville"
+
+msgctxt "theme"
+msgid "Ben 10"
+msgstr "Ben 10"
+
+msgctxt "theme"
+msgid "Bionicle"
+msgstr "Bionicle"
+
+msgctxt "theme"
+msgid "Black Falcons"
+msgstr "Black Falcons"
+
+msgctxt "theme"
+msgid "Black Knights"
+msgstr "Black Knights"
+
+msgctxt "theme"
+msgid "Blacktron I"
+msgstr "Blacktron I"
+
+msgctxt "theme"
+msgid "Blacktron II"
+msgstr "Blacktron II"
+
+msgctxt "theme"
+msgid "Bluey"
+msgstr "Bluey"
+
+msgctxt "theme"
+msgid "Bob the Builder"
+msgstr "Bob the Builder"
+
+msgctxt "theme"
+msgid "Books"
+msgstr "Livres"
+
+msgctxt "theme"
+msgid "Botanicals"
+msgstr "Botanicals"
+
+msgctxt "theme"
+msgid "Brick Sketches"
+msgstr "Brick Sketches"
+
+msgctxt "theme"
+msgid "Brickheadz"
+msgstr "Brickheadz"
+
+msgctxt "theme"
+msgid "BrickLink Designer Program"
+msgstr "BrickLink Designer Program"
+
+msgctxt "theme"
+msgid "Bricks & More"
+msgstr "Bricks & More"
+
+msgctxt "theme"
+msgid "Bricktober"
+msgstr "Bricktober"
+
+msgctxt "theme"
+msgid "Building Set with People"
+msgstr "Boîte de construction avec personnages"
+
+msgctxt "theme"
+msgid "Bulk Bricks"
+msgstr "Briques en vrac"
+
+msgctxt "theme"
+msgid "Captain America"
+msgstr "Captain America"
+
+msgctxt "theme"
+msgid "Cars"
+msgstr "Cars"
+
+msgctxt "theme"
+msgid "Castle"
+msgstr "Castle"
+
+msgctxt "theme"
+msgid "Chinese Traditional Festivals"
+msgstr "Fêtes traditionnelles chinoises"
+
+msgctxt "theme"
+msgid "Cities of Wonders"
+msgstr "Cities of Wonders"
+
+msgctxt "theme"
+msgid "City"
+msgstr "City"
+
+msgctxt "theme"
+msgid "City Center"
+msgstr "Centre-ville"
+
+msgctxt "theme"
+msgid "Classic"
+msgstr "Classic"
+
+msgctxt "theme"
+msgid "Classic Basic"
+msgstr "Classic Basic"
+
+msgctxt "theme"
+msgid "Classic Castle"
+msgstr "Classic Castle"
+
+msgctxt "theme"
+msgid "Classic Space"
+msgstr "Classic Space"
+
+msgctxt "theme"
+msgid "Classic Town"
+msgstr "Classic Town"
+
+msgctxt "theme"
+msgid "Clikits"
+msgstr "Clikits"
+
+msgctxt "theme"
+msgid "Clocks and Watches"
+msgstr "Horloges et montres"
+
+msgctxt "theme"
+msgid "Clothing & Footwear"
+msgstr "Vêtements et chaussures"
+
+msgctxt "theme"
+msgid "Collectible Minifigures"
+msgstr "Minifigurines à collectionner"
+
+msgctxt "theme"
+msgid "Competition"
+msgstr "Competition"
+
+msgctxt "theme"
+msgid "Constraction"
+msgstr "Constraction"
+
+msgctxt "theme"
+msgid "Control Lab"
+msgstr "Control Lab"
+
+msgctxt "theme"
+msgid "Creator"
+msgstr "Creator"
+
+msgctxt "theme"
+msgid "Creator 3-in-1"
+msgstr "Creator 3-in-1"
+
+msgctxt "theme"
+msgid "Creator Expert"
+msgstr "Creator Expert"
+
+msgctxt "theme"
+msgid "Dark Forest"
+msgstr "Dark Forest"
+
+msgctxt "theme"
+msgid "Database Sets"
+msgstr "Sets de la base de données"
+
+msgctxt "theme"
+msgid "DC Comics"
+msgstr "DC Comics"
+
+msgctxt "theme"
+msgid "DC Comics Super Heroes"
+msgstr "DC Comics Super Heroes"
+
+msgctxt "theme"
+msgid "DC Super Hero Girls"
+msgstr "DC Super Hero Girls"
+
+msgctxt "theme"
+msgid "DC Super Heroes"
+msgstr "DC Super Heroes"
+
+msgctxt "theme"
+msgid "Desert"
+msgstr "Désert"
+
+msgctxt "theme"
+msgid "Designer Sets"
+msgstr "Sets de designer"
+
+msgctxt "theme"
+msgid "Despicable Me 4"
+msgstr "Despicable Me 4"
+
+msgctxt "theme"
+msgid "DFB Minifigures"
+msgstr "Minifigurines DFB"
+
+msgctxt "theme"
+msgid "Dimensions"
+msgstr "Dimensions"
+
+msgctxt "theme"
+msgid "Dino"
+msgstr "Dino"
+
+msgctxt "theme"
+msgid "Dino Attack / Dino 2010"
+msgstr "Dino Attack / Dino 2010"
+
+msgctxt "theme"
+msgid "Dino Island"
+msgstr "Dino Island"
+
+msgctxt "theme"
+msgid "Dinosaurs"
+msgstr "Dinosaures"
+
+msgctxt "theme"
+msgid "Discovery"
+msgstr "Discovery"
+
+msgctxt "theme"
+msgid "Disney"
+msgstr "Disney"
+
+msgctxt "theme"
+msgid "Disney 100"
+msgstr "Disney 100"
+
+msgctxt "theme"
+msgid "Disney Princess"
+msgstr "Disney Princess"
+
+msgctxt "theme"
+msgid "Disney Series 1"
+msgstr "Disney Series 1"
+
+msgctxt "theme"
+msgid "Disney Series 2"
+msgstr "Disney Series 2"
+
+msgctxt "theme"
+msgid "Divers"
+msgstr "Plongeurs"
+
+msgctxt "theme"
+msgid "Doc McStuffins"
+msgstr "Doc McStuffins"
+
+msgctxt "theme"
+msgid "Dolls"
+msgstr "Poupées"
+
+msgctxt "theme"
+msgid "Dora the Explorer"
+msgstr "Dora the Explorer"
+
+msgctxt "theme"
+msgid "DOTS"
+msgstr "DOTS"
+
+msgctxt "theme"
+msgid "Dragon Knights"
+msgstr "Dragon Knights"
+
+msgctxt "theme"
+msgid "Dreamzzz"
+msgstr "Dreamzzz"
+
+msgctxt "theme"
+msgid "Dungeons & Dragons"
+msgstr "Dungeons & Dragons"
+
+msgctxt "theme"
+msgid "Duplo"
+msgstr "Duplo"
+
+msgctxt "theme"
+msgid "Duplo and Explore"
+msgstr "Duplo and Explore"
+
+msgctxt "theme"
+msgid "Early Creator"
+msgstr "Early Creator"
+
+msgctxt "theme"
+msgid "Easter"
+msgstr "Pâques"
+
+msgctxt "theme"
+msgid "Editions"
+msgstr "Editions"
+
+msgctxt "theme"
+msgid "Educational and Dacta"
+msgstr "Éducation et Dacta"
+
+msgctxt "theme"
+msgid "eLAB"
+msgstr "eLAB"
+
+msgctxt "theme"
+msgid "Elves"
+msgstr "Elves"
+
+msgctxt "theme"
+msgid "EV3"
+msgstr "EV3"
+
+msgctxt "theme"
+msgid "Exo-Force"
+msgstr "Exo-Force"
+
+msgctxt "theme"
+msgid "Expert Builder"
+msgstr "Expert Builder"
+
+msgctxt "theme"
+msgid "Exploriens"
+msgstr "Exploriens"
+
+msgctxt "theme"
+msgid "Extreme Team"
+msgstr "Extreme Team"
+
+msgctxt "theme"
+msgid "Fabuland"
+msgstr "Fabuland"
+
+msgctxt "theme"
+msgid "Factory"
+msgstr "Factory"
+
+msgctxt "theme"
+msgid "Fantastic Beasts"
+msgstr "Fantastic Beasts"
+
+msgctxt "theme"
+msgid "Fantasy Era"
+msgstr "Fantasy Era"
+
+msgctxt "theme"
+msgid "Ferrari"
+msgstr "Ferrari"
+
+msgctxt "theme"
+msgid "Ferries"
+msgstr "Ferries"
+
+msgctxt "theme"
+msgid "FIRST LEGO® League"
+msgstr "FIRST LEGO® League"
+
+msgctxt "theme"
+msgid "Forestmen"
+msgstr "Forestmen"
+
+msgctxt "theme"
+msgid "Forma"
+msgstr "Forma"
+
+msgctxt "theme"
+msgid "Formula 1"
+msgstr "Formula 1"
+
+msgctxt "theme"
+msgid "Fortnite"
+msgstr "Fortnite"
+
+msgctxt "theme"
+msgid "Freestyle"
+msgstr "Freestyle"
+
+msgctxt "theme"
+msgid "Friends"
+msgstr "Friends"
+
+msgctxt "theme"
+msgid "Fright Knights"
+msgstr "Fright Knights"
+
+msgctxt "theme"
+msgid "Frozen"
+msgstr "Frozen"
+
+msgctxt "theme"
+msgid "Fusion"
+msgstr "Fusion"
+
+msgctxt "theme"
+msgid "Futuron"
+msgstr "Futuron"
+
+msgctxt "theme"
+msgid "Gabby's Dollhouse"
+msgstr "Gabby's Dollhouse"
+
+msgctxt "theme"
+msgid "Galaxy Squad"
+msgstr "Galaxy Squad"
+
+msgctxt "theme"
+msgid "Galidor"
+msgstr "Galidor"
+
+msgctxt "theme"
+msgid "Games"
+msgstr "Jeux"
+
+msgctxt "theme"
+msgid "Gas Station"
+msgstr "Station-service"
+
+msgctxt "theme"
+msgid "Gear"
+msgstr "Produits dérivés"
+
+msgctxt "theme"
+msgid "Gears"
+msgstr "Engrenages"
+
+msgctxt "theme"
+msgid "Ghostbusters"
+msgstr "Ghostbusters"
+
+msgctxt "theme"
+msgid "Gravity Games"
+msgstr "Gravity Games"
+
+msgctxt "theme"
+msgid "Guardians of the Galaxy"
+msgstr "Guardians of the Galaxy"
+
+msgctxt "theme"
+msgid "Halloween"
+msgstr "Halloween"
+
+msgctxt "theme"
+msgid "Harry Potter"
+msgstr "Harry Potter"
+
+msgctxt "theme"
+msgid "Harry Potter and Fantastic Beasts Series 1"
+msgstr "Harry Potter and Fantastic Beasts Series 1"
+
+msgctxt "theme"
+msgid "Harry Potter and Fantastic Beasts Series 2"
+msgstr "Harry Potter and Fantastic Beasts Series 2"
+
+msgctxt "theme"
+msgid "Hero Factory"
+msgstr "Hero Factory"
+
+msgctxt "theme"
+msgid "Heroes"
+msgstr "Héros"
+
+msgctxt "theme"
+msgid "Hidden Side"
+msgstr "Hidden Side"
+
+msgctxt "theme"
+msgid "HO 1:87 Vehicles"
+msgstr "Véhicules HO 1:87"
+
+msgctxt "theme"
+msgid "Hockey"
+msgstr "Hockey"
+
+msgctxt "theme"
+msgid "Homemaker"
+msgstr "Homemaker"
+
+msgctxt "theme"
+msgid "Horizon Adventures"
+msgstr "Horizon Adventures"
+
+msgctxt "theme"
+msgid "Houseware"
+msgstr "Articles ménagers"
+
+msgctxt "theme"
+msgid "Hydronauts"
+msgstr "Hydronauts"
+
+msgctxt "theme"
+msgid "Ice Planet 2002"
+msgstr "Ice Planet 2002"
+
+msgctxt "theme"
+msgid "Icons"
+msgstr "Icons"
+
+msgctxt "theme"
+msgid "Ideas Books"
+msgstr "Livres d'idées"
+
+msgctxt "theme"
+msgid "Incredibles 2"
+msgstr "Incredibles 2"
+
+msgctxt "theme"
+msgid "Indiana Jones"
+msgstr "Indiana Jones"
+
+msgctxt "theme"
+msgid "Insectoids"
+msgstr "Insectoids"
+
+msgctxt "theme"
+msgid "Inventor"
+msgstr "Inventor"
+
+msgctxt "theme"
+msgid "Iron Man"
+msgstr "Iron Man"
+
+msgctxt "theme"
+msgid "Iron Man and His Awesome Friends"
+msgstr "Iron Man and His Awesome Friends"
+
+msgctxt "theme"
+msgid "Island Xtreme Stunts"
+msgstr "Island Xtreme Stunts"
+
+msgctxt "theme"
+msgid "Jack Stone"
+msgstr "Jack Stone"
+
+msgctxt "theme"
+msgid "Jake and the Never Land Pirates"
+msgstr "Jake and the Never Land Pirates"
+
+msgctxt "theme"
+msgid "Jumbo Bricks"
+msgstr "Briques géantes"
+
+msgctxt "theme"
+msgid "Jungle"
+msgstr "Jungle"
+
+msgctxt "theme"
+msgid "Juniors"
+msgstr "Juniors"
+
+msgctxt "theme"
+msgid "Jurassic Park III"
+msgstr "Jurassic Park III"
+
+msgctxt "theme"
+msgid "Jurassic World"
+msgstr "Jurassic World"
+
+msgctxt "theme"
+msgid "Jurassic World: Fallen Kingdom"
+msgstr "Jurassic World: Fallen Kingdom"
+
+msgctxt "theme"
+msgid "Justice League"
+msgstr "Justice League"
+
+msgctxt "theme"
+msgid "Key Chain"
+msgstr "Porte-clés"
+
+msgctxt "theme"
+msgid "Kingdoms"
+msgstr "Kingdoms"
+
+msgctxt "theme"
+msgid "Knights Kingdom I"
+msgstr "Knights Kingdom I"
+
+msgctxt "theme"
+msgid "Knights Kingdom II"
+msgstr "Knights Kingdom II"
+
+msgctxt "theme"
+msgid "KPop Demon Hunters"
+msgstr "KPop Demon Hunters"
+
+msgctxt "theme"
+msgid "Launch Command"
+msgstr "Launch Command"
+
+msgctxt "theme"
+msgid "Learning"
+msgstr "Apprentissage"
+
+msgctxt "theme"
+msgid "Learning at Home"
+msgstr "Apprendre à la maison"
+
+msgctxt "theme"
+msgid "Legends of Chima"
+msgstr "Legends of Chima"
+
+msgctxt "theme"
+msgid "LEGOLAND®"
+msgstr "LEGOLAND®"
+
+msgctxt "theme"
+msgid "LEGOLAND® Parks"
+msgstr "Parcs LEGOLAND®"
+
+msgctxt "theme"
+msgid "Legoville"
+msgstr "Legoville"
+
+msgctxt "theme"
+msgid "LEGO® Art"
+msgstr "LEGO® Art"
+
+msgctxt "theme"
+msgid "LEGO® Brand Store"
+msgstr "Magasins LEGO®"
+
+msgctxt "theme"
+msgid "LEGO® Ideas and CUUSOO"
+msgstr "LEGO® Ideas and CUUSOO"
+
+msgctxt "theme"
+msgid "LEGO® Originals"
+msgstr "LEGO® Originals"
+
+msgctxt "theme"
+msgid "Life On Mars"
+msgstr "Life On Mars"
+
+msgctxt "theme"
+msgid "Lightyear"
+msgstr "Lightyear"
+
+msgctxt "theme"
+msgid "Lion Knights"
+msgstr "Lion Knights"
+
+msgctxt "theme"
+msgid "Little Forest Friends"
+msgstr "Little Forest Friends"
+
+msgctxt "theme"
+msgid "Little Robots"
+msgstr "Little Robots"
+
+msgctxt "theme"
+msgid "Looney Tunes"
+msgstr "Looney Tunes"
+
+msgctxt "theme"
+msgid "M:Tron"
+msgstr "M:Tron"
+
+msgctxt "theme"
+msgid "Magnets"
+msgstr "Aimants"
+
+msgctxt "theme"
+msgid "Make & Create"
+msgstr "Make & Create"
+
+msgctxt "theme"
+msgid "Mars Exploration"
+msgstr "Exploration de Mars"
+
+msgctxt "theme"
+msgid "Mars Mission"
+msgstr "Mars Mission"
+
+msgctxt "theme"
+msgid "Marvel"
+msgstr "Marvel"
+
+msgctxt "theme"
+msgid "Marvel Series 1"
+msgstr "Marvel Series 1"
+
+msgctxt "theme"
+msgid "Marvel Series 2"
+msgstr "Marvel Series 2"
+
+msgctxt "theme"
+msgid "Marvel Super Heroes"
+msgstr "Marvel Super Heroes"
+
+msgctxt "theme"
+msgid "Master Builder Academy"
+msgstr "Master Builder Academy"
+
+msgctxt "theme"
+msgid "McDonalds"
+msgstr "McDonalds"
+
+msgctxt "theme"
+msgid "Mickey & Friends"
+msgstr "Mickey & Friends"
+
+msgctxt "theme"
+msgid "Mickey Mouse"
+msgstr "Mickey Mouse"
+
+msgctxt "theme"
+msgid "Miles From Tomorrowland"
+msgstr "Miles From Tomorrowland"
+
+msgctxt "theme"
+msgid "Mindstorms"
+msgstr "Mindstorms"
+
+msgctxt "theme"
+msgid "Minecraft"
+msgstr "Minecraft"
+
+msgctxt "theme"
+msgid "Mini"
+msgstr "Mini"
+
+msgctxt "theme"
+msgid "Minions"
+msgstr "Minions"
+
+msgctxt "theme"
+msgid "Minitalia"
+msgstr "Minitalia"
+
+msgctxt "theme"
+msgid "Mission Deep Freeze"
+msgstr "Mission Deep Freeze"
+
+msgctxt "theme"
+msgid "Mission Deep Sea"
+msgstr "Mission Deep Sea"
+
+msgctxt "theme"
+msgid "Mixels"
+msgstr "Mixels"
+
+msgctxt "theme"
+msgid "Model Team"
+msgstr "Model Team"
+
+msgctxt "theme"
+msgid "Modulex"
+msgstr "Modulex"
+
+msgctxt "theme"
+msgid "Monkie Kid"
+msgstr "Monkie Kid"
+
+msgctxt "theme"
+msgid "Monster Fighters"
+msgstr "Monster Fighters"
+
+msgctxt "theme"
+msgid "Monthly Mini Model Build"
+msgstr "Mini-modèle du mois"
+
+msgctxt "theme"
+msgid "Mosaic"
+msgstr "Mosaïque"
+
+msgctxt "theme"
+msgid "My Town"
+msgstr "My Town"
+
+msgctxt "theme"
+msgid "Nexo Knights"
+msgstr "Nexo Knights"
+
+msgctxt "theme"
+msgid "Nike"
+msgstr "Nike"
+
+msgctxt "theme"
+msgid "Ninja"
+msgstr "Ninja"
+
+msgctxt "theme"
+msgid "Ninjago"
+msgstr "Ninjago"
+
+msgctxt "theme"
+msgid "Non-fiction Books"
+msgstr "Documentaires"
+
+msgctxt "theme"
+msgid "NXT"
+msgstr "NXT"
+
+msgctxt "theme"
+msgid "One Piece"
+msgstr "One Piece"
+
+msgctxt "theme"
+msgid "Orient Expedition"
+msgstr "Orient Expedition"
+
+msgctxt "theme"
+msgid "Outback"
+msgstr "Outback"
+
+msgctxt "theme"
+msgid "Overwatch"
+msgstr "Overwatch"
+
+msgctxt "theme"
+msgid "Paradisa"
+msgstr "Paradisa"
+
+msgctxt "theme"
+msgid "Peppa Pig"
+msgstr "Peppa Pig"
+
+msgctxt "theme"
+msgid "Pharaoh's Quest"
+msgstr "Pharaoh's Quest"
+
+msgctxt "theme"
+msgid "Pick A Model"
+msgstr "Modèle au choix"
+
+msgctxt "theme"
+msgid "Pirates"
+msgstr "Pirates"
+
+msgctxt "theme"
+msgid "Pirates I"
+msgstr "Pirates I"
+
+msgctxt "theme"
+msgid "Pirates II"
+msgstr "Pirates II"
+
+msgctxt "theme"
+msgid "Pirates III"
+msgstr "Pirates III"
+
+msgctxt "theme"
+msgid "Pirates of the Caribbean"
+msgstr "Pirates of the Caribbean"
+
+msgctxt "theme"
+msgid "Planes"
+msgstr "Planes"
+
+msgctxt "theme"
+msgid "Playhouse"
+msgstr "Playhouse"
+
+msgctxt "theme"
+msgid "Playsets"
+msgstr "Sets de jeu"
+
+msgctxt "theme"
+msgid "Plush Toys"
+msgstr "Peluches"
+
+msgctxt "theme"
+msgid "Pokémon"
+msgstr "Pokémon"
+
+msgctxt "theme"
+msgid "Posters and Art Prints"
+msgstr "Affiches et reproductions d'art"
+
+msgctxt "theme"
+msgid "Power Functions"
+msgstr "Power Functions"
+
+msgctxt "theme"
+msgid "Power Miners"
+msgstr "Power Miners"
+
+msgctxt "theme"
+msgid "Powered Up"
+msgstr "Powered Up"
+
+msgctxt "theme"
+msgid "Primo"
+msgstr "Primo"
+
+msgctxt "theme"
+msgid "Prince of Persia"
+msgstr "Prince of Persia"
+
+msgctxt "theme"
+msgid "Princess Castle"
+msgstr "Princess Castle"
+
+msgctxt "theme"
+msgid "Protectors"
+msgstr "Protectors"
+
+msgctxt "theme"
+msgid "Quatro"
+msgstr "Quatro"
+
+msgctxt "theme"
+msgid "Race"
+msgstr "Course"
+
+msgctxt "theme"
+msgid "Racers"
+msgstr "Racers"
+
+msgctxt "theme"
+msgid "Rattles"
+msgstr "Hochets"
+
+msgctxt "theme"
+msgid "RC"
+msgstr "RC"
+
+msgctxt "theme"
+msgid "RC Train"
+msgstr "Train RC"
+
+msgctxt "theme"
+msgid "RCX"
+msgstr "RCX"
+
+msgctxt "theme"
+msgid "Res-Q"
+msgstr "Res-Q"
+
+msgctxt "theme"
+msgid "RoboForce"
+msgstr "RoboForce"
+
+msgctxt "theme"
+msgid "RoboRiders"
+msgstr "RoboRiders"
+
+msgctxt "theme"
+msgid "Rock Raiders"
+msgstr "Rock Raiders"
+
+msgctxt "theme"
+msgid "Role Play Toys and Costumes"
+msgstr "Jouets d'imitation et déguisements"
+
+msgctxt "theme"
+msgid "Royal Knights"
+msgstr "Royal Knights"
+
+msgctxt "theme"
+msgid "Samsonite"
+msgstr "Samsonite"
+
+msgctxt "theme"
+msgid "Scala"
+msgstr "Scala"
+
+msgctxt "theme"
+msgid "Scooby-Doo"
+msgstr "Scooby-Doo"
+
+msgctxt "theme"
+msgid "Sculptures"
+msgstr "Sculptures"
+
+msgctxt "theme"
+msgid "Series 1 Minifigures"
+msgstr "Minifigurines série 1"
+
+msgctxt "theme"
+msgid "Series 10 Minifigures"
+msgstr "Minifigurines série 10"
+
+msgctxt "theme"
+msgid "Series 11 Minifigures"
+msgstr "Minifigurines série 11"
+
+msgctxt "theme"
+msgid "Series 12 Minifigures"
+msgstr "Minifigurines série 12"
+
+msgctxt "theme"
+msgid "Series 13 Minifigures"
+msgstr "Minifigurines série 13"
+
+msgctxt "theme"
+msgid "Series 14 Minifigures"
+msgstr "Minifigurines série 14"
+
+msgctxt "theme"
+msgid "Series 15 Minifigures"
+msgstr "Minifigurines série 15"
+
+msgctxt "theme"
+msgid "Series 16 Minifigures"
+msgstr "Minifigurines série 16"
+
+msgctxt "theme"
+msgid "Series 17 Minifigures"
+msgstr "Minifigurines série 17"
+
+msgctxt "theme"
+msgid "Series 18 Minifigures"
+msgstr "Minifigurines série 18"
+
+msgctxt "theme"
+msgid "Series 19 Minifigures"
+msgstr "Minifigurines série 19"
+
+msgctxt "theme"
+msgid "Series 2 Minifigures"
+msgstr "Minifigurines série 2"
+
+msgctxt "theme"
+msgid "Series 20 Minifigures"
+msgstr "Minifigurines série 20"
+
+msgctxt "theme"
+msgid "Series 21 Minifigures"
+msgstr "Minifigurines série 21"
+
+msgctxt "theme"
+msgid "Series 22 Minifigures"
+msgstr "Minifigurines série 22"
+
+msgctxt "theme"
+msgid "Series 23 Minifigures"
+msgstr "Minifigurines série 23"
+
+msgctxt "theme"
+msgid "Series 24 Minifigures"
+msgstr "Minifigurines série 24"
+
+msgctxt "theme"
+msgid "Series 25 Minifigures"
+msgstr "Minifigurines série 25"
+
+msgctxt "theme"
+msgid "Series 26 Minifigures"
+msgstr "Minifigurines série 26"
+
+msgctxt "theme"
+msgid "Series 27 Minifigures"
+msgstr "Minifigurines série 27"
+
+msgctxt "theme"
+msgid "Series 28 Minifigures"
+msgstr "Minifigurines série 28"
+
+msgctxt "theme"
+msgid "Series 29 Minifigures"
+msgstr "Minifigurines série 29"
+
+msgctxt "theme"
+msgid "Series 3 Minifigures"
+msgstr "Minifigurines série 3"
+
+msgctxt "theme"
+msgid "Series 4 Minifigures"
+msgstr "Minifigurines série 4"
+
+msgctxt "theme"
+msgid "Series 5 Minifigures"
+msgstr "Minifigurines série 5"
+
+msgctxt "theme"
+msgid "Series 6 Minifigures"
+msgstr "Minifigurines série 6"
+
+msgctxt "theme"
+msgid "Series 7 Minifigures"
+msgstr "Minifigurines série 7"
+
+msgctxt "theme"
+msgid "Series 8 Minifigures"
+msgstr "Minifigurines série 8"
+
+msgctxt "theme"
+msgid "Series 9 Minifigures"
+msgstr "Minifigurines série 9"
+
+msgctxt "theme"
+msgid "Serious Play"
+msgstr "Serious Play"
+
+msgctxt "theme"
+msgid "Service Packs"
+msgstr "Packs de pièces de rechange"
+
+msgctxt "theme"
+msgid "Shrek"
+msgstr "Shrek"
+
+msgctxt "theme"
+msgid "Skylines"
+msgstr "Skylines"
+
+msgctxt "theme"
+msgid "Soccer"
+msgstr "Football"
+
+msgctxt "theme"
+msgid "Sofia the First"
+msgstr "Sofia the First"
+
+msgctxt "theme"
+msgid "Soft Bricks"
+msgstr "Briques souples"
+
+msgctxt "theme"
+msgid "Sonic The Hedgehog"
+msgstr "Sonic The Hedgehog"
+
+msgctxt "theme"
+msgid "Space"
+msgstr "Space"
+
+msgctxt "theme"
+msgid "Space Police I"
+msgstr "Space Police I"
+
+msgctxt "theme"
+msgid "Space Police II"
+msgstr "Space Police II"
+
+msgctxt "theme"
+msgid "Space Police III"
+msgstr "Space Police III"
+
+msgctxt "theme"
+msgid "Space Port"
+msgstr "Space Port"
+
+msgctxt "theme"
+msgid "Speed Champions"
+msgstr "Speed Champions"
+
+msgctxt "theme"
+msgid "Speed Racer"
+msgstr "Speed Racer"
+
+msgctxt "theme"
+msgid "Speed Slammers"
+msgstr "Speed Slammers"
+
+msgctxt "theme"
+msgid "Speedorz"
+msgstr "Speedorz"
+
+msgctxt "theme"
+msgid "Spider-Man"
+msgstr "Spider-Man"
+
+msgctxt "theme"
+msgid "Spider-Man - Across the Spider-Verse"
+msgstr "Spider-Man - Across the Spider-Verse"
+
+msgctxt "theme"
+msgid "Spidey and His Amazing Friends"
+msgstr "Spidey and His Amazing Friends"
+
+msgctxt "theme"
+msgid "SPIKE"
+msgstr "SPIKE"
+
+msgctxt "theme"
+msgid "SpongeBob SquarePants"
+msgstr "SpongeBob SquarePants"
+
+msgctxt "theme"
+msgid "Sports"
+msgstr "Sports"
+
+msgctxt "theme"
+msgid "Spybotics"
+msgstr "Spybotics"
+
+msgctxt "theme"
+msgid "Spyrius"
+msgstr "Spyrius"
+
+msgctxt "theme"
+msgid "Star Wars"
+msgstr "Star Wars"
+
+msgctxt "theme"
+msgid "Stationery and Office Supplies"
+msgstr "Papeterie et fournitures de bureau"
+
+msgctxt "theme"
+msgid "Stingrays"
+msgstr "Stingrays"
+
+msgctxt "theme"
+msgid "Storage"
+msgstr "Rangement"
+
+msgctxt "theme"
+msgid "Story Books"
+msgstr "Livres d'histoires"
+
+msgctxt "theme"
+msgid "Stranger Things"
+msgstr "Stranger Things"
+
+msgctxt "theme"
+msgid "Studios"
+msgstr "Studios"
+
+msgctxt "theme"
+msgid "Stuntz"
+msgstr "Stuntz"
+
+msgctxt "theme"
+msgid "Super Heroes DC"
+msgstr "Super Heroes DC"
+
+msgctxt "theme"
+msgid "Super Heroes Marvel"
+msgstr "Super Heroes Marvel"
+
+msgctxt "theme"
+msgid "Super Mario"
+msgstr "Super Mario"
+
+msgctxt "theme"
+msgid "Superman"
+msgstr "Superman"
+
+msgctxt "theme"
+msgid "Supplemental"
+msgstr "Sets complémentaires"
+
+msgctxt "theme"
+msgid "System"
+msgstr "System"
+
+msgctxt "theme"
+msgid "Tabletop Games and Puzzles"
+msgstr "Jeux de société et puzzles"
+
+msgctxt "theme"
+msgid "Team GB"
+msgstr "Team GB"
+
+msgctxt "theme"
+msgid "Technic"
+msgstr "Technic"
+
+msgctxt "theme"
+msgid "Teenage Mutant Ninja Turtles"
+msgstr "Teenage Mutant Ninja Turtles"
+
+msgctxt "theme"
+msgid "The Hobbit"
+msgstr "Le Hobbit"
+
+msgctxt "theme"
+msgid "The Infinity Saga"
+msgstr "The Infinity Saga"
+
+msgctxt "theme"
+msgid "The Legend of Zelda"
+msgstr "The Legend of Zelda"
+
+msgctxt "theme"
+msgid "The LEGO® Batman Movie"
+msgstr "The LEGO® Batman Movie"
+
+msgctxt "theme"
+msgid "The LEGO® Batman Movie Series 1"
+msgstr "The LEGO® Batman Movie Series 1"
+
+msgctxt "theme"
+msgid "The LEGO® Batman Movie Series 2"
+msgstr "The LEGO® Batman Movie Series 2"
+
+msgctxt "theme"
+msgid "The LEGO® Movie II"
+msgstr "La Grande Aventure LEGO® 2"
+
+msgctxt "theme"
+msgid "The LEGO® Ninjago Movie"
+msgstr "The LEGO® Ninjago Movie"
+
+msgctxt "theme"
+msgid "The Lone Ranger"
+msgstr "The Lone Ranger"
+
+msgctxt "theme"
+msgid "The Muppets"
+msgstr "The Muppets"
+
+msgctxt "theme"
+msgid "The Powerpuff Girls"
+msgstr "The Powerpuff Girls"
+
+msgctxt "theme"
+msgid "The Simpsons Series 1"
+msgstr "The Simpsons Series 1"
+
+msgctxt "theme"
+msgid "The Simpsons Series 2"
+msgstr "The Simpsons Series 2"
+
+msgctxt "theme"
+msgid "Thomas & Friends"
+msgstr "Thomas & Friends"
+
+msgctxt "theme"
+msgid "Throwbot Slizer"
+msgstr "Throwbot Slizer"
+
+msgctxt "theme"
+msgid "Time Cruisers"
+msgstr "Time Cruisers"
+
+msgctxt "theme"
+msgid "Toolo"
+msgstr "Toolo"
+
+msgctxt "theme"
+msgid "Town"
+msgstr "Town"
+
+msgctxt "theme"
+msgid "Town Jr."
+msgstr "Town Jr."
+
+msgctxt "theme"
+msgid "Town Plan"
+msgstr "Town Plan"
+
+msgctxt "theme"
+msgid "Toy Story"
+msgstr "Toy Story"
+
+msgctxt "theme"
+msgid "Trolls: World Tour"
+msgstr "Trolls: World Tour"
+
+msgctxt "theme"
+msgid "UCS"
+msgstr "UCS"
+
+msgctxt "theme"
+msgid "UFO"
+msgstr "UFO"
+
+msgctxt "theme"
+msgid "Ultimate Collector Series"
+msgstr "Ultimate Collector Series"
+
+msgctxt "theme"
+msgid "Ultra Agents"
+msgstr "Ultra Agents"
+
+msgctxt "theme"
+msgid "Unikitty!"
+msgstr "Unikitty!"
+
+msgctxt "theme"
+msgid "Unitron"
+msgstr "Unitron"
+
+msgctxt "theme"
+msgid "Universal Building Set"
+msgstr "Universal Building Set"
+
+msgctxt "theme"
+msgid "Universe"
+msgstr "Universe"
+
+msgctxt "theme"
+msgid "Valentine"
+msgstr "Saint-Valentin"
+
+msgctxt "theme"
+msgid "Value Packs"
+msgstr "Packs économiques"
+
+msgctxt "theme"
+msgid "Video Games and Accessories"
+msgstr "Jeux vidéo et accessoires"
+
+msgctxt "theme"
+msgid "VIDIYO"
+msgstr "VIDIYO"
+
+msgctxt "theme"
+msgid "Vikings"
+msgstr "Vikings"
+
+msgctxt "theme"
+msgid "Villains"
+msgstr "Méchants"
+
+msgctxt "theme"
+msgid "VIP Add-On Packs"
+msgstr "Packs VIP supplémentaires"
+
+msgctxt "theme"
+msgid "Wednesday"
+msgstr "Wednesday"
+
+msgctxt "theme"
+msgid "WeDo"
+msgstr "WeDo"
+
+msgctxt "theme"
+msgid "Western"
+msgstr "Western"
+
+msgctxt "theme"
+msgid "Wicked"
+msgstr "Wicked"
+
+msgctxt "theme"
+msgid "Winnie the Pooh"
+msgstr "Winnie the Pooh"
+
+msgctxt "theme"
+msgid "Wolfpack"
+msgstr "Wolfpack"
+
+msgctxt "theme"
+msgid "World City"
+msgstr "World City"
+
+msgctxt "theme"
+msgid "World Racers"
+msgstr "World Racers"
+
+msgctxt "theme"
+msgid "X-Men"
+msgstr "X-Men"
+
+msgctxt "theme"
+msgid "X-Pod"
+msgstr "X-Pod"
+
+msgctxt "theme"
+msgid "Xtra"
+msgstr "Xtra"
+
+msgctxt "theme"
+msgid "Znap"
+msgstr "Znap"
+
+msgctxt "theme"
+msgid "Zooters"
+msgstr "Zooters"

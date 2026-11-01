@@ -83,7 +83,9 @@ app, joined by a link (docs/TOGETHER.md).
   (`colour_of`). **Follow** on a name in the panel (`together_follow_N`,
   `Together.follow`): the view goes where theirs goes until this person
   moves it, presses Stop (`together_stop_following`, in a frame of their
-  colour over the model's column) or they leave.
+  colour over the model's column) or they leave. While neither view moves
+  nothing is drawn: `src/dev/idle_probe.gd` ("following another's view,
+  standing still") fails past one frame a second.
 - Comments pinned to parts (`src/assembly/pinned_comments.gd`
   `PinnedComments`, kept on `ModelStore.pins`; `src/ui/pins_view.gd`
   `PinsView`, the marks over the model's column; `src/ui/pins_dialog.gd`

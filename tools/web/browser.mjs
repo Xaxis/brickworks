@@ -142,6 +142,25 @@ export async function framesDrawn(page, frames = 3) {
   }), frames);
 }
 
+/// [words] typed into the menu just opened, to find its row: without spaces
+/// (a space presses the row the menu is on) and all in one task, as the keys
+/// a person types during a frame reach the page together. Typed a key at a
+/// time, each waits for a frame, and a menu begins its search again when
+/// more than 2 s pass between two keys (Godot's
+/// gui/timers/incremental_search_max_interval_msec): at 2.5 s a frame,
+/// together_flow's "Comm" was "m", and My collection opened in place of
+/// Comments (2026-10-31). Letters past the row's own words keep the row.
+export async function typeInMenu(page, words) {
+  await framesDrawn(page, 2);
+  await page.evaluate((letters) => {
+    const canvas = document.getElementById("canvas") || document.querySelector("canvas");
+    for (const key of letters) {
+      const code = /[a-z]/i.test(key) ? `Key${key.toUpperCase()}` : /[0-9]/.test(key) ? `Digit${key}` : "";
+      for (const type of ["keydown", "keyup"]) canvas.dispatchEvent(new KeyboardEvent(type, { key, code, bubbles: true }));
+    }
+  }, String(words).replace(/ /g, ""));
+}
+
 /// What the app says when it is asked: window.brickworksAsk<what> set, and
 /// its answer, window.brickworks<what> (Main._tell_page: "Phone", a finger's
 /// targets and the text shown; "Layout", the model's place and its parts;
@@ -248,6 +267,66 @@ export async function openColumnFor(page, name) {
   await page.mouse.click(rail.x, rail.y);
   await page.waitForTimeout(1500);
   return true;
+}
+
+/// The app's control [name] clicked where it has come to rest, as a person
+/// clicks what they see once it has stopped moving. The app tells the page
+/// a control's place only once it stood there at the telling before
+/// (Main._page_places), but a panel can lay itself out again a frame or
+/// more after what changed it: Account's Done moved Connect Claude 136 px
+/// after its place was told, the click went where it had been, and rel-m233
+/// was held twice on it (oauth_flow, a01d21bf). So the place is read again
+/// at the app's next telling, not twice from the same one, until two agree;
+/// when no new telling comes in 5 s the app is moving nothing.
+///
+/// [find] waits until the control shows and gives its place, or null: the
+/// flow's own way where it has one (its column opened, a dialog scrolled
+/// to it); by default asked every 500 ms for [seconds], five minutes unless
+/// said ([START_MS]), and with [open] its column opened every 5 s
+/// ([openColumnFor]). Never shown:
+/// a picture in [shots], then an error, or false when [optional]. [act]
+/// presses the place (a mouse click by default; a finger's tap, a right
+/// click), and [after] ms are waited after it. The place it pressed.
+export async function clickStill(page, name, { find = null, seconds = START_MS / 1000, open = false,
+  shots = "", optional = false, act = (at) => page.mouse.click(at.x, at.y), after = 0 } = {}) {
+  const look = find || ((n) => shownWithin(page, n, seconds, open));
+  let at = await look(name);
+  for (let n = 0; at && n < 10; n++) {
+    const again = await nextTelling(page, name);
+    if (again === undefined || (again && again.x === at.x && again.y === at.y)) break;
+    at = again || (await look(name));
+  }
+  if (!at) {
+    if (shots) await page.screenshot({ path: `${shots}/never_showed_${name}.png` }).catch(() => {});
+    if (optional) return false;
+    throw new Error(`the app never showed "${name}"${shots ? `; see ${shots}/never_showed_${name}.png` : ""}`);
+  }
+  await act(at);
+  if (after) await page.waitForTimeout(after);
+  return at;
+}
+
+async function shownWithin(page, name, seconds, open) {
+  for (let tries = 0; tries < seconds * 2; tries++) {
+    const at = await page.evaluate((n) => (window.brickworksControls || {})[n], name);
+    if (at) return at;
+    if (open && tries % 10 === 6) await openColumnFor(page, name);
+    await page.waitForTimeout(500);
+  }
+  return null;
+}
+
+/// [name]'s place at the app's next telling (null when that telling leaves
+/// it out: it moved, or went), or undefined when none comes in [ms]. Each
+/// telling is a new window.brickworksControls, told apart from the one
+/// there now by identity.
+async function nextTelling(page, name, ms = 5000) {
+  await page.evaluate(() => { window.brickworksControlsBefore = window.brickworksControls; });
+  const next = await page.waitForFunction((n) => {
+    const told = window.brickworksControls;
+    return told && told !== window.brickworksControlsBefore ? { at: told[n] || null } : false;
+  }, name, { timeout: ms, polling: 100 }).catch(() => null);
+  return next ? (await next.jsonValue()).at : undefined;
 }
 
 /// The app's address as the site links to it for someone who came for the

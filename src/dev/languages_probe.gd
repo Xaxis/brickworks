@@ -992,46 +992,50 @@ func _in(code: String) -> void:
 
 
 ## The Library's themes as LEGO's own sites in each language have them:
-## those that are words (ModelLibrary.THEME_WORDS) by their entries in the
-## context "theme", in the list and in every theme the library's sets have
-## ("City > Police"); the rest, product lines' and licences' names, as they
-## are; the list in the language's order. The list pictured open.
+## every one, in the list and in every theme the library's sets have
+## ("City > Police"), has an entry in the context "theme" and is drawn by
+## it: the words translated (Collectible Minifigures, Police), the product
+## lines' and licences' names as they are; the list in the language's order.
+## The list pictured open.
 func _themes(code: String) -> void:
 	var shown: Array = await _show("library")
 	var library: LibraryDialog = _shell.library_dialog
 	var choice: OptionButton = library.get("_theme")
 	var lacking: Array[String] = []
 	var wrong: Array[String] = []
-	var kept: Array[String] = []
+	var translated: Array[String] = []
 	var unordered: Array[String] = []
 	for n: int in range(1, choice.item_count):
 		if n > 1 and choice.get_item_text(n) < choice.get_item_text(n - 1):
 			unordered.append("%s after %s" % [choice.get_item_text(n), choice.get_item_text(n - 1)])
 		var english: String = str(choice.get_item_metadata(n))
-		var said: String = english
-		if english in ModelLibrary.THEME_WORDS:
-			said = Language.says(english, "theme")
-			if said.is_empty():
-				lacking.append(english)
-				continue
-		else:
-			kept.append(english)
+		var said: String = Language.says(english, "theme")
+		if said.is_empty():
+			lacking.append(english)
+			continue
+		if said != english:
+			translated.append("%s = %s" % [english, said])
 		if choice.get_item_text(n) != said:
 			wrong.append("%s drawn \"%s\"" % [english, choice.get_item_text(n)])
-	var words: Dictionary = {}
+	var parts: Dictionary = {}
 	for model: Dictionary in library.books.get("_models"):
 		for part: String in ModelLibrary.tidy(str(model.get("theme", ""))).split(" > "):
-			if part in ModelLibrary.THEME_WORDS:
-				words[part] = true
-	for part: String in words:
-		if Language.says(part, "theme").is_empty() and not part in lacking:
-			lacking.append(part)
-	_check("%s: the Library's %d themes, %d names kept (%s, ...) and the rest translated, " % [code,
-		choice.item_count - 1, kept.size(), ", ".join(kept.slice(0, 5))]
-		+ "with the %d words in its sets' themes, in the language's order%s" % [words.size(),
-		"" if lacking.is_empty() and wrong.is_empty() and unordered.is_empty()
-			else "; lacking %s; %s; %s" % [lacking, wrong, unordered.slice(0, 3)]],
-		choice.item_count > 1 and lacking.is_empty() and wrong.is_empty() and unordered.is_empty())
+			parts[part] = true
+	var worded := 0
+	for part: String in parts:
+		var said: String = Language.says(part, "theme")
+		if said.is_empty():
+			if not part in lacking:
+				lacking.append(part)
+		elif said != part:
+			worded += 1
+	_check("%s: the Library's %d themes, %d translated (%s, ...) and the names kept, " % [code,
+		choice.item_count - 1, translated.size(), ", ".join(translated.slice(0, 3))]
+		+ "and the %d parts of its sets' themes (%d translated) each by its entry, in the language's order%s" % [
+		parts.size(), worded, "" if lacking.is_empty() and wrong.is_empty() and unordered.is_empty()
+			else "; lacking %s; %s; %s" % [lacking.slice(0, 8), wrong.slice(0, 3), unordered.slice(0, 3)]],
+		choice.item_count > 1 and not translated.is_empty() and lacking.is_empty() and wrong.is_empty()
+			and unordered.is_empty())
 	if not _shots.is_empty():
 		choice.show_popup()
 		await _frames(8)

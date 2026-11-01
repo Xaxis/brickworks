@@ -136,6 +136,8 @@ func _run() -> void:
 	if idle["drawn"] > ceili(idle["seconds"]) and not every_frame:
 		await _who_draws()
 	await _looks_only_on_change()
+	if not every_frame:
+		await _follows_standing_still()
 
 	print("")
 	print("  something changes")
@@ -180,6 +182,46 @@ func _looks_only_on_change() -> void:
 	verbs.out_of_view = false
 	_builder.remove_brick_id(id)
 	await _frames(3)
+
+
+## Following another builder's view in Build together, neither view moving:
+## their view taken once, framed in their colour, and then nothing drawn.
+## The frame and its name were styled anew every frame, which drew the
+## whole window every frame for as long as anybody followed: on the rich
+## car in software the second browser never stood still, and the owner's
+## selection reached it 6.7 to 10.8 s after the click while their pointer
+## took 1 to 3 s (together_flow 5f, 2026-11-01). The session's own steps
+## (its sends and polls) are not run here, only the follow's, as
+## Together._process takes it each frame.
+func _follows_standing_still() -> void:
+	var together: Together = _main.get("_together")
+	await _quiet(1.0, 5.0)
+	together.set_process(false)
+	together.live = true
+	together.people = [{"who": "f0110we5", "name": "Ann", "here": true, "view": _camera.aim()}]
+	together.following = "f0110we5"
+	var began: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - began < 1000:
+		await process_frame
+		together._follow_step()
+	var drawn: int = Engine.get_frames_drawn()
+	var run: int = Engine.get_process_frames()
+	began = Time.get_ticks_usec()
+	while Time.get_ticks_usec() - began < 3000000:
+		await process_frame
+		together._follow_step()
+	var seconds: float = (Time.get_ticks_usec() - began) / 1000000.0
+	drawn = Engine.get_frames_drawn() - drawn
+	run = Engine.get_process_frames() - run
+	var framed: bool = together._banner != null and together._banner.visible
+	together.following = ""
+	together._show_banner()
+	together.people = []
+	together.live = false
+	together.set_process(true)
+	await _frames(3)
+	_check("following another's view, standing still: framed, and at most one frame drawn a second (%d in %.1f s, %d run)"
+		% [drawn, seconds, run], framed and drawn <= ceili(seconds) and run > 20)
 
 
 # -- the changes ---------------------------------------------------------------

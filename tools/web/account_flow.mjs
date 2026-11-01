@@ -24,7 +24,7 @@
 //
 // A preview's functions sit behind Vercel's login, so BW_BYPASS goes to the
 // page as a cookie for that domain, never anywhere else.
-import { launch } from "./browser.mjs";
+import { clickStill, launch } from "./browser.mjs";
 import { deleteAccount, mintCode, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync } from "node:fs";
 
@@ -73,14 +73,8 @@ async function controls(p = page) {
   return p.evaluate(() => window.brickworksControls || {});
 }
 
-async function click(name, p = page) {
-  for (let tries = 0; tries < 600; tries++) {
-    const where = (await controls(p))[name];
-    if (where) return p.mouse.click(where.x, where.y);
-    await p.waitForTimeout(500);
-  }
-  await p.screenshot({ path: `${out}/never_showed_${name}.png` }).catch(() => {});
-  throw new Error(`the app never showed "${name}"`);
+function click(name, p = page) {
+  return clickStill(p, name, { shots: out });
 }
 
 async function shot(name, p = page) {

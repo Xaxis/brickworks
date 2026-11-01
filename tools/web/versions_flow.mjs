@@ -36,7 +36,7 @@
 //
 // Pictures in --out. Both accounts are deleted at the end with their rows,
 // after their models are taken down, so nothing is left in the bucket.
-import { launch } from "./browser.mjs";
+import { clickStill, launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -132,7 +132,6 @@ function listen(page, who) {
 }
 
 const state = (page) => page.evaluate(() => window.brickworksShare || {});
-const controls = (page) => page.evaluate(() => window.brickworksControls || {});
 
 async function until(page, test, what, seconds = 240, arg = null) {
   const end = Date.now() + seconds * 1000;
@@ -144,26 +143,10 @@ async function until(page, test, what, seconds = 240, arg = null) {
   }
 }
 
-/// Press what the app shows by its name, once two of its reports agree on
-/// where it is (share_flow.mjs press).
-async function press(page, name, seconds = 60) {
-  const end = Date.now() + seconds * 1000;
-  for (;;) {
-    let at = (await controls(page))[name];
-    for (let n = 0; at && n < 6; n += 1) {
-      await page.waitForTimeout(550);
-      const again = (await controls(page))[name];
-      if (again && again.x === at.x && again.y === at.y) break;
-      at = again;
-    }
-    if (at) {
-      await page.mouse.click(at.x, at.y);
-      await page.waitForTimeout(400);
-      return at;
-    }
-    if (Date.now() > end) throw new Error(`no ${name} on the page`);
-    await page.waitForTimeout(500);
-  }
+/// Press what the app shows by its name where it stands still (browser.mjs
+/// clickStill), and the place pressed.
+function press(page, name, seconds = 60) {
+  return clickStill(page, name, { seconds, after: 400 });
 }
 
 const shot = (page, name) => page.screenshot({ path: path.join(out, name), timeout: 90000 })

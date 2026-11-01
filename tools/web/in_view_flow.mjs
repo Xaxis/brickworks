@@ -47,7 +47,7 @@
 // Pictures of the window in that state in --out, named by the size, and
 // in_view's text. No model is called; costs nothing. Fails, exiting 1, on any
 // check that does not hold or a script error in the console.
-import { askApp, controlsWith, launch, openColumnFor, withJobs } from "./browser.mjs";
+import { askApp, clickStill, controlsWith, launch, openColumnFor, withJobs } from "./browser.mjs";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -161,10 +161,13 @@ async function where(name, seconds = 240) {
   await shot(`never_${name.replace(/\W/g, "_")}_${tag}.png`);
   throw new Error(`the app never showed "${name}"`);
 }
+// ms 0 presses at once, where the control is now: Next pressed at once is
+// what drew no bricks (651df7c5), and waiting for it to stand still would
+// miss that.
 async function press(name, ms = 1500) {
+  if (ms) return clickStill(page, name, { find: where, after: ms });
   const at = await where(name);
   await page.mouse.click(at.x, at.y);
-  if (ms) await page.waitForTimeout(ms);
 }
 const caption = async () => ((await state()).timeline || {}).caption || "";
 // A picture of the window at a stage on the way, with where the view is

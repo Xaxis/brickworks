@@ -49,7 +49,7 @@
 // gallery on the Community shelf. Run against a local export with
 // serve.py --parts-url "$PARTS_URL", the deployment's store.
 // Pictures live_1_sets.png, live_2_8466.png, live_3_community.png.
-import { launch, openColumnFor } from "./browser.mjs";
+import { clickStill, launch, openColumnFor } from "./browser.mjs";
 import { mkdirSync, readFileSync, existsSync } from "node:fs";
 import path from "node:path";
 
@@ -174,9 +174,8 @@ async function stored(page, file) {
   }), `${USER}/${file}`);
 }
 const shown = async (page) => JSON.stringify((await shelf(page)).shown || []);
-async function click(page, name) {
-  const at = await controlAt(page, name, 60);
-  await page.mouse.click(at.x, at.y);
+function click(page, name) {
+  return clickStill(page, name, { find: (n) => controlAt(page, n, 60) });
 }
 // Words typed into the search, and the shelf asked again a moment after the
 // last key: true once it shows [want]. No Enter: Enter opens the first found.

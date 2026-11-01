@@ -22,7 +22,7 @@
 // Says each render's longest frame and what it was doing then
 // (StudioRender's worst_step). Leaves OUT/*.png, the downloads and a summary.
 // --also=FILE,… draws those models too, for pictures, asking nothing.
-import { launch } from "./browser.mjs";
+import { clickStill, launch } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -82,13 +82,10 @@ async function where(name, seconds = 60) {
   return null;
 }
 
-async function press(name) {
-  const at = await where(name);
-  if (!at) throw new Error(`no ${name} on the page`);
-  await page.mouse.click(at.x, at.y);
-  // The app tells the page where its controls are twice a second, and a
-  // press can move the ones under it.
-  await page.waitForTimeout(1100);
+// The app tells the page where its controls are twice a second, and a
+// press can move the ones under it.
+function press(name) {
+  return clickStill(page, name, { find: where, after: 1100 });
 }
 
 const state = () => page.evaluate(() => window.brickworksRender || {});

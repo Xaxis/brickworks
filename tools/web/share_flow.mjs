@@ -42,7 +42,7 @@
 // own picture as og_image.png. Both accounts are deleted at the end, and
 // their rows with them; both models were taken down first, so no file is
 // left in the bucket.
-import { launch, allPictures } from "./browser.mjs";
+import { allPictures, clickStill, launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { placed } from "./gallery_order.mjs";
 import { pictureThemes } from "./picture_themes.mjs";
@@ -125,29 +125,10 @@ async function until(page, test, what, seconds = 240, arg = null) {
   }
 }
 
-async function press(page, name, seconds = 60) {
-  const end = Date.now() + seconds * 1000;
-  for (;;) {
-    let at = (await controls(page))[name];
-    // Where it is, once two of the app's reports (twice a second) agree: a
-    // control that has just appeared, or moved because one above it did,
-    // is first reported where it was laid out before. Show who made it
-    // puts the author's field above List it in the gallery, and a click
-    // at the field's first report typed the credit into nothing.
-    for (let n = 0; at && n < 6; n += 1) {
-      await page.waitForTimeout(550);
-      const again = (await controls(page))[name];
-      if (again && again.x === at.x && again.y === at.y) break;
-      at = again;
-    }
-    if (at) {
-      await page.mouse.click(at.x, at.y);
-      await page.waitForTimeout(400);
-      return at;
-    }
-    if (Date.now() > end) throw new Error(`no ${name} on the page`);
-    await page.waitForTimeout(500);
-  }
+/// Press what the app shows by its name where it stands still (browser.mjs
+/// clickStill), and the place pressed.
+function press(page, name, seconds = 60) {
+  return clickStill(page, name, { seconds, after: 400 });
 }
 
 async function type(page, name, text) {

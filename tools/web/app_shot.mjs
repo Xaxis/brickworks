@@ -27,7 +27,7 @@
 // toolbar, a panel and a "Sign out" that the app no longer had. A picture
 // that can only be retaken by hand is retaken when someone notices.
 import { readFileSync } from "node:fs";
-import { controlsWith, launch } from "./browser.mjs";
+import { clickStill, controlsWith, launch, typeInMenu } from "./browser.mjs";
 
 const args = {};
 for (const a of process.argv.slice(2)) {
@@ -67,19 +67,13 @@ async function take(shot) {
   // Each control waited for, as a person waits for a menu or a panel: one
   // is told to the page only once it has stayed where it is drawn.
   const where = async (name) => (await controlsWith(page, [name]))[name];
-  async function press(name) {
-    const at = await where(name);
-    if (!at) throw new Error(`the app is not showing "${name}"`);
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(pause);
+  function press(name) {
+    return clickStill(page, name, { find: where, after: pause });
   }
   for (const pick of [].concat(shot.menu || [])) {
     const [control, word] = pick.split(":");
-    const at = await where(control);
-    if (!at) throw new Error(`the app is not showing "${control}"`);
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(1500);
-    await page.keyboard.type(word, { delay: 120 });
+    await clickStill(page, control, { find: where, after: 1500 });
+    await typeInMenu(page, word);
     await page.waitForTimeout(600);
     await page.keyboard.press("Enter");
     await page.waitForTimeout(pause);

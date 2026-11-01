@@ -29,7 +29,7 @@
 //
 // Pictures: 1_castle.png and 1_truck.png (each tab with Account open, its
 // chat named), 2_two_chats.png, 3_kept.png.
-import { launch, withAssistant } from "./browser.mjs";
+import { clickStill, launch, withAssistant } from "./browser.mjs";
 import { mintSession, STORAGE_KEY } from "./session.mjs";
 import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync } from "node:fs";
@@ -150,10 +150,8 @@ async function controlAt(page, name, seconds = 400) {
   await page.screenshot({ path: `${out}/missing_${name}.png` }).catch(() => {});
   throw new Error(`the app never showed its ${name} control`);
 }
-async function press(page, name) {
-  const at = await controlAt(page, name, 60);
-  await page.mouse.click(at.x, at.y);
-  await page.waitForTimeout(600);
+function press(page, name) {
+  return clickStill(page, name, { find: (n) => controlAt(page, n, 60), after: 600 });
 }
 async function until(test, seconds) {
   for (let n = 0; n < seconds * 2; n++) {

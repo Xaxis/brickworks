@@ -3646,9 +3646,12 @@ func _weakest_joints(input: Dictionary) -> String:
 	var world: BrickWorld = app.get("_world")
 	if world.brick_count() <= store.scenery.size():
 		return "There is nothing on the baseplate to weigh."
+	var generation: int = world.generation()
 	var report: Stability.Report = await app.call("weigh_joints")
 	if report == null:
 		return "The parts' shapes were still coming in; ask again in a moment."
+	if world.generation() != generation:
+		return "Another model was opened while this one was weighed; ask again."
 	return StressView.said(report, world, app.get("_library"), store.scenery,
 		clampi(int(input.get("count", 8)), 1, 40), int(input.get("part", 0)))
 

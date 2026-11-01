@@ -32,6 +32,16 @@ say("...") and counted(n, "one", "many") in a script a copy loads (and in
 what it imports), and the labels the API hands the gallery and the library
 to show (API_WORDS), must have its entry too, or the check fails.
 
+The sign-in's dialogs (web/account.js) are said in the visitor's language on
+every page, a copy or not, so their words are kept for each language at
+/<code>/words.json too (all a copy's scripts may say): what the dialogs
+say, each sentence a page asks somebody to sign in with ("Sign in to like
+it: ...", SIGN_IN_WHY, in any script), orangecheck's own words for its
+button and its box, and every error the sign-in's API answers with in
+words (TOLD). A word of web/account.js with a capital in it that is not
+said through say() fails the check (SAID_ALL), so none comes back in
+English.
+
 Which language a visitor is shown is web/theme.js's: the one they chose in
 the footer, else the first of their browser's that the site has.
 """
@@ -68,12 +78,25 @@ ATTRIBUTES = ("alt", "title", "aria-label", "placeholder")
 META = {"description", "og:title", "og:description", "og:image:alt", "twitter:title",
         "twitter:description", "twitter:image:alt"}
 # The words the API hands the copies' scripts to show: each label of these
-# constants (an "id" is not one), and the plans form's fixed replies.
+# constants (an "id" is not one), and the plans form's fixed replies; and
+# orangecheck's code's, for its button and its box (web/account.js).
 API_WORDS = {"api/_directory.js": ("KINDS", "SIZES", "SORTS", "WINDOWS", "MADES", "MINE_SORTS"),
-             "api/_library.js": ("SET_SORTS",), "api/_sets.js": ("SETS_SORTS",), "api/plans.js": ("KEPT", "GONE")}
+             "api/_library.js": ("SET_SORTS",), "api/_sets.js": ("SETS_SORTS",), "api/plans.js": ("KEPT", "GONE"),
+             "web/oc-button.mjs": ("SIGN_IN_BUSY_LABEL", "OUTCOME_COPY"),
+             "web/oc-connect-consent.mjs": ("CONNECT_CONSENT_LABEL", "CONNECT_CONSENT_BLURB")}
 STRING = r'"(?:[^"\\\n]|\\.)*"'
 SAY = re.compile(rf"\bsay\(\s*((?:{STRING}\s*\+\s*)*{STRING})")
 COUNTED = re.compile(rf"\bcounted\((?:[^,()]|\([^()]*\))+,\s*({STRING})(?:\s*,\s*({STRING}))?\s*\)")
+# The sign-in's API, whose errors the dialogs say: each sentence an answer
+# gives as its error ("POST only" is a developer's, and no sentence).
+TOLD = ("api/otp.js", "api/_trust.js", "api/_oc.js", "api/orangecheck.js")
+TOLD_AS = re.compile(rf"(?:\berror:\s*|\btrouble:\s*|\bsay\(response,\s*\d+,\s*|new Refusal\()((?:{STRING}\s*\+\s*)*{STRING})")
+# A page's reason to sign in, which web/account.js says on any page.
+SIGN_IN_WHY = re.compile(r'"(Sign in\b(?:[^"\\\n]|\\.)*\.)"')
+# The scripts that say every word they show through say(): a literal with a
+# capitalized word in it, outside say(), is English left on the page.
+SAID_ALL = ("account.js",)
+CODE_WORDS = {"Bearer"}
 # Runs that are names, the same in every language.
 NAMES = {"Brickworks", "brickworks.diy/app", "Claude", "Pro", "GitHub", "3D"}
 # The JSON-LD fields a reader is shown: a description anywhere, and an
@@ -265,13 +288,37 @@ def script_words() -> dict[str, str]:
     for path, names in API_WORDS.items():
         text = (ROOT / path).read_text(encoding="utf-8")
         for name in names:
-            block = re.search(rf"\bconst {name} = (.*?);\n", text, re.S).group(1)
+            block = re.search(rf"\b(?:const|var) {name} = (.*?);\n", text, re.S).group(1)
             for key, said in re.findall(rf"(?:(\w+):\s*)?({STRING})", block):
                 if key != "id" and not (key == "" and block.lstrip().startswith(("{", "["))):
                     words.setdefault(json.loads(said), path)
         for refusal in re.findall(rf"new Refusal\(({STRING})\)", text):
             words.setdefault(json.loads(refusal), path)
+    for path in TOLD:
+        for found in TOLD_AS.finditer((ROOT / path).read_text(encoding="utf-8")):
+            said = "".join(json.loads(s) for s in re.findall(STRING, found.group(1)))
+            if said.rstrip().endswith((".", "?")):
+                words.setdefault(said, path)
+    for one in sorted(WEB.glob("*.js")):
+        for why in SIGN_IN_WHY.findall(one.read_text(encoding="utf-8")):
+            words.setdefault(json.loads(f'"{why}"'), f"web/{one.name}")
     return {word: where for word, where in words.items() if says_something(word)}
+
+
+def unsaid(script: str) -> list[str]:
+    """The words a [script] shows in English: each literal with a
+    capitalized word in it (a sentence, a label) that is not said through
+    say(), its comments left out."""
+    text = re.sub(r"(?<![:\"'\w])//[^\n]*", "", script)
+    through = [found.span(1) for found in SAY.finditer(text)]
+    out = []
+    for found in re.finditer(rf"{STRING}|`(?:[^`\\]|\\.)*`", text):
+        if any(start <= found.start() < end for start, end in through):
+            continue
+        words = re.findall(r"\b[A-Z][a-z]+\b", re.sub(r"\$\{[^}]*\}", "", found.group(0)))
+        if [word for word in words if word not in CODE_WORDS]:
+            out.append(found.group(0))
+    return out
 
 
 def table(code: str) -> dict:
@@ -279,11 +326,30 @@ def table(code: str) -> dict:
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"pages": {}, "scripts": {}}
 
 
-def themes(code: str) -> dict[str, str]:
-    """The app's names for the Library's themes (locale/<code>.po, "theme")."""
+def theme_entries(code: str) -> dict[str, str]:
+    """Every theme's entry in locale/<code>.po (context "theme"): its name as
+    the app draws it (LEGO® with its mark, LEGOLAND®), and the language's,
+    which is the same for a product line's or a licence's."""
     po = (ROOT / "locale" / f"{code}.po").read_text(encoding="utf-8")
     return {json.loads(f'"{english}"'): json.loads(f'"{said}"') for english, said in re.findall(
         r'^msgctxt "theme"\nmsgid "((?:[^"\\]|\\.)*)"\nmsgstr "((?:[^"\\]|\\.)*)"', po, re.M) if said}
+
+
+def themes(code: str) -> dict[str, str]:
+    """The Library's themes that the language words its own way, by the
+    app's names for them, as the site says them too (web/card.js
+    themeSaid marks the catalogue's LEGO and Legoland first; script_table
+    keys them by their context)."""
+    return {english: said for english, said in theme_entries(code).items() if said != english}
+
+
+def script_table(code: str, words: dict) -> dict[str, str]:
+    """Every word a copy's scripts may say, in [code]'s language: a copy
+    carries it (#site-words), and /<code>/words.json is it for the sign-in's
+    dialogs on a page with no copy. A theme by its context, as gettext keys
+    it ("theme\x04Space"), so a theme and a word alike in English are each
+    said their own way (web/card.js themeSaid)."""
+    return {**{f"theme\x04{english}": said for english, said in themes(code).items()}, **words.get("scripts", {})}
 
 
 def address(code: str, where: str) -> str:
@@ -348,8 +414,7 @@ def translated(name: str, code: str, words: dict) -> tuple[str, list[str], list[
 
     out = re.sub(r'<script type="application/ld\+json">(.*?)</script>', ld, out, flags=re.S)
     # Its words for the page's scripts, and where it was made from.
-    scripts = {**themes(code), **words.get("scripts", {})}
-    data = json.dumps(scripts, ensure_ascii=False, sort_keys=True).replace("</", "<\\/")
+    data = json.dumps(script_table(code, words), ensure_ascii=False, sort_keys=True).replace("</", "<\\/")
     out = out.replace("</head>", f'<script type="application/json" id="site-words">{data}</script>\n</head>', 1)
     out = re.sub(r"<!--.*?-->", f"<!-- web/{name} in {LANGUAGES[code]}, written by tools/site_lang.py from it and "
                  f"web/_lang/{code}.json: change those and run it, never this. -->", out, count=1, flags=re.S)
@@ -408,6 +473,8 @@ def written() -> dict[Path, tuple[str, list[str], list[str]]]:
         words = table(code)
         for name, where in PAGES.items():
             out[WEB / code / (f"{where}.html" if where else "index.html")] = translated(name, code, words)
+        said = json.dumps(script_table(code, words), ensure_ascii=False, sort_keys=True, indent=0)
+        out[WEB / code / "words.json"] = (said + "\n", [], [])
     return out
 
 
@@ -420,7 +487,7 @@ def main(argv: list[str]) -> int:
             for key in translated(name, asked, words)[1]:
                 missing["pages"][key] = ""
         for word in script_words():
-            if word not in words.get("scripts", {}) and word not in themes(asked):
+            if word not in words.get("scripts", {}):
                 missing["scripts"][word] = ""
         print(json.dumps(missing, ensure_ascii=False, indent=1))
         return 0
@@ -445,10 +512,16 @@ def main(argv: list[str]) -> int:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
         wrote += 1
+    # A word shown in English where it is to be said through say().
+    for name in SAID_ALL:
+        left = unsaid((WEB / name).read_text(encoding="utf-8"))
+        if left:
+            problems.append(f"web/{name} shows {len(left)} words not said through say(), first {left[0]}: "
+                            "say(\"...\") them, so each language has them (tools/site_lang.py --missing)")
     # A word a script says with no entry: it would be said in English.
     said_by_scripts = script_words()
     for code in LANGUAGES:
-        has = {**themes(code), **table(code).get("scripts", {})}
+        has = table(code).get("scripts", {})
         short = [word for word in said_by_scripts if word not in has]
         if short:
             problems.append(f"web/_lang/{code}.json's scripts have no words for {len(short)} a script says, first "
@@ -465,7 +538,8 @@ def main(argv: list[str]) -> int:
     if problems:
         return 1
     count = len(LANGUAGES) * len(PAGES)
-    print(f"site_lang: {count} pages in {len(LANGUAGES)} languages" + ("" if check else f", {wrote} written"))
+    print(f"site_lang: {count} pages and their words in {len(LANGUAGES)} languages"
+          + ("" if check else f", {wrote} written"))
     return 0
 
 
