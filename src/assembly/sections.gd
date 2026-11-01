@@ -420,16 +420,45 @@ func _cut_on_a_worker(bricks: Array, wanted: int, job: Working.Job) -> Dictionar
 			elif made == null:
 				OS.delay_msec(2)
 		return made
+	# And what the order's step pictures read of each part from where it
+	# is alone, on a third worker beside the planner's reading of the model,
+	# which it needs nothing of: read as the order asked, it was a third of
+	# Orthanc's order (sectionsfast). Handed over as the graph is.
+	var pictured: Array = [null]
+	library.begin_reading()
+	var picturing: int = WorkerTasks.add(func() -> void:
+		var mine: Array = []
+		for brick_id: int in ids:
+			mine.append(still.get_brick(brick_id))
+		var made: Dictionary = Instructions.Pictures.read(mine, library)
+		sharing.lock()
+		pictured[0] = made
+		sharing.unlock(), false, "picture the sections' parts")
+	library.reading_in(picturing)
+	var pictured_mine := func() -> Dictionary:
+		var made: Variant = null
+		while made == null:
+			var ended: bool = WorkerThreadPool.is_task_completed(picturing)
+			sharing.lock()
+			made = pictured[0]
+			sharing.unlock()
+			if made == null and ended:
+				# Ended with none (a script error on it): asked as it goes.
+				return {}
+			if made == null:
+				OS.delay_msec(2)
+		return made
 	library.begin_reading()
 	var task: int = WorkerTasks.add(func() -> void:
 		var mine: Array = []
 		for brick_id: int in ids:
 			mine.append(still.get_brick(brick_id))
-		out[0] = _cut(mine, wanted, still, lattice, at_phase, graph_of_mine), false,
-		"suggest sections")
+		out[0] = _cut(mine, wanted, still, lattice, at_phase, graph_of_mine, pictured_mine),
+		false, "suggest sections")
 	library.reading_in(task)
 	while not WorkerThreadPool.is_task_completed(task) \
-			or not WorkerThreadPool.is_task_completed(joining):
+			or not WorkerThreadPool.is_task_completed(joining) \
+			or not WorkerThreadPool.is_task_completed(picturing):
 		await Engine.get_main_loop().process_frame
 		if job != null:
 			sharing.lock()
@@ -442,6 +471,8 @@ func _cut_on_a_worker(bricks: Array, wanted: int, job: Working.Job) -> Dictionar
 	library.end_reading(task)
 	WorkerTasks.collect(joining)
 	library.end_reading(joining)
+	WorkerTasks.collect(picturing)
+	library.end_reading(picturing)
 	at = _lap("collected", at)
 	still.free()
 	at = _lap("the copy freed", at)
@@ -628,7 +659,8 @@ func _suggest_from(bricks: Array, cut: Dictionary) -> void:
 ## parts before to the parts after, near every bag's worth; each run is
 ## then its pieces, by the joint graph, so each section is one piece.
 func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLattice = null,
-		stop_at: Callable = Callable(), graph_given: Callable = Callable()) -> Dictionary:
+		stop_at: Callable = Callable(), graph_given: Callable = Callable(),
+		pictured: Callable = Callable()) -> Dictionary:
 	if model == null:
 		model = world
 	if lattice == null:
@@ -666,7 +698,9 @@ func _cut(bricks: Array, wanted: int, model: BrickWorld = null, lattice: BrickLa
 		return {}
 	var built: Array[Instructions.Node2] = Instructions._contract(nodes, subs)
 	var named: bool = Instructions._assign_regions(built, {}, nodes.size())
-	var raw: Array = Instructions._sequence(built, named, Instructions._per_step(nodes.size()))
+	# With what the step pictures read beside it (_cut_on_a_worker), if they were.
+	var raw: Array = Instructions._sequence(built, named, Instructions._per_step(nodes.size()),
+		false, {}, pictured.call() if pictured.is_valid() else {})
 	var steps: Array[Instructions.Step] = Instructions._expand(raw, model)
 	if at_phase.call(6):
 		for made: Instructions.Assembly in subs:

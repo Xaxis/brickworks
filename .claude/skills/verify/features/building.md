@@ -1398,7 +1398,17 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   only where an answer can be: a part under one by the height of tops
   (`Instructions._hangers_of`), loops again only among parts on one, the
   next part among its region's own ready (`_sequence_into`)
-  (`command_probe --subjects=orthanc --only=suggest_sections`). The
+  (`command_probe --subjects=orthanc --only=suggest_sections`). Then
+  3.1 to 4.0 s became 2.3 to 2.8 s of its own, the same half hour at a
+  load of 6 to 16: a region's ready kept lowest first, looked through only
+  as high as the best so far can beat (`Instructions.Ready`, `_best_low`),
+  whether a part is near the step kept from one part of it to the next
+  (`_near_step_kept`), and what the step pictures read of each part from
+  where it is alone read on a third worker beside the order
+  (`Pictures.read`, `take`) (`sections_cost_probe`: under 3 s of its own
+  on the tower; with `--into=DIR` each model's sections and the planner's
+  steps written, the same byte for byte before and after on the tower,
+  10179-1, 42093-1 and 31025-1). The
   reading, the booklet's steps and the sections are the same, hash for
   hash, on the car, house, tower, kart, corner shop, castle, Orthanc,
   orrery, barn owl and station, with their authored steps and without, and
@@ -2702,6 +2712,11 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
 # split, merged, accepted, evaluated, Y out and back, undone and redone,
 # Shift+Y apart and together
 node tools/web/sections_flow.mjs --url=<preview>/app --bypass=… --out=shots/sections_web
+# Suggest sections on the Wizard's Tower under 3 s of its own, each try
+# suggesting what the first did, and on 10179-1, 42093-1 and 31025-1;
+# --into=DIR writes each model's sections and plan, to diff against
+# another checkout's
+godot --headless --path . --script src/dev/sections_cost_probe.gd
 # undo belongs to the model it was recorded against
 godot --headless --path . --script src/dev/history_probe.gd
 # an undo puts back what was taken and nothing more: count, scenery, the
