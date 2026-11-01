@@ -929,7 +929,8 @@
       "area": "mcp",
       "tests": [
         "tests/test_elements.py",
-        "tests/test_pck_split.py"
+        "tests/test_pck_split.py",
+        "tests/test_sets.py"
       ]
     },
     {

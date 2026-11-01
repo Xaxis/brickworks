@@ -206,8 +206,19 @@ reship() {
   # Stopped before its ship, it has no build to reuse and maybe no merge.
   [ -e "$SPEC/shipped" ] && [ -d "$WT/$tag" ] \
     || { echo "train: $tag stopped before its ship (${res:-no result}): stage it again"; exit 1; }
-  # By default the probes that did not pass in the attempt before: each
-  # named whose answer is missing or failed.
+  # By default the checks that did not pass in the attempt before: each it
+  # asked for (a reship's, or as staged) with no pass in its battery. Named
+  # none, rel-m242's reship ran site and frames alone, and would have
+  # shipped past the check that held it (2026-11-01).
+  if [ ${#checks[@]} -eq 0 ]; then
+    f=checks; [ -s "$SPEC/reship" ] && f=reship
+    words named "$f"
+    for n in "${named[@]}"; do
+      grep -q "^$n exit=0 " "$RO/${tag}_pv.out" 2>/dev/null || checks+=("$n")
+    done
+  fi
+  # And the probes that did not pass: each named whose answer is missing
+  # or failed.
   if [ -z "$asked" ]; then
     words named probes
     for n in "${named[@]}"; do

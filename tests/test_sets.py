@@ -256,7 +256,8 @@ const lots = [{ count: 48, name: "Slope Brick 31 1 x 2 x 0.667", colour_name: "L
   { count: 12, name: "Plate 1 x 2", colour_name: "Blue" }];
 console.log(JSON.stringify({ falcon: page("10179-1", { inside: [[S.catalogSet("4488-1"), 2]] }),
   explorer: page("10497-1", { lots }), chain: page("853900-1"),
-  brief: S.starterBrief(S.catalogSet("10497-1"), lots), files: S.sitemapSets(catalog.sets, "https://b.test") }));""")
+  brief: S.starterBrief(S.catalogSet("10497-1"), lots), files: S.sitemapSets(catalog.sets, "https://b.test"),
+  de: S.sitemapSets(catalog.sets, "https://b.test", "de") }));""")
     falcon, explorer, chain = said["falcon"], said["explorer"], said["chain"]
     for page in (falcon, explorer, chain):
         assert 'Set and inventory data: <a href="https://rebrickable.com/">Rebrickable</a>' in page
@@ -284,6 +285,8 @@ console.log(JSON.stringify({ falcon: page("10179-1", { inside: [[S.catalogSet("4
     assert '<meta name="robots"' not in explorer
     # Every set with parts in the sitemaps, the key chain not.
     assert said["files"] == [[f"https://b.test/library/set/{n}" for n in ["10179-1", "10497-1", "42115-1", "4488-1", "214.1-1"]]]
+    # And each language's copies in files of their own.
+    assert said["de"] == [[f"https://b.test/de/library/set/{n}" for n in ["10179-1", "10497-1", "42115-1", "4488-1", "214.1-1"]]]
 
 
 SITE = f"""
@@ -324,11 +327,14 @@ const none = await call({ op: "catalog_set", set: "nosuch-1" });
 const index = await call({ op: "sitemap_index" });
 const first = await call({ op: "sitemap_sets", n: "1" });
 const past = await call({ op: "sitemap_sets", n: "2" });
+const german = await call({ op: "sitemap_sets", n: "1", lang: "de" });
+const other = await call({ op: "sitemap_sets", n: "1", lang: "xx" });
 const owned = await call({ op: "catalog_owned", set: "10497-1" });
 console.log(JSON.stringify({ list: { status: list.status, total: list.body.total, of: list.body.of,
   ids: list.body.models.map((one) => one.id), years: list.body.years.length, credit: list.body.credit },
   page: [page.status, page.headers["cache-control"], page.body.includes("Key Chain Falcon")], none: none.status,
   index: index.body, first: (first.body.match(/<loc>/g) || []).length, past: past.status, owned: owned.status,
+  german: [german.status, german.body.match(/<loc>[^<]*<\/loc>/g) || []], other: other.status,
   db: asked.filter((one) => one.startsWith("https://db.test/rest")).length }));""")
     assert said["list"] == {"status": 200, "total": 3, "of": 6, "ids": ["set-10179-1", "set-4488-1", "set-853900-1"],
                             "years": 5, "credit": {"name": "Rebrickable", "url": "https://rebrickable.com/"}}
@@ -337,8 +343,71 @@ console.log(JSON.stringify({ list: { status: list.status, total: list.body.total
     assert "<loc>https://brickworks.test/sitemap.xml</loc>" in said["index"]
     assert "<loc>https://brickworks.test/sitemaps/sets-1.xml</loc>" in said["index"] and "sets-2.xml" not in said["index"]
     assert said["first"] == 5 and said["past"] == 404
+    # Each set page's German, French and Spanish copies, a sitemap each.
+    for code in ("de", "fr", "es"):
+        assert f"<loc>https://brickworks.test/sitemaps/sets-{code}-1.xml</loc>" in said["index"]
+    assert said["german"][0] == 200 and len(said["german"][1]) == 5
+    assert all(loc.startswith("<loc>https://brickworks.test/de/library/set/") for loc in said["german"][1])
+    assert said["other"] == 404
     # What somebody owns is theirs: nobody signed in is refused, and nothing asked of the database.
     assert said["owned"] == 401 and said["db"] == 0
+
+
+@needs_node
+def test_a_set_s_page_in_each_language_of_the_site() -> None:
+    # /de/library/set/<number> and its like (tools/deploy.sh routes them
+    # with &lang=): the page in the copy's words and chrome, its set's name
+    # as LEGO® publishes it, a theme through locale/<code>.po, and each
+    # language's page naming the others with its own canonical.
+    said = node(SITE + """
+const de = await call({ op: "catalog_set", set: "10497-1", lang: "de" });
+const es = await call({ op: "catalog_set", set: "853900-1", lang: "es" });
+const en = await call({ op: "catalog_set", set: "10497-1" });
+const other = await call({ op: "catalog_set", set: "10497-1", lang: "xx" });
+console.log(JSON.stringify({ de: de.body, es: es.body, en: en.body, statuses: [de.status, es.status, other.status] }));""")
+    assert said["statuses"] == [200, 200, 404]
+    words = {code: json.loads((ROOT / "web" / code / "words.json").read_text(encoding="utf-8")) for code in ("de", "es")}
+    for code, number, page in (("de", "10497-1", said["de"]), ("es", "853900-1", said["es"])):
+        assert f'<html lang="{code}">' in page
+        assert f'<link rel="canonical" href="https://brickworks.test/{code}/library/set/{number}">' in page
+        assert f'<meta property="og:url" content="https://brickworks.test/{code}/library/set/{number}">' in page
+        for other, at in (("en", ""), ("de", "/de"), ("fr", "/fr"), ("es", "/es"), ("x-default", "")):
+            assert f'<link rel="alternate" hreflang="{other}" href="https://brickworks.test{at}/library/set/{number}">' in page
+        # Its links stay in the language; the scripts on it read its words.
+        assert f'<a href="/{code}/library">{words[code]["Library"]}</a>' in page and 'id="site-words"' in page
+        assert f'<a class="skip" href="#main">{words[code]["Skip to content"]}</a>' in page
+    # What it shows, its words for its scripts left out.
+    de, es = (re.sub(r'<script [^>]*id="site-words".*?</script>', "", said[code], flags=re.S) for code in ("de", "es"))
+    assert "<h1>Galaxy Explorer</h1>" in de and words["de"]["Open its parts in Brickworks"] in de
+    assert "Open its parts in Brickworks" not in de and "every part" not in de and "Skip to content" not in es
+    # Gear is a word, so said in Spanish; the set's name is a name.
+    assert "<h1>Key Chain Falcon</h1>" in es and f'>{words["es"]["theme\x04Gear"]}</a>' in es
+    assert words["es"]["Rebrickable lists no parts for it: a book, gear or something else that is not built."] in es
+    # The English page names the copies and stays its own canonical.
+    assert '<html lang="en">' in said["en"] and '<link rel="canonical" href="https://brickworks.test/library/set/10497-1">' in said["en"]
+    assert '<link rel="alternate" hreflang="de" href="https://brickworks.test/de/library/set/10497-1">' in said["en"]
+
+
+@needs_node
+def test_a_parts_list_names_each_lot_as_the_app_does_in_the_language() -> None:
+    # api/_parts.js namesOf, from the names src/dev/write_part_names.gd
+    # writes from the app's own words: a part, its colour and its kind,
+    # each only where the app says it in the language, and a made part by
+    # what its maker called it.
+    names = {"parts": {"3004": "Stein 1×2"}, "colours": {"15": "Weiß"}, "categories": {"Brick": "Stein"}}
+    said = node(f"""
+import {{ namesOf, partNames, useNames }} from "./api/_parts.js";
+const names = useNames("de", {json.dumps(names)});
+console.log(JSON.stringify({{
+  brick: namesOf({{ part: "3004", colour: 15, category: "Brick", custom: false }}, names),
+  print: namesOf({{ part: "3004p01", colour: 4, category: "Brick", custom: false }}, names),
+  made: namesOf({{ part: "3004", colour: 15, category: "Brick", custom: true }}, names),
+  none: namesOf({{ part: "3004", colour: 15, category: "Brick" }}, null),
+  read: partNames("de") === names, odd: [partNames("../x"), partNames("xx")] }}));""")
+    assert said["brick"] == {"said": "Stein 1×2", "colour_said": "Weiß", "category_said": "Stein"}
+    assert said["print"] == {"category_said": "Stein"}
+    assert said["made"] == {"colour_said": "Weiß", "category_said": "Stein"}
+    assert said["none"] == {} and said["read"] is True and said["odd"] == [None, None]
 
 
 @needs_node

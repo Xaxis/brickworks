@@ -32,10 +32,12 @@
 // row with Follow in place, never you nor anybody you follow already;
 // shown only when somebody is close.
 //
-// Everything is put on the page as text.
-import { askToSignIn, call, email, madeUp, signOut, signedIn } from "/account.js";
+// Everything is put on the page as text, said in the visitor's language
+// as the sign-in's dialogs say theirs (web/account.js say): a Follow button
+// is in First steps on any page, a copy or not.
+import { askToSignIn, call, email, madeUp, say, signOut, signedIn } from "/account.js";
 import { earlyOn } from "/early.js";
-import { avatarHtml, say } from "/kit.js";
+import { avatarHtml } from "/kit.js";
 
 // A follow sent and not yet answered, kept for this tab until it is
 // (web295): Follow is drawn at once and the server answers 260-390 ms
@@ -77,16 +79,16 @@ const FOLLOWS = {
     sent: (handle, on) => ["/api/people?op=follow", { handle, on }],
     counted: (handle) => `[data-followers="${handle}"], .person[data-handle="${handle}"] [data-followers]`,
     signIn: "Sign in to follow people: we email you a code, no password.",
-    titles: ["See what they share in your feed", "You follow them: press to stop"],
-    followed: "What they share is in your feed now.",
+    title: (on) => (on ? say("You follow them: press to stop") : say("See what they share in your feed")),
+    followed: () => say("What they share is in your feed now."),
   },
   list: {
     asked: (id) => `/api/people?op=list_follows&id=${encodeURIComponent(id)}`,
     sent: (id, on) => ["/api/people?op=list_follow", { id, on }],
     counted: (id) => `[data-list-followers="${id}"]`,
     signIn: "Sign in to follow collections: we email you a code, no password.",
-    titles: ["See what is put in it in your feed", "You follow it: press to stop"],
-    followed: "What is put in it is in your feed now.",
+    title: (on) => (on ? say("You follow it: press to stop") : say("See what is put in it in your feed")),
+    followed: () => say("What is put in it is in your feed now."),
   },
 };
 
@@ -125,14 +127,14 @@ export async function followButton(button, known = null) {
   const kind = FOLLOWS[named];
   const handle = button.dataset.followList || button.dataset.follow;
   const said = button.parentElement?.querySelector(".said") || null;
-  const say = (words) => {
+  const tell = (words) => {
     if (said) said.textContent = words ? ` ${words}` : "";
   };
   let state = null;
   const draw = () => {
-    button.textContent = state.you_follow ? "Following" : "Follow";
+    button.textContent = state.you_follow ? say("Following") : say("Follow");
     button.setAttribute("aria-pressed", state.you_follow ? "true" : "false");
-    button.title = kind.titles[state.you_follow ? 1 : 0];
+    button.title = kind.title(state.you_follow);
     button.hidden = state.mine;
     // On your own page, Edit profile where Follow would be (docs/SOCIAL.md U6).
     const own = button.closest(".profile-head")?.querySelector("[data-edit-own]");
@@ -167,14 +169,14 @@ export async function followButton(button, known = null) {
     return;
   }
   button.addEventListener("click", async () => {
-    say("");
+    tell("");
     if (!state.signed_in) {
       if (!(await askToSignIn(kind.signIn))) return;
       if (!(await ask())) return;
       if (state.mine || state.you_follow) return;
     }
     if (!state.you_follow && !state.may) {
-      say(state.why_not);
+      tell(say(state.why_not));
       return;
     }
     // Drawn at once, as a card's like is, then as the server says; back as
@@ -189,12 +191,12 @@ export async function followButton(button, known = null) {
     if (answer.status !== 200) {
       state = was;
       draw();
-      say(answer.body.error || "That did not work just now. Try again in a minute.");
+      tell(answer.body.error ? say(answer.body.error) : say("That did not work just now. Try again in a minute."));
       return;
     }
     state = { ...state, ...answer.body };
     draw();
-    say(state.you_follow ? kind.followed : "");
+    tell(state.you_follow ? kind.followed() : "");
   });
 }
 

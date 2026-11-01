@@ -55,7 +55,7 @@ function language() {
 }
 
 /// The language's words fetched, where the page does not carry them: once.
-async function learn() {
+export async function learn() {
   const code = language();
   if (told || code === "en" || globalThis.brickworksLang?.code === code) return;
   told = await fetch(`/${code}/words.json`, { signal: AbortSignal.timeout(5000) })
@@ -63,13 +63,13 @@ async function learn() {
 }
 
 /// [english] in the visitor's language, each {name} filled from [values].
-function say(english, values = {}) {
+export function say(english, values = {}) {
   const said = told?.[english] ?? globalThis.brickworksLang?.say(english) ?? english;
   return said.replace(/\{(\w+)\}/g, (all, name) => (name in values ? String(values[name]) : all));
 }
 
 /// [dialog] marked as in the language it speaks where the page is not.
-function speaking(dialog) {
+export function speaking(dialog) {
   if (told) dialog.lang = language();
 }
 

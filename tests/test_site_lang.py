@@ -8,10 +8,12 @@ language, so nothing reaches the site half in English. And each copy says
 the LEGO Group's notice and the mark as the English does, in its language.
 
 The sign-in's dialogs (web/account.js) say every word through say(), from
-the copy's words or /<code>/words.json on a page with none, and every
-theme of the catalogue has an entry in locale/<code>.po, which the app's
-Library and the site's library both draw: this fails on an English word
-come back to the dialog, and on a theme with no entry.
+the copy's words or /<code>/words.json on a page with none, and so do
+First steps after it (web/first-steps.js) and a set's page, written on the
+server (api/_sets.js); every theme of the catalogue has an entry in
+locale/<code>.po, which the app's Library and the site's library both draw:
+this fails on an English word come back to one of them, and on a theme
+with no entry.
 """
 
 from __future__ import annotations
@@ -174,6 +176,41 @@ def test_an_english_word_back_in_the_dialog_is_caught() -> None:
     planted = text.replace('say("Not now")', '"Not now"', 1)
     assert planted != text and site_lang.unsaid(planted) == ['"Not now"']
     assert site_lang.unsaid('label.title = `Signed in as ${who}`; // A Comment\n') == ["`Signed in as ${who}`"]
+
+
+def test_first_steps_and_a_set_s_page_say_their_words() -> None:
+    # First steps after the sign-in (web/first-steps.js) and the Follow
+    # buttons in it (web/follow.js), what the profile API refuses a handle
+    # with, and a set's page as the server writes it (api/_sets.js) and the
+    # scripts on it: each word in each language.
+    words = site_lang.script_words()
+    assert {"Make your profile", "What do you build?", "Designers and models to start with", "See your feed"} <= set(words)
+    assert words["Following"] == words["You follow them: press to stop"] == "web/follow.js"
+    assert words["somebody already has that handle: choose another"] == "api/people.js"
+    assert words["that handle is kept for Brickworks itself: choose another"] == "api/_names.js"
+    assert {"Build it in 3D", "{name}, LEGO® set {set}: every part — Brickworks", "Parts you own",
+            "Parts you own: {have} of {pieces}. You are missing {missing} in {lots}.", "element {element}"} <= set(words)
+    for code in site_lang.LANGUAGES:
+        said = json.loads((ROOT / "web" / code / "words.json").read_text(encoding="utf-8"))
+        for english in ("Make your profile", "somebody already has that handle: choose another", "Build it in 3D"):
+            assert said[english] != english, f"{code}: {english}"
+
+
+def test_an_english_word_back_in_first_steps_or_a_set_s_page_is_caught() -> None:
+    for path, names, english in (("web/first-steps.js", (), "Make my profile"),
+                                 ("api/_sets.js", ("setPage",), "Build it in 3D"),
+                                 ("web/model-page.js", ("startParts",), "Other")):
+        text = (ROOT / path).read_text(encoding="utf-8")
+        assert site_lang.unsaid(site_lang.scope(path, names)) == [], path
+        planted = text.replace(f'say("{english}")', f'"{english}"', 1)
+        assert planted != text and site_lang.unsaid(site_lang.scope(path, names, planted)) == [f'"{english}"'], path
+
+
+def test_the_server_s_languages_are_the_site_s() -> None:
+    # api/_directory.js SITE_LANGS writes a set's page in each, and
+    # web/theme.js leads a reader to a copy in each.
+    directory = (ROOT / "api/_directory.js").read_text(encoding="utf-8")
+    assert json.loads(re.search(r"SITE_LANGS = (\[.*?\]);", directory).group(1)) == list(site_lang.LANGUAGES)
 
 
 @pytest.mark.skipif(not CATALOGUE.exists(), reason="no assets/generated/set_catalog.json (tools/set_catalog.py)")

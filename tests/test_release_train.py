@@ -701,6 +701,20 @@ def test_a_stopped_release_reships_with_its_fix_and_the_one_staged_after_waits_f
         assert y.spec("t-m5", "result").startswith("stopped: probes failed: fails"), y.logs()
         assert set(y.text("probes_run").split()[len(ran_before):]) == {"fails"}
         assert y.spec("t-m5", "probes.staged") == "fine fails"
+
+        # And the checks that did not pass: named none, rel-m242's reship ran
+        # site and frames alone, past the check that held it (2026-11-01).
+        assert y.train("stage", "t-m6", "stage2", "--checks", "io gallery",
+                       "--probes", "fails").returncode == 0
+        y.until(lambda: y.spec("t-m6", "result"))
+        # Held by gallery, as rel-m242 was by site_lang.
+        (y.ro / "t-m6_pv.out").write_text("io exit=0 fails=0 1s :: passed\n"
+                                          "gallery exit=1 fails=2 1s :: FAIL\ndone\n")
+        out = y.train("reship", "t-m6", "--probes", "fine")
+        assert out.returncode == 0, out.stdout + out.stderr
+        assert "reships from" in out.stdout and ": gallery (and site, frames)" in out.stdout, out.stdout
+        y.until(lambda: y.spec("t-m6", "result"))
+        assert y.text("t-m6_pv_args").split()[2:] == ["gallery", "site", "frames"], y.logs()
     finally:
         y.stop()
 

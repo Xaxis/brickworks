@@ -38,7 +38,13 @@ sized its own titles, from 26 to 74 px. Now:
   page's words are, down to 320 px: where the bar has no room for the
   word, the mark is the cube alone, the word wrapped out of sight with
   no breakpoint of its own (design_flow.mjs fails a header that runs
-  into the gutter at 320, 360 or 390 px). Everything in it is 44 px
+  into the gutter at 320, 360 or 390 px). On a phone Open the app is laid
+  out for the longest of the four languages ("Ouvrir l'application",
+  "Abrir la aplicación"): past about 8.5 em it takes two balanced lines in
+  the same 44 px rather than push the word out, so the word stays at 390
+  in all four and at 375 too (site_lang_flow.mjs checks it on every page
+  it opens); French gives it up at 360. Never a shorter word for a
+  language than its own. Everything in it is 44 px
   tall, a finger's: the mark, its links, Open the app and Sign in (the
   regular `.cta`, 44 px at 16, not a size of their own), Menu and your
   avatar's button (2026-10-26; they were 36-42). The footer: the mark,
@@ -130,7 +136,12 @@ entry in each language, or `tools/site_lang.py --check` fails. The
 sign-in's dialogs (`web/account.js`) open on every page, a copy or not, in
 the language chosen: their words come from `/<code>/words.json` where the
 page has none, and a word in them not said through `say()` fails the same
-check. A theme of the sets is said by `themeSaid()` (`web/card.js`), by
+check; so does First steps after them (`web/first-steps.js`). A set's
+page is written on the server (`api/_sets.js`), in the language at
+/de/library/set/<number> and so on, by the same `say()` and the gallery
+copy's chrome; its set's name is as LEGO® publishes it, never translated,
+and each language's page names the others (hreflang) with itself as its
+canonical. A theme of the sets is said by `themeSaid()` (`web/card.js`), by
 the app's own entry for it (`locale/<code>.po`, context "theme"), so the
 Library and the site name it alike. "LEGO®" stays an
 adjective in every language; the company is die LEGO Gruppe, le Groupe

@@ -285,9 +285,15 @@ export function pictureOf(model) {
 const isSet = (model) => Boolean(model.library) && typeof model.library === "object";
 
 /// A set's page: a set of the catalogue's own (api/_sets.js catalogCard,
-/// /library/set/<number>), else its LDraw model's, /library/<id>.
-const setPageOf = (model, id) => (typeof model.library.page === "string"
-  && /^\/library\/set\/[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/.test(model.library.page) ? model.library.page : `/library/${id}`);
+/// /library/set/<number>), in the page's language where it is not English
+/// (/de/library/set/<number>), else its LDraw model's, /library/<id>.
+const setPageOf = (model, id) => {
+  if (typeof model.library.page !== "string" || !/^\/library\/set\/[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/.test(model.library.page)) {
+    return `/library/${id}`;
+  }
+  const code = globalThis.brickworksLang?.code;
+  return /^(?:de|fr|es)$/.test(code || "") ? `/${code}${model.library.page}` : model.library.page;
+};
 
 /// The tags that say a model was made with the assistant or Brickify, as
 /// the guidelines ask a designer to tag it (web/guidelines.html), read for
