@@ -24,7 +24,9 @@
 ##     click on the highest section where it is drawn choosing it;
 ##   on the big one, the window keeps drawing while it is worked out on a
 ##     worker (its longest frame at most 100 ms, or no longer than 300 idle
-##     frames' of the same model on a loaded box), and Cancel stops it;
+##     frames' of the same model on a loaded box; each frame's own time,
+##     less the main thread's wait for a CPU, the 100 three times as long at
+##     a load past the box's cores: ProbeTime), and Cancel stops it;
 ##   evaluate_section, suggest_sections and break_out_section over MCP say
 ##     the same, and the read-only ones leave the model as it was.
 ## With --shots, pictures of the suggestion in the tree, a section broken
@@ -199,40 +201,39 @@ func _one_set(name: String) -> void:
 	# loaded, a frame with nothing to do took up to 140 ms (2026-10-17).
 	var idle: float = 0.0
 	if level_count() >= Sections.ON_A_WORKER_FROM:
-		var idle_at: int = Time.get_ticks_usec()
+		var idle_frames := ProbeTime.Frames.new()
+		root.add_child(idle_frames)
 		for _n: int in 300:
 			await process_frame
-			var now_idle: int = Time.get_ticks_usec()
-			idle = maxf(idle, (now_idle - idle_at) / 1000.0)
-			idle_at = now_idle
+		idle = float(ProbeTime.longest(idle_frames.gaps)[0])
+		idle_frames.queue_free()
 	var started: int = Time.get_ticks_msec()
-	var frames: Array = [0, Time.get_ticks_usec(), 0, ""]   # longest, last, how many, when
-	var watch: Callable = func() -> void:
-		var now: int = Time.get_ticks_usec()
-		if now - int(frames[1]) > int(frames[0]):
-			frames[0] = now - int(frames[1])
-			frames[3] = "after %s, %d ms in" % [str(_sections.laps.back()[0])
-				if not _sections.laps.is_empty() else "the start",
-				(now - started * 1000) / 1000]
-		frames[1] = now
-		frames[2] = int(frames[2]) + 1
-	process_frame.connect(watch)
+	var frames := ProbeTime.Frames.new()
+	frames.label = func() -> String: return str(_sections.laps.back()[0]) \
+		if not _sections.laps.is_empty() else "the start"
+	root.add_child(frames)
 	await _ui.suggest()
-	process_frame.disconnect(watch)
 	var took: int = Time.get_ticks_msec() - started
-	var longest_ms: float = int(frames[0]) / 1000.0
-	row["suggest_frames"] = int(frames[2])
+	# [its own ms, ms, the wait in it, its end, the lap it came after]
+	var longest: Array = ProbeTime.longest(frames.gaps)
+	var longest_ms: float = float(longest[0])
+	var count: int = frames.gaps.size()
+	var busy: float = maxf(frames.busy, ProbeTime.box_load())
+	frames.queue_free()
+	row["suggest_frames"] = count
 	if not _sections.laps.is_empty():
-		print("    on the window's thread: %s; the longest frame %s" % [str(_sections.laps),
-			str(frames[3])])
+		print("    on the window's thread: %s; the longest frame after %s, %d ms in" % [
+			str(_sections.laps), str(longest[4]), int(longest[3]) / 1000 - started])
 	row["suggest_longest_frame_ms"] = snappedf(longest_ms, 0.1)
 	if level_count() >= Sections.ON_A_WORKER_FROM:
 		# At most 100 ms, or no longer than the idle window's own longest.
 		row["idle_longest_frame_ms"] = snappedf(idle, 0.1)
+		var bar: float = 100.0 * ProbeTime.slack(busy)
 		_check("%s: the window keeps drawing while it is worked out on a worker: %d frames "
-			% [name, int(frames[2])] + "in %d ms, the longest %.0f ms (at most 100, or the "
-			% [took, longest_ms] + "%.0f ms of 300 idle frames)" % idle,
-			(longest_ms <= 100.0 or longest_ms <= idle + 10.0) and int(frames[2]) > 5)
+			% [name, count] + "in %d ms, the longest %.0f ms of its own (%.0f waiting for a CPU; "
+			% [took, longest_ms, float(longest[2])] + "at most %.0f, or the %.0f ms of 300 idle frames; %s)"
+			% [bar, idle, ProbeTime.load_said(busy)],
+			(longest_ms <= bar or longest_ms <= idle + 10.0) and count > 5)
 	var made: Array = _sections.suggested
 	row["suggest_ms"] = took
 	row["sections"] = made.size()

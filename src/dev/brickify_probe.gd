@@ -303,8 +303,15 @@ func _run() -> void:
 	if not big.is_empty():
 		var ms: Dictionary = big["ms"]
 		var total: int = int(ms["measure"]) + int(ms["lay"]) + int(ms["check"])
-		_check("in seconds: %.1f s (measured %d ms, laid %d ms, checked %d ms)" % [total / 1000.0,
-			ms["measure"], ms["lay"], ms["check"]], total < 20000)
+		# Of the app's own time: less the phases' share of the main thread's
+		# wait for a CPU over the build, the bar three times as long at a
+		# load past the box's cores (ProbeTime).
+		var span: ProbeTime.Span = big["span"]
+		var own: float = total * span.own / maxf(span.ms, 0.001)
+		var most: float = 20000.0 * span.slack()
+		_check("in seconds: %.1f s of its own, under %.0f (measured %d ms, laid %d ms, checked %d ms; the build %s)"
+			% [own / 1000.0, most / 1000.0, ms["measure"], ms["lay"], ms["check"], span.said()],
+			own < most)
 
 	# The sphere and the forty-stud bunny laid upright, as before unit 5, for
 	# the bond's figures against main's and the sideways ones against these.
@@ -376,9 +383,10 @@ func _run() -> void:
 
 func _brickify(name: String, mesh: MeshFile, options: Brickify.Options,
 		out_dir: String) -> Dictionary:
-	var t0: int = Time.get_ticks_msec()
+	var span := ProbeTime.Span.new()
 	var result: Dictionary = Brickify.build(mesh, options, _checker)
-	var took: int = Time.get_ticks_msec() - t0
+	var took: int = roundi(span.end().ms)
+	result["span"] = span
 	if result.has("error"):
 		_check("%s: %s" % [name, result["error"]], false)
 		return {}

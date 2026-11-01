@@ -7,7 +7,9 @@
 ## stud joints and put each joint pins or axles alone make among the parts
 ## "held otherwise". Here the D11 is weighed as Stress weighs it
 ## (Stability.check with its margins, Main.weigh_joints on a worker): it must
-## finish in under [constant MOST_MS], and its joints must count pins and
+## finish in under [constant MOST_MS] of its own (less the main thread's
+## wait for a CPU, three times as long at a load past the box's cores:
+## ProbeTime), and its joints must count pins and
 ## axles (Balance._pin_load): an axle keyed in its hole or pins on two lines
 ## held square, on one line a friction pin against its torque and a
 ## frictionless one against nothing; and Stress's own words (StressView.said)
@@ -52,15 +54,17 @@ func _run() -> void:
 	judge.lattice = builder.lattice
 	judge.floor_ids = store.scenery
 	judge.with_margins = true
-	var began: int = Time.get_ticks_msec()
+	var span := ProbeTime.Span.new()
 	var report: Stability.Report = judge.check(world)
-	var took: int = Time.get_ticks_msec() - began
+	var took: float = span.end().own
 	var kinds: Dictionary = {}
 	for one: Balance.JointLoad in report.margins.values():
 		kinds[one.kind] = int(kinds.get(one.kind, 0)) + 1
-	print("  weighed as Stress weighs it in %d ms: %s; %d joints: %s" % [took, report.summary(),
+	print("  weighed as Stress weighs it in %.0f ms: %s; %d joints: %s" % [span.ms, report.summary(),
 		report.margins.size(), kinds])
-	_check("Stress on the D11 in under %d s: %.1f s" % [MOST_MS / 1000, took / 1000.0], took < MOST_MS)
+	var most: float = MOST_MS * span.slack()
+	_check("Stress on the D11 in under %.0f s of its own: %s" % [most / 1000.0, span.said()],
+		took < most)
 	var pins: int = 0
 	for kind: String in kinds:
 		if kind != "studs":

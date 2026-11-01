@@ -9,8 +9,10 @@
 ##
 ##   - the bar is up in the very frame the thing was pressed, before any of
 ##     the slow work has been done (the work starts the frame after);
-##   - while Timeline works out the steps, no frame is over BUDGET_MS, the
-##     count goes up, and the steps come out the same as Instructions.plan's;
+##   - while Timeline works out the steps, no frame is over BUDGET_MS of
+##     the app's own time (less the main thread's wait for a CPU, three times
+##     the budget at a load past the box's cores: ProbeTime), the count goes
+##     up, and the steps come out the same as Instructions.plan's;
 ##   - and no frame's own work in the sub-assembly search is over
 ##     OWN_BUDGET_MS, judged in software too: the scripts' part of a frame,
 ##     from its start to its drawing, which a slow drawing does not stretch,
@@ -43,14 +45,8 @@ const BUDGET_MS := 200.0
 const OWN_BUDGET_MS := 100.0
 
 var _failures: int = 0
-var _last_us: int = 0
-var _gaps: Array = []   ## [end in usec, ms]
-## Each frame's own work, from process_frame to the drawing: [end in usec,
-## ms, the bar's words as the frame ended, ms less the main thread's wait
-## for a CPU].
-var _own: Array = []
-var _own_from: int = 0
-var _own_waited: float = 0.0
+## Each frame, and each frame's own work with the bar's words as it ended.
+var _frame_times: ProbeTime.Frames
 var _software: bool = false
 var _errors := _Errors.new()
 
@@ -80,47 +76,27 @@ func _initialize() -> void:
 	_run()
 
 
-func _process(_delta: float) -> bool:
-	var now: int = Time.get_ticks_usec()
-	if _last_us > 0:
-		_gaps.append([now, (now - _last_us) / 1000.0])
-	_last_us = now
-	return false
-
-
-## The longest frame of its own since [param from] while the bar said
-## [param words], and the longest for each thing it said.
+## The longest frame of its own since [param from], its waits for a CPU
+## aside, for each thing the bar said.
 func _own_worst_since(from: int) -> Dictionary:
 	var worst: Dictionary = {}
-	for frame: Array in _own:
+	for frame: Array in _frame_times.work:
 		if int(frame[0]) - int(float(frame[1]) * 1000.0) < from:
 			continue
-		var said: String = str(frame[2])
-		worst[said] = maxf(float(worst.get(said, 0.0)), float(frame[3]))
+		var said: String = str(frame[3])
+		worst[said] = maxf(float(worst.get(said, 0.0)), maxf(float(frame[1]) - float(frame[2]), 0.0))
 	return worst
 
 
-## The main thread's time waiting for a CPU so far, in ms
-## (booklet_stream_probe's).
-static func _waited_ms() -> float:
-	var stat: FileAccess = FileAccess.open("/proc/self/schedstat", FileAccess.READ)
-	if stat == null:
-		return 0.0
-	var fields: PackedStringArray = stat.get_line().split(" ", false)
-	return fields[1].to_float() / 1e6 if fields.size() > 1 else 0.0
-
-
-## The box's load over the last minute.
-static func _load() -> float:
-	var load: FileAccess = FileAccess.open("/proc/loadavg", FileAccess.READ)
-	return load.get_line().get_slice(" ", 0).to_float() if load != null else 0.0
-
-
-func _worst_since(from: int) -> float:
-	var worst: float = 0.0
-	for gap: Array in _gaps:
+## The longest frame since [param from], drawing included, its wait for a
+## CPU aside: [its own ms, the wait in it].
+func _worst_since(from: int) -> Array:
+	var worst: Array = [0.0, 0.0]
+	for gap: Array in _frame_times.gaps:
 		if int(gap[0]) - int(float(gap[1]) * 1000.0) >= from:
-			worst = maxf(worst, float(gap[1]))
+			var own: float = maxf(float(gap[1]) - float(gap[2]), 0.0)
+			if own > float(worst[0]):
+				worst = [own, float(gap[2])]
 	return worst
 
 
@@ -152,18 +128,11 @@ func _run() -> void:
 		or adapter.contains("swiftshader")
 	var main: Node = load("res://src/main.tscn").instantiate()
 	root.add_child(main)
-	# First of what runs in a frame: connected before any coroutine waits
-	# on it, so what they do when they wake is counted.
-	process_frame.connect(func() -> void:
-		_own_from = Time.get_ticks_usec()
-		_own_waited = _waited_ms())
-	RenderingServer.frame_pre_draw.connect(func() -> void:
-		if _own_from > 0:
-			var now: int = Time.get_ticks_usec()
-			var ms: float = (now - _own_from) / 1000.0
-			_own.append([now, ms, Working.current().words if Working.is_busy() else "",
-				maxf(ms - (_waited_ms() - _own_waited), 0.0)])
-		_own_from = 0)
+	# First of what runs in a frame: added before any coroutine waits on
+	# it, so what they do when they wake is counted.
+	_frame_times = ProbeTime.Frames.new()
+	_frame_times.label = func() -> String: return Working.current().words if Working.is_busy() else ""
+	root.add_child(_frame_times)
 	await _frames(120)
 	var playback: BuildPlayback = main.get("_playback")
 	playback.stop()
@@ -214,7 +183,7 @@ func _run() -> void:
 	# processing, which is where starting the work at the next process_frame
 	# went wrong — that is the same frame, not yet drawn.
 	var began: int = Time.get_ticks_usec()
-	var load_at_press: float = _load()
+	var load_at_press: float = ProbeTime.box_load()
 	_key(KEY_B)
 	var job: Working.Job = null
 	for _n: int in 10:
@@ -233,11 +202,14 @@ func _run() -> void:
 		and Instructions.laps.is_empty())
 	var seen: Dictionary = await _while_busy(180.0)
 	var took: float = (Time.get_ticks_usec() - began) / 1000.0
-	var worst: float = _worst_since(began)
-	_check("the steps are worked out in %.1f s, the longest frame %.0f ms (budget %.0f)%s; it said %s"
-		% [took / 1000.0, worst, BUDGET_MS, ", in software, so not judged" if _software else "",
+	var worst: Array = _worst_since(began)
+	var busy: float = maxf(load_at_press, ProbeTime.box_load())
+	var budget: float = BUDGET_MS * ProbeTime.slack(busy)
+	_check("the steps are worked out in %.1f s, the longest frame %.0f ms of its own (%.0f waiting for a CPU; budget %.0f; %s)%s; it said %s"
+		% [took / 1000.0, worst[0], worst[1], budget, ProbeTime.load_said(busy),
+			", in software, so not judged" if _software else "",
 			", then ".join(PackedStringArray(seen["words"]))],
-		steps.visible and (_software or worst <= BUDGET_MS))
+		steps.visible and (_software or float(worst[0]) <= budget))
 	_check("...counting as it went (up to %d)" % int(seen["counted"]), int(seen["counted"]) > 1000)
 	var own: Dictionary = _own_worst_since(began)
 	var each := PackedStringArray()
@@ -245,10 +217,10 @@ func _run() -> void:
 		each.append("%s %.0f" % [said if not said.is_empty() else "(the bar gone)", float(own[said])])
 	print("    (each thing's longest frame of its own, ms: %s)" % ", ".join(each))
 	var search: float = float(own.get("Finding what is built on the side…", -1.0))
-	var busy: float = maxf(load_at_press, _load())
-	var own_budget: float = OWN_BUDGET_MS * (3.0 if busy > OS.get_processor_count() else 1.0)
-	_check("...and the sub-assembly search's longest frame of its own %.0f ms, its waits for a CPU aside (budget %.0f; load %.0f of %d cores)"
-		% [search, own_budget, busy, OS.get_processor_count()],
+	busy = maxf(busy, ProbeTime.box_load())
+	var own_budget: float = OWN_BUDGET_MS * ProbeTime.slack(busy)
+	_check("...and the sub-assembly search's longest frame of its own %.0f ms, its waits for a CPU aside (budget %.0f; %s)"
+		% [search, own_budget, ProbeTime.load_said(busy)],
 		search >= 0.0 and search <= own_budget)
 	_check("...and the bar is gone once the timeline is up", not Working.is_busy())
 	var laps: PackedStringArray = PackedStringArray(Instructions.laps.map(
@@ -361,8 +333,8 @@ func _run() -> void:
 	began = Time.get_ticks_usec()
 	var note: String = await main.call("_export_booklet", path)
 	process_frame.disconnect(watcher)
-	var booklet_worst: float = _worst_since(began)
-	_check("the car's booklet: %s, counted %s, the longest frame %.0f ms" % [note,
+	var booklet_worst: float = float(_worst_since(began)[0])
+	_check("the car's booklet: %s, counted %s, the longest frame %.0f ms of its own" % [note,
 		JSON.stringify(counts), booklet_worst], note.begins_with("wrote ")
 		and counts.has("Drawing the steps…") and not Working.is_busy())
 	# And stopped part way.

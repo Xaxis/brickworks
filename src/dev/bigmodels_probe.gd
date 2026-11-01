@@ -164,15 +164,20 @@ func _hidden_quick() -> void:
 		most[1] = maxi(most[1], RenderingServer.get_rendering_info(
 			RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME))
 	process_frame.connect(sample)
-	var t: int = Time.get_ticks_usec()
+	# Of the app's own time, less the main thread's wait for a CPU, and the
+	# bar three times as long at a load past the box's cores (ProbeTime):
+	# the views are drawn on the GPU, which the load does not slow, but each
+	# is read back and tallied on the main thread, which it does.
+	var span := ProbeTime.Span.new()
 	var result: SeenParts.Result = await seen.measure(bricks)
-	var took: int = _ms(t)
+	span.end()
 	process_frame.disconnect(sample)
-	print("    orthanc, %d sides x %d: %d ms, %d hidden; a frame drew at most %d primitives in %d calls"
-		% [result.views, result.samples, took, result.hidden().size(), most[0], most[1]])
-	_check("orthanc measured from every side in %d ms (5,000 or less)" % took,
-		result.complete and result.views == SeenParts.directions(SeenParts.VIEWS).size()
-		and took <= 5000)
+	print("    orthanc, %d sides x %d: %.0f ms, %d hidden; a frame drew at most %d primitives in %d calls"
+		% [result.views, result.samples, span.ms, result.hidden().size(), most[0], most[1]])
+	_check("orthanc measured from every side in %s (%.0f or less)" % [span.said(),
+		5000 * span.slack()], result.complete
+		and result.views == SeenParts.directions(SeenParts.VIEWS).size()
+		and span.own <= 5000 * span.slack())
 
 
 ## Everything connected, from one part: what the full search finds.
@@ -211,11 +216,11 @@ func _joined() -> void:
 	_verbs.select_by("all")
 	await _frames(3)
 	var seeds: Array = _builder.selection.keys()
-	t = Time.get_ticks_usec()
+	var span := ProbeTime.Span.new()
 	var every: Array = SelectBy.connected(_world, lattice, seeds, scenery)
-	var at_once_ms: int = _ms(t)
-	_check("with all %d selected it stops at once (%d ms)" % [seeds.size(), at_once_ms],
-		every.size() == seeds.size() and at_once_ms < 100)
+	span.end()
+	_check("with all %d selected it stops at once (%s, under %.0f)" % [seeds.size(), span.said(),
+		100 * span.slack()], every.size() == seeds.size() and span.own < 100 * span.slack())
 	_verbs.select_by("none")
 	await _frames(3)
 

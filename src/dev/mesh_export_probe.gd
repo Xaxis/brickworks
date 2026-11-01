@@ -32,10 +32,16 @@ var _library: PartLibrary
 var _exports: Exports
 var _next: int = 0
 var _out: String = ""
-## The longest the frame was held while an export ran, in microseconds.
+## The longest the frame was held while an export ran, in microseconds: of
+## the app's own time, less the main thread's wait for a CPU (ProbeTime).
 var _held_us: int = 0
+## The main thread's wait for a CPU in that frame, in ms.
+var _held_waited: float = 0.0
 var _last_frame_us: int = 0
+var _last_waited: float = 0.0
 var _timing: bool = false
+## The box's load when the timing began.
+var _busy: float = 0.0
 
 
 func _initialize() -> void:
@@ -80,13 +86,18 @@ func _run() -> void:
 
 func _on_frame() -> void:
 	var now: int = Time.get_ticks_usec()
+	var waited: float = ProbeTime.waited_ms()
+	var own_us: int = now - _last_frame_us - int((waited - _last_waited) * 1000.0)
 	if _timing and _last_frame_us > 0:
-		_held_us = maxi(_held_us, now - _last_frame_us)
-		if now - _last_frame_us > 150000:
+		if own_us > _held_us:
+			_held_us = own_us
+			_held_waited = waited - _last_waited
+		if own_us > 150000:
 			var job: Working.Job = Working.current()
-			_long.append("%d ms at \"%s\"" % [(now - _last_frame_us) / 1000,
+			_long.append("%d ms at \"%s\"" % [own_us / 1000,
 				job.line() if job != null else "-"])
 	_last_frame_us = now
+	_last_waited = waited
 
 
 ## Frames held past 150 ms while timing, and what the bar said then.
@@ -99,6 +110,8 @@ func _time_from_here() -> void:
 		await process_frame
 	_long.clear()
 	_held_us = 0
+	_held_waited = 0.0
+	_busy = ProbeTime.box_load()
 	_timing = true
 
 
@@ -570,8 +583,11 @@ func _orthanc() -> void:
 				OS.get_static_memory_peak_usage() / 1048576.0])
 			if model != "Orthanc":
 				continue
-			_check("Orthanc as %s: no frame held past 250 ms (%d)" % [format, _held_us / 1000],
-				_held_us < 250000)
+			var busy: float = maxf(_busy, ProbeTime.box_load())
+			var most: float = 250.0 * ProbeTime.slack(busy)
+			_check("Orthanc as %s: no frame held past %.0f ms of its own (%d, %.0f waiting for a CPU; %s)"
+				% [format, most, _held_us / 1000, _held_waited, ProbeTime.load_said(busy)],
+				_held_us < most * 1000.0)
 			match format:
 				"glb":
 					_check("Orthanc's GLB whole: %.1f s, %.1f MB" % [took / 1000.0, size / 1048576.0],

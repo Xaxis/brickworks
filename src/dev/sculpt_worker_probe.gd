@@ -19,9 +19,10 @@
 ##                through the connector as a session makes them, each round's
 ##                sculpts new (another colour), with edits between, until
 ##                twenty and more are laid back to back. Every frame's own
-##                work is timed (OwnFrames): the longest while one is laid
-##                must be under 100 ms on a graphics card (said, not judged,
-##                drawn in software);
+##                work is timed (OwnFrames' way, less the main thread's wait
+##                for a CPU: ProbeTime): the longest while one is laid must
+##                be under 100 ms on a graphics card, 300 at a load past the
+##                box's cores (said, not judged, drawn in software);
 ##   said         the Working bar says "Laying a sculpt…" while it goes;
 ##   the panel    the Brickify panel laying a model at the same time as a
 ##                sculpt: one waits for the other (Brickify.begin_laying), and
@@ -41,6 +42,8 @@ var _software: bool = false
 var _own_ms: float = 0.0
 var _laying_said: bool = false
 var _watching: bool = false
+## Every frame's own work (ProbeTime.Frames).
+var _frames: ProbeTime.Frames
 var _main: Node
 var _assistant: Assistant
 var _rpc: CommandSocket
@@ -69,11 +72,11 @@ func _run() -> void:
 	var adapter: String = RenderingServer.get_video_adapter_name().to_lower()
 	_software = adapter.contains("llvmpipe") or adapter.contains("lavapipe") \
 		or adapter.contains("swiftshader")
-	var frames := OwnFrames.new()
-	root.add_child(frames)
-	frames.timed.connect(func(spent_us: int) -> void:
-		if _watching:
-			_own_ms = maxf(_own_ms, spent_us / 1000.0))
+	_frames = ProbeTime.Frames.new()
+	# From the next frame, as OwnFrames: this one lays every design on the
+	# main thread first (_same), which is not what is timed.
+	_frames.from_now = false
+	root.add_child(_frames)
 	var calls: Array = JSON.parse_string(FileAccess.get_file_as_string(
 		"res://src/dev/fixtures/sculpt_designs.json"))
 	print("")
@@ -110,9 +113,9 @@ func _same(calls: Array) -> void:
 		_assistant._sculpts_laid.clear()
 		var began: int = Time.get_ticks_msec()
 		_watching = true
-		_own_ms = 0.0
 		await _assistant._sculpt_ready(designs[n][1])
 		_watching = false
+		_own_ms = float(ProbeTime.longest(_frames.work, began * 1000)[0])
 		var main_laid: Dictionary = on_main[n]
 		var worker_laid: Dictionary = _assistant._sculpts_laid.duplicate(true)
 		var same: bool = main_laid.keys() == worker_laid.keys()
@@ -122,7 +125,7 @@ func _same(calls: Array) -> void:
 				and var_to_str(main_laid[key]) == var_to_str(worker_laid[key])
 			parts.append(int((main_laid[key] as Dictionary).get("parts", 0)))
 			compared += 1
-		_check("%s: %s, %s parts, on the worker in %d ms, its longest frame %.0f ms" % [
+		_check("%s: %s, %s parts, on the worker in %d ms, its longest frame %.0f ms of its own" % [
 			designs[n][0], "byte for byte the same" if same else "NOT the same",
 			", ".join(PackedStringArray(parts.map(func(v: Variant) -> String: return str(v)))),
 			Time.get_ticks_msec() - began, _own_ms], same and not main_laid.is_empty())
@@ -141,6 +144,7 @@ func _back_to_back(calls: Array) -> void:
 	_assistant._sculpts_laid.clear()
 	var laid: int = 0
 	var worst: float = 0.0
+	var over: int = 0
 	var round: int = 0
 	while laid < LAID_AT_LEAST and round < COLOURS.size():
 		var subject: String = ""
@@ -153,41 +157,49 @@ func _back_to_back(calls: Array) -> void:
 				if raw is Dictionary and str(raw.get("pattern")) == "sculpt":
 					raw["color"] = COLOURS[round]
 			var answer: Array = await _call(str(call["name"]), input)
+			var under: bool = float(answer[1]) <= float(answer[4])
 			if answer[2]:
 				laid += 1
 				worst = maxf(worst, float(answer[1]))
+				over += 0 if under else 1
 			# Answered, whatever the check made of the design: some of the
 			# sessions' first tries float, as they did on the bench.
-			_check("%s's %s, round %d: %s; its longest frame %.0f ms%s: %s" % [subject,
-				call["name"], round + 1, "a sculpt laid" if answer[2] else "laid already",
-				float(answer[1]), "" if float(answer[1]) <= BUDGET_MS or _software
-				else " (over %.0f)" % BUDGET_MS, str(answer[0]).left(90)],
-				(_software or float(answer[1]) <= BUDGET_MS) and not answer[3])
+			_check("%s's %s, round %d: %s; its longest frame %.0f ms of its own (%s)%s: %s" % [
+				subject, call["name"], round + 1, "a sculpt laid" if answer[2] else "laid already",
+				float(answer[1]), answer[5], "" if under or _software
+				else " (over %.0f)" % float(answer[4]), str(answer[0]).left(90)],
+				(_software or under) and not answer[3])
 			if call["name"] == "submit_design":
 				await _edits_between()
 		round += 1
-	_check("%d sculpts laid back to back, the longest frame while one was %.0f ms%s" % [laid,
-		worst, " (drawn in software, so not judged)" if _software else ""],
-		laid >= LAID_AT_LEAST and (_software or worst <= BUDGET_MS))
+	_check("%d sculpts laid back to back, the longest frame of its own while one was %.0f ms, %d over its bar%s"
+		% [laid, worst, over, " (drawn in software, so not judged)" if _software else ""],
+		laid >= LAID_AT_LEAST and (_software or over == 0))
 
 
 ## [the answer's text, the longest frame's own work in ms while it ran,
 ## whether the bar said a sculpt was being laid, whether it was an error].
 func _call(name: String, input: Dictionary) -> Array:
-	_own_ms = 0.0
 	_laying_said = false
 	_watching = true
+	var from: int = Time.get_ticks_usec()
+	var busy: float = ProbeTime.box_load()
 	var answer: Variant = await _rpc.answer_rpc({"jsonrpc": "2.0", "id": 1,
 		"method": "tools/call", "params": {"name": name, "arguments": input}})
 	await process_frame
 	_watching = false
+	# [its own ms, ms, the wait in it, ...]
+	var longest: Array = ProbeTime.longest(_frames.work, from)
+	_own_ms = float(longest[0])
+	busy = maxf(busy, ProbeTime.box_load())
 	var result: Dictionary = (answer as Dictionary).get("result", {}) if answer is Dictionary else {}
 	var text: String = ""
 	for block: Variant in result.get("content", []):
 		if block is Dictionary and str(block.get("type")) == "text":
 			text += str(block.get("text", "")).replace("\n", " ")
 	return [text, _own_ms, _laying_said, answer == null or bool(result.get("isError", false))
-		or (answer as Dictionary).has("error")]
+		or (answer as Dictionary).has("error"), BUDGET_MS * ProbeTime.slack(busy),
+		"%.0f waiting for a CPU; %s" % [float(longest[2]), ProbeTime.load_said(busy)]]
 
 
 ## A session's edits after a submit, and the person's undo: a brick added, a

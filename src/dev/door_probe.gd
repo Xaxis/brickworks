@@ -358,7 +358,9 @@ func _shape_comes_late() -> void:
 ## A door in hand swept across a row of eight frames, a move a step, as
 ## bigmodel_probe sweeps a part: what aiming costs a move (Builder.
 ## update_preview), the median and the worst, and how many moves were on a
-## hinge. Held under 2 ms a move headless, as a 2 x 4 brick's is.
+## hinge. Held under 2 ms a move headless, as a 2 x 4 brick's is: of the
+## app's own time, less the main thread's wait for a CPU, three times as
+## long at a load past the box's cores (ProbeTime).
 func _swept_across() -> void:
 	print("\na door swept across a row of eight frames")
 	_clear()
@@ -366,15 +368,22 @@ func _swept_across() -> void:
 		_builder.put_part("60596", 15, Transform3D(Basis.IDENTITY, Vector3(-280 + n * 80, 144, 0)))
 	_aim("60621", Vector3(-320, 72, 10))
 	var times: Array = []
+	var spans: Array = []
 	var on: int = 0
 	for n: int in 80:
 		var point := Vector3(-320 + n * 8, 72 + 40 * sin(n * 0.4), 10)
-		var t0: int = Time.get_ticks_usec()
+		var span := ProbeTime.Span.new()
 		_builder.update_preview(EYE, (point - EYE).normalized())
-		times.append((Time.get_ticks_usec() - t0) / 1000.0)
+		spans.append(span.end())
+		times.append(span.own)
 		if _builder.is_on_joint():
 			on += 1
 	times.sort()
 	var median: float = times[times.size() / 2]
-	_ok(median < 2.0 and on > 40, "aiming %.2f ms a move (worst %.2f), on a hinge in %d of %d moves"
-		% [median, times.back(), on, times.size()])
+	var busy: float = ProbeTime.busiest(spans)
+	var bar: float = 2.0 * ProbeTime.slack(busy)
+	var waited: float = 0.0
+	for span: ProbeTime.Span in spans:
+		waited += span.waited
+	_ok(median < bar and on > 40, "aiming %.2f ms of its own a move, under %.0f (worst %.2f; %.1f ms waiting for a CPU in all; %s), on a hinge in %d of %d moves"
+		% [median, bar, times.back(), waited, ProbeTime.load_said(busy), on, times.size()])
