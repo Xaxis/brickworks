@@ -183,6 +183,7 @@ const MAPPED = [
   [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.](page)[.]webp$/, "share", "catalog_photo"],
   [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]webp$/, "share", "catalog_photo"],
   [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/?$/, "share", "catalog_set"],
+  [/^\/(de|fr|es)\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/?$/, "share", "catalog_set_lang"],
   // A set of the LDraw library: its page, its pictures (the card's, the
   // page's and the app's cover, api/share.js set_cover), its file, its parts
   // and its scene, from the store as the deployment serves them.
@@ -304,6 +305,8 @@ http.createServer(async (incoming, outgoing) => {
       Object.assign(query, { set: captured[1], as: captured[2] || (mapped[2] === "catalog_photo" ? "card" : "json") });
     }
     if (captured[1] && mapped[2] === "sitemap_sets") query.n = captured[1];
+    // A set's page in a language: /de/library/set/<n>.
+    if (mapped[2] === "catalog_set_lang") Object.assign(query, { op: "catalog_set", lang: captured[1], set: captured[2], as: undefined });
   }
   // The app is at /app, which the deployment sends on to the build with
   // its query (?view=<id>, ?copy=<id>) intact.

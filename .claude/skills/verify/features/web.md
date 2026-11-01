@@ -1336,8 +1336,26 @@ plan with Claude as the client.
   `#site-words`, or on a page with no copy (/profile, where the header's
   Sign in and the app's orangecheck go) from `/<code>/words.json`, which
   `tools/site_lang.py` writes beside the copies; a literal with an English
-  word left in account.js fails `--check` (`SAID_ALL`). The library's and the
-  gallery's themes are the app's (`locale/<code>.po`, context "theme", by
+  word left in account.js fails `--check` (`SAID_ALL`), and so does one in
+  First steps (`web/first-steps.js`, opened after the age question; its
+  Follow buttons, `web/follow.js` `followButton`, say Follow, Following,
+  their titles and answers through the same `say`) or what
+  the profile API refuses a handle with (`TOLD_IN`: `api/people.js`
+  `saveProfile`, `api/_names.js` `handleTrouble`). **A set's page in each
+  language** (`/de/library/set/<number>`, `/fr/...`, `/es/...`; deploy.sh's
+  route sends `&lang=` to `?op=catalog_set`, the stand-in and the relay map
+  it too): `api/share.js` writes it inside `inLanguage` (`api/_directory.js`),
+  so `api/_sets.js` `setPage`, `facts` and `structured` say every word
+  through the same `say`/`counted`/`themeSaid`/`number` (their words a
+  `SAID_ALL` scope), with the copy's chrome (`_site_<code>.html`, the
+  gallery's copy) and its words (`_words_<code>.json`, the copy's
+  words.json, also put in the page as `#site-words` for `web/set-page.js` and
+  the parts list in `web/model-page.js`); `<html lang>`, a canonical and
+  og:url of its own, hreflang en/de/fr/es and x-default (English) on every
+  set page, English too, links to the library and other sets in the
+  language. The set's name is as LEGO® publishes it; the parts' own names,
+  colours and kinds are the catalogue's, in English. Another language is a
+  404. The library's and the gallery's themes are the app's (`locale/<code>.po`, context "theme", by
   `web/card.js` `themeSaid`, LEGO® and LEGOLAND® marked as the app draws
   them), and `tests/test_site_lang.py` fails on a theme of the catalogue
   with no entry.
@@ -2268,8 +2286,9 @@ plan with Claude as the client.
   card to `/library/set/<number>` marked 3D where LDraw modelled it; Filters
   adds the theme inside the theme (`#sub`), year, 3D model and minifigures,
   made by `web/library.js` where the page has none. `ui:every set's page`
-  is `/library/set/<number>` (`?op=catalog_set`, kept a day by the CDN):
-  facts, Rebrickable credited, CreativeWork and BreadcrumbList JSON-LD (no
+  is `/library/set/<number>` (`?op=catalog_set`, kept a day by the CDN;
+  `/de/library/set/<number>` and the rest in each language, under "the site
+  in German, French and Spanish"): facts, Rebrickable credited, CreativeWork and BreadcrumbList JSON-LD (no
   Product, no price), its parts list from its shard with our pictures, Parts
   you own (`?op=catalog_owned`, signed in, `web/set-page.js`), Open its
   parts in Brickworks (`/app?parts=N`: `cli:set parts probe`), Design with
@@ -3786,7 +3805,16 @@ locally (no `--app`); on brickworks.diy with rel-m239 live, 210 of 505 failed, e
 on the five pages or /gallery's choice. With signing in and every theme
 (languages3, same day): 601 passed locally; on brickworks.diy
 (`--pages=library,signin`) 75 of 139 failed, every German, French and
-Spanish dialog in English and the library's themes with them.
+Spanish dialog in English and the library's themes with them. A set's
+page (`--pages=set`: from /library/set/10297-1, Boutique Hotel, Modular
+Buildings, to its copy; the crumbs with the theme as the po words it, the
+facts, the actions, the Colour/Kind tabs and the parts list's counts in the
+language, the five alternates and its own canonical) and First steps
+(`--pages=firststeps`: opened over the gallery's copy, and locally after
+the age question too, each step's title and words in the language, nothing
+cut short), languages3 the same day: 813 passed locally; on brickworks.diy
+(`--pages=set,firststeps`) 80 of 165 failed, every set page staying English
+at /library/set/10297-1 and First steps English on the copies.
 
 The theme, with no network (the checkout's pages served as design_flow
 serves them, every API call answered by the stand-in):

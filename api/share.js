@@ -87,7 +87,8 @@
 //                            model, figs) and sorted (sort); the LDraw
 //                            shelf alone (api/_library.js) where this
 //                            deployment has no catalogue
-//   GET  ?op=catalog_set&set=N  /library/set/N: the set's page; with
+//   GET  ?op=catalog_set&set=N  /library/set/N: the set's page (&lang=de,
+//                            /de/library/set/N, in German, fr and es too); with
 //                            op=catalog_parts (/library/set/N/parts.json,
 //                            .xml, .csv) its parts, op=catalog_photo
 //                            (/library/set/N.webp, its card's, and
@@ -224,7 +225,7 @@ import {
   KINDS, LICENCES, MADES, MINE_SORTS, MOVES, NOTICE, SCORE, SHELF, SIZES, SORTS, TESTS_CACHE, Unacceptable, WINDOWS, cardOf,
   cleanDescription, cleanKind, cleanLicence, cleanTags, count, escapeHtml, isTechnic, kindLabel,
   LDRAW_FROM, listQuery, looksLikePerson, modelHash, modelledByOf, motionsIn, movesWords, partFacts,
-  siteChrome, testsAsked, visitorKey,
+  inLanguage, siteChrome, siteWords, testsAsked, visitorKey,
 } from "./_directory.js";
 import { namesTrouble } from "./_names.js";
 import { libraryCredit, storeBytes, storeFile, storeRoot } from "./_omr_credit.js";
@@ -1924,7 +1925,9 @@ async function read(request, response) {
   // With tests=1, the OMR's arrivals staged for the lead to let out too
   // (tools/library_import.py), which nobody else is shown.
   if (op === "library") return library(request, response);
-  if (op === "catalog_set") return catalogSetPage(response, origin, String(request.query?.set || ""));
+  if (op === "catalog_set") {
+    return catalogSetPage(response, origin, String(request.query?.set || ""), String(request.query?.lang || "en"));
+  }
   if (op === "catalog_parts") {
     return catalogParts(response, origin, String(request.query?.set || ""), String(request.query?.as || "json"));
   }
@@ -2255,9 +2258,11 @@ function catalogLots(rows) {
 }
 
 /// /library/set/N: the set's page.
-async function catalogSetPage(response, origin, number) {
+async function catalogSetPage(response, origin, number, lang = "en") {
   const entry = catalogSet(number);
-  if (!entry) return html(response, 404, gonePage(origin, number.slice(0, 40), false));
+  // A language the site has no words in is not a page.
+  const words = lang === "en" ? null : siteWords(lang);
+  if (!entry || (lang !== "en" && !words)) return html(response, 404, gonePage(origin, number.slice(0, 40), false));
   const catalogue = setCatalog();
   // LDraw's shelf and the set's shard, each a fetch, asked at once.
   const [models, rows] = await Promise.all([librarySets().catch(() => []), entry.lots ? catalogRows(entry, origin) : null]);
@@ -2265,8 +2270,9 @@ async function catalogSetPage(response, origin, number) {
   const lots = entry.lots ? catalogLots(rows) : null;
   const inside = entry.inside.map(([one, n]) => [catalogSet(one), n]).filter(([one]) => one);
   const next = catalogBeside(catalogue.sets, entry).map((one) => catalogCard(one, by));
-  return html(response, 200, catalogPage({ origin, entry, chrome: siteChrome(), held: by.get(entry.set.toLowerCase()) || null,
-    inside, next, lots: lots ? lots.lots : [], cardHtml }), { cache: CATALOG_CACHE });
+  return html(response, 200, inLanguage(lang, words, () => catalogPage({ origin, entry, chrome: siteChrome(lang),
+    held: by.get(entry.set.toLowerCase()) || null, inside, next, lots: lots ? lots.lots : [], cardHtml, lang, words })),
+  { cache: CATALOG_CACHE });
 }
 
 /// /library/set/N/parts.json, .xml and .csv: its parts, as a model's are.

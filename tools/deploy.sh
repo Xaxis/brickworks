@@ -328,6 +328,16 @@ for handler in api/*.js; do
   if [ "$route" = share ] || [ "$route" = people ]; then
     cp web/gallery.html "$fn/_site.html"
   fi
+  # A set's page in German, French and Spanish (/de/library/set/<n>): the
+  # gallery's copy for its header and footer, and the words the site says
+  # in each language (tools/site_lang.py), as api/_directory.js reads them.
+  if [ "$route" = share ]; then
+    for words in web/*/words.json; do
+      lang=$(basename "$(dirname "$words")")
+      cp "$words" "$fn/_words_$lang.json"
+      cp "web/$lang/gallery.html" "$fn/_site_$lang.html"
+    done
+  fi
   # /challenge?id=N is the challenge page with that challenge's own head
   # (api/_challenges.js challengeHead), so a link to one shows it.
   if [ "$route" = people ]; then
@@ -595,6 +605,7 @@ $docs_moved
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]page[.]webp", "dest": "/api/share?op=catalog_photo&set=\$1&as=page" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})[.]webp", "dest": "/api/share?op=catalog_photo&set=\$1&as=card" },
     { "src": "/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})/?", "dest": "/api/share?op=catalog_set&set=\$1" },
+    { "src": "/($langs)/library/set/([A-Za-z0-9][A-Za-z0-9.-]{0,29})/?", "dest": "/api/share?op=catalog_set&set=\$2&lang=\$1" },
     { "src": "/sitemaps/index[.]xml", "dest": "/api/share?op=sitemap_index" },
     { "src": "/sitemaps/sets-([1-9][0-9]{0,2})[.]xml", "dest": "/api/share?op=sitemap_sets&n=\$1" },
     { "src": "/library/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})/?", "dest": "/api/share?op=set&id=\$1" },

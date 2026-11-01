@@ -1076,8 +1076,11 @@ const PAGES = [
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
   [/^\/collections\/?$/, "people", "collections_page"],
-  // A LEGO® set's page (api/_sets.js), from this checkout's catalogue.
+  // A LEGO® set's page (api/_sets.js), from this checkout's catalogue, and
+  // in each language the site has; its parts list from the set's shard.
+  [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/parts[.](json|xml|csv)$/, "share", "catalog_parts"],
   [/^\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/?$/, "share", "catalog_set"],
+  [/^\/(de|fr|es)\/library\/set\/([A-Za-z0-9][A-Za-z0-9.-]{0,29})\/?$/, "share", "catalog_set_lang"],
 ];
 
 /// Which handler makes [pathname], and what it is asked. A path under /m/,
@@ -1088,6 +1091,8 @@ function routeOf(pathname) {
     const found = pattern.exec(pathname);
     if (!found) continue;
     if (op === "catalog_set") return { name, query: { op, set: found[1] } };
+    if (op === "catalog_parts") return { name, query: { op, set: found[1], as: found[2] } };
+    if (op === "catalog_set_lang") return { name, query: { op: "catalog_set", set: found[2], lang: found[1] } };
     if (name === "share") {
       return { name, query: { op, ...(found[1] ? { id: found[1] } : {}), ...(found[2] ? { v: found[2] } : {}),
         ...(found[3] ? { as: found[3] } : {}) } };
@@ -2188,7 +2193,7 @@ export async function serveSite(context, { web, api, remote = "", headers = {}, 
       return route.fulfill({ status: said.status, contentType: "application/json", body: asProject(JSON.stringify(said.json)) });
     }
     if (remote) return route.continue({ headers: { ...request.headers(), ...headers } });
-    if (/^\/(m|u|c|library\/set)\//.test(url.pathname) || /^\/(collections|oembed)\/?$/.test(url.pathname)) {
+    if (/^\/(m|u|c|library\/set|(?:de|fr|es)\/library\/set)\//.test(url.pathname) || /^\/(collections|oembed)\/?$/.test(url.pathname)) {
       const made = await serverPage(api, url.pathname + url.search);
       // With the security policy the server sends with it. A picture the
       // server makes (/m/X.cutout.png) as the bytes and type it answered:

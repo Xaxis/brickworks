@@ -23,7 +23,7 @@
 import { askToSignIn, call, signedIn } from "/account.js";
 import { openReport } from "/report.js";
 import { avatarHtml } from "/kit.js";
-import { HOWS, basedHtml, mentionPieces } from "/card.js";
+import { HOWS, basedHtml, counted, mentionPieces, number, say } from "/card.js";
 import { wireShare } from "/share-sheet.js";
 import { start3d } from "/start3d.js";
 
@@ -254,7 +254,9 @@ const SVG = "http://www.w3.org/2000/svg";
 /// number and colour, and how many. Its picture is its colour's swatch until
 /// the part itself is drawn over it, in its colour, from its geometry
 /// (web/part-pictures.js, site304), as the row nears the screen; one that
-/// cannot be drawn keeps the swatch.
+/// cannot be drawn keeps the swatch. Its words in the page's language (a
+/// set's page at /de/library/set/<n>); the parts' and colours' names are
+/// LDraw's and Rebrickable's.
 function startParts(section) {
   const list = section.querySelector(".lot-list");
   const all = section.querySelector("[data-all]");
@@ -299,12 +301,12 @@ function startParts(section) {
     const meta = document.createElement("span");
     meta.className = "meta";
     meta.append(`${lot.part}${lot.element ? ` · ${lot.element}` : ""} ·`, swatch(lot.hex), lot.colour_name);
-    meta.title = `${lot.part}${lot.element ? `, element ${lot.element}` : ""}, ${lot.colour_name}`;
+    meta.title = `${lot.part}${lot.element ? `, ${say("element {element}", { element: lot.element })}` : ""}, ${lot.colour_name}`;
     what.append(name, meta);
     const qty = document.createElement("span");
     qty.className = "qty";
-    qty.textContent = `× ${lot.count.toLocaleString("en-US")}`;
-    qty.setAttribute("aria-label", `${lot.count.toLocaleString("en-US")} of them`);
+    qty.textContent = `× ${number(lot.count)}`;
+    qty.setAttribute("aria-label", say("{n} of them", { n: number(lot.count) }));
     item.append(pic, what, qty);
     return item;
   };
@@ -316,7 +318,7 @@ function startParts(section) {
     said.textContent = words;
     const count = document.createElement("span");
     count.className = "n";
-    count.textContent = `${n.toLocaleString("en-US")} ${n === 1 ? "part" : "parts"}`;
+    count.textContent = counted(n, "part");
     item.append(said, count);
     return item;
   };
@@ -326,8 +328,8 @@ function startParts(section) {
     // under it.
     const groups = new Map();
     for (const lot of lots) {
-      const key = group === "colour" ? `c${lot.colour}` : lot.category || "Other";
-      if (!groups.has(key)) groups.set(key, { lots: [], n: 0, words: group === "colour" ? lot.colour_name : lot.category || "Other",
+      const key = group === "colour" ? `c${lot.colour}` : `k${lot.category || ""}`;
+      if (!groups.has(key)) groups.set(key, { lots: [], n: 0, words: group === "colour" ? lot.colour_name : lot.category || say("Other"),
         hex: group === "colour" ? lot.hex : "" });
       const one = groups.get(key);
       one.lots.push(lot);
@@ -354,10 +356,10 @@ function startParts(section) {
       .then((body) => {
         if (!body || !Array.isArray(body.lots)) {
           list.removeAttribute("aria-busy");
-          const said = document.createElement("li");
-          said.className = "group";
-          said.textContent = "The list did not come. Reload the page to ask for it again.";
-          list.replaceChildren(said);
+          const item = document.createElement("li");
+          item.className = "group";
+          item.textContent = say("The list did not come. Reload the page to ask for it again.");
+          list.replaceChildren(item);
           asked = null;
           return;
         }

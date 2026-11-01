@@ -6,7 +6,8 @@
 //   ... --app=<address>  the app's loading page too: a deployment's /app, or a web
 //                        export's index.html (node tools/web/relay_server.mjs PORT
 //                        --static=build/web; --app=http://127.0.0.1:PORT/index.html)
-//   [--widths=1280,390]  [--langs=en,de,fr,es]  [--pages=home,download,plans,faq,compare,gallery,library,signin]
+//   [--widths=1280,390]  [--langs=en,de,fr,es]
+//   [--pages=home,download,plans,faq,compare,gallery,library,set,signin,firststeps]
 //
 // The landing page and the download page, and the app's loading page
 // between them and the app, in German, French and Spanish (2026-11-01);
@@ -52,6 +53,19 @@
 // months as the language names them. No mail is sent: /api/otp is answered
 // in the browser, and on a deployment only the wrong code is asked of its
 // Supabase, once a run per language and width.
+//
+// A set's page (2026-11-01, api/_sets.js, written on the server): from
+// /library/set/<number> a browser asking for a language lands on its copy,
+// /de/library/set/<number>, with <html lang>, the title, the crumbs (the
+// theme as locale/<code>.po words it), the facts, the actions and the parts
+// list's heads in it, the set's name as LEGO® publishes it, the five
+// hreflang alternates and a canonical that is the page itself. The parts'
+// own names, their colours' and their kinds' are the catalogue's, in English
+// as in the app's parts list on the site.
+//
+// And First steps (web/first-steps.js), opened over the gallery's copy as a
+// first sign-in opens it, and on the stand-in after the age question: each
+// step's words in the language, none English, nothing cut short.
 //
 // With no --url nothing leaves this machine: the pages are served by
 // design_stand_in.mjs from this checkout's web/. Pictures with --out:
@@ -118,6 +132,10 @@ const PAGES = [
     says: "Gallery", ready: "gallery", count: "#found", noun: ["model", "models"] },
   { name: "library", path: "/library", title: "Library · Every LEGO® set and its parts, in Brickworks",
     heading: "#library-h", says: "Library", ready: "library", count: "#found-said", noun: ["set", "sets"] },
+  // A set built in 3D whose theme is a word in each language.
+  { name: "set", path: "/library/set/10297-1", set: { number: "10297-1", name: "Boutique Hotel", theme: "Modular Buildings" },
+    title: (code) => script(code, "{name}, LEGO® set {set}: every part — Brickworks", { name: "Boutique Hotel", set: "10297-1" }),
+    heading: "main h1", says: () => "Boutique Hotel" },
 ];
 const only = args.pages ? String(args.pages).split(",") : null;
 // English that is never a word of German, French or Spanish.
@@ -144,12 +162,14 @@ async function newContext(browser, code, width, state = {}) {
 }
 
 /// Every text of the page a person can read or hear, shown or folded away,
-/// but the names of the cards in its live strips and what is typed. And a
+/// but the names of the cards in its live strips, what is typed, and a
+/// parts list's part, colour and kind names (the catalogue's). And a
 /// library theme's pill under the catalogue's own name (Star Wars, The LEGO®
 /// Movie, marked), as the app keeps it: one the app names in the language
 /// (locale/<code>.po, "theme") is read like any other word.
 function readable() {
-  const SKIP = "script, style, code, kbd, template, svg, [translate='no'], article.model .words, article.model .frame";
+  const SKIP = "script, style, code, kbd, template, svg, [translate='no'], article.model .words, article.model .frame, "
+    + ".lot-list .name, .lot-list .meta, .lot-list .group > span:not(.n)";
   const said = [];
   const walk = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_TEXT);
   for (let node = walk.nextNode(); node; node = walk.nextNode()) {
@@ -212,11 +232,13 @@ async function onePage(browser, code, one, width) {
     check(new URL(tab.url()).pathname === want, `${where}: opens ${want} (at ${new URL(tab.url()).pathname})`);
     check(await tab.evaluate(() => document.documentElement.lang) === code, `${where}: <html lang="${code}">`);
     const title = await tab.title();
-    check(title === plain(page(code, one.title)), `${where}: its title says "${title}"`);
+    const words = (value) => (typeof value === "function" ? value(code) : plain(page(code, value)));
+    check(title === words(one.title), `${where}: its title says "${title}"`);
     if (one.heading) {
       const heading = (await tab.locator(one.heading).first().innerText()).replace(/\s+/g, " ").trim();
-      check(heading === plain(page(code, one.says)), `${where}: its heading says "${heading}"`);
+      check(heading === words(one.says), `${where}: its heading says "${heading}"`);
     }
+    if (one.set) await setSaid(tab, code, one, where);
     if (one.ready) {
       // Its list drawn, and counted in the language: "24 Modelle", "1.234 Sets".
       await tab.waitForFunction((name) => ["ready", "broken"].includes(document.documentElement.dataset[name]), one.ready,
@@ -284,6 +306,110 @@ async function onePage(browser, code, one, width) {
     }
   } catch (trouble) {
     check(false, `${where}: ${String(trouble.message || trouble).split("\n")[0]}`);
+  } finally {
+    await context.close();
+  }
+}
+
+/// A set's page in [code]: its crumbs, facts, actions and parts list in
+/// the language, the theme as the app words it, the alternates and its own
+/// canonical.
+async function setSaid(tab, code, one, where) {
+  const at = code === "en" ? "" : `/${code}`;
+  const own = `${at}${one.path}`;
+  const said = await tab.evaluate(() => ({
+    crumbs: [...document.querySelectorAll(".crumbs a")].map((a) => [a.textContent.trim(), new URL(a.href).pathname]),
+    alternates: Object.fromEntries([...document.querySelectorAll('link[rel="alternate"][hreflang]')]
+      .map((link) => [link.hreflang, new URL(link.href).pathname])),
+    canonical: new URL(document.querySelector('link[rel="canonical"]').href).pathname,
+    url: new URL(document.querySelector('meta[property="og:url"]').content).pathname,
+    parts: document.querySelector(".facts [data-parts]")?.textContent.trim() || "",
+    actions: [...document.querySelectorAll(".side .actions a")].map((a) => a.textContent.trim()),
+    tabs: [...document.querySelectorAll(".parts-bar [data-group]")].map((button) => button.textContent.trim()),
+  }));
+  const theme = code === "en" ? one.set.theme : THEMES[code][one.set.theme];
+  check(said.crumbs[0]?.[0] === script(code, "Library") && said.crumbs[0]?.[1] === `${at}/library`
+    && said.crumbs[1]?.[0] === theme, `${where}: its crumbs, ${said.crumbs.map(([text, to]) => `"${text}" ${to}`).join(", ")}`);
+  const want = { en: one.path, de: `/de${one.path}`, fr: `/fr${one.path}`, es: `/es${one.path}`, "x-default": one.path };
+  check(JSON.stringify(said.alternates) === JSON.stringify(want) && said.canonical === own && said.url === own,
+    `${where}: ${Object.keys(said.alternates).length} alternates, canonical and og:url ${said.canonical}`);
+  check(said.parts.endsWith(` ${script(code, "parts")}`) && said.actions.includes(script(code, "Open its parts in Brickworks"))
+    && said.tabs.join("|") === [script(code, "Colour"), script(code, "Kind")].join("|"),
+    `${where}: "${said.parts}", ${said.actions.map((text) => `"${text}"`).join(", ")}, ${said.tabs.join(" / ")}`);
+  // The parts list drawn by its script, its heads in the language.
+  await tab.waitForFunction(() => document.querySelector(".lot-list li.group .n"), null, { timeout: 30000 });
+  const head = await tab.locator(".lot-list li.group .n").first().innerText();
+  check(head.trim().endsWith(` ${script(code, "parts")}`) || head.trim().endsWith(` ${script(code, "part")}`),
+    `${where}: the parts list's heads count in it, "${head.trim()}"`);
+}
+
+/// First steps' every word a person reads or hears but people's and
+/// models' names, and what overflows it.
+function stepsSaid() {
+  const dialog = document.querySelector("dialog.first-steps[open]");
+  if (!dialog) return null;
+  const SKIP = ".person-row .names, article.model .words, article.model .frame, .face, svg";
+  const said = [];
+  const walk = document.createTreeWalker(dialog, NodeFilter.SHOW_TEXT);
+  for (let node = walk.nextNode(); node; node = walk.nextNode()) {
+    if (node.parentElement.closest(SKIP) || !node.textContent.trim()) continue;
+    said.push(node.textContent.trim());
+  }
+  for (const el of dialog.querySelectorAll("[aria-label], [placeholder], [title]")) {
+    if (el.closest(SKIP)) continue;
+    for (const name of ["aria-label", "placeholder", "title"]) if (el.getAttribute(name)) said.push(el.getAttribute(name));
+  }
+  const cut = [...dialog.querySelectorAll("button, label, h2, h3, p, a.cta")]
+    .filter((el) => !el.closest(SKIP) && el.offsetWidth && el.scrollWidth > el.clientWidth + 1).map((el) => el.textContent.trim());
+  return { lang: dialog.closest("[lang]")?.lang || "", step: dialog.dataset.step || "",
+    count: dialog.querySelector(".eyebrow")?.textContent.trim() || "", title: dialog.querySelector("h2")?.textContent.trim() || "",
+    said, cut, wide: dialog.getBoundingClientRect().right > innerWidth + 1 };
+}
+
+const STEPS = { profile: "Make your profile", kinds: "What do you build?", start: "Designers and models to start with" };
+
+/// First steps in [code] at [width], on the [tab] it is open in: each
+/// step's words, moving on by Skip, then Done.
+async function stepping(tab, code, width, label) {
+  const seen = [];
+  for (let at = 0; at < 3; at += 1) {
+    await tab.waitForFunction((was) => {
+      const step = document.querySelector("dialog.first-steps[open]")?.dataset.step;
+      return step && step !== was;
+    }, seen.at(-1)?.step || "", { timeout: 20000 });
+    await tab.waitForTimeout(300);
+    const one = await tab.evaluate(stepsSaid);
+    seen.push(one);
+    // A label in English where the language has its own word (German's
+    // Name is Name).
+    const labels = ["Skip", "Next", "Follow", "Following", "Done", "Name", "Handle"].filter((word) => script(code, word) !== word);
+    const left = code === "en" ? [] : one.said.map((text) => text.replace(NAMES, " ")).filter((text) => ENGLISH.test(text)
+      || labels.includes(text));
+    const all = Object.keys(STEPS).length;
+    check(one.lang === code && one.title === script(code, STEPS[one.step]) && one.count.length > 0 && !left.length,
+      `${label}: step ${at + 1} in ${one.lang}, "${one.count}", "${one.title}"${left.length ? `; English left: "${left[0].slice(0, 100)}"` : ""}`);
+    check(!one.cut.length && !one.wide, `${label}: step ${at + 1} has nothing cut short${one.cut.length ? `: "${one.cut[0]}"` : ""}`);
+    if (out) await tab.locator("dialog.first-steps").screenshot({ path: path.join(out, `${code}-firststeps-${one.step}-${width}.png`) });
+    if (one.step === "start" || at + 1 === all) break;
+    await tab.click("#first-skip");
+  }
+  check(seen.at(-1)?.step === "start", `${label}: ends on its designers and models (${seen.map((one) => one.step).join(", ")})`);
+  await tab.click("#first-done");
+  await tab.waitForFunction(() => !document.querySelector("dialog.first-steps"), null, { timeout: 10000 });
+}
+
+/// First steps opened over the gallery's copy as a first sign-in opens it.
+async function firstSteps(browser, code, width) {
+  const context = await newContext(browser, code, width);
+  const tab = await context.newPage();
+  const label = `${code} first steps ${width}`;
+  try {
+    await tab.goto(`${base}${code === "en" ? "" : `/${code}`}/gallery`, { waitUntil: "load" });
+    await tab.waitForFunction(() => document.documentElement.dataset.gallery === "ready", null, { timeout: 30000 });
+    await tab.evaluate(() => { import("/first-steps.js").then((steps) => steps.firstSteps()); });
+    await stepping(tab, code, width, label);
+  } catch (trouble) {
+    check(false, `${label}: ${String(trouble.message || trouble).split("\n")[0]}`);
   } finally {
     await context.close();
   }
@@ -435,6 +561,11 @@ async function signingIn(browser, code, width, where) {
       && age.months[1] === january && age.go === script(code, "Carry on"),
       `${label}: the age question, "${age.title}", ${age.months.slice(0, 2).join(", ")}, "${age.go}"`);
     if (out) await tab.locator("dialog.age").screenshot({ path: path.join(out, `${code}-age-${width}.png`) });
+    // Thirteen or over: First steps, in the language too.
+    await tab.selectOption("#age-month", { index: 1 });
+    await tab.selectOption("#age-year", "1990");
+    await tab.click("#age-go");
+    await stepping(tab, code, width, `${label}, then first steps`);
   } catch (trouble) {
     check(false, `${label}: ${String(trouble.message || trouble).split("\n")[0]}`);
   } finally {
@@ -506,6 +637,11 @@ try {
       for (const width of widths) {
         for (const where of ["profile", "gallery"]) await signingIn(browser, code, width, where);
       }
+    }
+  }
+  if (!only || only.includes("firststeps")) {
+    for (const code of langs) {
+      for (const width of widths) await firstSteps(browser, code, width);
     }
   }
   if (app) await loader(browser);

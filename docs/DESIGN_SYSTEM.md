@@ -130,7 +130,12 @@ entry in each language, or `tools/site_lang.py --check` fails. The
 sign-in's dialogs (`web/account.js`) open on every page, a copy or not, in
 the language chosen: their words come from `/<code>/words.json` where the
 page has none, and a word in them not said through `say()` fails the same
-check. A theme of the sets is said by `themeSaid()` (`web/card.js`), by
+check; so does First steps after them (`web/first-steps.js`). A set's
+page is written on the server (`api/_sets.js`), in the language at
+/de/library/set/<number> and so on, by the same `say()` and the gallery
+copy's chrome; its set's name is as LEGO® publishes it, never translated,
+and each language's page names the others (hreflang) with itself as its
+canonical. A theme of the sets is said by `themeSaid()` (`web/card.js`), by
 the app's own entry for it (`locale/<code>.po`, context "theme"), so the
 Library and the site name it alike. "LEGO®" stays an
 adjective in every language; the company is die LEGO Gruppe, le Groupe

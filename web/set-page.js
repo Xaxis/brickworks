@@ -14,8 +14,11 @@
 // for no collection, "broken" when it could not ask (tools/web/sets_flow.mjs
 // reads it); and on <html data-based> how many models are built from it,
 // "broken" when it could not ask (tools/web/based_on_flow.mjs).
+//
+// Every word in the page's language (web/card.js say: /de/library/set/<n>
+// carries its copy's words), its numbers as the language writes them.
 import { call, signedIn } from "/account.js";
-import { modelCard } from "/card.js";
+import { counted, modelCard, number, say } from "/card.js";
 
 const SET = /^[A-Za-z0-9][A-Za-z0-9.-]{0,29}$/;
 const owned = document.getElementById("owned");
@@ -39,8 +42,9 @@ async function builtFrom(article) {
     section.className = "next";
     section.id = "built-from";
     section.setAttribute("aria-labelledby", "built-from-h");
-    section.innerHTML = '<div class="scroller-head"><h2 id="built-from-h">Based on this set</h2></div>'
+    section.innerHTML = '<div class="scroller-head"><h2 id="built-from-h"></h2></div>'
       + '<div class="models scroller" role="group" aria-labelledby="built-from-h"></div>';
+    section.querySelector("h2").textContent = say("Based on this set");
     section.querySelector(".models").append(...models.map((model) => modelCard(model)));
     const similar = document.getElementById("similar");
     if (similar) similar.before(section);
@@ -62,15 +66,14 @@ async function start(section) {
   const have = Math.min(Number(body.have) || 0, pieces);
   section.hidden = false;
   if (!body.collection) {
-    said.textContent = "Your collection is empty. Add the sets and parts you own under My collection in the app, "
-      + "and this says how much of this set you have.";
+    said.textContent = say("Your collection is empty. Add the sets and parts you own under My collection in the app, "
+      + "and this says how much of this set you have.");
     document.documentElement.dataset.owned = "none";
     return;
   }
-  const n = (value) => value.toLocaleString("en-US");
-  said.textContent = have >= pieces ? `Parts you own: all ${n(pieces)} of them.`
-    : `Parts you own: ${n(have)} of ${n(pieces)}. You are missing ${n(pieces - have)} in `
-      + `${n(Number(body.missing) || 0)} ${Number(body.missing) === 1 ? "lot" : "lots"}.`;
+  said.textContent = have >= pieces ? say("Parts you own: all {n} of them.", { n: number(pieces) })
+    : say("Parts you own: {have} of {pieces}. You are missing {missing} in {lots}.", { have: number(have),
+      pieces: number(pieces), missing: number(pieces - have), lots: counted(Number(body.missing) || 0, "lot") });
   document.documentElement.dataset.owned = `${have}/${pieces}`;
   const wanted = document.getElementById("owned-wanted");
   if (have >= pieces || !wanted || !body.wanted) return;

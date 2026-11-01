@@ -38,9 +38,17 @@ every page, a copy or not, so their words are kept for each language at
 say, each sentence a page asks somebody to sign in with ("Sign in to like
 it: ...", SIGN_IN_WHY, in any script), orangecheck's own words for its
 button and its box, and every error the sign-in's API answers with in
-words (TOLD). A word of web/account.js with a capital in it that is not
-said through say() fails the check (SAID_ALL), so none comes back in
-English.
+words (TOLD). First steps (web/first-steps.js), which follow a first
+sign-in, speak the same way, with the errors a new profile can meet
+(TOLD_IN).
+
+A set's page is made by the server (api/_sets.js setPage), at
+/<code>/library/set/<number> in each language, from the same words: what
+it and the scripts on it say (SAID_ALL) needs its entry here too.
+
+A word of those scripts (SAID_ALL, or the functions of one named there)
+with a capital in it that is not said through say() fails the check, so
+none comes back in English.
 
 Which language a visitor is shown is web/theme.js's: the one they chose in
 the footer, else the first of their browser's that the site has.
@@ -85,18 +93,26 @@ API_WORDS = {"api/_directory.js": ("KINDS", "SIZES", "SORTS", "WINDOWS", "MADES"
              "web/oc-button.mjs": ("SIGN_IN_BUSY_LABEL", "OUTCOME_COPY"),
              "web/oc-connect-consent.mjs": ("CONNECT_CONSENT_LABEL", "CONNECT_CONSENT_BLURB")}
 STRING = r'"(?:[^"\\\n]|\\.)*"'
-SAY = re.compile(rf"\bsay\(\s*((?:{STRING}\s*\+\s*)*{STRING})")
+SAY = re.compile(rf"\bsay(?:Html)?\(\s*((?:{STRING}\s*\+\s*)*{STRING})")
 COUNTED = re.compile(rf"\bcounted\((?:[^,()]|\([^()]*\))+,\s*({STRING})(?:\s*,\s*({STRING}))?\s*\)")
 # The sign-in's API, whose errors the dialogs say: each sentence an answer
 # gives as its error ("POST only" is a developer's, and no sentence).
-TOLD = ("api/otp.js", "api/_trust.js", "api/_oc.js", "api/orangecheck.js")
+TOLD = ("api/otp.js", "api/_trust.js", "api/_oc.js", "api/orangecheck.js", "api/people.js")
+# And what First steps' profile can be refused with, in the functions that
+# refuse it: every sentence, ended with a full stop or not.
+TOLD_IN = {"api/people.js": ("saveProfile",), "api/_names.js": ("handleTrouble",)}
+REFUSED = re.compile(rf"(?:new Refusal\(|\breturn\s+)((?:{STRING}\s*\+\s*)*{STRING})")
 TOLD_AS = re.compile(rf"(?:\berror:\s*|\btrouble:\s*|\bsay\(response,\s*\d+,\s*|new Refusal\()((?:{STRING}\s*\+\s*)*{STRING})")
 # A page's reason to sign in, which web/account.js says on any page.
 SIGN_IN_WHY = re.compile(r'"(Sign in\b(?:[^"\\\n]|\\.)*\.)"')
-# The scripts that say every word they show through say(): a literal with a
-# capitalized word in it, outside say(), is English left on the page.
-SAID_ALL = ("account.js",)
-CODE_WORDS = {"Bearer"}
+# The scripts that say every word they show through say(), whole (()) or
+# in the functions named: a literal with a capitalized word in it, outside
+# say(), is English left on the page. Those no copy loads are read for
+# their words too: a set's page, which the server makes, and its scripts.
+SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/set-page.js": (),
+            "web/model-page.js": ("startParts",), "api/_sets.js": ("setPage", "facts", "structured")}
+# Capitalized words of those that are no English to say: code, and names.
+CODE_WORDS = {"Bearer", "Brickworks", "Rebrickable", "Dataset"}
 # Runs that are names, the same in every language.
 NAMES = {"Brickworks", "brickworks.diy/app", "Claude", "Pro", "GitHub", "3D"}
 # The JSON-LD fields a reader is shown: a description anywhere, and an
@@ -299,10 +315,37 @@ def script_words() -> dict[str, str]:
             said = "".join(json.loads(s) for s in re.findall(STRING, found.group(1)))
             if said.rstrip().endswith((".", "?")):
                 words.setdefault(said, path)
+    for path, names in TOLD_IN.items():
+        for found in REFUSED.finditer(scope(path, names)):
+            words.setdefault("".join(json.loads(s) for s in re.findall(STRING, found.group(1))), path)
+    for path, names in SAID_ALL.items():
+        text = scope(path, names)
+        for found in SAY.finditer(text):
+            words.setdefault("".join(json.loads(s) for s in re.findall(STRING, found.group(1))), path)
+        for found in COUNTED.finditer(text):
+            single = json.loads(found.group(1))
+            for word in (single, json.loads(found.group(2)) if found.group(2) else f"{single}s"):
+                words.setdefault(word, path)
     for one in sorted(WEB.glob("*.js")):
         for why in SIGN_IN_WHY.findall(one.read_text(encoding="utf-8")):
             words.setdefault(json.loads(f'"{why}"'), f"web/{one.name}")
     return {word: where for word, where in words.items() if says_something(word)}
+
+
+def scope(path: str, names: tuple = (), text: str | None = None) -> str:
+    """The text of [path] (from the checkout's root, or [text] given for
+    it), or of the top-level functions [names] in it, each to its closing
+    brace at the line's start."""
+    text = (ROOT / path).read_text(encoding="utf-8") if text is None else text
+    if not names:
+        return text
+    found = []
+    for name in names:
+        start = re.search(rf"^(?:export )?(?:async )?function {name}\(", text, re.M)
+        if not start:
+            raise ValueError(f"{path} has no function {name}")
+        found.append(text[start.start():text.index("\n}\n", start.start()) + 3])
+    return "\n".join(found)
 
 
 def unsaid(script: str) -> list[str]:
@@ -310,11 +353,10 @@ def unsaid(script: str) -> list[str]:
     capitalized word in it (a sentence, a label) that is not said through
     say(), its comments left out."""
     text = re.sub(r"(?<![:\"'\w])//[^\n]*", "", script)
-    through = [found.span(1) for found in SAY.finditer(text)]
+    # What is said through say() is said: taken out before the rest is read.
+    text = SAY.sub('say(""', text)
     out = []
     for found in re.finditer(rf"{STRING}|`(?:[^`\\]|\\.)*`", text):
-        if any(start <= found.start() < end for start, end in through):
-            continue
         words = re.findall(r"\b[A-Z][a-z]+\b", re.sub(r"\$\{[^}]*\}", "", found.group(0)))
         if [word for word in words if word not in CODE_WORDS]:
             out.append(found.group(0))
@@ -513,10 +555,10 @@ def main(argv: list[str]) -> int:
         path.write_text(text, encoding="utf-8")
         wrote += 1
     # A word shown in English where it is to be said through say().
-    for name in SAID_ALL:
-        left = unsaid((WEB / name).read_text(encoding="utf-8"))
+    for path, names in SAID_ALL.items():
+        left = unsaid(scope(path, names))
         if left:
-            problems.append(f"web/{name} shows {len(left)} words not said through say(), first {left[0]}: "
+            problems.append(f"{path} shows {len(left)} words not said through say(), first {left[0]}: "
                             "say(\"...\") them, so each language has them (tools/site_lang.py --missing)")
     # A word a script says with no entry: it would be said in English.
     said_by_scripts = script_words()

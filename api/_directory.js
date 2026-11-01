@@ -559,7 +559,7 @@ export const escapeHtml = (text) => String(text).replace(/[&<>"']/g, (c) => ({
 // its mark (docs/TRADEMARKS.md); tests/test_trademarks.py holds it here.
 export const NOTICE = "LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site.";
 
-let chrome = null;
+const chromes = new Map();
 
 // What every page's <head> carries before the site's stylesheet
 // (web/_shell.html): the browser bar's colour in each theme, and the script
@@ -568,36 +568,83 @@ const THEME_HEAD = '<meta name="theme-color" content="#0b0c0e" media="(prefers-c
   + '<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">\n'
   + '<script src="/theme.js"></script>';
 
+/// The languages the site's pages are in besides English (web/theme.js
+/// CODES, tools/site_lang.py LANGUAGES).
+export const SITE_LANGS = ["de", "fr", "es"];
+
 /// The header and footer every page of the site has, and the theme's lines
 /// for its <head>, taken from the gallery's own page (web/gallery.html:
 /// beside this file as _site.html in a deployment, where deploy.sh puts
-/// it), so a page made here changes when the site's do. Nothing is marked
-/// as the page being looked at. A plain header and footer, with the
-/// notice, if the page is not there.
-export function siteChrome() {
-  if (chrome) return chrome;
+/// it), so a page made here changes when the site's do; in [code], the
+/// gallery's copy in that language (web/<code>/gallery.html, _site_<code>.html).
+/// Nothing is marked as the page being looked at. A plain header and
+/// footer, with the notice, if the page is not there.
+export function siteChrome(code = "en") {
+  if (chromes.has(code)) return chromes.get(code);
+  const english = code === "en";
   let page = "";
-  for (const where of ["./_site.html", "../web/gallery.html"]) {
+  for (const where of english ? ["./_site.html", "../web/gallery.html"] : [`./_site_${code}.html`, `../web/${code}/gallery.html`]) {
     const url = new URL(where, import.meta.url);
     if (existsSync(url)) {
       page = readFileSync(url, "utf8");
       break;
     }
   }
+  if (!english && !page) return siteChrome();
   const header = (page.match(/<header class="site-head">[\s\S]*?<\/header>/) || [""])[0];
   const footer = (page.match(/<footer class="site-foot">[\s\S]*?<\/footer>/) || [""])[0];
   const head = (page.match(/(?:<meta name="theme-color"[^>]*>\n)+<script src="\/theme\.js"><\/script>/) || [""])[0];
   const plain = (html) => html.replace(/\s+aria-current="page"/g, "");
-  chrome = {
+  // A copy's footer says the notice in its language, the mark with it.
+  const noticed = footer && (english ? footer.includes(NOTICE.slice(0, 40)) : footer.includes("LEGO®"));
+  const made = {
     head: head || THEME_HEAD,
     header: header ? plain(header) : `<header class="site-head"><div class="wrap bar">`
       + `<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>`
       + `<nav class="nav" aria-label="Main"><a href="/gallery">Gallery</a>`
       + `<a class="cta" href="/app">Open the app</a></nav></div></header>`,
-    footer: footer && footer.includes(NOTICE.slice(0, 40)) ? plain(footer)
-      : `<footer class="site-foot"><div class="wrap legal"><p>${NOTICE}</p></div></footer>`,
+    footer: noticed ? plain(footer) : `<footer class="site-foot"><div class="wrap legal"><p>${NOTICE}</p></div></footer>`,
   };
-  return chrome;
+  chromes.set(code, made);
+  return made;
+}
+
+const words = new Map();
+
+/// The words the site's scripts say in [code] (tools/site_lang.py's
+/// web/<code>/words.json, beside this file as _words_<code>.json in a
+/// deployment), for a page made here in that language; null for English
+/// or a language with none.
+export function siteWords(code) {
+  if (!SITE_LANGS.includes(code)) return null;
+  if (!words.has(code)) {
+    let found = null;
+    for (const where of [`./_words_${code}.json`, `../web/${code}/words.json`]) {
+      const url = new URL(where, import.meta.url);
+      if (existsSync(url)) {
+        found = JSON.parse(readFileSync(url, "utf8"));
+        break;
+      }
+    }
+    words.set(code, found);
+  }
+  return words.get(code);
+}
+
+/// What [draw] makes, in [code]'s words ([said], siteWords): the site's
+/// say(), counted() and number() (web/card.js) speak it while it runs, as a
+/// copy's page does in the browser. [draw] runs to its end at once, so no
+/// other page is made in its language meanwhile.
+export function inLanguage(code, said, draw) {
+  if (!said) return draw();
+  const before = globalThis.brickworksLang;
+  globalThis.brickworksLang = { code, locale: code, say: (english) => said[english] ?? english };
+  try {
+    return draw();
+  } finally {
+    if (before === undefined) delete globalThis.brickworksLang;
+    else globalThis.brickworksLang = before;
+  }
 }
 
 /// "1,234 parts".
