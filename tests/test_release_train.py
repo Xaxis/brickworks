@@ -345,6 +345,8 @@ def test_a_train_waits_for_the_release_before_it_then_ships_its_spec_as_edited(t
         time.sleep(1)  # ten polls, and still waiting
         assert "waits for t-m1 to serve" in y.spec("t-m2", "step")
         assert not (y.wt / "t-m2").exists()
+        # Waiting, it already keeps every unit off the live database (preview_checks.sh).
+        assert (y.r / ".git" / "live-db.release" / y.spec("t-m2", "pid").strip()).exists()
         waiting = y.train("status").stdout
         assert waiting.startswith("live: brickworks.diy serves 0000000\n"), waiting
         assert "t-m1: shipping, begun by hand at " in waiting, waiting
@@ -916,3 +918,18 @@ def test_a_release_takes_the_live_database_before_a_unit_that_waited_longer(tmp_
     assert took == ["t-release", "t-unit"], took
     assert [line.split()[0] for line in y.text("check_spans").splitlines()] == ["t-release", "t-unit"]
     assert not any((y.r / ".git" / "live-db.release").iterdir())
+
+    # A train running (a file named for its pid, as train.sh run leaves): a unit's battery
+    # begins nothing on the live database until it ends; the release's checks on the live
+    # site (LIVE_DB_RELEASE) take it all the same.
+    (y.ro / "check_spans").unlink()
+    train = subprocess.Popen(["sleep", "5"])
+    (y.r / ".git" / "live-db.release" / str(train.pid)).write_text("")
+    unit = battery("t-unit2")
+    time.sleep(0.5)
+    stale = battery("t-stale", LIVE_DB_RELEASE="1")
+    assert stale.wait(timeout=30) == 0
+    assert unit.poll() is None, "the unit's check ran while the train did"
+    train.wait()
+    assert unit.wait(timeout=30) == 0
+    assert [line.split()[0] for line in y.text("check_spans").splitlines()] == ["t-stale", "t-unit2"]

@@ -274,7 +274,11 @@ What each one guards against, all learned the hard way on 2026-10-13:
   leaves a file named for its pid in `.git/live-db.release/`, and any other
   battery that gets the lock while one is there hands it back and waits.
   flock serves no one in order, and a unit's A/B, taking the lock run after
-  run, held rel-m232's arrival 24 minutes (2026-10-31).
+  run, held rel-m232's arrival 24 minutes (2026-10-31). A train leaves such
+  a file for as long as it runs, so no unit begins a live check from its
+  staging to its end: a run already in the lock cannot be taken back, and
+  one begun while rel-m233 merged held its oauth 33 minutes. The train's
+  checks on the live site (`LIVE_DB_RELEASE`) take the lock all the same.
 
 `tools/release/clean_worktrees.sh [--dry-run]` removes finished worktrees
 and nothing else: never a locked one (the harness locks an agent's while it
