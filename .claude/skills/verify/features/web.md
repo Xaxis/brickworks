@@ -105,10 +105,18 @@ plan with Claude as the client.
   (headless) fails when one is loaded once the window has settled or a
   signed-in person's collection has come, or is made twice or out of its
   place, and prints what each first load took. With the assistant shown,
-  its panel and connector come as the first frame is drawn, and headless
-  (no frame is ever drawn) deferred: `shown_assistant_probe` fails when
-  they are not made unasked, as the relay bench's tab never switched its
-  connector on (d8surf-smoke, 2026-11-01). On the web the page is
+  Claude's connector is made as the window is built (`_make_connector`,
+  its code 55 KB: it names no other Later class, which test_later checks),
+  so it asks whether to listen, and the page runs its frames out of view
+  meanwhile, from before the window is first drawn: made with the panel
+  at that draw, a new tab put out of view as its window was built was
+  heard 5 times in 8, and made with the window 8 in 8
+  (`hidden_start_flow`, 2026-11-01). Its panel and what answers it
+  (`CommandSocket`, the assistant) come as the first frame is drawn, and headless (no frame is
+  ever drawn) deferred, the connector waiting for them before it says
+  hello to the relay: `shown_assistant_probe` fails when they are not made
+  unasked, as the relay bench's tab never switched its connector on
+  (d8surf-smoke, 2026-11-01). On the web the page is
   told each first load (`window.brickworksLoaded`: name -> [when, ms]),
   and load_check prints "loaded on first use", each before interactive,
   under the first pick, or after: anything before the pick is a compile
@@ -280,7 +288,15 @@ plan with Claude as the client.
   view (`ClaudeConnector._watch_the_page`): the engine asks the page for each
   frame, and out of view the page gives it one from a worker's clock — one at
   a time, 33 ms after the last has run (a clock that ticked regardless ran
-  frames back to back and starved the replies carrying the answers). The same
+  frames back to back and starved the replies carrying the answers). It does
+  so too while the connector, as the tab starts, finds out whether Claude is
+  connected and it should listen (`ClaudeConnector.resume`): a tab opened and
+  left for claude.ai at once asked with no frames and was heard only once the
+  person came back. `tools/web/hidden_start_flow.mjs` puts a tab out of view
+  as it starts (`--hide=ui|model` at the app's boot mark, `--reload` for a tab
+  that was on) and passes when a call is answered out of view; `--hide=start`
+  fails by design, since out of view from the first byte no frame runs the
+  engine's own start (a known gap, 2026-11-01). The same
   worker sends `op=state` every ten seconds, which also counts as seen, so the
   relay judges a tab by its page: alive is ready, in view or not; a page that
   stopped altogether is "paused" if it was out of view and "not open" if not,
