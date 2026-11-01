@@ -51,7 +51,7 @@
 // first shown, or a finger meant for it lands on whatever came there
 // (jump290). --size=WxH for another touch screen (a tablet: 820x1180),
 // --slow=N for its CPU slowed N times, as a busy phone's.
-import { launch } from "./browser.mjs";
+import { clickStill, launch } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { placed } from "./gallery_order.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -250,17 +250,8 @@ async function until(page, test, what, seconds = 240, arg = null) {
 
 const controls = (page) => page.evaluate(() => window.brickworksControls || {});
 
-async function tap(page, name, seconds = 60) {
-  const end = Date.now() + seconds * 1000;
-  for (;;) {
-    const at = (await controls(page))[name];
-    if (at) {
-      await page.touchscreen.tap(at.x, at.y);
-      return at;
-    }
-    if (Date.now() > end) throw new Error(`no ${name} on the page`);
-    await page.waitForTimeout(500);
-  }
+function tap(page, name, seconds = 60) {
+  return clickStill(page, name, { seconds, act: (at) => page.touchscreen.tap(at.x, at.y) });
 }
 
 /// --first-told: where Build it is told, every time it moves ([ms, x, y,
@@ -280,7 +271,9 @@ const watchBuildIt = (page) => page.evaluate(() => {
 /// --first-told: Build it tapped where the page first says it is, once the
 /// viewer is ready; then where it rests once the timeline is up.
 async function firstTap(page) {
-  const told = await tap(page, "view_build");
+  // Where the page first says it is, not where it comes to stand.
+  const told = await until(page, () => (window.brickworksControls || {}).view_build, "Build it", 60);
+  await page.touchscreen.tap(told.x, told.y);
   const opened = await until(page, () => ((window.brickworksShare || {}).build || {}).open === true, "the step player", 30)
     .then(() => true, () => false);
   if (opened) {

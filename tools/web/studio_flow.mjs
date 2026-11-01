@@ -143,8 +143,7 @@ function tools(page) {
     }));
   }
   async function choose(name, file) {
-    const at = await where(name);
-    await picked(async () => page.mouse.click(at.x, at.y), file, name);
+    await picked(() => clickStill(page, name, { find: where }), file, name);
   }
   async function open(file) {
     const at = await where("open");

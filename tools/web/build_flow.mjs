@@ -32,7 +32,7 @@
 //
 // Pictures in --out: <size>_1_viewer.png, _2_cover.png, _3_step3.png,
 // _4_turned.png, _5_reloaded.png.
-import { launch } from "./browser.mjs";
+import { clickStill, launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
@@ -73,18 +73,9 @@ async function until(page, test, what, seconds = 300, arg = null) {
   }
 }
 
-// A finger on a control, where the app says it is.
-async function tap(page, name, seconds = 60) {
-  const end = Date.now() + seconds * 1000;
-  for (;;) {
-    const at = (await controls(page))[name];
-    if (at) {
-      await page.touchscreen.tap(at.x, at.y);
-      return at;
-    }
-    if (Date.now() > end) throw new Error(`no ${name} on the page`);
-    await page.waitForTimeout(500);
-  }
+// A finger on a control, where the app says it stands.
+function tap(page, name, seconds = 60) {
+  return clickStill(page, name, { seconds, act: (at) => page.touchscreen.tap(at.x, at.y) });
 }
 
 // A finger drawn from one point to another, as the browser sends it.

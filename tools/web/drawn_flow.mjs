@@ -34,7 +34,7 @@
 // Pictures in --out. Fails, exiting 1, on a count that is wrong, a step
 // that does not happen, or a script error in the console. No model is
 // called and nothing is signed in to.
-import { controlsWith, launch, openColumnFor } from "./browser.mjs";
+import { clickStill, controlsWith, launch, openColumnFor } from "./browser.mjs";
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -181,10 +181,8 @@ async function where(page, name, seconds = 240) {
   await page.screenshot({ path: `${out}/never_${name}_${tag}.png`, timeout: 180000 }).catch(() => {});
   throw new Error(`the app never showed "${name}"`);
 }
-async function press(page, name, ms = 1500) {
-  const at = await where(page, name);
-  await page.mouse.click(at.x, at.y);
-  if (ms) await page.waitForTimeout(ms);
+function press(page, name, ms = 1500) {
+  return clickStill(page, name, { find: (n) => where(page, n), after: ms });
 }
 
 // The bricks drawn in the model's part of the window, from a picture of it.
