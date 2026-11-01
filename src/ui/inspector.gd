@@ -521,6 +521,7 @@ func _show_floor() -> void:
 ## tool's hint.
 func _show_nothing() -> void:
 	_title.text = ""
+	_title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_INHERIT
 	_ids.text = ""
 	for control: Control in [_title, _ids, _colour_row, _place, _facts, _actions, _versions_button]:
 		control.visible = false
@@ -537,6 +538,7 @@ func _show_one(brick: BrickWorld.Brick) -> void:
 	_title.visible = true
 	_ids.visible = true
 	_title.text = Inventory._tidy(info.name) if info != null else brick.part_id
+	_title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_INHERIT
 	var custom: bool = library.custom.has(brick.part_id)
 	_ids.text = ("Made here · %s" % brick.part_id) if custom else (
 		"LDraw %s · BrickLink %s" % [brick.part_id, brick.part_id.trim_suffix(".dat")])
@@ -584,6 +586,7 @@ func _show_many(bricks: Array[BrickWorld.Brick]) -> void:
 	_title.visible = true
 	_ids.visible = true
 	_title.text = "%d parts selected" % bricks.size()
+	_title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_INHERIT
 	_versions_button.visible = false
 	var kinds: Dictionary = {}
 	var colours: Array[int] = []
@@ -661,13 +664,15 @@ static func _shared_path(bricks: Array) -> String:
 func _show_assembly(path: String, count: int) -> void:
 	var tree: Assemblies = shell.assemblies
 	_title.text = Assemblies.label(path)
+	# Its builder's name, drawn as it is in any language (Language).
+	_title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
 	var copies: int = tree.copies_of(path).size()
 	var inside: int = 0
 	for other: String in tree.paths():
 		if Assemblies.parent_of(other) == path:
 			inside += 1
-	var lines := PackedStringArray(["Sub-assembly of %d parts%s" % [count,
-		"" if inside == 0 else ", %d inside it" % inside]])
+	var lines := PackedStringArray([("Sub-assembly of 1 part" if count == 1
+		else "Sub-assembly of %d parts" % count) + ("" if inside == 0 else ", %d inside it" % inside)])
 	if copies > 0:
 		lines.append("%d other cop%s of %s follow%s it" % [copies, "y" if copies == 1 else "ies",
 			Assemblies.definition(Assemblies.leaf(path)), "s" if copies == 1 else ""])

@@ -10,7 +10,8 @@
 ## tooltip; the panels' titles (the columns' rails, the model tree, the
 ## properties, the dialogs' own); what the parts bin, the properties and the
 ## assistant's panel say, and the lines along the foot, with a part
-## selected and with none, but the names of parts, colours and Claude's
+## selected and with none (the properties also with two parts selected and
+## with a sub-assembly selected whole), but the names of parts, colours and Claude's
 ## models; the keys sheet; Settings; and the first build's every line,
 ## which Help, Take the tour shows. Then, in each of German, French and
 ## Spanish:
@@ -20,6 +21,8 @@
 ##   kept out of the translation, and none keeps words of the interface in
 ##   English (Language.left_in_english) but names and keys;
 ## - Find a command finds Save by its name in the language, and by "save";
+## - the Library's themes: those that are words by their own entries
+##   (context "theme"), the product lines' and licences' names as they are;
 ## - Render's backdrop "White" reads the language's word, by its own entry
 ##   (msgctxt "backdrop"), while LDraw's colour White stays White; and a
 ##   sub-model named Car reads Car in the model tree and in a line that
@@ -323,6 +326,33 @@ func _gather() -> void:
 			_walk("panels", right, [])
 		_walk("the foot's lines", _shell.status, [])
 		_walk("the foot's lines", _main.get("_hint"), [])
+	# The properties of several parts selected, and of a sub-assembly
+	# selected whole, which say other things (its parts, Edit inside, Make
+	# unique); the sub-assembly made for it and taken back.
+	var right_dock: SideDock = _main.get("_props_dock")
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.id != _brick:
+			builder.select_brick(_brick, false)
+			builder.select_brick(brick.id, true)
+			break
+	await _frames(6)
+	_walk("panels", right_dock, [])
+	builder.select_brick(_brick, false)
+	_names["Probe group"] = true
+	if not _shell.assemblies.make("Probe group").is_empty():
+		# Once the properties say it, as a person reads them.
+		for _n: int in 120:
+			if str(_shell.inspector.get("_title").text) == "Probe group":
+				break
+			await process_frame
+		_check("the properties of a sub-assembly selected whole read (%s)" %
+			str(_shell.inspector.get("_title").text),
+			str(_shell.inspector.get("_title").text) == "Probe group")
+		_walk("panels", right_dock, [])
+		_shell.run("undo")
+		await _frames(4)
+	builder.clear_selection()
+	await _frames(4)
 	# The tiles' tooltips, a few of them, whose name and number are names
 	# and the rest words of the interface; and a fold's count's.
 	var tiles: int = 0
@@ -437,6 +467,7 @@ func _gather_status() -> void:
 		var info: PartLibrary.PartInfo = library.parts[part_id]
 		_plain_names[_plain(info.name)] = true
 		_plain_names[_plain(PartsBin.tile_name(info))] = true
+		_plain_names[_plain(Inventory._tidy(info.name))] = true
 		# And as a hose's list and a figure's slots shorten it.
 		_plain_names[_plain(Flex.item_name("", library, part_id))] = true
 		_plain_names[_plain(MinifigDialog._short(info.name))] = true
@@ -513,7 +544,7 @@ const DIALOGS: Array[String] = ["sign_in", "sign_in_code", "sign_in_waiting",
 
 ## The dialogs pictured in each language (--shots).
 const PICTURED: Array[String] = ["sign_in", "sign_in_code", "clear", "save_as", "versions", "render",
-	"share", "parts_list", "about", "export_3d"]
+	"share", "parts_list", "about", "export_3d", "library"]
 
 
 func _gather_dialogs() -> void:
@@ -541,6 +572,14 @@ func _gather_dialogs() -> void:
 			var by: String = str(card["credit"]).get_slice(" · ", 0)
 			if by.begins_with("by "):
 				_names[by.trim_prefix("by ")] = true
+		if name == "library":
+			# Reached, its sets and their themes, or the run proves nothing
+			# of them (they come from the store).
+			var library: LibraryDialog = _shell.library_dialog
+			var themes: int = (library.get("_theme") as OptionButton).item_count - 1
+			_check("the Library's sets and themes reached (%d themes, %d sets shown)" % [themes,
+				(library.get("_shown") as Array).size()],
+				themes > 0 and not (library.get("_shown") as Array).is_empty())
 		var read: int = 0
 		for pair: Array in shown[1]:
 			if not _is_data(pair[0]):
@@ -846,6 +885,11 @@ func _in(code: String) -> void:
 		for word: Array in _words[kind]:
 			var english: String = word[0]
 			var said: String = Language.says(english)
+			# Names learnt after it was read (the parts', by _gather_status):
+			# "1 × Brick 2 x 4\n1 × Tyre 6/ 50 x 8 Offset Tread".
+			if said.is_empty() and _is_name(english):
+				same += 1
+				continue
 			if said.is_empty():
 				lacking.append(english)
 				(_missing[code] as Array).append([english, english])
@@ -885,7 +929,58 @@ func _in(code: String) -> void:
 		code, typed, ", ".join(found.slice(0, 3)), ", ".join(english.slice(0, 3))],
 		not found.is_empty() and found[0] == "save" and not english.is_empty() and english[0] == "save")
 	await _two_senses(code)
+	await _themes(code)
 	await _pictures(code)
+
+
+## The Library's themes as LEGO's own sites in each language have them:
+## those that are words (ModelLibrary.THEME_WORDS) by their entries in the
+## context "theme", in the list and in every theme the library's sets have
+## ("City > Police"); the rest, product lines' and licences' names, as they
+## are; the list in the language's order. The list pictured open.
+func _themes(code: String) -> void:
+	var shown: Array = await _show("library")
+	var library: LibraryDialog = _shell.library_dialog
+	var choice: OptionButton = library.get("_theme")
+	var lacking: Array[String] = []
+	var wrong: Array[String] = []
+	var kept: Array[String] = []
+	var unordered: Array[String] = []
+	for n: int in range(1, choice.item_count):
+		if n > 1 and choice.get_item_text(n) < choice.get_item_text(n - 1):
+			unordered.append("%s after %s" % [choice.get_item_text(n), choice.get_item_text(n - 1)])
+		var english: String = str(choice.get_item_metadata(n))
+		var said: String = english
+		if english in ModelLibrary.THEME_WORDS:
+			said = Language.says(english, "theme")
+			if said.is_empty():
+				lacking.append(english)
+				continue
+		else:
+			kept.append(english)
+		if choice.get_item_text(n) != said:
+			wrong.append("%s drawn \"%s\"" % [english, choice.get_item_text(n)])
+	var words: Dictionary = {}
+	for model: Dictionary in library.books.get("_models"):
+		for part: String in ModelLibrary.tidy(str(model.get("theme", ""))).split(" > "):
+			if part in ModelLibrary.THEME_WORDS:
+				words[part] = true
+	for part: String in words:
+		if Language.says(part, "theme").is_empty() and not part in lacking:
+			lacking.append(part)
+	_check("%s: the Library's %d themes, %d names kept (%s, ...) and the rest translated, " % [code,
+		choice.item_count - 1, kept.size(), ", ".join(kept.slice(0, 5))]
+		+ "with the %d words in its sets' themes, in the language's order%s" % [words.size(),
+		"" if lacking.is_empty() and wrong.is_empty() and unordered.is_empty()
+			else "; lacking %s; %s; %s" % [lacking, wrong, unordered.slice(0, 3)]],
+		choice.item_count > 1 and lacking.is_empty() and wrong.is_empty() and unordered.is_empty())
+	if not _shots.is_empty():
+		choice.show_popup()
+		await _frames(8)
+		await _shot("%s_library_themes" % code)
+		choice.get_popup().hide()
+		await _frames(3)
+	await _close("library", shown[0])
 
 
 ## A word with a second sense, and a name that is a word too: Render's
@@ -908,6 +1003,8 @@ func _two_senses(code: String) -> void:
 	(_main.get("_builder") as Builder).select_brick(_brick, false)
 	var made: String = _shell.assemblies.make("Car")
 	await _frames(10)
+	if not _shots.is_empty():
+		await _shot("%s_model_tree_submodel" % code)
 	var row: TreeItem = null
 	var rows: Array[String] = []
 	var top: TreeItem = (_shell.outliner.get("_tree") as Tree).get_root()

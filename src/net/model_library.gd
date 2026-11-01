@@ -178,6 +178,30 @@ static func theme_of(entry: Dictionary) -> String:
 	return tidy(str(entry.get("theme", "")).get_slice(" > ", 0).get_slice(" / ", 0).strip_edges())
 
 
+## The themes, and the parts of a theme's path, that are words and not
+## names, as LEGO's own German, French and Spanish sites have them: a kind
+## of set (Other, Seasonal, Promotional, Modular Buildings), what a city
+## set is (Police, Fire, Farm), a holiday, and a film's title in its
+## language (Der Herr der Ringe). Each has an entry in the context "theme"
+## (Language). Every other theme is a product line's or a licence's name,
+## the same in every language: City, Friends, Technic, Space, Architecture.
+const THEME_WORDS: Array[String] = ["Other", "Seasonal", "Promotional", "Hobby Sets",
+	"Modular Buildings", "LEGO® Exclusive", "Boat", "Train", "The Hobbit and Lord of the Rings",
+	"The LEGO® Movie", "The Lord of the Rings", "Advent", "Christmas", "Thanksgiving",
+	"Chinese (Lunar) New Year", "Airlines", "Airport", "Building", "Cargo", "Coast Guard",
+	"Construction", "Farm", "Fire", "Harbor", "Hospital", "Off-Road", "Police", "Traffic",
+	"Trains", "Vehicle"]
+
+
+## [param theme], a top theme or its path ("City > Police"), as it is drawn
+## in the language in use: its words by their entries, its names as they are.
+static func theme_said(theme: String) -> String:
+	var said := PackedStringArray()
+	for part: String in theme.split(" > "):
+		said.append(TranslationServer.translate(part, "theme") if part in THEME_WORDS else part)
+	return " > ".join(said)
+
+
 ## Every top theme, by name.
 static func themes(of: Array) -> PackedStringArray:
 	var seen: Dictionary = {}

@@ -8204,9 +8204,188 @@ msgstr "Claude puede acceder a esta pestaña"
 msgid "No assistant, no Claude and no AI anywhere in the window. Claude connections are off while the assistant is off."
 msgstr "Sin asistente, sin Claude y sin IA en ninguna parte de la ventana. Las conexiones con Claude están desactivadas mientras el asistente lo esté."
 
+# A sub-assembly selected whole, and two parts selected (Meet on hinges), in
+# the properties
+msgid "%s × %s studs, %s tall"
+msgstr "%s × %s espigas, %s de alto"
+
+msgid "Turn: by the turn step, %d° a time"
+msgstr "Giro: por paso de giro, %d° cada vez"
+
+msgid "How far it is turned about the hinge, pin, axle or clip it hangs from, in degrees off square: type an angle to swing it there"
+msgstr "Cuánto está girada sobre la bisagra, el pasador, el eje o el clip del que cuelga, en grados desde la escuadra: escribe un ángulo para girarla hasta ahí"
+
+msgid "Hinges"
+msgstr "Bisagras"
+
+msgid "Meet"
+msgstr "Juntar"
+
+msgid "Swing the hinges, clips and turntables between the two selected parts so they meet: a ring closes, a wing meets its strut. One step to undo"
+msgstr "Girar las bisagras, clips y plataformas giratorias entre las dos piezas seleccionadas hasta que se unan: un anillo se cierra, un ala se une a su puntal. Un solo paso para deshacer"
+
+msgid "made the sub-assembly %s of %s"
+msgstr "subconjunto %s con %s"
+
+msgid "Sub-assembly of 1 part"
+msgstr "Subconjunto de 1 pieza"
+
+msgid "Sub-assembly of %d parts"
+msgstr "Subconjunto de %d piezas"
+
+msgid "Sub-assembly of 1 part, %d inside it"
+msgstr "Subconjunto de 1 pieza, %d dentro"
+
+msgid "Sub-assembly of %d parts, %d inside it"
+msgstr "Subconjunto de %d piezas, %d dentro"
+
+msgid "%d other copy of %s follows it"
+msgstr "%d copia más de %s la sigue"
+
+msgid "%d other copies of %s follow it"
+msgstr "%d copias más de %s la siguen"
+
+msgid "In %s"
+msgstr "En %s"
+
+msgid "Edit inside"
+msgstr "Editar dentro"
+
+msgid "Work on its parts one by one"
+msgstr "Trabajar en sus piezas una a una"
+
+msgid "Take it apart one level"
+msgstr "Deshacer un nivel"
+
+msgid "Make unique"
+msgstr "Hacer única"
+
 # A word with a second sense, kept apart by its context (msgctxt, and
 # tr(word, context) where it is drawn): White as a render's backdrop, beside
 # LDraw's colour of that name, which stays as it is
 msgctxt "backdrop"
 msgid "White"
 msgstr "Blanco"
+
+# A theme of sets that is a word, not a name (ModelLibrary.THEME_WORDS), as
+# LEGO's own sites in each language have it; every other theme, a product
+# line's or a licence's, stays as it is
+msgctxt "theme"
+msgid "Other"
+msgstr "Otros"
+
+msgctxt "theme"
+msgid "Seasonal"
+msgstr "De temporada"
+
+msgctxt "theme"
+msgid "Promotional"
+msgstr "Sets promocionales"
+
+msgctxt "theme"
+msgid "Hobby Sets"
+msgstr "Sets Hobby"
+
+msgctxt "theme"
+msgid "Modular Buildings"
+msgstr "Edificios modulares"
+
+msgctxt "theme"
+msgid "LEGO® Exclusive"
+msgstr "Sets LEGO® exclusivos"
+
+msgctxt "theme"
+msgid "Boat"
+msgstr "Barcos"
+
+msgctxt "theme"
+msgid "Train"
+msgstr "Trenes"
+
+msgctxt "theme"
+msgid "The Hobbit and Lord of the Rings"
+msgstr "El Hobbit y El Señor de los Anillos"
+
+msgctxt "theme"
+msgid "The LEGO® Movie"
+msgstr "La LEGO® película"
+
+msgctxt "theme"
+msgid "The Lord of the Rings"
+msgstr "El Señor de los Anillos"
+
+msgctxt "theme"
+msgid "Advent"
+msgstr "Adviento"
+
+msgctxt "theme"
+msgid "Christmas"
+msgstr "Navidad"
+
+msgctxt "theme"
+msgid "Thanksgiving"
+msgstr "Acción de Gracias"
+
+msgctxt "theme"
+msgid "Chinese (Lunar) New Year"
+msgstr "Año Nuevo Lunar"
+
+msgctxt "theme"
+msgid "Airlines"
+msgstr "Aerolíneas"
+
+msgctxt "theme"
+msgid "Airport"
+msgstr "Aeropuerto"
+
+msgctxt "theme"
+msgid "Building"
+msgstr "Edificios"
+
+msgctxt "theme"
+msgid "Cargo"
+msgstr "Carga"
+
+msgctxt "theme"
+msgid "Coast Guard"
+msgstr "Guardacostas"
+
+msgctxt "theme"
+msgid "Construction"
+msgstr "Construcción"
+
+msgctxt "theme"
+msgid "Farm"
+msgstr "Granja"
+
+msgctxt "theme"
+msgid "Fire"
+msgstr "Bomberos"
+
+msgctxt "theme"
+msgid "Harbor"
+msgstr "Puerto"
+
+msgctxt "theme"
+msgid "Hospital"
+msgstr "Hospital"
+
+msgctxt "theme"
+msgid "Off-Road"
+msgstr "Todoterreno"
+
+msgctxt "theme"
+msgid "Police"
+msgstr "Policía"
+
+msgctxt "theme"
+msgid "Traffic"
+msgstr "Tráfico"
+
+msgctxt "theme"
+msgid "Trains"
+msgstr "Trenes"
+
+msgctxt "theme"
+msgid "Vehicle"
+msgstr "Vehículos"
