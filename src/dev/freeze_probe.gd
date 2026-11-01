@@ -24,7 +24,9 @@ extends SceneTree
 ## browser on a laptop runs the same scripts two or three times slower than
 ## this.
 const BUDGET_MS := 200.0
-## Frames a second the doubled Falcon must turn at.
+## Frames a second the doubled Falcon must turn at, of the app's own time
+## (the clock's less the main thread's wait for a CPU), a third of it at a
+## load past the box's cores (ProbeTime).
 const ORBIT_FPS := 30.0
 
 var _failures: int = 0
@@ -149,6 +151,7 @@ func _orbit(main: Node, world: BrickWorld) -> void:
 	RenderingServer.viewport_set_measure_render_time(viewport, true)
 	var draw_cpu_ms: float = 0.0
 	var draw_gpu_ms: float = 0.0
+	var busy: float = ProbeTime.box_load()
 	var queued: float = ProbeTime.waited_ms()
 	var began: int = Time.get_ticks_usec()
 	var worst: float = 0.0
@@ -162,8 +165,12 @@ func _orbit(main: Node, world: BrickWorld) -> void:
 		frames += 1
 		draw_cpu_ms += RenderingServer.viewport_get_measured_render_time_cpu(viewport)
 		draw_gpu_ms += RenderingServer.viewport_get_measured_render_time_gpu(viewport)
-	var fps: float = frames / ((Time.get_ticks_usec() - began) / 1e6)
+	var took_ms: float = (Time.get_ticks_usec() - began) / 1000.0
+	var fps: float = frames / (took_ms / 1000.0)
 	queued = ProbeTime.waited_ms() - queued
+	var own_fps: float = frames / (maxf(took_ms - queued, 1.0) / 1000.0)
+	busy = maxf(busy, ProbeTime.box_load())
+	var least: float = ORBIT_FPS / ProbeTime.slack(busy)
 	RenderingServer.viewport_set_measure_render_time(viewport, false)
 	print("  a frame while turning: %.1f ms, of which drawing is %.1f ms of the CPU's and %.1f of the GPU's"
 		% [2000.0 / maxf(frames, 1), draw_cpu_ms / maxf(frames, 1), draw_gpu_ms / maxf(frames, 1)])
@@ -173,12 +180,12 @@ func _orbit(main: Node, world: BrickWorld) -> void:
 			batches += 1
 	var adapter: String = RenderingServer.get_video_adapter_name()
 	var software: bool = _software
-	_check("turning round %d parts in %d batches: %.0f frames a second, the slowest %.0f ms (%s on %s)%s%s"
-		% [world.brick_count(), batches, fps, worst,
+	_check("turning round %d parts in %d batches: %.0f frames a second of its own (%.0f on the clock), at least %.0f, the slowest %.0f ms (%s on %s)%s%s"
+		% [world.brick_count(), batches, own_fps, fps, least, worst,
 			RenderingServer.get_current_rendering_method(), adapter,
 			", in software, so not judged" if software else "",
-			_queued_said(queued, 2000.0)],
-		software or fps >= ORBIT_FPS)
+			_queued_said(queued, took_ms, busy)],
+		software or own_fps >= least)
 	if library == null:
 		return
 
@@ -212,11 +219,10 @@ static func _falcon_calls() -> Array:
 
 
 ## How much of a slow stretch was the machine rather than the app, on a
-## machine other projects share (ProbeTime): the frames are judged as they
-## are.
-static func _queued_said(queued: float, of_ms: float) -> String:
+## machine other projects share (ProbeTime).
+static func _queued_said(queued: float, of_ms: float, busy: float) -> String:
 	return "; the main thread waited %.0f of those %.0f ms for a CPU, at a %s" % [
-		queued, of_ms, ProbeTime.load_said(ProbeTime.box_load())]
+		queued, of_ms, ProbeTime.load_said(busy)]
 
 
 func _check(what: String, held: bool) -> void:
