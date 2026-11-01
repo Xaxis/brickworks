@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<!-- web/download.html in Español, written by tools/site_lang.py from it and web/_lang/es.json: change those and run it, never this. -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<script defer src="https://overlook.technology/s.js" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Descargar Brickworks para Linux, macOS y Windows</title>
+<meta name="description" content="Brickworks para el escritorio: el mismo editor que la aplicación web, con todas las piezas en el disco, para que funcione sin conexión. Para Linux, macOS y Windows, de descarga gratuita hasta que Pro esté disponible.">
+<link rel="canonical" href="https://brickworks.diy/es/download">
+<link rel="alternate" hreflang="en" href="https://brickworks.diy/download">
+<link rel="alternate" hreflang="de" href="https://brickworks.diy/de/download">
+<link rel="alternate" hreflang="fr" href="https://brickworks.diy/fr/download">
+<link rel="alternate" hreflang="es" href="https://brickworks.diy/es/download">
+<link rel="alternate" hreflang="x-default" href="https://brickworks.diy/download">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Descargar Brickworks">
+<meta property="og:description" content="Brickworks para Linux, macOS y Windows, con todas las piezas en el disco para construir sin conexión. Descarga gratuita hasta que Pro esté disponible.">
+<meta property="og:url" content="https://brickworks.diy/es/download">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="La marca de Brickworks, un cubo con una esquina recortada, y las palabras: un CAD completo para modelos LEGO®, junto a un renderizado de un castillo de piedra gris hecho de ladrillos.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Descargar Brickworks">
+<meta name="twitter:description" content="Brickworks para Linux, macOS y Windows, con todas las piezas en el disco para construir sin conexión.">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/site.css">
+<style>
+/* The download and how to start it, then a picture of what it is: side
+   by side on a laptop, one under the other on a phone. Only layout here;
+   every control is site.css's. */
+.get { border-bottom: 1px solid var(--line); }
+.get > .wrap { display: grid; gap: var(--s-6); align-items: start; padding: var(--page-top) 0 var(--s-8); }
+@media (width >= 900px) { .get > .wrap { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--s-7); } }
+.get .shot { border-radius: var(--r-4); }
+.offer .note { margin: var(--s-3) 0 0; }
+.offer .note a { color: var(--ink-soft); }
+.offer .state { margin-top: var(--s-5); }
+.more { margin-top: var(--s-5); }
+.more ol { margin: 0 0 10px; padding-left: 20px; }
+.more li { margin: 0 0 8px; }
+.more b { color: var(--ink); font-weight: 620; }
+.more .note { margin: 0; }
+.copy-row { display: flex; gap: var(--s-2); align-items: flex-start; margin: 6px 0 10px; }
+.copy-row .cmd { flex: 1; min-width: 0; margin: 0; }
+.copy-row button { flex: none; }
+.news { padding: var(--s-7) 0 var(--section); }
+.news .card { max-width: 720px; }
+.news .card > * { max-width: 640px; }
+.news h2 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); }
+.news ul { margin: 0 0 var(--s-3); padding-left: 20px; color: var(--ink-soft); }
+.news li { margin: 0 0 6px; }
+.news .note a { color: var(--ink-soft); }
+</style>
+<script src="/follow.js" type="module"></script>
+<script type="application/json" id="site-words">{", a graphics driver with Vulkan or OpenGL 3.3": ", un controlador gráfico con Vulkan u OpenGL 3.3", ", and {size} of disk": " y {size} de disco", "Account": "Cuenta", "Advent": "Adviento", "Airlines": "Aerolíneas", "Airport": "Aeropuerto", "Apple silicon and Intel": "Apple silicon e Intel", "Assistant": "Asistente", "Beta hub": "Zona beta", "Boat": "Barcos", "Building": "Edificios", "Cargo": "Carga", "Chinese (Lunar) New Year": "Año Nuevo Lunar", "Christmas": "Navidad", "Coast Guard": "Guardacostas", "Construction": "Construcción", "Copied": "Copiado", "Copy": "Copiar", "Designed with the assistant, {how}": "Diseñado con el asistente, {how}", "Download for {system}": "Descargar para {system}", "Farm": "Granja", "Fire": "Bomberos", "First launch: drag it into Applications.": "Primer inicio: arrástrala a Aplicaciones.", "First launch: extract the zip first.": "Primer inicio: primero extrae el zip.", "First launch: extract the zip, then allow it once.": "Primer inicio: extrae el zip y después permítela una vez.", "First launch: let the AppImage run as a program.": "Primer inicio: deja que el AppImage se ejecute como programa.", "First launch: macOS asks you to allow it once.": "Primer inicio: macOS te pide permitirla una vez.", "Harbor": "Puerto", "Hobby Sets": "Sets Hobby", "Hospital": "Hospital", "In PowerShell, this checks the file is the one published. It should print True.": "En PowerShell, esto comprueba que el archivo es el publicado. Debería mostrar True.", "In Terminal, this checks the file is the one published. It should print OK.": "En Terminal, esto comprueba que el archivo es el publicado. Debería mostrar OK.", "In a terminal, this checks each file is the one published. It should print OK.": "En un terminal, esto comprueba que cada archivo es el publicado. Debería mostrar OK.", "LDraw has a 3D model of it, to build in Brickworks": "LDraw tiene un modelo 3D, para construir en Brickworks", "LEGO® Exclusive": "Sets LEGO® exclusivos", "Made from a 3D model with Brickify, {how}": "Hecho a partir de un modelo 3D con Brickify, {how}", "Menu": "Menú", "Menu and your account": "Menú y tu cuenta", "Menu and your account, {n} new": "Menú y tu cuenta, {n} nuevos", "Modelled by {name}": "Modelado por {name}", "Modular Buildings": "Edificios modulares", "Moves:": "Se mueve:", "Needs 64-bit Linux on an x86 PC": "Necesita Linux de 64 bits en un PC x86", "Needs 64-bit Linux on an x86 PC with glibc {glibc} or newer": "Necesita Linux de 64 bits en un PC x86 con glibc {glibc} o posterior", "Needs 64-bit Windows 10 or 11, a graphics driver with Vulkan, Direct3D 12 or OpenGL 3.3": "Necesita Windows 10 u 11 de 64 bits, un controlador gráfico con Vulkan, Direct3D 12 u OpenGL 3.3", "Needs macOS on Apple silicon or Intel": "Necesita macOS en Apple silicon o Intel", "Needs macOS {arm} or later on Apple silicon, {intel} or later on Intel": "Necesita macOS {arm} o posterior en Apple silicon, {intel} o posterior en Intel", "New in {version}": "Novedades de la {version}", "No picture": "Sin imagen", "Notifications": "Notificaciones", "Off-Road": "Todoterreno", "Open it and drag what moves, as it was built": "Ábrelo y arrastra lo que se mueve, tal como se construyó", "Open it and play it:": "Ábrelo y reprodúcelo:", "Open it and play them:": "Ábrelo y reprodúcelos:", "Other": "Otros", "Other systems: ": "Otros sistemas: ", "Police": "Policía", "Promotional": "Sets promocionales", "Released {date}": "Publicada el {date}", "Saved": "Guardados", "Seasonal": "De temporada", "See Pro": "Ver Pro", "Selected": "Seleccionado", "Send feedback": "Enviar comentarios", "Settings": "Ajustes", "Sign in": "Iniciar sesión", "Sign in to download the desktop app.": "Inicia sesión para descargar la aplicación de escritorio.", "Sign out": "Cerrar sesión", "Signed in": "Sesión iniciada", "Stands at every step · every step reachable · every part made in its colour · nothing loose": "Se sostiene en cada paso · cada paso es alcanzable · cada pieza existe en su color · nada suelto", "Tested": "Probado", "Thanksgiving": "Acción de Gracias", "The Hobbit and Lord of the Rings": "El Hobbit y El Señor de los Anillos", "The LEGO® Movie": "La LEGO® película", "The Lord of the Rings": "El Señor de los Anillos", "The download did not start just now. Try again in a minute.": "La descarga no empezó. Vuelve a intentarlo en un minuto.", "The {kind}:": "El archivo {kind}:", "Traffic": "Tráfico", "Train": "Trenes", "Trains": "Trenes", "Vehicle": "Vehículos", "Version {version}": "Versión {version}", "Windows 10 and 11": "Windows 10 y 11", "Won “{title}”, by hand": "Ganó «{title}», a mano", "Won “{title}”, with the assistant": "Ganó «{title}», con el asistente", "You have every part": "Tienes todas las piezas", "You have none of its parts": "No tienes ninguna de sus piezas", "You have {have} of its {pieces} parts": "Tienes {have} de sus {pieces} piezas", "Your account": "Tu cuenta", "Your account, {n} new": "Tu cuenta, {n} nuevos", "Your feed": "Tu feed", "Your profile": "Tu perfil", "actuator": "actuador", "and {n} more": "y {n} más", "as its designer tagged it": "según lo etiquetó su diseñador", "as the app said when it was published": "según indicó la aplicación al publicarlo", "boom": "pluma", "built": "construido", "comment": "comentario", "comments": "comentarios", "doors": "puertas", "gears": "engranajes", "like": "me gusta", "likes": "me gusta", "part": "pieza", "parts": "piezas", "pneumatics": "neumática", "rack": "cremallera", "remix": "remix", "remixes": "remixes", "steering": "dirección", "turntable": "plataforma giratoria", "{n} new": "{n} nuevos"}</script>
+</head>
+<body>
+<a class="skip" href="#main">Ir al contenido</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/es"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Principal">
+			<a href="/gallery">Galería</a>
+			<a href="/library">Biblioteca</a>
+			<a href="/docs">Documentación</a>
+			<a href="/plans">Precios</a>
+			<a class="cta" href="/app?lang=es">Abrir la aplicación</a>
+			<a class="cta ghost" href="/profile" data-account>Iniciar sesión</a>
+		</nav>
+		<details class="menu">
+			<summary>Menú</summary>
+			<div class="menu-list">
+				<nav aria-label="Menú">
+					<a href="/gallery">Galería</a>
+					<a href="/library">Biblioteca</a>
+					<a href="/docs">Documentación</a>
+					<a href="/plans">Precios</a>
+					<a href="/es/download" aria-current="page">Descargar</a>
+					<a href="/profile" data-account>Iniciar sesión</a>
+				</nav>
+				<div class="theme-choice"><span aria-hidden="true">Tema</span>
+					<div class="segmented" role="group" aria-label="Tema">
+						<button type="button" data-theme-choice="system" aria-pressed="true">Sistema</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Claro</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Oscuro</button>
+					</div>
+				</div>
+			</div>
+		</details>
+	</div>
+</header>
+
+<main id="main">
+	<section class="get halo" aria-labelledby="get-h">
+		<div class="wrap">
+		<div class="offer">
+			<p class="eyebrow">Windows, macOS y Linux</p>
+			<h1 id="get-h">Descargar Brickworks</h1>
+			<p class="lede" data-pitch="computer">El mismo editor que la aplicación web, con todas las piezas en el disco, para que funcione sin conexión.</p>
+			<p class="lede" data-pitch="mobile" hidden>La aplicación de escritorio es para un ordenador. Aquí, abre la aplicación web: es el mismo editor, sin nada que instalar.</p>
+			<p class="lede" data-pitch="other" hidden>Aún no hay una versión de escritorio para este ordenador. La aplicación web es el mismo editor, sin nada que instalar.</p>
+
+			<!-- Without the script, the button goes to the release on GitHub. -->
+			<div class="actions">
+				<a class="cta big" id="web-app" href="/app?lang=es" hidden>Abrir la aplicación web</a>
+				<a class="cta big" id="offer-button" href="https://github.com/Xaxis/brickworks-releases/releases/latest">Descargar</a>
+			</div>
+			<p class="note" id="offer-meta"></p>
+			<p class="note" id="others" hidden></p>
+			<p class="note" id="pro-note">Se descarga gratis hasta que <a href="/plans">Pro</a> esté disponible; desde entonces, las versiones nuevas vendrán con Pro. Cada versión que descargues sigue funcionando, con Pro o sin él.</p>
+
+			<p class="state" id="none-yet" hidden>La primera versión de escritorio está en camino. Hasta entonces, <a href="/app?lang=es">abre la aplicación web</a>.</p>
+			<p class="state" id="broken" hidden>La lista de descargas no se cargó. Todas las versiones están en <a href="https://github.com/Xaxis/brickworks-releases/releases/latest">GitHub</a>.</p>
+
+			<div class="more" id="more" hidden>
+				<details class="qa" id="steps">
+					<summary id="steps-line">Primer inicio</summary>
+					<div data-steps="macos" hidden>
+						<ol>
+							<li>Abre el zip y arrastra <b>Brickworks</b> a Aplicaciones.</li>
+							<li data-unsigned>Ábrelo. macOS dice que no puede comprobar que no contenga software malicioso: elige <b>OK</b>.</li>
+							<li data-unsigned>Abre <b>Ajustes del Sistema</b> y luego <b>Privacidad y seguridad</b>. En Seguridad, elige <b>Abrir igualmente</b> junto a Brickworks y luego <b>Abrir</b>.</li>
+						</ol>
+						<p data-unsigned>macOS lo pregunta porque Apple aún no ha notarizado esta versión. Solo lo pregunta la primera vez.</p>
+						<p data-unsigned>Si dice que «Brickworks» <b>está dañado</b>, es la marca de cuarentena de la descarga, no un daño. Verifica la descarga y luego, en Terminal:</p>
+						<div class="copy-row" data-unsigned><code class="cmd">xattr -dr com.apple.quarantine /Applications/Brickworks.app</code><button type="button" class="cta ghost small" data-copy>Copiar</button></div>
+						<p class="note" data-need="macos"></p>
+					</div>
+					<div data-steps="windows" hidden>
+						<ol>
+							<li>Haz clic derecho en el zip y elige <b>Extraer todo</b>. No se ejecuta desde dentro del zip.</li>
+							<li>Abre la carpeta y ejecuta <b>Brickworks.exe</b>.</li>
+							<li data-unsigned>Si Windows dice <b>Windows protegió tu PC</b>, elige <b>Más información</b> y luego <b>Ejecutar de todas formas</b>. Solo lo pregunta la primera vez, porque esta versión aún no está firmada.</li>
+						</ol>
+						<p class="note" data-need="windows"></p>
+					</div>
+					<div data-steps="linux" hidden>
+						<p>En tu gestor de archivos, abre las <b>Propiedades</b> del AppImage y permite que se ejecute como programa. Luego haz doble clic en él. O en una terminal:</p>
+						<div class="copy-row"><code class="cmd" data-cmd="linux-appimage">chmod +x Brickworks-*.AppImage &amp;&amp; ./Brickworks-*.AppImage</code><button type="button" class="cta ghost small" data-copy>Copiar</button></div>
+						<p>¿No arranca? Puede que a tu sistema le falte FUSE. Descarga en su lugar el <a id="linux-tar" href="https://github.com/Xaxis/brickworks-releases/releases/latest">.tar.xz</a> y ejecútalo desde donde se descomprima:</p>
+						<div class="copy-row"><code class="cmd" data-cmd="linux-tar">tar -xf Brickworks-*.tar.xz &amp;&amp; ./Brickworks-*/brickworks.x86_64</code><button type="button" class="cta ghost small" data-copy>Copiar</button></div>
+						<p class="note" data-need="linux"></p>
+					</div>
+				</details>
+				<details class="qa" id="verify">
+					<summary>Verificar la descarga</summary>
+					<div>
+						<p id="verify-how"></p>
+						<div id="sums"></div>
+						<p class="note">El SHA-256 de cada archivo está en SHA256SUMS, en <a id="release-link" href="https://github.com/Xaxis/brickworks-releases/releases/latest">la versión en GitHub</a>.</p>
+					</div>
+				</details>
+			</div>
+			<noscript><p class="state">Esta página elige tu descarga con un poco de JavaScript. Sin él, todos los archivos están en <a href="https://github.com/Xaxis/brickworks-releases/releases/latest">GitHub</a>.</p></noscript>
+		</div>
+
+		<figure class="shot">
+			<img src="/img/hero-1200.webp"
+				srcset="/img/hero-1200.webp 1200w, /img/hero-2400.webp 2400w"
+				sizes="(min-width: 1180px) 620px, (min-width: 900px) 54vw, calc(100vw - 32px)"
+				width="2400" height="1350" fetchpriority="high" decoding="async"
+				alt="El editor de Brickworks con un castillo de 2438 piezas abierto y su torre de entrada seleccionada: menús y una barra de herramientas arriba; a la izquierda, la caja de piezas, el árbol del modelo con sus subconjuntos y las propiedades de la torre de entrada; el cubo de vista arriba a la derecha; y en el centro un castillo de piedra con torres, un foso y un patio, con la torre de entrada resaltada en amarillo.">
+		</figure>
+		</div>
+	</section>
+
+	<section class="wrap news" id="notes" aria-labelledby="notes-h" hidden>
+		<div class="card">
+		<h2 id="notes-h">Qué hay de nuevo</h2>
+		<!-- A release's few lines, written for this page when it is published
+		     (docs/RELEASING.md, step 6). A release without them here shows the
+		     first sentences of its summary instead. -->
+		<ul data-highlights="0.13.0" hidden>
+			<li>Se abre antes: los paneles se cargan la primera vez que los usas.</li>
+			<li>Piezas y colores con nombre en alemán, francés y español.</li>
+			<li>La vista en corte va fluida en modelos grandes.</li>
+			<li>Deshacer devuelve una pieza a donde estaba.</li>
+		</ul>
+		<ul data-highlights="0.12.0" hidden>
+			<li>Renderizados en calidad «Máxima» con trazado de rutas en tu tarjeta gráfica.</li>
+			<li>Las imágenes se ponen en cola y se dibujan mientras construyes.</li>
+			<li>Folletos con piezas a tamaño real y separadas.</li>
+			<li>La aplicación en alemán, francés o español.</li>
+		</ul>
+		<ul data-highlights="0.11.0" hidden>
+			<li>Gira cualquier pieza sobre cualquier eje con sus anillos.</li>
+			<li>Conecta un punto de una pieza a un punto de otra.</li>
+			<li>Las teclas de Studio, Mecabricks o LDCad, como preajustes.</li>
+			<li>La construcción de un modelo, pieza a pieza, en vídeo.</li>
+		</ul>
+		<ul data-highlights="0.10.0" hidden>
+			<li>Una mirada fresca a cada diseño nuevo.</li>
+			<li>Se juzga por toda tu petición, palabra por palabra.</li>
+			<li>Las piezas con espigas en los lados ya no se interpretan como más anchas.</li>
+			<li>«Probado» juzga una construcción por sus propias piezas y uniones.</li>
+		</ul>
+		<ul data-highlights="0.9.0" hidden>
+			<li>Todos los diálogos y botones con el aspecto propio de la aplicación.</li>
+			<li>Un solo recuento de piezas por modelo, dondequiera que se muestre.</li>
+			<li>«Esfuerzos» tiene en cuenta los pasadores y ejes de un modelo Technic.</li>
+			<li>Encuentra una técnica por sus palabras, una pieza por su número.</li>
+		</ul>
+		<ul data-highlights="0.8.0" hidden>
+			<li>Construye un modelo junto con alguien, en directo.</li>
+			<li>Funciona con un lector de pantalla y solo con el teclado.</li>
+			<li>Encuentra una pieza por su nombre de BrickLink, su número o una foto.</li>
+			<li>Guarda un folleto como PDF.</li>
+		</ul>
+		<ul data-highlights="0.7.0" hidden>
+			<li>Tus modelos guardados con tu cuenta, en todos tus dispositivos.</li>
+			<li>Cada exportación pregunta dónde guardarla.</li>
+			<li>Los folletos grandes se dibujan unas seis veces más rápido.</li>
+			<li>Los engranajes engranan y las puertas cuelgan en cuanto los colocas.</li>
+		</ul>
+		<ul data-highlights="0.6.0" hidden>
+			<li>Ver, Esfuerzos muestra dónde cedería un modelo.</li>
+			<li>Los modelos grandes se abren sin congelar la ventana.</li>
+			<li>Las piezas móviles giran a mano con más suavidad.</li>
+			<li>Claude encuentra piezas por las propias palabras de quien construye.</li>
+		</ul>
+		<ul data-highlights="0.5.0" hidden>
+			<li>Abre cualquiera de los 1575 modelos de sets reales desde la Biblioteca.</li>
+			<li>En 85 sets, la dirección gira como en los reales.</li>
+			<li>Claude diseña dos veces y se queda con el mejor.</li>
+			<li>Brickify coloca de lado las caras empinadas.</li>
+		</ul>
+		<ul data-highlights="0.4.0" hidden>
+			<li>Movimientos: ponle nombre a cómo se mueve un modelo, reprodúcelo y grábalo.</li>
+			<li>Cremalleras, manivelas y correderas se mueven como las piezas reales.</li>
+			<li>Brickify lee archivos PLY, 3MF, VOX y FBX.</li>
+			<li>Un segundo modelo en su propia pestaña.</li>
+		</ul>
+		<ul data-highlights="0.3.0" hidden>
+			<li>Folletos de instrucciones, con pasos que se construyen tal como se dibujan.</li>
+			<li>Renderiza tu modelo, compártelo por enlace, dale una pose y anímalo.</li>
+			<li>Convierte un archivo 3D en ladrillos, o una imagen en un mosaico.</li>
+			<li>Exporta a Studio, BrickLink, Rebrickable o un programa 3D.</li>
+		</ul>
+		<ul id="notes-list" hidden></ul>
+		<p class="note"><span id="notes-date"></span><a id="notes-link" href="/changelog">Todas las novedades</a> · <a href="https://github.com/Xaxis/brickworks-releases/releases">Versiones anteriores</a></p>
+		</div>
+	</section>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-top">
+			<div class="foot-brand">
+				<a class="mark" href="/es"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>Un CAD para modelos LEGO®, con un diseñador de IA.</p>
+				<div class="theme-choice"><span aria-hidden="true">Tema</span>
+					<div class="segmented" role="group" aria-label="Tema">
+						<button type="button" data-theme-choice="system" aria-pressed="true">Sistema</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Claro</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Oscuro</button>
+					</div>
+				</div>
+				<label class="theme-choice"><span>Idioma</span>
+					<select data-lang-choice translate="no">
+						<option value="en" lang="en">English</option>
+						<option value="de" lang="de">Deutsch</option>
+						<option value="fr" lang="fr">Français</option>
+						<option value="es" lang="es">Español</option>
+					</select>
+				</label>
+			</div>
+			<nav class="foot-links" aria-label="Más">
+				<div>
+					<p class="foot-h" id="foot-product">Producto</p>
+					<ul aria-labelledby="foot-product">
+						<li><a href="/app?lang=es">Abrir la aplicación</a></li>
+						<li><a href="/es/download">Descargar</a></li>
+						<li><a href="/plans">Precios</a></li>
+						<li><a href="/changelog">Novedades</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-community">Comunidad</p>
+					<ul aria-labelledby="foot-community">
+						<li><a href="/gallery">Galería</a></li>
+						<li><a href="/library">Biblioteca LDraw</a></li>
+						<li><a href="/challenge">Desafío</a></li>
+						<li><a href="/collections">Colecciones</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-help">Ayuda</p>
+					<ul aria-labelledby="foot-help">
+						<li><a href="/docs">Documentación</a></li>
+						<li><a href="/faq">Preguntas frecuentes</a></li>
+						<li><a href="/compare">Comparar</a></li>
+						<li><a href="/guidelines">Normas</a></li>
+						<li><a href="/feedback" data-feedback>Enviar comentarios</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-legal">Legal</p>
+					<ul aria-labelledby="foot-legal">
+						<li><a href="/privacy">Privacidad</a></li>
+						<li><a href="/terms">Términos</a></li>
+						<li><a href="/takedown">Retirada</a></li>
+					</ul>
+				</div>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>LEGO® es una marca del grupo de empresas LEGO, que no patrocina, autoriza ni respalda este sitio. LEGO® Art, Technic, la Minifigura y las configuraciones del ladrillo y el espárrago son también marcas del Grupo LEGO. Piezas de la biblioteca LDraw™ (CC BY). <a href="/terms#notices">Avisos</a></p>
+		</div>
+	</div>
+</footer>
+
+<script src="/download.js" defer></script>
+</body>
+</html>

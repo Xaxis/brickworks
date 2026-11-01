@@ -48,9 +48,10 @@ tuned on, judged blind.
 - **The brief** is what a person would ask for, from the set's name and
   theme, with the set's footprint in studs and a band round its piece
   count, so the two are like for like. The designer never gets the set's
-  file, picture or parts: the subject id it is started with holds the set's
-  own pieces out of the real-set index (src/ai/real_snippets.gd) as well as
-  out of design memory, and a design's record says whether the log showed it.
+  file, picture or parts: the subject id and name it is started with hold
+  the set, and any set of its name, out of every real-set path of the app
+  (DesignMemory.holds, src/dev/holdout_probe.gd) and out of design memory,
+  and a design's record says whether the log showed it.
 - **The designer** is run.py's design stage, the real loop on the
   subscription, the app headless with its pictures drawn on the GPU's lease
   by a drawer that holds it only while it draws (src/ai/leased_shots.gd).
@@ -557,8 +558,9 @@ def brief(c: Candidate, plan: tuple[int, int]) -> str:
 
 
 def subject_of(c: Candidate, plan: tuple[int, int]) -> suite.Subject:
-    """The bench's subject for a set: its id is the set's number, which holds the set's
-    own pieces out of the designer's real-set index and memory (--held-out)."""
+    """The bench's subject for a set: its id is the set's number and its title the set's
+    name, which hold the set, and any set of its name under another number, out of every
+    real-set path of the app (--held-out, --held-out-name; src/dev/holdout_probe.gd)."""
     return suite.Subject(c.number, clean_name(c.name), brief(c, plan),
                          f"about {plan[0]} x {plan[1]} studs, {band(c.parts)[0]} to "
                          f"{band(c.parts)[1]} pieces", "other", ())
@@ -1025,7 +1027,8 @@ def design_via_relay(subject: suite.Subject, run_dir: Path, timeout: int, app: P
             tab = subprocess.Popen(
                 ["godot", "--headless", "--path", str(app), "--log-file",
                  str(run_dir / "godot_design.log"), "--", f"--mcp={app_port}", "--assistant=on",
-                 "--signed-in", f"--held-out={subject.id}", "--draw-by=" + json.dumps(bench.DRAWER)],
+                 "--signed-in", f"--held-out={subject.id}", f"--held-out-name={subject.title}",
+                 "--draw-by=" + json.dumps(bench.DRAWER)],
                 cwd=app, stdout=out, stderr=subprocess.STDOUT, start_new_session=True,
                 env=_tab_env(bench._billing_free_env(XDG_DATA_HOME=str(tab_home),
                                                      BRICKWORKS_API=origin,
@@ -1148,7 +1151,8 @@ def one(c: Candidate, args: argparse.Namespace, parts: style.Parts) -> dict:
         made = (design_via_relay(subject, out, args.timeout, args.checkout, args.instructions,
                                  not args.no_claude_code)
                 if args.via == "relay" and canned is None else
-                bench.design(subject, out, args.timeout, canned, app=args.checkout))
+                bench.design(subject, out, args.timeout, canned, app=args.checkout,
+                             extra=(f"--held-out-name={subject.title}",)))
     except SystemExit as failed:      # the machine failed, not the design: tried again next time
         bench.say(f"{c.number}: {failed}")
         return {}

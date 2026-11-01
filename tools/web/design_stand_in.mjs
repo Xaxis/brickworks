@@ -2097,7 +2097,9 @@ const PICTURE = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.ur
 /// 404 page for anything else.
 function staticFile(web, pathname) {
   const named = { "/": "index.html", "/oauth/authorize": "authorize.html" }[pathname.replace(/\/$/, "") || "/"];
-  const candidates = named ? [named] : [pathname.slice(1), `${pathname.slice(1).replace(/\/$/, "")}.html`];
+  // A folder's page is its index.html: /de, a language's landing page.
+  const bare = pathname.slice(1).replace(/\/$/, "");
+  const candidates = named ? [named] : [pathname.slice(1), `${bare}.html`, `${bare}/index.html`];
   for (const name of candidates) {
     if (!name || name.includes("..")) continue;
     const file = path.join(web, name);

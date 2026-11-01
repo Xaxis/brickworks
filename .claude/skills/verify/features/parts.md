@@ -144,7 +144,9 @@ geometry in front of them.
   search_parts (100% both), and four sizes alone with the brick first.
 - `parts bin`: the panel that shows the results, with a category filter and the
   current colour applied to the thumbnails. It searches through `PartSearch`
-  (every word, ranked as search_parts ranks), and folds each print, sticker
+  (every word, ranked as search_parts ranks; in German, French or Spanish its
+  tiles name parts in the language and its search reads the language's
+  words too, `PartsBin.said_name`, `PartWords`: see `interface languages`), and folds each print, sticker
   and assembly of a part that is listed too under that part's tile, behind a
   count in its corner (`PartsBin._fold`, `_fold_badge`; by a finger a
   44-point square in the tile's foot, clear of its picture, which a tap

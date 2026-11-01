@@ -39,6 +39,7 @@ const PATHS: Dictionary[StringName, String] = {
 	&"ChatPanel": "res://src/ui/chat_panel.gd",
 	&"ClaudeConnector": "res://src/net/claude_connector.gd",
 	&"CommandSocket": "res://src/net/command_socket.gd",
+	&"ViewerTools": "res://src/net/viewer_tools.gd",
 	# The panels and dialogs over the model and in its columns.
 	&"BrickifyDialog": "res://src/ui/brickify_dialog.gd",
 	&"ControlsDialog": "res://src/ui/controls_dialog.gd",

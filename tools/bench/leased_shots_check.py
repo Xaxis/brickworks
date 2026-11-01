@@ -43,7 +43,7 @@ from mcp_check import Relay, listening  # noqa: E402
 CORE = Path.home() / ".claude" / "claude-core" / "bin"
 GPU = str(CORE / "gpu")
 SCREEN = "-screen 0 1600x900x24"
-DRAWER = [GPU, "xvfb-run", "-a", f"--server-args={SCREEN}", "godot"]
+DRAWER = [GPU, "--brief", "xvfb-run", "-a", f"--server-args={SCREEN}", "godot"]
 
 ASKED = [
     ("corner", "view_model", {"from": "corner"}),

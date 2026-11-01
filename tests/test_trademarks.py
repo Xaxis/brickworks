@@ -37,30 +37,9 @@ NOTICE = re.compile(
 ALSO = ("LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations "
         "are also trademarks of the LEGO Group.")
 
-# Each wrong use, what to write instead, and a sentence it must catch.
-WRONG: list[tuple[re.Pattern[str], str, str]] = [
-    (re.compile(r"\bLEGO\b(?!®|\(R\)| Group)"),
-     "LEGO carries its ® each time it is used, but not in the LEGO Group", "real LEGO bricks"),
-    (re.compile(r"LEGO(?:®|\(R\)) Group"), "no ® in the company's name: the LEGO Group",
-     "as the LEGO® Group built it"),
-    (re.compile(r"\bLegos?\b"), "LEGO is written in capitals", "a Lego set"),
-    (re.compile(r"\b(?:LEGO|Lego|lego)s\b"), "LEGO is never plural: LEGO bricks", "Build with LEGOs"),
-    (re.compile(r"\b(?:LEGO|Lego)®?['’]s\b"), "LEGO is never possessive: the LEGO Group's",
-     "LEGO®'s own colours"),
-    (re.compile(r"\bLEGO®? (?:made|makes|built|builds|sells|sold|has|had|never|calls|called|"
-                r"names|did|does|designs|designed|moulds|moulded|prints|printed|replaced|"
-                r"retired|stopped|added)\b"),
-     "LEGO is an adjective, not the company: the LEGO Group made it", "as LEGO® made it"),
-    (re.compile(r"\b(?:laid|built|made) in LEGO\b(?!®? (?:bricks|parts|elements|pieces|plates|"
-                r"tiles|sets?|colou?rs|Digital))"),
-     "LEGO is an adjective: laid in LEGO bricks", "a sculpt laid in LEGO® at any size"),
-    (re.compile(r"\bLEGO®? CAD\b"), "not a LEGO product: a CAD app for LEGO bricks",
-     "the LEGO® CAD app"),
-    # "LEGO® Art," is the mark itself, named in the disclaimer's list.
-    (re.compile(r"\bLEGO®? Art\b(?!®? sets?\b|,)"),
-     "LEGO Art is the LEGO Group's line, not our feature: Brick Art, or LEGO Art sets",
-     "laid as LEGO® Art"),
-]
+# Each wrong use, what to write instead, and a sentence it must catch. They
+# live in tools/trademarks.py, which tools/release.py holds a release's notes to.
+from trademarks import MARK_FAULTS as WRONG  # noqa: E402
 
 
 def gd_strings(text: str) -> list[str]:
@@ -114,7 +93,8 @@ def plain(text: str) -> str:
 def public_text() -> dict[str, str]:
     """Every file a person reads, as the words they read."""
     texts: dict[str, str] = {}
-    for path in sorted((ROOT / "web").glob("*.html")) + sorted((ROOT / "web").glob("*.js")) + sorted(
+    for path in sorted((ROOT / "web").glob("*.html")) + sorted((ROOT / "web").glob("*/*.html")) + sorted(
+            (ROOT / "web/_lang").glob("*.json")) + sorted((ROOT / "web").glob("*.js")) + sorted(
             (ROOT / "docs-site").glob("*.md")) + [
             ROOT / "web/site.webmanifest", ROOT / "api/share.js", ROOT / "api/_directory.js",
             ROOT / "api/people.js", ROOT / "api/_names.js",
@@ -154,6 +134,8 @@ def test_each_pattern_catches_its_wrong_use(pattern: re.Pattern[str], example: s
     "LEGO® bricks", "as the LEGO Group made it", "the LEGO Group's own designers",
     "a mosaic in the style of LEGO® Art sets", "laid in LEGO® bricks",
     "LEGO® Digital Designer model (.lxf)", "Brick Art", "LEGO(R) is a trademark",
+    "Marken der LEGO Gruppe", "der LEGO Unternehmensgruppe", "du Groupe LEGO", "du groupe de sociétés LEGO",
+    "del Grupo LEGO", "del grupo de empresas LEGO", "modèles LEGO®",
 ])
 def test_the_check_lets_right_use_through(good: str) -> None:
     assert not any(pattern.search(good) for pattern, _, _ in WRONG), good

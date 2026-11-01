@@ -201,9 +201,12 @@ not tune for it.
 - **The brief** is the set's name, its theme, the footprint it fits in and a
   quarter either side of its piece count: "Andrea’s Stage, in the style of
   LEGO® Friends sets: fitting in about 18 x 18 studs, 70 to 110 pieces." The
-  designer never sees the set. Its own pieces are held out of the real-set
-  index for the run, and the log says so: "real sets: holding out 3932-1 (7
-  pieces)".
+  designer never sees the set. The set, and any set of its name under
+  another number, is held out of every path that hands a session a real
+  set's facts for the run (`--held-out`, `--held-out-name`; until
+  2026-11-01 plan_scale, the techniques, the catalogue, the official models,
+  the gallery's copies and Commons' pictures did not hold it), and the log
+  says so: "real sets: holding out 3932-1 (7 pieces)".
 - **The judge** sees the design and the set drawn by the same renderer, three
   views each, under hashed names, in both orders. It is not told either is a
   set. It picks one per dimension, with a reason. A subject counts the share
@@ -3302,6 +3305,246 @@ on Technic. Each is a part that does something in its own colour, offered as a
 finding the session keeps or refuses, as these lines were. The reader and the
 settling carry over. Results: `bench/results/realset-2026-10-31-d7lever/` and
 `realset-2026-10-31-d5base-vs-d7lever/`.
+
+### Technique: each assembly says its angle as it is planned, and the app lays it on its joint, on the 44 of proof (2026-10-31, `1625f1cf`, no gain)
+
+Design6's look asked what leans after the model stood, and it said none 32
+times in 38. A set designer decides that when the model is planned. So this
+round asks it then (`b5573a02`, `1625f1cf`):
+
+- Each assembly in `submit_design` says an `angle`, which is required. It is
+  the degrees its far end lifts, and 0 where it stands square. It can also
+  name its joint (`hinge`, `clip` or `click`) and the edge that holds it
+  (`held_at`). A part a set builds at its own angle is an assembly of its own,
+  built lying level on what holds it. As the design goes down, the app lays
+  each such assembly on its joint with design6's hinged turn. The answer says
+  first what was laid, or why not (`Assistant._lay_planned_angles`).
+- `how_real_sets_build_this` ends with "Plan the angles now".
+- The first arm, at `b5573a02`, asked nothing more. In its first 7 sessions, 0
+  of 59 assemblies said an angle. 7992-1 set its container stacker's "boom and
+  spreader" at 0, then raised the boom by hand after the model stood. That arm
+  was stopped, and its 4 records are kept in `realset-2026-10-31-d8lever/`.
+- So `1625f1cf` asks once. A session told to plan the angles whose design has
+  two or more assemblies, all square, gets "Not applied, this once" and what
+  sets build at an angle. Sent again with every assembly at 0, it is built as
+  it is (`Assistant._square_refusal`).
+
+**How it ran.** One locked snapshot, `snapd8plan` at `1625f1cf`, imported
+first. The baseline is design5's stage225 arm (`a3090df7`, 2026-10-30), and
+design6's arm is the second reference: the same 44, the same path, one design
+a subject, 3 at a time. Sessions ran 2026-10-31 19:29Z to 2026-11-01 02:16Z,
+beside design7's arm. Claude's login expired for a minute at 22:12Z. Four
+sessions ended on "OAuth session expired" and one judge call failed. A fifth
+session, 3939-1, never connected to the app's MCP server and saw no tool.
+Those five were moved to `realset-2026-10-31-d8plan-voided/` and run again,
+and 3189-1 was judged again. No session or judge in the arm now carries a
+login error. Sessions took a median 21 minutes (19 in both references), and
+none hit the 45-minute timeout. Each session that searched the library for
+its own set got 0. One tool result did name a held-out set: `plan_scale`
+listed "7242 Street Sweeper 15" among the official models of a street sweeper
+to the 7242-1 session. d5base's 7992-1 got its own set's length the same way.
+`_official_models` reads `SetKnowledge.sizes()` without the hold-out. It gives
+away only a length, but it is a gap.
+
+| dimension | stage225 (95%) | planned angles (95%) | lever minus stage225, paired (95%) | subjects better / worse | lever minus design6, paired (95%) |
+|---|---|---|---|---|---|
+| likeness | 26% (15-41) | 33% (21-48) | +7 (-1, +16) | 7 / 3 | +3 (-7, +14) |
+| surface | 33% (21-48) | 27% (16-42) | -6 (-16, +3) | 5 / 8 | -7 (-15, 0) |
+| colour | 33% (21-48) | 34% (22-49) | +1 (-10, +14) | 8 / 6 | +5 (-5, +14) |
+| technique | 10% (4-23) | 16% (8-29) | +6 (-1, +14) | 6 / 2 | +3 (-2, +9) |
+| creativity | 44% (31-59) | 44% (31-59) | 0 (-11, +11) | 6 / 7 | -3 (-14, +7) |
+| overall | 24% (14-38) | 25% (15-39) | +1 (-6, +8) | 3 / 3 | +2 (-6, +10) |
+
+Head to head, both orders, the lever's design preferred to stage225's:
+likeness 61% (47-74%), surface 48%, colour 52%, technique 44% (31-59%),
+creativity 50%, overall 56% (41-69%). To design6's: likeness 59%, surface
+51%, colour 50%, technique 53% (39-67%), creativity 49%, overall 62% (48-75%).
+
+**What the sessions heard and did** (their logs and transcripts):
+
+| | stage225 | design6 | planned angles |
+|---|---|---|---|
+| told to plan the angles | - | - | 44 of 44 |
+| assemblies said at an angle | - | - | 33 of 939, in 13 sessions |
+| ...unasked | - | - | 4 sessions: a bee's wings, a wheel loader's lift arms, a tipper bed, a siege ladder |
+| asked once, every assembly square | - | - | 40; 9 then said an angle, 31 sent it again all at 0 |
+| the app laid it on a hinge | - | - | 7 parts in 7 sessions: a chest lid, a sketch board, a lounger backrest, a rear wing, a tipper bed, a bonnet, a siege ladder |
+| ...refused, every way | - | - | 5 parts: the bee's two wings, the lift arms, a laptop screen, a windscreen |
+| ...kept in the final model | - | - | 6 of 7; 42033-1's rear wing went in a later resubmit |
+| `submit_design` calls | 110 | 111 | 176 |
+| the surface pass settled (`settle_surface`) | 39 of 44 | 40 of 44 | 33 of 44 |
+| hinge halves in the final model | 6 of 44 | 6 of 44 | 11 of 44 |
+| final: parts turned off the grid, above 0 / 5% or more | 8 / 2 | 6 / 2 | 17 / 6 |
+| final: tiles, median | 16% | 18% | 14% |
+| final: plain bricks and plates, median | 40% | 42% | 43% |
+| technique verdicts lost that call ours stacked | 80% | 71% | 74% |
+| ...subjects where the judge credits the set with angled sections | 61% | 70% | 52% |
+| surface verdicts lost that name our open studs | 51% | 69% | 59% |
+
+Paired by subject, the share of parts turned off the grid rose 1.2 points
+(+0.2, +2.4) against stage225 and 2.3 (+0.2, +5.2) against design6. Tiles
+fell 2.0 points (-4.2, +0.1) and 3.1 (-5.5, -0.8).
+
+Two of the five refused were held from the side: the bee's wings stand beside
+its body, and the hinged turn stands a joint only on a top under the part's
+edge. The lift arms, the laptop screen and the windscreen held up, or ran
+into, parts outside their box. Twice a design with an angle failed its check for another reason (a
+floating brick, a leaf in the way), and the session sent it again with the
+angle dropped. Turntables and Technic pins have no machinery to lay them on.
+
+**No gain.** The lever changed what is built: twice the models carry a hinge
+or a turned part. The judge did not credit it. Technique moved +6, inside its
+noise, and the 7 subjects where an angle was laid won 1 technique verdict of
+14 (none in either reference). The gain came from subjects with no angle,
+where the references differ as much. The laid parts are one small part a
+model, and the judge reads them so: "mostly stacked bricks with a simple
+tilted ladder"; "only stacks bricks and plates" beside a chest lid at 70
+degrees. Surface fell 6 and 7, at the edge of its noise against design6, and
+tiles fell beyond it. Asking once costs a resubmit of the whole design, 66
+more in all, and 6 fewer sessions finished the surface pass. The lever is
+kept on its branch.
+
+**Next.** Asked when they plan, sessions still build square: 31 of 40 asks
+were answered with all 0. What leans in a set is not what the judge misses
+most. Where we lose technique it calls ours stacked in 74% of verdicts. It
+credits the set with Technic construction in 55% of subjects and curved parts
+in 52%. Where we lose surface it names our open studs in 59% and stepped or
+boxy sides in about half. The body is what reads as stacked, not a missing
+lid. The next lever should change how a body is built: its sides of shaped
+parts and its tops finished on the first build, not offered as a pass the
+session may not reach. Results: `bench/results/realset-2026-10-31-d8plan/`,
+`realset-2026-10-31-d5base-vs-d8plan/` and
+`realset-2026-10-31-d6lever-vs-d8plan/`.
+
+### Colour: the surface pass gives a one-colour face its accents, on the 44 of proof (2026-11-01, `066dce2c`, not ready)
+
+The lines through a flat face moved no colour verdict (above). The judge
+credits an accent as a part, not a tone: of the 57 colour verdicts the lines'
+arm lost, it credited the set's transparent parts and lights in 37, its
+printed parts in 31, and its pins, hoses and grilles in 22. So this arm lays
+those parts, stacked on the lines (`5d22eaba`), as the lead asked.
+
+**First, the pictures.** On a loaded box the lines' arm sent 96 pictures to
+its sessions as letters, against 46 in the baseline. Every verdict rides on
+those pictures, so the cause came first. A headless app draws each picture
+in a drawer on the GPU's lease, and the lease served first come, first
+served over 2 slots. A drawer needs the GPU for under a second, but it
+queued behind windowed release probes that held a slot for minutes, and the
+app waits 120 s (`LeasedShots.MOST_WAIT_S`). In the lease log for that arm,
+114 of 942 drawers waited past 120 s, and while the late ones waited, probes
+held 86% of slot time. Replaying the log with drawers served first, the
+drawers over 120 s fell from 45 to 1.
+
+The fix is on the box: `gpu --brief` (claude-core `e1a487c`) gives a job the
+next free slot, ahead of whatever waits, capped at 120 s and logged when a
+holder overruns. The bench's drawers ask for it (`e8b75123`, `DRAWER` in
+`tools/bench/run.py` and `leased_shots_check.py`). The showcase keeps its
+whole-session app in the ordinary queue (`ON_GPU`). Under the same load, side
+by side (3 headless apps an arm asking pictures as sessions do, 30 minutes,
+both slots kept busy by 45-150 s windowed jobs), 27 of 39 pictures came as
+letters the old way, and 4 of 60 by `--brief`. On this arm's real run: 9 over
+44 designs, against 46 (d5base) and 96 (the lines' arm).
+
+**The lever** (`066dce2c`). Before its lines, the surface pass gives each
+flat face (`ColourFaces`, three at most) the details a set gives it. Each
+takes the place of a plain part of its shape, recoloured or swapped for its
+transparent or printed twin, so nothing is added and the hold stands.
+
+- A vehicle (two wheels or more, not a cart, not a scene on a baseplate)
+  gets lamps at its ends: clear at the end its windscreen is toward, red at
+  the other. It gets orange markers down its sides, a grille at each end, and
+  a printed panel and a vent on a side or the top. Its ends are lit even
+  where they are not one colour (`ColourFaces.seen`).
+- A building (its name or description says so, or it has a window or a door)
+  gets glass in its walls, in pairs along the middle.
+- Any face gets a Technic pin showing there in its colour.
+- A figure gets none of these: read on d5base's designs before the arm,
+  Jack Skellington's head was given a window and Gandalf's horse markers,
+  and both rules came from that.
+
+Each face's accents are one finding (A1, A2), told with why and how to
+settle. "accept", "recolor" ({"47": 36} where the front was guessed wrong),
+or "reject" with a reason, which puts the plain parts back, and the face is
+not offered again. `src/dev/colour_faces_probe.gd` proves it on a fire truck,
+a house and a figure. surface, cabins and creative probes and ci_gate pass.
+
+**How it ran.** One locked snapshot, `snapd7accent` at `e8b75123`, imported
+first. The baseline is d5base again (`a3090df7`, 2026-10-30), on the same 44
+and the same path: `--via relay --no-claude-code`, one design a subject, 3 at
+a time. Sessions ran 2026-11-01 03:36Z to 07:41Z, when the account's login
+expired. Nine sessions lost their design to it, 42060-1 mid-design and eight
+at their start (21013-1, 21023-1, 21028-1, 21031-1, 21033-1, 21035-1,
+21041-1, 21052-1). They were designed again on the same snapshot and command,
+10:58Z to 12:21Z; the first tries are kept as `<subject>.dropped-20261101`.
+No tool result carried a held-out set's number. Sessions took a median 16
+minutes against 19. None hit the timeout.
+
+| dimension | stage225 (95%) | accents and lines (95%) | lever minus stage225, paired (95%) | subjects better / worse |
+|---|---|---|---|---|
+| likeness | 26% (15-41) | 24% (14-38) | -2 (-8, +5) | 1 / 4 |
+| surface | 33% (21-48) | 32% (20-47) | -1 (-12, +10) | 8 / 9 |
+| colour | 33% (21-48) | 33% (21-48) | +0 (-9, +9) | 7 / 6 |
+| technique | 10% (4-23) | 11% (5-24) | +1 (-5, +8) | 3 / 3 |
+| creativity | 44% (31-59) | 47% (33-61) | +2 (-7, +11) | 8 / 7 |
+| overall | 24% (14-38) | 22% (12-36) | -2 (-8, +3) | 2 / 4 |
+
+Head to head, both orders, the lever's design preferred to stage225's:
+likeness 48%, surface 47%, colour 62% (48-75%), technique 51%, creativity
+51%, overall 52% (38-66%).
+
+**What the sessions heard and did:**
+
+| | stage225 | the lines | accents and lines |
+|---|---|---|---|
+| the surface pass run | 40 of 44 | 42 of 44 | 43 of 44 |
+| ...told of a one-colour face | - | 21 | 25 |
+| ...accents laid | - | - | 31, in 13 sessions |
+| ...accents kept | - | - | 14 in 7 sessions: 12 as laid, 2 recoloured (42081-1 swapped front and back) |
+| ...accents refused, with a reason | - | - | 17 in 8 sessions |
+| ...faces given none, said | - | - | in 13 sessions |
+| ...lines laid / kept | - | 28 / 21 | 24 / 15 |
+| final designs with a face | 21 of 44 | 15 of 44 | 10 of 44 |
+| colour verdicts won | 29 of 88 | 31 of 88 | 29 of 88 |
+| ...in the 7 subjects that kept an accent | 0 of 14 | 2 of 14 | 1 of 14 |
+| colour verdicts lost that call ours flat, one colour or short of accents | 51 of 59 | 50 of 57 | 51 of 59 |
+| ...that credit the set's transparent parts or lights / printed parts / pins, hoses, grilles | 33 / 26 / 19 | 35 / 30 / 21 | 38 / 23 / 14 |
+
+(The last row is read with one set of patterns over all three arms, so it
+differs a little from the counts above.)
+
+The refusals were a designer's, and they found where the rules guess. On
+21023-1, the Flatiron: "a few odd light-blue panes scattered through the
+grid read as mistakes". On 7992-1: "These lamps landed in the container's
+walls, and a shipping container has no lamps". On 5763-1: "Those round bricks
+are the exhaust stacks". On 42111-1: "its headlamps are hidden behind the
+grille, so these read as stray stickers". Vehicles kept theirs. Buildings
+refused their glass, except the Louvre's.
+
+**Not ready.** The accents reached the designs and the judge saw them, but
+not as enough. Final designs with a flat face fell from 21 to 10, and colour
+stayed at 29 of 88. Where accents were kept, the judge names them and still
+calls the model flat. On 42093-1, the Corvette, which kept a clear lamp, a
+red tail light and two grilles: "A is mostly flat yellow and black, with only
+small red tail lights and a ZR1 tile". The set's colour is in "a black roof
+and wing, a grey engine bay, yellow pistons, coloured pins". On 42081-1:
+"B adds grey, orange hoses, blue and red pins, clear lights". A part in
+place of a plain one is a sticker on the same composition. The set's colour
+comes from whole assemblies in their own colours (an engine, a bay, a seat,
+a roof), and those are design choices the session makes, not a pass's.
+Head to head, colour leans to the lever (62%, 48-75%), but neither colour
+nor overall clears 0 paired against the sets, the bar. Likeness, which rose
+with the lines alone, did not repeat (-2): that rise was noise, as feared.
+The lever is kept on its branch.
+
+**Next.** Colour is set when the parts are chosen, not after. The judge's
+verdicts name assemblies in a second colour: an engine bay, a roof, a seat,
+a cab's interior. A lever on colour belongs at planning time, where design8
+is asking for angles: ask the session to name each assembly's own colour
+before it builds, as a set's designer does. Then a check that a model of
+more than one assembly is not one colour within each. The pictures fix
+stands on its own and should go to main. Results:
+`bench/results/realset-2026-11-01-d7accent/` and
+`realset-2026-11-01-d5base-vs-d7accent/`.
 
 ## Against an outside ruler: BrickBench (2026-10-14)
 

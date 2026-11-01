@@ -78,6 +78,18 @@ func look_for(subject: String) -> void:
 		missed.emit("could not reach Wikimedia Commons")
 
 
+## Whether [param title] is a picture of a LEGO set under test
+## (DesignMemory.holds): LEGO, and the set's number or its name. A
+## photograph of the real thing it is a model of stays.
+static func _of_a_held_set(title: String) -> bool:
+	if not title.to_lower().contains("lego"):
+		return false
+	for number: RegExMatch in RegEx.create_from_string("[0-9]{3,6}").search_all(title):
+		if DesignMemory.holds(number.get_string()):
+			return true
+	return DesignMemory.holds("", title)
+
+
 func _owner() -> Node:
 	return _host if _host != null else self
 
@@ -119,6 +131,9 @@ func _on_searched(_result: int, code: int, _headers: PackedStringArray,
 		# four hundred page PDF — two of the first three answers for a
 		# lighthouse were Victorian title pages.
 		if _is_a_document(title):
+			continue
+		# Nor a photograph of the real set a design run is judged against.
+		if _of_a_held_set(title):
 			continue
 		_pending.append({
 			"url": url,

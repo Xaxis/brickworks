@@ -24,8 +24,17 @@
 ## - the Library's themes: those that are words by their own entries
 ##   (context "theme"), the product lines' and licences' names as they are;
 ## - a release's version line ("released 2026-10-31"), in Settings and About;
+## - a count of thousands, the Library's sets, grouped as the language groups
+##   it (1.575, 1 575);
+## - parts named as each language's LEGO sites name them, through a glossary
+##   of LDraw's words (PartWords): the bin's tiles ("Brique 1×2"), each
+##   name the language's whole or English's whole; a search in the language
+##   finds the part, as English's words and its number still do; the
+##   properties' title; the colour under the palette with its finish, whole
+##   either way ("Rouge, opaque"); and how many of the catalogue's parts are
+##   named whole;
 ## - Render's backdrop "White" reads the language's word, by its own entry
-##   (msgctxt "backdrop"), while LDraw's colour White stays White; and a
+##   (msgctxt "backdrop"), and LDraw's colour White the colours'; and a
 ##   sub-model named Car reads Car in the model tree and in a line that
 ##   names it ("opened Car — 61 bricks");
 ## - in German, the longest words, at 1280 x 720: every menu at most 25
@@ -44,6 +53,38 @@
 extends SceneTree
 
 const LANGUAGES: Array[String] = ["de", "fr", "es"]
+## What each groups a count's thousands with, where English has a comma:
+## 1.575 in German and Spanish, 1 575 in French (a no-break space).
+const THOUSANDS: Dictionary = {"de": ".", "fr": "\u00a0", "es": "."}
+## Parts as each language's LEGO sites name them, on the bin's tiles.
+const NAMED: Dictionary = {
+	"3004": {"de": "Stein 1×2", "fr": "Brique 1×2", "es": "Ladrillo 1×2"},
+	"3023b": {"de": "Platte 1×2", "fr": "Plaque 1×2", "es": "Placa 1×2"},
+	"2431": {"de": "Fliese 1×4 mit Rille", "fr": "Plaque lisse 1×4 avec rainure",
+		"es": "Baldosa 1×4 con ranura"},
+	"3039": {"de": "Dachstein 45 2×2", "fr": "Brique inclinée 45 2×2", "es": "Teja 45 2×2"},
+	"11477": {"de": "Dachstein gebogen 2×1", "fr": "Brique inclinée incurvée 2×1",
+		"es": "Teja curva 2×1"},
+	"3062b": {"de": "Stein 1×1 rund mit hohler Noppe", "fr": "Brique 1×1 ronde avec tenon creux",
+		"es": "Ladrillo 1×1 redondo con espiga hueca"},
+}
+## What a person types in each language, and the part it is.
+const TYPED: Dictionary = {
+	"de": [["stein 1x2", "3004"], ["fliese 1x4 mit rille", "2431"], ["dachstein gebogen 2x1", "11477"]],
+	"fr": [["brique 1x2", "3004"], ["plaque lisse 1x4 avec rainure", "2431"],
+		["brique inclinee incurvee 2x1", "11477"]],
+	"es": [["ladrillo 1x2", "3004"], ["baldosa 1x4 con ranura", "2431"], ["teja curva 2x1", "11477"]],
+}
+## Colours typed into the colour finder (Shift-C) in each language, accents
+## or none, and the colour each names first.
+const COLOURS_TYPED: Dictionary = {
+	"de": [["rot", 4], ["hellblaugrau", 71]],
+	"fr": [["rouge", 4], ["gris bleute clair", 71]],
+	"es": [["rojo", 4], ["gris azulado claro", 71]],
+}
+## A part no glossary words whole, a print, which every language names as
+## LDraw does.
+const UNWORDED: String = "3001p11"
 
 var _failures: int = 0
 var _main: Node
@@ -359,6 +400,11 @@ func _gather() -> void:
 		_walk("panels", right_dock, [])
 		_shell.run("undo")
 		await _frames(4)
+		# Taken back for good: the walk of the commands below presses Undo
+		# with nothing to undo and then Redo, which made it again, and every
+		# picture after had a "Probe group" in the model tree, inside Car
+		# (undo_count_probe: the undo itself takes it back in one frame).
+		builder.forget_history()
 	builder.clear_selection()
 	await _frames(4)
 	# The tiles' tooltips, a few of them, whose name and number are names
@@ -937,6 +983,7 @@ func _in(code: String) -> void:
 		code, typed, ", ".join(found.slice(0, 3)), ", ".join(english.slice(0, 3))],
 		not found.is_empty() and found[0] == "save" and not english.is_empty() and english[0] == "save")
 	await _two_senses(code)
+	await _part_names(code)
 	await _themes(code)
 	var version: String = BuildInfo.describe()
 	_check("%s: a release's version line, in Settings and About, reads \"%s\"" % [code,
@@ -991,12 +1038,20 @@ func _themes(code: String) -> void:
 		await _shot("%s_library_themes" % code)
 		choice.get_popup().hide()
 		await _frames(3)
+	# Its count of sets, in the thousands: "1,575 of 1,575 sets".
+	var status: Label = library.get("_status")
+	var counted: RegExMatch = RegEx.create_from_string(r"\d{1,3}(,\d{3})+").search(status.text)
+	var drawn: String = status.atr(status.text)
+	_check("%s: a count of thousands grouped as the language groups it (\"%s\" drawn \"%s\")" % [
+		code, status.text, drawn], counted != null
+		and counted.get_string().replace(",", str(THOUSANDS[code])) in drawn
+		and not counted.get_string() in drawn)
 	await _close("library", shown[0])
 
 
 ## A word with a second sense, and a name that is a word too: Render's
-## backdrop "White" is the language's (its entry by context) while LDraw's
-## colour White stays a name; a sub-model named Car stays Car in the model
+## backdrop "White" is the language's (its entry by context) and LDraw's
+## colour White the colours' (PartWords); a sub-model named Car stays Car in the model
 ## tree, though the parts' columns say Car in the language.
 func _two_senses(code: String) -> void:
 	var shown: Array = await _show("render")
@@ -1004,8 +1059,10 @@ func _two_senses(code: String) -> void:
 	var white: Button = render.controls_by_name()["render_bg_white"]
 	var backdrop: String = TranslationServer.translate("White", "backdrop")
 	var colour: String = TranslationServer.translate("White")
-	_check("%s: Render's backdrop reads \"%s\", its own entry, and the colour White \"%s\"" % [
-		code, white.text, colour], white.text == backdrop and backdrop != "White" and colour == "White")
+	var white_said: String = _say_colour("White", code)
+	_check("%s: Render's backdrop reads \"%s\", its own entry, and the colour White \"%s\", the colours' word" % [
+		code, white.text, colour], white.text == backdrop and backdrop != "White"
+		and colour == white_said and not white_said.is_empty())
 	await _close("render", shown[0])
 	# The model tree open in the column on the right, where a person reads it
 	# (folded, it is not worked out).
@@ -1034,6 +1091,202 @@ func _two_senses(code: String) -> void:
 		"Car" in opened and not Language.says("Car") in opened)
 	_shell.run("undo")
 	await _frames(4)
+
+
+## Parts named as LEGO's own sites in each language name them, through a
+## glossary of LDraw's words (PartWords): the bin's tiles (NAMED), each name
+## said whole or left in English whole; a search typed in the language finds
+## the part, and English's words and the part's number still do; the
+## properties name a part so, and a print the glossary cannot word as LDraw
+## does; the colour under the palette and its finish both in the language,
+## or both as they are; and how many of the catalogue's parts are named
+## whole.
+func _part_names(code: String) -> void:
+	var bin: PartsBin = _main.get("_bin")
+	var library: PartLibrary = _main.get("_library")
+	var builder: Builder = _main.get("_builder")
+	builder.clear_selection()
+	await _frames(4)
+	var dock: SideDock = _main.get("_bin_dock")
+	if dock != null and not dock.is_open():
+		dock.set_open(true, false)
+		await _frames(10)
+	# Each part's tile, its number typed.
+	var wrong: Array[String] = []
+	for id: String in NAMED:
+		var tiles: Array = await _tiles(bin, id)
+		var tile: Array = tiles[0] if not tiles.is_empty() else ["", "", ""]
+		if tile[0] != id or tile[1] != NAMED[id][code] or not _drawn_from(tile[2], tile[1], tile[0]):
+			wrong.append("%s: %s" % [id, tile])
+	_check("%s: the bin's tiles name parts in the language (%s%s)" % [code,
+		", ".join(NAMED.values().map(func(names: Dictionary) -> String: return names[code])),
+		"" if wrong.is_empty() else "; drawn: %s" % "; ".join(wrong)], wrong.is_empty())
+	# The bin as it opens, every tile's name the language's whole or
+	# English's whole.
+	var half: Array[String] = []
+	var worded: int = 0
+	var shown: Array = await _tiles(bin, "")
+	for tile: Array in shown:
+		var english: String = PartsBin.tile_name(library.parts[tile[0]])
+		var said: String = _say_part(english, code)
+		worded += 0 if said.is_empty() else 1
+		if tile[1] != (english if said.is_empty() else said) or not _drawn_from(tile[2], tile[1], tile[0]):
+			half.append("%s \"%s\" drawn \"%s\"" % tile)
+	_check("%s: of the bin's first %d tiles, %d named in the language and the rest as LDraw names them, none half%s" % [
+		code, shown.size(), worded, "" if half.is_empty() else "; not so: %s" % ", ".join(half.slice(0, 4))],
+		shown.size() >= 12 and worded > 0 and half.is_empty())
+	if not _shots.is_empty():
+		await _shot("%s_bin_tiles" % code)
+	# A search in the language, and in English's words and by number.
+	var missed: Array[String] = []
+	for typed: Array in TYPED[code] + [["brick 1x2", "3004"], ["3004", "3004"],
+			["tile 1x4 with groove", "2431"]]:
+		var found: Array = (await _tiles(bin, typed[0])).slice(0, 3).map(
+			func(tile: Array) -> String: return tile[0])
+		if not typed[1] in found:
+			missed.append("\"%s\" listed %s" % [typed[0], found])
+	_check("%s: a search in the language finds the part (%s), and so do English's words and its number%s" % [
+		code, ", ".join(TYPED[code].map(func(typed: Array) -> String: return typed[0])),
+		"" if missed.is_empty() else "; %s" % "; ".join(missed)], missed.is_empty())
+	if not _shots.is_empty():
+		await _tiles(bin, TYPED[code][1][0])
+		await _shot("%s_bin_search" % code)
+	await _tiles(bin, "")
+	# The properties' title, a part the glossary says and a print it does not.
+	var world: BrickWorld = _main.get("_world")
+	var print_brick: int = world.add_brick(UNWORDED, 4, Transform3D(Basis.IDENTITY, Vector3(-200, 24, 200)))
+	builder.register(print_brick, UNWORDED, world.get_brick(print_brick).transform)
+	var titles: Array[String] = []
+	var titled: bool = true
+	for brick: int in [_brick, print_brick]:
+		builder.select_brick(brick, false)
+		await _frames(6)
+		var title: Label = _shell.inspector.get("_title")
+		var english: String = Inventory._tidy((library.parts[world.get_brick(brick).part_id]
+			as PartLibrary.PartInfo).name)
+		var said: String = _say_part(english, code)
+		titles.append(title.atr(title.text))
+		titled = titled and title.atr(title.text) == (english if said.is_empty() else said) \
+			and (said.is_empty() == (brick == print_brick))
+	_check("%s: the properties name a part in the language and a print as LDraw does (%s)" % [code,
+		" / ".join(titles)], titled)
+	builder.clear_selection()
+	builder.remove_brick_id(print_brick)
+	builder.forget_history()
+	await _frames(6)
+	# The colour under the palette with its finish: Red's, and a colour no
+	# glossary words, each whole.
+	var note: Label = bin.get("_colour_note")
+	var unworded: PartLibrary.BrickColor = null
+	for colour_code: int in library.colors:
+		var colour: PartLibrary.BrickColor = library.colors[colour_code]
+		if colour.is_plastic() and colour.finish_name() == "solid" and library.is_current(colour_code) \
+				and _say_colour(colour.name, code).is_empty():
+			unworded = colour
+			break
+	var lines: Array[String] = []
+	var whole: bool = unworded != null
+	for colour: PartLibrary.BrickColor in [library.color(4), unworded]:
+		if colour == null:
+			continue
+		bin.call("_on_colour", colour.code, false)
+		await _frames(3)
+		var said: String = _say_colour(colour.name, code)
+		var expected: String = ("%s, solid" % colour.name) if said.is_empty() \
+			else "%s, %s" % [said, Language.says("solid")]
+		lines.append(note.atr(note.text).get_slice(".", 0))
+		whole = whole and note.atr(note.text).begins_with(expected) \
+			and said.is_empty() == (colour == unworded)
+	bin.call("_on_colour", 4, false)
+	await _frames(3)
+	_check("%s: the colour under the palette reads \"%s\", and one no glossary words \"%s\", each whole" % [
+		code, lines[0] if not lines.is_empty() else "", lines[1] if lines.size() > 1 else "(none found)"],
+		whole)
+	# The colour finder takes the language's names too.
+	var field: LineEdit = bin.get("_colour_find")
+	var answers: Array[String] = []
+	var firsts: bool = true
+	for typed: Array in COLOURS_TYPED[code]:
+		field.text = typed[0]
+		field.text_changed.emit(typed[0])
+		await _frames(3)
+		answers.append("\"%s\" %d" % [typed[0], bin.colour_first()])
+		firsts = firsts and bin.colour_first() == int(typed[1])
+	field.text = ""
+	field.text_changed.emit("")
+	await _frames(3)
+	_check("%s: the colour finder names a colour first by its name in the language (%s)" % [code,
+		", ".join(answers)], firsts)
+	# How many of the catalogue's parts are named whole, and how much of
+	# what sets are made of they are.
+	var parts: int = 0
+	var named: int = 0
+	var used: int = 0
+	var named_use: int = 0
+	for id: String in library.parts:
+		var info: PartLibrary.PartInfo = library.parts[id]
+		if info.is_redirect():
+			continue
+		parts += 1
+		used += info.in_sets
+		if not _say_part(PartsBin.tile_name(info), code).is_empty():
+			named += 1
+			named_use += info.in_sets
+	_check("%s: %d of the catalogue's %d parts named whole in the language, %d%% of the parts sets are made of" % [
+		code, named, parts, roundi(100.0 * named_use / maxf(1.0, used))], named > 0)
+
+
+## The first tiles the bin lists for [param query], each [its part, the
+## name it was given, what it draws].
+func _tiles(bin: PartsBin, query: String) -> Array:
+	var search: LineEdit = bin.get("_search")
+	search.text = query
+	bin.call("_run_search", query)
+	await _frames(6)
+	var out: Array = []
+	for cell: Node in (bin.get("_grid") as Node).get_children():
+		if out.size() >= 48:
+			break
+		if not cell.has_meta("name_label") or not cell.has_meta("part"):
+			continue
+		var label: Label = cell.get_meta("name_label")
+		out.append([str(cell.get_meta("part")), str(label.get_meta("name", "")),
+			label.atr(label.text).replace("\n", " ")])
+	return out
+
+
+## Whether a tile draws [param drawn] from [param name]: its words, or the
+## start of one cut short where the name runs on, and its part's
+## [param number] where two tiles cut short would read alike
+## (PartsBin._tell_apart: "Brique …2×1 3040b").
+func _drawn_from(drawn: String, name: String, number: String) -> bool:
+	if drawn.is_empty():
+		return false
+	var words: PackedStringArray = name.split(" ", false)
+	for word: String in drawn.replace("…", " ").split(" ", false):
+		var found: bool = word in words or word == number
+		for whole: String in words:
+			found = found or whole.begins_with(word)
+		if not found and not RegEx.create_from_string(r"^[×\d%]+$").search(word):
+			return false
+	return true
+
+
+## The glossary's word for a part's or a colour's name, "" where it has
+## none, or where this build has no glossary (a run of the code before it).
+func _say_part(name: String, code: String) -> String:
+	var words: Script = _part_words()
+	return "" if words == null else str(words.call("part", name, code))
+
+
+func _say_colour(name: String, code: String) -> String:
+	var words: Script = _part_words()
+	return "" if words == null else str(words.call("colour", name, code))
+
+
+func _part_words() -> Script:
+	return load("res://src/parts/part_words.gd") if ResourceLoader.exists(
+		"res://src/parts/part_words.gd") else null
 
 
 func _some(words: Array[String]) -> String:

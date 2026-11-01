@@ -120,9 +120,14 @@ AGENT = {"User-Agent": "brickworks-bench/1.0 (https://brickworks.diy)"}
 CANNED = ROOT / "tests" / "fixtures" / "bench"
 VIEWS = ("corner", "front", "close")
 SCREEN = "-screen 0 1600x900x24"
-# How a headless design's app starts a drawer for its pictures, on the GPU's
-# lease and off-screen (src/ai/leased_shots.gd's --draw-by=).
-DRAWER = [GPU, "xvfb-run", "-a", f"--server-args={SCREEN}", "godot"]
+# An app on the GPU's lease, off-screen, for as long as it runs.
+ON_GPU = [GPU, "xvfb-run", "-a", f"--server-args={SCREEN}", "godot"]
+# How a headless design's app starts a drawer for its pictures
+# (src/ai/leased_shots.gd's --draw-by=): on the lease's brief lane, which
+# waits for the next free slot and not behind every windowed probe queued
+# first. Behind them, 114 of 942 drawers on 2026-10-31 waited past the 120 s
+# the app waits, and the judge saw letters where pictures should be.
+DRAWER = [GPU, "--brief", "xvfb-run", "-a", f"--server-args={SCREEN}", "godot"]
 
 
 def say(text: str) -> None:

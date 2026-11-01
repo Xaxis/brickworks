@@ -71,13 +71,22 @@ var kept_in: String = ""
 ## The name of the model in this tab, as Claude is told it with every
 ## answer and in the list of tabs. Main's is its ModelStore title.
 var model_name: Callable = func() -> String: return ""
+## Whether the tab holds a model to change: parts beyond the scenery, and not
+## the example a first visit opens on, untouched (Main._make_room's test). A
+## chat that opens on one with a call that works on its parts is changing it
+## ([method _begin]). Main's.
+var has_work: Callable = func() -> bool: return false
 
 ## Where the relay is. The site the page came from on the web; on the
 ## desktop the deployment the account signs in to — the live site, or
 ## BRICKWORKS_API — so the session said with a hello is one it knows.
 var base_url: String = "https://brickworks.diy"
-## Answers the requests. Needs its assistant and app set.
-var rpc: CommandSocket
+## Answers the requests (a CommandSocket). Needs its assistant and app set.
+## Made with the assistant's panel (Main._make_chat), which may be after this
+## switches on: listening waits for it. Not named here, nor the assistant
+## nor ViewerTools, which name the assistant's code, all of it: this is
+## made as the window is built, and they are not (Later).
+var rpc: Node
 ## Who is switching it on: the relay will not let a tab that is not signed
 ## in switch a connector on.
 var account: Account
@@ -151,6 +160,9 @@ var _off_here: bool = false
 var _waiting_until: int = 0
 var _next_ask: int = 0
 var _asking_connections: bool = false
+## While [method resume] asks whether to listen: the page runs the app's
+## frames out of view, as it does while it listens (_watch_the_page).
+var _asking_out_of_view: bool = false
 ## Whether Claude has ever reached this address, so the steps for adding
 ## it can be folded away once it has.
 var _used: bool = false
@@ -277,8 +289,15 @@ func resume() -> void:
 	var saved: Dictionary = _read()
 	if bool(saved.get("on", false)) and not _token.is_empty():
 		start()
-	# Which switches it on, if Claude is connected (_set_connections).
-	refresh_connections()
+	# Which switches it on, if Claude is connected (_set_connections). The
+	# page runs the frames it asks with while the tab is out of view: a tab
+	# opened and left at once for claude.ai asked with none, and listened
+	# only once the person came back (hidden_start_flow).
+	_asking_out_of_view = true
+	_watch_the_page()
+	await refresh_connections()
+	_asking_out_of_view = false
+	_watch_the_page()
 
 
 ## The one click: listen here, put the shared address on the clipboard
@@ -475,19 +494,29 @@ static func _chat_said(request: Dictionary) -> Dictionary:
 
 
 ## Each chat working in this tab, by the relay's short name ("" for calls that
-## name none: a tab's own address), as one sitting: when it last called, and
+## name none: a tab's own address), as one sitting: when it last called,
 ## whether it has been told how to work here (Assistant.METHOD) and has begun
-## its subject; the assistant keeps which sizes it was told (_sizes_once), and
-## a new sitting is told them again. A chat quiet for longer than
-## [constant QUIET_MS] begins a new sitting, as the relay stops counting it in
-## the tab then (api/mcp.js HELD_MS): claude.ai is reported to share one
-## session between two of its conversations (claudeissues.com/issue/41836),
-## and the second would otherwise never be told.
+## its subject, and whether it opened on changing the model standing
+## ([method _begin]); the assistant keeps which sizes it was told
+## (_sizes_once), and a new sitting is told them again. A chat quiet for
+## longer than [constant QUIET_MS] begins a new sitting, as the relay stops
+## counting it in the tab then (api/mcp.js HELD_MS): claude.ai is reported to
+## share one session between two of its conversations
+## (claudeissues.com/issue/41836), and the second would otherwise never be
+## told.
 var _sittings: Dictionary = {}
 const QUIET_MS := 30 * 60 * 1000
 ## The calls that say what is being designed, with the words that say it.
 const SUBJECT_CALLS := ["how_real_sets_build_this", "plan_scale", "find_reference",
 	"submit_design"]
+## The calls that read or change the parts already standing: a chat whose
+## first call is one, on a model to change ([member has_work]), is changing
+## it, not designing.
+const CHANGING_CALLS := ["look_at_model", "view_model", "in_view", "measure", "selection",
+	"edit_model", "edit_selection", "where_to_attach", "attachment_points", "move_part",
+	"mirror_parts", "split_parts", "merge_parts", "make_unique", "colour_hidden_parts",
+	"weakest_joints", "edit_steps", "make_sections", "suggest_sections", "break_out_section",
+	"evaluate_section", "parts_list", "undo", "restyle_model", "pose_model"]
 
 
 func _sitting(request: Dictionary) -> Dictionary:
@@ -508,7 +537,16 @@ func _sitting(request: Dictionary) -> Dictionary:
 ## earlier chat in this tab designed, its part count and what it was told,
 ## is not this one's. The tab never hears the person's words, so the subject
 ## is the call's own.
+##
+## And a chat's first call says what the sitting is: one that reads or
+## changes the parts of a model already standing, on a model to change
+## ([member has_work]), is changing it, and is told how to change it in place
+## of the method ([method _taught]). Said as the call arrives, before it
+## changes anything: a first edit_model on the example car leaves it touched.
 func _begin(sitting: Dictionary, tool: String, arguments: Dictionary) -> void:
+	if not sitting.has("changing"):
+		sitting["changing"] = "owed" if tool in CHANGING_CALLS and rpc != null \
+			and rpc.assistant != null and bool(has_work.call()) else ""
 	if not tool in SUBJECT_CALLS or bool(sitting["begun"]) or rpc == null or rpc.assistant == null:
 		return
 	sitting["begun"] = true
@@ -522,15 +560,30 @@ func _begin(sitting: Dictionary, tool: String, arguments: Dictionary) -> void:
 ## shows no instructions never had. Once a sitting, never in every answer: a
 ## word said in every answer is heard twenty times and misleads (pose174,
 ## 2026-10-23). The panel's copy of the answer is the tool's alone.
+##
+## A sitting that opened on changing the model standing is told the guide's
+## CHANGING SOMETHING THAT IS ALREADY BUILT instead, and the method at its
+## first design call ([constant SUBJECT_CALLS]), if it makes one: "plan_scale,
+## then submit_design the silhouette" said to a chat come to move a wall
+## sends it to rebuild the person's model, which loses what nobody asked to
+## change and any edit made before it.
 func _taught(sitting: Dictionary, tool: String, answer: Variant) -> Variant:
 	if tool.is_empty() or bool(sitting["told"]) or not answer is Dictionary \
 			or not (answer as Dictionary).get("result") is Dictionary \
 			or not ((answer as Dictionary)["result"] as Dictionary).get("content") is Array:
 		return answer
-	sitting["told"] = true
+	var words: String = Later.script(&"Assistant").METHOD
+	match "" if tool in SUBJECT_CALLS else str(sitting.get("changing", "")):
+		"owed":
+			sitting["changing"] = "said"
+			words = rpc.assistant.read_guide("changing")
+		"said":
+			return answer
+		_:
+			sitting["told"] = true
 	var sent: Dictionary = (answer as Dictionary).duplicate()
 	var result: Dictionary = (sent["result"] as Dictionary).duplicate()
-	result["content"] = [{"type": "text", "text": Assistant.METHOD}] + (result["content"] as Array)
+	result["content"] = [{"type": "text", "text": words}] + (result["content"] as Array)
 	sent["result"] = result
 	return sent
 
@@ -750,9 +803,10 @@ func _tell(op: String) -> void:
 ## The engine asks the page for every frame (requestAnimationFrame), and a
 ## browser stops answering that for a tab it is not showing. So the page
 ## answers it instead while the tab is out of view and the connector is
-## on: from a worker's clock, which a browser does not hold back the way it
-## holds back the page's own timers — one frame at a time, 33 ms after the
-## last has run, so the page keeps time for everything else it does. A
+## on, or finding out whether to be ([method resume]): from a worker's
+## clock, which a browser does not hold back the way it holds back the
+## page's own timers — one frame at a time, 33 ms after the last has run,
+## so the page keeps time for everything else it does. A
 ## frame asked for just before the tab went out of view is handed on too,
 ## once — the screen would otherwise sit on it until the tab came back.
 ## The same worker tells the relay the page is alive every ten seconds.
@@ -765,6 +819,7 @@ func _watch_the_page() -> void:
 		if _on else "")
 	JavaScriptBridge.eval("""
 		window.brickworksConnector = %s;
+		window.brickworksConnectorAsking = %s;
 		if (!window.brickworksConnectorWatched) {
 			window.brickworksConnectorWatched = true;
 			var paint = window.requestAnimationFrame.bind(window);
@@ -810,8 +865,11 @@ func _watch_the_page() -> void:
 					+ "&model=" + encodeURIComponent(String(window.brickworksModelName || "").slice(0, 120));
 			}
 			var focusedAt = 0;
+			function driven() {
+				return !!window.brickworksConnector || !!window.brickworksConnectorAsking;
+			}
 			function steer() {
-				var away = document.hidden && !!window.brickworksConnector;
+				var away = document.hidden && driven();
 				if (!clock) {
 					var code = "var b=null;onmessage=function(e){" +
 						"if(e.data.frame>0){setTimeout(function(){postMessage('frame')},e.data.frame);return}" +
@@ -833,7 +891,7 @@ func _watch_the_page() -> void:
 			window.brickworksSteer = steer;
 			window.requestAnimationFrame = function (callback) {
 				var wrapped = once(callback);
-				if (document.hidden && window.brickworksConnector) {
+				if (document.hidden && driven()) {
 					waiting.push(wrapped);
 					tick();
 					return 0;
@@ -870,7 +928,7 @@ func _watch_the_page() -> void:
 			});
 		}
 		window.brickworksSteer();
-	""" % JSON.stringify(url), true)
+	""" % [JSON.stringify(url), "true" if _asking_out_of_view else "false"], true)
 
 
 ## Which tab this is, as the relay and Claude know it.
@@ -987,6 +1045,14 @@ static func _new_token() -> String:
 func _listen() -> void:
 	var token: String = _token
 	var mine: int = _generation
+	# Its answers to the handshake and the tool list are rpc's, which comes
+	# with the assistant's panel, the window's first frame drawn. The page's
+	# frames go on out of view once this is on (_watch_the_page), so it
+	# comes there too.
+	while rpc == null:
+		await get_tree().process_frame
+		if mine != _generation:
+			return
 	while true:
 		var greeted: int = await _hello()
 		if mine != _generation:
@@ -1088,7 +1154,7 @@ func _answer(token: String, work: Dictionary) -> void:
 	# The card in Claude asking for the model, the check or the steps
 	# (ViewerTools) is the person looking, not Claude building: the panel
 	# does not say Claude is at work for it.
-	var looking: bool = ViewerTools.handles(tool)
+	var looking: bool = Later.script(&"ViewerTools").handles(tool)
 	if not looking:
 		if not tool.is_empty():
 			_chat_called(request, tool, arguments)

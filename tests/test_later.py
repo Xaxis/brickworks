@@ -137,6 +137,28 @@ def test_the_first_screen_names_no_class_it_loads_later():
     assert share < 0.6, f"the first screen compiles {share:.0%} of the app's scripts"
 
 
+def test_the_connector_made_with_the_window_names_no_other_later_class():
+    """Claude's connector is made as the window is built when the assistant is
+    shown (Main._make_connector), so a tab that goes out of view before its
+    first frame still switches on and runs its frames out of view. That is
+    cheap only while it names none of Later's other classes: CommandSocket,
+    the assistant or ViewerTools named there brought all of the assistant's
+    code, 4.2 MB, into the start (hidden_boot, 2026-11-01)."""
+    classes, deps = _graph()
+    later = _later()
+    connector = later["ClaudeConnector"]
+    seen = {connector}
+    queue = [connector]
+    while queue:
+        for nxt in deps.get(queue.pop(), ()):
+            if nxt not in seen:
+                seen.add(nxt)
+                queue.append(nxt)
+    by_path = {path: name for name, path in classes.items()}
+    named = sorted(by_path.get(p, p) for p in seen & set(later.values()) if p != connector)
+    assert not named, f"ClaudeConnector compiles {', '.join(named)}; reach them with Later.script"
+
+
 def _body(text: str, signature: str) -> list[str]:
     """The lines of the function at [signature], unindented, to its end."""
     lines = text.split("\n")

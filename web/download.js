@@ -16,8 +16,16 @@
 // short-lived address and goes there; signed out it asks to sign in first,
 // and an account whose plan has no desktop is told so, in the server's
 // words, with the way to Pro.
+//
+// Its words are said in the page's language (/de/download...:
+// tools/site_lang.py, web/theme.js brickworksLang), its sizes and dates as
+// that language writes them.
 (function () {
   "use strict";
+
+  const LANG = window.brickworksLang || { code: "en", locale: "en-US",
+    say: (words, values = {}) => words.replace(/\{(\w+)\}/g, (all, name) => (name in values ? String(values[name]) : all)) };
+  const say = LANG.say;
 
   const NAMES = { linux: "Linux", macos: "macOS", windows: "Windows" };
   const PRIMARY = { linux: "AppImage", macos: "zip", windows: "zip" };
@@ -44,15 +52,16 @@
   }
 
   function megabytes(bytes) {
-    if (bytes >= 1e9) return (bytes / 1e9).toFixed(1) + " GB";
-    return (bytes / 1e6).toFixed(bytes >= 1e8 ? 0 : 1) + " MB";
+    const digits = bytes >= 1e9 || bytes < 1e8 ? 1 : 0;
+    const said = (n) => n.toLocaleString(LANG.locale, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    return bytes >= 1e9 ? said(bytes / 1e9) + " GB" : said(bytes / 1e6) + " MB";
   }
 
   // "2026-10-10" is a date, not an instant: read as one it would be midnight
   // UTC and show as the 9th everywhere west of Greenwich.
   function day(iso) {
     const [y, m, d] = iso.split("-").map(Number);
-    return new Date(y, m - 1, d).toLocaleDateString(undefined, { dateStyle: "long" });
+    return new Date(y, m - 1, d).toLocaleDateString(LANG.code === "en" ? undefined : LANG.locale, { dateStyle: "long" });
   }
 
   function el(tag, attrs, ...children) {
@@ -69,7 +78,7 @@
   // selected instead, for the keyboard's copy.
   function copyRow(command) {
     return el("div", { class: "copy-row" }, el("code", { class: "cmd", text: command }),
-      el("button", { type: "button", class: "cta ghost small", "data-copy": "", text: "Copy" }));
+      el("button", { type: "button", class: "cta ghost small", "data-copy": "", text: say("Copy") }));
   }
 
   document.addEventListener("click", async (event) => {
@@ -78,16 +87,19 @@
     const code = button.parentElement.querySelector("code");
     try {
       await navigator.clipboard.writeText(code.textContent);
-      button.textContent = "Copied";
+      button.textContent = say("Copied");
     } catch {
       getSelection().selectAllChildren(code);
-      button.textContent = "Selected";
+      button.textContent = say("Selected");
     }
-    setTimeout(() => { button.textContent = "Copy"; }, 1600);
+    setTimeout(() => { button.textContent = say("Copy"); }, 1600);
   });
 
   // The first launch, in one line, for the system on offer.
   function firstLine(os, file) {
+    return say(firstLineIn(os, file));
+  }
+  function firstLineIn(os, file) {
     if (os === "macos") {
       return file.notarized ? "First launch: drag it into Applications."
         : "First launch: macOS asks you to allow it once.";
@@ -126,17 +138,18 @@
     // tar.xz is read for Linux: it is the same program as the AppImage, and
     // a tarball can be measured without mounting anything.
     const linuxFacts = files.find((f) => f.os === "linux" && f.glibc) || byOs("linux")[0];
-    const disk = (file) => (file && file.unpacked ? ", and " + megabytes(file.unpacked) + " of disk" : "");
+    const disk = (file) => (file && file.unpacked ? say(", and {size} of disk", { size: megabytes(file.unpacked) }) : "");
     const mac = byOs("macos")[0];
     const oldest = (mac && mac.min_macos) || {};
     const needs = {
-      linux: "Needs 64-bit Linux on an x86 PC" + (linuxFacts && linuxFacts.glibc
-        ? " with glibc " + linuxFacts.glibc + " or newer" : "")
-        + ", a graphics driver with Vulkan or OpenGL 3.3" + disk(linuxFacts) + ".",
-      macos: "Needs macOS " + (oldest.arm64 && oldest.x86_64
-        ? oldest.arm64 + " or later on Apple silicon, " + oldest.x86_64 + " or later on Intel"
-        : "on Apple silicon or Intel") + disk(mac) + ".",
-      windows: "Needs 64-bit Windows 10 or 11, a graphics driver with Vulkan, Direct3D 12 or OpenGL 3.3"
+      linux: (linuxFacts && linuxFacts.glibc
+        ? say("Needs 64-bit Linux on an x86 PC with glibc {glibc} or newer", { glibc: linuxFacts.glibc })
+        : say("Needs 64-bit Linux on an x86 PC"))
+        + say(", a graphics driver with Vulkan or OpenGL 3.3") + disk(linuxFacts) + ".",
+      macos: (oldest.arm64 && oldest.x86_64
+        ? say("Needs macOS {arm} or later on Apple silicon, {intel} or later on Intel", { arm: oldest.arm64, intel: oldest.x86_64 })
+        : say("Needs macOS on Apple silicon or Intel")) + disk(mac) + ".",
+      windows: say("Needs 64-bit Windows 10 or 11, a graphics driver with Vulkan, Direct3D 12 or OpenGL 3.3")
         + disk(byOs("windows")[0]) + ".",
     };
     for (const [os, text] of Object.entries(needs)) {
@@ -169,9 +182,9 @@
       more.hidden = !pick;
       if (pick) {
         button.href = pick.url;
-        button.textContent = "Download for " + NAMES[os];
+        button.textContent = say("Download for {system}", { system: NAMES[os] });
         button.dataset.name = pick.name;
-        meta.textContent = "Version " + release.version + " · " + megabytes(pick.size) + " · " + FOR[os];
+        meta.textContent = say("Version {version}", { version: release.version }) + " · " + megabytes(pick.size) + " · " + say(FOR[os]);
 
         document.getElementById("steps-line").textContent = firstLine(os, pick);
         for (const steps of document.querySelectorAll("[data-steps]")) steps.hidden = steps.dataset.steps !== os;
@@ -180,16 +193,16 @@
           step.hidden = !unsigned;
         }
 
-        document.getElementById("verify-how").textContent = CHECK_IN[os];
+        document.getElementById("verify-how").textContent = say(CHECK_IN[os]);
         const sums = byOs(os);
         document.getElementById("sums").replaceChildren(...sums.flatMap((file) => [
-          sums.length > 1 ? el("p", { class: "note", text: "The " + file.kind + ":" }) : null,
+          sums.length > 1 ? el("p", { class: "note", text: say("The {kind}:", { kind: file.kind }) }) : null,
           copyRow(checkCommand(os, file)),
         ].filter(Boolean)));
       }
 
       const rest = Object.keys(NAMES).filter((o) => o !== os && byOs(o).length);
-      others.replaceChildren("Other systems: ", ...rest.flatMap((o, i) => {
+      others.replaceChildren(say("Other systems: "), ...rest.flatMap((o, i) => {
         const link = el("a", { href: "?os=" + o, "data-os": o, text: NAMES[o] });
         link.addEventListener("click", (event) => {
           event.preventDefault();
@@ -206,18 +219,20 @@
     show(NAMES[asked] ? asked : mine);
 
     // What is new: the lines written for this release, or else the first
-    // sentences of its summary. Never another release's lines.
-    document.getElementById("notes-h").textContent = "New in " + release.version;
+    // sentences of its summary. Never another release's lines, and never
+    // the summary's English on a page in another language: there, only
+    // the link to the changelog.
+    document.getElementById("notes-h").textContent = say("New in {version}", { version: release.version });
     const written = document.querySelector('[data-highlights="' + release.version + '"]');
     if (written) {
       written.hidden = false;
-    } else {
+    } else if (LANG.code === "en") {
       const sentences = (release.summary || "").split(/(?<=[.!?])\s+(?=[A-Z])/).filter(Boolean);
       const list = document.getElementById("notes-list");
       list.replaceChildren(...sentences.slice(0, 4).map((s) => el("li", { text: s })));
       list.hidden = !sentences.length;
     }
-    document.getElementById("notes-date").textContent = "Released " + day(release.date) + " · ";
+    document.getElementById("notes-date").textContent = say("Released {date}", { date: day(release.date) }) + " · ";
     // The site's own changelog, at this release, rather than the file on GitHub.
     document.getElementById("notes-link").href = "/changelog#v" + release.version;
     document.getElementById("notes").hidden = false;
@@ -265,7 +280,7 @@
       line = el("p", { class: "note", id: "gate-said", role: "status" });
       document.getElementById("offer-meta").after(line);
     }
-    line.replaceChildren(words, ...(pro ? [" ", el("a", { href: pro, text: "See Pro" })] : []));
+    line.replaceChildren(words, ...(pro ? [" ", el("a", { href: pro, text: say("See Pro") })] : []));
   }
 
   async function fetchGated(file) {
@@ -273,14 +288,14 @@
     const path = "/api/plans?op=download&file=" + encodeURIComponent(file);
     let reply = await account.call(path);
     if (reply.status === 401) {
-      if (!(await account.askToSignIn("Sign in to download the desktop app."))) return;
+      if (!(await account.askToSignIn(say("Sign in to download the desktop app.")))) return;
       reply = await account.call(path);
     }
     if (reply.status === 200 && reply.body.url) {
       location.assign(reply.body.url);
       return;
     }
-    refused(reply.body.error || "The download did not start just now. Try again in a minute.", reply.body.pro);
+    refused(reply.body.error || say("The download did not start just now. Try again in a minute."), reply.body.pro);
   }
 
   document.addEventListener("click", (event) => {
@@ -296,7 +311,7 @@
     askGated();
     let manifest;
     try {
-      const response = await fetch("releases.json", { cache: "no-cache" });
+      const response = await fetch("/releases.json", { cache: "no-cache" });
       if (!response.ok) throw new Error(String(response.status));
       manifest = await response.json();
     } catch {

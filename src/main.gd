@@ -86,13 +86,16 @@ var _named_for_work: String = ""
 var _driven: bool = false
 ## Renderer numbers on the status line, for --stats only.
 var _stats_shown: bool = _has_argument("--stats")
-## Claude connected to this tab (a Later class), made with the assistant's
-## panel (_make_chat).
+## Claude connected to this tab (a Later class), with what answers it, made
+## with the assistant's panel (_make_chat).
 var _connector: Node:
 	get:
-		if _connector_made == null and _built:
+		if _chat_made == null and _built:
 			_make_chat()
 		return _connector_made
+## The ClaudeConnector if it has been made, else null: as the window is
+## built when the assistant is shown (_make_connector), what answers it
+## with the panel.
 var _connector_made: Node = null
 ## File, Build together…: this model built with somebody else, live
 ## (src/net/together.gd, src/ui/together_dialog.gd).
@@ -5431,11 +5434,21 @@ func _build_ui() -> void:
 	_built = true
 	# Shown, the assistant's panel comes as the window's first frame is drawn:
 	# its code is the biggest the app has, and before that frame it held
-	# the window back for everybody (Later).
+	# the window back for everybody (Later). Claude's connector is made now,
+	# without it, so it asks whether to listen, and the page runs its frames
+	# out of view meanwhile (ClaudeConnector.resume), before that frame:
+	# made at it, a new tab out of view as its window was built was heard
+	# only some of the times (hidden_start_flow).
+	# Headless no frame is ever drawn: the relay bench's tab never made its
+	# connector, and never switched it on (shown_assistant_probe).
 	if ShellPrefs.assistant_shown() and _viewing.is_empty():
-		RenderingServer.frame_post_draw.connect(func() -> void:
-			if _chat_made == null:
-				_make_chat(), CONNECT_ONE_SHOT)
+		_make_connector()
+		if DisplayServer.get_name() == "headless":
+			_make_chat.call_deferred()
+		else:
+			RenderingServer.frame_post_draw.connect(func() -> void:
+				if _chat_made == null:
+					_make_chat(), CONNECT_ONE_SHOT)
 
 
 ## The assistant (src/ai/assistant.gd), made and wired the first time
@@ -5579,20 +5592,11 @@ func _make_chat() -> void:
 	answering.assistant = _assistant
 	answering.app = self
 	add_child(answering)
-	var connector: Node = Later.make(&"ClaudeConnector")
-	_connector_made = connector
+	if _connector_made == null:
+		_make_connector()
+	var connector: Node = _connector_made
 	connector.set("rpc", answering)
-	connector.account = _account
-	connector.model_name = func() -> String: return _store.title
-	# Off with the assistant, before a sign-in can switch it on.
-	connector.held = not ShellPrefs.assistant_shown()
-	add_child(connector)
 	chat.use_connector(connector)
-	# The toolbar's quiet line about this tab and Claude, as the chats in it
-	# change.
-	connector.listening.connect(func(_on: bool, _address: String) -> void: _show_badge())
-	connector.chats_changed.connect(func(_now: Array) -> void: _show_badge())
-	_show_badge()
 	chat.steps_wanted.connect(_toggle_steps)
 	chat.parts_list_wanted.connect(_toggle_parts)
 	chat.offers_hidden_colours = _offers_hidden_colours
@@ -5630,11 +5634,6 @@ func _make_chat() -> void:
 	chat.reference_wanted.connect(func() -> void:
 		_picking_reference = true
 		_picker.ask())
-	if _account_panel != null:
-		_account_panel.use_connector(connector)
-	# Put back as it was for whoever is signed in, as at every change of
-	# account since.
-	_tell_connector_who()
 	# What the slow frames were busy with, on the web (_watch_own_frames).
 	if OS.has_feature("web"):
 		answering.asked.connect(func(tool: String) -> void:
@@ -5645,6 +5644,32 @@ func _make_chat() -> void:
 	if not _brief_draft.is_empty():
 		chat.draft(_brief_draft)
 		_brief_draft = ""
+
+
+## Claude connected to this tab: made as the window is built when the
+## assistant is shown, else with its panel (_make_chat), which gives it what
+## answers it (rpc). Its own code is small; what answers it is the
+## assistant's, and is not loaded here.
+func _make_connector() -> void:
+	var connector: Node = Later.make(&"ClaudeConnector")
+	_connector_made = connector
+	connector.account = _account
+	connector.model_name = func() -> String: return _store.title
+	connector.has_work = func() -> bool: return _world.brick_count() > _store.scenery.size() \
+		and not (_sample_untouched and _builder.history_depth() == 0)
+	# Off with the assistant, before a sign-in can switch it on.
+	connector.held = not ShellPrefs.assistant_shown()
+	add_child(connector)
+	# The toolbar's quiet line about this tab and Claude, as the chats in it
+	# change.
+	connector.listening.connect(func(_on: bool, _address: String) -> void: _show_badge())
+	connector.chats_changed.connect(func(_now: Array) -> void: _show_badge())
+	_show_badge()
+	if _account_panel != null:
+		_account_panel.use_connector(connector)
+	# Put back as it was for whoever is signed in, as at every change of
+	# account since: a tab that was on switches on again here.
+	_tell_connector_who()
 
 
 ## The panels and dialogs below are made the first time something asks for
@@ -6600,8 +6625,10 @@ func set_assistant(on: bool) -> void:
 	if _mosaic_made != null:
 		_mosaic_made.show_claude(on)
 	_account_panel.show_claude(on)
+	# Off, the connector made as the window was built is held without
+	# making the panel for it.
 	if on or _connector_made != null:
-		_connector.hold(not on)
+		(_connector if on else _connector_made).hold(not on)
 	if on and _account.signed_in():
 		_connector.resume()
 	_chat_dock.visible = on
