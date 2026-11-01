@@ -1825,6 +1825,7 @@ func _check_stability() -> void:
 		poses.assign(_poses_to_weigh())
 		posed[0] = true
 	var report: Stability.Report = null
+	var generation: int = world.generation()
 	if app.has_method("weighed_now"):
 		var job: Working.Job = Working.begin("Weighing the model…")
 		await job.shown()
@@ -1832,6 +1833,9 @@ func _check_stability() -> void:
 		job.end()
 	if report == null:
 		report = await stability.check_paced(world, Callable() if posed[0] else find_poses)
+	# Another model opened meanwhile: the weak joints are not its parts.
+	if world.generation() != generation:
+		return
 	if report == null:
 		report = stability.check(world)
 	var said: String = "it stands up — no joint is carrying more than it can hold"
@@ -1887,8 +1891,10 @@ func weigh_balance(given: Variant = null, show: bool = true, tint: bool = true,
 	var poses: Array = given if given is Array else _poses_to_weigh()
 	var judge := Balance.new()
 	judge.library = library
-	judge.floor_ids = store.scenery
+	# A copy: an open clears the store's while a worker reads it.
+	judge.floor_ids = store.scenery.duplicate()
 	var weighed: Array = [null]
+	var generation: int = world.generation()
 	if world.brick_count() < WEIGH_OFF_THREAD_FROM or OS.has_feature("nothreads"):
 		judge.lattice = builder.lattice
 		weighed[0] = judge.measure(world.bricks(), poses)
@@ -1905,6 +1911,9 @@ func weigh_balance(given: Variant = null, show: bool = true, tint: bool = true,
 		library.end_reading(task)
 		still.free()
 	job.end()
+	# Another model opened meanwhile: its parts are not the ones weighed.
+	if world.generation() != generation:
+		return null
 	return _show_balance(weighed[0], show, tint)
 
 
