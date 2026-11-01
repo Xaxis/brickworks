@@ -27,7 +27,7 @@
 // Brickognize answers from the internet, so this needs it up; its failures
 // are proved with it stood in for (src/dev/photo_search_stub_probe.gd).
 // Pictures of each step go to --out, at both sizes.
-import { askApp, launch } from "./browser.mjs";
+import { askApp, clickStill, launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -92,12 +92,8 @@ for (const phone of [false, true]) {
     else await page.mouse.click(at.x, at.y);
     await page.waitForTimeout(600);
   };
-  const press = async (name, seconds = 30) => {
-    const at = await where(name, seconds);
-    if (!check(`"${name}" is on the screen`, Boolean(at))) return false;
-    await hit(at);
-    return true;
-  };
+  const press = async (name, seconds = 30) => check(`"${name}" is on the screen`,
+    await clickStill(page, name, { find: (n) => where(n, seconds), optional: true, act: hit }));
   const picture = (what) => page.screenshot({ path: `${out}/${width}_${what}.png`, timeout: 120000 })
     .catch((e) => console.log(`  --    no picture ${what}: ${String(e).split("\n")[0]}`));
 

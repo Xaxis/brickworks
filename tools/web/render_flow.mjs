@@ -28,7 +28,7 @@
 // or a script error reaches the console. Each render also says which of
 // its frames was longest and what it was doing then (StudioRender's
 // worst_step). Leaves OUT/*.png, the downloads and a summary.
-import { launch } from "./browser.mjs";
+import { clickStill, launch } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
@@ -126,13 +126,10 @@ async function inView(name) {
   return at;
 }
 
-async function press(name) {
-  const at = await inView(name);
-  if (!at) throw new Error(`no ${name} on the page`);
-  await page.mouse.click(at.x, at.y);
-  // The app tells the page where its controls are twice a second, and a
-  // press can move the ones under it.
-  await page.waitForTimeout(1100);
+// The app tells the page where its controls are twice a second, and a
+// press can move the ones under it.
+function press(name) {
+  return clickStill(page, name, { find: inView, after: 1100 });
 }
 
 const state = () => page.evaluate(() => window.brickworksRender || {});

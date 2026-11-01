@@ -56,7 +56,7 @@
 // down that long before the finger lifts; --slow=N runs the page's CPU N
 // times slower. Pictures go to --out,
 // <size>_<n>_<what>.png.
-import { askApp, launch, START_MS } from "./browser.mjs";
+import { askApp, clickStill, launch, START_MS } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -160,21 +160,16 @@ try {
       await page.waitForTimeout(600);
     };
     const tapBox = (box) => tap({ x: box[0] + box[2] / 2, y: box[1] + box[3] / 2 });
-    // Pressed where it stands still: a dialog moves as the keyboard comes
-    // and goes, and the page is told where its controls are twice a second.
+    // Pressed where it stands still (browser.mjs clickStill): a dialog
+    // moves as the keyboard comes and goes.
     let lastTap = null;
     const press = async (name, seconds = 30) => {
-      let at = await where(name, seconds);
-      for (let n = 0; at && n < 6; n++) {
-        await page.waitForTimeout(600);
-        const again = (await controls())[name];
-        if (again && again.x === at.x && again.y === at.y) break;
-        at = again || await where(name, 5);
-      }
-      if (!at) { check(`"${name}" is on the screen`, false); return false; }
-      lastTap = { name, x: at.x, y: at.y, t: Date.now() - t0 };
-      await tap(at);
-      return true;
+      if (await clickStill(page, name, { find: (n) => where(n, seconds), optional: true, act: (at) => {
+        lastTap = { name, x: at.x, y: at.y, t: Date.now() - t0 };
+        return tap(at);
+      } })) return true;
+      check(`"${name}" is on the screen`, false);
+      return false;
     };
     const touch = (type, points) => cdp.send("Input.dispatchTouchEvent", { type,
       touchPoints: points.map((p, i) => ({ x: p.x, y: p.y, id: i + 1, radiusX: 4, radiusY: 4, force: 1 })) });

@@ -68,7 +68,7 @@
 //
 // Red on a build without it: there is no Build together… in the File menu.
 // Pictures in --out. Exit 1 on any failure.
-import { askApp, launch, typeInMenu } from "./browser.mjs";
+import { askApp, clickStill, launch, typeInMenu } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -121,24 +121,10 @@ async function until(test, what, seconds = 120) {
   }
 }
 
-async function press(page, name, seconds = 60) {
-  const end = Date.now() + seconds * 1000;
-  for (;;) {
-    let at = (await controls(page))[name];
-    for (let n = 0; at && n < 6; n += 1) {
-      await page.waitForTimeout(550);
-      const again = (await controls(page))[name];
-      if (again && again.x === at.x && again.y === at.y) break;
-      at = again;
-    }
-    if (at) {
-      await page.mouse.click(at.x, at.y);
-      await page.waitForTimeout(400);
-      return at;
-    }
-    if (Date.now() > end) throw new Error(`no ${name} on the page`);
-    await page.waitForTimeout(500);
-  }
+/// Press what the app shows by its name where it stands still (browser.mjs
+/// clickStill), and the place pressed.
+function press(page, name, seconds = 60) {
+  return clickStill(page, name, { seconds, after: 400 });
 }
 
 // File, then the item's first words typed, then Enter: the menu as a

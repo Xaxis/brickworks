@@ -22,7 +22,7 @@
 // controls are (window.brickworksControls). The canvas and the sculpting
 // view are published as their middles; a face is drawn round the middle.
 // Serve a local export with --parts, as element_flow.mjs says.
-import { launch } from "./browser.mjs";
+import { clickStill, launch } from "./browser.mjs";
 import { mkdirSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -80,10 +80,8 @@ async function where(name, seconds = 120) {
   }
   return (await controls())[name];
 }
-async function click(name, seconds = 120) {
-  const at = await where(name, seconds);
-  await page.mouse.click(at.x, at.y);
-  await page.waitForTimeout(1500);
+function click(name, seconds = 120) {
+  return clickStill(page, name, { find: (n) => where(n, seconds), after: 1500 });
 }
 // A stroke through points, in small steps as a hand moves.
 // Each step is a frame of the app's on SwiftShader, which under load can

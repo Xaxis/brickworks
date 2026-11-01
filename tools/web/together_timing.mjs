@@ -23,7 +23,7 @@
 //
 // and the worst frame, capture and read of the model's own state on each
 // side meanwhile. Medians, a line a kind.
-import { askApp, launch, typeInMenu } from "./browser.mjs";
+import { askApp, clickStill, launch, typeInMenu } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -63,11 +63,8 @@ async function until(test, what, seconds = 120) {
     await wait(100);
   }
 }
-async function press(page, name) {
-  const at = await until(async () => (await controls(page))[name], name, 60);
-  await page.waitForTimeout(800);
-  const again = (await controls(page))[name] || at;
-  await page.mouse.click(again.x, again.y);
+function press(page, name) {
+  return clickStill(page, name, { find: (n) => until(async () => (await controls(page))[n], n, 60) });
 }
 async function ask(page, asks) {
   await page.evaluate((a) => { window.brickworksTogetherDone = undefined; window.brickworksTogetherAsk = a; }, asks);

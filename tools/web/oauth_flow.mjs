@@ -39,7 +39,7 @@ import { mkdirSync } from "node:fs";
 // in as the shared test account and disconnected its Claude (2026-10-14).
 const email = `delivered+bwoauthflow${Date.now().toString(36)}@resend.dev`;
 process.env.BW_TEST_EMAIL = email;
-const { launch, openColumnFor, withAssistant, withJobs } = await import("./browser.mjs");
+const { clickStill, launch, openColumnFor, withAssistant, withJobs } = await import("./browser.mjs");
 const { mintCode } = await import("./session.mjs");
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -187,22 +187,10 @@ async function where(name, tries = 600) {
   }
   return null;
 }
-// Clicked where it stands still. Account's Done re-lays the assistant's
-// panel out a frame or more later, and a click read before that went where
-// Connect Claude had been, 136 px below it: rel-m233's preview, no tab opened.
-async function click(name) {
-  let at = await where(name);
-  for (let n = 0; at && n < 20; n++) {
-    await page.waitForTimeout(250);
-    const again = await page.evaluate((key) => (window.brickworksControls || {})[key], name);
-    if (again && again.x === at.x && again.y === at.y) break;
-    at = again || (await where(name));
-  }
-  if (!at) {
-    await page.screenshot({ path: `${out}/never_showed_${name}.png` }).catch(() => {});
-    throw new Error(`the app never showed "${name}"; see ${out}/never_showed_${name}.png`);
-  }
-  await page.mouse.click(at.x, at.y);
+// Clicked where it stands still (browser.mjs clickStill): Account's Done
+// re-lays the assistant's panel out a frame or more later.
+function click(name) {
+  return clickStill(page, name, { find: where, shots: out });
 }
 const claudeState = () => page.evaluate(() => window.brickworksClaude || {});
 async function waitFor(test, ms = 30000) {

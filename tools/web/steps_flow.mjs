@@ -18,7 +18,7 @@
 // the yellow brick with the blue. Every result is read off
 // window.brickworksState; pictures in --out. It fails if a step does not
 // happen or a script error reaches the console.
-import { askApp, launch, typeInMenu } from "./browser.mjs";
+import { askApp, clickStill, launch, typeInMenu } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -85,10 +85,8 @@ async function where(name, seconds = 240) {
   await shot(`never_${name}.png`);
   throw new Error(`the app never showed "${name}"`);
 }
-async function press(name) {
-  const at = await where(name);
-  await page.mouse.click(at.x, at.y);
-  await page.waitForTimeout(1500);
+function press(name) {
+  return clickStill(page, name, { find: where, after: 1500 });
 }
 const caption = async () => ((await state()).timeline || {}).caption || "";
 // Open… > From a file, answered with a file: tried again when a press

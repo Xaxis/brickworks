@@ -495,6 +495,10 @@ async function fromMenu(page, control, path) {
     }
   }
 }
+// Pressed at once where it is told, not where it stands (clickStill): the
+// press is what is timed. Pressed just after a telling, the booklet's two
+// empty listeners before its own were each given its CPU, and it said
+// 509-771 ms against 165-169 ms at once (three runs each, 2026-11-01).
 const press = (page, name) => async () => {
   const at = await helpers(page).where(name);
   await page.mouse.click(at.x, at.y);

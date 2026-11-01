@@ -28,7 +28,7 @@
 //
 // On a build from before 2026-10-14 the browser is never asked, nothing is
 // warned, and there is no Versions…: steps 2, 3, 5 and 7 fail.
-import { askApp, launch } from "./browser.mjs";
+import { askApp, clickStill, launch } from "./browser.mjs";
 import { mkdirSync, readFileSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -90,11 +90,8 @@ async function until(test, seconds) {
   }
   return false;
 }
-async function press(page, name, seconds = 30) {
-  const at = await controlAt(page, name, seconds);
-  if (!at) return false;
-  await page.mouse.click(at.x, at.y);
-  return true;
+function press(page, name, seconds = 30) {
+  return clickStill(page, name, { find: (n) => controlAt(page, n, seconds), optional: true });
 }
 async function rename(page, name) {
   const field = await controlAt(page, "model_name");

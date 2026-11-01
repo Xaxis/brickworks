@@ -45,7 +45,7 @@
 // On a build from before 2026-10-23 nothing is sent: 1 fails, and 2 finds
 // nothing in Open; 7's Save saves "Untitled" without asking. On one from
 // before 2026-10-24 Open has no Rename or delete: 4, 5 and 6 fail.
-import { askApp, framesDrawn, launch } from "./browser.mjs";
+import { askApp, clickStill, framesDrawn, launch } from "./browser.mjs";
 import { canSignIn, deleteAccount, mintSession, signInContext } from "./session.mjs";
 import { createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";
@@ -151,11 +151,8 @@ async function until(test, seconds) {
   }
   return false;
 }
-async function press(page, name, seconds = 30) {
-  const at = await controlAt(page, name, seconds);
-  if (!at) return false;
-  await page.mouse.click(at.x, at.y);
-  return true;
+function press(page, name, seconds = 30) {
+  return clickStill(page, name, { find: (n) => controlAt(page, n, seconds), optional: true });
 }
 async function titleBecomes(page, wanted, seconds = 60) {
   return until(async () => (await page.title()) === wanted, seconds);

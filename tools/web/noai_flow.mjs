@@ -36,7 +36,7 @@
 // "Settings, Assistant, or open brickworks.diy/app?assistant=on". Pictures
 // in --out; it fails if a step does not happen or a script error reaches
 // the console.
-import { askApp, launch, typeInMenu } from "./browser.mjs";
+import { askApp, clickStill, launch, typeInMenu } from "./browser.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { randomBytes } from "node:crypto";
@@ -130,12 +130,17 @@ async function where(name, seconds = 120) {
   await until(async () => Boolean((await controls())[name]), seconds);
   return (await controls())[name] || null;
 }
+// A control by its name, where it stands still (browser.mjs clickStill),
+// or a place; the pointer moved there first, as a hand moves.
 async function click(name, options = {}) {
-  const at = typeof name === "string" ? await where(name) : name;
-  if (!at) return false;
-  await page.mouse.move(at.x, at.y, { steps: 3 });
-  await wait(250);
-  await page.mouse.click(at.x, at.y, options);
+  const act = async (at) => {
+    await page.mouse.move(at.x, at.y, { steps: 3 });
+    await wait(250);
+    await page.mouse.click(at.x, at.y, options);
+  };
+  if (typeof name === "string") return clickStill(page, name, { find: where, optional: true, act, after: 900 });
+  if (!name) return false;
+  await act(name);
   await wait(900);
   return true;
 }

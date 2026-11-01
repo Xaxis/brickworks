@@ -19,7 +19,7 @@
 // (window.brickworksState.custom), the sticker is not stuck on, the sheet is
 // not true to size within 0.1 mm, the model does not come back with all its
 // printed parts, or a script error reaches the console.
-import { launch, openColumnFor } from "./browser.mjs";
+import { clickStill, launch, openColumnFor } from "./browser.mjs";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -98,10 +98,8 @@ function tools(page) {
     }
     return (await controls())[name];
   }
-  async function click(name, seconds = 120) {
-    const at = await where(name, seconds);
-    await page.mouse.click(at.x, at.y);
-    await page.waitForTimeout(1500);
+  function click(name, seconds = 120) {
+    return clickStill(page, name, { find: (n) => where(n, seconds), after: 1500 });
   }
   // Whatever a press opens a file picker for, answered with a file. The app
   // reads the click a frame or more after the page does, and on SwiftShader
@@ -145,8 +143,7 @@ function tools(page) {
     }));
   }
   async function choose(name, file) {
-    const at = await where(name);
-    await picked(async () => page.mouse.click(at.x, at.y), file, name);
+    await picked(() => clickStill(page, name, { find: where }), file, name);
   }
   async function open(file) {
     const at = await where("open");

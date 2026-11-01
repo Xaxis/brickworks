@@ -60,7 +60,7 @@
 //   node --env-file=.env tools/web/comments_flow.mjs --url=http://127.0.0.1:8830 --site --out=DIR
 //
 // Pictures in --out.
-import { launch } from "./browser.mjs";
+import { clickStill, launch } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -559,9 +559,6 @@ async function replies(page, stepComment) {
 function state(page) {
   return page.evaluate(() => window.brickworksShare || {});
 }
-function controls(page) {
-  return page.evaluate(() => window.brickworksControls || {});
-}
 
 async function until(page, test, what, seconds = 240, arg = null) {
   const end = Date.now() + seconds * 1000;
@@ -573,26 +570,10 @@ async function until(page, test, what, seconds = 240, arg = null) {
   }
 }
 
-/// Press what the app shows by its name, once two of its reports agree on
-/// where it is (versions_flow.mjs press).
-async function press(page, name, seconds = 60) {
-  const end = Date.now() + seconds * 1000;
-  for (;;) {
-    let at = (await controls(page))[name];
-    for (let n = 0; at && n < 6; n += 1) {
-      await page.waitForTimeout(550);
-      const again = (await controls(page))[name];
-      if (again && again.x === at.x && again.y === at.y) break;
-      at = again;
-    }
-    if (at) {
-      await page.mouse.click(at.x, at.y);
-      await page.waitForTimeout(400);
-      return at;
-    }
-    if (Date.now() > end) throw new Error(`no ${name} on the page`);
-    await page.waitForTimeout(500);
-  }
+/// Press what the app shows by its name where it stands still (browser.mjs
+/// clickStill), and the place pressed.
+function press(page, name, seconds = 60) {
+  return clickStill(page, name, { seconds, after: 400 });
 }
 
 /// The viewer at [address] on a phone-sized page, as [who] (a session, or
