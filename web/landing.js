@@ -25,7 +25,10 @@ const near = document.getElementById("also");
 // waits on data-strip).
 const STRIPS = [
   { strip: "made", row: "made-models", ask: "/api/share?op=list&page=1&sort=top", id: GALLERY, said: "strip" },
-  { strip: "sets", row: "sets-models", ask: "/api/share?op=library&page=1&sort=largest", id: SET, said: "sets" },
+  // Only sets LDraw has a 3D model of: "ready to open" is a set that opens
+  // whole in the builder. Asked by size alone, 7 of the 8 had no model, only
+  // their parts (the owner, 2026-11-01).
+  { strip: "sets", row: "sets-models", ask: "/api/share?op=library&page=1&sort=largest&model=3d", id: SET, said: "sets" },
 ];
 
 /// [model]'s card once its picture is in, or null.

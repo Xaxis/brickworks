@@ -87,6 +87,44 @@ for (const [label, width, height] of [["phone", 390, 844], ["laptop", 1280, 900]
     + `${seen.intoTheApp} way${seen.intoTheApp === 1 ? "" : "s"} into the app`);
   await page.close();
   for (const theme of ["light", "dark"]) await strip(label, width, height, theme);
+  await setsStrip(label, width, height);
+}
+
+/// Real sets, ready to open: every card a set LDraw has a 3D model of, its
+/// page offering to build it in 3D. Asked by size alone, 7 of its 8 cards
+/// had no model and opened only as parts (the owner, 2026-11-01).
+async function setsStrip(label, width, height) {
+  const page = await browser.newPage({ viewport: { width, height } });
+  if (bypass) await page.setExtraHTTPHeaders({ "x-vercel-protection-bypass": bypass });
+  await page.goto(target, { waitUntil: "load", timeout: 45000 });
+  await page.evaluate(() => document.getElementById("sets")?.scrollIntoView({ block: "center" }));
+  const settled = await page.waitForFunction(() => document.documentElement.dataset.sets, null, { timeout: 30000 })
+    .then(() => true, () => false);
+  const seen = await page.evaluate(async () => {
+    const cards = [...document.querySelectorAll("#sets-models .model")];
+    const opened = await Promise.all(cards.map(async (card) => {
+      const href = card.querySelector("a.open")?.getAttribute("href") || "";
+      let build = false;
+      try {
+        const reply = await fetch(href, { headers: { accept: "text/html" } });
+        build = reply.ok && /data-build3d/.test(await reply.text());
+      } catch { /* no page */ }
+      return { href, model3d: card.dataset.model3d === "yes", build };
+    }));
+    return { said: document.documentElement.dataset.sets || "", opened };
+  });
+  const where = `${label} sets`;
+  if (!settled) {
+    problems.push(`${where}: the strip never settled (no data-sets after 30 s)`);
+  } else if (seen.said !== "none") {
+    for (const one of seen.opened) {
+      if (!one.model3d) problems.push(`${where}: ${one.href} has no 3D model, so it opens only as parts`);
+      else if (!one.build) problems.push(`${where}: ${one.href} has no Build it in 3D`);
+    }
+  }
+  const good = seen.opened.filter((one) => one.model3d && one.build).length;
+  console.log(`  ${where.padEnd(13)} ${seen.said === "none" ? "hidden" : `${good} of ${seen.opened.length} cards open in 3D`}`);
+  await page.close();
 }
 
 /// The strip as a visitor meets it: scrolled to, it asks the gallery, and
