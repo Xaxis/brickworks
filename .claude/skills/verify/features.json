@@ -3582,7 +3582,7 @@
       "id": "lib:the surface pass",
       "kind": "lib",
       "entry": "src/ai/surface_pass.gd",
-      "reach": "godot --headless --path . --script src/dev/surface_probe.gd   (over MCP: review_model {\"surface\": true}, then settle_surface; its colour findings, a line through a side or top one colour covers: src/dev/colour_faces_probe.gd)",
+      "reach": "godot --headless --path . --script src/dev/surface_probe.gd   (over MCP: review_model {\"surface\": true}, then settle_surface)",
       "area": "assistant",
       "tests": []
     },
