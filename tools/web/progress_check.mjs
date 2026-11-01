@@ -79,7 +79,7 @@
 // --model=FILE --parts=N opens FILE, of N parts, where Orthanc is opened:
 // --only=timeline with a model whose author's steps are taken out times the
 // planner (Instructions.plan_paced) in the browser.
-import { controlsWith, launch, openColumnFor } from "./browser.mjs";
+import { controlsWith, launch, openColumnFor, typeInMenu } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { deflateSync } from "node:zlib";
@@ -483,7 +483,7 @@ async function fromMenu(page, control, path) {
   for (let n = 0; n < path.length; n++) {
     const [word, downs] = Array.isArray(path[n]) ? path[n] : [path[n], 0];
     if (/\s/.test(word)) throw new Error(`a menu is typed into a word at a time, not "${word}"`);
-    if (word) await page.keyboard.type(word, { delay: 120 });
+    if (word) await typeInMenu(page, word);
     for (let d = 0; d < downs; d++) {
       await page.waitForTimeout(300);
       await page.keyboard.press("ArrowDown");
@@ -543,7 +543,7 @@ try {
       const menu = await h.where("menu_make");
       await page.mouse.click(menu.x, menu.y);
       await page.waitForTimeout(1500);
-      await page.keyboard.type("Mosaic", { delay: 120 });
+      await typeInMenu(page, "Mosaic");
       await page.waitForTimeout(800);
       await page.keyboard.press("Enter");
       for (let wait = 0; wait < 60 && page.choosers.length === 0; wait++) await page.waitForTimeout(500);

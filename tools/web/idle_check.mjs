@@ -23,7 +23,7 @@
 // --floor=none (or grid) first puts the model on that floor, by View >
 // Floor and the menu's keys: with no baseplate the ground catches the
 // model's shadow, and that must cost nothing standing still either.
-import { controlsWith, launch } from "./browser.mjs";
+import { controlsWith, launch, typeInMenu } from "./browser.mjs";
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
@@ -191,10 +191,10 @@ if (args.floor) {
     if (!menu) break;
     await page.mouse.click(menu.x, menu.y);
     await page.waitForTimeout(2000 + 2000 * tries);
-    await page.keyboard.type("Floor", { delay: 110 });
+    await typeInMenu(page, "Floor");
     await page.keyboard.press("ArrowRight");
     await page.waitForTimeout(1200);
-    await page.keyboard.type(words, { delay: 110 });
+    await typeInMenu(page, words);
     await page.keyboard.press("Enter");
     for (let n = 0; n < 40 && !on; n++) {
       await page.waitForTimeout(500);

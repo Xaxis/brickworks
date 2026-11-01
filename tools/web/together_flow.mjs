@@ -68,7 +68,7 @@
 //
 // Red on a build without it: there is no Build together… in the File menu.
 // Pictures in --out. Exit 1 on any failure.
-import { askApp, launch } from "./browser.mjs";
+import { askApp, launch, typeInMenu } from "./browser.mjs";
 import { answerAge, deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { spawn } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -148,22 +148,7 @@ async function menu(page, title, words, shown, seconds = 30) {
     const at = await until(async () => (await controls(page))[`menu_${title}`], `the ${title} menu`, 240);
     await page.mouse.click(at.x, at.y);
     await page.waitForTimeout(2000 + 1500 * n);
-    // The click taken, and the menu drawn: two frames since.
-    await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
-    // Typed without its spaces (a space in a menu presses the row it is
-    // on), and all at once, as keys a person types while a frame is drawn
-    // reach the page together. A key at a time each waits for a frame, and
-    // a menu starts its search again after 2 s between two keys (Godot's
-    // gui/timers/incremental_search_max_interval_msec): with the owner's
-    // frames at 2.5 s, "Comm" was "m", and My collection opened in place of
-    // Comments (two runs, 2026-10-31).
-    await page.evaluate((letters) => {
-      const canvas = document.querySelector("canvas");
-      for (const key of letters) {
-        const code = /[a-z]/i.test(key) ? `Key${key.toUpperCase()}` : "";
-        for (const type of ["keydown", "keyup"]) canvas.dispatchEvent(new KeyboardEvent(type, { key, code, bubbles: true }));
-      }
-    }, words.replace(/ /g, ""));
+    await typeInMenu(page, words);
     await page.waitForTimeout(700);
     if (n === 0) await shot(page, `menu_${title}_${words.replace(/\W+/g, "_")}.png`);
     await page.keyboard.press("Enter");
@@ -1211,19 +1196,31 @@ try {
   await shot(guest.page, "5f_selection.png");
   // The second person turning the view themselves stops it.
   const theirs = (await controls(guest.page)).view;
+  const unwheeled = (await state(guest.page)).view;
   if (theirs) {
     await guest.page.mouse.move(theirs.x, theirs.y + 40);
     await guest.page.mouse.wheel(0, -300);
   }
   const stopped = await until(async () => !(await together(guest.page)).following, "following stopped", 10)
     .catch(() => false);
-  await wait(1000);
-  const kept = (await state(guest.page)).view;
+  // The view kept is the wheel's, once the page is told it: the app tells
+  // the page its view every half second of its own frames, and whether it
+  // follows every frame. A second after following stopped, the page still
+  // had the view from before the wheel on a box at load 31, where the
+  // second browser no longer drew every frame (unit selfast, 2026-11-01).
+  const kept = await until(async () => {
+    const now = (await state(guest.page)).view;
+    return now && !sameView(now, unwheeled) ? now : null;
+  }, "the wheel's view told", 30).catch(() => null);
   await turnOwner(-20);
   await wait(3000);
+  const [guestNow, ownerNow] = [(await state(guest.page)).view, (await state(owner.page)).view];
+  const stayed = Boolean(kept) && sameView(guestNow, kept);
+  const apart = !sameView(guestNow, ownerNow);
   check("the second person's own wheel stops it, and the owner's next turn moves their view no more",
-    stopped && sameView((await state(guest.page)).view, kept)
-    && !sameView((await state(guest.page)).view, (await state(owner.page)).view));
+    stopped && stayed && apart, stopped && stayed && apart ? ""
+      : `following stopped ${Boolean(stopped)}, the wheel's view told ${Boolean(kept)}, kept ${stayed},`
+        + ` not the owner's ${apart}: ${JSON.stringify({ before: unwheeled, kept, now: guestNow, owner: ownerNow })}`);
 
   // What both browsers and the desktop have, where an account under 13 is
   // sent no comments: the owner's and the desktop's files the same, byte
