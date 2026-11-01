@@ -1,7 +1,65 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.12.0",
+ "latest": "0.13.0",
  "releases": [
+  {
+   "version": "0.13.0",
+   "tag": "v0.13.0",
+   "date": "2026-10-31",
+   "page": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.13.0",
+   "notes": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.13.0",
+   "summary": "A release about getting to your model sooner. Brickworks now opens a second or more sooner: the first screen loads only what it shows, and Render, Simulate, the assistant and the other panels and dialogs are made the first time you ask for one. On a big model, dragging See inside's cut takes a couple of milliseconds a move instead of forty, and the next model you open no longer waits for the last one's joints to be read. Search offers each part once, and undo puts a part back where it stood, so a save after it is the file you had. In German, French and Spanish, parts and colours now have the names the LEGO Group gives them there, and search finds them by those names; the sign-in screen, the dialogs, the Library's themes and the version line read in the language too, with thousands grouped the way it groups them.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.13.0-linux-x86_64.AppImage",
+     "size": 575638008,
+     "sha256": "882fc43e724a5f6afc58856db122cee3734a08d539c2933660e50384408a2ef4",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.13.0/Brickworks-0.13.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.13.0-linux-x86_64.tar.xz",
+     "size": 426635112,
+     "sha256": "e31908287c820e8e87c5aa2dfb07f1aa61916f0f45017e85e1160b523ac0138a",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.13.0/Brickworks-0.13.0-linux-x86_64.tar.xz",
+     "unpacked": 1490446716,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.13.0-macos-universal.zip",
+     "size": 755556969,
+     "sha256": "385b51c5acbc2f716b832c0974df283b6b52c2014b7607b192543bf23b411b0f",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.13.0/Brickworks-0.13.0-macos-universal.zip",
+     "unpacked": 1587201184,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.13.0-windows-x86_64.zip",
+     "size": 733920134,
+     "sha256": "173a756c99c9325c37577c1490d474ed63489db48cf8931144bcab61f1286af9",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.13.0/Brickworks-0.13.0-windows-x86_64.zip",
+     "unpacked": 1526149596,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.12.0",
    "tag": "v0.12.0",

@@ -751,6 +751,53 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   every throw (2,090, 1,970, 1,760 points), the bin and Saved models went
   2.00 a point, and the bin glided nothing. Standing still after each
   list, 0 frames drawn in 6 s on both. A tap on More's View folds it.
+- `a drag begun on a text field scrolls its list` (`src/ui/fling_scroll.gd`,
+  `FlingScroll._on_field_input`, uifix): a LineEdit takes a finger's press
+  for itself (it accepts it, and its window focuses it first, which puts
+  the keyboard up), so the list round it never heard a drag begin: on a
+  phone or a tablet Properties, Settings' AI page, the parts' search, the
+  assistant's drawer and a dialog's form scrolled only from the gaps
+  between their fields, and a drag on one focused it and selected its
+  words. FlingScroll watches every LineEdit added. A finger's press on one
+  in a ScrollContainer is held, and no field in a list can take focus from
+  that press: moved past 8 points it drags the lists round it as
+  ScrollContainer does, innermost first, and glides on the lift as any list
+  does; lifted where it came down, the field is given the press and the
+  lift (focus, the caret where the finger was, the keyboard); held still
+  480 ms (`Main.HOLD_MS`), it is given the press, and the drag after
+  selects. A mouse's press, and a field in no list, are untouched (a drag
+  on one still selects). `tools/probe.sh field_drag_probe --phone` and
+  `field_drag_tablet_probe` (windowed; 390 x 844 and 1024 x 768) open
+  Properties with a part selected, Settings' AI page on your own key, the
+  parts' search, the assistant and every dialog with a field the menus
+  open, and drag each field showing in a list 100 points; once a list, a
+  drag beside the fields (the measure), a tap at the field's end and a
+  hold then a drag along it. On stage225's 81f82757 the phone's 9 fields
+  in 4 lists that scroll each moved their list 0 units (Properties' six 0
+  of 176 and 0 of -185, focused, their words selected), the 10 in lists
+  with nothing to scroll at that size (Settings' AI page, Share, the part
+  maker) took focus, and the tablet's 19 in 7 lists each moved 0: 19
+  checks fail on each. With it every one moves its list as far as a drag
+  beside the fields does (176 of 176, -185 of -185, 94 of 94, 53 of 53),
+  unfocused with nothing selected; one in a list with nothing to scroll is
+  left alone; and in each list a tap at the field's end focuses it with
+  the caret there, and a hold then a drag along it selects its words, the
+  list still (phone 33 checks, tablet 42). A phone's 22 fields in no list
+  (Save as, Find, the library's search, the command palette) keep a drag
+  that selects. In the web build `tools/web/field_drag_flow.mjs` (preview
+  check `field_drag`; CDP touch, three to the point) drags the assistant's
+  drawer at 844 x 390 and at 390 x 844 at Interface size 150%, then
+  Settings' AI page on your own key at both: beside the fields, then back
+  by the key field, nothing typed in after; a tap types in the field; a
+  hold then a drag leaves the list. A local export of 2f78d2b9 fails all
+  four: the drawer 0 of 117 and 0 of 252, the AI page 0 of 117 and 0 of
+  253 with its key field typed in (rel-m234 live: the drawer 0 of 117);
+  with it 110 of 117 and 252 of 252 (the drawer), 109 of 117 and 253 of 253
+  (the AI page). By hand against a preview, `BW_BYPASS=$VERCEL_BYPASS`
+  (preview_checks.sh sets it): without it the app never comes up. A drag begun on a tile's "+N" in the parts bin scrolls
+  nothing (the tile scrolls the grid itself, `PartsBin._cell_input`; its
+  badge does not), and the probe's drag beside the fields keeps off it,
+  and off what scrolls itself (the AI page's ItemList of models).
 - `minifig builder by finger` (`MinifigDialog._arrange`, fig257): the
   builder's three columns want 860 units across at the least, and a phone
   has 720 (a tablet held upright too): its figure, Keep and Place in model
@@ -1134,10 +1181,23 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   parts (" · ", " — ", ". ", "; ", and " › " a menu's path) and the keys
   sheet's lowered words are found piece by piece, a part found nowhere kept
   as it is, as a name is ("House — 71 bricks"); of several partial ways the
-  one leaving the fewest English letters wins. Names stay as they are:
-  parts, colours (LDraw's, as Studio keeps them), models, sets, keys (Ctrl,
-  Shift), files, licences, and whatever an entry's English quotes (“%s”: a
-  model named Car stays Car). Find a command matches a command's words as
+  one leaving the fewest English letters wins. Parts and colours are named
+  as LEGO's own sites in each language name them, through a glossary of
+  LDraw's formulaic words (`src/parts/part_words.gd`, `PartWords`): the
+  kind, its size as written, the adjectives agreeing with it (Brique ronde,
+  Ladrillo redondo; Stein 2×2 rund) and the nouns after with, without, on
+  and for in their number and German's case ("Plaque lisse 1×4 avec
+  rainure", "Stein 1×2 ohne untere Röhre"; "Gris bleuté clair",
+  "Transparent-Rot"); a name it cannot word whole (a print's, a sticker's, a
+  minifigure's) stays as LDraw wrote it, never half in each, and so does a
+  colour with its finish ("Rouge, opaque" or "Bright Light Orange, solid",
+  `Words._finished`). The bin's tiles are said before they are fitted
+  (`PartsBin.said_name`, said again when the language changes), and the
+  bin's search reads the language's words back, accents or none, beside
+  LDraw's (`PartWords.spoken`, `PartSearch.terms_of`'s `spoken`): "brique
+  1x2" is 3004, as "brick 1x2" and "3004" still are. Names stay as they
+  are: models, sets, keys (Ctrl, Shift), files, licences, and whatever an
+  entry's English quotes (“%s”: a model named Car stays Car). Find a command matches a command's words as
   drawn too ("speichern" finds Save, `CommandPalette._score`). The status
   line after an action, and every dialog (the way in: signing in by email or
   orangecheck, the age question and what the server answers; Open's list and
@@ -1161,7 +1221,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   German and Spanish, 1 575 with a no-break space in French: the font has
   no narrow one, which a browser draws 1.4 px wide). A word with a second sense has
   an entry of its own by context: Render's backdrop "White" (`msgctxt
-  "backdrop"`, `tr("White", "backdrop")`) beside LDraw's colour White.
+  "backdrop"`, `tr("White", "backdrop")`) beside LDraw's colour White,
+  which the glossary says.
   `languages_probe` reads them all in English, then in each language: 63
   common actions with the status line heard after each, Settings with the
   assistant on and off, the properties with two parts selected and with a
@@ -1175,8 +1236,17 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   word drawn without its entry or the themes out of the language's order,
   a release's version line in Settings and About ("released 2026-10-31",
   the probe giving the run a release's stamp) without its entry, the
-  Library's count of sets not grouped as the language groups it, or
-  `--about` not saying its line in the language chosen; a control set to draw its words as they are
+  Library's count of sets not grouped as the language groups it,
+  `--about` not saying its line in the language chosen, a bin tile not
+  named as the language names it (3004 "Brique 1×2", 2431 "Plaque lisse
+  1×4 avec rainure") or half in each, a search typed in the language
+  ("plaque lisse 1x4 avec rainure") not finding its part or English's words
+  and the part's number no longer finding it, the properties' title of a
+  part not in the language or a print's not as LDraw writes it, the
+  colour under the palette not whole with its finish either way, or the
+  colour finder (Shift-C) not naming a colour first by its name in the
+  language ("gris bleute clair" is 71); it says
+  how many of the catalogue's parts the glossary names whole; a control set to draw its words as they are
   shows a name and is not read. `--missing=FILE` writes the entries to
   translate, each partial one with
   the whole it was in ("#. in:"). `--shots=DIR` pictures ten dialogs (the
@@ -1328,7 +1398,17 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   only where an answer can be: a part under one by the height of tops
   (`Instructions._hangers_of`), loops again only among parts on one, the
   next part among its region's own ready (`_sequence_into`)
-  (`command_probe --subjects=orthanc --only=suggest_sections`). The
+  (`command_probe --subjects=orthanc --only=suggest_sections`). Then
+  3.1 to 4.0 s became 2.3 to 2.8 s of its own, the same half hour at a
+  load of 6 to 16: a region's ready kept lowest first, looked through only
+  as high as the best so far can beat (`Instructions.Ready`, `_best_low`),
+  whether a part is near the step kept from one part of it to the next
+  (`_near_step_kept`), and what the step pictures read of each part from
+  where it is alone read on a third worker beside the order
+  (`Pictures.read`, `take`) (`sections_cost_probe`: under 3 s of its own
+  on the tower; with `--into=DIR` each model's sections and the planner's
+  steps written, the same byte for byte before and after on the tower,
+  10179-1, 42093-1 and 31025-1). The
   reading, the booklet's steps and the sections are the same, hash for
   hash, on the car, house, tower, kart, corner shop, castle, Orthanc,
   orrery, barn owl and station, with their authored steps and without, and
@@ -2632,6 +2712,11 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a -s "-screen 0 1400x900x24" godot --path . \
 # split, merged, accepted, evaluated, Y out and back, undone and redone,
 # Shift+Y apart and together
 node tools/web/sections_flow.mjs --url=<preview>/app --bypass=… --out=shots/sections_web
+# Suggest sections on the Wizard's Tower under 3 s of its own, each try
+# suggesting what the first did, and on 10179-1, 42093-1 and 31025-1;
+# --into=DIR writes each model's sections and plan, to diff against
+# another checkout's
+godot --headless --path . --script src/dev/sections_cost_probe.gd
 # undo belongs to the model it was recorded against
 godot --headless --path . --script src/dev/history_probe.gd
 # an undo puts back what was taken and nothing more: count, scenery, the
