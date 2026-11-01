@@ -390,13 +390,15 @@ a click. Here:
   stranger refused; the owner ending it; a session begun again on the car
   as all that left it, in one request and then in parts. The pointer is
   timed over 40 moves from the mouse moving to the frame the second page
-  drew its dot in, twice: on the car after the 50 edits, p95 under 1 s
-  strictly; on the rich car, as the change measure is there, p95 under
-  1 s or 95 of 100 on the app's own time: the move less its trip (the
-  network, the server, the frame that reads it), within four of that
-  page's frames (each move's own, this box's software drawing, half a
-  second and more). Both
-  say the stages and what the check reading the page saw. Red on m165 (no Build together in the File menu).
+  drew its dot in, twice, on the car after the 50 edits and on the rich
+  car, as the change measure is: p95 under 1 s, or 95 of 100 moves under
+  1 s or on the pages' own time: the move less its trip (the network and
+  the server), within the owner's longest frame before it sent and three
+  of the second page's while it drew the dot (this box's software
+  drawing: the one frame that draws the dot took 17-47 ms on the plain
+  car in eight runs, 300-750 ms in one at load 23-31, which failed a bar
+  of 1 s alone, 2026-11-01). Both say the stages, each move that missed,
+  and what the check reading the page saw. Red on m165 (no Build together in the File menu).
 
 ## Not done yet
 
